@@ -78,7 +78,7 @@ HETATM 1474  C4  5GP H 187      26.583  38.559  71.844  1.00 12.50
 ENDMDL
 MODEL        3
 HETATM 1475  S   SO4 S 188      31.424  42.923  60.396  1.00 55.69           S4+
-HETATM 1476  O1  SO4 S 188      31.631  41.513  60.336  1.00 59.84           O1-
+HETATM 1476  O1  SO4 S 188      31.631  41.513  60.336  1.00 59.84           o1-
 HETATM 1477  O2  SO4 S 188      32.533  43.699  59.932  1.00 49.98           O1-
 HETATM 1478  O3  SO4 S 188      31.128  43.217  61.738  1.00 59.44           O1-
 HETATM 1479  O4  SO4 S 188      30.353  43.201  59.539  1.00 60.54           O1-
@@ -115,7 +115,7 @@ END
   assert list(isel(r"name c?\*")) == [45,46,48,50,52]
   assert list(isel(r"name 'C?\*'")) == []
   assert list(isel(r"name ' C?\*'")) == [45,46,48,50,52]
-  assert list(isel(r"name ' c?\*'")) == []
+  assert list(isel(r"name ' c?\*'")) == [45,46,48,50,52]
   assert list(isel(r"name n?'")) == [55, 59]
   assert list(isel(r"altloc a and name n")) == [24]
   assert list(isel(r"altloc b and name n")) == [32]
@@ -124,7 +124,7 @@ END
   assert list(isel(r"resname hoh")) == [69]
   assert list(isel(r"resname SO4")) == [64,65,66,67,68]
   assert list(isel(r"resname so4")) == [64,65,66,67,68]
-  assert list(isel(r"resname So4")) == []
+  assert list(isel(r"resname So4")) == [64,65,66,67,68]
   assert list(isel(r"resname S?4")) == [64,65,66,67,68]
   assert list(isel(r"resname pro and name cg")) == [22]
   assert list(isel(r"resname pro and (name cg or name ca)")) == [18,22]
@@ -268,9 +268,9 @@ END
   assert list(isel("chain A")) == [0,1,2]
   assert list(isel("chain a")) == [3,4,5]
   assert list(isel("name ca")) == range(6)
-  assert list(isel("resname asn")) == []
-  assert list(isel("resname ASN")) == [1,5]
-  assert list(isel("resname Asn")) == [2]
+  assert list(isel("resname asn")) == [1,2,5]
+  assert list(isel("resname ASN")) == [1,2,5]
+  assert list(isel("resname Asn")) == [1,2,5]
   hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
@@ -285,7 +285,7 @@ END
   isel = sel_cache.iselection
   assert list(isel("resname asn")) == [1,2,5]
   assert list(isel("resname ASN")) == [1,2,5]
-  assert list(isel("resname Asn")) == []
+  assert list(isel("resname Asn")) == [1,2,5]
   assert list(isel("chain A")) == [0,1,2]
   assert list(isel("chain a")) == []
   assert list(isel("chain B")) == []
