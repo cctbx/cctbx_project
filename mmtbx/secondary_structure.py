@@ -1213,11 +1213,21 @@ def calculate_structure_content (pdb_file) :
   ss_manager.find_automatically()
   return ss_manager.calculate_structure_content()
 
+def find_ss_phil (user_phil) :
+  scope = user_phil.get("refinement.secondary_structure")
+  if (len(scope.objects) > 0) :
+    scope.objects[0].name = ""
+    out = cStringIO.StringIO()
+    scope.show(out=out)
+    if (out.getvalue() != "") :
+      return libtbx.phil.parse(out.getvalue())
+  return user_phil
+
 def run (args, out=sys.stdout, log=sys.stderr) :
   pdb_files = []
   sources = []
   force_new_annotation = False
-  master_phil = libtbx.phil.parse("""
+  master_phil_str = """
     show_all_params = False
       .type = bool
     show_histograms = False
@@ -1226,7 +1236,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       .type = choice
     quiet = False
       .type = bool
-%s""" % sec_str_master_phil_str)
+%s""" % sec_str_master_phil_str
+  master_phil = libtbx.phil.parse(master_phil_str)
   parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil,
     home_scope="")
@@ -1240,6 +1251,8 @@ def run (args, out=sys.stdout, log=sys.stderr) :
         except RuntimeError :
           print "Unrecognizable file format for %s" % arg
         else :
+          user_phil = find_ss_phil(user_phil)
+          user_phil.show()
           sources.append(user_phil)
     else :
       if arg.startswith("--") :
@@ -1294,12 +1307,14 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   else :
     #working_phil.show(out=out)
     print >> out, "# These parameters are suitable for use in phenix.refine."
-    print >> out, "refinement.secondary_structure {"
+    if (prefix_scope != "") :
+      print >> out, "%s {" % prefix_scope
     if params.show_all_params :
       working_phil.show(prefix="  ", out=out)
     else :
       phil_diff.show(prefix="  ", out=out)
-    print >> out, "}"
+    if (prefix_scope != "") :
+      print >> out, "}"
     #print >> out, ss_params_str
     return working_phil.as_str()
 
