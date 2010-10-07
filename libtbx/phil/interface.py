@@ -302,8 +302,20 @@ class index (object) :
         if len(redundant_paths) > 0 :
           delete_phil_objects(old_phil, redundant_paths, only_scope=only_scope)
       self.log2("Fetching new working phil")
-      new_phil = self.master_phil.fetch(sources=[old_phil, phil_object])
-      if new_phil is not None :
+      new_phil = None
+      if (only_scope is not None) :
+        new_scope = phil_object.get(only_scope)
+        scope_master = self.master_phil.get(only_scope)
+        fetched_scope = scope_master.fetch(source=new_scope)
+        #fetched_scope.show()
+        find_and_replace_scope(
+          current_phil=self.working_phil,
+          new_scope=fetched_scope,
+          scope_name=only_scope)
+        new_phil = self.working_phil
+      else :
+        new_phil = self.master_phil.fetch(sources=[old_phil, phil_object])
+      if (new_phil is not None) :
         self.working_phil = new_phil
         if rebuild_index :
           self.log2("rebuilding index")
@@ -395,6 +407,23 @@ def delete_phil_objects (current_phil, phil_path_list, only_scope=None) :
               phil_path_list=phil_path_list,
               only_scope=only_scope)
       i += 1
+
+def find_and_replace_scope (current_phil, new_scope, scope_name) :
+  i = 0
+  while (i < len(current_phil.objects)) :
+    full_path = current_phil.objects[i].full_path()
+    if (full_path == scope_name) :
+      assert (not current_phil.objects[i].multiple)
+      new_scope.change_primary_parent_scope(current_phil)
+      del current_phil.objects[i]
+      current_phil.objects[i:i] = new_scope.objects
+      break
+    elif (scope_name.startswith(full_path)) :
+      find_and_replace_scope(
+        current_phil=current_phil.objects[i],
+        new_scope=new_scope,
+        scope_name=scope_name)
+    i += 1
 
 def collect_redundant_paths (master_phil, new_phil, multiple_only=True) :
   phil_diff = master_phil.fetch_diff(source=new_phil)
