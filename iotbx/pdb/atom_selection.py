@@ -23,17 +23,23 @@ def _character_case_id(strings):
   if (have_lower): return -1
   return 0
 
-def _get_map_string(map, pattern, wildcard_escape_char='\\'):
+def _get_map_string(
+      map,
+      pattern,
+      wildcard_escape_char='\\',
+      unconditionally_case_insensitive=True):
   pattern_was_quoted = True
   if (not isinstance(pattern, str)):
     if (pattern.quote_token is None):
       pattern_was_quoted = False
     pattern = pattern.value
     if (not pattern_was_quoted): pattern = pattern.strip()
+    if (unconditionally_case_insensitive): pattern = pattern.upper()
   result = []
   def match():
     for key,value in map.items():
       if (not pattern_was_quoted): key = key.strip()
+      if (unconditionally_case_insensitive): key = key.upper()
       if (wildcard.is_match(
             string=key,
             pattern=pattern,
@@ -42,6 +48,7 @@ def _get_map_string(map, pattern, wildcard_escape_char='\\'):
   match()
   if (    len(result) == 0
       and not pattern_was_quoted
+      and not unconditionally_case_insensitive
       and _character_case_id(strings=[pattern]) != 0):
     keys_case_id = _character_case_id(strings=map.keys())
     if (keys_case_id != 0):
@@ -145,7 +152,8 @@ class cache(slots_getstate_setstate):
     return _get_map_string(
       map=self.chain_id,
       pattern=pattern,
-      wildcard_escape_char=self.wildcard_escape_char)
+      wildcard_escape_char=self.wildcard_escape_char,
+      unconditionally_case_insensitive=False)
 
   def get_resseq(self, pattern):
     return _get_map_string(
