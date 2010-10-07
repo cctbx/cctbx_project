@@ -19,10 +19,23 @@ from scitbx.math import distributions
 
 from smtbx import absolute_structure
 
+try:
+  distributions.students_t_distribution(1)
+except RuntimeError, e:
+  # XXX Student's t distribution is not supported with GCC 3.2 builds
+  if str(e).startswith("Implementation not available in this build."):
+    students_t_available = False
+    print "Skipping exercise_hooft_analysis() with Student's t distribution."
+  else:
+    raise RuntimeError(e)
+else:
+  students_t_available = True
+
 
 def exercise_hooft_analysis(space_group_info, d_min=1.0,
                             use_students_t_errors=False,
                             debug=False):
+  if use_students_t_errors and not students_t_available: return
   elements = ("N", "C", "C", "S") * 5
   xs = random_structure.xray_structure(
     space_group_info,
