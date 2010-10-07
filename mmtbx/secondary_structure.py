@@ -1025,7 +1025,8 @@ class manager (object) :
         prefix=None,
         log=log,
         add_segid=segid)
-      annotations.append(base_pairs)
+      if (base_pairs is not None) :
+        annotations.append(base_pairs)
     return "\n".join(annotations)
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
