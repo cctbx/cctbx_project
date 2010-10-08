@@ -295,7 +295,7 @@ public:
 
 
 /// Site, isotropic or anisotropic displacement, etc., or combination of those.
-/** They may belong to one or more scatterers.
+/** They may belong to one or more scatterers in the asymmetric unit.
 
     Heirs of this class implementing behaviour for specific scatterer parameters
     (e.g. site, occupancy, etc) shall read their values from their associated
