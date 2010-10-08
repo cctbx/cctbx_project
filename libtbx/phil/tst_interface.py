@@ -209,6 +209,18 @@ refinement.secondary_structure {
 }
 """
 
+  phil_str_3 = """
+refinement.ncs.restraint_group {
+  reference = "chain A"
+  selection = "chain B"
+}
+"""
+  phil_str_4 = """
+refinement.ncs.restraint_group {
+  reference = "chain C"
+  selection = "chain D"
+}"""
+
   master_phil = runtime.master_phil
   i = interface.index(master_phil=master_phil,
     parse=iotbx.phil.parse)
@@ -231,6 +243,14 @@ refinement.secondary_structure {
   if verbose :
     print "Merge with global fetch: %6.1fms" % ((t2-t1) * 1000)
     print "Merge with local fetch:  %6.1fms" % ((t4-t3) * 1000)
+  i.merge_phil(phil_string=phil_str_3,
+    only_scope="refinement.ncs.restraint_group")
+  params = i.get_python_object()
+  assert (params.refinement.ncs.restraint_group[0].reference == "chain A")
+  i.merge_phil(phil_string=phil_str_4,
+    only_scope="refinement.ncs.restraint_group")
+  params = i.get_python_object()
+  assert (params.refinement.ncs.restraint_group[0].reference == "chain C")
 
 if __name__ == "__main__" :
   exercise()
