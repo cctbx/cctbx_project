@@ -4,7 +4,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   /**** Sites ****/
 
-  void special_position_site::linearise(uctbx::unit_cell const &unit_cell,
+  void special_position_site_parameter::linearise(uctbx::unit_cell const &unit_cell,
                                         sparse_matrix_type *jacobian_transpose)
   {
     independent_small_vector_parameter<3> const &p = independent_params();

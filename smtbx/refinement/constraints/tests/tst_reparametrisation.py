@@ -24,7 +24,7 @@ class terminal_linear_ch_site_test_case(object):
     self.h = xray.scatterer("H")
     self.reparam = constraints.ext.reparametrisation(self.uc)
     if with_special_position_pivot:
-      x0 = self.reparam.add(constraints.special_position_site,
+      x0 = self.reparam.add(constraints.special_position_site_parameter,
                             self.site_symm, self.c0)
     else:
       x0 = self.reparam.add(constraints.independent_site_parameter, self.c0)
