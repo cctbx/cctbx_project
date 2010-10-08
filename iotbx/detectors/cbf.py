@@ -38,6 +38,24 @@ class CBFImage(MARIPImage):
   def beam_center_fast(self):
     return self.adaptor.beam_index_fast*self.adaptor.pixel_size()
 
+  def read(self):
+    T = self.adaptor.transform_flags()
+
+    #future: use these tests to trigger in-place column & row swaps
+    assert T.reverse_fast == False
+    assert T.reverse_slow == False
+
+    from cbflib_adaptbx import cbf_binary_adaptor
+    M = cbf_binary_adaptor( self.filename )
+    data = M.uncompress_implementation("buffer_based").uncompress_data()
+    if T.transpose==True:
+      #very inefficient; 0.09 sec for 3K x 3K uncompression
+      #              yet 0.54 sec for in-place transpose
+      # other options not tried: a) alloc & set new matrix; b) use data as is
+      data.matrix_transpose_in_place()
+
+    self.bin_safe_set_data(data)
+
 if __name__=='__main__':
   import sys
   C = CBFImage(sys.argv[1])
