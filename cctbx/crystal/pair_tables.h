@@ -504,16 +504,32 @@ namespace cctbx { namespace crystal {
         return *this;
       }
 
-      //! Extracts pair_sym_table of interactions unique under symmetry.
-      /*! The result may be interpreted as an "asymmetric unit of pair
-          interactions."
+      //! Extracts pair_sym_table of interaction pairs.
+      /*! The default is to consider only pairs unique under symmetry.
+          The result may then be interpreted as an "asymmetric unit of pair
+          interactions." The returned pairs read (i_seq, j_seq, rt_mx_ji)
+          where rt_mx_ji is the symmetry moving j_seq to the site interacting
+          with i_seq. Pairs such that j_seq is in the asu, i.e. rt_mx_ji is the
+          unit Seitz matrix are preferred.
 
           If skip_j_seq_less_than_i_seq == false the result may
-          contain redundancies. This option is mainly for debugging
-          and development purposes.
+          contain redundancies. This option is useful for debugging
+          and development purposes but also when one needs for each site to
+          have directly access to all the sites it interacts with.
+
+          If all_interactions_from_inside_asu is true, all the interactions
+          involving any site in the asu are generated, even if some of them are
+          symmetry-equivalent. The typical case is that of a site C1
+          on a special position which is bonded to a site C2' that is the
+          symmetry equivalent of a site C2 in the asu through an operator
+          leaving C1 invariant. Then in addition to the interaction C1--C2',
+          there is the interaction C1--C2. When all_interactions_from_inside_asu
+          is false, the latter interaction will be generated. When that flag
+          is true, the both of C1--C2' and C1--C2 will be generated.
        */
       pair_sym_table
-      extract_pair_sym_table(bool skip_j_seq_less_than_i_seq=true) const
+      extract_pair_sym_table(bool skip_j_seq_less_than_i_seq=true,
+                             bool all_interactions_from_inside_asu=false) const
       {
         pair_sym_table sym_table(asu_mappings_->mappings_const_ref().size());
         af::const_ref<pair_asu_dict> table_ref = table_.const_ref();
@@ -528,14 +544,36 @@ namespace cctbx { namespace crystal {
                 asu_dict_i++) {
             unsigned j_seq = asu_dict_i->first;
             if (skip_j_seq_less_than_i_seq && j_seq < i_seq) continue;
+            sgtbx::site_symmetry_ops const
+            &site_symm_j_seq = asu_mappings()->site_symmetry_table().get(j_seq);
             std::vector<sgtbx::rt_mx>& rt_mx_list = sym_dict[j_seq];
             for(pair_asu_j_sym_groups::const_iterator
                   j_sym_groups_i = asu_dict_i->second.begin();
                   j_sym_groups_i != asu_dict_i->second.end();
                   j_sym_groups_i++) {
-              unsigned j_sym = *(j_sym_groups_i->begin());
-              sgtbx::rt_mx rt_mx_j = asu_mappings_->get_rt_mx(j_seq, j_sym);
-              rt_mx_list.push_back(rt_mx_i_inv.multiply(rt_mx_j));
+              boost::optional<sgtbx::rt_mx> first_rt_mx_ji, candidate_rt_mx_ji;
+              for (pair_asu_j_sym_group::const_iterator
+                   j_sym_i = j_sym_groups_i->begin();
+                   j_sym_i != j_sym_groups_i->end();
+                   ++j_sym_i) {
+                unsigned j_sym = *j_sym_i;
+                sgtbx::rt_mx rt_mx_j = asu_mappings_->get_rt_mx(j_seq, j_sym);
+                sgtbx::rt_mx rt_mx_ji = rt_mx_i_inv.multiply(rt_mx_j);
+                if (!first_rt_mx_ji) first_rt_mx_ji = rt_mx_ji;
+                if (site_symm_j_seq.contains(rt_mx_ji)) {
+                  rt_mx_ji = rt_mx_ji.unit_mx();
+                  if (!all_interactions_from_inside_asu) {
+                    candidate_rt_mx_ji = rt_mx_ji;
+                    break;
+                  }
+                }
+                if (all_interactions_from_inside_asu) {
+                  rt_mx_list.push_back(rt_mx_ji);
+                }
+              }
+              if (all_interactions_from_inside_asu) continue;
+              if (candidate_rt_mx_ji) rt_mx_list.push_back(*candidate_rt_mx_ji);
+              else if (first_rt_mx_ji) rt_mx_list.push_back(*first_rt_mx_ji);
             }
           }
         }
