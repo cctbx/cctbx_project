@@ -413,9 +413,13 @@ def find_and_replace_scope (current_phil, new_scope, scope_name) :
   while (i < len(current_phil.objects)) :
     full_path = current_phil.objects[i].full_path()
     if (full_path == scope_name) :
-      assert (not current_phil.objects[i].multiple)
+      #assert (not current_phil.objects[i].multiple)
       new_scope.change_primary_parent_scope(current_phil)
-      del current_phil.objects[i]
+      j = i
+      while (j < len(current_phil.objects)) :
+        if (current_phil.objects[j].full_path() == scope_name) :
+          del current_phil.objects[j]
+        j += 1
       current_phil.objects[i:i] = new_scope.objects
       break
     elif (scope_name.startswith(full_path)) :
