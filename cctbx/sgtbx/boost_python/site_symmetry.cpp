@@ -86,6 +86,7 @@ namespace {
         .def("matrices", &w_t::matrices, ccr())
         .def("n_matrices", &w_t::n_matrices)
         .def("is_point_group_1", &w_t::is_point_group_1)
+        .def("__contains__", &w_t::contains)
         .def("__eq__", &w_t::operator==)
         .def("is_compatible_u_star",
           (bool(w_t::*)(scitbx::sym_mat3<double> const&, double) const)

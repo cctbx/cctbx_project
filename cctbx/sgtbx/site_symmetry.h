@@ -89,6 +89,15 @@ namespace cctbx { namespace sgtbx {
       bool
       is_point_group_1() const { return n_matrices() == 1; }
 
+      /// Whether the given matrix leaves the site invariant
+      bool contains(rt_mx const &s) const {
+        af::const_ref<rt_mx> m = matrices().const_ref();
+        for (int i=0; i<m.size(); ++i) {
+          if (s.new_denominators(m[i]) == m[i]) return true;
+        }
+        return false;
+      }
+
       //! True if special_op() and all matrices() are identical.
       bool
       operator==(site_symmetry_ops const& other) const

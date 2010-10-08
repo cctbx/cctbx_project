@@ -1319,12 +1319,14 @@ def exercise_site_symmetry():
   assert not s.is_point_group_1()
   assert s.point_group_type() == "2"
   assert [str(o) for o in s.unique_ops()] == ["0,0,z"]
+  assert sgtbx.rt_mx("-x,-y,z") in s
   cb_op = sgtbx.change_of_basis_op("z,x,y")
   sc = s.change_basis(cb_op=cb_op)
   assert str(sc.special_op()) == "x,0,0"
   assert str(sc.matrices()[0]) == "x,y,z"
   assert str(sc.matrices()[1]) == "x,-y,-z"
   assert str(s.matrices()[1]) == "-x,-y,z"
+  assert sgtbx.rt_mx("x,-y,-z") in sc
   assert sc.multiplicity() == 1
   cb_op = sgtbx.change_of_basis_op("-x,-y,-z") # negative determinant
   sc = s.change_basis(cb_op=cb_op)
