@@ -312,16 +312,20 @@ public:
   typedef xray::scatterer<> scatterer_type;
   typedef af::const_ref<scatterer_type *> scatterer_sequence_type;
 
-  /// The scatterers
+  /// The scatterers in the asu this models some parameters of.
+  /** If this parameter models scatterers outside of the asu, an empty sequence.
+   */
   virtual scatterer_sequence_type scatterers() const = 0;
 
   crystallographic_parameter(std::size_t n_arguments)
     : parameter(n_arguments)
   {}
 
-  /// Indices of those components associated with the given scatterer.
+  /// Indices of those components associated with the given asu scatterer.
   /** The resulting range may be invalid if the scatterer is not one of those
       this parameter refers to.
+      It shall throw an smtbx::error exception if this parameter does not
+      refer to any scatterer in the asu.
    */
   virtual index_range
   component_indices_for(scatterer_type const *scatterer) const = 0;
@@ -329,12 +333,17 @@ public:
   /// Write annotations for each component associated with the given scatterer
   /** It shall be written as a comma separated list which shall be empty
       if the scatterer is not one of those this parameter refers to.
+      It shall throw an smtbx::error exception if this parameter does not
+      refer to any scatterer in the asu.
    */
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const = 0;
 
   /// Store its components into the corresponding scatterers
+  /** It shall throw an smtbx::error exception if this parameter does not
+      refer to any scatterer in the asu.
+   */
   virtual void store(uctbx::unit_cell const &unit_cell) const = 0;
 };
 
