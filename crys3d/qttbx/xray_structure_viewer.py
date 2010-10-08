@@ -73,26 +73,31 @@ class xray_structure_viewer(qttbx.widget):
     ])
 
   covalent_bond_tolerance = 0.5 # Angstrom
+  distance_cutoff = None
+  bonding="covalent"
 
-  def __init__(self, xray_structure, name='??', **kwds):
+  def __init__(self, xray_structure, name='??',
+               **kwds):
     self.xray_structure = xs = xray_structure
     super(xray_structure_viewer, self).__init__(
       unit_cell=xray_structure.unit_cell(),
       orthographic=True,
       light_position=(-1, 1, 1, 0),
       **kwds)
+    assert self.bonding in ("covalent", "all")
+    assert self.bonding != "all" or self.distance_cutoff is not None
     self.setWindowTitle("%s in %s" % (name,
                                       xs.space_group().type().hall_symbol()))
     sites_frac = xs.sites_frac()
     self.set_extent(sites_frac.min(), sites_frac.max())
 
-    sites = self.sites_cart = xs.sites_cart()
+    sites_cart = self.sites_cart = xs.sites_cart()
     thermal_tensors = xs.extract_u_cart_plus_u_iso()
     self.ellipsoid_to_sphere_transforms = {}
     self.scatterer_indices = flex.std_string()
     self.scatterer_labels = flex.std_string()
     for i, (sc, site, u_cart) in enumerate(itertools.izip(xs.scatterers(),
-                                                          sites,
+                                                          sites_cart,
                                                           thermal_tensors)):
       t = quadrics.ellipsoid_to_sphere_transform(site, u_cart)
       self.ellipsoid_to_sphere_transforms.setdefault(
@@ -101,28 +106,49 @@ class xray_structure_viewer(qttbx.widget):
       self.scatterer_indices.append("# %i" % i)
       self.scatterer_labels.append(sc.label)
     self.labels = None
-    self.label_font = QtGui.QFont("Princetown LET", pointSize=22)
+    self.label_font = QtGui.QFont("Arial Black", pointSize=18)
 
-    radii = [
-      covalent_radii.table(elt).radius()
-      for elt in xs.scattering_type_registry().type_index_pairs_as_dict() ]
-    buffer_thickness = max(radii) + self.covalent_bond_tolerance
-    asu_mappings = xs.asu_mappings(buffer_thickness=buffer_thickness)
-    bond_table = crystal.pair_asu_table(asu_mappings)
-    bond_table.add_covalent_pairs(xs.scattering_types(),
-                                  tolerance=self.covalent_bond_tolerance)
-    pair_sym_table = bond_table.extract_pair_sym_table()
+    if self.bonding == "covalent":
+      radii = [
+        covalent_radii.table(elt).radius()
+        for elt in xs.scattering_type_registry().type_index_pairs_as_dict() ]
+      buffer_thickness = 2*max(radii) + self.covalent_bond_tolerance
+      asu_mappings = xs.asu_mappings(buffer_thickness=buffer_thickness)
+      bond_table = crystal.pair_asu_table(asu_mappings)
+      bond_table.add_covalent_pairs(xs.scattering_types(),
+                                    tolerance=self.covalent_bond_tolerance)
+    elif self.bonding == "all":
+      asu_mappings = xs.asu_mappings(buffer_thickness=self.distance_cutoff)
+      bond_table = crystal.pair_asu_table(asu_mappings)
+      bond_table.add_all_pairs(self.distance_cutoff)
+
+    pair_sym_table = bond_table.extract_pair_sym_table(
+      all_interactions_from_inside_asu=True)
     self.bonds = flex.vec3_double()
     self.bonds.reserve(len(xs.scatterers()))
     uc = self.xray_structure.unit_cell()
+    frac = mat.rec(uc.fractionalization_matrix(), (3,3))
+    inv_frac = frac.inverse()
+    site_symms = xs.site_symmetry_table()
     for i, neighbours in enumerate(pair_sym_table):
-      x0 = self.sites_cart[i]
+      x0 = sites_cart[i]
       for j, ops in neighbours.items():
         for op in ops:
           if op.is_unit_mx():
-            x1 = self.sites_cart[j]
+            x1 = sites_cart[j]
           else:
             x1 = uc.orthogonalize(op*sites_frac[j])
+            op_cart = inv_frac*mat.rec(op.r().as_double(), (3,3))*frac
+            u1 = (op_cart
+                  *mat.sym(sym_mat3=thermal_tensors[j])
+                  *op_cart.transpose())
+            t = quadrics.ellipsoid_to_sphere_transform(x1, u1.as_sym_mat3())
+            sc = xs.scatterers()[j]
+            self.ellipsoid_to_sphere_transforms[sc.element_symbol()].append(t)
+            self.sites_cart.append(x1)
+            op_lbl = (" [%s]" % op).lower()
+            self.scatterer_indices.append("# %i%s" % (j, op_lbl))
+            self.scatterer_labels.append("%s%s" % (sc.label, op_lbl))
           self.bonds.append(x0)
           self.bonds.append(x1)
 
@@ -178,7 +204,7 @@ class xray_structure_viewer(qttbx.widget):
 if __name__ == '__main__':
   import sys, os, datetime
   import libtbx.load_env
-  name = sys.argv[1]
+  name = os.path.expanduser(sys.argv[1])
   if os.path.exists(name):
     path = name
   else:
