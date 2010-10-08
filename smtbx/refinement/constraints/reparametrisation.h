@@ -339,15 +339,13 @@ public:
 };
 
 
-/// Parameter of a single scatterer in the asu
-class single_asu_scatterer_parameter : public crystallographic_parameter
+/// Parameter of a single scatterer
+class single_scatterer_parameter : public crystallographic_parameter
 {
 public:
   virtual scatterer_sequence_type scatterers() const;
 
-  /// Construct a parameter for the given scatterer
-  single_asu_scatterer_parameter(scatterer_type *scatterer,
-                                 std::size_t n_arguments)
+  single_scatterer_parameter(scatterer_type *scatterer, std::size_t n_arguments)
   : crystallographic_parameter(n_arguments),
     scatterer(scatterer)
   {}
@@ -364,11 +362,11 @@ protected:
 /// Scatterer site.
 /** A parameter whose components are the fractional coordinates.
  */
-class site_parameter : public single_asu_scatterer_parameter
+class site_parameter : public single_scatterer_parameter
 {
 public:
   site_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_asu_scatterer_parameter(scatterer, n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
   {}
 
   virtual std::size_t size() const;
@@ -415,11 +413,11 @@ public:
 /** A parameter whose components are the coefficients of the tensor
     in fractional coordinates.
  */
-class u_star_parameter : public single_asu_scatterer_parameter
+class u_star_parameter : public single_scatterer_parameter
 {
 public:
   u_star_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_asu_scatterer_parameter(scatterer, n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
   {}
 
   virtual std::size_t size() const;
@@ -462,11 +460,11 @@ public:
 
 
 /// Occupancy of a scatterer
-class occupancy_parameter : public single_asu_scatterer_parameter
+class occupancy_parameter : public single_scatterer_parameter
 {
 public:
   occupancy_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_asu_scatterer_parameter(scatterer, n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
   {}
 
   virtual std::size_t size() const;
@@ -509,11 +507,11 @@ public:
 
 
 /// Isotropic thermal displacement parameter of a scatterer
-class u_iso_parameter : public single_asu_scatterer_parameter
+class u_iso_parameter : public single_scatterer_parameter
 {
 public:
   u_iso_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_asu_scatterer_parameter(scatterer, n_arguments)
+  : single_scatterer_parameter(scatterer, n_arguments)
   {}
 
   virtual std::size_t size() const;
