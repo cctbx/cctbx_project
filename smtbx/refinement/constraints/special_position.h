@@ -11,10 +11,10 @@ namespace smtbx { namespace refinement { namespace constraints {
 
 /// Site constrained to be on a special position
 /** Parameter components are the fractional coordinates */
-class special_position_site : public site_parameter
+class special_position_site_parameter : public site_parameter
 {
 public:
-  special_position_site(sgtbx::site_symmetry_ops const &site_symmetry,
+  special_position_site_parameter(sgtbx::site_symmetry_ops const &site_symmetry,
                         scatterer_type *scatterer)
     : site_parameter(scatterer, 1),
       site_constraints(site_symmetry.site_constraints())

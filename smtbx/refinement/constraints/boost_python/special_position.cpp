@@ -9,14 +9,14 @@ namespace boost_python {
 
   struct special_position_site_wrapper
   {
-    typedef special_position_site wt;
+    typedef special_position_site_parameter wt;
 
     static void wrap() {
       using namespace boost::python;
       return_internal_reference<> rir;
       class_<wt, bases<site_parameter>,
              std::auto_ptr<wt>,
-             boost::noncopyable>("special_position_site", no_init)
+             boost::noncopyable>("special_position_site_parameter", no_init)
         .def(init<sgtbx::site_symmetry_ops const &, wt::scatterer_type *>
              ((arg("site_symmetry"), arg("scatterer"))))
         .add_property("independent_params",

@@ -26,10 +26,10 @@ namespace smtbx { namespace refinement { namespace constraints {
     sgtbx::site_symmetry site_symm_0(uc, sg, sc0->site),
                          site_symm_1(uc, sg, sc1->site),
                          site_symm_2(uc, sg, sc2->site);
-    special_position_site *s[] = {
-      new special_position_site(site_symm_0, sc0),
-      new special_position_site(site_symm_1, sc1),
-      new special_position_site(site_symm_2, sc2)
+    special_position_site_parameter *s[] = {
+      new special_position_site_parameter(site_symm_0, sc0),
+      new special_position_site_parameter(site_symm_1, sc1),
+      new special_position_site_parameter(site_symm_2, sc2)
     };
 
     reparametrisation reparam(uc, boost::make_iterator_range(s, s+3));

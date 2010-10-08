@@ -118,7 +118,7 @@ class reparametrisation(ext.reparametrisation):
       if site_symm.is_point_group_1():
         s = self.add(independent_site_parameter, sc)
       else:
-        s = self.add(special_position_site, site_symm, sc)
+        s = self.add(special_position_site_parameter, site_symm, sc)
       if symm_op is not None and not symm_op.is_unit_mx():
         s = self.add(symmetry_equivalent_site_parameter, s)
       self.asu_scatterer_parameters[i_scatterer].site = s
