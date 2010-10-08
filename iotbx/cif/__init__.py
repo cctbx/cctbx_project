@@ -90,10 +90,11 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
       '_atom_site_U_iso_or_equiv', '_atom_site_occupancy'))
     uc = xray_structure.unit_cell()
     fp_fdp_table = {}
+    fmt = "%.6f"
     for sc in scatterers:
       atom_site_loop.add_row((
-        sc.label, sc.scattering_type, sc.site[0], sc.site[1], sc.site[2],
-        sc.u_iso_or_equiv(uc), sc.occupancy))
+        sc.label, sc.scattering_type, fmt%sc.site[0], fmt%sc.site[1],
+        fmt%sc.site[2], fmt%sc.u_iso_or_equiv(uc), fmt%sc.occupancy))
       fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
     aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
     aniso_loop = model.loop(header=('_atom_site_aniso_label',
@@ -106,7 +107,8 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     for sc in aniso_scatterers:
       u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
       aniso_loop.add_row((
-        sc.label, u_cif[0], u_cif[1], u_cif[2], u_cif[3], u_cif[4], u_cif[5]))
+        sc.label, fmt%u_cif[0], fmt%u_cif[1], fmt%u_cif[2], fmt%u_cif[3],
+        fmt%u_cif[4], fmt%u_cif[5]))
 
     self.cif_block.add_loop(atom_site_loop)
     self.cif_block.add_loop(aniso_loop)

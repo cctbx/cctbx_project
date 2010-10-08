@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
 import cctbx.xray
+import random
 
 legend = """
 phenix.fmodel: a tool to compute structure factors, Fmodel:
@@ -155,6 +156,10 @@ data_column_label = None
   .short_caption = Reference file label
   .style = noauto renderer:draw_any_label_widget
 %s
+random_seed=None
+  .type = int
+  .help = Random seed
+  .expert_level=2
 output
   .short_caption = Reflection output
   .expert_level=0
@@ -256,6 +261,9 @@ def run(args, log = sys.stdout):
   print >> log, "\nParameters to compute Fmodel::\n"
   processed_args.params.show(out = log, prefix=" ")
   params = processed_args.params.extract()
+  if(params.random_seed is not None):
+    random.seed(params.random_seed)
+    flex.set_random_seed(params.random_seed)
   pdb_file_names = processed_args.pdb_file_names
   if len(pdb_file_names) == 0 :
     pdb_file_names = params.pdb_file # for GUI
