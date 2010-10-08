@@ -571,7 +571,7 @@ public:
   void visit(parameter *p) {
     if (p->colour() == white) {
       heir()->start(p);
-      visit_from(p);
+      if (heir()->shall_start_visit_from(p)) visit_from(p);
     }
   }
 
@@ -598,6 +598,10 @@ private:
   /// Called with the parameter the visit starts from
   /** The default is to do nothing */
   void start(parameter *p) { }
+
+  /// Wether the visit shall proceed by starting a DFS from p
+  /** The default is to do so */
+  bool shall_start_visit_from(parameter *p) { return true; }
 
   /// Called just after p is first seen
   /** The default is to do nothing */
@@ -651,6 +655,8 @@ public:
             sparse_matrix_type *jacobian_transpose)
     : unit_cell(unit_cell), jacobian_transpose(jacobian_transpose)
   {}
+
+  bool shall_start_visit_from(parameter *p) { return p->is_variable(); }
 
   bool shall_cross(parameter *p, parameter *q) { return q->is_variable(); }
 
