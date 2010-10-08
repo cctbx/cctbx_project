@@ -96,8 +96,6 @@ BOOST_PYTHON_MODULE(cbflib_ext)
    ;
    class_<CBFAdaptor >("CBFAdaptor",init<std::string>())
      .def("read_header",&CBFAdaptor::read_header)
-     .def("read_data",&CBFAdaptor::read_data)
-     .def("rawdata",&CBFAdaptor::read_data)
      .def("pixel_size",&CBFAdaptor::pixel_size)
      .def("wavelength",&CBFAdaptor::wavelength)
      .def("distance",&CBFAdaptor::distance)
