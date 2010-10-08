@@ -143,6 +143,8 @@ struct wrapper_of_byte_decompression {
 };
 
 class cbf_binary_adaptor: public CBFAdaptor {
+  std::size_t nelem_read;
+
  public:
   //data items needed to interface cbflib integer array parameters
   unsigned int compression;

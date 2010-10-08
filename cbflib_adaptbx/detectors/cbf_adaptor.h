@@ -40,21 +40,19 @@ class CBFAdaptor {
   FILE *private_file;
   bool read_header_already;
   const char *array_id;
-  int dimension [2];
-  int id, index;
-  std::size_t nelem_read;
+  int id;
   std::size_t i_size1,i_size2;
   int i_rows,i_columns;
   double d_overload, d_wavelength, d_detector_distance, d_pixel_size;
   double d_osc_start, d_osc_range;
-  bool data_transposed;
+
  public:
   cbf_handle cbf_h;
   double beam_index1,beam_index2,beam_center1, beam_center2;
 
  public:
   inline CBFAdaptor(const std::string& filename):
-    filename(filename),read_header_already(false),id(0),data_transposed(false){
+    filename(filename),read_header_already(false),id(0){
     /* Create the cbf */
     cbf_failnez (cbf_make_handle (&cbf_h))
   }
@@ -157,73 +155,6 @@ class CBFAdaptor {
     } catch (iotbx::detectors::Error& e) {throw e;}
 
     read_header_already = true;
-  }
-
-  inline scitbx::af::flex_int read_data(){
-
-    /* Get the image identifier */
-    cbf_failnez (cbf_rewind_datablock (cbf_h))
-    cbf_failnez (cbf_find_category    (cbf_h, "diffrn_data_frame"))
-    cbf_failnez (cbf_find_column      (cbf_h, "array_id"))
-    cbf_failnez (cbf_get_value        (cbf_h, &array_id))
-
-    /* Get the image dimensions (second dimension = fast, first = slow) */
-    cbf_failnez (cbf_find_category    (cbf_h, "array_structure_list"))
-    cbf_failnez (cbf_rewind_row       (cbf_h))
-    cbf_failnez (cbf_find_column      (cbf_h, "array_id"))
-
-    dimension [0] = dimension [1] = 0;
-
-    while (cbf_find_nextrow (cbf_h, array_id) == 0){
-      cbf_failnez (cbf_find_column      (cbf_h, "precedence"))
-      cbf_failnez (cbf_get_integervalue (cbf_h, &index))
-      if (index >= 1 && index <= 2){
-        cbf_failnez (cbf_find_column (cbf_h, "dimension"))
-        cbf_failnez (cbf_get_integervalue (cbf_h, &dimension [2 - index]))
-      } else {
-        throw Error ("thrown out of cbf_find_nextrow loop");
-      }
-      cbf_failnez (cbf_find_column (cbf_h, "array_id"))
-    }
-
-    if (dimension [0] == 0 || dimension [1] == 0) {
-      throw Error ("thrown out of dimension test");
-    }
-
-    /* Find the binary data */
-    cbf_failnez (cbf_find_category (cbf_h, "array_data"))
-    cbf_failnez (cbf_find_column   (cbf_h, "array_id"))
-    cbf_failnez (cbf_find_row      (cbf_h, array_id))
-    cbf_failnez (cbf_find_column   (cbf_h, "data"))
-
-    //C++ weirdness
-    scitbx::af::flex_int z((scitbx::af::flex_grid<>(dimension[0],dimension[1])),
-      scitbx::af::init_functor_null<int>() ); //don't waste 0.04 seconds initializing to zero.
-    int* begin = z.begin();
-    std::size_t sz = z.size();
-
-    /* Read the binary data */
-    data_transposed=false;
-    //boost::timer T = boost::timer();
-    cbf_failnez (cbf_get_integerarray (cbf_h, //cbf handle
-                 &id,                         //ptr to binary section identifier
-                 begin,                       //array ptr
-                 sizeof (int),                //element size
-                 1,                           //flag of signed data type
-                 sz,                          //elements requested
-                 &nelem_read                  //elements read
-                 ))
-    //std::cout<<"time elapsed for get_integerarray: " <<T.elapsed()<<std::endl;
-    SCITBX_ASSERT(sz==nelem_read);
-
-    if (file_is_transposed()) {
-      //std::cout<<"transposing data...";
-      scitbx::af::matrix_transpose_in_place(z);
-      //std::cout<<"done"<<std::endl;
-      data_transposed=true;
-    }
-
-    return z;
   }
 
   inline int size1() { read_header();
