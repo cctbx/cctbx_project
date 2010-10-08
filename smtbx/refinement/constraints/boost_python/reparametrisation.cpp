@@ -138,9 +138,9 @@ namespace boost_python {
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
   };
 
-  struct py_single_asu_scatterer_parameter
-  : single_asu_scatterer_parameter,
-    boost::python::wrapper<single_asu_scatterer_parameter>
+  struct py_single_scatterer_parameter
+  : single_scatterer_parameter,
+    boost::python::wrapper<single_scatterer_parameter>
   {
     SMTBX_CONSTRAINTS_OVERRIDE_SIZE
     SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
@@ -148,7 +148,7 @@ namespace boost_python {
     SMTBX_CONSTRAINTS_OVERRIDE_STORE
 
     SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(
-      single_asu_scatterer_parameter)
+      single_scatterer_parameter)
   };
 
   struct py_site_parameter : site_parameter,
@@ -293,15 +293,15 @@ namespace boost_python {
     }
   };
 
-  struct single_asu_scatterer_parameter_wrapper
+  struct single_scatterer_parameter_wrapper
   {
-    typedef single_asu_scatterer_parameter wt;
-    typedef py_single_asu_scatterer_parameter pywt;
+    typedef single_scatterer_parameter wt;
+    typedef py_single_scatterer_parameter pywt;
 
     static void wrap() {
       using namespace boost::python;
       class_<pywt, bases<crystallographic_parameter>,
-             boost::noncopyable>("single_asu_scatterer_parameter", no_init)
+             boost::noncopyable>("single_scatterer_parameter", no_init)
         ;
     }
   };
@@ -315,7 +315,7 @@ namespace boost_python {
     static void wrap() {                                                       \
       using namespace boost::python;                                           \
       return_value_policy<return_by_value> rbv;                                \
-      class_<pywt, bases<single_asu_scatterer_parameter>,                      \
+      class_<pywt, bases<single_scatterer_parameter>,                          \
              boost::noncopyable>(#param_name, no_init)                         \
         .add_property("value",                                                 \
                       make_getter(&wt::value, rbv), make_setter(&wt::value))   \
@@ -428,7 +428,7 @@ namespace boost_python {
       ::wrap("independent_small_6_vector_parameter");
     index_range_to_tuple();
     crystallographic_parameter_wrapper::wrap();
-    single_asu_scatterer_parameter_wrapper::wrap();
+    single_scatterer_parameter_wrapper::wrap();
     site_parameter_wrapper::wrap();
     independent_site_parameter_wrapper::wrap();
     u_star_parameter_wrapper::wrap();
