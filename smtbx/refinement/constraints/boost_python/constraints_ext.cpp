@@ -9,6 +9,7 @@ namespace boost_python {
   void wrap_geometrical_hydrogens();
   void wrap_special_position();
   void wrap_scatterer_parameters();
+  void wrap_symmetry_equivalent_site_parameter();
 
   namespace {
     void init_module() {
@@ -16,6 +17,7 @@ namespace boost_python {
       wrap_geometrical_hydrogens();
       wrap_special_position();
       wrap_scatterer_parameters();
+      wrap_symmetry_equivalent_site_parameter();
     }
   }
 

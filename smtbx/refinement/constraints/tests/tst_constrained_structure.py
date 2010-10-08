@@ -517,6 +517,10 @@ def exercise_saturated():
         constrained_site_indices=(9,)),
       ])
 
+  if 0:
+    from crys3d.qttbx.xray_structure_viewer import display
+    display(xray_structure=xs)
+
   warned_once = False
   for sc, params in itertools.izip(reparametrisation.structure.scatterers(),
                                    reparametrisation.asu_scatterer_parameters):
@@ -550,11 +554,199 @@ def exercise_saturated():
   reparametrisation.linearise()
 
 
+def exercise_symmetric_equivalent():
+  # 09srv172 from Durham database
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(17.0216, 8.4362, 10.2248, 90, 102.79, 90),
+      space_group_symbol='hall: -C 2yc'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer( #0
+                      label='S1',
+                      site=(0.525750, 0.737510, 0.619930),
+                      u=(0.000077, 0.000224, 0.000175,
+                         0.000021, 0.000022, -0.000034)),
+      xray.scatterer( #1
+                      label='C1',
+                      site=(0.500000, 0.867770, 0.750000),
+                      u=(0.000056, 0.000126, 0.000163,
+                         0.000000, 0.000024, 0.000000)),
+      xray.scatterer( #2
+                      label='C2',
+                      site=(0.533470, 0.552380, 0.711170),
+                      u=(0.000153, 0.000218, 0.000349,
+                         0.000035, 0.000045, -0.000021)),
+      xray.scatterer( #3
+                      label='H2A',
+                      u=0.037113),
+      xray.scatterer( #4
+                      label='H2B',
+                      u=0.037113),
+      xray.scatterer( #5
+                      label='C3',
+                      site=(0.425860, 0.971240, 0.682160),
+                      u=(0.000051, 0.000180, 0.000144,
+                         -0.000002, 0.000012, -0.000009)),
+      xray.scatterer( #6
+                      label='H3',
+                      u=0.016679),
+      xray.scatterer( #7
+                      label='C4',
+                      site=(0.349950, 0.874570, 0.622480),
+                      u=(0.000057, 0.000207, 0.000217,
+                         -0.000023, 0.000005, -0.000008)),
+      xray.scatterer( #8
+                      label='H4B',
+                      u=0.021422),
+      xray.scatterer( #9
+                      label='H4A',
+                      u=0.021422),
+      xray.scatterer( #10
+                      label='C5',
+                      site=(0.279640, 0.981640, 0.555420),
+                      u=(0.000059, 0.000294, 0.000210,
+                         -0.000003, 0.000003, -0.000032)),
+      xray.scatterer( #11
+                      label='H5B',
+                      u=0.023840),
+      xray.scatterer( #12
+                      label='H5A',
+                      u=0.023840),
+      xray.scatterer( #13
+                      label='C6',
+                      site=(0.259940, 1.103700, 0.653360),
+                      u=(0.000056, 0.000329, 0.000219,
+                         0.000014, 0.000018, -0.000014)),
+      xray.scatterer( #14
+                      label='H6B',
+                      u=0.024536),
+      xray.scatterer( #15
+                      label='H6A',
+                      u=0.024536),
+      xray.scatterer( #16
+                      label='C7',
+                      site=(0.334250, 1.202400, 0.713770),
+                      u=(0.000063, 0.000264, 0.000233,
+                         0.000017, 0.000015, -0.000032)),
+      xray.scatterer( #17
+                      label='H7A',
+                      u=0.024124),
+      xray.scatterer( #18
+                      label='H7B',
+                      u=0.024124),
+      xray.scatterer( #19
+                      label='C8',
+                      site=(0.405860, 1.096270, 0.780480),
+                      u=(0.000061, 0.000217, 0.000169,
+                         0.000011, 0.000014, -0.000024)),
+      xray.scatterer( #20
+                      label='H8A',
+                      u=0.019944),
+      xray.scatterer( #21
+                      label='H8B',
+                      u=0.019944)
+    )))
+
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True)
+
+  reparametrisation = constraints.reparametrisation(
+    structure=xs,
+    geometrical_constraints=[
+      _.secondary_ch2_sites(
+        pivot=2,
+        constrained_site_indices=(3,4)),
+      _.tertiary_ch_site(
+        pivot=5,
+        constrained_site_indices=(6,)),
+      _.secondary_ch2_sites(
+        pivot=7,
+        constrained_site_indices=(8, 9)),
+      _.secondary_ch2_sites(
+        pivot=10,
+        constrained_site_indices=(11, 12)),
+      _.secondary_ch2_sites(
+        pivot=13,
+        constrained_site_indices=(14, 15)),
+      _.secondary_ch2_sites(
+        pivot=16,
+        constrained_site_indices=(17, 18)),
+      _.secondary_ch2_sites(
+        pivot=19,
+        constrained_site_indices=(20, 21)),
+      ])
+  if 0:
+    from crys3d.qttbx.xray_structure_viewer import display
+    display(xray_structure=xs)
+
+  warned_once = False
+  for sc, params in itertools.izip(reparametrisation.structure.scatterers(),
+                                   reparametrisation.asu_scatterer_parameters):
+    if sc.scattering_type != 'H':
+      if sc.label == 'C1':
+        assert isinstance(params.site, core.special_position_site_parameter)
+        assert isinstance(params.u, core.special_position_u_star_parameter)
+      else:
+        assert isinstance(params.site, core.independent_site_parameter)
+        assert isinstance(params.u, core.independent_u_star_parameter)
+      assert params.site.scatterers[0].label == sc.label
+      assert params.u.scatterers[0].label == sc.label
+      assert isinstance(params.occupancy, core.independent_occupancy_parameter)
+      assert params.occupancy.scatterers[0].label == sc.label
+    else:
+      expected = {
+        "H2A": (core.secondary_ch2_sites, 'C2'),
+        "H2B": (core.secondary_ch2_sites, 'C2'),
+        "H3" : (core.tertiary_ch_site   , 'C3'),
+        "H4A": (core.secondary_ch2_sites, 'C4'),
+        "H4B": (core.secondary_ch2_sites, 'C4'),
+        "H5A": (core.secondary_ch2_sites, 'C5'),
+        "H5B": (core.secondary_ch2_sites, 'C5'),
+        "H6A": (core.secondary_ch2_sites, 'C6'),
+        "H6B": (core.secondary_ch2_sites, 'C6'),
+        "H7A": (core.secondary_ch2_sites, 'C7'),
+        "H7B": (core.secondary_ch2_sites, 'C7'),
+        "H8A": (core.secondary_ch2_sites, 'C8'),
+        "H8B": (core.secondary_ch2_sites, 'C8'),
+        }.get(sc.label)
+      if expected is None:
+        if not warned_once:
+          print "Warning: incomplete test coverage for H constraint types"
+          warned_once = True
+        continue
+      expected_type, expected_pivot = expected
+      assert isinstance(params.site, expected_type), \
+             (sc.label, params.site, expected_type)
+      assert ([ sc1.label for sc1 in params.site.argument(0).scatterers ]
+              == [expected_pivot]), sc.label
+
+  for params in reparametrisation.asu_scatterer_parameters:
+    if params.site.scatterers[0].label == 'H2A':
+      h2a = params.site
+      (pivot, pivot_neighbour_0, pivot_neighbour_1,
+       bond_length, h_c_h_angle) = h2a.arguments()
+      expected = [ (core.independent_site_parameter, 'S1'),
+                   (core.symmetry_equivalent_site_parameter, 'C2',
+                    '-x+1,y,-z+3/2') ]
+      expected.sort()
+      actual = []
+      for n in (pivot_neighbour_0, pivot_neighbour_1):
+        if type(n) == core.independent_site_parameter:
+          actual.append((type(n), n.scatterers[0].label))
+        elif type(n) == core.symmetry_equivalent_site_parameter:
+          actual.append((type(n), n.original.scatterers[0].label, str(n.motion)))
+      actual.sort()
+      assert actual == expected
+
+  reparametrisation.linearise()
+
+
 def run():
   import libtbx.utils
   libtbx.utils.show_times_at_exit()
   exercise_saturated()
   exercise_sucrose()
+  exercise_symmetric_equivalent()
 
 if __name__ == '__main__':
   run()
