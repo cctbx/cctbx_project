@@ -900,6 +900,124 @@ i_seq: 2
   apat = asu_table.angle_pair_asu_table()
   assert apat.as_nested_lists() == [[0], [1], [2]]
 
+def exercise_fix_for_missed_interaction_inside_asu():
+  """
+  The cctbx machinery used to return a bond between C1
+  and a symmetry equivalent C3' of C3 but it turns out
+  that C1 is on a special position and its site is invariant
+  under that operator moving C3 to C3' (the operator is -x+1,y,-z+3/2)
+  and there is therefore a bond between C1 and C3. That it used not to be
+  reported was deemed as a bug which got fixed, this file being the
+  regression test for that fix.
+  """
+  from cctbx import xray
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(17.0216, 8.4362, 10.2248, 90, 102.79, 90),
+      space_group_symbol='hall: -C 2yc'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer(
+                      label='C1',
+                      site=(0.500000, 0.867770, 0.750000)),
+      xray.scatterer(
+                      label='C3',
+                      site=(0.425860, 0.971240, 0.682160)),
+      )))
+
+  asu_mappings = xs.asu_mappings(buffer_thickness=2)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings)
+  gen = crystal.neighbors_fast_pair_generator(asu_mappings,
+                                              distance_cutoff=3.5,
+                                              minimal=True)
+  pair = gen.next()
+  pair_asu_table.add_pair(pair)
+  pair_sym_table = pair_asu_table.extract_pair_sym_table()
+  result = []
+  for i, neighbours in enumerate(pair_sym_table):
+    for j, ops in neighbours.items():
+      for op in ops:
+        result.append((i, j, str(op)))
+  assert result == [
+    (0, 1, "x,y,z") ]
+
+
+def exercise_all_bonds_from_inside_asu():
+  from cctbx import xray
+  structure = trial_structure()
+  asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
+  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  pair_generator = crystal.neighbors_fast_pair_generator(asu_mappings,
+                                                         distance_cutoff=3.5)
+  for pair in pair_generator:
+    asu_table.add_pair(pair)
+  sym_table = asu_table.extract_pair_sym_table(
+    all_interactions_from_inside_asu=True)
+  expected_sym_pairs = [
+    [0, 0, '-y+1,-x+1,-z+1/2'],
+    [0, 0, 'x,x-y+2,-z+1/2'],
+    [0, 1, '-y+1,x-y+1,-z+1/2'],
+    [0, 1, '-y+1,x-y+1,z'],
+    [1, 1, 'x,x-y+1,z'],
+    [1, 1, '-y+1,-x+1,z'],
+    [1, 2, '-x+1,-x+y+1,-z'],
+    [2, 2, 'y,-x+y,-z'],
+    [2, 2, 'x-y,x,-z'],
+  ]
+  ip = count()
+  for i_seq, sym_dict in enumerate(sym_table):
+    for j_seq, rt_mx_list in sym_dict.items():
+      for rt_mx in rt_mx_list:
+        expected = expected_sym_pairs[ip.next()]
+        assert [i_seq, j_seq, str(rt_mx)] == expected
+
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(17.0216, 8.4362, 10.2248, 90, 102.79, 90),
+      space_group_symbol='hall: -C 2yc'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer(
+                      label='C1',
+                      site=(0.500000, 0.867770, 0.750000)),
+      xray.scatterer(
+                      label='C3',
+                      site=(0.425860, 0.971240, 0.682160)),
+      )))
+
+  asu_mappings = xs.asu_mappings(buffer_thickness=2)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings)
+  gen = crystal.neighbors_fast_pair_generator(asu_mappings,
+                                              distance_cutoff=3.5,
+                                              minimal=True)
+  pair = gen.next()
+  pair_asu_table.add_pair(pair)
+
+  pair_sym_table = pair_asu_table.extract_pair_sym_table(
+    all_interactions_from_inside_asu=True)
+  result = []
+  for i, neighbours in enumerate(pair_sym_table):
+    for j, ops in neighbours.items():
+      for op in ops:
+        result.append((i, j, str(op)))
+  assert result == [
+    (0, 1, "-x+1,y,-z+3/2"),
+    (0, 1, "x,y,z"),
+    ]
+
+  pair_sym_table = pair_asu_table.extract_pair_sym_table(
+    skip_j_seq_less_than_i_seq=False,
+    all_interactions_from_inside_asu=True)
+  result = []
+  for i, neighbours in enumerate(pair_sym_table):
+    for j, ops in neighbours.items():
+      for op in ops:
+        result.append((i, j, str(op)))
+  assert result == [
+    (0, 1, "-x+1,y,-z+3/2"),
+    (0, 1, "x,y,z"),
+    (1, 0, "x,y,z"),
+    ]
+
+
 class adp_iso_local_sphere_restraints_energies_functor(object):
 
   def __init__(self, pair_sym_table, orthogonalization_matrix, sites_frac):
@@ -1204,6 +1322,8 @@ Estimated memory allocation for cubicles exceeds max_number_of_bytes:
 def run():
   exercise_direct_space_asu()
   exercise_pair_tables()
+  exercise_fix_for_missed_interaction_inside_asu()
+  exercise_all_bonds_from_inside_asu()
   exercise_coordination_sequences_simple()
   exercise_coordination_sequences_shell_asu_tables()
   exercise_symmetry()

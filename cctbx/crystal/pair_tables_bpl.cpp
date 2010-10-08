@@ -104,7 +104,8 @@ namespace {
             af::tiny<unsigned, 2> const&)) &w_t::add_pair,
           (arg("i_seqs")), return_self<>())
         .def("extract_pair_sym_table", &w_t::extract_pair_sym_table, (
-          arg("skip_j_seq_less_than_i_seq")=true))
+          arg("skip_j_seq_less_than_i_seq")=true,
+          arg("all_interactions_from_inside_asu")=false))
         .def("angle_pair_asu_table", &w_t::angle_pair_asu_table)
       ;
     }
