@@ -3,6 +3,7 @@
 #include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/array_family/counts.h>
+#include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/packed.h>
 #include <scitbx/matrix/move.h>
 #include <scitbx/stl/map_fwd.h>
@@ -93,6 +94,20 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("i_column"),
               arg("n_rows"),
               arg("n_columns")))
+      .def("matrix_transpose_in_place",
+        (void(*)(versa<int, flex_grid<> >&)) matrix_transpose_in_place)
+      .def("matrix_swap_rows_in_place",
+        (void(*)(
+          ref<int, c_grid<2> > const&, unsigned, unsigned))
+            matrix::swap_rows_in_place, (
+              arg("i"),
+              arg("j")))
+      .def("matrix_swap_columns_in_place",
+        (void(*)(
+          ref<int, c_grid<2> > const&, unsigned, unsigned))
+            matrix::swap_columns_in_place, (
+              arg("i"),
+              arg("j")))
       .def("matrix_paste_block_in_place",
         (void(*)(
           ref<int, c_grid<2> > const&,
