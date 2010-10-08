@@ -20,11 +20,17 @@ class _parameter(boost.python.injector, ext.parameter):
     """ String representation using the graphviz DOT language """
     try:
       scatt = ', '.join([ sc.label for sc in self.scatterers ])
-      scatt = "(%s)" % scatt
+      scatt = " (%s)" % scatt
     except AttributeError:
       scatt = ""
+    info = []
+    if not self.is_variable: info.append('cst')
+    if info: info = ' [%s]' % ', '.join(info)
+    else: info = ''
     lbl = '%i [label="%s%s%s #%s"]' % (
-      self.index, ('', '*')[self.is_root], self.__class__.__name__,
+      self.index,
+      self.__class__.__name__,
+      info,
       scatt, self.index)
     return lbl
 
