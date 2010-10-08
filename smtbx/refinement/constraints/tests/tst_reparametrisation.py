@@ -3,7 +3,7 @@ from cctbx import uctbx, xray, sgtbx, crystal
 from smtbx.refinement import constraints
 from scitbx import sparse
 from scitbx import matrix as mat
-from scitbx.array_family import flex
+from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 import libtbx.utils
 
@@ -224,12 +224,34 @@ class c_oh_test_case(object):
       print "J_2:"
       print jac_2.mathematica_form()
 
+def exercise_symmetry_equivalent():
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(1, 2, 3),
+      space_group_symbol='hall: P 2x'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer("C", site=(0.1, 0.2, 0.3)),
+    )))
+  reparametrisation = constraints.reparametrisation(xs, [])
+  site_0 = reparametrisation.add(constraints.independent_site_parameter,
+                                 scatterer=xs.scatterers()[0])
+  symm_eq = reparametrisation.add(
+    constraints.symmetry_equivalent_site_parameter,
+    site=site_0, motion=sgtbx.rt_mx('x,-y,-z'))
+  try:
+    symm_eq.store(xs.unit_cell())
+    raise Exception_expected
+  except RuntimeError, e:
+    assert str(e).find("scatterer outside the asu") >= 0
+
+
 def exercise(verbose):
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
   terminal_linear_ch_site_test_case(with_special_position_pivot=True).run()
   special_position_adp_test_case().run()
   c_oh_test_case(staggered=False, verbose=verbose).run()
   c_oh_test_case(staggered=True, verbose=verbose).run()
+  exercise_symmetry_equivalent()
 
 def run():
   libtbx.utils.show_times_at_exit()

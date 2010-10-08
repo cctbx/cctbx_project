@@ -75,7 +75,9 @@ class reparametrisation(ext.reparametrisation):
     bond_table.add_covalent_pairs(xs.scattering_types(),
                                   tolerance=self.covalent_bond_tolerance)
     self.pair_sym_table = bond_table.extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=False)
+      skip_j_seq_less_than_i_seq=False,
+      all_interactions_from_inside_asu=True,
+    )
 
     for constraint in geometrical_constraints:
       constraint.add_to(self)
@@ -125,9 +127,9 @@ class reparametrisation(ext.reparametrisation):
         s = self.add(independent_site_parameter, sc)
       else:
         s = self.add(special_position_site_parameter, site_symm, sc)
-      if symm_op is not None and not symm_op.is_unit_mx():
-        s = self.add(symmetry_equivalent_site_parameter, s)
       self.asu_scatterer_parameters[i_scatterer].site = s
+    if symm_op is not None and not symm_op.is_unit_mx():
+      s = self.add(symmetry_equivalent_site_parameter, s, symm_op)
     return s
 
   def add_new_thermal_displacement_parameter(self, i_scatterer):
