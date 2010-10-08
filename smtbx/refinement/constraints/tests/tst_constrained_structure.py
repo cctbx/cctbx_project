@@ -395,6 +395,7 @@ def exercise_sucrose():
          str(reparametrisation)
 
   assert reparametrisation.component_annotations
+  reparametrisation.linearise()
 
 
 def exercise_saturated():
@@ -545,6 +546,8 @@ def exercise_saturated():
              (sc.label, params.site, expected_type)
       assert ([ sc1.label for sc1 in params.site.argument(0).scatterers ]
               == [expected_pivot]), sc.label
+
+  reparametrisation.linearise()
 
 
 def run():
