@@ -2145,6 +2145,22 @@ def exercise_matrix():
       n_not_symmetric += 1
   assert n_not_symmetric > 0 # could fail if random number generator is changed
 
+def exercise_matrix_int():
+  a = flex.int(range(1,7))
+  a.resize(flex.grid(3,2))
+  assert list(a)==[1, 2, 3, 4, 5, 6]
+  assert a.focus()==(3,2)
+  a.matrix_transpose_in_place()
+  assert a.focus()==(2,3)
+  assert list(a)==[1, 3, 5, 2, 4, 6]
+  a.matrix_swap_rows_in_place(1,0)
+  assert list(a)==[2, 4, 6, 1, 3, 5]
+  a.matrix_swap_rows_in_place(0,1)
+  a.matrix_swap_columns_in_place(1,1)
+  assert list(a)==[1, 3, 5, 2, 4, 6]
+  a.matrix_swap_columns_in_place(0,2)
+  assert list(a)==[5, 3, 1, 6, 4, 2]
+
 def exercise_matrix_norms():
   a = flex.double((1,  2, -3,
                    4, -5,  6,
@@ -2772,6 +2788,7 @@ def run(iterations):
     exercise_extract_attributes()
     exercise_exceptions()
     exercise_matrix()
+    exercise_matrix_int()
     exercise_matrix_norms()
     exercise_matrix_move()
     exercise_matrix_inversion_in_place()
