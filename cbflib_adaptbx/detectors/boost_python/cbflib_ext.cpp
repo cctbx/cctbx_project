@@ -117,12 +117,6 @@ BOOST_PYTHON_MODULE(cbflib_ext)
      .def("uncompress_data",(scitbx::af::flex_int (cbf_binary_adaptor::*)())&cbf_binary_adaptor::uncompress_data)
      .def("uncompress_data",
      (scitbx::af::flex_int (cbf_binary_adaptor::*)(const int&, const int&))&cbf_binary_adaptor::uncompress_data)
-     .def("read_data",&cbf_binary_adaptor::read_data)
-     .def("buffer_based_uncompress",&cbf_binary_adaptor::buffer_based_uncompress)
-     .def("optimized_read_data",
-     (scitbx::af::flex_int (cbf_binary_adaptor::*)(const int&, const int&))&cbf_binary_adaptor::optimized_read_data)
-     .def("optimized_read_data",
-     (scitbx::af::flex_int (cbf_binary_adaptor::*)())&cbf_binary_adaptor::optimized_read_data)
      .def("compressed_string",&compressed_string)
      .def("dim_slow",&cbf_binary_adaptor::dim_slow)
      .def("dim_fast",&cbf_binary_adaptor::dim_fast)
