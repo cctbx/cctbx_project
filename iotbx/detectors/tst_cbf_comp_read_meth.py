@@ -42,10 +42,13 @@ def test_all(timer=False):
     P.read(algorithm="cbflib")
     read1 = P.linearintdata
     if timer: G = Profiler("cbflib optimized read")
-    adaptor = cbf_binary_adaptor(file)
-    read2 = adaptor.optimized_read_data(P.size1,P.size2)
+    P.linearintdata = None #won't read again without resetting first
+    P.read(algorithm="cbflib_optimized")
+    read2 = P.linearintdata
     if timer: G = Profiler("buffer-based read")
-    read3 = adaptor.buffer_based_uncompress()
+    P.linearintdata = None #won't read again without resetting first
+    P.read(algorithm="buffer_based")
+    read3 = P.linearintdata
     if timer: del G
     expected_image_size = {"Pilatus-6M":(2527,2463),
                            "Pilatus-2M":(1679,1475)}[P.vendortype]

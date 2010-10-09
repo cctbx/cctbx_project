@@ -21,7 +21,6 @@ class CBFImage(MARIPImage):
       print "     beamy:", self.adaptor.beam_index_fast*self.adaptor.pixel_size()
       print " osc_start:", self.adaptor.osc_start()
       print " osc_range:", self.adaptor.osc_range()
-      self.adaptor.read_data()
       print self.adaptor.raster_description()
       flags = self.adaptor.transform_flags()
       print flags.transpose, flags.reverse_slow, flags.reverse_fast
