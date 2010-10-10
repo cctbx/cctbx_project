@@ -264,6 +264,23 @@ class miller_array_builder(crystal_symmetry_builder):
           labels.append('%s_sigma' %prefix)
         array.set_info(base_array_info.customized_copy(labels=labels))
         self._arrays.setdefault(label, array)
+    refln_loop = cif_block.get('_refln')
+    if refln_loop is not None:
+      for key, value in refln_loop.iteritems():
+        if (key not in self._arrays and '_index_' not in key
+            and not key.endswith('sigma')
+            and not key.endswith('calc')
+            and not key.endswith('meas')):
+          try:
+            data = flex.int(flex.std_string(value))
+          except RuntimeError:
+            try:
+              data = flex.double(flex.std_string(value))
+            except RuntimeError:
+              data = value
+          array = miller.array(
+            miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
+          self._arrays.setdefault(key, array)
 
     if len(self._arrays) == 0:
       raise RuntimeError("No reflection data present in cif block")

@@ -119,6 +119,9 @@ def exercise_parser(reader, builder):
     input_string=cif_miller_array, builder=builder()).model()
   ma_builder = cif.builders.miller_array_builder(cif_model['global'])
   ma1 = ma_builder.arrays()['_refln_F_squared_meas']
+  if isinstance(cif_model, cif.model.cif):
+    assert (ma_builder.arrays()['_refln_observed_status'].data() ==
+            flex.std_string(['o'] * ma1.size()))
   # also test construction of cif model from miller array
   ma2 = cif.builders.miller_array_builder(
     ma1.as_cif_block(array_type='meas')).arrays()['_refln_F_squared_meas']
