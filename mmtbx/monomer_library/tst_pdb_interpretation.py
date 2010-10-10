@@ -313,6 +313,36 @@ HETATM  712 ZN    ZN A1401      -2.733  -3.868 -16.577  1.00 20.27          ZN2+
   xray_structure = processed_pdb_file.xray_structure()
   assert xray_structure.scattering_type_registry().type_count_dict() \
       == {"Na": 1, "Na1+": 1, "Zn2+": 2}
+  #
+  raw_records = """\
+CRYST1   14.600   26.100   29.200  90.00  90.00  90.00 P 21 21 21    4
+ATOM    107  N   CYS A  16      -0.448  11.073   0.703  1.00  5.42              
+ATOM    108  CA  CYS A  16      -1.464  10.253   1.359  1.00  6.46              
+ATOM    109  C   CYS A  16      -2.718  11.036   1.746  1.00  6.39              
+ATOM    110  O   CYS A  16      -3.805  10.424   1.754  1.00  7.99              
+ATOM    111  CB  CYS A  16      -0.881   9.558   2.593  1.00  6.56              
+ATOM    112  SG  CYS A  16       0.273   8.212   2.183  1.00  6.50              
+ATOM    113  H   CYS A  16       0.296  11.370   1.301  1.00  5.42              
+ATOM    114  HA  CYS A  16      -1.774   9.501   0.619  1.00  6.46              
+ATOM    115  HB2 CYS A  16      -0.360  10.303   3.212  1.00  6.56              
+ATOM    116  HB3 CYS A  16      -1.704   9.154   3.201  1.00  6.56              
+HETATM  117  N   NH2 A  17      -2.607  12.317   2.071  1.00  6.64 
+HETATM  118  HN1 NH2 A  17      -1.710  12.757   2.069  1.00  6.64               
+HETATM  119  HN2 NH2 A  17      -3.421  12.843   2.318  1.00  6.64               
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    raw_records=raw_records,
+    log=log)
+  processed_pdb_file.xray_structure()
+  lines=search_for(
+    pattern="""\
+          Link IDs: {'NH2_CTERM': 1}""",
+    mode="==",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
 
 def exercise_rna(
       mon_lib_srv,
