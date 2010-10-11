@@ -179,9 +179,9 @@ class crystal_structure_builder(crystal_symmetry_builder):
     occupancy = cif_block.get('_atom_site_occupancy')
     scatterers = flex.xray_scatterer()
     # XXX To do: allow interpretation of adps given as B
-    atom_site_aniso_label = flex.std_string(
-      cif_block.get('_atom_site_aniso_label'))
+    atom_site_aniso_label = cif_block.get('_atom_site_aniso_label')
     if atom_site_aniso_label is not None:
+      atom_site_aniso_label = flex.std_string(atom_site_aniso_label)
       adps = [flex.double(flex.std_string(
         cif_block.get('_atom_site_aniso_U_%i' %i)))
               for i in (11,22,33,12,13,23)]
