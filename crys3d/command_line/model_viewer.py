@@ -11,9 +11,11 @@ import sys, os, time
 # CLASSES AND METHODS FOR STANDALONE VIEWER
 #
 class App (wx.App) :
-  def __init__ (self, title="crys3d.wx_model_viewer", default_size=(800,600)) :
+  def __init__ (self, title="crys3d.wx_model_viewer", default_size=(800,600),
+      viewer_class=selection_editor_mixin) :
     self.title = title
     self.default_size = default_size
+    self.viewer_class = viewer_class
     wx.App.__init__(self, 0)
 
   def OnInit (self) :
@@ -21,13 +23,13 @@ class App (wx.App) :
       size=self.default_size)
     self.frame.CreateStatusBar()
     box = wx.BoxSizer(wx.VERTICAL)
-    self.view_objects = selection_editor_mixin(self.frame, size=(800,600))
+    self.view_objects = self.viewer_class(self.frame, size=(800,600))
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
     return True
 
-def run (args) :
+def run (args, viewer_class=selection_editor_mixin) :
   import cStringIO
   pdb_files = []
   cif_files = []
@@ -47,7 +49,7 @@ def run (args) :
   if len(pdb_files) == 0 :
     print "Please specify a PDB file (and optional CIFs) on the command line."
     return
-  a = App()
+  a = App(viewer_class=viewer_class)
   a.frame.Show()
   out = sys.stdout
   if not "--debug" in args :

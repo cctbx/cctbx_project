@@ -174,6 +174,7 @@ compcomm/newsletter09/sf_times_digest.py svneol=native#text/x-python
 compcomm/newsletter09/time_tables -text
 compcomm/smtbx_news_09/news.tex -text
 crys3d/__init__.py -text
+crys3d/command_line/__init__.py -text
 crys3d/command_line/model_viewer.py -text
 crys3d/images.py -text
 crys3d/libtbx_refresh.py -text
