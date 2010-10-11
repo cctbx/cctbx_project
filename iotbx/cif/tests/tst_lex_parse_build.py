@@ -101,6 +101,9 @@ def exercise_parser(reader, builder):
   xs1.as_cif_simple(out=sio)
   xs3 = cif.builders.crystal_structure_builder(reader(
     input_string=sio.getvalue(), builder=builder()).model()['global']).structure
+  xs_iso = xs1.deep_copy_scatterers()
+  xs_iso.convert_to_isotropic()
+  xs4 = cif.builders.crystal_structure_builder(xs_iso.as_cif_block()).structure
 
   for xs in (xs1, xs2, xs3):
     sc = xs.scatterers()

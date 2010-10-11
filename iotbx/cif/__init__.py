@@ -96,22 +96,22 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
         sc.label, sc.scattering_type, fmt%sc.site[0], fmt%sc.site[1],
         fmt%sc.site[2], fmt%sc.u_iso_or_equiv(uc), fmt%sc.occupancy))
       fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
-    aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
-    aniso_loop = model.loop(header=('_atom_site_aniso_label',
-                                    '_atom_site_aniso_U_11',
-                                    '_atom_site_aniso_U_22',
-                                    '_atom_site_aniso_U_33',
-                                    '_atom_site_aniso_U_12',
-                                    '_atom_site_aniso_U_13',
-                                    '_atom_site_aniso_U_23'))
-    for sc in aniso_scatterers:
-      u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
-      aniso_loop.add_row((
-        sc.label, fmt%u_cif[0], fmt%u_cif[1], fmt%u_cif[2], fmt%u_cif[3],
-        fmt%u_cif[4], fmt%u_cif[5]))
-
     self.cif_block.add_loop(atom_site_loop)
-    self.cif_block.add_loop(aniso_loop)
+    aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
+    if aniso_scatterers.size():
+      aniso_loop = model.loop(header=('_atom_site_aniso_label',
+                                      '_atom_site_aniso_U_11',
+                                      '_atom_site_aniso_U_22',
+                                      '_atom_site_aniso_U_33',
+                                      '_atom_site_aniso_U_12',
+                                      '_atom_site_aniso_U_13',
+                                      '_atom_site_aniso_U_23'))
+      for sc in aniso_scatterers:
+        u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
+        aniso_loop.add_row((
+          sc.label, fmt%u_cif[0], fmt%u_cif[1], fmt%u_cif[2], fmt%u_cif[3],
+          fmt%u_cif[4], fmt%u_cif[5]))
+      self.cif_block.add_loop(aniso_loop)
     #
     atom_type_loop = model.loop(header=('_atom_type_symbol',
                                         '_atom_type_scat_dispersion_real',
