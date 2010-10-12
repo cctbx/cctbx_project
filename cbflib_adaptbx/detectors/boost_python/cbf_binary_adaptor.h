@@ -3,8 +3,8 @@
 #include <cbflib_adaptbx/detectors/cbf_adaptor.h>
 #include <cbflib_adaptbx/detectors/cbf_byte_offset_optimized.h>
 #include <cbflib_adaptbx/detectors/buffer_based_service.h>
-#include "cbf_binary.h"
-#include "cbf_compress.h"
+#include <include/cbf_binary.h>
+#include <include/cbf_compress.h>
 
 namespace iotbx {
   namespace detectors {
