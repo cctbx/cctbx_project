@@ -131,6 +131,7 @@ class rotalyze(object):
   def analyze_pdb(self, pdb_io=None, hierarchy=None, outliers_only=False,
                   show_errors = False, out=sys.stdout):
     sa = SidechainAngles(show_errors)
+    r = rotamer_eval.RotamerEval()
     if(pdb_io is not None):
       hierarchy = pdb_io.construct_hierarchy()
     analysis = ""
@@ -155,7 +156,6 @@ class rotalyze(object):
               atom_dict = all_dict.get(atom_group.altloc)
               #print atom_dict
               chis = sa.measureChiAngles(atom_group, atom_dict)
-              r = rotamer_eval.RotamerEval()
               if (chis is not None):
                 if None in chis:
                   continue
