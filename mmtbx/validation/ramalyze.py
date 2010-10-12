@@ -222,6 +222,7 @@ class ramalyze(object):
     self.numpro = 0
     self.numprepro = 0
     self.numtotal = 0
+    r = ramachandran_eval.RamachandranEval()
     for model in hierarchy.models():
       for chain in model.chains():
         #prevRes, prevC, resN, resCA, resO = None, None, None, None, None;
@@ -281,7 +282,6 @@ class ramalyze(object):
                   resType = "general"
                   self.numgen += 1
 
-                r = ramachandran_eval.RamachandranEval()
                 #value = 0
 
                 value = r.evaluate(resType, [phi, psi])
