@@ -8,6 +8,10 @@
 # CIF  uncompressed http://www.rcsb.org/pdb/files/2vz8.cif
 # XML  uncompressed http://www.rcsb.org/pdb/files/2vz8.xml
 # Data uncompressed http://www.rcsb.org/pdb/files/2vz8-sf.cif
+#
+# For the PDBe:
+# http://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
+# http://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 
 import sys, os, re
 import urllib2
@@ -25,13 +29,23 @@ def validate_pdb_ids (id_list) :
     except RuntimeError, e :
       raise Sorry(str(e))
 
-def fetch (id, data_type="pdb", format="pdb") :
+def fetch (id, data_type="pdb", format="pdb", mirror="pdbe") :
   assert data_type in ["pdb", "xray", "fasta"]
   assert format in ["cif", "pdb", "xml"]
+  assert mirror in ["rcsb", "pdbe"]
   validate_pdb_id(id)
 
   id = id.lower()
-  url_base = "http://www.rcsb.org/pdb/files/"
+  if (mirror == "rcsb") :
+    url_base = "http://www.rcsb.org/pdb/files/"
+    pdb_ext = ".pdb"
+    sf_prefix = ""
+    sf_ext = "-sf.cif"
+  elif (mirror == "pdbe") :
+    url_base = "http://www.ebi.ac.uk/pdbe-srv/view/files/"
+    pdb_ext = ".ent"
+    sf_prefix = "r"
+    sf_ext = "sf.ent"
   if data_type == "fasta" :
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     url = "http://www.rcsb.org/pdb/download/downloadFile.do?fileFormat=FASTA&compression=NO&structureId=%s" % id
@@ -43,7 +57,7 @@ def fetch (id, data_type="pdb", format="pdb") :
       else :
         raise
   elif data_type == "xray" :
-    url = url_base + id + "-sf.cif"
+    url = url_base + sf_prefix + id + sf_ext
     try :
       data = urllib2.urlopen(url)
     except urllib2.HTTPError, e :
@@ -52,7 +66,10 @@ def fetch (id, data_type="pdb", format="pdb") :
       else :
         raise
   else :
-    url = url_base + id + "." + format
+    if format == "pdb" :
+      url = url_base + id + pdb_ext
+    else :
+      url = url_base + id + "." + format
     try :
       data = urllib2.urlopen(url)
     except urllib2.HTTPError, e :
