@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 #include <stdio.h>
-#include "cbf_file.h"
+#include <include/cbf_file.h>
 
   /* Decompress an array with the byte-offset algorithm */
 
