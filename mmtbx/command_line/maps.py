@@ -261,11 +261,23 @@ def validate_params (params, callback=None) :
     raise Sorry(("The output directory %s does not exist; please choose a "+
       "valid directory, or leave this parameter blank.") %
       params.maps.output.directory)
-  labels = []
+  validate_map_params(params.maps)
+  # TODO double-check this - can we get None by accident in GUI?
   for map_coeffs in params.maps.map_coefficients :
     if (map_coeffs.map_type is None) :
       raise Sorry("One or more map coefficients is missing a map type "+
         "definition.")
+  return True
+
+def validate_map_params (params) :
+  from mmtbx import map_names
+  labels = []
+  for map_coeffs in params.map_coefficients :
+    if (map_coeffs.map_type is not None) :
+      try :
+        decode_map = map_names(map_coeffs.map_type)
+      except RuntimeError, e :
+        raise Sorry(str(e))
     f = map_coeffs.mtz_label_amplitudes
     phi = map_coeffs.mtz_label_phases
     if (f in labels) or (phi in labels) :
