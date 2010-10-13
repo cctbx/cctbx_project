@@ -2596,7 +2596,7 @@ blockdata_unnamed(
 """)
   #
   lines = get("data_32.f")
-  assert not absd(lines, tail_off(13), """\
+  assert not absd(lines, tail_off(14), """\
     num = -34;
     str = "YuIo";
     {
@@ -2637,12 +2637,16 @@ blockdata_unnamed(
     numsj(2) = 45;
     strsj(2) = "ASdfg";
 """)
-  assert not absd(lines, head_off(28), """\
+  assert not absd(lines, head_off(29), """\
     static const int values[] = {
       -24, +35
     };
     fem::data_of_type<int>(FEM_VALUES_AND_SIZE),
       nums;
+""")
+  assert not absd(lines, head_off(90), """\
+    sc = fem::cmplx(1.2f, -3.4f);
+    dc = fem::cmplx(-5.6e0, +7.8e0);
 """)
   #
   lines = get("const_expressions.f", arr_nd_size_max=6)
