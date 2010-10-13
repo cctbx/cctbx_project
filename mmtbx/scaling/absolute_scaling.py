@@ -521,7 +521,7 @@ class ml_iso_absolute_scaling(object):
     if verbose>0:
       print >> out, "ML estimate of overall B value of %s:" \
             % str(self.info)
-      print >> out, "%s"%format_value("%5.2f", self.b_wilson), "A**(-2)"
+      print >> out, "%s"%format_value("%5.2f", self.b_wilson), "A**2"
       print >> out, "Estimated -log of scale factor of %s:" \
             % str(self.info)
       print >> out, "%s"%format_value("%5.2f", self.p_scale)

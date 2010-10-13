@@ -949,7 +949,7 @@ class xtriage_summary (object) :
     # ICE RINGS
     ijsco = getattr(basic_results.basic_data_stats, "ijsco")
     self.icy_shells = getattr(ijsco, "icy_shells", None)
-    #self.ice_warnings = getattr(ijsco, "warnings")
+    self.ice_warnings = getattr(ijsco, "warnings", 0)
     self.ice_comments = getattr(ijsco, "message", "")
 
     #-------------------------------------------------------------------
