@@ -2,6 +2,9 @@
 
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+import re
+
+single_quote = re.compile(r"'")
 
 class chain_selection_info (object) :
   def __init__ (self, chain_id) :
@@ -101,7 +104,8 @@ class atom_selection_info (object) :
     if altloc == "" :
       altloc = " "
     return ("chain '%s' and resid '%s' and name '%s' and altloc '%s'" %
-      (atom.chain_id, atom.resid(), atom.name, altloc))
+      (atom.chain_id, atom.resid(), single_quote.sub("\\\'",atom.name),
+       altloc))
 
 #-----------------------------------------------------------------------
 class mouse_selection_manager (object) :
@@ -375,6 +379,8 @@ class mouse_selection_manager (object) :
     deselection2 = selection2.__invert__()
     self.remove_redundant_atoms(selection2, self.selected_atoms)
     self.remove_redundant_atoms(deselection2, self.deselected_atoms)
+    for other_info in self.selected_pair :
+      clauses.append(str(other_info))
     for i_seq in self.selected_atoms :
       atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
       clauses.append(str(atom_info))
@@ -387,8 +393,6 @@ class mouse_selection_manager (object) :
     for i_seq in self.deselected_atoms :
       atom_info = atom_selection_info(i_seq, self.atom_index[i_seq])
       clauses.append(str(atom_info))
-    for other_info in self.selected_pair :
-      clauses.append(str(other_info))
     negative_selection = assemble_selection_clauses(clauses)
     # assemble final selection
     if positive_selection != "" :
