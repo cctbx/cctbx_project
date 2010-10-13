@@ -25,6 +25,7 @@
       write(6, '(2a)') strsj
       call sub
       call sub2
+      call sub3
       end
 
       subroutine sub
@@ -37,4 +38,13 @@
       integer*2 nums(3)
       data nums /-56,2*78/
       write(6, '(3i4)') (nums(i)*2, i=1,3)
+      end
+
+      subroutine sub3
+      complex sc
+      double complex dc
+      data sc /(1.2,-3.4)/
+      data dc /(-5.6d0,+7.8d0)/
+      write(6, *) sc
+      write(6, *) dc
       end

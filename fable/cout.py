@@ -184,6 +184,18 @@ def escape_string_literal(s):
     .replace("\t", "\\t")
     .replace("??", "\\?\\?"))
 
+def convert_complex_literal(vmap, tok):
+  assert len(tok.value) == 4
+  cc = []
+  for part in tok.value[1:3]:
+    c = []
+    sign_tok, val_tok = part
+    if (sign_tok is not None):
+      c.append(sign_tok.value)
+    c.append(convert_token(vmap=vmap, leading=None, tok=val_tok))
+    cc.append("".join(c))
+  return "fem::cmplx(%s)" % ", ".join(cc)
+
 def convert_token(vmap, leading, tok):
   tv = tok.value
   if (tok.is_identifier()):
@@ -242,6 +254,8 @@ def convert_token(vmap, leading, tok):
     return tv+"f"
   if (tok.is_double_precision()):
     return tv.replace("d", "e")
+  if (tok.is_complex()):
+    return convert_complex_literal(vmap=vmap, tok=tok)
   tok.raise_not_supported()
 
 class major_types_cache(object):
