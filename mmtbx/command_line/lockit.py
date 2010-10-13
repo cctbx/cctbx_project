@@ -1011,8 +1011,9 @@ def run(args):
         print "As previously obtained with target weight %.1f:" \
           % best_info.rstw
         grmp.energies_sites(sites_cart=refined.sites_cart).show(prefix="  ")
-        print "Finishing refinement with target weight zero:"
-        print "  Number of function evaluations   cycle RMSD"
+        print "Finishing refinement to idealize geometry:"
+        print "            number of function"
+        print "    weight     evaluations      cycle RMSD"
         number_of_fgm_cycles = 0
         rstw = best_info.rstw * fgm_params.first_weight_scale
         sites_cart_start = best_info.refined.sites_cart.deep_copy()
@@ -1029,8 +1030,8 @@ def run(args):
             lbfgs_termination_params=lbfgs_termination_params,
             lbfgs_exception_handling_params=lbfgs_exception_handling_params)
           cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
-          print "         %10d                  %6.3f" % (
-            fgm_refined.number_of_function_evaluations, cycle_rmsd)
+          print "   %6.1f     %10d          %6.3f" % (
+            rstw, fgm_refined.number_of_function_evaluations, cycle_rmsd)
           number_of_fgm_cycles += 1
           rstw *= fgm_params.cycle_weight_multiplier
           if (cycle_rmsd < 1.e-4):
@@ -1041,7 +1042,7 @@ def run(args):
               other_sites=fgm_refined.sites_cart)
             fgm_refined.sites_cart = fit.other_sites_best_fit()
           sites_cart_start = fgm_refined.sites_cart.deep_copy()
-        print "After %d refinements with real-space target weight zero:" % (
+        print "After %d refinements to idealize geometry:" % (
           number_of_fgm_cycles)
         grmp.energies_sites(sites_cart=fgm_refined.sites_cart).show(prefix="  ")
         if (work_scatterers is None):
