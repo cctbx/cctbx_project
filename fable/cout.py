@@ -177,9 +177,6 @@ def strip_leading_zeros(string):
     return ""
   return "0"
 
-def raise_unhandled(tok):
-  raise RuntimeError("Unhandled token %s %s" % (tok.type(), tok.value))
-
 def escape_string_literal(s):
   return (s
     .replace("\\","\\\\")
@@ -230,7 +227,7 @@ def convert_token(vmap, leading, tok):
       return " > "
     if (tv == ".ge." or tv == ">="):
       return " >= "
-    raise_unhandled(tok=tok)
+    tok.raise_not_supported()
   if (tok.is_string()):
     return '"' + escape_string_literal(tv) + '"'
   if (tok.is_logical()):
@@ -245,7 +242,7 @@ def convert_token(vmap, leading, tok):
     return tv+"f"
   if (tok.is_double_precision()):
     return tv.replace("d", "e")
-  raise_unhandled(tok=tok)
+  tok.raise_not_supported()
 
 class major_types_cache(object):
 
