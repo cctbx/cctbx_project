@@ -79,6 +79,7 @@ class Pool (object) :
   def map_with_async_callback (self, func, iterable, callback_async,
       chunksize=None, callback=None) :
     if self.enable_multiprocessing :
+      results = None
       if (self.smp_method == "mp") :
         import multiprocessing
         manager = multiprocessing.Manager()
@@ -86,7 +87,7 @@ class Pool (object) :
         f = _wrapper_with_queue(func, q)
         t = thread_utils.queue_monitor_thread(q, callback_async)
         t.start()
-        result = self._pool.map(f, iterable, chunksize)
+        results = self._pool.map(f, iterable, chunksize)
         t.exit()
       elif (self.smp_method == "sge") :
         if (chunksize is None) :
@@ -105,7 +106,7 @@ class Pool (object) :
         t.start()
         try :
           try :
-            result = self._pool.map(f, new_iterable, chunksize)
+            results = self._pool.map(f, new_iterable, chunksize)
           except KeyboardInterrupt :
             t.exit()
             sys.exit(1)
@@ -113,7 +114,7 @@ class Pool (object) :
           t.exit()
       else :
         raise RuntimeError("Can't use SMP method %s" % self.smp_method)
-      return result
+      return results
     else :
       results = []
       for item in iterable :
