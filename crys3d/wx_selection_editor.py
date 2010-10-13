@@ -360,7 +360,6 @@ class selection_editor_mixin (model_viewer_mixin) :
   def select_atom_pair (self) :
     model = self.get_model(self.current_object_id)
     if model is not None :
-      print self.current_atom_i_seq
       model.select_pair(self.current_atom_i_seq, selection_type="atom")
       return True
 
