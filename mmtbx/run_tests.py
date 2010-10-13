@@ -59,7 +59,7 @@ def run():
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
   "$D/alignment.py",
   "$D/invariant_domain.py",
-  "$D/secondary_structure.py",
+  "$D/secondary_structure/tst.py",
   "$D/regression/tst_flip_peptides.py",
   )
 
