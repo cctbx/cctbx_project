@@ -144,7 +144,7 @@ class ServerProxy (object) :
 
 #-----------------------------------------------------------------------
 class external_program_thread (threading.Thread) :
-  def __init__ (self, command, program_id, log=None) :
+  def __init__ (self, command, program_id, log=None, intercept_output=True) :
     adopt_init_args(self, locals())
     if self.log is None :
       self.log = sys.stdout
@@ -152,15 +152,19 @@ class external_program_thread (threading.Thread) :
     self._alive = True
 
   def run (self) :
-    p = subprocess.Popen(args=[self.command], stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE, shell=True)
+    if self.intercept_output :
+      p = subprocess.Popen(args=[self.command], stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, shell=True)
+    else :
+      p = subprocess.Popen(args=[self.command], shell=True)
     while True :
       if p.poll() is not None :
         break
-      output = p.stdout.readline()
-      if output is not None and output != "" :
-        self.log.write(output)
-        self.log.flush()
+      if self.intercept_output :
+        output = p.stdout.readline()
+        if output is not None and output != "" :
+          self.log.write(output)
+          self.log.flush()
     self._alive = False
 
   # XXX: this is probably a bad idea
@@ -171,7 +175,7 @@ class external_program_server (object) :
   port_ranges = [ (40001, 40840),
                   (46000, 46999) ]
   def __init__ (self, command, program_id, timeout, cache_requests=False,
-                local_port=None, log=None) :
+                local_port=None, log=None, intercept_output=True) :
     adopt_init_args(self, locals())
     self._process = None
     self._server = None
@@ -190,9 +194,11 @@ class external_program_server (object) :
         os.environ["CCTBX_XMLRPC_TIMEOUT"] = str(self.timeout)
       if self.local_port is not None :
         os.environ["CCTBX_XMLRPC_PORT"] = str(self.local_port)
-      self._process = external_program_thread(command=self.command,
-                                              program_id=self.program_id,
-                                              log=self.log)
+      self._process = external_program_thread(
+        command=self.command,
+        program_id=self.program_id,
+        log=self.log,
+        intercept_output=self.intercept_output)
       self._process.start()
       if self.cache_requests :
         proxy_class = ServerProxy
