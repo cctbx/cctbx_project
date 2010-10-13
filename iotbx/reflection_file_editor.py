@@ -323,18 +323,20 @@ class process_arrays (object) :
         labels_base = re.sub(",merged$", "", array_params.labels)
         input_labels = labels_base.split(",")
         if array_params.output_non_anomalous :
-          if labels_base in special_labels and not len(output_labels) == 2 :
-            raise Sorry(("There are too many output labels for the array "+
-              "%s, which is being converted to non-anomalous data. "+
-              "Labels such as I,SIGI are appropriate (or F,SIGF if you are "+
-              "converting the array to amplitudes.") % array_name)
-          elif len(output_labels) == len(input_labels) :
+          if (labels_base in special_labels) :
+            if (len(output_labels) != 2) :
+              raise Sorry(("There are too many output labels for the array "+
+                "%s, which is being converted to non-anomalous data. "+
+                "Labels such as I,SIGI are appropriate, or F,SIGF if you are "+
+                "converting the array to amplitudes.  (Current output labels: "+
+                "%s)") % (array_name, ",".join(output_labels)))
+          elif (len(output_labels) == len(input_labels)) :
             raise Sorry(("There are too many output labels for the array "
               "%s, which is being converted to non-anomalous data. "+
               "The total number of columns will be halved in the output "+
               "array, and the labels should not have trailing (+) or (-).") %
               array_name)
-        elif labels_base in special_labels and not len(output_labels) == 4 :
+        elif (labels_base in special_labels) and (len(output_labels) != 4) :
           raise Sorry(("There are not enough output labels for the array "+
             "%s. For Scalepack or d*TREK files containing anomalous "+
             "data, you must specify exactly four column labels (e.g. "+
@@ -367,7 +369,7 @@ class process_arrays (object) :
         new_array = new_array.customized_copy(crystal_symmetry=output_symm)
       if not new_array.is_unique_set_under_symmetry() :
         if new_array.is_integer_array() and not is_rfree_array(new_array,info):
-          raise Sorry(("The data in %s cannot be merged because it is in "+
+          raise Sorry(("The data in %s cannot be merged because they are in "+
             "integer format.  If you wish to change symmetry (or the input "+
             "data is unmerged), you must omit this array.  (Note also that "+
             "merging will fail for R-free flags if the flags for symmetry-"+
