@@ -8,6 +8,8 @@ from scitbx.array_family import flex
 from cctbx import xray
 from smtbx.structure_factors import direct
 
+from stdlib import math
+
 class normal_equations(object):
 
   default_weighting_scheme = mainstream_shelx_weighting
@@ -15,6 +17,7 @@ class normal_equations(object):
   floating_origin_restraint_relative_weight = 1e3
   scale_factor = None
   f_mask = None
+  restraints_manager=None
 
   def __init__(self, xray_structure, fo_sq, reparametrisation, **kwds):
     self.xray_structure = xray_structure
@@ -53,7 +56,7 @@ class normal_equations(object):
     if self.reduced is None:
       self.reparametrisation.linearise()
       self.reparametrisation.store()
-    ext.build_normal_equations(
+    result = ext.build_normal_equations(
       self._core_normal_eqns,
       self.fo_sq.indices(),
       self.fo_sq.data(),
@@ -63,8 +66,26 @@ class normal_equations(object):
       self.scale_factor,
       self.one_h_linearisation,
       self.reparametrisation.jacobian_transpose_matching_grad_fc())
+    self.f_calc = self.fo_sq.array(data=result.f_calc(), sigmas=None)
+    self.weights = result.weights()
     self.reduced = self._core_normal_eqns.reduced_equations()
     self.scale_factor = self._core_normal_eqns.optimal_scale_factor()
+    if self.restraints_manager is not None:
+      # Here we determine a normalisation factor to place the restraints on the
+      # same scale as the observations. This is the normalisation factor
+      # suggested in Giacovazzo. In contrast, shelxl simply uses the mean
+      # value of the deltas (shelx manual, page 5-1).
+      normalisation_factor = flex.sum(self.weights * flex.pow2(
+        self.fo_sq.data() - self.scale_factor * flex.norm(self.f_calc.data())))\
+          / (self.fo_sq.size() - self.reparametrisation.n_independent_params)
+      linearised_eqns = self.restraints_manager.build_linearised_eqns(
+        self.xray_structure)
+      jacobian = \
+        self.reparametrisation.jacobian_transpose_matching_grad_fc().transpose()
+      self.reduced.add_equations(linearised_eqns.deltas,
+                                 linearised_eqns.design_matrix * jacobian,
+                                 linearised_eqns.weights * normalisation_factor,
+                                 negate_right_hand_side=True)
     self.objective = self._core_normal_eqns.objective()
     self.gradient = self._core_normal_eqns.gradient()
     self.floating_origin_restraints.add_to(self.reduced)
@@ -84,10 +105,14 @@ class normal_equations(object):
     self.apply_shifts()
 
   def goof(self):
-    from stdlib import math
     return math.sqrt(
       self.objective
       /(self.fo_sq.size() - self.reparametrisation.n_independent_params))
+
+  def wR2(self):
+    return math.sqrt(flex.sum(self.weights * flex.pow2(
+      self.fo_sq.data() - self.scale_factor * flex.norm(self.f_calc.data())))
+                     /flex.sum(self.weights * flex.pow2(self.fo_sq.data())))
 
   def covariance_matrix(self, normalised_by_goof=True):
     cov_ind_params = linalg.inverse_of_u_transpose_u(
