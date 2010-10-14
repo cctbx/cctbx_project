@@ -117,49 +117,70 @@ namespace smtbx { namespace refinement { namespace least_squares {
       The constraints is performed with a reparametrisation whose Jacobian
       transpose is passed as an argument.
    */
-  template <typename FloatType,
-            template<typename> class NormalEquations,
-            template<typename> class WeightingScheme,
-            class OneMillerIndexLinearisation>
-  void
-  build_normal_equations(NormalEquations<FloatType> &normal_equations,
-                         af::const_ref<miller::index<> > const &miller_indices,
-                         af::const_ref<FloatType> const &data,
-                         af::const_ref<FloatType> const &sigmas,
-                         af::const_ref<std::complex<FloatType> > const &f_mask,
-                         WeightingScheme<FloatType> const &weighting_scheme,
-                         FloatType scale_factor,
-                         OneMillerIndexLinearisation &one_h_linearisation,
-                         scitbx::sparse::matrix<FloatType> const
-                         &jacobian_transpose_matching_grad_fc)
+  template <typename FloatType>
+
+  struct build_normal_equations
   {
-    // Accumulate equations Fo(h) ~ Fc(h)
-    SMTBX_ASSERT(miller_indices.size() == data.size())
-                (miller_indices.size())(data.size());
-    SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
-    if (f_mask.size()){
-      SMTBX_ASSERT(f_mask.size() == f_mask.size())(data.size())(data.size());
-    }
-    for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
-      miller::index<> const &h = miller_indices[i_h];
-      if (f_mask.size()) {
-        one_h_linearisation.compute(h, f_mask[i_h]);
+    //! Default constructor. Some data members are not initialized!
+    build_normal_equations() {}
+
+    template <template<typename> class NormalEquations,
+              template<typename> class WeightingScheme,
+              class OneMillerIndexLinearisation>
+    build_normal_equations(
+      NormalEquations<FloatType> &normal_equations,
+      af::const_ref<miller::index<> > const &miller_indices,
+      af::const_ref<FloatType> const &data,
+      af::const_ref<FloatType> const &sigmas,
+      af::const_ref<std::complex<FloatType> > const &f_mask,
+      WeightingScheme<FloatType> const &weighting_scheme,
+      FloatType scale_factor,
+      OneMillerIndexLinearisation &one_h_linearisation,
+      scitbx::sparse::matrix<FloatType> const
+        &jacobian_transpose_matching_grad_fc)
+    :
+      f_calc_(miller_indices.size()),
+      weights_(miller_indices.size())
+    {
+      // Accumulate equations Fo(h) ~ Fc(h)
+      SMTBX_ASSERT(miller_indices.size() == data.size())
+                  (miller_indices.size())(data.size());
+      SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
+      if (f_mask.size()){
+        SMTBX_ASSERT(f_mask.size() == f_mask.size())(data.size())(data.size());
       }
-      else {
-        one_h_linearisation.compute(h);
+      for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
+        miller::index<> const &h = miller_indices[i_h];
+        if (f_mask.size()) {
+          one_h_linearisation.compute(h, f_mask[i_h]);
+        }
+        else {
+          one_h_linearisation.compute(h);
+        }
+        FloatType observable = one_h_linearisation.observable;
+        af::shared<FloatType> gradient =
+          jacobian_transpose_matching_grad_fc*one_h_linearisation.grad_observable;
+        FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
+                                            scale_factor * observable);
+        f_calc_[i_h] = one_h_linearisation.f_calc;
+        weights_[i_h] = weight;
+        normal_equations.add_equation(observable,
+                                      gradient.ref(),
+                                      data[i_h],
+                                      weight);
       }
-      FloatType observable = one_h_linearisation.observable;
-      af::shared<FloatType> gradient =
-        jacobian_transpose_matching_grad_fc*one_h_linearisation.grad_observable;
-      FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                          scale_factor * observable);
-      normal_equations.add_equation(observable,
-                                    gradient.ref(),
-                                    data[i_h],
-                                    weight);
+      normal_equations.finalise();
     }
-    normal_equations.finalise();
-  }
+
+    af::shared<std::complex<FloatType> > f_calc() { return f_calc_; }
+
+    af::shared<FloatType> weights() { return weights_; }
+
+  private:
+    af::shared<std::complex<FloatType> > f_calc_;
+    af::shared<FloatType> weights_;
+
+  };
 
 }}}
 

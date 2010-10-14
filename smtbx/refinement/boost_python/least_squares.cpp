@@ -54,32 +54,39 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
   template <typename FloatType,
             template<typename> class NormalEquations,
-            template<typename> class WeightingScheme,
             class OneMillerIndexLinearisation>
   struct normal_equation_building
   {
-    static void wrap() {
+    typedef build_normal_equations<FloatType> wt;
+    //typedef build_normal_equations<FloatType, NormalEquations,
+    //                               WeightingScheme, OneMillerIndexLinearisation> wt;
+
+    static void wrap(char const *name) {
       using namespace boost::python;
-      void (*build)(NormalEquations<FloatType> &, //normal_equations
-                    af::const_ref<miller::index<> > const &, //miller_indices
-                    af::const_ref<FloatType> const &, //data
-                    af::const_ref<FloatType> const &, //sigmas
-                    af::const_ref<std::complex<FloatType> > const &, //f_mask
-                    WeightingScheme<FloatType> const &, //weighting_scheme
-                    FloatType,  //scale_factor
-                    OneMillerIndexLinearisation &, //one_h_linearisation
-                    scitbx::sparse::matrix<FloatType> const &//constraints
-                    ) =  smtbx::refinement::least_squares::build_normal_equations;
-      def("build_normal_equations", build,
-          (arg("normal_equations"),
-           arg("miller_indices"),
-           arg("data"),
-           arg("sigmas"),
-           arg("f_mask"),
-           arg("weighting_scheme"),
-           arg("scale_factor"),
-           arg("one_h_linearisation"),
-           arg("jacobian_transpose_matching_grad_fc")));
+      class_<wt>(name, no_init)
+        .def(init<NormalEquations<FloatType> &,
+                  af::const_ref<miller::index<> > const &,
+                  af::const_ref<FloatType> const &,
+                  af::const_ref<FloatType> const &,
+                  af::const_ref<std::complex<FloatType> > const &,
+                  mainstream_shelx_weighting<FloatType> const &,
+                  FloatType,
+                  OneMillerIndexLinearisation &,
+                  scitbx::sparse::matrix<FloatType> const &>
+                  ())
+        .def(init<NormalEquations<FloatType> &,
+                  af::const_ref<miller::index<> > const &,
+                  af::const_ref<FloatType> const &,
+                  af::const_ref<FloatType> const &,
+                  af::const_ref<std::complex<FloatType> > const &,
+                  unit_weighting<FloatType> const &,
+                  FloatType,
+                  OneMillerIndexLinearisation &,
+                  scitbx::sparse::matrix<FloatType> const &>
+                  ())
+        .def("f_calc", &wt::f_calc)
+        .def("weights", &wt::weights)
+        ;
     }
   };
 
@@ -92,24 +99,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
     normal_equation_building<
       double,
       scitbx::lstbx::normal_equations_separating_scale_factor,
-      unit_weighting,
       structure_factors::direct::one_h_linearisation::std_trigonometry<
         double,
         true,
         structure_factors::direct::one_h_linearisation::modulus_squared
       >
-    >::wrap();
-
-    normal_equation_building<
-      double,
-      scitbx::lstbx::normal_equations_separating_scale_factor,
-      mainstream_shelx_weighting,
-      structure_factors::direct::one_h_linearisation::std_trigonometry<
-        double,
-        true,
-        structure_factors::direct::one_h_linearisation::modulus_squared
-      >
-    >::wrap();
+    >::wrap("build_normal_equations");
   }
 
 
