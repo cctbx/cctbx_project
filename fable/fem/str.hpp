@@ -70,6 +70,13 @@ namespace fem {
 
     void
     operator=(
+      std::string const& rhs)
+    {
+      str_ref(*this) = rhs;
+    }
+
+    void
+    operator=(
       str_cref const& rhs)
     {
       str_ref(*this) = rhs;
