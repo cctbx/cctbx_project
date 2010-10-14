@@ -181,6 +181,13 @@ namespace fem {
 
     void
     operator=(
+      std::string const& rhs)
+    {
+      utils::copy_with_blank_padding(rhs.data(), rhs.size(), elems(), len());
+    }
+
+    void
+    operator=(
       str_cref const& rhs)
     {
       utils::copy_with_blank_padding(rhs.elems(), rhs.len(), elems(), len());
