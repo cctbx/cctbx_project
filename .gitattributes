@@ -943,6 +943,7 @@ mmtbx/polygon/__init__.py -text
 mmtbx/polygon/gui.py -text
 mmtbx/polygon/tst.py -text
 mmtbx/polygon/tst_gui.py -text
+mmtbx/ramachandran/__init__.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/fit_rotamers.py -text
 mmtbx/refinement/flip_peptides.py -text
