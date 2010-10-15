@@ -152,7 +152,9 @@ class secondary_planar_xh_site(_input.secondary_planar_xh_site,
                       pivot_site      , pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       hydrogens, **kwds):
-    assert len(pivot_neighbour_site_params) == 2
+    # e.g. Carbon atoms in Cyclopentadienyl complexes will have
+    #      3 pivot neighbours
+    assert len(pivot_neighbour_site_params) in (2, 3)
     return reparametrisation.add(
       _.secondary_planar_xh_site,
       pivot=pivot_site_param,
