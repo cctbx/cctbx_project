@@ -6,6 +6,7 @@ from scitbx import matrix as mat
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 import libtbx.utils
+import smtbx.utils
 
 class terminal_linear_ch_site_test_case(object):
 
@@ -232,7 +233,8 @@ def exercise_symmetry_equivalent():
     scatterers=flex.xray_scatterer((
       xray.scatterer("C", site=(0.1, 0.2, 0.3)),
     )))
-  reparametrisation = constraints.reparametrisation(xs, [])
+  connectivity_table = smtbx.utils.connectivity_table(xs)
+  reparametrisation = constraints.reparametrisation(xs, [], connectivity_table)
   site_0 = reparametrisation.add(constraints.independent_site_parameter,
                                  scatterer=xs.scatterers()[0])
   symm_eq = reparametrisation.add(

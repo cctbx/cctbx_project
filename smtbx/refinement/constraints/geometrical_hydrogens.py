@@ -12,6 +12,13 @@ class geometrical_hydrogens_mixin(object):
   def add_to(self, reparametrisation):
     i_pivot = self.pivot
     scatterers = reparametrisation.structure.scatterers()
+    conformer_indices = reparametrisation.connectivity_table.conformer_indices
+    if conformer_indices is not None:
+      constrained_site_conformer = conformer_indices[
+        self.constrained_site_indices[0]]
+      for i in self.constrained_site_indices:
+        assert conformer_indices[i] == constrained_site_conformer
+    else: constrained_site_conformer = 0
     pivot_site = scatterers[i_pivot].site
     pivot_site_param = reparametrisation.add_new_site_parameter(i_pivot)
     pivot_neighbour_sites = ()
@@ -20,16 +27,20 @@ class geometrical_hydrogens_mixin(object):
     for j, ops in reparametrisation.pair_sym_table[i_pivot].items():
       if j in self.constrained_site_indices: continue
       for op in ops:
-        s = reparametrisation.add_new_site_parameter(j, op)
-        pivot_neighbour_site_params += (s,)
-        pivot_neighbour_sites += (op*scatterers[j].site,)
-        if (self.need_pivot_neighbour_substituent
-            and pivot_neighbour_substituent_site_param is None):
-          for k, ops_k in reparametrisation.pair_sym_table[j].items():
-            if k != i_pivot:
-              pivot_neighbour_substituent_site_param = \
-                reparametrisation.add_new_site_parameter(k, ops_k[0])
-              break
+        if (conformer_indices is None or
+            conformer_indices[j] == 0 or
+            constrained_site_conformer == 0 or
+            (conformer_indices[j] == constrained_site_conformer)):
+          s = reparametrisation.add_new_site_parameter(j, op)
+          pivot_neighbour_site_params += (s,)
+          pivot_neighbour_sites += (op*scatterers[j].site,)
+          if (self.need_pivot_neighbour_substituent
+              and pivot_neighbour_substituent_site_param is None):
+            for k, ops_k in reparametrisation.pair_sym_table[j].items():
+              if k != i_pivot:
+                pivot_neighbour_substituent_site_param = \
+                  reparametrisation.add_new_site_parameter(k, ops_k[0])
+                break
 
     bond_length = reparametrisation.add(
       _.independent_scalar_parameter,
