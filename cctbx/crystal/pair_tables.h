@@ -405,11 +405,19 @@ namespace cctbx { namespace crystal {
         af::const_ref<std::string> const& scattering_types,
         af::const_ref<std::string> const& exclude_scattering_types
           = af::const_ref<std::string>(0,0),
+        af::const_ref<std::size_t> const& conformer_indices
+          = af::const_ref<std::size_t>(0, 0),
+        af::const_ref<std::size_t> const& sym_excl_indices
+          = af::const_ref<std::size_t>(0, 0),
         FloatType const& distance_cutoff=3.5,
         FloatType const& min_cubicle_edge=5,
         FloatType const& tolerance=0.5,
         FloatType const& epsilon=1.e-6)
       {
+        CCTBX_ASSERT(!conformer_indices.size()
+                  ||  conformer_indices.size() == scattering_types.size());
+        CCTBX_ASSERT(!sym_excl_indices.size()
+                  ||  sym_excl_indices.size() == scattering_types.size());
         neighbors::fast_pair_generator<FloatType, IntShiftType> pair_generator(
           asu_mappings_owner_,
           distance_cutoff*(1+epsilon),
@@ -418,20 +426,47 @@ namespace cctbx { namespace crystal {
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
             const& pair = pair_generator.next();
-          if (std::find(exclude_scattering_types.begin(),
-              exclude_scattering_types.end(),
-              scattering_types[pair.i_seq]) != exclude_scattering_types.end() ||
-            std::find(
-              exclude_scattering_types.begin(),
-              exclude_scattering_types.end(),
-              scattering_types[pair.j_seq]) != exclude_scattering_types.end()) continue;
+          if (   std::find(exclude_scattering_types.begin(),
+                           exclude_scattering_types.end(),
+                           scattering_types[pair.i_seq])
+                   != exclude_scattering_types.end()
+              || std::find(exclude_scattering_types.begin(),
+                           exclude_scattering_types.end(),
+                           scattering_types[pair.j_seq])
+                   != exclude_scattering_types.end()) {
+               continue;
+          }
+          if (   conformer_indices.size()
+              && conformer_indices[pair.i_seq] != 0
+              && conformer_indices[pair.j_seq] != 0
+              && conformer_indices[pair.i_seq]
+              != conformer_indices[pair.j_seq]) {
+                continue;
+          }
+          if (   sym_excl_indices.size()
+              && sym_excl_indices[pair.i_seq] != 0
+              && sym_excl_indices[pair.j_seq] != 0
+              && asu_mappings_->get_rt_mx_i(pair) != asu_mappings_->get_rt_mx_j(pair)) {
+              //&& pair.j_sym != 0) {
+                continue; // don't bond to sym equivs
+          }
+          if (   conformer_indices.size()
+              && sym_excl_indices.size()
+              && ((   conformer_indices[pair.i_seq] != 0
+                   && sym_excl_indices[pair.j_seq] != 0)
+                 ||
+                  (   conformer_indices[pair.j_seq] != 0
+                   && sym_excl_indices[pair.i_seq] != 0))) {
+                continue;
+          }
           FloatType const& radius_i =  eltbx::covalent_radii::table(
             scattering_types[pair.i_seq]).radius();
           FloatType const& radius_j =  eltbx::covalent_radii::table(
             scattering_types[pair.j_seq]).radius();
           FloatType const max_bond_length = radius_i + radius_j + tolerance;
-          if (std::sqrt(pair.dist_sq) <= max_bond_length)
+          if (std::sqrt(pair.dist_sq) <= max_bond_length) {
             add_pair(pair);
+          }
         }
         return *this;
       }
