@@ -39,11 +39,11 @@ class reparametrisation(ext.reparametrisation):
   """ Enhance the C++ level reparametrisation class for ease of use """
 
   temperature = 20 # Celsius
-  covalent_bond_tolerance = 0.5 # Angstrom
 
   def __init__(self,
                structure,
                geometrical_constraints,
+               connectivity_table,
                **kwds):
     """ Construct for the given instance of xray.structure subject to the
     given sequence of constraints. Each constraint instance shall understand:
@@ -60,24 +60,15 @@ class reparametrisation(ext.reparametrisation):
     """
     super(reparametrisation, self).__init__(structure.unit_cell())
     self.structure = xs = structure
+    self.connectivity_table = connectivity_table
+    self.pair_sym_table = \
+        connectivity_table.pair_asu_table.extract_pair_sym_table(
+          skip_j_seq_less_than_i_seq=False,
+          all_interactions_from_inside_asu=True)
     scatterers = xs.scatterers()
     self.site_symmetry_table_ = self.structure.site_symmetry_table()
     libtbx.adopt_optional_init_args(self, kwds)
     self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
-
-    radii = [
-      covalent_radii.table(elt).radius()
-      for elt in xs.scattering_type_registry().type_index_pairs_as_dict() ]
-    self.buffer_thickness = 2*max(radii) + self.covalent_bond_tolerance
-
-    asu_mappings = xs.asu_mappings(buffer_thickness=self.buffer_thickness)
-    bond_table = crystal.pair_asu_table(asu_mappings)
-    bond_table.add_covalent_pairs(xs.scattering_types(),
-                                  tolerance=self.covalent_bond_tolerance)
-    self.pair_sym_table = bond_table.extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=False,
-      all_interactions_from_inside_asu=True,
-    )
 
     for constraint in geometrical_constraints:
       constraint.add_to(self)

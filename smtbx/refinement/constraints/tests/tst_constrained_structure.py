@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 from smtbx.refinement import constraints
 import smtbx.refinement.constraints.geometrical_hydrogens as _
 import smtbx.refinement.constraints as core
+import smtbx.utils
 import itertools
 
 def exercise_sucrose():
@@ -178,7 +179,7 @@ def exercise_sucrose():
     sc.flags.set_grad_site(True)
     if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
     if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
-
+  connectivity_table = smtbx.utils.connectivity_table(xs)
   reparametrisation = constraints.reparametrisation(
     structure=xs,
     geometrical_constraints=[
@@ -247,7 +248,8 @@ def exercise_sucrose():
       _.secondary_ch2_sites(
         pivot=42,
         constrained_site_indices=(43, 44)),
-      ])
+      ],
+    connectivity_table=connectivity_table)
 
   if 0:
     from crys3d.qttbx.xray_structure_viewer import display
@@ -497,6 +499,7 @@ def exercise_saturated():
   for sc in xs.scatterers():
     sc.flags.set_grad_site(True)
 
+  connectivity_table = smtbx.utils.connectivity_table(xs)
   reparametrisation = constraints.reparametrisation(
     structure=xs,
     geometrical_constraints=[
@@ -515,7 +518,8 @@ def exercise_saturated():
       _.secondary_planar_xh_site(
         pivot=8,
         constrained_site_indices=(9,)),
-      ])
+      ],
+    connectivity_table=connectivity_table)
 
   if 0:
     from crys3d.qttbx.xray_structure_viewer import display
@@ -650,6 +654,7 @@ def exercise_symmetric_equivalent():
   for sc in xs.scatterers():
     sc.flags.set_grad_site(True)
 
+  connectivity_table = smtbx.utils.connectivity_table(xs)
   reparametrisation = constraints.reparametrisation(
     structure=xs,
     geometrical_constraints=[
@@ -674,7 +679,8 @@ def exercise_symmetric_equivalent():
       _.secondary_ch2_sites(
         pivot=19,
         constrained_site_indices=(20, 21)),
-      ])
+      ],
+    connectivity_table=connectivity_table)
   if 0:
     from crys3d.qttbx.xray_structure_viewer import display
     display(xray_structure=xs)
