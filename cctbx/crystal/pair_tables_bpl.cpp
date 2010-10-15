@@ -84,6 +84,8 @@ namespace {
         .def("add_covalent_pairs", &w_t::add_covalent_pairs, (
           arg("scattering_types"),
           arg("exclude_scattering_types")=boost::python::object(),
+          arg("conformer_indices")=boost::python::object(),
+          arg("sym_excl_indices")=boost::python::object(),
           arg("distance_cutoff")=3.5,
           arg("min_cubicle_edge")=5,
           arg("tolerance")=0.5,

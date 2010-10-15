@@ -1,6 +1,6 @@
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
-from cctbx import sgtbx
+from cctbx import sgtbx, xray
 import cctbx.crystal.direct_space_asu
 from cctbx import uctbx
 from cctbx.array_family import flex
@@ -484,6 +484,47 @@ def exercise_pair_tables():
   expected_pair_counts = (2, 4, 1, 1, 3, 3, 1, 4, 3, 2, 2, 3, 2,
                           2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
   assert approx_equal(covalent_asu_table.pair_counts(), expected_pair_counts)
+  #
+  structure.add_scatterer(xray.scatterer(label='O1a', site=(0.28, 0.48, 0.23)))
+  scattering_types = structure.scatterers().extract_scattering_types()
+  asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  conformer_indices = flex.size_t(structure.scatterers().size(), 0)
+  conformer_indices[2] = 1 # scatterer O1
+  conformer_indices[-1] = 2 # scatterer O1a
+  covalent_asu_table.add_covalent_pairs(
+    scattering_types=scattering_types, conformer_indices=conformer_indices)
+  assert covalent_asu_table.pair_counts()[-1] == 1
+  assert covalent_asu_table.pair_counts()[2] == 1
+  #
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell="10 10 10 90 90 90",
+      space_group_symbol="P-1"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer("C1", site=(0.05, 0.05, 0.05)),
+      xray.scatterer("C2", site=(0.15, 0.15, 0.15)),
+      xray.scatterer("C3", site=(0.25, 0.25, 0.25))]))
+  scattering_types = xs.scatterers().extract_scattering_types()
+  asu_mappings = xs.asu_mappings(buffer_thickness=3.5)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  covalent_asu_table.add_covalent_pairs(scattering_types=scattering_types)
+  assert approx_equal(covalent_asu_table.pair_counts(), (2, 2, 1))
+  sym_excl_indices = flex.size_t([1, 1, 0])
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  covalent_asu_table.add_covalent_pairs(
+    scattering_types=scattering_types, sym_excl_indices=sym_excl_indices)
+  assert approx_equal(covalent_asu_table.pair_counts(), (1, 2, 1))
+  xs.add_scatterer(xray.scatterer(label="C4", site=(0.16, 0.16, 0.16)))
+  sym_excl_indices.append(0)
+  conformer_indices = flex.size_t([0, 0, 0, 1])
+  scattering_types = xs.scatterers().extract_scattering_types()
+  asu_mappings = xs.asu_mappings(buffer_thickness=3.5)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  covalent_asu_table.add_covalent_pairs(scattering_types=scattering_types,
+                                        sym_excl_indices=sym_excl_indices,
+                                        conformer_indices=conformer_indices)
+  assert approx_equal(covalent_asu_table.pair_counts(), (1, 2, 2, 1))
   #
   structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
