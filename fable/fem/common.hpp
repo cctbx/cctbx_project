@@ -12,6 +12,20 @@ namespace fem {
   struct common
   {
     fem::io io;
+
+    int
+    iargc() const
+    {
+      throw TBXX_NOT_IMPLEMENTED();
+    }
+
+    void
+    getarg(
+      int /*iarg*/,
+      str_ref /*result*/) const
+    {
+      throw TBXX_NOT_IMPLEMENTED();
+    }
   };
 
   struct cmn_sve

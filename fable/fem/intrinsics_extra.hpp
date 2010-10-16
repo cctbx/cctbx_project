@@ -69,6 +69,14 @@ namespace fem {
     result = user_plus_system_time();
   }
 
+  inline
+  int
+  system(
+    str_cref command)
+  {
+    return std::system(std::string(command).c_str());
+  }
+
 } // namespace fem
 
 #endif // GUARD

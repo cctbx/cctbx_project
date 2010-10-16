@@ -44,6 +44,7 @@ dtan
 exp
 float
 iabs
+iargc
 iand
 ichar
 idnint
@@ -80,10 +81,12 @@ transfer
 """.splitlines())
 
 extra_set_lower = set("""\
-getenv
-date
-time
 cpu_time
+date
+getarg
+getenv
+system
+time
 """.splitlines())
 
 io_set_lower = set("""\

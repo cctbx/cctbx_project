@@ -540,6 +540,7 @@ fable/test/valid/int_literal_eq_int_literal.f -text
 fable/test/valid/integer_star_2_array.f -text
 fable/test/valid/intrinsic_with_data_type.f -text
 fable/test/valid/intrinsics_extra.f -text
+fable/test/valid/intrinsics_iargc_getarg.f -text
 fable/test/valid/label_format.f -text
 fable/test/valid/len_trim.f -text
 fable/test/valid/logical_a_or_b.f -text
@@ -603,6 +604,7 @@ fable/test/valid/string_array_declarations.f -text
 fable/test/valid/string_assign_to_slice.f -text
 fable/test/valid/string_common_dims.f -text
 fable/test/valid/string_compare.f -text
+fable/test/valid/string_concat.f -text
 fable/test/valid/string_spanning_continuation_lines.f -text
 fable/test/valid/string_sub_array_passing.f -text
 fable/test/valid/strings_size_dim.f -text

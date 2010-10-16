@@ -2470,6 +2470,9 @@ sub(
   write(6, "(a)"), e;
   float tm = fem::float0;
   fem::cpu_time(tm);
+  write(6, "(f6.2)"), tm;
+  fem::str<8> c = "echo YkD";
+  int i = fem::system(c);
 """)
   #
   lines = get("blockdata_unnamed.f", data_specializations=False)
@@ -3015,6 +3018,14 @@ struct common_commonymous
   lines = get("flush_external.f")
   assert not absd(lines, tail_off(1), """\
   flush(cmn, 2 * 5 - 4);
+""")
+  #
+  lines = get("string_concat.f")
+  assert not absd(lines, head_off(13), """\
+  fem::str<2> s1 = "x" + str_cref("Y");
+""")
+  assert not absd(lines, tail_off(1), """\
+  write(6, "(a)"), ("v" + (str_cref("cX"))) + str_cref("yz");
 """)
 
 def exercise_syntax_error(verbose):

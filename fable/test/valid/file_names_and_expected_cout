@@ -1464,3 +1464,22 @@ flush_intrinsic.f
 |OK|
 flush_external.f
 |           6|
+string_concat.f
+|xY|
+|Pq|
+|No|
+|asd |
+|fgh |
+|jkl |
+|zNo|
+|NoT|
+|U v|
+|U i |
+|i  U|
+|Wdi |
+|i  W|
+|Qwerty|
+|Uiop|
+|Mnb|
+|vcXyz|
+!@intrinsics_iargc_getarg.f
