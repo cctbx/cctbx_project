@@ -1756,6 +1756,7 @@ class fproc(fproc_p_methods):
     "uses_io",
     "uses_read",
     "uses_write",
+    "uses_iargc_getarg",
     "_fmt_counts_by_statement_label",
     "_common_name_by_identifier",
     "_equivalence_info",
@@ -1806,6 +1807,7 @@ class fproc(fproc_p_methods):
     O.uses_io = False
     O.uses_read = False
     O.uses_write = False
+    O.uses_iargc_getarg = False
     O._fmt_counts_by_statement_label = None
     O._common_name_by_identifier = None
     O._equivalence_info = None
@@ -2347,7 +2349,9 @@ class fproc(fproc_p_methods):
         id_tok = ei.subroutine_name
         tf = O.fdecl_by_identifier.get(id_tok.value)
         if (tf is None):
-          if (id_tok.value in intrinsics.io_set_lower):
+          if (id_tok.value in intrinsics.extra_set_lower):
+            make_fdecl(id_tok=id_tok, var_type=vt_intrinsic)
+          elif (id_tok.value in intrinsics.io_set_lower):
             make_fdecl(id_tok=id_tok, var_type=vt_intrinsic)
             O.uses_io = True
           else:
@@ -2361,6 +2365,9 @@ class fproc(fproc_p_methods):
               raise_confl_decl(id_tok=id_tok)
             tf.var_type = vt_subroutine
             tf.use_count += 1
+          elif (    vt is vt_intrinsic
+                and id_tok.value in intrinsics.extra_set_lower):
+            pass
           elif (vt is not vt_subroutine):
             raise_confl_decl(id_tok=id_tok)
       def search_for_id_tokens_callback(id_tok, next_tok):
@@ -2379,6 +2386,7 @@ class fproc(fproc_p_methods):
         tf.use_count += 1
         if (tf.var_type is vt_intrinsic):
           if (    id_tok.value not in intrinsics.set_lower
+              and id_tok.value not in intrinsics.extra_set_lower
               and id_tok.value not in intrinsics.io_set_lower):
             id_tok.raise_semantic_error(
               msg="Unknown intrinsic: %s" % id_tok.value)
@@ -2419,7 +2427,8 @@ class fproc(fproc_p_methods):
               pass # XXX should be error; ignored due to
                    #     lack of proper handling of f90 declarations
             tf.var_storage = None
-            if (id_tok.value in intrinsics.set_lower):
+            if (    id_tok.value in intrinsics.extra_set_lower
+                and id_tok.value in intrinsics.set_lower):
               tf.var_type = vt_intrinsic
             else:
               tf.var_type = vt_function
@@ -2496,6 +2505,12 @@ class fproc(fproc_p_methods):
       tf = O.fdecl_by_identifier.get(id_tok.value)
       assert tf is not None
       O.args_fdecl.append(tf)
+    #
+    for identifier in ["iargc", "getarg"]:
+      tf = O.fdecl_by_identifier.get(identifier)
+      if (tf is not None and tf.is_intrinsic()):
+        O.uses_iargc_getarg = True
+        break
     #
     equiv_info = O.equivalence_info()
     for equiv_tok_cluster in equiv_info.equiv_tok_clusters:
@@ -2904,7 +2919,6 @@ class build_bottom_up_fproc_list_following_calls(object):
     "bottom_up_list",
     "forward_uses_by_identifier",
     "dependency_cycles",
-    "intrinsics_extra",
     "missing_external_fdecls_by_identifier"]
 
   def __init__(O, all_fprocs, top_procedures=None):
@@ -3004,7 +3018,6 @@ class build_bottom_up_fproc_list_following_calls(object):
     bottom_up_set = set()
     O.forward_uses_by_identifier = {}
     forward_uses_set = set()
-    O.intrinsics_extra = set()
     O.missing_external_fdecls_by_identifier = {}
     for identifier in topological_sort.stable(
                         connections=connections_for_topological_sort):
@@ -3018,8 +3031,6 @@ class build_bottom_up_fproc_list_following_calls(object):
               and dep not in forward_uses_set):
             O.forward_uses_by_identifier.setdefault(identifier, []).append(dep)
             forward_uses_set.add(dep)
-      elif (identifier in intrinsics.extra_set_lower):
-        O.intrinsics_extra.add(identifier)
       elif (identifier not in all_fprocs.fprocs_by_name(plain=True)):
         O.missing_external_fdecls_by_identifier[identifier] = \
           external_fdecls[identifier]
@@ -3050,12 +3061,13 @@ class build_bottom_up_fproc_list_following_calls(object):
     fprocs_by_name = O.all_fprocs.fprocs_by_name()
     have_blockdata = (len(O.all_fprocs.blockdata) != 0)
     for caller_fproc in O.bottom_up_list:
-      caller_fproc.needs_cmn = \
-           caller_fproc.uses_common \
-        or caller_fproc.uses_save \
-        or caller_fproc.uses_io \
-        or (have_blockdata and caller_fproc.is_program()) \
-        or len(caller_fproc.dynamic_parameters) != 0
+      caller_fproc.needs_cmn = (
+           caller_fproc.uses_common
+        or caller_fproc.uses_save
+        or caller_fproc.uses_io
+        or caller_fproc.uses_iargc_getarg
+        or (have_blockdata and caller_fproc.is_program())
+        or len(caller_fproc.dynamic_parameters) != 0)
       if (not caller_fproc.needs_cmn):
         for dependency in O.deps_by_fproc_identifier.get(
                             caller_fproc.name.value, []):

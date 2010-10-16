@@ -4,6 +4,13 @@ from libtbx import group_args
 from libtbx import Auto
 import os.path as op
 
+class mutable(object): # XXX move to libtbx
+
+  __slots__ = ["value"]
+
+  def __init__(O, value):
+    O.value = value
+
 fmt_comma_placeholder = chr(255)
 
 def break_line_if_necessary(callback, line, max_len=80, min_len=70):
@@ -196,7 +203,7 @@ def convert_complex_literal(vmap, tok):
     cc.append("".join(c))
   return "fem::cmplx(%s)" % ", ".join(cc)
 
-def convert_token(vmap, leading, tok):
+def convert_token(vmap, leading, tok, had_str_concat=None):
   tv = tok.value
   if (tok.is_identifier()):
     return vmap.get(tv, tv)
@@ -222,6 +229,8 @@ def convert_token(vmap, leading, tok):
     if (tv == "/"):
       return " "+tv+" "
     if (tv == "//"):
+      if (had_str_concat is None): tok.raise_internal_error()
+      had_str_concat.value = True
       return " + "
     if (tv == ":"):
       if (leading):
@@ -241,7 +250,10 @@ def convert_token(vmap, leading, tok):
       return " >= "
     tok.raise_not_supported()
   if (tok.is_string()):
-    return '"' + escape_string_literal(tv) + '"'
+    s = '"' + escape_string_literal(tok.value) + '"'
+    if (had_str_concat is None or not had_str_concat.value):
+      return s
+    return "str_cref(%s)" % s
   if (tok.is_logical()):
     if (tv == ".false."):
       return "false"
@@ -395,7 +407,6 @@ class global_conversion_info(object):
     "arr_nd_size_max",
     "inline_all",
     "fprocs_by_name",
-    "intrinsics_extra",
     "converted_commons_info",
     "separate_namespaces",
     "data_values_block_size",
@@ -419,7 +430,6 @@ class global_conversion_info(object):
     O.arr_nd_size_max = arr_nd_size_max
     O.inline_all = inline_all
     O.fprocs_by_name = topological_fprocs.all_fprocs.fprocs_by_name()
-    O.intrinsics_extra = topological_fprocs.intrinsics_extra
     O.converted_commons_info = converted_commons_info
     O.separate_namespaces = separate_namespaces
     O.data_values_block_size = data_values_block_size
@@ -465,8 +475,11 @@ class conversion_info(global_conversion_info):
         O.vmap[identifier] \
           = ns + "::" + prepend_identifier_if_necessary(identifier)
         return True
-    if (    O.intrinsics_extra is not None
-          and identifier in O.intrinsics_extra):
+    if (identifier in ["getargc", "iargc"]):
+      O.vmap[identifier] = "cmn.%s" % identifier
+      return True
+    from fable import intrinsics
+    if (identifier in intrinsics.extra_set_lower):
       O.vmap[identifier] = "fem::" + identifier
       return True
     return False
@@ -480,6 +493,8 @@ class conversion_info(global_conversion_info):
     elif (fdecl.is_intrinsic()):
       if (identifier in ["float", "int", "char"]):
         O.vmap[identifier] = "fem::f" + identifier
+      elif (identifier == "iargc"):
+        O.vmap[identifier] = "cmn.iargc"
       else:
         O.vmap[identifier] = "fem::" + identifier
     elif (not O.set_vmap_for_callable(identifier=fdecl.id_tok.value)):
@@ -542,10 +557,12 @@ def convert_power(conv_info, tokens):
   return fun + "(" + convert_tokens(
     conv_info=conv_info, tokens=tokens, commas=True) + ")"
 
-def convert_tokens(conv_info, tokens, commas=False):
+def convert_tokens(conv_info, tokens, commas=False, had_str_concat=None):
   result = []
   rapp = result.append
   prev_tok = None
+  if (had_str_concat is None):
+    had_str_concat = mutable(value=False)
   from tokenization import group_power
   for tok in group_power(tokens=tokens):
     if (tok.is_seq()):
@@ -555,7 +572,10 @@ def convert_tokens(conv_info, tokens, commas=False):
         rapp("star /* %s UNHANDLED */" % tok.value[1].value)
       else:
         rapp(convert_tokens(
-          conv_info=conv_info, tokens=tok.value, commas=False))
+          conv_info=conv_info,
+          tokens=tok.value,
+          commas=False,
+          had_str_concat=had_str_concat))
     elif (tok.is_parentheses()):
       if (cmn_needs_to_be_inserted(conv_info=conv_info, prev_tok=prev_tok)):
         if (len(tok.value) != 0):
@@ -565,7 +585,10 @@ def convert_tokens(conv_info, tokens, commas=False):
       else:
         op = "("
       rapp(op + convert_tokens(
-        conv_info=conv_info, tokens=tok.value, commas=True) + ")")
+        conv_info=conv_info,
+        tokens=tok.value,
+        commas=True,
+        had_str_concat=had_str_concat) + ")")
     elif (tok.is_implied_do()):
       raise AssertionError
     elif (tok.is_power()):
@@ -574,7 +597,8 @@ def convert_tokens(conv_info, tokens, commas=False):
       rapp(convert_token(
         vmap=conv_info.vmap,
         leading=(len(result)==0),
-        tok=tok))
+        tok=tok,
+        had_str_concat=had_str_concat))
     prev_tok = tok
   if (commas):
     return ", ".join(result)
@@ -935,7 +959,8 @@ def find_implied_dos(result, tokens):
     elif (tok.is_implied_do()):
       result.append(tok)
 
-def convert_io_loop(io_scope, io_op, conv_info, tokens, cbuf=None):
+def convert_io_loop(
+      io_scope, io_op, conv_info, tokens, cbuf=None, had_str_concat=None):
   class cbuffer(object):
     __slots__ = ["strings", "leading"]
     def __init__(O):
@@ -973,11 +998,18 @@ def convert_io_loop(io_scope, io_op, conv_info, tokens, cbuf=None):
   else:
     owning_cbuf = False
   prev_tok = None
+  if (had_str_concat is None):
+    had_str_concat = mutable(value=False)
   from tokenization import group_power
   for tok in group_power(tokens=tokens):
     if (tok.is_seq()):
       convert_io_loop(
-        io_scope, io_op, conv_info, tokens=tok.value, cbuf=cbuf)
+        io_scope,
+        io_op,
+        conv_info,
+        tokens=tok.value,
+        cbuf=cbuf,
+        had_str_concat=had_str_concat)
       cbuf.append_comma()
     elif (tok.is_parentheses()):
       cbuf.append_opening_parenthesis()
@@ -986,7 +1018,12 @@ def convert_io_loop(io_scope, io_op, conv_info, tokens, cbuf=None):
         if (len(tok.value) != 0):
           cbuf.append_comma()
       convert_io_loop(
-        io_scope, io_op, conv_info, tokens=tok.value, cbuf=cbuf)
+        io_scope,
+        io_op,
+        conv_info,
+        tokens=tok.value,
+        cbuf=cbuf,
+        had_str_concat=had_str_concat)
       cbuf.append_closing_parenthesis()
     elif (tok.is_implied_do()):
       cbuf.flush()
@@ -1001,14 +1038,18 @@ def convert_io_loop(io_scope, io_op, conv_info, tokens, cbuf=None):
         io_scope=do_scope,
         io_op=io_op,
         conv_info=conv_info,
-        tokens=tok.value[:idi.dlist_size])
+        tokens=tok.value[:idi.dlist_size],
+        had_str_concat=had_str_concat)
       do_scope.close_nested_scope()
       return
     elif (tok.is_power()):
       cbuf.append(convert_power(conv_info=conv_info, tokens=tok.value))
     else:
       cbuf.append(convert_token(
-        vmap=conv_info.vmap, leading=cbuf.leading, tok=tok))
+        vmap=conv_info.vmap,
+        leading=cbuf.leading,
+        tok=tok,
+        had_str_concat=had_str_concat))
     prev_tok = tok
   if (owning_cbuf):
     cbuf.flush()
@@ -2045,8 +2086,14 @@ def convert_executable(
       elif (ei.key == "call"):
         fdecl = conv_info.fproc.get_fdecl(id_tok=ei.subroutine_name)
         if (fdecl.is_intrinsic()):
+          from fable import intrinsics
           cmn = ""
-          called = "cmn.io.%s" % ei.subroutine_name.value
+          if (ei.subroutine_name.value == "getarg"):
+            called = "cmn.getarg"
+          elif (ei.subroutine_name.value in intrinsics.io_set_lower):
+            called = "cmn.io.%s" % ei.subroutine_name.value
+          else:
+            called = "fem::%s" % ei.subroutine_name.value
         else:
           if (called_fproc_needs_cmn(
                 conv_info=conv_info,
