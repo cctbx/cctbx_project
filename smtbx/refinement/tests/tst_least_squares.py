@@ -6,6 +6,7 @@ from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
+import smtbx.utils
 from libtbx.test_utils import approx_equal
 import libtbx.utils
 from stdlib import math
@@ -57,9 +58,11 @@ class site_refinement_test(refinement_test):
   def exercise_floating_origin_restraints(self):
     n = self.n_independent_params
     eps_zero_rhs = 1e-6
+    connectivity_table = smtbx.utils.connectivity_table(self.xray_structure)
     reparametrisation = constraints.reparametrisation(
-      structure=self.xray_structure,
-      geometrical_constraints=[])
+      structure=xs,
+      geometrical_constraints=[],
+      connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       self.xray_structure,
       self.fo_sq,
@@ -185,9 +188,11 @@ class site_refinement_test(refinement_test):
 
   def exercise_ls_cycles(self):
     xs = self.xray_structure.deep_copy_scatterers()
+    connectivity_table = smtbx.utils.connectivity_table(xs)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
-      geometrical_constraints=[])
+      geometrical_constraints=[],
+      connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       xs, self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
@@ -245,9 +250,11 @@ class adp_refinement_test(refinement_test):
     xs = self.xray_structure.deep_copy_scatterers()
     xs.shake_adp() # it must happen before the reparamtrisation is constructed
                    # because the ADP values are read then and only then.
+    connectivity_table = smtbx.utils.connectivity_table(xs)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
-      geometrical_constraints=[])
+      geometrical_constraints=[],
+      connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       xs, self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
@@ -420,9 +427,11 @@ class special_positions_test(object):
     for sc in xs.scatterers():
       sc.flags.set_use_u_iso(False).set_use_u_aniso(True)
       sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+      connectivity_table = smtbx.utils.connectivity_table(xs)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
-      geometrical_constraints=[])
+      geometrical_constraints=[],
+      connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       xs, self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
