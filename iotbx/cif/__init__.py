@@ -22,12 +22,15 @@ class reader:
     if builder is None:
       builder = builders.cif_model_builder()
     self.builder = builder
+    if file_path is not None:
+      if isinstance(file_path, unicode):
+        file_object = open(file_path, 'rb')
+      else:
+        self.parser = ext.fast_reader(file_path, builder)
     if file_object is not None:
       input_string = file_object.read()
     if input_string is not None:
       self.parser = ext.fast_reader(input_string, builder)
-    if file_path is not None:
-      self.parser = ext.fast_reader(file_path, builder)
     self.show_errors(max_errors)
 
   def model(self):
