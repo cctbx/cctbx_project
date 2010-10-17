@@ -14,7 +14,6 @@ class lookup_table (object) :
       val, phi, psi = line.split()
       assert ((int(phi) % 2 == 1) and (int(psi) % 2 == 1))
       self._plot.append(float(val))
-    print self._plot.size()
     assert (self._plot.size() == 32400)
     grid = flex.grid((180,180))
     self._plot.reshape(grid)
@@ -29,13 +28,13 @@ class lookup_table (object) :
     phi_2 = iceil(phi)
     psi_1 = ifloor(psi)
     psi_2 = iceil(psi)
-    if (phi_1 % 2) == 0 :
+    if ((phi_1 % 2) == 0) :
       phi_1 -= 1
-    elif (phi_2 % 2) == 0 :
+    elif ((phi_2 % 2) == 0) :
       phi_2 += 1
-    if (psi_1 % 2) == 0 :
+    if ((psi_1 % 2) == 0) :
       psi_1 -= 1
-    elif (psi_2 % 2) == 0 :
+    elif ((psi_2 % 2) == 0) :
       psi_2 += 1
     r11 = self._getitem(phi_1, psi_1)
     r12 = self._getitem(phi_1, psi_2)
@@ -81,31 +80,81 @@ if (len(tables) == 0) :
   load_tables()
 
 class proxy (object) :
-  def __init__ (self, i_seqs) :
+  def __init__ (self, i_seqs, residue_type) :
     assert (len(i_seqs) == 5)
     self.i_seqs = i_seqs
+    self.residue_type = residue_type
 
-  def extract_sites (self, sites_cart) :
+  def _extract_sites (self, sites_cart) :
     from scitbx.array_family import flex
-    sites = flex.double()
-    for i_seq in i_seqs :
+    sites = flex.vec3_double()
+    for i_seq in self.i_seqs :
       sites.append(sites_cart[i_seq])
     return sites
 
+  def compute_gradients_finite_differences (self,
+                                            sites_cart,
+                                            gradients,
+                                            rama_table,
+                                            delta=0.1,
+                                            weight=1.0) :
+    assert ((delta > 0) and (delta < 1.0))
+    from cctbx import geometry_restraints
+    def dihedral (sites) :
+      return geometry_restraints.dihedral(
+        sites=sites,
+        angle_ideal=0,
+        weight=1).angle_model
+    #from scitbx.math import dihedral
+    sites = self._extract_sites(sites_cart)
+    #gradients = flex.vec3_double()
+    for k, i_seq in enumerate(self.i_seqs) :
+      k_grad = list(gradients[k])
+      xyz = list(sites[k])
+      for u in [0,1,2] :
+        xyz[u] -= delta
+        sites[k] = xyz
+        phi1 = dihedral(list(sites[0:4]))
+        psi1 = dihedral(list(sites[1:]))
+        xyz[u] += (delta * 2)
+        sites[k] = xyz
+        phi2 = dihedral(list(sites[0:4]))
+        psi2 = dihedral(list(sites[1:]))
+        xyz[u] -= delta
+        sites[k] = xyz
+        phi0 = dihedral(list(sites[0:4]))
+        psi0 = dihedral(list(sites[1:]))
+        r1 = rama_table.get_score(phi1, psi1)
+        r2 = rama_table.get_score(phi2, psi2)
+        w = weight * rama_table.get_score(phi0, psi0)
+        k_grad[u] = w * ((r2 - r1) / delta)
+      gradients[k] = k_grad
+    return gradients
+
 class restraints_manager (object) :
   def __init__ (self, pdb_hierarchy, log=sys.stdout) :
+    from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+    from cctbx import geometry_restraints
     self._phi_psi = []
     assert (len(pdb_hierarchy.models()) == 1)
     for chain in pdb_hierarchy.models()[0].chains() :
       for conformer in chain.conformers() :
         residues = conformer.residues()
         for i, residue in enumerate(residues) :
+          if (not residue.resname in one_letter_given_three_letter) :
+            continue
           next_res, prev_res = None, None
+          resseq2 = residue.resseq_as_int()
+          resseq1, resseq3 = None, None
           if (i > 0):
-            if (residue.resseq_as_int() != residues[i-1].resseq_as_int()) :
+            resseq1 = residues[i-1].resseq_as_int()
+            if (resseq2 != (resseq1 + 1)) :
               continue
             prev_res = residues[i-1]
           if (i < (len(residues) - 1)) :
+            resseq3 = residues[i+1].resseq_as_int()
+            if (resseq2 != (resseq3 - 1)) :
+              continue
             next_res = residues[i+1]
           if (next_res is not None) and (prev_res is not None) :
             c1, n2, ca2, c2, n3 = None, None, None, None, None
@@ -124,6 +173,8 @@ class restraints_manager (object) :
               if (atom.name == " N  ") :
                 n3 = atom
             if (None in [c1, n2, ca2, c2, n3]) :
+              #print >> log, "  incomplete backbone for %s %d-%d, skipping." % \
+              #  (chain.id, resseq1, resseq3)
               continue
             pep1 = geometry_restraints.bond(
               sites=[c1.xyz,n2.xyz],
@@ -135,9 +186,29 @@ class restraints_manager (object) :
               weight=1)
             if (pep1.distance_model > 4) or (pep2.distance_model > 4) :
               continue
-            phi_psi = proxy([c1.i_seq,n2.i_seq,ca2.i_seq,c2.i_seq,n3.i_seq])
+            i_seqs = [c1.i_seq,n2.i_seq,ca2.i_seq,c2.i_seq,n3.i_seq]
+            if (residue.resname == "PRO") :
+              residue_type = "pro"
+            elif (residue.resname == "GLY") :
+              residue_type = "gly"
+            elif (residues[i+1].resname == "PRO") :
+              residue_type = "prepro"
+            else :
+              residue_type = "ala"
+            phi_psi = proxy(i_seqs, residue_type)
             self._phi_psi.append(phi_psi)
     print >> log, "%d Ramachandran restraints generated." % len(self._phi_psi)
+
+  def compute_gradients_finite_differences (self, sites_cart, delta=0.1) :
+    from scitbx.array_family import flex
+    gradients = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    for phi_psi in self._phi_psi :
+      table = tables[phi_psi.residue_type]
+      phi_psi.compute_gradients_finite_differences(
+        sites_cart=sites_cart,
+        gradients=gradients,
+        rama_table=tables[phi_psi.residue_type],
+        delta=0.1)
 
 def exercise() :
   from iotbx import file_reader
@@ -150,6 +221,8 @@ def exercise() :
   pdb_in = file_reader.any_file(pdb_file).file_object
   pdb_hierarchy = pdb_in.construct_hierarchy()
   m = restraints_manager(pdb_hierarchy)
+  sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  m.compute_gradients_finite_differences(sites_cart)
 
 if __name__ == "__main__" :
   exercise()
