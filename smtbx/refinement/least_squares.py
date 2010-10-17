@@ -18,6 +18,7 @@ class normal_equations(object):
   scale_factor = None
   f_mask = None
   restraints_manager=None
+  n_restraints = None
 
   def __init__(self, xray_structure, fo_sq, reparametrisation, **kwds):
     self.xray_structure = xray_structure
@@ -86,6 +87,7 @@ class normal_equations(object):
                                  linearised_eqns.design_matrix * jacobian,
                                  linearised_eqns.weights * normalisation_factor,
                                  negate_right_hand_side=True)
+      self.n_restraints = linearised_eqns.n_restraints()
     self.objective = self._core_normal_eqns.objective()
     self.gradient = self._core_normal_eqns.gradient()
     self.floating_origin_restraints.add_to(self.reduced)
