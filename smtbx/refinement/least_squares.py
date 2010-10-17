@@ -71,6 +71,7 @@ class normal_equations(object):
     self.weights = result.weights()
     self.reduced = self._core_normal_eqns.reduced_equations()
     self.scale_factor = self._core_normal_eqns.optimal_scale_factor()
+    self.objective_data_only = self._core_normal_eqns.objective()
     if self.restraints_manager is not None:
       # Here we determine a normalisation factor to place the restraints on the
       # same scale as the observations. This is the normalisation factor
@@ -108,8 +109,16 @@ class normal_equations(object):
 
   def goof(self):
     return math.sqrt(
-      self.objective
+      self.objective_data_only
       /(self.fo_sq.size() - self.reparametrisation.n_independent_params))
+
+  def restrained_goof(self):
+    if self.n_restraints is not None: n_restraints = self.n_restraints
+    else: n_restraints = 0
+    return math.sqrt(
+      self.objective
+      /(self.fo_sq.size() + n_restraints
+        - self.reparametrisation.n_independent_params))
 
   def wR2(self):
     return math.sqrt(flex.sum(self.weights * flex.pow2(
@@ -132,7 +141,7 @@ class normal_equations(object):
       self.reduced.cholesky_factor_packed_u)
     jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
     cov = jac_tr.self_transpose_times_symmetric_times_self(cov_ind_params)
-    if normalised_by_goof: cov *= self.goof()**2
+    if normalised_by_goof: cov *= self.restrained_goof()**2
     return cov
 
   def covariance_matrix_and_annotations(self):
