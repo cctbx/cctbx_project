@@ -2427,8 +2427,8 @@ class fproc(fproc_p_methods):
               pass # XXX should be error; ignored due to
                    #     lack of proper handling of f90 declarations
             tf.var_storage = None
-            if (    id_tok.value in intrinsics.extra_set_lower
-                and id_tok.value in intrinsics.set_lower):
+            if (   id_tok.value in intrinsics.extra_set_lower
+                or id_tok.value in intrinsics.set_lower):
               tf.var_type = vt_intrinsic
             else:
               tf.var_type = vt_function
