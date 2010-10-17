@@ -3027,6 +3027,23 @@ struct common_commonymous
   assert not absd(lines, tail_off(1), """\
   write(6, "(a)"), ("v" + (str_cref("cX"))) + str_cref("yz");
 """)
+  #
+  lines = get("intrinsics_iargc_getarg.f")
+  assert not absd(lines, head_off(3), """\
+void
+sub1(
+  common& cmn,
+  int& n,
+  str_arr_ref<> buf)
+{
+  buf(dimension(star));
+  n = cmn.iargc();
+  int i = fem::int0;
+  FEM_DO(i, 1, n) {
+    cmn.getarg(i, buf(i));
+  }
+}
+""")
 
 def exercise_syntax_error(verbose):
   t_dir = libtbx.env.under_dist(

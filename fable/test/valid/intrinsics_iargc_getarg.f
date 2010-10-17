@@ -1,7 +1,6 @@
       subroutine sub1(n, buf)
       character buf*(*)(*)
       n = iargc()
-      buf(1) = ' ' ! XXX
       do i=1,n
         call getarg(i, buf(i))
       enddo
@@ -13,7 +12,6 @@
       character buf*(*)(*)
       integer i, j
       n = iargc()
-      buf(1) = ' ' ! XXX
       j = 1
       do i=n,1,-1
         call getarg(i, buf(j))
@@ -28,7 +26,6 @@
       integer i
       integer iargc
       n = iargc()
-      buf(1) = ' ' ! XXX
       do i=2,n
         call getarg(i, buf(i-1))
       enddo
