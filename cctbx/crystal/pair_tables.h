@@ -446,8 +446,8 @@ namespace cctbx { namespace crystal {
           if (   sym_excl_indices.size()
               && sym_excl_indices[pair.i_seq] != 0
               && sym_excl_indices[pair.j_seq] != 0
-              && asu_mappings_->get_rt_mx_i(pair) != asu_mappings_->get_rt_mx_j(pair)) {
-              //&& pair.j_sym != 0) {
+              && asu_mappings_->get_rt_mx_i(pair)
+              != asu_mappings_->get_rt_mx_j(pair)) {
                 continue; // don't bond to sym equivs
           }
           if (   conformer_indices.size()
