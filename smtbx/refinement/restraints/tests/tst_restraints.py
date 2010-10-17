@@ -36,14 +36,17 @@ class restraints_test_case:
 
   def exercise_ls_restraints(self):
     xs = self.xray_structure.deep_copy_scatterers()
-    restraints_matrix = self.manager.build_linearised_eqns(xs)
-    design_matrix = restraints_matrix.design_matrix.as_dense_matrix()
+    linearised_eqns = self.manager.build_linearised_eqns(xs)
+    design_matrix = linearised_eqns.design_matrix.as_dense_matrix()
     fd_design = flex.double()
     for proxy in self.proxies:
       grads = self.fd_grads(proxy)
       for i, grad in enumerate(grads):
         fd_design.extend(grad)
     assert approx_equal(design_matrix, fd_design, 1e-5)
+    assert approx_equal(
+      linearised_eqns.n_restraints(),
+      rows_per_restraint.get(self.proxies[0].__class__, 1) * self.proxies.size())
 
 
 class geometry_restraints_test_case(restraints_test_case):
@@ -107,7 +110,6 @@ class adp_restraints_test_case(restraints_test_case):
 
   def __init__(self):
     restraints_test_case.__init__(self)
-
 
   def fd_grads(self, proxy):
     n_restraints = rows_per_restraint.get(proxy.__class__, 1)
@@ -207,7 +209,7 @@ class rigid_bond_test_case(adp_restraints_test_case):
     sites_cart = self.xray_structure.sites_cart()
     return adp.rigid_bond(sites_cart, u_cart, proxy)
 
-def exercise_ls_restraints(quick=False):
+def exercise_ls_restraints():
   bond_restraint_test_case().run()
   angle_restraint_test_case().run()
   dihedral_restraint_test_case().run()
@@ -215,10 +217,10 @@ def exercise_ls_restraints(quick=False):
   adp_similarity_test_case().run()
   rigid_bond_test_case().run()
 
-def run(quick=False):
+def run():
   libtbx.utils.show_times_at_exit()
   exercise_ls_restraints()
 
 if __name__ == '__main__':
   import sys
-  run(quick="--quick" in sys.argv[1:])
+  run()

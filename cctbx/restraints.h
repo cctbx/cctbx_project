@@ -29,7 +29,7 @@ namespace cctbx { namespace restraints {
   public:
     typedef FloatType scalar_t;
 
-    std::size_t n_crystallographic_params, n_restraints;
+    std::size_t n_columns, n_rows;
     scitbx::sparse::matrix<scalar_t> design_matrix;
     scitbx::af::shared<scalar_t> weights;
     scitbx::af::shared<scalar_t> deltas;
@@ -38,20 +38,24 @@ namespace cctbx { namespace restraints {
     std::size_t row_i;
 
   public:
-    linearised_eqns_of_restraint(std::size_t n_restraints_, std::size_t n_crystallographic_params_)
-      : n_restraints(n_restraints_),
-        n_crystallographic_params(n_crystallographic_params_),
-        design_matrix(n_restraints_, n_crystallographic_params_),
-        weights(n_restraints_), deltas(n_restraints_),
+    linearised_eqns_of_restraint(std::size_t n_rows_, std::size_t n_columns_)
+      : n_rows(n_rows_),
+        n_columns(n_columns_),
+        design_matrix(n_rows_, n_columns_),
+        weights(n_rows_), deltas(n_rows_),
         row_i(0)
     {}
 
     std::size_t next_row() {
-      CCTBX_ASSERT(!finalised())(row_i)(n_restraints);
+      CCTBX_ASSERT(!finalised())(row_i)(n_rows);
       return row_i++;
     }
 
-    std::size_t finalised() { return row_i >= n_restraints; }
+    bool finalised() { return row_i >= n_rows; }
+
+    std::size_t n_restraints() { return row_i; }
+
+    std::size_t n_crystallographic_params() { return n_columns; }
 
   };
 

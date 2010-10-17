@@ -32,14 +32,11 @@ namespace boost_python {
         .def(init<std::size_t, std::size_t>
              ((arg("n_restraints"),
                arg("n_crystallographic_params"))))
-        //.def("accumulate", &wt::accumulate)
         .def_readwrite("design_matrix", &wt::design_matrix)
         .add_property("deltas", make_getter(&wt::deltas, rbv()))
         .add_property("weights", make_getter(&wt::weights, rbv()))
-        .def_readonly("n_crystallographic_params",
-                      &wt::n_crystallographic_params)
-        .def_readonly("n_restraints",
-                      &wt::n_restraints)
+        .def("n_crystallographic_params", &wt::n_crystallographic_params)
+        .def("n_restraints", &wt::n_restraints)
         ;
     }
   };
@@ -78,8 +75,6 @@ namespace boost_python {
       double, geom_res::angle_proxy, geom_res::angle>::wrap();
     geom_res_linearise_restraints_wrapper<
       double, geom_res::bond_simple_proxy, geom_res::bond>::wrap();
-    //geom_res_linearise_restraints_wrapper<
-    //  double, geom_res::bond_sym_proxy, geom_res::bond>::wrap();
     geom_res_linearise_restraints_wrapper<
       double, geom_res::dihedral_proxy, geom_res::dihedral>::wrap();
     //geom_res_linearise_restraints_wrapper<
