@@ -114,6 +114,17 @@ class normal_equations(object):
       self.fo_sq.data() - self.scale_factor * flex.norm(self.f_calc.data())))
                      /flex.sum(self.weights * flex.pow2(self.fo_sq.data())))
 
+  def r1_factor(self, cutoff_factor=None):
+    f_obs = self.fo_sq.f_sq_as_f()
+    if cutoff_factor is not None:
+      strong = f_obs.data() > cutoff_factor*f_obs.sigmas()
+      f_obs = f_obs.select(strong)
+      f_calc = self.f_calc.select(strong)
+    else:
+      f_calc = self.f_calc
+    R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor))
+    return R1, f_obs.size()
+
   def covariance_matrix(self, normalised_by_goof=True):
     cov_ind_params = linalg.inverse_of_u_transpose_u(
       self.reduced.cholesky_factor_packed_u)
