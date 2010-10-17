@@ -2477,8 +2477,15 @@ class fproc(fproc_p_methods):
           return
         tf = O.fdecl_by_identifier.get(id_tok.value)
         assert tf is not None
-        if (not tf.is_user_defined_callable()):
+        if (tf.is_intrinsic()):
+          intrinsic_is_modified_info = intrinsics.is_modified_info_by_name.get(
+            id_tok.value)
+          if (intrinsic_is_modified_info is None):
+            return
+        elif (not tf.is_user_defined_callable()):
           return
+        else:
+          intrinsic_is_modified_info = None
         called_identifier = id_tok.value
         for i_arg,tok_seq in enumerate(next_tok.value):
           assert tok_seq.is_seq()
@@ -2491,11 +2498,14 @@ class fproc(fproc_p_methods):
           assert tf_arg is not None
           if (tf_arg.is_fproc_name()):
             return
-          tf_arg.passed_as_arg.setdefault(
-            called_identifier, set()).add(i_arg)
-          if (len(tok_seq.value) == 1):
-            tf_arg.passed_as_arg_plain.setdefault(
+          if (intrinsic_is_modified_info is None):
+            tf_arg.passed_as_arg.setdefault(
               called_identifier, set()).add(i_arg)
+            if (len(tok_seq.value) == 1):
+              tf_arg.passed_as_arg_plain.setdefault(
+                called_identifier, set()).add(i_arg)
+          elif (i_arg in intrinsic_is_modified_info):
+            tf_arg.is_modified = True
       ei.search_for_id_tokens(callback=search_for_id_tokens_callback)
     #
     assert O.args_fdecl is None
