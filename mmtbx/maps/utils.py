@@ -34,7 +34,9 @@ class fast_maps_from_hkl_file (object) :
       print >> log, "      no label for %s, will try default labels" % \
         os.path.basename(file_name)
     f_obs = None
-    default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)"]
+    fallback_f_obs = []
+    default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)",
+      "FOBS_X"]
     all_labels = []
     data_file = file_reader.any_file(file_name, force_type="hkl")
     for miller_array in data_file.file_server.miller_arrays :
@@ -46,10 +48,15 @@ class fast_maps_from_hkl_file (object) :
       elif f_label is None and labels in default_labels :
         f_obs = miller_array
         break
+      elif miller_array.is_xray_amplitude_array() :
+        fallback_f_obs.append(miller_array)
     if f_obs is None :
-      raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
-        "column labels (possible choices: %s)") % (f_label, file_name,
-          " ".join(all_labels)))
+      if (len(fallback_f_obs) == 1) and (f_label is None) :
+        f_obs = fallback_f_obs[0]
+      else :
+        raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
+          "column labels (possible choices: %s)") % (f_label, file_name,
+            " ".join(all_labels)))
     self.f_obs = f_obs
     self.log = None
     if auto_run :
