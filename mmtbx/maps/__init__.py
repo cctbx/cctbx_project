@@ -1,14 +1,10 @@
-from cctbx.array_family import flex
-import iotbx.phil
-from mmtbx import utils as mmtbx_utils
-import sys, os
+import mmtbx.utils
 from libtbx.utils import Sorry, date_and_time
-from mmtbx import map_tools
-import mmtbx
-from cctbx import maptbx
+import libtbx.phil
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
+import sys, os
 
 map_coeff_params_str = """\
   map_coefficients
@@ -120,7 +116,7 @@ map_and_map_coeff_params_str = """\
 """%(map_coeff_params_str, map_params_str)
 
 def map_and_map_coeff_master_params():
-  return iotbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
+  return libtbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
 
 maps_including_IO_params_str = """\
 maps {
@@ -173,7 +169,7 @@ maps {
 master_params = maps_including_IO_params_str
 
 def maps_including_IO_master_params():
-  return iotbx.phil.parse(maps_including_IO_params_str, process_includes=False)
+  return libtbx.phil.parse(maps_including_IO_params_str, process_includes=False)
 
 def cast_map_coeff_params(map_type_obj):
   map_coeff_params_str = """\
@@ -188,7 +184,7 @@ def cast_map_coeff_params(map_type_obj):
     }
 """%(map_type_obj.format(), map_type_obj.format(), map_type_obj.format(),
      map_type_obj.kicked, map_type_obj.f_obs_filled)
-  return iotbx.phil.parse(map_coeff_params_str, process_includes=False)
+  return libtbx.phil.parse(map_coeff_params_str, process_includes=False)
 
 class map_coeffs_mtz_label_manager:
 
@@ -279,6 +275,8 @@ class write_xplor_map_file(object):
     return result
 
 def map_coefficients_from_fmodel(fmodel, params):
+  from mmtbx import map_tools
+  import mmtbx
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
     fill_mode          = "dfmodel")
@@ -362,6 +360,7 @@ class compute_map_coefficients(object):
           self.map_coeffs.append(coeffs)
 
   def write_mtz_file(self, file_name, mtz_history_buffer = None):
+    from cctbx.array_family import flex
     if(self.mtz_dataset is not None):
       if(mtz_history_buffer is None):
         mtz_history_buffer = flex.std_string()

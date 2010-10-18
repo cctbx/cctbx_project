@@ -206,7 +206,10 @@ def donors_and_acceptors (base_sele, selection_cache, atoms, donor_name,
     for k, i_seq in enumerate(acceptor_isel) :
       acceptor_atom = atoms[i_seq].fetch_labels()
       if acceptor_atom.resname.strip() == "PRO" :
-        donor_isel.insert(k, n_atoms)
+        if (k < len(donor_isel)) :
+          donor_isel.insert(k, n_atoms)
+        else :
+          donor_isel.append(n_atoms)
         n_pro += 1
     if (n_donors + n_pro) != n_acceptors :
       raise RuntimeError("""\

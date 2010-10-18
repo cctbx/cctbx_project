@@ -5,14 +5,7 @@
 # tested as part of Phenix regression tests (since it requires files)
 
 from __future__ import division
-import mmtbx.maps
-import mmtbx.utils
-import iotbx.phil
-import iotbx.xplor.map
-import iotbx.ccp4_map
-from iotbx import file_reader
-from cctbx import sgtbx
-from scitbx.array_family import flex
+import libtbx.phil
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
@@ -38,6 +31,7 @@ class fast_maps_from_hkl_file (object) :
     default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)",
       "FOBS_X"]
     all_labels = []
+    from iotbx import file_reader
     data_file = file_reader.any_file(file_name, force_type="hkl")
     for miller_array in data_file.file_server.miller_arrays :
       labels = miller_array.info().label_string()
@@ -63,6 +57,8 @@ class fast_maps_from_hkl_file (object) :
       self.run()
 
   def run (self) :
+    import mmtbx.utils
+    from scitbx.array_family import flex
     f_obs = self.f_obs
     r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
     fmodel = mmtbx.utils.fmodel_simple(
@@ -116,6 +112,7 @@ def map_coeffs_from_mtz_file (mtz_file, f_label="FP", phi_label="PHIM",
   if not os.path.isfile(mtz_file) :
     raise Sorry(
       "No map coefficients are available for conversion.")
+  from iotbx import file_reader
   mtz_in = file_reader.any_file(mtz_file)
   mtz_in.assert_file_type("hkl")
   miller_arrays = mtz_in.file_server.miller_arrays
@@ -138,6 +135,7 @@ def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
   assert (limit_arrays is None) or (isinstance(limit_arrays, list))
   if not os.path.isfile(mtz_file) :
     raise Sorry("No map coefficients are available for conversion.")
+  from iotbx import file_reader
   mtz_in = file_reader.any_file(mtz_file)
   mtz_in.assert_file_type("hkl")
   miller_arrays = mtz_in.file_server.miller_arrays
@@ -180,6 +178,7 @@ def write_xplor_map_file (coeffs, frac_min, frac_max, file_base) :
 
 def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
+  import iotbx.xplor.map
   if sites_cart is not None :
     frac_min, frac_max = unit_cell.box_frac_around_sites(
       sites_cart=sites_cart,
@@ -207,6 +206,7 @@ def xplor_maps_from_refine_mtz (pdb_file, mtz_file, file_base=None,
     file_base = os.path.join(os.path.dirname(mtz_file), "refine")
   if not os.path.isfile(pdb_file) :
     raise Sorry("The PDB file '%s' does not exist.")
+  from iotbx import file_reader
   output_arrays = extract_phenix_refine_map_coeffs(mtz_file, limit_arrays)
   pdb_in = file_reader.any_file(pdb_file)
   pdb_in.assert_file_type("pdb")
@@ -225,7 +225,9 @@ def xplor_maps_from_refine_mtz (pdb_file, mtz_file, file_base=None,
 
 def xplor_map_from_coeffs (miller_array, output_file, pdb_file=None,
     xray_structure=None, grid_resolution_factor=0.33) :
-  map_phil = iotbx.phil.parse("""map.file_name = %s """ % output_file)
+  import mmtbx.maps
+  from iotbx import file_reader
+  map_phil = libtbx.phil.parse("""map.file_name = %s """ % output_file)
   master_phil = mmtbx.maps.map_and_map_coeff_master_params()
   params = master_phil.fetch(source=map_phil).extract().map[0]
   params.file_name = output_file
@@ -331,6 +333,9 @@ def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
 
 def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
+  import iotbx.ccp4_map
+  from cctbx import sgtbx
+  from scitbx.array_family import flex
   if sites_cart is not None :
     frac_min, frac_max = unit_cell.box_frac_around_sites(
       sites_cart=sites_cart,
