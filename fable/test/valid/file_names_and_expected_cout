@@ -628,6 +628,41 @@ string_compare.f
 |qTF|
 |rFT|
 |sTF|
+|ab ab|
+| F|
+| T|
+| F|
+| T|
+|ab abc|
+| T|
+| T|
+| F|
+| F|
+|abc ab|
+| F|
+| F|
+| T|
+| T|
+|ab ab_|
+| F|
+| T|
+| F|
+| T|
+|ab_ ab|
+| F|
+| T|
+| F|
+| T|
+|ab ac|
+| T|
+| T|
+| F|
+| F|
+|ac ab|
+| F|
+| F|
+| T|
+| T|
 decl_before_if.f
 |39|
 |40|

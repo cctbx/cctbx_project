@@ -1520,7 +1520,7 @@ sub(
 """)
   #
   lines = get("string_compare.f")
-  assert not absd(lines, tail_off(1), """\
+  assert not absd(lines, tail_off(2), """\
   str2 = " y";
   write(6, "(a,2l1)"), "p", str2 == " y", str2 != " y";
   write(6, "(a,2l1)"), "q", str2 == " y ", str2 != " y ";

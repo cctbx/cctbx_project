@@ -96,14 +96,32 @@ namespace fem {
     operator<(
       str_cref const& rhs) const
     {
-      throw TBXX_NOT_IMPLEMENTED();
+      return (utils::string_compare_lexical(
+        elems(), len(), rhs.elems(), rhs.len()) < 0);
+    }
+
+    bool
+    operator<=(
+      str_cref const& rhs) const
+    {
+      return (utils::string_compare_lexical(
+        elems(), len(), rhs.elems(), rhs.len()) <= 0);
+    }
+
+    bool
+    operator>(
+      str_cref const& rhs) const
+    {
+      return (utils::string_compare_lexical(
+        elems(), len(), rhs.elems(), rhs.len()) > 0);
     }
 
     bool
     operator>=(
       str_cref const& rhs) const
     {
-      throw TBXX_NOT_IMPLEMENTED();
+      return (utils::string_compare_lexical(
+        elems(), len(), rhs.elems(), rhs.len()) >= 0);
     }
   };
 
