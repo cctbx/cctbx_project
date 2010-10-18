@@ -487,7 +487,10 @@ class xtriage_analyses(object):
       )
 
 
-def run(args, command_name="phenix.xtriage", return_result=False):
+def run(args, command_name="phenix.xtriage", return_result=False,
+    out=None):
+  if (out is None) :
+    out = sys.stdout
   command_line = (option_parser(
     usage=command_name+" [options] reflection_file parameters [...]",
     description="Example: %s data1.mtz" % command_name)
@@ -516,7 +519,7 @@ def run(args, command_name="phenix.xtriage", return_result=False):
   else:
     log = multi_out()
     if (not co.quiet):
-      log.register(label="stdout", file_object=sys.stdout)
+      log.register(label="stdout", file_object=out)
     string_buffer = StringIO()
     string_buffer_plots = StringIO()
     log.register(label="log_buffer", file_object=string_buffer)
@@ -873,6 +876,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         params=params,
         xtriage_results=xtriage_results,
         data_summary=summary_out.getvalue())
+    else :
+      return xtriage_results
 
 #--- Pickle-able results object for the GUI
 # TODO: regression tests
