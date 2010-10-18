@@ -348,6 +348,27 @@ namespace fem { namespace utils {
     return i;
   }
 
+  template <typename VectorOfStringType>
+  unsigned
+  split_comma_separated(
+    VectorOfStringType& result,
+    char const* c_str)
+  {
+    for(unsigned i=0;;i++) {
+      char c = c_str[i];
+      if (c == '\0') return i;
+      if (c == ',' || is_whitespace(c)) continue;
+      for(unsigned i_start=i++;;i++) {
+        char c = c_str[i];
+        if (c == '\0' || c == ',' || is_whitespace(c)) {
+          result.push_back(std::string(c_str+i_start, i-i_start));
+          if (c == '\0') return i;
+          break;
+        }
+      }
+    }
+  }
+
 }} // namespace fem::utils
 
 #endif // GUARD
