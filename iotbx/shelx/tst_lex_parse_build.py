@@ -207,9 +207,13 @@ def exercise_aspirin():
 
 def exercise_disordered():
   for set_grad_flags in (False, True):
-    structure = xray.structure.from_shelx(
-      file=cStringIO.StringIO(ins_disordered),
+    builder = iotbx.builders.crystal_structure_builder(
       set_grad_flags=set_grad_flags)
+    stream = shelx.command_stream(file=cStringIO.StringIO(ins_disordered))
+    cs_parser = shelx.crystal_symmetry_parser(stream, builder)
+    xs_parser = shelx.atom_parser(cs_parser.filtered_commands(), builder)
+    xs_parser.parse()
+    structure = builder.structure
     assert structure.crystal_symmetry().is_similar_symmetry(
       crystal.symmetry(
         unit_cell=uctbx.unit_cell((6.033, 6.830, 7.862,
@@ -234,6 +238,9 @@ def exercise_disordered():
     if set_grad_flags:
       for a in (c12, h121, h122, h123):
         assert a.flags.grad_occupancy()
+    assert approx_equal(builder.conformer_indices,
+                        [2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
+    assert builder.sym_excl_indices.count(0) == structure.scatterers().size()
 
 def exercise_invalid():
   for set_grad_flags in (False, True):
