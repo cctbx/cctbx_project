@@ -454,7 +454,8 @@ class _object(boost.python.injector, ext.object):
         crystal_symmetry_from_file,
         crystal_symmetry,
         base_array_info,
-        dataset):
+        dataset,
+        strict=False):
     known_mtz_column_types = "".join(column_type_legend.keys())
     assert len(known_mtz_column_types) == 16 # safety guard
     all_columns = dataset.columns()
@@ -467,7 +468,7 @@ class _object(boost.python.injector, ext.object):
       i_column += 1
       if (i_column == len(all_columns)): break
       column = all_columns[i_column]
-      if (column.type() not in known_mtz_column_types):
+      if (strict and column.type() not in known_mtz_column_types):
         raise RuntimeError(
           'Unknown MTZ column type: "%s" (column label: "%s")' % (
             column.type(), column.label()))
