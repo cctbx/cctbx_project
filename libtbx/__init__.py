@@ -16,6 +16,13 @@ class AutoType(object):
 
 Auto = AutoType()
 
+class mutable(object):
+
+  __slots__ = ["value"]
+
+  def __init__(O, value):
+    O.value = value
+
 class slots_getstate_setstate(object):
 
   __slots__ = []
