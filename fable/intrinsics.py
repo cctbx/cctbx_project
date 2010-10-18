@@ -75,6 +75,7 @@ sin
 sinh
 sngl
 sqrt
+system
 tan
 tanh
 transfer
@@ -85,7 +86,6 @@ cpu_time
 date
 getarg
 getenv
-system
 time
 """.splitlines())
 

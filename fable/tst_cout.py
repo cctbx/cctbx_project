@@ -2458,6 +2458,9 @@ sub(
 """)
   #
   lines = get("intrinsics_extra.f")
+  assert not absd(lines, head_off(1), """\
+using fem::common;
+""")
   assert not absd(lines, tail_off(2), """\
   fem::str<9> d = fem::char0;
   fem::date(d);
