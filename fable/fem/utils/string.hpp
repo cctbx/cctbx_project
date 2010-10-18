@@ -178,6 +178,24 @@ namespace fem { namespace utils {
   }
 
   inline
+  int
+  string_compare_lexical(
+    char const* lhs,
+    size_t lhs_size,
+    char const* rhs,
+    size_t rhs_size)
+  {
+    size_t n = std::max(lhs_size, rhs_size);
+    for(size_t i=0;i<n;i++) {
+      char l = (i < lhs_size ? lhs[i] : ' ');
+      char r = (i < rhs_size ? rhs[i] : ' ');
+      if (l < r) return -1;
+      if (l > r) return  1;
+    }
+    return 0;
+  }
+
+  inline
   size_t
   find_leading_blank_padding(
     char const* str,
