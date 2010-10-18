@@ -91,6 +91,20 @@ namespace fem {
     {
       return !((*this) == rhs);
     }
+
+    bool
+    operator<(
+      str_cref const& rhs) const
+    {
+      throw TBXX_NOT_IMPLEMENTED();
+    }
+
+    bool
+    operator>=(
+      str_cref const& rhs) const
+    {
+      throw TBXX_NOT_IMPLEMENTED();
+    }
   };
 
   int

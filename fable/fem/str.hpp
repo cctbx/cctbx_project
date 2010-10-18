@@ -131,6 +131,20 @@ namespace fem {
       return (str_cref(*this) != rhs);
     }
 
+    bool
+    operator<(
+      str_cref const& rhs) const
+    {
+      return (str_cref(*this) < rhs);
+    }
+
+    bool
+    operator>=(
+      str_cref const& rhs) const
+    {
+      return (str_cref(*this) >= rhs);
+    }
+
     str_cref
     operator()(
       int first,
