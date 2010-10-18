@@ -124,6 +124,20 @@ namespace fable { namespace ext {
   }
 
   bp::list
+  exercise_fem_utils_split_comma_separated(
+    std::string const& s)
+  {
+    bp::list result;
+    std::vector<std::string> buffer;
+    unsigned i = fem::utils::split_comma_separated(buffer, s.c_str());
+    TBXX_ASSERT(i == s.size());
+    for(std::size_t i=0;i<buffer.size();i++) {
+      result.append(buffer[i]);
+    }
+    return result;
+  }
+
+  bp::list
   exercise_fem_utils_int_types()
   {
     bp::list result;
@@ -233,6 +247,8 @@ namespace fable { namespace ext {
     def("find_closing_parenthesis", find_closing_parenthesis, (
       arg("code"), arg("start")=0, arg("stop")=-1));
 
+    def("exercise_fem_utils_split_comma_separated",
+      exercise_fem_utils_split_comma_separated);
     def("exercise_fem_utils_int_types", exercise_fem_utils_int_types);
     def("exercise_fem_real_types", exercise_fem_real_types);
     def("exercise_fem_format_tokenizer", exercise_fem_format_tokenizer, (

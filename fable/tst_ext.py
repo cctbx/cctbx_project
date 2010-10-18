@@ -86,6 +86,16 @@ def exercise_find_closing_parenthesis(f):
   assert f(code="x)", start=1, stop=-1) == 1
   assert f(code="x)", start=1, stop=1) == -1
 
+def exercise_fem_utils_split_comma_separated():
+  scs = fable.exercise_fem_utils_split_comma_separated
+  assert scs("") == []
+  assert scs(" , ") == []
+  assert scs("b") == ["b"]
+  assert scs(" c ") == ["c"]
+  assert scs("d,e") == ["d", "e"]
+  assert scs(" f , g ") == ["f", "g"]
+  assert scs(" abc,,def,g ,hi, jkl ") == ["abc", "def", "g", "hi", "jkl"]
+
 def exercise_fem_utils_int_types():
   int_sizes = fable.exercise_fem_utils_int_types()
   expected = [1, 2, 4, 8]
@@ -446,6 +456,7 @@ def run(args):
                fable.find_closing_parenthesis]:
     exercise_find_closing_parenthesis(f)
   if (fable.ext is not None):
+    exercise_fem_utils_split_comma_separated()
     exercise_fem_utils_int_types()
     exercise_fem_real_types()
     exercise_fem_format_tokenizer()
