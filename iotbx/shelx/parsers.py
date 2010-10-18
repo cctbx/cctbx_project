@@ -202,7 +202,8 @@ class atom_parser(parser, variable_decoder):
   def filtered_commands(self):
     self.label_for_sfac = None
     scatterer_index = 0
-    part_number = 0
+    conformer_index = 0
+    sym_excl_index = 0
     part_sof = None
     for command, line in self.command_stream:
       self.line = line
@@ -216,20 +217,26 @@ class atom_parser(parser, variable_decoder):
         self.free_variable = args # (b) ShelXL indexes into the whole array
       elif cmd == 'PART':
         part_sof = None
+        conformer_index = 0
+        sym_excl_index = 0
         part_number = 0
         if args:
-          part_number = args[0]
+          part_number = int(args[0])
         if len(args) == 2:
           part_sof = self.decode_one_variable(args[1])
+        if part_number > 0: conformer_index = part_number
+        elif part_number < 0: sym_excl_index = abs(part_number)
       elif cmd == '__ATOM__':
         if self.label_for_sfac is None:
           raise shelx_error("missing sfac", self.line)
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
-        if part_number and part_sof:
+        if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
         self.builder.add_scatterer(scatterer, behaviour_of_variable,
-                                   occupancy_includes_symmetry_factor=True)
+                                   occupancy_includes_symmetry_factor=True,
+                                   conformer_index=conformer_index,
+                                   sym_excl_index=sym_excl_index)
         scatterer_index += 1
       else:
         yield command, line

@@ -1,4 +1,6 @@
 from __future__ import division
+
+from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import xray
 from cctbx import sgtbx
@@ -29,6 +31,8 @@ class crystal_structure_builder(crystal_symmetry_builder):
     super(crystal_structure_builder, self).__init__()
     self.set_grad_flags = set_grad_flags
     self.min_distance_sym_equiv = min_distance_sym_equiv
+    self.conformer_indices = None
+    self.sym_excl_indices = None
 
   def make_structure(self):
     self.structure = xray.structure(
@@ -37,7 +41,9 @@ class crystal_structure_builder(crystal_symmetry_builder):
         min_distance_sym_equiv=self.min_distance_sym_equiv))
 
   def add_scatterer(self, scatterer, behaviour_of_variable,
-                    occupancy_includes_symmetry_factor):
+                    occupancy_includes_symmetry_factor,
+                    conformer_index=None,
+                    sym_excl_index=None):
     """ If the parameter set_grad_flags passed to the constructor was True,
         the scatterer.flags.grad_xxx() will be set to True
         if the corresponding variables have been found to be refined
@@ -65,6 +71,12 @@ class crystal_structure_builder(crystal_symmetry_builder):
       r_occ = occ.as_rational()
       sc.occupancy = round(r_occ.numerator() / r_occ.denominator(), 5)
 
+    if conformer_index is not None:
+      if self.conformer_indices is None: self.conformer_indices = flex.size_t()
+      self.conformer_indices.append(conformer_index)
+    if sym_excl_index is not None:
+      if self.sym_excl_indices is None: self.sym_excl_indices = flex.size_t()
+      self.sym_excl_indices.append(sym_excl_index)
 
 class constrained_crystal_structure_builder(crystal_structure_builder):
 
