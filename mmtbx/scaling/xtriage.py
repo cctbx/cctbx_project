@@ -991,6 +991,7 @@ class xtriage_summary (object) :
       setattr(self, attr, getattr(twin_results, attr, None))
     twin_summary = twin_results.twin_summary
     self.patterson_verdict = twin_summary.patterson_verdict.getvalue()
+    self.patterson_p_value = twin_summary.patterson_p_value
     self.twinning_verdict = twin_summary.twinning_verdict.getvalue()
     self.twin_law_table= getattr(twin_summary.twin_results, "table_data", None)
     self.z_score_info = getattr(twin_summary.twin_results, "z_score_info",None)
