@@ -1,15 +1,9 @@
 from __future__ import division
 from libtbx.utils import product
 from libtbx import group_args
+from libtbx import mutable
 from libtbx import Auto
 import os.path as op
-
-class mutable(object): # XXX move to libtbx
-
-  __slots__ = ["value"]
-
-  def __init__(O, value):
-    O.value = value
 
 fmt_comma_placeholder = chr(255)
 
