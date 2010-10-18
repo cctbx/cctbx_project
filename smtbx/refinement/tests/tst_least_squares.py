@@ -60,7 +60,7 @@ class site_refinement_test(refinement_test):
     eps_zero_rhs = 1e-6
     connectivity_table = smtbx.utils.connectivity_table(self.xray_structure)
     reparametrisation = constraints.reparametrisation(
-      structure=xs,
+      structure=self.xray_structure,
       geometrical_constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
