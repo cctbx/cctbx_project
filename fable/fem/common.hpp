@@ -4,6 +4,7 @@
 #include <fem/close_chain.hpp>
 #include <fem/file_positioning_chain.hpp>
 #include <fem/inquire_chain.hpp>
+#include <fem/main.hpp>
 #include <fem/open_chain.hpp>
 #include <fem/utils/misc.hpp>
 
@@ -11,20 +12,37 @@ namespace fem {
 
   struct common
   {
+    command_line_arguments command_line_args;
     fem::io io;
+
+    common() {}
+
+    common(
+      int argc,
+      char const* argv[])
+    :
+      command_line_args(argc, argv)
+    {}
 
     int
     iargc() const
     {
-      throw TBXX_NOT_IMPLEMENTED();
+      size_t n = command_line_args.buffer.size();
+      if (n == 0) return 0;
+      return static_cast<int>(n) - 1;
     }
 
     void
     getarg(
-      int /*iarg*/,
-      str_ref /*result*/) const
+      int pos,
+      str_ref value) const
     {
-      throw TBXX_NOT_IMPLEMENTED();
+      if (pos < 0 || pos >= command_line_args.buffer.size()) {
+        value = " ";
+      }
+      else {
+        value = command_line_args.buffer[pos];
+      }
     }
   };
 
@@ -107,7 +125,7 @@ namespace fem {
 #define FEM_CMN_SVE_DYNAMIC_PARAMETERS(FUNC) \
   bool is_called_first_time = cmn.FUNC##_sve.is_called_first_time(); \
   if (is_called_first_time) { \
-    cmn.FUNC##_sve.construct<FUNC##_save>(cmn.dynamic_parameters); \
+    cmn.FUNC##_sve.construct<FUNC##_save>(cmn.dynamic_params); \
   } \
   FUNC##_save& sve = cmn.FUNC##_sve.get<FUNC##_save>()
 

@@ -543,13 +543,13 @@ write_internal_file_2.f
 |          -56MnOpQrStUvWx|
 !=stop_bare.f
 |iteration 1|
-|STOP at stop_bare_fem.cpp(22)|
+|STOP at stop_bare_fem.cpp(19)|
 !=stop_integer.f
 |iteration 1|
-|STOP at stop_integer_fem.cpp(22): code=2345|
+|STOP at stop_integer_fem.cpp(19): code=2345|
 !=stop_string.f
 |iteration 1|
-|STOP at stop_string_fem.cpp(22): Break|
+|STOP at stop_string_fem.cpp(19): Break|
 write_internal_file_3.f
 |num = (A -2Ef)|
 !@open_write_read_2.f
@@ -1517,4 +1517,7 @@ string_concat.f
 |Uiop|
 |Mnb|
 |vcXyz|
-!@intrinsics_iargc_getarg.f
+intrinsics_iargc_getarg.f
+|A|
+|B|
+|C|

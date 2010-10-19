@@ -30,7 +30,7 @@ def run(args):
         ("fable.cout --example", "  -3   1  -5"),
         ('fable.cout %sdynamic_parameters_1.f'
           ' --dynamic-parameter="int root_size=1"',
-            "const int root_size = cmn.dynamic_parameters.root_size;")]:
+            "const int root_size = cmn.dynamic_params.root_size;")]:
     if (expected_output_fragment.find("fable_cout_common_report") >= 0):
       join_stdout_stderr = True
     else:

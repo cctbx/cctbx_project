@@ -151,10 +151,15 @@ With this, all occurrences of ``PARAMETER(array_size=...)`` in the
 Fortran program are converted to use a dynamic size instead. The
 default ``array_size`` in the example is set to 100 (the original
 size in the Fortran code is ignored). The ``array_size`` can be set
-from the command line, e.g.::
+from the command line with the ``--fem-dynamic-parameters`` option,
+e.g.::
 
   g++ -o dp_example -I/actual/path/fable dp_example.cpp
-  dp_example 200
+  dp_example --fem-dynamic-parameters=200
+
+(Note that this option is removed from the list of command-line
+arguments as seen by the ``iargc()`` and ``getarg()`` intrinsic
+functions.)
 
 Example: [`Fortran <sources/fable/test/valid/dp_example.f>`_]
 [`C++ <dp_example.cpp>`_]

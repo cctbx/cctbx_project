@@ -285,34 +285,41 @@ class process_file_info(object):
                   else:
                     raise AssertionError
               check(text)
-          if (file_name == "dynamic_parameters_1.f"):
-            def run_with_args(args):
-              cmda = cmd0 + " " + args
+          def run_with_args(args):
+            cmda = cmd0 + " " + args
+            if (opts.verbose):
+              print cmda
+              sys.stdout.flush()
+            result = easy_run.fully_buffered(
+              command=cmda, join_stdout_stderr=True)
+            if (opts.valgrind):
+              cmda = "valgrind " + cmda
               if (opts.verbose):
                 print cmda
                 sys.stdout.flush()
-              result = easy_run.fully_buffered(
+              buffers = easy_run.fully_buffered(
                 command=cmda, join_stdout_stderr=True)
-              if (opts.valgrind):
-                cmda = "valgrind " + cmda
-                if (opts.verbose):
-                  print cmda
-                  sys.stdout.flush()
-                buffers = easy_run.fully_buffered(
-                  command=cmda, join_stdout_stderr=True)
-                print "\n".join(buffers.stdout_lines)
-              return result
-            buffers = run_with_args("5")
+              print "\n".join(buffers.stdout_lines)
+            return result
+          if (file_name == "dynamic_parameters_1.f"):
+            buffers = run_with_args("--fem-dynamic-parameters=5")
             assert not show_diff(buffers.stdout_lines, """\
           14          15          16          17          18          19
           20          21          22          23
 """)
-            buffers = run_with_args("5 6")
+            buffers = run_with_args("--fem-dynamic-parameters=5,6")
             assert buffers.stdout_lines[0].endswith(
-              "Too many command-line arguments (given: 2, max. expected: 1)")
-            buffers = run_with_args("x")
+              "Too many --fem-dynamic-parameters fields"
+              " (given: 2, max. expected: 1)")
+            buffers = run_with_args("--fem-dynamic-parameters=x")
             assert buffers.stdout_lines[0].endswith(
-              'Invalid command-line argument (field 1): "x"')
+              'Invalid --fem-dynamic-parameters field (field 1): "x"')
+          elif (file_name == "intrinsics_iargc_getarg.f"):
+            buffers = run_with_args("D rP uWq")
+            assert not show_diff(buffers.stdout_lines, "\n".join([
+              "A", "D   ", "rP  ", "uWq ",
+              "B", "uWq ", "rP  ", "D   ",
+              "C", "rP  ", "uWq ", "D   "]) + "\n")
     #
     return n_failures[0]
 

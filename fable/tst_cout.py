@@ -9,6 +9,14 @@ op = os.path
 def head_off(i): return i + 5
 def tail_off(i): return -(i + 12) - 1
 
+common_argc_argv = """\
+  common(
+    int argc,
+    char const* argv[])
+  :
+    fem::common(argc, argv)
+  {}"""
+
 def exercise_simple(verbose):
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
@@ -101,7 +109,7 @@ main(
 """)
   #
   assert not absd(get("write_star.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   fem::str<1> c = "x";
   write(6, star), c;
@@ -140,7 +148,7 @@ main(
 """)
   #
   assert not absd(get("tab_syndrome.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = 1;
   write(6, star), i;
@@ -183,13 +191,13 @@ main(
 """)
   #
   assert not absd(get("mod_integers.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   write(6, star), fem::mod(13, 5);
 """)
   #
   assert not absd(get("do_enddo.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   FEM_DO(i, 1, 2) {
@@ -208,7 +216,7 @@ main(
 """)
   #
   assert not absd(get("if_endif.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   if (i == 0) {
@@ -217,7 +225,7 @@ main(
 """)
   #
   assert not absd(get("if_else_endif.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   FEM_DO(i, 0, 1) {
@@ -231,7 +239,7 @@ main(
 """)
   #
   assert not absd(get("if_elseif_else_endif.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   FEM_DO(i, 0, 2) {
@@ -248,7 +256,7 @@ main(
 """)
   #
   assert not absd(get("if_write.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   FEM_DO(i, 3, 4) {
@@ -262,7 +270,7 @@ main(
 """)
   #
   assert not absd(get("assign_to_array_elements.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   arr<float> abc(dimension(2), fem::fill0);
   abc(1) = 10;
@@ -271,7 +279,7 @@ main(
 """)
   #
   assert not absd(get("parameter_n.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   const int n = 2;
@@ -281,7 +289,7 @@ main(
 """)
   #
   assert not absd(get("do_ix_num.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int ix = fem::int0;
   const int num = 2;
@@ -291,7 +299,7 @@ main(
 """)
   #
   assert not absd(get("scopes_1.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int ix = fem::int0;
   int ix_sum = fem::int0;
@@ -302,7 +310,7 @@ main(
 """)
   #
   assert not absd(get("scopes_2.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int ix = fem::int0;
   int ix_sum = fem::int0;
@@ -323,7 +331,7 @@ main(
 """)
   #
   assert not absd(get("scopes_3.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   const int n_data = 10;
   float d_max = fem::float0;
@@ -345,7 +353,7 @@ main(
 """)
   #
   assert not absd(get("scopes_4.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   const int n_data = 10;
   float d_max = fem::float0;
@@ -367,7 +375,7 @@ main(
 """)
   #
   assert not absd(get("arr_float_2.f"), tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   int j = fem::int0;
@@ -411,7 +419,7 @@ sub2(
 }
 """)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   write(6, star), "first line in prog.";
   sub1(cmn);
@@ -450,7 +458,7 @@ sub2(
 }
 """)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   write(6, star), "first line in prog.";
   int i = fem::int0;
@@ -496,7 +504,7 @@ sub3(
 }
 """)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int num = fem::int0;
   sub1(num);
@@ -528,10 +536,7 @@ program_unnamed(
   int argc,
   char const* argv[])
 {
-  if (argc != 1) {
-    throw std::runtime_error("Unexpected command-line arguments.");
-  }
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int num = fem::int0;
   write(6, star), num;
@@ -567,7 +572,7 @@ struct common_com
 
 """)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   write(6, star), cmn.num;
 """)
@@ -586,7 +591,9 @@ struct common_com
 struct common :
   fem::common,
   common_com
-{};
+{
+%s
+};
 
 void
 sub(
@@ -595,9 +602,9 @@ sub(
   common_write write(cmn);
   write(6, star), cmn.num;
 }
-""")
+""" % common_argc_argv)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   sub(cmn);
   cmn.num = 7;
   sub(cmn);
@@ -619,7 +626,9 @@ struct common_com
 struct common :
   fem::common,
   common_com
-{};
+{
+%s
+};
 
 void
 sub(
@@ -629,9 +638,9 @@ sub(
   write(6, star), cmn.num;
   write(6, star), cmn.val;
 }
-""")
+""" % common_argc_argv)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   cmn.num = 3;
   cmn.val = 9;
   sub(cmn);
@@ -651,7 +660,9 @@ struct common_com
 struct common :
   fem::common,
   common_com
-{};
+{
+%s
+};
 
 void
 sub(
@@ -662,9 +673,9 @@ sub(
   //
   vals(1) = vals(2) + 1;
 }
-""")
+""" % common_argc_argv)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   // COMMON com
   arr_ref<int> vals(cmn.vals, dimension(2));
@@ -688,7 +699,9 @@ struct common_com
 struct common :
   fem::common,
   common_com
-{};
+{
+%s
+};
 
 void
 sub(
@@ -701,9 +714,9 @@ sub(
   n(1) = num + 1;
   n(2) = num + 3;
 }
-""")
+""" % common_argc_argv)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   // COMMON com
   arr_cref<int> n(cmn.n, dimension(2));
@@ -721,6 +734,8 @@ struct common :
   fem::common
 {
   fem::cmn_sve program_prog_sve;
+
+%s
 };
 
 struct program_prog_save
@@ -732,9 +747,9 @@ struct program_prog_save
   {}
 };
 
-""")
+""" % common_argc_argv)
     assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   FEM_CMN_SVE(program_prog);
   common_write write(cmn);
   write(6, star), sve.num;
@@ -747,6 +762,8 @@ struct common :
   fem::common
 {
   fem::cmn_sve sub_sve;
+
+%s
 };
 
 struct sub_save
@@ -771,9 +788,9 @@ sub(
   num++;
 }
 
-""")
+""" % common_argc_argv)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   sub(cmn);
   sub(cmn);
 """)
@@ -799,6 +816,8 @@ struct common :
   common_abc
 {
   fem::cmn_sve show_resolution_sve;
+
+%s
 };
 
 struct show_resolution_save
@@ -860,9 +879,9 @@ show_resolution(
   }
 }
 
-""")
+""" % common_argc_argv)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   cmn.a = 11.0f;
   cmn.b = 12.0f;
   cmn.c = 13.0f;
@@ -924,7 +943,7 @@ show_resolution(
 """)
   #
   lines = get("write_extra_parentheses.f")
-  assert not absd(lines, tail_off(35), """\
+  assert not absd(lines, tail_off(32), """\
 int
 i1(
   int const& i)
@@ -956,7 +975,7 @@ i3(
 }
 """)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = 3;
   int j = 4;
@@ -987,7 +1006,7 @@ i3(
         "function_two_returns_1.f",
         "function_two_returns_2.f"]:
     lines = get(file_name)
-  assert not absd(lines, tail_off(14), """\
+  assert not absd(lines, tail_off(11), """\
 int
 fun(
   int const& i)
@@ -1002,7 +1021,7 @@ fun(
 }
 """)
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   write(6, star), fun(2);
   write(6, star), fun(3);
@@ -1208,7 +1227,7 @@ sub(
 """)
   #
   lines = get("array_origin.f")
-  assert not absd(lines, head_off(14), """\
+  assert not absd(lines, head_off(11), """\
   arr<int> nums1(dim1(0, 1), fem::fill0);
   int k = fem::int0;
   arr<int, 2> nums2(dim1(0, 1).dim2(-1, 2), fem::fill0);
@@ -1216,7 +1235,7 @@ sub(
   arr<int, 3> nums3(dim1(0, 1).dim2(3).dim3(-1, 2), fem::fill0);
 """)
   lines = get("array_origin.f", arr_nd_size_max=24)
-  assert not absd(lines, head_off(14), """\
+  assert not absd(lines, head_off(11), """\
   arr_1d<2, int> nums1(dim1(0, 1), fem::fill0);
   int k = fem::int0;
   arr_2d<2, 4, int> nums2(dim1(0, 1).dim2(-1, 2), fem::fill0);
@@ -1291,7 +1310,7 @@ sub1(
 """)
   #
   lines = get("write_internal_file_2.f")
-  assert not absd(lines, head_off(24), """\
+  assert not absd(lines, head_off(31), """\
     write_loop wloop(bufs(i), "(i1,i2)");
 """)
   assert not absd(lines, tail_off(3), """\
@@ -1310,7 +1329,7 @@ sub1(
 """)
   #
   lines = get("open_write_read.f")
-  assert not absd(lines, head_off(19), """\
+  assert not absd(lines, head_off(16), """\
   cmn.io.open(10, buf)
     .form("formatted");
   int num = fem::int0;
@@ -1442,7 +1461,7 @@ sub1(
   assert not absd(lines, head_off(9), """\
   FEM_DOSTEP(i, fem::len(s), 1, -1) {
 """)
-  assert not absd(lines, head_off(33), """\
+  assert not absd(lines, head_off(30), """\
   cmn.io.inquire_unit(10)
     .name(cvar);
 """)
@@ -1611,7 +1630,7 @@ sub(
 """)
   #
   lines = get("data_10.f", data_specializations=False)
-  assert not absd(lines, head_off(7), """\
+  assert not absd(lines, head_off(14), """\
 struct program_prog_save
 {
   arr<int> num;
@@ -1636,7 +1655,7 @@ struct program_prog_save
 """)
   #
   lines = get("data_16.f")
-  assert not absd(lines, head_off(7), """\
+  assert not absd(lines, head_off(14), """\
 struct program_unnamed_save
 {
   static const int num = 2;
@@ -1657,7 +1676,7 @@ const int program_unnamed_save::num;
 """)
   #
   lines = get("data_22.f")
-  assert not absd(lines, head_off(7), """\
+  assert not absd(lines, head_off(14), """\
 struct program_prog_save
 {
   arr<int> nums;
@@ -1712,7 +1731,7 @@ struct program_prog_save
 """)
   #
   lines = get("data_26.f", data_specializations=False)
-  assert not absd(lines, head_off(55), """\
+  assert not absd(lines, head_off(62), """\
     fem::data((values, 1, 2, 3)), num1, num2, num3;
 """)
   #
@@ -1777,7 +1796,7 @@ struct program_prog_save
 """)
   #
   lines = get("strings_size_dim_data.f")
-  assert not absd(lines, head_off(7), """\
+  assert not absd(lines, head_off(14), """\
 struct program_prog_save
 {
   static const int base = 4;
@@ -1803,7 +1822,7 @@ const int program_prog_save::dim;
   #
   lines = get("main_cmn_indirect.f")
   assert not absd(lines, tail_off(1), """\
-  common cmn;
+  common cmn(argc, argv);
   sub_main(cmn);
 """)
   lines = get("main_cmn_indirect.f", top_procedures=["sub_main"])
@@ -1897,7 +1916,7 @@ sub2(
 """)
   #
   lines = get("subroutine_8.f")
-  assert not absd(lines, head_off(7), """\
+  assert not absd(lines, head_off(14), """\
 struct sub_save
 {
   int i;
@@ -1907,7 +1926,7 @@ struct sub_save
   {}
 };
 """)
-  assert not absd(lines, head_off(16), """\
+  assert not absd(lines, head_off(23), """\
 void
 sub(
   common& cmn,
@@ -1961,6 +1980,8 @@ struct common :
   common_cmn
 {
   fem::cmn_sve program_prog_sve;
+
+%s
 };
 
 struct program_prog_save
@@ -1975,7 +1996,7 @@ struct program_prog_save
 };
 
 const int program_prog_save::ld;
-""")
+""" % common_argc_argv)
   #
   lines = get("equivalence_01.f")
   assert not absd(lines, tail_off(5), """\
@@ -2018,6 +2039,8 @@ struct common :
   fem::cmn_sve sub2b_sve;
   fem::cmn_sve sub3_sve;
   fem::cmn_sve sub4_sve;
+
+%s
 };
 
 struct sub1a_save
@@ -2045,12 +2068,12 @@ sub1a(
   j(1) = 34;
   j(2) = 65;
 }
-""")
-  assert not absd(lines, tail_off(45), """\
+""" % common_argc_argv)
+  assert not absd(lines, tail_off(42), """\
   /* int const& i */ scr.bind<int>();
   int& j = scr.bind<int>();
 """)
-  assert not absd(lines, tail_off(21), """\
+  assert not absd(lines, tail_off(18), """\
   /* arr_cref<int> i( */ scr.bind<int>() /* , dimension(2)) */ ;
   int& j = scr.bind<int>();
 """)
@@ -2118,7 +2141,7 @@ sub1a(
 """)
   #
   lines = get("common_equivalence_5.f")
-  assert not absd(lines, head_off(24), """\
+  assert not absd(lines, head_off(31), """\
       mbr<int> inside(dimension(2));
       mbr<int> data(dimension(4));
       scr.allocate(),
@@ -2127,16 +2150,16 @@ sub1a(
            .with<1>()
       ;
 """)
-  assert not absd(lines, head_off(34), """\
+  assert not absd(lines, head_off(41), """\
   arr_ref<int> data(scr.bind<int>(), dimension(4));
 """)
-  assert not absd(lines, tail_off(19), """\
+  assert not absd(lines, tail_off(16), """\
       mbr<int> inside(dimension(3));
       scr.allocate(), inside;
 """)
   #
   lines = get("equivalence_09.f")
-  assert not absd(lines, head_off(8), """\
+  assert not absd(lines, head_off(15), """\
 struct program_prog_save
 {
   fem::variant_bindings scr_bindings;
@@ -2217,13 +2240,13 @@ struct program_prog_save
 """)
   #
   lines = get("equivalence_06.f")
-  assert not absd(lines, head_off(20), """\
+  assert not absd(lines, head_off(17), """\
     loc_equivalences.allocate(),
       equivalence(s1, s2, s3, s4)
         .align<1>(arr_index(1)(1, 1))
          .with<2>(arr_index(2)(3, 3))
 """)
-  assert not absd(lines, head_off(32), """\
+  assert not absd(lines, head_off(29), """\
   /* str_arr_ref<> s3( */ loc_equivalences.bind_str() /* , dimension(2)) */ ;
   /* str_ref s4 */ loc_equivalences.bind_str();
 """)
@@ -2248,7 +2271,7 @@ struct program_prog_save
 """)
   #
   lines = get("equivalence_data.f", data_specializations=False)
-  assert not absd(lines, head_off(8), """\
+  assert not absd(lines, head_off(15), """\
 struct program_prog_save
 {
   fem::variant_bindings scr_bindings;
@@ -2261,7 +2284,7 @@ struct program_prog_save
 """)
   #
   lines = get("common_name_clash.f")
-  assert not absd(lines, head_off(29), """\
+  assert not absd(lines, head_off(36), """\
 void
 sub1init(
   common& cmn)
@@ -2311,7 +2334,7 @@ show(
 """)
   #
   lines = get("external_arg_function.f")
-  assert not absd(lines, head_off(30), """\
+  assert not absd(lines, head_off(37), """\
 void
 sub1(
   common& cmn,
@@ -2360,7 +2383,7 @@ ifun(
 """)
   #
   lines = get("if_spaghetti.f")
-  assert not absd(lines, head_off(22), """\
+  assert not absd(lines, head_off(19), """\
       statement_10:
       if (i == j) {
         goto statement_14;
@@ -2368,7 +2391,7 @@ ifun(
 """)
   #
   lines = get("common_name_clash_2.f")
-  assert not absd(lines, head_off(68), """\
+  assert not absd(lines, head_off(75), """\
   // COMMON cmn2
   arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   int& num3 = cmn.num3;
@@ -2394,7 +2417,7 @@ void sub1(common&, int const&);
 """)
   #
   lines = get("common_name_clash_3.f")
-  assert not absd(lines, head_off(68), """\
+  assert not absd(lines, head_off(75), """\
   arr_cref<int> num2(static_cast<common_cmn2&>(cmn).num2, dimension(2));
   int& num3 = cmn.num3;
   //
@@ -2420,7 +2443,7 @@ struct common_scr
 {
   static const int isz = 2;
 """)
-  assert not absd(lines, head_off(24), """\
+  assert not absd(lines, head_off(31), """\
   const int isz = 2;
   nums_arg(dimension(isz));
 """)
@@ -2479,7 +2502,7 @@ using fem::common;
 """)
   #
   lines = get("blockdata_unnamed.f", data_specializations=False)
-  assert not absd(lines, head_off(21), """\
+  assert not absd(lines, head_off(28), """\
 void
 blockdata_unnamed(
   common& cmn)
@@ -2491,7 +2514,7 @@ blockdata_unnamed(
 }
 """)
   assert not absd(lines, tail_off(3), """\
-  common cmn;
+  common cmn(argc, argv);
   blockdata_unnamed(cmn);
 """)
   #
@@ -2643,14 +2666,14 @@ blockdata_unnamed(
     numsj(2) = 45;
     strsj(2) = "ASdfg";
 """)
-  assert not absd(lines, head_off(29), """\
+  assert not absd(lines, head_off(36), """\
     static const int values[] = {
       -24, +35
     };
     fem::data_of_type<int>(FEM_VALUES_AND_SIZE),
       nums;
 """)
-  assert not absd(lines, head_off(90), """\
+  assert not absd(lines, head_off(97), """\
     sc = fem::cmplx(1.2f, -3.4f);
     dc = fem::cmplx(-5.6e0, +7.8e0);
 """)
@@ -2746,10 +2769,7 @@ program_prog(
   int argc,
   char const* argv[])
 {
-  if (argc != 1) {
-    throw std::runtime_error("Unexpected command-line arguments.");
-  }
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   int i = fem::int0;
   arr<int> nums(dimension(2), fem::fill0);
@@ -2920,10 +2940,10 @@ struct common_vars
   {}
 };
 """)
-  assert not absd(lines, head_off(16), """\
+  assert not absd(lines, head_off(23), """\
 identifier_switch(
 """)
-  assert not absd(lines, head_off(28), """\
+  assert not absd(lines, head_off(35), """\
   // COMMON vars
   int& identifier_template = cmn.identifier_template;
   //
@@ -3009,7 +3029,7 @@ struct common_commonymous
 """)
   #
   lines = get("write_format.f")
-  assert not absd(lines, tail_off(18), """\
+  assert not absd(lines, tail_off(15), """\
   write(6, "(a)"), msg(1, 3);
 """)
   #
@@ -3024,7 +3044,7 @@ struct common_commonymous
 """)
   #
   lines = get("string_concat.f")
-  assert not absd(lines, head_off(13), """\
+  assert not absd(lines, head_off(10), """\
   fem::str<2> s1 = "x" + str_cref("Y");
 """)
   assert not absd(lines, tail_off(1), """\
@@ -3158,31 +3178,35 @@ def exercise_dynamic_parameters(verbose):
       name="root_size", ctype="int", default="3")])
   assert not absd(lines, head_off(0), """\
 
-struct dynamic_parameters_t
+struct dynamic_parameters
 {
   int root_size;
 
-  dynamic_parameters_t(
-    int argc,
-    char const* argv[])
+  dynamic_parameters(
+    fem::command_line_arguments const& command_line_args)
   :
     root_size(3)
   {
-    fem::dynamic_parameters_from_argv(argc, argv, 1)
+    fem::dynamic_parameters_from(command_line_args, 1)
       .reset_if_given(root_size)
     ;
   }
 };
 
-struct common :
-  fem::common
-{
-  dynamic_parameters_t dynamic_parameters;
+typedef
+  fem::dynamic_parameters_capsule<dynamic_parameters>
+    dynamic_parameters_capsule;
 
+struct common :
+  fem::common,
+  dynamic_parameters_capsule
+{
   common(
-    dynamic_parameters_t const& dynamic_parameters_)
+    int argc,
+    char const* argv[])
   :
-    dynamic_parameters(dynamic_parameters_)
+    fem::common(argc, argv),
+    dynamic_parameters_capsule(command_line_args)
   {}
 };
 
@@ -3191,39 +3215,39 @@ sub(
   common& cmn,
   arr_ref<int> nums)
 {
-  const int root_size = cmn.dynamic_parameters.root_size;
+  const int root_size = cmn.dynamic_params.root_size;
 """)
   assert not absd(lines, tail_off(7), """\
-  common cmn(dynamic_parameters_t(argc, argv));
+  common cmn(argc, argv);
 """)
   #
   lines = get("dynamic_parameters_2.f", [
     cout.dynamic_parameter_props(
       name="nums_size", ctype="int", default="2")])
-  assert not absd(lines, head_off(17), """\
+  assert not absd(lines, head_off(20), """\
 struct common_com
 {
   const int nums_size;
   arr<int> nums;
 
   common_com(
-    dynamic_parameters_t const& dynamic_parameters)
+    dynamic_parameters const& dynamic_params)
   :
-    nums_size(dynamic_parameters.nums_size),
+    nums_size(dynamic_params.nums_size),
     nums(dimension(nums_size), fem::fill0)
   {}
 };
 
 struct common :
 """)
-  assert not absd(lines, head_off(39), """\
-    common_com(dynamic_parameters_),
+  assert not absd(lines, head_off(44), """\
+    common_com(dynamic_params)
 """)
   #
   lines = get("dynamic_parameters_3.f", [
     cout.dynamic_parameter_props(
       name="base_size", ctype="int", default="3")])
-  assert not absd(lines, head_off(17), """\
+  assert not absd(lines, head_off(20), """\
 struct common_com
 {
   const int base_size;
@@ -3231,9 +3255,9 @@ struct common_com
   arr<int> nums;
 
   common_com(
-    dynamic_parameters_t const& dynamic_parameters)
+    dynamic_parameters const& dynamic_params)
   :
-    base_size(dynamic_parameters.base_size),
+    base_size(dynamic_params.base_size),
     nums_size(base_size * 2),
     nums(dimension(nums_size), fem::fill0)
   {}
@@ -3244,30 +3268,30 @@ struct common_com
   lines = get("dynamic_parameters_4.f", [
     cout.dynamic_parameter_props(
       name="base_size", ctype="int", default="3")])
-  assert not absd(lines, head_off(30), """\
+  assert not absd(lines, head_off(35), """\
 struct sub_save
 {
   const int base_size;
   arr<int> nums;
 
   sub_save(
-    dynamic_parameters_t const& dynamic_parameters)
+    dynamic_parameters const& dynamic_params)
   :
-    base_size(dynamic_parameters.base_size),
+    base_size(dynamic_params.base_size),
     nums(dimension(base_size * 2), fem::fill0)
   {}
 };
 
 """)
-  assert not absd(lines, head_off(48), """\
+  assert not absd(lines, head_off(53), """\
   FEM_CMN_SVE_DYNAMIC_PARAMETERS(sub);
 """)
   #
   lines = get("dynamic_parameters_5.f", [
     cout.dynamic_parameter_props(
       name="base_size", ctype="int", default="3")])
-  assert not absd(lines, head_off(34), """\
-  const int base_size = cmn.dynamic_parameters.base_size;
+  assert not absd(lines, head_off(38), """\
+  const int base_size = cmn.dynamic_params.base_size;
   nums(dimension(base_size * 2));
 """)
 
@@ -3295,7 +3319,7 @@ def exercise_common_equivalence_simple(verbose):
   for i in [1,2]:
     lines = get("common_equivalence_simple_%d.f" % i, "info")
     assert not absd(lines, tail_off(2), """\
-  common cmn;
+  common cmn(argc, argv);
   common_write write(cmn);
   // COMMON info
   arr_ref<int> nums(cmn.nums, dimension(2));
