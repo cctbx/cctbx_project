@@ -416,6 +416,8 @@ def common_substring(seq):
   substr = seq[0]
   for s in seq:
     substr = LCSubstr_set(substr, s).pop()
+  while len(substr) and not substr.endswith('_'):
+    substr = substr[:-1]
   return substr
 
 def LCSubstr_set(S, T):
