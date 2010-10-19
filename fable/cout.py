@@ -1454,7 +1454,7 @@ def declare_size_dim_identifiers(conv_info, top_scope, curr_scope, fdecl):
           conv_info=conv_info, top_scope=top_scope, curr_scope=curr_scope,
           tokens=sd_fdecl.parameter_assignment_tokens)
         if (sd_id_tok.value in conv_info.fproc.dynamic_parameters):
-          sd_crhs = "cmn.dynamic_parameters." + sd_id_tok.value
+          sd_crhs = "cmn.dynamic_params." + sd_id_tok.value
         else:
           sd_crhs = convert_tokens(
             conv_info=conv_info, tokens=sd_fdecl.parameter_assignment_tokens)
@@ -1564,7 +1564,7 @@ def declare_identifier(conv_info, top_scope, curr_scope, id_tok, crhs=None):
           conv_info=conv_info, top_scope=top_scope, curr_scope=curr_scope,
           tokens=fdecl.parameter_assignment_tokens)
         if (id_tok.value in conv_info.fproc.dynamic_parameters):
-          crhs = "cmn.dynamic_parameters." + prepend_identifier_if_necessary(
+          crhs = "cmn.dynamic_params." + prepend_identifier_if_necessary(
             id_tok.value)
         else:
           crhs = convert_tokens(
@@ -2385,7 +2385,7 @@ def convert_to_struct(
         callback("  const %s %s;" % (
           ctype, prepend_identifier_if_necessary(id_tok.value)))
         if (id_tok.value in conv_info.fproc.dynamic_parameters):
-          crhs = "dynamic_parameters." + prepend_identifier_if_necessary(
+          crhs = "dynamic_params." + prepend_identifier_if_necessary(
             id_tok.value)
         else:
           crhs = convert_tokens(
@@ -2454,7 +2454,7 @@ def convert_to_struct(
       callback("  %s() :" % struct_name)
     else:
       callback("  %s(" % struct_name)
-      callback("    dynamic_parameters_t const& dynamic_parameters)")
+      callback("    dynamic_parameters const& dynamic_params)")
       callback("  :")
     for i in xrange(n):
       ii = initializers[i]
@@ -2592,14 +2592,13 @@ def convert_commons(
       common_report_stringio):
   if (dynamic_parameters is not None):
     callback("")
-    callback("struct dynamic_parameters_t")
+    callback("struct dynamic_parameters")
     callback("{")
     for dp_props in dynamic_parameters:
       callback("  %s %s;" % (dp_props.ctype, dp_props.name))
     callback("""
-  dynamic_parameters_t(
-    int argc,
-    char const* argv[])
+  dynamic_parameters(
+    fem::command_line_arguments const& command_line_args)
   :""")
     for dp_props in dynamic_parameters:
       if (dp_props is not dynamic_parameters[-1]): c = ","
@@ -2610,7 +2609,7 @@ def convert_commons(
         c))
     callback("""\
   {
-    fem::dynamic_parameters_from_argv(argc, argv, %d)"""
+    fem::dynamic_parameters_from(command_line_args, %d)"""
       % len(dynamic_parameters))
     for dp_props in dynamic_parameters:
       callback("      .reset_if_given(%s)"
@@ -2618,6 +2617,10 @@ def convert_commons(
     callback("    ;")
     callback("  }")
     callback("};")
+    callback("")
+    callback("typedef")
+    callback("  fem::dynamic_parameters_capsule<dynamic_parameters>")
+    callback("    dynamic_parameters_capsule;")
   #
   common_fdecl_list_sizes = {}
   common_equiv_tok_seqs = {}
@@ -2740,31 +2743,36 @@ def convert_commons(
     return
   callback("")
   callback("struct common :")
-  callback("  " + ",\n  ".join(["fem::common"] + struct_commons))
-  if (    len(variant_commons) == 0
-      and len(save_struct_names) == 0
-      and dynamic_parameters is None):
-    callback("{};")
-  else:
-    callback("{")
-    for common_name in variant_commons:
-      callback("  fem::variant_core common_%s;" % common_name)
-    def save_as_sve(struct_name): return struct_name[:-3]+"ve"
-    for struct_name in save_struct_names:
-      callback("  fem::cmn_sve %s;" % save_as_sve(struct_name))
-    if (dynamic_parameters is not None):
-      callback("  dynamic_parameters_t dynamic_parameters;")
-      callback("""
+  leading_bases = ["fem::common"]
+  if (dynamic_parameters is not None):
+    leading_bases.append("dynamic_parameters_capsule")
+  callback("  " + ",\n  ".join(leading_bases + struct_commons))
+  callback("{")
+  need_empty_line = False
+  for common_name in variant_commons:
+    callback("  fem::variant_core common_%s;" % common_name)
+    need_empty_line = True
+  def save_as_sve(struct_name): return struct_name[:-3]+"ve"
+  for struct_name in save_struct_names:
+    callback("  fem::cmn_sve %s;" % save_as_sve(struct_name))
+    need_empty_line = True
+  if (need_empty_line):
+    callback("")
+  initializations = ["fem::common(argc, argv)"]
+  if (dynamic_parameters is not None):
+    initializations.append(
+      "dynamic_parameters_capsule(command_line_args)")
+    for struct_name in struct_commons:
+      if (struct_name in struct_commons_need_dynamic_parameters):
+        initializations.append("%s(dynamic_params)" % struct_name)
+  callback("""\
   common(
-    dynamic_parameters_t const& dynamic_parameters_)
-  :""")
-      for struct_name in struct_commons:
-        if (struct_name in struct_commons_need_dynamic_parameters):
-          callback("    %s(dynamic_parameters_)," % struct_name)
-      callback("""\
-    dynamic_parameters(dynamic_parameters_)
-  {}""")
-    callback("};")
+    int argc,
+    char const* argv[])
+  :
+    %s
+  {}""" % ",\n    ".join(initializations))
+  callback("};")
   #
   return group_args(
     member_registry=member_registry,
@@ -2822,7 +2830,7 @@ void
   int argc,
   char const* argv[])
 {""" % cname)
-    if (global_conv_info.dynamic_parameters is None):
+    if (not fproc.needs_cmn):
       callback("""\
   if (argc != 1) {
     throw std::runtime_error("Unexpected command-line arguments.");
@@ -2838,10 +2846,7 @@ void
       show_traceback()
     else:
       if (fproc.needs_cmn and not fproc.conv_hook.ignore_common_and_save):
-        if (global_conv_info.dynamic_parameters is None):
-          callback("  common cmn;")
-        else:
-          callback("  common cmn(dynamic_parameters_t(argc, argv));")
+        callback("  common cmn(argc, argv);")
       for line in result_buffer:
         callback(line)
       callback("}")

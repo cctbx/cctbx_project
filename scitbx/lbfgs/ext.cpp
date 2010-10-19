@@ -43,7 +43,7 @@ namespace scitbx { namespace lbfgs { namespace ext {
     SCITBX_ASSERT(diag.size() == n_);
     SCITBX_ASSERT(w.size() == n_*(2*m_+1)+2*m_);
 #if defined(SCITBX_LBFGS_HAVE_LBFGS_FEM)
-    static lbfgs_fem::common cmn;
+    static lbfgs_fem::common cmn(0, 0);
     lbfgs_fem::blockdata_lb2(cmn);
     lbfgs_fem::lbfgs(
       cmn,
