@@ -413,11 +413,15 @@ def common_substring(seq):
   #
   #   http://www.iucr.org/resources/cif/spec/ancillary/reserved-prefixes
 
+  if len(seq) == 1: return seq[0]
   substr = seq[0]
   for s in seq:
     substr = LCSubstr_set(substr, s).pop()
-  while len(substr) and not substr.endswith('_'):
-    substr = substr[:-1]
+  if not (substr.endswith('_') or substr.endswith('.')):
+    if '.' in substr:
+      substr = substr.split('.')[0]
+    elif substr.count('_') > 1:
+      substr = '_'.join(substr.split('_')[:-1])
   return substr
 
 def LCSubstr_set(S, T):
