@@ -552,7 +552,7 @@ write_internal_file_2.f
 |STOP at stop_string_fem.cpp(19): Break|
 write_internal_file_3.f
 |num = (A -2Ef)|
-!@open_write_read_2.f
+open_write_read_2.f
 |OK|
 read_err.f
 |success exercise_file_fmt|
@@ -1055,8 +1055,10 @@ blockdata_named.f
 |           4|
 data_str_arr.f
 | YuidFg|
-!@read_unformatted_str_arr.f
-!@data_byte.f
+read_unformatted_str_arr.f
+|OK|
+data_byte.f
+|X|
 read_end_empty.f
 |           0|
 read_end_empty.f

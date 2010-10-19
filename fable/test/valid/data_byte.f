@@ -1,6 +1,7 @@
       program prog
-      character*1 ctab
-      byte btab
-      equivalence(btab, ctab)
-      data btab /9/
+      character*1 cx
+      byte bx
+      equivalence(bx, cx)
+      data bx /88/
+      write(6, '(a)') cx
       end
