@@ -89,7 +89,7 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0,
     if tPP.distribution.degrees_of_freedom() < 100:
       tPP.correlation.coefficient() > NPP.correlation.coefficient()
   else:
-    assert approx_equal(NPP.correlation.coefficient(), 1, 0.002)
+    assert approx_equal(NPP.correlation.coefficient(), 1, 0.005)
   if debug:
     csv_utils.writer(open('npp.csv', 'wb'), (NPP.x,NPP.y))
     if use_students_t_errors:
