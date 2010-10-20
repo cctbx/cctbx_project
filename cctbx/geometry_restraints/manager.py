@@ -29,6 +29,8 @@ class manager(object):
         reference_dihedral_proxies=None,
         chirality_proxies=None,
         planarity_proxies=None,
+        generic_proxies=None,
+        generic_restraints_helper=None,
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5):
@@ -40,6 +42,8 @@ class manager(object):
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None and site_symmetry_table is not None):
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
+    if (generic_proxies is not None) :
+      assert (generic_restraints_helper is not None)
     adopt_init_args(self, locals())
     self.reset_internals()
 
@@ -367,6 +371,10 @@ class manager(object):
     self.planarity_proxies = self.planarity_proxies.proxy_remove(
       selection=selection)
 
+  def set_generic_restraints (self, proxies, restraints_helper) :
+    self.generic_proxies = proxies
+    self.generic_restraints_helper = restraints_helper
+
   def pair_proxies(self,
         sites_cart=None,
         flags=None,
@@ -598,7 +606,8 @@ class manager(object):
      dihedral_proxies,
      reference_dihedral_proxies,
      chirality_proxies,
-     planarity_proxies) = [None]*8
+     planarity_proxies,
+     generic_proxies) = [None]*9
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -614,6 +623,7 @@ class manager(object):
     if (flags.reference_dihedral):  reference_dihedral_proxies = self.reference_dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
+    if (flags.generic_restraints) : generic_proxies = self.generic_proxies
     return geometry_restraints.energies.energies(
       sites_cart=sites_cart,
       bond_proxies=bond_proxies,
@@ -624,6 +634,8 @@ class manager(object):
       reference_dihedral_proxies=reference_dihedral_proxies,
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
+      generic_proxies=generic_proxies,
+      generic_restraints_helper=self.generic_restraints_helper,
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
