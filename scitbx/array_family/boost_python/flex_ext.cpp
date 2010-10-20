@@ -91,6 +91,7 @@ namespace {
     tuple_mapping_fixed_size<tiny<unsigned, 2> >();
     tuple_mapping_fixed_size<tiny<unsigned, 3> >();
     tuple_mapping_fixed_size<tiny<unsigned, 4> >();
+    tuple_mapping_fixed_size<tiny<unsigned, 5> >();
 #if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
     tuple_mapping_fixed_size<tiny<std::size_t, 2> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 3> >();
