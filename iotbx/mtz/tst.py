@@ -217,13 +217,29 @@ def exercise_recycle(
     verbose=verbose)
   if (f_calc is None): return
   recycle(f_calc, "f_calc", verbose=verbose)
-  recycle(abs(f_calc), "f_obs", verbose=verbose)
+  for column_root_label, column_types in [
+        ("f_obs", None),
+        ("Ework", "E")]:
+    if (anomalous_flag and column_types == "E"): continue
+    recycle(
+      miller_array=abs(f_calc),
+      column_root_label=column_root_label,
+      column_types=column_types,
+      verbose=verbose)
   if (not anomalous_flag):
     recycle(abs(f_calc), "f_obs", column_types="R", verbose=verbose)
-  recycle(miller.array(
-    miller_set=f_calc,
-    data=flex.abs(f_calc.data()),
-    sigmas=flex.abs(f_calc.data())/10), "f_obs", verbose=verbose)
+  for column_root_label, column_types in [
+        ("f_obs", None),
+        ("Ework", "EQ")]:
+    if (anomalous_flag and column_types == "EQ"): continue
+    recycle(
+      miller_array=miller.array(
+        miller_set=f_calc,
+        data=flex.abs(f_calc.data()),
+        sigmas=flex.abs(f_calc.data())/10),
+      column_root_label=column_root_label,
+      column_types=column_types,
+      verbose=verbose)
   recycle(f_calc.centric_flags(), "cent", verbose=verbose)
   recycle(generate_random_hl(miller_set=f_calc), "prob", verbose=verbose)
 

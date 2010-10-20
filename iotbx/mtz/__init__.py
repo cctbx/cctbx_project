@@ -53,8 +53,7 @@ Thank you!
   sys.platform,
   boost.python.platform_info))
 
-column_type_legend_source = \
-  "http://www.ccp4.ac.uk/dist/html/mtzlib.html#fileformat"
+column_type_legend_source = "ccp4/doc/mtzformat.doc"
 column_type_legend = {
   "H": "index h,k,l",
   "J": "intensity",
@@ -65,6 +64,7 @@ column_type_legend = {
   "L": "standard deviation",
   "K": "I(+) or I(-)",
   "M": "standard deviation",
+  "E": "normalized amplitude",
   "P": "phase angle in degrees",
   "W": "weight (of some sort)",
   "A": "phase probability coefficients (Hendrickson/Lattman)",
@@ -381,8 +381,8 @@ class _object(boost.python.injector, ext.object):
         cb_op,
         new_space_group_info=None,
         assert_is_compatible_unit_cell=False):
-    # force update if column_type_legend is changed
-    assert len(column_type_legend) == 16 # programmer alert
+    assert len(column_type_legend) == 17 # programmer alert
+      # force update if column_type_legend is changed
     for column_type in self.column_types():
       if (column_type == "P"):
         raise RuntimeError(
@@ -410,8 +410,10 @@ class _object(boost.python.injector, ext.object):
         unit_cell=batch_uc.change_basis(cb_op=cb_op),
         space_group_info=new_space_group_info,
         assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
-      batch.set_cell(flex.float(batch_crystal_symmetry.unit_cell().parameters()))
-      batch.set_umat(flex.float((0,0,0,0,0,0,0,0,0)))
+      batch.set_cell(flex.float(
+        batch_crystal_symmetry.unit_cell().parameters()))
+      batch.set_umat(flex.float(
+        (0,0,0,0,0,0,0,0,0)))
 
   def as_miller_arrays(self,
         crystal_symmetry=None,
@@ -455,9 +457,9 @@ class _object(boost.python.injector, ext.object):
         crystal_symmetry,
         base_array_info,
         dataset,
-        strict=False):
+        strict=True):
     known_mtz_column_types = "".join(column_type_legend.keys())
-    assert len(known_mtz_column_types) == 16 # safety guard
+    assert len(known_mtz_column_types) == 17 # safety guard
     all_columns = dataset.columns()
     all_column_labels = dataset.column_labels()
     all_column_types = mend_non_conforming_anomalous_column_types(
@@ -532,9 +534,10 @@ class _object(boost.python.injector, ext.object):
         i_column += 3
         group = self.extract_delta_anomalous(*labels)
         observation_type = xray.observation_types.reconstructed_amplitude()
-      elif (t0 in "JFD"):
+      elif (t0 in "JFED"):
         # "J": "intensity"
         # "F": "amplitude"
+        # "E": "normalized amplitude"
         # "D": "anomalous difference"
         # "Q": "standard deviation"
         # "P": "phase angle in degrees"
