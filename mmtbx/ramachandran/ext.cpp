@@ -1,9 +1,3 @@
-
-#include <mmtbx/error.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/shared.h>
-#include <scitbx/array_family/accessors/c_grid.h>
-
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -11,6 +5,11 @@
 //#include <boost/python/return_value_policy.hpp>
 //#include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
+
+#include <mmtbx/error.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 
 #include <cmath>
 #include <iostream>
@@ -22,7 +21,7 @@ namespace mmtbx { namespace ramachandran {
   {
     public:
       af::versa<double, af::flex_grid<> > plot;
-      double max;
+      double values_max;
 
       lookup_table (
         af::const_ref< double > values,
@@ -32,16 +31,16 @@ namespace mmtbx { namespace ramachandran {
         af::flex_grid<>::index_type fg_origin;
         af::flex_grid<>::index_type fg_last;
         for (unsigned i = 0; i < 2; i++) {
-          fg_origin.push_back(0.0);
-          fg_last.push_back((double) n_angles);
+          fg_origin.push_back(0);
+          fg_last.push_back(n_angles);
         }
         plot = af::versa<double, af::flex_grid<> >(
           af::flex_grid<>(fg_origin, fg_last, true));
-        max = 0.0;
+        values_max = 0.0;
         for (unsigned i = 0; i < values.size(); i++) {
           plot[i] = values[i];
-          if (values[i] > max) {
-            max = values[i];
+          if (values[i] > values_max) {
+            values_max = values[i];
           }
         }
       }
@@ -87,7 +86,7 @@ namespace mmtbx { namespace ramachandran {
         double psi)
       {
         double score = get_score(phi, psi);
-        return - (score - max);
+        return - (score - values_max);
       }
 
     private :
