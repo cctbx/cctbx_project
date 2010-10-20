@@ -6,6 +6,7 @@ from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
 from iotbx import reflection_file_utils
 from mmtbx import monomer_library
+from mmtbx import real_space_correlation
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.f_model

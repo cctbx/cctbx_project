@@ -1,0 +1,9 @@
+Import("env_etc")
+
+Import("env_iotbx_boost_python_ext")
+env = env_iotbx_boost_python_ext.Clone()
+env.Prepend(LIBS=["cctbx"])
+env_etc.enable_more_warnings(env=env)
+env.SharedLibrary(
+  target="#lib/mmtbx_ramachandran_ext",
+  source=["ext.cpp"])
