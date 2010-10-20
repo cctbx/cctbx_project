@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from libtbx.utils import xfrange
 from libtbx.utils\
      import format_float_with_standard_uncertainty as format_float_with_su
+from libtbx.utils import Sorry
 
 from scitbx.math import distributions
 
@@ -48,6 +49,8 @@ class hooft_analysis:
     self.delta_fc2 = self.delta_fc2.select(~cutoff_sel)
     self.delta_fo2 = self.delta_fo2.customized_copy(
       data=self.delta_fo2.data()/scale_factor)
+    if not self.delta_fo2.size():
+      raise Sorry("Absolute structure could not be determined")
     min_gamma = -10
     max_gamma = 10
 
@@ -74,16 +77,18 @@ class hooft_analysis:
     while True:
       # search for where the curve becomes close to zero on the left
       min_gamma = middle - width/2
-      width *= 2
-      if self.log_p_obs_given_gamma(min_gamma) - max_log_p_obs < -10:
+      if (width > 100 or
+          self.log_p_obs_given_gamma(min_gamma) - max_log_p_obs < -10):
         break
+      width *= 2
     width = max_gamma - min_gamma
     while True:
       # search for where the curve becomes close to zero on the right
       max_gamma = middle + width/2
-      width *= 2
-      if self.log_p_obs_given_gamma(max_gamma) - max_log_p_obs < -10:
+      if (width > 100 or
+          self.log_p_obs_given_gamma(max_gamma) - max_log_p_obs < -10):
         break
+      width *= 2
 
     n_steps = 500
     d_gamma = (max_gamma - min_gamma)/n_steps
@@ -100,17 +105,18 @@ class hooft_analysis:
       p_u_gamma = math.exp(log_p_obs_given_gammas[i] - max_log_p_obs)
       p_u_gammas.append(p_u_gamma)
       if i == 0: continue
-      p_u_gamma_d_gamma = 0.5 * (p_u_gammas[-2] + p_u_gammas[-1]) * d_gamma
-      G_numerator += gamma * p_u_gamma_d_gamma
-      G_denominator += p_u_gamma_d_gamma
+      G_numerator += 0.5 * d_gamma * (
+        (gamma-d_gamma) * p_u_gammas[-2] + gamma * p_u_gammas[-1])
+      G_denominator += 0.5 * (p_u_gammas[-2] + p_u_gammas[-1]) * d_gamma
     self.G = G_numerator/G_denominator
     sigma_squared_G_numerator = 0
     # Numerical integration using trapezoidal rule
+    next = None
     for i, gamma in enumerate(xfrange(min_gamma, max_gamma, d_gamma)):
+      previous = next
+      next = math.pow((gamma - self.G), 2) * p_u_gammas[i] * d_gamma
       if i == 0: continue
-      p_u_gamma_d_gamma = 0.5 * (p_u_gammas[i-1] + p_u_gammas[i]) * d_gamma
-      sigma_squared_G_numerator \
-        += math.pow((gamma - self.G), 2) * p_u_gamma_d_gamma
+      sigma_squared_G_numerator += 0.5 * (previous + next)
     self.hooft_y = (1-self.G)/2
     self.sigma_G = math.sqrt(sigma_squared_G_numerator/G_denominator)
     self.sigma_y = self.sigma_G/2
@@ -205,8 +211,9 @@ class bijvoet_differences_probability_plot:
 
   def show(self, out=None):
     if out is None: out=sys.stdout
-    print >> out, self.fit.show_summary()
-    print >> out, "coefficient: %f" %self.correlation.coefficient()
+    print >> out, "y_intercept: %.3f" %self.fit.y_intercept()
+    print >> out, "slope: %.3f" %self.fit.slope()
+    print >> out, "coefficient: %.4f" %self.correlation.coefficient()
 
 
 def maximise_students_t_correlation_coefficient(observed_deviations,
