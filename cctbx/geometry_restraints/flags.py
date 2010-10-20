@@ -12,6 +12,7 @@ class flags(object):
         chirality=None,
         planarity=None,
         bond_similarity=None,
+        generic_restraints=None,
         default=False):
     if (bond is None): bond = default
     if (nonbonded is None): nonbonded = default
@@ -21,6 +22,7 @@ class flags(object):
     if (chirality is None): chirality = default
     if (planarity is None): planarity = default
     if (bond_similarity is None): bond_similarity = default
+    if (generic_restraints is None) : generic_restraints = default
     adopt_init_args(self, locals())
 
   def show(self, f=None):
@@ -34,3 +36,4 @@ class flags(object):
     print >> f, "  chirality:", self.chirality
     print >> f, "  planarity:", self.planarity
     print >> f, "  bond similarity:", self.bond_similarity
+    print >> f, "  other (generic):", self.generic_restraints
