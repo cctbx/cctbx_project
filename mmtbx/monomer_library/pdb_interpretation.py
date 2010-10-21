@@ -3247,6 +3247,7 @@ class build_all_chain_proxies(object):
         params_remove=None,
         h_bond_table=None,
         assume_hydrogens_all_missing=True,
+        ramachandran_atom_selection=None,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -3364,6 +3365,7 @@ class build_all_chain_proxies(object):
         raise Sorry("You may not use Ramachandran restraints when "+
           "discard_phi_psi=False.")
       generic_proxies = ramachandran.extract_proxies(self.pdb_hierarchy,
+        atom_selection=ramachandran_atom_selection,
         log=log)
       generic_restraints_helper = ramachandran.generic_restraints_helper(
         params=self.params.peptide_link)

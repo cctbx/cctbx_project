@@ -3,6 +3,7 @@
 # be a good idea to consolidate these modules into one framework.
 
 from mmtbx.refinement import fit_rotamers
+from mmtbx.refinement import print_statistics
 import mmtbx.refinement.real_space
 import mmtbx.model
 import mmtbx.restraints
@@ -280,6 +281,7 @@ def run(fmodel,
         params = None):
   if(log is None): log = sys.stdout
   if(params is None): params = master_params().extract()
+  print_statistics.make_sub_header(text="Peptide bond flips", out=log)
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry_restraints_manager,
     normalization = True)
