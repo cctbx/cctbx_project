@@ -230,6 +230,14 @@ class mvd(object):
     print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip()
     print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff).strip()
     print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff).strip()
+    #
+    if(self.model_vs_data.sigmaa_plot is not None):
+      print >> log, "  Statistics in resolution bins:"
+      print >> log, "    SIGMAA vs Resolution:"
+      print >> log, "     resolution(A)  sigmaa"
+      for resolution, sigmaa in zip(self.model_vs_data.sigmaa_plot.resolution,
+                                     self.model_vs_data.sigmaa_plot.sigmaa):
+        print "        %10.3f%8.3f"%(float(resolution), float(sigmaa))
 
 def get_program_name(file_lines):
   result = None
@@ -553,13 +561,17 @@ def show_model_vs_data(fmodel):
   mm = getattr(fmodel, "mask_manager", None)
   if (mm is not None):
     sc = mm.solvent_content_via_mask
+  sigmaa_plot = None
+  if(not fmodel.twin):
+    sigmaa_plot = fmodel.sigmaa().show_short(silent=True)
   return group_args(
-    r_work = fmodel.r_work(),
-    r_free = r_free,
-    k_sol  = fmodel.k_sol(),
-    b_sol  = fmodel.b_sol(),
-    b_cart = fmodel.b_cart(),
-    solvent_content_via_mask=sc)
+    r_work                   = fmodel.r_work(),
+    r_free                   = r_free,
+    k_sol                    = fmodel.k_sol(),
+    b_sol                    = fmodel.b_sol(),
+    b_cart                   = fmodel.b_cart(),
+    solvent_content_via_mask = sc,
+    sigmaa_plot              = sigmaa_plot)
 
 def maps(fmodel, mvd_obj, map_cutoff = 3.0, map_type = "mFo-DFc"):
   result = group_args(
