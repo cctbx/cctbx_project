@@ -26,10 +26,10 @@ master_phil = libtbx.phil.parse("""
 """)
 
 refine_opt_params = libtbx.phil.parse("""
-  min_allowed_d_min = 3.0
-    .type = float
-    .short_caption = Resolution cutoff for Ramachandran restraints
-    .expert_level = 2
+#  min_allowed_d_min = 3.0
+#    .type = float
+#    .short_caption = Resolution cutoff for Ramachandran restraints
+#    .expert_level = 2
   rama_selection = None
     .type = str
     .short_caption = Atom selection for Ramachandran restraints
@@ -166,6 +166,9 @@ def extract_proxies (pdb_hierarchy,
               #  (chain.id, resseq1, resseq3)
               continue
             i_seqs = [c1.i_seq,n2.i_seq,ca2.i_seq,c2.i_seq,n3.i_seq]
+            for i_seq in i_seqs :
+              if (not atom_selection[i_seq]) :
+                continue
             pep1 = geometry_restraints.bond(
               sites=[c1.xyz,n2.xyz],
               distance_ideal=1,
@@ -188,3 +191,34 @@ def extract_proxies (pdb_hierarchy,
             proxies.append(phi_psi)
   print >> log, "%d Ramachandran restraints generated." % len(proxies)
   return proxies
+
+def process_refinement_settings (
+    params,
+    pdb_hierarchy,
+    secondary_structure_manager,
+    d_min=None,
+    log=sys.stdout,
+    scope_name="refinement.ramachandran_restraints") :
+  if (params.rama_selection is None) :
+    atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
+  else :
+    cache = pdb_hierarchy.atom_selection_cache()
+    try :
+      sele = cache.selection(params.rama_selection)
+    except Exception, e :
+      raise Sorry("""Atom selection error:
+  %s
+Selection string resulting in error:
+  %s""" % (str(e), params.rama_selection))
+    else :
+      if (sele.count(True) == 0) :
+        raise Sorry("""Empty atom selection for %s.rama_selection.
+Current selection string:
+  %s""" % (scope_name, params.rama_selection))
+      atom_selection = sele
+  if params.exclude_secondary_structure :
+    alpha_sele = secondary_structure_manager.alpha_selection()
+    beta_sele = secondary_structure_manager.beta_selection()
+    ss_sele = alpha_sele | beta_sele
+    atom_selection &= ~ss_sele
+  return atom_selection

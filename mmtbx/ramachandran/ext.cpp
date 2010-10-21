@@ -131,15 +131,15 @@ namespace mmtbx { namespace ramachandran {
         double r_psi_1 = get_energy(phi_deg, psi_deg - epsilon);
         double r_psi_2 = get_energy(phi_deg, psi_deg + epsilon);
         double d_r_d_psi = (r_psi_2 - r_psi_1) / (epsilon * 2);
-        af::tiny<scitbx::vec3<double>, 4> grad_phi_delta = phi.grad_delta();
-        af::tiny<scitbx::vec3<double>, 4> grad_psi_delta = psi.grad_delta();
+        af::tiny<scitbx::vec3<double>, 4> d_phi_d_xyz = - phi.grad_delta();
+        af::tiny<scitbx::vec3<double>, 4> d_psi_d_xyz = - psi.grad_delta();
         for (unsigned k = 0; k < 5; k++) {
           std::size_t i_seq = i_seqs[k];
           if (k < 4) {
-            gradient_array[i_seq] -= grad_phi_delta[k] * d_r_d_phi * weight;
+            gradient_array[i_seq] += d_r_d_phi * d_phi_d_xyz[k] * weight;
           }
           if (k > 0) {
-            gradient_array[i_seq] -= grad_psi_delta[k-1] * d_r_d_psi * weight;
+            gradient_array[i_seq] += d_r_d_psi * d_psi_d_xyz[k-1] * weight;
           }
         }
         return residual;

@@ -1,3 +1,4 @@
+from mmtbx.refinement import print_statistics
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 from mmtbx.command_line import lockit
@@ -749,6 +750,7 @@ def run(fmodel,
         params = None):
   if(log is None): log = sys.stdout
   if(params is None): params = master_params().extract()
+  print_statistics.make_sub_header(text="Fitting sidechains", out=log)
   mon_lib_srv = mmtbx.monomer_library.server.server()
   if(params.use_dihedral_restraints):
     sel = flex.bool(fmodel.xray_structure.scatterers().size(), True)

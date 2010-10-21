@@ -9,7 +9,7 @@ import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 import libtbx.load_env
 from libtbx import group_args
 from cStringIO import StringIO
@@ -275,6 +275,33 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
     rama_list0=rama_list0,
     rama_list1=rama_list1,
     rama_list2=rama_list2)
+
+def exercise_other () :
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/3mku.pdb",
+    test=os.path.isfile)
+  if (file_name is None) :
+    print "Skipping test."
+    return
+    mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  params = pdb_interpretation.master_params.fetch().extract()
+  params.peptide_link.ramachandran_restraints = True
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    pdb_inp=pdb_in,
+    log=StringIO())
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  params2 = ramachandran.refine_opt_params.fetch().extract()
+  params2.exclude_secondary_structure = True
+  ramachandran.process_refinement_settings(
+    params=params2,
+    pdb_hierarchy=pdb_hierarchy,
+    secondary_structure_manager=ss_mgr,
+    d_min=2.9,
+    log=StringIO())
 
 if __name__ == "__main__" :
   exercise_basic()
