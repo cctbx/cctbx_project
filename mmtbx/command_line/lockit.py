@@ -13,7 +13,7 @@ import scitbx.lbfgs
 import scitbx.math.superpose
 from scitbx import matrix
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from libtbx import Auto, group_args
 import libtbx
 import sys, os
@@ -369,41 +369,14 @@ def get_best_rotamer(processed_pdb_file,
             residue.atoms().set_xyz(new_xyz=best_sites_cart)
             #print
 
-def get_master_phil():
-  return iotbx.phil.parse(
-    input_string="""\
-atom_selection = None
-  .type = str
-strict_processing = True
-  .type = bool
-
-map {
-  coeff_labels {
-    f = 2FOFCWT,PH2FOFCWT
-      .type = str
-    phases = None
-      .type = str
-    weights = None
-      .type = str
-  }
-  low_resolution = None
-    .type = float
-  high_resolution = None
-    .type = float
-  grid_resolution_factor = 1/3
-    .type = float
-}
-
-output_file = Auto
-  .type = str
-final_geo_file = Auto
-  .type = str
-
+real_space_params_phil_str = """\
 real_space_target_weight = 10
   .type = float
 real_space_gradients_delta_resolution_factor = 1/3
   .type = float
+"""
 
+coordinate_refinement_params_phil_str = """\
 coordinate_refinement {
   run = False
     .type = bool
@@ -455,6 +428,41 @@ coordinate_refinement {
   lbfgs_max_iterations = 500
     .type = int
 }
+"""
+
+def get_master_phil():
+  return iotbx.phil.parse(
+    input_string="""\
+atom_selection = None
+  .type = str
+strict_processing = True
+  .type = bool
+
+map {
+  coeff_labels {
+    f = 2FOFCWT,PH2FOFCWT
+      .type = str
+    phases = None
+      .type = str
+    weights = None
+      .type = str
+  }
+  low_resolution = None
+    .type = float
+  high_resolution = None
+    .type = float
+  grid_resolution_factor = 1/3
+    .type = float
+}
+
+output_file = Auto
+  .type = str
+final_geo_file = Auto
+  .type = str
+
+%s
+
+%s
 
 rotamer_score_and_choose_best {
   run = False
@@ -468,7 +476,8 @@ rotamer_score_and_choose_best {
 }
 
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
-""", process_includes=True)
+""" % (real_space_params_phil_str, coordinate_refinement_params_phil_str),
+    process_includes=True)
 
 def extract_map_coeffs(params, miller_arrays):
   def find(labels):
@@ -750,6 +759,197 @@ def write_pdb(
       crystal_symmetry=grm.crystal_symmetry)
     print
 
+def run_coordinate_refinement(
+      processed_pdb_file,
+      geometry_restraints_manager,
+      fft_map,
+      real_space_gradients_delta,
+      work_params,
+      write_pdb_callback=None,
+      log=None):
+  if (log is None): log = null_out()
+  best_info = None
+  atom_selection_bool = get_atom_selection_bool(
+    scope_extract=work_params.coordinate_refinement,
+    attr="atom_selection",
+    processed_pdb_file=processed_pdb_file,
+    work_params=work_params)
+  home_restraints_list = process_home_restraints_params(
+    work_params=work_params.coordinate_refinement.home_restraints,
+    processed_pdb_file=processed_pdb_file)
+  if (not work_params.coordinate_refinement.compute_final_correlation):
+    work_scatterers = None
+  else:
+    work_scatterers = processed_pdb_file.xray_structure(
+      show_summary=False).scatterers()
+    if (atom_selection_bool is None):
+      work_scatterers = work_scatterers.deep_copy()
+    else:
+      work_scatterers = work_scatterers.select(atom_selection_bool)
+  pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
+  sites_cart_start = pdb_atoms.extract_xyz()
+  site_labels = [atom.id_str() for atom in pdb_atoms]
+  grmp = geometry_restraints_manager_plus(
+    manager=geometry_restraints_manager,
+    home_sites_cart=sites_cart_start,
+    home_restraints_list=home_restraints_list)
+  print >> log, "Before coordinate refinement:"
+  grmp.energies_sites(sites_cart=sites_cart_start).show(f=log)
+  print >> log
+  log.flush()
+  density_map = fft_map.real_map()
+  rstw_params = work_params.coordinate_refinement.real_space_target_weights
+  if (rstw_params.number_of_samples is None):
+    rstw_list = [work_params.real_space_target_weight]
+  else:
+    rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
+      for i in xrange(rstw_params.number_of_samples)]
+  lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+    max_iterations=work_params.coordinate_refinement
+      .lbfgs_max_iterations)
+  lbfgs_exception_handling_params = \
+    scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound=True)
+  bond_rmsd_list = []
+  for rstw in rstw_list:
+    refined = maptbx.real_space_refinement_simple.lbfgs(
+      sites_cart=sites_cart_start,
+      density_map=density_map,
+      selection_variable=atom_selection_bool,
+      geometry_restraints_manager=grmp,
+      real_space_target_weight=rstw,
+      real_space_gradients_delta=real_space_gradients_delta,
+      lbfgs_termination_params=lbfgs_termination_params,
+      lbfgs_exception_handling_params=lbfgs_exception_handling_params)
+    print >> log, "After coordinate refinement" \
+      " with real-space target weight %.1f:" % rstw
+    grmp.energies_sites(sites_cart=refined.sites_cart).show(f=log)
+    bond_proxies = grmp.pair_proxies().bond_proxies
+    bond_proxies.show_sorted(
+      by_value="residual",
+      sites_cart=refined.sites_cart,
+      site_labels=site_labels,
+      f=log,
+      prefix="  ",
+      max_items=3)
+    print >> log
+    print >> log, "  number_of_function_evaluations:", \
+      refined.number_of_function_evaluations
+    print >> log, "  real+geo target start: %.6g" % refined.f_start
+    print >> log, "  real+geo target final: %.6g" % refined.f_final
+    deltas = bond_proxies.deltas(sites_cart=refined.sites_cart)
+    deltas_abs = flex.abs(deltas)
+    deltas_abs_sorted = deltas_abs.select(
+      flex.sort_permutation(deltas_abs), reverse=True)
+    wabr_params = rstw_params.worst_acceptable_bond_rmsd
+    acceptable = (
+      flex.mean(deltas_abs_sorted[:wabr_params.pool_size])
+        < wabr_params.max_pool_average)
+    bond_rmsd = flex.mean_sq(deltas)**0.5
+    bond_rmsd_list.append(bond_rmsd)
+    print >> log, "  Bond RMSD: %.3f" % bond_rmsd
+    #
+    if (work_scatterers is None):
+      region_cc = None
+    else:
+      region_cc = maptbx.region_density_correlation(
+        large_unit_cell=fft_map.unit_cell(),
+        large_d_min=fft_map.d_min(),
+        large_density_map=density_map,
+        sites_cart=refined.sites_cart_variable,
+        site_radii=flex.double(refined.sites_cart_variable.size(), 1),
+        work_scatterers=work_scatterers)
+    #
+    rmsd_diff = abs(rstw_params.bond_rmsd_target - bond_rmsd)
+    if (   best_info is None
+        or best_info.rmsd_diff > rmsd_diff
+          and (acceptable or not best_info.acceptable)):
+      best_info = group_args(
+        rstw=rstw,
+        refined=refined,
+        acceptable=acceptable,
+        rmsd_diff=rmsd_diff,
+        region_cc=region_cc)
+    print >> log
+  if (best_info is not None):
+    print >> log, "Table of real-space target weights vs. bond RMSD:"
+    print >> log, "  weight   RMSD"
+    for w,d in zip(rstw_list, bond_rmsd_list):
+      print >> log, "  %6.1f  %5.3f" % (w,d)
+    print >> log, "Best real-space target weight: %.1f" % best_info.rstw
+    print >> log, \
+      "Associated refined final value: %.6g" % best_info.refined.f_final
+    if (best_info.region_cc is not None):
+      print >> log, "Associated region correlation: %.4f" % best_info.region_cc
+    print >> log
+    pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
+    if (write_pdb_callback is not None):
+      write_pdb_callback(situation="after_best_weight_determination")
+    #
+    fgm_params = work_params.coordinate_refinement \
+      .finishing_geometry_minimization
+    if (fgm_params.cycles_max is not None and fgm_params.cycles_max > 0):
+      print >> log, "As previously obtained with target weight %.1f:" \
+        % best_info.rstw
+      grmp.energies_sites(sites_cart=refined.sites_cart).show(
+        f=log, prefix="  ")
+      print >> log, "Finishing refinement to idealize geometry:"
+      print >> log, "            number of function"
+      print >> log, "    weight     evaluations      cycle RMSD"
+      number_of_fgm_cycles = 0
+      rstw = best_info.rstw * fgm_params.first_weight_scale
+      sites_cart_start = best_info.refined.sites_cart.deep_copy()
+      for i_cycle in xrange(fgm_params.cycles_max):
+        fgm_refined = maptbx.real_space_refinement_simple.lbfgs(
+          sites_cart=sites_cart_start,
+          density_map=density_map,
+          selection_variable=atom_selection_bool,
+          geometry_restraints_manager=grmp,
+          energies_sites_flags=cctbx.geometry_restraints.flags.flags(
+            default=True, dihedral=fgm_params.dihedral_restraints),
+          real_space_target_weight=rstw,
+          real_space_gradients_delta=real_space_gradients_delta,
+          lbfgs_termination_params=lbfgs_termination_params,
+          lbfgs_exception_handling_params=lbfgs_exception_handling_params)
+        cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
+        print >> log, "   %6.1f     %10d          %6.3f" % (
+          rstw, fgm_refined.number_of_function_evaluations, cycle_rmsd)
+        number_of_fgm_cycles += 1
+        rstw *= fgm_params.cycle_weight_multiplier
+        if (cycle_rmsd < 1.e-4):
+          break
+        if (fgm_params.superpose_cycle_end_with_cycle_start):
+          fit = scitbx.math.superpose.least_squares_fit(
+            reference_sites=best_info.refined.sites_cart,
+            other_sites=fgm_refined.sites_cart)
+          fgm_refined.sites_cart = fit.other_sites_best_fit()
+        sites_cart_start = fgm_refined.sites_cart.deep_copy()
+      print >> log, "After %d refinements to idealize geometry:" % (
+        number_of_fgm_cycles)
+      grmp.energies_sites(sites_cart=fgm_refined.sites_cart).show(
+        f=log, prefix="  ")
+      if (work_scatterers is None):
+        fgm_region_cc = None
+      else:
+        fgm_region_cc = maptbx.region_density_correlation(
+          large_unit_cell=fft_map.unit_cell(),
+          large_d_min=fft_map.d_min(),
+          large_density_map=density_map,
+          sites_cart=fgm_refined.sites_cart_variable,
+          site_radii=flex.double(fgm_refined.sites_cart_variable.size(), 1),
+          work_scatterers=work_scatterers)
+        print >> log, "  Associated region correlation: %.4f" % fgm_region_cc
+      print >> log
+      best_info.fgm_refined = fgm_refined
+      best_info.fgm_region_cc = fgm_region_cc
+      pdb_atoms.set_xyz(new_xyz=fgm_refined.sites_cart)
+      if (write_pdb_callback is not None):
+        write_pdb_callback(situation="after_finishing_geo_min")
+    else:
+      best_info.fgm_refined = None
+      best_info.fgm_region_cc = None
+  return best_info
+
 def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
   master_phil = get_master_phil()
@@ -808,7 +1008,6 @@ def run(args):
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
     if (msg is not None):
       raise Sorry(msg)
-  pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
   #
   grm = processed_pdb_file.geometry_restraints_manager(
     params_edits=work_params.geometry_restraints.edits,
@@ -854,19 +1053,17 @@ def run(args):
     d_min=d_min,
     resolution_factor=work_params.map.grid_resolution_factor)
   fft_map.apply_sigma_scaling()
-  density_map = fft_map.real_map()
-
+  #
   real_space_gradients_delta = \
     d_min * work_params.real_space_gradients_delta_resolution_factor
   print "real_space_gradients_delta: %.6g" % real_space_gradients_delta
   print
   sys.stdout.flush()
-
-
+  #
   if (work_params.rotamer_score_and_choose_best.run):
     rotamer_score_and_choose_best(
       mon_lib_srv=mon_lib_srv,
-      density_map=density_map,
+      density_map=fft_map.real_map(),
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry_restraints_manager=grm,
       atom_selection_bool=get_atom_selection_bool(
@@ -887,188 +1084,33 @@ def run(args):
       new_suffix="_lockit_rotamer_score_and_choose_best.pdb")
   #
   best_info = None
-  if (work_params.coordinate_refinement.run != 0):
-    atom_selection_bool = get_atom_selection_bool(
-      scope_extract=work_params.coordinate_refinement,
-      attr="atom_selection",
-      processed_pdb_file=processed_pdb_file,
-      work_params=work_params)
-    home_restraints_list = process_home_restraints_params(
-      work_params=work_params.coordinate_refinement.home_restraints,
-      processed_pdb_file=processed_pdb_file)
-    if (not work_params.coordinate_refinement.compute_final_correlation):
-      work_scatterers = None
-    else:
-      work_scatterers = processed_pdb_file.xray_structure(
-        show_summary=False).scatterers()
-      if (atom_selection_bool is None):
-        work_scatterers = work_scatterers.deep_copy()
-      else:
-        work_scatterers = work_scatterers.select(atom_selection_bool)
-    sites_cart_start = pdb_atoms.extract_xyz()
-    site_labels = [atom.id_str() for atom in pdb_atoms]
-    print "Before coordinate refinement:"
-    grmp = geometry_restraints_manager_plus(
-      manager=grm,
-      home_sites_cart=sites_cart_start,
-      home_restraints_list=home_restraints_list)
-    grmp.energies_sites(sites_cart=sites_cart_start).show()
-    print
-    sys.stdout.flush()
-    rstw_params = work_params.coordinate_refinement.real_space_target_weights
-    if (rstw_params.number_of_samples is None):
-      rstw_list = [work_params.real_space_target_weight]
-    else:
-      rstw_list = [rstw_params.first_sample + i * rstw_params.sampling_step
-        for i in xrange(rstw_params.number_of_samples)]
-    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-      max_iterations=work_params.coordinate_refinement
-        .lbfgs_max_iterations)
-    lbfgs_exception_handling_params = \
-      scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_step_at_lower_bound=True)
-    bond_rmsd_list = []
-    for rstw in rstw_list:
-      refined = maptbx.real_space_refinement_simple.lbfgs(
-        sites_cart=sites_cart_start,
-        density_map=density_map,
-        selection_variable=atom_selection_bool,
-        geometry_restraints_manager=grmp,
-        real_space_target_weight=rstw,
-        real_space_gradients_delta=real_space_gradients_delta,
-        lbfgs_termination_params=lbfgs_termination_params,
-        lbfgs_exception_handling_params=lbfgs_exception_handling_params)
-      print "After coordinate refinement" \
-        " with real-space target weight %.1f:" % rstw
-      grmp.energies_sites(sites_cart=refined.sites_cart).show()
-      bond_proxies = grmp.pair_proxies().bond_proxies
-      bond_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=refined.sites_cart,
-        site_labels=site_labels,
-        prefix="  ",
-        max_items=3)
-      print
-      print "  number_of_function_evaluations:", \
-        refined.number_of_function_evaluations
-      print "  real+geo target start: %.6g" % refined.f_start
-      print "  real+geo target final: %.6g" % refined.f_final
-      deltas = bond_proxies.deltas(sites_cart=refined.sites_cart)
-      deltas_abs = flex.abs(deltas)
-      deltas_abs_sorted = deltas_abs.select(
-        flex.sort_permutation(deltas_abs), reverse=True)
-      wabr_params = rstw_params.worst_acceptable_bond_rmsd
-      acceptable = (
-        flex.mean(deltas_abs_sorted[:wabr_params.pool_size])
-          < wabr_params.max_pool_average)
-      bond_rmsd = flex.mean_sq(deltas)**0.5
-      bond_rmsd_list.append(bond_rmsd)
-      print "  Bond RMSD: %.3f" % bond_rmsd
-      #
-      if (work_scatterers is None):
-        region_cc = None
-      else:
-        region_cc = maptbx.region_density_correlation(
-          large_unit_cell=fft_map.unit_cell(),
-          large_d_min=fft_map.d_min(),
-          large_density_map=density_map,
-          sites_cart=refined.sites_cart_variable,
-          site_radii=flex.double(refined.sites_cart_variable.size(), 1),
-          work_scatterers=work_scatterers)
-      #
-      rmsd_diff = abs(rstw_params.bond_rmsd_target - bond_rmsd)
-      if (   best_info is None
-          or best_info.rmsd_diff > rmsd_diff
-            and (acceptable or not best_info.acceptable)):
-        best_info = group_args(
-          rstw=rstw,
-          refined=refined,
-          acceptable=acceptable,
-          rmsd_diff=rmsd_diff,
-          region_cc=region_cc)
-      print
-    if (best_info is not None):
-      print "Table of real-space target weights vs. bond RMSD:"
-      print "  weight   RMSD"
-      for w,d in zip(rstw_list, bond_rmsd_list):
-        print "  %6.1f  %5.3f" % (w,d)
-      print "Best real-space target weight: %.1f" % best_info.rstw
-      print "Associated refined final value: %.6g" % best_info.refined.f_final
-      if (best_info.region_cc is not None):
-        print "Associated region correlation: %.4f" % best_info.region_cc
-      print
-      pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
-      write_pdb(
-        file_name=work_params.output_file,
-        input_pdb_file_name=input_pdb_file_name,
-        processed_pdb_file=processed_pdb_file,
-        grm=grm,
-        new_suffix="_lockit_best_weight.pdb")
-      #
-      fgm_params = work_params.coordinate_refinement \
-        .finishing_geometry_minimization
-      if (fgm_params.cycles_max is not None and fgm_params.cycles_max > 0):
-        print "As previously obtained with target weight %.1f:" \
-          % best_info.rstw
-        grmp.energies_sites(sites_cart=refined.sites_cart).show(prefix="  ")
-        print "Finishing refinement to idealize geometry:"
-        print "            number of function"
-        print "    weight     evaluations      cycle RMSD"
-        number_of_fgm_cycles = 0
-        rstw = best_info.rstw * fgm_params.first_weight_scale
-        sites_cart_start = best_info.refined.sites_cart.deep_copy()
-        for i_cycle in xrange(fgm_params.cycles_max):
-          fgm_refined = maptbx.real_space_refinement_simple.lbfgs(
-            sites_cart=sites_cart_start,
-            density_map=density_map,
-            selection_variable=atom_selection_bool,
-            geometry_restraints_manager=grmp,
-            energies_sites_flags=cctbx.geometry_restraints.flags.flags(
-              default=True, dihedral=fgm_params.dihedral_restraints),
-            real_space_target_weight=rstw,
-            real_space_gradients_delta=real_space_gradients_delta,
-            lbfgs_termination_params=lbfgs_termination_params,
-            lbfgs_exception_handling_params=lbfgs_exception_handling_params)
-          cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
-          print "   %6.1f     %10d          %6.3f" % (
-            rstw, fgm_refined.number_of_function_evaluations, cycle_rmsd)
-          number_of_fgm_cycles += 1
-          rstw *= fgm_params.cycle_weight_multiplier
-          if (cycle_rmsd < 1.e-4):
-            break
-          if (fgm_params.superpose_cycle_end_with_cycle_start):
-            fit = scitbx.math.superpose.least_squares_fit(
-              reference_sites=best_info.refined.sites_cart,
-              other_sites=fgm_refined.sites_cart)
-            fgm_refined.sites_cart = fit.other_sites_best_fit()
-          sites_cart_start = fgm_refined.sites_cart.deep_copy()
-        print "After %d refinements to idealize geometry:" % (
-          number_of_fgm_cycles)
-        grmp.energies_sites(sites_cart=fgm_refined.sites_cart).show(prefix="  ")
-        if (work_scatterers is None):
-          fgm_region_cc = None
-        else:
-          fgm_region_cc = maptbx.region_density_correlation(
-            large_unit_cell=fft_map.unit_cell(),
-            large_d_min=fft_map.d_min(),
-            large_density_map=density_map,
-            sites_cart=fgm_refined.sites_cart_variable,
-            site_radii=flex.double(fgm_refined.sites_cart_variable.size(), 1),
-            work_scatterers=work_scatterers)
-          print "  Associated region correlation: %.4f" % fgm_region_cc
-        print
-        best_info.fgm_refined = fgm_refined
-        best_info.fgm_region_cc = fgm_region_cc
-        pdb_atoms.set_xyz(new_xyz=fgm_refined.sites_cart)
+  if (work_params.coordinate_refinement.run):
+    def write_pdb_callback(situation):
+      if (situation == "after_best_weight_determination"):
         write_pdb(
-          file_name=fgm_params.output_file,
+          file_name=work_params.output_file,
+          input_pdb_file_name=input_pdb_file_name,
+          processed_pdb_file=processed_pdb_file,
+          grm=grm,
+          new_suffix="_lockit_best_weight.pdb")
+      elif (situation == "after_finishing_geo_min"):
+        write_pdb(
+          file_name=work_params.coordinate_refinement \
+            .finishing_geometry_minimization.output_file,
           input_pdb_file_name=input_pdb_file_name,
           processed_pdb_file=processed_pdb_file,
           grm=grm,
           new_suffix="_lockit_finishing_geo_min.pdb")
       else:
-        best_info.fgm_refined = None
-        best_info.fgm_region_cc = None
+        raise AssertionError
+    best_info = run_coordinate_refinement(
+      processed_pdb_file=processed_pdb_file,
+      geometry_restraints_manager=grm,
+      fft_map=fft_map,
+      real_space_gradients_delta=real_space_gradients_delta,
+      work_params=work_params,
+      write_pdb_callback=write_pdb_callback,
+      log=sys.stdout)
   else:
     write_pdb(
       file_name=work_params.output_file,
@@ -1083,6 +1125,7 @@ def run(args):
       file_name = compose_output_file_name(
         input_pdb_file_name=input_pdb_file_name,
         new_suffix="_lockit_final.geo")
+    pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     sites_cart = pdb_atoms.extract_xyz()
     site_labels = [atom.id_str() for atom in pdb_atoms]
     print "Writing file: %s" % show_string(file_name)
