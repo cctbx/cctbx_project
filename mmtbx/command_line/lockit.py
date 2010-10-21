@@ -759,7 +759,7 @@ def write_pdb(
       crystal_symmetry=grm.crystal_symmetry)
     print
 
-def run_coordinate_refinement(
+def run_coordinate_refinement_driver(
       processed_pdb_file,
       geometry_restraints_manager,
       fft_map,
@@ -768,7 +768,6 @@ def run_coordinate_refinement(
       write_pdb_callback=None,
       log=None):
   if (log is None): log = null_out()
-  best_info = None
   atom_selection_bool = get_atom_selection_bool(
     scope_extract=work_params.coordinate_refinement,
     attr="atom_selection",
@@ -786,7 +785,37 @@ def run_coordinate_refinement(
       work_scatterers = work_scatterers.deep_copy()
     else:
       work_scatterers = work_scatterers.select(atom_selection_bool)
-  pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
+  return run_coordinate_refinement(
+    pdb_atoms=processed_pdb_file.all_chain_proxies.pdb_atoms,
+    geometry_restraints_manager=geometry_restraints_manager,
+    selection_variable=atom_selection_bool,
+    density_map=fft_map.real_map(),
+    real_space_gradients_delta=real_space_gradients_delta,
+    work_params=work_params,
+    home_restraints_list=home_restraints_list,
+    work_scatterers=work_scatterers,
+    unit_cell=fft_map.unit_cell(),
+    d_min=fft_map.d_min(),
+    write_pdb_callback=write_pdb_callback,
+    log=log)
+
+def run_coordinate_refinement(
+      pdb_atoms,
+      geometry_restraints_manager,
+      selection_variable,
+      density_map,
+      real_space_gradients_delta,
+      work_params,
+      home_restraints_list=[],
+      work_scatterers=None,
+      unit_cell=None,
+      d_min=None,
+      write_pdb_callback=None,
+      log=None):
+  if (work_scatterers is not None):
+    assert unit_cell is not None
+    assert d_min is not None
+  best_info = None
   sites_cart_start = pdb_atoms.extract_xyz()
   site_labels = [atom.id_str() for atom in pdb_atoms]
   grmp = geometry_restraints_manager_plus(
@@ -797,7 +826,6 @@ def run_coordinate_refinement(
   grmp.energies_sites(sites_cart=sites_cart_start).show(f=log)
   print >> log
   log.flush()
-  density_map = fft_map.real_map()
   rstw_params = work_params.coordinate_refinement.real_space_target_weights
   if (rstw_params.number_of_samples is None):
     rstw_list = [work_params.real_space_target_weight]
@@ -815,7 +843,7 @@ def run_coordinate_refinement(
     refined = maptbx.real_space_refinement_simple.lbfgs(
       sites_cart=sites_cart_start,
       density_map=density_map,
-      selection_variable=atom_selection_bool,
+      selection_variable=selection_variable,
       geometry_restraints_manager=grmp,
       real_space_target_weight=rstw,
       real_space_gradients_delta=real_space_gradients_delta,
@@ -853,8 +881,8 @@ def run_coordinate_refinement(
       region_cc = None
     else:
       region_cc = maptbx.region_density_correlation(
-        large_unit_cell=fft_map.unit_cell(),
-        large_d_min=fft_map.d_min(),
+        large_unit_cell=unit_cell,
+        large_d_min=d_min,
         large_density_map=density_map,
         sites_cart=refined.sites_cart_variable,
         site_radii=flex.double(refined.sites_cart_variable.size(), 1),
@@ -903,7 +931,7 @@ def run_coordinate_refinement(
         fgm_refined = maptbx.real_space_refinement_simple.lbfgs(
           sites_cart=sites_cart_start,
           density_map=density_map,
-          selection_variable=atom_selection_bool,
+          selection_variable=selection_variable,
           geometry_restraints_manager=grmp,
           energies_sites_flags=cctbx.geometry_restraints.flags.flags(
             default=True, dihedral=fgm_params.dihedral_restraints),
@@ -932,8 +960,8 @@ def run_coordinate_refinement(
         fgm_region_cc = None
       else:
         fgm_region_cc = maptbx.region_density_correlation(
-          large_unit_cell=fft_map.unit_cell(),
-          large_d_min=fft_map.d_min(),
+          large_unit_cell=unit_cell,
+          large_d_min=d_min,
           large_density_map=density_map,
           sites_cart=fgm_refined.sites_cart_variable,
           site_radii=flex.double(fgm_refined.sites_cart_variable.size(), 1),
@@ -1103,7 +1131,7 @@ def run(args):
           new_suffix="_lockit_finishing_geo_min.pdb")
       else:
         raise AssertionError
-    best_info = run_coordinate_refinement(
+    best_info = run_coordinate_refinement_driver(
       processed_pdb_file=processed_pdb_file,
       geometry_restraints_manager=grm,
       fft_map=fft_map,
