@@ -1,17 +1,23 @@
 
+from __future__ import division
 from mmtbx import ramachandran
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.monomer_library import server, pdb_interpretation
 from mmtbx.command_line import geometry_minimization
+from iotbx import file_reader
 import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import libtbx.load_env
+from libtbx import group_args
 from cStringIO import StringIO
+import sys
+import os
 
 def exercise_basic () :
-  t = ramachandran.tables["ala"]
+  t = ramachandran.load_tables()["ala"]
   assert approx_equal(t.get_score(0.0,0.0), -26.16, eps=0.01)
   assert approx_equal(t.get_score(-60,120), 10.41, eps=0.01)
   assert approx_equal(t.get_score(90,90), -7.43, eps=0.01)
@@ -87,16 +93,6 @@ ATOM     11  NE1 TRP A   2      -9.302  -0.712   0.282  1.00  0.00           N
 ATOM     12  CZ2 TRP A   2     -10.545  -1.931   2.116  1.00  0.00           C
 ATOM     13  CZ3 TRP A   2      -9.464  -1.842   4.298  1.00  0.00           C
 ATOM     14  CH2 TRP A   2     -10.516  -2.263   3.473  1.00  0.00           C
-ATOM     15  H   TRP A   2      -7.188   2.620   1.026  1.00  0.00           H
-ATOM     16  HA  TRP A   2      -7.228   1.875   3.695  1.00  0.00           H
-ATOM     17 2HB  TRP A   2      -5.686   0.023   2.715  1.00  0.00           H
-ATOM     18 3HB  TRP A   2      -5.628   0.906   1.206  1.00  0.00           H
-ATOM     19 1HD  TRP A   2      -7.656   0.544  -0.487  1.00  0.00           H
-ATOM     20 1HE  TRP A   2      -9.932  -0.827  -0.520  1.00  0.00           H
-ATOM     21 3HE  TRP A   2      -7.606  -0.756   4.438  1.00  0.00           H
-ATOM     22 2HZ  TRP A   2     -11.361  -2.251   1.484  1.00  0.00           H
-ATOM     23 3HZ  TRP A   2      -9.469  -2.109   5.345  1.00  0.00           H
-ATOM     24 2HH  TRP A   2     -11.317  -2.853   3.892  1.00  0.00           H
 ATOM     25  N   TRP A   3      -4.433   1.613   3.906  1.00  0.00           N
 ATOM     26  CA  TRP A   3      -3.184   1.900   4.605  1.00  0.00           C
 ATOM     27  C   TRP A   3      -2.939   3.389   4.685  1.00  0.00           C
@@ -111,16 +107,6 @@ ATOM     35  NE1 TRP A   3       1.552   2.107   4.845  1.00  0.00           N
 ATOM     36  CZ2 TRP A   3       2.010   0.567   6.798  1.00  0.00           C
 ATOM     37  CZ3 TRP A   3       0.140  -0.873   7.407  1.00  0.00           C
 ATOM     38  CH2 TRP A   3       1.454  -0.427   7.608  1.00  0.00           C
-ATOM     39  H   TRP A   3      -4.705   0.635   3.775  1.00  0.00           H
-ATOM     40  HA  TRP A   3      -3.251   1.516   5.640  1.00  0.00           H
-ATOM     41 2HB  TRP A   3      -1.935   1.609   2.820  1.00  0.00           H
-ATOM     42 3HB  TRP A   3      -2.223   0.135   3.716  1.00  0.00           H
-ATOM     43 1HD  TRP A   3       0.296   2.898   3.210  1.00  0.00           H
-ATOM     44 1HE  TRP A   3       2.456   2.577   4.724  1.00  0.00           H
-ATOM     45 3HE  TRP A   3      -1.667  -0.692   6.244  1.00  0.00           H
-ATOM     46 2HZ  TRP A   3       3.025   0.903   6.951  1.00  0.00           H
-ATOM     47 3HZ  TRP A   3      -0.264  -1.646   8.045  1.00  0.00           H
-ATOM     48 2HH  TRP A   3       2.045  -0.858   8.401  1.00  0.00           H
 ATOM     49  N   TRP A   4      -2.711   3.897   5.951  1.00  0.00           N
 ATOM     50  CA  TRP A   4      -2.097   5.179   6.287  1.00  0.00           C
 ATOM     51  C   TRP A   4      -2.267   5.492   7.755  1.00  0.00           C
@@ -135,16 +121,6 @@ ATOM     59  NE1 TRP A   4      -2.730   5.681   1.677  1.00  0.00           N
 ATOM     60  CZ2 TRP A   4      -0.413   6.421   0.986  1.00  0.00           C
 ATOM     61  CZ3 TRP A   4       0.960   7.272   2.810  1.00  0.00           C
 ATOM     62  CH2 TRP A   4       0.788   6.958   1.455  1.00  0.00           C
-ATOM     63  H   TRP A   4      -3.002   3.318   6.730  1.00  0.00           H
-ATOM     64  HA  TRP A   4      -1.012   5.126   6.080  1.00  0.00           H
-ATOM     65 2HB  TRP A   4      -2.422   7.293   5.781  1.00  0.00           H
-ATOM     66 3HB  TRP A   4      -3.852   6.305   5.592  1.00  0.00           H
-ATOM     67 1HD  TRP A   4      -4.316   5.299   3.166  1.00  0.00           H
-ATOM     68 1HE  TRP A   4      -3.115   5.322   0.796  1.00  0.00           H
-ATOM     69 3HE  TRP A   4       0.080   7.302   4.779  1.00  0.00           H
-ATOM     70 2HZ  TRP A   4      -0.539   6.173  -0.058  1.00  0.00           H
-ATOM     71 3HZ  TRP A   4       1.901   7.682   3.148  1.00  0.00           H
-ATOM     72 2HH  TRP A   4       1.597   7.133   0.763  1.00  0.00           H
 END
 """
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
@@ -153,6 +129,7 @@ END
     mon_lib_srv = server.server()
     ener_lib = server.ener_lib()
     params = pdb_interpretation.master_params.extract()
+    #params.peptide_link_params.ramachandran_restraints = True
     processed_pdb_file = pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -161,59 +138,146 @@ END
       log=StringIO())
     log = StringIO()
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    rama0, rama_list0 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
     atoms = pdb_hierarchy.atoms()
     proxies = ramachandran.extract_proxies(pdb_hierarchy, log=log)
     assert (len(proxies) == 1)
-    grm = processed_pdb_file.geometry_restraints_manager()
-    assert (grm is not None)
-    flags = cctbx.geometry_restraints.flags.flags(default=True)
     sites_cart_1 = atoms.extract_xyz().deep_copy()
-    e = grm.energies_sites(sites_cart=sites_cart_1)
-    b0 = e.bond_deviations()[-1]
-    a0 = e.angle_deviations()[-1]
-    sites_cart_2 = sites_cart_1.deep_copy()
-    lbfgs = geometry_minimization.lbfgs(
-      sites_cart=sites_cart_2,
-      geometry_restraints_manager=grm,
-      geometry_restraints_flags=flags,
-      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-          max_iterations=500))
-    a1, b1 = lbfgs.rmsd_angles, lbfgs.rmsd_bonds
-    atoms.set_xyz(sites_cart_2)
-    rama1, rama_list1 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
-    grm.set_generic_restraints(
+    gradients_fd = flex.vec3_double(sites_cart_1.size(), (0,0,0))
+    gradients_an = flex.vec3_double(sites_cart_1.size(), (0,0,0))
+    params = ramachandran.master_phil.fetch().extract()
+    params.use_finite_differences = False
+    restraints_helper = ramachandran.generic_restraints_helper(params)
+    residual_fd = restraints_helper.restraints_residual_sum(
+      sites_cart=sites_cart_1,
       proxies=proxies,
-      restraints_helper=ramachandran.generic_restraints_helper())
-    sites_cart_3 = sites_cart_1.deep_copy()
-    lbfgs = geometry_minimization.lbfgs(
-      sites_cart=sites_cart_3,
-      geometry_restraints_manager=grm,
-      geometry_restraints_flags=flags,
-      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-          max_iterations=500))
-    a2, b2 = lbfgs.rmsd_angles, lbfgs.rmsd_bonds
-    atoms.set_xyz(sites_cart_3)
-    rama2, rama_list2 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
-    phi0, psi0 = rama_list0[0][4:6]
-    phi1, psi1 = rama_list1[0][4:6]
-    phi2, psi2 = rama_list2[0][4:6]
-    r0 = float(rama_list0[0][3])
-    r1 = float(rama_list1[0][3])
-    r2 = float(rama_list2[0][3])
-    assert (r2 > 1.0)
-    if (i > 0) : assert (r2 > r1)
+      gradient_array=gradients_fd)
+    params.use_finite_differences = True
+    #restraints_helper = ramachandran.generic_restraints_helper(params)
+    residual_an = restraints_helper.restraints_residual_sum(
+      sites_cart=sites_cart_1,
+      proxies=proxies,
+      gradient_array=gradients_an)
+    assert (residual_fd == residual_an)
     if verbose :
-      print "peptide %d" % i
-      print " before: rmsbonds=%-6.4f rmsangles=%-6.3f rama=%-.2f" % (b0,a0,r0)
-      print "         phi=%-.1f psi=%-.1f" % (phi0, psi0)
-      print " simple: rmsbonds=%-6.4f rmsangles=%-6.3f rama=%-.2f" % (b1,a1,r1)
-      print "         phi=%-.1f psi=%-.1f" % (phi1, psi1)
-      print " + Rama: rmsbonds=%-6.4f rmsangles=%-6.3f rama=%-.2f" % (b2,a2,r2)
-      print "         phi=%-.1f psi=%-.1f" % (phi2, psi2)
+      print "peptide %d gradients" % (i+1)
+    for g1, g2 in zip(gradients_fd, gradients_an) :
+      if (g1 != (0.0,0.0,0.0)) or (g2 != (0.0,0.0,0.0)) :
+        if verbose :
+          print ("  (%.2f, %.2f, %.2f)" % tuple(g1)), \
+                ("(%.2f, %.2f, %.2f)" % tuple(g2))
+        for u in range(3) :
+          assert approx_equal(g1[u], g2[u], eps=0.01)
+  if verbose :
+    print ""
+  for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
+    pdb_in = iotbx.pdb.input(source_info="peptide",
+      lines=flex.split_lines(peptide))
+    o = benchmark_structure(pdb_in, verbose)
+    phi0, psi0 = o.rama_list0[0][4:6]
+    phi1, psi1 = o.rama_list1[0][4:6]
+    phi2, psi2 = o.rama_list2[0][4:6]
+    r0 = float(o.rama_list0[0][3])
+    r1 = float(o.rama_list1[0][3])
+    r2 = float(o.rama_list2[0][3])
+    if verbose :
+      print "peptide %d" % (i+1)
+      print " before: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b0,o.a0)
+      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi0, psi0, r0)
+      print " simple: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b1,o.a1)
+      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi1, psi1, r1)
+      print " + Rama: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b2,o.a2)
+      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2)
       print ""
+
+def exercise_lbfgs_big (verbose=False) :
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/3mku.pdb",
+    test=os.path.isfile)
+  if (file_name is None) :
+    print "Skipping big test."
+    return
+  pdb_in = file_reader.any_file(file_name).file_object
+  o = benchmark_structure(pdb_in, verbose, 1.0)
+  if verbose :
+    show_results(o, "3mhk")
+
+def show_results (o, structure_name) :
+  r0 = [ row[-3] for row in o.rama_list0 ].count("OUTLIER") / len(o.rama_list0)
+  r1 = [ row[-3] for row in o.rama_list1 ].count("OUTLIER") / len(o.rama_list1)
+  r2 = [ row[-3] for row in o.rama_list2 ].count("OUTLIER") / len(o.rama_list2)
+  rr0 = [ row[-3] for row in o.rama_list0 ].count("Favored") / len(o.rama_list0)
+  rr1 = [ row[-3] for row in o.rama_list1 ].count("Favored") / len(o.rama_list1)
+  rr2 = [ row[-3] for row in o.rama_list2 ].count("Favored") / len(o.rama_list2)
+  print structure_name
+  print " before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b0,o.a0,r0*100,rr0*100)
+  print " simple: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b1,o.a1,r1*100,rr1*100)
+  print " + Rama: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b2,o.a2,r2*100,rr2*100)
+  print ""
+
+def benchmark_structure (pdb_in, verbose=False, w=1.0) :
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  params = pdb_interpretation.master_params.extract()
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    pdb_inp=pdb_in,
+    log=StringIO())
+  log = StringIO()
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  rama0, rama_list0 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
+  atoms = pdb_hierarchy.atoms()
+  sites_cart_1 = atoms.extract_xyz().deep_copy()
+  sites_cart_2 = sites_cart_1.deep_copy()
+  proxies = ramachandran.extract_proxies(pdb_hierarchy, log=log)
+  grm = processed_pdb_file.geometry_restraints_manager()
+  assert (grm is not None)
+  e = grm.energies_sites(sites_cart=sites_cart_1)
+  b0 = e.bond_deviations()[-1]
+  a0 = e.angle_deviations()[-1]
+  flags = cctbx.geometry_restraints.flags.flags(default=True)
+  lbfgs = geometry_minimization.lbfgs(
+    sites_cart=sites_cart_1,
+    geometry_restraints_manager=grm,
+    geometry_restraints_flags=flags,
+    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=500))
+  a1 = lbfgs.rmsd_angles
+  b1 = lbfgs.rmsd_bonds
+  atoms.set_xyz(sites_cart_1)
+  rama1, rama_list1 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
+  params = ramachandran.master_phil.fetch().extract()
+  restraints_helper = ramachandran.generic_restraints_helper(params)
+  grm.set_generic_restraints(
+    proxies=proxies,
+    restraints_helper=restraints_helper)
+  lbfgs = geometry_minimization.lbfgs(
+    sites_cart=sites_cart_2,
+    geometry_restraints_manager=grm,
+    geometry_restraints_flags=flags,
+    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=500))
+  a2 = lbfgs.rmsd_angles
+  b2 = lbfgs.rmsd_bonds
+  atoms.set_xyz(sites_cart_2)
+  rama2, rama_list2 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
+  return group_args(
+    a0=a0,
+    a1=a1,
+    a2=a2,
+    b0=b0,
+    b1=b1,
+    b2=b2,
+    rama_list0=rama_list0,
+    rama_list1=rama_list1,
+    rama_list2=rama_list2)
 
 if __name__ == "__main__" :
   exercise_basic()
-  exercise_lbfgs_simple(True)
+  exercise_lbfgs_simple(("--verbose" in sys.argv) or ("-v" in sys.argv))
+  exercise_lbfgs_big(("--verbose" in sys.argv) or ("-v" in sys.argv))
   print "OK"

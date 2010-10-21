@@ -5,6 +5,7 @@ from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import conformation_dependent_restraints
+from mmtbx import ramachandran
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -122,6 +123,8 @@ master_params_str = """\
     .short_caption = Peptide link settings
     .style = box auto_align noauto
   {
+    ramachandran_restraints = False
+      .type = bool
     cis_threshold = 45
       .type = float
       .optional = False
@@ -130,6 +133,7 @@ master_params_str = """\
       .optional = False
     omega_esd_override_value = None
       .type = float
+    include scope mmtbx.ramachandran.master_phil
   }
   max_reasonable_bond_distance = 50.0
     .type=float
@@ -3353,6 +3357,16 @@ class build_all_chain_proxies(object):
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     #
+    generic_proxies = None
+    generic_restraints_helper = None
+    if self.params.peptide_link.ramachandran_restraints :
+      if (not self.params.peptide_link.discard_psi_phi) :
+        raise Sorry("You may not use Ramachandran restraints when "+
+          "discard_phi_psi=False.")
+      generic_proxies = ramachandran.extract_proxies(self.pdb_hierarchy,
+        log=log)
+      generic_restraints_helper = ramachandran.generic_restraints_helper(
+        params=self.params.peptide_link)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -3376,6 +3390,8 @@ class build_all_chain_proxies(object):
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
+      generic_proxies=generic_proxies,
+      generic_restraints_helper=generic_restraints_helper,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
       plain_pairs_radius=plain_pairs_radius)
     if (params_remove is not None):
