@@ -11,6 +11,7 @@ from libtbx.utils import Sorry
 import math
 import sys, os
 import iotbx.phil
+from libtbx import group_args
 
 sigmaa_estimator_params = iotbx.phil.parse("""\
   kernel_width_free_reflections = 100
@@ -124,6 +125,11 @@ class sigmaa_estimator(object):
     self.normalized_calc =self.normalized_calc_f.normalised_miller_dev_eps.f_sq_as_f()
 
     # get the 'free data'
+
+    if(self.r_free_flags.data().count(True) == 0):
+      self.r_free_flags = self.r_free_flags.array(
+        data = ~self.r_free_flags.data())
+
     self.free_norm_obs = self.normalized_obs.select( self.r_free_flags.data() )
     self.free_norm_calc= self.normalized_calc.select( self.r_free_flags.data() )
 
@@ -282,15 +288,20 @@ class sigmaa_estimator(object):
     print >> out
     print >> out
 
-  def show_short(self, out=None):
+  def show_short(self, out=None, silent=False):
     if(out is None): out = sys.stdout
-    print >> out
-    print >> out, "SigmaA vs Resolution"
-    print >> out, "--------------------"
-    print >> out, "1/d^3      d    sum weights  sigmaA"
+    if(not silent): print >> out
+    if(not silent): print >> out, "SigmaA vs Resolution"
+    if(not silent): print >> out, "--------------------"
+    if(not silent): print >> out, "1/d^3      d    sum weights  sigmaA"
+    resolution = []
+    sigmaa = []
     for h, sa in zip(self.h_array, self.sigmaa_array):
       if(h == 0): d = " "*7
       else: d = "%7.4f" % (1.0/h)**(1/3)
-      print >> out, "%s %7.4f" % (d, sa)
-    print >> out
-    print >> out
+      if(not silent): print >> out, "%s %7.4f" % (d, sa)
+      resolution.append(d)
+      sigmaa.append(sa)
+    if(not silent): print >> out
+    if(not silent): print >> out
+    return group_args(resolution = resolution, sigmaa = sigmaa)
