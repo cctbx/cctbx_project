@@ -1,3 +1,6 @@
+import mmtbx.alignment
+from iotbx.pdb import amino_acid_codes
+from libtbx import group_args
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
@@ -13,6 +16,36 @@ import sys, os, re
 
 reference_group_params = iotbx.phil.parse("""
  reference_group
+  .multiple=True
+  .optional=True
+  .short_caption=Reference group
+  .style = noauto auto_align menu_item parent_submenu:reference_model
+{
+  reference=None
+    .type=str
+    .short_caption=Reference selection
+    .style = selection
+  selection=None
+    .type=str
+    .short_caption=Restrained selection
+    .style = selection
+}
+ alignment
+    .help = Set of parameters for sequence alignment. Defaults are good for most \
+            of cases
+    .short_caption = Sequence alignment
+    .style = box auto_align
+{
+  alignment_style =  local *global
+    .type = choice
+  gap_opening_penalty = 1
+    .type = float
+  gap_extension_penalty = 1
+    .type = float
+  similarity_matrix =  blosum50  dayhoff *identity
+    .type = choice
+}
+ alignment_group
   .multiple=True
   .optional=True
   .short_caption=Reference group
@@ -46,12 +79,10 @@ def phil_atom_selection_multiple(
   for string in string_list:
     if (string is None):
       if (allow_none): return None
-      raise Sorry('Atom selection cannot be None:\n  %s=None' % (
-        parameter_name()))
+      raise Sorry('Atom selection cannot be None:\n  =None')
     elif (string is Auto):
       if (allow_auto): return Auto
-      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
-        parameter_name()))
+      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto')
     try:
         result.append(selection(string=string, cache=cache).iselection())
     except KeyboardInterrupt: raise
@@ -78,6 +109,71 @@ def phil_atom_selections_as_i_seqs_multiple(cache,
       result.append(atom)
   return result
 
+def is_residue_in_selection(i_seqs, selection):
+  for i_seq in i_seqs:
+    if i_seq not in selection:
+      return False
+  return True
+
+def get_i_seqs(atoms):
+  i_seqs = []
+  for atom in atoms:
+    i_seqs.append(atom.i_seq)
+  return i_seqs
+
+def extract_sequence_and_sites(pdb_hierarchy, selection):
+  seq = []
+  result = []
+  counter = 0
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        #print dir(rg)
+        #STOP()
+        if(len(rg.unique_resnames())==1):
+          resname = rg.unique_resnames()[0]
+          olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+          atoms = rg.atoms()
+          i_seqs = get_i_seqs(atoms)
+          if(olc!="X") and is_residue_in_selection(i_seqs, selection):
+            seq.append(olc)
+            result.append(group_args(i_seq = counter, rg = rg))
+            counter += 1
+  return "".join(seq), result
+
+def _alignment(pdb_hierarchy,
+                  pdb_hierarchy_ref,
+                  params,
+                  selections):
+  res_match_hash = {}
+  model_mseq_res_hash = {}
+  model_seq, model_structures = extract_sequence_and_sites(
+    pdb_hierarchy=pdb_hierarchy,
+    selection=selections[0])
+  ref_mseq_res_hash = {}
+  ref_seq, ref_structures = extract_sequence_and_sites(
+    pdb_hierarchy = pdb_hierarchy_ref,
+    selection=selections[1])
+  for struct in model_structures:
+    model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+  for struct in ref_structures:
+    ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+  align_obj = mmtbx.alignment.align(
+    seq_a                 = model_seq,
+    seq_b                 = ref_seq,
+    gap_opening_penalty   = params.alignment.gap_opening_penalty,
+    gap_extension_penalty = params.alignment.gap_extension_penalty,
+    similarity_function   = params.alignment.similarity_matrix,
+    style                 = params.alignment.alignment_style)
+  alignment = align_obj.extract_alignment()
+  matches = alignment.matches()
+  exact_match_selections = alignment.exact_match_selections()
+  exact_a = tuple(exact_match_selections[0])
+  exact_b = tuple(exact_match_selections[1])
+  for i, i_seq in enumerate(exact_a):
+    res_match_hash[model_mseq_res_hash[i_seq]] = ref_mseq_res_hash[exact_b[i]]
+  return res_match_hash
+
 def process_reference_groups(pdb_hierarchy,
                              pdb_hierarchy_ref,
                              params):
@@ -87,104 +183,160 @@ def process_reference_groups(pdb_hierarchy,
   sel_cache = pdb_hierarchy.atom_selection_cache()
   sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
   match_map = {}
-  #simple case with no specified reference groups
-  if len(params.reference_group) == 0:
-    ref_list = ['ALL']
-    selection_list = ['ALL']
-    sel_atoms = phil_atom_selections_as_i_seqs_multiple(
-                  cache=sel_cache,
-                  string_list=selection_list)
-    for i_seq in sel_atoms:
-      key = model_name_hash[i_seq]
-      try:
-        match_map[i_seq] = ref_iseq_hash[key]
-      except:
-        continue
 
-  #specified reference groups
-  for rg in params.reference_group:
-    model_chain = None
-    ref_chain = None
-    model_res_min = None
-    model_res_max = None
-    ref_res_min = None
-    ref_res_max = None
-    sel_atoms = (phil_atom_selections_as_i_seqs_multiple(
-                  cache=sel_cache,
-                  string_list=[rg.selection]))
-    sel_atoms_ref = (phil_atom_selections_as_i_seqs_multiple(
-                  cache=sel_cache_ref,
-                  string_list=[rg.reference]))
-    sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
-    sel_ref = re.split(r"AND|OR|NOT",rg.reference.upper())
-    for sel in sel_model:
-      if sel.strip().startswith("CHAIN"):
-        if model_chain is None:
-          model_chain = sel.strip().split(' ')[-1]
-        else:
-          raise Sorry("Cannot specify more than one chain per selection")
-      if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
-        res = sel.strip().split(' ')[-1].split(':')
-        if len(res) > 1:
-          if model_res_min is None and model_res_max is None:
-            model_res_min = res[0]
-            model_res_max = res[1]
+  #check for auto alignment compatability
+  if params.auto_align == True:
+    try:
+      assert len(params.reference_group) == 0
+    except:
+      raise Sorry("""
+Cannot use reference_group selections with automatic alignment.
+Please use alignment_group selections.  See documentation for details."
+""")
+    if len(params.alignment_group) == 0:
+      ref_list = ['ALL']
+      selection_list = ['ALL']
+      sel_atoms = (phil_atom_selections_as_i_seqs_multiple(
+                   cache=sel_cache,
+                   string_list=selection_list))
+      sel_atoms_ref = (phil_atom_selections_as_i_seqs_multiple(
+                       cache=sel_cache_ref,
+                       string_list=ref_list))
+      selections = (sel_atoms_ref, sel_atoms)
+      residue_match_map = _alignment(pdb_hierarchy=pdb_hierarchy,
+                                            pdb_hierarchy_ref=pdb_hierarchy_ref,
+                                            params=params,
+                                            selections=selections)
+      for i_seq in sel_atoms:
+        key = model_name_hash[i_seq]
+        atom = key[0:4]
+        res_key = key[4:]
+        try:
+          match_key = atom+residue_match_map[res_key]
+          match_map[i_seq] = ref_iseq_hash[match_key]
+        except:
+          continue
+
+    else:
+      for ag in params.alignment_group:
+        sel_atoms = (phil_atom_selections_as_i_seqs_multiple(
+                     cache=sel_cache,
+                     string_list=[ag.selection]))
+        sel_atoms_ref = (phil_atom_selections_as_i_seqs_multiple(
+                         cache=sel_cache_ref,
+                         string_list=[ag.reference]))
+        selections = (sel_atoms_ref, sel_atoms)
+        residue_match_map = _alignment(pdb_hierarchy=pdb_hierarchy,
+                                              pdb_hierarchy_ref=pdb_hierarchy_ref,
+                                              params=params,
+                                              selections=selections)
+        for i_seq in sel_atoms:
+          key = model_name_hash[i_seq]
+          atom = key[0:4]
+          res_key = key[4:]
+          match_key = atom+residue_match_map[res_key]
+          try:
+            match_map[i_seq] = ref_iseq_hash[match_key]
+          except:
+            continue
+  else:
+    if len(params.reference_group) == 0:
+      ref_list = ['ALL']
+      selection_list = ['ALL']
+      sel_atoms = phil_atom_selections_as_i_seqs_multiple(
+                      cache=sel_cache,
+                      string_list=selection_list)
+      for i_seq in sel_atoms:
+        key = model_name_hash[i_seq]
+        try:
+          match_map[i_seq] = ref_iseq_hash[key]
+        except:
+          continue
+
+    #specified reference groups
+    for rg in params.reference_group:
+      model_chain = None
+      ref_chain = None
+      model_res_min = None
+      model_res_max = None
+      ref_res_min = None
+      ref_res_max = None
+      sel_atoms = (phil_atom_selections_as_i_seqs_multiple(
+                    cache=sel_cache,
+                    string_list=[rg.selection]))
+      sel_atoms_ref = (phil_atom_selections_as_i_seqs_multiple(
+                    cache=sel_cache_ref,
+                    string_list=[rg.reference]))
+      sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
+      sel_ref = re.split(r"AND|OR|NOT",rg.reference.upper())
+      for sel in sel_model:
+        if sel.strip().startswith("CHAIN"):
+          if model_chain is None:
+            model_chain = sel.strip().split(' ')[-1]
           else:
-            raise Sorry("Cannot specify more than one residue or residue range per selection")
-        elif len(res) == 1:
-          if model_res_min is None and model_res_max is None:
-            model_res_min = res[0]
-            model_res_max = res[0]
-        else:
-          raise Sorry("Do not understand residue selection")
-    for sel in sel_ref:
-      if sel.strip().startswith("CHAIN"):
-        if ref_chain is None:
-          ref_chain = sel.strip().split(' ')[-1]
-        else:
-          raise Sorry("Cannot specify more than one chain per selection")
-      if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
-        res = sel.strip().split(' ')[-1].split(':')
-        if len(res) > 1:
-          if ref_res_min is None and ref_res_max is None:
-            ref_res_min = res[0]
-            ref_res_max = res[1]
+            raise Sorry("Cannot specify more than one chain per selection")
+        if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
+          res = sel.strip().split(' ')[-1].split(':')
+          if len(res) > 1:
+            if model_res_min is None and model_res_max is None:
+              model_res_min = res[0]
+              model_res_max = res[1]
+            else:
+              raise Sorry("Cannot specify more than one residue or residue range per selection")
+          elif len(res) == 1:
+            if model_res_min is None and model_res_max is None:
+              model_res_min = res[0]
+              model_res_max = res[0]
           else:
-            raise Sorry("Cannot specify more than one residue or residue range per selection")
-        elif len(res) == 1:
-          if ref_res_min is None and model_res_max is None:
-            ref_res_min = res[0]
-            ref_res_max = res[0]
-        else:
-          raise Sorry("Do not understand residue selection")
-    #check consistency
-    assert (ref_chain is None and model_chain is None) or \
-           (ref_chain is not None and model_chain is not None)
-    assert (ref_res_min is None and ref_res_max is None \
-            and model_res_min is None and model_res_max is None) or \
-            (ref_res_min is not None and ref_res_max is not None \
-            and model_res_min is not None and model_res_max is not None)
-    #calculate residue offset
-    offset = 0
-    if (ref_res_min is not None and ref_res_max is not None \
-        and model_res_min is not None and model_res_max is not None):
-      offset = int(model_res_min) - int(ref_res_min)
-      assert offset == (int(model_res_max) - int(ref_res_max))
-    for i_seq in sel_atoms:
-      key = model_name_hash[i_seq]
-      if ref_chain is not None:
-        if len(ref_chain)==1:
-          ref_chain = ' '+ref_chain
-        key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
-      if offset != 0:
-        resnum = key[10:14]
-        new_num = "%4d" % (int(resnum) - offset)
-        key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
-      try:
-        assert ref_iseq_hash[key] in sel_atoms_ref
-        match_map[i_seq] = ref_iseq_hash[key]
-      except:
-        continue
+            raise Sorry("Do not understand residue selection")
+      for sel in sel_ref:
+        if sel.strip().startswith("CHAIN"):
+          if ref_chain is None:
+            ref_chain = sel.strip().split(' ')[-1]
+          else:
+            raise Sorry("Cannot specify more than one chain per selection")
+        if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
+          res = sel.strip().split(' ')[-1].split(':')
+          if len(res) > 1:
+            if ref_res_min is None and ref_res_max is None:
+              ref_res_min = res[0]
+              ref_res_max = res[1]
+            else:
+              raise Sorry("Cannot specify more than one residue or residue range per selection")
+          elif len(res) == 1:
+            if ref_res_min is None and model_res_max is None:
+              ref_res_min = res[0]
+              ref_res_max = res[0]
+          else:
+            raise Sorry("Do not understand residue selection")
+      #check consistency
+      assert (ref_chain is None and model_chain is None) or \
+             (ref_chain is not None and model_chain is not None)
+      assert (ref_res_min is None and ref_res_max is None \
+              and model_res_min is None and model_res_max is None) or \
+              (ref_res_min is not None and ref_res_max is not None \
+              and model_res_min is not None and model_res_max is not None)
+      #calculate residue offset
+      offset = 0
+      if (ref_res_min is not None and ref_res_max is not None \
+          and model_res_min is not None and model_res_max is not None):
+        offset = int(model_res_min) - int(ref_res_min)
+        assert offset == (int(model_res_max) - int(ref_res_max))
+      for i_seq in sel_atoms:
+        key = model_name_hash[i_seq]
+        if ref_chain is not None:
+          if len(ref_chain)==1:
+            ref_chain = ' '+ref_chain
+          key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
+        if offset != 0:
+          resnum = key[10:14]
+          new_num = "%4d" % (int(resnum) - offset)
+          key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
+        try:
+          assert ref_iseq_hash[key] in sel_atoms_ref
+          match_map[i_seq] = ref_iseq_hash[key]
+        except:
+          continue
   return match_map
 
 def build_name_hash(pdb_hierarchy):
