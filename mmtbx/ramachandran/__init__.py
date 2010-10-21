@@ -1,7 +1,11 @@
 
 from __future__ import division
+from scitbx import matrix
 import libtbx.load_env
 from libtbx.math_utils import ifloor, iceil
+import libtbx.phil
+from libtbx import adopt_init_args
+import math
 import sys
 import os
 
@@ -9,9 +13,23 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_ramachandran_ext")
 from mmtbx_ramachandran_ext import *
 
-tables = {}
-def load_tables () :
+master_phil = libtbx.phil.parse("""
+  rama_weight = 1.0
+    .type = float
+    .short_caption = Ramachandran gradients weight
+    .expert_level = 1
+  use_finite_differences = False
+    .type = bool
+    .help = Used for testing - not suitable for real structures.
+    .short_caption = Use finite differences (DEVELOPERS ONLY)
+    .expert_level = 3
+""")
+
+def load_tables (params=None) :
+  if (params is None) :
+    params = master_phil.fetch().extract()
   from scitbx.array_family import flex
+  tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
     file_name = libtbx.env.find_in_repositories(
       relative_path="chem_data/rotarama_data/%s.rama.combined.data" %
@@ -25,9 +43,7 @@ def load_tables () :
       data.append(float(val))
     t = lookup_table(data, 180)
     tables[residue_type] = t
-
-if (len(tables) == 0) :
-  load_tables()
+  return tables
 
 class generic_proxy (object) :
   restraint_type = None
@@ -39,133 +55,51 @@ class proxy (generic_proxy) :
     self.i_seqs = i_seqs
     self.residue_type = residue_type
 
-  def extract_sites (self, sites_cart) :
-    from scitbx.array_family import flex
-    sites = flex.vec3_double()
-    for i_seq in self.i_seqs :
-      sites.append(sites_cart[i_seq])
-    return sites
+class generic_restraints_helper (object) :
+  def __init__ (self, params) :
+    adopt_init_args(self, locals())
+    self.tables = load_tables(params)
 
-def phi_psi_restraints_residual_sum (proxies,
-                                     sites_cart,
-                                     gradient_array=None,
-                                     delta=0.1) :
-  from scitbx.array_family import flex
-  sum = 0
-  for phi_psi in proxies :
-    sum += _compute_gradients(
-      proxy=phi_psi,
+  def restraints_residual_sum (self,
+                               sites_cart,
+                               proxies,
+                               gradient_array=None,
+                               unit_cell=None) :
+    ramachandran_proxies = []
+    for proxy in proxies :
+      if (proxy.restraint_type == "ramachandran") :
+        ramachandran_proxies.append(proxy)
+    return self._phi_psi_restraints_residual_sum(
       sites_cart=sites_cart,
-      gradients=gradient_array,
-      delta=0.1)
-  return sum
+      proxies=ramachandran_proxies,
+      gradient_array=gradient_array)
 
-def dihedral (sites) :
-  from cctbx import geometry_restraints
-  return geometry_restraints.dihedral(
-    sites=sites,
-    angle_ideal=0,
-    weight=1).angle_model
-
-def _compute_gradients (proxy,
-                        sites_cart,
-                        gradients,
-                        delta=0.1,
-                        weight=1.0,
-                        use_finite_differences=False) :
-  rama_table = tables[proxy.residue_type]
-  assert ((delta > 0) and (delta < 1.0))
-  from scitbx.array_family import flex
-  residual = 0
-  new_gradients = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-  #from scitbx.math import dihedral
-  sites = proxy.extract_sites(sites_cart)
-  phi0 = dihedral(list(sites[0:4]))
-  psi0 = dihedral(list(sites[1:]))
-  residual = rama_table.get_energy(phi0, psi0)
-  #print phi0, psi0, residual
-  if use_finite_differences :
-    _compute_gradients_finite_differences(
-      proxy=proxy,
-      sites=sites,
-      new_gradients=new_gradients,
-      delta=delta,
-      weight=weight)
-  else :
-    #assert 0
-    _compute_gradients_analytical(
-      proxy=proxy,
-      phi_start=phi0,
-      psi_start=psi0,
-      sites=sites,
-      new_gradients=new_gradients,
-      delta_cart=delta,
-      delta_ang=5.0,
-      weight=weight)
-  gradients += new_gradients
-  return residual
-
-def _compute_gradients_finite_differences (proxy,
-                                           sites,
-                                           new_gradients,
-                                           delta,
-                                           weight) :
-  rama_table = tables[proxy.residue_type]
-  for k, i_seq in enumerate(proxy.i_seqs) :
-    grad = list(new_gradients[i_seq])
-    xyz = list(sites[k])
-    for u in [0,1,2] :
-      xyz[u] -= delta
-      sites[k] = xyz
-      phi1 = dihedral(list(sites[0:4]))
-      psi1 = dihedral(list(sites[1:]))
-      xyz[u] += (delta * 2)
-      sites[k] = xyz
-      phi2 = dihedral(list(sites[0:4]))
-      psi2 = dihedral(list(sites[1:]))
-      xyz[u] -= delta
-      sites[k] = xyz
-      r1 = rama_table.get_energy(phi1, psi1)
-      r2 = rama_table.get_energy(phi2, psi2)
-      w = weight # * (0.1 * abs(residual))
-      grad[u] += w * ((r2 - r1) / (delta * 2))
-    new_gradients[i_seq] = grad
-
-def _compute_gradients_analytical (proxy,
-                                   phi_start,
-                                   psi_start,
-                                   sites,
-                                   new_gradients,
-                                   delta_ang,
-                                   delta_cart,
-                                   weight) :
-  rama_table = tables[proxy.residue_type]
-  r_phi_1 = rama_table.get_energy(phi_start - delta_ang, psi_start)
-  r_phi_2 = rama_table.get_energy(phi_start + delta_ang, psi_start)
-  d_r_d_phi = (r_phi_2 - r_phi_1) / (delta_ang * 2)
-  r_psi_1 = rama_table.get_energy(phi_start, psi_start - delta_ang)
-  r_psi_2 = rama_table.get_energy(phi_start, psi_start + delta_ang)
-  d_r_d_psi = (r_psi_2 - r_psi_1) / (delta_ang * 2)
-  for k, i_seq in enumerate(proxy.i_seqs) :
-    grad = list(new_gradients[i_seq])
-    xyz = list(sites[k])
-    for u in [0,1,2] :
-      xyz[u] -= delta_cart
-      sites[k] = xyz
-      phi_1 = dihedral(list(sites[0:4]))
-      psi_1 = dihedral(list(sites[1:]))
-      xyz[u] += (delta_cart * 2)
-      sites[k] = xyz
-      phi_2 = dihedral(list(sites[0:4]))
-      psi_2 = dihedral(list(sites[1:]))
-      xyz[u] -= delta_cart
-      sites[k] = xyz
-      d_phi_d_u = (phi_2 - phi_1) / (delta_cart * 2)
-      d_psi_d_u = (psi_2 - psi_1) / (delta_cart * 2)
-      d_r_d_u = (d_r_d_phi * d_phi_d_u) + (d_r_d_psi * d_psi_d_u)
-      grad[u] = weight * d_r_d_u
-    new_gradients[i_seq] = grad
-  #return (d_r_d_phi, d_r_d_psi)
+  def _phi_psi_restraints_residual_sum (self,
+                                        proxies,
+                                        sites_cart,
+                                        gradient_array=None) :
+    if (gradient_array is None) :
+      from scitbx.array_family import flex
+      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    sum = 0
+    assert (self.params.rama_weight >= 0.0);
+    for proxy in proxies :
+      rama_table = self.tables[proxy.residue_type]
+      if self.params.use_finite_differences :
+        sum += rama_table.compute_gradients_finite_differences(
+          gradient_array=gradient_array,
+          sites_cart=sites_cart,
+          i_seqs=proxy.i_seqs,
+          weight=self.params.rama_weight,
+          epsilon=0.001)
+      else :
+        sum += rama_table.compute_gradients(
+          gradient_array=gradient_array,
+          sites_cart=sites_cart,
+          i_seqs=proxy.i_seqs,
+          weight=self.params.rama_weight,
+          epsilon=0.001)
+    return sum
 
 def extract_proxies (pdb_hierarchy, log=sys.stdout) :
   from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
@@ -234,21 +168,3 @@ def extract_proxies (pdb_hierarchy, log=sys.stdout) :
             proxies.append(phi_psi)
   print >> log, "%d Ramachandran restraints generated." % len(proxies)
   return proxies
-
-class generic_restraints_helper (object) :
-  def __init__ (self) :
-    pass
-
-  def restraints_residual_sum (self,
-                               sites_cart,
-                               proxies,
-                               gradient_array=None,
-                               unit_cell=None) :
-    ramachandran_proxies = []
-    for proxy in proxies :
-      if (proxy.restraint_type == "ramachandran") :
-        ramachandran_proxies.append(proxy)
-    return phi_psi_restraints_residual_sum(
-      sites_cart=sites_cart,
-      proxies=ramachandran_proxies,
-      gradient_array=gradient_array)

@@ -7,6 +7,7 @@
 #include <boost/optional.hpp>
 
 #include <mmtbx/error.h>
+#include <cctbx/geometry_restraints/dihedral.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
@@ -16,6 +17,15 @@
 
 namespace mmtbx { namespace ramachandran {
   namespace af = scitbx::af;
+
+  double convert_angle (double theta) {
+    if (theta > 180) {
+      theta = -360 + theta;
+    } else if (theta < -180) {
+      theta = 360 + theta;
+    }
+    return theta;
+  }
 
   class lookup_table
   {
@@ -49,6 +59,9 @@ namespace mmtbx { namespace ramachandran {
         double phi,
         double psi)
       {
+        phi = convert_angle(phi);
+        psi = convert_angle(psi);
+        //std::cout << phi << " " << psi << "\n";
         MMTBX_ASSERT((phi <= 180.0) && (phi >= -180.0));
         MMTBX_ASSERT((psi <= 180.0) && (psi >= -180.0));
         int phi_1 = (int) floor(phi);
@@ -81,6 +94,7 @@ namespace mmtbx { namespace ramachandran {
         return r_phi_psi;
       }
 
+      // score inverted and adjusted to have a minimum value of 0
       double get_energy (
         double phi,
         double psi)
@@ -89,11 +103,108 @@ namespace mmtbx { namespace ramachandran {
         return - (score - values_max);
       }
 
+      double
+      compute_gradients (
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::tiny<unsigned, 5> const& i_seqs,
+        double weight=1.0,
+        double epsilon=0.1)
+      {
+        MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
+        MMTBX_ASSERT(epsilon > 0.0);
+        using cctbx::geometry_restraints::dihedral;
+        af::tiny<scitbx::vec3<double>, 4> phi_sites;
+        af::tiny<scitbx::vec3<double>, 4> psi_sites;
+        for (unsigned i = 0; i < 4; i++) {
+          phi_sites[i] = sites_cart[i_seqs[i]];
+          psi_sites[i] = sites_cart[i_seqs[i+1]];
+        }
+        dihedral phi(phi_sites, 0, 1.0);
+        dihedral psi(psi_sites, 0, 1.0);
+        double phi_deg = phi.angle_model;
+        double psi_deg = psi.angle_model;
+        double residual = get_energy(phi_deg, psi_deg);
+        double r_phi_1 = get_energy(phi_deg - epsilon, psi_deg);
+        double r_phi_2 = get_energy(phi_deg + epsilon, psi_deg);
+        double d_r_d_phi = (r_phi_2 - r_phi_1) / (epsilon * 2);
+        double r_psi_1 = get_energy(phi_deg, psi_deg - epsilon);
+        double r_psi_2 = get_energy(phi_deg, psi_deg + epsilon);
+        double d_r_d_psi = (r_psi_2 - r_psi_1) / (epsilon * 2);
+        af::tiny<scitbx::vec3<double>, 4> grad_phi_delta = phi.grad_delta();
+        af::tiny<scitbx::vec3<double>, 4> grad_psi_delta = psi.grad_delta();
+        for (unsigned k = 0; k < 5; k++) {
+          std::size_t i_seq = i_seqs[k];
+          if (k < 4) {
+            gradient_array[i_seq] -= grad_phi_delta[k] * d_r_d_phi * weight;
+          }
+          if (k > 0) {
+            gradient_array[i_seq] -= grad_psi_delta[k-1] * d_r_d_psi * weight;
+          }
+        }
+        return residual;
+      }
+
+      double
+      compute_gradients_finite_differences (
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::tiny<unsigned, 5> const& i_seqs,
+        double weight=1.0,
+        double epsilon=0.01)
+      {
+        MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
+        MMTBX_ASSERT(epsilon > 0.0);
+        using cctbx::geometry_restraints::dihedral;
+        af::tiny<scitbx::vec3<double>, 4> phi_sites;
+        af::tiny<scitbx::vec3<double>, 4> psi_sites;
+        for (unsigned k = 0; k < 4; k++) {
+          phi_sites[k] = sites_cart[i_seqs[k]];
+          psi_sites[k] = sites_cart[i_seqs[k+1]];
+        }
+        dihedral phi(phi_sites, 0, 1.0);
+        dihedral psi(psi_sites, 0, 1.0);
+        double residual = get_energy(phi.angle_model, psi.angle_model);
+        for (unsigned k = 0; k < 5; k++) {
+          std::size_t i_seq = i_seqs[k];
+          for (unsigned u = 0; u < 3; u++) {
+            if (k < 4) {
+              phi_sites[k][u] -= epsilon;
+            }
+            if (k > 0) {
+              psi_sites[k-1][u] -= epsilon;
+            }
+            dihedral phi1(phi_sites, 0, 1.0);
+            dihedral psi1(psi_sites, 0, 1.0);
+            if (k < 4) {
+              phi_sites[k][u] += epsilon * 2;
+            }
+            if (k > 0) {
+              psi_sites[k-1][u] += epsilon * 2;
+            }
+            dihedral phi2(phi_sites, 0, 1.0);
+            dihedral psi2(psi_sites, 0, 1.0);
+            if (k < 4) {
+              phi_sites[k][u] -= epsilon;
+            }
+            if (k > 0) {
+              psi_sites[k-1][u] -= epsilon;
+            }
+            double r1 = get_energy(phi1.angle_model, psi1.angle_model);
+            double r2 = get_energy(phi2.angle_model, psi2.angle_model);
+            gradient_array[i_seq][u] += weight * ((r2-r1) / (epsilon*2));
+          }
+        }
+        return residual;
+      }
+
     private :
       double get_point (
         int phi,
         int psi)
       {
+        phi = (int) convert_angle(phi);
+        psi = (int) convert_angle(psi);
         MMTBX_ASSERT((phi < 180) && (phi > -180));
         MMTBX_ASSERT((psi < 180) && (psi > -180));
         MMTBX_ASSERT((abs(phi % 2) == 1) && (abs(psi % 2) == 1));
@@ -116,8 +227,22 @@ namespace mmtbx { namespace ramachandran {
         arg("psi")))
       .def("get_energy", &lookup_table::get_energy, (
         arg("phi"),
-        arg("psi")));
+        arg("psi")))
+      .def("compute_gradients", &lookup_table::compute_gradients, (
+        arg("gradient_array"),
+        arg("sites_cart"),
+        arg("i_seqs"),
+        arg("weight")=1.0,
+        arg("epsilon")=0.1))
+      .def("compute_gradients_finite_differences",
+        &lookup_table::compute_gradients_finite_differences, (
+        arg("gradient_array"),
+        arg("sites_cart"),
+        arg("i_seqs"),
+        arg("weight")=1.0,
+        arg("epsilon")=0.01));
   }
+
 }} // namespace mmtbx::ramachandran
 
 BOOST_PYTHON_MODULE(mmtbx_ramachandran_ext)
