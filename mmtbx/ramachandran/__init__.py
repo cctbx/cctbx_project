@@ -25,6 +25,21 @@ master_phil = libtbx.phil.parse("""
     .expert_level = 3
 """)
 
+refine_opt_params = libtbx.phil.parse("""
+  min_allowed_d_min = 3.0
+    .type = float
+    .short_caption = Resolution cutoff for Ramachandran restraints
+    .expert_level = 2
+  rama_selection = None
+    .type = str
+    .short_caption = Atom selection for Ramachandran restraints
+    .style = selection
+    .expert_level = 1
+  exclude_secondary_structure = False
+    .type = str
+    .expert_level = 1
+""")
+
 def load_tables (params=None) :
   if (params is None) :
     params = master_phil.fetch().extract()
@@ -101,9 +116,14 @@ class generic_restraints_helper (object) :
           epsilon=0.001)
     return sum
 
-def extract_proxies (pdb_hierarchy, log=sys.stdout) :
+def extract_proxies (pdb_hierarchy,
+                     atom_selection=None,
+                     log=sys.stdout) :
   from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
   from cctbx import geometry_restraints
+  from scitbx.array_family import flex
+  if (atom_selection is None) :
+    atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
   proxies = []
   for model in pdb_hierarchy.models() :
     for chain in model.chains() :
@@ -145,6 +165,7 @@ def extract_proxies (pdb_hierarchy, log=sys.stdout) :
               #print >> log, "  incomplete backbone for %s %d-%d, skipping." % \
               #  (chain.id, resseq1, resseq3)
               continue
+            i_seqs = [c1.i_seq,n2.i_seq,ca2.i_seq,c2.i_seq,n3.i_seq]
             pep1 = geometry_restraints.bond(
               sites=[c1.xyz,n2.xyz],
               distance_ideal=1,
@@ -155,7 +176,6 @@ def extract_proxies (pdb_hierarchy, log=sys.stdout) :
               weight=1)
             if (pep1.distance_model > 4) or (pep2.distance_model > 4) :
               continue
-            i_seqs = [c1.i_seq,n2.i_seq,ca2.i_seq,c2.i_seq,n3.i_seq]
             if (residue.resname == "PRO") :
               residue_type = "pro"
             elif (residue.resname == "GLY") :
