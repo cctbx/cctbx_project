@@ -157,7 +157,7 @@ END
       sites_cart=sites_cart_1,
       proxies=proxies,
       gradient_array=gradients_an)
-    assert (residual_fd == residual_an)
+    assert approx_equal(residual_fd, residual_an, eps=0.01)
     if verbose :
       print "peptide %d gradients" % (i+1)
     for g1, g2 in zip(gradients_fd, gradients_an) :
