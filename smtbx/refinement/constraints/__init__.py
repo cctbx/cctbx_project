@@ -9,6 +9,11 @@ from scitbx.array_family import flex
 from cctbx import crystal
 from cctbx.eltbx import covalent_radii
 
+class InvalidConstraint(libtbx.utils.Sorry):
+  __module__ = Exception.__module__
+
+bad_connectivity_msg = "Invalid %s constraint involving %s: bad connectivity"
+
 class _parameter(boost.python.injector, ext.parameter):
 
   def arguments(self):

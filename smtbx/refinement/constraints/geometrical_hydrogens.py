@@ -3,6 +3,7 @@ ShelXL documentation (p. 4-3) """
 
 import iotbx.constraints.geometrical as _input
 import smtbx.refinement.constraints as _
+from smtbx.refinement.constraints import InvalidConstraint
 from scitbx.matrix import col
 
 class geometrical_hydrogens_mixin(object):
@@ -44,7 +45,7 @@ class geometrical_hydrogens_mixin(object):
 
     bond_length = reparametrisation.add(
       _.independent_scalar_parameter,
-      value=self.ideal_bond_length(scatterers[i_pivot].scattering_type,
+      value=self.ideal_bond_length(scatterers[i_pivot],
                                    reparametrisation.temperature),
       variable=self.stretching)
 
@@ -64,8 +65,14 @@ class geometrical_hydrogens_mixin(object):
     for i_sc in self.constrained_site_indices:
       reparametrisation.asu_scatterer_parameters[i_sc].site = param
 
-  def ideal_bond_length(self, pivot_element, temperature):
-    d = self.room_temperature_bond_length[pivot_element]
+  def ideal_bond_length(self, pivot, temperature):
+    pivot_element = pivot.scattering_type
+    d = self.room_temperature_bond_length.get(pivot_element)
+    if d is None:
+      raise InvalidConstraint(
+        "Invalid %s constraint involving %s:"
+        " ideal bond length not defined to atom type %s" %(
+          self.__class__.__name__, pivot.label, pivot_element))
     if temperature is not None:
       if   temperature < -20: d += 0.1
       elif temperature < -70: d += 0.2
@@ -78,7 +85,9 @@ class terminal_tetrahedral_xhn_site_mixin(geometrical_hydrogens_mixin):
                       pivot_site      , pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       hydrogens, **kwds):
-    assert len(pivot_neighbour_site_params) == 1
+    if len(pivot_neighbour_site_params) != 1:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
                                     value=0, variable=self.rotating)
     uc = reparametrisation.structure.unit_cell()
@@ -117,7 +126,9 @@ class tertiary_ch_site(_input.tertiary_ch_site,
                       pivot_site      , pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       hydrogens, **kwds):
-    assert len(pivot_neighbour_site_params) == 3
+    if len(pivot_neighbour_site_params) != 3:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
     return reparametrisation.add(
       _.tertiary_ch_site,
       pivot=pivot_site_param,
@@ -138,7 +149,9 @@ class secondary_ch2_sites(_input.secondary_ch2_sites,
                       pivot_site      , pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       hydrogens, **kwds):
-    assert len(pivot_neighbour_site_params) == 2
+    if len(pivot_neighbour_site_params) != 2:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
     flapping = reparametrisation.add(_.angle_starting_tetrahedral,
                                      variable=True)
     return reparametrisation.add(
@@ -165,7 +178,9 @@ class secondary_planar_xh_site(_input.secondary_planar_xh_site,
                       hydrogens, **kwds):
     # e.g. Carbon atoms in Cyclopentadienyl complexes will have
     #      3 pivot neighbours
-    assert len(pivot_neighbour_site_params) in (2, 3)
+    if len(pivot_neighbour_site_params) not in (2, 3):
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
     return reparametrisation.add(
       _.secondary_planar_xh_site,
       pivot=pivot_site_param,
@@ -188,7 +203,9 @@ class terminal_planar_xh2_sites(_input.terminal_planar_xh2_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       pivot_neighbour_substituent_site_param,
                       hydrogens, **kwds):
-    assert len(pivot_neighbour_site_params) == 1
+    if len(pivot_neighbour_site_params) != 1:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
     return reparametrisation.add(
       _.terminal_planar_xh2_sites,
       pivot=pivot_site_param,
@@ -209,7 +226,9 @@ class terminal_linear_ch_site(_input.terminal_linear_ch_site,
                       pivot_site      , pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       hydrogens, **kwds):
-    assert len(pivot_neighbour_site_params) == 1
+    if len(pivot_neighbour_site_params) != 1:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
     return reparametrisation.add(
       _.terminal_linear_ch_site,
       pivot=pivot_site_param,
