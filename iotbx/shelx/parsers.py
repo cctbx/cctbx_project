@@ -244,7 +244,7 @@ class atom_parser(parser, variable_decoder):
   def lex_scatterer(self, args, scatterer_index):
     _ = iotbx.constraints.commonplace
     name = args[0]
-    self.scatterer_label_to_index.setdefault(name, scatterer_index)
+    self.scatterer_label_to_index.setdefault(name.lower(), scatterer_index)
     n = int(args[1])
     n_vars = len(args) - 2
     if n_vars == 5:
@@ -402,8 +402,10 @@ class restraint_parser(atom_parser):
             weight = 1/(sigma**2)
             for i in range(div-(1-mod)):
               atom_pair = atoms[i*2:(i+1)*2]
-              i_seqs = [self.scatterer_label_to_index[atom[1]] for atom in atom_pair]
-              sym_ops = [self.symmetry_operations.get(atom[2]) for atom in atom_pair]
+              i_seqs = [self.scatterer_label_to_index[
+                atom[1].lower()] for atom in atom_pair]
+              sym_ops = [
+                self.symmetry_operations.get(atom[2]) for atom in atom_pair]
               self.builder.process_restraint(restraint_type,
                                              distance_ideal=distance_ideal,
                                              weight=weight,
@@ -423,8 +425,10 @@ class restraint_parser(atom_parser):
             sym_ops = []
             for i in range(div):
               atom_pair = atom_pairs[i*2:(i+1)*2]
-              i_seqs.append([self.scatterer_label_to_index[atom[1]] for atom in atom_pair])
-              sym_ops.append([self.symmetry_operations.get(atom[2]) for atom in atom_pair])
+              i_seqs.append([self.scatterer_label_to_index[
+                atom[1].lower()] for atom in atom_pair])
+              sym_ops.append(
+                [self.symmetry_operations.get(atom[2]) for atom in atom_pair])
             weights = [1/(sigma**2)]*len(i_seqs)
             self.builder.process_restraint(restraint_type,
                                            weights=weights,
@@ -438,7 +442,7 @@ class restraint_parser(atom_parser):
               sigma = 0.1
               atoms = args
             assert len(atoms) > 3
-            i_seqs = [self.scatterer_label_to_index[i[1]] for i in atoms]
+            i_seqs = [self.scatterer_label_to_index[i[1].lower()] for i in atoms]
             sym_ops = [self.symmetry_operations.get(i) for i in atoms]
             weights = [1/(sigma**2)]*len(i_seqs)
             self.builder.process_restraint(restraint_type,
@@ -472,7 +476,8 @@ class restraint_parser(atom_parser):
                     if not atoms and len(args) > 3:
                       atoms = args[3:]
             if atoms:
-              i_seqs = [self.scatterer_label_to_index[atom[1]] for atom in atoms]
+              i_seqs = [
+                self.scatterer_label_to_index[atom[1].lower()] for atom in atoms]
             else:
               i_seqs = None
             if s1 is None:
