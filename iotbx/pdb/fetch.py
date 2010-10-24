@@ -29,7 +29,7 @@ def validate_pdb_ids (id_list) :
     except RuntimeError, e :
       raise Sorry(str(e))
 
-def fetch (id, data_type="pdb", format="pdb", mirror="pdbe") :
+def fetch (id, data_type="pdb", format="pdb", mirror="rcsb") :
   assert data_type in ["pdb", "xray", "fasta"]
   assert format in ["cif", "pdb", "xml"]
   assert mirror in ["rcsb", "pdbe"]
