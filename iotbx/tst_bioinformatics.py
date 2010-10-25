@@ -257,7 +257,7 @@ class test_alignment(unittest.TestCase):
       )
 
 
-  def testError(self):
+  def test_error(self):
 
     self.assertRaises(
       ValueError,
@@ -273,7 +273,7 @@ class test_alignment(unittest.TestCase):
       )
 
 
-  def testIdentityCount(self):
+  def test_identity_count(self):
 
     self.assertEqual( self.alignment1.identity_count(), 49 )
     self.assertEqual( self.alignment2.identity_count(), 21 )
@@ -281,7 +281,7 @@ class test_alignment(unittest.TestCase):
     self.assertEqual( self.alignment4.identity_count(), 0 )
 
 
-  def testIdentityFraction(self):
+  def test_identity_fraction(self):
 
     self.assertAlmostEqual( self.alignment1.identity_fraction(), 0.700, 3 )
     self.assertAlmostEqual( self.alignment2.identity_fraction(), 0.300, 3 )
@@ -305,6 +305,54 @@ class test_alignment(unittest.TestCase):
     self.assertEqual( self.alignment4.length(), 75 )
 
 
+  def test_copy(self):
+
+    c = self.alignment1.copy(
+      alignments = [ "AB", "BA" ],
+      names = [ "XY", "YX" ],
+      gap = "#"
+      )
+
+    self.assert_( c is not self.alignment1 )
+    self.assertEqual( c.alignments, [ "AB", "BA" ] )
+    self.assertEqual( c.names, [ "XY", "YX" ] )
+    self.assertEqual( c.gap, "#" )
+
+
+  def test__str__(self):
+    self.assertEqual(
+      str( self.alignment1 ),
+      ">1hml\n"
+      + "-KQFTKCELSQLLK--DIDGYGGIALPELICTMFHTSGYDTQAIVENN--ESTEYGLFQISNKLWCKSSQ\n"
+      + "VPQSR\n\n"
+      + ">1hfy\n"
+      + "-EQLTKCEVFQKLK--DLKDYGGVSLPEWVCTAFHTSGYDTQAIVQNN--DSTEYGLFQINNKIWCKDDQ\n"
+      + "NPHSR"
+      )
+
+  def test_extend(self):
+
+    sequences = [
+      "ABKQFTKCELSQLLKDIDGYGGIALPELICTMFHTSGYDTQAIVENNESTEYGLFQISNKLWCKSSQVPQSRNOPQR",
+      "CDEEQLTKCEVFQKLKDLKDYGGVSLPEWVCTAFHTSGYDTQAIVQNNDSTEYGLFQINNKIWCKDDQNPHSRSTUV",
+      "FGHIGKVYGRCELAAAMKRMGLDNYRGYSLGNWVCAAKFESNFNTGATNRNTDGSTDYGILQINSRWWCNDGRTPGSKXYZ",
+      "JKILMKVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFDTHATNRNTDGSTDYGILQINSRWWCNDGRTPGSKAB",
+      ]
+    ali = self.alignment2.copy()
+    ali.extend( sequences = sequences )
+    self.assertEqual( ali.names, self.alignment2.names )
+    self.assertEqual( ali.gap, self.alignment2.gap )
+    self.assertEqual(
+      ali.alignments,
+      [
+        "AB------------" + self.alignment2.alignments[0] + "NOPQR---------",
+        "--CDE---------" + self.alignment2.alignments[1] + "-----STUV-----",
+        "-----FGHI-----" + self.alignment2.alignments[2] + "---------XYZ--",
+        "---------JKILM" + self.alignment2.alignments[3] + "------------AB",
+        ]
+      )
+
+
 class test_fasta_alignment(unittest.TestCase):
 
   def setUp(self):
@@ -320,7 +368,7 @@ class test_fasta_alignment(unittest.TestCase):
         ]
       )
 
-  def testError(self):
+  def test_error(self):
 
     self.assertRaises(
       ValueError,
@@ -335,7 +383,7 @@ class test_fasta_alignment(unittest.TestCase):
       )
 
 
-  def testFormat(self):
+  def test_format(self):
 
     self.assertEqual(
       self.alignment.format( 40 ),
@@ -354,7 +402,7 @@ class test_fasta_alignment(unittest.TestCase):
       )
 
 
-  def testStr(self):
+  def test__str__(self):
     self.assertEqual(
       str( self.alignment ),
       ">1hml alpha lactalbumin:Homo sapiens\n"
@@ -370,6 +418,15 @@ class test_fasta_alignment(unittest.TestCase):
       + "-KVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFDTHATNRNT-DGSTDYGILQINSRWWCNDGR\n"
       + "TPGSK"
       )
+
+
+  def test_copy(self):
+
+    c = self.alignment.copy( descriptions = [ "A", "B", "C", "D" ] )
+    self.assertEqual( c.descriptions, [ "A", "B", "C", "D" ] )
+    self.assertEqual( c.alignments, self.alignment.alignments )
+    self.assertEqual( c.names, self.alignment.names )
+    self.assertEqual( c.gap, self.alignment.gap )
 
 
 class test_pir_alignment(unittest.TestCase):
@@ -388,7 +445,7 @@ class test_pir_alignment(unittest.TestCase):
         ]
       )
 
-  def testError(self):
+  def test_error(self):
 
     self.assertRaises(
       ValueError,
@@ -415,7 +472,7 @@ class test_pir_alignment(unittest.TestCase):
       )
 
 
-  def testFormat(self):
+  def test_format(self):
 
     self.assertEqual(
       self.alignment.format( 40 ),
@@ -434,7 +491,7 @@ class test_pir_alignment(unittest.TestCase):
       )
 
 
-  def testStr(self):
+  def test__str__(self):
     self.assertEqual(
       str( self.alignment ),
       ">P1;1hml\nalpha lactalbumin:Homo sapiens\n"
@@ -451,6 +508,18 @@ class test_pir_alignment(unittest.TestCase):
       + "  GRTPGSK*"
       )
 
+  def test_copy(self):
+
+    c = self.alignment.copy(
+      descriptions = [ "A", "B", "C", "D" ],
+      types = [ "P1", "P2", "P3", "P4" ]
+      )
+    self.assertEqual( c.descriptions, [ "A", "B", "C", "D" ] )
+    self.assertEqual( c.types, [ "P1", "P2", "P3", "P4" ] )
+    self.assertEqual( c.alignments, self.alignment.alignments )
+    self.assertEqual( c.names, self.alignment.names )
+    self.assertEqual( c.gap, self.alignment.gap )
+
 
 class test_clustal_alignment(unittest.TestCase):
 
@@ -462,7 +531,7 @@ class test_clustal_alignment(unittest.TestCase):
       program = "CLUSTAL X 1.35"
       )
 
-  def testFormat(self):
+  def test_format(self):
 
     self.assertEqual(
       self.alignment.format( 40, 10 ),
@@ -480,7 +549,7 @@ class test_clustal_alignment(unittest.TestCase):
       )
 
 
-  def testStr(self):
+  def test__str__(self):
 
     self.assertEqual(
       str( self.alignment ),
@@ -496,6 +565,14 @@ class test_clustal_alignment(unittest.TestCase):
       + "1lz3            NSRWWCNDGRTPGSK 73\n"
       + "                    **     * * "
       )
+
+  def test_copy(self):
+
+    c = self.alignment.copy( program = "Foo" )
+    self.assertEqual( c.program, "Foo" )
+    self.assertEqual( c.alignments, self.alignment.alignments )
+    self.assertEqual( c.names, self.alignment.names )
+    self.assertEqual( c.gap, self.alignment.gap )
 
 
 seq = """
@@ -1049,6 +1126,211 @@ class test_alignment_parse(unittest.TestCase):
       )
 
 
+hhpredout = \
+"""
+Query         Thu_Sep_09_20:47:04_+0200_2010
+Match_columns 205
+No_of_seqs    280 out of 1436
+Neff          7.1 
+Searched_HMMs 22773
+Date          Thu Sep  9 20:51:32 2010
+Command       /cluster/toolkit/production/bioprogs/hhpred/hhsearch -cpu 4 -v 1 -i /cluster/toolkit/production/tmp/production/426773/3338418.hhm -d /cluster/toolkit/production/databases/hhpred/new_dbs/pdb70_9Sep10/db/pdb.hhm -o /cluster/toolkit/production/tmp/production/426773/3338418.hhr -p 20 -P 20 -Z 100 -B 100 -seq 1 -aliw 80 -local -ssm 2 -norealign -sc 1 -dbstrlen 10000 -cs /cluster/toolkit/production/bioprogs/csblast/data/clusters.prf 
+
+ No Hit                             Prob E-value P-value  Score    SS Cols Query HMM  Template HMM
+  1 3cng_A Nudix hydrolase; struct 100.0 4.5E-28   2E-32  196.5  15.7  139   59-204    27-172 (189)
+  2 3i7u_A AP4A hydrolase; nudix p  99.9 1.4E-27 6.2E-32  182.2  13.1  127   69-196     4-130 (134)
+
+No 1  
+>3cng_A Nudix hydrolase; structural genomics, APC7497, PSI-2, protein structure initiative, midwest center for structural genomics; 2.00A {Nitrosomonas europaea atcc 19718}
+Probab=99.96  E-value=4.5e-28  Score=196.52  Aligned_cols=139  Identities=21%  Similarity=0.317  Sum_probs=0.0
+
+Q ss_pred             hccCCC---CCceEEEEEEEEEECCEEEEEEcCC----CEEECCceeeCCCCCHHHHHHHHHHHHhCCccccceEEEEEe
+Q Thu_Sep_09_20:   59 FCNETG---YQTPKLDTRAAIFQEDKILLVQEND----GLWSLPGGWCDVDQSVKDNVVKEVKEEAGLDVEAQRVVAILD  131 (205)
+Q Consensus        59 ~~~~~g---y~Tpkv~v~a~v~~d~kiLLv~~~~----g~W~lPGG~ve~gEs~~eaa~REv~EETGl~v~~~~ll~v~~  131 (205)
+                       |+.||   |+.|++.|.++|.++++|||++|+.    |.|+||||++|.|||+++||+||++||||+++....+++++.
+T Consensus        27 ~C~~C~~~~y~~P~v~v~~ii~~~~~vLLv~r~~~~~~g~W~lPGG~ve~GEs~e~aa~REv~EEtGl~v~~~~l~~~~~  106 (189)
+T 3cng_A           27 ICPKCHTIHYQNPKVIVGCIPEWENKVLLCKRAIAPYRGKWTLPAGFMENNETLVQGAARETLEEANARVEIRELYAVYS  106 (189)
+T ss_dssp             EETTTTEEECCCCEEEEEEEEEETTEEEEEEESSSSSTTCEECSEEECCTTCCHHHHHHHHHHHHHCCCEEEEEEEEEEE
+T ss_pred             eCCCCCCcccCCCceEEEEEeecCceEEEEeccCCCCCCCEeCCcccCcCCCCHHHHHHHHHHhhhceeeeeeEEEEEee
+
+
+Q ss_pred             eccccCCCCceEEEEEEEEEEecCCccCCCCCeEeEEEEcHHHCccccccCCCHHHHHHHHHHHhCCCCCCCc
+Q Thu_Sep_09_20:  132 KHKNNPAKSAHRVTKVFILCRLLGGEFQPNSETVASGFFSLDDLPPLYLGKNTAEQLALCLEASRSEHWETRF  204 (205)
+Q Consensus       132 ~~~~~~~~~~~~~~~~~f~~~~~~~~~~~~~E~~e~~Wf~~deLp~Ls~~r~~~~~i~~~f~~~r~~~~~t~f  204 (205)
+                      ....       +...++|.|...++.+.++.|+.+++||++++||...+.-....+.-+.|...+..+....+
+T Consensus       107 ~~~~-------~~~~~~f~~~~~~~~~~~~~E~~e~~wf~~~elp~~~la~~~~~~~l~~~~~~~~~g~~~~~  172 (189)
+T 3cng_A          107 LPHI-------SQVYMLFRAKLLDLDFFPGIESLEVRLFGEQEIPWNDIAFRVIHDPLKRYMEERHHGQPAFH  172 (189)
+T ss_dssp             EGGG-------TEEEEEEEEEECCSCCCCCTTEEEEEEECTTTCCGGGBSCHHHHHHHHHHHHHHHHSSCCCE
+T ss_pred             cccc-------ceeEEEEEEEeccCcccCcccceeEEEEcHHHCCchhcCcHHHHHHHHHHHHHhhcCCCccc
+
+
+No 2  
+>3i7u_A AP4A hydrolase; nudix protein, diadenosine polyphosphate, structural genomics, NPPSFA; HET: PGE; 1.80A {Aquifex aeolicus} PDB: 2pq1_A* 3i7u_A* 3i7v_A*
+Probab=99.95  E-value=1.4e-27  Score=182.17  Aligned_cols=127  Identities=20%  Similarity=0.336  Sum_probs=0.0
+
+Q ss_pred             EEEEEEEEEECCEEEEEEcCCCEEECCceeeCCCCCHHHHHHHHHHHHhCCccccceEEEEEeeccccCCCCceEEEEEE
+Q Thu_Sep_09_20:   69 KLDTRAAIFQEDKILLVQENDGLWSLPGGWCDVDQSVKDNVVKEVKEEAGLDVEAQRVVAILDKHKNNPAKSAHRVTKVF  148 (205)
+Q Consensus        69 kv~v~a~v~~d~kiLLv~~~~g~W~lPGG~ve~gEs~~eaa~REv~EETGl~v~~~~ll~v~~~~~~~~~~~~~~~~~~~  148 (205)
+                      ++.++|+|+++|+|||+++.+|.|++|||++|.|||+.+||+||++||||+++....+++..+.. +.......+...++
+T Consensus         4 ~~aAg~vv~~~~~vLlv~r~~~~w~~PgG~ve~gEt~~~aa~RE~~EEtGl~~~~~~~~~~~~~~-~~~~~~~~~~~~~~   82 (134)
+T 3i7u_A            4 EFSAGGVLFKDGEVLLIKTPSNVWSFPKGNIEPGEKPEETAVREVWEETGVKGEILDYIGEIHYW-YTLKGERIFKTVKY   82 (134)
+T ss_dssp             EEEEEEEEEETTEEEEEECTTSCEECCEEECCTTCCHHHHHHHHHHHHHSEEEEEEEEEEEEEEE-EEETTEEEEEEEEE
+T ss_pred             EEEEEEEEEECCEEEEEEeCCCcEECceeEeCCCCCHHHHHHhhhhheeceeEEEeeeeeeeeee-ccCCCceEEEEEEE
+
+
+Q ss_pred             EEEEecCCccCCCCCeEeEEEEcHHHCccccccCCCHHHHHHHHHHHh
+Q Thu_Sep_09_20:  149 ILCRLLGGEFQPNSETVASGFFSLDDLPPLYLGKNTAEQLALCLEASR  196 (205)
+Q Consensus       149 f~~~~~~~~~~~~~E~~e~~Wf~~deLp~Ls~~r~~~~~i~~~f~~~r  196 (205)
+                      |.+...++++.++.|+.+++|+++++++++....+....|..+++..+
+T Consensus        83 f~~~~~~~~~~~~~E~~~~~W~~~~e~~~~l~~~~~r~il~~~~~l~~  130 (134)
+T 3i7u_A           83 YLMKYKEGEPRPSWEVKDAKFFPIKEAKKLLKYKGDKEIFEKALKLKE  130 (134)
+T ss_dssp             EEEEEEEECCCCCTTSSEEEEEEHHHHHHHCCSHHHHHHHHHHHHHHH
+T ss_pred             EEEeccCCcccCChhheEEEEEeHHHHHhhcCChHHHHHHHHHHHHHh
+
+
+Done!
+"""
+
+
+class test_hhpred_homology_search(unittest.TestCase):
+
+  def setUp(self):
+
+    self.hss = bioinformatics.hhpred_homology_search( output = hhpredout )
+
+
+  def test_split(self):
+
+    res = bioinformatics.hhpred_homology_search.SPLIT.search( hhpredout )
+    self.assert_( res )
+    self.assertEqual( res.group( 1 ), hhpredout[1:617] )
+    self.assertEqual( res.group( 2 ), hhpredout[ 619 : 917 ] )
+    self.assertEqual( res.group( 3 ), hhpredout[ 919 : 4657 ] )
+
+
+  def test_process_header(self):
+
+    self.assertEqual( self.hss.query, "Thu_Sep_09_20:47:04_+0200_2010" )
+    self.assertEqual( self.hss.match_columns, 205 )
+    self.assertEqual( self.hss.no_of_sequences, ( 280, 1436 ) )
+    self.assertEqual( self.hss.neff, "7.1 " )
+    self.assertEqual( self.hss.searched_hmms, 22773 )
+    self.assertEqual( self.hss.date, "Thu Sep  9 20:51:32 2010" )
+    self.assertEqual(
+      self.hss.command,
+      "/cluster/toolkit/production/bioprogs/hhpred/hhsearch -cpu 4 -v 1 -i /cluster/toolkit/production/tmp/production/426773/3338418.hhm -d /cluster/toolkit/production/databases/hhpred/new_dbs/pdb70_9Sep10/db/pdb.hhm -o /cluster/toolkit/production/tmp/production/426773/3338418.hhr -p 20 -P 20 -Z 100 -B 100 -seq 1 -aliw 80 -local -ssm 2 -norealign -sc 1 -dbstrlen 10000 -cs /cluster/toolkit/production/bioprogs/csblast/data/clusters.prf "
+      )
+
+
+  def test_process_hits(self):
+
+    self.assertEqual( self.hss.indices, [ 1, 2 ] )
+    self.assertEqual( self.hss.pdbs, [ "3cng", "3i7u" ] )
+    self.assertEqual( self.hss.chains, [ "A", "A" ] )
+    self.assertEqual(
+      self.hss.annotations,
+      [
+        "Nudix hydrolase; structural genomics, APC7497, PSI-2, protein structure initiative, midwest center for structural genomics; 2.00A {Nitrosomonas europaea atcc 19718}",
+        "AP4A hydrolase; nudix protein, diadenosine polyphosphate, structural genomics, NPPSFA; HET: PGE; 1.80A {Aquifex aeolicus} PDB: 2pq1_A* 3i7u_A* 3i7v_A*",
+        ]
+        )
+
+    self.assertIterablesAlmostEqual( self.hss.probabs, [ 99.96, 99.95 ], 2 )
+    self.assertIterablesAlmostEqual( self.hss.e_values, [ 4.5e-28, 1.4e-27 ], 28 )
+    self.assertIterablesAlmostEqual( self.hss.scores, [ 196.52, 182.17 ], 2 )
+    self.assertEqual( self.hss.aligned_cols, [ 139, 127 ] )
+    self.assertIterablesAlmostEqual( self.hss.identities, [ 21, 20 ], 1 )
+    self.assertIterablesAlmostEqual( self.hss.similarities, [ 0.317, 0.336 ], 3 )
+    self.assertIterablesAlmostEqual( self.hss.sum_probs, [ 0, 0 ], 1 )
+    self.assertEqual( self.hss.query_starts, [ 59, 69 ] )
+    self.assertEqual( self.hss.query_ends, [ 204, 196 ] )
+    self.assertEqual( self.hss.query_others, [ 205, 205 ] )
+    self.assertEqual(
+      self.hss.query_alignments,
+      [
+        "FCNETG---YQTPKLDTRAAIFQEDKILLVQEND----GLWSLPGGWCDVDQSVKDNVVKEVKEEAGLDVEAQRVVAILD"
+          + "KHKNNPAKSAHRVTKVFILCRLLGGEFQPNSETVASGFFSLDDLPPLYLGKNTAEQLALCLEASRSEHWETRF",
+        "KLDTRAAIFQEDKILLVQENDGLWSLPGGWCDVDQSVKDNVVKEVKEEAGLDVEAQRVVAILDKHKNNPAKSAHRVTKVF"
+          + "ILCRLLGGEFQPNSETVASGFFSLDDLPPLYLGKNTAEQLALCLEASR",
+        ]
+      )
+    self.assertEqual(
+      self.hss.query_consensi,
+      [
+        "~~~~~g---y~Tpkv~v~a~v~~d~kiLLv~~~~----g~W~lPGG~ve~gEs~~eaa~REv~EETGl~v~~~~ll~v~~"
+          + "~~~~~~~~~~~~~~~~~f~~~~~~~~~~~~~E~~e~~Wf~~deLp~Ls~~r~~~~~i~~~f~~~r~~~~~t~f",
+        "kv~v~a~v~~d~kiLLv~~~~g~W~lPGG~ve~gEs~~eaa~REv~EETGl~v~~~~ll~v~~~~~~~~~~~~~~~~~~~"
+          + "f~~~~~~~~~~~~~E~~e~~Wf~~deLp~Ls~~r~~~~~i~~~f~~~r",
+        ]
+      )
+    self.assertEqual(
+      self.hss.query_ss_preds,
+      [
+        "hccCCC---CCceEEEEEEEEEECCEEEEEEcCC----CEEECCceeeCCCCCHHHHHHHHHHHHhCCccccceEEEEEe"
+          + "eccccCCCCceEEEEEEEEEEecCCccCCCCCeEeEEEEcHHHCccccccCCCHHHHHHHHHHHhCCCCCCCc",
+        "EEEEEEEEEECCEEEEEEcCCCEEECCceeeCCCCCHHHHHHHHHHHHhCCccccceEEEEEeeccccCCCCceEEEEEE"
+          + "EEEEecCCccCCCCCeEeEEEEcHHHCccccccCCCHHHHHHHHHHHh",
+        ]
+      )
+    self.assertEqual(
+      self.hss.midlines,
+      [
+        " |+.||   |+.|++.|.++|.++++|||++|+.    |.|+||||++|.|||+++||+||++||||+++....+++++."
+          + "....       +...++|.|...++.+.++.|+.+++||++++||...+.-....+.-+.|...+..+....+",
+        "++.++|+|+++|+|||+++.+|.|++|||++|.|||+.+||+||++||||+++....+++..+.. +.......+...++"
+          + "|.+...++++.++.|+.+++|+++++++++....+....|..+++..+",
+        ]
+      )
+
+    self.assertEqual( self.hss.hit_starts, [ 27, 4 ] )
+    self.assertEqual( self.hss.hit_ends, [ 172, 130 ] )
+    self.assertEqual( self.hss.hit_others, [ 189, 134 ] )
+    self.assertEqual(
+      self.hss.hit_ss_preds,
+      [
+        "eCCCCCCcccCCCceEEEEEeecCceEEEEeccCCCCCCCEeCCcccCcCCCCHHHHHHHHHHhhhceeeeeeEEEEEee"
+          + "cccc-------ceeEEEEEEEeccCcccCcccceeEEEEcHHHCCchhcCcHHHHHHHHHHHHHhhcCCCccc",
+        "EEEEEEEEEECCEEEEEEeCCCcEECceeEeCCCCCHHHHHHhhhhheeceeEEEeeeeeeeeee-ccCCCceEEEEEEE"
+          + "EEEeccCCcccCChhheEEEEEeHHHHHhhcCChHHHHHHHHHHHHHh",
+        ]
+      )
+    self.assertEqual(
+      self.hss.hit_ss_dssps,
+      [
+        "EETTTTEEECCCCEEEEEEEEEETTEEEEEEESSSSSTTCEECSEEECCTTCCHHHHHHHHHHHHHCCCEEEEEEEEEEE"
+          + "EGGG-------TEEEEEEEEEECCSCCCCCTTEEEEEEECTTTCCGGGBSCHHHHHHHHHHHHHHHHSSCCCE",
+        "EEEEEEEEEETTEEEEEECTTSCEECCEEECCTTCCHHHHHHHHHHHHHSEEEEEEEEEEEEEEE-EEETTEEEEEEEEE"
+          + "EEEEEEEECCCCCTTSSEEEEEEHHHHHHHCCSHHHHHHHHHHHHHHH",
+        ]
+      )
+    self.assertEqual(
+      self.hss.hit_consensi,
+      [
+        "~C~~C~~~~y~~P~v~v~~ii~~~~~vLLv~r~~~~~~g~W~lPGG~ve~GEs~e~aa~REv~EEtGl~v~~~~l~~~~~"
+          + "~~~~-------~~~~~~f~~~~~~~~~~~~~E~~e~~wf~~~elp~~~la~~~~~~~l~~~~~~~~~g~~~~~",
+        "~~aAg~vv~~~~~vLlv~r~~~~w~~PgG~ve~gEt~~~aa~RE~~EEtGl~~~~~~~~~~~~~~-~~~~~~~~~~~~~~"
+          + "f~~~~~~~~~~~~~E~~~~~W~~~~e~~~~l~~~~~r~il~~~~~l~~",
+        ]
+      )
+    self.assertEqual(
+      self.hss.hit_alignments,
+      [
+        "ICPKCHTIHYQNPKVIVGCIPEWENKVLLCKRAIAPYRGKWTLPAGFMENNETLVQGAARETLEEANARVEIRELYAVYS"
+          + "LPHI-------SQVYMLFRAKLLDLDFFPGIESLEVRLFGEQEIPWNDIAFRVIHDPLKRYMEERHHGQPAFH",
+        "EFSAGGVLFKDGEVLLIKTPSNVWSFPKGNIEPGEKPEETAVREVWEETGVKGEILDYIGEIHYW-YTLKGERIFKTVKY"
+          + "YLMKYKEGEPRPSWEVKDAKFFPIKEAKKLLKYKGDKEIFEKALKLKE",
+        ]
+      )
+
+
+  def assertIterablesAlmostEqual(self, i1, i2, digits):
+
+    self.assertEqual( len( i1 ), len( i2 ) )
+
+    for ( o, e ) in zip( i1, i2 ):
+      self.assertAlmostEqual( o, e, digits )
+
+
 suite_sequence = unittest.TestLoader().loadTestsFromTestCase(
   test_sequence
   )
@@ -1079,6 +1361,9 @@ suite_sequence_parse = unittest.TestLoader().loadTestsFromTestCase(
 suite_alignment_parse = unittest.TestLoader().loadTestsFromTestCase(
     test_alignment_parse
     )
+suite_hhpred_homology_search = unittest.TestLoader().loadTestsFromTestCase(
+    test_hhpred_homology_search
+    )
 
 alltests = unittest.TestSuite(
   [
@@ -1092,6 +1377,7 @@ alltests = unittest.TestSuite(
     suite_clustal_alignment,
     suite_sequence_parse,
     suite_alignment_parse,
+    suite_hhpred_homology_search,
     ]
   )
 
