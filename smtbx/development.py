@@ -1,5 +1,8 @@
+from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx import sgtbx
+from smtbx.refinement import constraints
+from smtbx.refinement.constraints import geometrical_hydrogens
 
 class random_xray_structure(random_structure.xray_structure):
 
@@ -36,3 +39,57 @@ class test_case(object):
       exercise(o)
       if verbose: print "OK"
   run = classmethod(run)
+
+def generate_geometrical_constraints(structure, connectivity_table):
+  # This is purely for testing purposes and is not in any way intended
+  # to be a complete or comprehensive generation of constraints
+
+  sc = structure.scatterers()
+  conformer_indices = connectivity_table.conformer_indices
+  sym_excl_indices = connectivity_table.sym_excl_indices
+  sc_types = sc.extract_scattering_types()
+  pair_sym_table = connectivity_table.pair_asu_table.extract_pair_sym_table(
+    skip_j_seq_less_than_i_seq=False,
+    all_interactions_from_inside_asu=True)
+  geometrical_constraints = []
+  for i_seq, j_seq_dict in enumerate(pair_sym_table):
+    for conformer_i in range(flex.max(conformer_indices)):
+      if conformer_indices[i_seq] not in (0, conformer_i): continue
+      if sc_types[i_seq] in ('H', 'D'): continue
+      h_count = 0
+      constrained_site_indices = []
+      pivot_neighbour_count = 0
+      for j_seq, sym_ops in j_seq_dict.items():
+        if conformer_indices[j_seq] not in (0, conformer_i): continue
+        if sc_types[j_seq] in ('H', 'D'):
+          h_count += sym_ops.size()
+          constrained_site_indices.append(j_seq)
+        else: pivot_neighbour_count += sym_ops.size()
+      rotating = False
+      stretching = False
+      constraint_type = None
+      if h_count == 0: continue
+      elif h_count == 1:
+        if pivot_neighbour_count == 1:
+          constraint_type = geometrical_hydrogens.terminal_linear_ch_site
+        elif pivot_neighbour_count == 2:
+          constraint_type = geometrical_hydrogens.secondary_planar_xh_site
+          stretching = True
+        elif pivot_neighbour_count == 3:
+          constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh_site
+      elif h_count == 2:
+        if pivot_neighbour_count == 1:
+          constraint_type = geometrical_hydrogens.terminal_planar_xh2_sites
+        elif pivot_neighbour_count == 2:
+          constraint_type = geometrical_hydrogens.secondary_ch2_sites
+      elif h_count == 3:
+        if pivot_neighbour_count == 1:
+          constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh3_sites
+      if constraint_type is not None:
+        current = constraint_type(
+          rotating=rotating,
+          stretching=stretching,
+          pivot=i_seq,
+          constrained_site_indices=constrained_site_indices)
+        geometrical_constraints.append(current)
+    return geometrical_constraints
