@@ -1131,16 +1131,16 @@ hhpredout = \
 Query         Thu_Sep_09_20:47:04_+0200_2010
 Match_columns 205
 No_of_seqs    280 out of 1436
-Neff          7.1 
+Neff          7.1
 Searched_HMMs 22773
 Date          Thu Sep  9 20:51:32 2010
-Command       /cluster/toolkit/production/bioprogs/hhpred/hhsearch -cpu 4 -v 1 -i /cluster/toolkit/production/tmp/production/426773/3338418.hhm -d /cluster/toolkit/production/databases/hhpred/new_dbs/pdb70_9Sep10/db/pdb.hhm -o /cluster/toolkit/production/tmp/production/426773/3338418.hhr -p 20 -P 20 -Z 100 -B 100 -seq 1 -aliw 80 -local -ssm 2 -norealign -sc 1 -dbstrlen 10000 -cs /cluster/toolkit/production/bioprogs/csblast/data/clusters.prf 
+Command       /cluster/toolkit/production/bioprogs/hhpred/hhsearch -cpu 4 -v 1 -i /cluster/toolkit/production/tmp/production/426773/3338418.hhm -d /cluster/toolkit/production/databases/hhpred/new_dbs/pdb70_9Sep10/db/pdb.hhm -o /cluster/toolkit/production/tmp/production/426773/3338418.hhr -p 20 -P 20 -Z 100 -B 100 -seq 1 -aliw 80 -local -ssm 2 -norealign -sc 1 -dbstrlen 10000 -cs /cluster/toolkit/production/bioprogs/csblast/data/clusters.prf
 
  No Hit                             Prob E-value P-value  Score    SS Cols Query HMM  Template HMM
   1 3cng_A Nudix hydrolase; struct 100.0 4.5E-28   2E-32  196.5  15.7  139   59-204    27-172 (189)
   2 3i7u_A AP4A hydrolase; nudix p  99.9 1.4E-27 6.2E-32  182.2  13.1  127   69-196     4-130 (134)
 
-No 1  
+No 1
 >3cng_A Nudix hydrolase; structural genomics, APC7497, PSI-2, protein structure initiative, midwest center for structural genomics; 2.00A {Nitrosomonas europaea atcc 19718}
 Probab=99.96  E-value=4.5e-28  Score=196.52  Aligned_cols=139  Identities=21%  Similarity=0.317  Sum_probs=0.0
 
@@ -1164,7 +1164,7 @@ T ss_dssp             EGGG-------TEEEEEEEEEECCSCCCCCTTEEEEEEECTTTCCGGGBSCHHHHHHH
 T ss_pred             cccc-------ceeEEEEEEEeccCcccCcccceeEEEEcHHHCCchhcCcHHHHHHHHHHHHHhhcCCCccc
 
 
-No 2  
+No 2
 >3i7u_A AP4A hydrolase; nudix protein, diadenosine polyphosphate, structural genomics, NPPSFA; HET: PGE; 1.80A {Aquifex aeolicus} PDB: 2pq1_A* 3i7u_A* 3i7v_A*
 Probab=99.95  E-value=1.4e-27  Score=182.17  Aligned_cols=127  Identities=20%  Similarity=0.336  Sum_probs=0.0
 
