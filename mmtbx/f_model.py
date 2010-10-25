@@ -2471,7 +2471,8 @@ class resolution_bin(object):
                fom_work      = None,
                scale_k1_work = None,
                pher_work     = None,
-               pher_free     = None):
+               pher_free     = None,
+               sigmaa        = None):
     adopt_init_args(self, locals())
 
 class info(object):
@@ -2505,6 +2506,7 @@ class info(object):
     self.mask_grid_step_factor = mp.grid_step_factor
     self.ml_phase_error = flex.mean(fmodel.phase_errors())
     self.ml_coordinate_error = fmodel.model_error_ml()
+    self.sigmaa = fmodel.sigmaa().sigmaa() # miller array
     self.d_max, self.d_min = fmodel.f_obs.resolution_range()
     self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
     self.completeness_d_min_inf = fmodel.f_obs.completeness()
@@ -2549,6 +2551,7 @@ class info(object):
     pher_w = fmodel.phase_errors_work()
     pher_t = fmodel.phase_errors_test()
     fom = fmodel.figures_of_merit_work()
+    sigmaa = fmodel.sigmaa().sigmaa()
     fmodel.f_obs.setup_binner(n_bins=fmodel.determine_n_bins(
       free_reflections_per_bin=free_reflections_per_bin,
       max_n_bins=max_number_of_bins))
@@ -2560,6 +2563,7 @@ class info(object):
     alpha_t.use_binning_of(fo_t)
     beta_w.use_binning_of(fo_t)
     beta_t.use_binning_of(fo_t)
+    sigmaa.use_binning_of(fo_t)
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
       sel_w = fo_w.binner().selection(i_bin)
@@ -2608,7 +2612,8 @@ class info(object):
           mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
           fom_work     = flex.mean_default(fom.select(sel_w),None),
           pher_work    = flex.mean_default(pher_w.select(sel_w),None),
-          pher_free    = flex.mean_default(pher_t.select(sel_t),None))
+          pher_free    = flex.mean_default(pher_t.select(sel_t),None),
+          sigmaa       = flex.mean_default(sigmaa.select(sel_all).data(), None))
         result.append(bin)
     return result
 
@@ -2850,31 +2855,7 @@ class info(object):
 
   # re-arrange binned statistics for phenix GUI (or logfile)
   def export_bins_table_data (self, title="Statistics by resolution bin") :
-    table_stats = ["r_work", "r_free", "completeness", "fom_work",
-                   "pher_free", "scale_k1_work"]
-    data_rows = []
-    for bin in self.bins :
-      bin_stats = []
-      (min_res_str, max_res_str) = re.sub("\s*", "", bin.d_range).split("-")
-      (min_res, max_res) = (string.atof(min_res_str), string.atof(max_res_str))
-      bin_stats.append(1 / (max_res ** 2))
-      for stat_attr_name in table_stats :
-        bin_stats.append(getattr(bin, stat_attr_name))
-      data_rows.append(bin_stats)
-    data = [[row[i] for row in data_rows] for i in xrange(len(data_rows[0]))]
-    t = data_plots.table_data(
-      title = title,
-      column_labels = ["Resolution", "R-work", "R-free", "Completeness", "FOM",
-                     "Phase error", "Scale factor"],
-      graph_names = ["R-work/R-free vs. resolution",
-                   "Completeness vs. resolution",
-                   "Figure of merit vs. resolution",
-                   "Phase error vs. resolution",
-                   "Scale factor vs. resolution"],
-      graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]],
-      data = data,
-      x_is_inverse_d_min=True)
-    return t
+    return export_bins_table_data(self.bins, title)
 
 def show_histogram(data, n_slots, log):
   hm = flex.histogram(data = data, n_slots = n_slots)
@@ -2884,3 +2865,38 @@ def show_histogram(data, n_slots, log):
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
+
+def export_bins_table_data (bins, title="Statistics by resolution bin") :
+  table_stats = ["r_work", "r_free", "completeness", "fom_work",
+                 "pher_free", "scale_k1_work"]
+  labels = ["Resolution", "R-work", "R-free", "Completeness", "FOM",
+                   "Phase error", "Scale factor"]
+  graph_names = ["R-work/R-free vs. resolution",
+                 "Completeness vs. resolution",
+                 "Figure of merit vs. resolution",
+                 "Phase error vs. resolution",
+                 "Scale factor vs. resolution"]
+  graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]]
+  if hasattr(bins[0], "sigmaa") :
+    table_stats.append("sigmaa")
+    labels.append("SigmaA")
+    graph_names.append("SigmaA vs. resolution")
+    graph_columns.append([0,7])
+  data_rows = []
+  for bin in bins :
+    bin_stats = []
+    (min_res_str, max_res_str) = re.sub("\s*", "", bin.d_range).split("-")
+    (min_res, max_res) = (string.atof(min_res_str), string.atof(max_res_str))
+    bin_stats.append(1 / (max_res ** 2))
+    for stat_attr_name in table_stats :
+      bin_stats.append(getattr(bin, stat_attr_name))
+    data_rows.append(bin_stats)
+  data = [[row[i] for row in data_rows] for i in xrange(len(data_rows[0]))]
+  t = data_plots.table_data(
+    title=title,
+    column_labels=labels,
+    graph_names=graph_names,
+    graph_columns=graph_columns,
+    data=data,
+    x_is_inverse_d_min=True)
+  return t

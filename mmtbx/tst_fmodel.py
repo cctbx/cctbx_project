@@ -35,6 +35,7 @@ def test_1(xray_structure):
                   f_obs = abs(f_obs_comp)
                   flags = f_obs.generate_r_free_flags(fraction = 0.1,
                                                       max_free = 99999999)
+                  f_obs.set_observation_type_xray_amplitude()
                   for (xrs,fc) in ((xray_structure,None),(None,f_obs_comp)):
                       ###
                       ### instantiate fmodel only
