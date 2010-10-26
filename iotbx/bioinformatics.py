@@ -528,8 +528,11 @@ pir_sequence_parse = generic_sequence_parser(
 
 _implemented_sequence_parsers = {
   ".fasta": fasta_sequence_parse,
+  ".fa": fasta_sequence_parse,
+  ".faa" : fasta_sequence_parse,
   ".pir": pir_sequence_parse,
   ".seq": seq_sequence_parse,
+  ".dat": seq_sequence_parse,
   }
 
 def sequence_parser_for(file_name):
@@ -543,6 +546,29 @@ def known_sequence_formats():
 
   return _implemented_sequence_parsers.keys()
 
+def any_sequence_format (file_name) :
+  format_parser = sequence_parser_for(file_name)
+  data = open(file_name, "r").read()
+  seq_object = None
+  if (format_parser is not None) :
+    try :
+      seq_object = format_parser.parse(data)
+      assert seq_object is not None
+    except Exception, e :
+      pass
+    else :
+      return seq_object
+  for other_parser in [fasta_sequence_parse, pir_sequence_parse,
+                       seq_sequence_parse] :
+    if (other_parser is not format_parser) :
+      try :
+        seq_object = other_parser.parse(data)
+        assert seq_object is not None
+      except Exception, e :
+        pass
+      else :
+        return seq_object
+  return None
 
 # Alignment file parsers
 class generic_alignment_parser(object):

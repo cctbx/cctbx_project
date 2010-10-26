@@ -921,10 +921,9 @@ class test_sequence_parse(unittest.TestCase):
 
 
   def test_known_formats(self):
-
     self.assertEqual(
       sorted( bioinformatics.known_sequence_formats() ),
-      [ ".fasta", ".pir", ".seq" ]
+      ['.dat', '.fa', '.faa', '.fasta', '.pir', '.seq']
       )
 
 

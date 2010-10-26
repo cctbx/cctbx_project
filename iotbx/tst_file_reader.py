@@ -140,6 +140,38 @@ refinement {
   assert params.refinement.main.number_of_macro_cycles == 3
   os.remove("tmp1.pkl")
 
+  #--- sequence
+  seqs = ["AAKDVKFGVNVLADAV",
+          "AAKDVKFGNDARVKML",
+          "AVKDVRYGNEARVKIL"]
+  headers = ["anb.pdb chain A",
+             "anb.pdb chain B",
+             "anb.pdb chain C"]
+  f = open("sequence.pir", "w")
+  f.write("""\
+> %s
+
+%s
+*""" % (headers[0], seqs[0]))
+  f.close()
+  f = any_file("sequence.pir")
+  assert (f.file_type == "seq")
+  os.remove("sequence.pir")
+  f = open("sequence.dat", "w")
+  f.write(seqs[0])
+  f.close()
+  f = any_file("sequence.dat")
+  assert (f.file_type == "seq")
+  os.remove("sequence.dat")
+  f = open("sequence.fa", "w")
+  f.write("""\
+> %s
+%s""" % (headers[0], seqs[0]))
+  f.close()
+  f = any_file("sequence.fa", "w")
+  assert (f.file_type == "seq")
+  os.remove("sequence.fa")
+
 def exercise_maps () :
   xplor_map = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/misc/cns.map",
