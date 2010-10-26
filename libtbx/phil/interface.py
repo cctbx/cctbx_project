@@ -390,8 +390,9 @@ def delete_phil_objects (current_phil, phil_path_list, only_scope=None) :
   while i < len(current_phil.objects) :
     full_path = current_phil.objects[i].full_path()
     if (only_scope is not None) :
-      if ((not only_scope.startswith(full_path)) and
-          (not full_path.startswith(only_scope))) :
+      if not ((only_scope == full_path) or
+              (only_scope.startswith(full_path + ".")) or
+              (full_path.startswith(only_scope + "."))) :
         i += 1
         continue
     if current_phil.objects[i].is_template != 0 :
@@ -419,10 +420,11 @@ def find_and_replace_scope (current_phil, new_scope, scope_name) :
       while (j < len(current_phil.objects)) :
         if (current_phil.objects[j].full_path() == scope_name) :
           del current_phil.objects[j]
-        j += 1
+        else :
+          j += 1
       current_phil.objects[i:i] = new_scope.objects
       break
-    elif (scope_name.startswith(full_path)) :
+    elif (scope_name.startswith(full_path + ".")) :
       find_and_replace_scope(
         current_phil=current_phil.objects[i],
         new_scope=new_scope,
