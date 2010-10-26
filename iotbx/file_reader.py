@@ -22,7 +22,7 @@ standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
   'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor", "cv", "ref", "fobs"],
   'cif'  : ["cif"],
-  'seq'  : ["fa", "faa", "seq", "pir", "dat"],
+  'seq'  : ["fa", "faa", "seq", "pir", "dat", "fasta"],
   'xplor_map' : ["xplor", "map"],
   'ccp4_map'  : ["ccp4", "map"],
   'phil' : ["params", "eff", "def", "phil"],
@@ -117,8 +117,8 @@ def any_file (file_name,
       force_type=force_type)
 
 class any_file_input (object) :
-  __extensions = standard_file_extensions
-  __descriptions = standard_file_descriptions
+  __extensions__ = standard_file_extensions
+  __descriptions__ = standard_file_descriptions
 
   def __init__ (self, file_name, get_processed_file, valid_types, force_type) :
     self.valid_types = valid_types
@@ -145,7 +145,7 @@ class any_file_input (object) :
         read_method()
     else :
       for file_type in valid_types :
-        if file_ext[1:] in self.__extensions[file_type] :
+        if file_ext[1:] in self.__extensions__[file_type] :
           read_method = getattr(self, "try_as_%s" % file_type)
           try :
             read_method()
@@ -161,7 +161,7 @@ class any_file_input (object) :
       if self.file_type is None :
         self.try_all_types()
     if self.file_type is not None :
-      self.file_description = self.__descriptions[self.file_type]
+      self.file_description = self.__descriptions__[self.file_type]
 
   def try_as_pdb (self) :
     from iotbx.pdb import is_pdb_file
@@ -272,7 +272,7 @@ class any_file_input (object) :
     if self.file_type == None :
       return "Unknown file%s" % file_size_str
     else :
-      return "%s%s" % (self.__descriptions[self.file_type],
+      return "%s%s" % (self.__descriptions__[self.file_type],
         file_size_str)
 
   def assert_file_type (self, expected_type) :
