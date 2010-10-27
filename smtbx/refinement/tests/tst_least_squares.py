@@ -198,7 +198,7 @@ class site_refinement_test(refinement_test):
     xs.shake_sites_in_place(rms_difference=0.1)
 
     cycles = normal_eqns_solving.naive_iterations(normal_eqns, track_all=True)
-    cycles.do(5)
+    cycles.do(n_iterations=5)
 
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-5)
     assert approx_equal(normal_eqns.objective, 0)
@@ -252,7 +252,7 @@ class adp_refinement_test(refinement_test):
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(normal_eqns, track_all=True)
-    cycles.do(10)
+    cycles.do(n_iterations=10)
 
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
     assert approx_equal(normal_eqns.objective, 0)
@@ -420,7 +420,7 @@ class special_positions_test(object):
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(normal_eqns)
-    cycles.do(10)
+    cycles.do(n_iterations=10)
 
     ## Test whether refinement brought back the shaked structure to its
     ## original state
