@@ -57,14 +57,17 @@ class iterations(object):
     self.accumulate_solution_properties()
 
   def do(self,
-         relative_gradient_norm_threshold=1e-8,
-         n_iterations=1000):
+         relative_gradient_norm_threshold=None,
+         n_iterations=None):
+    assert (n_iterations is not None
+            or relative_gradient_norm_threshold is not None)
     if n_iterations is None:
       counter = itertools.count()
     else:
       counter = xrange(n_iterations)
     for i in counter:
       self.next()
+      if relative_gradient_norm_threshold is None: continue
       if self.relative_gradient_norms[-1] < relative_gradient_norm_threshold:
         break
 
