@@ -12,12 +12,12 @@ namespace smtbx { namespace refinement { namespace constraints {
     the latter to define an ordering.
  */
 struct ordered_scatterer_parameters
-  : public af::tiny<crystallographic_parameter *, 3>
+  : public af::tiny<asu_parameter *, 3>
 {
-  typedef af::tiny<crystallographic_parameter *, 3> base_t;
+  typedef af::tiny<asu_parameter *, 3> base_t;
 
   struct is_variable {
-    bool operator()(crystallographic_parameter const *p) const {
+    bool operator()(asu_parameter const *p) const {
       return p->is_variable();
     }
   };
@@ -25,9 +25,9 @@ struct ordered_scatterer_parameters
   typedef boost::filter_iterator<is_variable, base_t::const_iterator>
           const_iterator;
 
-  ordered_scatterer_parameters(crystallographic_parameter *p0,
-                               crystallographic_parameter *p1,
-                               crystallographic_parameter *p2)
+  ordered_scatterer_parameters(asu_parameter *p0,
+                               asu_parameter *p1,
+                               asu_parameter *p2)
   : base_t(p0, p1, p2)
   {}
 
@@ -47,10 +47,10 @@ struct ordered_scatterer_parameters
 /// The constraints::parameters corresponding to a single scatterer
 struct scatterer_parameters
 {
-  typedef crystallographic_parameter::scatterer_type scatterer_type;
+  typedef asu_parameter::scatterer_type scatterer_type;
 
   scatterer_type const *scatterer;
-  crystallographic_parameter *site, *occupancy, *u;
+  asu_parameter *site, *occupancy, *u;
 
   scatterer_parameters() {}
 
@@ -60,9 +60,9 @@ struct scatterer_parameters
   {}
 
   scatterer_parameters(scatterer_type const *scatterer,
-                       crystallographic_parameter *site,
-                       crystallographic_parameter *occupancy,
-                       crystallographic_parameter *u)
+                       asu_parameter *site,
+                       asu_parameter *occupancy,
+                       asu_parameter *u)
     : scatterer(scatterer),
       site(site), occupancy(occupancy), u(u)
   {}
@@ -85,7 +85,7 @@ af::shared<std::size_t>
 mapping_to_grad_fc(af::const_ref<scatterer_parameters> const &params) {
   af::shared<std::size_t> result((af::reserve(5*params.size()))); // heuristic
   for (std::size_t i=0; i<params.size(); ++i) {
-    BOOST_FOREACH (crystallographic_parameter const *p, params[i].ordered()) {
+    BOOST_FOREACH (asu_parameter const *p, params[i].ordered()) {
       index_range r = p->component_indices_for(params[i].scatterer);
       SMTBX_ASSERT(r.is_valid())(params[i].scatterer->label);
       for (std::size_t j=r.first(); j<r.last(); ++j) result.push_back(j);
@@ -101,7 +101,7 @@ write_component_annotations(af::const_ref<scatterer_parameters> const &params,
                             std::ostream &output)
 {
   for (std::size_t i=0; i<params.size(); ++i) {
-    BOOST_FOREACH (crystallographic_parameter const *p, params[i].ordered()) {
+    BOOST_FOREACH (asu_parameter const *p, params[i].ordered()) {
       p->write_component_annotations_for(params[i].scatterer, output);
     }
   }

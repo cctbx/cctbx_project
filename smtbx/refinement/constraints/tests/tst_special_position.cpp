@@ -6,7 +6,7 @@
 
 using namespace smtbx;
 using namespace smtbx::refinement::constraints;
-typedef crystallographic_parameter::scatterer_type sc_t;
+typedef asu_parameter::scatterer_type sc_t;
 
 namespace smtbx { namespace refinement { namespace constraints {
 

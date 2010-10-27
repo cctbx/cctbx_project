@@ -88,6 +88,22 @@ private:
 /** Its components may be independent scalar parameters eventually passed
     to the minimisation engine, or it may be function of other scalar- or
     vector-valued parameters, which we will refer to as its arguments.
+
+    Implementation note: this class will be inherited virtually to allow
+    multiple inheritance with a correct handling of the dreaded diamond.
+    As a result, the most derived class will need to *explicitly*
+    call the constructor of this class parameter. Thus the usual pattern
+    of calling this class constructor in the constructor of direct heirs
+    is redundant and we won't do it. But then the compiler will try to
+    invoke a constructor for class parameter without argument. Thus we
+    provide a trivial one. The pattern repeats itself down the inheritance
+    hierarchy: either a class defines no constructor (and gets a compiler-
+    generated default constructor without arguments) or it defines a non-trivial
+    constructor, in which case a trivial one needs be provided too. In any case,
+    any non-trivial constructor shall only initialise the class member and
+    not attempt to initialise the virtual bases higher in the inheritance
+    hierarchy since, again, that will have to be done by the most derived
+    classes anyway. (few!)
  */
 class parameter : public boost::noncopyable
 {
@@ -104,6 +120,10 @@ public:
   friend class parameter_tagger;
 
   friend class reparametrisation;
+
+  /// Trivial constructor made necessary by virtual inheritance pattern we use.
+  /** See documentation header for this class */
+  parameter() {}
 
   /// Construct a parameter with the given number of arguments
   parameter(std::size_t n_arguments)
@@ -139,13 +159,17 @@ public:
   virtual bool is_variable() const;
 
   /// Dimension of this vector parameter
-  virtual std::size_t size() const = 0;
+  std::size_t size() const {
+    return components().size();
+  }
 
-  /// A pointer to the vector of component values
-  /** Zero in this class: it shall be overriden by heirs allowing
-      the value to be accessed, merely independent parameters.
-   */
-  virtual double *components();
+  /// A reference to the vector of component values
+  virtual af::ref<double> components() = 0;
+
+  /// A reference to the vector of component values
+  af::const_ref<double> components() const {
+    return const_cast<parameter *>(this)->components();
+  }
 
   /// Compute the value of this parameter but not its Jacobian
   void evaluate(uctbx::unit_cell const &unit_cell) {
@@ -239,63 +263,72 @@ private:
 };
 
 
-/// An independent scalar parameter which is not a crystallographic parameter.
-/** It means it is not one of those attributes features by xray::scatterer<>
-    or its equivalent.
- */
-class independent_scalar_parameter : public parameter
+/// scalar parameter
+class scalar_parameter : public virtual parameter
 {
 public:
-  independent_scalar_parameter(double value, bool variable=true)
-    : parameter(0), value(value)
-  {
-    set_variable(variable);
-  }
-
-  virtual std::size_t size() const;
-
-  virtual void linearise(uctbx::unit_cell const &unit_cell,
-                         sparse_matrix_type *jacobian_transpose);
-
-  virtual double *components();
+  virtual af::ref<double> components();
 
   double value;
 };
 
 
-template <int N>
-class independent_small_vector_parameter : public parameter
+/// Independent scalar parameter
+class independent_scalar_parameter : public scalar_parameter
 {
 public:
-  independent_small_vector_parameter(af::small<double, N> const &value,
-                                     bool variable=true)
-    : parameter(0), value(value)
+  independent_scalar_parameter(double value, bool variable=true)
+  : parameter(0)
   {
+    this->value = value;
     set_variable(variable);
   }
-
-  /// Construct with an intial value equal to the zero vector of dimension n
-  independent_small_vector_parameter(int n, bool variable=true)
-    : parameter(0), value(n)
-  {
-    set_variable(variable);
-  }
-
-  virtual std::size_t size() const { return value.size(); }
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
-                         sparse_matrix_type *jacobian_transpose)
-  {}
+                         sparse_matrix_type *jacobian_transpose);
+};
 
-  virtual double *components() { return value.begin(); }
+
+template <int N>
+class small_vector_parameter : public virtual parameter
+{
+public:
+  virtual af::ref<double> components() { return value.ref(); }
 
   af::small<double, N> value;
 };
 
 
+template <int N>
+class independent_small_vector_parameter
+  : public small_vector_parameter<N>
+{
+public:
+  independent_small_vector_parameter(af::small<double, N> const &value,
+                                     bool variable=true)
+  : parameter(0)
+  {
+    this->value = value;
+    this->set_variable(variable);
+  }
+
+  /// Construct with an intial value equal to the zero vector of dimension n
+  independent_small_vector_parameter(int n, bool variable=true)
+  : parameter(0)
+  {
+    this->value.resize(n, 0);
+    this->set_variable(variable);
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose)
+  {}
+
+};
+
 
 /// Site, isotropic or anisotropic displacement, etc., or combination of those.
-/** They may belong to one or more scatterers in the asymmetric unit.
+/** They belong to one or more scatterers in the asymmetric unit.
 
     Heirs of this class implementing behaviour for specific scatterer parameters
     (e.g. site, occupancy, etc) shall read their values from their associated
@@ -306,26 +339,18 @@ public:
     of the scatterer parameters directly (e.g. sc.site = ...) in user code
     will have no effect on the reparametrisation computation.
  */
-class crystallographic_parameter : public parameter
+class asu_parameter : public virtual parameter
 {
 public:
   typedef xray::scatterer<> scatterer_type;
   typedef af::const_ref<scatterer_type *> scatterer_sequence_type;
 
   /// The scatterers in the asu this models some parameters of.
-  /** If this parameter models scatterers outside of the asu, an empty sequence.
-   */
   virtual scatterer_sequence_type scatterers() const = 0;
-
-  crystallographic_parameter(std::size_t n_arguments)
-    : parameter(n_arguments)
-  {}
 
   /// Indices of those components associated with the given asu scatterer.
   /** The resulting range may be invalid if the scatterer is not one of those
       this parameter refers to.
-      It shall throw an smtbx::error exception if this parameter does not
-      refer to any scatterer in the asu.
    */
   virtual index_range
   component_indices_for(scatterer_type const *scatterer) const = 0;
@@ -333,31 +358,27 @@ public:
   /// Write annotations for each component associated with the given scatterer
   /** It shall be written as a comma separated list which shall be empty
       if the scatterer is not one of those this parameter refers to.
-      It shall throw an smtbx::error exception if this parameter does not
-      refer to any scatterer in the asu.
    */
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const = 0;
 
   /// Store its components into the corresponding scatterers
-  /** It shall throw an smtbx::error exception if this parameter does not
-      refer to any scatterer in the asu.
-   */
   virtual void store(uctbx::unit_cell const &unit_cell) const = 0;
 };
 
 
-/// Parameter of a single scatterer
-class single_scatterer_parameter : public crystallographic_parameter
+/// Parameter of a single scatterer in the asu
+class single_asu_scatterer_parameter : public virtual asu_parameter
 {
 public:
-  virtual scatterer_sequence_type scatterers() const;
+  single_asu_scatterer_parameter() {}
 
-  single_scatterer_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : crystallographic_parameter(n_arguments),
-    scatterer(scatterer)
+  single_asu_scatterer_parameter(scatterer_type *scatterer)
+  : scatterer(scatterer)
   {}
+
+  virtual scatterer_sequence_type scatterers() const;
 
   virtual index_range
   component_indices_for(scatterer_type const *scatterer) const;
@@ -371,32 +392,41 @@ protected:
 /// Scatterer site.
 /** A parameter whose components are the fractional coordinates.
  */
-class site_parameter : public single_scatterer_parameter
+class site_parameter : public virtual parameter
 {
 public:
-  site_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_scatterer_parameter(scatterer, n_arguments)
-  {}
-
-  virtual std::size_t size() const;
-
-  virtual void
-  write_component_annotations_for(scatterer_type const *scatterer,
-                                  std::ostream &output) const;
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
+  virtual af::ref<double> components();
 
   /// The site value in Cartesian coordinates
   fractional<double> value;
 };
 
 
+
+/// asu scatterer site.
+/** A parameter whose components are the fractional coordinates of a
+    scatterer in the asu.
+ */
+class asu_site_parameter : public site_parameter,
+                           public virtual single_asu_scatterer_parameter
+{
+public:
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+};
+
+
 /// Scatterer site that is an independent parameter
-class independent_site_parameter : public site_parameter
+class independent_site_parameter : public asu_site_parameter
 {
 public:
   independent_site_parameter(scatterer_type *scatterer)
-    : site_parameter(scatterer, 0)
+  : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
   {
     value = scatterer->site;
   }
@@ -413,8 +443,6 @@ public:
    */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual double *components();
 };
 
 
@@ -422,31 +450,36 @@ public:
 /** A parameter whose components are the coefficients of the tensor
     in fractional coordinates.
  */
-class u_star_parameter : public single_scatterer_parameter
+class u_star_parameter : public virtual parameter
 {
 public:
-  u_star_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_scatterer_parameter(scatterer, n_arguments)
-  {}
-
-  virtual std::size_t size() const;
-
-  virtual void
-  write_component_annotations_for(scatterer_type const *scatterer,
-                                  std::ostream &output) const;
-
-  virtual void store(uctbx::unit_cell const &unit_cell) const;
+  virtual af::ref<double> components();
 
   /// The site value in Cartesian coordinates
   tensor_rank_2_t value;
 };
 
 
-class independent_u_star_parameter : public u_star_parameter
+/// Anisotropic displacement parameters of a site in the asu
+class asu_u_star_parameter : public u_star_parameter,
+                             public virtual single_asu_scatterer_parameter
+{
+public:
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+};
+
+
+class independent_u_star_parameter : public asu_u_star_parameter
 {
 public:
   independent_u_star_parameter(scatterer_type *scatterer)
-  : u_star_parameter(scatterer, 0)
+  : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
   {
     value = scatterer->u_star;
   }
@@ -463,21 +496,14 @@ public:
    */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual double *components();
 };
 
 
 /// Occupancy of a scatterer
-class occupancy_parameter : public single_scatterer_parameter
+class occupancy_parameter : public scalar_parameter,
+                            public virtual single_asu_scatterer_parameter
 {
 public:
-  occupancy_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_scatterer_parameter(scatterer, n_arguments)
-  {}
-
-  virtual std::size_t size() const;
-
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const;
@@ -493,7 +519,8 @@ class independent_occupancy_parameter : public occupancy_parameter
 {
 public:
   independent_occupancy_parameter(scatterer_type *scatterer)
-  : occupancy_parameter(scatterer, 0)
+  : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
   {
     value = scatterer->occupancy;
   }
@@ -510,21 +537,14 @@ public:
    */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual double *components();
 };
 
 
 /// Isotropic thermal displacement parameter of a scatterer
-class u_iso_parameter : public single_scatterer_parameter
+class u_iso_parameter : public scalar_parameter,
+                        public virtual single_asu_scatterer_parameter
 {
 public:
-  u_iso_parameter(scatterer_type *scatterer, std::size_t n_arguments)
-  : single_scatterer_parameter(scatterer, n_arguments)
-  {}
-
-  virtual std::size_t size() const;
-
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const;
@@ -540,7 +560,8 @@ class independent_u_iso_parameter : public u_iso_parameter
 {
 public:
   independent_u_iso_parameter(scatterer_type *scatterer)
-  : u_iso_parameter(scatterer, 0)
+  : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
   {
     value = scatterer->u_iso;
   }
@@ -557,8 +578,6 @@ public:
    */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
-  virtual double *components();
 };
 
 
@@ -717,7 +736,7 @@ private:
   typedef std::vector<parameter *> parameter_array_t;
 
 public:
-  typedef crystallographic_parameter::scatterer_type scatterer_type;
+  typedef asu_parameter::scatterer_type scatterer_type;
 
   typedef parameter_array_t::iterator iterator;
 
@@ -864,11 +883,9 @@ public:
     SMTBX_ASSERT(shifts.size() == n_independents());
     BOOST_FOREACH(parameter *p, all) {
       if (!p->n_arguments() && p->is_variable()) {
-        double *x = p->components();
-        if (!x) throw cant_modify_parameter_value_error(p);
-        std::size_t n = p->size();
         double const *s = &shifts[p->index()];
-        for (std::size_t i=0; i<n; ++i) x[i] += s[i];
+        af::ref<double> x = p->components();
+        for (std::size_t i=0; i<x.size(); ++i) x[i] += s[i];
       }
     }
   }
@@ -877,8 +894,7 @@ public:
   /// scatterers.
   void store() {
     BOOST_FOREACH(parameter *p, all) {
-      crystallographic_parameter
-      *cp = dynamic_cast<crystallographic_parameter *> (p);
+      asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
       if (cp) cp->store(unit_cell);
     }
   }
