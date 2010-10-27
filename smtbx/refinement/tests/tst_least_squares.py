@@ -1,6 +1,7 @@
 from __future__ import division
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
+from scitbx.lstbx import normal_eqns_solving
 from cctbx import sgtbx, crystal, xray, miller, adptbx, uctbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
@@ -196,22 +197,16 @@ class site_refinement_test(refinement_test):
     emma_ref = xs.as_emma_model()
     xs.shake_sites_in_place(rms_difference=0.1)
 
-    objectives = []
-    scales = []
-    fo_sq_max = flex.max(self.fo_sq.data())
-    for i in xrange(5):
-      normal_eqns.build_up()
-      objectives.append(normal_eqns.objective)
-      scales.append(normal_eqns.scale_factor)
-      gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
-      normal_eqns.solve_and_apply_shifts()
-      shifts = normal_eqns.shifts
+    cycles = normal_eqns_solving.naive_iterations(normal_eqns, track_all=True)
+    cycles.do(5)
 
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-5)
     assert approx_equal(normal_eqns.objective, 0)
     # skip next-to-last one to allow for no progress and rounding error
-    assert objectives[0] >= objectives[1] >= objectives[3], objectives
-    assert approx_equal(gradient_relative_norm, 0, eps=1e-9)
+    assert (
+      cycles.objectives[0] >= cycles.objectives[1] >= cycles.objectives[3]
+      ), cycles.objectives
+    assert approx_equal(cycles.relative_gradient_norms[-1], 0, eps=1e-9)
 
     match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
     assert match.rt.r == matrix.identity(3)
@@ -253,27 +248,18 @@ class adp_refinement_test(refinement_test):
       geometrical_constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
-      xs, self.fo_sq, reparametrisation,
+      self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
-    objectives = []
-    gradient_relative_norms = []
-    scales = []
-    fo_sq_max = flex.max(self.fo_sq.data())
-    for i in xrange(10):
-      normal_eqns.build_up()
-      objectives.append(normal_eqns.objective)
-      scales.append(normal_eqns.scale_factor)
-      gradient_relative_norms.append(normal_eqns.gradient.norm()/fo_sq_max)
-      normal_eqns.solve_and_apply_shifts()
-      shifts = normal_eqns.shifts
+    cycles = normal_eqns_solving.naive_iterations(normal_eqns, track_all=True)
+    cycles.do(10)
 
     assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
     assert approx_equal(normal_eqns.objective, 0)
     # skip next-to-last one to allow for no progress and rounding error
-    n = len(objectives)
-    assert objectives[0] > objectives[n-1], objectives
-    assert approx_equal(gradient_relative_norms[-1], 0, eps=1e-6)
+    n = len(cycles.objectives)
+    assert cycles.objectives[0] > cycles.objectives[n-1], cycles.objectives
+    assert approx_equal(cycles.relative_gradient_norms[-1], 0, eps=1e-6)
 
     for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
       assert approx_equal(sc0.u_star, sc1.u_star)
@@ -433,18 +419,8 @@ class special_positions_test(object):
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
-    objectives = []
-    scales = []
-    fo_sq_max = flex.max(self.fo_sq.data())
-    shifts = []
-    for i in xrange(10):
-      normal_eqns.build_up()
-      objectives.append(normal_eqns.objective)
-      scales.append(normal_eqns.scale_factor)
-      gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
-      a = normal_eqns.reduced.normal_matrix_packed_u.deep_copy()
-      normal_eqns.solve_and_apply_shifts()
-      shifts.append(normal_eqns.shifts)
+    cycles = normal_eqns_solving.naive_iterations(normal_eqns)
+    cycles.do(10)
 
     ## Test whether refinement brought back the shaked structure to its
     ## original state
