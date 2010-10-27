@@ -8,7 +8,6 @@
 #   - test on Windows
 #   - additional styles?
 
-import wxtbx.bitmaps
 import wx
 import sys, os
 
@@ -405,6 +404,10 @@ if __name__ == "__main__" :
     index = evt.GetClientData()
     print "Toggle button clicked: %d, %s" % (index,
       evt.GetEventObject().GetValue(index))
+  try :
+    from wxtbx import bitmaps
+  except ImportError :
+    bitmaps = None
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Test frame")
   toolbar = frame.CreateToolBar()
@@ -451,7 +454,7 @@ if __name__ == "__main__" :
     frame.Bind(wx.EVT_TOGGLEBUTTON, OnToggle, btn3)
     v_sizer.Add(wx.StaticText(panel, -1, "Toggle buttons"), 0, wx.ALL, 5)
     v_sizer.Add(btn3, 0, wx.ALL, 5)
-    if wxtbx.bitmaps.icon_lib is not None :
+    if (bitmaps is not None) and (bitmaps.icon_lib is not None) :
       bmp1 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "1leftarrow", 16)
       bmp2 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "gohome", 16)
       bmp3 = wxtbx.bitmaps.fetch_icon_bitmap("actions", "viewmag", 16)
