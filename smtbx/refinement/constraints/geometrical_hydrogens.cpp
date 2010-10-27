@@ -318,7 +318,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     // Hydrogen sites
     af::tiny<cart_t, 2> u_h(0.5*e0 + half_sqrt_3*e1,
                             0.5*e0 - half_sqrt_3*e1);
-    for (int k=0; k<2; ++k) x_h[k] = p[k] + l*u_h[k];
+    for (int k=0; k<2; ++k) x_h[k] = p + l*u_h[k];
 
     // Jacobian
     if (!jacobian_transpose) return;

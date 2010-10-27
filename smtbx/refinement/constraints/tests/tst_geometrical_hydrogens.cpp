@@ -296,10 +296,10 @@ void exercise_terminal_xh2() {
   uctbx::unit_cell uc(af::double6(1, 2, 3, 90, 90, 90));
   af::shared<sc_t> sc(5);
   sc_t *x = &sc[0], *y = &sc[1], *z = &sc[2], *h0 = &sc[3], *h1 = &sc[4];
-  x->site = frac_t( 0.,  0.,  0.);
+  x->site = frac_t( 0.1,  0.2,  0.3);
   x->flags.set_grad_site(true);
-  y->site = frac_t( 1., 1., 1.);
-  z->site = frac_t( 2., 0., 2.);
+  y->site = frac_t( 1.1, 1.2, 1.3);
+  z->site = frac_t( 2.1, 0.2, 2.3);
 
   independent_site_parameter *is_x = new independent_site_parameter(x),
                              *is_y = new independent_site_parameter(y),
