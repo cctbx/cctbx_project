@@ -1212,8 +1212,35 @@ def exercise_xray_structure_repr():
     assert sc.fp  == sc1.fp
     assert sc.fdp == sc1.fdp
 
+def exercise_delta_sites_cart_measure():
+  rnd_delta = 1e-3
+  for hall_symbol, continuously_shift in [
+    ('P 2yb', lambda x,y,z: (x    , y+0.7, z)    ),
+    ('P -2x', lambda x,y,z: (x    , y+0.9, z-0.7)),
+    ('P 1'  , lambda x,y,z: (x+0.1, y+0.2, z+0.9)),
+    ]:
+    xs0 = random_structure.xray_structure(
+      sgtbx.space_group_info('hall: %s' % hall_symbol),
+      use_u_iso=False,
+      use_u_aniso=True,
+      n_scatterers=5,
+      elements="random")
+    xs1 = xs0.deep_copy_scatterers()
+    delta = flex.vec3_double()
+    for sc in xs1.scatterers():
+      x, y, z = continuously_shift(*sc.site)
+      dx, dy, dz = [ random.uniform(-rnd_delta, rnd_delta)
+                     for i in xrange(3) ]
+      delta.append((dx, dy, dz))
+      sc.site = (x + dx, y + dy, z + dz)
+    delta = flex.vec3_double([ xs0.unit_cell().orthogonalize(d)
+                               for d in delta ])
+    diff_ref = flex.max_absolute(delta.as_double())
+    diff = xs1.delta_sites_cart_measure(xs0)
+    assert approx_equal(diff, diff_ref, eps=rnd_delta)
 
 def run():
+  exercise_delta_sites_cart_measure()
   exercise_xray_structure_repr()
   exercise_parameter_map()
   exercise_chemical_formula()
