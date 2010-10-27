@@ -64,7 +64,6 @@ class site_refinement_test(refinement_test):
       geometrical_constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
-      self.xray_structure,
       self.fo_sq,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
@@ -81,7 +80,6 @@ class site_refinement_test(refinement_test):
     unrestrained_eigenvec = ev.vectors()
 
     normal_eqns = least_squares.normal_equations(
-      self.xray_structure,
       self.fo_sq,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
@@ -149,7 +147,6 @@ class site_refinement_test(refinement_test):
     # Do the floating origin restraints prevent the structure from floating?
     xs = self.xray_structure.deep_copy_scatterers()
     normal_eqns = least_squares.normal_equations(
-      xs,
       self.fo_sq,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
@@ -194,7 +191,7 @@ class site_refinement_test(refinement_test):
       geometrical_constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
-      xs, self.fo_sq, reparametrisation,
+      self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
     emma_ref = xs.as_emma_model()
     xs.shake_sites_in_place(rms_difference=0.1)
@@ -433,7 +430,7 @@ class special_positions_test(object):
       geometrical_constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
-      xs, self.fo_sq, reparametrisation,
+      self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     objectives = []

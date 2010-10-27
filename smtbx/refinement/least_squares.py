@@ -2,6 +2,7 @@ import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
 
+import libtbx
 from libtbx import adopt_optional_init_args
 from scitbx import linalg, lstbx
 from scitbx.array_family import flex
@@ -20,8 +21,7 @@ class normal_equations(object):
   restraints_manager=None
   n_restraints = None
 
-  def __init__(self, xray_structure, fo_sq, reparametrisation, **kwds):
-    self.xray_structure = xray_structure
+  def __init__(self, fo_sq, reparametrisation, **kwds):
     self.fo_sq = fo_sq
     self.reparametrisation = reparametrisation
     adopt_optional_init_args(self, kwds)
@@ -30,7 +30,7 @@ class normal_equations(object):
     if self.weighting_scheme == "default":
       self.weighting_scheme = self.default_weighting_scheme()
     self.floating_origin_restraints = floating_origin_restraints(
-      xray_structure.space_group(),
+      self.xray_structure.space_group(),
       reparametrisation.asu_scatterer_parameters,
       reparametrisation.jacobian_transpose_matching_grad_fc(),
       self.floating_origin_restraint_relative_weight)
@@ -38,6 +38,10 @@ class normal_equations(object):
       self.reparametrisation.n_independent_params)
     self.reduced = None
     self.shifts = None
+
+  class xray_structure(libtbx.property):
+    def fget(self):
+      return self.reparametrisation.structure
 
   def compute_quick_scale_factor_approximation(self):
     self.fo_sq.set_observation_type_xray_intensity()
