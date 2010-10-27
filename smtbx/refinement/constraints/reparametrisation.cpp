@@ -50,6 +50,14 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // asu_site_parameter
 
+  void asu_site_parameter::set_variable(bool f) {
+    scatterer->flags.set_grad_site(f);
+  }
+
+  bool asu_site_parameter::is_variable() const {
+    return scatterer->flags.grad_site();
+  }
+
   void asu_site_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
                                     std::ostream &output) const
@@ -67,14 +75,6 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // independent_site_parameter
 
-  void independent_site_parameter::set_variable(bool f) {
-    scatterer->flags.set_grad_site(f);
-  }
-
-  bool independent_site_parameter::is_variable() const {
-    return scatterer->flags.grad_site();
-  }
-
   void independent_site_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
@@ -85,6 +85,15 @@ namespace smtbx { namespace refinement { namespace constraints {
   af::ref<double> u_star_parameter::components() { return value.ref(); }
 
   // asu ADP
+
+  void asu_u_star_parameter::set_variable(bool f) {
+    if (f) scatterer->flags.set_use_u_aniso(true);
+    scatterer->flags.set_grad_u_aniso(f);
+  }
+
+  bool asu_u_star_parameter::is_variable() const {
+    return scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso();
+  }
 
   void
   asu_u_star_parameter
@@ -107,21 +116,20 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // independent ADP
 
-  void independent_u_star_parameter::set_variable(bool f) {
-    if (f) scatterer->flags.set_use_u_aniso(true);
-    scatterer->flags.set_grad_u_aniso(f);
-  }
-
-  bool independent_u_star_parameter::is_variable() const {
-    return scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso();
-  }
-
   void independent_u_star_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {}
 
   // Occupancy
+
+  void asu_occupancy_parameter::set_variable(bool f) {
+    scatterer->flags.set_grad_occupancy(f);
+  }
+
+  bool asu_occupancy_parameter::is_variable() const {
+    return scatterer->flags.grad_occupancy();
+  }
 
   void asu_occupancy_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
@@ -135,20 +143,21 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // independent Occupancy
 
-  void independent_occupancy_parameter::set_variable(bool f) {
-    scatterer->flags.set_grad_occupancy(f);
-  }
-
-  bool independent_occupancy_parameter::is_variable() const {
-    return scatterer->flags.grad_occupancy();
-  }
-
   void independent_occupancy_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {}
 
   // u_iso
+
+  void asu_u_iso_parameter::set_variable(bool f) {
+    if (f) scatterer->flags.set_use_u_iso(true);
+    scatterer->flags.set_grad_u_iso(f);
+  }
+
+  bool asu_u_iso_parameter::is_variable() const {
+    return scatterer->flags.grad_u_iso();
+  }
 
   void asu_u_iso_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
@@ -161,15 +170,6 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   // independent u_iso
-
-  void independent_u_iso_parameter::set_variable(bool f) {
-    if (f) scatterer->flags.set_use_u_iso(true);
-    scatterer->flags.set_grad_u_iso(f);
-  }
-
-  bool independent_u_iso_parameter::is_variable() const {
-    return scatterer->flags.grad_u_iso();
-  }
 
   void independent_u_iso_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
