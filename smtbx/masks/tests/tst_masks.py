@@ -162,7 +162,7 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
     geometrical_constraints=[],
     connectivity_table=connectivity_table)
   normal_eqns = least_squares.normal_equations(
-    xs, fo_sq, reparametrisation,
+    fo_sq, reparametrisation,
     f_mask=f_mask,
     weighting_scheme="default")
   objectives = []
