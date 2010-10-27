@@ -234,7 +234,8 @@ def exercise_symmetry_equivalent():
       xray.scatterer("C", site=(0.1, 0.2, 0.3)),
     )))
   connectivity_table = smtbx.utils.connectivity_table(xs)
-  reparametrisation = constraints.reparametrisation(xs, [], connectivity_table)
+  reparametrisation = constraints.reparametrisation(
+    xs, [], connectivity_table)
   site_0 = reparametrisation.add(constraints.independent_site_parameter,
                                  scatterer=xs.scatterers()[0])
   symm_eq = reparametrisation.add(

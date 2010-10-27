@@ -45,13 +45,14 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot = (site_parameter *)this->argument(0),
-                   *pivot_neighbour = (site_parameter *)this->argument(1);
-    independent_scalar_parameter *azimuth, *length;
+    site_parameter
+    *pivot           = dynamic_cast<site_parameter *>(this->argument(0)),
+    *pivot_neighbour = dynamic_cast<site_parameter *>(this->argument(1));
+    scalar_parameter *azimuth, *length;
     site_parameter *stagger;
-    if (staggered) stagger = (site_parameter *)this->argument(2);
-    else           azimuth = (independent_scalar_parameter *)this->argument(2);
-    length  = (independent_scalar_parameter *)this->argument(3);
+    if (staggered) stagger = dynamic_cast<site_parameter *>(this->argument(2));
+    else           azimuth = dynamic_cast<scalar_parameter *>(this->argument(2));
+    length  = dynamic_cast<scalar_parameter *>(this->argument(3));
 
     // Local frame
     cart_t x_p = unit_cell.orthogonalize(pivot->value),
@@ -151,13 +152,13 @@ namespace smtbx { namespace refinement { namespace constraints {
                                       sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot             = (site_parameter *)argument(0),
-                   *pivot_neighbour_0 = (site_parameter *)argument(1),
-                   *pivot_neighbour_1 = (site_parameter *)argument(2);
-    independent_scalar_parameter
-    *length = (independent_scalar_parameter *)argument(3);
+    site_parameter
+    *pivot             = dynamic_cast<site_parameter *>(argument(0)),
+    *pivot_neighbour_0 = dynamic_cast<site_parameter *>(argument(1)),
+    *pivot_neighbour_1 = dynamic_cast<site_parameter *>(argument(2));
+    scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(3));
     angle_starting_tetrahedral
-    *h_c_h = (angle_starting_tetrahedral *)argument(4);
+    *h_c_h = dynamic_cast<angle_starting_tetrahedral *>(argument(4));
 
     // Local frame
     /* (C, e0, e1) is the bisecting plane of the angle X-C-Y
@@ -216,13 +217,12 @@ namespace smtbx { namespace refinement { namespace constraints {
                                    sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot = (site_parameter *)argument(0);
+    site_parameter *pivot = dynamic_cast<site_parameter *>(argument(0));
     af::tiny<site_parameter *, 3> pivot_neighbour;
     for (int k=0; k<3; ++k) {
-      pivot_neighbour[k] = (site_parameter *)argument(k+1);
+      pivot_neighbour[k] = dynamic_cast<site_parameter *>(argument(k+1));
     }
-    independent_scalar_parameter
-    *length = (independent_scalar_parameter *)argument(4);
+    scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(4));
 
     // Local frame
     cart_t x_p = unit_cell.orthogonalize(pivot->value);
@@ -261,11 +261,11 @@ namespace smtbx { namespace refinement { namespace constraints {
                                            sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot = (site_parameter *)argument(0);
-    site_parameter *pivot_neighbour_0 = (site_parameter *)argument(1),
-                   *pivot_neighbour_1 = (site_parameter *)argument(2);
-    independent_scalar_parameter
-    *length = (independent_scalar_parameter *)argument(3);
+    site_parameter *pivot = dynamic_cast<site_parameter *>(argument(0));
+    site_parameter
+    *pivot_neighbour_0 = dynamic_cast<site_parameter *>(argument(1)),
+    *pivot_neighbour_1 = dynamic_cast<site_parameter *>(argument(2));
+    scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(3));
 
     // Local frame
     cart_t x_p = unit_cell.orthogonalize(pivot->value);
@@ -299,11 +299,12 @@ namespace smtbx { namespace refinement { namespace constraints {
             sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot = (site_parameter *)argument(0);
-    site_parameter *pivot_neighbour = (site_parameter *)argument(1);
-    site_parameter *pivot_neighbour_substituent = (site_parameter *)argument(2);
-    independent_scalar_parameter
-    *length = (independent_scalar_parameter *)argument(3);
+    site_parameter *pivot = dynamic_cast<site_parameter *>(argument(0));
+    site_parameter
+    *pivot_neighbour = dynamic_cast<site_parameter *>(argument(1));
+    site_parameter
+    *pivot_neighbour_substituent = dynamic_cast<site_parameter *>(argument(2));
+    scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(3));
 
     // Local frame
     cart_t p = unit_cell.orthogonalize(pivot->value);
@@ -345,10 +346,9 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
-    site_parameter *pivot = (site_parameter *)argument(0);
-    site_parameter *pivot_neighbour = (site_parameter *)argument(1);
-    independent_scalar_parameter
-    *length = (independent_scalar_parameter *)argument(2);
+    site_parameter *pivot = dynamic_cast<site_parameter *>(argument(0));
+    site_parameter *pivot_neighbour = dynamic_cast<site_parameter *>(argument(1));
+    scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(2));
 
     // Local frame
     cart_t p = unit_cell.orthogonalize(pivot->value);

@@ -79,7 +79,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::shared<scalar_t> singular_dir(af::reserve(5*params.size()));
         std::back_insert_iterator< af::shared<scalar_t> > g(singular_dir);
         for (std::size_t i=0; i<params.size(); ++i) {
-          BOOST_FOREACH (constraints::crystallographic_parameter const *p,
+          BOOST_FOREACH (constraints::asu_parameter const *p,
                          params[i].ordered())
           {
             if (p == params[i].site) std::copy(v.begin(), v.end(), g);

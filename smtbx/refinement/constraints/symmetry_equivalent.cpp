@@ -2,13 +2,7 @@
 
 namespace smtbx { namespace refinement { namespace constraints {
 
-  SMTBX_CONSTRAINTS_SYMMETRY_EQUIVALENT_DEFINE_BOILER_PLATE(
-    symmetry_equivalent_site_parameter)
-
   // Symmetry equivalent site
-
-  std::size_t symmetry_equivalent_site_parameter
-  ::size() const { return 3; }
 
   void symmetry_equivalent_site_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,

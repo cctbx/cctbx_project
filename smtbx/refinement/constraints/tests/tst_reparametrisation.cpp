@@ -8,13 +8,14 @@
 using namespace smtbx;
 using namespace smtbx::refinement::constraints;
 
-class dependent_site_1 : public site_parameter
+class dependent_site_1 : public asu_site_parameter
 {
 public:
   dependent_site_1(scatterer_type *scatterer,
                    site_parameter *site_1,
                    site_parameter *site_2)
-    : site_parameter(scatterer, 2)
+    : parameter(2),
+      single_asu_scatterer_parameter(scatterer)
   {
     set_arguments(site_1, site_2);
   }
@@ -22,8 +23,8 @@ public:
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jt)
   {
-    site_parameter *s1 = (site_parameter *)argument(0),
-                   *s2 = (site_parameter *)argument(1);
+    site_parameter *s1 = dynamic_cast<site_parameter *>(argument(0)),
+                   *s2 = dynamic_cast<site_parameter *>(argument(1));
     value = s1->value + s2->value;
     if (!jt) return;
     std::size_t j_s1=s1->index(), j_s2=s2->index(), j=index();
@@ -34,13 +35,14 @@ public:
 };
 
 
-class dependent_site_2 : public site_parameter
+class dependent_site_2 : public asu_site_parameter
 {
 public:
   dependent_site_2(scatterer_type *scatterer,
                    site_parameter *site_1,
                    site_parameter *site_2)
-  : site_parameter(scatterer, 2)
+  : parameter(2),
+    single_asu_scatterer_parameter(scatterer)
   {
     set_arguments(site_1, site_2);
   }
@@ -48,8 +50,8 @@ public:
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jt)
   {
-    site_parameter *s1 = (site_parameter *)argument(0),
-                   *s2 = (site_parameter *)argument(1);
+    site_parameter *s1 = dynamic_cast<site_parameter *>(argument(0)),
+                   *s2 = dynamic_cast<site_parameter *>(argument(1));
     value = s1->value - s2->value;
     if (!jt) return;
     std::size_t j_s1=s1->index(), j_s2=s2->index(), j=index();
@@ -60,13 +62,14 @@ public:
 };
 
 
-class dependent_site_3 : public site_parameter
+class dependent_site_3 : public asu_site_parameter
 {
 public:
   dependent_site_3(scatterer_type *scatterer,
                    site_parameter *site,
-                   independent_scalar_parameter *x)
-    : site_parameter(scatterer, 2)
+                   scalar_parameter *x)
+  : parameter(2),
+    single_asu_scatterer_parameter(scatterer)
   {
     set_arguments(site, x);
   }
@@ -74,8 +77,8 @@ public:
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jt)
   {
-    site_parameter *s = (site_parameter *)argument(0);
-    independent_scalar_parameter *x = (independent_scalar_parameter *)argument(1);
+    site_parameter *s = dynamic_cast<site_parameter *>(argument(0));
+    scalar_parameter *x = dynamic_cast<scalar_parameter *>(argument(1));
     value = x->value * s->value;
     if (!jt) return;
     std::size_t j_s=s->index(), j_x=x->index(), j=index();
@@ -92,17 +95,17 @@ public:
 class test_case
 {
 public:
-  typedef crystallographic_parameter::scatterer_type sc_t;
+  typedef asu_parameter::scatterer_type sc_t;
 
   uctbx::unit_cell uc;
   af::shared<sc_t> sc;
   independent_site_parameter *is1, *is2, *is3, *is4;
 
-  site_parameter *s1, *s2, *s3, *s4;
-  site_parameter *s5, *s6, *s7, *s8;
+  asu_site_parameter *s1, *s2, *s3, *s4;
+  asu_site_parameter *s5, *s6, *s7, *s8;
 
-  independent_scalar_parameter *s11;
-  site_parameter *s10, *s9;
+  scalar_parameter *s11;
+  asu_site_parameter *s10, *s9;
 
 
   test_case()
@@ -171,7 +174,7 @@ public:
     std::cout << "sizeof(parameter) = " << sizeof(parameter) << "\n";
 
     //*** check root and variability status are correctly assigned ***
-    std::vector<crystallographic_parameter *> cryst;
+    std::vector<asu_parameter *> cryst;
     cryst.push_back(s8);
     cryst.push_back(s9);
     reparametrisation
@@ -341,7 +344,7 @@ public:
 
   void run() {
     // Construct
-    std::vector<crystallographic_parameter *> cryst;
+    std::vector<asu_parameter *> cryst;
     cryst.push_back(s6);
     cryst.push_back(s1);
     cryst.push_back(s2);

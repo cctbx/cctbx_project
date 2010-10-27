@@ -11,12 +11,13 @@ namespace smtbx { namespace refinement { namespace constraints {
 
 /// Site constrained to be on a special position
 /** Parameter components are the fractional coordinates */
-class special_position_site_parameter : public site_parameter
+class special_position_site_parameter : public asu_site_parameter
 {
 public:
   special_position_site_parameter(sgtbx::site_symmetry_ops const &site_symmetry,
-                        scatterer_type *scatterer)
-    : site_parameter(scatterer, 1),
+                                  scatterer_type *scatterer)
+    : parameter(1),
+      single_asu_scatterer_parameter(scatterer),
       site_constraints(site_symmetry.site_constraints())
   {
     value = site_symmetry.special_op()*scatterer->site;
@@ -26,7 +27,7 @@ public:
   }
 
   independent_small_vector_parameter<3> const &independent_params() {
-    return *(independent_small_vector_parameter<3> *)argument(0);
+    return *dynamic_cast<independent_small_vector_parameter<3> *>(argument(0));
   }
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
@@ -40,7 +41,7 @@ private:
 /// Anisotropic displacement constrained by the symmetry of a special position
 /** Parameter components are those of the tensor in fractional coordinates
  */
-class special_position_u_star_parameter : public u_star_parameter
+class special_position_u_star_parameter : public asu_u_star_parameter
 {
 public:
   typedef sgtbx::tensor_rank_2::constraints<double>
@@ -48,7 +49,8 @@ public:
 
   special_position_u_star_parameter(sgtbx::site_symmetry_ops const &site_symmetry,
                                     scatterer_type *scatterer)
-    : u_star_parameter(scatterer, 1),
+    : parameter(1),
+      single_asu_scatterer_parameter(scatterer),
       adp_constraints(site_symmetry.adp_constraints())
   {
     value = site_symmetry.average_u_star(scatterer->u_star);
@@ -58,7 +60,7 @@ public:
   }
 
   independent_small_vector_parameter<6> const &independent_params() {
-    return *(independent_small_vector_parameter<6> *)argument(0);
+    return *dynamic_cast<independent_small_vector_parameter<6> *>(argument(0));
   }
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,

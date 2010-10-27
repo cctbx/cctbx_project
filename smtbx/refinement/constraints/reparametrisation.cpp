@@ -11,18 +11,18 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   void parameter::set_variable(bool f) { variable = f; }
 
-  double *parameter::components() { return 0; }
+  // scalar parameter
 
- // independent_scalar_parameter
+  af::ref<double> scalar_parameter::components() {
+    return af::ref<double>(&value, 1);
+  }
 
-  std::size_t independent_scalar_parameter::size() const { return 1; }
+  // independent_scalar_parameter
 
   void independent_scalar_parameter
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {}
-
-  double *independent_scalar_parameter::components() { return &value; }
 
   // independent_small_vector_parameter
 
@@ -31,13 +31,13 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // single_scatterer_parameter
 
-  crystallographic_parameter::scatterer_sequence_type
-  single_scatterer_parameter::scatterers() const {
+  asu_parameter::scatterer_sequence_type
+  single_asu_scatterer_parameter::scatterers() const {
     return scatterer_sequence_type(&scatterer, 1);
   }
 
   index_range
-  single_scatterer_parameter
+  single_asu_scatterer_parameter
   ::component_indices_for(scatterer_type const *scatterer) const
   {
     return scatterer == this->scatterer ? index_range(index(), size())
@@ -46,9 +46,11 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // site_parameter
 
-  std::size_t site_parameter::size() const { return 3; }
+  af::ref<double> site_parameter::components() { return value.ref(); }
 
-  void site_parameter
+  // asu_site_parameter
+
+  void asu_site_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
                                     std::ostream &output) const
   {
@@ -59,7 +61,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void site_parameter::store(uctbx::unit_cell const &unit_cell) const {
+  void asu_site_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->site = value;
   }
 
@@ -78,16 +80,14 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {}
 
-  double *independent_site_parameter::components() {
-    return value.begin();
-  }
-
   // ADP
 
-  std::size_t u_star_parameter::size() const { return 6; }
+  af::ref<double> u_star_parameter::components() { return value.ref(); }
+
+  // asu ADP
 
   void
-  u_star_parameter
+  asu_u_star_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
                                     std::ostream &output) const
   {
@@ -101,7 +101,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void u_star_parameter::store(uctbx::unit_cell const &unit_cell) const {
+  void asu_u_star_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->u_star = value;
   }
 
@@ -121,13 +121,7 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {}
 
-  double *independent_u_star_parameter::components() {
-    return value.begin();
-  }
-
   // Occupancy
-
-  std::size_t occupancy_parameter::size() const { return 1; }
 
   void occupancy_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
@@ -154,11 +148,7 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {}
 
-  double *independent_occupancy_parameter::components() { return &value; }
-
   // u_iso
-
-  std::size_t u_iso_parameter::size() const { return 1; }
 
   void u_iso_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
@@ -185,7 +175,5 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {}
-
-  double *independent_u_iso_parameter::components() { return &value; }
 
 }}}
