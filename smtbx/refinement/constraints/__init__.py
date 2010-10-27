@@ -89,15 +89,15 @@ class reparametrisation(ext.reparametrisation):
     self.mapping_to_grad_fc = \
         self.asu_scatterer_parameters.mapping_to_grad_fc()
 
-  def _(self):
-    return self.__dict__.setdefault(
-      "_component_annotations",
-      self.asu_scatterer_parameters.component_annotations().split(','))
-  component_annotations = property(_)
+  class component_annotations(libtbx.property):
+    def fget(self):
+      return self.__dict__.setdefault(
+        "_component_annotations",
+        self.asu_scatterer_parameters.component_annotations().split(','))
 
-  def _(self):
-    return self.jacobian_transpose.n_rows
-  n_independent_params = property(_)
+  class n_independent_params(libtbx.property):
+    def fget(self):
+      return self.jacobian_transpose.n_rows
 
   def jacobian_transpose_matching_grad_fc(self):
     """ The columns of self.jacobian_transpose corresponding to crystallographic
