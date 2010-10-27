@@ -130,9 +130,14 @@ class xray_structure_viewer(qttbx.widget):
     frac = mat.rec(uc.fractionalization_matrix(), (3,3))
     inv_frac = frac.inverse()
     site_symms = xs.site_symmetry_table()
+    scatt = self.xray_structure.scatterers()
     for i, neighbours in enumerate(pair_sym_table):
       x0 = sites_cart[i]
+      sc0 = scatt[i]
       for j, ops in neighbours.items():
+        sc1 = scatt[j]
+        if sc0.scattering_type == 'H' and sc1.scattering_type == 'H':
+          continue
         for op in ops:
           if op.is_unit_mx():
             x1 = sites_cart[j]
@@ -143,12 +148,11 @@ class xray_structure_viewer(qttbx.widget):
                   *mat.sym(sym_mat3=thermal_tensors[j])
                   *op_cart.transpose())
             t = quadrics.ellipsoid_to_sphere_transform(x1, u1.as_sym_mat3())
-            sc = xs.scatterers()[j]
-            self.ellipsoid_to_sphere_transforms[sc.element_symbol()].append(t)
+            self.ellipsoid_to_sphere_transforms[sc1.element_symbol()].append(t)
             self.sites_cart.append(x1)
             op_lbl = (" [%s]" % op).lower()
             self.scatterer_indices.append("# %i%s" % (j, op_lbl))
-            self.scatterer_labels.append("%s%s" % (sc.label, op_lbl))
+            self.scatterer_labels.append("%s%s" % (sc1.label, op_lbl))
           self.bonds.append(x0)
           self.bonds.append(x1)
 
