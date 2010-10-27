@@ -414,6 +414,13 @@ class asu_site_parameter : public site_parameter,
                            public virtual single_asu_scatterer_parameter
 {
 public:
+  /// Variability property, directly linked to the scatterer grad_site flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const;
@@ -433,13 +440,6 @@ public:
   {
     value = scatterer->site;
   }
-
-  /// Variability property, directly linked to the scatterer grad_site flag
-  //@{
-  virtual void set_variable(bool f);
-
-  virtual bool is_variable() const;
-  //@}
 
   /// Does nothing in this class
   /** This optimisation relies on class reparametrisation implementation
@@ -468,6 +468,13 @@ class asu_u_star_parameter : public u_star_parameter,
                              public virtual single_asu_scatterer_parameter
 {
 public:
+  /// Variability property, directly linked to the scatterer grad_site flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const;
@@ -487,13 +494,6 @@ public:
     value = scatterer->u_star;
   }
 
-  /// Variability property, directly linked to the scatterer grad_site flag
-  //@{
-  virtual void set_variable(bool f);
-
-  virtual bool is_variable() const;
-  //@}
-
   /// Does nothing in this class
   /** This optimisation relies on class reparametrisation implementation
    */
@@ -507,6 +507,13 @@ class asu_occupancy_parameter : public scalar_parameter,
                                 public virtual single_asu_scatterer_parameter
 {
 public:
+  /// Variability property, directly linked to the scatterer grad_occupancy flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const;
@@ -528,13 +535,6 @@ public:
     value = scatterer->occupancy;
   }
 
-  /// Variability property, directly linked to the scatterer grad_occupancy flag
-  //@{
-  virtual void set_variable(bool f);
-
-  virtual bool is_variable() const;
-  //@}
-
   /// Does nothing in this class
   /** This optimisation relies on class reparametrisation implementation
    */
@@ -548,6 +548,13 @@ class asu_u_iso_parameter : public scalar_parameter,
                             public virtual single_asu_scatterer_parameter
 {
 public:
+  /// Variability property, directly linked to the scatterer grad_u_iso flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
   virtual void
   write_component_annotations_for(scatterer_type const *scatterer,
                                   std::ostream &output) const;
@@ -568,13 +575,6 @@ public:
   {
     value = scatterer->u_iso;
   }
-
-  /// Variability property, directly linked to the scatterer grad_u_iso flag
-  //@{
-  virtual void set_variable(bool f);
-
-  virtual bool is_variable() const;
-  //@}
 
   /// Does nothing in this class
   /** This optimisation relies on class reparametrisation implementation
