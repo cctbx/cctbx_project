@@ -123,13 +123,13 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // Occupancy
 
-  void occupancy_parameter
+  void asu_occupancy_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
                                     std::ostream &output) const
   {
     if (scatterer == this->scatterer) output << scatterer->label << ".occ,";
   }
-  void occupancy_parameter::store(uctbx::unit_cell const &unit_cell) const {
+  void asu_occupancy_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->occupancy = value;
   }
 
@@ -150,13 +150,13 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // u_iso
 
-  void u_iso_parameter
+  void asu_u_iso_parameter
   ::write_component_annotations_for(scatterer_type const *scatterer,
                                     std::ostream &output) const
   {
     if (scatterer == this->scatterer) output << scatterer->label << ".uiso,";
   }
-  void u_iso_parameter::store(uctbx::unit_cell const &unit_cell) const {
+  void asu_u_iso_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->u_iso = value;
   }
 

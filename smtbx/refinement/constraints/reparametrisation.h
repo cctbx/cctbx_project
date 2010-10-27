@@ -503,8 +503,8 @@ public:
 
 
 /// Occupancy of a scatterer
-class occupancy_parameter : public scalar_parameter,
-                            public virtual single_asu_scatterer_parameter
+class asu_occupancy_parameter : public scalar_parameter,
+                                public virtual single_asu_scatterer_parameter
 {
 public:
   virtual void
@@ -518,7 +518,7 @@ public:
 };
 
 
-class independent_occupancy_parameter : public occupancy_parameter
+class independent_occupancy_parameter : public asu_occupancy_parameter
 {
 public:
   independent_occupancy_parameter(scatterer_type *scatterer)
@@ -544,8 +544,8 @@ public:
 
 
 /// Isotropic thermal displacement parameter of a scatterer
-class u_iso_parameter : public scalar_parameter,
-                        public virtual single_asu_scatterer_parameter
+class asu_u_iso_parameter : public scalar_parameter,
+                            public virtual single_asu_scatterer_parameter
 {
 public:
   virtual void
@@ -559,7 +559,7 @@ public:
 };
 
 
-class independent_u_iso_parameter : public u_iso_parameter
+class independent_u_iso_parameter : public asu_u_iso_parameter
 {
 public:
   independent_u_iso_parameter(scatterer_type *scatterer)
