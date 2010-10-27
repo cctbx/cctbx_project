@@ -142,6 +142,9 @@ public:
   /// Number of arguments
   std::size_t n_arguments() const { return n_args; }
 
+  /// Whether this parameter is independent in the refinement
+  bool is_independent() const { return !n_arguments(); }
+
   /// i-th argument
   parameter *argument(std::size_t i) const { return arg[i]; }
 
@@ -805,10 +808,10 @@ public:
     n_independents_ = n_intermediates_ = n_non_trivial_roots_ = 0;
     BOOST_FOREACH(parameter *p, all) {
       std::size_t s = p->size();
-      if      (!p->is_variable()) n_intermediates_ += s;
-      else if (!p->n_arguments()) n_independents_ += s;
-      else if (p->is_root())      n_non_trivial_roots_ += s;
-      else                        n_intermediates_ += s;
+      if      (!p->is_variable())   n_intermediates_ += s;
+      else if (p->is_independent()) n_independents_ += s;
+      else if (p->is_root())        n_non_trivial_roots_ += s;
+      else                          n_intermediates_ += s;
     }
     std::size_t i_independent = 0,
     i_intermediate = n_independents(),
@@ -882,7 +885,7 @@ public:
   void apply_shifts(af::const_ref<double> const &shifts) {
     SMTBX_ASSERT(shifts.size() == n_independents());
     BOOST_FOREACH(parameter *p, all) {
-      if (!p->n_arguments() && p->is_variable()) {
+      if (p->is_independent() && p->is_variable()) {
         double const *s = &shifts[p->index()];
         af::ref<double> x = p->components();
         for (std::size_t i=0; i<x.size(); ++i) x[i] += s[i];
