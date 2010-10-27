@@ -14,65 +14,99 @@ class plot_container (wx.BoxSizer) :
   def __init__ (self,
                 parent,
                 figure_size=(8,6),
+                font_size=12,
+                title_font_size=10,
                 facecolor='white',
                 transparent=False,
-                handle_left_click=False) :
+                handle_left_click=False,
+                show_data_points=True,
+                point_types=('o', '^', '+', 's', 'D'),
+                title_alignment="right") :
     wx.BoxSizer.__init__(self, wx.VERTICAL)
-    from matplotlib.backends.backend_wxagg import Toolbar
-    from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg, FigureManager
-    import matplotlib.ticker
-    import matplotlib.cm
-    import matplotlib.figure
-    import matplotlib.font_manager
-    self.parent = parent
-    self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
-      facecolor=facecolor)
-    if transparent :
-      self.figure.figurePatch.set_alpha(0.0)
-    self.canvas = FigureCanvasWxAgg(self.parent, -1, self.figure)
-    self.canvas.toolbar = oop.null()
-    self.figmgr = FigureManager(self.canvas, 1, self)
-    self.Add(self.canvas, 1, wx.EXPAND|wx.ALL)
-    self.font = matplotlib.font_manager.FontProperties(
-      family = ["Courier", "Monaco", "monospace"],
-      weight = "normal",
-      size   = 10
-    )
-    self.label_font = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
-      weight = "bold",
-      size = 11
-    )
-    self.legend_font = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
-      weight = "normal",
-      size = 10
-    )
-    self.value_label_font = matplotlib.font_manager.FontProperties(
-      family = ["Courier", "Monaco", "monospace"],
-      weight = "normal",
-      size   = self.font_size
-    )
-    self.axis_label_font = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
-      weight = "bold",
-      size   = self.font_size
-    )
-    self.text_font = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
-      weight = "normal",
-      size   = self.font_size
-    )
-    self.title_font = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
-      weight = "normal",
-      size   = self.title_font_size
-    )
-    self.null_fmt = matplotlib.ticker.NullFormatter()
-    if self.handle_left_click :
-      self.canvas.mpl_connect("button_release_event", self.OnClick)
+    adopt_init_args(self, locals())
+    self._fonts = {}
+    self.disabled = False
+    try :
+      import matplotlib
+      from matplotlib.backends.backend_wxagg import Toolbar
+      from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+      from matplotlib.backends.backend_wxagg import FigureManager
+      import matplotlib.ticker
+      import matplotlib.cm
+      import matplotlib.figure
+      import matplotlib.font_manager
+    except ImportError, e :
+      print ""
+      print "Error loading matplotlib module:"
+      print e
+      print ""
+      self.disabled = True
+      self.canvas = oop.null()
+      self.figure = oop.null()
+      self.text_font = oop.null()
+      self.p = oop.null()
+      w = int(figure_size[0] * 72)
+      h = int(figure_size[1] * 72)
+      panel = wx.Panel(parent=parent,
+        size=(w,h))
+      panel.SetBackgroundColour((150,150,150))
+      szr = wx.BoxSizer(wx.VERTICAL)
+      panel.SetSizer(szr)
+      txt = wx.StaticText(parent=panel,
+        label="Plotting disabled due to missing libraries.")
+      szr.Add(txt, 1, wx.ALL|wx.ALIGN_CENTER, 10)
+      txt.SetForegroundColour((255,0,0))
+      font = txt.GetFont()
+      font.SetWeight(wx.FONTWEIGHT_BOLD)
+      txt.SetFont(font)
+      self.Add(panel, 1, wx.EXPAND|wx.ALL)
     else :
-      self.canvas.Bind(wx.EVT_CONTEXT_MENU, self.OnRightClick, self.canvas)
+      self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
+        facecolor=facecolor)
+      if transparent :
+        self.figure.figurePatch.set_alpha(0.0)
+      self.canvas = FigureCanvasWxAgg(self.parent, -1, self.figure)
+      self.canvas.toolbar = oop.null()
+      self.figmgr = FigureManager(self.canvas, 1, self)
+      self.Add(self.canvas, 1, wx.EXPAND|wx.ALL)
+      self.setup_fonts()
+      self.null_fmt = matplotlib.ticker.NullFormatter()
+      if self.handle_left_click :
+        self.canvas.mpl_connect("button_release_event", self.OnClick)
+      else :
+        self.canvas.Bind(wx.EVT_CONTEXT_MENU, self.OnRightClick, self.canvas)
+
+  def setup_fonts (self) :
+    import matplotlib.font_manager
+    self._fonts["basic"] = matplotlib.font_manager.FontProperties(
+      family = ["Courier", "Monaco", "monospace"],
+      weight = "normal",
+      size   = 10)
+    self._fonts["value_label"] = matplotlib.font_manager.FontProperties(
+      family = ["Courier", "Monaco", "monospace"],
+      weight = "normal",
+      size   = self.font_size)
+    self._fonts["axis_label"] = matplotlib.font_manager.FontProperties(
+      family = ["Helvetica", "sans-serif"],
+      weight = "bold",
+      size   = self.font_size)
+    self._fonts["text"] = matplotlib.font_manager.FontProperties(
+      family = ["Helvetica", "sans-serif"],
+      weight = "normal",
+      size   = self.font_size)
+    self._fonts["title"] = matplotlib.font_manager.FontProperties(
+      family = ["Helvetica", "sans-serif"],
+      weight = "normal",
+      size   = self.title_font_size)
+
+  def get_font (self, font_type) :
+    font = self._fonts.get(font_type, None)
+    if (font is None) :
+      font = self._fonts.get("basic", None)
+    return font
+
+  def GetToolBar (self) :
+    return None
 
   def OnRightClick (self, event) :
     pass
@@ -124,10 +158,7 @@ class iotbx_data_plot_base (plot_container) :
                 parent,
                 tables,
                 size=(640,480),
-                randomize_colors=False,
-                use_points=True,
-                transparent=True,
-                handle_left_click=False) :
+                **kwds) :
     adopt_init_args(self, locals())
     (x, y, w, h) = tuple(wx.GetClientDisplayRect())
     (width, height) = size
@@ -137,10 +168,7 @@ class iotbx_data_plot_base (plot_container) :
       fig_w = int(math.floor((w-40) / 72))
     if (fig_h * 72) > (h - 120) :
       fig_h = int(math.floor((h-160) / 72))
-    plot_container.__init__(self,
-      parent=parent,
-      figure_size=(fig_w, fig_h),
-      transparent=transparent)
+    plot_container.__init__(self, parent, (fig_w, fig_h), **kwds)
     self.p = self.figure.add_subplot(111)
     self.plot_type = None
 
@@ -158,6 +186,8 @@ class iotbx_data_plot_base (plot_container) :
       self.show_plot(graph)
 
   def show_plot (self, graph, line_width=1, show_points=True, show_grid=True) :
+    if self.disabled :
+      return
     self.figure.clear()
     self.graph = graph
     self.p = self.figure.add_subplot(111)
@@ -168,7 +198,7 @@ class iotbx_data_plot_base (plot_container) :
       show_lines = False
     else :
       show_lines = True
-    if self.use_points :
+    if self.show_data_points :
       point_types = self.point_types #['o', '^', '+', 's', 'D']
     else :
       point_types = [""]
@@ -187,7 +217,7 @@ class iotbx_data_plot_base (plot_container) :
     if show_grid :
       self.p.get_axes().grid(True, color="0.75")
     self.p.get_axes().set_autoscale_on(True)
-    self.p.set_title(graph.name, fontproperties=self.title_font,
+    self.p.set_title(graph.name, fontproperties=self.get_font("title"),
       horizontalalignment=self.title_alignment)
     self.canvas.draw()
     self.parent.Refresh()
@@ -196,7 +226,7 @@ class iotbx_data_plot_base (plot_container) :
     if self.tables[0].x_is_inverse_d_min :
       xdata = self.tables[0].get_x_as_resolution()
       self.p.get_axes().set_xlabel("Resolution",
-        fontproperties=self.axis_label_font)
+        fontproperties=self.get_font("axis_label"))
       marks = [5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.25, 1.1,
                 1, 0.9, 0.8, 0.7, 0.6, 0.5]
       xticks = []
@@ -213,12 +243,12 @@ class iotbx_data_plot_base (plot_container) :
     else :
       if self.graph.x_axis_label is not None :
         self.p.get_axes().set_xlabel(self.graph.x_axis_label,
-          fontproperties=self.axis_label_font)
+          fontproperties=self.get_font("axis_label"))
       else :
         self.p.get_axes().set_xlabel(self.graph.x_label,
-          fontproperties=self.axis_label_font)
+          fontproperties=self.get_font("axis_label"))
     for ticklabel in self.p.get_axes().get_xticklabels() :
-      ticklabel.set_fontproperties(self.value_label_font)
+      ticklabel.set_fontproperties(self.get_font("value_label"))
 
   def axvline (self, x, **kwargs) :
     axes = self.p#.get_axes()
@@ -231,14 +261,14 @@ class iotbx_data_plot_base (plot_container) :
 
   def format_y_axis (self) :
     for ticklabel in self.p.get_axes().get_yticklabels() :
-      ticklabel.set_fontproperties(self.value_label_font)
+      ticklabel.set_fontproperties(self.get_font("value_label"))
     if self.graph.y_axis_label is not None :
       self.p.get_axes().set_ylabel(self.graph.y_axis_label,
-          fontproperties=self.axis_label_font)
+          fontproperties=self.get_font("axis_label"))
 
   def format_labels (self) :
     self.figure.legend(self.p.lines, self.graph.y_labels,
-      prop=self.text_font)
+      prop=self.get_font("text"))
     self.format_x_axis()
     self.format_y_axis()
 
@@ -248,7 +278,7 @@ class iotbx_data_plot_base (plot_container) :
     else :
       self.p.get_axes().grid(False)
     self.canvas.draw()
-    self.Refresh()
+    self.parent.Refresh()
 
   def OnRightClick (self, event) :
     menu = wx.Menu()
@@ -257,6 +287,17 @@ class iotbx_data_plot_base (plot_container) :
 
   def OnSave (self, event=None) :
     self.save_image()
+
+class small_plot (iotbx_data_plot_base) :
+  def __init__ (self, parent, table, size=(320,320)) :
+    iotbx_data_plot_base.__init__(self,
+      parent=parent,
+      tables=[table],
+      size=size,
+      font_size=9,
+      title_font_size=10,
+      title_alignment="center",
+      point_types=('+'))
 
 class plot_frame (wx.Frame) :
   controls_on_top = True
@@ -275,6 +316,7 @@ class plot_frame (wx.Frame) :
     else :
       self.sizer.Add(self.plot_panel, 1, wx.EXPAND|wx.ALL)
       self.sizer.Add(self.top_panel, 0, wx.EXPAND|wx.ALL)
+    self._show_controls = self.show_controls_default
     if not self.show_controls_default :
       self.top_panel.Hide()
     self.SetSizer(self.sizer)
@@ -286,23 +328,22 @@ class plot_frame (wx.Frame) :
   def setup_toolbar (self) :
     tb_buttons = [
       ("Show/hide controls",
-       bitmaps.fetch_icon_bitmap("apps/advancedsettings.png"),
+       bitmaps.fetch_icon_bitmap("apps", "advancedsettings"),
        self.OnToggleControls),
       ("Save",
-       bitmaps.fetch_icon_bitmap("actions/save_all.png"),
+       bitmaps.fetch_icon_bitmap("actions", "save_all"),
        self.OnSave),
       #("Print",
-      # bitmaps.fetch_icon_bitmap("devices/printer1.png"),
+      # bitmaps.fetch_icon_bitmap("devices", "printer1"),
       # self.OnPrint),
     ]
     tb = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     tb.SetToolBitmapSize((32,32))
     self.SetToolBar(tb)
-    for (button_name, button_bitmap, button_function) in tb_buttons :
-      tool_button = tb.AddLabelTool(-1, button_name, bmp,
-          shortHelp=help_string, kind=wx.ITEM_NORMAL)
-      self.Bind(wx.EVT_MENU, button_function, tool_button)
-    tb.Realize()
+    for (name, bitmap, function) in tb_buttons :
+      tool_button = tb.AddLabelTool(-1, name, bitmap, kind=wx.ITEM_NORMAL)
+      self.Bind(wx.EVT_MENU, function, tool_button)
+    self.toolbar = tb
 
   def draw_top_panel (self) :
     pass
@@ -379,9 +420,9 @@ class loggraph (plot_frame) :
       choices=plot_choices)
     self.Bind(wx.EVT_CHOICE, self.OnSelectPlot, self.plot_chooser)
     grid.Add(self.plot_chooser, 0, wx.ALL|wx.EXPAND, 5)
-    cp.Add(grid, 0, wx.EXPAND)
+    cp_sizer.Add(grid, 0, wx.EXPAND)
     szr = wx.BoxSizer(wx.HORIZONTAL)
-    cp.Add(szr, 0, wx.EXPAND)
+    cp_sizer.Add(szr, 0, wx.EXPAND)
     grid_box = wx.CheckBox(parent=cp,
       label="Show grid")
     grid_box.SetValue(True)
@@ -435,15 +476,9 @@ class loggraph (plot_frame) :
     plot = self.plot_chooser.GetStringSelection()
     if table != "" and plot != "" :
       self.plot.set_plot(graph_name=plot, table_name=table)
-      self.Refresh()
+      #self.Refresh()
 
   #--- EVENTS
-  def OnShowTables (self, event) :
-    if self.table_frame is None :
-      self.table_frame = TableFrame(self, "Tables", self.tables)
-    self.table_frame.Show()
-    self.table_frame.Raise()
-
   def OnSelectTable (self, event) :
     table_name = self.table_chooser.GetStringSelection()
     current_plot = self.plot_chooser.GetStringSelection()
@@ -467,5 +502,35 @@ class loggraph (plot_frame) :
     self.plot.show_grid(show)
 
   def OnTogglePoints (self, event) :
-    self.plot.use_points = event.GetEventObject().GetValue()
+    self.plot.show_data_points = event.GetEventObject().GetValue()
     self.switch_plot()
+
+def exercise () :
+  from iotbx import data_plots
+  loggraph1 = """\
+$TABLE: Resolution shell statistics
+$GRAPHS
+:R-free vs. resolution
+:A:1,3:
+:FOM vs. resolution
+:A:1,4:
+$$
+1/resol^2  Nrefl      R-free     FOM       $$
+$$
+0.02       2004       0.25       0.89
+0.04       2084       0.23       0.88
+0.06       2037       0.27       0.83
+0.08       1949       0.28       0.75
+0.1        1783       0.38       *
+$$
+"""
+  app = wx.App(0)
+  frame = loggraph(parent=None,
+    title="Loggraph test",
+    tables=None,
+    processed_lines=loggraph1.splitlines())
+  frame.Show()
+  app.MainLoop()
+
+if __name__ == "__main__" :
+  exercise()

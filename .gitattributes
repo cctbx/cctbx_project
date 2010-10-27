@@ -1367,8 +1367,8 @@ tbxx/optional_copy.hpp svneol=native#text/plain
 tbxx/time_accu.hpp svneol=native#text/plain
 wxtbx/__init__.py -text
 wxtbx/bitmaps.py svneol=native#text/x-python
-wxtbx/matplotlib.py -text
 wxtbx/metallicbutton.py -text
+wxtbx/plots.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
