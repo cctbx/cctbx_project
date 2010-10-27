@@ -129,9 +129,9 @@ class normal_equations(object):
         - self.reparametrisation.n_independent_params))
 
   def wR2(self):
-    return math.sqrt(flex.sum(self.weights * flex.pow2(
-      self.fo_sq.data() - self.scale_factor * flex.norm(self.f_calc.data())))
-                     /flex.sum(self.weights * flex.pow2(self.fo_sq.data())))
+    return math.sqrt(
+      self.objective_data_only
+      /flex.sum(self.weights * flex.pow2(self.fo_sq.data())))
 
   def r1_factor(self, cutoff_factor=None):
     f_obs = self.fo_sq.f_sq_as_f()
@@ -144,11 +144,14 @@ class normal_equations(object):
     R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor))
     return R1, f_obs.size()
 
-  def covariance_matrix(self, normalised_by_goof=True):
-    cov_ind_params = linalg.inverse_of_u_transpose_u(
+  def covariance_matrix(self,
+                        independent_params=False,
+                        normalised_by_goof=True):
+    cov = linalg.inverse_of_u_transpose_u(
       self.reduced.cholesky_factor_packed_u)
-    jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
-    cov = jac_tr.self_transpose_times_symmetric_times_self(cov_ind_params)
+    if not independent_params:
+      jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
+      cov = jac_tr.self_transpose_times_symmetric_times_self(cov)
     if normalised_by_goof: cov *= self.restrained_goof()**2
     return cov
 
