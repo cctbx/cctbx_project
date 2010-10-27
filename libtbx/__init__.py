@@ -121,3 +121,35 @@ if (sys.platform == "cygwin"):
     return builtin_open(name, mode, buffering)
   __builtins__["open"] = open_realpath
   __builtins__["file"] = open_realpath
+
+
+class property(object):
+  """ Syntactic sugar for defining class properties for those poor souls
+  who must stay compatible with older versions of Python which do not
+  feature the @property decorator.
+
+  Synopsis:
+
+     class foo(object):
+
+        class bar(libtbx.property):
+           ''' documentation of the property
+               In the following, self is the object featuring the property.
+           '''
+           def fget(self): # getter
+           def fset(self, value): # setter
+           def fdel(self): # deleter
+  """
+
+  class __metaclass__(type):
+
+    def __new__(meta, name, bases, defs):
+      if bases == (object,):
+        # this is this class
+        return type.__new__(meta, name, bases, defs)
+      else:
+        # this is some heir of this class
+        return __builtins__['property'](fget=defs.get("fget"),
+                                        fset=defs.get("fset"),
+                                        fdel=defs.get("fdel"),
+                                        doc=defs.get("__doc__"))
