@@ -43,6 +43,10 @@ class normal_equations(object):
     def fget(self):
       return self.reparametrisation.structure
 
+  class gradient_norm_reference(libtbx.property):
+    def fget(self):
+      return flex.max(self.fo_sq.data())
+
   def compute_quick_scale_factor_approximation(self):
     self.fo_sq.set_observation_type_xray_intensity()
     f_calc = xray.structure_factors.from_scatterers_direct(
