@@ -105,7 +105,7 @@ private:
     hierarchy since, again, that will have to be done by the most derived
     classes anyway. (few!)
  */
-class parameter : public boost::noncopyable
+class parameter
 {
 public:
   template <class>
