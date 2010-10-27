@@ -1,5 +1,6 @@
 from libtbx import object_oriented_patterns as oop
 from libtbx.test_utils import Exception_expected
+import libtbx
 
 def exercise_injector():
   class a(object):
@@ -121,10 +122,42 @@ def exercise_null():
   assert x == 2
   assert isinstance(n[234], oop.null)
 
+def exercise_easy_property():
+
+  class foo(object):
+
+    def __init__(self):
+      self.a = 1
+
+    class bar(libtbx.property):
+      """ documentation for property bar """
+
+      def fget(self):
+        return self.a
+
+      def fset(self, a):
+        self.a = a
+
+      def fdel(self):
+        self.a = -1
+
+  x = foo()
+  assert x.bar == 1
+  x.bar = 2
+  assert x.bar == 2
+  assert x.a == 2
+  x.bar += 4
+  assert x.bar == 6
+  assert x.a == 6
+  assert foo.bar.__doc__.find("documentation for property bar") >= 0
+  del x.bar
+  assert x.a == -1
+
 def run():
   exercise_injector()
   exercise_memoize()
   exercise_null()
+  exercise_easy_property()
   print 'OK'
 
 if __name__ == '__main__':
