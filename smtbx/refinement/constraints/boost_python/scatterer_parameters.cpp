@@ -45,9 +45,9 @@ struct scatterer_parameters_wrapper
     class_<wt>("scatterer_parameters", no_init)
       .def(init<wt::scatterer_type *>(arg("scatterer")))
       .def(init<wt::scatterer_type *,
-                crystallographic_parameter *,
-                crystallographic_parameter *,
-                crystallographic_parameter *>(
+                asu_parameter *,
+                asu_parameter *,
+                asu_parameter *>(
            (arg("scatterer"), arg("site"), arg("occupancy"), arg("u"))))
       .add_property("scatterer", make_getter(&wt::scatterer, rir))
       .add_property("site"     , make_getter(&wt::site, rir)
