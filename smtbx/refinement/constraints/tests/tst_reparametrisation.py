@@ -233,20 +233,28 @@ def exercise_symmetry_equivalent():
     scatterers=flex.xray_scatterer((
       xray.scatterer("C", site=(0.1, 0.2, 0.3)),
     )))
+  xs.scatterers()[0].flags.set_grad_site(True)
   connectivity_table = smtbx.utils.connectivity_table(xs)
   reparametrisation = constraints.reparametrisation(
     xs, [], connectivity_table)
   site_0 = reparametrisation.add(constraints.independent_site_parameter,
                                  scatterer=xs.scatterers()[0])
+  g = sgtbx.rt_mx('x,-y,-z')
   symm_eq = reparametrisation.add(
     constraints.symmetry_equivalent_site_parameter,
-    site=site_0, motion=sgtbx.rt_mx('x,-y,-z'))
-  try:
-    symm_eq.store(xs.unit_cell())
-    raise Exception_expected
-  except RuntimeError, e:
-    assert str(e).find("scatterer outside the asu") >= 0
+    site=site_0, motion=g)
+  reparametrisation.finalise()
 
+  assert approx_equal(symm_eq.original.scatterers[0].site, (0.1, 0.2, 0.3),
+                      eps=1e-15)
+  assert str(symm_eq.motion) == 'x,-y,-z'
+  assert symm_eq.is_variable
+  reparametrisation.linearise()
+  assert approx_equal(symm_eq.value, g*site_0.value, eps=1e-15)
+
+  reparametrisation.store()
+  assert approx_equal(symm_eq.value, (0.1, -0.2, -0.3), eps=1e-15)
+  assert approx_equal(site_0.value, (0.1, 0.2, 0.3), eps=1e-15)
 
 def exercise(verbose):
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
