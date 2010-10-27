@@ -7,17 +7,17 @@
 namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
 
-  struct special_position_site_wrapper
+  template <class wt, class ancestor>
+  struct special_position_wrapper
   {
-    typedef special_position_site_parameter wt;
-
-    static void wrap() {
+    static void wrap(char const *name) {
       using namespace boost::python;
       return_internal_reference<> rir;
-      class_<wt, bases<site_parameter>,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("special_position_site_parameter", no_init)
-        .def(init<sgtbx::site_symmetry_ops const &, wt::scatterer_type *>
+      class_<wt,
+             bases<ancestor>,
+             std::auto_ptr<wt> >(name, no_init)
+        .def(init<sgtbx::site_symmetry_ops const &,
+                  typename wt::scatterer_type *>
              ((arg("site_symmetry"), arg("scatterer"))))
         .add_property("independent_params",
                       make_function(&wt::independent_params, rir))
@@ -26,29 +26,15 @@ namespace boost_python {
     }
   };
 
-  struct special_position_u_star_parameter_wrapper
-  {
-    typedef special_position_u_star_parameter wt;
-
-    static void wrap() {
-      using namespace boost::python;
-      return_internal_reference<> rir;
-      class_<wt, bases<u_star_parameter>,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("special_position_u_star_parameter", no_init)
-        .def(init<sgtbx::site_symmetry_ops const &,
-                  wt::scatterer_type *>
-             ((arg("site_symmetry"), arg("scatterer"))))
-        .add_property("independent_params",
-                      make_function(&wt::independent_params, rir))
-      ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
-    }
-  };
-
   void wrap_special_position() {
-    special_position_site_wrapper::wrap();
-    special_position_u_star_parameter_wrapper::wrap();
+    using namespace boost::python;
+    special_position_wrapper<special_position_site_parameter,
+                             asu_site_parameter>
+    ::wrap("special_position_site_parameter");
+
+    special_position_wrapper<special_position_u_star_parameter,
+                             asu_u_star_parameter>
+    ::wrap("special_position_u_star_parameter");
   }
 
 }}}}

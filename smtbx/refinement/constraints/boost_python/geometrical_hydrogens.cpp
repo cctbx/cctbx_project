@@ -10,22 +10,6 @@
 namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
 
-  template <int n_hydrogens>
-  struct geometrical_hydrogen_sites_wrapper
-  {
-    typedef geometrical_hydrogen_sites<n_hydrogens> wt;
-
-    static void wrap() {
-      using namespace boost::python;
-      std::ostringstream sname;
-      sname << "geometrical_hydrogen_" << n_hydrogens << "_sites";
-      std::string name = sname.str();
-      class_<wt, bases<crystallographic_parameter>,
-             std::auto_ptr<wt>,
-             boost::noncopyable>(name.c_str(), no_init);
-    }
-  };
-
   template <int n_hydrogens, bool staggered>
   struct terminal_tetrahedral_xhn_sites_wrapper
   {
@@ -40,33 +24,37 @@ namespace boost_python {
       sname << "_site";
       if (n_hydrogens > 1) sname << "s";
       std::string name = sname.str();
-      class_<wt, bases<geometrical_hydrogen_sites<n_hydrogens> >,
-             std::auto_ptr<wt>,
-             boost::noncopyable> klass(name.c_str(), no_init);
       if (staggered) {
-        klass
-        .def(init<site_parameter *,
-                  site_parameter *,
-                  site_parameter *,
-                  independent_scalar_parameter *,
-                  af::tiny<typename wt::scatterer_type *, n_hydrogens> const &>
-             ((arg("pivot"), arg("pivot_neighbour"), arg("stagger_on"),
-               arg("length"),
-               arg("hydrogen"))));
-
+        class_<wt,
+               bases<asu_parameter>,
+               std::auto_ptr<wt> >(name.c_str(), no_init)
+          .def(init<site_parameter *,
+                    site_parameter *,
+                    site_parameter *,
+                    independent_scalar_parameter *,
+                    af::tiny<typename wt::scatterer_type *,
+                             n_hydrogens> const &>
+               ((arg("pivot"), arg("pivot_neighbour"), arg("stagger_on"),
+                 arg("length"),
+                 arg("hydrogen"))))
+          ;
       }
       else {
-        klass
-        .def(init<site_parameter *,
-                  site_parameter *,
-                  independent_scalar_parameter *,
-                  independent_scalar_parameter *,
-                  cart_t const &,
-                  af::tiny<typename wt::scatterer_type *, n_hydrogens> const &>
-             ((arg("pivot"), arg("pivot_neighbour"),
-               arg("azimuth"), arg("length"),
-               arg("e_zero_azimuth"),
-               arg("hydrogen"))));
+        class_<wt,
+               bases<asu_parameter>,
+               std::auto_ptr<wt> >(name.c_str(), no_init)
+          .def(init<site_parameter *,
+                    site_parameter *,
+                    independent_scalar_parameter *,
+                    independent_scalar_parameter *,
+                    cart_t const &,
+                    af::tiny<typename wt::scatterer_type *,
+                             n_hydrogens> const &>
+               ((arg("pivot"), arg("pivot_neighbour"),
+                 arg("azimuth"), arg("length"),
+                 arg("e_zero_azimuth"),
+                 arg("hydrogen"))))
+          ;
       }
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
@@ -78,9 +66,9 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt, bases<independent_scalar_parameter>,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("angle_starting_tetrahedral", no_init)
+      class_<wt,
+             bases<scalar_parameter>,
+             std::auto_ptr<wt> >("angle_starting_tetrahedral", no_init)
         .def(init<bool>(arg("variable")))
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
@@ -94,9 +82,8 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt,
-             bases<geometrical_hydrogen_sites<2> >,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("secondary_ch2_sites", no_init)
+             bases<asu_parameter>,
+             std::auto_ptr<wt> >("secondary_ch2_sites", no_init)
         .def(init<site_parameter *,
                 site_parameter *,
                 site_parameter *,
@@ -117,9 +104,9 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt, bases<geometrical_hydrogen_sites<1> >,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("tertiary_ch_site", no_init)
+      class_<wt,
+             bases<asu_parameter>,
+             std::auto_ptr<wt> >("tertiary_ch_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -139,9 +126,9 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt, bases<geometrical_hydrogen_sites<1> >,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("secondary_planar_xh_site", no_init)
+      class_<wt,
+             bases<asu_parameter>,
+             std::auto_ptr<wt> >("secondary_planar_xh_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -160,9 +147,9 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt, bases<geometrical_hydrogen_sites<2> >,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("terminal_planar_xh2_sites", no_init)
+      class_<wt,
+             bases<asu_parameter>,
+             std::auto_ptr<wt> >("terminal_planar_xh2_sites", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -182,9 +169,9 @@ namespace boost_python {
 
     static void wrap() {
       using namespace boost::python;
-      class_<wt, bases<geometrical_hydrogen_sites<1> >,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("terminal_linear_ch_site", no_init)
+      class_<wt,
+             bases<asu_parameter>,
+             std::auto_ptr<wt> >("terminal_linear_ch_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   independent_scalar_parameter *,
@@ -198,16 +185,10 @@ namespace boost_python {
   void wrap_geometrical_hydrogens() {
     {
       using namespace scitbx::boost_python::container_conversions;
-      tuple_mapping_fixed_size<
-        af::tiny<crystallographic_parameter::scatterer_type *, 1> >();
-      tuple_mapping_fixed_size<
-        af::tiny<crystallographic_parameter::scatterer_type *, 2> >();
-      tuple_mapping_fixed_size<
-        af::tiny<crystallographic_parameter::scatterer_type *, 3> >();
+      tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 1> >();
+      tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 2> >();
+      tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 3> >();
     }
-    geometrical_hydrogen_sites_wrapper<1>::wrap();
-    geometrical_hydrogen_sites_wrapper<2>::wrap();
-    geometrical_hydrogen_sites_wrapper<3>::wrap();
     //                                    #H  #staggered?
     terminal_tetrahedral_xhn_sites_wrapper<1, false>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<2, false>::wrap();

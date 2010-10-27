@@ -15,207 +15,318 @@
 #include <boost_adaptbx/iterator_range.h>
 #include <scitbx/boost_python/container_conversions.h>
 
-#include <boost/operators.hpp>
+#include <boost/format.hpp>
+
 #include <smtbx/refinement/constraints/reparametrisation.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
 
-  /*** To support polymorphism fully, some extra wrappers must be written
-   *** (c.f. Boost.Python tutorial)
-   ***/
+  /* Three goals may be pursued in relation to inheritance:
 
-  /* To avoid the traps of multiple inheritance armed by Boost.Python
-     ways to deal with polymorphic calls, we must resort to macros
+      (1) Polymorphic calls from Python to C++
+          e.g. given a Python object s of type independent_site_parameter,
+          properly dispatch s.scatterers() to the appropriate ancestor in C++
+
+      (2) Given a C++ function taking an argument of type site_parameter *,
+          make sure that from the Python side one can pass to it an
+          object of type special_position_site_parameter, e.g.
+
+      (3) Make it possible to write new constraints in Python, which requires
+          polymorphic calls from C++ to Python.
+
+   Goals (1) and (2) are easily achieved with the usual flavour
+   of Boost.Python wrapper. That is to say that virtual or pure virtual
+   member functions are wrapped as any other member function, once and only
+   once in the class where they are introduced in the inheritance hierarchy,
+   e.g. linearise is wrapped as part of the wrapper of class parameter.
+   Boost.Python then auto-magically care of all the details. The only necessary
+   trick is to instruct Boost.Python to use boost::noncopyable storage for
+   any class with non-overriden pure virtual member functions,
+   as otherwise the code won't compile since Boost.Python will try
+   to construct an object.
+
+   Goal (3) requires to write an inordinate amount of boiler code. The
+   Boost.Python tutorial looks easy enough on that subject but the featured
+   example has only one base class and one derived class. For the non-trivial
+   hiearchy of ours, it scales very badly. In an earlier version, we had
+   attempted to reach that goal, but we have now decided against it,
+   until the need for writing reparametrisations in Python arises.
+
+   An orthogonal question is that of memory management for the instances
+   of parameter classes (and heirs). Since class reparametrisation owns the
+   pointers to the objects it refers too, we need to be very carefull that
+   the Python side releases ownership and transfers it correctly. The first
+   step to do that is to instruct Boost.Python to use std::auto_ptr storage
+   for all instanciable classes (i.e. without any non-overriden pure
+   virtual member functions). The second step is the Boost.Python binding
+   for class reparametrisation (see below).
    */
-
-  #define SMTBX_CONSTRAINTS_OVERRIDE_SIZE                                      \
-  std::size_t size() const {                                                   \
-    return this->get_override("size")();                                       \
-  }                                                                            \
-
-  #define SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE                                 \
-  void linearise(uctbx::unit_cell const &unit_cell,                            \
-                         sparse_matrix_type *jacobian_transpose)               \
-  {                                                                            \
-    this->get_override("linearise")(unit_cell, jacobian_transpose);            \
-  }
-
-  #define SMTBX_CONSTRAINTS_OVERRIDE_SCATTERERS                                \
-  crystallographic_parameter::scatterer_sequence_type scatterers() const       \
-  {                                                                            \
-    return this->get_override("scatterers")();                                 \
-  }
-
-  #define SMTBX_CONSTRAINTS_OVERRIDE_COMPONENT_INDICES_FOR                     \
-  index_range component_indices_for(scatterer_type const *scatterer) const     \
-  {                                                                            \
-    return this->get_override("component_indices_for")(scatterer);             \
-  }
-
-  #define SMTBX_CONSTRAINTS_OVERRIDE_WRITE_COMPONENT_ANNOTATIONS_FOR           \
-  void write_component_annotations_for(scatterer_type const *scatterer,        \
-                                       std::ostream &output) const             \
-  {                                                                            \
-    this->get_override("write_component_annotations_for")(scatterer, output);  \
-  }
-
-  #define SMTBX_CONSTRAINTS_OVERRIDE_STORE                                     \
-  virtual void store(uctbx::unit_cell const &unit_cell) const {                \
-    this->get_override("store")(unit_cell);                                    \
-  }
-
-  #define SMTBX_CONSTRAINTS_BEFRIEND_INIT_PARAM                                \
-    template<class ParameterType>                                              \
-    friend void initialise_parameter(ParameterType *p,                         \
-                                     boost::python::tuple const &arguments,    \
-                                     int first);
-
-  #define SMTBX_CONSTRAINTS_PARAMETER_CONSTRUCTOR(klass)                       \
-    SMTBX_CONSTRAINTS_BEFRIEND_INIT_PARAM                                      \
-    py_##klass(boost::python::tuple const &arguments)                          \
-    : klass(boost::python::len(arguments))                                     \
-    {                                                                          \
-      initialise_parameter(this, arguments);                                   \
-    }
-
-  namespace details {
-    inline
-    std::size_t checked(std::size_t n_arguments) {
-      SMTBX_ASSERT(n_arguments >= 1)(n_arguments);
-      return n_arguments;
-    }
-  }
-
-  #define SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(klass)      \
-    SMTBX_CONSTRAINTS_BEFRIEND_INIT_PARAM                                      \
-    py_##klass(boost::python::tuple const &arguments)                          \
-    : klass(boost::python::extract<scatterer_type *>(arguments[0])(),          \
-            details::checked(boost::python::len(arguments)))                   \
-    {                                                                          \
-      initialise_parameter(this, arguments, 1);                                \
-    }
-
-  template <class ParameterType>
-  void initialise_parameter(ParameterType *p,
-                            boost::python::tuple const &arguments,
-                            int first = 0)
-  {
-    using namespace boost::python;
-    for (int i=first; i<p->n_arguments(); ++i) {
-      extract<parameter *> proxy(arguments[i]);
-      if (!proxy.check()) {
-        PyErr_Format(PyExc_ValueError,
-                     "Argument #%i is not of type "
-                     "'smtbx.refinement.constraints.parameter'",
-                     i);
-        throw_error_already_set();
-      }
-      p->set_argument(i, proxy());
-    }
-  }
-
-  struct py_parameter : parameter,
-                        boost::python::wrapper<parameter>
-  {
-    SMTBX_CONSTRAINTS_PARAMETER_CONSTRUCTOR(parameter)
-
-    SMTBX_CONSTRAINTS_OVERRIDE_SIZE
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-  };
-
-  struct py_crystallographic_parameter
-  : public crystallographic_parameter,
-    boost::python::wrapper<crystallographic_parameter>
-  {
-    SMTBX_CONSTRAINTS_PARAMETER_CONSTRUCTOR(crystallographic_parameter)
-
-    SMTBX_CONSTRAINTS_OVERRIDE_SIZE
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-    SMTBX_CONSTRAINTS_OVERRIDE_SCATTERERS
-    SMTBX_CONSTRAINTS_OVERRIDE_COMPONENT_INDICES_FOR
-    SMTBX_CONSTRAINTS_OVERRIDE_WRITE_COMPONENT_ANNOTATIONS_FOR
-    SMTBX_CONSTRAINTS_OVERRIDE_STORE
-  };
-
-  struct py_single_scatterer_parameter
-  : single_scatterer_parameter,
-    boost::python::wrapper<single_scatterer_parameter>
-  {
-    SMTBX_CONSTRAINTS_OVERRIDE_SIZE
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-    SMTBX_CONSTRAINTS_OVERRIDE_WRITE_COMPONENT_ANNOTATIONS_FOR
-    SMTBX_CONSTRAINTS_OVERRIDE_STORE
-
-    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(
-      single_scatterer_parameter)
-  };
-
-  struct py_site_parameter : site_parameter,
-                             boost::python::wrapper<site_parameter>
-  {
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-
-    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(site_parameter)
-  };
-
-  struct py_u_star_parameter : u_star_parameter,
-                               boost::python::wrapper<u_star_parameter>
-  {
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-
-    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(u_star_parameter)
-  };
-
-  struct py_occupancy_parameter
-    : occupancy_parameter,
-      boost::python::wrapper<occupancy_parameter>
-  {
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-
-    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(occupancy_parameter)
-  };
-
-  struct py_u_iso_parameter
-    : u_iso_parameter,
-      boost::python::wrapper<u_iso_parameter>
-  {
-    SMTBX_CONSTRAINTS_OVERRIDE_LINEARISE
-
-    SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_CONSTRUCTOR(u_iso_parameter)
-  };
-
-
-  /*** The usual wrappers
-   ***
-   *** It should be noted that all non-virtual class wrappers needs
-   *** (a) to have an auto_ptr<> storage, and
-   *** (b) to instruct Boost.Python about the implicit conversion
-   ***     from auto_ptr<wrapped_type> to auto_ptr<parameter>.
-   ***/
 
   struct parameter_wrapper
   {
     typedef parameter wt;
-    typedef py_parameter pywt;
 
     static void wrap() {
       using namespace boost::python;
       return_internal_reference<> rir;
-      class_<pywt, boost::noncopyable>("parameter", no_init)
-        .def(init<boost::python::tuple>(arg("arguments")))
+      class_<wt,
+             boost::noncopyable>("parameter", no_init)
+        .add_property("index", &wt::index)
         .add_property("n_arguments", &wt::n_arguments)
         .def("argument", &wt::argument, rir)
-        .add_property("index", &wt::index)
+        .add_property("is_independent", &wt::is_independent)
         .add_property("is_root", &wt::is_root)
+        .def("size", &wt::size)
         .add_property("is_variable", &wt::is_variable)
-        .def("size", pure_virtual(&wt::size))
-        .def("evaluate", &wt::evaluate)
-        .def("linearise", pure_virtual(&wt::linearise))
+        .def("evaluate", &wt::evaluate, arg("unit_cell"))
+        .def("linearise", &wt::linearise,
+             (arg("unit_cell"), arg("jacobian_transpose")))
         ;
     }
   };
 
+  struct asu_parameter_wrapper
+  {
+    typedef asu_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>("asu_parameter", no_init)
+        .def("component_indices_for",
+             &wt::component_indices_for,
+             arg("scatterer"))
+        .def("store", &wt::store, arg("unit_cell"))
+        .add_property("scatterers", &wt::scatterers)
+        ;
+    }
+  };
+
+  struct single_asu_scatterer_parameter_wrapper
+  {
+    typedef single_asu_scatterer_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_parameter>,
+             boost::noncopyable>("single_asu_scatterer_parameter", no_init)
+        ;
+    }
+  };
+
+  struct scalar_parameter_wrapper
+  {
+    typedef scalar_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>("scalar_parameter", no_init)
+        .def_readonly("value", &wt::value);
+    }
+  };
+
+  struct independent_scalar_parameter_wrapper
+  {
+    typedef independent_scalar_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<scalar_parameter>,
+             std::auto_ptr<wt> >("independent_scalar_parameter", no_init)
+        .def(init<double, bool>((arg("value"), arg("variable"))));
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  template <int N>
+  struct small_vector_parameter_wrapper
+  {
+    typedef small_vector_parameter<N> wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      std::string name = (
+        boost::format("small_%1%_vector_parameter") % N).str();
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>(name.c_str(), no_init)
+        .add_property("value",
+                      make_getter(&wt::value, rbv),
+                      make_setter(&wt::value));
+    }
+  };
+
+  template <int N>
+  struct independent_small_vector_parameter_wrapper
+  {
+    typedef independent_small_vector_parameter<N> wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      std::string name = (
+        boost::format("independent_small_%1%_vector_parameter") % N).str();
+      class_<wt,
+             bases<small_vector_parameter<N> >,
+             std::auto_ptr<wt> >(name.c_str(), no_init)
+        .def(init<af::small<double, N> const &, bool>
+             ((arg("value"), arg("variable"))));
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  struct site_parameter_wrapper
+  {
+    typedef site_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>("site_parameter", no_init)
+        .add_property("value",
+                      make_getter(&wt::value, rbv),
+                      make_setter(&wt::value));
+        ;
+    }
+  };
+
+  struct asu_site_parameter_wrapper
+  {
+    typedef asu_site_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<site_parameter, single_asu_scatterer_parameter>,
+             boost::noncopyable>("asu_site_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_site_parameter_wrapper
+  {
+    typedef independent_site_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_site_parameter>,
+             std::auto_ptr<wt> >("independent_site_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  struct u_star_parameter_wrapper
+  {
+    typedef u_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>("u_star_parameter", no_init)
+        .add_property("value",
+                      make_getter(&wt::value, rbv),
+                      make_setter(&wt::value));
+        ;
+    }
+  };
+
+  struct asu_u_star_parameter_wrapper
+  {
+    typedef asu_u_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<u_star_parameter, single_asu_scatterer_parameter>,
+             boost::noncopyable>("asu_u_star_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_u_star_parameter_wrapper
+  {
+    typedef independent_u_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_u_star_parameter>,
+             std::auto_ptr<wt> >("independent_u_star_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  struct asu_occupancy_parameter_wrapper
+  {
+    typedef asu_occupancy_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<scalar_parameter, single_asu_scatterer_parameter>,
+             boost::noncopyable>("asu_occupancy_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_occupancy_parameter_wrapper
+  {
+    typedef independent_occupancy_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_occupancy_parameter>,
+             std::auto_ptr<wt> >("independent_occupancy_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  struct asu_u_iso_parameter_wrapper
+  {
+    typedef asu_u_iso_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<scalar_parameter, single_asu_scatterer_parameter>,
+             boost::noncopyable>("asu_u_iso_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_u_iso_parameter_wrapper
+  {
+    typedef independent_u_iso_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_u_iso_parameter>,
+             std::auto_ptr<wt> >("independent_u_iso_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
 
   struct index_range_to_tuple
   {
@@ -233,118 +344,6 @@ namespace boost_python {
     }
   };
 
-
-  struct crystallographic_parameter_wrapper
-  {
-    typedef crystallographic_parameter wt;
-    typedef py_crystallographic_parameter pywt;
-
-    static
-    boost::python::object scatterers(boost::python::object const &self) {
-      return self.attr("_scatterers")();
-    }
-
-    static void wrap() {
-      using namespace boost::python;
-      class_<pywt, bases<parameter>,
-             boost::noncopyable>("crystallographic_parameter", no_init)
-        .def(init<boost::python::tuple>(arg("arguments")))
-        .def("store", pure_virtual(&wt::store), arg("unit_cell"))
-        .def("_scatterers", pure_virtual(&wt::scatterers))
-        .add_property("scatterers", scatterers)
-        .def("component_indices_for", pure_virtual(&wt::component_indices_for),
-             arg("scatterer"))
-        ;
-    }
-  };
-
-  struct independent_scalar_parameter_wrapper
-  {
-    typedef independent_scalar_parameter wt;
-
-    static void wrap() {
-      using namespace boost::python;
-      class_<wt, bases<parameter>,
-             std::auto_ptr<wt>,
-             boost::noncopyable>("independent_scalar_parameter", no_init)
-        .def(init<double, bool>((arg("value"), arg("variable")=true)))
-        .def_readwrite("value", &wt::value)
-        ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
-    }
-  };
-
-  template <int N>
-  struct independent_small_vector_parameter_wrapper
-  {
-    typedef independent_small_vector_parameter<N> wt;
-
-    static void wrap(char const *name) {
-      using namespace boost::python;
-      return_value_policy<return_by_value> rbv;
-      class_<wt, bases<parameter>,
-             std::auto_ptr<wt>,
-             boost::noncopyable>(name, no_init)
-      .def(init<int, bool>
-           ((arg("size"), arg("variable")=true)))
-      .add_property("value",
-                    make_getter(&wt::value, rbv), make_setter(&wt::value))
-      ;
-    }
-  };
-
-  struct single_scatterer_parameter_wrapper
-  {
-    typedef single_scatterer_parameter wt;
-    typedef py_single_scatterer_parameter pywt;
-
-    static void wrap() {
-      using namespace boost::python;
-      class_<pywt, bases<crystallographic_parameter>,
-             boost::noncopyable>("single_scatterer_parameter", no_init)
-        ;
-    }
-  };
-
-  #define SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(param_name)     \
-  struct param_name##_wrapper                                                  \
-  {                                                                            \
-    typedef param_name wt;                                                     \
-    typedef py_##param_name pywt;                                              \
-                                                                               \
-    static void wrap() {                                                       \
-      using namespace boost::python;                                           \
-      return_value_policy<return_by_value> rbv;                                \
-      class_<pywt, bases<single_scatterer_parameter>,                          \
-             boost::noncopyable>(#param_name, no_init)                         \
-        .add_property("value",                                                 \
-                      make_getter(&wt::value, rbv), make_setter(&wt::value))   \
-        ;                                                                      \
-    }                                                                          \
-  };                                                                           \
-                                                                               \
-  struct independent_##param_name##_wrapper                                    \
-  {                                                                            \
-    typedef independent_##param_name wt;                                       \
-                                                                               \
-    static void wrap() {                                                       \
-      using namespace boost::python;                                           \
-      class_<wt, bases<param_name>,                                            \
-             std::auto_ptr<wt>,                                                \
-             boost::noncopyable>("independent_"#param_name, no_init)           \
-        .def(init<wt::scatterer_type *>(arg("scatterer")))                     \
-        ;                                                                      \
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();  \
-    }                                                                          \
-  };
-
-  SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(site_parameter)
-
-  SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(u_star_parameter)
-
-  SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(occupancy_parameter)
-
-  SMTBX_CONSTRAINTS_SINGLE_SCATTERER_PARAMETER_WRAPPER(u_iso_parameter)
 
   struct reparametrisation_wrapper
   {
@@ -420,26 +419,40 @@ namespace boost_python {
 
   void wrap_reparametrisation() {
     using namespace boost::python;
-    parameter_wrapper::wrap();
-    independent_scalar_parameter_wrapper::wrap();
-    independent_small_vector_parameter_wrapper<3>
-      ::wrap("independent_small_3_vector_parameter");
-    independent_small_vector_parameter_wrapper<6>
-      ::wrap("independent_small_6_vector_parameter");
+
     index_range_to_tuple();
-    crystallographic_parameter_wrapper::wrap();
-    single_scatterer_parameter_wrapper::wrap();
-    site_parameter_wrapper::wrap();
-    independent_site_parameter_wrapper::wrap();
-    u_star_parameter_wrapper::wrap();
-    independent_u_star_parameter_wrapper::wrap();
-    occupancy_parameter_wrapper::wrap();
-    independent_occupancy_parameter_wrapper::wrap();
-    u_iso_parameter_wrapper::wrap();
-    independent_u_iso_parameter_wrapper::wrap();
-    reparametrisation_wrapper::wrap();
     scitbx::boost_python::container_conversions::to_tuple_mapping<
-      crystallographic_parameter::scatterer_sequence_type>();
+      asu_parameter::scatterer_sequence_type>();
+
+    parameter_wrapper::wrap();
+    asu_parameter_wrapper::wrap();
+    single_asu_scatterer_parameter_wrapper::wrap();
+
+    scalar_parameter_wrapper::wrap();
+    independent_scalar_parameter_wrapper::wrap();
+
+    small_vector_parameter_wrapper<3>::wrap();
+    independent_small_vector_parameter_wrapper<3>::wrap();
+
+    small_vector_parameter_wrapper<6>::wrap();
+    independent_small_vector_parameter_wrapper<6>::wrap();
+
+    site_parameter_wrapper::wrap();
+    asu_site_parameter_wrapper::wrap();
+    independent_site_parameter_wrapper::wrap();
+
+    u_star_parameter_wrapper::wrap();
+    asu_u_star_parameter_wrapper::wrap();
+    independent_u_star_parameter_wrapper::wrap();
+
+    asu_occupancy_parameter_wrapper::wrap();
+    independent_occupancy_parameter_wrapper::wrap();
+
+    asu_u_iso_parameter_wrapper::wrap();
+    independent_u_iso_parameter_wrapper::wrap();
+
+    reparametrisation_wrapper::wrap();
+
     def("debug", &debug);
   }
 
