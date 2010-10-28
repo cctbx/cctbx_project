@@ -80,7 +80,7 @@ class pir_sequence(sequence):
   Pir sequence
   """
 
-  def __init__(self, sequence, name, type, description):
+  def __init__(self, sequence, name, type = "P1", description = ""):
 
     super( pir_sequence, self ).__init__( sequence, name )
     self.type = type
@@ -451,7 +451,7 @@ class generic_sequence_parser(object):
     self.type = type
 
 
-  def parse(self, text):
+  def parse(self, text, extra = {}):
 
     objects = []
     non_compliant = []
@@ -467,7 +467,9 @@ class generic_sequence_parser(object):
         if unknown and not unknown.isspace():
           non_compliant.append( unknown )
 
-        objects.append( self.type( **match.groupdict() ) )
+        objects.append(
+          self.type( **dict( match.groupdict().items() + extra.items() ) )
+          )
 
       else:
         break
@@ -517,13 +519,65 @@ pir_sequence_parse = generic_sequence_parser(
     (?P<type> [PFDRN][13LC] ) ;
     (?P<name> \S+ ) \n
     (?P<description> [^\n]* ) \n
-    (?P<sequence> [^>]* )
+    (?P<sequence> [^>^\*]* )
     \* \s*
     """,
     re.MULTILINE | re.VERBOSE
     ),
   type = pir_sequence
   )
+
+tolerant_pir_sequence_parse = generic_sequence_parser(
+  regex = re.compile(
+    r"""
+    ^ >
+    (?P<name> [^\n]+ ) \n
+    (?P<description> [^\n]* ) \n
+    (?P<sequence> [^>^\*]* )
+    \*? \s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
+  type = pir_sequence
+  )
+
+lineseparated_sequence_parse = generic_sequence_parser(
+  regex = re.compile(
+    r"""
+    (?P<sequence> [^>^*]*? )
+    \*?\s*\n\n
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
+  type = sequence
+  )
+
+_tf_split_regex = re.compile(
+  r"""
+  \A \s*
+  > ( [^\n]* ) \n
+  ( .* )
+  \Z
+  """,
+  re.MULTILINE | re.VERBOSE | re.DOTALL
+  )
+
+def tf_sequence_parse(text):
+  """
+  Tom's format sequence parser
+  """
+
+  match = _tf_split_regex.search( text )
+
+  if not match:
+    return ( [], [ text ] )
+
+  ( name, data ) = match.groups()
+
+  return lineseparated_sequence_parse.parse(
+    text = data,
+    extra = { "name": name.strip() }
+    )
 
 
 _implemented_sequence_parsers = {
@@ -538,6 +592,11 @@ _implemented_sequence_parsers = {
 def sequence_parser_for(file_name):
 
   ( name, extension ) = os.path.splitext( file_name )
+
+  return _implemented_sequence_parsers.get( extension )
+
+
+def sequence_parser_for_extension(extension):
 
   return _implemented_sequence_parsers.get( extension )
 
@@ -761,6 +820,11 @@ _implemented_alignment_parsers = {
 def alignment_parser_for(file_name):
 
   ( name, extension ) = os.path.splitext( file_name )
+
+  return _implemented_alignment_parsers.get( extension )
+
+
+def alignment_parser_for_extension(extension):
 
   return _implemented_alignment_parsers.get( extension )
 
