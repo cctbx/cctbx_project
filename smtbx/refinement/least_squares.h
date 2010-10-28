@@ -161,7 +161,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::shared<FloatType> gradient =
           jacobian_transpose_matching_grad_fc*one_h_linearisation.grad_observable;
         FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                            scale_factor * observable);
+                                            observable, scale_factor);
         f_calc_[i_h] = one_h_linearisation.f_calc;
         weights_[i_h] = weight;
         normal_equations.add_equation(observable,

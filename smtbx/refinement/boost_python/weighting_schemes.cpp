@@ -16,9 +16,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
     static af::shared<double> weights(wt const &weighting_scheme,
                                       af::const_ref<double> const &fo_sq,
                                       af::const_ref<double> const &sigmas,
-                                      af::const_ref<double> const &fc_sq)
+                                      af::const_ref<double> const &fc_sq,
+                                      double scale_factor)
     {
-      return least_squares::weights(weighting_scheme, fo_sq, sigmas, fc_sq);
+      return least_squares::weights(
+        weighting_scheme, fo_sq, sigmas, fc_sq, scale_factor);
     }
 
     weighting_scheme_class(char const *name)
@@ -26,9 +28,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {
       using namespace boost::python;
       this->def("__call__", &wt::operator(),
-          (arg("fo_sq"), arg("sigma"), arg("fc_sq")));
+          (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor")));
       this->def("__call__", weights,
-          (arg("fo_sq"), arg("sigmas"), arg("fc_sq")));
+          (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor")));
     }
   };
 
