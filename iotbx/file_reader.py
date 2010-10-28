@@ -207,24 +207,24 @@ class any_file_input (object) :
     self.file_object = phil_object
 
   def try_as_seq (self) :
-#    import iotbx.bioinformatics
-#    try :
-#      seq_object = iotbx.bioinformatics.any_sequence_format(self.file_name)
-#    except Exception, e :
-#      print e
-#      raise
-#    assert (seq_object is not None)
-#    self.file_object = seq_object
-    self.try_as_txt()
-    assert len(self.file_object) != 0
-    for _line in self.file_object.splitlines() :
-      assert not _line.startswith(" ")
-      line = re.sub(" ", "", _line)
-      assert ((len(line) == 0) or
-              (line[0] == ">") or
-              (line == "*") or
-              ((line[-1] == '*') and line[:-1].isalpha()) or
-              line.isalpha())
+    import iotbx.bioinformatics
+    try :
+      seq_object = iotbx.bioinformatics.any_sequence_format(self.file_name)
+    except Exception, e :
+      print e
+      raise
+    assert (seq_object is not None)
+    self.file_object = seq_object
+    #self.try_as_txt()
+    #assert len(self.file_object) != 0
+    #for _line in self.file_object.splitlines() :
+    #  assert not _line.startswith(" ")
+    #  line = re.sub(" ", "", _line)
+    #  assert ((len(line) == 0) or
+    #          (line[0] == ">") or
+    #          (line == "*") or
+    #          ((line[-1] == '*') and line[:-1].isalpha()) or
+    #          line.isalpha())
     self.file_type = "seq"
 
   def try_as_xplor_map (self) :
