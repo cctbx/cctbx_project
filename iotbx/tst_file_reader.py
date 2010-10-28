@@ -171,6 +171,16 @@ refinement {
   f = any_file("sequence.fa", "w")
   assert (f.file_type == "seq")
   os.remove("sequence.fa")
+  f = open("sequences.fa", "w")
+  for header, seq in zip(headers, seqs) :
+    f.write("""\
+> %s
+%s
+""" % (header, seq))
+  f.close()
+  f = any_file("sequences.fa")
+  assert (f.file_type == "seq")
+  os.remove("sequences.fa")
 
 def exercise_maps () :
   xplor_map = libtbx.env.find_in_repositories(

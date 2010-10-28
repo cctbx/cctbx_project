@@ -629,6 +629,17 @@ def any_sequence_format (file_name) :
         return seq_object
   return None
 
+def merge_sequence_files (file_names, output_file,
+    include_non_compliant=False) :
+  assert (len(file_names) > 0)
+  seq_out = open(output_file, "w")
+  for seq_file in file_names :
+    objects, non_compliant = any_sequence_format(seq_file)
+    for seq_record in objects :
+      seq_out.write("> %s\n" % str(seq_record.name))
+      seq_out.write("%s\n" % seq_record.sequence)
+  seq_out.close()
+
 # Alignment file parsers
 class generic_alignment_parser(object):
   """
