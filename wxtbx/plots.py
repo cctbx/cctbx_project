@@ -307,7 +307,6 @@ class plot_frame (wx.Frame) :
     self.setup_toolbar()
     self.toolbar.Realize()
     self.sizer = wx.BoxSizer(wx.VERTICAL)
-    self.top_panel = wx.Panel(parent=self, style=wx.SUNKEN_BORDER)
     self.draw_top_panel()
     self.plot_panel = self.create_plot_panel()
     if self.controls_on_top :
@@ -346,7 +345,7 @@ class plot_frame (wx.Frame) :
     self.toolbar = tb
 
   def draw_top_panel (self) :
-    pass
+    self.top_panel = wx.Panel(parent=self, style=wx.SUNKEN_BORDER)
 
   def create_plot_panel (self) :
     return (0,0)
@@ -402,6 +401,7 @@ class loggraph (plot_frame) :
     self.switch_plot()
 
   def draw_top_panel (self) :
+    self.top_panel = wx.Panel(parent=self, style=wx.SUNKEN_BORDER)
     cp = self.top_panel
     cp_sizer = wx.BoxSizer(wx.VERTICAL)
     cp.SetSizer(cp_sizer)
@@ -504,6 +504,25 @@ class loggraph (plot_frame) :
   def OnTogglePoints (self, event) :
     self.plot.show_data_points = event.GetEventObject().GetValue()
     self.switch_plot()
+
+standard_colormaps = [ ("jet", "Rainbow"),
+                       ("Greys", "Greyscale"),
+                       ("Reds", "Red"),
+                       ("YlGn", "Yellow/Green"),
+                       ("Greens", "Green"),
+                       ("Blues", "Blue"),
+                     ]
+colormap_names = [ cm_name for cm_id, cm_name in standard_colormaps ]
+
+def get_colormap (cm_name) :
+  import matplotlib.cm
+  cm = None
+  for cm_id, cm_name2 in standard_colormaps :
+    if cm_name2 == cm_name :
+      cm = getattr(matplotlib.cm, cm_id, None)
+  if cm is None :
+    cm = matplotlib.cm.jet
+  return cm
 
 def exercise () :
   from iotbx import data_plots
