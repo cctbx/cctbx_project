@@ -566,7 +566,18 @@ def exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center():
   assert approx_equal(box.sites_cart, [(5.0, 5.0, 5.0)])
   assert box.crystal_symmetry().space_group_info().type().number() == 1
 
+def exercise_u_star_to_u_iso_linear_form():
+  from cctbx import adptbx, sgtbx
+  p1 = sgtbx.space_group_info('P1')
+  for i in xrange(100):
+    uc = p1.any_compatible_unit_cell(27)
+    u_star = matrix.col.random(n=6, a=0, b=1)
+    u_iso_ref = adptbx.u_star_as_u_iso(uc, u_star)
+    u_iso = matrix.col(uc.u_star_to_u_iso_linear_form()).dot(u_star)
+    assert approx_equal(u_iso, u_iso_ref, eps=1e-15)
+
 def run():
+  exercise_u_star_to_u_iso_linear_form()
   exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center()
   exercise_functions()
   exercise_basic()
