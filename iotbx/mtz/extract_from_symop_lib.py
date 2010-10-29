@@ -3,39 +3,48 @@ import libtbx.load_env
 import os.path as op
 
 if (libtbx.env.has_module("ccp4io")):
-  ccp4io_dist = libtbx.env.dist_path("ccp4io")
-  ccp4io_symop_lib_path = op.normpath(op.join(
-    ccp4io_dist, "lib/data/symop.lib"))
+  ccp4io_lib_data = libtbx.env.under_dist(
+    module_name="ccp4io", path="lib/data")
 else:
-  ccp4io_dist = None
+  ccp4io_lib_data = None
 
-_ccp4_symbol_cache = {}
+_ccp4_symbol_cache = {"symop.lib": {}, "syminfo.lib": {}}
 
-def ccp4_symbol(space_group_info, require_at_least_one_symop_lib=True):
+def ccp4_symbol(
+      space_group_info,
+      lib_name="symop.lib",
+      require_at_least_one_lib=True):
+  assert lib_name in _ccp4_symbol_cache.keys()
   lookup_symbol = space_group_info.type().lookup_symbol()
-  result = _ccp4_symbol_cache.get(lookup_symbol, "..unknown..")
+  cache = _ccp4_symbol_cache[lib_name]
+  result = cache.get(lookup_symbol, "..unknown..")
   if (result != "..unknown.."):
     return result
   result = None
-  symop_lib_paths = []
-  if (ccp4io_dist is not None):
-    symop_lib_paths.append(ccp4io_symop_lib_path)
-  symop_lib_paths.append(op.expandvars("$CCP4_LIB/data/symop.lib"))
-  found_at_least_one_symop_lib = False
-  for symop_lib_path in symop_lib_paths:
-    if (op.isfile(symop_lib_path)):
-      found_at_least_one_symop_lib = True
-      file_iter = open(symop_lib_path)
-      result = search_for_ccp4_symbol(space_group_info, file_iter)
+  lib_paths = []
+  if (ccp4io_lib_data is not None):
+    lib_paths.append(op.join(ccp4io_lib_data, lib_name))
+  lib_paths.append(op.expandvars("$CCP4_LIB/data/"+lib_name))
+  found_at_least_one_lib = False
+  for lib_path in lib_paths:
+    if (op.isfile(lib_path)):
+      found_at_least_one_lib = True
+      file_iter = open(lib_path)
+      if (lib_name == "symop.lib"):
+        result = search_symop_lib_for_ccp4_symbol(
+          space_group_info=space_group_info, file_iter=file_iter)
+      else:
+        result = search_syminfo_lib_for_ccp4_symbol(
+          space_group_info=space_group_info, file_iter=file_iter)
       if (result is not None):
         break
   else:
-    if (require_at_least_one_symop_lib):
-      assert found_at_least_one_symop_lib
-  _ccp4_symbol_cache[lookup_symbol] = result
+    if (require_at_least_one_lib):
+      assert found_at_least_one_lib
+  cache[lookup_symbol] = result
   return result
 
-def search_for_ccp4_symbol(space_group_info, file_iter):
+def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
   given_space_group_number = space_group_info.type().number()
   for line in file_iter:
     flds = line.split(None, 4)
@@ -57,3 +66,55 @@ def collect_symops(file_iter, order_z):
     line = file_iter.next().strip()
     result.expand_smx(sgtbx.rt_mx(line))
   return result
+
+def search_syminfo_lib_for_ccp4_symbol(space_group_info, file_iter):
+  given_space_group_number = space_group_info.type().number()
+  for line in file_iter:
+    l = line.strip()
+    if (l == "begin_spacegroup"):
+      symbols = {}
+      for line in file_iter:
+        l = line.strip()
+        if (l == "end_spacegroup"):
+          assert len(symbols) == 3
+          group = sgtbx.space_group(symbols["hall"])
+          if (group == space_group_info.group()):
+            def get_shortest(s_list):
+              if (len(s_list) == 0):
+                return None
+              result = s_list[0]
+              for s in s_list:
+                if (len(result) > len(s)):
+                  result = s
+              return result
+            result = get_shortest(symbols["old"])
+            if (result is None):
+              if (len(symbols["xhm"]) != 0):
+                result = symbols["xhm"]
+              else:
+                raise RuntimeError("Missing both xHM and old symbols")
+            return result
+          break
+        if (l.startswith("number ")):
+          flds = l.split()
+          assert len(flds) == 2
+          number = int(flds[1])
+          if (number != given_space_group_number):
+            break
+        elif (l.startswith("symbol ")):
+          flds = l.split(None, 2)
+          assert len(flds) == 3
+          stype = flds[1].lower()
+          if (stype in ["hall", "xhm", "old"]):
+            assert stype not in symbols
+            symbol = flds[2].strip()
+            assert len(symbol) >= 2
+            assert symbol.startswith("'")
+            assert symbol.endswith("'")
+            if (stype == "old"):
+              symbols[stype] = " ".join(symbol[1:-1].split()).split("' '")
+            else:
+              symbols[stype] = symbol[1:-1]
+      else:
+        raise RuntimeError("Missing end_spacegroup")
+  return None
