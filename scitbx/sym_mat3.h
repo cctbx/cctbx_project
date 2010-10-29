@@ -595,6 +595,22 @@ namespace scitbx {
           lhs[2]*rhs[2]+lhs[0]*rhs[4]+lhs[1]*rhs[5]);
   }
 
+  /// Linear form * (matrix as 6-vector)
+  template <typename NumTypeVector,
+            typename NumTypeMatrix>
+  inline
+  typename af::binary_operator_traits<NumTypeVector,
+                                      NumTypeMatrix>::arithmetic
+  operator*(af::tiny_plain<NumTypeVector, 6> const &form,
+            sym_mat3<NumTypeMatrix> const &matrix_as_vec6)
+  {
+    typename af::binary_operator_traits<NumTypeVector,
+                                        NumTypeMatrix>::arithmetic
+    result = 0;
+    for (int i=0; i<6; ++i) result += form[i]*matrix_as_vec6[i];
+    return result;
+  }
+
   //! Element-wise multiplication.
   template <typename NumType>
   inline
