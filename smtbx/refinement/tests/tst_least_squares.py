@@ -62,7 +62,7 @@ class site_refinement_test(refinement_test):
     connectivity_table = smtbx.utils.connectivity_table(self.xray_structure)
     reparametrisation = constraints.reparametrisation(
       structure=self.xray_structure,
-      geometrical_constraints=[],
+      constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       self.fo_sq,
@@ -189,7 +189,7 @@ class site_refinement_test(refinement_test):
     connectivity_table = smtbx.utils.connectivity_table(xs)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
-      geometrical_constraints=[],
+      constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       self.fo_sq, reparametrisation,
@@ -245,7 +245,7 @@ class adp_refinement_test(refinement_test):
     connectivity_table = smtbx.utils.connectivity_table(xs)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
-      geometrical_constraints=[],
+      constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       self.fo_sq, reparametrisation,
@@ -413,7 +413,7 @@ class special_positions_test(object):
       connectivity_table = smtbx.utils.connectivity_table(xs)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
-      geometrical_constraints=[],
+      constraints=[],
       connectivity_table=connectivity_table)
     normal_eqns = least_squares.normal_equations(
       self.fo_sq, reparametrisation,
