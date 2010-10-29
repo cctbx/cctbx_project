@@ -256,7 +256,53 @@ def exercise_symmetry_equivalent():
   assert approx_equal(symm_eq.value, (0.1, -0.2, -0.3), eps=1e-15)
   assert approx_equal(site_0.value, (0.1, 0.2, 0.3), eps=1e-15)
 
+def exercise_u_iso_proportional_to_pivot_u_eq():
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(),
+      space_group_symbol='hall: P 2x 2y'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer('C0', u=(1, 1, 1, 0, 0, 0)),
+      xray.scatterer('C1'),
+      xray.scatterer('C2', site=(0.1, 0.2, 0.3), u=(1, 2, 3, 0, 0, 0)),
+      xray.scatterer('C3'),
+      )))
+  r = constraints.ext.reparametrisation(xs.unit_cell())
+  sc = xs.scatterers()
+  sc[0].flags.set_grad_u_aniso(True)
+  sc[2].flags.set_grad_u_aniso(True)
+
+  u_0 = r.add(constraints.special_position_u_star_parameter,
+              site_symmetry=xs.site_symmetry_table().get(0),
+              scatterer=sc[0])
+  u_iso_1 = r.add(constraints.u_iso_proportional_to_pivot_u_eq,
+                pivot_u=u_0,
+                multiplier=3,
+                scatterer=sc[1])
+  u_2 = r.add(constraints.independent_u_star_parameter, sc[2])
+  u_iso_3 = r.add(constraints.u_iso_proportional_to_pivot_u_eq,
+                pivot_u=u_2,
+                multiplier=2,
+                scatterer=sc[3])
+  r.finalise()
+  m = 3 + 6
+  n = m + 6 + 1 + 1
+  r.linearise()
+  assert approx_equal(u_iso_1.value, 3, eps=1e-15)
+  assert approx_equal(u_iso_3.value, 4, eps=1e-15)
+  jt0 = sparse.matrix(m, n)
+  for i in xrange(m): jt0[i, i] = 1
+  p, q = u_0.argument(0).index, u_0.index
+  jt0[p, q] = jt0[p+1, q+1] = jt0[p+2, q+2] = 1
+  q = u_iso_1.index
+  jt0[p, q] = jt0[p+1, q] = jt0[p+2, q] = 1
+  p, q = u_2.index, u_iso_3.index
+  jt0[p, q] = jt0[p+1, q] = jt0[p+2, q] = 2/3
+  assert sparse.approx_equal(tolerance=1e-15)(r.jacobian_transpose, jt0)
+
+
 def exercise(verbose):
+  exercise_u_iso_proportional_to_pivot_u_eq()
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
   terminal_linear_ch_site_test_case(with_special_position_pivot=True).run()
   special_position_adp_test_case().run()
