@@ -60,21 +60,6 @@ namespace boost_python {
     }
   };
 
-  struct angle_starting_tetrahedral_wrapper
-  {
-    typedef angle_starting_tetrahedral wt;
-
-    static void wrap() {
-      using namespace boost::python;
-      class_<wt,
-             bases<scalar_parameter>,
-             std::auto_ptr<wt> >("angle_starting_tetrahedral", no_init)
-        .def(init<bool>(arg("variable")))
-        ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
-    }
-  };
-
   struct secondary_ch2_sites_wrapper
   {
     typedef secondary_ch2_sites wt;
@@ -88,7 +73,7 @@ namespace boost_python {
                 site_parameter *,
                 site_parameter *,
                 independent_scalar_parameter *,
-                angle_starting_tetrahedral *,
+                independent_scalar_parameter *,
                 wt::scatterer_type *,
                 wt::scatterer_type *>
            ((arg("pivot"), arg("pivot_neighbour_0"), arg("pivot_neighbour_1"),
@@ -197,7 +182,6 @@ namespace boost_python {
     terminal_tetrahedral_xhn_sites_wrapper<2, true>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<3, true>::wrap();
 
-    angle_starting_tetrahedral_wrapper::wrap();
     secondary_ch2_sites_wrapper::wrap();
     tertiary_ch_site_wrapper::wrap();
     secondary_planar_xh_site_wrapper::wrap();

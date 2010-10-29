@@ -122,17 +122,6 @@ private:
 };
 
 
-/// A parameter representing an angle in radians starting as tetrahedral
-class angle_starting_tetrahedral : public independent_scalar_parameter
-{
-public:
-  angle_starting_tetrahedral(bool variable=true)
-  : parameter(0),
-    independent_scalar_parameter(constants::tetrahedral_angle, variable)
-  {}
-};
-
-
 /// Model of X-CH2-Y
 /**
   C is referred to as the "pivot" and X and Y as pivot's neighbour 1 and 2.
@@ -148,7 +137,7 @@ public:
                       site_parameter *pivot_neighbour_0,
                       site_parameter *pivot_neighbour_1,
                       independent_scalar_parameter *length,
-                      angle_starting_tetrahedral *h_c_h,
+                      independent_scalar_parameter *h_c_h,
                       scatterer_type *hydrogen_0,
                       scatterer_type *hydrogen_1)
   : parameter(5),
