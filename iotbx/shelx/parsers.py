@@ -166,7 +166,7 @@ class variable_decoder(object):
           u_iso = scatt.u_iso_or_equiv(
             self.builder.crystal_symmetry.unit_cell())
           values.append( -p*u_iso )
-          behaviours.append((_.constant_times_u_eq, scatt_idx))
+          behaviours.append((_.constant_times_u_eq, -p, scatt_idx))
         else:
           # p (free to refine)
           values.append(p)
