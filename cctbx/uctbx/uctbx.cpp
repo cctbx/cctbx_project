@@ -1,6 +1,7 @@
 #include <cctbx/uctbx/fast_minimum_reduction.h>
 #include <cctbx/sgtbx/change_of_basis_op.h>
 #include <scitbx/math/unimodular_generator.h>
+#include <scitbx/array_family/tiny_algebra.h>
 
 namespace cctbx { namespace uctbx {
 
@@ -143,6 +144,18 @@ namespace cctbx { namespace uctbx {
     r_metr_mx_ = construct_metrical_matrix(r_params_, r_cos_ang_);
   }
 
+  void unit_cell::init_tensor_rank_2_orth_and_frac_linear_maps() {
+    uc_mat3 const &o = orthogonalization_matrix();
+    af::double6   &f = u_star_to_u_iso_linear_form_;
+    f[0] = o[0]*o[0];
+    f[1] = o[1]*o[1] + o[4]*o[4];
+    f[2] = o[2]*o[2] + o[5]*o[5] + o[8]*o[8];
+    f[3] = 2*o[0]*o[1];
+    f[4] = 2*o[0]*o[2];
+    f[5] = 2*(o[1]*o[2] + o[4]*o[5]);
+    f *= 1./3;
+  }
+
   void unit_cell::initialize()
   {
     std::size_t i;
@@ -168,6 +181,7 @@ namespace cctbx { namespace uctbx {
     init_reciprocal();
     init_metrical_matrices();
     init_orth_and_frac_matrices();
+    init_tensor_rank_2_orth_and_frac_linear_maps();
     longest_vector_sq_ = -1.;
     shortest_vector_sq_ = -1.;
   }

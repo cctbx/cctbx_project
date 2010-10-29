@@ -100,6 +100,8 @@ namespace {
           (scitbx::vec3<double>(w_t::*)(scitbx::vec3<double> const&) const)
           &w_t::fractionalize_gradient, (
             arg("site_cart")))
+        .def("u_star_to_u_iso_linear_form",
+             &w_t::u_star_to_u_iso_linear_form, ccr())
         .def("length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::length, (

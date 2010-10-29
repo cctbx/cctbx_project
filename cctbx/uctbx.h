@@ -512,6 +512,25 @@ namespace cctbx {
                                      O[2]*g[0] + O[5]*g[1] + O[8]*g[2]);
       }
 
+      /// The linear form transforming ADP u* into u_iso
+      /** If
+            U = { {u_0, u_3, u_4}, {u_3, u_1, u_5}, {u_4, u_5, u_2} }
+
+          is the layout of u* as per scitbx::sym_mat3 and
+
+            O ={ {o_0, o_1, o_2}, {0, o_4, o_5}, {0, 0, o_8} }
+
+          is the layout of the orthogonalisation matrix as per scitbx::mat3,
+
+            u_iso = 1/3 Tr( O U O^T )
+
+                = o_0^2 u_0 + (o_1^2 + o_4^2) u_1 + (o_2^2 + o_5^2 + o_8^2) u_2
+                  + 2 o_0 o_1 u_3 + 2 o_0 o_2 u_4 + 2 (o_1 o_2 + o_4 o_5) u_5
+       */
+      af::double6 const &u_star_to_u_iso_linear_form() const {
+        return u_star_to_u_iso_linear_form_;
+      }
+
       //! Length^2 of a vector of fractional coordinates.
       /*! Not available in Python.
        */
@@ -956,6 +975,7 @@ namespace cctbx {
       void init_reciprocal();
       void init_metrical_matrices();
       void init_orth_and_frac_matrices();
+      void init_tensor_rank_2_orth_and_frac_linear_maps();
       void initialize();
 
       af::double6 params_;
@@ -969,6 +989,8 @@ namespace cctbx {
       uc_sym_mat3 r_metr_mx_;
       uc_mat3 frac_;
       uc_mat3 orth_;
+      af::double6 u_star_to_u_iso_linear_form_;
+
       mutable double longest_vector_sq_;
       mutable double shortest_vector_sq_;
 
