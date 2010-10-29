@@ -47,7 +47,7 @@ class reparametrisation(ext.reparametrisation):
 
   def __init__(self,
                structure,
-               geometrical_constraints,
+               constraints,
                connectivity_table,
                **kwds):
     """ Construct for the given instance of xray.structure subject to the
@@ -75,7 +75,7 @@ class reparametrisation(ext.reparametrisation):
     libtbx.adopt_optional_init_args(self, kwds)
     self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
 
-    for constraint in geometrical_constraints:
+    for constraint in constraints:
       constraint.add_to(self)
 
     for i_sc in xrange(len(self.asu_scatterer_parameters)):

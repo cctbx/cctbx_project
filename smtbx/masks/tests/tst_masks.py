@@ -159,7 +159,7 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
   connectivity_table = smtbx.utils.connectivity_table(xs)
   reparametrisation = constraints.reparametrisation(
     structure=xs,
-    geometrical_constraints=[],
+    constraints=[],
     connectivity_table=connectivity_table)
   normal_eqns = least_squares.normal_equations(
     fo_sq, reparametrisation,
