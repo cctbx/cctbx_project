@@ -157,8 +157,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     *pivot_neighbour_0 = dynamic_cast<site_parameter *>(argument(1)),
     *pivot_neighbour_1 = dynamic_cast<site_parameter *>(argument(2));
     scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(3));
-    angle_starting_tetrahedral
-    *h_c_h = dynamic_cast<angle_starting_tetrahedral *>(argument(4));
+    scalar_parameter *h_c_h = dynamic_cast<scalar_parameter *>(argument(4));
 
     // Local frame
     /* (C, e0, e1) is the bisecting plane of the angle X-C-Y

@@ -125,7 +125,8 @@ void exercise_secondary_ch2() {
                              *is_c2 = new independent_site_parameter(c2);
   independent_scalar_parameter
   *length = new independent_scalar_parameter(0.9, false);
-  angle_starting_tetrahedral *h_c_h = new angle_starting_tetrahedral();
+  independent_scalar_parameter
+  *h_c_h = new independent_scalar_parameter(constants::tetrahedral_angle);
   secondary_ch2_sites
   *ch2 = new secondary_ch2_sites(is_c0, is_c1, is_c2, length, h_c_h,
                                  h0, h1);

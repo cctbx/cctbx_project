@@ -152,7 +152,11 @@ class secondary_ch2_sites(_input.secondary_ch2_sites,
     if len(pivot_neighbour_site_params) != 2:
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
-    flapping = reparametrisation.add(_.angle_starting_tetrahedral,
+    x_h = [ col(h.site) for h in hydrogens ]
+    x_p = col(pivot_site)
+    theta = (x_h[0] - x_p).angle(x_h[1] - x_p)
+    flapping = reparametrisation.add(_.independent_scalar_parameter,
+                                     value=theta,
                                      variable=True)
     return reparametrisation.add(
       _.secondary_ch2_sites,
