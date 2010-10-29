@@ -15,7 +15,7 @@ class sequence(object):
   Sequence
   """
 
-  def __init__(self, sequence, name):
+  def __init__(self, sequence, name = ""):
 
     self.name = name
     self.sequence = "".join(
@@ -56,7 +56,7 @@ class fasta_sequence(sequence):
   Fasta sequence
   """
 
-  def __init__(self, sequence, name, description):
+  def __init__(self, sequence, name = "", description = ""):
 
     super( fasta_sequence, self ).__init__( sequence, name )
     self.description = description
@@ -80,7 +80,7 @@ class pir_sequence(sequence):
   Pir sequence
   """
 
-  def __init__(self, sequence, name, type = "P1", description = ""):
+  def __init__(self, sequence, name = "", type = "P1", description = ""):
 
     super( pir_sequence, self ).__init__( sequence, name )
     self.type = type
@@ -451,7 +451,7 @@ class generic_sequence_parser(object):
     self.type = type
 
 
-  def parse(self, text, extra = {}):
+  def parse(self, text, **kwargs):
 
     objects = []
     non_compliant = []
@@ -468,7 +468,7 @@ class generic_sequence_parser(object):
           non_compliant.append( unknown )
 
         objects.append(
-          self.type( **dict( match.groupdict().items() + extra.items() ) )
+          self.type( **dict( kwargs.items() + match.groupdict().items() ) )
           )
 
       else:
@@ -480,9 +480,9 @@ class generic_sequence_parser(object):
     return ( objects, non_compliant )
 
 
-  def __call__(self, text):
+  def __call__(self, text, **kwargs):
 
-    return self.parse( text )
+    return self.parse( text, **kwargs )
 
 # Sequence parser instances that can be used as functions
 seq_sequence_parse = generic_sequence_parser(
@@ -517,7 +517,7 @@ pir_sequence_parse = generic_sequence_parser(
     r"""
     ^ >
     (?P<type> [PFDRN][13LC] ) ;
-    (?P<name> \S+ ) \n
+    (?P<name> \S* ) \n
     (?P<description> [^\n]* ) \n
     (?P<sequence> [^>^\*]* )
     \* \s*
@@ -531,7 +531,7 @@ tolerant_pir_sequence_parse = generic_sequence_parser(
   regex = re.compile(
     r"""
     ^ >
-    (?P<name> [^\n]+ ) \n
+    (?P<name> [^\n]* ) \n
     (?P<description> [^\n]* ) \n
     (?P<sequence> [^>^\*]* )
     \*? \s*
@@ -545,7 +545,7 @@ lineseparated_sequence_parse = generic_sequence_parser(
   regex = re.compile(
     r"""
     (?P<sequence> [^>^*]*? )
-    \*?\s*\n\n
+    \*?\s*\n(?:\n|\Z)
     """,
     re.MULTILINE | re.VERBOSE
     ),
@@ -576,7 +576,7 @@ def tf_sequence_parse(text):
 
   return lineseparated_sequence_parse.parse(
     text = data,
-    extra = { "name": name.strip() }
+    name = name.strip()
     )
 
 

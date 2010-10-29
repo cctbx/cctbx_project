@@ -1086,7 +1086,7 @@ class test_sequence_parse(unittest.TestCase):
 
       ( seqs, unknowns ) = bioinformatics.lineseparated_sequence_parse.parse(
         text = lineseparated,
-        extra = { "name": "foo" }
+        name = "foo"
         )
       self.assertEqual( unknowns, [] )
       self.assertEqual( len( seqs ), 2 )
