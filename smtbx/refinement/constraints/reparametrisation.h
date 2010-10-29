@@ -519,9 +519,6 @@ public:
                                   std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-  /// The occupancy value
-  double value;
 };
 
 
@@ -560,9 +557,6 @@ public:
                                   std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
-
-  /// The u_iso value
-  double value;
 };
 
 
