@@ -87,6 +87,19 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     self.constraint_factory = constraint_factory
     self.constraints = []
 
+  def add_scatterer(self, scatterer, behaviour_of_variable, *args, **kwds):
+    _ = iotbx.constraints.commonplace
+    crystal_structure_builder.add_scatterer(
+      self, scatterer, behaviour_of_variable, *args, **kwds)
+    if (scatterer.flags.use_u_iso()):
+      b = behaviour_of_variable[4]
+      if isinstance(b, tuple) and b[0] == _.constant_times_u_eq:
+        self.constraints.append(
+          self.constraint_factory.u_iso_proportional_to_pivot_u_eq(
+            u_eq_scatterer_idx=b[2],
+            u_iso_scatterer_idx=len(self.structure.scatterers()) - 1,
+            multiplier=b[1]))
+
   def start_geometrical_constraint(self, type_,
                                    bond_length, rotating, stretching,
                                    pivot_relative_pos):

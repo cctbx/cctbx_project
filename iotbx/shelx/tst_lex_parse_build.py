@@ -307,9 +307,59 @@ def exercise_afix_parsing():
       pivot=17,
       rotating=True)
     ]
-  for result, expected in zip(builder.constraints,
+  geometrical_constraints = [
+    c for c in builder.constraints
+    if c.__module__ == 'iotbx.constraints.geometrical' ]
+  for result, expected in zip(geometrical_constraints,
                               expected_geometrical_constraints):
     assert (result == expected)
+
+def exercise_u_iso_proportional_to_u_eq_parsing():
+  builder = iotbx.builders.constrained_crystal_structure_builder()
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+  l_cs = shelx.crystal_symmetry_parser(stream, builder)
+  l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
+  l_xs.parse()
+  _ = iotbx.constraints.adp
+  expected_u_iso_constraints = [
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=1,
+      u_eq_scatterer_idx=0,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=6,
+      u_eq_scatterer_idx=5,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=10,
+      u_eq_scatterer_idx=9,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=13,
+      u_eq_scatterer_idx=12,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=16,
+      u_eq_scatterer_idx=15,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=18,
+      u_eq_scatterer_idx=17,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=19,
+      u_eq_scatterer_idx=17,
+      multiplier=1.5),
+    _.u_iso_proportional_to_pivot_u_eq(
+      u_iso_scatterer_idx=20,
+      u_eq_scatterer_idx=17,
+      multiplier=1.5),
+  ]
+  u_iso_constraints = [
+    c for c in builder.constraints
+    if c.__module__ == 'iotbx.constraints.adp' ]
+  for result, expected in zip(u_iso_constraints, expected_u_iso_constraints):
+    assert result == expected
 
 def exercise_restraint_parsing():
   import libtbx.load_env
@@ -591,6 +641,7 @@ def shelx_u_cif(unit_cell, u_star):
 def run():
   exercise_instruction_parsing()
   exercise_restraint_parsing()
+  exercise_u_iso_proportional_to_u_eq_parsing()
   exercise_afix_parsing()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
