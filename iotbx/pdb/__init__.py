@@ -1089,7 +1089,7 @@ def format_cryst1_sgroup(space_group_info):
     from iotbx.mtz.extract_from_symop_lib import ccp4_symbol
     alt = ccp4_symbol(
       space_group_info=space_group_info,
-      require_at_least_one_symop_lib=False)
+      require_at_least_one_lib=False)
     if (alt is not None and alt != result.replace(" ", "")):
       result = alt
   if (len(result) > 11):

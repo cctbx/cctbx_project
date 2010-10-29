@@ -2,7 +2,8 @@ from iotbx.mtz import extract_from_symop_lib
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times
 import libtbx
-import sys
+import sys, os
+op = os.path
 
 def exercise_230():
   for space_group_number in xrange(1,231):
@@ -16,9 +17,19 @@ def exercise_230():
     assert sgtbx.space_group_info(
       symbol=symbol,
       table_id="A1983").group() == space_group_info.group()
+    #
+    symbol = extract_from_symop_lib.ccp4_symbol(
+      space_group_info=space_group_info,
+      lib_name="syminfo.lib")
+    if (symbol[0] == "H"):
+      symbol = "R" + symbol[1:] + ":H"
+    assert sgtbx.space_group_info(
+      symbol=symbol,
+      table_id="A1983").group() == space_group_info.group()
 
 def exercise_symop_lib_recycling():
-  file_iter = open(extract_from_symop_lib.ccp4io_symop_lib_path)
+  file_iter = open(op.join(
+    extract_from_symop_lib.ccp4io_lib_data, "symop.lib"))
   ccp4_id_counts = libtbx.dict_with_default_0()
   ccp4_symbol_counts = libtbx.dict_with_default_0()
   for line in file_iter:
@@ -57,7 +68,7 @@ def exercise_symop_lib_recycling():
 
 def exercise(args):
   assert len(args) == 0
-  if (extract_from_symop_lib.ccp4io_dist is None):
+  if (extract_from_symop_lib.ccp4io_lib_data is None):
     print "Skipping iotbx/mtz/tst_extract_from_symop_lib.py:" \
       " ccp4io not available"
     return
