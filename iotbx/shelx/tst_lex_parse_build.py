@@ -307,7 +307,7 @@ def exercise_afix_parsing():
       pivot=17,
       rotating=True)
     ]
-  for result, expected in zip(builder.geometrical_constraints,
+  for result, expected in zip(builder.constraints,
                               expected_geometrical_constraints):
     assert (result == expected)
 
