@@ -1086,9 +1086,10 @@ def format_cryst1_sgroup(space_group_info):
   if (result in standard_rhombohedral_space_group_symbols):
     result = result[-1] + result[1:-3]
   if (not space_group_info.group().is_centric()):
-    from iotbx.mtz.extract_from_symop_lib import ccp4_symbol
+    from iotbx.mtz.extract_from_symmetry_lib import ccp4_symbol
     alt = ccp4_symbol(
       space_group_info=space_group_info,
+      lib_name="syminfo.lib",
       require_at_least_one_lib=False)
     if (alt is not None and alt != result.replace(" ", "")):
       result = alt

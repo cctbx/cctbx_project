@@ -33,7 +33,7 @@ def run():
   "$D/scalepack/no_merge_original_index.py",
   "$D/ccp4_map/tst.py",
   "$D/mtz/tst_ext.py",
-  "$D/mtz/tst_extract_from_symop_lib.py",
+  "$D/mtz/tst_extract_from_symmetry_lib.py",
   ["$D/mtz/tst.py", "P31"],
   "$D/examples/tst_mtz_free_flipper.py",
   "$D/tst_reflection_file_utils.py",

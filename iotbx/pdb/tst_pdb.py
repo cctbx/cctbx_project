@@ -313,7 +313,7 @@ SCALE3      0.000000  0.000000  1.000000        3.00000""")
     space_group_symbol="C 1 2 1 (a-1/4,b-1/4,c)")
   s = iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry)
   assert not show_diff(s, """\
-CRYST1   11.000   12.000   13.000  90.00 100.00  90.00 C21""")
+CRYST1   11.000   12.000   13.000  90.00 100.00  90.00 C 1 21 1""")
 
 def exercise_format_and_interpret_cryst1():
   for symbols in sgtbx.space_group_symbol_iterator():

@@ -1576,6 +1576,14 @@ class module:
         if (op.isfile(path)): result.append(path)
     return result
 
+  def remove_obsolete_pyc_if_possible(self, pyc_file_names):
+    for file_name in pyc_file_names:
+      for dist_path in self.dist_paths_active():
+        path = libtbx.path.norm_join(dist_path, file_name)
+        if (op.isfile(path)):
+          try: os.remove(path)
+          except IOError: pass
+
 class build_options:
 
   supported_modes = [

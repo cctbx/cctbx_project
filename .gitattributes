@@ -737,7 +737,7 @@ iotbx/file_cache.py -text
 iotbx/file_reader.py svneol=native#text/x-python
 iotbx/libtbx_refresh.py svneol=native#text/x-python
 iotbx/logfiles.py -text
-iotbx/mtz/tst_extract_from_symop_lib.py svneol=native#text/x-python
+iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
