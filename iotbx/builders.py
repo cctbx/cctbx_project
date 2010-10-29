@@ -15,6 +15,7 @@ else:
 
 import iotbx.constraints.commonplace
 import iotbx.constraints.geometrical
+import iotbx.constraints.factory
 
 class crystal_symmetry_builder(object):
 
@@ -80,11 +81,11 @@ class crystal_structure_builder(crystal_symmetry_builder):
 
 class constrained_crystal_structure_builder(crystal_structure_builder):
 
-  def __init__(self, constraint_factory=iotbx.constraints.geometrical,
+  def __init__(self, constraint_factory=iotbx.constraints.factory,
                *args, **kwds):
     super(constrained_crystal_structure_builder, self).__init__(*args, **kwds)
     self.constraint_factory = constraint_factory
-    self.geometrical_constraints = []
+    self.constraints = []
 
   def start_geometrical_constraint(self, type_,
                                    bond_length, rotating, stretching,
@@ -99,7 +100,7 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
   def end_geometrical_constraint(self):
     last = len(self.structure.scatterers())
     self.current.finalise(self.first, last)
-    self.geometrical_constraints.append(self.current)
+    self.constraints.append(self.current)
 
   def finish(self):
     pass
