@@ -9,37 +9,45 @@ else:
   ccp4io_lib_data = None
 
 _ccp4_symbol_cache = {"symop.lib": {}, "syminfo.lib": {}}
+_syminfo_lib_cache = []
 
 def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
   assert lib_name in _ccp4_symbol_cache.keys()
-  lookup_symbol = space_group_info.type().lookup_symbol()
+  sg_type = space_group_info.type()
+  lookup_symbol = sg_type.lookup_symbol()
   cache = _ccp4_symbol_cache[lib_name]
   result = cache.get(lookup_symbol, "..unknown..")
   if (result != "..unknown.."):
     return result
-  result = None
-  lib_paths = []
-  if (ccp4io_lib_data is not None):
-    lib_paths.append(op.join(ccp4io_lib_data, lib_name))
-  lib_paths.append(op.expandvars("$CCP4_LIB/data/"+lib_name))
-  found_at_least_one_lib = False
-  for lib_path in lib_paths:
-    if (op.isfile(lib_path)):
-      found_at_least_one_lib = True
-      file_iter = open(lib_path)
-      if (lib_name == "symop.lib"):
-        result = search_symop_lib_for_ccp4_symbol(
-          space_group_info=space_group_info, file_iter=file_iter)
-      else:
-        result = search_syminfo_lib_for_ccp4_symbol(
-          space_group_info=space_group_info, file_iter=file_iter)
-      if (result is not None):
-        break
-  else:
-    if (require_at_least_one_lib):
-      assert found_at_least_one_lib
-  cache[lookup_symbol] = result
-  return result
+  if (lib_name != "syminfo.lib" or len(_syminfo_lib_cache) == 0):
+    lib_paths = []
+    if (ccp4io_lib_data is not None):
+      lib_paths.append(op.join(ccp4io_lib_data, lib_name))
+    lib_paths.append(op.expandvars("$CCP4_LIB/data/"+lib_name))
+    found_at_least_one_lib = False
+    for lib_path in lib_paths:
+      if (op.isfile(lib_path)):
+        found_at_least_one_lib = True
+        if (lib_name == "symop.lib"):
+          ccp4_symbol = search_symop_lib_for_ccp4_symbol(
+            space_group_info=space_group_info,
+            file_iter=open(lib_path))
+          if (ccp4_symbol is not None):
+            cache[lookup_symbol] = ccp4_symbol
+            return ccp4_symbol
+        else:
+          build_syminfo_lib_cache(lib_path)
+          break
+    else:
+      if (require_at_least_one_lib):
+        assert found_at_least_one_lib
+  if (lib_name == "syminfo.lib"):
+    for hall,ccp4_symbol in _syminfo_lib_cache[sg_type.number()]:
+      sgi = sgtbx.space_group_info(symbol="Hall: "+hall)
+      lus = sgi.type().lookup_symbol()
+      cache[lus] = ccp4_symbol
+      if (lus == lookup_symbol):
+        return ccp4_symbol
 
 def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
   given_space_group_number = space_group_info.type().number()
@@ -64,39 +72,42 @@ def collect_symops(file_iter, order_z):
     result.expand_smx(sgtbx.rt_mx(line))
   return result
 
-def search_syminfo_lib_for_ccp4_symbol(space_group_info, file_iter):
-  given_space_group_number = space_group_info.type().number()
+def build_syminfo_lib_cache(lib_path):
+  _syminfo_lib_cache.append(None)
+  for number in xrange(230):
+    _syminfo_lib_cache.append([])
+  file_iter = open(lib_path)
   for line in file_iter:
     l = line.strip()
     if (l == "begin_spacegroup"):
+      number = None
       symbols = {}
       for line in file_iter:
         l = line.strip()
         if (l == "end_spacegroup"):
+          assert number is not None
           assert len(symbols) == 3
-          group = sgtbx.space_group(symbols["hall"])
-          if (group == space_group_info.group()):
-            def get_shortest(s_list):
-              result = None
-              for s in s_list:
-                if (len(s) == 0): continue
-                if (result is None or len(result) > len(s)):
-                  result = s
-              return result
-            result = get_shortest(symbols["old"])
-            if (result is None):
-              if (len(symbols["xhm"]) != 0):
-                result = symbols["xhm"]
-              else:
-                raise RuntimeError("Missing both xHM and old symbols")
+          def get_shortest(s_list):
+            result = None
+            for s in s_list:
+              if (len(s) == 0): continue
+              if (result is None or len(result) > len(s)):
+                result = s
             return result
+          ccp4_symbol = get_shortest(symbols["old"])
+          if (ccp4_symbol is None):
+            if (len(symbols["xhm"]) != 0):
+              ccp4_symbol = symbols["xhm"]
+            else:
+              raise RuntimeError("Missing both xHM and old symbols")
+          _syminfo_lib_cache[number].append((symbols["hall"], ccp4_symbol))
           break
         if (l.startswith("number ")):
           flds = l.split()
           assert len(flds) == 2
           number = int(flds[1])
-          if (number != given_space_group_number):
-            break
+          assert number >= 1
+          assert number <= 230
         elif (l.startswith("symbol ")):
           flds = l.split(None, 2)
           assert len(flds) == 3
