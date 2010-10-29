@@ -10,10 +10,7 @@ else:
 
 _ccp4_symbol_cache = {"symop.lib": {}, "syminfo.lib": {}}
 
-def ccp4_symbol(
-      space_group_info,
-      lib_name="symop.lib",
-      require_at_least_one_lib=True):
+def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
   assert lib_name in _ccp4_symbol_cache.keys()
   lookup_symbol = space_group_info.type().lookup_symbol()
   cache = _ccp4_symbol_cache[lib_name]
@@ -80,11 +77,10 @@ def search_syminfo_lib_for_ccp4_symbol(space_group_info, file_iter):
           group = sgtbx.space_group(symbols["hall"])
           if (group == space_group_info.group()):
             def get_shortest(s_list):
-              if (len(s_list) == 0):
-                return None
-              result = s_list[0]
+              result = None
               for s in s_list:
-                if (len(result) > len(s)):
+                if (len(s) == 0): continue
+                if (result is None or len(result) > len(s)):
                   result = s
               return result
             result = get_shortest(symbols["old"])

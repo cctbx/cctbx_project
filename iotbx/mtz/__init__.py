@@ -5,7 +5,7 @@ ext = boost.python.import_ext("iotbx_mtz_ext")
 from iotbx_mtz_ext import *
 import iotbx_mtz_ext as ext
 
-from iotbx.mtz import extract_from_symop_lib
+from iotbx.mtz import extract_from_symmetry_lib
 from cctbx import xray
 import cctbx.xray.observation_types
 from cctbx import miller
@@ -191,10 +191,11 @@ class _object(boost.python.injector, ext.object):
 
   def set_space_group_info(self, space_group_info, symbol=None):
     if (symbol is None):
-      symbol = extract_from_symop_lib.ccp4_symbol(space_group_info)
+      symbol = extract_from_symmetry_lib.ccp4_symbol(
+        space_group_info=space_group_info,
+        lib_name="syminfo.lib")
       if (symbol is None):
         symbol = "No.%d" % space_group_info.type().number()
-    assert not " " in symbol
     group = space_group_info.group()
     self.set_space_group_name(name=symbol)
     self.set_space_group_number(number=space_group_info.type().number())
