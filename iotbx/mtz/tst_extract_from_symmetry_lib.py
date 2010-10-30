@@ -68,6 +68,43 @@ def exercise_symop_lib_recycling():
         'ccp4 symbol "%s" appears %d times (should be unique).'
           % (ccp4_symbol, count))
 
+def exercise_syminfo_lib_pdb_cryst1_recycling():
+  # this call is to build _syminfo_lib_cache
+  assert extract_from_symmetry_lib.ccp4_symbol(
+    space_group_info=sgtbx.space_group_info("P 1"),
+    lib_name="syminfo.lib") == "P 1"
+  #
+  import iotbx.pdb.cryst1_interpretation
+  n_need_more_special = 0
+  for number in xrange(1,230+1):
+    for hall,ccp4_symbol in \
+          extract_from_symmetry_lib._syminfo_lib_cache[number]:
+      sgi = sgtbx.space_group_info(symbol="Hall: "+hall)
+      if (sgi.group().is_centric()):
+        continue
+      sgroup = iotbx.pdb.format_cryst1_sgroup(space_group_info=sgi)
+      if (len(sgroup) > 11):
+        print "ccp4 syminfo.lib setting leads to pdb CRYST1 overflow:",\
+          ccp4_symbol, sgroup
+      cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+      pdb_str = iotbx.pdb.format_cryst1_record(crystal_symmetry=cs)
+      cs2 = iotbx.pdb.cryst1_interpretation.crystal_symmetry(
+        cryst1_record=pdb_str)
+      if (cs2.space_group_info() is None):
+        if (n_need_more_special == 0): print
+        print '"%s": "Hall: %s",' % (
+          ccp4_symbol.replace(" ", "").upper(), hall)
+        n_need_more_special += 1
+      else:
+        assert cs2.is_similar_symmetry(other=cs)
+  if (n_need_more_special != 0):
+    print
+    from libtbx.utils import plural_s
+    raise RuntimeError("""\
+Please edit iotbx/pdb/cryst1_interpretation.py:
+  Add the %d line%s above with "Hall:" to the "special" dictionary.
+""" % plural_s(n_need_more_special))
+
 def exercise(args):
   assert len(args) == 0
   if (extract_from_symmetry_lib.ccp4io_lib_data is None):
@@ -76,6 +113,7 @@ def exercise(args):
     return
   exercise_230()
   exercise_symop_lib_recycling()
+  exercise_syminfo_lib_pdb_cryst1_recycling()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

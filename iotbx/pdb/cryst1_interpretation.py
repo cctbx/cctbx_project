@@ -48,6 +48,15 @@ special = {
   "P21212A": "Hall:  P 2 2ab (x+1/4,y+1/4,z)",
   "F422": "Hall:  I 4 2 (1/2*x+1/2*y,-1/2*x+1/2*y,z)",
   "C4212": "Hall:  P 4 2 (1/2*x+1/2*y-1/4,-1/2*x+1/2*y-1/4,z)",
+  #
+  # from ccp4/lib/data/syminfo.lib 2010-10-29
+  "P21212(A)": "Hall:  P 2 2ab (x+1/4,y+1/4,z)",
+  "C2221A)": "Hall:  C 2c 2 (x+1/4,y,z)",
+  "C222A": "Hall:  C 2 2 (x+1/4,y+1/4,z)",
+  "F222A": "Hall:  F 2 2 (x,y,z+1/4)",
+  "I222A": "Hall:  I 2 2 (x-1/4,y+1/4,z-1/4)",
+  "P42212A": "Hall:  P 4n 2n (x-1/4,y-1/4,z-1/4)",
+  "I23A": "Hall:  I 2 2 3 (x+1/4,y+1/4,z+1/4)"
 }
 
 _all = {}
