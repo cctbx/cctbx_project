@@ -193,7 +193,7 @@ class _object(boost.python.injector, ext.object):
     if (symbol is None):
       symbol = extract_from_symmetry_lib.ccp4_symbol(
         space_group_info=space_group_info,
-        lib_name="syminfo.lib")
+        lib_name="symop.lib")
       if (symbol is None):
         symbol = "No.%d" % space_group_info.type().number()
     group = space_group_info.group()
