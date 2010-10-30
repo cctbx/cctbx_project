@@ -11,6 +11,10 @@ else:
 _ccp4_symbol_cache = {"symop.lib": {}, "syminfo.lib": {}}
 _syminfo_lib_cache = []
 
+syminfo_lib_bad_old = set("""
+P 21/m 21/m 2/n a
+""".splitlines())
+
 def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
   assert lib_name in _ccp4_symbol_cache.keys()
   sg_type = space_group_info.type()
@@ -95,7 +99,8 @@ def build_syminfo_lib_cache(lib_path):
                 result = s
             return result
           ccp4_symbol = get_shortest(symbols["old"])
-          if (ccp4_symbol is None):
+          if (   ccp4_symbol is None
+              or ccp4_symbol in syminfo_lib_bad_old):
             if (len(symbols["xhm"]) != 0):
               ccp4_symbol = symbols["xhm"]
             else:
