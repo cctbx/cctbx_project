@@ -611,23 +611,23 @@ def any_sequence_format (file_name) :
   seq_object = None
   if (format_parser is not None) :
     try :
-      seq_object = format_parser.parse(data)
+      objects, non_compliant = format_parser.parse(data)
       assert seq_object is not None
     except Exception, e :
       pass
     else :
-      return seq_object
+      return objects, non_compliant
   for other_parser in [fasta_sequence_parse, pir_sequence_parse,
                        seq_sequence_parse] :
     if (other_parser is not format_parser) :
       try :
-        seq_object = other_parser.parse(data)
+        objects, non_compliant = other_parser.parse(data)
         assert seq_object is not None
       except Exception, e :
         pass
       else :
-        return seq_object
-  return None
+        return objects, non_compliant
+  return None, None
 
 def merge_sequence_files (file_names, output_file,
     include_non_compliant=False) :

@@ -128,6 +128,7 @@ class any_file_input (object) :
     self.file_server = None
     self.file_description = None
     self._cached_file = None # XXX: used in phenix.file_reader
+    self._errors = {}
     self.file_size = os.path.getsize(file_name)
     self.get_processed_file = get_processed_file
 
@@ -154,6 +155,7 @@ class any_file_input (object) :
           except FormatError, e :
             raise e
           except Exception, e :
+            self._errors[file_type] = str(e)
             self.file_type = None
             self.file_object = None
           else :
@@ -207,24 +209,25 @@ class any_file_input (object) :
     self.file_object = phil_object
 
   def try_as_seq (self) :
-    import iotbx.bioinformatics
-    try :
-      seq_object = iotbx.bioinformatics.any_sequence_format(self.file_name)
-    except Exception, e :
-      print e
-      raise
-    assert (seq_object is not None)
-    self.file_object = seq_object
-    #self.try_as_txt()
-    #assert len(self.file_object) != 0
-    #for _line in self.file_object.splitlines() :
-    #  assert not _line.startswith(" ")
-    #  line = re.sub(" ", "", _line)
-    #  assert ((len(line) == 0) or
-    #          (line[0] == ">") or
-    #          (line == "*") or
-    #          ((line[-1] == '*') and line[:-1].isalpha()) or
-    #          line.isalpha())
+    #from iotbx.bioinformatics import any_sequence_format
+    #try :
+    #  objects, non_compliant = any_sequence_format(self.file_name)
+    #except Exception, e :
+    #  print e
+    #  raise
+    #assert (objects is not None)
+    #assert (len(non_compliant) == 0)
+    #self.file_object = objects
+    self.try_as_txt()
+    assert len(self.file_object) != 0
+    for _line in self.file_object.splitlines() :
+      assert not _line.startswith(" ")
+      line = re.sub(" ", "", _line)
+      assert ((len(line) == 0) or
+              (line[0] == ">") or
+              (line == "*") or
+              ((line[-1] == '*') and line[:-1].isalpha()) or
+              line.isalpha())
     self.file_type = "seq"
 
   def try_as_xplor_map (self) :
@@ -258,6 +261,7 @@ class any_file_input (object) :
       except KeyboardInterrupt :
         raise
       except Exception, e :
+        self._errors[filetype] = str(e)
         self.file_type = None
         self.file_object = None
         continue
