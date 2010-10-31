@@ -5,6 +5,11 @@ import libtbx
 import sys, os
 op = os.path
 
+try:
+  import ccp4io_adaptbx
+except ImportError:
+  ccp4io_adaptbx = None
+
 def exercise_230():
   for space_group_number in xrange(1,231):
     space_group_info = sgtbx.space_group_info(
@@ -68,6 +73,27 @@ def exercise_symop_lib_recycling():
         'ccp4 symbol "%s" appears %d times (should be unique).'
           % (ccp4_symbol, count))
 
+def exercise_mmdb_cryst1_interpretation(sgi_hall, pdb_str):
+  print >> open("tmp.pdb", "w"), pdb_str
+  mgr = ccp4io_adaptbx.mmdb.Manager()
+  mgr.ReadPDBASCII(fileName="tmp.pdb", gzipMode=0)
+  if (mgr.isSpaceGroup() == 0):
+    print "MMDB does not recognize space group symbol:"
+    print pdb_str
+    print
+  else:
+    sg = sgtbx.space_group()
+    for i in xrange(mgr.GetNumberOfSymOps()):
+      s = mgr.GetSymOp(Nop=i)
+      sg.expand_smx(s)
+    sgi = sgtbx.space_group_info(group=sg)
+    if (sgi.group() != sgi_hall.group()):
+      print "MMDB symmetry mismatch:"
+      print pdb_str
+      print sgi_hall
+      print sgi
+      print
+
 def exercise_syminfo_lib_pdb_cryst1_recycling():
   # this call is to build _syminfo_lib_cache
   assert extract_from_symmetry_lib.ccp4_symbol(
@@ -79,14 +105,14 @@ def exercise_syminfo_lib_pdb_cryst1_recycling():
   for number in xrange(1,230+1):
     for hall,ccp4_symbol in \
           extract_from_symmetry_lib._syminfo_lib_cache[number]:
-      sgi = sgtbx.space_group_info(symbol="Hall: "+hall)
-      if (sgi.group().is_centric()):
+      sgi_hall = sgtbx.space_group_info(symbol="Hall: "+hall)
+      if (sgi_hall.group().is_centric()):
         continue
-      sgroup = iotbx.pdb.format_cryst1_sgroup(space_group_info=sgi)
+      sgroup = iotbx.pdb.format_cryst1_sgroup(space_group_info=sgi_hall)
       if (len(sgroup) > 11):
         print "ccp4 syminfo.lib setting leads to pdb CRYST1 overflow:",\
           ccp4_symbol, sgroup
-      cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+      cs = sgi_hall.any_compatible_crystal_symmetry(volume=1000)
       pdb_str = iotbx.pdb.format_cryst1_record(crystal_symmetry=cs)
       cs2 = iotbx.pdb.cryst1_interpretation.crystal_symmetry(
         cryst1_record=pdb_str)
@@ -97,6 +123,9 @@ def exercise_syminfo_lib_pdb_cryst1_recycling():
         n_need_more_special += 1
       else:
         assert cs2.is_similar_symmetry(other=cs)
+      if (ccp4io_adaptbx is not None):
+        exercise_mmdb_cryst1_interpretation(
+          sgi_hall=sgi_hall, pdb_str=pdb_str)
   if (n_need_more_special != 0):
     print
     from libtbx.utils import plural_s
