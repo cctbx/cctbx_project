@@ -236,3 +236,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     return dict([
       (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
       if len(proxies) != 0])
+
+class constrained_restrained_crystal_structure_builder(
+  constrained_crystal_structure_builder, restrained_crystal_structure_builder):
+  pass
