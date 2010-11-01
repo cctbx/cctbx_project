@@ -11,6 +11,7 @@ class iterations(object):
   track_gradients = False
   track_all = False
   n_max_iterations = 100
+  norm_of_gradient = flex.double.norm_inf
 
   def __init__(self, normal_eqns, **kwds):
     """ normal_eqns, thereafter denoted as e, shall feature:
@@ -47,7 +48,7 @@ class iterations(object):
   def accumulate_normal_equation_properties(self):
     self.objectives.append(self.normal_eqns.objective)
     g = self.normal_eqns.gradient
-    self.gradient_norms.append(g.norm_1())
+    self.gradient_norms.append(self.norm_of_gradient(g))
     if self.scale_factors is not None:
       self.scale_factors.append(self.normal_eqns.scale_factor)
     if self.track_all or self.track_gradients:
