@@ -1364,7 +1364,7 @@ class test_alignment_parse(unittest.TestCase):
       )
 
 
-hhpredout = \
+hhsearchout = \
 """
 Query         Thu_Sep_09_20:47:04_+0200_2010
 Match_columns 205
@@ -1429,21 +1429,64 @@ T ss_pred             EEEeccCCcccCChhheEEEEEeHHHHHhhcCChHHHHHHHHHHHHHh
 Done!
 """
 
+hhalignout = """
+Query         1XVQ.pdb
+Match_columns 155
+No_of_seqs    111 out of 3723
+Neff          9.0
+Searched_HMMs 0
+Date          Tue Jul 13 19:50:02 2010
+Command       /work/dimaio/sequence/hhsearch/hhalign -i 1XVQ.hhm -t 1FOH.hhm -glob -o 1FOH_1XVQ.hhr
 
-class test_hhpred_homology_search(unittest.TestCase):
+ No Hit                             Prob E-value P-value  Score    SS Cols Query HMM  Template HMM
+  1 1FOH_aln.pdb                     1.0       1       1   56.1  11.5  141    1-155   460-631 (649)
+
+No 1
+>1FOH_aln.pdb
+Probab=1.00    E-value=1  Score=56.09  Aligned_columns=141  Identities=11%
+
+Q ss_pred             CCCCCCCCCCCCCCEEEEC-CCCCEEEHHH-HC--CCEEEEEEECCCCCCCHHHHHHHHHHHHHHC--------------
+Q ss_conf             9988554688178517897-9997764889-69--9848999832437711126669999998420--------------
+Q 1XVQ.pdb          1 TVGELPAVGSPAPAFTLTG-GDLGVISSDQ-FR--GKSVLLNIFPSVDTPVCATSVRTFDERAAAS--------------   62 (155)
+Q Consensus         1 ~~~~~p~vG~~aPdF~l~~-~~G~~v~ls~-~~--Gk~vvl~f~~~~~~p~c~~~~~~l~~~~~~~--------------   62 (155)
+                      -...-+.+|..+|+.-+.. .+|....+.+ +.  |++.++.|......+.-...+..+.+.....              
+T Consensus       460 ~~~~~~~~G~r~p~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  539 (649)
+T 1FOH_aln.pdb    460 ELAKNCVVGTRFKSQPVVRHSEGLWMHFGDRLVTDGRFRIIVFAGKATDATQMSRIKKFSAYLDSENSVISLYTPKVSDR  539 (649)
+T ss_pred             CCCCCCCCCCCCCCCCEEECCCCCCCCHHHHHCCCCCEEEEEECCCCCCCHHHHHHHHHHHHHCCCCCEEEECCCCCCCC
+T ss_conf             33688888864688503532788831125541278837999943888761135678888875204563011022466766
+
+
+Q ss_pred             --CEEECCCCCCCHH-----HHHHHHHHHCCCC------EEECCCCCHHHHHHCCCCCCCCCCCCCEEEEEEEECCCCEE
+Q ss_conf             --1000023467889-----9999999828975------11014433488997077344565557101279998699839
+Q 1XVQ.pdb         63 --GATVLCVSKDLPF-----AQKRFCGAEGTEN------VMPASAFRDSFGEDYGVTIADGPMAGLLARAIVVIGADGNV  129 (155)
+Q Consensus        63 --g~~v~~i~~~~~~-----~~~~~~~~~~~~~------~~~~~d~~~~~~~~~g~~~~~~~~~~~~~p~~fiID~~G~I  129 (155)
+                        .+.++.|......     .............      .....|........||+..+        ..+.+||=|||-|
+T Consensus       540 ~~~~~~~~v~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~~~~~~~~~~~~~~g~~~~--------~~~~vlVRPD~~V  611 (649)
+T 1FOH_aln.pdb    540 NSRIDVITIHSCHRDDIEMHDFPAPALHPKWQYDFIYADCDSWHHPHPKSYQAWGVDET--------KGAVVVVRPDGYT  611 (649)
+T ss_pred             CCCEEEEEEECCCCCCCCHHHCHHHHCCCCCCCEEEEECCCCCCCCCHHHHHHHCCCHH--------CCEEEEECCCCEE
+T ss_conf             56168999854776544233320200246742016650444444667789998098711--------4379998699558
+
+
+Q ss_pred             EEEEECCCCCCCCCHHHHHHHHHHHC
+Q ss_conf             99998178888889999999998519
+Q 1XVQ.pdb        130 AYTELVPEIAQEPNYEAALAALGATS  155 (155)
+Q Consensus       130 ~~~~~~~~~~~~~~~~~il~~lkal~  155 (155)
+                      .++.  +    .-+.+++.+.+...=
+T Consensus       612 a~~~--~----~~~~~~l~~~~~~~l  631 (649)
+T 1FOH_aln.pdb    612 SLVT--D----LEGTAEIDRYFSGIL  631 (649)
+T ss_pred             EEEE--C----HHHHHHHHHHHHHHC
+T ss_conf             9997--3----013589999999742
+
+
+Done!
+"""
+
+
+class test_hhsearch_parser(unittest.TestCase):
 
   def setUp(self):
 
-    self.hss = bioinformatics.hhpred_homology_search( output = hhpredout )
-
-
-  def test_split(self):
-
-    res = bioinformatics.hhpred_homology_search.SPLIT.search( hhpredout )
-    self.assert_( res )
-    self.assertEqual( res.group( 1 ), hhpredout[1:615] )
-    self.assertEqual( res.group( 2 ), hhpredout[ 617 : 915 ] )
-    self.assertEqual( res.group( 3 ), hhpredout[ 917 : 4651 ] )
+    self.hss = bioinformatics.hhsearch_parser( output = hhsearchout )
 
 
   def test_process_header(self):
@@ -1569,6 +1612,127 @@ class test_hhpred_homology_search(unittest.TestCase):
       self.assertAlmostEqual( o, e, digits )
 
 
+class test_hhalign_parser(unittest.TestCase):
+
+  def setUp(self):
+
+    self.hss = bioinformatics.hhalign_parser( output = hhalignout )
+
+
+  def test_process_header(self):
+
+    self.assertEqual( self.hss.query, "1XVQ.pdb" )
+    self.assertEqual( self.hss.match_columns, 155 )
+    self.assertEqual( self.hss.no_of_sequences, ( 111, 3723 ) )
+    self.assertEqual( self.hss.neff, "9.0" )
+    self.assertEqual( self.hss.searched_hmms, 0 )
+    self.assertEqual( self.hss.date, "Tue Jul 13 19:50:02 2010" )
+    self.assertEqual(
+      self.hss.command,
+      "/work/dimaio/sequence/hhsearch/hhalign -i 1XVQ.hhm -t 1FOH.hhm -glob -o 1FOH_1XVQ.hhr"
+      )
+
+
+  def test_process_hits(self):
+
+    self.assertEqual( self.hss.indices, [ 1 ] )
+    self.assertEqual( self.hss.annotations, [ "1FOH_aln.pdb" ] )
+
+    self.assertIterablesAlmostEqual( self.hss.probabs, [ 1.0 ], 2 )
+    self.assertIterablesAlmostEqual( self.hss.e_values, [ 1.0 ], 2 )
+    self.assertIterablesAlmostEqual( self.hss.scores, [ 56.09 ], 2 )
+    self.assertEqual( self.hss.aligned_cols, [ 141 ] )
+    self.assertIterablesAlmostEqual( self.hss.identities, [ 11 ], 1 )
+    self.assertEqual( self.hss.query_starts, [ 1 ] )
+    self.assertEqual( self.hss.query_ends, [ 155 ] )
+    self.assertEqual( self.hss.query_others, [ 155 ] )
+    self.assertEqual(
+      self.hss.query_alignments,
+      [
+        "TVGELPAVGSPAPAFTLTG-GDLGVISSDQ-FR--GKSVLLNIFPSVDTPVCATSVRTFDERAAAS--------------"
+          + "--GATVLCVSKDLPF-----AQKRFCGAEGTEN------VMPASAFRDSFGEDYGVTIADGPMAGLLARAIVVIGADGNV"
+          + "AYTELVPEIAQEPNYEAALAALGATS",
+        ]
+      )
+    self.assertEqual(
+      self.hss.query_consensi,
+      [
+        "~~~~~p~vG~~aPdF~l~~-~~G~~v~ls~-~~--Gk~vvl~f~~~~~~p~c~~~~~~l~~~~~~~--------------"
+          + "--g~~v~~i~~~~~~-----~~~~~~~~~~~~~------~~~~~d~~~~~~~~~g~~~~~~~~~~~~~p~~fiID~~G~I"
+          + "~~~~~~~~~~~~~~~~~il~~lkal~",
+        ]
+      )
+    self.assertEqual(
+      self.hss.query_ss_preds,
+      [
+        "CCCCCCCCCCCCCCEEEEC-CCCCEEEHHH-HC--CCEEEEEEECCCCCCCHHHHHHHHHHHHHHC--------------"
+          + "--CEEECCCCCCCHH-----HHHHHHHHHCCCC------EEECCCCCHHHHHHCCCCCCCCCCCCCEEEEEEEECCCCEE"
+          + "EEEEECCCCCCCCCHHHHHHHHHHHC",
+        ]
+      )
+    self.assertEqual(
+      self.hss.query_ss_confs,
+      [
+        "9988554688178517897-9997764889-69--9848999832437711126669999998420--------------"
+          + "--1000023467889-----9999999828975------11014433488997077344565557101279998699839"
+          + "99998178888889999999998519",
+        ]
+      )
+
+    self.assertEqual(
+      self.hss.midlines,
+      [
+        "-...-+.+|..+|+.-+.. .+|....+.+ +.  |++.++.|......+.-...+..+.+.....              "
+          + "  .+.++.|......     .............      .....|........||+..+        ..+.+||=|||-|"
+          + ".++.  +    .-+.+++.+.+...=",
+        ]
+      )
+
+    self.assertEqual( self.hss.hit_starts, [ 460 ] )
+    self.assertEqual( self.hss.hit_ends, [ 631 ] )
+    self.assertEqual( self.hss.hit_others, [ 649 ] )
+    self.assertEqual(
+      self.hss.hit_ss_preds,
+      [
+        "CCCCCCCCCCCCCCCCEEECCCCCCCCHHHHHCCCCCEEEEEECCCCCCCHHHHHHHHHHHHHCCCCCEEEECCCCCCCC"
+          + "CCCEEEEEEECCCCCCCCHHHCHHHHCCCCCCCEEEEECCCCCCCCCHHHHHHHCCCHH--------CCEEEEECCCCEE"
+          + "EEEE--C----HHHHHHHHHHHHHHC",
+        ]
+      )
+    self.assertEqual(
+      self.hss.hit_ss_confs,
+      [
+        "33688888864688503532788831125541278837999943888761135678888875204563011022466766"
+          + "56168999854776544233320200246742016650444444667789998098711--------4379998699558"
+          + "9997--3----013589999999742",
+        ]
+      )
+    self.assertEqual(
+      self.hss.hit_consensi,
+      [
+        "~~~~~~~~G~r~p~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          + "~~~~~~~~v~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~~~~~~~~~~~~~~g~~~~--------~~~~vlVRPD~~V"
+          + "a~~~--~----~~~~~~l~~~~~~~l",
+        ]
+      )
+    self.assertEqual(
+      self.hss.hit_alignments,
+      [
+        "ELAKNCVVGTRFKSQPVVRHSEGLWMHFGDRLVTDGRFRIIVFAGKATDATQMSRIKKFSAYLDSENSVISLYTPKVSDR"
+          + "NSRIDVITIHSCHRDDIEMHDFPAPALHPKWQYDFIYADCDSWHHPHPKSYQAWGVDET--------KGAVVVVRPDGYT"
+          + "SLVT--D----LEGTAEIDRYFSGIL",
+        ]
+      )
+
+
+  def assertIterablesAlmostEqual(self, i1, i2, digits):
+
+    self.assertEqual( len( i1 ), len( i2 ) )
+
+    for ( o, e ) in zip( i1, i2 ):
+      self.assertAlmostEqual( o, e, digits )
+
+
 suite_sequence = unittest.TestLoader().loadTestsFromTestCase(
   test_sequence
   )
@@ -1599,8 +1763,11 @@ suite_sequence_parse = unittest.TestLoader().loadTestsFromTestCase(
 suite_alignment_parse = unittest.TestLoader().loadTestsFromTestCase(
     test_alignment_parse
     )
-suite_hhpred_homology_search = unittest.TestLoader().loadTestsFromTestCase(
-    test_hhpred_homology_search
+suite_hhsearch_parser = unittest.TestLoader().loadTestsFromTestCase(
+    test_hhsearch_parser
+    )
+suite_hhalign_parser = unittest.TestLoader().loadTestsFromTestCase(
+    test_hhalign_parser
     )
 
 alltests = unittest.TestSuite(
@@ -1615,7 +1782,8 @@ alltests = unittest.TestSuite(
     suite_clustal_alignment,
     suite_sequence_parse,
     suite_alignment_parse,
-    suite_hhpred_homology_search,
+    suite_hhsearch_parser,
+    suite_hhalign_parser,
     ]
   )
 
