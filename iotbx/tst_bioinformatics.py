@@ -608,6 +608,15 @@ Error
      DRLQAETDQLEEEKAELESEIAELQKEKERLEFVLVAHKPGCKIPYEEGPGPGPLAEVRD
      LPGSTSAKEDGFGWLLPPPPPPPLPFQSSRDAPPNLTASLFTHSEVQVLGDPFPVVSPSY
      TSSFVLTCPEVSAFAGAQRTSGSEQPSDPLNSPSLLAL
+> 1YJP:A|PDBID|CHAIN|SEQUENCE
+
+     MFQAFPGDYDSGSRCSSSPSAESQYLSSVDSFGSPPTAAASQECAGLGEMPGSFVPTVTA
+     ITTSQDLQWLVQPTLISSMAQSQGQPLASQPPAVDPYDMPGTSYSTPGLSAYSTGGASGS
+     GGPSTSTTTSGPVSARPARARPRRPREETLTPEEEEKRRVRRERNKLAAAKCRNRRRELT
+     DRLQAETDQLEEEKAELESEIAELQKEKERLEFVLVAHKPGCKIPYEEGPGPGPLAEVRD
+     LPGSTSAKEDGFGWLLPPPPPPPLPFQSSRDAPPNLTASLFTHSEVQVLGDPFPVVSPSY
+     TSSFVLTCPEVSAFAGAQRTSGSEQPSDPLNSPSLLAL
+
 
 """
 
@@ -888,7 +897,7 @@ class test_sequence_parse(unittest.TestCase):
 
     ( fastas, unknowns ) = bioinformatics.seq_sequence_parse( fasta )
 
-    self.assertEqual( len( fastas ), 2 )
+    self.assertEqual( len( fastas ), 3 )
     self.assertEqual( unknowns, [ "\nError\n" ] )
 
     self.assertEqual(
@@ -909,23 +918,24 @@ class test_sequence_parse(unittest.TestCase):
       fasta_sequence
       )
 
+    self.assertEqual(
+      fastas[2].name,
+      "1YJP:A|PDBID|CHAIN|SEQUENCE"
+      )
+    self.assertEqual(
+      fastas[2].sequence,
+      fasta_sequence
+      )
 
   def testFasta(self):
 
     ( fastas, unknowns ) = bioinformatics.fasta_sequence_parse( fasta )
 
-    self.assertEqual( len( fastas ), 1 )
+    self.assertEqual( len( fastas ), 3 )
     self.assertEqual(
       unknowns,
       [
         "\nError\n",
-        "> FOSB_MOUSE Protein fosB. 338 bp\n"
-        + "     MFQAFPGDYDSGSRCSSSPSAESQYLSSVDSFGSPPTAAASQECAGLGEMPGSFVPTVTA\n"
-        + "     ITTSQDLQWLVQPTLISSMAQSQGQPLASQPPAVDPYDMPGTSYSTPGLSAYSTGGASGS\n"
-        + "     GGPSTSTTTSGPVSARPARARPRRPREETLTPEEEEKRRVRRERNKLAAAKCRNRRRELT\n"
-        + "     DRLQAETDQLEEEKAELESEIAELQKEKERLEFVLVAHKPGCKIPYEEGPGPGPLAEVRD\n"
-        + "     LPGSTSAKEDGFGWLLPPPPPPPLPFQSSRDAPPNLTASLFTHSEVQVLGDPFPVVSPSY\n"
-        + "     TSSFVLTCPEVSAFAGAQRTSGSEQPSDPLNSPSLLAL\n\n"
         ] )
 
     self.assertEqual(
@@ -939,6 +949,32 @@ class test_sequence_parse(unittest.TestCase):
     self.assertEqual(
       fastas[0].description,
       "Protein fosB. 338 bp"
+      )
+
+    self.assertEqual(
+      fastas[1].name,
+      "FOSB_MOUSE"
+      )
+    self.assertEqual(
+      fastas[1].sequence,
+      fasta_sequence
+      )
+    self.assertEqual(
+      fastas[1].description,
+      "Protein fosB. 338 bp"
+      )
+
+    self.assertEqual(
+      fastas[2].name,
+      "1YJP"
+      )
+    self.assertEqual(
+      fastas[2].description,
+      "A|PDBID|CHAIN|SEQUENCE"
+      )
+    self.assertEqual(
+      fastas[2].sequence,
+      fasta_sequence
       )
 
 
