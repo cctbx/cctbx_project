@@ -1,6 +1,6 @@
 import libtbx.path
 from libtbx.str_utils import show_string
-from libtbx.utils import escape_sh_double_quoted, Sorry, detect_binary_file
+from libtbx.utils import escape_sh_double_quoted, detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
@@ -101,7 +101,7 @@ def get_hp_ux_acc_version():
   # aCC: HP aC++/ANSI C B3910B A.06.01 [Jan 05 2005]
   if (len(version) >= 6 and version[5].startswith("A.")):
     return version[5]
-  raise Sorry(
+  raise RuntimeError(
     "\n  ".join(["Unknown C++ compiler (aCC -V):"] + run_out))
 
 def get_mipspro_version():
@@ -115,7 +115,7 @@ def get_mipspro_version():
       return "73"
     elif (version[3].startswith("7.4")):
       return "74"
-  raise Sorry(
+  raise RuntimeError(
     "\n  ".join(["Unknown MIPSpro compiler (CC -version):"] + run_out))
 
 def python_include_path(must_exist=True):
@@ -199,7 +199,7 @@ def open_info(path, mode="w", info="   "):
   print info, op.basename(path)
   try: return open(path, mode)
   except IOError, e:
-    raise Sorry(str(e))
+    raise RuntimeError(str(e))
 
 class common_setpaths(object):
 
@@ -332,7 +332,7 @@ class environment:
   def raise_python_version_incompatible(self, prev_pvmm=None):
     if (prev_pvmm is None):
       prev_pvmm = "%d.%d" % self.python_version_major_minor
-    raise Sorry("Python version incompatible with this build:\n"
+    raise RuntimeError("Python version incompatible with this build:\n"
       + "  Build directory: %s\n" % show_string(self.build_path)
       + "  Python version used initially: %s\n" % prev_pvmm
       + "  Python version in use now:     %d.%d" % sys.version_info[:2])
@@ -465,7 +465,7 @@ class environment:
         buffer.append(path)
     if (len(buffer) != 0):
       if (not have_libtbx_command):
-        raise Sorry("""Existing "bin" sub-directory safety-guard:
+        raise RuntimeError("""Existing "bin" sub-directory safety-guard:
   A "bin" sub-directory exists already in the current working directory,
   but it does not contain any "libtbx." commands. Therefore the current
   working directory does not appear to be an existing libtbx-managed
@@ -482,7 +482,8 @@ class environment:
     path = self.under_build("command_version_suffix")
     try: f = open(path, "w")
     except IOError:
-      raise Sorry('Cannot write command_version_suffix file: "%s"' % path)
+      raise RuntimeError(
+        'Cannot write command_version_suffix file: "%s"' % path)
     print >> f, self.command_version_suffix
 
   def read_command_version_suffix(self):
@@ -493,7 +494,8 @@ class environment:
       try:
         self.command_version_suffix = open(path).read().strip()
       except IOError:
-        raise Sorry('Cannot read command_version_suffix file: "%s"' % path)
+        raise RuntimeError(
+          'Cannot read command_version_suffix file: "%s"' % path)
 
   def register_module(self, dependent_module, module):
     if (dependent_module is None):
@@ -508,13 +510,13 @@ class environment:
     for name,path in module.name_and_dist_path_pairs():
       self.module_dist_paths[name] = path
 
-  def raise_sorry_not_found_in_repositories(self, message):
+  def raise_not_found_in_repositories(self, message):
     if (isinstance(message, str)): message = [message]
     else: message = list(message)
     message.append("  Repository directories searched:")
     for path in self.repository_paths:
       message.append("    %s" % show_string(path))
-    raise Sorry("\n".join(message))
+    raise RuntimeError("\n".join(message))
 
   def listdir_in_repositories(self, test=None):
     for path in self.repository_paths:
@@ -536,7 +538,7 @@ class environment:
         all_matches.append((path, name))
     if (len(all_matches) == 0):
       if (not optional):
-        self.raise_sorry_not_found_in_repositories(
+        self.raise_not_found_in_repositories(
           message="Cannot locate: %s" % show_string(relative_path_pattern))
       return None
     all_matches.sort()
@@ -548,7 +550,7 @@ class environment:
           show_string(all_matches[0][0]))
         for path,name in all_matches:
           message.append('    %s' % show_string(name))
-        raise Sorry("\n".join(message))
+        raise RuntimeError("\n".join(message))
     return libtbx.path.norm_join(*all_matches[0])
 
   def find_in_repositories(self,
@@ -562,7 +564,7 @@ class environment:
       if (test is None or test(result)):
         return result
     if (not optional):
-      self.raise_sorry_not_found_in_repositories(
+      self.raise_not_found_in_repositories(
         message="Cannot locate: %s" % show_string(relative_path))
     return None
 
@@ -580,7 +582,7 @@ class environment:
             module_name, trial_module.mate_suffix))
         if (dist_path is not None): return dist_path
     if (not optional):
-      self.raise_sorry_not_found_in_repositories(
+      self.raise_not_found_in_repositories(
         message="Module not found: %s" % module_name)
     return None
 
@@ -614,7 +616,7 @@ class environment:
     for module_name in command_line.args:
       if (len(module_name) == 0): continue # ignore arguments like ""
       if (module_name == ".."):
-        raise Sorry('Invalid module name: ".."')
+        raise RuntimeError('Invalid module name: ".."')
       if (module_name == "."): module_name = "libtbx"
       if (module_name in self.command_line_redirections):
         del self.command_line_redirections[module_name]
@@ -623,7 +625,7 @@ class environment:
         module_name, redirection = module_name.split("=")
         dist_path = self.abs_path_clean(op.expandvars(redirection))
         if (not op.isdir(dist_path)):
-          raise Sorry(
+          raise RuntimeError(
             'Invalid command line redirection:\n'
             '  module name = "%s"\n'
             '  redirection = "%s"\n'
@@ -726,8 +728,7 @@ class environment:
     include_files.sort()
     for path in include_files:
       print "Processing: %s" % show_string(path)
-      try: lines = open(path).read().splitlines()
-      except IOError, e: raise Sorry(str(e))
+      lines = open(path).read().splitlines()
       lines_at_start = []
       lines_before_command = []
       buffer = lines_before_command
@@ -932,7 +933,7 @@ class environment:
                  or not op.samefile(reg, source_file))
             and    op.normcase(self.abs_path_short(abs_path=reg))
                 != op.normcase(self.abs_path_short(abs_path=source_file))):
-        raise Sorry("Multiple sources for dispatcher:\n"
+        raise RuntimeError("Multiple sources for dispatcher:\n"
           + "  target file:\n"
           + "    %s\n" % show_string(target_file)
           + "  source files:\n"
@@ -1150,7 +1151,7 @@ selfx:
     print "command_version_suffix:", self.command_version_suffix
     self.show_module_listing()
     if (len(self.missing_for_use) > 0):
-      raise Sorry("Missing modules: "
+      raise RuntimeError("Missing modules: "
         + " ".join(sorted(self.missing_for_use)))
     if (not self.is_ready_for_build()):
       if (self.scons_dist_path is not None):
@@ -1368,17 +1369,17 @@ class module:
             config = None
             break
           try: f = open(path)
-          except IOError: raise Sorry(
+          except IOError: raise RuntimeError(
             'Cannot open configuration file: "%s"' % path)
           try: config = eval(" ".join(f.readlines()), {}, {})
           except KeyboardInterrupt: raise
-          except: raise Sorry('Corrupt configuration file: "%s"' % path)
+          except: raise RuntimeError('Corrupt configuration file: "%s"' % path)
           f.close()
           redirection = config.get("redirection", None)
           if (redirection is None):
             break
           if (not isinstance(redirection, str)):
-            raise Sorry(
+            raise RuntimeError(
               'Corrupt configuration file:\n'
               '  file = "%s"\n'
               '  redirection must be a Python string' % path)
@@ -1387,7 +1388,7 @@ class module:
             new_dist_path = libtbx.path.norm_join(dist_path, new_dist_path)
           new_dist_path = self.env.abs_path_clean(new_dist_path)
           if (not op.isdir(new_dist_path)):
-            raise Sorry(
+            raise RuntimeError(
               'Invalid redirection:\n'
               '  file = "%s"\n'
               '  redirection = "%s"\n'
@@ -1478,7 +1479,7 @@ class module:
     if (read_size != 0):
       try: source_text = open(source_file).read(read_size)
       except IOError:
-        raise Sorry('Cannot read file: "%s"' % source_file)
+        raise RuntimeError('Cannot read file: "%s"' % source_file)
     if (read_size == 2):
       if (not source_text.startswith("#!")):
         if (ext != ".bat" and not suppress_warning):
@@ -1848,7 +1849,7 @@ class pre_process_args:
       help="remove scons build signatures and config cache")
     self.command_line = parser.process(args=args)
     if (len(self.command_line.args) == 0):
-      raise Sorry(
+      raise RuntimeError(
         "At least one module name is required"
         " (use --help to obtain more information).")
     if (not hasattr(os.path, "samefile")):
@@ -1858,10 +1859,10 @@ class pre_process_args:
     if (not self.warm_start):
       if (self.command_line.options.force_32bit):
         if (sys.platform != "darwin"):
-          raise Sorry(
+          raise RuntimeError(
             "The --force_32bit option is only valid on Mac OS systems.")
         if (sys.maxint > 2**31-1):
-          raise Sorry(
+          raise RuntimeError(
             'The --force_32bit option can only be used with 32-bit Python.\n'
             '  See also: "man python"')
         from libtbx import easy_run
@@ -1869,16 +1870,17 @@ class pre_process_args:
           command="/usr/bin/arch -i386 /bin/ls /")
         if (   len(buffers.stderr_lines) != 0
             or len(buffers.stdout_lines) == 0):
-          raise Sorry(
+          raise RuntimeError(
             "The --force_32bit option is not valid for this platform.")
       if (    self.command_line.options.msvc_arch_flag != "None"
           and os.name != "nt"):
-        raise Sorry(
+        raise RuntimeError(
           "The --msvc_arch_flag option is not valid for this platform.")
 
   def option_repository(self, option, opt, value, parser):
     if (not op.isdir(value)):
-      raise Sorry("Not a directory: --repository %s" % show_string(value))
+      raise RuntimeError(
+        "Not a directory: --repository %s" % show_string(value))
     self.repository_paths.append(value)
 
 def set_preferred_sys_prefix_and_sys_executable(build_path):
@@ -1917,13 +1919,13 @@ def cold_start(args):
     build_path = os.getcwd()
   else:
     if (not op.isabs(build_path)):
-      raise Sorry("Not an absolute path name:"
+      raise RuntimeError("Not an absolute path name:"
         " --current_working_directory %s" % show_string(build_path))
     if (not op.isdir(build_path)):
-      raise Sorry("Not a directory:"
+      raise RuntimeError("Not a directory:"
         " --current_working_directory %s" % show_string(build_path))
     if (not op.samefile(build_path, os.getcwd())):
-      raise Sorry("Not equivalent to the current working directory:"
+      raise RuntimeError("Not equivalent to the current working directory:"
         " --current_working_directory %s" % show_string(build_path))
     n = len(os.sep)
     while (len(build_path) > n and build_path.endswith(os.sep)):
