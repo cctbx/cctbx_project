@@ -845,7 +845,7 @@ def known_alignment_formats():
   return _implemented_alignment_parsers.keys()
 
 
-class hhpred_homology_search(object):
+class hhpred_parser(object):
   """
   Parses .hhr files from HHPred
   """
@@ -854,8 +854,8 @@ class hhpred_homology_search(object):
     r"""
     ( Query .*? ) \n\n
     ( \s+ No \s+ Hit .*? ) \n\n
-    ( .* )
-    Done!
+    ( .*? )
+    (?= (?:Done!) | (?:\Z) )
     """,
     re.VERBOSE | re.DOTALL
     )
@@ -871,36 +871,6 @@ class hhpred_homology_search(object):
     Date \s+ (\S[^\n]*) \n
     Command \s+ (\S.*)
     \Z
-    """,
-    re.VERBOSE
-    )
-
-  HIT = re.compile(
-    r"""
-    No \s ( \d+) \s* \n
-    >( [\w]{4} ) _  ( [\w]? ) \s ([^\n]*)\n
-    Probab = ( [+-]? \d+ \. \d* ) \s+
-    E-value = ( \d+ \. \d+ )( e[+-]? \d+ )? \s+
-    Score = ( \d+\.\d+ ) \s+
-    Aligned_cols = ( \d+ ) \s+
-    Identities = ( \d+ ) % \s+
-    Similarity = ( \d+ \. \d+ ) \s+
-    Sum_probs = ( \d+ \. \d+ ) \n
-    ( .*? )(?= (?:^No) | (?:\Z) )
-    """,
-    re.VERBOSE | re.DOTALL | re.MULTILINE
-    )
-
-  BLOCK = re.compile(
-    r"""
-    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
-    Q \s+ [\w:]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    \s+ ( [ \.\-+|]+ ) \n
-    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    T \s+ ss_dssp \s+ ( [\w-]+ ) \s* \n
-    T \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
     """,
     re.VERBOSE
     )
@@ -936,6 +906,108 @@ class hhpred_homology_search(object):
 
   def process_hits(self, hits):
 
+    self.setup_data_arrays()
+    start = 0
+
+    for m in self.HITS.finditer( hits ):
+      if m.start() != start:
+        assert start < m.start()
+
+        unknown = hits[ start : m.start() ].strip()
+
+        if unknown:
+          raise ValueError, "Uninterpretable: %s" % repr( unknown )
+
+      start = m.end()
+
+      self.add_match_to_hit_header_results( match = m )
+      self.process_blocks( blocks = m.groupdict()[ "blocks" ] )
+
+    remaining = hits[ start: ].strip()
+
+    if remaining:
+      raise ValueError, "Uninterpretable: %s" % repr( remaining )
+
+
+  def process_blocks(self, blocks):
+
+    matches = []
+    start = 0
+
+    for match in self.BLOCKS.finditer( blocks ):
+      if match.start() != start:
+        assert start < match.start()
+
+        unknown = blocks[ start : match.start() ].strip()
+
+        if unknown:
+          raise ValueError, "Uninterpretable: %s" % repr( unknown )
+
+      start = match.end()
+      matches.append( match.groups() )
+
+    remaining = blocks[ start: ].strip()
+
+    if remaining:
+      raise ValueError, "Uninterpretable: %s" % repr( remaining )
+
+    if not matches:
+      raise ValueError, "Empty homology block"
+
+    assert all( len( matches[0] ) == len( a ) for a in matches[1:] )
+
+    return self.merge_and_process_block_hits( matches = matches )
+
+
+  def merge_sequence_numbers(self, starts, ends, others):
+
+    for ( s, e ) in zip( starts[1:], ends[:-1] ):
+      if s != e + 1:
+        raise ValueError, "Incorrect sequence indices"
+
+      if not all( others[0] == o for o in others[1:] ):
+        raise ValueError, "Incorrect sequence indices"
+
+    return ( starts[0], ends[-1], others[0] )
+
+
+class hhsearch_parser(hhpred_parser):
+  """
+  Specific for hhsearch output
+  """
+
+  HITS = re.compile(
+    r"""
+    No \s ( \d+) \s* \n
+    >( [\w]{4} ) _  ( [\w]? ) \s ( [^\n]* )\n
+    Probab = ( [+-]? \d+ \. \d* ) \s+
+    E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
+    Score = ( \d+\.\d+ ) \s+
+    Aligned_cols = ( \d+ ) \s+
+    Identities = ( \d+ ) % \s+
+    Similarity = ( \d+ \. \d+ ) \s+
+    Sum_probs = ( \d+ \. \d+ ) \n
+    (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
+    """,
+    re.VERBOSE | re.DOTALL | re.MULTILINE
+    )
+  BLOCKS = re.compile(
+    r"""
+    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
+    Q \s+ [\w:\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    \s+ ( [ \.\-+|=]+ ) \n
+    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    T \s+ ss_dssp \s+ ( [\w-]+ ) \s* \n
+    T \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
+    (?: Confidence \s+ ( [\w ]+ ) \s* \n)?
+    """,
+    re.VERBOSE
+    )
+
+  def setup_data_arrays(self):
+
     self.indices = []
     self.pdbs = []
     self.chains = []
@@ -966,80 +1038,29 @@ class hhpred_homology_search(object):
     self.hit_ss_dssps = []
 
 
-    for m in self.HIT.finditer( hits ):
-      self.indices.append( int( m.group( 1 ) ) )
-      self.pdbs.append( m.group( 2 ) )
-      self.chains.append( m.group( 3 ) )
-      self.annotations.append( m.group( 4 ) )
-      self.probabs.append( float( m.group( 5 ) ) )
-      self.e_values.append( float( m.group( 6 ) + m.group( 7 ) ) )
-      self.scores.append( float( m.group( 8 ) ) )
-      self.aligned_cols.append( int( m.group( 9 ) ) )
-      self.identities.append( float( m.group( 10 ) ) )
-      self.similarities.append( float( m.group( 11 ) ) )
-      self.sum_probs.append( float( m.group( 12 ) ) )
+  def add_match_to_hit_header_results(self, match):
 
-      ( q_indices, h_indices, alignments, midline ) = self.process_blocks(
-        blocks = m.group( 13 )
-        )
-      self.query_starts.append( q_indices[0] )
-      self.query_ends.append( q_indices[1] )
-      self.query_others.append( q_indices[2] )
-      self.query_ss_preds.append( alignments[0] )
-      self.query_alignments.append( alignments[1] )
-      self.query_consensi.append( alignments[2] )
-
-      self.midlines.append( midline )
-
-      self.hit_starts.append( h_indices[0] )
-      self.hit_ends.append( h_indices[1] )
-      self.hit_others.append( h_indices[2] )
-      self.hit_consensi.append( alignments[3] )
-      self.hit_alignments.append( alignments[4] )
-      self.hit_ss_dssps.append( alignments[5] )
-      self.hit_ss_preds.append( alignments[6] )
+    self.indices.append( int( match.group( 1 ) ) )
+    self.pdbs.append( match.group( 2 ) )
+    self.chains.append( match.group( 3 ) )
+    self.annotations.append( match.group( 4 ) )
+    self.probabs.append( float( match.group( 5 ) ) )
+    number = match.group( 6 ) + ( match.group( 7 ) if match.group( 7 ) else "" )
+    self.e_values.append( float( number ) )
+    self.scores.append( float( match.group( 8 ) ) )
+    self.aligned_cols.append( int( match.group( 9 ) ) )
+    self.identities.append( float( match.group( 10 ) ) )
+    self.similarities.append( float( match.group( 11 ) ) )
+    self.sum_probs.append( float( match.group( 12 ) ) )
 
 
-  def process_blocks(self, blocks):
+  def merge_and_process_block_hits(self, matches):
 
-    data = [ [] for i in range( 20 ) ]
-
-    for b in self.BLOCK.finditer( blocks ):
-      data[0].append( b.group( 1 ) ) # q_ss_pred
-
-      data[1].append( int( b.group( 2 ) ) ) # q_sequence_start_indices
-      data[2].append( b.group( 3 ) ) # q_sequence
-      data[3].append( int( b.group( 4 ) ) ) # q_sequence_end_indices
-      data[4].append( int( b.group( 5 ) ) ) # q_sequence_end_other_indices
-
-      data[5].append( int( b.group( 6 ) ) ) # q_consensus_start_indides
-      data[6].append( b.group( 7 ) ) # q_consensus
-      data[7].append( int( b.group( 8 ) ) ) # q_consensus_end_indices
-      data[8].append( int( b.group( 9 ) ) ) # q_consensus_end_other_indices
-
-      data[9].append( b.group( 10 ) ) # midline
-
-      data[10].append( int( b.group( 11 ) ) ) # t_consensus_start_indides
-      data[11].append( b.group( 12 ) ) # t_consensus
-      data[12].append( int( b.group( 13 ) ) ) # t_consensus_end_indices
-      data[13].append( int( b.group( 14 ) ) ) # t_consensus_end_other_indices
-
-      data[14].append( int( b.group( 15 ) ) ) # t_sequence_start_indices
-      data[15].append( b.group( 16 ) ) # t_sequence
-      data[16].append( int( b.group( 17 ) ) ) # t_sequence_end_indices
-      data[17].append( int( b.group( 18 ) ) ) # t_sequence_end_other_indices
-
-      data[18].append( b.group( 19 ) ) # t_ss_dssp
-      data[19].append( b.group( 20 ) ) # t_ss_pred
-
-
-    if not data[0]:
-      raise ValueError, "Incorrect homology block format"
-
-    if not all( len( data[0] ) == len( a ) for a in data[1:] ):
-      raise ValueError, "Inconsistent alignments"
+    data = zip( *matches )
+    assert len( data ) == 21
 
     sequences = [ data[0], data[2], data[6], data[11], data[15], data[18], data[19] ]
+    midlines = []
 
     for ( index , alis) in enumerate( zip( *sequences ) ):
       count = len( alis[0] )
@@ -1047,38 +1068,181 @@ class hhpred_homology_search(object):
       if not all( count == len( c ) for c in alis[1:] ):
         raise ValueError, "Incorrect alignments"
 
-      data[9][index] = " " * ( count - len( data[9][ index ] ) ) + data[9][ index ]
+      midlines.append(
+        " " * ( count - len( data[9][ index ] ) ) + data[9][ index ]
+        )
 
     merged = [ reduce( operator.add, a ) for a in sequences ]
+    assert len( midlines ) == len( matches )
+    midline = reduce( operator.add, midlines )
 
     if data[1] != data[5] or data[3] != data[7] or data[4] != data[8]:
       raise ValueError, "Inconsistent query numbering"
 
     q_indices = self.merge_sequence_numbers(
-      starts = data[1],
-      ends = data[3],
-      others = data[4]
+      starts = [ int( d ) for d in data[1] ],
+      ends = [ int( d ) for d in data[3] ],
+      others = [ int( d ) for d in data[4] ]
       )
 
     if data[10] != data[14] or data[12] != data[16] or data[13] != data[17]:
       raise ValueError, "Inconsistent target numbering"
 
     t_indices = self.merge_sequence_numbers(
-      starts = data[10],
-      ends = data[12],
-      others = data[13]
+      starts = [ int( d ) for d in data[10] ],
+      ends = [ int( d ) for d in data[12] ],
+      others = [ int( d ) for d in data[13] ]
       )
 
-    return ( q_indices, t_indices, merged, reduce( operator.add, data[9] ) )
+    self.query_starts.append( q_indices[0] )
+    self.query_ends.append( q_indices[1] )
+    self.query_others.append( q_indices[2] )
+    self.query_ss_preds.append( merged[0] )
+    self.query_alignments.append( merged[1] )
+    self.query_consensi.append( merged[2] )
+
+    self.midlines.append( midline )
+
+    self.hit_starts.append( t_indices[0] )
+    self.hit_ends.append( t_indices[1] )
+    self.hit_others.append( t_indices[2] )
+    self.hit_consensi.append( merged[3] )
+    self.hit_alignments.append( merged[4] )
+    self.hit_ss_dssps.append( merged[5] )
+    self.hit_ss_preds.append( merged[6] )
 
 
-  def merge_sequence_numbers(self, starts, ends, others):
+class hhalign_parser(hhpred_parser):
+  """
+  Specific for hhalign output
+  """
 
-    for ( s, e ) in zip( starts[1:], ends[:-1] ):
-      if s != e + 1:
-        raise ValueError, "Incorrect sequence indices"
+  HITS = re.compile(
+    r"""
+    No \s ( \d+) \s* \n
+    > \s* ( [^\n]* ) \n
+    Probab = ( [+-]? \d+ \. \d* ) \s+
+    E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
+    Score = ( \d+\.\d+ ) \s+
+    Aligned_columns = ( \d+ ) \s+
+    Identities = ( \d+ ) % \n
+    (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
+    """,
+    re.VERBOSE | re.DOTALL | re.MULTILINE
+    )
+  BLOCKS = re.compile(
+    r"""
+    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
+    Q \s+ ss_conf \s+ ( [\w-]+ ) \s* \n
+    Q \s+ [\w:\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    \s+ ( [ \.\-+|=]+ ) \n
+    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    T \s+ [\w\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
+    T \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
+    T \s+ ss_conf \s+ ( [\w-]+ ) \s* \n
+    """,
+    re.VERBOSE
+    )
 
-      if not all( others[0] == o for o in others[1:] ):
-        raise ValueError, "Incorrect sequence indices"
+  def setup_data_arrays(self):
 
-    return ( starts[0], ends[-1], others[0] )
+    self.indices = []
+    self.annotations = []
+    self.probabs = []
+    self.e_values = []
+    self.scores = []
+    self.aligned_cols = []
+    self.identities = []
+
+    self.query_starts = []
+    self.query_ends = []
+    self.query_others = []
+    self.query_alignments = []
+    self.query_consensi = []
+    self.query_ss_preds = []
+    self.query_ss_confs = []
+
+    self.midlines = []
+
+    self.hit_starts = []
+    self.hit_ends = []
+    self.hit_others = []
+    self.hit_alignments = []
+    self.hit_consensi = []
+    self.hit_ss_preds = []
+    self.hit_ss_confs = []
+
+
+  def add_match_to_hit_header_results(self, match):
+
+    self.indices.append( int( match.group( 1 ) ) )
+    self.annotations.append( match.group( 2 ) )
+    self.probabs.append( float( match.group( 3 ) ) )
+    number = match.group( 4 ) + ( match.group( 5 ) if match.group( 5 ) else "" )
+    self.e_values.append( float( number ) )
+    self.scores.append( float( match.group( 6 ) ) )
+    self.aligned_cols.append( int( match.group( 7 ) ) )
+    self.identities.append( float( match.group( 8 ) ) )
+
+
+  def merge_and_process_block_hits(self, matches):
+
+    data = zip( *matches )
+    assert len( data ) == 21
+
+    sequences = [
+        data[0], data[1], data[3], data[7],
+        data[12], data[16], data[19], data[20] ]
+    midlines = []
+
+    for ( index , alis) in enumerate( zip( *sequences ) ):
+      count = len( alis[0] )
+
+      if not all( count == len( c ) for c in alis[1:] ):
+        raise ValueError, "Incorrect alignments"
+
+      midlines.append(
+        " " * ( count - len( data[10][ index ] ) ) + data[10][ index ]
+        )
+
+    merged = [ reduce( operator.add, a ) for a in sequences ]
+    assert len( midlines ) == len( matches )
+    midline = reduce( operator.add, midlines )
+
+    if data[2] != data[6] or data[4] != data[8] or data[5] != data[9]:
+      raise ValueError, "Inconsistent query numbering"
+
+    q_indices = self.merge_sequence_numbers(
+      starts = [ int( d ) for d in data[2] ],
+      ends = [ int( d ) for d in data[4] ],
+      others = [ int( d ) for d in data[5] ]
+      )
+
+    if data[11] != data[15] or data[13] != data[17] or data[14] != data[18]:
+      raise ValueError, "Inconsistent target numbering"
+
+    t_indices = self.merge_sequence_numbers(
+      starts = [ int( d ) for d in data[11] ],
+      ends = [ int( d ) for d in data[13] ],
+      others = [ int( d ) for d in data[18] ]
+      )
+
+    self.query_starts.append( q_indices[0] )
+    self.query_ends.append( q_indices[1] )
+    self.query_others.append( q_indices[2] )
+    self.query_ss_preds.append( merged[0] )
+    self.query_ss_confs.append( merged[1] )
+    self.query_alignments.append( merged[2] )
+    self.query_consensi.append( merged[3] )
+
+    self.midlines.append( midline )
+
+    self.hit_starts.append( t_indices[0] )
+    self.hit_ends.append( t_indices[1] )
+    self.hit_others.append( t_indices[2] )
+    self.hit_consensi.append( merged[4] )
+    self.hit_alignments.append( merged[5] )
+    self.hit_ss_preds.append( merged[6] )
+    self.hit_ss_confs.append( merged[7] )
+
