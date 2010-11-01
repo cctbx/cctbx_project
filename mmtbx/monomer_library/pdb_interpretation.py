@@ -125,6 +125,12 @@ master_params_str = """\
   {
     ramachandran_restraints = False
       .type = bool
+      .help = Restrains peptide backbone to fall within allowed regions of \
+        Ramachandran plot.  Although it does not eliminate outliers, it can \
+        significantly improve the percent favored and percent outliers at \
+        low resolution.  Probably not useful (and maybe even harmful) at \
+        resolutions much higher than 3.0A.
+      .style = bold noauto
     cis_threshold = 45
       .type = float
       .optional = False
