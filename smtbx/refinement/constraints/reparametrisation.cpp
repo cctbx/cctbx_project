@@ -1,5 +1,7 @@
 #include <smtbx/refinement/constraints/reparametrisation.h>
 #include <iostream>
+#include <scitbx/math/accumulators.h>
+#include <scitbx/array_family/ref_reductions.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
 
@@ -175,5 +177,19 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {}
+
+  // reparametrisation
+
+  double reparametrisation
+  ::norm_of_independent_parameter_vector() {
+    scitbx::math::accumulator::norm_accumulator<double> acc;
+    BOOST_FOREACH(parameter *p, all) {
+      if (p->is_independent() && p->is_variable()) {
+        acc(af::sum_sq(p->components()));
+      }
+    }
+    return acc.norm();
+  }
+
 
 }}}

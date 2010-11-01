@@ -886,6 +886,9 @@ public:
     }
   }
 
+  /// Norm of the vector of independent parameters
+  double norm_of_independent_parameter_vector();
+
   /// Store all crystallographic parameter values into their respective
   /// scatterers.
   void store() {
