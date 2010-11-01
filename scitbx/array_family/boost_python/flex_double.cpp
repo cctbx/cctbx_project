@@ -2,6 +2,7 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
+#include <scitbx/matrix/norms.h>
 #include <scitbx/math/utils.h>
 #include <boost/python/args.hpp>
 #include <boost/python/make_constructor.hpp>
