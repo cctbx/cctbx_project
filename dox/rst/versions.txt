@@ -120,10 +120,12 @@ challenging problem. The Babylonians knew how to solve the equation
 ax^2+bx+c=0. Omar Khayyam (1048-1131) devised methods of solving cubic
 equations through the use of geometric constructions and conic
 sections. The algebraic solution of the general cubic equation
-ax^3+bx^2+cx+d=0 was not discovered until the sixteenth century. An
-Italian mathematician, Luca Paciola (ca. 1445-1509), wrote in *Summa de
-Arithmetica* that the solution of the cubic was impossible. This was
-taken as a challenge by the rest of the mathematical community.
+ax^3+bx^2+cx+d=0 was not discovered until the sixteenth century.
+An Italian mathematician,
+`Luca Pacioli <http://en.wikipedia.org/wiki/Luca_Pacioli>`_,
+wrote in *Summa de Arithmetica* that the solution
+of the cubic was impossible. This was taken as a challenge by the
+rest of the mathematical community.
 
 Scipione del Ferro (1465-1526), of the University of Bologna, solved
 the "depressed cubic,"
