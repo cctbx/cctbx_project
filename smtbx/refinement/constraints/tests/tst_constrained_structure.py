@@ -1,7 +1,7 @@
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
-import smtbx.refinement.constraints.geometrical_hydrogens as _
+import smtbx.refinement.constraints.factory as _
 import smtbx.refinement.constraints as core
 import smtbx.utils
 from smtbx.refinement import least_squares
@@ -65,10 +65,11 @@ class test_case(object):
 
 
   def check_refinement_stability(self):
-    for sc in self.xray_structure.scatterers():
-      sc.flags.set_grad_site(True)
-      if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(False)
-      if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(False)
+    if not self.shall_refine_thermal_displacements:
+      for sc in self.xray_structure.scatterers():
+        sc.flags.set_grad_site(True)
+        if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(False)
+        if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(False)
 
     xs = self.xray_structure
     xs0 = self.reference_xray_structure = xs.deep_copy_scatterers()
@@ -78,10 +79,14 @@ class test_case(object):
     fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1))
 
     xs.shake_sites_in_place(rms_difference=0.1)
-    #xs.shake_adp(spread=0, aniso_spread=0.1)
+    if self.shall_refine_thermal_displacements:
+      # a spread of 10 for u_iso's would be enormous for our low temperature
+      # test structures if those u_iso's were not constrained
+      xs.shake_adp(spread=10, # absolute
+                   aniso_spread=0.2) # relative
 
     self.reparametrisation = constraints.reparametrisation(
-      xs, self.geometrical_constraints, self.connectivity_table,
+      xs, self.constraints, self.connectivity_table,
       temperature=self.t_celsius)
     normal_eqns = least_squares.normal_equations(
       fo_sq,
@@ -89,12 +94,23 @@ class test_case(object):
       weighting_scheme=least_squares.mainstream_shelx_weighting())
     self.cycles = normal_eqns_solving.naive_iterations(normal_eqns,
                                                        track_all=True)
-    self.cycles.do(relative_gradient_norm_threshold=1e-3)
+    self.cycles.do(gradient_threshold=1e-3, shift_threshold=1e-8)
     print ("%s: %i pure Gauss-Newton iterations to recover from shaking"
            % (self.__class__.__name__, self.cycles.n_iterations))
 
-    assert xs.delta_sites_cart_measure(xs0) < self.refinement_tolerance,\
+    assert xs.delta_sites_cart_measure(xs0) < self.site_refinement_tolerance,\
            self.__class__.__name__
+
+    if self.shall_refine_thermal_displacements:
+      delta_u = []
+      for sc, sc0 in itertools.izip(xs.scatterers(), xs0.scatterers()):
+        if not sc.flags.use_u_aniso() or not sc0.flags.use_u_aniso(): continue
+        delta_u.extend(matrix.col(sc.u_star) - matrix.col(sc0.u_star))
+      delta_u = flex.double(delta_u)
+
+      assert flex.max_absolute(delta_u) < self.u_star_refinement_tolerance,\
+             self.__class__.__name__
+
 
   def display_structure(self):
     from crys3d.qttbx.xray_structure_viewer import display
@@ -110,7 +126,7 @@ class test_case(object):
 
     self.reparametrisation = constraints.reparametrisation(
       self.xray_structure,
-      self.geometrical_constraints,
+      self.constraints,
       self.connectivity_table,
       temperature=self.t_celsius,
     )
@@ -347,8 +363,9 @@ class sucrose_test_case(test_case):
       )))
 
     self.t_celsius = 20
+    self.shall_refine_thermal_displacements = False
 
-    self.geometrical_constraints = [
+    self.constraints = [
       _.terminal_tetrahedral_xh_site(
         rotating=True,
         pivot=1,
@@ -534,7 +551,7 @@ class sucrose_test_case(test_case):
       239 , # H12A.u
     )
 
-    self.refinement_tolerance = 1e-4
+    self.site_refinement_tolerance = 1e-4
 
 
 class saturated_test_case(test_case):
@@ -551,118 +568,155 @@ class saturated_test_case(test_case):
       scatterers=flex.xray_scatterer((
         xray.scatterer( #0
                         label='O1',
-                        site=(0.299693, 0.262689, 0.397067),
-                        u=(0.003620, 0.000123, 0.000110,
-                           0.000151, -0.000302, -0.000018)),
+                        site=(0.299733, 0.262703, 0.397094),
+                        u=(0.003622, 0.000123, 0.000108,
+                           0.000154, -0.000304, -0.000017)),
         xray.scatterer( #1
                         label='O2',
-                        site=(0.606193, 0.145209, 0.437266),
-                        u=(0.004024, 0.000151, 0.000118,
-                           0.000400, -0.000120, -0.000041)),
+                        site=(0.606432, 0.145132, 0.437285),
+                        u=(0.004117, 0.000149, 0.000118,
+                           0.000405, -0.000117, -0.000042)),
         xray.scatterer( #2
                         label='N1',
-                        site=(0.481383, 0.221254, 0.451416),
-                        u=(0.001732, 0.000092, 0.000090,
-                           0.000006, -0.000024, -0.000002)),
+                        site=(0.481175, 0.221358, 0.451529),
+                        u=(0.001750, 0.000091, 0.000090,
+                           0.000016, -0.000027, -0.000000)),
         xray.scatterer( #3
                         label='N2',
-                        site=(0.669994, 0.393837, 0.763963),
-                        u=(0.002898, 0.000121, 0.000073,
-                           0.000167, -0.000066, -0.000001)),
+                        site=(0.669716, 0.393801, 0.763893),
+                        u=(0.002874, 0.000122, 0.000071,
+                           0.000168, -0.000071, -0.000000)),
         xray.scatterer( #4
                         label='H1N',
-                        site=(0.778128, 0.365414, 0.806881),
-                        u=0.050070),
+                        site=(0.777763, 0.365311, 0.806784),
+                        u=0.042273),
         xray.scatterer( #5
                         label='H2N',
-                        site=(0.589595, 0.450183, 0.770105),
-                        u=0.045210),
+                        site=(0.589373, 0.450143, 0.770096),
+                        u=0.042273),
         xray.scatterer( #6
                         label='C1',
-                        site=(0.542592, 0.263281, 0.532761),
-                        u=(0.001390, 0.000089, 0.000076,
-                           -0.000015, 0.000006, -0.000002)),
+                        site=(0.542801, 0.263225, 0.532794),
+                        u=(0.001423, 0.000084, 0.000076,
+                           -0.000009, 0.000000, -0.000003)),
         xray.scatterer( #7
                         label='C2',
-                        site=(0.718091, 0.216067, 0.600697),
-                        u=(0.001208, 0.000084, 0.000090,
-                           -0.000009, 0.000020, 0.000011)),
+                        site=(0.718203, 0.216166, 0.600719),
+                        u=(0.001241, 0.000081, 0.000088,
+                           -0.000011, 0.000023, 0.000009)),
         xray.scatterer( #8
                         label='C3',
-                        site=(0.754321, 0.260920, 0.677749),
-                        u=(0.001515, 0.000101, 0.000081,
-                           0.000046, -0.000012, 0.000020)),
+                        site=(0.754550, 0.260840, 0.677732),
+                        u=(0.001553, 0.000097, 0.000079,
+                           0.000044, -0.000014, 0.000019)),
         xray.scatterer( #9
                         label='H3',
-                        site=(0.867862, 0.229913, 0.724316),
-                        u=0.028850),
+                        site=(0.868083, 0.229804, 0.724284),
+                        u=0.031215),
         xray.scatterer( #10
                         label='C4',
-                        site=(0.627618, 0.351173, 0.689002),
-                        u=(0.001555, 0.000095, 0.000076,
-                           0.000009, 0.000023, 0.000006)),
+                        site=(0.627437, 0.351296, 0.688971),
+                        u=(0.001601, 0.000093, 0.000075,
+                           0.000015, 0.000027, 0.000004)),
         xray.scatterer( #11
                         label='C5',
-                        site=(0.454814, 0.396894, 0.619358),
-                        u=(0.001283, 0.000086, 0.000082,
-                           -0.000002, -0.000009, 0.000008)),
+                        site=(0.454744, 0.396843, 0.619275),
+                        u=(0.001302, 0.000082, 0.000083,
+                           -0.000002, -0.000011, 0.000007)),
         xray.scatterer( #12
                         label='C6',
-                        site=(0.414902, 0.352119, 0.542583),
-                        u=(0.001288, 0.000088, 0.000081,
-                           0.000006, -0.000039, 0.000014)),
+                        site=(0.414545, 0.352153, 0.542558),
+                        u=(0.001310, 0.000086, 0.000080,
+                           0.000014, -0.000038, 0.000012)),
         xray.scatterer( #13
                         label='H6',
-                        site=(0.298734, 0.382510, 0.496009),
-                        u=0.024170),
+                        site=(0.298067, 0.382503, 0.496003),
+                        u=0.028457),
         xray.scatterer( #14
                         label='C7',
-                        site=(0.870669, 0.125812, 0.594875),
-                        u=(0.001484, 0.000105, 0.000085,
-                           0.000002, 0.000003, 0.000009)),
+                        site=(0.870740, 0.125780, 0.594964),
+                        u=(0.001485, 0.000100, 0.000087,
+                           0.000015, 0.000006, 0.000009)),
         xray.scatterer( #15
                         label='C8',
-                        site=(1.017696, 0.053535, 0.594133),
-                        u=(0.002104, 0.000098, 0.000110,
-                           0.000073, 0.000028, 0.000013)),
+                        site=(1.017756, 0.053520, 0.594148),
+                        u=(0.002161, 0.000095, 0.000112,
+                           0.000070, 0.000030, 0.000015)),
         xray.scatterer( #16
                         label='H8',
-                        site=(1.135340, -0.004298, 0.593539),
-                        u=0.052960),
+                        site=(1.135411, -0.004309, 0.593494),
+                        u=0.039284),
         xray.scatterer( #17
                         label='C9',
-                        site=(0.318201, 0.487802, 0.631013),
-                        u=(0.001514, 0.000105, 0.000080,
-                           -0.000001, -0.000028, 0.000009)),
+                        site=(0.317957, 0.487839, 0.631013),
+                        u=(0.001562, 0.000101, 0.000080,
+                           0.000008, -0.000022, 0.000009)),
         xray.scatterer( #18
                         label='C10',
-                        site=(0.204724, 0.561797, 0.646085),
-                        u=(0.001912, 0.000102, 0.000124,
-                           0.000052, -0.000032, -0.000004)),
+                        site=(0.204108, 0.561746, 0.646136),
+                        u=(0.001931, 0.000100, 0.000123,
+                           0.000052, -0.000025, -0.000002)),
         xray.scatterer( #19
                         label='H10',
-                        site=(0.113785, 0.621095, 0.658163),
-                        u=0.039200)
+                        site=(0.112835, 0.620998, 0.658260),
+                        u=0.039775)
       )))
 
-    self.t_celsius = -153
 
-    self.geometrical_constraints = [
+    self.t_celsius = -153
+    self.shall_refine_thermal_displacements = True
+
+    k=1.5 # that is the multiplier used to refine the structure with ShelXL
+    self.constraints = [
       _.terminal_planar_xh2_sites(
         pivot=3,
         constrained_site_indices=(4, 5)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=3,
+        u_iso_scatterer_idx=4,
+        multiplier=k),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=3,
+        u_iso_scatterer_idx=5,
+        multiplier=k),
+
       _.terminal_linear_ch_site(
         pivot=15,
         constrained_site_indices=(16,)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=15,
+        u_iso_scatterer_idx=16,
+        multiplier=k),
+
       _.terminal_linear_ch_site(
         pivot=18,
         constrained_site_indices=(19,)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=18,
+        u_iso_scatterer_idx=19,
+        multiplier=k),
+
       _.secondary_planar_xh_site(
         pivot=12,
         constrained_site_indices=(13,)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=12,
+        u_iso_scatterer_idx=13,
+        multiplier=k),
+
       _.secondary_planar_xh_site(
         pivot=8,
         constrained_site_indices=(9,)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=8,
+        u_iso_scatterer_idx=9,
+        multiplier=k),
       ]
 
     self.expected_reparametrisation_for_hydrogen_named = {
@@ -674,7 +728,8 @@ class saturated_test_case(test_case):
       'H8': (core.terminal_linear_ch_site, 'C8'),
     }
 
-    self.refinement_tolerance = 1e-2
+    self.site_refinement_tolerance = 1e-2
+    self.u_star_refinement_tolerance = 1e-5
 
 
 class symmetry_equivalent_test_case(test_case):
@@ -786,29 +841,101 @@ class symmetry_equivalent_test_case(test_case):
       )))
 
     self.t_celsius = -153
+    self.shall_refine_thermal_displacements = True
 
-    self.geometrical_constraints = [
+    self.constraints = [
       _.secondary_ch2_sites(
         pivot=2,
         constrained_site_indices=(3,4)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=2,
+        u_iso_scatterer_idx=3,
+        multiplier=1.5),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=2,
+        u_iso_scatterer_idx=4,
+        multiplier=1.5),
+
       _.tertiary_ch_site(
         pivot=5,
         constrained_site_indices=(6,)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=5,
+        u_iso_scatterer_idx=6,
+        multiplier=1.5),
+
       _.secondary_ch2_sites(
         pivot=7,
         constrained_site_indices=(8, 9)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=7,
+        u_iso_scatterer_idx=8,
+        multiplier=1.5),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=7,
+        u_iso_scatterer_idx=9,
+        multiplier=1.5),
+
       _.secondary_ch2_sites(
         pivot=10,
         constrained_site_indices=(11, 12)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=10,
+        u_iso_scatterer_idx=11,
+        multiplier=1.5),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=10,
+        u_iso_scatterer_idx=12,
+        multiplier=1.5),
+
       _.secondary_ch2_sites(
         pivot=13,
         constrained_site_indices=(14, 15)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=13,
+        u_iso_scatterer_idx=14,
+        multiplier=1.5),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=13,
+        u_iso_scatterer_idx=15,
+        multiplier=1.5),
+
       _.secondary_ch2_sites(
         pivot=16,
           constrained_site_indices=(17, 18)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=16,
+        u_iso_scatterer_idx=17,
+        multiplier=1.5),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=16,
+        u_iso_scatterer_idx=18,
+        multiplier=1.5),
+
       _.secondary_ch2_sites(
         pivot=19,
         constrained_site_indices=(20, 21)),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=19,
+        u_iso_scatterer_idx=20,
+        multiplier=1.5),
+
+      _.u_iso_proportional_to_pivot_u_eq(
+        u_eq_scatterer_idx=19,
+        u_iso_scatterer_idx=21,
+        multiplier=1.5),
     ]
 
     self.expected_reparametrisation_for_hydrogen_named = {
@@ -827,7 +954,8 @@ class symmetry_equivalent_test_case(test_case):
       "H8B": (core.secondary_ch2_sites, 'C8'),
     }
 
-    self.refinement_tolerance = 0.01
+    self.site_refinement_tolerance = 0.01
+    self.u_star_refinement_tolerance = 5e-7
 
   def check_reparametrisation_construction_more(self):
     for params in self.reparametrisation.asu_scatterer_parameters:
