@@ -246,6 +246,12 @@ namespace scitbx { namespace lstbx {
       }
     }
 
+    /// \sum w y_o^2
+    /** This has the important property that the rescaled objective
+        \f$\frac{L(K, x)}{\sum w y_o^2}\f$ is between 0 and 1.
+     */
+    scalar_t sum_w_yo_sq() { return yo_sq; }
+
     /** \brief The value \f$ K^*(x) \f$ of the scale factor optimising the L.S. objective for a given constant \f$ x \f$.
      */
     scalar_t optimal_scale_factor() {
