@@ -305,6 +305,10 @@ namespace {
     return result;
   }
 
+  double norm_1_a(const_ref<double> const &self) {
+    return matrix::norm_1(self);
+  }
+
   /* For allowed syntax for the optional format_string argument see:
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
@@ -417,6 +421,7 @@ namespace boost_python {
         arg("selection")))
       .def("select", select_stl_iterable<std::set<unsigned> >, (
         arg("selection")))
+      .def("norm_1",  norm_1_a)
     ;
     def(
       "double_from_byte_str",
