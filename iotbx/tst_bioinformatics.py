@@ -1449,7 +1449,7 @@ Q ss_pred             CCCCCCCCCCCCCCEEEEC-CCCCEEEHHH-HC--CCEEEEEEECCCCCCCHHHHHHH
 Q ss_conf             9988554688178517897-9997764889-69--9848999832437711126669999998420--------------
 Q 1XVQ.pdb          1 TVGELPAVGSPAPAFTLTG-GDLGVISSDQ-FR--GKSVLLNIFPSVDTPVCATSVRTFDERAAAS--------------   62 (155)
 Q Consensus         1 ~~~~~p~vG~~aPdF~l~~-~~G~~v~ls~-~~--Gk~vvl~f~~~~~~p~c~~~~~~l~~~~~~~--------------   62 (155)
-                      -...-+.+|..+|+.-+.. .+|....+.+ +.  |++.++.|......+.-...+..+.+.....              
+                      -...-+.+|..+|+.-+.. .+|....+.+ +.  |++.++.|......+.-...+..+.+.....
 T Consensus       460 ~~~~~~~~G~r~p~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  539 (649)
 T 1FOH_aln.pdb    460 ELAKNCVVGTRFKSQPVVRHSEGLWMHFGDRLVTDGRFRIIVFAGKATDATQMSRIKKFSAYLDSENSVISLYTPKVSDR  539 (649)
 T ss_pred             CCCCCCCCCCCCCCCCEEECCCCCCCCHHHHHCCCCCEEEEEECCCCCCCHHHHHHHHHHHHHCCCCCEEEECCCCCCCC
