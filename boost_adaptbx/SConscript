@@ -78,6 +78,17 @@ if (not env_etc.no_boost_python):
       "#include",
       env_etc.boost_include,
       env_etc.python_include])
+  conf = env_pure_boost_python_ext.Clone().Configure()
+  if (not conf.TryCompile("#include <Python.h>", extension=".cpp")):
+    raise RuntimeError("""\
+FATAL:
+
+******************** Python.h include not available. ********************
+
+On some Linux machines you may need to install the "python-dev" package,
+e.g. with "yum install python-dev" or "apt-get install python-dev".
+""")
+  conf.Finish()
   env_boost_python_ext = env_pure_boost_python_ext.Clone()
   env_etc.include_registry.prepend(
     env=env_boost_python_ext,
