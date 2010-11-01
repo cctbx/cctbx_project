@@ -12,7 +12,6 @@
 #include <boost/shared_array.hpp>
 #include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <boost/functional/hash.hpp>
 #include <vector>
 #include <iterator>
 #include <queue>
