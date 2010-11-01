@@ -397,6 +397,8 @@ namespace boost_python {
         .add_property("jacobian_transpose",
                       make_getter(&wt::jacobian_transpose))
         .def("apply_shifts", &wt::apply_shifts)
+        .add_property("norm_of_independent_parameter_vector",
+                      &wt::norm_of_independent_parameter_vector)
         ;
       docstring_options no_signature(true, false);
       klass
