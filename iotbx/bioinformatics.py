@@ -1000,12 +1000,11 @@ class hhpred_homology_search(object):
       self.hit_ss_preds.append( alignments[6] )
 
 
-  @classmethod
-  def process_blocks(cls, blocks):
+  def process_blocks(self, blocks):
 
     data = [ [] for i in range( 20 ) ]
 
-    for b in cls.BLOCK.finditer( blocks ):
+    for b in self.BLOCK.finditer( blocks ):
       data[0].append( b.group( 1 ) ) # q_ss_pred
 
       data[1].append( int( b.group( 2 ) ) ) # q_sequence_start_indices
@@ -1055,7 +1054,7 @@ class hhpred_homology_search(object):
     if data[1] != data[5] or data[3] != data[7] or data[4] != data[8]:
       raise ValueError, "Inconsistent query numbering"
 
-    q_indices = cls.merge_sequence_numbers(
+    q_indices = self.merge_sequence_numbers(
       starts = data[1],
       ends = data[3],
       others = data[4]
@@ -1064,7 +1063,7 @@ class hhpred_homology_search(object):
     if data[10] != data[14] or data[12] != data[16] or data[13] != data[17]:
       raise ValueError, "Inconsistent target numbering"
 
-    t_indices = cls.merge_sequence_numbers(
+    t_indices = self.merge_sequence_numbers(
       starts = data[10],
       ends = data[12],
       others = data[13]
@@ -1073,8 +1072,7 @@ class hhpred_homology_search(object):
     return ( q_indices, t_indices, merged, reduce( operator.add, data[9] ) )
 
 
-  @classmethod
-  def merge_sequence_numbers(cls, starts, ends, others):
+  def merge_sequence_numbers(self, starts, ends, others):
 
     for ( s, e ) in zip( starts[1:], ends[:-1] ):
       if s != e + 1:

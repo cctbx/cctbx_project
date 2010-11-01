@@ -96,6 +96,18 @@ if (vers_info in [(2,3),(2,4),(2,5)] and not hasattr(frozenset, "isdisjoint")):
   __builtins__["frozenset"] = forward_compatibility_frozenset
   __builtins__["set"] = forward_compatibility_set
 
+if "all" not in __builtins__:
+  #Python 2.3-2.4 compatibility
+  def all(iterable):
+    for element in iterable:
+      if not element:
+        return False
+
+    return True
+
+  __builtins__[ "all" ] = all
+
+
 class _advertise_subprocess(object):
 
   def __init__(self, function_id, target):
