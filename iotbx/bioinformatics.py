@@ -612,21 +612,28 @@ def any_sequence_format (file_name) :
   if (format_parser is not None) :
     try :
       objects, non_compliant = format_parser.parse(data)
-      assert seq_object is not None
+      assert (len(objects) > 0)
+      assert (objects[0].sequence != "")
     except Exception, e :
       pass
     else :
       return objects, non_compliant
-  for other_parser in [fasta_sequence_parse, pir_sequence_parse,
-                       seq_sequence_parse] :
+  for other_parser in [fasta_sequence_parse.parse, pir_sequence_parse.parse,
+                       seq_sequence_parse.parse, tf_sequence_parse] :
     if (other_parser is not format_parser) :
       try :
-        objects, non_compliant = other_parser.parse(data)
-        assert seq_object is not None
+        objects, non_compliant = other_parser(data)
+        assert (len(objects) > 0)
+        assert (objects[0].sequence != "")
       except Exception, e :
         pass
       else :
         return objects, non_compliant
+  # fallback: unformatted
+  data = re.sub("\s", "", data)
+  if (re.search("[^a-zA-Z\*]", data) is None) :
+    seq = sequence(data)
+    return [seq], []
   return None, None
 
 def merge_sequence_files (file_names, output_file,
@@ -636,7 +643,10 @@ def merge_sequence_files (file_names, output_file,
   for seq_file in file_names :
     objects, non_compliant = any_sequence_format(seq_file)
     for seq_record in objects :
-      seq_out.write("> %s\n" % str(seq_record.name))
+      name = str(seq_record.name)
+      if (name == "") :
+        name = "none"
+      seq_out.write("> %s\n" % name)
       seq_out.write("%s\n" % seq_record.sequence)
   seq_out.close()
 
@@ -1245,4 +1255,3 @@ class hhalign_parser(hhpred_parser):
     self.hit_alignments.append( merged[5] )
     self.hit_ss_preds.append( merged[6] )
     self.hit_ss_confs.append( merged[7] )
-

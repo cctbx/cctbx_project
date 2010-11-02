@@ -156,12 +156,14 @@ refinement {
   f.close()
   f = any_file("sequence.pir")
   assert (f.file_type == "seq")
+  assert (f.file_object[0].sequence == (seqs[0] + "*"))
   os.remove("sequence.pir")
   f = open("sequence.dat", "w")
   f.write(seqs[0])
   f.close()
   f = any_file("sequence.dat")
   assert (f.file_type == "seq")
+  assert (f.file_object[0].sequence == seqs[0])
   os.remove("sequence.dat")
   f = open("sequence.fa", "w")
   f.write("""\
@@ -180,6 +182,8 @@ refinement {
   f.close()
   f = any_file("sequences.fa")
   assert (f.file_type == "seq")
+  for i, seq_object in enumerate(f.file_object) :
+    assert (seq_object.sequence == seqs[i])
   os.remove("sequences.fa")
 
 def exercise_maps () :
