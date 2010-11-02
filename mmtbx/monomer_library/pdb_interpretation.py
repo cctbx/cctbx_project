@@ -1209,7 +1209,7 @@ def evaluate_registry_process_result(
       registry_process_result,
       lines=[]):
   if (registry_process_result.is_conflicting):
-    raise AssertionError(format_exception_message(
+    raise Sorry(format_exception_message(
       m_i=m_i,
       m_j=m_j,
       i_seqs=i_seqs,
@@ -1221,7 +1221,7 @@ def evaluate_registry_process_result(
   atoms = [pdb_atoms[i_seq] for i_seq in i_seqs]
   if (not registry_process_result.is_new
       and not all_atoms_are_in_main_conf(atoms=atoms)):
-    raise AssertionError(format_exception_message(
+    raise Sorry(format_exception_message(
       m_i=m_i,
       m_j=m_j,
       i_seqs=i_seqs,
