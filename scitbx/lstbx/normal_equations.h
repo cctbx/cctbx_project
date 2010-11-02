@@ -176,10 +176,15 @@ namespace scitbx { namespace lstbx {
   /// Normal equations for least-squares fit with an overall scale.
   /** The least-squares target reads
 
-      \f$ L(K, x) = \sum w ( K y_c(x) - y_o )^2 \f$
+      \f[ L(K, x) = \frac{ \sum w ( K y_c(x) - y_o )^2 }{ \sum w y_o^2 } \f]
 
       where the both of \f$ y_c(x) \f$ and \f$ y_o \f$ are vectors,
-      respectively the model to fit to the data.
+      respectively the model to fit to the data. Alternatively, the
+      non-normalised
+
+      \f[ \tilde{L}(K, x) = \sum w ( K y_c(x) - y_o )^2 \f]
+
+      may be used instead.
 
       One takes advantage of the separability of the problem:
 
@@ -204,16 +209,24 @@ namespace scitbx { namespace lstbx {
   public:
     SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
 
-    /// Construct a least-squares problem with the given number of parameters
-    /** That is the length of the vector \f$ x \f$ */
-    normal_equations_separating_scale_factor(int n_parameters)
+    /// Construct a least-squares problem with the given number of parameters.
+    /** That is the length of the vector \f$ x \f$. The flag normalised
+        specify whether to use the normalised objective \f$L\f$ or the
+        non-normalised objective \f$\tilde{L}\f$.
+     */
+    normal_equations_separating_scale_factor(int n_parameters,
+                                             bool normalised=true)
       : yo_dot_yc(0), yc_sq(0), yo_sq(0),
         n_params(n_parameters),
+        normalised_(normalised),
         a(n_parameters),
         yo_dot_grad_yc(n_parameters),
         yc_dot_grad_yc(n_parameters),
         grad_k_star(n_parameters)
     {}
+
+    /// Whether the L.S. target is normalised by \f$ \sum w y_o^2 \f$ or not
+    bool normalised() { return normalised_; }
 
     /** \brief Add the linearisation of the equation
          \f$y_{c,i} \propto y_{o,i}\f$ with weight w.
@@ -247,8 +260,8 @@ namespace scitbx { namespace lstbx {
     }
 
     /// \sum w y_o^2
-    /** This has the important property that the rescaled objective
-        \f$\frac{L(K, x)}{\sum w y_o^2}\f$ is between 0 and 1.
+    /** This is the normalisation that guarantees
+        that \f$L(K, x)\f$ is between 0 and 1.
      */
     scalar_t sum_w_yo_sq() { return yo_sq; }
 
@@ -263,7 +276,8 @@ namespace scitbx { namespace lstbx {
      */
     scalar_t objective() {
       scalar_t k_star_sq = std::pow(optimal_scale_factor(), 2);
-      scalar_t result = yo_sq * (1 - (k_star_sq * yc_sq)/yo_sq);
+      scalar_t result = 1 - (k_star_sq * yc_sq)/yo_sq;
+      if (!normalised()) result *= yo_sq;
       return result;
     }
 
@@ -290,6 +304,10 @@ namespace scitbx { namespace lstbx {
                        + yc_dot_grad_yc[j]*grad_k_star[i])
              + grad_k_star[i]*grad_k_star[j]*yc_sq;
         *pa++ = a_ij;
+      }
+      if (normalised()) {
+        a /= yo_sq;
+        b /= yo_sq;
       }
       reduced_equations_ = normal_equations<scalar_t>(a.array(), b.array());
     }
@@ -326,6 +344,7 @@ namespace scitbx { namespace lstbx {
   private:
     scalar_t yo_dot_yc, yo_sq, yc_sq;
     int n_params;
+    bool normalised_;
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
     vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;

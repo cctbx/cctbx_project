@@ -23,7 +23,7 @@ struct linear_polynomial_fit
   normal_eqns_t ls;
 
   linear_polynomial_fit(double noise_)
-    : noise(noise_), ls(n_params)
+    : noise(noise_), ls(n_params, false)
   {}
 
   void compute(double a, double b, double c) {
