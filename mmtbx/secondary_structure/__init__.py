@@ -642,6 +642,10 @@ class manager (object) :
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
       log=log)
+    if (bonds_table.bonds.size() == 0) :
+      print >> log, ""
+      print >> log, "  No hydrogen bonds defined."
+      return None
     if verbose :
       print >> log, ""
       print >> log, "  %d hydrogen bonds defined." % bonds_table.bonds.size()
@@ -892,7 +896,9 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     raise Sorry("Not yet implemented.")
   elif params.format in ["pymol", "refmac"] :
     bonds_table = m.get_bonds_table(log=log)
-    if params.format == "pymol" :
+    if (bonds_table is None) :
+      pass
+    elif params.format == "pymol" :
       bonds_table.as_pymol_dashes(pdb_hierarchy, filter=True, out=out)
     else :
       bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
