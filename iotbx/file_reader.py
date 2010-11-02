@@ -216,7 +216,7 @@ class any_file_input (object) :
       print e
       raise
     assert (objects is not None)
-    #assert (len(non_compliant) == 0)
+    assert (len(non_compliant) == 0)
     self.file_object = objects
 #    self.try_as_txt()
 #    assert len(self.file_object) != 0
