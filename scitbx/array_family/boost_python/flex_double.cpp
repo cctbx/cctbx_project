@@ -4,6 +4,7 @@
 #include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/matrix/norms.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/matrix/norms.h>
 #include <boost/python/args.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/numeric/conversion/cast.hpp>
@@ -422,7 +423,7 @@ namespace boost_python {
         arg("selection")))
       .def("select", select_stl_iterable<std::set<unsigned> >, (
         arg("selection")))
-      .def("norm_1",  norm_1_a)
+      .def("norm_1", norm_1_a)
     ;
     def(
       "double_from_byte_str",
