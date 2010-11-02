@@ -60,7 +60,7 @@ namespace scitbx { namespace lstbx { namespace boost_python {
     static void wrap(char const *name) {
       using namespace boost::python;
       class_<wt>(name, no_init)
-        .def(init<int>(arg("n_parameters")))
+        .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("finalise", &wt::finalise)
