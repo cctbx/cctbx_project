@@ -88,24 +88,20 @@ def eval_sidechain_completeness(pdb_hierarchy,
           reference_list = []
           if(not ignore_hydrogens):
             for at in mlq.atom_dict():
-              atom = at.replace("*", "'")
-              if atom.upper() == "O1P":
-                atom = "OP1"
-              elif atom.upper() == "O2P":
-                atom = "OP2"
               reference_list.append(atom.strip().upper())
           elif (mlq is not None) :
             for non in mlq.non_hydrogen_atoms():
-              atom = non.atom_id.replace("*", "'")
-              if atom.upper() == "O1P":
-                atom = "OP1"
-              elif atom.upper() == "O2P":
-                atom = "OP2"
-              reference_list.append(atom.strip().upper())
+              reference_list.append(non.atom_id.strip().upper())
           missing=[]
           for atom in reference_list:
             if atom not in atom_list:
-              missing.append(atom)
+              atom_temp = atom.replace("*", "'")
+              if atom.upper() == "O1P":
+                atom_temp = "OP1"
+              elif atom.upper() == "O2P":
+                atom_temp = "OP2"
+              if atom_temp not in atom_list:
+                missing.append(atom)
           if not report_whole_res:
             if len(missing) > 0:
               item.append(key)
