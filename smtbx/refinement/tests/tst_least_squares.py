@@ -206,7 +206,7 @@ class site_refinement_test(refinement_test):
     assert (
       cycles.objectives[0] >= cycles.objectives[1] >= cycles.objectives[3]
       ), cycles.objectives
-    assert approx_equal(cycles.relative_gradient_norms[-1], 0, eps=1e-9)
+    assert approx_equal(cycles.gradient_norms[-1], 0, eps=1e-9)
 
     match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
     assert match.rt.r == matrix.identity(3)
@@ -259,7 +259,7 @@ class adp_refinement_test(refinement_test):
     # skip next-to-last one to allow for no progress and rounding error
     n = len(cycles.objectives)
     assert cycles.objectives[0] > cycles.objectives[n-1], cycles.objectives
-    assert approx_equal(cycles.relative_gradient_norms[-1], 0, eps=1e-6)
+    assert approx_equal(cycles.gradient_norms[-1], 0, eps=1e-6)
 
     for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
       assert approx_equal(sc0.u_star, sc1.u_star)
