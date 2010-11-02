@@ -119,12 +119,17 @@ def run_reduce(hierarchy, remove_hydrogens=True):
   build = "phenix.reduce -quiet -build -allalt -"
   input_str = ""
   pdb_string = hierarchy.as_pdb_string()
-  clean_pdb_string = ""
-  for line in pdb_string.splitlines():
-    # *'s in atom names don't impact base, so leaving alone for now
-    #line = re.sub(r'^((ATOM  |HETATM).{9})\*',r'\1'+"\'",line)
-    line = clean_base_names(line)
-    clean_pdb_string = clean_pdb_string+line+'\n'
+  clean_lines = []
+  for line in pdb_string.splitlines() :
+    # XXX for some reason the ANISOU records are confusing Reduce - maybe
+    # because residue names aren't being capitalized there?  fortunately we
+    # don't need ANISOUs here anyway.
+    if not line.startswith("ANISOU") :
+      # *'s in atom names don't impact base, so leaving alone for now
+      #line = re.sub(r'^((ATOM  |HETATM).{9})\*',r'\1'+"\'",line)
+      line = clean_base_names(line)
+      clean_lines.append(line)
+  clean_pdb_string = "\n".join(clean_lines)
   if(remove_hydrogens):
     clean = easy_run.fully_buffered(trim,
                                     stdin_lines=clean_pdb_string)
