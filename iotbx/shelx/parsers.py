@@ -197,6 +197,7 @@ class variable_decoder(object):
 class atom_parser(parser, variable_decoder):
   """ A parser pulling out the scatterer info from a command stream """
 
+  overall_scale=None
   scatterer_label_to_index = {}
 
   def filtered_commands(self):
@@ -213,8 +214,12 @@ class atom_parser(parser, variable_decoder):
         self.label_for_sfac = ('*',) + args # (a) working around
                                             #     ShelXL 1-based indexing
       elif cmd == 'FVAR':
-        self.overall_scale = args[0]
-        self.free_variable = args # (b) ShelXL indexes into the whole array
+        if self.overall_scale is None:
+          self.overall_scale = args[0]
+          self.free_variable = args # (b) ShelXL indexes into the whole array
+        else:
+          # ShelXL allows for more than one FVAR instruction
+          self.free_variable = self.free_variable + args
       elif cmd == 'PART':
         part_sof = None
         conformer_index = 0
