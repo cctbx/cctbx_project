@@ -153,3 +153,33 @@ class normal_equations(object):
   def covariance_matrix_and_annotations(self):
     return (self.covariance_matrix(),
             self.reparametrisation.component_annotations)
+
+
+class _mainstream_shelx_weighting(boost.python.injector,
+                                  mainstream_shelx_weighting):
+
+  def __str__(self):
+    """ A string representation of the weighting scheme in a format that is
+        appropriate for the CIF item _refine_ls_weighting_details.
+    """
+    if round(self.a, 4) in (0.1, 0.2):
+      a = "%.1f" %self.a
+    else:
+      a = "%.4f" %self.a
+    if round(self.b, 4) == 0: b_part=""
+    else: b_part = "+%.4fP" %self.b
+    return ("w=1/[\s^2^(Fo^2^)+(%sP)^2^%s]"
+            " where P=(Fo^2^+2Fc^2^)/3" %(a, b_part))
+
+  def type(self):
+    return "calc"
+
+
+class _unit_weighting(boost.python.injector,
+                      unit_weighting):
+
+  def __str__(self):
+    return "w=1"
+
+  def type(self):
+    return "unit"
