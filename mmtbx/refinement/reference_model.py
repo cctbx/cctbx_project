@@ -12,6 +12,7 @@ import iotbx.phil
 from libtbx import Auto
 from libtbx.utils import format_exception, Sorry
 from libtbx.str_utils import show_string
+from mmtbx import secondary_structure
 import sys, os, re
 
 reference_group_params = iotbx.phil.parse("""
@@ -459,6 +460,7 @@ def get_home_dihedral_proxies(work_params,
                               geometry_ref,
                               sites_cart_ref,
                               pdb_hierarchy_ref):
+  ss_selection = None
   reference_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
   sigma = work_params.sigma
   limit = work_params.limit
@@ -475,6 +477,25 @@ def get_home_dihedral_proxies(work_params,
                              pdb_hierarchy=pdb_hierarchy,
                              pdb_hierarchy_ref=pdb_hierarchy_ref,
                              params=work_params)
+  if work_params.secondary_structure_only:
+    ref_ss_m = secondary_structure.manager(
+                 pdb_hierarchy=pdb_hierarchy_ref,
+                 xray_structure=pdb_hierarchy_ref.extract_xray_structure(),
+                 sec_str_from_pdb_file=None)
+    ref_ss_m.find_automatically()
+    pdb_str = pdb_hierarchy_ref.as_pdb_string()
+    (records, stderr) = secondary_structure.run_ksdssp_direct(pdb_str)
+    sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
+                              records=records,
+                              allow_none=True)
+    if sec_str_from_pdb_file != None:
+      overall_helix_selection = sec_str_from_pdb_file.overall_helix_selection()
+      overall_sheet_selection = sec_str_from_pdb_file.overall_sheet_selection()
+      overall_selection = overall_helix_selection +' or ' + overall_sheet_selection
+      sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
+      ss_selection = (phil_atom_selections_as_i_seqs_multiple(
+                      cache=sel_cache_ref,
+                      string_list=[overall_selection]))
   for dp in geometry.dihedral_proxies:
     key = ""
     for i_seq in dp.i_seqs:
@@ -486,12 +507,31 @@ def get_home_dihedral_proxies(work_params,
       reference_angle = reference_dihedral_hash[key]
     except:
       continue
-    dp_add = cctbx.geometry_restraints.dihedral_proxy(
-      i_seqs=dp.i_seqs,
-      angle_ideal=reference_angle,
-      weight=1/sigma**2,
-      limit=limit)
-    reference_dihedral_proxies.append(dp_add)
+    if work_params.secondary_structure_only and ss_selection != None:
+        if match_map[dp.i_seqs[0]] in ss_selection and \
+           match_map[dp.i_seqs[1]] in ss_selection and \
+           match_map[dp.i_seqs[2]] in ss_selection and \
+           match_map[dp.i_seqs[3]] in ss_selection:
+          dp_add = cctbx.geometry_restraints.dihedral_proxy(
+            i_seqs=dp.i_seqs,
+            angle_ideal=reference_angle,
+            weight=1/(1.0**2),
+            limit=30.0)
+          reference_dihedral_proxies.append(dp_add)
+        else:
+          dp_add = cctbx.geometry_restraints.dihedral_proxy(
+            i_seqs=dp.i_seqs,
+            angle_ideal=reference_angle,
+            weight=1/(5.0**2),
+            limit=15.0)
+          reference_dihedral_proxies.append(dp_add)
+    else:
+      dp_add = cctbx.geometry_restraints.dihedral_proxy(
+        i_seqs=dp.i_seqs,
+        angle_ideal=reference_angle,
+        weight=1/sigma**2,
+        limit=limit)
+      reference_dihedral_proxies.append(dp_add)
 
   for cp in geometry.chirality_proxies:
     key = ""
@@ -527,6 +567,30 @@ def get_home_dihedral_proxies(work_params,
       limit=limit)
     reference_dihedral_proxies.append(dp_add)
   return reference_dihedral_proxies
+
+#def get_reference_proxies_secondary_only(work_params,
+#                                         geometry,
+#                                         pdb_hierarchy,
+#                                         geometry_ref,
+#                                         sites_cart_ref,
+#                                         pdb_hierarchy_ref):
+#  reference_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
+#  sigma = work_params.sigma
+#  limit = work_params.limit
+#  i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
+#  i_seq_name_hash_ref = build_name_hash(pdb_hierarchy=pdb_hierarchy_ref)
+#  reference_dihedral_hash = build_dihedral_hash(
+#                         geometry=geometry_ref,
+#                         sites_cart=sites_cart_ref,
+#                         pdb_hierarchy=pdb_hierarchy_ref,
+#                         include_hydrogens=work_params.hydrogens,
+#                         include_main_chain=work_params.main_chain,
+#                         include_side_chain=work_params.side_chain)
+#  match_map = process_reference_groups(
+#                             pdb_hierarchy=pdb_hierarchy,
+#                             pdb_hierarchy_ref=pdb_hierarchy_ref,
+#                             params=work_params)
+
 
 def add_reference_dihedral_proxies(geometry, reference_dihedral_proxies):
   geometry.reference_dihedral_proxies=reference_dihedral_proxies

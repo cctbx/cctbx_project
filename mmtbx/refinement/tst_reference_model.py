@@ -4,7 +4,9 @@ from mmtbx.refinement import reference_model
 from mmtbx.validation.rotalyze import rotalyze
 import iotbx.phil
 import iotbx.utils
-import sys
+from iotbx import file_reader
+import libtbx.load_env
+import sys, os
 
 model_raw_records = """\
 CRYST1   41.566   72.307   92.870 108.51  93.02  90.06 P 1           4
@@ -111,6 +113,8 @@ reference_model
     fix_outliers = True
       .type = bool
     auto_align = False
+      .type = bool
+    secondary_structure_only = False
       .type = bool
     reference_group
       .multiple=True
@@ -330,6 +334,52 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
                                                        params=work_params_match.reference_model)
   assert match_map == \
   {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
+
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf.pdb",
+    test=os.path.isfile)
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    pdb_inp = pdb_in,
+    for_dihedral_reference=True)
+  geometry = processed_pdb_file.geometry_restraints_manager()
+  sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
+  xray_structure=processed_pdb_file.xray_structure()
+  pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
+    work_params=work_params.reference_model,
+    geometry=geometry,
+    pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    geometry_ref=geometry,
+    sites_cart_ref=sites_cart,
+    pdb_hierarchy_ref=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  standard_weight = 0
+  for dp in reference_dihedral_proxies:
+    if dp.weight == 1.0:
+      standard_weight += 1
+  assert standard_weight == 1403
+  master_phil_str_overrides = """
+  reference_model {
+    secondary_structure_only = True
+  }
+  """
+  phil_objects = [
+    iotbx.phil.parse(input_string=master_phil_str_overrides)]
+  work_params_ss = master_phil.fetch(sources=phil_objects).extract()
+  reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
+    work_params=work_params_ss.reference_model,
+    geometry=geometry,
+    pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    geometry_ref=geometry,
+    sites_cart_ref=sites_cart,
+    pdb_hierarchy_ref=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  ss_weight = 0
+  for dp in reference_dihedral_proxies:
+    if dp.weight == 1.0:
+      ss_weight += 1
+  assert ss_weight == 916
 
 def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
