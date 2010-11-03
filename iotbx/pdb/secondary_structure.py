@@ -105,8 +105,12 @@ class annotation (structure_base) :
     return "(" + ") or (".join(selections) + ")"
 
   def overall_sheet_selection (self, params=ss_input_params) :
+    selections = []
     for sheet in self.sheets :
-      selections.extend(sheet.as_atom_selections(params))
+      try:
+        selections.extend(sheet.as_atom_selections(params))
+      except RuntimeError, e :
+        pass
     return "(" + ") or (".join(selections) + ")"
 
   def as_bond_selections (self, params) :
