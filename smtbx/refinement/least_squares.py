@@ -76,14 +76,14 @@ class normal_equations(object):
     self.reduced = self._core_normal_eqns.reduced_equations()
     self.scale_factor = self._core_normal_eqns.optimal_scale_factor()
     self.objective_data_only = self._core_normal_eqns.objective()
+    self.sum_w_yo_sq = self._core_normal_eqns.sum_w_yo_sq()
     if self.restraints_manager is not None:
       # Here we determine a normalisation factor to place the restraints on the
       # same scale as the observations. This is the normalisation factor
       # suggested in Giacovazzo. In contrast, shelxl simply uses the mean
       # value of the deltas (shelx manual, page 5-1).
-      normalisation_factor = flex.sum(self.weights * flex.pow2(
-        self.fo_sq.data() - self.scale_factor * flex.norm(self.f_calc.data())))\
-          / (self.fo_sq.size() - self.reparametrisation.n_independent_params)
+      dof = self.fo_sq.size() - self.reparametrisation.n_independent_params
+      normalisation_factor = self.objective_data_only/dof
       linearised_eqns = self.restraints_manager.build_linearised_eqns(
         self.xray_structure)
       jacobian = \
@@ -114,22 +114,18 @@ class normal_equations(object):
     self.apply_shifts()
 
   def goof(self):
-    return math.sqrt(
-      self.objective_data_only
-      /(self.fo_sq.size() - self.reparametrisation.n_independent_params))
+    dof = self.fo_sq.size() - self.reparametrisation.n_independent_params
+    return math.sqrt(self.objective_data_only*self.sum_w_yo_sq/dof)
 
   def restrained_goof(self):
     if self.n_restraints is not None: n_restraints = self.n_restraints
     else: n_restraints = 0
-    return math.sqrt(
-      self.objective
-      /(self.fo_sq.size() + n_restraints
-        - self.reparametrisation.n_independent_params))
+    dof = (self.fo_sq.size() + n_restraints
+           - self.reparametrisation.n_independent_params)
+    return math.sqrt(self.objective*self.sum_w_yo_sq/dof)
 
   def wR2(self):
-    return math.sqrt(
-      self.objective_data_only
-      /flex.sum(self.weights * flex.pow2(self.fo_sq.data())))
+    return math.sqrt(self.objective_data_only)
 
   def r1_factor(self, cutoff_factor=None):
     f_obs = self.fo_sq.f_sq_as_f()
@@ -147,6 +143,7 @@ class normal_equations(object):
                         normalised_by_goof=True):
     cov = linalg.inverse_of_u_transpose_u(
       self.reduced.cholesky_factor_packed_u)
+    cov /= self.sum_w_yo_sq
     if not independent_params:
       jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
       cov = jac_tr.self_transpose_times_symmetric_times_self(cov)
