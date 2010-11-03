@@ -2,7 +2,6 @@ import boost.python
 boost.python.import_ext("smtbx_refinement_restraints_ext")
 
 from smtbx_refinement_restraints_ext import *
-from smtbx.refinement import least_squares
 
 from cctbx.xray import parameter_map
 
