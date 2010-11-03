@@ -38,10 +38,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
   {
     static void wrap() {
       using namespace boost::python;
-      weighting_scheme_class<
-        mainstream_shelx_weighting
-      >("mainstream_shelx_weighting")
+      typedef weighting_scheme_class<mainstream_shelx_weighting> wt;
+      wt("mainstream_shelx_weighting")
         .def(init<optional<double, double> >((arg("a"), arg("b"))))
+        .def_readwrite("a", &wt::wt::a)
+        .def_readwrite("b", &wt::wt::b)
         ;
     }
   };
