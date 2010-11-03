@@ -30,6 +30,14 @@ def exercise_results():
     assert abs(fff-j1(xx))/fff < 1e-5
     assert abs(ffff-j2(xx))/ffff < 1e-5
 
+def tst_sph_bessel_j1():
+  x = flex.double( range(1,8000) )/999.0
+  f1 = math.spherical_bessel_array(1,x)
+  for xx,ff in zip(x,f1):
+    assert abs( ff-j1(xx) )/abs(ff) < 1e-5
+    #print xx, ff, j1(xx), abs( ff-j1(xx) )/abs(ff)
+
+
 def exercise():
   if (not hasattr(math, "spherical_bessel")):
     print "Skipping tst_bessel.py: functions not available."
@@ -44,4 +52,7 @@ def run(args):
 
 if (__name__ == "__main__"):
   import sys
+  if 'test_j1' in sys.argv[1:]:
+    tst_sph_bessel_j1()
+    exit()
   run(args=sys.argv[1:])
