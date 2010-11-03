@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx import sgtbx
 from smtbx.refinement import constraints
+from smtbx.refinement.constraints import adp as adp_constraints
 from smtbx.refinement.constraints import geometrical_hydrogens
 
 class random_xray_structure(random_structure.xray_structure):
@@ -40,7 +41,7 @@ class test_case(object):
       if verbose: print "OK"
   run = classmethod(run)
 
-def generate_geometrical_constraints(structure, connectivity_table):
+def generate_hydrogen_constraints(structure, connectivity_table):
   # This is purely for testing purposes and is not in any way intended
   # to be a complete or comprehensive generation of constraints
 
@@ -51,9 +52,9 @@ def generate_geometrical_constraints(structure, connectivity_table):
   pair_sym_table = connectivity_table.pair_asu_table.extract_pair_sym_table(
     skip_j_seq_less_than_i_seq=False,
     all_interactions_from_inside_asu=True)
-  geometrical_constraints = []
+  h_constraints = []
   for i_seq, j_seq_dict in enumerate(pair_sym_table):
-    for conformer_i in range(flex.max(conformer_indices)):
+    for conformer_i in range(flex.max(conformer_indices)+1):
       if conformer_indices[i_seq] not in (0, conformer_i): continue
       if sc_types[i_seq] in ('H', 'D'): continue
       h_count = 0
@@ -68,28 +69,41 @@ def generate_geometrical_constraints(structure, connectivity_table):
       rotating = False
       stretching = False
       constraint_type = None
+      u_eq_multiplier = 1.2
       if h_count == 0: continue
       elif h_count == 1:
         if pivot_neighbour_count == 1:
-          constraint_type = geometrical_hydrogens.terminal_linear_ch_site
-        elif pivot_neighbour_count == 2:
+          if sc_types[i_seq] == 'C':
+            constraint_type = geometrical_hydrogens.terminal_linear_ch_site
+          else:
+            constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh_site
+            if sc_types[i_seq] == 'O':
+              u_eq_multiplier  = 1.5
+        elif pivot_neighbour_count == 2 and sc_types[i_seq] in ('C', 'N'):
           constraint_type = geometrical_hydrogens.secondary_planar_xh_site
           stretching = True
-        elif pivot_neighbour_count == 3:
-          constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh_site
+        elif pivot_neighbour_count == 3 and sc_types[i_seq] == 'C':
+          constraint_type = geometrical_hydrogens.tertiary_ch_site
       elif h_count == 2:
-        if pivot_neighbour_count == 1:
+        if pivot_neighbour_count == 1 and sc_types[i_seq] in ('C', 'N'):
           constraint_type = geometrical_hydrogens.terminal_planar_xh2_sites
-        elif pivot_neighbour_count == 2:
+        elif pivot_neighbour_count == 2 and sc_types[i_seq] == 'C':
           constraint_type = geometrical_hydrogens.secondary_ch2_sites
       elif h_count == 3:
         if pivot_neighbour_count == 1:
           constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh3_sites
+          u_eq_multiplier = 1.5
       if constraint_type is not None:
         current = constraint_type(
           rotating=rotating,
           stretching=stretching,
           pivot=i_seq,
           constrained_site_indices=constrained_site_indices)
-        geometrical_constraints.append(current)
-    return geometrical_constraints
+        h_constraints.append(current)
+        for idx in constrained_site_indices:
+          h_constraints.append(
+            adp_constraints.u_iso_proportional_to_pivot_u_eq(
+              u_eq_scatterer_idx=i_seq,
+              u_iso_scatterer_idx=idx,
+              multiplier=u_eq_multiplier))
+  return h_constraints
