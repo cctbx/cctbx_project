@@ -10,6 +10,7 @@ import mmtbx.monomer_library
 from cctbx.array_family import flex
 import iotbx.phil
 from libtbx import Auto
+import libtbx.load_env
 from libtbx.utils import format_exception, Sorry
 from libtbx.str_utils import show_string
 from mmtbx import secondary_structure
@@ -478,6 +479,9 @@ def get_home_dihedral_proxies(work_params,
                              pdb_hierarchy_ref=pdb_hierarchy_ref,
                              params=work_params)
   if work_params.secondary_structure_only:
+    if (not libtbx.env.has_module(name="ksdssp")):
+      raise RuntimeError(
+        "ksdssp module is not configured, cannot generate secondary structure reference")
     ref_ss_m = secondary_structure.manager(
                  pdb_hierarchy=pdb_hierarchy_ref,
                  xray_structure=pdb_hierarchy_ref.extract_xray_structure(),
