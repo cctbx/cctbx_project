@@ -235,8 +235,8 @@ Please use alignment_group selections.  See documentation for details."
           key = model_name_hash[i_seq]
           atom = key[0:4]
           res_key = key[4:]
-          match_key = atom+residue_match_map[res_key]
           try:
+            match_key = atom+residue_match_map[res_key]
             match_map[i_seq] = ref_iseq_hash[match_key]
           except:
             continue
