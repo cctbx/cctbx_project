@@ -1891,25 +1891,25 @@ def asu_195(): # P 2 3
   return (direct_space_asu('P 2 2 3')
     & z0(y2 & x2)
     & m1(-y2)
-    & cut((0,1,-1),0)(cut((-1,0,1),0))
-    & cut((1,0,-1),0)
+    & zy0(-zx0)
+    & zx0
   )
 
 def asu_196(): # F 2 3
   return (direct_space_asu('F 2 2 3')
     & p0(m2)
-    & cut((-1,0,-1),r1/2)(cut((0,-1,1),0))
-    & cut((-1,0,1),r1/2)(cut((0,-1,-1),0))
-    & cut((0,1,1),0)
-    & cut((0,1,-1),0)
+    & (~xz1/2)(-zy0)
+    & (zx1/2)(yz0)
+    & -yz0
+    & zy0
   )
 
 def asu_197(): # I 2 3
   return (direct_space_asu('I 2 2 3')
     & z0(x2)
-    & p0(cut((0,-1,1),0))
+    & p0(-zy0)
     & +m1
-    & cut((0,1,-1),0)
+    & zy0
   )
 
 def asu_198(): # P 21 3
@@ -1917,10 +1917,10 @@ def asu_198(): # P 21 3
     & x0(-y0)
     & x2
     & y2(+z0 & x2(+z2))
-    & cut((-1,0,1), r1/2)(m2)
-    & cut((1,0,-1), 0)(p0)
-    & cut((0,1,1), 0)
-    & cut((0,1,-1), 0)
+    & (zx1/2)(m2)
+    & zx0(p0)
+    & -yz0
+    & zy0
   )
 
 def asu_199(): # I 21 3
@@ -1928,8 +1928,8 @@ def asu_199(): # I 21 3
     & x2(-y4)
     & y2(-z4)
     & z0(x4)
-    & cut((1,0,-1),0)(cut((0,-1,1),0)(+x2))
-    & cut((0,1,-1),0)
+    & zx0(-zy0(+x2))
+    & zy0
   )
 
 def asu_200(): # P m -3
@@ -1937,58 +1937,58 @@ def asu_200(): # P m -3
     & x2
     & y2
     & z0
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((0,1,-1),0)
+    & zx0(-zy0)
+    & zy0
   )
 
 def asu_201(): # P n -3 :2
   return (direct_space_asu('-P 2ab 2bc 3')
     & ~z4(x4)
-    & p0(cut((0,-1,1),0)(-x0))
-    & m2(cut((0,-1,1),0)(x2))
-    & cut((0,1,-1),0)
+    & p0(-zy0(-x0))
+    & m2(-zy0(x2))
+    & zy0
   )
 
 def asu_202(): # F m -3
   return (direct_space_asu('-F 2 2 3')
     & z0
     & p0(x4)
-    & cut((-1,0,-1),r1/2)(cut((0,-1,1),0))
-    & cut((0,1,-1),0)
+    & (~xz1/2)(-zy0)
+    & zy0
   )
 
 def asu_203(): # F d -3 :2
   return (direct_space_asu('-F 2uv 2vw 3')
-    & p0(cut((0,-1,1),0)(-x0))
-    & (m1/4)(cut((0,-1,1),0) | cut((0,-1,-1),-r1/4)(~z4))
-    & cut((0,1,-1),0)
-    & cut((0,1,1),r1/4)
+    & p0(-zy0(-x0))
+    & (m1/4)(-zy0 | (-yz1/4)(~z4))
+    & zy0
+    & yz1/4
   )
 
 def asu_204(): # I m -3
   return (direct_space_asu('-I 2 2 3')
     & x2
     & z0
-    & p0(cut((0,-1,1),0)(x4))
-    & cut((0,1,-1),0)
+    & p0(-zy0(x4))
+    & zy0
   )
 
 def asu_205(): # P a -3
   return (direct_space_asu('-P 2ac 2ab 3')
-    & x2(-z0(cut((0,-1,1),0)))
-    & y2(cut((0,-1,1),0))
+    & x2(-z0(-zy0))
+    & y2(-zy0)
     & z0
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((0,1,-1),0)
+    & zx0(-zy0)
+    & zy0
   )
 
 def asu_206(): # I a -3
   return (direct_space_asu('-I 2b 2c 3')
     & z0(x4)
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((-1,0,-1),r1/2)
-    & cut((0,1,-1),0)
-    & cut((0,-1,-1),r1/2)(cut((-1,0,1),0))
+    & zx0(-zy0)
+    & ~xz1/2
+    & zy0
+    & (~yz1/2)(-zx0)
   )
 
 def asu_207(): # P 4 3 2
@@ -1996,57 +1996,57 @@ def asu_207(): # P 4 3 2
     & z0(x2)
     & p0
     & m1(-p0)
-    & cut((0,1,-1),0)(x2)
+    & zy0(x2)
   )
 
 def asu_208(): # P 42 3 2
   return (direct_space_asu('P 4n 2 3')
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((1,0,1),0)(cut((0,-1,-1),0))
-    & cut((-1,0,1),r1/2)(y4)
-    & cut((-1,0,-1),r1/2)(y4)
-    & cut((0,1,-1),0)
-    & cut((0,1,1),0)
-    & cut((0,-1,1),r1/2)(-x4)
-    & cut((0,-1,-1),r1/2)(-x4)
+    & zx0(-zy0)
+    & -xz0(yz0)
+    & (zx1/2)(y4)
+    & (~xz1/2)(y4)
+    & zy0
+    & -yz0
+    & (zy1/2)(-x4)
+    & (~yz1/2)(-x4)
   )
 
 def asu_209(): # F 4 3 2
   return (direct_space_asu('F 4 2 3')
     & p0(z0)
     & m2(z0)
-    & cut((0,1,-1),0)
-    & cut((0,1,1),0)(cut((0,-1,1),0))
+    & zy0
+    & -yz0(-zy0)
   )
 
 def asu_210(): # F 41 3 2
   return (direct_space_asu('F 4d 2 3')
-    & y8(-cut((-1,0,-1), r1/4))
+    & y8(-~xz1/4)
     & z8(m1/4)
-    & p0(-cut((1,0,-1), 0))
-    & m2(-cut((-1,0,-1), r1/2))
-    & cut((0,1,1), 0)(z0)
-    & cut((1,0,-1), 0)
-    & cut((-1,0,-1), r1/2)
+    & p0(-zx0)
+    & m2(-~xz1/2)
+    & -yz0(z0)
+    & zx0
+    & ~xz1/2
   )
 
 def asu_211(): # I 4 3 2
   return (direct_space_asu('I 4 2 3')
     & z0(p0)
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((-1,0,-1),r1/2)(y4)
-    & cut((0,1,-1),0)
-    & cut((0,-1,-1),r1/2)(-x4)
+    & zx0(-zy0)
+    & (~xz1/2)(y4)
+    & zy0
+    & (~yz1/2)(-x4)
   )
 
 def asu_212(): # P 43 3 2 (enantiomorph of 213)
   return (direct_space_asu('P 4acd 2ab 3')
-    & cut((-1,0,1),r1/2)
-    & cut((0,1,1),0)(cut((1,0,-1),-r1/2))
-    & cut((0,-1,-1),r1/2)(cut((-2,1,1),0))
-    & cut((2,-1,-1),0)(x8)
-    & cut((-1,2,-1),0)(y8)
-    & cut((-2,1,-1),r1/2)(-x1*3/8)
+    & zx1/2
+    & -yz0(-zx1/2)
+    & (~yz1/2)(tmm0)
+    & -tmm0(x8)
+    & -mtm0(y8)
+    & (~tmo1/2)(-x1*3/8)
   )
 
 def asu_213(): # P 41 3 2 (enantiomorph of 212)
@@ -2054,13 +2054,13 @@ def asu_213(): # P 41 3 2 (enantiomorph of 212)
 
 def asu_214(): # I 41 3 2
   return (direct_space_asu('I 4bd 2c 3')
-    & x8(cut((0,-1,-1),r1/4))
-    & y8(cut((-1,0,-1),r1/4))
-    & ~y8(cut((-1,0,1),-r1/4))
-    & cut((-1,0,1),0)(cut((0,1,-1),0))
-    & cut((0,-1,1),0)
-    & cut((0,1,-1),r1/4)(-y0)
-    & cut((1,-1,1),r1/8)(~p4)
+    & x8(~yz1/4)
+    & y8(~xz1/4)
+    & ~y8(-~zx1/4)
+    & -zx0(zy0)
+    & -zy0
+    & (~zy1/4)(-y0)
+    & (omo1/8)(~p4)
   )
 
 def asu_215(): # P -4 3 m
@@ -2068,15 +2068,15 @@ def asu_215(): # P -4 3 m
     & z0(x2)
     & p0
     & m1
-    & cut((0,1,-1),0)
+    & zy0
   )
 
 def asu_216(): # F -4 3 m
   return (direct_space_asu('F -4 2 3')
     & p0
     & m2
-    & cut((0,1,-1),0)
-    & cut((0,1,1),0)
+    & zy0
+    & -yz0
   )
 
 def asu_217(): # I -4 3 m
@@ -2084,7 +2084,7 @@ def asu_217(): # I -4 3 m
     & x2(-z0(y4))
     & z0
     & p0
-    & cut((0,1,-1),0)
+    & zy0
   )
 
 def asu_218(): # P -4 3 n
@@ -2092,27 +2092,27 @@ def asu_218(): # P -4 3 n
     & x2(-z0(y4))
     & y2(-z0(x4))
     & z0
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((0,1,-1),0)
+    & zx0(-zy0)
+    & zy0
   )
 
 def asu_219(): # F -4 3 c
   return (direct_space_asu('F -4a 2 3')
     & p0
     & m2(-p0(z0))
-    & cut((0,1,-1),0)
-    & cut((0,1,1),0)(-p0 | cut((0,-1,1),0)(x4))
+    & zy0
+    & -yz0(-p0 | -zy0(x4))
   )
 
 def asu_220(): # I -4 3 d
   return (direct_space_asu('I -4bd 2c 3')
-    & -x4(-z0(-y8*3))
+    & -x4(-z0(-y1*3/8))
     & x2
     & -y4(-x2(-z8))
     & y2(-z4)
     & z0
-    & cut((1,0,-1), 0)(-cut((0,1,-1), 0))
-    & cut((0,1,-1), 0)
+    & zx0(-zy0)
+    & zy0
   )
 
 def asu_221(): # P m -3 m
@@ -2120,33 +2120,33 @@ def asu_221(): # P m -3 m
     & x2
     & z0
     & p0
-    & cut((0,1,-1), 0)
+    & zy0
   )
 
 def asu_222(): # P n -3 n :2
   return (direct_space_asu('-P 4a 2bc 3')
-    & (x1*3/4)(z4(y2) | cut((0,-1,1),0))
+    & (x1*3/4)(z4(y2) | -zy0)
     & -z4
-    & p0(cut((0,-1,1),0)(z2))
-    & cut((0,1,-1),0)
+    & p0(-zy0(z2))
+    & zy0
   )
 
 def asu_223(): # P m -3 n
   return (direct_space_asu('-P 4n 2 3')
     & z0
-    & cut((1,0,-1),0)(cut((0,-1,1),0))
-    & cut((-1,0,-1),r1/2)(y4)
-    & cut((0,1,-1),0)
-    & cut((0,-1,-1),r1/2)(x4)
+    & zx0(-zy0)
+    & (~xz1/2)(y4)
+    & zy0
+    & (~yz1/2)(x4)
   )
 
 def asu_224(): # P n -3 m :2
   return (direct_space_asu('-P 4bc 2bc 3')
     & p0
-    & cut((-1,0,-1),r1)(y2)
-    & cut((-1,0,1),r1/2)(y2)
-    & cut((0,1,1),-r1/2)
-    & cut((0,1,-1),0)
+    & ~xz1(y2)
+    & (zx1/2)(y2)
+    & -~yz1/2
+    & zy0
   )
 
 def asu_225(): # F m -3 m
@@ -2154,7 +2154,7 @@ def asu_225(): # F m -3 m
     & z0
     & p0
     & m2
-    & cut((0,1,-1), 0)
+    & zy0
   )
 
 def asu_226(): # F m -3 c
@@ -2162,46 +2162,46 @@ def asu_226(): # F m -3 c
     & z0
     & p0
     & m2(-p0)
-    & cut((0,1,-1),0)(x4)
+    & zy0(x4)
   )
 
 def asu_227(): # F d -3 m :2
   return (direct_space_asu('-F 4vw 2vw 3')
-    & -y0(cut((1,0,1),0))
+    & -y0(-xz0)
     & p0
     & m1/4
-    & cut((0,1,1),r1/4)
-    & cut((0,1,-1),0)
+    & yz1/4
+    & zy0
   )
 
 def asu_228(): # F d -3 c :2
   return (direct_space_asu('-F 4ud 2vw 3')
-    & -y0(cut((-1,0,1),r1/4))
-    & p0(cut((0,-1,1), 0))
-    & cut((-1,-1,0), r1/4)
-    & cut((0,1,1), r1/4)(-cut((0,1,-1), 0)(x8))
-    & cut((0,1,-1), 0)
+    & -y0(zx1/4)
+    & p0(-zy0)
+    & m1/4
+    & (yz1/4)(-zy0(x8))
+    & zy0
   )
 
 def asu_229(): # I m -3 m
   return (direct_space_asu('-I 4 2 3')
     & z0
     & p0
-    & cut((-1,0,-1),r1/2)(y4)
-    & cut((0,1,-1),0)
+    & (~xz1/2)(y4)
+    & zy0
   )
 
 def asu_230(): # I a -3 d
   return (direct_space_asu('-I 4bd 2c 3')
-    & x8(cut((0,1,-1),r1/4) & cut((0,-1,-1),r1/4))
+    & x8(~zy1/4 & ~yz1/4)
     & ~x8(y0(-z4))
-    & y8(cut((1,0,1),-r1/4))
-    & ~y8(cut((1,0,-1),r1/4))
+    & y8(-~xz1/4)
+    & ~y8(~zx1/4)
     & z4(y0)
-    & cut((-1,0,1),0)
-    & cut((1,0,1),0)(-z0)
-    & cut((0,-1,1),0)(cut((1,0,-1),0))
-    & cut((0,1,1),0)
+    & -zx0
+    & -xz0(-z0)
+    & -zy0(zx0)
+    & -yz0
   )
 
 def get_asu(space_group_number):

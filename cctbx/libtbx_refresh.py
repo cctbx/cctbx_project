@@ -31,8 +31,8 @@ if (self.env.is_ready_for_build()):
 
   # reference_table.cpp : checking that it is up-to-date
   for f,sig in [
-      ("reference_table.py", "5e11890e01d068e93a1273a8a8bea2a4"),
-      ("short_cuts.py", "bf76fe6d609a622908e94403d24b40d7"),
+      ("reference_table.py", "b5ac97b6273082248bf64494935acd34"),
+      ("short_cuts.py", "82f7553df60eebe1e3e36d07b9ec7858"),
       ("proto/generate_cpp_asu_table.py", "c67cc76278e002b08b66746710aedcb9") ]:
     fn = "sgtbx/direct_space_asu/" + f
     warn_if_unexpected_md5_hexdigest(
@@ -42,4 +42,3 @@ if (self.env.is_ready_for_build()):
         "  Files to review:",
         "    "+fn,
         "    cctbx/libtbx_refresh.py"])
-
