@@ -174,7 +174,8 @@ class _mainstream_shelx_weighting(boost.python.injector,
   def type(self):
     return "calc"
 
-  def optimise_parameters(self, normal_eqns):
+  def optimise_parameters(self, fo_sq, f_calc,
+                          scale_factor, n_independent_params):
     """ Find optimal values of a and b that give a flat analysis of the variance
         when binned by Fc/max(Fc), and a goodness of fit close to 1.
 
@@ -182,7 +183,11 @@ class _mainstream_shelx_weighting(boost.python.injector,
 
         self is not modified in place; instead a new instance of the weighting
         scheme is returned.
+
+        It is intended that f_calc should already contain the contribution from
+        f_mask (if a solvent mask is used).
     """
+    assert f_calc.is_complex_array()
     weighting = mainstream_shelx_weighting(a=self.a, b=self.b)
 
     def compute_chi_sq(fo_sq, fc_sq, a,b):
@@ -193,10 +198,9 @@ class _mainstream_shelx_weighting(boost.python.injector,
       return (flex.sum(
         weights * flex.pow2(fo_sq.data() - scale_factor * fc_sq.data())))
 
-    scale_factor = normal_eqns.scale_factor
-    fo_sq = normal_eqns.fo_sq.deep_copy()
+    fo_sq = fo_sq.deep_copy()
     fo_sq.data().set_selected(fo_sq.data() < 0, 0)
-    fc_sq = normal_eqns.f_calc.as_intensity_array()
+    fc_sq = f_calc.as_intensity_array()
 
     fo2 = fo_sq.data().deep_copy()
     fo2 /= scale_factor
@@ -231,8 +235,7 @@ class _mainstream_shelx_weighting(boost.python.injector,
       bin_limits.append(int(math.ceil((i+1) * fc_sq.size()/n_bins)))
       bin_count.append(bin_limits[i+1] - bin_limits[i])
 
-    n = fo_sq.size() \
-      /(fo_sq.size()-normal_eqns.reparametrisation.n_independent_params)
+    n = fo_sq.size()/(fo_sq.size()-n_independent_params)
 
     # search on a 9x9 grid to determine best values of a and b
     gridding = flex.grid(9,9)
@@ -295,6 +298,7 @@ class _unit_weighting(boost.python.injector,
   def type(self):
     return "unit"
 
-  def optimise_parameters(self, normal_eqns):
+  def optimise_parameters(self, fo_sq, fc_sq,
+                          scale_factor, n_independent_params):
     # no parameters to optimise!
     return self
