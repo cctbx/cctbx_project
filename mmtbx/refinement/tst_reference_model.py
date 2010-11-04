@@ -360,26 +360,29 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
     if dp.weight == 1.0:
       standard_weight += 1
   assert standard_weight == 1403
-  master_phil_str_overrides = """
-  reference_model {
-    secondary_structure_only = True
-  }
-  """
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  work_params_ss = master_phil.fetch(sources=phil_objects).extract()
-  reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
-    work_params=work_params_ss.reference_model,
-    geometry=geometry,
-    pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    geometry_ref=geometry,
-    sites_cart_ref=sites_cart,
-    pdb_hierarchy_ref=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  ss_weight = 0
-  for dp in reference_dihedral_proxies:
-    if dp.weight == 1.0:
-      ss_weight += 1
-  assert ss_weight == 916
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipping KSDSSP tests: ksdssp module not available."
+  else:
+    master_phil_str_overrides = """
+    reference_model {
+      secondary_structure_only = True
+    }
+    """
+    phil_objects = [
+      iotbx.phil.parse(input_string=master_phil_str_overrides)]
+    work_params_ss = master_phil.fetch(sources=phil_objects).extract()
+    reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
+      work_params=work_params_ss.reference_model,
+      geometry=geometry,
+      pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      geometry_ref=geometry,
+      sites_cart_ref=sites_cart,
+      pdb_hierarchy_ref=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+    ss_weight = 0
+    for dp in reference_dihedral_proxies:
+      if dp.weight == 1.0:
+        ss_weight += 1
+    assert ss_weight == 916
 
 def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
