@@ -462,6 +462,7 @@ def get_home_dihedral_proxies(work_params,
                               sites_cart_ref,
                               pdb_hierarchy_ref):
   ss_selection = None
+  residue_match_hash = {}
   reference_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
   sigma = work_params.sigma
   limit = work_params.limit
@@ -564,13 +565,34 @@ def get_home_dihedral_proxies(work_params,
     if CAsite is None or Csite is None or CBsite is None or Nsite is None:
       continue
     i_seqs = [Csite, Nsite, CAsite, CBsite]
-    dp_add = cctbx.geometry_restraints.dihedral_proxy(
-      i_seqs=i_seqs,
-      angle_ideal=reference_angle,
-      weight=1/sigma**2,
-      limit=limit)
-    reference_dihedral_proxies.append(dp_add)
+    if work_params.secondary_structure_only and ss_selection != None:
+        if match_map[i_seqs[0]] in ss_selection and \
+           match_map[i_seqs[1]] in ss_selection and \
+           match_map[i_seqs[2]] in ss_selection and \
+           match_map[i_seqs[3]] in ss_selection:
+          dp_add = cctbx.geometry_restraints.dihedral_proxy(
+            i_seqs=i_seqs,
+            angle_ideal=reference_angle,
+            weight=1/(1.0**2),
+            limit=30.0)
+          reference_dihedral_proxies.append(dp_add)
+        else:
+          dp_add = cctbx.geometry_restraints.dihedral_proxy(
+            i_seqs=i_seqs,
+            angle_ideal=reference_angle,
+            weight=1/(5.0**2),
+            limit=15.0)
+          reference_dihedral_proxies.append(dp_add)
+    else:
+      dp_add = cctbx.geometry_restraints.dihedral_proxy(
+        i_seqs=i_seqs,
+        angle_ideal=reference_angle,
+        weight=1/sigma**2,
+        limit=limit)
+      reference_dihedral_proxies.append(dp_add)
   return reference_dihedral_proxies
+
+#def print_reference_matches():
 
 #def get_reference_proxies_secondary_only(work_params,
 #                                         geometry,
