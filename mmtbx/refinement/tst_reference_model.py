@@ -382,7 +382,7 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
     for dp in reference_dihedral_proxies:
       if dp.weight == 1.0:
         ss_weight += 1
-    assert ss_weight == 916
+    assert ss_weight == 837
 
 def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
