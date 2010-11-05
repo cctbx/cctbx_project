@@ -16,10 +16,23 @@ import copy
 import sys
 
 def exercise_reference_table():
-  for space_group_number in xrange(1,231):
+  for space_group_number in xrange(1,230+1):
     space_group_info = sgtbx.space_group_info(number=space_group_number)
     asu = reference_table.get_asu(space_group_number)
     assert sgtbx.space_group(asu.hall_symbol) == space_group_info.group()
+  #
+  for space_group_number in xrange(1,230+1):
+    asu = reference_table.get_asu(space_group_number)
+    n_long_cuts = 0
+    for facet in asu.facets:
+      s = str(facet)
+      have_long_cut = (s.find("cut") >= 0)
+      if (space_group_number != 213):
+        assert not have_long_cut
+      elif (have_long_cut):
+        n_long_cuts += 1
+    if (space_group_number == 213):
+      assert n_long_cuts == 4 # done with change_basis
 
 def exercise_cut_planes(cut_planes):
   for cut_plane in cut_planes:
