@@ -964,7 +964,7 @@ class hhpred_parser(object):
     if not matches:
       raise ValueError, "Empty homology block"
 
-    assert all( len( matches[0] ) == len( a ) for a in matches[1:] )
+    assert all([len( matches[0] ) == len( a ) for a in matches[1:]])
 
     return self.merge_and_process_block_hits( matches = matches )
 
@@ -975,7 +975,7 @@ class hhpred_parser(object):
       if s != e + 1:
         raise ValueError, "Incorrect sequence indices"
 
-      if not all( others[0] == o for o in others[1:] ):
+      if not all([others[0] == o for o in others[1:]]):
         raise ValueError, "Incorrect sequence indices"
 
     return ( starts[0], ends[-1], others[0] )
@@ -1055,7 +1055,8 @@ class hhsearch_parser(hhpred_parser):
     self.chains.append( match.group( 3 ) )
     self.annotations.append( match.group( 4 ) )
     self.probabs.append( float( match.group( 5 ) ) )
-    number = match.group( 6 ) + ( match.group( 7 ) if match.group( 7 ) else "" )
+    number = match.group( 6 )
+    if match.group( 7 ): number += match.group( 7 )
     self.e_values.append( float( number ) )
     self.scores.append( float( match.group( 8 ) ) )
     self.aligned_cols.append( int( match.group( 9 ) ) )
@@ -1075,7 +1076,7 @@ class hhsearch_parser(hhpred_parser):
     for ( index , alis) in enumerate( zip( *sequences ) ):
       count = len( alis[0] )
 
-      if not all( count == len( c ) for c in alis[1:] ):
+      if not all([count == len( c ) for c in alis[1:]]):
         raise ValueError, "Incorrect alignments"
 
       midlines.append(
@@ -1189,7 +1190,9 @@ class hhalign_parser(hhpred_parser):
     self.indices.append( int( match.group( 1 ) ) )
     self.annotations.append( match.group( 2 ) )
     self.probabs.append( float( match.group( 3 ) ) )
-    number = match.group( 4 ) + ( match.group( 5 ) if match.group( 5 ) else "" )
+    number = match.group( 4 )
+    if match.group( 5 ):
+      number += match.group( 5 )
     self.e_values.append( float( number ) )
     self.scores.append( float( match.group( 6 ) ) )
     self.aligned_cols.append( int( match.group( 7 ) ) )
@@ -1209,7 +1212,7 @@ class hhalign_parser(hhpred_parser):
     for ( index , alis) in enumerate( zip( *sequences ) ):
       count = len( alis[0] )
 
-      if not all( count == len( c ) for c in alis[1:] ):
+      if not all([count == len( c ) for c in alis[1:]]):
         raise ValueError, "Incorrect alignments"
 
       midlines.append(
