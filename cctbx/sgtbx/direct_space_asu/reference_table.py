@@ -1,6 +1,21 @@
 from cctbx.sgtbx.direct_space_asu import direct_space_asu
 from cctbx.sgtbx.direct_space_asu.short_cuts import *
 
+change_of_basis_tab = {
+   78: ( 76, "x,y,-z+1"),
+   95: ( 91, "-x+1,y,z"),
+  145: (144, "y,x,z"),
+  154: (152, "y,x,z"),
+  170: (169, "y,x,z"),
+  172: (171, "-y+1,-x+1,z"),
+  181: (180, "-x+y+1,-x+1,-z+1/6"),
+  213: (212, "-y+1/2,z+1/2,x")
+}
+
+def apply_change_of_basis(target_sg_no):
+  source_sg_no, cb_expr = change_of_basis_tab[target_sg_no]
+  return get_asu(source_sg_no).change_basis(cb_expr)
+
 def asu_001(): # P 1
   return (direct_space_asu('P 1')
     & x0
@@ -772,7 +787,7 @@ def asu_077(): # P 42
   )
 
 def asu_078(): # P 43 (enantiomorph of 78)
-  return asu_076().change_basis("x,y,-z+1")
+  return apply_change_of_basis(78)
 
 def asu_079(): # I 4
   return (direct_space_asu('I 4')
@@ -935,7 +950,7 @@ def asu_094(): # P 42 21 2
   )
 
 def asu_095(): # P 43 2 2 (enantiomorph of 91)
-  return asu_091().change_basis("-x+1,y,z")
+  return apply_change_of_basis(95)
 
 def asu_096(): # P 43 21 2 (enantiomorph of 92)
   # cannot be superimposed with enantiomorphic asu 92
@@ -1411,7 +1426,7 @@ def asu_144(): # P 31 (enantiomorph of 145)
   )
 
 def asu_145(): # P 32 (enantiomorph of 144)
-  return asu_144().change_basis("y,x,z")
+  return apply_change_of_basis(145)
 
 def asu_146(): # R 3 :H
   return (direct_space_asu('R 3')
@@ -1500,7 +1515,7 @@ def asu_153(): # P 32 1 2 (enantiomorph of 151)
  )
 
 def asu_154(): # P 32 2 1 (enantiomorph of 152)
-  return asu_152().change_basis("y,x,z")
+  return apply_change_of_basis(154)
 
 def asu_155(): # R 3 2 :H
   return (direct_space_asu('R 3 2"')
@@ -1656,7 +1671,7 @@ def asu_169(): # P 61 (enantiomorph of 170)
   )
 
 def asu_170(): # P 65 (enantiomorph of 169)
-  return asu_169().change_basis("y,x,z")
+  return apply_change_of_basis(170)
 
 def asu_171(): # P 62 (enantiomorph of 172)
   return (direct_space_asu('P 62')
@@ -1668,7 +1683,7 @@ def asu_171(): # P 62 (enantiomorph of 172)
   )
 
 def asu_172(): # P 64 (enantiomorph of 171)
-  return asu_171().change_basis("-y+1,-x+1,z")
+  return apply_change_of_basis(172)
 
 def asu_173(): # P 63
   return (direct_space_asu('P 6c')
@@ -1754,7 +1769,7 @@ def asu_180(): # P 62 2 2 (enantiomorph of 181)
   )
 
 def asu_181(): # P 64 2 2 (enantiomorph of 180)
-  result = asu_180().change_basis("-x+y+1,-x+1,-z+1/6")
+  result = apply_change_of_basis(181)
   assert result.hall_symbol == " P 64 2 (x,y,z+1/6)"
   result.hall_symbol = "P 64 2 (0 0 2)" # Int. Tab. Vol. B compatibility
   return result
@@ -2050,7 +2065,7 @@ def asu_212(): # P 43 3 2 (enantiomorph of 213)
   )
 
 def asu_213(): # P 41 3 2 (enantiomorph of 212)
-  return asu_212().change_basis("-y+1/2,z+1/2,x")
+  return apply_change_of_basis(213)
 
 def asu_214(): # I 41 3 2
   return (direct_space_asu('I 4bd 2c 3')
