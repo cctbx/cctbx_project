@@ -13,6 +13,7 @@ from cctbx import crystal
 from cctbx import xray
 from libtbx.test_utils import approx_equal, is_below_limit
 from libtbx.utils import format_cpu_times
+from cctbx.development import debug_utils
 
 # cStringIO does not work
 #  import cStringIO
@@ -550,7 +551,47 @@ def run():
 
   print format_cpu_times()
 
+def exercise_mask_data(space_group_info, n_sites=100):
+  from cctbx import maptbx
+  from cctbx.masks import vdw_radii_from_xray_structure
+  xrs = random_structure.xray_structure(
+    space_group_info=space_group_info,
+    elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+    volume_per_atom=30,
+    min_distance=1)
+  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+  for d_min in [1, 1.5, 2.1]:
+    for resolution_factor in [1./2, 1./3, 1./4, 1./5]:
+      asu_mask = masks.atom_mask(
+        unit_cell                = xrs.unit_cell(),
+        group                    = xrs.space_group(),
+        resolution               = d_min,
+        grid_step_factor         = resolution_factor,
+        solvent_radius           = 1.0,
+        shrink_truncation_radius = 1.0)
+      asu_mask.compute(xrs.sites_frac(), atom_radii)
+      mask_data = asu_mask.mask_data_whole_uc()
+      assert flex.min(mask_data) == 0.0
+      # It's not just 0 and 1 ... !
+      assert flex.max(mask_data) == xrs.space_group().order_z()
+      if(0): # XXX This would crash with the message: "... The grid is not ..."
+        cr_gr = maptbx.crystal_gridding(
+          unit_cell         = xrs.unit_cell(),
+          d_min             = d_min,
+          resolution_factor = resolution_factor)
+        asu_mask = masks.atom_mask(
+          unit_cell                = xrs.unit_cell(),
+          space_group              = xrs.space_group(),
+          gridding_n_real          = cr_gr.n_real(),
+          solvent_radius           = 1.0,
+          shrink_truncation_radius = 1.0)
+        asu_mask.compute(xrs.sites_frac(), atom_radii)
+
+def run_call_back(flags, space_group_info):
+  exercise_mask_data(space_group_info)
+
 if (__name__ == "__main__"):
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   try:
     run()
   except :
@@ -560,4 +601,3 @@ if (__name__ == "__main__"):
       print cout.getvalue()
       print ">>>>>>>> End Log"
     raise
-

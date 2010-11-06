@@ -10,12 +10,14 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_interval_grid.h>
 
+#include <cctbx/maptbx/structure_factors.h>
+
 namespace mmtbx {
 
   //! Masks for bulk solvent modelling
   /*!
   Mask calculations are based on the following paper.
-  Jiang, J.-S. & Brünger, A. T. (1994). J. Mol. Biol. 243, 100-115.
+  Jiang, J.-S. & Brunger, A. T. (1994). J. Mol. Biol. 243, 100-115.
   "Protein hydration observed by X-ray diffraction. Solvation properties
   of penicillopepsin and neuraminidase crystal structures."
    */
@@ -232,6 +234,9 @@ namespace mmtbx {
       );
 
       const mask_array_t & get_mask() const { return data; }
+
+      af::versa<double, af::c_grid_padded<3> >  mask_data_whole_uc(
+        unsigned char layer = 0);
 
       //! Computes mask structure factors.
       /*!

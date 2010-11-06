@@ -449,10 +449,8 @@ namespace mmtbx { namespace masks {
       versa_3d_padded_complex_array;
   }
 
-
-  scitbx::af::shared< std::complex<double> > atom_mask::structure_factors(
-    const scitbx::af::const_ref< cctbx::miller::index<> > &indices,
-    unsigned char layer)
+  versa_3d_padded_real_array
+  atom_mask::mask_data_whole_uc(unsigned char layer)
   {
     if( n_layers == 0 )
       throw error("Must compute mask before calculating structure "
@@ -543,6 +541,20 @@ namespace mmtbx { namespace masks {
         }
       }
     }
+    return padded_real;
+  }
+
+  scitbx::af::shared< std::complex<double> > atom_mask::structure_factors(
+    const scitbx::af::const_ref< cctbx::miller::index<> > &indices,
+    unsigned char layer)
+  {
+    versa_3d_padded_real_array padded_real =
+      atom_mask::mask_data_whole_uc(layer);
+    const scitbx::int3 grid_full_cell = this->grid_size();
+    scitbx::fftpack::real_to_complex_3d<double> fft(grid_full_cell);
+    const scitbx::int3 mdim = fft.m_real(), ndim = fft.n_real();
+    MMTBX_ASSERT( ndim == grid_full_cell );
+    MMTBX_ASSERT( scitbx::le_all( ndim, mdim ) );
 
     boost::posix_time::ptime
       tb = boost::posix_time::microsec_clock::local_time(), te;
@@ -1089,4 +1101,3 @@ namespace mmtbx { namespace masks {
   }
 
 }} // namespace mmtbx::masks
-
