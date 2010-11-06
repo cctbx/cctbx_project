@@ -283,6 +283,34 @@ class space_group_info(object):
         volume=volume, asu_volume=asu_volume),
       space_group_info=self)
 
+  def cif_symmetry_code(self, rt_mx, full_code=False, sep="_"):
+    """ The symmetry code for the given rt_mx in the given space group as
+        required by the CIF:
+
+        http://www.iucr.org/__data/iucr/cifdic_html/1/cif_core.dic/Igeom_angle_site_symmetry_.html
+
+        With the default full_code=False, if the translation term is zero,
+        just the index of the symmetry operation is returned.
+    """
+    group = self._group
+    cache = self._space_group_info_cache
+    if not hasattr(cache, "_index_lookup_table"):
+      lookup = {}
+      all_ops = group.all_ops()
+      for i, op in enumerate(all_ops):
+        lookup.setdefault(op.r(), {})
+        lookup[op.r()][op.t().mod_positive()] = i
+      cache._index_lookup_table = lookup
+    rt_mx = rt_mx.new_denominators(group.r_den(), group.t_den())
+    tr_vecs = cache._index_lookup_table[rt_mx.r()]
+    t_mod_positive = rt_mx.t().mod_positive()
+    idx = tr_vecs[t_mod_positive]
+    t_diff = rt_mx.t().minus(group[idx].t())
+    if not full_code and t_diff.is_zero():
+      return "%i" %(idx+1)
+    klm = tuple([int(i) + 5 for i in t_diff.as_double()])
+    return "%i%s" %(idx+1, sep) + "%i%i%i" %(klm)
+
 def reference_space_group_infos():
   for number in xrange(1,230+1):
     yield space_group_info(number=number)
