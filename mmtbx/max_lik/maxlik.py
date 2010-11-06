@@ -410,3 +410,23 @@ class alpha_beta(object):
 
   def alpha_beta(self):
     return self.alpha, self.beta
+
+def sigma_miss(miller_array, n_atoms_absent, bf_atoms_absent, absent_atom_type):
+  result = flex.double()
+  if(n_atoms_absent == 0): return flex.double(miller_array.indices().size(), 0)
+  def form_factor(ssi, absent_atom_type):
+    table=wk1995(absent_atom_type).fetch()
+    a_wk=table.array_of_a()
+    b_wk=table.array_of_b()
+    c_wk=table.c()
+    result_wk=c_wk
+    for i in xrange(5):
+      result_wk += a_wk[i]*math.exp(-b_wk[i]*ssi/4.0)
+    return result_wk
+  ss = 1./flex.pow2(miller_array.d_spacings().data())
+  nsym = miller_array.space_group().order_z()
+  #
+  for ssi in ss:
+     fact = form_factor(ssi, absent_atom_type)*math.exp(-bf_atoms_absent/4.0*ssi)
+     result.append(fact * nsym * n_atoms_absent)
+  return result
