@@ -41,6 +41,7 @@ def exercise_cut_planes(cut_planes):
 def exercise_volume_vertices(asu, unit_cell):
   volume_asu = asu.volume_only()
   asu_volume_vertices = asu.volume_vertices()
+  assert len(asu_volume_vertices) >= 4
   facet_analysis_volume_vertices = facet_analysis.volume_vertices(asu)
   assert len(asu_volume_vertices) == len(facet_analysis_volume_vertices)
   asu_volume_vertices.sort()
