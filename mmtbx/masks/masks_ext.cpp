@@ -62,6 +62,8 @@ namespace {
          arg("shells") = shells_array_t() ) )
       .def("structure_factors", &w_t::structure_factors, (arg("indices"),
          arg("layer")=0) )
+      .def("mask_data_whole_uc", &w_t::mask_data_whole_uc, (
+         arg("layer")=0) )
       .def("grid_size", &w_t::grid_size)
       .def("n_asu_atoms", &w_t::n_asu_atoms)
       .def("n_solvent_layers", &w_t::n_solvent_layers)
