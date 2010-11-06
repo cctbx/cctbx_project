@@ -296,8 +296,7 @@ class space_group_info(object):
     cache = self._space_group_info_cache
     if not hasattr(cache, "_index_lookup_table"):
       lookup = {}
-      all_ops = group.all_ops()
-      for i, op in enumerate(all_ops):
+      for i, op in enumerate(group):
         lookup.setdefault(op.r(), {})
         lookup[op.r()][op.t().mod_positive()] = i
       cache._index_lookup_table = lookup
