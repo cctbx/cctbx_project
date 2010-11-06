@@ -7,6 +7,7 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import pickle
+import random
 import sys
 
 def exercise_sys_abs_equiv():
@@ -138,6 +139,15 @@ def exercise_space_group_info():
                           (cb_r_den, cb_t_den)]:
         assert sgx_i.type(r_den=r_den, t_den=t_den) is t
       assert sgx_i.type(tidy_cb_op=False, r_den=r_den, t_den=t_den) is not t
+      for i, op in enumerate(sgx_i.group()):
+        assert sgx_i.cif_symmetry_code(op) == "%i" %(i+1)
+        assert sgx_i.cif_symmetry_code(
+          op, full_code=True, sep=" ") == "%i 555" %(i+1)
+        tr = [random.randint(-4, 4) for j in range(3)]
+        rt_mx = sgtbx.rt_mx(op.r(), op.t().plus(
+          sgtbx.tr_vec(tr, tr_den=1).new_denominator(op.t().den())))
+        assert sgx_i.cif_symmetry_code(rt_mx, full_code=True) \
+               == "%i_%i%i%i" %(i+1, 5+tr[0], 5+tr[1], 5+tr[2])
 
 def test_enantiomorphic_pairs():
   pairs = []
