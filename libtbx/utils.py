@@ -433,15 +433,15 @@ def human_readable_time_as_seconds(time_units, time_unit):
   if (time_unit == "days"): return time_units*60*60*24
   raise RuntimeError("Unknown time_unit: %s" % time_unit)
 
-def format_timestamp_12_hour (unix_time, short=False) :
+def format_timestamp_12_hour (unix_time, short=False, replace_with="unknown") :
   if unix_time is None :
-    return "unknown"
+    return replace_with
   elif short :
     return time.strftime("%d-%m-%y %I:%M %p", time.localtime(float(unix_time)))
   else :
     return time.strftime("%b %d %Y %I:%M %p", time.localtime(float(unix_time)))
 
-def format_timestamp_24_hour (unix_time, short=False) :
+def format_timestamp_24_hour (unix_time, short=False, replace_with="unknown") :
   if unix_time is None :
     return "unknown"
   elif short :
