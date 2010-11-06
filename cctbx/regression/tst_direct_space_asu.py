@@ -49,6 +49,8 @@ def exercise_volume_vertices(asu, unit_cell):
   for box_min,box_max in zip(asu.box_min(volume_vertices=asu_volume_vertices),
                              asu.box_max(volume_vertices=asu_volume_vertices)):
     assert box_min < box_max
+  if (unit_cell is None):
+    return
   float_asu = asu.add_buffer(unit_cell=unit_cell, thickness=0)
   asu_shrunk = float_asu.add_buffer(relative_thickness=-1.e-5)
   mcs = asu.define_metric(unit_cell).minimum_covering_sphere()
@@ -317,6 +319,9 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_reference_table()
+  for space_group_number in xrange(1,230+1):
+    asu = reference_table.get_asu(space_group_number)
+    exercise_volume_vertices(asu=asu, unit_cell=None)
   debug_utils.parse_options_loop_space_groups(
     sys.argv[1:], run_call_back, show_cpu_times=False)
   exercise_is_simple_interaction()
