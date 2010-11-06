@@ -2,6 +2,7 @@
 #define CCTBX_SGTBX_TR_VEC_HASH_H
 
 #include <cctbx/sgtbx/tr_vec.h>
+#include <boost/functional/hash.hpp>
 
 namespace cctbx { namespace sgtbx {
 
