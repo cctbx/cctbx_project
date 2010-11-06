@@ -1,5 +1,6 @@
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import cut_plane
+from cctbx.sgtbx.direct_space_asu.short_cuts import r1
 from scitbx import matrix
 import sys
 
@@ -69,7 +70,7 @@ class direct_space_asu(object):
           m = matrix.rec(facets[i0].n+facets[i1].n+facets[i2].n,(3,3))
           d = m.determinant()
           if (d != 0):
-            c = m.co_factor_matrix_transposed() // d
+            c = m.co_factor_matrix_transposed() * (r1/d)
             b = matrix.col([-facets[i0].c,-facets[i1].c,-facets[i2].c])
             vertex = c * b
             if (self.is_inside(vertex, volume_only=True)):
