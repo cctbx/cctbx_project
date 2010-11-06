@@ -4,12 +4,14 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/sgtbx/tr_vec.h>
+#include <cctbx/sgtbx/tr_vec_hash.h>
+#include <boost_adaptbx/hash.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
 
-  struct tr_vec_wrappers
+  struct tr_vec_wrappers : boost_adaptbx::py_hashable<tr_vec>
   {
     typedef tr_vec w_t;
 
@@ -45,6 +47,7 @@ namespace {
           arg("decimal")=false,
           arg("separator")=","))
         .def("__str__", str)
+        .def("__hash__", py_hash)
       ;
     }
   };

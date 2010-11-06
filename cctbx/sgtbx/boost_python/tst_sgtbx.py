@@ -2245,6 +2245,15 @@ def exercise_hashing():
   for g in sg:
     assert g in op_set
 
+  # rot_mx, tr_vec
+  d = {}
+  for op in sg:
+    d.setdefault(op.r(), set())
+    d[op.r()].add(op.t())
+  for g in sg:
+    assert g.r() in d
+    assert g.t() in d[g.r()]
+
   # space_group
   symbol_set = set([ symbol.hall()
                      for symbol in sgtbx.space_group_symbol_iterator() ])
