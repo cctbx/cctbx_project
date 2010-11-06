@@ -2043,10 +2043,10 @@ def asu_212(): # P 43 3 2 (enantiomorph of 213)
   return (direct_space_asu('P 4acd 2ab 3')
     & zx2
     & -yz0(-zx2)
-    & ~yz2(tdd0)
-    & -tdd0(x8)
-    & dtd0(y8)
-    & ~tdu2(-x1*3/8)
+    & ~yz2(tx0)
+    & -tx0(x8)
+    & ty0(y8)
+    & tz2(-x1*3/8)
   )
 
 def asu_213(): # P 41 3 2 (enantiomorph of 212)
@@ -2060,7 +2060,7 @@ def asu_214(): # I 41 3 2
     & -zx0(zy0)
     & -zy0
     & ~zy4(-y0)
-    & udu8(~p4)
+    & dy8(~p4)
   )
 
 def asu_215(): # P -4 3 m
