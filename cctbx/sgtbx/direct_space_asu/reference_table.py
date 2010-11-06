@@ -1469,7 +1469,7 @@ def asu_150(): # P 3 2 1
   )
 
 def asu_151(): # P 31 1 2 (enantiomorph of 153)
-  return (direct_space_asu('P 31 2 (x,y,z+1/3)')
+  return (direct_space_asu('P 31 2 (0 0 4)')
     & x0
     & +x1
     & y0
@@ -1490,7 +1490,7 @@ def asu_152(): # P 31 2 1 (enantiomorph of 154)
 
 def asu_153(): # P 32 1 2 (enantiomorph of 151)
   # cannot be superimposed with enantiomorphic asu 151
-  return (direct_space_asu('P 32 2 (x,y,z+1/6)')
+  return (direct_space_asu('P 32 2 (0 0 2)')
     & x0
     & +x1
     & y0
@@ -1724,7 +1724,7 @@ def asu_177(): # P 6 2 2
   )
 
 def asu_178(): # P 61 2 2 (enantiomorph of 179)
-  return (direct_space_asu('P 61 2 (x,y,z+5/12)')
+  return (direct_space_asu('P 61 2 (0 0 5)')
     & x0
     & +x1
     & y0
@@ -1735,7 +1735,7 @@ def asu_178(): # P 61 2 2 (enantiomorph of 179)
 
 def asu_179(): # P 65 2 2 (enantiomorph of 178)
   # cannot be superimposed with enantiomorphic asu 178
-  return (direct_space_asu('P 65 2 (x,y,z+1/12)')
+  return (direct_space_asu('P 65 2 (0 0 1)')
     & x0
     & +x1
     & y0
@@ -1745,7 +1745,7 @@ def asu_179(): # P 65 2 2 (enantiomorph of 178)
   )
 
 def asu_180(): # P 62 2 2 (enantiomorph of 181)
-  return (direct_space_asu('P 62 2 (x,y,z+1/3)')
+  return (direct_space_asu('P 62 2 (0 0 4)')
     & x1(y2)
     & y0(x2)
     & z0(k1)
@@ -1754,7 +1754,10 @@ def asu_180(): # P 62 2 2 (enantiomorph of 181)
   )
 
 def asu_181(): # P 64 2 2 (enantiomorph of 180)
-  return asu_180().change_basis("-x+y+1,-x+1,-z+1/6")
+  result = asu_180().change_basis("-x+y+1,-x+1,-z+1/6")
+  assert result.hall_symbol == " P 64 2 (x,y,z+1/6)"
+  result.hall_symbol = "P 64 2 (0 0 2)" # Int. Tab. Vol. B compatibility
+  return result
 
 def asu_182(): # P 63 2 2
   return (direct_space_asu('P 6c 2c')
