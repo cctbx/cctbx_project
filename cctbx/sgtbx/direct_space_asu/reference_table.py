@@ -2045,7 +2045,7 @@ def asu_212(): # P 43 3 2 (enantiomorph of 213)
     & -yz0(-zx2)
     & ~yz2(tdd0)
     & -tdd0(x8)
-    & -dtd0(y8)
+    & dtd0(y8)
     & ~tdu2(-x1*3/8)
   )
 
