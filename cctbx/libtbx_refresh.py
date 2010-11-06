@@ -31,7 +31,7 @@ if (self.env.is_ready_for_build()):
 
   # reference_table.cpp : checking that it is up-to-date
   for f,sig in [
-      ("reference_table.py", "f8f9828332dbc107e35f62c692bbc5f0"),
+      ("reference_table.py", "3a6893a001d5649929cab65fe27990cb"),
       ("short_cuts.py", "1d124893286427c6f50cecae193ada1d"),
       ("proto/generate_cpp_asu_table.py", "c67cc76278e002b08b66746710aedcb9") ]:
     fn = "sgtbx/direct_space_asu/" + f
