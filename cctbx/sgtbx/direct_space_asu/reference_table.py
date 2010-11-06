@@ -2,14 +2,14 @@ from cctbx.sgtbx.direct_space_asu import direct_space_asu
 from cctbx.sgtbx.direct_space_asu.short_cuts import *
 
 change_of_basis_tab = {
-   78: ( 76, "x,y,-z+1"),
-   95: ( 91, "-x+1,y,z"),
-  145: (144, "y,x,z"),
-  154: (152, "y,x,z"),
-  170: (169, "y,x,z"),
-  172: (171, "-y+1,-x+1,z"),
-  181: (180, "-x+y+1,-x+1,-z+1/6"),
-  213: (212, "-y+1/2,z+1/2,x")
+   78: ( 76, "a,b,-c+1"),
+   95: ( 91, "-a+1,b,c"),
+  145: (144, "b,a,c"),
+  154: (152, "b,a,c"),
+  170: (169, "b,a,c"),
+  172: (171, "-b+1,-a+1,c"),
+  181: (180, "b+1,-a-b,-c+1/6"),
+  213: (212, "-b,c+1/2,a-1/2")
 }
 
 def apply_change_of_basis(target_sg_no):
