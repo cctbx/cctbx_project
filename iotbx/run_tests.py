@@ -9,6 +9,7 @@ def run():
   "$D/ranges.py",
   "$D/tst_crystal_symmetry_from_any.py",
   "$D/kriber/tst_strudat.py",
+  "$D/cif/tests/tst_cif.py",
   "$D/cif/tests/tst_lex_parse_build.py",
   "$D/cif/tests/tst_model.py",
   "$D/cif/tests/tst_validation.py",
