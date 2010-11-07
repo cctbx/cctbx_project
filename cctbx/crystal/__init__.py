@@ -624,6 +624,61 @@ class _pair_asu_table(boost.python.injector, pair_asu_table):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
+class calculate_distances(object):
+
+  def __init__(self,
+               pair_asu_table,
+               sites_frac):
+    libtbx.adopt_init_args(self, locals())
+    self.distances = flex.double()
+    self.pair_counts = flex.size_t()
+
+  def __iter__(self):
+    return self.next()
+
+  def next(self):
+
+    class distance(object):
+      def __init__(self,
+                   distance,
+                   i_seq,
+                   j_seq,
+                   pair_count,
+                   rt_mx_ji=None,
+                   i_j_sym=None):
+        libtbx.adopt_init_args(self, locals())
+
+    asu_mappings = self.pair_asu_table.asu_mappings()
+    unit_cell = asu_mappings.unit_cell()
+    for i_seq,asu_dict in enumerate(self.pair_asu_table.table()):
+      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+      site_frac_i = self.sites_frac[i_seq]
+      pair_count = 0
+      dists = flex.double()
+      j_seq_i_group = []
+      for j_seq,j_sym_groups in asu_dict.items():
+        site_frac_j = self.sites_frac[j_seq]
+        for i_group,j_sym_group in enumerate(j_sym_groups):
+          pair_count += j_sym_group.size()
+          j_sym = j_sym_group[0]
+          rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
+          dist = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
+          dists.append(dist)
+          j_seq_i_group.append((j_seq,i_group))
+      permutation = flex.sort_permutation(data=dists)
+      for j_seq,i_group in flex.select(j_seq_i_group, permutation):
+        site_frac_j = self.sites_frac[j_seq]
+        j_sym_groups = asu_dict[j_seq]
+        j_sym_group = j_sym_groups[i_group]
+        for i_j_sym,j_sym in enumerate(j_sym_group):
+          rt_mx_ji = rt_mx_i_inv.multiply(
+            asu_mappings.get_rt_mx(j_seq, j_sym))
+          site_frac_ji = rt_mx_ji * site_frac_j
+          dist = unit_cell.distance(site_frac_i, site_frac_ji)
+          self.distances.append(dist)
+          yield distance(dist, i_seq, j_seq, pair_count, rt_mx_ji, i_j_sym)
+      self.pair_counts.append(pair_count)
+
 class show_distances(object):
 
   def __init__(self,
@@ -640,10 +695,9 @@ class show_distances(object):
       self.pair_asu_table = pair_asu_table
     else:
       self.pair_asu_table = None
-    self.distances = flex.double()
-    self.pair_counts = flex.size_t()
     asu_mappings = pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
+    self._i_seqs = flex.size_t()
     if (sites_frac is None):
       sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     if (site_labels is None):
@@ -655,63 +709,106 @@ class show_distances(object):
       for label in site_labels:
         label_len = max(label_len, len(label))
       label_fmt = "%%-%ds" % (label_len+1)
-    for i_seq,asu_dict in enumerate(pair_asu_table.table()):
-      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-      site_frac_i = sites_frac[i_seq]
-      pair_count = 0
-      dists = flex.double()
-      j_seq_i_group = []
-      for j_seq,j_sym_groups in asu_dict.items():
-        site_frac_j = sites_frac[j_seq]
-        for i_group,j_sym_group in enumerate(j_sym_groups):
-          pair_count += j_sym_group.size()
-          j_sym = j_sym_group[0]
-          rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
-          distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
-          dists.append(distance)
-          j_seq_i_group.append((j_seq,i_group))
+
+    distances = calculate_distances(pair_asu_table, sites_frac)
+
+    for d in distances:
+      i_seq, j_seq = d.i_seq, d.j_seq
+      rt_mx_ji = d.rt_mx_ji
+      if i_seq not in self._i_seqs:
+        self._i_seqs.append(i_seq)
+        if (site_labels is None):
+          s = label_fmt % (i_seq+1)
+        else:
+          s = label_fmt % site_labels[i_seq]
+        s += " pair count: %3d" % d.pair_count
+        site_frac_i = sites_frac[i_seq]
+        if (show_cartesian):
+          formatted_site = [" %7.2f" % x
+            for x in unit_cell.orthogonalize(site_frac_i)]
+        else:
+          formatted_site = [" %7.4f" % x for x in site_frac_i]
+        print >> out, ("%%-%ds" % (label_len+23)) % s, \
+          "<<"+",".join(formatted_site)+">>"
       if (site_labels is None):
-        s = label_fmt % (i_seq+1)
+        print >> out, " ", label_fmt % (j_seq+1) + ":",
       else:
-        s = label_fmt % site_labels[i_seq]
-      s += " pair count: %3d" % pair_count
+        print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
+      print >> out, "%8.4f" % d.distance,
+      if d.i_j_sym != 0:
+        s = "sym. equiv."
+      else:
+        s = "           "
+      site_frac_ji = rt_mx_ji * sites_frac[j_seq]
       if (show_cartesian):
         formatted_site = [" %7.2f" % x
-          for x in unit_cell.orthogonalize(site_frac_i)]
+          for x in unit_cell.orthogonalize(site_frac_ji)]
       else:
-        formatted_site = [" %7.4f" % x for x in site_frac_i]
-      print >> out, ("%%-%ds" % (label_len+23)) % s, \
-        "<<"+",".join(formatted_site)+">>"
-      permutation = flex.sort_permutation(data=dists)
-      for j_seq,i_group in flex.select(j_seq_i_group, permutation):
-        site_frac_j = sites_frac[j_seq]
-        j_sym_groups = asu_dict[j_seq]
-        j_sym_group = j_sym_groups[i_group]
-        for i_j_sym,j_sym in enumerate(j_sym_group):
-          rt_mx_ji = rt_mx_i_inv.multiply(
-            asu_mappings.get_rt_mx(j_seq, j_sym))
-          site_frac_ji = rt_mx_ji * site_frac_j
-          distance = unit_cell.distance(site_frac_i, site_frac_ji)
-          self.distances.append(distance)
-          if (site_labels is None):
-            print >> out, " ", label_fmt % (j_seq+1) + ":",
-          else:
-            print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
-          print >> out, "%8.4f" % distance,
-          if (i_j_sym != 0):
-            s = "sym. equiv."
-          else:
-            s = "           "
-          if (show_cartesian):
-            formatted_site = [" %7.2f" % x
-              for x in unit_cell.orthogonalize(site_frac_ji)]
-          else:
-            formatted_site = [" %7.4f" % x for x in site_frac_ji]
-          s += " (" + ",".join(formatted_site) +")"
-          print >> out, s
-      if (pair_count == 0):
+        formatted_site = [" %7.4f" % x for x in site_frac_ji]
+      s += " (" + ",".join(formatted_site) +")"
+      print >> out, s
+
+      if i_seq == self._i_seqs[-1] and d.pair_count == 0:
         print >> out, "  no neighbors"
-      self.pair_counts.append(pair_count)
+
+    self.distances = distances.distances
+    self.pair_counts = distances.pair_counts
+
+
+class calculate_angles(object):
+
+  def __init__(self,
+               pair_asu_table,
+               sites_frac):
+    libtbx.adopt_init_args(self, locals())
+    self.distances = flex.double()
+    self.angles = flex.double()
+    self.pair_counts = flex.size_t()
+
+  def __iter__(self):
+    return self.next()
+
+  def next(self):
+
+    class angle(object):
+      def __init__(self,
+                   angle,
+                   i_seqs,
+                   rt_mx_ji=None,
+                   rt_mx_ki=None):
+        libtbx.adopt_init_args(self, locals())
+
+    asu_mappings = self.pair_asu_table.asu_mappings()
+    unit_cell = asu_mappings.unit_cell()
+
+    ## angle is formed by j_seq-i_seq-k_seq
+    for i_seq,asu_dict in enumerate(self.pair_asu_table.table()):
+      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+      site_frac_i = self.sites_frac[i_seq]
+      angles = flex.double()
+      for j_seq,j_sym_groups in asu_dict.items():
+        site_frac_j = self.sites_frac[j_seq]
+        for j_sym_group in j_sym_groups:
+          for i_j_sym,j_sym in enumerate(j_sym_group):
+            rt_mx_ji = rt_mx_i_inv.multiply(
+              asu_mappings.get_rt_mx(j_seq, j_sym))
+            site_frac_ji = rt_mx_ji * site_frac_j
+            for k_seq, k_sym_groups in asu_dict.items():
+              if k_seq == j_seq and j_sym_group.size() <= 1: continue
+              if k_seq > j_seq: continue
+              site_frac_k = self.sites_frac[k_seq]
+              for k_sym_group in k_sym_groups:
+                for i_k_sym,k_sym in enumerate(k_sym_group):
+                  if j_seq == k_seq and i_j_sym <= i_k_sym: continue
+                  if i_seq == k_seq and i_k_sym == 0: continue
+                  rt_mx_ki = rt_mx_i_inv.multiply(
+                    asu_mappings.get_rt_mx(k_seq, k_sym))
+                  site_frac_ki = rt_mx_ki * site_frac_k
+                  angle_ = unit_cell.angle(
+                    site_frac_ji, site_frac_i, site_frac_ki)
+                  if angle_ is None: continue
+                  self.angles.append(angle_)
+                  yield angle(angle_, (i_seq, j_seq, k_seq), rt_mx_ji, rt_mx_ki)
 
 class show_angles(object):
 
@@ -723,20 +820,14 @@ class show_angles(object):
         show_cartesian=False,
         keep_pair_asu_table=False,
         out=None):
+
     assert [sites_frac, sites_cart].count(None) == 1
     if (out is None): out = sys.stdout
     if (keep_pair_asu_table):
       self.pair_asu_table = pair_asu_table
     else:
       self.pair_asu_table = None
-    self.distances = flex.double()
-    self.angles = flex.double()
     rt_mxs = []
-    self.pair_counts = flex.size_t()
-    asu_mappings = pair_asu_table.asu_mappings()
-    unit_cell = asu_mappings.unit_cell()
-    if (sites_frac is None):
-      sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     if (site_labels is None):
       label_len = len("%d" % (sites_frac.size()+1))
       label_fmt = "site_%%0%dd" % label_len
@@ -747,55 +838,37 @@ class show_angles(object):
         label_len = max(label_len, len(label))
       label_fmt = "%%-%ds" % (label_len+4)
       label_fmt *= 3
-    ## angle is formed by j_seq-i_seq-k_seq
-    for i_seq,asu_dict in enumerate(pair_asu_table.table()):
-      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-      site_frac_i = sites_frac[i_seq]
-      angles = flex.double()
-      for j_seq,j_sym_groups in asu_dict.items():
-        site_frac_j = sites_frac[j_seq]
-        for j_sym_group in j_sym_groups:
-          for i_j_sym,j_sym in enumerate(j_sym_group):
-            rt_mx_ji = rt_mx_i_inv.multiply(
-              asu_mappings.get_rt_mx(j_seq, j_sym))
-            site_frac_ji = rt_mx_ji * site_frac_j
-            for k_seq, k_sym_groups in asu_dict.items():
-              if k_seq == j_seq and j_sym_group.size() <= 1: continue
-              if k_seq > j_seq: continue
-              site_frac_k = sites_frac[k_seq]
-              for k_sym_group in k_sym_groups:
-                for i_k_sym,k_sym in enumerate(k_sym_group):
-                  if j_seq == k_seq and i_j_sym <= i_k_sym: continue
-                  if i_seq == k_seq and i_k_sym == 0: continue
-                  rt_mx_ki = rt_mx_i_inv.multiply(
-                    asu_mappings.get_rt_mx(k_seq, k_sym))
-                  site_frac_ki = rt_mx_ki * site_frac_k
-                  angle = unit_cell.angle(site_frac_ji, site_frac_i, site_frac_ki)
-                  if angle is None: continue
-                  self.angles.append(angle)
-                  if (site_labels is None):
-                    s = label_fmt % (j_seq+1) + ":"
-                  else:
-                    i_label = site_labels[i_seq]
-                    j_label = site_labels[j_seq]
-                    k_label = site_labels[k_seq]
-                    if i_j_sym != 0:
-                      if rt_mx_ji in rt_mxs:
-                        j = rt_mxs.index(rt_mx_ji) + 1
-                      else:
-                        rt_mxs.append(rt_mx_ji)
-                        j = len(rt_mxs)
-                      j_label += "*%s" %j
-                    if i_k_sym != 0:
-                      if rt_mx_ki in rt_mxs:
-                        k = rt_mxs.index(rt_mx_ki) + 1
-                      else:
-                        rt_mxs.append(rt_mx_ki)
-                        k = len(rt_mxs)
-                      k_label += "*%s" %k
-                    s = label_fmt % (j_label, i_label, k_label)
-                  s += " %6.2f" % angle
-                  print >> out, s
+    angles = calculate_angles(pair_asu_table, sites_frac)
+    for a in angles:
+      i_seq, j_seq, k_seq = a.i_seqs
+      rt_mx_ji = a.rt_mx_ji
+      rt_mx_ki = a.rt_mx_ki
+      if (site_labels is None):
+        s = label_fmt % (j_seq+1) + ":"
+      else:
+        i_label = site_labels[i_seq]
+        j_label = site_labels[j_seq]
+        k_label = site_labels[k_seq]
+        if not rt_mx_ji.is_unit_mx():
+          if rt_mx_ji in rt_mxs:
+            j = rt_mxs.index(rt_mx_ji) + 1
+          else:
+            rt_mxs.append(rt_mx_ji)
+            j = len(rt_mxs)
+          j_label += "*%s" %j
+        if not rt_mx_ki.is_unit_mx():
+          if rt_mx_ki in rt_mxs:
+            k = rt_mxs.index(rt_mx_ki) + 1
+          else:
+            rt_mxs.append(rt_mx_ki)
+            k = len(rt_mxs)
+          k_label += "*%s" %k
+        s = label_fmt % (j_label, i_label, k_label)
+      s += " %6.2f" % a.angle
+      print >> out, s
+
+    self.angles = angles.angles
+    self.distance = angles.distances
     for i, rt_mx in enumerate(rt_mxs):
       print >> out, "*%s" %(i+1),
       print >> out, rt_mx
