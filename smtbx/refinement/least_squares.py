@@ -152,5 +152,33 @@ class normal_equations(object):
     return cov
 
   def covariance_matrix_and_annotations(self):
-    return (self.covariance_matrix(),
-            self.reparametrisation.component_annotations)
+    return covariance_matrix_and_annotations(
+      self.covariance_matrix(), self.reparametrisation.component_annotations)
+
+
+class covariance_matrix_and_annotations(object):
+
+  def __init__(self, covariance_matrix, annotations):
+    """ The covariance matrix is assumed to be a symmetric matrix stored as a
+        packed upper diagonal matrix.
+    """
+    self.matrix = covariance_matrix
+    self.annotations = annotations
+    self._2_n_minus_1 = 2*len(self.annotations)-1 # precompute for efficiency
+
+  def __call__(self, i, j):
+    return self.matrix[i*0.5*(self._2_n_minus_1-i)+j]
+
+  def variance_of(self, annotation):
+    i = self.annotations.index(annotation)
+    return self(i, i)
+
+  def covariance_of(self, annotation_1, annotation_2):
+    i = self.annotations.index(annotation_1)
+    j = self.annotations.index(annotation_2)
+    if j > i:
+      i, j = j, i
+    return self(i, j)
+
+  def diagonal(self):
+    return self.matrix.matrix_packed_u_diagonal()
