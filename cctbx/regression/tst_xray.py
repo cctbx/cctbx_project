@@ -399,17 +399,19 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   s = StringIO()
   quartz.show_angles(distance_cutoff=2, out=s)
   assert not show_diff(s.getvalue(), """\
-O*1   Si    O      101.31
-O*2   Si    O      111.31
-O*2   Si    O*1    116.13
-O*3   Si    O      116.13
-O*3   Si    O*1    111.31
-O*3   Si    O*2    101.31
-Si*4  O     Si     146.93
+O*1   Si    O*2    101.31
+O*3   Si    O*2    111.31
+O*3   Si    O*1    116.13
+O*4   Si    O*2    116.13
+O*4   Si    O*1    111.31
+O*4   Si    O*3    101.31
+Si*5  O     Si*6   146.93
 *1 x-y,x,z-2/3
-*2 y+1,-x+y+1,z-1/3
-*3 -x+y+1,-x+1,z-2/3
-*4 y,-x+y,z+2/3
+*2 -y,x-y,z-1/3
+*3 y+1,-x+y+1,z-1/3
+*4 -x+y+1,-x+1,z-2/3
+*5 y,-x+y,z+2/3
+*6 -x+y,-x,z+1/3
 """)
 ### shake_adp()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
