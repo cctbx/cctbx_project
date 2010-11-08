@@ -49,7 +49,10 @@ import random
 from copy import deepcopy
 from libtbx import group_args
 from cctbx import maptbx
-import phenix.masks
+if(not libtbx.env.has_module(name="solve_resolve")):
+  phenix_masks = None
+else:
+  import solve_resolve.masks as phenix_masks
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -988,7 +991,7 @@ class manager(manager_mixin):
     #    xray_structure=xs,
     #    algorithm="direct").f_calc().data())*n_atoms*miller_array.space_group().order_z()
     #######
-    nuo = phenix.masks.nu(
+    nuo = phenix_masks.nu(
       fmodel               = self,
       verbose              = True,
       output_map_file_name = "map.mtz",
