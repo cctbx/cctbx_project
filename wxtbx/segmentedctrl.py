@@ -1,11 +1,14 @@
 
+# Copyright 2010 University of California
+# All rights reserved
+
 # This is an approximate mimic of the NSSegmentedControl in Cocoa.  The
 # Apple control has many more styles than this, but the basic functionality
 # is the same, with three selection modes (any, one, or none).  Either
 # labels, bitmaps, or both are supported.
 
 # TODO:
-#   - test on Windows
+#   - Windows bugs
 #   - additional styles?
 
 import wx
@@ -37,8 +40,10 @@ class SegmentedControl (wx.PyControl) :
                 name=wx.ButtonNameStr,
                 border=0,
                 pad=_DEFAULT_PADDING) :
-    wx.PyControl.__init__(self, parent, id, pos, size, wx.NO_BORDER,
+    wx.PyControl.__init__(self, parent, id, pos=pos, size=size,
+      style=wx.NO_BORDER,
       name=name)
+    self.SetBackgroundStyle(wx.BG_STYLE_CUSTOM)
     self.InheritAttributes()
     self.segments = []
     self.values = [] # for radio and toggle versions
@@ -130,6 +135,9 @@ class SegmentedControl (wx.PyControl) :
 
   def __DrawButtons (self) :
     dc = wx.AutoBufferedPaintDCFactory(self)
+    if wx.Platform == '__WXMSW__' :
+      dc.SetBackground(wx.Brush(self.GetParent().GetBackgroundColour()))
+      dc.Clear()
     gc = wx.GCDC(dc)
     gc.SetBackgroundMode(wx.TRANSPARENT)
     gc.SetFont(self.GetFont())
@@ -436,6 +444,8 @@ if __name__ == "__main__" :
     tbtn.AddSegment("Help")
     tbtn.AddSegment("Next")
     tbtn.Realize()
+    (w,h) = tbtn.GetSize()
+    toolbar.SetToolBitmapSize((h,h))
     frame.Bind(wx.EVT_BUTTON, OnButton, tbtn)
     toolbar.AddControl(tbtn)
     #toolbar.AddControl(wx.Button(toolbar, -1, "Hello"))
@@ -451,6 +461,7 @@ if __name__ == "__main__" :
     btn3.AddSegment("Maps")
     btn3.AddSegment("Models")
     btn3.AddSegment("Selection")
+    btn3.Realize()
     frame.Bind(wx.EVT_TOGGLEBUTTON, OnToggle, btn3)
     v_sizer.Add(wx.StaticText(panel, -1, "Toggle buttons"), 0, wx.ALL, 5)
     v_sizer.Add(btn3, 0, wx.ALL, 5)
@@ -494,6 +505,7 @@ if __name__ == "__main__" :
     vbtn2.AddSegment("Down")
     frame.Bind(wx.EVT_BUTTON, OnButton, vbtn2)
     sizer.Add(vbtn2, 0, wx.ALL, 20)
+  sizer.Layout()
   sizer.Fit(panel)
   frame.Fit()
   toolbar.Realize()
