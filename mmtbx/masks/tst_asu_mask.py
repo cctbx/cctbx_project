@@ -551,7 +551,7 @@ def run():
 
   print format_cpu_times()
 
-def exercise_mask_data(space_group_info, n_sites=100):
+def exercise_mask_data_1(space_group_info, n_sites=100):
   from cctbx import maptbx
   from cctbx.masks import vdw_radii_from_xray_structure
   xrs = random_structure.xray_structure(
@@ -587,8 +587,39 @@ def exercise_mask_data(space_group_info, n_sites=100):
           shrink_truncation_radius = 1.0)
         asu_mask.compute(xrs.sites_frac(), atom_radii)
 
+def exercise_mask_data_2(space_group_info, n_sites=100, d_min=2.0,
+                         resolution_factor=1./4):
+  from cctbx import maptbx
+  from cctbx.masks import vdw_radii_from_xray_structure
+  xrs = random_structure.xray_structure(
+    space_group_info=space_group_info,
+    elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+    volume_per_atom=50,
+    min_distance=1.5)
+  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+  asu_mask = masks.atom_mask(
+    unit_cell                = xrs.unit_cell(),
+    group                    = xrs.space_group(),
+    resolution               = d_min,
+    grid_step_factor         = resolution_factor,
+    solvent_radius           = 1.0,
+    shrink_truncation_radius = 1.0)
+  asu_mask.compute(xrs.sites_frac(), atom_radii)
+  mask_data = asu_mask.mask_data_whole_uc()
+  mask_data = mask_data / xrs.space_group().order_z()
+  fc = xrs.structure_factors(d_min = d_min).f_calc()
+  f_mask_1 = fc.set().array(data = asu_mask.structure_factors(fc.indices()))
+  f_mask_2 = f_mask_1.structure_factors_from_map(map=mask_data,
+    use_scale = True, anomalous_flag = False, use_sg = True)
+  fm1 = abs(f_mask_1).data()
+  fm2 = abs(f_mask_2).data()
+  r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
+  assert approx_equal(r, 0.0)
+
+
 def run_call_back(flags, space_group_info):
-  exercise_mask_data(space_group_info)
+  exercise_mask_data_1(space_group_info)
+  exercise_mask_data_2(space_group_info)
 
 if (__name__ == "__main__"):
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
