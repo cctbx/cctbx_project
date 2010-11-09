@@ -5565,6 +5565,14 @@ ATOM     24 H113 LIG A   1       0.358  -0.896  -3.748  1.00 20.00      A    H
   if (pdb_file is not None) :
     (n_res,n_frag,n_wat)=pdb.hierarchy.get_residue_and_fragment_count(pdb_file)
     assert (n_res == 1548) and (n_frag == 7) and (n_wat == 708)
+  #
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+HETATM    0  PA  ANP A   1      27.977  39.209  67.441  1.00 26.15           P
+HETATM    1  O2A ANP A   1      28.552  39.588  68.829  1.00 27.12           O
+HETATM    2 MN    MN B   1      28.911  38.079  64.440  1.00 24.79          Mn
+""").construct_hierarchy()
+  bond_lists = pdb_hierarchy.distance_based_connectivity()
+  assert [list(bond) for bond in bond_lists] == [[1], [0], []]
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
