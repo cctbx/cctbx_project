@@ -1,6 +1,6 @@
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
-from mmtbx.refinement import reference_model
+from mmtbx.refinement.reference_model import reference_model
 from mmtbx.validation.rotalyze import rotalyze
 import iotbx.phil
 import iotbx.utils
@@ -168,6 +168,7 @@ reference_model
 """)
 
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
+  rm = reference_model()
   master_phil = get_master_phil()
   #print master_phil.show()
   input_objects = iotbx.utils.process_command_line_inputs(
@@ -209,7 +210,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   geometry_ref = processed_pdb_file_ref.geometry_restraints_manager()
   sites_cart_ref = processed_pdb_file_ref.all_chain_proxies.sites_cart
   pdb_hierarchy_ref=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy
-  i_seq_name_hash = reference_model.build_name_hash(
+  i_seq_name_hash = rm.build_name_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_name_hash == \
     {0: ' N   ASN C 236 ', 1: ' CA  ASN C 236 ', 2: ' C   ASN C 236 ',
@@ -219,14 +220,14 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
      12: ' CB  LEU C 237 ', 13: ' CG  LEU C 237 ', 14: ' CD1 LEU C 237 ',
      15: ' CD2 LEU C 237 '}
 
-  i_seq_element_hash = reference_model.build_element_hash(
+  i_seq_element_hash = rm.build_element_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_element_hash == \
     {0: ' N', 1: ' C', 2: ' C', 3: ' O', 4: ' C', 5: ' C', 6: ' O', 7: ' N',
      8: ' N', 9: ' C', 10: ' C', 11: ' O', 12: ' C', 13: ' C', 14: ' C',
      15: ' C'}
 
-  dihedral_hash = reference_model.build_dihedral_hash(
+  dihedral_hash = rm.build_dihedral_hash(
     geometry=geometry_ref,
     sites_cart=sites_cart_ref,
     pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy,
@@ -235,7 +236,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     include_side_chain=True)
   assert len(dihedral_hash) == 9
 
-  reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
+  reference_dihedral_proxies = rm.get_home_dihedral_proxies(
     work_params=work_params.reference_model,
     geometry=geometry,
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
@@ -255,7 +256,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   phil_objects = [
     iotbx.phil.parse(input_string=master_phil_str_overrides)]
   work_params_alt = master_phil.fetch(sources=phil_objects).extract()
-  match_map = reference_model.process_reference_groups(
+  match_map = rm.process_reference_groups(
                 pdb_hierarchy,
                 pdb_hierarchy_ref_alt_seq,
                 work_params_alt.reference_model)
@@ -276,7 +277,7 @@ C 237 LEU:0.0:209.6:357.2:::OUTLIER"""
 C 236 ASN:41.4:203.2:43.6:::t30
 C 237 LEU:52.8:179.1:57.3:::tp"""
 
-  reference_model.set_rotamer_to_reference(
+  rm.set_rotamer_to_reference(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
     pdb_hierarchy_ref=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy,
     xray_structure=xray_structure,
@@ -293,11 +294,11 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
 C 236 ASN:1.2:227.3:80.2:::t30
 C 237 LEU:52.8:179.1:57.3:::tp"""
 
-  cbetadev_hash = reference_model.build_cbetadev_hash(
+  cbetadev_hash = rm.build_cbetadev_hash(
                     pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
   assert cbetadev_hash == \
     {' ASN C 236': '  0.015', ' LEU C 237': '  0.038'}
-  match_map = reference_model.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
+  match_map = rm.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
                                                        pdb_hierarchy_ref=pdb_hierarchy_ref,
                                                        params=work_params.reference_model)
   assert match_map == \
@@ -311,7 +312,7 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
   phil_objects = [
     iotbx.phil.parse(input_string=master_phil_str_overrides)]
   work_params_match = master_phil.fetch(sources=phil_objects).extract()
-  match_map = reference_model.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
+  match_map = rm.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
                                                        pdb_hierarchy_ref=pdb_hierarchy_ref_match,
                                                        params=work_params_match.reference_model)
   assert match_map == \
@@ -329,7 +330,7 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
   phil_objects = [
     iotbx.phil.parse(input_string=master_phil_str_overrides)]
   work_params_match = master_phil.fetch(sources=phil_objects).extract()
-  match_map = reference_model.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
+  match_map = rm.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
                                                        pdb_hierarchy_ref=pdb_hierarchy_ref_match,
                                                        params=work_params_match.reference_model)
   assert match_map == \
@@ -348,7 +349,7 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
   xray_structure=processed_pdb_file.xray_structure()
   pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
+  reference_dihedral_proxies = rm.get_home_dihedral_proxies(
     work_params=work_params.reference_model,
     geometry=geometry,
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
@@ -356,6 +357,7 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
     sites_cart_ref=sites_cart,
     pdb_hierarchy_ref=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   standard_weight = 0
+  rm.show_reference_summary()
   for dp in reference_dihedral_proxies:
     if dp.weight == 1.0:
       standard_weight += 1
@@ -371,7 +373,7 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
     phil_objects = [
       iotbx.phil.parse(input_string=master_phil_str_overrides)]
     work_params_ss = master_phil.fetch(sources=phil_objects).extract()
-    reference_dihedral_proxies = reference_model.get_home_dihedral_proxies(
+    reference_dihedral_proxies = rm.get_home_dihedral_proxies(
       work_params=work_params_ss.reference_model,
       geometry=geometry,
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
