@@ -357,7 +357,6 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
     sites_cart_ref=sites_cart,
     pdb_hierarchy_ref=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   standard_weight = 0
-  rm.show_reference_summary()
   for dp in reference_dihedral_proxies:
     if dp.weight == 1.0:
       standard_weight += 1
