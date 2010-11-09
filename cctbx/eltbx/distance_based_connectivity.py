@@ -47,6 +47,7 @@ expected_bond_lengths_by_element_pair = {
 ('P', 'S'): 1.7,
 ('S', 'S'): 2.0}
 
+# XXX severe duplication: cctbx/crystal/distance_based_connectivity.py
 def build_edge_list(
       sites_cart,
       elements,

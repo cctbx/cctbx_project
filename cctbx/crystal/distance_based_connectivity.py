@@ -12,6 +12,7 @@ for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems() :
 for k, v in vdw.table.items() :
   vdw_radii[k.upper()] = v
 
+# XXX severe duplication: cctbx/eltbx/distance_based_connectivity.py
 def build_bond_list (
       sites_cart,
       elements,
@@ -28,7 +29,7 @@ def build_bond_list (
           isinstance(fallback_search_max_distance, int))
   stripped_elements = elements.strip().upper()
   if (search_max_distance is None):
-    search_max_distance = max([vdw_radii.get(e, 0.0) for e in elements])
+    search_max_distance = 2 * max([vdw_radii.get(e, 0.0) for e in elements])
     if (search_max_distance == 0.0):
       search_max_distance = fallback_search_max_distance
     else:
