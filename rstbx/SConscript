@@ -31,15 +31,20 @@ builder(
 
 if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
-  env = env_boost_python_ext.Clone()
-  env.Prepend(LIBS=["rstbx", "cctbx", "scitbx_boost_python"])
-  env.SharedLibrary(target="#lib/rstbx_ext", source="ext.cpp")
-  env.SharedLibrary(
+  env_rstbx_boost_python_ext = env_boost_python_ext.Clone()
+  env_rstbx_boost_python_ext.Prepend(
+                 LIBS=["rstbx", "cctbx", "scitbx_boost_python"])
+  env_rstbx_boost_python_ext.SharedLibrary(
+                 target="#lib/rstbx_ext", source="ext.cpp")
+  env_rstbx_boost_python_ext.SharedLibrary(
                     target="#lib/rstbx_array_family_flex_ext",
                     source=[
                       "array_family/ext.cpp",
                       "array_family/flex_rstbx_arrays.cpp",
                     ])
   env_etc.include_registry.append(
-    env=env,
+    env=env_rstbx_boost_python_ext,
     paths=env_etc.rstbx_common_includes)
+  Export("env_rstbx_boost_python_ext")
+
+  SConscript("diffraction/fastbragg/SConscript")

@@ -1030,6 +1030,13 @@ rstbx/command_line/__init__.py -text
 rstbx/diffraction/__init__.py -text
 rstbx/diffraction/ewald_sphere.cpp -text
 rstbx/diffraction/ewald_sphere.h -text
+rstbx/diffraction/fastbragg/SConscript -text
+rstbx/diffraction/fastbragg/__init__.py -text
+rstbx/diffraction/fastbragg/fastbragg.cpp -text
+rstbx/diffraction/fastbragg/fastbragg.h -text
+rstbx/diffraction/fastbragg/fastbragg_ext.cpp -text
+rstbx/diffraction/fastbragg/tst_bragg_minimal.py -text
+rstbx/diffraction/fastbragg/tst_utils_clustering.py -text
 rstbx/diffraction/tst_ewald_sphere.py -text
 rstbx/diffraction/tst_predict.py -text
 rstbx/dps_core/__init__.py -text
