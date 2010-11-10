@@ -93,7 +93,7 @@ class reparametrisation(ext.reparametrisation):
     def fget(self):
       return self.__dict__.setdefault(
         "_component_annotations",
-        self.asu_scatterer_parameters.component_annotations().split(','))
+        self.asu_scatterer_parameters.component_annotations().split(',')[:-1])
 
   class n_independent_params(libtbx.property):
     def fget(self):
