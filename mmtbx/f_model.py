@@ -977,181 +977,54 @@ class manager(manager_mixin):
 
   def update_f_part(self, log=None):
     if(log is None): log = sys.stdout
-    def show(r_work,r_free,k_part,b_part,n_miss,b_miss,prefix,log):
-      fmt = "%s %6.4f %6.4f %5.2f %6.2f %d %6.2f"
-      print >> log, fmt % (prefix,r_work,r_free,k_part,b_part,n_miss,b_miss)
-    # XXX WHY THIS DOESN'T WORK: not the same as (maxlik.sigma_miss) ?
-    #def get_fcp(atom_type, n_atoms, miller_array):
-    #  sc = xray.scatterer(atom_type, site=(0,0,0), u=0)
-    #  scatterers = flex.xray_scatterer([sc])
-    #  xs = xray.structure(
-    #    crystal_symmetry = miller_array.crystal_symmetry(),
-    #    scatterers = scatterers)
-    #  return flex.abs(miller_array.structure_factors_from_scatterers(
-    #    xray_structure=xs,
-    #    algorithm="direct").f_calc().data())*n_atoms*miller_array.space_group().order_z()
-    #######
+    def show(r_work,r_free,k_part,b_part,prefix,log):
+      fmt = "%s %6.4f %6.4f %5.2f %6.2f"
+      print >> log, fmt % (prefix,r_work,r_free,k_part,b_part)
+    self.update_solvent_and_scale(optimize_mask=False)
     nuo = phenix_masks.nu(
       fmodel               = self,
       verbose              = True,
       output_map_file_name = "map.mtz",
       resolution_factor    = 1./3,
-      solvent_radius_inc   = 1.,
+      solvent_radius_inc   = 0.,
       solvent_content      = 0.5,
       log                  = log,
-      write_tmp_files      = True)
+      debug                = True,
+      diff_map_cutoff      = 1.5)
     self.update_core(f_mask      = nuo.f_mask_new,
-                     f_part_base = nuo.f_diff_map)
-    self.update_solvent_and_scale()
+                     f_part_base = nuo.f_part)
+    self.update_solvent_and_scale(optimize_mask=False)
     print self.r_work(), self.r_free(), self.k_sol(), self.b_sol()
 
     rws = self.r_work()
     kbest=self.k_part()
     bbest=self.b_part()
-    nbest = 0
-    bmissbest=0
-    #f_part_base_best = self.f_part_base().deep_copy()
     show(r_work=rws, r_free=self.r_free(), k_part=self.k_part(),
-         b_part=self.b_part(), n_miss=0, b_miss=0, prefix="START:", log=log)
-    #f_part_base_ = self.f_mask().structure_factors_from_map(map = map_data,
-    #  use_scale = True)
-    #f_part_base = self.f_mask().array(data = f_part_base_.data())
+         b_part=self.b_part(), prefix="START:", log=log)
     b_part_range = range(0,100,5)
     for b_part in b_part_range:
-      #kpr = [i/10. for i in xrange(11)] + [i/1. for i in range(2,21)]
       kpr = [i/10. for i in xrange(22)] + [i/1. for i in range(2,21)]
       for k_part in kpr:
         self.update_core(
-          k_part      = k_part,
-          b_part      = b_part)
+          k_part = k_part,
+          b_part = b_part)
         rw = self.r_work()
-        if (rw < rws):
+        if(rw < rws):
           rws = rw
           kbest=k_part
           bbest=b_part
-          #nbest = nmiss
-          bmissbest = b_part
-          #f_part_base_best = f_part_base.deep_copy()
           show(r_work=rws, r_free=self.r_free(), k_part=kbest,
-               b_part=bbest, n_miss=nbest, b_miss=b_part, prefix="   ", log=log)
+               b_part=bbest, prefix="   ", log=log)
     self.update_core(
-        k_part      = kbest,
-        b_part      = bbest)
+        k_part = kbest,
+        b_part = bbest)
     show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-         b_part=self.b_part(), n_miss=nbest, b_miss=bmissbest, prefix="FINAL:", log=log)
+         b_part=self.b_part(), prefix="FINAL:", log=log)
     print
-    self.update_solvent_and_scale()
+    self.update_solvent_and_scale(optimize_mask=False)
     print self.r_work(), self.r_free(), self.k_sol(), self.b_sol()
     print
-    assert 0
-    #######
 
-# CCC    fc_fft_map = self.f_mask().structure_factors_from_scatterers(
-# CCC      xray_structure = self.xray_structure).f_calc().fft_map(
-# CCC         resolution_factor = 1./3)
-# CCC    fc_fft_map.apply_sigma_scaling()
-# CCC    fc_map_data = fc_fft_map.real_map_unpadded()
-# CCC    fc_map_sel = fc_map_data > 1.5
-# CCC    fc_map_data = fc_map_data.set_selected(fc_map_sel, 0.)
-# CCC    fc_map_data = fc_map_data.set_selected(~fc_map_sel, 1.)
-# CCC
-# CCC    rws = self.r_work()
-# CCC    kbest=self.k_part()
-# CCC    bbest=self.b_part()
-# CCC    nbest = 0
-# CCC    bmissbest=0
-# CCC    f_part_base_best = self.f_part_base().deep_copy()
-# CCC    show(r_work=rws, r_free=self.r_free(), k_part=self.k_part(),
-# CCC         b_part=self.b_part(), n_miss=0, b_miss=0, prefix="START:", log=log)
-# CCC    for cutoff in [1.5,]:#[3,2.0,1.5]:#[3.0,2.0,1.0]:
-# CCC      print >> log, cutoff
-# CCC      ####
-# CCC      #XXX TEST ONLY import iotbx.pdb
-# CCC      #XXX TEST ONLY xs = iotbx.pdb.input(file_name = "fabABS.pdb").xray_structure_simple()
-# CCC      #XXX TEST ONLY fft_map = self.f_mask().structure_factors_from_scatterers(
-# CCC      #XXX TEST ONLY   xray_structure = xs).f_calc().fft_map(
-# CCC      #XXX TEST ONLY    resolution_factor = 1./4)
-# CCC      #XXX TEST ONLY fft_map.apply_sigma_scaling()
-# CCC      #XXX TEST ONLY map_data = fft_map.real_map_unpadded()
-# CCC      #XXX TEST ONLY map_sel  = map_data < 1.5
-# CCC      #XXX TEST ONLY map_data = map_data.set_selected(map_sel, 0.)
-# CCC      #XXX TEST ONLY map_data = map_data.set_selected(~map_sel, 1.)
-# CCC      #XXX TEST ONLY scale = 1./map_data.count(1.)
-# CCC      #XXX TEST ONLY map_data = map_data * scale
-# CCC      ####
-# CCC      map_obj = self.electron_density_map()
-# CCC      fft_map = map_obj.fft_map(resolution_factor = 1./3, map_type = "mFo-DFc")
-# CCC      fft_map.apply_sigma_scaling()
-# CCC      map_data = fft_map.real_map_unpadded()
-# CCC      map_sel = map_data < cutoff
-# CCC      map_data = map_data.set_selected(map_sel, 0.)
-# CCC      map_data = map_data.set_selected(~map_sel, 1.)
-# CCC      print >> log, "map_data:", map_data.count(True), map_data.size()
-# CCC      scale = 1.#/map_data.count(1.)
-# CCC      #map_data = map_data * fc_map_data
-# CCC      map_data = map_data * scale
-# CCC      ####
-# CCC      map_data__ = missing_structure_mask(
-# CCC        fmodel               = self,
-# CCC        map_type             = "3mFo-2DFc",
-# CCC        output_map_file_name = "map.mtz",
-# CCC        resolution_factor    = 1./3,
-# CCC        log                  = log)
-# CCC      scale = 1./map_data.count(1.)
-# CCC      print >> log, "map_data:", map_data.count(True), map_data.size()
-# CCC      #map_data = map_data #* scale
-# CCC      map_data =map_data__*map_data
-# CCC      ####
-# CCC      f_part_base_ = self.f_mask().structure_factors_from_map(map = map_data,
-# CCC        use_scale = True)
-# CCC      b_iso_mean = flex.mean(
-# CCC        self.xray_structure.extract_u_iso_or_u_equiv())*adptbx.u_as_b(1.)*1.5
-# CCC      b_inc = 5
-# CCC      if(b_iso_mean > 50): b_inc=10
-# CCC      elif(b_iso_mean > 100): b_inc=15
-# CCC      elif(b_iso_mean > 150): b_inc=25
-# CCC      else: b_inc=50
-# CCC      #nmissrange = list(range(0,5100,100))
-# CCC      nmissrange = [1,]#list(range(0,5100,100))
-# CCC      for nmiss in nmissrange:
-# CCC        #sigma_miss = get_fcp(atom_type="C", n_atoms=nmiss, miller_array=self.f_mask())
-# CCC        sigma_miss = maxlik.sigma_miss(
-# CCC          miller_array     = self.f_mask(),
-# CCC          n_atoms_absent   = nmiss,
-# CCC          bf_atoms_absent  = 0,
-# CCC          absent_atom_type = "C")
-# CCC        #f_part_base = self.f_mask().array(data = f_part_base_.data()*sigma_miss)
-# CCC        f_part_base = self.f_mask().array(data = f_part_base_.data())
-# CCC        #b_part_range = range(-int(b_iso_mean),int(b_iso_mean),b_inc)
-# CCC        b_part_range = range(-10,100,5)
-# CCC        for b_part in b_part_range:
-# CCC          #kpr = [1,]
-# CCC          kpr = [i/10. for i in xrange(11)] + [i/1. for i in range(1,21)]
-# CCC          for k_part in kpr:
-# CCC            self.update_core(
-# CCC              k_part      = k_part,
-# CCC              b_part      = b_part,
-# CCC              f_part_base = f_part_base)
-# CCC            rw = self.r_work()
-# CCC            if (rw < rws):
-# CCC              rws = rw
-# CCC              kbest=k_part
-# CCC              bbest=b_part
-# CCC              nbest = nmiss
-# CCC              bmissbest = b_part
-# CCC              f_part_base_best = f_part_base.deep_copy()
-# CCC              show(r_work=rws, r_free=self.r_free(), k_part=kbest,
-# CCC                   b_part=bbest, n_miss=nbest, b_miss=b_part, prefix="   ", log=log)
-# CCC      self.update_core(
-# CCC        k_part      = kbest,
-# CCC        b_part      = bbest,
-# CCC        f_part_base = f_part_base_best)
-# CCC    self.update_core(
-# CCC      k_part      = kbest,
-# CCC      b_part      = bbest,
-# CCC      f_part_base = f_part_base_best)
-# CCC    show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-# CCC         b_part=self.b_part(), n_miss=nbest, b_miss=bmissbest, prefix="FINAL:", log=log)
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
                                      optimize_mask = True):
