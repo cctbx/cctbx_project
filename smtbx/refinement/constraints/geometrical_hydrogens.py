@@ -74,8 +74,8 @@ class geometrical_hydrogens_mixin(object):
         " ideal bond length not defined to atom type %s" %(
           self.__class__.__name__, pivot.label, pivot_element))
     if temperature is not None:
-      if   temperature < -20: d += 0.01
-      elif temperature < -70: d += 0.02
+      if   temperature < -70: d += 0.02
+      elif temperature < -20: d += 0.01
     return d
 
 
