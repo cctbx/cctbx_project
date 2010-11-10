@@ -24,6 +24,8 @@ def exercise_move_old_create_new_directory():
 def run(args):
   assert len(args) == 0
   exercise_move_old_create_new_directory()
+  from libtbx.path import random_new_directory_name
+  assert len(random_new_directory_name()) == len("tmp_dir_00000000")
   print "OK"
 
 if (__name__ == "__main__"):
