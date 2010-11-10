@@ -35,9 +35,11 @@ namespace mmtbx { namespace ramachandran {
 
       lookup_table (
         af::const_ref< double > values,
-        int n_angles)
+        int n_angles,
+        double scale_allowed=1.0)
       {
         MMTBX_ASSERT(values.size() == (n_angles * n_angles));
+        MMTBX_ASSERT(scale_allowed > 0.0);
         af::flex_grid<>::index_type fg_origin;
         af::flex_grid<>::index_type fg_last;
         for (unsigned i = 0; i < 2; i++) {
@@ -48,7 +50,11 @@ namespace mmtbx { namespace ramachandran {
           af::flex_grid<>(fg_origin, fg_last, true));
         values_max = 0.0;
         for (unsigned i = 0; i < values.size(); i++) {
-          plot[i] = values[i];
+          if (values[i] > 0.0) {
+            plot[i] = values[i] * scale_allowed;
+          } else {
+            plot[i] = values[i];
+          }
           if (values[i] > values_max) {
             values_max = values[i];
           }
@@ -219,9 +225,11 @@ namespace mmtbx { namespace ramachandran {
     using namespace boost::python;
     class_<lookup_table>("lookup_table", no_init)
       .def(init<af::const_ref< double >,
-                int>((
+                int,
+                double>((
         arg("values"),
-        arg("n_angles"))))
+        arg("n_angles"),
+        arg("scale_allowed")=1.0)))
       .def("get_score", &lookup_table::get_score, (
         arg("phi"),
         arg("psi")))

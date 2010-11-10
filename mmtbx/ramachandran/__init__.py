@@ -4,6 +4,7 @@ from scitbx import matrix
 import libtbx.load_env
 from libtbx.math_utils import ifloor, iceil
 import libtbx.phil
+from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import math
 import sys
@@ -18,6 +19,9 @@ master_phil = libtbx.phil.parse("""
     .type = float
     .short_caption = Ramachandran gradients weight
     .expert_level = 1
+  scale_allowed = 1.0
+    .type = float
+    .short_caption = Rescale allowed region pseudo-energy by
   use_finite_differences = False
     .type = bool
     .help = Used for testing - not suitable for real structures.
@@ -43,6 +47,9 @@ refine_opt_params = libtbx.phil.parse("""
 def load_tables (params=None) :
   if (params is None) :
     params = master_phil.fetch().extract()
+  if (params.scale_allowed <= 0.0) :
+    raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
+      "a positive number (current value: %g)." % params.scale_allowed)
   from scitbx.array_family import flex
   tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
@@ -56,7 +63,7 @@ def load_tables (params=None) :
       val, phi, psi = line.split()
       assert ((int(phi) % 2 == 1) and (int(psi) % 2 == 1))
       data.append(float(val))
-    t = lookup_table(data, 180)
+    t = lookup_table(data, 180, params.scale_allowed)
     tables[residue_type] = t
   return tables
 
