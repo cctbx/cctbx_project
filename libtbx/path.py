@@ -106,3 +106,12 @@ def walk_source_tree(top, arg=None):
   result = []
   op.walk(top, visitor, result)
   return result
+
+def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
+  from libtbx.utils import random_hex_code
+  for i_trial in xrange(10**6):
+    name = prefix + random_hex_code(number_of_digits=number_of_hex_code_digits)
+    if (not op.exists(name)):
+      return name
+  else:
+    raise AssertionError

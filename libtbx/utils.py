@@ -911,6 +911,13 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty):
     fmt_str = "%.0f(%i)"
     return fmt_str %(round(value, precision), su)
 
+def random_hex_code(number_of_digits):
+  import random
+  digits = []
+  for i_digit in xrange(number_of_digits):
+    i = random.randrange(16)
+    digits.append("0123456789abcdef"[i])
+  return "".join(digits)
 
 def exercise():
   from libtbx.test_utils import approx_equal, Exception_expected
@@ -1020,6 +1027,10 @@ def exercise():
   assert format_float_with_standard_uncertainty(12345, 45) == "12350(50)"
   assert format_float_with_standard_uncertainty(12.3,1.2) == "12.3(12)"
   assert format_float_with_standard_uncertainty(-0.2451, 0.8135) == "-0.2(8)"
+  #
+  for n in xrange(4):
+    assert len(random_hex_code(number_of_digits=n)) == n
+  #
   print "OK"
 
 if (__name__ == "__main__"):
