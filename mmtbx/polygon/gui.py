@@ -89,8 +89,8 @@ class canvas_layout (object) :
       self._histograms.append(layout)
       i += 1
     self._polygon = canvas_layout.polygon_layout(self.stats, self._histograms)
-    self.set_color_model("original")
-    self.relative_scale_colors = True
+    self.set_color_model("rainbow")
+    self.relative_scale_colors = False #True
 
   def resize (self, size) :
     self.w, self.h = size
@@ -337,9 +337,7 @@ class rmb_color_model (color_model) :
                             [ float(x) / 7.0 for x in range(8) ] ]
 
   def get_bin_color (self, value) :
-    print 240.0 + (120.0 * value)
     color = hsv2rgb(240.0 + (120.0 * value), 1, 1)
-    print value, color
     return color
 
 def hsv2rgb (h, s, v) :
