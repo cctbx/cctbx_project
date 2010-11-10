@@ -554,14 +554,14 @@ def run():
 def exercise_mask_data_1(space_group_info, n_sites=100):
   from cctbx import maptbx
   from cctbx.masks import vdw_radii_from_xray_structure
-  xrs = random_structure.xray_structure(
-    space_group_info=space_group_info,
-    elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
-    volume_per_atom=30,
-    min_distance=1)
-  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
   for d_min in [1, 1.5, 2.1]:
     for resolution_factor in [1./2, 1./3, 1./4, 1./5]:
+      xrs = random_structure.xray_structure(
+        space_group_info=space_group_info,
+        elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+        volume_per_atom=30,
+        min_distance=1)
+      atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
       asu_mask = masks.atom_mask(
         unit_cell                = xrs.unit_cell(),
         group                    = xrs.space_group(),
@@ -572,8 +572,18 @@ def exercise_mask_data_1(space_group_info, n_sites=100):
       asu_mask.compute(xrs.sites_frac(), atom_radii)
       mask_data = asu_mask.mask_data_whole_uc()
       assert flex.min(mask_data) == 0.0
-      # It's not just 0 and 1 ... !
+      # It's not just 0 and 1 ...
       assert flex.max(mask_data) == xrs.space_group().order_z()
+      # In fact, it is a mixture ...
+      if 0: # XXX this will rightfully crash
+        mask_data_ = mask_data / xrs.space_group().order_z()
+        s0 = mask_data_ < 0.5
+        s1 = mask_data_ > 0.5
+        if(mask_data_.size() != s0.count(True)+s1.count(True)):
+          for d in mask_data_:
+            if(d != 0 and d != 1): print d, xrs.space_group().order_z()
+          assert mask_data_.size() == s0.count(True)+s1.count(True), [
+            mask_data_.size()-(s0.count(True)+s1.count(True))]
       if(0): # XXX This would crash with the message: "... The grid is not ..."
         cr_gr = maptbx.crystal_gridding(
           unit_cell         = xrs.unit_cell(),
@@ -591,31 +601,33 @@ def exercise_mask_data_2(space_group_info, n_sites=100, d_min=2.0,
                          resolution_factor=1./4):
   from cctbx import maptbx
   from cctbx.masks import vdw_radii_from_xray_structure
-  xrs = random_structure.xray_structure(
-    space_group_info=space_group_info,
-    elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
-    volume_per_atom=50,
-    min_distance=1.5)
-  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
-  asu_mask = masks.atom_mask(
-    unit_cell                = xrs.unit_cell(),
-    group                    = xrs.space_group(),
-    resolution               = d_min,
-    grid_step_factor         = resolution_factor,
-    solvent_radius           = 1.0,
-    shrink_truncation_radius = 1.0)
-  asu_mask.compute(xrs.sites_frac(), atom_radii)
-  mask_data = asu_mask.mask_data_whole_uc()
-  mask_data = mask_data / xrs.space_group().order_z()
-  fc = xrs.structure_factors(d_min = d_min).f_calc()
-  f_mask_1 = fc.set().array(data = asu_mask.structure_factors(fc.indices()))
-  f_mask_2 = f_mask_1.structure_factors_from_map(map=mask_data,
-    use_scale = True, anomalous_flag = False, use_sg = True)
-  fm1 = abs(f_mask_1).data()
-  fm2 = abs(f_mask_2).data()
-  r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
-  assert approx_equal(r, 0.0)
-
+  for yn in [0,1]:
+    xrs = random_structure.xray_structure(
+      space_group_info=space_group_info,
+      elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+      volume_per_atom=50,
+      min_distance=1.5)
+    atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+    asu_mask = masks.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      group                    = xrs.space_group(),
+      resolution               = d_min,
+      grid_step_factor         = resolution_factor,
+      solvent_radius           = 1.0,
+      shrink_truncation_radius = 1.0)
+    asu_mask.compute(xrs.sites_frac(), atom_radii)
+    mask_data = asu_mask.mask_data_whole_uc()
+    mask_data = mask_data / xrs.space_group().order_z()
+    if(yn == 1):
+      mask_data = maptbx.copy(mask_data, flex.grid(mask_data.focus()))
+    fc = xrs.structure_factors(d_min = d_min).f_calc()
+    f_mask_1 = fc.set().array(data = asu_mask.structure_factors(fc.indices()))
+    f_mask_2 = f_mask_1.structure_factors_from_map(map=mask_data,
+      use_scale = True, anomalous_flag = False, use_sg = True)
+    fm1 = abs(f_mask_1).data()
+    fm2 = abs(f_mask_2).data()
+    r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
+    assert approx_equal(r, 0.0)
 
 def run_call_back(flags, space_group_info):
   exercise_mask_data_1(space_group_info)
