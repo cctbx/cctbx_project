@@ -3,6 +3,7 @@ from scitbx.matrix import sqr
 from rstbx.diffraction.fastbragg import foo
 from rstbx.diffraction.fastbragg import detector,camera,crystal
 from rstbx.diffraction.fastbragg import fast_bragg_simulation
+import libtbx.load_env
 
 pdb_lines = """HEADER    ELECTRON TRANSPORT                      17-JAN-08   3BZ1
 CRYST1  127.692  225.403  306.106  90.00  90.00  90.00 P 21 21 21    4
@@ -324,6 +325,9 @@ def tst_all():
   #simulation is complete, now we'll autoindex the image fragment and verify
   # that the indexed cell is similar to the input cell.
 
+  if (not libtbx.env.has_module("annlib")):
+    print "Skipping some tests: annlib not available."
+    return
   # 1. Analysis of the image to identify the Bragg peak centers.
   #    This step uses an inefficient algorithm and implementation and
   #    is most time consuming; but the code is only for testing, not production
