@@ -52,6 +52,7 @@ def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
       cache[lus] = ccp4_symbol
       if (lus == lookup_symbol):
         return ccp4_symbol
+  return None
 
 def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
   given_space_group_number = space_group_info.type().number()
