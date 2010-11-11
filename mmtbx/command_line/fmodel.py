@@ -364,7 +364,15 @@ def validate_params (params, callback=None) :
     if params.low_resolution < params.high_resolution :
       raise Sorry("Low-resolution cutoff must be larger than the high-"+
         "resolution cutoff.")
+  if (params.output.type == "complex") and (params.add_sigmas) :
+    raise Sorry("Sigma values only supported when the output type is 'real'.")
   return True
+
+def finish_job (result) :
+  output_files = []
+  if (result is not None) and (os.path.isfile(result)) :
+    output_files.append((os.path.abspath(result), file_name))
+  return (output_files, [])
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
