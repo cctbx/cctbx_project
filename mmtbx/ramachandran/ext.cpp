@@ -88,15 +88,31 @@ namespace mmtbx { namespace ramachandran {
         } else if ((psi_2 % 2) == 0) {
           psi_2 += 1;
         }
-        double r11 = get_point(phi_1, psi_1);
-        double r12 = get_point(phi_1, psi_2);
-        double r21 = get_point(phi_2, psi_1);
-        double r22 = get_point(phi_2, psi_2);
-        double d_phi_d_psi = (double) (phi_2 - phi_1) * (psi_2 - psi_1);
-        double r_phi_psi = ((r11/d_phi_d_psi) * (phi_2-phi) * (psi_2-psi)) +\
-                           ((r21/d_phi_d_psi) * (phi-phi_1) * (psi_2-psi)) +\
-                           ((r12/d_phi_d_psi) * (phi_2-phi) * (psi-psi_1)) +\
-                           ((r22/d_phi_d_psi) * (phi-phi_1) * (psi-psi_1));
+        double r_phi_psi = 0;
+        if (phi_2 == phi_1) {
+          if (psi_2 == psi_1) {
+            r_phi_psi = get_point(phi_1, psi_1);
+          } else {
+            double r11 = get_point(phi_1, psi_1);
+            double r12 = get_point(phi_1, psi_2);
+            r_phi_psi = (((psi-psi_1)*r12)+((psi_2-psi)*r11)) / (psi_2-psi_1);
+          }
+        } else if (psi_2 == psi_1) {
+          double r11 = get_point(phi_1, psi_1);
+          double r21 = get_point(phi_2, psi_1);
+          r_phi_psi = (((phi-phi_1)*r21)+((phi_2-phi)*r11)) / (phi_2-phi_1);
+        } else {
+          double r11 = get_point(phi_1, psi_1);
+          double r12 = get_point(phi_1, psi_2);
+          double r21 = get_point(phi_2, psi_1);
+          double r22 = get_point(phi_2, psi_2);
+          double d_phi_d_psi = (double) (phi_2 - phi_1) * (psi_2 - psi_1);
+          MMTBX_ASSERT(d_phi_d_psi != 0);
+          r_phi_psi = ((r11/d_phi_d_psi) * (phi_2-phi) * (psi_2-psi)) +\
+                      ((r21/d_phi_d_psi) * (phi-phi_1) * (psi_2-psi)) +\
+                      ((r12/d_phi_d_psi) * (phi_2-phi) * (psi-psi_1)) +\
+                      ((r22/d_phi_d_psi) * (phi-phi_1) * (psi-psi_1));
+        }
         return r_phi_psi;
       }
 

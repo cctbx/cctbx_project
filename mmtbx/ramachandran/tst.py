@@ -23,6 +23,11 @@ def exercise_basic () :
   assert approx_equal(t.get_score(90,90), -7.43, eps=0.01)
   assert approx_equal(t.get_energy(0.0,0.0), 53.81, eps=0.01)
   assert approx_equal(t.get_energy(-60,120), 17.24, eps=0.01)
+  e1 = t.get_energy(-85.0, 85.0)
+  e2 = t.get_energy(-85.000001, 85.000001)
+  assert approx_equal(e1, e2, eps=0.000001)
+  assert approx_equal(t.get_energy(-85.0, 86.0), 21.3345, eps=0.001)
+  assert approx_equal(t.get_energy(-86.0, 85.0), 21.389, eps=0.001)
 
 def exercise_lbfgs_simple (verbose=False) :
   # three peptides:
