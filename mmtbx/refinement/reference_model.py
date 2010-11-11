@@ -148,9 +148,11 @@ class reference_model(object):
   def _alignment(self, pdb_hierarchy,
                     pdb_hierarchy_ref,
                     params,
-                    selections):
+                    selections,
+                    log=sys.stdout):
     res_match_hash = {}
     model_mseq_res_hash = {}
+    #print selections
     model_seq, model_structures = self.extract_sequence_and_sites(
       pdb_hierarchy=pdb_hierarchy,
       selection=selections[0])
@@ -176,19 +178,25 @@ class reference_model(object):
     exact_b = tuple(exact_match_selections[1])
     for i, i_seq in enumerate(exact_a):
       res_match_hash[model_mseq_res_hash[i_seq]] = ref_mseq_res_hash[exact_b[i]]
+    print >> log, "  --> aligning model sequence to reference sequence"
+    alignment.pretty_print(block_size  = 50,
+                           n_block     = 1,
+                           top_name    = "model",
+                           bottom_name = "ref",
+                           out         = log)
     return res_match_hash
 
   def process_reference_groups(self,
                                pdb_hierarchy,
                                pdb_hierarchy_ref,
-                               params):
+                               params,
+                               log=sys.stdout):
     model_iseq_hash = self.build_iseq_hash(pdb_hierarchy=pdb_hierarchy)
     model_name_hash = self.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     ref_iseq_hash = self.build_iseq_hash(pdb_hierarchy=pdb_hierarchy_ref)
     sel_cache = pdb_hierarchy.atom_selection_cache()
     sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
     match_map = {}
-
     #check for auto alignment compatability
     if params.auto_align == True:
       try:
@@ -207,11 +215,12 @@ class reference_model(object):
         sel_atoms_ref = (self.phil_atom_selections_as_i_seqs_multiple(
                          cache=sel_cache_ref,
                          string_list=ref_list))
-        selections = (sel_atoms_ref, sel_atoms)
+        selections = (sel_atoms, sel_atoms_ref)
         residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
                                               pdb_hierarchy_ref=pdb_hierarchy_ref,
                                               params=params,
-                                              selections=selections)
+                                              selections=selections,
+                                              log=log)
         for i_seq in sel_atoms:
           key = model_name_hash[i_seq]
           atom = key[0:4]
@@ -230,11 +239,12 @@ class reference_model(object):
           sel_atoms_ref = (self.phil_atom_selections_as_i_seqs_multiple(
                            cache=sel_cache_ref,
                            string_list=[ag.reference]))
-          selections = (sel_atoms_ref, sel_atoms)
+          selections = (sel_atoms, sel_atoms_ref)
           residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
                                                 pdb_hierarchy_ref=pdb_hierarchy_ref,
                                                 params=params,
-                                                selections=selections)
+                                                selections=selections,
+                                                log=log)
           for i_seq in sel_atoms:
             key = model_name_hash[i_seq]
             atom = key[0:4]
@@ -484,7 +494,8 @@ class reference_model(object):
     match_map = self.process_reference_groups(
                                pdb_hierarchy=pdb_hierarchy,
                                pdb_hierarchy_ref=pdb_hierarchy_ref,
-                               params=work_params)
+                               params=work_params,
+                               log=log)
     if work_params.secondary_structure_only:
       if (not libtbx.env.has_module(name="ksdssp")):
         raise RuntimeError(
