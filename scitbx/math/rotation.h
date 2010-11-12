@@ -8,7 +8,12 @@
 #include<scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include<scitbx/math/zernike.h>
-
+/*
+ * This class is to rotate spherical harnomic functions
+ * The dmatrix is similar to the one in phaser 
+ * The correlation class is to evaluate correlation of zernike moment represented
+ * models; the maximum correlation coefficient is found by using fft 
+*/
 namespace af=scitbx::af;
 
 namespace scitbx { namespace math

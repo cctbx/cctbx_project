@@ -36,7 +36,7 @@ namespace zernike {
              bool const& fixed_dx,
              FloatType const& external_rmax,
              FloatType const& dx,
-             FloatType const& fraction, // will be optimized later: splat_range*dx< (1-fraction)*rmax
+             FloatType const& fraction, // splat_range*dx< (1-fraction)*rmax
              scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz
            ):
            NP_(n_point), dx_(1.0/static_cast<FloatType>(NP_) ), uniform_(uniform),fixed_dx_(fixed_dx),
