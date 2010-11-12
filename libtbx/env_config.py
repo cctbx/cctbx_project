@@ -1090,7 +1090,6 @@ reconf:
 \t%(lsj)s
 
 redo:
-\t%(lsj)s --clean
 \t./bin/libtbx.configure . --clear-scons-memory
 \t%(lsj)s
 
