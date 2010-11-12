@@ -1,4 +1,8 @@
 from scitbx import math
+from scitbx import differential_evolution as de
+from scitbx import simplex
+from scitbx import lbfgs
+from scitbx import direct_search_simulated_annealing as dssa
 from scitbx.array_family import flex
 from scitbx.array_family import shared
 from stdlib import math as smath
@@ -235,8 +239,217 @@ def tst_integral_triple_zernike2d(nmax):
         for n3 in range(m,n2+1,2):
           value = integrate_triple_zernike2d(n1,n2,n3,m,Bnmk_obj)
           C_m_3n.set_coef(n1,n2,n3,value)
-          print m,n1,n2,n3,value.real
+        #  print m,n1,n2,n3,value.real
     coef_table.append( C_m_3n )
+  return coef_table
+
+def calc_Cnm_4m_from_Inm(m, nmax, Inm, coef_table_m):
+  Cnm_m=flex.double()
+  for n in range(m, nmax+1, 2 ):
+    temp = 0
+    for n1 in range( m,nmax+1,2 ):
+      n1_indx = (n1-m)/2
+      for n2 in range( m,nmax+1,2 ):
+        n2_indx = (n2-m)/2
+        i,j,k=sorted([n,n1,n2],reverse=True)
+        temp = temp + coef_table_m.get_coef(i,j,k).real*Inm[n1_indx]*Inm[n2_indx]
+    Cnm_m.append( temp )
+  return Cnm_m
+
+
+def calc_Cnm_from_Inm( Inm, coef_table, nmax ):
+  Cnm=math.nl_array(nmax)
+  for n in range( 0,nmax+1,2 ): # only even number (n,m)
+    for m in range(0,n+1,2 ):
+      temp = 0
+      for n1 in range( m,nmax+1,2 ):
+        for n2 in range( m,n1,2 ):
+          i,j,k=sorted([n,n1,n2],reverse=True)
+          temp = temp + coef_table[m].get_coef(i,j,k).real*Inm.get_coef(n1,m)*Inm.get_coef(n2,m)
+        
+        i,j,k=sorted([n,n1,n1],reverse=True)
+        temp = temp + coef_table[m].get_coef(i,j,k).real*Inm.get_coef(n1,m)**2.0/2.0
+      Cnm.set_coef(n,m,temp*2.0)
+  return Cnm
+
+
+def comp_Cnm_calculations(nmax):
+  Inm=math.nl_array(nmax)
+  nls = Inm.nl()
+  size = nls.size()
+  coefs = flex.random_double(size)
+  Inm.load_coefs( nls, coefs )
+  coef_table = tst_integral_triple_zernike2d(nmax)
+  Cnm = calc_Cnm_from_Inm(Inm, coef_table, nmax )
+
+  for mm in range(0,nmax+1,2):
+    coef_table_m = coef_table[mm]
+    Inm_m=flex.double()
+    Cnm_m=flex.double()
+    for nn in range(mm,nmax+1,2):
+      Inm_m.append( Inm.get_coef(nn,mm) )
+      Cnm_m.append( Cnm.get_coef(nn,mm) )
+    Cnm_m_new = calc_Cnm_4m_from_Inm(mm,nmax,Inm_m,coef_table_m)
+
+    for ii,jj in zip(Cnm_m, Cnm_m_new):
+      assert(abs(ii-jj)<1e-6)
+  
+
+
+
+def tst_solving_Inm(nmax):
+  Inm=math.nl_array(nmax)
+  nls = Inm.nl()
+  size = nls.size()
+  coefs = flex.random_double(size)
+  Inm.load_coefs( nls, coefs )
+
+  coef_table = tst_integral_triple_zernike2d(nmax)
+  Cnm = calc_Cnm_from_Inm( Inm, coef_table, nmax )
+
+  new_Inm=math.nl_array(nmax)
+
+  for n in range( nmax+1 ):
+    for m in range(n,-1,-2):
+      Cnm_value = Cnm.get_coef( n, m )
+      coef = coef_table[m].get_coef(n,n,n).real
+#      value = smath.sqrt( Cnm_value/coef )
+      if(coef != 0):
+        value = ( Cnm_value/coef )
+        print n,m,Inm.get_coef(n,m)**2, value
+
+
+class inm_refine(object):
+  def __init__(self, nmax, Cnm, coef_table,m):
+    self.nmax=nmax
+    self.Cnm = Cnm
+    self.coef_table = coef_table
+    self.Inm = math.nl_array(nmax)
+
+    self.m=m ## testing the most populated cases
+    self.coef_table_m = self.coef_table[self.m]
+    self.x = None
+    self.ndim = (self.nmax-self.m)/2+1
+    self.n = self.ndim
+    self.domain =[(-1.0,1.0)]*self.ndim
+    self.target_data=flex.double()
+    self.n_list=range(self.m,nmax+1,2)
+    self.n_indx_list=range(self.ndim)
+    for nn in self.n_list:
+      self.target_data.append( self.Cnm.get_coef(nn,self.m) )
+#    self.solution=flex.random_double(self.n)*2-1
+#    self.target_data=self.calc_Cnm_from_Inm(self.solution)
+    self.scale = self.target_data.norm()**2
+#    self.optimizer = de.differential_evolution_optimizer(self, population_size=self.ndim,eps=1e-8,n_cross=self.n/2)
+#    self.run_simplex()
+#    self.run_dssa()
+    lowest_score=1e8
+    for ii in range(10):
+      self.run_lbfgs()
+      score=self.target(self.x)
+      if(score < lowest_score):
+        lowest_score=score
+        self.best_solution=self.x.deep_copy()
+      print list(self.x), score
+    print lowest_score
+
+  def run_lbfgs(self):
+    self.h = 0.000001
+    self.x = flex.random_double(self.n)*2-1
+    lbfgs.run(target_evaluator=self)
+    
+  def compute_functional_and_gradients(self):
+   # t, dd = self.derivs( self.x , h=self.h)
+    t=self.target(self.x)
+    dd = self.analytic_f_prime(self.x)
+    return t, dd
+
+  def derivs(self,vector,h=0.0001):
+    t  = self.target(vector)
+    dd = []
+    for ii in range(vector.size()):
+      vector_1 = vector.deep_copy()
+      vector_1[ii]=vector_1[ii]+h
+      th = self.target(vector_1)
+      delta = (th-t)/h
+      dd.append( delta )
+    delta = flex.double(dd)
+    return t,delta
+   
+  def callback_after_step(self, minimizer):
+    return
+
+  def run_dssa(self):
+    start_matrix=[]
+    for ii in range(self.n):
+      start_matrix.append( flex.random_double(self.n)*2.0-1.0 )
+    start_matrix.append( flex.double(self.n,0) )
+    self.optimizer = dssa.dssa( dimension=self.n, matrix=start_matrix, evaluator=self, tolerance=1e-5, further_opt=True )
+    self.x = self.optimizer.get_solution()
+
+
+  def run_simplex(self):
+    start_matrix=[]
+    for ii in range(self.n):
+      start_matrix.append( flex.random_double(self.n)*2.0-1.0 )
+    start_matrix.append( flex.double(self.n,0) )
+    self.optimizer = simplex.simplex_opt( dimension=self.n, matrix=start_matrix, evaluator=self, tolerance=1e-5 )
+    self.x = self.optimizer.get_solution()
+
+  def analytic_f_prime(self,Inm):
+    f_prime=flex.double()
+    pre_factor=(self.calc_data-self.target_data)*(4.0)/self.scale
+
+    for n in self.n_list:
+      temp = 0
+      for n1,n1_indx in zip(self.n_list,self.n_indx_list):
+        temp1 = 0
+        for n2,n2_indx in zip(self.n_list,self.n_indx_list):
+          i,j,k=sorted([n,n1,n2],reverse=True)
+          temp1 = temp1 + self.coef_table_m.get_coef(i,j,k).real*Inm[n2_indx]
+        temp = temp+temp1*pre_factor[n1_indx]
+      f_prime.append(temp)
+    return f_prime
+
+
+  def target(self, x):
+    self.calc_data=self.calc_Cnm_from_Inm(x) 
+    score = flex.sum_sq( self.calc_data-self.target_data) 
+    return score/self.scale
+   
+  def calc_Cnm_from_Inm(self, Inm):
+    Cnm=flex.double()
+    for n in range(self.m,self.nmax+1,2):
+      temp = 0
+      for n1 in range(self.m,self.nmax+1,2):
+        n1_indx = (n1-self.m)/2
+        for n2 in range(self.m,self.nmax+1,2):
+          n2_indx = (n2-self.m)/2
+          i,j,k=sorted([n,n1,n2],reverse=True)
+          temp = temp + self.coef_table_m.get_coef(i,j,k).real*Inm[n1_indx]*Inm[n2_indx]
+      Cnm.append( temp )
+    return Cnm
+
+def test_solving(nmax, m):
+  Inm=math.nl_array(nmax)
+  nls = Inm.nl()
+  size = nls.size()
+  coefs = flex.random_double(size)
+  Inm.load_coefs( nls, coefs )
+
+  coef_table = tst_integral_triple_zernike2d(nmax)
+  Cnm = calc_Cnm_from_Inm( Inm, coef_table, nmax )
+  t1 = time.time()
+  refine_de_obj = inm_refine( nmax, Cnm, coef_table, m )
+  solution=flex.double()
+  for nn in range(m,nmax+1,2):
+    solution.append( Inm.get_coef(nn,m) )
+  for ss,xx in zip(solution, refine_de_obj.best_solution):
+    print ss,xx
+  print "score=",refine_de_obj.target(refine_de_obj.x)
+  print "score=",refine_de_obj.target(solution)
+  t2 = time.time()
+  print "nmax=",nmax, "time used:", t2-t1
 
 
 
@@ -256,7 +469,14 @@ if __name__ == "__main__":
     nmax=int(args[0])
   elif(len(args)==0):
     nmax=5
+  if(len(args) == 2):
+    nmax=int(args[0])
+    m=int(args[1])
+    assert m<=nmax
+    test_solving(nmax,m)
+  exit()
   tst_integral_triple_zernike2d(nmax)
+  comp_Cnm_calculations(nmax)
 
 
   exit()

@@ -8,6 +8,37 @@
 namespace scitbx { namespace math {
 namespace {
 
+  struct two_d_voxel_wrapper
+  {
+    typedef voxel_2d <double> w_t;
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("two_d_voxel", no_init)
+        .def( init<
+                   int const&,
+                   double const&,
+                   double const&,
+                   double const&,
+                   scitbx::af::const_ref< scitbx::vec3<double> >
+                  >
+             ((
+                arg("splat_range"),
+                arg("external_rmax"),
+                arg("dx"),
+                arg("fraction"),
+                arg("xyz")
+             ))
+            )
+        .def("rmax", &w_t::rmax)
+        .def("np", &w_t::np)
+        .def("get_image", &w_t::get_image)
+        .def("get_value", &w_t::get_value)
+      ;
+    }
+  };
+
 //
 //
   struct two_d_grid_wrapper
@@ -46,7 +77,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("two_d_zernike_moments", no_init)
         .def( init<
-                   grid_2d<double>,
+                   grid_2d< double >,
                    int const&
                   >
              ((
@@ -73,6 +104,7 @@ namespace boost_python {
 
   void wrap_2d_zernike_mom()
   {
+    two_d_voxel_wrapper::wrap();
     two_d_moments_wrapper::wrap();
     two_d_grid_wrapper::wrap();
   }

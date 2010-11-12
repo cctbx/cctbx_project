@@ -27,6 +27,122 @@ namespace scitbx { namespace math {
 namespace zernike {
 
   template <typename FloatType>
+  class voxel_2d
+  {
+    public:
+      voxel_2d() {}
+      voxel_2d(
+             int const& splat_range,
+             FloatType const& external_rmax,
+             FloatType const& dx,
+             FloatType const& fraction, // splat_range*dx< (1-fraction)*rmax
+             scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz
+           ):
+           splat_range_(splat_range), dx_(dx),natom_(xyz.size()), fract_(fraction), NP_MAX_(200), external_rmax_(external_rmax)
+      {
+        FloatType tmp_r2;
+        x_center_=0;
+        y_center_=0;
+
+        for(int i=0;i<natom_;i++) {
+          scitbx::vec2<FloatType> new_xy( xyz[i][0], xyz[i][1] );
+          xy_.push_back( new_xy );
+          x_center_ += new_xy[0];
+          y_center_ += new_xy[1];
+        }
+
+        x_center_ /= static_cast<FloatType> (natom_);
+        y_center_ /= static_cast<FloatType> (natom_);
+
+        rmax_=0.0;
+        for(int i=0;i<natom_;i++) {
+          xy_[i][0] -= x_center_;
+          xy_[i][1] -= y_center_;
+          tmp_r2 = xy_[i].length_sq();
+          if(rmax_< tmp_r2) rmax_= tmp_r2;
+        }
+        rmax_ = std::sqrt( rmax_ );
+
+        if (external_rmax_ > 0){
+          SCITBX_ASSERT( external_rmax_ >= rmax_ ) ; // if not,  we are no longer on the unit ball!
+          rmax_ = external_rmax_;
+        }
+
+        NP_ = int(rmax_/fract_/dx_)+1;
+        if(NP_ > NP_MAX_)
+          NP_=NP_MAX_;
+        dx_ = 1.0/static_cast<FloatType>(NP_);
+
+        scale_ = 1.0/rmax_*fract_;
+        for(int i=0;i<natom_;i++)
+          scaled_xy_.push_back(xy_[i]*scale_);
+
+        initialize_voxel();
+        xyz2voxel();
+      }
+
+      FloatType rmax() { return rmax_; }
+      FloatType fraction() { return fract_; }
+      int np() { return NP_; }
+
+      void xyz2voxel() {
+        int xi,yi;
+        int n_tot = NP_*2+1;
+        for(int i=0;i<natom_;i++) {
+          if(scaled_xy_[i][0] <0 )
+            xi=int(scaled_xy_[i][0]/dx_-0.5)+NP_;
+          else
+            xi=int(scaled_xy_[i][0]/dx_+0.5)+NP_;
+
+          if(scaled_xy_[i][1] <0 )
+            yi=int(scaled_xy_[i][1]/dx_-0.5)+NP_;
+          else
+            yi=int(scaled_xy_[i][1]/dx_+0.5)+NP_;
+          mark_region(xi,yi);
+        }
+
+        for(int i=0;i<n_tot;i++)
+          for(int j=0;j<n_tot;j++)
+            image_.push_back( scitbx::vec3<FloatType> (i,j,value_(i,j)) );
+
+      }
+
+      void mark_region(int xi, int yi) {
+        for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
+          for(int j=yi-splat_range_;j<=yi+splat_range_;j++)
+              value_(i,j) += 1.0;  //uniform
+
+        return;
+      }
+
+      bool initialize_voxel() {
+        int n_tot=2*NP_+1;
+        scitbx::af::c_grid<2> value_grid( n_tot, n_tot );
+        value_= scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > (value_grid, 0);
+        return true;
+      }
+
+      scitbx::af::shared< scitbx::vec3<FloatType> > get_image()
+      { return image_; }
+
+      scitbx::af::versa<FloatType, scitbx::af::c_grid<2> > get_value()
+      { return value_; }
+
+
+    private:
+      scitbx::af::shared< scitbx::vec2<FloatType> > xy_;
+      scitbx::af::shared< scitbx::vec2<FloatType> > scaled_xy_;
+      scitbx::af::shared< scitbx::vec3<FloatType> > image_;
+      int natom_, NP_, NP_MAX_;
+      bool uniform_, fixed_dx_;
+      FloatType dx_, splat_range_, rmax_, scale_, fract_, rg_, rel_rg_, external_rmax_;
+      FloatType x_center_, y_center_;
+      scitbx::af::versa<  FloatType, scitbx::af::c_grid<2> > value_;
+  };
+
+
+
+  template <typename FloatType>
   class grid_2d
   { //the 2D grid that encloses unit disk with resolution 1/(2*N)
     public:
@@ -78,7 +194,6 @@ namespace zernike {
           }
           total_point_ = voxel_indx_.size();
         }
-//        std::cout<<"occupied pixel "<<voxel_value_.size()<<std::endl;
         return true;
       }
 
