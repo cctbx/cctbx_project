@@ -233,16 +233,10 @@ class cut(cut_expr_ops):
     return cut(self.n, self.c)
 
   def change_basis(self, cb_op):
-    rt = cb_op.c().as_rational()
-    r_inv_transpose = cb_op.c_inv().r().as_rational().transpose()
-    n = matrix.col(self.n)
-    n_norm_sq = n.norm_sq()
-    assert n_norm_sq != 0
-    x = n * (-self.c / rational.int(n_norm_sq))
-    assert n.dot(x)+self.c == 0
-    np = r_inv_transpose * n
-    xp = rt.r * x + rt.t
-    cp = -(np.dot(xp))
+    r_inv_tp = cb_op.c_inv().r().as_rational().transpose()
+    t = cb_op.c().t().as_rational()
+    np = r_inv_tp * matrix.col(self.n)
+    cp = self.c - np.dot(t)
     if (self.has_cuts()):
       return cut(np.elems, cp, inclusive=self.inclusive,
         cut_expr=self.cut_expr.change_basis(cb_op))
