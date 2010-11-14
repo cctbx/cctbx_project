@@ -63,7 +63,8 @@ namespace {
         arg("max_keys")))
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
-      .def("as_numpy_array", flex_size_t_as_numpy_array)
+      .def("as_numpy_array", flex_size_t_as_numpy_array, (
+        arg("optional")=false))
     ;
     range_wrappers<std::size_t, long, range_args::unsigned_check>::wrap(
       "size_t_range");

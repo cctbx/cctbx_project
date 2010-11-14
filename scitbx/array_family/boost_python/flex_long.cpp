@@ -21,7 +21,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("counts", counts<long, std::map<long, long> >::unlimited)
       .def("counts", counts<long, std::map<long, long> >::limited, (
         arg("max_keys")))
-      .def("as_numpy_array", flex_long_as_numpy_array)
+      .def("as_numpy_array", flex_long_as_numpy_array, (
+        arg("optional")=false))
     ;
     range_wrappers<long, long>::wrap("long_range");
   }

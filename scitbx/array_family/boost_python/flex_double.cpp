@@ -426,7 +426,8 @@ namespace boost_python {
       .def("select", select_stl_iterable<std::set<unsigned> >, (
         arg("selection")))
       .def("norm_1", norm_1_a)
-      .def("as_numpy_array", flex_double_as_numpy_array)
+      .def("as_numpy_array", flex_double_as_numpy_array, (
+        arg("optional")=false))
     ;
     def(
       "double_from_byte_str",

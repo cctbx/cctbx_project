@@ -5,7 +5,8 @@ namespace scitbx { namespace af { namespace boost_python {
 #define SCITBX_LOC(pyname, ElementType) \
   boost::python::object \
   flex_##pyname##_as_numpy_array( \
-    ref<ElementType, flex_grid<> > const& O); \
+    ref<ElementType, flex_grid<> > const& O, \
+    bool optional=false); \
  \
   versa<ElementType, flex_grid<> >* \
   flex_##pyname##_from_numpy_array( \

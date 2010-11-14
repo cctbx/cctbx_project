@@ -120,7 +120,8 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
-      .def("as_numpy_array", flex_int_as_numpy_array)
+      .def("as_numpy_array", flex_int_as_numpy_array, (
+        arg("optional")=false))
     ;
     def(
       "int_from_byte_str",

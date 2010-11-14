@@ -390,7 +390,8 @@ namespace {
            af::const_ref<bool> const&,
            af::const_ref<std::size_t> const&)) filter_indices, (
              arg("indices")))
-      .def("as_numpy_array", flex_bool_as_numpy_array)
+      .def("as_numpy_array", flex_bool_as_numpy_array, (
+        arg("optional")=false))
     ;
     def("order", f_w::order_a_a, (arg("other")));
     def("union", union_, (arg("size"), arg("iselections")));

@@ -1,4 +1,5 @@
 from scitbx.array_family import flex
+from libtbx.test_utils import Exception_expected, show_diff
 
 def exercise_basic(flex_type, verbose):
   if (flex_type is flex.bool):
@@ -52,7 +53,14 @@ def run(args):
   assert args in [[], ["--forever"]]
   verbose = True
   while True:
-    if (flex.int().as_numpy_array() is not None):
+    if (flex.int().as_numpy_array(optional=True) is None):
+      try:
+        flex.int().as_numpy_array()
+      except RuntimeError, e:
+        assert not show_diff(str(e), "numpy API not available")
+      else:
+        raise Exception_expected
+    else:
       for flex_type in [
             flex.bool,
             flex.int,
