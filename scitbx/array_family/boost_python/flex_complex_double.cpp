@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/flex_wrapper_complex.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/move.h>
 #include <boost/python/make_constructor.hpp>
@@ -94,10 +95,6 @@ namespace {
 
 } // namespace <anonymous>
 
-  boost::python::object
-  ref_flex_as_numpy_array(
-    ref<std::complex<double>, flex_grid<> > const& O);
-
   void wrap_flex_complex_double()
   {
     using namespace boost::python;
@@ -105,10 +102,12 @@ namespace {
     typedef flex_wrapper<std::complex<double> > f_w;
     scope local_scope;
     f_w::numeric_common("complex_double", local_scope)
+      .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
       .def("__init__", make_constructor(
         from_pair_of_flex_double, default_call_policies(), (
           arg("reals"), arg("imags"))))
-      .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
+      .def("__init__", make_constructor(
+        flex_complex_double_from_numpy_array, default_call_policies()))
       .def("all_approx_equal",
         all_approx_equal_a_a, (
           arg("other"),
@@ -160,7 +159,7 @@ namespace {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
-      .def("as_numpy_array", ref_flex_as_numpy_array)
+      .def("as_numpy_array", flex_complex_double_as_numpy_array)
     ;
     def("mean", f_w::mean_a);
     def("mean_sq", f_w::mean_sq_a);

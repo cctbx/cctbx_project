@@ -2,6 +2,7 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/array_family/counts.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/packed.h>
@@ -63,10 +64,6 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
-  boost::python::object
-  ref_flex_as_numpy_array(
-    ref<int, flex_grid<> > const& O);
-
   void wrap_flex_int()
   {
     using namespace boost::python;
@@ -75,6 +72,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<int>())
       .def("__init__", make_constructor(
         from_std_string, default_call_policies()))
+      .def("__init__", make_constructor(
+        flex_int_from_numpy_array, default_call_policies()))
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
@@ -121,7 +120,7 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
-      .def("as_numpy_array", ref_flex_as_numpy_array)
+      .def("as_numpy_array", flex_int_as_numpy_array)
     ;
     def(
       "int_from_byte_str",

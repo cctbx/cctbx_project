@@ -2,6 +2,7 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/math/utils.h>
 #include <scitbx/matrix/norms.h>
 #include <boost/python/args.hpp>
@@ -361,10 +362,6 @@ namespace {
 
 namespace boost_python {
 
-  boost::python::object
-  ref_flex_as_numpy_array(
-    ref<double, flex_grid<> > const& O);
-
   void
   wrap_flex_double_matrix(
     flex_wrapper<double>::class_f_t& class_f_t);
@@ -389,6 +386,8 @@ namespace boost_python {
         from_list_of_lists_or_tuples, default_call_policies()))
       .def("__init__", make_constructor(
         from_tuple_of_lists_or_tuples, default_call_policies()))
+      .def("__init__", make_constructor(
+        flex_double_from_numpy_array, default_call_policies()))
       .def("__mul__", mul_ar_sc)
       .def("__rmul__", mul_ar_sc)
       .def("__mul__", f_w::mul_a_s) // re-define so it is found first
@@ -427,7 +426,7 @@ namespace boost_python {
       .def("select", select_stl_iterable<std::set<unsigned> >, (
         arg("selection")))
       .def("norm_1", norm_1_a)
-      .def("as_numpy_array", ref_flex_as_numpy_array)
+      .def("as_numpy_array", flex_double_as_numpy_array)
     ;
     def(
       "double_from_byte_str",

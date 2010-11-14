@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost/python/args.hpp>
 #include <boost/python/scope.hpp>
@@ -344,10 +345,6 @@ namespace {
 
 } // namespace <anonymous>
 
-  boost::python::object
-  ref_flex_as_numpy_array(
-    ref<bool, flex_grid<> > const& O);
-
   void wrap_flex_bool()
   {
     using namespace boost::python;
@@ -365,6 +362,8 @@ namespace {
         &from_iselection<std::size_t>::get,
         default_call_policies(),
         (arg("size"), arg("iselection"))))
+      .def("__init__", make_constructor(
+        flex_bool_from_numpy_array, default_call_policies()))
       .def("__eq__", eq)
       .def("__ne__", ne)
       .def("__eq__", eq)
@@ -391,7 +390,7 @@ namespace {
            af::const_ref<bool> const&,
            af::const_ref<std::size_t> const&)) filter_indices, (
              arg("indices")))
-      .def("as_numpy_array", ref_flex_as_numpy_array)
+      .def("as_numpy_array", flex_bool_as_numpy_array)
     ;
     def("order", f_w::order_a_a, (arg("other")));
     def("union", union_, (arg("size"), arg("iselections")));
