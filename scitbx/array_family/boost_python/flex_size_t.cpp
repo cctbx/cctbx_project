@@ -42,6 +42,10 @@ namespace {
 
 } // namespace <anonymous>
 
+  boost::python::object
+  ref_flex_as_numpy_array(
+    ref<std::size_t, flex_grid<> > const& O);
+
   void wrap_flex_size_t()
   {
     using namespace boost::python;
@@ -60,6 +64,7 @@ namespace {
         arg("max_keys")))
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
+      .def("as_numpy_array", ref_flex_as_numpy_array)
     ;
     range_wrappers<std::size_t, long, range_args::unsigned_check>::wrap(
       "size_t_range");

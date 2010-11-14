@@ -34,6 +34,7 @@ def run():
   "$D/stl/tst_vector.py",
   "$D/array_family/boost_python/regression_test.py",
   "$D/array_family/boost_python/tst_flex.py",
+  "$D/array_family/boost_python/tst_numpy_bridge.py",
   "$D/array_family/boost_python/tst_smart_selection.py",
   "$D/array_family/boost_python/tst_shared.py",
   "$D/array_family/boost_python/tst_integer_offsets_vs_pointers.py",

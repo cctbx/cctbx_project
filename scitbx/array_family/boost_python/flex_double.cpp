@@ -361,6 +361,10 @@ namespace {
 
 namespace boost_python {
 
+  boost::python::object
+  ref_flex_as_numpy_array(
+    ref<double, flex_grid<> > const& O);
+
   void
   wrap_flex_double_matrix(
     flex_wrapper<double>::class_f_t& class_f_t);
@@ -423,6 +427,7 @@ namespace boost_python {
       .def("select", select_stl_iterable<std::set<unsigned> >, (
         arg("selection")))
       .def("norm_1", norm_1_a)
+      .def("as_numpy_array", ref_flex_as_numpy_array)
     ;
     def(
       "double_from_byte_str",

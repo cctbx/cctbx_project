@@ -8,6 +8,10 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  boost::python::object
+  ref_flex_as_numpy_array(
+    ref<long, flex_grid<> > const& O);
+
   void wrap_flex_long()
   {
     using namespace boost::python;
@@ -17,6 +21,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("counts", counts<long, std::map<long, long> >::unlimited)
       .def("counts", counts<long, std::map<long, long> >::limited, (
         arg("max_keys")))
+      .def("as_numpy_array", ref_flex_as_numpy_array)
     ;
     range_wrappers<long, long>::wrap("long_range");
   }

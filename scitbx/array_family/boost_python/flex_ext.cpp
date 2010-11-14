@@ -28,6 +28,7 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  void import_numpy_api_if_available();
   void wrap_flex_grid();
   void wrap_flex_bool();
   void wrap_flex_size_t();
@@ -427,6 +428,8 @@ namespace {
   {
     using namespace boost::python;
     using boost::python::arg;
+
+    import_numpy_api_if_available();
 
     register_scitbx_tuple_mappings();
 

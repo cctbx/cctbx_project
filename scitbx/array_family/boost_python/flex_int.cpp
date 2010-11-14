@@ -63,6 +63,10 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  boost::python::object
+  ref_flex_as_numpy_array(
+    ref<int, flex_grid<> > const& O);
+
   void wrap_flex_int()
   {
     using namespace boost::python;
@@ -117,6 +121,7 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
+      .def("as_numpy_array", ref_flex_as_numpy_array)
     ;
     def(
       "int_from_byte_str",
