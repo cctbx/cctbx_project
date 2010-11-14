@@ -266,7 +266,7 @@ def calc_Cnm_from_Inm( Inm, coef_table, nmax ):
         for n2 in range( m,n1,2 ):
           i,j,k=sorted([n,n1,n2],reverse=True)
           temp = temp + coef_table[m].get_coef(i,j,k).real*Inm.get_coef(n1,m)*Inm.get_coef(n2,m)
-        
+
         i,j,k=sorted([n,n1,n1],reverse=True)
         temp = temp + coef_table[m].get_coef(i,j,k).real*Inm.get_coef(n1,m)**2.0/2.0
       Cnm.set_coef(n,m,temp*2.0)
@@ -293,7 +293,7 @@ def comp_Cnm_calculations(nmax):
 
     for ii,jj in zip(Cnm_m, Cnm_m_new):
       assert(abs(ii-jj)<1e-6)
-  
+
 
 
 
@@ -357,7 +357,7 @@ class inm_refine(object):
     self.h = 0.000001
     self.x = flex.random_double(self.n)*2-1
     lbfgs.run(target_evaluator=self)
-    
+
   def compute_functional_and_gradients(self):
    # t, dd = self.derivs( self.x , h=self.h)
     t=self.target(self.x)
@@ -375,7 +375,7 @@ class inm_refine(object):
       dd.append( delta )
     delta = flex.double(dd)
     return t,delta
-   
+
   def callback_after_step(self, minimizer):
     return
 
@@ -413,10 +413,10 @@ class inm_refine(object):
 
 
   def target(self, x):
-    self.calc_data=self.calc_Cnm_from_Inm(x) 
-    score = flex.sum_sq( self.calc_data-self.target_data) 
+    self.calc_data=self.calc_Cnm_from_Inm(x)
+    score = flex.sum_sq( self.calc_data-self.target_data)
     return score/self.scale
-   
+
   def calc_Cnm_from_Inm(self, Inm):
     Cnm=flex.double()
     for n in range(self.m,self.nmax+1,2):
