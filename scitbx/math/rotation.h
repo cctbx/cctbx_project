@@ -10,9 +10,9 @@
 #include<scitbx/math/zernike.h>
 /*
  * This class is to rotate spherical harnomic functions
- * The dmatrix is similar to the one in phaser 
+ * The dmatrix is similar to the one in phaser
  * The correlation class is to evaluate correlation of zernike moment represented
- * models; the maximum correlation coefficient is found by using fft 
+ * models; the maximum correlation coefficient is found by using fft
 */
 namespace af=scitbx::af;
 
