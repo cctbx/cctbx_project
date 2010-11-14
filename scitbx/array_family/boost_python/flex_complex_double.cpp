@@ -94,6 +94,10 @@ namespace {
 
 } // namespace <anonymous>
 
+  boost::python::object
+  ref_flex_as_numpy_array(
+    ref<std::complex<double>, flex_grid<> > const& O);
+
   void wrap_flex_complex_double()
   {
     using namespace boost::python;
@@ -156,6 +160,7 @@ namespace {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
+      .def("as_numpy_array", ref_flex_as_numpy_array)
     ;
     def("mean", f_w::mean_a);
     def("mean_sq", f_w::mean_sq_a);

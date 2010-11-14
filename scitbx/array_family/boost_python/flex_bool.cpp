@@ -344,6 +344,10 @@ namespace {
 
 } // namespace <anonymous>
 
+  boost::python::object
+  ref_flex_as_numpy_array(
+    ref<bool, flex_grid<> > const& O);
+
   void wrap_flex_bool()
   {
     using namespace boost::python;
@@ -387,6 +391,7 @@ namespace {
            af::const_ref<bool> const&,
            af::const_ref<std::size_t> const&)) filter_indices, (
              arg("indices")))
+      .def("as_numpy_array", ref_flex_as_numpy_array)
     ;
     def("order", f_w::order_a_a, (arg("other")));
     def("union", union_, (arg("size"), arg("iselections")));
