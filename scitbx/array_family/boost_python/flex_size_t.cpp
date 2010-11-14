@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/array_family/counts.h>
 #include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_fwd.h>
@@ -42,10 +43,6 @@ namespace {
 
 } // namespace <anonymous>
 
-  boost::python::object
-  ref_flex_as_numpy_array(
-    ref<std::size_t, flex_grid<> > const& O);
-
   void wrap_flex_size_t()
   {
     using namespace boost::python;
@@ -54,6 +51,8 @@ namespace {
       .def_pickle(flex_pickle_single_buffered<std::size_t>())
       .def("__init__", make_constructor(
         from_stl_vector_unsigned, default_call_policies()))
+      .def("__init__", make_constructor(
+        flex_size_t_from_numpy_array, default_call_policies()))
       .def("intersection",
         (af::shared<std::size_t>(*)(
           af::const_ref<std::size_t> const&,
@@ -64,7 +63,7 @@ namespace {
         arg("max_keys")))
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
-      .def("as_numpy_array", ref_flex_as_numpy_array)
+      .def("as_numpy_array", flex_size_t_as_numpy_array)
     ;
     range_wrappers<std::size_t, long, range_args::unsigned_check>::wrap(
       "size_t_range");
