@@ -13,7 +13,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<float>())
       .def("__init__", make_constructor(
         flex_float_from_numpy_array, default_call_policies()))
-      .def("as_numpy_array", flex_float_as_numpy_array)
+      .def("as_numpy_array", flex_float_as_numpy_array, (
+        boost::python::arg("optional")=false))
     ;
     range_wrappers<float, int>::wrap("float_range");
   }

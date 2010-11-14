@@ -159,7 +159,8 @@ namespace {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
-      .def("as_numpy_array", flex_complex_double_as_numpy_array)
+      .def("as_numpy_array", flex_complex_double_as_numpy_array, (
+        arg("optional")=false))
     ;
     def("mean", f_w::mean_a);
     def("mean_sq", f_w::mean_sq_a);

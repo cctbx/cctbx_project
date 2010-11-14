@@ -29,15 +29,23 @@ namespace scitbx { namespace af { namespace boost_python {
 #endif
   }
 
+  char const*
+  numpy_api_not_available() { return "numpy API not available"; }
+
   template <typename ElementType>
   boost::python::object
   ref_flex_as_numpy_array(
     ref<ElementType, flex_grid<> > const& O,
+    bool optional,
     int type_num)
   {
     namespace bp = boost::python;
     bp::object result;
-#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+#if !defined(SCITBX_HAVE_NUMPY_INCLUDE)
+    if (!optional) {
+      throw std::runtime_error(numpy_api_not_available());
+    }
+#else
     npy_intp dims[flex_grid<>::index_type::capacity()];
     flex_grid<> const& grid = O.accessor();
     int nd = static_cast<int>(grid.nd());
@@ -68,7 +76,9 @@ namespace scitbx { namespace af { namespace boost_python {
     boost::python::numeric::array const& arr_obj)
   {
     namespace bp = boost::python;
-#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+#if !defined(SCITBX_HAVE_NUMPY_INCLUDE)
+    throw std::runtime_error(numpy_api_not_available());
+#else
     PyObject* arr_ptr = arr_obj.ptr();
     if (!PyArray_Check(arr_ptr)) {
       throw std::invalid_argument(
@@ -115,18 +125,17 @@ namespace scitbx { namespace af { namespace boost_python {
         "Unsupported numpy.ndarray element type");
     }
 #undef SCITBX_LOC
-#else
-    versa<ElementType, flex_grid<> > result;
-#endif
     return result;
+#endif
   }
 
 #define SCITBX_LOC(pyname, ElementType, type_num) \
   boost::python::object \
   flex_##pyname##_as_numpy_array( \
-    ref<ElementType, flex_grid<> > const& O) \
+    ref<ElementType, flex_grid<> > const& O, \
+    bool optional) \
   { \
-    return ref_flex_as_numpy_array(O, type_num); \
+    return ref_flex_as_numpy_array(O, optional, type_num); \
   } \
  \
   versa<ElementType, flex_grid<> >* \
