@@ -53,6 +53,8 @@ namespace scitbx { namespace af { namespace boost_python {
 #define NPY_FLOAT 0
 #define NPY_DOUBLE 0
 #define NPY_CDOUBLE 0
+#define NPY_USHORT 0
+#define NPY_UINT 0
 #define NPY_ULONG 0
 #define NPY_ULONGLONG 0
 #endif
@@ -64,7 +66,11 @@ namespace scitbx { namespace af { namespace boost_python {
   SCITBX_LOC(double, NPY_DOUBLE);
   SCITBX_LOC(std::complex<double>, NPY_CDOUBLE);
 
-#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG)
+#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_SHORT)
+  SCITBX_LOC(std::size_t, NPY_USHORT);
+#elif defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
+  SCITBX_LOC(std::size_t, NPY_UINT);
+#elif defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG)
   SCITBX_LOC(std::size_t, NPY_ULONG);
 #elif defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG_LONG)
   SCITBX_LOC(std::size_t, NPY_ULONGLONG);
