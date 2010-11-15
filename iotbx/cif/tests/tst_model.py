@@ -33,7 +33,6 @@ def exercise_cif_model():
   block["_tag"] = 3
   block["_tag1"] = "'a string'"
   block["_another_tag"] = 3.142
-  #block["_bad_tag"] = u"ü"
   assert "_tag" in block
   assert "_tag1" in block
   assert "_another_tag" in block
