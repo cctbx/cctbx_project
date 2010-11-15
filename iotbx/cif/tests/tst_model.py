@@ -1,7 +1,9 @@
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
+from libtbx.utils import Sorry
 from cStringIO import StringIO
 import copy
+
 
 def exercise_cif_model():
   import iotbx.cif
@@ -19,7 +21,7 @@ def exercise_cif_model():
   assert loop.size() == 4 # the number of rows (loop iterations)
   assert loop.keys() == ['_loop_a', '_loop_c', '_loop_b']
   try: loop["no_leading_underscore"] = 3
-  except AssertionError: pass
+  except Sorry: pass
   else: raise Exception_expected
   loop2 = model.loop(header=("_loop2_a", "_loop2_b"), data=(1,2,3,4,5,6))
   assert loop2.keys() == ["_loop2_a", "_loop2_b"]
@@ -29,23 +31,24 @@ def exercise_cif_model():
   #
   block = model.block()
   block["_tag"] = 3
-  block["_tag1"] = "a string"
+  block["_tag1"] = "'a string'"
   block["_another_tag"] = 3.142
+  #block["_bad_tag"] = u"ü"
   assert "_tag" in block
   assert "_tag1" in block
   assert "_another_tag" in block
   assert block["_tag"] == '3'
-  assert block["_tag1"] == "a string"
+  assert block["_tag1"] == "'a string'"
   assert block["_another_tag"] == "3.142"
   assert block.keys() == ['_tag', '_tag1', '_another_tag']
-  assert block.values() == ["3", 'a string', "3.142"]
+  assert block.values() == ["3", "'a string'", "3.142"]
   try: block["no_leading_underscore"] = 3
-  except AssertionError: pass
+  except Sorry: pass
   else: raise Exception_expected
   block.add_loop(loop)
   assert len(block) == 6
   assert block.items() == [
-    ('_tag', '3'), ('_tag1', 'a string'), ('_another_tag', '3.142'),
+    ('_tag', '3'), ('_tag1', "'a string'"), ('_another_tag', '3.142'),
     ('_loop_a', flex.std_string(['1', '2', '3', '4'])),
     ('_loop_c', flex.std_string(['4', '5', '6', '7'])),
     ('_loop_b', flex.std_string(['7', '8', '9', '0']))]
@@ -58,7 +61,7 @@ def exercise_cif_model():
   block1.add_loop(loop3)
   block.update(block1)
   assert block._items.keys() == ['_another_tag', '_tag2', '_tag', '_tag1']
-  assert block._items.values() == ['3.142', '1.2', '2', 'a string']
+  assert block._items.values() == ['3.142', '1.2', '2', "'a string'"]
   assert block.loops.keys() == ['_loop', '_loop2']
   assert block.keys() == ['_tag', '_tag1', '_another_tag', '_loop_a',
                           '_loop_b','_tag2', '_loop2_a', '_loop2_b']

@@ -1,4 +1,5 @@
 from libtbx.containers import OrderedDict, OrderedSet
+from libtbx.utils import Sorry
 import sys
 import copy
 from cStringIO import StringIO
@@ -17,6 +18,8 @@ class cif(DictMixin):
 
   def __setitem__(self, key, value):
     assert isinstance(value, block)
+    if not re.match(tag_re, '_'+key):
+      raise Sorry("%s is not a valid data block name" %key)
     self.blocks[key] = value
     self.keys_lower[key.lower()] = key
 
@@ -81,13 +84,19 @@ class block_base(DictMixin):
     self.keys_lower = {}
 
   def __setitem__(self, key, value):
-    assert key.startswith('_')
+    if not re.match(tag_re, key):
+      raise Sorry("%s is not a valid data name" %key)
     if isinstance(value, loop):
       self.loops[key] = value
       for k in value.keys():
         self.keys_lower[k.lower()] = k
     else:
-      self._items[key] = str(value)
+      v = str(value)
+      if not (re.match(any_print_char_re, v) or
+              re.match(quoted_string_re, v) or
+              re.match(semicolon_string_re, v)):
+        raise Sorry("Invalid data item for %s" %key)
+      self._items[key] = v
       self.keys_lower[key.lower()] = key
     self._set.add(key)
 
@@ -302,7 +311,8 @@ class loop(DictMixin):
         [(key.lower(), key) for key in self._columns.keys()])
 
   def __setitem__(self, key, value):
-    assert key.startswith('_')
+    if not re.match(tag_re, key):
+      raise Sorry("%s is not a valid data name" %key)
     if len(self) > 0:
       assert len(value) == self.size()
     if not isinstance(value, flex.std_string):
@@ -446,14 +456,25 @@ def LCSubstr_set(S, T):
 
 
 import re
-quoted_string_re = re.compile(r"(?!'|\").*?(?!'|\")")
+_ordinary_char_set = r"!%&()*+,\-./0-9:<=>?@A-Z\\^`a-z{|}~"
+_non_blank_char_set = r"%s\"#$'_;[\]"%_ordinary_char_set
+_any_print_char_set = r"%s\"#$'_ \t;[\]" %_ordinary_char_set
+_text_lead_char_set = r"%s\"#$'_ \t[\]" %_ordinary_char_set
+
+any_print_char_re = re.compile(r"[%s]*" %_any_print_char_set)
+tag_re = re.compile(r"_[%s]+" %_non_blank_char_set)
+unquoted_string_re = re.compile(
+  r"[%s][%s]*" %(_ordinary_char_set, _non_blank_char_set))
+quoted_string_re = re.compile(r"('|\")[%s]*('|\")" %_any_print_char_set)
 semicolon_string_re = re.compile(r"(\s*)(;).*?(;)(\s*)", re.DOTALL)
 
 def format_value(value_string):
   m = re.match(quoted_string_re, value_string)
-  string_is_quoted = m is None
+  string_is_quoted = m is not None
   if not string_is_quoted:
-    if re.match(semicolon_string_re, value_string) is not None:
+    if len(value_string) == 0:
+      return "''"
+    elif re.match(semicolon_string_re, value_string) is not None:
       # a semicolon text field
       return "\n%s\n" %value_string.strip()
     elif '\n' in value_string:
