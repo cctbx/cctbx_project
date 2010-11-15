@@ -84,7 +84,7 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     from cctbx.crystal import direct_space_asu
     return direct_space_asu.float_asu(
       unit_cell=self,
-      facets=[direct_space_asu.float_cut_plane(n=n, c=0)
+      cuts=[direct_space_asu.float_cut_plane(n=n, c=0)
         for n in [(-1,0,0),(0,-1,0),(0,0,-1)]]) \
       .add_buffer(thickness=float(buffer)) \
       .volume_vertices().max()

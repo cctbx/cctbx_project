@@ -27,7 +27,7 @@ from mmtbx import f_model
 import libtbx.phil.command_line
 from mmtbx.twinning import twin_f_model
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys, os
 
 master_params = iotbx.phil.parse("""\

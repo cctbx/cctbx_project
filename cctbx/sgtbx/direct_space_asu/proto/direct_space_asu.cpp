@@ -216,7 +216,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     if( is_optimized() )
       throw cctbx::error("Optimized asu may only be used for"
         " is_inside/where_is operations on the grid");
-    cctbx::crystal::direct_space_asu::float_asu<>::facets_t ffaces;
+    cctbx::crystal::direct_space_asu::float_asu<>::cuts_t ffaces;
     size_type nf = this->n_faces();
     for(size_type i=0; i<nf; ++i)
     {

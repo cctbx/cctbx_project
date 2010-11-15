@@ -85,7 +85,7 @@ def exercise_symmetry():
          bc.change_basis("-x,-y,-x+z").unit_cell())
   asu = xs.direct_space_asu()
   assert asu.hall_symbol == " P 2y"
-  assert len(asu.facets) == 6
+  assert len(asu.cuts) == 6
   assert asu.unit_cell is xs.unit_cell()
   asu_mappings = xs.asu_mappings(buffer_thickness=2.364)
   assert approx_equal(asu_mappings.buffer_thickness(), 2.364)

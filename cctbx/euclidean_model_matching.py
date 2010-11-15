@@ -2,7 +2,6 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix
-from scitbx.python_utils import list_algebra
 from scitbx.python_utils import dicts
 from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
@@ -180,14 +179,14 @@ class match_refine(object):
     self.singles1 = generate_singles(self.ref_model1.size(), self.i_pivot1)
     self.singles2 = generate_singles(self.ref_model2.size(), self.i_pivot2)
     self.pairs = [(self.i_pivot1, self.i_pivot2)]
-    self.adjusted_shift = initial_shift[:]
+    self.adjusted_shift = matrix.col(initial_shift)
     if (self.times is None):
       self.times = match_refine_times()
     self.exclude_pairs()
     self.add_pairs()
     self.eliminate_weak_pairs()
     self.ref_eucl_rt = sgtbx_rt_mx_as_matrix_rt(self.eucl_symop) \
-                     + matrix.col(self.adjusted_shift)
+                     + self.adjusted_shift
     self.pairs.sort(pair_sort_function)
     self.singles1.sort()
     self.singles2.sort()
@@ -252,8 +251,8 @@ class match_refine(object):
     self.times.eliminate_weak_pairs += timer.delta()
 
   def apply_eucl_ops(self, i_model2):
-    c2 = self.eucl_symop * self.ref_model2[i_model2].site
-    return list_algebra.plus(c2, self.adjusted_shift)
+    c2 = matrix.col(self.eucl_symop * self.ref_model2[i_model2].site)
+    return c2 + self.adjusted_shift
 
   def calculate_shortest_diff(self, pair):
     c2 = self.apply_eucl_ops(pair[1])
@@ -273,15 +272,14 @@ class match_refine(object):
   def refine_adjusted_shift(self):
     timer = user_plus_sys_time()
     unit_cell = self.ref_model1.unit_cell()
-    sum_diff_cart = [0,0,0]
+    sum_diff_cart = matrix.col([0.,0.,0.])
     for diff in self.calculate_shortest_diffs():
       diff_allowed = self.match_symmetry.filter_shift(diff, selector=1)
       diff_cart = unit_cell.orthogonalize(diff_allowed)
-      sum_diff_cart = list_algebra.plus(sum_diff_cart, diff_cart)
-    mean_diff_cart = [s / len(self.pairs) for s in sum_diff_cart]
-    mean_diff_frac = unit_cell.fractionalize(mean_diff_cart)
-    self.adjusted_shift = list_algebra.plus(
-      self.adjusted_shift, mean_diff_frac)
+      sum_diff_cart += matrix.col(diff_cart)
+    mean_diff_cart = sum_diff_cart / len(self.pairs)
+    mean_diff_frac = matrix.col(unit_cell.fractionalize(mean_diff_cart))
+    self.adjusted_shift = matrix.col(self.adjusted_shift) + mean_diff_frac
     self.times.refine_adjusted_shift += timer.delta()
 
   def calculate_rms(self):

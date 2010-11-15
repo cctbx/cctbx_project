@@ -34,7 +34,7 @@ from libtbx.utils import Sorry, user_plus_sys_time
 import scitbx.lbfgs
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 from scitbx import differential_evolution
 import sys, os, math, time, string
 import mmtbx.f_model

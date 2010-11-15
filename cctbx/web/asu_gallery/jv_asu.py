@@ -1,6 +1,6 @@
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
-from cctbx.web.asu_gallery import facet_notation
+from cctbx.web.asu_gallery import cut_notation
 from cctbx.web.asu_gallery import web_links
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
@@ -234,11 +234,11 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   l("</pre>")
   l("</td>")
   l("<td>")
-  l("<pre>Number of facets: %d" % len(asu.facets))
-  for facet in asu.facets:
-    l("  "+facet.as_xyz())
+  l("<pre>Number of faces: %d" % len(asu.cuts))
+  for cut in asu.cuts:
+    l("  "+cut.as_xyz())
   l("</pre>")
-  l('<a href="facet_notation.html">[Guide to notation]</a>')
+  l('<a href="cut_notation.html">[Guide to notation]</a>')
   l("</td>")
   l("</tr>")
   l("</table>")
@@ -274,7 +274,7 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
   if (not os.path.isdir(html_subdir)):
     os.makedirs(html_subdir)
   jv_index.write_html(open("%s/index.html" % html_subdir, "w"))
-  facet_notation.write_html(open("%s/facet_notation.html" % html_subdir, "w"))
+  cut_notation.write_html(open("%s/cut_notation.html" % html_subdir, "w"))
   if (len(args) == 0):
     args = ["1-230"]
   for arg in args:

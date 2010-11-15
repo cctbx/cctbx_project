@@ -87,20 +87,20 @@ namespace direct_space_asu {
   class float_asu
   {
     public:
-      //! Array type for facets.
-      typedef af::small<float_cut_plane<FloatType>, 12> facets_t;
+      //! Array type for cuts.
+      typedef af::small<float_cut_plane<FloatType>, 12> cuts_t;
 
       //! Default constructor. Some data members are not initialized!
       float_asu() {}
 
-      //! Initialization with unit cell and list of facets.
+      //! Initialization with unit cell and list of cuts.
       float_asu(
         uctbx::unit_cell const& unit_cell,
-        facets_t const& facets,
+        cuts_t const& cuts,
         FloatType const& is_inside_epsilon=1e-6)
       :
         unit_cell_(unit_cell),
-        facets_(facets),
+        cuts_(cuts),
         is_inside_epsilon_(is_inside_epsilon),
         have_box_(false)
       {}
@@ -109,22 +109,22 @@ namespace direct_space_asu {
       uctbx::unit_cell const&
       unit_cell() const { return unit_cell_; }
 
-      //! Facets as passed to the constructor.
-      facets_t const&
-      facets() const { return facets_; }
+      //! cuts as passed to the constructor.
+      cuts_t const&
+      cuts() const { return cuts_; }
 
       //! Epsilon for is_inside() as passed to the constructor.
       FloatType
       is_inside_epsilon() const { return is_inside_epsilon_; }
 
-      //! True if is_inside() is true for all facets().
+      //! True if is_inside() is true for all cuts().
       /*! is_inside_epsilon() is used in the test.
        */
       bool
       is_inside(fractional<FloatType> const& point) const
       {
-        for(std::size_t i=0;i<facets_.size();i++) {
-          if (!facets_[i].is_inside(point, is_inside_epsilon_)) return false;
+        for(std::size_t i=0;i<cuts_.size();i++) {
+          if (!cuts_[i].is_inside(point, is_inside_epsilon_)) return false;
         }
         return true;
       }
@@ -158,18 +158,18 @@ namespace direct_space_asu {
         return result;
       }
 
-      /*! \brief New asymmetric unit with all facets shifted by the distance
+      /*! \brief New asymmetric unit with all cuts shifted by the distance
           specified as thickness.
        */
       float_asu
       add_buffer(FloatType const& thickness) const
       {
-        facets_t buffer_facets;
-        for(std::size_t i=0;i<facets_.size();i++) {
-          buffer_facets.push_back(
-            facets_[i].add_buffer(unit_cell_, thickness));
+        cuts_t buffer_cuts;
+        for(std::size_t i=0;i<cuts_.size();i++) {
+          buffer_cuts.push_back(
+            cuts_[i].add_buffer(unit_cell_, thickness));
         }
-        return float_asu(unit_cell_, buffer_facets, is_inside_epsilon_);
+        return float_asu(unit_cell_, buffer_cuts, is_inside_epsilon_);
       }
 
       //! List of vertices. Duplicates are possible.
@@ -183,18 +183,18 @@ namespace direct_space_asu {
       {
         CCTBX_ASSERT(epsilon > 0);
         af::shared<scitbx::vec3<FloatType> > result;
-        if (facets_.size() < 3) return result;
+        if (cuts_.size() < 3) return result;
         scitbx::mat3<FloatType> m;
         scitbx::vec3<FloatType> b;
-        for(std::size_t i0=0   ;i0<facets_.size()-2;i0++) {
-          m.set_row(0, facets_[i0].n);
-          b[0] = -facets_[i0].c;
-        for(std::size_t i1=i0+1;i1<facets_.size()-1;i1++) {
-          m.set_row(1, facets_[i1].n);
-          b[1] = -facets_[i1].c;
-        for(std::size_t i2=i1+1;i2<facets_.size()  ;i2++) {
-          m.set_row(2, facets_[i2].n);
-          b[2] = -facets_[i2].c;
+        for(std::size_t i0=0   ;i0<cuts_.size()-2;i0++) {
+          m.set_row(0, cuts_[i0].n);
+          b[0] = -cuts_[i0].c;
+        for(std::size_t i1=i0+1;i1<cuts_.size()-1;i1++) {
+          m.set_row(1, cuts_[i1].n);
+          b[1] = -cuts_[i1].c;
+        for(std::size_t i2=i1+1;i2<cuts_.size()  ;i2++) {
+          m.set_row(2, cuts_[i2].n);
+          b[2] = -cuts_[i2].c;
           FloatType d = m.determinant();
           scitbx::mat3<FloatType> c = m.co_factor_matrix_transposed();
           if (scitbx::fn::absolute(d) > c.max_abs() * epsilon) {
@@ -247,7 +247,7 @@ namespace direct_space_asu {
 
     protected:
       uctbx::unit_cell unit_cell_;
-      facets_t facets_;
+      cuts_t cuts_;
       FloatType is_inside_epsilon_;
       mutable bool have_box_;
       mutable scitbx::vec3<FloatType> box_min_frac_;

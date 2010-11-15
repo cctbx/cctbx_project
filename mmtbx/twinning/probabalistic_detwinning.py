@@ -26,7 +26,6 @@ from libtbx import table_utils
 import scitbx.lbfgs
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
 from scitbx import differential_evolution
 import sys, os, math, time
 from libtbx.test_utils import approx_equal

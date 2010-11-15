@@ -55,13 +55,13 @@ namespace {
       class_<w_t>("direct_space_asu_float_asu", no_init)
         .def(init<
           uctbx::unit_cell const&,
-          w_t::facets_t const&,
+          w_t::cuts_t const&,
           double const&>((
             arg("unit_cell"),
-            arg("facets"),
+            arg("cuts"),
             arg("is_inside_epsilon")=1e-6)))
         .def("unit_cell", &w_t::unit_cell, rir())
-        .def("facets", &w_t::facets, ccr())
+        .def("cuts", &w_t::cuts, ccr())
         .def("is_inside_epsilon", &w_t::is_inside_epsilon)
         .def("is_inside", &w_t::is_inside, (arg("point")))
         .def("is_inside_frac", &w_t::is_inside_frac, (arg("sites_frac")))
@@ -75,7 +75,7 @@ namespace {
       ;
       {
         using namespace scitbx::boost_python::container_conversions;
-        tuple_mapping<w_t::facets_t, fixed_capacity_policy>();
+        tuple_mapping<w_t::cuts_t, fixed_capacity_policy>();
       }
     }
   };

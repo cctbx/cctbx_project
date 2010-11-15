@@ -52,9 +52,9 @@ class cut_expression(cut_expr_ops):
       return self.lhs.is_inside(point) or self.rhs.is_inside(point)
     raise RuntimeError
 
-  def extract_all_facets(self, result):
-    self.lhs.extract_all_facets(result)
-    self.rhs.extract_all_facets(result)
+  def extract_all_cuts(self, result):
+    self.lhs.extract_all_cuts(result)
+    self.rhs.extract_all_cuts(result)
 
   def change_basis(self, cb_op):
     return cut_expression(
@@ -224,10 +224,10 @@ class cut(cut_expr_ops):
     if (not self.has_cuts()): return self.inclusive
     return self.cut_expr.is_inside(point)
 
-  def extract_all_facets(self, result):
+  def extract_all_cuts(self, result):
     result.append(self)
     if (self.has_cuts()):
-      self.cut_expr.extract_all_facets(result)
+      self.cut_expr.extract_all_cuts(result)
 
   def strip(self):
     return cut(self.n, self.c)

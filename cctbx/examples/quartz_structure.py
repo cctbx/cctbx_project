@@ -25,10 +25,10 @@ def run():
 
   quartz_structure.show_summary().show_scatterers()
 
-  from scitbx.python_utils import easy_pickle
+  from libtbx import easy_pickle
   easy_pickle.dump("beach", quartz_structure)
 
-  from scitbx.python_utils import easy_pickle
+  from libtbx import easy_pickle
   quartz_structure = easy_pickle.load("beach")
 
   for scatterer in quartz_structure.scatterers():
