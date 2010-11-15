@@ -33,7 +33,7 @@ if (self.env.is_ready_for_build()):
   for f,sig in [
       ("reference_table.py", "0e7cc97096ecb8f6dab2abce9fe98dba"),
       ("short_cuts.py", "92ad3a575f1ad230f7b9e89e947e7f5c"),
-      ("proto/generate_cpp_asu_table.py", "c67cc76278e002b08b66746710aedcb9") ]:
+      ("proto/generate_cpp_asu_table.py", "78796aea988d52e0faa95aa0c40dba86")]:
     fn = "sgtbx/direct_space_asu/" + f
     warn_if_unexpected_md5_hexdigest(
       path=self.env.under_dist( module_name="cctbx", path=fn),

@@ -24,8 +24,8 @@ def exercise_reference_table():
   for space_group_number in xrange(1,230+1):
     asu = reference_table.get_asu(space_group_number)
     n_long_cuts = 0
-    for facet in asu.facets:
-      s = str(facet)
+    for cut in asu.cuts:
+      s = str(cut)
       have_long_cut = (s.find("cut") >= 0)
       if (space_group_number != 213):
         assert not have_long_cut
@@ -81,16 +81,16 @@ def exercise_volume_vertices(asu, unit_cell):
   assert m_near_sphere_surface >= n_near_sphere_surface
   line_asu = copy.copy(asu)
   line_asu.add_planes([(0,0,1),(1,1,1)], both_directions=True)
-  assert len(line_asu.facets) == len(asu.facets) + 4
-  assert line_asu.facets[-2].n == (-line_asu.facets[-1]).n
+  assert len(line_asu.cuts) == len(asu.cuts) + 4
+  assert line_asu.cuts[-2].n == (-line_asu.cuts[-1]).n
 
 def exercise_float_asu(space_group_info, n_grid=6):
   unit_cell = space_group_info.any_compatible_unit_cell(volume=1000)
   ref_asu = reference_table.get_asu(space_group_info.type().number())
-  exercise_cut_planes(ref_asu.facets)
+  exercise_cut_planes(ref_asu.cuts)
   inp_asu = space_group_info.direct_space_asu()
   assert sgtbx.space_group(inp_asu.hall_symbol) == space_group_info.group()
-  exercise_cut_planes(inp_asu.facets)
+  exercise_cut_planes(inp_asu.cuts)
   exercise_volume_vertices(inp_asu, unit_cell)
   float_asu = inp_asu.add_buffer(unit_cell=unit_cell, thickness=0.001)
   cb_mx_ref_inp = space_group_info.type().cb_op().c_inv().as_rational()
@@ -103,11 +103,11 @@ def exercise_float_asu(space_group_info, n_grid=6):
     # check correctness of cut_plane.add_buffer()
     inp_r = inp_r.elems
     inp_f = [float(r) for r in inp_r]
-    for facet in inp_asu.facets:
-      r_cut = facet.strip()
+    for cut in inp_asu.cuts:
+      r_cut = cut.strip()
       r_inside = r_cut.is_inside(inp_r)
       for buffer_thickness in [0.001, 1, -1][:1]:
-        f_cut = facet.as_float_cut_plane().add_buffer(
+        f_cut = cut.as_float_cut_plane().add_buffer(
           unit_cell=unit_cell,
           thickness=buffer_thickness)
         f_inside = f_cut.is_inside(inp_f)
@@ -122,7 +122,7 @@ def exercise_float_asu(space_group_info, n_grid=6):
     assert float_asu.is_inside(inp_f) == inp_asu.volume_only().is_inside(inp_r)
   asu_with_metric = inp_asu.define_metric(unit_cell)
   assert asu_with_metric.hall_symbol is inp_asu.hall_symbol
-  assert len(asu_with_metric.facets) == len(inp_asu.facets)
+  assert len(asu_with_metric.cuts) == len(inp_asu.cuts)
   assert asu_with_metric.unit_cell is unit_cell
   asu_tight = asu_with_metric.as_float_asu()
   asu_buffer = asu_with_metric.add_buffer(thickness=2)

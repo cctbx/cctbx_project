@@ -3,7 +3,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from scitbx.python_utils import list_algebra
+from scitbx import matrix
 from libtbx.test_utils import approx_equal, show_diff
 from cStringIO import StringIO
 import random
@@ -95,11 +95,11 @@ class test_model(emma.model):
     i = random.randrange(match_symmetry.rt_mx.order_z())
     eucl_symop = match_symmetry.rt_mx(i)
     shift = [0.5 - random.random() for i in xrange(3)]
-    allowed_shift = match_symmetry.filter_shift(shift, selector=1)
+    allowed_shift = matrix.col(match_symmetry.filter_shift(shift, selector=1))
     new_positions = []
     for pos in self.positions():
-      new_site = list_algebra.plus(eucl_symop * pos.site, allowed_shift)
-      new_positions.append(emma.position(pos.label, new_site))
+      new_site = matrix.col(eucl_symop * pos.site) + allowed_shift
+      new_positions.append(emma.position(pos.label, new_site.elems))
     return self.create_new_test_model(new_positions)
 
   def add_random_positions(self, number_of_new_positions=3, label="R",

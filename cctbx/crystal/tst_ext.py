@@ -78,23 +78,23 @@ def exercise_direct_space_asu():
   assert approx_equal(cpb.c, 2.5)
   asu = crystal.direct_space_asu_float_asu(
     unit_cell=unit_cell,
-    facets=[])
+    cuts=[])
   assert asu.volume_vertices().size() == 0
-  facets = []
+  cuts = []
   for i in xrange(3):
     n = [0,0,0]
     n[i] = -1
-    facets.append(crystal.direct_space_asu.float_cut_plane(n=n, c=i+1))
+    cuts.append(crystal.direct_space_asu.float_cut_plane(n=n, c=i+1))
   asu = crystal.direct_space_asu.float_asu(
     unit_cell=unit_cell,
-    facets=facets,
+    cuts=cuts,
     is_inside_epsilon=1.e-6)
   assert asu.unit_cell().is_similar_to(unit_cell)
   for i in xrange(3):
     n = [0,0,0]
     n[i] = -1
-    assert approx_equal(asu.facets()[i].n, n)
-    assert approx_equal(asu.facets()[i].c, i+1)
+    assert approx_equal(asu.cuts()[i].n, n)
+    assert approx_equal(asu.cuts()[i].c, i+1)
   assert approx_equal(asu.is_inside_epsilon(), 1.e-6)
   assert asu.is_inside([0.99,0.49,0.32])
   eps = 0.02
@@ -109,7 +109,7 @@ def exercise_direct_space_asu():
       cartesian=cartesian, epsilon=1.e-6)[0], (1.0, 2.0, 3.0))
   asu = crystal.direct_space_asu.float_asu(
     unit_cell=unit_cell,
-    facets=[crystal.direct_space_asu.float_cut_plane(n=n,c=c) for n,c in [
+    cuts=[crystal.direct_space_asu.float_cut_plane(n=n,c=c) for n,c in [
       [(0, 0, 1), -1/2.],
       [(-1, -1, 0), 1],
       [(0, 1, -1), 3/4.],
@@ -125,7 +125,7 @@ def exercise_direct_space_asu():
     buffer_thickness=0.1)
   asu_mappings.reserve(n_sites_final=10)
   assert asu_mappings.space_group().order_z() == 12
-  assert len(asu_mappings.asu().facets()) == 4
+  assert len(asu_mappings.asu().cuts()) == 4
   assert asu_mappings.unit_cell().is_similar_to(unit_cell)
   assert approx_equal(asu_mappings.buffer_thickness(), 0.1)
   assert approx_equal(asu_mappings.asu_buffer().box_min(),

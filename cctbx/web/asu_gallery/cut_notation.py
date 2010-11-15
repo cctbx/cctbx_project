@@ -5,7 +5,7 @@ import sys
 def write_html(f=None):
   if (f is None): f = sys.stdout
   iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
-  title = "ASU Gallery - Facet notation"
+  title = "ASU Gallery - Cut notation"
   print >> f, html_head_title(title=title)
   print >> f, """\
 <body>
@@ -18,27 +18,26 @@ Reference:
 >IUCr Computing Commission Newsletter No. 2, July 2003</a>
 <hr>
 
-Each facet of an asymmetric unit is defined by a condition of
+Each cut of an asymmetric unit is defined by a condition of
 the form
 <pre>
   h*x+k*y+l*z+c>=0
 </pre>
 <tt>h</tt>,<tt>k</tt>,<tt>l</tt> are Miller indices and define the
-normal vector of the facet, <tt>c</tt> is a constant which determines
+normal vector of the cut, <tt>c</tt> is a constant which determines
 the distance from the origin. <tt>x</tt>,<tt>y</tt>,<tt>z</tt> are
 fractional coordinates in direct space. The expression
 <tt>h*x+k*y+l*z+c</tt> is
 
 <ul>
-<li>exactly zero for points in the plane of the facet.
+<li>exactly zero for points in the cut plane.
 <li>greater than zero for points inside the asymmetric unit.
 <li>less than zero for points outside the asymmetric unit.
 </ul>
 
-In general, not all points in a facet are inside the asymmetric unit.
-If all points that are exactly in a facet are not inside, the
-facet condition changes from <tt>h*x+k*y+l*z+c>=0</tt> to
-<tt>h*x+k*y+l*z+c>0</tt>.
+If all points that are exactly in a cut plane are not inside the
+asymmetric unit, the condition changes from <tt>h*x+k*y+l*z+c&gt;=0</tt>
+to <tt>h*x+k*y+l*z+c&gt;0</tt>.
 
 <p>
 
@@ -68,7 +67,7 @@ conditions. For example:
   y<=1/4 [z<=1/2]
 </pre>
 
-The first term defines the facet as before. The second term
+The first term defines the face as before. The second term
 in the square brackets only applies if <tt>y=1/4</tt>.
 This notation is recursive. For example:
 

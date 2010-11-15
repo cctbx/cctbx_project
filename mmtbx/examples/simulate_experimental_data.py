@@ -28,7 +28,6 @@ from mmtbx.scaling import outlier_rejection
 from mmtbx import f_model
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
 import sys, os
 
 

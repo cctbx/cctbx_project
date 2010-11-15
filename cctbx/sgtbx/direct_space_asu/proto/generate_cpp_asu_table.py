@@ -80,11 +80,11 @@ cctbx.sgtbx.direct_space_asu.cut_plane.cut.base_symbol = base_symbol_cpp
 
 def out_cpp(asu, f):
   i=0
-  for facet in asu.facets:
+  for cut in asu.cuts:
     if( i!=0 ):
-      print >>f, "    &", facet
+      print >>f, "    &", cut
     else:
-      print >>f, "     ", facet
+      print >>f, "     ", cut
     i = i + 1
 
 

@@ -6,72 +6,72 @@ import sys
 
 class direct_space_asu(object):
 
-  def __init__(self, hall_symbol, facets=[]):
+  def __init__(self, hall_symbol, cuts=[]):
     self.hall_symbol = hall_symbol
-    self.facets = facets[:]
+    self.cuts = cuts[:]
 
   def __copy__(self):
     return direct_space_asu(
       hall_symbol=self.hall_symbol,
-      facets=self.facets)
+      cuts=self.cuts)
 
   def __and__(self, obj):
-    self.facets.append(obj)
+    self.cuts.append(obj)
     return self
 
   def show_summary(self, f=None):
     if (f == None): f = sys.stdout
     print >> f, "Hall symbol:", self.hall_symbol
-    print >> f, "Number of facets:", len(self.facets)
+    print >> f, "Number of cuts:", len(self.cuts)
     return self
 
   def show_comprehensive_summary(self, f=None):
     if (f == None): f = sys.stdout
     self.show_summary(f)
-    for facet in self.facets:
-      print >> f, "    &", facet
+    for cut in self.cuts:
+      print >> f, "    &", cut
     return self
 
   def is_inside(self, point, volume_only=False):
     if (volume_only):
-      for facet in self.facets:
-        if (facet.evaluate(point) < 0): return False
+      for cut in self.cuts:
+        if (cut.evaluate(point) < 0): return False
     else:
-      for facet in self.facets:
-        if (not facet.is_inside(point)): return False
+      for cut in self.cuts:
+        if (not cut.is_inside(point)): return False
     return True
 
-  def in_which_facets(self, point):
+  def in_which_cuts(self, point):
     result = []
-    for facet in self.facets:
-      if (facet.evaluate(point) == 0):
-        result.append(facet)
+    for cut in self.cuts:
+      if (cut.evaluate(point) == 0):
+        result.append(cut)
     return result
 
-  def extract_all_facets(self):
+  def extract_all_cuts(self):
     result = []
-    for facet in self.facets:
-      facet.extract_all_facets(result)
+    for cut in self.cuts:
+      cut.extract_all_cuts(result)
     return result
 
   def volume_only(self):
     result = direct_space_asu(self.hall_symbol)
-    for facet in self.facets:
-      result.facets.append(facet.strip())
+    for cut in self.cuts:
+      result.cuts.append(cut.strip())
     return result
 
   def volume_vertices(self):
     result = {}
-    facets = self.facets
-    n_facets = len(facets)
-    for i0 in xrange(0,n_facets-2):
-      for i1 in xrange(i0+1,n_facets-1):
-        for i2 in xrange(i1+1,n_facets):
-          m = matrix.rec(facets[i0].n+facets[i1].n+facets[i2].n,(3,3))
+    cuts = self.cuts
+    n_cuts = len(cuts)
+    for i0 in xrange(0,n_cuts-2):
+      for i1 in xrange(i0+1,n_cuts-1):
+        for i2 in xrange(i1+1,n_cuts):
+          m = matrix.rec(cuts[i0].n+cuts[i1].n+cuts[i2].n,(3,3))
           d = m.determinant()
           if (d != 0):
             c = m.co_factor_matrix_transposed() * (r1/d)
-            b = matrix.col([-facets[i0].c,-facets[i1].c,-facets[i2].c])
+            b = matrix.col([-cuts[i0].c,-cuts[i1].c,-cuts[i2].c])
             vertex = c * b
             if (self.is_inside(vertex, volume_only=True)):
               result[vertex.elems] = 0
@@ -97,7 +97,7 @@ class direct_space_asu(object):
   def add_plane(self, normal_direction, point=None):
     if (point is None):
       point = self.box_min()
-    self.facets.append(cut_plane.cut(
+    self.cuts.append(cut_plane.cut(
       n=normal_direction,
       c=-(matrix.col(normal_direction).dot(matrix.col(point)))))
 
@@ -107,7 +107,7 @@ class direct_space_asu(object):
     for normal_direction in normal_directions:
       self.add_plane(normal_direction=normal_direction, point=point)
       if (both_directions):
-        self.facets.append(-self.facets[-1])
+        self.cuts.append(-self.cuts[-1])
 
   def change_basis(self, cb_op):
     if (not isinstance(cb_op, sgtbx.change_of_basis_op)):
@@ -118,8 +118,8 @@ class direct_space_asu(object):
       cb_space_group_info = space_group_info.change_basis(cb_op)
       cb_hall_symbol = cb_space_group_info.type().hall_symbol()
     cb_asu = direct_space_asu(cb_hall_symbol)
-    for facet in self.facets:
-      cb_asu.facets.append(facet.change_basis(cb_op))
+    for cut in self.cuts:
+      cb_asu.cuts.append(cut.change_basis(cb_op))
     return cb_asu
 
   def define_metric(self, unit_cell):

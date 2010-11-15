@@ -53,11 +53,11 @@ def exercise_space_group_info():
   assert str(i.as_reference_setting()) == "C 1 2 1"
   assert str(i.primitive_setting()) == "C 1 2 1 (-x+y,z,x+y)"
   asu = i.direct_space_asu()
-  assert len(asu.facets) == 6
+  assert len(asu.cuts) == 6
   assert sgtbx.space_group(asu.hall_symbol) == i.group()
   j = i.primitive_setting()
   asu = j.direct_space_asu()
-  assert len(asu.facets) == 6
+  assert len(asu.cuts) == 6
   assert sgtbx.space_group(asu.hall_symbol) == j.group()
   i = sgtbx.space_group_info(number=19)
   assert [str(sgtbx.space_group_info(group=group))

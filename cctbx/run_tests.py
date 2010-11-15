@@ -65,7 +65,6 @@ def run():
   ["$D/regression/tst_reciprocal_space_asu.py", "P312"],
   ["$D/regression/tst_triplet_generator.py", "P41"],
   ["$D/regression/tst_emma.py", "P31"],
-  ["$D/regression/tst_find_centre_of_inversion.py", "P31"],
   ["$D/regression/tst_expand_to_p1.py", "P31"],
   ["$D/regression/tst_change_basis.py", "P31"],
   ["$D/regression/tst_wilson_plot.py", "P31"],

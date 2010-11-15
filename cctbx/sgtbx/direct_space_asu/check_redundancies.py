@@ -36,7 +36,7 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
         frac = rational.vector((i,j,k), n)
         f = asu.is_inside(frac)
         fv = asu.is_inside(frac, volume_only=True)
-        if (len(asu.in_which_facets(frac)) != 0 and fv):
+        if (len(asu.in_which_cuts(frac)) != 0 and fv):
           colored_grid_points.append(colored_grid_point(
             frac,
             jv_asu.select_color(f)))
@@ -280,21 +280,21 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
   for symop, pairs in redundancies:
     print symop, ": number of redundancies:", len(pairs)
     print "  ", rt_mx_analysis(sgtbx.rt_mx(symop))
-    all_facets = dicts.with_default_factory(dict)
-    not_in_facets = {}
+    all_cuts = dicts.with_default_factory(dict)
+    not_in_cuts = {}
     for pair in pairs:
       for point in pair:
-        facets = asu.in_which_facets(rational.vector(point, n))
-        if (len(facets) == 0):
-          not_in_facets[point] = 1
-        all_facets[tuple(facets)][point] = 1
-    print "    In facets:"
-    for facets,points in all_facets.items():
+        cuts = asu.in_which_cuts(rational.vector(point, n))
+        if (len(cuts) == 0):
+          not_in_cuts[point] = 1
+        all_cuts[tuple(cuts)][point] = 1
+    print "    In cuts:"
+    for cuts,points in all_cuts.items():
       print "     ",
       show_amp = False
-      for facet in facets:
+      for cut in cuts:
         if (show_amp): print "&",
-        print facet,
+        print cut,
         show_amp = True
       print "#points: %d:" % len(points),
       print str(points.keys()[:4]).replace(" ", "")
@@ -302,22 +302,22 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
       print "    Pairs:"
       for pair in pairs:
         print "      ", pair
-    if (len(not_in_facets) > 0):
-      print "    Not in facets:"
-      for point in not_in_facets.keys():
+    if (len(not_in_cuts) > 0):
+      print "    Not in cuts:"
+      for point in not_in_cuts.keys():
         print "     ", point
-      raise AssertionError, "Some redundant points not in any facets."
+      raise AssertionError, "Some redundant points not in any cuts."
     print
 
 def check_multiplicities(asu, n):
   space_group = sgtbx.space_group(asu.hall_symbol)
-  all_facets = asu.extract_all_facets()
-  print "Total number of facets:", len(all_facets)
+  all_cuts = asu.extract_all_cuts()
+  print "Total number of cuts:", len(all_cuts)
   def get_code(point):
     result = 0
     bit = 1
-    for facet in all_facets:
-      if (facet.evaluate(point) == 0):
+    for cut in all_cuts:
+      if (cut.evaluate(point) == 0):
         result += bit
       bit *= 2
     return result
@@ -336,7 +336,7 @@ def check_multiplicities(asu, n):
       print "PROBLEM:", space_group.type().number(), mults_by_code
       break
   else:
-    print "facet intersection multiplicities unique:"
+    print "cut intersection multiplicities unique:"
     order_z = space_group.order_z()
     tab_codes = []
     for code in sorted(mults_by_code.keys()):
@@ -344,7 +344,7 @@ def check_multiplicities(asu, n):
       if (m != order_z):
         print code, m
         tab_codes.append((code, m))
-    print "Number of facet intersection codes:", len(tab_codes)
+    print "Number of cut intersection codes:", len(tab_codes)
 
 def test_all(n):
   for space_group_number in xrange(1, 231):

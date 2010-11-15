@@ -16,7 +16,7 @@ class direct_space_asu(sgtbx.direct_space_asu.direct_space_asu):
 
   def __init__(self, asu, unit_cell):
     sgtbx.direct_space_asu.direct_space_asu.__init__(self,
-      hall_symbol=asu.hall_symbol, facets=asu.facets)
+      hall_symbol=asu.hall_symbol, cuts=asu.cuts)
     self.unit_cell = unit_cell
 
   def minimum_covering_sphere(self, epsilon=None):
@@ -32,7 +32,7 @@ class direct_space_asu(sgtbx.direct_space_asu.direct_space_asu):
       is_inside_epsilon = 1.e-6
     return float_asu(
       unit_cell=self.unit_cell,
-      facets=[facet.as_float_cut_plane() for facet in self.facets],
+      cuts=[cut.as_float_cut_plane() for cut in self.cuts],
       is_inside_epsilon=is_inside_epsilon)
 
   def add_buffer(self, thickness=None, relative_thickness=None,
@@ -73,7 +73,7 @@ def non_crystallographic_asu_mappings(
       default_buffer_layer=default_buffer_layer)
   sites_min = crystal_symmetry.unit_cell().fractionalize(sites_min)
   sites_max = crystal_symmetry.unit_cell().fractionalize(sites_max)
-  asu_facets = [float_cut_plane(n=n,c=c) for n,c in [
+  asu_cuts = [float_cut_plane(n=n,c=c) for n,c in [
     ([1,0,0],-sites_min[0]),
     ([-1,0,0],sites_max[0]),
     ([0,1,0],-sites_min[1]),
@@ -85,7 +85,7 @@ def non_crystallographic_asu_mappings(
     space_group=crystal_symmetry.space_group(),
     asu=float_asu(
       unit_cell=crystal_symmetry.unit_cell(),
-      facets=asu_facets).add_buffer(thickness=buffer_layer),
+      cuts=asu_cuts).add_buffer(thickness=buffer_layer),
     buffer_thickness=0)
   result.process_sites_cart(original_sites=sites_cart)
   return result

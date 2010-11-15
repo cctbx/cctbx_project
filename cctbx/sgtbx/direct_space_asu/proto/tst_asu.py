@@ -139,15 +139,15 @@ def compare(spgr, n=NSteps, verbose=False):
   fasun = asun.as_float_asu( unit_cell, 1.0E-6);
   fasuo = cctbx.crystal.direct_space_asu_float_asu(
     unit_cell=unit_cell,
-    facets=[facet.as_float_cut_plane() for facet in asuo.facets],
+    cuts=[cut.as_float_cut_plane() for cut in asuo.cuts],
     is_inside_epsilon=1.e-6)
   # python sucks big: still (in 2.5) there is no float.epsilon/max/tiny/etc
   assert approx_equal(fasun.is_inside_epsilon(), fasuo.is_inside_epsilon(),
       1.0E-100)
-  assert len(fasun.facets()) == len(fasuo.facets()), \
-    "%d != %d"%(len(fasuo.facets()),len(fasun.facets()))
-  assert ((len(fasun.facets()) < 200) & (len(fasun.facets()) > 3)), \
-    len(fasun.facets())
+  assert len(fasun.cuts()) == len(fasuo.cuts()), \
+    "%d != %d"%(len(fasuo.cuts()),len(fasun.cuts()))
+  assert ((len(fasun.cuts()) < 200) & (len(fasun.cuts()) > 3)), \
+    len(fasun.cuts())
   if verbose:
     print cout.getvalue()
   cout.truncate(0)
@@ -173,8 +173,8 @@ def as_raw(c ):
 
 def as_raw_asu(asu, f=None):
   if (f == None): f = sys.stdout
-  for facet in asu.facets:
-    print >>f, "  & ", as_raw(facet)
+  for cut in asu.cuts:
+    print >>f, "  & ", as_raw(cut)
 
 
 def run():

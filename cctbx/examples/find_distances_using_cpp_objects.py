@@ -33,12 +33,12 @@ def find_distances(unit_cell, space_group, sites_frac, distance_cutoff):
       asu=metric_free_asu, unit_cell=unit_cell)
 
   proto_asu = proto.direct_space_asu(space_group_type) # C++ type
-  # todo in C++: convert proto_asu facets to as_float_cut_plane()
+  # todo in C++: convert proto_asu cuts to as_float_cut_plane()
 
   # all objects below are wrapped C++ objects
   float_asu = cctbx.crystal.direct_space_asu_float_asu(
     unit_cell=unit_cell,
-    facets=[facet.as_float_cut_plane() for facet in metric_free_asu.facets],
+    cuts=[cut.as_float_cut_plane() for cut in metric_free_asu.cuts],
     is_inside_epsilon=1.e-6)
   asu_mappings = cctbx.crystal.direct_space_asu_asu_mappings(
     space_group=space_group,
