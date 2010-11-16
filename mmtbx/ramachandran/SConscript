@@ -7,3 +7,6 @@ env_etc.enable_more_warnings(env=env)
 env.SharedLibrary(
   target="#lib/mmtbx_ramachandran_ext",
   source=["ext.cpp"])
+env.SharedLibrary(
+  target="#lib/mmtbx_ramachandran_restraints_ext",
+  source=["restraints.cpp"])

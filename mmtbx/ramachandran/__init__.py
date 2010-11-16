@@ -9,10 +9,17 @@ from libtbx import adopt_init_args
 import math
 import sys
 import os
+from scitbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_ramachandran_ext")
 from mmtbx_ramachandran_ext import *
+
+
+
+
+ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+from mmtbx_ramachandran_restraints_ext import target_and_gradients, target_phi_psi
 
 master_phil = libtbx.phil.parse("""
   rama_weight = 1.0
@@ -27,6 +34,8 @@ master_phil = libtbx.phil.parse("""
     .help = Used for testing - not suitable for real structures.
     .short_caption = Use finite differences (DEVELOPERS ONLY)
     .expert_level = 3
+  type = oldfield *emsley
+    .type = choice(multi=False)
 """)
 
 refine_opt_params = libtbx.phil.parse("""
@@ -77,24 +86,225 @@ class proxy (generic_proxy) :
     self.i_seqs = i_seqs
     self.residue_type = residue_type
 
+def show_histogram(data, n_slots, log):
+  hm = flex.histogram(data = data, n_slots = n_slots)
+  lc_1 = hm.data_min()
+  s_1 = enumerate(hm.slots())
+  print >> log, "      Map Values          Number of points"
+  for (i_1,n_1) in s_1:
+    hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
+    print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
+    lc_1 = hc_1
+
+class ramachandran_plot_data(object):
+  def __init__(self):
+    self.gly = None
+    self.pro = None
+    self.prepro = None
+    self.general = None
+    files = [
+      ["gly",     "rama500-gly-sym.data"],
+      ["pro",     "rama500-pro.data"],
+      ["prepro",  "rama500-prepro.data"],
+      ["general", "rama500-general.data"]]
+    for rtf in files:
+      rt,f = rtf
+      file_name = libtbx.env.find_in_repositories(
+        relative_path="chem_data/rotarama_data/%s"%f,
+        test = os.path.isfile)
+      if(rt=="gly"):     self.gly     = flex.vec3_double()
+      if(rt=="pro"):     self.pro     = flex.vec3_double()
+      if(rt=="prepro"):  self.prepro  = flex.vec3_double()
+      if(rt=="general"): self.general = flex.vec3_double()
+      fo = open(file_name, "r")
+      for line in fo.readlines():
+        line = line.split()
+        if(len(line)==3):
+          phi_, psi_, val = float(line[0]),float(line[1]),float(line[2])
+          triplet = [phi_, psi_, val]
+          if(rt=="gly"):     self.gly    .append(triplet)
+          if(rt=="pro"):     self.pro    .append(triplet)
+          if(rt=="prepro"):  self.prepro .append(triplet)
+          if(rt=="general"): self.general.append(triplet)
+    self.gly = self.normalize_gly(data=self.gly)
+    self.pro = self.normalize_pro(data=self.pro)
+    self.prepro = self.normalize_prepro(data=self.prepro)
+    self.general = self.normalize_general(data=self.general)
+    # XXX DEBUG
+    if 0:
+      print self.gly     .size()
+      print self.pro     .size()
+      print self.prepro  .size()
+      print self.general .size()
+      assert 0
+
+  def helper(self, phi, psi, val, sel):
+    vmax = flex.max_default(val.select(sel),0)
+    if(vmax==0): return None,None
+    else:
+      for x,y,z, s in zip(phi,psi,val,sel):
+        if(s and abs(z-vmax)< 0.0001):
+          return x,y
+
+  def norm_to_max(self, data, val, sel, threshold=0.99):
+    vmax = flex.max(val.select(sel))
+    sel1 = val > vmax*threshold
+    return data.select(sel1)
+
+  def normalize_general(self, data):
+    phi = flex.double()
+    psi = flex.double()
+    val = flex.double()
+    for x,y,z in data:
+      phi.append(x)
+      psi.append(y)
+      val.append(z)
+    s1=(phi>40)&(phi<80)& (psi>-5)&(psi<65)
+    s2=(phi<-70)&(phi>-170)& (psi<-170)&(psi>-180)
+    s3=(phi<-50)&(phi>-130)& (psi>-60)&(psi<40)
+    s4=(phi<-50)&(phi>-180)& (psi>50)&(psi<180)
+    d1 = self.norm_to_max(data=data, val=val, sel=s1)
+    d2 = self.norm_to_max(data=data, val=val, sel=s2)
+    d3 = self.norm_to_max(data=data, val=val, sel=s3)
+    d4 = self.norm_to_max(data=data, val=val, sel=s4)
+    d1.extend(d2)
+    d1.extend(d3)
+    d1.extend(d4)
+    sel = flex.size_t(range(0,d1.size(),3))
+    return d1.select(sel)
+
+  def normalize_prepro(self, data):
+    phi = flex.double()
+    psi = flex.double()
+    val = flex.double()
+    for x,y,z in data:
+      phi.append(x)
+      psi.append(y)
+      val.append(z)
+    s1=(phi<-50)&(phi>-70)& (psi<-20)&(psi>-65)
+    s2=(phi<-40)&(phi>-180)& (psi> 50)&(psi<180)
+    s3=(phi>40)&(phi<60)& (psi> 40)&(psi< 70)
+    s6 =(phi<-60)&(phi>-180)& (psi<-170)&(psi>-180)
+    d1 = self.norm_to_max(data=data, val=val, sel=s1)
+    d2 = self.norm_to_max(data=data, val=val, sel=s2)
+    d3 = self.norm_to_max(data=data, val=val, sel=s3)
+    d6 = self.norm_to_max(data=data, val=val, sel=s6)
+    d1.extend(d2)
+    d1.extend(d3)
+    d1.extend(d6)
+    sel = flex.size_t(range(0,d1.size(),3))
+    return d1.select(sel)
+
+  def normalize_pro(self, data):
+    phi = flex.double()
+    psi = flex.double()
+    val = flex.double()
+    for x,y,z in data:
+      phi.append(x)
+      psi.append(y)
+      val.append(z)
+    s1=(phi<-30)&(phi>-100)& (psi<-170)&(psi>-180)
+    s2=(phi<-30)&(phi>-100)& (psi<  20)&(psi> -60)
+    s3=(phi<-30)&(phi>-100)& (psi>  40)&(psi<  80)
+    s4=(phi<-30)&(phi>-100)& (psi> 110)&(psi< 180)
+    d1 = self.norm_to_max(data=data, val=val, sel=s1)
+    d2 = self.norm_to_max(data=data, val=val, sel=s2)
+    d3 = self.norm_to_max(data=data, val=val, sel=s3)
+    d4 = self.norm_to_max(data=data, val=val, sel=s4)
+    d1.extend(d2)
+    d1.extend(d3)
+    d1.extend(d4)
+    sel = flex.size_t(range(0,d1.size(),3))
+    return d1.select(sel)
+
+  def normalize_gly(self, data):
+    phi = flex.double()
+    psi = flex.double()
+    val = flex.double()
+    for x,y,z in data:
+      phi.append(x)
+      psi.append(y)
+      val.append(z)
+    s1=(phi<-55)&(phi>-180)& (psi<-90)&(psi>-180)
+    s2=(phi>40)&(phi<180)& (psi<-100)&(psi>-180)
+    s3=(phi<-30)&(phi>-90)& (psi>-100)&(psi<60)
+    s4=(phi>30)&(phi<90)& (psi>-100)&(psi<60)
+    s5=(phi<-30)&(phi>-180)& (psi>90)&(psi<180)
+    s6=(phi>55)&(phi<180)& (psi>90)&(psi<180)
+    d1 = self.norm_to_max(data=data, val=val, sel=s1)
+    d2 = self.norm_to_max(data=data, val=val, sel=s2)
+    d3 = self.norm_to_max(data=data, val=val, sel=s3)
+    d4 = self.norm_to_max(data=data, val=val, sel=s4)
+    d5 = self.norm_to_max(data=data, val=val, sel=s5)
+    d6 = self.norm_to_max(data=data, val=val, sel=s6)
+    d1.extend(d2)
+    d1.extend(d3)
+    d1.extend(d4)
+    d1.extend(d5)
+    d1.extend(d6)
+    sel = flex.size_t(range(0,d1.size(),3))
+    return d1.select(sel)
+
 class generic_restraints_helper (object) :
   def __init__ (self, params) :
     adopt_init_args(self, locals())
-    self.tables = load_tables(params)
+    if(self.params.type == "oldfield"): self.tables = ramachandran_plot_data()
+    else: self.tables = load_tables(params)
 
   def restraints_residual_sum (self,
                                sites_cart,
                                proxies,
                                gradient_array=None,
                                unit_cell=None) :
+    from scitbx.array_family import flex
     ramachandran_proxies = []
     for proxy in proxies :
       if (proxy.restraint_type == "ramachandran") :
         ramachandran_proxies.append(proxy)
-    return self._phi_psi_restraints_residual_sum(
-      sites_cart=sites_cart,
-      proxies=ramachandran_proxies,
-      gradient_array=gradient_array)
+    if(self.params.type == "oldfield"):
+      phi_target = flex.double()
+      psi_target = flex.double()
+      weights = flex.double()
+      for proxy in ramachandran_proxies:
+        if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
+        if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
+        if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
+        if(proxy.residue_type=="ala"):    rama_table = self.tables.general
+        r = target_phi_psi(
+          rama_table     = rama_table,
+          sites_cart     = sites_cart,
+          i_seqs         = proxy.i_seqs)
+        phi_target.append(r[0])
+        psi_target.append(r[1])
+        weights.append(r[2])
+      #
+      if(gradient_array is None) :
+        from scitbx.array_family import flex
+        gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+      target = 0
+      for proxy, phi_t, psi_t, weight in zip(ramachandran_proxies,
+                                             phi_target,
+                                             psi_target,
+                                             weights):
+         if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
+         if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
+         if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
+         if(proxy.residue_type=="ala"):    rama_table = self.tables.general
+         tg = target_and_gradients(
+           gradient_array = gradient_array,
+           phi_target     = phi_t,
+           psi_target     = psi_t,
+           weight         = weight,
+           rama_table     = rama_table,
+           sites_cart     = sites_cart,
+           i_seqs         = proxy.i_seqs)
+         target += tg.target()
+      return target
+    else:
+      return self._phi_psi_restraints_residual_sum(
+        sites_cart=sites_cart,
+        proxies=ramachandran_proxies,
+        gradient_array=gradient_array)
 
   def _phi_psi_restraints_residual_sum (self,
                                         proxies,
