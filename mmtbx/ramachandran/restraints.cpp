@@ -80,11 +80,14 @@ af::tiny<FloatType, 3>
   double phi_t=0, psi_t=0;
   double dist_to_current = 1.e+9;
   double score_current = 0;
+  af::shared<double> distances;
+  distances.resize(rama_table.size(), 0);
   for(int i=0; i<rama_table.size(); i++) {
     scitbx::vec3<double> point = rama_table[i];
     double d1 = gr::angle_delta_deg(point[0],phi_deg);
     double d2 = gr::angle_delta_deg(point[1],psi_deg);
     double d = std::sqrt(d1 * d1 + d2 * d2);
+    distances[i] = d;
     if(d<dist_to_current) {
       dist_to_current = d;
       score_current = point[2];
@@ -93,9 +96,7 @@ af::tiny<FloatType, 3>
   double dist_to_allowed = 1.e+9;
   for(int i=0; i<rama_table.size(); i++) {
     scitbx::vec3<double> point = rama_table[i];
-    double d1 = gr::angle_delta_deg(point[0],phi_deg);
-    double d2 = gr::angle_delta_deg(point[1],psi_deg);
-    double d = std::sqrt(d1 * d1 + d2 * d2);
+    double d = distances[i];
     if(point[2] >= score_current && d<dist_to_allowed) {
       dist_to_allowed = d;
       phi_t = point[0];
