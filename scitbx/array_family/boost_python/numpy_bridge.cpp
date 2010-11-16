@@ -2,6 +2,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <boost_adaptbx/type_id_eq.h>
+#include <boost_adaptbx/floating_point_exceptions.h>
 
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
 #include <numpy/arrayobject.h>
@@ -24,7 +25,18 @@ namespace scitbx { namespace af { namespace boost_python {
   import_numpy_api_if_available()
   {
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
-    import_array();
+    {
+      /* On Snow Leopard, numpy is shipped with the system
+       and the call import_array() triggers a floating-point exception,
+       which then crashes the program thanks to the default unforgiving
+       FP trapping policy of the cctbx.
+       Temporarily changing to a more lenient policy is the simplest
+       possible fix.
+       */
+      using namespace boost_adaptbx::floating_point;
+      exception_trapping guard(exception_trapping::dont_trap);
+      import_array();
+    }
     boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
 #endif
   }
