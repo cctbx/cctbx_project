@@ -3,7 +3,7 @@ from boost.python import streambuf
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 try: from libtbx import subprocess_with_fixes as subprocess
 except ImportError: import subprocess
-import sys, os
+import sys
 
 def exercise():
   proc = subprocess.Popen(args='libtbx.python %s --core' % __file__,

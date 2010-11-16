@@ -1,7 +1,5 @@
-
 import libtbx.phil
 from libtbx import thread_utils, easy_pickle
-from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import time
 import sys

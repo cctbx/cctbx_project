@@ -3,7 +3,6 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import cmath
-import math
 from cStringIO import StringIO
 import sys
 

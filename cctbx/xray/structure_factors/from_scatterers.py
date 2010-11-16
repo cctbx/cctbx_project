@@ -3,7 +3,6 @@ from cctbx.xray.structure_factors.from_scatterers_direct \
   import from_scatterers_direct
 from cctbx.xray.structure_factors.from_scatterers_fft \
   import from_scatterers_fft
-from cctbx import maptbx
 
 class from_scatterers(manager):
   """ Factory class for structure factor evaluations """

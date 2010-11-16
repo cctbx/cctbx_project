@@ -3,7 +3,6 @@ from cctbx.uctbx.reduction_base import reduction_base
 from cctbx.uctbx.reduction_base import minimum_reduction_mixin
 from cctbx import uctbx
 from scitbx import matrix
-import math
 
 def entier(x):
   "greatest integer which is not greater than x"

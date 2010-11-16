@@ -2,7 +2,7 @@
 from libtbx import easy_pickle
 from libtbx.utils import Sorry, Abort
 from libtbx import object_oriented_patterns as oop
-from libtbx import group_args, adopt_init_args
+from libtbx import adopt_init_args
 import Queue
 import threading
 import sys, traceback, time, os

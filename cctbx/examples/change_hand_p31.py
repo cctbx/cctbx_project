@@ -9,7 +9,6 @@ group symmetry is simply retained.
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
-from cctbx.development import random_structure
 
 def run():
   print __doc__

@@ -1,4 +1,3 @@
-from cctbx import xray
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import crystal

@@ -9,7 +9,6 @@ class empty: pass
 
 from cctbx.array_family import flex
 from cctbx import matrix
-import scitbx.math
 from boost import rational
 import random
 import sys

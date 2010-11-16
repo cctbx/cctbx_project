@@ -1,4 +1,4 @@
-import sys, os
+import sys
 
 def run(args):
   from libtbx.utils import Usage

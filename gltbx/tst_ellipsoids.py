@@ -3,7 +3,7 @@ import random
 from scitbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
-from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
   from gltbx import quadrics

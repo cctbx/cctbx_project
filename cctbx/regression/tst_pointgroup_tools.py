@@ -1,4 +1,4 @@
-import sys,os
+import sys
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex

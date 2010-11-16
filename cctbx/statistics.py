@@ -5,8 +5,6 @@ from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.utils import plural_s
 import math
-from cctbx import miller
-from libtbx import itertbx
 
 import boost.python
 ext = boost.python.import_ext("cctbx_statistics_ext")

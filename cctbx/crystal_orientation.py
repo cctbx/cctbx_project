@@ -1,8 +1,8 @@
-from cctbx.array_family import flex
+import cctbx.array_family.flex # import dependency
+from cctbx import uctbx # import dependency
 import boost.python
 ext = boost.python.import_ext("cctbx_orientation_ext")
 from cctbx_orientation_ext import *
-from cctbx import uctbx
 
 class basis_type:
   direct = False

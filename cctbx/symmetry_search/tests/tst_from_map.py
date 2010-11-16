@@ -1,17 +1,14 @@
-from cctbx.development import debug_utils, random_structure
+from cctbx.development import random_structure
 from cctbx.development.space_group_option_parser \
      import space_group_option_parser
 from cctbx import miller
 from cctbx import symmetry_search
-from cctbx import sgtbx, maptbx
-from cctbx import euclidean_model_matching as emma
+from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix as mat
 import libtbx
-from libtbx.test_utils import approx_equal
 import scitbx.random
 import random
-import math
 
 def exercise(space_group_info,
              fixed_random_seed=True,
@@ -138,7 +135,7 @@ def exercise(space_group_info,
   assert target_sg == target_sg.change_basis(stabilising_cb_op)
 
 def run():
-  import sys, os
+  import sys
   libtbx.utils.show_times_at_exit()
   parser = space_group_option_parser()
   parser.option(None, '--skip_extra_tests',

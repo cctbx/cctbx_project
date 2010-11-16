@@ -514,7 +514,7 @@ def build_submission( directory, jobs, use_grid_engine=True ):
 
 def main():
   ''' map() a function against data as given in an input pickle file, saving result to a pickle.'''
-  import sys, os, optparse
+  import os, optparse
 
   usage = "%prog [options] inputPickle outputPickle \n" + main.__doc__
   parser = optparse.OptionParser(usage)

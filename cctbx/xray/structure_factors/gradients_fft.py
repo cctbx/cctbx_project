@@ -2,7 +2,6 @@ from cctbx.xray.structure_factors.gradients_base import gradients_base
 from cctbx.xray.structure_factors.misc import expensive_function_call_message
 from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
-from cctbx import miller
 from cctbx import maptbx
 from cctbx import adptbx
 from cctbx.array_family import flex

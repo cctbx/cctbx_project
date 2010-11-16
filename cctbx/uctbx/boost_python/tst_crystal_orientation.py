@@ -1,13 +1,9 @@
-from math import pi, cos, asin, sqrt
-import pickle, StringIO
-from cctbx.array_family import flex
+from math import pi
+import pickle
 from cctbx import uctbx, sgtbx
 from cctbx.crystal_orientation import crystal_orientation, basis_type
-from scitbx import matrix
-from libtbx.test_utils import approx_equal, not_approx_equal
-import random
+from libtbx.test_utils import approx_equal
 import math
-import sys
 
 def exercise_functions():
   orthorhombic = (1,0,0,0,0.5,0.,0.,0.,0.25)

@@ -1,10 +1,6 @@
-import libtbx.load_env
-import sys, os
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import cctbx.adp_restraints
-from cctbx import xray
-from cctbx import adptbx
 from libtbx.test_utils import approx_equal
 
 phe_pdb = """\

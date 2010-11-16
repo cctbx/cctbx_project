@@ -1,13 +1,9 @@
 from __future__ import division
 from cctbx.maptbx import real_space_target_and_gradients
 from cctbx import sgtbx
-from cctbx import adptbx
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 import random, time
-import sys, os
-import iotbx.pdb
-import libtbx.load_env
 from cctbx.maptbx import real_space_refinement_simple
 from libtbx.test_utils import approx_equal
 

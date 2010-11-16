@@ -1,12 +1,10 @@
 from cctbx import adptbx, sgtbx
-from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from scitbx.math import row_echelon_full_pivoting
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 import sys
-import math
 
 
 def f(u_cart):

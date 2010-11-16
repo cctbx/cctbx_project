@@ -1,5 +1,4 @@
 from cctbx import xray
-from cctbx.development import random_structure
 from cctbx.array_family import flex
 from cctbx.regression import tst_xray_minimization
 from cctbx import sgtbx

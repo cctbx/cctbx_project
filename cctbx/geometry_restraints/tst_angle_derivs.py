@@ -4,7 +4,6 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
-import math
 import sys
 
 def derivs_fd(a, order, eps=1.e-6):

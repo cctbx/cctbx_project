@@ -1,15 +1,12 @@
 from cctbx.sgtbx import subgroups
 from cctbx.array_family import flex
 from cctbx import sgtbx
-import cctbx.sgtbx.direct_space_asu
 from cctbx import uctbx
-import boost.rational
 from libtbx import complex_math
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.load_env
-import random
 import math
 import weakref
 import pickle

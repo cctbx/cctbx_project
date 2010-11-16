@@ -4,7 +4,7 @@ import cctbx.eltbx.gaussian_fit
 import scitbx.math.gaussian_fit
 from libtbx.utils import hashlib_md5
 import time
-import sys, os
+import sys
 
 def write_module_info(f, module_object):
   file_name = module_object.__file__

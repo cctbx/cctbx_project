@@ -9,7 +9,7 @@ from scitbx import matrix
 from libtbx.option_parser import OptionParser
 import urllib
 import math
-import sys, os
+import os
 
 def select_color(inclusive_flag):
   if (inclusive_flag): return (0,255,0)

@@ -1,4 +1,3 @@
-from cctbx import crystal
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import sgtbx
@@ -8,7 +7,6 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.development import structure_factor_utils
 from cctbx.array_family import flex
-from scitbx import fftpack
 from libtbx.test_utils import approx_equal, show_diff
 import pickle
 from cStringIO import StringIO

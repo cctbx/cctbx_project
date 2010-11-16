@@ -80,7 +80,7 @@ class cumulative_intensity_distribution_python(object):
     n_reflections = 0
     self.n_bins = f_obs_sq.binner().n_bins_all()
     self.mean_f_obs_sq = f_obs_sq.mean(use_binning=True)
-    for intensity, d_spacing, indices in itertbx.izip(
+    for intensity, d_spacing, indices in itertools.izip(
       f_obs_sq.data(), f_obs_sq.d_spacings().data(), f_obs_sq.indices()):
       n_reflections += 1
       i_over_mean_i = intensity/self._get_mean_f_obs_sq(d_spacing)

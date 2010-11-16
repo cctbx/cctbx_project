@@ -3,9 +3,8 @@ from cctbx import uctbx
 from cctbx import crystal
 from cctbx.array_family import flex
 import cctbx.sgtbx.lattice_symmetry
-from cctbx.sgtbx import cosets
 from scitbx import matrix
-import math,sys,os
+import math, sys
 import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times

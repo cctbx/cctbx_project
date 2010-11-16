@@ -13,7 +13,6 @@ import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, show_diff
 from itertools import count
-from stdlib import math
 from cStringIO import StringIO
 import sys
 

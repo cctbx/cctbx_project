@@ -3,8 +3,6 @@ from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-from cStringIO import StringIO
-import random
 import sys
 
 def exercise(space_group_info, anomalous_flag,

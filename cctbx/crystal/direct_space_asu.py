@@ -4,7 +4,6 @@ from cctbx import uctbx
 import cctbx.sgtbx.direct_space_asu
 from cctbx.array_family import flex
 from scitbx.math import minimum_covering_sphere
-from scitbx import matrix
 import boost.python
 
 float_cut_plane = crystal.direct_space_asu_float_cut_plane

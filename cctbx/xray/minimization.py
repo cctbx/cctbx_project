@@ -1,13 +1,11 @@
 import cctbx.xray.structure_factors
 from cctbx.xray import ext
-from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.math
 from libtbx import adopt_init_args
 from stdlib import math
-from cctbx import adptbx
 
 def add_gradients(
       scatterers,

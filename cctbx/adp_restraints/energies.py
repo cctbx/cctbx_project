@@ -1,6 +1,5 @@
 from cctbx import adp_restraints
 from cctbx.array_family import flex
-import scitbx.restraints
 from libtbx import adopt_init_args
 from stdlib import math
 import sys

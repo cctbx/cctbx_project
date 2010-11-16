@@ -9,20 +9,10 @@ unavoidable.
 
 
 from cctbx import sgtbx
-from cctbx import uctbx
-from cctbx import crystal
-from cctbx.array_family import flex
-import cctbx.sgtbx.lattice_symmetry
 from cctbx.sgtbx import cosets, sub_lattice_tools
 from scitbx import matrix
-import math,sys,os
-import scitbx.math
-from libtbx.test_utils import approx_equal
-from libtbx.utils import format_cpu_times
 from boost import rational
-from scitbx.math import eigensystem
 from libtbx.math_utils import ifloor
-from cStringIO import StringIO
 
 def as_hkl( op ):
   def row_as_hkl( row, txt=['h','k','l']):

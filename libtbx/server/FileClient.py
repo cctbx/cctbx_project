@@ -1,7 +1,5 @@
 import pickle
-import cPickle
 import socket
-import SocketServer
 import sys
 import os
 

@@ -6,7 +6,6 @@ import scitbx.math.gaussian
 from libtbx.str_utils import line_feeder
 from libtbx.option_parser import OptionParser
 from libtbx import adopt_init_args
-import sys, os
 
 class table(object):
 

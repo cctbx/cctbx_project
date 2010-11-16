@@ -1,4 +1,4 @@
-import scitbx.array_family.flex
+import scitbx.array_family.flex # import dependency
 import scitbx.matrix
 from libtbx import easy_run
 import boost.python

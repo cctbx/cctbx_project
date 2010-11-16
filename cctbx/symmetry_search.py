@@ -6,19 +6,14 @@ from cctbx_symmetry_search_ext import ls_with_scale_and_bias
 
 from cctbx import miller
 from cctbx import sgtbx
-import sgtbx.cosets
 from cctbx.sgtbx import lattice_symmetry
 from cctbx import maptbx
 from libtbx import adopt_optional_init_args
-from libtbx import itertbx
 from scitbx import matrix as mat
 import scitbx.math
 from scitbx.math import clustering
 from cctbx.array_family import flex
-from libtbx import containers
-from copy import copy
-import cStringIO
-
+import itertools
 
 class symmetrised_shifted_structure_factors(object):
 
@@ -136,7 +131,7 @@ class structure_factor_symmetry(object):
     sites = []
     cc_map_peaks = cc_map.peak_search(self.search_parameters)
     zero = mat.zeros(3)
-    for cc_peak_info in itertbx.islice(cc_map_peaks, 5):
+    for cc_peak_info in itertools.islice(cc_map_peaks, 5):
       if abs(mat.col(cc_peak_info.site) - zero) < 0.01: continue
       heights.append(cc_peak_info.height)
       sites.append(cc_peak_info.site)

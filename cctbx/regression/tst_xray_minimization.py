@@ -3,7 +3,6 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 import sys, random
-from libtbx.test_utils import approx_equal
 
 def shift_u_iso(structure, shift):
   for sc in structure.scatterers():

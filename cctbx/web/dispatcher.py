@@ -6,7 +6,7 @@ if (__name__ == "__main__"):
   cgitb.enable()
 
 from cctbx.web import cgi_utils
-import os, cgi, urlparse
+import os, cgi
 
 if (0):
   cgi.test()

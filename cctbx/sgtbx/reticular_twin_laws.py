@@ -4,17 +4,11 @@ from cctbx import uctbx
 from cctbx import crystal
 from cctbx.array_family import flex
 import cctbx.sgtbx.lattice_symmetry
-from cctbx.sgtbx import cosets
 from cctbx.sgtbx import reticular_pg_tools as rmpg
 from cctbx.sgtbx import sub_lattice_tools as slt
 from scitbx import matrix
-import math,sys,os
+import math, sys
 import scitbx.math
-from libtbx.test_utils import approx_equal
-from libtbx.utils import format_cpu_times
-from boost import rational
-from libtbx.math_utils import ifloor
-from cStringIO import StringIO
 
 class symmetry_safe_sublattice_xs(object):
   def __init__(self,xsin,start_order=1,stop_order=5,max_delta=5.0):

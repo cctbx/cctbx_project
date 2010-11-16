@@ -1,4 +1,3 @@
-import cctbx.eltbx.gaussian_fit
 from cctbx.eltbx.gaussian_fit import international_tables_stols
 from cctbx.array_family import flex
 from libtbx.str_utils import line_feeder

@@ -1,5 +1,5 @@
 try:
-  import scitbx.array_family.flex
+  import scitbx.array_family.flex # import dependency
   import boost.python
   ext = boost.python.import_ext("fftw3tbx_ext")
 except ImportError:

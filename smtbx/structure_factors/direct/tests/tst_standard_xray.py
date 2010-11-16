@@ -11,7 +11,7 @@ from libtbx.test_utils import approx_equal
 from scitbx.math import approx_equal_relatively
 import libtbx.utils
 import math, random
-from libtbx.itertbx import islice, izip
+from itertools import islice, izip
 from scitbx import matrix
 from scitbx.math import median_statistics
 

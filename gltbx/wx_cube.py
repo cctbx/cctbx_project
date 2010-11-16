@@ -2,7 +2,6 @@ import wx
 import wx.glcanvas
 from gltbx.gl import *
 from gltbx.glu import *
-import sys
 
 class MyCanvasBase(wx.glcanvas.GLCanvas):
     def __init__(self, parent):

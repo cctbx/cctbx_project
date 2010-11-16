@@ -1,6 +1,5 @@
 import fftw3tbx
-from libtbx import easy_run
-import sys, os
+import os
 
 if (self.env.is_ready_for_build()):
   for libfftw3 in [fftw3tbx.libfftw3, fftw3tbx.libfftw3f]:

@@ -6,9 +6,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.crystal import direct_space_asu
 from scitbx import matrix
-from scitbx import stl
-from libtbx.test_utils import \
-  Exception_expected, approx_equal, not_approx_equal, eps_eq, show_diff
+from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
 from libtbx.utils import null_out
 from cStringIO import StringIO
 import math

@@ -1,7 +1,6 @@
 from iotbx.kriber import strudat
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
-from cctbx import xray
 from iotbx.option_parser import iotbx_option_parser
 import libtbx.load_env
 import sys, os

@@ -1,8 +1,8 @@
-from scitbx.source_generators.utils import norm_join, join_open
+from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env
 import string
-import sys, os
+import os
 
 this = "cctbx.source_generators.eltbx.generate_henke_cpp"
 

@@ -1,7 +1,6 @@
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
-from cctbx import maptbx
 from cctbx import eltbx
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu

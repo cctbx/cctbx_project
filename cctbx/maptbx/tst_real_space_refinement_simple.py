@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx.maptbx import real_space_refinement_simple
 import cctbx.geometry_restraints.manager
 from cctbx import xray
-from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.graph import test_cases_tardy_pdb
 import scitbx.math

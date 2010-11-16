@@ -1,5 +1,4 @@
 from cctbx.array_family import flex
-from cctbx import sgtbx
 from cctbx import miller
 from cctbx.development import debug_utils
 from cctbx.development import make_cns_input
@@ -9,7 +8,6 @@ from iotbx.cns import reflection_reader
 from libtbx.complex_math import abs_arg
 from libtbx.test_utils import approx_equal
 from libtbx import easy_run
-import random
 import sys, os
 
 def verify(sg_fcalc, sg_hl, sg_cns, p1_cns):

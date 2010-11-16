@@ -2,7 +2,7 @@ from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-import sys, os, time, random
+import sys, os, random
 
 def get_test_space_group_symbols(flag_AllSpaceGroups,
                                  flag_ChiralSpaceGroups,

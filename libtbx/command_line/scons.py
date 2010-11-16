@@ -1,7 +1,6 @@
 from libtbx.utils import Sorry, show_times_at_exit
 from libtbx.str_utils import show_string
 import libtbx.load_env
-import time
 import sys, os
 
 def find_scons_engine_path():

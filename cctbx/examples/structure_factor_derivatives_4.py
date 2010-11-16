@@ -1,4 +1,3 @@
-from cctbx import xray
 from scitbx.math import tensor_rank_2_gradient_transform_matrix
 from scitbx import matrix
 from scitbx.array_family import flex

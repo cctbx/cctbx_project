@@ -1,4 +1,4 @@
-from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
+from libtbx.test_utils import approx_equal, show_diff
 from iotbx.shelx import from_ins
 from cctbx.array_family import flex
 from cctbx import adptbx

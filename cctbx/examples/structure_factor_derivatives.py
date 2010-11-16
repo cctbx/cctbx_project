@@ -1,6 +1,5 @@
 from cctbx.examples import g_exp_i_alpha_derivatives
 from scitbx import matrix
-import cmath
 import math
 
 class parameters:

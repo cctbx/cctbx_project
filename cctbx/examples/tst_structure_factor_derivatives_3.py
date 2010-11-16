@@ -1,6 +1,4 @@
-from cctbx import xray
 from cctbx import miller
-from cctbx import crystal
 from cctbx.examples.structure_factor_derivatives_3 \
   import scatterer_as_list, scatterer_from_list, structure_factors
 from cctbx.examples.exp_i_alpha_derivatives import least_squares

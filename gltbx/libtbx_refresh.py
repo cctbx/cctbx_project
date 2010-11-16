@@ -1,7 +1,6 @@
 from gltbx import generate_defines_bpl
 from gltbx import generate_functions_bpl
 from gltbx import generate_fonts_ucs_cpp
-import sys, os
 
 if (self.env.is_ready_for_build()):
   target_dir = self.env.under_build("gltbx")

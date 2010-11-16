@@ -1,11 +1,8 @@
-import cctbx.array_family.flex
+import cctbx.array_family.flex # import dependency
 
 import boost.python
 ext = boost.python.import_ext("cctbx_dmtbx_ext")
 from cctbx_dmtbx_ext import *
-
-from cctbx.array_family import flex
-import sys
 
 class _weighted_triplet_phase_relation(
   boost.python.injector, weighted_triplet_phase_relation):

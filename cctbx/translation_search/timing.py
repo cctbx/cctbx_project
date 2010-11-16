@@ -1,12 +1,10 @@
 from __future__ import division
-from cctbx.development import debug_utils, random_structure
+from cctbx.development import random_structure
 from cctbx import miller
-from cctbx import symmetry_search
 from cctbx import translation_search
 from cctbx import sgtbx
 from cctbx.array_family import flex
-import sys
-from libtbx.utils import user_plus_sys_time, show_times
+from libtbx.utils import show_times
 import omptbx
 
 def run():
