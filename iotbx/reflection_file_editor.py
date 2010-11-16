@@ -407,7 +407,9 @@ class process_arrays (object) :
           print >> log, "  Change of basis operator in x,y,z notation:"
         print >> log, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
           cb_op.inverse().as_xyz())
-        if (d < 0 and co.change_of_basis != "to_inverse_hand"):
+        d = cb_op.c().r().determinant()
+        print "  Determinant:", d
+        if (d < 0) and (c_o_b != "to_inverse_hand") :
           print >> log, ("WARNING: This change of basis operator changes the "+
                         "hand!")
         if params.mtz_file.crystal_symmetry.eliminate_invalid_indices :
