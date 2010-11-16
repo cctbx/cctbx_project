@@ -1,3 +1,4 @@
+from libtbx.utils import write_this_is_auto_generated # implicit import
 import os
 
 def norm_join(path1, path2):
