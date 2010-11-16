@@ -1,5 +1,4 @@
 from scitbx.math import basic_statistics
-import math
 
 def pixels_to_mmPos(x,y,pixel_size):
   return [pixel_size*x,pixel_size*y]

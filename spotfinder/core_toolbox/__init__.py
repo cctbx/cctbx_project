@@ -1,7 +1,6 @@
 import boost.python
-boost.python.import_ext("spotfinder_distltbx_ext")
+ext = boost.python.import_ext("spotfinder_distltbx_ext")
 from spotfinder_distltbx_ext import *
-import spotfinder_distltbx_ext as ext
 boost.python.import_ext("spotfinder_hough_ext")
 from spotfinder_hough_ext import *
 from libtbx import adopt_init_args

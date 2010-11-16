@@ -1,10 +1,6 @@
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
-from iotbx.detectors import ImageFactory
-from scitbx.array_family import flex
-from libtbx.development.timers import Timer,Profiler
-import StringIO, cgi, sys
-from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
-from multiprocessing import Process, current_process, freeze_support
+from BaseHTTPServer import HTTPServer
+import cgi, sys
+from multiprocessing import Process, current_process
 
 from urlparse import urlparse
 #backward compatibility with Python 2.5
@@ -14,7 +10,6 @@ except: from cgi import parse_qs
 def note(format, *args):
     sys.stderr.write('[%s]\t%s\n' % (current_process().name, format%args))
 
-from spotfinder.servers.spotfinder_server_read_file import module_safe_items, module_image_stats
 from spotfinder.servers.spotfinder_server_read_file import image_request_handler as irhbase
 from spotfinder.servers.spotfinder_server_read_file import common_parameters
 

@@ -1,7 +1,6 @@
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
-from iotbx.detectors import ImageFactory
 from scitbx.array_family import flex
-from libtbx.development.timers import Timer,Profiler
+from libtbx.development.timers import Timer
 import StringIO, cgi, sys
 from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
 
