@@ -1,6 +1,6 @@
 #LIBTBX_SET_DISPATCHER_NAME phenix.find_reticular_twin_laws
 
-import sys,os
+import sys
 from cctbx.sgtbx import reticular_twin_laws
 from iotbx.option_parser import option_parser
 

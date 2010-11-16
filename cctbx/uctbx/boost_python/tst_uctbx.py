@@ -6,7 +6,6 @@ from cctbx import uctbx
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, not_approx_equal
 import random
-import math
 import sys
 
 def exercise_functions():

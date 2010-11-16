@@ -16,7 +16,6 @@ print "Loading module:", __name__
 
 # cctbx imports
 from cctbx import maptbx
-from scitbx.array_family import flex
 from libtbx import easy_pickle
 
 # PyMOL imports

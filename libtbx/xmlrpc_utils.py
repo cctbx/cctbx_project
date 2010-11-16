@@ -50,14 +50,11 @@
 # OF THIS SOFTWARE.
 # --------------------------------------------------------------------
 
-import os, sys, time, random, string
+import os, sys, random, string
 import xmlrpclib
 import subprocess
 import threading
 from libtbx import adopt_init_args
-from libtbx import thread_utils
-import libtbx.load_env
-from libtbx.utils import Sorry
 
 class ServerProxy (object) :
   def __init__(self, uri, transport=None, encoding=None, verbose=0,

@@ -1,8 +1,6 @@
 from cctbx.xray import ext
 from cctbx.xray import weighting_schemes
-from cctbx.xray import observation_types
 from cctbx import miller
-from cctbx.array_family import flex
 from libtbx import adopt_init_args
 
 class least_squares(object):

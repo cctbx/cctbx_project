@@ -1,8 +1,6 @@
-from libtbx.utils import Sorry
 from libtbx import runtime_utils
 from libtbx import easy_pickle, easy_run
-from libtbx import adopt_init_args
-import sys, os, time
+import os
 
 def exercise () :
   params = runtime_utils.process_master_phil.extract()

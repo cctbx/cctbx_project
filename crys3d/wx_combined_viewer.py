@@ -7,7 +7,6 @@ from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
-from cctbx import maptbx
 from scitbx.math import minimum_covering_sphere
 from scitbx.array_family import flex
 from scitbx import iso_surface

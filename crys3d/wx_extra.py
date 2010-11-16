@@ -4,8 +4,6 @@ import wx
 from libtbx import copy_init_args
 import libtbx.object_oriented_patterns as oop
 
-import unicodedata
-
 class _extended_wxDC(oop.injector, wx.DC):
 
   def FillWith3DGradient(self, rect, colour, direction, step=1):

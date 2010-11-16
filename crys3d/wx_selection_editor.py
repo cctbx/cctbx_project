@@ -10,8 +10,6 @@ from gltbx.gl import *
 from gltbx.glu import *
 from gltbx import viewer_utils
 import iotbx.phil
-from libtbx.utils import Sorry
-from libtbx import adopt_init_args
 import wx
 
 viewer_phil = iotbx.phil.parse("""

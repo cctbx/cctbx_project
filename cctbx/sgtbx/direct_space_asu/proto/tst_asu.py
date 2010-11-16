@@ -1,12 +1,11 @@
 import sys
 import StringIO
-import boost
 import cctbx
 from boost.rational import int as rint
 from cctbx.sgtbx import space_group_info
 from cctbx.sgtbx.direct_space_asu import proto as new_asu
 from cctbx.crystal import direct_space_asu_float_asu
-from libtbx.test_utils import approx_equal, is_below_limit
+from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 
 # For usage type:

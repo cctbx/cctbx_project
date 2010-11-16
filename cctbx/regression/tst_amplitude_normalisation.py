@@ -3,7 +3,7 @@ from cctbx import uctbx
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
-from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.test_utils import approx_equal
 from libtbx import group_args
 import math
 

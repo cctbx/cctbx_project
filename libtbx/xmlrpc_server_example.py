@@ -8,7 +8,7 @@
 
 DEFAULT_PORT = 40000
 
-import os, sys, time, string, signal
+import os, sys, string, signal
 import xmlrpclib
 
 try :

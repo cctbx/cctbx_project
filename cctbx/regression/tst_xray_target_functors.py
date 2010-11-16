@@ -3,7 +3,6 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from cctbx.development import random_structure
 import sys
 
 def run(args):

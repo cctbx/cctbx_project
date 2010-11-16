@@ -1,5 +1,5 @@
 import libtbx.path
-import sys, os
+import sys
 
 buf_size = 1000000
 

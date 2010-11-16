@@ -14,7 +14,7 @@ import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
 import math
-import os,sys
+import sys
 
 
 def v3distsq(a,b):

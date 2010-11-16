@@ -7,7 +7,7 @@ from cctbx import sgtbx
 from cctbx.sgtbx import show_cosets
 from cctbx.sgtbx import pointgroup_tools
 from cctbx.development import debug_utils
-import sys,os
+import sys
 
 
 def reverse_dict( dict ):

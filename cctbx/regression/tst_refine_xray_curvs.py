@@ -8,7 +8,6 @@ import scitbx.lbfgs
 import scitbx.lbfgsb
 from scitbx import matrix
 import libtbx.phil.command_line
-from libtbx.test_utils import approx_equal
 from libtbx import easy_pickle
 import random
 import sys

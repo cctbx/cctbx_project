@@ -1,6 +1,5 @@
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.web.asu_gallery import jv_asu
-from cctbx.web.asu_gallery import jv_index
 from cctbx import sgtbx
 from scitbx import matrix
 from scitbx.python_utils import dicts

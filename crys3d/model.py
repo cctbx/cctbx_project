@@ -2,12 +2,6 @@ from __future__ import division
 
 # TODO: clean up handling of changes in atom count
 
-import libtbx.phil
-from libtbx.utils import Sorry
-from libtbx import adopt_init_args
-import wx
-import sys, os
-
 # these are approximations based on my (probably faulty) memory.
 # feel free to change to something more reasonable.
 # note: carbon is assigned the base color.

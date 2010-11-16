@@ -2,7 +2,6 @@ from cctbx import xray
 from cctbx.examples import g_exp_i_alpha_derivatives
 from scitbx import matrix
 from scitbx.array_family import flex
-import cmath
 import math
 
 def scatterer_as_list(self):

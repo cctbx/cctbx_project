@@ -1,5 +1,4 @@
 from boost_python_hybrid_times_ext import run_c_plus_plus
-import math
 import sys, os
 
 if (not hasattr(sys, "gettickeraccumulation")):

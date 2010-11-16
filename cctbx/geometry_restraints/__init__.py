@@ -1,6 +1,7 @@
-import cctbx.crystal.direct_space_asu
+import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
-import scitbx.array_family.shared
+import scitbx.array_family.shared # import dependency
+
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
 

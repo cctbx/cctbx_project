@@ -1,14 +1,12 @@
 from __future__ import division
 
-from cctbx import miller, crystal
+from cctbx import miller
 from cctbx.development import debug_utils, random_structure
 from cctbx import translation_search
 from scitbx.array_family import flex
 from scitbx import matrix as mat
 from libtbx.test_utils import approx_equal
-from libtbx.utils import show_times_at_exit
-from libtbx.utils import progress_bar, progress_displayed_as_fraction
-import math
+from libtbx.utils import progress_displayed_as_fraction
 import random
 import sys
 

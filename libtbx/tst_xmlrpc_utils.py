@@ -1,5 +1,5 @@
 
-import os, sys, time
+import os, time
 import libtbx.load_env
 from libtbx import xmlrpc_utils
 import cStringIO

@@ -1,21 +1,15 @@
 from cctbx.array_family import flex
 from cctbx import matrix
-from cctbx import uctbx
-from cctbx import adptbx
 from cctbx import sgtbx
 from cctbx.crystal.find_best_cell import alternative_find_best_cell
 from cctbx.sgtbx import cosets
-from cctbx import maptbx
 from cctbx import crystal
 from cctbx import miller
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 from libtbx.utils import Sorry
-from libtbx import table_utils
-from libtbx import forward_compatibility
 from scitbx.python_utils import graph_tools
-
-import sys,os
+import sys
 
 
 def reference_setting_choices(space_group):

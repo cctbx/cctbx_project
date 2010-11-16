@@ -2,7 +2,6 @@
 
 import os
 import re
-import operator
 from glob import glob
 
 

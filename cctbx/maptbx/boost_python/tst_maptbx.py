@@ -12,7 +12,6 @@ import itertools
 import time
 import sys
 import random
-from cPickle import dumps
 
 def flex_types():
   return (flex.float, flex.double)

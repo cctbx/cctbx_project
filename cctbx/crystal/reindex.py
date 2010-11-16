@@ -1,8 +1,6 @@
 from cctbx import sgtbx
-from cctbx import crystal
 from cctbx.sgtbx import cosets
 from cctbx.sgtbx import lattice_symmetry
-import sys, os
 
 
 class reindexing_operators(object):

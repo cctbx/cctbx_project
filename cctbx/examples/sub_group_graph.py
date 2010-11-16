@@ -5,7 +5,7 @@ Construct all subgroup graphs and their relations between them from a single spa
 
 from cctbx import sgtbx
 from cctbx.sgtbx import pointgroup_tools
-import sys,os
+import sys
 
 def run(sg1):
   sg_high = sgtbx.space_group_info( sg1  ).group()

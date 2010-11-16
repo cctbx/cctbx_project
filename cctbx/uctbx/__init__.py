@@ -1,5 +1,5 @@
-from cctbx.array_family import flex
-import scitbx.array_family.shared
+import cctbx.array_family.flex # import dependency
+import scitbx.array_family.shared # import dependency
 
 import boost.python
 ext = boost.python.import_ext("cctbx_uctbx_ext")

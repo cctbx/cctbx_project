@@ -1,6 +1,5 @@
 from cctbx.xray import ext
 import cctbx.eltbx.xray_scattering
-import cctbx.eltbx.tiny_pse
 from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.array_family import flex

@@ -1,4 +1,3 @@
-import os.path
 import epydoc
 import epydoc.docwriter
 import epydoc.docwriter.xlink

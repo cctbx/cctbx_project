@@ -2,7 +2,6 @@ from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
 from cctbx import crystal
-import cctbx.crystal.direct_space_asu
 from cctbx import sgtbx
 import cctbx.eltbx.xray_scattering
 from cctbx import adptbx

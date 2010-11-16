@@ -1,4 +1,3 @@
-import libtbx.load_env
 from libtbx import subprocess_with_fixes
 import sys, os
 

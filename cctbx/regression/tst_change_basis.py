@@ -1,4 +1,3 @@
-from cctbx.xray import minimization
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils

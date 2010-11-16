@@ -1,5 +1,4 @@
 from cctbx import maptbx
-from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure

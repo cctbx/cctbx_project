@@ -1,5 +1,3 @@
-import pickle
-import socket
 from FileServer import StartServer, GetServerClient, WriteServerFile
 
 def run():

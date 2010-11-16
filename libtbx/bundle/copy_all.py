@@ -1,6 +1,6 @@
 from libtbx.bundle import copy_runtime_sources
 from libtbx.bundle import copy_build_libtbx
-import sys, os
+import sys
 
 def run(prefix):
   copy_runtime_sources.run(prefix+"_sources")

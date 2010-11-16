@@ -1,7 +1,7 @@
 from libtbx.utils import Sorry
 from libtbx.queuing_system_utils import chunk_manager
 import copy
-import sys, os
+import sys
 
 from optik import *
 

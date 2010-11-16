@@ -3,7 +3,6 @@ from cctbx.xray.structure_factors.gradients_direct \
   import gradients_direct
 from cctbx.xray.structure_factors.gradients_fft \
   import gradients_fft
-from cctbx import maptbx
 
 class gradients(manager):
   """ Factory class for structure factor derivatives evaluation """

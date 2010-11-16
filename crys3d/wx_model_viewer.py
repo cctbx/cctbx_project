@@ -14,10 +14,8 @@ from gltbx.glu import *
 import gltbx
 import libtbx.phil
 from libtbx.introspection import method_debug_log
-from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import wx
-import sys, os
 
 debug = method_debug_log()
 

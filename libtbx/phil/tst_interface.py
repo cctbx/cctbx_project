@@ -1,9 +1,6 @@
-
-import os, sys
+import sys
 import libtbx.phil
 from libtbx.phil import interface
-from libtbx.utils import Sorry
-from libtbx import easy_pickle
 
 def exercise () :
   master_phil = libtbx.phil.parse("""

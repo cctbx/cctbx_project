@@ -1,6 +1,5 @@
 from cctbx import xray
 from cctbx import miller
-from cctbx import crystal
 from cctbx.examples.structure_factor_derivatives_4 import structure_factors
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from cctbx.array_family import flex
