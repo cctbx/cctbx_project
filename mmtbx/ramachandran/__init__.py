@@ -148,7 +148,10 @@ class ramachandran_plot_data(object):
     sel1 = val > vmax*threshold
     return data.select(sel1)
 
-  def normalize_general(self, data):
+  def thin_data(self, x, step = 5):
+    return x.select(flex.size_t(range(0,x.size(),step)))
+
+  def split_array(self, data):
     phi = flex.double()
     psi = flex.double()
     val = flex.double()
@@ -156,6 +159,10 @@ class ramachandran_plot_data(object):
       phi.append(x)
       psi.append(y)
       val.append(z)
+    return phi, psi, val
+
+  def normalize_general(self, data):
+    phi, psi, val = self.split_array(data=data)
     s1=(phi>40)&(phi<80)& (psi>-5)&(psi<65)
     s2=(phi<-70)&(phi>-170)& (psi<-170)&(psi>-180)
     s3=(phi<-50)&(phi>-130)& (psi>-60)&(psi<40)
@@ -167,17 +174,10 @@ class ramachandran_plot_data(object):
     d1.extend(d2)
     d1.extend(d3)
     d1.extend(d4)
-    sel = flex.size_t(range(0,d1.size(),3))
-    return d1.select(sel)
+    return self.thin_data(d1)
 
   def normalize_prepro(self, data):
-    phi = flex.double()
-    psi = flex.double()
-    val = flex.double()
-    for x,y,z in data:
-      phi.append(x)
-      psi.append(y)
-      val.append(z)
+    phi, psi, val = self.split_array(data=data)
     s1=(phi<-50)&(phi>-70)& (psi<-20)&(psi>-65)
     s2=(phi<-40)&(phi>-180)& (psi> 50)&(psi<180)
     s3=(phi>40)&(phi<60)& (psi> 40)&(psi< 70)
@@ -189,17 +189,10 @@ class ramachandran_plot_data(object):
     d1.extend(d2)
     d1.extend(d3)
     d1.extend(d6)
-    sel = flex.size_t(range(0,d1.size(),3))
-    return d1.select(sel)
+    return self.thin_data(d1)
 
   def normalize_pro(self, data):
-    phi = flex.double()
-    psi = flex.double()
-    val = flex.double()
-    for x,y,z in data:
-      phi.append(x)
-      psi.append(y)
-      val.append(z)
+    phi, psi, val = self.split_array(data=data)
     s1=(phi<-30)&(phi>-100)& (psi<-170)&(psi>-180)
     s2=(phi<-30)&(phi>-100)& (psi<  20)&(psi> -60)
     s3=(phi<-30)&(phi>-100)& (psi>  40)&(psi<  80)
@@ -211,17 +204,10 @@ class ramachandran_plot_data(object):
     d1.extend(d2)
     d1.extend(d3)
     d1.extend(d4)
-    sel = flex.size_t(range(0,d1.size(),3))
-    return d1.select(sel)
+    return self.thin_data(d1)
 
   def normalize_gly(self, data):
-    phi = flex.double()
-    psi = flex.double()
-    val = flex.double()
-    for x,y,z in data:
-      phi.append(x)
-      psi.append(y)
-      val.append(z)
+    phi, psi, val = self.split_array(data=data)
     s1=(phi<-55)&(phi>-180)& (psi<-90)&(psi>-180)
     s2=(phi>40)&(phi<180)& (psi<-100)&(psi>-180)
     s3=(phi<-30)&(phi>-90)& (psi>-100)&(psi<60)
@@ -239,8 +225,7 @@ class ramachandran_plot_data(object):
     d1.extend(d4)
     d1.extend(d5)
     d1.extend(d6)
-    sel = flex.size_t(range(0,d1.size(),3))
-    return d1.select(sel)
+    return self.thin_data(d1)
 
 class generic_restraints_helper (object) :
   def __init__ (self, params) :
@@ -259,9 +244,10 @@ class generic_restraints_helper (object) :
       if (proxy.restraint_type == "ramachandran") :
         ramachandran_proxies.append(proxy)
     if(self.params.type == "oldfield"):
-      phi_target = flex.double()
-      psi_target = flex.double()
-      weights = flex.double()
+      if(gradient_array is None) :
+        from scitbx.array_family import flex
+        gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+      target = 0
       for proxy in ramachandran_proxies:
         if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
         if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
@@ -271,31 +257,15 @@ class generic_restraints_helper (object) :
           rama_table     = rama_table,
           sites_cart     = sites_cart,
           i_seqs         = proxy.i_seqs)
-        phi_target.append(r[0])
-        psi_target.append(r[1])
-        weights.append(r[2])
-      #
-      if(gradient_array is None) :
-        from scitbx.array_family import flex
-        gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-      target = 0
-      for proxy, phi_t, psi_t, weight in zip(ramachandran_proxies,
-                                             phi_target,
-                                             psi_target,
-                                             weights):
-         if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
-         if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
-         if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
-         if(proxy.residue_type=="ala"):    rama_table = self.tables.general
-         tg = target_and_gradients(
+        tg = target_and_gradients(
            gradient_array = gradient_array,
-           phi_target     = phi_t,
-           psi_target     = psi_t,
-           weight         = weight,
+           phi_target     = r[0],
+           psi_target     = r[1],
+           weight         = r[2],
            rama_table     = rama_table,
            sites_cart     = sites_cart,
            i_seqs         = proxy.i_seqs)
-         target += tg.target()
+        target += tg.target()
       return target
     else:
       return self._phi_psi_restraints_residual_sum(
