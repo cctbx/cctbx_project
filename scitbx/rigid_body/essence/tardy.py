@@ -1,11 +1,9 @@
 from __future__ import division
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import body_lib
-from scitbx.rigid_body.essence import joint_lib
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from scitbx import matrix
-import random
 import math
 
 def construct_bodies(

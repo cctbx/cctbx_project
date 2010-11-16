@@ -3,7 +3,6 @@ import iotbx.phil
 from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching
 from cctbx import sgtbx
-from cctbx.array_family import flex
 import libtbx.phil.command_line
 from scitbx import matrix
 from libtbx.utils import Sorry

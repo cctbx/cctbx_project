@@ -1,7 +1,6 @@
 from scitbx.array_family import flex
 from stdlib import math
 from libtbx.utils import Sorry
-from libtbx.test_utils import approx_equal
 from copy import deepcopy
 from stdlib import random
 from scitbx import simplex

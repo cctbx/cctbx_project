@@ -1,10 +1,7 @@
-import sys, os, time
 from scitbx.array_family import flex
 from scitbx.math import correlation
 from stdlib import math as smath
-from libtbx import easy_pickle
-from scitbx import math, fftpack, simplex
-import iotbx.phil
+from scitbx import fftpack, simplex
 
 def get_mean_sigma( nlm_array ):
   coef = nlm_array.coefs()

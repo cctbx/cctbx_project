@@ -23,7 +23,7 @@ except ImportError:
   def generalized_inverse(m):
     return m.inverse()
 else:
-  import scitbx.math
+  import scitbx.linalg.eigensystem
   def generalized_inverse(m):
     # assumption to achieve stability: order of magnitude of masses is around 1
     return matrix.sqr(

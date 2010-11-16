@@ -10,7 +10,7 @@ from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import matrix
-from scitbx.math import eigensystem
+from scitbx.linalg import eigensystem
 from libtbx.utils import Sorry, show_exception_info_if_full_testing
 import scitbx.lbfgs
 import math

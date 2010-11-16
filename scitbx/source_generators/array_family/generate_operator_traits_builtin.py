@@ -1,5 +1,5 @@
 from scitbx.source_generators import utils
-import sys, os
+import sys
 
 this = "scitbx.source_generators.array_family.generate_operator_traits_builtin"
 

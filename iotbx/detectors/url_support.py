@@ -7,7 +7,7 @@ class potential_url_request:
     try: from urlparse import parse_qs
     except: from cgi import parse_qs
 
-    from urlparse import urlparse, urlunparse
+    from urlparse import urlparse
     try:
       self.parsed = urlparse(self.text)
     except:

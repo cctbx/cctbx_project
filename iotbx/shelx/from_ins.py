@@ -5,7 +5,6 @@
 #
 from cctbx import xray
 import math
-import sys
 from cctbx import crystal
 from cctbx import adptbx
 from cctbx import eltbx

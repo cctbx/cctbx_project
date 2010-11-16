@@ -1,6 +1,5 @@
 import re
 import operator
-import string
 import os.path
 
 # Wrap lines that are longer than 'width'

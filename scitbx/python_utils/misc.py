@@ -1,4 +1,4 @@
-import sys, os
+import sys
 
 class store(object):
 

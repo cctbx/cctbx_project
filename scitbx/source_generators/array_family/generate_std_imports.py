@@ -1,6 +1,5 @@
 from scitbx.source_generators.array_family import generate_operator_functors
 from scitbx.source_generators import utils
-import sys, os
 
 this = "scitbx.source_generators.array_family.generate_std_imports"
 

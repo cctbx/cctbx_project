@@ -1,6 +1,6 @@
 import os
 import time
-import boost.optional
+import boost.optional # import dependency
 import boost.python
 boost.python.import_ext("scitbx_random_ext")
 import scitbx_random_ext

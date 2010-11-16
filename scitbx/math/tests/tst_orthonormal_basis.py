@@ -1,7 +1,6 @@
 from scitbx.math import orthonormal_basis
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
-from math import sqrt
 from scitbx.array_family import flex
 
 def input_pairs():

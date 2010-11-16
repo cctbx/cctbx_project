@@ -1,2 +1,2 @@
-from scitbx.array_family import flex #mandatory import for cbflib_ext
+import scitbx.array_family import.flex # import dependency
 from cbflib_ext import *

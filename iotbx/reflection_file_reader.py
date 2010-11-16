@@ -8,12 +8,9 @@ from iotbx.shelx import hklf as shelx_hklf
 from iotbx.shelx import crystal_symmetry_from_ins
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
 from iotbx.solve.fpfm_reader import reader as solve_fpfm_reader
-from iotbx import crystal_symmetry_from_any
 from iotbx.option_parser import option_parser
 from cctbx import miller
 from cctbx import crystal
-from cctbx import sgtbx
-from cctbx import uctbx
 from libtbx import easy_pickle, smart_open
 from libtbx.utils import Sorry, detect_binary_file
 import sys, os, os.path

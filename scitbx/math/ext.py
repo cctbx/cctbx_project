@@ -1,5 +1,5 @@
-import scitbx.array_family.flex
-import scitbx.array_family.shared
+import scitbx.array_family.flex # import dependency
+import scitbx.array_family.shared # import dependency
 
 import boost.python
 ext = boost.python.import_ext("scitbx_math_ext")

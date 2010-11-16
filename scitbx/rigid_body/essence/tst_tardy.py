@@ -6,7 +6,6 @@ from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit
 from libtbx.test_utils import approx_equal, is_above_limit
-from libtbx import Auto
 import random
 import sys
 

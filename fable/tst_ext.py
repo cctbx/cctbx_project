@@ -1,5 +1,5 @@
 import fable
-from libtbx.test_utils import Exception_expected, show_diff
+from libtbx.test_utils import Exception_expected
 
 def try_code_none(f):
   try: f(code=None)

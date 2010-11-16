@@ -9,9 +9,8 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-import boost.python
 import math
-import sys, os
+import sys
 
 import scitbx.minpack
 import scitbx.lbfgs

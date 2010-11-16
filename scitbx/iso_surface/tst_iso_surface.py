@@ -3,7 +3,7 @@ from scitbx.array_family import flex
 from scitbx import iso_surface
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-from math import sin, cos, exp
+from math import sin
 from scitbx import matrix
 import sys
 import time

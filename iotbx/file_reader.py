@@ -10,7 +10,7 @@
 # XXX note that there is some cross-importing from mmtbx here, but it is done
 # inline, not globally
 
-import sys, os, re, string
+import sys, os, re
 from libtbx import smart_open
 from libtbx.utils import Sorry
 import cPickle

@@ -4,7 +4,6 @@ from scitbx import lbfgs
 from scitbx import lbfgsb
 from scitbx.examples import immoptibox_ports
 from scitbx.array_family import flex
-from scitbx.python_utils import dicts
 from libtbx.math_utils import ifloor
 from libtbx import adopt_init_args
 from libtbx import easy_pickle

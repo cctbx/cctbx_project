@@ -1,5 +1,5 @@
-import scitbx.array_family.flex
-import scitbx.stl.map
+import scitbx.array_family.flex # import dependency
+import scitbx.stl.map # import dependency
 
 import boost.python
 ext = boost.python.import_ext("scitbx_cubicle_neighbors_ext")

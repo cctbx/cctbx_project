@@ -1,4 +1,4 @@
-import sys, os
+import sys
 from libtbx.str_utils import format_value
 from libtbx import smart_open
 

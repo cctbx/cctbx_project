@@ -2,7 +2,6 @@ from iotbx.pdb import cryst1_interpretation
 from iotbx.cns import pdb_remarks as cns_pdb_remarks
 from libtbx import smart_open
 from libtbx.utils import detect_binary_file
-from libtbx.str_utils import show_string
 
 def extract_from(file_name=None, file=None, monitor_initial=None):
   assert [file_name, file].count(None) == 1

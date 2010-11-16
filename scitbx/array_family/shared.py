@@ -1,4 +1,4 @@
-import scitbx.stl.vector
+import scitbx.stl.vector # import dependency
 
 import boost.python
 boost.python.import_ext("scitbx_array_family_shared_ext")

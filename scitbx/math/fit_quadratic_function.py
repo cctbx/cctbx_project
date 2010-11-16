@@ -1,6 +1,5 @@
 from scitbx import lbfgs
 from scitbx.array_family import flex
-import math
 
 
 class fit_quadratic_function_2d_data(object):

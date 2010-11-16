@@ -1,6 +1,5 @@
 """ Parsing of ins/res files """
 
-from libtbx import forward_compatibility
 import re
 
 from iotbx.shelx.errors import error as shelx_error

@@ -4,10 +4,8 @@ from scitbx import simplex
 from scitbx import lbfgs
 from scitbx import direct_search_simulated_annealing as dssa
 from scitbx.array_family import flex
-from scitbx.array_family import shared
 from stdlib import math as smath
-import random
-import time, os, sys
+import time, sys
 from fractions import Fraction
 
 def read_data(filename):

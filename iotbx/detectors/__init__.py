@@ -1,10 +1,9 @@
 import os
-from scitbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("iotbx_detectors_ext")
 from iotbx_detectors_ext import *
-from iotbx_detectors_bruker_ext import Bruker_base
+from iotbx_detectors_bruker_ext import Bruker_base # import dependency
 
 import exceptions
 class ImageException(exceptions.Exception):

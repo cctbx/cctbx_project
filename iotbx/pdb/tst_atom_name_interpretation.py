@@ -1,7 +1,6 @@
 from iotbx.pdb.atom_name_interpretation import interpreters
 from cStringIO import StringIO
 from libtbx.test_utils import show_diff
-import sys
 
 def exercise():
   atom_names = ["CA", "C", "C", "X", "HB1", "HB2", "HB3"]

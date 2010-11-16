@@ -3,7 +3,7 @@ from __future__ import division
 # TODO: regression testing
 # TODO: confirm old_test_flag_value if ambiguous
 
-from iotbx import reflection_file_reader, reflection_file_utils, file_reader
+from iotbx import reflection_file_utils, file_reader
 from iotbx.reflection_file_utils import get_r_free_flags_scores
 import iotbx.phil
 import iotbx.mtz

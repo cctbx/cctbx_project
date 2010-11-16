@@ -1,5 +1,4 @@
 import iotbx.pdb.hierarchy
-from cctbx import xray
 from cctbx import adptbx
 from cStringIO import StringIO
 

@@ -3,7 +3,6 @@
 from iotbx import pdb
 from iotbx.option_parser import option_parser
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
 import sys, os
 
 def run(args, command_name="phenix.pdb.hierarchy"):

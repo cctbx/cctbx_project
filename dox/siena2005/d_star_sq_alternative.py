@@ -1,5 +1,4 @@
 from cctbx import uctbx
-import math
 
 def d_star_sq(unit_cell, miller_index):
   """\

@@ -14,7 +14,6 @@ else:
   smtbx_adp_restraints = None
 
 import iotbx.constraints.commonplace
-import iotbx.constraints.geometrical
 import iotbx.constraints.factory
 
 class crystal_symmetry_builder(object):

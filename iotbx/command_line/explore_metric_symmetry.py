@@ -6,12 +6,12 @@ from cctbx.sgtbx import sub_lattice_tools as slt
 from cctbx import crystal
 from iotbx.option_parser import option_parser
 from libtbx import easy_run
-from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.utils import Sorry, multi_out
 from libtbx.str_utils import show_string
 import libtbx.path
 from cStringIO import StringIO
 
-import sys, os
+import sys
 
 def do_pointgroup_tricks(input_uc,
                          input_ls,

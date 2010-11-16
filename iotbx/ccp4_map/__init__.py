@@ -1,4 +1,4 @@
-import cctbx.array_family.flex
+import cctbx.array_family.flex # import dependency
 
 import boost.python
 ext = boost.python.import_ext("iotbx_ccp4_map_ext")

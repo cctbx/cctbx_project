@@ -1,8 +1,6 @@
 ## This file conatins some usefull transformations
 ## for the generation of specific random variables
 import random
-import os
-import time
 import math
 from scitbx.array_family import flex
 

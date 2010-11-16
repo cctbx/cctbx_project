@@ -12,7 +12,6 @@ from cctbx.crystal import reindex
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from itertools import count
-import math
 import sys
 
 def compare_cb_op_as_hkl(a, b):

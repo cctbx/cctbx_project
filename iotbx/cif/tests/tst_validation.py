@@ -1,10 +1,9 @@
-from libtbx.test_utils import Exception_expected
 from iotbx import cif
 from iotbx.cif import validation
-from iotbx.cif.validation import dictionary, ValidationError
 from iotbx.cif.validation import smart_load_dictionary
+import libtbx.load_env
 
-from urllib2 import urlopen, URLError
+from urllib2 import URLError
 from cStringIO import StringIO
 import sys
 
@@ -51,7 +50,6 @@ def exercise_validation():
   assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
 
 def exercise_smart_load(show_timings=False, exercise_url=False):
-  from libtbx import easy_pickle, load_env
   from libtbx.utils import time_log
   import libtbx
   import os, shutil, tempfile

@@ -5,7 +5,6 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
-from libtbx import easy_pickle
 from cStringIO import StringIO
 import math
 import sys

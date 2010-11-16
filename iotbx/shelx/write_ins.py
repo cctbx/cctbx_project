@@ -1,5 +1,3 @@
-from cStringIO import StringIO
-
 def LATT_SYMM(s, space_group):
   Z = space_group.conventional_centring_type_symbol()
   Z_dict = {

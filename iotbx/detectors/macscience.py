@@ -1,4 +1,4 @@
-import re,struct,os
+import struct,os
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ReadDIP
 
