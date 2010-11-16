@@ -1,5 +1,5 @@
 from spotfinder.array_family import flex
-import types,math,sys,os
+import types,math,sys
 from spotfinder.exception import SpotfinderError
 from spotfinder.core_toolbox import Distl,SpotFilterAgent,SingleMask
 from spotfinder.math_support import pixels_to_mmPos,stats_profile

@@ -1,6 +1,4 @@
 import os
-from urllib import urlencode
-from urllib2 import urlopen
 from spotfinder.diffraction.imagefiles import quick_image
 from spotfinder.servers.multipart_encoder import post_multipart
 from libtbx.development.timers import Timer

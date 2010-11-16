@@ -1,5 +1,5 @@
 from spotfinder.applications.practical_heuristics import sf2
-from spotfinder.diffraction.imagefiles import image_files,Spotspickle_argument_module
+from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
 
 SP_argument_module = Spotspickle_argument_module
 
