@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import sys
 import math
 
 from cctbx.uctbx import unit_cell

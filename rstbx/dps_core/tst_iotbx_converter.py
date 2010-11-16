@@ -2,7 +2,6 @@ import pickle, StringIO
 from cctbx import crystal,sgtbx,uctbx
 from cctbx.sgtbx import lattice_symmetry
 from rstbx.dps_core.lepage import iotbx_converter
-from libtbx.test_utils import show_diff
 
 class subgroup_comparator:
 

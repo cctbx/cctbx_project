@@ -1,5 +1,4 @@
-from math import sqrt,pi,acos,sin,atan
-from libtbx.test_utils import approx_equal
+from math import sqrt,pi,sin,atan
 from scitbx.array_family import flex
 from scitbx.matrix import col,sqr
 
