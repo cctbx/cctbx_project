@@ -1,8 +1,9 @@
+from libtbx.command_line import find_unused_imports_crude
 import sys, os
 
 class file_clutter(object):
 
-  def __init__(self, path):
+  def __init__(self, path, find_unused_imports=False):
     self.path = path
     self.is_executable = os.access(path, os.X_OK)
     self.dos_format = False
@@ -24,6 +25,10 @@ class file_clutter(object):
         if (clean_line != line): self.n_tabs_or_trailing_whitespace += 1
         if (len(clean_line) == 0): self.n_trailing_empty_lines += 1
         else: self.n_trailing_empty_lines = 0
+    self.unused_imports = None
+    if (find_unused_imports and path.endswith(".py")):
+      self.unused_imports = find_unused_imports_crude.inspect(
+        py_lines=stream.splitlines())
 
   def is_cluttered(self, flag_x):
     return ((self.is_executable and flag_x)
@@ -32,28 +37,34 @@ class file_clutter(object):
             or self.n_trailing_empty_lines > 1
             or self.missing_eol)
 
+  def has_unused_imports(self):
+    return (self.unused_imports is not None and len(self.unused_imports) != 0)
+
   def status(self, flag_x, flag_dos_format=True):
-    status = ""
+    status = []
+    def sapp(s): status.append(s)
     if (self.is_executable and flag_x
         and self.path.lower().find("command_line") < 0
         and not self.path.endswith(".csh")
         and not self.path.endswith(".sh")):
-      status += "is executable, "
+      sapp("is executable")
     if (flag_dos_format and self.dos_format):
-      status += "dos format, "
+      sapp("dos format")
     if (self.n_tabs_or_trailing_whitespace > 0):
-      status += "tabs or trailing whitespace=%d, " \
-             % self.n_tabs_or_trailing_whitespace
+      sapp(
+        "tabs or trailing whitespace=%d" % self.n_tabs_or_trailing_whitespace)
     if (self.n_trailing_empty_lines > 1):
-      status += "trailing empty lines=%d, " % self.n_trailing_empty_lines
+      sapp("trailing empty lines=%d" % self.n_trailing_empty_lines)
     if (self.missing_eol):
-      status += "missing end-of-line, "
-    return status
+      sapp("missing end-of-line")
+    if (self.has_unused_imports()):
+      sapp("unused imports=%d" % len(self.unused_imports))
+    return ", ".join(status)
 
   def show(self, flag_x, flag_dos_format=True):
     status = self.status(flag_x, flag_dos_format)
-    if status: print "%s: %s" % (self.path, status)
-
+    if (len(status) != 0):
+      print "%s: %s" % (self.path, status)
 
 def is_text_file(file_name):
   name = file_name.lower()
@@ -62,17 +73,19 @@ def is_text_file(file_name):
     if (name.endswith(extension)): return True
   return False
 
-def gather(paths):
+def gather(paths, find_unused_imports=False):
   clutter = []
+  def capp():
+    clutter.append(file_clutter(path, find_unused_imports))
   for path in paths:
     if (not os.path.exists(path)):
       print >> sys.stderr, "No such file or directory:", path
     elif (os.path.isfile(path)):
-      clutter.append(file_clutter(path))
+      capp()
     else:
       for root, dirs, files in os.walk(path):
         for f in files:
           if (is_text_file(f)):
             path = os.path.normpath(os.path.join(root, f))
-            clutter.append(file_clutter(path))
+            capp()
   return clutter
