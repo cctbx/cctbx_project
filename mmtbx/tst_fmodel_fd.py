@@ -3,12 +3,10 @@ import mmtbx.f_model
 from cctbx.regression.tst_miller import generate_random_hl
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from cctbx import sgtbx
 from cctbx import adptbx
 from libtbx.test_utils import approx_equal
-from libtbx.utils import format_cpu_times
 import random
-import sys, math
+import sys
 from cctbx import xray
 from mmtbx import masks
 

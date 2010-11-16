@@ -3411,8 +3411,6 @@ class build_all_chain_proxies(object):
   def extract_xray_structure(self, unknown_scattering_type_substitute = "?"):
     from cctbx import xray
     from cctbx import adptbx
-    from cctbx import eltbx
-    import cctbx.eltbx.xray_scattering
     from itertools import count
     assert self.special_position_settings is not None
     result = xray.structure(

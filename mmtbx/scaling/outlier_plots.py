@@ -1,7 +1,6 @@
-import scitbx.math as sm
 from iotbx.option_parser import option_parser
 from scitbx.array_family import flex
-import sys, os
+import sys
 from libtbx.utils import Sorry
 from mmtbx import scaling
 import math

@@ -1,19 +1,12 @@
-import sys, os, time, random, re
+import sys, os, random, re
 from cctbx.array_family import flex
 from iotbx import pdb
 from cctbx import adptbx, sgtbx
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
 from iotbx import reflection_file_utils
-from mmtbx import monomer_library
 from mmtbx import real_space_correlation
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-import mmtbx.f_model
-from iotbx.pdb import crystal_symmetry_from_pdb
-from iotbx import crystal_symmetry_from_any
 from iotbx import reflection_file_utils
-from iotbx import reflection_file_reader
 from libtbx.str_utils import format_value
 import iotbx
 from mmtbx import utils
@@ -23,10 +16,8 @@ from cStringIO import StringIO
 from mmtbx import model_statistics
 from iotbx.pdb import extract_rfactors_resolutions_sigma
 import iotbx.pdb.remark_3_interpretation
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-from iotbx.pdb import combine_unique_pdb_files
 from libtbx import group_args
-from mmtbx import masks
+import mmtbx.restraints
 import mmtbx.find_peaks
 import mmtbx.maps
 

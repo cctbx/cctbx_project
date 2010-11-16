@@ -1,9 +1,6 @@
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
-import math, sys, copy
-from libtbx.test_utils import approx_equal
 from scitbx import lbfgs
-from cctbx import xray
 from libtbx.str_utils import format_value
 from phenix.refinement import weight_xray_chem
 

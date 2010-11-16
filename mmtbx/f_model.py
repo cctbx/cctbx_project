@@ -7,22 +7,18 @@ else:
   import phaser.phenix_adaptors.sad_target
 
 from cctbx.array_family import flex
-import math, time, sys, os, random, re, string
+import math, sys, os, random, re, string
 from cctbx import miller
-from cctbx import crystal
 from cctbx import adptbx
 from scitbx import lbfgs
 from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal, not_approx_equal
 from mmtbx import bulk_solvent
 from mmtbx import masks
 from cctbx import xray
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
 from mmtbx.scaling.sigmaa_estimation import sigmaa_estimator
-from mmtbx.refinement import print_statistics
 from cctbx.eltbx.xray_scattering import wk1995
-from mmtbx.max_lik import max_like_non_uniform
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from cctbx import miller
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
@@ -48,7 +44,6 @@ from iotbx import data_plots
 import random
 from copy import deepcopy
 from libtbx import group_args
-from cctbx import maptbx
 if(not libtbx.env.has_module(name="solve_resolve")):
   phenix_masks = None
 else:

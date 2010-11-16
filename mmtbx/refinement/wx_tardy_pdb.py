@@ -6,7 +6,6 @@ import gltbx.util
 from libtbx.thread_utils import thread_with_callback_and_wait
 import scitbx.iso_surface
 from scitbx.math import minimum_covering_sphere, sphere_3d
-from scitbx.array_family import flex
 import wx
 import sys
 

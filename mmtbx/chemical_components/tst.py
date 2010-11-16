@@ -1,5 +1,3 @@
-import os, sys
-
 import mmtbx.chemical_components
 from mmtbx.chemical_components import get_atom_names, get_hydrogen_names
 from mmtbx.chemical_components import get_bond_pairs

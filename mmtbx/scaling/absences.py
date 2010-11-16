@@ -1,5 +1,4 @@
-from cctbx import sgtbx, uctbx
-from cctbx import miller
+from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx import crystal

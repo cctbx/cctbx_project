@@ -1,9 +1,4 @@
-import libtbx.forward_compatibility
-
-import cctbx.array_family.flex
 from mmtbx.refinement import print_statistics
-from cctbx.array_family import flex
-
 
 class fmodels(object):
   def __init__(self, fmodel_xray = None,

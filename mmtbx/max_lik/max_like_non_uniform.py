@@ -1,4 +1,4 @@
-import math,sys
+import math
 from cctbx.array_family import flex
 from cctbx.eltbx import van_der_waals_radii
 from cctbx import maptbx

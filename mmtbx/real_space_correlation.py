@@ -1,22 +1,18 @@
 from cctbx.array_family import flex
-import mmtbx.f_model
 import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.pdb import crystal_symmetry_from_pdb
 from cStringIO import StringIO
-from cctbx.xray import ext
-from scitbx.array_family import shared
 from cctbx import maptbx
 import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from cctbx import adptbx
 from libtbx.utils import Sorry
-import os, math, time
+import os, math
 from cctbx import miller
 from mmtbx import map_tools
-from libtbx import adopt_init_args
-from libtbx import Auto, group_args
+from libtbx import group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import sys
 from cctbx import crystal

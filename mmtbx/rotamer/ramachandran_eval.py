@@ -1,9 +1,7 @@
-import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from mmtbx.rotamer.rotamer_eval import open_rotarama_dlite
 from libtbx import easy_pickle
-from libtbx import dlite
 from libtbx.utils import Sorry
 import weakref
 import sys, os

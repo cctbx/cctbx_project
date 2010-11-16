@@ -1,7 +1,5 @@
-from cctbx.array_family import flex
 import iotbx.phil
 from mmtbx.refinement import print_statistics
-from libtbx.test_utils import approx_equal
 from cctbx.maptbx import real_space_target_and_gradients
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value

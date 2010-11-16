@@ -1,15 +1,7 @@
 ## Peter Zwart Mai 10, 2005
 from cctbx.array_family import flex
-from cctbx import crystal
-from cctbx import miller
-from cctbx import xray
-from cctbx import sgtbx
-from cctbx import uctbx
-from mmtbx import scaling
 from scitbx.math import chebyshev_polynome
-from libtbx.test_utils import approx_equal
 from iotbx import data_plots
-import random
 import scitbx.math
 import math
 import sys

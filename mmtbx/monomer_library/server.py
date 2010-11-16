@@ -6,7 +6,6 @@ from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, format_exception, windows_device_names
 import libtbx.load_env
 import libtbx.path
-import copy
 import os
 
 class MonomerLibraryServerError(RuntimeError): pass

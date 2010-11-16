@@ -1,7 +1,6 @@
 from cctbx.array_family import flex
-import math, time
-from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal, not_approx_equal
+import math
+from libtbx.test_utils import approx_equal
 import sys
 from stdlib import math
 from cctbx import xray
@@ -9,17 +8,13 @@ from cctbx import adptbx
 import mmtbx.restraints
 from iotbx import pdb
 from cctbx import geometry_restraints
-from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_lbfgs
 import scitbx.lbfgs
 from libtbx.utils import Sorry, user_plus_sys_time
-from mmtbx.tls import tools
 from cctbx import adp_restraints
 from mmtbx import ias
 from mmtbx import utils
 from mmtbx import model_statistics
-from mmtbx.solvent import ordered_solvent
 import iotbx.pdb
-from cctbx import sgtbx
 
 time_model_show = 0.0
 

@@ -8,7 +8,6 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from libtbx.utils import format_cpu_times
 import math
 import sys
 

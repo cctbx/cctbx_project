@@ -15,7 +15,6 @@ from scitbx.python_utils import random_transform
 import random
 import math
 import time
-import sys
 from libtbx.str_utils import StringIO
 
 random.seed(0)

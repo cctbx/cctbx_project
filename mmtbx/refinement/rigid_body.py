@@ -7,9 +7,8 @@ from scitbx import matrix
 from scitbx import lbfgs
 from mmtbx.refinement import print_statistics
 import iotbx.phil
-import copy, time
+import copy
 from libtbx.utils import Sorry
-from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from libtbx.math_utils import iround
 

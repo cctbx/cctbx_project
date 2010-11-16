@@ -1,5 +1,4 @@
 from libtbx import adopt_init_args
-import cctbx.array_family.flex
 from mmtbx.refinement import print_statistics
 from mmtbx import utils
 

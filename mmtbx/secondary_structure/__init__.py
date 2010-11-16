@@ -5,9 +5,8 @@ import iotbx.pdb
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import shared, flex
 import libtbx.phil
-import libtbx.object_oriented_patterns as oop
-from libtbx import smart_open, easy_run
-from libtbx.utils import Sorry, Usage
+from libtbx import easy_run
+from libtbx.utils import Sorry
 from libtbx import adopt_init_args, group_args
 import libtbx.load_env
 from math import sqrt

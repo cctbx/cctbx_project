@@ -1,5 +1,5 @@
 import libtbx.load_env
-import sys, os, math, string
+import sys, os, string
 
 try:
   from iotbx import pdb

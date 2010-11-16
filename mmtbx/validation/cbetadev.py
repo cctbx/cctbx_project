@@ -1,14 +1,4 @@
-import libtbx.load_env
 import sys, os, math
-try:
-  from iotbx import pdb
-except ImportError, e:
-  print "iotbx not loaded"
-  sys.exit()
-
-from mmtbx.rotamer.n_dim_table import NDimTable
-from mmtbx.rotamer import rotamer_eval
-from mmtbx.rotamer import ramachandran_eval
 from cctbx import geometry_restraints
 import iotbx.phil
 
@@ -107,7 +97,7 @@ class cbetadev(object):
     if self.params.cbetadev.verbose :
       print >> out, 'filename', filename
     if filename and os.path.exists(filename):
-      pdb_io = pdb.input(filename)
+      pdb_io = iotbx.pdb.input(filename)
     else:
       print "Please enter a file name"
       return

@@ -4,8 +4,6 @@ from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from libtbx import subprocess_with_fixes as subprocess
 import random
-import time
-import math
 import sys, os
 
 def calculate_fobs(resolution   = 1.0,

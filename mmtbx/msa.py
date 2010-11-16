@@ -1,8 +1,7 @@
-
 from libtbx import easy_run
 import libtbx.load_env
 from libtbx import adopt_init_args
-import sys, os
+import os
 
 class align_pdb_residues (object) :
   def __init__ (self,

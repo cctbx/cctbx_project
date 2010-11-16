@@ -1,9 +1,7 @@
-from iotbx import pdb
 from cctbx.array_family import flex
-import sys, math, time, random
+import time, random
 from mmtbx_rsr_ext import *
 from libtbx.utils import user_plus_sys_time
-from libtbx.test_utils import approx_equal
 from cctbx.development import random_structure
 from cctbx import sgtbx, adptbx
 

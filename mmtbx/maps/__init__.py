@@ -4,7 +4,7 @@ import libtbx.phil
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
-import sys, os
+import os
 
 map_coeff_params_str = """\
   map_coefficients

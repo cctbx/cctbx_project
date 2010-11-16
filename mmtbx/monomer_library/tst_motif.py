@@ -1,7 +1,7 @@
 from mmtbx.monomer_library import server
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
-import sys, os
+import sys
 
 tmp_cif = """\
 data_comp_list

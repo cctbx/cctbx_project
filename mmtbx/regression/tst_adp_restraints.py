@@ -5,7 +5,7 @@ import cctbx.adp_restraints
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-import sys, os
+import os
 from cctbx.array_family import flex
 
 def run():

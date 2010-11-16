@@ -5,7 +5,6 @@ import iotbx.pdb
 from mmtbx.tls import tools
 from scitbx.array_family import flex
 import mmtbx.secondary_structure
-import libtbx.math_utils
 import random
 
 res13=[[[0,1,2,3,4,5,6,7,8,9,10,11],[12]],[[0,1,2,3,4,5,6,7,8,9,10],[11,12]],[[0,1,2,3,4,5,6,7,8,9,10],[11],[12]],[[0,1,2,3,4,5,6,7,8,9],[10,11,12]],[[0,1,2,3,4,5,6,7,8,9],[10,11],[12]],[[0,1,2,3,4,5,6,7,8,9],[10],[11,12]],[[0,

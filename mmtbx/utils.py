@@ -1,9 +1,6 @@
 from cctbx import miller
 from cctbx import crystal
-from cctbx import uctbx
 from cctbx import sgtbx
-from cctbx import xray
-from cctbx import eltbx
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from libtbx.utils import \
@@ -17,17 +14,12 @@ from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 from iotbx import pdb
 from cStringIO import StringIO
-from libtbx import easy_pickle
-from scitbx.math import matrix
 from cctbx import adptbx
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
-from iotbx.option_parser import iotbx_option_parser
-from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.pdb import combine_unique_pdb_files
 from iotbx import mtz
-from libtbx.utils import user_plus_sys_time, show_total_time
 from libtbx import str_utils
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
@@ -35,12 +27,10 @@ import random, sys, os, time
 from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 import libtbx.load_env
-from mmtbx.solvent import ordered_solvent
 from mmtbx.twinning import twin_f_model
 from cctbx import sgtbx
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
-from mmtbx import masks
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel

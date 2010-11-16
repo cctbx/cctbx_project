@@ -1,14 +1,11 @@
 from cctbx import xray
 from cctbx import crystal
-from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 from stdlib import math
-import sys, time
-from libtbx.test_utils import approx_equal
+import sys
 from libtbx.utils import user_plus_sys_time
-import cctbx.adp_restraints
 from cctbx import adptbx
 from libtbx.str_utils import format_value
 

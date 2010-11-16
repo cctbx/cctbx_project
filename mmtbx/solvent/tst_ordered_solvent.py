@@ -3,7 +3,6 @@ from libtbx import easy_run
 import libtbx.load_env
 import libtbx.path
 import time
-import math
 import sys, os
 from iotbx import pdb
 from cctbx.array_family import flex

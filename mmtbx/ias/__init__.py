@@ -1,4 +1,4 @@
-import os, sys, math
+import sys, math
 from cctbx import xray
 from cctbx import adptbx
 from iotbx import pdb

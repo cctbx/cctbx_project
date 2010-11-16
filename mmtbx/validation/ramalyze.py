@@ -78,16 +78,7 @@ molprobity_fascinating_clusters_things_gui(
 """
 #}}}
 
-import libtbx.load_env
-import sys, os, getopt
-try:
-  from iotbx import pdb
-except ImportError, e:
-  print "iotbx not loaded"
-  sys.exit()
-
-from mmtbx.rotamer.n_dim_table import NDimTable
-from mmtbx.rotamer import rotamer_eval
+import sys, os
 from mmtbx.rotamer import ramachandran_eval
 from cctbx import geometry_restraints
 import iotbx.phil
@@ -185,7 +176,12 @@ class ramalyze(object):
     log=out
     if (log is None): log = sys.stdout
     if filename and os.path.exists(filename):
-      pdb_io = pdb.input(filename)
+      try:
+        import iotbx.pdb
+      except ImportError:
+        print "iotbx not loaded"
+        return None, None
+      pdb_io = iotbx.pdb.input(filename)
     else:
       print "Please enter a file name"
       return None, None

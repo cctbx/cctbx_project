@@ -12,9 +12,8 @@ import iotbx.phil
 from libtbx import Auto
 import libtbx.load_env
 from libtbx.utils import format_exception, Sorry
-from libtbx.str_utils import show_string
 from mmtbx import secondary_structure
-import sys, os, re
+import sys, re
 
 reference_group_params = iotbx.phil.parse("""
  reference_group

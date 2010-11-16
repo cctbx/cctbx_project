@@ -1,4 +1,3 @@
-import cctbx.geometry_restraints
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 import scitbx.math

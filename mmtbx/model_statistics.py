@@ -2,11 +2,8 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import sys, math, mmtbx
 from cctbx import geometry_restraints
-from mmtbx import bulk_solvent
-from libtbx import adopt_init_args
 from mmtbx.tls import tools
 from libtbx.str_utils import line_breaker
-import mmtbx.f_model
 from libtbx.str_utils import format_value
 from itertools import count
 

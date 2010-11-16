@@ -122,5 +122,5 @@ def process_chem_comps(file_name):
 
 
 if __name__=="__main__":
-  import os, sys
+  import sys
   process_chem_comps(sys.argv[1])

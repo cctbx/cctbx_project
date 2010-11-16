@@ -1,7 +1,6 @@
 from mmtbx import scaling
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-import math
 
 
 def tst_outliers_compare_mode_mean():

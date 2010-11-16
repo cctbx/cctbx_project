@@ -1,13 +1,7 @@
-from cctbx import miller
 from cctbx import crystal
-from cctbx import uctbx
 from cctbx import sgtbx
-from cctbx import xray
-from cctbx import eltbx
 import cctbx.xray.structure_factors
-from cctbx.eltbx.xray_scattering import wk1995
-from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.utils import Sorry, multi_out
 import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure

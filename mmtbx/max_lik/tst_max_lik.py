@@ -1,16 +1,7 @@
-#from mmtbx.max_lik import max_lik
-from cctbx import uctbx
-from cctbx import sgtbx
 from cctbx.array_family import flex
-from cctbx.eltbx import van_der_waals_radii
-import time, math, sys
-from cctbx import maptbx
+import sys
 from cctbx import xray
 from cctbx import crystal
-from libtbx.test_utils import approx_equal
-from scitbx import fftpack
-from scitbx import matrix
-from cctbx import miller
 from mmtbx.max_lik import max_like_non_uniform
 from cctbx.development import random_structure
 from cctbx.development import debug_utils

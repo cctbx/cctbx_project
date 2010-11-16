@@ -1,6 +1,6 @@
 from libtbx import easy_run
 import libtbx.load_env
-import sys, os, math, time
+import sys, os, math
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
@@ -9,10 +9,8 @@ from mmtbx import utils
 from libtbx.test_utils import approx_equal, not_approx_equal, run_command, \
   show_diff
 from libtbx.utils import show_times_at_exit
-from iotbx import reflection_file_reader
 import iotbx.pdb
 from scitbx.array_family import flex
-import mmtbx.f_model
 from cctbx import adptbx
 
 class xray_structure_plus(object):

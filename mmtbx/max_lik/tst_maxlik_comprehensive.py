@@ -1,11 +1,7 @@
-from cctbx import sgtbx
 from cctbx import xray
 from cctbx.array_family import flex
-from cctbx import crystal
-from iotbx import pdb
-import math,sys,random
+import sys, random
 import maxlik
-import time
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 

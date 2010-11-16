@@ -1,14 +1,9 @@
-from cctbx.array_family import flex
-import math, time, sys, os
-from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal
+import os
 import mmtbx.model
-from libtbx import introspection
 import libtbx.load_env
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from cStringIO import StringIO
 from mmtbx import ias
 
 

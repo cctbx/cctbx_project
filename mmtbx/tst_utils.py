@@ -1,16 +1,8 @@
-from cctbx.array_family import flex
-import math, time, sys, os
-from libtbx import adopt_init_args
+import sys, os
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-import mmtbx.model
-from libtbx import introspection
 import libtbx.load_env
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
-from mmtbx import model_statistics
 from mmtbx import utils
 
 def extract_serials(atoms, occ_groups):

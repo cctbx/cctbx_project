@@ -1,6 +1,5 @@
 import math
 import scitbx.math
-from scitbx.math import besselk
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 

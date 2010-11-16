@@ -1,14 +1,4 @@
-from cctbx.array_family import flex
-import mmtbx.f_model
-from cctbx.development import random_structure
-from cctbx.development import debug_utils
-from cctbx import sgtbx
-from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
-import pickle
-from cStringIO import StringIO
-import random
-import sys, math
 import mmtbx
 
 def exercise():

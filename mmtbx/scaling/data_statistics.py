@@ -1,29 +1,15 @@
 from __future__ import division
-from cctbx import maptbx
 from cctbx import miller
-from cctbx import crystal
-from cctbx import sgtbx
-from cctbx import adptbx
-import cctbx.sgtbx.lattice_symmetry
-import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
+from libtbx.utils import Sorry
 from iotbx import data_plots
-import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
-from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import erf
-import libtbx.phil.command_line
 from libtbx import table_utils
-from libtbx import easy_pickle
-import sys, os
+import sys
 import math
-import string
 
 
 class i_sigi_completeness_stats(object):

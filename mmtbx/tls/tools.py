@@ -1,16 +1,14 @@
 from iotbx import pdb
 from cctbx.array_family import flex
-import sys, math, time, random
+import sys, time
 from scitbx import lbfgs
 from mmtbx_tls_ext import *
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
-import copy
 from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from libtbx.str_utils import line_breaker
-from iotbx.option_parser import iotbx_option_parser
 from libtbx import group_args
 import mmtbx.utils
 import iotbx

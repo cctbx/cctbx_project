@@ -1,17 +1,13 @@
 from iotbx import pdb
 from cctbx.array_family import flex
-import sys, math, time, random
+import sys
 from mmtbx_tls_ext import tlso
-from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal
 import os
 from cctbx import adptbx
-from cctbx import xray
 from iotbx.option_parser import iotbx_option_parser
 import iotbx.phil
 from mmtbx import utils
 from libtbx.utils import Sorry
-import iotbx.pdb.remark_3_interpretation
 import mmtbx.tls.tools
 
 

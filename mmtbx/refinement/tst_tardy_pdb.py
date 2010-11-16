@@ -1,7 +1,6 @@
 from __future__ import division
 import mmtbx.refinement.tardy
 from mmtbx.monomer_library import pdb_interpretation
-import mmtbx.monomer_library.server as mon_lib_server
 import iotbx.pdb
 import iotbx.phil
 import cctbx.geometry_restraints
@@ -9,10 +8,8 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
-from scitbx import matrix
 import libtbx.phil.command_line
 from libtbx.utils import Sorry, format_cpu_times
-from libtbx.str_utils import format_value
 from libtbx import Auto, group_args
 import random
 import sys, os

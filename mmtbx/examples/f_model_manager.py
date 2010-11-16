@@ -66,8 +66,6 @@ def run():
 
   f_model_manager.info().show_all()
 
-  import iotbx.xplor.map
-
   fft_map = f_model_manager.electron_density_map().fft_map(
     map_type = "mFobs - DFmodel")
   fft_map.as_xplor_map(

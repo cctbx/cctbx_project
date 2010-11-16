@@ -1,23 +1,13 @@
-from cctbx import maptbx
-from cctbx import miller
 from cctbx import crystal
-from cctbx import sgtbx
-from cctbx import adptbx
-import cctbx.sgtbx.lattice_symmetry
-import cctbx.sgtbx.cosets
-from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 import mmtbx.scaling
-from mmtbx.scaling import absolute_scaling, relative_scaling
-from mmtbx.scaling import matthews, twin_analyses
-from mmtbx.scaling import basic_analyses, data_statistics,pair_analyses
+from mmtbx.scaling import pair_analyses
 import libtbx.phil.command_line
 from libtbx.str_utils import StringIO
-from libtbx import easy_pickle
 from mmtbx.scaling import pre_scale
 from mmtbx.scaling import make_param
 import sys, os

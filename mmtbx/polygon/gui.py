@@ -1,9 +1,6 @@
-
-import sys, os
+import sys
 from mmtbx import polygon, model_vs_data
-import iotbx.phil
 from math import pi, cos, sin, radians, degrees, floor
-import cStringIO
 
 stat_names = dict(zip(polygon.keys_to_show, polygon.key_captions))
 stat_formats = { "r_work" : "%.4f",

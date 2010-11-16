@@ -1,6 +1,3 @@
-from cctbx import miller
-import math, os, sys
-
 """
 the parameters should have this scope
   omit {

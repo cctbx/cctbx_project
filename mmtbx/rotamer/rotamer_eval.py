@@ -4,7 +4,6 @@ from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
 from mmtbx.rotamer.sidechain_angles import PropertyFile
-from iotbx.pdb import common_residue_names_get_class
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import weakref

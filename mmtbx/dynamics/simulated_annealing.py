@@ -1,21 +1,5 @@
-from cctbx.array_family import flex
-import random
-import time, math
-from iotbx import pdb
-from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal
-from scitbx import matrix
-import scitbx.math
-from cctbx import crystal
-import iotbx.pdb
 from cctbx import xray
-from mmtbx import dynamics
 from mmtbx.refinement import print_statistics
-from cctbx import miller
-import cctbx.xray.structure_factors
-from mmtbx import bulk_solvent
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-from mmtbx import dynamics
 from mmtbx.dynamics import cartesian_dynamics
 import mmtbx.refinement.minimization
 
@@ -43,6 +27,7 @@ def manager(simulated_annealing_params,
     is_neutron_scat_table = False
     if(all_params.main.scattering_table == "neutron"):
       is_neutron_scat_table = True
+    import scitbx.lbfgs
     minimized = mmtbx.refinement.minimization.lbfgs(
       restraints_manager       = model.restraints_manager,
       refine_xyz               = True,

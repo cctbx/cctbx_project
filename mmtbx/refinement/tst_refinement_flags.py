@@ -1,9 +1,6 @@
-from copy import deepcopy
 from cctbx.array_family import flex
-import sys, os, math, string
 from libtbx.test_utils import approx_equal, show_diff
-from libtbx import adopt_init_args
-from libtbx.utils import Sorry, format_cpu_times
+from libtbx.utils import format_cpu_times
 from mmtbx.refinement import refinement_flags
 from cStringIO import StringIO
 

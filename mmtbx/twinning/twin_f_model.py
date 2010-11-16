@@ -1,50 +1,32 @@
-from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
-from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray
-from cctbx import eltbx
 from cctbx import adptbx
 from copy import deepcopy
-from scitbx import lbfgs
 from mmtbx import masks
 import cctbx.xray.structure_factors
 from cctbx.eltbx.xray_scattering import wk1995
 from libtbx import adopt_init_args
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.utils import Sorry, date_and_time
 from libtbx.math_utils import iround
 import iotbx.phil
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 import mmtbx.scaling
-import scitbx.math as sm
-from mmtbx.scaling import absolute_scaling, relative_scaling
-from mmtbx.scaling import matthews, twin_analyses
+from mmtbx.scaling import relative_scaling
 from mmtbx.scaling import sigmaa_estimation
 from mmtbx import masks
 from mmtbx import max_lik
-from mmtbx.max_lik import maxlik
 import mmtbx.f_model
 from libtbx import table_utils
 from libtbx.utils import Sorry, user_plus_sys_time
-import scitbx.lbfgs
-import libtbx.phil.command_line
 from cStringIO import StringIO
-from libtbx import easy_pickle
-from scitbx import differential_evolution
-import sys, os, math, time, string
+import sys, os, math
 import mmtbx.f_model
-from libtbx.str_utils import format_value, show_string
-from mmtbx.scaling import outlier_rejection
-from mmtbx.scaling import absolute_scaling
-import mmtbx.scaling.twin_analyses
+from libtbx.str_utils import format_value
 from libtbx import Auto
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-from libtbx.test_utils import approx_equal
 
 master_params =  iotbx.phil.parse("""
   twin_law = None

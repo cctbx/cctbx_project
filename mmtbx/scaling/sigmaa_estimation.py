@@ -7,9 +7,8 @@ import scitbx.lbfgs
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from libtbx.math_utils import iround
-from libtbx.utils import Sorry
 import math
-import sys, os
+import sys
 import iotbx.phil
 from libtbx import group_args
 

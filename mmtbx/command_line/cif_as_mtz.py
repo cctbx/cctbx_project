@@ -1,23 +1,15 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 
-import sys, os, time, re
+import sys, os, re
 from cctbx.array_family import flex
 from cctbx import miller
-from libtbx import easy_run, runtime_utils
+from libtbx import runtime_utils
 from cctbx import crystal
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
 from iotbx import reflection_file_utils, crystal_symmetry_from_any
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from cctbx.eltbx.neutron import neutron_news_1992_table
-from cctbx import eltbx
-import mmtbx.f_model
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import crystal_symmetry_from_pdb
 from libtbx import smart_open
-from libtbx.str_utils import show_string
 import mmtbx.utils
 import iotbx.pdb
 import iotbx.phil

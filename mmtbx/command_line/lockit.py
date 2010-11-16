@@ -1,6 +1,5 @@
 from __future__ import division
 import mmtbx.monomer_library.pdb_interpretation
-import iotbx.pdb.atom_name_interpretation
 import iotbx.mtz
 import iotbx.phil, libtbx.phil
 from cctbx import maptbx

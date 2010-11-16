@@ -1,4 +1,5 @@
-import os,sys, string, iotbx.phil
+import iotbx.phil
+import sys
 
 class phil_lego(object):
   """

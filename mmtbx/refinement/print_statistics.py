@@ -1,18 +1,15 @@
 from cctbx.array_family import flex
-from cctbx import geometry_restraints
 import scitbx.math.euler_angles
 from scitbx import matrix
 from libtbx.utils import format_cpu_times, getenv_bool
 from libtbx import adopt_init_args
-import sys, os, time
+import sys, time
 from libtbx import str_utils
 from libtbx.str_utils import prefix_each_line_suffix
 from libtbx import introspection
-from cctbx import adptbx
 from stdlib import math
 from cctbx import xray
 import cctbx.xray.structure_factors.global_counters
-from mmtbx import bulk_solvent
 from mmtbx import max_lik
 from itertools import count
 

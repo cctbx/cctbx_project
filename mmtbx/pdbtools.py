@@ -2,7 +2,6 @@ import iotbx.phil
 from mmtbx.refinement import rigid_body
 from mmtbx import utils
 from cctbx.array_family import flex
-import iotbx.cns.miller_array
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.str_utils import show_string
 import libtbx.phil.command_line
@@ -11,7 +10,6 @@ from iotbx import pdb
 from cctbx import crystal
 from libtbx.utils import Sorry
 from iotbx.pdb import crystal_symmetry_from_pdb
-from iotbx import crystal_symmetry_from_any
 from mmtbx import monomer_library
 import mmtbx.restraints
 import mmtbx.model
