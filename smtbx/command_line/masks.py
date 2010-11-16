@@ -2,13 +2,10 @@
 
 from __future__ import division
 
-from cctbx import crystal, miller, sgtbx, uctbx, xray
-from cctbx.array_family import flex
+from cctbx import miller, sgtbx, uctbx, xray
 from iotbx import reflection_file_utils, reflection_file_reader
 from iotbx import shelx
 from smtbx import masks
-from cctbx.masks import flood_fill
-from libtbx.test_utils import approx_equal
 from libtbx.utils import time_log
 from iotbx.option_parser import option_parser
 

@@ -1,8 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME smtbx.absolute_structure
 
 from cctbx.array_family import flex
-from cctbx import miller
-from cctbx import xray
 
 import iotbx.builders
 import iotbx.cif

@@ -1,7 +1,7 @@
 from __future__ import division
 
 from cctbx.array_family import flex
-from cctbx import sgtbx, uctbx, xray, crystal, miller, eltbx
+from cctbx import sgtbx, xray, crystal, miller, eltbx
 import cctbx.eltbx.wavelengths
 import smtbx.development
 from cctbx.development.space_group_option_parser\
@@ -10,7 +10,7 @@ import smtbx.structure_factors.direct as structure_factors
 from libtbx.test_utils import approx_equal
 from scitbx.math import approx_equal_relatively
 import libtbx.utils
-import math, random
+import random
 from itertools import islice, izip
 from scitbx import matrix
 from scitbx.math import median_statistics

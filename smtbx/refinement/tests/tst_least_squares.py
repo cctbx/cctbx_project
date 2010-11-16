@@ -2,7 +2,7 @@ from __future__ import division
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
 from scitbx.lstbx import normal_eqns_solving
-from cctbx import sgtbx, crystal, xray, miller, adptbx, uctbx
+from cctbx import sgtbx, crystal, xray, adptbx, uctbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from smtbx.refinement import least_squares

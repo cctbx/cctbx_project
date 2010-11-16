@@ -7,7 +7,6 @@ import smtbx.utils
 from smtbx.refinement import least_squares
 from scitbx.lstbx import normal_eqns_solving
 from scitbx import matrix
-import scitbx.math
 import itertools
 
 

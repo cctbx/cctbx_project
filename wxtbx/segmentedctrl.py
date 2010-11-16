@@ -12,7 +12,6 @@
 #   - additional styles?
 
 import wx
-import sys, os
 
 SEGBTN_ROUNDED_CORNERS = 1
 SEGBTN_VERTICAL = 2

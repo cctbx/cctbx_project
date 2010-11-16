@@ -9,7 +9,6 @@
 
 from __future__ import division
 import wx
-import wx.lib.wordwrap
 import wx.lib.scrolledpanel
 import cStringIO
 import math, sys, os

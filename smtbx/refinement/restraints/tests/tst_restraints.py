@@ -1,5 +1,4 @@
 from __future__ import division
-from cctbx import sgtbx, crystal, xray, miller, adptbx, uctbx
 from cctbx import geometry_restraints, adp_restraints
 from cctbx.array_family import flex
 from cctbx.xray import parameter_map
@@ -7,12 +6,10 @@ from smtbx.refinement import restraints
 from smtbx.refinement.restraints.adp_restraints import\
      adp_similarity_restraints, isotropic_adp_restraints, rigid_bond_restraints
 from smtbx.refinement.restraints.tests import trial_structure
-from scitbx import sparse
 from libtbx.test_utils import approx_equal
 import libtbx
 
 from scitbx import matrix
-from scitbx.math import approx_equal_relatively
 
 geom = geometry_restraints
 adp = adp_restraints
@@ -222,5 +219,4 @@ def run():
   exercise_ls_restraints()
 
 if __name__ == '__main__':
-  import sys
   run()

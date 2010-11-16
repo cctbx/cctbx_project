@@ -2,7 +2,7 @@
 from wx.lib.embeddedimage import PyEmbeddedImage
 import wx
 import libtbx.load_env
-import sys, os
+import os
 
 blank16 = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAXNSR0IArs4c6QAAAAJiS0dE"

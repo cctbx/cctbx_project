@@ -1,4 +1,4 @@
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import show_diff
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints import adp_restraints
 from smtbx.refinement.restraints.tests import trial_structure
@@ -6,7 +6,6 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 import cctbx.geometry_restraints
-import cctbx.adp_restraints.flags
 from cStringIO import StringIO
 import sys
 

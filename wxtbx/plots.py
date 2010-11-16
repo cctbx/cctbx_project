@@ -3,9 +3,7 @@ from wxtbx import bitmaps
 import wx
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_init_args
-from libtbx.utils import Sorry
 import sys
-import os
 if (sys.version_info[2] >= 6) :
   import warnings
   warnings.simplefilter('ignore', DeprecationWarning)
@@ -28,7 +26,6 @@ class plot_container (wx.BoxSizer) :
     self.disabled = False
     try :
       import matplotlib
-      from matplotlib.backends.backend_wxagg import Toolbar
       from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
       from matplotlib.backends.backend_wxagg import FigureManager
       import matplotlib.ticker

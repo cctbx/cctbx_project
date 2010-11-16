@@ -7,7 +7,6 @@ except ImportError, e :
   webkit = None
   _import_error = str(e)
 import wx
-import sys
 
 class webkit_frame (wx.Frame) :
   def __init__ (self, *args, **kwds) :

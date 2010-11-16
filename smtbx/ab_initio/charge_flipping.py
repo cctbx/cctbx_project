@@ -35,13 +35,8 @@ Cryst. A64:123-134, 2008
 
 from __future__ import division, generators
 
-from libtbx import forward_compatibility
 from libtbx import object_oriented_patterns as oop
-from libtbx.math_utils import are_equivalent
-from libtbx.assert_utils import is_numeric
-from libtbx import adopt_init_args, adopt_optional_init_args
-
-from scitbx import matrix as mat
+from libtbx import adopt_optional_init_args
 
 from cctbx.array_family import flex
 from cctbx import crystal

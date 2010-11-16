@@ -1,9 +1,7 @@
-from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import crystal
 from cctbx import miller
 from cctbx.development import random_structure
-import random
 
 indices = miller.build_set(
   crystal_symmetry=crystal.symmetry(unit_cell=(10,11,12, 90,105,90),
