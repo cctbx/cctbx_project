@@ -1,11 +1,11 @@
-from cctbx.array_family import flex
+from cctbx.array_family import flex # import dependency
 
 import boost.python
 boost.python.import_ext("rstbx_ext")
 from rstbx_ext import *
 import rstbx_ext as ext
 
-import types,math
+import math
 
 from cctbx.crystal_orientation import basis_type
 from cctbx.crystal_orientation import ext as coext

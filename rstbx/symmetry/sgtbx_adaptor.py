@@ -1,4 +1,4 @@
-from cctbx.sgtbx import space_group, space_group_info
+from cctbx.sgtbx import space_group_info
 
 #take care of R vs. H nomenclature, as well as ambiguous I-centered groups
 

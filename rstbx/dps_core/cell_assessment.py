@@ -1,4 +1,4 @@
-import math,exceptions
+import exceptions
 
 class SmallUnitCellVolume(exceptions.Exception): pass
 
