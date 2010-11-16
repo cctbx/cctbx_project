@@ -1,6 +1,6 @@
 import scitbx.array_family.flex # for tuple mappings
 
-from scitbx.math.ext import gaussian_term as term
+from scitbx.math.ext import gaussian_term as term # implicit import
 from scitbx.math.ext import gaussian_sum as sum
 from scitbx.math.ext import gaussian_fit as fit
 from scitbx.array_family import flex

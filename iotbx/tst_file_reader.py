@@ -1,4 +1,4 @@
-import os, sys
+import os
 import libtbx.load_env
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected

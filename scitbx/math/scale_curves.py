@@ -1,6 +1,6 @@
 from scitbx import differential_evolution as de
 from scitbx.array_family import flex
-import math, sys
+import sys
 from libtbx.test_utils import approx_equal
 
 class curve_interpolator(object):

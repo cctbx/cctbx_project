@@ -6,7 +6,6 @@ import scitbx.stl.map
 from libtbx.phil import tokenizer
 from libtbx.utils import Sorry, format_exception
 from libtbx import slots_getstate_setstate
-from cStringIO import StringIO
 
 def _character_case_id(strings):
   have_upper = False

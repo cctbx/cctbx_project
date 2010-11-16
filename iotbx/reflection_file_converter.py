@@ -1,7 +1,7 @@
 import iotbx.mtz
 import iotbx.cns.miller_array
 import iotbx.scalepack.merge
-import iotbx.shelx.hklf
+import iotbx.shelx.hklf # implicit import
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.option_parser import option_parser

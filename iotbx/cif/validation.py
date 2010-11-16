@@ -5,7 +5,7 @@ import os
 import shutil
 import re
 import sys
-from urllib2 import urlopen, URLError
+from urllib2 import urlopen
 
 
 class ErrorHandler:

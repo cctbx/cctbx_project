@@ -3,7 +3,6 @@ from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
 from gltbx import wx_viewer
 from libtbx.option_parser import libtbx_option_parser
-from libtbx.utils import Usage
 import wx
 import sys
 

@@ -9,12 +9,11 @@ import iotbx.pdb.hierarchy
 
 from iotbx.pdb.atom_name_interpretation import \
   interpreters as protein_atom_name_interpreters
-import scitbx.array_family.shared
+import scitbx.array_family.shared # import dependency
 import scitbx.stl.set
 from libtbx import smart_open
-from libtbx.math_utils import iround
-from libtbx.str_utils import show_string, show_sorted_by_counts
-from libtbx.utils import plural_s, Sorry, hashlib_md5, date_and_time
+from libtbx.str_utils import show_string
+from libtbx.utils import plural_s, hashlib_md5, date_and_time
 from libtbx import Auto
 from cStringIO import StringIO
 import sys

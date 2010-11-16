@@ -3,7 +3,6 @@ from cctbx import miller
 from iotbx import cif
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
-from libtbx.utils import time_log
 from cStringIO import StringIO
 import sys
 

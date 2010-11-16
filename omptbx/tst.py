@@ -1,5 +1,4 @@
 import omptbx
-import os
 
 def exercise():
   if (omptbx.have_omp_h): print "omptbx.have_omp_h"

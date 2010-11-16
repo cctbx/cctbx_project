@@ -519,7 +519,6 @@ class construct(slots_getstate_setstate):
         angular_tolerance_deg=near_singular_hinges_angular_tolerance_deg)
 
   def show_summary(O, vertex_labels, out=None, prefix=""):
-    from libtbx.str_utils import format_value
     from libtbx.utils import xlen, plural_s
     import sys
     if (out is None): out = sys.stdout

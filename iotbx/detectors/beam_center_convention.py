@@ -102,7 +102,7 @@ def convert_beam_instrument_to_module(input_image,image_divider,moduleindex,
 if __name__=="__main__":
   from libtbx import adopt_init_args
   from libtbx.test_utils import show_diff
-  import StringIO,sys
+  import StringIO
   class test_tile:
     def __init__(self,first,last):
       adopt_init_args(self, locals())

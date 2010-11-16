@@ -1,4 +1,4 @@
-import copy,re,cPickle
+import copy,cPickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors import ImageException
 from scitbx.array_family import flex
@@ -8,7 +8,7 @@ def pilatus_slice_from_http_url(url):
   try: from urlparse import parse_qs
   except: from cgi import parse_qs
 
-  from urlparse import urlparse, urlunparse
+  from urlparse import urlparse
   parsed = urlparse(url)
   assert parsed.scheme in ["http","https"]
   from urllib2 import urlopen
@@ -39,7 +39,7 @@ def pilatus_slice_from_file_url(url):
   try: from urlparse import parse_qs
   except: from cgi import parse_qs
 
-  from urlparse import urlparse, urlunparse
+  from urlparse import urlparse
   parsed = urlparse(url)
   assert parsed.scheme == "file"
   file = parsed.path.split("?")[0]

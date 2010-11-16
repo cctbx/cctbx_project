@@ -1,7 +1,6 @@
 from iotbx.detectors.raxisbase import Raxis
 from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors import ReadRAXIS,MakeSquareRAXIS
-from scitbx.array_family import flex
 
 #Special class to handle Raxis-II images, containing rectangular pixels
 # Array is resized so that the internal representation has square pixels

@@ -1,4 +1,3 @@
-import math
 from scitbx.array_family import flex
 from scitbx.python_utils import robust_statistics as rs
 

@@ -1,7 +1,5 @@
 from iotbx.cns.crystal_symmetry_utils import crystal_symmetry_as_sg_uc
-from cctbx import miller
 from cctbx.array_family import flex
-from libtbx.str_utils import show_string
 
 def crystal_symmetry_as_cns_comments(crystal_symmetry, out):
   if (   crystal_symmetry.unit_cell() is not None

@@ -1,4 +1,3 @@
-import re,struct
 from iotbx.detectors.detectorbase import DetectorImageBase
 
 class NullAdaptor(object):

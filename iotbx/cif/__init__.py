@@ -7,7 +7,6 @@ if has_antlr3:
 
 from cctbx.array_family import flex
 from cctbx import adptbx, crystal, sgtbx
-from cctbx.xray import structure
 from iotbx.cif import model, builders
 from libtbx.containers import OrderedDict
 

@@ -3,7 +3,6 @@
 
 import libtbx
 from scitbx.array_family import flex
-import itertools
 
 class iterations(object):
 

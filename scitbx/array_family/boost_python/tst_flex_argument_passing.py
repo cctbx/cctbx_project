@@ -1,4 +1,3 @@
-import boost.python
 from scitbx.array_family import flex
 
 def exercise():

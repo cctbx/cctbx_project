@@ -1,8 +1,5 @@
-from scitbx import lbfgs
-from scitbx.array_family import flex
 from scitbx.math import fit_quadratic_function as fqf
 from libtbx.test_utils import approx_equal
-import math
 
 def test_fit():
   x1_obs=[]

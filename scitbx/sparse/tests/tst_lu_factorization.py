@@ -1,5 +1,5 @@
 from scitbx import sparse
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import approx_equal
 
 class test(object):
 

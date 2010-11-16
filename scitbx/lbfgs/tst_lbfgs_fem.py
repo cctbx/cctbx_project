@@ -5,7 +5,6 @@ from libtbx.utils import show_times
 from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import libtbx.load_env
-import platform
 import random
 import re
 import sys, os

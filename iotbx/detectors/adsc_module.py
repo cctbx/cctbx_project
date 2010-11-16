@@ -1,6 +1,5 @@
-import copy,re,cPickle
+import copy
 from iotbx.detectors.adsc import ADSCImage
-from iotbx.detectors import ImageException
 from scitbx.array_family import flex
 from iotbx.detectors import image_divider
 
@@ -16,7 +15,7 @@ def ADSC_module_from_file_url(url):
   try: from urlparse import parse_qs
   except: from cgi import parse_qs
 
-  from urlparse import urlparse, urlunparse
+  from urlparse import urlparse
   parsed = urlparse(url)
   assert parsed.scheme == "file"
   file = parsed.path.split("?")[0]

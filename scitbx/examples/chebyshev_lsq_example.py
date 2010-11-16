@@ -2,7 +2,6 @@ from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from cStringIO import StringIO
-import math
 
 
 

@@ -6,7 +6,7 @@ from libtbx.test_utils import approx_equal
 import libtbx.utils
 import random
 import math
-import sys, os
+import sys
 
 def fmtfloat(f):
   s = "%.1f" % (f,)

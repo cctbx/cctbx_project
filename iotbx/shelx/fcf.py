@@ -3,9 +3,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from iotbx.acta_c import cif_float
 from cmath import cos, sin, pi
-from libtbx import forward_compatibility
 
 
 def miller_export_as_shelx_fcf(self, f_calc, file_object=None):

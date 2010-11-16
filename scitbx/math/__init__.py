@@ -1,6 +1,6 @@
 from scitbx.math.ext import *
 import scitbx.linalg.eigensystem
-import scitbx.math.gaussian
+import scitbx.math.gaussian # implicit import
 from scitbx import matrix
 from scitbx.array_family import flex
 from stdlib import math

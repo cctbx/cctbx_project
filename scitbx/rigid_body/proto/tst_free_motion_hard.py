@@ -11,7 +11,6 @@ from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
-import math
 import sys
 
 def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):

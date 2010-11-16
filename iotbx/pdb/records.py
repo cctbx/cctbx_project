@@ -1,5 +1,3 @@
-import sys
-
 class FormatError(RuntimeError): pass
 
 def chain_id_strip(id):

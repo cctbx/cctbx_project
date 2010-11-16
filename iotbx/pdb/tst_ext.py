@@ -2,7 +2,7 @@ from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal
 from cctbx.array_family import flex
-from libtbx.utils import hashlib_md5, Sorry, \
+from libtbx.utils import hashlib_md5, \
   user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env

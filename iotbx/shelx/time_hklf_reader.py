@@ -1,5 +1,4 @@
 from libtbx.utils import user_plus_sys_time
-from libtbx.test_utils import approx_equal
 import os
 
 from iotbx.shelx import hklf

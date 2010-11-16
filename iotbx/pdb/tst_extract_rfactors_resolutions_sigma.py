@@ -1,5 +1,4 @@
 from iotbx.pdb import extract_rfactors_resolutions_sigma
-import sys, os
 from libtbx.test_utils import approx_equal
 
 example_cns = """

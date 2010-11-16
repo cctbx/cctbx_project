@@ -3,13 +3,10 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
-from cctbx import geometry_restraints
-from cctbx import adp_restraints
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
 import iotbx.constraints.geometrical
 import iotbx.builders
-from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
 import cStringIO

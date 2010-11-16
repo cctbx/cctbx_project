@@ -6,14 +6,7 @@ from cctbx import xray
 from cctbx import eltbx
 from cctbx import adptbx
 
-from cctbx import geometry_restraints
-from cctbx import adp_restraints
-
 import scitbx.math
-
-from libtbx import forward_compatibility
-from libtbx import adopt_init_args
-import libtbx.load_env
 
 from iotbx.shelx.errors import error as shelx_error
 import iotbx.constraints.commonplace

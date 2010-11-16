@@ -1,7 +1,6 @@
 from scitbx.source_generators.array_family import operator_functor_info
 from scitbx.source_generators.array_family import generate_std_imports
 from scitbx.source_generators import utils
-import sys, os
 
 this = "scitbx.source_generators.array_family.generate_algebras"
 

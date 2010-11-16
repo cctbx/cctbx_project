@@ -1,4 +1,4 @@
-from scitbx.math import eigensystem
+from scitbx.linalg import eigensystem
 from scitbx.math import superpose_kearsley_rotation
 from scitbx import matrix
 from stdlib import math

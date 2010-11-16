@@ -1,7 +1,6 @@
 from cctbx import miller
 from cctbx import crystal
 from cctbx import uctbx
-from cctbx import sgtbx
 from cctbx.array_family import flex
 import sys
 

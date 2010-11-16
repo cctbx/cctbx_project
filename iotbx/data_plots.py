@@ -1,9 +1,5 @@
-
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
-from libtbx.utils import Sorry
-import sys
-import os
 import string, re, math
 
 class plot_data(object):

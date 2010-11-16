@@ -8,7 +8,7 @@ from libtbx.math_utils import iround
 from libtbx.test_utils import approx_equal, eps_eq, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
-import sys, os
+import os
 
 def exercise_map_gridding():
   try:

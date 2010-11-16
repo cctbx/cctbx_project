@@ -1,13 +1,13 @@
-import boost.optional
-import boost.std_pair
-import scitbx.boost_python.slice
+import boost.optional # import dependency
+import boost.std_pair # import dependency
+import scitbx.boost_python.slice # import dependency
 
 import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
-import scitbx.stl.map
+import scitbx.stl.map # import dependency
 import scitbx.random
 from scitbx.random import get_random_seed, set_random_seed
 from libtbx.str_utils import format_value

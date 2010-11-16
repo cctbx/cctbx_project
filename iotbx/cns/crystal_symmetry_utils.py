@@ -1,6 +1,5 @@
 from iotbx.cns.space_group_symbols import cns_format
 from cctbx import crystal
-import re
 
 uc_param_names = "a b c alpha beta gamma".split()
 

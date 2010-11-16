@@ -1,10 +1,4 @@
 import os, sys
-try:
-  from iotbx import pdb
-  from iotbx.pdb.hybrid_36 import hy36decode
-except ImportError, e:
-  print "iotbx not loaded"
-  sys.exit()
 
 protein_sequence_to_three = {
   "B" : "ACE",
@@ -56,10 +50,15 @@ def run(filename,
         print_unknown=False,
         ):
   protein_only = True
+  from libtbx.utils import Sorry
+  try:
+    import iotbx.pdb
+  except ImportError, e:
+    raise Sorry("iotbx not available")
   if os.path.exists(filename):
-    pdb_io = pdb.input(filename)
+    pdb_io = iotbx.pdb.input(filename)
   elif filename.find("\n")>-1:
-    pdb_io = pdb.input(source_info=None,
+    pdb_io = iotbx.pdb.input(source_info=None,
                        lines=flex.split_lines(filename))
   else:
     assert 0

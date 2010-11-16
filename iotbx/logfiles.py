@@ -524,7 +524,6 @@ def parse_all_files (args) :
 
 def exercise () :
   import libtbx.load_env
-  from libtbx import test_utils
   denzo_log = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/tracking/denzo.log",
     test=os.path.isfile)

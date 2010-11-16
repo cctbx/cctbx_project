@@ -5,7 +5,7 @@
 # implementation was good enough
 #
 
-import sys, os
+import sys
 from libtbx.utils import Sorry
 
 class graph(object):
