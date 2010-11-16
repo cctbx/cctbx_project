@@ -1,23 +1,16 @@
 from __future__ import division
 
-import os.path
 import sys
 import random
-import math
 
-from cctbx import sgtbx
 from cctbx import miller
 from cctbx import maptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from cctbx import euclidean_model_matching as emma
-from cctbx import symmetry_search
 
-from libtbx.test_utils import approx_equal, is_above_limit
-from libtbx.utils import flat_list
 from libtbx import group_args
-from libtbx.utils import format_cpu_times
 
 import scitbx.matrix as mat
 

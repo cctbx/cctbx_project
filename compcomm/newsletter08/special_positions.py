@@ -1,6 +1,5 @@
 from cctbx import crystal
 from cctbx.array_family import flex
-import math
 
 crystal_symmetry = crystal.symmetry(
     unit_cell=(10,10,10,90,90,90),

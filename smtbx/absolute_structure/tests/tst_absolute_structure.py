@@ -1,12 +1,11 @@
 from __future__ import division
 
-import math
 import sys
 from stdlib import random
 
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from cctbx import adptbx, miller, sgtbx
+from cctbx import adptbx
 from cctbx.array_family import flex
 
 from iotbx import csv_utils

@@ -1,3 +1,5 @@
+import scitbx.sparse # import dependency
+
 import boost.python
 boost.python.import_ext("smtbx_refinement_restraints_ext")
 

@@ -1,13 +1,10 @@
 import boost.python
-boost.python.import_ext("smtbx_refinement_constraints_ext")
-import smtbx_refinement_constraints_ext as ext
+ext = boost.python.import_ext("smtbx_refinement_constraints_ext")
 from smtbx_refinement_constraints_ext import *
 
-import libtbx
-import scitbx.sparse
-from scitbx.array_family import flex
-from cctbx import crystal
-from cctbx.eltbx import covalent_radii
+import scitbx.sparse # import dependency
+from scitbx.array_family import flex # import dependency
+import libtbx.utils
 
 class InvalidConstraint(libtbx.utils.Sorry):
   __module__ = Exception.__module__

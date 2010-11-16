@@ -2,13 +2,14 @@ import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
 
+import smtbx.refinement.weighting_schemes # import dependency
+
 import libtbx
 from libtbx import adopt_optional_init_args
 from scitbx import linalg, lstbx
 from scitbx.array_family import flex
 from cctbx import xray
 from smtbx.structure_factors import direct
-import smtbx.refinement.weighting_schemes
 
 from stdlib import math
 

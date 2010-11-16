@@ -18,7 +18,6 @@ __all__ = ["MetallicButton", "AdjustAlpha", "AdjustColour",
 
 
 import wx
-import wx.lib.newevent
 import wx.lib.wordwrap
 import wx.lib.imageutils
 from wx.lib.colourutils import *

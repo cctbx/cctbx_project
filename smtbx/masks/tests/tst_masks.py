@@ -3,7 +3,6 @@ from __future__ import division
 from cctbx import miller
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
-from cctbx.masks import flood_fill
 from cctbx.xray import structure
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.utils

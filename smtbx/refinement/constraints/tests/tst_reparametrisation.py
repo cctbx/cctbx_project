@@ -4,7 +4,7 @@ from smtbx.refinement import constraints
 from scitbx import sparse
 from scitbx import matrix as mat
 from cctbx.array_family import flex
-from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.test_utils import approx_equal
 import libtbx.utils
 import smtbx.utils
 

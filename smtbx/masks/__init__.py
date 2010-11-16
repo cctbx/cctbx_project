@@ -3,7 +3,7 @@ from __future__ import division
 import sys
 
 import cctbx.masks
-from cctbx import crystal, maptbx, miller, sgtbx, xray
+from cctbx import maptbx, miller, sgtbx, xray
 from cctbx.array_family import flex
 from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
