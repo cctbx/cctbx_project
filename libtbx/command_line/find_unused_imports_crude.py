@@ -1,7 +1,7 @@
 import os
 op = os.path
 
-def find_unused_imports(py_lines):
+def inspect(py_lines):
   imports_to_ignore = set([
     "import libtbx.forward_compatibility",
     "  import libtbx.start_print_trace",
@@ -85,28 +85,39 @@ def find_unused_imports(py_lines):
   return unused_names
 
 def show_unused_imports(file_name):
-  unused_imports = find_unused_imports(
+  unused_imports = inspect(
     py_lines=open(file_name).read().splitlines())
   if (len(unused_imports) != 0):
     print "%s: %s" % (file_name, ", ".join(unused_imports))
     print
+  return unused_imports
 
-def walk_func(not_used, dirname, names):
+def walk_func(counter, dirname, names):
   for name in names:
     if (not name.endswith(".py")):
       continue
     file_name = op.join(dirname, name)
     if (op.isfile(file_name)):
-      show_unused_imports(file_name)
+      if (len(show_unused_imports(file_name)) != 0):
+        counter[0] += 1
 
 def run(args):
   if (len(args) == 0):
     args = ["."]
+  counter = [0]
   for arg in args:
     if (op.isdir(arg)):
-      op.walk(arg, walk_func, None)
+      op.walk(arg, walk_func, counter)
     elif (op.isfile(arg)):
-      show_unused_imports(file_name=arg)
+      if (len(show_unused_imports(file_name=arg)) != 0):
+        counter[0] += 1
+  if (counter[0] != 0):
+    print """\
+HINT:
+  To suppress flagging of unused imports follow these examples:
+    import scitbx.array_family.flex # import dependency
+    import something.related # implicit import
+"""
 
 if (__name__ == "__main__"):
   import sys
