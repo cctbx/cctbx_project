@@ -5,9 +5,8 @@ import mmtbx.refinement.group
 from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
 import scitbx.lbfgs
-from cctbx import xray
 from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry, user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 time_adp_refinement_py = 0.0
 

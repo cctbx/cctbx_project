@@ -1,10 +1,9 @@
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
-import math, sys
+import sys
 from libtbx.test_utils import approx_equal
-from scitbx import matrix
 from scitbx import lbfgs
-import copy, math
+import copy
 from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time

@@ -3,7 +3,7 @@ from __future__ import division
 import iotbx.pdb.secondary_structure
 import libtbx.object_oriented_patterns as oop
 from libtbx.utils import Sorry
-from libtbx import adopt_init_args, group_args
+from libtbx import group_args
 from math import sqrt
 import sys
 

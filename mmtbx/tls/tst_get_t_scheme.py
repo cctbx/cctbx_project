@@ -1,17 +1,11 @@
 from cctbx.array_family import flex
-from cctbx import xray
-import time, math,os,sys,random
+import math, sys, random
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-from cctbx import crystal
 import random, copy
-from libtbx import adopt_init_args
-from libtbx import introspection
 from cctbx import sgtbx
-import cctbx.sgtbx.bravais_types
 from cctbx import adptbx
 from cctbx.development import random_structure
-import libtbx.load_env
 import scitbx.math
 
 from mmtbx.tls import tools

@@ -1,8 +1,5 @@
 from cctbx.array_family import flex
-from cctbx import adptbx
-import sys, os, math
 from cctbx import miller
-from libtbx import adopt_init_args
 from cctbx import maptbx
 import boost.python
 import mmtbx

@@ -7,7 +7,6 @@ import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
-import cctbx.xray
 import random
 
 legend = """

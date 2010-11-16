@@ -1,7 +1,5 @@
-from copy import deepcopy
 from cctbx.array_family import flex
-import sys, os, math, string
-from libtbx.test_utils import approx_equal
+import sys
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 

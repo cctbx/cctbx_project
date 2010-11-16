@@ -7,7 +7,7 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.math_utils import ifloor, iceil
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import null_out
 import libtbx.load_env
 from libtbx import easy_run
 from libtbx import adopt_init_args

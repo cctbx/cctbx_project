@@ -6,13 +6,10 @@ from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.rna_validate import rna_validate
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
-from cctbx.array_family import flex
-from libtbx.test_utils import show_diff, approx_equal
-from libtbx import easy_pickle
-import cStringIO
+from libtbx.test_utils import show_diff
 import libtbx.load_env
 
-import sys, os, getopt
+import sys, os
 
 #{{{ exercise_rna_validate
 def exercise_rna_validate():

@@ -1,10 +1,7 @@
 from scitbx.array_family import flex
-#from libtbx import easy_pickle
-import libtbx.load_env
 from math import floor
 import re
 import types
-#import os
 
 
 class NDimTable:

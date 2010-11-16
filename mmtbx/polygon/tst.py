@@ -1,4 +1,3 @@
-from scitbx.array_family import flex
 import iotbx.phil
 from mmtbx import polygon
 import libtbx, os

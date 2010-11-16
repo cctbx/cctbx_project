@@ -1,22 +1,15 @@
 from cctbx.array_family import flex
 from iotbx import pdb
-import mmtbx.f_model
-from libtbx import introspection
 import libtbx.load_env
 from iotbx import pdb
-import sys, os, time, random
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
+import os, random
 import mmtbx.refinement.rigid_body
-import mmtbx.model
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import random, math
 from cctbx import xray
 import mmtbx.utils
 import iotbx.pdb
-import scitbx.math.euler_angles
 from scitbx import matrix
 import mmtbx.command_line.fmodel
 

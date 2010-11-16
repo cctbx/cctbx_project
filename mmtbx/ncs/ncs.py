@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-import sys, os, re, string
+import sys, os, string
 from libtbx.utils import Sorry
  # hierarchy:  there can be any number of ncs groups.
  #   each group has a set of NCS operators and centers and may apply

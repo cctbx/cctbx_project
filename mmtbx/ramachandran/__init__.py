@@ -1,12 +1,9 @@
 
 from __future__ import division
-from scitbx import matrix
 import libtbx.load_env
-from libtbx.math_utils import ifloor, iceil
 import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
-import math
 import sys
 import os
 from scitbx.array_family import flex

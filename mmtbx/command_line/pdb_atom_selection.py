@@ -4,10 +4,10 @@ from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
 from iotbx.option_parser import option_parser
 from cctbx.array_family import flex
-from libtbx.utils import Usage, plural_s
+from libtbx.utils import plural_s
 from libtbx.str_utils import show_string
 import libtbx.load_env
-import sys, os
+import sys
 
 def run(args, command_name=libtbx.env.dispatcher_name):
   if (len(args) == 0): args = ["--help"]

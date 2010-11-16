@@ -3,15 +3,8 @@ import mmtbx.f_model
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import sgtbx
-from cctbx import adptbx
-from libtbx.test_utils import approx_equal
-from libtbx.utils import format_cpu_times
 import random
-import sys, math
-from cctbx import xray
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
+import sys
 from mmtbx.scaling import outlier_rejection
 from cctbx.xray import observation_types
 from cctbx.development import debug_utils

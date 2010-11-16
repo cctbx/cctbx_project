@@ -1,33 +1,8 @@
 from __future__ import division
-from cctbx import maptbx
-from cctbx import miller
-from cctbx import crystal
-from cctbx import sgtbx
-from cctbx import adptbx
 from mmtbx import scaling
-import cctbx.sgtbx.lattice_symmetry
-import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
-from iotbx import data_plots
 import mmtbx.scaling
-from mmtbx.scaling import absolute_scaling, outlier_plots
-from scitbx.math import chebyshev_lsq
-from scitbx.math import chebyshev_polynome
-from scitbx.math import chebyshev_lsq_fit
-from scitbx.math import erf
-import libtbx.phil.command_line
-from libtbx import table_utils
-from libtbx import easy_pickle
-import scitbx.lbfgs
-import sys, os
-import math, time
-import string
-from libtbx.str_utils import StringIO
-import mmtbx.f_model
+import time
 from libtbx.test_utils import approx_equal
 
 def tst_sigmaa():

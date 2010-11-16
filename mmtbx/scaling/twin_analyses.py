@@ -2,8 +2,6 @@ from __future__ import division
 from cctbx.array_family import flex
 from mmtbx import scaling
 from mmtbx.scaling import absolute_scaling
-from cctbx import uctbx
-from cctbx import adptbx
 from cctbx import sgtbx
 from cctbx.sgtbx import pointgroup_tools
 from cctbx import maptbx
@@ -13,12 +11,8 @@ import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 import scitbx.math
 from scitbx import matrix
-from scitbx.math import chebyshev_lsq
-from scitbx.math import chebyshev_polynome
-from scitbx.math import chebyshev_lsq_fit
-from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
-from libtbx.str_utils import StringIO # XXX: pickle support
+from cStringIO import StringIO
 import math
 import sys
 from iotbx import data_plots

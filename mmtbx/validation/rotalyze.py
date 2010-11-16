@@ -1,9 +1,7 @@
 #(jEdit options) :folding=explicit:collapseFolds=1:
 
-import libtbx.load_env
-import sys, os, getopt
+import sys, os
 from iotbx import pdb
-from cctbx import geometry_restraints
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.rotamer.rotamer_eval import RotamerID

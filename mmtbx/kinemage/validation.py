@@ -2,7 +2,6 @@ import os, sys, string
 from iotbx import pdb
 from mmtbx import monomer_library
 from mmtbx.chemical_components import get_bond_pairs
-from mmtbx.refinement import fit_rotamers
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
@@ -12,7 +11,6 @@ from libtbx import easy_run
 from scitbx import matrix
 from cctbx import geometry_restraints
 from mmtbx.monomer_library import pdb_interpretation
-from scitbx.array_family import flex
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from iotbx.pdb.rna_dna_detection import residue_analysis
 

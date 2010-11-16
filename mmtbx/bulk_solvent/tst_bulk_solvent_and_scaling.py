@@ -1,11 +1,10 @@
 from iotbx import pdb
 from cctbx.array_family import flex
-import time, math,os,sys
+import os
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import random
-from libtbx import adopt_init_args
 import mmtbx.f_model
 from cctbx import sgtbx
 import cctbx.sgtbx.bravais_types

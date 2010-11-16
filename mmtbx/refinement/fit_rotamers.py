@@ -2,7 +2,6 @@ from mmtbx.refinement import print_statistics
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 from mmtbx.command_line import lockit
-from mmtbx import real_space_correlation
 from libtbx import adopt_init_args
 from cctbx import maptbx
 import scitbx.lbfgs
@@ -10,18 +9,12 @@ import iotbx.pdb
 import mmtbx.monomer_library
 import mmtbx.model
 import mmtbx.refinement.real_space
-from cctbx import miller
 from mmtbx import map_tools
-from libtbx.test_utils import approx_equal, not_approx_equal
-from mmtbx import masks
 from cctbx import maptbx
-import time,math, sys
+import math, sys
 import mmtbx.monomer_library.server
 import iotbx.pdb.atom_name_interpretation
-from libtbx.utils import sequence_index_dict
 import scitbx.graph.tardy_tree
-import scitbx.rigid_body
-from scitbx import matrix
 import iotbx.phil
 import mmtbx.monomer_library
 import mmtbx.monomer_library.rotamer_utils

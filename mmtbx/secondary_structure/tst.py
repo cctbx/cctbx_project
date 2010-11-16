@@ -3,7 +3,6 @@ from mmtbx.secondary_structure import manager
 from iotbx import file_reader
 import libtbx.load_env
 import cStringIO
-import sys
 import os
 
 def exercise () :

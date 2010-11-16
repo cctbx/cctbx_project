@@ -8,11 +8,9 @@ import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from cctbx import adptbx
 from libtbx.utils import Sorry
-import os, math, time, sys
-from libtbx import adopt_init_args
-from libtbx import Auto, group_args
+import os, math
+from libtbx import group_args
 from iotbx import pdb
-from libtbx.str_utils import format_value
 from cctbx import xray
 import mmtbx.refinement
 import scitbx.lbfgs
@@ -298,6 +296,7 @@ def refinery(fmodels, number_of_iterations, iselection, parameter):
     print "Refinement failed... "
     print str(e)
     print "... carry on"
+    return
   xrs = fmodels.fmodel_xray().xray_structure
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
     update_f_mask=False)

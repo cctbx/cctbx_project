@@ -1,5 +1,5 @@
 from mmtbx.monomer_library import server
-import sys, os
+import sys
 
 def run(args):
   list_cif = server.mon_lib_list_cif()

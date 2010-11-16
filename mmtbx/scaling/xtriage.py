@@ -1,9 +1,4 @@
-from cctbx import maptbx
-from cctbx import miller
 from cctbx import crystal
-from cctbx import sgtbx
-import cctbx.sgtbx.lattice_symmetry
-import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
 from libtbx.utils import \
   Sorry, show_exception_info_if_full_testing, date_and_time, multi_out
@@ -15,14 +10,13 @@ from iotbx import pdb
 from iotbx.option_parser import option_parser
 import mmtbx.utils
 import mmtbx.scaling
-from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import massage_twin_detwin_data
 import libtbx.phil.command_line
 from libtbx.str_utils import StringIO
 from libtbx.utils import null_out
-from libtbx import easy_pickle, runtime_utils
+from libtbx import runtime_utils
 import sys, os
 
 

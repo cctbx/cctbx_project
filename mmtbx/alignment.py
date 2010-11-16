@@ -36,7 +36,7 @@ Smith, T.F. & Waterman M.S. (1981). J. Mol. Biol. 147, 195-197.
 """
 
 from libtbx import adopt_init_args
-import sys, types
+import sys
 
 # based on maximizing similarity (rather than minimizing distance)
 # give gap weights as positive; they will be subtracted

@@ -8,7 +8,6 @@ import sys, os
 import mmtbx.f_model
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import miller
-import libtbx.load_env
 from mmtbx import utils
 from iotbx.pdb import combine_unique_pdb_files
 import iotbx.pdb

@@ -1,14 +1,10 @@
 from __future__ import division
 from cctbx.array_family import flex
 from mmtbx import scaling
-from cctbx import uctbx
 from cctbx import adptbx
-from cctbx import sgtbx
-from cctbx import eltbx
 from cctbx import crystal
 from cctbx import miller
 from libtbx.utils import Sorry
-import scitbx
 from scitbx.minimizers import newton_more_thuente_1994
 from scitbx import matrix
 import math

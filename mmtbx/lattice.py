@@ -1,6 +1,4 @@
-
-from libtbx import group_args
-import sys, os
+import sys
 
 def find_crystal_contacts (xray_structure,
                            pdb_atoms, # atom_with_labels, not atom!

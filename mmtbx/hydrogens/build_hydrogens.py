@@ -4,7 +4,6 @@ import mmtbx.monomer_library.server
 from iotbx import pdb
 from cctbx.geometry_restraints.lbfgs import lbfgs as geometry_restraints_lbfgs
 import scitbx.lbfgs
-from libtbx.test_utils import approx_equal
 import libtbx.load_env
 import math
 import sys, os

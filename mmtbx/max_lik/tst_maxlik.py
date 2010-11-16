@@ -2,21 +2,16 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import xray
 from cctbx.array_family import flex
-from iotbx import pdb
-import math
 from cctbx import miller
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import time
-import max_like_non_uniform
 from cctbx.development import random_structure
-from cctbx.development import debug_utils
 from cctbx.eltbx.xray_scattering import wk1995
-from cctbx.eltbx.xray_scattering import it1992
-from cctbx import adptbx
 import random
+import math
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)

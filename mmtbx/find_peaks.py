@@ -1,10 +1,7 @@
 from cctbx.array_family import flex
-import math, sys
+import sys
 from libtbx import adopt_init_args
 from cctbx import maptbx
-from cctbx import crystal
-import libtbx.load_env
-from libtbx.test_utils import approx_equal
 import iotbx.phil
 from libtbx.str_utils import format_value
 from mmtbx.refinement import print_statistics

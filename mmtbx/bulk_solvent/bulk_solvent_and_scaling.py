@@ -1,18 +1,9 @@
 from cctbx.array_family import flex
-import math, time
-from cctbx import miller
-from cctbx import crystal
 from cctbx import adptbx
 from scitbx import lbfgs
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 from mmtbx import bulk_solvent
-from cctbx import xray
-from mmtbx import max_lik
-from mmtbx.max_lik import maxlik
-from mmtbx.refinement import print_statistics
-from scitbx import matrix
-from mmtbx.max_lik import max_like_non_uniform
 import iotbx.phil
 from libtbx.utils import Sorry
 

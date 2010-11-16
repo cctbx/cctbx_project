@@ -1,17 +1,10 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.geometry_minimization
 
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from iotbx import pdb
 import iotbx.phil
-from iotbx.option_parser import option_parser
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
 import scitbx.lbfgs
-from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
-import sys, os
+import sys
 
 master_params = iotbx.phil.parse("""\
   alternate_nonbonded_off_on=False

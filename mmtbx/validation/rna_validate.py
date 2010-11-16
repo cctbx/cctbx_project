@@ -1,6 +1,5 @@
-import os, sys, string
+import os, sys
 from iotbx import pdb
-from mmtbx.chemical_components import get_bond_pairs
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from iotbx.pdb import common_residue_names_get_class
 import iotbx.phil
@@ -49,9 +48,15 @@ class rna_validate(object):
     filename = file_obj.file_name
     self.params=work_params
     if filename and os.path.exists(filename):
-      pdb_io = pdb.input(filename)
+      try:
+        import iotbx.pdb
+      except ImportError:
+        print "iotbx not loaded"
+        return
+      pdb_io = iotbx.pdb.input(filename)
     else:
       print "Please enter a file name"
+      return
     self.analyze_pdb(pdb_io=pdb_io)
     self.print_results()
 

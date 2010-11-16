@@ -3,7 +3,6 @@ import mmtbx.ncs.restraints
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, format_cpu_times
 from libtbx.test_utils import Exception_expected, eps_eq, show_diff

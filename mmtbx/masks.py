@@ -5,8 +5,6 @@ from mmtbx_masks_ext import *
 
 from cctbx.masks import around_atoms, vdw_radii_from_xray_structure
 from cctbx import maptbx
-from scitbx import fftpack
-from scitbx import matrix
 import sys
 import iotbx.xplor.map
 import iotbx.phil

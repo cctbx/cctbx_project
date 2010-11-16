@@ -1,19 +1,11 @@
 import math
-import sys
 from cctbx.array_family import flex
 from cctbx.eltbx.xray_scattering import wk1995
-from cctbx.eltbx.xray_scattering import it1992
-from cctbx import sgtbx
 from scitbx.math import bessel_i1_over_i0
 from mmtbx import max_lik
-import math,sys,time
+import math
 from cctbx.array_family import flex
-from cctbx import crystal
-from cctbx import uctbx
-from libtbx.test_utils import approx_equal
 from cctbx import miller
-from cctbx import sgtbx
-from scitbx import matrix
 from libtbx import adopt_init_args
 import iotbx.phil
 

@@ -9,7 +9,7 @@ import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from libtbx import group_args
 from cStringIO import StringIO

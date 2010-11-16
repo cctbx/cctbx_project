@@ -1,30 +1,15 @@
 import math
-from cctbx import maptbx
-from cctbx import miller
 from cctbx import crystal
-from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray
-from cctbx import eltbx
-from cctbx import adptbx
-from scitbx import lbfgs
-from mmtbx import masks
-import cctbx.xray.structure_factors
-from cctbx.eltbx.xray_scattering import wk1995
-from libtbx import adopt_init_args
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.utils import Sorry, multi_out
 import iotbx.phil
-from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from iotbx import pdb
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
-from mmtbx.scaling import matthews, twin_analyses
-from mmtbx.scaling import basic_analyses, pair_analyses
-from mmtbx.scaling import twin_detwin_data
-from mmtbx.scaling import outlier_rejection
 from mmtbx import f_model
 import libtbx.phil.command_line
 from cStringIO import StringIO

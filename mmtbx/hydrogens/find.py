@@ -1,4 +1,4 @@
-import sys, math
+import math
 from cctbx.array_family import flex
 from mmtbx import find_peaks
 from mmtbx import utils
@@ -8,7 +8,6 @@ from libtbx import adopt_init_args
 from mmtbx.refinement import print_statistics
 import mmtbx.utils
 from cctbx import maptbx
-from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
 

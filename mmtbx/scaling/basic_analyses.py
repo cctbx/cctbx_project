@@ -1,26 +1,11 @@
-from cctbx import maptbx
-from cctbx import miller
-from cctbx import crystal
-from cctbx import sgtbx
 from cctbx import adptbx
-import cctbx.sgtbx.lattice_symmetry
-import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from libtbx.utils import \
-  Sorry, show_exception_info_if_full_testing, date_and_time, multi_out
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
-from iotbx import data_plots
-
+from libtbx.utils import Sorry, show_exception_info_if_full_testing
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
-from mmtbx.scaling import matthews, twin_analyses
+from mmtbx.scaling import matthews
 from mmtbx.scaling import data_statistics
-
-import libtbx.phil.command_line
-from libtbx import easy_pickle
-import sys, os
+import sys
 
 
 class basic_analyses(object):

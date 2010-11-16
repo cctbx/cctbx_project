@@ -10,9 +10,7 @@ import mmtbx.restraints
 import iotbx.phil
 import iotbx.pdb
 from scitbx.array_family import flex
-from libtbx.utils import Sorry, Usage
 import sys
-import os
 
 torsion_search_params_str = fit_rotamers.torsion_search_params_str
 
