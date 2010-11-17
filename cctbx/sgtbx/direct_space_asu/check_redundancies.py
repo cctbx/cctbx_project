@@ -42,7 +42,7 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
         if (volume):
           if (not fv): assert not f
         else:
-          fv = 0
+          fv = False
         if (f or fv):
           i_pr = i % n[0]
           j_pr = j % n[1]

@@ -61,7 +61,7 @@ class direct_space_asu(object):
     return result
 
   def volume_vertices(self):
-    result = {}
+    result = set()
     cuts = self.cuts
     n_cuts = len(cuts)
     for i0 in xrange(0,n_cuts-2):
@@ -70,12 +70,12 @@ class direct_space_asu(object):
           m = matrix.rec(cuts[i0].n+cuts[i1].n+cuts[i2].n,(3,3))
           d = m.determinant()
           if (d != 0):
-            c = m.co_factor_matrix_transposed() * (r1/d)
+            m_inv = m.co_factor_matrix_transposed() * (r1/d)
             b = matrix.col([-cuts[i0].c,-cuts[i1].c,-cuts[i2].c])
-            vertex = c * b
+            vertex = m_inv * b
             if (self.is_inside(vertex, volume_only=True)):
-              result[vertex.elems] = 0
-    return result.keys()
+              result.add(vertex.elems)
+    return sorted(result)
 
   def _box_corner(self, volume_vertices, min_or_max):
     if (volume_vertices is None):
