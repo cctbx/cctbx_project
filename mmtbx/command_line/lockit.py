@@ -813,23 +813,25 @@ def run_coordinate_refinement(
       write_pdb_callback=None,
       log=None):
   assert [pdb_atoms, sites_cart].count(None)==1
+  if (log is None): log = null_out()
   if (work_scatterers is not None):
     assert unit_cell is not None
     assert d_min is not None
   best_info = None
-  if(pdb_atoms is not None):
+  if (pdb_atoms is not None):
     sites_cart_start = pdb_atoms.extract_xyz()
     site_labels = [atom.id_str() for atom in pdb_atoms]
-  else: sites_cart_start = sites_cart
+  else:
+    sites_cart_start = sites_cart
+    site_labels = None
   grmp = geometry_restraints_manager_plus(
     manager=geometry_restraints_manager,
     home_sites_cart=sites_cart_start,
     home_restraints_list=home_restraints_list)
-  if(log is not None):
-    print >> log, "Before coordinate refinement:"
-    grmp.energies_sites(sites_cart=sites_cart_start).show(f=log)
-    print >> log
-    log.flush()
+  print >> log, "Before coordinate refinement:"
+  grmp.energies_sites(sites_cart=sites_cart_start).show(f=log)
+  print >> log
+  log.flush()
   rstw_params = work_params.coordinate_refinement.real_space_target_weights
   if (rstw_params.number_of_samples is None):
     rstw_list = [work_params.real_space_target_weight]
@@ -853,24 +855,22 @@ def run_coordinate_refinement(
       real_space_gradients_delta=real_space_gradients_delta,
       lbfgs_termination_params=lbfgs_termination_params,
       lbfgs_exception_handling_params=lbfgs_exception_handling_params)
-    if(log is not None):
-      print >> log, "After coordinate refinement" \
-        " with real-space target weight %.1f:" % rstw
-      grmp.energies_sites(sites_cart=refined.sites_cart).show(f=log)
+    print >> log, "After coordinate refinement" \
+      " with real-space target weight %.1f:" % rstw
+    grmp.energies_sites(sites_cart=refined.sites_cart).show(f=log)
     bond_proxies = grmp.pair_proxies().bond_proxies
-    if(log is not None):
-      bond_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=refined.sites_cart,
-        site_labels=site_labels,
-        f=log,
-        prefix="  ",
-        max_items=3)
-      print >> log
-      print >> log, "  number_of_function_evaluations:", \
-        refined.number_of_function_evaluations
-      print >> log, "  real+geo target start: %.6g" % refined.f_start
-      print >> log, "  real+geo target final: %.6g" % refined.f_final
+    bond_proxies.show_sorted(
+      by_value="residual",
+      sites_cart=refined.sites_cart,
+      site_labels=site_labels,
+      f=log,
+      prefix="  ",
+      max_items=3)
+    print >> log
+    print >> log, "  number_of_function_evaluations:", \
+      refined.number_of_function_evaluations
+    print >> log, "  real+geo target start: %.6g" % refined.f_start
+    print >> log, "  real+geo target final: %.6g" % refined.f_final
     deltas = bond_proxies.deltas(sites_cart=refined.sites_cart)
     deltas_abs = flex.abs(deltas)
     deltas_abs_sorted = deltas_abs.select(
@@ -881,7 +881,7 @@ def run_coordinate_refinement(
         < wabr_params.max_pool_average)
     bond_rmsd = flex.mean_sq(deltas)**0.5
     bond_rmsd_list.append(bond_rmsd)
-    if(log is not None): print >> log, "  Bond RMSD: %.3f" % bond_rmsd
+    print >> log, "  Bond RMSD: %.3f" % bond_rmsd
     #
     if (work_scatterers is None):
       region_cc = None
@@ -905,37 +905,33 @@ def run_coordinate_refinement(
         rmsd_diff=rmsd_diff,
         region_cc=region_cc,
         sites_cart=refined.sites_cart)
-    if(log is not None): print >> log
+    print >> log
   if (best_info is not None):
-    if(log is not None):
-      print >> log, "Table of real-space target weights vs. bond RMSD:"
-      print >> log, "  weight   RMSD"
-      for w,d in zip(rstw_list, bond_rmsd_list):
-        print >> log, "  %6.1f  %5.3f" % (w,d)
-      print >> log, "Best real-space target weight: %.1f" % best_info.rstw
-      print >> log, \
-        "Associated refined final value: %.6g" % best_info.refined.f_final
-      if (best_info.region_cc is not None):
-        print >> log, "Associated region correlation: %.4f" % best_info.region_cc
-      print >> log
-    if(pdb_atoms is not None):
+    print >> log, "Table of real-space target weights vs. bond RMSD:"
+    print >> log, "  weight   RMSD"
+    for w,d in zip(rstw_list, bond_rmsd_list):
+      print >> log, "  %6.1f  %5.3f" % (w,d)
+    print >> log, "Best real-space target weight: %.1f" % best_info.rstw
+    print >> log, \
+      "Associated refined final value: %.6g" % best_info.refined.f_final
+    if (best_info.region_cc is not None):
+      print >> log, "Associated region correlation: %.4f" % best_info.region_cc
+    print >> log
+    if (pdb_atoms is not None):
       pdb_atoms.set_xyz(new_xyz=refined.sites_cart)
-    else:
-      sites_cart = refined.sites_cart
     if (write_pdb_callback is not None):
       write_pdb_callback(situation="after_best_weight_determination")
     #
     fgm_params = work_params.coordinate_refinement \
       .finishing_geometry_minimization
     if (fgm_params.cycles_max is not None and fgm_params.cycles_max > 0):
-      if(log is not None):
-        print >> log, "As previously obtained with target weight %.1f:" \
-          % best_info.rstw
-        grmp.energies_sites(sites_cart=refined.sites_cart).show(
-          f=log, prefix="  ")
-        print >> log, "Finishing refinement to idealize geometry:"
-        print >> log, "            number of function"
-        print >> log, "    weight     evaluations      cycle RMSD"
+      print >> log, "As previously obtained with target weight %.1f:" \
+        % best_info.rstw
+      grmp.energies_sites(sites_cart=refined.sites_cart).show(
+        f=log, prefix="  ")
+      print >> log, "Finishing refinement to idealize geometry:"
+      print >> log, "            number of function"
+      print >> log, "    weight     evaluations      cycle RMSD"
       number_of_fgm_cycles = 0
       rstw = best_info.rstw * fgm_params.first_weight_scale
       sites_cart_start = best_info.refined.sites_cart.deep_copy()
@@ -952,7 +948,7 @@ def run_coordinate_refinement(
           lbfgs_termination_params=lbfgs_termination_params,
           lbfgs_exception_handling_params=lbfgs_exception_handling_params)
         cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
-        if(log is not None): print >> log, "   %6.1f     %10d          %6.3f" % (
+        print >> log, "   %6.1f     %10d          %6.3f" % (
           rstw, fgm_refined.number_of_function_evaluations, cycle_rmsd)
         number_of_fgm_cycles += 1
         rstw *= fgm_params.cycle_weight_multiplier
@@ -964,11 +960,10 @@ def run_coordinate_refinement(
             other_sites=fgm_refined.sites_cart)
           fgm_refined.sites_cart = fit.other_sites_best_fit()
         sites_cart_start = fgm_refined.sites_cart.deep_copy()
-      if(log is not None):
-        print >> log, "After %d refinements to idealize geometry:" % (
-          number_of_fgm_cycles)
-        grmp.energies_sites(sites_cart=fgm_refined.sites_cart).show(
-          f=log, prefix="  ")
+      print >> log, "After %d refinements to idealize geometry:" % (
+        number_of_fgm_cycles)
+      grmp.energies_sites(sites_cart=fgm_refined.sites_cart).show(
+        f=log, prefix="  ")
       if (work_scatterers is None):
         fgm_region_cc = None
       else:
@@ -979,15 +974,13 @@ def run_coordinate_refinement(
           sites_cart=fgm_refined.sites_cart_variable,
           site_radii=flex.double(fgm_refined.sites_cart_variable.size(), 1),
           work_scatterers=work_scatterers)
-        if(log is not None):
-          print >> log, "  Associated region correlation: %.4f" % fgm_region_cc
-      if(log is not None): print >> log
+        print >> log, "  Associated region correlation: %.4f" % fgm_region_cc
+      print >> log
       best_info.fgm_refined = fgm_refined
       best_info.fgm_region_cc = fgm_region_cc
-      if(pdb_atoms is not None):
+      if (pdb_atoms is not None):
         pdb_atoms.set_xyz(new_xyz=fgm_refined.sites_cart)
-      else:
-        best_info.sites_cart = fgm_refined.sites_cart
+      best_info.sites_cart = fgm_refined.sites_cart
       if (write_pdb_callback is not None):
         write_pdb_callback(situation="after_finishing_geo_min")
     else:
