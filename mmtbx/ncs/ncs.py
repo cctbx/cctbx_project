@@ -220,6 +220,19 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def translations_orth(self):
     return self._translations_orth
 
+  def rotations_translations_forward_euler(self):
+    # note usual rt is from molecule j to molecule 1. Here it is opposite.
+    from scitbx.math import euler_angles
+    rotations_forward_euler=[]
+    translations_forward_euler=[]
+    for r,t in zip(self._rota_matrices,self._translations_orth):
+      r_inv=r.inverse()
+      t_inv=-1.*r_inv*t
+      r_inv_euler=euler_angles.zyz_angles(r_inv)
+      rotations_forward_euler.append(r_inv_euler)
+      translations_forward_euler.append(t_inv)
+    return rotations_forward_euler,translations_forward_euler
+
   def rota_matrices(self):
     return self._rota_matrices
 
