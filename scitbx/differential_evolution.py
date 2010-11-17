@@ -23,27 +23,42 @@ data members:
  The developers of the differential evolution method have this advice:
  (taken from ref. 1)
 
- If you are going to optimize your own objective function with DE,
- try the following settings for the input file first: Choose method
- e.g. DE/rand/1/exp, set the number of parents NP to 10 times the
- number of parameters, select weighting factor F=0.8 and crossover
- constant CR=0.9. Make sure that you initialize your parameter vectors
- by exploiting their full numerical range, i.e. if a parameter is allowed
- to exhibit values in the range [-100, 100] it's a good idea to pick the
- initial values from this range instead of unnecessarily restricting diversity.
- If you experience misconvergence you usually have to increase the value for NP,
- but often you only have to adjust F to be a little lower or higher than 0.8.
- If you increase NP and simultaneously lower F a little, convergence is more likely
- to occur but generally takes longer, i.e. DE is getting more robust (there is always
- a convergence speed/robustness tradeoff).
+If you are going to optimize your own objective function with DE, you may try the
+following classical settings for the input file first: Choose method e.g. DE/rand/1/bin,
+set the number of parents NP to 10 times the number of parameters, select weighting
+factor F=0.8, and crossover constant CR=0.9. It has been found recently that selecting
+F from the interval [0.5, 1.0] randomly for each generation or for each difference
+vector, a technique called dither, improves convergence behaviour significantly,
+especially for noisy objective functions. It has also been found that setting CR to a
+low value, e.g. CR=0.2 helps optimizing separable functions since it fosters the search
+along the coordinate axes. On the contrary this choice is not effective if parameter
+dependence is encountered, something which is frequently occuring in real-world optimization
+problems rather than artificial test functions. So for parameter dependence the choice of
+CR=0.9 is more appropriate. Another interesting empirical finding is that rasing NP above,
+say, 40 does not substantially improve the convergence, independent of the number of
+parameters. It is worthwhile to experiment with these suggestions. Make sure that you
+initialize your parameter vectors by exploiting their full numerical range, i.e. if a
+parameter is allowed to exhibit values in the range [-100, 100] it's a good idea to pick
+the initial values from this range instead of unnecessarily restricting diversity.
 
- Note: NP is called population size in the routine below.)
+Keep in mind that different problems often require different settings for NP, F and CR
+(have a look into the different papers to get a feeling for the settings). If you still
+get misconvergence you might want to try a different method. We mostly use DE/rand/1/... or DE/best/1/... .
+The crossover method is not so important although Ken Price claims that binomial is never
+worse than exponential. In case of misconvergence also check your choice of objective
+function. There might be a better one to describe your problem. Any knowledge that you
+have about the problem should be worked into the objective function. A good objective
+function can make all the difference.
+
+Note: NP is called population size in the routine below.)
+Note: [0.5,1.0] dither is the default behavoir unless f is set to a value other then None.
+
   """
 
   def __init__(self,
                evaluator,
                population_size=50,
-               f=0.8,
+               f=None,
                cr=0.9,
                eps=1e-2,
                n_cross=1,
@@ -52,7 +67,9 @@ data members:
                out=None,
                show_progress=False,
                show_progress_nth_cycle=1,
-               insert_solution_vector=None):
+               insert_solution_vector=None,
+               dither_constant=0.4):
+    self.dither=dither_constant
     self.show_progress=show_progress
     self.show_progress_nth_cycle=show_progress_nth_cycle
     self.evaluator = evaluator
@@ -114,7 +131,7 @@ data members:
         else:
          monitor_score = flex.min(self.scores)
       rd = (flex.mean(self.scores) - flex.min(self.scores) )
-      rd = rd*rd/(flex.min(self.scores)*flex.min(self.scores) + self.eps*self.eps )
+      rd = rd*rd/(flex.min(self.scores)*flex.min(self.scores) + self.eps )
       if ( rd < self.eps ):
         converged = True
 
@@ -158,7 +175,13 @@ data members:
       x1 = self.population[ i1 ]
       x2 = self.population[ i2 ]
       x3 = self.population[ i3 ]
-      vi = x1 + self.f*(x2-x3)
+
+      if self.f is None:
+        use_f = random.random()/2.0 + 0.5
+      else:
+        use_f = self.f
+
+      vi = x1 + use_f*(x2-x3)
       # prepare the offspring vector please
       rnd = flex.random_double(self.vector_length)
       permut = flex.sort_permutation(rnd)
@@ -205,7 +228,7 @@ class test_rosenbrock_function(object):
     self.n = 2*dim
     self.dim = dim
     self.domain = [ (-10,10) ]*self.n
-    self.optimizer =  differential_evolution_optimizer(self,population_size=self.n*10,n_cross=self.n*2,eps=1e-8, show_progress=False)
+    self.optimizer =  differential_evolution_optimizer(self,population_size=min(self.n*10,40),n_cross=self.n,cr=0.9, eps=1e-8, show_progress=False)
     for x in self.x:
       assert abs(x-1.0)<1e-2
 
@@ -221,7 +244,7 @@ class test_rosenbrock_function(object):
     return result
 
   def print_status(self, mins,means,vector,txt):
-    print mins, means, list(vector)
+    print txt,mins, means, list(vector)
 
 
 def run():
