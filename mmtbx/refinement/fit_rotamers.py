@@ -305,6 +305,7 @@ class refiner(object):
     self.real_space_gradients_delta = real_space_gradients_delta
     self.geometry_restraints_manager = geometry_restraints_manager
     self.pdb_hierarchy = pdb_hierarchy
+    #self.pdb_atoms = pdb_hierarchy.atoms()
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
     self.lbfgs_exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
@@ -312,11 +313,30 @@ class refiner(object):
       ignore_line_search_failed_step_at_upper_bound = True,
       ignore_line_search_failed_maxfev              = True)
 
-  def refine_restrained(self, sites_cart_rsel, rsel, rs):
+  def refine_restrained(self, sites_cart_rsel, rsel, rs, use_lockit=False):
     assert rsel.size() == self.pdb_hierarchy.atoms_size()
     assert sites_cart_rsel.size() == rsel.count(True)
     geometry_restraints_manager = \
       self.geometry_restraints_manager.select(rsel)
+    if(use_lockit): # XXX trying lockit...
+      work_params = lockit.get_master_phil().extract()
+      work_params.coordinate_refinement.lbfgs_max_iterations=25
+      work_params.coordinate_refinement.compute_final_correlation=False
+      work_params.coordinate_refinement.finishing_geometry_minimization.cycles_max=25
+      result = lockit.run_coordinate_refinement(
+        sites_cart                  = sites_cart_rsel,
+        geometry_restraints_manager = geometry_restraints_manager,
+        selection_variable          = rs,
+        density_map                 = self.target_map,
+        real_space_gradients_delta  = self.real_space_gradients_delta,
+        work_params                 = work_params,
+        home_restraints_list=[],
+        work_scatterers=None,
+        unit_cell=None,
+        d_min=None,
+        write_pdb_callback=None,
+        log=None)
+      return result.sites_cart.select(rs)
     result = maptbx.real_space_refinement_simple.lbfgs(
       selection_variable              = rs,
       sites_cart                      = sites_cart_rsel,
