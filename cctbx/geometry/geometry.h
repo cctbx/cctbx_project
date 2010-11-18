@@ -145,10 +145,10 @@ namespace cctbx { namespace geometry {
               d_angle_d_site0, d_angle_d_site1, d_angle_d_site2;
           d_angle_d_site0 = (d_01_unit * cos_angle_model - d_21_unit) /
                             (sin_angle_model * d_01_abs);
-          grads[0] = d_angle_d_site0 / pi_180;
+          grads[0] = -d_angle_d_site0 / pi_180;
           d_angle_d_site2 = (d_21_unit * cos_angle_model - d_01_unit) /
                             (sin_angle_model * d_21_abs);
-          grads[2] = d_angle_d_site2 / pi_180;
+          grads[2] = -d_angle_d_site2 / pi_180;
           grads[1] = -(grads[0] + grads[2]);
         }
       }
