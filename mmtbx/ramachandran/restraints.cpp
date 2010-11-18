@@ -38,10 +38,8 @@ namespace mmtbx { namespace ramachandran { namespace restraints {
           phi_sites[i] = sites_cart[i_seqs[i]];
           psi_sites[i] = sites_cart[i_seqs[i+1]];
         }
-        double esd = 10.0;
-        double w = 1./(esd * esd) * weight;
-        dihedral phi(phi_sites, phi_target, w);
-        dihedral psi(psi_sites, psi_target, w);
+        dihedral phi(phi_sites, phi_target, weight);
+        dihedral psi(psi_sites, psi_target, weight);
         target_ = phi.residual()+psi.residual();
         af::tiny<scitbx::vec3<double>, 4> d_phi_d_xyz = phi.gradients();
         af::tiny<scitbx::vec3<double>, 4> d_psi_d_xyz = psi.gradients();
@@ -77,7 +75,8 @@ af::tiny<FloatType, 3>
   dihedral psi1(psi_sites, 0, 1.0);
   double phi_deg = phi1.angle_model;
   double psi_deg = psi1.angle_model;
-  double phi_t=0, psi_t=0;
+  double phi_t=phi_deg;
+  double psi_t=psi_deg;
   double dist_to_current = 1.e+9;
   double score_current = 0;
   af::shared<double> distances;
