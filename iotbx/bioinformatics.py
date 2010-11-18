@@ -69,11 +69,6 @@ class fasta_sequence(sequence):
       )
 
 
-  def __str__(self):
-
-    return self.format( 70 )
-
-
 class pir_sequence(sequence):
   """
   Pir sequence
@@ -98,9 +93,25 @@ class pir_sequence(sequence):
       )
 
 
-  def __str__(self):
+class pdb_sequence(sequence):
+  """
+  PDB sequence
+  """
 
-    return self.format( 70 )
+  def __init__(self, sequence, name = "", chain = ""):
+
+    super( pdb_sequence, self ).__init__( sequence, name )
+    self.chain = chain
+
+
+  def format(self, width):
+
+    return (
+      ( ">PDB:%s_%s" % ( self.name, self.chain ) )[:width] + "\n"
+        + "\n".join(
+          [ "  " + line for line in wrap( self.sequence, width - 2 ) ]
+          )
+      )
 
 
 # Alignment middle/match line calculation
@@ -155,6 +166,17 @@ class alignment(object):
     self.names = names
     self.alignments = alignments
     self.gap = gap
+
+
+  def aligned_positions_count(self):
+
+    result = 0
+
+    for equi in zip( *self.alignments ):
+      if self.gap not in equi:
+        result += 1
+
+    return result
 
 
   def identity_count(self):
@@ -549,6 +571,20 @@ lineseparated_sequence_parse = generic_sequence_parser(
     re.MULTILINE | re.VERBOSE
     ),
   type = sequence
+  )
+
+dbfetch_sequence_parse = generic_sequence_parser(
+  regex = re.compile(
+    r"""
+    ^ > \s* PDB \s* :
+    (?P<name> [^_]+ ) _
+    (?P<chain> \w* ) \s* \n
+    (?P<sequence> [^>]* )
+    \s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
+  type = pdb_sequence
   )
 
 _tf_split_regex = re.compile(
