@@ -180,8 +180,14 @@ class comp_comp_id(slots_getstate_setstate):
   def normalize_atom_ids_in_place(self):
     atom_ids_mod = []
     atom_ids_mod_set = set()
+    is_rna_dna = (self.get_classification() in ["RNA", "RNAv3", "DNA", "DNAv3"])
     for atom in self.atom_list:
       atom_id = atom.atom_id.replace("'", "*")
+      if is_rna_dna:
+        if atom_id == "OP1":
+          atom_id = "O1P"
+        elif atom_id == "OP2":
+          atom_id = "O2P"
       if (atom_id in atom_ids_mod_set):
         return False # changing ids results in ambiguity
       atom_ids_mod.append(atom_id)
