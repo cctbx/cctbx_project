@@ -193,7 +193,7 @@ namespace cctbx { namespace masks {
       accumulator_t;
     unsigned n_voids_;
     af::shared<accumulator_t> accumulators;
-    uctbx::unit_cell const & unit_cell_;
+    uctbx::unit_cell const unit_cell_;
   };
 
 }} // namespace cctbx::masks
