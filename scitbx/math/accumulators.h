@@ -282,17 +282,17 @@ class inertia_accumulator
         m2(0.)
     {}
 
-    inertia_accumulator(scitbx::vec3<FloatType> x0, FloatType weight=1.0)
+    inertia_accumulator(vec3<FloatType> const& x0, FloatType weight=1.0)
       : sum_weights_(weight),
         center_of_mass_(x0),
         m2(0.)
     {}
 
-    void operator()(scitbx::vec3<FloatType> x, FloatType weight=1.0) {
+    void operator()(vec3<FloatType> const& x, FloatType weight=1.0) {
       sum_weights_ += weight;
-      scitbx::vec3<FloatType> delta = x - center_of_mass_;
+      vec3<FloatType> delta = x - center_of_mass_;
       center_of_mass_ += weight * delta/sum_weights_;
-      scitbx::vec3<FloatType> new_delta = x - center_of_mass_;
+      vec3<FloatType> new_delta = x - center_of_mass_;
       m2[0] += weight * delta[0] * new_delta[0];
       m2[1] += weight * delta[1] * new_delta[1];
       m2[2] += weight * delta[2] * new_delta[2];
@@ -301,7 +301,7 @@ class inertia_accumulator
       m2[5] += weight * delta[1] * new_delta[2];
     }
 
-    scitbx::vec3<FloatType> center_of_mass() const { return center_of_mass_; }
+    vec3<FloatType> const& center_of_mass() const { return center_of_mass_; }
 
     /*! inertia_tensor = sum_weights * (identity * trace(covariance) - covariance)
           or
@@ -309,9 +309,9 @@ class inertia_accumulator
 
         see also: http://en.wikipedia.org/wiki/Variance#Moment_of_inertia
      */
-    scitbx::sym_mat3<FloatType> inertia_tensor() const {
+    sym_mat3<FloatType> inertia_tensor() const {
       FloatType trace = m2.trace();
-      scitbx::sym_mat3<FloatType> result(trace,trace,trace,0,0,0);
+      sym_mat3<FloatType> result(trace,trace,trace,0,0,0);
       result -= m2;
       return result;
     }
@@ -321,11 +321,11 @@ class inertia_accumulator
     //    account the Parallel Axis Theorem.
     //    http://en.wikipedia.org/wiki/Moment_of_inertia#Parallel_axis_theorem_2
     // */
-    scitbx::sym_mat3<FloatType> inertia_tensor(scitbx::vec3<FloatType> pivot) const {
-      if (sum_weights_ == 0) return scitbx::sym_mat3<FloatType>(0.);
-      scitbx::vec3<FloatType> p = center_of_mass() - pivot;
-      scitbx::sym_mat3<FloatType> result = inertia_tensor();
-      result += sum_weights_ * scitbx::sym_mat3<FloatType>(
+    sym_mat3<FloatType> inertia_tensor(vec3<FloatType> const& pivot) const {
+      if (sum_weights_ == 0) return sym_mat3<FloatType>(0.);
+      vec3<FloatType> p = center_of_mass() - pivot;
+      sym_mat3<FloatType> result = inertia_tensor();
+      result += sum_weights_ * sym_mat3<FloatType>(
         p[1]*p[1] + p[2]*p[2],
         p[0]*p[0] + p[2]*p[2],
         p[0]*p[0] + p[1]*p[1],
@@ -336,8 +336,8 @@ class inertia_accumulator
     }
 
     //! covariance_matrix = 1/sum_weights * m2
-    scitbx::sym_mat3<FloatType> covariance_matrix() const {
-      if (sum_weights_ == 0) return scitbx::sym_mat3<FloatType>(0.);
+    sym_mat3<FloatType> covariance_matrix() const {
+      if (sum_weights_ == 0) return sym_mat3<FloatType>(0.);
       return m2 * (1/sum_weights_);
     }
 
@@ -345,9 +345,9 @@ class inertia_accumulator
 
   private:
     FloatType sum_weights_;
-    scitbx::vec3<FloatType> center_of_mass_;
+    vec3<FloatType> center_of_mass_;
     //! m2 = sum(weights) * covariance matrix
-    scitbx::sym_mat3<FloatType> m2;
+    sym_mat3<FloatType> m2;
 };
 
 }}} // namespace scitbx::math::accumulator
