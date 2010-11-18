@@ -127,6 +127,7 @@ if (not env_etc.no_boost_python):
   SConscript("boost_python/SConscript")
   SConscript("crystal/SConscript")
   SConscript("geometry_restraints/SConscript")
+  SConscript("covariance/boost_python/SConscript")
   SConscript("adp_restraints/SConscript")
   SConscript("symmetry_search/boost_python/SConscript")
 
