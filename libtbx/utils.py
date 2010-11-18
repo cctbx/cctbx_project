@@ -900,11 +900,11 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty):
   precision = -int(round(math.log10(standard_uncertainty)))
   if precision > -1:
     su = standard_uncertainty * math.pow(10, precision)
-    if su < 2:
+    if round(su,1) < 2:
       su *= 10
       precision += 1
     fmt_str = "%%.%if(%%i)" %precision
-    return fmt_str %(value, su)
+    return fmt_str %(value, round(su))
   else:
     precision += 1
     su = int(round(standard_uncertainty, precision))
@@ -1027,6 +1027,8 @@ def exercise():
   assert format_float_with_standard_uncertainty(12345, 45) == "12350(50)"
   assert format_float_with_standard_uncertainty(12.3,1.2) == "12.3(12)"
   assert format_float_with_standard_uncertainty(-0.2451, 0.8135) == "-0.2(8)"
+  assert format_float_with_standard_uncertainty(1.234, 0.196) == "1.2(2)"
+  assert format_float_with_standard_uncertainty(1.234, 0.193) == "1.23(19)"
   #
   for n in xrange(4):
     assert len(random_hex_code(number_of_digits=n)) == n
