@@ -207,7 +207,8 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t, bases<bond_params> >("bond", no_init)
+      class_<w_t, bases<bond_params, cctbx::geometry::distance<double> > >(
+        "bond", no_init)
         .def(init<
           af::tiny<scitbx::vec3<double>, 2> const&,
           double,

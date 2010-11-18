@@ -81,7 +81,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("angle", no_init)
+      class_<w_t, bases<cctbx::geometry::angle<double> > >("angle", no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 3> const&,
           double,
           double,

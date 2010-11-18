@@ -4,6 +4,7 @@
 #include <cctbx/geometry_restraints/utils.h>
 #include <cctbx/geometry_restraints/asu_cache.h>
 #include <cctbx/geometry_restraints/sorted_asu_proxies.h>
+#include <cctbx/geometry/geometry.h>
 #include <cctbx/restraints.h>
 
 #include <tbxx/optional_copy.hpp>
@@ -200,7 +201,7 @@ namespace cctbx { namespace geometry_restraints {
   };
 
   //! Residual and gradient calculations for harmonically restrained bonds.
-  class bond : public bond_params
+  class bond : public cctbx::geometry::distance<double>, public bond_params
   {
     public:
       //! Convenience typedef.
@@ -216,10 +217,10 @@ namespace cctbx { namespace geometry_restraints {
         double weight_,
         double slack_=0)
       :
-        bond_params(distance_ideal_, weight_, slack_),
-        sites(sites_)
+        cctbx::geometry::distance<double>(sites_),
+        bond_params(distance_ideal_, weight_, slack_)
       {
-        init_distance_model();
+        init_deltas();
       }
 
       /*! \brief Coordinates are copied from sites_cart according to
@@ -237,6 +238,7 @@ namespace cctbx { namespace geometry_restraints {
           sites[i] = sites_cart[i_seq];
         }
         init_distance_model();
+        init_deltas();
       }
 
       /*! \brief Coordinates are copied from sites_cart according to
@@ -259,6 +261,7 @@ namespace cctbx { namespace geometry_restraints {
             *proxy.rt_mx_ji * unit_cell.fractionalize(sites[1]));
         }
         init_distance_model();
+        init_deltas();
       }
 
       /*! \brief Coordinates are copied from sites_cart according to
@@ -280,6 +283,7 @@ namespace cctbx { namespace geometry_restraints {
         sites[1] = unit_cell.orthogonalize(
           proxy.rt_mx_ji * unit_cell.fractionalize(sites[1]));
         init_distance_model();
+        init_deltas();
       }
 
       /*! \brief Coordinates are copied from sites_cart according to
@@ -297,6 +301,7 @@ namespace cctbx { namespace geometry_restraints {
         sites[1] = asu_mappings.map_moved_site_to_asu(
           sites_cart[proxy.j_seq], proxy.j_seq, proxy.j_sym);
         init_distance_model();
+        init_deltas();
       }
 
       //! For fast processing. Not available in Python.
@@ -309,6 +314,7 @@ namespace cctbx { namespace geometry_restraints {
         sites[0] = cache.sites[proxy.i_seq][0];
         sites[1] = cache.sites[proxy.j_seq][proxy.j_sym];
         init_distance_model();
+        init_deltas();
       }
 
       //! weight * delta_slack**2.
@@ -316,16 +322,6 @@ namespace cctbx { namespace geometry_restraints {
        */
       double
       residual() const { return weight * scitbx::fn::pow2(delta_slack); }
-
-      //! Gradient of delta with respect to sites[0].
-      /*! Not available in Python.
-       */
-      scitbx::vec3<double>
-      grad_delta_0(double epsilon=1.e-100) const
-      {
-        if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
-        return (sites[1] - sites[0]) / distance_model;
-      }
 
       //! Gradient of R = w * sum(deltas) with respect to sites[0].
       /*! Not available in Python.
@@ -335,7 +331,7 @@ namespace cctbx { namespace geometry_restraints {
       {
         if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
         if (delta < -slack || delta > slack) {
-          return weight * 2 * delta_slack * grad_delta_0(epsilon);
+          return weight * 2 * delta_slack * d_distance_d_site_0(epsilon);
         }
         return scitbx::vec3<double>(0,0,0);
       }
@@ -407,7 +403,7 @@ namespace cctbx { namespace geometry_restraints {
         af::tiny<unsigned, 2> const& i_seqs = proxy.i_seqs;
         af::tiny<scitbx::vec3<double>, 2> grads;
         if (delta < -slack || delta > slack) {
-          grads[0] = grad_delta_0();
+          grads[0] = d_distance_d_site_0();
         }
         else { grads[0] = scitbx::vec3<double>(0,0,0); }
 
@@ -431,10 +427,6 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-      //! Cartesian coordinates of bonded sites.
-      af::tiny<scitbx::vec3<double>, 2> sites;
-      //! Distance between sites.
-      double distance_model;
       //! Difference distance_ideal - distance_model.
       double delta;
       //! sign(delta) * max(0, (abs(delta) - slack)).
@@ -442,9 +434,8 @@ namespace cctbx { namespace geometry_restraints {
 
     protected:
       void
-      init_distance_model()
+      init_deltas()
       {
-        distance_model = (sites[0] - sites[1]).length();
         delta = distance_ideal - distance_model;
         CCTBX_ASSERT(slack >= 0);
         if (delta > slack) {
