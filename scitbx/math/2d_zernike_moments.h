@@ -10,6 +10,7 @@
 #include <scitbx/array_family/shared.h>
 #include<scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/sort.h>
 
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
@@ -38,8 +39,9 @@ namespace zernike {
              FloatType const& fraction, // splat_range*dx< (1-fraction)*rmax
              scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz
            ):
-           splat_range_(splat_range), dx_(dx),natom_(xyz.size()), fract_(fraction), NP_MAX_(200), external_rmax_(external_rmax)
+           splat_range_(splat_range), dx_(dx),natom_(xyz.size()), fract_(fraction), NP_MAX_(200), external_rmax_(external_rmax), filter_radius_(3*splat_range)
       {
+
         FloatType tmp_r2;
         x_center_=0;
         y_center_=0;
@@ -100,7 +102,7 @@ namespace zernike {
             yi=int(scaled_xy_[i][1]/dx_+0.5)+NP_;
           mark_region(xi,yi);
         }
-
+        value_ = median_filter(filter_radius_);
         for(int i=0;i<n_tot;i++)
           for(int j=0;j<n_tot;j++)
             image_.push_back( scitbx::vec3<FloatType> (i,j,value_(i,j)) );
@@ -108,10 +110,11 @@ namespace zernike {
       }
 
       void mark_region(int xi, int yi) {
-        for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
-          for(int j=yi-splat_range_;j<=yi+splat_range_;j++)
+        for(int i=xi-splat_range_;i<=xi+splat_range_;i++){
+          for(int j=yi-splat_range_;j<=yi+splat_range_;j++){
               value_(i,j) += 1.0;  //uniform
-
+           }
+         }
         return;
       }
 
@@ -128,12 +131,37 @@ namespace zernike {
       scitbx::af::versa<FloatType, scitbx::af::c_grid<2> > get_value()
       { return value_; }
 
+      scitbx::af::versa<FloatType, scitbx::af::c_grid<2>  > median_filter(int const& radius)
+      {
+         int n_tot=2*NP_+1;
+         int median_point = static_cast<int>((radius*2+1)*(radius*2+1)/2.0+0.5); // technically not correct, but sufficient enough
+
+         scitbx::af::c_grid<2> value_grid( n_tot, n_tot );
+         scitbx::af::versa<  FloatType, scitbx::af::c_grid<2> > new_value(value_grid,0);
+         // now we have to walk over the whole image
+         for (int xx=0+radius;xx<n_tot-radius;xx++){
+           for (int yy=0+radius;yy<n_tot-radius;yy++){
+             scitbx::af::shared<FloatType> tmp_vals;
+             for (int ii=-radius;ii<radius+1;ii++){
+               for (int jj=-radius;jj<radius+1;jj++){
+                  tmp_vals.push_back( value_(xx+ii,yy+jj) );
+               }
+             }
+             scitbx::af::shared<std::size_t> permut;
+             permut = scitbx::af::sort_permutation( tmp_vals.const_ref(), true );
+             FloatType median = tmp_vals[ permut[median_point] ];
+             new_value( xx,yy ) = median;
+           }
+         }
+         return(new_value);
+      }
+
 
     private:
       scitbx::af::shared< scitbx::vec2<FloatType> > xy_;
       scitbx::af::shared< scitbx::vec2<FloatType> > scaled_xy_;
       scitbx::af::shared< scitbx::vec3<FloatType> > image_;
-      int natom_, NP_, NP_MAX_;
+      int natom_, NP_, NP_MAX_, filter_radius_;
       bool uniform_, fixed_dx_;
       FloatType dx_, splat_range_, rmax_, scale_, fract_, rg_, rel_rg_, external_rmax_;
       FloatType x_center_, y_center_;
