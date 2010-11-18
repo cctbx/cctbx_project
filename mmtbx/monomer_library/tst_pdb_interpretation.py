@@ -7,6 +7,467 @@ import libtbx.load_env
 from cStringIO import StringIO
 import os
 
+def exercise_rna_v3(mon_lib_srv, ener_lib):
+  raw_records = """\
+CRYST1  401.998  401.998  175.648  90.00  90.00  90.00 P 41 21 2
+ATOM  25432  P     G A1206     198.794 115.083  28.238  1.00 76.49           P
+ATOM  25433  OP1   G A1206     198.375 115.264  29.645  1.00 77.28           O
+ATOM  25434  OP2   G A1206     200.140 114.542  27.966  1.00 76.41           O
+ATOM  25435  O5'   G A1206     197.705 114.233  27.449  1.00 76.56           O
+ATOM  25436  C5'   G A1206     196.418 114.761  27.170  1.00 76.79           C
+ATOM  25437  C4'   G A1206     195.633 113.833  26.279  1.00 77.12           C
+ATOM  25438  O4'   G A1206     196.015 114.053  24.894  1.00 77.27           O
+ATOM  25439  C3'   G A1206     195.867 112.344  26.510  1.00 77.37           C
+ATOM  25440  O3'   G A1206     195.077 111.810  27.556  1.00 77.97           O
+ATOM  25441  C2'   G A1206     195.569 111.736  25.150  1.00 77.22           C
+ATOM  25442  O2'   G A1206     194.170 111.623  24.952  1.00 76.79           O
+ATOM  25443  C1'   G A1206     196.112 112.819  24.214  1.00 77.65           C
+ATOM  25444  N9    G A1206     197.533 112.591  23.877  1.00 78.00           N
+ATOM  25445  C8    G A1206     198.581 113.321  24.380  1.00 78.03           C
+ATOM  25446  N7    G A1206     199.744 112.915  23.956  1.00 78.32           N
+ATOM  25447  C5    G A1206     199.447 111.851  23.119  1.00 77.90           C
+ATOM  25448  C6    G A1206     200.326 111.029  22.380  1.00 77.52           C
+ATOM  25449  O6    G A1206     201.557 111.100  22.331  1.00 77.98           O
+ATOM  25450  N1    G A1206     199.635 110.063  21.665  1.00 77.35           N
+ATOM  25451  C2    G A1206     198.270 109.923  21.660  1.00 76.93           C
+ATOM  25452  N2    G A1206     197.791 108.932  20.898  1.00 76.75           N
+ATOM  25453  N3    G A1206     197.437 110.686  22.346  1.00 77.12           N
+ATOM  25454  C4    G A1206     198.088 111.632  23.050  1.00 77.74           C
+HETATM25455  P   2MG A1207     195.612 110.560  28.417  1.00 79.39           P
+HETATM25456  OP1 2MG A1207     194.636 110.113  29.435  1.00 80.29           O
+HETATM25457  OP2 2MG A1207     196.934 111.063  28.860  1.00 79.14           O
+HETATM25458  O5' 2MG A1207     195.767 109.399  27.334  1.00 79.02           O
+HETATM25459  C5' 2MG A1207     194.639 108.661  26.891  1.00 79.38           C
+HETATM25460  C4' 2MG A1207     195.005 107.705  25.788  1.00 79.65           C
+HETATM25461  O4' 2MG A1207     195.607 108.447  24.695  1.00 80.37           O
+HETATM25462  C3' 2MG A1207     196.032 106.636  26.145  1.00 79.49           C
+HETATM25463  O3' 2MG A1207     195.452 105.486  26.729  1.00 79.21           O
+HETATM25464  C2' 2MG A1207     196.714 106.355  24.818  1.00 80.16           C
+HETATM25465  O2' 2MG A1207     195.930 105.477  24.030  1.00 80.10           O
+HETATM25466  C1' 2MG A1207     196.702 107.734  24.168  1.00 80.84           C
+HETATM25467  N9  2MG A1207     197.946 108.483  24.449  1.00 22.09           N
+HETATM25468  C8  2MG A1207     198.164 109.755  25.238  1.00 22.18           C
+HETATM25469  N7  2MG A1207     199.619 110.140  25.258  1.00 22.22           N
+HETATM25470  C5  2MG A1207     200.255 109.072  24.452  1.00 22.02           C
+HETATM25471  C6  2MG A1207     201.664 108.956  24.144  1.00 21.94           C
+HETATM25472  O6  2MG A1207     202.706 109.773  24.490  1.00 21.74           O
+HETATM25473  N1  2MG A1207     201.977 107.741  23.302  1.00 22.13           N
+HETATM25474  C2  2MG A1207     200.927 106.863  22.894  1.00 22.28           C
+HETATM25475  N2  2MG A1207     201.271 105.673  22.035  1.00 22.47           N
+HETATM25476  CM2 2MG A1207     200.196 105.202  20.911  1.00 22.37           C
+HETATM25477  N3  2MG A1207     199.581 107.007  23.199  1.00 22.01           N
+HETATM25478  C4  2MG A1207     199.263 108.076  23.968  1.00 22.00           C
+ATOM  25479  P     C A1208     196.141 104.788  27.998  1.00 79.45           P
+ATOM  25480  OP1   C A1208     195.091 104.010  28.693  1.00 79.48           O
+ATOM  25481  OP2   C A1208     196.850 105.858  28.740  1.00 80.10           O
+ATOM  25482  O5'   C A1208     197.196 103.794  27.347  1.00 80.15           O
+ATOM  25483  C5'   C A1208     196.897 103.077  26.162  1.00 81.09           C
+ATOM  25484  C4'   C A1208     198.159 102.657  25.458  1.00 82.10           C
+ATOM  25485  O4'   C A1208     198.738 103.799  24.770  1.00 82.55           O
+ATOM  25486  C3'   C A1208     199.268 102.155  26.367  1.00 82.68           C
+ATOM  25487  O3'   C A1208     199.120 100.784  26.703  1.00 83.37           O
+ATOM  25488  C2'   C A1208     200.542 102.467  25.585  1.00 82.81           C
+ATOM  25489  O2'   C A1208     200.823 101.440  24.645  1.00 82.68           O
+ATOM  25490  C1'   C A1208     200.147 103.738  24.821  1.00 83.10           C
+ATOM  25491  N1    C A1208     200.654 104.979  25.469  1.00 83.75           N
+ATOM  25492  C2    C A1208     202.030 105.208  25.539  1.00 84.04           C
+ATOM  25493  O2    C A1208     202.787 104.352  25.073  1.00 85.37           O
+ATOM  25494  N3    C A1208     202.504 106.336  26.117  1.00 83.20           N
+ATOM  25495  C4    C A1208     201.650 107.231  26.606  1.00 83.20           C
+ATOM  25496  N4    C A1208     202.152 108.331  27.170  1.00 82.99           N
+ATOM  25497  C5    C A1208     200.240 107.041  26.541  1.00 83.43           C
+ATOM  25498  C6    C A1208     199.794 105.918  25.966  1.00 83.75           C
+ATOM  25499  P     C A1209     199.109 100.325  28.246  1.00 83.81           P
+ATOM  25500  OP1   C A1209     198.251  99.114  28.342  1.00 83.30           O
+ATOM  25501  OP2   C A1209     198.750 101.522  29.056  1.00 82.92           O
+ATOM  25502  O5'   C A1209     200.633  99.930  28.499  1.00 84.20           O
+ATOM  25503  C5'   C A1209     201.270  98.949  27.692  1.00 84.37           C
+ATOM  25504  C4'   C A1209     202.741  99.244  27.501  1.00 84.82           C
+ATOM  25505  O4'   C A1209     202.921 100.574  26.949  1.00 84.19           O
+ATOM  25506  C3'   C A1209     203.597  99.255  28.757  1.00 85.06           C
+ATOM  25507  O3'   C A1209     203.935  97.953  29.207  1.00 86.28           O
+ATOM  25508  C2'   C A1209     204.805 100.090  28.332  1.00 84.19           C
+ATOM  25509  O2'   C A1209     205.743  99.293  27.621  1.00 83.94           O
+ATOM  25510  C1'   C A1209     204.174 101.087  27.350  1.00 83.23           C
+ATOM  25511  N1    C A1209     203.980 102.422  27.942  1.00 81.76           N
+ATOM  25512  C2    C A1209     205.090 103.092  28.456  1.00 81.49           C
+ATOM  25513  O2    C A1209     206.191 102.525  28.418  1.00 81.76           O
+ATOM  25514  N3    C A1209     204.936 104.327  28.991  1.00 81.01           N
+ATOM  25515  C4    C A1209     203.734 104.903  29.006  1.00 80.86           C
+ATOM  25516  N4    C A1209     203.625 106.122  29.534  1.00 79.98           N
+ATOM  25517  C5    C A1209     202.587 104.247  28.470  1.00 81.59           C
+ATOM  25518  C6    C A1209     202.754 103.021  27.948  1.00 81.60           C
+""".splitlines()
+  cif_records = """\
+# electronic Ligand Builder and Optimisation Workbench (eLBOW)
+#   - a module of PHENIX version dev-550 (Mon Oct  6 00:28:00 2010)
+#   - file written: Wed Nov 17 14:20:56 2010
+#
+#   Input file: sample.pdb
+#   Random seed: 3628800
+#   Residue: 2MG
+#
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+2MG        2MG 'Unknown                  ' ligand 40 24 .
+#
+data_comp_2MG
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+2MG         P      P   P     .        193.1922  110.7393   27.8108
+2MG         OP1    O   OH1   .        193.2303  110.5959   29.4269
+2MG         OP2    O   O     .        193.8066  112.0430   27.1100
+2MG        O5'     O   O2    .        193.8090  109.3126   27.4983
+2MG        C5'     C   CH2   .        195.2238  109.1932   27.1837
+2MG        C4'     C   CR15  .        195.5915  108.2815   26.0928
+2MG        O4'     O   O     .        196.8078  108.6487   25.5614
+2MG        C3'     C   CR15  .        195.7744  106.9078   26.6204
+2MG        O3'     O   OH1   .        195.9405  106.9603   27.9901
+2MG        C2'     C   CR15  .        196.9455  106.4187   26.0245
+2MG        O2'     O   OH1   .        196.6506  105.2541   25.2751
+2MG        C1'     C   CR15  .        197.4047  107.4689   25.1175
+2MG         N9     N   NR5   .        198.8548  107.5902   25.1810
+2MG         C8     C   CR15  .        199.6182  107.8273   26.3017
+2MG         N7     N   N     .        200.9440  107.9581   25.8975
+2MG         C5     C   CR56  .        201.0035  107.8016   24.5249
+2MG         C6     C   CR6   .        202.0016  107.9320   23.5649
+2MG         O6     O   OH1   .        203.2939  108.1809   23.9568
+2MG         N1     N   N     .        201.6911  107.8327   22.1819
+2MG         C2     C   CR6   .        200.3827  107.6027   21.7653
+2MG         N2     N   NH1   .        200.1198  107.3807   20.4207
+2MG         CM2    C   CH3   .        201.2316  107.4071   19.4380
+2MG         N3     N   N     .        199.4107  107.4740   22.6488
+2MG         C4     C   CR56  .        199.6703  107.5658   24.0571
+2MG        HP1     H   H     .        191.9727  110.4452   27.6374
+2MG        HP11    H   HOH1  .        192.6565  111.1706   29.7890
+2MG        H5'1    H   HCH2  .        195.6955  108.8897   28.0106
+2MG        H5'2    H   HCH2  .        195.5673  110.1131   26.9473
+2MG        H4'1    H   HCR5  .        194.9037  108.3265   25.3852
+2MG        H3'1    H   HCR5  .        195.0531  106.4463   26.3998
+2MG        H3'2    H   HOH1  .        195.4753  106.3269   28.3657
+2MG        H2'1    H   HCR5  .        197.5835  106.2824   26.7053
+2MG        H2'2    H   HOH1  .        196.7242  104.5157   25.8120
+2MG        H1'1    H   HCR5  .        197.2320  107.2825   24.2174
+2MG        H81     H   HCR5  .        199.2996  107.8051   27.2342
+2MG        H61     H   HOH1  .        203.7851  108.3067   23.2622
+2MG        H21     H   HNH1  .        199.3048  107.1092   20.1655
+2MG        HM21    H   HCH3  .        201.8876  108.1500   19.6848
+2MG        HM22    H   HCH3  .        200.8866  107.5682   18.5764
+2MG        HM23    H   HCH3  .        201.6753  106.5837   19.4482
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+2MG   P       OP1   single        1.623 0.020
+2MG   P       OP2   double        1.603 0.020
+2MG   P      O5'    single        1.586 0.020
+2MG  O5'     C5'    single        1.454 0.020
+2MG  C5'     C4'    single        1.468 0.020
+2MG  C4'     O4'    single        1.377 0.020
+2MG  C4'     C3'    single        1.483 0.020
+2MG  O4'     C1'    single        1.395 0.020
+2MG  C3'     O3'    single        1.381 0.020
+2MG  C3'     C2'    single        1.402 0.020
+2MG  C2'     O2'    single        1.416 0.020
+2MG  C2'     C1'    single        1.462 0.020
+2MG  C1'      N9    single        1.457 0.020
+2MG   N9      C8    aromatic      1.377 0.020
+2MG   N9      C4    aromatic      1.389 0.020
+2MG   C8      N7    aromatic      1.392 0.020
+2MG   N7      C5    aromatic      1.383 0.020
+2MG   C5      C6    aromatic      1.391 0.020
+2MG   C5      C4    aromatic      1.432 0.020
+2MG   C6      O6    single        1.373 0.020
+2MG   C6      N1    aromatic      1.421 0.020
+2MG   N1      C2    aromatic      1.392 0.020
+2MG   C2      N2    single        1.388 0.020
+2MG   C2      N3    aromatic      1.320 0.020
+2MG   N3      C4    aromatic      1.435 0.020
+2MG   CM2     N2    single        1.484 0.020
+2MG  HP1      P     single        1.266 0.020
+2MG  HP11     OP1   single        0.889 0.020
+2MG  H5'1    C5'    single        0.999 0.020
+2MG  H5'2    C5'    single        1.010 0.020
+2MG  H4'1    C4'    single        0.988 0.020
+2MG  H3'1    C3'    single        0.884 0.020
+2MG  H3'2    O3'    single        0.871 0.020
+2MG  H2'1    C2'    single        0.943 0.020
+2MG  H2'2    O2'    single        0.916 0.020
+2MG  H1'1    C1'    single        0.935 0.020
+2MG  H81      C8    single        0.986 0.020
+2MG  H61      O6    single        0.860 0.020
+2MG  H21      N2    single        0.896 0.020
+2MG  HM21     CM2   single        1.021 0.020
+2MG  HM22     CM2   single        0.942 0.020
+2MG  HM23     CM2   single        0.935 0.020
+#
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+2MG  C5'     O5'      P           119.67 3.000
+2MG   OP2     P       OP1         119.89 3.000
+2MG  O5'      P       OP1          96.17 3.000
+2MG  O5'      P       OP2         119.78 3.000
+2MG  C4'     C5'     O5'          117.08 3.000
+2MG  O4'     C4'     C5'          110.01 3.000
+2MG  C3'     C4'     C5'          109.98 3.000
+2MG  C1'     O4'     C4'          105.97 3.000
+2MG  O3'     C3'     C4'          109.42 3.000
+2MG  C2'     C3'     C4'          105.96 3.000
+2MG  C3'     C4'     O4'          105.98 3.000
+2MG  C2'     C1'     O4'          106.01 3.000
+2MG   N9     C1'     O4'          109.98 3.000
+2MG  O2'     C2'     C3'          109.75 3.000
+2MG  C1'     C2'     C3'          105.99 3.000
+2MG  C2'     C3'     O3'          109.54 3.000
+2MG   N9     C1'     C2'          110.21 3.000
+2MG  C1'     C2'     O2'          109.14 3.000
+2MG   C8      N9     C1'          127.01 3.000
+2MG   C4      N9     C1'          123.21 3.000
+2MG   N7      C8      N9          107.94 3.000
+2MG   C5      C4      N9          106.21 3.000
+2MG   N3      C4      N9          133.57 3.000
+2MG   C4      N9      C8          109.65 3.000
+2MG   C5      N7      C8          108.57 3.000
+2MG   C6      C5      N7          134.85 3.000
+2MG   C4      C5      N7          107.63 3.000
+2MG   O6      C6      C5          119.70 3.000
+2MG   N1      C6      C5          120.55 3.000
+2MG   N3      C4      C5          119.96 3.000
+2MG   C4      C5      C6          117.25 3.000
+2MG   C2      N1      C6          120.54 3.000
+2MG   N1      C6      O6          119.74 3.000
+2MG   N2      C2      N1          119.62 3.000
+2MG   N3      C2      N1          120.53 3.000
+2MG   CM2     N2      C2          119.78 3.000
+2MG   C4      N3      C2          121.16 3.000
+2MG   N3      C2      N2          119.56 3.000
+2MG  HP11     OP1     P           109.46 3.000
+2MG  HP1      P       OP1          97.96 3.000
+2MG  HP1      P       OP2         119.89 3.000
+2MG  HP1      P      O5'           97.97 3.000
+2MG  H5'1    C5'     O5'          107.77 3.000
+2MG  H5'2    C5'     O5'          107.86 3.000
+2MG  H4'1    C4'     C5'          109.24 3.000
+2MG  H5'1    C5'     C4'          107.94 3.000
+2MG  H5'2    C5'     C4'          107.84 3.000
+2MG  H3'1    C3'     C4'          107.10 3.000
+2MG  H4'1    C4'     O4'          109.05 3.000
+2MG  H1'1    C1'     O4'          113.32 3.000
+2MG  H4'1    C4'     C3'          112.52 3.000
+2MG  H3'2    O3'     C3'          109.63 3.000
+2MG  H2'1    C2'     C3'          107.98 3.000
+2MG  H3'1    C3'     O3'          111.44 3.000
+2MG  H3'1    C3'     C2'          113.16 3.000
+2MG  H2'2    O2'     C2'          109.64 3.000
+2MG  H1'1    C1'     C2'          113.33 3.000
+2MG  H2'1    C2'     O2'          113.84 3.000
+2MG  H2'1    C2'     C1'          109.84 3.000
+2MG  H1'1    C1'      N9          104.03 3.000
+2MG  H81      C8      N9          125.95 3.000
+2MG  H81      C8      N7          125.77 3.000
+2MG  H61      O6      C6          109.49 3.000
+2MG  H21      N2      C2          119.77 3.000
+2MG  HM21     CM2     N2          109.52 3.000
+2MG  HM22     CM2     N2          109.53 3.000
+2MG  HM23     CM2     N2          109.42 3.000
+2MG  H21      N2      CM2         119.88 3.000
+2MG  H5'2    C5'     H5'1         108.04 3.000
+2MG  HM22     CM2    HM21         109.38 3.000
+2MG  HM23     CM2    HM21         109.45 3.000
+2MG  HM23     CM2    HM22         109.53 3.000
+#
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+2MG CONST_01       C5      N7      C8      N9           -0.02   0.0 0
+2MG CONST_02       N7      C5      C4      N9           -0.02   0.0 0
+2MG CONST_03       C6      C5      C4      N9         -174.95   0.0 0
+2MG CONST_04       C2      N3      C4      N9          173.30   0.0 0
+2MG CONST_05       C5      C4      N9      C8            0.00   0.0 0
+2MG CONST_06       N3      C4      N9      C8         -173.94   0.0 0
+2MG CONST_07       C6      C5      N7      C8          173.67   0.0 0
+2MG CONST_08       C4      C5      N7      C8            0.03   0.0 0
+2MG CONST_09       C4      N9      C8      N7            0.01   0.0 0
+2MG CONST_10       N1      C6      C5      N7         -173.16   0.0 0
+2MG CONST_11       N3      C4      C5      N7          174.92   0.0 0
+2MG CONST_12       C2      N1      C6      C5           -0.02   0.0 0
+2MG CONST_13       C2      N3      C4      C5            0.02   0.0 0
+2MG CONST_14       N3      C4      C5      C6           -0.02   0.0 0
+2MG CONST_15       N3      C2      N1      C6            0.02   0.0 0
+2MG CONST_16       C4      C5      C6      N1            0.02   0.0 0
+2MG CONST_17       C4      N3      C2      N1           -0.03   0.0 0
+2MG CONST_18       N7      C8      N9     C1'         -176.01   0.0 0
+2MG CONST_19       C5      C4      N9     C1'          176.21   0.0 0
+2MG CONST_20       N3      C4      N9     C1'            2.27   0.0 0
+2MG CONST_21       O6      C6      C5      N7            5.76   0.0 0
+2MG CONST_22       N2      C2      N1      C6         -173.82   0.0 0
+2MG CONST_23       C4      C5      C6      O6          178.94   0.0 0
+2MG CONST_24       C2      N1      C6      O6         -178.94   0.0 0
+2MG CONST_25       C4      N3      C2      N2          173.82   0.0 0
+2MG CONST_26      H81      C8      N9     C1'           10.40   0.0 0
+2MG CONST_27      H81      C8      N7      C5          173.58   0.0 0
+2MG CONST_28      H81      C8      N9      C4         -173.58   0.0 0
+2MG Var_01        C4'     C5'     O5'      P          -138.25  30.0 3
+2MG Var_02        C5'     O5'      P       OP1         -98.80  30.0 3
+2MG Var_03        C5'     O5'      P       OP2          30.95  30.0 3
+2MG Var_04        O4'     C4'     C5'     O5'          156.12  30.0 3
+2MG Var_05        C3'     C4'     C5'     O5'          -87.50  30.0 3
+2MG Var_06        C1'     O4'     C4'     C5'          149.03  30.0 1
+2MG Var_07        O3'     C3'     C4'     C5'          -17.76  30.0 1
+2MG Var_08        C2'     C3'     C4'     C5'         -135.78  30.0 1
+2MG Var_09         N9     C1'     O4'     C4'         -151.05  30.0 1
+2MG Var_10        O2'     C2'     C3'     C4'         -120.19  30.0 1
+2MG Var_11        O3'     C3'     C4'     O4'          101.12  30.0 1
+2MG Var_12        O2'     C2'     C1'     O4'          138.94  30.0 1
+2MG Var_13         C8      N9     C1'     O4'           60.18  30.0 2
+2MG Var_14         C4      N9     C1'     O4'         -115.34  30.0 2
+2MG Var_15         N9     C1'     C2'     C3'          139.77  30.0 1
+2MG Var_16        O2'     C2'     C3'     O3'          121.88  30.0 1
+2MG Var_17        C1'     C2'     C3'     O3'         -120.39  30.0 1
+2MG Var_18         C8      N9     C1'     C2'          -56.35  30.0 2
+2MG Var_19         C4      N9     C1'     C2'          128.13  30.0 2
+2MG Var_20         N9     C1'     C2'     O2'         -102.09  30.0 1
+2MG Var_21         CM2     N2      C2      N1           -0.75  30.0 2
+2MG Var_22         N3      C2      N2      CM2        -174.66  30.0 2
+2MG Var_23        H5'1    C5'     O5'      P            99.94  30.0 3
+2MG Var_24        H5'2    C5'     O5'      P           -16.48  30.0 3
+2MG Var_25        HP11     OP1     P       OP2          70.99  30.0 3
+2MG Var_26        HP11     OP1     P      O5'         -159.34  30.0 3
+2MG Var_27        H4'1    C4'     C5'     O5'           36.45  30.0 3
+2MG Var_28        HP1      P      O5'     C5'          162.24  30.0 1
+2MG Var_29        H3'1    C3'     C4'     C5'          103.17  30.0 1
+2MG Var_30        H1'1    C1'     O4'     C4'           93.00  30.0 1
+2MG Var_31        H3'2    O3'     C3'     C4'          136.99  30.0 3
+2MG Var_32        H2'1    C2'     C3'     C4'          115.20  30.0 1
+2MG Var_33        H5'1    C5'     C4'     O4'          -82.15  30.0 2
+2MG Var_34        H5'2    C5'     C4'     O4'           34.35  30.0 2
+2MG Var_35        H3'1    C3'     C4'     O4'         -137.95  30.0 1
+2MG Var_36        H2'1    C2'     C1'     O4'          -95.61  30.0 1
+2MG Var_37        H5'1    C5'     C4'     C3'           34.22  30.0 2
+2MG Var_38        H5'2    C5'     C4'     C3'          150.73  30.0 2
+2MG Var_39        H2'2    O2'     C2'     C3'          -89.07  30.0 3
+2MG Var_40        H1'1    C1'     C2'     C3'         -104.12  30.0 1
+2MG Var_41        H4'1    C4'     C3'     O3'         -139.78  30.0 1
+2MG Var_42        H2'1    C2'     C3'     O3'           -2.74  30.0 1
+2MG Var_43        H4'1    C4'     C3'     C2'          102.20  30.0 1
+2MG Var_44        H3'2    O3'     C3'     C2'         -107.25  30.0 3
+2MG Var_45        H3'1    C3'     C2'     O2'           -3.13  30.0 1
+2MG Var_46        H1'1    C1'     C2'     O2'           14.02  30.0 1
+2MG Var_47        H4'1    C4'     O4'     C1'          -91.18  30.0 1
+2MG Var_48        H3'1    C3'     C2'     C1'          114.61  30.0 1
+2MG Var_49        H2'2    O2'     C2'     C1'          155.18  30.0 3
+2MG Var_50        H2'1    C2'     C1'      N9           23.37  30.0 1
+2MG Var_51        H1'1    C1'      N9      C8         -178.15  30.0 1
+2MG Var_52        H61      O6      C6      C5         -174.96  30.0 2
+2MG Var_53        H61      O6      C6      N1            3.97  30.0 2
+2MG Var_54        H21      N2      C2      N1          170.63  30.0 2
+2MG Var_55        HM21     CM2     N2      C2          -38.75  30.0 3
+2MG Var_56        HM22     CM2     N2      C2         -158.70  30.0 3
+2MG Var_57        HM23     CM2     N2      C2           81.23  30.0 3
+2MG Var_58        H21      N2      C2      N3           -3.27  30.0 2
+2MG Var_59        H1'1    C1'      N9      C4            6.33  30.0 1
+2MG Var_60        HP11     OP1     P      HP1          -60.37  30.0 3
+2MG Var_61        H4'1    C4'     C5'     H5'1         158.18  30.0 3
+2MG Var_62        H4'1    C4'     C5'     H5'2         -85.32  30.0 3
+2MG Var_63        H3'1    C3'     C4'     H4'1         -18.86  30.0 1
+2MG Var_64        H3'2    O3'     C3'     H3'1          18.74  30.0 3
+2MG Var_65        H2'1    C2'     C3'     H3'1        -127.74  30.0 1
+2MG Var_66        H2'2    O2'     C2'     H2'1          32.08  30.0 3
+2MG Var_67        H1'1    C1'     C2'     H2'1         139.48  30.0 1
+2MG Var_68        HM21     CM2     N2     H21          149.88  30.0 3
+2MG Var_69        HM22     CM2     N2     H21           29.93  30.0 3
+2MG Var_70        HM23     CM2     N2     H21          -90.14  30.0 3
+#
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+2MG chir_01   P       OP1     OP2    O5'    both
+2MG chir_02  C4'     C5'     O4'     C3'    both
+2MG chir_03  C3'     C4'     O3'     C2'    both
+2MG chir_04  C2'     C3'     O2'     C1'    both
+2MG chir_05  C1'     O4'     C2'      N9    both
+#
+#
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+2MG plan-1    C1' 0.020
+2MG plan-1     N9 0.020
+2MG plan-1     C8 0.020
+2MG plan-1     N7 0.020
+2MG plan-1     C5 0.020
+2MG plan-1     C6 0.020
+2MG plan-1     O6 0.020
+2MG plan-1     N1 0.020
+2MG plan-1     C2 0.020
+2MG plan-1     N2 0.020
+2MG plan-1     N3 0.020
+2MG plan-1     C4 0.020
+2MG plan-1    H81 0.020
+2MG plan-2     C2 0.020
+2MG plan-2     N2 0.020
+2MG plan-2    CM2 0.020
+2MG plan-2    H21 0.020
+"""
+  from mmtbx.monomer_library import mmCIF
+  cif_object = mmCIF.mmCIFFile()
+  cif_object.load_file(fil=StringIO(cif_records), strict=False)
+  mon_lib_srv.process_cif_object(cif_object=cif_object)
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    force_symmetry=True)
+  grm = processed_pdb_file.geometry_restraints_manager()
+  mod_base_5p_link_op1 = False
+  mod_base_5p_link_op2 = False
+  for ap in grm.angle_proxies:
+    if ap.i_seqs == (8,23,24):
+      mod_base_5p_link_op1 = True
+    if ap.i_seqs == (8,23,25):
+      mod_base_5p_link_op2 = True
+  assert mod_base_5p_link_op1
+  assert mod_base_5p_link_op2
+
 def exercise_pdb_string(mon_lib_srv, ener_lib):
   raw_records = """\
 CRYST1   50.066   67.126   47.862  90.00  92.41  90.00 P 1 21 1
@@ -608,6 +1069,7 @@ def run(args):
   exercise_dna_cns_cy5_th6()
   exercise_sym_excl_indices(mon_lib_srv, ener_lib)
   exercise_auto_alias_h_h1()
+  exercise_rna_v3(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
