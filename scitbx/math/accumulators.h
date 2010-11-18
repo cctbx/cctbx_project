@@ -290,9 +290,9 @@ class inertia_accumulator
 
     void operator()(scitbx::vec3<FloatType> x, FloatType weight=1.0) {
       sum_weights_ += weight;
-      scitbx::vec3<FloatType> delta = scitbx::vec3<FloatType>(x) - center_of_mass_;
+      scitbx::vec3<FloatType> delta = x - center_of_mass_;
       center_of_mass_ += weight * delta/sum_weights_;
-      scitbx::vec3<FloatType> new_delta = scitbx::vec3<FloatType>(x) - center_of_mass_;
+      scitbx::vec3<FloatType> new_delta = x - center_of_mass_;
       m2[0] += weight * delta[0] * new_delta[0];
       m2[1] += weight * delta[1] * new_delta[1];
       m2[2] += weight * delta[2] * new_delta[2];
