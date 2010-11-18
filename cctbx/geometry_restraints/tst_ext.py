@@ -2721,7 +2721,7 @@ Planarity restraints: 2
 """)
 
 def exercise():
-  #exercise_bond_similarity()
+  exercise_bond_similarity()
   exercise_bond()
   exercise_nonbonded()
   exercise_nonbonded_cos()
