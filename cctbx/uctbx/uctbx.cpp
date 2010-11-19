@@ -155,10 +155,9 @@ namespace cctbx { namespace uctbx {
     f[5] = 2*(o[1]*o[2] + o[4]*o[5]);
     f *= 1./3;
 
-    u_star_to_u_cart_linear_form_.resize(
+    u_star_to_u_cart_linear_map_.resize(
       af::c_grid<2>(6,6), static_cast<double>(0));
-    af::versa<double, af::c_grid<2> > &L
-      = u_star_to_u_cart_linear_form_;
+    af::versa<double, af::c_grid<2> > &L = u_star_to_u_cart_linear_map_;
     L(0,0) = o[0]*o[0];
     L(0,1) = o[1]*o[1];
     L(0,2) = o[2]*o[2];
@@ -180,7 +179,7 @@ namespace cctbx { namespace uctbx {
     L(5,2) = o[5]*o[8];
     L(5,5) = o[4]*o[8];
 
-    af::double6  &c = u_star_to_u_cif_linear_form_;
+    af::double6  &c = u_star_to_u_cif_linear_map_;
     c[0] = 1./(r_params_[0] * r_params_[0]);
     c[1] = 1./(r_params_[1] * r_params_[1]);
     c[2] = 1./(r_params_[2] * r_params_[2]);
