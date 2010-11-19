@@ -6,11 +6,14 @@ if has_antlr3:
   ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
-from cctbx import adptbx, crystal, sgtbx
+from cctbx import adptbx, covariance, crystal, sgtbx
 from iotbx.cif import model, builders
 from libtbx.containers import OrderedDict
+from libtbx.utils import format_float_with_standard_uncertainty \
+     as format_float_with_su
+from scitbx import matrix
 
-import sys
+import math, sys
 
 class reader:
 
@@ -52,11 +55,11 @@ class crystal_symmetry_as_cif_block:
 
   def __init__(self, crystal_symmetry):
     self.cif_block = model.block()
-    sym_loop = model.loop(data={
-      '_space_group_symop_operation_xyz':
-      [s.as_xyz() for s in crystal_symmetry.space_group()],
-      '_space_group_symop_id':
-      range(1, len(crystal_symmetry.space_group())+1)})
+    sym_loop = model.loop(data=OrderedDict((
+      ('_space_group_symop_id',
+       range(1, len(crystal_symmetry.space_group())+1)),
+      ('_space_group_symop_operation_xyz',
+       [s.as_xyz() for s in crystal_symmetry.space_group()]))))
     self.cif_block.add_loop(sym_loop)
     #
     sg_type = crystal_symmetry.space_group_info().type()
@@ -82,25 +85,72 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
   }
 
-  def __init__(self, xray_structure):
+  def __init__(self, xray_structure, covariance_matrix=None):
     crystal_symmetry_as_cif_block.__init__(
       self, xray_structure.crystal_symmetry())
     scatterers = xray_structure.scatterers()
+    uc = xray_structure.unit_cell()
+    if covariance_matrix is not None:
+      param_map = xray_structure.parameter_map()
+      covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
+      u_star_to_u_cif_linear_map_pow2 = flex.pow2(flex.double(
+        uc.u_star_to_u_cif_linear_map()))
+      u_star_to_u_iso_linear_form = matrix.row(
+        uc.u_star_to_u_iso_linear_form())
+    fmt = "%.6f"
+
+    # _atom_site_* loop
     atom_site_loop = model.loop(header=(
       '_atom_site_label', '_atom_site_type_symbol',
       '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
-      '_atom_site_U_iso_or_equiv', '_atom_site_occupancy'))
-    uc = xray_structure.unit_cell()
+      '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
+      '_atom_site_occupancy'))
     fp_fdp_table = {}
-    fmt = "%.6f"
-    for sc in scatterers:
+    for i_seq, sc in enumerate(scatterers):
+      # site
+      if covariance_matrix is not None and sc.flags.grad_site():
+        site = []
+        for i in range(3):
+          idx = param_map[i_seq].site
+          if idx > -1:
+            var = covariance_diagonal[idx]
+          else: var = 0
+          if var != 0:
+            site.append(format_float_with_su(sc.site[i], math.sqrt(var)))
+          else: site.append(fmt % sc.site[i])
+      else:
+        site = [fmt % sc.site[i] for i in range(3)]
+      # u_eq
+      if (covariance_matrix is not None and
+          (sc.flags.grad_u_iso() or sc.flags.grad_u_aniso())):
+        if sc.flags.grad_u_iso():
+          u_iso_or_equiv = format_float_with_su(
+            sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
+              i_seq, covariance_matrix, param_map)))
+        else:
+          cov = covariance.extract_covariance_matrix_for_u_aniso(
+            i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
+          var = (  u_star_to_u_iso_linear_form
+                 * matrix.sqr(cov)
+                 * u_star_to_u_iso_linear_form.transpose())[0]
+          u_iso_or_equiv = format_float_with_su(
+            sc.u_iso_or_equiv(uc), math.sqrt(var))
+      else:
+        u_iso_or_equiv = fmt % sc.u_iso_or_equiv(uc)
+      if sc.flags.use_u_aniso():
+        adp_type = 'Uani'
+      else:
+        adp_type = 'Uiso'
       atom_site_loop.add_row((
-        sc.label, sc.scattering_type, fmt%sc.site[0], fmt%sc.site[1],
-        fmt%sc.site[2], fmt%sc.u_iso_or_equiv(uc), fmt%sc.occupancy))
+        sc.label, sc.scattering_type, site[0], site[1], site[2], u_iso_or_equiv,
+        adp_type, fmt%sc.occupancy))
       fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
     self.cif_block.add_loop(atom_site_loop)
+
+    # _atom_site_aniso_* loop
     aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
     if aniso_scatterers.size():
+      labels = list(scatterers.extract_labels())
       aniso_loop = model.loop(header=('_atom_site_aniso_label',
                                       '_atom_site_aniso_U_11',
                                       '_atom_site_aniso_U_22',
@@ -110,11 +160,25 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
                                       '_atom_site_aniso_U_23'))
       for sc in aniso_scatterers:
         u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
-        aniso_loop.add_row((
-          sc.label, fmt%u_cif[0], fmt%u_cif[1], fmt%u_cif[2], fmt%u_cif[3],
-          fmt%u_cif[4], fmt%u_cif[5]))
+        if covariance_matrix is not None:
+          row = [sc.label]
+          idx = param_map[labels.index(sc.label)].u_aniso
+          if idx > -1:
+            var = covariance_diagonal[idx:idx+6] * u_star_to_u_cif_linear_map_pow2
+            for i in range(6):
+              if var[i] != 0:
+                row.append(
+                  format_float_with_su(u_cif[i], math.sqrt(var[i])))
+              else:
+                row.append(fmt%u_cif[i])
+          else:
+            row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+        else:
+          row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+        aniso_loop.add_row(row)
       self.cif_block.add_loop(aniso_loop)
-    #
+
+    # _atom_type_* loop
     atom_type_loop = model.loop(header=('_atom_type_symbol',
                                         '_atom_type_scat_dispersion_real',
                                         '_atom_type_scat_dispersion_imag',
@@ -205,7 +269,9 @@ class distances_as_cif_loop(object):
                pair_asu_table,
                site_labels,
                sites_frac=None,
-               sites_cart=None):
+               sites_cart=None,
+               covariance_matrix=None,
+               parameter_map=None):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.4f"
     asu_mappings = pair_asu_table.asu_mappings()
@@ -217,13 +283,22 @@ class distances_as_cif_loop(object):
       "_geom_bond_distance",
       "_geom_bond_site_symmetry_2"
     ))
-    distances = crystal.calculate_distances(pair_asu_table, sites_frac)
+    distances = crystal.calculate_distances(
+      pair_asu_table, sites_frac,
+      covariance_matrix=covariance_matrix,
+      parameter_map=parameter_map)
     for d in distances:
+      if site_labels[d.i_seq].startswith('H') or site_labels[d.j_seq].startswith('H'):
+        continue
+      if d.variance is not None and d.variance != 0:
+        distance = format_float_with_su(d.distance, math.sqrt(abs(d.variance)))
+      else:
+        distance = fmt % d.distance
       sym_code = space_group_info.cif_symmetry_code(d.rt_mx_ji)
       if sym_code == "1": sym_code = "."
       self.loop.add_row((site_labels[d.i_seq],
                          site_labels[d.j_seq],
-                         fmt % d.distance,
+                         distance,
                          sym_code))
     self.distances = distances.distances
     self.pair_counts = distances.pair_counts
@@ -234,9 +309,11 @@ class angles_as_cif_loop(object):
                pair_asu_table,
                site_labels,
                sites_frac=None,
-               sites_cart=None):
+               sites_cart=None,
+               covariance_matrix=None,
+               parameter_map=None):
     assert [sites_frac, sites_cart].count(None) == 1
-    fmt = "%.2f"
+    fmt = "%.1f"
     asu_mappings = pair_asu_table.asu_mappings()
     space_group_info = sgtbx.space_group_info(group=asu_mappings.space_group())
     unit_cell = asu_mappings.unit_cell()
@@ -245,20 +322,27 @@ class angles_as_cif_loop(object):
       "_geom_angle_atom_site_label_2",
       "_geom_angle_atom_site_label_3",
       "_geom_angle",
-      "_geom_angle_site_symmetry_2",
+      "_geom_angle_site_symmetry_1",
       "_geom_angle_site_symmetry_3"
     ))
-    angles = crystal.calculate_angles(pair_asu_table, sites_frac)
+    angles = crystal.calculate_angles(pair_asu_table, sites_frac,
+      covariance_matrix=covariance_matrix, parameter_map=parameter_map)
     for a in angles:
+      i_seq, j_seq, k_seq = a.i_seqs
+      if site_labels[i_seq].startswith('H') or site_labels[k_seq].startswith('H'):
+        continue
       sym_code_ji = space_group_info.cif_symmetry_code(a.rt_mx_ji)
       sym_code_ki = space_group_info.cif_symmetry_code(a.rt_mx_ki)
       if sym_code_ji == "1": sym_code_ji = "."
       if sym_code_ki == "1": sym_code_ki = "."
-      i_seq, j_seq, k_seq = a.i_seqs
+      if a.variance is not None and a.variance != 0:
+        angle = format_float_with_su(a.angle, math.sqrt(abs(a.variance)))
+      else:
+        angle = fmt % a.angle
       self.loop.add_row((site_labels[i_seq],
                          site_labels[j_seq],
                          site_labels[k_seq],
-                         fmt % a.angle,
+                         angle,
                          sym_code_ji,
                          sym_code_ki,
                          ))
