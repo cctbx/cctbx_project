@@ -31,21 +31,50 @@ namespace cctbx { namespace covariance {
         std::size_t j_seq = i_seqs[j];
         cctbx::xray::parameter_indices ids_i = parameter_map[i_seq];
         cctbx::xray::parameter_indices ids_j = parameter_map[j_seq];
+        CCTBX_ASSERT(ids_i.site> -1);
+        CCTBX_ASSERT(ids_j.site> -1);
         if (ids_i.site > ids_j.site) { ids_i, ids_j = ids_j, ids_i; }
         for (std::size_t ii=0; ii<3; ii++) {
           for (std::size_t jj=0; jj<3; jj++) {
             if (i==j && ii>jj) continue;
-            if (ids_i.site == -1 || ids_j.site == -1) {
-              result(i*3+ii, j*3+jj) = 0;
-            }
-            else {
-              result(i*3+ii,j*3+jj) = matrix(ids_i.site+ii, ids_j.site+jj);
-            }
+            result(i*3+ii,j*3+jj) = matrix(ids_i.site+ii, ids_j.site+jj);
           }
         }
       }
     }
     return result;
+  }
+
+  template<typename FloatType>
+  af::versa<FloatType, af::packed_u_accessor>
+  extract_covariance_matrix_for_u_aniso(
+    std::size_t i_seq,
+    af::const_ref<FloatType, af::packed_u_accessor> const &matrix,
+    cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> >
+      const &parameter_map)
+  {
+    af::versa<FloatType, af::packed_u_accessor> result(6);
+    cctbx::xray::parameter_indices ids = parameter_map[i_seq];
+    CCTBX_ASSERT(ids.u_aniso > -1);
+    for (std::size_t i=0; i<6; i++) {
+      for (std::size_t j=i; j<6; j++) {
+        result(i,j) = matrix(ids.u_aniso+i, ids.u_aniso+j);
+      }
+    }
+    return result;
+  }
+
+  template<typename FloatType>
+  FloatType
+  variance_for_u_iso(
+    std::size_t i_seq,
+    af::const_ref<FloatType, af::packed_u_accessor> const &matrix,
+    cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> >
+      const &parameter_map)
+  {
+    cctbx::xray::parameter_indices ids = parameter_map[i_seq];
+    CCTBX_ASSERT(ids.u_iso > -1);
+    return matrix(ids.u_iso, ids.u_iso);
   }
 
   template<typename FloatType>
