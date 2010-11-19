@@ -27,8 +27,6 @@ loop_
    Si O 1.6160 2_554
    Si O 1.6160 3_664
    Si O 1.6160 5_664
-   O Si 1.6160 5
-   O Si 1.6160 3
 
 """)
   s = StringIO()
@@ -43,15 +41,15 @@ loop_
   _geom_angle_atom_site_label_2
   _geom_angle_atom_site_label_3
   _geom_angle
-  _geom_angle_site_symmetry_2
+  _geom_angle_site_symmetry_1
   _geom_angle_site_symmetry_3
-   Si O O 101.31 2_554 4_554
-   Si O O 111.31 3_664 4_554
-   Si O O 116.13 3_664 2_554
-   Si O O 116.13 5_664 4_554
-   Si O O 111.31 5_664 2_554
-   Si O O 101.31 5_664 3_664
-   O Si Si 146.93 3 5
+   O Si O 101.3 2_554 4_554
+   O Si O 111.3 3_664 4_554
+   O Si O 116.1 3_664 2_554
+   O Si O 116.1 5_664 4_554
+   O Si O 111.3 5_664 2_554
+   O Si O 101.3 5_664 3_664
+   Si O Si 146.9 3 5
 
 """)
 

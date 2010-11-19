@@ -7,6 +7,7 @@ from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import sgtbx
 from cctbx import uctbx
+from cctbx import covariance, geometry
 
 from scitbx.array_family import shared
 from scitbx import stl
@@ -628,7 +629,10 @@ class calculate_distances(object):
 
   def __init__(self,
                pair_asu_table,
-               sites_frac):
+               sites_frac,
+               skip_j_seq_less_than_i_seq=True,
+               covariance_matrix=None,
+               parameter_map=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
     self.pair_counts = flex.size_t()
@@ -645,7 +649,8 @@ class calculate_distances(object):
                    j_seq,
                    pair_count,
                    rt_mx_ji=None,
-                   i_j_sym=None):
+                   i_j_sym=None,
+                   variance=None):
         libtbx.adopt_init_args(self, locals())
 
     asu_mappings = self.pair_asu_table.asu_mappings()
@@ -657,6 +662,7 @@ class calculate_distances(object):
       dists = flex.double()
       j_seq_i_group = []
       for j_seq,j_sym_groups in asu_dict.items():
+        if self.skip_j_seq_less_than_i_seq and j_seq < i_seq: continue
         site_frac_j = self.sites_frac[j_seq]
         for i_group,j_sym_group in enumerate(j_sym_groups):
           pair_count += j_sym_group.size()
@@ -674,9 +680,22 @@ class calculate_distances(object):
           rt_mx_ji = rt_mx_i_inv.multiply(
             asu_mappings.get_rt_mx(j_seq, j_sym))
           site_frac_ji = rt_mx_ji * site_frac_j
-          dist = unit_cell.distance(site_frac_i, site_frac_ji)
+          d = geometry.distance((unit_cell.orthogonalize(site_frac_i),
+                                 unit_cell.orthogonalize(site_frac_ji)))
+          dist = d.distance_model
           self.distances.append(dist)
-          yield distance(dist, i_seq, j_seq, pair_count, rt_mx_ji, i_j_sym)
+          if self.covariance_matrix is not None:
+            param_map = self.parameter_map
+            cov_cart = covariance.orthogonalize_covariance_matrix(
+              self.covariance_matrix, unit_cell, param_map)
+            cov = covariance.extract_covariance_matrix_for_sites(
+              flex.size_t((i_seq,j_seq)), cov_cart, param_map)
+            var = d.variance(cov, unit_cell, rt_mx_ji)
+          else:
+            var = None
+          yield distance(
+            dist, i_seq, j_seq, pair_count, rt_mx_ji, i_j_sym, variance=var)
+
       self.pair_counts.append(pair_count)
 
 class show_distances(object):
@@ -688,6 +707,7 @@ class show_distances(object):
         sites_cart=None,
         show_cartesian=False,
         keep_pair_asu_table=False,
+        skip_j_seq_less_than_i_seq=False,
         out=None):
     assert [sites_frac, sites_cart].count(None) == 1
     if (out is None): out = sys.stdout
@@ -710,7 +730,9 @@ class show_distances(object):
         label_len = max(label_len, len(label))
       label_fmt = "%%-%ds" % (label_len+1)
 
-    distances = calculate_distances(pair_asu_table, sites_frac)
+    distances = calculate_distances(
+      pair_asu_table, sites_frac,
+      skip_j_seq_less_than_i_seq=skip_j_seq_less_than_i_seq)
 
     for d in distances:
       i_seq, j_seq = d.i_seq, d.j_seq
@@ -759,7 +781,10 @@ class calculate_angles(object):
 
   def __init__(self,
                pair_asu_table,
-               sites_frac):
+               sites_frac,
+               skip_j_seq_less_than_i_seq=True,
+               covariance_matrix=None,
+               parameter_map=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
     self.angles = flex.double()
@@ -775,7 +800,8 @@ class calculate_angles(object):
                    angle,
                    i_seqs,
                    rt_mx_ji=None,
-                   rt_mx_ki=None):
+                   rt_mx_ki=None,
+                   variance=None):
         libtbx.adopt_init_args(self, locals())
 
     asu_mappings = self.pair_asu_table.asu_mappings()
@@ -794,6 +820,7 @@ class calculate_angles(object):
               asu_mappings.get_rt_mx(j_seq, j_sym))
             site_frac_ji = rt_mx_ji * site_frac_j
             for k_seq, k_sym_groups in asu_dict.items():
+              if self.skip_j_seq_less_than_i_seq and j_seq < k_seq: continue
               if k_seq == j_seq and j_sym_group.size() <= 1: continue
               if k_seq > j_seq: continue
               site_frac_k = self.sites_frac[k_seq]
@@ -804,11 +831,23 @@ class calculate_angles(object):
                   rt_mx_ki = rt_mx_i_inv.multiply(
                     asu_mappings.get_rt_mx(k_seq, k_sym))
                   site_frac_ki = rt_mx_ki * site_frac_k
-                  angle_ = unit_cell.angle(
-                    site_frac_ji, site_frac_i, site_frac_ki)
-                  if angle_ is None: continue
+                  a = geometry.angle((unit_cell.orthogonalize(site_frac_ji),
+                                      unit_cell.orthogonalize(site_frac_i),
+                                      unit_cell.orthogonalize(site_frac_ki)))
+                  angle_ = a.angle_model
                   self.angles.append(angle_)
-                  yield angle(angle_, (i_seq, j_seq, k_seq), rt_mx_ji, rt_mx_ki)
+                  if self.covariance_matrix is not None:
+                    param_map = self.parameter_map
+                    cov_cart = covariance.orthogonalize_covariance_matrix(
+                      self.covariance_matrix, unit_cell, param_map)
+                    cov = covariance.extract_covariance_matrix_for_sites(
+                      flex.size_t((i_seq,j_seq, k_seq)), cov_cart, param_map)
+                    var = a.variance(
+                      cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
+                  else:
+                    var = None
+                  yield angle(angle_, (j_seq, i_seq, k_seq),
+                              rt_mx_ji, rt_mx_ki, variance=var)
 
 class show_angles(object):
 
@@ -840,7 +879,7 @@ class show_angles(object):
       label_fmt *= 3
     angles = calculate_angles(pair_asu_table, sites_frac)
     for a in angles:
-      i_seq, j_seq, k_seq = a.i_seqs
+      j_seq, i_seq, k_seq = a.i_seqs
       rt_mx_ji = a.rt_mx_ji
       rt_mx_ki = a.rt_mx_ki
       if (site_labels is None):
