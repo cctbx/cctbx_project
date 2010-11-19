@@ -370,7 +370,7 @@ def validate_params (params, callback=None) :
 def finish_job (result) :
   output_files = []
   if (result is not None) and (os.path.isfile(result)) :
-    output_files.append((os.path.abspath(result), file_name))
+    output_files.append((os.path.abspath(result), "MTZ file"))
   return (output_files, [])
 
 if (__name__ == "__main__"):

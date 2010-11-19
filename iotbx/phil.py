@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 from cctbx import uctbx
-import libtbx.phil
+import libtbx.phil.command_line
 from libtbx.utils import Sorry, import_python_object
 from libtbx.phil import tokenizer
 from libtbx import Auto
