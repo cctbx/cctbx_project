@@ -11,7 +11,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import approx_equal, is_below_limit, show_diff
 from itertools import count
 from cStringIO import StringIO
 import sys
@@ -101,8 +101,10 @@ def exercise(verbose=0):
           print "bond:", proxy.i_seqs, delta
         for proxy,delta in zip(angle_proxies, angle_deltas):
           print "angle:", proxy.i_seqs, delta
-      assert flex.max(flex.abs(bond_deltas)) < 1.e-6
-      assert flex.max(flex.abs(angle_deltas)) < 1.e-6
+      assert is_below_limit(
+        value=flex.max(flex.abs(bond_deltas)), limit=0, eps=1.e-6)
+      assert is_below_limit(
+        value=flex.max(flex.abs(angle_deltas)), limit=0, eps=2.e-6)
   sites_cart += matrix.col((1,1,0)) - matrix.col(sites_cart.min())
   unit_cell_lengths = list(  matrix.col(sites_cart.max())
                            + matrix.col((1,-1.2,4)))
