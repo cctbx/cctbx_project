@@ -16,6 +16,20 @@ namespace cctbx { namespace covariance {
         cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &))
         extract_covariance_matrix_for_sites,
         (arg("i_seqs"), arg("matrix"), arg("parameter_map")));
+      def("extract_covariance_matrix_for_u_aniso", (
+        af::versa<double, af::packed_u_accessor>(*)(
+        std::size_t,
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &))
+        extract_covariance_matrix_for_u_aniso,
+        (arg("i_seq"), arg("matrix"), arg("parameter_map")));
+      def("variance_for_u_iso", (
+        double(*)(
+        std::size_t,
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &))
+        variance_for_u_iso,
+        (arg("i_seq"), arg("matrix"), arg("parameter_map")));
       def("orthogonalize_covariance_matrix", (
         af::versa<double, af::packed_u_accessor>(*)(
         af::const_ref<double, af::packed_u_accessor> const &,
