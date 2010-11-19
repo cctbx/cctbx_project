@@ -533,7 +533,7 @@ namespace cctbx {
         return u_star_to_u_iso_linear_form_;
       }
 
-      /// The linear form transforming ADP u* into u_cart
+      /// The linear map transforming ADP u* into u_cart
       /** If
             U = { {u_0, u_3, u_4}, {u_3, u_1, u_5}, {u_4, u_5, u_2} }
 
@@ -558,13 +558,13 @@ namespace cctbx {
                  {0, 0, o_5 o_8, 0, 0, o_4 o_8}
                }
        */
-      af::versa<double, af::c_grid<2> > const &u_star_to_u_cart_linear_form() const {
-        return u_star_to_u_cart_linear_form_;
+      af::versa<double, af::c_grid<2> > const &u_star_to_u_cart_linear_map() const {
+        return u_star_to_u_cart_linear_map_;
       }
 
-      /// The linear form transforming ADP u* into u_cif
-      af::double6 const &u_star_to_u_cif_linear_form() const {
-        return u_star_to_u_cif_linear_form_;
+      /// The linear map transforming ADP u* into u_cif
+      af::double6 const &u_star_to_u_cif_linear_map() const {
+        return u_star_to_u_cif_linear_map_;
       }
 
       //! Length^2 of a vector of fractional coordinates.
@@ -1026,8 +1026,8 @@ namespace cctbx {
       uc_mat3 frac_;
       uc_mat3 orth_;
       af::double6 u_star_to_u_iso_linear_form_;
-      af::double6 u_star_to_u_cif_linear_form_;
-      af::versa<double, af::c_grid<2> > u_star_to_u_cart_linear_form_;
+      af::double6 u_star_to_u_cif_linear_map_;
+      af::versa<double, af::c_grid<2> > u_star_to_u_cart_linear_map_;
 
       mutable double longest_vector_sq_;
       mutable double shortest_vector_sq_;
