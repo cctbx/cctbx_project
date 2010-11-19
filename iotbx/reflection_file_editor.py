@@ -555,7 +555,7 @@ class process_arrays (object) :
           r_free_flags = new_array
         else :
           r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
-        fraction_free = (r_free_flags.data().count(True) /
+        fraction_free = (get_r_free_as_bool(r_free_flags, test_flag_value).data().count(True) /
                          r_free_flags.data().size())
         print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
         if complete_set is not None :
