@@ -9,6 +9,8 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/vec3.h>
 #include <cctbx/coordinates.h>
@@ -531,6 +533,40 @@ namespace cctbx {
         return u_star_to_u_iso_linear_form_;
       }
 
+      /// The linear form transforming ADP u* into u_cart
+      /** If
+            U = { {u_0, u_3, u_4}, {u_3, u_1, u_5}, {u_4, u_5, u_2} }
+
+          is the layout of u* as per scitbx::sym_mat3 and
+
+            O ={ {o_0, o_1, o_2}, {0, o_4, o_5}, {0, 0, o_8} }
+
+
+          is the layout of the orthogonalisation matrix as per scitbx::mat3,
+
+            u_cart = ( O u* O^T )
+
+            can be alternatively be written as
+
+            u_cart = L u*, where
+
+            L ={ {o_0^2, o_1^2, o_2^2, 2 o_0 o_1, 2 o_0 o_2, 2 o_1 o_2},
+                 {0, o_4^2, o_5^2, 0, 0, 2 o_4 o_5,
+                 {0, 0, o_8^2, 0, 0, 0},
+                 {0, o_1 o_4, o_2 o_5, o_0 o_4, o_0 o_5, o_2 o_4+o_1 o_5},
+                 {0, 0, o_2 o_8, 0, o_0 o_8, o_1 o_8},
+                 {0, 0, o_5 o_8, 0, 0, o_4 o_8}
+               }
+       */
+      af::versa<double, af::c_grid<2> > const &u_star_to_u_cart_linear_form() const {
+        return u_star_to_u_cart_linear_form_;
+      }
+
+      /// The linear form transforming ADP u* into u_cif
+      af::double6 const &u_star_to_u_cif_linear_form() const {
+        return u_star_to_u_cif_linear_form_;
+      }
+
       //! Length^2 of a vector of fractional coordinates.
       /*! Not available in Python.
        */
@@ -990,6 +1026,8 @@ namespace cctbx {
       uc_mat3 frac_;
       uc_mat3 orth_;
       af::double6 u_star_to_u_iso_linear_form_;
+      af::double6 u_star_to_u_cif_linear_form_;
+      af::versa<double, af::c_grid<2> > u_star_to_u_cart_linear_form_;
 
       mutable double longest_vector_sq_;
       mutable double shortest_vector_sq_;
