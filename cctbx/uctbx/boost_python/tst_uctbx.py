@@ -565,7 +565,7 @@ def exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center():
   assert approx_equal(box.sites_cart, [(5.0, 5.0, 5.0)])
   assert box.crystal_symmetry().space_group_info().type().number() == 1
 
-def exercise_u_star_to_u_iso_linear_form():
+def exercise_tensor_rank_2_orth_and_frac_linear_maps():
   from cctbx import adptbx, sgtbx
   p1 = sgtbx.space_group_info('P1')
   for i in xrange(100):
@@ -574,9 +574,15 @@ def exercise_u_star_to_u_iso_linear_form():
     u_iso_ref = adptbx.u_star_as_u_iso(uc, u_star)
     u_iso = matrix.col(uc.u_star_to_u_iso_linear_form()).dot(u_star)
     assert approx_equal(u_iso, u_iso_ref, eps=1e-15)
+    u_cart_ref = adptbx.u_star_as_u_cart(uc, u_star)
+    u_cart = matrix.sqr(uc.u_star_to_u_cart_linear_form()) * u_star
+    assert approx_equal(u_cart, u_cart_ref, eps=1e-15)
+    u_cif_ref = adptbx.u_star_as_u_cif(uc, u_star)
+    u_cif = matrix.diag(uc.u_star_to_u_cif_linear_form())*(u_star)
+    assert approx_equal(u_cif, u_cif_ref)
 
 def run():
-  exercise_u_star_to_u_iso_linear_form()
+  exercise_tensor_rank_2_orth_and_frac_linear_maps()
   exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center()
   exercise_functions()
   exercise_basic()

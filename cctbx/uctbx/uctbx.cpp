@@ -154,6 +154,39 @@ namespace cctbx { namespace uctbx {
     f[4] = 2*o[0]*o[2];
     f[5] = 2*(o[1]*o[2] + o[4]*o[5]);
     f *= 1./3;
+
+    u_star_to_u_cart_linear_form_.resize(
+      af::c_grid<2>(6,6), static_cast<double>(0));
+    af::versa<double, af::c_grid<2> > &L
+      = u_star_to_u_cart_linear_form_;
+    L(0,0) = o[0]*o[0];
+    L(0,1) = o[1]*o[1];
+    L(0,2) = o[2]*o[2];
+    L(0,3) = 2*o[0]*o[1];
+    L(0,4) = 2*o[0]*o[2];
+    L(0,5) = 2*o[1]*o[2];
+    L(1,1) = o[4]*o[4];
+    L(1,2) = o[5]*o[5];
+    L(1,5) = 2*o[4]*o[5];
+    L(2,2) = o[8]*o[8];
+    L(3,1) = o[1]*o[4];
+    L(3,2) = o[2]*o[5];
+    L(3,3) = o[0]*o[4];
+    L(3,4) = o[0]*o[5];
+    L(3,5) = o[2]*o[4] + o[1]*o[5];
+    L(4,2) = o[2]*o[8];
+    L(4,4) = o[0]*o[8];
+    L(4,5) = o[1]*o[8];
+    L(5,2) = o[5]*o[8];
+    L(5,5) = o[4]*o[8];
+
+    af::double6  &c = u_star_to_u_cif_linear_form_;
+    c[0] = 1./(r_params_[0] * r_params_[0]);
+    c[1] = 1./(r_params_[1] * r_params_[1]);
+    c[2] = 1./(r_params_[2] * r_params_[2]);
+    c[3] = 1./(r_params_[0] * r_params_[1]);
+    c[4] = 1./(r_params_[0] * r_params_[2]);
+    c[5] = 1./(r_params_[1] * r_params_[2]);
   }
 
   void unit_cell::initialize()

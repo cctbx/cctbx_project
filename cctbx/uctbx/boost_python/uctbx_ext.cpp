@@ -102,6 +102,10 @@ namespace {
             arg("site_cart")))
         .def("u_star_to_u_iso_linear_form",
              &w_t::u_star_to_u_iso_linear_form, ccr())
+        .def("u_star_to_u_cif_linear_form",
+             &w_t::u_star_to_u_cif_linear_form, ccr())
+        .def("u_star_to_u_cart_linear_form",
+             &w_t::u_star_to_u_cart_linear_form, ccr())
         .def("length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::length, (
