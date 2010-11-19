@@ -619,8 +619,10 @@ class process_arrays (object) :
         print >> log, "%s: converting to CCP4 convention" % array_name
         output_array = export_r_free_flags(miller_array=new_r_free_array,
           test_flag_value=True)
+      else:
+        output_array = new_r_free_array
       self.mtz_dataset.add_miller_array(
-        miller_array=new_r_free_array,
+        miller_array=output_array,
         column_root_label=r_free_params.new_label)
       labels.append(r_free_params.new_label)
       label_files.append("(new array)")
