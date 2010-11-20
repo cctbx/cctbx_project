@@ -26,10 +26,10 @@ blank = PyEmbeddedImage(
 class CheckListCtrl (wx.ListCtrl) :
   def __init__ (self, *args, **kwds) :
     wx.ListCtrl.__init__(self, *args, **kwds)
-    self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self)
-    self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self)
-    self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick, self)
-    self.Bind(wx.EVT_CHAR, self.OnChar, self)
+    self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
+    self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect)
+    self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
+    self.Bind(wx.EVT_CHAR, self.OnChar)
     self._checklist = []
     il = wx.ImageList(16, 16, True)
     il.Add(blank.GetBitmap())
