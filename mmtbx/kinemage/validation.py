@@ -13,6 +13,29 @@ from cctbx import geometry_restraints
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from iotbx.pdb.rna_dna_detection import residue_analysis
+import iotbx.phil
+from libtbx.utils import Sorry
+from libtbx.str_utils import show_string
+
+def get_master_phil():
+  return iotbx.phil.parse(
+    input_string="""
+      kinemage {
+        pdb = None
+         .type = path
+         .optional = True
+         .help = '''Enter a PDB file name'''
+        cif = None
+         .type = path
+         .optional = True
+         .multiple = True
+         .help = '''Enter a CIF file for ligand parameters'''
+        out_file = None
+         .type = path
+         .optional = True
+         .help = '''Enter a .kin output name'''
+  }
+    """)
 
 def build_name_hash(pdb_hierarchy):
   i_seq_name_hash = dict()
@@ -447,7 +470,7 @@ def get_chain_color(index):
   return chain_colors[index]
 
 
-def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
+def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hydrogen=True):
   mc_atoms = ["N", "CA", "C", "O", "OXT",
               "P", "OP1", "OP2", "OP3", "O5'", "C5'", "C4'", "O4'", "C1'",
               "C3'", "O3'", "C2'", "O2'"]
@@ -494,11 +517,7 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
   c4_hash_xyz = {}
   for residue_group in chain.residue_groups():
     cur_resid = residue_group.resseq
-    #print dir(residue_group)
-    #sys.exit()
     for atom_group in residue_group.atom_groups():
-      #print dir(atom_group)
-      #sys.exit()
       key_hash = {}
       xyz_hash = {}
       het_hash = {}
@@ -560,9 +579,8 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
                        atom.xyz[0],
                        atom.xyz[1],
                        atom.xyz[2])
-        elif atom.hetero == True:
+        else:
           het_hash[atom.name.strip()] = [key, atom.xyz]
-        #  print common_residue_names_get_class(atom_group.resname)
 
       if(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
         try:
@@ -587,8 +605,6 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
         except:
           pass
 
-      bonds = get_bond_pairs(code=atom_group.resname)
-
       prev_CA_xyz = cur_CA_xyz
       prev_CA_key = cur_CA_key
       prev_C_xyz = cur_C_xyz
@@ -597,67 +613,73 @@ def get_kin_lots(chain, pdbID=None, index=0, show_hydrogen=True):
       prev_O3_key = cur_O3_key
       prev_O3_xyz = cur_O3_xyz
 
-      if (common_residue_names_get_class(atom_group.resname) == 'other'):
-        if bonds is not None:
-          for bond in bonds:
-            if (bond[0].startswith('H') or bond[1].startswith('H')):
+      cur_i_seqs = []
+      for atom in atom_group.atoms():
+        cur_i_seqs.append(atom.i_seq)
+
+      for atom in atom_group.atoms():
+        try:
+          cur_bonds = bond_hash[atom.i_seq]
+        except:
+          continue
+        for bond in cur_bonds:
+          atom_1 = i_seq_name_hash[atom.i_seq][0:4].strip()
+          atom_2 = i_seq_name_hash[bond][0:4].strip()
+          if (common_residue_names_get_class(atom_group.resname) == 'other' or \
+              common_residue_names_get_class(atom_group.resname) == 'common_small_molecule'):
+            if atom_1.startswith('H') or atom_2.startswith('H'):
               if show_hydrogen:
                 try:
-                  het_h += kin_vec(het_hash[bond[0]][0],
-                                 het_hash[bond[0]][1],
-                                 het_hash[bond[1]][0],
-                                 het_hash[bond[1]][1])
+                  het_h += kin_vec(het_hash[atom_1][0],
+                                   het_hash[atom_1][1],
+                                   het_hash[atom_2][0],
+                                   het_hash[atom_2][1])
                 except:
                   pass
             else:
               try:
-                hets += kin_vec(het_hash[bond[0]][0],
-                              het_hash[bond[0]][1],
-                              het_hash[bond[1]][0],
-                              het_hash[bond[1]][1])
+                hets += kin_vec(het_hash[atom_1][0],
+                                het_hash[atom_1][1],
+                                het_hash[atom_2][0],
+                                het_hash[atom_2][1])
               except:
                 pass
-
-      if bonds is not None:
-        for bond in bonds:
-          #print key_hash[bond[0]]
-          if bond[0] in mc_atoms and bond[1] in mc_atoms:
-            try:
-              mc_veclist += kin_vec(key_hash[bond[0]],
-                                  xyz_hash[bond[0]],
-                                  key_hash[bond[1]],
-                                  xyz_hash[bond[1]])
-            except:
-              pass
-
-          elif (bond[0].startswith('H') or bond[1].startswith('H')):
-            if show_hydrogen:
-              if (bond[0] in mc_atoms or bond[1] in mc_atoms):
-                try:
-                  mc_h_veclist += kin_vec(key_hash[bond[0]],
-                                        xyz_hash[bond[0]],
-                                        key_hash[bond[1]],
-                                        xyz_hash[bond[1]])
-                except:
-                  pass
-              else:
-                try:
-                  sc_h_veclist += kin_vec(key_hash[bond[0]],
-                                        xyz_hash[bond[0]],
-                                        key_hash[bond[1]],
-                                        xyz_hash[bond[1]])
-                except:
-                  pass
-          else:
-            try:
-              sc_veclist += kin_vec(key_hash[bond[0]],
-                                  xyz_hash[bond[0]],
-                                  key_hash[bond[1]],
-                                  xyz_hash[bond[1]])
-            except:
-              pass
-
-  #print p_hash_key
+          elif common_residue_names_get_class(atom_group.resname) == "common_amino_acid" or \
+               common_residue_names_get_class(atom_group.resname) == "common_rna_dna":
+            if atom_1 in mc_atoms and atom_2 in mc_atoms:
+              try:
+                 mc_veclist += kin_vec(key_hash[atom_1],
+                                       xyz_hash[atom_1],
+                                       key_hash[atom_2],
+                                       xyz_hash[atom_2])
+              except:
+                pass
+            elif atom_1.startswith('H') or atom_2.startswith('H'):
+              if show_hydrogens:
+                if (atom_1 in mc_atoms or atom_2 in mc_atoms):
+                  try:
+                    mc_h_veclist += kin_vec(key_hash[atom_1],
+                                            xyz_hash[atom_1],
+                                            key_hash[atom_2],
+                                            xyz_hash[atom_2])
+                  except:
+                    pass
+                else:
+                  try:
+                    sc_h_veclist += kin_vec(key_hash[atom_1],
+                                            xyz_hash[atom_1],
+                                            key_hash[atom_2],
+                                            xyz_hash[atom_2])
+                  except:
+                    pass
+            else:
+              try:
+                sc_veclist += kin_vec(key_hash[atom_1],
+                                      xyz_hash[atom_1],
+                                      key_hash[atom_2],
+                                      xyz_hash[atom_2])
+              except:
+                pass
   #clean up empty lists:
   if len(mc_veclist.splitlines()) > 1:
     kin_out += mc_veclist
@@ -715,20 +737,11 @@ def get_footer():
 """
   return footer
 
-def get_multikin(f, pdb_io):
-  pdbID = None
-  pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
-  assert pdb_io is not None
-  #if(pdb_io is not None):
-  #  hierarchy = pdb_io.construct_hierarchy()
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = pdb_interpretation.process(
-        mon_lib_srv=mon_lib_srv,
-        ener_lib=ener_lib,
-        pdb_inp=pdb_io,
-        for_dihedral_reference=True)
+def make_multikin(f, processed_pdb_file, pdbID=None):
+  if pdbID == None:
+    pdbID = "PDB"
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   sites_cart=processed_pdb_file.all_chain_proxies.sites_cart
   geometry = processed_pdb_file.geometry_restraints_manager()
   flags = geometry_restraints.flags.flags(default=True)
@@ -736,6 +749,13 @@ def get_multikin(f, pdb_io):
   pair_proxies = geometry.pair_proxies(flags=flags,
                                        sites_cart=sites_cart)
   bond_proxies = pair_proxies.bond_proxies
+  quick_bond_hash = {}
+  for bp in bond_proxies.simple:
+    try:
+      quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
+    except:
+      quick_bond_hash[bp.i_seqs[0]] = []
+      quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
   kin_out = get_default_header()
   kin_out += "@group {%s} dominant animate\n" % pdbID
   initiated_chains = []
@@ -755,7 +775,11 @@ def get_multikin(f, pdb_io):
                   pdbID,
                   chain.id)
         initiated_chains.append(chain.id)
-      kin_out += get_kin_lots(chain=chain, pdbID=pdbID, index=counter)
+      kin_out += get_kin_lots(chain=chain,
+                              bond_hash=quick_bond_hash,
+                              i_seq_name_hash=i_seq_name_hash,
+                              pdbID=pdbID,
+                              index=counter)
       kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
       kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
       kin_out += get_angle_outliers(angle_proxies=angle_proxies,
@@ -780,21 +804,58 @@ def get_multikin(f, pdb_io):
   for line in kin_out:
     outfile.write(line)
   outfile.close()
+  return f
 
 def run(args):
-  assert (len(args) == 1) or (len(args) == 2)
-  file_name = args[0]
+  pdbID = None
+  master_phil = get_master_phil()
+  import iotbx.utils
+  input_objects = iotbx.utils.process_command_line_inputs(
+    args=args,
+    master_phil=master_phil,
+    input_types=("pdb", "cif"))
+  work_phil = master_phil.fetch(sources=input_objects["phil"])
+  work_params = work_phil.extract()
+  if work_params.kinemage.pdb == None:
+    assert len(input_objects["pdb"]) == 1
+    file_obj = input_objects["pdb"][0]
+    file_name = file_obj.file_name
+  else:
+    file_name = work_params.kinemage.pdb
   if file_name and os.path.exists(file_name):
     pdb_io = pdb.input(file_name)
-  else :
-    raise Sorry("First argument must be an existing PDB file.")
-  if (len(args) > 1) and (args[1] is not None) :
-    outfile = args[1]
-  else :
     pdbID = os.path.basename(pdb_io.source_info().split(' ')[1]).split('.')[0]
+  else :
+    raise Sorry("PDB file does not exist")
+  assert pdb_io is not None
+  cif_file = None
+  cif_object = None
+  if len(work_params.kinemage.cif) == 0:
+    if len(input_objects["cif"]) > 0:
+      cif_file = []
+      for cif in input_objects["cif"]:
+        cif_file.append(cif.file_name)
+  else:
+    cif_file = work_params.kinemage.cif
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  if cif_file != None:
+    for cif in cif_file:
+      try:
+        cif_object = monomer_library.server.read_cif(file_name=cif)
+      except:
+        raise Sorry("Unknown file format: %s" % show_string(cif))
+    if cif_object != None:
+      for srv in [mon_lib_srv, ener_lib]:
+        srv.process_cif_object(cif_object=cif_object)
+  processed_pdb_file = pdb_interpretation.process(
+        mon_lib_srv=mon_lib_srv,
+        ener_lib=ener_lib,
+        pdb_inp=pdb_io,
+        for_dihedral_reference=True)
+  if work_params.kinemage.out_file is not None:
+    outfile = work_params.kinemage.out_file
+  else :
     outfile = pdbID+'.kin'
-  get_multikin(f=outfile, pdb_io=pdb_io)
+  outfile = make_multikin(f=outfile, processed_pdb_file=processed_pdb_file, pdbID=pdbID)
   return outfile
-
-#if __name__ == "__main__":
-#  run(args=sys.argv[1:])
