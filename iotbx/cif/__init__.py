@@ -113,7 +113,7 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
         for i in range(3):
           idx = param_map[i_seq].site
           if idx > -1:
-            var = covariance_diagonal[idx]
+            var = covariance_diagonal[idx+i]
           else: var = 0
           if var != 0:
             site.append(format_float_with_su(sc.site[i], math.sqrt(var)))
