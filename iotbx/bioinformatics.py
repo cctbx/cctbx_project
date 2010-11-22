@@ -961,7 +961,7 @@ class hhpred_parser(object):
         unknown = hits[ start : m.start() ].strip()
 
         if unknown:
-          raise ValueError, "Uninterpretable: %s" % repr( unknown )
+          raise ValueError, "Uninterpretable block: %s" % repr( unknown )
 
       start = m.end()
 
@@ -971,7 +971,7 @@ class hhpred_parser(object):
     remaining = hits[ start: ].strip()
 
     if remaining:
-      raise ValueError, "Uninterpretable: %s" % repr( remaining )
+      raise ValueError, "Uninterpretable tail: %s" % repr( remaining )
 
 
   def process_blocks(self, blocks):
@@ -1030,7 +1030,7 @@ class hhsearch_parser(hhpred_parser):
     Score = ( \d+\.\d+ ) \s+
     Aligned_cols = ( \d+ ) \s+
     Identities = ( \d+ ) % \s+
-    Similarity = ( \d+ \. \d+ ) \s+
+    Similarity = ( -? \d+ \. \d+ ) \s+
     Sum_probs = ( \d+ \. \d+ ) \n
     (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
     """,
