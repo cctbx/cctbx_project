@@ -75,6 +75,11 @@ class cif(DictMixin):
         error_handler.show(show_warnings=show_warnings, out=out)
     return error_handler
 
+  def sort(self, recursive=False, key=None, reverse=False):
+    self.blocks = OrderedDict(sorted(self.blocks.items(), key=key, reverse=reverse))
+    if recursive:
+      for b in self.blocks.values():
+        b.sort(recursive=recursive, reverse=reverse)
 
 class block_base(DictMixin):
   def __init__(self):
@@ -198,6 +203,13 @@ class block_base(DictMixin):
     for loop in self.loops.values():
       dictionary.validate_loop(loop, self)
 
+  def sort(self, recursive=False, key=None, reverse=False):
+    self._set = OrderedSet(
+      sorted(self._items.keys(), key=key, reverse=reverse) \
+      + sorted(self.loops.keys(), key=key, reverse=reverse))
+    if recursive:
+      for l in self.loops.values():
+        l.sort(key=key, reverse=reverse)
 
   """Items that either appear in both self and other and the value has changed
      or appear in self but not other."""
@@ -289,6 +301,11 @@ class block(block_base):
         self.loops[k].show(out=out, indent=indent)
         print >> out
 
+  def sort(self, recursive=False, key=None, reverse=False):
+    block_base.sort(self, recursive=recursive, key=key, reverse=reverse)
+    if recursive:
+      for s in self.saves.values():
+        s.sort(recursive=recursive, key=key, reverse=reverse)
 
 class loop(DictMixin):
   def __init__(self, header=None, data=None):
@@ -406,6 +423,10 @@ class loop(DictMixin):
     return iter([[self.values()[i][j] for i in range(len(self))]
                  for j in range(self.size())])
 
+  def sort(self, key=None, reverse=False):
+    self._columns = OrderedDict(
+      sorted(self._columns.items(), key=key, reverse=reverse))
+
   def __eq__(self, other):
     if (len(self) != len(other) or
         self.size() != other.size() or
@@ -430,7 +451,7 @@ def common_substring(seq):
   if not (substr.endswith('_') or substr.endswith('.')):
     if '.' in substr:
       substr = substr.split('.')[0]
-    elif substr.count('_') > 1:
+    elif substr not in seq and substr.count('_') > 1:
       substr = '_'.join(substr.split('_')[:-1])
   return substr
 

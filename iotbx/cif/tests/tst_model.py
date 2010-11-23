@@ -163,6 +163,30 @@ loop_
      5 6
 
 """)
+  cif_model.sort(recursive=True)
+  s = StringIO()
+  cif_model.show(out=s)
+  assert not show_diff(s.getvalue(),
+"""\
+data_fred
+_another_tag                      3.142
+_tag1                             'a string'
+_tag2                             1.2
+loop_
+  _loop_a
+  _loop_b
+   6 5
+   4 3
+   2 1
+
+loop_
+  _loop2_a
+  _loop2_b
+   1 2
+   3 4
+   5 6
+
+""")
   save = model.save()
   save.add_loop(l3)
   save['_tag1'] = 3
