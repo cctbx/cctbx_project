@@ -53,56 +53,67 @@ def generate_hydrogen_constraints(structure, connectivity_table):
     all_interactions_from_inside_asu=True)
   h_constraints = []
   for i_seq, j_seq_dict in enumerate(pair_sym_table):
-    for conformer_i in range(flex.max(conformer_indices)+1):
-      if conformer_indices[i_seq] not in (0, conformer_i): continue
-      if sc_types[i_seq] in ('H', 'D'): continue
-      h_count = 0
-      constrained_site_indices = []
-      pivot_neighbour_count = 0
-      for j_seq, sym_ops in j_seq_dict.items():
-        if conformer_indices[j_seq] not in (0, conformer_i): continue
-        if sc_types[j_seq] in ('H', 'D'):
-          h_count += sym_ops.size()
-          constrained_site_indices.append(j_seq)
-        else: pivot_neighbour_count += sym_ops.size()
-      rotating = False
-      stretching = False
-      constraint_type = None
-      u_eq_multiplier = 1.2
-      if h_count == 0: continue
-      elif h_count == 1:
-        if pivot_neighbour_count == 1:
-          if sc_types[i_seq] == 'C':
-            constraint_type = geometrical_hydrogens.terminal_linear_ch_site
-          else:
-            constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh_site
-            if sc_types[i_seq] == 'O':
-              u_eq_multiplier  = 1.5
-        elif pivot_neighbour_count == 2 and sc_types[i_seq] in ('C', 'N'):
-          constraint_type = geometrical_hydrogens.secondary_planar_xh_site
-          stretching = True
-        elif pivot_neighbour_count == 3 and sc_types[i_seq] == 'C':
-          constraint_type = geometrical_hydrogens.tertiary_ch_site
-      elif h_count == 2:
-        if pivot_neighbour_count == 1 and sc_types[i_seq] in ('C', 'N'):
-          constraint_type = geometrical_hydrogens.terminal_planar_xh2_sites
-        elif pivot_neighbour_count == 2 and sc_types[i_seq] == 'C':
-          constraint_type = geometrical_hydrogens.secondary_ch2_sites
-      elif h_count == 3:
-        if pivot_neighbour_count == 1:
-          constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh3_sites
-          u_eq_multiplier = 1.5
-      if constraint_type is not None:
-        current = constraint_type(
-          rotating=rotating,
-          stretching=stretching,
-          pivot=i_seq,
-          constrained_site_indices=constrained_site_indices)
-        h_constraints.append(current)
+    conformer_i = conformer_indices[i_seq]
+    if sc_types[i_seq] in ('H', 'D'): continue
+    h_count = 0
+    constrained_site_indices = []
+    pivot_neighbour_count = 0
+    for j_seq, sym_ops in j_seq_dict.items():
+      if not (   conformer_i == 0
+              or conformer_indices[j_seq] == 0
+              or conformer_i == conformer_indices[j_seq]):
+        continue
+      if sc_types[j_seq] in ('H', 'D'):
+        h_count += sym_ops.size()
+        constrained_site_indices.append(j_seq)
+      else: pivot_neighbour_count += sym_ops.size()
+    rotating = False
+    stretching = False
+    constraint_type = None
+    u_eq_multiplier = 1.2
+    if h_count == 0: continue
+    elif h_count == 1:
+      if pivot_neighbour_count == 1:
+        if sc_types[i_seq] == 'C':
+          constraint_type = geometrical_hydrogens.terminal_linear_ch_site
+        else:
+          constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh_site
+          if sc_types[i_seq] == 'O':
+            u_eq_multiplier  = 1.5
+      elif pivot_neighbour_count == 2 and sc_types[i_seq] in ('C', 'N'):
+        constraint_type = geometrical_hydrogens.secondary_planar_xh_site
+        stretching = True
+      elif pivot_neighbour_count == 3 and sc_types[i_seq] == 'C':
+        constraint_type = geometrical_hydrogens.tertiary_ch_site
+    elif h_count == 2:
+      if pivot_neighbour_count == 1 and sc_types[i_seq] in ('C', 'N'):
+        constraint_type = geometrical_hydrogens.terminal_planar_xh2_sites
+      elif pivot_neighbour_count == 2 and sc_types[i_seq] == 'C':
+        constraint_type = geometrical_hydrogens.secondary_ch2_sites
+      elif pivot_neighbour_count == 0 and sc_types[i_seq] == 'O': # water
+        u_eq_multiplier = 1.5
         for idx in constrained_site_indices:
           h_constraints.append(
             adp_constraints.u_iso_proportional_to_pivot_u_eq(
               u_eq_scatterer_idx=i_seq,
               u_iso_scatterer_idx=idx,
               multiplier=u_eq_multiplier))
+    elif h_count == 3:
+      if pivot_neighbour_count == 1:
+        constraint_type = geometrical_hydrogens.terminal_tetrahedral_xh3_sites
+        u_eq_multiplier = 1.5
+    if constraint_type is not None:
+      current = constraint_type(
+        rotating=rotating,
+        stretching=stretching,
+        pivot=i_seq,
+        constrained_site_indices=constrained_site_indices)
+      h_constraints.append(current)
+      if sc[i_seq].flags.use_u_iso(): continue # XXX u_iso can't yet ride on u_iso
+      for idx in constrained_site_indices:
+        h_constraints.append(
+          adp_constraints.u_iso_proportional_to_pivot_u_eq(
+            u_eq_scatterer_idx=i_seq,
+            u_iso_scatterer_idx=idx,
+            multiplier=u_eq_multiplier))
   return h_constraints
