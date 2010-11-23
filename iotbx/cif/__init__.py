@@ -130,9 +130,8 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
         else:
           cov = covariance.extract_covariance_matrix_for_u_aniso(
             i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
-          var = (  u_star_to_u_iso_linear_form
-                 * matrix.sqr(cov)
-                 * u_star_to_u_iso_linear_form.transpose())[0]
+          var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
+                 ).dot(u_star_to_u_iso_linear_form)
           u_iso_or_equiv = format_float_with_su(
             sc.u_iso_or_equiv(uc), math.sqrt(var))
       else:
