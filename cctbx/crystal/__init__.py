@@ -841,7 +841,7 @@ class calculate_angles(object):
                     cov_cart = covariance.orthogonalize_covariance_matrix(
                       self.covariance_matrix, unit_cell, param_map)
                     cov = covariance.extract_covariance_matrix_for_sites(
-                      flex.size_t((i_seq,j_seq, k_seq)), cov_cart, param_map)
+                      flex.size_t((j_seq, i_seq, k_seq)), cov_cart, param_map)
                     var = a.variance(
                       cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
                   else:
