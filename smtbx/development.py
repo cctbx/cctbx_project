@@ -1,4 +1,3 @@
-from cctbx.array_family import flex
 from cctbx.development import random_structure
 from smtbx.refinement import constraints
 from smtbx.refinement.constraints import adp as adp_constraints
