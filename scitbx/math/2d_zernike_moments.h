@@ -511,7 +511,6 @@ namespace zernike {
           beta = 2*nu+d;
           alpha = k-beta;
           temp += i_pow_n_[d]*bino_[m][d]*ss_(alpha,beta);
-//          temp += i_pow_n_[d]*bino_[m][d]*sum3(n,m,k,nu,d);
         }
         return temp;
       }
@@ -527,33 +526,21 @@ namespace zernike {
         return temp;
       }
 
-      std::complex<FloatType> zernike_poly(int n, int m, FloatType x, FloatType y)
+      FloatType zernike_poly(int n, int m, FloatType r)
       {
         int in,im,ik,k, max_nu, nu, alpha, beta, d;
-        std::complex< FloatType > value(0,0),temp(0,0), temp1(0,0);
-        af::shared< FloatType > gm_x(n+1,1.0);
-        af::shared< FloatType > gm_y(n+1,1.0);
+        FloatType value(0),temp(0), temp1(0);
+        af::shared< FloatType > gm_r(n+1,1.0);
         for(int i=1;i<=n;i++) {
-          gm_x[i]=gm_x[i-1]*x;
-          gm_y[i]=gm_y[i-1]*y;
+          gm_r[i]=gm_r[i-1]*r;
         }
 
         in = (n_max_-n);
         im = (n-m)/2;
         ik = 0;
         for(k=n;k>=m;k-=2) {
-          temp=0;
-          max_nu = (k-m)/2;
-          for(nu=0;nu<=max_nu;nu++) {
-            temp1=0;
-            for(d=0;d<=m;d++) {
-              beta=2*nu+d;
-              alpha = k-beta;
-              temp1 += i_pow_p_[d]*bino_[m][d]*gm_x[alpha]*gm_y[beta];
-            }
-            temp += temp1*bino_[max_nu][nu];
-          }
-          value += Bnmk_[in][im][ik]*temp;
+          value += Bnmk_[in][im][ik]*gm_r[k];
+          //std::cout<<n<<" "<<m<<" "<<k<<" "<<Bnmk_[in][im][ik]<<std::endl;
           ik++;
         }
         return value;

@@ -89,6 +89,7 @@ namespace {
         .def("get_moment",&w_t::get_moment)
         .def("calc_moments",&w_t::calc_moments)
         .def("update_ss",&w_t::update_ss)
+        .def("print_bnmk",&w_t::print_Bnmk)
         .def("zernike_poly",&w_t::zernike_poly)
         .def("zernike_map",&w_t::zernike_map)
       ;

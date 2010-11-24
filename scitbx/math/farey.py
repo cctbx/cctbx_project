@@ -52,6 +52,5 @@ def tst():
   assert d==99532
 
 
-
 if __name__ == "__main__":
   tst()

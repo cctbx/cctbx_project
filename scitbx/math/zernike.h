@@ -687,7 +687,7 @@ namespace zernike{
             }
             nl_count++;
 
-            for (int kk=ll;kk<=nn;kk++){
+            for (int kk=0;kk<=nn;kk++){
               if(is_even(nn-kk)) {
                 tmp2.push_back( count ); // this index has a specific n,l pair
 
@@ -734,6 +734,7 @@ namespace zernike{
        else {
          nlm_location = l->second;
        }
+       //std::cout<< nlm_location<<std::endl;
        return (nlm_location);
     }
 
@@ -756,7 +757,7 @@ namespace zernike{
        return (nl_location);
     }
 
-    bool set_coef(int const& n, int const&l, int const&m, std::complex<FloatType> const&x )
+    bool set_coef(int const& n, int const&l, int const&m, FloatType const&x )
     {
        int this_index = find_nlm(n,l,m);
        if (this_index>-1){
@@ -766,13 +767,13 @@ namespace zernike{
        return(false);
     }
 
-    std::complex<FloatType> get_coef(int const& n, int const& l, int const& m)
+    FloatType get_coef(int const& n, int const& l, int const& m)
     {
        int this_index = find_nlm(n,l,m);
        if (this_index>-1){
          return(coefs_[ this_index ]);
        }
-       std::complex<FloatType> tmp(0.0);
+       FloatType tmp(0.0);
        return(tmp);
     }
 
@@ -804,14 +805,14 @@ namespace zernike{
     }
 
 
-    scitbx::af::shared< std::complex<FloatType> > coefs()
+    scitbx::af::shared< FloatType > coefs()
     {
       return( coefs_ );
     }
 
 
     bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,3> > nlm,
-                    scitbx::af::const_ref< std::complex<FloatType> > const& coef)
+                    scitbx::af::const_ref< FloatType > const& coef)
     {
 
        SCITBX_ASSERT(nlm.size()==coef.size());
@@ -842,7 +843,7 @@ namespace zernike{
 
       int n_max_;
       scitbx::af::shared< nlm_index<int> > indices_;
-      scitbx::af::shared< std::complex<FloatType> > coefs_;
+      scitbx::af::shared< FloatType > coefs_;
       scitbx::af::shared< double_integer_index<int> > nl_;
       scitbx::af::shared< scitbx::af::shared<int> > nl_index_;
 
@@ -1660,7 +1661,7 @@ namespace zernike{
     zernike_2d_radial_dc(int const& n, int const& l)
     :
     n_(n),
-    n_terms_(n*2),
+    n_terms_(n*2+1),
     n_plus_1_(static_cast<FloatType>(n+1)),
     l_(l),
     eps_(1e-18)
@@ -1694,11 +1695,12 @@ namespace zernike{
       if(n_==0) return 1.0;
       if(r==1.0) return 1.0;
       return f_exact(r);
-      indx_=int(r*n_terms_);
+/*      indx_=int(r*n_terms_);
       //std::cout<<r_array_[indx_]<<" "<<r_array_[indx_+1]<<" "<<f_r_array_[indx_]<<" "<<f_r_array_[indx_+1]<<r<<std::endl;
       value_=(r-r_array_[indx_])*f_r_array_[indx_+1]-(r-r_array_[indx_+1])*f_r_array_[indx_];
       value_/=step_size_;
       return value_;
+ */
     }
 
     FloatType f_exact(FloatType r)
