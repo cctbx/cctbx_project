@@ -8,6 +8,80 @@ def wrap(text, width):
   return re.findall( "[^\n]{1,%d}" % width, text )
 
 
+# Sequence headers
+class ebi_pdb_header(object):
+  """
+  EBI-style parsed header
+  """
+
+  regex = re.compile(
+    r"""
+    ^ > \s* PDB \s* :
+    ( [^_]+ ) _
+    ( \w* ) \s*
+    """,
+    re.VERBOSE
+    )
+
+  format = ">PDB:XXXX_X"
+
+  def __init__(self, identifier, chain):
+
+    self.identifier = identifier
+    self.chain = chain
+
+
+  def __str__(self):
+
+    return ">PDB:%s_%s" % ( self.identifier, self.chain )
+
+
+  def parse(cls, data):
+
+    match = cls.regex.search( data )
+
+    if not match:
+      raise ValueError, ( cls.format, str( data ) )
+
+    ( identifier, chain ) = match.groups()
+    return cls( identifier = identifier.upper(), chain = chain.upper() )
+
+  parse = classmethod( parse )
+
+
+class generic_sequence(object):
+  """
+  Sequence
+  """
+
+  def __init__(self, header, body):
+
+    self.header = header
+    self.body = body
+
+
+  def format(self, width):
+
+    return "\n".join(
+      [ str( self.header )[:width] ] + wrap( self.body, width )
+      )
+
+
+  def reinterpret_header(self, header):
+
+    self.header = header.parse( data = str( self.header ) )
+
+
+  def __len__(self):
+
+    return len( self.body )
+
+
+  def __str__(self):
+
+    return self.format( 70 )
+
+
 # Sequence formats
 class sequence(object):
   """
@@ -504,6 +578,77 @@ class generic_sequence_parser(object):
   def __call__(self, text, **kwargs):
 
     return self.parse( text, **kwargs )
+
+# New-style sequence parsing
+class SequenceFormat(object):
+  """
+  Bundle of independent parsing data
+  """
+
+  def __init__(self, regex, expected, create):
+
+    self.regex = regex
+    self.expected = expected
+    self.create = create
+
+
+st_separated_fasta = SequenceFormat(
+  regex = re.compile(
+    r"""
+    ^
+    ( > [^\n]* ) \n
+    ( [^>^*]* )
+    \*?\s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
+  expected = ">Header\nSEQUENCE",
+  create = lambda headers, body: generic_sequence( header = headers[0], body  = body )
+  )
+
+
+def partition_sequence_str(data, regex):
+  """
+  Partition sequence files
+  """
+
+  position = 0
+
+  for match in regex.finditer( data ):
+    current = match.start()
+    unknown = data[ position : current ].strip()
+    yield ( match.groups(), ( position, current, unknown ) )
+    position = match.end()
+
+  remaining = data[ position : ].strip()
+
+  if remaining:
+    yield ( (), ( position, len( data ), remaining ) )
+
+  raise StopIteration
+
+
+def parse_sequence_str(data, format):
+  """
+  Generic purpose sequence header parser
+  """
+
+  partition = partition_sequence_str( data = data, regex = format.regex )
+
+  for ( groups, ( n_start, n_end, n_data ) ) in partition:
+    if n_data:
+      raise ValueError, (
+        "Uninterpretable block from %s to %s:\nExpected: %s\nFound: %s" % (
+          n_start,
+          n_end,
+          format.expected,
+          n_data,
+          )
+        )
+
+    body = "".join( [ c for c in groups[-1] if not c.isspace() ] )
+    yield format.create( headers = groups[:-1], body = body )
+
 
 # Sequence parser instances that can be used as functions
 seq_sequence_parse = generic_sequence_parser(
@@ -1081,6 +1226,38 @@ class hhsearch_parser(hhpred_parser):
     self.hit_consensi = []
     self.hit_ss_preds = []
     self.hit_ss_dssps = []
+
+
+  def restrict(self, max_count):
+
+    self.indices = self.indices[:max_count]
+    self.pdbs = self.pdbs[:max_count]
+    self.chains = self.chains[:max_count]
+    self.annotations = self.annotations[:max_count]
+    self.probabs = self.probabs[:max_count]
+    self.e_values = self.e_values[:max_count]
+    self.scores = self.scores[:max_count]
+    self.aligned_cols = self.aligned_cols[:max_count]
+    self.identities = self.identities[:max_count]
+    self.similarities = self.similarities[:max_count]
+    self.sum_probs = self.sum_probs[:max_count]
+
+    self.query_starts = self.query_starts[:max_count]
+    self.query_ends = self.query_ends[:max_count]
+    self.query_others = self.query_others[:max_count]
+    self.query_alignments = self.query_alignments[:max_count]
+    self.query_consensi = self.query_consensi[:max_count]
+    self.query_ss_preds = self.query_ss_preds[:max_count]
+
+    self.midlines = self.midlines[:max_count]
+
+    self.hit_starts = self.hit_starts[:max_count]
+    self.hit_ends = self.hit_ends[:max_count]
+    self.hit_others = self.hit_others[:max_count]
+    self.hit_alignments = self.hit_alignments[:max_count]
+    self.hit_consensi = self.hit_consensi[:max_count]
+    self.hit_ss_preds = self.hit_ss_preds[:max_count]
+    self.hit_ss_dssps = self.hit_ss_dssps[:max_count]
 
 
   def add_match_to_hit_header_results(self, match):
