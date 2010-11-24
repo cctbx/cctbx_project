@@ -863,6 +863,21 @@ def exercise_grid_indices_around_sites():
     assert str(e).startswith("product of fft_m_real")
   else: raise Exception_expected
 
+def exercise_standard_devations_around_sites():
+  unit_cell = uctbx.unit_cell((5,5,5))
+  fft_n_real = (5,5,5)
+  fft_m_real = (5,5,6)
+  density_map = flex.double(flex.grid(fft_m_real).set_focus(fft_n_real), 0)
+  sites_cart = flex.vec3_double([(2.5,2.5,2.5)])
+  site_radii = flex.double([1.2])
+  def get():
+    return maptbx.standard_deviations_around_sites(
+      unit_cell=unit_cell, density_map=density_map,
+      sites_cart=sites_cart, site_radii=site_radii)
+  assert approx_equal(get(), [0])
+  density_map[(2,2,2)] = 1
+  assert approx_equal(get(), [0.35355339059327379])
+
 def exercise_region_density_correlation():
   sites_frac = flex.vec3_double([
     (0.02,0.10,0.02),
@@ -927,6 +942,7 @@ def run(args):
   exercise_real_space_refinement()
   exercise_average_density()
   exercise_grid_indices_around_sites()
+  exercise_standard_devations_around_sites()
   exercise_region_density_correlation()
   print "OK"
 

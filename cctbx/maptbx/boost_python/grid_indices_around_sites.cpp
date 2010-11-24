@@ -11,6 +11,20 @@ namespace cctbx { namespace maptbx { namespace boost_python {
 
 namespace {
 
+  struct grid_indices_around_sites_unordered_set :
+         grid_indices_around_sites_enumerator
+  {
+    boost::unordered_set<unsigned> buffer;
+
+    virtual
+    void
+    next_point(
+      std::size_t i_grid)
+    {
+      buffer.insert(i_grid);
+    }
+  };
+
   boost::shared_ptr<std::vector<unsigned> >
   grid_indices_around_sites_wrapper(
     uctbx::unit_cell const& unit_cell,
@@ -19,14 +33,13 @@ namespace {
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<double> const& site_radii)
   {
-    std::auto_ptr<boost::unordered_set<unsigned> >
-      gias = grid_indices_around_sites<boost::unordered_set<unsigned> >(
-        unit_cell, fft_n_real, fft_m_real, sites_cart, site_radii);
+    grid_indices_around_sites_unordered_set gias;
+    gias.enumerate(unit_cell, fft_n_real, fft_m_real, sites_cart, site_radii);
     boost::shared_ptr<std::vector<unsigned> >
       result(new std::vector<unsigned>());
-    std::size_t n = gias->size();
+    std::size_t n = gias.buffer.size();
     result->reserve(n);
-    boost::unordered_set<unsigned>::const_iterator p = gias->begin();
+    boost::unordered_set<unsigned>::const_iterator p = gias.buffer.begin();
     for(std::size_t i=0;i!=n;i++) result->push_back(*p++);
     std::sort(result->begin(), result->end());
     return result;

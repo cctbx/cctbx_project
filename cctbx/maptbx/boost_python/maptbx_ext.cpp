@@ -2,6 +2,7 @@
 
 #include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
+#include <cctbx/maptbx/standard_deviations_around_sites.hpp>
 #include <cctbx/maptbx/real_space_gradients_simple.h>
 #include <cctbx/maptbx/real_space_target_and_gradients.h>
 #include <scitbx/boost_python/utils.h>
@@ -242,6 +243,13 @@ namespace {
            arg("density_map"),
            arg("sites_cart"),
            arg("delta")));
+
+    def("standard_deviations_around_sites",
+      standard_deviations_around_sites, (
+        arg("unit_cell"),
+        arg("density_map"),
+        arg("sites_cart"),
+        arg("site_radii")));
   }
 
 } // namespace <anonymous>
