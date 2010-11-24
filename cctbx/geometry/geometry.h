@@ -141,8 +141,7 @@ namespace cctbx { namespace geometry {
         }
         else {
           using scitbx::constants::pi_180;
-          scitbx::vec3<FloatType>
-              d_angle_d_site0, d_angle_d_site1, d_angle_d_site2;
+          scitbx::vec3<FloatType> d_angle_d_site0, d_angle_d_site2;
           d_angle_d_site0 = (d_01_unit * cos_angle_model - d_21_unit) /
                             (sin_angle_model * d_01_abs);
           grads[0] = -d_angle_d_site0 / pi_180;
