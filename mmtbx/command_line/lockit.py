@@ -460,6 +460,8 @@ final_geo_file = Auto
   .type = str
 
 %s
+local_standard_deviations_radius = None
+  .type = float
 
 %s
 
@@ -853,6 +855,8 @@ def run_coordinate_refinement(
       geometry_restraints_manager=grmp,
       real_space_target_weight=rstw,
       real_space_gradients_delta=real_space_gradients_delta,
+      local_standard_deviations_radius=
+        work_params.local_standard_deviations_radius,
       lbfgs_termination_params=lbfgs_termination_params,
       lbfgs_exception_handling_params=lbfgs_exception_handling_params)
     print >> log, "After coordinate refinement" \
@@ -945,6 +949,8 @@ def run_coordinate_refinement(
             default=True, dihedral=fgm_params.dihedral_restraints),
           real_space_target_weight=rstw,
           real_space_gradients_delta=real_space_gradients_delta,
+          local_standard_deviations_radius=
+            work_params.local_standard_deviations_radius,
           lbfgs_termination_params=lbfgs_termination_params,
           lbfgs_exception_handling_params=lbfgs_exception_handling_params)
         cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
