@@ -11,36 +11,55 @@ env_etc.gltbx_common_includes = [
 ]
 
 if (not env_etc.no_boost_python):
-  Import("env_no_includes_boost_python_ext")
+  Import("env_base", "env_no_includes_boost_python_ext")
+  trial_env = env_base.Clone()
   env = env_no_includes_boost_python_ext.Clone()
   env.Prepend(LIBS=["scitbx_boost_python"])
   if (env_etc.compiler == "win32_cl"):
-    env.Append(LIBS=["glu32", "opengl32"])
+    for e in [trial_env, env]:
+      e.Append(LIBS=["glu32", "opengl32"])
   elif (env_etc.compiler.startswith("darwin_")):
-    env.Append(SHLINKFLAGS=["-framework", "OpenGL"])
+    for e in [trial_env, env]:
+      e.Append(SHLINKFLAGS=["-framework", "OpenGL"])
   else:
-    libs = list(env["LIBS"])
-    try: i = libs.index("m")
-    except ValueError: i = len(libs)
-    libs.insert(i, "GL")
-    libs.insert(i, "GLU")
-    env.Replace(LIBS=libs)
+    for e in [trial_env, env]:
+      if (not e.has_key("LIBS")):
+        libs = []
+        i = 0
+      else:
+        libs = list(e["LIBS"])
+        try: i = libs.index("m")
+        except ValueError: i = len(libs)
+      libs.insert(i, "GL")
+      libs.insert(i, "GLU")
+      e.Replace(LIBS=libs)
+  env_etc.include_registry.append(
+    env=trial_env,
+    paths=env_etc.gltbx_common_includes)
   env_etc.include_registry.append(
     env=env,
     paths=env_etc.gltbx_common_includes + [env_etc.python_include])
   #
-  env_etc.gltbx_has_opengl_headers = False
-  conf = env.Clone().Configure() # the .Clone() is to work around an unknown
-                                 # problem under Windows 7 (64-bit) with
-                                 # Python 2.7rc2
-  if (conf.TryCompile("#include <gltbx/include_opengl.h>", extension=".cpp")):
-    env_etc.gltbx_has_opengl_headers = True
-  else:
-    print "gltbx: OpenGL headers not available."
-    print "gltbx: Compilation skipped."
+  env_etc.gltbx_has_usable_opengl = False
+  conf = trial_env.Configure()
+  flag, output = conf.TryRun("""
+#include <gltbx/include_opengl.h>
+#include <iostream>
+int main() { std::cout << GL_POINT << std::endl; return 0; }
+""", extension=".cpp")
   conf.Finish()
+  if (flag and len(output.strip()) != 0):
+    conf = env.Configure()
+    if (conf.TryCompile("""
+#include <gltbx/include_opengl.h>
+""", extension=".cpp")):
+      env_etc.gltbx_has_usable_opengl = True
+    conf.Finish()
   #
-  if (env_etc.gltbx_has_opengl_headers):
+  if (not env_etc.gltbx_has_usable_opengl):
+    print "gltbx: OpenGL headers and/or libraries not available."
+    print "gltbx: Compilation skipped."
+  else:
     for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
                                                       ("glu", 2, 4)]:
       source=["%s_ext.cpp" % namespace]
