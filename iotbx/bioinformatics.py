@@ -603,7 +603,10 @@ st_separated_fasta = SequenceFormat(
     re.MULTILINE | re.VERBOSE
     ),
   expected = ">Header\nSEQUENCE",
-  create = lambda headers, body: generic_sequence( header = headers[0], body  = body )
+  create = lambda headers, body: generic_sequence(
+      header = headers[0],
+      body  = body
+      )
   )
 
 
@@ -1035,6 +1038,19 @@ def known_alignment_formats():
   return _implemented_alignment_parsers.keys()
 
 
+class homology_search_hit(object):
+  """
+  A hit from a homology search
+  """
+
+  def __init__(self, identifier, chain, annotation, alignment):
+
+    self.identifier = identifier
+    self.chain = chain
+    self.annotation = annotation
+    self.alignment = alignment
+
+
 class hhpred_parser(object):
   """
   Parses .hhr files from HHPred
@@ -1333,6 +1349,31 @@ class hhsearch_parser(hhpred_parser):
     self.hit_alignments.append( merged[4] )
     self.hit_ss_dssps.append( merged[5] )
     self.hit_ss_preds.append( merged[6] )
+
+
+  def hits(self):
+
+    data = zip(
+      self.pdbs,
+      self.chains,
+      self.annotations,
+      self.query_alignments,
+      self.hit_alignments,
+      )
+
+    for ( pdb, chain, annotation, query, hit ) in data:
+      alignment = clustal_alignment(
+        names = [ "target", "%s_%s" % ( pdb, chain ) ],
+        alignments = [ query, hit ],
+        program = "HHPred"
+        )
+
+      yield homology_search_hit(
+        identifier = pdb,
+        chain = chain,
+        annotation = annotation,
+        alignment = alignment
+        )
 
 
 class hhalign_parser(hhpred_parser):
