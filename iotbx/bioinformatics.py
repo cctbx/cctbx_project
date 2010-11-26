@@ -1279,7 +1279,7 @@ class hhsearch_parser(hhpred_parser):
   def add_match_to_hit_header_results(self, match):
 
     self.indices.append( int( match.group( 1 ) ) )
-    self.pdbs.append( match.group( 2 ) )
+    self.pdbs.append( match.group( 2 ).upper() )
     self.chains.append( match.group( 3 ) )
     self.annotations.append( match.group( 4 ) )
     self.probabs.append( float( match.group( 5 ) ) )
