@@ -69,10 +69,26 @@ namespace cctbx { namespace geometry {
       return result;
     }
 
+    // The gradient of the distance wrt the elements of the metrical matrix
+    scitbx::sym_mat3<FloatType>
+    d_distance_d_metrical_matrix(cctbx::uctbx::unit_cell const &unit_cell) const
+    {
+      scitbx::vec3<FloatType> vec_frac = unit_cell.fractionalize(sites[0]-sites[1]);
+      scitbx::sym_mat3<FloatType> result;
+      FloatType one_over_distance = 1./distance_model;
+      result[0] = vec_frac[0] * vec_frac[0] * one_over_distance * 0.5;
+      result[1] = vec_frac[1] * vec_frac[1] * one_over_distance * 0.5;
+      result[2] = vec_frac[2] * vec_frac[2] * one_over_distance * 0.5;
+      result[3] = vec_frac[0] * vec_frac[1] * one_over_distance;
+      result[4] = vec_frac[0] * vec_frac[2] * one_over_distance;
+      result[5] = vec_frac[1] * vec_frac[2] * one_over_distance;
+      return result;
+    }
+
     FloatType
     variance(
-      af::const_ref<FloatType, af::packed_u_accessor> const & covariance_matrix,
-      cctbx::uctbx::unit_cell const& unit_cell,
+      af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
+      cctbx::uctbx::unit_cell const &unit_cell,
       sgtbx::rt_mx const &rt_mx_ji) const
     {
       af::tiny<scitbx::vec3<FloatType>, 2> grads;
@@ -152,6 +168,39 @@ namespace cctbx { namespace geometry {
         }
       }
       return grads;
+    }
+
+    // The gradient of the angle wrt the elements of the metrical matrix
+    scitbx::sym_mat3<FloatType>
+    d_angle_d_metrical_matrix(cctbx::uctbx::unit_cell const &unit_cell) const
+    {
+      scitbx::vec3<FloatType> d_01_frac = unit_cell.fractionalize(d_01);
+      scitbx::vec3<FloatType> d_21_frac = unit_cell.fractionalize(d_21);
+      scitbx::sym_mat3<FloatType> result;
+      FloatType overall_factor
+        = 1./std::sqrt(1-scitbx::fn::pow2(cos_angle_model));
+      FloatType factor0 = cos_angle_model/(d_01_abs*d_01_abs);
+      FloatType factor1 = 1./(d_01_abs*d_21_abs);
+      FloatType factor2 = cos_angle_model/(d_21_abs*d_21_abs);
+      for (std::size_t i=0;i<3;i++) {
+        result[i] = 0.5 * overall_factor * (
+            scitbx::fn::pow2(d_01_frac[i])* factor0
+          - d_01_frac[i] * d_21_frac[i] * 2 * factor1
+          + scitbx::fn::pow2(d_21_frac[i]) * factor2);
+      }
+      result[3] = overall_factor * (
+           d_01_frac[0] * d_01_frac[1] * factor0
+        - (d_01_frac[0] * d_21_frac[1] + d_01_frac[1] * d_21_frac[0]) * factor1
+        +  d_21_frac[0] * d_21_frac[1] * factor2);
+      result[4] = overall_factor * (
+           d_01_frac[0] * d_01_frac[2] * factor0
+        - (d_01_frac[0] * d_21_frac[2] + d_01_frac[2] * d_21_frac[0]) * factor1
+        +  d_21_frac[0] * d_21_frac[2] * factor2);
+      result[5] = overall_factor * (
+           d_01_frac[1] * d_01_frac[2] * factor0
+        - (d_01_frac[1] * d_21_frac[2] + d_01_frac[2] * d_21_frac[1]) * factor1
+        +  d_21_frac[1] * d_21_frac[2] * factor2);
+      return result;
     }
 
     FloatType
