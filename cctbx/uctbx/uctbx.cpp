@@ -142,6 +142,22 @@ namespace cctbx { namespace uctbx {
   {
     metr_mx_ = construct_metrical_matrix(params_, cos_ang_);
     r_metr_mx_ = construct_metrical_matrix(r_params_, r_cos_ang_);
+
+    using scitbx::constants::pi_180;
+    af::versa<double, af::c_grid<2> > &f = d_metrical_matrix_d_params_;
+    f.resize(af::c_grid<2>(6,6), 0.);
+    f(0,0) = 2*params_[0];
+    f(1,1) = 2*params_[1];
+    f(2,2) = 2*params_[2];
+    f(3,0) = params_[1]*cos_ang_[2];
+    f(3,1) = params_[0]*cos_ang_[2];
+    f(3,5) = -params_[0]*params_[1]*sin_ang_[2]*pi_180;
+    f(4,0) = params_[2]*cos_ang_[1];
+    f(4,2) = params_[0]*cos_ang_[1];
+    f(4,4) = -params_[0]*params_[2]*sin_ang_[1]*pi_180;
+    f(5,1) = params_[2]*cos_ang_[0];
+    f(5,2) = params_[1]*cos_ang_[0];
+    f(5,3) = -params_[1]*params_[2]*sin_ang_[0]*pi_180;
   }
 
   void unit_cell::init_tensor_rank_2_orth_and_frac_linear_maps() {

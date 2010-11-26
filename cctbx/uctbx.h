@@ -558,7 +558,8 @@ namespace cctbx {
                  {0, 0, o_5 o_8, 0, 0, o_4 o_8}
                }
        */
-      af::versa<double, af::c_grid<2> > const &u_star_to_u_cart_linear_map() const {
+      af::versa<double, af::c_grid<2> > const &
+      u_star_to_u_cart_linear_map() const {
         return u_star_to_u_cart_linear_map_;
       }
 
@@ -567,6 +568,11 @@ namespace cctbx {
         return u_star_to_u_cif_linear_map_;
       }
 
+      //! The gradient of the elements of the metrical matrix wrt the unit cell params
+      af::versa<double, af::c_grid<2> > const &
+      d_metrical_matrix_d_params() const {
+        return d_metrical_matrix_d_params_;
+      }
       //! Length^2 of a vector of fractional coordinates.
       /*! Not available in Python.
        */
@@ -1028,6 +1034,7 @@ namespace cctbx {
       af::double6 u_star_to_u_iso_linear_form_;
       af::double6 u_star_to_u_cif_linear_map_;
       af::versa<double, af::c_grid<2> > u_star_to_u_cart_linear_map_;
+      af::versa<double, af::c_grid<2> > d_metrical_matrix_d_params_;
 
       mutable double longest_vector_sq_;
       mutable double shortest_vector_sq_;
