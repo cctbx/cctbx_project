@@ -581,7 +581,36 @@ def exercise_tensor_rank_2_orth_and_frac_linear_maps():
     u_cif = matrix.diag(uc.u_star_to_u_cif_linear_map())*(u_star)
     assert approx_equal(u_cif, u_cif_ref)
 
+def exercise_d_metrical_matrix_d_params():
+  def finite_differences(unit_cell, eps=1e-6):
+    grads = []
+    for i in range(6):
+      params = list(unit_cell.parameters())
+      params[i] += eps
+      uc = uctbx.unit_cell(parameters=params)
+      qm = matrix.col(uc.metrical_matrix())
+      params[i] -= 2*eps
+      uc = uctbx.unit_cell(parameters=params)
+      qp = matrix.col(uc.metrical_matrix())
+      dq = (qm-qp)/(2*eps)
+      grads.extend(list(dq))
+    grads = flex.double(grads)
+    grads.resize(flex.grid((6,6)))
+    return grads.matrix_transpose()
+  from cctbx import sgtbx
+  p1 = sgtbx.space_group_info('P1')
+  uc = p1.any_compatible_unit_cell(27)
+  grads = uc.d_metrical_matrix_d_params()
+  fd_grads = finite_differences(uc)
+  assert approx_equal(grads, fd_grads)
+  sgi = sgtbx.space_group_info('I-4')
+  uc = sgi.any_compatible_unit_cell(volume=18000)
+  grads = uc.d_metrical_matrix_d_params()
+  fd_grads = finite_differences(uc)
+  assert approx_equal(grads, fd_grads)
+
 def run():
+  exercise_d_metrical_matrix_d_params()
   exercise_tensor_rank_2_orth_and_frac_linear_maps()
   exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center()
   exercise_functions()

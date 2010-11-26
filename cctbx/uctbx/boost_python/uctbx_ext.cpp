@@ -106,6 +106,8 @@ namespace {
              &w_t::u_star_to_u_cif_linear_map, ccr())
         .def("u_star_to_u_cart_linear_map",
              &w_t::u_star_to_u_cart_linear_map, ccr())
+        .def("d_metrical_matrix_d_params",
+             &w_t::d_metrical_matrix_d_params, ccr())
         .def("length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::length, (
