@@ -1542,7 +1542,7 @@ class test_hhsearch_parser(unittest.TestCase):
   def test_process_hits(self):
 
     self.assertEqual( self.hss.indices, [ 1, 2 ] )
-    self.assertEqual( self.hss.pdbs, [ "3cng", "3i7u" ] )
+    self.assertEqual( self.hss.pdbs, [ "3CNG", "3I7U" ] )
     self.assertEqual( self.hss.chains, [ "A", "A" ] )
     self.assertEqual(
       self.hss.annotations,
