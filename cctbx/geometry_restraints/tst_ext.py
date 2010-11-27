@@ -475,6 +475,12 @@ def exercise_bond():
       [[ 6.1880215351700611]*3,
        [-6.1880215351700611]*3])
   #
+  for p in geometry_restraints.shared_bond_simple_proxy(size=2):
+    assert p.distance_ideal == 0
+    assert p.weight == 0
+    assert p.slack == 0
+    assert p.i_seqs == (0,0)
+  #
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   sorted_asu_proxies.push_back(proxy=sym_proxies[0])

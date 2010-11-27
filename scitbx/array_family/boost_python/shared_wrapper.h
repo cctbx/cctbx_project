@@ -4,6 +4,8 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
+#include <boost/python/make_constructor.hpp>
+#include <boost/python/args.hpp>
 #include <scitbx/boost_python/slice.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/array_family/shared.h>
@@ -16,6 +18,13 @@ namespace scitbx { namespace af { namespace boost_python {
 
   using scitbx::positive_getitem_index;
 
+  template <typename ElementType>
+  struct shared_wrapper_default_element
+  {
+    static ElementType
+    get() { return ElementType(); }
+  };
+
   template <typename ElementType,
             typename GetitemReturnValuePolicy
               = boost::python::return_value_policy<
@@ -24,6 +33,13 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     typedef shared<ElementType> w_t;
     typedef ElementType e_t;
+
+    static w_t*
+    init_with_default_value(
+      std::size_t size)
+    {
+      return new w_t(size, shared_wrapper_default_element<e_t>::get());
+    }
 
     static e_t&
     getitem_1d(w_t& self, long i)
@@ -88,7 +104,13 @@ namespace scitbx { namespace af { namespace boost_python {
       class_<w_t> result(python_name.c_str());
       result
         .def(init<w_t const&>())
-        .def(init<std::size_t const&, optional<e_t const&> >())
+        .def(init<std::size_t const&, e_t const&>((
+          boost::python::arg("size"),
+          boost::python::arg("value"))))
+        .def("__init__", make_constructor(
+          init_with_default_value,
+            default_call_policies(), (
+              boost::python::arg("size"))))
         .def("size", &w_t::size)
         .def("__len__", &w_t::size)
         .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())

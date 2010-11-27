@@ -14,6 +14,23 @@
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
   cctbx::geometry_restraints::bond_asu_proxy)
 
+namespace scitbx { namespace af { namespace boost_python {
+
+  using cctbx::geometry_restraints::bond_simple_proxy;
+
+  template <>
+  struct shared_wrapper_default_element<bond_simple_proxy>
+  {
+    static bond_simple_proxy
+    get()
+    {
+      return bond_simple_proxy(
+        af::tiny<unsigned, 2>(0, 0), 0., 0., 0.);
+    }
+  };
+
+}}}
+
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
