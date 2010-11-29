@@ -2882,10 +2882,10 @@ class build_all_chain_proxies(object):
           attr=attr,
           raise_if_empty_selection=False)
         atom_sel = getattr(scope_extract, attr)
-        for i in iselection:
-          if (i.size() == 0):
-            raise Sorry("No atom selected: %s" % show_string(atom_sel))
-          for atom in i:
+        for i, i_sel in enumerate(iselection):
+          if (i_sel.size() == 0):
+            raise Sorry("No atom selected: %s" % show_string(atom_sel[i]))
+          for atom in i_sel:
             result.append(atom)
     return result
 
