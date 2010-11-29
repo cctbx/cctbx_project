@@ -24,6 +24,8 @@ namespace cctbx { namespace covariance {
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> >
       const &parameter_map)
   {
+    CCTBX_ASSERT(matrix.size()
+      == parameter_map.n_parameters()*(parameter_map.n_parameters()+1)/2);
     af::versa<FloatType, af::packed_u_accessor> result(3*i_seqs.size());
     for (std::size_t i=0; i<i_seqs.size(); i++) {
       for (std::size_t j=i; j<i_seqs.size(); j++) {
@@ -53,6 +55,8 @@ namespace cctbx { namespace covariance {
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> >
       const &parameter_map)
   {
+    CCTBX_ASSERT(matrix.size()
+      == parameter_map.n_parameters()*(parameter_map.n_parameters()+1)/2);
     af::versa<FloatType, af::packed_u_accessor> result(6);
     cctbx::xray::parameter_indices ids = parameter_map[i_seq];
     CCTBX_ASSERT(ids.u_aniso > -1);
@@ -72,6 +76,8 @@ namespace cctbx { namespace covariance {
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> >
       const &parameter_map)
   {
+    CCTBX_ASSERT(matrix.size()
+      == parameter_map.n_parameters()*(parameter_map.n_parameters()+1)/2);
     cctbx::xray::parameter_indices ids = parameter_map[i_seq];
     CCTBX_ASSERT(ids.u_iso > -1);
     return matrix(ids.u_iso, ids.u_iso);
@@ -109,6 +115,8 @@ namespace cctbx { namespace covariance {
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> >
       const &parameter_map)
   {
+    CCTBX_ASSERT(matrix.size()
+      == parameter_map.n_parameters()*(parameter_map.n_parameters()+1)/2);
     scitbx::sparse::matrix<FloatType> O = covariance_orthogonalization_matrix(
       unit_cell, parameter_map);
     return O.this_times_symmetric_times_this_transpose(matrix);
