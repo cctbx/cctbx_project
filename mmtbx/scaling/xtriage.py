@@ -676,7 +676,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       space_group_symbol = str(params.scaling.input.xray_data.space_group) )
 
     ## Please check if we have a acentric space group
-    assert( not crystal_symmetry.space_group().is_centric())
+    if crystal_symmetry.space_group().is_centric() :
+      raise Sorry("Centric space groups are not supported.")
 
     ## Now it time to read in reflection files somehow
     ## We do this via a reflection_file_server
