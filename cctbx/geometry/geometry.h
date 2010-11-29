@@ -91,6 +91,7 @@ namespace cctbx { namespace geometry {
       cctbx::uctbx::unit_cell const &unit_cell,
       sgtbx::rt_mx const &rt_mx_ji) const
     {
+      CCTBX_ASSERT(covariance_matrix.size() == 21);
       af::tiny<scitbx::vec3<FloatType>, 2> grads;
       grads[0] = d_distance_d_site_0();
       grads[1] = -grads[0];
@@ -209,6 +210,7 @@ namespace cctbx { namespace geometry {
       cctbx::uctbx::unit_cell const &unit_cell,
       optional_container<af::shared<sgtbx::rt_mx> > const &sym_ops) const
     {
+      CCTBX_ASSERT(covariance_matrix.size() == 45);
       af::tiny<scitbx::vec3<FloatType>, 3> grads = d_angle_d_sites();
       for (std::size_t i=0; i<3; i++) {
         if (sym_ops && !sym_ops[i].is_unit_mx()) {
