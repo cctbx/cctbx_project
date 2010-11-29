@@ -355,7 +355,7 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll", "/MANIFEST"]
     if (libtbx.env.build_options.debug_symbols):
       env_etc.shlinkflags.append("/DEBUG")
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
   elif (env_etc.compiler == "win32_icc"):
     cl_exe = full_command_path("icl.exe")
@@ -407,7 +407,7 @@ libtbx.scons: Warning: compiling with /MDd:
       raise RuntimeError("Debug build not supported.")
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
   else:
     sys.tracebacklimit = 0
@@ -537,15 +537,16 @@ else:
       env_base.Prepend(LINKFLAGS=["-static"])
       static_exe = None
     env_etc.shlinkflags = ["-shared"]
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
     if (libtbx.env.build_options.mode == "profile"):
       env_base.Prepend(LINKFLAGS=["-pg"])
       env_etc.shlinkflags.append("-pg")
-      env_etc.shlinkflags_bpl.append("-pg")
     if (libtbx.env.build_options.debug_symbols):
-      env_base.Append(LINKFLAGS=["-rdynamic"])
-      env_etc.shlinkflags.append("-rdynamic")
-      env_etc.shlinkflags_bpl.append("-rdynamic")
+      lkfl = ["-rdynamic"]
+    else:
+      lkfl = ["-s"]
+    env_base.Append(LINKFLAGS=lkfl)
+    env_etc.shlinkflags.extend(lkfl)
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
   elif (env_etc.compiler == "unix_clang"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -581,7 +582,7 @@ else:
       env_base.Prepend(LINKFLAGS=["-static"])
       static_exe = None
     env_etc.shlinkflags = ["-shared"]
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -610,7 +611,7 @@ else:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["-shared"]
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
   elif env_etc.compiler.startswith("darwin"):
     env_etc.gcc_version = libtbx.env_config.get_gcc_version()
     env_etc.static_libraries = 1
