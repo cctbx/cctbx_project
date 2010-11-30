@@ -335,6 +335,9 @@ namespace cctbx {
       double
       volume() const { return volume_; }
 
+      af::double6 const&
+      d_volume_d_params() const { return d_volume_d_params_; }
+
       //! Corresponding reciprocal cell.
       unit_cell
       reciprocal() const;
@@ -1024,6 +1027,7 @@ namespace cctbx {
       af::double3 sin_ang_;
       af::double3 cos_ang_;
       double volume_;
+      af::double6 d_volume_d_params_;
       uc_sym_mat3 metr_mx_;
       af::double6 r_params_;
       af::double3 r_sin_ang_;

@@ -138,6 +138,10 @@ def exercise_basic():
   assert approx_equal(u.shortest_vector_sq(), 2*2)
   u = uctbx.unit_cell(p)
   assert approx_equal(u.volume(), 22.04006625)
+  assert approx_equal(
+    u.d_volume_d_params(),
+    (11.020033123326023, 7.3466887488840156, 5.5100165616630115,
+     0.051324088220620838, -0.051324088220620769, -0.13367230402431379))
   for alpha in xrange(70,121,10):
     for beta in xrange(70,121,10):
       for gamma in xrange(70,121,10):

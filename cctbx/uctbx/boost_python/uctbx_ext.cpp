@@ -54,6 +54,8 @@ namespace {
         .def("reciprocal_metrical_matrix",
           &w_t::reciprocal_metrical_matrix, ccr())
         .def("volume", &w_t::volume)
+        .def("d_volume_d_params",
+          &w_t::d_volume_d_params, ccr())
         .def("reciprocal", &w_t::reciprocal)
         .def("longest_vector_sq", &w_t::longest_vector_sq)
         .def("shortest_vector_sq", &w_t::shortest_vector_sq)
