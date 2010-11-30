@@ -5,6 +5,7 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/rt_mx.h>
 #include <scitbx/array_family/accessors/packed_matrix.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 #include <tbxx/optional_copy.hpp>
 
 #include <vector>
@@ -85,6 +86,18 @@ namespace cctbx { namespace geometry {
       return result;
     }
 
+    // The gradient of the distance wrt the elements of the unit cell parameters
+    scitbx::sym_mat3<FloatType>
+    d_distance_d_cell_params(cctbx::uctbx::unit_cell const &unit_cell) const
+    {
+      scitbx::sym_mat3<FloatType> result;
+      scitbx::sym_mat3<FloatType> d_d_mm = d_distance_d_metrical_matrix(unit_cell);
+      af::versa<FloatType, af::c_grid<2> > d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
+      scitbx::matrix::matrix_transposed_vector(6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());//,1.,0.);
+      return result;
+    }
+
+    // The variance of the distance taking into account only the errors in the sites
     FloatType
     variance(
       af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
@@ -103,6 +116,29 @@ namespace cctbx { namespace geometry {
         grads[1] = r_inv_cart * grads[1];
       }
       return detail::variance_impl(grads, covariance_matrix);
+    }
+
+    /*! The variance of the distance taking into account errors in the sites
+        and errors in the unit cell parameters.
+
+        Under the assumption that the errors in the sites are uncorrelated with
+        the errors in the unit cell parameters, then
+
+          sigma^2(f) = sigma^2(f,sites) + sigma^2(f,cell)
+     */
+    FloatType
+    variance(
+      af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
+      af::const_ref<FloatType, af::packed_u_accessor> const &cell_covariance_matrix,
+      cctbx::uctbx::unit_cell const &unit_cell,
+      sgtbx::rt_mx const &rt_mx_ji) const
+    {
+      CCTBX_ASSERT(cell_covariance_matrix.size() == 21);
+      FloatType var = variance(covariance_matrix, unit_cell, rt_mx_ji);
+      scitbx::sym_mat3<FloatType> d_distance_d_cell = d_distance_d_cell_params(unit_cell);
+      var += scitbx::matrix::quadratic_form_packed_u(
+        6, cell_covariance_matrix.begin(), d_distance_d_cell.begin());
+      return var;
     }
 
     //! Cartesian coordinates of bonded sites.
@@ -204,6 +240,18 @@ namespace cctbx { namespace geometry {
       return result;
     }
 
+    // The gradient of the angle wrt the elements of the unit cell parameters
+    scitbx::sym_mat3<FloatType>
+    d_angle_d_cell_params(cctbx::uctbx::unit_cell const &unit_cell) const
+    {
+      scitbx::sym_mat3<FloatType> result;
+      scitbx::sym_mat3<FloatType> d_d_mm = d_angle_d_metrical_matrix(unit_cell);
+      af::versa<FloatType, af::c_grid<2> > d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
+      scitbx::matrix::matrix_transposed_vector(6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());//,1.,0.);
+      return result;
+    }
+
+    // The variance of the angle taking into account only the errors in the sites
     FloatType
     variance(
       af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
@@ -222,6 +270,29 @@ namespace cctbx { namespace geometry {
         }
       }
       return detail::variance_impl(grads, covariance_matrix);
+    }
+
+    /*! The variance of the angle taking into account errors in the sites
+        and errors in the unit cell parameters.
+
+        Under the assumption that the errors in the sites are uncorrelated with
+        the errors in the unit cell parameters, then
+
+          sigma^2(f) = sigma^2(f,sites) + sigma^2(f,cell)
+     */
+    FloatType
+    variance(
+      af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
+      af::const_ref<FloatType, af::packed_u_accessor> const &cell_covariance_matrix,
+      cctbx::uctbx::unit_cell const &unit_cell,
+      optional_container<af::shared<sgtbx::rt_mx> > const &sym_ops) const
+    {
+      CCTBX_ASSERT(cell_covariance_matrix.size() == 21);
+      FloatType var = variance(covariance_matrix, unit_cell, sym_ops);
+      scitbx::sym_mat3<FloatType> d_angle_d_cell = d_angle_d_cell_params(unit_cell);
+      var += scitbx::matrix::quadratic_form_packed_u(
+        6, cell_covariance_matrix.begin(), d_angle_d_cell.begin());
+      return var;
     }
 
     //! Cartesian coordinates of sites forming the angle.
