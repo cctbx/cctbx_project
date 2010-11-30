@@ -67,6 +67,17 @@ namespace cctbx { namespace uctbx {
     if (d < 0.) throw error("Square of unit cell volume is negative.");
         volume_ = params_[0] * params_[1] * params_[2] * std::sqrt(d);
     if (volume_ <= 0.) throw error("Unit cell volume is zero or negative.");
+
+    af::double6 &f = d_volume_d_params_;
+        using scitbx::constants::pi_180;
+    double factor
+      = pi_180 * scitbx::fn::pow2(params_[0] * params_[1] * params_[2])/volume_;
+    f[0] = volume_/params_[0];
+    f[1] = volume_/params_[1];
+    f[2] = volume_/params_[2];
+    f[3] = factor * sin_ang_[0] * (cos_ang_[0] - cos_ang_[1]*cos_ang_[2]);
+    f[4] = factor * sin_ang_[1] * (cos_ang_[1] - cos_ang_[0]*cos_ang_[2]);
+    f[5] = factor * sin_ang_[2] * (cos_ang_[2] - cos_ang_[1]*cos_ang_[0]);
   }
 
   void unit_cell::init_reciprocal()
