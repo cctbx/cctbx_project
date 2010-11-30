@@ -3,6 +3,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 import iotbx.phil, libtbx.phil
 from cctbx import maptbx
+from cctbx import miller
 import cctbx.maptbx.real_space_refinement_simple
 import cctbx.geometry_restraints.flags
 from cctbx.array_family import flex
@@ -1126,16 +1127,16 @@ def run(args):
   if (map_coeffs is not map_coeffs_input):
     show_completeness("final")
   #
-  def get_fft_map(coeffs):
-    result = map_coeffs.fft_map(
-      d_min=d_min,
-      resolution_factor=work_params.map.grid_resolution_factor)
-    result.apply_sigma_scaling()
-    return result
-  fft_map = get_fft_map(coeffs=map_coeffs)
+  fft_map = map_coeffs.fft_map(
+    d_min=d_min,
+    resolution_factor=work_params.map.grid_resolution_factor)
+  fft_map.apply_sigma_scaling()
   std_dev_weight_fft_map = None
   if (std_dev_weight_coeffs is not None):
-    std_dev_weight_fft_map = get_fft_map(coeffs=std_dev_weight_coeffs)
+    std_dev_weight_fft_map = miller.fft_map(
+      crystal_gridding=fft_map,
+      fourier_coefficients=std_dev_weight_coeffs)
+    std_dev_weight_fft_map.apply_sigma_scaling()
   #
   real_space_gradients_delta = \
     d_min * work_params.real_space_gradients_delta_resolution_factor
