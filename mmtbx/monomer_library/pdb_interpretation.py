@@ -2107,6 +2107,7 @@ class build_all_chain_proxies(object):
         file_name=None,
         raw_records=None,
         pdb_inp=None,
+        atom_selection_string=None,
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
@@ -2138,6 +2139,13 @@ class build_all_chain_proxies(object):
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
     self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
+
+    if atom_selection_string is not None:
+      sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
+      temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
+      self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
+      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
+
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.counts = self.pdb_hierarchy.overall_counts()
     self.counts.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
@@ -3494,6 +3502,7 @@ class process(object):
         file_name=None,
         raw_records=None,
         pdb_inp=None,
+        atom_selection_string=None,
         strict_conflict_handling=False,
         special_position_settings=None,
         crystal_symmetry=None,
@@ -3514,6 +3523,7 @@ class process(object):
       file_name=file_name,
       raw_records=raw_records,
       pdb_inp=pdb_inp,
+      atom_selection_string=atom_selection_string,
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
