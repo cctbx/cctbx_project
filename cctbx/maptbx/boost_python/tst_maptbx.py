@@ -388,6 +388,9 @@ def exercise_real_space_gradients_simple(timing):
     target = maptbx.real_space_target_simple(
       unit_cell=uc, density_map=map, sites_cart=sites_cart)
     assert approx_equal(target, 0)
+    terms = maptbx.real_space_target_simple_per_site(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+    assert approx_equal(terms, [0])
     grads = maptbx.real_space_gradients_simple(
       unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
     assert approx_equal(grads, [(0,0,0)])
@@ -396,6 +399,9 @@ def exercise_real_space_gradients_simple(timing):
     target = maptbx.real_space_target_simple(
       unit_cell=uc, density_map=map, sites_cart=sites_cart)
     assert approx_equal(target, 1)
+    terms = maptbx.real_space_target_simple_per_site(
+      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+    assert approx_equal(terms, [1])
     grads = maptbx.real_space_gradients_simple(
       unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
     assert approx_equal(grads, [(0,0,0)])

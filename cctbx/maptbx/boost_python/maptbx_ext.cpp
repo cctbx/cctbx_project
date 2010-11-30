@@ -233,6 +233,15 @@ namespace {
              arg("unit_cell"),
              arg("density_map"),
              arg("sites_cart")));
+    def("real_space_target_simple_per_site",
+      (af::shared<double>(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           real_space_target_simple_per_site, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
     def("real_space_gradients_simple",
       (af::shared<scitbx::vec3<double> >(*)
         (uctbx::unit_cell const&,
