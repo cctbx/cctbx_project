@@ -25,20 +25,45 @@ class target_and_gradients(object):
       sites_cart  =self.sites_cart,
       delta       =self.real_space_gradients_delta)
 
-def local_standard_deviations_target(
-      unit_cell, density_map, sites_cart, radius):
-  return flex.sum(maptbx.standard_deviations_around_sites(
+def local_standard_deviations_target_per_site(
+      unit_cell, density_map, weight_map, weight_map_scale_factor,
+      sites_cart, site_radii):
+  if (weight_map is None):
+    return maptbx.standard_deviations_around_sites(
+      unit_cell=unit_cell,
+      density_map=density_map,
+      sites_cart=sites_cart,
+      site_radii=site_radii)
+  d = maptbx.real_space_target_simple_per_site(
     unit_cell=unit_cell,
     density_map=density_map,
+    sites_cart=sites_cart)
+  w = flex.pow2(maptbx.standard_deviations_around_sites(
+    unit_cell=unit_cell,
+    density_map=weight_map,
     sites_cart=sites_cart,
-    site_radii=flex.double(sites_cart.size(), radius)))
+    site_radii=site_radii))
+  w_min = 0.01
+  w.set_selected((w < w_min), w_min)
+  w = 1. / w
+  if (weight_map_scale_factor is not None):
+    assert weight_map_scale_factor > 0
+    w *= weight_map_scale_factor
+  return d / w
+
+def local_standard_deviations_target(
+      unit_cell, density_map, weight_map, weight_map_scale_factor,
+      sites_cart, site_radii):
+  return flex.sum(local_standard_deviations_target_per_site(
+    unit_cell, density_map, weight_map, weight_map_scale_factor,
+    sites_cart, site_radii))
 
 def local_standard_deviations_gradients(
-      unit_cell, density_map, sites_cart, radius, delta):
+      unit_cell, density_map, weight_map, weight_map_scale_factor,
+      sites_cart, site_radii, delta):
   # XXX inefficient implementation:
   # inner-most loop (in maptbx.standard_deviations_around_sites)
   # should be outer-most
-  site_radii = flex.double(sites_cart.size(), radius)
   grad_cols = []
   for i_dim in [0,1,2]:
     shift = [0,0,0]
@@ -46,9 +71,11 @@ def local_standard_deviations_gradients(
     for signed_delta in [delta, -delta]:
       shift[i_dim] = signed_delta
       sites_cart_shifted = sites_cart + shift
-      targets.append(maptbx.standard_deviations_around_sites(
+      targets.append(local_standard_deviations_target_per_site(
         unit_cell=unit_cell,
         density_map=density_map,
+        weight_map=weight_map,
+        weight_map_scale_factor=weight_map_scale_factor,
         sites_cart=sites_cart_shifted,
         site_radii=site_radii))
     grad_cols.append((targets[0]-targets[1])/(2*delta))
@@ -59,6 +86,7 @@ class lbfgs(object):
   def __init__(O,
         sites_cart,
         density_map,
+        weight_map=None,
         unit_cell=None,
         selection_variable=None,
         geometry_restraints_manager=None,
@@ -66,6 +94,7 @@ class lbfgs(object):
         real_space_target_weight=1,
         real_space_gradients_delta=None,
         local_standard_deviations_radius=None,
+        weight_map_scale_factor=None,
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None):
     assert [unit_cell, geometry_restraints_manager].count(None) == 1
@@ -73,6 +102,7 @@ class lbfgs(object):
     if (unit_cell is None):
       unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
     O.density_map = density_map
+    O.weight_map = weight_map
     O.unit_cell = unit_cell
     O.sites_cart = sites_cart
     O.geometry_restraints_manager = geometry_restraints_manager
@@ -80,6 +110,12 @@ class lbfgs(object):
     O.real_space_target_weight = real_space_target_weight
     O.real_space_gradients_delta = real_space_gradients_delta
     O.local_standard_deviations_radius = local_standard_deviations_radius
+    if (O.local_standard_deviations_radius is None):
+      O.site_radii = None
+    else:
+      O.site_radii = flex.double(
+        O.sites_cart.size(), O.local_standard_deviations_radius)
+    O.weight_map_scale_factor = weight_map_scale_factor
     O.selection_variable = selection_variable
     if (O.selection_variable is None):
       O.sites_cart = sites_cart
@@ -95,6 +131,7 @@ class lbfgs(object):
       exception_handling_params=lbfgs_exception_handling_params)
     O.f_final, O.g_final = O.compute_functional_and_gradients()
     del O.x
+    del O.site_radii
 
   def compute_functional_and_gradients(O):
     if (O.number_of_function_evaluations == 0):
@@ -118,16 +155,20 @@ class lbfgs(object):
           delta       = O.real_space_gradients_delta)
       else:
         rs_f = local_standard_deviations_target(
-          unit_cell   = O.unit_cell,
-          density_map = O.density_map,
-          sites_cart  = O.sites_cart_variable,
-          radius=O.local_standard_deviations_radius)
+          unit_cell=O.unit_cell,
+          density_map=O.density_map,
+          weight_map=O.weight_map,
+          weight_map_scale_factor=O.weight_map_scale_factor,
+          sites_cart=O.sites_cart_variable,
+          site_radii=O.site_radii)
         rs_g = local_standard_deviations_gradients(
-          unit_cell   = O.unit_cell,
-          density_map = O.density_map,
-          sites_cart  = O.sites_cart_variable,
-          radius=O.local_standard_deviations_radius,
-          delta       = O.real_space_gradients_delta)
+          unit_cell=O.unit_cell,
+          density_map=O.density_map,
+          weight_map=O.weight_map,
+          weight_map_scale_factor=O.weight_map_scale_factor,
+          sites_cart=O.sites_cart_variable,
+          site_radii=O.site_radii,
+          delta=O.real_space_gradients_delta)
       rs_f *= -O.real_space_target_weight
       rs_g *= -O.real_space_target_weight
     if (O.geometry_restraints_manager is None):

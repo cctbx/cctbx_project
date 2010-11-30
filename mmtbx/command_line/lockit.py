@@ -446,6 +446,14 @@ map {
     weights = None
       .type = str
   }
+  std_dev_weight_coeff_labels {
+    f = None
+      .type = str
+    phases = None
+      .type = str
+    weights = None
+      .type = str
+  }
   low_resolution = None
     .type = float
   high_resolution = None
@@ -461,6 +469,8 @@ final_geo_file = Auto
 
 %s
 local_standard_deviations_radius = None
+  .type = float
+weight_map_scale_factor = None
   .type = float
 
 %s
@@ -480,7 +490,7 @@ include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 """ % (real_space_params_phil_str, coordinate_refinement_params_phil_str),
     process_includes=True)
 
-def extract_map_coeffs(params, miller_arrays):
+def extract_map_coeffs(params, optional, miller_arrays):
   def find(labels):
     for miller_array in miller_arrays:
       if (",".join(miller_array.info().labels) == labels):
@@ -501,7 +511,9 @@ def extract_map_coeffs(params, miller_arrays):
       msg.append("    %s" % ",".join(miller_array.info().labels))
     raise Sorry("\n".join(msg))
   if (params.f is None):
-    raise_sorry(msg_intro="Missing assignment:", name="f")
+    if (not optional):
+      raise_sorry(msg_intro="Missing assignment:", name="f")
+    return None
   f = find(labels=params.f)
   if (f is None):
     raise_sorry(msg_intro="Cannot find map coefficients:", name="f")
@@ -766,6 +778,7 @@ def run_coordinate_refinement_driver(
       fft_map,
       real_space_gradients_delta,
       work_params,
+      std_dev_weight_fft_map=None,
       write_pdb_callback=None,
       log=None):
   if (log is None): log = null_out()
@@ -786,6 +799,11 @@ def run_coordinate_refinement_driver(
       work_scatterers = work_scatterers.deep_copy()
     else:
       work_scatterers = work_scatterers.select(atom_selection_bool)
+  if (std_dev_weight_fft_map is None):
+    weight_map = None
+  else:
+    assert std_dev_weight_fft_map.n_real() == fft_map.n_real()
+    weight_map = std_dev_weight_fft_map.real_map()
   return run_coordinate_refinement(
     pdb_atoms=processed_pdb_file.all_chain_proxies.pdb_atoms,
     geometry_restraints_manager=geometry_restraints_manager,
@@ -797,6 +815,7 @@ def run_coordinate_refinement_driver(
     work_scatterers=work_scatterers,
     unit_cell=fft_map.unit_cell(),
     d_min=fft_map.d_min(),
+    weight_map=weight_map,
     write_pdb_callback=write_pdb_callback,
     log=log)
 
@@ -812,6 +831,7 @@ def run_coordinate_refinement(
       work_scatterers=None,
       unit_cell=None,
       d_min=None,
+      weight_map=None,
       write_pdb_callback=None,
       log=None):
   assert [pdb_atoms, sites_cart].count(None)==1
@@ -851,12 +871,14 @@ def run_coordinate_refinement(
     refined = maptbx.real_space_refinement_simple.lbfgs(
       sites_cart=sites_cart_start,
       density_map=density_map,
+      weight_map=weight_map,
       selection_variable=selection_variable,
       geometry_restraints_manager=grmp,
       real_space_target_weight=rstw,
       real_space_gradients_delta=real_space_gradients_delta,
       local_standard_deviations_radius=
         work_params.local_standard_deviations_radius,
+      weight_map_scale_factor=work_params.weight_map_scale_factor,
       lbfgs_termination_params=lbfgs_termination_params,
       lbfgs_exception_handling_params=lbfgs_exception_handling_params)
     print >> log, "After coordinate refinement" \
@@ -951,6 +973,7 @@ def run_coordinate_refinement(
           real_space_gradients_delta=real_space_gradients_delta,
           local_standard_deviations_radius=
             work_params.local_standard_deviations_radius,
+          weight_map_scale_factor=work_params.weight_map_scale_factor,
           lbfgs_termination_params=lbfgs_termination_params,
           lbfgs_exception_handling_params=lbfgs_exception_handling_params)
         cycle_rmsd = sites_cart_start.rms_difference(fgm_refined.sites_cart)
@@ -1010,9 +1033,16 @@ def run(args):
   work_params = work_phil.extract()
   #
   assert len(input_objects["mtz"]) == 1
+  miller_arrays = input_objects["mtz"][0].file_content.as_miller_arrays()
   map_coeffs = extract_map_coeffs(
-    miller_arrays=input_objects["mtz"][0].file_content.as_miller_arrays(),
-    params=work_params.map.coeff_labels)
+    miller_arrays=miller_arrays,
+    params=work_params.map.coeff_labels,
+    optional=False)
+  std_dev_weight_coeffs = extract_map_coeffs(
+    miller_arrays=miller_arrays,
+    params=work_params.map.std_dev_weight_coeff_labels,
+    optional=True)
+  del miller_arrays
   #
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
@@ -1085,6 +1115,9 @@ def run(args):
   if (d_max_apply is not None or d_min_apply is not None):
     map_coeffs = map_coeffs.resolution_filter(
       d_max=d_max_apply, d_min=d_min_apply)
+    if (std_dev_weight_coeffs is not None):
+      std_dev_weight_coeffs = std_dev_weight_coeffs.resolution_filter(
+        d_max=d_max_apply, d_min=d_min_apply)
     if (d_min_apply is not None):
       d_min = d_min_apply
     print
@@ -1093,10 +1126,16 @@ def run(args):
   if (map_coeffs is not map_coeffs_input):
     show_completeness("final")
   #
-  fft_map = map_coeffs.fft_map(
-    d_min=d_min,
-    resolution_factor=work_params.map.grid_resolution_factor)
-  fft_map.apply_sigma_scaling()
+  def get_fft_map(coeffs):
+    result = map_coeffs.fft_map(
+      d_min=d_min,
+      resolution_factor=work_params.map.grid_resolution_factor)
+    result.apply_sigma_scaling()
+    return result
+  fft_map = get_fft_map(coeffs=map_coeffs)
+  std_dev_weight_fft_map = None
+  if (std_dev_weight_coeffs is not None):
+    std_dev_weight_fft_map = get_fft_map(coeffs=std_dev_weight_coeffs)
   #
   real_space_gradients_delta = \
     d_min * work_params.real_space_gradients_delta_resolution_factor
@@ -1151,6 +1190,7 @@ def run(args):
       processed_pdb_file=processed_pdb_file,
       geometry_restraints_manager=grm,
       fft_map=fft_map,
+      std_dev_weight_fft_map=std_dev_weight_fft_map,
       real_space_gradients_delta=real_space_gradients_delta,
       work_params=work_params,
       write_pdb_callback=write_pdb_callback,
