@@ -632,6 +632,7 @@ class calculate_distances(object):
                sites_frac,
                skip_j_seq_less_than_i_seq=True,
                covariance_matrix=None,
+               cell_covariance_matrix=None,
                parameter_map=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
@@ -690,7 +691,11 @@ class calculate_distances(object):
               self.covariance_matrix, unit_cell, param_map)
             cov = covariance.extract_covariance_matrix_for_sites(
               flex.size_t((i_seq,j_seq)), cov_cart, param_map)
-            var = d.variance(cov, unit_cell, rt_mx_ji)
+            if self.cell_covariance_matrix is not None:
+              var = d.variance(
+                cov, self.cell_covariance_matrix, unit_cell, rt_mx_ji)
+            else:
+              var = d.variance(cov, unit_cell, rt_mx_ji)
           else:
             var = None
           yield distance(
@@ -784,6 +789,7 @@ class calculate_angles(object):
                sites_frac,
                skip_j_seq_less_than_i_seq=True,
                covariance_matrix=None,
+               cell_covariance_matrix=None,
                parameter_map=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
@@ -842,8 +848,13 @@ class calculate_angles(object):
                       self.covariance_matrix, unit_cell, param_map)
                     cov = covariance.extract_covariance_matrix_for_sites(
                       flex.size_t((j_seq, i_seq, k_seq)), cov_cart, param_map)
-                    var = a.variance(
-                      cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
+                    if self.cell_covariance_matrix is not None:
+                      var = a.variance(
+                        cov, self.cell_covariance_matrix, unit_cell,
+                        (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
+                    else:
+                      var = a.variance(
+                        cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
                   else:
                     var = None
                   yield angle(angle_, (j_seq, i_seq, k_seq),

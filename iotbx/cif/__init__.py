@@ -53,7 +53,7 @@ fast_reader = reader # XXX backward compatibility 2010-08-25
 
 class crystal_symmetry_as_cif_block:
 
-  def __init__(self, crystal_symmetry):
+  def __init__(self, crystal_symmetry, cell_covariance_matrix=None):
     self.cif_block = model.block()
     sym_loop = model.loop(data=OrderedDict((
       ('_space_group_symop_id',
@@ -70,13 +70,26 @@ class crystal_symmetry_as_cif_block:
     self.cif_block['_space_group_name_Hall'] = sg_type.hall_symbol()
     #
     uc = crystal_symmetry.unit_cell()
-    a,b,c,alpha,beta,gamma = uc.parameters()
+    params = list(uc.parameters())
+    volume = uc.volume()
+    if cell_covariance_matrix is not None:
+      diag = cell_covariance_matrix.matrix_packed_u_diagonal()
+      for i in range(6):
+        if not diag[i] == 0:
+          params[i] = format_float_with_su(params[i], math.sqrt(diag[i]))
+      d_v_d_params = matrix.row(uc.d_volume_d_params())
+      vcv = matrix.sqr(
+        cell_covariance_matrix.matrix_packed_u_as_symmetric())
+      var_v = (d_v_d_params * vcv).dot(d_v_d_params)
+      volume = format_float_with_su(volume, math.sqrt(var_v))
+    a,b,c,alpha,beta,gamma = params
     self.cif_block['_cell_length_a'] = a
     self.cif_block['_cell_length_b'] = b
     self.cif_block['_cell_length_c'] = c
     self.cif_block['_cell_angle_alpha'] = alpha
     self.cif_block['_cell_angle_beta'] = beta
     self.cif_block['_cell_angle_gamma'] = gamma
+    self.cif_block['_cell_volume'] = volume
 
 
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
@@ -85,9 +98,11 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
   }
 
-  def __init__(self, xray_structure, covariance_matrix=None):
+  def __init__(self, xray_structure, covariance_matrix=None,
+               cell_covariance_matrix=None):
     crystal_symmetry_as_cif_block.__init__(
-      self, xray_structure.crystal_symmetry())
+      self, xray_structure.crystal_symmetry(),
+      cell_covariance_matrix=cell_covariance_matrix)
     scatterers = xray_structure.scatterers()
     uc = xray_structure.unit_cell()
     if covariance_matrix is not None:
@@ -270,6 +285,7 @@ class distances_as_cif_loop(object):
                sites_frac=None,
                sites_cart=None,
                covariance_matrix=None,
+               cell_covariance_matrix=None,
                parameter_map=None):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.4f"
@@ -285,6 +301,7 @@ class distances_as_cif_loop(object):
     distances = crystal.calculate_distances(
       pair_asu_table, sites_frac,
       covariance_matrix=covariance_matrix,
+      cell_covariance_matrix=cell_covariance_matrix,
       parameter_map=parameter_map)
     for d in distances:
       if site_labels[d.i_seq].startswith('H') or site_labels[d.j_seq].startswith('H'):
@@ -310,6 +327,7 @@ class angles_as_cif_loop(object):
                sites_frac=None,
                sites_cart=None,
                covariance_matrix=None,
+               cell_covariance_matrix=None,
                parameter_map=None):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.1f"
@@ -324,8 +342,11 @@ class angles_as_cif_loop(object):
       "_geom_angle_site_symmetry_1",
       "_geom_angle_site_symmetry_3"
     ))
-    angles = crystal.calculate_angles(pair_asu_table, sites_frac,
-      covariance_matrix=covariance_matrix, parameter_map=parameter_map)
+    angles = crystal.calculate_angles(
+      pair_asu_table, sites_frac,
+      covariance_matrix=covariance_matrix,
+      cell_covariance_matrix=cell_covariance_matrix,
+      parameter_map=parameter_map)
     for a in angles:
       i_seq, j_seq, k_seq = a.i_seqs
       if site_labels[i_seq].startswith('H') or site_labels[k_seq].startswith('H'):
