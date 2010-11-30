@@ -1,3 +1,4 @@
+from iotbx import pdb
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -564,6 +565,37 @@ END
     log=log)
   lines = search_for(
     pattern=" +bond proxies already assigned to first conformer: 3$",
+    mode="re.match",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
+
+  # test the atom_selection feature
+  log = StringIO()
+  pdb_inp = pdb.input(source_info = None, lines = raw_records)
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    atom_selection_string="resname ser",
+    pdb_inp = pdb_inp,
+    crystal_symmetry=pdb_inp.crystal_symmetry(),
+    log=log)
+  processed_pdb_file.geometry_restraints_manager()
+  lines = search_for(
+    pattern=" +Nonbonded interactions: 0$",
+    mode="re.match",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
+
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    atom_selection_string="resname ser or resname ala",
+    pdb_inp = pdb_inp,
+    crystal_symmetry=pdb_inp.crystal_symmetry(),
+    log=log)
+  processed_pdb_file.geometry_restraints_manager()
+  lines = search_for(
+    pattern=" +Nonbonded interactions: 7$",
     mode="re.match",
     lines=log.getvalue().splitlines())
   assert len(lines) == 1

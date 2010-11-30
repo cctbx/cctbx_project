@@ -3,6 +3,9 @@
 def get_master_phil():
   import iotbx.phil
   return iotbx.phil.parse("""\
+atom_selection = None
+  .type = str
+  .help = "Limit all analysis of restraints to this selection only."
 strict_processing = False
   .type = bool
 build_geometry_restraints_manager = True
@@ -53,6 +56,7 @@ def run(args):
       ener_lib=ener_lib,
       params=work_params.pdb_interpretation,
       file_name=input_obj.file_name,
+      atom_selection_string=work_params.atom_selection,
       strict_conflict_handling=work_params.strict_processing,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
       max_atoms=work_params.max_atoms,
