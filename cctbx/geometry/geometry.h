@@ -91,9 +91,12 @@ namespace cctbx { namespace geometry {
     d_distance_d_cell_params(cctbx::uctbx::unit_cell const &unit_cell) const
     {
       scitbx::sym_mat3<FloatType> result;
-      scitbx::sym_mat3<FloatType> d_d_mm = d_distance_d_metrical_matrix(unit_cell);
-      af::versa<FloatType, af::c_grid<2> > d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
-      scitbx::matrix::matrix_transposed_vector(6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());//,1.,0.);
+      scitbx::sym_mat3<FloatType>
+        d_d_mm = d_distance_d_metrical_matrix(unit_cell);
+      af::versa<FloatType, af::c_grid<2> >
+        d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
+      scitbx::matrix::matrix_transposed_vector(
+        6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());
       return result;
     }
 
@@ -129,13 +132,15 @@ namespace cctbx { namespace geometry {
     FloatType
     variance(
       af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
-      af::const_ref<FloatType, af::packed_u_accessor> const &cell_covariance_matrix,
+      af::const_ref<FloatType, af::packed_u_accessor> const &
+        cell_covariance_matrix,
       cctbx::uctbx::unit_cell const &unit_cell,
       sgtbx::rt_mx const &rt_mx_ji) const
     {
       CCTBX_ASSERT(cell_covariance_matrix.size() == 21);
       FloatType var = variance(covariance_matrix, unit_cell, rt_mx_ji);
-      scitbx::sym_mat3<FloatType> d_distance_d_cell = d_distance_d_cell_params(unit_cell);
+      scitbx::sym_mat3<FloatType>
+        d_distance_d_cell = d_distance_d_cell_params(unit_cell);
       var += scitbx::matrix::quadratic_form_packed_u(
         6, cell_covariance_matrix.begin(), d_distance_d_cell.begin());
       return var;
@@ -246,8 +251,10 @@ namespace cctbx { namespace geometry {
     {
       scitbx::sym_mat3<FloatType> result;
       scitbx::sym_mat3<FloatType> d_d_mm = d_angle_d_metrical_matrix(unit_cell);
-      af::versa<FloatType, af::c_grid<2> > d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
-      scitbx::matrix::matrix_transposed_vector(6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());//,1.,0.);
+      af::versa<FloatType, af::c_grid<2> >
+        d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
+      scitbx::matrix::matrix_transposed_vector(
+        6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());
       return result;
     }
 
@@ -283,13 +290,15 @@ namespace cctbx { namespace geometry {
     FloatType
     variance(
       af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
-      af::const_ref<FloatType, af::packed_u_accessor> const &cell_covariance_matrix,
+      af::const_ref<FloatType, af::packed_u_accessor> const &
+        cell_covariance_matrix,
       cctbx::uctbx::unit_cell const &unit_cell,
       optional_container<af::shared<sgtbx::rt_mx> > const &sym_ops) const
     {
       CCTBX_ASSERT(cell_covariance_matrix.size() == 21);
       FloatType var = variance(covariance_matrix, unit_cell, sym_ops);
-      scitbx::sym_mat3<FloatType> d_angle_d_cell = d_angle_d_cell_params(unit_cell);
+      scitbx::sym_mat3<FloatType>
+        d_angle_d_cell = d_angle_d_cell_params(unit_cell);
       var += scitbx::matrix::quadratic_form_packed_u(
         6, cell_covariance_matrix.begin(), d_angle_d_cell.begin());
       return var;
