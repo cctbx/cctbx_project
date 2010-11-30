@@ -73,6 +73,12 @@ def exercise_geometry():
                                     2e-8,1e-9,2e-9,
                                          3e-8,1e-9,
                                               4e-8))
+  cell_vcv = flex.double((3e-2,3e-2,0,0,0,0,
+                               3e-2,0,0,0,0,
+                                 4e-2,0,0,0,
+                                      0,0,0,
+                                        0,0,
+                                          0))
   param_map = xs.parameter_map()
   cov_cart = covariance.orthogonalize_covariance_matrix(cov, uc, param_map)
   O = matrix.sqr(uc.orthogonalization_matrix())
@@ -90,6 +96,14 @@ def exercise_geometry():
   g = matrix.row(g[0] + tuple(r_inv_cart*matrix.col(g[1])))
   f = g * matrix.sqr(cov_cart.matrix_packed_u_as_symmetric()) * g.transpose()
   assert approx_equal(d.variance(cov_cart, uc, rt_mx_ji), f[0], eps=1e-15)
+  assert approx_equal(
+    0.0018054494791580823, d.variance(cov_cart, cell_vcv, uc, rt_mx_ji))
+  rt_mx_ji = sgtbx.rt_mx('x+1,y,z')
+  sites = (sites_cart[0], uc.orthogonalize(rt_mx_ji*sites_frac[0]))
+  d = geometry.distance(sites)
+  assert approx_equal(d.distance_model, uc.parameters()[0])
+  assert approx_equal(cell_vcv.matrix_packed_u_diagonal()[0],
+                      d.variance(cov_cart, cell_vcv, uc, rt_mx_ji))
   # angles
   rt_mx_ji = sgtbx.rt_mx('x-y,x,z-2/3')
   rt_mx_ki = sgtbx.rt_mx('-y,x-y,z-1/3')
@@ -107,6 +121,8 @@ def exercise_geometry():
   f = g * matrix.sqr(cov_a.matrix_packed_u_as_symmetric()) * g.transpose()
   assert approx_equal(
     a.variance(cov_a, uc, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki)), f[0], eps=1e-15)
+  assert approx_equal(0.0039655104934522168,
+    a.variance(cov_a, cell_vcv, uc, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki)))
 
 def exercise_grad_metrical_matrix():
   def calc_distance(metrical_matrix=None):

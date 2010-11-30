@@ -14,7 +14,28 @@ namespace cctbx { namespace geometry { namespace boost_python {
             arg("epsilon")=1.e-100))
       .def("d_distance_d_metrical_matrix", &wt::d_distance_d_metrical_matrix,
            (arg("unit_cell")))
-      .def("variance", &wt::variance)
+      .def("d_distance_d_cell_params", &wt::d_distance_d_cell_params,
+           (arg("unit_cell")))
+      .def("variance",
+       (double(wt::*)(
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::uctbx::unit_cell const &,
+        sgtbx::rt_mx const &) const)
+          &wt::variance,
+         (arg("covariance_matrix"),
+          arg("unit_cell"),
+          arg("rt_mx_ji")))
+      .def("variance",
+       (double(wt::*)(
+        af::const_ref<double, af::packed_u_accessor> const &,
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::uctbx::unit_cell const &,
+        sgtbx::rt_mx const &) const)
+          &wt::variance,
+         (arg("covariance_matrix"),
+          arg("cell_covariance_matrix"),
+          arg("unit_cell"),
+          arg("rt_mx_ji")))
       .def_readonly("distance_model", &wt::distance_model)
     ;
   }
@@ -29,7 +50,28 @@ namespace cctbx { namespace geometry { namespace boost_python {
             arg("epsilon")=1.e-100))
       .def("d_angle_d_metrical_matrix", &wt::d_angle_d_metrical_matrix,
            (arg("unit_cell")))
-      .def("variance", &wt::variance)
+      .def("d_angle_d_cell_params", &wt::d_angle_d_cell_params,
+           (arg("unit_cell")))
+      .def("variance",
+       (double(wt::*)(
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::uctbx::unit_cell const &,
+        optional_container<af::shared<sgtbx::rt_mx> > const &) const)
+          &wt::variance,
+         (arg("covariance_matrix"),
+          arg("unit_cell"),
+          arg("sym_ops")))
+      .def("variance",
+       (double(wt::*)(
+        af::const_ref<double, af::packed_u_accessor> const &,
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::uctbx::unit_cell const &,
+        optional_container<af::shared<sgtbx::rt_mx> > const &) const)
+          &wt::variance,
+         (arg("covariance_matrix"),
+          arg("cell_covariance_matrix"),
+          arg("unit_cell"),
+          arg("sym_ops")))
       .def_readonly("angle_model", &wt::angle_model)
     ;
   }
