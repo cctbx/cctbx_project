@@ -480,6 +480,7 @@ class MetallicButton (wx.PyControl) :
     #       quickly changing focus and activating buttons
     if self._state['cur'] != GRADIENT_PRESSED:
       self.SetState(GRADIENT_NORMAL)
+      self.Refresh()
 
   def OnLeftDown(self, evt):
     """Sets the pressed state and depending on the click position will

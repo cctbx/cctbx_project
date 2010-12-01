@@ -1,8 +1,12 @@
 
+# Copyright 2010, University of California
+# License: LGPL
+
 from wx.lib.embeddedimage import PyEmbeddedImage
 import wx
 import sys
 
+# from Crystal Icons (http://www.everaldo.com/crystal/)
 button_ok = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACK0lEQVQ4jaWSXUhTYRjH/+/O"
     "3uPOOfs4W2oRRGI0jPYRStaIjMS6SyQoC+kD0rqJwAjqqo+bbpLoQorIhjaShIqRLUtzdaHD"
