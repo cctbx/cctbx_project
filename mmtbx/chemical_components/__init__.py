@@ -79,8 +79,10 @@ def get_name(code):
   if not cif: return cif
   desc = cif.get("_pdbx_chem_comp_identifier", {})
   for item in desc:
-    if item.identifier:
+    if getattr(item, "identifier", None) is not None:
       return item.identifier
+    else:
+      return "Unknown or not read"
 
 def get_atom_names(code, alternate=False):
   cif = get_cif_dictionary(code)
@@ -128,17 +130,35 @@ def get_bond_pairs(code, alternate=False):
       tmp.append([item.atom_id_1, item.atom_id_2])
   return tmp
 
-def generate_chemical_components_codes():
+def generate_chemical_components_codes(sort_reverse_by_smiles=False):
+  def _cmp_smiles_length(f1, f2):
+    c1 = f1[5:-4]
+    c2 = f2[5:-4]
+    if not c1:
+      return 1
+    if not c2:
+      return -1
+    s1 = get_smiles(c1)
+    s2 = get_smiles(c2)
+    if len(s1)>len(s2):
+      return -1
+    else:
+      return 1
+
   data_dir = find_data_dir()
   dirs = os.listdir(data_dir)
   dirs.sort()
+  filenames = []
   for d in dirs:
     if not os.path.isdir(os.path.join(data_dir, d)): continue
-    filenames = os.listdir(os.path.join(data_dir, d))
+    filenames += os.listdir(os.path.join(data_dir, d))
+  if sort_reverse_by_smiles:
+    filenames.sort(_cmp_smiles_length)
+  else:
     filenames.sort()
-    for filename in filenames:
-      if filename.find("data_")!=0: continue
-      yield filename[5:-4]
+  for filename in filenames:
+    if filename.find("data_")!=0: continue
+    yield filename[5:-4]
 
 def get_header(code):
   filename=get_cif_filename(code)
