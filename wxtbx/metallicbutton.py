@@ -42,7 +42,7 @@ class MetallicButton (wx.PyControl) :
                 highlight_color=(230,230,230), label_size=13,
                 caption_size=11, button_margin=2, disable_after_click=0):
     wx.PyControl.__init__(self, parent, id_, pos, size,
-      wx.BORDER_SIMPLE, name=name)
+      wx.NO_BORDER, name=name)
     self.InheritAttributes()
     self._bmp = dict(enable=bmp)
     self._margin = button_margin
@@ -112,8 +112,8 @@ class MetallicButton (wx.PyControl) :
       bw, bh = bmp.GetSize()
       cw, ch = self.GetSize()
       if ch > (bh + 4) : # (self._margin * 2)):
-        ypos = ((ch - bh) / 2) - (self._margin / 2)
-        xpos = self._margin
+        ypos = ((ch - bh) / 2) - (self._margin / 2) + 1
+        xpos = self._margin + 2
       else :
         ypos = 0
         xpos = 0
@@ -164,7 +164,7 @@ class MetallicButton (wx.PyControl) :
     rgc = gc.GetGraphicsContext()
     brush = rgc.CreateLinearGradientBrush(0, 1, 0, height, color, end_color)
     rgc.SetBrush(brush)
-    gc.DrawRectangle(0, 0, width, height)
+    gc.DrawRectangle(1, 1, width-2, height-2)
 
   def __DrawCaption (self, gc, xpos, ypos) :
     if self._label2 != '' :
@@ -215,24 +215,29 @@ class MetallicButton (wx.PyControl) :
       txt_y = 4 #th + 4 #height - th - 4
       txt2_y = th + 8
     else :
-      txt_y = max((height - th) / 2 - 2, 1)
+      txt_y = max((height - th) / 2 - 1, 1)
       txt2_y = None
     #print height, th, txt_y, txt2_y
+    #gc.SetBrush(wx.TRANSPARENT_BRUSH)
+    #gc.DrawRectangle(0, 0, width, height)
+    gc.SetPen(wx.Pen((100,100,100)))
+    gc.SetBrush(wx.Brush((240,240,240)))
+    gc.DrawRectangle(0,0,width,height)
+    gc.SetPen(wx.TRANSPARENT_PEN)
 
     if self._state['cur'] == GRADIENT_HIGHLIGHT:
       gc.SetTextForeground(self._color['htxt'])
-      gc.SetPen(wx.TRANSPARENT_PEN)
       self.__DrawHighlight(gc, width, height)
 
     elif self._state['cur'] == GRADIENT_PRESSED:
       gc.SetTextForeground(self._color['htxt'])
       if wx.Platform == '__WXMAC__':
-        brush = wx.Brush(wx.BLACK)
+        brush = wx.Brush((100,100,100))
         brush.MacSetTheme(Carbon.Appearance.kThemeBrushFocusHighlight)
         pen = wx.Pen(brush.GetColour(), 1, wx.SOLID)
       else:
         pen = wx.Pen(AdjustColour(self._color['press_start'], -80, 220), 1)
-      gc.SetPen(pen)
+      #gc.SetPen(pen)
 
       self.__DrawHighlight(gc, width, height)
       txt_x = self.__DrawBitmap(gc)
@@ -242,12 +247,12 @@ class MetallicButton (wx.PyControl) :
 
     else:
       rgc = gc.GetGraphicsContext()
-      gc.SetPen(wx.TRANSPARENT_PEN)
+      #gc.SetPen(wx.TRANSPARENT_PEN)
       color =  wx.Colour(218,218,218)
       brush = rgc.CreateLinearGradientBrush(0, 1, 0, height,
         self._color['gradient_start'], self._color['gradient_end'])
       rgc.SetBrush(brush)
-      gc.DrawRectangle(0, 0, width, height)
+      gc.DrawRectangle(1, 2, width-2, height-3)
       if self.IsEnabled():
         gc.SetTextForeground(self.GetForegroundColour())
       else:
@@ -325,7 +330,7 @@ class MetallicButton (wx.PyControl) :
     caption_height = 0
     if self._bmp['enable'] is not None:
       bsize = self._bmp['enable'].GetSize()
-      width += (bsize[0] + 10)
+      width += (bsize[0] + 12)
       height = bsize[1] + (self._margin * 2)
     else:
       width += 10
@@ -362,7 +367,7 @@ class MetallicButton (wx.PyControl) :
           caption_width = line_w
         caption_height += line_h + buffer
     width += max(caption_width, label_width) + 4
-    height = max(caption_height + label_height + 10, height)
+    height = max(caption_height + label_height + 12, height)
 
     if self._menu is not None or self._style & MB_STYLE_DROPARROW :
        width += 12
