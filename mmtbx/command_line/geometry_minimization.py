@@ -45,7 +45,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
          self.rmsd_bonds < self.rmsd_bonds_termination_cutoff):
         return True
 
-def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
+def run(processed_pdb_file, params=master_params.extract(), log=sys.stdout):
   co = params
   geometry_restraints_flags = geometry_restraints.flags.flags(default=True)
   all_chain_proxies = processed_pdb_file.all_chain_proxies
@@ -84,17 +84,17 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
       f=log,
       max_items=10)
   del pair_proxies
-  print
+  print >> log
   log.flush()
   if (co.alternate_nonbonded_off_on and co.macro_cycles % 2 != 0):
     co.macro_cycles += 1
-    print "INFO: Number of macro cycles increased by one to ensure use of"
-    print "      nonbonded interactions in last macro cycle."
-    print
+    print >> log, "INFO: Number of macro cycles increased by one to ensure use of"
+    print >> log, "      nonbonded interactions in last macro cycle."
+    print >> log
   for i_macro_cycle in xrange(co.macro_cycles):
     if (co.alternate_nonbonded_off_on):
       geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
-      print "Use nonbonded interactions this macro cycle:", \
+      print >> log, "Use nonbonded interactions this macro cycle:", \
         geometry_restraints_flags.nonbonded
     minimized = lbfgs(
       sites_cart=sites_cart,
@@ -102,16 +102,16 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=co.max_iterations))
-    print "Energies at start of minimization:"
-    minimized.first_target_result.show()
-    print
-    print "Number of minimization iterations:", minimized.minimizer.iter()
-    print "Root-mean-square coordinate difference: %.3f" % (
+    print >> log, "Energies at start of minimization:"
+    minimized.first_target_result.show(f=log)
+    print >> log
+    print >> log, "Number of minimization iterations:", minimized.minimizer.iter()
+    print >> log, "Root-mean-square coordinate difference: %.3f" % (
       all_chain_proxies.sites_cart.rms_difference(sites_cart))
-    print
-    print "Energies at end of minimization:"
-    minimized.final_target_result.show()
-    print
+    print >> log
+    print >> log, "Energies at end of minimization:"
+    minimized.final_target_result.show(f=log)
+    print >> log
     geometry_restraints_manager.pair_proxies(
       sites_cart=sites_cart,
       flags=geometry_restraints_flags) \
@@ -121,7 +121,7 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
           site_labels=atom_labels,
           f=log,
           max_items=10)
-    print
+    print >> log
   assert geometry_restraints_flags.nonbonded
   return sites_cart
 
