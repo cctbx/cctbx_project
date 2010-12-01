@@ -557,7 +557,7 @@ class manager(object):
             "nonbonded_distance_cutoff=%.6g is too small:"
             " max_vdw_distance=%.6g" % (
               self.nonbonded_distance_cutoff,
-              max_vdw))
+              max_vdw_dist))
         self.adjusted_nonbonded_distance_cutoff = max_vdw_dist
         self.effective_nonbonded_buffer \
           = current_nonbonded_distance_cutoff_plus_buffer \
