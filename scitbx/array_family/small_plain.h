@@ -11,6 +11,8 @@ namespace scitbx { namespace af {
   class small_plain
   {
     public:
+      static const std::size_t capacity_value = N;
+
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
       small_plain()

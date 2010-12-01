@@ -58,7 +58,7 @@ namespace scitbx { namespace af { namespace boost_python {
       throw std::runtime_error(numpy_api_not_available());
     }
 #else
-    npy_intp dims[flex_grid<>::index_type::capacity()];
+    npy_intp dims[flex_grid<>::index_type::capacity_value];
     flex_grid<> const& grid = O.accessor();
     int nd = static_cast<int>(grid.nd());
     for(unsigned i=0;i<nd;i++) {
