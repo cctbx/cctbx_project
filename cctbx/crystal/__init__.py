@@ -656,6 +656,10 @@ class calculate_distances(object):
 
     asu_mappings = self.pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
+    if self.covariance_matrix is not None:
+      assert self.parameter_map is not None
+      cov_cart = covariance.orthogonalize_covariance_matrix(
+        self.covariance_matrix, unit_cell, self.parameter_map)
     for i_seq,asu_dict in enumerate(self.pair_asu_table.table()):
       rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
       site_frac_i = self.sites_frac[i_seq]
@@ -686,11 +690,8 @@ class calculate_distances(object):
           dist = d.distance_model
           self.distances.append(dist)
           if self.covariance_matrix is not None:
-            param_map = self.parameter_map
-            cov_cart = covariance.orthogonalize_covariance_matrix(
-              self.covariance_matrix, unit_cell, param_map)
             cov = covariance.extract_covariance_matrix_for_sites(
-              flex.size_t((i_seq,j_seq)), cov_cart, param_map)
+              flex.size_t((i_seq,j_seq)), cov_cart, self.parameter_map)
             if self.cell_covariance_matrix is not None:
               var = d.variance(
                 cov, self.cell_covariance_matrix, unit_cell, rt_mx_ji)
@@ -812,6 +813,10 @@ class calculate_angles(object):
 
     asu_mappings = self.pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
+    if self.covariance_matrix is not None:
+      assert self.parameter_map is not None
+      cov_cart = covariance.orthogonalize_covariance_matrix(
+        self.covariance_matrix, unit_cell, self.parameter_map)
 
     ## angle is formed by j_seq-i_seq-k_seq
     for i_seq,asu_dict in enumerate(self.pair_asu_table.table()):
@@ -843,11 +848,9 @@ class calculate_angles(object):
                   angle_ = a.angle_model
                   self.angles.append(angle_)
                   if self.covariance_matrix is not None:
-                    param_map = self.parameter_map
-                    cov_cart = covariance.orthogonalize_covariance_matrix(
-                      self.covariance_matrix, unit_cell, param_map)
                     cov = covariance.extract_covariance_matrix_for_sites(
-                      flex.size_t((j_seq, i_seq, k_seq)), cov_cart, param_map)
+                      flex.size_t((j_seq, i_seq, k_seq)),
+                      cov_cart, self.parameter_map)
                     if self.cell_covariance_matrix is not None:
                       var = a.variance(
                         cov, self.cell_covariance_matrix, unit_cell,
