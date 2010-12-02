@@ -213,14 +213,18 @@ namespace cctbx { namespace geometry {
     }
 
     // The gradient of the angle wrt the elements of the metrical matrix
-    scitbx::sym_mat3<FloatType>
-    d_angle_d_metrical_matrix(cctbx::uctbx::unit_cell const &unit_cell) const
+    scitbx::sym_mat3<FloatType> d_angle_d_metrical_matrix(
+      cctbx::uctbx::unit_cell const &unit_cell, FloatType epsilon=1.e-100) const
     {
       scitbx::vec3<FloatType> d_01_frac = unit_cell.fractionalize(d_01);
       scitbx::vec3<FloatType> d_21_frac = unit_cell.fractionalize(d_21);
       scitbx::sym_mat3<FloatType> result;
-      FloatType overall_factor
-        = 1./std::sqrt(1-scitbx::fn::pow2(cos_angle_model));
+      FloatType
+        sin_angle_model = std::sqrt(1-scitbx::fn::pow2(cos_angle_model));
+      if (sin_angle_model < epsilon) {
+        return scitbx::sym_mat3<FloatType>(0,0,0,0,0,0);
+      }
+      FloatType overall_factor = 1./sin_angle_model;
       FloatType factor0 = cos_angle_model/(d_01_abs*d_01_abs);
       FloatType factor1 = 1./(d_01_abs*d_21_abs);
       FloatType factor2 = cos_angle_model/(d_21_abs*d_21_abs);
