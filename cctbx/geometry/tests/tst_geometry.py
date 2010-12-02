@@ -121,7 +121,7 @@ def exercise_geometry():
   f = g * matrix.sqr(cov_a.matrix_packed_u_as_symmetric()) * g.transpose()
   assert approx_equal(
     a.variance(cov_a, uc, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki)), f[0], eps=1e-15)
-  assert approx_equal(0.0039655104934522168,
+  assert approx_equal(0.0042632511984529199,
     a.variance(cov_a, cell_vcv, uc, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki)))
 
 def exercise_grad_metrical_matrix():
