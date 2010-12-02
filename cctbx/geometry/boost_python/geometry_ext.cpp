@@ -49,7 +49,7 @@ namespace cctbx { namespace geometry { namespace boost_python {
       .def("d_angle_d_sites", &wt::d_angle_d_sites, (
             arg("epsilon")=1.e-100))
       .def("d_angle_d_metrical_matrix", &wt::d_angle_d_metrical_matrix,
-           (arg("unit_cell")))
+           (arg("unit_cell"), arg("epsilon")=1.e-100))
       .def("d_angle_d_cell_params", &wt::d_angle_d_cell_params,
            (arg("unit_cell")))
       .def("variance",
