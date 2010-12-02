@@ -75,7 +75,7 @@ class crystal_symmetry_as_cif_block:
     if cell_covariance_matrix is not None:
       diag = cell_covariance_matrix.matrix_packed_u_diagonal()
       for i in range(6):
-        if not diag[i] == 0:
+        if diag[i] > 0:
           params[i] = format_float_with_su(params[i], math.sqrt(diag[i]))
       d_v_d_params = matrix.row(uc.d_volume_d_params())
       vcv = matrix.sqr(
@@ -130,7 +130,7 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
           if idx > -1:
             var = covariance_diagonal[idx+i]
           else: var = 0
-          if var != 0:
+          if var > 0:
             site.append(format_float_with_su(sc.site[i], math.sqrt(var)))
           else: site.append(fmt % sc.site[i])
       else:
@@ -180,7 +180,7 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
           if idx > -1:
             var = covariance_diagonal[idx:idx+6] * u_star_to_u_cif_linear_map_pow2
             for i in range(6):
-              if var[i] != 0:
+              if var[i] > 0:
                 row.append(
                   format_float_with_su(u_cif[i], math.sqrt(var[i])))
               else:
@@ -286,7 +286,8 @@ class distances_as_cif_loop(object):
                sites_cart=None,
                covariance_matrix=None,
                cell_covariance_matrix=None,
-               parameter_map=None):
+               parameter_map=None,
+               eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.4f"
     asu_mappings = pair_asu_table.asu_mappings()
@@ -306,8 +307,8 @@ class distances_as_cif_loop(object):
     for d in distances:
       if site_labels[d.i_seq].startswith('H') or site_labels[d.j_seq].startswith('H'):
         continue
-      if d.variance is not None and d.variance != 0:
-        distance = format_float_with_su(d.distance, math.sqrt(abs(d.variance)))
+      if d.variance is not None and d.variance > eps:
+        distance = format_float_with_su(d.distance, math.sqrt(d.variance))
       else:
         distance = fmt % d.distance
       sym_code = space_group_info.cif_symmetry_code(d.rt_mx_ji)
@@ -328,7 +329,8 @@ class angles_as_cif_loop(object):
                sites_cart=None,
                covariance_matrix=None,
                cell_covariance_matrix=None,
-               parameter_map=None):
+               parameter_map=None,
+               eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.1f"
     asu_mappings = pair_asu_table.asu_mappings()
@@ -355,8 +357,8 @@ class angles_as_cif_loop(object):
       sym_code_ki = space_group_info.cif_symmetry_code(a.rt_mx_ki)
       if sym_code_ji == "1": sym_code_ji = "."
       if sym_code_ki == "1": sym_code_ki = "."
-      if a.variance is not None and a.variance != 0:
-        angle = format_float_with_su(a.angle, math.sqrt(abs(a.variance)))
+      if a.variance is not None and a.variance > eps:
+        angle = format_float_with_su(a.angle, math.sqrt(a.variance))
       else:
         angle = fmt % a.angle
       self.loop.add_row((site_labels[i_seq],
