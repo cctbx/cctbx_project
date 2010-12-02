@@ -1325,10 +1325,11 @@ class structure(crystal.special_position_settings):
     cif[data_name] = self.as_cif_block()
     print >> out, cif
 
-  def as_cif_block(self, covariance_matrix=None):
+  def as_cif_block(self, covariance_matrix=None, cell_covariance_matrix=None):
     import iotbx.cif
     return iotbx.cif.xray_structure_as_cif_block(
-      self, covariance_matrix=covariance_matrix).cif_block
+      self, covariance_matrix=covariance_matrix,
+      cell_covariance_matrix=cell_covariance_matrix).cif_block
 
   def as_pdb_file(self,
         remark=None,
