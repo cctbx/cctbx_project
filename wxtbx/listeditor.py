@@ -5,7 +5,6 @@ import wx
 import sys
 
 class ListEditor (wx.Panel) :
-  header_label = "Items"
   def __init__ (self, *args, **kwds) :
     wx.Panel.__init__(self, *args, **kwds)
     self._default_label = "---"
@@ -15,14 +14,26 @@ class ListEditor (wx.Panel) :
       parent=self,
       id=-1,
       style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
-    self.list.InsertColumn(0, self.header_label, width=460)
+    self.list.InsertColumn(0, "Items", width=460)
     self.list.SetMinSize((480,160))
     self.list.SetItemSpacing(5)
     self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.list)
     self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self.list)
     szr.Add(self.list, 1, wx.EXPAND|wx.ALL, 5)
-    btn_szr = self.CreateButtons()
-    szr.Add(btn_szr, 0, wx.LEFT|wx.BOTTOM|wx.RIGHT, 5)
+    self.buttons = wx.BoxSizer(wx.HORIZONTAL)
+    add_btn = self.AddControlButton(
+      label="Add",
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "edit_add", 16))
+    self.Bind(wx.EVT_BUTTON, self.OnAdd, add_btn)
+    del_btn = self.AddControlButton(
+      label="Delete",
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete", 16))
+    self.Bind(wx.EVT_BUTTON, self.OnDelete, del_btn)
+    update_btn = self.AddControlButton(
+      label="Update item",
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "recur", 16))
+    self.Bind(wx.EVT_BUTTON, self.OnUpdate, update_btn)
+    szr.Add(self.buttons, 0, wx.LEFT|wx.BOTTOM|wx.RIGHT, 5)
     edit_szr = wx.BoxSizer(wx.HORIZONTAL)
     edit_label = wx.StaticText(
       parent=self,
@@ -36,31 +47,40 @@ class ListEditor (wx.Panel) :
     edit_szr.Add(self.edit, 1, wx.EXPAND|wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, 5)
     szr.Add(edit_szr, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.BOTTOM, 5)
     szr.Layout()
+    self.sizer = szr
+    self._label = None
+    self._callback = None
 
-  def CreateButtons (self) :
-    btn_szr = wx.BoxSizer(wx.HORIZONTAL)
-    add_btn = metallicbutton.MetallicButton(
+  def SetLabel (self, label, font_weight=wx.FONTWEIGHT_BOLD) :
+    if (self._label is not None) :
+      self._label.SetLabel(label)
+    else :
+      self._label = wx.StaticText(parent=self, label=label)
+      font = self._label.GetFont()
+      font.SetWeight(font_weight)
+      self._label.SetFont(font)
+      self.sizer.Insert(0, self._label, 0, wx.TOP|wx.LEFT, 5)
+    self.sizer.Layout()
+
+  def SetColumnHeader (self, header) :
+    col = self.list.GetColumn(0)
+    col.SetText(header)
+    self.list.SetColumn(0, col)
+
+  def SetToolTip (self, tool_tip) :
+    if isinstance(tool_tip, str) :
+      self.list.SetToolTip(wx.ToolTip(tool_tip))
+    else :
+      self.list.SetToolTip(tool_tip)
+
+  def AddControlButton (self, label, bitmap) :
+    btn = metallicbutton.MetallicButton(
       parent=self,
-      label="Add",
-      bmp=wxtbx.bitmaps.fetch_icon_bitmap("actions", "edit_add", 16),
+      label=label,
+      bmp=bitmap,
       highlight_color=(200,220,240))
-    self.Bind(wx.EVT_BUTTON, self.OnAdd, add_btn)
-    del_btn = metallicbutton.MetallicButton(
-      parent=self,
-      label="Delete",
-      bmp=wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete", 16),
-      highlight_color=(200,220,240))
-    self.Bind(wx.EVT_BUTTON, self.OnDelete, del_btn)
-    update_btn = metallicbutton.MetallicButton(
-      parent=self,
-      label="Update item",
-      bmp=wxtbx.bitmaps.fetch_icon_bitmap("actions", "recur", 16),
-      highlight_color=(200,220,240))
-    self.Bind(wx.EVT_BUTTON, self.OnUpdate, update_btn)
-    btn_szr.Add(add_btn, 0, wx.RIGHT, 5)
-    btn_szr.Add(del_btn, 0, wx.RIGHT, 5)
-    btn_szr.Add(update_btn, 0, wx.RIGHT, 5)
-    return btn_szr
+    self.buttons.Add(btn, 0, wx.RIGHT, 5)
+    return btn
 
   def AddItem (self, item) :
     return self.list.InsertStringItem(sys.maxint, item)
@@ -69,11 +89,13 @@ class ListEditor (wx.Panel) :
     i = self.AddItem(self._default_label)
     self.list.Select(i, 1)
     self.edit.SetFocus()
+    self.call_back()
 
   def OnDelete (self, event) :
     i = self.list.GetFirstSelected()
     self.list.DeleteItem(i)
     self.edit.SetValue("")
+    self.call_back()
 
   def OnUpdate (self, event) :
     evt_type = event.GetEventType()
@@ -88,6 +110,7 @@ class ListEditor (wx.Panel) :
     else :
       self.list.SetItemText(i, txt)
     self.list.SetFocus()
+    self.call_back()
 
   def OnSelect (self, event) :
     item = self.list.GetFirstSelected()
@@ -95,9 +118,11 @@ class ListEditor (wx.Panel) :
     if (txt == self._default_label) :
       txt = ""
     self.edit.SetValue(txt)
+    self.call_back()
 
   def OnDeSelect (self, event) :
     self.edit.SetValue("")
+    self.call_back()
 
   def SetDefaultItemLabel (self, label) :
     self._default_label = label
@@ -105,12 +130,39 @@ class ListEditor (wx.Panel) :
   def GetValues (self) :
     items = []
     i = 0
-    while (i < self.list.GetItemCount()) :
+    n = self.list.GetItemCount()
+    while (i < n) :
       txt = self.list.GetItemText(i)
       if (txt == self._default_label) :
         txt = None
       items.append(txt)
+      i += 1
     return items
+
+  def DeleteAllItems (self) :
+    self.list.DeleteAllItems()
+    self.call_back()
+
+  def SetSelectedValue (self, txt) :
+    i = self.list.GetFirstSelected()
+    if (i == -1) :
+      return
+    self.list.SetItemText(i, txt)
+    self.edit.SetValue(txt)
+
+  def GetSelectedValue (self) :
+    i = self.list.GetFirstSelected()
+    if (i == -1) :
+      return None
+    return self.list.GetItemText(i)
+
+  def SetCallback (self, callback) :
+    assert hasattr(callback, "__call__")
+    self._callback = callback
+
+  def call_back (self) :
+    if (self._callback is not None) :
+      self._callback()
 
 if __name__ == "__main__" :
   app = wx.App(0)
@@ -118,6 +170,8 @@ if __name__ == "__main__" :
   szr = wx.BoxSizer(wx.VERTICAL)
   frame.SetSizer(szr)
   panel = ListEditor(parent=frame)
+  panel.SetLabel("TLS groups:")
+  panel.SetColumnHeader("Atom selection")
   szr.Add(panel, 1, wx.EXPAND)
   szr.Layout()
   szr.Fit(panel)
