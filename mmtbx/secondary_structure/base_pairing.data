@@ -1,16 +1,71 @@
 # columns:
-# pair_type   paired_bases    hydrogen_flag   atom_pair   [atom_pair ...]
+# pair_type   saenger   paired_bases    hydrogen_flag   atom_pair   [atom_pair ...]
 #
 # Canonical Watson-Crick base pairings
-WWT   CG    +   H42,O6    N3,H1   O2,H22
-WWT   AU    +   H61,O4    N1,H3
-WWT   AT    +   H61,O4    N1,H3
-WWT   GU    +   H1,O2     O6,H3
-WWT   CG    -   N4,O6     N3,N1   O2,N2
-WWT   AU    -   N6,O4     N1,N3
-WWT   AT    -   N6,O4     N1,N3
-WWT   GU    -   N1,O2     O6,N3
-WWT   DCDG  +   H42,O6    N3,H1   O2,H22
-WWT   DADT  +   H61,O4    N1,H3
-WWT   DCDG  -   N4,O6     N3,N1   O2,N2
-WWT   DADT  -   N6,O4     N1,N3
+WWT  _       AT    +   H61,O4    N1,H3
+WWT  _       AT    -   N6,O4     N1,N3
+WWT  _       DCDG  +   H42,O6    N3,H1   O2,H22
+WWT  _       DADT  +   H61,O4    N1,H3
+WWT  _       DCDG  -   N4,O6     N3,N1   O2,N2
+WWT  _       DADT  -   N6,O4     N1,N3
+#homo purine  
+_    I       AA    +   H61,N1    N1,H61
+_    I       AA    -   N6,N1     N1,N6
+_    II      AA    +   H62,N7    N7,H62
+_    II      AA    -   N6,N7     N7,N6
+_    III     GG    +   H1,O6     O6,H1
+_    III     GG    -   N1,O6     O6,N1
+_    IV      GG    +   H21,N3    N3,H21
+_    IV      GG    -   N2,N3     N3,N2
+_    V       AA    +   H62,N1    N7,H61
+_    V       AA    -   N6,N1     N7,N1
+_    VI      GG    +   O6,H1     N7,H22
+_    VI      GG    -   O6,N1     N7,N2
+_    VII     GG    +   N7,H1     O6,H22
+_    VII     GG    -   N7,N1     O6,N2
+#hetero purine
+_    VIII    AG    +   H61,O6    N1,H1
+_    VIII    AG    -   N6,O6     N1,N1
+_    IX      AG    +   H62,O6    N7,H1
+_    IX      AG    -   N6,O6     N7,N1
+_    X       AG    +   H61,N3    N1,H21
+_    X       AG    -   N6,N3     N1,N2
+_    XI      AG    +   H62,N3    N7,H21
+_    XI      AG    -   N6,N3     N7,N2
+#homo pyrimidine
+_    XII     UU    +   H3,O4     O4,H3
+_    XII     UU    -   N3,O4     O4,N3
+_    XIII    UU    +   O2,H3     H3,O2
+_    XIII    UU    -   O2,N3     N3,O2
+_    XIV     CC    +   N3,H42    H42,N3
+_    XIV     CC    -   N3,N4     N4,N3
+_    XV      CC    +   O2,H42    H42,O2
+_    XV      CC    -   O2,N4     N4,O2
+_    XVI     UU    +   H3,O4     O2,H3
+_    XVI     UU    -   N3,O4     O2,N3
+#hetero pyrimidine
+_    XVII    CU    +   N3,H3     H42,O2
+_    XVII    CU    -   N3,N3     N4,O2
+_    XVIII   CU    +   H42,O4    N3,H3
+_    XVIII   CU    -   N4,O4     N3,N3
+#purine - pyrimidine
+WWT  XIX     CG    +   H42,O6    N3,H1   O2,H22
+WWT  XIX     CG    -   N4,O6     N3,N1   O2,N2
+WWT  XX      AU    +   H61,O4    N1,H3
+WWT  XX      AU    -   N6,O4     N1,N3
+_    XXI     AU    +   H61,O2    N1,H3
+_    XXI     AU    -   N6,O2     N1,N3
+_    XXII    CG    +   O2,H1     N3,H22
+_    XXII    CG    -   O2,N1     N3,N2
+_    XXIII   AU    +   H62,O4    N7,H3
+_    XXIII   AU    -   N6,O4     N7,N3
+_    XXIV    AU    +   H62,O2    N7,H3
+_    XXIV    AU    -   N6,O2     N7,N3
+_    XXV     AC    +   H62,N3    N7,H42
+_    XXV     AC    -   N6,N3     N7,N4
+_    XXVI    AC    +   H61,N3    N1,H42
+_    XXVI    AC    -   N6,N3     N1,N4
+_    XXVII   GU    +   O6,H3     H1,O4
+_    XXVII   GU    -   O6,N3     N1,O4
+WWT  XXVIII  GU    +   O6,H3     H1,O2
+WWT  XXVIII  GU    -   O6,N3     N1,O2

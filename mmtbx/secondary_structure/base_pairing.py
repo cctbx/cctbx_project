@@ -12,14 +12,25 @@ base_pair
     .type = str
   base2 = None
     .type = str
-  pair_type = *wwt
+  saenger_class = None
+    .type = str
+    .optional = True
+    .caption = Saenger number if applicable
+    .help = reference
+  leontis_westhof_class = *wwt
     .type = choice
     .caption = Watson-Crick
+    .help = reference
 # TODO
 #  planar = False
 #    .type = bool
 }
 """
+
+saenger_list = [ "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+                 "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII",
+                 "XIX", "XX", "XXI", "XXII", "XXIII", "XXIV", "XXV", "XXVI",
+                 "XXVII", "XXVIII" ]
 
 class pair_database (object) :
   def __init__ (self) :
@@ -31,22 +42,29 @@ class pair_database (object) :
       if line.startswith("#") :
         continue
       fields = line.strip().split()
-      assert len(fields) >= 4
-      pair_type = fields[0]
-      paired_bases = fields[1]
-      hydrogen_flag = fields[2]
-      atom_pairs = [ (p.split(",")[0], p.split(",")[1]) for p in fields[3:] ]
+      assert len(fields) >= 5
+      lw_class = fields[0]
+      if lw_class == '_':
+        lw_class = 'other'
+      saenger_class = fields[1]
+      if saenger_class == '_':
+        saenger_class = None
+      paired_bases = fields[2]
+      hydrogen_flag = fields[3]
+      atom_pairs = [ (p.split(",")[0], p.split(",")[1]) for p in fields[4:] ]
       if hydrogen_flag == '+' :
         db = self._h_bond_pairs
       else :
         db = self._pseudo_bond_pairs
-      if pair_type in db :
-        if paired_bases in db[pair_type] :
-          raise RuntimeError("Duplicate entry in base pair dictionary, line %d"
-            % i)
-      else :
-        db[pair_type] = {}
-      db[pair_type][paired_bases] = atom_pairs
+      for key in [saenger_class, lw_class]:
+        if key != None and key != 'other':
+          if key in db :
+            if paired_bases in db[key] :
+              raise RuntimeError("Duplicate entry in base pair dictionary, line %d"
+                % i)
+          else :
+            db[key] = {}
+          db[key][paired_bases] = atom_pairs
 
   def get_atoms (self, base_pair, pair_type, use_hydrogens=False) :
     if use_hydrogens :
@@ -64,25 +82,41 @@ class pair_database (object) :
 
   def get_pair_type (self, base_pair, atom_pairs, use_hydrogens=False) :
     return_pair_type = None
+    inverted_atom_pairs = invert_pairs(atom_pairs)
     if use_hydrogens :
       db = self._h_bond_pairs
     else:
       db = self._pseudo_bond_pairs
     for pair_type in db:
       if base_pair in db[pair_type]:
-        if db[pair_type][base_pair].sort(key=sort_tuple) == atom_pairs.sort(key=sort_tuple):
+        db[pair_type][base_pair].sort(key=sort_tuple)
+        atom_pairs.sort(key=sort_tuple)
+        if db[pair_type][base_pair] == atom_pairs:
           if return_pair_type is None:
             return_pair_type = pair_type
+          elif (not is_saenger(return_pair_type)) and (is_saenger(pair_type)):
+            return_pair_type = pair_type
+          elif (is_saenger(return_pair_type)) and (not is_saenger(pair_type)):
+            pass
           else:
+            print return_pair_type, pair_type
             raise RuntimeError("Redundant entries found for base pair %s." % base_pair)
       elif base_pair[::-1] in db[pair_type]:
-        if db[pair_type][base_pair[::-1]].sort(key=sort_tuple) == \
-           invert_pairs(atom_pairs).sort(key=sort_tuple):
+        db[pair_type][base_pair[::-1]].sort(key=sort_tuple)
+        inverted_atom_pairs.sort(key=sort_tuple)
+        if db[pair_type][base_pair[::-1]] == \
+           inverted_atom_pairs:
           if return_pair_type is None:
             return_pair_type = pair_type
           else:
             raise RuntimeError("Redundant entries found for base pair %s." % base_pair)
     return return_pair_type
+
+def is_saenger(key):
+  if key in saenger_list:
+    return True
+  else:
+    return False
 
 def invert_pairs(h_bond_atoms):
   inverted_h_bond_atoms = []
@@ -95,8 +129,15 @@ def sort_tuple(tuple):
 
 db = pair_database()
 
-def get_h_bond_atoms(residues, pair_type, use_hydrogens=False):
+def get_h_bond_atoms(residues,
+                     saenger_class,
+                     leontis_westhof_class,
+                     use_hydrogens=False):
   base_pair = residues[0].strip()[0] + residues[1].strip()[0]
+  if saenger_class != None:
+    pair_type = saenger_class
+  else:
+    pair_type = leontis_westhof_class
   return db.get_atoms(base_pair, pair_type, use_hydrogens)
 
 def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
@@ -161,6 +202,9 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
     atom2 = bases[1][11:15]
     base_key = base1+base2
     bond_key = atom1.strip()+','+atom2.strip()
+    #filter out carbon weak h-bonds for the time being
+    if atom1.strip()[0] == 'C' or atom2.strip()[0] == 'C':
+      continue
     if (not base_key in hbond_hash):
       hbond_hash[base_key] = {}
     if (not bond_key in hbond_hash[base_key]) :
@@ -176,7 +220,6 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
     if (len(pair_hash[key]) >= 2) :
       pair_hash[key].sort(key=sort_tuple)
       reduced_pair_hash[key] = pair_hash[key]
-
   base_pair_list = []
   for pair in reduced_pair_hash :
     bases = (pair[:10], pair[10:])
@@ -207,12 +250,16 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
       if (chain == "") :
         chain = " "
       chains.append(chain)
+    if (is_saenger(pair_type)):
+      type_key = "saenger_class"
+    else:
+      type_key = "leontis_westhof_class"
     phil_strings.append("""base_pair {
   base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
   base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"
-  pair_type = %s
+  %s = %s
 }""" % (chains[0], segid_extra, bases[0][2:6], chains[1], segid_extra,
-        bases[1][2:6], pair_type))
+        bases[1][2:6], type_key, pair_type))
   phil_str = """nucleic_acids {\n%s\n}""" % ("\n".join(phil_strings))
   if prefix is not None :
     return """%s {\n%s\n}""" % (prefix, phil_str)
@@ -224,9 +271,9 @@ def exercise () :
     assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
     assert (db.get_atoms("GC", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
       ('N2', 'O2')])
-    assert db.get_pair_type("AU", [('H61', 'O4'), ('N1', 'H3')], True) == "WWT"
-    assert db.get_pair_type("AU", [('N1', 'H3'), ('H61', 'O4')], True) == "WWT"
-    assert db.get_pair_type("CG", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "WWT"
+    assert db.get_pair_type("AU", [('H61', 'O4'), ('N1', 'H3')], True) == "XX"
+    assert db.get_pair_type("AU", [('N1', 'H3'), ('H61', 'O4')], True) == "XX"
+    assert db.get_pair_type("CG", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
   else:
     print "Skipping: probe and/or reduce not available"
   print "OK"
