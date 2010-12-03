@@ -170,7 +170,6 @@ reference_model
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
   rm = reference_model()
   master_phil = get_master_phil()
-  #print master_phil.show()
   input_objects = iotbx.utils.process_command_line_inputs(
     args=args,
     master_phil=master_phil,
@@ -307,6 +306,9 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
   master_phil_str_overrides = """
   reference_model {
     auto_align = True
+    alignment{
+      similarity_matrix =  blosum50
+    }
   }
   """
   phil_objects = [
@@ -321,6 +323,9 @@ C 237 LEU:52.8:179.1:57.3:::tp"""
   master_phil_str_overrides = """
   reference_model {
     auto_align = True
+    alignment{
+      similarity_matrix = identity
+    }
     alignment_group {
       reference = resid 270
       selection = resid 236
