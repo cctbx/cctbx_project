@@ -175,7 +175,7 @@ class mere_file_test_case(io_test_case):
     self.file_object.close()
 
   def create_file_object(self, mode):
-    fd, name = tempfile.mkstemp()
+    fd, name = tempfile.mkstemp(dir=".")
     if mode.find('r') > -1:
       os.write(fd, self.phrase)
     os.close(fd)
@@ -198,7 +198,7 @@ def time_it(path, buffer_size):
   input = open(path, 'r')
   inp_buf = streambuf(python_file_obj=input, buffer_size=buffer_size)
   ext.time_read(input.name, inp_buf)
-  fd, name = tempfile.mkstemp()
+  fd, name = tempfile.mkstemp(dir=".")
   output = open(name, 'w')
   out_buf = streambuf(python_file_obj=output, buffer_size=buffer_size)
   ext.time_write(name, out_buf)
