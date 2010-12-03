@@ -408,7 +408,8 @@ def hydrogen_bonds_from_selections (
           atoms=atoms)
         atom_pairs = base_pairing.get_h_bond_atoms(
           residues=(resname1,resname2),
-          pair_type=base_pair.pair_type.upper(),
+          saenger_class=base_pair.saenger_class.upper(),
+          leontis_westhof_class=base_pair.leontis_westhof_class.upper(),
           use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
         for (name1, name2) in atom_pairs :
           sele1 = """name %s and %s""" % (name1, base_pair.base1)
@@ -417,7 +418,8 @@ def hydrogen_bonds_from_selections (
           # doesn't really matter here.
           (i_seq,j_seq) = _hydrogen_bond_from_selection_pair(sele1, sele2,
             selection_cache)
-          if has_bond[i_seq] or has_bond[j_seq] :
+          if (has_bond[i_seq] and atoms[i_seq].element.strip() != 'N') \
+             or (has_bond[j_seq] and atoms[j_seq].element.strip() != 'N'):
             print >> log, "One or more atoms already bonded:"
             print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
             print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
