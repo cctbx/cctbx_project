@@ -887,7 +887,8 @@ def run(args,
       selection             = None,
       set_cc_to_zero_if_n_grid_points_less_than = 50,
       poor_cc_threshold                         = 0.7,
-      poor_map_value_threshold                  = 1.0)
+      poor_map_1_value_threshold                = 1.0,
+      poor_map_2_value_threshold                = 1.0)
   #
   if(command_line.options.r_factor_per_reflection):
     fmodel_cut.r_work_per_reflection()

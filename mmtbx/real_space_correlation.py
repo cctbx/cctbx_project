@@ -545,7 +545,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     map_2_name                                = params.map_2.map_type,
     set_cc_to_zero_if_n_grid_points_less_than = params.set_cc_to_zero_if_n_grid_points_less_than,
     poor_cc_threshold                         = params.poor_cc_threshold,
-    poor_map_value_threshold                  = params.poor_map_value_threshold)
+    poor_map_1_value_threshold                = params.poor_map_value_threshold,
+    poor_map_2_value_threshold                = params.poor_map_value_threshold)
   show_result(result = result, show_hydrogens = False)
   map_cc_obj.overall_correlation_min_max_standard_deviation()
 
@@ -632,7 +633,8 @@ class map_cc_funct(object):
   def map_cc(self, map_2,
                    set_cc_to_zero_if_n_grid_points_less_than,
                    poor_cc_threshold,
-                   poor_map_value_threshold,
+                   poor_map_1_value_threshold,
+                   poor_map_2_value_threshold,
                    map_2_name = None):
     assert self.map_1_size == map_2.size()
     self.map_2_stat = maptbx.statistics(map_2)
@@ -652,7 +654,7 @@ class map_cc_funct(object):
           ed2 = map_2.eight_point_interpolation(scatterer.site)
           xyz = self._result[i_seq].xyz
           poor_flag = False
-          if(((ed2 < poor_map_value_threshold or ed1 < poor_map_value_threshold)
+          if(((ed2 < poor_map_2_value_threshold or ed1 < poor_map_1_value_threshold)
              or corr < poor_cc_threshold)):
             poor_flag = True
           a = None
@@ -697,7 +699,7 @@ class map_cc_funct(object):
           ed2_.append(map_2.eight_point_interpolation(scatterers[i_seq].site))
         ed2 = flex.mean(ed2_)
         poor_flag = False
-        if(((ed2 < poor_map_value_threshold or ed1 < poor_map_value_threshold)
+        if(((ed2 < poor_map_2_value_threshold or ed1 < poor_map_1_value_threshold)
            or corr < poor_cc_threshold)):
           poor_flag = True
         self.result.append(group_args(
@@ -784,6 +786,7 @@ def simple(fmodel,
            pdb_hierarchy         = None,
            map_1_name            = "Fc",
            map_2_name            = "2mFo-DFc",
+           diff_map_name         = "mFo-DFc",
            details_level         = "automatic",
            atom_radius           = None,
            hydrogen_atom_radius  = 1.0,
@@ -792,10 +795,11 @@ def simple(fmodel,
            log                   = None,
            show_hydrogens        = False,
            selection             = None,
-           diff_map              = "mFo-DFc",
            set_cc_to_zero_if_n_grid_points_less_than = 50,
            poor_cc_threshold                         = 0.7,
-           poor_map_value_threshold                  = 1.0):
+           poor_map_1_value_threshold = 1.0,
+           poor_map_2_value_threshold = 1.0,
+           poor_diff_map_value_threshold = 2.0):
     if(fmodel.twin):
       raise Sorry("Not available for twinned data.")
     atom_detail, residue_detail, atom_radius = set_details_level_and_radius(
@@ -845,18 +849,20 @@ def simple(fmodel,
       map_2_name                                = map_2_name,
       set_cc_to_zero_if_n_grid_points_less_than = set_cc_to_zero_if_n_grid_points_less_than,
       poor_cc_threshold                         = poor_cc_threshold,
-      poor_map_value_threshold                  = poor_map_value_threshold)
+      poor_map_1_value_threshold                = poor_map_1_value_threshold,
+      poor_map_2_value_threshold                = poor_map_2_value_threshold)
     del map_2
-    if(atom_detail and diff_map is not None):
+    if(atom_detail and diff_map_name is not None):
       fft_map_3 = fmodel.electron_density_map().fft_map(
         other_fft_map  = fft_map_1,
-        map_type       = diff_map,
+        map_type       = diff_map_name,
         symmetry_flags = maptbx.use_space_group_symmetry)
       fft_map_3.apply_sigma_scaling()
       map_3 = fft_map_3.real_map_unpadded()
       for i_seq, r in enumerate(result):
         ed3 = map_3.eight_point_interpolation(r.scatterer.site)
         r.residual_map_val = ed3
+        if(abs(ed3) > abs(poor_diff_map_value_threshold)): r.poor_flag=True
       del map_3
     if(show):
       show_result(result = result, show_hydrogens = show_hydrogens, log = log)
