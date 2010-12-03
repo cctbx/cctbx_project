@@ -120,6 +120,20 @@ Completeness with d_max=infinity: 1
   for deg in [False, True]:
     p = s.random_phases_compatible_with_phase_restrictions(deg=deg).data()
     assert s.space_group().is_valid_phase((0,0,1), p[1], deg)
+  #
+  s = miller.set(
+    crystal_symmetry=xs,
+    indices=flex.miller_index(((1,2,3), (0,0,0))),
+    anomalous_flag=False)
+  r = s.resolution_filter_selection
+  assert list(r()) == [True, True]
+  assert list(r(d_max=0, d_min=0)) == [True, True]
+  assert list(r(d_max=1.1)) == [False, False]
+  assert list(r(d_max=1.2)) == [True, False]
+  assert list(r(d_min=1.1)) == [True, True]
+  assert list(r(d_min=1.2)) == [False, True]
+  assert list(r(d_max=1.2, d_min=1.1)) == [True, False]
+  assert list(r(d_max=1.1, d_min=1.2)) == [False, False]
 
 def exercise_enforce_positive_amplitudes():
   from cctbx.xray import observation_types

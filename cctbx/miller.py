@@ -580,11 +580,11 @@ class set(crystal.symmetry):
       selection=self.sys_absent_flags().data(),
       negate=not negate)
 
-  def resolution_filter_selection(self, d_max=0, d_min=0):
-    d = self.d_spacings().data()
+  def resolution_filter_selection(self, d_max=None, d_min=None):
     result = self.all_selection()
-    if (d_max is not None and d_max > 0): result &= d <= d_max
-    if (d_min is not None and d_min > 0): result &= d >= d_min
+    d_star = flex.sqrt(self.d_star_sq().data())
+    if (d_max is not None and d_max > 0): result &= (d_star >= 1/d_max)
+    if (d_min is not None and d_min > 0): result &= (d_star <= 1/d_min)
     return result
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
