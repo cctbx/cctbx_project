@@ -9,7 +9,7 @@ real_space_refinement
   .short_caption = Real-space refinement
   .style = menu_item auto_align
 {
-    mode = simple *diff_map
+    mode = simple diff_map *lockit
       .type = choice(multi=False)
       .help = Real space refinement method (diff_map is much slower but might \
               have larger convergence radius especially at low resolution)

@@ -1957,6 +1957,8 @@ class manager(manager_mixin):
   def filter_by_fom(self, fom_threshold = 0.2):
     fom = self.figures_of_merit()
     sel = fom > fom_threshold
+    dsel = self.f_obs.d_spacings().data() < 5.
+    sel = sel.set_selected(~dsel,True)
     self = self.select(sel)
     return self
 

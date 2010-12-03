@@ -20,10 +20,12 @@ def manager(simulated_annealing_params,
             monitor=None):
   if(out is None): out = sys.stdout
   print_statistics.make_header("simulated annealing refinement", out = out)
+  model.set_refine_individual_sites()
+  fmodel = fmodels.fmodel_xray() # XXX use only xray data
+  fmodel.xray_structure = model.xray_structure # XXX use only xray data
   if (simulated_annealing_params.max_number_of_iterations >= 0):
     print_statistics.make_sub_header(
       "lbfgs minimization: before simulated annealing", out = out)
-    model.set_refine_individual_sites()
     is_neutron_scat_table = False
     if(all_params.main.scattering_table == "neutron"):
       is_neutron_scat_table = True
@@ -40,8 +42,6 @@ def manager(simulated_annealing_params,
       h_params                 = h_params,
       verbose                  = 0)
     minimized.monitor.show(message = "LBFGS minimization", log  = out)
-  fmodel = fmodels.fmodel_xray() # XXX use only xray data
-  model.xray_structure = fmodel.xray_structure # XXX use only xray data
   fmodel.update_xray_structure(xray_structure = model.xray_structure,
                                update_f_calc  = True,
                                update_f_mask  = True,
