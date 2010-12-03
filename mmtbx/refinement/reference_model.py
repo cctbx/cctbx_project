@@ -151,7 +151,6 @@ class reference_model(object):
                     log=sys.stdout):
     res_match_hash = {}
     model_mseq_res_hash = {}
-    #print selections
     model_seq, model_structures = self.extract_sequence_and_sites(
       pdb_hierarchy=pdb_hierarchy,
       selection=selections[0])
@@ -175,8 +174,11 @@ class reference_model(object):
     exact_match_selections = alignment.exact_match_selections()
     exact_a = tuple(exact_match_selections[0])
     exact_b = tuple(exact_match_selections[1])
-    for i, i_seq in enumerate(exact_a):
-      res_match_hash[model_mseq_res_hash[i_seq]] = ref_mseq_res_hash[exact_b[i]]
+    for i, i_seq in enumerate(alignment.i_seqs_a):
+      if i_seq != None:
+        if alignment.i_seqs_b[i] != None and matches[i] in ['*','|']:
+          res_match_hash[model_mseq_res_hash[i_seq]] = \
+            ref_mseq_res_hash[alignment.i_seqs_b[i]]
     print >> log, "  --> aligning model sequence to reference sequence"
     alignment.pretty_print(block_size  = 50,
                            n_block     = 1,
