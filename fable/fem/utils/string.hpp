@@ -161,18 +161,17 @@ namespace fem { namespace utils {
     char const* rhs)
   {
     static const char blank = ' ';
-    size_t i = 0;
-    for(;i<lhs_size;i++) {
-      if (rhs[i] == '\0') {
+    for(size_t i=0;i<lhs_size;i++) {
+      if (*rhs == '\0') {
         for(;i<lhs_size;i++) {
           if (lhs[i] != blank) return false;
         }
         return true;
       }
-      if (rhs[i] != lhs[i]) return false;
+      if (*rhs++ != lhs[i]) return false;
     }
-    for(; rhs[i] != '\0'; i++) {
-      if (rhs[i] != blank) return false;
+    while(*rhs != '\0') {
+      if (*rhs++ != blank) return false;
     }
     return true;
   }
