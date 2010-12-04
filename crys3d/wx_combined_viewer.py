@@ -91,22 +91,17 @@ class map_scene (object) :
       self.mesh_display_list = gltbx.gl_managed.display_list()
       self.mesh_display_list.compile()
       glMatrixMode(GL_MODELVIEW)
-      glLineWidth(0.2)
       gltbx.util.handle_error()
       glPushMatrix()
       try :
         glMultTransposeMatrixd(self.orthogonaliser)
         for i, triangulation in enumerate(self.triangles) :
-          glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
           if self.flag_use_materials :
             pass
           #  self.materials[i].execute(specular=False)
-          #  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
           else :
             glColor3f(*self.colors[i])
-          va = gltbx.util.vertex_array(triangulation.vertices,
-                                     triangulation.normals)
-          va.draw_triangles(triangulation.triangles)
+          gltbx.util.IsoMesh(triangulation.vertices, triangulation.triangles)
       finally :
         glPopMatrix()
       self.mesh_display_list.end()
@@ -141,8 +136,8 @@ class map_viewer_mixin (wxGLWindow) :
     glEnable(GL_DEPTH_TEST)
     glShadeModel(GL_SMOOTH)
     vendor = glGetString(GL_VENDOR)
-    if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
-      self.flag_smooth_lines = False
+    if (sys.platform == "darwin") and vendor.startswith("NVIDIA") :
+      print vendor
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
     self.initialize_modelview()
@@ -275,12 +270,16 @@ class map_viewer_mixin (wxGLWindow) :
     gltbx.util.handle_error()
     if self.flag_use_materials :
       glLightfv(GL_LIGHT0, GL_AMBIENT, [0., 0., 0., 1.])
-    if self.flag_use_lights :
-      glDisable(GL_LIGHTING)
+    elif self.flag_use_lights :
       glDisable(GL_LIGHT0)
-      glDisable(GL_BLEND)
-    if not self.flag_smooth_lines :
-      glDisable(GL_LINE_SMOOTH)
+      glDisable(GL_LIGHTING)
+    #glDisable(GL_BLEND)
+    glLineWidth(1.0)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+    glEnable(GL_LINE_SMOOTH)
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
     for map_id, scene in self.map_scenes.iteritems() :
       if self.show_object[map_id] :
         scene.draw_mesh()
@@ -311,12 +310,16 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def InitGL (self) :
     selection_editor_mixin.InitGL(self)
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
-    glShadeModel(GL_SMOOTH)
     vendor = glGetString(GL_VENDOR)
     if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
-      self.flag_smooth_lines = False
-    glEnableClientState(GL_VERTEX_ARRAY)
-    glEnableClientState(GL_NORMAL_ARRAY)
+      print vendor
+    if (wx.VERSION[1] >= 9) and ("GL_MULTISAMPLE" in globals().keys()) :
+      print "glEnable(GL_MULTISAMPLE)"
+      glEnable(GL_MULTISAMPLE)
+    glEnable(GL_POLYGON_SMOOTH)
+    n = [0]
+    glGetIntegerv(GL_SAMPLE_BUFFERS, n)
+    print n
 
   def OnRedrawGL (self, event=None) :
     if self._debug_mode :
