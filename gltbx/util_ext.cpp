@@ -330,6 +330,20 @@ namespace gltbx { namespace util {
       input_type normals_;
   };
 
+  void IsoMesh (
+    af::const_ref< scitbx::vec3< double > > const& vertices,
+    af::const_ref< af::tiny<int, 3> > const& triangles)
+  {
+    for (std::size_t i = 0; i < triangles.size(); i++) {
+      glBegin(GL_TRIANGLES);
+      for (int j=0; j<3; j++) {
+        scitbx::vec3< double > const& vertex = vertices[triangles[i][j]];
+        glVertex3f(vertex[0], vertex[1], vertex[2]);
+      }
+      glEnd();
+    }
+  }
+
   //! Based on freeglut-2.4.0/src/freeglut_geometry.c
   /* Compute lookup table of cos and sin values forming a cirle
    *
@@ -612,6 +626,9 @@ namespace gltbx { namespace util {
       arg("radius"),
       arg("slices"),
       arg("stacks")));
+    def("IsoMesh", IsoMesh, (
+      arg("vertices"),
+      arg("triangles")));
     {
       // compatibility with scitbx/iso_surface/iso_surface_ext.cpp
       typedef af::c_grid_padded_periodic<3>::index_value_type ivt;

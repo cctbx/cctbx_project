@@ -123,12 +123,14 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.initLeft = (0,0)
     self.was_dragged = False
     self.pick_points = None
+    self.light0_position = [0, 0, 100, 0]
 
   def OnEraseBackground(self, event):
     pass # Do nothing, to avoid flashing on MSW.
 
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
+    print self.w, self.h
     if (self.GetContext() and self.GetParent().IsShown()):
       if (self.context is not None) :
         self.SetCurrent(self.context)
@@ -254,6 +256,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glOrtho(left, right, bottom, top, near, far)
     else:
       gluPerspective(self.field_of_view_y, aspect, near, far)
+    self.set_lights()
     self.setup_fog()
 
   def get_clipping_distances (self) :
@@ -266,6 +269,28 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     if near < self.min_near :
       near = self.min_near
     return (near, far)
+
+  def setup_lighting (self) :
+    if self.flag_use_lights :
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glEnable(GL_BLEND)
+      #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+      glBlendFunc(GL_SRC_ALPHA,GL_ZERO)
+      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+      glLightfv(GL_LIGHT0, GL_AMBIENT, [0.0, 0.0, 0.0, 1.0])
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
+      glLightfv(GL_LIGHT0, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
+
+  def set_lights (self) :
+    if self.flag_use_lights :
+      glMatrixMode(GL_MODELVIEW)
+      glPushMatrix()
+      glLoadIdentity()
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glLightfv(GL_LIGHT0, GL_POSITION, self.light0_position)
+      glPopMatrix()
 
   def setup_fog (self) :
     if self.flag_show_fog :
@@ -310,7 +335,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glLoadIdentity()
     self.setup_lighting()
     gluLookAt(0,0,0, 0,0,-1, 0,1,0)
-    glTranslated(*self.compute_home_translation())
+    translation = self.compute_home_translation()
+    glTranslated(*translation)
     rc = self.minimum_covering_sphere.center()
     self.rotation_center = rc
     if eye_vector is None: eye_vector = (1,1,1)
@@ -319,25 +345,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
       xvector=eye_vector[0], yvector=eye_vector[1], zvector=eye_vector[2],
       angle=angle)
-
-  def setup_lighting (self) :
-    if self.flag_use_lights :
-      glMatrixMode(GL_MODELVIEW)
-      glLoadIdentity()
-      glEnable(GL_LIGHTING)
-      glEnable(GL_LIGHT0)
-      glEnable(GL_LIGHT1)
-      glLightfv(GL_LIGHT0, GL_AMBIENT, [0.0, 0.0, 0.0, 1.0])
-      glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
-      glLightfv(GL_LIGHT0, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
-      glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
-      glLightfv(GL_LIGHT1, GL_AMBIENT, [0.0, 0.0, 0.0, 1.0])
-      glLightfv(GL_LIGHT1, GL_DIFFUSE, [1, 1, 1, 1])
-      glLightfv(GL_LIGHT1, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
-      glLightfv(GL_LIGHT1, GL_POSITION, [0, 0, -1, 0])
-      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
-      glEnable(GL_BLEND)
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
   def rotation_move_factor(self, rotation_angle):
     return abs(rotation_angle)/180
