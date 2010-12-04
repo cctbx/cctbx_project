@@ -81,7 +81,7 @@ class MetallicButton (wx.PyControl) :
     self.SetInitialSize()
 
     # Event Handlers
-    self.Bind(wx.EVT_PAINT, lambda evt: self.__DrawButton())
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnErase)
     self.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
     self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
@@ -96,6 +96,9 @@ class MetallicButton (wx.PyControl) :
     # Other events
     self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
     self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
+
+  def OnPaint (self, event) :
+    self.__DrawButton()
 
   def __DrawBitmap(self, gc):
     """Draw the bitmap if one has been set
