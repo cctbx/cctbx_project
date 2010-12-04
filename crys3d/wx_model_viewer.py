@@ -281,12 +281,6 @@ class model_viewer_mixin (wxGLWindow) :
     glEnable(GL_LINE_SMOOTH)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     self.initialize_modelview()
-    if self.flag_use_lights :
-      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
-      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.5, 0.5, 0.5, 1.0])
-      glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0.2, 0.2, 0.2, 1.))
-      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1, 1, 1, 1.))
-      glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 50.)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     self.proto_ellipsoid = quadrics.proto_ellipsoid(slices=32, stacks=32)
     gltbx.util.handle_error()
@@ -354,7 +348,6 @@ class model_viewer_mixin (wxGLWindow) :
     if self.flag_use_lights :
       glEnable(GL_LIGHTING)
       glEnable(GL_LIGHT0)
-      glEnable(GL_LIGHT1)
       glEnable(GL_NORMALIZE)
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0,1.0,1.0,1.0])
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
@@ -365,15 +358,13 @@ class model_viewer_mixin (wxGLWindow) :
 
   def draw_lines (self) :
     glEnable(GL_LINE_SMOOTH)
-    #glDisable(GL_LINE_SMOOTH)
+    glEnable(GL_BLEND)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glDisable(GL_LIGHTING)
     glLineWidth(self.settings.opengl.line_width)
     for model_id, model in self.iter_models() :
       if self.show_object[model_id] and model.flag_show_lines :
         self.scene_objects[model_id].draw_lines()
-    if not self.flag_smooth_lines :
-      glDisable(GL_LINE_SMOOTH)
 
   def draw_ellipsoids (self) :
     glMatrixMode(GL_MODELVIEW)
@@ -382,10 +373,7 @@ class model_viewer_mixin (wxGLWindow) :
       glEnable(GL_DEPTH_TEST)
       glEnable(GL_LIGHTING)
       glEnable(GL_LIGHT0)
-      glEnable(GL_LIGHT1)
       glEnable(GL_NORMALIZE)
-      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
-      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.5, 0.5, 0.5, 1.0])
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     proto_ellipsoid = self.proto_ellipsoid
     for model_id, model in self.iter_models() :
