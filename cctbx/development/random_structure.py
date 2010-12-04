@@ -230,7 +230,7 @@ def random_elements(size, choices=["O", "Mg", "Si", "Ca"]):
 class xray_structure(xray.structure):
 
   def __init__(self,
-               space_group_info,
+               space_group_info=None,
                unit_cell=None,
                elements=None,
                sites_frac=None,
@@ -259,6 +259,8 @@ class xray_structure(xray.structure):
         "min_distance_sym_equiv",
         "sites_frac",
         "use_u_iso"))
+    if (space_group_info is None):
+      space_group_info = sgtbx.space_group_info(symbol="P 1")
     self.use_u_iso_ = use_u_iso
     if (sites_frac is not None):
       assert self.elements is not None
