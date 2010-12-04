@@ -3191,30 +3191,27 @@ class fft_map(maptbx.crystal_gridding):
   def statistics(self):
     return maptbx.statistics(self.real_map())
 
-  def apply_volume_scaling(self):
-    scale = 1./self.unit_cell().volume()
+  def apply_scaling(self, scale):
     if (not self.anomalous_flag()):
       self._real_map *= scale
     else:
       self._complex_map *= scale
     return self
 
-  def apply_scaling(self,scale=1.0):
-    if (not self.anomalous_flag()):
-      self._real_map *= scale
-    else:
-      self._complex_map *= scale
-    return self
+  def apply_fourier_scaling(self):
+    return self.apply_scaling(scale=1/matrix.col(self.n_real()).product())
+
+  def apply_volume_scaling(self):
+    return self.apply_scaling(scale=1/self.unit_cell().volume())
 
   def apply_sigma_scaling(self):
     statistics = self.statistics()
-    if (not self.anomalous_flag()):
-      if (statistics.sigma() != 0):
-        self._real_map /= statistics.sigma()
-    else:
-      if (statistics.sigma() != 0):
-        self._complex_map /= complex(statistics.sigma())
-    return self
+    if (statistics.sigma() == 0):
+      return self
+    scale = 1 / statistics.sigma()
+    if (self.anomalous_flag()):
+      scale = complex(scale)
+    return self.apply_scaling(scale=scale)
 
   def peak_search(self, parameters=None, verify_symmetry=True):
     return self.tags().peak_search(
