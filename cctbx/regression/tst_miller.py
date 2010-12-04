@@ -1319,10 +1319,10 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
-def exercise_phased_translation_coeff(d_min = 0.3,
+def exercise_phased_translation_coeff(d_min = 1.0,
                                       algorithm = "direct",
                                       shift = [0.7, 1.2, 1.4],
-                                      resolution_factor = 1/10.):
+                                      resolution_factor = 1./3):
   cs = crystal.symmetry((5, 5, 5, 90, 90, 90), "P 1")
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer(
@@ -1341,18 +1341,16 @@ def exercise_phased_translation_coeff(d_min = 0.3,
     from cctbx import maptbx
     fft_map = result.fft_map(resolution_factor = resolution_factor,
                              symmetry_flags = maptbx.use_space_group_symmetry)
+    fft_map.apply_fourier_scaling() # just to exercise this method
     fft_map.apply_sigma_scaling()
     fft_map_data = fft_map.real_map_unpadded()
     crystal_gridding_tags = fft_map.tags()
     cluster_analysis = crystal_gridding_tags.peak_search(
       parameters = maptbx.peak_search_parameters(),
       map = fft_map_data)
-    expected_shift = [1.-(0.7/5), 1.-(1.2/5), 1.-(1.4/5)]
-    #print "heights= ", list(cluster_analysis.heights())
-    #print "sites=", list(cluster_analysis.sites())
-    #print "expected: ", expected_shift
     assert cluster_analysis.sites().size() == 1
-    assert approx_equal(expected_shift, cluster_analysis.sites()[0])
+    expected_shift = [1.-(0.7/5), 1.-(1.2/5), 1.-(1.4/5)]
+    assert approx_equal(expected_shift, cluster_analysis.sites()[0], eps=1e-2)
 
 def exercise_common_set((a, b), permutation_only):
   ab = a.common_set(b)

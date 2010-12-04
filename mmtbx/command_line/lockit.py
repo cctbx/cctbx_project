@@ -471,6 +471,8 @@ final_geo_file = Auto
 %s
 local_standard_deviations_radius = None
   .type = float
+weight_map_normalization = *fourier sigma
+  .type = choice
 weight_map_scale_factor = None
   .type = float
 
@@ -1136,7 +1138,12 @@ def run(args):
     std_dev_weight_fft_map = miller.fft_map(
       crystal_gridding=fft_map,
       fourier_coefficients=std_dev_weight_coeffs)
-    std_dev_weight_fft_map.apply_sigma_scaling()
+    if (work_params.weight_map_normalization == "fourier"):
+      std_dev_weight_fft_map.apply_fourier_scaling()
+    elif (work_params.weight_map_normalization == "sigma"):
+      std_dev_weight_fft_map.apply_sigma_scaling()
+    else:
+      assert work_params.weight_map_normalization is None
   #
   real_space_gradients_delta = \
     d_min * work_params.real_space_gradients_delta_resolution_factor
