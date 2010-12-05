@@ -31,10 +31,6 @@
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/type_traits.h>
 
-#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
-#include <memory>
-#endif
-
 namespace scitbx { namespace af {
 
   struct weak_ref_flag {};
