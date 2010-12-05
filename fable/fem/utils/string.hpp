@@ -126,8 +126,8 @@ namespace fem { namespace utils {
     size_t dest_size)
   {
     size_t i;
-    for (i=0; i < dest_size && src[i] != '\0'; i++) {
-      dest[i] = src[i];
+    for (i=0; i < dest_size && *src != '\0'; i++) {
+      dest[i] = *src++;
     }
     for (; i < dest_size; i++) {
       dest[i] = ' ';
