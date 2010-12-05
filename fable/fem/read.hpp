@@ -5,6 +5,7 @@
 #include <fem/format.hpp>
 #include <fem/star.hpp>
 #include <fem/str_arr_ref.hpp>
+#include <fem/utils/misc.hpp>
 #include <fem/utils/string_to_double_fmt.hpp>
 
 namespace fem {
@@ -12,7 +13,7 @@ namespace fem {
   class read_loop // TODO copy-constructor potential performance problem
   {
     private:
-      std::auto_ptr<utils::simple_istream> inp;
+      utils::slick_ptr<utils::simple_istream> inp;
       bool first_inp_get;
       format::token_loop fmt_loop;
       bool blanks_zero;
@@ -62,7 +63,7 @@ namespace fem {
         str_cref const& internal_file,
         star_type const&)
       :
-        inp(std::auto_ptr<utils::simple_istream>(new
+        inp(utils::slick_ptr<utils::simple_istream>(new
           utils::simple_istream_from_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         first_inp_get(true),
@@ -75,7 +76,7 @@ namespace fem {
         str_cref const& internal_file,
         str_cref fmt)
       :
-        inp(std::auto_ptr<utils::simple_istream>(new
+        inp(utils::slick_ptr<utils::simple_istream>(new
           utils::simple_istream_from_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         first_inp_get(true),

@@ -98,7 +98,7 @@ namespace fem { namespace utils {
 
     void
     swap(
-      slick_ptr& other) const
+      slick_ptr const& other) const
     {
       T* tmp = other.ptr;
       other.ptr = ptr;
