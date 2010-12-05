@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_MISC_H
 
 #include <scitbx/array_family/type_traits.h>
+#include <memory>
 
 namespace scitbx { namespace af {
 
