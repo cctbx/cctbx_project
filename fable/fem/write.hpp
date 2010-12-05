@@ -32,7 +32,7 @@ namespace fem {
     // TODO copy-constructor potential performance problem
   {
     private:
-      std::auto_ptr<utils::simple_ostream> out;
+      utils::slick_ptr<utils::simple_ostream> out;
       int internal_file_len;
       io_modes io_mode;
       format::token_loop fmt_loop;
@@ -74,7 +74,7 @@ namespace fem {
         str_ref const& internal_file,
         star_type const&)
       :
-        out(std::auto_ptr<utils::simple_ostream>(new
+        out(utils::slick_ptr<utils::simple_ostream>(new
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         internal_file_len(internal_file.len()),
@@ -85,7 +85,7 @@ namespace fem {
         str_ref const& internal_file,
         str_cref fmt)
       :
-        out(std::auto_ptr<utils::simple_ostream>(new
+        out(utils::slick_ptr<utils::simple_ostream>(new
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         internal_file_len(internal_file.len()),
@@ -98,7 +98,7 @@ namespace fem {
         str_arr_ref<Ndims> const& internal_file,
         star_type const&)
       :
-        out(std::auto_ptr<utils::simple_ostream>(new
+        out(utils::slick_ptr<utils::simple_ostream>(new
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.begin(), internal_file.len()))),
         internal_file_len(internal_file.len()),
@@ -110,7 +110,7 @@ namespace fem {
         str_arr_ref<Ndims> const& internal_file,
         str_cref fmt)
       :
-        out(std::auto_ptr<utils::simple_ostream>(new
+        out(utils::slick_ptr<utils::simple_ostream>(new
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.begin(), internal_file.len()))),
         internal_file_len(internal_file.len()),

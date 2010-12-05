@@ -8,7 +8,6 @@
 #include <fem/utils/simple_streams.hpp>
 #include <fem/utils/string.hpp>
 #include <map>
-#include <memory>
 #include <cstdio>
 
 namespace fem {
@@ -401,7 +400,7 @@ namespace fem {
       return false;
     }
 
-    std::auto_ptr<utils::simple_ostream>
+    utils::slick_ptr<utils::simple_ostream>
     simple_ostream(
       int unit)
     {
@@ -416,17 +415,17 @@ namespace fem {
         }
         u_ptr->prev_op_was_write = true;
       }
-      return std::auto_ptr<utils::simple_ostream>(new
+      return utils::slick_ptr<utils::simple_ostream>(new
         utils::simple_ostream_to_c_file(sf.ptr));
     }
 
-    std::auto_ptr<utils::simple_istream>
+    utils::slick_ptr<utils::simple_istream>
     simple_istream(
       int unit)
     {
       io_unit* u_ptr = unit_ptr(unit, /*auto_open*/ true);
       u_ptr->prev_op_was_write = false;
-      return std::auto_ptr<utils::simple_istream>(new
+      return utils::slick_ptr<utils::simple_istream>(new
         utils::simple_istream_from_c_file(u_ptr->stream.ptr));
     }
 
