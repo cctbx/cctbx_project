@@ -1086,6 +1086,14 @@ namespace cctbx { namespace sgtbx {
     }
     string work_symbol = pre_process_symbol(symbol);
     work_symbol[0] = toupper(work_symbol[0]);
+    if (std_table_id.size() == 0 && work_symbol[0] == 'H') {
+      if (work_symbol == "H3") {
+        work_symbol = "R3";
+      }
+      else if (work_symbol == "H32") {
+        work_symbol = "R32";
+      }
+    }
     remove_screw_component_parentheses(work_symbol);
     change_of_basis_op cb_op(0, 0);
     std::string cb_mx_symbol = split_off_cb_symbol(work_symbol);
