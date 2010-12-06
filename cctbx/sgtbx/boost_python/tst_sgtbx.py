@@ -191,6 +191,13 @@ def exercise_symbols():
   for pair in ad_hoc_1992_pairs:
     o,n = [sgtbx.space_group_info(symbol=symbol) for symbol in pair.split()]
     assert o.group() == n.group()
+  #
+  def check(symbols, uhm):
+    for symbol in symbols:
+      s = sgtbx.space_group_symbols(symbol=symbol, table_id="")
+      assert s.universal_hermann_mauguin() == uhm
+  check(["R3", "H3", " h 3 "], "R 3 :H")
+  check(["R32", "H32", "_h_3_2_"], "R 3 2 :H")
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec
