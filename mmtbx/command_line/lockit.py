@@ -430,6 +430,29 @@ coordinate_refinement {
 }
 """
 
+lockit_run_conditions_params_phil_str = """\
+lockit_run_conditions {
+  always = False
+    .type = bool
+    .expert_level=3
+  acceptable_r_factor_increase=2
+    .type = float
+    .expert_level=3
+  high_resolution_cutoff = 1.5
+    .type = float
+    .expert_level=3
+  low_resolution_cutoff = 3.5
+    .type = float
+    .expert_level=3
+  min_r_work = 0.2
+    .type = float
+    .expert_level=3
+  r_free_r_work_diff = 5
+    .type = float
+    .expert_level=3
+}
+"""
+
 def get_master_phil():
   return iotbx.phil.parse(
     input_string="""\
@@ -906,9 +929,11 @@ def run_coordinate_refinement(
       flex.sort_permutation(deltas_abs), reverse=True)
     wabr_params = rstw_params.worst_acceptable_bond_rmsd
     acceptable = (
-      flex.mean(deltas_abs_sorted[:wabr_params.pool_size])
+      flex.mean_default(deltas_abs_sorted[:wabr_params.pool_size],0)
         < wabr_params.max_pool_average)
-    bond_rmsd = flex.mean_sq(deltas)**0.5
+    if(deltas.size()>0):
+      bond_rmsd = flex.mean_sq(deltas)**0.5
+    else: bond_rmsd=0
     bond_rmsd_list.append(bond_rmsd)
     print >> log, "  Bond RMSD: %.3f" % bond_rmsd
     #
