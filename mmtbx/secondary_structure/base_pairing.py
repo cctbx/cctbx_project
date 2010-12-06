@@ -51,7 +51,11 @@ class pair_database (object) :
         saenger_class = None
       paired_bases = fields[2]
       hydrogen_flag = fields[3]
-      atom_pairs = [ (p.split(",")[0], p.split(",")[1]) for p in fields[4:] ]
+      atom_pairs = [ (p.split(",")[0],
+                      p.split(",")[1]) for p in fields[4:] ]
+      distances = [ (p.split(",")[2],
+                     p.split(",")[3],
+                     p.split(",")[4]) for p in fields[4:] ]
       if hydrogen_flag == '+' :
         db = self._h_bond_pairs
       else :
@@ -64,7 +68,9 @@ class pair_database (object) :
                 % i)
           else :
             db[key] = {}
-          db[key][paired_bases] = atom_pairs
+          db[key][paired_bases] = [atom_pairs,distances]
+    #print self._pseudo_bond_pairs
+    #STOP()
 
   def get_atoms (self, base_pair, pair_type, use_hydrogens=False) :
     if use_hydrogens :
@@ -73,9 +79,23 @@ class pair_database (object) :
       db = self._pseudo_bond_pairs
     pair_rules = db[pair_type]
     if base_pair in pair_rules :
-      return pair_rules[base_pair]
+      return pair_rules[base_pair][0]
     elif base_pair[::-1] in pair_rules :
-      return invert_pairs(pair_rules[base_pair[::-1]])
+      return invert_pairs(pair_rules[base_pair[0][::-1]])
+    else :
+      raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
+        (base_pair, pair_type, str(use_hydrogens)))
+
+  def get_distances (self, base_pair, pair_type, use_hydrogens=False) :
+    if use_hydrogens :
+      db = self._h_bond_pairs
+    else :
+      db = self._pseudo_bond_pairs
+    pair_rules = db[pair_type]
+    if base_pair in pair_rules :
+      return pair_rules[base_pair][1]
+    elif base_pair[::-1] in pair_rules :
+      return invert_pairs(pair_rules[base_pair[1][::-1]])
     else :
       raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
         (base_pair, pair_type, str(use_hydrogens)))
@@ -89,9 +109,9 @@ class pair_database (object) :
       db = self._pseudo_bond_pairs
     for pair_type in db:
       if base_pair in db[pair_type]:
-        db[pair_type][base_pair].sort(key=sort_tuple)
+        db[pair_type][base_pair][0].sort(key=sort_tuple)
         atom_pairs.sort(key=sort_tuple)
-        if db[pair_type][base_pair] == atom_pairs:
+        if db[pair_type][base_pair][0] == atom_pairs:
           if return_pair_type is None:
             return_pair_type = pair_type
           elif (not is_saenger(return_pair_type)) and (is_saenger(pair_type)):
@@ -102,9 +122,9 @@ class pair_database (object) :
             print return_pair_type, pair_type
             raise RuntimeError("Redundant entries found for base pair %s." % base_pair)
       elif base_pair[::-1] in db[pair_type]:
-        db[pair_type][base_pair[::-1]].sort(key=sort_tuple)
+        db[pair_type][base_pair[0][::-1]].sort(key=sort_tuple)
         inverted_atom_pairs.sort(key=sort_tuple)
-        if db[pair_type][base_pair[::-1]] == \
+        if db[pair_type][base_pair[0][::-1]] == \
            inverted_atom_pairs:
           if return_pair_type is None:
             return_pair_type = pair_type
@@ -139,6 +159,17 @@ def get_h_bond_atoms(residues,
   else:
     pair_type = leontis_westhof_class
   return db.get_atoms(base_pair, pair_type, use_hydrogens)
+
+def get_distances(residues,
+                  saenger_class,
+                  leontis_westhof_class,
+                  use_hydrogens=False):
+  base_pair = residues[0].strip()[0] + residues[1].strip()[0]
+  if saenger_class != None:
+    pair_type = saenger_class
+  else:
+    pair_type = leontis_westhof_class
+  return db.get_distances(base_pair, pair_type, use_hydrogens)
 
 def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
   reduce_output = run_reduce(pdb_hierarchy, remove_hydrogens=False).stdout_lines
@@ -254,6 +285,11 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
       type_key = "saenger_class"
     else:
       type_key = "leontis_westhof_class"
+    distances = db.get_distances(bases[0][-3:].strip()+bases[1][-3:].strip(),
+                                 pair_type,
+                                 use_hydrogens=False)
+    #print distances
+    #STOP()
     phil_strings.append("""base_pair {
   base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
   base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"

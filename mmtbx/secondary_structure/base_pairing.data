@@ -1,71 +1,86 @@
 # columns:
 # pair_type   saenger   paired_bases    hydrogen_flag   atom_pair   [atom_pair ...]
+# atom_pair = atom1, atom2, bond_length, standard_deviation, slack
 #
 # Canonical Watson-Crick base pairings
-WWT  _       AT    +   H61,O4    N1,H3
-WWT  _       AT    -   N6,O4     N1,N3
-WWT  _       DCDG  +   H42,O6    N3,H1   O2,H22
-WWT  _       DADT  +   H61,O4    N1,H3
-WWT  _       DCDG  -   N4,O6     N3,N1   O2,N2
-WWT  _       DADT  -   N6,O4     N1,N3
+WWT  _       AT    +   H61,O4,_,_,_    N1,H3,_,_,_
+WWT  _       AT    -   N6,O4,_,_,_     N1,N3,_,_,_
+WWT  _       DCDG  +   H42,O6,_,_,_    N3,H1,_,_,_   O2,H22,_,_,_
+WWT  _       DADT  +   H61,O4,_,_,_    N1,H3,_,_,_
+WWT  _       DCDG  -   N4,O6,_,_,_     N3,N1,_,_,_   O2,N2,_,_,_
+WWT  _       DADT  -   N6,O4,_,_,_     N1,N3,_,_,_
 #homo purine  
-_    I       AA    +   H61,N1    N1,H61
-_    I       AA    -   N6,N1     N1,N6
-_    II      AA    +   H62,N7    N7,H62
-_    II      AA    -   N6,N7     N7,N6
-_    III     GG    +   H1,O6     O6,H1
-_    III     GG    -   N1,O6     O6,N1
-_    IV      GG    +   H21,N3    N3,H21
-_    IV      GG    -   N2,N3     N3,N2
-_    V       AA    +   H62,N1    N7,H61
-_    V       AA    -   N6,N1     N7,N1
-_    VI      GG    +   O6,H1     N7,H22
-_    VI      GG    -   O6,N1     N7,N2
-_    VII     GG    +   N7,H1     O6,H22
-_    VII     GG    -   N7,N1     O6,N2
+_    I       AA    +   H61,N1,_,_,_    N1,H61,_,_,_
+# pairing is symmetric, but distances are not (2.92, 3.06)
+# set target value to the average and balanced with a slack of 0.07
+_    I       AA    -   N6,N1,2.99,0.14,0.07     N1,N6,2.99,0.14,0.07
+_    II      AA    +   H62,N7,_,_,_    N7,H62,_,_,_
+# pairing is symmetric, but distances are not (3.01, 2.89)
+# set target value to the average and balanced with a slack of 0.06
+_    II      AA    -   N6,N7,2.95,0.20,0.06     N7,N6,2.95,0.20,0.06
+_    III     GG    +   H1,O6,_,_,_     O6,H1,_,_,_
+# pairing is symmetric, but distances are not (2.85, 2.88)
+# set target value to the average and balanced with a slack of 
+_    III     GG    -   N1,O6,2.86,0.12,0.01     O6,N1,2.86,0.12,0.01
+_    IV      GG    +   H21,N3,_,_,_    N3,H21,_,_,_
+# pairing is symmetric, but distances are not (2.96, 3.23)
+# set target value to the average and balanced with a slack of 0.13
+_    IV      GG    -   N2,N3,3.10,0.22,0.13     N3,N2,3.10,0.22,0.13
+_    V       AA    +   H62,N1,_,_,_    N7,H61,_,_,_
+_    V       AA    -   N6,N1,2.93,0.18,_     N7,N6,3.07,0.17,_
+_    VI      GG    +   O6,H1,_,_,_     N7,H22,_,_,_
+_    VI      GG    -   O6,N1,2.88,0.16,_     N7,N2,2.91,0.15,_
+_    VII     GG    +   N7,H1,_,_,_     O6,H22,_,_,_
+_    VII     GG    -   N7,N1,2.93,0.17,_     O6,N2,2.76,0.24,_
 #hetero purine
-_    VIII    AG    +   H61,O6    N1,H1
-_    VIII    AG    -   N6,O6     N1,N1
-_    IX      AG    +   H62,O6    N7,H1
-_    IX      AG    -   N6,O6     N7,N1
-_    X       AG    +   H61,N3    N1,H21
-_    X       AG    -   N6,N3     N1,N2
-_    XI      AG    +   H62,N3    N7,H21
-_    XI      AG    -   N6,N3     N7,N2
+_    VIII    AG    +   H61,O6,_,_,_    N1,H1,_,_,_
+_    VIII    AG    -   N6,O6,2.95,0.21,_     N1,N1,2.88,0.15,_
+_    IX      AG    +   H62,O6,_,_,_    N7,H1,_,_,_
+_    IX      AG    -   N6,O6,2.70,0.08,_     N7,N1,3.08,0.08,_
+_    X       AG    +   H61,N3,_,_,_    N1,H21,_,_,_
+_    X       AG    -   N6,N3,3.15,0.11,_     N1,N2,3.02,0.19,_
+_    XI      AG    +   H62,N3,_,_,_    N7,H21,_,_,_
+_    XI      AG    -   N6,N3,3.23,0.15,_     N7,N2,3.00,0.16,_
 #homo pyrimidine
-_    XII     UU    +   H3,O4     O4,H3
-_    XII     UU    -   N3,O4     O4,N3
-_    XIII    UU    +   O2,H3     H3,O2
-_    XIII    UU    -   O2,N3     N3,O2
-_    XIV     CC    +   N3,H42    H42,N3
-_    XIV     CC    -   N3,N4     N4,N3
-_    XV      CC    +   O2,H42    H42,O2
-_    XV      CC    -   O2,N4     N4,O2
-_    XVI     UU    +   H3,O4     O2,H3
-_    XVI     UU    -   N3,O4     O2,N3
+_    XII     UU    +   H3,O4,_,_,_     O4,H3,_,_,_
+# pairing is symmetric, but distances are not (2.98, 2.74)
+# set target value to the average and balanced with a slack of 0.12
+_    XII     UU    -   N3,O4,2.86,0.05,0.12     O4,N3,2.86,0.05,0.12
+_    XIII    UU    +   O2,H3,_,_,_     H3,O2,_,_,_
+# pairing is symmetric, but distances are not (2.70, 2.77)
+# set target value to the average and balanced with a slack of 0.03
+_    XIII    UU    -   O2,N3,2.74,0.05,0.03     N3,O2,2.74,0.05,0.03
+_    XIV     CC    +   N3,H42,_,_,_    H42,N3,_,_,_
+# pairing is symmetric, but distances are not (3.34, 2.09)
+# set target value to the average and balanced with a slack of 0.6
+_    XIV     CC    -   N3,N4,2.72,0.05,0.6     N4,N3,2.72,0.05,0.6
+_    XV      CC    +   O2,H42,_,_,_    H42,O2,_,_,_
+_    XV      CC    -   O2,N4,2.83,0.01,_     N4,O2,3.12,0.07,_
+_    XVI     UU    +   H3,O4,_,_,_     O2,H3,_,_,_
+_    XVI     UU    -   N3,O4,_,_,_     O2,N3,_,_,_
 #hetero pyrimidine
-_    XVII    CU    +   N3,H3     H42,O2
-_    XVII    CU    -   N3,N3     N4,O2
-_    XVIII   CU    +   H42,O4    N3,H3
-_    XVIII   CU    -   N4,O4     N3,N3
+_    XVII    CU    +   N3,H3,_,_,_     H42,O2,_,_,_
+_    XVII    CU    -   N3,N3,2.98,0.05,_     N4,O2,2.91,0.07,_
+_    XVIII   CU    +   H42,O4,_,_,_    N3,H3,_,_,_
+_    XVIII   CU    -   N4,O4,3.19,0.07,_     N3,N3,3.16,0.06,_
 #purine - pyrimidine
-WWT  XIX     CG    +   H42,O6    N3,H1   O2,H22
-WWT  XIX     CG    -   N4,O6     N3,N1   O2,N2
-WWT  XX      AU    +   H61,O4    N1,H3
-WWT  XX      AU    -   N6,O4     N1,N3
-_    XXI     AU    +   H61,O2    N1,H3
-_    XXI     AU    -   N6,O2     N1,N3
-_    XXII    CG    +   O2,H1     N3,H22
-_    XXII    CG    -   O2,N1     N3,N2
-_    XXIII   AU    +   H62,O4    N7,H3
-_    XXIII   AU    -   N6,O4     N7,N3
-_    XXIV    AU    +   H62,O2    N7,H3
-_    XXIV    AU    -   N6,O2     N7,N3
-_    XXV     AC    +   H62,N3    N7,H42
-_    XXV     AC    -   N6,N3     N7,N4
-_    XXVI    AC    +   H61,N3    N1,H42
-_    XXVI    AC    -   N6,N3     N1,N4
-_    XXVII   GU    +   O6,H3     H1,O4
-_    XXVII   GU    -   O6,N3     N1,O4
-WWT  XXVIII  GU    +   O6,H3     H1,O2
-WWT  XXVIII  GU    -   O6,N3     N1,O2
+WWT  XIX     CG    +   H42,O6,_,_,_    N3,H1,_,_,_   O2,H22,_,_,_
+WWT  XIX     CG    -   N4,O6,2.96,0.17,_     N3,N1,2.89,0.11,_   O2,N2,2.77,0.15,_
+WWT  XX      AU    +   H61,O4,_,_,_    N1,H3,_,_,_
+WWT  XX      AU    -   N6,O4,3.00,0.17,_     N1,N3,2.84,0.12,_
+_    XXI     AU    +   H61,O2,_,_,_    N1,H3,_,_,_
+_    XXI     AU    -   N6,O2,2.94,0.17,_     N1,N3,2.84,0.13,_
+_    XXII    CG    +   O2,H1,_,_,_     N3,H22,_,_,_
+_    XXII    CG    -   O2,N1,2.80,0.17,_     N3,N2,2.86,0.18,_
+_    XXIII   AU    +   H62,O4,_,_,_    N7,H3,_,_,_
+_    XXIII   AU    -   N6,O4,3.05,0.15,_     N7,N3,2.96,0.15,_
+_    XXIV    AU    +   H62,O2,_,_,_    N7,H3,_,_,_
+_    XXIV    AU    -   N6,O2,2.91,0.19,_     N7,N3,2.87,0.13,_
+_    XXV     AC    +   H62,N3,_,_,_    N7,H42,_,_,_
+_    XXV     AC    -   N6,N3,3.13,0.15,_     N7,N4,3.08,0.18,_
+_    XXVI    AC    +   H61,N3,_,_,_    N1,H42,_,_,_
+_    XXVI    AC    -   N6,N3,3.09,0.14,_     N1,N4,3.01,0.08,_
+_    XXVII   GU    +   O6,H3,_,_,_     H1,O4,_,_,_
+_    XXVII   GU    -   O6,N3,2.99,0.15,_     N1,O4,2.99,0.07,_
+WWT  XXVIII  GU    +   O6,H3,_,_,_     H1,O2,_,_,_
+WWT  XXVIII  GU    -   O6,N3,2.83,0.13,_     N1,O2,2.79,0.13,_

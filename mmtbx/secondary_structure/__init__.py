@@ -230,6 +230,7 @@ def hydrogen_bonds_from_selections (
   bond_i_seqs = shared.stl_set_unsigned()
   sigmas = flex.double()
   slacks = flex.double()
+  distances = flex.double()
   atoms = pdb_hierarchy.atoms()
   n_atoms = atoms.size()
   sites = atoms.extract_xyz()
@@ -298,6 +299,7 @@ def hydrogen_bonds_from_selections (
             has_bond[i_seq] = True
             has_bond[j_seq] = True
             bond_i_seqs.append((j_seq, i_seq))
+            distances.append(distance_ideal)
             sigmas.append(sigma)
             slacks.append(slack)
           else :
@@ -387,6 +389,7 @@ def hydrogen_bonds_from_selections (
         has_bond[i_seq] = True
         has_bond[j_seq] = True
         bond_i_seqs.append((i_seq, j_seq))
+        distances.append(distance_ideal)
         sigmas.append(sigma)
         slacks.append(slack)
   if params.h_bond_restraints.restrain_base_pairs :
@@ -411,7 +414,14 @@ def hydrogen_bonds_from_selections (
           saenger_class=base_pair.saenger_class.upper(),
           leontis_westhof_class=base_pair.leontis_westhof_class.upper(),
           use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
-        for (name1, name2) in atom_pairs :
+        distance_values = base_pairing.get_distances(
+          residues=(resname1,resname2),
+          saenger_class=base_pair.saenger_class.upper(),
+          leontis_westhof_class=base_pair.leontis_westhof_class.upper(),
+          use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
+        #print distances
+        #STOP()
+        for i, (name1, name2) in enumerate(atom_pairs) :
           sele1 = """name %s and %s""" % (name1, base_pair.base1)
           sele2 = """name %s and %s""" % (name2, base_pair.base2)
           # XXX these aren't necessarily in donor/acceptor order, but it
@@ -426,13 +436,28 @@ def hydrogen_bonds_from_selections (
             continue
           has_bond[i_seq] = True
           has_bond[j_seq] = True
+          if distance_values[i][0] != '_':
+            cur_distance = float(distance_values[i][0])
+          else:
+            cur_distance = distance_ideal
+          if distance_values[i][1] != '_':
+            cur_sigma = float(distance_values[i][1])
+          else:
+            cur_sigma = sigma
+          if distance_values[i][2] != '_':
+            cur_slack = float(distance_values[i][2])
+          else:
+            cur_slack = slack
           bond_i_seqs.append((i_seq, j_seq))
-          sigmas.append(sigma)
-          slacks.append(slack)
+          distances.append(cur_distance)
+          sigmas.append(cur_sigma)
+          slacks.append(cur_slack)
       except RuntimeError, e :
         print >> log, str(e)
+  #print dir(distances)
+  #print dir(slacks)
   return hydrogen_bond_table(bonds=bond_i_seqs,
-    distance=flex.double(bond_i_seqs.size(), distance_ideal),
+    distance=distances,
     sigma=sigmas,
     slack=slacks,
     bond_lengths=_get_distances(bond_i_seqs, sites))
