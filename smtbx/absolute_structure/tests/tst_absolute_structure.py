@@ -52,7 +52,7 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0,
   fo = fc.as_amplitude_array()
   fo.set_observation_type_xray_amplitude()
   if use_students_t_errors:
-    nu = random.uniform(1, 20)
+    nu = random.uniform(1, 10)
     normal_g = variate(normal_distribution())
     gamma_g = variate(gamma_distribution(0.5*nu, 2))
     errors = normal_g(fc.size())/flex.sqrt(2*gamma_g(fc.size()))
@@ -75,20 +75,27 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0,
     csv_utils.writer(
       open('delta_F_npp.csv', 'wb'), (expected_deviations, observed_deviations))
   # first with the correct absolute structure
-  analysis = absolute_structure.hooft_analysis(fo2, fc)
-  assert approx_equal(analysis.hooft_y, 0, 1e-2)
-  assert approx_equal(analysis.p2, 1)
-  assert approx_equal(analysis.p3_true, 1)
-  assert approx_equal(analysis.p3_false, 0)
-  assert approx_equal(analysis.p3_racemic_twin, 0)
-  NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
+  gaussian = absolute_structure.hooft_analysis(fo2, fc)
+  analyses = [gaussian]
+  NPP = absolute_structure.bijvoet_differences_probability_plot(gaussian)
   if use_students_t_errors:
+    nu_calc = absolute_structure.maximise_students_t_correlation_coefficient(
+      NPP.y, min_nu=1, max_nu=200)
+    t_analysis = absolute_structure.students_t_hooft_analysis(
+      fo2, fc, nu_calc, probability_plot_slope=NPP.fit.slope())
+    analyses.append(gaussian)
     tPP = absolute_structure.bijvoet_differences_probability_plot(
-      analysis, use_students_t_distribution=True)
+      t_analysis, use_students_t_distribution=True, students_t_nu=nu_calc)
     if tPP.distribution.degrees_of_freedom() < 100:
-      tPP.correlation.coefficient() > NPP.correlation.coefficient()
+      assert tPP.correlation.coefficient() > NPP.correlation.coefficient()
   else:
     assert approx_equal(NPP.correlation.coefficient(), 1, 0.005)
+  for analysis in analyses:
+    assert approx_equal(analysis.hooft_y, 0, 1e-2)
+    assert approx_equal(analysis.p2, 1)
+    assert approx_equal(analysis.p3_true, 1)
+    assert approx_equal(analysis.p3_false, 0)
+    assert approx_equal(analysis.p3_racemic_twin, 0)
   if debug:
     csv_utils.writer(open('npp.csv', 'wb'), (NPP.x,NPP.y))
     if use_students_t_errors:
@@ -98,41 +105,54 @@ def exercise_hooft_analysis(space_group_info, d_min=1.0,
   xs_i = xs.inverse_hand()
   fc_i = xs_i.structure_factors(
     anomalous_flag=True, d_min=d_min, algorithm="direct").f_calc()
-  analysis = absolute_structure.hooft_analysis(fo2, fc_i)
-  assert approx_equal(analysis.hooft_y, 1, 1e-2)
-  assert approx_equal(analysis.p2, 0)
-  assert approx_equal(analysis.p3_true, 0)
-  assert approx_equal(analysis.p3_false, 1)
-  assert approx_equal(analysis.p3_racemic_twin, 0)
-  NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
+  gaussian = absolute_structure.hooft_analysis(fo2, fc_i)
+  analyses = [gaussian]
+  NPP = absolute_structure.bijvoet_differences_probability_plot(gaussian)
   if use_students_t_errors:
+    nu_calc = absolute_structure.maximise_students_t_correlation_coefficient(
+      NPP.y, min_nu=1, max_nu=200)
+    t_analysis = absolute_structure.students_t_hooft_analysis(
+      fo2, fc_i, nu_calc, probability_plot_slope=NPP.fit.slope())
+    analyses.append(gaussian)
     tPP = absolute_structure.bijvoet_differences_probability_plot(
-      analysis, use_students_t_distribution=True)
+      t_analysis, use_students_t_distribution=True)
     if tPP.distribution.degrees_of_freedom() < 100:
       assert tPP.correlation.coefficient() > NPP.correlation.coefficient()
   else:
     assert approx_equal(NPP.correlation.coefficient(), 1, 0.002)
     assert approx_equal(NPP.fit.y_intercept(), 0)
+  for analysis in analyses:
+    assert approx_equal(analysis.hooft_y, 1, 1e-2)
+    assert approx_equal(analysis.p2, 0)
+    assert approx_equal(analysis.p3_true, 0)
+    assert approx_equal(analysis.p3_false, 1)
+    assert approx_equal(analysis.p3_racemic_twin, 0)
   # test for the case of a racemic twin
   fo2_twin = fc.customized_copy(
     data=fc.data()+fc_i.data()).as_intensity_array()
   fo2_twin = fo2_twin.customized_copy(
     data=(errors + fo2_twin.data()) * k,
     sigmas=fo2.sigmas())
-  analysis = absolute_structure.hooft_analysis(fo2_twin, fc)
-  assert approx_equal(analysis.hooft_y, 0.5, 1e-2)
-  assert approx_equal(analysis.p3_true, 0)
-  assert approx_equal(analysis.p3_false, 0)
-  assert approx_equal(analysis.p3_racemic_twin, 1)
-  NPP = absolute_structure.bijvoet_differences_probability_plot(analysis)
+  gaussian = absolute_structure.hooft_analysis(fo2_twin, fc)
+  analyses = [gaussian]
+  NPP = absolute_structure.bijvoet_differences_probability_plot(gaussian)
   if use_students_t_errors:
+    nu_calc = absolute_structure.maximise_students_t_correlation_coefficient(
+      NPP.y, min_nu=1, max_nu=200)
+    t_analysis = absolute_structure.students_t_hooft_analysis(
+      fo2_twin, fc, nu_calc, probability_plot_slope=NPP.fit.slope())
     tPP = absolute_structure.bijvoet_differences_probability_plot(
-      analysis, use_students_t_distribution=True)
+      t_analysis, use_students_t_distribution=True)
     if tPP.distribution.degrees_of_freedom() < 100:
       assert tPP.correlation.coefficient() > NPP.correlation.coefficient()
   else:
     assert approx_equal(NPP.correlation.coefficient(), 1, 0.002)
     assert approx_equal(NPP.fit.y_intercept(), 0)
+  for analysis in analyses:
+    assert approx_equal(analysis.hooft_y, 0.5, 1e-2)
+    assert approx_equal(analysis.p3_true, 0)
+    assert approx_equal(analysis.p3_false, 0)
+    assert approx_equal(analysis.p3_racemic_twin, 1)
 
 def run_call_back(flags, space_group_info):
   if not space_group_info.group().is_centric():
