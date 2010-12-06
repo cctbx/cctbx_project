@@ -48,6 +48,8 @@ real_space_refinement
     verbose = 1
       .type = int
       .help = All output is supressed if it is negative
+
+    include scope mmtbx.command_line.lockit.lockit_run_conditions_params_phil_str
   }
 """
 

@@ -320,9 +320,9 @@ class refiner(object):
       self.geometry_restraints_manager.select(rsel)
     if(use_lockit): # XXX trying lockit...
       work_params = lockit.get_master_phil().extract()
-      work_params.coordinate_refinement.lbfgs_max_iterations=25
+      work_params.coordinate_refinement.lbfgs_max_iterations=50
       work_params.coordinate_refinement.compute_final_correlation=False
-      work_params.coordinate_refinement.finishing_geometry_minimization.cycles_max=25
+      work_params.coordinate_refinement.finishing_geometry_minimization.cycles_max=50
       result = lockit.run_coordinate_refinement(
         sites_cart                  = sites_cart_rsel,
         geometry_restraints_manager = geometry_restraints_manager,
