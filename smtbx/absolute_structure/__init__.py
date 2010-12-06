@@ -32,7 +32,9 @@ class hooft_analysis:
 
   def __init__(self, fo2, fc,
                scale_factor=None,
-               outlier_cuttoff_factor=2):
+               outlier_cuttoff_factor=2,
+               probability_plot_slope=None):
+    self.probability_plot_slope = probability_plot_slope
     assert fo2.is_xray_intensity_array()
     assert fc.is_complex_array()
     assert not fo2.space_group().is_centric()
@@ -132,26 +134,28 @@ class hooft_analysis:
     log_p_obs_given_gamma_is_minus_1 -= max_log_p_obs
     log_p_obs_given_gamma_is_0 -= max_log_p_obs
     log_p_obs_given_gamma_is_1 -= max_log_p_obs
-    p2_denominator = math.exp(log_p_obs_given_gamma_is_1) * 0.5 \
-                   + math.exp(log_p_obs_given_gamma_is_minus_1) * 0.5
-    p3_denominator = math.exp(log_p_obs_given_gamma_is_1) * 1/3 \
-                   + math.exp(log_p_obs_given_gamma_is_minus_1) * 1/3 \
-                   + math.exp(log_p_obs_given_gamma_is_0) * 1/3
+    p2_denominator = math.exp(log_p_obs_given_gamma_is_1) \
+                   + math.exp(log_p_obs_given_gamma_is_minus_1)
+    p3_denominator = math.exp(log_p_obs_given_gamma_is_1) \
+                   + math.exp(log_p_obs_given_gamma_is_minus_1) \
+                   + math.exp(log_p_obs_given_gamma_is_0)
     #
     if p2_denominator == 0: self.p2 = None
     else:
-      self.p2 = (math.exp(log_p_obs_given_gamma_is_1) * 1./2) / p2_denominator
+      self.p2 = (math.exp(log_p_obs_given_gamma_is_1)) / p2_denominator
     self.p3_true = (
-      math.exp(log_p_obs_given_gamma_is_1) * 1./3) / p3_denominator
+      math.exp(log_p_obs_given_gamma_is_1)) / p3_denominator
     self.p3_false = (
-      math.exp(log_p_obs_given_gamma_is_minus_1) * 1./3) / p3_denominator
+      math.exp(log_p_obs_given_gamma_is_minus_1)) / p3_denominator
     self.p3_racemic_twin = (
-      math.exp(log_p_obs_given_gamma_is_0) * 1./3) / p3_denominator
+      math.exp(log_p_obs_given_gamma_is_0)) / p3_denominator
 
   def log_p_obs_given_gamma(self, gamma):
-    return -0.5 * flex.sum_sq(
-      (gamma * self.delta_fc2.data() - self.delta_fo2.data())
-      / self.delta_fo2.sigmas())
+    x_gamma = (gamma * self.delta_fc2.data() - self.delta_fo2.data()) \
+            / self.delta_fo2.sigmas()
+    if self.probability_plot_slope is not None:
+      x_gamma /= self.probability_plot_slope
+    return -0.5 * flex.sum_sq(x_gamma)
 
   def show(self, out=None):
     if out is None: out=sys.stdout
@@ -180,7 +184,8 @@ class bijvoet_differences_probability_plot:
   def __init__(self,
                hooft_analysis,
                use_students_t_distribution=False,
-               students_t_nu=None):
+               students_t_nu=None,
+               probability_plot_slope=None):
     self.delta_fo2, minus_fo2 =\
         hooft_analysis.delta_fo2.generate_bijvoet_mates().hemispheres_acentrics()
     self.delta_fc2, minus_fc2 =\
@@ -194,6 +199,9 @@ class bijvoet_differences_probability_plot:
     self.indices = self.delta_fo2.indices()
     observed_deviations = (hooft_analysis.G * self.delta_fc2.data()
                            - self.delta_fo2.data())/self.delta_fo2.sigmas()
+
+    if probability_plot_slope is not None:
+      observed_deviations /= probability_plot_slope
     selection = flex.sort_permutation(observed_deviations)
     observed_deviations = observed_deviations.select(selection)
     if use_students_t_distribution:
@@ -241,3 +249,27 @@ def maximise_students_t_correlation_coefficient(observed_deviations,
     else:
       min_nu = middle
   return middle
+
+class students_t_hooft_analysis(hooft_analysis):
+  """
+  Hooft, R.W.W., Straver, L.H., Spek, A.L. (2010). J. Appl. Cryst., 43, 665-668.
+  """
+
+  def __init__(self, fo2, fc,
+               degrees_of_freedom,
+               scale_factor=None,
+               outlier_cuttoff_factor=2,
+               probability_plot_slope=None):
+    self.degrees_of_freedom = degrees_of_freedom
+    hooft_analysis.__init__(self, fo2, fc,
+                            scale_factor=scale_factor,
+                            outlier_cuttoff_factor=outlier_cuttoff_factor,
+                            probability_plot_slope=probability_plot_slope)
+
+  def log_p_obs_given_gamma(self, gamma):
+    dof = self.degrees_of_freedom
+    x_gamma = (gamma * self.delta_fc2.data() - self.delta_fo2.data()) \
+            / self.delta_fo2.sigmas()
+    if self.probability_plot_slope is not None:
+      x_gamma /= self.probability_plot_slope
+    return -(1+dof)/2 * flex.sum(flex.log(flex.pow2(x_gamma) + dof))
