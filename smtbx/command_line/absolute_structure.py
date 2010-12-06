@@ -24,7 +24,7 @@ def crawl(directory, ext='cif'):
       except Exception, e:
         continue
 
-def run_once(file_path):
+def run_once(file_path, nu=None):
   file_root, file_ext = os.path.splitext(file_path)
   hkl_path = file_root + '.hkl'
   fcf_path = file_root + '.fcf'
@@ -45,7 +45,7 @@ def run_once(file_path):
     fo2, fc, scale = structure_factors_from_ins_res(file_path)
   if not fc.space_group().is_centric():
     print file_path
-    absolute_structure_analysis(fo2, fc, scale)
+    absolute_structure_analysis(fo2, fc, scale, nu=nu)
 
 def structure_factors_from_fcf(file_path, xs=None):
   cif = iotbx.cif.reader(file_path=file_path).model()
@@ -87,7 +87,7 @@ def structure_factors_from_ins_res(file_path):
     photon=l_ins.instructions['cell'][0], table="sasaki")
   return structure_factors_from_hkl(xs, hkl_path)
 
-def absolute_structure_analysis(fo2, fc, scale):
+def absolute_structure_analysis(fo2, fc, scale, nu=None):
   if not fc.space_group().is_centric():
     hooft_analysis = absolute_structure.hooft_analysis(
       fo2, fc, scale_factor=scale)
@@ -98,6 +98,19 @@ def absolute_structure_analysis(fo2, fc, scale):
     print "Probability plot:"
     NPP.show()
     print
+    if nu is None:
+      nu = absolute_structure.maximise_students_t_correlation_coefficient(
+        NPP.y, min_nu=1, max_nu=200)
+    t_analysis = absolute_structure.students_t_hooft_analysis(
+      fo2, fc, nu, probability_plot_slope=NPP.fit.slope())
+    tPP = absolute_structure.bijvoet_differences_probability_plot(
+      t_analysis, use_students_t_distribution=True, students_t_nu=nu)
+    print "Student's t analysis:"
+    print "nu: %.2f" %nu
+    t_analysis.show()
+    print "Probability plot:"
+    tPP.show()
+    print
 
 def run(args):
   command_line = (option_parser(
@@ -105,6 +118,9 @@ def run(args):
                   .enable_symmetry_comprehensive()
                   .option(None, "--ext",
                           action="store")
+                  .option(None, "--nu",
+                          action="store",
+                          type="float")
                   .option(None, "--debug",
                           action="store_true")
                   .option(None, "--verbose",
@@ -115,8 +131,10 @@ def run(args):
     return
   if os.path.isdir(command_line.args[0]):
     crawl(command_line.args[0], ext=command_line.options.ext)
+  elif os.path.isfile(command_line.args[0]):
+    run_once(command_line.args[0], nu=command_line.options.nu)
   else:
-    run_once(command_line.args[0])
+    print "Please provide a valid file or directory"
 
 
 if __name__ == '__main__':
