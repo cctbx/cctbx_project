@@ -49,8 +49,8 @@ class hooft_analysis:
         flex.abs(self.delta_fc2.data()))
     self.delta_fo2 = self.delta_fo2.select(~cutoff_sel)
     self.delta_fc2 = self.delta_fc2.select(~cutoff_sel)
-    self.delta_fo2 = self.delta_fo2.customized_copy(
-      data=self.delta_fo2.data()/scale_factor)
+    self.delta_fc2 = self.delta_fc2.customized_copy(
+      data=self.delta_fc2.data() * scale_factor)
     if not self.delta_fo2.size():
       raise Sorry("Absolute structure could not be determined")
     min_gamma = -10
