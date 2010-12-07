@@ -1765,6 +1765,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                   symmetry_flags = None,
                   map_coefficients = None,
                   other_fft_map = None,
+                  use_all_data = False,
                   map_type = None):
         if(resolution_factor is None):
           resolution_factor = self.resolution_factor
