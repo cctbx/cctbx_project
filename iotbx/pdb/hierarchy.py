@@ -574,6 +574,18 @@ class _root(boost.python.injector, ext.root):
               is_first_in_chain = False
               is_first_after_break = False
 
+  def get_conformer_indices (self) :
+    n_seq = self.atoms_size()
+    conformer_indices = flex.size_t(n_seq, 0)
+    altloc_indices = self.altloc_indices()
+    if ("" in altloc_indices): p = 0
+    else:                      p = 1
+    altlocs = sorted(altloc_indices.keys())
+    for i,altloc in enumerate(altlocs):
+      if (altloc == ""): continue
+      conformer_indices.set_selected(altloc_indices[altloc], i+p)
+    return conformer_indices
+
   def transfer_chains_from_other(self, other):
     from iotbx.pdb import hy36encode
     i_model = 0
@@ -615,9 +627,11 @@ class _root(boost.python.injector, ext.root):
     atoms.set_chemical_element_simple_if_necessary()
     sites_cart = atoms.extract_xyz()
     elements = atoms.extract_element()
+    conformer_indices = self.get_conformer_indices()
     atomic_bonds = distance_based_connectivity.build_bond_list(
       sites_cart=sites_cart,
       elements=elements,
+      conformer_indices=conformer_indices,
       fallback_expected_bond_length=fallback_expected_bond_length,
       fallback_search_max_distance=fallback_search_max_distance)
     return atomic_bonds

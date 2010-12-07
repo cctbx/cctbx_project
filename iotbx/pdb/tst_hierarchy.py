@@ -5560,6 +5560,28 @@ ATOM     24 H113 LIG A   1       0.358  -0.896  -3.748  1.00 20.00      A    H
   assert bonds.size() == pdb_hierarchy.atoms().size()
   #print list(bonds[0])
   assert list(bonds[0]) == [1, 14, 15, 16]
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      1  C1  EOH     1       3.108   0.653  -8.526  1.00  0.00           C
+ATOM      2  C2  EOH     1       4.597   0.674  -8.132  1.00  0.00           C
+ATOM      3 1H1  EOH     1       2.815  -0.349  -8.761  1.00  0.00           H
+ATOM      4 2H1  EOH     1       2.517   1.015  -7.711  1.00  0.00           H
+ATOM      5 3H1  EOH     1       2.956   1.278  -9.381  1.00  0.00           H
+ATOM      6 1H2 AEOH     1       5.210   0.503  -9.017  1.00  0.00           H
+ATOM      7 2H2 AEOH     1       4.790  -0.110  -7.400  1.00  0.00           H
+ATOM      8  OH AEOH     1       4.922   1.945  -7.565  1.00  0.00           O
+ATOM      9  HH AEOH     1       5.850   1.958  -7.320  1.00  0.00           H
+ATOM     10 1H2 BEOH     1       5.198   0.305  -8.963  1.00  0.00           H
+ATOM     11 2H2 BEOH     1       4.751   0.037  -7.261  1.00  0.00           H
+ATOM     12  OH BEOH     1       4.988   2.012  -7.818  1.00  0.00           O
+ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
+""").construct_hierarchy()
+  pdb_hierarchy.atoms().reset_i_seq()
+  bonds = pdb_hierarchy.distance_based_connectivity()
+  assert (list(bonds[7]) == [1,8])
+  assert (list(bonds[10]) == [1])
+  assert (list(bonds[11]) == [1,12])
+  assert (list(bonds[12]) == [11])
+
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/2hr0.pdb", test=os.path.isfile)
   if (pdb_file is not None) :
