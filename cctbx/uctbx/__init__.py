@@ -38,6 +38,30 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     if (f is None): f = sys.stdout
     print >> f, prefix + str(self)
 
+  def is_conventional_hexagonal_basis(self,
+        absolute_length_tolerance=1e-3,
+        absolute_angle_tolerance=1e-3):
+    p = self.parameters()
+    if (abs(p[0]-p[1]) > absolute_length_tolerance):
+      return False
+    ideal_angles = [90, 90, 120]
+    for i in [3,4,5]:
+      if (abs(p[i]-ideal_angles[i-3]) > absolute_angle_tolerance):
+        return False
+    return True
+
+  def is_conventional_rhombohedral_basis(self,
+        absolute_length_tolerance=1e-3,
+        absolute_angle_tolerance=1e-3):
+    p = self.parameters()
+    for j in [1,2]:
+      if (abs(p[0]-p[j]) > absolute_length_tolerance):
+        return False
+    for j in [4,5]:
+      if (abs(p[3]-p[j]) > absolute_angle_tolerance):
+        return False
+    return True
+
   def distance_mod_1(self, site_frac_1, site_frac_2):
     return distance_mod_1(
       unit_cell=self, site_frac_1=site_frac_1, site_frac_2=site_frac_2)
