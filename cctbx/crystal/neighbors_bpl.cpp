@@ -93,6 +93,7 @@ namespace {
         .def("neighbors_of", &w_t::neighbors_of, (arg("primary_selection")))
         .def("distance_based_connectivity", &w_t::distance_based_connectivity,
           (arg("elements"),
+           arg("conformer_indices"),
            arg("expected_bond_lengths"),
            arg("vdw_radii"),
            arg("fallback_expected_bond_length"),

@@ -16,6 +16,7 @@ for k, v in vdw.table.items() :
 def build_bond_list (
       sites_cart,
       elements,
+      conformer_indices=None,
       search_max_distance=None,
       tolerance_factor_expected_bond_length=1.3,
       fallback_expected_bond_length=2.0,
@@ -27,6 +28,8 @@ def build_bond_list (
           isinstance(fallback_expected_bond_length, int))
   assert (isinstance(fallback_search_max_distance, float) or
           isinstance(fallback_search_max_distance, int))
+  if (conformer_indices is None) :
+    conformer_indices = flex.sites_t(sites_cart.size(), 0)
   stripped_elements = elements.strip().upper()
   if (search_max_distance is None):
     search_max_distance = 2 * max([vdw_radii.get(e, 0.0) for e in elements])
@@ -51,6 +54,7 @@ def build_bond_list (
   result = shared.stl_set_unsigned(sites_cart.size())
   bonds = pair_generator.distance_based_connectivity(
     elements=stripped_elements,
+    conformer_indices=conformer_indices,
     expected_bond_lengths=expected_bond_lengths,
     vdw_radii=vdw_radii,
     fallback_expected_bond_length=fallback_expected_bond_length,

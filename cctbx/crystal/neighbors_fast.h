@@ -166,11 +166,13 @@ namespace cctbx { namespace crystal { namespace neighbors {
       af::shared< std::set< unsigned > >
       distance_based_connectivity(
         af::const_ref< std::string > const& elements,
+        af::const_ref<std::size_t> const& conformer_indices,
         std::map<std::string, double> expected_bond_lengths,
         std::map<std::string, double> vdw_radii,
         double fallback_expected_bond_length,
         double tolerance_factor_expected_bond_length)
       {
+        CCTBX_ASSERT(conformer_indices.size() == elements.size());
         std::size_t n_sites = elements.size();
         af::shared< std::set< unsigned > > bonds(n_sites);
         restart();
@@ -180,6 +182,11 @@ namespace cctbx { namespace crystal { namespace neighbors {
           //CCTBX_ASSERT(pair.i_seq < n_sites);
           std::string elem1 = elements[pair.i_seq];
           std::string elem2 = elements[pair.j_seq];
+          std::size_t conf1 = conformer_indices[pair.i_seq];
+          std::size_t conf2 = conformer_indices[pair.j_seq];
+          if ((conf2 != conf1) && (conf1 != 0) && (conf2 != 0)) {
+            continue;
+          }
           std::string elem_key;
           if (elem1 < elem2) {
             elem_key = elem1 + elem2;
