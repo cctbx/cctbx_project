@@ -331,6 +331,22 @@ def exercise_compare():
   assert c.c().r().den() == 12
   assert c.c().t().den() == 144
 
+def exercise_is_conventional_basis():
+  u = uctbx.unit_cell
+  def hex(s): return u(s).is_conventional_hexagonal_basis()
+  assert hex("10 10 11 90 90 120")
+  assert     not hex("10 11 11 90 90 120")
+  assert not hex("10 10 11 91 90 120")
+  assert not hex("10 10 11 90 89 120")
+  assert not hex("10 10 11 90 90 121")
+  def rho(s): return u(s).is_conventional_rhombohedral_basis()
+  assert     rho("10 10 10 80 80 80")
+  assert not rho("10 11 10 80 80 80")
+  assert not rho("10 10 11 80 80 80")
+  assert not rho("10 10 10 81 80 80")
+  assert not rho("10 10 10 80 81 80")
+  assert not rho("10 10 10 80 80 81")
+
 def exercise_pickle():
   u = uctbx.unit_cell((2,3,5,80,100,110))
   p = pickle.dumps(u)
@@ -624,6 +640,7 @@ def run():
   exercise_change_basis()
   exercise_miller_index_methods()
   exercise_compare()
+  exercise_is_conventional_basis()
   exercise_pickle()
   exercise_exceptions()
   exercise_fast_minimum_reduction()

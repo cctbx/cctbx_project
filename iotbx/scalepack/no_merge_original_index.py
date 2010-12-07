@@ -91,11 +91,9 @@ class reader(object):
     else:
       space_group_info = None
     return miller.set(
-      crystal_symmetry=crystal.symmetry(
-        unit_cell=None,
-        space_group_info=space_group_info).join_symmetry(
-          other_symmetry=crystal_symmetry,
-          force=force_symmetry),
+      crystal_symmetry=self.crystal_symmetry().join_symmetry(
+        other_symmetry=crystal_symmetry,
+        force=force_symmetry),
       indices=self.original_indices,
       anomalous_flag=True)
 

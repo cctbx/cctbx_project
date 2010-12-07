@@ -5,6 +5,15 @@ import boost.python
 ext = boost.python.import_ext("cctbx_sgtbx_ext")
 from cctbx_sgtbx_ext import *
 
+rhombohedral_hermann_mauguin_symbols = [
+  "R 3",
+  "R -3",
+  "R 3 2",
+  "R 3 m",
+  "R 3 c",
+  "R -3 m",
+  "R -3 c"]
+
 class empty: pass
 
 from cctbx.array_family import flex

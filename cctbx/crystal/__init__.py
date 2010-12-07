@@ -28,12 +28,14 @@ pair_asu_j_sym_group = scitbx.stl.set.unsigned
 
 class symmetry(object):
 
-  def __init__(self, unit_cell=None,
-                     space_group_symbol=None,
-                     space_group_info=None,
-                     space_group=None,
-                     assert_is_compatible_unit_cell=True,
-                     force_compatible_unit_cell=True):
+  def __init__(self,
+        unit_cell=None,
+        space_group_symbol=None,
+        space_group_info=None,
+        space_group=None,
+        correct_rhombohedral_setting_if_necessary=False,
+        assert_is_compatible_unit_cell=True,
+        force_compatible_unit_cell=True):
     assert [space_group_symbol, space_group_info, space_group].count(None)>=2
     if (    unit_cell is not None
         and not isinstance(unit_cell, uctbx.ext.unit_cell)):
@@ -50,6 +52,19 @@ class symmetry(object):
         else:
           self._space_group_info = sgtbx.space_group_info(symbol=space_group)
     if (self.unit_cell() is not None and self.space_group_info() is not None):
+      if (correct_rhombohedral_setting_if_necessary):
+        sgi = self.space_group_info()
+        z = sgi.group().conventional_centring_type_symbol()
+        if (z == "P"):
+          if (self.unit_cell().is_conventional_hexagonal_basis()):
+            ls = sgi.type().lookup_symbol()
+            if (ls.endswith(" :R")):
+              self._space_group_info = sgi.reference_setting()
+        elif (z == "R"):
+          if (self.unit_cell().is_conventional_rhombohedral_basis()):
+            ls = sgi.type().lookup_symbol()
+            if (ls.endswith(" :H")):
+              self._space_group_info = sgi.primitive_setting()
       if (assert_is_compatible_unit_cell):
         assert self.is_compatible_unit_cell(), \
           "Space group is incompatible with unit cell parameters."

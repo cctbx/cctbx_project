@@ -98,7 +98,8 @@ class reader(object):
   def crystal_symmetry(self):
     return crystal.symmetry(
       unit_cell=self.unit_cell,
-      space_group_info=self.space_group_info)
+      space_group_info=self.space_group_info,
+      correct_rhombohedral_setting_if_necessary=True)
 
   def as_miller_array(self,
         crystal_symmetry=None,
