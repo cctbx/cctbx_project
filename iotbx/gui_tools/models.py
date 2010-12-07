@@ -37,9 +37,7 @@ class model_handler (iotbx.gui_tools.manager) :
       self.cif_handler.clear_cache()
     self._cached_pdb_hierarchies = {}
     self._cached_bonds = {}
-    self._cached_ss_managers = {}
     self._cached_xray_structures = {}
-    self._cached_mmtbx_pdb_files = {}
 
   def set_callbacks (self, add_callback, remove_callback) :
     self.add_callback = add_callback
@@ -57,11 +55,6 @@ class model_handler (iotbx.gui_tools.manager) :
       pdb_hierarchy = input_file.file_object.construct_hierarchy()
       self._cached_pdb_hierarchies[file_name] = pdb_hierarchy
       return pdb_hierarchy
-
-  # these do not get deleted!
-  def save_interpreted_pdb_file (self, file_name, processed_pdb_file) :
-    self._cached_mmtbx_pdb_files[file_name] = processed_pdb_file
-    self._cached_mtimes[file_name] = os.path.getmtime(file_name)
 
   def get_complete_model_file (self, file_param_name=None) :
     file_names = []
@@ -147,30 +140,20 @@ class model_handler (iotbx.gui_tools.manager) :
     self._cached_bonds[file_name] = atomic_bonds
     return atomic_bonds
 
-  # XXX: this will not automatically process the file - if the return value is
-  # None, a separate call to self.process_pdb_file* needs to be made.
-  def get_interpreted_pdb_file (self, file_name) :
-    assert os.path.isfile(file_name)
-    if ((file_name in self._cached_mmtbx_pdb_files) and
-        (not self.file_is_modified(file_name))) :
-      return self._cached_mmtbx_pdb_files[file_name]
-    return None
-
-  def clear_interpreted_pdb_files (self) :
-    self._cached_mmtbx_pdb_files = {}
-
   def get_pdb_file_symmetry (self, file_name) :
     pdb_file = self.get_file(file_name)
-    if pdb_file is None :
+    if (pdb_file is None) :
       pdb_file = file_reader.any_file(file_name)
       pdb_file.assert_file_type("pdb")
     return pdb_file.file_object.crystal_symmetry()
 
-  def create_copy_with_fake_symmetry (self, file_name) :
+  def create_copy_with_fake_symmetry (self, file_name, tmp_dir=None) :
     import iotbx.pdb
-    tmp_dir = self.tmp_dir
-    if tmp_dir is None :
-      tmp_dir = "/var/tmp"
+    if (tmp_dir is None) :
+      if (self.tmp_dir is None) :
+        tmp_dir = "/var/tmp"
+      else :
+        tmp_dir = self.tmp_dir
     assert os.path.isdir(tmp_dir)
     pdb_hierarchy = self.get_pdb_hierarchy(file_name)
     if pdb_hierarchy is None :
@@ -190,6 +173,7 @@ class model_handler (iotbx.gui_tools.manager) :
     return output_file
 
 def get_fake_symmetry (xyz_min, xyz_max) :
+  from iotbx import crystal_symmetry_from_any
   a = xyz_max[0] - xyz_min[0] + 10.0
   b = xyz_max[1] - xyz_min[1] + 10.0
   c = xyz_max[2] - xyz_min[2] + 10.0
