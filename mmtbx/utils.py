@@ -2268,6 +2268,7 @@ class cmdline_load_pdb_and_data (object) :
       self.processed_pdb_file = processed_pdb_file
       self.geometry = geometry
     else :
+      pdb_in = pdb_file_object.pdb_inp
       pdb_hierarchy = pdb_file_object.pdb_inp.construct_hierarchy()
       xray_structure = pdb_file_object.pdb_inp.xray_structure_simple()
       self.processed_pdb_file = None

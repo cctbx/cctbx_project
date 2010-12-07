@@ -130,7 +130,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
-    print self.w, self.h
     if (self.GetContext() and self.GetParent().IsShown()):
       if (self.context is not None) :
         self.SetCurrent(self.context)
