@@ -735,8 +735,11 @@ iotbx/examples/pdb_truncate_to_ala/v2_simple.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v3_better.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v4_with_bells_and_whistles.py svneol=native#text/x-python
 iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
-iotbx/file_cache.py -text
 iotbx/file_reader.py svneol=native#text/x-python
+iotbx/gui_tools/__init__.py -text
+iotbx/gui_tools/models.py -text
+iotbx/gui_tools/reflections.py -text
+iotbx/gui_tools/tst.py -text
 iotbx/libtbx_refresh.py svneol=native#text/x-python
 iotbx/logfiles.py -text
 iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
@@ -1386,6 +1389,7 @@ wxtbx/checklistctrl.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/plots.py -text
+wxtbx/processes.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text

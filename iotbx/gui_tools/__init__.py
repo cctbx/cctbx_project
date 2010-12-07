@@ -2,6 +2,10 @@
 # This module is used by the PHENIX GUI to manage file objects and associated
 # phil parameters.
 
+# TODO better tests!  major functionality is tested as part of the handlers
+# specific to HKL/PDB formats, but not every method yet
+
+from iotbx import file_reader
 from libtbx.utils import hashlib_md5
 from libtbx import adopt_init_args
 import os
@@ -48,7 +52,6 @@ class manager (object) :
       yield (file_name, file_object)
 
   def open_file (self, file_name) :
-    from iotbx import file_reader
     input_file = file_reader.any_file(file_name)
     return input_file
 
@@ -144,6 +147,7 @@ class manager (object) :
     if self.allowed_param_names is not None :
       if not file_param_name in self.allowed_param_names :
         raise KeyError("Unrecognized input file parameter %s."%file_param_name)
+    opened_file = False
     if (file_name is None) or (file_name == "") or (file_name == "None") :
       self._param_files.pop(file_param_name, None)
     else :
@@ -151,6 +155,7 @@ class manager (object) :
         self.save_file(input_file)
       elif (self.get_file(file_name) is None) :
         input_file = self.open_file(file_name)
+        opened_file = True
         self.save_file(input_file)
       if self.allow_multiple(file_param_name) :
         if (not file_param_name in self._param_files) :
@@ -162,6 +167,7 @@ class manager (object) :
       callback = self._param_callbacks.get(file_param_name, None)
       if (callback is not None) :
         callback(file_name)
+    return opened_file
 
   def unset_param_file (self, file_name, file_param_name, run_callback=True) :
     if (self.allow_multiple(file_param_name) and
