@@ -234,7 +234,7 @@ def hydrogen_bonds_from_selections (
   atoms = pdb_hierarchy.atoms()
   n_atoms = atoms.size()
   sites = atoms.extract_xyz()
-  has_bond = flex.bool(sites.size(), False)
+  has_bond = flex.int(sites.size(), 0)
   selection_cache = pdb_hierarchy.atom_selection_cache()
   isel = selection_cache.iselection
   donor_name = "H"
@@ -296,8 +296,8 @@ def hydrogen_bonds_from_selections (
               print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
               print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
               continue
-            has_bond[i_seq] = True
-            has_bond[j_seq] = True
+            has_bond[i_seq] += 1
+            has_bond[j_seq] += 1
             bond_i_seqs.append((j_seq, i_seq))
             distances.append(distance_ideal)
             sigmas.append(sigma)
@@ -386,8 +386,8 @@ def hydrogen_bonds_from_selections (
           print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
           print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
           continue
-        has_bond[i_seq] = True
-        has_bond[j_seq] = True
+        has_bond[i_seq] += 1
+        has_bond[j_seq] += 1
         bond_i_seqs.append((i_seq, j_seq))
         distances.append(distance_ideal)
         sigmas.append(sigma)
@@ -419,8 +419,6 @@ def hydrogen_bonds_from_selections (
           saenger_class=base_pair.saenger_class.upper(),
           leontis_westhof_class=base_pair.leontis_westhof_class.upper(),
           use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
-        #print distances
-        #STOP()
         for i, (name1, name2) in enumerate(atom_pairs) :
           sele1 = """name %s and %s""" % (name1, base_pair.base1)
           sele2 = """name %s and %s""" % (name2, base_pair.base2)
@@ -428,14 +426,14 @@ def hydrogen_bonds_from_selections (
           # doesn't really matter here.
           (i_seq,j_seq) = _hydrogen_bond_from_selection_pair(sele1, sele2,
             selection_cache)
-          if (has_bond[i_seq] and atoms[i_seq].element.strip() != 'N') \
-             or (has_bond[j_seq] and atoms[j_seq].element.strip() != 'N'):
+          if (has_bond[i_seq] > 2) \
+             or (has_bond[j_seq] > 2):
             print >> log, "One or more atoms already bonded:"
             print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
             print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
             continue
-          has_bond[i_seq] = True
-          has_bond[j_seq] = True
+          has_bond[i_seq] += 1
+          has_bond[j_seq] += 1
           if distance_values[i][0] != '_':
             cur_distance = float(distance_values[i][0])
           else:
@@ -454,8 +452,6 @@ def hydrogen_bonds_from_selections (
           slacks.append(cur_slack)
       except RuntimeError, e :
         print >> log, str(e)
-  #print dir(distances)
-  #print dir(slacks)
   return hydrogen_bond_table(bonds=bond_i_seqs,
     distance=distances,
     sigma=sigmas,
