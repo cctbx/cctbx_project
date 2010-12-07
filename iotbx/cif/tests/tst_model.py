@@ -1,6 +1,7 @@
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from libtbx.utils import Sorry
+from libtbx.containers import OrderedDict
 from cStringIO import StringIO
 import copy
 
@@ -234,6 +235,25 @@ save_bob
   b2.add_loop(l2)
   b5 = b1.difference(b2)
   assert b5['_loop'] == l2
+  l = model.loop(data=OrderedDict((('_loop_a',(1,21,-13)),
+                                   ('_loop_b',(-221.3,3.01,4.246)),
+                                   ('_loop_c',("a","b","c")))))
+  b = model.block()
+  b.add_loop(l)
+  cm = model.cif({'fred':b})
+  s = StringIO()
+  cm.show(out=s, loop_format_strings={'_loop':'% 4i% 8.2f %s'})
+  assert not show_diff(s.getvalue(),"""\
+data_fred
+loop_
+  _loop_a
+  _loop_b
+  _loop_c
+   1 -221.30 a
+  21    3.01 b
+ -13    4.25 c
+
+""")
 
 
 if __name__ == '__main__':

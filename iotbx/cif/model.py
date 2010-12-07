@@ -47,13 +47,16 @@ class cif(DictMixin):
   def deepcopy(self):
     return copy.deepcopy(self)
 
-  def show(self, out=None, indent="  ", data_name_field_width=34):
+  def show(self, out=None, indent="  ",
+           data_name_field_width=34,
+           loop_format_strings=None):
     if out is None:
       out = sys.stdout
     for name, block in self.items():
       print >> out, "data_%s" %name
       block.show(
-        out=out, indent=indent, data_name_field_width=data_name_field_width)
+        out=out, indent=indent, data_name_field_width=data_name_field_width,
+        loop_format_strings=loop_format_strings)
 
   def __str__(self):
     s = StringIO()
@@ -282,7 +285,9 @@ class block(block_base):
     block_base.update(self, other, **kwargs)
     self.saves.update(other.saves)
 
-  def show(self, out=None, indent="  ", data_name_field_width=34):
+  def show(self, out=None, indent="  ",
+           data_name_field_width=34,
+           loop_format_strings=None):
     if out is None:
       out = sys.stdout
     format_str = "%%-%is" %(data_name_field_width-1)
@@ -298,7 +303,11 @@ class block(block_base):
         print >> out, indent + "save_"
         print >> out
       else:
-        self.loops[k].show(out=out, indent=indent)
+        if loop_format_strings is not None and k in loop_format_strings:
+          self.loops[k].show(
+            out=out, indent=indent, fmt_str=loop_format_strings[k])
+        else:
+          self.loops[k].show(out=out, indent=indent)
         print >> out
 
   def sort(self, recursive=False, key=None, reverse=False):
@@ -403,16 +412,36 @@ class loop(DictMixin):
   def deepcopy(self):
     return copy.deepcopy(self)
 
-  def show(self, out=None, indent="  "):
+  def show(self, out=None, indent="  ", fmt_str=None):
     if out is None:
       out = sys.stdout
     print >> out, "loop_"
     for k in self.keys():
       print >> out, indent + k
     values = self._columns.values()
-    for i in range(self.size()):
-      values_to_print = [format_value(values[j][i]) for j in range(len(values))]
-      print >> out, ' '.join([indent] + values_to_print)
+    if fmt_str is not None:
+      # Pretty printing:
+      #   The user is responsible for providing a valid format string.
+      #   Values are not quoted - it is the user's responsibility to place
+      #   appropriate quotes in the format string if a particular value may
+      #   contain spaces.
+      for i, v in enumerate(values):
+        for flex_numeric_type in (flex.int, flex.double):
+          if not isinstance(v, flex_numeric_type):
+            try:
+              values[i] = flex_numeric_type(v)
+            except RuntimeError:
+              continue
+            else:
+              break
+      if fmt_str is None:
+        fmt_str = indent + ' '.join(["%s"]*len(values))
+      for i in range(self.size()):
+        print >> out, fmt_str % tuple(values[j][i] for j in range(len(values)))
+    else:
+      for i in range(self.size()):
+        values_to_print = [format_value(values[j][i]) for j in range(len(values))]
+        print >> out, ' '.join([indent] + values_to_print)
 
   def __str__(self):
     s = StringIO()
