@@ -1,5 +1,5 @@
 
-from iotbx.gui_tools import reflections
+from iotbx.gui_tools import reflections, models
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, Exception_expected
 from iotbx import file_reader
@@ -128,6 +128,58 @@ def exercise_reflections () :
   (fp, fpp) = reflections.get_fp_fpp_from_sasaki("Se", 0.979)
   assert fp is not None and fpp is not None
 
+def exercise_model () :
+  model_handler = models.model_handler(
+    allowed_param_names=["refinement.input.pdb.file_name"],
+    allowed_multiple_params=["refinement.input.pdb.file_name"],
+    cif_param_names=["refinement.input.monomers.file_name"],
+    multiple_cif_params=["refinement.input.monomers.file_name"],
+    tmp_dir=os.getcwd())
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ur0013.pdb",
+    test=os.path.isfile)
+  cif_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/cif_files/elbow.ur0013_ent.all.001.cif",
+    test=os.path.isfile)
+  model_handler.set_param_file(
+    file_name=pdb_file,
+    file_param_name="refinement.input.pdb.file_name")
+  model_handler.set_param_cif_file(
+    file_name=cif_file,
+    file_param_name="refinement.input.monomers.file_name")
+  assert (len(model_handler.get_cif_objects()) == 1)
+  assert (model_handler.get_current_cif_file_names() == [cif_file])
+  pdb_file2 = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf.pdb",
+    test=os.path.isfile)
+  model_handler.set_param_file(
+    file_name=pdb_file2,
+    file_param_name="refinement.input.pdb.file_name")
+  assert (model_handler.get_current_file_names() == [pdb_file2, pdb_file])
+  assert (model_handler.get_file_params(pdb_file) ==
+          ["refinement.input.pdb.file_name"])
+  assert (model_handler.get_param_files("refinement.input.pdb.file_name") ==
+          [pdb_file, pdb_file2])
+  pdb_hierarchy = model_handler.get_pdb_hierarchy(pdb_file2)
+  xrs = model_handler.get_xray_structure(pdb_file2)
+  assert (pdb_hierarchy.atoms().size() == xrs.scatterers().size() == 2127)
+  model_handler.remove_file(pdb_file)
+  assert (model_handler.get_param_files("refinement.input.pdb.file_name") ==
+          [pdb_file2])
+  atomic_bonds = model_handler.get_connectivity(pdb_file2)
+  assert (atomic_bonds.size() == 2127)
+  symm = model_handler.get_pdb_file_symmetry(pdb_file2)
+  assert (str(symm.space_group_info()) == "I 41")
+  assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
+          "113.068 113.068 53.292 90.000 90.000 90.000")
+  f = model_handler.create_copy_with_fake_symmetry(pdb_file2,
+    tmp_dir=os.getcwd())
+  pdb_in = file_reader.any_file(f, force_type="pdb").file_object
+  symm = pdb_in.crystal_symmetry()
+  assert (str(symm.space_group_info()) == "P 1")
+  assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
+          "59.227 55.922 60.264 90.000 90.000 90.000")
+
 if (__name__ == "__main__") :
   hkl_dir = libtbx.env.find_in_repositories(
     relative_path="phenix_regression",
@@ -135,5 +187,6 @@ if (__name__ == "__main__") :
   if (hkl_dir is None) :
     print "phenix_regression/reflection_files not found, skipping tests."
   else :
+    exercise_model()
     exercise_reflections()
     print "OK"
