@@ -53,6 +53,16 @@ class polynomial_fit(normal_eqns.non_linear_ls_with_separable_scale_factor,
     self.finalise()
 
 
+class polynomial_fit_with_penalty(polynomial_fit):
+
+  def build_up(self, objective_only=False):
+    super(polynomial_fit_with_penalty, self).build_up(objective_only)
+    a, b, c = self.x
+    reduced = self.reduced_problem()
+    reduced.add_equation(residual=(a - b + c - 2),
+                         grad_residual=flex.double((1, -1, 1)),
+                         weight=1)
+
 class exponential_fit(
   normal_eqns.non_linear_ls,
   normal_eqns.non_linear_ls_mixin):
