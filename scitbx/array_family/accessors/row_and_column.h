@@ -23,6 +23,12 @@ row_right_of(af::ref<ValueType, af::mat_grid> const &a,
   return af::ref<ValueType>(&a(i,j), a.n_columns() - j);
 }
 
+template <typename ValueType>
+af::const_ref<ValueType>
+row(af::const_ref<ValueType, af::mat_grid> const &a, std::size_t i) {
+  return af::const_ref<ValueType>(&a(i, 0), a.n_columns());
+}
+
 }} // scitbx::af
 
 #endif // GUARD
