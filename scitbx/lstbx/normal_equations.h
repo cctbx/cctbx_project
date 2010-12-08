@@ -166,7 +166,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
   /// Normal equations for non-linear least-squares
   /** The least-squares target reads
 
-      \f[ L(x) = \frac{1}{2} \|r_i(x)\|^2 \f]
+      \f[ L(x) = \frac{1}{2} \|r(x)\|^2 \f]
 
       where the norm is diagonal-weighted
 
@@ -183,9 +183,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
     /// Construct a least-squares problem with the given number of unknowns.
     non_linear_ls(int n_parameters)
-      : linearised(n_parameters),
+      : n_equations_(0),
         r_sq(0),
-        n_equations_(0)
+        linearised(n_parameters)
     {}
 
     /// Construct with an exiting L.S. problem.
@@ -210,6 +210,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
     /// Number of unknown parameters
     int n_parameters() const { return linearised.n_parameters(); }
+
+    /// Number of degrees of freedom
+    std::size_t dof() const { return n_equations() - n_parameters(); }
 
     /// Add the given residual with the given weight
     void add_residual(scalar_t r, scalar_t w) {
@@ -278,18 +281,16 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         the form used in a fit, \f$r_i(x) = \text{model} - \text{data}\f$,
         but the computation is the same in the general case.
      */
-    scalar_t chi_sq() const {
-      return r_sq/(n_equations() - n_parameters());
-    }
+    scalar_t chi_sq() const { return r_sq/dof(); }
 
     /// Linearised equations to solve for a step
     linear_ls<scalar_t> &step_equations() { return linearised; }
 
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
-      linearised.reset();
-      r_sq = 0;
       n_equations_ = 0;
+      r_sq = 0;
+      linearised.reset();
     }
 
   private:
@@ -365,6 +366,11 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       return finalised() ? reduced_ls.n_equations() : n_data;
     }
 
+    /// Number of degrees of freedom.
+    /** This does take into account the equations added to the reduced_problem().
+     */
+    std::size_t dof() const { return n_equations() - n_parameters(); }
+
     /// Whether the L.S. target is normalised by \f$ \sum w y_o^2 \f$ or not
     bool normalised() const { return normalised_; }
 
@@ -420,7 +426,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
-    /// \sum w y_o^2
+    /// \f$\sum w y_o^2\f$
     /** This is the normalisation that guarantees
         that \f$L(K, x)\f$ is between 0 and 1.
      */
@@ -446,12 +452,19 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
     /// \f$\chi^2\f$ of the fit.
-    /** The \f$\chi^2\f$ for the fit of \f$y_c(x)\f$ to \f$y_o\f$, plus
-        the contributions added to the reduced_problem()
+    /** The \f$\chi^2\f$ for the fit of \f$y_c(x)\f$ to \f$y_o\f$.
+        This does include the contributions added to the reduced_problem().
      */
     scalar_t chi_sq() const {
       SCITBX_ASSERT(finalised());
-      return reduced_ls.chi_sq();
+      return (r_sq + 2*(reduced_ls.objective() - objective_))/dof();
+    }
+
+    scalar_t scale_factor_independent_chi_sq() const {
+      scalar_t
+      scale_factor_independent_objective = reduced_ls.objective() - objective_;
+      return 2*scale_factor_independent_objective
+              /(n_equations() - n_parameters());
     }
 
     /// Equation accumulation is finished.
@@ -462,8 +475,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       finalised_ = true;
 
       scalar_t k_star = optimal_scale_factor(), k_star_sq = k_star*k_star;
-      scalar_t objective_ = (1 - (k_star_sq * yc_sq)/yo_sq)/2;
-      if (!normalised()) objective_ *= yo_sq;
+      r_sq = yo_sq*(1 - (k_star_sq * yc_sq)/yo_sq);
+      objective_ = r_sq/2;
+      if (normalised()) objective_ /= yo_sq;
 
       vector_owning_ref_t b = yo_dot_grad_yc;
       reduced_ls = non_linear_ls<scalar_t>(n_data,
@@ -534,7 +548,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
   private:
-    scalar_t yo_dot_yc, yo_sq, yc_sq;
+    scalar_t yo_dot_yc, yo_sq, yc_sq, r_sq, objective_;
     int n_params;
     std::size_t n_data;
     bool normalised_;

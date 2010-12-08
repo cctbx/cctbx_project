@@ -84,6 +84,7 @@ namespace boost_python {
                arg("normal_matrix"))))
         .add_property("n_parameters", &wt::n_parameters)
         .add_property("n_equations", &wt::n_equations)
+        .add_property("dof", &wt::dof)
         .def("add_residual",
              &wt::add_residual,
              (arg("residual"), arg("weight")))
@@ -131,6 +132,7 @@ namespace boost_python {
         .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
         .add_property("n_parameters", &wt::n_parameters)
         .add_property("n_equations", &wt::n_equations)
+        .add_property("dof", &wt::dof)
         .def("add_residual",
              &wt::add_residual,
              (arg("y_calc"), arg("y_obs"), arg("weight")))

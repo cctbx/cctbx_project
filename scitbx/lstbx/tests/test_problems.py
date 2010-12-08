@@ -15,8 +15,9 @@ class polynomial_fit(normal_eqns.non_linear_ls_with_separable_scale_factor,
   n_data = 10
   x_0 = flex.double((0.5, 0.3, 0.2))
 
-  def __init__(self, **kwds):
-    super(polynomial_fit, self).__init__(n_parameters=3, normalised=False)
+  def __init__(self, normalised, **kwds):
+    super(polynomial_fit, self).__init__(n_parameters=3,
+                                         normalised=normalised)
     libtbx.adopt_optional_init_args(self, kwds)
     self.t = t = flex.double_range(self.n_data)/self.n_data
     noise = self.noise*flex.double([ (-1)**i for i in xrange(self.n_data) ])
