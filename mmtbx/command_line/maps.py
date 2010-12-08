@@ -185,14 +185,11 @@ def run(args, log = sys.stdout):
     log                     = log)
   f_obs = determine_data_and_flags_result.f_obs
   if (not f_obs.anomalous_flag()) :
-    for map_coeffs in params.maps.map_coefficients :
-      if map_coeffs.map_type.lower().startswith("anom") :
-        raise Sorry(("Anomalous map coefficients ('%s') requested, but input "+
-          "data are not anomalous.") % map_coeffs.map_type)
-    for map in params.maps.map :
+    all_maps = params.maps.map_coefficients + params.maps.map
+    for map in all_maps :
       if map.map_type.lower().startswith("anom") :
-        raise Sorry(("Anomalous map coefficients ('%s') requested, but input "+
-          "data are not anomalous.") % map_coeffs.map_type)
+        raise Sorry(("Anomalous map type ('%s') requested, but input "+
+          "data are not anomalous.") % map.map_type)
   r_free_flags = determine_data_and_flags_result.r_free_flags
   test_flag_value = determine_data_and_flags_result.test_flag_value
   if(r_free_flags is None):
