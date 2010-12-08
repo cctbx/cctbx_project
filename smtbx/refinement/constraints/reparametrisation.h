@@ -772,77 +772,20 @@ public:
       This object takes ownership of those parameters, which will therefore
       be deallocated when this object is destroyed.
    */
-  void add(parameter *p) {
-    typedef std::back_insert_iterator<std::vector<parameter *> >
-            all_param_inserter_t;
-    topologist<all_param_inserter_t> t(std::back_inserter(all));
-    t.visit(p);
-  }
+  void add(parameter *p);
 
   /// Ready this for linearise(), etc.
-  void finalise() {
-    whiten(); // only time we need to call that explicitely
-    analyse_variability();
-  }
+  void finalise();
   //@}
 
   /// Walks the computational graph to find constant branches
   /** This member function is to be called every time the variability of
       a parameter changes after this has been constructed
    */
-  void analyse_variability() {
-    /* Assign variability to each parameter.
-     It also evaluates constant parameters once and for all.
-     */
-    variability_visitor var(unit_cell);
-    accept(var);
-
-    // Assign indices to parameters
-    n_independents_ = n_intermediates_ = n_non_trivial_roots_ = 0;
-    BOOST_FOREACH(parameter *p, all) {
-      std::size_t s = p->size();
-      if      (!p->is_variable())   n_intermediates_ += s;
-      else if (p->is_independent()) n_independents_ += s;
-      else if (p->is_root())        n_non_trivial_roots_ += s;
-      else                          n_intermediates_ += s;
-    }
-    std::size_t i_independent = 0,
-    i_intermediate = n_independents(),
-    i_non_trivial_root = n_independents() + n_intermediates();
-    BOOST_FOREACH(parameter *p, all) {
-      std::size_t s = p->size();
-      if      (!p->is_variable()) {
-        p->set_index(i_intermediate);
-        i_intermediate += s;
-      }
-      else if (!p->n_arguments()) {
-        p->set_index(i_independent);
-        i_independent += s;
-      }
-      else if (p->is_root()) {
-        p->set_index(i_non_trivial_root);
-        i_non_trivial_root += s;
-      }
-      else {
-        p->set_index(i_intermediate);
-        i_intermediate += s;
-      }
-    }
-
-    // Initialise Jacobian transpose: [ dx_j/dx_i ]_ij
-    /* The block of independent parameters is initialised to the identity matrix.
-     Logically, it should be done in independent_xxxx_parameter::linearise,
-     but it is more efficient to do it once and for all here.
-     */
-    sparse_matrix_type jt(n_independents(), n_components());
-    for (std::size_t j=0; j<n_independents(); ++j) jt(j, j) = 1.;
-    jacobian_transpose = jt;
-  }
+  void analyse_variability();
 
   /// Destroy all parameters in the computational graph.
-  ~reparametrisation() {
-    BOOST_FOREACH(parameter *p, all) delete p;
-  }
+  ~reparametrisation();
 
   /// The range of all parameters held by this object
   range parameters() { return boost::make_iterator_range(all); }
@@ -863,40 +806,19 @@ public:
 
   /// Call parameter::linearise() on each computational graph vertex.
   /** In the right order. */
-  void linearise() {
-    // Initialise to zero Jacobian columns of intermediate and non trivial roots
-    for (std::size_t j=n_independents(); j<n_components(); ++j) {
-      jacobian_transpose.col(j).zero();
-    }
-    evaluator eval(unit_cell, &jacobian_transpose);
-    accept(eval);
-  }
+  void linearise();
 
   /// Apply the given shifts to the independent parameters
   /** Indexing is, as for the Jacobian, enforced by parameter::index()
    */
-  void apply_shifts(af::const_ref<double> const &shifts) {
-    SMTBX_ASSERT(shifts.size() == n_independents());
-    BOOST_FOREACH(parameter *p, all) {
-      if (p->is_independent() && p->is_variable()) {
-        double const *s = &shifts[p->index()];
-        af::ref<double> x = p->components();
-        for (std::size_t i=0; i<x.size(); ++i) x[i] += s[i];
-      }
-    }
-  }
+  void apply_shifts(af::const_ref<double> const &shifts);
 
   /// Norm of the vector of independent parameters
   double norm_of_independent_parameter_vector();
 
   /// Store all crystallographic parameter values into their respective
   /// scatterers.
-  void store() {
-    BOOST_FOREACH(parameter *p, all) {
-      asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
-      if (cp) cp->store(unit_cell);
-    }
-  }
+  void store();
 
   /// Let the given visitor visits all parameters.
   /** All nodes are whitened before returning, allowing another visit to proceed
@@ -909,9 +831,7 @@ public:
   }
 
 private:
-  void whiten() {
-    BOOST_FOREACH(parameter *p, all) p->set_colour(white);
-  }
+  void whiten();
 
 public:
   /// The transpose of the Jacobian of the function transforming independent
