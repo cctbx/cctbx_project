@@ -240,7 +240,7 @@ namespace scitbx { namespace lstbx {
     }
 
     /// Overload for when efficiency is paramount.
-    /** This shall not be called after build_reduced_equations has been called
+    /** This shall not be called after finalise() has been called
         but this is not enforced for speed.
      */
     void add_equation(scalar_t yc, scalar_t const *grad_yc,
