@@ -1,5 +1,6 @@
 from __future__ import division
 
+from scitbx.lstbx import normal_eqns_solving
 from cctbx import miller
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
@@ -164,16 +165,8 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
     fo_sq, reparametrisation,
     f_mask=f_mask,
     weighting_scheme="default")
-  objectives = []
-  scales = []
-  fo_sq_max = flex.max(fo_sq.data())
-  for i in xrange(3):
-    normal_eqns.build_up()
-    objectives.append(normal_eqns.objective)
-    scales.append(normal_eqns.scale_factor)
-    gradient_relative_norm = normal_eqns.gradient.norm()/fo_sq_max
-    normal_eqns.solve_and_apply_shifts()
-    shifts = normal_eqns.shifts
+  cycles = normal_eqns_solving.naive_iterations(normal_eqns,
+                                                n_max_iterations=3)
   return xs
 
 YAKRUY_ins = """

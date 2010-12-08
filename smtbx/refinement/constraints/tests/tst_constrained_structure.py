@@ -60,7 +60,7 @@ class test_case(object):
       assert (tuple(self.reparametrisation.mapping_to_grad_fc)
               == self.expected_mapping_to_grad_fc)
     else:
-      print "%s: no mapping to grad Fc test" % self.__class__.__name__
+      print "No mapping to grad Fc test"
 
 
   def check_refinement_stability(self):
@@ -92,10 +92,11 @@ class test_case(object):
       self.reparametrisation,
       weighting_scheme=least_squares.mainstream_shelx_weighting())
     self.cycles = normal_eqns_solving.naive_iterations(normal_eqns,
-                                                       track_all=True)
-    self.cycles.do(gradient_threshold=1e-3, shift_threshold=1e-8)
-    print ("%s: %i pure Gauss-Newton iterations to recover from shaking"
-           % (self.__class__.__name__, self.cycles.n_iterations))
+                                                       gradient_threshold=1e-8,
+                                                       step_threshold=1e-8)
+    print ("%i %s iterations to recover from shaking"
+           % (self.cycles.n_iterations,
+              self.cycles))
 
     assert xs.delta_sites_cart_measure(xs0) < self.site_refinement_tolerance,\
            self.__class__.__name__
@@ -116,6 +117,7 @@ class test_case(object):
     display(xray_structure=self.xray_structure)
 
   def run(self):
+    print "[ %s ]" % self.__class__.__name__
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
     for sc in self.xray_structure.scatterers():

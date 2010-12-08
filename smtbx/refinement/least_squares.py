@@ -6,14 +6,15 @@ import smtbx.refinement.weighting_schemes # import dependency
 
 import libtbx
 from libtbx import adopt_optional_init_args
-from scitbx import linalg, lstbx
+from scitbx import linalg
+from scitbx.lstbx import normal_eqns
 from scitbx.array_family import flex
 from cctbx import xray
 from smtbx.structure_factors import direct
 
 from stdlib import math
 
-class normal_equations(object):
+class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
 
   default_weighting_scheme = mainstream_shelx_weighting
   weighting_scheme = "default"
@@ -24,6 +25,8 @@ class normal_equations(object):
   n_restraints = None
 
   def __init__(self, fo_sq, reparametrisation, **kwds):
+    super(normal_equations, self).__init__(
+      reparametrisation.n_independent_params)
     self.fo_sq = fo_sq
     self.reparametrisation = reparametrisation
     adopt_optional_init_args(self, kwds)
@@ -36,95 +39,77 @@ class normal_equations(object):
       reparametrisation.asu_scatterer_parameters,
       reparametrisation.jacobian_transpose_matching_grad_fc(),
       self.floating_origin_restraint_relative_weight)
-    self._core_normal_eqns = lstbx.normal_equations_separating_scale_factor(
-      self.reparametrisation.n_independent_params)
-    self.reduced = None
-    self.shifts = None
 
   class xray_structure(libtbx.property):
     def fget(self):
       return self.reparametrisation.structure
 
-  def compute_quick_scale_factor_approximation(self):
+  def scale_factor_approximation(self):
     self.fo_sq.set_observation_type_xray_intensity()
     f_calc = xray.structure_factors.from_scatterers_direct(
       self.xray_structure, self.fo_sq).f_calc()
-    self.scale_factor = self.fo_sq.scale_factor(f_calc, cutoff_factor=0.99)
+    return self.fo_sq.scale_factor(f_calc, cutoff_factor=0.99)
 
-  def build_up(self):
-    if self.scale_factor is None:
-      self.compute_quick_scale_factor_approximation()
-    if self.reduced is not None:
-      self._core_normal_eqns.reset()
+  def build_up(self, objective_only=False):
+    if not self.finalised: #i.e. never been called
+      self.reparametrisation.linearise()
+      self.reparametrisation.store()
+      scale_factor = self.scale_factor_approximation()
+    else:
+      scale_factor = self.scale_factor()
+    self.reset()
     if self.f_mask is not None:
       f_mask = self.f_mask.data()
     else:
       f_mask = flex.complex_double()
-    if self.reduced is None:
-      self.reparametrisation.linearise()
-      self.reparametrisation.store()
     result = ext.build_normal_equations(
-      self._core_normal_eqns,
+      self,
       self.fo_sq.indices(),
       self.fo_sq.data(),
       self.fo_sq.sigmas(),
       f_mask,
       self.weighting_scheme,
-      self.scale_factor,
+      scale_factor,
       self.one_h_linearisation,
       self.reparametrisation.jacobian_transpose_matching_grad_fc())
     self.f_calc = self.fo_sq.array(data=result.f_calc(), sigmas=None)
     self.weights = result.weights()
-    self.reduced = self._core_normal_eqns.reduced_equations()
-    self.scale_factor = self._core_normal_eqns.optimal_scale_factor()
-    self.objective_data_only = self._core_normal_eqns.objective()
-    self.sum_w_yo_sq = self._core_normal_eqns.sum_w_yo_sq()
+    self.objective_data_only = self.objective()
+    self.chi_sq_data_only = self.chi_sq()
     if self.restraints_manager is not None:
       # Here we determine a normalisation factor to place the restraints on the
       # same scale as the observations. This is the normalisation factor
       # suggested in Giacovazzo. In contrast, shelxl simply uses the mean
       # value of the deltas (shelx manual, page 5-1).
-      dof = self.fo_sq.size() - self.reparametrisation.n_independent_params
-      normalisation_factor = self.objective_data_only/dof
+      # The factor 2 comes from the fact that we minimize 1/2 sum w delta^2
+      normalisation_factor = self.chi_sq_data_only/2
       linearised_eqns = self.restraints_manager.build_linearised_eqns(
         self.xray_structure)
       jacobian = \
         self.reparametrisation.jacobian_transpose_matching_grad_fc().transpose()
-      self.reduced.add_equations(linearised_eqns.deltas,
-                                 linearised_eqns.design_matrix * jacobian,
-                                 linearised_eqns.weights * normalisation_factor,
-                                 negate_right_hand_side=True)
+      self.reduced_problem().add_equations(
+        linearised_eqns.deltas,
+        linearised_eqns.design_matrix * jacobian,
+        linearised_eqns.weights * normalisation_factor)
       self.n_restraints = linearised_eqns.n_restraints()
-    self.parameter_vector_norm = \
-        self.reparametrisation.norm_of_independent_parameter_vector
-    self.objective = self._core_normal_eqns.objective()
-    self.gradient = self._core_normal_eqns.gradient()
-    self.floating_origin_restraints.add_to(self.reduced)
+      self.chi_sq_data_and_restraints = self.chi_sq()
+    self.floating_origin_restraints.add_to(self.step_equations())
 
-  def solve(self):
-    self.reduced.solve()
-    self.shifts = self.reduced.solution
+  def parameter_vector_norm(self):
+    return self.reparametrisation.norm_of_independent_parameter_vector
 
-  def apply_shifts(self):
-    assert self.shifts is not None
-    self.reparametrisation.apply_shifts(self.shifts)
+  def scale_factor(self): return self.optimal_scale_factor()
+
+  def step_forward(self):
+    self.reparametrisation.apply_shifts(self.step())
     self.reparametrisation.linearise()
     self.reparametrisation.store()
 
-  def solve_and_apply_shifts(self):
-    self.solve()
-    self.apply_shifts()
-
   def goof(self):
-    dof = self.fo_sq.size() - self.reparametrisation.n_independent_params
-    return math.sqrt(self.objective_data_only*self.sum_w_yo_sq/dof)
+    return math.sqrt(self.chi_sq_data_only)
 
   def restrained_goof(self):
-    if self.n_restraints is not None: n_restraints = self.n_restraints
-    else: n_restraints = 0
-    dof = (self.fo_sq.size() + n_restraints
-           - self.reparametrisation.n_independent_params)
-    return math.sqrt(self.objective*self.sum_w_yo_sq/dof)
+    return math.sqrt(self.chi_sq_data_and_restraints)
 
   def wR2(self):
     return math.sqrt(self.objective_data_only)
@@ -144,8 +129,8 @@ class normal_equations(object):
                         independent_params=False,
                         normalised_by_goof=True):
     cov = linalg.inverse_of_u_transpose_u(
-      self.reduced.cholesky_factor_packed_u)
-    cov /= self.sum_w_yo_sq
+      self.step_equations().cholesky_factor_packed_u())
+    cov /= self.sum_w_yo_sq()
     if not independent_params:
       jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
       cov = jac_tr.self_transpose_times_symmetric_times_self(cov)
