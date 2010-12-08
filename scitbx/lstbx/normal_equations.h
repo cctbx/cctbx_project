@@ -386,8 +386,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       return yo_dot_yc/yc_sq;
     }
 
-    /** \brief The value of \f$L(K, x)\f$
-     for the optimised scale factor \f$ K^*(x) \f$ and the input \f$yc_(x)\f$.
+    /// The value of the minimised function, for the optimal scale factor
+    /** This is \f$L(K^*(x), x)\f$, plus the contributions added to
+        the reduced_problem().
      */
     scalar_t objective() const {
       SCITBX_ASSERT(finalised());
@@ -433,7 +434,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Whether finalise has been called.
     bool finalised() const { return finalised_; }
 
-    /// Reduced normal equations
+    /// The linear L.S. problem to solve for a step toward the minimum.
     linear_ls<scalar_t> &step_equations() {
       return reduced_problem().step_equations();
     }
