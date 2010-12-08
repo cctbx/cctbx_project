@@ -12,7 +12,7 @@
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
 
-namespace scitbx { namespace lstbx {
+namespace scitbx { namespace lstbx { namespace normal_equations {
 
 #define SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType)                            \
     typedef FloatType scalar_t;                                               \
@@ -38,41 +38,40 @@ namespace scitbx { namespace lstbx {
     typedef af::ref<scalar_t> vector_ref_t;
 
 
-  /// Normal equations for linear and non-linear least-squares
+  /// Normal equations for linear least-squares problem.
   /** The least-squares target reads
 
-      \f$ L(x) = \| A x - b \|^2 + \sum \|r(x)\|^2\f$
+      \f[ L(x) = \| A x - b \|^2 \f]
 
       where the norm is diagonal-weighted
 
-      \f$ \| y \|^2 = \sum_i w_i y_i^2 \f$
+      \f[ \| y \|^2 = \sum_i w_i y_i^2 \f]
 
-      and \f$r(x)\f$ is a vector of residuals.
+      Objects of this type may also be used to hold the normal equations
+      from a non-linear problem after they have been built.
   */
   template <typename FloatType>
-  class normal_equations
+  class linear_ls
   {
   public:
     SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
 
     /// Construct a least-squares problem with the given number of unknowns.
-    normal_equations(int n_parameters)
-      : n_params(n_parameters),
-        solved_(false),
-        normal_matrix_(n_params),
-        right_hand_side_(n_params),
-        r_sq(0)
+    linear_ls(int n_parameters)
+      : solved_(false),
+        normal_matrix_(n_parameters),
+        right_hand_side_(n_parameters)
     {}
 
-    /// Initialise the least-squares problem with the given normal matrix a
+    /// Number of unknown parameters
+    int n_parameters() { return right_hand_side_.size(); }
+
+    /// Initialise the least-squares problem with the given normal matrix A
     /// and right hand side b
-    normal_equations(symmetric_matrix_t const &a,
-                     vector_t const &b)
-      : n_params(a.accessor().n),
-        solved_(false),
+    linear_ls(symmetric_matrix_t const &a, vector_t const &b)
+      : solved_(false),
         normal_matrix_(a),
-        right_hand_side_(b),
-        r_sq(0)
+        right_hand_side_(b)
     {
       SCITBX_ASSERT(a.accessor().n == b.size());
     }
@@ -83,9 +82,9 @@ namespace scitbx { namespace lstbx {
                       scalar_t w)
     {
       scalar_t *p = normal_matrix_.begin();
-      for (int i=0; i<n_params; ++i)  {
+      for (int i=0; i<n_parameters(); ++i)  {
         right_hand_side_[i] += w * a_row[i] * b_i;
-        for (int j=i; j<n_params; ++j) *p++ += w * a_row[i] * a_row[j];
+        for (int j=i; j<n_parameters(); ++j) *p++ += w * a_row[i] * a_row[j];
       }
     }
 
@@ -98,6 +97,9 @@ namespace scitbx { namespace lstbx {
                        af::const_ref<scalar_t> const &w,
                        bool negate_right_hand_side=false)
     {
+      SCITBX_ASSERT(   a.n_rows() == b.size()
+                    && b.size()   == w.size())(a.n_rows())(b.size())(w.size());
+      SCITBX_ASSERT(a.n_cols() == n_parameters());
       sparse::matrix<scalar_t>
       at_w_a = a.this_transpose_times_diagonal_times_this(w);
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
@@ -107,22 +109,11 @@ namespace scitbx { namespace lstbx {
 
     }
 
-    /// Add the linearisation of the equation \f$r_i(x) = 0\f$
-    void add_equation(scalar_t r, af::const_ref<scalar_t> const &grad_r) {
-      r_sq += r*r;
-      scalar_t *p = normal_matrix_.begin();
-      for (int i=0; i<n_params; ++i) {
-        right_hand_side_[i] -= r*grad_r[i];
-        for (int j=i; j<n_params; ++j) *p++ += grad_r[i]*grad_r[j];
-      }
-    }
-
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
       solved_ = false;
       std::fill(normal_matrix_.begin(), normal_matrix_.end(), scalar_t(0));
       std::fill(right_hand_side_.begin(), right_hand_side_.end(), scalar_t(0));
-      r_sq = 0;
     }
 
     /// Only available if the equations have not been solved yet
@@ -165,11 +156,64 @@ namespace scitbx { namespace lstbx {
     }
 
   private:
-    int n_params;
     bool solved_;
-    scalar_t r_sq;
     symmetric_matrix_owning_ref_t normal_matrix_;
     vector_owning_ref_t right_hand_side_;
+  };
+
+
+  /// Normal equations for non-linear least-squares
+  /** The least-squares target reads
+
+      \f[ L(x) = \|r_i(x)\|^2 \f]
+
+      where the norm is diagonal-weighted
+
+      \f[ \| y \|^2 = \sum_i w_i y_i^2 \f]
+
+      and \f$r(x)\f$ is a vector of residuals depending on a vector
+      of unknowns \f$x\f$.
+  */
+  template <typename FloatType>
+  class non_linear_ls
+  {
+  public:
+    SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
+
+    /// Construct a least-squares problem with the given number of unknowns.
+    non_linear_ls(int n_parameters)
+      : linearised(n_parameters),
+        r_sq(0)
+    {}
+
+    /// Number of unknown parameters
+    int n_parameters() { return linearised.n_parameters(); }
+
+    /// Add the linearisation of the equation \f$r_i(x) = 0\f$
+    /** with the given weight */
+    void add_equation(scalar_t r,
+                      af::const_ref<scalar_t> const &grad_r,
+                      scalar_t w)
+    {
+      r_sq += w*r*r;
+      linearised.add_equation(-r, grad_r, w);
+    }
+
+    /// Objective value \f$L(x)\f$ for the current value of the unknowns
+    scalar_t objective() { return r_sq; }
+
+    /// Linearised equations to solve for a step
+    linear_ls<scalar_t> &step_equations() { return linearised; }
+
+    /// Reset the state to construction time, i.e. no equations accumulated
+    void reset() {
+      linearised.reset();
+      r_sq = 0;
+    }
+
+  private:
+    scalar_t r_sq;
+    linear_ls<scalar_t> linearised;
   };
 
 
@@ -204,7 +248,7 @@ namespace scitbx { namespace lstbx {
    and references therein.
   */
   template <typename FloatType>
-  class normal_equations_separating_scale_factor
+  class non_linear_ls_with_separable_scale_factor
   {
   public:
     SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
@@ -214,8 +258,8 @@ namespace scitbx { namespace lstbx {
         specify whether to use the normalised objective \f$L\f$ or the
         non-normalised objective \f$\tilde{L}\f$.
      */
-    normal_equations_separating_scale_factor(int n_parameters,
-                                             bool normalised=true)
+    non_linear_ls_with_separable_scale_factor(int n_parameters,
+                                              bool normalised=true)
       : yo_dot_yc(0), yc_sq(0), yo_sq(0),
         n_params(n_parameters),
         normalised_(normalised),
@@ -224,6 +268,9 @@ namespace scitbx { namespace lstbx {
         yc_dot_grad_yc(n_parameters),
         grad_k_star(n_parameters)
     {}
+
+    /// Number of unknown parameters, not including the overall scale factor
+    int n_parameters() { return n_params; }
 
     /// Whether the L.S. target is normalised by \f$ \sum w y_o^2 \f$ or not
     bool normalised() { return normalised_; }
@@ -291,7 +338,7 @@ namespace scitbx { namespace lstbx {
     void finalise() {
       SCITBX_ASSERT(!finalised());
       vector_owning_ref_t b = yo_dot_grad_yc;
-      reduced_equations_ = normal_equations<scalar_t>(a.array(), b.array());
+      reduced_equations_ = linear_ls<scalar_t>(a.array(), b.array());
       scalar_t k_star = optimal_scale_factor();
       scalar_t r_dot_yc = yo_dot_yc - k_star*yc_sq;
       scalar_t inv_yc_sq = 1./yc_sq;
@@ -322,7 +369,7 @@ namespace scitbx { namespace lstbx {
     }
 
     /// Reduced normal equations
-    normal_equations<scalar_t> &step_equations() {
+    linear_ls<scalar_t> &step_equations() {
       SCITBX_ASSERT(finalised());
       return *reduced_equations_;
     }
@@ -344,7 +391,7 @@ namespace scitbx { namespace lstbx {
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
     vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;
-    boost::optional< normal_equations<scalar_t> > reduced_equations_;
+    boost::optional< linear_ls<scalar_t> > reduced_equations_;
   };
 
 
@@ -369,12 +416,12 @@ namespace scitbx { namespace lstbx {
    has been fixed.
    */
   template <typename FloatType>
-  class normal_equations_separating_linear_part
+  class separable_non_linear_ls
   {
   public:
     SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
 
-    normal_equations_separating_linear_part(int n_parameters, int n_bases)
+    separable_non_linear_ls(int n_parameters, int n_bases)
       : n(n_parameters), p(n_bases),
         linear_part(p),
         grad_yc_trans_grad_yc(n*(n+1)/2 * p*p),
@@ -414,7 +461,7 @@ namespace scitbx { namespace lstbx {
       return a_star.array();
     }
 
-    normal_equations<scalar_t> equations() {
+    linear_ls<scalar_t> equations() {
       using namespace scitbx::matrix;
       if(!has_solved_separable_linear_part) optimise_separable_linear_part();
 
@@ -443,7 +490,7 @@ namespace scitbx { namespace lstbx {
         grad_yc_tr_grad_yc += p*p;
       }
 
-      return normal_equations<scalar_t>(a.array(), b.array());
+      return linear_ls<scalar_t>(a.array(), b.array());
     }
 
   private:
@@ -462,7 +509,7 @@ namespace scitbx { namespace lstbx {
     int n;
     int p;
 
-    normal_equations<scalar_t> linear_part;
+    linear_ls<scalar_t> linear_part;
 
     af::ref_owning_shared<scalar_t> grad_yc_trans_grad_yc;
     matrix_owning_ref_t yo_trans_grad_yc;
@@ -478,6 +525,6 @@ namespace scitbx { namespace lstbx {
 
 
 
-}}
+}}}
 
 #endif // GUARD

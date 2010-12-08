@@ -1,6 +1,6 @@
 #include <boost/python/module.hpp>
 
-namespace scitbx { namespace lstbx { namespace boost_python {
+namespace scitbx { namespace lstbx { namespace normal_equations { namespace boost_python {
 
   void wrap_normal_equations();
 
@@ -9,9 +9,9 @@ namespace scitbx { namespace lstbx { namespace boost_python {
       wrap_normal_equations();
     }
   }
-}}}
+}}}}
 
-BOOST_PYTHON_MODULE(scitbx_lstbx_ext)
+BOOST_PYTHON_MODULE(scitbx_lstbx_normal_equations_ext)
 {
-  scitbx::lstbx::boost_python::init_module();
+  scitbx::lstbx::normal_equations::boost_python::init_module();
 }

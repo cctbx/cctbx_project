@@ -54,7 +54,8 @@ struct linear_polynomial_fit
       SCITBX_ASSERT(
         approx_equal(fit.ls.optimal_scale_factor(),
                      0.6148971786833856, 5e-14));
-      lstbx::normal_equations<double> normal_eqns = fit.ls.step_equations();
+      lstbx::normal_equations::linear_ls<double>
+      &normal_eqns = fit.ls.step_equations();
       SCITBX_ASSERT(!normal_eqns.solved());
       try {
         normal_eqns.cholesky_factor();
@@ -123,7 +124,8 @@ struct linear_combination_fit
 {
   static int const n=4, p=3, n_data=10;
   double noise;
-  typedef lstbx::normal_equations_separating_linear_part<double> normal_eqns_t;
+  typedef lstbx::normal_equations::separable_non_linear_ls<double>
+          normal_eqns_t;
   typedef normal_eqns_t::symmetric_matrix_owning_ref_t
           symmetric_matrix_owning_ref_t;
   typedef normal_eqns_t::vector_owning_ref_t
@@ -172,7 +174,7 @@ struct linear_combination_fit
                           0.208033764252907,
                          -0.0543166780808711;
     SCITBX_ASSERT(a_star.all_approx_equal(a_star_0, 1e-14));
-    lstbx::normal_equations<double> normal_eqns = fit.ls.equations();
+    lstbx::normal_equations::linear_ls<double> normal_eqns = fit.ls.equations();
     symmetric_matrix_owning_ref_t a = normal_eqns.normal_matrix();
     vector_owning_ref_t b = normal_eqns.right_hand_side();
 
@@ -199,7 +201,8 @@ struct linear_combination_fit
 
 int main() {
   linear_polynomial_fit<
-    lstbx::normal_equations_separating_scale_factor>::exercise();
+    lstbx::normal_equations
+    ::non_linear_ls_with_separable_scale_factor>::exercise();
   linear_combination_fit::exercise();
   std::cout << "OK\n";
   return 0;

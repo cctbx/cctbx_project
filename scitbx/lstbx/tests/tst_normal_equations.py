@@ -1,6 +1,8 @@
 from scitbx.array_family import flex
-from scitbx import lstbx, sparse
+from scitbx import sparse
+from scitbx.lstbx import normal_eqns, normal_eqns_solving
 from libtbx.test_utils import approx_equal
+import itertools
 
 def exercise_basic_normal_equations():
   py_eqs = [ ( 1, (-1,  0,  0),  1),
@@ -9,13 +11,13 @@ def exercise_basic_normal_equations():
              (-2, ( 0,  1,  0), -2),
              ]
 
-  eqs_0 = lstbx.normal_equations(3)
+  eqs_0 = normal_eqns.linear_ls(3)
   for b, a, w in py_eqs:
     eqs_0.add_equation(right_hand_side=b,
                        design_matrix_row=flex.double(a),
                        weight=w)
 
-  eqs_1 = lstbx.normal_equations(3)
+  eqs_1 = normal_eqns.linear_ls(3)
   b = flex.double()
   w = flex.double()
   a = sparse.matrix(len(py_eqs), 3)
@@ -36,7 +38,7 @@ def exercise_basic_normal_equations():
     list(eqs_0.right_hand_side()), [ 11, -6, -2 ], eps=1e-15)
 
 def exercise_normal_equations_separating_scale_factor():
-  eqs = lstbx.normal_equations_separating_scale_factor(3)
+  eqs = lstbx.non_linear_ls_with_separable_scale_factor(3)
   eqs.add_equation(y_calc=1.1,
                    grad_y_calc=flex.double((1, 2, 3)),
                    y_obs=1,

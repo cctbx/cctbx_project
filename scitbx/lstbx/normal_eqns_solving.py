@@ -7,20 +7,20 @@ import libtbx
 from scitbx.array_family import flex
 
 
-class journaled_normal_eqns(object):
+class journaled_non_linear_ls(object):
   """ A decorator that keeps the history of the objective, gradient,
   step, etc of an underlying normal equations object. An instance of this
   class is a drop-in replacement of that underlying object, with the
   journaling just mentionned automatically happening behind the scene.
   """
 
-  def __init__(self, normal_eqns, journal, track_gradient, track_step):
+  def __init__(self, non_linear_ls, journal, track_gradient, track_step):
     """ Decorate the given normal equations. The history will be accumulated
     in relevant attributes of journal. The flags track_xxx specify whether
     to journal the gradient and/or the step, a potentially memory-hungry
     operation.
     """
-    self.actual = normal_eqns
+    self.actual = non_linear_ls
     self.journal = journal
     self.journal.objective_history = flex.double()
     if track_gradient:
@@ -34,7 +34,7 @@ class journaled_normal_eqns(object):
       self.journal.step_history = None
     self.journal.step_norm_history = flex.double()
     self.journal.parameter_vector_norm_history = flex.double()
-    if hasattr(normal_eqns, "scale_factor"):
+    if hasattr(non_linear_ls, "scale_factor"):
       self.journal.scale_factor_history = flex.double()
     else:
       self.journal.scale_factor_history = None
@@ -92,14 +92,14 @@ class iterations(object):
   gradient_threshold = None
   step_threshold = None
 
-  def __init__(self, normal_eqns, **kwds):
+  def __init__(self, non_linear_ls, **kwds):
     """
     """
     libtbx.adopt_optional_init_args(self, kwds)
     if self.track_all: self.track_step = self.track_gradient = True
-    self.normal_eqns = journaled_normal_eqns(normal_eqns, self,
-                                             self.track_gradient,
-                                             self.track_step)
+    self.non_linear_ls = journaled_non_linear_ls(non_linear_ls, self,
+                                                 self.track_gradient,
+                                                 self.track_step)
     self.do()
 
   def has_gradient_converged_to_zero(self):
@@ -122,11 +122,11 @@ class naive_iterations(iterations):
   def do(self):
     self.n_iterations = 0
     while self.n_iterations <= self.n_max_iterations:
-      self.normal_eqns.build_up()
+      self.non_linear_ls.build_up()
       if self.has_gradient_converged_to_zero(): break
-      self.normal_eqns.solve()
+      self.non_linear_ls.solve()
       if self.had_too_small_a_step(): break
-      self.normal_eqns.step_forward()
+      self.non_linear_ls.step_forward()
       self.n_iterations += 1
 
   def __str__(self):

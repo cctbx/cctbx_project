@@ -7,12 +7,13 @@
 #include <boost/python/return_internal_reference.hpp>
 
 
-namespace scitbx { namespace lstbx { namespace boost_python {
+namespace scitbx { namespace lstbx { namespace normal_equations {
+namespace boost_python {
 
   template <typename FloatType>
-  struct normal_equations_wrapper
+  struct linear_ls_wrapper
   {
-    typedef normal_equations<FloatType> wt;
+    typedef linear_ls<FloatType> wt;
     typedef typename wt::scalar_t scalar_t;
     typedef typename wt::symmetric_matrix_t symmetric_matrix_t;
     typedef typename wt::vector_t vector_t;
@@ -27,17 +28,19 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def(init<int>(arg("n_parameters")))
         .def(init<symmetric_matrix_t const &, vector_t const &>(
              (arg("normal_matrix"), arg("right_hand_side"))))
+        .add_property("n_parameters", &wt::n_parameters)
         .def("add_equation",
-             (void (wt::*)(scalar_t b, af::const_ref<scalar_t> const &, scalar_t))
              &wt::add_equation,
              (arg("right_hand_side"), arg("design_matrix_row"), arg("weight")))
-        .def("add_equations", &wt::add_equations,
+        .def("add_equations",
+             &wt::add_equations,
              (arg("right_hand_side"), arg("design_matrix"), arg("weights"),
               arg("negate_right_hand_side")=false))
+        .def("reset", &wt::reset)
         .def("solve", &wt::solve)
         .add_property("solved", &wt::solved)
         /* We use 'def' instead of add_property for those because they may
-           throw if called on an instanced which is not finalised.
+           throw if called on an instanced which is not solved.
            On the Python side, an attribute lookup which may throw is a
            source of confusion (e.g. hasattr does not work correctly for those).
          */
@@ -49,11 +52,34 @@ namespace scitbx { namespace lstbx { namespace boost_python {
     }
   };
 
+  template <typename FloatType>
+  struct non_linear_ls_wrapper
+  {
+    typedef non_linear_ls<FloatType> wt;
+
+    static void wrap(char const *name) {
+      using namespace boost::python;
+      return_internal_reference<> rir;
+      class_<wt>(name, no_init)
+        .def(init<int>(arg("n_parameters")))
+        .add_property("n_parameters", &wt::n_parameters)
+        .def("add_non_linear_equation",
+             &wt::add_equation,
+             (arg("residual"), arg("grad_residual")))
+        /* We use 'def' instead of add_property for those to stay consistent
+           with the other wrappers in this module which can't use properties
+         */
+        .def("objective", &wt::objective)
+        .def("step_equations", &wt::step_equations, rir)
+        ;
+    }
+  };
+
 
   template <typename FloatType>
-  struct normal_equations_separating_scale_factor_wrapper
+  struct non_linear_ls_with_separable_scale_factor_wrapper
   {
-    typedef normal_equations_separating_scale_factor<FloatType> wt;
+    typedef non_linear_ls_with_separable_scale_factor<FloatType> wt;
     typedef typename wt::scalar_t scalar_t;
 
     static void add_equation(wt &self,
@@ -68,6 +94,7 @@ namespace scitbx { namespace lstbx { namespace boost_python {
       return_internal_reference<> rir;
       class_<wt>(name, no_init)
         .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
+        .add_property("n_parameters", &wt::n_parameters)
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("finalise", &wt::finalise)
@@ -87,9 +114,10 @@ namespace scitbx { namespace lstbx { namespace boost_python {
   };
 
   void wrap_normal_equations() {
-    normal_equations_wrapper<double>::wrap("normal_equations");
-    normal_equations_separating_scale_factor_wrapper<double>
-      ::wrap("normal_equations_separating_scale_factor");
+    linear_ls_wrapper<double>::wrap("linear_ls");
+    non_linear_ls_wrapper<double>::wrap("non_linear_ls");
+    non_linear_ls_with_separable_scale_factor_wrapper<double>
+      ::wrap("non_linear_ls_with_separable_scale_factor");
   }
 
-}}}
+}}}}

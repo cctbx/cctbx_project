@@ -15,8 +15,5 @@ if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")
   env = env_scitbx_boost_python_ext.Copy()
   env.SharedLibrary(
-    target="#lib/scitbx_lstbx_ext",
-    source=[ os.path.join("boost_python", p) for p in [
-      "lstbx_ext.cpp",
-      "normal_equations.cpp",
-      ]])
+    target="#lib/scitbx_lstbx_normal_equations_ext",
+    source=Glob("boost_python/*.cpp"))
