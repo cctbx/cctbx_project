@@ -1,9 +1,9 @@
 #ifndef SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 #define SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 
+#include <boost/type_traits/is_unsigned.hpp>
 #include <cmath>
 #include <cstdlib>
-#include <boost/type_traits/is_unsigned.hpp>
 
 namespace scitbx { namespace fn {
 
