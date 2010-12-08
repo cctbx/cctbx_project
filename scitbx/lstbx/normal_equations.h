@@ -190,13 +190,27 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Number of unknown parameters
     int n_parameters() { return linearised.n_parameters(); }
 
+    /// Add the given residual with the given weight
+    void add_residual(scalar_t r, scalar_t w) {
+      r_sq += w*r*r;
+    }
+
+    /// Add the given residuals with the given weights
+    void add_residuals(af::const_ref<scalar_t> const &r,
+                       af::const_ref<scalar_t> const &w)
+    {
+      for (int i=0; i<r.size(); ++i) {
+        add_residual(r[i], w.size() ? w[i] : 1);
+      }
+    }
+
     /// Add the linearisation of the equation \f$r_i(x) = 0\f$
     /** with the given weight */
     void add_equation(scalar_t r,
                       af::const_ref<scalar_t> const &grad_r,
                       scalar_t w)
     {
-      r_sq += w*r*r;
+      add_residual(r, w);
       linearised.add_equation(-r, grad_r, w);
     }
 
@@ -208,19 +222,12 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                        af::const_ref<scalar_t> w)
     {
       SCITBX_ASSERT(   r.size() == jacobian.n_rows()
-                    && r.size() == w.size())
+                    && (!w.size() || r.size() == w.size()))
                    (r.size())(jacobian.n_rows())(w.size());
       SCITBX_ASSERT(jacobian.n_columns() == n_parameters())
                    (jacobian.n_columns())(n_parameters());
-      if (w.size() == 0) {
-        for (int i=0; i<r.size(); ++i) {
-          add_equation(r[i], af::row(jacobian, i), 1);
-        }
-      }
-      else {
-        for (int i=0; i<r.size(); ++i) {
-          add_equation(r[i], af::row(jacobian, i), w[i]);
-        }
+      for (int i=0; i<r.size(); ++i) {
+        add_equation(r[i], af::row(jacobian, i), w.size() ? w[i] : 1);
       }
     }
 

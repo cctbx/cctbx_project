@@ -63,12 +63,19 @@ namespace boost_python {
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
         .add_property("n_parameters", &wt::n_parameters)
-        .def("add_non_linear_equation",
+        .def("add_residual",
+             &wt::add_residual,
+             (arg("residual"), arg("weight")))
+        .def("add_residuals",
+             &wt::add_residuals,
+             (arg("residuals"), arg("weights")))
+        .def("add_equation",
              &wt::add_equation,
-             (arg("residual"), arg("grad_residual")))
-        .def("add_non_linear_equations",
+             (arg("residual"), arg("grad_residual"), arg("weight")))
+        .def("add_equations",
              &wt::add_equations,
-             (arg("residuals"), arg("jacobian")))
+             (arg("residuals"), arg("jacobian"), arg("weights")))
+        .def("reset", &wt::reset)
         /* We use 'def' instead of add_property for those to stay consistent
            with the other wrappers in this module which can't use properties
          */
