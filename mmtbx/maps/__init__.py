@@ -310,6 +310,8 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
   for mp in params:
     if(mp.map_type is not None):
       coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mp)
+      if (coeffs is None) :
+        raise Sorry("Couldn't generate map type '%s'." % mp.map_type)
       if(mp.file_name is None):
         output_file_name = ""
         if(file_name_prefix is not None): output_file_name = file_name_prefix
