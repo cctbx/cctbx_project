@@ -166,7 +166,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
   /// Normal equations for non-linear least-squares
   /** The least-squares target reads
 
-      \f[ L(x) = \|r_i(x)\|^2 \f]
+      \f[ L(x) = \frac{1}{2} \|r_i(x)\|^2 \f]
 
       where the norm is diagonal-weighted
 
@@ -264,13 +264,15 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
   /// Normal equations for least-squares fit with an overall scale.
   /** The least-squares target reads
 
-      \f[ L(K, x) = \frac{ \sum w ( K y_c(x) - y_o )^2 }{ \sum w y_o^2 } \f]
+      \f[ L(K, x) = \frac{1}{2} \frac{ \sum w ( K y_c(x) - y_o )^2 }
+                                     { \sum w y_o^2 }
+      \f]
 
       where the both of \f$ y_c(x) \f$ and \f$ y_o \f$ are vectors,
       respectively the model to fit to the data. Alternatively, the
       non-normalised
 
-      \f[ \tilde{L}(K, x) = \sum w ( K y_c(x) - y_o )^2 \f]
+      \f[ \tilde{L}(K, x) = \frac{1}{2} \sum w ( K y_c(x) - y_o )^2 \f]
 
       may be used instead.
 
@@ -440,7 +442,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// The non-linear problem with the scale factor already optimised away
     /** The main use of this function comes for an objective function
 
-        \[ \tilde{L}(K, x) = L(K, x) + \|r(x\|^2 \]
+        \[ \tilde{L}(K, x) = L(K, x) + \frac{1}{2} \|r(x\|^2 \]
 
         for some residual vector \f$r(x)\f$ independent of the overall scale
         factor that the first term depends upon. The equations for that
