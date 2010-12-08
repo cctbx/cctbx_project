@@ -9,10 +9,13 @@
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python.hpp>
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::tls::common)
 
 namespace mmtbx { namespace tls {
+  namespace bp = boost::python;
+
 namespace {
   boost::python::tuple
   getinitargs(tlso<> const& self)
@@ -24,8 +27,7 @@ namespace {
   {
     using namespace boost::python;
     using boost::python::arg;
-   // def("uaniso_from_tls",uaniso_from_tls)
-   //;
+
     class_<uaniso_from_tls>("uaniso_from_tls",
                              init<sym_mat3<double> const&,
                                   sym_mat3<double> const&,
@@ -63,6 +65,19 @@ namespace {
       .def("grad_L", &tls_from_uaniso_target_and_grads::grad_L)
       .def("grad_S", &tls_from_uaniso_target_and_grads::grad_S)
     ;
+    class_<tls_from_uiso_target_and_grads>("tls_from_uiso_target_and_grads",
+                             init<double const&,
+                                  sym_mat3<double> const&,
+                                  vec3<double> const&,
+                                  vec3<double> const&,
+                                  af::shared<vec3<double> > const&,
+                                  af::shared<double> const&>())
+      .def("target", &tls_from_uiso_target_and_grads::target)
+      .def("grad_T", &tls_from_uiso_target_and_grads::grad_T)
+      .def("grad_L", &tls_from_uiso_target_and_grads::grad_L)
+      .def("grad_S", &tls_from_uiso_target_and_grads::grad_S)
+    ;
+
     typedef return_value_policy<return_by_value> rbv;
     class_<tlso<> >("tlso")
       .def(init<scitbx::sym_mat3<double> const&,

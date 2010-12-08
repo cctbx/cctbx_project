@@ -109,6 +109,120 @@ private:
   mat3<sym_mat3<double> > gS_;
 };
 
+double uiso_from_tls(double const& T,
+                     sym_mat3<double> const& L_deg,
+                     vec3<double> const& S_deg,
+                     vec3<double> const& origin,
+                     vec3<double> const& site_cart)
+  {
+   double deg2rad = scitbx::deg_as_rad(1.0);
+   double deg2radsq = deg2rad * deg2rad;
+   sym_mat3<double> L = L_deg * deg2radsq;
+   vec3<double> S = S_deg * deg2rad;
+   vec3<double> r = site_cart - origin;
+   double x = r[0];
+   double y = r[1];
+   double z = r[2];
+   double u_iso = T + 1./3*(L[0]*(y*y+z*z) + L[1]*(x*x+z*z) + L[2]*(x*x+y*y) -
+                            2*L[3]*x*y - 2*L[4]*x*z - 2*L[5]*y*z +
+                            2*S[0]*z   + 2*S[1]*y   + 2*S[2]*x);
+  return u_iso;
+}
+
+class d_uiso_d_tls {
+public:
+  d_uiso_d_tls(vec3<double> const& origin,
+               vec3<double> const& site,
+               double scale_l_and_s)
+  {
+   // Order is : sym_mat3<double>(a11,a22,a33,a12,a13,a23);
+   //                            ( a0, a1, a2, a3, a4, a5);
+   vec3<double> r = site - origin;
+   double x = r[0];
+   double y = r[1];
+   double z = r[2];
+   double one_over_three = 1./3;
+   double two_over_three = 2./3;
+   d_uiso_d_T = 1;
+   double d_uiso_d_L11 = one_over_three * (y*y+z*z);
+   double d_uiso_d_L22 = one_over_three * (x*x+z*z);
+   double d_uiso_d_L33 = one_over_three * (x*x+y*y);
+   double d_uiso_d_L12 = -two_over_three * x*y;
+   double d_uiso_d_L13 = -two_over_three * x*z;
+   double d_uiso_d_L23 = -two_over_three * y*z;
+   double d_uiso_d_S1  =  two_over_three * z;
+   double d_uiso_d_S2  =  two_over_three * y;
+   double d_uiso_d_S3  =  two_over_three * x;
+   if(scale_l_and_s != -1) {
+     double l_sc = scale_l_and_s * scale_l_and_s;
+     d_uiso_d_L = sym_mat3<double>
+       (d_uiso_d_L11*l_sc,
+        d_uiso_d_L22*l_sc,
+        d_uiso_d_L33*l_sc,
+        d_uiso_d_L12*l_sc,
+        d_uiso_d_L13*l_sc,
+        d_uiso_d_L23*l_sc);
+     d_uiso_d_S = vec3<double> (
+       d_uiso_d_S1*scale_l_and_s,
+       d_uiso_d_S2*scale_l_and_s,
+       d_uiso_d_S3*scale_l_and_s);
+   }
+   else {
+    d_uiso_d_L = sym_mat3<double>
+       (d_uiso_d_L11,
+        d_uiso_d_L22,
+        d_uiso_d_L33,
+        d_uiso_d_L12,
+        d_uiso_d_L13,
+        d_uiso_d_L23);
+    d_uiso_d_S = vec3<double> (d_uiso_d_S1, d_uiso_d_S2, d_uiso_d_S3);
+   }
+  }
+  double d_u_d_T() { return d_uiso_d_T; }
+  sym_mat3<double> d_u_d_L() { return d_uiso_d_L; }
+  vec3<double> d_u_d_S() { return d_uiso_d_S; }
+private:
+  double d_uiso_d_T;
+  sym_mat3<double> d_uiso_d_L;
+  vec3<double> d_uiso_d_S;
+};
+
+class tls_from_uiso_target_and_grads {
+public:
+  tls_from_uiso_target_and_grads(
+                                  double const& T,
+                                  sym_mat3<double> const& L_deg,
+                                  vec3<double> const& S_deg,
+                                  vec3<double> const& origin,
+                                  af::shared<vec3<double> > const& sites,
+                                  af::shared<double> const& uisos)
+  {
+    tg = 0.0;
+    gT = 0.0;
+    gL = sym_mat3<double> (0,0,0,0,0,0);
+    gS = vec3<double> (0,0,0);
+    double scale_l_and_s = scitbx::deg_as_rad(1.0);
+    for(std::size_t i=0; i < sites.size(); i++) {
+      vec3<double> const& site = sites[i];
+      double diff = uiso_from_tls(T,L_deg,S_deg,origin,site) - uisos[i];
+      double two_diff = 2*diff;
+      tg += diff*diff;
+      d_uiso_d_tls d_uiso_d_tls_manager(origin,site,scale_l_and_s);
+      gT = gT + two_diff*d_uiso_d_tls_manager.d_u_d_T();
+      gL = gL + two_diff*d_uiso_d_tls_manager.d_u_d_L();
+      gS = gS + two_diff*d_uiso_d_tls_manager.d_u_d_S();
+    }
+  }
+  double target() const { return tg; }
+  double grad_T() { return gT; }
+  sym_mat3<double> grad_L() { return gL; }
+  vec3<double> grad_S() { return gS; }
+private:
+  double tg, gT;
+  sym_mat3<double> gL;
+  vec3<double> gS;
+};
+
 class uaniso_from_tls {
 public:
   uaniso_from_tls(sym_mat3<double> const& T,

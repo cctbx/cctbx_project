@@ -360,6 +360,74 @@ class tls_from_uaniso_minimizer(object):
     self.g = self.pack(manager.grad_T(), manager.grad_L(), manager.grad_S())
     return self.f, self.g
 
+#######
+class tls_from_uiso_minimizer(object):
+  def __init__(self,
+               uiso,
+               T_initial,
+               L_initial,
+               S_initial,
+               refine_T,
+               refine_L,
+               refine_S,
+               origin,
+               sites,
+               max_iterations):
+    adopt_init_args(self, locals())
+    assert uiso.size() == sites.size()
+    self.dim_T = len(self.T_initial)
+    self.dim_L = len(self.L_initial)
+    self.dim_S = len(self.S_initial)
+    assert self.dim_T == 1 and self.dim_S == 3 and self.dim_L == 6
+    self.T_min = self.T_initial
+    self.L_min = self.L_initial
+    self.S_min = self.S_initial
+    self.x = self.pack(self.T_min, self.L_min, self.S_min)
+    self.n = self.x.size()
+    self.minimizer = lbfgs.run(
+      target_evaluator = self,
+      termination_params = lbfgs.termination_parameters(
+        max_iterations = max_iterations,
+        max_calls      = int(max_iterations*1.5)),
+        exception_handling_params =
+        lbfgs.exception_handling_parameters(
+          ignore_line_search_failed_step_at_lower_bound = True,
+          ignore_line_search_failed_step_at_upper_bound = True,
+          ignore_line_search_failed_maxfev              = True)
+        )
+    self.compute_functional_and_gradients()
+    del self.x
+
+  def pack(self, T, L, S):
+    v = []
+    if (self.refine_T): v += list(flex.double([T]))
+    if (self.refine_L): v += list(L)
+    if (self.refine_S): v += list(S)
+    return flex.double(tuple(v))
+
+  def unpack_x(self):
+    i = 0
+    if (self.refine_T):
+      self.T_min = tuple(self.x)[i:self.dim_T]
+      i = self.dim_T
+    if (self.refine_L):
+      self.L_min = tuple(self.x)[i:i+self.dim_L]
+      i += self.dim_L
+    if (self.refine_S):
+      self.S_min = tuple(self.x)[i:i+self.dim_S]
+
+  def compute_functional_and_gradients(self):
+    self.unpack_x()
+    manager = tls_from_uiso_target_and_grads(self.T_min[0],
+                                             self.L_min,
+                                             self.S_min,
+                                             self.origin,
+                                             self.sites,
+                                             self.uiso)
+    self.f = manager.target()
+    self.g = self.pack(manager.grad_T(), manager.grad_L(), manager.grad_S())
+    return self.f, self.g
+#######
 
 class tls_xray_target_minimizer(object):
   def __init__(self,
