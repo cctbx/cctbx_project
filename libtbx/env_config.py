@@ -1247,7 +1247,7 @@ selfx:
       else:
         if (libtbx_cvs_root.lower().find("ccp") >= 0): return False
     for module in self.module_list:
-      if (module.has_top_level_cvs_or_svn_directory()):
+      if (module.is_version_controlled()):
         return True
     return False
 
@@ -1441,8 +1441,8 @@ class module:
         return True
     return False
 
-  def has_top_level_cvs_or_svn_directory(self):
-    for directory_name in ["CVS", ".svn"]:
+  def is_version_controlled(self):
+    for directory_name in ["CVS", ".svn", ".git"]:
       if (self.has_top_level_directory(directory_name=directory_name)):
         return True
     return False
