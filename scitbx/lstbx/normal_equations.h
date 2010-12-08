@@ -460,13 +460,6 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       return (r_sq + 2*(reduced_ls.objective() - objective_))/dof();
     }
 
-    scalar_t scale_factor_independent_chi_sq() const {
-      scalar_t
-      scale_factor_independent_objective = reduced_ls.objective() - objective_;
-      return 2*scale_factor_independent_objective
-              /(n_equations() - n_parameters());
-    }
-
     /// Equation accumulation is finished.
     /** The reduced normal equations for \f$ x \f$ as per step 2 are constructed
      */
@@ -539,6 +532,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
     /// Ready this for another computation of the normal equations
     void reset() {
+      n_data = 0;
       yo_dot_yc = 0; yc_sq = 0; yo_sq = 0;
       std::fill(a.begin(), a.end(), scalar_t(0));
       std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));

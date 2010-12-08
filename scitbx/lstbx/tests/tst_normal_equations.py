@@ -142,6 +142,9 @@ def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
   test_bis.build_up()
   assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
 
+  n_equations = test.n_equations
+  test.build_up()
+  assert test.n_equations == n_equations
 
 def exercise_levenberg_marquardt(non_linear_ls, plot=False):
   non_linear_ls.restart()
