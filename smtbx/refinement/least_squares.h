@@ -18,6 +18,8 @@
 
 namespace smtbx { namespace refinement { namespace least_squares {
 
+  namespace lstbx = scitbx::lstbx;
+
   /** \brief Restraints to prevent the structure to freely move as a whole
    along the continuous shift directions if any.
 
@@ -94,18 +96,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
 
     /// Add floating origin restraints to the given normal equations
-    void add_to(scitbx::lstbx::normal_equations<scalar_t> &normal_eqns) {
+    void add_to(lstbx::normal_equations::linear_ls<scalar_t> &normal_eqns) {
       if (!floating_origin_restraint_relative_weight) return;
-      typedef scitbx::lstbx::normal_equations<scalar_t> normal_eqns_t;
       af::ref<scalar_t, af::packed_u_accessor>
       a = normal_eqns.normal_matrix().ref();
       scitbx::math::accumulator::min_max_accumulator<scalar_t> acc(a(0,0));
       for (int i=1; i<a.n_rows(); ++i) acc(a(i,i));
       scalar_t w = floating_origin_restraint_relative_weight * acc.max();
       for (int i=0; i<singular_directions.size(); ++i) {
-        normal_eqns.add_equation(0,
-                                 singular_directions[i].const_ref(),
-                                 w);
+        normal_eqns.add_equation(0, singular_directions[i].const_ref(), w);
       }
     }
   };

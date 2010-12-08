@@ -106,7 +106,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     normal_equation_building<
       double,
-      scitbx::lstbx::normal_equations_separating_scale_factor,
+      lstbx::normal_equations::non_linear_ls_with_separable_scale_factor,
       structure_factors::direct::one_h::std_trigonometry<
         double,
         structure_factors::direct::one_h::modulus_squared

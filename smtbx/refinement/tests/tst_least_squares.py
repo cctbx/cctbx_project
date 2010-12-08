@@ -70,10 +70,10 @@ class site_refinement_test(refinement_test):
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
     normal_eqns.build_up()
-    assert normal_eqns.reduced.right_hand_side.all_approx_equal(
-      0, eps_zero_rhs),\
-           list(normal_eqns.reduced.right_hand_side)
-    unrestrained_normal_matrix = normal_eqns.reduced.normal_matrix_packed_u
+    assert normal_eqns.opposite_of_gradient()\
+           .all_approx_equal(0, eps_zero_rhs),\
+           list(normal_eqns.gradient())
+    unrestrained_normal_matrix = normal_eqns.normal_matrix_packed_u()
     assert len(unrestrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
       unrestrained_normal_matrix.matrix_packed_u_as_symmetric())
@@ -86,9 +86,10 @@ class site_refinement_test(refinement_test):
       weighting_scheme=least_squares.unit_weighting(),
     )
     normal_eqns.build_up()
-    assert normal_eqns.reduced.right_hand_side.all_approx_equal(0, eps_zero_rhs),\
-            list(normal_eqns.reduced.right_hand_side)
-    restrained_normal_matrix = normal_eqns.reduced.normal_matrix_packed_u
+    assert normal_eqns.opposite_of_gradient()\
+           .all_approx_equal(0, eps_zero_rhs),\
+           list(normal_eqns.gradient())
+    restrained_normal_matrix = normal_eqns.normal_matrix_packed_u()
     assert len(restrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
       restrained_normal_matrix.matrix_packed_u_as_symmetric())
@@ -168,7 +169,7 @@ class site_refinement_test(refinement_test):
     # one refinement cycle
     normal_eqns.build_up()
     normal_eqns.solve()
-    shifts = normal_eqns.shifts
+    shifts = normal_eqns.step()
 
     # That's what floating origin restraints are for!
     # Note that in the presence of special position, that's different
@@ -197,16 +198,19 @@ class site_refinement_test(refinement_test):
     emma_ref = xs.as_emma_model()
     xs.shake_sites_in_place(rms_difference=0.1)
 
-    cycles = normal_eqns_solving.naive_iterations(normal_eqns, track_all=True)
-    cycles.do(n_iterations=5)
+    cycles = normal_eqns_solving.naive_iterations(
+      normal_eqns,
+      n_max_iterations=5,
+      track_all=True)
 
-    assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-5)
-    assert approx_equal(normal_eqns.objective, 0)
+    assert approx_equal(normal_eqns.scale_factor(), 1, eps=1e-5)
+    assert approx_equal(normal_eqns.objective(), 0)
     # skip next-to-last one to allow for no progress and rounding error
     assert (
-      cycles.objectives[0] >= cycles.objectives[1] >= cycles.objectives[3]
-      ), cycles.objectives
-    assert approx_equal(cycles.gradient_norms[-1], 0, eps=1e-9)
+      cycles.objective_history[0]
+      >= cycles.objective_history[1]
+      >= cycles.objective_history[3]), cycles.objective_history
+    assert approx_equal(cycles.gradient_norm_history[-1], 0, eps=1e-9)
 
     match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
     assert match.rt.r == matrix.identity(3)
@@ -251,15 +255,18 @@ class adp_refinement_test(refinement_test):
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
-    cycles = normal_eqns_solving.naive_iterations(normal_eqns, track_all=True)
-    cycles.do(n_iterations=10)
+    cycles = normal_eqns_solving.naive_iterations(
+      normal_eqns,
+      n_max_iterations=10,
+      track_all=True)
 
-    assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
-    assert approx_equal(normal_eqns.objective, 0)
+    assert approx_equal(normal_eqns.scale_factor(), 1, eps=1e-4)
+    assert approx_equal(normal_eqns.objective(), 0)
     # skip next-to-last one to allow for no progress and rounding error
-    n = len(cycles.objectives)
-    assert cycles.objectives[0] > cycles.objectives[n-1], cycles.objectives
-    assert approx_equal(cycles.gradient_norms[-1], 0, eps=1e-6)
+    n = len(cycles.objective_history)
+    assert cycles.objective_history[0] > cycles.objective_history[n-1],\
+           cycles.objective_history
+    assert approx_equal(cycles.gradient_norm_history[-1], 0, eps=1e-6)
 
     for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
       assert approx_equal(sc0.u_star, sc1.u_star)
@@ -419,8 +426,10 @@ class special_positions_test(object):
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
-    cycles = normal_eqns_solving.naive_iterations(normal_eqns)
-    cycles.do(n_iterations=10)
+    cycles = normal_eqns_solving.naive_iterations(
+      normal_eqns,
+      n_max_iterations=10,
+      track_all=True)
 
     ## Test whether refinement brought back the shaked structure to its
     ## original state
@@ -434,7 +443,7 @@ class special_positions_test(object):
                     - xs0.scatterers().extract_u_cart(xs.unit_cell())).norms()
     assert flex.abs(delta_u_carts) < 1e-6
 
-    assert approx_equal(normal_eqns.scale_factor, 1, eps=1e-4)
+    assert approx_equal(normal_eqns.scale_factor(), 1, eps=1e-4)
 
     ## Test covariance matrix
     cov = normal_eqns.covariance_matrix(normalised_by_goof=False)\
