@@ -241,7 +241,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
      */
     void add_equations(af::const_ref<scalar_t> const &r,
                        af::const_ref<scalar_t, af::mat_grid> const &jacobian,
-                       af::const_ref<scalar_t> w)
+                       af::const_ref<scalar_t> const &w)
     {
       SCITBX_ASSERT(   r.size() == jacobian.n_rows()
                     && (!w.size() || r.size() == w.size()))
@@ -251,6 +251,19 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       for (int i=0; i<r.size(); ++i) {
         add_equation(r[i], af::row(jacobian, i), w.size() ? w[i] : 1);
       }
+    }
+
+    void add_equations(af::const_ref<scalar_t> const &r,
+                       sparse::matrix<scalar_t> const &jacobian,
+                       af::const_ref<scalar_t> const &w)
+    {
+      SCITBX_ASSERT(   r.size() == jacobian.n_rows()
+                    && (!w.size() || r.size() == w.size()))
+                   (r.size())(jacobian.n_rows())(w.size());
+      SCITBX_ASSERT(jacobian.n_cols() == n_parameters())
+                   (jacobian.n_cols())(n_parameters());
+      add_residuals(r, w);
+      linearised.add_equations(r, jacobian, w, /*negate_right_hand_side=*/true);
     }
 
     /// Objective value \f$L(x)\f$ for the current value of the unknowns
