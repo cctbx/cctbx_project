@@ -65,7 +65,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     {}
 
     /// Number of unknown parameters
-    int n_parameters() { return right_hand_side_.size(); }
+    int n_parameters() const { return right_hand_side_.size(); }
 
     /// Initialise the least-squares problem with the given normal matrix A
     /// and right hand side b
@@ -200,7 +200,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     {}
 
     /// Number of unknown parameters
-    int n_parameters() { return linearised.n_parameters(); }
+    int n_parameters() const { return linearised.n_parameters(); }
 
     /// Add the given residual with the given weight
     void add_residual(scalar_t r, scalar_t w) {
@@ -244,7 +244,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
     /// Objective value \f$L(x)\f$ for the current value of the unknowns
-    scalar_t objective() { return r_sq/2; }
+    scalar_t objective() const { return r_sq/2; }
 
     /// Linearised equations to solve for a step
     linear_ls<scalar_t> &step_equations() { return linearised; }
@@ -318,10 +318,10 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     {}
 
     /// Number of unknown parameters, not including the overall scale factor
-    int n_parameters() { return n_params; }
+    int n_parameters() const { return n_params; }
 
     /// Whether the L.S. target is normalised by \f$ \sum w y_o^2 \f$ or not
-    bool normalised() { return normalised_; }
+    bool normalised() const { return normalised_; }
 
     /** \brief Add the linearisation of the equation
          \f$y_{c,i} \propto y_{o,i}\f$ with weight w.
@@ -374,14 +374,14 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /** This is the normalisation that guarantees
         that \f$L(K, x)\f$ is between 0 and 1.
      */
-    scalar_t sum_w_yo_sq() {
+    scalar_t sum_w_yo_sq() const {
       SCITBX_ASSERT(finalised());
       return yo_sq;
     }
 
     /** \brief The value \f$ K^*(x) \f$ of the scale factor optimising the L.S. objective for a given constant \f$ x \f$.
      */
-    scalar_t optimal_scale_factor() {
+    scalar_t optimal_scale_factor() const {
       SCITBX_ASSERT(finalised());
       return yo_dot_yc/yc_sq;
     }
@@ -389,8 +389,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /** \brief The value of \f$L(K, x)\f$
      for the optimised scale factor \f$ K^*(x) \f$ and the input \f$yc_(x)\f$.
      */
-    scalar_t objective() {
-      return reduced_problem().objective();
+    scalar_t objective() const {
+      SCITBX_ASSERT(finalised());
+      return reduced_ls.objective();
     }
 
     /// Equation accumulation is finished.
@@ -430,9 +431,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
     /// Whether finalise has been called.
-    bool finalised() {
-      return finalised_;
-    }
+    bool finalised() const { return finalised_; }
 
     /// Reduced normal equations
     linear_ls<scalar_t> &step_equations() {
