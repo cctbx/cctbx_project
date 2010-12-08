@@ -2749,9 +2749,19 @@ def exercise_approx_equal():
   assert d.all_approx_equal_relatively(c, relative_error=0.07)
   assert not d.all_approx_equal(c, tolerance=0.1)
 
+def exercise_matrix_packed_u_diagonal():
+  a = flex.double((1, 2, 3, 4 ,
+                      5, 6, 7 ,
+                         8, 9 ,
+                            10))
+  assert tuple(a.matrix_packed_u_diagonal()) == (1, 5, 8, 10)
+  a.matrix_packed_u_diagonal_add_in_place(1)
+  assert tuple(a.matrix_packed_u_diagonal()) == (2, 6, 9, 11)
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_matrix_packed_u_diagonal()
     exercise_versa_packed_u_to_flex()
     exercise_quadratic_form()
     exercise_approx_equal()

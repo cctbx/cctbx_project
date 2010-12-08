@@ -304,6 +304,9 @@ namespace boost_python {
         (shared<double>(*)(
           const_ref<double> const&))
             matrix::packed_u_diagonal)
+      .def("matrix_packed_u_diagonal_add_in_place",
+           (void (*)(ref<double> const &, double))
+            matrix::packed_u_diagonal_add_in_place)
       .def("matrix_copy_upper_to_lower_triangle_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&))
