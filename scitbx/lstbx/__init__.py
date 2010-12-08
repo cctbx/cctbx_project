@@ -37,7 +37,7 @@ class non_linear_normal_equations_mixin(object):
   def step_forward(self):
     raise NotImplementedError()
 
-  def gradient(self):
+  def opposite_of_gradient(self):
     return self.step_equations().right_hand_side()
 
   def normal_matrix_packed_u(self):

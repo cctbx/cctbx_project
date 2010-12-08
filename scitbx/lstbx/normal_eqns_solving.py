@@ -48,9 +48,9 @@ class journaled_normal_eqns(object):
       self.actual.parameter_vector_norm())
     self.journal.objective_history.append(self.actual.objective())
     self.journal.gradient_norm_history.append(
-      self.actual.gradient().norm_inf())
+      self.actual.opposite_of_gradient().norm_inf())
     if self.journal.gradient_history is not None:
-      self.journal.gradient_history.append(self.actual.gradient())
+      self.journal.gradient_history.append(-self.actual.opposite_of_gradient())
     if self.journal.scale_factor_history is not None:
       self.journal.scale_factor_history.append(self.actual.scale_factor())
 
