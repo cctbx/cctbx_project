@@ -42,8 +42,9 @@ class journaled_non_linear_ls(object):
   def __getattr__(self, name):
     return getattr(self.actual, name)
 
-  def build_up(self):
-    self.actual.build_up()
+  def build_up(self, objective_only=False):
+    self.actual.build_up(objective_only)
+    if objective_only: return
     self.journal.parameter_vector_norm_history.append(
       self.actual.parameter_vector_norm())
     self.journal.objective_history.append(self.actual.objective())
@@ -104,7 +105,8 @@ class iterations(object):
 
   def has_gradient_converged_to_zero(self):
     eps_1 = self.gradient_threshold
-    return eps_1 is not None and self.gradient_norm_history[-1] <= eps_1
+    g = self.gradient_norm_history[-1]
+    return eps_1 is not None and g <= eps_1
 
   def had_too_small_a_step(self):
     eps_2 = self.step_threshold
@@ -131,3 +133,50 @@ class naive_iterations(iterations):
 
   def __str__(self):
     return "pure Gauss-Newton"
+
+
+class levenberg_marquardt_iterations(iterations):
+
+  tau = 1e-3
+
+  class mu(libtbx.property):
+    def fget(self):
+      return self._mu
+    def fset(self, value):
+      self.mu_history.append(value)
+      self._mu = value
+
+  def do(self):
+    self.mu_history = flex.double()
+    self.n_iterations = 0
+    nu = 2
+    self.non_linear_ls.build_up()
+    if self.has_gradient_converged_to_zero(): return
+    a = self.non_linear_ls.normal_matrix_packed_u()
+    self.mu = self.tau*flex.max(a.matrix_packed_u_diagonal())
+    while self.n_iterations <= self.n_max_iterations:
+      a.matrix_packed_u_diagonal_add_in_place(self.mu)
+      objective = self.non_linear_ls.objective()
+      g = -self.non_linear_ls.opposite_of_gradient()
+      self.non_linear_ls.solve()
+      if self.had_too_small_a_step(): break
+      self.n_iterations += 1
+      h = self.non_linear_ls.step()
+      expected_decrease = 0.5*h.dot(self.mu*h - g)
+      self.non_linear_ls.step_forward()
+      self.non_linear_ls.build_up(objective_only=True)
+      objective_new = self.non_linear_ls.objective()
+      actual_decrease = objective - objective_new
+      rho = actual_decrease/expected_decrease
+      if rho > 0:
+        if self.has_gradient_converged_to_zero(): break
+        self.mu *= max(1/3, 1 - (2*rho - 1)**3)
+        nu = 2
+      else:
+        self.non_linear_ls.step_backward()
+        self.mu *= nu
+        nu *= 2
+      self.non_linear_ls.build_up()
+
+  def __str__(self):
+    return "Levenberg-Marquardt"

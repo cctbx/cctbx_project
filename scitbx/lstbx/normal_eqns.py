@@ -25,7 +25,7 @@ class non_linear_ls_mixin(object):
   def parameter_vector_norm(self):
     raise NotImplementedError()
 
-  def build_up(self):
+  def build_up(self, objective_only=False):
     raise NotImplementedError()
 
   def step_equations(self):
