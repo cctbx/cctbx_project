@@ -10,6 +10,7 @@
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include <vector>
 #include <set>
 #include "flex_helpers.h"
@@ -358,6 +359,36 @@ namespace {
     return result;
   }
 
+  std::string mathematica_form(af::const_ref<double, flex_grid<> > const &self)
+  {
+    /* Let's use Mathematica cleverness instead of working it out in C++ */
+    std::ostringstream o, c;
+    c << "{";
+    for (std::size_t i=0; i<self.size(); ++i) {
+      c << self[i];
+      if (i != self.size() - 1) c << ",";
+    }
+    c << "}";
+    std::string coeffs = c.str();
+    boost::replace_all(coeffs, "e", "*^");
+    if (self.accessor().nd() > 1) o << "Fold[Partition,";
+    o << coeffs;
+    if (self.accessor().nd() > 1) {
+      o << ",";
+      if (self.accessor().nd() > 2) o << "Reverse[";
+      o << "{";
+      flex_grid<>::index_type indices = self.accessor().all();
+      for (int i=1; i<indices.size(); ++i) {
+        o << indices[i];
+        if (i != indices.size() - 1) o << ",";
+      }
+      o << "}";
+      if (self.accessor().nd() > 2) o << "]";
+      o << "]";
+    }
+    return o.str();
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -420,6 +451,7 @@ namespace boost_python {
       .def("as_string", as_string, (
           arg("other"),
           arg("format_string")="%d"))
+      .def("mathematica_form", mathematica_form)
       .def("round", round, (arg("n_digits")=0))
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg("selection")))
