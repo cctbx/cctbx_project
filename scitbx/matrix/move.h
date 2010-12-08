@@ -75,6 +75,16 @@ namespace scitbx { namespace matrix {
   }
 
   template <typename T>
+  void paste_column_in_place(af::ref<T, af::c_grid<2> > const &self,
+                             af::const_ref<T> const &col,
+                             unsigned j)
+  {
+    SCITBX_ASSERT(self.n_rows() == col.size())(self.n_rows())(col.size());
+    SCITBX_ASSERT(j < self.n_columns())(j);
+    for (unsigned i=0; i<self.n_rows(); ++i) self(i, j) = col(i);
+  }
+
+  template <typename T>
   void
   copy_upper_to_lower_triangle_in_place(
     af::ref<T, af::c_grid<2> > const& a)
