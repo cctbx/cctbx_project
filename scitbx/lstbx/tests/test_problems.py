@@ -43,6 +43,7 @@ class polynomial_fit(normal_eqns.non_linear_ls_with_separable_scale_factor,
     return self.x.norm()
 
   def build_up(self, objective_only=False):
+    self.reset()
     a, b, c = self.x
     one, t, t2, t3 = self.one, self.t, self.t2, self.t3
     yc = -t3 + a*t2 + b*t + c
