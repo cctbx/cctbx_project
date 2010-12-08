@@ -124,3 +124,6 @@ class naive_iterations(iterations):
       if self.had_too_small_a_step(): break
       self.normal_eqns.apply_shifts()
       self.n_iterations += 1
+
+  def __str__(self):
+    return "pure Gauss-Newton"
