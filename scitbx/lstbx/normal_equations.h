@@ -7,6 +7,7 @@
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/ref_algebra.h>
 #include <scitbx/array_family/owning_ref.h>
+#include <scitbx/array_family/accessors/row_and_column.h>
 #include <scitbx/matrix/cholesky.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/sparse/matrix.h>
@@ -199,6 +200,30 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       linearised.add_equation(-r, grad_r, w);
     }
 
+    /// Add the linearisation of the equations \f$r(x) = 0\f$ all at once
+    /** The Jacobian is that of \f$x \mapto r(x)\f$.
+     */
+    void add_equations(af::const_ref<scalar_t> const &r,
+                       af::const_ref<scalar_t, af::mat_grid> const &jacobian,
+                       af::const_ref<scalar_t> w)
+    {
+      SCITBX_ASSERT(   r.size() == jacobian.n_rows()
+                    && r.size() == w.size())
+                   (r.size())(jacobian.n_rows())(w.size());
+      SCITBX_ASSERT(jacobian.n_columns() == n_parameters())
+                   (jacobian.n_columns())(n_parameters());
+      if (w.size() == 0) {
+        for (int i=0; i<r.size(); ++i) {
+          add_equation(r[i], af::row(jacobian, i), 1);
+        }
+      }
+      else {
+        for (int i=0; i<r.size(); ++i) {
+          add_equation(r[i], af::row(jacobian, i), w[i]);
+        }
+      }
+    }
+
     /// Objective value \f$L(x)\f$ for the current value of the unknowns
     scalar_t objective() { return r_sq/2; }
 
@@ -303,6 +328,22 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       for (int i=0; i<n_params; ++i) {
         yo_dot_grad_yc[i] += w * yo * grad_yc[i];
         yc_dot_grad_yc[i] += w * yc * grad_yc[i];
+      }
+    }
+
+    /// Add many equations in one go
+    void add_equations(af::const_ref<scalar_t> const &yc,
+                       af::const_ref<scalar_t, af::mat_grid> const &jacobian_yc,
+                       af::const_ref<scalar_t> const &yo,
+                       af::const_ref<scalar_t> const &w)
+    {
+      SCITBX_ASSERT(   yc.size() == jacobian_yc.n_rows()
+                    && (!w.size() || yc.size() == w.size()))
+                   (yc.size())(jacobian_yc.n_rows())(w.size());
+      SCITBX_ASSERT(jacobian_yc.n_columns() == n_parameters())
+                   (jacobian_yc.n_columns())(n_parameters());
+      for (int i=0; i<yc.size(); ++i) {
+        add_equation(yc[i], &jacobian_yc(i, 0), yo[i], w.size() ? w[i] : 1);
       }
     }
 
