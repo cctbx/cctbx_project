@@ -322,7 +322,7 @@ namespace scitbx { namespace lstbx {
     }
 
     /// Reduced normal equations
-    normal_equations<scalar_t> step_equations() {
+    normal_equations<scalar_t> &step_equations() {
       SCITBX_ASSERT(finalised());
       return *reduced_equations_;
     }
