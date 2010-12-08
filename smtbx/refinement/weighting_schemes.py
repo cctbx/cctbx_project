@@ -153,3 +153,14 @@ class _unit_weighting(boost.python.injector,
                           scale_factor, n_independent_params):
     # no parameters to optimise!
     return self
+
+class _sigma_weighting(boost.python.injector, ext.sigma_weighting):
+
+  def __str__(self): return "w=1/sigma^2"
+
+  def type(self): return "sigma"
+
+  def optimise_parameters(self, fo_sq, fc_sq,
+                          scale_factor, n_independent_params):
+    # no parameters to optimise!
+    return self

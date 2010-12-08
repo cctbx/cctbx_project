@@ -58,8 +58,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
   struct normal_equation_building
   {
     typedef build_normal_equations<FloatType> wt;
-    //typedef build_normal_equations<FloatType, NormalEquations,
-    //                               WeightingScheme, OneMillerIndexLinearisation> wt;
 
     static void wrap(char const *name) {
       using namespace boost::python;
@@ -80,6 +78,16 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   af::const_ref<FloatType> const &,
                   af::const_ref<std::complex<FloatType> > const &,
                   unit_weighting<FloatType> const &,
+                  FloatType,
+                  OneMillerIndexLinearisation &,
+                  scitbx::sparse::matrix<FloatType> const &>
+                  ())
+        .def(init<NormalEquations<FloatType> &,
+                  af::const_ref<miller::index<> > const &,
+                  af::const_ref<FloatType> const &,
+                  af::const_ref<FloatType> const &,
+                  af::const_ref<std::complex<FloatType> > const &,
+                  sigma_weighting<FloatType> const &,
                   FloatType,
                   OneMillerIndexLinearisation &,
                   scitbx::sparse::matrix<FloatType> const &>
