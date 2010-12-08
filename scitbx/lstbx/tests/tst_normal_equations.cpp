@@ -54,7 +54,7 @@ struct linear_polynomial_fit
       SCITBX_ASSERT(
         approx_equal(fit.ls.optimal_scale_factor(),
                      0.6148971786833856, 5e-14));
-      lstbx::normal_equations<double> normal_eqns = fit.ls.reduced_equations();
+      lstbx::normal_equations<double> normal_eqns = fit.ls.step_equations();
       SCITBX_ASSERT(!normal_eqns.solved());
       try {
         normal_eqns.cholesky_factor();

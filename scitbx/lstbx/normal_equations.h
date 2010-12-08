@@ -318,17 +318,9 @@ namespace scitbx { namespace lstbx {
     }
 
     /// Reduced normal equations
-    normal_equations<scalar_t> reduced_equations() {
+    normal_equations<scalar_t> step_equations() {
       SCITBX_ASSERT(finalised());
       return *reduced_equations_;
-    }
-
-    /** \brief The value of \f$\nabla_x L(K^*(x), x)\f$ corresponding
-     to objective.
-     */
-    vector_t gradient() {
-      SCITBX_ASSERT(finalised());
-      return reduced_equations_->right_hand_side();
     }
 
     /// Ready this for another computation of the normal equations

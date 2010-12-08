@@ -9,15 +9,15 @@ from scitbx.array_family import flex
 
 class journaled_normal_eqns(object):
   """ A decorator that keeps the history of the objective, gradient,
-  shifts, etc of an underlying normal equations object. An instance of this
+  step, etc of an underlying normal equations object. An instance of this
   class is a drop-in replacement of that underlying object, with the
   journaling just mentionned automatically happening behind the scene.
   """
 
-  def __init__(self, normal_eqns, journal, track_gradient, track_shifts):
+  def __init__(self, normal_eqns, journal, track_gradient, track_step):
     """ Decorate the given normal equations. The history will be accumulated
     in relevant attributes of journal. The flags track_xxx specify whether
-    to journal the gradient and/or the shifts, a potentially memory-hungry
+    to journal the gradient and/or the step, a potentially memory-hungry
     operation.
     """
     self.actual = normal_eqns
@@ -28,11 +28,11 @@ class journaled_normal_eqns(object):
     else:
       self.journal.gradient_history = None
     self.journal.gradient_norm_history = flex.double()
-    if track_shifts:
-      self.journal.shifts_history = []
+    if track_step:
+      self.journal.step_history = []
     else:
-      self.journal.shifts_history = None
-    self.journal.shifts_norm_history = flex.double()
+      self.journal.step_history = None
+    self.journal.step_norm_history = flex.double()
     self.journal.parameter_vector_norm_history = flex.double()
     if hasattr(normal_eqns, "scale_factor"):
       self.journal.scale_factor_history = flex.double()
@@ -45,35 +45,39 @@ class journaled_normal_eqns(object):
   def build_up(self):
     self.actual.build_up()
     self.journal.parameter_vector_norm_history.append(
-      self.actual.parameter_vector_norm)
-    self.journal.objective_history.append(self.actual.objective)
-    self.journal.gradient_norm_history.append(self.actual.gradient.norm_inf())
+      self.actual.parameter_vector_norm())
+    self.journal.objective_history.append(self.actual.objective())
+    self.journal.gradient_norm_history.append(
+      self.actual.gradient().norm_inf())
     if self.journal.gradient_history is not None:
-      self.journal.gradient_history.append(self.actual.gradient)
+      self.journal.gradient_history.append(self.actual.gradient())
     if self.journal.scale_factor_history is not None:
-      self.journal.scale_factor_history.append(self.actual.scale_factor)
+      self.journal.scale_factor_history.append(self.actual.scale_factor())
 
   def solve(self):
     self.actual.solve()
-    self.journal.shifts_norm_history.append(self.actual.shifts.norm())
-    if self.journal.shifts_history is not None:
-      self.journal.shifts_history.append(self.actual.shifts.deep_copy())
+    self.journal.step_norm_history.append(self.actual.step().norm())
+    if self.journal.step_history is not None:
+      self.journal.step_history.append(self.actual.step().deep_copy())
 
-  def apply_shifts(self):
-    self.actual.apply_shifts()
+  def step_forward(self):
+    self.actual.step_forward()
 
-  def solve_and_apply_shifts(self):
+  def solve_and_step_forward(self):
     self.solve()
-    self.apply_shifts()
+    self.step_forward()
 
 
 class iterations(object):
-  """ Iterations to solve a L.S. minimisation problem.
+  """ Iterations to solve a non-linear L.S. minimisation problem.
 
   It is assumed that the objective function is properly scaled to be
   between 0 and 1 (or approximately so), so that this class can
   meaningfully thresholds the norm of the gradients to watch for
   convergence.
+
+  The interface expected from the normal equations object passed to __init__
+  is that of lstbx.non_linear_normal_equations_mixin
 
   Use classic stopping criteria: c.f. e.g.
   Methods for non-linear least-squares problems,
@@ -81,21 +85,21 @@ class iterations(object):
   http://www2.imm.dtu.dk/pubdb/views/edoc_download.php/3215/pdf/imm3215.pdf
   """
 
-  track_shifts = False
-  track_gradients = False
+  track_step = False
+  track_gradient = False
   track_all = False
   n_max_iterations = 100
   gradient_threshold = None
-  shift_threshold = None
+  step_threshold = None
 
   def __init__(self, normal_eqns, **kwds):
     """
     """
     libtbx.adopt_optional_init_args(self, kwds)
-    if self.track_all: self.track_shifts = self.track_gradients = True
+    if self.track_all: self.track_step = self.track_gradient = True
     self.normal_eqns = journaled_normal_eqns(normal_eqns, self,
-                                             self.track_gradients,
-                                             self.track_shifts)
+                                             self.track_gradient,
+                                             self.track_step)
     self.do()
 
   def has_gradient_converged_to_zero(self):
@@ -103,10 +107,10 @@ class iterations(object):
     return eps_1 is not None and self.gradient_norm_history[-1] <= eps_1
 
   def had_too_small_a_step(self):
-    eps_2 = self.shift_threshold
+    eps_2 = self.step_threshold
     if eps_2 is None: return False
     x = self.parameter_vector_norm_history[-1]
-    h = self.shifts_norm_history[-1]
+    h = self.step_norm_history[-1]
     return h <= eps_2*(x + eps_2)
 
   def do(self):
@@ -122,7 +126,7 @@ class naive_iterations(iterations):
       if self.has_gradient_converged_to_zero(): break
       self.normal_eqns.solve()
       if self.had_too_small_a_step(): break
-      self.normal_eqns.apply_shifts()
+      self.normal_eqns.step_forward()
       self.n_iterations += 1
 
   def __str__(self):

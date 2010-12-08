@@ -33,12 +33,17 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def("add_equations", &wt::add_equations,
              (arg("right_hand_side"), arg("design_matrix"), arg("weights"),
               arg("negate_right_hand_side")=false))
-        .add_property("normal_matrix_packed_u", &wt::normal_matrix)
-        .add_property("right_hand_side", &wt::right_hand_side)
         .def("solve", &wt::solve)
         .add_property("solved", &wt::solved)
-        .add_property("cholesky_factor_packed_u", &wt::cholesky_factor)
-        .add_property("solution", &wt::solution)
+        /* We use 'def' instead of add_property for those because they may
+           throw if called on an instanced which is not finalised.
+           On the Python side, an attribute lookup which may throw is a
+           source of confusion (e.g. hasattr does not work correctly for those).
+         */
+        .def("normal_matrix_packed_u", &wt::normal_matrix)
+        .def("right_hand_side", &wt::right_hand_side)
+        .def("cholesky_factor_packed_u", &wt::cholesky_factor)
+        .def("solution", &wt::solution)
         ;
     }
   };
@@ -64,12 +69,18 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("finalise", &wt::finalise)
+        .add_property("finalised", &wt::finalised)
+        .def("reset", &wt::reset)
+        /* We use 'def' instead of add_property for those because they may
+           throw if called on an instanced which is not finalised.
+           On the Python side, an attribute lookup which may throw is a
+           source of confusion (e.g. hasattr does not work correctly for those).
+         */
         .def("optimal_scale_factor", &wt::optimal_scale_factor)
         .def("sum_w_yo_sq", &wt::sum_w_yo_sq)
         .def("objective", &wt::objective)
-        .def("gradient", &wt::gradient)
-        .def("reduced_equations", &wt::reduced_equations)
-        .def("reset", &wt::reset);
+        .def("step_equations", &wt::step_equations)
+        ;
     }
   };
 
