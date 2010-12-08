@@ -66,6 +66,9 @@ namespace boost_python {
         .def("add_non_linear_equation",
              &wt::add_equation,
              (arg("residual"), arg("grad_residual")))
+        .def("add_non_linear_equations",
+             &wt::add_equations,
+             (arg("residuals"), arg("jacobian")))
         /* We use 'def' instead of add_property for those to stay consistent
            with the other wrappers in this module which can't use properties
          */
@@ -97,6 +100,9 @@ namespace boost_python {
         .add_property("n_parameters", &wt::n_parameters)
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
+        .def("add_equations", &wt::add_equations,
+             (arg("ys_calc"), arg("jacobian_y_calc"), arg("ys_obs"),
+              arg("weights")))
         .def("finalise", &wt::finalise)
         .add_property("finalised", &wt::finalised)
         .def("reset", &wt::reset)
