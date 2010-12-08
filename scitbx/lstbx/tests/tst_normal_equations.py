@@ -46,10 +46,13 @@ def exercise_non_linear_ls_with_separable_scale_factor():
   test = test_problems.polynomial_fit()
   test.build_up()
 
+  assert test.n_equations == test.n_data;
+
   # Reference values computed in tst_normal_equations.nb
   eps = 5e-14
   assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
   assert approx_equal(test.objective(), 0.039642707534326034, eps)
+  assert approx_equal(test.chi_sq(), 0.011326487866950296, eps)
 
 
   assert not test.step_equations().solved
@@ -103,6 +106,7 @@ def exercise_non_linear_ls_with_separable_scale_factor():
 def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
   test = test_problems.polynomial_fit_with_penalty()
   test.build_up()
+  assert test.n_equations == test.n_data + 1
 
   eps = 5e-14
   # reference values from tst_normal_equations.nb again
@@ -116,6 +120,7 @@ def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
          .all_eq(redu.step_equations().normal_matrix_packed_u())
 
   assert approx_equal(test.objective(), 1.3196427075343262, eps)
+  assert approx_equal(test.chi_sq(), 0.32991067688358156, eps)
   assert approx_equal(
     test.step_equations().right_hand_side(),
     (1.7214991729791487, -1.4619624074720623, 1.5748093588574208),
@@ -137,6 +142,7 @@ def exercise_levenberg_marquardt(non_linear_ls, plot=False):
     step_threshold=1e-8,
     tau=1e-4,
     n_max_iterations=200)
+  assert non_linear_ls.n_equations == non_linear_ls.n_data
   assert approx_equal(non_linear_ls.x, non_linear_ls.arg_min, eps=5e-4)
   print "L-M: %i iterations" % iterations.n_iterations
   if plot:
