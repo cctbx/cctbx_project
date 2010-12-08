@@ -29,7 +29,7 @@ def build_bond_list (
   assert (isinstance(fallback_search_max_distance, float) or
           isinstance(fallback_search_max_distance, int))
   if (conformer_indices is None) :
-    conformer_indices = flex.sites_t(sites_cart.size(), 0)
+    conformer_indices = flex.size_t(sites_cart.size(), 0)
   stripped_elements = elements.strip().upper()
   if (search_max_distance is None):
     search_max_distance = 2 * max([vdw_radii.get(e, 0.0) for e in elements])
