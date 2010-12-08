@@ -339,6 +339,9 @@ namespace boost_python {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
+      .def("matrix_paste_column_in_place",
+           matrix::paste_column_in_place<double>,
+           (arg("column"), "i_column"))
       .def("matrix_copy_upper_triangle", matrix::copy_upper_triangle<double>)
       .def("matrix_copy_lower_triangle", matrix::copy_lower_triangle<double>)
       .def("matrix_swap_rows_in_place",

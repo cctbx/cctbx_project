@@ -2389,6 +2389,34 @@ def exercise_matrix_move():
   a[2] = 2
   assert a.matrix_is_symmetric()
 
+  """
+  matrix_paste_column_in_place
+  """
+  m, n = 3, 5
+  a = flex.double_range(m*n)
+  a.reshape(flex.grid(m, n))
+  u = flex.double((-1, -2, -3))
+  try:
+    a.matrix_paste_column_in_place(u, n)
+    raise Exception_expected
+  except RuntimeError:
+    pass
+  try:
+    v = flex.double((-1, -2))
+    a.matrix_paste_column_in_place(v, 0)
+    raise Exception_expected
+  except RuntimeError:
+    pass
+  try:
+    v = flex.double((-1, -2, -3, -4))
+    a.matrix_paste_column_in_place(v, 0)
+    raise Exception_expected
+  except RuntimeError:
+    pass
+  for j in xrange(n):
+    a.matrix_paste_column_in_place(u, j)
+    assert a.matrix_copy_column(j).all_eq(u)
+
 def exercise_copy_upper_or_lower_triangle():
   for m, n in [ (5,3), (5,4), (5,5), (4,5), (3,5),
                 (4,2), (2,4),
