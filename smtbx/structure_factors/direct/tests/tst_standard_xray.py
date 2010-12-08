@@ -161,6 +161,10 @@ class smtbx_against_cctbx_test_case(test_case):
 
 class custom_vs_std_test_case(test_case):
 
+  def __init__(self, *args, **kwds):
+    self.has_printed_header = False
+    test_case.__init__(self, *args, **kwds)
+
   def do_exercise(self, verbose=False):
     xs = self.xs
     indices = self.miller_indices(xs.space_group_info())
@@ -177,6 +181,14 @@ class custom_vs_std_test_case(test_case):
       deltas.append(abs(custom_fc_sq.f_calc - std_fc_sq.f_calc)
                     /abs(std_fc_sq.f_calc))
     stats = median_statistics(deltas)
+    if verbose:
+      if not self.has_printed_header:
+        print "f_calc and sin/cos: |tabulated - std|/|std|"
+        print "median & median absolute deviation"
+        self.has_printed_header = True
+      print "%s: %.12g +/- %.12g" % (xs.space_group_info().type().hall_symbol(),
+                                     stats.median,
+                                     stats.median_absolute_deviation)
     assert stats.median < 0.01, (str(xs.space_group_info()), stats.median)
     assert stats.median_absolute_deviation < 0.005, (
       str(xs.space_group_info()), stats.median_absolute_deviation)
