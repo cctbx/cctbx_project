@@ -57,10 +57,20 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
   };
 
+  struct sigma_weighting_wrapper
+  {
+    static void wrap() {
+      using namespace boost::python;
+      weighting_scheme_class<sigma_weighting>("sigma_weighting")
+        .def(init<>())
+        ;
+    }
+  };
 
   void wrap_weighting_schemes() {
     mainstream_shelx_weighting_wrapper::wrap();
     unit_weighting_wrapper::wrap();
+    sigma_weighting_wrapper::wrap();
   }
 
 

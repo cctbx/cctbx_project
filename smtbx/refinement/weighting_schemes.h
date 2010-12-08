@@ -23,6 +23,16 @@ namespace smtbx { namespace refinement { namespace least_squares {
     return result;
   }
 
+
+  template <typename T>
+  struct sigma_weighting
+  {
+    T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
+      return std::pow(sigma, -2);
+    }
+  };
+
+
   template <typename T>
   struct unit_weighting
   {
