@@ -65,13 +65,16 @@ namespace boost_python {
       return_internal_reference<> rir;
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
-        .def(init<scalar_t,
+        .def(init<std::size_t,
+                  scalar_t,
                   vector_t const &,
                   symmetric_matrix_t const &>
-             ((arg("objective"),
+             ((arg("n_equations"),
+               arg("objective"),
                arg("opposite_of_grad_objective"),
                arg("normal_matrix"))))
         .add_property("n_parameters", &wt::n_parameters)
+        .add_property("n_equations", &wt::n_equations)
         .def("add_residual",
              &wt::add_residual,
              (arg("residual"), arg("weight")))
@@ -89,6 +92,7 @@ namespace boost_python {
            with the other wrappers in this module which can't use properties
          */
         .def("objective", &wt::objective)
+        .def("chi_sq", &wt::chi_sq)
         .def("step_equations", &wt::step_equations, rir)
         ;
     }
@@ -114,6 +118,7 @@ namespace boost_python {
       class_<wt>(name, no_init)
         .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
         .add_property("n_parameters", &wt::n_parameters)
+        .add_property("n_equations", &wt::n_equations)
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("add_equations", &wt::add_equations,
@@ -130,6 +135,7 @@ namespace boost_python {
         .def("optimal_scale_factor", &wt::optimal_scale_factor)
         .def("sum_w_yo_sq", &wt::sum_w_yo_sq)
         .def("objective", &wt::objective)
+        .def("chi_sq", &wt::chi_sq)
         .def("step_equations", &wt::step_equations, rir)
         .def("reduced_problem", &wt::reduced_problem, rir)
         ;
