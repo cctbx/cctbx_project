@@ -2,8 +2,35 @@
 #define SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 
 #include <cmath>
+#include <cstdlib>
+#include <boost/type_traits/is_unsigned.hpp>
 
 namespace scitbx { namespace fn {
+
+  namespace details {
+
+    template <typename NumType>
+    class absolute
+    {
+    public:
+      NumType operator()(NumType x) {
+        return (*this)(x, typename boost::is_unsigned<NumType>::type());
+      }
+
+    private:
+      /* boost::is_unsigned<my_type> is false by default, which makes
+         this version the default, and the other one the version used only
+         for those types explicitly marked as unsigned.
+       */
+      NumType operator()(NumType x, boost::false_type is_unsigned) {
+        return std::abs(x);
+      }
+
+      NumType operator()(NumType x, boost::true_type is_unsigned) {
+        return x;
+      }
+    };
+  }
 
   //! Absolute value.
   template <typename NumType>
@@ -11,8 +38,7 @@ namespace scitbx { namespace fn {
   NumType
   absolute(NumType const& x)
   {
-    if (x < NumType(0)) return -x;
-    return x;
+    return details::absolute<NumType>()(x);
   }
 
   //! Floating-point modulus with strictly positive result.
