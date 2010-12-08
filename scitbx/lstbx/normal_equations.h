@@ -263,11 +263,15 @@ namespace scitbx { namespace lstbx {
     /** This is the normalisation that guarantees
         that \f$L(K, x)\f$ is between 0 and 1.
      */
-    scalar_t sum_w_yo_sq() { return yo_sq; }
+    scalar_t sum_w_yo_sq() {
+      SCITBX_ASSERT(finalised());
+      return yo_sq;
+    }
 
     /** \brief The value \f$ K^*(x) \f$ of the scale factor optimising the L.S. objective for a given constant \f$ x \f$.
      */
     scalar_t optimal_scale_factor() {
+      SCITBX_ASSERT(finalised());
       return yo_dot_yc/yc_sq;
     }
 
@@ -286,9 +290,10 @@ namespace scitbx { namespace lstbx {
      */
     void finalise() {
       SCITBX_ASSERT(!finalised());
+      vector_owning_ref_t b = yo_dot_grad_yc;
+      reduced_equations_ = normal_equations<scalar_t>(a.array(), b.array());
       scalar_t k_star = optimal_scale_factor();
       scalar_t r_dot_yc = yo_dot_yc - k_star*yc_sq;
-      vector_owning_ref_t b = yo_dot_grad_yc;
       scalar_t inv_yc_sq = 1./yc_sq;
       for (int i=0; i<n_params; ++i) {
         scalar_t r_dot_grad_yc_i = yo_dot_grad_yc[i] - k_star*yc_dot_grad_yc[i];
@@ -309,7 +314,6 @@ namespace scitbx { namespace lstbx {
         a /= yo_sq;
         b /= yo_sq;
       }
-      reduced_equations_ = normal_equations<scalar_t>(a.array(), b.array());
     }
 
     /// Whether finalise has been called.
