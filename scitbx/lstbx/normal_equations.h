@@ -200,7 +200,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
     /// Objective value \f$L(x)\f$ for the current value of the unknowns
-    scalar_t objective() { return r_sq; }
+    scalar_t objective() { return r_sq/2; }
 
     /// Linearised equations to solve for a step
     linear_ls<scalar_t> &step_equations() { return linearised; }
@@ -327,7 +327,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
      */
     scalar_t objective() {
       scalar_t k_star_sq = std::pow(optimal_scale_factor(), 2);
-      scalar_t result = 1 - (k_star_sq * yc_sq)/yo_sq;
+      scalar_t result = (1 - (k_star_sq * yc_sq)/yo_sq)/2;
       if (!normalised()) result *= yo_sq;
       return result;
     }
