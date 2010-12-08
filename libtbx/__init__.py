@@ -107,6 +107,9 @@ class group_args(object):
   def __init__(self, **keyword_arguments):
     self.__dict__.update(keyword_arguments)
 
+  def __call__(self):
+    return self.__dict__
+
 if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
   import libtbx.start_print_trace
 
