@@ -1,8 +1,62 @@
+from __future__ import division
+
 """ Tools to solve non-linear L.S. problems formulated with normal-equations.
 """
 
 import libtbx
 from scitbx.array_family import flex
+
+
+class journaled_normal_eqns(object):
+  """ A decorator that keeps the history of the objective, gradient,
+  shifts, etc of an underlying normal equations object. An instance of this
+  class is a drop-in replacement of that underlying object, with the
+  journaling just mentionned automatically happening behind the scene.
+  """
+
+  def __init__(self, normal_eqns, journal, track_gradient, track_shifts):
+    """ Decorate the given normal equations. The history will be accumulated
+    in relevant attributes of journal. The flags track_xxx specify whether
+    to journal the gradient and/or the shifts, a potentially memory-hungry
+    operation.
+    """
+    self.actual = normal_eqns
+    self.journal = journal
+    self.journal.objective_history = flex.double()
+    if track_gradient:
+      self.journal.gradient_history = []
+    else:
+      self.journal.gradient_history = None
+    self.journal.gradient_norm_history = flex.double()
+    if track_shifts:
+      self.journal.shifts_history = []
+    else:
+      self.journal.shifts_history = None
+    if hasattr(normal_eqns, "scale_factor"):
+      self.journal.scale_factor_history = flex.double()
+    else:
+      self.journal.scale_factor_history = None
+
+  def __getattr__(self, name):
+    return getattr(self.actual, name)
+
+  def build_up(self):
+    self.actual.build_up()
+    self.journal.objective_history.append(self.actual.objective)
+    self.journal.gradient_norm_history.append(self.actual.gradient.norm_inf())
+    if self.journal.gradient_history is not None:
+      self.journal.gradient_history.append(self.actual.gradient)
+    if self.journal.scale_factor_history is not None:
+      self.journal.scale_factor_history.append(self.actual.scale_factor)
+
+  def solve(self):
+    self.actual.solve()
+    if self.journal.shifts_history is not None:
+      self.journal.shifts_history.append(self.actual.shifts.deep_copy())
+
+  def apply_shifts(self):
+    self.actual.apply_shifts()
+
 
 class iterations(object):
 
