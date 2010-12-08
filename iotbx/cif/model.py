@@ -437,7 +437,7 @@ class loop(DictMixin):
       if fmt_str is None:
         fmt_str = indent + ' '.join(["%s"]*len(values))
       for i in range(self.size()):
-        print >> out, fmt_str % tuple(values[j][i] for j in range(len(values)))
+        print >> out, fmt_str % tuple([values[j][i] for j in range(len(values))])
     else:
       for i in range(self.size()):
         values_to_print = [format_value(values[j][i]) for j in range(len(values))]
