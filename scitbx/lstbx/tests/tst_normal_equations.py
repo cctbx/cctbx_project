@@ -45,6 +45,7 @@ def exercise_linear_normal_equations():
 def exercise_non_linear_ls_with_separable_scale_factor():
   test = test_problems.polynomial_fit()
   test.build_up()
+
   # Reference values computed in tst_normal_equations.nb
   eps = 5e-14
   assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
@@ -99,6 +100,34 @@ def exercise_non_linear_ls_with_separable_scale_factor():
     [ 1.2878697604109028, -0.7727798877778043, -0.5151113342942297 ],
     eps=1e-12)
 
+def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
+  test = test_problems.polynomial_fit_with_penalty()
+  test.build_up()
+
+  eps = 5e-14
+  # reference values from tst_normal_equations.nb again
+
+  assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
+  redu = test.reduced_problem()
+  assert test.objective() == redu.objective()
+  assert test.step_equations().right_hand_side()\
+         .all_eq(redu.step_equations().right_hand_side())
+  assert test.step_equations().normal_matrix_packed_u()\
+         .all_eq(redu.step_equations().normal_matrix_packed_u())
+
+  assert approx_equal(test.objective(), 1.3196427075343262, eps)
+  assert approx_equal(
+    test.step_equations().right_hand_side(),
+    (1.7214991729791487, -1.4619624074720623, 1.5748093588574208),
+    eps)
+  assert approx_equal(
+    test.step_equations().normal_matrix_packed_u(),
+    (1.371944193675858, -0.6093345300213344,  1.107972946555006,
+                         1.4185925035480405, -0.9192237056192452,
+                                              1.1976726805790037),
+    eps)
+
+
 def exercise_levenberg_marquardt(non_linear_ls, plot=False):
   non_linear_ls.restart()
   iterations = normal_eqns_solving.levenberg_marquardt_iterations(
@@ -124,6 +153,7 @@ def run():
   exercise_levenberg_marquardt(t, plot)
   exercise_linear_normal_equations()
   exercise_non_linear_ls_with_separable_scale_factor()
+  exercise_non_linear_ls_with_separable_scale_factor_plus_penalty()
   print 'OK'
 
 if __name__ == '__main__':

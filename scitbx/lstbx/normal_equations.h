@@ -187,6 +187,18 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         r_sq(0)
     {}
 
+    /// Construct with an exiting L.S. problem.
+    /** That is
+          - this->objective()  == objective
+          - this->step_equations().right_hand_side() == opposite_of_grad_objective
+          - this->step_equations().normal_matrix() == normal_matrix
+     */
+    non_linear_ls(scalar_t objective,
+                  vector_t const &opposite_of_grad_objective,
+                  symmetric_matrix_t const &normal_matrix)
+    : r_sq(2*objective), linearised(normal_matrix, opposite_of_grad_objective)
+    {}
+
     /// Number of unknown parameters
     int n_parameters() { return linearised.n_parameters(); }
 
@@ -298,7 +310,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         a(n_parameters),
         yo_dot_grad_yc(n_parameters),
         yc_dot_grad_yc(n_parameters),
-        grad_k_star(n_parameters)
+        grad_k_star(n_parameters),
+        finalised_(false),
+        reduced_ls(n_parameters)
     {}
 
     /// Number of unknown parameters, not including the overall scale factor
@@ -374,10 +388,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
      for the optimised scale factor \f$ K^*(x) \f$ and the input \f$yc_(x)\f$.
      */
     scalar_t objective() {
-      scalar_t k_star_sq = std::pow(optimal_scale_factor(), 2);
-      scalar_t result = (1 - (k_star_sq * yc_sq)/yo_sq)/2;
-      if (!normalised()) result *= yo_sq;
-      return result;
+      return reduced_problem().objective();
     }
 
     /// Equation accumulation is finished.
@@ -385,9 +396,15 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
      */
     void finalise() {
       SCITBX_ASSERT(!finalised());
+      finalised_ = true;
+
+      scalar_t k_star = optimal_scale_factor(), k_star_sq = k_star*k_star;
+      scalar_t objective_ = (1 - (k_star_sq * yc_sq)/yo_sq)/2;
+      if (!normalised()) objective_ *= yo_sq;
+
       vector_owning_ref_t b = yo_dot_grad_yc;
-      reduced_equations_ = linear_ls<scalar_t>(a.array(), b.array());
-      scalar_t k_star = optimal_scale_factor();
+      reduced_ls = non_linear_ls<scalar_t>(objective_, b.array(), a.array());
+
       scalar_t r_dot_yc = yo_dot_yc - k_star*yc_sq;
       scalar_t inv_yc_sq = 1./yc_sq;
       for (int i=0; i<n_params; ++i) {
@@ -396,7 +413,6 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         b[i] = k_star*r_dot_grad_yc_i + grad_k_star[i]*r_dot_yc;
       }
       double *pa = a.begin();
-      scalar_t k_star_sq = k_star*k_star;
       for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
         scalar_t a_ij = *pa;
         a_ij = k_star_sq*a_ij
@@ -413,13 +429,34 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
     /// Whether finalise has been called.
     bool finalised() {
-      return reduced_equations_;
+      return finalised_;
     }
 
     /// Reduced normal equations
     linear_ls<scalar_t> &step_equations() {
+      return reduced_problem().step_equations();
+    }
+
+    /// The non-linear problem with the scale factor already optimised away
+    /** The main use of this function comes for an objective function
+
+        \[ \tilde{L}(K, x) = L(K, x) + \|r(x\|^2 \]
+
+        for some residual vector \f$r(x)\f$ independent of the overall scale
+        factor that the first term depends upon. The equations for that
+        second term may then be accumulated into the object returned by this
+        function, to produce the correct equations for
+        \f$\tilde{L}(K^*(x), x)\f$.
+
+        This would not be possible with step_equations() which looses
+        sight of the objective value.
+
+        Invariant: reduced_problem().step_equations() and this->step_equations()
+        are identical (i.e. modify one, modifies the other).
+     */
+    non_linear_ls<scalar_t> &reduced_problem() {
       SCITBX_ASSERT(finalised());
-      return *reduced_equations_;
+      return reduced_ls;
     }
 
     /// Ready this for another computation of the normal equations
@@ -429,7 +466,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));
       std::fill(yc_dot_grad_yc.begin(), yc_dot_grad_yc.end(), scalar_t(0));
       std::fill(grad_k_star.begin(), grad_k_star.end(), scalar_t(0));
-      reduced_equations_ = boost::none;
+      finalised_ = false;
     }
 
   private:
@@ -439,7 +476,8 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
     vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;
-    boost::optional< linear_ls<scalar_t> > reduced_equations_;
+    bool finalised_;
+    non_linear_ls<scalar_t> reduced_ls;
   };
 
 

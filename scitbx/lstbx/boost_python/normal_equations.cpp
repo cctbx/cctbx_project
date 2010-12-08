@@ -56,12 +56,21 @@ namespace boost_python {
   struct non_linear_ls_wrapper
   {
     typedef non_linear_ls<FloatType> wt;
+    typedef typename wt::scalar_t scalar_t;
+    typedef typename wt::vector_t vector_t;
+    typedef typename wt::symmetric_matrix_t symmetric_matrix_t;
 
     static void wrap(char const *name) {
       using namespace boost::python;
       return_internal_reference<> rir;
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
+        .def(init<scalar_t,
+                  vector_t const &,
+                  symmetric_matrix_t const &>
+             ((arg("objective"),
+               arg("opposite_of_grad_objective"),
+               arg("normal_matrix"))))
         .add_property("n_parameters", &wt::n_parameters)
         .def("add_residual",
              &wt::add_residual,
@@ -122,6 +131,7 @@ namespace boost_python {
         .def("sum_w_yo_sq", &wt::sum_w_yo_sq)
         .def("objective", &wt::objective)
         .def("step_equations", &wt::step_equations, rir)
+        .def("reduced_problem", &wt::reduced_problem, rir)
         ;
     }
   };
