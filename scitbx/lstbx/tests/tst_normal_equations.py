@@ -41,7 +41,7 @@ def exercise_linear_normal_equations():
 
 
 def exercise_non_linear_ls_with_separable_scale_factor():
-  test = test_problems.polynomial_fit()
+  test = test_problems.polynomial_fit(normalised=False)
   test.build_up()
 
   assert test.n_equations == test.n_data;
@@ -101,8 +101,16 @@ def exercise_non_linear_ls_with_separable_scale_factor():
     [ 1.2878697604109028, -0.7727798877778043, -0.5151113342942297 ],
     eps=1e-12)
 
+  test_bis = test_problems.polynomial_fit(normalised=True)
+  test_bis.build_up()
+  assert approx_equal(test_bis.objective(),
+                      test.objective()/test.sum_w_yo_sq(),
+                      eps=1e-15)
+  assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
+
+
 def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
-  test = test_problems.polynomial_fit_with_penalty()
+  test = test_problems.polynomial_fit_with_penalty(normalised=False)
   test.build_up()
   assert test.n_equations == test.n_data + 1
 
@@ -129,6 +137,10 @@ def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
                          1.4185925035480405, -0.9192237056192452,
                                               1.1976726805790037),
     eps)
+
+  test_bis = test_problems.polynomial_fit_with_penalty(normalised=True)
+  test_bis.build_up()
+  assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
 
 
 def exercise_levenberg_marquardt(non_linear_ls, plot=False):
