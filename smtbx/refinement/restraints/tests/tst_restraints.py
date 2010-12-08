@@ -1,12 +1,17 @@
 from __future__ import division
-from cctbx import geometry_restraints, adp_restraints
+from scitbx.lstbx import normal_eqns_solving
+from cctbx import geometry_restraints, adp_restraints, sgtbx, miller
 from cctbx.array_family import flex
 from cctbx.xray import parameter_map
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints.adp_restraints import\
      adp_similarity_restraints, isotropic_adp_restraints, rigid_bond_restraints
 from smtbx.refinement.restraints.tests import trial_structure
+import smtbx.utils
+import smtbx.development
+from smtbx.refinement import constraints, least_squares
 from libtbx.test_utils import approx_equal
+from libtbx.utils import wall_clock_time
 import libtbx
 
 from scitbx import matrix
@@ -44,7 +49,6 @@ class restraints_test_case:
     assert approx_equal(
       linearised_eqns.n_restraints(),
       rows_per_restraint.get(self.proxies[0].__class__, 1) * self.proxies.size())
-
 
 class geometry_restraints_test_case(restraints_test_case):
 
@@ -206,7 +210,104 @@ class rigid_bond_test_case(adp_restraints_test_case):
     sites_cart = self.xray_structure.sites_cart()
     return adp.rigid_bond(sites_cart, u_cart, proxy)
 
-def exercise_ls_restraints():
+def exercise_restrained_refinement(options):
+  import random
+  random.seed(1)
+  flex.set_random_seed(1)
+  xs0 = smtbx.development.random_xray_structure(
+    sgtbx.space_group_info('P1'),
+    n_scatterers=options.n_scatterers,
+    elements="random")
+  for sc in xs0.scatterers():
+    sc.flags.set_grad_site(True)
+  sc0 = xs0.scatterers()
+  uc = xs0.unit_cell()
+
+  mi = xs0.build_miller_set(anomalous_flag=False, d_min=options.resolution)
+  fo_sq = mi.structure_factors_from_scatterers(
+    xs0, algorithm="direct").f_calc().norm()
+  fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1))
+
+  i, j, k, l = random.sample(xrange(options.n_scatterers), 4)
+  bond_proxies = geometry_restraints.shared_bond_simple_proxy()
+  w = 1e9
+  d_ij = uc.distance(sc0[i].site, sc0[j].site)*0.8
+  bond_proxies.append(geom.bond_simple_proxy(
+    i_seqs=(i, j),
+    distance_ideal=d_ij,
+    weight=w))
+  d_jk = uc.distance(sc0[j].site, sc0[k].site)*0.85
+  bond_proxies.append(geom.bond_simple_proxy(
+    i_seqs=(j, k),
+    distance_ideal=d_jk,
+    weight=w))
+  d_ki = min(uc.distance(sc0[k].site, sc0[i].site)*0.9, (d_ij + d_jk)*0.8)
+  bond_proxies.append(geom.bond_simple_proxy(
+    i_seqs=(k, i),
+    distance_ideal=d_ki,
+    weight=w))
+  d_jl = uc.distance(sc0[j].site, sc0[l].site)*0.9
+  bond_proxies.append(geom.bond_simple_proxy(
+    i_seqs=(j, l),
+    distance_ideal=d_jl,
+    weight=w))
+  d_lk = min(uc.distance(sc0[l].site, sc0[k].site)*0.8, 0.75*(d_jk + d_jl))
+  bond_proxies.append(geom.bond_simple_proxy(
+    i_seqs=(l, k),
+    distance_ideal=d_jl,
+    weight=w))
+  restraints_manager = restraints.manager(bond_proxies=bond_proxies)
+
+  xs1 = xs0.deep_copy_scatterers()
+  xs1.shake_sites_in_place(rms_difference=0.1)
+
+  def ls_problem():
+    xs = xs1.deep_copy_scatterers()
+    reparametrisation = constraints.reparametrisation(
+      structure=xs,
+      constraints=[],
+      connectivity_table=smtbx.utils.connectivity_table(xs),
+      temperature=20)
+    return least_squares.normal_equations(
+      fo_sq=fo_sq,
+      reparametrisation=reparametrisation,
+      restraints_manager=restraints_manager)
+
+  gradient_threshold, step_threshold = 1e-6, 1e-6
+  eps = 5e-3
+
+  ls = ls_problem()
+  t = wall_clock_time()
+  cycles = normal_eqns_solving.naive_iterations(
+    ls,
+    gradient_threshold=gradient_threshold,
+    step_threshold=step_threshold,
+    track_all=True)
+  if options.verbose:
+    print "%i %s steps in %.6f s" % (cycles.n_iterations, cycles, t.elapsed())
+  sc = ls.xray_structure.scatterers()
+  for p in bond_proxies:
+    d = uc.distance(*[ sc[i_pair].site for i_pair in p.i_seqs ])
+    assert approx_equal(d, p.distance_ideal, eps)
+
+  ls = ls_problem()
+  t = wall_clock_time()
+  cycles = normal_eqns_solving.levenberg_marquardt_iterations(
+    ls,
+    gradient_threshold=gradient_threshold,
+    step_threshold=step_threshold,
+    tau=1e-3,
+    track_all=True)
+  if options.verbose:
+    print "%i %s steps in %.6f s" % (cycles.n_iterations, cycles, t.elapsed())
+  sc = ls.xray_structure.scatterers()
+  sc = ls.xray_structure.scatterers()
+  for p in bond_proxies:
+    d = uc.distance(*[ sc[i].site for i in p.i_seqs ])
+    assert approx_equal(d, p.distance_ideal, eps)
+
+def exercise_ls_restraints(options):
+  exercise_restrained_refinement(options)
   bond_restraint_test_case().run()
   angle_restraint_test_case().run()
   dihedral_restraint_test_case().run()
@@ -216,7 +317,18 @@ def exercise_ls_restraints():
 
 def run():
   libtbx.utils.show_times_at_exit()
-  exercise_ls_restraints()
+  import sys
+  from libtbx.option_parser import option_parser
+  command_line = (option_parser()
+    .option(None, "--verbose",
+            action="store_true")
+    .option(None, "--scatterers",
+            dest='n_scatterers',
+            type="int")
+    .option(None, "--resolution",
+            type="float")
+  ).process(args=sys.argv[1:])
+  exercise_ls_restraints(command_line.options)
 
 if __name__ == '__main__':
   run()

@@ -17,7 +17,8 @@ def run():
     "$D/refinement/constraints/tests/tst_constrained_structure.py",
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
-    "$D/refinement/restraints/tests/tst_restraints.py",
+    ["$D/refinement/restraints/tests/tst_restraints.py",
+     '--verbose', '--scatterers=5', '--resolution=0.2'],
     )
   build_dir = libtbx.env.under_build("smtbx")
   dist_dir = libtbx.env.dist_path("smtbx")
