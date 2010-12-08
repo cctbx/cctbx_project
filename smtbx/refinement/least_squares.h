@@ -135,7 +135,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       FloatType scale_factor,
       OneMillerIndexFcalc &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
-        &jacobian_transpose_matching_grad_fc)
+        &jacobian_transpose_matching_grad_fc,
+      bool objective_only=false)
     :
       f_calc_(miller_indices.size()),
       weights_(miller_indices.size())
@@ -147,27 +148,49 @@ namespace smtbx { namespace refinement { namespace least_squares {
       if (f_mask.size()){
         SMTBX_ASSERT(f_mask.size() == f_mask.size())(data.size())(data.size());
       }
-      for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
-        miller::index<> const &h = miller_indices[i_h];
-        if (f_mask.size()) {
-          f_calc_function.linearise(h, f_mask[i_h]);
+      if (objective_only) {
+        for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
+          miller::index<> const &h = miller_indices[i_h];
+          if (f_mask.size()) {
+            f_calc_function.evaluate(h, f_mask[i_h]);
+          }
+          else {
+            f_calc_function.evaluate(h);
+          }
+          FloatType observable = f_calc_function.observable;
+          FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
+                                              observable, scale_factor);
+          f_calc_[i_h] = f_calc_function.f_calc;
+          weights_[i_h] = weight;
+          normal_equations.add_residual(observable,
+                                        data[i_h],
+                                        weight);
         }
-        else {
-          f_calc_function.linearise(h);
-        }
-        FloatType observable = f_calc_function.observable;
-        af::shared<FloatType> gradient =
-          jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
-        FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                            observable, scale_factor);
-        f_calc_[i_h] = f_calc_function.f_calc;
-        weights_[i_h] = weight;
-        normal_equations.add_equation(observable,
-                                      gradient.ref(),
-                                      data[i_h],
-                                      weight);
+        normal_equations.finalise(/*objective_only=*/true);
       }
-      normal_equations.finalise();
+      else {
+        for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
+          miller::index<> const &h = miller_indices[i_h];
+          if (f_mask.size()) {
+            f_calc_function.linearise(h, f_mask[i_h]);
+          }
+          else {
+            f_calc_function.linearise(h);
+          }
+          FloatType observable = f_calc_function.observable;
+          af::shared<FloatType> gradient =
+            jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
+          FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
+                                              observable, scale_factor);
+          f_calc_[i_h] = f_calc_function.f_calc;
+          weights_[i_h] = weight;
+          normal_equations.add_equation(observable,
+                                        gradient.ref(),
+                                        data[i_h],
+                                        weight);
+        }
+        normal_equations.finalise();
+      }
     }
 
     af::shared<std::complex<FloatType> > f_calc() { return f_calc_; }

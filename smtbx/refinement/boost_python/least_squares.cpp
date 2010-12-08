@@ -70,7 +70,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   mainstream_shelx_weighting<FloatType> const &,
                   FloatType,
                   OneMillerIndexLinearisation &,
-                  scitbx::sparse::matrix<FloatType> const &>
+                  scitbx::sparse::matrix<FloatType> const &,
+                  optional<bool> >
                   ())
         .def(init<NormalEquations<FloatType> &,
                   af::const_ref<miller::index<> > const &,
@@ -80,7 +81,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   unit_weighting<FloatType> const &,
                   FloatType,
                   OneMillerIndexLinearisation &,
-                  scitbx::sparse::matrix<FloatType> const &>
+                  scitbx::sparse::matrix<FloatType> const &,
+                  optional<bool> >
                   ())
         .def(init<NormalEquations<FloatType> &,
                   af::const_ref<miller::index<> > const &,
@@ -90,7 +92,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   sigma_weighting<FloatType> const &,
                   FloatType,
                   OneMillerIndexLinearisation &,
-                  scitbx::sparse::matrix<FloatType> const &>
+                  scitbx::sparse::matrix<FloatType> const &,
+                  optional<bool> >
                   ())
         .def("f_calc", &wt::f_calc)
         .def("weights", &wt::weights)

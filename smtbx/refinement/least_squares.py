@@ -39,6 +39,7 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
       reparametrisation.asu_scatterer_parameters,
       reparametrisation.jacobian_transpose_matching_grad_fc(),
       self.floating_origin_restraint_relative_weight)
+    self.taken_step = None
 
   class xray_structure(libtbx.property):
     def fget(self):
@@ -71,7 +72,8 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
       self.weighting_scheme,
       scale_factor,
       self.one_h_linearisation,
-      self.reparametrisation.jacobian_transpose_matching_grad_fc())
+      self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+      objective_only)
     self.f_calc = self.fo_sq.array(data=result.f_calc(), sigmas=None)
     self.weights = result.weights()
     self.objective_data_only = self.objective()
@@ -93,7 +95,8 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
         linearised_eqns.weights * normalisation_factor)
       self.n_restraints = linearised_eqns.n_restraints()
       self.chi_sq_data_and_restraints = self.chi_sq()
-    self.floating_origin_restraints.add_to(self.step_equations())
+    if not objective_only:
+      self.floating_origin_restraints.add_to(self.step_equations())
 
   def parameter_vector_norm(self):
     return self.reparametrisation.norm_of_independent_parameter_vector
@@ -104,6 +107,13 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
     self.reparametrisation.apply_shifts(self.step())
     self.reparametrisation.linearise()
     self.reparametrisation.store()
+    self.taken_step = self.step().deep_copy()
+
+  def step_backward(self):
+    self.reparametrisation.apply_shifts(-self.taken_step)
+    self.reparametrisation.linearise()
+    self.reparametrisation.store()
+    self.taken_step = None
 
   def goof(self):
     return math.sqrt(self.chi_sq_data_only)
