@@ -63,6 +63,15 @@ namespace boost_python {
     static void wrap(char const *name) {
       using namespace boost::python;
       return_internal_reference<> rir;
+      void (wt::*add_dense_eqns)(af::const_ref<scalar_t> const &,
+                                 af::const_ref<scalar_t, af::mat_grid> const &,
+                                 af::const_ref<scalar_t> const &)
+        = &wt::add_equations;
+      void (wt::*add_sparse_eqns)(af::const_ref<scalar_t> const &,
+                                  sparse::matrix<scalar_t> const &,
+                                  af::const_ref<scalar_t> const &)
+        = &wt::add_equations;
+
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
         .def(init<std::size_t,
@@ -85,7 +94,10 @@ namespace boost_python {
              &wt::add_equation,
              (arg("residual"), arg("grad_residual"), arg("weight")))
         .def("add_equations",
-             &wt::add_equations,
+             add_dense_eqns,
+             (arg("residuals"), arg("jacobian"), arg("weights")))
+        .def("add_equations",
+             add_sparse_eqns,
              (arg("residuals"), arg("jacobian"), arg("weights")))
         .def("reset", &wt::reset)
         /* We use 'def' instead of add_property for those to stay consistent
