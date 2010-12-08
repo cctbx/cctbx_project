@@ -18,7 +18,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
   using cctbx::xray::structure_factors::hr_ht_cache;
 
 
-  namespace one_scatterer_one_h_linearisation {
+  namespace one_scatterer_one_h {
 
     #define SMTBX_STRUCTURE_FACTORS_DIRECT_TYPEDEFS                            \
       typedef FloatType float_type;                                            \
@@ -42,8 +42,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
       complex_type grad_u_iso, grad_occ;
     };
 
-    /** Base class for the linearisation of the structure factor
-        for one scatterer for a given Miller index.
+    /** Base class for the linearisation or the evaluation of the structure
+        factor for one scatterer for a given Miller index.
+
+        This uses the CRTP, delegating to Heir the key step of the actual
+        computation.
      */
     template <typename FloatType, class ExpI2PiFunctor, class Heir>
     struct base : core<FloatType>
@@ -54,7 +57,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       float_type d_star_sq;
       ExpI2PiFunctor const &exp_i_2pi;
 
-      /** Construct the linearisation for the given h in the given space-group.
+      /** Construct the linearisation or the evaluation for the given h
+          in the given space-group.
 
        The functor exp_i_2pi_functor will be used to compute exp( i 2pi h.x ).
        */
@@ -69,27 +73,31 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {}
 
       /** Compute the structure factor of the given scatterer
-       and its gradients wrt to the crystallographic parameters of that
-       scatterer.
+       as well as its gradients wrt to the crystallographic parameters of that
+       scatterer if requested so.
 
        The argument f0 is the elastic form factor
        for that type of chemical element at the miller index at hand.
        */
-      void compute(scatterer_type const &scatterer, float_type f0)
+      void compute(scatterer_type const &scatterer,
+                   float_type f0,
+                   bool compute_grad)
       {
         Heir &heir = static_cast<Heir &> (*this);
 
         this->structure_factor = 0;
-        this->grad_site = grad_site_type(0, 0, 0);
-        this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+        if (compute_grad) {
+          this->grad_site = grad_site_type(0, 0, 0);
+          this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+        }
 
-        heir.compute_anisotropic_part(scatterer);
+        heir.compute_anisotropic_part(scatterer, compute_grad);
         if (scatterer.flags.use_fp_fdp()) {
           complex_type ff(f0 + scatterer.fp, scatterer.fdp);
-          heir.multiply_by_isotropic_part(scatterer, ff);
+          heir.multiply_by_isotropic_part(scatterer, ff, compute_grad);
         }
         else {
-          heir.multiply_by_isotropic_part(scatterer, f0);
+          heir.multiply_by_isotropic_part(scatterer, f0, compute_grad);
         }
       }
     };
@@ -105,28 +113,26 @@ namespace smtbx { namespace structure_factors { namespace direct {
       using base_t::d_star_sq;
 
 
-    /** Key steps of the linearisation of the structure factor
+    /** Key steps of the evaluation or linearisation of the structure factor
         of one scatterer for a given Miller index in any space group.
      */
-    template <typename FloatType, class ExpI2PiFunctor, bool compute_grad>
+    template <typename FloatType, class ExpI2PiFunctor>
     struct in_generic_space_group : base<FloatType,
                                         ExpI2PiFunctor,
                                         in_generic_space_group<FloatType,
-                                                               ExpI2PiFunctor,
-                                                               compute_grad> >
+                                                               ExpI2PiFunctor> >
 
     {
       typedef base<FloatType,
                    ExpI2PiFunctor,
                    in_generic_space_group<FloatType,
-                                          ExpI2PiFunctor,
-                                          compute_grad> >
+                                          ExpI2PiFunctor> >
               base_t;
 
       SMTBX_STRUCTURE_FACTORS_DIRECT_TYPEDEFS;
       SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING;
 
-      /** \copydoc one_scatterer_one_h_linearisation::base */
+      /** \copydoc one_scatterer_one_h::base */
       in_generic_space_group(sgtbx::space_group const &space_group,
                              miller::index<> const &h,
                              float_type d_star_sq,
@@ -151,7 +157,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         Centring translations are not included in those sums: they just
         result in a multiplicative factor later.
        */
-      void compute_anisotropic_part(scatterer_type const &scatterer)
+      void compute_anisotropic_part(scatterer_type const &scatterer,
+                                    bool compute_grad)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -232,7 +239,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
        */
       template <typename FormFactorType>
       void multiply_by_isotropic_part(scatterer_type const &scatterer,
-                                      FormFactorType const &ff)
+                                      FormFactorType const &ff,
+                                      bool compute_grad)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -278,30 +286,28 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
 
-    /** Key steps of the linearisation of the structure factor
+    /** Key steps of the evaluation or linearisation of the structure factor
         of one scatterer for a given Miller index
         in an origin centric space group.
      */
-    template <typename FloatType, class ExpI2PiFunctor, bool compute_grad>
+    template <typename FloatType, class ExpI2PiFunctor>
     struct in_origin_centric_space_group
       : base<FloatType,
              ExpI2PiFunctor,
              in_origin_centric_space_group<FloatType,
-                                           ExpI2PiFunctor,
-                                           compute_grad> >
+                                           ExpI2PiFunctor> >
     {
       typedef
         base<FloatType,
              ExpI2PiFunctor,
              in_origin_centric_space_group<FloatType,
-                                           ExpI2PiFunctor,
-                                           compute_grad> >
+                                           ExpI2PiFunctor> >
         base_t;
 
       SMTBX_STRUCTURE_FACTORS_DIRECT_TYPEDEFS;
       SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING;
 
-      /** \copydoc one_scatterer_one_h_linearisation::base */
+      /** \copydoc one_scatterer_one_h::base */
       in_origin_centric_space_group(sgtbx::space_group const &space_group,
                                     miller::index<> const &h,
                                     float_type d_star_sq,
@@ -323,7 +329,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
        result in a multiplicative factor later, which is combined with the
        factor 2 above.
        */
-      void compute_anisotropic_part(scatterer_type const &scatterer)
+      void compute_anisotropic_part(scatterer_type const &scatterer,
+                                    bool compute_grad)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -368,7 +375,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       /** \copydoc in_generic_space_group::multiply_by_isotropic_part */
       template <typename FormFactorType>
       void multiply_by_isotropic_part(scatterer_type const &scatterer,
-                                      FormFactorType const &ff)
+                                      FormFactorType const &ff,
+                                      bool compute_grad)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -420,14 +428,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
-  } // namespace one_scatterer_one_h_linearisation
+  } // namespace one_scatterer_one_h
 
 
-  namespace one_h_linearisation {
+  namespace one_h {
 
-    /** @brief Linearisation of \f$F_c(h)\f$ and of a derived observable,
-               for any miller index h,
-               as functions of crystallographic parameters.
+    /** @brief Evaluation or linearisation of \f$F_c(h)\f$
+        and of a derived observable, for any miller index h,
+        as functions of crystallographic parameters.
 
         The observable is modelled by the type ObservableType, two examples
         of which are the class modulus and modulus_squared in this namespace.
@@ -446,8 +454,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         and provide a member exp_i_2pi of type ExpI2PiFunctor to compute
         \f$\exp i2\pi x\f$.
      */
-    template <typename FloatType, bool compute_grad,
-              template<typename, bool> class ObservableType,
+    template <typename FloatType,
+              template<typename> class ObservableType,
               template<typename> class ExpI2PiFunctor,
               class Heir>
     class base
@@ -455,7 +463,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
     public:
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
-      typedef ObservableType<float_type, compute_grad> observable_type;
+      typedef ObservableType<float_type> observable_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
 
     protected:
@@ -468,6 +476,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       af::shared<std::size_t> scattering_type_indices;
 
       complex_type *grad_f_calc_cursor;
+      bool has_computed_grad;
 
     public:
       complex_type f_calc;
@@ -476,8 +485,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       af::ref_owning_shared<float_type> grad_observable;
 
     public:
-      /** @brief The linearisation of \f$F_c\f$ for the given structure
-                 is to be computed.
+      /** @brief The evaluation or linearisation of \f$F_c\f$
+          for the given structure is to be computed.
 
           After construction, only the value of the refined parameters may
           change. That is, any of the following operations are forbidden:
@@ -506,13 +515,35 @@ namespace smtbx { namespace structure_factors { namespace direct {
           grad_f_calc(grad_flags_counts.n_parameters(),
                       af::init_functor_null<complex_type>()),
           grad_observable(grad_flags_counts.n_parameters(),
-                          af::init_functor_null<float_type>())
+                          af::init_functor_null<float_type>()),
+          has_computed_grad(false)
       {}
 
-      /// Compute the linearisation
-      void compute(
-        miller::index<> const &h,
-        boost::optional<complex_type> const &f_mask=boost::optional<complex_type>())
+      /// Evaluate the structure factors
+      void evaluate(miller::index<> const &h,
+                    boost::optional<complex_type> const &f_mask=boost::none)
+      {
+        compute(h, f_mask, false);
+      }
+
+      /// Linearise the structure factors
+      void linearise(miller::index<> const &h,
+                     boost::optional<complex_type> const &f_mask=boost::none)
+      {
+        compute(h, f_mask, true);
+      }
+
+      /// Whether this is a linearisation of Fc.
+      /** As opposed to a mere evaluation: for the latter, only the value
+       of Fc was computed whereas for the former, its gradient was computed
+       as well.
+       */
+      bool is_linearisation() const { return has_computed_grad; }
+
+      /// Compute the evaluation or the linearisation
+      void compute(miller::index<> const &h,
+                   boost::optional<complex_type> const &f_mask=boost::none,
+                   bool compute_grad=true)
       {
         float_type d_star_sq = unit_cell.d_star_sq(h);
         af::shared<float_type> elastic_form_factors
@@ -520,23 +551,23 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         Heir &heir = static_cast<Heir &>(*this);
 
-        typedef one_scatterer_one_h_linearisation::in_generic_space_group<
-                  float_type, exp_i_2pi_functor, compute_grad>
+        typedef one_scatterer_one_h::in_generic_space_group<
+                  float_type, exp_i_2pi_functor>
                 generic_linearisation_t;
 
-        typedef one_scatterer_one_h_linearisation::in_origin_centric_space_group<
-                  float_type, exp_i_2pi_functor, compute_grad>
+        typedef one_scatterer_one_h::in_origin_centric_space_group<
+                  float_type, exp_i_2pi_functor>
                 origin_centric_linearisation_t;
 
         if (!origin_centric_case) {
            generic_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                              heir.exp_i_2pi);
-          compute(elastic_form_factors.ref(), lin_for_h, f_mask);
+          compute(elastic_form_factors.ref(), lin_for_h, f_mask, compute_grad);
         }
         else {
           origin_centric_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                                    heir.exp_i_2pi);
-          compute(elastic_form_factors.ref(), lin_for_h, f_mask);
+          compute(elastic_form_factors.ref(), lin_for_h, f_mask, compute_grad);
         }
       }
 
@@ -544,7 +575,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       template <class LinearisationForMillerIndex>
       void compute(af::const_ref<float_type> const &elastic_form_factors,
                    LinearisationForMillerIndex &l,
-                   boost::optional<complex_type> const &f_mask)
+                   boost::optional<complex_type> const &f_mask,
+                   bool compute_grad)
       {
         f_calc = 0;
         grad_f_calc_cursor = grad_f_calc.begin();
@@ -552,7 +584,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
           float_type f0 = elastic_form_factors[ scattering_type_indices[j] ];
-          l.compute(sc, f0);
+          l.compute(sc, f0, compute_grad);
 
           f_calc += l.structure_factor;
 
@@ -578,23 +610,25 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (f_mask) f_calc += *f_mask;
         observable_type::compute(origin_centric_case,
                                  f_calc, grad_f_calc,
-                                 observable, grad_observable);
+                                 observable, grad_observable,
+                                 compute_grad);
+        has_computed_grad = compute_grad;
       }
     };
 
 
-    template <typename FloatType, bool compute_grad,
-              template<typename, bool> class ObservableType,
+    template <typename FloatType,
+              template<typename> class ObservableType,
               template<typename> class ExpI2PiFunctor>
     class custom_trigonometry
-      : public base<FloatType, compute_grad, ObservableType, ExpI2PiFunctor,
+      : public base<FloatType, ObservableType, ExpI2PiFunctor,
                     custom_trigonometry<
-                      FloatType, compute_grad, ObservableType, ExpI2PiFunctor> >
+                      FloatType, ObservableType, ExpI2PiFunctor> >
     {
     public:
-      typedef base<FloatType, compute_grad, ObservableType, ExpI2PiFunctor,
+      typedef base<FloatType, ObservableType, ExpI2PiFunctor,
                    custom_trigonometry<
-                     FloatType, compute_grad, ObservableType, ExpI2PiFunctor> >
+                     FloatType, ObservableType, ExpI2PiFunctor> >
               base_t;
 
       typedef FloatType float_type;
@@ -613,21 +647,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
 
-    template <typename FloatType, bool compute_grad,
-              template<typename, bool> class ObservableType>
+    template <typename FloatType,
+              template<typename> class ObservableType>
     class std_trigonometry
-      : public base<FloatType, compute_grad, ObservableType,
+      : public base<FloatType, ObservableType,
                     cctbx::math::cos_sin_exact,
-                    std_trigonometry<
-                      FloatType, compute_grad, ObservableType>
-                    >
+                    std_trigonometry<FloatType, ObservableType> >
     {
     public:
-      typedef base<FloatType, compute_grad, ObservableType,
+      typedef base<FloatType, ObservableType,
                    cctbx::math::cos_sin_exact,
-                   std_trigonometry<
-                     FloatType, compute_grad, ObservableType>
-                   >
+                   std_trigonometry<FloatType, ObservableType> >
               base_t;
 
       typedef FloatType float_type;
@@ -644,7 +674,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
 
-    template <typename FloatType, bool compute_grad>
+    template <typename FloatType>
     struct modulus_squared
     {
       typedef FloatType float_type;
@@ -655,7 +685,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    complex_type f_calc,
                    af::const_ref<complex_type> const &grad_f_calc,
                    float_type &observable,
-                   af::ref<float_type> const &grad_observable)
+                   af::ref<float_type> const &grad_observable,
+                   bool compute_grad)
       {
         if (origin_centric_case && f_calc.imag() == 0) {
           observable = f_calc.real() * f_calc.real();
@@ -693,7 +724,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
 
-    template <typename FloatType, bool compute_grad>
+    template <typename FloatType>
     struct modulus
     {
       typedef FloatType float_type;
@@ -704,7 +735,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    complex_type f_calc,
                    af::const_ref<complex_type> const &grad_f_calc,
                    float_type &observable,
-                   af::ref<float_type> const &grad_observable)
+                   af::ref<float_type> const &grad_observable,
+                   bool compute_grad)
       {
         if (origin_centric_case && f_calc.imag() == 0) {
           observable = std::abs(f_calc.real());
@@ -744,7 +776,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
       }
     };
-  } // namespace one_h_linearisation
+  } // namespace one_h
 
 
 }}} // smtbx::structure_factors::direct

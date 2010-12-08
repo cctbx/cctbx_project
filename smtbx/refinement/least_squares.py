@@ -27,7 +27,7 @@ class normal_equations(object):
     self.fo_sq = fo_sq
     self.reparametrisation = reparametrisation
     adopt_optional_init_args(self, kwds)
-    self.one_h_linearisation = direct.linearisation_of_f_calc_modulus_squared(
+    self.one_h_linearisation = direct.f_calc_modulus_squared(
       self.xray_structure)
     if self.weighting_scheme == "default":
       self.weighting_scheme = self.default_weighting_scheme()

@@ -118,7 +118,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
       transpose is passed as an argument.
    */
   template <typename FloatType>
-
   struct build_normal_equations
   {
     //! Default constructor. Some data members are not initialized!
@@ -126,7 +125,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     template <template<typename> class NormalEquations,
               template<typename> class WeightingScheme,
-              class OneMillerIndexLinearisation>
+              class OneMillerIndexFcalc>
     build_normal_equations(
       NormalEquations<FloatType> &normal_equations,
       af::const_ref<miller::index<> > const &miller_indices,
@@ -135,7 +134,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::const_ref<std::complex<FloatType> > const &f_mask,
       WeightingScheme<FloatType> const &weighting_scheme,
       FloatType scale_factor,
-      OneMillerIndexLinearisation &one_h_linearisation,
+      OneMillerIndexFcalc &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc)
     :
@@ -152,17 +151,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
       for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
         miller::index<> const &h = miller_indices[i_h];
         if (f_mask.size()) {
-          one_h_linearisation.compute(h, f_mask[i_h]);
+          f_calc_function.linearise(h, f_mask[i_h]);
         }
         else {
-          one_h_linearisation.compute(h);
+          f_calc_function.linearise(h);
         }
-        FloatType observable = one_h_linearisation.observable;
+        FloatType observable = f_calc_function.observable;
         af::shared<FloatType> gradient =
-          jacobian_transpose_matching_grad_fc*one_h_linearisation.grad_observable;
+          jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
         FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
                                             observable, scale_factor);
-        f_calc_[i_h] = one_h_linearisation.f_calc;
+        f_calc_[i_h] = f_calc_function.f_calc;
         weights_[i_h] = weight;
         normal_equations.add_equation(observable,
                                       gradient.ref(),
