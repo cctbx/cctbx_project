@@ -5,11 +5,6 @@ env = env_base.Clone()
 env_etc.include_registry.append(
   env=env,
   paths=["."] + env_etc.scitbx_common_includes)
-envlm = env.Clone(
-  LIBS=env_etc.libm
-)
-env.Program(target="tests/tst_normal_equations",
-            source="tests/tst_normal_equations.cpp")
 
 if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")

@@ -21,7 +21,6 @@ def run():
   "$B/matrix/tests/tst_householder",
   "$B/matrix/tests/tst_svd",
   "$B/matrix/tests/tst_cholesky",
-  "$B/lstbx/tests/tst_normal_equations",
   "$D/linalg/tests/tst_matrix.py",
   "$D/linalg/tests/tst_cholesky.py",
   "$D/linalg/tests/tst_svd.py",
@@ -109,6 +108,7 @@ def run():
   "$D/golden_section_search.py",
   "$D/direct_search_simulated_annealing.py",
   "$D/random/tests/tst_random.py",
+  "$D/lstbx/tests/tst_normal_equations.py",
   )
 
   build_dir = libtbx.env.under_build("scitbx")
