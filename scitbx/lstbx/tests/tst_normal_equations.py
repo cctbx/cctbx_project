@@ -2,8 +2,6 @@ from scitbx.array_family import flex
 from scitbx import sparse
 from scitbx.lstbx import normal_eqns, normal_eqns_solving
 from libtbx.test_utils import approx_equal, Exception_expected
-import libtbx
-import itertools
 
 from scitbx.lstbx.tests import test_problems
 

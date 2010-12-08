@@ -131,12 +131,15 @@ namespace boost_python {
         .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
         .add_property("n_parameters", &wt::n_parameters)
         .add_property("n_equations", &wt::n_equations)
+        .def("add_residual",
+             &wt::add_residual,
+             (arg("y_calc"), arg("y_obs"), arg("weight")))
         .def("add_equation", add_equation,
              (arg("y_calc"), arg("grad_y_calc"), arg("y_obs"), arg("weight")))
         .def("add_equations", &wt::add_equations,
              (arg("ys_calc"), arg("jacobian_y_calc"), arg("ys_obs"),
               arg("weights")))
-        .def("finalise", &wt::finalise)
+        .def("finalise", &wt::finalise, arg("objective_only")=false)
         .add_property("finalised", &wt::finalised)
         .def("reset", &wt::reset)
         /* We use 'def' instead of add_property for those because they may

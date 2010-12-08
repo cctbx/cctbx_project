@@ -368,6 +368,13 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Whether the L.S. target is normalised by \f$ \sum w y_o^2 \f$ or not
     bool normalised() const { return normalised_; }
 
+    void add_residual(scalar_t yc, scalar_t yo, scalar_t w) {
+      n_data++;
+      yo_sq += w * yo * yo;
+      yo_dot_yc += w * yo * yc;
+      yc_sq += w * yc * yc;
+    }
+
     /** \brief Add the linearisation of the equation
          \f$y_{c,i} \propto y_{o,i}\f$ with weight w.
      */
@@ -386,10 +393,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     void add_equation(scalar_t yc, scalar_t const *grad_yc,
                       scalar_t yo, scalar_t w)
     {
-      n_data++;
-      yo_sq += w * yo * yo;
-      yo_dot_yc += w * yo * yc;
-      yc_sq += w * yc * yc;
+      add_residual(yc, yo, w);
       double *pa = a.begin();
       for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
         *pa++ += w * grad_yc[i] * grad_yc[j];
@@ -453,8 +457,8 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Equation accumulation is finished.
     /** The reduced normal equations for \f$ x \f$ as per step 2 are constructed
      */
-    void finalise() {
-      SCITBX_ASSERT(!finalised());
+    void finalise(bool objective_only=false) {
+      SCITBX_ASSERT(!finalised() && n_equations())(n_equations());
       finalised_ = true;
 
       scalar_t k_star = optimal_scale_factor(), k_star_sq = k_star*k_star;
@@ -464,6 +468,8 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       vector_owning_ref_t b = yo_dot_grad_yc;
       reduced_ls = non_linear_ls<scalar_t>(n_data,
                                            objective_, b.array(), a.array());
+
+      if (objective_only) return;
 
       scalar_t r_dot_yc = yo_dot_yc - k_star*yc_sq;
       scalar_t inv_yc_sq = 1./yc_sq;
