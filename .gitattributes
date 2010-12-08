@@ -1174,7 +1174,6 @@ scitbx/lstbx/boost_python/lstbx_ext.cpp -text
 scitbx/lstbx/boost_python/normal_equations.cpp -text
 scitbx/lstbx/normal_eqns.py -text
 scitbx/lstbx/normal_equations.h -text
-scitbx/lstbx/tests/tst_normal_equations.cpp -text
 scitbx/lstbx/tests/tst_normal_equations.py -text
 scitbx/math/2d_zernike_moments.h -text
 scitbx/math/approx_equal.h -text
