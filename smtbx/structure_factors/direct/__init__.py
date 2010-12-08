@@ -13,41 +13,39 @@ class constructed_with_xray_structure(object):
     self.xray_structure = xray_structure
 
 
-class linearisation_of_f_calc_modulus_squared_with_std_trigonometry(
+class f_calc_modulus_squared_with_std_trigonometry(
   constructed_with_xray_structure,
-  ext.linearisation_of_f_calc_modulus_squared_with_std_trigonometry):
+  ext.f_calc_modulus_squared_with_std_trigonometry):
   pass
 
-class linearisation_of_f_calc_modulus_squared_with_custom_trigonometry(
+class f_calc_modulus_squared_with_custom_trigonometry(
   constructed_with_xray_structure,
-  ext.linearisation_of_f_calc_modulus_squared_with_custom_trigonometry):
+  ext.f_calc_modulus_squared_with_custom_trigonometry):
   pass
 
-class linearisation_of_f_calc_modulus_with_std_trigonometry(
+class f_calc_modulus_with_std_trigonometry(
   constructed_with_xray_structure,
-  ext.linearisation_of_f_calc_modulus_with_std_trigonometry):
+  ext.f_calc_modulus_with_std_trigonometry):
   pass
 
-class linearisation_of_f_calc_modulus_with_custom_trigonometry(
+class f_calc_modulus_with_custom_trigonometry(
   constructed_with_xray_structure,
-  ext.linearisation_of_f_calc_modulus_with_custom_trigonometry):
+  ext.f_calc_modulus_with_custom_trigonometry):
   pass
 
 
-def linearisation_of_f_calc_modulus_squared(xray_structure,
-                                            exp_i_2pi_functor=None):
+def f_calc_modulus_squared(xray_structure,
+                           exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
-    return linearisation_of_f_calc_modulus_squared_with_std_trigonometry(
-      xray_structure)
+    return f_calc_modulus_squared_with_std_trigonometry(xray_structure)
   else:
-    return linearisation_of_f_calc_modulus_squared_with_custom_trigonometry(
-      xray_structure, exp_i_2pi_functor)
+    return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
+                                                           exp_i_2pi_functor)
 
-def linearisation_of_f_calc_modulus(xray_structure,
-                                    exp_i_2pi_functor=None):
+def f_calc_modulus(xray_structure,
+                   exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
-    return linearisation_of_f_calc_modulus_with_std_trigonometry(
-      xray_structure)
+    return f_calc_modulus_with_std_trigonometry(xray_structure)
   else:
-    return linearisation_of_f_calc_modulus_with_custom_trigonometry(
-      xray_structure, exp_i_2pi_functor)
+    return f_calc_modulus_with_custom_trigonometry(xray_structure,
+                                                   exp_i_2pi_functor)

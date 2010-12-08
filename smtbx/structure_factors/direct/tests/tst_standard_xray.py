@@ -100,31 +100,37 @@ class consistency_test_cases(test_case):
     origin_centric_case = sg.is_origin_centric()
 
     indices = self.miller_indices(xs.space_group_info())
-    f_calc_linearisation = (
-      structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    f = structure_factors.f_calc_modulus_squared(xs)
+
+    eps = 1e-15
+    for h in indices:
+      f.linearise(h)
+      fl = f.f_calc
+      f.evaluate(h)
+      fe = f.f_calc
+      assert f.grad_f_calc is None
+      if fl or fe:
+        assert 1 - eps < abs(fl - fe)/abs(fl + fe) < 1 + eps, (fl, fe)
 
     if (xs.space_group().is_origin_centric() and not self.inelastic_scattering):
       for h in indices:
-        f_calc_linearisation.compute(h)
-        assert f_calc_linearisation.f_calc.imag == 0
-        assert flex.imag(f_calc_linearisation.grad_f_calc).all_eq(0)
+        f.linearise(h)
+        assert f.f_calc.imag == 0
+        assert flex.imag(f.grad_f_calc).all_eq(0)
 
     eta = 1e-8
     xs_forward = xs.deep_copy_scatterers()
-    f_calc_linearisation_forward = (
-      structure_factors.linearisation_of_f_calc_modulus_squared(xs_forward))
+    f_forward = structure_factors.f_calc_modulus_squared(xs_forward)
 
     deltas = flex.double()
     for direction in islice(self.structures_forward(xs, xs_forward, eta),
                             self.n_directions):
       for h in indices:
-        f_calc_linearisation.compute(h)
-        assert approx_equal(abs(f_calc_linearisation.f_calc)**2,
-                            f_calc_linearisation.observable)
-        f_calc_linearisation_forward.compute(h)
-        diff_num = (  f_calc_linearisation_forward.observable
-                    - f_calc_linearisation.observable) / eta
-        diff = f_calc_linearisation.grad_observable.dot(direction)
+        f.linearise(h)
+        assert approx_equal(abs(f.f_calc)**2, f.observable)
+        f_forward.linearise(h)
+        diff_num = (f_forward.observable - f.observable) / eta
+        diff = f.grad_observable.dot(direction)
         delta = abs(1 - diff/diff_num)
         deltas.append(delta)
     stats = median_statistics(deltas)
@@ -144,14 +150,13 @@ class smtbx_against_cctbx_test_case(test_case):
         crystal.symmetry(unit_cell=xs.unit_cell(),
                          space_group_info=xs.space_group_info()),
         indices))
-    f_calc_linearisation = (
-      structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    f = structure_factors.f_calc_modulus_squared(xs)
     for h, fc in cctbx_structure_factors.f_calc():
-      f_calc_linearisation.compute(h)
+      f.linearise(h)
       if fc == 0:
-        assert f_calc_linearisation.f_calc == 0
+        assert f.f_calc == 0
       else:
-        delta = abs((f_calc_linearisation.f_calc - fc)/fc)
+        delta = abs((f.f_calc - fc)/fc)
         assert delta < 1e-6
 
 class custom_vs_std_test_case(test_case):
@@ -161,14 +166,14 @@ class custom_vs_std_test_case(test_case):
     indices = self.miller_indices(xs.space_group_info())
     exp_i_2pi_functor = cctbx.math_module.cos_sin_table(1024)
     custom_fc_sq = (
-      structure_factors.linearisation_of_f_calc_modulus_squared(
+      structure_factors.f_calc_modulus_squared(
         xs, exp_i_2pi_functor))
     std_fc_sq = (
-      structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+      structure_factors.f_calc_modulus_squared(xs))
     deltas = flex.double()
     for h in indices:
-      custom_fc_sq.compute(h)
-      std_fc_sq.compute(h)
+      custom_fc_sq.linearise(h)
+      std_fc_sq.linearise(h)
       deltas.append(abs(custom_fc_sq.f_calc - std_fc_sq.f_calc)
                     /abs(std_fc_sq.f_calc))
     stats = median_statistics(deltas)
@@ -191,19 +196,16 @@ class f_vs_f_sq_test_case(test_case):
       return
     xs = self.xs
     indices = self.miller_indices(xs.space_group_info())
-    f_linearisation = (
-      structure_factors.linearisation_of_f_calc_modulus(xs))
-    f_sq_linearisation = (
-      structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    f = structure_factors.f_calc_modulus(xs)
+    f_sq = structure_factors.f_calc_modulus_squared(xs)
     for h in indices:
-      f_linearisation.compute(h)
-      f_sq_linearisation.compute(h)
-      assert approx_equal_relatively(f_linearisation.observable**2,
-                                     f_sq_linearisation.observable,
+      f.linearise(h)
+      f_sq.linearise(h)
+      assert approx_equal_relatively(f.observable**2,
+                                     f_sq.observable,
                                      relative_error=1e-15)
-      grad_f_sq = f_sq_linearisation.grad_observable
-      two_f_grad_f = (2*f_linearisation.observable
-                       *f_linearisation.grad_observable)
+      grad_f_sq = f_sq.grad_observable
+      two_f_grad_f = (2*f.observable*f.grad_observable)
       assert two_f_grad_f.all_approx_equal_relatively(grad_f_sq,
                                                       relative_error=1e-14)
 
@@ -224,8 +226,7 @@ def exercise_trigonometric_ff():
       sc = xray.scatterer(site=x, scattering_type="const")
       sc.flags.set_grad_site(True)
       xs.add_scatterer(sc)
-    f_sq_linearisation = (
-        structure_factors.linearisation_of_f_calc_modulus_squared(xs))
+    f_sq = structure_factors.f_calc_modulus_squared(xs)
     for h in miller_set.indices():
       h = matrix.col(h)
       phi1, phi2, phi3 = 2*pi*h.dot(x1), 2*pi*h.dot(x2), 2*pi*h.dot(x3)
@@ -236,10 +237,9 @@ def exercise_trigonometric_ff():
       g.extend( -2*(sin(phi3 - phi1) - sin(phi2 - phi3))*2*pi*h )
       grad_fc_mod_sq = g
 
-      f_sq_linearisation.compute(h)
-      assert approx_equal(f_sq_linearisation.observable, fc_mod_sq)
-      assert approx_equal(f_sq_linearisation.grad_observable, grad_fc_mod_sq)
-
+      f_sq.linearise(h)
+      assert approx_equal(f_sq.observable, fc_mod_sq)
+      assert approx_equal(f_sq.grad_observable, grad_fc_mod_sq)
 
 def run(args):
   libtbx.utils.show_times_at_exit()
