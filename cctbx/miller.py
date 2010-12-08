@@ -2847,6 +2847,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     whose magnitudes are greater than cutoff_factor * max(yo) will be included
     in the calculation.
     """
+    if self.data() is None: return None
     assert not use_binning or self.binner() is not None
     if use_binning: assert cutoff_factor is None
     if weights is not None:
