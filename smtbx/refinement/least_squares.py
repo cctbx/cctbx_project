@@ -19,7 +19,6 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
   default_weighting_scheme = mainstream_shelx_weighting
   weighting_scheme = "default"
   floating_origin_restraint_relative_weight = 1e3
-  scale_factor = None
   f_mask = None
   restraints_manager=None
   n_restraints = None
@@ -132,7 +131,7 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
       f_calc = self.f_calc.select(strong)
     else:
       f_calc = self.f_calc
-    R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor))
+    R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor()))
     return R1, f_obs.size()
 
   def covariance_matrix(self,
