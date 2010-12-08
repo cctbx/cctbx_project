@@ -27,13 +27,13 @@ def exercise_basic_normal_equations():
   eqs_1.add_equations(right_hand_side=b, design_matrix=a, weights=w)
 
   assert approx_equal(
-    eqs_0.normal_matrix_packed_u, eqs_1.normal_matrix_packed_u, eps=1e-15)
+    eqs_0.normal_matrix_packed_u(), eqs_1.normal_matrix_packed_u(), eps=1e-15)
   assert approx_equal(
-    eqs_0.right_hand_side, eqs_1.right_hand_side, eps=1e-15)
+    eqs_0.right_hand_side(), eqs_1.right_hand_side(), eps=1e-15)
   assert approx_equal(
-    list(eqs_0.normal_matrix_packed_u), [ 13, -6, 0, 9, 4, 2 ], eps=1e-15)
+    list(eqs_0.normal_matrix_packed_u()), [ 13, -6, 0, 9, 4, 2 ], eps=1e-15)
   assert approx_equal(
-    list(eqs_0.right_hand_side), [ 11, -6, -2 ], eps=1e-15)
+    list(eqs_0.right_hand_side()), [ 11, -6, -2 ], eps=1e-15)
 
 def exercise_normal_equations_separating_scale_factor():
   eqs = lstbx.normal_equations_separating_scale_factor(3)
@@ -42,7 +42,7 @@ def exercise_normal_equations_separating_scale_factor():
                    y_obs=1,
                    weight=1)
   eqs.finalise()
-  a, b = eqs.reduced_equations()
+  a, b = eqs.step_equations()
   assert a.size() == 6
   assert list(b) == [0, 0, 0]
 
