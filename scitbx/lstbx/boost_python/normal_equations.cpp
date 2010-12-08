@@ -4,6 +4,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 
 namespace scitbx { namespace lstbx { namespace boost_python {
@@ -64,6 +65,7 @@ namespace scitbx { namespace lstbx { namespace boost_python {
 
     static void wrap(char const *name) {
       using namespace boost::python;
+      return_internal_reference<> rir;
       class_<wt>(name, no_init)
         .def(init<int, bool>((arg("n_parameters"), arg("normalised")=true)))
         .def("add_equation", add_equation,
@@ -79,7 +81,7 @@ namespace scitbx { namespace lstbx { namespace boost_python {
         .def("optimal_scale_factor", &wt::optimal_scale_factor)
         .def("sum_w_yo_sq", &wt::sum_w_yo_sq)
         .def("objective", &wt::objective)
-        .def("step_equations", &wt::step_equations)
+        .def("step_equations", &wt::step_equations, rir)
         ;
     }
   };

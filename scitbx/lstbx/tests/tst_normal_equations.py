@@ -37,14 +37,29 @@ def exercise_basic_normal_equations():
 
 def exercise_normal_equations_separating_scale_factor():
   eqs = lstbx.normal_equations_separating_scale_factor(3)
-  eqs.add_equation(y_calc=1,
+  eqs.add_equation(y_calc=1.1,
                    grad_y_calc=flex.double((1, 2, 3)),
                    y_obs=1,
+                   weight=1)
+  eqs.add_equation(y_calc=2.2,
+                   grad_y_calc=flex.double((2, 3, 1)),
+                   y_obs=2,
+                   weight=1)
+  eqs.add_equation(y_calc=3.3,
+                   grad_y_calc=flex.double((3, 1, 2)),
+                   y_obs=3,
+                   weight=1)
+  eqs.add_equation(y_calc=4.4,
+                   grad_y_calc=flex.double((1, 3, 2)),
+                   y_obs=4,
                    weight=1)
   eqs.finalise()
   a, b = eqs.step_equations()
   assert a.size() == 6
-  assert list(b) == [0, 0, 0]
+  assert b.size() == 3
+  eqs.step_equations().solve()
+  assert eqs.step_equations().solved
+
 
 def run():
   exercise_basic_normal_equations()
