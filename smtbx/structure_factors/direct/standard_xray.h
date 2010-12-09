@@ -172,14 +172,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
-            if (!compute_grad) continue;
-            if (scatterer.flags.grad_u_aniso()) {
-              scitbx::sym_mat3<float_type> log_grad_u_star
-                = debye_waller_factor_u_star_gradient_coefficients<float_type>(
-                                                                          g.hr);
-              complex_type grad_u_star_factor = -two_pi_sq * f;
-              for (int j=0; j<6; ++j) {
-                grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+            if (compute_grad) {
+              if (scatterer.flags.grad_u_aniso()) {
+                scitbx::sym_mat3<float_type> log_grad_u_star
+                  = debye_waller_factor_u_star_gradient_coefficients<
+                      float_type>(g.hr);
+                complex_type grad_u_star_factor = -two_pi_sq * f;
+                for (int j=0; j<6; ++j) {
+                  grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+                }
               }
             }
           }
@@ -348,15 +349,16 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             fa *= dw;
-            if (!compute_grad) continue;
-            if (scatterer.flags.grad_site()) fb *= dw;
-            if (scatterer.flags.grad_u_aniso()) {
-              scitbx::sym_mat3<float_type> log_grad_u_star
-              = debye_waller_factor_u_star_gradient_coefficients<float_type>(
-                                                                          g.hr);
-              float_type grad_u_star_factor = -two_pi_sq * fa;
-              for (int j=0; j<6; ++j) {
-                grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+            if (compute_grad) {
+              if (scatterer.flags.grad_site()) fb *= dw;
+              if (scatterer.flags.grad_u_aniso()) {
+                scitbx::sym_mat3<float_type> log_grad_u_star
+                  = debye_waller_factor_u_star_gradient_coefficients<
+                      float_type>(g.hr);
+                float_type grad_u_star_factor = -two_pi_sq * fa;
+                for (int j=0; j<6; ++j) {
+                  grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+                }
               }
             }
           }
