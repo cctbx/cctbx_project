@@ -22,6 +22,7 @@ def run():
     "$D/refinement/restraints/tests/tst_manager.py",
     ["$D/refinement/restraints/tests/tst_restraints.py",
      '--verbose', '--scatterers=5', '--resolution=0.2'],
+    "$D/tests/tst_utils.py",
     )
   build_dir = libtbx.env.under_build("smtbx")
   dist_dir = libtbx.env.dist_path("smtbx")

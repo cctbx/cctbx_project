@@ -1,3 +1,4 @@
+from cctbx import crystal, sgtbx
 import libtbx
 
 class connectivity_table(object):
@@ -13,19 +14,60 @@ class connectivity_table(object):
                structure,
                **kwds):
     from cctbx.eltbx import covalent_radii
-    from cctbx import crystal
     self.structure = structure
     libtbx.adopt_optional_init_args(self, kwds)
 
     radii = [
       covalent_radii.table(elt).radius() for elt in
       structure.scattering_type_registry().type_index_pairs_as_dict() ]
-    buffer_thickness = 2*max(radii) + self.covalent_bond_tolerance
+    self.structure = structure
+    self.buffer_thickness = 2*max(radii) + self.covalent_bond_tolerance
     asu_mappings = structure.asu_mappings(
-      buffer_thickness=buffer_thickness)
-    self.pair_asu_table = crystal.pair_asu_table(asu_mappings)
-    self.pair_asu_table.add_covalent_pairs(
+      buffer_thickness=self.buffer_thickness)
+    self._pair_asu_table = crystal.pair_asu_table(asu_mappings)
+    self._pair_asu_table_needs_updating = False
+    self._pair_asu_table.add_covalent_pairs(
       structure.scattering_types(),
       conformer_indices=self.conformer_indices,
       sym_excl_indices=self.sym_excl_indices,
       tolerance=self.covalent_bond_tolerance)
+    self.pair_sym_table = self.pair_asu_table.extract_pair_sym_table()
+
+  class pair_asu_table(libtbx.property):
+    def fget(self):
+      if self._pair_asu_table_needs_updating:
+        self._pair_asu_table = crystal.pair_asu_table(
+          asu_mappings=self._pair_asu_table.asu_mappings())
+        self._pair_asu_table.add_pair_sym_table(self.pair_sym_table)
+        self.pair_sym_table = self._pair_asu_table.extract_pair_sym_table()
+      return self._pair_asu_table
+
+  def remove_bond(self, i_seq, j_seq, rt_mx_ji=sgtbx.rt_mx()):
+    space_group = self.pair_asu_table.asu_mappings().space_group()
+    r_den, t_den = space_group.r_den(), space_group.t_den()
+    if j_seq < i_seq:
+      i_seq, j_seq = j_seq, i_seq
+      if not rt_mx_ji.is_unit_mx():
+        rt_mx_ji = rt_mx_ji.inverse()
+    if j_seq not in self.pair_sym_table[i_seq]:
+      return
+    for i, rt_mx in enumerate(self.pair_sym_table[i_seq][j_seq]):
+      if (rt_mx.new_denominators(r_den, t_den) ==
+          rt_mx_ji.new_denominators(r_den, t_den)):
+        del self.pair_sym_table[i_seq][j_seq][i]
+    self._pair_asu_table_needs_updating = True
+
+  def add_bond(self, i_seq, j_seq, rt_mx_ji=sgtbx.rt_mx()):
+    try:
+      self.pair_asu_table.add_pair(i_seq, j_seq, rt_mx_ji)
+    except RuntimeError:
+      sites_frac = self.structure.sites_frac()
+      sites = [sites_frac[i_seq], sites_frac[j_seq]]
+      if not rt_mx_ji.is_unit_mx():
+        sites[-1] = rt_mx_ji * sites[-1]
+      d = self.structure.unit_cell().distance(sites[0], sites[1])
+      self.pair_sym_table = self.pair_asu_table.extract_pair_sym_table()
+      self._pair_asu_table = crystal.pair_asu_table(self.structure.asu_mappings(
+        buffer_thickness=max(self.buffer_thickness, d)))
+      self._pair_asu_table.add_pair_sym_table(self.pair_sym_table)
+      self.pair_asu_table.add_pair(i_seq, j_seq, rt_mx_ji)
