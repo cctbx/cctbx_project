@@ -194,7 +194,11 @@ class residue_analysis(slots_getstate_setstate):
     O.c1p_outbound_candidates = {}
     for key in O.atom_dict.keys():
       if (key.find("'") >= 0):
-        O.problems.append("other_prime")
+        if key == "N2'":
+          O.deoxy_ribo_atom_dict[key] = atom
+          del O.atom_dict[key]
+        else:
+          O.problems.append("other_prime")
         continue
       if (key.startswith("N") or key.startswith("C")):
         O.c1p_outbound_candidates[key] = O.atom_dict[key]
