@@ -101,16 +101,16 @@ class consistency_test_cases(test_case):
 
     indices = self.miller_indices(xs.space_group_info())
     f = structure_factors.f_calc_modulus_squared(xs)
+    f1 = structure_factors.f_calc_modulus_squared(xs)
 
     eps = 1e-15
     for h in indices:
       f.linearise(h)
       fl = f.f_calc
-      f.evaluate(h)
-      fe = f.f_calc
-      assert f.grad_f_calc is None
-      if fl or fe:
-        assert 1 - eps < abs(fl - fe)/abs(fl + fe) < 1 + eps, (fl, fe)
+      f1.evaluate(h)
+      fe = f1.f_calc
+      assert f1.grad_f_calc is None
+      assert approx_equal_relatively(fe, fl, relative_error=1e-15), (fe, fl)
 
     if (xs.space_group().is_origin_centric() and not self.inelastic_scattering):
       for h in indices:
