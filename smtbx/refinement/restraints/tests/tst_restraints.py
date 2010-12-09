@@ -1,12 +1,11 @@
 from __future__ import division
 from scitbx.lstbx import normal_eqns_solving
-from cctbx import geometry_restraints, adp_restraints, sgtbx, miller
+from cctbx import geometry_restraints, adp_restraints, sgtbx
 from cctbx.array_family import flex
 from cctbx.xray import parameter_map
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints.adp_restraints import\
      adp_similarity_restraints, isotropic_adp_restraints, rigid_bond_restraints
-from smtbx.refinement.restraints.tests import trial_structure
 import smtbx.utils
 import smtbx.development
 from smtbx.refinement import constraints, least_squares
@@ -28,7 +27,7 @@ rows_per_restraint = {
 class restraints_test_case:
 
   def __init__(self):
-    xs = trial_structure()
+    xs = smtbx.development.sucrose()
     self.xray_structure = xs
     self.param_map = parameter_map(self.xray_structure.scatterers())
     assert self.proxies.size() > 0
@@ -166,7 +165,7 @@ class adp_restraints_test_case(restraints_test_case):
 
 class isotropic_adp_test_case(adp_restraints_test_case):
   proxies = isotropic_adp_restraints(
-    xray_structure=trial_structure()).proxies
+    xray_structure=smtbx.development.sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_isotropic_adp_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -180,7 +179,7 @@ class isotropic_adp_test_case(adp_restraints_test_case):
 
 class adp_similarity_test_case(adp_restraints_test_case):
   proxies = adp_similarity_restraints(
-    xray_structure=trial_structure()).proxies
+    xray_structure=smtbx.development.sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_adp_similarity_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -197,7 +196,7 @@ class adp_similarity_test_case(adp_restraints_test_case):
 
 class rigid_bond_test_case(adp_restraints_test_case):
   proxies = rigid_bond_restraints(
-    xray_structure=trial_structure()).proxies
+    xray_structure=smtbx.development.sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_rigid_bond_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.3)))
