@@ -1,5 +1,6 @@
 
 from libtbx import easy_run
+from libtbx.utils import Sorry
 import os, sys, re
 
 dna_rna_params_str = """
@@ -154,10 +155,12 @@ def get_h_bond_atoms(residues,
                      leontis_westhof_class,
                      use_hydrogens=False):
   base_pair = residues[0].strip()[0] + residues[1].strip()[0]
-  if saenger_class != None:
-    pair_type = saenger_class
-  else:
-    pair_type = leontis_westhof_class
+  if (saenger_class is not None) :
+    pair_type = saenger_class.upper()
+  elif (leontis_westhof_class is not None) :
+    pair_type = leontis_westhof_class.upper()
+  else :
+    raise Sorry("Base pair type not specified.")
   return db.get_atoms(base_pair, pair_type, use_hydrogens)
 
 def get_distances(residues,
@@ -165,10 +168,12 @@ def get_distances(residues,
                   leontis_westhof_class,
                   use_hydrogens=False):
   base_pair = residues[0].strip()[0] + residues[1].strip()[0]
-  if saenger_class != None:
-    pair_type = saenger_class
-  else:
-    pair_type = leontis_westhof_class
+  if (saenger_class is not None) :
+    pair_type = saenger_class.upper()
+  elif (leontis_westhof_class is not None) :
+    pair_type = leontis_westhof_class.upper()
+  else :
+    raise Sorry("Base pair type not specified.")
   return db.get_distances(base_pair, pair_type, use_hydrogens)
 
 def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
