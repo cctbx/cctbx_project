@@ -1,7 +1,7 @@
 from libtbx.test_utils import show_diff
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints import adp_restraints
-from smtbx.refinement.restraints.tests import trial_structure
+import smtbx.development
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -10,7 +10,8 @@ from cStringIO import StringIO
 import sys
 
 def exercise_manager(verbose=0):
-  xray_structure = trial_structure()
+  xray_structure = smtbx.development.sucrose()
+  xray_structure.scatterers()[10].set_use_u_iso_only()
   asu_mappings = xray_structure.asu_mappings(buffer_thickness=3.5)
   pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   scattering_types = xray_structure.scatterers().extract_scattering_types()
@@ -31,23 +32,23 @@ def exercise_manager(verbose=0):
   bond_proxies = cctbx.geometry_restraints.shared_bond_simple_proxy()
   bond_proxies.append(
     cctbx.geometry_restraints.bond_simple_proxy(
-      i_seqs=(3,24), distance_ideal=1.44, weight=2))
+      i_seqs=(3,23), distance_ideal=1.44, weight=2))
   bond_proxies.append(
     cctbx.geometry_restraints.bond_simple_proxy(
-      i_seqs=(5,26), distance_ideal=1.44, weight=2))
+      i_seqs=(5,25), distance_ideal=1.44, weight=2))
   bond_proxies.append(
     cctbx.geometry_restraints.bond_simple_proxy(
       i_seqs=(1,21), distance_ideal=1.44, weight=2))
   angle_proxies = cctbx.geometry_restraints.shared_angle_proxy()
   angle_proxies.append(
     cctbx.geometry_restraints.angle_proxy(
-      i_seqs=(26,28,30),angle_ideal=110,weight=2))
+      i_seqs=(25,28,30),angle_ideal=110,weight=2))
   angle_proxies.append(
     cctbx.geometry_restraints.angle_proxy(
-      i_seqs=(24,26,28),angle_ideal=110,weight=2))
+      i_seqs=(23,25,28),angle_ideal=110,weight=2))
   angle_proxies.append(
     cctbx.geometry_restraints.angle_proxy(
-      i_seqs=(19,24,26),angle_ideal=110,weight=2))
+      i_seqs=(19,23,25),angle_ideal=110,weight=2))
   bond_similarity_proxies=cctbx.geometry_restraints.shared_bond_similarity_proxy()
   bond_similarity_proxies.append(
     cctbx.geometry_restraints.bond_similarity_proxy(
@@ -76,7 +77,7 @@ Sorted by residual:
 bond O3
      C3
   ideal  model  delta    sigma   weight residual
-  1.440  1.421  0.019 7.07e-01 2.00e+00 7.04e-04
+  1.440  1.422  0.018 7.07e-01 2.00e+00 6.58e-04
 ... (remaining 2 not shown)
 
 Bond angle restraints: 3
@@ -85,26 +86,26 @@ angle C3
       C4
       C5
     ideal   model   delta    sigma   weight residual
-   110.00  108.10    1.90 7.07e-01 2.00e+00 7.20e+00
+   110.00  108.00    2.00 7.07e-01 2.00e+00 8.03e+00
 ... (remaining 2 not shown)
 
 Bond similarity restraints: 1
 Sorted by residual:
                delta    sigma   weight rms_deltas residual sym.op.
-bond O9-C9    -0.010 3.16e-01 1.00e+01   1.02e-02 1.04e-04
+bond O9-C9    -0.010 3.16e-01 1.00e+01   9.93e-03 9.87e-05
      O8-C10    0.010 3.16e-01 1.00e+01
 
 ADP similarity restraints: 24
 Sorted by residual:
-scatterers O3
-           C3
+scatterers O7
+           C12
           delta    sigma   weight rms_deltas residual
- U11   1.70e-02 8.00e-02 1.56e+02   1.61e-02 3.65e-01
- U22   2.94e-03 8.00e-02 1.56e+02
- U33   4.24e-02 8.00e-02 1.56e+02
- U12  -6.75e-03 8.00e-02 1.56e+02
- U13   6.37e-03 8.00e-02 1.56e+02
- U23  -5.96e-03 8.00e-02 1.56e+02
+ U11  -1.02e+00 8.00e-02 1.56e+02   5.93e-01 4.95e+02
+ U22  -1.03e+00 8.00e-02 1.56e+02
+ U33  -1.03e+00 8.00e-02 1.56e+02
+ U12  -4.23e-03 8.00e-02 1.56e+02
+ U13  -3.49e-03 8.00e-02 1.56e+02
+ U23   5.66e-03 8.00e-02 1.56e+02
 ... (remaining 23 not shown)
 
 Rigid bond restraints: 60
@@ -112,19 +113,19 @@ Sorted by residual:
 scatterers O7
            C12
    delta_z    sigma   weight residual
- -6.39e-01 1.00e-02 1.00e+04 4.09e+03
+ -6.42e-01 1.00e-02 1.00e+04 4.12e+03
 ... (remaining 59 not shown)
 
 Isotropic ADP restraints: 22
 Sorted by residual:
 scatterer O3
          delta    sigma   weight rms_deltas residual
- U11  1.12e-03 2.00e-01 2.50e+01   1.33e-02 4.01e-02
- U22 -2.44e-02 2.00e-01 2.50e+01
- U33  2.32e-02 2.00e-01 2.50e+01
- U12 -8.65e-03 2.00e-01 2.50e+01
- U13  9.38e-03 2.00e-01 2.50e+01
- U23 -8.44e-03 2.00e-01 2.50e+01
+ U11  1.20e-03 2.00e-01 2.50e+01   1.34e-02 4.06e-02
+ U22 -2.46e-02 2.00e-01 2.50e+01
+ U33  2.34e-02 2.00e-01 2.50e+01
+ U12 -8.14e-03 2.00e-01 2.50e+01
+ U13  9.78e-03 2.00e-01 2.50e+01
+ U23 -8.63e-03 2.00e-01 2.50e+01
 ... (remaining 21 not shown)
 
 """)

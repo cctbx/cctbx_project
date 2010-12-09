@@ -1,6 +1,6 @@
 from libtbx.test_utils import approx_equal
 from smtbx.refinement.restraints import adp_restraints
-from smtbx.refinement.restraints.tests import trial_structure
+from smtbx import development
 from cctbx.array_family import flex
 from cctbx import crystal
 
@@ -13,7 +13,7 @@ def get_pair_sym_table(xray_structure):
   return pair_asu_table.extract_pair_sym_table()
 
 def exercise_adp_similarity():
-  xray_structure = trial_structure()
+  xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
     if table is None: xs = xray_structure
@@ -37,7 +37,7 @@ def exercise_adp_similarity():
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
     # add more restraints to same shared proxy
-    i_seqs = (3,24,40,42)
+    i_seqs = (3,23,40,42)
     restraints = \
       adp_restraints.adp_similarity_restraints(
         xray_structure=xs,
@@ -45,7 +45,7 @@ def exercise_adp_similarity():
         proxies=proxies,
         i_seqs=i_seqs)
     expected_i_seqs = (
-      (9,32),(14,36),(32,36),(36,38),(3,24),(40,42))
+      (9,32),(14,36),(32,36),(36,38),(3,23),(40,42))
     expected_weights = (625,156.25,625,625,156.25,625)
     proxies = restraints.proxies
     assert proxies.size() == len(expected_i_seqs)
@@ -54,7 +54,7 @@ def exercise_adp_similarity():
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def exercise_rigid_bond():
-  xray_structure = trial_structure()
+  xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
     if table is None: xs = xray_structure
@@ -97,7 +97,8 @@ def exercise_rigid_bond():
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def exercise_isotropic_adp():
-  xray_structure = trial_structure()
+  xray_structure = development.sucrose()
+  xray_structure.scatterers()[10].set_use_u_iso_only()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
     restraints = \
