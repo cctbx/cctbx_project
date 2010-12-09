@@ -110,7 +110,7 @@ class consistency_test_cases(test_case):
       f1.evaluate(h)
       fe = f1.f_calc
       assert f1.grad_f_calc is None
-      assert approx_equal_relatively(fe, fl, relative_error=1e-15), (fe, fl)
+      assert approx_equal_relatively(fe, fl, relative_error=1e-12), (fe, fl)
 
     if (xs.space_group().is_origin_centric() and not self.inelastic_scattering):
       for h in indices:
