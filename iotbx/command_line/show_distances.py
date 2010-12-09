@@ -49,6 +49,13 @@ def run(args):
       default=5,
       help="Maximum distance to be considered",
       metavar="FLOAT")
+    .option(None, "--min_distance_sym_equiv",
+      action="store",
+      type="float",
+      default=0.5,
+      help="Minimum distance between symmetry mates"
+           " (for special position analysis)",
+      metavar="FLOAT")
     .option(None, "--show_cartesian",
       action="store_true",
       help="Show Cartesian coordinates (instead of fractional)")
@@ -82,6 +89,7 @@ def run(args):
           crystal_symmetry=command_line.symmetry,
           cryst1_substitution_buffer_layer=max(5,
             co.distance_cutoff+1),
+          min_distance_sym_equiv=co.min_distance_sym_equiv,
           enable_scattering_type_unknown=True)
       display(
         distance_cutoff=co.distance_cutoff,
@@ -102,7 +110,8 @@ def run(args):
           continue
         print "strudat tag:", entry.tag
         print
-        xray_structure = entry.as_xray_structure()
+        xray_structure = entry.as_xray_structure(
+          min_distance_sym_equiv=co.min_distance_sym_equiv)
         display(
           distance_cutoff=co.distance_cutoff,
           show_cartesian=co.show_cartesian,

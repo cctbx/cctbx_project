@@ -145,10 +145,11 @@ class read_entry(object):
           % (self.tag, n_none, [" is","s are"][int(n_none!=1)]))
     return result
 
-  def as_xray_structure(self):
+  def as_xray_structure(self, min_distance_sym_equiv=0.5):
     result = xray.structure(
       special_position_settings=crystal.special_position_settings(
-        crystal_symmetry=self.crystal_symmetry()))
+        crystal_symmetry=self.crystal_symmetry(),
+        min_distance_sym_equiv=min_distance_sym_equiv))
     for atm in self.atoms:
       result.add_scatterer(atm.as_xray_scatterer())
     return result
