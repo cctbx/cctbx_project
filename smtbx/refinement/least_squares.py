@@ -137,6 +137,8 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
   def covariance_matrix(self,
                         independent_params=False,
                         normalised_by_goof=True):
+    if not self.step_equations().solved:
+      self.solve()
     cov = linalg.inverse_of_u_transpose_u(
       self.step_equations().cholesky_factor_packed_u())
     cov /= self.sum_w_yo_sq()
