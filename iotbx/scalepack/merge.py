@@ -96,10 +96,13 @@ class reader(object):
     print >> out, prefix + "Number of reflections:", self.miller_indices.size()
 
   def crystal_symmetry(self):
+    def have_r_with_axes_info():
+      s = self.space_group_symbol.upper()
+      return (s.startswith("R") and (s.endswith("R") or s.endswith("H")))
     return crystal.symmetry(
       unit_cell=self.unit_cell,
       space_group_info=self.space_group_info,
-      correct_rhombohedral_setting_if_necessary=True)
+      correct_rhombohedral_setting_if_necessary=not have_r_with_axes_info())
 
   def as_miller_array(self,
         crystal_symmetry=None,
