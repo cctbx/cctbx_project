@@ -15,6 +15,9 @@ class test_case(object):
   expected_reparametrisation_for_hydrogen_named = None
   expected_mapping_to_grad_fc = None
 
+  def __init__(self, normal_eqns_solving_method):
+    self.normal_eqns_solving_method = normal_eqns_solving_method
+
   def check_reparametrisation_construction(self):
     warned_once = False
     for sc, params in itertools.izip(
@@ -91,12 +94,13 @@ class test_case(object):
       fo_sq,
       self.reparametrisation,
       weighting_scheme=least_squares.mainstream_shelx_weighting())
-    self.cycles = normal_eqns_solving.naive_iterations(normal_eqns,
-                                                       gradient_threshold=1e-8,
-                                                       step_threshold=1e-8)
+    self.cycles = self.normal_eqns_solving_method(normal_eqns)
     print ("%i %s iterations to recover from shaking"
            % (self.cycles.n_iterations,
               self.cycles))
+    if 0:
+      from crys3d.qttbx.xray_structure_viewer import display
+      display(xray_structure=xs)
 
     assert xs.delta_sites_cart_measure(xs0) < self.site_refinement_tolerance,\
            self.__class__.__name__
@@ -152,7 +156,8 @@ class sucrose_test_case(test_case):
     was used to produce this structure in the first place)
   """
 
-  def __init__(self):
+  def __init__(self, m):
+    test_case.__init__(self, m)
     self.xray_structure = xray.structure(
       crystal_symmetry=crystal.symmetry(
         unit_cell=(7.783, 8.7364, 10.9002, 90, 102.984, 90),
@@ -561,7 +566,8 @@ class saturated_test_case(test_case):
   H1N and H2N sites and u's have been swapped.
   """
 
-  def __init__(self):
+  def __init__(self, m):
+    test_case.__init__(self, m)
     self.xray_structure = xray.structure(
       crystal_symmetry=crystal.symmetry(
         unit_cell=(3.753, 14.54, 15.868, 90, 92.58, 90),
@@ -736,7 +742,8 @@ class saturated_test_case(test_case):
 class symmetry_equivalent_test_case(test_case):
   """ 09srv172 from Durham database """
 
-  def __init__(self):
+  def __init__(self, m):
+    test_case.__init__(self, m)
     self.xray_structure = xray.structure(
       crystal_symmetry=crystal.symmetry(
         unit_cell=(17.0216, 8.4362, 10.2248, 90, 102.79, 90),
@@ -982,10 +989,39 @@ class symmetry_equivalent_test_case(test_case):
 def run():
   import libtbx.utils
   libtbx.utils.show_times_at_exit()
+  import sys
+  from libtbx.option_parser import option_parser
+  command_line = (option_parser()
+    .option(None, "--normal_eqns_solving_method",
+            default='naive')
+    .option(None, "--fix_random_seeds",
+            action='store_true',
+            default='naive')
+  ).process(args=sys.argv[1:])
+  opts = command_line.options
+  if opts.fix_random_seeds:
+    import random
+    random.seed(1)
+    flex.set_random_seed(1)
+  gradient_threshold=1e-8
+  step_threshold=1e-8
+  if opts.normal_eqns_solving_method == 'naive':
+    m = lambda eqns: normal_eqns_solving.naive_iterations(
+      eqns,
+      gradient_threshold=gradient_threshold,
+      step_threshold=step_threshold)
+  elif opts.normal_eqns_solving_method == 'levenberg-marquardt':
+    m = lambda eqns: normal_eqns_solving.levenberg_marquardt_iterations(
+      eqns,
+      gradient_threshold=gradient_threshold,
+      step_threshold=gradient_threshold,
+      tau=1e-7)
+  else:
+    raise RuntimeError("Unknown method %s" % opts.normal_eqns_solving_method)
   for t in [
-    saturated_test_case(),
-    sucrose_test_case(),
-    symmetry_equivalent_test_case(),
+    saturated_test_case(m),
+    sucrose_test_case(m),
+    symmetry_equivalent_test_case(m),
     ]:
     t.run()
 
