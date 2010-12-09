@@ -411,13 +411,13 @@ def hydrogen_bonds_from_selections (
           atoms=atoms)
         atom_pairs = base_pairing.get_h_bond_atoms(
           residues=(resname1,resname2),
-          saenger_class=base_pair.saenger_class.upper(),
-          leontis_westhof_class=base_pair.leontis_westhof_class.upper(),
+          saenger_class=base_pair.saenger_class,
+          leontis_westhof_class=base_pair.leontis_westhof_class,
           use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
         distance_values = base_pairing.get_distances(
           residues=(resname1,resname2),
-          saenger_class=base_pair.saenger_class.upper(),
-          leontis_westhof_class=base_pair.leontis_westhof_class.upper(),
+          saenger_class=base_pair.saenger_class,
+          leontis_westhof_class=base_pair.leontis_westhof_class,
           use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
         for i, (name1, name2) in enumerate(atom_pairs) :
           sele1 = """name %s and %s""" % (name1, base_pair.base1)
