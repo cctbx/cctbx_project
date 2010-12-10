@@ -1,13 +1,26 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_tls_groups
 
-import sys, time
-import iotbx.pdb
 from mmtbx.tls import tools
-from scitbx.array_family import flex
 import mmtbx.secondary_structure
-import random
-from copy import deepcopy
+import iotbx.pdb
 from cctbx import adptbx
+from scitbx.array_family import flex
+import libtbx.phil
+from copy import deepcopy
+import cStringIO
+import random
+import os
+import time
+import sys
+
+master_phil = libtbx.phil.parse("""
+  pdb_file = None
+    .type = path
+  nproc = 1
+    .type = int
+  random_seed = 4865136
+    .type = int
+""")
 
 ##### PERMTOOLS
 def consequtive_permutations(iterable, r=None):
@@ -443,27 +456,73 @@ def permutations_as_atom_selection_string(groups, perm):
     result.append(resseq)
   return result
 
-def run(args):
+# XXX for multiprocessing
+class analyze_permutations (object) :
+  def __init__ (self, groups, sites_cart, u_cart, u_iso) :
+    self.groups = groups
+    self.sites_cart = sites_cart
+    self.u_cart = u_cart
+    self.u_iso = u_iso
+
+  def __call__ (self, perm) :
+    selections = tls_group_selections(self.groups, perm)
+    target = 0
+    for selection in selections:
+      mo = tls_refinery(
+        u_cart     = self.u_cart,
+        u_iso      = self.u_iso,
+        sites_cart = self.sites_cart,
+        selection  = selection)
+      target += mo.f
+    return target
+
+def run (args=(), params=None, pdb_hierarchy=None, xray_structure=None):
   default_message="""\
 
 phenix.find_tls_groups: Tool for automated partitioning a model into TLS groups.
 
 Usage:
-  phenix.find_tls_groups model.pdb
-  """
-  if(len(args) != 1):
+  phenix.find_tls_groups model.pdb [nproc=...]
+"""
+  if(len(args) == 0):
     print default_message
     return
-  pdb_file_name = args[0]
-  if(not iotbx.pdb.is_pdb_file(pdb_file_name)):
+  cmdline_phil = []
+  for arg in args :
+    if os.path.isfile(arg) :
+      if iotbx.pdb.is_pdb_file(arg) :
+        pdb_phil = libtbx.phil.parse("pdb_file=%s" % os.path.abspath(arg))
+        cmdline_phil.append(pdb_phil)
+      else :
+        file_phil = libtbx.phil.parse(file_name=arg)
+        cmdline_phil.append(file_phil)
+    else :
+      arg_phil = libtbx.phil.parse(arg)
+      cmdline_phil.append(arg_phil)
+  working_phil = master_phil.fetch(sources=cmdline_phil)
+  params = working_phil.extract()
+  pdb_file_name = params.pdb_file
+  if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)) :
     print "A PDB file is required."
     return
-  pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
+  if (params.nproc is None) :
+    params.nproc = 1
+  pdb_inp = iotbx.pdb.input(file_name=pdb_file_name)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   #
   xray_structure = pdb_inp.xray_structure_simple()
+  return find_tls(
+    params=params,
+    pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure)
+
+def find_tls (params, pdb_hierarchy, xray_structure) :
+  if (params.random_seed is None) :
+    params.random_seed = flex.get_random_seed()
+  random.seed(params.random_seed)
+  flex.set_random_seed(params.random_seed)
   #xray_structure.convert_to_anisotropic()
   xray_structure.convert_to_isotropic()
   sites_cart = xray_structure.sites_cart()
@@ -501,6 +560,15 @@ Usage:
     secondary_structure_selection = secondary_structure_selection)
   chains_and_permutations = []
   chains_and_atom_selection_strings = []
+  mp_pool = None
+  if (params.nproc > 1) :
+    try :
+      import multiprocessing
+    except ImportError :
+      print "multiprocessing not available, ignoring nproc=%d" % params.nproc
+      params.nproc = 1
+    else :
+      mp_pool = multiprocessing.Pool(processes=params.nproc)
   for crs in chains_and_residue_selections:
     print "Processing chain '%s':"%crs[0]
     chain_selection = chain_selection_from_residues(crs[1])
@@ -513,19 +581,30 @@ Usage:
       print "  Fitting TLS matrices..."
       dic = {}
       target_best = 1.e+9
-      for i_perm, perm in enumerate(perms):
-        if i_perm%100==0:
-          print "    ...perm %d of %d"%(i_perm, len(perms))
-        selections = tls_group_selections(groups, perm)
-        target = 0
-        for selection in selections:
-          mo = tls_refinery(
-            u_cart     = u_cart,
-            u_iso      = u_iso,
-            sites_cart = sites_cart,
-            selection  = selection)
-          target += mo.f
-        dic.setdefault(len(perm), []).append([target,perm])
+      if (params.nproc > 1) :
+        assert (mp_pool is not None)
+        process_perms = analyze_permutations(
+          groups=groups,
+          sites_cart=sites_cart,
+          u_cart=u_cart,
+          u_iso=u_iso)
+        targets = mp_pool.map(process_perms, perms, chunksize=100)
+        for (perm, target) in zip(perms, targets) :
+          dic.setdefault(len(perm), []).append([target,perm])
+      else :
+        for i_perm, perm in enumerate(perms):
+          if i_perm%100==0:
+            print "    ...perm %d of %d"%(i_perm, len(perms))
+          selections = tls_group_selections(groups, perm)
+          target = 0
+          for selection in selections:
+            mo = tls_refinery(
+              u_cart     = u_cart,
+              u_iso      = u_iso,
+              sites_cart = sites_cart,
+              selection  = selection)
+            target += mo.f
+          dic.setdefault(len(perm), []).append([target,perm])
         #print "    perm %d of %d: target=%8.3f (TLS groups: %s), permutation:"%(
         #  i_perm, len(perms),target,len(perm)),perm
       print "    Best fits:"
@@ -569,7 +648,10 @@ Usage:
   for chain_and_permutation in chains_and_permutations:
     print chain_and_permutation
   print
-  print "TLS groups (atom selection strings):"
+  #print "TLS groups (atom selection strings):"
+  print "TLS atom selections for phenix.refine:"
+  groups_out = cStringIO.StringIO()
+  print >> groups_out, "refinement.refine.adp {"
   for r in chains_and_atom_selection_strings:
     prefix = "chain '%s'"%r[0]
     if(len(r[1])>0 and len(r[1:])>0):
@@ -577,9 +659,27 @@ Usage:
       for r_ in r[1:]:
         for r__ in r_:
           if(len(r__)>0):
-            print prefix+"(%s)"%r__
-    else: print prefix
+            group_selection = prefix+"(%s)"%r__
+            print >> groups_out, "  tls = \"%s\"" % group_selection
+    else:
+      print >> groups_out, "  tls = \"%s\"" % prefix
+  print >> groups_out, "}"
+  print groups_out.getvalue()
   print
+  return groups_out.getvalue()
+
+# XXX wrapper for running in Phenix GUI
+class _run_find_tls (object) :
+  def __init__ (self, params, pdb_hierarchy, xray_structure) :
+    self.params = params
+    self.pdb_hierarchy = pdb_hierarchy
+    self.xray_structure = xray_structure
+
+  def __call__ (self) :
+    return find_tls(
+      params=self.params,
+      pdb_hierarchy=self.pdb_hierarchy,
+      xray_structure=self.xray_structure)
 
 if (__name__ == "__main__"):
   t0 = time.time()
