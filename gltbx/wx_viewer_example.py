@@ -24,5 +24,5 @@ class MyApp(wx_viewer.App):
     box.SetSizeHints(self.frame)
 
 if __name__ == '__main__':
-  a = MyApp(title="An example of use of gltbx.wx_viewer")
+  a = MyApp(title="An example of using gltbx.wx_viewer")
   a.MainLoop()

@@ -557,15 +557,22 @@ namespace gltbx { namespace util {
   bool
   gl2ps_interface(
     char const* file_name,
+    bool draw_background,
     boost::python::object const& callback)
   {
 #if !defined(GLTBX_HAVE_GL2PS)
-    if (file_name == 0 && callback.is_none()) return false;
+    if (   file_name == 0
+        && !draw_background
+        && callback.is_none()) return false;
     throw std::runtime_error("gl2ps is not available.");
 #else
     if (file_name == 0) return true;
     boost::shared_ptr<FILE> stream(fopen(file_name, "wb"), fclose);
     GLTBX_ASSERT(stream.get() != 0);
+    GLint options = GL2PS_USE_CURRENT_VIEWPORT;
+    if (draw_background) {
+      options |= GL2PS_DRAW_BACKGROUND;
+    }
     int buffersize = 1024 * 1024;
     int state = GL2PS_OVERFLOW;
     while (state == GL2PS_OVERFLOW) {
@@ -576,8 +583,7 @@ namespace gltbx { namespace util {
         /* viewport */ NULL,
         /* format */ GL2PS_PDF,
         /* sort */ GL2PS_SIMPLE_SORT,
-        /* options */   GL2PS_DRAW_BACKGROUND
-                      | GL2PS_USE_CURRENT_VIEWPORT,
+        options,
         /* colormode */ GL_RGBA,
         /* colorsize */ 0,
         /* colormap */ NULL,
@@ -689,7 +695,9 @@ namespace gltbx { namespace util {
     }
     matrix_wrapper::wrap();
     def("gl2ps_interface", gl2ps_interface, (
-      arg("file_name"), arg("callback")));
+      arg("file_name"),
+      arg("draw_background"),
+      arg("callback")));
   }
 
 }} // namespace gltbx::util

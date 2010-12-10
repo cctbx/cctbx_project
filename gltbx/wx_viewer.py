@@ -305,14 +305,17 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     else :
       glDisable(GL_FOG)
 
-  def set_minimum_covering_sphere(self, atoms=[]):
-    points = flex.vec3_double()
-    for atom in atoms:
-      points.append(atom)
-    if (len(points) > 1):
+  def set_minimum_covering_sphere(self, atoms=None):
+    if (atoms is None):
+      points = self.points
+    else:
+      points = flex.vec3_double()
+      for atom in atoms:
+        points.append(atom)
+    if (points is not None and len(points) > 1):
       s = scitbx.math.minimum_covering_sphere_3d(points=points)
     else:
-      if (len(points) == 0):
+      if (points is None or len(points) == 0):
         center = (0,0,0)
       else:
         center = points[0]
@@ -614,7 +617,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def save_screen_shot_via_gl2ps(self, file_name):
     from libtbx.str_utils import show_string
     gl2ps = gltbx.util.gl2ps_interface
-    if (not gl2ps(file_name=None, callback=None)):
+    if (not gl2ps(file_name=None, draw_background=False, callback=None)):
       print "PDF output via gl2ps not available: cannot write file %s" \
         % file_name
       return 0
@@ -626,7 +629,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       print "Error opening file for writing: %s" % \
         show_string(os.path.abspath(file_name))
       return 0
-    gl2ps(file_name=file_name, callback=self.OnRedraw)
+    gl2ps(file_name=file_name, draw_background=False, callback=self.OnRedraw)
     print "Wrote file: %s" % show_string(os.path.abspath(file_name))
     return 1
 
