@@ -108,31 +108,22 @@ def all_permutations(N):
                   result.append(tmp)
                   tmp=[]
                   break
-  ##########
-  print "All permutations:",len(result)
   n = []
   for r_ in result:
     n_=[]
-    #print r_
     for r__ in r_:
-      #print "  ", r__
       r__.sort()
       n_.append(r__)
     n_.sort()
     n.append(n_)
   result = n
   result.sort()
-  print "finally:", len(result)
-
-
+  #print "  Number of all permutations:",len(result)
   ### DEBUG
   for i,ri in enumerate(result):
     for j,rj in enumerate(result):
       if(i!=j): assert ri != rj
-
-  ###
   return result
-
 
 ###############
 
@@ -168,7 +159,7 @@ def group_residues(residues):
   assert min([chs1,chs2,cntr3]) == max([chs1,chs2,cntr3])
   return sels
 
-def regroup_groups(sels, residues, fragment_size, max_sels=15):
+def regroup_groups(sels, residues, fragment_size, max_sels):
   sel = []
   min_size = 1.e+6
   i_min = None
@@ -221,20 +212,57 @@ def regroup_groups(sels, residues, fragment_size, max_sels=15):
   assert chsum1 == chsum2, [chsum1, chsum2]
   return sels
 
+def split_groups(sels, fragment_size):
+  new_sels = []
+  for sel in sels:
+    if(len(sel)>fragment_size*3):
+      #print "len(sel):", len(sel)
+      is_ss_cntr=0
+      for s_ in sel:
+        #print s_
+        if(s_[1]): is_ss_cntr += 1
+      if(is_ss_cntr*100./len(sel)<50.):
+        nc = 0
+        new_sel = []
+        while nc < len(sel):
+          new_sels.append(sel[nc:nc+fragment_size])
+          nc += fragment_size
+      else:
+        new_sels.append(sel)
+    else:
+      new_sels.append(sel)
+  return new_sels
 
-def get_model_partitioning(residues, secondary_structure_selection):
+def show_groups(sels):
+  min_group_size = 1.e+6
+  print "          Residues  Resseq  Sec.Structure"
+  for i, s in enumerate(sels):
+    is_ss_cntr=0
+    for s_ in s:
+      if(s_[1]): is_ss_cntr += 1
+    print "      #%d: %8d  %s-%s %9d"%(i, len(s), s[0][2].strip(),
+      s[len(s)-1][2].strip(), is_ss_cntr)
+    if(len(s)<min_group_size): min_group_size = len(s)
+  return min_group_size
+
+def get_model_partitioning(residues, secondary_structure_selection, max_sels=13):
   fragment_size = 5
   print "  Grouping residues by secondary structure..."
   sels = group_residues(residues)
   print "  Fragment size:", fragment_size
-  for i, s in enumerate(sels):
-    print "      group %d: %d"%(i, len(s))
-  print "  Re-grouping to achieve maximum possible nuber of groups..."
-  new_sels = regroup_groups(sels, residues, fragment_size)
-  print "  Fragment size:", fragment_size
-  for i, s in enumerate(new_sels):
-    print "      group %d: %d"%(i, len(s))
-  len_new_sels = len(new_sels)
+  print "    Initial groups:"
+  min_group_size = show_groups(sels=sels)
+  ###
+  sels = split_groups(sels = sels, fragment_size = fragment_size)
+  print "    Modified groups:"
+  show_groups(sels=sels)
+  ###
+  if(len(sels) > max_sels or min_group_size < fragment_size and len(sels)>1):
+    print "  Re-grouping to achieve maximum possible nuber of groups..."
+    sels = regroup_groups(sels, residues, fragment_size, max_sels)
+    print "  Fragment size:", fragment_size
+    show_groups(sels=sels)
+  len_new_sels = len(sels)
   if(len_new_sels==10):
     from mmtbx.tls import perm10
     perms = perm10.res
@@ -253,11 +281,12 @@ def get_model_partitioning(residues, secondary_structure_selection):
   elif(len_new_sels==15):
     from mmtbx.tls import perm15
     perms = perm15.res
+  elif(len_new_sels==1):
+    perms = [[[0]]]
   elif(len_new_sels<10):
     perms = all_permutations(len(list(xrange(len_new_sels))))
   else: raise RuntimeError("Too many permutations.")
-
-  return new_sels, perms
+  return sels, perms
 
 def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
   new_secondary_structure_selection = flex.bool()
@@ -280,13 +309,13 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
               new_secondary_structure_selection.append(
                 secondary_structure_selection[atom.i_seq])
         if(result_.size()>0):
-          result.append([result_, is_secondary_structure, rg.resseq,
-                         rg.unique_resnames()])
+          result.append(
+            [result_, is_secondary_structure, rg.resseq, rg.unique_resnames()])
       if(len(result)>0):
         chains_and_residue_selections.append([chain.id, result])
   print "Considering these chains:"
   for ch in chains_and_residue_selections:
-    print "  chain %s (number of residues selected: %d)" % (ch[0], len(ch[1]))
+    print "  chain '%s' (number of residues selected: %d)" % (ch[0], len(ch[1]))
   return chains_and_residue_selections, new_secondary_structure_selection
 
 def tls_group_selections(groups, perm):
@@ -317,7 +346,7 @@ def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,  max_iterations
       max_iterations = max_iterations)
   else:
     return tools.tls_from_uiso_minimizer(
-      uiso         = u_iso.select(selection),
+      uiso           = u_iso.select(selection),
       T_initial      = [0],
       L_initial      = [0,0,0,0,0,0],
       S_initial      = [0,0,0],
@@ -335,17 +364,30 @@ def chunks(size, n_groups):
   counter = 0
   sum_size = 0
   res = []
+  check = 0
   while nc <= size:
-    next = nc+chunk_size
-    if(next>size or next+chunk_size>size): next = size
-    if(counter==n_groups and nc+chunk_size>size): break
+    check += 1
+    chunk_size_ = chunk_size + random.randrange(-1,2)*int(0.5*chunk_size)
+    next = nc+chunk_size_
+    if check >100 or nc>=next or next>=size:
+      ###
+      chunk_size = size/n_groups
+      nc = chunk_size
+      counter = 0
+      sum_size = 0
+      res = []
+      check = 0
+      ###
+      check=0
+    if(next>size or next+chunk_size_>size): next = size
+    if(counter==n_groups and nc+chunk_size_>size): break
     if(len(res)>n_groups-1): break
     r = random.randrange(nc,next)
     try: ev = size-1-r>1 and r-max(res)>1
     except: ev = size-1-r>1 and not r in res
     if(ev):
       res.append(r)
-      nc+=chunk_size
+      nc+=chunk_size_
       if(len(res)>n_groups-2): break
   result = []
   for i, r in enumerate(res):
@@ -355,16 +397,30 @@ def chunks(size, n_groups):
   result.append([res[len(res)-1]+1,size-1])
   tmp = []
   for r in result:
-    r_ = flex.size_t(range(r[0],r[1]))
+    a = r[0]
+    b = r[1]
+    if(a!=0): a = a
+    b = b+1
+    r_ = flex.size_t(range(a,b))
     assert r_.size() > 0, [result, res]
     tmp.append(r_)
+  # DEBUG
+  cntr = 0
+  for s in tmp:
+    cntr += s.size()
+  assert cntr == size
+  #
   return tmp
 
-def tls_refinery_random_groups(sites_cart, n_groups, u_cart=None, u_iso=None, n_runs=20):
+def tls_refinery_random_groups(sites_cart, n_groups, u_cart=None, u_iso=None, n_runs=50):
   assert [u_cart, u_iso].count(None)==1
   t = 0
   for tr in xrange(n_runs):
-    selections = chunks(size=sites_cart.size(), n_groups=n_groups)
+    while True:
+      selections = chunks(size=sites_cart.size(), n_groups=n_groups)
+      #print [(min(s),max(s)) for s in selections]
+      if(len(selections) == n_groups): break
+    assert len(selections) == n_groups
     for selection in selections:
       mo = tls_refinery(u_cart=u_cart, u_iso=u_iso, sites_cart=sites_cart, selection=selection)
       t += mo.f
@@ -409,10 +465,10 @@ Usage:
   pdb_atoms.reset_i_seq()
   #
   xray_structure = pdb_inp.xray_structure_simple()
-  xray_structure.convert_to_anisotropic()
+  #xray_structure.convert_to_anisotropic()
+  xray_structure.convert_to_isotropic()
   sites_cart = xray_structure.sites_cart()
-  cm = sites_cart.mean_weighted(weights=flex.double(sites_cart.size(),1))
-  unit_cell = xray_structure.unit_cell()
+  #unit_cell = xray_structure.unit_cell()
   u_cart = None#xray_structure.scatterers().extract_u_cart(unit_cell)
   u_iso  = xray_structure.extract_u_iso_or_u_equiv()#*adptbx.u_as_b(1.)
   #
@@ -424,6 +480,15 @@ Usage:
     assume_hydrogens_all_missing = None,
     tmp_dir                      = None)
   ssm.find_automatically()
+  ####################################
+  #bs = ssm.beta_selections()
+  #print list(bs)
+  #for bs_ in bs:
+  #  bs_ = bs_.iselection()
+  #  print flex.min(bs_), flex.max(bs_)
+  ####################################
+
+  ####################################
   alpha_h_selection = ssm.alpha_selection()
   secondary_structure_selection = ssm.alpha_selection() | \
       ssm.beta_selection() | ssm.base_pair_selection()
@@ -438,62 +503,66 @@ Usage:
   chains_and_permutations = []
   chains_and_atom_selection_strings = []
   for crs in chains_and_residue_selections:
-    print "Processing chain %s:"%crs[0]
+    print "Processing chain '%s':"%crs[0]
     chain_selection = chain_selection_from_residues(crs[1])
     groups, perms = get_model_partitioning(residues = crs[1],
       secondary_structure_selection = secondary_structure_selection)
-    print "  Fitting TLS matrices..."
-    dic = {}
-    target_best = 1.e+9
-    for i_perm, perm in enumerate(perms):
-      if i_perm%100==0:
-        print "    ...perm %d of %d"%(i_perm, len(perms))
-      selections = tls_group_selections(groups, perm)
-      target = 0
-      for selection in selections:
-        mo = tls_refinery(
-          u_cart     = u_cart,
-          u_iso      = u_iso,
-          sites_cart = sites_cart,
-          selection  = selection)
-        target += mo.f
-      dic.setdefault(len(perm), []).append([target,perm])
-      #print "    perm %d of %d: target=%8.3f (TLS groups: %s), permutation:"%(
-      #  i_perm, len(perms),target,len(perm)),perm
-    print "    Best fits:"
-    print "      No. of         Targets"
-    print "      groups   best   rand.pick diff.  score permutation"
-    score_best = -1.e+9
-    perm_choice = None
-    for k, v in zip(dic.keys(),dic.values()):
-      t_best = v[0][0]
-      perm_best = v[0][1]
-      for v_ in v:
-        if(v_[0]<t_best):
-          t_best = v_[0]
-          perm_best = v_[1]
-      if(u_cart is not None):
-        u_cart_ = u_cart.select(chain_selection)
-      else: u_cart_ = None
-      if(u_iso is not None):
-        u_iso_ = u_iso.select(chain_selection)
-      else: u_iso_ = None
-      r = tls_refinery_random_groups(
-        u_cart     = u_cart_,
-        u_iso      = u_iso_,
-        sites_cart = sites_cart.select(chain_selection),
-        n_groups   = k)
-      score = (r-t_best)/(r+t_best)*100.
-      print "         %3d   %6.1f   %6.1f %6.1f %6.1f"%(
-        k,t_best, r, r-t_best, score), perm_best
-      if(score > score_best):
-        score_best = score
-        perm_choice = perm_best[:]
-    #
-    chains_and_permutations.append([crs[0],perm_choice])
-    chains_and_atom_selection_strings.append([crs[0],
-      permutations_as_atom_selection_string(groups, perm_choice)])
-    #
+    if(len(perms)==1):
+      print "  Whole chain is considered as one TLS group."
+      chains_and_atom_selection_strings.append([crs[0],[]])
+    else:
+      print "  Fitting TLS matrices..."
+      dic = {}
+      target_best = 1.e+9
+      for i_perm, perm in enumerate(perms):
+        if i_perm%100==0:
+          print "    ...perm %d of %d"%(i_perm, len(perms))
+        selections = tls_group_selections(groups, perm)
+        target = 0
+        for selection in selections:
+          mo = tls_refinery(
+            u_cart     = u_cart,
+            u_iso      = u_iso,
+            sites_cart = sites_cart,
+            selection  = selection)
+          target += mo.f
+        dic.setdefault(len(perm), []).append([target,perm])
+        #print "    perm %d of %d: target=%8.3f (TLS groups: %s), permutation:"%(
+        #  i_perm, len(perms),target,len(perm)),perm
+      print "    Best fits:"
+      print "      No. of         Targets"
+      print "      groups   best   rand.pick diff.  score permutation"
+      score_best = -1.e+9
+      perm_choice = None
+      for k, v in zip(dic.keys(),dic.values()):
+        t_best = v[0][0]
+        perm_best = v[0][1]
+        for v_ in v:
+          if(v_[0]<t_best):
+            t_best = v_[0]
+            perm_best = v_[1]
+        if(u_cart is not None):
+          u_cart_ = u_cart.select(chain_selection)
+        else: u_cart_ = None
+        if(u_iso is not None):
+          u_iso_ = u_iso.select(chain_selection)
+        else: u_iso_ = None
+        r = tls_refinery_random_groups(
+          u_cart     = u_cart_,
+          u_iso      = u_iso_,
+          sites_cart = sites_cart.select(chain_selection),
+          n_groups   = k)
+        score = (r-t_best)/(r+t_best)*100.
+        print "         %3d   %6.1f   %6.1f %6.1f %6.1f"%(
+          k,t_best, r, r-t_best, score), perm_best
+        if(score > score_best):
+          score_best = score
+          perm_choice = perm_best[:]
+      #
+      chains_and_permutations.append([crs[0],perm_choice])
+      chains_and_atom_selection_strings.append([crs[0],
+        permutations_as_atom_selection_string(groups, perm_choice)])
+      #
   print
   print "%sSUMMARY%s"%("-"*36,"-"*37)
   print
@@ -503,10 +572,14 @@ Usage:
   print
   print "TLS groups (atom selection strings):"
   for r in chains_and_atom_selection_strings:
-    prefix = "chain %s and "%r[0]
-    for r_ in r[1:]:
-      for r__ in r_:
-        print prefix+"(%s)"%r__
+    prefix = "chain '%s'"%r[0]
+    if(len(r[1])>0 and len(r[1:])>0):
+      prefix += " and "
+      for r_ in r[1:]:
+        for r__ in r_:
+          if(len(r__)>0):
+            print prefix+"(%s)"%r__
+    else: print prefix
   print
 
 if (__name__ == "__main__"):
