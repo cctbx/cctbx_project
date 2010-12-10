@@ -2,7 +2,6 @@
 
 import sys, time
 import iotbx.pdb
-import mmtbx.tls
 from mmtbx.tls import tools
 from scitbx.array_family import flex
 import mmtbx.secondary_structure
