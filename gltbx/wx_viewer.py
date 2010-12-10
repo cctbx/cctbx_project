@@ -575,18 +575,19 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self._settings_widget = OpenGLSettingsToolbox(self)
       self._settings_widget.Show()
 
-  def save_screen_shot(self,
+  def save_screen_shot_via_pil(self,
         file_name="wx_viewer",
-        extensions=["png", "jpg", "tiff", "eps"]):
+        extensions=["png", "jpg", "tiff", "eps", "pdf"]):
     import gltbx.viewer_utils
     from libtbx.utils import Sorry
     from libtbx.str_utils import show_string
     pil_image = gltbx.viewer_utils.read_pixels_to_pil_image(
       x=0, y=0, width=self.w, height=self.h)
     if (pil_image is None):
-      raise Sorry(
-        "Cannot save screen shot to file:"
-        " Python Imaging Library (PIL) not available.")
+      print \
+        "Cannot save screen shot to file:" \
+        " Python Imaging Library (PIL) not available."
+      return 0
     print "Screen shot width x height: %d x %d" % (self.w, self.h)
     save = pil_image.save
     def try_save(file_name_ext):
@@ -598,8 +599,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       if (file_name.endswith("."+ext)):
         print "Writing file: %s" % show_string(os.path.abspath(file_name))
         if (not try_save(file_name_ext=file_name)):
-          raise Sorry(
-            "Failure saving screen shot as %s file." % ext.upper())
+          print "Failure saving screen shot as %s file." % ext.upper()
         return 1
     n_written = 0
     for ext in extensions:
@@ -609,6 +609,46 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       else:
         print "Wrote file: %s" % show_string(os.path.abspath(file_name_ext))
         n_written += 1
+    return n_written
+
+  def save_screen_shot_via_gl2ps(self, file_name):
+    from libtbx.str_utils import show_string
+    gl2ps = gltbx.util.gl2ps_interface
+    if (not gl2ps(file_name=None, callback=None)):
+      print "PDF output via gl2ps not available: cannot write file %s" \
+        % file_name
+      return 0
+    try:
+      # preempt potential error in C++, for better reporting here
+      open(file_name, "wb")
+    except KeyboardInterrupt: raise
+    except:
+      print "Error opening file for writing: %s" % \
+        show_string(os.path.abspath(file_name))
+      return 0
+    gl2ps(file_name=file_name, callback=self.OnRedraw)
+    print "Wrote file: %s" % show_string(os.path.abspath(file_name))
+    return 1
+
+  def save_screen_shot(self,
+        file_name="wx_viewer",
+        extensions=["png", "jpg", "tiff", "eps", "pdf"]):
+    extensions_pil = []
+    save_pdf = file_name.endswith(".pdf")
+    gl2ps_file_name = file_name
+    if (not save_pdf):
+      for ext in extensions:
+        if (ext == "pdf"):
+          save_pdf = True
+          gl2ps_file_name += "."+ext
+        else:
+          extensions_pil.append(ext)
+    n_written = 0
+    if (len(extensions_pil) != 0):
+      n_written += self.save_screen_shot_via_pil(
+        file_name=file_name, extensions=extensions_pil)
+    if (save_pdf):
+      n_written += self.save_screen_shot_via_gl2ps(file_name=gl2ps_file_name)
     if (n_written == 0):
       raise Sorry(
         "Cannot save screen shot in any of the formats specified.")

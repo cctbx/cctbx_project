@@ -17,9 +17,14 @@
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <boost/shared_array.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <gltbx/error.h>
 #include <gltbx/util.h>
+
+#if defined(GLTBX_HAVE_GL2PS)
+#include <gl2ps.h>
+#endif
 
 namespace gltbx { namespace util {
 
@@ -549,6 +554,54 @@ namespace gltbx { namespace util {
     }
   };
 
+  bool
+  gl2ps_interface(
+    char const* file_name,
+    boost::python::object const& callback)
+  {
+#if !defined(GLTBX_HAVE_GL2PS)
+    if (file_name == 0 && callback.is_none()) return false;
+    throw std::runtime_error("gl2ps is not available.");
+#else
+    if (file_name == 0) return true;
+    boost::shared_ptr<FILE> stream(fopen(file_name, "wb"), fclose);
+    GLTBX_ASSERT(stream.get() != 0);
+    int buffersize = 1024 * 1024;
+    int state = GL2PS_OVERFLOW;
+    while (state == GL2PS_OVERFLOW) {
+      buffersize *= 2;
+      gl2psBeginPage(
+        /* title */ "test",
+        /* producer */ "gltbx.util.gl2ps_interface",
+        /* viewport */ NULL,
+        /* format */ GL2PS_PDF,
+        /* sort */ GL2PS_SIMPLE_SORT,
+        /* options */   GL2PS_DRAW_BACKGROUND
+                      | GL2PS_USE_CURRENT_VIEWPORT,
+        /* colormode */ GL_RGBA,
+        /* colorsize */ 0,
+        /* colormap */ NULL,
+        /* nr */ 0,
+        /* ng */ 0,
+        /* nb */ 0,
+        buffersize,
+        stream.get(),
+        file_name);
+      if (!callback.is_none()) {
+        try {
+          callback();
+        }
+        catch (...) {
+          gl2psEndPage();
+          throw;
+        }
+      }
+      state = gl2psEndPage();
+    }
+    return true;
+#endif
+  }
+
   void
   init_module()
   {
@@ -635,6 +688,8 @@ namespace gltbx { namespace util {
       vertex_array_wrapper<ivt, GLdouble>::wrap("vertex_array");
     }
     matrix_wrapper::wrap();
+    def("gl2ps_interface", gl2ps_interface, (
+      arg("file_name"), arg("callback")));
   }
 
 }} // namespace gltbx::util
