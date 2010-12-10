@@ -1,6 +1,9 @@
 import libtbx.load_env
 Import("env_etc")
 
+gl2ps_path = libtbx.env.find_in_repositories(
+  relative_path="gui_resources/gl2ps")
+
 env_etc.gltbx_dist = libtbx.env.dist_path("gltbx")
 env_etc.gltbx_include = libtbx.env.under_dist("gltbx", "..")
 env_etc.gltbx_common_includes = [
@@ -9,6 +12,8 @@ env_etc.gltbx_common_includes = [
   env_etc.scitbx_include,
   env_etc.boost_include,
 ]
+if (gl2ps_path is not None):
+  env_etc.gltbx_common_includes.append(gl2ps_path)
 
 if (not env_etc.no_boost_python):
   Import("env_base", "env_no_includes_boost_python_ext")
@@ -72,9 +77,15 @@ int main() { std::cout << GL_POINT << std::endl; return 0; }
       env.SharedLibrary(
         target="#lib/gltbx_%s_ext" % namespace,
         source=source)
-    env.SharedLibrary(
+    env_util = env
+    source = ["util_ext.cpp"]
+    if (gl2ps_path is not None):
+      source.append("#gl2ps/gl2ps.c")
+      env_util = env.Clone()
+      env_util.Append(SHCXXFLAGS=["-DGLTBX_HAVE_GL2PS"])
+    env_util.SharedLibrary(
       target="#lib/gltbx_util_ext",
-      source=["util_ext.cpp"])
+      source=source)
     env.SharedLibrary(
       target="#lib/gltbx_viewer_utils_ext",
       source=["viewer_utils_ext.cpp"])
