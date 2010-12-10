@@ -61,10 +61,12 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
                                 auto_spin_allowed=False,
                                 orthographic=False,
                                 animation_time=1, #seconds
+                                background_rgb=(0,0,0),
                                 **kw):
     self.autospin_allowed = auto_spin_allowed
     self.orthographic = orthographic
     self.animation_time = animation_time
+    self.background_rgb = background_rgb
     return kw
 
   def __init__(self, parent, *args, **kw):
@@ -89,11 +91,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.Connect(-1, -1, VIEWER_UPDATE_ID, self.OnUpdate)
 
     self.w, self.h = self.GetClientSizeTuple()
-
-    # The _back color
-    self.r_back = 0
-    self.g_back = 0
-    self.b_back = 0
 
     self.field_of_view_y = 10.0
     self.min_near = 1
@@ -301,7 +298,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glFogi(GL_FOG_MODE, GL_LINEAR)
       glFogf(GL_FOG_START, fog_start)
       glFogf(GL_FOG_END, fog_end)
-      glFogfv(GL_FOG_COLOR, [self.r_back, self.g_back, self.b_back, 1.0])
+      b = self.background_rgb
+      glFogfv(GL_FOG_COLOR, [b[0], b[1], b[2], 1.0])
     else :
       glDisable(GL_FOG)
 
@@ -674,13 +672,15 @@ class show_points_and_lines_mixin(wxGLWindow):
     self.line_i_seqs = []
     self.line_colors = {}
     self.spheres = []
+    self.line_width = 1
     self.labels_display_list = None
     self.points_display_list = None
     self.lines_display_list = None
 
   def InitGL(self):
     gltbx.util.handle_error()
-    glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
+    b = self.background_rgb
+    glClearColor(b[0], b[1], b[2], 0.0)
     self.minimum_covering_sphere_display_list = None
     self.initialize_modelview()
     gltbx.util.handle_error()
@@ -733,6 +733,7 @@ class show_points_and_lines_mixin(wxGLWindow):
     if (self.lines_display_list is None):
       self.lines_display_list = gltbx.gl_managed.display_list()
       self.lines_display_list.compile()
+      assert self.line_width > 0
       for i_seqs in self.line_i_seqs:
         color = self.line_colors.get(tuple(i_seqs))
         if (color is None):
@@ -740,7 +741,7 @@ class show_points_and_lines_mixin(wxGLWindow):
           if (color is None):
             color = (1,0,1)
         glColor3f(*color)
-        glLineWidth(1)
+        glLineWidth(self.line_width)
         glBegin(GL_LINES)
         glVertex3f(*self.points[i_seqs[0]])
         glVertex3f(*self.points[i_seqs[1]])
