@@ -349,7 +349,7 @@ def parse_scalepack (lines) :
         fields = line2.strip().split()
         i_mean = float(fields[2])
         sig_i_mean = float(fields[3])
-        r_merge = fields[-1] # XXX -1 (linear) or -2 (square) ???
+        r_merge = fields[-2] # XXX -1 (linear) or -2 (square) ???
         if (fields[0] == "All" and fields[1] == "reflections") :
           info.add_overall_stat("i/sigma", "%.2f" % (i_mean / sig_i_mean))
           info.add_overall_stat("r_merge", r_merge)
@@ -539,7 +539,7 @@ def exercise () :
 REMARK 200 OVERALL.
 REMARK 200  COMPLETENESS FOR RANGE     (%) : 88.4
 REMARK 200  DATA REDUNDANCY                : 3.5
-REMARK 200  R MERGE                    (I) : 0.06900
+REMARK 200  R MERGE                    (I) : 0.09600
 REMARK 200  R SYM                      (I) : NULL
 REMARK 200  <I/SIGMA(I)> FOR THE DATA SET  : 11.5700
 REMARK 200
@@ -548,7 +548,7 @@ REMARK 200  HIGHEST RESOLUTION SHELL, RANGE HIGH (A) : 1.98
 REMARK 200  HIGHEST RESOLUTION SHELL, RANGE LOW  (A) : 2.05
 REMARK 200  COMPLETENESS FOR SHELL     (%) : 34.1
 REMARK 200  DATA REDUNDANCY IN SHELL       : 1.5
-REMARK 200  R MERGE FOR SHELL          (I) : 0.70400
+REMARK 200  R MERGE FOR SHELL          (I) : 0.93400
 REMARK 200  R SYM FOR SHELL            (I) : NULL
 REMARK 200  <I/SIGMA(I)> FOR SHELL         : 0.6000
 REMARK 200""")
