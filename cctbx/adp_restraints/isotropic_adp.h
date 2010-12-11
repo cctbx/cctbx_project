@@ -104,6 +104,7 @@ namespace cctbx { namespace adp_restraints {
       cctbx::xray::parameter_indices const &ids
         = parameter_map[i_seq];
       // One restraint per parameter == six rows in the restraint matrix
+      CCTBX_ASSERT(ids.u_aniso > -1);
       for (std::size_t i=0;i<6;i++) {
         std::size_t row_i = linearised_eqns.next_row();
         if (i < 3) {
