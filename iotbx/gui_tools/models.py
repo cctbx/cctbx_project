@@ -81,6 +81,47 @@ class model_handler (iotbx.gui_tools.manager) :
       return file_name
     return None
 
+  def combine_pdb_files (self, file_names) :
+    symm = None
+    pdb_str = cStringIO.StringIO()
+    hierarchies = []
+    for file_name in file_names :
+      pdb_file = self._cached_input_files[file_name]
+      file_symm = pdb_file.file_object.crystal_symmetry()
+      if (file_symm is not None) and (symm is not None) :
+        symm = file_symm
+      hierarchy_str = self.get_pdb_hierarchy(file_name).as_pdb_string()
+      hierarchies.append(hierarchy_str)
+    if (symm is not None) :
+      import iotbx.pdb
+      cryst1 = iotbx.pdb.format_cryst1_record(symm)
+      scale = iotbx.pdb.format_scale_records(symm.unit_cell())
+      pdb_str.write(cryst1 + "\n")
+      pdb_str.write(scale + "\n")
+    pdb_str.write("\n".join(hierarchies))
+    return pdb_str
+
+  def get_combined_pdb_input (self, file_param_name=None) :
+    if (file_param_name is not None) :
+      file_names = self.get_param_files(file_param_name)
+      if (len(file_names) == 1) :
+        hierarchy = self.get_pdb_hierarchy(file_names[0])
+        xray_structure = self.get_xray_structure(file_names[0])
+        return (hierarchy, xray_structure)
+    else :
+      file_names = self._cached_input_files.keys()
+    if (len(file_names) == 0) :
+      raise RuntimeError("No PDB files loaded.")
+    pdb_str = self.combine_pdb_files(file_names)
+    import iotbx.pdb
+    from scitbx.array_family import flex
+    raw_records = flex.std_string()
+    raw_records.extend(flex.split_lines(pdb_str))
+    pdb_in = iotbx.pdb.input(source_info=None, lines=raw_records)
+    hierarchy = pdb_in.construct_hierarchy()
+    xray_structure = pdb_in.xray_structure_simple()
+    return (hierarchy, xray_structure)
+
   #--- CIF files
   def save_cif_file (self, *args, **kwds) :
     self.cif_handler.save_file(*args, **kwds)
