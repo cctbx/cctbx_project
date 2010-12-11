@@ -70,8 +70,11 @@ class pair_database (object) :
           else :
             db[key] = {}
           db[key][paired_bases] = [atom_pairs,distances]
-    #print self._pseudo_bond_pairs
-    #STOP()
+
+  def invert_bases (self, base_pair) :
+    bases = base_pair.split('-')
+    assert len(bases) == 2
+    return bases[1] + '-' + bases[0]
 
   def get_atoms (self, base_pair, pair_type, use_hydrogens=False) :
     if use_hydrogens :
@@ -81,8 +84,8 @@ class pair_database (object) :
     pair_rules = db[pair_type]
     if base_pair in pair_rules :
       return pair_rules[base_pair][0]
-    elif base_pair[::-1] in pair_rules :
-      return invert_pairs(pair_rules[base_pair[0][::-1]])
+    elif self.invert_bases(base_pair) in pair_rules :
+      return invert_pairs(pair_rules[self.invert_bases(base_pair)][0])
     else :
       raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
         (base_pair, pair_type, str(use_hydrogens)))
@@ -95,8 +98,8 @@ class pair_database (object) :
     pair_rules = db[pair_type]
     if base_pair in pair_rules :
       return pair_rules[base_pair][1]
-    elif base_pair[::-1] in pair_rules :
-      return invert_pairs(pair_rules[base_pair[1][::-1]])
+    elif self.invert_bases(base_pair) in pair_rules :
+      return invert_pairs(pair_rules[self.invert_bases(base_pair)][1])
     else :
       raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
         (base_pair, pair_type, str(use_hydrogens)))
@@ -122,10 +125,10 @@ class pair_database (object) :
           else:
             print return_pair_type, pair_type
             raise RuntimeError("Redundant entries found for base pair %s." % base_pair)
-      elif base_pair[::-1] in db[pair_type]:
-        db[pair_type][base_pair[0][::-1]].sort(key=sort_tuple)
+      elif self.invert_bases(base_pair) in db[pair_type]:
+        db[pair_type][self.invert_bases(base_pair)][0].sort(key=sort_tuple)
         inverted_atom_pairs.sort(key=sort_tuple)
-        if db[pair_type][base_pair[0][::-1]] == \
+        if db[pair_type][self.invert_bases(base_pair)][0] == \
            inverted_atom_pairs:
           if return_pair_type is None:
             return_pair_type = pair_type
@@ -154,7 +157,7 @@ def get_h_bond_atoms(residues,
                      saenger_class,
                      leontis_westhof_class,
                      use_hydrogens=False):
-  base_pair = residues[0].strip()[0] + residues[1].strip()[0]
+  base_pair = residues[0].strip() + '-' + residues[1].strip()
   if (saenger_class is not None) :
     pair_type = saenger_class.upper()
   elif (leontis_westhof_class is not None) :
@@ -167,7 +170,7 @@ def get_distances(residues,
                   saenger_class,
                   leontis_westhof_class,
                   use_hydrogens=False):
-  base_pair = residues[0].strip()[0] + residues[1].strip()[0]
+  base_pair = residues[0].strip() + '-' + residues[1].strip()
   if (saenger_class is not None) :
     pair_type = saenger_class.upper()
   elif (leontis_westhof_class is not None) :
@@ -259,7 +262,7 @@ def get_base_pairs(pdb_hierarchy, probe_flags=None):
   base_pair_list = []
   for pair in reduced_pair_hash :
     bases = (pair[:10], pair[10:])
-    base_pair = pair[7:10].strip()+pair[17:20].strip()
+    base_pair = pair[7:10].strip() + '-' + pair[17:20].strip()
     pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
     if (pair_type is not None) :
       base_pair_list.append([bases, pair_type])
@@ -290,11 +293,9 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
       type_key = "saenger_class"
     else:
       type_key = "leontis_westhof_class"
-    distances = db.get_distances(bases[0][-3:].strip()+bases[1][-3:].strip(),
+    distances = db.get_distances(bases[0][-3:].strip()+'-'+bases[1][-3:].strip(),
                                  pair_type,
                                  use_hydrogens=False)
-    #print distances
-    #STOP()
     phil_strings.append("""base_pair {
   base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
   base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"
@@ -309,12 +310,16 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
 def exercise () :
   import libtbx.load_env
   if libtbx.env.has_module("probe") and libtbx.env.has_module("reduce"):
-    assert (db.get_atoms("AU", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
-    assert (db.get_atoms("GC", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
+    assert (db.get_atoms("A-U", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
+    assert (db.get_atoms("DA-DT", "WWT", False) == [('N6', 'O4'), ('N1', 'N3')])
+    assert (db.get_atoms("DT-DA", "WWT", False) == [('O4', 'N6'), ('N3', 'N1')])
+    assert (db.get_atoms("G-C", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
       ('N2', 'O2')])
-    assert db.get_pair_type("AU", [('H61', 'O4'), ('N1', 'H3')], True) == "XX"
-    assert db.get_pair_type("AU", [('N1', 'H3'), ('H61', 'O4')], True) == "XX"
-    assert db.get_pair_type("CG", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
+    assert (db.get_atoms("C-G", "WWT", False) == [('N4', 'O6'), ('N3', 'N1'),
+      ('O2', 'N2')])
+    assert db.get_pair_type("A-U", [('H61', 'O4'), ('N1', 'H3')], True) == "XX"
+    assert db.get_pair_type("A-U", [('N1', 'H3'), ('H61', 'O4')], True) == "XX"
+    assert db.get_pair_type("C-G", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
   else:
     print "Skipping: probe and/or reduce not available"
   print "OK"
