@@ -675,7 +675,7 @@ class _run_find_tls (object) :
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
 
-  def __call__ (self) :
+  def __call__ (self, *args, **kwds) :
     return find_tls(
       params=self.params,
       pdb_hierarchy=self.pdb_hierarchy,

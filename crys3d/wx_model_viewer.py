@@ -269,7 +269,8 @@ class model_viewer_mixin (wxGLWindow) :
   @debug
   def InitGL(self):
     gltbx.util.handle_error()
-    glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
+    bgcolor = self.settings.opengl.background_color + [0.0]
+    glClearColor(*bgcolor)
     self.minimum_covering_sphere_display_list = None
     glDepthFunc(GL_LESS)
     glEnable(GL_ALPHA_TEST)
@@ -418,6 +419,9 @@ class model_viewer_mixin (wxGLWindow) :
     else :
       self.animation_time = 0
     self.toggle_hydrogens(params.opengl.show_hydrogens)
+    self.r_back = params.opengl.background_color[0]
+    self.g_back = params.opengl.background_color[1]
+    self.b_back = params.opengl.background_color[2]
     if redraw :
       self.update_scene = True
 
