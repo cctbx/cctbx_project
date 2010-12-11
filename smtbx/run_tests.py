@@ -20,8 +20,8 @@ def run():
      '--normal_eqns_solving_method=levenberg-marquardt'],
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
-##    ["$D/refinement/restraints/tests/tst_restraints.py",
-##     '--verbose', '--scatterers=5', '--resolution=0.2'],
+    ["$D/refinement/restraints/tests/tst_restraints.py",
+     '--verbose', '--scatterers=5', '--resolution=0.2'],
     "$D/tests/tst_utils.py",
     )
   build_dir = libtbx.env.under_build("smtbx")

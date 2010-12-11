@@ -27,8 +27,12 @@ rows_per_restraint = {
 class restraints_test_case:
 
   def __init__(self):
-    xs = smtbx.development.sucrose()
-    self.xray_structure = xs
+    self.xray_structure = smtbx.development.sucrose()
+    for sc in self.xray_structure.scatterers():
+      sc.flags.set_grad_site(True)
+      if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+      if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
+
     self.param_map = parameter_map(self.xray_structure.scatterers())
     assert self.proxies.size() > 0
 
@@ -44,7 +48,7 @@ class restraints_test_case:
       grads = self.fd_grads(proxy)
       for i, grad in enumerate(grads):
         fd_design.extend(grad)
-    assert approx_equal(design_matrix, fd_design, 1e-5)
+    assert approx_equal(design_matrix, fd_design, 1e-4)
     assert approx_equal(
       linearised_eqns.n_restraints(),
       rows_per_restraint.get(self.proxies[0].__class__, 1) * self.proxies.size())
@@ -52,7 +56,6 @@ class restraints_test_case:
 class geometry_restraints_test_case(restraints_test_case):
 
   def exercise_ls_restraints(self):
-    xs = self.xray_structure.deep_copy_scatterers()
     match = restraints_test_case.exercise_ls_restraints(self)
 
   def fd_grads(self, proxy):
