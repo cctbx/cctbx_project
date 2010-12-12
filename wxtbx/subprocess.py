@@ -143,7 +143,7 @@ class ThreadProgressDialog (pyprogress.PyProgress) :
     self.SetFirstGradientColour(wx.Colour(235,235,235))
     self.SetSecondGradientColour(wx.Colour(120, 200, 255))
 
-def run_function_as_thread_in_dialog (thread_function, title, message) :
+def run_function_as_thread_in_dialog (parent, thread_function, title, message) :
   dlg = ThreadProgressDialog(None, title, message)
   t = thread_utils.simple_task_thread(thread_function, dlg)
   t.start()
@@ -171,6 +171,7 @@ class ProcessDialog (wx.Dialog) :
       style=wx.RAISED_BORDER|wx.CAPTION)
     self.callback = callback
     self.process = None
+    self._error = None
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     szr2 = wx.BoxSizer(wx.VERTICAL)
@@ -199,18 +200,28 @@ class ProcessDialog (wx.Dialog) :
     self.EndModal(wx.ID_CANCEL)
 
   def OnError (self, event) :
-    try :
-      if isinstance(event.data, Exception) :
-        raise event.data
-      elif isinstance(event.data, tuple) :
-        exception, traceback = event.data
-        print exception
-        print traceback
-        raise RuntimeError("Original error: %s" % str(exception))
-      else :
-        raise Sorry("error in child process: %s" % str(event.data))
-    finally :
-      self.EndModal(wx.ID_CANCEL)
+    self._error = event.data
+    self.EndModal(wx.ID_CANCEL)
+
+  def exception_raised (self) :
+    return (self._error is not None)
+
+  def handle_error (self) :
+    if isinstance(self._error, Exception) :
+      raise event.data
+    elif isinstance(self._error, tuple) :
+      exception, traceback = self._error
+      #print exception
+      #print traceback
+      raise RuntimeError("""\
+Error in subprocess!
+ Original error: %s
+ Original traceback:
+%s""" % (str(exception), traceback))
+    else :
+      raise Sorry("error in child process: %s" % str(self._error))
+   # finally :
+   #   self.EndModal(wx.ID_CANCEL)
 
   def OnComplete (self, event) :
     try :
@@ -247,27 +258,58 @@ def run_function_as_process_in_dialog (
   result = None
   if (dlg.run(p) == wx.ID_OK) :
     result = dlg.get_result()
+  elif dlg.exception_raised() :
+    dlg.handle_error()
   wx.CallAfter(dlg.Destroy)
   return result
 
 if (__name__ == "__main__") :
-  from libtbx.test_utils import approx_equal
+  from libtbx.test_utils import approx_equal, Exception_expected
   import math
-  def test_function (*args, **kwds) :
+  import sys
+  def test_function_1 (*args, **kwds) :
     n = 0
     for i in range(25000) :
       x = math.sqrt(i)
       print x
       n += x
     return n
+  def test_function_2 (*args, **kwds) :
+    n = 0
+    for i in range(100000) :
+      x = math.sqrt(i)
+      n += x
+    return n
+  def test_function_3 (*args, **kwds) :
+    raise RuntimeError("This is a test!")
+  def excepthook (*args, **kwds) :
+    pass
+  sys._excepthook = excepthook
   app = wx.App(0)
   result = run_function_as_process_in_dialog(
     parent=None,
-    thread_function=test_function,
+    thread_function=test_function_1,
     title="Test subprocess",
     message="Running test function as separate process...",
     callback=None)
   if (result is not None) :
-    print result
     assert approx_equal(result, 2635152.11891, eps=0.0001)
+  result2 = run_function_as_thread_in_dialog(
+    parent=None,
+    thread_function=test_function_2,
+    title="Test subprocess",
+    message="Running test function in Python thread...")
+  assert approx_equal(result2, 21081692.7462, eps=0.0001)
+  try :
+    result = run_function_as_process_in_dialog(
+      parent=None,
+      thread_function=test_function_3,
+      title="Test subprocess",
+      message="Running test function as separate process...",
+      callback=None)
+  except RuntimeError :
+    pass
+  else :
+    raise Exception_expected
   wx.Yield()
+  print "OK"
