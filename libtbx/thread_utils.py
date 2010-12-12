@@ -104,6 +104,29 @@ class file_monitor_thread (threading.Thread) :
   def exit (self) :
     self._exit = True
 
+class simple_task_thread (threading.Thread) :
+  def __init__ (self, thread_function, parent_window=None) :
+    threading.Thread.__init__(self)
+    self.f = thread_function
+    self.return_value = None
+    self._exception = None
+
+  def is_complete (self) :
+    return (self.return_value is not None)
+
+  def exception_raised (self) :
+    return (self._exception is not None)
+
+  def run (self) :
+    try :
+      self.return_value = self.f()
+    except Exception, e :
+      sys.stderr.write(str(e))
+      self._exception = e
+
+  def get_error (self) :
+    return str(self._exception)
+
 class child_process_message (object) :
   def __init__ (self, message_type, data) :
     adopt_init_args(self, locals())
