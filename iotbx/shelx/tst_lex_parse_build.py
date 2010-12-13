@@ -377,6 +377,7 @@ def exercise_restraint_parsing():
     print "Skipping exercise_restraint_parsing():" \
       " smtbx module is not available."
     return
+  import smtbx.refinement.restraints
   def parse_restraints(ins_name):
     builder = iotbx.builders.restrained_crystal_structure_builder()
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
@@ -386,7 +387,10 @@ def exercise_restraint_parsing():
     l_restraints = shelx.restraint_parser(
       l_xs.filtered_commands(), builder)
     l_restraints.parse()
-    return l_restraints.builder.proxies()
+    builder = l_restraints.builder
+    assert isinstance(builder.restraints_manager,
+                      smtbx.refinement.restraints.manager)
+    return builder.proxies()
   # exercise DFIX, DANG
   proxies = parse_restraints(ins_dfix_across_symm)
   shared_bond_proxy = proxies['bond']
