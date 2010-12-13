@@ -79,6 +79,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
       if self.sym_excl_indices is None: self.sym_excl_indices = flex.size_t()
       self.sym_excl_indices.append(sym_excl_index)
 
+
 class constrained_crystal_structure_builder(crystal_structure_builder):
 
   def __init__(self, constraint_factory=iotbx.constraints.factory,
@@ -116,8 +117,6 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     self.current.finalise(self.first, last)
     self.constraints.append(self.current)
 
-  def finish(self):
-    pass
 
 class restrained_crystal_structure_builder(crystal_structure_builder):
 
@@ -230,8 +229,6 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       del kwds['rt_mx_ji']
     self.add_proxy(restraint_type, **kwds)
 
-  def finish(self):
-    pass
 
   def proxies(self):
     return dict([
