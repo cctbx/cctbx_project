@@ -256,6 +256,9 @@ namespace gltbx { namespace viewer_utils {
     scitbx::vec3<double> midpoint = (pi + pj) / 2.0;
     scitbx::vec3<double> dxyz = midpoint - pi;
     double length = dxyz.length();
+    if (length == 0) {
+      return midpoint;
+    }
     scitbx::vec3<double> norm_vec = dxyz.normalize();
     scitbx::vec3<double> scaled_vec(norm_vec * length * scale_by);
     return pi + scaled_vec;
