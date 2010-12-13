@@ -1088,6 +1088,21 @@ def exercise_auto_alias_h_h1():
   assert log.getvalue().find("Modifications used: {'NH3': 1}") >= 0
   assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
 
+def exercise_d_aa_resnames():
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/dpn.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print "Skipping exercise_d_aa_resnames():", \
+      "input file not available: dpn.pdb"
+    return
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
+    args=[file_path], log=log)
+  assert log.getvalue().find("'PEPT-D': 1") >= 0
+  assert log.getvalue().find("'NH1NOTPRO': 1") >= 0
+  assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -1101,6 +1116,7 @@ def run(args):
   exercise_dna_cns_cy5_th6()
   exercise_sym_excl_indices(mon_lib_srv, ener_lib)
   exercise_auto_alias_h_h1()
+  exercise_d_aa_resnames()
   exercise_rna_v3(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
