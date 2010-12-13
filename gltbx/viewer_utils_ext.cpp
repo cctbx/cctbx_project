@@ -248,6 +248,19 @@ namespace gltbx { namespace viewer_utils {
       }
   };
 
+  scitbx::vec3<double> capped_midpoint (
+    scitbx::vec3<double> const& pi,
+    scitbx::vec3<double> const& pj,
+    double scale_by=1.05) // TODO: scale with view zoom instead
+  {
+    scitbx::vec3<double> midpoint = (pi + pj) / 2.0;
+    scitbx::vec3<double> dxyz = midpoint - pi;
+    double length = dxyz.length();
+    scitbx::vec3<double> norm_vec = dxyz.normalize();
+    scitbx::vec3<double> scaled_vec(norm_vec * length * scale_by);
+    return pi + scaled_vec;
+  }
+
   void
   draw_bonds (
     af::const_ref< scitbx::vec3<double> > const& points,
@@ -268,11 +281,14 @@ namespace gltbx { namespace viewer_utils {
         scitbx::vec3<double> const& pj = points[*j_seq];
         scitbx::vec3<double> const& c = atom_colors[i_seq];
         glColor3f(c[0], c[1], c[2]);
-        scitbx::vec3<double> midpoint = (pi + pj) / 2.0;
+        scitbx::vec3<double> midpoint = capped_midpoint(pi, pj);
         glBegin(GL_LINES);
         glVertex3f(pi[0], pi[1], pi[2]);
         glVertex3f(midpoint[0], midpoint[1], midpoint[2]);
         glEnd();
+        //glBegin(GL_POINTS);
+        //glVertex3f(midpoint[0], midpoint[1], midpoint[2]);
+        //glEnd();
       }
     }
     handle_error();
