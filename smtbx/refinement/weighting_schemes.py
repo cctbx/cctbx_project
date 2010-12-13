@@ -2,28 +2,14 @@ import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 
 from cctbx.array_family import flex
+import iotbx.weighting_schemes
 
 import math
 
 
-class _mainstream_shelx_weighting(boost.python.injector,
-                                  ext.mainstream_shelx_weighting):
-
-  def __str__(self):
-    """ A string representation of the weighting scheme in a format that is
-        appropriate for the CIF item _refine_ls_weighting_details.
-    """
-    if round(self.a, 4) in (0.1, 0.2):
-      a = "%.1f" %self.a
-    else:
-      a = "%.4f" %self.a
-    if round(self.b, 4) == 0: b_part=""
-    else: b_part = "+%.4fP" %self.b
-    return ("w=1/[\s^2^(Fo^2^)+(%sP)^2^%s]"
-            " where P=(Fo^2^+2Fc^2^)/3" %(a, b_part))
-
-  def type(self):
-    return "calc"
+class mainstream_shelx_weighting(
+  ext.mainstream_shelx_weighting,
+  iotbx.weighting_schemes.mainstream_shelx_weighting_mixin):
 
   def optimise_parameters(self, fo_sq, f_calc,
                           scale_factor, n_independent_params):
@@ -140,25 +126,16 @@ class _mainstream_shelx_weighting(boost.python.injector,
     weighting.b = start_b
     return weighting
 
-class _unit_weighting(boost.python.injector,
-                      ext.unit_weighting):
-
-  def __str__(self):
-    return "w=1"
-
-  def type(self):
-    return "unit"
+class unit_weighting(ext.unit_weighting,
+                     iotbx.weighting_schemes.unit_weighting_mixin):
 
   def optimise_parameters(self, fo_sq, fc_sq,
                           scale_factor, n_independent_params):
     # no parameters to optimise!
     return self
 
-class _sigma_weighting(boost.python.injector, ext.sigma_weighting):
-
-  def __str__(self): return "w=1/sigma^2"
-
-  def type(self): return "sigma"
+class _sigma_weighting(ext.sigma_weighting,
+                       iotbx.weighting_schemes.sigma_weighting_mixin):
 
   def optimise_parameters(self, fo_sq, fc_sq,
                           scale_factor, n_independent_params):

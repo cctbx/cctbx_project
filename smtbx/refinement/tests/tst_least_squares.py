@@ -467,18 +467,6 @@ class special_positions_test(object):
       assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
       assert approx_equal(cov[i, i+3]/cov[i, i], 0.5, eps=1e-12)
 
-
-def exercise_weighting_schemes():
-  unit_weighting = least_squares.unit_weighting()
-  assert unit_weighting.type() == "unit"
-  assert str(unit_weighting) == "w=1"
-  shelx_weighting = least_squares.mainstream_shelx_weighting(0.1234, 0.5678)
-  assert shelx_weighting.type() == "calc"
-  assert not show_diff(
-    str(shelx_weighting),
-    "w=1/[\s^2^(Fo^2^)+(0.1234P)^2^+0.5678P] where P=(Fo^2^+2Fc^2^)/3")
-
-
 def run():
   libtbx.utils.show_times_at_exit()
   import sys
@@ -498,7 +486,6 @@ def run():
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
   exercise_normal_equations()
   special_positions_test(n_runs).run()
-  exercise_weighting_schemes()
 
 if __name__ == '__main__':
   run()
