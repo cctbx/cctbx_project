@@ -1,5 +1,9 @@
 """ Lexing of ins/res files """
 
+from __future__ import division
+
+import itertools
+
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray
@@ -31,6 +35,7 @@ class instruction_parser(parser):
     self.instructions = {}
 
   def filtered_commands(self):
+    temperature = 20
     for command, line in self.command_stream:
       cmd, args = command[0], command[-1]
       n_args = len(args)
@@ -52,12 +57,28 @@ class instruction_parser(parser):
       elif cmd == 'MERG':
         if args:
           self.instructions['merg'] = args[0]
+      elif cmd == 'TEMP':
+        if len(args) > 1:
+          raise shelx_error("TEMP takes at most 1 argument")
+        if args: temperature = args[0]
+        self.instructions['temp'] = temperature
+        if self.builder is not None:
+          self.builder.temperature_in_celsius = temperature
       elif cmd == 'WGHT':
-        if args:
-          names = 'abcdef'
-          assert n_args <= 6
-          self.instructions['wght'] = dict(
-            [(names[i], args[i]) for i in range(n_args)])
+        if n_args > 6:
+          raise shelx_error("Too many argument for %s" % cmd, line)
+        default_weighting_scheme = { 'a': 0.1,
+                                     'b': 0,
+                                     'c': 0,
+                                     'd': 0,
+                                     'e': 0,
+                                     'f': 1/3 }
+        weighting_scheme = dict([
+          (key, (arg is not None and arg) or default_weighting_scheme[key])
+          for key, arg in itertools.izip_longest('abcdef', args) ])
+        self.instructions['wght'] = weighting_scheme
+        if self.builder is not None:
+          self.builder.make_shelx_weighting_scheme(**weighting_scheme)
       elif cmd == 'HKLF':
         assert 'hklf' not in self.instructions # only ONE HKLF instruction allowed
         hklf = {}

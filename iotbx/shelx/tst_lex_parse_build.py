@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -115,21 +116,33 @@ def exercise_crystal_symmetry_parsing():
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
 def exercise_instruction_parsing():
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
-  l = shelx.instruction_parser(stream)
-  l.parse()
-  ins = l.instructions
-  assert ins['hklf']['s'] == 1
-  assert ins['hklf']['matrix'].as_xyz() == 'x,y,z'
-  assert ins['hklf']['n'] == 4
-  assert ins['omit_hkl'] == [[2, 3, 4], [-1, -3, 2]]
-  assert ins['omit']['s'] == -2
-  assert ins['omit']['two_theta'] == 56
-  assert ins['wght'] == {'a':0.0687,'b':0.4463}
-  assert ins['merg'] == 2
-  assert ins['twin']['matrix'].as_xyz() == '-x,y,-z'
-  assert ins['twin']['n'] == 2
-  assert ins['basf'] == (0.352,)
+  for builder in (None,
+                  iotbx.builders.weighting_scheme_builder()):
+    stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+    l = shelx.instruction_parser(stream, builder)
+    l.parse()
+    ins = l.instructions
+    assert ins['hklf']['s'] == 1
+    assert ins['hklf']['matrix'].as_xyz() == 'x,y,z'
+    assert ins['hklf']['n'] == 4
+    assert ins['omit_hkl'] == [[2, 3, 4], [-1, -3, 2]]
+    assert ins['omit']['s'] == -2
+    assert ins['omit']['two_theta'] == 56
+    assert ins['wght'] == {'a':0.0687,'b':0.4463,
+                           'c':0, 'd':0, 'e':0, 'f':1/3}
+    assert ins['merg'] == 2
+    assert ins['twin']['matrix'].as_xyz() == '-x,y,-z'
+    assert ins['twin']['n'] == 2
+    assert ins['basf'] == (0.352,)
+    assert ins['temp'] == -60
+    if builder is not None:
+      assert builder.temperature_in_celsius == ins['temp']
+      ws = builder.weighting_scheme
+      assert isinstance(ws, iotbx.weighting_schemes.mainstream_shelx_weighting)
+      assert ws.a == ins['wght']['a']
+      assert ws.b == ins['wght']['b']
+      assert ws.c == ws.d == ws.e == 0
+      assert ws.f == 1/3
 
 def exercise_xray_structure_parsing():
   exercise_special_positions()
@@ -737,7 +750,7 @@ LATT 1
 SYMM -X,0.500+Y,0.500-Z
 SFAC C H O
 UNIT 36 28 16
-TEMP 20.000
+TEMP -60.000
 L.S. 20
 WGHT    0.068700    0.446300
 MERG 2
