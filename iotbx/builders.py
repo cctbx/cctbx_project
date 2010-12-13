@@ -229,6 +229,12 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       del kwds['rt_mx_ji']
     self.add_proxy(restraint_type, **kwds)
 
+  class restraints_manager(libtbx.property):
+    def fget(self):
+      from smtbx.refinement.restraints import manager
+      kwds = dict([ ("%s_proxies" % name, value)
+                    for name, value in self.proxies().iteritems() ])
+      return manager(**kwds)
 
   def proxies(self):
     return dict([
