@@ -8,7 +8,7 @@ from cctbx.array_family import flex
 from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
 import smtbx.utils
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import approx_equal
 import libtbx.utils
 from stdlib import math
 import sys
