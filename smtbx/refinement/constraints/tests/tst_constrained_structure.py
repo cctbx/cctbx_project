@@ -103,7 +103,8 @@ class test_case(object):
       from crys3d.qttbx.xray_structure_viewer import display
       display(xray_structure=xs)
 
-    assert xs.delta_sites_cart_measure(xs0) < self.site_refinement_tolerance,\
+    diff = xray.meaningful_site_cart_differences(xs0, xs)
+    assert diff.max_absolute() < self.site_refinement_tolerance,\
            self.__class__.__name__
 
     if self.shall_refine_thermal_displacements:

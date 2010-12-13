@@ -1194,47 +1194,6 @@ class structure(crystal.special_position_settings):
   def rms_difference(self, other):
     return self.sites_cart().rms_difference(other.sites_cart())
 
-  def delta_sites_cart_measure(self, other):
-    """ The max absolute deviation from the mean of all coordinates of
-    self.sites_cart() - other.sites_cart(),
-    allowing for continuous origin shifts if self and other are in the
-    same space group. This is especially useful to compared a refined
-    structure to a reference structure as the former may have drifted along
-    a continuous shift direction during refinement, therefore spoiling
-    a naive comparison of corresponding sites. """
-    delta = canonical_delta = self.sites_cart() - other.sites_cart()
-    if self.space_group() == other.space_group():
-      ssi = sgtbx.structure_seminvariants(self.space_group())\
-                 .select(discrete=False)
-      if ssi.size():
-        shifts = [ matrix.col(self.unit_cell().orthogonalize(vm.v))
-                   for vm in ssi.vectors_and_moduli() ]
-        if len(shifts) == 1:
-          e0 = shifts[0].normalize()
-          e1 = e0.ortho()
-          e2 = e0.cross(e1)
-        elif len(shifts) == 2:
-          e0 = shifts[0].normalize()
-          v = shifts[1]
-          e1 = (e0 - 1/e0.dot(v)*v).normalize()
-          e2 = e0.cross(e1)
-        elif len(shifts) == 3:
-          e0, e1, e2 = [ (1,0,0), (0,1,0), (0,0,1) ]
-        deltas = [ canonical_delta.dot(e) for e in (e0, e1, e2) ]
-        means = [ flex.mean(d) for d in deltas ]
-        if len(shifts) == 1:
-          means_correction = (means[0], 0, 0)
-        elif len(shifts) == 2:
-          means_correction = (means[0], means[1], 0)
-        elif len(shifts) == 3:
-          means_correction = tuple(means)
-        delta = flex.vec3_double(deltas[0], deltas[1], deltas[2])
-        delta -= means_correction
-    return flex.max_absolute(delta.as_double())
-
-
-
-
   def closest_distances(self, sites_frac, distance_cutoff, use_selection=None):
     class map_next_to_model_and_find_closest_distances(object):
       def __init__(self, xray_structure, sites_frac, use_selection):
@@ -1395,3 +1354,47 @@ class conservative_pair_proxies(object):
       angle_pair_asu_table = bond_pair_asu_table.angle_pair_asu_table()
       self.angle = geometry_restraints.bond_sorted_asu_proxies(
         pair_asu_table=angle_pair_asu_table)
+
+
+class meaningful_site_cart_differences(object):
+  """ Differences between the Cartesian coordinates of corresponding sites
+  in two structures, cancelling continuous origin shifts if any.
+
+  This is especially useful to compare a refined
+  structure to a reference structure as the former may have drifted along
+  a continuous shift direction during refinement, therefore spoiling
+  a naive comparison of corresponding sites.
+  """
+
+  def __init__(self, xs1, xs2):
+    self.delta = canonical_delta = xs1.sites_cart() - xs2.sites_cart()
+    if xs1.space_group() == xs2.space_group():
+      ssi = sgtbx.structure_seminvariants(xs1.space_group())\
+                 .select(discrete=False)
+      if ssi.size():
+        shifts = [ matrix.col(xs1.unit_cell().orthogonalize(vm.v))
+                   for vm in ssi.vectors_and_moduli() ]
+        if len(shifts) == 1:
+          e0 = shifts[0].normalize()
+          e1 = e0.ortho()
+          e2 = e0.cross(e1)
+        elif len(shifts) == 2:
+          e0 = shifts[0].normalize()
+          v = shifts[1]
+          e1 = (e0 - 1/e0.dot(v)*v).normalize()
+          e2 = e0.cross(e1)
+        elif len(shifts) == 3:
+          e0, e1, e2 = [ (1,0,0), (0,1,0), (0,0,1) ]
+        deltas = [ canonical_delta.dot(e) for e in (e0, e1, e2) ]
+        means = [ flex.mean(d) for d in deltas ]
+        if len(shifts) == 1:
+          means_correction = (means[0], 0, 0)
+        elif len(shifts) == 2:
+          means_correction = (means[0], means[1], 0)
+        elif len(shifts) == 3:
+          means_correction = tuple(means)
+        self.delta = flex.vec3_double(deltas[0], deltas[1], deltas[2])
+        self.delta -= means_correction
+
+  def max_absolute(self):
+    return flex.max_absolute(self.delta.as_double())
