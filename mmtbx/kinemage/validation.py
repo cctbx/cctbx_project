@@ -648,10 +648,15 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                common_residue_names_get_class(atom_group.resname) == "common_rna_dna":
             if atom_1 in mc_atoms and atom_2 in mc_atoms:
               try:
-                 mc_veclist += kin_vec(key_hash[atom_1],
-                                       xyz_hash[atom_1],
-                                       key_hash[atom_2],
-                                       xyz_hash[atom_2])
+                 if atom_1 == "C" and atom_2 == "N":
+                   pass
+                 elif atom_1 == "O3'" and atom_2 == "P":
+                   pass
+                 else:
+                   mc_veclist += kin_vec(key_hash[atom_1],
+                                         xyz_hash[atom_1],
+                                         key_hash[atom_2],
+                                         xyz_hash[atom_2])
               except:
                 pass
             elif atom_1.startswith('H') or atom_2.startswith('H'):
