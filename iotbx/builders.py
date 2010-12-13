@@ -240,6 +240,7 @@ class weighting_scheme_builder(object):
 
   def __init__(self, weighting_scheme_factory=iotbx.weighting_schemes.factory,
                *args, **kwds):
+    super(weighting_scheme_builder, self).__init__(*args, **kwds)
     self.weighting_scheme_factory = weighting_scheme_factory
 
   def make_shelx_weighting_scheme(self, a, b, c=0, d=0, e=0, f=1/3):
