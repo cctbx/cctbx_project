@@ -367,7 +367,6 @@ class afix_parser(parser):
         yield command, line
       else:
         yield command, line
-    self.builder.finish()
 
 
 class restraint_parser(atom_parser):
