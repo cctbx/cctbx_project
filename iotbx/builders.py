@@ -15,6 +15,7 @@ else:
 
 import iotbx.constraints.commonplace
 import iotbx.constraints.factory
+import iotbx.weighting_schemes.factory
 
 class crystal_symmetry_builder(object):
 
@@ -85,6 +86,7 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     super(constrained_crystal_structure_builder, self).__init__(*args, **kwds)
     self.constraint_factory = constraint_factory
     self.constraints = []
+    self.temperature_in_celsius = None
 
   def add_scatterer(self, scatterer, behaviour_of_variable, *args, **kwds):
     _ = iotbx.constraints.commonplace
@@ -236,6 +238,27 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
       if len(proxies) != 0])
 
+
+class weighting_scheme_builder(object):
+
+  def __init__(self, weighting_scheme_factory=iotbx.weighting_schemes.factory,
+               *args, **kwds):
+    self.weighting_scheme_factory = weighting_scheme_factory
+
+  def make_shelx_weighting_scheme(self, a, b, c=0, d=0, e=0, f=1/3):
+    assert f == 1/3
+    if c == 0 and d == 0 and e == 0:
+      self.weighting_scheme = \
+          self.weighting_scheme_factory.mainstream_shelx_weighting(a, b)
+    else:
+      self.weighting_scheme = \
+          self.weighting_scheme_factory.shelx_weighting(a, b, c, d, e, f)
+
 class constrained_restrained_crystal_structure_builder(
   constrained_crystal_structure_builder, restrained_crystal_structure_builder):
+  pass
+
+
+class weighted_constrained_restrained_crystal_structure_builder(
+  weighting_scheme_builder, constrained_restrained_crystal_structure_builder):
   pass
