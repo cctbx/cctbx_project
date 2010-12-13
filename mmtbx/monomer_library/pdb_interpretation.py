@@ -644,6 +644,12 @@ class monomer_mapping(slots_getstate_setstate):
       self._set_incomplete_info()
       self.is_terminus = None
       self.monomer.set_classification()
+      if (self.atom_name_interpretation is not None):
+        d_aa_rn = getattr(
+          self.atom_name_interpretation, "d_aa_residue_name", None)
+        if (d_aa_rn is not None):
+          self.apply_mod(
+            mod_mod_id=self.mon_lib_srv.mod_mod_id_dict["PEPT-D"])
       if (self.incomplete_info is None):
         self.resolve_unexpected()
     if (self.pdb_residue_id_str in apply_cif_links_mm_pdbres_dict):
@@ -861,6 +867,12 @@ class monomer_mapping(slots_getstate_setstate):
         mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COOH"])
       elif ("OXT" in u):
         mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COO"])
+      def raise_missing_notpro(id, h):
+        raise RuntimeError("""\
+A modified version of the monomer library is required to correctly
+handle N-terminal hydrogens. The mod_%sNOTPRO modification is missing.
+This is a copy of mod_%s, but without the %s-N-CD angle.
+Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       if (ani is not None):
         nitrogen_hydrogens = []
         for name in u.keys():
@@ -877,15 +889,17 @@ class monomer_mapping(slots_getstate_setstate):
           else:
             mod_mod_id = self.mon_lib_srv.mod_mod_id_dict.get("NH2NOTPRO")
             if (mod_mod_id is None):
-              raise RuntimeError("""\
-A modified version of the monomer library is required to correctly
-handle N-terminal hydrogens. The mod_NH2NOTPRO modification is missing.
-This is a copy of mod_NH2, but without the HN2-N-CD angle.
-Please contact cctbx@cci.lbl.gov for more information.""")
+              raise_missing_notpro("NH2", "HN2")
           mod_mod_ids.append(mod_mod_id)
           nitrogen_hydrogen_translation = ["HN1", "HN2"]
         elif (len(nitrogen_hydrogens) == 1):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH1"])
+          if (self.monomer.chem_comp.id == "PRO"):
+            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH1"]
+          else:
+            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH1NOTPRO"]
+            if (mod_mod_id is None):
+              raise_missing_notpro("NH1", "HN")
+          mod_mod_ids.append(mod_mod_id)
           nitrogen_hydrogen_translation = ["HN"]
         if (nitrogen_hydrogen_translation is not None):
           j = 0

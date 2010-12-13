@@ -367,6 +367,11 @@ class server(process_cif_mixin):
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=True)
     if (rnpani.work_residue_name is None): return (None, None)
+    d_aa_rn = getattr(
+      rnpani.atom_name_interpretation, "d_aa_residue_name", None)
+    if (    d_aa_rn is not None
+        and self.comp_comp_id_dict.get(d_aa_rn) is not None):
+      return (self.get_comp_comp_id_direct(comp_id=d_aa_rn), None)
     return (
       self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
       rnpani.atom_name_interpretation)

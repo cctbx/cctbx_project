@@ -405,13 +405,23 @@ class residue_name_plus_atom_names_interpreter(object):
       self.work_residue_name = None
       self.atom_name_interpretation = None
       return
+    from iotbx.pdb.amino_acid_codes import three_letter_l_given_three_letter_d
+    l_aa_rn = three_letter_l_given_three_letter_d.get(work_residue_name)
+    if (l_aa_rn is None):
+      d_aa_rn = None
+    else:
+      d_aa_rn = work_residue_name
+      work_residue_name = l_aa_rn
     protein_interpreter = protein_atom_name_interpreters.get(
       work_residue_name)
     atom_name_interpretation = None
     if (protein_interpreter is not None):
       atom_name_interpretation = protein_interpreter.match_atom_names(
         atom_names=atom_names)
+      if (atom_name_interpretation is not None):
+        atom_name_interpretation.d_aa_residue_name = d_aa_rn
     else:
+      assert d_aa_rn is None
       if (    translate_cns_dna_rna_residue_names is not None
           and not translate_cns_dna_rna_residue_names
           and work_residue_name in cns_dna_rna_residue_names):
