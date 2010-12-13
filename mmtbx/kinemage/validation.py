@@ -655,7 +655,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
               except:
                 pass
             elif atom_1.startswith('H') or atom_2.startswith('H'):
-              if show_hydrogens:
+              if show_hydrogen:
                 if (atom_1 in mc_atoms or atom_2 in mc_atoms):
                   try:
                     mc_h_veclist += kin_vec(key_hash[atom_1],
