@@ -1103,6 +1103,56 @@ def exercise_d_aa_resnames():
   assert log.getvalue().find("'NH1NOTPRO': 1") >= 0
   assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
 
+def exercise_d_amino_acid_chain_perfect_in_box():
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print "Skipping exercise_d_aa_resnames():", \
+      "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
+    return
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
+    args=[file_path], log=log)
+  lv = log.getvalue()
+  assert lv.find("Classifications: {'peptide': 16}") >= 0
+  assert lv.find("'PEPT-D': 1") >= 0
+  assert lv.find("'TRANS': 14") >= 0
+  assert lv.find("'PCIS': 1") >= 0
+  assert lv.find("""\
+Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
+""") >= 0
+  assert not block_show_diff(lv, """\
+  Bond restraints: 122
+  Sorted by residual:
+  bond pdb=" CG  DPR A   7 "
+       pdb=" CD  DPR A   7 "
+    ideal  model  delta    sigma   weight residual
+    1.503  1.507 -0.004 3.40e-02 8.65e+02 1.39e-02
+""")
+  assert not block_show_diff(lv, """\
+  Bond angle restraints: 161
+  Sorted by residual:
+  angle pdb=" CA  DPR A   7 "
+        pdb=" C   DPR A   7 "
+        pdb=" O   DPR A   7 "
+      ideal   model   delta    sigma   weight residual
+     119.00  119.98   -0.98 3.00e+00 1.11e-01 1.07e-01
+""")
+  assert not block_show_diff(lv, """\
+  Dihedral angle restraints: 47
+    sinusoidal: 31
+      harmonic: 16
+  Sorted by residual:
+  dihedral pdb=" N   DPR A   7 "
+           pdb=" CG  DPR A   7 "
+           pdb=" CD  DPR A   7 "
+           pdb=" CB  DPR A   7 "
+      ideal   model   delta sinusoidal    sigma   weight residual
+      30.00   25.28    4.72     1      1.50e+01 4.44e-03 1.45e-01
+""")
+  assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -1117,6 +1167,7 @@ def run(args):
   exercise_sym_excl_indices(mon_lib_srv, ener_lib)
   exercise_auto_alias_h_h1()
   exercise_d_aa_resnames()
+  exercise_d_amino_acid_chain_perfect_in_box()
   exercise_rna_v3(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
