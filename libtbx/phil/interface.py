@@ -18,6 +18,7 @@ class index (object) :
     self._multiple_scopes = {}
     self._multiple_defs = {}
     self._expert_levels = {}
+    self._input_files = []
     self._hidden = [] # XXX: not implemented here (for phenix GUI)
     self._phil_has_changed = False
     self._log = str_utils.StringIO()
@@ -65,7 +66,8 @@ class index (object) :
                        multiple_scopes=self._multiple_scopes,
                        multiple_defs=self._multiple_defs,
                        collect_multiple=collect_multiple,
-                       expert_levels=self._expert_levels)
+                       expert_levels=self._expert_levels,
+                       input_files=self._input_files)
 
   def rebuild_index (self, only_scope=None) :
     self._full_path_index = {}
@@ -219,6 +221,17 @@ class index (object) :
     else :
       return str(proxy.formatted.extract())
 
+  def get_label (self, def_name) :
+    phil_text = self._full_text_index.get(def_name, None)
+    if (phil_text is not None) :
+      label = phil_text[0]
+      if (label is not None) :
+        return label
+    scope = self.get_scope_by_name(def_name)
+    if isinstance(scope, list) :
+      scope = scope[0]
+    return get_standard_phil_label(scope)
+
   def search_phil_text (self, search_text, match_all=False, labels_only=True) :
     fields = search_text.split()
     for word in fields :
@@ -230,25 +243,25 @@ class index (object) :
     n_words = len(regex_list)
     for phil_name, phil_text in self._full_text_index.iteritems() :
       (label, caption, help, is_def) = phil_text
-      if phil_name in self._hidden or not is_def :
+      if (phil_name in self._hidden) or (not is_def) :
         continue
       n_found = 0
       if labels_only :
         for regex in regex_list :
-          if regex.search(label) is None :
+          if (regex.search(label) is None) :
             if match_all : break
             else :         continue
           n_found += 1
       else :
         for regex in regex_list :
-          if (regex.search(label) is None and
-              regex.search(phil_name) is None and
-              regex.search(caption) is None and
-              regex.search(help) is None) :
+          if ((regex.search(label) is None) and
+              (regex.search(phil_name) is None) and
+              (regex.search(caption) is None) and
+              (regex.search(help) is None)) :
             if match_all : break
             else :         continue
           n_found += 1
-      if (match_all and n_found == n_words) or n_found > 0 :
+      if (match_all and (n_found == n_words)) or (n_found > 0) :
         matching_defs.append(phil_name)
     return matching_defs
 
@@ -271,6 +284,34 @@ class index (object) :
 
   def get_expert_level (self, phil_name) :
     return self._expert_levels.get(phil_name, 0)
+
+  def get_input_files (self) :
+    files = []
+    for def_name in self._input_files :
+      phil_object = self.get_scope_by_name(def_name)
+      label = self.get_label(def_name)
+      #phil_text = self._full_text_index[def_name] #.get(def_name, [None]*4)
+      #(label, caption, help, is_def) = phil_text
+      if isinstance(phil_object, list) :
+        for def_copy in phil_object :
+          assert (def_copy.is_definition)
+          file_name = def_copy.extract()
+          if (file_name is not None) :
+            files.append((file_name, label, def_name))
+      else :
+        assert phil_object.is_definition
+        file_name = phil_object.extract()
+        if (file_name is not None) :
+          files.append((file_name, label, def_name))
+    return files
+
+  def get_run_title (self) :
+    for def_name in self._full_path_index.keys() :
+      if def_name.endswith(".title") or def_name.endswith(".job_title") :
+        phil_def = self._full_path_index[def_name]
+        assert phil_def.is_definition
+        return phil_def.extract()
+    return None
 
   #---------------------------------------------------------------------
   # EDITING METHODS
@@ -458,9 +499,16 @@ def get_all_path_names (phil_object, paths=None) :
     for object in phil_object.objects :
       get_all_path_names(object, paths)
 
-def index_phil_objects (phil_object, path_index, text_index, template_index,
-    multiple_scopes=None, multiple_defs=None, collect_multiple=True,
-    in_template=False, expert_levels=None) :
+def index_phil_objects (phil_object,
+                        path_index,
+                        text_index,
+                        template_index,
+                        multiple_scopes=None,
+                        multiple_defs=None,
+                        collect_multiple=True,
+                        in_template=False,
+                        expert_levels=None,
+                        input_files=None) :
   full_path = phil_object.full_path()
   if expert_levels is not None :
     if phil_object.expert_level is not None :
@@ -476,9 +524,9 @@ def index_phil_objects (phil_object, path_index, text_index, template_index,
       in_template = True
   elif in_template :
     template_index[full_path] = phil_object
-  if phil_object.multiple == True :
+  if (phil_object.multiple == True) :
     if collect_multiple :
-      if phil_object.is_scope and multiple_scopes is not None:
+      if (phil_object.is_scope) and (multiple_scopes is not None) :
         multiple_scopes[full_path] = True
       elif multiple_defs is not None :
         multiple_defs[full_path] = True
@@ -504,7 +552,14 @@ def index_phil_objects (phil_object, path_index, text_index, template_index,
                          multiple_defs=multiple_defs,
                          collect_multiple=collect_multiple,
                          in_template=in_template,
-                         expert_levels=expert_levels)
+                         expert_levels=expert_levels,
+                         input_files=input_files)
+  elif (phil_object.type.phil_type == "path") and (input_files is not None) :
+    style = phil_object.style
+    if (style is not None) :
+      style_words = style.split()
+      if ("input_file" in style_words) :
+        input_files.append(full_path)
 
 def reindex_phil_objects (phil_object, path_index, only_scope=None) :
   if phil_object.is_template < 0 :

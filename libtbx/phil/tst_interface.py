@@ -169,7 +169,8 @@ refinement.ncs.restraint_group {
     "refinement.input.xray_data.file_name", "labels") ==
     "refinement.input.xray_data.labels")
 
-# XXX sorry about the cross-import here, but I
+# XXX sorry about the cross-import here, but I really need to test this on
+# something large and complex
 def exercise_2 (verbose=False) :
   try :
     from phenix.refinement import runtime
@@ -248,6 +249,24 @@ refinement.ncs.restraint_group {
     only_scope="refinement.ncs.restraint_group")
   params = i.get_python_object()
   assert (params.refinement.ncs.restraint_group[0].reference == "chain C")
+  i.merge_phil(phil_string="""
+refinement.input.pdb.file_name = protein.pdb
+refinement.input.pdb.file_name = ligand.pdb
+refinement.input.xray_data.file_name = data.mtz
+refinement.input.monomers.file_name = ligand.cif
+refinement.output.title = Test refinement run
+""")
+  names = i.search_phil_text("CIF")
+  assert (names == ['refinement.output.write_model_cif_file',
+                    'refinement.ncs.simple_ncs_from_pdb.max_rmsd_user',
+                    'refinement.output.write_reflection_cif_file',
+                    'refinement.input.monomers.file_name'])
+  assert (i.get_input_files() == [
+    ('protein.pdb', 'Input model', 'refinement.input.pdb.file_name'),
+    ('ligand.pdb', 'Input model', 'refinement.input.pdb.file_name'),
+    ('data.mtz', 'Reflections file', 'refinement.input.xray_data.file_name'),
+    ('ligand.cif', 'CIF File', 'refinement.input.monomers.file_name')])
+  assert (i.get_run_title() == "Test refinement run")
 
 if __name__ == "__main__" :
   exercise()
