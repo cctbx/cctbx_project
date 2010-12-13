@@ -13,7 +13,7 @@ from libtbx.utils import Sorry
 from scitbx.math import distributions
 
 
-class hooft_analysis:
+class hooft_analysis(object):
   """
   Determination of absolute structure using Bayesian statistics
   on Bijvoet differences.
@@ -176,7 +176,7 @@ class hooft_analysis:
       self.hooft_y, self.sigma_y)
 
 
-class bijvoet_differences_probability_plot:
+class bijvoet_differences_probability_plot(object):
   """
   Hooft, R.W.W., Straver, L.H., Spek, A.L. (2010). J. Appl. Cryst., 43, 665-668.
   """
