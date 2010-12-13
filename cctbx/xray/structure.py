@@ -1305,15 +1305,9 @@ class structure(crystal.special_position_settings):
       resname=resname,
       connect=connect)
 
-  def from_shelx(cls, file=None, filename=None,
-                 set_grad_flags=True):
-    from iotbx import shelx, builders
-    builder = builders.crystal_structure_builder(set_grad_flags=set_grad_flags)
-    stream = shelx.command_stream(file=file, filename=filename)
-    cs_parser = shelx.crystal_symmetry_parser(stream, builder)
-    xs_parser = shelx.atom_parser(cs_parser.filtered_commands(), builder)
-    xs_parser.parse()
-    return builder.structure
+  def from_shelx(cls, *args, **kwds):
+    import iotbx.shelx
+    return iotbx.shelx.cctbx_xray_structure_from(cls, *args, **kwds)
   from_shelx = classmethod(from_shelx)
 
   def from_cif(cls, file_object=None, file_path=None, block_heading=None):
