@@ -93,7 +93,7 @@ data_and_flags_str_part1 = """\
   file_name = None
     .type=path
     .short_caption=Reflections file
-    .style = bold file_type:hkl noauto process_hkl \
+    .style = bold input_file file_type:hkl noauto process_hkl \
       child:fobs:labels child:d_min:high_resolution \
       child:d_max:low_resolution child:rfree_file:r_free_flags.file_name
     .expert_level = 0
@@ -136,7 +136,7 @@ data_and_flags_str_part2 = """\
     .help = This is normally the same as the file containing Fobs and is \
       usually selected automatically.
     .input_size = 200
-    .style = noauto file_type:hkl process_hkl child:rfree:label
+    .style = noauto input_file file_type:hkl process_hkl child:rfree:label
     .expert_level = 0
   label = None
     .type=str
@@ -618,7 +618,7 @@ experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
     .short_caption=Experimental phase file
-    .style = file_type:hkl
+    .style = input_file file_type:hkl
   labels=None
     .type=strings
     .input_size = 160
@@ -676,7 +676,8 @@ pdb_params = iotbx.phil.parse("""\
     .short_caption=Input model
     .multiple=True
     .input_size=400
-    .style = bold file_type:pdb OnUpdate:extract_pdb_params file_type_default
+    .style = bold input_file file_type:pdb OnUpdate:extract_pdb_params \
+      file_type_default
 """)
 
 def get_atom_selections(all_chain_proxies,
@@ -908,7 +909,7 @@ cif_params = iotbx.phil.parse("""\
     .multiple=True
     .short_caption=CIF File
     .input_size = 400
-    .style = bold file_type:cif
+    .style = bold input_file file_type:cif
 """)
 
 class process_pdb_file_srv(object):
