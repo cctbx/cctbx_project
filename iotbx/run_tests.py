@@ -48,6 +48,7 @@ def run():
   "$D/tst_csv_utils.py",
   "$D/tst_file_reader.py",
   "$D/tst_bioinformatics.py",
+  "$D/weighting_schemes/tests/tst_weighting_schemes.py",
   )
 
   build_dir = libtbx.env.under_build("iotbx")
