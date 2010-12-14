@@ -268,9 +268,48 @@ refinement.output.title = Test refinement run
     ('ligand.cif', 'CIF File', 'refinement.input.monomers.file_name')])
   assert (i.get_run_title() == "Test refinement run")
 
+def exercise_3 () :
+  try :
+    import phaser.phenix_interface
+    import iotbx.phil
+  except ImportError :
+    print "Phaser sources not found, skipping advanced tests"
+    return False
+  master_phil = phaser.phenix_interface.master_phil
+  i = interface.index(master_phil=master_phil,
+    parse=iotbx.phil.parse)
+  i.merge_phil(phil_string="""\
+phaser {
+  hklin = "/Users/nat/Documents/beta-blip/beta_blip_P3221.mtz"
+  labin = Fobs,Sigma
+  composition {
+    chain {
+      sequence_file = "/Users/nat/Documents/beta-blip/beta.seq"
+    }
+    chain {
+      sequence_file = "/Users/nat/Documents/beta-blip/blip.seq"
+    }
+  }
+  ensemble {
+    model_id = "beta"
+    coordinates {
+      pdb = "/Users/nat/Documents/beta-blip/beta.pdb"
+    }
+  }
+  ensemble {
+    model_id = "blip"
+    coordinates {
+      pdb = "/Users/nat/Documents/beta-blip/blip.pdb"
+    }
+  }
+}
+""")
+  print i.get_input_files()
+
 if __name__ == "__main__" :
   exercise()
   exercise_2(verbose=("-v" in sys.argv[1:] or "--verbose" in sys.argv[1:]))
+#  exercise_3()
   print "OK"
 
 #---end
