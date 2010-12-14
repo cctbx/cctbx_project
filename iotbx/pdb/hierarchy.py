@@ -948,6 +948,11 @@ class input(object):
     sentinel = i_atoms.reset_tmp(first_value=0, increment=1)
     return self.hierarchy.atoms().extract_tmp_as_size_t()
 
+  def xray_structure_simple (self, *args, **kwds) :
+    perm = self.input_to_hierarchy_atom_permutation()
+    xrs = self.input.xray_structure_simple(*args, **kwds)
+    return xrs.select(perm)
+
 class show_summary(input):
 
   def __init__(self,
