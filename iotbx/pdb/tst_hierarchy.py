@@ -5595,6 +5595,24 @@ HETATM    2 MN    MN B   1      28.911  38.079  64.440  1.00 24.79          Mn
 """).construct_hierarchy()
   bond_lists = pdb_hierarchy.distance_based_connectivity()
   assert [list(bond) for bond in bond_lists] == [[1], [0], []]
+  pdb_in = pdb.hierarchy.input(pdb_string="""\
+ATOM      1  C1  EOH     1       3.108   0.653  -8.526  1.00  0.00           C
+ATOM      2  C2  EOH     1       4.597   0.674  -8.132  1.00  0.00           C
+ATOM      3 1H1  EOH     1       2.815  -0.349  -8.761  1.00  0.00           H
+ATOM      4 2H1  EOH     1       2.517   1.015  -7.711  1.00  0.00           H
+ATOM      5 3H1  EOH     1       2.956   1.278  -9.381  1.00  0.00           H
+ATOM      6 1H2 AEOH     1       5.210   0.503  -9.017  1.00  0.00           H
+ATOM      7 1H2 BEOH     1       5.198   0.305  -8.963  1.00  0.00           H
+ATOM      8 2H2 AEOH     1       4.790  -0.110  -7.400  1.00  0.00           H
+ATOM      9 2H2 BEOH     1       4.751   0.037  -7.261  1.00  0.00           H
+ATOM     10  OH AEOH     1       4.922   1.945  -7.565  1.00  0.00           O
+ATOM     11  OH BEOH     1       4.988   2.012  -7.818  1.00  0.00           O
+ATOM     12  HH AEOH     1       5.850   1.958  -7.320  1.00  0.00           H
+ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
+""")
+  xrs = pdb_in.xray_structure_simple()
+  assert (xrs.sites_cart().size() == 13)
+  assert (approx_equal(xrs.sites_cart()[-3][-1], -7.261, eps=0.0001))
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
