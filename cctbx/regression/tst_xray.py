@@ -1238,8 +1238,8 @@ def exercise_delta_sites_cart_measure():
     delta = flex.vec3_double([ xs0.unit_cell().orthogonalize(d)
                                for d in delta ])
     diff_ref = flex.max_absolute(delta.as_double())
-    diff = xs1.delta_sites_cart_measure(xs0)
-    assert approx_equal(diff, diff_ref, eps=rnd_delta)
+    mscd = xray.meaningful_site_cart_differences(xs1=xs1, xs2=xs0)
+    assert approx_equal(mscd.max_absolute(), diff_ref, eps=rnd_delta)
 
 def run():
   exercise_delta_sites_cart_measure()
