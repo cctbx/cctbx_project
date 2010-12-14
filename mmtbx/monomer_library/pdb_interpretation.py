@@ -157,6 +157,8 @@ master_params_str = """\
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
+  min_distance_sym_equiv = 0.5
+    .type=float
   custom_nonbonded_symmetry_exclusions = None
     .optional = True
     .type = str
@@ -2217,9 +2219,11 @@ class build_all_chain_proxies(object):
     #
     if (    special_position_settings is None
         and crystal_symmetry is not None):
-      special_position_settings = crystal_symmetry.special_position_settings()
+      special_position_settings = crystal_symmetry.special_position_settings(
+        min_distance_sym_equiv=params.min_distance_sym_equiv)
     self.special_position_settings = self.pdb_inp.special_position_settings(
       special_position_settings=special_position_settings,
+      min_distance_sym_equiv=params.min_distance_sym_equiv,
       weak_symmetry=not force_symmetry)
     if (self.special_position_settings is not None
         and (   self.special_position_settings.unit_cell() is None
@@ -2228,7 +2232,8 @@ class build_all_chain_proxies(object):
     if (    self.special_position_settings is None
         and substitute_non_crystallographic_unit_cell_if_necessary):
       self.special_position_settings = crystal.non_crystallographic_symmetry(
-        sites_cart=self.sites_cart).special_position_settings()
+        sites_cart=self.sites_cart).special_position_settings(
+          min_distance_sym_equiv=params.min_distance_sym_equiv)
     if (self.special_position_settings is None):
       self.special_position_indices = None
     else:
