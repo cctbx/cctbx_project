@@ -282,11 +282,6 @@ class alignment(object):
     return float( self.identity_count() ) / shortest_sequence_length
 
 
-  def midline(self):
-
-    return midline().compare( self.alignments, self.gap )
-
-
   def sequence_strings(self):
 
     return [ "".join( [ c for c in seq if c != self.gap ] )
@@ -487,7 +482,16 @@ class clustal_alignment(alignment):
     return aln_info
 
 
-  def format(self, aln_width, caption_width):
+  def format(self, aln_width, caption_width, middle_line=None):
+
+    if not middle_line:
+      middle_line = midline().compare(
+        alignments = self.alignments,
+        gap = self.gap
+        )
+
+    elif len( middle_line ) != self.length():
+      raise ValueError, "Incorrect midline length"
 
     # All alignments
     aln_infos = [
@@ -502,7 +506,7 @@ class clustal_alignment(alignment):
     # Midline
     aln_infos.append(
       [ ( " " * caption_width, line, "" )
-        for line in wrap( self.midline(), aln_width ) ]
+        for line in wrap( middle_line, aln_width ) ]
       )
 
     def fmt_num():
