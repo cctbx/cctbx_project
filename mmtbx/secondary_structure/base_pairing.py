@@ -190,6 +190,7 @@ def clean_base_names(pdb_line):
   clean_line = pdb_line
   #clean RNA lines
   clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGU])([Rr])',r'\1  \3',clean_line)
+  clean_line = re.sub(r'^((ATOM  |HETATM).{11})([ACGU])  ',r'\1  \3',clean_line)
   #clean DNA lines
   clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGT])([Dd])',r'\1 D\3',clean_line)
   return clean_line
