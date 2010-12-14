@@ -5595,7 +5595,8 @@ HETATM    2 MN    MN B   1      28.911  38.079  64.440  1.00 24.79          Mn
 """).construct_hierarchy()
   bond_lists = pdb_hierarchy.distance_based_connectivity()
   assert [list(bond) for bond in bond_lists] == [[1], [0], []]
-  pdb_in = pdb.hierarchy.input(pdb_string="""\
+  # the following tests check order of xray scatterers vs. hierarchy atoms
+  pdb_str = """\
 ATOM      1  C1  EOH     1       3.108   0.653  -8.526  1.00  0.00           C
 ATOM      2  C2  EOH     1       4.597   0.674  -8.132  1.00  0.00           C
 ATOM      3 1H1  EOH     1       2.815  -0.349  -8.761  1.00  0.00           H
@@ -5609,8 +5610,15 @@ ATOM     10  OH AEOH     1       4.922   1.945  -7.565  1.00  0.00           O
 ATOM     11  OH BEOH     1       4.988   2.012  -7.818  1.00  0.00           O
 ATOM     12  HH AEOH     1       5.850   1.958  -7.320  1.00  0.00           H
 ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
-""")
+"""
+  pdb_in = pdb.hierarchy.input(pdb_string=pdb_str)
   xrs = pdb_in.xray_structure_simple()
+  assert (xrs.sites_cart().size() == 13)
+  assert (approx_equal(xrs.sites_cart()[-3][-1], -7.261, eps=0.0001))
+  pdb_in = pdb.input(source_info=None, lines=pdb_str)
+  hierarchy = pdb_in.construct_hierarchy()
+  xrs = hierarchy.extract_xray_structure(
+    crystal_symmetry=pdb_in.crystal_symmetry())
   assert (xrs.sites_cart().size() == 13)
   assert (approx_equal(xrs.sites_cart()[-3][-1], -7.261, eps=0.0001))
 
