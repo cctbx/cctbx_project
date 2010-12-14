@@ -228,7 +228,7 @@ fragment ANY_PRINT_CHAR
 //	      | DOUBLE_QUOTE | SINGLE_QUOTE
 	;
 
-TAG	:	'_' ( 'A'..'Z' | 'a'..'z' ) (NON_BLANK_CHAR_)* ;
+TAG	:	'_' (NON_BLANK_CHAR_)+ ;
 
 /*------------------------------------------------------------------
  * CHARACTER STRINGS AND FIELDS

@@ -61,6 +61,8 @@ def exercise_lex_parse_build():
   assert b['global'].items() == [('_a', '1')]
   c = cif.reader(input_string=cif_invalid_string).model()
   sys.stdout = stdout
+  a = cif.reader(input_string=cif_cod)
+  assert a.error_count() == 0
 
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
@@ -261,6 +263,12 @@ loop_
 
 # comment with WS before and after
 
+"""
+
+cif_cod = """\
+data_global
+_a 1
+_[b] 2
 """
 
 cif_quoted_string = """\
