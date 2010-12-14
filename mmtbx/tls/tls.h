@@ -5,7 +5,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <vector>
-#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/shared_algebra.h>
 #include <cctbx/import_scitbx_af.h>
 #include <cmath>
 #include <cctbx/adptbx.h>
@@ -15,6 +15,7 @@
 #include <iostream>
 #include <mmtbx/error.h>
 #include <cctbx/xray/targets.h>
+#include <scitbx/matrix/outer_product.h>
 
 using namespace std;
 namespace mmtbx { namespace tls {
@@ -1031,6 +1032,74 @@ sym_mat3<double> t_from_u_cart(af::shared<double> const& u_iso,
     }
 
     return t;
+}
+
+class tls_ls_derivative_coefficients {
+public:
+  af::versa<double, af::flex_grid<> > a;
+  af::shared<double> b;
+  af::versa<double, af::flex_grid<> > tmp;
+
+  tls_ls_derivative_coefficients(
+    vec3<double> const& origin,
+    af::shared<vec3<double> > const& sites_cart,
+    af::shared<double> const& u_iso)
+  :
+  a(af::flex_grid<>(10, 10), 0),
+  b(10, 0), tmp(af::flex_grid<>(10, 10), 0)
+  {
+    MMTBX_ASSERT(sites_cart.size() == u_iso.size());
+    MMTBX_ASSERT(sites_cart.size() > 0);
+    double deg2rad = scitbx::deg_as_rad(1.0);
+    double deg2radsq = deg2rad * deg2rad;
+    for (std::size_t i=0; i < sites_cart.size(); i++) {
+      vec3<double> r = sites_cart[i] - origin;
+      double x = r[0];
+      double y = r[1];
+      double z = r[2];
+      //
+      double X = (y*y+z*z)/3  * deg2radsq;
+      double Y = (x*x+z*z)/3  * deg2radsq;
+      double Z = (x*x+y*y)/3  * deg2radsq;
+      double W = -2*x*y/3     * deg2radsq;
+      double V = -2*x*z/3     * deg2radsq;
+      double T = -2*y*z/3     * deg2radsq;
+      double S = 2*z/3        * deg2rad;
+      double R = 2*y/3        * deg2rad;
+      double Q = 2*x/3        * deg2rad;
+      //
+      const double cv_values[] = {1,X,Y,Z,W,V,T,S,R,Q};
+      af::shared<double> cv(cv_values, cv_values+10);
+      scitbx::matrix::outer_product(tmp.begin(),cv.const_ref(),cv.const_ref());
+
+      double* a_ = a.begin();
+      double* tmp_ = tmp.begin();
+      for (unsigned j=0; j < 100; j++) {
+        *a_ = (*a_) + (*tmp_);
+        *a_++;
+        *tmp_++;
+      }
+      b = b + u_iso[i]*cv;
+    }
+  }
+};
+
+double ls_target_from_iso_tls(double const& t,
+                              sym_mat3<double> const& l_deg,
+                              vec3<double> const& s_deg,
+                              vec3<double> const& origin,
+                              af::shared<vec3<double> > const& sites,
+                              af::shared<double> const& uisos)
+  {
+    double tg = 0.0;
+    double scale_l_and_s = scitbx::deg_as_rad(1.0);
+    for(std::size_t i=0; i < sites.size(); i++) {
+      vec3<double> const& site = sites[i];
+      double diff = uiso_from_tls(t,l_deg,s_deg,origin,site) - uisos[i];
+      double two_diff = 2*diff;
+      tg += diff*diff;
+    }
+    return tg;
 }
 
 }} // namespace mmtbx::tls

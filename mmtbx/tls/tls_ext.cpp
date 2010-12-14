@@ -27,6 +27,7 @@ namespace {
   {
     using namespace boost::python;
     using boost::python::arg;
+    typedef return_value_policy<return_by_value> rbv;
 
     class_<uaniso_from_tls>("uaniso_from_tls",
                              init<sym_mat3<double> const&,
@@ -35,6 +36,17 @@ namespace {
                                   vec3<double> const&,
                                   vec3<double> const&>())
       .def("u", &uaniso_from_tls::u)
+    ;
+
+    class_<tls_ls_derivative_coefficients>("tls_ls_derivative_coefficients",
+                           init<vec3<double> const&,
+                                af::shared<vec3<double> > const&,
+                                af::shared<double> const&>(
+                                   (arg("origin"),
+                                    arg("sites_cart"),
+                                    arg("u_iso"))))
+      .add_property("a", make_getter(&tls_ls_derivative_coefficients::a, rbv()))
+      .add_property("b", make_getter(&tls_ls_derivative_coefficients::b, rbv()))
     ;
 
     class_<d_target_d_tls>("d_target_d_tls",
@@ -132,8 +144,16 @@ namespace {
       .def("branch_1_2_3_1", &common::get_branch_1_2_3_1)
       .def("branch_1_2_3_2", &common::get_branch_1_2_3_2)
    ;
-   //def("t_from_u_cart",t_from_u_cart)
-   //;
+
+   def("ls_target_from_iso_tls", (double(*)(
+     double const&,
+     sym_mat3<double> const&,
+     vec3<double> const&,
+     vec3<double> const&,
+     af::shared<vec3<double> > const&,
+     af::shared<double> const&)) ls_target_from_iso_tls, (arg("t"),arg("l"),
+       arg("s"),arg("origin"),arg("sites_cart"),arg("u_isos")))
+   ;
 
    def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<sym_mat3<double> > const&, double)) t_from_u_cart, (arg("u_cart"),arg("small")))
    ;
