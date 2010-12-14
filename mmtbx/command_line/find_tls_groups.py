@@ -12,6 +12,7 @@ import random
 import os
 import time
 import sys
+import scitbx.linalg
 
 master_phil = libtbx.phil.parse("""
   pdb_file = None
@@ -340,34 +341,72 @@ def tls_group_selections(groups, perm):
     result.append(one_group)
   return result
 
-def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,  max_iterations=30):
+def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,
+                 use_minimizer=False, max_iterations=100):
   sites_cart_ = sites_cart.select(selection)
   cm = sites_cart_.mean_weighted(weights=flex.double(selection.size(),1))
   assert [u_cart, u_iso].count(None)==1
-  if(u_cart is not None):
-    return tools.tls_from_uaniso_minimizer(
-      uaniso         = u_cart.select(selection),
-      T_initial      = [0,0,0,0,0,0],
-      L_initial      = [0,0,0,0,0,0],
-      S_initial      = [0,0,0,0,0,0,0,0,0],
-      refine_T       = True,
-      refine_L       = True,
-      refine_S       = True,
-      origin         = cm,
-      sites          = sites_cart_,
-      max_iterations = max_iterations)
+  if(not use_minimizer):
+    obj = tools.tls_ls_derivative_coefficients(
+      origin     = cm,
+      sites_cart = sites_cart_,
+      u_iso      = u_iso.select(selection))
+    def s1(use_generalized_inverse=True):
+      if(not use_generalized_inverse):
+        obj.a.matrix_inversion_in_place()
+        res = obj.a.matrix_multiply(obj.b)
+      else:
+        es = scitbx.linalg.eigensystem.real_symmetric(
+          m=obj.a,
+          relative_epsilon=1.e-12,
+          absolute_epsilon=0)
+        a = es.generalized_inverse_as_packed_u().matrix_packed_u_as_symmetric()
+        res = a.matrix_multiply(obj.b)
+      return res
+    result = s1()
+    target = tools.ls_target_from_iso_tls(
+      t = result[0],
+      l = tuple(result[1:7]),
+      s = tuple(result[7:]),
+      origin = cm,
+      sites_cart = sites_cart_,
+      u_isos = u_iso.select(selection))
+    #print "target:",target
+    class foo: pass
+    foo.f = target
+    return foo
   else:
-    return tools.tls_from_uiso_minimizer(
-      uiso           = u_iso.select(selection),
-      T_initial      = [0],
-      L_initial      = [0,0,0,0,0,0],
-      S_initial      = [0,0,0],
-      refine_T       = True,
-      refine_L       = True,
-      refine_S       = True,
-      origin         = cm,
-      sites          = sites_cart_,
-      max_iterations = max_iterations)
+    if(u_cart is not None):
+      return tools.tls_from_uaniso_minimizer(
+        uaniso         = u_cart.select(selection),
+        T_initial      = [0,0,0,0,0,0],
+        L_initial      = [0,0,0,0,0,0],
+        S_initial      = [0,0,0,0,0,0,0,0,0],
+        refine_T       = True,
+        refine_L       = True,
+        refine_S       = True,
+        origin         = cm,
+        sites          = sites_cart_,
+        max_iterations = max_iterations)
+    else:
+      minimized = tools.tls_from_uiso_minimizer(
+        uiso           = u_iso.select(selection),
+        T_initial      = [0],
+        L_initial      = [0,0,0,0,0,0],
+        S_initial      = [0,0,0],
+        refine_T       = True,
+        refine_L       = True,
+        refine_S       = True,
+        origin         = cm,
+        sites          = sites_cart_,
+        max_iterations = max_iterations)
+      if(0): # DEBUG
+        print "Minimization:", xxx.f
+        print "T_min:", minimized.T_min
+        print "L_min:", minimized.L_min
+        print "S_min:", minimized.S_min
+        print
+      return minimized
 
 def chunks(size, n_groups):
   rp = list(xrange(size))
