@@ -20,8 +20,6 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None):
   from iotbx.reflection_file_reader import any_reflection_file
   from iotbx.builders \
        import weighted_constrained_restrained_crystal_structure_builder
-  import smtbx.refinement.constraints.factory
-  import smtbx.refinement.weighting_schemes
 
   assert ins_or_res is not None or hkl is not None
 
@@ -39,9 +37,7 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None):
     hkl = "%.hkl" % root
     assert os.path.isfile(hkl)
 
-  builder = weighted_constrained_restrained_crystal_structure_builder(
-    constraint_factory=smtbx.refinement.constraints.factory,
-    weighting_scheme_factory=smtbx.refinement.weighting_schemes)
+  builder = weighted_constrained_restrained_crystal_structure_builder()
   stream = command_stream(filename=ins_or_res)
   stream = crystal_symmetry_parser(stream, builder)
   stream = afix_parser(stream.filtered_commands(), builder)
