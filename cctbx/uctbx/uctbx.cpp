@@ -5,6 +5,25 @@
 
 namespace cctbx { namespace uctbx {
 
+  bool
+  unit_cell_angles_are_feasible(
+    scitbx::vec3<double> const& values_deg,
+    double tolerance)
+  {
+    for(unsigned i=0;i<3;i++) {
+      if (values_deg[i] <= tolerance) return false;
+      if (values_deg[i] >= 180-tolerance) return false;
+    }
+    double a = values_deg[0];
+    double b = values_deg[1];
+    double g = values_deg[2];
+    if ( a+b+g >= 360-tolerance) return false;
+    if ( a+b-g <= tolerance) return false;
+    if ( a-b+g <= tolerance) return false;
+    if (-a+b+g <= tolerance) return false;
+    return true;
+  }
+
   namespace {
 
     void throw_corrupt_metrical_matrix()

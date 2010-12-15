@@ -337,6 +337,9 @@ namespace {
       two_theta_as_d,
       (arg("two_theta"), arg("wavelength"), arg("deg")=false));
 
+    def("unit_cell_angles_are_feasible", unit_cell_angles_are_feasible, (
+      arg("values_deg"), arg("tolerance")=1e-6));
+
     unit_cell_wrappers::wrap();
     wrap_fast_minimum_reduction();
 

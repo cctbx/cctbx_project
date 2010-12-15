@@ -150,6 +150,23 @@ def exercise_basic():
           orthogonalization_matrix=u.orthogonalization_matrix())
         assert v.is_similar_to(u)
 
+def exercise_unit_cell_angles_are_feasible():
+  n = 0
+  n15 = 0
+  for a in xrange(0,180+10,10):
+    for b in xrange(0,180+10,10):
+      for g in xrange(0,180+10,10):
+        f = uctbx.unit_cell_angles_are_feasible(values_deg=(a,b,g))
+        if (f):
+          n += 1
+          assert uctbx.unit_cell((10,10,10,a,b,g)).volume() > 0
+        if (uctbx.unit_cell_angles_are_feasible(
+                values_deg=(a,b,g), tolerance=15)):
+          assert f
+          n15 += 1
+  assert n == 1649
+  assert n15 == 1135
+
 def exercise_frac_orth():
   u = uctbx.unit_cell(())
   assert approx_equal(
@@ -635,6 +652,7 @@ def run():
   exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center()
   exercise_functions()
   exercise_basic()
+  exercise_unit_cell_angles_are_feasible()
   exercise_frac_orth()
   exercise_distance_mod_1()
   exercise_change_basis()
