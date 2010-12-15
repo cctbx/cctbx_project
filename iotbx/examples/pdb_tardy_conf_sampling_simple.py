@@ -26,9 +26,10 @@ def build_clash_detector(n_sites, bond_list, threshold):
 def run(args):
   time_start = time.time()
   import iotbx.pdb
-  from cctbx.eltbx.distance_based_connectivity import build_edge_list
+  from cctbx.crystal.distance_based_connectivity import build_bond_list
   import scitbx.rigid_body
   import scitbx.graph.tardy_tree
+  from scitbx.graph.utils import extract_edge_list
   from scitbx.array_family import flex
   print "Time importing extensions: %.2f" % (time.time() - time_start)
   #
@@ -42,16 +43,16 @@ def run(args):
     sites_cart = pdb_atoms.extract_xyz()
     #
     time_start = time.time()
-    edge_list = build_edge_list(
+    bond_list = extract_edge_list(edge_sets=build_bond_list(
       sites_cart=sites_cart,
-      elements=pdb_atoms.extract_element())
+      elements=pdb_atoms.extract_element()))
     print "Time building bond list: %.2f" % (time.time() - time_start)
-    print "Number of bonds:", len(edge_list)
+    print "Number of bonds:", len(bond_list)
     #
     time_start = time.time()
     tardy_tree = scitbx.graph.tardy_tree.construct(
       sites=sites_cart,
-      edge_list=edge_list)
+      edge_list=bond_list)
     print "Time building tardy tree: %.2f" % (time.time() - time_start)
     #
     time_start = time.time()
@@ -72,7 +73,7 @@ def run(args):
     two_pi = 2 * math.pi
     clash_detector = build_clash_detector(
       n_sites=sites_cart.size(),
-      bond_list=edge_list,
+      bond_list=bond_list,
       threshold=clash_threshold)
     time_start = time.time()
     n_conf = 10000
