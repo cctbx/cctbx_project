@@ -366,6 +366,17 @@ class alignment(object):
       return {}
 
 
+  def assign_as_target(self, index):
+
+    if self.multiplicity() <= index:
+      raise ValueError, "No such sequence: %d" % index
+
+    self.names = ( [ self.names[ index ] ] + self.names[ : index ]
+      + self.names[ index + 1 : ] )
+    self.alignments = ( [ self.alignments[ index ] ]
+      + self.alignments[ : index ] + self.alignments[ index + 1 : ] )
+
+
   def _set_alignments(self, alignments):
 
     # All alignments should have the same length
@@ -974,6 +985,17 @@ class clustal_alignment_parser(generic_alignment_parser):
       )
 
 
+def hhalign_alignment_parse(text):
+
+  try:
+    hhalign = hhalign_parser( output = text )
+
+  except ValueError:
+    return ( None, text )
+
+  return ( hhalign.alignment(), "" )
+
+
 # Alignment parser instances that can be used as functions
 clustal_alignment_parse = clustal_alignment_parser()
 pir_alignment_parse = sequential_alignment_parser(
@@ -1023,6 +1045,7 @@ _implemented_alignment_parsers = {
   ".fasta": fasta_alignment_parse,
   ".ali": ali_alignment_parse,
   ".fa": ali_alignment_parse,
+  ".hhr": hhalign_alignment_parse,
   }
 
 def alignment_parser_for(file_name):
@@ -1515,3 +1538,13 @@ class hhalign_parser(hhpred_parser):
     self.hit_alignments.append( merged[5] )
     self.hit_ss_preds.append( merged[6] )
     self.hit_ss_confs.append( merged[7] )
+
+
+  def alignment(self):
+
+    assert len( self.annotations ) == 1
+    return clustal_alignment(
+      names = [ "target", self.annotations[0] ],
+      alignments = [ self.query_alignments[0], self.hit_alignments[0] ],
+      program = "HHPred"
+      )
