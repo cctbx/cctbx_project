@@ -179,24 +179,24 @@ namespace cctbx { namespace crystal { namespace neighbors {
         while (!this->at_end_) {
           direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
             pair = next();
-          //CCTBX_ASSERT(pair.i_seq < n_sites);
-          std::string elem1 = elements[pair.i_seq];
-          std::string elem2 = elements[pair.j_seq];
           std::size_t conf1 = conformer_indices[pair.i_seq];
           std::size_t conf2 = conformer_indices[pair.j_seq];
           if ((conf2 != conf1) && (conf1 != 0) && (conf2 != 0)) {
             continue;
           }
+          std::string const& elem1 = elements[pair.i_seq];
+          std::string const& elem2 = elements[pair.j_seq];
           std::string elem_key;
           if (elem1 < elem2) {
-            elem_key = elem1 + elem2;
+            elem_key = elem1 + ":" + elem2;
           } else {
-            elem_key = elem2 + elem1;
+            elem_key = elem2 + ":" + elem1;
           }
+          std::map<std::string, double>::const_iterator
+            ebl_from_tab = expected_bond_lengths.find(elem_key);
           double ebl;
-          if (expected_bond_lengths.find(elem_key) !=
-              expected_bond_lengths.end()) {
-            ebl = expected_bond_lengths[elem_key];
+          if (ebl_from_tab != expected_bond_lengths.end()) {
+            ebl = ebl_from_tab->second;
             if (ebl == 0.0) continue;
           } else {
             double radius1 = 0.0;
