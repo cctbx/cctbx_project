@@ -91,13 +91,14 @@ namespace {
         .def("count_pairs", &w_t::count_pairs)
         .def("max_distance_sq", &w_t::max_distance_sq)
         .def("neighbors_of", &w_t::neighbors_of, (arg("primary_selection")))
-        .def("distance_based_connectivity", &w_t::distance_based_connectivity,
-          (arg("elements"),
-           arg("conformer_indices"),
-           arg("expected_bond_lengths"),
-           arg("vdw_radii"),
-           arg("fallback_expected_bond_length"),
-           arg("tolerance_factor_expected_bond_length")))
+        .def("distance_based_simple_two_way_bond_sets",
+          &w_t::distance_based_simple_two_way_bond_sets, (
+            arg("elements"),
+            arg("conformer_indices"),
+            arg("expected_bond_lengths"),
+            arg("vdw_radii"),
+            arg("fallback_expected_bond_length"),
+            arg("tolerance_factor_expected_bond_length")))
       ;
     }
   };

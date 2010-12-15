@@ -1,4 +1,5 @@
-from cctbx.eltbx.distance_based_connectivity import expected_bond_lengths_by_element_pair
+from cctbx.eltbx.distance_based_connectivity import \
+  expected_bond_lengths_by_element_pair
 from cctbx.eltbx.van_der_waals_radii import vdw
 from scitbx.stl import map
 import cctbx.crystal
@@ -12,7 +13,7 @@ for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems() :
 for k, v in vdw.table.items() :
   vdw_radii[k.upper()] = v
 
-def build_bond_list (
+def build_simple_two_way_bond_sets (
       sites_cart,
       elements,
       conformer_indices=None,
@@ -52,11 +53,10 @@ def build_bond_list (
     distance_cutoff=search_max_distance,
     minimal=True)
   result = shared.stl_set_unsigned(sites_cart.size())
-  bonds = pair_generator.distance_based_connectivity(
+  return pair_generator.distance_based_simple_two_way_bond_sets(
     elements=stripped_elements,
     conformer_indices=conformer_indices,
     expected_bond_lengths=expected_bond_lengths,
     vdw_radii=vdw_radii,
     fallback_expected_bond_length=fallback_expected_bond_length,
     tolerance_factor_expected_bond_length=tolerance_factor_expected_bond_length)
-  return bonds

@@ -619,22 +619,21 @@ class _root(boost.python.injector, ext.root):
     del sentinel
     return result
 
-  def distance_based_connectivity (self,
-      fallback_expected_bond_length=1.4,
-      fallback_search_max_distance=2.5) :
+  def distance_based_simple_two_way_bond_sets(self,
+        fallback_expected_bond_length=1.4,
+        fallback_search_max_distance=2.5) :
     from cctbx.crystal import distance_based_connectivity
     atoms = self.atoms().deep_copy() # XXX potential bottleneck
     atoms.set_chemical_element_simple_if_necessary()
     sites_cart = atoms.extract_xyz()
     elements = atoms.extract_element()
     conformer_indices = self.get_conformer_indices()
-    atomic_bonds = distance_based_connectivity.build_bond_list(
+    return distance_based_connectivity.build_simple_two_way_bond_sets(
       sites_cart=sites_cart,
       elements=elements,
       conformer_indices=conformer_indices,
       fallback_expected_bond_length=fallback_expected_bond_length,
       fallback_search_max_distance=fallback_search_max_distance)
-    return atomic_bonds
 
 class _model(boost.python.injector, ext.model):
 

@@ -5556,7 +5556,7 @@ ATOM     22 H111 LIG A   1       0.508   0.861  -3.756  1.00 20.00      A    H
 ATOM     23 H112 LIG A   1      -1.076   0.113  -3.560  1.00 20.00      A    H
 ATOM     24 H113 LIG A   1       0.358  -0.896  -3.748  1.00 20.00      A    H
 """).construct_hierarchy()
-  bonds = pdb_hierarchy.distance_based_connectivity()
+  bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
   assert bonds.size() == pdb_hierarchy.atoms().size()
   #print list(bonds[0])
   assert list(bonds[0]) == [1, 14, 15, 16]
@@ -5576,7 +5576,7 @@ ATOM     12  OH BEOH     1       4.988   2.012  -7.818  1.00  0.00           O
 ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
 """).construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
-  bonds = pdb_hierarchy.distance_based_connectivity()
+  bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
   assert (list(bonds[7]) == [1,8])
   assert (list(bonds[10]) == [1])
   assert (list(bonds[11]) == [1,12])
@@ -5593,8 +5593,8 @@ HETATM    0  PA  ANP A   1      27.977  39.209  67.441  1.00 26.15           P
 HETATM    1  O2A ANP A   1      28.552  39.588  68.829  1.00 27.12           O
 HETATM    2 MN    MN B   1      28.911  38.079  64.440  1.00 24.79          Mn
 """).construct_hierarchy()
-  bond_lists = pdb_hierarchy.distance_based_connectivity()
-  assert [list(bond) for bond in bond_lists] == [[1], [0], []]
+  bond_sets = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
+  assert [list(bond) for bond in bond_sets] == [[1], [0], []]
   # the following tests check order of xray scatterers vs. hierarchy atoms
   pdb_str = """\
 ATOM      1  C1  EOH     1       3.108   0.653  -8.526  1.00  0.00           C

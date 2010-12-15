@@ -1,6 +1,7 @@
 def run(args):
   assert len(args) == 0
-  from cctbx.crystal.distance_based_connectivity import build_bond_list
+  from cctbx.crystal.distance_based_connectivity import \
+    build_simple_two_way_bond_sets
   from scitbx.array_family import flex
   sites_cart = flex.vec3_double([
     (25.655, 43.266, 42.630),
@@ -10,7 +11,8 @@ def run(args):
     (24.951, 47.170, 37.585),
     (19.298, 46.942, 51.808)])
   elements = flex.std_string(["S", "C", "N", "CU", "ZN", "CA"])
-  bond_list = build_bond_list(sites_cart=sites_cart, elements=elements)
+  bond_list = build_simple_two_way_bond_sets(
+    sites_cart=sites_cart, elements=elements)
   assert [sorted(b) for b in bond_list] == [[1], [0,2], [1,3], [2], [], []]
   #
   # caffeine
@@ -43,9 +45,8 @@ def run(args):
   elements = flex.std_string([
     ' C', ' N', ' C', ' N', ' C', ' N', ' C', ' C', ' O', ' N', ' C', ' C',
     ' O', ' C', ' H', ' H', ' H', ' H', ' H', ' H', ' H', ' H', ' H', ' H'])
-  bonds = build_bond_list(
-    sites_cart=sites_cart,
-    elements=elements)
+  bonds = build_simple_two_way_bond_sets(
+    sites_cart=sites_cart, elements=elements)
   assert bonds.size() == sites_cart.size()
   assert list(bonds[0]) == [1, 14, 15, 16]
   #
