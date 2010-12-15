@@ -1,6 +1,7 @@
 import libtbx.load_env
 import libtbx.env_config
 from libtbx import easy_run
+from libtbx.utils import getenv_bool
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
 import platform
@@ -84,8 +85,17 @@ int main()
 def determine_opt_resources_flag():
   if (ARGUMENTS.get("opt_resources") is not None):
     return bool(int(ARGUMENTS.get("opt_resources", "0")))
-  from libtbx.utils import getenv_bool
   return getenv_bool(variable_name="LIBTBX_OPT_RESOURCES")
+
+def determine_cpp0x_flag():
+  result = getenv_bool(variable_name="LIBTBX_CPP0X", default=None)
+  if (result is None):
+    result = libtbx.env.under_dist(
+      module_name="boost",
+      default=None,
+      path=".svn",
+      test=op.isdir)
+  return result
 
 env_etc = empty()
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python")
@@ -251,12 +261,6 @@ def setup_clang_warning(env_etc, warning_level):
 
 env_etc.enable_more_warnings = enable_more_warnings
 env_etc._enable_more_warnings = None
-
-boost_dot_svn = libtbx.env.under_dist(
-  module_name="boost",
-  default=None,
-  path=".svn",
-  test=op.isdir)
 
 is_64bit_architecture = libtbx.env_config.is_64bit_architecture()
 
@@ -504,7 +508,7 @@ else:
       "-fPIC",
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
-    if (env_etc.gcc_version >= 40400 and boost_dot_svn is not None):
+    if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
@@ -598,7 +602,7 @@ else:
     env_etc.c_link = "icc"
     env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing", "-wd161,167"]
     env_etc.cxxflags_base = ["-Wno-deprecated"]
-    if (env_etc.icc_version >= 100000 and boost_dot_svn is not None):
+    if (env_etc.icc_version >= 100000 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
