@@ -1,4 +1,4 @@
 {
-  "modules_required_for_use": ["cctbx", "iotbx"],
+  "modules_required_for_use": ["cctbx"],
   "modules_required_for_build": ["cctbx"],
 }
