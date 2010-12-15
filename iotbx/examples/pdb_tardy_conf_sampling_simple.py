@@ -26,7 +26,8 @@ def build_clash_detector(n_sites, bond_list, threshold):
 def run(args):
   time_start = time.time()
   import iotbx.pdb
-  from cctbx.crystal.distance_based_connectivity import build_bond_list
+  from cctbx.crystal.distance_based_connectivity import \
+    build_simple_two_way_bond_sets
   import scitbx.rigid_body
   import scitbx.graph.tardy_tree
   from scitbx.graph.utils import extract_edge_list
@@ -43,7 +44,7 @@ def run(args):
     sites_cart = pdb_atoms.extract_xyz()
     #
     time_start = time.time()
-    bond_list = extract_edge_list(edge_sets=build_bond_list(
+    bond_list = extract_edge_list(edge_sets=build_simple_two_way_bond_sets(
       sites_cart=sites_cart,
       elements=pdb_atoms.extract_element()))
     print "Time building bond list: %.2f" % (time.time() - time_start)

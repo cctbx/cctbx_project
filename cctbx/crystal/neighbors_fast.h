@@ -164,7 +164,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
       }
 
       af::shared< std::set< unsigned > >
-      distance_based_connectivity(
+      distance_based_simple_two_way_bond_sets(
         af::const_ref< std::string > const& elements,
         af::const_ref<std::size_t> const& conformer_indices,
         std::map<std::string, double> expected_bond_lengths,

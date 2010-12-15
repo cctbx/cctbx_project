@@ -174,10 +174,9 @@ class model_handler (iotbx.gui_tools.manager) :
     if ((file_name in self._cached_bonds) and
         (not self.file_is_modified(file_name))) :
       return self._cached_bonds[file_name]
-    from cctbx.crystal import distance_based_connectivity
     pdb_hierarchy = self.get_pdb_hierarchy(file_name)
     assert (pdb_hierarchy is not None)
-    atomic_bonds = pdb_hierarchy.distance_based_connectivity()
+    atomic_bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
     self._cached_bonds[file_name] = atomic_bonds
     return atomic_bonds
 

@@ -57,13 +57,12 @@ def run (args, viewer_class=selection_editor_mixin) :
   for file_name in pdb_files :
     print "Reading PDB file %s" % file_name
     from iotbx import file_reader
-    from cctbx.crystal import distance_based_connectivity
     from mmtbx.monomer_library import pdb_interpretation
     t1 = time.time()
     if fast_connectivity :
       pdb_in = file_reader.any_file(file_name, force_type="pdb")
       pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
-      atomic_bonds = pdb_hierarchy.distance_based_connectivity()
+      atomic_bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
       acp_selection = None
     else :
       processed_pdb_file = pdb_interpretation.run(args=[file_name]+cif_files,
