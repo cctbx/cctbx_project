@@ -1,3 +1,15 @@
+""" Weighting schemes.
+
+They all feature:
+
+  o __str__: a string representation of the weighting scheme in a format
+             that is appropriate for the CIF item _refine_ls_weighting_details;
+
+  o type: the kind of weighting scheme,
+          that is appropriate for the CIF item _refine_ls_weighting_scheme
+"""
+
+
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 
@@ -11,9 +23,6 @@ class _mainstream_shelx_weighting(boost.python.injector,
                                   ext.mainstream_shelx_weighting):
 
   def __str__(self):
-    """ A string representation of the weighting scheme in a format that is
-        appropriate for the CIF item _refine_ls_weighting_details.
-    """
     if round(self.a, 4) in (0.1, 0.2):
       a = "%.1f" %self.a
     else:
