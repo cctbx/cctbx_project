@@ -293,11 +293,7 @@ def exercise_invalid():
 
 def exercise_afix_parsing():
   import smtbx.refinement.constraints.geometrical.hydrogens as _
-  try:
-    builder = iotbx.builders.constrained_crystal_structure_builder()
-  except AttributeError:
-    print "Skipping AFIX parsing: : smtbx module not available"
-    return
+  builder = iotbx.builders.constrained_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
@@ -334,11 +330,7 @@ def exercise_afix_parsing():
 
 def exercise_u_iso_proportional_to_u_eq_parsing():
   import smtbx.refinement.constraints.adp as _
-  try:
-    builder = iotbx.builders.constrained_crystal_structure_builder()
-  except AttributeError:
-    print "Skipping u_iso = k u_eq test: smtbx module not available"
-    return
+  builder = iotbx.builders.constrained_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
@@ -385,11 +377,6 @@ def exercise_u_iso_proportional_to_u_eq_parsing():
     assert result == expected
 
 def exercise_restraint_parsing():
-  import libtbx.load_env
-  if (not libtbx.env.has_module(name="smtbx")):
-    print "Skipping exercise_restraint_parsing():" \
-      " smtbx module is not available."
-    return
   import smtbx.refinement.restraints
   def parse_restraints(ins_name):
     builder = iotbx.builders.restrained_crystal_structure_builder()
@@ -667,9 +654,13 @@ def shelx_u_cif(unit_cell, u_star):
 
 def run():
   exercise_instruction_parsing()
-  exercise_restraint_parsing()
-  exercise_u_iso_proportional_to_u_eq_parsing()
-  exercise_afix_parsing()
+  import libtbx.load_env
+  if (not libtbx.env.has_module(name="smtbx")):
+    print "Skipping some tests: smtbx module is not available."
+  else:
+    exercise_restraint_parsing()
+    exercise_u_iso_proportional_to_u_eq_parsing()
+    exercise_afix_parsing()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
   exercise_lexing()
