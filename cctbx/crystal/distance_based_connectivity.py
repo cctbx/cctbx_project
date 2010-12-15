@@ -12,7 +12,6 @@ for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems() :
 for k, v in vdw.table.items() :
   vdw_radii[k.upper()] = v
 
-# XXX severe duplication: cctbx/eltbx/distance_based_connectivity.py
 def build_bond_list (
       sites_cart,
       elements,
@@ -32,7 +31,8 @@ def build_bond_list (
     conformer_indices = flex.size_t(sites_cart.size(), 0)
   stripped_elements = elements.strip().upper()
   if (search_max_distance is None):
-    search_max_distance = 2 * max([vdw_radii.get(e, 0.0) for e in elements])
+    search_max_distance = 2 * max([vdw_radii.get(e, 0.0)
+      for e in stripped_elements])
     if (search_max_distance == 0.0):
       search_max_distance = fallback_search_max_distance
     else:
@@ -60,65 +60,3 @@ def build_bond_list (
     fallback_expected_bond_length=fallback_expected_bond_length,
     tolerance_factor_expected_bond_length=tolerance_factor_expected_bond_length)
   return bonds
-#  pair_generator.restart()
-#  for pair in pair_generator :
-#    pair_elems = tuple(sorted(
-#      [stripped_elements[i] for i in [pair.i_seq, pair.j_seq]]))
-#    elem_key = "%s%s" % (pair_elems[0], pair_elems[1])
-#    ebl = expected_bond_lengths.get(elem_key, None)
-#    if (ebl == 0.0):
-#      continue
-#    if (ebl is None):
-#      ebl = max([vdw_table.get(e, 0.0) for e in pair_elems])
-#      if (ebl == 0.0):
-#        ebl = fallback_expected_bond_length
-#        if (ebl is None):
-#          continue
-#    cutoff_sq = (ebl * tolerance_factor_expected_bond_length)**2
-#    if (pair.dist_sq > cutoff_sq):
-#      continue
-#    result[pair.i_seq].append(pair.j_seq)
-#    result[pair.j_seq].append(pair.i_seq)
-#  return result
-
-def exercise () :
-  # caffeine
-  sites_cart = flex.vec3_double([
-    (-2.986, 0.015, 1.643),
-    (-1.545, 0.015, 1.643),
-    (-0.733, 0.015, 2.801),
-    (0.592, 0.015, 2.395),
-    (0.618, 0.015, 1.034),
-    (1.758, 0.015, 0.102),
-    (3.092, -0.06, 0.694),
-    (1.525, 0.015, -1.360),
-    (2.489, -0.024, -2.139),
-    (0.158, 0.015, -1.888),
-    (-0.025, 0.024, -3.330),
-    (-0.986, 0.015, -0.959),
-    (-2.155, 0.008, -1.408),
-    (-0.733, 0.015, 0.565),
-    (-3.346, 0.016, 2.662),
-    (-3.347, 0.896, 1.133),
-    (-3.347, -0.868, 1.136),
-    (-1.083, 0.02, 3.822),
-    (3.184, -0.975, 1.26),
-    (3.245, 0.785, 1.348),
-    (3.835, -0.047, -0.09),
-    (0.508, 0.861, -3.756),
-    (-1.076, 0.113, -3.560),
-    (0.358, -0.896, -3.748)
-  ])
-  elements = flex.std_string([
-    ' C', ' N', ' C', ' N', ' C', ' N', ' C', ' C', ' O', ' N', ' C', ' C',
-    ' O', ' C', ' H', ' H', ' H', ' H', ' H', ' H', ' H', ' H', ' H', ' H'])
-  bonds = build_bond_list(
-    sites_cart=sites_cart,
-    elements=elements)
-  assert bonds.size() == sites_cart.size()
-  #print list(bonds[0])
-  assert list(bonds[0]) == [1, 14, 15, 16]
-  print "OK"
-
-if __name__ == "__main__" :
-  exercise()
