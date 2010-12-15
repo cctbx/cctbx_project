@@ -6,6 +6,7 @@
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <vector>
 #include <scitbx/array_family/shared_algebra.h>
+#include <scitbx/array_family/versa_algebra.h>
 #include <cctbx/import_scitbx_af.h>
 #include <cmath>
 #include <cctbx/adptbx.h>
@@ -1072,13 +1073,7 @@ public:
       af::shared<double> cv(cv_values, cv_values+10);
       scitbx::matrix::outer_product(tmp.begin(),cv.const_ref(),cv.const_ref());
 
-      double* a_ = a.begin();
-      double* tmp_ = tmp.begin();
-      for (unsigned j=0; j < 100; j++) {
-        *a_ = (*a_) + (*tmp_);
-        *a_++;
-        *tmp_++;
-      }
+      a += tmp;
       b = b + u_iso[i]*cv;
     }
   }
