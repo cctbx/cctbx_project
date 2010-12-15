@@ -1,6 +1,6 @@
 from __future__ import division
 
-from smtbx.refinement import constraints, weighting_schemes
+from smtbx.refinement import constraints, least_squares
 import smtbx.refinement.constraints.adp
 import smtbx.refinement.constraints.geometrical.all
 
@@ -55,10 +55,10 @@ class weighting_scheme_builder(object):
     assert f == 1/3
     if c == 0 and d == 0 and e == 0:
       self.weighting_scheme = \
-          weighting_schemes.mainstream_shelx_weighting(a, b)
+          least_squares.mainstream_shelx_weighting(a, b)
     else:
       self.weighting_scheme = \
-          weighting_schemes.shelx_weighting(a, b, c, d, e, f)
+          least_squares.shelx_weighting(a, b, c, d, e, f)
 
 class constrained_restrained_crystal_structure_builder(
   constrained_crystal_structure_builder, restrained_crystal_structure_builder):
