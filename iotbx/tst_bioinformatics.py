@@ -1396,7 +1396,7 @@ class test_alignment_parse(unittest.TestCase):
 
     self.assertEqual(
       sorted( bioinformatics.known_alignment_formats() ),
-      [ ".ali", ".aln", ".clustal", ".fa", ".fasta", ".pir" ]
+      [ ".ali", ".aln", ".clustal", ".fa", ".fasta", ".hhr", ".pir" ]
       )
 
 
