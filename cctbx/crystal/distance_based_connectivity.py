@@ -6,12 +6,17 @@ import cctbx.crystal
 import cctbx.uctbx
 from scitbx.array_family import flex, shared
 
-expected_bond_lengths = map.stl_string_double()
-vdw_radii = map.stl_string_double()
-for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems() :
-  expected_bond_lengths[e1+e2] = length
-for k, v in vdw.table.items() :
-  vdw_radii[k.upper()] = v
+def __build_tables():
+  global expected_bond_lengths, vdw_radii
+  expected_bond_lengths = map.stl_string_double()
+  vdw_radii = map.stl_string_double()
+  for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems() :
+    assert e1.find(":") < 0
+    assert e2.find(":") < 0
+    expected_bond_lengths[e1+":"+e2] = length
+  for k, v in vdw.table.items() :
+    vdw_radii[k.upper()] = v
+__build_tables()
 
 def build_simple_two_way_bond_sets (
       sites_cart,
