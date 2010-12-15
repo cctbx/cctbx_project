@@ -27,6 +27,11 @@ LIBTBX_FULL_TESTING
 LIBTBX_DEBUG_LOG
   If set, enables libtbx.introspection.method_debug_log.
   See method_debug_log documentation for details.
+
+LIBTBX_CPP0X=False|True
+  If False, disables -std=c++0x (if the boost tree is under revision
+  control -std=c++0x is enabled automatically for some compilers).
+  If True, enables -std=c++0x for some compilers.
 """
 
 if (__name__ == "__main__"):
