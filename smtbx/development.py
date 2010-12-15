@@ -2,8 +2,9 @@ from cctbx.development import random_structure
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
-from smtbx.refinement.constraints import adp as adp_constraints
-from smtbx.refinement.constraints import geometrical_hydrogens
+import smtbx.refinement.constraints.adp as adp_constraints
+import smtbx.refinement.constraints.geometrical.hydrogens \
+       as geometrical_hydrogens
 
 class random_xray_structure(random_structure.xray_structure):
 

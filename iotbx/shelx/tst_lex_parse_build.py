@@ -6,7 +6,6 @@ from cctbx import adptbx
 from cctbx import xray
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
-import iotbx.constraints.geometrical
 import iotbx.builders
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
@@ -116,8 +115,12 @@ def exercise_crystal_symmetry_parsing():
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
 def exercise_instruction_parsing():
-  for builder in (None,
-                  iotbx.builders.weighting_scheme_builder()):
+  try:
+    _ = iotbx.builders.weighting_scheme_builder
+    alternatives = (None, _())
+  except AttributeError:
+    alternatives = (None, )
+  for builder in alternatives:
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
     l = shelx.instruction_parser(stream, builder)
     l.parse()
@@ -138,11 +141,11 @@ def exercise_instruction_parsing():
     if builder is not None:
       assert builder.temperature_in_celsius == ins['temp']
       ws = builder.weighting_scheme
-      assert isinstance(ws, iotbx.weighting_schemes.mainstream_shelx_weighting)
+      assert isinstance(
+        ws,
+        iotbx.builders.weighting_schemes.mainstream_shelx_weighting)
       assert ws.a == ins['wght']['a']
       assert ws.b == ins['wght']['b']
-      assert ws.c == ws.d == ws.e == 0
-      assert ws.f == 1/3
 
 def exercise_xray_structure_parsing():
   exercise_special_positions()
@@ -289,13 +292,17 @@ def exercise_invalid():
       assert approx_equal(sc.occupancy, 1-occ)
 
 def exercise_afix_parsing():
-  builder = iotbx.builders.constrained_crystal_structure_builder()
+  import smtbx.refinement.constraints.geometrical.hydrogens as _
+  try:
+    builder = iotbx.builders.constrained_crystal_structure_builder()
+  except AttributeError:
+    print "Skipping AFIX parsing: : smtbx module not available"
+    return
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
   l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
   l_xs.parse()
-  _ = iotbx.constraints.geometrical
   expected_geometrical_constraints = [
     _.staggered_terminal_tetrahedral_xh_site(
       constrained_site_indices=(1,),
@@ -319,18 +326,23 @@ def exercise_afix_parsing():
     ]
   geometrical_constraints = [
     c for c in builder.constraints
-    if c.__module__ == 'iotbx.constraints.geometrical' ]
+    if c.__module__ == 'smtbx.refinement.constraints.geometrical.hydrogens' ]
+  assert len(geometrical_constraints) == len(expected_geometrical_constraints)
   for result, expected in zip(geometrical_constraints,
                               expected_geometrical_constraints):
     assert (result == expected)
 
 def exercise_u_iso_proportional_to_u_eq_parsing():
-  builder = iotbx.builders.constrained_crystal_structure_builder()
+  import smtbx.refinement.constraints.adp as _
+  try:
+    builder = iotbx.builders.constrained_crystal_structure_builder()
+  except AttributeError:
+    print "Skipping u_iso = k u_eq test: smtbx module not available"
+    return
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
   l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
   l_xs.parse()
-  _ = iotbx.constraints.adp
   expected_u_iso_constraints = [
     _.u_iso_proportional_to_pivot_u_eq(
       u_iso_scatterer_idx=1,
@@ -367,7 +379,8 @@ def exercise_u_iso_proportional_to_u_eq_parsing():
   ]
   u_iso_constraints = [
     c for c in builder.constraints
-    if c.__module__ == 'iotbx.constraints.adp' ]
+    if c.__module__ == 'smtbx.refinement.constraints.adp' ]
+  assert len(u_iso_constraints) == len(expected_u_iso_constraints)
   for result, expected in zip(u_iso_constraints, expected_u_iso_constraints):
     assert result == expected
 
