@@ -143,7 +143,7 @@ def exercise_instruction_parsing():
       ws = builder.weighting_scheme
       assert isinstance(
         ws,
-        iotbx.builders.weighting_schemes.mainstream_shelx_weighting)
+        iotbx.builders.least_squares.mainstream_shelx_weighting)
       assert ws.a == ins['wght']['a']
       assert ws.b == ins['wght']['b']
 
