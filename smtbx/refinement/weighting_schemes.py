@@ -88,7 +88,6 @@ class _mainstream_shelx_weighting(boost.python.injector,
     fc_sq = fc_sq.select(permutation)
     fo_sq = fo_sq.select(permutation)
     n_bins = 10
-    bins = []
     bin_max = 0
     bin_limits = flex.size_t(1, 0)
     bin_count = flex.size_t()
