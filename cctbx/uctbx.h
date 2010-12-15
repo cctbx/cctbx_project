@@ -259,6 +259,12 @@ namespace cctbx {
     return result;
   }
 
+  //! Foadi, J., Evans, G. (2011). Acta Cryst. A67, 93-95.
+  bool
+  unit_cell_angles_are_feasible(
+    scitbx::vec3<double> const& values_deg,
+    double tolerance=1e-6);
+
   //! Class for the handling of unit cell information.
   /*! All angles are in degrees.
       <p>
