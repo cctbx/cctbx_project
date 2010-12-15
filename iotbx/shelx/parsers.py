@@ -13,7 +13,7 @@ from cctbx import adptbx
 import scitbx.math
 
 from iotbx.shelx.errors import error as shelx_error
-import iotbx.constraints.commonplace
+import iotbx.constrained_parameters
 
 class parser(object):
 
@@ -158,7 +158,7 @@ class crystal_symmetry_parser(parser):
 class variable_decoder(object):
 
   def decode_variables(self, coded_variables, u_iso_idx=None):
-    _ = iotbx.constraints.commonplace
+    _ = iotbx.constrained_parameters
     values = []
     behaviours = []
     for i, coded_variable in enumerate(coded_variables):
@@ -261,7 +261,7 @@ class atom_parser(parser, variable_decoder):
         yield command, line
 
   def lex_scatterer(self, args, scatterer_index):
-    _ = iotbx.constraints.commonplace
+    _ = iotbx.constrained_parameters
     name = args[0]
     self.scatterer_label_to_index.setdefault(name.lower(), scatterer_index)
     n = int(args[1])
@@ -348,8 +348,8 @@ class afix_parser(parser):
         info = self.constraints.get(m)
         if info is not None:
           constraint_name, pivot_relative_pos = info
-          constraint_type = getattr(self.builder.constraint_factory,
-                                    constraint_name)
+          constraint_type = self.builder.make_geometrical_constraint_type(
+            constraint_name)
           self.builder.start_geometrical_constraint(
             type_=constraint_type,
             bond_length=d,

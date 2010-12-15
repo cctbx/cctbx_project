@@ -1,12 +1,11 @@
 """ All X-H bond lengths are in Angstrom and their values are taken from
 ShelXL documentation (p. 4-3) """
 
-import iotbx.constraints.geometrical as _input
 import smtbx.refinement.constraints as _
-from smtbx.refinement.constraints import InvalidConstraint
+from smtbx.refinement.constraints import InvalidConstraint, geometrical
 from scitbx.matrix import col
 
-class geometrical_hydrogens_mixin(object):
+class hydrogens(geometrical.any):
 
   need_pivot_neighbour_substituent = False
 
@@ -79,7 +78,7 @@ class geometrical_hydrogens_mixin(object):
     return d
 
 
-class terminal_tetrahedral_xhn_site_mixin(geometrical_hydrogens_mixin):
+class terminal_tetrahedral_xhn_site(hydrogens):
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
                       pivot_site      , pivot_neighbour_sites,
@@ -102,23 +101,21 @@ class terminal_tetrahedral_xhn_site_mixin(geometrical_hydrogens_mixin):
       hydrogen=hydrogens)
 
 
-class terminal_tetrahedral_xh_site(_input.terminal_tetrahedral_xh_site,
-                                   terminal_tetrahedral_xhn_site_mixin):
-
+class terminal_tetrahedral_xh_site(terminal_tetrahedral_xhn_site):
+  n_constrained_sites = 1
   room_temperature_bond_length = { 'O' : 0.82,
                                    }
 
-class terminal_tetrahedral_xh3_sites(_input.terminal_tetrahedral_xh3_sites,
-                                     terminal_tetrahedral_xhn_site_mixin):
-
+class terminal_tetrahedral_xh3_sites(terminal_tetrahedral_xhn_site):
+  n_constrained_sites = 3
   room_temperature_bond_length = { 'C' : 0.96,
                                    'N' : 0.89,
                                    }
 
 
-class tertiary_ch_site(_input.tertiary_ch_site,
-                       geometrical_hydrogens_mixin):
+class tertiary_ch_site(hydrogens):
 
+  n_constrained_sites = 1
   room_temperature_bond_length = { 'C' : 0.98,
                                    }
 
@@ -139,9 +136,9 @@ class tertiary_ch_site(_input.tertiary_ch_site,
       hydrogen=hydrogens[0])
 
 
-class secondary_ch2_sites(_input.secondary_ch2_sites,
-                          geometrical_hydrogens_mixin):
+class secondary_ch2_sites(hydrogens):
 
+  n_constrained_sites = 2
   room_temperature_bond_length = { 'C' : 0.97,
                                    }
 
@@ -169,9 +166,9 @@ class secondary_ch2_sites(_input.secondary_ch2_sites,
       hydrogen_1=hydrogens[1])
 
 
-class secondary_planar_xh_site(_input.secondary_planar_xh_site,
-                               geometrical_hydrogens_mixin):
+class secondary_planar_xh_site(hydrogens):
 
+  n_constrained_sites = 1
   room_temperature_bond_length = { 'C' : 0.93,
                                    'N' : 0.86,
                                    }
@@ -194,9 +191,9 @@ class secondary_planar_xh_site(_input.secondary_planar_xh_site,
       hydrogen=hydrogens[0])
 
 
-class terminal_planar_xh2_sites(_input.terminal_planar_xh2_sites,
-                                geometrical_hydrogens_mixin):
+class terminal_planar_xh2_sites(hydrogens):
 
+  n_constrained_sites = 2
   need_pivot_neighbour_substituent = True
 
   room_temperature_bond_length = \
@@ -220,9 +217,9 @@ class terminal_planar_xh2_sites(_input.terminal_planar_xh2_sites,
       hydrogen_1=hydrogens[1])
 
 
-class terminal_linear_ch_site(_input.terminal_linear_ch_site,
-                              geometrical_hydrogens_mixin):
+class terminal_linear_ch_site(hydrogens):
 
+  n_constrained_sites = 1
   room_temperature_bond_length = { 'C' : 0.93,
                                    }
 
@@ -239,3 +236,42 @@ class terminal_linear_ch_site(_input.terminal_linear_ch_site,
       pivot_neighbour=pivot_neighbour_site_params[0],
       length=bond_length,
       hydrogen=hydrogens[0])
+
+class staggered_terminal_tetrahedral_xh3_sites(hydrogens):
+
+  n_constrained_sites = 3
+  staggered = True
+  room_temperature_bond_length = \
+    terminal_tetrahedral_xh3_sites.room_temperature_bond_length
+
+  def add_hydrogen_to(self, reparametrisation, bond_length,
+                      pivot_site      , pivot_neighbour_sites,
+                      pivot_site_param, pivot_neighbour_site_params,
+                      hydrogens, **kwds):
+    raise NotImplementedError
+
+
+class staggered_terminal_tetrahedral_xh_site(hydrogens):
+
+  n_constrained_sites = 1
+  staggered = True
+  room_temperature_bond_length = \
+    terminal_tetrahedral_xh_site.room_temperature_bond_length
+
+  def add_hydrogen_to(self, reparametrisation, bond_length,
+                      pivot_site      , pivot_neighbour_sites,
+                      pivot_site_param, pivot_neighbour_site_params,
+                      hydrogens, **kwds):
+    raise NotImplementedError
+
+
+class polyhedral_bh_site(hydrogens):
+
+  n_constrained_sites = 5
+  room_temperature_bond_length = { 'B': 1.10, }
+
+  def add_hydrogen_to(self, reparametrisation, bond_length,
+                      pivot_site      , pivot_neighbour_sites,
+                      pivot_site_param, pivot_neighbour_site_params,
+                      hydrogens, **kwds):
+    raise NotImplementedError

@@ -1,7 +1,7 @@
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
-import smtbx.refinement.constraints.factory as _
+import smtbx.refinement.constraints.all as _
 import smtbx.refinement.constraints as core
 import smtbx.utils
 from smtbx.refinement import least_squares

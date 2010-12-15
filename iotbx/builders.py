@@ -1,21 +1,18 @@
 from __future__ import division
 
+import scitbx.math
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import xray
 from cctbx import sgtbx
 from cctbx import adp_restraints, geometry_restraints
-import scitbx.math
+import iotbx.constrained_parameters
 
 import libtbx.load_env
 if (libtbx.env.has_module(name="smtbx")):
   from smtbx.refinement.restraints import adp_restraints as smtbx_adp_restraints
 else:
   smtbx_adp_restraints = None
-
-import iotbx.constraints.commonplace
-import iotbx.constraints.factory
-import iotbx.weighting_schemes.factory
 
 class crystal_symmetry_builder(object):
 
@@ -50,7 +47,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
         if the corresponding variables have been found to be refined
         by the parser using this builder.
     """
-    _ = iotbx.constraints.commonplace
+    _ = iotbx.constrained_parameters
     if self.set_grad_flags:
       f = scatterer.flags
       if behaviour_of_variable[0:3].count(_.constant_parameter) != 3:
@@ -78,45 +75,6 @@ class crystal_structure_builder(crystal_symmetry_builder):
     if sym_excl_index is not None:
       if self.sym_excl_indices is None: self.sym_excl_indices = flex.size_t()
       self.sym_excl_indices.append(sym_excl_index)
-
-
-class constrained_crystal_structure_builder(crystal_structure_builder):
-
-  def __init__(self, constraint_factory=iotbx.constraints.factory,
-               *args, **kwds):
-    super(constrained_crystal_structure_builder, self).__init__(*args, **kwds)
-    self.constraint_factory = constraint_factory
-    self.constraints = []
-    self.temperature_in_celsius = None
-
-  def add_scatterer(self, scatterer, behaviour_of_variable, *args, **kwds):
-    _ = iotbx.constraints.commonplace
-    crystal_structure_builder.add_scatterer(
-      self, scatterer, behaviour_of_variable, *args, **kwds)
-    if (scatterer.flags.use_u_iso()):
-      b = behaviour_of_variable[4]
-      if isinstance(b, tuple) and b[0] == _.constant_times_u_eq:
-        self.constraints.append(
-          self.constraint_factory.u_iso_proportional_to_pivot_u_eq(
-            u_eq_scatterer_idx=b[2],
-            u_iso_scatterer_idx=len(self.structure.scatterers()) - 1,
-            multiplier=b[1]))
-
-  def start_geometrical_constraint(self, type_,
-                                   bond_length, rotating, stretching,
-                                   pivot_relative_pos):
-    self.first = len(self.structure.scatterers())
-
-    self.current = type_(rotating=rotating,
-                         stretching=stretching,
-                         bond_length=bond_length,
-                         pivot=self.first + pivot_relative_pos)
-
-  def end_geometrical_constraint(self):
-    last = len(self.structure.scatterers())
-    self.current.finalise(self.first, last)
-    self.constraints.append(self.current)
-
 
 class restrained_crystal_structure_builder(crystal_structure_builder):
 
@@ -241,28 +199,5 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
       if len(proxies) != 0])
 
-
-class weighting_scheme_builder(object):
-
-  def __init__(self, weighting_scheme_factory=iotbx.weighting_schemes.factory,
-               *args, **kwds):
-    super(weighting_scheme_builder, self).__init__(*args, **kwds)
-    self.weighting_scheme_factory = weighting_scheme_factory
-
-  def make_shelx_weighting_scheme(self, a, b, c=0, d=0, e=0, f=1/3):
-    assert f == 1/3
-    if c == 0 and d == 0 and e == 0:
-      self.weighting_scheme = \
-          self.weighting_scheme_factory.mainstream_shelx_weighting(a, b)
-    else:
-      self.weighting_scheme = \
-          self.weighting_scheme_factory.shelx_weighting(a, b, c, d, e, f)
-
-class constrained_restrained_crystal_structure_builder(
-  constrained_crystal_structure_builder, restrained_crystal_structure_builder):
-  pass
-
-
-class weighted_constrained_restrained_crystal_structure_builder(
-  weighting_scheme_builder, constrained_restrained_crystal_structure_builder):
-  pass
+if (libtbx.env.has_module(name="smtbx")):
+  from iotbx.builders_depending_on_smtbx import *
