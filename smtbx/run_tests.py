@@ -10,6 +10,7 @@ def run():
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
     ["$D/refinement/tests/tst_least_squares.py", "--fix_random_seeds"],
+    "$D/refinement/tests/tst_weighting_schemes.py",
     "$B/refinement/constraints/tests/tst_reparametrisation",
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
     "$B/refinement/constraints/tests/tst_special_position",
