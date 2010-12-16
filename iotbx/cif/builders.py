@@ -193,6 +193,8 @@ class crystal_structure_builder(crystal_symmetry_builder):
     type_symbol = cif_block.get('_atom_site_type_symbol')
     U_iso_or_equiv = flex_double_else_none(
       cif_block.get('_atom_site_U_iso_or_equiv'))
+    B_iso_or_equiv = flex_double_else_none(
+      cif_block.get('_atom_site_B_iso_or_equiv'))
     adp_type = cif_block.get('_atom_site_adp_type')
     occupancy = flex_double_else_none(cif_block.get('_atom_site_occupancy'))
     scatterers = flex.xray_scatterer()
@@ -224,6 +226,8 @@ class crystal_structure_builder(crystal_symmetry_builder):
           self.crystal_symmetry.unit_cell(), adp))
       elif U_iso_or_equiv is not None:
         kwds.setdefault('u', float_from_string(U_iso_or_equiv[i]))
+      elif B_iso_or_equiv is not None:
+        kwds.setdefault('b', float_from_string(B_iso_or_equiv[i]))
       if occupancy is not None:
         kwds.setdefault('occupancy', float_from_string(occupancy[i]))
       scatterers.append(xray.scatterer(**kwds))
