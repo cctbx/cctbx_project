@@ -3,6 +3,7 @@
 
 import iotbx.gui_tools
 from iotbx import file_reader
+import cStringIO
 import os
 
 class cif_handler (iotbx.gui_tools.manager) :
@@ -99,7 +100,7 @@ class model_handler (iotbx.gui_tools.manager) :
       pdb_str.write(cryst1 + "\n")
       pdb_str.write(scale + "\n")
     pdb_str.write("\n".join(hierarchies))
-    return pdb_str
+    return pdb_str.getvalue()
 
   def get_combined_pdb_input (self, file_param_name=None) :
     if (file_param_name is not None) :
@@ -114,10 +115,7 @@ class model_handler (iotbx.gui_tools.manager) :
       raise RuntimeError("No PDB files loaded.")
     pdb_str = self.combine_pdb_files(file_names)
     import iotbx.pdb
-    from scitbx.array_family import flex
-    raw_records = flex.std_string()
-    raw_records.extend(flex.split_lines(pdb_str))
-    pdb_in = iotbx.pdb.input(source_info=None, lines=raw_records)
+    pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
     hierarchy = pdb_in.construct_hierarchy()
     xray_structure = pdb_in.xray_structure_simple()
     return (hierarchy, xray_structure)
