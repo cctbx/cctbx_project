@@ -125,7 +125,7 @@ maps {
       .type = path
       .optional = False
       .short_caption = PDB file
-      .style = bold file_type:pdb
+      .style = bold file_type:pdb input_file
     reflection_data {
       %s
       r_free_flags {

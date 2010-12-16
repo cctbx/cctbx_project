@@ -143,13 +143,13 @@ pdb_file = None
   .multiple = True
   .optional = True
   .short_caption = PDB file
-  .style = bold noauto file_type:pdb
+  .style = bold noauto file_type:pdb input_file
 reference_file = None
   .type = path
   .short_caption = Reference set
   .help = Reflections file containing Miller indices (h,k,l) to use in output \
     file.
-  .style = noauto file_type:mtz OnUpdate:update_reference_column_labels
+  .style = noauto input_file file_type:mtz OnUpdate:update_reference_column_labels
 data_column_label = None
   .type = str
   .short_caption = Reference file label
