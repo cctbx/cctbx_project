@@ -7,13 +7,13 @@ additional_spotfinder_phil_defs ="""
 distl {
   minimum_spot_area = None
     .type = int
-    .help = "Override default application; set minimum spot area (in pixels) within spotfinder."
+    .help = "Override application default (PADs:5, others:10) set minimum spot area (in pixels) within spotfinder."
   minimum_signal_height = None
     .type = float
-    .help = "Override default application; set minimum signal height (in units of background noise sigma) within spotfinder."
+    .help = "Override application default (PADs:2.5, CCDs:1.5) set minimum signal height (in units of background noise sigma) within spotfinder."
   minimum_spot_height = None
     .type = float
-    .help = "Expert use only; after pixels are classified as signals (rather then noise), minimum height to be considered a spot maximum (in units of background noise sigma). Default=3.5"
+    .help = "Expert use only; after pixels are classified as signals rather than noise, minimum height to be considered a spot maximum (in units of background noise sigma). Default=3.5"
   spot_area_maximum_factor = None
     .type = float
     .help = "Expert use only; max spot area expressed as a multiple of minimum_spot_area. Default=5.0"
