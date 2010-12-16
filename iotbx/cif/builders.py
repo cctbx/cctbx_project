@@ -192,9 +192,12 @@ class crystal_structure_builder(crystal_symmetry_builder):
     labels = cif_block.get('_atom_site_label')
     type_symbol = cif_block.get('_atom_site_type_symbol')
     U_iso_or_equiv = flex_double_else_none(
-      cif_block.get('_atom_site_U_iso_or_equiv'))
-    B_iso_or_equiv = flex_double_else_none(
-      cif_block.get('_atom_site_B_iso_or_equiv'))
+      cif_block.get('_atom_site_U_iso_or_equiv',
+      cif_block.get('_atom_site_U_equiv_geom_mean')))
+    if U_iso_or_equiv is None:
+      B_iso_or_equiv = flex_double_else_none(
+        cif_block.get('_atom_site_B_iso_or_equiv',
+        cif_block.get('_atom_site_B_equiv_geom_mean')))
     adp_type = cif_block.get('_atom_site_adp_type')
     occupancy = flex_double_else_none(cif_block.get('_atom_site_occupancy'))
     scatterers = flex.xray_scatterer()
