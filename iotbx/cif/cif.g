@@ -126,7 +126,7 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 @after { delete $data_items::curr_loop_values;
  	 delete $data_items::curr_loop_headers;
 }
-	:	TAG WHITESPACE value
+	:	TAG WHITESPACE* value
 {
   ($parse::builder)->attr("add_data_item")(
   to_std_string($TAG),
