@@ -30,6 +30,8 @@ class hooft_analysis(object):
 
   """
 
+  distribution = "Gaussian"
+
   def __init__(self, fo2, fc,
                scale_factor=None,
                outlier_cuttoff_factor=2,
@@ -159,6 +161,7 @@ class hooft_analysis(object):
 
   def show(self, out=None):
     if out is None: out=sys.stdout
+    print >> out, "Bijvoet pair analysis using %s distribution" %self.distribution
     print >> out, "Bijvoet pairs (all): %i" %self.n_bijvoet_pairs
     print >> out, "Bijvoet pairs (used): %i" %self.delta_fo2.size()
     print >> out, "Bijvoet pairs coverage: %.2f" %(
@@ -254,6 +257,8 @@ class students_t_hooft_analysis(hooft_analysis):
   """
   Hooft, R.W.W., Straver, L.H., Spek, A.L. (2010). J. Appl. Cryst., 43, 665-668.
   """
+
+  distribution = "Student's t"
 
   def __init__(self, fo2, fc,
                degrees_of_freedom,
