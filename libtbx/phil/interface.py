@@ -308,12 +308,20 @@ class index (object) :
           assert (def_copy.is_definition)
           file_name = def_copy.extract()
           if (file_name is not None) :
-            files.append((file_name, label, def_name))
+            if isinstance(file_name, list) :
+              for fn in file_name :
+                files.append((fn, label, def_name))
+            else :
+              files.append((file_name, label, def_name))
       else :
         assert phil_object.is_definition
         file_name = phil_object.extract()
         if (file_name is not None) :
-          files.append((file_name, label, def_name))
+          if isinstance(file_name, list) :
+            for fn in file_name :
+              files.append((fn, label, def_name))
+          else :
+            files.append((file_name, label, def_name))
     return files
 
   def get_run_title (self) :
@@ -565,12 +573,13 @@ def index_phil_objects (phil_object,
                          in_template=in_template,
                          expert_levels=expert_levels,
                          input_files=input_files)
-  elif (phil_object.type.phil_type == "path") and (input_files is not None) :
-    style = phil_object.style
-    if (style is not None) :
-      style_words = style.split()
-      if ("input_file" in style_words) :
-        input_files.append(full_path)
+  elif (input_files is not None) :
+    if (phil_object.type.phil_type in ["path", "strings"]) :
+      style = phil_object.style
+      if (style is not None) :
+        style_words = style.split()
+        if ("input_file" in style_words) :
+          input_files.append(full_path)
 
 def reindex_phil_objects (phil_object, path_index, only_scope=None) :
   if phil_object.is_template < 0 :
