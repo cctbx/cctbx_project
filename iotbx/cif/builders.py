@@ -119,24 +119,41 @@ if PyCifRW is not None:
 class crystal_symmetry_builder:
 
   def __init__(self, cif_block):
+    # The order of priority for determining space group is:
+    #   sym_ops, hall symbol, H-M symbol, space group number
     sym_ops = cif_block.get('_space_group_symop_operation_xyz',
               cif_block.get('_symmetry_equiv_pos_as_xyz'))
     sym_op_ids = cif_block.get('_space_group_symop_id',
                  cif_block.get('_symmetry_equiv_pos_site_id'))
-    if sym_ops is None:
-      raise RuntimeError("No symmetry instructions are present in the cif block")
-    if sym_op_ids is not None:
-      assert len(sym_op_ids) == len(sym_ops)
-    self.sym_ops = {}
-    space_group = sgtbx.space_group()
-    for i, op in enumerate(sym_ops):
-      s = sgtbx.rt_mx(op)
-      if sym_op_ids is None:
-        sym_op_id = i+1
+    if sym_ops is not None:
+      if sym_op_ids is not None:
+        assert len(sym_op_ids) == len(sym_ops)
+      self.sym_ops = {}
+      space_group = sgtbx.space_group()
+      if isinstance(sym_ops, basestring): sym_ops = [sym_ops]
+      for i, op in enumerate(sym_ops):
+        s = sgtbx.rt_mx(op)
+        if sym_op_ids is None:
+          sym_op_id = i+1
+        else:
+          sym_op_id = int(sym_op_ids[i])
+        self.sym_ops[sym_op_id] = s
+        space_group.expand_smx(s)
+    else:
+      hall_symbol = cif_block.get('_space_group_name_Hall',
+                    cif_block.get('_symmetry_space_group_name_Hall'))
+      hm_symbol = cif_block.get('_space_group_name_H-M_alt',
+                  cif_block.get('_symmetry_space_group_name_H-M'))
+      sg_number = cif_block.get('_space_group_symop_sg_id',
+                  cif_block.get('_symmetry_Int_Tables_number'))
+      if hall_symbol is not None:
+        space_group = sgtbx.space_group(hall_symbol)
+      elif hm_symbol is not None:
+        space_group = sgtbx.space_group_info(symbol=hm_symbol).group()
+      elif sg_number is not None:
+        space_group = sgtbx.space_group_info(number=sg_number).group()
       else:
-        sym_op_id = int(sym_op_ids[i])
-      self.sym_ops[sym_op_id] = s
-      space_group.expand_smx(s)
+        raise RuntimeError("No symmetry instructions are present in the cif block")
     try:
       cell_params = [float_from_string(
         cif_block['_cell_length_%s' %dim]) for dim in ('a','b','c')]
@@ -146,7 +163,7 @@ class crystal_symmetry_builder:
     except KeyError:
       raise RuntimeError("Not all unit cell parameters are given in the cif file")
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
-                                        space_group=space_group)
+                                             space_group=space_group)
 
 class crystal_structure_builder(crystal_symmetry_builder):
 
@@ -174,17 +191,23 @@ class crystal_structure_builder(crystal_symmetry_builder):
         flex.double(flex.std_string(atom_sites_frac[2])))
     labels = cif_block.get('_atom_site_label')
     type_symbol = cif_block.get('_atom_site_type_symbol')
-    U_iso_or_equiv = cif_block.get('_atom_site_U_iso_or_equiv')
+    U_iso_or_equiv = flex_double_else_none(
+      cif_block.get('_atom_site_U_iso_or_equiv'))
     adp_type = cif_block.get('_atom_site_adp_type')
-    occupancy = cif_block.get('_atom_site_occupancy')
+    occupancy = flex_double_else_none(cif_block.get('_atom_site_occupancy'))
     scatterers = flex.xray_scatterer()
-    # XXX To do: allow interpretation of adps given as B
     atom_site_aniso_label = cif_block.get('_atom_site_aniso_label')
     if atom_site_aniso_label is not None:
       atom_site_aniso_label = flex.std_string(atom_site_aniso_label)
-      adps = [flex.double(flex.std_string(
-        cif_block.get('_atom_site_aniso_U_%i' %i)))
+      adps = [cif_block.get('_atom_site_aniso_U_%i' %i)
               for i in (11,22,33,12,13,23)]
+      have_Bs = False
+      if adps.count(None) > 0:
+        adps = [cif_block.get('_atom_site_aniso_B_%i' %i)
+                for i in (11,22,33,12,13,23)]
+        have_Bs = True
+      assert adps.count(None) == 0
+      adps = [flex.double(flex.std_string(adp)) for adp in adps]
       adps = flex.sym_mat3_double(*adps)
     for i in range(len(atom_sites_frac)):
       kwds = {}
@@ -195,9 +218,10 @@ class crystal_structure_builder(crystal_symmetry_builder):
       if (atom_site_aniso_label is not None
           and labels is not None
           and labels[i] in atom_site_aniso_label):
-        adp_i = flex.first_index(atom_site_aniso_label, labels[i])
+        adp = adps[flex.first_index(atom_site_aniso_label, labels[i])]
+        if have_Bs: adp = adptbx.b_as_u(adp)
         kwds.setdefault('u', adptbx.u_cif_as_u_star(
-          self.crystal_symmetry.unit_cell(), adps[adp_i]))
+          self.crystal_symmetry.unit_cell(), adp))
       elif U_iso_or_equiv is not None:
         kwds.setdefault('u', float_from_string(U_iso_or_equiv[i]))
       if occupancy is not None:
@@ -287,6 +311,14 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def arrays(self):
     return self._arrays
+
+def flex_double_else_none(strings):
+  if strings is None: return None
+  try:
+    return flex.double(flex.std_string(strings))
+  except RuntimeError, e:
+    if 'bad lexical cast' in str(e): return None
+    else: raise e
 
 def float_from_string(string):
   """a cif string may be quoted,
