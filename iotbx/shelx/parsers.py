@@ -307,8 +307,8 @@ class afix_parser(parser):
   # AFIX mn : some of them use a pivot whose position is given wrt
   #           the first constrained scatterer site
   # m:    type                                    , pivot position
-    1:  ("tertiary_ch_site"                        , -1),
-    2:  ("secondary_ch2_sites"                     , -1),
+    1:  ("tertiary_xh_site"                        , -1),
+    2:  ("secondary_xh2_sites"                     , -1),
     3:  ("staggered_terminal_tetrahedral_xh3_sites", -1),
     4:  ("secondary_planar_xh_site"                , -1),
     8:  ("staggered_terminal_tetrahedral_xh_site"  , -1),

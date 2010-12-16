@@ -198,37 +198,37 @@ class sucrose_test_case(test_case):
         rotating=True,
         pivot=16,
         constrained_site_indices=(17,)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=19,
         constrained_site_indices=(20,)),
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=21,
         constrained_site_indices=(26, 22)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=23,
         constrained_site_indices=(24,)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=25,
         constrained_site_indices=(27,)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=28,
         constrained_site_indices=(29,)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=30,
         constrained_site_indices=(31,)),
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=33,
         constrained_site_indices=(35, 34)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=36,
         constrained_site_indices=(37,)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=38,
         constrained_site_indices=(39,)),
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=40,
         constrained_site_indices=(41,)),
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=42,
         constrained_site_indices=(43, 44)),
       ]
@@ -242,20 +242,20 @@ class sucrose_test_case(test_case):
       "H8": (core.terminal_tetrahedral_xh_site, 'O8'),
       "H9": (core.terminal_tetrahedral_xh_site, 'O9'),
       "H10": (core.terminal_tetrahedral_xh_site, 'O10'),
-      "H1": (core.tertiary_ch_site, 'C1'),
-      "H2A": (core.secondary_ch2_sites, 'C2'),
-      "H2B": (core.secondary_ch2_sites, 'C2'),
-      "H3B": (core.tertiary_ch_site, 'C3'),
-      "H4B": (core.tertiary_ch_site, 'C4'),
-      "H5B": (core.tertiary_ch_site, 'C5'),
-      "H6": (core.tertiary_ch_site, 'C6'),
-      "H8A": (core.secondary_ch2_sites, 'C8'),
-      "H8B": (core.secondary_ch2_sites, 'C8'),
-      "H9B": (core.tertiary_ch_site, 'C9'),
-      "H10B": (core.tertiary_ch_site, 'C10'),
-      "H11": (core.tertiary_ch_site, 'C11'),
-      "H12A": (core.secondary_ch2_sites, 'C12'),
-      "H12B": (core.secondary_ch2_sites, 'C12'),
+      "H1": (core.tertiary_xh_site, 'C1'),
+      "H2A": (core.secondary_xh2_sites, 'C2'),
+      "H2B": (core.secondary_xh2_sites, 'C2'),
+      "H3B": (core.tertiary_xh_site, 'C3'),
+      "H4B": (core.tertiary_xh_site, 'C4'),
+      "H5B": (core.tertiary_xh_site, 'C5'),
+      "H6": (core.tertiary_xh_site, 'C6'),
+      "H8A": (core.secondary_xh2_sites, 'C8'),
+      "H8B": (core.secondary_xh2_sites, 'C8'),
+      "H9B": (core.tertiary_xh_site, 'C9'),
+      "H10B": (core.tertiary_xh_site, 'C10'),
+      "H11": (core.tertiary_xh_site, 'C11'),
+      "H12A": (core.secondary_xh2_sites, 'C12'),
+      "H12B": (core.secondary_xh2_sites, 'C12'),
     }
 
     self.expected_mapping_to_grad_fc = (
@@ -646,7 +646,7 @@ class symmetry_equivalent_test_case(test_case):
     self.shall_refine_thermal_displacements = True
 
     self.constraints = [
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=2,
         constrained_site_indices=(3,4)),
 
@@ -660,7 +660,7 @@ class symmetry_equivalent_test_case(test_case):
         u_iso_scatterer_idx=4,
         multiplier=1.5),
 
-      _.tertiary_ch_site(
+      _.tertiary_xh_site(
         pivot=5,
         constrained_site_indices=(6,)),
 
@@ -669,7 +669,7 @@ class symmetry_equivalent_test_case(test_case):
         u_iso_scatterer_idx=6,
         multiplier=1.5),
 
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=7,
         constrained_site_indices=(8, 9)),
 
@@ -683,7 +683,7 @@ class symmetry_equivalent_test_case(test_case):
         u_iso_scatterer_idx=9,
         multiplier=1.5),
 
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=10,
         constrained_site_indices=(11, 12)),
 
@@ -697,7 +697,7 @@ class symmetry_equivalent_test_case(test_case):
         u_iso_scatterer_idx=12,
         multiplier=1.5),
 
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=13,
         constrained_site_indices=(14, 15)),
 
@@ -711,7 +711,7 @@ class symmetry_equivalent_test_case(test_case):
         u_iso_scatterer_idx=15,
         multiplier=1.5),
 
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=16,
           constrained_site_indices=(17, 18)),
 
@@ -725,7 +725,7 @@ class symmetry_equivalent_test_case(test_case):
         u_iso_scatterer_idx=18,
         multiplier=1.5),
 
-      _.secondary_ch2_sites(
+      _.secondary_xh2_sites(
         pivot=19,
         constrained_site_indices=(20, 21)),
 
@@ -741,19 +741,19 @@ class symmetry_equivalent_test_case(test_case):
     ]
 
     self.expected_reparametrisation_for_hydrogen_named = {
-      "H2A": (core.secondary_ch2_sites, 'C2'),
-      "H2B": (core.secondary_ch2_sites, 'C2'),
-      "H3" : (core.tertiary_ch_site   , 'C3'),
-      "H4A": (core.secondary_ch2_sites, 'C4'),
-      "H4B": (core.secondary_ch2_sites, 'C4'),
-      "H5A": (core.secondary_ch2_sites, 'C5'),
-      "H5B": (core.secondary_ch2_sites, 'C5'),
-      "H6A": (core.secondary_ch2_sites, 'C6'),
-      "H6B": (core.secondary_ch2_sites, 'C6'),
-      "H7A": (core.secondary_ch2_sites, 'C7'),
-      "H7B": (core.secondary_ch2_sites, 'C7'),
-      "H8A": (core.secondary_ch2_sites, 'C8'),
-      "H8B": (core.secondary_ch2_sites, 'C8'),
+      "H2A": (core.secondary_xh2_sites, 'C2'),
+      "H2B": (core.secondary_xh2_sites, 'C2'),
+      "H3" : (core.tertiary_xh_site   , 'C3'),
+      "H4A": (core.secondary_xh2_sites, 'C4'),
+      "H4B": (core.secondary_xh2_sites, 'C4'),
+      "H5A": (core.secondary_xh2_sites, 'C5'),
+      "H5B": (core.secondary_xh2_sites, 'C5'),
+      "H6A": (core.secondary_xh2_sites, 'C6'),
+      "H6B": (core.secondary_xh2_sites, 'C6'),
+      "H7A": (core.secondary_xh2_sites, 'C7'),
+      "H7B": (core.secondary_xh2_sites, 'C7'),
+      "H8A": (core.secondary_xh2_sites, 'C8'),
+      "H8B": (core.secondary_xh2_sites, 'C8'),
     }
 
     self.site_refinement_tolerance = 0.01

@@ -113,10 +113,11 @@ class terminal_tetrahedral_xh3_sites(terminal_tetrahedral_xhn_site):
                                    }
 
 
-class tertiary_ch_site(hydrogens):
+class tertiary_xh_site(hydrogens):
 
   n_constrained_sites = 1
   room_temperature_bond_length = { 'C' : 0.98,
+                                   'N' : 0.91,
                                    }
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
@@ -127,7 +128,7 @@ class tertiary_ch_site(hydrogens):
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
     return reparametrisation.add(
-      _.tertiary_ch_site,
+      _.tertiary_xh_site,
       pivot=pivot_site_param,
       pivot_neighbour_0=pivot_neighbour_site_params[0],
       pivot_neighbour_1=pivot_neighbour_site_params[1],
@@ -136,10 +137,11 @@ class tertiary_ch_site(hydrogens):
       hydrogen=hydrogens[0])
 
 
-class secondary_ch2_sites(hydrogens):
+class secondary_xh2_sites(hydrogens):
 
   n_constrained_sites = 2
   room_temperature_bond_length = { 'C' : 0.97,
+                                   'N' : 0.90,
                                    }
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
@@ -156,7 +158,7 @@ class secondary_ch2_sites(hydrogens):
                                      value=theta,
                                      variable=True)
     return reparametrisation.add(
-      _.secondary_ch2_sites,
+      _.secondary_xh2_sites,
       pivot=pivot_site_param,
       pivot_neighbour_0=pivot_neighbour_site_params[0],
       pivot_neighbour_1=pivot_neighbour_site_params[1],

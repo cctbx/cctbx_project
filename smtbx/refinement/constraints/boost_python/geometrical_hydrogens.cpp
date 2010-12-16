@@ -60,15 +60,15 @@ namespace boost_python {
     }
   };
 
-  struct secondary_ch2_sites_wrapper
+  struct secondary_xh2_sites_wrapper
   {
-    typedef secondary_ch2_sites wt;
+    typedef secondary_xh2_sites wt;
 
     static void wrap() {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("secondary_ch2_sites", no_init)
+             std::auto_ptr<wt> >("secondary_xh2_sites", no_init)
         .def(init<site_parameter *,
                 site_parameter *,
                 site_parameter *,
@@ -83,15 +83,15 @@ namespace boost_python {
     }
   };
 
-  struct tertiary_ch_site_wrapper
+  struct tertiary_xh_site_wrapper
   {
-    typedef tertiary_ch_site wt;
+    typedef tertiary_xh_site wt;
 
     static void wrap() {
       using namespace boost::python;
       class_<wt,
              bases<asu_parameter>,
-             std::auto_ptr<wt> >("tertiary_ch_site", no_init)
+             std::auto_ptr<wt> >("tertiary_xh_site", no_init)
         .def(init<site_parameter *,
                   site_parameter *,
                   site_parameter *,
@@ -182,8 +182,8 @@ namespace boost_python {
     terminal_tetrahedral_xhn_sites_wrapper<2, true>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<3, true>::wrap();
 
-    secondary_ch2_sites_wrapper::wrap();
-    tertiary_ch_site_wrapper::wrap();
+    secondary_xh2_sites_wrapper::wrap();
+    tertiary_xh_site_wrapper::wrap();
     secondary_planar_xh_site_wrapper::wrap();
     terminal_planar_xh2_sites_wrapper::wrap();
     terminal_linear_ch_site_wrapper::wrap();
