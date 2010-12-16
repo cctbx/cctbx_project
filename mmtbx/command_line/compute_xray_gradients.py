@@ -7,8 +7,9 @@ import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header
 from libtbx.utils import Usage
-import sys
+import time
 import os
+import sys
 
 master_phil = iotbx.phil.parse("""
 include scope mmtbx.utils.cmdline_input_phil_str
@@ -40,6 +41,7 @@ def compute_gradients (params,
                        f_obs,
                        r_free_flags,
                        out=sys.stdout) :
+  t1 = time.time()
   params.bss.apply_back_trace_of_b_cart=False
   if (not params.options.bulk_solvent_and_scale) :
     assert (not None in [params.fmodel.k_sol,params.fmodel.b_sol,
@@ -68,6 +70,7 @@ def compute_gradients (params,
   if params.options.remove_outliers :
     print >> out, ""
     fmodel = fmodel.remove_outliers(show=True, log=out)
+  t2 = time.time()
   fmodel.xray_structure.scatterers().flags_set_grads(state=False)
   selection = flex.bool(xray_structure.sites_cart().size(), True)
   #print selection.iselection().size()
@@ -82,8 +85,13 @@ def compute_gradients (params,
   sf = tfx_r.gradients_wrt_atomic_parameters().packed()
   assert (sf.size() == (pdb_hierarchy.atoms().size() * 3))
   xyz_grads = flex.vec3_double(sf)
+  t3 = time.time()
   info = fmodel.info()
   info.show_targets(out=out, text="Target values")
+  print >> out, ""
+  print "Run time (excluding I/O): %.2fs" % (t3 - t1)
+  print "Gradients calculation alone: %.2fs" % (t3 - t2)
+  print >> out, ""
   params.fmodel.b_cart = fmodel.b_cart()
   params.fmodel.k_sol = fmodel.k_sol()
   params.fmodel.b_sol = fmodel.b_sol()
