@@ -44,6 +44,7 @@ def exercise_masks():
   s = cStringIO.StringIO()
   mask.show_summary(log=s)
   assert not show_diff(s.getvalue(), """\
+use_set_completion: False
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
 van der Waals radii:
@@ -64,9 +65,9 @@ gridding: (30,45,54)
   for fo2, use_space_group_symmetry in zip(
     (fo2_complete, fo2_complete, fo2_missing_1, fo2_incomplete),
     (True, False, True, True)):
-    if fo2 is fo2_complete: use_complete_set=False
-    else: use_complete_set=True
-    mask = masks.mask(xs_no_sol, fo2, use_complete_set=use_complete_set)
+    if fo2 is fo2_complete: use_set_completion=False
+    else: use_set_completion=True
+    mask = masks.mask(xs_no_sol, fo2, use_set_completion=use_set_completion)
     mask.compute(solvent_radius=1.2,
                  shrink_truncation_radius=1.2,
                  resolution_factor=1/3,
@@ -94,6 +95,7 @@ gridding: (30,45,54)
   s = cStringIO.StringIO()
   mask.show_summary(log=s)
   assert not show_diff(s.getvalue(), """\
+use_set_completion: True
 solvent_radius: 1.20
 shrink_truncation_radius: 1.20
 van der Waals radii:
@@ -169,6 +171,7 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
                                                 n_max_iterations=3)
   return xs
 
+# durham structure 99srv215, CSD code YAKRUY
 YAKRUY_ins = """
 CELL 0.71073   7.086  10.791  12.850 104.16 105.87  95.86
 ZERR    2.00   0.001   0.003   0.002   0.02   0.02   0.01

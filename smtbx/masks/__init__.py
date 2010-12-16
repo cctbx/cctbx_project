@@ -9,11 +9,11 @@ from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
 
 class mask(object):
-  def __init__(self, xray_structure, observations, use_complete_set=False):
+  def __init__(self, xray_structure, observations, use_set_completion=False):
     self.xray_structure = xray_structure
     self.fo2 = observations.as_intensity_array().average_bijvoet_mates()
-    self.use_complete_set = use_complete_set
-    if use_complete_set:
+    self.use_set_completion = use_set_completion
+    if use_set_completion:
       self.complete_set = self.fo2.complete_set()
     else:
       self.complete_set = None
@@ -84,7 +84,7 @@ class mask(object):
     """P. van der Sluis and A. L. Spek, Acta Cryst. (1990). A46, 194-201."""
     assert self.mask is not None
     if self.n_voids() == 0: return
-    if self.use_complete_set:
+    if self.use_set_completion:
       f_calc_set = self.complete_set
     else:
       f_calc_set = self.fo2.set()
@@ -165,7 +165,7 @@ class mask(object):
   def f_obs(self):
     fo2 = self.fo2.as_intensity_array()
     f_obs = fo2.as_amplitude_array()
-    if self.use_complete_set:
+    if self.use_set_completion:
       if self._f_mask is not None:
         f_model = self.f_model()
       else:
@@ -229,6 +229,7 @@ class mask(object):
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
+    print >> log, "use_set_completion: %s" %self.use_set_completion
     print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
     print >> log, "shrink_truncation_radius: %.2f" %(
       self.mask.shrink_truncation_radius)
