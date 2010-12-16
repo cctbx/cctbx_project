@@ -269,7 +269,10 @@ cif_cod = """\
 data_global
 _a 1
 _[b] 2
-_a e43
+_c e43
+_d # comment
+   # another comment
+'1 2'
 """
 
 cif_quoted_string = """\
