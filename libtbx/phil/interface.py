@@ -48,11 +48,22 @@ class index (object) :
       del saved_phil
 
   def push_state (self) :
-    self._states.append(self.working_phil)
+    self._states.append(self.working_phil.fetch())
+    return len(self._states) - 1
 
   def pop_state (self) :
     if len(self._states) > 0 :
       self.working_phil = self._states.pop()
+      self.rebuild_index()
+      return True
+    return False
+
+  def set_state (self, index) :
+    assert (index >= 0)
+    if (len(self._states) == 0) :
+      pass
+    else :
+      self.working_phil = self._states[index].fetch()
       self.rebuild_index()
       return True
     return False
