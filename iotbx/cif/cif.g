@@ -170,17 +170,11 @@ value 	:	inapplicable | unknown | '-' | char_string  | numeric| text_field
 	catch [RecognitionException re] {
 	}
 
-unsigned_integer
-	:	(DIGIT)+ ;
+integer	: 	( '+' | '-' )? UNSIGNED_INTEGER;
 
-integer	: 	( '+' | '-' )? unsigned_integer ;
+number	:	integer | FLOAT;
 
-float_
-	: 	integer EXPONENT | ( ( '+' | '-' )? ( (DIGIT)* '.' unsigned_integer) | (DIGIT)+ '.' ) (EXPONENT)? ;
-
-number  :	integer | float_ ;
-
-numeric	:	number | ( number '(' (DIGIT)+ ')' ) ;
+numeric	:	number | ( number '(' (UNSIGNED_INTEGER)+ ')' ) ;
 
 char_string
 	:	CHAR_STRING ;
@@ -288,9 +282,17 @@ fragment DOUBLE_QUOTED_STRING
  * NUMERICS
  *------------------------------------------------------------------*/
 
-DIGIT	: '0'..'9' ;
+fragment DIGIT	: '0'..'9' ;
 
-EXPONENT: 	( ( 'e' | 'E') | ( 'e' | 'E')( '+' | '-' ) ) (DIGIT)+ ;
+fragment EXPONENT: 	( ( 'e' | 'E') | ( 'e' | 'E')( '+' | '-' ) ) (DIGIT)+ ;
+
+fragment INTEGER	: 	( '+' | '-' )? (DIGIT)+ ;
+
+FLOAT
+	: 	INTEGER EXPONENT | ( ( '+' | '-' )? ( (DIGIT)* '.' (DIGIT)+) | (DIGIT)+ '.' ) (EXPONENT)? ;
+
+UNSIGNED_INTEGER
+	:	(DIGIT)+ ;
 
 // UNQUOTED_STRING must be defined after the digits if we want to catch digits first
 fragment UNQUOTED_STRING
