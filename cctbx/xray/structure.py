@@ -14,7 +14,7 @@ from itertools import count
 import types
 import sys
 import random
-from libtbx.utils import count_max
+from libtbx.utils import count_max, Sorry
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from libtbx.assert_utils import is_string
@@ -1313,10 +1313,13 @@ class structure(crystal.special_position_settings):
   def from_cif(cls, file_object=None, file_path=None, block_heading=None):
     import iotbx.cif
     from iotbx.cif import builders
-    return iotbx.cif.cctbx_data_structure_from_cif(
+    result = iotbx.cif.cctbx_data_structure_from_cif(
       file_object=file_object, file_path=file_path,
       block_heading=block_heading,
-      data_structure_builder=builders.crystal_structure_builder).structure
+      data_structure_builder=builders.crystal_structure_builder)
+    if result is not None: return result.structure
+    else:
+      raise Sorry("Could not extract an xray.structure from the given input")
   from_cif = classmethod(from_cif)
 
   def unit_cell_content(self, omit=None):
