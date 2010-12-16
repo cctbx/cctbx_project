@@ -11,7 +11,7 @@ class journaled_non_linear_ls(object):
   """ A decorator that keeps the history of the objective, gradient,
   step, etc of an underlying normal equations object. An instance of this
   class is a drop-in replacement of that underlying object, with the
-  journaling just mentionned automatically happening behind the scene.
+  journaling just mentioned automatically happening behind the scene.
   """
 
   def __init__(self, non_linear_ls, journal, track_gradient, track_step):
@@ -123,7 +123,7 @@ class naive_iterations(iterations):
 
   def do(self):
     self.n_iterations = 0
-    while self.n_iterations <= self.n_max_iterations:
+    while self.n_iterations < self.n_max_iterations:
       self.non_linear_ls.build_up()
       if self.has_gradient_converged_to_zero(): break
       self.non_linear_ls.solve()
@@ -154,7 +154,7 @@ class levenberg_marquardt_iterations(iterations):
     if self.has_gradient_converged_to_zero(): return
     a = self.non_linear_ls.normal_matrix_packed_u()
     self.mu = self.tau*flex.max(a.matrix_packed_u_diagonal())
-    while self.n_iterations <= self.n_max_iterations:
+    while self.n_iterations < self.n_max_iterations:
       a.matrix_packed_u_diagonal_add_in_place(self.mu)
       objective = self.non_linear_ls.objective()
       g = -self.non_linear_ls.opposite_of_gradient()
