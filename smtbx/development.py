@@ -86,12 +86,12 @@ def generate_hydrogen_constraints(structure, connectivity_table):
         constraint_type = geometrical_hydrogens.secondary_planar_xh_site
         stretching = True
       elif pivot_neighbour_count == 3 and sc_types[i_seq] == 'C':
-        constraint_type = geometrical_hydrogens.tertiary_ch_site
+        constraint_type = geometrical_hydrogens.tertiary_xh_site
     elif h_count == 2:
       if pivot_neighbour_count == 1 and sc_types[i_seq] in ('C', 'N'):
         constraint_type = geometrical_hydrogens.terminal_planar_xh2_sites
       elif pivot_neighbour_count == 2 and sc_types[i_seq] == 'C':
-        constraint_type = geometrical_hydrogens.secondary_ch2_sites
+        constraint_type = geometrical_hydrogens.secondary_xh2_sites
       elif pivot_neighbour_count == 0 and sc_types[i_seq] == 'O': # water
         u_eq_multiplier = 1.5
         for idx in constrained_site_indices:

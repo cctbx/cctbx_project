@@ -148,7 +148,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // X-CH2-Y
 
-  void secondary_ch2_sites::linearise(uctbx::unit_cell const &unit_cell,
+  void secondary_xh2_sites::linearise(uctbx::unit_cell const &unit_cell,
                                       sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;
@@ -212,7 +212,7 @@ namespace smtbx { namespace refinement { namespace constraints {
           |
           X2
    */
-  void tertiary_ch_site::linearise(uctbx::unit_cell const &unit_cell,
+  void tertiary_xh_site::linearise(uctbx::unit_cell const &unit_cell,
                                    sparse_matrix_type *jacobian_transpose)
   {
     using namespace constants;

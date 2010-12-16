@@ -127,8 +127,8 @@ void exercise_secondary_ch2() {
   *length = new independent_scalar_parameter(0.9, false);
   independent_scalar_parameter
   *h_c_h = new independent_scalar_parameter(constants::tetrahedral_angle);
-  secondary_ch2_sites
-  *ch2 = new secondary_ch2_sites(is_c0, is_c1, is_c2, length, h_c_h,
+  secondary_xh2_sites
+  *ch2 = new secondary_xh2_sites(is_c0, is_c1, is_c2, length, h_c_h,
                                  h0, h1);
 
   reparametrisation reparam(uc, boost::make_iterator_range(&ch2, &ch2 + 1));
@@ -207,8 +207,8 @@ void exercise_tertiary_ch() {
                              *is_z = new independent_site_parameter(z);
   independent_scalar_parameter
   *length = new independent_scalar_parameter(0.9, false);
-  tertiary_ch_site
-  *tert_ch = new tertiary_ch_site(is_c, is_x, is_y, is_z, length, h);
+  tertiary_xh_site
+  *tert_ch = new tertiary_xh_site(is_c, is_x, is_y, is_z, length, h);
 
   reparametrisation reparam(uc,
                             boost::make_iterator_range(&tert_ch, &tert_ch + 1));

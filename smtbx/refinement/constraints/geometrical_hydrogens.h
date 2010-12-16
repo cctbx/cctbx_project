@@ -129,11 +129,11 @@ private:
   All angles Hi-C-X and Hi-C-Y are equal.
   The angle H-C-H is refinable (flapping).
 */
-class secondary_ch2_sites
+class secondary_xh2_sites
   : public geometrical_hydrogen_sites<2>
 {
 public:
-  secondary_ch2_sites(site_parameter *pivot,
+  secondary_xh2_sites(site_parameter *pivot,
                       site_parameter *pivot_neighbour_0,
                       site_parameter *pivot_neighbour_1,
                       independent_scalar_parameter *length,
@@ -154,11 +154,11 @@ public:
 /// Model of tertiary CH
 /** All angles Hi-C-X are equal.
  */
-class tertiary_ch_site
+class tertiary_xh_site
   : public geometrical_hydrogen_sites<1>
 {
 public:
-  tertiary_ch_site(site_parameter *pivot,
+  tertiary_xh_site(site_parameter *pivot,
                    site_parameter *pivot_neighbour_0,
                    site_parameter *pivot_neighbour_1,
                    site_parameter *pivot_neighbour_2,
