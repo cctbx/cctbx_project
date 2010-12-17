@@ -1907,6 +1907,16 @@ def exercise_weighted_covariance():
   assert approx_equal(stats.covariance_xy, 6.14274540984693878, eps)
   assert approx_equal(stats.correlation, 0.809980077408506317, eps)
 
+def exercise_interpolation () :
+  from scitbx.math import interpolate_catmull_rom_spline
+  p0 = (4.6125, 53.1915, -1.0)
+  p1 = (4.86, 54.206, 0.603)
+  p2 = (6.640, 55.369, 0.651)
+  p3 = (7.726, 56.192, -0.941)
+  points = interpolate_catmull_rom_spline(p0, p1, p2, p3, 5)
+  assert approx_equal(points[2][0], 5.9044, eps=0.0001)
+  assert approx_equal(points[4][2], 0.651, eps=0.0001)
+
 def run():
   exercise_weighted_covariance()
   exercise_distributions()
@@ -1942,6 +1952,7 @@ def run():
   exercise_cheb_family()
   exercise_slatec_dlngam()
   exercise_slatec_dbinom()
+  exercise_interpolation()
   forever = "--forever" in sys.argv[1:]
   exercise_unimodular_generator(
     forever=forever and "--unimodular" in sys.argv[1:])
