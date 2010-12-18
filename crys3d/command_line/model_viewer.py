@@ -58,6 +58,7 @@ def run (args, viewer_class=selection_editor_mixin) :
     print "Reading PDB file %s" % file_name
     from iotbx import file_reader
     from mmtbx.monomer_library import pdb_interpretation
+    from mmtbx import secondary_structure
     t1 = time.time()
     if fast_connectivity :
       pdb_in = file_reader.any_file(file_name, force_type="pdb")
@@ -79,8 +80,12 @@ def run (args, viewer_class=selection_editor_mixin) :
     print "%.2fs" % (t2-t1)
     a.view_objects.add_model(file_name, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=acp_selection)
+    sec_str = secondary_structure.manager(
+      pdb_hierarchy=pdb_hierarchy,
+      xray_structure=None)
+    sec_str.find_automatically()
+    a.view_objects.set_sec_str(file_name, sec_str.selections_as_ints())
     if show_ss_restraints and acp_selection is not None :
-      from mmtbx import secondary_structure
       bonds_table = secondary_structure.process_structure(params=None,
         processed_pdb_file=processed_pdb_file,
         tmp_dir=os.getcwd(),

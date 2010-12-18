@@ -56,7 +56,9 @@ opengl {
 
 draw_modes = [ ("trace", "Show trace"),
                ("all_atoms", "Show all atoms"),
-               ("bonded_only", "Show bonded atoms"), ]
+               ("bonded_only", "Show bonded atoms"),
+               #("ribbon", "Show ribbon"),
+             ]
 draw_flags = [ ("flag_show_hydrogens", "Show hydrogens"),
                ("flag_show_ellipsoids", "Show B-factor ellipsoids"),
                ("flag_show_labels", "Show labels"),
@@ -71,7 +73,7 @@ color_modes = [ ("rainbow", "Color rainbow"),
 # which are also implemented as methods here.
 class model_scene (object) :
   def __init__ (self, bonds, points, b_iso, b_aniso, atom_colors, atom_labels,
-      atom_radii, visibility, noncovalent_bonds, atomic_bonds) :
+      atom_radii, visibility, noncovalent_bonds, atomic_bonds, ribbon=None) :
     adopt_init_args(self, locals())
     self.clear_lists()
     self.clear_labels()
@@ -86,6 +88,7 @@ class model_scene (object) :
     self.selection_display_list = None
     self.labels_display_list = None
     self.nc_display_list = None
+    self.ribbon_display_list = None
 
   @debug
   def clear_labels (self) :
@@ -140,6 +143,18 @@ class model_scene (object) :
         bonds_visible = self.bonds_visible)
       self.lines_display_list.end()
     self.lines_display_list.call()
+
+  def draw_ribbon (self) :
+    if (self.ribbon is None) :
+      return
+    if (self.ribbon_display_list is None) :
+      self.ribbon_display_list = gltbx.gl_managed.display_list()
+      self.ribbon_display_list.compile()
+      self.ribbon.draw_ribbon(
+        atom_colors=self.atom_colors,
+        atoms_visible=self.bonds_visible)
+      self.ribbon_display_list.end()
+    self.ribbon_display_list.call()
 
   def draw_spheres (self, scale_factor=1.0) :
     if self.spheres_display_list is None :
@@ -259,6 +274,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.flag_use_lights                   = True
     self.flag_show_labels                  = True
     self.flag_show_trace                   = False
+    self.flag_show_ribbon                  = True
     self.flag_show_noncovalent_bonds       = False
     self.flag_show_hydrogens               = False
     self.flag_show_ellipsoids              = True
@@ -328,6 +344,8 @@ class model_viewer_mixin (wxGLWindow) :
       self.draw_points()
     if self.flag_show_lines :
       self.draw_lines()
+    if self.flag_show_ribbon :
+      self.draw_ribbon()
     if self.flag_show_spheres :
       self.draw_spheres()
     if self.flag_show_ellipsoids :
@@ -366,6 +384,16 @@ class model_viewer_mixin (wxGLWindow) :
     for model_id, model in self.iter_models() :
       if self.show_object[model_id] and model.flag_show_lines :
         self.scene_objects[model_id].draw_lines()
+
+  def draw_ribbon (self) :
+    glEnable(GL_LINE_SMOOTH)
+    glEnable(GL_BLEND)
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    glDisable(GL_LIGHTING)
+    glLineWidth(self.settings.opengl.line_width)
+    for model_id, model in self.iter_models() :
+      if self.show_object[model_id] and model.flag_show_ribbon :
+        self.scene_objects[model_id].draw_ribbon()
 
   def draw_ellipsoids (self) :
     glMatrixMode(GL_MODELVIEW)
@@ -546,6 +574,12 @@ class model_viewer_mixin (wxGLWindow) :
         model.flag_show_noncovalent_bonds = True
       self.update_scene = True
 
+  def set_sec_str (self, model_id, sec_str) :
+    model = self.get_model(model_id)
+    if (model is not None) :
+      model.initialize_cartoon(sec_str)
+      self.update_scene = True
+
   def update_mcs (self, points, recenter_and_zoom=True, buffer=0) :
     from scitbx.math import minimum_covering_sphere, sphere_3d
     mcs = minimum_covering_sphere(points=points,
@@ -717,6 +751,16 @@ class model_viewer_mixin (wxGLWindow) :
       if object_id is None or object_id == model_id :
         if show_trace :
           model.set_draw_mode("trace")
+        else :
+          model.set_draw_mode("all_atoms")
+    self.update_scene = True
+
+  def toggle_ribbon (self, show_ribbon, object_id=None) :
+    self.flag_show_ribbon = show_ribbon
+    for model_id, model in self.iter_models() :
+      if (object_id is None) or (object_id == model_id) :
+        if show_ribbon :
+          model.set_draw_mode("ribbon")
         else :
           model.set_draw_mode("all_atoms")
     self.update_scene = True
