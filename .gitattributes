@@ -187,6 +187,7 @@ crys3d/qttbx/map_viewer_controls.ui -text
 crys3d/qttbx/xray_structure_viewer.py -text
 crys3d/qttbx/xray_structure_viewer_controls.ui -text
 crys3d/reverse_selection.py -text
+crys3d/ribbon.py -text
 crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_model_viewer.py -text

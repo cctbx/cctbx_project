@@ -49,7 +49,8 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
       atom_radii=self.atom_radii,
       visibility=self.visibility,
       noncovalent_bonds=self.noncovalent_bonds,
-      atomic_bonds=atomic_bonds)
+      atomic_bonds=atomic_bonds,
+      ribbon=self.ribbon)
     scene.flag_show_all_selected_atoms = self.flag_show_all_selected_atoms
     self.update_scene_data(scene)
     return scene

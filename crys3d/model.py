@@ -31,6 +31,7 @@ class model_data (object) :
     self.draw_mode = None
     self.current_bonds = None
     self.noncovalent_bonds = None
+    self.ribbon = None
     self.color_mode = None #"rainbow"
     self.flag_object_visible = True
     self._color_cache = {}
@@ -39,6 +40,7 @@ class model_data (object) :
     self.flag_show_labels = True
     self.flag_show_points = True
     self.flag_show_spheres = False
+    self.flag_show_ribbon = False
     self.flag_show_ellipsoids = False
     self.flag_show_noncovalent_bonds = False
     self.update_structure(pdb_hierarchy, atomic_bonds)
@@ -61,7 +63,8 @@ class model_data (object) :
       atom_radii=self.atom_radii,
       visibility=self.visibility,
       noncovalent_bonds=self.noncovalent_bonds,
-      atomic_bonds=self.atomic_bonds)
+      atomic_bonds=self.atomic_bonds,
+      ribbon=self.ribbon)
 
   def set_noncovalent_bonds (self, bonded_atoms) :
     self.noncovalent_bonds = bonded_atoms
@@ -159,6 +162,19 @@ class model_data (object) :
     )
     self.visible_atom_count = self.visibility.visible_atoms_count
 
+  def initialize_cartoon (self, sec_str=None) :
+    if (sec_str is None) :
+      from mmtbx import secondary_structure
+      manager = secondary_structure.manager(
+        pdb_hierarchy=self.pdb_hierarchy,
+        xray_structure=None)
+      manager.find_automatically()
+      sec_str = manager.selections_as_ints()
+    from crys3d import ribbon
+    self.ribbon = ribbon.cartoon(pdb_hierarchy=self.pdb_hierarchy,
+      sec_str=sec_str)
+    self.ribbon.construct_geometry()
+
   def refresh (self) :
     self.is_changed = True
     self._color_cache = {}
@@ -180,7 +196,15 @@ class model_data (object) :
       show_points = True
       if draw_mode == "spheres" :
         self.flag_show_spheres = True
+      elif draw_mode == "ribbon" :
+        self.flag_show_ribbon = True
+        self.flag_show_lines = False
+        self.flag_show_points = False
+        if (self.ribbon is None) :
+          self.initialize_cartoon()
       else :
+        self.flag_show_ribbon = False
+        self.flag_show_lines = True
         if draw_mode in ["trace", "trace_and_nb"] :
           self.current_bonds = self.trace_bonds
         else :
