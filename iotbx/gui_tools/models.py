@@ -54,6 +54,7 @@ class model_handler (iotbx.gui_tools.manager) :
     if self.construct_hierarchy :
       file_name = input_file.file_name
       pdb_hierarchy = input_file.file_object.construct_hierarchy()
+      pdb_hierarchy.atoms().reset_i_seq()
       self._cached_pdb_hierarchies[file_name] = pdb_hierarchy
       return pdb_hierarchy
 
