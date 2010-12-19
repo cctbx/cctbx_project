@@ -766,6 +766,17 @@ class manager (object) :
       whole_selection |= sheet
     return whole_selection
 
+  def selections_as_ints (self) :
+    n_sites = self.xray_structure.sites_cart().size()
+    sec_str = flex.int(n_sites, 0)
+    all_alpha = flex.int(n_sites, 1)
+    all_beta = flex.int(n_sites, 2)
+    helices = self.alpha_selection()
+    sheets = self.beta_selection()
+    sec_str.set_selected(helices, all_alpha.select(helices))
+    sec_str.set_selected(sheets, all_beta.select(sheets))
+    return sec_str
+
 def process_structure (params, processed_pdb_file, tmp_dir, log,
     assume_hydrogens_all_missing=None) :
   acp = processed_pdb_file.all_chain_proxies
