@@ -153,7 +153,8 @@ class secondary_xh2_sites(hydrogens):
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
     x_h = [ col(h.site) for h in hydrogens ]
     x_p = col(pivot_site)
-    theta = (x_h[0] - x_p).angle(x_h[1] - x_p)
+    uc = reparametrisation.structure.unit_cell()
+    theta = col(uc.orthogonalize(x_h[0] - x_p)).angle(col(uc.orthogonalize(x_h[1] - x_p)))
     flapping = reparametrisation.add(_.independent_scalar_parameter,
                                      value=theta,
                                      variable=True)
