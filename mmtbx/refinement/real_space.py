@@ -49,7 +49,31 @@ real_space_refinement
       .type = int
       .help = All output is supressed if it is negative
 
-    include scope mmtbx.command_line.lockit.lockit_run_conditions_params_phil_str
+    lockit_run_conditions
+      .expert_level=3
+    {
+      always = False
+        .type = bool
+      acceptable_r_factor_increase = 2
+        .type = float
+      high_resolution_cutoff = 1.5
+        .type = float
+      low_resolution_cutoff = 3.5
+        .type = float
+      min_r_work = 0.2
+        .type = float
+      r_free_r_work_diff = 5
+        .type = float
+      debug = False
+        .type = bool
+    }
+
+    lockit_parameters
+      .expert_level=3
+    {
+      include scope \
+        mmtbx.command_line.lockit.coordinate_refinement_export_phil_str
+    }
   }
 """
 

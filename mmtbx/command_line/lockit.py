@@ -376,6 +376,42 @@ real_space_gradients_delta_resolution_factor = 1/3
   .type = float
 """
 
+coordinate_refinement_export_phil_str = """\
+finishing_geometry_minimization
+{
+  cycles_max = 100
+    .type = int
+  first_weight_scale = 0.1
+    .type = float
+  cycle_weight_multiplier = 1.0
+    .type = float
+  superpose_cycle_end_with_cycle_start = False
+    .type = bool
+  dihedral_restraints = False
+    .type = bool
+  output_file = Auto
+    .type = str
+}
+real_space_target_weights {
+  first_sample = 10
+    .type = float
+  sampling_step = 30
+    .type = float
+  number_of_samples = 10
+    .type = int
+  bond_rmsd_target = 0.03
+    .type = float
+  worst_acceptable_bond_rmsd {
+    pool_size = 10
+      .type = int
+    max_pool_average = 0.1
+      .type = float
+  }
+}
+lbfgs_max_iterations = 500
+  .type = int
+"""
+
 coordinate_refinement_params_phil_str = """\
 coordinate_refinement {
   run = False
@@ -384,21 +420,6 @@ coordinate_refinement {
     .type = str
   compute_final_correlation = True
     .type = bool
-  finishing_geometry_minimization
-  {
-    cycles_max = 100
-      .type = int
-    first_weight_scale = 0.1
-      .type = float
-    cycle_weight_multiplier = 1.0
-      .type = float
-    superpose_cycle_end_with_cycle_start = False
-      .type = bool
-    dihedral_restraints = False
-      .type = bool
-    output_file = Auto
-      .type = str
-  }
   home_restraints
     .multiple = True
   {
@@ -409,49 +430,9 @@ coordinate_refinement {
     slack = 0
       .type = float
   }
-  real_space_target_weights {
-    first_sample = 10
-      .type = float
-    sampling_step = 30
-      .type = float
-    number_of_samples = 10
-      .type = int
-    bond_rmsd_target = 0.03
-      .type = float
-    worst_acceptable_bond_rmsd {
-      pool_size = 10
-        .type = int
-      max_pool_average = 0.1
-        .type = float
-    }
-  }
-  lbfgs_max_iterations = 500
-    .type = int
+  %(coordinate_refinement_export_phil_str)s
 }
-"""
-
-lockit_run_conditions_params_phil_str = """\
-lockit_run_conditions {
-  always = False
-    .type = bool
-    .expert_level=3
-  acceptable_r_factor_increase=2
-    .type = float
-    .expert_level=3
-  high_resolution_cutoff = 1.5
-    .type = float
-    .expert_level=3
-  low_resolution_cutoff = 3.5
-    .type = float
-    .expert_level=3
-  min_r_work = 0.2
-    .type = float
-    .expert_level=3
-  r_free_r_work_diff = 5
-    .type = float
-    .expert_level=3
-}
-"""
+""" % vars()
 
 def get_master_phil():
   return iotbx.phil.parse(
