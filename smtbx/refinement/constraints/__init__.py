@@ -143,6 +143,15 @@ class reparametrisation(ext.reparametrisation):
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
 
+  def add_new_u_iso_parameter(self, i_sc):
+    u_iso = self.asu_scatterer_parameters[i_sc].u
+    if u_iso is None:
+      sc = self.structure.scatterers()[i_sc]
+      u_iso = self.add(independent_u_iso_parameter, sc)
+      self.asu_scatterer_parameters[i_sc].u = u_iso
+    return u_iso
+
+
   def __str__(self):
     """ String representation using the graphviz DOT language """
     self.finalise()

@@ -24,12 +24,23 @@ class u_iso_proportional_to_pivot_u_eq(object):
       return False
 
   def add_to(self, reparametrisation):
-    param = reparametrisation.add(
-      _.u_iso_proportional_to_pivot_u_eq,
-      pivot_u=reparametrisation.add_new_thermal_displacement_parameter(
-        self.u_eq_scatterer_idx),
-      scatterer = reparametrisation.structure.scatterers()[
-        self.u_iso_scatterer_idx],
-      multiplier=self.multiplier)
+    scatterers = reparametrisation.structure.scatterers()
+    if scatterers[self.u_eq_scatterer_idx].flags.use_u_aniso():
+      param = reparametrisation.add(
+        _.u_iso_proportional_to_pivot_u_eq,
+        pivot_u=reparametrisation.add_new_thermal_displacement_parameter(
+          self.u_eq_scatterer_idx),
+        scatterer = reparametrisation.structure.scatterers()[
+          self.u_iso_scatterer_idx],
+        multiplier=self.multiplier)
+    else:
+      param = reparametrisation.add(
+        _.u_iso_proportional_to_pivot_u_iso,
+        pivot_u_iso=reparametrisation.add_new_u_iso_parameter(
+          self.u_eq_scatterer_idx),
+        scatterer = reparametrisation.structure.scatterers()[
+          self.u_iso_scatterer_idx],
+        multiplier=self.multiplier)
     reparametrisation.asu_scatterer_parameters[
       self.u_iso_scatterer_idx].u = param
+
