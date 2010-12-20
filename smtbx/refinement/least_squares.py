@@ -29,6 +29,8 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
     self.fo_sq = fo_sq
     self.reparametrisation = reparametrisation
     adopt_optional_init_args(self, kwds)
+    if self.f_mask is not None:
+      assert self.f_mask.size() == self.fo_sq.size()
     self.one_h_linearisation = direct.f_calc_modulus_squared(
       self.xray_structure)
     if self.weighting_scheme == "default":
