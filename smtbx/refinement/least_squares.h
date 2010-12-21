@@ -146,7 +146,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   (miller_indices.size())(data.size());
       SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
       if (f_mask.size()){
-        SMTBX_ASSERT(f_mask.size() == f_mask.size())(data.size())(data.size());
+        SMTBX_ASSERT(f_mask.size() == data.size())(f_mask.size())(data.size());
       }
       if (objective_only) {
         for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
