@@ -13,6 +13,7 @@ namespace boost_python {
   void wrap_u_eq_dependent_u_iso();
   void wrap_u_iso_dependent_u_iso();
   void wrap_shared();
+  void wrap_occupancy();
 
   namespace {
     void init_module() {
@@ -24,6 +25,7 @@ namespace boost_python {
       wrap_u_eq_dependent_u_iso();
       wrap_u_iso_dependent_u_iso();
       wrap_shared();
+      wrap_occupancy();
     }
   }
 

@@ -36,12 +36,13 @@ class _parameter(boost.python.injector, ext.parameter):
       scatt, self.index)
     return lbl
 
+# The order in which constraints are added MAKES a difference, shared site, U and/or
+# occupancy constraints must be added first for proper bookkeeping
 
 class reparametrisation(ext.reparametrisation):
   """ Enhance the C++ level reparametrisation class for ease of use """
 
   temperature = 20 # Celsius
-
   def __init__(self,
                structure,
                constraints,
@@ -61,6 +62,11 @@ class reparametrisation(ext.reparametrisation):
     C.f. module geometrical_hydrogens in this package for a typical example
     """
     super(reparametrisation, self).__init__(structure.unit_cell())
+    #association of scatterer_idx:parameter, bookkeeping
+    self.shared_Us = {}
+    self.shared_sites = {}
+    self.shared_occupancies = {}
+
     self.structure = xs = structure
     self.connectivity_table = connectivity_table
     self.pair_sym_table = \
@@ -104,6 +110,8 @@ class reparametrisation(ext.reparametrisation):
     return self.jacobian_transpose.select_columns(self.mapping_to_grad_fc)
 
   def add_new_occupancy_parameter(self, i_sc):
+    if self.shared_occupancies.has_key(i_sc):
+      return self.shared_occupancies[i_sc]
     occ = self.asu_scatterer_parameters[i_sc].occupancy
     if occ is None:
       sc = self.structure.scatterers()[i_sc]
@@ -112,6 +120,8 @@ class reparametrisation(ext.reparametrisation):
     return occ
 
   def add_new_site_parameter(self, i_scatterer, symm_op=None):
+    if self.shared_sites.has_key(i_scatterer):
+      return self.shared_sites[i_scatterer]
     s = self.asu_scatterer_parameters[i_scatterer].site
     if s is None:
       site_symm = self.site_symmetry_table_.get(i_scatterer)
@@ -126,6 +136,8 @@ class reparametrisation(ext.reparametrisation):
     return s
 
   def add_new_thermal_displacement_parameter(self, i_scatterer):
+    if self.shared_Us.has_key(i_scatterer):
+      return self.shared_Us[i_scatterer]
     u = self.asu_scatterer_parameters[i_scatterer].u
     if u is None:
       sc = self.structure.scatterers()[i_scatterer]
