@@ -19,6 +19,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       jt.col(index() + j) = jt.col(u->index() + j);
     }
   }
+
   // u_iso
   void
   shared_u_iso
@@ -46,6 +47,20 @@ namespace smtbx { namespace refinement { namespace constraints {
     sparse_matrix_type &jt = *jacobian_transpose;
     for (int i=0; i < 3; i++)
       jt.col(index()+i) = jt.col(site->index()+i);
+  }
+
+  // occupancy
+  void
+  shared_occupancy
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {
+    scalar_parameter *site = original();
+    value = site->value;
+
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    jt.col(index()) = jt.col(site->index());
   }
 
 }}}

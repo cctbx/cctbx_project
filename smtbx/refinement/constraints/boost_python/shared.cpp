@@ -7,8 +7,7 @@
 namespace smtbx { namespace refinement { namespace constraints {
   namespace boost_python {
 
-    struct shared_u_star_wrapper
-    {
+    struct shared_u_star_wrapper  {
       typedef shared_u_star wt;
 
       static void wrap() {
@@ -27,8 +26,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
-    struct shared_u_iso_wrapper
-    {
+    struct shared_u_iso_wrapper  {
       typedef shared_u_iso wt;
 
       static void wrap() {
@@ -47,8 +45,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
-    struct shared_site_wrapper
-    {
+    struct shared_site_wrapper  {
       typedef shared_site wt;
 
       static void wrap() {
@@ -67,10 +64,30 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
+    struct shared_occupancy_wrapper  {
+      typedef shared_occupancy wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        return_internal_reference<> rir;
+        class_<wt,
+               bases<asu_occupancy_parameter>,
+               std::auto_ptr<wt> >("shared_occupancy", no_init)
+          .def(init<scalar_parameter *,
+                    wt::scatterer_type *>
+               ((arg("occupancy"),
+                 arg("scatterer"))))
+          .add_property("occupancy", make_function(&wt::original, rir))
+          ;
+        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      }
+    };
+
     void wrap_shared() {
       shared_u_star_wrapper::wrap();
       shared_u_iso_wrapper::wrap();
       shared_site_wrapper::wrap();
+      shared_occupancy_wrapper::wrap();
     }
 
 
