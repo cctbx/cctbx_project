@@ -15,7 +15,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
     if (!jacobian_transpose) return;
     sparse_matrix_type &jt = *jacobian_transpose;
-    jt.col(index()) = jt.col(index()) + multiplier*jt.col(u_iso->index());
+    jt.col(index()) = multiplier*jt.col(u_iso->index());
   }
 
 }}}
