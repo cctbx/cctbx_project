@@ -12,9 +12,6 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_ramachandran_ext")
 from mmtbx_ramachandran_ext import *
 
-
-
-
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import target_and_gradients, target_phi_psi
 
@@ -31,7 +28,8 @@ master_phil = libtbx.phil.parse("""
     .help = Used for testing - not suitable for real structures.
     .short_caption = Use finite differences (DEVELOPERS ONLY)
     .expert_level = 3
-  type = *oldfield emsley
+#  type = *oldfield emsley rosetta
+   type = *oldfield emsley
     .type = choice(multi=False)
   oldfield
   {
@@ -48,6 +46,8 @@ master_phil = libtbx.phil.parse("""
       .type = float
       .expert_level = 2
   }
+#  rosetta_scale = 5.0
+#    .type = float
 """)
 
 refine_opt_params = libtbx.phil.parse("""
@@ -93,10 +93,14 @@ class generic_proxy (object) :
 
 class proxy (generic_proxy) :
   restraint_type = "ramachandran"
-  def __init__ (self, i_seqs, residue_type) :
+  def __init__ (self, i_seqs, residue_type, residue_name) :
     assert (len(i_seqs) == 5)
     self.i_seqs = i_seqs
     self.residue_type = residue_type
+    # XXX the Rosetta AA lookup function will crash if passed a non-standard
+    # residue name, so it is validated first if Rosetta is being used
+    self.residue_name = residue_name
+    self.ignore_flag = None
 
 def show_histogram(data, n_slots, log):
   hm = flex.histogram(data = data, n_slots = n_slots)
@@ -246,8 +250,18 @@ class ramachandran_plot_data(object):
 class generic_restraints_helper (object) :
   def __init__ (self, params) :
     adopt_init_args(self, locals())
-    if(self.params.type == "oldfield"): self.tables = ramachandran_plot_data()
-    else: self.tables = load_tables(params)
+    if(self.params.type == "oldfield"):
+      self.tables = ramachandran_plot_data()
+    elif (self.params.type == "rosetta") :
+      try :
+        from rosetta_adaptbx import scoring
+      except ImportError, e :
+        print e
+        raise Sorry("Rosetta not included or not configured in this build.")
+      else :
+        self.tables = scoring.ramachandran() # not a list
+    else :
+      self.tables = load_tables(params)
 
   def restraints_residual_sum (self,
                                sites_cart,
@@ -287,6 +301,11 @@ class generic_restraints_helper (object) :
            i_seqs         = proxy.i_seqs)
         target += tg.target()
       return target
+    elif (self.params.type == "rosetta") :
+      return self.target_and_gradients_rosetta(
+        sites_cart=sites_cart,
+        proxies=ramachandran_proxies,
+        gradient_array=gradient_array)
     else:
       return self._phi_psi_restraints_residual_sum(
         sites_cart=sites_cart,
@@ -301,7 +320,7 @@ class generic_restraints_helper (object) :
       from scitbx.array_family import flex
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     sum = 0
-    assert (self.params.rama_weight >= 0.0);
+    assert (self.params.rama_weight >= 0.0)
     for proxy in proxies :
       rama_table = self.tables[proxy.residue_type]
       if self.params.use_finite_differences :
@@ -318,6 +337,36 @@ class generic_restraints_helper (object) :
           i_seqs=proxy.i_seqs,
           weight=self.params.rama_weight,
           epsilon=0.001)
+    return sum
+
+  def target_and_gradients_rosetta (self,
+                                    proxies,
+                                    sites_cart,
+                                    gradient_array=None) :
+    from iotbx import pdb
+    if (gradient_array is None) :
+      from scitbx.array_family import flex
+      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    sum = 0
+    assert (self.params.rama_weight >= 0.0)
+    weight_scale = self.params.rosetta_scale
+    if (weight_scale is None) :
+      weight_scale = 2.0
+    for proxy in proxies :
+      if proxy.ignore_flag : # non-standard AA
+        continue
+      elif (proxy.ignore_flag is None) :
+        if (not proxy.residue_name in pdb.common_residue_names_amino_acid) :
+          proxy.ignore_flag = True
+          continue
+        else :
+          proxy.ignore_flag = False
+      sum += self.tables.target_and_gradients(
+        gradient_array=gradient_array,
+        sites_cart=sites_cart,
+        residue_name=proxy.residue_name,
+        i_seqs=proxy.i_seqs,
+        weight=self.params.rama_weight * weight_scale)
     return sum
 
 def extract_proxies (pdb_hierarchy,
@@ -383,15 +432,18 @@ def extract_proxies (pdb_hierarchy,
               weight=1)
             if (pep1.distance_model > 4) or (pep2.distance_model > 4) :
               continue
-            if (residue.resname == "PRO") :
+            residue_name = residue.resname
+            if (residue_name == "PRO") :
               residue_type = "pro"
-            elif (residue.resname == "GLY") :
+            elif (residue_name == "GLY") :
               residue_type = "gly"
             elif (residues[i+1].resname == "PRO") :
               residue_type = "prepro"
             else :
               residue_type = "ala"
-            phi_psi = proxy(i_seqs, residue_type)
+            if (residue_name == "MSE") :
+              residue_name = "MET"
+            phi_psi = proxy(i_seqs, residue_type, residue_name)
             proxies.append(phi_psi)
   print >> log, "%d Ramachandran restraints generated." % len(proxies)
   return proxies
