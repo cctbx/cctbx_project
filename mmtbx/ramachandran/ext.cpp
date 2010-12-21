@@ -164,7 +164,7 @@ namespace mmtbx { namespace ramachandran {
             gradient_array[i_seq] += d_r_d_psi * d_psi_d_xyz[k-1] * weight;
           }
         }
-        return residual;
+        return residual * weight;
       }
 
       double
@@ -217,7 +217,7 @@ namespace mmtbx { namespace ramachandran {
             gradient_array[i_seq][u] += weight * ((r2-r1) / (epsilon*2));
           }
         }
-        return residual;
+        return residual * weight;
       }
 
     private :
