@@ -1333,10 +1333,7 @@ scitbx/wigner/wigner3j.h -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
-smtbx/refinement/constraints/boost_python/u_uso_dependent_u_iso.cpp -text
 smtbx/refinement/constraints/parameter[!!-~]hierarchy.graffle -text svneol=unset#unset
-smtbx/refinement/constraints/u_iso_dependent_u_iso.cpp -text
-smtbx/refinement/constraints/u_iso_dependent_u_iso.h -text
 smtbx/refinement/tests/tst_least_squares.py -text
 spotfinder/SConscript -text
 spotfinder/__init__.py -text

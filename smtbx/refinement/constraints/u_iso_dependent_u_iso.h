@@ -5,11 +5,7 @@
 
 namespace smtbx { namespace refinement { namespace constraints {
 
-/** u_iso parameter that is proportional to the equivalent u_iso
-    of some u_star parameter.
-
-    The latter is the average of the diagonal elements of the associated u_cart.
-    C.f. adptbx::u_star_as_u_iso
+/** u_iso parameter that is proportional to the u_iso of another scatterer
  */
 class u_iso_proportional_to_pivot_u_iso : public asu_u_iso_parameter
 {

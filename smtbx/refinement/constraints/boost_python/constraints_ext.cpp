@@ -12,6 +12,7 @@ namespace boost_python {
   void wrap_symmetry_equivalent_site_parameter();
   void wrap_u_eq_dependent_u_iso();
   void wrap_u_iso_dependent_u_iso();
+  void wrap_shared();
 
   namespace {
     void init_module() {
@@ -22,6 +23,7 @@ namespace boost_python {
       wrap_symmetry_equivalent_site_parameter();
       wrap_u_eq_dependent_u_iso();
       wrap_u_iso_dependent_u_iso();
+      wrap_shared();
     }
   }
 
