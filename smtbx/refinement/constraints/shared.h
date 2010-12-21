@@ -71,28 +71,6 @@ public:
 
 };
 
-/** two scatterers have the same occupancy
- */
-class shared_occupancy : public asu_occupancy_parameter
-{
-public:
-  shared_occupancy(scalar_parameter *original_occupancy,
-             scatterer_type *scatterer)
-  : parameter(1),
-    single_asu_scatterer_parameter(scatterer)
-  {
-    this->set_arguments(original_occupancy);
-  }
-
-  scalar_parameter *original() const {
-    return dynamic_cast<scalar_parameter *>(this->argument(0));
-  }
-
-  virtual void linearise(uctbx::unit_cell const &unit_cell,
-                         sparse_matrix_type *jacobian_transpose);
-
-};
-
 }}}
 
 #endif // GUARD
