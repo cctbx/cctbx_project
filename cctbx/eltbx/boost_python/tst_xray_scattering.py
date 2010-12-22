@@ -100,6 +100,27 @@ def exercise_gaussian():
   assert approx_equal(l.array_of_b(), g.array_of_b())
   assert approx_equal(l.c(), g.c())
   assert not l.use_c()
+  #
+  g = xray_scattering.gaussian(*zip(*[
+    (2.51340127252, 31.8053433708),
+    (1.74867019409, 0.445605499982),
+    (1.72398202356, 10.5831679451)])) # C 3-gaussian
+  assert not g.use_c()
+  e = g.electron_density
+  assert approx_equal(e(r=0, b_iso=0), 264.731533932)
+  assert approx_equal(e(r=0, b_iso=1), 47.3615000971)
+  assert approx_equal(e(r=1, b_iso=0), 0.233911429529)
+  assert approx_equal(e(r=1, b_iso=1), 0.243343387016)
+  g = xray_scattering.gaussian(
+    (2.31000, 1.02000, 1.58860, 0.865000),
+    (20.8439, 10.2075, 0.568700, 51.6512),
+    0.215600) # C it1992
+  assert g.use_c()
+  e = g.electron_density
+  assert approx_equal(e(r=0, b_iso=0.1), 435.677592698)
+  assert approx_equal(e(r=0, b_iso=1), 47.9420591405)
+  assert approx_equal(e(r=1, b_iso=0.1), 0.241082494004)
+  assert approx_equal(e(r=1, b_iso=1), 0.248806720643)
 
 def exercise_n_gaussian():
   assert xray_scattering.n_gaussian_table_size() == 212
