@@ -12,15 +12,21 @@ import sys, os
 master_phil = iotbx.phil.parse("""
 mtz_file = None
   .type = path
+  .short_caption = MTZ file
+  .style = bold file_type:hkl
 pdb_file = None
   .type = path
+  .short_caption = PDB file
 labels = None
   .type = strings
   .multiple = True
 buffer = 5.0
   .type = float
+  .short_caption = Region padding
 selection = None
   .type = str
+  .input_size = 400
+  .short_caption = Atom selection
 d_min = None
   .type = float
 d_max = None
@@ -33,10 +39,13 @@ scale = *sigma volume
 output {
   directory = None
     .type = path
+    .short_caption = Output directory
   prefix = None
     .type = str
+    .short_caption = Output file prefix
   format = xplor *ccp4
     .type = choice
+    .caption = XPLOR CCP4
   extension = *Auto ccp4 xplor map
     .type = choice
 }
