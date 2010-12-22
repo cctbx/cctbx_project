@@ -1060,6 +1060,14 @@ mean:   2.00
   assert flex.mean(a) == 2+1j
   assert approx_equal(flex.sum_sq(a), 32)
   assert approx_equal(flex.mean_sq(a), 8)
+  #
+  assert flex.double().standard_deviation_of_the_sample() is None
+  assert approx_equal(
+    flex.double([1]).standard_deviation_of_the_sample(), 0)
+  assert approx_equal(
+    flex.double([1,2]).standard_deviation_of_the_sample(), 0.5)
+  assert flex.double([1]).sample_standard_deviation() is None
+  assert approx_equal(flex.double([3,7]).sample_standard_deviation(), 8**0.5)
 
 def exercise_complex_functions():
   c = 1+2j
