@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.math.gaussian # base class for gaussian
 
 import boost.python
@@ -24,6 +25,19 @@ class _gaussian(boost.python.injector, ext.gaussian):
       print >> f, l, " ".join([format % x for x in v])
     print >> f, "c:", format % self.c()
     return self
+
+  def electron_density(self, r, b_iso):
+    from math import pi, exp
+    result = 0
+    def ft(b):
+      # Agarwal (1978). Acta Cryst. A34, 791-809.
+      # Page 796 before equation (42).
+      return (4*pi/(b+b_iso))**(3/2) * exp(-4*pi**2*r**2/(b+b_iso))
+    for a,b in zip(self.array_of_a(), self.array_of_b()):
+      result += a * ft(b)
+    if (self.use_c()):
+      result += self.c() * ft(0)
+    return result
 
 def best_approximation(scattering_type):
   if (scattering_type == "const"):
