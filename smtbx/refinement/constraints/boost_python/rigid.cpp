@@ -19,7 +19,7 @@ namespace smtbx { namespace refinement { namespace constraints {
           .def(init<site_parameter *,
                     site_parameter *,
                     independent_scalar_parameter *,
-                    const af::shared<typename wt::scatterer_type *>&>
+                    const af::shared<wt::scatterer_type *>&>
                ((arg("pivot"),
                  arg("pivot_neighbour"),
                  arg("azimuth"),
@@ -51,7 +51,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       {
         using namespace scitbx::boost_python::container_conversions;
         tuple_mapping_variable_capacity<
-          af::shared<typename asu_parameter::scatterer_type *> >();
+          af::shared<asu_parameter::scatterer_type *> >();
       }
       pivoted_rotable_group_wrapper::wrap();
       rigid_site_proxy_wrapper::wrap();
