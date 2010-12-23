@@ -68,52 +68,58 @@ if ("reversed" not in __builtins__):
       yield seq[i]
   __builtins__["reversed"] = reversed
 
-if sys.version_info[:2] < (2,6):
+vers_info = sys.version_info[:2]
+
+if (vers_info < (2,6)):
   import cmath
   math = stdlib_import("math")
   cmath.phase = lambda z: math.atan2(z.imag, z.real)
   cmath.polar = lambda z: (abs(z), cmath.phase(z))
   cmath.rect = lambda r, phi: (r*math.cos(phi), r*math.sin(phi))
 
-  import itertools
-  def izip_longest(*args, **kwds):
-    """ Make an iterator that aggregates elements from each of the iterables.
-    If the iterables are of uneven length, missing values are filled-in with
-    fillvalue. Iteration continues until the longest iterable is exhausted.
-    Synopsis: izip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
-    """
-    fillvalue = kwds.get('fillvalue')
-    def sentinel(counter = ([fillvalue]*(len(args)-1)).pop):
-      yield counter() # yields the fillvalue, or raises IndexError
-    fillers = repeat(fillvalue)
-    iters = [chain(it, sentinel(), fillers) for it in args]
-    try:
-      for tup in izip(*iters):
-        yield tup
-    except IndexError:
-      pass
-  itertools.izip_longest = izip_longest
+  if (vers_info > (2,2)):
+    import itertools
+    def izip_longest(*args, **kwds):
+      """ Make an iterator that aggregates elements from each of the iterables.
+      If the iterables are of uneven length, missing values are filled-in with
+      fillvalue. Iteration continues until the longest iterable is exhausted.
+      Synopsis: izip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
+      """
+      fillvalue = kwds.get('fillvalue')
+      def sentinel(counter = ([fillvalue]*(len(args)-1)).pop):
+        yield counter() # yields the fillvalue, or raises IndexError
+      fillers = itertools.repeat(fillvalue)
+      iters = [itertools.chain(it, sentinel(), fillers) for it in args]
+      try:
+        for tup in itertools.izip(*iters):
+          yield tup
+      except IndexError:
+        pass
+    itertools.izip_longest = izip_longest
 
-vers_info = sys.version_info[:2]
-if (vers_info == (2,3) and "set" not in __builtins__):
-  # Python 2.3 compatibility
-  import sets
-  __builtins__["set"] = sets.Set
-  __builtins__["frozenset"] = sets.ImmutableSet
-if (vers_info in [(2,3),(2,4),(2,5)] and not hasattr(frozenset, "isdisjoint")):
-  # Python 2.3, 2.4, 2.5 compatibility
-  class forward_compatibility_set_mixin(object):
-    def isdisjoint(self, other):
-      for value in other:
-        if value in self:
-          return False
-      return True
-  class forward_compatibility_frozenset(
-        forward_compatibility_set_mixin, frozenset): pass
-  class forward_compatibility_set(
-        forward_compatibility_set_mixin, set): pass
-  __builtins__["frozenset"] = forward_compatibility_frozenset
-  __builtins__["set"] = forward_compatibility_set
+  if (vers_info == (2,3) and "set" not in __builtins__):
+    # Python 2.3 compatibility
+    import sets
+    __builtins__["set"] = sets.Set
+    __builtins__["frozenset"] = sets.ImmutableSet
+
+  if (vers_info in [(2,3),(2,4),(2,5)]
+        and not hasattr(frozenset, "isdisjoint")):
+    # Python 2.3, 2.4, 2.5 compatibility
+    class forward_compatibility_set_mixin(object):
+      def isdisjoint(self, other):
+        for value in other:
+          if value in self:
+            return False
+        return True
+    class forward_compatibility_frozenset(
+          forward_compatibility_set_mixin, frozenset): pass
+    class forward_compatibility_set(
+          forward_compatibility_set_mixin, set): pass
+    __builtins__["frozenset"] = forward_compatibility_frozenset
+    __builtins__["set"] = forward_compatibility_set
+
+del vers_info
 
 if "all" not in __builtins__:
   #Python 2.3-2.4 compatibility
@@ -125,7 +131,6 @@ if "all" not in __builtins__:
     return True
 
   __builtins__[ "all" ] = all
-
 
 class _advertise_subprocess(object):
 
