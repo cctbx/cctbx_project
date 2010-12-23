@@ -195,16 +195,7 @@ class custom_vs_std_test_case(test_case):
 
 class f_vs_f_sq_test_case(test_case):
 
-  skip_warning = True
-
   def do_exercise(self, verbose=False):
-    import boost.python
-    vers = boost.python.gcc_version()
-    if (vers is not None and str(vers).startswith("4.1.")):
-      if self.__class__.skip_warning:
-        print "Skip F vs F^2 test because platform with GCC %s" % vers
-        self.__class__.skip_warning = False
-      return
     xs = self.xs
     indices = self.miller_indices(xs.space_group_info())
     f = structure_factors.f_calc_modulus(xs)
@@ -217,8 +208,7 @@ class f_vs_f_sq_test_case(test_case):
                                      relative_error=1e-12)
       grad_f_sq = f_sq.grad_observable
       two_f_grad_f = (2*f.observable*f.grad_observable)
-      assert two_f_grad_f.all_approx_equal_relatively(grad_f_sq,
-                                                      relative_error=1e-12)
+      flex.compare_derivatives(two_f_grad_f, grad_f_sq, eps=1e-12)
 
 
 def exercise_trigonometric_ff():

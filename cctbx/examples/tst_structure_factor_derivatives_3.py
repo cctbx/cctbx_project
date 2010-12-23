@@ -66,10 +66,6 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
     scatterers_eps[i_scatterer] = scatterers[i_scatterer]
   return result
 
-def compare_derivatives(ana, fin):
-  s = max(1, flex.max(flex.abs(ana)))
-  assert approx_equal(ana/s, fin/s)
-
 def compare_analytical_and_finite(f_obs, xray_structure, out):
   grads_fin = d_target_d_params_finite(
     f_obs=f_obs, xray_structure=xray_structure)
@@ -78,13 +74,13 @@ def compare_analytical_and_finite(f_obs, xray_structure, out):
     xray_structure=xray_structure, miller_set=f_obs)
   grads_ana = sf.d_target_d_params(f_obs=f_obs, target_type=least_squares)
   print >> out, "grads_ana:", list(grads_ana)
-  compare_derivatives(grads_ana, grads_fin)
+  flex.compare_derivatives(grads_ana, grads_fin)
   curvs_fin = d2_target_d_params_finite(
     f_obs=f_obs, xray_structure=xray_structure)
   print >> out, "curvs_fin:", list(curvs_fin)
   curvs_ana = sf.d2_target_d_params(f_obs=f_obs, target_type=least_squares)
   print >> out, "curvs_ana:", list(curvs_ana)
-  compare_derivatives(curvs_ana, curvs_fin)
+  flex.compare_derivatives(curvs_ana.as_1d(), curvs_fin)
   print >> out
 
 def exercise(

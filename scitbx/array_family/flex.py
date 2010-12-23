@@ -78,7 +78,8 @@ def export_to(target_module_name):
     "linear_correlation",
     "histogram",
     "permutation_generator",
-    "smart_selection"]
+    "smart_selection",
+    "compare_derivatives"]
   target_module = sys.modules[target_module_name]
   g = globals()
   for attr in export_list:
@@ -396,3 +397,12 @@ def exercise_triple(flex_triple, flex_order=None, as_double=False):
     assert approx_equal(tuple(a.as_double()), (1,2,3,2,3,4,3,4,5))
     b = flex_triple(a.as_double())
     assert tuple(a) == tuple(b)
+
+def compare_derivatives(more_reliable, less_reliable, eps=1e-6):
+  from __builtin__ import max
+  scale = max(1, ext.max(ext.abs(more_reliable)))
+  if (not (more_reliable/scale).all_approx_equal( # fast
+             other=less_reliable/scale, tolerance=eps)):
+    from libtbx.test_utils import approx_equal
+    assert approx_equal( # slow but helpful output
+      more_reliable/scale, less_reliable/scale, eps=eps)
