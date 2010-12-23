@@ -103,7 +103,6 @@ class consistency_test_cases(test_case):
     f = structure_factors.f_calc_modulus_squared(xs)
     f1 = structure_factors.f_calc_modulus_squared(xs)
 
-    eps = 1e-15
     for h in indices:
       f.linearise(h)
       fl = f.f_calc
@@ -215,11 +214,11 @@ class f_vs_f_sq_test_case(test_case):
       f_sq.linearise(h)
       assert approx_equal_relatively(f.observable**2,
                                      f_sq.observable,
-                                     relative_error=1e-15)
+                                     relative_error=1e-12)
       grad_f_sq = f_sq.grad_observable
       two_f_grad_f = (2*f.observable*f.grad_observable)
       assert two_f_grad_f.all_approx_equal_relatively(grad_f_sq,
-                                                      relative_error=1e-14)
+                                                      relative_error=1e-12)
 
 
 def exercise_trigonometric_ff():
