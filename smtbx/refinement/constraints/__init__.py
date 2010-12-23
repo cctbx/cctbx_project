@@ -135,6 +135,12 @@ class reparametrisation(ext.reparametrisation):
       s = self.add(symmetry_equivalent_site_parameter, s, symm_op)
     return s
 
+  def add_new_site_proxy_parameter(self, param, i, i_sc):
+    if self.shared_sites.has_key(i_sc):
+      return self.shared_sites[i_sc]
+    sc = self.structure.scatterers()[i_sc]
+    self.shared_sites[i_sc] = self.add(rigid_site_proxy, param, i)
+
   def add_new_thermal_displacement_parameter(self, i_scatterer):
     if self.shared_Us.has_key(i_scatterer):
       return self.shared_Us[i_scatterer]
