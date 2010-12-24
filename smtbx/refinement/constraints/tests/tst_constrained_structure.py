@@ -91,11 +91,11 @@ class test_case(object):
     self.reparametrisation = constraints.reparametrisation(
       xs, self.constraints, self.connectivity_table,
       temperature=self.t_celsius)
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       fo_sq,
       self.reparametrisation,
       weighting_scheme=least_squares.mainstream_shelx_weighting())
-    self.cycles = self.normal_eqns_solving_method(normal_eqns)
+    self.cycles = self.normal_eqns_solving_method(ls)
     print ("%i %s iterations to recover from shaking"
            % (self.cycles.n_iterations,
               self.cycles))

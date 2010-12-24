@@ -270,7 +270,7 @@ def exercise_restrained_refinement(options):
       constraints=[],
       connectivity_table=smtbx.utils.connectivity_table(xs),
       temperature=20)
-    return least_squares.normal_equations(
+    return least_squares.crystallographic_ls(
       fo_sq=fo_sq,
       reparametrisation=reparametrisation,
       restraints_manager=restraints_manager)

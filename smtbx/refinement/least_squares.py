@@ -14,7 +14,8 @@ from smtbx.structure_factors import direct
 
 from stdlib import math
 
-class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
+class crystallographic_ls(
+  normal_eqns.non_linear_ls_with_separable_scale_factor):
 
   default_weighting_scheme = mainstream_shelx_weighting
   weighting_scheme = "default"
@@ -24,7 +25,7 @@ class normal_equations(normal_eqns.non_linear_ls_with_separable_scale_factor):
   n_restraints = None
 
   def __init__(self, fo_sq, reparametrisation, **kwds):
-    super(normal_equations, self).__init__(
+    super(crystallographic_ls, self).__init__(
       reparametrisation.n_independent_params)
     self.fo_sq = fo_sq
     self.reparametrisation = reparametrisation
