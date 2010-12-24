@@ -8,7 +8,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 class rigid_group_base : public virtual parameter {
 public:
   virtual ~rigid_group_base() {}
-  virtual fractional<double> const& get_fractional(int index) const = 0;
+  virtual fractional<double> const& site(int index) const = 0;
 };
 /** a set of atoms rides on pivot and rotates around the direction given
   by pivot and pivot_neighbour
@@ -53,7 +53,7 @@ public:
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
 
-  virtual fractional<double> const& get_fractional(int i) const {  return fx_s[i];  }
+  virtual fractional<double> const& site(int i) const {  return fx_s[i];  }
 
 protected:
   af::shared<scatterer_type *> atoms;
@@ -73,14 +73,14 @@ public:
     parent(parent),
     index(index)
   {
-    value = parent->get_fractional(index);
+    value = parent->site(index);
     set_variable(false);
   }
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose)
   {
-    value = parent->get_fractional(index);
+    value = parent->site(index);
   }
 };
 
