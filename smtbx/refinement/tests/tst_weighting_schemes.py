@@ -23,7 +23,8 @@ def exercise_optimise_shelxl_weights():
   sigmas = fo.sigmas()
   for i in range(fo.size()):
     fo.data()[i] += 2 * scitbx.random.variate(
-      scitbx.random.normal_distribution(sigma=sigmas[i]))() + 0.5*random.random()
+      scitbx.random.normal_distribution(sigma=sigmas[i]))() \
+      + 0.5*random.random()
   fo2 = fo.as_intensity_array()
   w = least_squares.mainstream_shelx_weighting(a=0.1)
   s = calc_goof(fo2, fc, w, k, xs.n_parameters())
