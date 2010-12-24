@@ -14,7 +14,7 @@ namespace boost_python {
   void wrap_u_iso_dependent_u_iso();
   void wrap_shared();
   void wrap_occupancy();
-  void wrap_ridgid();
+  void wrap_rigid();
 
   namespace {
     void init_module() {
@@ -27,7 +27,7 @@ namespace boost_python {
       wrap_u_iso_dependent_u_iso();
       wrap_shared();
       wrap_occupancy();
-      wrap_ridgid();
+      wrap_rigid();
     }
   }
 

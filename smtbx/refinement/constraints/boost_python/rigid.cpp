@@ -47,7 +47,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
-    void wrap_ridgid() {
+    void wrap_rigid() {
       {
         using namespace scitbx::boost_python::container_conversions;
         tuple_mapping_variable_capacity<
