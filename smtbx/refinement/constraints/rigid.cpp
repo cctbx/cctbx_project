@@ -5,8 +5,8 @@ namespace smtbx { namespace refinement { namespace constraints {
   index_range
   pivoted_rotable_group
   ::component_indices_for(scatterer_type const *scatterer) const {
-    for (int i=0; i < atoms.size(); i++)  {
-      if( atoms[i] == scatterer )
+    for (int i=0; i < scatterers_.size(); i++)  {
+      if( scatterers_[i] == scatterer )
         return index_range(index() + 3*i, 3);
     }
     return index_range();
@@ -17,11 +17,11 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::write_component_annotations_for(scatterer_type const *scatterer,
                                     std::ostream &output) const
   {
-    for (int i=0; i < atoms.size(); i++)  {
-      if( atoms[i] == scatterer )  {
-        output << atoms[i]->label << ".x,";
-        output << atoms[i]->label << ".y,";
-        output << atoms[i]->label << ".z,";
+    for (int i=0; i < scatterers_.size(); i++)  {
+      if( scatterers_[i] == scatterer )  {
+        output << scatterers_[i]->label << ".x,";
+        output << scatterers_[i]->label << ".y,";
+        output << scatterers_[i]->label << ".z,";
       }
     }
   }
@@ -58,20 +58,20 @@ namespace smtbx { namespace refinement { namespace constraints {
     );
     cart_t center;
     if( original_crd_initialised )  {
-      for (int i=0; i < atoms.size(); i++)
-        center += unit_cell.orthogonalize(atoms[i]->site);
+      for (int i=0; i < scatterers_.size(); i++)
+        center += unit_cell.orthogonalize(scatterers_[i]->site);
     }
     else  {
-      for (int i=0; i < atoms.size(); i++)  {
-        co_s[i] = unit_cell.orthogonalize(atoms[i]->site);
+      for (int i=0; i < scatterers_.size(); i++)  {
+        co_s[i] = unit_cell.orthogonalize(scatterers_[i]->site);
         center += co_s[i];
       }
       original_crd_initialised = true;
     }
-    center = center/atoms.size();
-    // Loop over the atoms
-    for (int i=0; i < atoms.size(); i++) {
-      // update site of i-th atoms
+    center = center/scatterers_.size();
+    // Loop over the scatterers
+    for (int i=0; i < scatterers_.size(); i++) {
+      // update site of i-th scatterers
      cx_s[i] = (co_s[i]-center)*rm + center;
      fx_s[i] = unit_cell.fractionalize(cx_s[i]);
 
