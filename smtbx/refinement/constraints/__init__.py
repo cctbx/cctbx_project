@@ -11,7 +11,7 @@ class InvalidConstraint(libtbx.utils.Sorry):
 
 bad_connectivity_msg = "Invalid %s constraint involving %s: bad connectivity"
 
-class _parameter(boost.python.injector, ext.parameter):
+class _(boost.python.injector, ext.parameter):
 
   def arguments(self):
     """ An iterator over its arguments """
@@ -35,6 +35,23 @@ class _parameter(boost.python.injector, ext.parameter):
       info,
       scatt, self.index)
     return lbl
+
+class _(boost.python.injector, ext.reparametrisation):
+
+  def __str__(self):
+    """ String representation using the graphviz DOT language """
+    self.finalise()
+    bits = []
+    for p in self.parameters():
+      for q in p.arguments():
+        bits.append("%i -> %i" % (p.index, q.index))
+    dsu_bits = []
+    for p in self.parameters():
+      dsu_bits.append((p.index, str(p)))
+    dsu_bits.sort()
+    bits.extend([ p for i,p in dsu_bits ])
+    return "digraph dependencies {\n%s\n}" % ';\n'.join(bits)
+
 
 # The order in which constraints are added MAKES a difference, shared site, U and/or
 # occupancy constraints must be added first for proper bookkeeping
@@ -160,17 +177,3 @@ class reparametrisation(ext.reparametrisation):
                        sc)
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
-
-  def __str__(self):
-    """ String representation using the graphviz DOT language """
-    self.finalise()
-    bits = []
-    for p in self.parameters():
-      for q in p.arguments():
-        bits.append("%i -> %i" % (p.index, q.index))
-    dsu_bits = []
-    for p in self.parameters():
-      dsu_bits.append((p.index, str(p)))
-    dsu_bits.sort()
-    bits.extend([ p for i,p in dsu_bits ])
-    return "digraph dependencies {\n%s\n}" % ';\n'.join(bits)
