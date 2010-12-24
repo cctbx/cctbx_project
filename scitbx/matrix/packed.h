@@ -325,6 +325,28 @@ namespace scitbx { namespace matrix {
     packed_u_diagonal_add_in_place(a.begin(), n, mu);
   }
 
+  /// Add diag to each diagonal element
+  template <typename FloatType>
+  void packed_u_diagonal_add_in_place(FloatType *a,
+                                      unsigned n,
+                                      FloatType const *diag)
+  {
+    std::size_t ij = 0;
+    for(unsigned i=0; i<n; i++) {
+      a[ij] += diag[i];
+      ij += static_cast<std::size_t>(n-i);
+    }
+  }
+
+  /// Add diag to each diagonal element
+  template <typename FloatType>
+  void packed_u_diagonal_add_in_place(af::ref<FloatType> const &a,
+                                      af::const_ref<FloatType> const &diag)
+  {
+    unsigned n = af::dimension_from_packed_size(a.size());
+    packed_u_diagonal_add_in_place(a.begin(), n, diag.begin());
+  }
+
 }} // namespace scitbx::matrix
 
 #endif // SCITBX_MATRIX_PACKED_H
