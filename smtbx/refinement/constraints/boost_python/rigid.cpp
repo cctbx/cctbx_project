@@ -23,7 +23,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                ((arg("pivot"),
                  arg("pivot_neighbour"),
                  arg("azimuth"),
-                 arg("atoms"))))
+                 arg("scatterers"))))
           ;
         implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
       }
