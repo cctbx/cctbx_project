@@ -163,11 +163,11 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
     structure=xs,
     constraints=[],
     connectivity_table=connectivity_table)
-  normal_eqns = least_squares.normal_equations(
+  ls = least_squares.crystallographic_ls(
     fo_sq, reparametrisation,
     f_mask=f_mask,
     weighting_scheme="default")
-  cycles = normal_eqns_solving.naive_iterations(normal_eqns,
+  cycles = normal_eqns_solving.naive_iterations(ls,
                                                 n_max_iterations=3)
   return xs
 

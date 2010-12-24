@@ -64,32 +64,32 @@ class site_refinement_test(refinement_test):
       structure=self.xray_structure,
       constraints=[],
       connectivity_table=connectivity_table)
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       self.fo_sq,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
-    normal_eqns.build_up()
-    assert normal_eqns.opposite_of_gradient()\
+    ls.build_up()
+    assert ls.opposite_of_gradient()\
            .all_approx_equal(0, eps_zero_rhs),\
-           list(normal_eqns.gradient())
-    unrestrained_normal_matrix = normal_eqns.normal_matrix_packed_u()
+           list(ls.gradient())
+    unrestrained_normal_matrix = ls.normal_matrix_packed_u()
     assert len(unrestrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
       unrestrained_normal_matrix.matrix_packed_u_as_symmetric())
     unrestrained_eigenval = ev.values()
     unrestrained_eigenvec = ev.vectors()
 
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       self.fo_sq,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
     )
-    normal_eqns.build_up()
-    assert normal_eqns.opposite_of_gradient()\
-           .all_approx_equal(0, eps_zero_rhs),\
-           list(normal_eqns.gradient())
-    restrained_normal_matrix = normal_eqns.normal_matrix_packed_u()
+    ls.build_up()
+    assert ls.opposite_of_gradient()\
+             .all_approx_equal(0, eps_zero_rhs),\
+           list(ls.gradient())
+    restrained_normal_matrix = ls.normal_matrix_packed_u()
     assert len(restrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
       restrained_normal_matrix.matrix_packed_u_as_symmetric())
@@ -148,7 +148,7 @@ class site_refinement_test(refinement_test):
 
     # Do the floating origin restraints prevent the structure from floating?
     xs = self.xray_structure.deep_copy_scatterers()
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       self.fo_sq,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
@@ -167,9 +167,9 @@ class site_refinement_test(refinement_test):
       if moved_far_enough: break
 
     # one refinement cycle
-    normal_eqns.build_up()
-    normal_eqns.solve()
-    shifts = normal_eqns.step()
+    ls.build_up()
+    ls.solve()
+    shifts = ls.step()
 
     # That's what floating origin restraints are for!
     # Note that in the presence of special position, that's different
@@ -192,19 +192,19 @@ class site_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
     emma_ref = xs.as_emma_model()
     xs.shake_sites_in_place(rms_difference=0.1)
 
     cycles = normal_eqns_solving.naive_iterations(
-      normal_eqns,
+      ls,
       n_max_iterations=5,
       track_all=True)
 
-    assert approx_equal(normal_eqns.scale_factor(), 1, eps=1e-5)
-    assert approx_equal(normal_eqns.objective(), 0)
+    assert approx_equal(ls.scale_factor(), 1, eps=1e-5)
+    assert approx_equal(ls.objective(), 0)
     # skip next-to-last one to allow for no progress and rounding error
     assert (
       cycles.objective_history[0]
@@ -251,17 +251,17 @@ class adp_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(
-      normal_eqns,
+      ls,
       n_max_iterations=10,
       track_all=True)
 
-    assert approx_equal(normal_eqns.scale_factor(), 1, eps=1e-4)
-    assert approx_equal(normal_eqns.objective(), 0)
+    assert approx_equal(ls.scale_factor(), 1, eps=1e-4)
+    assert approx_equal(ls.objective(), 0)
     # skip next-to-last one to allow for no progress and rounding error
     n = len(cycles.objective_history)
     assert cycles.objective_history[0] > cycles.objective_history[n-1],\
@@ -422,12 +422,12 @@ class special_positions_test(object):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    normal_eqns = least_squares.normal_equations(
+    ls = least_squares.crystallographic_ls(
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(
-      normal_eqns,
+      ls,
       n_max_iterations=10,
       track_all=True)
 
@@ -443,10 +443,10 @@ class special_positions_test(object):
                     - xs0.scatterers().extract_u_cart(xs.unit_cell())).norms()
     assert flex.abs(delta_u_carts) < 1e-6
 
-    assert approx_equal(normal_eqns.scale_factor(), 1, eps=1e-4)
+    assert approx_equal(ls.scale_factor(), 1, eps=1e-4)
 
     ## Test covariance matrix
-    cov = normal_eqns.covariance_matrix(normalised_by_goof=False)\
+    cov = ls.covariance_matrix(normalised_by_goof=False)\
         .matrix_packed_u_as_symmetric()
     m, n = cov.accessor().focus()
     # x,y for point group 3 sites are fixed: no variance or correlation
