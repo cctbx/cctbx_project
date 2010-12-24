@@ -1364,6 +1364,7 @@ class meaningful_site_cart_differences(object):
   """
 
   def __init__(self, xs1, xs2):
+    self.labels = [ sc.label for sc in xs1.scatterers() ]
     self.delta = canonical_delta = xs1.sites_cart() - xs2.sites_cart()
     if xs1.space_group() == xs2.space_group():
       ssi = sgtbx.structure_seminvariants(xs1.space_group())\
@@ -1395,3 +1396,8 @@ class meaningful_site_cart_differences(object):
 
   def max_absolute(self):
     return flex.max_absolute(self.delta.as_double())
+
+  def show(self):
+    import itertools
+    for lbl, diff in itertools.izip(self.labels, self.delta):
+      print "%6s: (%.6f, %.6f, %.6f)" % ((lbl,) + diff)
