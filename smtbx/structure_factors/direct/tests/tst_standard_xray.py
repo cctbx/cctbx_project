@@ -205,7 +205,7 @@ class f_vs_f_sq_test_case(test_case):
       f_sq.linearise(h)
       assert approx_equal_relatively(f.observable**2,
                                      f_sq.observable,
-                                     relative_error=1e-12)
+                                     relative_error=1e-10)
       grad_f_sq = f_sq.grad_observable
       two_f_grad_f = (2*f.observable*f.grad_observable)
       flex.compare_derivatives(two_f_grad_f, grad_f_sq, eps=1e-12)
