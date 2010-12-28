@@ -650,8 +650,10 @@ class monomer_mapping(slots_getstate_setstate):
         d_aa_rn = getattr(
           self.atom_name_interpretation, "d_aa_residue_name", None)
         if (d_aa_rn is not None):
-          self.apply_mod(
-            mod_mod_id=self.mon_lib_srv.mod_mod_id_dict["PEPT-D"])
+          mmid = self.mon_lib_srv.mod_mod_id_dict
+          self.apply_mod(mod_mod_id=mmid["PEPT-D"])
+          if (d_aa_rn in ["DIL", "DTH"]):
+            self.apply_mod(mod_mod_id=mmid["PEPT-D_chir_02_both"])
       if (self.incomplete_info is None):
         self.resolve_unexpected()
     if (self.pdb_residue_id_str in apply_cif_links_mm_pdbres_dict):
