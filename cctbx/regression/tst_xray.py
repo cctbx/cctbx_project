@@ -396,6 +396,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
     scatterers=flex.xray_scatterer([
       xray.scatterer("Si", (1/2.,1/2.,1/3.)),
       xray.scatterer("O", (0.197,-0.197,0.83333))]))
+  assert approx_equal(quartz.mean_scattering_density(), 0.184934969936)
   s = StringIO()
   quartz.show_angles(distance_cutoff=2, out=s)
   assert not show_diff(s.getvalue(), """\

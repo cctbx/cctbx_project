@@ -89,6 +89,12 @@ class _scattering_type_registry(
         print >> out, prefix \
           + "  sf(0) = scattering factor at diffraction angle 0."
 
+  def sum_of_scattering_factors_at_diffraction_angle_0(self):
+    result = 0
+    for g,c in zip(self.unique_gaussians_as_list(), self.unique_counts):
+      result += g.at_stol(0) * c
+    return result
+
   def wilson_dict(self):
     result = {}
     unique_counts = list(self.unique_counts)

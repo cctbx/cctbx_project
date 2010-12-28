@@ -660,6 +660,11 @@ class structure(crystal.special_position_settings):
       raise RuntimeError("Unknown inelastic form factors table: %s" % table)
     set_inelastic_ff(self.scatterers(), photon, set_use_fp_fdp)
 
+  def mean_scattering_density(self):
+    r = self.scattering_type_registry()
+    return r.sum_of_scattering_factors_at_diffraction_angle_0() \
+         / self.unit_cell().volume()
+
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
     assert self.scatterers() is not None
