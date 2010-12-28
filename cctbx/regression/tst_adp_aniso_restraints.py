@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 from cStringIO import StringIO
 import cctbx.adp_restraints
 from libtbx.test_utils import approx_equal
+import libtbx.load_env
 
 phe_pdb = """\
 remark CRYST1   25.000   35.000   45.000  80.00 70.00 100.00 P 1           1
@@ -91,13 +92,14 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
            #print "   fin.diff.= %10.5f anal.= %10.5f diff.= %10.5f"%(g1, g2, g1-g2)
            assert approx_equal(g1,g2,1.e-4)
 
-
-def run():
-  try: from mmtbx.monomer_library import pdb_interpretation
-  except ImportError:
-    print "Skipping run():", \
-      "mmtbx.monomer_library.pdb_interpretation not available"
+def exercise():
+  if (not libtbx.env.has_module("mmtbx")):
+    print "Skipping exercise(): mmtbx module not available"
     return
+  if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
+    print "Skipping exercise(): chem_data directory not available"
+    return
+  from mmtbx.monomer_library import pdb_interpretation
   file_name = "phe_tst_adp_aniso_restraints.pdb"
   open(file_name, "w").write(phe_pdb)
   out = StringIO()
@@ -120,7 +122,12 @@ def run():
   assert approx_equal(flex.mean(adp_rm.gradients_aniso_cart.as_double()), -0.118959432097)
   assert approx_equal(adp_rm.target, 8.97112989232)
   fd(xray_structure = xray_structure, restraints_manager = geo, eps=1.e-4)
+
+def run(args):
+  assert len(args) == 0
+  exercise()
   print "OK"
 
 if (__name__ == "__main__"):
-  run()
+  import sys
+  run(args=sys.argv[1:])

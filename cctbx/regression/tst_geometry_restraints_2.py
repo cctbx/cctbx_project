@@ -389,6 +389,9 @@ def exercise_with_pdb(verbose):
     print "Skipping exercise_with_pdb():", \
       "mmtbx.monomer_library.pdb_interpretation not available"
     return
+  if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
+    print "Skipping exercise_with_pdb(): chem_data directory not available"
+    return
   from mmtbx.monomer_library import pdb_interpretation
   if (verbose):
     out = sys.stdout
