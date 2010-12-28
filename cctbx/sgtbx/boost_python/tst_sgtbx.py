@@ -1644,7 +1644,8 @@ def exercise_wyckoff():
   assert approx_equal(m.original_site(), x)
   assert m.position().letter() == "b"
   assert m.position().point_group_type() == "mmm"
-  assert str(m.sym_op()) in ("x+3,y-1,z+5", "x+3,-y+1,z+5")
+  xyz = str(m.sym_op())
+  assert xyz in ("x+3,y-1,z+5", "x+3,-y+1,z+5"), xyz
   assert approx_equal(m.representative_site(), (0.5,0,0))
   assert approx_equal(m.exact_site(), (-2.5, 1.0, -5.0))
   assert approx_equal(m.distance_moved(), u.length((-0.02,0.123,-0.03)))
