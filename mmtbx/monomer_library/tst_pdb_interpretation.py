@@ -1114,6 +1114,7 @@ def exercise_d_amino_acid_chain_perfect_in_box():
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.run(
     args=[file_path], log=log)
+  grm = processed_pdb_file.geometry_restraints_manager()
   lv = log.getvalue()
   assert lv.find("Classifications: {'peptide': 16}") >= 0
   assert lv.find("'PEPT-D': 1") >= 0
@@ -1152,6 +1153,29 @@ Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
       30.00   25.28    4.72     1      1.50e+01 4.44e-03 1.45e-01
 """)
   assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
+  log = StringIO()
+  acp = processed_pdb_file.all_chain_proxies
+  grm.show_sorted(
+    sites_cart=acp.sites_cart_exact(),
+    site_labels=[atom.id_str() for atom in acp.pdb_atoms],
+    f=log)
+  lv = log.getvalue()
+  assert not block_show_diff(lv, """\
+chirality pdb=" CB  DIL A  10 "
+          pdb=" CA  DIL A  10 "
+          pdb=" CG1 DIL A  10 "
+          pdb=" CG2 DIL A  10 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    True       2.64    2.65   -0.00 2.00e-01 2.50e+01 5.99e-06
+""")
+  assert not block_show_diff(lv, """\
+chirality pdb=" CB  DTH A  18 "
+          pdb=" CA  DTH A  18 "
+          pdb=" CG2 DTH A  18 "
+          pdb=" OG1 DTH A  18 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    True       2.55   -2.55   -0.00 2.00e-01 2.50e+01 4.37e-06
+""")
 
 def run(args):
   assert len(args) == 0
