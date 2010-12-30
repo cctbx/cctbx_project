@@ -63,8 +63,11 @@ def rho_stats(
     assert fft_map.n_real() == n_real
     rho = fft_map.real_map_unpadded() / unit_cell_volume
     assert approx_equal(voxel_volume*flex.sum(rho), f_calc.data()[0])
-    assert flex.max_index(rho) == 0
-    rho_max.append(rho[0])
+    if (xray_structure.scatterers().size() == 1):
+      assert flex.max_index(rho) == 0
+      rho_max.append(rho[0])
+    else:
+      rho_max.append(flex.max(rho))
     site_cart = xray_structure.sites_cart()[0]
     gias = maptbx.grid_indices_around_sites(
       unit_cell=xray_structure.unit_cell(),
@@ -78,10 +81,12 @@ def rho_stats(
     a = xray_structure.unit_cell().parameters()[0]
     nx = n_real[0]
     nxh = nx//2
-    dax = []
+    x = []
+    y = []
     for ix in xrange(-nxh,nxh+1):
-      dax.append((a*ix/nx, rho[(ix%nx,0,0)]))
-    densities_along_x.append(dax)
+      x.append(a*ix/nx)
+      y.append(rho[(ix%nx,0,0)])
+    densities_along_x.append((x,y))
   #
   print \
     "%3.1f %4.2f %-12s %5d %5d | %6.3f %6.3f | %6.3f %6.3f | %4.2f %5.1f" % (
@@ -104,91 +109,37 @@ table_header = """\
 res fac  grid           all Ewald |    all  Ewald |    all  Ewald | F000  Biso\
 """
 
-def build_xray_structure_with_carbon_at_origin(a, b):
+def build_xray_structure_with_carbon_along_x(a, b_iso, x=[0]):
   result = xray.structure(
     crystal_symmetry=crystal.symmetry(
       unit_cell=(a,a,a,90,90,90),
       space_group_symbol="P1"))
-  result.add_scatterer(xray.scatterer(
-    scattering_type="C", site=(0,0,0), b=b))
+  for i,v in enumerate(x):
+    result.add_scatterer(xray.scatterer(
+      label="C%d" % (i+1), scattering_type="C", site=(v,0,0), b=b_iso))
+  reg = result.scattering_type_registry(table="n_gaussian", d_min=1/12)
+  g = reg.as_type_gaussian_dict()["C"]
+  assert g.n_terms() == 5
+  assert not g.use_c()
   return result
 
 def loop_res_fac(b, electron_sum_radius=2, zero_out_f000=False):
-  xray_structure = build_xray_structure_with_carbon_at_origin(a=10, b=b)
+  xray_structure = build_xray_structure_with_carbon_along_x(a=10, b_iso=b)
   xray_structure.show_scatterers()
   print table_header
   for d_min in [4, 3, 2, 1]:
     for resolution_factor in [1/2, 1/3, 1/4]:
-      densities_along_x = rho_stats(
+      rho_stats(
         xray_structure=xray_structure,
         d_min=d_min,
         resolution_factor=resolution_factor,
         electron_sum_radius=electron_sum_radius,
         zero_out_f000=False)
 
-def text_only():
+def run(args):
+  assert len(args) == 0
   for b in [0, 5, 20]:
     loop_res_fac(b=b)
-
-def matplotlib_plots(dry_run):
-  if (not dry_run):
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-  print table_header
-  a = 5
-  gr = 3
-  gc = 4
-  def p(i, r, f, b, z, ym):
-    xs = build_xray_structure_with_carbon_at_origin(a=a, b=b)
-    densities_along_x = rho_stats(
-      xray_structure=xs,
-      d_min=r,
-      resolution_factor=f,
-      electron_sum_radius=2,
-      zero_out_f000=bool(z))
-    if (dry_run):
-      return
-    ax = fig.add_subplot(gr, gc, i)
-    for dax,code in reversed(zip(densities_along_x, ["b-", "r-"])):
-      x_values = [x for x,y in dax]
-      y_values = [y for x,y in dax]
-      ax.plot(x_values, y_values, code)
-    ax.axis([-a/2, a/2, -1, ym])
-    if (i > 8):
-      for label in ax.get_xticklabels():
-        label.set_fontsize(8)
-    else:
-      for label in ax.get_xticklabels():
-        label.set_visible(False)
-    if (i % 4 == 1):
-      for label in ax.get_yticklabels():
-        label.set_fontsize(8)
-    else:
-      for label in ax.get_yticklabels():
-        label.set_visible(False)
-    j = len(y_values)//2
-    y0 = y_values[j]
-    if (y0 > ym):
-      ax.text(0.5, ym*0.8, "h=%.2f" % y0, fontsize=8, color="b")
-  i = 1
-  for r in [1, 2, 3]:
-    for f in [1/3, 1/4]:
-      p(i, r, f, 0, 0, 10)
-      i += 1
-    p(i, r, 1/4, 20, 0, 10)
-    i += 1
-    p(i, r, 1/4, 20, 1, 10)
-    i += 1
-  if (not dry_run):
-    plt.show()
-
-def run(args):
-  assert args in [[], ["plots"]]
-  dry_run = False
-  if (len(args) == 0):
-    text_only()
-    dry_run = True
-  matplotlib_plots(dry_run=dry_run)
   print "OK"
 
 if (__name__ == "__main__"):
