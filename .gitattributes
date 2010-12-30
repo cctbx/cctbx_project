@@ -1180,6 +1180,7 @@ scitbx/lstbx/SConscript -text
 scitbx/lstbx/__init__.py -text
 scitbx/lstbx/boost_python/lstbx_ext.cpp -text
 scitbx/lstbx/boost_python/normal_equations.cpp -text
+scitbx/lstbx/memory.nb -text
 scitbx/lstbx/normal_eqns.py -text
 scitbx/lstbx/normal_equations.h -text
 scitbx/lstbx/tests/tst_normal_equations.py -text
