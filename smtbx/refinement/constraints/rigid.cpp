@@ -80,12 +80,12 @@ namespace smtbx { namespace refinement { namespace constraints {
     );
     // rotation happens around the geometrical center of the group...
     InitCoordinates(unit_cell, pivot->value);
-    const cart_t center = rotation_center +
+    const cart_t shift = rotation_center +
        unit_cell.orthogonalize(pivot->value) - original_pivot_crd;
     // Loop over the scatterers
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th scatterers
-     fx_s[i] = unit_cell.fractionalize(co_s[i]*rm + center);
+     fx_s[i] = unit_cell.fractionalize(co_s[i]*rm + shift);
 
       // Derivatives
       if (!jacobian_transpose) continue;
@@ -152,13 +152,13 @@ namespace smtbx { namespace refinement { namespace constraints {
     };
     // calculate the geometrical center
     InitCoordinates(unit_cell, pivot->value);
-    const cart_t center = rotation_center +
+    const cart_t shift = rotation_center +
        unit_cell.orthogonalize(pivot->value) - original_pivot_crd;
     // expansion/contraction happens from/to the center
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th atoms
       const cart_t len_vec = size_value*co_s[i];
-      fx_s[i] = unit_cell.fractionalize(len_vec*rm + center);
+      fx_s[i] = unit_cell.fractionalize(len_vec*rm + shift);
 
       // Derivatives
       if (!jacobian_transpose) continue;
