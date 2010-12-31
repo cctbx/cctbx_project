@@ -300,9 +300,30 @@ def exercise_u_iso_proportional_to_pivot_u_eq():
   jt0[p, q] = jt0[p+1, q] = jt0[p+2, q] = 2/3
   assert sparse.approx_equal(tolerance=1e-15)(r.jacobian_transpose, jt0)
 
+def exercise_u_iso_proportional_to_pivot_u_iso():
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(),
+      space_group_symbol='hall: P 2x 2y'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer('C0', u=0.12),
+      xray.scatterer('C1'),
+      )))
+  r = constraints.ext.reparametrisation(xs.unit_cell())
+  sc = xs.scatterers()
+
+  u_iso = r.add(constraints.independent_u_iso_parameter, sc[0])
+  u_iso_1 = r.add(constraints.u_iso_proportional_to_pivot_u_iso,
+                pivot_u_iso=u_iso,
+                multiplier=2,
+                scatterer=sc[1])
+  r.finalise()
+  r.linearise()
+  assert approx_equal(u_iso_1.value, 0.24, eps=1e-15)
 
 def exercise(verbose):
   exercise_u_iso_proportional_to_pivot_u_eq()
+  exercise_u_iso_proportional_to_pivot_u_iso()
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
   terminal_linear_ch_site_test_case(with_special_position_pivot=True).run()
   special_position_adp_test_case().run()
