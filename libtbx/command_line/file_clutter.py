@@ -7,7 +7,7 @@ class file_clutter(object):
     self.path = path
     self.is_executable = os.access(path, os.X_OK)
     self.dos_format = False
-    self.n_tabs_or_trailing_whitespace = 0
+    self.n_tabs_or_trailing_whitespace = []
     self.n_trailing_empty_lines = 0
     self.missing_eol = False
     stream = open(path, "rb").read()
@@ -17,12 +17,12 @@ class file_clutter(object):
       else:
         stream = stream[:-1]
       text = stream.split("\n")
-      for line in text:
+      for i, line in enumerate(text):
         if (line.endswith("\r")):
           line = line[:-1]
           self.dos_format = True
         clean_line = line.expandtabs().rstrip()
-        if (clean_line != line): self.n_tabs_or_trailing_whitespace += 1
+        if (clean_line != line): self.n_tabs_or_trailing_whitespace.append(i+1)
         if (len(clean_line) == 0): self.n_trailing_empty_lines += 1
         else: self.n_trailing_empty_lines = 0
     self.unused_imports = None
@@ -33,7 +33,7 @@ class file_clutter(object):
   def is_cluttered(self, flag_x):
     return ((self.is_executable and flag_x)
             or self.dos_format
-            or self.n_tabs_or_trailing_whitespace > 0
+            or len(self.n_tabs_or_trailing_whitespace) > 0
             or self.n_trailing_empty_lines > 1
             or self.missing_eol)
 
@@ -50,9 +50,13 @@ class file_clutter(object):
       sapp("is executable")
     if (flag_dos_format and self.dos_format):
       sapp("dos format")
-    if (self.n_tabs_or_trailing_whitespace > 0):
-      sapp(
-        "tabs or trailing whitespace=%d" % self.n_tabs_or_trailing_whitespace)
+    if (len(self.n_tabs_or_trailing_whitespace) > 0):
+      line = "tabs or trailing whitespace=%d" %len(self.n_tabs_or_trailing_whitespace)
+      for cnt, i in enumerate(self.n_tabs_or_trailing_whitespace):
+        line += ", #" + str(i)
+        if cnt >= 9:
+          break
+      sapp(line)
     if (self.n_trailing_empty_lines > 1):
       sapp("trailing empty lines=%d" % self.n_trailing_empty_lines)
     if (self.missing_eol):
