@@ -5,35 +5,25 @@
 
 namespace smtbx { namespace refinement { namespace constraints {
 
-class rigid_group_base : public virtual parameter
-{
+/** rigid group base - abstract, defines common components needed
+for a rigid groups in this file
+*/
+class rigid_group_base : public asu_parameter {
 public:
-  virtual ~rigid_group_base() {}
-  virtual fractional<double> const& site(int index) const = 0;
-};
-
-
-/** a set of scatterers rides on pivot and rotates around the direction given
-  by pivot and pivot_neighbour
- */
-class pivoted_rotable_group : public rigid_group_base, public asu_parameter {
-public:
-  pivoted_rotable_group(site_parameter *pivot,
-         site_parameter *pivot_neighbour,
-         independent_scalar_parameter *azimuth,
-         const af::shared<scatterer_type *>& scatterers)
-  : parameter(3),
-    scatterers_(scatterers),
-    cx_s(scatterers.size()), co_s(scatterers.size()), fx_s(scatterers.size()),
-    original_crd_initialised(false)
+  rigid_group_base(const af::shared<scatterer_type *>& scatterers)
+  : scatterers_(scatterers),
+    co_s(scatterers.size()), fx_s(scatterers.size()),
+    crd_initialised(false),
+    rotation_center(0,0,0), original_pivot_crd(0,0,0)
   {
-    this->set_arguments(pivot, pivot_neighbour, azimuth);
-    for (int i=0; i<scatterers_.size(); i++)
+    for (int i=0; i<scatterers.size(); i++)
       fx_s[i] = scatterers_[i]->site;
   }
 
+  virtual ~rigid_group_base() {}
+
   virtual af::ref<double> components() {
-    return af::ref<double>(cx_s[0].begin(), 3*cx_s.size());
+    return af::ref<double>(fx_s[0].begin(), 3*fx_s.size());
   }
 
   virtual scatterer_sequence_type scatterers() const {
@@ -49,23 +39,25 @@ public:
 
   virtual void store(uctbx::unit_cell const &unit_cell) const {
     for (int i=0; i<scatterers_.size(); i++)
-      scatterers_[i]->site = unit_cell.fractionalize(cx_s[i]);
+      scatterers_[i]->site = fx_s[i];
   }
-
-  virtual void linearise(uctbx::unit_cell const &unit_cell,
-                         sparse_matrix_type *jacobian_transpose);
 
   virtual fractional<double> const& site(int i) const {  return fx_s[i];  }
 
 protected:
+  /** Calculates the current geometric center, derived classes must use it
+  to initialise the internal cartesian coordinates
+  */
+  void InitCoordinates(uctbx::unit_cell const &unit_cell,
+    fractional<double> const& pivot);
   af::shared<scatterer_type *> scatterers_;
   af::shared<cart_t>
-    cx_s,  //new Cartesian coordinates
-    co_s;  // original Cartesian coordinates
+    co_s;  // original {Cartesian coordinates - geometrical center}
   af::shared<fractional<double> > fx_s;  // new fractional (for proxies)
-  bool original_crd_initialised;
+  cart_t rotation_center, original_pivot_crd;
+private:
+  bool crd_initialised;
 };
-
 
 class rigid_site_proxy : public site_parameter {
   int index_in_parent;
@@ -90,6 +82,52 @@ public:
     }
   }
 };
+
+/** a set of atoms rides on pivot and rotates around the direction given
+  by pivot and pivot_neighbour (AFIX n=6 in shelxl)
+ */
+
+class pivoted_rotable_group : public rigid_group_base {
+public:
+  pivoted_rotable_group(site_parameter *pivot,
+         site_parameter *pivot_neighbour,
+         independent_scalar_parameter *azimuth,
+         const af::shared<scatterer_type *>& scatterers)
+  : parameter(3),
+    rigid_group_base(scatterers)
+  {
+    set_arguments(pivot, pivot_neighbour, azimuth);
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+};
+
+/** a set of atoms rides on the pivot one; the group may shrink or
+expand uniformly and rotate in 3D, an example is a spherecal counteranion or
+'circluar' groups like Cp or Ph (AFIX n=9 in shelxl)
+ */
+
+class rotable_expandable_group : public rigid_group_base {
+public:
+  rotable_expandable_group(
+    site_parameter *pivot,
+    independent_scalar_parameter *size,
+    independent_scalar_parameter *alpha,
+    independent_scalar_parameter *beta,
+    independent_scalar_parameter *gamma,
+    const af::shared<scatterer_type *>& scatterers)
+  : parameter(5),
+    rigid_group_base(scatterers)
+  {
+    set_arguments(pivot, size, alpha, beta, gamma);
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+
+};
+
 
 }}}
 

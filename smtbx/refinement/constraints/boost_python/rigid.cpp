@@ -29,6 +29,31 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
+    struct rotable_expandable_group_wrapper  {
+      typedef rotable_expandable_group wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        class_<wt,
+               bases<asu_parameter>,
+               std::auto_ptr<wt> >("rigid_rotable_expandable_group", no_init)
+          .def(init<site_parameter *,
+                    independent_scalar_parameter *,
+                    independent_scalar_parameter *,
+                    independent_scalar_parameter *,
+                    independent_scalar_parameter *,
+                    const af::shared<wt::scatterer_type *>&>
+               ((arg("pivot"),
+                 arg("size"),
+                 arg("alpha"),
+                 arg("beta"),
+                 arg("gamma"),
+                 arg("scatterers"))))
+          ;
+        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      }
+    };
+
     struct rigid_site_proxy_wrapper {
       typedef rigid_site_proxy wt;
 
@@ -39,6 +64,10 @@ namespace smtbx { namespace refinement { namespace constraints {
                bases<site_parameter>,
                std::auto_ptr<wt> >("rigid_site_proxy", no_init)
           .def(init<pivoted_rotable_group *,
+                    int>
+                ((arg("parent"),
+                  arg("index"))))
+          .def(init<rotable_expandable_group *,
                     int>
                 ((arg("parent"),
                   arg("index"))))
@@ -54,6 +83,7 @@ namespace smtbx { namespace refinement { namespace constraints {
           af::shared<asu_parameter::scatterer_type *> >();
       }
       pivoted_rotable_group_wrapper::wrap();
+      rotable_expandable_group_wrapper::wrap();
       rigid_site_proxy_wrapper::wrap();
     }
 
