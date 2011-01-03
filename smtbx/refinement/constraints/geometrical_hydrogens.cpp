@@ -373,4 +373,40 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
+  // boron cage B(n)-H
+  void polyhedral_bh_site
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {
+    using namespace constants;
+    site_parameter *pivot = dynamic_cast<site_parameter *>(argument(0));
+    scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(1));
+    const cart_t c = unit_cell.orthogonalize(pivot->value);
+    cart_t p(0,0,0);
+    for (int i=2; i<n_arguments(); i++)  {
+      p = p + (unit_cell.orthogonalize(
+        dynamic_cast<site_parameter *>(argument(i))->value) - c).normalize();
+    }
+    p = -p.normalize();
+    double l = length->value;
+    // Hydrogen site
+    x_h[0] = c + p*l;
+
+    // Jacobian
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    std::size_t j_h = index();
+
+    // Riding
+    for (int i=0; i<3; i++)
+      jt.col(j_h + i) = jt.col(pivot->index() + i);
+
+    // Bond stretching
+    if (length->is_variable()) {
+      frac_t grad_f = unit_cell.fractionalize(p);
+      for (int i=0; i<3; i++)
+        jt(length->index(), j_h + i) = grad_f[i];
+    }
+  }
+
 }}}

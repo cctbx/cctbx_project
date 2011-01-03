@@ -167,12 +167,32 @@ namespace boost_python {
     }
   };
 
+  struct polyhedral_bh_site_wrapper
+  {
+    typedef polyhedral_bh_site wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_parameter>,
+             std::auto_ptr<wt> >("polyhedral_bh_site", no_init)
+        .def(init<site_parameter *,
+                  af::shared<site_parameter *> const&,
+                  independent_scalar_parameter *,
+                  wt::scatterer_type *>
+             ((arg("pivot"), arg("pivot_neighbours"), arg("length"),
+               arg("hydrogen"))));
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
   void wrap_geometrical_hydrogens() {
     {
       using namespace scitbx::boost_python::container_conversions;
       tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 1> >();
       tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 2> >();
       tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 3> >();
+      tuple_mapping_variable_capacity<af::shared<site_parameter *> >();
     }
     //                                    #H  #staggered?
     terminal_tetrahedral_xhn_sites_wrapper<1, false>::wrap();
@@ -187,6 +207,7 @@ namespace boost_python {
     secondary_planar_xh_site_wrapper::wrap();
     terminal_planar_xh2_sites_wrapper::wrap();
     terminal_linear_ch_site_wrapper::wrap();
+    polyhedral_bh_site_wrapper::wrap();
   }
 
 
