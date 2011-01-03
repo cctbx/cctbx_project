@@ -96,10 +96,18 @@ class rna_validate(object):
         is_epsilon_outlier="yes"
       else:
         is_epsilon_outlier="no"
+      if outlier[1][0] == None:
+        delta_angle = -1.0
+      else:
+        delta_angle = outlier[1][0]
+      if outlier[1][2] == None:
+        ep_angle = -1.0
+      else:
+        ep_angle = outlier[1][2]
       print "%s:%.3f:%s:%.3f:%s" % (outlier[0],
-                                      outlier[1][0],
+                                      delta_angle,
                                       is_delta_outlier,
-                                      outlier[1][2],
+                                      ep_angle,
                                       is_epsilon_outlier)
     print "\n-----------------------------------------------"
     print "Bond Length Outliers:"
