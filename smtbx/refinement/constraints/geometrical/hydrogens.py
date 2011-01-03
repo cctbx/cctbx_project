@@ -272,10 +272,20 @@ class staggered_terminal_tetrahedral_xh_site(hydrogens):
 class polyhedral_bh_site(hydrogens):
 
   n_constrained_sites = 5
-  room_temperature_bond_length = { 'B': 1.10, }
+  room_temperature_bond_length = { 'B': 1.10,
+                                   'C': 1.10, }
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
-                      pivot_site      , pivot_neighbour_sites,
+                      pivot_site, pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
                       hydrogens, **kwds):
-    raise NotImplementedError
+    if len(pivot_neighbour_site_params) != 4 and\
+       len(pivot_neighbour_site_params) != 5:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    return reparametrisation.add(
+      _.polyhedral_bh_site,
+      pivot=pivot_site_param,
+      pivot_neighbours=pivot_neighbour_site_params,
+      length=bond_length,
+      hydrogen=hydrogens[0])

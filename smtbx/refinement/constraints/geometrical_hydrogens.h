@@ -252,6 +252,32 @@ public:
                          sparse_matrix_type *jacobian_transpose);
 };
 
+/// Model of polyhedral B/C(4,5)-H
+/**
+    ()-H is a negative sum of unit vectors from the pivot to the neghbours,
+    normalised to the given/refined length
+*/
+class polyhedral_bh_site
+  : public geometrical_hydrogen_sites<1>
+{
+public:
+  polyhedral_bh_site(site_parameter *pivot,
+                     af::shared<site_parameter *> const& neighbours,
+                     independent_scalar_parameter *length,
+                     scatterer_type *hydrogen)
+  : parameter(neighbours.size()+2),
+    geometrical_hydrogen_sites<1>(hydrogen)
+  {
+    set_argument(0, pivot);
+    set_argument(1, length);
+    for (size_t i=0; i<neighbours.size(); i++)
+      set_argument(i+2, neighbours[i]);
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+};
+
 }}}
 
 #endif // GUARD
