@@ -8,6 +8,7 @@ import math
 from scitbx.matrix import col
 from scitbx import matrix as mat
 from libtbx.test_utils import approx_equal
+from smtbx.refinement.constraints import rigid
 
 def exercise_rigid_site_proxy(n=5):
   uc = uctbx.unit_cell((1, 2, 3))
@@ -199,11 +200,76 @@ class rigid_rotable(object):
     self.exercise_expansion()
     self.exercise_rotation()
 
+class idealised(object):
+  def __init__(self):
+    self.def_len_ref = {
+      "Naphthalene" : ((0.695,-1.203775),
+                       (-0.695,-1.203775),
+                       (-1.39,-0),
+                       (-0.695,1.203775),
+                       (0.695,1.203775),
+                       (1.39,0),
+                       (2.78,0),
+                       (3.475,1.203775),
+                       (2.78,2.407551),
+                       (1.39,2.407551)),
+      "Cp*" :         ((0.373269,-1.148804),
+                       (-0.977231,-0.71),
+                       (-0.977231,0.71),
+                       (0.373269,1.148804),
+                       (1.207924,0),
+                       (0.701754,-2.159777),
+                       (-1.837216,-1.334816),
+                       (-1.837216,1.334816),
+                       (0.701754,2.159777),
+                       (2.270924,0)),
+      "Cp" :          ((0.373269,-1.148804),
+                       (-0.977231,-0.71),
+                       (-0.977231,0.71),
+                       (0.373269,1.148804),
+                       (1.207924,0)),
+      "Ph" :          ((0.695,-1.203775),
+                       (-0.695,-1.203775),
+                       (-1.39,-0),
+                       (-0.695,1.203775),
+                       (0.695,1.203775),
+                       (1.39,0))
+    }
+    self.tested = rigid.idealised_fragment()
+
+  def compare_results(self, _a , _b):
+    for i, a in enumerate(_a):
+      assert approx_equal(a.x, _b[i][0], 1e-6)
+      assert approx_equal(a.y, _b[i][1], 1e-6)
+
+  def excersise_generation(self):
+    frags = ("Cp", "Ph", "Cp*", "Naphthalene")
+    for i in frags:
+      self.compare_results(
+        self.tested.generate_fragment(i), self.def_len_ref[i])
+
+  def excersise_fitting(self):
+    source_pts_indices = [1, 2, 5]
+    ref_sites = ((-0.695,-1.203775,0), (-1.39,-0,0), (1.39,0,0))
+    control_pts_indices = [0, 1, 4]
+    fragment = self.tested.generate_fragment("Ph")
+    crds = self.tested.fit(fragment, ref_sites, control_pts_indices)
+    uc = uctbx.unit_cell((1, 1, 1))
+    for i, p in enumerate(source_pts_indices):
+      approx_equal(
+        uc.distance(
+          col((fragment[p].x,fragment[p].y,0)),
+          crds[control_pts_indices[i]]), 1e-14)
+
+  def excersise(self):
+    self.excersise_generation()
+    self.excersise_fitting()
 
 def run():
   exercise_rigid_site_proxy()
   exercise_rigid_pivoted_rotable()
   rigid_rotable().excercise()
+  idealised().excersise()
   print 'OK'
 
 if __name__ == '__main__':
