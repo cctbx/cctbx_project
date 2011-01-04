@@ -24,7 +24,7 @@ class crystallographic_ls(
   restraints_manager=None
   n_restraints = None
 
-  def __init__(self, fo_sq, reparametrisation, **kwds):
+  def __init__(self, fo_sq, reparametrisation, osf=None, **kwds):
     super(crystallographic_ls, self).__init__(
       reparametrisation.n_independent_params)
     self.fo_sq = fo_sq
@@ -42,6 +42,7 @@ class crystallographic_ls(
       reparametrisation.jacobian_transpose_matching_grad_fc(),
       self.floating_origin_restraint_relative_weight)
     self.taken_step = None
+    self.osf = osf
 
   class xray_structure(libtbx.property):
     def fget(self):
@@ -57,9 +58,12 @@ class crystallographic_ls(
     if not self.finalised: #i.e. never been called
       self.reparametrisation.linearise()
       self.reparametrisation.store()
-      scale_factor = self.scale_factor_approximation()
-    else:
-      scale_factor = self.scale_factor()
+      if self.osf != None: #is provided from previous refinement?
+        scale_factor = self.osf
+      else: #estimate then
+        scale_factor = self.scale_factor_approximation()
+    else: #use from previous step
+      self.osf = scale_factor = self.scale_factor()
     self.reset()
     if self.f_mask is not None:
       f_mask = self.f_mask.data()
