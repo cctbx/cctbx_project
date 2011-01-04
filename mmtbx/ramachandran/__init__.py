@@ -29,9 +29,12 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Use finite differences (DEVELOPERS ONLY)
     .expert_level = 3
 #  type = *oldfield emsley rosetta
-   type = *oldfield emsley
+   rama_potential = *oldfield emsley
     .type = choice(multi=False)
+    .short_caption = Ramachandran potential
+    .caption = Oldfield Coot
   oldfield
+    .short_caption = Oldfield potential parameters
   {
     esd = 10.0
       .type = float
@@ -250,9 +253,9 @@ class ramachandran_plot_data(object):
 class generic_restraints_helper (object) :
   def __init__ (self, params) :
     adopt_init_args(self, locals())
-    if(self.params.type == "oldfield"):
+    if(self.params.rama_potential == "oldfield"):
       self.tables = ramachandran_plot_data()
-    elif (self.params.type == "rosetta") :
+    elif (self.params.rama_potential == "rosetta") :
       try :
         from rosetta_adaptbx import scoring
       except ImportError, e :
@@ -273,7 +276,7 @@ class generic_restraints_helper (object) :
     for proxy in proxies :
       if (proxy.restraint_type == "ramachandran") :
         ramachandran_proxies.append(proxy)
-    if(self.params.type == "oldfield"):
+    if(self.params.rama_potential == "oldfield"):
       op = self.params.oldfield
       if(gradient_array is None) :
         from scitbx.array_family import flex
@@ -301,7 +304,7 @@ class generic_restraints_helper (object) :
            i_seqs         = proxy.i_seqs)
         target += tg.target()
       return target
-    elif (self.params.type == "rosetta") :
+    elif (self.params.rama_potential == "rosetta") :
       return self.target_and_gradients_rosetta(
         sites_cart=sites_cart,
         proxies=ramachandran_proxies,
