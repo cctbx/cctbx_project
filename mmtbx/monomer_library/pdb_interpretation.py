@@ -134,11 +134,14 @@ master_params_str = """\
     cis_threshold = 45
       .type = float
       .optional = False
+      .short_caption = Threshold (degrees) for cis-peptides
     discard_psi_phi = True
       .type = bool
       .optional = False
+      .short_caption = Ignore monomer library Phi/Psi restraints
     omega_esd_override_value = None
       .type = float
+      .short_caption = Omega-ESD override value
     include scope mmtbx.ramachandran.master_phil
   }
   max_reasonable_bond_distance = 50.0
