@@ -309,6 +309,140 @@ class pm_test(object):
     yield xray.scatterer("C2", (0, -0.3, 0.4)) # on mirror plane
     yield xray.scatterer("C3", (0.7, 0.1, -0.1))
 
+class twin_test(object):
+
+  def __init__(self):
+    self.structure = xray.structure(
+      crystal_symmetry=crystal.symmetry(
+      unit_cell=(7.6338, 7.6338, 9.8699, 90, 90, 120),
+      space_group_symbol='hall:  P 3 -2c'),
+      scatterers=flex.xray_scatterer((
+        xray.scatterer( #0
+      label='LI',
+      site=(0.032717, 0.241544, 0.254924),
+      u=(0.000544, 0.000667, 0.000160,
+         0.000326, 0.000072, -0.000030)),
+        xray.scatterer( #1
+      label='NA',
+      site=(0.033809, 0.553123, 0.484646),
+      u=(0.000554, 0.000731, 0.000174,
+         0.000212, 0.000032, -0.000015)),
+        xray.scatterer( #2
+      label='S1',
+      site=(0.000000, 0.000000, -0.005908),
+      u=(0.000370, 0.000370, 0.000081,
+         0.000185, 0.000000, 0.000000)),
+        xray.scatterer( #3
+      label='S2',
+      site=(0.333333, 0.666667, 0.211587),
+      u=(0.000244, 0.000244, 0.000148,
+         0.000122, 0.000000, 0.000000)),
+        xray.scatterer( #4
+      label='S3',
+      site=(0.666667, 0.333333, 0.250044),
+      u=(0.000349, 0.000349, 0.000094,
+         0.000174, 0.000000, 0.000000)),
+        xray.scatterer( #5
+      label='O1',
+      site=(0.000000, -0.000000, 0.154207),
+      u=(0.000360, 0.000360, 0.000149,
+         0.000180, 0.000000, 0.000000),
+      occupancy=0.999000),
+        xray.scatterer( #6
+      label='O2',
+      site=(0.333333, 0.666667, 0.340665),
+      u=(0.000613, 0.000613, 0.000128,
+         0.000306, 0.000000, 0.000000)),
+        xray.scatterer( #7
+      label='O3',
+      site=(0.666667, 0.333333, 0.112766),
+      u=(0.000724, 0.000724, 0.000118,
+         0.000362, 0.000000, 0.000000)),
+        xray.scatterer( #8
+      label='O4',
+      site=(0.225316, 0.110088, -0.035765),
+      u=(0.000477, 0.000529, 0.000213,
+         0.000230, 0.000067, -0.000013)),
+        xray.scatterer( #9
+      label='O5',
+      site=(0.221269, 0.442916, 0.153185),
+      u=(0.000767, 0.000286, 0.000278,
+         0.000210, 0.000016, -0.000082)),
+        xray.scatterer( #10
+      label='O6',
+      site=(0.487243, 0.169031, 0.321690),
+      u=(0.000566, 0.000582, 0.000354,
+         0.000007, 0.000022, 0.000146))
+      )))
+    self.twin_laws = (sgtbx.rot_mx((0,1,0,1,0,0,0,0,-1)),)
+    self.twin_fractions = flex.double((flex.random_double(),))
+    self.scale_factor = 0.05 + 10 * flex.random_double()
+    self.crystal_symmetry = self.structure.crystal_symmetry()
+    mi = self.crystal_symmetry.build_miller_set(anomalous_flag=False,
+                                                d_min=0.5)
+    fo_sq = mi.structure_factors_from_scatterers(
+      self.structure, algorithm="direct").f_calc().norm()
+    fo_sq = fo_sq.customized_copy(
+      data=fo_sq.data()*self.scale_factor,
+      sigmas=flex.double(fo_sq.size(), 1))
+    twin_completion = xray.twin_completion(
+      mi.indices(),
+      mi.space_group(),
+      mi.anomalous_flag(),
+      self.twin_laws[0].as_double())
+    sigmas = flex.double(fo_sq.size(), 1)
+    from cctbx import miller
+    twin_complete_set = miller.set(
+      crystal_symmetry=self.crystal_symmetry,
+      indices=twin_completion.twin_complete(),
+      anomalous_flag=mi.anomalous_flag()).map_to_asu()
+    detwinner = xray.hemihedral_detwinner(
+      hkl_obs=fo_sq.indices(),
+      hkl_calc=twin_complete_set.indices(),
+      space_group=mi.space_group(),
+      anomalous_flag=mi.anomalous_flag(),
+      twin_law=self.twin_laws[0].as_double())
+    twinned_i, twinned_s = detwinner.twin_with_twin_fraction(
+      fo_sq.data(),
+      sigmas,
+      twin_fraction=self.twin_fractions[0])
+    self.fo_sq = fo_sq.customized_copy(data=twinned_i, sigmas=twinned_s)
+
+  def run(self):
+    self.fo_sq = self.fo_sq.sort(by_value="packed_indices")
+    self.exercise()
+    self.fo_sq = self.fo_sq.sort(by_value="resolution")
+    self.exercise()
+
+  def exercise(self):
+    xs0 = self.structure
+    xs = xs0.deep_copy_scatterers()
+    xs.shake_sites_in_place(rms_difference=0.15)
+    xs.shake_adp()
+
+    for sc in xs.scatterers():
+      sc.flags.set_use_u_iso(False).set_use_u_aniso(True)
+      sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+    connectivity_table = smtbx.utils.connectivity_table(xs)
+    if self.twin_fractions[0] < 0.5:
+      twin_fractions = self.twin_fractions.deep_copy() + 0.1
+    else:
+      twin_fractions = self.twin_fractions.deep_copy() - 0.1
+    reparametrisation = constraints.reparametrisation(
+      structure=xs,
+      constraints=[],
+      connectivity_table=connectivity_table,
+      twin_fractions=twin_fractions)
+    normal_eqns = least_squares.crystallographic_ls(
+      self.fo_sq, reparametrisation,
+      weighting_scheme=least_squares.unit_weighting(),
+      twin_laws=self.twin_laws)
+    cycles = normal_eqns_solving.naive_iterations(
+      normal_eqns,
+      n_max_iterations=10,
+      track_all=True)
+    assert approx_equal(normal_eqns.twin_fractions, self.twin_fractions)
+    assert approx_equal(normal_eqns.objective(), 0, eps=1e-14)
 
 class site_refinement_in_p1_test(p1_test, site_refinement_test): pass
 
@@ -446,7 +580,9 @@ class special_positions_test(object):
     assert approx_equal(ls.scale_factor(), 1, eps=1e-4)
 
     ## Test covariance matrix
-    cov = ls.covariance_matrix(normalised_by_goof=False)\
+    jac_tr = reparametrisation.jacobian_transpose_matching_grad_fc()
+    cov = ls.covariance_matrix(
+      jacobian_transpose=jac_tr, normalised_by_goof=False)\
         .matrix_packed_u_as_symmetric()
     m, n = cov.accessor().focus()
     # x,y for point group 3 sites are fixed: no variance or correlation
@@ -486,6 +622,8 @@ def run():
     random.seed(2)
   n_runs = command_line.options.runs
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
+
+  twin_test().run()
   exercise_normal_equations()
   special_positions_test(n_runs).run()
 

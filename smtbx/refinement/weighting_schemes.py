@@ -35,7 +35,7 @@ class _mainstream_shelx_weighting(boost.python.injector,
   def type(self):
     return "calc"
 
-  def optimise_parameters(self, fo_sq, f_calc,
+  def optimise_parameters(self, fo_sq, fc_sq,
                           scale_factor, n_independent_params):
     """ Find optimal values of a and b that give a flat analysis of the variance
         when binned by Fc/max(Fc), and a goodness of fit close to 1.
@@ -48,7 +48,7 @@ class _mainstream_shelx_weighting(boost.python.injector,
         It is intended that f_calc should already contain the contribution from
         f_mask (if a solvent mask is used).
     """
-    assert f_calc.is_complex_array()
+    assert fc_sq.is_xray_intensity_array()
     weighting = ext.mainstream_shelx_weighting(a=self.a, b=self.b)
 
     def compute_chi_sq(fo_sq, fc_sq, a,b):
@@ -61,7 +61,6 @@ class _mainstream_shelx_weighting(boost.python.injector,
 
     fo_sq = fo_sq.deep_copy()
     fo_sq.data().set_selected(fo_sq.data() < 0, 0)
-    fc_sq = f_calc.as_intensity_array()
 
     fo2 = fo_sq.data().deep_copy()
     fo2 /= scale_factor

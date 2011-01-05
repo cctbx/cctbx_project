@@ -71,6 +71,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   FloatType,
                   OneMillerIndexLinearisation &,
                   scitbx::sparse::matrix<FloatType> const &,
+                  af::shared<sgtbx::rot_mx> const &,
+                  af::const_ref<FloatType> const &,
                   optional<bool> >
                   ())
         .def(init<NormalEquations<FloatType> &,
@@ -82,6 +84,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   FloatType,
                   OneMillerIndexLinearisation &,
                   scitbx::sparse::matrix<FloatType> const &,
+                  af::shared<sgtbx::rot_mx> const &,
+                  af::const_ref<FloatType> const &,
                   optional<bool> >
                   ())
         .def(init<NormalEquations<FloatType> &,
@@ -93,8 +97,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   FloatType,
                   OneMillerIndexLinearisation &,
                   scitbx::sparse::matrix<FloatType> const &,
+                  af::shared<sgtbx::rot_mx> const &,
+                  af::const_ref<FloatType> const &,
                   optional<bool> >
                   ())
+        .def("observables", &wt::observables)
         .def("f_calc", &wt::f_calc)
         .def("weights", &wt::weights)
         ;

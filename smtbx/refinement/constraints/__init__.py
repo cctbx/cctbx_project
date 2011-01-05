@@ -60,6 +60,8 @@ class reparametrisation(ext.reparametrisation):
   """ Enhance the C++ level reparametrisation class for ease of use """
 
   temperature = 20 # Celsius
+  twin_fractions = None
+
   def __init__(self,
                structure,
                constraints,
@@ -94,6 +96,7 @@ class reparametrisation(ext.reparametrisation):
     self.site_symmetry_table_ = self.structure.site_symmetry_table()
     libtbx.adopt_optional_init_args(self, kwds)
     self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
+    self.independent_scalar_parameters = shared_independent_shared_parameters()
 
     for constraint in constraints:
       constraint.add_to(self)
@@ -102,12 +105,24 @@ class reparametrisation(ext.reparametrisation):
       self.add_new_site_parameter(i_sc)
       self.add_new_thermal_displacement_parameter(i_sc)
       self.add_new_occupancy_parameter(i_sc)
+    if self.twin_fractions is not None:
+      for twin_fraction in self.twin_fractions:
+        self.add_new_independent_scalar_parameter(twin_fraction)
     self.finalise()
 
   def finalise(self):
     super(reparametrisation, self).finalise()
     self.mapping_to_grad_fc = \
         self.asu_scatterer_parameters.mapping_to_grad_fc()
+    self.mapping_to_grad_fc_independent_scalars = \
+        self.independent_scalar_parameters.mapping_to_grad_fc()
+    self.mapping_to_grad_fc_all = self.mapping_to_grad_fc.deep_copy()
+    self.mapping_to_grad_fc_all.extend(self.mapping_to_grad_fc_independent_scalars)
+
+  def apply_shifts(self, shifts):
+    ext.reparametrisation.apply_shifts(self, shifts)
+    if self.twin_fractions is not None:
+      self.twin_fractions += shifts[-self.twin_fractions.size():]
 
   class component_annotations(libtbx.property):
     def fget(self):
@@ -121,10 +136,17 @@ class reparametrisation(ext.reparametrisation):
 
   def jacobian_transpose_matching_grad_fc(self):
     """ The columns of self.jacobian_transpose corresponding to crystallographic
-    parameters, in the same order as the derivatives in grad Fc. In this class,
-    the latter is assumed to follow the convention of smtbx.structure_factors
+    parameters for the scatterers, in the same order as the derivatives in
+    grad Fc. In this class, the latter is assumed to follow the convention of
+    smtbx.structure_factors
     """
-    return self.jacobian_transpose.select_columns(self.mapping_to_grad_fc)
+    return self.jacobian_transpose_matching(self.mapping_to_grad_fc)
+
+  def jacobian_transpose_matching(self, mapping):
+    """ The columns of self.jacobian_transpose corresponding to the given
+    crystallographic parameters.
+    """
+    return self.jacobian_transpose.select_columns(mapping)
 
   def add_new_occupancy_parameter(self, i_sc):
     if self.shared_occupancies.has_key(i_sc):
@@ -177,3 +199,8 @@ class reparametrisation(ext.reparametrisation):
                        sc)
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
+
+  def add_new_independent_scalar_parameter(self, value, variable=True):
+    p = self.add(independent_scalar_parameter, value=value, variable=variable)
+    self.independent_scalar_parameters.append(p)
+    return p
