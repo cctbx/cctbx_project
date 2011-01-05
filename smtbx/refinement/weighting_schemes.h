@@ -27,6 +27,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct sigma_weighting
   {
+    bool f_calc_independent() const { return true; }
+
     T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
       return std::pow(sigma, -2);
     }
@@ -36,6 +38,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct unit_weighting
   {
+    bool f_calc_independent() const { return true; }
+
     T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
       return 1.;
     }
@@ -50,6 +54,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
     mainstream_shelx_weighting(T a=0.1, T b=0)
       : a(a), b(b)
     {}
+
+    bool f_calc_independent() const { return false; }
 
     /* Shelxl uses fo_sq/k, sigma/k, fc_sq in its calculation of the weights
        whereas we use fo_sq, sigma and k*fc_sq. To keep our weights compatible
