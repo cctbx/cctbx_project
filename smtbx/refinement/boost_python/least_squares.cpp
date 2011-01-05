@@ -59,48 +59,31 @@ namespace smtbx { namespace refinement { namespace least_squares {
   {
     typedef build_normal_equations<FloatType> wt;
 
+    template <template<typename> class WeightingSchemeType>
+    static void def_init(boost::python::class_<wt> &klass) {
+      using namespace boost::python;
+      klass.def(init<NormalEquations<FloatType> &,
+                af::const_ref<miller::index<> > const &,
+                af::const_ref<FloatType> const &,
+                af::const_ref<FloatType> const &,
+                af::const_ref<std::complex<FloatType> > const &,
+                WeightingSchemeType<FloatType> const &,
+                boost::optional<FloatType>,
+                OneMillerIndexLinearisation &,
+                scitbx::sparse::matrix<FloatType> const &,
+                af::shared<sgtbx::rot_mx> const &,
+                af::const_ref<FloatType> const &,
+                optional<bool> >
+                ());
+    }
+
     static void wrap(char const *name) {
       using namespace boost::python;
-      class_<wt>(name, no_init)
-        .def(init<NormalEquations<FloatType> &,
-                  af::const_ref<miller::index<> > const &,
-                  af::const_ref<FloatType> const &,
-                  af::const_ref<FloatType> const &,
-                  af::const_ref<std::complex<FloatType> > const &,
-                  mainstream_shelx_weighting<FloatType> const &,
-                  boost::optional<FloatType>,
-                  OneMillerIndexLinearisation &,
-                  scitbx::sparse::matrix<FloatType> const &,
-                  af::shared<sgtbx::rot_mx> const &,
-                  af::const_ref<FloatType> const &,
-                  optional<bool> >
-                  ())
-        .def(init<NormalEquations<FloatType> &,
-                  af::const_ref<miller::index<> > const &,
-                  af::const_ref<FloatType> const &,
-                  af::const_ref<FloatType> const &,
-                  af::const_ref<std::complex<FloatType> > const &,
-                  unit_weighting<FloatType> const &,
-                  boost::optional<FloatType>,
-                  OneMillerIndexLinearisation &,
-                  scitbx::sparse::matrix<FloatType> const &,
-                  af::shared<sgtbx::rot_mx> const &,
-                  af::const_ref<FloatType> const &,
-                  optional<bool> >
-                  ())
-        .def(init<NormalEquations<FloatType> &,
-                  af::const_ref<miller::index<> > const &,
-                  af::const_ref<FloatType> const &,
-                  af::const_ref<FloatType> const &,
-                  af::const_ref<std::complex<FloatType> > const &,
-                  sigma_weighting<FloatType> const &,
-                  boost::optional<FloatType>,
-                  OneMillerIndexLinearisation &,
-                  scitbx::sparse::matrix<FloatType> const &,
-                  af::shared<sgtbx::rot_mx> const &,
-                  af::const_ref<FloatType> const &,
-                  optional<bool> >
-                  ())
+      class_<wt> klass(name, no_init);
+        def_init<mainstream_shelx_weighting>(klass);
+        def_init<unit_weighting            >(klass);
+        def_init<sigma_weighting           >(klass);
+      klass
         .def("observables", &wt::observables)
         .def("f_calc", &wt::f_calc)
         .def("weights", &wt::weights)
