@@ -26,9 +26,10 @@ def exercise_optimise_shelxl_weights():
       scitbx.random.normal_distribution(sigma=sigmas[i]))() \
       + 0.5*random.random()
   fo2 = fo.as_intensity_array()
+  fc2 = fc.as_intensity_array()
   w = least_squares.mainstream_shelx_weighting(a=0.1)
   s = calc_goof(fo2, fc, w, k, xs.n_parameters())
-  w2 = w.optimise_parameters(fo2, fc, k, xs.n_parameters())
+  w2 = w.optimise_parameters(fo2, fc2, k, xs.n_parameters())
   s2 = calc_goof(fo2, fc, w2, k, xs.n_parameters())
   # sort data and setup binning by fc/fc_max
   fc_sq = fc.as_intensity_array()

@@ -23,6 +23,7 @@ class crystallographic_ls(
   f_mask = None
   restraints_manager=None
   n_restraints = None
+  twin_laws = None
 
   def __init__(self, fo_sq, reparametrisation, osf=None, **kwds):
     super(crystallographic_ls, self).__init__(
@@ -48,6 +49,10 @@ class crystallographic_ls(
     def fget(self):
       return self.reparametrisation.structure
 
+  class twin_fractions(libtbx.property):
+    def fget(self):
+      return self.reparametrisation.twin_fractions
+
   def scale_factor_approximation(self):
     self.fo_sq.set_observation_type_xray_intensity()
     f_calc = xray.structure_factors.from_scatterers_direct(
@@ -69,6 +74,11 @@ class crystallographic_ls(
       f_mask = self.f_mask.data()
     else:
       f_mask = flex.complex_double()
+    twin_laws = self.twin_laws
+    twin_fractions = self.twin_fractions
+    if twin_laws is None:
+      twin_laws = ()
+      twin_fractions = flex.double()
     result = ext.build_normal_equations(
       self,
       self.fo_sq.indices(),
@@ -79,8 +89,12 @@ class crystallographic_ls(
       scale_factor,
       self.one_h_linearisation,
       self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+      twin_laws,
+      twin_fractions,
       objective_only)
     self.f_calc = self.fo_sq.array(data=result.f_calc(), sigmas=None)
+    self.fc_sq = self.fo_sq.array(data=result.observables(), sigmas=None)\
+        .set_observation_type_xray_intensity()
     self.weights = result.weights()
     self.objective_data_only = self.objective()
     self.chi_sq_data_only = self.chi_sq()
@@ -132,32 +146,39 @@ class crystallographic_ls(
 
   def r1_factor(self, cutoff_factor=None):
     f_obs = self.fo_sq.f_sq_as_f()
+    f_calc = self.fc_sq.f_sq_as_f()
     if cutoff_factor is not None:
       strong = f_obs.data() > cutoff_factor*f_obs.sigmas()
       f_obs = f_obs.select(strong)
-      f_calc = self.f_calc.select(strong)
+      f_calc = f_calc.select(strong)
     else:
-      f_calc = self.f_calc
+      f_calc = f_calc
     R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor()))
     return R1, f_obs.size()
 
   def covariance_matrix(self,
-                        independent_params=False,
+                        jacobian_transpose=None,
                         normalised_by_goof=True):
+    """ The columns of the jacobian_transpose determine which crystallographic
+        parameters appear in the covariance matrix.
+        If jacobian_transpose is None, then the covariance matrix returned will
+        be that for the independent L.S. parameters.
+    """
     if not self.step_equations().solved:
       self.solve()
     cov = linalg.inverse_of_u_transpose_u(
       self.step_equations().cholesky_factor_packed_u())
     cov /= self.sum_w_yo_sq()
-    if not independent_params:
-      jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
-      cov = jac_tr.self_transpose_times_symmetric_times_self(cov)
+    if jacobian_transpose is not None:
+      cov = jacobian_transpose.self_transpose_times_symmetric_times_self(cov)
     if normalised_by_goof: cov *= self.restrained_goof()**2
     return cov
 
   def covariance_matrix_and_annotations(self):
+    jac_tr = self.reparametrisation.jacobian_transpose_matching_grad_fc()
     return covariance_matrix_and_annotations(
-      self.covariance_matrix(), self.reparametrisation.component_annotations)
+      self.covariance_matrix(jacobian_transpose=jac_tr),
+      self.reparametrisation.component_annotations)
 
 
 class covariance_matrix_and_annotations(object):

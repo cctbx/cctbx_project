@@ -6,8 +6,11 @@
 #include <scitbx/lstbx/normal_equations.h>
 #include <scitbx/math/accumulators.h>
 #include <scitbx/sparse/matrix.h>
+#include <scitbx/array_family/ref_reductions.h>
 
 #include <cctbx/sgtbx/seminvariant.h>
+#include <cctbx/sgtbx/rot_mx.h>
+#include <cctbx/xray/twin_targets.h>
 
 #include <smtbx/refinement/constraints/scatterer_parameters.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
@@ -109,6 +112,107 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
   };
 
+  template <typename FloatType>
+  struct f_calc_function_result
+  {
+    f_calc_function_result(
+      FloatType const &observable_,
+      std::complex<FloatType> const &f_calc_,
+      af::shared<FloatType> const &grad_observable_)
+      :
+    observable(observable_),
+    f_calc(f_calc_),
+    grad_observable(grad_observable_)
+    {}
+
+    f_calc_function_result(
+      FloatType const &observable_,
+      std::complex<FloatType> const &f_calc_)
+      :
+    observable(observable_),
+    f_calc(f_calc_),
+    grad_observable()
+    {}
+
+    FloatType const observable;
+    std::complex<FloatType> const f_calc;
+    af::shared<FloatType> const grad_observable;
+  };
+
+  /*  A thin wrapper around OneMillerIndexFcalc to enable caching of the
+      results for symmetry related indices.
+   */
+  template <typename FloatType, class OneMillerIndexFcalc>
+  struct f_calc_function_with_cache
+  {
+    f_calc_function_with_cache(
+      OneMillerIndexFcalc &f_calc_function_, bool use_cache_=false)
+      :
+    f_calc_function(f_calc_function_),
+    use_cache(use_cache_),
+    observable(),
+    grad_observable(),
+    f_calc(),
+    length_sq(0),
+    cache()
+    {};
+
+    void compute(
+      miller::index<> const &h,
+      boost::optional<std::complex<FloatType> > const &f_mask=boost::none,
+      bool compute_grad=true)
+    {
+      if (!use_cache) {
+        f_calc_function.compute(h, f_mask, compute_grad);
+        observable = f_calc_function.observable;
+        grad_observable = f_calc_function.grad_observable;
+        f_calc = f_calc_function.f_calc;
+      }
+      else {
+        FloatType h_length_sq = h.length_sq();
+        if (h_length_sq != length_sq) {
+          cache.clear();
+          length_sq = h_length_sq;
+        }
+        typename cache_t::iterator iter = cache.find(h);
+        if (iter == cache.end()) {
+          f_calc_function.linearise(h, f_mask);
+          observable = f_calc_function.observable;
+          grad_observable = f_calc_function.grad_observable;
+          f_calc = f_calc_function.f_calc;
+          cache.insert(
+            std::pair<miller::index<>, f_calc_function_result<FloatType> >(
+              h, f_calc_function_result<FloatType>(
+                  observable,
+                  f_calc_function.f_calc,
+                  grad_observable.array().deep_copy())));
+        }
+        else {
+          observable = iter->second.observable;
+          f_calc = iter->second.f_calc;
+          grad_observable =
+            af::ref_owning_shared<FloatType>(iter->second.grad_observable);
+        }
+      }
+    }
+
+    void compute(miller::index<> const &h,
+                 bool compute_grad=true)
+    {
+      compute(h, /*f_mask=*/ boost::none, compute_grad);
+    }
+
+    typedef
+      std::map<miller::index<>, f_calc_function_result<FloatType> > cache_t;
+
+    OneMillerIndexFcalc &f_calc_function;
+    bool use_cache;
+    FloatType observable;
+    af::ref_owning_shared<FloatType> grad_observable;
+    std::complex<FloatType> f_calc;
+    FloatType length_sq;
+    cache_t cache;
+  };
 
   /** \brief Build normal equations for the given data, model, weighting
        and constraints.
@@ -136,69 +240,98 @@ namespace smtbx { namespace refinement { namespace least_squares {
       OneMillerIndexFcalc &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
+      af::shared<sgtbx::rot_mx> const &twin_laws,
+      af::const_ref<FloatType> const &twin_fractions,
       bool objective_only=false)
     :
       f_calc_(miller_indices.size()),
+      observables_(miller_indices.size()),
       weights_(miller_indices.size())
     {
       // Accumulate equations Fo(h) ~ Fc(h)
       SMTBX_ASSERT(miller_indices.size() == data.size())
                   (miller_indices.size())(data.size());
       SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
+      SMTBX_ASSERT(twin_fractions.size() == twin_laws.size());
+      if (twin_laws.size()) {
+        // twinning combined with masks not currently supported
+        SMTBX_ASSERT(!f_mask.size());
+      }
       if (f_mask.size()){
         SMTBX_ASSERT(f_mask.size() == data.size())(f_mask.size())(data.size());
       }
-      if (objective_only) {
-        for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
-          miller::index<> const &h = miller_indices[i_h];
-          if (f_mask.size()) {
-            f_calc_function.evaluate(h, f_mask[i_h]);
+      bool use_cache = twin_laws.size() > 0;
+      f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>
+        f_calc_func(f_calc_function, use_cache);
+      bool compute_grad = !objective_only;
+      af::shared<FloatType> gradient(
+        jacobian_transpose_matching_grad_fc.n_rows(),
+        af::init_functor_null<FloatType>());
+      for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
+        miller::index<> const &h = miller_indices[i_h];
+        if (f_mask.size()) {
+          f_calc_func.compute(h, f_mask[i_h], compute_grad);
+        }
+        else {
+          f_calc_func.compute(h, compute_grad);
+        }
+        FloatType observable = f_calc_func.observable;
+        if (compute_grad) {
+          gradient =
+            jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
+        }
+        // sort out twinning
+        if (twin_fractions.size()) {
+          FloatType identity_part = observable;
+          FloatType one_minus_sum_twin_fractions = 1-sum(twin_fractions);
+          observable *= one_minus_sum_twin_fractions;
+          if (compute_grad) {
+            gradient *= one_minus_sum_twin_fractions;
           }
-          else {
-            f_calc_function.evaluate(h);
+          for (std::size_t i_twin=0;i_twin<twin_laws.size();i_twin++) {
+            sgtbx::rot_mx const &twin_law = twin_laws[i_twin];
+            miller::index<> const &twin_h = cctbx::xray::twin_targets::twin_mate(
+              h, twin_law.as_floating_point(scitbx::type_holder<FloatType>()));
+            f_calc_func.compute(twin_h, compute_grad);
+            observable += twin_fractions[i_twin]*f_calc_func.observable;
+            if (compute_grad) {
+              af::shared<FloatType> grad_tmp =
+                jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
+              gradient += grad_tmp * twin_fractions[i_twin];
+              gradient[gradient.size()-twin_fractions.size()+i_twin] +=
+                f_calc_func.observable - identity_part;
+            }
           }
-          FloatType observable = f_calc_function.observable;
-          FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                              observable, scale_factor);
-          f_calc_[i_h] = f_calc_function.f_calc;
-          weights_[i_h] = weight;
+        }
+        f_calc_[i_h] = f_calc_func.f_calc;
+        observables_[i_h] = observable;
+        FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
+                                            observable, scale_factor);
+        weights_[i_h] = weight;
+        if (objective_only) {
           normal_equations.add_residual(observable,
                                         data[i_h],
                                         weight);
         }
-        normal_equations.finalise(/*objective_only=*/true);
-      }
-      else {
-        for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
-          miller::index<> const &h = miller_indices[i_h];
-          if (f_mask.size()) {
-            f_calc_function.linearise(h, f_mask[i_h]);
-          }
-          else {
-            f_calc_function.linearise(h);
-          }
-          FloatType observable = f_calc_function.observable;
-          af::shared<FloatType> gradient =
-            jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
-          FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                              observable, scale_factor);
-          f_calc_[i_h] = f_calc_function.f_calc;
-          weights_[i_h] = weight;
+        else {
           normal_equations.add_equation(observable,
                                         gradient.ref(),
                                         data[i_h],
                                         weight);
         }
-        normal_equations.finalise();
       }
+      normal_equations.finalise(objective_only);
     }
 
     af::shared<std::complex<FloatType> > f_calc() { return f_calc_; }
+
+    af::shared<FloatType> observables() { return observables_; }
 
     af::shared<FloatType> weights() { return weights_; }
 
   private:
     af::shared<std::complex<FloatType> > f_calc_;
+    af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
 
   };
