@@ -83,9 +83,9 @@ class crystallographic_ls(
           twin_fractions,
           True, # objective_only
           )
-    # use scale factor computed in the above if branch or
-    # the one from the previous step
-    scale_factor = self.scale_factor()
+        scale_factor = self.scale_factor()
+    else: # use scale factor from the previous step
+      scale_factor = self.scale_factor()
 
     self.reset()
     result = ext.build_normal_equations(
