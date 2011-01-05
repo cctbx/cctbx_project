@@ -5,6 +5,8 @@
 #include <cctbx/sgtbx/rot_mx_info.h>
 #include <cctbx/sgtbx/rot_mx_hash.h>
 #include <boost_adaptbx/hash.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/stl/vector_wrapper.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -78,6 +80,13 @@ namespace {
           (vec3_rat(*)(
             rot_mx const&, vec3_rat const&)) operator*)
       ;
+
+      scitbx::stl::boost_python::vector_wrapper<rot_mx>::wrap(
+        "stl_vector_rot_mx");
+      {
+        using namespace scitbx::boost_python::container_conversions;
+        tuple_mapping_variable_capacity<af::shared<rot_mx> >();
+      }
     }
   };
 
