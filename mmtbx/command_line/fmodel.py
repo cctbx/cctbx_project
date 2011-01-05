@@ -320,6 +320,8 @@ def run(args, log = sys.stdout):
       xray_structure             = xray_structure,
       anomalous_scatterer_groups = params.anomalous_scatterers.group)
   #
+  validate_params_command_line(params)
+  #
   print >> log, "-"*79
   print >> log, "Computing model structure factors, Fmodel:"
   if(params.output.format == "cns"): extension = ".hkl"
@@ -347,7 +349,7 @@ def validate_params (params, callback=None) :
   if len(params.pdb_file) == 0 :
     raise Sorry("You must provide at least one PDB file to use for "+
       "F(model) calculations.")
-  elif (params.high_resolution is None) :
+  if (params.high_resolution is None) :
     if (params.reference_file is None) :
       raise Sorry("Please specify a high-resolution cutoff.")
   elif (params.reference_file is not None) :
@@ -357,14 +359,18 @@ def validate_params (params, callback=None) :
     elif ([params.high_resolution, params.low_resolution].count(None) != 2):
       raise Sorry("High resolution and low resolution must be undefined "+
                   "if reflection data file is given.")
-  elif (params.output.file_name is None) :
+  if (params.output.file_name is None) :
     raise Sorry("Please specify an output file.")
-  if params.low_resolution is not None :
+  validate_params_command_line(params)
+
+def validate_params_command_line(params):
+  if (params.output.type == "complex") and (params.add_sigmas) :
+    raise Sorry("Sigma values only supported when the output type is 'real'.")
+  if (    params.low_resolution is not None
+      and params.high_resolution is not None):
     if params.low_resolution < params.high_resolution :
       raise Sorry("Low-resolution cutoff must be larger than the high-"+
         "resolution cutoff.")
-  if (params.output.type == "complex") and (params.add_sigmas) :
-    raise Sorry("Sigma values only supported when the output type is 'real'.")
   return True
 
 def finish_job (result) :
