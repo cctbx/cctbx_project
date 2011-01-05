@@ -64,43 +64,38 @@ class crystallographic_ls(
       twin_laws = ()
       twin_fractions = flex.double()
 
+    def args(scale_factor, weighting_scheme, objective_only):
+      args = (self,
+              self.fo_sq.indices(),
+              self.fo_sq.data(),
+              self.fo_sq.sigmas(),
+              f_mask,
+              weighting_scheme,
+              scale_factor,
+              self.one_h_linearisation,
+              self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+              twin_laws,
+              twin_fractions)
+      if objective_only:
+        args += (True,)
+      return args
+
     if not self.finalised: #i.e. never been called
       self.reparametrisation.linearise()
       self.reparametrisation.store()
       scale_factor = self.initial_scale_factor
       if scale_factor is None: # we haven't got one from previous refinement
         result = ext.build_normal_equations(
-          self,
-          self.fo_sq.indices(),
-          self.fo_sq.data(),
-          self.fo_sq.sigmas(),
-          f_mask,
-          sigma_weighting(),
-          None, # scale_factor
-          self.one_h_linearisation,
-          self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-          twin_laws,
-          twin_fractions,
-          True, # objective_only
-          )
+          *args(scale_factor=None, weighting_scheme=sigma_weighting(),
+                objective_only=True))
         scale_factor = self.scale_factor()
     else: # use scale factor from the previous step
       scale_factor = self.scale_factor()
 
     self.reset()
-    result = ext.build_normal_equations(
-      self,
-      self.fo_sq.indices(),
-      self.fo_sq.data(),
-      self.fo_sq.sigmas(),
-      f_mask,
-      self.weighting_scheme,
-      scale_factor,
-      self.one_h_linearisation,
-      self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-      twin_laws,
-      twin_fractions,
-      objective_only)
+    result = ext.build_normal_equations(*args(scale_factor,
+                                              self.weighting_scheme,
+                                              objective_only))
     self.f_calc = self.fo_sq.array(data=result.f_calc(), sigmas=None)
     self.fc_sq = self.fo_sq.array(data=result.observables(), sigmas=None)\
         .set_observation_type_xray_intensity()
