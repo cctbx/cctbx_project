@@ -253,13 +253,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   (miller_indices.size())(data.size());
       SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
       SMTBX_ASSERT(twin_fractions.size() == twin_laws.size());
-      if (twin_laws.size()) {
-        // twinning combined with masks not currently supported
-        SMTBX_ASSERT(!f_mask.size());
-      }
-      if (f_mask.size()){
-        SMTBX_ASSERT(f_mask.size() == data.size())(f_mask.size())(data.size());
-      }
+      SMTBX_ASSERT(!twin_laws.size() || !f_mask.size());
+      SMTBX_ASSERT(!f_mask.size() || f_mask.size() == data.size())
+                  (f_mask.size())(data.size());
       bool use_cache = twin_laws.size() > 0;
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>
         f_calc_func(f_calc_function, use_cache);
