@@ -24,8 +24,9 @@ class crystallographic_ls(
   restraints_manager=None
   n_restraints = None
   twin_laws = None
+  initial_scale_factor = None
 
-  def __init__(self, fo_sq, reparametrisation, osf=None, **kwds):
+  def __init__(self, fo_sq, reparametrisation, **kwds):
     super(crystallographic_ls, self).__init__(
       reparametrisation.n_independent_params)
     self.fo_sq = fo_sq
@@ -43,7 +44,6 @@ class crystallographic_ls(
       reparametrisation.jacobian_transpose_matching_grad_fc(),
       self.floating_origin_restraint_relative_weight)
     self.taken_step = None
-    self.osf = osf
 
   class xray_structure(libtbx.property):
     def fget(self):
@@ -53,23 +53,7 @@ class crystallographic_ls(
     def fget(self):
       return self.reparametrisation.twin_fractions
 
-  def scale_factor_approximation(self):
-    self.fo_sq.set_observation_type_xray_intensity()
-    f_calc = xray.structure_factors.from_scatterers_direct(
-      self.xray_structure, self.fo_sq).f_calc()
-    return self.fo_sq.scale_factor(f_calc, cutoff_factor=0.99)
-
   def build_up(self, objective_only=False):
-    if not self.finalised: #i.e. never been called
-      self.reparametrisation.linearise()
-      self.reparametrisation.store()
-      if self.osf != None: #is provided from previous refinement?
-        scale_factor = self.osf
-      else: #estimate then
-        scale_factor = self.scale_factor_approximation()
-    else: #use from previous step
-      self.osf = scale_factor = self.scale_factor()
-    self.reset()
     if self.f_mask is not None:
       f_mask = self.f_mask.data()
     else:
@@ -79,6 +63,31 @@ class crystallographic_ls(
     if twin_laws is None:
       twin_laws = ()
       twin_fractions = flex.double()
+
+    if not self.finalised: #i.e. never been called
+      self.reparametrisation.linearise()
+      self.reparametrisation.store()
+      scale_factor = self.initial_scale_factor
+      if scale_factor is None: # we haven't got one from previous refinement
+        result = ext.build_normal_equations(
+          self,
+          self.fo_sq.indices(),
+          self.fo_sq.data(),
+          self.fo_sq.sigmas(),
+          f_mask,
+          sigma_weighting(),
+          None, # scale_factor
+          self.one_h_linearisation,
+          self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+          twin_laws,
+          twin_fractions,
+          True, # objective_only
+          )
+    # use scale factor computed in the above if branch or
+    # the one from the previous step
+    scale_factor = self.scale_factor()
+
+    self.reset()
     result = ext.build_normal_equations(
       self,
       self.fo_sq.indices(),
