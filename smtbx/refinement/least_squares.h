@@ -236,7 +236,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::const_ref<FloatType> const &sigmas,
       af::const_ref<std::complex<FloatType> > const &f_mask,
       WeightingScheme<FloatType> const &weighting_scheme,
-      FloatType scale_factor,
+      boost::optional<FloatType> scale_factor,
       OneMillerIndexFcalc &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
@@ -256,10 +256,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
       SMTBX_ASSERT(!twin_laws.size() || !f_mask.size());
       SMTBX_ASSERT(!f_mask.size() || f_mask.size() == data.size())
                   (f_mask.size())(data.size());
+      SMTBX_ASSERT(scale_factor || weighting_scheme.f_calc_independent());
       bool use_cache = twin_laws.size() > 0;
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>
         f_calc_func(f_calc_function, use_cache);
       bool compute_grad = !objective_only;
+
       af::shared<FloatType> gradient(
         jacobian_transpose_matching_grad_fc.n_rows(),
         af::init_functor_null<FloatType>());
@@ -302,7 +304,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc_[i_h] = f_calc_func.f_calc;
         observables_[i_h] = observable;
         FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                            observable, scale_factor);
+                                            observable, *scale_factor);
         weights_[i_h] = weight;
         if (objective_only) {
           normal_equations.add_residual(observable,
