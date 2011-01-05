@@ -27,6 +27,7 @@ import mmtbx.f_model
 from libtbx.str_utils import format_value
 from libtbx import Auto
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import libtbx.path
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
