@@ -7,7 +7,7 @@
 namespace smtbx { namespace refinement { namespace constraints {
 
 /// Helper to present crystallographic parameters in a user-defined order
-/** The class constraints::scatterer_parameters below feature named parameters,
+/** The class constraints::scatterer_parameters below features named parameters,
     whereas this class presents them in a list. The former may therefore use
     the latter to define an ordering.
  */
@@ -68,7 +68,7 @@ struct scatterer_parameters
   {}
 
   /// Parameters in the same order as the derivatives in grad Fc
-  /** This shall abide to the convention of in smtbx::structure_factors.
+  /** This shall abide to the convention of smtbx::structure_factors.
    */
   ordered_scatterer_parameters ordered() const {
     return ordered_scatterer_parameters(site, u, occupancy);
