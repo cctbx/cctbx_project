@@ -261,6 +261,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc_func(f_calc_function, use_cache);
       bool compute_grad = !objective_only;
 
+      /* Quite hackish but the assert above makes it safe providing
+         the weighting scheme class plays ball.
+       */
+      FloatType scale_factor_ = scale_factor ? *scale_factor : 0;
+
       af::shared<FloatType> gradient(
         jacobian_transpose_matching_grad_fc.n_rows(),
         af::init_functor_null<FloatType>());
@@ -305,7 +310,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc_[i_h] = f_calc_func.f_calc;
         observables_[i_h] = observable;
         FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                            observable, *scale_factor);
+                                            observable, scale_factor_);
         weights_[i_h] = weight;
         if (objective_only) {
           normal_equations.add_residual(observable,
