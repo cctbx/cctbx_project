@@ -42,10 +42,19 @@ class hydrogens(geometrical.any):
                   reparametrisation.add_new_site_parameter(k, ops_k[0])
                 break
 
+    length_value = self.ideal_bond_length(scatterers[i_pivot],
+                                   reparametrisation.temperature)
+    if self.stretching:
+      uc = reparametrisation.structure.unit_cell()
+      _length_value = uc.distance(
+        col(scatterers[i_pivot].site),
+        col(scatterers[self.constrained_site_indices[0]].site))
+      if _length_value > 0.5: #check for dummy values
+        length_value = _length_value
+
     bond_length = reparametrisation.add(
       _.independent_scalar_parameter,
-      value=self.ideal_bond_length(scatterers[i_pivot],
-                                   reparametrisation.temperature),
+      value=length_value,
       variable=self.stretching)
 
     hydrogens = tuple(
