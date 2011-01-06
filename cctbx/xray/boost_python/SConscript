@@ -23,6 +23,7 @@ sources = [
   "twin_targets.cpp",
   "grouped_data.cpp",
   "parameter_map.cpp",
+  "twin_components.cpp",
 ]
 
 raw_multithreaded_sources = [

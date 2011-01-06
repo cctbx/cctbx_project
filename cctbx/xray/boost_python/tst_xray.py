@@ -1995,7 +1995,27 @@ def exercise_maximum_likelihood_targets():
         assert mlw.target_test() is None
         assert approx_equal(mlw.gradients_work(), gw)
 
+def exercise_twin_components():
+  twin_a = xray.twin_component(sgtbx.rot_mx((0,1,0,1,0,0,0,0,-1)),
+                               twin_fraction=0.5,
+                               grad_twin_fraction=True)
+  assert twin_a.twin_fraction == 0.5
+  assert twin_a.twin_law == sgtbx.rot_mx((0,1,0,1,0,0,0,0,-1))
+  assert twin_a.grad_twin_fraction == True
+  twin_a.set_grad_twin_fraction(False)
+  assert twin_a.grad_twin_fraction == False
+  twin_b = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)),
+                               twin_fraction=0.2)
+  assert twin_b.grad_twin_fraction == False
+  twins = (twin_a, twin_b)
+  xray.set_grad_twin_fraction(twins, True)
+  assert twin_a.grad_twin_fraction == True
+  assert twin_b.grad_twin_fraction == True
+  assert xray.sum_twin_fractions(twins) == 0.7
+
+
 def run():
+  exercise_twin_components()
   exercise_scatterer_flags()
   exercise_set_selected_scatterer_grad_flags()
   exercise_set_scatterer_grad_flags()
