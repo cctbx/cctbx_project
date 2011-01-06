@@ -9,7 +9,6 @@ from libtbx import adopt_optional_init_args
 from scitbx import linalg
 from scitbx.lstbx import normal_eqns
 from scitbx.array_family import flex
-from cctbx import xray
 from smtbx.structure_factors import direct
 
 from stdlib import math
@@ -23,7 +22,7 @@ class crystallographic_ls(
   f_mask = None
   restraints_manager=None
   n_restraints = None
-  twin_laws = None
+  twin_components = None
   initial_scale_factor = None
 
   def __init__(self, fo_sq, reparametrisation, **kwds):
@@ -49,20 +48,14 @@ class crystallographic_ls(
     def fget(self):
       return self.reparametrisation.structure
 
-  class twin_fractions(libtbx.property):
-    def fget(self):
-      return self.reparametrisation.twin_fractions
-
   def build_up(self, objective_only=False):
     if self.f_mask is not None:
       f_mask = self.f_mask.data()
     else:
       f_mask = flex.complex_double()
-    twin_laws = self.twin_laws
-    twin_fractions = self.twin_fractions
-    if twin_laws is None:
-      twin_laws = ()
-      twin_fractions = flex.double()
+    twin_components = self.twin_components
+    if twin_components is None:
+      twin_components = ()
 
     def args(scale_factor, weighting_scheme, objective_only):
       args = (self,
@@ -74,8 +67,7 @@ class crystallographic_ls(
               scale_factor,
               self.one_h_linearisation,
               self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-              twin_laws,
-              twin_fractions)
+              twin_components)
       if objective_only:
         args += (True,)
       return args

@@ -428,20 +428,25 @@ class twin_test(object):
       twin_fractions = self.twin_fractions.deep_copy() + 0.1
     else:
       twin_fractions = self.twin_fractions.deep_copy() - 0.1
+    twin_components = tuple(
+      [xray.twin_component(law, fraction, grad_twin_fraction=True)
+       for law, fraction in zip(self.twin_laws, twin_fractions)])
     reparametrisation = constraints.reparametrisation(
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table,
-      twin_fractions=twin_fractions)
+      twin_components=twin_components)
     normal_eqns = least_squares.crystallographic_ls(
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
-      twin_laws=self.twin_laws)
+      twin_components=twin_components)
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns,
       n_max_iterations=10,
       track_all=True)
-    assert approx_equal(normal_eqns.twin_fractions, self.twin_fractions)
+    assert approx_equal(
+      [twin.twin_fraction for twin in normal_eqns.twin_components],
+      self.twin_fractions)
     assert approx_equal(normal_eqns.objective(), 0, eps=1e-14)
 
 class site_refinement_in_p1_test(p1_test, site_refinement_test): pass

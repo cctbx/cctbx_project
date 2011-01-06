@@ -144,6 +144,21 @@ namespace boost_python {
     }
   };
 
+  struct twin_component_parameter_wrapper
+  {
+    typedef twin_component_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<independent_scalar_parameter>,
+             std::auto_ptr<wt> >("twin_component_parameter", no_init)
+        .def(init<cctbx::xray::twin_component<double> *>((
+          arg("twin_component"))));
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
   template <int N>
   struct small_vector_parameter_wrapper
   {
@@ -432,6 +447,8 @@ namespace boost_python {
 
     scalar_parameter_wrapper::wrap();
     independent_scalar_parameter_wrapper::wrap();
+
+    twin_component_parameter_wrapper::wrap();
 
     small_vector_parameter_wrapper<3>::wrap();
     independent_small_vector_parameter_wrapper<3>::wrap();
