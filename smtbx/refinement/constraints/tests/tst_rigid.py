@@ -101,7 +101,7 @@ def exercise_rigid_pivoted_rotable():
     uc.distance(col(site_proxy.value), col(sc[2].site)), 0, eps=1e-15)
   #rotation happens around the center of gravity
   assert approx_equal(
-    uc.distance(col((.5,1,.5)), col(sc[2].site)), 0, eps=1e-15)
+    uc.distance(col((0,1,1)), col(sc[2].site)), 0, eps=1e-15)
 
 class rigid_rotable(object):
   def __init__(self):
@@ -122,9 +122,9 @@ class rigid_rotable(object):
         xray.scatterer('C3'),
         )))
     self.center = col((0,0,0))
-    for s in self.sites[1:]:
+    for s in self.sites:
       self.center = self.center + col(s)
-    self.center = self.center / (len(self.sites)-1)
+    self.center = self.center / len(self.sites)
     self.reset_sites()
   def reset_sites(self):
     sc = self.xs.scatterers()
@@ -153,8 +153,9 @@ class rigid_rotable(object):
     r.finalise()
     r.linearise()
     r.store()
+    shift = col(self.sites[0]) - (col(self.sites[0])-self.center)*self.size_value
     for i in xrange(1,4):
-      calc_site = (col(self.sites[i])-self.center)*self.size_value + self.center
+      calc_site = (col(self.sites[i])-self.center)*self.size_value + shift
       assert approx_equal(
         self.uc.distance(
           calc_site, col(sc[i].site)), 0, eps=1e-14)
@@ -191,8 +192,9 @@ class rigid_rotable(object):
                     math.sin(self.rz), math.cos(self.rz), 0,
                     0, 0, 1))
     R = rx_m*ry_m*rz_m #comulative rotation matrix
+    shift = col(self.sites[0])-col(mat.row(col(self.sites[0])-self.center)*R)
     for i in xrange(1,4):
-      calc_site = col(mat.row(col(self.sites[i])-self.center)*R) + self.center
+      calc_site = col(mat.row(col(self.sites[i])-self.center)*R) + shift
       assert approx_equal(
         self.uc.distance(
           calc_site, col(sc[i].site)), 0, eps=1e-14)
