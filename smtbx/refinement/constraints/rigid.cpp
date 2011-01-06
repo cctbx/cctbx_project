@@ -82,7 +82,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     InitCoordinates(unit_cell, pivot->value);
     const cart_t shift_to_pivot = original_pivot_crd-rotation_center;
     const cart_t new_pivot = unit_cell.orthogonalize(pivot->value);
-    const cart_t shift = new_pivot - size_value*shift_to_pivot*rm;
+    const cart_t shift = new_pivot - shift_to_pivot*rm;
     // Loop over the scatterers
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th scatterers
