@@ -33,12 +33,12 @@ namespace smtbx { namespace refinement { namespace constraints {
                     fractional<double> const& pivot)
   {
     if( crd_initialised )  return;
-    original_pivot_crd = unit_cell.orthogonalize(pivot);
+    rotation_center = original_pivot_crd = unit_cell.orthogonalize(pivot);
     for (int i=0; i < scatterers_.size(); i++)  {
       co_s[i] = unit_cell.orthogonalize(scatterers_[i]->site);
       rotation_center += co_s[i];
     }
-    rotation_center = rotation_center/scatterers_.size();
+    rotation_center = rotation_center/(scatterers_.size()+1);
     for (int i=0; i < scatterers_.size(); i++)
       co_s[i] = co_s[i] - rotation_center;
     crd_initialised = true;
@@ -80,8 +80,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     );
     // rotation happens around the geometrical center of the group...
     InitCoordinates(unit_cell, pivot->value);
-    const cart_t shift = rotation_center +
-       unit_cell.orthogonalize(pivot->value) - original_pivot_crd;
+    const cart_t shift_to_pivot = original_pivot_crd-rotation_center;
+    const cart_t new_pivot = unit_cell.orthogonalize(pivot->value);
+    const cart_t shift = new_pivot - size_value*shift_to_pivot*rm;
     // Loop over the scatterers
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th scatterers
@@ -98,7 +99,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
       // Rotating
       if (azimuth->is_variable()) {
-        cart_t grad_c = co_s[i]*rmd;
+        cart_t grad_c = (co_s[i]-shift_to_pivot)*rmd;
         frac_t grad_f = unit_cell.fractionalize(grad_c);
         for (int j=0; j<3; j++)
           jt(azimuth->index(), j_s + j) = grad_f[j];
@@ -152,13 +153,13 @@ namespace smtbx { namespace refinement { namespace constraints {
     };
     // calculate the geometrical center
     InitCoordinates(unit_cell, pivot->value);
-    const cart_t shift = rotation_center +
-       unit_cell.orthogonalize(pivot->value) - original_pivot_crd;
+    const cart_t shift_to_pivot = original_pivot_crd-rotation_center;
+    const cart_t new_pivot = unit_cell.orthogonalize(pivot->value);
+    const cart_t shift = new_pivot - size_value*shift_to_pivot*rm;
     // expansion/contraction happens from/to the center
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th atoms
-      const cart_t len_vec = size_value*co_s[i];
-      fx_s[i] = unit_cell.fractionalize(len_vec*rm + shift);
+      fx_s[i] = unit_cell.fractionalize(size_value*co_s[i]*rm + shift);
 
       // Derivatives
       if (!jacobian_transpose) continue;
@@ -169,18 +170,18 @@ namespace smtbx { namespace refinement { namespace constraints {
       for (int j=0; j<3; j++)
         jt.col(j_s + j) = jt.col(pivot->index() + j);
 
+      const cart_t grad_vec_ = co_s[i]-shift_to_pivot;
       // Rotating
       for (int j=0; j<3; j++ )  {
         if (!angles[j]->is_variable())  continue;
-        cart_t grad_c = len_vec*rmd[j];
-        frac_t grad_f = unit_cell.fractionalize(grad_c);
+        frac_t grad_f = unit_cell.fractionalize(size_value*grad_vec_*rmd[j]);
         for (int k=0; k<3; k++)
           jt(angles[j]->index(), j_s + k) = grad_f[k];
       }
 
-      // bond stretching
+      // expansion/contraction
       if (size->is_variable())  {
-        frac_t grad_f = unit_cell.fractionalize(co_s[i]*rm);
+        frac_t grad_f = unit_cell.fractionalize(grad_vec_*rm);
         for (int j=0; j<3; j++)
           jt(size->index(), j_s + j) = grad_f[j];
       }

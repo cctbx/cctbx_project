@@ -84,7 +84,7 @@ public:
 };
 
 /** a set of atoms rides on pivot and rotates around the direction given
-  by pivot and pivot_neighbour (AFIX n=6 in shelxl)
+  by pivot and pivot_neighbour (AFIX n=7 in shelxl)
  */
 
 class pivoted_rotable_group : public rigid_group_base {
