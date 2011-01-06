@@ -60,7 +60,7 @@ class reparametrisation(ext.reparametrisation):
   """ Enhance the C++ level reparametrisation class for ease of use """
 
   temperature = 20 # Celsius
-  twin_fractions = None
+  twin_components = None
 
   def __init__(self,
                structure,
@@ -105,9 +105,9 @@ class reparametrisation(ext.reparametrisation):
       self.add_new_site_parameter(i_sc)
       self.add_new_thermal_displacement_parameter(i_sc)
       self.add_new_occupancy_parameter(i_sc)
-    if self.twin_fractions is not None:
-      for twin_fraction in self.twin_fractions:
-        self.add_new_independent_scalar_parameter(twin_fraction)
+    if self.twin_components is not None:
+      for component in self.twin_components:
+        self.add_new_twin_component_parameter(component)
     self.finalise()
 
   def finalise(self):
@@ -121,8 +121,6 @@ class reparametrisation(ext.reparametrisation):
 
   def apply_shifts(self, shifts):
     ext.reparametrisation.apply_shifts(self, shifts)
-    if self.twin_fractions is not None:
-      self.twin_fractions += shifts[-self.twin_fractions.size():]
 
   class component_annotations(libtbx.property):
     def fget(self):
@@ -199,6 +197,11 @@ class reparametrisation(ext.reparametrisation):
                        sc)
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
+
+  def add_new_twin_component_parameter(self, twin_component):
+    p = self.add(twin_component_parameter, twin_component)
+    self.independent_scalar_parameters.append(p)
+    return p
 
   def add_new_independent_scalar_parameter(self, value, variable=True):
     p = self.add(independent_scalar_parameter, value=value, variable=variable)

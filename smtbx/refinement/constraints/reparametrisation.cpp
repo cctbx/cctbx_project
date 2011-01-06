@@ -31,6 +31,12 @@ namespace smtbx { namespace refinement { namespace constraints {
   template class independent_small_vector_parameter<3>;
   template class independent_small_vector_parameter<6>;
 
+  // twin_component_parameter
+
+  void twin_component_parameter::store() const {
+    twin_component->twin_fraction = value;
+  }
+
   // single_scatterer_parameter
 
   asu_parameter::scatterer_sequence_type
@@ -286,6 +292,10 @@ namespace smtbx { namespace refinement { namespace constraints {
     BOOST_FOREACH(parameter *p, all) {
       asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
       if (cp) cp->store(unit_cell);
+      else {
+        storable_parameter *cp = dynamic_cast<storable_parameter *> (p);
+        if (cp) cp->store();
+      }
     }
   }
 

@@ -62,18 +62,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
     template <template<typename> class WeightingSchemeType>
     static void def_init(boost::python::class_<wt> &klass) {
       using namespace boost::python;
-      klass.def(init<NormalEquations<FloatType> &,
-                af::const_ref<miller::index<> > const &,
-                af::const_ref<FloatType> const &,
-                af::const_ref<FloatType> const &,
-                af::const_ref<std::complex<FloatType> > const &,
-                WeightingSchemeType<FloatType> const &,
-                boost::optional<FloatType>,
-                OneMillerIndexLinearisation &,
-                scitbx::sparse::matrix<FloatType> const &,
-                af::shared<sgtbx::rot_mx> const &,
-                af::const_ref<FloatType> const &,
-                optional<bool> >
+      klass.def(init<NormalEquations<FloatType> &,                    // normal_equations
+                af::const_ref<miller::index<> > const &,              // miller_indices
+                af::const_ref<FloatType> const &,                     // data
+                af::const_ref<FloatType> const &,                     // sigmas
+                af::const_ref<std::complex<FloatType> > const &,      // f_mask
+                WeightingSchemeType<FloatType> const &,               // weighting_scheme
+                boost::optional<FloatType>,                           // scale_factor
+                OneMillerIndexLinearisation &,                        // f_calc_function
+                scitbx::sparse::matrix<FloatType> const &,            // jacobian_transpose_matching_grad_fc
+                af::shared<cctbx::xray::twin_component<FloatType> *>, // twin_components
+                optional<bool> >                                      // objective_only=false
                 ());
     }
 
