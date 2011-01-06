@@ -438,8 +438,7 @@ class twin_test(object):
       twin_components=twin_components)
     normal_eqns = least_squares.crystallographic_ls(
       self.fo_sq, reparametrisation,
-      weighting_scheme=least_squares.unit_weighting(),
-      twin_components=twin_components)
+      weighting_scheme=least_squares.unit_weighting())
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns,
       n_max_iterations=10,
