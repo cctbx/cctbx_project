@@ -32,10 +32,10 @@ class rigid_pivoted_rotable_group(object):
     scatterers = tuple([scatterers[i] for i in self.indices])
     param = reparametrisation.add(
       _.rigid_pivoted_rotable_group,
-      pivot = pivot_sp,
-      pivot_neighbour = pivot_n_sp,
-      azimuth = azimuth,
-      scatterers = scatterers)
+      pivot=pivot_sp,
+      pivot_neighbour=pivot_n_sp,
+      azimuth=azimuth,
+      scatterers=scatterers)
     for i, j in enumerate(self.indices):
       reparametrisation.add_new_site_proxy_parameter(param, i, j)
       reparametrisation.asu_scatterer_parameters[j].site = param
@@ -45,11 +45,12 @@ class rigid_rotable_expandable_group(object):
   expands or shrinks
   """
 
-  def __init__(self, center, ind_sequence):
+  def __init__(self, center, ind_sequence, sizeable):
     if len(ind_sequence) == 0:
       raise InvalidConstraint("at least one atom is expected")
     self.pivot = center
     self.indices = ind_sequence
+    self.sizeable = sizeable
 
   def __eq__(self, other):
     if (self.pivot != other.pivot or self.indices != other.indices):
@@ -60,7 +61,7 @@ class rigid_rotable_expandable_group(object):
     scatterers = reparametrisation.structure.scatterers()
     pivot_sp = reparametrisation.add_new_site_parameter(self.pivot)
     size = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=1, variable=True)
+                                    value=1, variable=self.sizeable)
     alpha = reparametrisation.add(_.independent_scalar_parameter,
                                     value=0, variable=True)
     beta = reparametrisation.add(_.independent_scalar_parameter,
@@ -70,11 +71,11 @@ class rigid_rotable_expandable_group(object):
     scatterers = tuple([scatterers[i] for i in self.indices])
     param = reparametrisation.add(
       _.rigid_rotable_expandable_group,
-      pivot = pivot_sp,
-      size = size,
-      alpha = alpha,
-      beta = beta,
-      gamma = gamma,
+      pivot=pivot_sp,
+      size=size,
+      alpha=alpha,
+      beta=beta,
+      gamma=gamma,
       scatterers = scatterers)
     for i, j in enumerate(self.indices):
       reparametrisation.add_new_site_proxy_parameter(param, i, j)
