@@ -26,24 +26,30 @@ class command_stream(object):
   _cmd_pat = re.compile("""
     ^
     (?:
-      (?:
-        ( HFIX | EXYZ | EADP | OMIT | CONN |
-          SAME | CHIV | DELU | SIMU | ISOR |
-          BLOC | BOND | CONF | MPLA | RTAB )
-        _
-        (?:
-          ([a-z] \S{0,3})
-          |
-          (\d{1,4})
-          |
-          \*
-        )?
-      )
+      (TITL | REM)
+      \s?
+      (.*)
       |
-      ([a-z] \S{0,3})
+      (?:
+        (?:
+          ( HFIX | EXYZ | EADP | OMIT | CONN |
+            SAME | CHIV | DELU | SIMU | ISOR |
+            BLOC | BOND | CONF | MPLA | RTAB )
+          _
+          (?:
+            ([a-z] \S{0,3})
+            |
+            (\d{1,4})
+            |
+            \*
+          )?
+        )
+        |
+        ([a-z] \S{0,3})
+      )
+      ([^!=]*)
+      (=?)
     )
-    ([^!=]*)
-    (=?)
     """, re.X | re.I)
 
   _continuation_pat = re.compile("""
@@ -105,12 +111,12 @@ class command_stream(object):
         if m is None:
           if li[0].isspace(): continue
           raise shelx_error("illegal command or atom name error", i)
-        cmd = m.group(4)
+        cmd = m.group(1) or m.group(6)
         if cmd:
           cmd = cmd.upper()
           cmd_residue = None
         else:
-          (cmd, cmd_residue_class, cmd_residue_number) = m.group(1,2,3)
+          (cmd, cmd_residue_class, cmd_residue_number) = m.group(3,4,5)
           cmd = cmd.upper()
           if cmd_residue_class:
             cmd_residue = (self.residue_class_tok, cmd_residue_class.upper())
@@ -118,7 +124,8 @@ class command_stream(object):
             cmd_residue = (self.residue_number_tok, int(cmd_residue_number))
           else:
             cmd_residue = (self.all_residues_tok,)
-        args, continued = m.group(5,6)
+        args = m.group(2) or m.group(7)
+        continued = m.group(8)
         arguments = args.split()
       if not continued:
         result = self._parse_special_cases(cmd, args, i, li)
