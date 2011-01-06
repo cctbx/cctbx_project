@@ -28,9 +28,12 @@ def exercise_rigid_site_proxy(n=5):
     rigid_group_scatterers.append(sc)
   phi = reparam.add(constraints.independent_scalar_parameter,
                     value=0.1, variable=True)
+  size = reparam.add(constraints.independent_scalar_parameter,
+                    value=1, variable=True)
   rigid_group = reparam.add(constraints.rigid_pivoted_rotable_group,
                             pivot, pivot_neighbour,
                             azimuth=phi,
+                            size=size,
                             scatterers=rigid_group_scatterers)
   proxies = [ ]
   for i in xrange(n):
@@ -41,29 +44,31 @@ def exercise_rigid_site_proxy(n=5):
 
   assert str(reparam) == """\
 digraph dependencies {
-7 -> 0;
-7 -> 3;
-7 -> 6;
-22 -> 7;
-25 -> 7;
-28 -> 7;
-31 -> 7;
-34 -> 7;
+8 -> 0;
+8 -> 3;
+8 -> 6;
+8 -> 7;
+23 -> 8;
+26 -> 8;
+29 -> 8;
+32 -> 8;
+35 -> 8;
 0 [label="independent_site_parameter (C#) #0"];
 3 [label="independent_site_parameter (C##) #3"];
 6 [label="independent_scalar_parameter #6"];
-7 [label="rigid_pivoted_rotable_group (C0, C1, C2, C3, C4) #7"];
-22 [label="rigid_site_proxy #22"];
-25 [label="rigid_site_proxy #25"];
-28 [label="rigid_site_proxy #28"];
-31 [label="rigid_site_proxy #31"];
-34 [label="rigid_site_proxy #34"]
+7 [label="independent_scalar_parameter #7"];
+8 [label="rigid_pivoted_rotable_group (C0, C1, C2, C3, C4) #8"];
+23 [label="rigid_site_proxy #23"];
+26 [label="rigid_site_proxy #26"];
+29 [label="rigid_site_proxy #29"];
+32 [label="rigid_site_proxy #32"];
+35 [label="rigid_site_proxy #35"]
 }"""
 
   reparam.linearise()
   jt = reparam.jacobian_transpose
 
-  q = 2*3 + 1 # pivot, its neighbour, azimuthal angle
+  q = 2*3 + 1 + 1 # pivot, its neighbour, azimuthal angle, size
   jt0 = sparse.matrix(q, q + 2*3*n) # + rigid_group + constrained site proxies
   assert jt.n_rows == jt0.n_rows
   assert jt.n_cols == jt0.n_cols
@@ -87,10 +92,13 @@ def exercise_rigid_pivoted_rotable():
   pivot_neighbour = r.add(constraints.independent_site_parameter, sc[1])
   azimuth = r.add(constraints.independent_scalar_parameter,
                   value=pi/2, variable=True)
+  size = r.add(constraints.independent_scalar_parameter,
+                  value=1, variable=False)
   rg = r.add(constraints.rigid_pivoted_rotable_group,
                 pivot=pivot,
                 pivot_neighbour=pivot_neighbour,
-                azimuth = azimuth,
+                azimuth=azimuth,
+                size=size,
                 scatterers=(sc[1], sc[2]))
   site_proxy = r.add(constraints.rigid_site_proxy, rg, 1)
   r.finalise()

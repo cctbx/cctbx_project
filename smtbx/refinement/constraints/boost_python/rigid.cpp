@@ -19,10 +19,12 @@ namespace smtbx { namespace refinement { namespace constraints {
           .def(init<site_parameter *,
                     site_parameter *,
                     independent_scalar_parameter *,
+                    independent_scalar_parameter *,
                     const af::shared<wt::scatterer_type *>&>
                ((arg("pivot"),
                  arg("pivot_neighbour"),
                  arg("azimuth"),
+                 arg("size"),
                  arg("scatterers"))))
           ;
         implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();

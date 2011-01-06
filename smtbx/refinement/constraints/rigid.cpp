@@ -27,23 +27,6 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  void
-  rigid_group_base
-  ::InitCoordinates(uctbx::unit_cell const &unit_cell,
-                    fractional<double> const& pivot)
-  {
-    if( crd_initialised )  return;
-    rotation_center = original_pivot_crd = unit_cell.orthogonalize(pivot);
-    for (int i=0; i < scatterers_.size(); i++)  {
-      co_s[i] = unit_cell.orthogonalize(scatterers_[i]->site);
-      rotation_center += co_s[i];
-    }
-    rotation_center = rotation_center/(scatterers_.size()+1);
-    for (int i=0; i < scatterers_.size(); i++)
-      co_s[i] = co_s[i] - rotation_center;
-    crd_initialised = true;
-  }
-
 
   // pivoted rotable...
   void
@@ -55,7 +38,8 @@ namespace smtbx { namespace refinement { namespace constraints {
       *pivot = dynamic_cast<site_parameter *>(this->argument(0)),
       *pivot_neighbour = dynamic_cast<site_parameter *>(this->argument(1));
     scalar_parameter
-      *azimuth = dynamic_cast<scalar_parameter *>(this->argument(2));
+      *azimuth = dynamic_cast<scalar_parameter *>(this->argument(2)),
+      *size = dynamic_cast<scalar_parameter *>(this->argument(3));
 
     const cart_t
       x_p = unit_cell.orthogonalize(pivot->value),
@@ -63,6 +47,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       rv = (x_p - x_pn).normalize();
     const double
       angle = azimuth->value,
+      size_value = size->value,
       ca = cos(angle),
       sa = sin(angle),
       t = 1.0-ca;
@@ -78,15 +63,18 @@ namespace smtbx { namespace refinement { namespace constraints {
       sa*rv[0]*rv[1] - ca*rv[2], sa*rv[1]*rv[1] - sa,       sa*rv[1]*rv[2] + ca*rv[0],
       sa*rv[0]*rv[2] + ca*rv[1], sa*rv[1]*rv[2] - ca*rv[0], sa*rv[2]*rv[2] - sa
     );
-    // rotation happens around the geometrical center of the group...
-    InitCoordinates(unit_cell, pivot->value);
-    const cart_t shift_to_pivot = original_pivot_crd-rotation_center;
-    const cart_t new_pivot = unit_cell.orthogonalize(pivot->value);
-    const cart_t shift = new_pivot - shift_to_pivot*rm;
+    if (!crd_initialised) {
+      const cart_t rot_center = unit_cell.orthogonalize(pivot->value);
+      for (int i=0; i < scatterers_.size(); i++)
+        co_s[i] = unit_cell.orthogonalize(scatterers_[i]->site) -
+                  rot_center;
+      crd_initialised = true;
+    }
     // Loop over the scatterers
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th scatterers
-     fx_s[i] = unit_cell.fractionalize(co_s[i]*rm + shift);
+      const cart_t p = co_s[i]*rm;
+     fx_s[i] = unit_cell.fractionalize(size_value*p + x_p);
 
       // Derivatives
       if (!jacobian_transpose) continue;
@@ -99,10 +87,15 @@ namespace smtbx { namespace refinement { namespace constraints {
 
       // Rotating
       if (azimuth->is_variable()) {
-        cart_t grad_c = (co_s[i]-shift_to_pivot)*rmd;
-        frac_t grad_f = unit_cell.fractionalize(grad_c);
+        frac_t grad_f = unit_cell.fractionalize(size_value*co_s[i]*rmd);
         for (int j=0; j<3; j++)
           jt(azimuth->index(), j_s + j) = grad_f[j];
+      }
+      // stretching
+      if (size->is_variable()) {
+        frac_t grad_f = unit_cell.fractionalize(p);
+        for (int j=0; j<3; j++)
+          jt(size->index(), j_s + j) = grad_f[j];
       }
     }
   }
@@ -151,11 +144,21 @@ namespace smtbx { namespace refinement { namespace constraints {
          c_a*s_b*s_g + s_a*c_g,  c_a*s_b*c_g - s_a*s_g, 0
       )
     };
-    // calculate the geometrical center
-    InitCoordinates(unit_cell, pivot->value);
-    const cart_t shift_to_pivot = original_pivot_crd-rotation_center;
-    const cart_t new_pivot = unit_cell.orthogonalize(pivot->value);
-    const cart_t shift = new_pivot - size_value*shift_to_pivot*rm;
+    if (!crd_initialised) {
+      const cart_t original_pivot_crd = unit_cell.orthogonalize(pivot->value);
+      cart_t rotation_center = original_pivot_crd;
+      for (int i=0; i < scatterers_.size(); i++)  {
+        co_s[i] = unit_cell.orthogonalize(scatterers_[i]->site);
+        rotation_center += co_s[i];
+      }
+      rotation_center = rotation_center/(scatterers_.size()+1);
+      for (int i=0; i < scatterers_.size(); i++)
+        co_s[i] = co_s[i] - rotation_center;
+      this->shift_to_pivot = original_pivot_crd-rotation_center;
+      crd_initialised = true;
+    }
+    const cart_t new_pivot_crd = unit_cell.orthogonalize(pivot->value);
+    const cart_t shift = new_pivot_crd - size_value*shift_to_pivot*rm;
     // expansion/contraction happens from/to the center
     for (int i=0; i < scatterers_.size(); i++) {
       // update site of i-th atoms
