@@ -1191,6 +1191,19 @@ def exercise_space_group_type():
     sgi.type().lookup_symbol(), "A b a 2 (x,y-z,y+z)")
   assert not show_diff(
     sgi.type().lookup_symbol(ad_hoc_1992=True), "A e a 2 (x,y-z,y+z)")
+  #
+  def all_t_zero(g): # this simple test is correct only for reference settings
+    assert g.make_tidy()
+    for s in g.smx():
+      if (not s.t().is_zero()): return False
+    return True
+  n_symmorphic = 0
+  for sgi in sgtbx.reference_space_group_infos():
+    is_symmorphic = sgi.type().is_symmorphic()
+    assert is_symmorphic == all_t_zero(sgi.group())
+    if (is_symmorphic):
+      n_symmorphic += 1
+  assert n_symmorphic == 73
 
 def exercise_phase_info():
   phase_info = sgtbx.phase_info

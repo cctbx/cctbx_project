@@ -50,6 +50,7 @@ namespace {
           &w_t::expand_addl_generators_of_euclidean_normalizer, (
             arg("flag_k2l"), arg("flag_l2n")))
         .def("is_enantiomorphic", &w_t::is_enantiomorphic)
+        .def("is_symmorphic", &w_t::is_symmorphic)
         .def("change_of_hand_op", &w_t::change_of_hand_op)
         .def("hall_symbol", &w_t::hall_symbol, (arg("tidy_cb_op")=true))
         .def("universal_hermann_mauguin_symbol",
