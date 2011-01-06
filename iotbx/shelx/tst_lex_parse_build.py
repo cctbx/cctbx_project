@@ -16,63 +16,65 @@ def exercise_lexing():
   i = iter(stream)
   try:
     cmd, line = i.next()
-    assert cmd, line == ('TITL', ('in Pbca',))
+    assert cmd == ('TITL', ('in Pbca',))
     cmd, line =  i.next()
-    assert cmd, line == ('CELL', (0.71073, 7.35, 9.541, 12.842, 90, 90, 90))
+    assert cmd == ('CELL', (0.71073, 7.35, 9.541, 12.842, 90, 90, 90))
     cmd, line = i.next()
-    assert cmd, line == ('ZERR', (4, 0.002, 0.002, 0.003, 0, 0, 0))
+    assert cmd == ('ZERR', (4, 0.002, 0.002, 0.003, 0, 0, 0))
     cmd, line = i.next()
-    assert cmd, line == ('LATT', (1,))
+    assert cmd == ('LATT', (1,))
     cmd, line = i.next()
-    assert cmd, line == ('SYMM', ('0.5-X, -Y, 0.5+Z',))
+    assert cmd == ('SYMM', ('0.5-X, -Y, 0.5+Z',))
     cmd, line = i.next()
-    assert cmd, line == ('SYMM', ('-X, 0.5+Y, 0.5-Z',))
+    assert cmd == ('SYMM', ('-X, 0.5+Y, 0.5-Z',))
     cmd, line = i.next()
-    assert cmd, line == ('SYMM', ('1/2+X, 0.5-Y, -Z',))
+    assert cmd == ('SYMM', ('1/2+X, 0.5-Y, -Z',))
     cmd, line =  i.next()
-    assert cmd, line == ('SFAC', ('C', 'H', 'O', 'N',))
-    cmd, line = i.next() # UNIT
-    cmd, line = i.next() # TEMP
+    assert cmd == ('SFAC', ('C', 'H', 'O', 'N',))
     cmd, line = i.next()
-    assert cmd, line == ('L.S.', (4,))
+    assert cmd == ('UNIT', (32, 40, 16, 8))
     cmd, line = i.next()
-    assert cmd, line == ('BOND', ((stream.element_tok, 'H'),))
+    assert cmd == ('TEMP', (-153,))
+    cmd, line = i.next()
+    assert cmd == ('L.S.', (4,))
+    cmd, line = i.next()
+    assert cmd == ('BOND', ((stream.element_tok, 'H'),))
     cmd, line = i.next() # FMAP
     cmd, line = i.next() # PLAN
     cmd, line = i.next() # WGHT
     cmd, line = i.next() # EXTI
     cmd, line = i.next() # FVAR
     cmd, line = i.next()
-    assert cmd, line == ('REM', ('Protracted example of residues on command',))
+    assert cmd == ('REM', ('Protracted example of residues on command',))
     cmd, line = i.next()
-    assert cmd, line == ('HFIX', (stream.residue_number_tok, 1), (23,))
+    assert cmd == ('HFIX', (stream.residue_number_tok, 1), (23,))
     cmd, line =  i.next()
-    assert cmd, line == ('HFIX', (stream.residue_class_tok, 'N'), (43,))
+    assert cmd == ('HFIX', (stream.residue_class_tok, 'N'), (43,))
     cmd, line = i.next()
-    assert cmd, line == ('EQIV', (1, '1-X, -Y, -Z'))
+    assert cmd == ('EQIV', (1, '1-X, -Y, -Z'))
     cmd, line = i.next()
-    assert cmd, line == ('CONF', ( (stream.atom_tok, 'C4', None),
+    assert cmd == ('CONF', ( (stream.atom_tok, 'C4', None),
                              (stream.atom_tok, 'N', None),
                              (stream.atom_tok, 'H', None),
                              (stream.atom_tok, 'O2', 1) ) )
     cmd, line = i.next()
-    assert cmd, line == ('__ATOM__',
+    assert cmd == ('__ATOM__',
                    ('O2', 3, 0.362893, 0.160589, -0.035913, 11,
                           0.03926, 0.02517, 0.02140,
                           -0.00415, -0.00810, 0.01009))
     cmd, line = i.next()
-    assert cmd, line == ('__ATOM__',
+    assert cmd == ('__ATOM__',
                    ('O3', 3, 0.696722, 0.119176, 0.260657, 11,
                           0.02838, 0.02133, 0.02918,
                           0.00011, -0.01030, -0.00048))
     cmd, line = i.next() # C1
     cmd, line = i.next() # C4
     cmd, line =  i.next()
-    assert cmd, line == ('RESI', (1,))
+    assert cmd == ('RESI', (1,))
     cmd, line = i.next() # C2
     cmd, line = i.next() # C3
     cmd, line =  i.next()
-    assert cmd, line == ('RESI', ('N',))
+    assert cmd == ('RESI', ('N',))
     cmd, line = i.next() # N
     cmd, line = i.next() # HKLF
     try:
