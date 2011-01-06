@@ -367,7 +367,7 @@ def parse_scala (lines) :
   tables = data_plots.import_ccp4i_logfile(log_lines=lines)
   d_max = None
   for i, line in enumerate(lines) :
-    if ("Summary data for Project" in line) :
+    if ("Summary data for " in line) :
       j = i
       n_refl = None
       n_refl_all = None
@@ -375,7 +375,7 @@ def parse_scala (lines) :
         line = lines[j].strip()
         if line.startswith("Low resolution limit") :
           d_max = float(line.split()[3])
-        elif line.startswith("Rmerge") :
+        elif line.startswith("Rmerge") and (not "bin" in line) :
           info.add_overall_stat("r_merge", float(line.split()[1]))
         elif line.startswith("Total number of observations") :
           n_refl_all = float(line.split()[4])

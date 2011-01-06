@@ -137,6 +137,9 @@ class table_data (object) :
     for raw_line in lines :
       line = raw_line.strip()
       #line = initial_spaces.sub("", raw_line)
+      if line.startswith("$$") :
+        sections_passed += 1 #line.count("$$")
+        line = re.sub("^\$\$\ *", "", line)
       if line == "" :
         pass
       elif line.startswith("$TABLE") :
@@ -159,7 +162,7 @@ class table_data (object) :
       elif sections_passed == 3 and line[0:2] != "$$" :
         fields = [ _atof(x) for x in line.split() ]
         self.add_row(fields)
-      if trailing_spaces.sub("", line).endswith("$$") :
+      if line.endswith("$$") : #trailing_spaces.sub("", line).endswith("$$") :
         sections_passed += line.count("$$")
         if sections_passed == 1 :
           if graph_lines is None : graph_lines = line[:-2]
@@ -173,7 +176,7 @@ class table_data (object) :
                            type=fields[i+1],
                            columns=[ (_atoi(x_str)-1) for x_str in col_strs ])
             i += 4
-        elif sections_passed == 4 :
+        elif (sections_passed == 4) :
           break
     for i, column in enumerate(self.data) :
       column_is_ints = [ x is None or int(x)==x for x in column ]
