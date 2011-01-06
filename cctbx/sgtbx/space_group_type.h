@@ -136,6 +136,17 @@ namespace cctbx { namespace sgtbx {
       bool
       is_enantiomorphic() const;
 
+      //! Simple table lookup.
+      /*! A space group is symmorphic if, apart from the lattice translations,
+          all symmetry operations leave one common point fixed. This is
+          true for 73 space group types, e.g. C222.
+          <p>
+          See also:
+            http://reference.iucr.org/dictionary/Symmorphic_space_groups
+       */
+      bool
+      is_symmorphic() const;
+
       //! Determines a change-of-hand matrix.
       /*! If the space group is centro-symmetric, the change-of-hand
           matrix is the identity matrix.
