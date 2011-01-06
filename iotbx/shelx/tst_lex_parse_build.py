@@ -85,6 +85,20 @@ def exercise_lexing():
   except StopIteration:
     raise AssertionError
 
+def exercise_lexing_bis():
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_equal_sign_in_rem))
+  i = iter(stream)
+  try:
+    cmd, line = i.next()
+    assert cmd == ('REM',
+                   ('Solution 1  R1  0.100,  Alpha = 0.0015  in P2(1)',))
+    cmd, line = i.next()
+    assert cmd == ('REM', ('C13 O10',))
+    cmd, line = i.next()
+    assert cmd == ('TITL', ('SUCROSE IN P2(1)',))
+  except StopIteration:
+    raise AssertionError
+
 def exercise_crystal_symmetry_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
   l = shelx.crystal_symmetry_parser(
@@ -655,6 +669,8 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
+  exercise_lexing()
+  exercise_lexing_bis()
   exercise_instruction_parsing()
   import libtbx.load_env
   if (not libtbx.env.has_module(name="smtbx")):
@@ -665,7 +681,6 @@ def run():
     exercise_afix_parsing()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
-  exercise_lexing()
   print 'OK'
 
 ins_mundane_tiny = (
@@ -1062,6 +1077,12 @@ ins_dfix_multiple = template_ins("DFIX 1.7 C1 C2 C3 C4")
 ins_invalid_dfix = template_ins("DFIX C1 C2")
 ins_invalid_dfix_2 = template_ins("DFIX 1.7 C1 C2 C3")
 ins_invalid_flat = template_ins("FLAT C1 C2 C3")
+
+ins_equal_sign_in_rem = """\
+REM Solution 1  R1  0.100,  Alpha = 0.0015  in P2(1)
+REM C13 O10
+TITL SUCROSE IN P2(1)
+"""
 
 if __name__ == '__main__':
   run()
