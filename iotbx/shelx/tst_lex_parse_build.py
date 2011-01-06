@@ -168,6 +168,29 @@ def exercise_xray_structure_parsing():
   exercise_aspirin()
   exercise_disordered()
   exercise_invalid()
+  exercise_atom_with_peaks()
+
+def exercise_atom_with_peaks():
+  builder = iotbx.builders.crystal_structure_builder(set_grad_flags=True)
+  stream = shelx.command_stream(
+    file=cStringIO.StringIO(ins_with_atom_peak_heights))
+  stream = shelx.crystal_symmetry_parser(stream, builder)
+  stream = shelx.atom_parser(stream.filtered_commands(), builder=builder,
+                             strictly_shelxl=False)
+  stream.parse()
+  sc = builder.structure.scatterers()
+
+  assert sc[0].label == 'O001'
+  assert approx_equal(sc[0].site, (0.60914, 0.62292, 0.82801), eps=1e-5)
+  assert sc[0].occupancy == 1
+  assert sc[0].flags.use_u_iso()
+  assert approx_equal(sc[0].u_iso, 0.01991)
+
+  assert sc[-1].label == 'C00N'
+  assert approx_equal(sc[-1].site, (0.95213, 0.88631, 0.71108), eps=1e-5)
+  assert sc[-1].occupancy == 1
+  assert sc[-1].flags.use_u_iso()
+  assert approx_equal(sc[-1].u_iso, 0.02971)
 
 def exercise_special_positions():
   structure = xray.structure.from_shelx(
@@ -1082,6 +1105,48 @@ ins_equal_sign_in_rem = """\
 REM Solution 1  R1  0.100,  Alpha = 0.0015  in P2(1)
 REM C13 O10
 TITL SUCROSE IN P2(1)
+"""
+
+ins_with_atom_peak_heights = """\
+TITL SUCROSE IN P2(1)
+CELL  0.71073   7.7830   8.7364  10.9002   90.000  102.984   90.000
+ZERR 2 0.001 0.0012 0.0015 0 0.009 0
+LATT -1
+SYMM -X, 1/2+Y, -Z
+SFAC C H O
+UNIT 24 44 22
+L.S. 10
+BOND
+LIST 6
+FMAP 2
+PLAN 20
+ANIS
+DELU
+O001  3  0.60914  0.62292  0.82801 11.00000  0.01991   8.33
+O002  3  0.63134  0.57137  0.62239 11.00000  0.02191   8.21
+O003  3  0.68506  0.87525  0.78808 11.00000  0.02117   8.01
+O004  3  0.25196  0.53353  0.76983 11.00000  0.02850   7.89
+O005  3  0.37848  0.73377  0.96996 11.00000  0.02967   7.87
+O006  3  0.79443  0.65096  1.07392 11.00000  0.02911   7.82
+O007  3  1.08974  0.87253  1.02226 11.00000  0.02929   7.77
+O008  3  0.96030  0.73231  0.67382 11.00000  0.03335   7.69
+O009  3  0.29687  0.22403  0.69006 11.00000  0.03867   7.41
+O00A  3  0.71468  0.42497  0.41792 11.00000  0.03487   7.28
+C00B  1  0.64414  0.15501  0.65110 11.00000  0.02137   6.85
+C00C  1  0.51386  0.61153  0.69938 11.00000  0.01950   6.36
+C00D  1  0.78440  0.77821  0.99237 11.00000  0.02002   6.06
+C00E  1  0.36586  0.49695  0.68863 11.00000  0.01963   6.03
+C00F  1  0.94543  0.80269  0.93471 11.00000  0.02056   5.97
+C00G  1  0.63136  0.77807  0.87607 11.00000  0.02041   5.94
+C00H  1  0.55937  0.29776  0.62561 11.00000  0.02281   5.87
+C00I  1  0.45580  0.83872  0.89621 11.00000  0.02767   5.77
+C00J  1  0.87184  0.90817  0.82300 11.00000  0.02382   5.76
+C00K  1  0.43548  0.33306  0.71436 11.00000  0.02549   5.76
+C00L  1  0.81534  0.39973  0.54440 11.00000  0.02952   5.73
+C00M  1  0.70459  0.41948  0.64084 11.00000  0.02597   5.72
+C00N  1  0.95213  0.88631  0.71108 11.00000  0.02971   5.35
+HKLF 4
+END
 """
 
 if __name__ == '__main__':

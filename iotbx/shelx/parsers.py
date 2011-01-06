@@ -214,6 +214,10 @@ class atom_parser(parser, variable_decoder):
   overall_scale=None
   scatterer_label_to_index = {}
 
+  def __init__(self, command_stream, builder=None, strictly_shelxl=True):
+    parser.__init__(self, command_stream, builder)
+    self.strictly_shelxl = strictly_shelxl
+
   def filtered_commands(self):
     self.label_for_sfac = None
     scatterer_index = 0
@@ -266,11 +270,11 @@ class atom_parser(parser, variable_decoder):
     self.scatterer_label_to_index.setdefault(name.lower(), scatterer_index)
     n = int(args[1])
     n_vars = len(args) - 2
-    if n_vars == 5:
+    if n_vars == 5 or (not self.strictly_shelxl and n_vars == 6):
       values, behaviours = self.decode_variables(
         args[2:],
         u_iso_idx=n_vars-1)
-      u = values[-1]
+      u = values[4]
       isotropic = True
     elif n_vars == 10:
       unit_cell = self.builder.crystal_symmetry.unit_cell()
