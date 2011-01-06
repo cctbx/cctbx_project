@@ -22,7 +22,6 @@ class crystallographic_ls(
   f_mask = None
   restraints_manager=None
   n_restraints = None
-  twin_components = None
   initial_scale_factor = None
 
   def __init__(self, fo_sq, reparametrisation, **kwds):
@@ -48,12 +47,16 @@ class crystallographic_ls(
     def fget(self):
       return self.reparametrisation.structure
 
+  class twin_components(libtbx.property):
+    def fget(self):
+      return self.reparametrisation.twin_components
+
   def build_up(self, objective_only=False):
     if self.f_mask is not None:
       f_mask = self.f_mask.data()
     else:
       f_mask = flex.complex_double()
-    twin_components = self.twin_components
+    twin_components = self.reparametrisation.twin_components
     if twin_components is None:
       twin_components = ()
 
