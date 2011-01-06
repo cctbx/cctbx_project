@@ -28,7 +28,7 @@
     some of the parameters involved in the constraints as functions
     of the others, and sometimes of extra parameter, which are usually referred
     to as "free variables" following the ShelX nomenclature.
-    In the above example, the Hydrogen sites are function of the Carbon site
+    In the above example, the Hydrogen sites are a function of the Carbon site
     and of one rotation angle around the C-C bond.
 
     The former presentation is what is known as constraints in numerical
@@ -102,7 +102,7 @@ private:
     any non-trivial constructor shall only initialise the class member and
     not attempt to initialise the virtual bases higher in the inheritance
     hierarchy since, again, that will have to be done by the most derived
-    classes anyway. (few!)
+    classes anyway. (phew!)
  */
 class parameter
 {
@@ -623,7 +623,7 @@ private:
   /** The default is to do nothing */
   void start(parameter *p) { }
 
-  /// Wether the visit shall proceed by starting a DFS from p
+  /// Whether the visit shall proceed by starting a DFS from p
   /** The default is to do so */
   bool shall_start_visit_from(parameter *p) { return true; }
 
@@ -632,7 +632,7 @@ private:
   void discover(parameter *p) { }
 
   /// Call just after the edge from p to its argument q is discovered
-  /** the default it to do nothing */
+  /** the default is to do nothing */
   void examine_edge(parameter *p, parameter *q) { }
 
   /// Whether the visit shall proceed by crossing from p to its argument q.
@@ -753,7 +753,7 @@ public:
             all_param_inserter_t;
     topologist<all_param_inserter_t> t(std::back_inserter(all));
     BOOST_FOREACH(parameter *p, params) t.visit(p);
-    whiten(); // only time we need to call that explicitely
+    whiten(); // only time we need to call that explicitly
 
     analyse_variability();
   }
@@ -820,7 +820,7 @@ public:
   /// scatterers.
   void store();
 
-  /// Let the given visitor visits all parameters.
+  /// Let the given visitor visit all parameters.
   /** All nodes are whitened before returning, allowing another visit to proceed
       immediately.
    */

@@ -240,7 +240,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   void reparametrisation
   ::finalise() {
-    whiten(); // only time we need to call that explicitely
+    whiten(); // only time we need to call that explicitly
     analyse_variability();
   }
 
