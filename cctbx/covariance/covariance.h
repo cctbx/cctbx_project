@@ -33,12 +33,13 @@ namespace cctbx { namespace covariance {
         std::size_t j_seq = i_seqs[j];
         cctbx::xray::parameter_indices ids_i = parameter_map[i_seq];
         cctbx::xray::parameter_indices ids_j = parameter_map[j_seq];
-        CCTBX_ASSERT(ids_i.site> -1);
-        CCTBX_ASSERT(ids_j.site> -1);
         for (std::size_t ii=0; ii<3; ii++) {
           for (std::size_t jj=0; jj<3; jj++) {
             if (i==j && ii>jj) continue;
-            if (ids_i.site > ids_j.site) {
+            if (ids_i.site == -1 || ids_j.site == -1) {
+              result(i*3+ii,j*3+jj) = 0.0;
+            }
+            else if (ids_i.site > ids_j.site) {
               result(i*3+ii,j*3+jj) = matrix(ids_j.site+jj, ids_i.site+ii);
             }
             else {
