@@ -26,10 +26,10 @@ $$
 #  print t.format_loggraph()
 #  print "---"
 #  print loggraph1
-  assert len(t.data) == 4
-  assert t.data[0] == [0.02, 0.04, 0.06, 0.08, 0.10]
-  assert t.data[3][4] is None
-  assert t.format_loggraph() == loggraph1
+  assert (len(t.data) == 4)
+  assert (t.data[0] == [0.02, 0.04, 0.06, 0.08, 0.10])
+  assert (t.data[3][4] is None)
+  assert (t.format_loggraph() == loggraph1)
   f = open("_tst_data_plots.log", "w")
   f.write("\nRandom non-loggraph text\n\n")
   f.write(loggraph1)
