@@ -32,8 +32,8 @@ class direct_space_asu(object):
       print >> f, "    &", cut
     return self
 
-  def is_inside(self, point, volume_only=False):
-    if (volume_only):
+  def is_inside(self, point, shape_only=False):
+    if (shape_only):
       for cut in self.cuts:
         if (cut.evaluate(point) < 0): return False
     else:
@@ -54,13 +54,13 @@ class direct_space_asu(object):
       cut.extract_all_cuts(result)
     return result
 
-  def volume_only(self):
+  def shape_only(self):
     result = direct_space_asu(self.hall_symbol)
     for cut in self.cuts:
       result.cuts.append(cut.strip())
     return result
 
-  def volume_vertices(self):
+  def shape_vertices(self):
     result = set()
     cuts = self.cuts
     n_cuts = len(cuts)
@@ -73,26 +73,26 @@ class direct_space_asu(object):
             m_inv = m.co_factor_matrix_transposed() * (r1/d)
             b = matrix.col([-cuts[i0].c,-cuts[i1].c,-cuts[i2].c])
             vertex = m_inv * b
-            if (self.is_inside(vertex, volume_only=True)):
+            if (self.is_inside(vertex, shape_only=True)):
               result.add(vertex.elems)
     return sorted(result)
 
-  def _box_corner(self, volume_vertices, min_or_max):
-    if (volume_vertices is None):
-      volume_vertices = self.volume_vertices()
-    if (len(volume_vertices) == 0):
+  def _box_corner(self, shape_vertices, min_or_max):
+    if (shape_vertices is None):
+      shape_vertices = self.shape_vertices()
+    if (len(shape_vertices) == 0):
       return None
-    result = list(volume_vertices[0])
-    for vertex in volume_vertices[1:]:
+    result = list(shape_vertices[0])
+    for vertex in shape_vertices[1:]:
       for i in xrange(3):
         result[i] = min_or_max(result[i], vertex[i])
     return result
 
-  def box_min(self, volume_vertices=None):
-    return self._box_corner(volume_vertices, min)
+  def box_min(self, shape_vertices=None):
+    return self._box_corner(shape_vertices, min)
 
-  def box_max(self, volume_vertices=None):
-    return self._box_corner(volume_vertices, max)
+  def box_max(self, shape_vertices=None):
+    return self._box_corner(shape_vertices, max)
 
   def add_plane(self, normal_direction, point=None):
     if (point is None):

@@ -14,7 +14,7 @@ class colored_grid_point(object):
     self.site = tuple(site)
     self.color = color
 
-def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
+def sample_asu(asu, n=(12,12,12), shape=False, is_stripped_asu=False):
   n_redundancies = 0
   u_grid=[]
   for i in xrange(n[0]):
@@ -34,12 +34,12 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
       for k in xrange(-n[2]//2, n[2]+1):
         frac = rational.vector((i,j,k), n)
         f = asu.is_inside(frac)
-        fv = asu.is_inside(frac, volume_only=True)
+        fv = asu.is_inside(frac, shape_only=True)
         if (len(asu.in_which_cuts(frac)) != 0 and fv):
           colored_grid_points.append(colored_grid_point(
             frac,
             jv_asu.select_color(f)))
-        if (volume):
+        if (shape):
           if (not fv): assert not f
         else:
           fv = False
@@ -64,9 +64,9 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
   return u_grid, r_grid, colored_grid_points, n_redundancies
 
 def check_compatibility_with_sampling_grid(asu):
-  print "Volume vertices:"
+  print "Shape vertices:"
   n_outside_sampling_grid = 0
-  for vertex in asu.volume_vertices():
+  for vertex in asu.shape_vertices():
     s = ""
     for v in vertex:
       if (v < -rational.int(1,2) or v > 1):
@@ -392,11 +392,11 @@ if (__name__=="__main__"):
             == sgtbx.space_group_info(number=space_group_number).group()
         asu = asu_original
         if (flags.strip or flags.strip_polygons):
-          asu = asu_original.volume_only()
+          asu = asu_original.shape_only()
         print "Writing asu_gallery files"
         jv_asu.asu_as_jvx(space_group_number, asu)
         if (flags.strip_grid):
-          asu = asu_original.volume_only()
+          asu = asu_original.shape_only()
         if (flags.show_asu):
           asu.show_comprehensive_summary()
         check_asu(

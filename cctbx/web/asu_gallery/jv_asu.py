@@ -1,6 +1,6 @@
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
-from cctbx.web.asu_gallery import cut_notation
+from cctbx.web.asu_gallery import guide_to_notation
 from cctbx.web.asu_gallery import web_links
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
@@ -224,12 +224,12 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   l("<br>")
   l("Basis vectors: a = red, b = green, c = blue")
   l("<p>")
-  volume_vertices = facet_analysis.volume_vertices(asu)
+  shape_vertices = facet_analysis.shape_vertices(asu)
   l("<table border=2 cellpadding=8>")
   l("<tr valign=top>")
   l("<td>")
-  l("<pre>Number of vertices: %d" % len(volume_vertices))
-  for vertex in volume_vertices:
+  l("<pre>Number of vertices: %d" % len(shape_vertices))
+  for vertex in shape_vertices:
     l("  "+str(vertex)[1:-1])
   l("</pre>")
   l("</td>")
@@ -238,7 +238,7 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   for cut in asu.cuts:
     l("  "+cut.as_xyz())
   l("</pre>")
-  l('<a href="cut_notation.html">[Guide to notation]</a>')
+  l('<a href="guide_to_notation.html">[Guide to notation]</a>')
   l("</td>")
   l("</tr>")
   l("</table>")
@@ -274,7 +274,8 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
   if (not os.path.isdir(html_subdir)):
     os.makedirs(html_subdir)
   jv_index.write_html(open("%s/index.html" % html_subdir, "w"))
-  cut_notation.write_html(open("%s/cut_notation.html" % html_subdir, "w"))
+  guide_to_notation.write_html(
+    open("%s/guide_to_notation.html" % html_subdir, "w"))
   if (len(args) == 0):
     args = ["1-230"]
   for arg in args:

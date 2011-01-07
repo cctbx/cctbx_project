@@ -22,7 +22,7 @@ class direct_space_asu(sgtbx.direct_space_asu.direct_space_asu):
     if (epsilon is None): epsilon = 1.e-3
     points = flex.vec3_double()
     orth = self.unit_cell.orthogonalize
-    for vertex in self.volume_vertices():
+    for vertex in self.shape_vertices():
       points.append(orth([float(e) for e in vertex]))
     return minimum_covering_sphere(points=points, epsilon=epsilon)
 

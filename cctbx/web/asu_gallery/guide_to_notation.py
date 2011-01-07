@@ -5,7 +5,7 @@ import sys
 def write_html(f=None):
   if (f is None): f = sys.stdout
   iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
-  title = "ASU Gallery - Cut notation"
+  title = "ASU Gallery - Guide to notation"
   print >> f, html_head_title(title=title)
   print >> f, """\
 <body>
@@ -18,13 +18,13 @@ Reference:
 >IUCr Computing Commission Newsletter No. 2, July 2003</a>
 <hr>
 
-Each cut of an asymmetric unit is defined by a condition of
+Each cut plane of an asymmetric unit is defined by a condition of
 the form
 <pre>
   h*x+k*y+l*z+c>=0
 </pre>
 <tt>h</tt>,<tt>k</tt>,<tt>l</tt> are Miller indices and define the
-normal vector of the cut, <tt>c</tt> is a constant which determines
+normal vector of the cut plane, <tt>c</tt> is a constant which determines
 the distance from the origin. <tt>x</tt>,<tt>y</tt>,<tt>z</tt> are
 fractional coordinates in direct space. The expression
 <tt>h*x+k*y+l*z+c</tt> is
@@ -41,7 +41,7 @@ to <tt>h*x+k*y+l*z+c&gt;0</tt>.
 
 <p>
 
-To enhance readability the facet conditions (shown under the pictures
+To enhance readability the asymmetric unit conditions (shown under the pictures
 in the gallery) are simplified by omitting terms with zeros (e.g.
 <tt>0*x</tt>) and unit factors (e.g. <tt>x</tt> instead of
 <tt>1*x</tt>). The constant term <tt>c</tt> is moved to the right-hand
@@ -55,27 +55,27 @@ side. For example:
 </pre>
 
 A point <tt>x</tt>,<tt>y</tt>,<tt>z</tt> is inside the asymmetric unit
-only if all facet conditions are simultaneously true.
+only if all conditions are simultaneously true.
 
 <p>
 
-Often a facet is only partially inside the asymmetric unit.
-The dividing lines are defined by facet-specific additional
-conditions. For example:
+Often a face or edge on the surface of the asymmetric unit is only partially
+inside. The dividing lines are defined by face- or edge-specific
+sub-conditions. For example:
 
 <pre>
   y<=1/4 [z<=1/2]
 </pre>
 
-The first term defines the face as before. The second term
-in the square brackets only applies if <tt>y=1/4</tt>.
+The first condition defines the face as before. The second condition
+in square brackets only applies if <tt>y=1/4</tt>.
 This notation is recursive. For example:
 
 <pre>
   y<=1/4 [z<=1/2 [x<=1/4]]
 </pre>
 
-The third term only applies if <tt>y=1/4</tt> and <tt>z=1/2</tt>.
+The third condition only applies if <tt>y=1/4</tt> and <tt>z=1/2</tt>.
 
 <p>
 Some asymmetric units require the combination of conditions with

@@ -144,8 +144,8 @@ def extract_polygon_vertices(list_of_polygons):
         result[vertex] = 1
   return result.keys()
 
-def volume_vertices(asu):
-  return extract_polygon_vertices(asu_polygons(asu.volume_only()))
+def shape_vertices(asu):
+  return extract_polygon_vertices(asu_polygons(asu.shape_only()))
 
 def line_sample_point(a, b, f, gridding):
   return [a[i]+rational.int(f,gridding)*(b[i]-a[i]) for i in xrange(3)]
@@ -191,7 +191,7 @@ def all_cut_points(asu):
           assert is_one_of(all_cuts, second_cut)
         point = intersection(cuts=all_cuts)
         assert point is not None
-        if (asu.is_inside(point, volume_only=True)):
+        if (asu.is_inside(point, shape_only=True)):
           result[point] = 1
   return result.keys()
 

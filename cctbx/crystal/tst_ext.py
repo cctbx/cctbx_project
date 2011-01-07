@@ -79,7 +79,7 @@ def exercise_direct_space_asu():
   asu = crystal.direct_space_asu_float_asu(
     unit_cell=unit_cell,
     cuts=[])
-  assert asu.volume_vertices().size() == 0
+  assert asu.shape_vertices().size() == 0
   cuts = []
   for i in xrange(3):
     n = [0,0,0]
@@ -103,9 +103,9 @@ def exercise_direct_space_asu():
   assert buf_asu.is_inside([0.99+0.2,0.49+0.2,0.32+0.2])
   eps = 0.02
   assert not buf_asu.is_inside([0.99+0.2+eps,0.49+0.2+eps,0.32+0.2+eps])
-  assert len(asu.volume_vertices()) == 1
+  assert len(asu.shape_vertices()) == 1
   for cartesian in [False,True]:
-    assert approx_equal(asu.volume_vertices(
+    assert approx_equal(asu.shape_vertices(
       cartesian=cartesian, epsilon=1.e-6)[0], (1.0, 2.0, 3.0))
   asu = crystal.direct_space_asu.float_asu(
     unit_cell=unit_cell,
