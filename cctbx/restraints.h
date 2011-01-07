@@ -51,6 +51,17 @@ namespace cctbx { namespace restraints {
       return row_i++;
     }
 
+    void add_equation(
+      FloatType r, af::const_ref<FloatType> const &gradient, FloatType w) {
+      CCTBX_ASSERT(gradient.size() == n_crystallographic_params());
+      std::size_t row_i = next_row();
+      deltas[row_i] = r;
+      weights[row_i] = w;
+      for (std::size_t col_i=0; col_i<gradient.size(); col_i++) {
+        design_matrix(row_i, col_i) = gradient[col_i];
+      }
+    }
+
     bool finalised() { return row_i >= n_rows; }
 
     std::size_t n_restraints() { return row_i; }

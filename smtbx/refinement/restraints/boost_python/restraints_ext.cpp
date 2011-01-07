@@ -37,6 +37,7 @@ namespace boost_python {
         .add_property("weights", make_getter(&wt::weights, rbv()))
         .def("n_crystallographic_params", &wt::n_crystallographic_params)
         .def("n_restraints", &wt::n_restraints)
+        .def("add_equation", &wt::add_equation)
         ;
     }
   };
