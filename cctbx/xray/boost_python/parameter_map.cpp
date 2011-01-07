@@ -2,6 +2,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/iterator.hpp>
 
@@ -40,14 +41,19 @@ struct parameter_map_wrapper
   static void wrap(char const *name) {
     using namespace boost::python;
     typedef return_value_policy<copy_const_reference> ccr;
+    typedef return_value_policy<return_by_value> rbv;
     class_<wt>("parameter_map", no_init)
-      .def(init<af::const_ref<typename wt::xray_scatterer_type> const &>(
-            arg("scatterers")))
+      .def(init<af::const_ref<typename wt::xray_scatterer_type> const &>((
+            arg("scatterers"))))
+      .def(init<af::const_ref<typename wt::xray_scatterer_type> const &,
+                af::shared<twin_component<double> *> const &>((
+            arg("scatterers"), arg("twin_components"))))
       .def("__len__", &wt::size)
       .def("__getitem__", &wt::operator[], ccr())
       .def("__iter__", iterator<wt, ccr>())
       .add_property("n_parameters", &wt::n_parameters)
       .add_property("n_scatterers", &wt::n_scatterers)
+      .add_property("twin_fractions", make_getter(&wt::twin_fractions, rbv()))
       ;
   }
 };
