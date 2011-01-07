@@ -41,7 +41,7 @@ class restraints_test_case:
 
   def exercise_ls_restraints(self):
     xs = self.xray_structure.deep_copy_scatterers()
-    linearised_eqns = self.manager.build_linearised_eqns(xs)
+    linearised_eqns = self.manager.build_linearised_eqns(xs, xs.parameter_map())
     design_matrix = linearised_eqns.design_matrix.as_dense_matrix()
     fd_design = flex.double()
     for proxy in self.proxies:
@@ -308,7 +308,34 @@ def exercise_restrained_refinement(options):
     d = uc.distance(*[ sc[i].site for i in p.i_seqs ])
     assert approx_equal(d, p.distance_ideal, eps)
 
+def exercise_add_equation():
+  linearised_eqns = restraints.linearised_eqns_of_restraint(10, 10)
+  delta = 0.5
+  grads = flex.double((0,0,1,0,0,2,0,0,-1, 0))
+  w = 10
+  linearised_eqns.add_equation(delta, grads, w)
+  assert linearised_eqns.n_restraints() == 1
+  linearised_eqns.add_equation(delta, grads, w)
+  linearised_eqns.add_equation(delta, grads, w)
+  assert linearised_eqns.n_restraints() == 3
+  from scitbx import sparse
+  assert approx_equal(
+    linearised_eqns.design_matrix.as_dense_matrix(),
+    sparse.matrix(rows=10, columns=10,
+                  elements_by_columns=[ { 0: 0, 1: 0, 2: 0 },
+                                        { 0: 0, 1: 0, 2: 0 },
+                                        { 0: 1, 1: 1, 2: 1 },
+                                        { 0: 0, 1: 0, 2: 0 },
+                                        { 0: 0, 1: 0, 2: 0 },
+                                        { 0: 2, 1: 2, 2: 2 },
+                                        { 0: 0, 1: 0, 2: 0 },
+                                        { 0: 0, 1: 0, 2: 0 },
+                                        { 0: -1, 1: -1, 2: -1 },
+                                        { 0: 0, 1: 0, 2: 0 }, ]).as_dense_matrix())
+
+
 def exercise_ls_restraints(options):
+  exercise_add_equation()
   exercise_restrained_refinement(options)
   bond_restraint_test_case().run()
   angle_restraint_test_case().run()

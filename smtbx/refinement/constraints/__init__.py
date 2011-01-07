@@ -210,4 +210,7 @@ class reparametrisation(ext.reparametrisation):
     return p
 
   def parameter_map(self):
-    return xray.parameter_map(self.structure.scatterers(), self.twin_components)
+    if self.twin_components is None:
+      return xray.parameter_map(self.structure.scatterers())
+    else:
+      return xray.parameter_map(self.structure.scatterers(), self.twin_components)
