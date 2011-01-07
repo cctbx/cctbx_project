@@ -212,6 +212,24 @@ class hydrogen_bond_table (object) :
       sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
       print >>out, "dist %s, %s" % (sele1, sele2)
 
+  def as_kinemage (self, pdb_hierarchy, filter=True, out=sys.stdout) :
+    atoms = pdb_hierarchy.atoms()
+    print >> out, """\
+@group {PHENIX H-bonds}
+@subgroup {H-bond dots} dominant"""
+    for (i_seq, j_seq) in self.get_simple_bonds(filter=filter) :
+      a = atoms[i_seq].xyz
+      b = atoms[j_seq].xyz
+      ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
+      print >> out, """@dotlist {Drawn dots} color= green"""
+      for x in range(1, 12) :
+        fac = float(x) / 12
+        vec = (a[0] + (ab[0]*fac), a[1] + (ab[1]*fac), a[2] + (ab[2]*fac))
+        if (x == 1) :
+          print "{drawn} %.4f %.4f %.4f" % vec
+        else :
+          print "{''} %.4f %.4f %.4f" % vec
+
   def as_refmac_restraints (self, pdb_hierarchy, filter=True, out=sys.stdout) :
     atoms = pdb_hierarchy.atoms()
     for bond in self.get_bond_restraint_data(filter=filter) :
@@ -580,7 +598,7 @@ class manager (object) :
     if (find_nucleic_acids(self.pdb_hierarchy) or
         params.input.force_nucleic_acids) :
       find_automatically = params.input.find_automatically
-      if len(params.nucleic_acids.base_pair) == 0 :
+      if (len(params.nucleic_acids.base_pair) == 0) :
         if find_automatically != False :
           find_automatically = True
       if find_automatically :
@@ -861,7 +879,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       .type = bool
     show_histograms = False
       .type = bool
-    format = *phenix phenix_bonds pymol refmac
+    format = *phenix phenix_bonds pymol refmac kinemage
       .type = choice
     quiet = False
       .type = bool
@@ -881,7 +899,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
           print "Unrecognizable file format for %s" % arg
         else :
           user_phil = find_ss_phil(user_phil)
-          user_phil.show()
+          #user_phil.show()
           sources.append(user_phil)
     else :
       if arg.startswith("--") :
@@ -927,12 +945,14 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     bonds_table = m.get_bonds_table(log=log)
   elif params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
-  elif params.format in ["pymol", "refmac"] :
+  elif params.format in ["pymol", "refmac", "kinemage"] :
     bonds_table = m.get_bonds_table(log=log)
     if (bonds_table is None) :
       pass
     elif params.format == "pymol" :
       bonds_table.as_pymol_dashes(pdb_hierarchy, filter=True, out=out)
+    elif params.format == "kinemage" :
+      bonds_table.as_kinemage(pdb_hierarchy, filter=True, out=out)
     else :
       bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
   else :
