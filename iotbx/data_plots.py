@@ -137,7 +137,7 @@ class table_data (object) :
     for raw_line in lines :
       line = raw_line.strip()
       #line = initial_spaces.sub("", raw_line)
-      if line.startswith("$$") :
+      if line.startswith("$$") and (not line == "$$") :
         sections_passed += 1 #line.count("$$")
         line = re.sub("^\$\$\ *", "", line)
       if line == "" :
