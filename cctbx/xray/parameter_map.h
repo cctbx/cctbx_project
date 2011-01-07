@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
+#include <cctbx/xray/twin_component.h>
 
 namespace cctbx { namespace xray {
 
@@ -50,6 +51,26 @@ class parameter_map
       : map(scatterers.size()),
         params(0)
     {
+      init_scatterer_part(scatterers);
+    }
+
+    parameter_map(af::const_ref<xray_scatterer_type> const &scatterers,
+                  af::shared<twin_component<double> *> const &twin_components)
+      : map(scatterers.size()),
+        params(0),
+        twin_fractions(twin_components.size(), -1)
+    {
+      init_scatterer_part(scatterers);
+      for (int i_twin=0; i_twin < twin_components.size(); i_twin++) {
+        if (twin_components[i_twin]->grad_twin_fraction) {
+          twin_fractions[i_twin] = params++;
+        }
+      }
+    }
+
+private:
+    void init_scatterer_part(af::const_ref<xray_scatterer_type> const &scatterers)
+    {
       for(int i_sc=0; i_sc < scatterers.size(); ++i_sc) {
         xray_scatterer_type const &sc = scatterers[i_sc];
         parameter_indices &ids = map[i_sc];
@@ -68,6 +89,7 @@ class parameter_map
       }
     }
 
+public:
     parameter_indices const &operator[](int i_sc) const { return map[i_sc]; }
 
     iterator begin() const { return map.begin(); }
@@ -79,6 +101,8 @@ class parameter_map
     int n_scatterers() const { return size(); }
 
     int n_parameters() const { return params; }
+
+    af::shared<int> twin_fractions;
 };
 
 }} // cctbx::xray

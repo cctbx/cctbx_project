@@ -1159,32 +1159,38 @@ def exercise_parameter_map():
     f.set_grad_occupancy(occ)
     f.set_grad_fp(fp)
     f.set_grad_fdp(fdp)
-  m = xs.parameter_map()
-  assert m.n_parameters == xs.n_parameters()
+  m1 = xs.parameter_map()
+  twins = (xray.twin_component(sgtbx.rot_mx((1,0,0,0,1,0,0,0,-1)),0.5, True),
+           xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, False))
+  m2 = xray.parameter_map(xs.scatterers(), twins)
+  assert m1.n_parameters == xs.n_parameters()
+  assert m2.n_parameters == xs.n_parameters()+1
+  assert approx_equal(m2.twin_fractions, (33,-1))
 
-  indices = m[0]
-  assert indices.site == 0
-  assert indices.u_iso == xray.parameter_indices.invariable
-  assert indices.u_aniso == 3
-  assert indices.occupancy == xray.parameter_indices.invariable
-  assert indices.fp == 9
-  assert indices.fdp == 10
+  for m in (m1, m2):
+    indices = m[0]
+    assert indices.site == 0
+    assert indices.u_iso == xray.parameter_indices.invariable
+    assert indices.u_aniso == 3
+    assert indices.occupancy == xray.parameter_indices.invariable
+    assert indices.fp == 9
+    assert indices.fdp == 10
 
-  indices = m[1]
-  assert indices.site == xray.parameter_indices.invariable
-  assert indices.u_iso == 11
-  assert indices.u_aniso == xray.parameter_indices.invariable
-  assert indices.occupancy == 12
-  assert indices.fp == 13
-  assert indices.fdp == xray.parameter_indices.invariable
+    indices = m[1]
+    assert indices.site == xray.parameter_indices.invariable
+    assert indices.u_iso == 11
+    assert indices.u_aniso == xray.parameter_indices.invariable
+    assert indices.occupancy == 12
+    assert indices.fp == 13
+    assert indices.fdp == xray.parameter_indices.invariable
 
-  for i, indices in enumerate(m):
-    assert indices.site == m[i].site
-    assert indices.u_iso == m[i].u_iso
-    assert indices.u_aniso == m[i].u_aniso
-    assert indices.occupancy == m[i].occupancy
-    assert indices.fp == m[i].fp
-    assert indices.fdp == m[i].fdp
+    for i, indices in enumerate(m):
+      assert indices.site == m[i].site
+      assert indices.u_iso == m[i].u_iso
+      assert indices.u_aniso == m[i].u_aniso
+      assert indices.occupancy == m[i].occupancy
+      assert indices.fp == m[i].fp
+      assert indices.fdp == m[i].fdp
 
 
 def exercise_xray_structure_repr():
