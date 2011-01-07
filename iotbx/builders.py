@@ -58,7 +58,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
         if behaviour_of_variable[4] != _.constant_parameter:
           f.set_grad_u_iso(True)
       else:
-        if behaviour_of_variable[-6:].count(_.constant_parameter) != 3:
+        if behaviour_of_variable[-6:].count(_.constant_parameter) != 6:
           f.set_grad_u_aniso(True)
     self.structure.add_scatterer(scatterer)
 
