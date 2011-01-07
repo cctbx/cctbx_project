@@ -45,3 +45,4 @@ class dependent_occupancy(object):
         scatterer = reparametrisation.structure.scatterers()[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param
       reparametrisation.shared_occupancies[sc[0]] = occupancy
+    self.occupancy = occupancy
