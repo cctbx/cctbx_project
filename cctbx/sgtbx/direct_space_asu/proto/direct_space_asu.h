@@ -63,15 +63,15 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Removes subexpressions from every face
-    void volume_only()
+    void shape_only()
     {
-      faces = faces->new_volume_only();
+      faces = faces->new_shape_only();
     }
 
     // Experimental
-    void volume_only_keep_inclusive_flag()
+    void shape_only_keep_inclusive_flag()
     {
-      faces = faces->new_volume_only_keep_inclusive_flag();
+      faces = faces->new_shape_only_keep_inclusive_flag();
     }
 
 
@@ -119,7 +119,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 
     //! Tests if point belongs to the asymmetric unit, disregarding plane subexpressions
-    bool is_inside_volume_only(const rvector3_t &point) const
+    bool is_inside_shape_only(const rvector3_t &point) const
     {
       const size_type sz = this->n_faces();
       cut plane;
@@ -132,14 +132,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return true;
     }
 
-    bool is_inside_volume_only(const scitbx::af::double3 &point, double tol) const
+    bool is_inside_shape_only(const scitbx::af::double3 &point, double tol) const
     {
-      return faces->is_inside_volume_only(point, tol);
+      return faces->is_inside_shape_only(point, tol);
     }
 
     bool is_inside(const rvector3_t &point, bool vol_only) const
     {
-      return vol_only ? is_inside_volume_only(point) : is_inside(point);
+      return vol_only ? is_inside_shape_only(point) : is_inside(point);
     }
 
     //! Returns number of the faces in the asu
@@ -158,7 +158,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Returns a set of all asu vertices
-    void volume_vertices(set_rvector3_t &result) const;
+    void shape_vertices(set_rvector3_t &result) const;
 
     //! Returns bounding box for the asu. Not in python
     void box_corners(rvector3_t &mn, rvector3_t &mx) const;

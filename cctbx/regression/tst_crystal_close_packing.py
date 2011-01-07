@@ -65,10 +65,10 @@ def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
   hex_cell = hexagonal_sampling_cell(point_distance=point_distance)
   hex_box = hexagonal_box(
     hex_cell=hex_cell,
-    vertices_cart=float_asu.volume_vertices(cartesian=True))
+    vertices_cart=float_asu.shape_vertices(cartesian=True))
   hex_box_buffer = hexagonal_box(
     hex_cell=hex_cell,
-    vertices_cart=float_asu_buffer.volume_vertices(cartesian=True))
+    vertices_cart=float_asu_buffer.shape_vertices(cartesian=True))
   box_lower = []
   box_upper = []
   for i in xrange(3):

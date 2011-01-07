@@ -177,7 +177,7 @@ namespace direct_space_asu {
           strictly greater than zero.
        */
       af::shared<scitbx::vec3<FloatType> >
-      volume_vertices(
+      shape_vertices(
         bool cartesian=false,
         FloatType const& epsilon=1e-6) const
       {
@@ -258,7 +258,7 @@ namespace direct_space_asu {
       void
       compute_box() const
       {
-        af::shared<scitbx::vec3<FloatType> > vertices_ = volume_vertices();
+        af::shared<scitbx::vec3<FloatType> > vertices_ = shape_vertices();
         af::const_ref<scitbx::vec3<FloatType> > vertices = vertices_.ref();
         CCTBX_ASSERT(vertices.size() >= 4);
         box_min_frac_ = box_max_frac_ = vertices[0];
@@ -412,7 +412,7 @@ namespace direct_space_asu {
         asu_buffer_(asu.add_buffer(buffer_thickness)),
         buffer_covering_sphere_(
           scitbx::math::minimum_covering_sphere_3d<FloatType>(
-            asu.volume_vertices(true).const_ref())
+            asu.shape_vertices(true).const_ref())
           .expand(buffer_thickness)
           .expand_relative(2*asu.is_inside_epsilon())),
         mappings_const_ref_(mappings_.const_ref()),

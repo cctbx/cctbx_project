@@ -79,8 +79,8 @@ int main(int argc, const char* argv[])
 
     ins = loop_over_grid_points(asu, n);
 
-    asu.volume_only();
-    std::cout << "\nAfter volume_only\n";
+    asu.shape_only();
+    std::cout << "\nAfter shape_only\n";
 
     ins = loop_over_grid_points(asu, n);
   }

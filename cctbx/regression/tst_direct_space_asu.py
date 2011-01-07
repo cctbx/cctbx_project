@@ -38,17 +38,17 @@ def exercise_cut_planes(cut_planes):
   for cut_plane in cut_planes:
     assert cut_plane.strip().is_inside(cut_plane.get_point_in_plane())
 
-def exercise_volume_vertices(asu, unit_cell):
-  volume_asu = asu.volume_only()
-  asu_volume_vertices = asu.volume_vertices()
-  assert len(asu_volume_vertices) >= 4
-  facet_analysis_volume_vertices = facet_analysis.volume_vertices(asu)
-  assert len(asu_volume_vertices) == len(facet_analysis_volume_vertices)
-  asu_volume_vertices.sort()
-  facet_analysis_volume_vertices.sort()
-  assert asu_volume_vertices == facet_analysis_volume_vertices
-  for box_min,box_max in zip(asu.box_min(volume_vertices=asu_volume_vertices),
-                             asu.box_max(volume_vertices=asu_volume_vertices)):
+def exercise_shape_vertices(asu, unit_cell):
+  volume_asu = asu.shape_only()
+  asu_shape_vertices = asu.shape_vertices()
+  assert len(asu_shape_vertices) >= 4
+  facet_analysis_shape_vertices = facet_analysis.shape_vertices(asu)
+  assert len(asu_shape_vertices) == len(facet_analysis_shape_vertices)
+  asu_shape_vertices.sort()
+  facet_analysis_shape_vertices.sort()
+  assert asu_shape_vertices == facet_analysis_shape_vertices
+  for box_min,box_max in zip(asu.box_min(shape_vertices=asu_shape_vertices),
+                             asu.box_max(shape_vertices=asu_shape_vertices)):
     assert box_min < box_max
   if (unit_cell is None):
     return
@@ -58,7 +58,7 @@ def exercise_volume_vertices(asu, unit_cell):
   center = matrix.col(mcs.center())
   radius = mcs.radius()
   n_near_sphere_surface = 0
-  for vertex in asu_volume_vertices:
+  for vertex in asu_shape_vertices:
     assert volume_asu.is_inside(vertex)
     float_vertex = [float(e) for e in vertex]
     assert float_asu.is_inside(float_vertex)
@@ -68,10 +68,10 @@ def exercise_volume_vertices(asu, unit_cell):
     if (radius - r < radius * 1.e-2):
       n_near_sphere_surface += 1
   assert n_near_sphere_surface >= 2
-  float_asu_volume_vertices = float_asu.volume_vertices()
-  assert len(float_asu_volume_vertices) >= len(asu_volume_vertices)
+  float_asu_shape_vertices = float_asu.shape_vertices()
+  assert len(float_asu_shape_vertices) >= len(asu_shape_vertices)
   m_near_sphere_surface = 0
-  for vertex in float_asu_volume_vertices:
+  for vertex in float_asu_shape_vertices:
     assert float_asu.is_inside(point=vertex)
     assert not asu_shrunk.is_inside(vertex)
     r = abs(matrix.col(unit_cell.orthogonalize(vertex)) - center)
@@ -91,7 +91,7 @@ def exercise_float_asu(space_group_info, n_grid=6):
   inp_asu = space_group_info.direct_space_asu()
   assert sgtbx.space_group(inp_asu.hall_symbol) == space_group_info.group()
   exercise_cut_planes(inp_asu.cuts)
-  exercise_volume_vertices(inp_asu, unit_cell)
+  exercise_shape_vertices(inp_asu, unit_cell)
   float_asu = inp_asu.add_buffer(unit_cell=unit_cell, thickness=0.001)
   cb_mx_ref_inp = space_group_info.type().cb_op().c_inv().as_rational()
   n = n_grid
@@ -119,7 +119,7 @@ def exercise_float_asu(space_group_info, n_grid=6):
         elif (r_inside != f_inside):
           assert f_inside
     # check correctness of float_asu.add_buffer()
-    assert float_asu.is_inside(inp_f) == inp_asu.volume_only().is_inside(inp_r)
+    assert float_asu.is_inside(inp_f) == inp_asu.shape_only().is_inside(inp_r)
   asu_with_metric = inp_asu.define_metric(unit_cell)
   assert asu_with_metric.hall_symbol is inp_asu.hall_symbol
   assert len(asu_with_metric.cuts) == len(inp_asu.cuts)
@@ -127,9 +127,9 @@ def exercise_float_asu(space_group_info, n_grid=6):
   asu_tight = asu_with_metric.as_float_asu()
   asu_buffer = asu_with_metric.add_buffer(thickness=2)
   asu_shrunk = asu_with_metric.add_buffer(relative_thickness=-1.e-5)
-  vertices = facet_analysis.volume_vertices(inp_asu)
+  vertices = facet_analysis.shape_vertices(inp_asu)
   for vertex in vertices:
-    assert inp_asu.volume_only().is_inside(vertex)
+    assert inp_asu.shape_only().is_inside(vertex)
   for vertex in vertices:
     assert asu_tight.is_inside(matrix.col(vertex).as_float().elems)
   for vertex in vertices:
@@ -322,7 +322,7 @@ def run():
   exercise_reference_table()
   for space_group_number in xrange(1,230+1):
     asu = reference_table.get_asu(space_group_number)
-    exercise_volume_vertices(asu=asu, unit_cell=None)
+    exercise_shape_vertices(asu=asu, unit_cell=None)
   debug_utils.parse_options_loop_space_groups(
     sys.argv[1:], run_call_back, show_cpu_times=False)
   exercise_is_simple_interaction()

@@ -63,10 +63,10 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     return direct_space_asu(a);
   }
 
-  scitbx::af::shared<rvector3_t> asu_volume_vertices(const direct_space_asu &a)
+  scitbx::af::shared<rvector3_t> asu_shape_vertices(const direct_space_asu &a)
   {
     set_rvector3_t v;
-    a.volume_vertices(v);
+    a.shape_vertices(v);
     scitbx::af::shared<rvector3_t> result;
     for(set_rvector3_t::const_iterator it=v.begin(); it!=v.end(); ++it)
       result.push_back(*it);
@@ -90,10 +90,10 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     bool (w_t::*const is_inside1)( const rvector3_t &) const = &w_t::is_inside;
     bool (w_t::*const is_inside2)( const rvector3_t &, bool ) const =
       &w_t::is_inside;
-    bool (w_t::*const is_inside_volume_only1)(const rvector3_t &point) const =
-      &w_t::is_inside_volume_only;
-    bool (w_t::*const is_inside_volume_only2)(const scitbx::af::double3 &point,
-      double tol) const = &w_t::is_inside_volume_only;
+    bool (w_t::*const is_inside_shape_only1)(const rvector3_t &point) const =
+      &w_t::is_inside_shape_only;
+    bool (w_t::*const is_inside_shape_only2)(const scitbx::af::double3 &point,
+      double tol) const = &w_t::is_inside_shape_only;
     short (w_t::*const where_is1)(const scitbx::int3 &num,
       const scitbx::int3 &den) const = &w_t::where_is;
     short (w_t::*const where_is2)(const scitbx::int3 &num) const =
@@ -105,17 +105,17 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def_readonly("hall_symbol", &w_t::hall_symbol)
       .def("is_inside", is_inside1)
       .def("is_inside", is_inside2)
-      .def("is_inside_volume_only", is_inside_volume_only1)
-      .def("is_inside_volume_only", is_inside_volume_only2)
+      .def("is_inside_shape_only", is_inside_shape_only1)
+      .def("is_inside_shape_only", is_inside_shape_only2)
       .def("where_is", where_is1)
       .def("where_is", where_is2)
       .def("change_basis", &w_t::change_basis)
       .def("get_nth_plane", &w_t::get_nth_plane)
-      .def("volume_only", &w_t::volume_only)
+      .def("shape_only", &w_t::shape_only)
       .def("in_which_planes", &w_t::in_which_planes)
       .def("in_which_facets", &w_t::in_which_facets, rbv())
       .def("n_faces", &w_t::n_faces)
-      .def("volume_vertices", asu_volume_vertices)
+      .def("shape_vertices", asu_shape_vertices)
       .def("box_max", &w_t::box_max)
       .def("box_min", &w_t::box_min)
       .def("as_string", &w_t::as_string)

@@ -231,7 +231,7 @@ namespace close_packing {
         typedef scitbx::vec3<FloatType> v;
         typedef cartesian<FloatType> c;
         typedef scitbx::math::float_int_conversions<FloatType, int> fic;
-        af::shared<v> asu_vertices_cart = float_asu_.volume_vertices(true);
+        af::shared<v> asu_vertices_cart = float_asu_.shape_vertices(true);
         CCTBX_ASSERT(asu_vertices_cart.size() > 0);
         v box_max = sampling_cell_.fractionalize(c(asu_vertices_cart[0]));
         FloatType pivot_dist_sq = box_max.length_sq();
@@ -245,7 +245,7 @@ namespace close_packing {
             box_pivot_ = vertex_hex;
           }
         }
-        asu_vertices_cart = float_asu_buffer_.volume_vertices(true);
+        asu_vertices_cart = float_asu_buffer_.shape_vertices(true);
         CCTBX_ASSERT(asu_vertices_cart.size() > 0);
         v box_buffer_min = sampling_cell_.fractionalize(
                              c(asu_vertices_cart[0]));

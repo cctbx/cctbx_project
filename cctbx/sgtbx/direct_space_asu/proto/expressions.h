@@ -57,9 +57,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
 
-    bool is_inside_volume_only(const scitbx::af::double3 &p, double tol) const
+    bool is_inside_shape_only(const scitbx::af::double3 &p, double tol) const
     {
-      return lhs.is_inside_volume_only(p,tol);
+      return lhs.is_inside_shape_only(p,tol);
     }
 
 
@@ -162,9 +162,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
 
-    bool is_inside_volume_only(const scitbx::af::double3 &p, double tol) const
+    bool is_inside_shape_only(const scitbx::af::double3 &p, double tol) const
     {
-      return lhs.is_inside_volume_only(p,tol) && rhs.is_inside_volume_only(p,tol);
+      return lhs.is_inside_shape_only(p,tol) && rhs.is_inside_shape_only(p,tol);
     }
 
 

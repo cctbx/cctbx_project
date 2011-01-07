@@ -84,8 +84,8 @@ def loop_grid(asu, n, mn, mx, asu2=None):
       j += 1
     i += 1
 
-  volume = result / vv
-  return (result,volume)
+  shape = result / vv
+  return (result,shape)
 
 def compare(spgr, n=NSteps, verbose=False):
   if verbose:
@@ -110,8 +110,8 @@ def compare(spgr, n=NSteps, verbose=False):
   print >>cout, "box  min= ", mnn, "   max= ", mxn
   assert mnn == mno
   assert mxn == mxo
-  old_vertices = asuo.volume_vertices()
-  new_vertices = asun.volume_vertices() # C++  sorted list
+  old_vertices = asuo.shape_vertices()
+  new_vertices = asun.shape_vertices() # C++  sorted list
   assert len(old_vertices) == len(new_vertices)
   # TODO: the following seems to use the same ordering operation
   # as mine in C++
@@ -122,9 +122,9 @@ def compare(spgr, n=NSteps, verbose=False):
   ins,v = loop_grid(asun, n, mnn, mxn, asuo)
   print >>cout, "N inside = ", ins, "   volume = ", v,  \
       "   expected volume = ", rint(1,grp.group().order_z())
-  ### VOLUME ONLY
-  asun.volume_only()
-  asuo = asuo.volume_only()
+  ### SHAPE ONLY
+  asun.shape_only()
+  asuo = asuo.shape_only()
   mxo2 = tuple( asuo.box_max() )
   mno2 = tuple( asuo.box_min() )
   mnn2 = asun.box_min()

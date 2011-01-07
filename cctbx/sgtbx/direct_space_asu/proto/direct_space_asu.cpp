@@ -35,7 +35,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
   }
 
-  void direct_space_asu::volume_vertices(set_rvector3_t &result) const
+  void direct_space_asu::shape_vertices(set_rvector3_t &result) const
   {
     if( is_optimized() )
       throw cctbx::error("Optimized asu may only be used for"
@@ -65,7 +65,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
             int3_t b( -face0.c, -face1.c, -face2.c );
             int3_t iv = c * b;
             rvector3_t vertex( rvector3_t(iv) / rational_t(d) );
-            if( this->is_inside_volume_only(vertex) ) // do not add if planes intersect outside of the asu
+            if( this->is_inside_shape_only(vertex) ) // do not add if planes intersect outside of the asu
               result.insert(vertex);
           }
         }
@@ -78,7 +78,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
   void direct_space_asu::box_corners(rvector3_t &mn, rvector3_t &mx) const
   {
     set_rvector3_t vertices;
-    volume_vertices(vertices);
+    shape_vertices(vertices);
     if( vertices.empty() )
       throw cctbx::error("No vertices in the asu");
     mn = *vertices.begin();

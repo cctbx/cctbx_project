@@ -19,7 +19,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     virtual bool is_inside(const scitbx::af::int3 &num,
         const scitbx::af::int3 &den) const = 0;
     virtual bool is_inside(const scitbx::af::int3 &num) const = 0;
-    virtual bool is_inside_volume_only(const scitbx::af::double3 &point,
+    virtual bool is_inside_shape_only(const scitbx::af::double3 &point,
         double tol) const = 0;
     virtual short where_is(const scitbx::af::int3 &num,
         const scitbx::af::int3 &den) const = 0;
@@ -27,8 +27,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     virtual void optimize_for_grid(const scitbx::af::int3 &grid_size) = 0;
     virtual void get_optimized_grid_limits(scitbx::af::long3 &max_p) const = 0;
     virtual pointer new_copy() const = 0;
-    virtual pointer new_volume_only() const = 0;
-    virtual pointer new_volume_only_keep_inclusive_flag() const = 0;
+    virtual pointer new_shape_only() const = 0;
+    virtual pointer new_shape_only_keep_inclusive_flag() const = 0;
     virtual size_type size() const = 0;
     virtual void change_basis(const change_of_basis_op &) =0;
     virtual void get_nth_plane(size_type i, cut &plane) const = 0;

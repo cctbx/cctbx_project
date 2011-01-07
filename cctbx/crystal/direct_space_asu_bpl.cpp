@@ -67,7 +67,7 @@ namespace {
         .def("is_inside_frac", &w_t::is_inside_frac, (arg("sites_frac")))
         .def("is_inside_cart", &w_t::is_inside_cart, (arg("sites_cart")))
         .def("_add_buffer", &w_t::add_buffer)
-        .def("volume_vertices", &w_t::volume_vertices, (
+        .def("shape_vertices", &w_t::shape_vertices, (
           arg("cartesian")=false,
           arg("epsilon")=1e-6))
         .def("box_min", &w_t::box_min, (arg("cartesian")=false), ccr())

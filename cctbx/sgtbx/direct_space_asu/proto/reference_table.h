@@ -48,10 +48,10 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return obj.is_inside(num);
     }
 
-    bool is_inside_volume_only(const scitbx::af::double3 &point, double tol)
+    bool is_inside_shape_only(const scitbx::af::double3 &point, double tol)
       const
     {
-      return obj.is_inside_volume_only(point,tol);
+      return obj.is_inside_shape_only(point,tol);
     }
 
 
@@ -94,14 +94,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     expression_adaptor(const T &o) : obj(o) { }
 
-    facet_collection::pointer new_volume_only() const
+    facet_collection::pointer new_shape_only() const
     {
       typedef typename strip<T>::return_type return_type;
       return facet_collection::pointer( new expression_adaptor< return_type >( strip<T>::execute(obj) ) );
     }
 
     // DO NOT USE!! Experimental
-    facet_collection::pointer new_volume_only_keep_inclusive_flag() const
+    facet_collection::pointer new_shape_only_keep_inclusive_flag() const
     {
       typedef typename strip_keep_inclusive_flag<T>::return_type return_type;
       return facet_collection::pointer( new expression_adaptor< return_type >(
