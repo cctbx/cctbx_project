@@ -23,5 +23,5 @@ class shared_site(object):
         scatterer = reparametrisation.structure.scatterers()[
           self.indices[i]])
       reparametrisation.asu_scatterer_parameters[self.indices[i]].site = param
-      reparametrisation.shared_sites[self.indices[i]] = u_c
+      reparametrisation.shared_sites[self.indices[i]] = site
 
