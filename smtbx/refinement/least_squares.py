@@ -105,9 +105,10 @@ class crystallographic_ls(
       # The factor 2 comes from the fact that we minimize 1/2 sum w delta^2
       normalisation_factor = self.chi_sq_data_only/2
       linearised_eqns = self.restraints_manager.build_linearised_eqns(
-        self.xray_structure)
+        self.xray_structure, self.reparametrisation.parameter_map())
       jacobian = \
-        self.reparametrisation.jacobian_transpose_matching_grad_fc().transpose()
+        self.reparametrisation.jacobian_transpose_matching(
+          self.reparametrisation.mapping_to_grad_fc_all).transpose()
       self.reduced_problem().add_equations(
         linearised_eqns.deltas,
         linearised_eqns.design_matrix * jacobian,

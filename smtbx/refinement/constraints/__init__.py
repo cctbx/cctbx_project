@@ -5,6 +5,7 @@ from smtbx_refinement_constraints_ext import *
 import scitbx.sparse # import dependency
 from scitbx.array_family import flex # import dependency
 import libtbx.utils
+from cctbx import xray
 
 class InvalidConstraint(libtbx.utils.Sorry):
   __module__ = Exception.__module__
@@ -207,3 +208,6 @@ class reparametrisation(ext.reparametrisation):
     p = self.add(independent_scalar_parameter, value=value, variable=variable)
     self.independent_scalar_parameters.append(p)
     return p
+
+  def parameter_map(self):
+    return xray.parameter_map(self.structure.scatterers(), self.twin_components)
