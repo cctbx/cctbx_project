@@ -91,10 +91,9 @@ class manager(object):
         f=f, prefix=prefix, max_items=max_items)
       print >> f
 
-  def build_linearised_eqns(self, xray_structure):
+  def build_linearised_eqns(self, xray_structure, parameter_map):
     n_restraints = 0
-    n_params = xray_structure.n_parameters()
-    param_map = parameter_map(xray_structure.scatterers())
+    n_params = parameter_map.n_parameters
     geometry_proxies = [proxies for proxies in (
       self.bond_proxies, self.angle_proxies, self.dihedral_proxies)
                         if proxies is not None]
@@ -120,19 +119,19 @@ class manager(object):
     for proxies in geometry_proxies:
       linearise_restraints(
         xray_structure.unit_cell(), xray_structure.sites_cart(),
-        param_map, proxies, linearised_eqns)
+        parameter_map, proxies, linearised_eqns)
     u_cart = xray_structure.scatterers().extract_u_cart(
       xray_structure.unit_cell())
     if self.adp_similarity_proxies is not None:
       linearise_restraints(
         u_cart, xray_structure.scatterers().extract_u_iso(),
         xray_structure.use_u_aniso(),
-        param_map, self.adp_similarity_proxies, linearised_eqns)
+        parameter_map, self.adp_similarity_proxies, linearised_eqns)
     if self.isotropic_adp_proxies is not None:
       linearise_restraints(
-        u_cart, param_map, self.isotropic_adp_proxies, linearised_eqns)
+        u_cart, parameter_map, self.isotropic_adp_proxies, linearised_eqns)
     if self.rigid_bond_proxies is not None:
       linearise_restraints(
         xray_structure.sites_cart(), u_cart,
-        param_map, self.rigid_bond_proxies, linearised_eqns)
+        parameter_map, self.rigid_bond_proxies, linearised_eqns)
     return linearised_eqns
