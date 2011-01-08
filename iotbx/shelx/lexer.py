@@ -124,7 +124,7 @@ class command_stream(object):
             cmd_residue = (self.residue_number_tok, int(cmd_residue_number))
           else:
             cmd_residue = (self.all_residues_tok,)
-        args = m.group(2) or m.group(7)
+        args = m.group(2) or m.group(7) or ""
         continued = m.group(8)
         arguments = args.split()
       if not continued:
