@@ -241,7 +241,7 @@ di::w_Distl::set_resolution_outer(const double& newvalue)
   // only meaningful if the resolution value is a positive number.
   SCITBX_ASSERT(newvalue>0.0);
   finder.resolution_outer = newvalue;
-  SCITBX_EXAMINE(finder.resolution_outer);
+  //SCITBX_EXAMINE(finder.resolution_outer);
 }
 
 void
