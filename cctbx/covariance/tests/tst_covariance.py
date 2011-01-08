@@ -53,9 +53,8 @@ def exercise_covariance():
   try: covariance.extract_covariance_matrix_for_u_aniso(1, cov, param_map)
   except RuntimeError: pass
   else: raise Exception_expected
-  try: covariance.extract_covariance_matrix_for_sites(flex.size_t([1]), cov, param_map)
-  except RuntimeError: pass
-  else: raise Exception_expected
+  approx_equal(covariance.extract_covariance_matrix_for_sites(
+    flex.size_t([1]), cov, param_map), (0,0,0,0,0,0))
 
 def run():
   exercise_covariance()
