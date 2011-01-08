@@ -240,6 +240,12 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   l("</pre>")
   l('<a href="guide_to_notation.html">[Guide to notation]</a>')
   l("</td>")
+  l("<td>")
+  l("<pre>Geometric notation:")
+  for cut in asu.cuts:
+    l("  "+str(cut))
+  l("</pre>")
+  l("</td>")
   l("</tr>")
   l("</table>")
   f = open(html_file_name, "w")
@@ -292,9 +298,9 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
         html_subdir=html_subdir)
       asu_as_jvx(
         space_group_number=space_group_number,
-        http_server_name=http_server_name,
         asu=asu,
         colored_grid_points=[],
+        http_server_name=http_server_name,
         html_subdir=html_subdir)
 
 if (__name__ == "__main__"):
