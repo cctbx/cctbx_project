@@ -1131,13 +1131,6 @@ scitbx/examples/rigid_body_refinement_core.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.txt svneol=native#text/plain
 scitbx/fftpack/boost_python/threads.d -text
 scitbx/fftpack/complex_to_complex_2d.h -text
-scitbx/fortran_io/details/istream_scanner.h -text
-scitbx/fortran_io/details/numeric_extractors.h -text
-scitbx/fortran_io/numeric_manipulators.h -text
-scitbx/fortran_io/numeric_parsers.h -text
-scitbx/fortran_io/tests/SConscript -text
-scitbx/fortran_io/tests/tst_numeric_manipulators.cpp -text
-scitbx/fortran_io/tests/tst_numeric_parsers.cpp -text
 scitbx/golden_section_search.py -text
 scitbx/graph/__init__.py -text
 scitbx/graph/rigidity.py -text

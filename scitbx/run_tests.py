@@ -101,8 +101,6 @@ def run():
   "$D/sparse/tests/tst_sparse.py",
   "$D/sparse/tests/tst_lu_factorization.py",
   "$D/iso_surface/tst_iso_surface.py",
-  "$B/fortran_io/tests/tst_numeric_manipulators",
-  "$B/fortran_io/tests/tst_numeric_parsers",
   "$D/simplex.py",
   "$D/differential_evolution.py",
   "$D/golden_section_search.py",
