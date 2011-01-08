@@ -45,6 +45,8 @@ def exercise_lexing():
     cmd, line = i.next() # EXTI
     cmd, line = i.next() # FVAR
     cmd, line = i.next()
+    assert cmd == ('REM', ())
+    cmd, line = i.next()
     assert cmd == ('REM', ('Protracted example of residues on command',))
     cmd, line = i.next()
     assert cmd == ('HFIX', (stream.residue_number_tok, 1), (23,))
@@ -129,30 +131,6 @@ def exercise_crystal_symmetry_parsing():
   cs = crystal_symmetry_from_ins.extract_from(
     file=cStringIO.StringIO(ins_P1))
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
-
-  stream = shelx.command_stream(file=cStringIO.StringIO("""\
-REM TRY      1   CC 48.25   CC(weak) 33.30   TIME       1 SECS
-REM
-TITL gere_MAD_anom_diffs.ins
-CELL 1.0 108.742 61.679 71.652 90 97.151 90
-LATT -7
-SYMM -X,Y,-Z
-SFAC Se
-UNIT 48
-SE01   1  0.758827  0.932823  0.245764   1.0000  0.2
-SE02   1  0.571739  1.251114  0.120543   0.8452  0.2
-SE03   1  0.793762  1.044273  0.140502   0.8097  0.2
-HKLF 3
-END
-"""))
-  l = shelx.crystal_symmetry_parser(
-    stream,
-    builder=iotbx.builders.crystal_symmetry_builder())
-  l.parse()
-  cs = l.builder.crystal_symmetry
-  assert not show_diff(str(cs.unit_cell()),
-    "(108.742, 61.679, 71.652, 90, 97.151, 90)")
-  assert not show_diff(str(cs.space_group_info()), "C 1 2 1")
 
 def exercise_instruction_parsing():
   try:
@@ -750,6 +728,7 @@ ins_mundane_tiny = (
 "WGHT    0.054500    0.220600\n"
 "EXTI    0.034016\n"
 "FVAR       0.89220\n"
+"REM\n"
 "REM  Protracted example of residues on command\n"
 "HFIX_1 23\n"
 "HFIX_N 43\n"

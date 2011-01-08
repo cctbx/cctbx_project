@@ -136,7 +136,10 @@ class command_stream(object):
 
   def _parse_special_cases(self, cmd, args, i, li):
     if cmd in ('TITL', 'REM'):
-      return (cmd, (args.strip(),))
+      args = args.strip()
+      if args: arg_tuple = (args,)
+      else: arg_tuple = ()
+      return (cmd, arg_tuple)
     if cmd == 'SYMM':
       if args is None:
         raise shelx_error("illegal argument '%s'", i, args)
