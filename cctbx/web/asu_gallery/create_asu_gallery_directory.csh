@@ -3,6 +3,11 @@
 # mkdir jv395; cd jv395
 # unzip javaviewFull-v3.95.zip
 set verbose
+set cctbx="`libtbx.show_dist_paths cctbx`"
+touch crmXXX
+rm -rf crm???
+libtbx.parallel_simple --dirs=crm --command="cctbx.python $cctbx/sgtbx/direct_space_asu/check_redundancies.py --strip_grid 24 "'$(MULTI:230-1)'
+rm -rf asu_gallery
 mkdir asu_gallery
-cctbx.python "`libtbx.show_dist_paths cctbx`"/sgtbx/direct_space_asu/check_redundancies.py --strip_grid 24 1-230
-cctbx.python "`libtbx.show_dist_paths cctbx`"/web/asu_gallery/jv_asu.py --server cci.lbl.gov
+mv crm???/asu_gallery/* asu_gallery
+cctbx.python "$cctbx/web/asu_gallery/jv_asu.py" --server cci.lbl.gov
