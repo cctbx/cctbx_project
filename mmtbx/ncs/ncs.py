@@ -105,7 +105,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     text="\nnew_ncs_group\n"
     if self._cc is not None: text+="NCS_CC "+str(self._cc)+"\n"
     if self._ncs_domain_pdb is not None:
-      text+="  NCS_DOMAIN_PDB "+str(ncs_domain_pdb)+"\n"
+      text+="  NCS_DOMAIN_PDB "+str(self._ncs_domain_pdb)+"\n"
 
     count=0
     for id,residue_ranges, center,trans_orth,ncs_rota_matr, \
