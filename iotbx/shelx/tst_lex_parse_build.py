@@ -7,7 +7,7 @@ from cctbx import xray
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
 import iotbx.builders
-from libtbx.test_utils import approx_equal, Exception_expected, show_diff
+from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
 import cStringIO
 
