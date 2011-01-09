@@ -33,6 +33,10 @@ number_of_macro_cycles = 1
   .type = int
 real_space_refine_overall = False
   .type = bool
+  .short_caption = Run overall real-space refinement (RSR)
+exclude_hydrogens = True
+  .type = bool
+  .short_caption = Exclude hydrogens from RSR
 residue_iteration
   .style = box auto_align
 {
