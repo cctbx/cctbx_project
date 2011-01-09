@@ -2,6 +2,7 @@
 #define FEM_INQUIRE_CHAIN_HPP
 
 #include <fem/io.hpp>
+#include <fem/str_ref.hpp>
 
 namespace fem {
 
