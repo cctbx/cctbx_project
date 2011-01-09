@@ -1,12 +1,10 @@
 #ifndef IOTBX_SHELX_HKLF_H
 #define IOTBX_SHELX_HKLF_H
 
-#include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
-#include <scitbx/fortran_io/numeric_manipulators.h>
-#include <scitbx/misc/file_utils.h>
+#include <scitbx/array_family/shared.h>
+#include <fable/fem/read.hpp>
 #include <istream>
-#include <iostream>
 
 namespace iotbx { namespace shelx {
 
@@ -16,35 +14,59 @@ class hklf_reader
     typedef char char_t;
     typedef cctbx::miller::index<> miller_t;
 
+    static
+    bool
+    substr_is_whitespace_only(
+      std::string const& line,
+      std::size_t start,
+      std::size_t stop)
+    {
+      for(std::size_t i=start;i<stop;i++) {
+        if (!fem::utils::is_whitespace(line[i])) return false;
+      }
+      return true;
+    }
+
     hklf_reader(std::istream &input, bool strict=true)
     {
-      using namespace scitbx::fortran_io::manipulators;
-      fortran_int i4(4, /*strict=*/true);
-      fortran_real f8_2(8, 2, /*strict=*/true);
-
-      std::runtime_error not_hklf("Not a SHELX hklf file.");
       while(!input.eof()) {
+        std::string line;
+        std::getline(input, line);
+        if (input.eof()) break;
+        if (!input.good()) {
+          throw std::runtime_error("Error while reading SHELX hklf file.");
+        }
+        std::size_t i_trailing = 3*4+2*8;
         miller_t h;
         double datum, sigma;
-        int extra;
-        std::string trailing;
-        input >> sticky(i4) >> h[0] >> h[1] >> h[2];
+        int extra = 0;
+        bool have_extra = false;
+        if (substr_is_whitespace_only(
+              line, i_trailing, std::min(i_trailing+4, line.size()))) {
+          fem::read_loop(line, "(3i4,2f8.2)"),
+            h[0], h[1], h[2], datum, sigma;
+        }
+        else {
+          i_trailing += 4;
+          have_extra = true;
+          fem::read_loop(line, "(3i4,2f8.2,i4)"),
+            h[0], h[1], h[2], datum, sigma, extra;
+        }
         if (h.is_zero()) break;
-        input >> sticky(f8_2) >> datum >> sigma;
-        if (!input.good()) throw not_hklf;
+        if (strict
+              && !substr_is_whitespace_only(line, i_trailing, line.size())) {
+          throw std::runtime_error("Not a SHELX hklf file.");
+        }
         indices_.push_back(h);
         data_.push_back(datum);
         sigmas_.push_back(sigma);
-        scitbx::misc::end_of_line eol(input);
-        if (eol) continue;
-        input >> i4 >> extra;
-        std::getline(input, trailing);
-        if (!input.good()) throw not_hklf;
-        if (strict && trailing.size() && trailing != "\r") throw not_hklf;
-        extra_.push_back(extra);
+        if (have_extra) {
+          extra_.push_back(extra);
+        }
       }
-      std::runtime_error empty_hklf("No data in SHELX hklf file.");
-      if (indices_.size() == 0) throw empty_hklf;
+      if (indices_.size() == 0) {
+        throw std::runtime_error("No data in SHELX hklf file.");
+      }
     }
 
     scitbx::af::shared<miller_t> indices() { return indices_; };

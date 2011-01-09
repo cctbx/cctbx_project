@@ -1,6 +1,6 @@
-Import("env_iotbx_boost_python_ext")
+Import("env_iotbx_boost_python_ext", "env_etc")
 env = env_iotbx_boost_python_ext.Clone()
-
+env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
 env.SharedLibrary(target="#lib/iotbx_shelx_ext", source=[
   "shelx_ext.cpp",
 ])
