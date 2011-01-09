@@ -86,6 +86,20 @@ namespace fem {
         io_mode(io_formatted)
       {}
 
+      read_loop(
+        std::string const& internal_file,
+        str_cref fmt)
+      :
+        inp(utils::slick_ptr<utils::simple_istream>(new
+          utils::simple_istream_from_char_ptr_and_size(
+            internal_file.data(), internal_file.size()))),
+        first_inp_get(true),
+        fmt_loop(fmt),
+        blanks_zero(false),
+        exp_scale(0),
+        io_mode(io_formatted)
+      {}
+
       read_loop&
       rec(
         int const&)
