@@ -43,13 +43,13 @@ class hklf_reader
         bool have_extra = false;
         if (substr_is_whitespace_only(
               line, i_trailing, std::min(i_trailing+4, line.size()))) {
-          fem::read_loop(line, "(3i4,2f8.2)"),
+          fem::read_from_string(line, "(3i4,2f8.2)"),
             h[0], h[1], h[2], datum, sigma;
         }
         else {
           i_trailing += 4;
           have_extra = true;
-          fem::read_loop(line, "(3i4,2f8.2,i4)"),
+          fem::read_from_string(line, "(3i4,2f8.2,i4)"),
             h[0], h[1], h[2], datum, sigma, extra;
         }
         if (h.is_zero()) break;
