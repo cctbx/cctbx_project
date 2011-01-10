@@ -139,6 +139,8 @@ class crystallographic_ls(
     return math.sqrt(self.chi_sq_data_only)
 
   def restrained_goof(self):
+    if self.restraints_manager is None:
+      return self.goof()
     return math.sqrt(self.chi_sq_data_and_restraints)
 
   def wR2(self):
