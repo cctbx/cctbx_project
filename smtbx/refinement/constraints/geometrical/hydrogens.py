@@ -195,11 +195,16 @@ class secondary_planar_xh_site(hydrogens):
     if len(pivot_neighbour_site_params) not in (2, 3):
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    uc = reparametrisation.structure.unit_cell()
+    x_s = col(pivot_site)
+    d_s = [ (uc.distance(s, x_s), i)
+            for i, s in enumerate(pivot_neighbour_sites) ]
+    d_s.sort()
     return reparametrisation.add(
       _.secondary_planar_xh_site,
       pivot=pivot_site_param,
-      pivot_neighbour_0=pivot_neighbour_site_params[0],
-      pivot_neighbour_1=pivot_neighbour_site_params[1],
+      pivot_neighbour_0=pivot_neighbour_site_params[d_s[0][1]],
+      pivot_neighbour_1=pivot_neighbour_site_params[d_s[1][1]],
       length=bond_length,
       hydrogen=hydrogens[0])
 
