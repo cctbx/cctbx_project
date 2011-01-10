@@ -13,18 +13,20 @@ from smtbx import absolute_structure
 
 import glob, os, sys
 
-def crawl(directory, ext='cif'):
+def crawl(directory, ext='cif', log=None):
   assert ext in ('res', 'ins', 'fcf', 'cif')
   for root, dirs, files in os.walk(directory):
     if '.olex' in root: continue # ignore Olex2 strdir subdirectories
     g = glob.glob(os.path.join(root, "*.%s" %ext))
     for path in g:
       try:
-        run_once(path)
+        run_once(path, log=log)
       except Exception, e:
         continue
 
-def run_once(file_path, nu=None):
+def run_once(file_path, nu=None, log=None):
+  if log is None:
+    log = sys.stdout
   file_root, file_ext = os.path.splitext(file_path)
   hkl_path = file_root + '.hkl'
   fcf_path = file_root + '.fcf'
@@ -37,15 +39,17 @@ def run_once(file_path, nu=None):
     xs = iotbx.cif.builders.crystal_structure_builder(cif_block).structure
     xs.set_inelastic_form_factors(photon=wavelength, table="sasaki")
     if os.path.exists(fcf_path):
-      fo2, fc, scale = structure_factors_from_fcf(fcf_path, xs)
+      xs, fo2, fc, scale = structure_factors_from_fcf(fcf_path, xs)
     elif os.path.exists(hkl_path):
-      fo2, fc, scale = structure_factors_from_hkl(hkl_path, xs)
+      xs, fo2, fc, scale = structure_factors_from_hkl(hkl_path, xs)
+    else: return
   else:
     if not os.path.exists(hkl_path): return
-    fo2, fc, scale = structure_factors_from_ins_res(file_path)
+    xs, fo2, fc, scale = structure_factors_from_ins_res(file_path)
   if not fc.space_group().is_centric():
-    print file_path
-    absolute_structure_analysis(fo2, fc, scale, nu=nu)
+    print >> log, file_path
+    absolute_structure_analysis(xs, fo2, fc, scale, nu=nu, log=log)
+  log.flush()
 
 def structure_factors_from_fcf(file_path, xs=None):
   cif = iotbx.cif.reader(file_path=file_path).model()
@@ -61,7 +65,7 @@ def structure_factors_from_fcf(file_path, xs=None):
   else:
     fc = fo2.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
     scale = fo2.scale_factor(fc)
-  return fo2, fc, scale
+  return xs, fo2, fc, scale
 
 def structure_factors_from_hkl(xs, hkl_path):
   fo2 = hklf.reader(filename=hkl_path).as_miller_arrays(
@@ -71,33 +75,39 @@ def structure_factors_from_hkl(xs, hkl_path):
   fo2 = merging.array()
   fc = fo2.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
   scale = fo2.scale_factor(fc)
-  return fo2, fc, scale
+  return xs, fo2, fc, scale
 
 def structure_factors_from_ins_res(file_path):
   hkl_path = os.path.splitext(file_path)[0] + ".hkl"
   if not os.path.exists(hkl_path): return [None]*3
   builder = iotbx.builders.crystal_structure_builder()
   stream = shelx.command_stream(filename=file_path)
-  l_ins = shelx.instruction_parser(stream, builder)
-  l_cs = shelx.crystal_symmetry_parser(l_ins.filtered_commands(), builder)
-  l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder)
+  l_ins = shelx.instruction_parser(stream, builder=None)
+  l_cs = shelx.crystal_symmetry_parser(l_ins.filtered_commands(), builder=builder)
+  l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder=builder)
   l_xs.parse()
   xs = builder.structure
+  twin = l_ins.instructions.get('twin')
+  if twin is not None and not xs.space_group().is_centric():
+    print file_path
+    print 'twin: ', twin['matrix']
   xs.set_inelastic_form_factors(
     photon=l_ins.instructions['cell'][0], table="sasaki")
   return structure_factors_from_hkl(xs, hkl_path)
 
-def absolute_structure_analysis(fo2, fc, scale, nu=None):
+def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None):
+  if log is None:
+    log = sys.stdout
   if not fc.space_group().is_centric():
     hooft_analysis = absolute_structure.hooft_analysis(
       fo2, fc, scale_factor=scale)
-    print "Gaussian analysis:"
-    hooft_analysis.show()
+    print >> log, "Gaussian analysis:"
+    hooft_analysis.show(out=log)
     NPP = absolute_structure.bijvoet_differences_probability_plot(
       hooft_analysis)
-    print "Probability plot:"
-    NPP.show()
-    print
+    print >> log, "Probability plot:"
+    NPP.show(out=log)
+    print >> log
     if nu is None:
       nu = absolute_structure.maximise_students_t_correlation_coefficient(
         NPP.y, min_nu=1, max_nu=200)
@@ -105,12 +115,14 @@ def absolute_structure_analysis(fo2, fc, scale, nu=None):
       fo2, fc, nu, probability_plot_slope=NPP.fit.slope())
     tPP = absolute_structure.bijvoet_differences_probability_plot(
       t_analysis, use_students_t_distribution=True, students_t_nu=nu)
-    print "Student's t analysis:"
-    print "nu: %.2f" %nu
-    t_analysis.show()
-    print "Probability plot:"
-    tPP.show()
-    print
+    print >> log, "Student's t analysis:"
+    print >> log, "nu: %.2f" %nu
+    t_analysis.show(out=log)
+    print >> log, "Probability plot:"
+    tPP.show(out=log)
+    print >> log
+    flack = absolute_structure.flack_analysis(xs, fo2)
+    flack.show(out=log)
 
 def run(args):
   command_line = (option_parser(
@@ -125,14 +137,20 @@ def run(args):
                           action="store_true")
                   .option(None, "--verbose",
                           action="store_true")
+                  .option(None, "--log",
+                          action="store")
                   ).process(args=args)
   if len(command_line.args) != 1:
     command_line.parser.show_help()
     return
+  if command_line.options.log is not None:
+    log = open(command_line.options.log, 'wb')
+  else:
+    log = None
   if os.path.isdir(command_line.args[0]):
-    crawl(command_line.args[0], ext=command_line.options.ext)
+    crawl(command_line.args[0], ext=command_line.options.ext, log=log)
   elif os.path.isfile(command_line.args[0]):
-    run_once(command_line.args[0], nu=command_line.options.nu)
+    run_once(command_line.args[0], nu=command_line.options.nu, log=log)
   else:
     print "Please provide a valid file or directory"
 

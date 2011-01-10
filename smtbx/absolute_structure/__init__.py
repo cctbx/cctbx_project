@@ -4,13 +4,20 @@ import math
 import sys
 
 from cctbx.array_family import flex
+from cctbx import sgtbx, xray
 
+from libtbx import adopt_init_args
 from libtbx.utils import xfrange
 from libtbx.utils\
      import format_float_with_standard_uncertainty as format_float_with_su
 from libtbx.utils import Sorry
 
 from scitbx.math import distributions
+from scitbx.lstbx import normal_eqns_solving
+
+import smtbx.utils
+from smtbx.refinement import constraints
+from smtbx.refinement import least_squares
 
 
 class hooft_analysis(object):
@@ -278,3 +285,36 @@ class students_t_hooft_analysis(hooft_analysis):
     if self.probability_plot_slope is not None:
       x_gamma /= self.probability_plot_slope
     return -(1+dof)/2 * flex.sum(flex.log(flex.pow2(x_gamma) + dof))
+
+class flack_analysis(object):
+
+  def __init__(self, xray_structure, fo2):
+    adopt_init_args(self, locals())
+    assert fo2.anomalous_flag()
+    xray_structure = xray_structure.deep_copy_scatterers()
+    flags = xray_structure.scatterer_flags()
+    for sc in xray_structure.scatterers():
+      f = xray.scatterer_flags()
+      f.set_use_u_aniso(sc.flags.use_u_aniso())
+      f.set_use_u_iso(sc.flags.use_u_iso())
+      f.set_use_fp_fdp(True)
+      sc.flags = f
+    twin_components = (
+      xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True),)
+    reparametrisation = constraints.reparametrisation(
+      xray_structure, [], smtbx.utils.connectivity_table(xray_structure),
+      twin_components=twin_components)
+    normal_eqns = least_squares.crystallographic_ls(
+      fo2, reparametrisation)
+    cycles = normal_eqns_solving.naive_iterations(
+      normal_eqns, n_max_iterations=10,
+      gradient_threshold=1e-7,
+      step_threshold=1e-4)
+    self.flack_x = twin_components[0].twin_fraction
+    self.sigma_x = math.sqrt(normal_eqns.covariance_matrix(
+      jacobian_transpose=reparametrisation.jacobian_transpose_matching(
+        reparametrisation.mapping_to_grad_fc_independent_scalars))[0])
+
+  def show(self, out=None):
+    if out is None: out = sys.stdout
+    print >> out, "Flack x: %s" %format_float_with_su(self.flack_x, self.sigma_x)
