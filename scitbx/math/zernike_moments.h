@@ -37,7 +37,8 @@ namespace zernike {
              FloatType const& external_rmax,
              FloatType const& dx,
              FloatType const& fraction, // splat_range*dx< (1-fraction)*rmax
-             scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz
+             scitbx::af::const_ref< scitbx::vec3<FloatType> > xyz,
+             scitbx::af::const_ref< FloatType > density
            ):
            NP_(n_point), dx_(1.0/static_cast<FloatType>(NP_) ), uniform_(uniform),fixed_dx_(fixed_dx),
            splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction), NP_MAX_(200), rg_(0.0), rel_rg_(0.0), external_rmax_(external_rmax)
@@ -72,10 +73,13 @@ namespace zernike {
         }
 
         scale_ = 1.0/rmax_*fract_;
-        for(int i=0;i<natom_;i++)
+        for(int i=0;i<natom_;i++) {
           scaled_xyz_.push_back(xyz_[i]*scale_);
+          density_.push_back(density[i]);
+        }
 
         initialize_voxel();
+        find_nbr();
         xyz2voxel();
   //      std::string info( print_status() );
 
@@ -178,28 +182,43 @@ namespace zernike {
             zi=int(scaled_xyz_[i][2]/dx_+0.5)+NP_;
 
           if(uniform_)
-            mark_region_uniform(xi,yi,zi);
+            mark_region_uniform(xi,yi,zi, density_[i]);
           else
-            mark_region_non_uniform(xi,yi,zi);
+            mark_region_non_uniform(xi,yi,zi, density_[i]);
         }
       }
 
-      void mark_region_uniform(int xi, int yi, int zi) {
-        for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
+      void mark_region_uniform(int xi, int yi, int zi, FloatType density) {
+/*        for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
           for(int j=yi-splat_range_;j<=yi+splat_range_;j++)
             for(int k=zi-splat_range_;k<=zi+splat_range_;k++)
-              value_[i][j][k] = 1.0;  //uniform
+ */
+        int i,j,k;
+        for(int n=0;n<n_nbr_;n++) {
+          i=xi+neighbors_[n][0];
+          j=yi+neighbors_[n][1];
+          k=zi+neighbors_[n][2];
+          value_[i][j][k] = density;  //uniform
+        }
 
         return;
       }
 
-      void mark_region_non_uniform(int xi, int yi, int zi) {
-        for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
+      void mark_region_non_uniform(int xi, int yi, int zi, FloatType density) {
+       /* for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
           for(int j=yi-splat_range_;j<=yi+splat_range_;j++)
             for(int k=zi-splat_range_;k<=zi+splat_range_;k++)
-              value_[i][j][k] += 1.0;  //non-uniform
-          return;
+              value_[i][j][k] += density;  //non-uniform
+*/
+        int i,j,k;
+        for(int n=0;n<n_nbr_;n++) {
+          i=xi+neighbors_[n][0];
+          j=yi+neighbors_[n][1];
+          k=zi+neighbors_[n][2];
+          value_[i][j][k] = density;  //uniform
         }
+        return;
+      }
 
       bool initialize_voxel() {
         int n_tot=2*NP_+1;
@@ -213,6 +232,17 @@ namespace zernike {
           value_.push_back( voxel_i );
         }
         return true;
+      }
+
+      void find_nbr() {
+        FloatType splat2=splat_range_*splat_range_;
+        for(int i=-splat_range_;i<=splat_range_;i++)
+          for(int j=-splat_range_;j<=splat_range_;j++)
+            for(int k=-splat_range_;k<=splat_range_;k++)
+              if(i*i+j*j+k*k <= splat2)
+                neighbors_.push_back(scitbx::vec3<int>(i,j,k) );
+        n_nbr_=neighbors_.size();
+        return;
       }
 
       FloatType value(scitbx::vec3<int> xyz) {
@@ -235,6 +265,9 @@ namespace zernike {
 
     private:
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
+      scitbx::af::shared< scitbx::vec3<int> > neighbors_;
+      int n_nbr_;
+      scitbx::af::shared< FloatType > density_;
       scitbx::af::shared< scitbx::vec3<FloatType> > scaled_xyz_;
       int natom_, NP_, NP_MAX_;
       bool uniform_, fixed_dx_;
