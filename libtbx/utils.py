@@ -36,10 +36,8 @@ def xfrange(start, stop=None, step=None):
   else:
     assert step != 0.0
   count = int(math.ceil((stop - start) / step))
-  v = start
   for i in xrange(count):
-    yield v
-    v += step
+    yield start + i * step
 
 def frange(start, stop=None, step=None):
   return list(xfrange(start, stop=stop, step=step))
@@ -1012,18 +1010,19 @@ def exercise():
     command="libtbx.raise_exception_for_testing silent")
   b.raise_if_errors_or_output()
   #
-  assert [i/10. for i in range(-2,2)] == frange(-0.2,0.2,0.1)
-  assert [i/10. for i in range(2,-2,-1)] == frange(0.2,-0.2,-0.1)
-  assert [i/4. for i in range(4,8)] == frange(1, 2, 0.25)
-  assert [0.2+i/3. for i in range(0,4)] == frange(0.2, 1.3, 1./3)
-  assert range(5)  == frange(5)
-  assert range(-5) == frange(-5)
-  assert range(1,3) == frange(1, 3)
-  # floating point errors cause this one to not be exact
-  assert approx_equal([i/10. for i in range(20, 9, -2)], frange(2.0, 0.9, -0.2))
+  assert approx_equal([i/10. for i in range(-2,2)], frange(-0.2,0.2,0.1))
+  assert approx_equal([i/10. for i in range(2,-2,-1)], frange(0.2,-0.2,-0.1))
+  assert approx_equal([i/4. for i in range(4,8)], frange(1, 2, 0.25))
+  assert approx_equal([0.2+i/3. for i in range(0,4)], frange(0.2, 1.3, 1./3))
+  assert approx_equal(range(5) , frange(5))
+  assert approx_equal(range(-5), frange(-5))
+  assert approx_equal(range(1,3), frange(1, 3))
+  assert approx_equal([i/10. for i in range(20,9,-2)], frange(2.0,0.9,-0.2))
   #
-  assert format_float_with_standard_uncertainty(21.234567, 0.0013) == "21.2346(13)"
-  assert format_float_with_standard_uncertainty(21.234567, 0.0023) == "21.235(2)"
+  assert format_float_with_standard_uncertainty(21.234567, 0.0013) \
+      == "21.2346(13)"
+  assert format_float_with_standard_uncertainty(21.234567, 0.0023) \
+      == "21.235(2)"
   assert format_float_with_standard_uncertainty(12345, 45) == "12350(50)"
   assert format_float_with_standard_uncertainty(12.3,1.2) == "12.3(12)"
   assert format_float_with_standard_uncertainty(-0.2451, 0.8135) == "-0.2(8)"
