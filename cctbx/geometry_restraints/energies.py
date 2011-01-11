@@ -20,6 +20,7 @@ class energies(scitbx.restraints.energies):
                      bond_similarity_proxies=None,
                      generic_proxies=None,
                      generic_restraints_helper=None,
+                     external_energy_function=None,
                      compute_gradients=True,
                      gradients=None,
                      disable_asu_cache=False,
@@ -193,6 +194,12 @@ class energies(scitbx.restraints.energies):
             unit_cell=unit_cell)
       self.number_of_restraints += self.n_generic_proxies
       self.residual_sum += self.generic_restraint_residual_sum
+    if (external_energy_function is not None) :
+      self.external_energy = external_energy_function(
+        sites_cart=sites_cart,
+        gradient_array=self.gradients)
+    else :
+      self.external_energy = 0
     for extension_obj in self.extension_objects:
       extension_obj.energies_add(energies_obj=self)
     self.finalize_target_and_gradients()

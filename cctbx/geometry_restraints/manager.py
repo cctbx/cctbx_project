@@ -31,6 +31,7 @@ class manager(object):
         planarity_proxies=None,
         generic_proxies=None,
         generic_restraints_helper=None,
+        external_energy_function=None,
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5):
@@ -375,6 +376,9 @@ class manager(object):
     self.generic_proxies = proxies
     self.generic_restraints_helper = restraints_helper
 
+  def set_external_energy_function (self, energy_function) :
+    self.external_energy_function = energy_function
+
   def pair_proxies(self,
         sites_cart=None,
         flags=None,
@@ -636,6 +640,7 @@ class manager(object):
       planarity_proxies=planarity_proxies,
       generic_proxies=generic_proxies,
       generic_restraints_helper=self.generic_restraints_helper,
+      external_energy_function=self.external_energy_function,
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
