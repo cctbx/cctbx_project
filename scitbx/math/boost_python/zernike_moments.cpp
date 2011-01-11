@@ -89,7 +89,8 @@ namespace {
                    double const&,
                    double const&,
                    double const&,
-                   scitbx::af::const_ref< scitbx::vec3<double> >
+                   scitbx::af::const_ref< scitbx::vec3<double> >,
+                   scitbx::af::const_ref< double >
                   >
              ((
                 arg("np"),
@@ -99,7 +100,8 @@ namespace {
                 arg("external_rmax"),
                 arg("fraction"),
                 arg("dx"),
-                arg("xyz")
+                arg("xyz"),
+                arg("density")
              ))
             )
         .def("value", &w_t::get_value)
