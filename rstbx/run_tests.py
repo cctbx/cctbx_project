@@ -22,6 +22,7 @@ def run_standalones():
   "$D/dps_core/tst_iotbx_converter.py",
   "$D/diffraction/tst_predict.py",
   "$D/diffraction/tst_ewald_sphere.py",
+  "$D/diffraction/tst_partial_derivatives.py",
   "$D/diffraction/fastbragg/tst_bragg_minimal.py",
   )
 

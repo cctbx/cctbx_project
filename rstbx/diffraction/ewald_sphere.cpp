@@ -46,7 +46,6 @@ given the sphere S and circle Co in plane P, how about this sequence:
 rstbx::rotation_angles::rotation_angles(const ewald_sphere_base_model& ew):
     ewald_sphere_base_model(ew){
 
-    Sr = std::sqrt(srsq);
     //make sure that the axial direction is of unit length
     e_axial_direction = e_axial_direction.normalize();
 
@@ -62,7 +61,6 @@ rstbx::rotation_angles::rotation_angles(const double& R,
                    const double& w,
                    const point& axial_direction):
     ewald_sphere_base_model(R,m,w,axial_direction){
-    Sr = std::sqrt(srsq);
     e_axial_direction = e_axial_direction.normalize();
     a_dot_s = e_axial_direction * spherecenter;
 }

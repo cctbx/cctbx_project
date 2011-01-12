@@ -75,11 +75,6 @@ def index_wrapper(positions,info,pdb_object):
   core_ai = dps_core()
   core_ai.setXyzData(xyzdata)
   core_ai.setMaxcell(1.25*max(uc.parameters()[0:3]))
-  """
-add select files to svn status
-check this in to rstbx!!
-email Holton
-email AZET"""
 
   H = HemisphereSampler(
       characteristic_grid = sampling,
