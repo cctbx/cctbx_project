@@ -3,10 +3,13 @@ import libtbx.phil
 import libtbx.load_env
 from libtbx.utils import Sorry
 import sys
+import os
 
 is_installed = False
 if libtbx.env.has_module("rosetta_adaptbx") :
-  is_installed = True
+  build_dir = libtbx.env.under_build("rosetta_adaptbx")
+  if (build_dir is not None) and (os.path.isdir(build_dir)) :
+    is_installed = True
 
 if (not is_installed) :
   external_energy_params = libtbx.phil.parse("")
