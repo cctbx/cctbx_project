@@ -3287,6 +3287,7 @@ class build_all_chain_proxies(object):
         params_remove=None,
         h_bond_table=None,
         assume_hydrogens_all_missing=True,
+        external_energy_function=None,
         ramachandran_atom_selection=None,
         log=None):
     assert self.special_position_settings is not None
@@ -3434,6 +3435,7 @@ class build_all_chain_proxies(object):
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
       generic_proxies=generic_proxies,
       generic_restraints_helper=generic_restraints_helper,
+      external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
       plain_pairs_radius=plain_pairs_radius)
     if (params_remove is not None):
@@ -3577,7 +3579,8 @@ class process(object):
         h_bond_table=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
-        hard_minimum_bond_distance_model=0.001):
+        hard_minimum_bond_distance_model=0.001,
+        external_energy_function=None):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -3590,6 +3593,7 @@ class process(object):
             params_remove=params_remove,
             h_bond_table=h_bond_table,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
+            external_energy_function=external_energy_function,
             log=self.log)
       if (self.log is not None):
         print >> self.log, \

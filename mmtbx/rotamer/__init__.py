@@ -80,7 +80,7 @@ def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
               residue_type=residue_type,
               chain_id=chain.id,
               altloc=altloc,
-              resid=residue.resid,
+              resid=residue.resid(),
               i_seqs=i_seqs)
             rama_angles.append(phi_psi)
   return rama_angles
