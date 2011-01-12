@@ -10,6 +10,7 @@
 #include <rstbx/dps_core/dps_core.h>
 #include <rstbx/dps_core/direction.h>
 #include <rstbx/diffraction/ewald_sphere.h>
+#include <rstbx/diffraction/partial_spot_position_partial_H.h>
 
 #include <scitbx/array_family/flex_types.h>
 
@@ -167,6 +168,18 @@ namespace boost_python { namespace {
       .def("offsetdot", &rotation_angles::offsetdot)
       .def("get_intersection_angles", &rotation_angles::get_intersection_angles)
     ;
+
+    class_<partial_spot_position_partial_H, bases<rotation_angles> >(
+      "partial_spot_position_partial_H",
+      init<const double&, const ewald_sphere_base_model::matrix&, const double&,
+           const ewald_sphere_base_model::point&>((arg("limiting_resolution"),
+             arg("orientation"),
+             arg("wavelength"),arg("axial_direction")
+      )))
+      .def("__call__", &partial_spot_position_partial_H::operator())
+      .def("dangle_", &partial_spot_position_partial_H::dangle_)
+    ;
+
   }
 
 }}} // namespace omptbx::boost_python::<anonymous>

@@ -84,8 +84,7 @@ class rotation_angles: public ewald_sphere_base_model {
    */
   bool operator()(scitbx::vec3<double> const&); //evaluate a Miller index
 
- private: //member data
-  double Sr; //radius of Ewald sphere
+ protected: //member data
   double a_dot_s; //cache value of unit rotation axis (dot) ewald sphere center
   point intersections[2]; //cache points where rotated H intersects Ewald sphere
   Angle iangle[2]; //phi angular rotation values where H intersects Ewald sphere
@@ -116,7 +115,7 @@ class rotation_angles: public ewald_sphere_base_model {
       }
   */
   inline scitbx::vec2<Angle>
-  get_intersection_angles(){//scitbx::vec3<double> const& miller){
+  get_intersection_angles()const{//scitbx::vec3<double> const& miller){
     //this->operator()(miller);
     return scitbx::vec2<Angle>(angle_(0), angle_(1));
   }

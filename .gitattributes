@@ -1055,7 +1055,10 @@ rstbx/diffraction/fastbragg/fastbragg.h -text
 rstbx/diffraction/fastbragg/fastbragg_ext.cpp -text
 rstbx/diffraction/fastbragg/tst_bragg_minimal.py -text
 rstbx/diffraction/fastbragg/tst_utils_clustering.py -text
+rstbx/diffraction/partial_spot_position_partial_H.cpp -text
+rstbx/diffraction/partial_spot_position_partial_H.h -text
 rstbx/diffraction/tst_ewald_sphere.py -text
+rstbx/diffraction/tst_partial_derivatives.py -text
 rstbx/diffraction/tst_predict.py -text
 rstbx/dps_core/__init__.py -text
 rstbx/dps_core/basis_choice.py -text
