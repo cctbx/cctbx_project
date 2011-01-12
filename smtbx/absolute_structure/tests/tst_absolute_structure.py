@@ -40,7 +40,6 @@ class test_case(object):
   def __init__(self, space_group_info, **kwds):
     libtbx.adopt_optional_init_args(self, kwds)
     self.space_group_info = space_group_info
-    if self.use_students_t_errors and not students_t_available: return
     self.structure = random_structure.xray_structure(
       space_group_info,
       elements=self.elements,
@@ -167,10 +166,11 @@ class hooft_analysis_test_case(test_case):
 
 def run_call_back(flags, space_group_info):
   if not space_group_info.group().is_centric():
-    for use_students_t_errors in (True, False):
+    hooft_analysis_test_case(
+      space_group_info,use_students_t_errors=False).exercise(debug=flags.Debug)
+    if students_t_available:
       hooft_analysis_test_case(
-        space_group_info,use_students_t_errors=use_students_t_errors).exercise(
-          debug=flags.Debug)
+        space_group_info,use_students_t_errors=True).exercise(debug=flags.Debug)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
