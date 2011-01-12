@@ -1,6 +1,7 @@
 import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env
+from libtbx import group_args
 import sys, os
 
 def find_source_dir(optional=False):
@@ -95,7 +96,12 @@ class SidechainAngles:
 #    except KeyError:
 #      resName + " is unknown"
 
-  def measureAngle(self, angleName, res, atom_dict = None):
+  def measureAngle(self, *args, **kwds):
+    angleAtoms = self.extract_chi_atoms(*args, **kwds)
+    return scitbx.math.dihedral_angle(
+      sites=[a.xyz for a in angleAtoms], deg=True)
+
+  def extract_chi_atoms (self, angleName, res, atom_dict=None) :
     atomNamesMap = None
     if (atom_dict is None):
       atomNamesMap = makeAtomDict(res)
@@ -111,14 +117,46 @@ class SidechainAngles:
         testAtom = atomNamesMap.get(namelist[j])
         j += 1
       #print testAtom.name + res.name
-      if testAtom != None: angleAtoms.append(atomNamesMap.get(testAtom.name))
-      else: raise AttributeError, "some sidechain atoms are missing!"
-      #testAtom = res.atoms[res.atoms().index(angleAtom)]
-    return scitbx.math.dihedral_angle(
-      sites=[a.xyz for a in angleAtoms], deg=True)
+      if (testAtom != None) :
+        angleAtoms.append(atomNamesMap.get(testAtom.name))
+      else:
+        raise AttributeError("Missing sidechain atoms!")
+    return angleAtoms
 
 def makeAtomDict(res):
   atomNamesMap = {}
   for atom in res.atoms():
     atomNamesMap[atom.name] = atom
   return atomNamesMap
+
+def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
+  angle_lookup = SidechainAngles(False)
+  residue_chis = []
+  for model in pdb_hierarchy.models() :
+    for chain in model.chains() :
+      for conformer in chain.conformers() :
+        for residue in conformer.residues() :
+          n_chi = angle_lookup.chisPerAA.get(residue.resname.lower(), 0)
+          try :
+            n_chi = int(n_chi)
+          except ValueError :
+            continue
+          chis = []
+          altloc = residue.atoms()[0].fetch_labels().altloc
+          for i in range(1, n_chi+1) :
+            try :
+              atoms = angle_lookup.extract_chi_atoms("chi%d" % i, residue)
+            except RuntimeError, e :
+              pass
+            else :
+              i_seqs = [ atom.i_seq for atom in atoms ]
+              chis.append(group_args(chi_id=i, i_seqs=i_seqs))
+          if (len(chis) > 0) :
+            residue_info = group_args(
+              residue_name=residue.resname,
+              chain_id=chain.id,
+              altloc=altloc,
+              resid=residue.resid(),
+              chis=chis)
+            residue_chis.append(residue_info)
+  return residue_chis
