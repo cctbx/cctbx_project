@@ -157,7 +157,8 @@ def get_h_bond_atoms(residues,
                      saenger_class,
                      leontis_westhof_class,
                      use_hydrogens=False):
-  base_pair = residues[0].strip() + '-' + residues[1].strip()
+  base_pair = clean_single_base_name(residues[0]).strip() + '-' + \
+              clean_single_base_name(residues[1]).strip()
   if (saenger_class is not None) :
     pair_type = saenger_class.upper()
   elif (leontis_westhof_class is not None) :
@@ -170,7 +171,8 @@ def get_distances(residues,
                   saenger_class,
                   leontis_westhof_class,
                   use_hydrogens=False):
-  base_pair = residues[0].strip() + '-' + residues[1].strip()
+  base_pair = clean_single_base_name(residues[0]).strip() + '-' + \
+              clean_single_base_name(residues[1]).strip()
   if (saenger_class is not None) :
     pair_type = saenger_class.upper()
   elif (leontis_westhof_class is not None) :
@@ -194,6 +196,16 @@ def clean_base_names(pdb_line):
   #clean DNA lines
   clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGT])([Dd])',r'\1 D\3',clean_line)
   return clean_line
+
+def clean_single_base_name(base):
+  clean_base = base
+  #clean RNA base names
+  clean_base = re.sub(r' ([ACGU])([Rr])',r'  \1',clean_base)
+  clean_base = re.sub(r'([ACGU])  ',r'  \1',clean_base)
+  #clean DNA base names
+  clean_base = re.sub(r' ([ACGT])([Dd])',r' D\1',clean_base)
+  return clean_base
+
 
 def run_reduce(hierarchy, remove_hydrogens=True):
   trim = "phenix.reduce -quiet -trim -"
