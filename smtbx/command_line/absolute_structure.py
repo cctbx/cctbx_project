@@ -31,7 +31,7 @@ def run_once(file_path, nu=None, log=None):
   hkl_path = file_root + '.hkl'
   fcf_path = file_root + '.fcf'
   if file_ext == '.fcf':
-    fo2, fc, scale = structure_factors_from_fcf(file_path)
+    xs, fo2, fc, scale = structure_factors_from_fcf(file_path)
   elif file_ext == '.cif':
     cif = iotbx.cif.reader(file_path=file_path).model()
     cif_block = cif.values()[0]
@@ -67,25 +67,34 @@ def structure_factors_from_fcf(file_path, xs=None):
     scale = fo2.scale_factor(fc)
   return xs, fo2, fc, scale
 
-def structure_factors_from_hkl(xs, hkl_path):
+def structure_factors_from_hkl(xs, hkl_path, weighting_scheme=None):
   fo2 = hklf.reader(filename=hkl_path).as_miller_arrays(
     crystal_symmetry=xs)[0]
   fo2.set_observation_type_xray_intensity()
   merging = fo2.merge_equivalents()
   fo2 = merging.array()
+  xs.scattering_type_registry(table="it1992", d_min=fo2.d_min())
   fc = fo2.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
   scale = fo2.scale_factor(fc)
+  if weighting_scheme is not None:
+    weights = weighting_scheme(
+      fo2.data(), fo2.sigmas(), fc.as_intensity_array().data(), scale)
+    scale = fo2.scale_factor(fc, weights=weights)
   return xs, fo2, fc, scale
 
 def structure_factors_from_ins_res(file_path):
+  from iotbx.builders \
+       import weighted_constrained_restrained_crystal_structure_builder
   hkl_path = os.path.splitext(file_path)[0] + ".hkl"
   if not os.path.exists(hkl_path): return [None]*3
-  builder = iotbx.builders.crystal_structure_builder()
-  stream = shelx.command_stream(filename=file_path)
-  l_ins = shelx.instruction_parser(stream, builder=None)
-  l_cs = shelx.crystal_symmetry_parser(l_ins.filtered_commands(), builder=builder)
-  l_xs = shelx.atom_parser(l_cs.filtered_commands(), builder=builder)
-  l_xs.parse()
+  builder = weighted_constrained_restrained_crystal_structure_builder()
+  stream = iotbx.shelx.command_stream(filename=file_path)
+  l_ins = iotbx.shelx.instruction_parser(stream, builder)
+  stream = iotbx.shelx.crystal_symmetry_parser(l_ins.filtered_commands(), builder)
+  stream = iotbx.shelx.afix_parser(stream.filtered_commands(), builder)
+  stream = iotbx.shelx.atom_parser(stream.filtered_commands(), builder)
+  stream = iotbx.shelx.restraint_parser(stream.filtered_commands(), builder)
+  stream.parse()
   xs = builder.structure
   twin = l_ins.instructions.get('twin')
   if twin is not None and not xs.space_group().is_centric():
@@ -93,7 +102,8 @@ def structure_factors_from_ins_res(file_path):
     print 'twin: ', twin['matrix']
   xs.set_inelastic_form_factors(
     photon=l_ins.instructions['cell'][0], table="sasaki")
-  return structure_factors_from_hkl(xs, hkl_path)
+  return structure_factors_from_hkl(
+    xs, hkl_path, weighting_scheme=builder.weighting_scheme)
 
 def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None):
   if log is None:
@@ -112,7 +122,7 @@ def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None):
       nu = absolute_structure.maximise_students_t_correlation_coefficient(
         NPP.y, min_nu=1, max_nu=200)
     t_analysis = absolute_structure.students_t_hooft_analysis(
-      fo2, fc, nu, probability_plot_slope=NPP.fit.slope())
+      fo2, fc, nu, scale_factor=scale, probability_plot_slope=NPP.fit.slope())
     tPP = absolute_structure.bijvoet_differences_probability_plot(
       t_analysis, use_students_t_distribution=True, students_t_nu=nu)
     print >> log, "Student's t analysis:"
@@ -121,8 +131,9 @@ def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None):
     print >> log, "Probability plot:"
     tPP.show(out=log)
     print >> log
-    flack = absolute_structure.flack_analysis(xs, fo2)
-    flack.show(out=log)
+    if xs is not None:
+      flack = absolute_structure.flack_analysis(xs, fo2)
+      flack.show(out=log)
 
 def run(args):
   command_line = (option_parser(
