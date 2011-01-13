@@ -79,8 +79,7 @@ namespace zernike {
         }
 
         initialize_voxel();
-        if(!uniform)
-          find_nbr();
+        find_nbr();
         xyz2voxel();
   //      std::string info( print_status() );
 
@@ -190,10 +189,6 @@ namespace zernike {
       }
 
       void mark_region_uniform(int xi, int yi, int zi, FloatType density) {
-/*        for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
-          for(int j=yi-splat_range_;j<=yi+splat_range_;j++)
-            for(int k=zi-splat_range_;k<=zi+splat_range_;k++)
- */
         int i,j,k;
         for(int n=0;n<n_nbr_;n++) {
           i=xi+neighbors_[n][0];
@@ -206,11 +201,6 @@ namespace zernike {
       }
 
       void mark_region_non_uniform(int xi, int yi, int zi, FloatType density) {
-       /* for(int i=xi-splat_range_;i<=xi+splat_range_;i++)
-          for(int j=yi-splat_range_;j<=yi+splat_range_;j++)
-            for(int k=zi-splat_range_;k<=zi+splat_range_;k++)
-              value_[i][j][k] += density;  //non-uniform
-*/
         int i,j,k;
         for(int n=0;n<n_nbr_;n++) {
           i=xi+neighbors_[n][0];
@@ -226,7 +216,7 @@ namespace zernike {
         int i,j,k;
         int n_tot=2*NP_+1;
         int n_pt, indx, n2(n_tot*n_tot);
-        af::shared< af::shared< af::shared<FloatType> > > new_value = value_.deep_copy();
+//        af::shared< af::shared< af::shared<FloatType> > > new_value = value_.deep_copy();
         af::shared< scitbx::vec3<int> > border_list;
         af::shared< int > border_indices;
         find_nearest_nbr();
