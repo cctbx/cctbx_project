@@ -79,7 +79,8 @@ namespace zernike {
         }
 
         initialize_voxel();
-        find_nbr();
+        if(!uniform)
+          find_nbr();
         xyz2voxel();
   //      std::string info( print_status() );
 
@@ -215,9 +216,65 @@ namespace zernike {
           i=xi+neighbors_[n][0];
           j=yi+neighbors_[n][1];
           k=zi+neighbors_[n][2];
-          value_[i][j][k] = density;  //uniform
+          value_[i][j][k] += weight_[n]*density;  //non-uniform
         }
         return;
+      }
+
+      scitbx::af::shared<int> border(int thickness)
+      {
+        int i,j,k;
+        int n_tot=2*NP_+1;
+        int n_pt, indx, n2(n_tot*n_tot);
+        af::shared< af::shared< af::shared<FloatType> > > new_value = value_.deep_copy();
+        af::shared< scitbx::vec3<int> > border_list;
+        af::shared< int > border_indices;
+        find_nearest_nbr();
+        scitbx::vec3< int > pt;
+        for(int t=0;t<thickness;t++)
+        {
+          border_list.clear();
+          for(i=0;i<n_tot;i++)
+            for(j=0;j<n_tot;j++)
+              for(k=0;k<n_tot;k++)
+              {
+                if(value_[i][j][k]>0)
+                {
+                  if(next_to_zero(i,j,k) )
+                  {
+                    border_list.push_back(scitbx::vec3<int>(i,j,k) );
+                  }
+                }
+              }
+           //update the map
+          n_pt=border_list.size();
+
+          for(int n=0;n<n_pt;n++)
+          {
+            pt=border_list[n];
+            indx = pt[0]*n2+pt[1]*n_tot+pt[2];
+            value_[pt[0]][pt[1]][pt[2]]=0.0;
+            border_indices.push_back( indx );
+          }
+
+        }//end of thickness
+        return border_indices;
+      }
+
+      bool next_to_zero(int i, int j, int k) {
+        for(int n=0;n<n_near_nbr_;n++)
+        {
+          if(value_[i+near_nbrs_[n][0]][j+near_nbrs_[n][1]][k+near_nbrs_[n][2]] == 0)
+          return true;
+        }
+        return false;
+      }
+
+
+      void dilate() {
+      }
+
+      void erode() {
       }
 
       bool initialize_voxel() {
@@ -236,14 +293,35 @@ namespace zernike {
 
       void find_nbr() {
         FloatType splat2=splat_range_*splat_range_;
+        FloatType d2;
         for(int i=-splat_range_;i<=splat_range_;i++)
           for(int j=-splat_range_;j<=splat_range_;j++)
-            for(int k=-splat_range_;k<=splat_range_;k++)
-              if(i*i+j*j+k*k <= splat2)
+            for(int k=-splat_range_;k<=splat_range_;k++) {
+              d2 = (i*i+j*j+k*k);
+              if(d2 <= splat2) {
                 neighbors_.push_back(scitbx::vec3<int>(i,j,k) );
+                weight_.push_back( std::exp(-d2/9.0) );
+              }
+            }
         n_nbr_=neighbors_.size();
         return;
       }
+
+      void find_nearest_nbr() {
+        int range=1;
+        FloatType d2;
+        for(int i=-range;i<=range;i++)
+          for(int j=-range;j<=range;j++)
+            for(int k=-range;k<=range;k++) {
+              d2 = (i*i+j*j+k*k);
+              if(d2 <= range) {
+                near_nbrs_.push_back(scitbx::vec3<int>(i,j,k) );
+              }
+            }
+        n_near_nbr_=near_nbrs_.size();
+        return;
+      }
+
 
       FloatType value(scitbx::vec3<int> xyz) {
         return get_value(xyz[0],xyz[1],xyz[2]);
@@ -266,7 +344,10 @@ namespace zernike {
     private:
       scitbx::af::shared< scitbx::vec3<FloatType> > xyz_;
       scitbx::af::shared< scitbx::vec3<int> > neighbors_;
-      int n_nbr_;
+      scitbx::af::shared< scitbx::vec3<int> > near_nbrs_;
+      scitbx::af::shared< FloatType > weight_;
+      scitbx::af::shared< int > border_;
+      int n_nbr_, n_near_nbr_;
       scitbx::af::shared< FloatType > density_;
       scitbx::af::shared< scitbx::vec3<FloatType> > scaled_xyz_;
       int natom_, NP_, NP_MAX_;
