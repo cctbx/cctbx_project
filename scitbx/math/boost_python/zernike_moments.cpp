@@ -113,6 +113,7 @@ namespace {
         .def("np",&w_t::np)
         .def("occupied_sites", &w_t::occupied_sites)
         .def("status", &w_t::print_status)
+        .def("border", &w_t::border)
       ;
     }
   };
