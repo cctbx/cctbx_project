@@ -103,11 +103,11 @@ def exercise_lexing_bis():
 
 def exercise_crystal_symmetry_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
-  l = shelx.crystal_symmetry_parser(
-    stream,
-    builder=iotbx.builders.crystal_symmetry_builder())
-  l.parse()
-  assert l.builder.crystal_symmetry.is_similar_symmetry(
+  builder = iotbx.builders.crystal_symmetry_builder()
+  stream = shelx.crystal_symmetry_parser(stream, builder)
+  stream = shelx.wavelength_parser(stream.filtered_commands(), builder)
+  stream.parse()
+  assert builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
       unit_cell=uctbx.unit_cell((7.350, 9.541, 12.842, 90, 90, 90)),
       space_group_symbol='Pbca'),
@@ -115,7 +115,8 @@ def exercise_crystal_symmetry_parsing():
     absolute_angle_tolerance=1e-15)
   cs = crystal_symmetry_from_ins.extract_from(
     file=cStringIO.StringIO(ins_mundane_tiny))
-  assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
+  assert cs.is_similar_symmetry(builder.crystal_symmetry)
+  assert approx_equal(builder.wavelength_in_angstrom, 0.71073, eps=5e-6)
 
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
   l = shelx.crystal_symmetry_parser(

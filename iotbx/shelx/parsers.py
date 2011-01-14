@@ -109,9 +109,6 @@ class instruction_parser(parser):
       elif cmd == 'EXTI':
         if len(args) == 1:
           self.instructions['exti'] = args[0]
-      elif cmd == 'CELL':
-        self.instructions['cell'] = args
-        yield command, line
       else:
         yield command, line
 
@@ -122,8 +119,8 @@ class crystal_symmetry_parser(parser):
   def filtered_commands(self):
     """ Yields those command in self.command_stream
         that this parser is not concerned with. On the contrary,
-        CELL, LATT, SYMM are swallowed.
-        The resulting info is available in self.crystal_symmetry
+        LATT, SYMM are swallowed (CELL is yielded because it carries
+        the wavelength too).
     """
     unit_cell = None
     space_group = sgtbx.space_group()
@@ -132,6 +129,7 @@ class crystal_symmetry_parser(parser):
       if cmd == 'CELL':
         assert unit_cell is None
         unit_cell = uctbx.unit_cell(args[1:])
+        yield command, line
       elif cmd == 'LATT':
         assert len(args) == 1
         n = int(args[0])
@@ -153,6 +151,17 @@ class crystal_symmetry_parser(parser):
   def parse(self):
     for command, line in self.filtered_commands():
       if command[0] == 'SFAC': break
+
+
+class wavelength_parser(parser):
+  """ A parser pulling out the wavelength info from a command stream """
+
+  def filtered_commands(self):
+    for command, line in self.command_stream:
+      cmd, args = command[0], command[-1]
+      if cmd == 'CELL':
+        self.builder.wavelength_in_angstrom = args[0]
+      yield command, line
 
 
 class variable_decoder(object):

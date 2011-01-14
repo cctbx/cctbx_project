@@ -90,7 +90,9 @@ def structure_factors_from_ins_res(file_path):
   builder = weighted_constrained_restrained_crystal_structure_builder()
   stream = iotbx.shelx.command_stream(filename=file_path)
   l_ins = iotbx.shelx.instruction_parser(stream, builder)
-  stream = iotbx.shelx.crystal_symmetry_parser(l_ins.filtered_commands(), builder)
+  stream = iotbx.shelx.crystal_symmetry_parser(l_ins.filtered_commands(),
+                                               builder)
+  stream = iotbx.shelx.wavelength_parser(stream.filtered_commands(), builder)
   stream = iotbx.shelx.afix_parser(stream.filtered_commands(), builder)
   stream = iotbx.shelx.atom_parser(stream.filtered_commands(), builder)
   stream = iotbx.shelx.restraint_parser(stream.filtered_commands(), builder)
@@ -101,7 +103,7 @@ def structure_factors_from_ins_res(file_path):
     print file_path
     print 'twin: ', twin['matrix']
   xs.set_inelastic_form_factors(
-    photon=l_ins.instructions['cell'][0], table="sasaki")
+    photon=builder.wavelength_in_angstrom, table="sasaki")
   return structure_factors_from_hkl(
     xs, hkl_path, weighting_scheme=builder.weighting_scheme)
 
