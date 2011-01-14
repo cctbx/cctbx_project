@@ -12,6 +12,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <scitbx/vec3.h>
+#include <scitbx/array_family/versa.h>
 
 namespace cctbx { namespace uctbx { namespace boost_python {
 
@@ -33,6 +34,24 @@ namespace {
     getinitargs(w_t const& ucell)
     {
       return boost::python::make_tuple(ucell.parameters());
+    }
+
+    typedef af::versa<double, af::mat_grid> matrix_t;
+
+    static matrix_t u_star_to_u_cart_linear_map(w_t const &self) {
+      matrix_t result(af::mat_grid(6, 6));
+      std::copy(self.u_star_to_u_cart_linear_map().begin(),
+                self.u_star_to_u_cart_linear_map().end(),
+                result.begin());
+      return result;
+    }
+
+    static matrix_t d_metrical_matrix_d_params(w_t const &self) {
+      matrix_t result(af::mat_grid(6, 6));
+      std::copy(self.d_metrical_matrix_d_params().begin(),
+                self.d_metrical_matrix_d_params().end(),
+                result.begin());
+      return result;
     }
 
     static void
@@ -107,9 +126,9 @@ namespace {
         .def("u_star_to_u_cif_linear_map",
              &w_t::u_star_to_u_cif_linear_map, ccr())
         .def("u_star_to_u_cart_linear_map",
-             &w_t::u_star_to_u_cart_linear_map, ccr())
+             u_star_to_u_cart_linear_map)
         .def("d_metrical_matrix_d_params",
-             &w_t::d_metrical_matrix_d_params, ccr())
+             d_metrical_matrix_d_params)
         .def("length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::length, (

@@ -9,7 +9,7 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/shared.h>
-#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/tiny_mat_ref.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/vec3.h>
@@ -567,9 +567,10 @@ namespace cctbx {
                  {0, 0, o_5 o_8, 0, 0, o_4 o_8}
                }
        */
-      af::versa<double, af::c_grid<2> > const &
+      af::const_ref<double, af::mat_grid>
       u_star_to_u_cart_linear_map() const {
-        return u_star_to_u_cart_linear_map_;
+        return
+        af::tiny_mat_const_ref<double, 6, 6>(u_star_to_u_cart_linear_map_);
       }
 
       /// The linear map transforming ADP u* into u_cif
@@ -578,9 +579,10 @@ namespace cctbx {
       }
 
       //! The gradient of the elements of the metrical matrix wrt the unit cell params
-      af::versa<double, af::c_grid<2> > const &
+      af::const_ref<double, af::mat_grid>
       d_metrical_matrix_d_params() const {
-        return d_metrical_matrix_d_params_;
+        return
+        af::tiny_mat_const_ref<double, 6, 6>(d_metrical_matrix_d_params_);
       }
       //! Length^2 of a vector of fractional coordinates.
       /*! Not available in Python.
@@ -1043,8 +1045,8 @@ namespace cctbx {
       uc_mat3 orth_;
       af::double6 u_star_to_u_iso_linear_form_;
       af::double6 u_star_to_u_cif_linear_map_;
-      af::versa<double, af::c_grid<2> > u_star_to_u_cart_linear_map_;
-      af::versa<double, af::c_grid<2> > d_metrical_matrix_d_params_;
+      double u_star_to_u_cart_linear_map_[6*6];
+      double d_metrical_matrix_d_params_[6*6];
 
       mutable double longest_vector_sq_;
       mutable double shortest_vector_sq_;

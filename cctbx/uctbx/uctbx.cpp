@@ -174,8 +174,8 @@ namespace cctbx { namespace uctbx {
     r_metr_mx_ = construct_metrical_matrix(r_params_, r_cos_ang_);
 
     using scitbx::constants::pi_180;
-    af::versa<double, af::c_grid<2> > &f = d_metrical_matrix_d_params_;
-    f.resize(af::c_grid<2>(6,6), 0.);
+    af::tiny_mat_ref<double, 6, 6> f(d_metrical_matrix_d_params_);
+    f.fill(0);
     f(0,0) = 2*params_[0];
     f(1,1) = 2*params_[1];
     f(2,2) = 2*params_[2];
@@ -201,9 +201,8 @@ namespace cctbx { namespace uctbx {
     f[5] = 2*(o[1]*o[2] + o[4]*o[5]);
     f *= 1./3;
 
-    u_star_to_u_cart_linear_map_.resize(
-      af::c_grid<2>(6,6), static_cast<double>(0));
-    af::versa<double, af::c_grid<2> > &L = u_star_to_u_cart_linear_map_;
+    af::tiny_mat_ref<double, 6, 6> L(u_star_to_u_cart_linear_map_);
+    L.fill(0);
     L(0,0) = o[0]*o[0];
     L(0,1) = o[1]*o[1];
     L(0,2) = o[2]*o[2];

@@ -93,7 +93,7 @@ namespace cctbx { namespace geometry {
       scitbx::sym_mat3<FloatType> result;
       scitbx::sym_mat3<FloatType>
         d_d_mm = d_distance_d_metrical_matrix(unit_cell);
-      af::versa<FloatType, af::c_grid<2> >
+      af::const_ref<double, af::mat_grid>
         d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
       scitbx::matrix::matrix_transposed_vector(
         6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());
@@ -255,7 +255,7 @@ namespace cctbx { namespace geometry {
     {
       scitbx::sym_mat3<FloatType> result;
       scitbx::sym_mat3<FloatType> d_d_mm = d_angle_d_metrical_matrix(unit_cell);
-      af::versa<FloatType, af::c_grid<2> >
+      af::const_ref<double, af::mat_grid>
         d_mm_d_params = unit_cell.d_metrical_matrix_d_params();
       scitbx::matrix::matrix_transposed_vector(
         6, 6, d_mm_d_params.begin(), d_d_mm.begin(), result.begin());
