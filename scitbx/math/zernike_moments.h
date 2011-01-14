@@ -287,11 +287,11 @@ namespace zernike {
         for(int i=-splat_range_;i<=splat_range_;i++)
           for(int j=-splat_range_;j<=splat_range_;j++)
             for(int k=-splat_range_;k<=splat_range_;k++) {
-              d2 = (i*i+j*j+k*k);
-              if(d2 <= splat2) {
+            //  d2 = (i*i+j*j+k*k);
+            //  if(d2 <= splat2) {
                 neighbors_.push_back(scitbx::vec3<int>(i,j,k) );
                 weight_.push_back( std::exp(-d2/9.0) );
-              }
+             // }
             }
         n_nbr_=neighbors_.size();
         return;

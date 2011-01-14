@@ -212,6 +212,8 @@ namespace zernike {
         int total_point=image.size();
         FloatType x,y, bound, r2;
         bound = N_point_*N_point_;
+        voxel_indx_.clear();
+        voxel_value_.clear();
         for(int i=0;i<total_point;i++) {
           x=image[i][0]-N_point_;
           y=image[i][1]-N_point_;

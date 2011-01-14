@@ -1938,7 +1938,7 @@ namespace zernike{
     nl_(n_max_),    // nl index
     lgf_(n_max_*2+5)// factorial engine
     {
-      delta_ = 1.0 / (m-1);
+      delta_ = 1.0 / (m);
       FloatType x,y,r,t;
       scitbx::vec2<FloatType> xy, rt;
       scitbx::vec2<int> ij;
