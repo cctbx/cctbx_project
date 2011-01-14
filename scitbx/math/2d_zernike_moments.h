@@ -330,7 +330,10 @@ namespace zernike {
       fnn()
       { return C_nn_; }
 
-
+      scitbx::af::shared< scitbx::af::tiny<int,2> > nm()
+      {
+        return( C_nm_.nl() );
+      }
 
       std::complex<FloatType> get_moment(int n,int m)
       {
