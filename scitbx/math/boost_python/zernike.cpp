@@ -83,7 +83,7 @@ namespace {
 
   struct nl_complex_array_wrapper
   {
-    typedef zernike::nl_array< std::complex<double> > w_t;
+    typedef zernike::nl_complex_array< double > w_t;
 
     static void
     wrap()
@@ -274,6 +274,29 @@ namespace {
     }
   };
 
+  struct zernike_grid_2d_wrapper
+  {
+    typedef zernike::zernike_grid_2d<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("zernike_grid_2d", no_init)
+        .def(init<int const&, int const&>
+                  ((  arg("m"),
+                      arg("n_max")
+                  )))
+        .def("xy", &w_t::xy )
+        .def("rt", &w_t::rt )
+        .def("load_coefs", &w_t::load_coefs)
+        .def("f", &w_t::f)
+        .def("nl", &w_t::nl)
+        .def("coefs", &w_t::coefs)
+           ;
+    }
+  };
 
 
 } // namespace <anonymous>
@@ -293,6 +316,7 @@ namespace boost_python {
     zernike_2d_polynome_wrapper::wrap();
     log_factorial_generator_wrapper::wrap();
     zernike_grid_wrapper::wrap();
+    zernike_grid_2d_wrapper::wrap();
     nss_spherical_harmonics_wrapper::wrap();
   }
 

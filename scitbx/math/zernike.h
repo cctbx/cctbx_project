@@ -1852,7 +1852,7 @@ namespace zernike{
       if(n_==0) return 1.0;
       if(r==1.0) return 1.0;
       value_=0.0;
-      for(int k=0;k<n_terms_;k++)
+      for(int k=0;k<=n_terms_;k++)
       {
         x_=r*std::cos(two_pi_over_nterm_*k);
         mu_ = std::acos(x_);

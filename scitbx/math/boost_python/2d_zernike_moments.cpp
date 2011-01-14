@@ -86,6 +86,7 @@ namespace {
              ))
             )
         .def("moments", &w_t::all_moments)
+        .def("nm", &w_t::nm)
         .def("get_moment",&w_t::get_moment)
         .def("calc_moments",&w_t::calc_moments)
         .def("update_ss",&w_t::update_ss)
