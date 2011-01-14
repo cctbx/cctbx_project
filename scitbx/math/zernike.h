@@ -18,6 +18,7 @@
 
 #include <scitbx/math/gamma.h>
 #include <scitbx/vec3.h>
+#include <scitbx/vec2.h>
 
 #include <complex>
 #include <boost/math/special_functions/spherical_harmonic.hpp>
@@ -443,6 +444,149 @@ namespace zernike{
       scitbx::af::shared< scitbx::af::shared<int> > nl_index_;
 
   } ;
+
+
+  //---------------------------------------------------
+  // same as above, but now with complex numbers
+  //
+  template <typename FloatType = double>
+  class nl_complex_array
+  {
+
+     typedef std::map< double_integer_index<int>,
+                      std::size_t,
+                      double_integer_index_fast_less_than<int> > nl_lookup_map_type;
+
+    public:
+    /* Default constructor */
+    nl_complex_array() {}
+    /* Basic constructor, sets all coefs to zero */
+    nl_complex_array(int const& n_max)
+    {
+      SCITBX_ASSERT (n_max>0);
+      n_max_=n_max;
+      int count=0, n_duplicates=0, nl_count=0;
+      for (int nn=0; nn<=n_max_; nn++){
+        for (int ll=0;ll<=nn;ll++){
+          // restriction on even / odd
+          if (is_even( nn-ll )){
+            //scitbx::af::shared<int> tmp2;
+            // make a lookup table for nl
+            double_integer_index<int> this_nl(nn,ll);
+            nl_.push_back( this_nl );
+            coefs_.push_back( 0.0 );
+            nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
+            if ( l == nl_lookup_.end() ) { // not in list
+                nl_lookup_[ this_nl ] = nl_count;
+            }
+            nl_count++;
+
+
+          }
+          // if odd, leave it be
+        }
+      }
+    }
+
+
+
+    int find_nl(int const& n, int const& l)
+    {
+       double_integer_index<int> this_nl(n,l);
+       return(find_nl(this_nl));
+    }
+
+
+    int find_nl(double_integer_index<int> const& this_nl )
+    {
+       int nl_location;
+       nl_lookup_map_type::const_iterator l = nl_lookup_.find( this_nl );
+       if (l == nl_lookup_.end()) {
+         nl_location = -1; // !!! negative if not found !!!
+       }
+       else {
+         nl_location = l->second;
+       }
+       return (nl_location);
+    }
+
+
+    bool set_coef(int const& n, int const&l, std::complex<FloatType> const&x )
+    {
+       int this_index = find_nl(n,l);
+       if (this_index>-1){
+         coefs_[ this_index ] = x;
+         return(true);
+       }
+       return(false);
+    }
+
+    std::complex<FloatType> get_coef(int const& n, int const& l)
+    {
+       int this_index = find_nl(n,l);
+       if (this_index>-1){
+         return(coefs_[ this_index ]);
+       }
+       return(0.0);
+    }
+
+
+    scitbx::af::shared< scitbx::af::tiny<int,2> > nl()
+    {
+      scitbx::af::shared< scitbx::af::tiny<int,2> > result;
+      for(int ii=0;ii<nl_.size();ii++){
+        scitbx::af::tiny<int,2> tmp( nl_[ii].n_, nl_[ii].l_);
+        result.push_back( tmp );
+      }
+      return( result );
+    }
+
+
+    scitbx::af::shared< std::complex<FloatType> > coefs()
+    {
+      return( coefs_ );
+    }
+
+    bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,2> > nl,
+                    scitbx::af::const_ref< std::complex<FloatType> > const& coef)
+    {
+
+       SCITBX_ASSERT(nl.size()==coef.size());
+       SCITBX_ASSERT(nl.size()>0 );
+       int this_one;
+       bool found_it, global_find=true;
+       for (int ii=0;ii<nl.size();ii++){
+         found_it = set_coef(nl[ii][0],nl[ii][1],coef[ii]);
+         if (!found_it){
+           global_find=false;
+         }
+       }
+       return(global_find);
+    }
+
+
+    private:
+      bool is_even(std::size_t value)
+      {
+        std::size_t res;
+        res = 2*(value/2);
+        if (res == value){
+          return(true);
+        }
+        return(false);
+      }
+
+      nl_lookup_map_type nl_lookup_;
+
+      int n_max_;
+      scitbx::af::shared< std::complex<FloatType> > coefs_;
+      scitbx::af::shared< double_integer_index<int> > nl_;
+      scitbx::af::shared< scitbx::af::shared<int> > nl_index_;
+
+  } ;
+
+
+
 
 
   //--------------------------------------------------------------
@@ -1775,6 +1919,169 @@ namespace zernike{
     int n_, l_;
     zernike_2d_radial_dc<FloatType> rnl_;
   };
+
+
+
+
+  template <typename FloatType = double>
+  class zernike_grid_2d
+  {
+    public:
+    /* Default constructor */
+    zernike_grid_2d(){}
+    /* Basic constructor */
+    zernike_grid_2d(int const& m, int const& n_max)
+    :
+    m_(m),          // length of cube  = m*2+1
+    n_max_(n_max),  // order of expansion
+    eps_(1e-12),    // epsilon
+    nl_(n_max_),    // nl index
+    lgf_(n_max_*2+5)// factorial engine
+    {
+      delta_ = 1.0 / (m-1);
+      FloatType x,y,r,t;
+      scitbx::vec2<FloatType> xy, rt;
+      scitbx::vec2<int> ij;
+      // get all indices please
+      // scitbx::af::shared< scitbx::af::tiny<int,2> > nl_indices_only_ = nl_.nl();
+      nl_indices_only_ = nl_.nl();
+      // make a log factorial lookup table
+      log_factorial_generator<FloatType> lgf;
+      scitbx::af::shared< zernike_2d_polynome<FloatType> > zp;
+      for (int ii=0;ii<nl_indices_only_.size();ii++){
+        zp.push_back( zernike_2d_polynome<FloatType>( nl_indices_only_[ii][0],
+                                                      nl_indices_only_[ii][1] ) );
+      }
+
+      build_grid();
+      int np_total = xy_.size();
+      for(int i=0; i< np_total; i++) {
+        r=rt_[i][0];
+        t=rt_[i][1];
+
+        // for each point, make a place holder for the zernike basis function
+        std::vector< std::complex<FloatType> > tmp_result;
+        // loop over all indices nlm and precompute all coefficients
+        if (r<=1.0){
+          for (int ii=0;ii<zp.size();ii++){
+            tmp_result.push_back( zp[ii].f(r,t) );
+            }
+        } else {
+          std::complex<FloatType> tmp(0,0);
+          tmp_result.push_back( tmp ); // when radius bigger then 1
+        }
+        partial_data_.push_back( tmp_result );
+      }
+    }
+
+    void build_grid()
+    {
+      FloatType x,y,r,t;
+      scitbx::vec2<FloatType> xy, rt;
+
+        for (int ix=-m_;ix<=m_;ix++){
+         for (int iy=-m_;iy<=m_;iy++){
+            x = ix*delta_;
+            y = iy*delta_;
+            xy[0]=x;
+            xy[1]=y;
+            xy_.push_back( xy );
+          }
+         }
+
+
+
+     int np_total = xy_.size();
+     for(int i=0;i<np_total;i++)
+     {
+        x=xy_[i][0];
+        y=xy_[i][1];
+        r = std::sqrt(x*x+y*y);
+        if (r>eps_){
+         t = std::atan2(y,x);
+         } else {
+           t = 0.0;
+         }
+
+        rt[0]=r;
+        rt[1]=t;
+        rt_.push_back( rt );
+     }
+
+      return;
+    }
+
+
+
+
+    scitbx::af::shared< scitbx::vec2<FloatType> > xy()
+    {
+      return( xy_ );
+    }
+    scitbx::af::shared< scitbx::vec2<FloatType> > rt()
+    {
+      return(rt_ );
+    }
+
+
+
+    bool load_coefs(scitbx::af::shared< scitbx::af::tiny<int,2> > these_nl,
+                    scitbx::af::const_ref< std::complex<FloatType> > const& coef)
+    {
+       return( nl_.load_coefs(these_nl,coef) );
+    }
+
+
+    scitbx::af::shared< std::complex<FloatType> > f()
+    {
+       //scitbx::af::shared< scitbx::af::tiny<int,2> > nl_ind = nl_.nl();
+       scitbx::af::shared< std::complex<FloatType> > coefs = nl_.coefs();
+       scitbx::af::shared< std::complex<FloatType> > result;
+       std::complex<FloatType> tmp;
+       for (int gg=0;gg<partial_data_.size();gg++){
+         std::complex<FloatType> tmp_result=0.0;
+         for (int ii=0;ii<partial_data_[gg].size();ii++){
+           tmp = partial_data_[gg][ii]*coefs[ii];
+           if (nl_indices_only_[ii][1]!=0){
+             tmp = tmp+std::conj(tmp);
+           }
+           tmp_result += tmp;
+         }
+         result.push_back( tmp_result );
+       }
+       return( result );
+    }
+
+    scitbx::af::shared< std::complex<FloatType> > coefs()
+    {
+      return( nl_.coefs() );
+    }
+
+    scitbx::af::shared< scitbx::af::tiny<int,2> > nl()
+    {
+      return( nl_.nl() );
+    }
+
+
+    private:
+      int m_, n_max_;
+      bool hex_;
+      FloatType delta_, eps_;
+      scitbx::af::shared< scitbx::vec2<FloatType> > xy_;
+      scitbx::af::shared< scitbx::vec2<FloatType> > rt_;
+      scitbx::af::shared< scitbx::vec2<int> > ij_;
+
+      scitbx::af::shared< scitbx::af::tiny<int,2> > nl_indices_only_;
+
+      scitbx::af::shared< std::vector< std::complex<FloatType> > > partial_data_;
+      nl_complex_array<FloatType> nl_;
+      log_factorial_generator<FloatType> lgf_;
+      scitbx::af::shared< FloatType > model_;
+  };
+
+
+
+
 
 
 
