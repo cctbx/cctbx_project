@@ -1,6 +1,10 @@
 import os
 from libtbx.utils import warn_if_unexpected_md5_hexdigest
 
+self.remove_obsolete_pyc_if_possible(pyc_file_names=[
+  "eltbx/xray_scattering.pyc", # XXX backward compatibility 2011-01-14
+])
+
 if (self.env.is_ready_for_build()):
   message_template = '  Generating C++ files in:\n    "%s"'
 

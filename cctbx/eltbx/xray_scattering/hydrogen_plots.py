@@ -2,7 +2,11 @@ from __future__ import division
 from cctbx.eltbx import xray_scattering
 import sys
 
-itc_tab_6112 = [
+# Table 6.1.1.2. Spherical bonded hydrogen-atom scattering
+# factors from Stewart, Davidson & Simpson (1965)
+# Manually padded with itvc/v5.txt HF values (similar to what
+# the ITC Table 6.1.1.1 authors did in some other cases).
+itc_tab_6112_padded = [
   (0.0000, 1.0000),
   (0.0215, 0.9924),
   (0.0429, 0.9704),
@@ -48,11 +52,21 @@ itc_tab_6112 = [
   (1.5887, 0.0015),
   (1.6317, 0.0013),
   (1.6746, 0.0011),
-  (1.7176, 0.0010)]
+  (1.7176, 0.0010),
+  # Manually padded with itvc/v5.txt HF values.
+  (1.80, 0.0008),
+  (1.90, 0.0006),
+  (2.00, 0.0005),
+  (2.50, 0.0002),
+  (3.00, 0.0001),
+  (3.50, 0.0001),
+  (4.00, 0.0000),
+  (5.00, 0.0000),
+  (6.00, 0.0000)]
 
 def run(args):
   assert len(args) == 0
-  sds = xray_scattering.gaussian(
+  sds = xray_scattering.gaussian( # ITC 1992 Table 6.1.1.4
     (0.493002, 0.322912, 0.140191, 0.040810),
     (10.5109, 26.1257, 3.14236, 57.7997),
     0.003038)
@@ -65,7 +79,7 @@ def run(args):
     print '@ s%d legend "%s"' % (i+1, lbl)
   print "@ s0 symbol 1"
   print "@ s0 line linestyle 0"
-  for x,y in itc_tab_6112:
+  for x,y in itc_tab_6112_padded:
     print x, y
   print "&"
   n_samples = 100
