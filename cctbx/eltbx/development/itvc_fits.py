@@ -2,6 +2,7 @@ from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import rez_rez_grant
 from cctbx.eltbx.development.create_n_gaussian_raw_cpp import identifier
 from cctbx.eltbx import xray_scattering
+from scitbx.array_family import flex
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
 from libtbx.option_parser import OptionParser
@@ -29,7 +30,7 @@ def run(file_name, args, cutoff, params,
   sel = stols_more <= cutoff + 1.e-6
   stols = stols_more.select(sel)
   i_chunk = 0
-  for element in tab.elements + ["O2-"]:
+  for element in tab.elements + ["O2-", "SDS"]:
     if (len(args) > 0 and element not in args): continue
     flag = i_chunk % chunk_n == chunk_i
     i_chunk += 1
@@ -37,66 +38,86 @@ def run(file_name, args, cutoff, params,
       continue
     results = {}
     results["fit_parameters"] = params
-    wk = xray_scattering.wk1995(element, True)
-    if (element != "O2-"):
-      entry = tab.entries[element]
+    if (element == "SDS"):
+      wrk_lbl = element
+      from cctbx.eltbx.xray_scattering.hydrogen_plots import \
+        itc_tab_6112_padded
+      sds_stols, sds_data = [flex.double(vals)
+        for vals in zip(*itc_tab_6112_padded)]
+      sds_sigmas = flex.double(sds_data.size(), 0.00005)
+      assert sorted(sds_stols) == list(sds_stols)
+      sel = sds_stols <= cutoff + 1.e-6
       null_fit = scitbx.math.gaussian.fit(
-        stols,
-        entry.table_y[:stols.size()],
-        entry.table_sigmas[:stols.size()],
+        sds_stols.select(sel),
+        sds_data.select(sel),
+        sds_sigmas.select(sel),
         xray_scattering.gaussian(0, False))
       null_fit_more = scitbx.math.gaussian.fit(
-        stols_more,
-        entry.table_y[:stols_more.size()],
-        entry.table_sigmas[:stols_more.size()],
+        sds_stols,
+        sds_data,
+        sds_sigmas,
         xray_scattering.gaussian(0, False))
     else:
-      rrg_stols_more = rez_rez_grant.table_2_stol
-      sel = rrg_stols_more <= cutoff + 1.e-6
-      rrg_stols = rrg_stols_more.select(sel)
-      null_fit = scitbx.math.gaussian.fit(
-        rrg_stols,
-        rez_rez_grant.table_2_o2minus[:rrg_stols.size()],
-        rez_rez_grant.table_2_sigmas[:rrg_stols.size()],
-        xray_scattering.gaussian(0, False))
-      null_fit_more = scitbx.math.gaussian.fit(
-        rrg_stols_more,
-        rez_rez_grant.table_2_o2minus[:rrg_stols_more.size()],
-        rez_rez_grant.table_2_sigmas[:rrg_stols_more.size()],
-        xray_scattering.gaussian(0, False))
+      wrk_lbl = xray_scattering.wk1995(element, True)
+      if (element != "O2-"):
+        entry = tab.entries[element]
+        null_fit = scitbx.math.gaussian.fit(
+          stols,
+          entry.table_y[:stols.size()],
+          entry.table_sigmas[:stols.size()],
+          xray_scattering.gaussian(0, False))
+        null_fit_more = scitbx.math.gaussian.fit(
+          stols_more,
+          entry.table_y[:stols_more.size()],
+          entry.table_sigmas[:stols_more.size()],
+          xray_scattering.gaussian(0, False))
+      else:
+        rrg_stols_more = rez_rez_grant.table_2_stol
+        sel = rrg_stols_more <= cutoff + 1.e-6
+        rrg_stols = rrg_stols_more.select(sel)
+        null_fit = scitbx.math.gaussian.fit(
+          rrg_stols,
+          rez_rez_grant.table_2_o2minus[:rrg_stols.size()],
+          rez_rez_grant.table_2_sigmas[:rrg_stols.size()],
+          xray_scattering.gaussian(0, False))
+        null_fit_more = scitbx.math.gaussian.fit(
+          rrg_stols_more,
+          rez_rez_grant.table_2_o2minus[:rrg_stols_more.size()],
+          rez_rez_grant.table_2_sigmas[:rrg_stols_more.size()],
+          xray_scattering.gaussian(0, False))
     if (zig_zag):
-      results[wk.label()] = cctbx.eltbx.gaussian_fit.zig_zag_fits(
-        label=wk.label(),
+      results[wrk_lbl] = cctbx.eltbx.gaussian_fit.zig_zag_fits(
+        label=wrk_lbl,
         null_fit=null_fit,
         null_fit_more=null_fit_more,
         params=params)
     elif (full_fits is not None):
-      assert len(full_fits.all[wk.label()]) == 1
-      results[wk.label()] = cctbx.eltbx.gaussian_fit.decremental_fits(
-        label=wk.label(),
+      assert len(full_fits.all[wrk_lbl]) == 1
+      results[wrk_lbl] = cctbx.eltbx.gaussian_fit.decremental_fits(
+        label=wrk_lbl,
         null_fit=null_fit,
-        full_fit=full_fits.all[wk.label()][0],
+        full_fit=full_fits.all[wrk_lbl][0],
         params=params,
         plots_dir=plots_dir,
         verbose=verbose)
     elif (not six_term):
-      results[wk.label()] = cctbx.eltbx.gaussian_fit.incremental_fits(
-        label=wk.label(),
+      results[wrk_lbl] = cctbx.eltbx.gaussian_fit.incremental_fits(
+        label=wrk_lbl,
         null_fit=null_fit,
         params=params,
         plots_dir=plots_dir,
         verbose=verbose)
     else:
       best_min = scitbx.math.gaussian_fit.fit_with_golay_starts(
-        label=wk.label(),
+        label=wrk_lbl,
         null_fit=null_fit,
         null_fit_more=null_fit_more,
         params=params)
       g = best_min.final_gaussian_fit
-      results[wk.label()] = [xray_scattering.fitted_gaussian(
+      results[wrk_lbl] = [xray_scattering.fitted_gaussian(
         stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
-    pickle_file_name = "%s_fits.pickle" % identifier(wk.label())
+    pickle_file_name = "%s_fits.pickle" % identifier(wrk_lbl)
     easy_pickle.dump(pickle_file_name, results)
 
 def run_and_time(*args, **kw):
