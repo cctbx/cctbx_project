@@ -191,4 +191,45 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
+  // riding expandable...
+  void
+  riding_expandable_group
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {
+    site_parameter
+      *pivot = dynamic_cast<site_parameter *>(this->argument(0));
+    scalar_parameter
+      *size = dynamic_cast<scalar_parameter *>(argument(1));
+    const double size_value = size->value;
+    const cart_t center = unit_cell.fractionalize(pivot->value);
+    if (!crd_initialised) {
+      const cart_t original_pivot_crd = unit_cell.orthogonalize(pivot->value);
+      for (int i=0; i < scatterers_.size(); i++)  {
+        co_s[i] = unit_cell.orthogonalize(scatterers_[i]->site) -
+          original_pivot_crd;
+      }
+      crd_initialised = true;
+    }
+    for (int i=0; i < scatterers_.size(); i++) {
+      // update site of i-th atoms
+      fx_s[i] = unit_cell.fractionalize(center + co_s[i]*size_value);
+
+      // Derivatives
+      if (!jacobian_transpose) continue;
+      sparse_matrix_type &jt = *jacobian_transpose;
+      std::size_t const j_s = this->index() + 3*i;
+
+      // Riding
+      for (int j=0; j<3; j++)
+        jt.col(j_s + j) = jt.col(pivot->index() + j);
+
+      // expansion/contraction
+      if (size->is_variable())  {
+        frac_t grad_f = unit_cell.fractionalize(co_s[i]);
+        for (int j=0; j<3; j++)
+          jt(size->index(), j_s + j) = grad_f[j];
+      }
+    }
+  }
 }}}

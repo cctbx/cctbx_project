@@ -89,6 +89,38 @@ class rigid_rotable_expandable_group(object):
       reparametrisation.asu_scatterer_parameters[j].site = param
 
 
+class rigid_riding_expandable_group(object):
+  """ a set of atoms rides on a pivot atom, rotates and uniformly
+  expands or shrinks
+  """
+
+  def __init__(self, center, ind_sequence, sizeable):
+    if len(ind_sequence) == 0:
+      raise InvalidConstraint("at least one atom is expected")
+    self.pivot = center
+    self.indices = ind_sequence
+    self.sizeable = sizeable
+
+  def __eq__(self, other):
+    if (self.pivot != other.pivot or self.indices != other.indices):
+      return False
+    return True
+
+  def add_to(self, reparametrisation):
+    scatterers = reparametrisation.structure.scatterers()
+    pivot_sp = reparametrisation.add_new_site_parameter(self.pivot)
+    size = reparametrisation.add(_.independent_scalar_parameter,
+                                    value=1, variable=self.sizeable)
+    scatterers = tuple([scatterers[i] for i in self.indices])
+    param = reparametrisation.add(
+      _.rigid_riding_expandable_group,
+      pivot=pivot_sp,
+      size=size,
+      scatterers = scatterers)
+    for i, j in enumerate(self.indices):
+      reparametrisation.add_new_site_proxy_parameter(param, i, j)
+      reparametrisation.asu_scatterer_parameters[j].site = param
+
 class idealised_fragment(object):
   """ ported from olex2 xlib/fragment.h
   generates parameterised coordinates for four framents:

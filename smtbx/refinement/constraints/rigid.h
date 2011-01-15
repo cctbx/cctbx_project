@@ -124,6 +124,26 @@ protected:
 };
 
 
+/** a set of atoms rides on the pivot one; bonds may be allowed stretching
+    shelxl code 3/4
+ */
+
+class riding_expandable_group : public rigid_group_base {
+public:
+  riding_expandable_group(
+    site_parameter *pivot,
+    independent_scalar_parameter *size,
+    af::shared<scatterer_type *> const &scatterers)
+  : parameter(2),
+    rigid_group_base(scatterers)
+  {
+    set_arguments(pivot, size);
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+};
+
 }}}
 
 #endif // GUARD
