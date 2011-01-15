@@ -39,7 +39,7 @@ def get_spotfinder_url(file_object,host,port):
   Response = post_multipart(host=testurl, selector=selector,
     fields = query_object, files = files)
 
-  print Response.read()
+  print Response.getresponse().read()
 
 def get_labelit_image_object(file,convention):
   Q = quick_image(file)

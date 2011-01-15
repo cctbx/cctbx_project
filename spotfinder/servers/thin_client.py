@@ -15,7 +15,8 @@ def get_spotfinder_url(filename,host,port):
   Response = post_multipart(host=testurl, selector=selector,
     fields = query_object, files = [])
 
-  print Response.read()
+  print Response.getresponse().read()
+  Response.close()
 
 def kill_server(host,port):
   from socket import error as socketerror
@@ -30,6 +31,8 @@ def kill_server(host,port):
 
       Response = post_multipart(host=testurl, selector=selector,
       fields = query_object, files = [])
+      Response.getresponse()
+      Response.close()
   except socketerror,e:
     pass
 

@@ -41,7 +41,10 @@ def post_multipart(host, selector, fields, files):
     h.putheader('content-length', str(len(body)))
     h.endheaders()
     h.send(body)
-    return h.getresponse()
+    return h
+    # it is the responsibility of the caller to call
+    # h.getresponse()
+    # h.close()
 
 def encode_multipart_formdata(fields, files):
     """
