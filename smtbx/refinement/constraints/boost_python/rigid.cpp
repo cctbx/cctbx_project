@@ -56,6 +56,26 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
+
+    struct riding_expandable_group_wrapper  {
+      typedef riding_expandable_group wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        class_<wt,
+               bases<asu_parameter>,
+               std::auto_ptr<wt> >("rigid_riding_expandable_group", no_init)
+          .def(init<site_parameter *,
+                    independent_scalar_parameter *,
+                    const af::shared<wt::scatterer_type *>&>
+               ((arg("pivot"),
+                 arg("size"),
+                 arg("scatterers"))))
+          ;
+        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      }
+    };
+
     struct rigid_site_proxy_wrapper {
       typedef rigid_site_proxy wt;
 
@@ -86,6 +106,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
       pivoted_rotable_group_wrapper::wrap();
       rotable_expandable_group_wrapper::wrap();
+      riding_expandable_group_wrapper::wrap();
       rigid_site_proxy_wrapper::wrap();
     }
 
