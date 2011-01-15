@@ -89,6 +89,10 @@ namespace smtbx { namespace refinement { namespace constraints {
                     int>
                 ((arg("parent"),
                   arg("index"))))
+          .def(init<riding_expandable_group *,
+                    int>
+                ((arg("parent"),
+                  arg("index"))))
           .def(init<rotable_expandable_group *,
                     int>
                 ((arg("parent"),

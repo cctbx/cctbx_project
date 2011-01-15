@@ -202,7 +202,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     scalar_parameter
       *size = dynamic_cast<scalar_parameter *>(argument(1));
     const double size_value = size->value;
-    const cart_t center = unit_cell.fractionalize(pivot->value);
+    const cart_t center = unit_cell.orthogonalize(pivot->value);
     if (!crd_initialised) {
       const cart_t original_pivot_crd = unit_cell.orthogonalize(pivot->value);
       for (int i=0; i < scatterers_.size(); i++)  {
