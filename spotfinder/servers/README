@@ -14,3 +14,38 @@ Caveats(6/2/2010):
      Therefore in the example given (thin_client.csh), a /bin/sleep command
      is used to time the requests at a reasonable pace given the particular
      server host and number of processes.
+  -- New data (1/14/2011).  The /bin/sleep delay must be long enough to 
+     avoid having an accumulation of processing requests faster than the
+     combined server processes can handle, or the servwe fails.  Here is a
+     single client script that forks separate thin clients for each image:
+
+#/bin/csh -f
+source <path to build directory>/setpaths.csh
+
+foreach x (`python -c "for x in xrange(1,720): print '%03d'%x,"`)
+ set file="/directory_containing_720_images/lysozyme_1_0$x.cbf"
+  # sleep length must be optimized based on server speed & number of processors
+   /bin/sleep 0.05
+    echo $file
+     (labelit.python -c "from spotfinder.servers.thin_client import do_main; do_main( '${file}', 'server_host', 8125 )") &
+end
+
+In this script, it is absolutely essential to have a /bin/sleep command.  Real Web servers 
+implement queues to manage an onslaught of incoming requests that get processed asynchronously.  
+The spotfinder server has no such controls.  Therefore the sleep duration must be adjusted 
+based on the server speed and number of processors.  With 24 processors, we get the 
+following timings:
+
+     /bin/sleep     performance
+     0.2 sec        205 ms/image
+     0.15 sec       158 ms/image
+     0.10 sec       107 ms/image
+     0.08 sec        88 ms/image
+     0.06 sec        68 ms/image
+     0.05 sec        56 ms/image
+     0.04 sec        Failure
+
+That is, the performance closely matched the /bin/sleep delay up until the point where requests 
+were generated faster than the server could handle them, and then the server generated many
+Python tracebacks with error messages. 
+
