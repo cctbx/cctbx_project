@@ -58,9 +58,9 @@ cctbx/crystal/distance_based_connectivity.py -text
 cctbx/crystal/tst_distance_based_connectivity.py svneol=native#text/x-python
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
+cctbx/eltbx/development/hydrogen_plots.py svneol=native#text/x-python
 cctbx/eltbx/distance_based_connectivity.py svneol=native#text/x-python
 cctbx/eltbx/xray_scattering/form_factor.h -text
-cctbx/eltbx/xray_scattering/hydrogen_plots.py svneol=native#text/x-python
 cctbx/examples/fft_map_electron_density_around_atom.py svneol=native#text/x-python
 cctbx/examples/find_distances.cpp svneol=native#text/plain
 cctbx/examples/find_distances_using_cpp_objects.py svneol=native#text/x-python

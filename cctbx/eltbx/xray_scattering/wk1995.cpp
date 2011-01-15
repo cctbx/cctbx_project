@@ -16,9 +16,14 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
     static const detail::raw_table_entry<5> wk1995_raw_table[] =
     {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
+      { "Hsds",  { 0.484695901679, 0.324555322398, 0.13780976132,
+                   0.0458737688963, 0.00701257573104 },
+                 { 10.4556852572, 25.6501857528, 3.25938027505,
+                   55.9771445774, 0.627898035503 },
+                 0. }, // SDS, 5-Gaussian from n_gaussian_raw.cpp
       { "H",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
-                 0.000049 },
+                 0.000049 }, // HF
       { "He",    { 0.732354, 0.753896, 0.283819, 0.190003, 0.039139 },
                  { 11.553918, 4.595831, 1.546299, 26.463964, 0.377523 },
                  0.000487 },
@@ -668,7 +673,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 
   wk1995_iterator::wk1995_iterator()
   :
-    current_("H", true)
+    current_("Hsds", true)
   {}
 
   wk1995

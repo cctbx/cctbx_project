@@ -37,6 +37,8 @@ def identifier(label):
     .replace("-", "minus"))
 
 def write_fit_group(f, label, group):
+  if (label == "h_sds"): # retro-fitted
+    group = list(reversed(group))
   id = identifier(label)
   s = "D %s_s[] = {" % id
   for fit in group:
@@ -44,8 +46,21 @@ def write_fit_group(f, label, group):
   s = s[:-1] + " };"
   print >> f, s
   print >> f, "D %s_e[] = {" % id
+  if (label == "h_sds"): # retro-fitted
+    from cctbx.eltbx.development.hydrogen_plots import fit_input
+    from scitbx.array_family import flex
+    fi = fit_input()
   for fit in group:
-    s = str(fit.max_error)
+    sel = fi.stols <= fit.stol + 1.e-6
+    if (label == "h_sds"): # retro-fitted
+      gaussian_fit = scitbx.math.gaussian.fit(
+        fi.stols.select(sel),
+        fi.data.select(sel),
+        fi.sigmas.select(sel),
+        fit)
+      s = str(flex.max(gaussian_fit.significant_relative_errors()))
+    else:
+      s = str(fit.max_error)
     if (fit is not group[-1]): s += ","
     print >> f, s
   print >> f, "};"
@@ -121,6 +136,9 @@ def run(gaussian_fit_pickle_file_names):
   localtime = time.localtime()
   fits = read_pickled_fits(gaussian_fit_pickle_file_names)
   f = sys.stdout
+  if (gaussian_fit_pickle_file_names[0].find("sds") >= 0): # retro-fitted
+    write_fit_group(f, "h_sds", fits.all["SDS"])
+    return
   print >> f, "// This is an automatically generated file. DO NOT EDIT!"
   print >> f
   print >> f, "// Time %04d/%02d/%02d %02d:%02d:%02d" % localtime[:6]

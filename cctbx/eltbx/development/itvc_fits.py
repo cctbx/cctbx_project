@@ -2,7 +2,6 @@ from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import rez_rez_grant
 from cctbx.eltbx.development.create_n_gaussian_raw_cpp import identifier
 from cctbx.eltbx import xray_scattering
-from scitbx.array_family import flex
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
 from libtbx.option_parser import OptionParser
@@ -40,22 +39,18 @@ def run(file_name, args, cutoff, params,
     results["fit_parameters"] = params
     if (element == "SDS"):
       wrk_lbl = element
-      from cctbx.eltbx.xray_scattering.hydrogen_plots import \
-        itc_tab_6112_padded
-      sds_stols, sds_data = [flex.double(vals)
-        for vals in zip(*itc_tab_6112_padded)]
-      sds_sigmas = flex.double(sds_data.size(), 0.00005)
-      assert sorted(sds_stols) == list(sds_stols)
-      sel = sds_stols <= cutoff + 1.e-6
+      from cctbx.eltbx.development.hydrogen_plots import fit_input
+      fi = fit_input()
+      sel = fi.stols <= cutoff + 1.e-6
       null_fit = scitbx.math.gaussian.fit(
-        sds_stols.select(sel),
-        sds_data.select(sel),
-        sds_sigmas.select(sel),
+        fi.stols.select(sel),
+        fi.data.select(sel),
+        fi.sigmas.select(sel),
         xray_scattering.gaussian(0, False))
       null_fit_more = scitbx.math.gaussian.fit(
-        sds_stols,
-        sds_data,
-        sds_sigmas,
+        fi.stols,
+        fi.data,
+        fi.sigmas,
         xray_scattering.gaussian(0, False))
     else:
       wrk_lbl = xray_scattering.wk1995(element, True)
@@ -142,6 +137,9 @@ def main():
   parser.add_option("-n", "--max_n_terms",
     type="int", default=5, metavar="INT",
     help="maximum number of Gaussian terms")
+  parser.add_option("-e", "--max_max_error",
+    type="float", default=0.01, metavar="FLOAT",
+    help="max acceptable max_error")
   parser.add_option("-s", "--six_term",
     action="store_true", default=0,
     help="fit six-term Gaussians using Golay based starts")
@@ -161,7 +159,8 @@ def main():
   else:
     full_fits = None
   params = cctbx.eltbx.gaussian_fit.fit_parameters(
-    max_n_terms=options.max_n_terms)
+    max_n_terms=options.max_n_terms,
+    max_max_error=options.max_max_error)
   if (options.quick):
     params = params.quick()
   run_and_time(
