@@ -26,15 +26,12 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
     static const detail::raw_table_entry<4> it1992_raw_table[] =
     {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
-      /* SDS
-      { "H",     { 0.493002, 0.322912, 0.140191, 0.040810 },
+      { "Hsds",  { 0.493002, 0.322912, 0.140191, 0.040810 }, // SDS
                  { 10.5109, 26.1257, 3.14236, 57.7997 },
                  0.003038 },
-      */
-      /* HF */
       { "H",     { 0.489918, 0.262003, 0.196767, 0.049879 },
                  { 20.6593, 7.74039, 49.5519, 2.20159 },
-                 0.001305 },
+                 0.001305 }, // HF
       { "H1-",   { 0.897661, 0.565616, 0.415815, 0.116973 },
                  { 53.1368, 15.1870, 186.576, 3.56709 },
                  0.002389 },
@@ -686,7 +683,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 
   it1992_iterator::it1992_iterator()
   :
-    current_("H", true)
+    current_("Hsds", true)
   {}
 
   it1992

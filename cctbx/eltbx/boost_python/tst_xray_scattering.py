@@ -3,12 +3,11 @@ from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 import pickle
 import math
-import string
 
 def exercise_basic():
   std_labels = xray_scattering.standard_labels_list()
-  assert len(std_labels) == 216
-  assert std_labels[:4] == ["H", "D", "T", "He"]
+  assert len(std_labels) == 217
+  assert std_labels[:5] == ["H", "D", "T", "Hsds", "He"]
   assert std_labels[-1] == "Pu6+"
   for l in std_labels:
     assert xray_scattering.get_standard_label(
@@ -123,12 +122,12 @@ def exercise_gaussian():
   assert approx_equal(e(r=1, b_iso=1), 0.248806720643)
 
 def exercise_n_gaussian():
-  assert xray_scattering.n_gaussian_table_size() == 212
-  assert xray_scattering.n_gaussian_table_index("H") == 0
-  assert xray_scattering.n_gaussian_table_index("Pu6+") == 211
+  assert xray_scattering.n_gaussian_table_size() == 213
+  assert xray_scattering.n_gaussian_table_index("Hsds") == 0
+  assert xray_scattering.n_gaussian_table_index("Pu6+") == 212
   for n_terms in [6,5,4,3,2,1]:
     e = xray_scattering.n_gaussian_table_entry(0, n_terms)
-    assert e.label() == "H"
+    assert e.label() == "Hsds"
     g = e.gaussian()
     assert g.n_terms() == n_terms
     assert approx_equal(g.at_x(0), 1, eps=0.01+1.e-6)
@@ -202,11 +201,13 @@ def exercise_it1992():
   n = 0
   for e in xray_scattering.it1992_iterator():
     n += 1
-    if (n == 215):
+    if (n == 213):
       assert e.label() == "Cf"
+    else:
+      assert e.label() != "Cf"
     d = xray_scattering.it1992(e.label(), True)
     assert d.label() == e.label()
-  assert n == 212
+  assert n == 213
   i = xray_scattering.it1992_iterator()
   j = iter(i)
   assert i is j
@@ -238,11 +239,13 @@ def exercise_wk1995():
   n = 0
   for e in xray_scattering.wk1995_iterator():
     n += 1
-    if (n == 215):
+    if (n == 213):
       assert e.label() == "Pu6+"
+    else:
+      assert e.label() != "Pu6+"
     d = xray_scattering.wk1995(e.label(), True)
     assert d.label() == e.label()
-  assert n == 212
+  assert n == 213
   i = xray_scattering.wk1995_iterator()
   j = iter(i)
   assert i is j
@@ -271,15 +274,11 @@ def ensure_correct_element_symbol():
   from cctbx.eltbx import tiny_pse
   for e in xray_scattering.it1992_iterator():
     l = e.label()
-    if (l == "Cval"):
-      s = "C"
-    else:
-      s = l[:2]
-      if (len(s) > 1 and s[1] not in string.letters):
-        s = s[:1]
-    assert tiny_pse.table(l).symbol() == s
-    assert tiny_pse.table(l.lower()).symbol() == s
-    assert tiny_pse.table(l.upper()).symbol() == s
+    e, c = xray_scattering.get_element_and_charge_symbols(
+      scattering_type=l, exact=False)
+    assert tiny_pse.table(l).symbol() == e
+    assert tiny_pse.table(l.lower()).symbol() == e
+    assert tiny_pse.table(l.upper()).symbol() == e
 
 def run():
   exercise_basic()

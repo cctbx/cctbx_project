@@ -12,6 +12,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 
   static const char *standard_labels[] = {
     "H", "D", "T",
+    "Hsds",
     "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al",
     "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn",
     "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr",

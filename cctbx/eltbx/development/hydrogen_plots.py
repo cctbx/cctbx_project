@@ -4,9 +4,7 @@ import sys
 
 # Table 6.1.1.2. Spherical bonded hydrogen-atom scattering
 # factors from Stewart, Davidson & Simpson (1965)
-# Manually padded with itvc/v5.txt HF values (similar to what
-# the ITC Table 6.1.1.1 authors did in some other cases).
-itc_tab_6112_padded = [
+itc_tab_6112 = [
   (0.0000, 1.0000),
   (0.0215, 0.9924),
   (0.0429, 0.9704),
@@ -52,38 +50,37 @@ itc_tab_6112_padded = [
   (1.5887, 0.0015),
   (1.6317, 0.0013),
   (1.6746, 0.0011),
-  (1.7176, 0.0010),
-  # Manually padded with itvc/v5.txt HF values.
-  (1.80, 0.0008),
-  (1.90, 0.0006),
-  (2.00, 0.0005),
-  (2.50, 0.0002),
-  (3.00, 0.0001),
-  (3.50, 0.0001),
-  (4.00, 0.0000),
-  (5.00, 0.0000),
-  (6.00, 0.0000)]
+  (1.7176, 0.0010)]
+
+class fit_input(object):
+  def __init__(O):
+    from scitbx.array_family import flex
+    O.stols, O.data = [flex.double(vals) for vals in zip(*itc_tab_6112)]
+    O.stols.append(6)
+    O.data.append(0)
+    O.sigmas = flex.double(O.data.size(), 0.00005)
+    assert sorted(O.stols) == list(O.stols)
 
 def run(args):
   assert len(args) == 0
-  sds = xray_scattering.gaussian( # ITC 1992 Table 6.1.1.4
-    (0.493002, 0.322912, 0.140191, 0.040810),
-    (10.5109, 26.1257, 3.14236, 57.7997),
-    0.003038)
-  hf = xray_scattering.it1992("H").fetch()
-  wk = xray_scattering.wk1995("H").fetch()
-  ng = xray_scattering.n_gaussian_table_entry("H", 6).gaussian()
+  sds_it = xray_scattering.it1992("Hsds").fetch()
+  sds_wk = xray_scattering.wk1995("Hsds").fetch()
+  sds_ng = xray_scattering.n_gaussian_table_entry("Hsds", 6).gaussian()
+  hf_it = xray_scattering.it1992("H").fetch()
+  hf_wk = xray_scattering.wk1995("H").fetch()
+  hf_ng = xray_scattering.n_gaussian_table_entry("H", 6).gaussian()
   print "@with g0"
-  print '@ s0 legend "ITC Tab 6.1.1.2"'
-  for i,lbl in enumerate(["SDS", "HF", "WK", "NG"]):
+  print '@ s0 legend "SDS ITC Tab 6.1.1.2"'
+  for i,lbl in enumerate(["SDS IT", "SDS WK", "SDS NG",
+                          "HF IT", "HF WK", "HF NG"]):
     print '@ s%d legend "%s"' % (i+1, lbl)
   print "@ s0 symbol 1"
   print "@ s0 line linestyle 0"
-  for x,y in itc_tab_6112_padded:
+  for x,y in itc_tab_6112:
     print x, y
   print "&"
-  n_samples = 100
-  for g in [sds, hf, wk, ng]:
+  n_samples = 1000
+  for g in [sds_it, sds_wk, sds_ng, hf_it, hf_wk, hf_ng]:
     for i_stol in xrange(n_samples+1):
       stol = 6 * i_stol / n_samples
       print stol, g.at_stol(stol)

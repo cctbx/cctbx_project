@@ -340,13 +340,18 @@ def minimize_multi(start_fit,
     else: best_min_list.append(minimized)
   for current_shift_sqrt_b_mod_n in shift_sqrt_b_mod_n:
     for minimize_multi_type in [minimize_multi_lbfgs, minimize_multi_lbfgsb]:
-      best_min_list.append(minimize_multi_type(
-        start_fit=start_fit,
-        target_powers=target_powers,
-        minimize_using_sigmas=minimize_using_sigmas,
-        shift_sqrt_b_mod_n=current_shift_sqrt_b_mod_n,
-        b_min=b_min,
-        n_repeats_minimization=n_repeats_minimization))
+      try:
+        minimized = minimize_multi_type(
+          start_fit=start_fit,
+          target_powers=target_powers,
+          minimize_using_sigmas=minimize_using_sigmas,
+          shift_sqrt_b_mod_n=current_shift_sqrt_b_mod_n,
+          b_min=b_min,
+          n_repeats_minimization=n_repeats_minimization)
+      except RuntimeError, e:
+        if (str(e).find("SCITBX_ASSERT(b >= 0)") < 0):
+          raise
+      else: best_min_list.append(minimized)
   best_best_min = None
   for best_min in best_min_list:
     if (best_min is None): continue
@@ -368,7 +373,7 @@ def find_max_x(gaussian_fit,
   prev_n_points = 0
   good_n_points = 0
   i_x_high = table_x.size() - 1
-  while 1:
+  while True:
     if (good_n_points == 0):
       x = (table_x[0] + table_x[i_x_high]) / 2
       n_points = n_less_than(sorted_array=table_x, cutoff=x)
