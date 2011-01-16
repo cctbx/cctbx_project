@@ -89,7 +89,7 @@ class minimize_lbfgs(minimize_lbfgs_mixin):
     adopt_init_args(self, locals())
     minimize_multi_histogram.setdefault(str(self), 0)
     assert target_power in [2,4]
-    self.x = flex.double(gaussian_fit.n_terms() * 2, 0)
+    self.x = flex.double(gaussian_fit.n_parameters(), 0)
     self.first_target_value = None
     self.minimizer = lbfgs.run(
       target_evaluator=self,
@@ -124,7 +124,7 @@ class minimize_lbfgsb(minimize_lbfgs_mixin):
     adopt_init_args(self, locals())
     minimize_multi_histogram.setdefault(str(self), 0)
     assert target_power in [2,4]
-    self.n = gaussian_fit.n_terms() * 2
+    self.n = gaussian_fit.n_parameters()
     try:
       self.run()
     except LargeNegativeB:
@@ -379,7 +379,7 @@ def find_max_x(gaussian_fit,
       n_points = n_less_than(sorted_array=table_x, cutoff=x)
       if (n_points == prev_n_points):
         n_points -= 1
-        if (n_points < gaussian_fit.n_terms()*2):
+        if (n_points < gaussian_fit.n_parameters()):
           break
       prev_n_points = n_points
     else:
