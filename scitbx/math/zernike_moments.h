@@ -283,7 +283,7 @@ namespace zernike {
 
       void find_nbr() {
         FloatType splat2=splat_range_*splat_range_;
-        FloatType d2;
+        FloatType d2=0;
         for(int i=-splat_range_;i<=splat_range_;i++)
           for(int j=-splat_range_;j<=splat_range_;j++)
             for(int k=-splat_range_;k<=splat_range_;k++) {
