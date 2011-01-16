@@ -16,11 +16,16 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
     static const detail::raw_table_entry<5> wk1995_raw_table[] =
     {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
-      { "Hsds",  { 0.484695901679, 0.324555322398, 0.13780976132,
-                   0.0458737688963, 0.00701257573104 },
-                 { 10.4556852572, 25.6501857528, 3.25938027505,
-                   55.9771445774, 0.627898035503 },
-                 0. }, // SDS, 5-Gaussian from n_gaussian_raw.cpp
+      { "Hsds", // added entry, not part of original sfac.dat
+          // 5-Gaussian fit based on ITC 2006 Table 6.1.1.2.
+          // Data point added for fit: stol=6, y=0, with sigma=0.0005 for
+          // all data points.
+          // max(gaussian_fit.significant_relative_errors()): 0.00991125937956
+          { -0.117103661459, 0.00934859438867, 0.270068598623,
+            0.284341399492, 0.552871721265 },
+          { 3.05984661463, 0.746557743911, 3.29178616951,
+            32.6456509125, 11.5463566492 },
+            0. }, // SDS
       { "H",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
                  0.000049 }, // HF
