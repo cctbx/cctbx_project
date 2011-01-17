@@ -114,6 +114,30 @@ namespace {
     }
   };
 
+  struct merge_equivalents_shelx_wrappers
+  {
+    typedef merge_equivalents_shelx<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("merge_equivalents_shelx", no_init)
+        .def(init<af::const_ref<index<> > const&,
+                  af::const_ref<double> const&,
+                  af::const_ref<double> const&>())
+        .add_property("indices", make_getter(&w_t::indices, rbv()))
+        .add_property("data", make_getter(&w_t::data, rbv()))
+        .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
+        .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
+        .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
+        .add_property("r_square", make_getter(&w_t::r_square, rbv()))
+        .add_property("r_int", &w_t::r_int)
+        .add_property("inconsistent_equivalents", &w_t::inconsistent_equivalents)
+      ;
+    }
+  };
 } // namespace <anoymous>
 
   void wrap_merge_equivalents()
@@ -126,6 +150,7 @@ namespace {
     merge_equivalents_exact_wrappers<int>::wrap(
       "merge_equivalents_exact_int");
     merge_equivalents_obs_wrappers::wrap();
+    merge_equivalents_shelx_wrappers::wrap();
   }
 
 }}} // namespace cctbx::miller::boost_python
