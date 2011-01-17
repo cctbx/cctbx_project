@@ -314,6 +314,12 @@ namespace cctbx { namespace miller {
       }
   };
 
+  /** refs: shelxl code; and
+  http://www.crystal.chem.uu.nl/distr/mergehklf5/mergehklf5.html
+  main difference to standard merging are the weights and replacing the
+  experimental sigmas with sum(data-mean(data))/(n*(n-1)^0.5),
+  if experimental sigmas are smaller
+  */
   template <typename FloatType=double>
   class merge_equivalents_shelx {
     public:
@@ -334,9 +340,23 @@ namespace cctbx { namespace miller {
       af::shared<FloatType> data;
       af::shared<FloatType> sigmas;
       af::shared<int> redundancies;
+      //! r_linear = sum(abs(data - mean(data))) / sum(abs(data))
       af::shared<FloatType> r_linear;
+      //! r_square = sum((data - mean(data))**2) / sum(data**2)
       af::shared<FloatType> r_square;
+      /** r_int = sum(sum(abs(data - mean(data)))) / sum(sum(abs(data)))
+      where inner sums run over the equivalent reflections and the
+      outer ones run over all unique reflections. the r_ factors should
+      be calculated in the same way as in the merge_equivalents_obs
+      */
       FloatType r_int_num, r_int_den;
+      /** number of inconsistent equivalents:
+      sum(data-mean(data))/(n*(n-1)^0.5) > 5/sum(1/sig^2),
+      where n is the number of reflections in the group and mean value is
+      calculated with these weights:
+      weight = ((data > 3.0*sig) ? data/sig^2 : 3./sig)
+      */
+      std::size_t inconsistent_eq;
 
       FloatType r_int() { return (r_int_den == 0 ? 0 : r_int_num / r_int_den); }
       std::size_t inconsistent_equivalents() const { return inconsistent_eq; }
@@ -380,7 +400,7 @@ namespace cctbx { namespace miller {
             static_cast<FloatType>(1e-3) : unmerged_sigmas[index]);
           const FloatType oss = scitbx::fn::pow2(1./s);
           const FloatType val = unmerged_data[index];
-          const FloatType w = ((val > 3.0*s) ? val*oss : 3./s);
+          const FloatType w = ((val > 3.0*s) ? val*oss : 3.0/s);
           oss_sum += oss;
           w_sum += w;
           i_wght_sum += w*val;
@@ -401,20 +421,18 @@ namespace cctbx { namespace miller {
           r_int_den += sum_i;
           const FloatType sig_int = sum_diff/(n*sqrt(static_cast<double>(n)-1.0));
           if (sig_int > sig) {
-            if( sig_int > 5*sig )
+            if (sig_int > 5*sig)
               inconsistent_eq++;
-            sig = sig_int;
+            sig = sig_int;  //replace the experimental sigma
           }
         }
-        r_linear.push_back(sum_i == 0.0 ? 0.0 : sum_diff/sum_i);
-        r_square.push_back(sum_is == 0.0 ? 0.0 : sum_diffs/sum_is);
+        r_linear.push_back(sum_i == 0 ? 0 : sum_diff/sum_i);
+        r_square.push_back(sum_is == 0 ? 0 : sum_diffs/sum_is);
         indices.push_back(current_index);
         data.push_back(i_wght_sum/w_sum);
         sigmas.push_back(sig);
         redundancies.push_back(n);
       }
-      // number of inconsistent equivalents
-      std::size_t inconsistent_eq;
   };
 }} // namespace cctbx::miller
 
