@@ -16,6 +16,7 @@ import random
 import math
 import time
 from libtbx.str_utils import StringIO
+from libtbx.utils import format_cpu_times
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -1019,8 +1020,7 @@ def test_ml_murray_rust():
        p2 = ml_mr_object.num_int(ii/3.0, 1e-13, jj/3.0, 1e-13, -5, 5,0.25, 20)
        assert approx_equal( p1, p2, eps=0.01)
 
-
-if (__name__ == "__main__"):
+def test_all():
   test_luts()
   test_ml_murray_rust()
   test_likelihood_iso()
@@ -1044,4 +1044,12 @@ if (__name__ == "__main__"):
   test_kernel_based_normalisation()
   test_twin_r_value('h+k,-k,-l')
   test_constant()
-  print "OK"
+
+def run(args):
+  assert len(args) == 0
+  test_all()
+  print format_cpu_times()
+
+if (__name__ == "__main__"):
+  import sys
+  run(args=sys.argv[1:])

@@ -16,7 +16,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
     static const detail::raw_table_entry<5> wk1995_raw_table[] =
     {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
-      { "Hsds", // added entry, not part of original sfac.dat
+      { "H", // added entry, not part of original sfac.dat
           // 5-Gaussian fit based on ITC 2006 Table 6.1.1.2.
           // Data point added for fit: stol=6, y=0, with sigma=0.0005 for
           // all data points.
@@ -26,7 +26,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
           { 3.05984661463, 0.746557743911, 3.29178616951,
             32.6456509125, 11.5463566492 },
             0. }, // SDS
-      { "H",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
+      { "Hhf",   { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
                  0.000049 }, // HF
       { "He",    { 0.732354, 0.753896, 0.283819, 0.190003, 0.039139 },
@@ -678,7 +678,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 
   wk1995_iterator::wk1995_iterator()
   :
-    current_("Hsds", true)
+    current_("H", true)
   {}
 
   wk1995

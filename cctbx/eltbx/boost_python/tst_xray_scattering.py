@@ -7,7 +7,7 @@ import math
 def exercise_basic():
   std_labels = xray_scattering.standard_labels_list()
   assert len(std_labels) == 217
-  assert std_labels[:5] == ["H", "D", "T", "Hsds", "He"]
+  assert std_labels[:5] == ["H", "D", "T", "Hhf", "He"]
   assert std_labels[-1] == "Pu6+"
   for l in std_labels:
     assert xray_scattering.get_standard_label(
@@ -123,11 +123,11 @@ def exercise_gaussian():
 
 def exercise_n_gaussian():
   assert xray_scattering.n_gaussian_table_size() == 213
-  assert xray_scattering.n_gaussian_table_index("Hsds") == 0
+  assert xray_scattering.n_gaussian_table_index("H") == 0
   assert xray_scattering.n_gaussian_table_index("Pu6+") == 212
   for n_terms in [6,5,4,3,2,1]:
     e = xray_scattering.n_gaussian_table_entry(0, n_terms)
-    assert e.label() == "Hsds"
+    assert e.label() == "H"
     g = e.gaussian()
     assert g.n_terms() == n_terms
     assert approx_equal(g.at_x(0), 1, eps=0.01+1.e-6)

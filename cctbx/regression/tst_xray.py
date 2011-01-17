@@ -910,9 +910,9 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     else:
       assert ls.target() < 0.0002
   #
-  for element in ["H", "D"]:
+  for element in ["H", "D", "T"]:
     structure = random_structure.xray_structure(
-      space_group_info, elements=["D"])
+      space_group_info, elements=[element])
     ugs = structure.scattering_type_registry(table="n_gaussian") \
         .unique_gaussians_as_list()
     assert len(ugs) == 1
@@ -920,8 +920,8 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     s = StringIO()
     ugs[0].show(f=s)
     assert not show_diff(s.getvalue(), """\
-a: 0.27221656 0.25271838 0.24971456 0.18667197 0.036800021 0.0018616359
-b: 19.557704 7.1039496 21.423627 51.052183 1.8864593 0.31198465
+a: -1.0938988 0.76752101 0.44291771 0.42681501 0.35006501 0.10647464
+b: 1.7298482 2.0196679 1.4769121 9.3088777 20.966682 44.631255
 c: 0
 """)
     ugs = structure.scattering_type_registry(table="it1992") \
@@ -931,9 +931,9 @@ c: 0
     s = StringIO()
     ugs[0].show(f=s)
     assert not show_diff(s.getvalue(), """\
-a: 0.48991799 0.262003 0.196767 0.049879
-b: 20.6593 7.7403898 49.551899 2.2015901
-c: 0.001305
+a: 0.493002 0.32291201 0.140191 0.04081
+b: 10.5109 26.1257 3.14236 57.799702
+c: 0.0030380001
 """)
     ugs = structure.scattering_type_registry(table="wk1995") \
         .unique_gaussians_as_list()
@@ -942,9 +942,9 @@ c: 0.001305
     s = StringIO()
     ugs[0].show(f=s)
     assert not show_diff(s.getvalue().replace("e-005","e-05"), """\
-a: 0.413048 0.29495299 0.187491 0.080701001 0.023736
-b: 15.569946 32.398468 5.7114038 61.889874 1.334118
-c: 4.8999998e-05
+a: -0.11710366 0.0093485946 0.27006859 0.28434139 0.5528717
+b: 3.0598466 0.74655777 3.2917862 32.645653 11.546356
+c: 0
 """)
 
 def run_call_back(flags, space_group_info):
