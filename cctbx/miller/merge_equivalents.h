@@ -415,11 +415,13 @@ namespace cctbx { namespace miller {
           sum_diffs += scitbx::fn::pow2(diff);
           sum_is += scitbx::fn::pow2(val);
         }
+        CCTBX_ASSERT(oss_sum != 0);
         FloatType sig = std::sqrt(1./oss_sum);
         if (n>1) {
           r_int_num += sum_diff;
           r_int_den += sum_i;
-          const FloatType sig_int = sum_diff/(n*sqrt(static_cast<double>(n)-1.0));
+          const FloatType
+            sig_int = sum_diff/(n*sqrt(static_cast<double>(n)-1.0));
           if (sig_int > sig) {
             if (sig_int > 5*sig)
               inconsistent_eq++;
@@ -434,6 +436,7 @@ namespace cctbx { namespace miller {
         redundancies.push_back(n);
       }
   };
+
 }} // namespace cctbx::miller
 
 #endif // CCTBX_MILLER_MERGE_EQUIVALENTS_H
