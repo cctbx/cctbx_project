@@ -75,7 +75,7 @@ def exercise_normalised_amplitudes():
   d = flex.double((1,2,0.1))
   s = flex.double((2,3,1.1))
   expected = flex.double(
-    (0.2440551673339596, 10.919433420688351, 0.0052403529424040899))
+    (0.24360789372276667, 10.918685276828379, 0.0052268772340737469))
 
   ms = miller.set(
       crystal_symmetry=crystal.symmetry(
