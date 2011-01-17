@@ -1279,9 +1279,9 @@ def occupancy_selections(
   return result
 
 def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
-                                 adp = True, occupancies = True):
+                                 adp = True, occupancies = True, elements=True):
   assert x1.scatterers().size() == x2.scatterers().size()
-  if (not libtbx.env.full_testing):
+  if(not libtbx.env.full_testing):
     return
   if(selection is not None):
     x1 = x1.select(selection)
@@ -1294,6 +1294,11 @@ def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
   if(occupancies):
     assert approx_equal(x1.scatterers().extract_occupancies(),
                         x2.scatterers().extract_occupancies())
+  if(elements):
+    sct1 = x1.scatterers().extract_scattering_types()
+    sct2 = x2.scatterers().extract_scattering_types()
+    for sct1_, sct2_ in zip(sct1, sct2):
+      assert sct1_ == sct2_
 
 class xray_structures_from_processed_pdb_file(object):
 

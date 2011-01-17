@@ -575,12 +575,12 @@ def extract_f_model_core_constants(remark_3_records):
     try:
       if(l.count("REMARK   3   K_SOL              :")): k_sol = float(ls[4])
       if(l.count("REMARK   3   B_SOL              :")): b_sol = float(ls[4])
-      if(l.count("REMARK   3    B11 :")): b11 = float(ls[4])
-      if(l.count("REMARK   3    B22 :")): b22 = float(ls[4])
-      if(l.count("REMARK   3    B33 :")): b33 = float(ls[4])
-      if(l.count("REMARK   3    B12 :")): b12 = float(ls[4])
-      if(l.count("REMARK   3    B13 :")): b13 = float(ls[4])
-      if(l.count("REMARK   3    B23 :")): b23 = float(ls[4])
+      if(l.count("REMARK   3    B11")): b11 = float(ls[len(ls)-1])
+      if(l.count("REMARK   3    B22")): b22 = float(ls[len(ls)-1])
+      if(l.count("REMARK   3    B33")): b33 = float(ls[len(ls)-1])
+      if(l.count("REMARK   3    B12")): b12 = float(ls[len(ls)-1])
+      if(l.count("REMARK   3    B13")): b13 = float(ls[len(ls)-1])
+      if(l.count("REMARK   3    B23")): b23 = float(ls[len(ls)-1])
       if(l.count("REMARK   3   FRACTION:")): twin_fraction = float(ls[3])
       if(l.count("REMARK   3   OPERATOR:")): twin_law      = ls[3]
       if(l.count("REMARK   3   SOLVENT RADIUS     :")): r_solv = float(ls[5])
