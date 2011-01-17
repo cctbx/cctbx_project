@@ -147,14 +147,15 @@ class crystallographic_ls(
     return math.sqrt(2*self.objective_data_only)
 
   def r1_factor(self, cutoff_factor=None):
-    f_obs = self.fo_sq.f_sq_as_f()
-    f_calc = self.fc_sq.f_sq_as_f()
+    fo_sq = self.fo_sq
     if cutoff_factor is not None:
-      strong = f_obs.data() > cutoff_factor*f_obs.sigmas()
-      f_obs = f_obs.select(strong)
-      f_calc = f_calc.select(strong)
+      strong = fo_sq.data() > cutoff_factor*fo_sq.sigmas()
+      fo_sq = fo_sq.select(strong)
+      fc_sq = self.fc_sq.select(strong)
     else:
-      f_calc = f_calc
+      fc_sq = self.fc_sq
+    f_obs = fo_sq.f_sq_as_f()
+    f_calc = fc_sq.f_sq_as_f()
     R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor()))
     return R1, f_obs.size()
 
