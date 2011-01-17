@@ -250,7 +250,7 @@ class manager(object):
        self.sites_cart.size() != sites_cart_new.size()): return True
     if(self.sites_cart is not None):
       atom_atom_distances = flex.sqrt((sites_cart_new - self.sites_cart).dot())
-      mean_shift = flex.mean(atom_atom_distances)
+      mean_shift = flex.mean_default(atom_atom_distances,0)
       if(mean_shift > self.mask_params.mean_shift_for_mask_update):
         return True
       else: return False

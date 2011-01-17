@@ -537,16 +537,24 @@ def run(args, command_name="phenix.pdbtools"):
                                          args          = args,
                                          log           = log)
   output_files = []
+  ### get i/o file names
+  ofn = command_line_interpreter.params.modify.output.file_name
+  ifn = command_line_interpreter.params.input.pdb.file_name
+  if(ofn is None):
+    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
+    elif(len(ifn)>1): ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
+    else:
+      pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
+      ofn = pdbout+"_modified.pdb"
 ### Truncate to poly-Ala
   if(command_line_interpreter.params.modify.truncate_to_polyala):
     xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
     utils.print_header("Truncating to poly-Ala", out = log)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     truncate_to_poly_ala(hierarchy = pdb_hierarchy)
-    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
-    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+    pdb_hierarchy.write_pdb_file(file_name = ofn,
       crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
-    output_files.append(pdbout+"_modified.pdb")
+    output_files.append(ofn)
     return output_files
 ### Renumber residues
   if(command_line_interpreter.params.modify.renumber_residues):
@@ -554,10 +562,9 @@ def run(args, command_name="phenix.pdbtools"):
     utils.print_header("Re-numbering residues", out = log)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     renumber_residues(pdb_hierarchy = pdb_hierarchy)
-    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
-    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+    pdb_hierarchy.write_pdb_file(file_name = ofn,
       crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
-    output_files.append(pdbout+"_modified.pdb")
+    output_files.append(ofn)
     return output_files
 ###
   command_line_interpreter.set_ppf()
@@ -567,12 +574,6 @@ def run(args, command_name="phenix.pdbtools"):
     show_summary = False)
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
-### get i/o file names
-  ofn = command_line_interpreter.params.modify.output.file_name
-  ifn = command_line_interpreter.params.input.pdb.file_name
-  if(ofn is None):
-    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
-    else: ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
 ### show_geometry_statistics and exit
   if(command_line_interpreter.command_line.options.show_geometry_statistics):
     utils.print_header("Geometry statistics", out = log)
@@ -601,7 +602,7 @@ def run(args, command_name="phenix.pdbtools"):
   if(command_line_interpreter.command_line.options.add_h):
     utils.print_header("Adding hydrogen atoms", out = log)
     if(len(ifn) > 1): raise Sorry("Multiple input PDB files found.")
-    ifn = ifn[0]
+    ifn = command_line_interpreter.pdb_file_names[0]
     if(not os.path.isfile(ifn)): raise Sorry("File %s does not exist."%ifn)
     easy_run.go("phenix.reduce %s > %s"% (ifn, ofn))
     print >> log, "Output model file name (with H added): %s\n"%ofn
@@ -627,9 +628,9 @@ def run(args, command_name="phenix.pdbtools"):
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     set_chemical_element_simple_if_necessary(hierarchy = pdb_hierarchy)
     pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
-    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+    pdb_hierarchy.write_pdb_file(file_name = ofn,
       crystal_symmetry = xray_structure.crystal_symmetry())
-    output_files.append(pdbout+"_modified.pdb")
+    output_files.append(ofn)
     print >> log, "All done."
     return output_files
 ### rename_chain_id
@@ -639,10 +640,9 @@ def run(args, command_name="phenix.pdbtools"):
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     rename_chain_id(hierarchy = pdb_hierarchy,
       params = command_line_interpreter.params.modify.rename_chain_id, log = log)
-    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
-    pdb_hierarchy.write_pdb_file(file_name = pdbout+"_modified.pdb",
+    pdb_hierarchy.write_pdb_file(file_name = ofn,
       crystal_symmetry = xray_structure.crystal_symmetry())
-    output_files.append(pdbout+"_modified.pdb")
+    output_files.append(ofn)
     print >> log, "All done."
     return output_files
 ### do other model manipulations
