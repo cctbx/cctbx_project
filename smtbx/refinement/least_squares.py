@@ -144,7 +144,7 @@ class crystallographic_ls(
     return math.sqrt(self.chi_sq_data_and_restraints)
 
   def wR2(self):
-    return math.sqrt(self.objective_data_only)
+    return math.sqrt(2*self.objective_data_only)
 
   def r1_factor(self, cutoff_factor=None):
     f_obs = self.fo_sq.f_sq_as_f()
