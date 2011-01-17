@@ -63,12 +63,12 @@ class fit_input(object):
 
 def run(args):
   assert len(args) == 0
-  sds_it = xray_scattering.it1992("Hsds").fetch()
-  sds_wk = xray_scattering.wk1995("Hsds").fetch()
-  sds_ng = xray_scattering.n_gaussian_table_entry("Hsds", 6).gaussian()
-  hf_it = xray_scattering.it1992("H").fetch()
-  hf_wk = xray_scattering.wk1995("H").fetch()
-  hf_ng = xray_scattering.n_gaussian_table_entry("H", 6).gaussian()
+  sds_it = xray_scattering.it1992("H").fetch()
+  sds_wk = xray_scattering.wk1995("H").fetch()
+  sds_ng = xray_scattering.n_gaussian_table_entry("H", 6).gaussian()
+  hf_it = xray_scattering.it1992("Hhf").fetch()
+  hf_wk = xray_scattering.wk1995("Hhf").fetch()
+  hf_ng = xray_scattering.n_gaussian_table_entry("Hhf", 6).gaussian()
   print "@with g0"
   print '@ s0 legend "SDS ITC Tab 6.1.1.2"'
   for i,lbl in enumerate(["SDS IT", "SDS WK", "SDS NG",
