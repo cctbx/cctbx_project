@@ -110,7 +110,7 @@ class categorize(object):
         return sgtbx.space_group_info(Z + " 1 1 " + T)
     if (self.category == special):
       return sgtbx.space_group_info(special[self.symbol])
-    raise RuntimeError, "Programming error (should be unreachable)."
+    raise RuntimeError("Programming error (should be unreachable).")
 
 def crystal_symmetry(cryst1_record):
   if (isinstance(cryst1_record, str)):

@@ -2536,8 +2536,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert self.sigmas() is None
     return self.arg(deg)
 
-  def merge_equivalents(self, merger="standard"):
-    return merge_equivalents(self, merger)
+  def merge_equivalents(self, algorithm="default"):
+    return merge_equivalents(self, algorithm)
 
   def as_non_anomalous_array(self):
     return array(
@@ -3002,7 +3002,8 @@ class normalised_amplitudes(object):
 
 class merge_equivalents(object):
 
-  def __init__(self, miller_array, merger="standard"):
+  def __init__(self, miller_array, algorithm="default"):
+    assert algorithm in ["default", "shelx"]
     self._r_linear = None
     self._r_square = None
     self._r_int = None
@@ -3025,19 +3026,19 @@ class merge_equivalents(object):
       asu_set = set.map_to_asu(miller_array)
       perm = asu_set.sort_permutation(by_value="packed_indices")
       if (miller_array.sigmas() is not None):
-        if merger == "standard":
+        if algorithm == "default":
           merge_ext = ext.merge_equivalents_obs(
             asu_set.indices().select(perm),
             miller_array.data().select(perm),
             miller_array.sigmas().select(perm))
-        elif merger == "shelx":
+        elif algorithm == "shelx":
           merge_ext = ext.merge_equivalents_shelx(
             asu_set.indices().select(perm),
             miller_array.data().select(perm),
             miller_array.sigmas().select(perm))
           self._inconsistent_equivalents = merge_ext.inconsistent_equivalents
         else:
-          raise RuntimeError("Invalid merger: " + merger)
+          raise RuntimeError("Programming error (should be unreachable).")
         sigmas = merge_ext.sigmas
       else:
         merge_ext = ext.merge_equivalents_real(

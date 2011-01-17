@@ -17,14 +17,15 @@ def exercise(space_group_info, anomalous_flag,
   fs = miller.array(miller_set=f, data=f.data(), sigmas=flex.sqrt(f.data()))
   assert fs.is_unique_set_under_symmetry()
   for a in (f, fs):
-    m = a.merge_equivalents()
-    m.show_summary(out=StringIO())
-    j = m.array().adopt_set(a)
-    assert flex.linear_correlation(j.data(),
-                                   a.data()).coefficient() > 1-1.e-6
-    if (a.sigmas() is not None):
-      assert flex.linear_correlation(j.sigmas(),
-                                     a.sigmas()).coefficient() > 1-1.e-6
+    for algorithm in ["default", "shelx"]:
+      m = a.merge_equivalents(algorithm=algorithm)
+      m.show_summary(out=StringIO())
+      j = m.array().adopt_set(a)
+      assert flex.linear_correlation(
+        j.data(), a.data()).coefficient() > 1-1.e-6
+      if (a.sigmas() is not None):
+        assert flex.linear_correlation(
+          j.sigmas(), a.sigmas()).coefficient() > 1-1.e-6
   redundancies = flex.size_t()
   for i in xrange(fs.indices().size()):
     redundancies.append(random.randrange(5)+1)
@@ -49,15 +50,15 @@ def exercise(space_group_info, anomalous_flag,
   assert not r.is_unique_set_under_symmetry()
   noise = flex.random_double(size=r.indices().size())
   r = r.sort(by_value=noise)
-  m = r.merge_equivalents()
-  m.show_summary(out=StringIO())
-  j = m.array().adopt_set(fs)
-  assert j.is_unique_set_under_symmetry()
-  assert flex.linear_correlation(
-    j.data(),
-    fs.data()).coefficient() > 1-1.e-6
-  fssr = fs.sigmas() / flex.sqrt(redundancies.as_double())
-  assert flex.linear_correlation(j.sigmas(), fssr).coefficient() > 1-1.e-6
+  for algorithm in ["default", "shelx"]:
+    m = r.merge_equivalents(algorithm=algorithm)
+    m.show_summary(out=StringIO())
+    j = m.array().adopt_set(fs)
+    assert j.is_unique_set_under_symmetry()
+    assert flex.linear_correlation(
+      j.data(), fs.data()).coefficient() > 1-1.e-6
+    fssr = fs.sigmas() / flex.sqrt(redundancies.as_double())
+    assert flex.linear_correlation(j.sigmas(), fssr).coefficient() > 1-1.e-6
   #
   if (anomalous_flag):
     f_calc_ave = f_calc.average_bijvoet_mates() # uses merge_equivalents
