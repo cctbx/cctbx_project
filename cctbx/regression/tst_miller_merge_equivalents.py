@@ -17,7 +17,7 @@ def exercise(space_group_info, anomalous_flag,
   fs = miller.array(miller_set=f, data=f.data(), sigmas=flex.sqrt(f.data()))
   assert fs.is_unique_set_under_symmetry()
   for a in (f, fs):
-    for algorithm in ["default", "shelx"]:
+    for algorithm in ["gaussian", "shelx"]:
       m = a.merge_equivalents(algorithm=algorithm)
       m.show_summary(out=StringIO())
       j = m.array().adopt_set(a)
@@ -50,7 +50,7 @@ def exercise(space_group_info, anomalous_flag,
   assert not r.is_unique_set_under_symmetry()
   noise = flex.random_double(size=r.indices().size())
   r = r.sort(by_value=noise)
-  for algorithm in ["default", "shelx"]:
+  for algorithm in ["gaussian", "shelx"]:
     m = r.merge_equivalents(algorithm=algorithm)
     m.show_summary(out=StringIO())
     j = m.array().adopt_set(fs)
