@@ -103,7 +103,7 @@ van der Waals radii:
  1.77  1.20  1.50  1.45
 
 Total solvent accessible volume / cell = 146.5 Ang^3 [16.3%]
-Total electron count / cell = 43.0
+Total electron count / cell = 43.2
 
 gridding: (45,72,80)
 Void #Grid points Vol/A^3 Vol/%  Centre of mass (frac)   Eigenvectors (frac)
@@ -115,8 +115,8 @@ Void #Grid points Vol/A^3 Vol/%  Centre of mass (frac)   Eigenvectors (frac)
                                                          3  (-0.092, 0.970,-0.223)
 
 Void  Vol/Ang^3  #Electrons
-   1       73.3         21.5
-   2       73.3         21.5
+   1       73.3         21.6
+   2       73.3         21.6
 """)
   cif_block = mask.as_cif_block()
 
