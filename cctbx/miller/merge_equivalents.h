@@ -314,6 +314,108 @@ namespace cctbx { namespace miller {
       }
   };
 
+  template <typename FloatType=double>
+  class merge_equivalents_shelx {
+    public:
+      merge_equivalents_shelx() : inconsistent_eq(0) {}
+
+      merge_equivalents_shelx(
+        af::const_ref<index<> > const& unmerged_indices,
+        af::const_ref<FloatType> const& unmerged_data,
+        af::const_ref<FloatType> const& unmerged_sigmas)
+      : r_int_num(0), r_int_den(0)
+      {
+        CCTBX_ASSERT(unmerged_data.size() == unmerged_indices.size());
+        CCTBX_ASSERT(unmerged_sigmas.size() == unmerged_indices.size());
+        init(unmerged_indices, unmerged_data, unmerged_sigmas);
+      }
+
+      af::shared<index<> > indices;
+      af::shared<FloatType> data;
+      af::shared<FloatType> sigmas;
+      af::shared<int> redundancies;
+      af::shared<FloatType> r_linear;
+      af::shared<FloatType> r_square;
+      FloatType r_int_num, r_int_den;
+
+      FloatType r_int() { return (r_int_den == 0 ? 0 : r_int_num / r_int_den); }
+      std::size_t inconsistent_equivalents() const { return inconsistent_eq; }
+    protected:
+      void
+      init(
+        af::const_ref<index<> > const& unmerged_indices,
+        af::const_ref<FloatType> const& unmerged_data,
+        af::const_ref<FloatType> const& unmerged_sigmas)
+      {
+        inconsistent_eq = 0;
+        if (unmerged_indices.size() == 0) return;
+        std::size_t group_begin = 0;
+        std::size_t group_end = 1;
+        for(;group_end<unmerged_indices.size();group_end++) {
+          if (unmerged_indices[group_end] != unmerged_indices[group_begin]) {
+            process_group(group_begin, group_end,
+                          unmerged_indices[group_begin],
+                          unmerged_data, unmerged_sigmas);
+            group_begin = group_end;
+          }
+        }
+        process_group(group_begin, group_end,
+                      unmerged_indices[group_begin],
+                      unmerged_data, unmerged_sigmas);
+      }
+
+      void
+      process_group(std::size_t group_begin,
+                    std::size_t group_end,
+                    index<> const& current_index,
+                    af::const_ref<FloatType> const& unmerged_data,
+                    af::const_ref<FloatType> const& unmerged_sigmas)
+      {
+        std::size_t n = group_end - group_begin;
+        if (n == 0) return;
+        FloatType oss_sum = 0, w_sum = 0, i_wght_sum = 0;
+        for(std::size_t i=0;i<n;i++) {
+          const std::size_t index = group_begin+i;
+          const FloatType s = (unmerged_sigmas[index] == 0 ?
+            static_cast<FloatType>(1e-3) : unmerged_sigmas[index]);
+          const FloatType oss = scitbx::fn::pow2(1./s);
+          const FloatType val = unmerged_data[index];
+          const FloatType w = ((val > 3.0*s) ? val*oss : 3./s);
+          oss_sum += oss;
+          w_sum += w;
+          i_wght_sum += w*val;
+        }
+        const FloatType mean = i_wght_sum/w_sum;
+        FloatType sum_diff = 0, sum_i = 0, sum_diffs = 0, sum_is = 0;
+        for(std::size_t i=0;i<n;i++) {
+          const FloatType val = unmerged_data[group_begin+i];
+          const double diff = val-mean;
+          sum_diff += scitbx::fn::absolute(diff);
+          sum_i += val;
+          sum_diffs += scitbx::fn::pow2(diff);
+          sum_is += scitbx::fn::pow2(val);
+        }
+        FloatType sig = std::sqrt(1./oss_sum);
+        if (n>1) {
+          r_int_num += sum_diff;
+          r_int_den += sum_i;
+          const FloatType sig_int = sum_diff/(n*sqrt(static_cast<double>(n)-1.0));
+          if (sig_int > sig) {
+            if( sig_int > 5*sig )
+              inconsistent_eq++;
+            sig = sig_int;
+          }
+        }
+        r_linear.push_back(sum_i == 0.0 ? 0.0 : sum_diff/sum_i);
+        r_square.push_back(sum_is == 0.0 ? 0.0 : sum_diffs/sum_is);
+        indices.push_back(current_index);
+        data.push_back(i_wght_sum/w_sum);
+        sigmas.push_back(sig);
+        redundancies.push_back(n);
+      }
+      // number of inconsistent equivalents
+      std::size_t inconsistent_eq;
+  };
 }} // namespace cctbx::miller
 
 #endif // CCTBX_MILLER_MERGE_EQUIVALENTS_H

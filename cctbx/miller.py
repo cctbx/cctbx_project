@@ -2536,8 +2536,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert self.sigmas() is None
     return self.arg(deg)
 
-  def merge_equivalents(self):
-    return merge_equivalents(self)
+  def merge_equivalents(self, merger="standard"):
+    return merge_equivalents(self, merger)
 
   def as_non_anomalous_array(self):
     return array(
@@ -3002,10 +3002,11 @@ class normalised_amplitudes(object):
 
 class merge_equivalents(object):
 
-  def __init__(self, miller_array):
+  def __init__(self, miller_array, merger="standard"):
     self._r_linear = None
     self._r_square = None
     self._r_int = None
+    self._inconsistent_equivalents = None
     merge_type = {
       "bool": ext.merge_equivalents_exact_bool,
       "int": ext.merge_equivalents_exact_int,
@@ -3024,10 +3025,19 @@ class merge_equivalents(object):
       asu_set = set.map_to_asu(miller_array)
       perm = asu_set.sort_permutation(by_value="packed_indices")
       if (miller_array.sigmas() is not None):
-        merge_ext = ext.merge_equivalents_obs(
-          asu_set.indices().select(perm),
-          miller_array.data().select(perm),
-          miller_array.sigmas().select(perm))
+        if merger == "standard":
+          merge_ext = ext.merge_equivalents_obs(
+            asu_set.indices().select(perm),
+            miller_array.data().select(perm),
+            miller_array.sigmas().select(perm))
+        elif merger == "shelx":
+          merge_ext = ext.merge_equivalents_shelx(
+            asu_set.indices().select(perm),
+            miller_array.data().select(perm),
+            miller_array.sigmas().select(perm))
+          self._inconsistent_equivalents = merge_ext.inconsistent_equivalents
+        else:
+          raise RuntimeError("Invalid merger: " + merger)
         sigmas = merge_ext.sigmas
       else:
         merge_ext = ext.merge_equivalents_real(
@@ -3071,6 +3081,11 @@ class merge_equivalents(object):
 
   def r_int(self):
     return self._r_int
+
+  def inconsistent_equivalents(self):
+    if self._inconsistent_equivalents != None:
+      return self._inconsistent_equivalents
+    return 0
 
   def r_sigma(self):
     return flex.sum(self.array().sigmas()) / flex.sum(self.array().data())
