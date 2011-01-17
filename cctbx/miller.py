@@ -2536,7 +2536,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert self.sigmas() is None
     return self.arg(deg)
 
-  def merge_equivalents(self, algorithm="default"):
+  def merge_equivalents(self, algorithm="gaussian"):
     return merge_equivalents(self, algorithm)
 
   def as_non_anomalous_array(self):
@@ -3002,8 +3002,8 @@ class normalised_amplitudes(object):
 
 class merge_equivalents(object):
 
-  def __init__(self, miller_array, algorithm="default"):
-    assert algorithm in ["default", "shelx"]
+  def __init__(self, miller_array, algorithm="gaussian"):
+    assert algorithm in ["gaussian", "shelx"]
     self._r_linear = None
     self._r_square = None
     self._r_int = None
@@ -3026,7 +3026,7 @@ class merge_equivalents(object):
       asu_set = set.map_to_asu(miller_array)
       perm = asu_set.sort_permutation(by_value="packed_indices")
       if (miller_array.sigmas() is not None):
-        if algorithm == "default":
+        if algorithm == "gaussian":
           merge_ext = ext.merge_equivalents_obs(
             asu_set.indices().select(perm),
             miller_array.data().select(perm),
