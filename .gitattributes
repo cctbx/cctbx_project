@@ -1401,6 +1401,7 @@ wxtbx/checklistctrl.py -text
 wxtbx/command_line/loggraph.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
+wxtbx/monitor.py -text
 wxtbx/plots.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
 wxtbx/segmentedctrl.py -text
