@@ -1,6 +1,9 @@
 
 # see also xmlrpc_server_example.py
 
+# FIXME: rewrite ServerProxy with built-in threading for handling failed
+# requests
+
 # XXX: The ServerProxy here is based on the xmlrpclib ServerProxy
 # object, but rewritten from scratch to cache requests which failed due
 # to a connection error and retry them later.  I'm not sure why I can't
@@ -50,11 +53,17 @@
 # OF THIS SOFTWARE.
 # --------------------------------------------------------------------
 
-import os, sys, random, string
+from libtbx import adopt_init_args
 import xmlrpclib
+import socket
+socket.setdefaulttimeout(3)
 import subprocess
 import threading
-from libtbx import adopt_init_args
+import time
+import string
+import random
+import os
+import sys
 
 class ServerProxy (object) :
   def __init__(self, uri, transport=None, encoding=None, verbose=0,
@@ -81,6 +90,8 @@ class ServerProxy (object) :
     self.__encoding = encoding
     self.__verbose = verbose
     self.__allow_none = allow_none
+    self._timeouts = 0
+    self._errors = []
 
   def __request(self, methodname, params):
     self._pending.append((methodname, params))
@@ -113,7 +124,12 @@ class ServerProxy (object) :
             msg.startswith("[Errno 32]") or msg.startswith("[Errno 54]") or
             msg.startswith("[Errno 104]")) :
           self._pending.insert(0, (methodname, params))
+          t = time.strftime("%H:%M:%S", time.localtime())
+          self._errors.append("%s -- %s" % (t, msg))
           break
+        elif ("timed out" in msg) :
+          print "XMLRPC timeout, ignoring request"
+          self._timeouts += 1
         elif str(e).startswith("<ProtocolError ") :
           self._pending = []
           break
@@ -139,6 +155,12 @@ class ServerProxy (object) :
       # magic method dispatcher
       return xmlrpclib._Method(self.__request, name)
 
+  def number_of_timeout_errors (self) :
+    return self._timeouts
+
+  def get_error_messages (self) :
+    return self._errors
+
 #-----------------------------------------------------------------------
 class external_program_thread (threading.Thread) :
   def __init__ (self, command, program_id, log=None, intercept_output=True) :
@@ -157,6 +179,8 @@ class external_program_thread (threading.Thread) :
     while True :
       if p.poll() is not None :
         break
+      else :
+        time.sleep(0.5)
       if self.intercept_output :
         output = p.stdout.readline()
         if output is not None and output != "" :
@@ -172,7 +196,7 @@ class external_program_server (object) :
   port_ranges = [ (40001, 40840),
                   (46000, 46999) ]
   def __init__ (self, command, program_id, timeout, cache_requests=False,
-                local_port=None, log=None, intercept_output=True) :
+                local_port=None, log=None, intercept_output=False) :
     adopt_init_args(self, locals())
     self._process = None
     self._server = None
