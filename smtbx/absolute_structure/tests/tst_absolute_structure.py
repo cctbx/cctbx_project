@@ -166,6 +166,9 @@ class hooft_analysis_test_case(test_case):
 
 def run_call_back(flags, space_group_info):
   if not space_group_info.group().is_centric():
+    if flags.fix_random_seeds:
+      random.seed(1)
+      flex.set_random_seed(1)
     hooft_analysis_test_case(
       space_group_info,use_students_t_errors=False).exercise(debug=flags.Debug)
     if students_t_available:
@@ -173,7 +176,11 @@ def run_call_back(flags, space_group_info):
         space_group_info,use_students_t_errors=True).exercise(debug=flags.Debug)
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  debug_utils.parse_options_loop_space_groups(
+    sys.argv[1:],
+    run_call_back,
+    keywords=("fix_random_seeds",),
+  )
 
 if __name__ == '__main__':
   libtbx.utils.show_times_at_exit()
