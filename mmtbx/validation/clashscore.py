@@ -1,5 +1,6 @@
 import libtbx.load_env
 import sys, os, string
+from libtbx.utils import Usage
 
 try:
   from iotbx import pdb
@@ -52,7 +53,7 @@ class clashscore(object):
     header+="\n# Analyze clashscore for protein model"
     header+="\n# type phenix."+str(command_name)+": --help for help\n"
 
-    summary= "usage: phenix.%s [options] mypdb.pdb" % command_name
+    summary= "phenix.%s [options] mypdb.pdb" % command_name
     return summary,header
   #------------------------------------------------------------------------------------------------
 
@@ -66,12 +67,9 @@ class clashscore(object):
       input_types=("pdb",))
     work_phil = master_phil.fetch(sources=input_objects["phil"])
     work_params = work_phil.extract()
-    try:
-      assert len(input_objects["pdb"]) == 1
-    except:
+    if len(input_objects["pdb"]) != 1:
       summary, header = self.get_summary_and_header("clashscore")
-      print summary
-      sys.exit()
+      raise Usage(summary)
     file_obj = input_objects["pdb"][0]
     filename = file_obj.file_name
 

@@ -7,6 +7,7 @@ from mmtbx.monomer_library import pdb_interpretation
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
 from libtbx import easy_run
+from libtbx.utils import Usage
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -43,11 +44,8 @@ class rna_validate(object):
       input_types=("pdb",))
     work_phil = master_phil.fetch(sources=input_objects["phil"])
     work_params = work_phil.extract()
-    try:
-      assert len(input_objects["pdb"]) == 1
-    except:
-      print "usage: phenix.rna_validate mypdb.pdb"
-      sys.exit()
+    if len(input_objects["pdb"]) != 1:
+      raise Usage("phenix.rna_validate mypdb.pdb")
     file_obj = input_objects["pdb"][0]
     filename = file_obj.file_name
     self.params=work_params
