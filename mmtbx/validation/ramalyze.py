@@ -82,6 +82,7 @@ import sys, os
 from mmtbx.rotamer import ramachandran_eval
 from cctbx import geometry_restraints
 import iotbx.phil
+from libtbx.utils import Usage
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -131,7 +132,7 @@ class ramalyze(object):
     header+="\n# Analyze protein backbone ramachandran"
     header+="\n# type phenix."+str(command_name)+": --help for help"
 
-    summary= "usage: phenix.%s mypdb.pdb" % command_name
+    summary= "phenix.%s mypdb.pdb" % command_name
     return summary,header
 
 
@@ -148,12 +149,9 @@ class ramalyze(object):
       input_types=("pdb",))
     work_phil = master_phil.fetch(sources=input_objects["phil"])
     work_params = work_phil.extract()
-    try:
-      assert len(input_objects["pdb"]) == 1
-    except:
+    if len(input_objects["pdb"]) != 1:
       summary, header = self.get_summary_and_header("ramalyze")
-      print summary
-      sys.exit()
+      raise Usage(summary)
     file_obj = input_objects["pdb"][0]
     filename = file_obj.file_name
 
