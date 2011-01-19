@@ -21,6 +21,7 @@ class reader:
                builder=None, max_errors=50):
     assert [file_path, file_object, input_string].count(None) == 2
     assert has_antlr3
+    self.file_path = file_path
     if builder is None:
       builder = builders.cif_model_builder()
     self.builder = builder
@@ -48,6 +49,17 @@ class reader:
       print >> out, msg
     for msg in self.parser.parser_errors()[:max_errors]:
       print >> out, msg
+
+  def build_crystal_structure(self, data_block_name="global"):
+    block = self.model().get(key=data_block_name)
+    if (block is None):
+      if (self.file_path is None):
+        msg = 'Unknown CIF data block name: "%s"' % data_block_name
+      else:
+        msg = 'Unknown CIF data block name "%s" in file: "%s"' % (
+          data_block_name, self.file_path)
+      raise RuntimeError(msg)
+    return builders.crystal_structure_builder(cif_block=block).structure
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 

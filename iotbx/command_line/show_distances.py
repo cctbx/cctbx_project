@@ -1,5 +1,6 @@
 from iotbx.kriber import strudat
 import iotbx.pdb
+import iotbx.cif
 from iotbx.option_parser import option_parser
 from cctbx.crystal import coordination_sequences
 from cctbx import crystal
@@ -39,6 +40,11 @@ def run(args):
   command_line = (option_parser(
     usage="iotbx.show_distances [options] studat_file [...]",
     description="Example: iotbx.show_distances strudat --tag=SOD")
+    .option(None, "--cif_data_block_name",
+      action="store",
+      type="string",
+      default="global",
+      help="data block name as it appears in the CIF file")
     .option(None, "--tag",
       action="store",
       type="string",
@@ -83,6 +89,7 @@ def run(args):
   else:
     coseq_dict = None
   for file_name in command_line.args:
+    xray_structure = None
     if (iotbx.pdb.is_pdb_file(file_name=file_name)):
       xray_structure = iotbx.pdb.input(
         file_name=file_name).xray_structure_simple(
@@ -91,6 +98,11 @@ def run(args):
             co.distance_cutoff+1),
           min_distance_sym_equiv=co.min_distance_sym_equiv,
           enable_scattering_type_unknown=True)
+    elif (file_name.lower().endswith(".cif")):
+      xray_structure = iotbx.cif.reader(
+        file_path=file_name).build_crystal_structure(
+          data_block_name=co.cif_data_block_name)
+    if (xray_structure is not None):
       display(
         distance_cutoff=co.distance_cutoff,
         show_cartesian=co.show_cartesian,
