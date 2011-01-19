@@ -23,8 +23,17 @@ class cif(DictMixin):
     self.blocks[key] = value
     self.keys_lower[key.lower()] = key
 
+  def get(self, key, default=None):
+    key_lower = self.keys_lower.get(key.lower())
+    if (key_lower is None):
+      return default
+    return self.blocks.get(key_lower, default)
+
   def __getitem__(self, key):
-    return self.blocks[self.keys_lower[key.lower()]]
+    result = self.get(key)
+    if (result is None):
+      raise KeyError('Unknown CIF data block name: "%s"' % key)
+    return result
 
   def __delitem__(self, key):
     del self.blocks[self.keys_lower[key.lower()]]
