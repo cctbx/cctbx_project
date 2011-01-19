@@ -11,6 +11,7 @@ from libtbx import adopt_init_args
 import random
 import time
 import math
+import sys
 import iotbx.phil
 
 def random_velocities(
@@ -18,9 +19,12 @@ def random_velocities(
       target_temperature,
       zero_fraction=0,
       random_gauss=None,
-      random_random=None):
+      random_random=None,
+      seed = None):
   result = flex.vec3_double()
   result.reserve(masses.size())
+  if seed is not None:
+    random.seed(seed)
   if (random_gauss is None): random_gauss = random.gauss
   if (random_random is None): random_random = random.random
   kt = boltzmann_constant_akma * target_temperature
@@ -84,26 +88,29 @@ class cartesian_dynamics(object):
   def __init__(self,
                structure,
                restraints_manager,
-               temperature                      = 300,
-               n_steps                          = 200,
-               time_step                        = 0.0005,
-               initial_velocities_zero_fraction = 0,
-               vxyz                             = None,
-               interleaved_minimization_params  = None,
-               n_print                          = 20,
-               fmodel                           = None,
-               xray_target_weight               = None,
-               chem_target_weight               = None,
-               shift_update                     = 0.0,
-               xray_structure_last_updated      = None,
-               xray_gradient                    = None,
-               reset_velocities                 = True,
-               stop_cm_motion                   = False,
-               update_f_calc                    = True,
-               time_averaging_data              = None,
-               log                              = None,
-               stop_at_diff                     = None,
-               verbose                          = -1):
+               temperature                        = 300,
+               protein_thermostat                 = False,
+               n_steps                            = 200,
+               time_step                          = 0.0005,
+               initial_velocities_zero_fraction   = 0,
+               vxyz                               = None,
+               interleaved_minimization_params    = None,
+               n_print                            = 20,
+               fmodel                             = None,
+               xray_target_weight                 = None,
+               chem_target_weight                 = None,
+               shift_update                       = 0.0,
+               xray_structure_last_updated        = None,
+               xray_gradient                      = None,
+               reset_velocities                   = True,
+               stop_cm_motion                     = False,
+               update_f_calc                      = True,
+               time_averaging_data                = None,
+               log                                = None,
+               stop_at_diff                       = None,
+               verbose                            = -1,
+               solvent_harmonic_restraints        = False,
+               solvent_harmonic_restraints_weight = 0.001):
     adopt_init_args(self, locals())
     assert self.n_print > 0
     assert self.temperature >= 0.0
@@ -126,8 +133,19 @@ class cartesian_dynamics(object):
     if(self.time_averaging_data is not None and
        self.time_averaging_data.velocities is not None):
       self.vxyz = self.time_averaging_data.velocities
+
+    if self.time_averaging_data is not None:
+      self.time_averaging_data.geo_grad_rms = 0
+      self.time_averaging_data.xray_grad_rms = 0
+
     if(self.fmodel is not None):
-      self.fmodel_copy = self.fmodel.deep_copy()
+      if self.time_averaging_data is None:
+        self.fmodel_copy = self.fmodel.deep_copy()
+      else:
+        self.fmodel_copy = self.fmodel
+        if self.time_averaging_data.fix_scale_factor is not None:
+          self.fmodel_copy.set_scale_switch = self.time_averaging_data.fix_scale_factor
+    #
       self.target_functor = self.fmodel_copy.target_functor()
       assert self.chem_target_weight is not None
       assert self.xray_target_weight is not None
@@ -142,8 +160,8 @@ class cartesian_dynamics(object):
       self.time_step *= imp.time_step_factor
       if ("bonds" not in imp.restraints):
         raise Sorry(
-          'Invalid choice: %s: "bonds" must always be included.'
-            % imp.__phil_path__(object_name="restraints"))
+          'Invalid choice: %s.restraints: "bonds" must always be included.'
+            % imp.__phil_path__())
       self.interleaved_minimization_angles = "angles" in imp.restraints
     else:
       self.interleaved_minimization_angles = False
@@ -195,6 +213,7 @@ class cartesian_dynamics(object):
 
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
+
     self.current_temperature = kt.temperature
     self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
@@ -202,16 +221,44 @@ class cartesian_dynamics(object):
 
   def set_velocities(self):
     self.vxyz.clear()
+    if self.time_averaging_data is not None:
+      seed = self.time_averaging_data.seed
+    else: seed = None
     self.vxyz.extend(random_velocities(
       masses=self.weights,
       target_temperature=self.temperature,
-      zero_fraction=self.initial_velocities_zero_fraction))
+      zero_fraction=self.initial_velocities_zero_fraction,
+      seed = seed))
 
   def accelerations(self):
     stereochemistry_residuals = self.restraints_manager.energies_sites(
       sites_cart=self.structure.sites_cart(),
       compute_gradients=True)
+
+    #Harmonic restraints options
+    if self.solvent_harmonic_restraints:
+      harmonic_grads = self.restraints_manager.geometry.ta_solvent_harmonic_restraints(
+                                    sites_cart = self.structure.sites_cart(),
+                                    ref_sites_cart =self.xray_structure_last_updated.sites_cart(),
+                                    #XXX Defunct!
+                                    number_protein_atoms = self.time_averaging_data.protein_total_atom_range["pro_only"],
+                                    weight = self.solvent_harmonic_restraints_weight)
+
+      assert stereochemistry_residuals.gradients.size() == harmonic_grads.size()
+      stereochemistry_residuals.gradients += harmonic_grads
+    elif self.time_averaging_data is not None:
+      if self.time_averaging_data.specific_harmonic_restraint_info is not None:
+        harmonic_grads = self.restraints_manager.geometry.ta_specific_harmonic_restraints(
+                                      sites_cart = self.structure.sites_cart(),
+                                      specific_harmonic_restraint_info = self.time_averaging_data.specific_harmonic_restraint_info,
+                                      weight = self.solvent_harmonic_restraints_weight,
+                                      slack = 1.0)
+
+        assert stereochemistry_residuals.gradients.size() == harmonic_grads.size()
+        stereochemistry_residuals.gradients += harmonic_grads
+
     result = stereochemistry_residuals.gradients
+
     d_max = None
     if(self.xray_structure_last_updated is not None and self.shift_update > 0):
       array_of_distances_between_each_atom = \
@@ -232,54 +279,43 @@ class cartesian_dynamics(object):
       factor *= self.chem_target_weight
     if (stereochemistry_residuals.normalization_factor is not None):
       factor *= stereochemistry_residuals.normalization_factor
+
     if (factor != 1.0):
       result *= 1.0 / factor
+    if self.time_averaging_data is not None:
+      gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
+      xg = self.xray_gradient*(self.xray_target_weight/factor)
+      #Select for protein component only
+      gg_pro = gg.select( ~self.time_averaging_data.solvent_sel )
+      xg_pro = xg.select( ~self.time_averaging_data.solvent_sel )
+      self.time_averaging_data.geo_grad_rms  += (flex.mean_sq(gg_pro.as_double())**0.5) / self.n_steps
+      self.time_averaging_data.xray_grad_rms += (flex.mean_sq(xg_pro.as_double())**0.5) / self.n_steps
+
     if (self.show_gradient_rms and self.xray_gradient is not None):
       gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
       xg = self.xray_gradient*(self.xray_target_weight/factor)
       print "CARDY_GRADIENT_RMS_GEO_XRAY:", \
         flex.mean_sq(gg.as_double())**0.5, \
         flex.mean_sq(xg.as_double())**0.5
+
     return result
 
   def xray_grads(self):
-    self.fmodel_copy.update_xray_structure(
-      xray_structure = self.structure,
-      update_f_calc  = True,
-      update_f_mask  = False)
-    if(self.time_averaging_data is not None):
-      self.time_averaging_data.xray_structures.append(
-        self.structure.deep_copy_scatterers())
-      fcra = self.time_averaging_data.f_calc_running_average
-      fmda = self.time_averaging_data.f_model_data_average
-      self.time_averaging_data.f_model_data_current = \
-        self.fmodel_copy.f_model().data()
-      if(fmda is None):
-        fmda = self.time_averaging_data.f_model_data_current
-      else:
-        fmda += self.time_averaging_data.f_model_data_current
-      self.time_averaging_data.f_model_data_average = fmda
-    if(not self.update_f_calc):
-      f_calc = self.fmodel_copy.f_calc()
-      if(fcra is None):
-        fcra = f_calc
-      else:
-        a_prime = math.exp(
-          -self.time_step/self.time_averaging_data.params.tx)
-        f_calc_average_data = fcra.data()
-        f_calc_average_data = a_prime * f_calc_average_data + \
-                         (1.-a_prime) * f_calc.data()
-        fcra = fcra.array(data = f_calc_average_data)
-      self.fmodel_copy.update(f_calc = fcra)
-      self.time_averaging_data.f_calc_running_average = fcra
-      self.time_averaging_data.r_work_running_average = \
-        self.fmodel_copy.r_work()
-      self.time_averaging_data.r_free_running_average = \
-        self.fmodel_copy.r_free()
+    if(self.time_averaging_data is None):
+      self.fmodel_copy.update_xray_structure(
+        xray_structure           = self.structure,
+        update_f_calc            = True,
+        update_f_mask            = False)
+
+    elif(self.time_averaging_data is not None):
+      self.fmodel_copy.update_xray_structure(
+        xray_structure           = self.structure,
+        update_f_calc            = False,
+        update_f_mask            = False)
+
     sf = self.target_functor(
-      compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
-    if(self.time_averaging_data is not None):
-      self.time_averaging_data.velocities = self.vxyz
+        compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
+
     return flex.vec3_double(sf.packed())
 
   def center_of_mass_info(self):
@@ -306,13 +342,22 @@ class cartesian_dynamics(object):
       self.weights)
 
   def velocity_rescaling(self):
-    if(self.time_averaging_data is not None):
-      self.time_averaging_data.temp.append(self.current_temperature)
-    if (self.current_temperature <= 1.e-10):
-      factor = 1.0
+    if self.protein_thermostat and self.time_averaging_data is not None:
+      if (self.current_temperature <= 1.e-10):
+        factor_non_solvent = 1.0
+      else:
+        solvent_sel         = self.time_averaging_data.solvent_sel
+        non_solvent_vxyz    = self.vxyz.select(~solvent_sel)
+        non_solvent_weights = self.weights.select(~solvent_sel)
+        non_solvent_kt      = dynamics.kinetic_energy_and_temperature(non_solvent_vxyz, non_solvent_weights)
+        factor_non_solvent  = math.sqrt(self.temperature/non_solvent_kt.temperature)
+      self.vxyz           = self.vxyz * factor_non_solvent
     else:
-      factor = math.sqrt(self.temperature/self.current_temperature)
-    self.vxyz = self.vxyz * factor
+      if (self.current_temperature <= 1.e-10):
+        factor = 1.0
+      else:
+        factor = math.sqrt(self.temperature/self.current_temperature)
+      self.vxyz = self.vxyz * factor
 
   def interleaved_minimization(self):
     geo_manager = self.restraints_manager.geometry
@@ -357,6 +402,24 @@ class cartesian_dynamics(object):
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
       self.current_temperature = kt.temperature
       self.ekin = kt.kinetic_energy
+
+      #Store sys, solvent, nonsolvet temperatures
+      if self.time_averaging_data is not None:
+        solvent_sel         = self.time_averaging_data.solvent_sel
+        solvent_vxyz        = self.vxyz.select(solvent_sel)
+        solvent_weights     = self.weights.select(solvent_sel)
+        solvent_kt          = dynamics.kinetic_energy_and_temperature(solvent_vxyz, solvent_weights)
+        non_solvent_vxyz    = self.vxyz.select(~solvent_sel)
+        non_solvent_weights = self.weights.select(~solvent_sel)
+        non_solvent_kt      = dynamics.kinetic_energy_and_temperature(non_solvent_vxyz, non_solvent_weights)
+        if cycle == 1:
+          self.time_averaging_data.non_solvent_temp = 0
+          self.time_averaging_data.solvent_temp = 0
+          self.time_averaging_data.system_temp  = 0
+        self.time_averaging_data.non_solvent_temp += (non_solvent_kt.temperature / self.n_steps)
+        self.time_averaging_data.solvent_temp += (solvent_kt.temperature /self.n_steps)
+        self.time_averaging_data.system_temp  += (kt.temperature /self.n_steps)
+
       self.velocity_rescaling()
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
