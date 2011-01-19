@@ -5,6 +5,7 @@
 from mmtbx.maps import utils
 import iotbx.phil
 from iotbx import file_reader
+from libtbx import runtime_utils
 import libtbx.phil
 from libtbx.utils import Sorry, Usage
 import sys, os
@@ -13,7 +14,7 @@ master_phil = iotbx.phil.parse("""
 mtz_file = None
   .type = path
   .short_caption = MTZ file
-  .style = bold file_type:hkl
+  .style = bold file_type:hkl OnUpdate:extract_map_coeffs_for_fft
 pdb_file = None
   .type = path
   .short_caption = PDB file
@@ -36,12 +37,14 @@ grid_resolution_factor = 1.0 / 3
 scale = *sigma volume
   .type = choice(multi=False)
   .expert_level = 1
+  .short_caption = Map scaling
 output {
   directory = None
     .type = path
     .short_caption = Output directory
   prefix = None
     .type = str
+    .input_size = 400
     .short_caption = Output file prefix
   format = xplor *ccp4
     .type = choice
@@ -170,6 +173,7 @@ def run (args, log=sys.stdout) :
       sites_cart = sites_cart.select(selection)
   else :
     print >> log, "No PDB file - will output map(s) in unit cell."
+  file_info = []
   for i, map_labels in enumerate(params.labels) :
     map_coeffs = None
     if len(map_labels) == 1 :
@@ -241,6 +245,7 @@ def run (args, log=sys.stdout) :
         n_real=map.n_real(),
         file_name=map_file_name,
         buffer=params.buffer)
+      file_info.append((map_file_name, "XPLOR map"))
     else :
       if sites_cart is not None :
         utils.write_ccp4_map(
@@ -252,8 +257,20 @@ def run (args, log=sys.stdout) :
           buffer=params.buffer)
       else :
         map.as_ccp4_map(file_name=map_file_name)
+      file_info.append((map_file_name, "CCP4 map"))
     print >> log, "  wrote %s" % map_file_name
-  return True
+  return file_info
+
+def finish_job (result) :
+  return (result, []) # XXX result is already a file name/desc. list
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(args=list(self.args), log=sys.stdout)
+
+def validate_params (params) :
+  if (params.mtz_file is None) :
+    raise Sorry("No MTZ file was provided.")
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
