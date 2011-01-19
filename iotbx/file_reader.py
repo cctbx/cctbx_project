@@ -16,7 +16,7 @@ from libtbx.utils import Sorry
 import cPickle
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
-  "seq", "xml", "pkl", "txt"]
+  "seq", "xml", "aln", "pkl", "txt",]
 
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
@@ -30,6 +30,7 @@ standard_file_extensions = {
   'pkl'  : ["pickle", "pkl"],
   'txt'  : ["txt", "log", "html"],
   'mtz'  : ["mtz"],
+  'aln'  : ["aln"],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
 
@@ -45,6 +46,7 @@ standard_file_descriptions = {
   'pkl'  : "Python pickle",
   'txt'  : "Text",
   'mtz'  : "Reflections (MTZ)",
+  'aln'  : "Sequence alignment",
 }
 
 supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "txt",
