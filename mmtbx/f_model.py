@@ -44,6 +44,7 @@ from iotbx import data_plots
 import random
 from copy import deepcopy
 from libtbx import group_args
+import mmtbx.scaling.ta_alpha_beta_calc
 if(not libtbx.env.has_module(name="solve_resolve")):
   phenix_masks = None
 else:
@@ -1325,6 +1326,39 @@ class manager(manager_mixin):
     print self.r_free()
     return self
 
+  #TA alpha beta parameters
+  set_sigmaa         = None
+  eobs_norm_factor   = None
+  ecalc_norm_factor  = None
+  def eobs_and_ecalc_miller_array_normalizers(self, fix_norm_factors = True, res_scale = None):
+    p = self.alpha_beta_params.sigmaa_estimator
+    fmodel = self.f_model()
+    eobs_norm_factor, ecalc_norm_factor = mmtbx.scaling.ta_alpha_beta_calc.ta_alpha_beta_calc(
+             miller_obs = self.f_obs,
+             miller_calc = fmodel,
+             r_free_flags = self.r_free_flags,
+             ta_d = self.set_sigmaa,
+             kernel_width_free_reflections=p.kernel_width_free_reflections,
+             kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
+             n_sampling_points=p.number_of_sampling_points,
+             n_chebyshev_terms=p.number_of_chebyshev_terms,
+             use_sampling_sum_weights=p.use_sampling_sum_weights).eobs_and_ecalc_miller_array_normalizers()
+    if fix_norm_factors:
+      self.eobs_norm_factor  = eobs_norm_factor
+      self.ecalc_norm_factor = ecalc_norm_factor
+    return eobs_norm_factor, ecalc_norm_factor
+
+  def alpha_beta_from_fixed_norm_factors(self):
+    assert self.eobs_norm_factor is not None
+    assert self.ecalc_norm_factor is not None
+    alpha = self.set_sigmaa * flex.sqrt(
+        self.eobs_norm_factor /
+        self.ecalc_norm_factor )
+    beta  = (1.0 - self.set_sigmaa*self.set_sigmaa) * self.eobs_norm_factor
+    alpha = self.f_obs.array(data=alpha)
+    beta  = self.f_obs.array(data=beta)
+    return alpha, beta
+
   def alpha_beta(self, f_obs = None, f_model = None):
     global time_alpha_beta
     timer = user_plus_sys_time()
@@ -1332,6 +1366,9 @@ class manager(manager_mixin):
     if(f_model is None): f_model = self.f_model()
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
+    #Eobs and Ecalc normalization factors are fixed for TA
+    if self.set_sigmaa != None:
+      return self.alpha_beta_from_fixed_norm_factors()
     if(self.alpha_beta_params is not None):
        assert self.alpha_beta_params.method in ("est", "calc")
        assert self.alpha_beta_params.estimation_algorithm in [
@@ -1521,23 +1558,42 @@ class manager(manager_mixin):
   def r_all(self):
     return self._r_factor(type="all")
 
+  #XXX Fix k1 option for TA
+  set_scale_switch = 0
   def scale_k1(self, selection = None):
-    return _scale_helper(
-      num=self.f_obs.data(),
-      den=flex.abs(self.f_model().data()),
-      selection=selection)
+    if self.set_scale_switch is not None:
+      if (self.set_scale_switch == 0):
+        return _scale_helper(
+        num=self.f_obs.data(),
+        den=flex.abs(self.f_model().data()),
+        selection=selection)
+      if (self.set_scale_switch > 0):
+        return self.set_scale_switch
+    else:
+      return _scale_helper(
+        num=self.f_obs.data(),
+        den=flex.abs(self.f_model().data()),
+        selection=selection)
 
   def scale_k1_w(self, selection = None):
-    return _scale_helper(
-      num=self.f_obs_w.data(),
-      den=flex.abs(self.f_model_work().data()),
-      selection=selection)
+    if self.set_scale_switch is not None:
+      if (self.set_scale_switch == 0):
+        return _scale_helper(
+          num=self.f_obs_w.data(),
+          den=flex.abs(self.f_model_work().data()),
+          selection=selection)
+      if (self.set_scale_switch > 0):
+        return self.set_scale_switch
 
   def scale_k1_t(self, selection = None):
-    return _scale_helper(
-      num=self.f_obs_t.data(),
-      den=flex.abs(self.f_model_free().data()),
-      selection=selection)
+    if self.set_scale_switch is not None:
+      if (self.set_scale_switch == 0):
+        return _scale_helper(
+          num=self.f_obs_t.data(),
+          den=flex.abs(self.f_model_free().data()),
+          selection=selection)
+      if (self.set_scale_switch > 0):
+        return self.set_scale_switch
 
   def scale_k2(self, selection = None):
     return _scale_helper(
@@ -2278,6 +2334,73 @@ class manager(manager_mixin):
       s_fc_w_d = flex.abs(sel_fc_w.data())
       r_work = flex.sum(flex.abs(s_fo_w_d - s_fc_w_d)) / flex.sum(s_fo_w_d)
       print >>log,"%3d: %-17s %4d %6.4f"%(i_bin,d_range,s_fo_w_d.size(),r_work)
+
+  def show_rwork_and_rfree_in_bins(self,
+        free_reflections_per_bin,
+        title,
+        max_number_of_bins,
+        log):
+    fo_t = self.f_obs_t
+    fc_t = miller.array(miller_set = self.f_obs_t,
+                        data       = self.scale_k1()*self.f_model_free().data())
+    fo_w = self.f_obs_w
+    fc_w = miller.array(miller_set = self.f_obs_w,
+                        data       = self.scale_k1()*self.f_model_work().data())
+    fc_w_not_scale = self.f_model_work()
+    fc_t_not_scale = self.f_model_free()
+    self.f_obs.setup_binner(n_bins=self.determine_n_bins(
+      free_reflections_per_bin=free_reflections_per_bin,
+      max_n_bins=max_number_of_bins))
+    fo_t.use_binning_of(self.f_obs)
+    fc_t.use_binning_of(fo_t)
+    fo_w.use_binning_of(fo_t)
+    fc_w.use_binning_of(fo_t)
+    fc_w_not_scale.use_binning_of(fo_t)
+    if(title is not None):
+      print >> log, title
+    print >> log, \
+    " BIN  RESOLUTION RANGE  |    NWORK NFREE  RWORK   RFREE     Scale_w     Scale_t"
+    fmt = " %s %s  | %s %s %s  %s %s %s"
+    for i_bin in fo_t.binner().range_used():
+      sel_t = fo_t.binner().selection(i_bin)
+      sel_w = fo_w.binner().selection(i_bin)
+      sel_fo_t = fo_t.select(sel_t)
+      sel_fc_t = fc_t.select(sel_t)
+      sel_fo_w = fo_w.select(sel_w)
+      sel_fc_w = fc_w.select(sel_w)
+      sel_fc_w_not_scale = fc_w_not_scale.select(sel_w)
+      sel_fc_t_not_scale = fc_t_not_scale.select(sel_t)
+      d_range = fo_t.binner().bin_legend(
+        i_bin=i_bin, show_bin_number=False, show_counts=False)
+      s_fo_w_data = sel_fo_w.data()
+      s_fo_t_data = sel_fo_t.data()
+      s_fc_w_data = sel_fc_w.data()
+      s_fc_t_data = sel_fc_t.data()
+      assert s_fo_w_data.size() == s_fc_w_data.size()
+      if(s_fo_w_data.size() > 0):
+        i_bin        = i_bin
+        d_range      = d_range
+        s_fo_t_d = flex.abs(sel_fo_t.data())
+        s_fc_t_d = flex.abs(sel_fc_t.data())
+        s_fo_w_d = flex.abs(sel_fo_w.data())
+        s_fc_w_d = flex.abs(sel_fc_w.data())
+        s_fc_w_not_scale = flex.abs(sel_fc_w_not_scale.data())
+        s_fc_t_not_scale = flex.abs(sel_fc_t_not_scale.data())
+        n_work       = sel_fo_w.data().size()
+        n_free       = sel_fo_t.data().size()
+        r_free = flex.sum(flex.abs(s_fo_t_d - s_fc_t_d)) / flex.sum(s_fo_t_d)
+        r_work = flex.sum(flex.abs(s_fo_w_d - s_fc_w_d)) / flex.sum(s_fo_w_d)
+        shell_scale_work = _scale_helper(num=s_fo_w_data, den=s_fc_w_not_scale)
+        shell_scale_free = _scale_helper(num=s_fo_t_data, den=s_fc_t_not_scale)
+        print >> log,fmt%(
+        format_value("%3d", i_bin),
+        format_value("%-17s", d_range),
+        format_value("%8d", n_work),
+        format_value("%5d", n_free),
+        format_value("%6.4f", r_work),
+        format_value("%6.4f", r_free),
+        format_value("%11.4f", shell_scale_work),
+        format_value("%11.4f", shell_scale_free))
 
 class phaser_sad_target_functor(object):
 

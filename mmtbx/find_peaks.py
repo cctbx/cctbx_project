@@ -63,7 +63,7 @@ class peaks_holder(object):
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
                      use_kick_map = False, kick_map_params = None,
-                     silent = False):
+                     use_all_data = True, silent = False):
     adopt_init_args(self, locals())
     self.mapped = False
     self.peaks_ = None
@@ -84,7 +84,8 @@ class manager(object):
       fft_map = self.fmodel.electron_density_map().\
         fft_map(resolution_factor = self.params.resolution_factor,
                 symmetry_flags    = maptbx.use_space_group_symmetry,
-                map_type          = self.map_type)
+                map_type          = self.map_type,
+                use_all_data      = use_all_data)
       if(self.params.use_sigma_scaled_maps):
         fft_map.apply_sigma_scaling()
         map_units = "sigma"
