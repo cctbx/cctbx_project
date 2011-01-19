@@ -122,6 +122,9 @@ nucleic_acids
     .type = float
     .short_caption = Slack for nucleic acid H-bonds
     .help = Defaults to global setting
+  use_db_values = True
+    .type = bool
+    .short_caption = Use distances from Rutgers BPS database
 #  planar = False
 #    .type = bool
 #    .short_caption = Use planar restraints by default
@@ -452,17 +455,22 @@ def hydrogen_bonds_from_selections (
             continue
           has_bond[i_seq] += 1
           has_bond[j_seq] += 1
-          if distance_values[i][0] != '_':
-            cur_distance = float(distance_values[i][0])
-          else:
+          if params.nucleic_acids.use_db_values :
+            if distance_values[i][0] != '_':
+              cur_distance = float(distance_values[i][0])
+            else:
+              cur_distance = distance_ideal
+            if distance_values[i][1] != '_':
+              cur_sigma = float(distance_values[i][1])
+            else:
+              cur_sigma = sigma
+            if distance_values[i][2] != '_':
+              cur_slack = float(distance_values[i][2])
+            else:
+              cur_slack = slack
+          else :
             cur_distance = distance_ideal
-          if distance_values[i][1] != '_':
-            cur_sigma = float(distance_values[i][1])
-          else:
             cur_sigma = sigma
-          if distance_values[i][2] != '_':
-            cur_slack = float(distance_values[i][2])
-          else:
             cur_slack = slack
           bond_i_seqs.append((i_seq, j_seq))
           distances.append(cur_distance)
