@@ -56,7 +56,6 @@
 from libtbx import adopt_init_args
 import xmlrpclib
 import socket
-socket.setdefaulttimeout(3)
 import subprocess
 import threading
 import time
