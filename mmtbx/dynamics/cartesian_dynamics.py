@@ -108,9 +108,7 @@ class cartesian_dynamics(object):
                time_averaging_data                = None,
                log                                = None,
                stop_at_diff                       = None,
-               verbose                            = -1,
-               solvent_harmonic_restraints        = False,
-               solvent_harmonic_restraints_weight = 0.001):
+               verbose                            = -1):
     adopt_init_args(self, locals())
     assert self.n_print > 0
     assert self.temperature >= 0.0
@@ -235,28 +233,16 @@ class cartesian_dynamics(object):
       sites_cart=self.structure.sites_cart(),
       compute_gradients=True)
 
-    #Harmonic restraints options
-    if self.solvent_harmonic_restraints:
-      harmonic_grads = self.restraints_manager.geometry.ta_solvent_harmonic_restraints(
-                                    sites_cart = self.structure.sites_cart(),
-                                    ref_sites_cart =self.xray_structure_last_updated.sites_cart(),
-                                    #XXX Defunct!
-                                    number_protein_atoms = self.time_averaging_data.protein_total_atom_range["pro_only"],
-                                    weight = self.solvent_harmonic_restraints_weight)
-
-      assert stereochemistry_residuals.gradients.size() == harmonic_grads.size()
-      stereochemistry_residuals.gradients += harmonic_grads
-    elif self.time_averaging_data is not None:
-      if self.time_averaging_data.specific_harmonic_restraint_info is not None:
-        harmonic_grads = self.restraints_manager.geometry.ta_specific_harmonic_restraints(
-                                      sites_cart = self.structure.sites_cart(),
-                                      specific_harmonic_restraint_info = self.time_averaging_data.specific_harmonic_restraint_info,
-                                      weight = self.solvent_harmonic_restraints_weight,
-                                      slack = 1.0)
-
+    #Ta Harmonic restraints options
+    if self.time_averaging_data is not None:
+      if self.time_averaging_data.ta_harmonic_restraints_info is not None:
+        harmonic_grads = self.restraints_manager.geometry.ta_harmonic_restraints(
+                                sites_cart = self.structure.sites_cart(),
+                                ta_harmonic_restraint_info = self.time_averaging_data.ta_harmonic_restraints_info,
+                                weight = self.time_averaging_data.ta_harmonic_restraints_weight,
+                                slack = self.time_averaging_data.ta_harmonic_restraints_slack)
         assert stereochemistry_residuals.gradients.size() == harmonic_grads.size()
         stereochemistry_residuals.gradients += harmonic_grads
-
     result = stereochemistry_residuals.gradients
 
     d_max = None
