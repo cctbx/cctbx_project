@@ -7,7 +7,7 @@ from scitbx.python_utils.misc import store
 from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
-import sys
+import sys, math
 
 class manager(object):
 
@@ -666,6 +666,49 @@ class manager(object):
       gradients[i] += term * 2
       gradients[j] -= term * 2
     return store(residual_sum=residual_sum, gradients=gradients)
+
+  def ta_harmonic_restraints(self, sites_cart, ta_harmonic_restraint_info, weight = 0.001, slack = 0.5):
+
+    def delta(site1,
+              site2):
+      delta = math.sqrt(((site1[0]-site2[0])**2) + ((site1[1]-site2[1])**2) + ((site1[2]-site2[2])**2))
+      if slack > 0:
+        if (delta > self.ta_slack):
+          delta_slack = delta - slack
+        else:
+          delta_slack = 0.0
+      else: delta_slack = delta
+      return delta, delta_slack
+
+    def residual(distance):
+      residual = self.ta_harmonic_weight * distance**2
+      return residual
+
+    def gradient(site,
+                 ref_site,
+                 distance_slack,
+                 distance):
+      site_delta = ((site[0]-ref_site[0]),(site[1]-ref_site[1]),(site[2]-ref_site[2]))
+      if self.ta_slack > 0.0:
+        if distance < self.ta_slack:
+          return (0.0,0.0,0.0)
+      gradient = (self.ta_harmonic_weight * 2.0 * distance_slack * site_delta[0],
+                  self.ta_harmonic_weight * 2.0 * distance_slack * site_delta[1],
+                  self.ta_harmonic_weight * 2.0 * distance_slack * site_delta[2])
+      return gradient
+
+    self.ta_harmonic_weight = weight
+    self.ta_slack = slack
+    gradients = flex.vec3_double(sites_cart.size(), (0,0,0))
+    residuals = flex.double(sites_cart.size(), 0)
+    for x in ta_harmonic_restraint_info:
+      distance, distance_slack = delta(x[1],sites_cart[x[0]])
+      residuals[x[0]] = residual(distance = distance)
+      gradients[x[0]] = gradient(distance       = distance,
+                                 distance_slack = distance_slack,
+                                 site           = sites_cart[x[0]],
+                                 ref_site       = x[1])
+    return gradients
 
   def show_interactions(self,
         flags=None,
