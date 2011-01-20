@@ -55,6 +55,7 @@
 
 from libtbx import adopt_init_args
 import xmlrpclib
+import httplib
 import socket
 import subprocess
 import threading
@@ -64,9 +65,25 @@ import random
 import os
 import sys
 
+# http://stackoverflow.com/questions/372365/set-timeout-for-xmlrpclib-serverproxy
+class TimeoutTransport(xmlrpclib.Transport):
+  def __init__(self, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, *args, **kwargs):
+    xmlrpclib.Transport.__init__(self, *args, **kwargs)
+    self.timeout = timeout
+
+  def make_connection (self, host) :
+    if self._connection and host == self._connection[0]:
+      return self._connection[1]
+    # create a HTTP connection object from a host descriptor
+    chost, self._extra_headers, x509 = self.get_host_info(host)
+    #store the host argument along with the connection object
+    self._connection = host, httplib.HTTPConnection(chost,
+      timeout=self.timeout)
+    return self._connection[1]
+
 class ServerProxy (object) :
   def __init__(self, uri, transport=None, encoding=None, verbose=0,
-               allow_none=0, use_datetime=0):
+               allow_none=0, use_datetime=0, timeout=5.0):
     self._pending = []
     # establish a "logical" server connection
 
@@ -83,7 +100,8 @@ class ServerProxy (object) :
       if type == "https":
         transport = xmlrpclib.SafeTransport(use_datetime=use_datetime)
       else:
-        transport = xmlrpclib.Transport(use_datetime=use_datetime)
+        transport = TimeoutTransport(timeout=timeout,
+          use_datetime=use_datetime)
     self.__transport = transport
 
     self.__encoding = encoding
@@ -140,7 +158,7 @@ class ServerProxy (object) :
 
 
   def __repr__(self):
-      return (
+    return (
           "<ServerProxy for %s%s>" %
           (self.__host, self.__handler)
           )
@@ -151,8 +169,8 @@ class ServerProxy (object) :
   # result getattr(server, "strange-python-name")(args)
 
   def __getattr__(self, name):
-      # magic method dispatcher
-      return xmlrpclib._Method(self.__request, name)
+    # magic method dispatcher
+    return xmlrpclib._Method(self.__request, name)
 
   def number_of_timeout_errors (self) :
     return self._timeouts
