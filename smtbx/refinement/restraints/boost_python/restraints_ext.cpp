@@ -85,6 +85,7 @@ namespace boost_python {
     // adp similarity restraint
     def("linearise_restraints",
       (void(*) (
+        cctbx::uctbx::unit_cell const &,
         af::const_ref<scitbx::sym_mat3<double> > const &,
         af::const_ref<double> const &,
         af::const_ref<bool> const &,
@@ -93,7 +94,8 @@ namespace boost_python {
         cctbx::restraints::linearised_eqns_of_restraint<double> &))
         cctbx::restraints::linearise_restraints<
           double, adp_res::adp_similarity_proxy, adp_res::adp_similarity>,
-        (arg("u_cart"),
+        (arg("unit_cell"),
+         arg("u_cart"),
          arg("u_iso"),
          arg("use_u_aniso"),
          arg("parameter_map"),
@@ -102,6 +104,7 @@ namespace boost_python {
     // rigid bond restraint
     def("linearise_restraints",
       (void(*) (
+        cctbx::uctbx::unit_cell const &,
         af::const_ref<scitbx::vec3<double> > const &,
         af::const_ref<scitbx::sym_mat3<double> > const &,
         cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
@@ -109,7 +112,8 @@ namespace boost_python {
         cctbx::restraints::linearised_eqns_of_restraint<double> &))
         cctbx::restraints::linearise_restraints<
           double, adp_res::rigid_bond_proxy, adp_res::rigid_bond>,
-        (arg("sites_cart"),
+        (arg("unit_cell"),
+         arg("sites_cart"),
          arg("u_cart"),
          arg("parameter_map"),
          arg("proxies"),
@@ -117,13 +121,15 @@ namespace boost_python {
     // isotropic adp restraint
     def("linearise_restraints",
       (void(*) (
+        cctbx::uctbx::unit_cell const &,
         af::const_ref<scitbx::sym_mat3<double> > const &,
         cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
         af::const_ref<adp_res::isotropic_adp_proxy> const &,
         cctbx::restraints::linearised_eqns_of_restraint<double> &))
         cctbx::restraints::linearise_restraints<
           double, adp_res::isotropic_adp_proxy, adp_res::isotropic_adp>,
-        (arg("u_cart"),
+        (arg("unit_cell"),
+         arg("u_cart"),
          arg("parameter_map"),
          arg("proxies"),
          arg("restraints_matrix")));

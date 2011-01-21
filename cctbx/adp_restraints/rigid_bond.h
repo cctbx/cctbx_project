@@ -5,6 +5,7 @@
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/restraints.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -149,19 +150,26 @@ using scitbx::sym_mat3;
 
     void
     linearise(
+      uctbx::unit_cell const &unit_cell,
       cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
       cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
       af::tiny<unsigned, 2> const& i_seqs) const
     {
-      scitbx::sym_mat3<double> grad = grad_delta_0();
+      af::const_ref<double, af::mat_grid> const &f
+        = unit_cell.u_star_to_u_cart_linear_map();
+      scitbx::sym_mat3<double> grad_u_cart = grad_delta_0();
+      scitbx::sym_mat3<double> grad_u_star;
+      scitbx::matrix::matrix_transposed_vector(
+        6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
       std::size_t row_i = linearised_eqns.next_row();
       for (std::size_t i=0;i<2;i++) {
-        if (i == 1) grad = -grad;
+        if (i == 1) grad_u_star = -grad_u_star;
         cctbx::xray::parameter_indices const &ids_i
           = parameter_map[i_seqs[i]];
         if (ids_i.u_aniso == -1) continue;
         for (std::size_t j=0;j<6;j++) {
-          linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j) = grad[j];
+          linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
+            = grad_u_star[j];
         }
       linearised_eqns.weights[row_i] = weight;
       linearised_eqns.deltas[row_i] = delta_z_;

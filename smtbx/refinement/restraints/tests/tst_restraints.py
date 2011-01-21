@@ -1,6 +1,6 @@
 from __future__ import division
 from scitbx.lstbx import normal_eqns_solving
-from cctbx import geometry_restraints, adp_restraints, sgtbx
+from cctbx import geometry_restraints, adp_restraints, sgtbx, adptbx
 from cctbx.array_family import flex
 from cctbx.xray import parameter_map
 from smtbx.refinement import restraints
@@ -121,24 +121,27 @@ class adp_restraints_test_case(restraints_test_case):
     uc = self.xray_structure.unit_cell()
     xs = self.xray_structure
     u_cart = xs.scatterers().extract_u_cart(uc).deep_copy()
+    u_star = xs.scatterers().extract_u_star().deep_copy()
     u_iso = xs.scatterers().extract_u_iso().deep_copy()
     for n in xrange(n_restraints):
       for i in xrange(self.param_map.n_scatterers):
-        use_u_aniso = self.param_map[i].u_aniso != -1
-        use_u_iso = self.param_map[i].u_iso != -1
+        use_u_aniso = self.param_map[i].u_aniso > -1
+        use_u_iso = self.param_map[i].u_iso > -1
         for j in range(6):
           if use_u_aniso:
             h = [0,0,0,0,0,0]
             h[j] = eps
             h = matrix.sym(sym_mat3=h)
-            u_cart[i]=list((matrix.sym(sym_mat3=u_cart[i]) + h).as_sym_mat3())
-            r = self.restraint(proxy, u_cart=u_cart)
+            u_star[i]=list((matrix.sym(sym_mat3=u_star[i]) + h).as_sym_mat3())
+            r = self.restraint(proxy, u_cart=flex.sym_mat3_double([
+              adptbx.u_star_as_u_cart(uc, u) for u in u_star]))
             if isinstance(r, adp.rigid_bond):
               d1 = r.delta_z()
             else:
               d1 = r.deltas()[n]
-            u_cart[i]=list((matrix.sym(sym_mat3=u_cart[i]) - 2*h).as_sym_mat3())
-            r = self.restraint(proxy, u_cart=u_cart)
+            u_star[i]=list((matrix.sym(sym_mat3=u_star[i]) - 2*h).as_sym_mat3())
+            r = self.restraint(proxy, u_cart=flex.sym_mat3_double([
+              adptbx.u_star_as_u_cart(uc, u) for u in u_star]))
             if isinstance(r, adp.rigid_bond):
               d2 = r.delta_z()
             else:
@@ -353,9 +356,11 @@ def run():
             action="store_true")
     .option(None, "--scatterers",
             dest='n_scatterers',
-            type="int")
+            type="int",
+            default=5)
     .option(None, "--resolution",
-            type="float")
+            type="float",
+            default=0.2)
   ).process(args=sys.argv[1:])
   exercise_ls_restraints(command_line.options)
 
