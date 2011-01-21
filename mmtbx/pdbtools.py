@@ -146,6 +146,7 @@ output
     .help = Default is the original file name with the file extension \
             replaced by "_modified.pdb".
     .style = bold
+  include scope libtbx.phil.interface.tracking_params
 }
 random_seed = None
   .type = int

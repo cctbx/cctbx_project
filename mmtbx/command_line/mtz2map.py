@@ -46,6 +46,7 @@ output {
     .type = str
     .input_size = 400
     .short_caption = Output file prefix
+  include scope libtbx.phil.interface.tracking_params
   format = xplor *ccp4
     .type = choice
     .caption = XPLOR CCP4
@@ -64,7 +65,7 @@ output {
 #}
 show_maps = False
   .type = bool
-""")
+""", process_includes=True)
 
 def find_array (miller_arrays, labels) :
   for array in miller_arrays :

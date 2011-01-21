@@ -58,9 +58,10 @@ scattering_table = *xray neutron
 output_file = None
   .type = path
   .style = bold new_file file_type:mtz
+include scope libtbx.phil.interface.tracking_params
 """
 def fo_minus_fo_master_params():
-  return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=False)
+  return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
 
 def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
     output_file=None):

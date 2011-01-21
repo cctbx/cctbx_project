@@ -184,6 +184,7 @@ output
     .expert_level=1
     .short_caption = Output file
     .style = bold noauto new_file
+  include scope libtbx.phil.interface.tracking_params
 }
 anomalous_scatterers
   .short_caption = Anomalous sites
