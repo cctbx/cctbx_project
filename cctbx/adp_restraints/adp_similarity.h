@@ -5,6 +5,7 @@
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/restraints.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -116,10 +117,19 @@ namespace cctbx { namespace adp_restraints {
 
     void
     linearise(
+      uctbx::unit_cell const &unit_cell,
       cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
       cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
       af::tiny<unsigned, 2> const& i_seqs) const
     {
+      static const double grads_u_cart[6][6] = {
+        { 1, 0, 0, 0, 0, 0},
+        { 0, 1, 0, 0, 0, 0},
+        { 0, 0, 1, 0, 0, 0},
+        { 0, 0, 0, 1, 0, 0},
+        { 0, 0, 0, 0, 1, 0},
+        { 0, 0, 0, 0, 0, 1},
+      };
       if (!use_u_aniso[0] && !use_u_aniso[1]) {
         // Only one restraint, i.e. one row added to restraint matrix
         std::size_t row_i = linearised_eqns.next_row();
@@ -136,22 +146,33 @@ namespace cctbx { namespace adp_restraints {
       }
       else {
         // One restraint per parameter == six rows in the restraint matrix
+        af::const_ref<double, af::mat_grid> const &f
+          = unit_cell.u_star_to_u_cart_linear_map();
         for (std::size_t i=0;i<6;i++) {
+          scitbx::sym_mat3<double> grad_u_star;
+          scitbx::matrix::matrix_transposed_vector(
+            6, 6, f.begin(),
+            scitbx::sym_mat3<double>(grads_u_cart[i]).begin(),
+            grad_u_star.begin());
           std::size_t row_i = linearised_eqns.next_row();
-          double grad;
-          if (i < 3) grad = 1.;
-          else grad = 2.; // symmetric matrix, hence off diagonals count double
           for (std::size_t j=0;j<2;j++) {
             if (j == 1) {
-              grad = -grad;
+              grad_u_star = -grad_u_star;
             }
             cctbx::xray::parameter_indices const &ids_j
               = parameter_map[i_seqs[j]];
             if (use_u_aniso[j] && ids_j.u_aniso != -1) {
-              linearised_eqns.design_matrix(row_i, ids_j.u_aniso+i) = grad;
+              for (std::size_t k=0;k<6;k++) {
+                double grad_k = grad_u_star[k];
+                if (k>2) grad_k *= 2; // symmetric matrix, off-diagonals count double
+                linearised_eqns.design_matrix(row_i, ids_j.u_aniso+k) = grad_k;
+              }
             }
             else if (i < 3 && !use_u_aniso[j] && ids_j.u_iso != -1) {
-              linearised_eqns.design_matrix(row_i, ids_j.u_iso) = grad;
+              for (std::size_t k=0;k<3;k++) {
+                linearised_eqns.design_matrix(row_i, ids_j.u_iso)
+                  = grad_u_star[k];
+              }
             }
           }
           linearised_eqns.weights[row_i] = weight;

@@ -88,6 +88,7 @@ namespace cctbx { namespace restraints {
 
   template <typename FloatType, typename proxy_t, typename restraint_t>
   void linearise_restraints(
+    uctbx::unit_cell const &unit_cell,
     af::const_ref<scitbx::sym_mat3<FloatType> > const &u_cart,
     af::const_ref<FloatType> const &u_iso,
     af::const_ref<bool> const &use_u_aniso,
@@ -99,12 +100,13 @@ namespace cctbx { namespace restraints {
       proxy_t const& proxy = proxies[i];
       restraint_t restraint(u_cart, u_iso, use_u_aniso, proxy);
       restraint.linearise(
-        linearised_eqns, parameter_map, proxy.i_seqs);
+        unit_cell, linearised_eqns, parameter_map, proxy.i_seqs);
     }
   }
 
   template <typename FloatType, typename proxy_t, typename restraint_t>
   void linearise_restraints(
+    uctbx::unit_cell const &unit_cell,
     af::const_ref<scitbx::vec3<double> > const &sites_cart,
     af::const_ref<scitbx::sym_mat3<FloatType> > const &u_cart,
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
@@ -115,12 +117,13 @@ namespace cctbx { namespace restraints {
       proxy_t const& proxy = proxies[i];
       restraint_t restraint(sites_cart, u_cart, proxy);
       restraint.linearise(
-        linearised_eqns, parameter_map, proxy.i_seqs);
+        unit_cell, linearised_eqns, parameter_map, proxy.i_seqs);
     }
   }
 
   template <typename FloatType, typename proxy_t, typename restraint_t>
   void linearise_restraints(
+    uctbx::unit_cell const &unit_cell,
     af::const_ref<scitbx::sym_mat3<FloatType> > const &u_cart,
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
     af::const_ref<proxy_t> const &proxies,
@@ -130,7 +133,7 @@ namespace cctbx { namespace restraints {
       proxy_t const& proxy = proxies[i];
       restraint_t restraint(u_cart, proxy);
       restraint.linearise(
-        linearised_eqns, parameter_map, proxy.i_seq);
+        unit_cell, linearised_eqns, parameter_map, proxy.i_seq);
     }
   }
 

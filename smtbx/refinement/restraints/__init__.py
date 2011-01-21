@@ -124,14 +124,16 @@ class manager(object):
       xray_structure.unit_cell())
     if self.adp_similarity_proxies is not None:
       linearise_restraints(
-        u_cart, xray_structure.scatterers().extract_u_iso(),
+        xray_structure.unit_cell(), u_cart,
+        xray_structure.scatterers().extract_u_iso(),
         xray_structure.use_u_aniso(),
         parameter_map, self.adp_similarity_proxies, linearised_eqns)
     if self.isotropic_adp_proxies is not None:
       linearise_restraints(
-        u_cart, parameter_map, self.isotropic_adp_proxies, linearised_eqns)
+        xray_structure.unit_cell(), u_cart, parameter_map,
+        self.isotropic_adp_proxies, linearised_eqns)
     if self.rigid_bond_proxies is not None:
       linearise_restraints(
-        xray_structure.sites_cart(), u_cart,
+        xray_structure.unit_cell(), xray_structure.sites_cart(), u_cart,
         parameter_map, self.rigid_bond_proxies, linearised_eqns)
     return linearised_eqns

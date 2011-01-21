@@ -5,6 +5,7 @@
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/restraints.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -97,28 +98,36 @@ namespace cctbx { namespace adp_restraints {
 
     void
     linearise(
+      uctbx::unit_cell const &unit_cell,
       cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
       cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
       unsigned const& i_seq) const
     {
+      static const double grads_u_cart[6][6] = {
+        { 2./3, -1./3, -1./3, 0, 0, 0},
+        {-1./3,  2./3, -1./3, 0, 0, 0},
+        {-1./3, -1./3,  2./3, 0, 0, 0},
+        {    0,     0,     0, 1, 0, 0},
+        {    0,     0,     0, 0, 1, 0},
+        {    0,     0,     0, 0, 0, 1}
+      };
       cctbx::xray::parameter_indices const &ids
         = parameter_map[i_seq];
+      af::const_ref<double, af::mat_grid> const &f
+        = unit_cell.u_star_to_u_cart_linear_map();
       // One restraint per parameter == six rows in the restraint matrix
       CCTBX_ASSERT(ids.u_aniso > -1);
       for (std::size_t i=0;i<6;i++) {
         std::size_t row_i = linearised_eqns.next_row();
-        if (i < 3) {
-          for (std::size_t j=0;j<3;j++) {
-            if (j==i) {
-              linearised_eqns.design_matrix(row_i, ids.u_aniso+j) = 2./3;
-            }
-            else {
-              linearised_eqns.design_matrix(row_i, ids.u_aniso+j) = -1./3;
-            }
-          }
-        }
-        else {
-          linearised_eqns.design_matrix(row_i, ids.u_aniso+i) = 2.;
+        scitbx::sym_mat3<double> grad_u_star;
+        scitbx::matrix::matrix_transposed_vector(
+          6, 6, f.begin(),
+          scitbx::sym_mat3<double>(grads_u_cart[i]).begin(),
+          grad_u_star.begin());
+        for (std::size_t k=0;k<6;k++) {
+          double grad_k = grad_u_star[k];
+          if (k>2) grad_k *= 2; // symmetric matrix, off-diagonals count double
+          linearised_eqns.design_matrix(row_i, ids.u_aniso+k) = grad_k;
         }
         linearised_eqns.weights[row_i] = weight;
         linearised_eqns.deltas[row_i] = deltas_[i];
