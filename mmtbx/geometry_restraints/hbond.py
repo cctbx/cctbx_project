@@ -97,7 +97,7 @@ def _eval_energy_implicit (sites,
   bond_dist = abs(v2 - v1)
   sigma = sigma_base * distance_ideal
   energy = weight * ((sigma / bond_dist)**6 - (sigma / bond_dist)**4) * \
-           cos(delta_low)**4
+           cos(delta_theta)**4
   if ((distance_cut - distance_ideal) < 0.05) :
     energy *= (distance_cut - distance_ideal) / 0.05
   return energy

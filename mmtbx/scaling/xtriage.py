@@ -217,6 +217,7 @@ gui
   result_file = None
     .type = path
     .help = Pickled result file for Phenix GUI
+  include scope libtbx.phil.interface.tracking_params
 }
 }
 """, process_includes=True)
