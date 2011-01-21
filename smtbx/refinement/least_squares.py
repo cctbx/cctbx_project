@@ -42,6 +42,7 @@ class crystallographic_ls(
       reparametrisation.jacobian_transpose_matching_grad_fc(),
       self.floating_origin_restraint_relative_weight)
     self.taken_step = None
+    self.restraints_normalisation_factor = None
 
   class xray_structure(libtbx.property):
     def fget(self):
@@ -99,11 +100,13 @@ class crystallographic_ls(
     self.chi_sq_data_only = self.chi_sq()
     if self.restraints_manager is not None:
       # Here we determine a normalisation factor to place the restraints on the
-      # same scale as the observations. This is the normalisation factor
-      # suggested in Giacovazzo. In contrast, shelxl simply uses the mean
-      # value of the deltas (shelx manual, page 5-1).
+      # same scale as the average residual. This is the normalisation
+      # factor suggested in Giacovazzo and similar to that used by shelxl.
+      # (shelx manual, page 5-1).
       # The factor 2 comes from the fact that we minimize 1/2 sum w delta^2
-      normalisation_factor = self.chi_sq_data_only/2
+      if self.restraints_normalisation_factor is None:
+        self.restraints_normalisation_factor \
+            = 2 * self.objective_data_only/(self.n_equations-self.n_parameters)
       linearised_eqns = self.restraints_manager.build_linearised_eqns(
         self.xray_structure, self.reparametrisation.parameter_map())
       jacobian = \
@@ -112,7 +115,7 @@ class crystallographic_ls(
       self.reduced_problem().add_equations(
         linearised_eqns.deltas,
         linearised_eqns.design_matrix * jacobian,
-        linearised_eqns.weights * normalisation_factor)
+        linearised_eqns.weights * self.restraints_normalisation_factor)
       self.n_restraints = linearised_eqns.n_restraints()
       self.chi_sq_data_and_restraints = self.chi_sq()
     if not objective_only:
