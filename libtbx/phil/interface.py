@@ -8,6 +8,13 @@ from libtbx.utils import Sorry
 from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args
 
+tracking_params = libtbx.phil.parse("""
+  job_title = None
+    .type = str
+    .input_size = 400
+    .help = Job title in PHENIX GUI, not used on command line
+""")
+
 class index (object) :
   def __init__ (self, master_phil, working_phil=None, parse=None) :
     adopt_init_args(self, locals())
