@@ -18,6 +18,7 @@
 #include <tbxx/libc_backtrace.hpp>
 
 #include <boost/cstdint.hpp>
+#include <boost/version.hpp>
 
 #include <sstream>
 #include <stdexcept>
@@ -344,6 +345,9 @@ namespace {
 #endif
 #if defined(__SSE2__)
     result += "__SSE2__ = " + to_str(__SSE2__) + nl;
+#endif
+#if defined(BOOST_LIB_VERSION)
+    result += "BOOST_LIB_VERSION = " BOOST_LIB_VERSION "\n";
 #endif
 #if defined(PY_VERSION)
     result += "PY_VERSION = " PY_VERSION "\n";
