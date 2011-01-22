@@ -662,7 +662,7 @@ Si*5  O     Si*6   146.93
           ==
           [ sc.flags.bits for sc in xs.scatterers() ])
   #
-  from cctbx.eltbx import wavelengths
+  from cctbx.eltbx import henke, sasaki, wavelengths
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
       unit_cell=(3,4,5,90,90,90),
@@ -676,12 +676,21 @@ Si*5  O     Si*6   146.93
     assert sc.flags.use_fp_fdp() == True
     assert sc.fp != 0
     assert sc.fdp != 0
+    sc_sasaki = sasaki.table(sc.element_symbol())
+    sc_fp_fdp_sasaki = sc_sasaki.at_angstrom(
+      wavelengths.characteristic('Mo').as_angstrom())
+    assert approx_equal(sc.fp, sc_fp_fdp_sasaki.fp())
+    assert approx_equal(sc.fdp, sc_fp_fdp_sasaki.fdp())
   xs2 = xs.deep_copy_scatterers()
   xs2.set_inelastic_form_factors(0.71073, "henke") # angstrom
   for sc in xs2.scatterers():
     assert sc.flags.use_fp_fdp() == True
     assert sc.fp != 0
     assert sc.fdp != 0
+    sc_henke = henke.table(sc.element_symbol())
+    sc_fp_fdp_henke = sc_henke.at_angstrom(0.71073)
+    assert approx_equal(sc.fp, sc_fp_fdp_henke.fp())
+    assert approx_equal(sc.fdp, sc_fp_fdp_henke.fdp())
 
 
 def exercise_closest_distances():
