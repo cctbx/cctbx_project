@@ -25,7 +25,7 @@ namespace cctbx { namespace xray {
       FloatType const& tolerance=1.e-6)
     {
       init_f(f_sq);
-      if (f < tolerance && sigma_f_sq < tolerance || sigma_f_sq < 0) sigma_f=0;
+      if ((f < tolerance && sigma_f_sq < tolerance) || sigma_f_sq < 0) sigma_f=0;
       else sigma_f = sigma_f_sq / (f + std::sqrt(sigma_f_sq + f * f));
     }
 
