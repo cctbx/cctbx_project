@@ -21,6 +21,7 @@ def run():
     .option("--tolerance",
             type="float",
             default=3)
+    .option("--match_hydrogens", type='bool', default=True)
   ).process(args=sys.argv[1:])
   if len(command_line.args) != 2:
     command_line.parser.print_help()
@@ -32,6 +33,11 @@ def run():
   if (not type(structures) in (type([]), type(()))):
     structures = [structures]
 
+  if not command_line.options.match_hydrogens:
+    reference_structure.select_inplace(
+      ~reference_structure.element_selection('H'))
+    for structure in structures:
+      structure.select_inplace(~structure.element_selection('H'))
   print "Reference model:"
   reference_structure.show_summary()
   print
