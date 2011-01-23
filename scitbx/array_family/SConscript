@@ -7,26 +7,32 @@ env_etc.include_registry.append(
 envlm = env.Clone(
   LIBS=env_etc.libm
 )
-if (env_etc.compiler != "unix_icc"):
+if env_etc.compiler == "unix_icc":
+  wd = ["-wd177"]
+elif env_etc.compiler.endswith("clang"):
+  wd = ["-Wno-unused-function"]
+else:
+  wd = []
+if wd:
+  # disable "function was declared but never referenced" warning
+  env_wd = env.Clone()
+  env_wd.Append(CCFLAGS=wd)
+  envlm_wd = envlm.Clone()
+  envlm_wd.Append(CCFLAGS=wd)
+else:
   env_wd = env
   envlm_wd = envlm
-else:
-  # disable "function was declared but never referenced" warning
-  wd = ["-wd177"]
-  env_wd = env.Clone()
-  env_wd.Append(CXXFLAGS=wd)
-  envlm_wd = envlm.Clone()
-  envlm_wd.Append(CXXFLAGS=wd)
+
 env_wd.Program(target="tst_af_1", source="tst_af_1.cpp")
-env.Program(target="tst_af_2", source="tst_af_2.cpp")
-env.Program(target="tst_af_3", source="tst_af_3.cpp")
+env_wd.Program(target="tst_af_2", source="tst_af_2.cpp")
+env_wd.Program(target="tst_af_3", source="tst_af_3.cpp")
 envlm_wd.Program(target="tst_af_4", source="tst_af_4.cpp")
-env.Program(target="tst_ref_matrix_facet", source="tst_ref_matrix_facet.cpp")
-envlm.Program(target="tst_af_5", source="tst_af_5.cpp")
-envlm.Program(target="tst_vec3", source="tst_vec3.cpp")
-envlm.Program(target="tst_mat3", source="tst_mat3.cpp")
-envlm.Program(target="tst_sym_mat3", source="tst_sym_mat3.cpp")
-env.Program(target="tst_accessors", source="tst_accessors.cpp")
-env.Program(target="tst_unsigned_float_arithmetic",
+env_wd.Program(target="tst_ref_matrix_facet", source="tst_ref_matrix_facet.cpp")
+envlm_wd.Program(target="tst_af_5", source="tst_af_5.cpp")
+envlm_wd.Program(target="tst_vec3", source="tst_vec3.cpp")
+envlm_wd.Program(target="tst_mat3", source="tst_mat3.cpp")
+envlm_wd.Program(target="tst_sym_mat3", source="tst_sym_mat3.cpp")
+env_wd.Program(target="tst_accessors", source="tst_accessors.cpp")
+env_wd.Program(target="tst_unsigned_float_arithmetic",
             source="tst_unsigned_float_arithmetic.cpp")
-env.Program(target="tst_optional_copy", source="tst_optional_copy.cpp")
+env_wd.Program(target="tst_optional_copy", source="tst_optional_copy.cpp")

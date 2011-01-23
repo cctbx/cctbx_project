@@ -48,5 +48,3 @@
     if (x <= tolerance) return true;
     return false;
   }
-
-#pragma clang diagnostic ignored "-Wunused-function"
