@@ -281,7 +281,7 @@ class atom_parser(parser, variable_decoder):
     n_vars = len(args) - 2
     if n_vars == 5 or (not self.strictly_shelxl and n_vars == 6):
       values, behaviours = self.decode_variables(
-        args[2:],
+        args[2:7],
         u_iso_idx=n_vars-1)
       u = values[4]
       isotropic = True
