@@ -1,4 +1,5 @@
 from libtbx import easy_pickle
+from libtbx.option_parser import option_parser
 from scitbx.python_utils import dicts
 from cctbx import euclidean_model_matching as emma
 import sys
@@ -13,12 +14,21 @@ class match_record(object):
     return "%d/%d" % (self.n_matches, self.model_size)
 
 def run():
-  assert len(sys.argv) == 3, \
-    "usage: cctbx.euclidean_model_matching reference_structure.pickle structures.pickle"
-  reference_structure = easy_pickle.load(sys.argv[1])
+  command_line = (option_parser(
+    usage="usage: cctbx.euclidean_model_matching [OPTIONS] "
+          "reference_structure.pickle structure.pickle",
+    description="")
+    .option("--tolerance",
+            type="float",
+            default=3)
+  ).process(args=sys.argv[1:])
+  if len(command_line.args) != 2:
+    command_line.parser.print_help()
+    sys.exit(1)
+  reference_structure = easy_pickle.load(command_line.args[0])
   if (type(reference_structure) in (type([]), type(()))):
     reference_structure = reference_structure[0]
-  structures = easy_pickle.load(sys.argv[2])
+  structures = easy_pickle.load(command_line.args[1])
   if (not type(structures) in (type([]), type(()))):
     structures = [structures]
 
@@ -38,7 +48,7 @@ def run():
     refined_matches = emma.model_matches(
       reference_model,
       structure.as_emma_model(),
-      tolerance=3,
+      tolerance=command_line.options.tolerance,
       models_are_diffraction_index_equivalent=False,
       break_if_match_with_no_singles=True).refined_matches
     if (len(refined_matches)):
