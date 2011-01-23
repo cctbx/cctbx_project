@@ -202,17 +202,3 @@ class xray_structure_viewer(qttbx.widget):
   def set_font_size(self, s):
     self.label_font.setPointSize(s)
     self.updateGL()
-
-
-if __name__ == '__main__':
-  import sys, os, datetime
-  import libtbx.load_env
-  name = os.path.expanduser(sys.argv[1])
-  if os.path.exists(name):
-    path = name
-  else:
-    root = libtbx.env.find_in_repositories('durham_structures')
-    year = datetime.datetime.strptime(name[:2], '%y').strftime('%Y')
-    path = os.path.join(root, year, name, "%s-original.res" % name)
-  xs = xray.structure.from_shelx(filename=path, strictly_shelxl=False)
-  display(xray_structure=xs, name=name)
