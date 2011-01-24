@@ -14,6 +14,13 @@ if (libtbx.env.has_module(name="smtbx")):
 else:
   smtbx_adp_restraints = None
 
+
+def mixin_builder_class(mixin_name, *mixed_builders):
+  """ This function will make on-the-fly a builder class with the given
+  name, that inherits from the given builders """
+  return type.__new__(type, mixin_name, mixed_builders, {})
+
+
 class crystal_symmetry_builder(object):
 
   def make_crystal_symmetry(self, unit_cell, space_group):
