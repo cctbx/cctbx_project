@@ -486,7 +486,48 @@ def exercise_inversion_centring():
     else:
       assert str(icb) == "a,b,c"
 
+def exercise_change_of_basis_between_arbitrary_space_groups():
+  from random import randint
+  from scitbx import matrix as mat
+
+  g = sgtbx.space_group_info('hall: P 2')
+  h = sgtbx.space_group_info('hall: P 2c')
+  assert g.change_of_basis_op_to(h) is None
+
+  g = sgtbx.space_group_info('hall: C 2c 2 (x+y,x-y,z)')
+  h = g.change_basis(sgtbx.change_of_basis_op(sgtbx.rt_mx('-y,x,z')))
+  cb_op = g.change_of_basis_op_to(h)
+  assert cb_op.as_xyz() == 'x,y,z+1/4'
+  assert g.change_basis(cb_op).group() == h.group()
+
+  g = sgtbx.space_group_info('hall: I 4 2 3')
+  z2p_op = g.change_of_basis_op_to_primitive_setting()
+  h = g.change_basis(z2p_op)
+  cb_op = g.change_of_basis_op_to(h)
+  assert cb_op.c() == z2p_op.c(), (cb_op.as_xyz(), z2p_op.as_xyz())
+
+  for i in xrange(1, 231):
+    s = sgtbx.space_group_symbols(space_group_number=i)
+    g = sgtbx.space_group_info(group=sgtbx.space_group(s, t_den=24))
+
+    o = tuple([ randint(0, 23) for j in xrange(3) ])
+    cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(sgtbx.tr_vec(o, 24)))
+    h = g.change_basis(cb_op)
+    cb_op_1 = g.change_of_basis_op_to(h)
+    assert cb_op_1.c().r().is_unit_mx()
+    delta = (mat.col(cb_op_1.c().t().as_double())
+             - mat.col(cb_op.c().t().as_double()))
+    assert h.is_allowed_origin_shift(delta, tolerance=1e-12)
+
+    z2p_op = g.change_of_basis_op_to_primitive_setting()
+    h = g.change_basis(z2p_op)
+    cb_op = g.change_of_basis_op_to(h)
+    h1 = g.change_basis(cb_op)
+    assert (h.as_reference_setting().group()
+            == h1.as_reference_setting().group())
+
 def run(args):
+  exercise_change_of_basis_between_arbitrary_space_groups()
   exercise_sys_abs_equiv()
   exercise_allowed_origin_shift()
   exercise_generator_set()
