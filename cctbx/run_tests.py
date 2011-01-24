@@ -29,6 +29,7 @@ def run():
   "$D/eltbx/tests/tst_sasaki.py",
   "$D/eltbx/tests/tst_tiny_pse.py",
   "$D/eltbx/tests/tst_wavelengths.py",
+  "$D/eltbx/tests/tst_formula.py",
   "$D/xray/boost_python/tst_xray.py",
   "$D/maptbx/boost_python/tst_maptbx.py",
   "$D/dmtbx/boost_python/tst_dmtbx.py",
