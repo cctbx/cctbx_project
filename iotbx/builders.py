@@ -28,7 +28,7 @@ class crystal_symmetry_builder(object):
                                              space_group=space_group)
 
 
-class q_peak(object):
+class electron_density_peak(object):
 
   __slots__ = ('site', 'height')
 
@@ -94,7 +94,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
       self.sym_excl_indices.append(sym_excl_index)
 
   def add_electron_density_peak(self, site, height):
-    self.electron_density_peaks.append(q_peak(site, height))
+    self.electron_density_peaks.append(electron_density_peak(site, height))
 
 
 class restrained_crystal_structure_builder(crystal_structure_builder):
