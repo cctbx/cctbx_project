@@ -28,9 +28,14 @@ class parser(object):
 class instruction_parser(parser):
   """ A parser for extracting from the command stream miscellaneous
       shelxl commands that do not concern other parsers.
+
+      This parser is unusual in that it does not rely entirely on its
+      builder: it builds a dictionary containing the parsed information.
   """
 
   def __init__(self, command_stream, builder=None):
+    from libtbx import object_oriented_patterns as oop
+    if builder is None: builder = oop.null()
     parser.__init__(self, command_stream, builder)
     self.instructions = {}
 
@@ -62,8 +67,7 @@ class instruction_parser(parser):
           raise shelx_error("TEMP takes at most 1 argument")
         if args: temperature = args[0]
         self.instructions['temp'] = temperature
-        if self.builder is not None:
-          self.builder.temperature_in_celsius = temperature
+        self.builder.temperature_in_celsius = temperature
       elif cmd == 'WGHT':
         if n_args > 6:
           raise shelx_error("Too many argument for %s" % cmd, line)
@@ -77,8 +81,7 @@ class instruction_parser(parser):
           (key, (arg is not None and arg) or default_weighting_scheme[key])
           for key, arg in itertools.izip_longest('abcdef', args) ])
         self.instructions['wght'] = weighting_scheme
-        if self.builder is not None:
-          self.builder.make_shelx_weighting_scheme(**weighting_scheme)
+        self.builder.make_shelx_weighting_scheme(**weighting_scheme)
       elif cmd == 'HKLF':
         assert 'hklf' not in self.instructions # only ONE HKLF instruction allowed
         hklf = {}
@@ -95,7 +98,8 @@ class instruction_parser(parser):
                 hklf['m'] = args[12]
         self.instructions['hklf'] = hklf
       elif cmd == 'TWIN':
-        assert 'twin' not in self.instructions # only ONE twin instruction allowed
+        # only ONE twin instruction allowed
+        assert 'twin' not in self.instructions
         twin = {}
         if n_args > 0:
           assert n_args >= 9
