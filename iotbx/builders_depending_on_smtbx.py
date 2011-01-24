@@ -52,13 +52,13 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
 class weighting_scheme_builder(object):
 
   def make_shelx_weighting_scheme(self, a, b, c=0, d=0, e=0, f=1/3):
-    assert f == 1/3
+    assert f == 1/3, "Non-Wilsonian ShelX weighting not supported"
     if c == 0 and d == 0 and e == 0:
       self.weighting_scheme = \
           least_squares.mainstream_shelx_weighting(a, b)
     else:
-      self.weighting_scheme = \
-          least_squares.shelx_weighting(a, b, c, d, e, f)
+      raise NotImplementedError(
+        "ShelX weighting scheme with non-zero parameter c, d or e")
 
 class weighted_constrained_restrained_crystal_structure_builder(
   constrained_crystal_structure_builder,
