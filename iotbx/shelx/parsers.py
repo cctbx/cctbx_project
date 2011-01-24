@@ -258,6 +258,9 @@ class atom_parser(parser, variable_decoder):
       cmd, args = command[0], command[-1]
       if cmd == 'SFAC':
         self.builder.make_structure()
+        if len(args) == 15 and isinstance(args[1], float):
+          raise NotImplementedError(
+            '''SFAC label a1 b1 a2 b2 a3 b3 a4 b4 c f' f" mu r wt''')
         self.label_for_sfac = ('*',) + args # (a) working around
                                             #     ShelXL 1-based indexing
       elif cmd == 'FVAR':

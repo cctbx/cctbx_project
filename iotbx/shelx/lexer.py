@@ -130,13 +130,13 @@ class command_stream(object):
         continued = m.group(8)
         arguments = args.split()
       if not continued:
-        result = self._parse_special_cases(cmd, args, i, li)
+        result = self._parse_special_cases(cmd, args, arguments, i, li)
         if result is None:
           result = self._parse_general_case(cmd, cmd_residue, arguments, i, li)
         yield result, i
         if cmd == 'HKLF': break
 
-  def _parse_special_cases(self, cmd, args, i, li):
+  def _parse_special_cases(self, cmd, args, arguments, i, li):
     if cmd in ('TITL', 'REM'):
       args = args.strip()
       if args: arg_tuple = (args,)
@@ -156,7 +156,13 @@ class command_stream(object):
         raise shelx_error("illegal argument '%s'", i, m.group(1))
       return (cmd, (idx, self.symm_space.sub('', m.group(2)).upper()))
     if cmd == 'SFAC':
-      return (cmd, tuple([ e.upper() for e in args.split() ]))
+      sfac_args = []
+      for e in arguments:
+        try:
+          sfac_args.append(float(e))
+        except ValueError:
+          sfac_args.append(e)
+      return (cmd, tuple(sfac_args))
     return None
 
   def _parse_general_case(self, cmd, cmd_residue, arguments, i, li):
