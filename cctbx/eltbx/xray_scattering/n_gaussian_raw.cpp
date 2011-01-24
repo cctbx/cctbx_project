@@ -9405,7 +9405,7 @@ D* pu6plus_c[] = { pu6plus_6, pu6plus_5, pu6plus_4, pu6plus_3, pu6plus_2, pu6plu
 static const char*
 labels[] = {
 "H",
-"Hhf",
+"Hiso",
 "He",
 "Li",
 "Be",
