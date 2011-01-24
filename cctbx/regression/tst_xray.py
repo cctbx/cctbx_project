@@ -1146,6 +1146,7 @@ def exercise_chemical_formula():
   assert xs.unit_cell_content() == unit_cell_content
   del unit_cell_content['C']
   assert xs.unit_cell_content(omit=set('C')) == unit_cell_content
+  assert approx_equal(xs.crystal_density(), 0.47850314720502857)
 
 def exercise_parameter_map():
   cs = crystal.symmetry((8,9,10, 85, 95, 105), "P1")

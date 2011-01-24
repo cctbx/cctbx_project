@@ -349,6 +349,25 @@ class structure(crystal.special_position_settings):
         unit_cell_occupancy_sum=unit_cell_occupancy_sums[unique_index]))
     return result
 
+  def crystal_density(self):
+    """
+    Value of the diffraction-determined density for the crystal, suitable
+    for the CIF item _exptl_crystal_density_diffrn
+
+    Density values calculated from the crystal cell and contents. The
+    units are megagrams per cubic metre (grams per cubic centimetre).
+
+    Equivalent to:
+      1.66042 * _chemical_formula_weight * _cell_formula_units_Z / _cell_volume
+
+    """
+    from cctbx.eltbx import tiny_pse
+    numerator = sum([
+      tiny_pse.table(elt.scattering_type).weight() * elt.unit_cell_occupancy_sum
+      for elt in self.scattering_types_counts_and_occupancy_sums()])
+    denominator = self.unit_cell().volume()
+    return 1.66042 * numerator/denominator
+
   def shake_sites_in_place(self,
         rms_difference=None,
         mean_distance=None,
