@@ -209,7 +209,7 @@ class space_group_info(object):
 
   def change_of_basis_op_to(self, other):
     """ The change of basis from self to other.
-    This method thrives to return a mere origin shift.
+    This method strives to return a mere origin shift.
     """
     self_to_ref_op = self.change_of_basis_op_to_reference_setting()
     other_to_ref_op = other.change_of_basis_op_to_reference_setting()
