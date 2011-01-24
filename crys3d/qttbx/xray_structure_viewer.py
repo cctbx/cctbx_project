@@ -5,7 +5,7 @@ import crys3d.qttbx.xray_structure_viewer_controls
 from gltbx import quadrics, gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
-from cctbx import xray, crystal
+from cctbx import crystal
 from cctbx.array_family import flex
 from cctbx.eltbx import covalent_radii
 from scitbx import matrix as mat
