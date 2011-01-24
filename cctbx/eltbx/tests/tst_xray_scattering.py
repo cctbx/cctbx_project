@@ -7,7 +7,7 @@ import math
 def exercise_basic():
   std_labels = xray_scattering.standard_labels_list()
   assert len(std_labels) == 217
-  assert std_labels[:5] == ["H", "D", "T", "Hhf", "He"]
+  assert std_labels[:5] == ["H", "D", "T", "Hiso", "He"]
   assert std_labels[-1] == "Pu6+"
   for l in std_labels:
     assert xray_scattering.get_standard_label(

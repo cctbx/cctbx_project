@@ -10,7 +10,7 @@ import sys
 def get_element_and_charge_symbols(scattering_type, exact=True):
   sl = get_standard_label(label=scattering_type, exact=exact, optional=True)
   if (sl is None): return "", ""
-  if (sl == "Hhf"): return "H", ""
+  if (sl == "Hiso"): return "H", ""
   if (sl == "Cval"): return "C", ""
   if (sl == "Sival"): return "Si", ""
   if (sl[-1] in ["+", "-"]):
