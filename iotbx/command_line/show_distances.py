@@ -3,9 +3,10 @@ import iotbx.pdb
 import iotbx.cif
 from iotbx.option_parser import option_parser
 from cctbx.crystal import coordination_sequences
-from cctbx import crystal
+from cctbx import crystal, xray
 from libtbx.utils import Sorry
 import sys
+import os
 
 def display(
       distance_cutoff,
@@ -103,6 +104,15 @@ def run(args):
         file_path=file_name).build_crystal_structure(
           data_block_name=co.cif_data_block_name)
     if (xray_structure is not None):
+      display(
+        distance_cutoff=co.distance_cutoff,
+        show_cartesian=co.show_cartesian,
+        max_shell=max_shell,
+        coseq_dict=coseq_dict,
+        xray_structure=xray_structure)
+    elif os.path.splitext(file_name)[1] in ('.ins', '.res'):
+      xray_structure = xray.structure.from_shelx(filename=file_name,
+                                                 strictly_shelxl=False)
       display(
         distance_cutoff=co.distance_cutoff,
         show_cartesian=co.show_cartesian,
