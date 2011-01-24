@@ -3,6 +3,7 @@
 from __future__ import division
 
 import itertools
+from boost import rational
 
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -43,6 +44,7 @@ class instruction_parser(parser):
     self.instructions = {}
 
   def filtered_commands(self):
+    from scitbx.math import continued_fraction
     temperature = 20
     for command, line in self.command_stream:
       cmd, args = command[0], command[-1]
@@ -94,7 +96,11 @@ class instruction_parser(parser):
           hklf['s'] = args[1]
           if n_args > 2:
             assert n_args > 10
-            hklf['matrix'] = sgtbx.rot_mx([int(i) for i in args[2:11]])
+            mx = [ continued_fraction.from_real(e, eps=1e-3).as_rational()
+                   for e in args[2:11] ]
+            den = reduce(rational.lcm, [ r.denominator() for r in mx ])
+            nums = [ r.numerator()*(den//r.denominator()) for r in mx ]
+            hklf['matrix'] = sgtbx.rot_mx(nums, den)
             if n_args > 11:
               hklf['wt'] = args[11]
               if n_args == 13:

@@ -175,6 +175,14 @@ def exercise_instruction_parsing():
   if len(alternatives) != 2: return
   builder = alternatives[-1]
 
+  ins = cStringIO.StringIO(
+    "HKLF 4 1  "
+    "0.0000  0.0000  0.3330  1.0000  0.0000  0.0000  0.0000  1.0000 -0.3330")
+  stream = shelx.command_stream(file=ins)
+  stream = shelx.instruction_parser(stream, builder)
+  stream.parse()
+  assert builder.data_change_of_basis_op.as_xyz() == "y+3*z,x,y"
+
   ins = cStringIO.StringIO("HKLF 4 1 -1 2 0 -1 0 0 0 -1 1")
   stream = shelx.command_stream(file=ins)
   stream = shelx.instruction_parser(stream, builder)
