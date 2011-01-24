@@ -1,6 +1,5 @@
 from cctbx.eltbx import tiny_pse
 from scitbx.math import continued_fraction
-from boost import rational
 
 class formula(object):
 
