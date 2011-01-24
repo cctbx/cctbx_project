@@ -146,7 +146,6 @@ output
     .help = Default is the original file name with the file extension \
             replaced by "_modified.pdb".
     .style = bold
-  include scope libtbx.phil.interface.tracking_params
 }
 random_seed = None
   .type = int
@@ -216,6 +215,7 @@ regularize_geometry = False
   .type = bool
   .short_caption = Perform geometry minimization
   .style = bold
+include scope libtbx.phil.interface.tracking_params
 """%modify_params_str, process_includes=True)
 
 class modify(object):
