@@ -10,10 +10,10 @@ class command_stream(object):
   shelx_commands = dict([ (cmd, 1) for cmd in [
     'ACTA', 'AFIX', 'ANIS', 'BASF', 'BIND', 'BLOC', 'BOND', 'BUMP', 'CELL',
     'CGLS', 'CHIV', 'CONF', 'CONN', 'DAMP', 'DANG', 'DEFS', 'DELU', 'DFIX',
-    'DISP', 'EADP', 'END ', 'EQIV', 'EXTI', 'EXYZ', 'FEND', 'FLAT', 'FMAP',
+    'DISP', 'EADP', 'END' , 'EQIV', 'EXTI', 'EXYZ', 'FEND', 'FLAT', 'FMAP',
     'FRAG', 'FREE', 'FVAR', 'GRID', 'HFIX', 'HKLF', 'HOPE', 'HTAB', 'ISOR',
     'L.S.', 'LATT', 'LAUE', 'LIST', 'MERG', 'MOLE', 'MORE', 'MOVE', 'MPLA',
-    'MUST', 'NCSY', 'OMIT', 'PART', 'PLAN', 'REM ', 'RESI', 'RTAB', 'SADI',
+    'MUST', 'NCSY', 'OMIT', 'PART', 'PLAN', 'REM' , 'RESI', 'RTAB', 'SADI',
     'SAME', 'SFAC', 'SHEL', 'SIMU', 'SIZE', 'SPEC', 'STIR', 'SUMP', 'SWAT',
     'SYMM', 'TEMP', 'TIME', 'TITL', 'TWIN', 'UNIT', 'WGHT', 'WPDB', 'ZERR'
   ]])
@@ -187,7 +187,7 @@ class command_stream(object):
     if cmd_residue:
       return (cmd, cmd_residue, tuple(tokens))
     else:
-      if len(cmd) < 4 or cmd not in self.shelx_commands:
+      if cmd not in self.shelx_commands:
         if cmd[0] == 'Q':
           tokens = (int(cmd[1:]),) + tuple(tokens)
           cmd = '__Q_PEAK__'
