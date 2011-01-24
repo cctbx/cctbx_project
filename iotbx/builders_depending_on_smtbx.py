@@ -60,11 +60,8 @@ class weighting_scheme_builder(object):
       self.weighting_scheme = \
           least_squares.shelx_weighting(a, b, c, d, e, f)
 
-class constrained_restrained_crystal_structure_builder(
-  constrained_crystal_structure_builder, restrained_crystal_structure_builder):
-  pass
-
-
 class weighted_constrained_restrained_crystal_structure_builder(
-  weighting_scheme_builder, constrained_restrained_crystal_structure_builder):
+  constrained_crystal_structure_builder,
+  restrained_crystal_structure_builder,
+  weighting_scheme_builder):
   pass
