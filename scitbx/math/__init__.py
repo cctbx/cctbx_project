@@ -3,6 +3,7 @@ import scitbx.linalg.eigensystem
 import scitbx.math.gaussian # implicit import
 from scitbx import matrix
 from scitbx.array_family import flex
+from boost import rational # implicit import
 from stdlib import math
 
 def median_statistics(data):
