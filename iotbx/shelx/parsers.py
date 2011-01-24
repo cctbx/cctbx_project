@@ -129,7 +129,9 @@ class instruction_parser(parser):
           self.instructions['exti'] = args[0]
       else:
         yield command, line
-
+    else:
+      # All token have been read without errors or early bailout
+      assert 'hklf' in self.instructions, "Missing HKLF instruction"
 
 class crystal_symmetry_parser(parser):
   """ A parser pulling out the crystal symmetry info from a command stream """
