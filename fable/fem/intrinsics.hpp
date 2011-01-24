@@ -258,6 +258,22 @@ namespace fem {
     return std::log10(x);
   }
 
+  inline
+  float
+  alog(
+    float const& x)
+  {
+    return std::log(x);
+  }
+
+  inline
+  double
+  alog(
+    double const& x)
+  {
+    return std::log(x);
+  }
+
   template <typename T>
   inline
   int
