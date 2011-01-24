@@ -29,6 +29,9 @@ class instruction_parser(parser):
   """ A parser for extracting from the command stream miscellaneous
       shelxl commands that do not concern other parsers.
 
+      If this parser is constructed with a real builder, the wt and m
+      arguments to HKLF are not supported.
+
       This parser is unusual in that it does not rely entirely on its
       builder: it builds a dictionary containing the parsed information.
   """
@@ -83,20 +86,25 @@ class instruction_parser(parser):
         self.instructions['wght'] = weighting_scheme
         self.builder.make_shelx_weighting_scheme(**weighting_scheme)
       elif cmd == 'HKLF':
-        assert 'hklf' not in self.instructions # only ONE HKLF instruction allowed
-        hklf = {}
+        # only ONE HKLF instruction allowed
+        assert 'hklf' not in self.instructions
+        hklf = {'s': 1, 'matrix': sgtbx.rot_mx()}
         hklf['n'] = args[0]
         if n_args > 1:
           hklf['s'] = args[1]
           if n_args > 2:
             assert n_args > 10
-            hklf['matrix'] = sgtbx.rt_mx(
-              sgtbx.rot_mx([int(i) for i in args[2:11]]))
+            hklf['matrix'] = sgtbx.rot_mx([int(i) for i in args[2:11]])
             if n_args > 11:
               hklf['wt'] = args[11]
               if n_args == 13:
                 hklf['m'] = args[12]
         self.instructions['hklf'] = hklf
+        assert not self.builder or ('wt' not in hklf and 'm' not in hklf)
+        self.builder.create_shelx_reflection_data_source(
+          format=hklf['n'],
+          indices_transform=hklf['matrix'],
+          data_scale=hklf['s'])
       elif cmd == 'TWIN':
         # only ONE twin instruction allowed
         assert 'twin' not in self.instructions

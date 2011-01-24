@@ -134,18 +134,22 @@ def exercise_crystal_symmetry_parsing():
   assert cs.is_similar_symmetry(l.builder.crystal_symmetry)
 
 def exercise_instruction_parsing():
+  alternatives = (None,)
   try:
-    _ = iotbx.builders.weighting_scheme_builder
-    alternatives = (None, _())
+    _ = iotbx.builders.mixin_builder_class(
+      "builder_to_test_instruction_parsing",
+      iotbx.builders.reflection_data_source_builder,
+      iotbx.builders.weighting_scheme_builder)
+    alternatives += (_(),)
   except AttributeError:
-    alternatives = (None, )
+    pass
   for builder in alternatives:
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
     l = shelx.instruction_parser(stream, builder)
     l.parse()
     ins = l.instructions
     assert ins['hklf']['s'] == 1
-    assert ins['hklf']['matrix'].as_xyz() == 'x,y,z'
+    assert ins['hklf']['matrix'].as_xyz() == 'z,x+y,x'
     assert ins['hklf']['n'] == 4
     assert ins['omit_hkl'] == [[2, 3, 4], [-1, -3, 2]]
     assert ins['omit']['s'] == -2
@@ -157,7 +161,7 @@ def exercise_instruction_parsing():
     assert ins['twin']['n'] == 2
     assert ins['basf'] == (0.352,)
     assert ins['temp'] == -60
-    if builder is not None:
+    if builder:
       assert builder.temperature_in_celsius == ins['temp']
       ws = builder.weighting_scheme
       assert isinstance(
@@ -165,6 +169,18 @@ def exercise_instruction_parsing():
         iotbx.builders.least_squares.mainstream_shelx_weighting)
       assert ws.a == ins['wght']['a']
       assert ws.b == ins['wght']['b']
+      assert builder.reflection_file_format == "hklf4"
+      assert builder.data_change_of_basis_op.as_hkl()== "l,h+k,h"
+
+  if len(alternatives) != 2: return
+  builder = alternatives[-1]
+
+  ins = cStringIO.StringIO("HKLF 4 1 -1 2 0 -1 0 0 0 -1 1")
+  stream = shelx.command_stream(file=ins)
+  stream = shelx.instruction_parser(stream, builder)
+  stream.parse()
+  assert builder.data_change_of_basis_op.as_abc() == '-a+2*b,-a,-b+c'
+
 
 def exercise_xray_structure_parsing():
   exercise_special_positions()
@@ -856,7 +872,7 @@ AFIX 137
 H9A   2    0.571182    0.263181    0.222267    11.00000   -1.50000
 H9C   2    0.670926    0.103865    0.213827    11.00000   -1.50000
 H9B   2    0.545047    0.061174    0.153241    11.00000   -1.50000
-HKLF 4 1 1 0 0 0 1 0 0 0 1
+HKLF 4 1 0 0 1 1 1 0 1 0 0
 
 REM  aspirin in P2(1)/c
 REM R1 =  0.0455 for   1038 Fo > 4sig(Fo)  and  0.0990 for all   1806 data

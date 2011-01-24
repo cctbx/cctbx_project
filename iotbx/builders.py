@@ -206,5 +206,42 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
       if len(proxies) != 0])
 
+class reflection_data_source_builder(object):
+  """ A builder which is passed the information about the reflections
+  corresponding to the parsed
+
+  Attributes:
+
+    - reflection_file_format: a string to identify the format, compatible with
+              iotbx.reflection_file_reader.any_reflection_file
+    - data_change_of_basis_op: the instance of sgtbx.change_of_basis_op that
+                          shall be applied to the Miller indices to match
+                          the parsed model
+    - data_scale: the scale of the data and their standard deviations
+  """
+
+  def create_shelx_reflection_data_source(self,
+                                          format,
+                                          indices_transform=None,
+                                          change_of_basis_op=None,
+                                          data_scale=1):
+    """ format is one of 3, 4, 5, etc.
+    data_scale scales the data and their standard deviations
+    """
+    assert [indices_transform, change_of_basis_op].count(None) == 1
+    if change_of_basis_op is None:
+      if indices_transform.is_unit_mx():
+        change_of_basis_op = sgtbx.change_of_basis_op()
+      else:
+        r = sgtbx.rt_mx(indices_transform.new_denominator(24).transpose())
+        change_of_basis_op = sgtbx.change_of_basis_op(r).inverse()
+    self.reflection_file_format = "hklf%i" % format
+    self.data_change_of_basis_op = change_of_basis_op
+    self.data_scale = data_scale
+
+
+# **********************************************
+# Conditional import of smtbx-dependent builders
+# **********************************************
 if (libtbx.env.has_module(name="smtbx")):
   from iotbx.builders_depending_on_smtbx import *
