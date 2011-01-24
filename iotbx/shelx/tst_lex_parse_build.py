@@ -196,6 +196,7 @@ def exercise_xray_structure_parsing():
   exercise_disordered()
   exercise_invalid()
   exercise_atom_with_peaks()
+  exercise_q_peaks()
 
 def exercise_atom_with_peaks():
   builder = iotbx.builders.crystal_structure_builder(set_grad_flags=True)
@@ -218,6 +219,36 @@ def exercise_atom_with_peaks():
   assert sc[-1].occupancy == 1
   assert sc[-1].flags.use_u_iso()
   assert approx_equal(sc[-1].u_iso, 0.02971)
+
+def exercise_q_peaks():
+  builder = iotbx.builders.crystal_structure_builder(set_grad_flags=True)
+  stream = shelx.command_stream(
+    file=cStringIO.StringIO(ins_with_q_peaks))
+  stream = shelx.crystal_symmetry_parser(stream, builder)
+  stream = shelx.atom_parser(stream.filtered_commands(), builder=builder,
+                             strictly_shelxl=False)
+  stream.parse()
+  uc = builder.structure.unit_cell()
+  sc = builder.structure.scatterers()
+  q = builder.electron_density_peaks
+
+  assert len(sc) == 3
+
+  assert sc[-1].label == 'O2'
+  assert approx_equal(sc[-1].site, (0.645870, 0.883988, 0.489582), eps=1e-5)
+  assert shelx_u_cif(uc, sc[-1].u_star) == (
+    "0.01055   0.00848   0.00946   0.00007   0.00427   -0.00235")
+
+  assert len(q) == 3
+
+  assert approx_equal(q[0].site, (0.615600, 0.695100, 0.623900), eps=1e-6)
+  assert approx_equal(q[0].height, 0.64, eps=1e-2)
+
+  assert approx_equal(q[1].site, (0.526800, 0.678600, 0.431500), eps=1e-6)
+  assert approx_equal(q[1].height, 0.63, eps=1e-2)
+
+  assert approx_equal(q[2].site, (0.620800, 1.025100, 0.211700), eps=1e-6)
+  assert approx_equal(q[2].height, 0.46, eps=1e-2)
 
 def exercise_special_positions():
   structure = xray.structure.from_shelx(
@@ -1173,6 +1204,36 @@ C00K  1  0.43548  0.33306  0.71436 11.00000  0.02549   5.76
 C00L  1  0.81534  0.39973  0.54440 11.00000  0.02952   5.73
 C00M  1  0.70459  0.41948  0.64084 11.00000  0.02597   5.72
 C00N  1  0.95213  0.88631  0.71108 11.00000  0.02971   5.35
+HKLF 4
+END
+"""
+
+ins_with_q_peaks = """\
+TITL 01mrh009 in P2(1)/c
+CELL 0.71073   8.7925   8.2663   8.5561  90.000 111.141  90.000
+ZERR    2.00   0.0018   0.0017   0.0017   0.000   0.030   0.000
+LATT 1
+SYMM -X, 0.5+Y, 0.5-Z
+SFAC C  H  N  O  P  V
+UNIT 8 24 4 20 4 4
+L.S. 30
+ACTA
+BOND
+FMAP 2
+PLAN 5
+HTAB
+WGHT  0.032500  0.937600
+FVAR  0.671230
+MOLE 1
+V1     6   0.657682  1.034967  0.322750 11.000000  0.005490  0.006760 =
+           0.007550 -0.000030  0.002830 -0.000560
+P1     5   0.557872  0.733904  0.520843 11.000000  0.006330  0.006410 =
+           0.006990  0.000100  0.002880 -0.000130
+O2     4   0.645870  0.883988  0.489582 11.000000  0.010550  0.008480 =
+           0.009460  0.000070  0.004270 -0.002350
+Q1     1   0.615600  0.695100  0.623900 11.000000  0.050000      0.64
+Q2     1   0.526800  0.678600  0.431500 11.000000  0.050000      0.63
+Q3     1   0.620800  1.025100  0.211700 11.000000  0.050000      0.46
 HKLF 4
 END
 """

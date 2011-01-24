@@ -90,6 +90,8 @@ class command_stream(object):
         ('HFIX', (parser.residue_number_tok, 1), (23, ))
     Notes:
       - For atoms, cmd is '__ATOM__' and the name is the first argument
+      - For so-called Q-peaks, cmd is '__Q_PEAK__' and the number is the
+        first argument
       - In args, floating point items are reported as is whereas any
         string comes as (type, value) where type is one of the class
         constants defined just above this method (actually, for
@@ -186,8 +188,12 @@ class command_stream(object):
       return (cmd, cmd_residue, tuple(tokens))
     else:
       if len(cmd) < 4 or cmd not in self.shelx_commands:
-        tokens = (cmd,) + tuple(tokens)
-        cmd = '__ATOM__'
+        if cmd[0] == 'Q':
+          tokens = (int(cmd[1:]),) + tuple(tokens)
+          cmd = '__Q_PEAK__'
+        else:
+          tokens = (cmd,) + tuple(tokens)
+          cmd = '__ATOM__'
       else:
         tokens = tuple(tokens)
       return (cmd, tokens)

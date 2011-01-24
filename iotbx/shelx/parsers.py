@@ -288,6 +288,11 @@ class atom_parser(parser, variable_decoder):
                                    conformer_index=conformer_index,
                                    sym_excl_index=sym_excl_index)
         scatterer_index += 1
+      elif cmd == '__Q_PEAK__':
+        assert not self.strictly_shelxl,\
+               "Q-peaks amidst atoms in strict ShelXL model"
+        self.builder.add_electron_density_peak(site = args[2:5],
+                                               height = args[-1])
       else:
         yield command, line
 
