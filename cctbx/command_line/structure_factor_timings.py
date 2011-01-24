@@ -86,7 +86,11 @@ def read_structure(file_name):
   try: return easy_pickle.load(file_name)
   except KeyboardInterrupt: raise
   except: pass
-  try: return iotbx.pdb.input(file_name=file_name).xray_structure_simple()
+  try:
+    if file_name.endswith('.res') or file_name.endswith('.ins'):
+      return xray.structure.from_shelx(filename=file_name)
+    else:
+      return iotbx.pdb.input(file_name=file_name).xray_structure_simple()
   except KeyboardInterrupt: raise
   except: pass
   raise RuntimeError("Unknown file format: %s" % file_name)
