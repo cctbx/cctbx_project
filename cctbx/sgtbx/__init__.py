@@ -207,6 +207,61 @@ class space_group_info(object):
   def primitive_setting(self):
     return self.change_basis(self.change_of_basis_op_to_primitive_setting())
 
+  def change_of_basis_op_to(self, other):
+    """ The change of basis from self to other.
+    This method thrives to return a mere origin shift.
+    """
+    self_to_ref_op = self.change_of_basis_op_to_reference_setting()
+    other_to_ref_op = other.change_of_basis_op_to_reference_setting()
+
+    # early exit if other is not the same space group in a different setting
+    self_as_reference = self.change_basis(self_to_ref_op)
+    other_as_reference = other.change_basis(other_to_ref_op)
+    if self_as_reference.group() != other_as_reference.group(): return None
+
+    # the obvious answer: if it is a mere shift, return it
+    obvious_result = other_to_ref_op.inverse()*self_to_ref_op
+    if obvious_result.c().r().is_unit_mx(): return obvious_result
+
+    # otherwise, let's try to find an origin shift by hand
+    # see test case exercise_change_of_basis_between_arbitrary_space_groups
+    # in regression/tst_sgtbx.py for the motivation for this code.
+    self_z2p_op = self.change_of_basis_op_to_primitive_setting()
+    other_z2p_op = other.change_of_basis_op_to_primitive_setting()
+    primitive_self = self.change_basis(self_z2p_op)
+    primitive_other = other.change_basis(other_z2p_op)
+    if (   set([ op.r() for op in primitive_self.group() ])
+        == set([ op.r() for op in primitive_other.group() ])):
+      self_tr_info_for_r = dict([ (op.r(), translation_part_info(op))
+                                  for op in primitive_self.group() ])
+      origin_shift = matrix.mutable_zeros(3)
+      for op in primitive_other.group():
+        self_ti = self_tr_info_for_r[op.r()]
+        other_ti = translation_part_info(op)
+        if self_ti.intrinsic_part() != other_ti.intrinsic_part():
+          origin_shift = None
+          break
+        delta = other_ti.origin_shift().minus(
+             self_ti.origin_shift()).mod_positive()
+        delta_num = delta.num()
+        for i in xrange(3):
+          if origin_shift[i] == 0:
+            origin_shift[i] = 24//delta.den()*delta_num[i]
+        if origin_shift.elems.count(0) == 0: break
+      if origin_shift is not None:
+        origin_shift = tr_vec(origin_shift, tr_den=24)
+        if not origin_shift.is_zero():
+          cb_op = change_of_basis_op(
+            rt_mx(origin_shift)).new_denominators(24, 144)
+          cb_op = other_z2p_op.inverse()*cb_op*self_z2p_op
+          cb_op.mod_positive_in_place()
+          tentative_other = self.change_basis(cb_op)
+          if tentative_other.group() == other.group():
+            return cb_op
+
+    # no origin shift has been found, so return the obvious answer
+    return obvious_result
+
   def reflection_intensity_equivalent_groups(self, anomalous_flag=True):
     result = []
     reference_group = self.reference_setting().group()
