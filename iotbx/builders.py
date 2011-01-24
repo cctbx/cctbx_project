@@ -28,6 +28,15 @@ class crystal_symmetry_builder(object):
                                              space_group=space_group)
 
 
+class q_peak(object):
+
+  __slots__ = ('site', 'height')
+
+  def __init__(self, site, height):
+    self.site = site
+    self.height = height
+
+
 class crystal_structure_builder(crystal_symmetry_builder):
 
   def __init__(self,
@@ -38,6 +47,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
     self.min_distance_sym_equiv = min_distance_sym_equiv
     self.conformer_indices = None
     self.sym_excl_indices = None
+    self.electron_density_peaks = []
 
   def make_structure(self):
     self.structure = xray.structure(
@@ -82,6 +92,10 @@ class crystal_structure_builder(crystal_symmetry_builder):
     if sym_excl_index is not None:
       if self.sym_excl_indices is None: self.sym_excl_indices = flex.size_t()
       self.sym_excl_indices.append(sym_excl_index)
+
+  def add_electron_density_peak(self, site, height):
+    self.electron_density_peaks.append(q_peak(site, height))
+
 
 class restrained_crystal_structure_builder(crystal_structure_builder):
 
