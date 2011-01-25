@@ -14,6 +14,7 @@ import libtbx
 import libtbx.utils
 from libtbx.test_utils import approx_equal
 
+import scitbx.random
 from scitbx.random import variate, normal_distribution, gamma_distribution
 from scitbx.math import distributions
 
@@ -169,6 +170,7 @@ def run_call_back(flags, space_group_info):
     if flags.fix_random_seeds:
       random.seed(1)
       flex.set_random_seed(1)
+      scitbx.random.set_random_seed(1)
     hooft_analysis_test_case(
       space_group_info,use_students_t_errors=False).exercise(debug=flags.Debug)
     if students_t_available:
