@@ -1144,6 +1144,7 @@ def exercise_chemical_formula():
     )))
   unit_cell_content = {'C':13, 'O':3, 'N':6}
   assert xs.unit_cell_content() == unit_cell_content
+  assert approx_equal(xs.f_000(), 144, eps=1e-2)
   del unit_cell_content['C']
   assert xs.unit_cell_content(omit=set('C')) == unit_cell_content
   assert approx_equal(xs.crystal_density(), 0.47850314720502857)
