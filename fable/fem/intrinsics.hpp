@@ -268,7 +268,7 @@ namespace fem {
 
   inline
   double
-  alog(
+  dlog(
     double const& x)
   {
     return std::log(x);
