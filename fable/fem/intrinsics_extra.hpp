@@ -66,6 +66,14 @@ namespace fem {
   cpu_time(
     float& result)
   {
+    result = static_cast<float>(user_plus_system_time());
+  }
+
+  inline
+  void
+  cpu_time(
+    double& result)
+  {
     result = user_plus_system_time();
   }
 
