@@ -368,15 +368,17 @@ class structure(crystal.special_position_settings):
     denominator = self.unit_cell().volume()
     return 1.66042 * numerator/denominator
 
-  def f_000(self):
+  def f_000(self, include_inelastic_part=False):
     """
     The effective number of electrons in the crystal unit cell
     contributing to F(000), suitable for the CIF item _exptl_crystal_F_000.
 
     According to the CIF definition, this item **may** contain dispersion
-    contributions. This implementation does not (for now).
+    contributions. Use
+      include_inelastic_part=True
+    to include the contributions due to dispersion.
     """
-    result = 0
+    elastic_part = 0
     reg = self.scattering_type_registry()
     unique_counts = reg.unique_counts
     if (flex.sum(unique_counts) != self._scatterers.size()):
@@ -384,9 +386,18 @@ class structure(crystal.special_position_settings):
     unit_cell_occupancy_sums = reg.unit_cell_occupancy_sums(self._scatterers)
     unique_form_factors_at_origin = reg.unique_form_factors_at_d_star_sq(0)
     for scattering_type,unique_index in reg.type_index_pairs_as_dict().items():
-      result +=   unit_cell_occupancy_sums[unique_index] \
-                * unique_form_factors_at_origin[unique_index]
-    return result
+      elastic_part +=   unit_cell_occupancy_sums[unique_index] \
+                      * unique_form_factors_at_origin[unique_index]
+    if not include_inelastic_part:
+      return elastic_part
+    inelastic_part_real = 0
+    inelastic_part_imag = 0
+    for sc in self.scatterers():
+      if sc.fp:
+        inelastic_part_real += sc.fp * sc.occupancy * sc.multiplicity()
+      if sc.fdp:
+        inelastic_part_imag += sc.fdp * sc.occupancy * sc.multiplicity()
+    return abs(complex(elastic_part+inelastic_part_real, inelastic_part_imag))
 
   def shake_sites_in_place(self,
         rms_difference=None,
