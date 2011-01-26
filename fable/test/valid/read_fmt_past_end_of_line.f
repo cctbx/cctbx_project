@@ -20,5 +20,10 @@
         read(1, '(1X,A2)') title
         write(6, *) '[', title, ']'
       enddo
+      rewind(1)
+      num = 12
+      missing = 34
+      read(1, '(1x,2i4)') num, missing
+      write(6, *) num, missing
       close(1)
       end

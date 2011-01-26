@@ -502,7 +502,6 @@ namespace fem {
       read_fmt_long(
         unsigned n)
       {
-        bool at_start_of_record = first_inp_get;
         bool had_non_blank = false;
         bool negative = false;
         long result = 0;
@@ -520,11 +519,6 @@ namespace fem {
             break;
           }
           if (utils::is_end_of_line(c)) {
-            if (i == 0 && !at_start_of_record) {
-              inp.reset();
-              throw read_end(
-                "End of record while reading integer value");
-            }
             inp->backup();
             break;
           }
