@@ -72,7 +72,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       sin_phi = std::sin(phi);
     }
     else {
-      cos_phi = 1.;
+      cos_phi = -1.;
       sin_phi = 0.;
     }
 

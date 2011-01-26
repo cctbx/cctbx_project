@@ -7,7 +7,7 @@ from scitbx.matrix import col
 
 class hydrogens(geometrical.any):
 
-  need_pivot_neighbour_substituent = False
+  need_pivot_neighbour_substituents = False
 
   def add_to(self, reparametrisation):
     i_pivot = self.pivot
@@ -23,7 +23,7 @@ class hydrogens(geometrical.any):
     pivot_site_param = reparametrisation.add_new_site_parameter(i_pivot)
     pivot_neighbour_sites = ()
     pivot_neighbour_site_params = ()
-    pivot_neighbour_substituent_site_param = None
+    pivot_neighbour_substituent_site_params = ()
     for j, ops in reparametrisation.pair_sym_table[i_pivot].items():
       if j in self.constrained_site_indices: continue
       for op in ops:
@@ -34,13 +34,11 @@ class hydrogens(geometrical.any):
           s = reparametrisation.add_new_site_parameter(j, op)
           pivot_neighbour_site_params += (s,)
           pivot_neighbour_sites += (op*scatterers[j].site,)
-          if (self.need_pivot_neighbour_substituent
-              and pivot_neighbour_substituent_site_param is None):
+          if (self.need_pivot_neighbour_substituents):
             for k, ops_k in reparametrisation.pair_sym_table[j].items():
-              if k != i_pivot:
-                pivot_neighbour_substituent_site_param = \
-                  reparametrisation.add_new_site_parameter(k, ops_k[0])
-                break
+              if k != i_pivot and scatterers[k].scattering_type != 'H':
+                s = reparametrisation.add_new_site_parameter(k, ops_k[0])
+                pivot_neighbour_substituent_site_params += (s,)
 
     length_value = self.ideal_bond_length(scatterers[i_pivot],
                                    reparametrisation.temperature)
@@ -67,8 +65,8 @@ class hydrogens(geometrical.any):
       pivot_neighbour_sites=pivot_neighbour_sites,
       pivot_site_param=pivot_site_param,
       pivot_neighbour_site_params=pivot_neighbour_site_params,
-      pivot_neighbour_substituent_site_param=
-        pivot_neighbour_substituent_site_param,
+      pivot_neighbour_substituent_site_params=
+        pivot_neighbour_substituent_site_params,
       hydrogens=hydrogens)
     for i_sc in self.constrained_site_indices:
       reparametrisation.asu_scatterer_parameters[i_sc].site = param
@@ -212,7 +210,7 @@ class secondary_planar_xh_site(hydrogens):
 class terminal_planar_xh2_sites(hydrogens):
 
   n_constrained_sites = 2
-  need_pivot_neighbour_substituent = True
+  need_pivot_neighbour_substituents = True
 
   room_temperature_bond_length = \
     secondary_planar_xh_site.room_temperature_bond_length
@@ -220,7 +218,7 @@ class terminal_planar_xh2_sites(hydrogens):
   def add_hydrogen_to(self, reparametrisation, bond_length,
                       pivot_site      , pivot_neighbour_sites,
                       pivot_site_param, pivot_neighbour_site_params,
-                      pivot_neighbour_substituent_site_param,
+                      pivot_neighbour_substituent_site_params,
                       hydrogens, **kwds):
     if len(pivot_neighbour_site_params) != 1:
       raise InvalidConstraint(_.bad_connectivity_msg %(
@@ -229,7 +227,7 @@ class terminal_planar_xh2_sites(hydrogens):
       _.terminal_planar_xh2_sites,
       pivot=pivot_site_param,
       pivot_neighbour=pivot_neighbour_site_params[0],
-      pivot_neighbour_substituent=pivot_neighbour_substituent_site_param,
+      pivot_neighbour_substituent=pivot_neighbour_substituent_site_params[0],
       length=bond_length,
       hydrogen_0=hydrogens[0],
       hydrogen_1=hydrogens[1])
@@ -255,33 +253,68 @@ class terminal_linear_ch_site(hydrogens):
       length=bond_length,
       hydrogen=hydrogens[0])
 
-class staggered_terminal_tetrahedral_xh3_sites(hydrogens):
+class staggered_terminal_tetrahedral_xhn_sites(hydrogens):
+
+  staggered = True
+  need_pivot_neighbour_substituents = True
+  stagger_on = None
+
+  def add_hydrogen_to(self, reparametrisation, bond_length,
+                      pivot_site      , pivot_neighbour_sites,
+                      pivot_site_param, pivot_neighbour_site_params,
+                      pivot_neighbour_substituent_site_params,
+                      hydrogens, **kwds):
+    if len(pivot_neighbour_site_params) != 1:
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    if self.stagger_on is None:
+      if len(pivot_neighbour_substituent_site_params) == 1:
+        stagger_on = pivot_neighbour_substituent_site_params[0]
+      else:
+        # staggered with respect to the shortest
+        # pivot_neighbour - pivot_neighbour_substituent bond
+        #
+        # If the two bond lengths are similar, then the hydrogen could have a
+        # tendancy to flip between the positions. If this is the case, a
+        # staggered hydrogen constraint is probably unsuitable, and a freely
+        # rotatable constraint could be used.
+        #
+        uc = reparametrisation.structure.unit_cell()
+        x_s = col(pivot_neighbour_sites[0])
+        d_s = [ (uc.distance(s.value, x_s), i)
+                for i, s in enumerate(pivot_neighbour_substituent_site_params) ]
+        d_s.sort()
+        stagger_on = pivot_neighbour_substituent_site_params[d_s[0][1]]
+    else:
+      for p in pivot_neighbour_substituent_site_params:
+        if p.index == self.stagger_on:
+          stagger_on = p
+          break
+      # The stagger_on atom must be one of the pivot_neighbour_substituents.
+      # If we reach here, this is not the case so an error is raised.
+      raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    return reparametrisation.add(
+      getattr(_, self.__class__.__name__),
+      pivot=pivot_site_param,
+      pivot_neighbour=pivot_neighbour_site_params[0],
+      length=bond_length,
+      stagger_on=stagger_on,
+      hydrogen=hydrogens)
+
+class staggered_terminal_tetrahedral_xh3_sites(
+  staggered_terminal_tetrahedral_xhn_sites):
 
   n_constrained_sites = 3
-  staggered = True
   room_temperature_bond_length = \
     terminal_tetrahedral_xh3_sites.room_temperature_bond_length
 
-  def add_hydrogen_to(self, reparametrisation, bond_length,
-                      pivot_site      , pivot_neighbour_sites,
-                      pivot_site_param, pivot_neighbour_site_params,
-                      hydrogens, **kwds):
-    raise NotImplementedError
-
-
-class staggered_terminal_tetrahedral_xh_site(hydrogens):
+class staggered_terminal_tetrahedral_xh_site(
+  staggered_terminal_tetrahedral_xhn_sites):
 
   n_constrained_sites = 1
-  staggered = True
   room_temperature_bond_length = \
     terminal_tetrahedral_xh_site.room_temperature_bond_length
-
-  def add_hydrogen_to(self, reparametrisation, bond_length,
-                      pivot_site      , pivot_neighbour_sites,
-                      pivot_site_param, pivot_neighbour_site_params,
-                      hydrogens, **kwds):
-    raise NotImplementedError
-
 
 class polyhedral_bh_site(hydrogens):
 
