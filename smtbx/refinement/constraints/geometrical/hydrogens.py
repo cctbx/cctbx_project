@@ -253,6 +253,11 @@ class terminal_linear_ch_site(hydrogens):
       length=bond_length,
       hydrogen=hydrogens[0])
 
+
+need_at_least_one_substituent_msg = (
+  "Invalid %s constraint involving %s: "
+  "pivot neighbour must have at least one non-H substituent")
+
 class staggered_terminal_tetrahedral_xhn_sites(hydrogens):
 
   staggered = True
@@ -266,6 +271,9 @@ class staggered_terminal_tetrahedral_xhn_sites(hydrogens):
                       hydrogens, **kwds):
     if len(pivot_neighbour_site_params) != 1:
       raise InvalidConstraint(_.bad_connectivity_msg %(
+        self.__class__.__name__, pivot_site_param.scatterers[0].label))
+    if not len(pivot_neighbour_substituent_site_params):
+      raise InvalidConstraint(need_at_least_one_substituent_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
     if self.stagger_on is None:
       if len(pivot_neighbour_substituent_site_params) == 1:
