@@ -1,9 +1,8 @@
-from scitbx.math import basic_statistics
-
 def pixels_to_mmPos(x,y,pixel_size):
   return [pixel_size*x,pixel_size*y]
 
 def scitbx_stats(data):
+  from scitbx.math import basic_statistics
   bs = basic_statistics(values = data)
   return bs.mean, bs.bias_corrected_standard_deviation
 
