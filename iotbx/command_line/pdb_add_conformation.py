@@ -22,7 +22,8 @@ master_phil = libtbx.phil.parse("""
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) :
-    raise Usage("iotbx.pdb.add_conformation model.pdb [selection=...]")
+    raise Usage("iotbx.pdb.add_conformation model.pdb [selection=...]\n"+
+      "Full parameters:\n" + master_phil.as_str())
   from iotbx import file_reader
   pdb_in = None
   user_phil = []
