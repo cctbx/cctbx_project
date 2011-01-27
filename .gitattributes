@@ -918,9 +918,15 @@ mmtbx/command_line/xmanip.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/email_ralf_042910.txt -text
 mmtbx/find_peaks.py -text
+mmtbx/geometry_restraints/SConscript -text
 mmtbx/geometry_restraints/__init__.py -text
+mmtbx/geometry_restraints/boost_python/ramachandran_ext.cpp -text
 mmtbx/geometry_restraints/external.py -text
 mmtbx/geometry_restraints/hbond.py -text
+mmtbx/geometry_restraints/ramachandran.h -text
+mmtbx/geometry_restraints/ramachandran.py -text
+mmtbx/geometry_restraints/ramachandran.pyc -text
+mmtbx/geometry_restraints/tst_ramachandran.py -text
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/ias/__init__.py -text
@@ -961,11 +967,6 @@ mmtbx/polygon/__init__.py -text
 mmtbx/polygon/gui.py -text
 mmtbx/polygon/tst.py -text
 mmtbx/polygon/tst_gui.py -text
-mmtbx/ramachandran/SConscript -text
-mmtbx/ramachandran/__init__.py -text
-mmtbx/ramachandran/ext.cpp -text
-mmtbx/ramachandran/restraints.cpp -text
-mmtbx/ramachandran/tst.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/fit_rotamers.py -text
 mmtbx/refinement/flip_peptides.py -text
