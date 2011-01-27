@@ -915,6 +915,7 @@ mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/xmanip.py -text
+mmtbx/conformation_dependent_library/__init__.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/email_ralf_042910.txt -text
 mmtbx/find_peaks.py -text
