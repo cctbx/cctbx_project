@@ -3,6 +3,7 @@ from wxtbx import bitmaps
 import wx
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_init_args
+import math
 import sys
 if (sys.version_info[2] >= 6) :
   import warnings
