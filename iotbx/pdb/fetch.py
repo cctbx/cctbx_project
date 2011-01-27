@@ -90,9 +90,16 @@ def run (args, log=sys.stdout) :
     data_type = "fasta"
   if "-q" in args :
     quiet = True
+  mirror = "rcsb"
+  for arg in args :
+    if (arg.startswith("--mirror=")) :
+      mirror = arg.split("=")[1]
+      if (not mirror in ["rcsb", "pdbe"]) :
+        raise Sorry("Unrecognized mirror site '%s' (choices: rcsb, pdbe)" %
+          mirror)
   id = args[-1]
   try :
-    data = fetch(id, data_type)
+    data = fetch(id, data_type, mirror=mirror)
   except RuntimeError, e :
     raise Sorry(str(e))
   file_name = None
