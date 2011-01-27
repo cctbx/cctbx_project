@@ -299,7 +299,7 @@ class any_file_input (object) :
     else :
       raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
         "almost certainly a bug; please contact the developers.") %
-        (str(self.file_name), expected_type, str(self.file_type)))
+        (expected_type, str(self.file_name), str(self.file_type)))
 
 class directory_input (object) :
   def __init__ (self, dir_name) :
