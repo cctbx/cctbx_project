@@ -1,7 +1,11 @@
+
 from libtbx import easy_run
+import libtbx.phil
 import libtbx.load_env
+from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import os
+import sys
 
 class align_pdb_residues (object) :
   def __init__ (self,
@@ -93,6 +97,53 @@ def get_muscle_alignment (fasta_sequences, group_sequences=True) :
   alignment, null = clustal_alignment_parse("\n".join(muscle_out))
   return alignment
 
+########################################################################
+# PHENIX GUI ADAPTOR
+master_phil = libtbx.phil.parse("""
+muscle
+  .caption = PHENIX includes the open-source multiple sequence alignment \
+    program MUSCLE, written by Bob Edgar.  It can produce output identical in \
+    format to CLUSTALW, which is suitable for input to the Sculptor model \
+    preparation program.  You may provide all sequences in a single file, \
+    or in as many different files as desired.
+{
+  seq_file = None
+    .type = path
+    .multiple = True
+    .short_caption = Sequence file
+    .style = file_type:seq use_list
+  output_file = None
+    .type = path
+    .style = bold file_type:aln new_file
+  load_in_text_editor = True
+    .type = bool
+    .short_caption = Open alignment in text editor when complete
+}""")
+
+def run (args=(), params=None, out=sys.stdout) :
+  assert (params is not None)
+  seq_files = params.muscle.seq_file
+  output_file = params.muscle.output_file
+  if (output_file is None) or (output_file == "") :
+    output_file = os.path.join(os.getcwd(), "muscle.aln")
+  from iotbx.bioinformatics import any_sequence_format
+  seqs = []
+  for seq_file in seq_files :
+    seq_objects, non_compliant = any_sequence_format(seq_file)
+    seqs.extend(seq_objects)
+  if (len(seqs) < 2) :
+    raise Sorry("Need at least two valid sequences to run MUSCLE.")
+  combined = "\n".join([ seq.format(80) for seq in seqs ])
+  muscle_out = run_muscle(combined)
+  open(output_file, "w").write("\n".join(muscle_out))
+  return (output_file, "\n".join(muscle_out))
+
+def validate_params (params) :
+  if (len(params.muscle.seq_file) == 0) :
+    raise Sorry("No sequence files provided!")
+
+########################################################################
+# REGRESSION TESTING
 def exercise () :
   fasta_sequences = """\
 >1MRU_A

@@ -1,4 +1,3 @@
-from mmtbx.refinement import print_statistics
 
 class fmodels(object):
   def __init__(self, fmodel_xray = None,
@@ -99,6 +98,7 @@ class fmodels(object):
         header = "neutron data", out = self.log)
 
   def show_comprehensive(self, message = ""):
+    from mmtbx.refinement import print_statistics
     print_statistics.make_sub_header("X-ray data", out = self.log)
     if(self.fmodel_x is not None):
       self.fmodel_xray().info().show_all(header = message, out = self.log)
@@ -109,6 +109,7 @@ class fmodels(object):
   def update_bulk_solvent_and_scale(self, params = None, optimize_mask= False,
                                     optimize_mask_thorough= False,
                                     force_update_f_mask = False):
+    from mmtbx.refinement import print_statistics
     print_statistics.make_header("bulk solvent modeling and scaling",
       out = self.log)
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
@@ -130,6 +131,7 @@ class fmodels(object):
     self.show_short()
 
   def remove_outliers(self):
+    from mmtbx.refinement import print_statistics
     print_statistics.make_header("Outliers rejection", out = self.log)
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):
