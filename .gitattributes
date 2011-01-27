@@ -925,7 +925,6 @@ mmtbx/geometry_restraints/external.py -text
 mmtbx/geometry_restraints/hbond.py -text
 mmtbx/geometry_restraints/ramachandran.h -text
 mmtbx/geometry_restraints/ramachandran.py -text
-mmtbx/geometry_restraints/ramachandran.pyc -text
 mmtbx/geometry_restraints/tst_ramachandran.py -text
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
