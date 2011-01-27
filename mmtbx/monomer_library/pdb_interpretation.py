@@ -5,7 +5,8 @@ from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import conformation_dependent_restraints
-from mmtbx import ramachandran
+from mmtbx.geometry_restraints import ramachandran
+import mmtbx.geometry_restraints
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -142,7 +143,7 @@ master_params_str = """\
     omega_esd_override_value = None
       .type = float
       .short_caption = Omega-ESD override value
-    include scope mmtbx.ramachandran.master_phil
+    include scope mmtbx.geometry_restraints.ramachandran.master_phil
   }
   max_reasonable_bond_distance = 50.0
     .type=float
@@ -3399,17 +3400,20 @@ class build_all_chain_proxies(object):
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     #
-    generic_proxies = None
-    generic_restraints_helper = None
+    ramachandran_proxies = None
+    ramachandran_lookup = None
     if self.params.peptide_link.ramachandran_restraints :
       if (not self.params.peptide_link.discard_psi_phi) :
         raise Sorry("You may not use Ramachandran restraints when "+
           "discard_phi_psi=False.")
-      generic_proxies = ramachandran.extract_proxies(self.pdb_hierarchy,
+      ramachandran_proxies = ramachandran.extract_proxies(self.pdb_hierarchy,
         atom_selection=ramachandran_atom_selection,
         log=log)
-      generic_restraints_helper = ramachandran.generic_restraints_helper(
+      ramachandran_lookup = ramachandran.lookup_manager(
         params=self.params.peptide_link)
+    generic_restraints_manager = mmtbx.geometry_restraints.manager(
+      ramachandran_proxies=ramachandran_proxies,
+      ramachandran_lookup=ramachandran_lookup)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -3433,8 +3437,8 @@ class build_all_chain_proxies(object):
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
-      generic_proxies=generic_proxies,
-      generic_restraints_helper=generic_restraints_helper,
+      generic_proxies=generic_restraints_manager.get_proxies(),
+      generic_restraints_helper=generic_restraints_manager,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
       plain_pairs_radius=plain_pairs_radius)

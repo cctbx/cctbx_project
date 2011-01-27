@@ -1,6 +1,7 @@
 
 from __future__ import division
-from mmtbx import ramachandran
+from mmtbx.geometry_restraints import ramachandran
+import mmtbx.geometry_restraints
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.monomer_library import server, pdb_interpretation
 from mmtbx.command_line import geometry_minimization
@@ -151,7 +152,7 @@ END
     gradients_an = flex.vec3_double(sites_cart_1.size(), (0,0,0))
     params = ramachandran.master_phil.fetch().extract()
     params.use_finite_differences = False
-    restraints_helper = ramachandran.generic_restraints_helper(params)
+    restraints_helper = ramachandran.lookup_manager(params)
     residual_fd = restraints_helper.restraints_residual_sum(
       sites_cart=sites_cart_1,
       proxies=proxies,
@@ -256,7 +257,10 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
   atoms.set_xyz(sites_cart_1)
   rama1, rama_list1 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
   params = ramachandran.master_phil.fetch().extract()
-  restraints_helper = ramachandran.generic_restraints_helper(params)
+  rama_lookup = ramachandran.lookup_manager(params)
+  restraints_helper = mmtbx.geometry_restraints.manager(
+    ramachandran_proxies=proxies,
+    ramachandran_lookup=rama_lookup)
   grm.set_generic_restraints(
     proxies=proxies,
     restraints_helper=restraints_helper)

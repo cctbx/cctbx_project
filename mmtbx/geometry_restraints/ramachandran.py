@@ -1,19 +1,13 @@
 
 from __future__ import division
+from scitbx.array_family import flex
+import boost.python
 import libtbx.load_env
 import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
 import os
-from scitbx.array_family import flex
-
-import boost.python
-ext = boost.python.import_ext("mmtbx_ramachandran_ext")
-from mmtbx_ramachandran_ext import *
-
-ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-from mmtbx_ramachandran_restraints_ext import target_and_gradients, target_phi_psi
 
 master_phil = libtbx.phil.parse("""
   rama_weight = 1.0
@@ -28,7 +22,6 @@ master_phil = libtbx.phil.parse("""
     .help = Used for testing - not suitable for real structures.
     .short_caption = Use finite differences (DEVELOPERS ONLY)
     .expert_level = 3
-#  type = *oldfield emsley rosetta
    rama_potential = *oldfield emsley
     .type = choice(multi=False)
     .short_caption = Ramachandran potential
@@ -49,8 +42,6 @@ master_phil = libtbx.phil.parse("""
       .type = float
       .expert_level = 2
   }
-#  rosetta_scale = 5.0
-#    .type = float
 """)
 
 refine_opt_params = libtbx.phil.parse("""
@@ -74,6 +65,8 @@ def load_tables (params=None) :
   if (params.scale_allowed <= 0.0) :
     raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
       "a positive number (current value: %g)." % params.scale_allowed)
+  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+  from mmtbx_ramachandran_restraints_ext import lookup_table
   from scitbx.array_family import flex
   tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
@@ -91,11 +84,7 @@ def load_tables (params=None) :
     tables[residue_type] = t
   return tables
 
-class generic_proxy (object) :
-  restraint_type = None
-
-class proxy (generic_proxy) :
-  restraint_type = "ramachandran"
+class proxy (object) :
   def __init__ (self, i_seqs, residue_type, residue_name) :
     assert (len(i_seqs) == 5)
     self.i_seqs = i_seqs
@@ -250,19 +239,11 @@ class ramachandran_plot_data(object):
     d1.extend(d6)
     return self.thin_data(d1)
 
-class generic_restraints_helper (object) :
+class lookup_manager (object) :
   def __init__ (self, params) :
     adopt_init_args(self, locals())
     if(self.params.rama_potential == "oldfield"):
       self.tables = ramachandran_plot_data()
-    elif (self.params.rama_potential == "rosetta") :
-      try :
-        from rosetta_adaptbx import scoring
-      except ImportError, e :
-        print e
-        raise Sorry("Rosetta not included or not configured in this build.")
-      else :
-        self.tables = scoring.ramachandran() # not a list
     else :
       self.tables = load_tables(params)
 
@@ -272,17 +253,15 @@ class generic_restraints_helper (object) :
                                gradient_array=None,
                                unit_cell=None) :
     from scitbx.array_family import flex
-    ramachandran_proxies = []
-    for proxy in proxies :
-      if (proxy.restraint_type == "ramachandran") :
-        ramachandran_proxies.append(proxy)
+    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+    from mmtbx_ramachandran_restraints_ext import target_and_gradients, target_phi_psi
+    if(gradient_array is None) :
+      from scitbx.array_family import flex
+      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    target = 0
     if(self.params.rama_potential == "oldfield"):
       op = self.params.oldfield
-      if(gradient_array is None) :
-        from scitbx.array_family import flex
-        gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-      target = 0
-      for proxy in ramachandran_proxies:
+      for proxy in proxies:
         if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
         if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
         if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
@@ -304,73 +283,25 @@ class generic_restraints_helper (object) :
            i_seqs         = proxy.i_seqs)
         target += tg.target()
       return target
-    elif (self.params.rama_potential == "rosetta") :
-      return self.target_and_gradients_rosetta(
-        sites_cart=sites_cart,
-        proxies=ramachandran_proxies,
-        gradient_array=gradient_array)
     else:
-      return self._phi_psi_restraints_residual_sum(
-        sites_cart=sites_cart,
-        proxies=ramachandran_proxies,
-        gradient_array=gradient_array)
-
-  def _phi_psi_restraints_residual_sum (self,
-                                        proxies,
-                                        sites_cart,
-                                        gradient_array=None) :
-    if (gradient_array is None) :
-      from scitbx.array_family import flex
-      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-    sum = 0
-    assert (self.params.rama_weight >= 0.0)
-    for proxy in proxies :
-      rama_table = self.tables[proxy.residue_type]
-      if self.params.use_finite_differences :
-        sum += rama_table.compute_gradients_finite_differences(
-          gradient_array=gradient_array,
-          sites_cart=sites_cart,
-          i_seqs=proxy.i_seqs,
-          weight=self.params.rama_weight,
-          epsilon=0.001)
-      else :
-        sum += rama_table.compute_gradients(
-          gradient_array=gradient_array,
-          sites_cart=sites_cart,
-          i_seqs=proxy.i_seqs,
-          weight=self.params.rama_weight,
-          epsilon=0.001)
-    return sum
-
-  def target_and_gradients_rosetta (self,
-                                    proxies,
-                                    sites_cart,
-                                    gradient_array=None) :
-    from iotbx import pdb
-    if (gradient_array is None) :
-      from scitbx.array_family import flex
-      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-    sum = 0
-    assert (self.params.rama_weight >= 0.0)
-    weight_scale = self.params.rosetta_scale
-    if (weight_scale is None) :
-      weight_scale = 2.0
-    for proxy in proxies :
-      if proxy.ignore_flag : # non-standard AA
-        continue
-      elif (proxy.ignore_flag is None) :
-        if (not proxy.residue_name in pdb.common_residue_names_amino_acid) :
-          proxy.ignore_flag = True
-          continue
+      assert (self.params.rama_weight >= 0.0)
+      for proxy in proxies :
+        rama_table = self.tables[proxy.residue_type]
+        if self.params.use_finite_differences :
+          target += rama_table.compute_gradients_finite_differences(
+            gradient_array=gradient_array,
+            sites_cart=sites_cart,
+            i_seqs=proxy.i_seqs,
+            weight=self.params.rama_weight,
+            epsilon=0.001)
         else :
-          proxy.ignore_flag = False
-      sum += self.tables.target_and_gradients(
-        gradient_array=gradient_array,
-        sites_cart=sites_cart,
-        residue_name=proxy.residue_name,
-        i_seqs=proxy.i_seqs,
-        weight=self.params.rama_weight * weight_scale)
-    return sum
+          target += rama_table.compute_gradients(
+            gradient_array=gradient_array,
+            sites_cart=sites_cart,
+            i_seqs=proxy.i_seqs,
+            weight=self.params.rama_weight,
+            epsilon=0.001)
+    return target
 
 def extract_proxies (pdb_hierarchy,
                      atom_selection=None,
