@@ -1,6 +1,4 @@
 from libtbx import adopt_init_args
-from mmtbx.refinement import print_statistics
-from mmtbx import utils
 
 class monitors(object):
   def __init__(self, params,
@@ -11,6 +9,7 @@ class monitors(object):
                      neutron_refinement = None,
                      call_back_handler = None):
     adopt_init_args(self, locals())
+    from mmtbx.refinement import print_statistics
     self.monitor_xray = print_statistics.refinement_monitor(
       params    = params,
       model_ref = model_ref,
@@ -34,6 +33,7 @@ class monitors(object):
                     model = None,
                     target_weights = None,
                     rigid_body_shift_accumulator = None):
+    from mmtbx import utils
     if(target_weights is not None):
       self.target_weights = target_weights
     if(model is not None): self.model = model
