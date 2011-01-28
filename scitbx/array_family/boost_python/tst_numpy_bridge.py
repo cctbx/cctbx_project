@@ -25,6 +25,9 @@ def exercise_int():
   assert fna.origin() == (0,)
   assert fna.focus() == (6,)
   assert fna.all_eq(fa)
+  fa[0] = 99
+  assert na[0] == 1
+  fa[0] = 1
   #
   fa.reshape(flex.grid(2,3))
   na = fa.as_numpy_array()
