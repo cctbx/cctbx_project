@@ -64,8 +64,10 @@ namespace scitbx { namespace af { namespace boost_python {
     for(unsigned i=0;i<nd;i++) {
       dims[i] = static_cast<npy_intp>(grid.all()[i]);
     }
-    result = bp::object(bp::handle<>(
-      PyArray_SimpleNewFromData(nd, dims, type_num, O.begin())));
+    result = bp::object(bp::handle<>(PyArray_SimpleNew(nd, dims, type_num)));
+    ElementType* result_data = reinterpret_cast<ElementType*>(
+      PyArray_DATA(result.ptr()));
+    std::copy(O.begin(), O.end(), result_data);
 #endif
     return result;
   }
