@@ -1,4 +1,4 @@
-# LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.add_conformation
+# LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.add_conformations
 
 import libtbx.phil.command_line
 from libtbx.utils import Sorry, Usage
