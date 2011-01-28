@@ -202,6 +202,12 @@ class index (object) :
     else :
       return None
 
+  def get_root_scope_names (self) :
+    paths = []
+    for phil_object in self.working_phil.objects :
+      paths.append(phil_object.full_path())
+    return paths
+
   def get_template_copy (self, phil_name) :
     template = self._template_index.get(phil_name)
     new_copy = None
