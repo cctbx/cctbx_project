@@ -1,8 +1,65 @@
 
 from __future__ import division
 from math import sqrt, cos
+from libtbx import adopt_init_args
 
 sigma_base = sqrt(2.0) / 3.0
+
+master_phil = libtbx.phil.parse("""
+  restraints_weight = 1.0
+    .type = float
+  implicit
+    .short_caption = Implicit hydrogens
+    .help = Based on H-bond potential for CNS by Chapman lab
+  {
+    distance_ideal = 2.9
+      .type = float
+    distance_cut = 3.5
+      .type = float
+    theta_high = 155
+      .type = float
+    theta_low = 115
+      .type = float
+  }
+  explicit
+    .short_caption = Explicit hydrogens
+    .help = Similar to Rosetta H-bond energy (Kortemme & Baker)
+  {
+    distance_ideal = 1.975
+      .type = float
+    distance_cut = None
+      .type = float
+    distance_sigma = 0.05
+      .type = float
+    theta_ideal = 180
+      .type = float
+    theta_sigma = 5
+      .type = float
+    psi_ideal = 155
+      .type = float
+    psi_sigma = 5
+      .type = float
+    relative_weights = 1.0 1.0 1.0
+      .type = floats(size=3)
+  }
+  simple
+    .short_caption = Simple distance-based potential
+    .help = Pseudo-bond restraints
+  {
+    distance_ideal_h_o = 1.975
+      .type = float
+    distance_cut_h_o = 2.5
+      .type = float
+    distance_ideal_n_o = 2.9
+      .type = float
+    distance_cut_n_o = 3.5
+      .type = float
+    sigma = 0.05
+      .type = float
+    slack = 0.0
+      .type = float
+  }
+""")
 
 class implicit_proxy (object) :
   def __init__ (self,
@@ -12,12 +69,40 @@ class implicit_proxy (object) :
                 theta_low,
                 theta_high,
                 weight=1.0) :
-    self.i_seqs = i_seqs
-    self.distance_ideal = distance_ideal
-    self.distance_cut = distance_cut
-    self.theta_low = theta_low
-    self.theta_high = theta_high
-    self.weight = weight
+    assert (len(i_seqs) == 3))
+    assert (distance_cut is None) or (distance_cut > distance_ideal)
+    adopt_init_args(self, locals())
+
+class explicit_proxy (object) :
+  def __init__ (self,
+                i_seqs, # donor, H, acceptor, acceptor base
+                distance_ideal,
+                distance_cut,
+                theta_ideal,
+                psi_ideal,
+                weight=1.0,
+                relative_weights=(1.0,1.0,1.0)) :
+    assert (len(relative_weights) == 3)
+    assert (len(i_seqs) == 4)
+    assert (distance_cut is None) or (distance_cut > distance_ideal)
+    adopt_init_args(self, locals())
+
+class distance_proxy (object) :
+  def __init__ (self,
+                i_seqs,
+                distance_ideal,
+                distance_cut,
+                sigma,
+                slack,
+                weight=1.0) :
+    assert (len(i_seqs) == 2)
+    assert (distance_cut is None) or (distance_cut > distance_ideal)
+    adopt_init_args(self, locals())
+    import cctbx.geometry_restraints
+    self.cctbx_proxy = cctbx.geometry_restraints.bond_simple_proxy(
+      i_seqs=i_seqs,
+      distance_ideal=distance_ideal,
+      weight=1/(sigma**2))
 
 def hbond_target_and_gradients (proxies,
                                 sites_cart,
@@ -28,18 +113,22 @@ def hbond_target_and_gradients (proxies,
   sum = 0.0
   for proxy in proxies :
     if isinstance(proxy, implicit_proxy) :
-      sum += _implicit_residue_and_gradients_fd(
+      sum += _implicit_target_and_gradients_fd(
         proxy=proxy,
         sites_cart=sites_cart)
-    else :
+    elif isinstance(proxy, explicit_proxy) :
       pass
+    elif isinstance(proxy, distance_proxy) :
+      pass
+    else :
+      assert False, "Not a recognized H-bond proxy type"
   return sum
 
 # Fabiola et al. (2002) Protein Sci. 11:1415-23
 # http://www.ncbi.nlm.nih.gov/pubmed/12021440
-def _implicit_residue_and_gradients_fd (proxy,
-                                        sites_cart,
-                                        gradients_array) :
+def _implicit_target_and_gradients_fd (proxy,
+                                       sites_cart,
+                                       gradients_array) :
   from cctbx.geometry import angle
   weight = proxy.weight
   i_seqs = proxy.i_seqs
@@ -101,3 +190,8 @@ def _eval_energy_implicit (sites,
   if ((distance_cut - distance_ideal) < 0.05) :
     energy *= (distance_cut - distance_ideal) / 0.05
   return energy
+
+def _expicit_target_and_gradients_fd (proxy,
+                                      sites_cart,
+                                      gradients_array) :
+  assert isinstance(proxy, explicit_proxy)
