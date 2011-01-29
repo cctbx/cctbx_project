@@ -50,7 +50,7 @@ class reader:
     for msg in self.parser.parser_errors()[:max_errors]:
       print >> out, msg
 
-  def build_crystal_structure(self, data_block_name="global"):
+  def get_block_else_raise(self, data_block_name):
     block = self.model().get(key=data_block_name)
     if (block is None):
       if (self.file_path is None):
@@ -59,7 +59,15 @@ class reader:
         msg = 'Unknown CIF data block name "%s" in file: "%s"' % (
           data_block_name, self.file_path)
       raise RuntimeError(msg)
+    return block
+
+  def build_crystal_structure(self, data_block_name="global"):
+    block = self.get_block_else_raise(data_block_name=data_block_name)
     return builders.crystal_structure_builder(cif_block=block).structure
+
+  def build_miller_arrays(self, data_block_name="global"):
+    block = self.get_block_else_raise(data_block_name=data_block_name)
+    return builders.miller_array_builder(cif_block=block).arrays().values()
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
