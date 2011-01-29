@@ -4,9 +4,10 @@
 #include <cctbx/miller.h>
 #include <scitbx/array_family/shared.h>
 #include <fable/fem/read.hpp>
-#include <istream>
 
 namespace iotbx { namespace shelx {
+
+namespace af = scitbx::af;
 
 class hklf_reader
 {
@@ -42,15 +43,12 @@ class hklf_reader
       }
     }
 
-    hklf_reader(std::istream &input, bool strict=true)
+    hklf_reader(
+      af::const_ref<std::string> const& lines,
+      bool strict=true)
     {
-      while(!input.eof()) {
-        std::string line;
-        std::getline(input, line);
-        if (input.eof()) break;
-        if (!input.good()) {
-          throw std::runtime_error("Error while reading SHELX hklf file.");
-        }
+      for(std::size_t i_line=0;i_line<lines.size();i_line++) {
+        std::string line = lines[i_line];
         std::size_t i_trailing = 3*4+2*8;
         miller_t h;
         double datum, sigma;
@@ -86,20 +84,20 @@ class hklf_reader
       }
     }
 
-    scitbx::af::shared<miller_t> indices() { return indices_; };
+    af::shared<miller_t> indices() { return indices_; };
 
-    scitbx::af::shared<double> data() { return data_; }
+    af::shared<double> data() { return data_; }
 
-    scitbx::af::shared<double> sigmas() { return sigmas_; }
+    af::shared<double> sigmas() { return sigmas_; }
 
-    scitbx::af::shared<int> alphas() { return extra_; }
+    af::shared<int> alphas() { return extra_; }
 
-    scitbx::af::shared<int> batch_numbers() { return extra_; }
+    af::shared<int> batch_numbers() { return extra_; }
 
   private:
-    scitbx::af::shared<miller_t> indices_;
-    scitbx::af::shared<double> data_, sigmas_;
-    scitbx::af::shared<int> extra_; // batch numbers or phases
+    af::shared<miller_t> indices_;
+    af::shared<double> data_, sigmas_;
+    af::shared<int> extra_; // batch numbers or phases
 };
 
 }} // iotbx::shelx
