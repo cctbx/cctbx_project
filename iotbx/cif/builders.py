@@ -279,6 +279,7 @@ class miller_array_builder(crystal_symmetry_builder):
           if data is not None:
             data = flex.double(flex.std_string(data))
           else: continue
+        if array_type == 'calc': sigmas = None
         array = miller.array(
           miller.set(self.crystal_symmetry, indices).auto_anomalous(),
           data, sigmas)

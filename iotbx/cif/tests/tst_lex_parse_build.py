@@ -68,6 +68,8 @@ def exercise_lex_parse_build():
     cif_miller_array_template %(
       '_refln_F_calc', '_refln_F_meas', '_refln_F_sigma')))
   assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_meas']
+  assert arrays['_refln_F_calc'].sigmas() is None
+  assert isinstance(arrays['_refln_F_meas'].sigmas(), flex.double)
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
       '_refln_A_calc', '_refln_B_calc', '_refln_F_meas')))
@@ -96,7 +98,7 @@ def exercise_lex_parse_build():
       '_refln_F_meas',
       '_refln_F_sigma'))).build_miller_arrays(data_block_name="global")
   assert " ".join(sorted([str(ma.info()) for ma in miller_arrays])) \
-    == "cif:_refln_F_calc,_refln_F_sigma cif:_refln_F_meas,_refln_F_sigma"
+    == "cif:_refln_F_calc cif:_refln_F_meas,_refln_F_sigma"
 
 def exercise_parser(reader, builder):
   cif_model = reader(
