@@ -27,6 +27,21 @@ class hklf_reader
       return true;
     }
 
+    static
+    void
+    prepare_for_read(
+      std::string& line,
+      std::size_t target_size)
+    {
+      std::size_t initial_size = line.size();
+      for(std::size_t i=0;i<initial_size;i++) {
+        if (line[i] < ' ') line[i] = ' '; // emulates shelxl
+      }
+      if (initial_size < target_size) {
+        line.append(target_size-initial_size, ' ');
+      }
+    }
+
     hklf_reader(std::istream &input, bool strict=true)
     {
       while(!input.eof()) {
@@ -43,13 +58,15 @@ class hklf_reader
         bool have_extra = false;
         if (substr_is_whitespace_only(
               line, i_trailing, std::min(i_trailing+4, line.size()))) {
-          fem::read_from_string(line, "(3i4,2f8.2)"),
+          prepare_for_read(line, 28);
+          fem::read_from_string(line, "(3i4,2f8.0)"),
             h[0], h[1], h[2], datum, sigma;
         }
         else {
           i_trailing += 4;
           have_extra = true;
-          fem::read_from_string(line, "(3i4,2f8.2,i4)"),
+          prepare_for_read(line, 32);
+          fem::read_from_string(line, "(3i4,2f8.0,i4)"),
             h[0], h[1], h[2], datum, sigma, extra;
         }
         if (h.is_zero()) break;

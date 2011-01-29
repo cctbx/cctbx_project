@@ -29,7 +29,7 @@ namespace iotbx { namespace shelx {
           miller_t hkl;
           boost::trim_right(line);
           if (line.size() == 0) break;
-          if (line.size() < 28) throw not_hklf_error;
+          if (line.size() < 12) throw not_hklf_error;
           if (strict && line.size() > 32) throw not_hklf_error;
           /* That would make a strong check but it kills performance
           if (!boost::all(line, boost::is_any_of("+-.")
@@ -41,9 +41,10 @@ namespace iotbx { namespace shelx {
           for (std::string::size_type i=0; i != 3; i++) {
             hkl[i] = std::atoi(line.substr(i*4, 4).c_str());
           }
+          if (hkl == end_hkl) break;
+          if (line.size() < 28) throw not_hklf_error;
           double datum = std::atof(line.substr(12, 8).c_str());
           double sigma = std::atof(line.substr(20, 8).c_str());
-          if (hkl == end_hkl) break;
           indices_.push_back(hkl);
           data_.push_back(datum);
           sigmas_.push_back(sigma);
