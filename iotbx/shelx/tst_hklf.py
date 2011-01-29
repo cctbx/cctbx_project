@@ -99,6 +99,14 @@ def exercise_fast_hkl_reading():
     assert approx_equal(r.data(), [23, -1])
     assert approx_equal(r.sigmas(), [4, 3])
 
+  for rt in (hklf.fast_reader, hklf.simple_reader, hklf.python_reader):
+    s = ('   3   2  -1     32.      5.\n'
+         '   0   0   0\n')
+    r = rt(file_object=StringIO(s))
+    assert list(r.indices()) == [(3, 2, -1)]
+    assert approx_equal(r.data(), [32])
+    assert approx_equal(r.sigmas(), [5])
+
   s = (
 """King Arthur: [after Arthur's cut off both of the Black Knight's arms]
   Look, you stupid Bastard. You've got no arms left.

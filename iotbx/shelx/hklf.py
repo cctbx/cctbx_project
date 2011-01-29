@@ -84,8 +84,8 @@ class python_reader(reader_base):
       if (len(line.rstrip()) > 32):
         raise RuntimeError("Not a SHELX hklf file.")
       h = [int(line[i*4:(i+1)*4]) for i in xrange(3)]
-      fs = [float(line[12+i*8:12+(i+1)*8]) for i in xrange(2)]
       if (h == [0,0,0]): break
+      fs = [float(line[12+i*8:12+(i+1)*8]) for i in xrange(2)]
       self._indices.append(h)
       self._data.append(fs[0])
       self._sigmas.append(fs[1])
