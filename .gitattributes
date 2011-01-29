@@ -788,7 +788,6 @@ iotbx/reflection_file_editor.py -text
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
 iotbx/shelx/errors.py -text
 iotbx/shelx/fcf.py -text
-iotbx/shelx/hklf_simple.h -text
 iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
 iotbx/shelx/tst_lex_parse_build.py -text

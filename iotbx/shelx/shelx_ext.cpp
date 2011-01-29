@@ -3,47 +3,22 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 
-#include <iotbx/shelx/hklf_simple.h>
 #include <iotbx/shelx/hklf.h>
 
 namespace iotbx { namespace shelx { namespace boost_python {
 
-  struct hklf_reader
+  struct hklf_reader_wrapper
   {
-    hklf_reader(std::string const &content, bool strict) {
-      std::istringstream input(content);
-      iotbx::shelx::hklf_reader delegate(input, strict);
-      indices_ = delegate.indices();
-      data_ = delegate.data();
-      sigmas_ = delegate.sigmas();
-      extra_ = delegate.alphas();
-    }
+    typedef hklf_reader wt;
 
-    scitbx::af::shared<cctbx::miller::index<> > indices_;
-    scitbx::af::shared<double> data_, sigmas_;
-    scitbx::af::shared<int> extra_; // batch numbers or phases
-
-    scitbx::af::shared<cctbx::miller::index<> > indices() { return indices_; };
-
-    scitbx::af::shared<double> data() { return data_; }
-
-    scitbx::af::shared<double> sigmas() { return sigmas_; }
-
-    scitbx::af::shared<int> alphas() { return extra_; }
-
-    scitbx::af::shared<int> batch_numbers() { return extra_; }
-  };
-
-  template<class WrappedType>
-  struct any_hklf_reader_wrapper
-  {
-    typedef WrappedType wt;
-
-    static void wrap(char const *name) {
+    static void
+    wrap()
+    {
       using namespace boost::python;
-      class_<wt>(name, no_init)
-        .def(init<std::string const &, bool>((arg("content"),
-                                              arg("strict")=true)))
+      class_<wt>("hklf_reader", no_init)
+        .def(init<af::const_ref<std::string> const&, bool>((
+          arg("lines"),
+          arg("strict")=true)))
         .def("indices", &wt::indices)
         .def("data", &wt::data)
         .def("sigmas", &wt::sigmas)
@@ -53,15 +28,15 @@ namespace iotbx { namespace shelx { namespace boost_python {
     }
   };
 
-  void init_module() {
-    any_hklf_reader_wrapper<simple_hklf_reader>::wrap("simple_hklf_reader");
-    any_hklf_reader_wrapper<hklf_reader>::wrap("hklf_reader");
+  void
+  init_module()
+  {
+    hklf_reader_wrapper::wrap();
   }
 
 }}} //iotbx::shelx::boost_python
 
-
 BOOST_PYTHON_MODULE(iotbx_shelx_ext)
 {
-        iotbx::shelx::boost_python::init_module();
+  iotbx::shelx::boost_python::init_module();
 }
