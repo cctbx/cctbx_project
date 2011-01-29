@@ -5,19 +5,17 @@ import boost.python
 iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys
 
-def miller_export_as_shelx_hklf(self, file_object=None):
-  assert self.is_real_array()
+def miller_array_export_as_shelx_hklf(miller_array, file_object=None):
+  assert miller_array.is_real_array()
   if (file_object is None): file_object = sys.stdout
-  data = self.data()
-  sigmas = self.sigmas()
+  data = miller_array.data()
+  sigmas = miller_array.sigmas()
   s = 0.01
   fmt = "%4d%4d%4d%8.2f%8.2f"
-  for i,h in enumerate(self.indices()):
+  for i,h in enumerate(miller_array.indices()):
     if (sigmas is not None): s = sigmas[i]
     print >> file_object, fmt % (h + (data[i],s))
   print >> file_object, fmt % (0,0,0,0,0)
-
-miller.array.export_as_shelx_hklf = miller_export_as_shelx_hklf
 
 class reader(iotbx_shelx_ext.hklf_reader):
 
