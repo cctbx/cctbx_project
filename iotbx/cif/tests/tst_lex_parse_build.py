@@ -90,6 +90,14 @@ def exercise_lex_parse_build():
   assert sorted(arrays.keys()) == ['_refln_F_calc']
   assert arrays['_refln_F_calc'].is_complex_array()
 
+  miller_arrays = cif.reader(file_object=StringIO(
+    cif_miller_array_template %(
+      '_refln_F_calc',
+      '_refln_F_meas',
+      '_refln_F_sigma'))).build_miller_arrays(data_block_name="global")
+  assert " ".join(sorted([str(ma.info()) for ma in miller_arrays])) \
+    == "cif:_refln_F_calc,_refln_F_sigma cif:_refln_F_meas,_refln_F_sigma"
+
 def exercise_parser(reader, builder):
   cif_model = reader(
     input_string=cif_xray_structure, builder=builder()).model()
