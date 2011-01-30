@@ -11,7 +11,7 @@ from iotbx.solve.fpfm_reader import reader as solve_fpfm_reader
 from iotbx.option_parser import option_parser
 from cctbx import miller
 from cctbx import crystal
-from libtbx import easy_pickle, smart_open
+from libtbx import easy_pickle
 from libtbx.utils import Sorry, detect_binary_file
 import sys, os, os.path
 import re
@@ -58,7 +58,7 @@ def try_all_readers(file_name):
   except: pass
   else: return ("dtrek_reflnlist", content)
   try: content = shelx_hklf.reader(
-    open(file_name))
+    file_name=file_name)
   except KeyboardInterrupt: raise
   except: pass
   else: return ("shelx_hklf", content)
@@ -76,6 +76,7 @@ def try_all_readers(file_name):
 class any_reflection_file(object):
 
   def __init__(self, file_name, ensure_read_access=True, strict=True):
+    # strict is no longer used
     if (   file_name.startswith("amplitudes=")
         or file_name.startswith("hklf3=")
         or file_name.startswith("intensities=")
@@ -105,8 +106,7 @@ class any_reflection_file(object):
       return
     if (self._observation_type is not None):
       try: self._file_content = shelx_hklf.reader(
-        smart_open.for_reading(file_name),
-        strict=strict)
+        file_name=file_name)
       except KeyboardInterrupt: raise
       except:
         raise Sorry("Not a SHELX reflection file: %s\n"

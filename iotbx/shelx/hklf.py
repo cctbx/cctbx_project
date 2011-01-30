@@ -1,6 +1,3 @@
-from cctbx import miller
-from cctbx import crystal
-from cctbx.array_family import flex
 import boost.python
 iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys
@@ -19,19 +16,21 @@ def miller_array_export_as_shelx_hklf(miller_array, file_object=None):
 
 class reader(iotbx_shelx_ext.hklf_reader):
 
-  def __init__(self, file_object=None, filename=None, strict=True):
-    assert [file_object, filename].count(None) == 1
+  def __init__(self, file_object=None, file_name=None):
+    assert [file_object, file_name].count(None) == 1
     if (file_object is None):
-      file_object = open(filename)
-    super(reader, self).__init__(
-      lines=flex.split_lines(file_object.read()),
-      strict=strict)
+      from libtbx import smart_open
+      file_object = smart_open.for_reading(file_name=file_name)
+    from cctbx.array_family import flex
+    super(reader, self).__init__(lines=flex.split_lines(file_object.read()))
 
   def as_miller_arrays(self,
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
         base_array_info=None):
+    from cctbx import miller
+    from cctbx import crystal
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
     if (base_array_info is None):
@@ -62,4 +61,5 @@ class reader(iotbx_shelx_ext.hklf_reader):
     return f
   alphas = _override('alphas')
   batch_numbers = _override('batch_numbers')
+  wavelengths = _override('wavelengths')
   del _override
