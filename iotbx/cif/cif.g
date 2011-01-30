@@ -91,7 +91,7 @@ scope { boost::python::object *builder; }
 @init { $parse::builder = new boost::python::object(builder_); }
 @after { delete $parse::builder; }
 
-	: cif EOF ;
+	: cif (EOF | '\u001a' /*Ctrl-Z*/) ;
 /*------------------------------------------------------------------
  * BASIC STRUCTURE OF A CIF
  *------------------------------------------------------------------*/
