@@ -68,7 +68,7 @@ def structure_factors_from_fcf(file_path, xs=None):
   return xs, fo2, fc, scale
 
 def structure_factors_from_hkl(xs, hkl_path, weighting_scheme=None):
-  fo2 = hklf.reader(filename=hkl_path).as_miller_arrays(
+  fo2 = hklf.reader(file_name=hkl_path).as_miller_arrays(
     crystal_symmetry=xs)[0]
   fo2.set_observation_type_xray_intensity()
   merging = fo2.merge_equivalents()

@@ -30,6 +30,9 @@ def exercise_hklf_reader():
        '   0   2   5 4776.00   40.00\n')
   r = hklf.reader(file_object=StringIO(s))
   assert list(r.indices()) == [ (0,2,3), (0,2,4), (0,2,5) ]
+  assert r.batch_numbers() is None
+  assert r.alphas() is None
+  assert r.wavelengths() is None
 
   for end_line in (True, False):
     for something_after_end_line in (True, False):
@@ -44,8 +47,9 @@ def exercise_hklf_reader():
       s = (s)
       r = hklf.reader(file_object=StringIO(s))
       assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
-      assert r.alphas() is None
       assert r.batch_numbers() is None
+      assert r.alphas() is None
+      assert r.wavelengths() is None
 
   s = ''
   try: r = hklf.reader(file_object=StringIO(s))
@@ -59,26 +63,25 @@ def exercise_hklf_reader():
   except Exception: pass
   else: raise Exception_expected
 
-  s = ('   1   2  -1   23.34    4.56   1     45.36\n'
-       '   2  -3   9  -12.45   -6.12   2     45.36\n'
-       '   0   0   0    0.00    0.00   0         0\n')
-  try: r = hklf.reader(file_object=StringIO(s))
-  except RuntimeError: pass
-  else: raise Exception_expected
+  s = ('   1   2  -1   23.34    4.56   1   45.36\n'
+       '   2  -3   9  -12.45   -6.12   2   54.63\n'
+       '   0   0   0    0.00    0.00   0       0\n')
+  r = hklf.reader(file_object=StringIO(s))
+  assert list(r.indices()) == [ (1, 2, -1), (2, -3, 9)]
+  assert approx_equal(r.data(), [23.34, -12.45])
+  assert approx_equal(r.sigmas(), [4.56, -6.12])
+  assert approx_equal(r.batch_numbers(), [1, 2])
+  assert approx_equal(r.wavelengths(), [45.36, 54.63])
 
-  r = hklf.reader(file_object=StringIO(s), strict=False)
-  assert list(r.indices()) == [ (1, 2, -1), (2, -3, 9), ]
-  assert approx_equal(r.data(), [23.34, -12.45, ])
-  assert approx_equal(r.sigmas(), [4.56, -6.12, ])
-  assert approx_equal(r.batch_numbers(), [1, 2, ])
-
-  s = ('   1   2  -1     23.      4.   1\n'
+  s = ('   1   2  -1     23.      4.   2\n'
        '  -2   1   3     -1.      3.   1\n'
        '   0   0   0      0.      0.   0\n')
   r = hklf.reader(file_object=StringIO(s))
   assert list(r.indices()) == [(1, 2, -1), (-2, 1, 3)]
   assert approx_equal(r.data(), [23, -1])
   assert approx_equal(r.sigmas(), [4, 3])
+  assert approx_equal(r.alphas(), [2, 1])
+  assert r.wavelengths() is None
 
   s = ('   3   2  -1     32.      5.\n'
        '   0   0   0\n')
@@ -86,6 +89,8 @@ def exercise_hklf_reader():
   assert list(r.indices()) == [(3, 2, -1)]
   assert approx_equal(r.data(), [32])
   assert approx_equal(r.sigmas(), [5])
+  assert r.alphas() is None
+  assert r.wavelengths() is None
 
   s = (
 """King Arthur: [after Arthur's cut off both of the Black Knight's arms]
@@ -94,10 +99,6 @@ Black Knight: Yes I have.
 King Arthur: *Look*!
 Black Knight: It's just a flesh wound.""")
   try: r = hklf.reader(file_object=StringIO(s))
-  except RuntimeError: pass
-  else: raise Exception_expected
-
-  try: hklf.reader(file_object=StringIO(s), strict=False)
   except RuntimeError: pass
   else: raise Exception_expected
 
