@@ -598,6 +598,16 @@ def exercise_f_calc_map():
   assert f_map[(3,2,1)] == 4+4j
   assert f_map[(-1,-3,-5)] == 0
 
+def exercise_union_of_indices():
+  u = miller.union_of_indices_registry()
+  assert u.as_array().size() == 0
+  u.update(indices=flex.miller_index([(1,2,0)]))
+  assert list(u.as_array()) == [(1,2,0)]
+  u.update(indices=flex.miller_index([(1,2,0)]))
+  assert list(u.as_array()) == [(1,2,0)]
+  u.update(indices=flex.miller_index([(3,2,0)]))
+  assert sorted(u.as_array()) == [(1,2,0), (3,2,0)]
+
 def run():
   exercise_f_calc_map()
   exercise_sym_equiv()
@@ -611,6 +621,7 @@ def run():
   exercise_match_indices()
   exercise_phase_integral()
   exercise_phase_transfer()
+  exercise_union_of_indices()
   print "OK"
 
 if (__name__ == "__main__"):

@@ -135,6 +135,21 @@ Completeness with d_max=infinity: 1
   assert list(r(d_max=1.2, d_min=1.1)) == [True, False]
   assert list(r(d_max=1.1, d_min=1.2)) == [False, False]
 
+def exercise_union_of_sets():
+  xs = crystal.symmetry(unit_cell=(10,10,10,90,90,90), space_group_symbol="P1")
+  ms = miller.set(xs, flex.miller_index())
+  u = miller.union_of_sets(miller_sets=[ms])
+  assert u.is_similar_symmetry(ms)
+  assert len(u.indices()) == 0
+  ms = miller.set(xs, flex.miller_index(((1,-2,3), (0,0,-4))))
+  u = miller.union_of_sets(miller_sets=[ms])
+  assert sorted(u.indices()) == [(0,0,-4), (1,-2,3)]
+  u = miller.union_of_sets(miller_sets=[ms, ms])
+  assert sorted(u.indices()) == [(0,0,-4), (1,-2,3)]
+  ms2 = miller.set(xs, flex.miller_index(((1,-2,3), (0,0,-5))))
+  u = miller.union_of_sets(miller_sets=[ms, ms2])
+  assert sorted(u.indices()) == [(0,0,-5), (0,0,-4), (1,-2,3)]
+
 def exercise_enforce_positive_amplitudes():
   from cctbx.xray import observation_types
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
@@ -1685,8 +1700,11 @@ def run(args):
   exercise_concatenate()
   exercise_phased_translation_coeff()
   exercise_set()
-  exercise_generate_r_free_flags(use_lattice_symmetry=False, verbose="--verbose" in args)
-  exercise_generate_r_free_flags(use_lattice_symmetry=True, verbose="--verbose" in args)
+  exercise_union_of_sets()
+  exercise_generate_r_free_flags(
+    use_lattice_symmetry=False, verbose="--verbose" in args)
+  exercise_generate_r_free_flags(
+    use_lattice_symmetry=True, verbose="--verbose" in args)
   exercise_enforce_positive_amplitudes()
   exercise_binner()
   exercise_array()
