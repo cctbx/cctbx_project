@@ -214,7 +214,7 @@ class manager(object):
       x.shift_us(b_shift = shift_b_iso)
     total_number_xrs = len(self.ta_obj.tad.xray_structures)
     div_int =  1
-    print >> self.ta_obj.log, "\nReduce with equal distribution though trajectory : \n"
+    print >> self.ta_obj.log, "\nReduce ensemble with equal distribution though trajectory :"
     print >> self.ta_obj.log, '\n {0:>12} {1:>8} {2:>8} {3:>8} {4:>8} {5:>8} {6:>8}'\
         .format('Num','Rwork','Rfree','k1','biso','ksol','bsol')
     target_rfree = final_rfree
@@ -271,7 +271,7 @@ class manager(object):
       div_int = div_int * 2.0
 
     if final_div == None:
-      print >> self.ta_obj.log, "Warning pdb ensemble does not contain sufficent models and missrepresents simulation by {0:2.3f} % rfree".format(100*(rfree_all_models-final_rfree))
+      print >> self.ta_obj.log, "Warning pdb ensemble does not contain sufficent models and missrepresents simulation.  Simulation Rfree: {0:2.3f} %".format(100*(final_rfree))
     else:
       #Update fmodel_total
       self.ta_obj.fmodel_total.update(f_calc = final_f_calc,
