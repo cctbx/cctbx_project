@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/sym_equiv.h>
+#include <cctbx/miller/union_of_indices.h>
 #include <cctbx/miller/math.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -29,8 +30,23 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_local_area();
   void wrap_amplitude_normalisation();
 
-
 namespace {
+
+  struct union_of_indices_registry_wrappers
+  {
+    typedef union_of_indices_registry wt;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<wt>("union_of_indices_registry", no_init)
+        .def(init<>())
+        .def("update", &wt::update, (arg("indices")))
+        .def("as_array", &wt::as_array)
+      ;
+    }
+  };
 
   hendrickson_lattman<>
   as_hendrickson_lattman(
@@ -80,6 +96,8 @@ namespace {
                  bool,
                  af::const_ref<index<> > const&,
                  af::const_ref<double> const&)) statistical_mean);
+
+    union_of_indices_registry_wrappers::wrap();
 
     def("as_hendrickson_lattman", as_hendrickson_lattman, (
       arg("centric_flag"),

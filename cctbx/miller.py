@@ -1195,6 +1195,13 @@ def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   if(d_max is not None): result = result.resolution_filter(d_max = d_max)
   return result
 
+def union_of_sets(miller_sets):
+  assert len(miller_sets) != 0
+  uoi = union_of_indices_registry()
+  for ms in miller_sets:
+    uoi.update(ms.indices())
+  return miller_sets[0].customized_copy(indices=uoi.as_array())
+
 class array_info(object):
 
   def __init__(self,
