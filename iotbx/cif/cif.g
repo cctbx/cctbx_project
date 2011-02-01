@@ -135,11 +135,20 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 	      | loop_header WHITESPACE* loop_body
 {
   scitbx::af::shared<std::string> &values = *($data_items::curr_loop_values);
-  try {
-    ($parse::builder)->attr("add_loop")($data_items::curr_loop_headers, values);
+  int n_cols = $data_items::curr_loop_headers->size();
+  if (values.size() \% n_cols != 0) {
+    std::string msg = "Wrong number of data items for loop containing ";
+    msg += (*$data_items::curr_loop_headers)[0];
+    CTX->errors->push_back(msg);
   }
-  catch (boost::python::error_already_set&) {
-    PyErr_Clear();
+  else {
+    try {
+      ($parse::builder)->attr("add_loop")($data_items::curr_loop_headers, values);
+    }
+    catch (boost::python::error_already_set&) {
+      PyErr_Print();
+      PyErr_Clear();
+    }
   }
 }
 	;
