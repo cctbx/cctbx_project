@@ -147,22 +147,27 @@ class crystal_symmetry_builder:
                   cif_block.get('_symmetry_space_group_name_H-M'))
       sg_number = cif_block.get('_space_group_symop_sg_id',
                   cif_block.get('_symmetry_Int_Tables_number'))
-      if hall_symbol is not None:
+      if hall_symbol not in (None, '?'):
         space_group = sgtbx.space_group(hall_symbol)
-      elif hm_symbol is not None:
+      elif hm_symbol not in (None, '?'):
         space_group = sgtbx.space_group_info(symbol=hm_symbol).group()
-      elif sg_number is not None:
+      elif sg_number not in (None, '?'):
         space_group = sgtbx.space_group_info(number=sg_number).group()
       else:
         raise RuntimeError("No symmetry instructions are present in the cif block")
     try:
       cell_params = [float_from_string(
         cif_block['_cell_length_%s' %dim]) for dim in ('a','b','c')]
-      cell_params.extend([float_from_string(
-        cif_block['_cell_angle_%s' %angle]) for angle in ('alpha','beta','gamma')])
+      for i, angle in enumerate(('alpha','beta','gamma')):
+        cell_angle = cif_block['_cell_angle_%s' %angle]
+        # enumeration default for angles is 90 degrees
+        if cell_angle == '?': cell_params.append(90)
+        else: cell_params.append(float_from_string(cell_angle))
       unit_cell = uctbx.unit_cell(cell_params)
     except KeyError:
       raise RuntimeError("Not all unit cell parameters are given in the cif file")
+    except ValueError:
+      raise RuntimeError("Invalid unit cell parameters are given")
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
 
