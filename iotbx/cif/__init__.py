@@ -11,6 +11,7 @@ from iotbx.cif import model, builders
 from libtbx.containers import OrderedDict
 from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
+from libtbx.utils import Sorry
 from scitbx import matrix
 
 import math, sys
@@ -396,12 +397,17 @@ def cctbx_data_structure_from_cif(
   block_heading=None, **kwds):
   assert data_structure_builder is not None
   cif_model = reader(file_path=file_path, file_object=file_object).model()
+  if not len(cif_model):
+    raise Sorry("No data block found in CIF")
   if block_heading is not None:
     return data_structure_builder(cif_model[block_heading], **kwds)
   else:
-    xs = None
+    errors = []
     for block in cif_model.values():
       try:
         return data_structure_builder(block)
-      except:
+      except Exception, e:
+        errors.append(e)
         continue
+    if errors:
+      raise errors[0]
