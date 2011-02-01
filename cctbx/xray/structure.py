@@ -1074,6 +1074,7 @@ class structure(crystal.special_position_settings):
       weights=atomic_weights)
 
   def set_u_cart(self, u_cart, selection = None):
+    assert self._scatterers.size() == u_cart.size()
     if(selection is not None):
       self._scatterers.set_u_cart(unit_cell = self.unit_cell(),
                                   u_cart    = u_cart,
