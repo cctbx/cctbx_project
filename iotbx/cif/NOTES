@@ -1,7 +1,3 @@
-The files cifProtoParser.py and cifProtoLexer.py are generated from the file
-cifProto.g using antlr-3.1.2.jar.
-It is a prototype Python version of the parser, and speed is not its forte.
-
 The files cifParser.{h,c} and cifLexer.{h,c} are generated from the file
 cif.g using antlr-3.2.jar
 
@@ -18,7 +14,6 @@ or for Unix:
 /usr/bin/env CLASSPATH=/net/cci/auto_build/repositories/antlr-3.2.jar java org.antlr.Tool cif.g
 
 The required anltr jar files can be obtained from:
-  http://www.antlr.org/download/antlr-3.1.2.jar
   http://www.antlr.org/download/antlr-3.2.jar
 
 The runtime libraries and associated files required to build and run the
