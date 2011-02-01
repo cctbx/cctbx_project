@@ -2,6 +2,7 @@ from cctbx import adptbx, crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
 import iotbx.cif
 from iotbx.cif import model
+from libtbx.utils import Sorry
 
 try:
   import PyCifRW
@@ -253,8 +254,10 @@ class miller_array_builder(crystal_symmetry_builder):
     self._arrays = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
-    hkl = [flex.int(flex.std_string(cif_block.get('_refln_index_%s' %i)))
-           for i in ('h','k','l')]
+    hkl = [cif_block.get('_refln_index_%s' %i) for i in ('h','k','l')]
+    if hkl.count(None) > 0:
+      raise Sorry("Miller indices missing from current CIF block")
+    hkl = [flex.int(flex.std_string(h)) for h in hkl]
     indices = flex.miller_index(*hkl)
 
     phase_calc = cif_block.get('_refln_phase_calc')
