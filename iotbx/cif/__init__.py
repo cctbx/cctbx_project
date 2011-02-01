@@ -410,4 +410,4 @@ def cctbx_data_structure_from_cif(
         errors.append(e)
         continue
     if errors:
-      raise errors[0]
+      raise errors[-1]
