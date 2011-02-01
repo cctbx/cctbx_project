@@ -745,7 +745,7 @@ class manager(manager_mixin):
     b_min = min(self.b_sol(),
       self.xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
     if(b_min < 0):
-      self.xray_structure.tidy_us(u_min = 1.e-6)
+      self.xray_structure.tidy_us()
     b_iso = self.b_iso()
     b_test = b_min+b_iso
     if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
@@ -760,7 +760,7 @@ class manager(manager_mixin):
       b_min = min(self.b_sol(),
         self.xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
       assert b_min >= 0.0
-      self.xray_structure.tidy_us(u_min = 1.e-6)
+      self.xray_structure.tidy_us()
       self.update_xray_structure(
         xray_structure = self.xray_structure,
         update_f_calc  = True,
@@ -939,8 +939,12 @@ class manager(manager_mixin):
       rf = self.r_free()
       rw_low = self.r_work_low().r_work
       if(out is not None):
-        print >> out, "r_solv=%6.2f r_shrink=%6.2f r_work=%6.4f r_free=%6.4f r_work_low=%6.4f"%(
-          r_solv, r_shrink, rw, rf, rw_low)
+        print >> out, "r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
+          format_value("%6.2f", r_solv),
+          format_value("%6.2f", r_shrink),
+          format_value("%6.4f", rw),
+          format_value("%6.4f", rf),
+          format_value("%6.4f", rw_low))
       if(rw < rw_):
          rw_       = rw
          rf_       = rf
@@ -2015,6 +2019,16 @@ class manager(manager_mixin):
     sel = fom > fom_threshold
     dsel = self.f_obs.d_spacings().data() < 5.
     sel = sel.set_selected(~dsel,True)
+    self = self.select(sel)
+    return self
+
+  def filter_by_delta_fofc(self):
+    deltas = flex.double()
+    for fc, fo in zip(self.f_model_scaled_with_k1().data(), self.f_obs.data()):
+      deltas.append(abs(fo - abs(fc)))
+    sel = flex.sort_permutation(deltas, reverse=True)
+    self = self.select(sel)
+    sel = flex.size_t(range(100, deltas.size()))
     self = self.select(sel)
     return self
 
