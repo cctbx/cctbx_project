@@ -67,7 +67,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
     // Next comes the line number
     //
 
-    message += str(boost::format("%d) ") %recognizer->state->exception->line);
+    message += str(boost::format("line %d) ") %recognizer->state->exception->line);
     message += str(boost::format(" : error %d : %s")
       %recognizer->state->exception->type
       %(pANTLR3_UINT8) (recognizer->state->exception->message));
@@ -379,7 +379,7 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
     message += str(boost::format("%s(") %ftext->chars);
   }
 
-  message += str(boost::format("%d) ") %recognizer->state->exception->line);
+  message += str(boost::format("line %d) ") %recognizer->state->exception->line);
   message += str(boost::format(": lexer error %d :\n\t%s at offset %d, ")
                                               %ex->type
                                               %((pANTLR3_UINT8)(ex->message))
@@ -400,7 +400,7 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
       {
         message += str(boost::format("near char(%#02X) :\n") %(ANTLR3_UINT8)(ex->c));
       }
-      boost::format fmt(str(boost::format("\t%%%is\n") % std::min(width, 20)));
+      boost::format fmt(str(boost::format("\t%%.%is\n") % std::min(width, 20)));
       message += str(fmt % (pANTLR3_UINT8)(ex->index));
     }
     else
@@ -414,7 +414,7 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
 
       if (width >= 1)
       {
-        boost::format fmt(str(boost::format("looks like this:\n\t\t%%%is\n")
+        boost::format fmt(str(boost::format("looks like this:\n\t\t%%.%is\n")
                               % std::min(width, 20)));
         message += str(
           fmt % (pANTLR3_UINT8)(lexer->rec->state->tokenStartCharIndex));
