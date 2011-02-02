@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.french_wilson
+
 from iotbx import french_wilson
 import sys
 
