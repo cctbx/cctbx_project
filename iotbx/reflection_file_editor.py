@@ -123,11 +123,11 @@ mtz_file
       .short_caption = Output non-anomalous data
       .help = If enabled, anomalous arrays will be merged first.  Note that \
         this will cut the number of output labels in half.
-    output_label = None
-      .type = str
-      .multiple = True
+    output_labels = None
+      .type = strings
       .optional = True
-      .short_caption = Output column label
+      .short_caption = Output column labels
+      .input_size = 300
       .help = Most Miller arrays have more than one label, and there must be \
               exactly as many new labels as the number of labels in the \
               old array.  Note however that the output labels do not \
@@ -303,7 +303,9 @@ class process_arrays (object) :
       if array_params.d_min is not None and array_params.d_min <= 0 :
         array_params.d_min = None
       output_array = None # this will eventually be the final processed array
-      output_labels = array_params.output_label
+      output_labels = array_params.output_labels
+      if (output_labels is None) :
+        raise Sorry("Missing output labels for %s!" % array_name)
       info = miller_array.info()
       if not None in [array_params.scale_factor, array_params.scale_max] :
         raise Sorry("The parameters scale_factor and scale_max are " +
@@ -650,10 +652,10 @@ class process_arrays (object) :
             "alphanumeric characters, underscore, plus and minus signs, or "+
             "parentheses.")
             % label)
-        if used[labels[i]] > 0 :
+        if used[label] > 0 :
           if params.mtz_file.resolve_label_conflicts :
             if label.endswith("(+)") or label.endswith("(-)") :
-              label = label[0:-3] + ("_%d" % (used[labels[i]]+1)) + label[-3:]
+              label = label[0:-3] + ("_%d" % (used[label]+1)) + label[-3:]
             else :
               label += "_%d" % (used[labels[i]] + 1)
             self.label_changes.append((label_files[i], labels[i], label))
@@ -662,8 +664,16 @@ class process_arrays (object) :
               "resolve_label_conflicts=True to automatically generate "+
               "non-redundant labels, or edit the parameters to provide your"+
               "own choice of labels.") % labels[i])
-        column.set_label(label)
-        used[labels[i]] += 1
+        try :
+          column.set_label(label)
+        except RuntimeError, e :
+          if ("new_label is used already" in str(e)) :
+            col_names = [ col.label() for col in mtz_object.columns() ]
+            raise RuntimeError(("Duplicate column label '%s': current labels "+
+              "are %s; user-specified output labels are %s.") %
+              (label, " ".join(col_names), " ".join(labels)))
+        else :
+          used[label] += 1
       i += 1
 
   def add_array_to_mtz_dataset (self, output_array, fake_label, column_types) :
@@ -814,8 +824,7 @@ def generate_params (file_name, miller_array, include_resolution=False) :
   labels = %s
 """ % (file_name, miller_array.info().label_string())
   output_labels = guess_array_output_labels(miller_array)
-  for label in output_labels :
-    param_str += "  output_label = %s\n" % label
+  param_str += "  output_labels = " + " ".join(output_labels)
   if include_resolution :
     try :
       (d_max, d_min) = miller_array.d_max_min()
