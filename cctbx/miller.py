@@ -2895,12 +2895,12 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
         self.select(sel).scale_factor(f_calc.select(sel), weights_sel))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def from_cif(cls, file_object=None, file_path=None, block_heading=None):
+  def from_cif(cls, file_object=None, file_path=None, data_block_name=None):
     import iotbx.cif
     from iotbx.cif import builders
     return iotbx.cif.cctbx_data_structure_from_cif(
       file_object=file_object, file_path=file_path,
-      block_heading=block_heading,
+      data_block_name=data_block_name,
       data_structure_builder=builders.miller_array_builder).arrays()
   from_cif = classmethod(from_cif)
 
