@@ -109,9 +109,9 @@ french_wilson {
     .type = path
     .help = '''input intensity data file (mtz)'''
   intensity_labels = None
-    .type = strings
+    .type = str
   r_free_label = None
-    .type = strings
+    .type = str
   output_file = None
     .type = path
     .optional = True
