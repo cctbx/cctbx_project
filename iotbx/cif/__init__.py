@@ -51,24 +51,19 @@ class reader:
     for msg in self.parser.parser_errors()[:max_errors]:
       print >> out, msg
 
-  def get_block_else_raise(self, data_block_name):
-    block = self.model().get(key=data_block_name)
-    if (block is None):
-      if (self.file_path is None):
-        msg = 'Unknown CIF data block name: "%s"' % data_block_name
-      else:
-        msg = 'Unknown CIF data block name "%s" in file: "%s"' % (
-          data_block_name, self.file_path)
-      raise RuntimeError(msg)
-    return block
+  def build_crystal_structure(self, data_block_name=None):
+    return cctbx_data_structure_from_cif(
+      cif_model=self.model(),
+      file_path=self.file_path,
+      data_block_name=data_block_name,
+      data_structure_builder=builders.crystal_structure_builder).structure
 
-  def build_crystal_structure(self, data_block_name="global"):
-    block = self.get_block_else_raise(data_block_name=data_block_name)
-    return builders.crystal_structure_builder(cif_block=block).structure
-
-  def build_miller_arrays(self, data_block_name="global"):
-    block = self.get_block_else_raise(data_block_name=data_block_name)
-    return builders.miller_array_builder(cif_block=block).arrays().values()
+  def build_miller_arrays(self, data_block_name=None):
+    return cctbx_data_structure_from_cif(
+      cif_model=self.model(),
+      file_path=self.file_path,
+      data_block_name=data_block_name,
+      data_structure_builder=builders.miller_array_builder).arrays()
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
@@ -393,14 +388,24 @@ class angles_as_cif_loop(object):
 
 
 def cctbx_data_structure_from_cif(
-  file_object=None, file_path=None, data_structure_builder=None,
-  block_heading=None, **kwds):
+  file_object=None, file_path=None, cif_model=None, data_structure_builder=None,
+  data_block_name=None, **kwds):
+  assert [file_object, cif_model].count(None) == 1
   assert data_structure_builder is not None
-  cif_model = reader(file_path=file_path, file_object=file_object).model()
+  if cif_model is None:
+    cif_model = reader(file_path=file_path, file_object=file_object).model()
   if not len(cif_model):
     raise Sorry("No data block found in CIF")
-  if block_heading is not None:
-    return data_structure_builder(cif_model[block_heading], **kwds)
+  if data_block_name is not None:
+    block = cif_model.get(key=data_block_name)
+    if (block is None):
+      if (file_path is None):
+        msg = 'Unknown CIF data block name: "%s"' % data_block_name
+      else:
+        msg = 'Unknown CIF data block name "%s" in file: "%s"' % (
+          data_block_name, file_path)
+      raise RuntimeError(msg)
+    return data_structure_builder(block, **kwds)
   else:
     errors = []
     for block in cif_model.values():
