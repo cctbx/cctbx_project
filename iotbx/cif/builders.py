@@ -150,13 +150,13 @@ class crystal_symmetry_builder:
                   cif_block.get('_symmetry_Int_Tables_number'))
       if space_group is None and hall_symbol not in (None, '?'):
         try: space_group = sgtbx.space_group(hall_symbol)
-        except: pass
+        except Exception: pass
       if space_group is None and hm_symbol not in (None, '?'):
         try: space_group = sgtbx.space_group_info(symbol=hm_symbol).group()
-        except: pass
+        except Exception: pass
       if space_group is not None and sg_number not in (None, '?'):
         try: space_group = sgtbx.space_group_info(number=sg_number).group()
-        except: pass
+        except Exception: pass
       if space_group is None:
         raise RuntimeError(
           "No symmetry instructions could be extracted from the cif block")
