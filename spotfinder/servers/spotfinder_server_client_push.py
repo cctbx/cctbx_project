@@ -105,7 +105,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     S = spotfinder_no_pickle(Files, s3_passthru = "-s3 4",
                              spot_convention = 0)
 
-    frames = Files.frames(1)
+    frames = Files.frames()
 
     logfile = StringIO.StringIO()
     sys.stdout = logfile

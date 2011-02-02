@@ -123,7 +123,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     from labelit.procedure import spotfinder_and_pickle
     S = spotfinder_and_pickle(None, Files, spots_pickle = None)
 
-    frames = Files.frames(1)
+    frames = Files.frames()
 
     logfile = StringIO.StringIO()
     sys.stdout = logfile
