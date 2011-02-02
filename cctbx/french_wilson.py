@@ -341,18 +341,3 @@ def run(args):
       column_root_label = "R-free-flags")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = output_file)
-
-#old input methods
-#def old_run(args):
-  #processed_args = utils.process_command_line_args(args = args,
-  #                                                 master_params=master_phil,
-  #                                                 log = sys.stdout)
-  #work_params = processed_args.params.extract()
-  #reflection_files = processed_args.reflection_files
-  #params.file_name = args[0]
-  #if(len(reflection_files) == 0):
-  #  raise Sorry("No reflection file found.")
-  #crystal_symmetry = processed_args.crystal_symmetry
-
-#if(__name__ == "__main__"):
-#  run(sys.argv[1:])
