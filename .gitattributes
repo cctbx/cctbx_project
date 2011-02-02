@@ -53,7 +53,6 @@ cbflib_adaptbx/libtbx_config -text
 cctbx/adp_restraints/gradients.tex -text
 cctbx/boost_python/orientation_ext.cpp -text
 cctbx/command_line/find_reticular_twin_laws.py -text
-cctbx/command_line/french_wilson.py svneol=native#text/x-python
 cctbx/command_line/version.py -text
 cctbx/crystal/distance_based_connectivity.py -text
 cctbx/crystal/tst_distance_based_connectivity.py svneol=native#text/x-python
@@ -80,7 +79,6 @@ cctbx/examples/sys_abs_equiv_space_groups.cpp svneol=native#text/plain
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/examples/unit_cell_minimizers.py svneol=native#text/x-python
-cctbx/french_wilson.py svneol=native#text/x-python
 cctbx/geometry_restraints/bond_misc.h svneol=native#text/plain
 cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
