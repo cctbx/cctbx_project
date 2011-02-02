@@ -316,13 +316,19 @@ def run(args):
       parameter_name = 'obs_labels'
   )
   r_free_flags = None
-  r_free_flags, flag_scores = xray_data_server.get_r_free_flags(
+  r_free_flags_array = xray_data_server.get_r_free_flags(
       file_name = params.file_name,
       label = None,
       test_flag_value = None,
       disable_suitability_test = False,
-      parameter_scope = ''
+      parameter_scope = '',
+      return_all_valid_arrays=True
   )
+  #TODO - improve handling of R-free arrays
+  # currently only works for the simple case
+  if len(r_free_flags_array) == 1:
+    if r_free_flags_array[0][1] == 1:
+      r_free_flags = r_free_flags_array[0][0]
   assert (i_obs is not None), "Couldn't find intensities!"
   f_obs = french_wilson_scale(miller_array=i_obs,
                               params=params)
