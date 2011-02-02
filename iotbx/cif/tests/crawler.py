@@ -2,6 +2,7 @@ import glob, os, sys
 import urllib2
 
 from libtbx.utils import time_log
+import libtbx.load_env
 from iotbx.option_parser import option_parser
 from iotbx import cif
 from cctbx import miller, xray
@@ -28,6 +29,7 @@ def crawl(directory, file_ext,
   print "%i files read (%i with errors)" %(timer.n, error_count)
   print timer.legend
   print timer.report()
+  sys.stdout.flush()
 
 def run_once(file_path, build_miller_arrays=False, build_xray_structure=False):
   if build_xray_structure:
