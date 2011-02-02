@@ -625,7 +625,7 @@ st_separated_fasta = SequenceFormat(
   )
 
 
-def partition_sequence_str(data, regex):
+def partition_string(data, regex):
   """
   Partition sequence files
   """
@@ -634,8 +634,7 @@ def partition_sequence_str(data, regex):
 
   for match in regex.finditer( data ):
     current = match.start()
-    unknown = data[ position : current ].strip()
-    yield ( match.groups(), ( position, current, unknown ) )
+    yield ( match.groups(), ( position, current, data[ position : current ] ) )
     position = match.end()
 
   remaining = data[ position : ].strip()
@@ -651,10 +650,10 @@ def parse_sequence_str(data, format):
   Generic purpose sequence header parser
   """
 
-  partition = partition_sequence_str( data = data, regex = format.regex )
+  partition = partition_string( data = data, regex = format.regex )
 
   for ( groups, ( n_start, n_end, n_data ) ) in partition:
-    if n_data:
+    if n_data.strip():
       raise ValueError, (
         "Uninterpretable block from %s to %s:\nExpected: %s\nFound: %s" % (
           n_start,
@@ -1232,7 +1231,7 @@ class hhsearch_parser(hhpred_parser):
     \s+ ( [ \.\-+|=]+ ) \n
     T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
     T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    T \s+ ss_dssp \s+ ( [\w-]+ ) \s* \n
+    (?: T \s+ ss_dssp \s+ ( [\w-]+ ) \s* \n )?
     T \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
     (?: Confidence \s+ ( [\w ]+ ) \s* \n)?
     """,
@@ -1326,6 +1325,10 @@ class hhsearch_parser(hhpred_parser):
     assert len( data ) == 21
 
     sequences = [ data[0], data[2], data[6], data[11], data[15], data[18], data[19] ]
+
+    if sequences[5] == ( None, ) * len( sequences[5] ):
+      sequences[5] = tuple( [ " " * len( d ) for d in sequences[0] ] )
+
     midlines = []
 
     for ( index , alis) in enumerate( zip( *sequences ) ):
