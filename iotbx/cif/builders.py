@@ -126,6 +126,7 @@ class crystal_symmetry_builder:
               cif_block.get('_symmetry_equiv_pos_as_xyz'))
     sym_op_ids = cif_block.get('_space_group_symop_id',
                  cif_block.get('_symmetry_equiv_pos_site_id'))
+    space_group = None
     if sym_ops is not None:
       if sym_op_ids is not None:
         assert len(sym_op_ids) == len(sym_ops)
@@ -147,14 +148,18 @@ class crystal_symmetry_builder:
                   cif_block.get('_symmetry_space_group_name_H-M'))
       sg_number = cif_block.get('_space_group_symop_sg_id',
                   cif_block.get('_symmetry_Int_Tables_number'))
-      if hall_symbol not in (None, '?'):
-        space_group = sgtbx.space_group(hall_symbol)
-      elif hm_symbol not in (None, '?'):
-        space_group = sgtbx.space_group_info(symbol=hm_symbol).group()
-      elif sg_number not in (None, '?'):
-        space_group = sgtbx.space_group_info(number=sg_number).group()
-      else:
-        raise RuntimeError("No symmetry instructions are present in the cif block")
+      if space_group is None and hall_symbol not in (None, '?'):
+        try: space_group = sgtbx.space_group(hall_symbol)
+        except: pass
+      if space_group is None and hm_symbol not in (None, '?'):
+        try: space_group = sgtbx.space_group_info(symbol=hm_symbol).group()
+        except: pass
+      if space_group is not None and sg_number not in (None, '?'):
+        try: space_group = sgtbx.space_group_info(number=sg_number).group()
+        except: pass
+      if space_group is None:
+        raise RuntimeError(
+          "No symmetry instructions could be extracted from the cif block")
     try:
       cell_params = [float_from_string(
         cif_block['_cell_length_%s' %dim]) for dim in ('a','b','c')]
@@ -181,7 +186,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
     if atom_sites_frac.count(None) == 3:
       atom_sites_cart = [cif_block.get('_atom_site_Cartn_%s' %axis)
                          for axis in ('x','y','z')]
-      assert atom_sites_cart.count(None) == 0
+      assert atom_sites_cart.count(None) == 0, "No atomic coordinates could be found"
       atom_sites_cart = flex.vec3_double(
         flex.double(atom_sites_cart[0]),
         flex.double(atom_sites_cart[1]),
@@ -190,7 +195,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
       atom_sites_frac = self.crystal_symmetry.unit_cell().fractionalize(
         atom_sites_cart)
     else:
-      assert atom_sites_frac.count(None) == 0
+      assert atom_sites_frac.count(None) == 0, "No atomic coordinates could be found"
       atom_sites_frac = flex.vec3_double(
         flex.double(flex.std_string(atom_sites_frac[0])),
         flex.double(flex.std_string(atom_sites_frac[1])),
