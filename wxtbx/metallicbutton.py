@@ -70,7 +70,7 @@ class MetallicButton (wx.PyControl) :
     self.SetLabel(label)
     self._label2 = label2
     self._style = style
-    self._size = tuple(size)
+    #self._size = tuple(size)
     self._state = dict(pre=GRADIENT_NORMAL, cur=GRADIENT_NORMAL)
     self._color = self.__InitColors(start_color, highlight_color,
       gradient_percent)
@@ -78,7 +78,7 @@ class MetallicButton (wx.PyControl) :
     self._disable_after_click = disable_after_click
 
     # Setup Initial Size
-    self.SetInitialSize()
+    self.SetInitialSize(size)
 
     # Event Handlers
     self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -172,7 +172,7 @@ class MetallicButton (wx.PyControl) :
   def __DrawCaption (self, gc, xpos, ypos) :
     if self._label2 != '' :
       gc.SetFont(self._label2_font)
-      min_w, min_h = self._size
+      min_w, min_h = self.GetSize() #self._size
       if min_w == -1 :
         min_w = 120
       txt_w = min_w - xpos - 10
@@ -180,8 +180,9 @@ class MetallicButton (wx.PyControl) :
         lines = self._caption_lines
       else :
         if wx.Platform == '__WXGTK__' :
-          dc = wx.MemoryDC()
-          txt_w += 100
+          dc = wx.ClientDC(self)
+          dc.SetFont(self._label2_font)
+          #txt_w += 100
         else :
           dc = gc
         lines = wx.lib.wordwrap.wordwrap(self._label2,
@@ -347,14 +348,15 @@ class MetallicButton (wx.PyControl) :
       if wx.Platform == '__WXMAC__' :
         dc = wx.GraphicsContext.CreateMeasuringContext()
       else :
-        dc = wx.MemoryDC()
+        dc = wx.ClientDC(self)
+        #dc = wx.MemoryDC()
       dc.SetFont(self._label2_font)
-      min_w, min_h = self._size
+      min_w, min_h = self.GetSize() #self._size
       if min_w == -1 :
         min_w = 120
       txt_w = min_w - width - 10
-      #if wx.Platform == '__WXGTK__' :
-      #  txt_w -= 100
+      if wx.Platform == '__WXGTK__' :
+        txt_w += 40
       lines = wx.lib.wordwrap.wordwrap(self._label2,
         width=txt_w,
         dc=dc)
@@ -375,8 +377,8 @@ class MetallicButton (wx.PyControl) :
     if self._menu is not None or self._style & MB_STYLE_DROPARROW :
        width += 12
 
-    if width < self._size[0] :
-      width = self._size[0]
+    if width < self.GetSize()[0] : #self._size[0] :
+      width = self.GetSize()[0]
     best = wx.Size(width, height)
     self.CacheBestSize(best)
     return best
