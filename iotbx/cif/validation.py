@@ -280,7 +280,7 @@ class dictionary(model.cif):
       if definition.type in ('numb', 'float', 'int'):
         try:
           v = builders.float_from_string(value)
-        except: return # this error is handled with elsewhere
+        except Exception: return # this error is handled with elsewhere
         # DDL1 range is inclusive, DDL2 is exclusive
         if self.DDL_version == 1:
           if not ((enum_min is None or v >= float(enum_min)) and
