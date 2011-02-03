@@ -1366,7 +1366,7 @@ class structure(crystal.special_position_settings):
     return iotbx.shelx.cctbx_xray_structure_from(cls, *args, **kwds)
   from_shelx = classmethod(from_shelx)
 
-  def from_cif(cls, file_object=None, file_path=None):
+  def from_cif(cls, file_object=None, file_path=None, data_block_name=None):
     import iotbx.cif
     from iotbx.cif import builders
     result = iotbx.cif.cctbx_data_structure_from_cif(
