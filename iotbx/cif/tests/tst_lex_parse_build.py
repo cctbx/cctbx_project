@@ -97,8 +97,8 @@ def exercise_lex_parse_build():
       cif_miller_array_template %(
         '_refln_F_calc',
         '_refln_F_meas',
-        '_refln_F_sigma'))).build_miller_arrays(data_block_name="global")
-    assert " ".join(sorted([str(ma.info()) for ma in miller_arrays.values()])) \
+        '_refln_F_sigma'))).as_miller_arrays(data_block_name="global")
+    assert " ".join(sorted([str(ma.info()) for ma in miller_arrays])) \
       == "cif:_refln_F_calc cif:_refln_F_meas,_refln_F_sigma"
 
 def exercise_parser(reader, builder):
