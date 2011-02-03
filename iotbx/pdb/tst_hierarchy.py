@@ -5621,6 +5621,29 @@ ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
     crystal_symmetry=pdb_in.crystal_symmetry())
   assert (xrs.sites_cart().size() == 13)
   assert (approx_equal(xrs.sites_cart()[-3][-1], -7.261, eps=0.0001))
+  # sequence extraction
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      2  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A   4      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   5      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN A   6       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN A   7       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN A   8       6.831   2.310   4.318  1.00 12.30           C
+ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
+""").construct_hierarchy()
+  main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
+  assert (main_conf.as_padded_sequence() == "XXGNNQQNY")
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      2  CA  GLY A  -2      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A  -1      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   0      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN A   1       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN A   4       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN A   5       6.831   2.310   4.318  1.00 12.30           C
+ATOM     48  CA  TYR A   6       9.159   2.144   7.299  1.00 15.18           C
+""").construct_hierarchy()
+  main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
+  assert (main_conf.as_padded_sequence() == "GNNQXXQNY")
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
