@@ -838,13 +838,11 @@ class _conformer(boost.python.injector, ext.conformer):
   def as_padded_sequence (self, missing_char='X') :
     seq = self.as_sequence()
     padded_seq = []
-    last_resseq = None
+    last_resseq = 0
     i = 0
     for i, residue in enumerate(self.residues()) :
       resseq = residue.resseq_as_int()
-      if (last_resseq is None) :
-        pass
-      elif (resseq > (last_resseq + 1)) :
+      if (resseq > (last_resseq + 1)) :
         for x in range(resseq - last_resseq - 1) :
           padded_seq.append(missing_char)
       last_resseq = resseq
