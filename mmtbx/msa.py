@@ -7,6 +7,11 @@ from libtbx import adopt_init_args
 import os
 import sys
 
+# XXX this is more complex than ideal, in order to support long and
+# potentially problematic "sequence names", which in some applications will
+# actually be file paths + chain IDs.  to ensure that MUSCLE doesn't choke
+# on these, the option is given to substitute numerical sequence names
+# internally, while still allowing retrieval using the original names.
 class align_pdb_residues (object) :
   def __init__ (self,
                 pdb_sequences,
@@ -15,12 +20,23 @@ class align_pdb_residues (object) :
                 reference_sequence=None,
                 reference_sequence_name="sequence",
                 reference_sequence_offset=0,
-                reference_index=None) :
-#                group_sequences=True) :
+                reference_index=None,
+                substitute_names=False) :
     adopt_init_args(self, locals())
     n_models = len(pdb_sequences)
     assert ((n_models >= 1) and (n_models==len(pdb_names)==len(pdb_offsets)))
     use_pdb_sequence = False
+    self.fasta_names = []
+    self._name_lookup = None
+    # build index of sequence names given to MUSCLE
+    if substitute_names :
+      self._name_lookup = {}
+      for i, name in enumerate(pdb_names) :
+        self._name_lookup[name] = str(i)
+        self.fasta_names.append(str(i))
+    else :
+      self.fasta_names = pdb_names
+    # determine sequence for reference numbering
     if (reference_sequence is not None) :
       assert (reference_index is None)
     else :
@@ -28,15 +44,19 @@ class align_pdb_residues (object) :
       if (reference_index is None) :
         reference_index = 0
       reference_sequence = pdb_sequences[reference_index]
-      reference_sequence_name = pdb_names[reference_index]
       reference_sequence_offset = pdb_offsets[reference_index]
-    fasta = "\n".join([ ">%s\n%s" % (n,s) for n,s in zip(pdb_names,
+      if substitute_names :
+        reference_sequence_name = self.fasta_names[reference_index]
+      else :
+        reference_sequence_name = pdb_names[reference_index]
+    fasta = "\n".join([ ">%s\n%s" % (n,s) for n,s in zip(self.fasta_names,
                         pdb_sequences) ])
     if (not use_pdb_sequence) :
       ref_seq_fasta = ">%s\n%s" % (reference_sequence_name, reference_sequence)
       fasta = ref_seq_fasta + "\n" + fasta
-    self.muscle_aln = get_muscle_alignment(fasta)#, group_sequences)
+    self.muscle_aln = get_muscle_alignment(fasta)
     assert (self.muscle_aln is not None)
+    # find sequences and determine equivalent numbering
     self._lookup_table = {}
     i_ref = self.muscle_aln.names.index(reference_sequence_name)
     self._reference_alignment = self.muscle_aln.alignments[i_ref]
@@ -45,7 +65,7 @@ class align_pdb_residues (object) :
       if (i == i_ref) :
         self._lookup_table[name] = None
       else :
-        i_pdb = self.pdb_names.index(name)
+        i_pdb = self.fasta_names.index(name)
         aln = self.muscle_aln.alignments[i]
         j = k = 0
         new_resseqs = []
@@ -63,14 +83,35 @@ class align_pdb_residues (object) :
         assert (j == len(new_resseqs))
         self._lookup_table[name] = new_resseqs
 
+  def get_name_index (self, pdb_name) :
+    if (self._name_lookup is not None) :
+      return self._name_lookup[pdb_name]
+    else :
+      return pdb_name
+      #return self.pdb_names.index(pdb_name)
+
   def convert_residue_number (self, pdb_name, resseq) :
+    seq_name = self.get_name_index(pdb_name)
     assert isinstance(resseq, int)
-    if (self._lookup_table[pdb_name] is None) :
+    if (self._lookup_table[seq_name] is None) :
       return resseq
     i_pdb = self.pdb_names.index(pdb_name)
     offset = self.pdb_offsets[i_pdb]
     i_res = resseq + offset - 1
-    return self._lookup_table[pdb_name][i_res]
+    try :
+      return self._lookup_table[seq_name][i_res]
+    except IndexError, e :
+      raise RuntimeError("""\
+Encountered IndexError attempting to convert residue number!
+Values:
+  pdb_name = %s
+  resseq = %s
+  seq_name = %s
+  i_res = %s
+
+Dump of full alignment:
+  %s
+""" % (pdb_name, resseq, seq_name, i_res, self.muscle_aln))
 
 def run_muscle (fasta_sequences, group_sequences=True) :
   assert group_sequences # XXX this isn't actually optional!
@@ -176,18 +217,21 @@ DKKEKTLLQKLLSKKPEDRPNTSEILRTLTVWKKSPEKNERHTA"""
   pdb_names = ["pdb1","pdb2","pdb3"]
   pdb_offsets = [0, 0, 3]
   reference_sequence = "MIATKGQNEPKKHFMVILSTCYGWSDDAKFGG"
-  m = align_pdb_residues(
-    pdb_sequences=pdb_sequences,
-    pdb_names=pdb_names,
-    pdb_offsets=pdb_offsets,
-    reference_sequence=reference_sequence)
-  assert (m.convert_residue_number("pdb3", -2) is None)
-  assert (m.convert_residue_number("pdb1", 10) == 10)
-  assert (m.convert_residue_number("pdb2", 5) == 8)
-  assert (m.convert_residue_number("pdb2", 16) == 19)
-  assert (m.convert_residue_number("pdb2", 18) is None)
-  assert (m.convert_residue_number("pdb1", 27) == 27)
-  assert (m.convert_residue_number("pdb2", 30) == 30)
+  for arg in [False, True] :
+    m = align_pdb_residues(
+      pdb_sequences=pdb_sequences,
+      pdb_names=pdb_names,
+      pdb_offsets=pdb_offsets,
+      reference_sequence=reference_sequence,
+      substitute_names=arg)
+    assert (m.convert_residue_number("pdb3", -2) is None)
+    assert (m.convert_residue_number("pdb1", 10) == 10)
+    assert (m.convert_residue_number("pdb2", 5) == 8)
+    assert (m.convert_residue_number("pdb2", 16) == 19)
+    assert (m.convert_residue_number("pdb2", 18) is None)
+    assert (m.convert_residue_number("pdb1", 27) == 27)
+    assert (m.convert_residue_number("pdb2", 30) == 30)
+
   #print m.muscle_aln.format(80,10)
   print "OK"
 
