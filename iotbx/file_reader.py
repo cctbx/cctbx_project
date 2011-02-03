@@ -25,6 +25,7 @@ standard_file_extensions = {
   'seq'  : ["fa", "faa", "seq", "pir", "dat", "fasta"],
   'xplor_map' : ["xplor", "map"],
   'ccp4_map'  : ["ccp4", "map"],
+  'map'  : ["xplor", "map", "ccp4"],
   'phil' : ["params", "eff", "def", "phil"],
   'xml'  : ["xml"],
   'pkl'  : ["pickle", "pkl"],
