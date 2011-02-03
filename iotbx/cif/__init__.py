@@ -65,6 +65,9 @@ class reader:
       data_block_name=data_block_name,
       data_structure_builder=builders.miller_array_builder).arrays()
 
+  def as_miller_arrays(self, data_block_name=None):
+    return self.build_miller_arrays(data_block_name=data_block_name).values()
+
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
 class crystal_symmetry_as_cif_block:
