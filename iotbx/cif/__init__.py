@@ -390,7 +390,7 @@ class angles_as_cif_loop(object):
 def cctbx_data_structure_from_cif(
   file_object=None, file_path=None, cif_model=None, data_structure_builder=None,
   data_block_name=None, **kwds):
-  assert [file_object, cif_model].count(None) == 1
+  assert file_object is None or cif_model is None
   assert data_structure_builder is not None
   if cif_model is None:
     cif_model = reader(file_path=file_path, file_object=file_object).model()
