@@ -37,7 +37,7 @@ class index (object) :
     if working_phil is None :
       self.working_phil = self.master_phil.fetch()
     else :
-      self.working_phil = self.master_phil.fetch(source=working_phil)
+      self.working_phil = working_phil #self.master_phil.fetch(source=working_phil)
     self.build_index(collect_multiple=True)
     self.params = self.working_phil.extract()
 
@@ -446,7 +446,7 @@ class index (object) :
   def check_scopes (self, phil_names) :
     for phil_name in phil_names :
       if self.get_scope_by_name(phil_name) is None :
-        raise Exception("Scope %s does not exist!" % phil_name)
+        raise AttributeError("Scope %s does not exist!" % phil_name)
     return True
 
   def log (self, message) :
