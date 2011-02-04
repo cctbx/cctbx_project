@@ -285,17 +285,25 @@ class manager(object):
       copy_tad_xray_structures = []
       copy_pdb_hierarchys      = []
       copy_tad_ke_pdb          = []
+      copy_tad_geo_a_b_c_d_n_p = []
+      copy_tad_geo_a_b_c_d_n_p_n_res = []
       for x in xrange(len(self.ta_obj.tad.xray_structures)):
         if x%int(final_div) == 0:
           copy_tad_xray_structures.append(self.ta_obj.tad.xray_structures[x])
           copy_pdb_hierarchys.append(self.ta_obj.tad.pdb_hierarchys[x])
           copy_tad_ke_pdb.append(self.ta_obj.tad.ke_pdb[x])
+          copy_tad_geo_a_b_c_d_n_p.append(self.ta_obj.tad.geo_a_b_c_d_n_p[x])
+          copy_tad_geo_a_b_c_d_n_p_n_res.append(self.ta_obj.tad.geo_a_b_c_d_n_p_n_res[x])
       self.ta_obj.tad.xray_structures        = copy_tad_xray_structures
       self.ta_obj.tad.pdb_hierarchys         = copy_pdb_hierarchys
       self.ta_obj.tad.ke_pdb                 = copy_tad_ke_pdb
+      self.ta_obj.tad.geo_a_b_c_d_n_p        = copy_tad_geo_a_b_c_d_n_p
+      self.ta_obj.tad.geo_a_b_c_d_n_p_n_res  = copy_tad_geo_a_b_c_d_n_p_n_res
       print >> self.ta_obj.log, "Final pdb ensemble contains {0:3d} models".format(len(self.ta_obj.tad.xray_structures))
       assert len(self.ta_obj.tad.xray_structures) == len(self.ta_obj.tad.pdb_hierarchys)
       assert len(self.ta_obj.tad.xray_structures) == len(self.ta_obj.tad.ke_pdb)
+      assert len(self.ta_obj.tad.xray_structures) == len(self.ta_obj.tad.geo_a_b_c_d_n_p)
+      assert len(self.ta_obj.tad.xray_structures) == len(self.ta_obj.tad.geo_a_b_c_d_n_p_n_res)
       print >> self.ta_obj.log, "|"+"-"*77+"|\n"
 
   def ensemble_to_fmodel(self):
