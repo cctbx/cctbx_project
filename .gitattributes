@@ -1410,6 +1410,7 @@ wxtbx/bitmaps.py svneol=native#text/x-python
 wxtbx/browser.py -text
 wxtbx/checklistctrl.py -text
 wxtbx/command_line/loggraph.py -text
+wxtbx/layout.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
