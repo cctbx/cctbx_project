@@ -740,7 +740,6 @@ iotbx/examples/pdb_truncate_to_ala/v3_better.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v4_with_bells_and_whistles.py svneol=native#text/x-python
 iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
 iotbx/file_reader.py svneol=native#text/x-python
-iotbx/french_wilson.py svneol=native#text/x-python
 iotbx/gui_tools/__init__.py -text
 iotbx/gui_tools/models.py -text
 iotbx/gui_tools/reflections.py -text
