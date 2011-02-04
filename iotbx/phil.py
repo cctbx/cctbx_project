@@ -131,7 +131,8 @@ def parse_command_line_phil_args (args, master_phil, command_name, usage_opts,
     elif arg != "" :
       unused_args.append(arg)
   try :
-    working_phil = master_phil.fetch_diff(sources=sources)
+    working_phil = master_phil.fetch(sources=sources,
+       skip_incompatible_objects=True)
   except Exception, e :
     print >> log, "Error incorporating parameters from user-specified file(s):"
     print >> log, str(e)
