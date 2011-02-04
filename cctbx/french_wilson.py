@@ -100,30 +100,13 @@ c_zf_sd = [
   0.27234, 0.26731, 0.26263, 0.25826, 0.25417, 0.25032, 0.24670, 0.24327, 0.24002, 0.23693,
   0.23398 ]
 
-def get_master_phil():
-  return libtbx.phil.parse("""
-french_wilson {
-  file_name = None
-    .type = path
-    .help = '''input intensity data file (mtz)'''
-  intensity_labels = None
-    .type = str
-  r_free_label = None
-    .type = str
-  output_file = None
-    .type = path
-    .optional = True
-    .help = '''Enter a .mtz output name'''
-  keep_r_free_flags = True
-    .type = bool
-    .help = '''Keep R-free flag data if present'''
+master_phil = libtbx.phil.parse("""
   max_bins = 60
     .type = int
     .help = '''Maximum number of resolution bins'''
   min_bin_size = 40
     .type = int
     .help = '''Minimum number of reflections per bin'''
-}
 """)
 
 def interpolate(pt_1, pt_2, delta):
@@ -224,7 +207,7 @@ def french_wilson_scale(miller_array, params=None, log=None):
   if not miller_array.is_xray_intensity_array():
     raise Sorry("Input array appears to be amplitudes. This method is only appropriate for input intensities.")
   if params == None:
-    work_params = get_master_phil().extract()
+    work_params = master_phil.extract()
     params = work_params.french_wilson
   if log == None:
     log = sys.stdout

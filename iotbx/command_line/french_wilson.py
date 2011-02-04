@@ -1,14 +1,33 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.french_wilson
 
 from cctbx import french_wilson
-import iotbx.phil
+import libtbx.phil
 import iotbx.utils
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 import sys
 
+master_phil = libtbx.phil.parse("""
+french_wilson {
+  file_name = None
+    .type = path
+    .help = '''input intensity data file (mtz)'''
+  intensity_labels = None
+    .type = str
+  r_free_label = None
+    .type = str
+  output_file = None
+    .type = path
+    .optional = True
+    .help = '''Enter a .mtz output name'''
+  keep_r_free_flags = True
+    .type = bool
+    .help = '''Keep R-free flag data if present'''
+  include scope cctbx.french_wilson.master_phil
+}
+""", process_includes=True)
+
 def run(args):
-  master_phil = french_wilson.get_master_phil()
   input_objects = iotbx.utils.process_command_line_inputs(
     args=args,
     master_phil=master_phil,
