@@ -304,10 +304,10 @@ def finish_job (results) :
   (mtz_file, map_files) = results
   output_files = []
   if mtz_file is not None and os.path.isfile(mtz_file) :
-    output_files.append(("MTZ file", mtz_file))
+    output_files.append((mtz_file, "MTZ file"))
   for map_file in map_files :
     if os.path.isfile(map_file) :
-      output_files.append(("XPLOR map", map_file))
+      output_files.append((map_file, "XPLOR map"))
   return (output_files, [])
 
 if (__name__ == "__main__"):
