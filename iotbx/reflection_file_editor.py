@@ -647,6 +647,7 @@ class process_arrays (object) :
     for column in self.mtz_object.columns() :
       if column.label() != labels[i] :
         label = labels[i]
+        original_label = label
         if invalid_chars.search(label) is not None :
           raise Sorry(("Invalid label '%s'.  Output labels may only contain "+
             "alphanumeric characters, underscore, plus and minus signs, or "+
@@ -673,7 +674,7 @@ class process_arrays (object) :
               "are %s; user-specified output labels are %s.") %
               (label, " ".join(col_names), " ".join(labels)))
         else :
-          used[label] += 1
+          used[original_label] += 1
       i += 1
 
   def add_array_to_mtz_dataset (self, output_array, fake_label, column_types) :
