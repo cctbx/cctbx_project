@@ -895,7 +895,6 @@ mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
-mmtbx/command_line/compute_xray_gradients.py -text
 mmtbx/command_line/find_tls_groups.py -text
 mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/fmodel.py -text
