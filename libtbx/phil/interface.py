@@ -16,7 +16,8 @@ tracking_params = libtbx.phil.parse("""
 """)
 
 class index (object) :
-  def __init__ (self, master_phil, working_phil=None, parse=None) :
+  def __init__ (self, master_phil, working_phil=None, parse=None,
+      fetch_new=False) :
     adopt_init_args(self, locals())
     self._states = []
     self._full_path_index = {}
@@ -31,13 +32,15 @@ class index (object) :
     self._log = str_utils.StringIO()
     if parse is None :
       self.parse = libtbx.phil.parse
-    self.setup_phil(working_phil)
+    self.setup_phil(working_phil, fetch_new)
 
-  def setup_phil (self, working_phil) :
+  def setup_phil (self, working_phil, fetch_new=False) :
     if working_phil is None :
       self.working_phil = self.master_phil.fetch()
+    elif fetch_new :
+      self.working_phil = self.master_phil.fetch(source=working_phil)
     else :
-      self.working_phil = working_phil #self.master_phil.fetch(source=working_phil)
+      self.working_phil = working_phil
     self.build_index(collect_multiple=True)
     self.params = self.working_phil.extract()
 
