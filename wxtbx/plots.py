@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import, division
 from wxtbx import bitmaps
 import wx
 from libtbx import object_oriented_patterns as oop
@@ -523,6 +524,7 @@ def get_colormap (cm_name) :
   return cm
 
 def exercise () :
+  sys.path.pop(0)
   from iotbx import data_plots
   loggraph1 = """\
 $TABLE: Resolution shell statistics
