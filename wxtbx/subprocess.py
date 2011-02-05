@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 from wx.lib.agw import pyprogress
 from libtbx import thread_utils
 from libtbx.utils import Sorry
