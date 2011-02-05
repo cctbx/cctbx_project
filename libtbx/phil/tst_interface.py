@@ -109,7 +109,8 @@ refinement.ncs.restraint_group {
   selection = "chain D and resseq 1:100"
 }"""
   i = libtbx.phil.interface.index(master_phil=master_phil,
-                                  working_phil=refine_phil1)
+    working_phil=refine_phil1,
+    fetch_new=True)
   params = i.get_python_object()
   assert len(params.refinement.ncs.restraint_group) == 1
   i.update(refine_phil2_str)
