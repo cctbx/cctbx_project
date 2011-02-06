@@ -876,12 +876,15 @@ class structure(crystal.special_position_settings):
     crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
-  def show_scatterers(self, f=None):
+  def show_scatterers(self, f=None, special_positions_only=False):
     if (f is None): f = sys.stdout
     print >> f, ("Label, Scattering, Multiplicity, Coordinates, Occupancy, "
                  "Uiso, Ustar as Uiso")
-    for scatterer in self.scatterers():
-      scatterer.show(f=f, unit_cell=self.unit_cell())
+    scatterers = self.scatterers()
+    if (special_positions_only):
+      scatterers = scatterers.select(self.special_position_indices())
+    for sc in scatterers:
+      sc.show(f=f, unit_cell=self.unit_cell())
     return self
 
   def show_special_position_shifts(self,
