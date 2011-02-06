@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_model_histogram
 
-import os, sys, math
-from libtbx.test_utils import approx_equal
+import sys, math
 import iotbx.pdb
 import iotbx.phil
 import mmtbx.f_model
