@@ -691,7 +691,29 @@ Si*5  O     Si*6   146.93
     sc_fp_fdp_henke = sc_henke.at_angstrom(0.71073)
     assert approx_equal(sc.fp, sc_fp_fdp_henke.fp())
     assert approx_equal(sc.fdp, sc_fp_fdp_henke.fdp())
-
+  #
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      (5.01,5.01,5.47,90,90,120), "P6222"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer("Si", (1/2.,1/2.,1/3.)),
+      xray.scatterer("C", (0.1234, 0.5432, 0.4321)),
+      xray.scatterer("O", (0.197,-0.197,0.83333))]))
+  s = StringIO()
+  xs.show_scatterers(f=s)
+  assert not show_diff(s.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
+Si   Si     3 ( 0.5000  0.5000  0.3333) 1.00 0.0000 [ - ]
+C    C     12 ( 0.1234  0.5432  0.4321) 1.00 0.0000 [ - ]
+O    O      6 ( 0.1970 -0.1970  0.8333) 1.00 0.0000 [ - ]
+""")
+  s = StringIO()
+  xs.show_scatterers(f=s, special_positions_only=True)
+  assert not show_diff(s.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
+Si   Si     3 ( 0.5000  0.5000  0.3333) 1.00 0.0000 [ - ]
+O    O      6 ( 0.1970 -0.1970  0.8333) 1.00 0.0000 [ - ]
+""")
 
 def exercise_closest_distances():
   xs = random_structure.xray_structure(
