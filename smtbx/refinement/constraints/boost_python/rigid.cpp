@@ -7,15 +7,15 @@
 namespace smtbx { namespace refinement { namespace constraints {
   namespace boost_python {
 
-    struct pivoted_rotable_group_wrapper  {
-      typedef pivoted_rotable_group wt;
+    struct pivoted_rotatable_group_wrapper  {
+      typedef pivoted_rotatable_group wt;
 
       static void wrap() {
         using namespace boost::python;
         return_internal_reference<> rir;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("rigid_pivoted_rotable_group", no_init)
+               std::auto_ptr<wt> >("rigid_pivoted_rotatable_group", no_init)
           .def(init<site_parameter *,
                     site_parameter *,
                     independent_scalar_parameter *,
@@ -31,14 +31,14 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
-    struct rotable_expandable_group_wrapper  {
-      typedef rotable_expandable_group wt;
+    struct rotatable_expandable_group_wrapper  {
+      typedef rotatable_expandable_group wt;
 
       static void wrap() {
         using namespace boost::python;
         class_<wt,
                bases<asu_parameter>,
-               std::auto_ptr<wt> >("rigid_rotable_expandable_group", no_init)
+               std::auto_ptr<wt> >("rigid_rotatable_expandable_group", no_init)
           .def(init<site_parameter *,
                     independent_scalar_parameter *,
                     independent_scalar_parameter *,
@@ -85,7 +85,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         class_<wt,
                bases<site_parameter>,
                std::auto_ptr<wt> >("rigid_site_proxy", no_init)
-          .def(init<pivoted_rotable_group *,
+          .def(init<pivoted_rotatable_group *,
                     int>
                 ((arg("parent"),
                   arg("index"))))
@@ -93,7 +93,7 @@ namespace smtbx { namespace refinement { namespace constraints {
                     int>
                 ((arg("parent"),
                   arg("index"))))
-          .def(init<rotable_expandable_group *,
+          .def(init<rotatable_expandable_group *,
                     int>
                 ((arg("parent"),
                   arg("index"))))
@@ -108,8 +108,8 @@ namespace smtbx { namespace refinement { namespace constraints {
         tuple_mapping_variable_capacity<
           af::shared<asu_parameter::scatterer_type *> >();
       }
-      pivoted_rotable_group_wrapper::wrap();
-      rotable_expandable_group_wrapper::wrap();
+      pivoted_rotatable_group_wrapper::wrap();
+      rotatable_expandable_group_wrapper::wrap();
       riding_expandable_group_wrapper::wrap();
       rigid_site_proxy_wrapper::wrap();
     }
