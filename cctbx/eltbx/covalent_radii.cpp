@@ -17,6 +17,7 @@ namespace {
     const raw_record table[] = {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       {"H",  0.31, 0.05},
+      {"D",  0.31, 0.05},
       {"He", 0.28, 0.00},
       {"Li", 1.28, 0.07},
       {"Be", 0.96, 0.03},
