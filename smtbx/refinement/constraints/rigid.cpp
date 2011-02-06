@@ -28,9 +28,9 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
 
-  // pivoted rotable...
+  // pivoted rotatable...
   void
-  pivoted_rotable_group
+  pivoted_rotatable_group
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
@@ -100,9 +100,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
-  // spherical rotable expandable...
+  // spherical rotatable expandable...
   void
-  rotable_expandable_group
+  rotatable_expandable_group
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {

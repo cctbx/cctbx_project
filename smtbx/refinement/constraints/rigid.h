@@ -79,9 +79,9 @@ public:
   by pivot and pivot_neighbour (AFIX n=7 in shelxl)
  */
 
-class pivoted_rotable_group : public rigid_group_base {
+class pivoted_rotatable_group : public rigid_group_base {
 public:
-  pivoted_rotable_group(site_parameter *pivot,
+  pivoted_rotatable_group(site_parameter *pivot,
          site_parameter *pivot_neighbour,
          independent_scalar_parameter *azimuth,
          independent_scalar_parameter *size,
@@ -101,9 +101,9 @@ expand uniformly and rotate in 3D, an example is a spherecal counteranion or
 'circluar' groups like Cp or Ph (AFIX n=9 in shelxl)
  */
 
-class rotable_expandable_group : public rigid_group_base {
+class rotatable_expandable_group : public rigid_group_base {
 public:
-  rotable_expandable_group(
+  rotatable_expandable_group(
     site_parameter *pivot,
     independent_scalar_parameter *size,
     independent_scalar_parameter *alpha,

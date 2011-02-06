@@ -30,7 +30,7 @@ def exercise_rigid_site_proxy(n=5):
                     value=0.1, variable=True)
   size = reparam.add(constraints.independent_scalar_parameter,
                     value=1, variable=True)
-  rigid_group = reparam.add(constraints.rigid_pivoted_rotable_group,
+  rigid_group = reparam.add(constraints.rigid_pivoted_rotatable_group,
                             pivot, pivot_neighbour,
                             azimuth=phi,
                             size=size,
@@ -57,7 +57,7 @@ digraph dependencies {
 3 [label="independent_site_parameter (C##) #3"];
 6 [label="independent_scalar_parameter #6"];
 7 [label="independent_scalar_parameter #7"];
-8 [label="rigid_pivoted_rotable_group (C0, C1, C2, C3, C4) #8"];
+8 [label="rigid_pivoted_rotatable_group (C0, C1, C2, C3, C4) #8"];
 23 [label="rigid_site_proxy #23"];
 26 [label="rigid_site_proxy #26"];
 29 [label="rigid_site_proxy #29"];
@@ -75,7 +75,7 @@ digraph dependencies {
   for i,j in zip(xrange(q, q+3*n), xrange(q+3*n, jt0.n_cols)):
     assert jt.col(i) == jt.col(j)
 
-def exercise_rigid_pivoted_rotable():
+def exercise_rigid_pivoted_rotatable():
   uc = uctbx.unit_cell((1, 1, 1))
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -94,7 +94,7 @@ def exercise_rigid_pivoted_rotable():
                   value=pi/2, variable=True)
   size = r.add(constraints.independent_scalar_parameter,
                   value=1, variable=False)
-  rg = r.add(constraints.rigid_pivoted_rotable_group,
+  rg = r.add(constraints.rigid_pivoted_rotatable_group,
                 pivot=pivot,
                 pivot_neighbour=pivot_neighbour,
                 azimuth=azimuth,
@@ -104,14 +104,14 @@ def exercise_rigid_pivoted_rotable():
   r.finalise()
   r.linearise()
   r.store()
-  #check that proxy an the final results are the same...
+  #check that proxy and the final results are the same...
   assert approx_equal(
     uc.distance(col(site_proxy.value), col(sc[2].site)), 0, eps=1e-15)
   #rotation happens around the center of gravity
   assert approx_equal(
     uc.distance(col((0,1,1)), col(sc[2].site)), 0, eps=1e-15)
 
-class rigid_rotable(object):
+class rigid_rotatable(object):
   def __init__(self):
     self.size_value = 9
     self.rx = pi
@@ -151,7 +151,7 @@ class rigid_rotable(object):
                     value=0, variable=False)
     r_z = r.add(constraints.independent_scalar_parameter,
                     value=0, variable=False)
-    rg = r.add(constraints.rigid_rotable_expandable_group,
+    rg = r.add(constraints.rigid_rotatable_expandable_group,
                   pivot=pivot,
                   size = size,
                   alpha = r_x,
@@ -180,7 +180,7 @@ class rigid_rotable(object):
                     value=pi/2, variable=True)
     r_z = r.add(constraints.independent_scalar_parameter,
                     value=pi/3, variable=True)
-    rg = r.add(constraints.rigid_rotable_expandable_group,
+    rg = r.add(constraints.rigid_rotatable_expandable_group,
                   pivot=pivot,
                   size = size,
                   alpha = r_x,
@@ -277,8 +277,8 @@ class idealised(object):
 
 def run():
   exercise_rigid_site_proxy()
-  exercise_rigid_pivoted_rotable()
-  rigid_rotable().excercise()
+  exercise_rigid_pivoted_rotatable()
+  rigid_rotatable().excercise()
   idealised().excersise()
   print 'OK'
 

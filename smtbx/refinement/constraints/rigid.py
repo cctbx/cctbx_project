@@ -5,19 +5,19 @@ import math
 from scitbx.math import superpose
 from scitbx.array_family import flex
 
-class rigid_pivoted_rotable_group(object):
+class rigid_pivoted_rotatable_group(object):
   """ a set of atoms (rigid body) rides on a pivot atom and rotates around
   the pivot-pivot_neighbour bond, the original geometry is not altered
   """
 
-  def __init__(self, pivot, pivot_neighbour, ind_sequence, sizeable, rotable):
+  def __init__(self, pivot, pivot_neighbour, ind_sequence, sizeable, rotatable):
     if len(ind_sequence) == 0:
       raise InvalidConstraint("at least one atom is expected")
     self.pivot = pivot
     self.pivot_neighbour = pivot_neighbour
     self.indices = ind_sequence
     self.sizeable = sizeable
-    self.rotable = rotable
+    self.rotatable = rotatable
 
   def __eq__(self, other):
     if (self.pivot != other.pivot or\
@@ -31,12 +31,12 @@ class rigid_pivoted_rotable_group(object):
     pivot_sp = reparametrisation.add_new_site_parameter(self.pivot)
     pivot_n_sp = reparametrisation.add_new_site_parameter(self.pivot_neighbour)
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotable)
+                                    value=0, variable=self.rotatable)
     size = reparametrisation.add(_.independent_scalar_parameter,
                                     value=1, variable=self.sizeable)
     scatterers = tuple([scatterers[i] for i in self.indices])
     param = reparametrisation.add(
-      _.rigid_pivoted_rotable_group,
+      _.rigid_pivoted_rotatable_group,
       pivot=pivot_sp,
       pivot_neighbour=pivot_n_sp,
       azimuth=azimuth,
@@ -46,18 +46,18 @@ class rigid_pivoted_rotable_group(object):
       reparametrisation.add_new_site_proxy_parameter(param, i, j)
       reparametrisation.asu_scatterer_parameters[j].site = param
 
-class rigid_rotable_expandable_group(object):
+class rigid_rotatable_expandable_group(object):
   """ a set of atoms rides on a pivot atom, rotates and uniformly
   expands or shrinks
   """
 
-  def __init__(self, center, ind_sequence, sizeable, rotable):
+  def __init__(self, center, ind_sequence, sizeable, rotatable):
     if len(ind_sequence) == 0:
       raise InvalidConstraint("at least one atom is expected")
     self.pivot = center
     self.indices = ind_sequence
     self.sizeable = sizeable
-    self.rotable = rotable
+    self.rotatable = rotatable
 
   def __eq__(self, other):
     if (self.pivot != other.pivot or self.indices != other.indices):
@@ -70,14 +70,14 @@ class rigid_rotable_expandable_group(object):
     size = reparametrisation.add(_.independent_scalar_parameter,
                                     value=1, variable=self.sizeable)
     alpha = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotable)
+                                    value=0, variable=self.rotatable)
     beta = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotable)
+                                    value=0, variable=self.rotatable)
     gamma = reparametrisation.add(_.independent_scalar_parameter,
-                                    value=0, variable=self.rotable)
+                                    value=0, variable=self.rotatable)
     scatterers = tuple([scatterers[i] for i in self.indices])
     param = reparametrisation.add(
-      _.rigid_rotable_expandable_group,
+      _.rigid_rotatable_expandable_group,
       pivot=pivot_sp,
       size=size,
       alpha=alpha,
