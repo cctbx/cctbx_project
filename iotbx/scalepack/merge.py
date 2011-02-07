@@ -80,6 +80,8 @@ class reader(object):
           except KeyboardInterrupt: raise
           except:
             raise FormatError, line_error
+          if (sigma < 0) :
+            continue
           if (i):
             h = [-e for e in h]
             self.anomalous = True
