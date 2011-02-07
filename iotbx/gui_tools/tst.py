@@ -57,6 +57,12 @@ def exercise_reflections () :
     pass
   else :
     raise Exception_expected
+  sca_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/merge.sca",
+    test=os.path.isfile)
+  hkl_handler.save_file(file_name=sca_file)
+  assert (hkl_handler.get_intensity_labels(file_name=sca_file) ==
+          ['i_obs,sigma'])
 
   resolve_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/resolve_1_offset.mtz",

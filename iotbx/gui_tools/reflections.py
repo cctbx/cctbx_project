@@ -163,9 +163,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return []
 
   def get_data_labels (self, *args, **kwds) :
-    miller_arrays = self.get_data_arrays(*args, **kwds)
-    labels = [ array.info().label_string() for array in miller_arrays ]
-    return labels
+    return extract_labels(self.get_data_arrays(*args, **kwds))
 
   def get_amplitude_arrays (self, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
@@ -182,9 +180,18 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return []
 
   def get_amplitude_labels (self, *args, **kwds) :
-    miller_arrays = self.get_amplitude_arrays(*args, **kwds)
-    labels = [ array.info().label_string() for array in miller_arrays ]
-    return labels
+    return extract_labels(self.get_amplitude_arrays(*args, **kwds))
+
+  def get_intensity_arrays (self, *args, **kwds) :
+    miller_arrays = self.get_data_arrays(*args, **kwds)
+    i_arrays = []
+    for array in miller_arrays :
+      if array.is_xray_intensity_array() :
+        i_arrays.append(array)
+    return i_arrays
+
+  def get_intensity_labels (self, *args, **kwds) :
+    return extract_labels(self.get_intensity_arrays(*args, **kwds))
 
   # space-separated, column labels only
   def get_data_labels_for_wizard (self, *args, **kwds) :
@@ -321,6 +328,9 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def check_symmetry_consistency (self) :
     pass
+
+def extract_labels (miller_arrays) :
+  return [ array.info().label_string() for array in miller_arrays ]
 
 def get_fp_fpp_from_sasaki (guess_ha,wavelength):
   from cctbx.eltbx import sasaki
