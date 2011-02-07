@@ -11,11 +11,11 @@ def exercise():
     n += 1
     if (n == 1):
       assert t.label() == "H"
-    elif (n == 96):
+    elif (n == 97):
       assert t.label() == "Cm"
     u = covalent_radii.table(t.label())
     assert u.label() == t.label()
-  assert n == 96
+  assert n == 97
 
 def run():
   exercise()
