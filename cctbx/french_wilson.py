@@ -1,6 +1,5 @@
 import sys, math
 from libtbx.utils import Sorry
-from cctbx.array_family import flex
 import libtbx.phil
 
 # tables borrowed from CTRUNCATE in CCP4
@@ -202,6 +201,7 @@ def f_w_binning(miller_array, max_bins=60, min_bin_size=40, log=sys.stderr):
         break
 
 def french_wilson_scale(miller_array, params=None, log=None):
+  from cctbx.array_family import flex
   if not miller_array.is_xray_intensity_array():
     raise Sorry("Input array appears to be amplitudes. This method is only appropriate for input intensities.")
   if params == None:
