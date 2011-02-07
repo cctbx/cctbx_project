@@ -120,7 +120,6 @@ def interpolate(pt_1, pt_2, delta):
 def fw_acentric(I, sigma_I, mean_intensity) :
   h = (I/sigma_I) - (sigma_I/mean_intensity)
   if (I/sigma_I) < -3.7 or h < -4.0:
-    print >> sys.stderr, "unphys: %f %f %f %f" % (I,sigma_I,mean_intensity,h)
     return -1.0, -1.0, -1.0, -1.0
   else:
     if h < 3.0:
@@ -150,7 +149,6 @@ def fw_acentric(I, sigma_I, mean_intensity) :
 def fw_centric(I, sigma_I, mean_intensity) :
   h = (I/sigma_I) - ( sigma_I/(2.0*mean_intensity) )
   if (I/sigma_I) < -3.7 or h < -4.0:
-    print >> sys.stderr, "unphys: %f %f %f %f" % (I,sigma_I,mean_intensity,h)
     return -1.0, -1.0, -1.0, -1.0
   else:
     if h < 5.0:
@@ -211,6 +209,7 @@ def french_wilson_scale(miller_array, params=None, log=None):
     params = work_params.french_wilson
   if log == None:
     log = sys.stdout
+  rejected = []
   print >> log, "** Scaling input intensities via French-Wilson Method **"
   print >> log, "Trying %d bins..." % params.max_bins
   f_w_binning(miller_array=miller_array,
@@ -242,6 +241,8 @@ def french_wilson_scale(miller_array, params=None, log=None):
           new_sigma_I.append(sigma_J)
           new_F.append(F)
           new_sigma_F.append(sigma_F)
+        else:
+          rejected.append( (index, I, sigma_I, mean_intensity) )
       for I, sigma_I, index in zip(acen.data(), acen.sigmas(), acen.indices()):
         J, sigma_J, F, sigma_F = fw_acentric(
                                    I=I,
@@ -254,11 +255,24 @@ def french_wilson_scale(miller_array, params=None, log=None):
           new_sigma_I.append(sigma_J)
           new_F.append(F)
           new_sigma_F.append(sigma_F)
+        else:
+          rejected.append( (index, I, sigma_I, mean_intensity) )
   f_obs = miller_array.customized_copy(indices=new_indices,
                                        data=new_F,
                                        sigmas=new_sigma_F)
   f_obs.set_observation_type_xray_amplitude()
+  show_rejected_summary(rejected=rejected, log=log)
   return f_obs
+
+def show_rejected_summary(rejected, log=sys.stderr):
+  print >> log, "** Summary or rejected intensities **"
+  print >> log, "-----------------------------------------------------------------"
+  print >> log, "Miller Index  :  Intesity  :  Sigma  :  Bin Mean Intensity"
+  for rej in rejected:
+    print >> log, "%s    %.3f      %.3f    %.3f" % \
+                  (str(rej[0]),rej[1],rej[2],rej[3])
+  print >> log, "-----------------------------------------------------------------"
+  print >> log, "** Total # rejected intensities: %d **" % len(rejected)
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
