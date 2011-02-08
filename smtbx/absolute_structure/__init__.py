@@ -149,9 +149,12 @@ class hooft_analysis(object):
                    + math.exp(log_p_obs_given_gamma_is_minus_1) \
                    + math.exp(log_p_obs_given_gamma_is_0)
     #
-    if p2_denominator == 0: self.p2 = None
+    if p2_denominator == 0: self.p2_true = self.p2_false = None
     else:
-      self.p2 = (math.exp(log_p_obs_given_gamma_is_1)) / p2_denominator
+      self.p2_true = (
+        math.exp(log_p_obs_given_gamma_is_1)) / p2_denominator
+      self.p2_false = (
+        math.exp(log_p_obs_given_gamma_is_minus_1)) / p2_denominator
     self.p3_true = (
       math.exp(log_p_obs_given_gamma_is_1)) / p3_denominator
     self.p3_false = (
@@ -167,6 +170,12 @@ class hooft_analysis(object):
     return -0.5 * flex.sum_sq(x_gamma)
 
   def show(self, out=None):
+
+    def format_p(p_value):
+      if p_value is None: return "n/a"
+      elif p_value >= 1e-2: return "%.3f" %p_value
+      else: return "%.3e" %p_value
+
     if out is None: out=sys.stdout
     print >> out, "Bijvoet pair analysis using %s distribution" %self.distribution
     print >> out, "Bijvoet pairs (all): %i" %self.n_bijvoet_pairs
@@ -175,13 +184,11 @@ class hooft_analysis(object):
       self.n_bijvoet_pairs/self.delta_fo2.customized_copy(
         anomalous_flag=True).complete_set().n_bijvoet_pairs())
     print >> out, "G: %s" %format_float_with_su(self.G, self.sigma_G)
-    if self.p2 is None:
-      print >> out, "P2(true): n/a"
-    else:
-      print >> out,  "P2(true): %.3f" %self.p2
-    print >> out,  "P3(true): %.3f" %self.p3_true
-    print >> out,  "P3(false): %.3f" %self.p3_false
-    print >> out,  "P3(racemic twin): %.3f" %self.p3_racemic_twin
+    print >> out,  "P2(true): %s" %format_p(self.p2_true)
+    print >> out,  "P2(false): %s" %format_p(self.p2_false)
+    print >> out,  "P3(true): %s" %format_p(self.p3_true)
+    print >> out,  "P3(false): %s" %format_p(self.p3_false)
+    print >> out,  "P3(racemic twin): %s" %format_p(self.p3_racemic_twin)
     print >> out, "Hooft y: %s" %format_float_with_su(
       self.hooft_y, self.sigma_y)
 
