@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
@@ -95,11 +96,19 @@ class structure(crystal.special_position_settings):
       space_group_info = self.space_group_info())
 
   def erase_scatterers(self):
+    """Remove all scatterers from structure
+    
+    Returns: None
+    """
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
     self._scattering_type_registry_is_out_of_date = True
 
   def deep_copy_scatterers(self):
+    """Create a deep copy of the structure with all scatterers
+    
+    Returns: cctbx.xray.structure
+    """
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry)
     cp._scatterers = self._scatterers.deep_copy()
@@ -109,6 +118,10 @@ class structure(crystal.special_position_settings):
     return cp
 
   def scatterers(self):
+    """Get all scatterers of the structure
+    
+    Returns: list of cctbx.xray.scatterer
+    """
     return self._scatterers
 
   def set_u_iso(self, value = None, values = None, selection = None):
