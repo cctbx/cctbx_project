@@ -102,9 +102,11 @@ c_zf_sd = [
 master_phil = libtbx.phil.parse("""
   max_bins = 60
     .type = int
+    .short_caption = Max. resolution bins
     .help = '''Maximum number of resolution bins'''
   min_bin_size = 40
     .type = int
+    .short_caption = Minimum bin size
     .help = '''Minimum number of reflections per bin'''
 """)
 
@@ -205,8 +207,7 @@ def french_wilson_scale(miller_array, params=None, log=None):
   if not miller_array.is_xray_intensity_array():
     raise Sorry("Input array appears to be amplitudes. This method is only appropriate for input intensities.")
   if params == None:
-    work_params = master_phil.extract()
-    params = work_params.french_wilson
+    params = master_phil.extract()
   if log == None:
     log = sys.stdout
   rejected = []
@@ -230,6 +231,9 @@ def french_wilson_scale(miller_array, params=None, log=None):
       cen = bin.select_centric()
       acen = bin.select_acentric()
       for I, sigma_I, index in zip(cen.data(), cen.sigmas(), cen.indices()):
+        if (sigma_I <= 0) :
+          rejected.append( (index, I, sigma_I, mean_intensity) )
+          continue
         J, sigma_J, F, sigma_F = fw_centric(
                                    I=I,
                                    sigma_I=sigma_I,
@@ -244,6 +248,9 @@ def french_wilson_scale(miller_array, params=None, log=None):
         else:
           rejected.append( (index, I, sigma_I, mean_intensity) )
       for I, sigma_I, index in zip(acen.data(), acen.sigmas(), acen.indices()):
+        if (sigma_I <= 0) :
+          rejected.append( (index, I, sigma_I, mean_intensity) )
+          continue
         J, sigma_J, F, sigma_F = fw_acentric(
                                    I=I,
                                    sigma_I=sigma_I,
@@ -273,10 +280,3 @@ def show_rejected_summary(rejected, log=sys.stderr):
                   (str(rej[0]),rej[1],rej[2],rej[3])
   print >> log, "-----------------------------------------------------------------"
   print >> log, "** Total # rejected intensities: %d **" % len(rejected)
-
-def reflection_file_server(crystal_symmetry, reflection_files):
-  return reflection_file_utils.reflection_file_server(
-    crystal_symmetry=crystal_symmetry,
-    force_symmetry=True,
-    reflection_files=reflection_files,
-    err=sys.stderr)
