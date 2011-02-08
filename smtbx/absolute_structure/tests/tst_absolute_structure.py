@@ -110,7 +110,8 @@ class hooft_analysis_test_case(test_case):
       assert approx_equal(NPP.correlation.coefficient(), 1, 0.005)
     for analysis in analyses:
       assert approx_equal(analysis.hooft_y, 0, 1e-2)
-      assert approx_equal(analysis.p2, 1)
+      assert approx_equal(analysis.p2_true, 1)
+      assert approx_equal(analysis.p2_false, 0)
       assert approx_equal(analysis.p3_true, 1)
       assert approx_equal(analysis.p3_false, 0)
       assert approx_equal(analysis.p3_racemic_twin, 0)
@@ -138,7 +139,8 @@ class hooft_analysis_test_case(test_case):
       assert approx_equal(NPP.fit.y_intercept(), 0)
     for analysis in analyses:
       assert approx_equal(analysis.hooft_y, 1, 1e-2)
-      assert approx_equal(analysis.p2, 0)
+      assert approx_equal(analysis.p2_true, 0)
+      assert approx_equal(analysis.p2_false, 1)
       assert approx_equal(analysis.p3_true, 0)
       assert approx_equal(analysis.p3_false, 1)
       assert approx_equal(analysis.p3_racemic_twin, 0)
