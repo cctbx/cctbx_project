@@ -113,11 +113,6 @@ master_phil = libtbx.phil.parse("""
 def interpolate(pt_1, pt_2, delta):
   return ( ((1.0-delta)*pt_1) + (delta*pt_2) )
 
-# methods adapted from TRUNCATE in CCP4
-# Copyright (C) 1976 Keith Wilson, Simon French
-#and CTRUNCATE in CCP4
-# Copyright (C) 2006-2008 Norman Stein
-
 def fw_acentric(I, sigma_I, mean_intensity) :
   h = (I/sigma_I) - (sigma_I/mean_intensity)
   if (I/sigma_I) < -3.7 or h < -4.0:
@@ -170,15 +165,18 @@ def fw_centric(I, sigma_I, mean_intensity) :
                             pt_2=c_zf_sd[pt_2],
                             delta=delta) * math.sqrt(sigma_I)
     else:
-      hm2 = 1.0 / (h*h)
-      hm4 = hm2 * hm2
-      hm6 = hm2 * hm4
-      c_1 = math.sqrt(h) * (1.0 - (3.0/8.0)*hm2 - (87.0/128.0)*hm4 - (2889.0/1024.0)*hm6)
-      c_2 = math.sqrt( h * ((1.0/4.0)*hm2 + (15.0/32.0)*hm4 + (273.0/128.0)*hm6) )
-      J = h*sigma_I*(1.0 - (1.0/2.0)*hm2 - (3.0/4.0)*hm4 - 3.0*hm6)
-      sigma_J = 2.0*sigma_I*c_1*c_2
-      F = c_1*math.sqrt(sigma_I)
-      sigma_F = c_2*math.sqrt(sigma_I)
+      #adapted from French-Wilson w/ added x^6 term in the expansion
+      h_2 = 1.0 / (h*h)
+      h_4 = h_2 * h_2
+      h_6 = h_2 * h_4
+      #posterier of F
+      post_F = math.sqrt(h) * (1.0 - (3.0/8.0)*h_2 - (87.0/128.0)*h_4 - (2889.0/1024.0)*h_6)
+      #posterier of sigma_F
+      post_sig_F = math.sqrt( h * ((1.0/4.0)*h_2 + (15.0/32.0)*h_4 + (273.0/128.0)*h_6) )
+      J = h*sigma_I*(1.0 - (1.0/2.0)*h_2 - (3.0/4.0)*h_4 - 3.0*h_6)
+      sigma_J = 2.0*sigma_I*post_F*post_sig_F
+      F = post_F*math.sqrt(sigma_I)
+      sigma_F = post_sig_F*math.sqrt(sigma_I)
   return J, sigma_J, F, sigma_F
 
 def get_mean_intensity(miller_array):
