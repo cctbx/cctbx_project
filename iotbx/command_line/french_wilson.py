@@ -26,7 +26,6 @@ french_wilson {
     .optional = True
     .help = '''Enter a .mtz output name'''
     .style = bold
-  include_scope libtbx.phil.interface.tracking_params
   keep_r_free_flags = True
     .type = bool
     .help = "Keep R-free flag data if present"
