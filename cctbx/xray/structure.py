@@ -97,7 +97,7 @@ class structure(crystal.special_position_settings):
 
   def erase_scatterers(self):
     """Remove all scatterers from structure
-    
+
     Returns: None
     """
     self._scatterers = flex.xray_scatterer()
@@ -106,8 +106,8 @@ class structure(crystal.special_position_settings):
 
   def deep_copy_scatterers(self):
     """Create a deep copy of the structure with all scatterers
-    
-    Returns: cctbx.xray.structure
+
+    Returns: new cctbx.xray.structure
     """
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry)
@@ -119,8 +119,8 @@ class structure(crystal.special_position_settings):
 
   def scatterers(self):
     """Get all scatterers of the structure
-    
-    Returns: list of cctbx.xray.scatterer
+
+    Returns: reference to array of cctbx.xray.scatterer
     """
     return self._scatterers
 
