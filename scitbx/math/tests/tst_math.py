@@ -1916,6 +1916,12 @@ def exercise_interpolation () :
   points = interpolate_catmull_rom_spline(p0, p1, p2, p3, 5)
   assert approx_equal(points[2][0], 5.9044, eps=0.0001)
   assert approx_equal(points[4][2], 0.651, eps=0.0001)
+  p0 = (0, 1)
+  p1 = (0.5, 0.707)
+  p2 = (1, 0)
+  p3 = (-0.5, -0.707)
+  points = interpolate_catmull_rom_spline(p0, p1, p2, p3, 5)
+  assert approx_equal(points[1][1], 0.454, eps=0.0001)
 
 def run():
   exercise_weighted_covariance()

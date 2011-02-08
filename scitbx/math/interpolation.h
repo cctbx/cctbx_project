@@ -11,15 +11,16 @@ namespace scitbx { namespace math {
   // http://en.wikipedia.org/wiki/Cubic_Hermite_spline
   // http://www.mvps.org/directx/articles/catmull
   // XXX: convert to template with arbitary vector dimensionality
-  af::shared< scitbx::vec3<double> > interpolate_catmull_rom_spline (
-    scitbx::vec3<double> const& p0,
-    scitbx::vec3<double> const& p1,
-    scitbx::vec3<double> const& p2,
-    scitbx::vec3<double> const& p3,
+  template <typename PointType>
+  af::shared< PointType > interpolate_catmull_rom_spline (
+    PointType const& p0,
+    PointType const& p1,
+    PointType const& p2,
+    PointType const& p3,
     unsigned n_points)
   {
     SCITBX_ASSERT(n_points >= 1);
-    af::shared< scitbx::vec3<double> > spline(n_points);
+    af::shared< PointType > spline(n_points);
     for (unsigned i = 1; i <= n_points; i++) {
       double t = ((double) i) / n_points;
       double t2 = t * t;
