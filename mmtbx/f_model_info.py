@@ -1,12 +1,10 @@
 from cctbx.array_family import flex
-import math, sys, os, random, re, string
+import sys, re, string
 from libtbx import adopt_init_args
 from mmtbx import bulk_solvent
-from cctbx import xray
 from cctbx.array_family import flex
-from libtbx.str_utils import format_value, show_string
+from libtbx.str_utils import format_value
 from iotbx import data_plots
-from libtbx import group_args
 from cctbx import sgtbx
 
 def _scale_helper(num, den, selection=None, num_num=False):

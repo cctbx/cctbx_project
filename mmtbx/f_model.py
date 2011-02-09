@@ -3,7 +3,7 @@ from __future__ import division
 import mmtbx.f_model_info
 import libtbx.load_env
 from cctbx.array_family import flex
-import math, sys, os, random, re, string
+import math, sys, os
 from cctbx import miller
 from cctbx import adptbx
 from scitbx import lbfgs
@@ -35,8 +35,6 @@ from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling.twin_analyses
 from cctbx import sgtbx
 from mmtbx import map_tools
-from iotbx import data_plots
-import random
 from copy import deepcopy
 from libtbx import group_args
 import mmtbx.scaling.ta_alpha_beta_calc
@@ -45,11 +43,6 @@ if(not libtbx.env.has_module(name="solve_resolve")):
 else:
   import solve_resolve.masks as phenix_masks
 import mmtbx.targets
-
-if(not libtbx.env.has_module(name="phaser")):
-  phaser = None
-else:
-  import phaser.phenix_adaptors.sad_target
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 

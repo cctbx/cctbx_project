@@ -1,11 +1,9 @@
 from libtbx.test_utils import approx_equal
-import libtbx.load_env
-import os, math, time
+import math
 import iotbx.pdb
 from mmtbx.refinement import fit_rotamers
 from scitbx.array_family import flex
 from scitbx import matrix
-import mmtbx.utils
 from cctbx import adptbx
 
 def get_axes_and_atoms_i_seqs(pdb_hierarchy, mon_lib_srv):
