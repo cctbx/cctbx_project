@@ -25,14 +25,13 @@ from cctbx import adptbx
 import boost.python
 import mmtbx
 from libtbx.math_utils import iround
-from libtbx.utils import Sorry, user_plus_sys_time, date_and_time
+from libtbx.utils import user_plus_sys_time, date_and_time
 from libtbx.str_utils import format_value, show_string
 import libtbx.path
 from cStringIO import StringIO
 import iotbx.phil
 from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
-import mmtbx.scaling.twin_analyses
 from cctbx import sgtbx
 from mmtbx import map_tools
 from copy import deepcopy
@@ -42,7 +41,7 @@ if(not libtbx.env.has_module(name="solve_resolve")):
   phenix_masks = None
 else:
   import solve_resolve.masks as phenix_masks
-import mmtbx.targets
+import mmtbx.refinement.targets
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -581,18 +580,6 @@ class manager(manager_mixin):
     else: result = self._wilson_b
     return result
 
-  def twin_test(self, cut_off = 3.5):
-    result = None
-    if(self.f_obs.d_min() < 9.0):
-      result = mmtbx.scaling.twin_analyses.twin_analyses_brief(
-        miller_array = self.f_obs, cut_off = cut_off)
-      if(result): result = "yes"
-      elif(result is None): result = "unknown"
-      elif(not result): result = "no"
-      else: raise Sorry("Twin analysis failed.")
-    if(result is None): result = "unknown"
-    return result
-
   def deep_copy(self):
     selection = flex.bool(self.f_obs.data().size(), True)
     return self.select(selection = selection)
@@ -1034,7 +1021,7 @@ class manager(manager_mixin):
         "Unknown target name: %s" % show_string(self.target_name))
 
   def target_functor(self):
-    return mmtbx.targets.target_functor(manager=self)
+    return mmtbx.refinement.targets.target_functor(manager=self)
 
   def set_target_name(self, target_name):
     if (target_name == "ls"): target_name = "ls_wunit_k1"
@@ -1140,14 +1127,6 @@ class manager(manager_mixin):
   def f_obs_free(self):
     return self.active_arrays.f_obs_free
 
-  def f_obs_scaled_with_k2(self):
-    scale_k2 = self.scale_k2()
-    f_obs = self.f_obs
-    d = f_obs.data() * scale_k2
-    s = f_obs.sigmas()
-    if (s is not None): s = s * scale_k2
-    return f_obs.array(data=d, sigmas=s)
-
   def f_model(self):
     return self.active_arrays.f_model
 
@@ -1173,42 +1152,23 @@ class manager(manager_mixin):
       data       = self.scale_k1_w()*self.f_model_work().data())
 
   def f_star_w_star_obj(self):
-    #XXX why I use self.f_calc and not f_model ????????????????????????????????
     alpha, beta = self.alpha_beta()
     obj = max_lik.f_star_w_star_mu_nu(
-                                 f_obs          = self.f_obs.data(),
-                                 f_model        = flex.abs(self.f_calc().data()),
-                                 alpha          = alpha.data(),
-                                 beta           = beta.data(),
-                                 space_group    = self.f_obs.space_group(),
-                                 miller_indices = self.f_obs.indices())
+      f_obs          = self.active_arrays.f_obs.data(),
+      f_model        = flex.abs(self.f_model().data()),
+      alpha          = alpha.data(),
+      beta           = beta.data(),
+      space_group    = self.active_arrays.f_obs.space_group(),
+      miller_indices = self.active_arrays.f_obs.indices())
     return obj
 
   def f_star_w_star(self):
     obj = self.f_star_w_star_obj()
-    f_star = miller.array(miller_set = self.f_obs,
-                          data       = obj.f_star())
-    w_star = miller.array(miller_set = self.f_obs,
-                          data       = obj.w_star())
+    f_star = miller.array(miller_set = self.active_arrays.f_obs,
+      data = obj.f_star())
+    w_star = miller.array(miller_set = self.active_arrays.f_obs,
+      data = obj.w_star())
     return f_star, w_star
-
-  def f_star_w_star_work(self):
-    assert self.r_free_flags is not None
-    f_star, w_star = self.f_star_w_star()
-    flags = self.r_free_flags.data()
-    if(flags.count(True) > 0):
-       return f_star.select(~flags), w_star.select(~flags)
-    else:
-       return f_star, w_star
-
-  def f_star_w_star_test(self):
-    assert self.r_free_flags is not None
-    f_star, w_star = self.f_star_w_star()
-    flags = self.r_free_flags.data()
-    if(flags.count(True) > 0):
-       return f_star.select(flags), w_star.select(flags)
-    else:
-       return f_star, w_star
 
   def b_cart(self):
     uc = self.f_obs.unit_cell()
@@ -1266,32 +1226,13 @@ class manager(manager_mixin):
   def k_sol_b_sol(self):
     return self.k_sol(), self.b_sol()
 
-  def r_work_per_reflection(self, log=None):
+  def f_obs_vs_f_model(self, log=None):
     if(log is None): log = sys.stdout
-    fo_ma = self.f_obs#_w
-    fm_ma = self.f_model_scaled_with_k1()#_w()
-    fo = flex.abs(fo_ma.data())
-    fm = flex.abs(fm_ma.data())
-    r = flex.abs(fo-fm) / fo * 100.
-    r_overall = flex.sum(flex.abs(fo-fm)) / flex.sum(fo) * 100.
-    sel = flex.sort_permutation(r)
-    fo_ma = fo_ma.select(sel)
-    fm_ma = fm_ma.select(sel)
-    r = r.select(sel)
-    d = fo_ma.d_spacings().data()
-    for i, di, foi, fmi, ri in zip(fo_ma.indices(), d, fo_ma.data(),
-                                flex.abs(fm_ma.data()), r):
-      print >> log, \
-        "%5d%5d%5d RESOL.= %5.2f FOBS= %10.3f FMODEL= %10.3f R(percent)= %7.2f" % \
-        (i[0], i[1], i[2], di, foi, fmi, ri)
-    print >> log, "Rwork = %7.2f"%r_overall
-    sel100 = r < 100.
-    print sel100.count(False), sel100.size(), sel100.count(False)*100/sel100.size()
-    self = self.select(selection = sel100)
-    self.update_solvent_and_scale()
-    print self.r_work()
-    print self.r_free()
-    return self
+    for fo, fm, d in zip(self.active_arrays.f_obs.data(),
+                         abs(self.f_model_scaled_with_k1()),
+                         self.active_arrays.f_obs.d_spacings().data()):
+      print >> log, "Fobe   Fmodel   resolution (A)"
+      print >> log, "%12.3f %12.3f %6.3f"%(fo, fm, d)
 
   #TA alpha beta parameters
   set_sigmaa         = None
