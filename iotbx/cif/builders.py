@@ -119,7 +119,7 @@ if PyCifRW is not None:
 
 class crystal_symmetry_builder:
 
-  def __init__(self, cif_block):
+  def __init__(self, cif_block, strict=False):
     # The order of priority for determining space group is:
     #   sym_ops, hall symbol, H-M symbol, space group number
     sym_ops = cif_block.get('_space_group_symop_operation_xyz',
@@ -157,22 +157,30 @@ class crystal_symmetry_builder:
       if space_group is not None and sg_number not in (None, '?'):
         try: space_group = sgtbx.space_group_info(number=sg_number).group()
         except Exception: pass
-      if space_group is None:
+      if (space_group is None and strict):
         raise RuntimeError(
           "No symmetry instructions could be extracted from the cif block")
-    try:
-      cell_params = [float_from_string(
-        cif_block['_cell_length_%s' %dim]) for dim in ('a','b','c')]
-      for i, angle in enumerate(('alpha','beta','gamma')):
-        cell_angle = cif_block['_cell_angle_%s' %angle]
-        # enumeration default for angles is 90 degrees
-        if cell_angle == '?': cell_params.append(90)
-        else: cell_params.append(float_from_string(cell_angle))
-      unit_cell = uctbx.unit_cell(cell_params)
-    except KeyError:
-      raise RuntimeError("Not all unit cell parameters are given in the cif file")
-    except ValueError:
-      raise RuntimeError("Invalid unit cell parameters are given")
+    items = [cif_block.get("_cell_length_"+s) for s in "abc"]
+    for s in ["alpha", "beta", "gamma"]:
+      item = cif_block.get("_cell_angle_"+s)
+      if (item == "?"):
+        item = "90" # enumeration default for angles is 90 degrees
+      items.append(item)
+    ic = items.count(None)
+    if (ic == 6):
+      if (strict):
+        raise RuntimeError(
+          "Unit cell parameters not found in the cif file")
+      unit_cell = None
+    elif (ic == 0):
+      try:
+        vals = [float_from_string(s) for s in items]
+      except ValueError:
+        raise RuntimeError("Invalid unit cell parameters are given")
+      unit_cell = uctbx.unit_cell(vals)
+    else:
+      raise RuntimeError(
+        "Not all unit cell parameters are given in the cif file")
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
 
