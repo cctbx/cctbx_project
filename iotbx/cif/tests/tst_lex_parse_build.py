@@ -2,7 +2,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from iotbx import cif
 import libtbx.load_env
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import approx_equal, show_diff, Exception_expected
 from cStringIO import StringIO
 import sys
 
@@ -35,13 +35,6 @@ def exercise_miller_arrays_as_cif_block():
   for key in ('_diffrn_refln_intensity_net', '_diffrn_refln_intensity_sigma',
               '_diffrn_refln_intensity_u'):
     assert key in mas_as_cif_block.cif_block.keys()
-
-def exercise():
-  if not cif.has_antlr3:
-    print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
-    return
-  exercise_miller_arrays_as_cif_block()
-  exercise_lex_parse_build()
 
 def exercise_lex_parse_build():
   builders = [cif.builders.cif_model_builder]
@@ -313,6 +306,38 @@ data_global
 _a 'no closing quote
 _b 1
 """
+
+def exercise_partial_crystal_symmetry():
+  def get_inp(u, s):
+    result = ["data_test"]
+    if (u):
+      result.append("_cell_length_a 12.605(3)")
+    if (s):
+      result.append("_symmetry_space_group_name_Hall  '-P 2yn'")
+    return "\n".join(result)
+  def get_cs(input_string):
+    cif_model = cif.reader(input_string=input_string).model()
+    return cif.builders.crystal_symmetry_builder(
+      cif_block=cif_model["test"]).crystal_symmetry
+  cs = get_cs(get_inp(False, False))
+  assert cs.unit_cell() is None
+  assert cs.space_group_info() is None
+  cs = get_cs(get_inp(False, True))
+  assert cs.unit_cell() is None
+  assert str(cs.space_group_info()) == "P 1 21/n 1"
+  try:
+    get_cs(get_inp(True, False))
+  except RuntimeError, e:
+    assert str(e) == "Not all unit cell parameters are given in the cif file"
+  else: raise Exception_expected
+
+def exercise():
+  if not cif.has_antlr3:
+    print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
+    return
+  exercise_miller_arrays_as_cif_block()
+  exercise_lex_parse_build()
+  exercise_partial_crystal_symmetry()
 
 if __name__ == '__main__':
   exercise()
