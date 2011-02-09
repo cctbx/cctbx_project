@@ -136,7 +136,7 @@ class structure(crystal.special_position_settings):
     values -- (optional) an array of double values to set all u_iso of selected scatterers to
     selection -- (optional) an array of bools to select scatterers to be updated with new u_iso values
 
-    Returns: new cctbx.xray.structure
+    Returns: cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -157,7 +157,7 @@ class structure(crystal.special_position_settings):
     values -- (optional) an array of double values to set all b_iso of selected scatterers to
     selection -- (optional) an array of bools to select scatterers to be updated with new b_iso values
 
-    Returns: new cctbx.xray.structure
+    Returns: cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -385,16 +385,16 @@ class structure(crystal.special_position_settings):
     return result
 
   def crystal_density(self):
-    """
-    Value of the diffraction-determined density for the crystal, suitable
+    """Get the value of the diffraction-determined density for the crystal, suitable
     for the CIF item _exptl_crystal_density_diffrn
 
-    Density values calculated from the crystal cell and contents. The
-    units are megagrams per cubic metre (grams per cubic centimetre).
+    Density values are calculated from the crystal cell and contents. The
+    units are megagrams per cubic metre (=grams per cubic centimetre).
 
     Equivalent to:
       1.66042 * _chemical_formula_weight * _cell_formula_units_Z / _cell_volume
 
+    Returns: float
     """
     from cctbx.eltbx import tiny_pse
     numerator = sum([
@@ -404,14 +404,16 @@ class structure(crystal.special_position_settings):
     return 1.66042 * numerator/denominator
 
   def f_000(self, include_inelastic_part=False):
-    """
-    The effective number of electrons in the crystal unit cell
+    """Get the effective number of electrons in the crystal unit cell
     contributing to F(000), suitable for the CIF item _exptl_crystal_F_000.
 
     According to the CIF definition, this item **may** contain dispersion
-    contributions. Use
-      include_inelastic_part=True
-    to include the contributions due to dispersion.
+    contributions.
+
+    Input:
+    include_inelastic_part -- (optional, default=False) If 'True' contributions due to dispersion are included in F(000).
+
+    Returns: float
     """
     elastic_part = 0
     reg = self.scattering_type_registry()
