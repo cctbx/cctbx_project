@@ -37,10 +37,6 @@ from mmtbx import map_tools
 from copy import deepcopy
 from libtbx import group_args
 import mmtbx.scaling.ta_alpha_beta_calc
-if(not libtbx.env.has_module(name="solve_resolve")):
-  phenix_masks = None
-else:
-  import solve_resolve.masks as phenix_masks
 import mmtbx.refinement.targets
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -935,6 +931,10 @@ class manager(manager_mixin):
     return result
 
   def update_f_part(self, log=None):
+    if(not libtbx.env.has_module(name="solve_resolve")):
+      phenix_masks = None
+    else:
+      import solve_resolve.masks as phenix_masks
     if(log is None): log = sys.stdout
     def show(r_work,r_free,k_part,b_part,prefix,log):
       fmt = "%s %6.4f %6.4f %5.2f %6.2f"

@@ -1,13 +1,9 @@
-from cctbx.array_family import flex
-import sys, re, string
 from libtbx import adopt_init_args
-from mmtbx import bulk_solvent
-from cctbx.array_family import flex
 from libtbx.str_utils import format_value
-from iotbx import data_plots
-from cctbx import sgtbx
+import sys, re, string
 
 def _scale_helper(num, den, selection=None, num_num=False):
+  from cctbx.array_family import flex
   if (selection is not None):
     num = num.select(selection)
     den = den.select(selection)
@@ -52,6 +48,7 @@ class info(object):
                fmodel,
                free_reflections_per_bin = 140,
                max_number_of_bins = 30):
+    from cctbx.array_family import flex
     mp = fmodel.mask_params
     self.target_name = fmodel.target_name
     if(self.target_name == "twin_lsq_f"):
@@ -111,6 +108,8 @@ class info(object):
 
   def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
                                     max_number_of_bins):
+    from mmtbx import bulk_solvent
+    from cctbx.array_family import flex
     if(self.target_name == "twin_lsq_f"):
       return fmodel.statistics_in_resolution_bins()
     result = []
@@ -223,6 +222,7 @@ class info(object):
         format_value("%6.4f", bin.r_free))
 
   def show_remark_3(self, out = None):
+    from cctbx import sgtbx
     if(out is None): out = sys.stdout
     pr = "REMARK   3  "
     print >> out,pr+"REFINEMENT TARGET : %s"%self.target_name.upper()
@@ -345,6 +345,7 @@ class info(object):
     out.flush()
 
   def show_rfactors_targets_scales_overall(self, header = None, out=None):
+    from cctbx import sgtbx
     if(out is None): out = sys.stdout
     out.flush()
     p = " "
@@ -446,6 +447,7 @@ class info(object):
     return export_bins_table_data(self.bins, title)
 
 def show_histogram(data, n_slots, log):
+  from cctbx.array_family import flex
   hm = flex.histogram(data = data, n_slots = n_slots)
   lc_1 = hm.data_min()
   s_1 = enumerate(hm.slots())
@@ -455,6 +457,7 @@ def show_histogram(data, n_slots, log):
     lc_1 = hc_1
 
 def export_bins_table_data (bins, title="Statistics by resolution bin") :
+  from iotbx import data_plots
   table_stats = ["r_work", "r_free", "completeness", "fom_work",
                  "pher_free", "scale_k1_work"]
   labels = ["Resolution", "R-work", "R-free", "Completeness", "FOM",
