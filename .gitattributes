@@ -109,6 +109,7 @@ cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
+cctbx/regression/tst_direct_scaling.py -text
 cctbx/regression/tst_grouped_data.py -text
 cctbx/regression/tst_map_weights_for_symmetry_summation.py svneol=native#text/x-python
 cctbx/regression/tst_math_module.py -text
@@ -163,6 +164,7 @@ cctbx/xray/curvatures_simple.h svneol=native#text/plain
 cctbx/xray/grouped_data.h -text
 cctbx/xray/least-squares.tex -text
 cctbx/xray/raw_multithreading/structure_factors_direct.h -text
+cctbx/xray/structure_factors/from_scatterers_direct_parallel.py -text
 cctbx/xray/weighting_schemes.py -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text

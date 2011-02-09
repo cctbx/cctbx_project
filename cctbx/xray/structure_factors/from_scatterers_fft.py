@@ -10,7 +10,8 @@ class from_scatterers_fft(managed_calculation_base):
 
   def __init__(self, manager,
                      xray_structure,
-                     miller_set):
+                     miller_set,
+                     algorithm="fft"):
     time_all = user_plus_sys_time()
     managed_calculation_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="fft")
