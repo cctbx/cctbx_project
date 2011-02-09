@@ -4,10 +4,9 @@ if(not libtbx.env.has_module(name="phaser")):
 else:
   import phaser.phenix_adaptors.sad_target
 from cctbx.array_family import flex
-import math, sys, os, random, re, string
 from cctbx import xray
 import boost.python
-from libtbx.utils import Sorry, user_plus_sys_time, date_and_time
+from libtbx.utils import Sorry, user_plus_sys_time
 from cctbx.eltbx.xray_scattering import wk1995
 from cctbx import adptbx
 
