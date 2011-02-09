@@ -84,7 +84,7 @@ def exercise_01_general(d_mins = [1.6,],
             assert approx_equal(fmodel.b_sol(),   kb[1], eps = 1.e-6)
             assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
-def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 0.000001):
+def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 0.00001):
   for symbol in sgtbx.bravais_types.acentric + sgtbx.bravais_types.centric:
     space_group_info = sgtbx.space_group_info(symbol = symbol)
     xray_structure = get_xray_structure_random(space_group_info)

@@ -44,8 +44,7 @@ def manager(simulated_annealing_params,
     minimized.monitor.show(message = "LBFGS minimization", log  = out)
   fmodel.update_xray_structure(xray_structure = model.xray_structure,
                                update_f_calc  = True,
-                               update_f_mask  = True,
-                               out            = out)
+                               update_f_mask  = True)
   print_statistics.make_header("simulated annealing", out = out)
   wx = target_weights.xyz_weights_result.wx * \
     target_weights.xyz_weights_result.wx_scale
@@ -112,8 +111,7 @@ def run_simulated_annealing(simulated_annealing_params,
     xray_gradient = cd_manager.xray_gradient
     fmodel.update_xray_structure(xray_structure  = model.xray_structure,
                                         update_f_calc = True,
-                                        update_f_mask = True,
-                                        out           = out)
+                                        update_f_mask = True)
     fmodel.info().show_rfactors_targets_scales_overall(
       header = "2:SA temperature = "+str(sa_temp), out = out)
 

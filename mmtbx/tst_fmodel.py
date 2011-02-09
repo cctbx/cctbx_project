@@ -66,9 +66,9 @@ def test_1(xray_structure):
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
                       assert fmodel.b_iso() == 0.0
-                      assert fmodel.f_obs_w.data().all_eq(
+                      assert fmodel.f_obs_work().data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert fmodel.f_obs_t.data().all_eq(
+                      assert fmodel.f_obs_free().data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_calc_w()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -128,9 +128,9 @@ def test_1(xray_structure):
                       assert fmodel.k_sol_b_sol() == (0.5,35.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
                       assert fmodel.b_iso() == 0.0
-                      assert fmodel.f_obs_w.data().all_eq(
+                      assert fmodel.f_obs_work().data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert fmodel.f_obs_t.data().all_eq(
+                      assert fmodel.f_obs_free().data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_calc_w()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -173,9 +173,9 @@ def test_1(xray_structure):
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
                       assert fmodel.b_iso() == 0.0
-                      assert fmodel.f_obs_w.data().all_eq(
+                      assert fmodel.f_obs_work().data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert fmodel.f_obs_t.data().all_eq(
+                      assert fmodel.f_obs_free().data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_calc_w()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -228,7 +228,7 @@ def test_1(xray_structure):
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
                                               sf_and_grads_accuracy_params = sfg_params)
-                      fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_, update_xray_structure=True)
+                      fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_)
                       fmodel_info = fmodel_1.info()
                       fmodel_info = fmodel_.info()
                       if(fc is not None):
@@ -245,6 +245,8 @@ def test_1(xray_structure):
                                 r_free_flags      = flags.resolution_filter(d_max = d_max_, d_min = d_min_),
                                 target_name       = "ls_wunit_k1",
                                 sf_and_grads_accuracy_params = sfg_params)
+                      if(xrs is not None and algorithm=="fft"):
+                        fmodel_1.update_xray_structure(update_f_calc=True) # XXX may be do it internally in fmodel ?
                       assert fmodel_1.f_obs.data().all_eq(fmodel_2.f_obs.data())
                       assert fmodel_1.r_free_flags.data().all_eq(fmodel_2.r_free_flags.data())
                       assert abs(fmodel_1.f_calc()).data().all_eq(abs(fmodel_2.f_calc()).data())
@@ -252,18 +254,12 @@ def test_1(xray_structure):
                       assert fmodel_1.fb_cart().all_eq(fmodel_2.fb_cart())
                       assert fmodel_1.fb_cart_work().all_eq(fmodel_2.fb_cart_work())
                       assert fmodel_1.fb_cart_t().all_eq(fmodel_2.fb_cart_t())
-                      assert fmodel_1.f_obs_w.data().all_eq(
-                                                     fmodel_2.f_obs_w.data())
-                      assert fmodel_1.f_obs_t.data().all_eq(
-                                                     fmodel_2.f_obs_t.data())
-                      assert abs(fmodel_1.f_calc_w()).data().all_eq(
-                                               abs(fmodel_2.f_calc_w()).data())
-                      assert abs(fmodel_1.f_calc_t()).data().all_eq(
-                                               abs(fmodel_2.f_calc_t()).data())
-                      assert abs(fmodel_1.f_model_work()).data().all_eq(
-                                              abs(fmodel_2.f_model_work()).data())
-                      assert abs(fmodel_1.f_model_free()).data().all_eq(
-                                              abs(fmodel_2.f_model_free()).data())
+                      assert fmodel_1.f_obs_work().data().all_eq(fmodel_2.f_obs_work().data())
+                      assert fmodel_1.f_obs_free().data().all_eq(fmodel_2.f_obs_free().data())
+                      assert abs(fmodel_1.f_calc_w()).data().all_eq(abs(fmodel_2.f_calc_w()).data())
+                      assert abs(fmodel_1.f_calc_t()).data().all_eq(abs(fmodel_2.f_calc_t()).data())
+                      assert abs(fmodel_1.f_model_work()).data().all_eq(abs(fmodel_2.f_model_work()).data())
+                      assert abs(fmodel_1.f_model_free()).data().all_eq(abs(fmodel_2.f_model_free()).data())
                       assert abs(fmodel_1.f_bulk_w()).data().all_eq(abs(fmodel_2.f_bulk_w()).data())
                       assert abs(fmodel_1.f_bulk_t()).data().all_eq(abs(fmodel_2.f_bulk_t()).data())
                       assert fmodel_1.figures_of_merit() .all_approx_equal(fmodel_2.figures_of_merit() )

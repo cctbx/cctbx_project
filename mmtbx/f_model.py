@@ -1,11 +1,6 @@
 from __future__ import division
 
 import libtbx.load_env
-if (not libtbx.env.has_module(name="phaser")):
-  phaser = None
-else:
-  import phaser.phenix_adaptors.sad_target
-
 from cctbx.array_family import flex
 import math, sys, os, random, re, string
 from cctbx import miller
@@ -18,7 +13,6 @@ from cctbx import xray
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
 from mmtbx.scaling.sigmaa_estimation import sigmaa_estimator
-from cctbx.eltbx.xray_scattering import wk1995
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from cctbx import miller
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
@@ -49,6 +43,12 @@ if(not libtbx.env.has_module(name="solve_resolve")):
   phenix_masks = None
 else:
   import solve_resolve.masks as phenix_masks
+import mmtbx.targets
+
+if(not libtbx.env.has_module(name="phaser")):
+  phaser = None
+else:
+  import phaser.phenix_adaptors.sad_target
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -89,6 +89,45 @@ def show_times(out = None):
   print >> out, "    TOTAL for micro-tasks          = %-7.2f" % total
   return total
 
+class active_arrays(object):
+
+  def __init__(self,
+               core,
+               f_obs,
+               r_free_flags,
+               hl_coeffs=None,
+               core_twin=None,
+               twin_fraction=None):
+    adopt_init_args(self, locals())
+    self.work_sel = ~self.r_free_flags.data()
+    self.free_sel = self.r_free_flags.data()
+    if(self.free_sel.all_ne(True)): self.free_sel = ~self.free_sel
+    self.d_spacings = self.f_obs.d_spacings().data()
+    self.d_spacings_work = self.d_spacings.select(self.work_sel)
+    self.d_spacings_free = self.d_spacings.select(self.free_sel)
+    self._update_derived_arrays()
+
+  def _update_derived_arrays(self):
+    if(self.core_twin is None):
+      self.f_model = self.core.f_model
+    else:
+      self.f_model = self.f_obs.array(data =
+        mmtbx.utils.apply_twin_fraction(
+          amplitude_data_part_one = flex.abs(self.core.f_model.data()),
+          amplitude_data_part_two = flex.abs(self.core_twin.f_model.data()),
+          twin_fraction           = self.twin_fraction))
+    self.f_model_work = self.f_model.select(self.work_sel)
+    self.f_model_free = self.f_model.select(self.free_sel)
+    self.fb_cart_work = self.core.data.f_aniso.select(self.work_sel) #XXX no-twin
+    self.f_obs_work = self.f_obs.select(self.work_sel)
+    self.f_obs_free = self.f_obs.select(self.free_sel)
+
+  def update_core(self, core=None, core_twin=None, twin_fraction=None):
+    if(core is not None): self.core = core
+    if(core_twin is not None): self.core_twin = core_twin
+    if(twin_fraction is not None): self.twin_fraction = twin_fraction
+    if([core, core_twin].count(None)<2): self._update_derived_arrays()
+
 class core(object):
   def __init__(self,
                f_calc      = None,
@@ -99,8 +138,8 @@ class core(object):
                k_part      = 0.,
                b_part      = 0.,
                u_star      = [0,0,0,0,0,0],
-               ss          = None,
-               fmodel      = None):
+               fmodel      = None,
+               ss          = None):
     if(fmodel is not None):
       self.f_calc      = fmodel.f_calc()
       self.f_mask      = fmodel.f_mask()
@@ -110,8 +149,10 @@ class core(object):
       self.k_part      = fmodel.k_part()
       self.b_part      = fmodel.b_part()
       self.u_star      = fmodel.u_star()
-      self.ss          = fmodel.ss
     else: adopt_init_args(self, locals())
+    self.ss = ss
+    if(self.ss is None):
+      self.ss = 1./flex.pow2(self.f_calc.d_spacings().data()) / 4.
     self.data = ext.core(
       f_calc      = self.f_calc.data(),
       f_mask      = self.f_mask.data(),
@@ -156,6 +197,7 @@ class core(object):
         b_part      = self.b_part,
         u_star      = self.u_star,
         ss          = self.ss)
+    return self
 
   def __getstate__(self):
     return {"args": (
@@ -167,7 +209,6 @@ class core(object):
       self.k_part,
       self.b_part,
       self.u_star,
-      self.ss,
       self.fmodel)}
 
   def __setstate__(self, state):
@@ -291,6 +332,10 @@ class manager(manager_mixin):
   def __init__(self,
          f_obs                        = None,
          r_free_flags                 = None,
+         f_mask                       = None,
+         f_part_base                  = None,
+         f_calc                       = None,
+         abcd                         = None,
          b_cart                       = [0.,0.,0.,0.,0.,0.],
          k_sol                        = 0.0,
          b_sol                        = 0.0,
@@ -298,15 +343,9 @@ class manager(manager_mixin):
          b_part                       = 0.0,
          sf_and_grads_accuracy_params = None,
          target_name                  = "ml",
-         abcd                         = None,
          alpha_beta_params            = None,
          xray_structure               = None,
-         f_mask                       = None,
-         f_part_base                  = None,
-         f_calc                       = None,
          mask_params                  = None,
-         trust_xray_structure         = False,
-         update_xray_structure        = True,
          use_f_model_scaled           = False,
          mask_manager                 = None,
          twin_law                     = None,
@@ -314,29 +353,17 @@ class manager(manager_mixin):
          max_number_of_bins           = 30,
          filled_f_obs_selection       = None,
          _target_memory               = None):
-    if(twin_law is not None):
-      target_name = "twin_lsq_f"
-    self.core = None
-    self.core_twin_mate = None
+    if(twin_law is not None): target_name = "twin_lsq_f"
+    self.active_arrays = None
     self.twin_law = twin_law
     self.twin_law_str = twin_law
     self.twin_fraction = twin_fraction
     self.f_obs = f_obs
-    self.twin_set = None
-    if(self.twin_law is not None):
-      twin_law_xyz = sgtbx.rt_mx(symbol=self.twin_law, r_den=12, t_den=144)
-      twin_law_matrix = twin_law_xyz.as_double_array()[0:9]
-      twin_mi = mmtbx.utils.create_twin_mate(
-        miller_indices  = self.f_obs.indices(),
-        twin_law_matrix = twin_law_matrix)
-      self.twin_set = self.f_obs.customized_copy(
-        indices = twin_mi,
-        crystal_symmetry = self.f_obs.crystal_symmetry())
-    self.update_r_free_flags(r_free_flags)
-    self.d_spacings = self.f_obs.d_spacings().data()
-    self.d_spacings_w = self.d_spacings.select(self.work)
-    self.d_spacings_t = self.d_spacings.select(self.test)
-    self.ss = 1./flex.pow2(self.d_spacings) / 4.
+    self.twin_set = self._set_twin_set()
+    self.r_free_flags = r_free_flags
+    if(self.r_free_flags is None):
+      self.r_free_flags = self.f_obs.array(
+        data = flex.bool(self.f_obs.data().size(),False))
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
     if(alpha_beta_params is None):
@@ -347,7 +374,6 @@ class manager(manager_mixin):
     if(self.filled_f_obs_selection is not None):
       self.filled_f_obs_selection.size() == f_obs.data().size()
     assert f_obs.is_real_array()
-    self.r_free_flags      = None
     self.sfg_params = sf_and_grads_accuracy_params
     self.abcd              = abcd
     self.alpha_beta_params = alpha_beta_params
@@ -360,65 +386,46 @@ class manager(manager_mixin):
     else:
        self.mask_params = mmtbx.masks.mask_master_params.extract()
     if(r_free_flags is not None):
-       assert r_free_flags.indices().all_eq(self.f_obs.indices())
-       self.update_r_free_flags(r_free_flags)
-    self.f_obs_w = self.f_obs.select(self.work)
-    self.f_obs_t = self.f_obs.select(self.test)
+      assert r_free_flags.indices().all_eq(self.f_obs.indices())
     self.uc = self.f_obs.unit_cell()
+    if(f_part_base is None):
+      assert k_part == 0 and b_part == 0
+      f_part_base = self.f_obs.array(
+        data = flex.complex_double(self.f_obs.data().size(),0+0j))
     if(self.xray_structure is None):
-       assert [f_calc, f_mask].count(None) == 0
-       assert f_mask.is_complex_array()
-       assert f_calc.is_complex_array()
-       assert f_mask.indices().all_eq(self.f_obs.indices())
-       assert f_calc.indices().all_eq(self.f_obs.indices())
-       if(f_part_base is None):
-         assert k_part == 0 and b_part == 0
-         f_part_base = self.f_obs.array(
-           data = flex.complex_double(self.f_obs.data().size(),0+0j))
-       self.update_core(f_calc       = f_calc,
-                        f_mask       = f_mask,
-                        k_sol        = k_sol,
-                        b_sol        = b_sol,
-                        f_part_base  = f_part_base,
-                        k_part       = k_part,
-                        b_part       = b_part,
-                        b_cart       = b_cart)
+      assert [f_calc, f_mask].count(None) == 0
+      assert f_mask.is_complex_array()
+      assert f_calc.is_complex_array()
+      assert f_mask.indices().all_eq(self.f_obs.indices())
+      assert f_calc.indices().all_eq(self.f_obs.indices())
+      f_calc_twin = None
+      f_mask_twin = None
     else:
-       if(self.mask_manager is None):
-         self.mask_manager = masks.manager(
-           miller_array      = self.f_obs,
-           miller_array_twin = self.twin_set,
-           xray_structure    = self.xray_structure,
-           mask_params       = self.mask_params)
-       if(update_xray_structure):
-          if(f_part_base is None):
-            assert k_part == 0 and b_part == 0
-            f_part_base = self.f_obs.array(
-              data = flex.complex_double(self.f_obs.data().size(),0+0j))
-          self.update_xray_structure(xray_structure = self.xray_structure,
-                                     update_f_calc  = True,
-                                     update_f_mask  = True,
-                                     k_sol          = k_sol,
-                                     b_sol          = b_sol,
-                                     f_part_base    = f_part_base,
-                                     k_part         = k_part,
-                                     b_part         = b_part,
-                                     b_cart         = b_cart)
-       else:
-          if(f_calc is None):
-            f_calc = self.compute_f_calc()
-          if(f_mask is None):
-            f_mask = self.mask_manager.f_mask(
-              xray_structure_new = self.xray_structure,
-              force_update       = True)
-          self.update_core(f_calc      = f_calc,
-                           f_mask      = f_mask,
-                           k_sol       = k_sol,
-                           b_sol       = b_sol,
-                           f_part_base = f_part_base,
-                           k_part      = k_part,
-                           b_part      = b_part,
-                           b_cart      = b_cart)
+      if(self.mask_manager is None):
+        self.mask_manager = masks.manager(
+          miller_array      = self.f_obs,
+          miller_array_twin = self.twin_set,
+          mask_params       = self.mask_params)
+      if(f_calc is None): f_calc = self.compute_f_calc()
+      f_calc_twin = None
+      if(self.twin_set is not None):
+        f_calc_twin = self.compute_f_calc(miller_array = self.twin_set)
+      if(f_mask is None):
+        f_mask = self.mask_manager.f_mask(
+          xray_structure_new = self.xray_structure,
+          force_update       = True)
+      f_mask_twin = self.mask_manager.f_mask_twin()
+    self.update_core(
+      f_calc      = f_calc,
+      f_mask      = f_mask,
+      f_calc_twin = f_calc_twin,
+      f_mask_twin = f_mask_twin,
+      b_cart      = b_cart,
+      k_sol       = k_sol,
+      b_sol       = b_sol,
+      f_part_base = f_part_base,
+      k_part      = k_part,
+      b_part      = b_part)
     assert len(b_cart) == 6
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
@@ -439,7 +446,7 @@ class manager(manager_mixin):
     if (self._structure_factor_gradients_w is None):
       self._structure_factor_gradients_w \
         = cctbx.xray.structure_factors.gradients(
-         miller_set                   = self.f_obs_w,
+         miller_set                   = self.f_obs_work(),
          cos_sin_table                = self.sfg_params.cos_sin_table,
          grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
          quality_factor               = self.sfg_params.quality_factor,
@@ -452,9 +459,24 @@ class manager(manager_mixin):
 
   structure_factor_gradients_w = property(_get_structure_factor_gradients_w)
 
+  def _set_twin_set(self):
+    result = None
+    if(self.twin_law is not None):
+      twin_law_xyz = sgtbx.rt_mx(symbol=self.twin_law, r_den=12, t_den=144)
+      twin_law_matrix = twin_law_xyz.as_double_array()[0:9]
+      twin_mi = mmtbx.utils.create_twin_mate(
+        miller_indices  = self.f_obs.indices(),
+        twin_law_matrix = twin_law_matrix)
+      result = self.f_obs.customized_copy(
+        indices = twin_mi,
+        crystal_symmetry = self.f_obs.crystal_symmetry())
+    return result
+
   def compute_f_calc(self, miller_array = None):
     if(miller_array is None): miller_array = self.f_obs
     p = self.sfg_params
+    if(miller_array.indices().size()==0):
+      raise RuntimeError("Empty miller_array.")
     return miller_array.structure_factors_from_scatterers(
       xray_structure               = self.xray_structure,
       algorithm                    = p.algorithm,
@@ -466,18 +488,8 @@ class manager(manager_mixin):
       wing_cutoff                  = p.wing_cutoff,
       exp_table_one_over_step_size = p.exp_table_one_over_step_size).f_calc()
 
-  def k_part(self):
-    return self.core.data.k_part
-
-  def b_part(self):
-    return self.core.data.b_part
-
-  def f_part_base(self):
-    return self.core.f_part_base
-
-
   def update_twin_fraction(self): # XXX
-    if(self.twin_law is None): return
+    if(self.twin_set is None): return
     tfb = self.twin_fraction
     r_work = self.r_work()
     ks_best = self.k_sol()
@@ -490,21 +502,19 @@ class manager(manager_mixin):
           tf_best = tfb
           while twin_fraction <= 1.0:
             r_work_= abs(bulk_solvent.r_factor(
-              self.f_obs_w.data(),
-              self.core.f_model.select(self.work).data(),
-              self.core_twin_mate.f_model.select(self.work).data(),
+              self.f_obs_work().data(),
+              self.active_arrays.core.data.f_model.select(self.active_arrays.work_sel),
+              self.active_arrays.core_twin.data.f_model.select(self.active_arrays.work_sel),
               twin_fraction))
             if(r_work_ < r_work):
               r_work = r_work_
               tf_best = twin_fraction
             twin_fraction += 0.01
-          self.update(twin_fraction = tf_best)
-          #
-          self.core.update(k_sol=ks, b_sol=bs)
-          self.core_twin_mate.update(k_sol=ks, b_sol=bs)
-          r_work_= abs(bulk_solvent.r_factor(self.f_obs_w.data(),
-            self.core.f_model.data().select(self.work),
-            self.core_twin_mate.f_model.data().select(self.work),
+          self.update(twin_fraction = tf_best, k_sol=ks, b_sol=bs)
+          r_work_= abs(bulk_solvent.r_factor(
+            self.f_obs_work().data(),
+            self.active_arrays.core.data.f_model.select(self.active_arrays.work_sel),
+            self.active_arrays.core_twin.data.f_model.select(self.active_arrays.work_sel),
             self.twin_fraction))
           if(r_work_ < r_work):
             r_work = r_work_
@@ -519,9 +529,9 @@ class manager(manager_mixin):
     tf_best = self.twin_fraction
     while twin_fraction <= 1.0:
       r_work_= abs(bulk_solvent.r_factor(
-        self.f_obs_w.data(),
-        self.core.f_model.select(self.work).data(),
-        self.core_twin_mate.f_model.select(self.work).data(),
+        self.f_obs_work().data(),
+        self.active_arrays.core.data.f_model.select(self.active_arrays.work_sel),
+        self.active_arrays.core_twin.data.f_model.select(self.active_arrays.work_sel),
         twin_fraction))
       if(r_work_ < r_work):
         r_work = r_work_
@@ -529,94 +539,8 @@ class manager(manager_mixin):
       twin_fraction += 0.001
     self.update(twin_fraction = tf_best)
 
-
-  def update_core(self, f_calc      = None,
-                        f_mask      = None,
-                        f_calc_twin = None,
-                        f_mask_twin = None,
-                        b_cart      = None,
-                        u_star      = None,
-                        k_sol       = None,
-                        b_sol       = None,
-                        f_part_base = None,
-                        k_part      = None,
-                        b_part      = None):
-    if(b_cart is not None):# XXX
-      u_star = adptbx.u_cart_as_u_star(
-        self.f_obs.unit_cell(),adptbx.b_as_u(b_cart))
-    if(self.core is None):
-      self.core = core(
-        f_calc      = f_calc,
-        f_mask      = f_mask,
-        k_sol       = k_sol,
-        b_sol       = b_sol,
-        f_part_base = f_part_base,
-        k_part      = k_part,
-        b_part      = b_part,
-        u_star      = u_star,
-        ss          = self.ss)
-    else:
-      self.core.update(
-        f_calc      = f_calc,
-        f_mask      = f_mask,
-        k_sol       = k_sol,
-        b_sol       = b_sol,
-        u_star      = u_star,
-        f_part_base = f_part_base,
-        k_part      = k_part,
-        b_part      = b_part)
-    self._f_model      = self.core.f_model
-    self._f_model_work = self.core.f_model.select(self.work)
-    self._f_model_free = self.core.f_model.select(self.test)
-    self._fb_cart_work = self.core.data.f_aniso.select(self.work)
-    if(self.twin_law is not None):
-      if(f_part_base is None):
-        assert [k_part,b_part].count(None) == 2
-        f_part_base = self.f_obs.array(
-          data = flex.complex_double(self.f_obs.data().size(),0+0j))
-      if(self.core_twin_mate is None):
-        f_calc_twin_mate = self.compute_f_calc(miller_array = self.twin_set)
-        f_mask_twin_mate = self.mask_manager.f_mask(twin=True)
-        self.core_twin_mate = core(
-          f_calc      = f_calc_twin_mate,
-          f_mask      = f_mask_twin_mate,
-          u_star      = u_star,
-          k_sol       = k_sol,
-          b_sol       = b_sol,
-          f_part_base = f_part_base,
-          k_part      = k_part,
-          b_part      = b_part,
-          ss          = self.ss)
-      else:
-        self.core_twin_mate.update(
-          f_calc      = f_calc_twin,
-          f_mask      = f_mask_twin,
-          u_star      = u_star,
-          k_sol       = k_sol,
-          b_sol       = b_sol,
-          f_part_base = f_part_base,
-          k_part      = k_part,
-          b_part      = b_part)
-      self._f_model_work_twin_mate = self.core_twin_mate.f_model.select(self.work)
-      self._f_model_free_twin_mate = self.core_twin_mate.f_model.select(self.test)
-      self._f_model = self.f_obs.array(data =
-        mmtbx.utils.apply_twin_fraction(
-          amplitude_data_part_one = flex.abs(self._f_model.data()),
-          amplitude_data_part_two = flex.abs(self.core_twin_mate.f_model.data()),
-          twin_fraction           = self.twin_fraction))
-      self._f_model_work = self.f_obs_w.array(data =
-        mmtbx.utils.apply_twin_fraction(
-          amplitude_data_part_one = flex.abs(self._f_model_work.data()),
-          amplitude_data_part_two = flex.abs(self._f_model_work_twin_mate.data()),
-          twin_fraction           = self.twin_fraction))
-      self._f_model_free = self.f_obs_t.array(data =
-        mmtbx.utils.apply_twin_fraction(
-          amplitude_data_part_one = flex.abs(self._f_model_free.data()),
-          amplitude_data_part_two = flex.abs(self._f_model_free_twin_mate.data()),
-          twin_fraction           = self.twin_fraction))
-
-  def core_data_work(self):
-    return core(fmodel = self.select(self.work))
+  def core_data_work(self): # XXX WHICH one : twin? non-twin?
+    return core(fmodel = self.select(self.active_arrays.work_sel))
 
   def outlier_selection(self, show = False, log = None):
     if(log is None): log = sys.stdout
@@ -679,7 +603,7 @@ class manager(manager_mixin):
     selection = flex.bool(self.f_obs.data().size(), True)
     return self.select(selection = selection)
 
-  def select(self, selection, update_xray_structure=False):
+  def select(self, selection):
     if (self.abcd is not None):
       abcd = self.abcd.select(selection=selection)
     else:
@@ -693,13 +617,11 @@ class manager(manager_mixin):
     else:
       new_filled_f_obs_selection = \
         self.filled_f_obs_selection.select(selection)
-    if(self.xray_structure is None):
-      xrs = None
-    else:
-      xrs = self.xray_structure.deep_copy_scatterers()
     r_free_flags = self.r_free_flags
     if(r_free_flags is not None):
       r_free_flags = self.r_free_flags.select(selection=selection)
+    xrs = self.xray_structure
+    if(xrs is not None): xrs = self.xray_structure.deep_copy_scatterers()
     result = manager(
       f_obs                        = self.f_obs.select(selection=selection),
       r_free_flags                 = r_free_flags,
@@ -720,8 +642,6 @@ class manager(manager_mixin):
       mask_manager                 = new_mask_manager,
       twin_law                     = self.twin_law,
       twin_fraction                = self.twin_fraction,
-      trust_xray_structure         = True,
-      update_xray_structure        = update_xray_structure,
       max_number_of_bins           = self.max_number_of_bins,
       filled_f_obs_selection       = new_filled_f_obs_selection,
       _target_memory               = self._target_memory)
@@ -731,14 +651,11 @@ class manager(manager_mixin):
 
   def resolution_filter(self,
         d_max=0,
-        d_min=0,
-        update_xray_structure=False):
+        d_min=0):
     if(d_min is None): d_min = 0
     if(d_max is None): d_max = 0
     return self.select(
-      selection=self.f_obs.resolution_filter_selection(
-        d_max=d_max, d_min=d_min),
-      update_xray_structure=update_xray_structure)
+      selection=self.f_obs.resolution_filter_selection(d_max=d_max,d_min=d_min))
 
   def apply_back_b_iso(self):
     if(self.xray_structure is None): return
@@ -764,52 +681,115 @@ class manager(manager_mixin):
       self.update_xray_structure(
         xray_structure = self.xray_structure,
         update_f_calc  = True,
-        update_f_mask  = False,
-        out            = None)
+        update_f_mask  = False)
 
   def update_xray_structure(self,
                             xray_structure      = None,
                             update_f_calc       = False,
                             update_f_mask       = False,
-                            force_update_f_mask = False,
-                            out                 = None,
-                            k_sol               = None,
-                            b_sol               = None,
-                            f_part_base         = None,
-                            k_part              = None,
-                            b_part              = None,
-                            b_cart              = None):
-    if (xray_structure is not None):
+                            force_update_f_mask = False):
+    if(xray_structure is not None):
       self.xray_structure = xray_structure
+    if(self.active_arrays.core is None or
+       (self.twin_set is not None)):
+      force_update_f_mask = True
     f_calc = None
+    f_calc_twin = None
     if(update_f_calc):
-       global time_f_calc
-       timer = user_plus_sys_time()
-       assert self.xray_structure is not None
-       f_calc = self.compute_f_calc()
-       time_f_calc += timer.elapsed()
+      f_calc = self.compute_f_calc()
+      if(self.twin_law is not None):
+        f_calc_twin = self.compute_f_calc(miller_array = self.twin_set)
     f_mask = None
+    f_mask_twin = None
     if(update_f_mask):
-       global time_mask
-       timer = user_plus_sys_time()
-       f_mask = self.mask_manager.f_mask(
-         xray_structure_new = self.xray_structure,
-         force_update       = force_update_f_mask)
-       time_mask += timer.elapsed()
-    if([f_calc, f_mask].count(None) == 2): set_core_flag = False
+      f_mask = self.mask_manager.f_mask(
+        xray_structure_new = self.xray_structure,
+        force_update       = force_update_f_mask)
+      f_mask_twin = self.mask_manager.f_mask_twin()
+    if([f_calc, f_mask, f_calc_twin, f_mask_twin].count(None) == 4):
+      set_core_flag = False
     else: set_core_flag = True
-    if(f_calc is None): f_calc = self.f_calc()
-    if(f_mask is None): f_mask = self.f_mask()
+    if(f_calc is None and self.active_arrays.core is not None): f_calc = self.f_calc()
+    if(f_mask is None and self.active_arrays.core is not None): f_mask = self.f_mask()
     if(set_core_flag):
       self.update_core(
         f_calc      = f_calc,
         f_mask      = f_mask,
-        b_cart      = b_cart,
+        f_calc_twin = f_calc_twin,
+        f_mask_twin = f_mask_twin)
+
+  def update_core(self, f_calc      = None,
+                        f_mask      = None,
+                        f_calc_twin = None,
+                        f_mask_twin = None,
+                        b_cart      = None,
+                        u_star      = None,
+                        k_sol       = None,
+                        b_sol       = None,
+                        f_part_base = None,
+                        k_part      = None,
+                        b_part      = None):
+    if(b_cart is not None):# XXX
+      u_star = adptbx.u_cart_as_u_star(
+        self.f_obs.unit_cell(),adptbx.b_as_u(b_cart))
+    core_ = None
+    core_twin_ = None
+    if(self.active_arrays is None):
+      core_ = core(
+        f_calc      = f_calc,
+        f_mask      = f_mask,
         k_sol       = k_sol,
         b_sol       = b_sol,
         f_part_base = f_part_base,
         k_part      = k_part,
+        b_part      = b_part,
+        u_star      = u_star)
+      if(self.twin_set is not None):
+        if(f_part_base is None):
+          assert [k_part,b_part].count(None) == 2
+          f_part_base = self.f_obs.array(
+            data = flex.complex_double(self.f_obs.data().size(),0+0j)) # XXX
+        core_twin_ = core(
+          f_calc      = self.compute_f_calc(miller_array = self.twin_set),
+          f_mask      = self.mask_manager.f_mask_twin(),
+          u_star      = u_star,
+          k_sol       = k_sol,
+          b_sol       = b_sol,
+          f_part_base = f_part_base, # XXX
+          k_part      = k_part,
+          b_part      = b_part)
+      self.active_arrays = active_arrays(
+        core          = core_,
+        core_twin     = core_twin_,
+        f_obs         = self.f_obs,
+        r_free_flags  = self.r_free_flags,
+        hl_coeffs     = self.abcd,
+        twin_fraction = self.twin_fraction)
+    else:
+      core_ = self.active_arrays.core.update(
+        f_calc      = f_calc,
+        f_mask      = f_mask,
+        k_sol       = k_sol,
+        b_sol       = b_sol,
+        u_star      = u_star,
+        f_part_base = f_part_base,
+        k_part      = k_part,
         b_part      = b_part)
+      if(self.twin_set is not None):
+        if(f_part_base is None):
+          assert [k_part,b_part].count(None) == 2
+          f_part_base = self.f_obs.array(
+            data = flex.complex_double(self.f_obs.data().size(),0+0j)) # XXX
+        core_twin_ = self.active_arrays.core_twin.update(
+          f_calc      = f_calc_twin,
+          f_mask      = f_mask_twin,
+          u_star      = u_star,
+          k_sol       = k_sol,
+          b_sol       = b_sol,
+          f_part_base = f_part_base, # XXX
+          k_part      = k_part,
+          b_part      = b_part)
+      self.active_arrays.update_core(core=core_, core_twin=core_twin_, twin_fraction = self.twin_fraction)
 
   def optimize_mask_and_update_solvent_and_scale(
                                 self, params = None, out = None, verbose=-1):
@@ -933,8 +913,7 @@ class manager(manager_mixin):
         xray_structure      = self.xray_structure,
         update_f_calc       = False,
         update_f_mask       = True,
-        force_update_f_mask = True,
-        out                 = None)
+        force_update_f_mask = True)
       rw = self.r_work()
       rf = self.r_free()
       rw_low = self.r_work_low().r_work
@@ -962,8 +941,7 @@ class manager(manager_mixin):
     self.update_xray_structure(xray_structure      = self.xray_structure,
                                update_f_calc       = False,
                                update_f_mask       = True,
-                               force_update_f_mask = True,
-                               out                 = None)
+                               force_update_f_mask = True)
     self.show_mask_optimization_statistics(prefix="Mask optimization: final",
       out = out)
     return True
@@ -1031,7 +1009,7 @@ class manager(manager_mixin):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
     self.update_core()
-    if(self.core_twin_mate is not None): self.update_twin_fraction()
+    if(self.twin_set is not None): self.update_twin_fraction()
     if(params is None): params = bss.master_params.extract()
     if(verbose is not None): params.verbose=verbose
     save_params_bulk_solvent = params.bulk_solvent
@@ -1062,27 +1040,11 @@ class manager(manager_mixin):
         "Unknown target name: %s" % show_string(self.target_name))
 
   def target_functor(self):
-    return target_functor(manager=self)
+    return mmtbx.targets.target_functor(manager=self)
 
   def set_target_name(self, target_name):
     if (target_name == "ls"): target_name = "ls_wunit_k1"
     self._target_name = target_name
-
-  def update_r_free_flags(self, r_free_flags):
-    if(r_free_flags is None):
-      r_free_flags = self.f_obs.array(
-        data=flex.bool(self.f_obs.indices().size(), False))
-    assert r_free_flags.indices().size() == self.f_obs.indices().size()
-    self.r_free_flags = r_free_flags
-    self.work = ~r_free_flags.data()
-    self.test =  r_free_flags.data()
-    if (self.work.count(True) == 0): self.work = ~self.work # XXX BAD
-    if (self.test.count(True) == 0): self.test = ~self.test # XXX BAD
-    self.work_count_true = self.work.count(True)
-    self.test_count_true = self.test.size() - self.work_count_true
-    self.test_count_true = self.test.count(True) # XXX BAD
-    #assert self.work_count_true != 0 XXX fails some tests
-    #assert self.test_count_true != 0
 
   def determine_n_bins(self,
         free_reflections_per_bin,
@@ -1090,8 +1052,8 @@ class manager(manager_mixin):
         min_n_bins=1,
         min_refl_per_bin=100):
     assert free_reflections_per_bin > 0
-    n_refl = self.test.size()
-    n_free = self.test_count_true
+    n_refl = self.active_arrays.free_sel.size()
+    n_free = self.active_arrays.free_sel.count(True)
     n_refl_per_bin = free_reflections_per_bin
     if (n_free != 0):
       n_refl_per_bin *= n_refl / n_free
@@ -1122,10 +1084,8 @@ class manager(manager_mixin):
     if(mask_params is not None):
        self.mask_params = mask_params
     if(f_obs is not None):
-       assert f_obs.data().size() == self.f_obs.data().size()
-       self.f_obs = f_obs
-       self.f_obs_w = self.f_obs.select(self.work)
-       self.f_obs_t = self.f_obs.select(self.test)
+      self.f_obs = f_obs
+      self.update_core()
     if(r_free_flags is not None):
       self.update_r_free_flags(r_free_flags)
     if(sf_and_grads_accuracy_params is not None):
@@ -1137,6 +1097,7 @@ class manager(manager_mixin):
       self.abcd = abcd
     if(twin_fraction is not None):
       self.twin_fraction = twin_fraction
+      self.update_core()
     if(alpha_beta_params is not None):
       self.alpha_beta_params = alpha_beta_params
     if(xray_structure is not None):
@@ -1145,29 +1106,45 @@ class manager(manager_mixin):
                                   update_f_calc  = True)
     return self
 
+  def k_part(self):
+    return self.active_arrays.core.data.k_part
+
+  def b_part(self):
+    return self.active_arrays.core.data.b_part
+
+  def f_part_base(self):
+    return self.active_arrays.core.f_part_base
+
   def f_bulk(self):
-    return miller.array(miller_set = self.f_obs, data = self.core.data.f_bulk)
+    return miller.array(miller_set = self.active_arrays.f_obs,
+      data = self.active_arrays.core.data.f_bulk)
 
   def f_bulk_w(self):
     if(self.r_free_flags.data().count(True) > 0):
-      return self.f_bulk().select(self.work)
+      return self.f_bulk().select(self.active_arrays.work_sel)
     else:
       return self.f_bulk()
 
   def f_bulk_t(self):
     if(self.r_free_flags.data().count(True) > 0):
-      return self.f_bulk().select(self.test)
+      return self.f_bulk().select(self.active_arrays.free_sel)
     else:
       return self.f_bulk()
 
   def fb_cart(self):
-    return self.core.data.f_aniso
+    return self.active_arrays.core.data.f_aniso
 
   def fb_cart_work(self):
-    return self._fb_cart_work
+    return self.active_arrays.fb_cart_work
 
   def fb_cart_t(self):
-    return self.fb_cart().select(self.test)
+    return self.fb_cart().select(self.active_arrays.free_sel)
+
+  def f_obs_work(self):
+    return self.active_arrays.f_obs_work
+
+  def f_obs_free(self):
+    return self.active_arrays.f_obs_free
 
   def f_obs_scaled_with_k2(self):
     scale_k2 = self.scale_k2()
@@ -1178,22 +1155,13 @@ class manager(manager_mixin):
     return f_obs.array(data=d, sigmas=s)
 
   def f_model(self):
-    return self._f_model
+    return self.active_arrays.f_model
 
   def f_model_work(self):
-    return self._f_model_work
+    return self.active_arrays.f_model_work
 
   def f_model_free(self):
-    return self._f_model_free
-
-  def f_model_twin_mate(self):
-    return self.core_twin_mate.f_model
-
-  def f_model_work_twin_mate(self):
-    return self._f_model_work_twin_mate
-
-  def f_model_free_twin_mate(self):
-    return self._f_model_free_twin_mate
+    return self.active_arrays.f_model_free
 
   def f_model_scaled_with_k1(self):
     return miller.array(
@@ -1202,12 +1170,12 @@ class manager(manager_mixin):
 
   def f_model_scaled_with_k1_t(self):
     return miller.array(
-      miller_set = self.f_obs_t,
+      miller_set = self.f_obs_free(),
       data       = self.scale_k1_t()*self.f_model_free().data())
 
   def f_model_scaled_with_k1_w(self):
     return miller.array(
-      miller_set = self.f_obs_w,
+      miller_set = self.f_obs_work(),
       data       = self.scale_k1_w()*self.f_model_work().data())
 
   def f_star_w_star_obj(self):
@@ -1250,18 +1218,19 @@ class manager(manager_mixin):
 
   def b_cart(self):
     uc = self.f_obs.unit_cell()
-    b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(uc,self.core.data.u_star))
+    b_cart = adptbx.u_as_b(
+      adptbx.u_star_as_u_cart(uc, self.active_arrays.core.data.u_star))
     return b_cart
 
   def u_star(self):
-    return self.core.data.u_star
+    return self.active_arrays.core.data.u_star
 
   def b_iso(self):
     b_cart = self.b_cart()
     return (b_cart[0]+b_cart[1]+b_cart[2])/3.0
 
   def f_mask(self):
-    return self.core.f_mask
+    return self.active_arrays.core.f_mask
 
   def f_mask_w(self):
     assert self.r_free_flags is not None
@@ -1278,7 +1247,7 @@ class manager(manager_mixin):
       return self.f_mask()
 
   def f_calc(self):
-    return self.core.f_calc
+    return self.active_arrays.core.f_calc
 
   def f_calc_w(self):
     assert self.r_free_flags is not None
@@ -1295,10 +1264,10 @@ class manager(manager_mixin):
       return self.f_calc()
 
   def k_sol(self):
-    return self.core.data.k_sol
+    return self.active_arrays.core.data.k_sol
 
   def b_sol(self):
-    return self.core.data.b_sol
+    return self.active_arrays.core.data.b_sol
 
   def k_sol_b_sol(self):
     return self.k_sol(), self.b_sol()
@@ -1461,45 +1430,26 @@ class manager(manager_mixin):
       estimation_algorithm = self.alpha_beta_params.estimation_algorithm
     assert estimation_algorithm in ["analytical", "iterative"]
     est_exceptions = []
-    fmat6 = self.resolution_filter(d_max=6.0)
-    for fmodel in [
-          fmat6,
-          self]:
-      ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
-      if (estimation_algorithm == "analytical"):
-        try:
-          alpha, beta = maxlik.alpha_beta_est_manager(
-            f_obs           = fmodel.f_obs,
-            f_calc          = fmodel.f_model_scaled_with_k1(),
-            free_reflections_per_bin = free_reflections_per_bin,
-            flags           = fmodel.r_free_flags.data(),
-            interpolation   = True).alpha_beta()
-          break
-        except KeyboardInterrupt: raise
-        except Exception, e: est_exceptions.append(str(e))
-      else:
-        p = self.alpha_beta_params.sigmaa_estimator
-        try:
-          alpha, beta = sigmaa_estimator(
-            miller_obs=fmodel.f_obs,
-            miller_calc=fmodel.f_model_scaled_with_k1(),
-            r_free_flags=fmodel.r_free_flags,
-            kernel_width_free_reflections=p.kernel_width_free_reflections,
-            kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
-            n_sampling_points=p.number_of_sampling_points,
-            n_chebyshev_terms=p.number_of_chebyshev_terms,
-            use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
-          break
-        except KeyboardInterrupt: raise
-        except Exception, e: est_exceptions.append(str(e))
+    if(estimation_algorithm == "analytical"):
+      alpha, beta = maxlik.alpha_beta_est_manager(
+        f_obs           = self.active_arrays.f_obs,
+        f_calc          = self.f_model_scaled_with_k1(),
+        free_reflections_per_bin = free_reflections_per_bin,
+        flags           = self.active_arrays.r_free_flags.data(),
+        interpolation   = True).alpha_beta()
     else:
-      raise RuntimeError(
-        "Failure estimating alpha, beta coefficients:\n"
-        + est_exceptions[0] + "\n"
-        + "  " + "-"*77 + "\n"
-        + est_exceptions[1])
+      p = self.alpha_beta_params.sigmaa_estimator
+      alpha, beta = sigmaa_estimator(
+        miller_obs=self.active_arrays.f_obs,
+        miller_calc=self.f_model_scaled_with_k1(),
+        r_free_flags=self.active_arrays.r_free_flags,
+        kernel_width_free_reflections=p.kernel_width_free_reflections,
+        kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
+        n_sampling_points=p.number_of_sampling_points,
+        n_chebyshev_terms=p.number_of_chebyshev_terms,
+        use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
     omega = flex.double()
-    for ae,ssi in zip(alpha.data(),ss):
+    for ae,ssi in zip(alpha.data(),self.active_arrays.core.ss):
       if(ae > 0.0):
         coeff = -4./(math.pi**3*ssi)
         tmp = math.log(ae) * coeff
@@ -1516,10 +1466,10 @@ class manager(manager_mixin):
                 selection=None):
     global time_r_factors
     if(type == "work"):
-      f_obs = self.f_obs_w.data()
+      f_obs = self.f_obs_work().data()
       f_model = self.f_model_scaled_with_k1_w().data()
     elif(type == "free"):
-      f_obs = self.f_obs_t.data()
+      f_obs = self.f_obs_free().data()
       f_model = self.f_model_scaled_with_k1_t().data()
     elif(type == "all"):
       f_obs = self.f_obs.data()
@@ -1548,7 +1498,7 @@ class manager(manager_mixin):
       type       = "work",
       d_min      = d_min,
       d_max      = d_max,
-      d_spacings = self.d_spacings_w,
+      d_spacings = self.active_arrays.d_spacings_work,
       selection  = selection)
 
   def r_free(self, d_min = None, d_max = None, selection = None):
@@ -1556,7 +1506,7 @@ class manager(manager_mixin):
       type       = "free",
       d_min      = d_min,
       d_max      = d_max,
-      d_spacings = self.d_spacings_t,
+      d_spacings = self.active_arrays.d_spacings_free,
       selection  = selection)
 
   def r_all(self):
@@ -1583,7 +1533,7 @@ class manager(manager_mixin):
     if self.set_scale_switch is not None:
       if (self.set_scale_switch == 0):
         return _scale_helper(
-          num=self.f_obs_w.data(),
+          num=self.f_obs_work().data(),
           den=flex.abs(self.f_model_work().data()),
           selection=selection)
       if (self.set_scale_switch > 0):
@@ -1593,7 +1543,7 @@ class manager(manager_mixin):
     if self.set_scale_switch is not None:
       if (self.set_scale_switch == 0):
         return _scale_helper(
-          num=self.f_obs_t.data(),
+          num=self.f_obs_free().data(),
           den=flex.abs(self.f_model_free().data()),
           selection=selection)
       if (self.set_scale_switch > 0):
@@ -1601,28 +1551,28 @@ class manager(manager_mixin):
 
   def scale_k2(self, selection = None):
     return _scale_helper(
-      num=flex.abs(self.core.f_model.data()),
-      den=self.f_obs.data(),
+      num=flex.abs(self.active_arrays.f_model.data()),
+      den=self.active_arrays.f_obs.data(),
       selection=selection)
 
   def scale_k2_w(self, selection = None):
     return _scale_helper(
       num=flex.abs(self.f_model_work().data()),
-      den=self.f_obs_w.data(),
+      den=self.f_obs_work().data(),
       selection=selection)
 
   def scale_k2_t(self, selection = None):
     return _scale_helper(
       num=flex.abs(self.f_model_free().data()),
-      den=self.f_obs_t.data(),
+      den=self.f_obs_free().data(),
       selection=selection)
 
   def scale_k3_w(self, selection = None):
     mul_eps_sqrt = flex.sqrt(
-        self.f_obs_w.multiplicities().data().as_double()
-      / self.f_obs_w.epsilons().data().as_double())
+        self.f_obs_work().multiplicities().data().as_double()
+      / self.f_obs_work().epsilons().data().as_double())
     result = _scale_helper(
-      num=self.f_obs_w.data() * mul_eps_sqrt,
+      num=self.f_obs_work().data() * mul_eps_sqrt,
       den=flex.abs(self.f_model_work().data()) * mul_eps_sqrt,
       selection=selection,
       num_num=True)
@@ -1631,10 +1581,10 @@ class manager(manager_mixin):
 
   def scale_k3_t(self, selection = None):
     mul_eps_sqrt = flex.sqrt(
-        self.f_obs_t.multiplicities().data().as_double()
-      / self.f_obs_t.epsilons().data().as_double())
+        self.f_obs_free().multiplicities().data().as_double()
+      / self.f_obs_free().epsilons().data().as_double())
     result = _scale_helper(
-      num=self.f_obs_t.data() * mul_eps_sqrt,
+      num=self.f_obs_free().data() * mul_eps_sqrt,
       den=flex.abs(self.f_model_free().data()) * mul_eps_sqrt,
       selection=selection,
       num_num=True)
@@ -1642,8 +1592,8 @@ class manager(manager_mixin):
     return result**0.5
 
   def r_work_low(self, size=500):
-    sel = self.f_obs_w.sort_permutation()
-    fo = self.f_obs_w.select(sel)
+    sel = self.f_obs_work().sort_permutation()
+    fo = self.f_obs_work().select(sel)
     fm = self.f_model_scaled_with_k1_w().select(sel)
     ds = fo.d_spacings().data()[:size]
     d_min = flex.max(ds)
@@ -1657,15 +1607,15 @@ class manager(manager_mixin):
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()
-    d_max, d_min = self.f_obs_w.d_max_min()
+    d_max, d_min = self.f_obs_work().d_max_min()
     if(d_max < d): d = d_max
     if(d_min > d): d = d_min
-    n_low = self.f_obs_w.resolution_filter(d_min = d, d_max = 999.9).data().size()
+    n_low = self.f_obs_work().resolution_filter(d_min = d, d_max = 999.9).data().size()
     if(n_low > 0):
        r_work_l = self.r_work(d_min = d, d_max = 999.9)
     else:
        r_work_l = None
-    n_high = self.f_obs_w.resolution_filter(d_min = 0.0, d_max = d).data().size()
+    n_high = self.f_obs_work().resolution_filter(d_min = 0.0, d_max = d).data().size()
     if(n_high > 0):
        r_work_h = self.r_work(d_min = 0.0, d_max = d)
     else:
@@ -1701,228 +1651,8 @@ class manager(manager_mixin):
     mtz_object.write(file_name = file_name)
 
   def fill_missing_f_obs(self, fill_mode):
-    assert fill_mode in ["fobs_mean_mixed_with_dfmodel",
-                         "random",
-                         "fobs_mean",
-                         "dfmodel"]
-    bss_params = bss.master_params.extract()
-    bss_params.k_sol_b_sol_grid_search = False
-    bss_params.b_sol_max = 150.0
-    bss_params.number_of_macro_cycles = 1
-    f_model = self.f_model()
-    n_refl_orig = f_model.data().size()
-    complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
-    f_calc_atoms = complete_set.structure_factors_from_scatterers(
-      xray_structure = self.xray_structure).f_calc()
-    f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
-    n_refl_lone = f_calc_atoms_lone.data().size()
-    f_mask = masks.manager(
-      miller_array   = f_calc_atoms,
-      mask_params    = self.mask_params,
-      xray_structure = self.xray_structure).f_mask()
-    f_mask_lone = f_mask.lone_set(other = f_model)
-    ss = 1./flex.pow2(f_mask_lone.d_spacings().data())/4.
-    r_free_flags_lone = f_mask_lone.array(
-      data = flex.bool(f_mask_lone.size(), False))
-    f_model_core = ext.core(
-      f_calc      = f_calc_atoms_lone.data(),
-      f_mask      = f_mask_lone.data(),
-      k_sol       = self.k_sol(),
-      b_sol       = self.b_sol(),
-      f_part_base = f_calc_atoms_lone.data()*0, #XXX
-      k_part      = 0,      #XXX
-      b_part      = 0,      #XXX
-      u_star      = self.u_star(),
-      hkl         = f_calc_atoms_lone.indices(),
-      uc          = f_mask_lone.unit_cell(),
-      ss          = ss)
-    f_obs_orig = self.f_obs.deep_copy()
-    r_free_flags_orig = self.r_free_flags
-    # compose new fileld fmodel
-    filled_f_obs_selection = flex.bool(n_refl_orig, False)
-    f_model_lone = abs(miller.array(
-      miller_set = f_mask_lone,
-      data       = f_model_core.f_model * self.scale_k1()))
-    new_f_obs = self.f_obs.concatenate(other = f_model_lone)
-    new_r_free_flags = self.r_free_flags.concatenate(
-      other = r_free_flags_lone)
-    filled_f_obs_selection = filled_f_obs_selection.concatenate(
-      flex.bool(n_refl_lone, True))
-    new_abcd = None
-    if(self.abcd is not None):
-      new_abcd = self.abcd.customized_copy(
-        indices = new_f_obs.indices(),
-        data = self.abcd.data().concatenate(
-          flex.hendrickson_lattman(n_refl_lone, [0,0,0,0])))
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = self.xray_structure,
-      r_free_flags   = new_r_free_flags,
-      target_name    = "ls_wunit_k1",
-      f_obs          = new_f_obs,
-      abcd           = new_abcd,
-      mask_params    = self.mask_params,
-      k_sol          = self.k_sol(),
-      b_sol          = self.b_sol(),
-      #f_part_base    = self.f_part_base(), #XXX
-      #k_part         = self.k_part(),      #XXX
-      #b_part         = self.b_part(),      #XXX
-      b_cart         = self.b_cart())
-    fmodel.update_solvent_and_scale(params = bss_params, optimize_mask=False)
-    # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
-    alpha, beta = maxlik.alpha_beta_est_manager(
-      f_obs                    = fmodel.f_obs,
-      f_calc                   = fmodel.f_model_scaled_with_k1(),
-      free_reflections_per_bin = 100,
-      flags                    = fmodel.r_free_flags.data(),
-      interpolation            = True).alpha_beta()
-    apply_alpha_sel = flex.bool(n_refl_orig, False).concatenate(
-      flex.bool(n_refl_lone, True)) # assume order did not change
-    assert apply_alpha_sel.size() == fmodel.f_obs.data().size()
-    alpha = alpha.select(apply_alpha_sel)
-    # compose new fileld fmodel
-    f_model_lone = abs(miller.array(
-      miller_set = f_mask_lone,
-      data       = f_model_core.f_model * fmodel.scale_k1()*alpha.data()))
-    new_f_obs = f_obs_orig.concatenate(other = f_model_lone)
-    new_r_free_flags = r_free_flags_orig.concatenate(
-      other = r_free_flags_lone)
-    # XXX implement and use fmodel.customized_copy() instead of creating a new one
-    new_f_obs.set_observation_type_xray_amplitude()
-    assert new_f_obs.data().size() == filled_f_obs_selection.size()
-    #
-    if(fill_mode == "fobs_mean"):
-      sel = new_f_obs.sort_permutation(by_value = "resolution")
-      new_f_obs = new_f_obs.select(selection = sel)
-      new_r_free_flags = new_r_free_flags.select(selection = sel)
-      new_data = flex.double()
-      i_max = new_f_obs.data().size()
-      d_spacings = new_f_obs.d_spacings().data()
-      new_f_obs_data = new_f_obs.data()
-      for i_seq, fo in enumerate(new_f_obs_data):
-        if(filled_f_obs_selection[i_seq]):
-          #
-          x = flex.double()
-          y = flex.double()
-          i = i_seq
-          counter = 0
-          while True:
-            i +=1
-            if i > i_max-1: break
-            if(not filled_f_obs_selection[i]):
-              x.append(d_spacings[i])
-              y.append(new_f_obs_data[i])
-              counter += 1
-            if(counter == 5): break
-          #
-          i = i_seq
-          counter = 0
-          while True:
-            i -=1
-            if i < 0: break
-            if(not filled_f_obs_selection[i]):
-              x.append(d_spacings[i])
-              y.append(new_f_obs_data[i])
-              counter += 1
-            if(counter == 5): break
-          #
-          assert y.size() > 0 and x.size() == y.size()
-          assert x.size() <= 10, x.size()
-          new_data.append( flex.mean(y) )
-        else:
-          new_data.append(fo)
-      new_f_obs._data = new_data
-    if(fill_mode == "random"):
-      new_data = flex.double()
-      for i_seq, fo in enumerate(new_f_obs.data()):
-        if(filled_f_obs_selection[i_seq]):
-          if(fo > 1.):
-            new_data.append( random.randrange(int(fo-fo/2),int(fo+fo/2)) )
-          else: new_data.append( abs(random.random()) )
-        else:
-          new_data.append(fo)
-      new_f_obs._data = new_data
-    if(fill_mode in ["fobs_interpolated_mixed_with_dfmodel",
-                     "fobs_mean_mixed_with_dfmodel"]):
-      sel = new_f_obs.sort_permutation(by_value = "resolution")
-      new_f_obs = new_f_obs.select(selection = sel)
-      new_r_free_flags = new_r_free_flags.select(selection = sel)
-      new_data = flex.double()
-      i_max = new_f_obs.data().size()
-      d_spacings = new_f_obs.d_spacings().data()
-      new_f_obs_data = new_f_obs.data()
-      for i_seq, fo in enumerate(new_f_obs_data):
-        if(filled_f_obs_selection[i_seq]):
-          #
-          x = flex.double()
-          y = flex.double()
-          i = i_seq
-          counter = 0
-          d_i_seq = d_spacings[i_seq]
-          while True:
-            i +=1
-            if i > i_max-1: break
-            if(not filled_f_obs_selection[i]):
-              x.append(d_spacings[i])
-              y.append(new_f_obs_data[i])
-              counter += 1
-            if(counter == 5): break
-            if(abs(d_i_seq-d_spacings[i]) > 0.1): break
-          #
-          i = i_seq
-          counter = 0
-          while True:
-            i -=1
-            if i < 0: break
-            if(not filled_f_obs_selection[i]):
-              x.append(d_spacings[i])
-              y.append(new_f_obs_data[i])
-              counter += 1
-            if(counter == 5): break
-            if(abs(d_i_seq-d_spacings[i]) > 0.1): break
-          #
-          assert x.size() <= 10, x.size()
-          #
-          if(x.size() < 10):
-            i = i_seq
-            j = i_seq
-            while True:
-              i +=1
-              j -=1
-              if(x.size() >= 10): break
-              if((i <= i_max-1 and i >= 0) and filled_f_obs_selection[i] and
-                 abs(d_i_seq-d_spacings[i]) < 0.1):
-                x.append(d_spacings[i])
-                y.append(new_f_obs_data[i])
-              if(x.size() >= 10): break
-              if((j <= i_max-1 and j >= 0) and filled_f_obs_selection[j] and
-                 abs(d_i_seq-d_spacings[j]) < 0.1):
-                x.append(d_spacings[j])
-                y.append(new_f_obs_data[j])
-          #
-          assert y.size() > 0 and x.size() == y.size()
-          assert x.size() == 10, x.size()
-          new_data.append( flex.mean(y) )
-        else:
-          new_data.append(fo)
-      new_f_obs._data = new_data
-    #
-    fmodel_result = mmtbx.f_model.manager(
-      xray_structure         = self.xray_structure,
-      r_free_flags           = new_r_free_flags,
-      target_name            = self.target_name,
-      f_obs                  = new_f_obs,
-      abcd                   = new_abcd,
-      k_sol                  = self.k_sol(),
-      b_sol                  = self.b_sol(),
-      #f_part_base            = self.f_part_base(),
-      #k_part                 = self.k_part(),
-      #b_part                 = self.b_part(),
-      b_cart                 = self.b_cart(),
-      mask_params            = self.mask_params,
-      filled_f_obs_selection = filled_f_obs_selection)
-    fmodel_result.update_solvent_and_scale(params = bss_params,
-      optimize_mask=False)
-    return fmodel_result
+    #XXX ???
+    return mmtbx.utils.fill_missing_f_obs(fmodel=self, fill_mode=fill_mode) #XXX ???
 
   def remove_filled_f_obs(self):
     if(self.filled_f_obs_selection is not None):
@@ -1944,7 +1674,7 @@ class manager(manager_mixin):
     alpha, beta = self.alpha_beta_w()
     scale_manager = bss.uaniso_ksol_bsol_scaling_minimizer(
                self.f_calc_w(),
-               self.f_obs_w,
+               self.f_obs_work(),
                self.f_mask_w(),
                k_initial = 0.,
                b_initial = 0.,
@@ -1967,12 +1697,12 @@ class manager(manager_mixin):
     global time_foms
     timer = user_plus_sys_time()
     result = max_lik.fom_and_phase_error(
-                           f_obs          = self.f_obs.data(),
-                           f_model        = flex.abs(self.core.f_model.data()),
-                           alpha          = alpha.data(),
-                           beta           = beta.data(),
-                           space_group    = self.f_obs.space_group(),
-                           miller_indices = self.f_obs.indices()).fom()
+      f_obs          = self.active_arrays.f_obs.data(),
+      f_model        = flex.abs(self.active_arrays.f_model.data()),
+      alpha          = alpha.data(),
+      beta           = beta.data(),
+      space_group    = self.f_obs.space_group(),
+      miller_indices = self.f_obs.indices()).fom()
     time_foms += timer.elapsed()
     return result
 
@@ -1989,12 +1719,12 @@ class manager(manager_mixin):
     global time_phase_errors
     timer = user_plus_sys_time()
     result = max_lik.fom_and_phase_error(
-                           f_obs          = self.f_obs.data(),
-                           f_model        = flex.abs(self.core.f_model.data()),
-                           alpha          = alpha.data(),
-                           beta           = beta.data(),
-                           space_group    = self.f_obs.space_group(),
-                           miller_indices = self.f_obs.indices()).phase_error()
+      f_obs          = self.active_arrays.f_obs.data(),
+      f_model        = flex.abs(self.active_arrays.f_model.data()),
+      alpha          = alpha.data(),
+      beta           = beta.data(),
+      space_group    = self.f_obs.space_group(),
+      miller_indices = self.f_obs.indices()).phase_error()
     time_phase_errors += timer.elapsed()
     return result
 
@@ -2137,7 +1867,8 @@ class manager(manager_mixin):
       free_reflections_per_bin= self.alpha_beta_params.free_reflections_per_bin
     if(max_number_of_bins is None):
       max_number_of_bins = self.max_number_of_bins
-    return mmtbx.f_model.info(
+    import mmtbx.f_model_info
+    return mmtbx.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins       = max_number_of_bins)
@@ -2146,7 +1877,7 @@ class manager(manager_mixin):
                           n_bins              = 0,
                           out                 = None):
     if(out is None): out = sys.stdout
-    f_obs_w = self.f_obs_w
+    f_obs_w = self.f_obs_work()
     f_obs_w.setup_binner(reflections_per_bin = reflections_per_bin,
                          n_bins              = n_bins)
     fmodel_dc = self.deep_copy()
@@ -2331,390 +2062,6 @@ class manager(manager_mixin):
       b_cart[4],
       b_cart[5]])
 
-  def show_rwork_in_bins(self, reflections_per_bin, title="", log=None):
-    if(log is None): log = sys.stdout
-    print >> log, title
-    fo_w = self.f_obs_w
-    fc_w = self.f_model_scaled_with_k1_w()
-    fo_w.setup_binner(reflections_per_bin = reflections_per_bin)
-    fc_w.use_binning_of(fo_w)
-    for i_bin in fo_w.binner().range_used():
-      sel_w = fo_w.binner().selection(i_bin)
-      sel_fo_w = fo_w.select(sel_w)
-      sel_fc_w = fc_w.select(sel_w)
-      d_range = fo_w.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
-      s_fo_w_d = flex.abs(sel_fo_w.data())
-      s_fc_w_d = flex.abs(sel_fc_w.data())
-      r_work = flex.sum(flex.abs(s_fo_w_d - s_fc_w_d)) / flex.sum(s_fo_w_d)
-      print >>log,"%3d: %-17s %4d %6.4f"%(i_bin,d_range,s_fo_w_d.size(),r_work)
-
-  def show_rwork_and_rfree_in_bins(self,
-        free_reflections_per_bin,
-        title,
-        max_number_of_bins,
-        log):
-    fo_t = self.f_obs_t
-    fc_t = miller.array(miller_set = self.f_obs_t,
-                        data       = self.scale_k1()*self.f_model_free().data())
-    fo_w = self.f_obs_w
-    fc_w = miller.array(miller_set = self.f_obs_w,
-                        data       = self.scale_k1()*self.f_model_work().data())
-    fc_w_not_scale = self.f_model_work()
-    fc_t_not_scale = self.f_model_free()
-    self.f_obs.setup_binner(n_bins=self.determine_n_bins(
-      free_reflections_per_bin=free_reflections_per_bin,
-      max_n_bins=max_number_of_bins))
-    fo_t.use_binning_of(self.f_obs)
-    fc_t.use_binning_of(fo_t)
-    fo_w.use_binning_of(fo_t)
-    fc_w.use_binning_of(fo_t)
-    fc_w_not_scale.use_binning_of(fo_t)
-    if(title is not None):
-      print >> log, title
-    print >> log, \
-    " BIN  RESOLUTION RANGE  |    NWORK NFREE  RWORK   RFREE     Scale_w     Scale_t"
-    fmt = " %s %s  | %s %s %s  %s %s %s"
-    for i_bin in fo_t.binner().range_used():
-      sel_t = fo_t.binner().selection(i_bin)
-      sel_w = fo_w.binner().selection(i_bin)
-      sel_fo_t = fo_t.select(sel_t)
-      sel_fc_t = fc_t.select(sel_t)
-      sel_fo_w = fo_w.select(sel_w)
-      sel_fc_w = fc_w.select(sel_w)
-      sel_fc_w_not_scale = fc_w_not_scale.select(sel_w)
-      sel_fc_t_not_scale = fc_t_not_scale.select(sel_t)
-      d_range = fo_t.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
-      s_fo_w_data = sel_fo_w.data()
-      s_fo_t_data = sel_fo_t.data()
-      s_fc_w_data = sel_fc_w.data()
-      s_fc_t_data = sel_fc_t.data()
-      assert s_fo_w_data.size() == s_fc_w_data.size()
-      if(s_fo_w_data.size() > 0):
-        i_bin        = i_bin
-        d_range      = d_range
-        s_fo_t_d = flex.abs(sel_fo_t.data())
-        s_fc_t_d = flex.abs(sel_fc_t.data())
-        s_fo_w_d = flex.abs(sel_fo_w.data())
-        s_fc_w_d = flex.abs(sel_fc_w.data())
-        s_fc_w_not_scale = flex.abs(sel_fc_w_not_scale.data())
-        s_fc_t_not_scale = flex.abs(sel_fc_t_not_scale.data())
-        n_work       = sel_fo_w.data().size()
-        n_free       = sel_fo_t.data().size()
-        r_free = flex.sum(flex.abs(s_fo_t_d - s_fc_t_d)) / flex.sum(s_fo_t_d)
-        r_work = flex.sum(flex.abs(s_fo_w_d - s_fc_w_d)) / flex.sum(s_fo_w_d)
-        shell_scale_work = _scale_helper(num=s_fo_w_data, den=s_fc_w_not_scale)
-        shell_scale_free = _scale_helper(num=s_fo_t_data, den=s_fc_t_not_scale)
-        print >> log,fmt%(
-        format_value("%3d", i_bin),
-        format_value("%-17s", d_range),
-        format_value("%8d", n_work),
-        format_value("%5d", n_free),
-        format_value("%6.4f", r_work),
-        format_value("%6.4f", r_free),
-        format_value("%11.4f", shell_scale_work),
-        format_value("%11.4f", shell_scale_free))
-
-class phaser_sad_target_functor(object):
-
-  def __init__(self,
-        f_obs,
-        r_free_flags,
-        xray_structure,
-        f_calc,
-        target_memory):
-    self.f_obs = f_obs
-    self.r_free_flags = r_free_flags
-    self.xray_structure = xray_structure
-    self.f_calc = f_calc
-    if (target_memory is None): # XXX could be more elegant!
-      den = self.f_obs.data()
-      num = flex.abs(self.f_calc.data())
-      denom = flex.sum(num*den)
-      numerator = flex.sum(den*den)
-      if (denom == 0):
-        raise RuntimeError("Zero denominator in scale calculation.")
-      previous_overall_scaleK = numerator/denom
-      previous_overall_scaleU = 0.
-      previous_variances = None
-      adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
-        f_obs=f_obs,
-        r_free_flags=r_free_flags,
-        verbose=True)
-      self.refine_sad_object = adaptor.target(
-        xray_structure=xray_structure,
-        previous_overall_scaleK=previous_overall_scaleK,
-        previous_overall_scaleU=previous_overall_scaleU,
-        previous_variances=previous_variances)
-      self.refine_sad_object.set_f_calc(f_calc=f_calc)
-      target_memory = self.target_memory()
-
-    assert len(target_memory) == 4
-    assert target_memory[0] == "ml_sad"
-    previous_overall_scaleK = target_memory[1]
-    previous_overall_scaleU = target_memory[2]
-    previous_variances = target_memory[3]
-    adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
-      f_obs=f_obs,
-      r_free_flags=r_free_flags,
-      verbose=True)
-    self.refine_sad_object = adaptor.target(
-      xray_structure=xray_structure,
-      previous_overall_scaleK=previous_overall_scaleK,
-      previous_overall_scaleU=previous_overall_scaleU,
-      previous_variances=previous_variances)
-    self.refine_sad_object.set_f_calc(f_calc=f_calc)
-    self.refine_sad_object.reject_outliers()
-
-  def prepare_for_minimization(self):
-    rso = self.refine_sad_object
-    rso.refine_variance_terms()
-    self.refined_overall_b_iso = adptbx.u_as_b(
-          rso.refine_sad_instance.get_refined_scaleU())
-    rso.refine_sad_instance.set_scaleU(0.)
-
-  def target_memory(self):
-    rsi = self.refine_sad_object.refine_sad_instance
-    return ("ml_sad", rsi.get_refined_scaleK(),
-                      rsi.get_refined_scaleU(),rsi.get_variance_array())
-
-  def __call__(self, f_calc, compute_gradients):
-    self.refine_sad_object.set_f_calc(f_calc=f_calc)
-    rso = self.refine_sad_object
-    target_work = rso.functional(use_working_set=True)
-    da_db, daa_dbb_dab = rso.derivatives(curvs=True)
-    target_test = rso.functional(use_working_set=False)
-    return xray.targets_common_results(
-      target_per_reflection=flex.double(),
-      target_work=target_work,
-      target_test=target_test,
-      gradients_work=da_db.data(),
-      curvatures_work=daa_dbb_dab.data())
-
-class target_functor(object):
-
-  def __init__(self, manager):
-    self.manager = manager
-    target_name = manager.target_name
-    assert target_name is not None
-    attr = manager.target_attributes()
-    if (target_name == "ml_sad"):
-      if (phaser is None):
-        raise Sorry(
-          "ml_sad target requires phaser extension, which is not available"
-          " in this installation.")
-      self.core = phaser_sad_target_functor(
-        f_obs=manager.f_obs,
-        r_free_flags=manager.r_free_flags,
-        xray_structure=manager.xray_structure,
-        f_calc=manager.f_model(),
-        target_memory=manager._target_memory)
-      manager._target_memory = self.core.target_memory()
-    elif (attr.family == "ml"):
-      if (attr.requires_experimental_phases()):
-        experimental_phases = manager.abcd
-      else:
-        experimental_phases = None
-      self.core = xray.target_functors.max_like(
-        f_obs=manager.f_obs,
-        r_free_flags=manager.r_free_flags,
-        experimental_phases=experimental_phases,
-        alpha_beta=manager.alpha_beta(),
-        scale_factor=manager.scale_ml_wrapper(),
-        integration_step_size=5.0)
-    else:
-      if (attr.pseudo_ml):
-        f_obs, weights = manager.f_star_w_star()
-        weights = weights.data()
-        if   (target_name == "lsm_k1"):
-          scale_factor = 0
-        elif (target_name == "lsm_k2"):
-          scale_factor = 0
-        elif (target_name == "lsm_k1ask3_fixed"):
-          scale_factor = manager.scale_k3_w()
-        elif (target_name == "lsm_k1_fixed"):
-          scale_factor = manager.scale_k1_w()
-        elif (target_name == "lsm_kunit"):
-          scale_factor = 1.0
-        else:
-          raise RuntimeError
-      else:
-        f_obs = manager.f_obs
-        if (target_name.startswith("ls_wunit_")):
-          weights = flex.double(f_obs.data().size(), 1.0)
-          if   (target_name == "ls_wunit_k1"):
-            scale_factor = 0
-          elif (target_name == "ls_wunit_k1_fixed"):
-            scale_factor = manager.scale_k1_w()
-          elif (target_name == "ls_wunit_k2"):
-            scale_factor = 0
-          elif (target_name == "ls_wunit_kunit"):
-            scale_factor = 1.0
-          elif (target_name == "ls_wunit_k1ask3_fixed"):
-            scale_factor = manager.scale_k3_w()
-          else:
-            raise RuntimeError
-        elif (target_name.startswith("ls_wexp_")):
-          weights = ls_sigma_weights(f_obs)
-          if   (target_name == "ls_wexp_k1"):
-            scale_factor = 0
-          elif (target_name == "ls_wexp_k2"):
-            scale_factor = 0
-          elif (target_name == "ls_wexp_kunit"):
-            scale_factor = 1.0
-          else:
-            raise RuntimeError
-        elif (target_name.startswith("ls_wff_")):
-          weights = ls_ff_weights(f_obs, "N", 25.0)
-          if   (target_name == "ls_wff_k1"):
-            scale_factor = 0
-          elif (target_name == "ls_wff_k1_fixed"):
-            scale_factor = manager.scale_k1_w()
-          elif (target_name == "ls_wff_k1ask3_fixed"):
-            scale_factor = manager.scale_k3_w()
-          elif (target_name == "ls_wff_k2"):
-            scale_factor = 0
-          elif (target_name == "ls_wff_kunit"):
-            scale_factor = 1.0
-          else:
-            raise RuntimeError
-        else:
-          raise RuntimeError
-      self.core = xray.target_functors.least_squares(
-        apply_scale_to_f_calc=attr.ls_apply_scale_to_f_calc(),
-        compute_scale_using_all_data=False,
-        f_obs=f_obs,
-        r_free_flags=manager.r_free_flags,
-        weights=weights,
-        scale_factor=scale_factor)
-
-  def prepare_for_minimization(self):
-    if (self.manager.target_name == "ml_sad"):
-      self.core.prepare_for_minimization()
-      self.manager.adopt_external_b_iso_adjustments(
-        overall_b_iso_shift=self.core.refined_overall_b_iso)
-
-  def target_function_is_invariant_under_allowed_origin_shifts(self):
-    return (self.manager.target_name != "mlhl")
-
-  def __call__(self, compute_gradients=False):
-    result = target_result(
-      manager=self.manager,
-      core_result=self.core(
-        f_calc=self.manager.f_model(),
-        compute_gradients=compute_gradients))
-    target_memory = getattr(self.core, "target_memory", None)
-    if (target_memory is not None):
-      self.manager._target_memory = target_memory()
-    return result
-
-class target_result_mixin(object):
-
-  def gradients_wrt_atomic_parameters(self,
-        selection=None,
-        site=False,
-        u_iso=False,
-        u_aniso=False,
-        occupancy=False,
-        tan_b_iso_max=None,
-        u_iso_refinable_params=None):
-    if (tan_b_iso_max is not None and tan_b_iso_max != 0):
-      raise RuntimeError("Not implemented:\n"
-        "  See CVS revision 1.87, 2007/03/03 01:53:05\n"
-        "  method: manager.gradient_wrt_atomic_parameters()")
-    global time_gradients_wrt_atomic_parameters
-    timer = user_plus_sys_time()
-    manager = self.manager
-    xray_structure = manager.xray_structure
-    if (selection is not None):
-      xray_structure = xray_structure.select(selection)
-    d_target_d_f_calc = self.d_target_d_f_calc_work()
-    result = None
-    if (u_aniso):
-      result = manager.structure_factor_gradients_w(
-        u_iso_refinable_params=None,
-        d_target_d_f_calc=d_target_d_f_calc.data(),
-        xray_structure=xray_structure,
-        n_parameters=0,
-        miller_set=d_target_d_f_calc,
-        algorithm=manager.sfg_params.algorithm).d_target_d_u_cart()
-    elif(u_iso):
-      result = manager.structure_factor_gradients_w(
-        u_iso_refinable_params=None,
-        d_target_d_f_calc=d_target_d_f_calc.data(),
-        xray_structure=xray_structure,
-        n_parameters=0,
-        miller_set=d_target_d_f_calc,
-        algorithm=manager.sfg_params.algorithm).d_target_d_u_iso()
-    elif(occupancy):
-      result = manager.structure_factor_gradients_w(
-        u_iso_refinable_params=None,
-        d_target_d_f_calc=d_target_d_f_calc.data(),
-        xray_structure=xray_structure,
-        n_parameters=0,
-        miller_set=d_target_d_f_calc,
-        algorithm=manager.sfg_params.algorithm).d_target_d_occupancy()
-    else:
-      result = manager.structure_factor_gradients_w(
-        u_iso_refinable_params=u_iso_refinable_params,
-        d_target_d_f_calc=d_target_d_f_calc.data(),
-        xray_structure=xray_structure,
-        n_parameters=xray_structure.n_parameters(),
-        miller_set=d_target_d_f_calc,
-        algorithm=manager.sfg_params.algorithm)
-    time_gradients_wrt_atomic_parameters += timer.elapsed()
-    return result
-
-  def d_target_d_site_cart(self):
-    manager = self.manager
-    xray.set_scatterer_grad_flags(
-      scatterers=manager.xray_structure.scatterers(),
-      site=True)
-    return flex.vec3_double(
-      self.gradients_wrt_atomic_parameters().packed())
-
-class target_result(target_result_mixin):
-
-  def __init__(self, manager, core_result):
-    self.manager = manager
-    self.core_result = core_result
-
-  def target_per_reflection(self):
-    return self.core_result.target_per_reflection()
-
-  def target_work(self):
-    return self.core_result.target_work()
-
-  def target_test(self):
-    return self.core_result.target_test()
-
-  def d_target_d_f_model_work(self):
-    return self.manager.f_obs_w.array(
-      data=self.core_result.gradients_work())
-
-  def d_target_d_f_calc_work(self):
-    return self.manager.f_obs_w.array(
-      data=self.core_result.gradients_work()
-          *self.manager.fb_cart_work())
-
-
-def ls_ff_weights(f_obs, atom, B):
-  d_star_sq_data = f_obs.d_star_sq().data()
-  table = wk1995(atom).fetch()
-  ff = table.at_d_star_sq(d_star_sq_data) * flex.exp(-B/4.0*d_star_sq_data)
-  weights = 1.0/flex.pow2(ff)
-  return weights
-
-def ls_sigma_weights(f_obs):
-  if(f_obs.sigmas() is not None):
-     sigmas_squared = flex.pow2(f_obs.sigmas())
-  else:
-     sigmas_squared = flex.double(f_obs.data().size(), 1.0)
-  assert sigmas_squared.all_gt(0)
-  weights = 1 / sigmas_squared
-  return weights
-
 def kb_range(x_max, x_min, step):
   x_range = []
   x = x_min
@@ -2730,428 +2077,6 @@ def n_as_s(format, value):
     return (format % value).strip()
   return [(format % v).strip() for v in value]
 
-
-### Information summary holding class with formatted printing functionality ###
-
-class resolution_bin(object):
-  def __init__(self,
-               i_bin         = None,
-               d_range       = None,
-               completeness  = None,
-               alpha_work    = None,
-               beta_work     = None,
-               r_work        = None,
-               r_free        = None,
-               target_work   = None,
-               target_free   = None,
-               n_work        = None,
-               n_free        = None,
-               mean_f_obs    = None,
-               fom_work      = None,
-               scale_k1_work = None,
-               pher_work     = None,
-               pher_free     = None,
-               sigmaa        = None):
-    adopt_init_args(self, locals())
-
-class info(object):
-  def __init__(self,
-               fmodel,
-               free_reflections_per_bin = 140,
-               max_number_of_bins = 30):
-    mp = fmodel.mask_params
-    self.target_name = fmodel.target_name
-    if(self.target_name == "twin_lsq_f"):
-      self.twin_fraction = fmodel.twin_fraction
-      self.twin_law = fmodel.twin_law
-    else:
-      self.twin_fraction = None
-      self.twin_law = None
-    self.r_work = fmodel.r_work()
-    self.r_free = fmodel.r_free()
-    self.r_all = fmodel.r_all()
-    self.target_work = fmodel.target_w()
-    self.target_free = fmodel.target_t()
-    self.overall_scale_k1 = fmodel.scale_k1()
-    self.number_of_test_reflections = fmodel.f_calc_t().data().size()
-    self.number_of_work_reflections = fmodel.f_calc_w().data().size()
-    self.number_of_reflections = fmodel.f_obs.data().size()
-    self.k_sol = fmodel.k_sol()
-    self.b_sol = fmodel.b_sol()
-    self.b_cart = fmodel.b_cart()
-    self.b_iso = fmodel.b_iso()
-    self.mask_solvent_radius = mp.solvent_radius
-    self.mask_shrink_radius = mp.shrink_truncation_radius
-    self.mask_grid_step_factor = mp.grid_step_factor
-    self.ml_phase_error = flex.mean(fmodel.phase_errors())
-    self.ml_coordinate_error = fmodel.model_error_ml()
-    if hasattr(fmodel, "sigmaa") :
-      try :
-        self.sigmaa = fmodel.sigmaa().sigmaa() # miller array
-      except RuntimeError, e :
-        self.sigmaa = None
-    else :
-      self.sigmaa = None
-    self.d_max, self.d_min = fmodel.f_obs.resolution_range()
-    self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
-    self.completeness_d_min_inf = fmodel.f_obs.completeness()
-    f_obs_6 = fmodel.f_obs.resolution_filter(d_min = 6)
-    self.completeness_6_inf = f_obs_6.completeness()
-    self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma(
-      return_none_if_zero_sigmas=True)
-    self.sf_algorithm = fmodel.sfg_params.algorithm
-    alpha_w, beta_w = fmodel.alpha_beta_w()
-    self.alpha_work_min, self.alpha_work_max, self.alpha_work_mean = \
-      alpha_w.data().min_max_mean().as_tuple()
-    self.beta_work_min, self.beta_work_max, self.beta_work_mean = \
-      beta_w.data().min_max_mean().as_tuple()
-    self.fom_work_min, self.fom_work_max, self.fom_work_mean = \
-      fmodel.figures_of_merit_work().min_max_mean().as_tuple()
-    self.pher_work_min, self.pher_work_max, self.pher_work_mean = \
-      fmodel.phase_errors_work().min_max_mean().as_tuple()
-    self.pher_free_min, self.pher_free_max, self.pher_free_mean = \
-      fmodel.phase_errors_test().min_max_mean().as_tuple()
-    self.bins = self.statistics_in_resolution_bins(
-      fmodel = fmodel,
-      free_reflections_per_bin = free_reflections_per_bin,
-      max_number_of_bins = max_number_of_bins)
-
-  def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
-                                    max_number_of_bins):
-    if(self.target_name == "twin_lsq_f"):
-      return fmodel.statistics_in_resolution_bins()
-    result = []
-    target_functor = fmodel.target_functor()
-    target_result = target_functor(compute_gradients=False)
-    tpr = target_result.target_per_reflection()
-    if(tpr.size() != 0):
-      tpr_w = tpr.select(fmodel.work)
-      tpr_t = tpr.select(fmodel.test)
-    fo_t = fmodel.f_obs_t
-    fc_t = fmodel.f_model_scaled_with_k1_t()
-    fo_w = fmodel.f_obs_w
-    fc_w = fmodel.f_model_scaled_with_k1_w()
-    alpha_w, beta_w = fmodel.alpha_beta_w()
-    alpha_t, beta_t = fmodel.alpha_beta_t()
-    pher_w = fmodel.phase_errors_work()
-    pher_t = fmodel.phase_errors_test()
-    fom = fmodel.figures_of_merit_work()
-    fmodel.f_obs.setup_binner(n_bins=fmodel.determine_n_bins(
-      free_reflections_per_bin=free_reflections_per_bin,
-      max_n_bins=max_number_of_bins))
-    fo_t.use_binning_of(fmodel.f_obs)
-    fc_t.use_binning_of(fo_t)
-    fo_w.use_binning_of(fo_t)
-    fc_w.use_binning_of(fo_t)
-    alpha_w.use_binning_of(fo_t)
-    alpha_t.use_binning_of(fo_t)
-    beta_w.use_binning_of(fo_t)
-    beta_t.use_binning_of(fo_t)
-    if hasattr(fmodel, "sigmaa") :
-      try :
-        sigmaa = fmodel.sigmaa().sigmaa()
-      except RuntimeError, e :
-        sigmaa = None
-      else :
-        sigmaa.use_binning_of(fo_t)
-    else :
-      sigmaa = None
-    for i_bin in fo_t.binner().range_used():
-      sel_t = fo_t.binner().selection(i_bin)
-      sel_w = fo_w.binner().selection(i_bin)
-      sel_all = fmodel.f_obs.binner().selection(i_bin)
-      sel_fo_all = fmodel.f_obs.select(sel_all)
-      sel_fo_t = fo_t.select(sel_t)
-      sel_fc_t = fc_t.select(sel_t)
-      sel_fo_w = fo_w.select(sel_w)
-      sel_fc_w = fc_w.select(sel_w)
-      if (tpr.size() == 0):
-        sel_tpr_w = None
-        sel_tpr_t = None
-      else:
-        denom_w = sel_fo_w.data().size()
-        denom_t = sel_fo_t.data().size()
-        if(denom_w != 0):
-           sel_tpr_w = flex.sum(tpr_w.select(sel_w))/denom_w
-        else:
-           sel_tpr_w = flex.sum(tpr_w.select(sel_w))
-        if(denom_t != 0):
-           sel_tpr_t = flex.sum(tpr_t.select(sel_t))/denom_t
-        else:
-           sel_tpr_t = flex.sum(tpr_t.select(sel_t))
-      d_max_,d_min_ = sel_fo_all.d_max_min()
-      completeness = sel_fo_all.completeness(d_max = d_max_)
-      d_range = fo_t.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
-      s_fo_w_d = sel_fo_w.data()
-      s_fc_w_d = sel_fc_w.data()
-      assert s_fo_w_d.size() == s_fc_w_d.size()
-      s_fc_w_d_a = flex.abs(s_fc_w_d)
-      sigmaa_bin = None
-      if (sigmaa is not None) :
-        sigmaa_bin = flex.mean_default(sigmaa.select(sel_all).data(), None)
-      if(s_fo_w_d.size() > 0):
-        bin = resolution_bin(
-          i_bin        = i_bin,
-          d_range      = d_range,
-          completeness = completeness,
-          alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
-          beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
-          r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d, 1),
-          r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data(), 1),
-          target_work  = sel_tpr_w,
-          target_free  = sel_tpr_t,
-          n_work       = sel_fo_w.data().size(),
-          n_free       = sel_fo_t.data().size(),
-          scale_k1_work= _scale_helper(num=s_fo_w_d, den=s_fc_w_d_a),
-          mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
-          fom_work     = flex.mean_default(fom.select(sel_w),None),
-          pher_work    = flex.mean_default(pher_w.select(sel_w),None),
-          pher_free    = flex.mean_default(pher_t.select(sel_t),None),
-          sigmaa       = sigmaa_bin)
-        result.append(bin)
-    return result
-
-  def show_rwork_rfree_number_completeness(self, prefix="", title=None, out = None):
-    if(out is None): out = sys.stdout
-    if(title is not None):
-      print >> out, prefix+title
-    print >> out,\
-      prefix+" BIN  RESOLUTION RANGE  COMPL.    NWORK NFREE   RWORK  RFREE"
-    fmt = " %s %s    %s %s %s  %s %s"
-    for bin in self.bins:
-      print >> out,prefix+fmt%(
-        format_value("%3d", bin.i_bin),
-        format_value("%-17s", bin.d_range),
-        format_value("%4.2f", bin.completeness),
-        format_value("%8d", bin.n_work),
-        format_value("%5d", bin.n_free),
-        format_value("%6.4f", bin.r_work),
-        format_value("%6.4f", bin.r_free))
-
-  def show_remark_3(self, out = None):
-    if(out is None): out = sys.stdout
-    pr = "REMARK   3  "
-    print >> out,pr+"REFINEMENT TARGET : %s"%self.target_name.upper()
-    print >> out,pr
-    print >> out,pr+"DATA USED IN REFINEMENT."
-    print >> out,pr+" RESOLUTION RANGE HIGH (ANGSTROMS) : %s"%format_value("%-8.3f", self.d_min)
-    print >> out,pr+" RESOLUTION RANGE LOW  (ANGSTROMS) : %s"%format_value("%-8.3f", self.d_max)
-    print >> out,pr+" MIN(FOBS/SIGMA_FOBS)              : %s"%format_value("%-6.2f", self.min_f_obs_over_sigma)
-    print >> out,pr+" COMPLETENESS FOR RANGE        (%s) : %-6.2f"%\
-      ("%", self.completeness_in_range*100.0)
-    print >> out,pr+" NUMBER OF REFLECTIONS             : %-10d"%self.number_of_reflections
-    print >> out,pr
-    print >> out,pr+"FIT TO DATA USED IN REFINEMENT."
-    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %s"%format_value("%-6.4f",self.r_all)
-    print >> out,pr+" R VALUE            (WORKING SET) : %s"%format_value("%-6.4f", self.r_work)
-    print >> out,pr+" FREE R VALUE                     : %s"%format_value("%-6.4f", self.r_free)
-    print >> out,pr+" FREE R VALUE TEST SET SIZE   (%s) : %-6.2f"%("%",
-      float(self.number_of_test_reflections)/self.number_of_reflections*100.)
-    print >> out,pr+" FREE R VALUE TEST SET COUNT      : %-10d"%self.number_of_test_reflections
-    print >> out,pr
-    self.show_rwork_rfree_number_completeness(prefix = pr,
-      title = "FIT TO DATA USED IN REFINEMENT (IN BINS).", out = out)
-    print >> out,pr
-    print >> out,pr+"BULK SOLVENT MODELLING."
-    print >> out,pr+" METHOD USED        : FLAT BULK SOLVENT MODEL"
-    print >> out,pr+" SOLVENT RADIUS     : %s"%format_value("%-8.2f", self.mask_solvent_radius)
-    print >> out,pr+" SHRINKAGE RADIUS   : %s"%format_value("%-8.2f", self.mask_shrink_radius)
-    print >> out,pr+" GRID STEP FACTOR   : %s"%format_value("%-8.2f", self.mask_grid_step_factor)
-    print >> out,pr+" K_SOL              : %s"%format_value("%-8.3f", self.k_sol)
-    print >> out,pr+" B_SOL              : %s"%format_value("%-8.3f", self.b_sol)
-    print >> out,pr
-    if(self.twin_fraction is not None):
-      print >> out,pr+"TWINNING INFORMATION."
-      print >> out,pr+" FRACTION: %s"%format_value("%-8.3f", self.twin_fraction)
-      print >> out,pr+" OPERATOR: %s"%\
-        format_value("%-s", sgtbx.change_of_basis_op(self.twin_law).as_hkl())
-    print >> out,pr+"ERROR ESTIMATES."
-    print >> out,pr+" COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %s"%\
-      format_value("%-8.2f", self.ml_coordinate_error)
-    print >> out,pr+" PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %s"%\
-      format_value("%-8.2f", self.ml_phase_error)
-    print >> out,pr
-    print >> out,pr+"OVERALL SCALE FACTORS."
-    print >> out,pr+" SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %s"%\
-      format_value("%-12.4f", self.overall_scale_k1)
-    print >> out,pr+" ANISOTROPIC SCALE MATRIX ELEMENTS (IN CARTESIAN BASIS)."
-    print >> out,pr+"  B11 : %s"%format_value("%-15.4f", self.b_cart[0])
-    print >> out,pr+"  B22 : %s"%format_value("%-15.4f", self.b_cart[1])
-    print >> out,pr+"  B33 : %s"%format_value("%-15.4f", self.b_cart[2])
-    print >> out,pr+"  B12 : %s"%format_value("%-15.4f", self.b_cart[3])
-    print >> out,pr+"  B13 : %s"%format_value("%-15.4f", self.b_cart[4])
-    print >> out,pr+"  B23 : %s"%format_value("%-15.4f", self.b_cart[5])
-    print >> out,pr
-    print >> out,pr+"R FACTOR FORMULA."
-    print >> out,pr+" R = SUM(||F_OBS|-SCALE*|F_MODEL||)/SUM(|F_OBS|)"
-    print >> out,pr
-    print >> out,pr+"TOTAL MODEL STRUCTURE FACTOR (F_MODEL)."
-    print >> out,pr+" F_MODEL = FB_CART * (F_CALC_ATOMS + F_BULK)"
-    print >> out,pr+"  F_BULK = K_SOL * EXP(-B_SOL * S**2 / 4) * F_MASK"
-    print >> out,pr+"  F_CALC_ATOMS = ATOMIC MODEL STRUCTURE FACTORS"
-    print >> out,pr+"  FB_CART = EXP(-H(t) * A(-1) * B * A(-1t) * H)"
-    print >> out,pr+"   A = orthogonalization matrix, H = MILLER INDEX"
-    print >> out,pr+"   (t) = TRANSPOSE, (-1) = INVERSE"
-    print >> out,pr
-    print >> out,pr+"STRUCTURE FACTORS CALCULATION ALGORITHM : %-s"%\
-      self.sf_algorithm.upper()
-    out.flush()
-
-  def show_targets(self, out = None, text = ""):
-    if(out is None): out = sys.stdout
-    part1 = "|-"+text
-    part2 = "-|"
-    n = 79 - len(part1+part2)
-    print >> out, part1 + "-"*n + part2
-    part3 = "| target_work(%s) = %s  r_work = %s  r_free = %s" % (
-      self.target_name,
-      format_value(format="%.6g",  value = self.target_work),
-      format_value(format="%6.4f", value = self.r_work),
-      format_value(format="%6.4f", value = self.r_free))
-    n = 78 - len(str(part3)+"|")
-    print >> out, part3, " "*n +"|"
-    print >> out, "|" +"-"*77+"|"
-    out.flush()
-
-  def _header_resolutions_nreflections(self, header, out):
-    if(header is None): header = ""
-    line1 = "(resolution: "
-    line2 = format_value("%6.2f",self.d_min).strip()
-    line3 = format_value("%6.2f",self.d_max).strip()
-    line4 = " - "
-    line5 = " A; n_refl. = "
-    line6 = format_value("%d",self.number_of_reflections).strip()
-    tl = header+"-"+line1+line2+line4+line3+line5+line6+")"
-    line_len = len("|-"+"|"+tl)
-    fill_len = 80-line_len-1
-    print >> out, "|-"+tl+"-"*(fill_len)+"|"
-    out.flush()
-
-  def _rfactors_and_bulk_solvent_and_scale_params(self, out):
-    out.flush()
-    r_work = format_value("%6.4f",self.r_work).strip()
-    r_free = format_value("%6.4f",self.r_free).strip()
-    scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    k_sol  = format_value("%4.2f",self.k_sol).strip()
-    b_sol  = format_value("%6.2f",self.b_sol).strip()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
-    b_iso  = format_value("%7.2f",self.b_iso).strip()
-    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
-           "   Bsol= "+b_sol+"   scale= "+scale
-    np = 79 - (len(line) + 1)
-    if(np < 0): np = 0
-    print >> out, line + " "*np + "|"
-    print >> out, "| "+"  "*38+"|"
-    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
-    c = ","
-    line4 = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
-    np = 79 - (len(line4) + 1)
-    line4 = line4 + " "*np + "|"
-    print >> out, line4
-    out.flush()
-
-  def show_rfactors_targets_scales_overall(self, header = None, out=None):
-    if(out is None): out = sys.stdout
-    out.flush()
-    p = " "
-    self._header_resolutions_nreflections(header=header, out=out)
-    print >> out, "| "+"  "*38+"|"
-    self._rfactors_and_bulk_solvent_and_scale_params(out=out)
-    err = format_value("%6.2f",self.ml_coordinate_error)
-    print >> out, "| "+"  "*38+"|"
-    line6="| maximum likelihood estimate for coordinate error: "+err+" A"
-    np = 79 - (len(line6) + 1)
-    line6 = line6 + " "*np + "|"
-    print >> out, line6
-    line7="| x-ray target function (%s) for work reflections: %s"% (
-      self.target_name, n_as_s("%15.6f",self.target_work))
-    np = 79 - (len(line7) + 1)
-    line7 = line7 + " "*np + "|"
-    print >> out, line7
-    if(self.twin_fraction is not None):
-      line8="| twin fraction: "+format_value("%-4.2f",self.twin_fraction)+\
-        "  twin operator: "+\
-        format_value("%-s",sgtbx.change_of_basis_op(self.twin_law).as_hkl())
-      np = 79 - (len(line8) + 1)
-      line8 = line8 + " "*np + "|"
-      print >> out, line8
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_rfactors_targets_in_bins(self, out = None):
-    if(out is None): out = sys.stdout
-    print >> out, "|"+"-"*77+"|"
-    print >> out, "| Bin     Resolution   Compl.  No. Refl.    R-factors          Targets        |"
-    print >> out, "|number     range              work test   work   test        work        test|"
-    for bin in self.bins:
-      print >> out, "|%3d: %-17s %4.2f %6d %4d %s %s %s %s|" % (
-        bin.i_bin,
-        bin.d_range,
-        bin.completeness,
-        bin.n_work,
-        bin.n_free,
-        format_value("%6.4f",  bin.r_work),
-        format_value("%6.4f",  bin.r_free),
-        format_value("%11.5g", bin.target_work),
-        format_value("%11.5g", bin.target_free))
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_fom_pher_alpha_beta_in_bins(self, out = None):
-    if(out is None): out = sys.stdout
-    print >> out, "|"+"-"*77+"|"
-    print >> out, "|R-free likelihood based estimates for figures of merit, absolute phase error,|"
-    print >> out, "|and distribution parameters alpha and beta (Acta Cryst. (1995). A51, 880-887)|"
-    print >> out, "|"+" "*77+"|"
-    print >> out, "| Bin     Resolution      No. Refl.   FOM  Phase Scale    Alpha        Beta   |"
-    print >> out, "|  #        range        work  test        error factor                       |"
-    for bin in self.bins:
-      print >> out, "|%3d: %-17s%6d%6d%s%s%s%s%s|" % (
-        bin.i_bin,
-        bin.d_range,
-        bin.n_work,
-        bin.n_free,
-        format_value("%6.2f",  bin.fom_work),
-        format_value("%7.2f",  bin.pher_work),
-        format_value("%7.2f",  bin.scale_k1_work),
-        format_value("%9.2f",  bin.alpha_work),
-        format_value("%14.2f", bin.beta_work))
-    print >>out, "|alpha:            min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.alpha_work_min),
-      format_value("%16.2f", self.alpha_work_max),
-      format_value("%13.2f", self.alpha_work_mean))
-    print >>out, "|beta:             min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.beta_work_min),
-      format_value("%16.2f", self.beta_work_max),
-      format_value("%13.2f", self.beta_work_mean))
-    print >>out, "|figures of merit: min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.fom_work_min),
-      format_value("%16.2f", self.fom_work_max),
-      format_value("%13.2f", self.fom_work_mean))
-    print >>out, "|phase err.(work): min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.pher_work_min),
-      format_value("%16.2f", self.pher_work_max),
-      format_value("%13.2f", self.pher_work_mean))
-    print >>out, "|phase err.(test): min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.pher_free_min),
-      format_value("%16.2f", self.pher_free_max),
-      format_value("%13.2f", self.pher_free_mean))
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_all(self, header = "", out = None):
-    if(out is None): out = sys.stdout
-    self.show_rfactors_targets_scales_overall(header = header, out = out)
-    print >> out
-    self.show_rfactors_targets_in_bins(out = out)
-    print >> out
-    self.show_fom_pher_alpha_beta_in_bins(out = out)
-
-  # re-arrange binned statistics for phenix GUI (or logfile)
-  def export_bins_table_data (self, title="Statistics by resolution bin") :
-    return export_bins_table_data(self.bins, title)
-
 def show_histogram(data, n_slots, log):
   hm = flex.histogram(data = data, n_slots = n_slots)
   lc_1 = hm.data_min()
@@ -3160,38 +2085,3 @@ def show_histogram(data, n_slots, log):
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
-
-def export_bins_table_data (bins, title="Statistics by resolution bin") :
-  table_stats = ["r_work", "r_free", "completeness", "fom_work",
-                 "pher_free", "scale_k1_work"]
-  labels = ["Resolution", "R-work", "R-free", "Completeness", "FOM",
-                   "Phase error", "Scale factor"]
-  graph_names = ["R-work/R-free vs. resolution",
-                 "Completeness vs. resolution",
-                 "Figure of merit vs. resolution",
-                 "Phase error vs. resolution",
-                 "Scale factor vs. resolution"]
-  graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]]
-  if hasattr(bins[0], "sigmaa") and (bins[0].sigmaa is not None) :
-    table_stats.append("sigmaa")
-    labels.append("SigmaA")
-    graph_names.append("SigmaA vs. resolution")
-    graph_columns.append([0,7])
-  data_rows = []
-  for bin in bins :
-    bin_stats = []
-    (min_res_str, max_res_str) = re.sub("\s*", "", bin.d_range).split("-")
-    (min_res, max_res) = (string.atof(min_res_str), string.atof(max_res_str))
-    bin_stats.append(1 / (max_res ** 2))
-    for stat_attr_name in table_stats :
-      bin_stats.append(getattr(bin, stat_attr_name))
-    data_rows.append(bin_stats)
-  data = [[row[i] for row in data_rows] for i in xrange(len(data_rows[0]))]
-  t = data_plots.table_data(
-    title=title,
-    column_labels=labels,
-    graph_names=graph_names,
-    graph_columns=graph_columns,
-    data=data,
-    x_is_inverse_d_min=True)
-  return t

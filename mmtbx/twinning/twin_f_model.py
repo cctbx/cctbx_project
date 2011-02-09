@@ -28,6 +28,8 @@ from libtbx.str_utils import format_value
 from libtbx import Auto
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.path
+import mmtbx.targets
+import mmtbx.f_model_info
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -538,7 +540,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     return "yes"
 
   def info(self, free_reflections_per_bin = 140, max_number_of_bins = 20):
-    return mmtbx.f_model.info(
+    return mmtbx.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins       = max_number_of_bins)
@@ -693,6 +695,24 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def target_attributes(self):
     return self._target_attributes
 
+  def r_work(self):
+    if(self.fmodel_ts1 is not None): # XXX BAD
+      self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
+        update_f_calc = True, update_f_mask=True)
+      return self.fmodel_ts1.r_work()
+    else:
+      w,f = self.r_values(False)
+      return w
+
+  def r_free(self):
+    if(self.fmodel_ts1 is not None): # XXX BAD
+      self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
+        update_f_calc = True, update_f_mask = True)
+      return self.fmodel_ts1.r_free()
+    else:
+      w,f = self.r_values(False)
+      return f
+
   def update_solvent_and_scale(self,
                                optimize_mask=True,
                                params=None,
@@ -708,6 +728,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       k_sol          = self.k_sol(),
       b_sol          = self.b_sol(),
       b_cart         = self.b_cart())
+    self.twin_set = self.fmodel_ts1.twin_set
+    self.active_arrays = self.fmodel_ts1.active_arrays
+    self.fmodel_ts1.update_twin_fraction()
     if(params is None):
       params = bss.master_params.extract()
     params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
@@ -792,6 +815,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.target_evaluator.alpha( twin_fraction )
       self.free_target_evaluator.alpha( twin_fraction )
 
+  def f_obs_work(self):
+    return self.f_obs_w
 
   def update(self, f_calc              = None,
                    f_obs               = None,
@@ -1224,24 +1249,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     else:
       return r_abs_work_f_overall, r_abs_free_f_overall
-
-  def r_work(self):
-    if(self.fmodel_ts1 is not None): # XXX BAD
-      self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
-        update_f_calc = True, update_f_mask=True)
-      return self.fmodel_ts1.r_work()
-    else:
-      w,f = self.r_values(False)
-      return w
-
-  def r_free(self):
-    if(self.fmodel_ts1 is not None): # XXX BAD
-      self.fmodel_ts1.update_xray_structure(xray_structure = self.xray_structure,
-        update_f_calc = True, update_f_mask = True)
-      return self.fmodel_ts1.r_free()
-    else:
-      w,f = self.r_values(False)
-      return f
 
   def r_all(self):
     selection = flex.bool( self.f_obs.data().size(), True )
@@ -2235,7 +2242,7 @@ class target_functor(object):
   def __call__(self, compute_gradients=False):
     return target_result(manager=self.manager)
 
-class target_result(mmtbx.f_model.target_result_mixin):
+class target_result(mmtbx.targets.target_result_mixin):
 
   def __init__(self, manager):
     self.manager = manager

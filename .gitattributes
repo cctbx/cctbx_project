@@ -922,6 +922,7 @@ mmtbx/conformation_dependent_library/__init__.py -text
 mmtbx/conformation_dependent_library/cdl_database.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/email_ralf_042910.txt -text
+mmtbx/f_model_info.py -text
 mmtbx/find_peaks.py -text
 mmtbx/geometry_restraints/SConscript -text
 mmtbx/geometry_restraints/__init__.py -text
@@ -1011,7 +1012,9 @@ mmtbx/secondary_structure/proteins.py -text
 mmtbx/secondary_structure/tst.py -text
 mmtbx/solvent/ta_ordered_solvent.py svneol=native#text/x-python
 mmtbx/ta_utils.py svneol=native#text/x-python
+mmtbx/targets.py -text
 mmtbx/tls/command_line.py -text
+mmtbx/tls/ladp.py -text
 mmtbx/tls/perm10.py -text
 mmtbx/tls/perm11.py -text
 mmtbx/tls/perm12.py -text

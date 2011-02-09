@@ -109,6 +109,28 @@ def get_atom_selection_manager(pdb_inp):
   pdb_atoms.reset_i_seq()
   return pdb_hierarchy.atom_selection_cache()
 
+def analyze_input_params(params):
+  # Analize map_coefficients
+  mcp = params.maps.map_coefficients
+  for mcp_ in mcp:
+    if(mmtbx.map_names(mcp_.map_type).anomalous):
+      mcp_.kicked = False
+      mcp_.fill_missing_f_obs = False
+      mcp_.acentrics_scale = 2.0
+      mcp_.centrics_pre_scale = 1.0
+      mcp_.sharpening = False
+      mcp_.sharpening_b_factor = None
+  # Analize maps
+  mp = params.maps.map
+  for mp_ in mp:
+    if(mmtbx.map_names(mp_.map_type).anomalous):
+      mp_.kicked = False
+      mp_.fill_missing_f_obs = False
+      mp_.acentrics_scale = 2.0
+      mp_.centrics_pre_scale = 1.0
+      mp_.sharpening = False
+      mp_.sharpening_b_factor = None
+
 def run(args, log = sys.stdout):
   print >> log, legend
   print >> log, "-"*79
@@ -132,6 +154,7 @@ def run(args, log = sys.stdout):
   print >> log, "\nParameters to compute maps::\n"
   processed_args.params.show(out = log, prefix=" ")
   params = processed_args.params.extract()
+  analyze_input_params(params=params)
   if(not os.path.isfile(str(params.maps.input.pdb_file_name))):
     raise Sorry(
       "PDB file is not given: maps.input.pdb_file_name=%s is not a file"%\
@@ -238,8 +261,6 @@ def run(args, log = sys.stdout):
     fmodel = fmodel,
     params = params.maps.map_coefficients)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
-  #if(params.maps.output.prefix is not None and len(params.maps.output.prefix)>0):
-  #  map_coeff_file_name = params.maps.output.prefix + "_" + map_coeff_file_name
   cmo.write_mtz_file(file_name = map_coeff_file_name)
   if(params.maps.output.fmodel_data_file_format is not None):
     fmodel_file_name = file_name_base + "_fmodel." + \
