@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
 import mmtbx.f_model
-import mmtbx.targets
+import mmtbx.refinement.targets
 from cctbx.regression.tst_miller import generate_random_hl
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -100,7 +100,7 @@ def exercise(space_group_info,
           else:
             experimental_phases = None
           if (target == "ml_sad"
-                and (not anomalous_flag or mmtbx.targets.phaser is None)):
+                and (not anomalous_flag or mmtbx.refinement.targets.phaser is None)):
             continue
           print "  ",target
           xray.set_scatterer_grad_flags(

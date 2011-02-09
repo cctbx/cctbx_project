@@ -28,7 +28,7 @@ from libtbx.str_utils import format_value
 from libtbx import Auto
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.path
-import mmtbx.targets
+import mmtbx.refinement.targets
 import mmtbx.f_model_info
 
 master_params =  iotbx.phil.parse("""
@@ -2242,7 +2242,7 @@ class target_functor(object):
   def __call__(self, compute_gradients=False):
     return target_result(manager=self.manager)
 
-class target_result(mmtbx.targets.target_result_mixin):
+class target_result(mmtbx.refinement.targets.target_result_mixin):
 
   def __init__(self, manager):
     self.manager = manager

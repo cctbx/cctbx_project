@@ -637,7 +637,7 @@ def run(args,
       default=False,
       type="bool",
       help="Save model_vs_data object as pickle object.")
-    .option(None, "--r_factor_per_reflection",
+    .option(None, "--f_obs_vs_f_model",
       action="store",
       default=False,
       type="bool",
@@ -890,8 +890,8 @@ def run(args,
       poor_map_1_value_threshold                = 1.0,
       poor_map_2_value_threshold                = 1.0)
   #
-  if(command_line.options.r_factor_per_reflection):
-    fmodel_cut.r_work_per_reflection()
+  if(command_line.options.f_obs_vs_f_model):
+    fmodel_cut.f_obs_vs_f_model()
   if(command_line.options.dump_result_object_as_pickle):
     output_prefixes = []
     for op in processed_args.pdb_file_names+processed_args.reflection_file_names:
