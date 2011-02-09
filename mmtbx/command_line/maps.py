@@ -110,7 +110,7 @@ def get_atom_selection_manager(pdb_inp):
   return pdb_hierarchy.atom_selection_cache()
 
 def analyze_input_params(params):
-  # Analize map_coefficients
+  # Analyze map_coefficients
   mcp = params.maps.map_coefficients
   for mcp_ in mcp:
     if(mmtbx.map_names(mcp_.map_type).anomalous):
@@ -120,7 +120,7 @@ def analyze_input_params(params):
       mcp_.centrics_pre_scale = 1.0
       mcp_.sharpening = False
       mcp_.sharpening_b_factor = None
-  # Analize maps
+  # Analyze maps
   mp = params.maps.map
   for mp_ in mp:
     if(mmtbx.map_names(mp_.map_type).anomalous):
