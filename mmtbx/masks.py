@@ -175,9 +175,10 @@ class asu_mask(object):
 
 class manager(object):
   def __init__(self, miller_array,
-                     xray_structure,
+                     xray_structure = None,
                      miller_array_twin = None,
-                     mask_params = None):
+                     mask_params = None,
+                     compute_mask = True):
     adopt_init_args(self, locals())
     if(self.mask_params is not None): self.mask_params = mask_params
     else: self.mask_params = mask_master_params.extract()
@@ -194,7 +195,7 @@ class manager(object):
       self.sites_cart = self.xray_structure.sites_cart()
       twin=False
       if(self.miller_array_twin is not None): twin=True
-      self.compute_f_mask(twin = twin)
+      if(compute_mask): self.compute_f_mask()
 
   def deep_copy(self):
     return self.select(flex.bool(self.miller_array.indices().size(),True))
@@ -206,8 +207,9 @@ class manager(object):
     new_manager = manager(
       miller_array      = self.miller_array.select(selection),
       miller_array_twin = miller_array_twin,
-      xray_structure    = None,
-      mask_params       = deepcopy(self.mask_params))
+      xray_structure    = self.xray_structure,
+      mask_params       = deepcopy(self.mask_params),
+      compute_mask      = False)
     if(self._f_mask is not None):
       new_manager._f_mask = self._f_mask.select(selection = selection)
     if(self._f_mask_twin is not None):
@@ -225,25 +227,23 @@ class manager(object):
     step = min(0.8, step)
     return step
 
-  def f_mask(self, xray_structure_new = None, force_update = False,
-             twin = False):
-    if(twin): f_mask = self._f_mask_twin
-    else: f_mask = self._f_mask
-    if(xray_structure_new is None): return f_mask
-    else:
-      if(force_update or f_mask is None):
+  def f_mask(self, xray_structure_new = None, force_update=False):
+    if(xray_structure_new is not None):
+      if(force_update or self._f_mask is None):
         self.xray_structure = xray_structure_new.deep_copy_scatterers()
         self.sites_cart = xray_structure_new.sites_cart()
-        return self.compute_f_mask()
+        self.compute_f_mask()
       else:
         flag = self._need_update_mask(sites_cart_new =
           xray_structure_new.sites_cart())
         if(flag):
           self.xray_structure = xray_structure_new.deep_copy_scatterers()
           self.sites_cart = xray_structure_new.sites_cart()
-          return self.compute_f_mask(twin=twin)
-        else:
-          return f_mask
+          self.compute_f_mask()
+    return self._f_mask
+
+  def f_mask_twin(self):
+    return self._f_mask_twin
 
   def _need_update_mask(self, sites_cart_new):
     if(self.sites_cart is not None and
@@ -256,7 +256,7 @@ class manager(object):
       else: return False
     else: return True
 
-  def compute_f_mask(self, twin=False):
+  def compute_f_mask(self):
     if(not self.mask_params.use_asu_masks):
       bulk_solvent_mask_obj = self.bulk_solvent_mask()
       self._f_mask = bulk_solvent_mask_obj.structure_factors(
@@ -279,8 +279,6 @@ class manager(object):
         fm_asu = asu_mask_obj.structure_factors(self.miller_array_twin.indices())
         self._f_mask_twin = self.miller_array_twin.set().array(data = fm_asu)
       self.solvent_content_via_mask = asu_mask_obj.contact_surface_fraction
-    if(twin): return self._f_mask_twin
-    else: return self._f_mask
 
   def bulk_solvent_mask(self):
     mp = self.mask_params

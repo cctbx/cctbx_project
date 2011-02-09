@@ -454,7 +454,7 @@ class manager(object):
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
     d_mins, target_names = split_resolution_range(
-      d_spacings                    = fmodel_copy.f_obs_w.d_spacings().data(),
+      d_spacings                    = fmodel_copy.f_obs_work().d_spacings().data(),
       n_bodies                      = len(selections),
       target                        = params.target,
       target_auto_switch_resolution = params.target_auto_switch_resolution,
@@ -485,7 +485,7 @@ class manager(object):
         fmodel_copy = fmodel.resolution_filter(d_min = res)
         if (fmodel_copy.target_name != target_name):
           fmodel_copy.update(target_name=target_name)
-        d_max_min = fmodel_copy.f_obs_w.d_max_min()
+        d_max_min = fmodel_copy.f_obs_work().d_max_min()
         line = "Refinement at resolution: "+\
                  str("%7.2f"%d_max_min[0]).strip() + " - " \
                + str("%6.2f"%d_max_min[1]).strip() \
@@ -536,16 +536,14 @@ class manager(object):
                          selections          = selections)
             fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                               update_f_calc  = True,
-                                              update_f_mask  = True,
-                                              out            = log)
+                                              update_f_mask  = True)
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
         fmodel.update_xray_structure(
           xray_structure = fmodel_copy.xray_structure,
           update_f_calc  = True,
-          update_f_mask  = True,
-          out            = log)
+          update_f_mask  = True)
         if(bss is not None and params.bulk_solvent_and_scale):
           fmodel.update_solvent_and_scale(params = bss, out = log, verbose= -1,
             optimize_mask=False)

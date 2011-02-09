@@ -218,7 +218,7 @@ class electron_density_map(object):
     if(force_anomalous_flag_false):
       map_coefficients = map_coefficients.average_bijvoet_mates()
     if(not use_all_data):
-      map_coefficients = map_coefficients.select(self.fmodel.work)
+      map_coefficients = map_coefficients.select(self.fmodel.active_arrays.work_sel)
     if(other_fft_map is None):
       return map_coefficients.fft_map(
         resolution_factor = resolution_factor,

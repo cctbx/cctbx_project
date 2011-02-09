@@ -100,8 +100,7 @@ class manager(object):
           refine_occ     = refine_occ)
         fmodel_copy.update_xray_structure(
           xray_structure = fmodel.xray_structure,
-          update_f_calc  = True,
-          out            = log)
+          update_f_calc  = True)
         rwork = minimized.fmodel.r_work()
         rfree = minimized.fmodel.r_free()
         assert approx_equal(rwork, fmodel_copy.r_work())

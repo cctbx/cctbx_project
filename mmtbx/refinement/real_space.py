@@ -93,7 +93,7 @@ class run(object):
       print_statistics.make_header("Real-space coordinate refinement", out=log)
     fft_map_target = self.compute_map(map_type = params.target_map_name)
     geom = self.show()
-    step = self.fmodel.f_obs_w.d_min()*\
+    step = self.fmodel.f_obs_work().d_min()*\
       params.grid_resolution_factor
     if(params.real_space_target_weight is not None):
       real_space_target_weight = params.real_space_target_weight
@@ -156,7 +156,7 @@ class run(object):
           else: restraints_target_weight = restraints_target_weight_
         minimized = real_space_target_and_gradients.minimization(
           xray_structure              = xrs_start.deep_copy_scatterers(),
-          miller_array                = self.fmodel.f_obs_w,
+          miller_array                = self.fmodel.f_obs_work(),
           crystal_gridding            = fft_map_target,
           map_target                  = fft_map_target.real_map_unpadded(),
           step                        = step,

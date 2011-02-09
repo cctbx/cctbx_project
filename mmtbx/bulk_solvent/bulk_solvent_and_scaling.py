@@ -244,7 +244,7 @@ def k_sol_b_sol_b_cart_minimizer(
   fmodel_core_data_work = fmodel.core_data_work()
   return kbu_minimizer(
     fmodel_core_data = fmodel_core_data_work,
-    f_obs            = fmodel.f_obs_w,
+    f_obs            = fmodel.f_obs_work(),
     k_initial        = fmodel_core_data_work.k_sol,
     b_initial        = fmodel_core_data_work.b_sol,
     u_initial        = fmodel_core_data_work.u_star,
@@ -429,7 +429,7 @@ class bulk_solvent_and_scales(object):
       u_min = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
         params = self.params, refine_u_star = True).u_min
       b_cart = adptbx.u_as_b(
-        adptbx.u_star_as_u_cart(fmodel.f_obs_w.unit_cell(),u_min))
+        adptbx.u_star_as_u_cart(fmodel.f_obs_work().unit_cell(),u_min))
       fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final >= r_start):
