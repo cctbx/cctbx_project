@@ -753,6 +753,26 @@ class _atom_group(boost.python.injector, ext.atom_group):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
+class _atom(boost.python.injector, ext.atom):
+
+  def set_element_and_charge_from_scattering_type_if_necessary(self,
+        scattering_type):
+    from cctbx.eltbx.xray_scattering \
+      import get_element_and_charge_symbols \
+        as gec
+    sct_e, sct_c = gec(scattering_type=scattering_type, exact=False)
+    pdb_ec = self.element.strip() + self.charge.strip()
+    if (len(pdb_ec) != 0):
+      if (sct_e == "" and sct_c == ""):
+        return False
+      pdb_e, pdb_c = gec(scattering_type=pdb_ec, exact=False)
+      if (    pdb_e == sct_e
+          and pdb_c == sct_c):
+        return False
+    self.element = "%2s" % sct_e.upper()
+    self.charge = "%-2s" % sct_c
+    return True
+
 class _conformer(boost.python.injector, ext.conformer):
 
   def only_residue(self):

@@ -827,21 +827,12 @@ def write_pdb_file(
     atom.xyz = sites_cart[j_seq]
     atom.occ = occupancies[j_seq]
     atom.b = adptbx.u_as_b(u_isos[j_seq])
-    # XXX AD-HOC (dirty) manipulation of element+charge
-    e = scat_types[j_seq]
-    if (len(e) > 1 and "+-0123456789".find(e[1]) >= 0):
-      atom.element = "%2s" % e[:1]
-      atom.charge = "%-2s" % e[1:]
-    elif (len(e) > 2):
-      atom.element = "%2s" % e[:2]
-      atom.charge = "%-2s" % e[2:]
-    else:
-      atom.element = "%2s" % e
-      atom.charge = "  "
     if (scatterers[j_seq].flags.use_u_aniso()):
       atom.uij = u_carts[j_seq]
     else:
-      atom.uij = (-1,-1,-1,-1,-1,-1)
+      atom.uij_erase()
+    atom.set_element_and_charge_from_scattering_type_if_necessary(
+      scattering_type=scat_types[j_seq])
   if (atoms_reset_serial):
     atoms_reset_serial_first_value = 1
   else:

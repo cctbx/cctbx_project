@@ -397,6 +397,30 @@ Duplicate keys in build_dict(strip_names=true, upper_names=true,\
     upper_names=True,
     convert_stars_to_primes=True)
   assert sorted(d.keys()) == ["NA", "X", "X'"]
+  #
+  a = pdb.hierarchy.atom()
+  def check(scattering_type, e, c):
+    a.set_element_and_charge_from_scattering_type_if_necessary(
+      scattering_type=scattering_type)
+    assert not show_diff(a.element, e)
+    assert not show_diff(a.charge, c)
+  a.element = ""
+  a.charge = ""
+  check("", "  ", "  ")
+  a.element = "Na"
+  a.charge = ""
+  check("", "Na", "")
+  a.charge = "  "
+  check("", "Na", "  ")
+  a.element = ""
+  a.charge = ""
+  check("Na+", "NA", "1+")
+  a.element = "Na"
+  a.charge = "+"
+  check("NA1+", "Na", "+")
+  a.element = "Na"
+  a.charge = "2+"
+  check("NA1+", "NA", "1+")
 
 def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()
