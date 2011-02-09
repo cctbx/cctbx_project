@@ -10,10 +10,16 @@ class from_scatterers_direct(managed_calculation_base):
   def __init__(self, xray_structure,
                      miller_set,
                      manager=None,
-                     cos_sin_table=False):
+                     cos_sin_table=False,
+                     algorithm="direct"):
     time_all = user_plus_sys_time()
     managed_calculation_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="direct")
+    if hasattr(algorithm,"use_alt_parallel"):
+        #enumeration of indices() is fast compared to direct summation
+        from cctbx.xray.structure_factors.from_scatterers_direct_parallel import pprocess
+        pprocess(self,algorithm)
+        return
     timer = user_plus_sys_time()
     if (manager is not None):
       cos_sin_table = manager.cos_sin_table()

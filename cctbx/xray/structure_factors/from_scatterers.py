@@ -50,4 +50,5 @@ class from_scatterers(manager):
     return f(
       manager=self,
       xray_structure=xray_structure,
-      miller_set=miller_set)
+      miller_set=miller_set,
+      algorithm=algorithm) # passing algorithm allows f to decide on CPU/GPU implementation
