@@ -894,11 +894,11 @@ class set(crystal.symmetry):
       deg=deg))
 
   def change_basis(self, cb_op):
-    """Get a new miller set with a different basis
+    """Get a transformation of the miller set with a new basis specified by cb_op
 
     Inputs:
-    cb_op -- string or sgtbx.change_of_basis_operator descibinge the desired transformation of the basis
-    
+    cb_op -- string or sgtbx.change_of_basis_operator describing the desired transformation of the basis
+
     Returns: new miller.set
     """
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
@@ -907,6 +907,10 @@ class set(crystal.symmetry):
       indices=cb_op.apply(self.indices()))
 
   def expand_to_p1(self):
+    """Get a transformation of the miller set to spacegroup P1
+
+    Returns: new set(crystal.symmetry, miller.indices, boolean)
+    """
     assert self.space_group_info() is not None
     assert self.indices() is not None
     assert self.anomalous_flag() is not None
