@@ -3,12 +3,7 @@ from __future__ import division
 # TODO: regression testing
 # TODO: confirm old_test_flag_value if ambiguous
 
-from iotbx import reflection_file_utils, file_reader
-from iotbx.reflection_file_utils import get_r_free_flags_scores
 import iotbx.phil
-import iotbx.mtz
-from cctbx import crystal, miller, sgtbx
-from scitbx.array_family import flex
 from libtbx.phil.command_line import argument_interpreter
 from libtbx.math_utils import iceil
 from libtbx.utils import Sorry, null_out
@@ -150,7 +145,7 @@ mtz_file
       .type = str
       .short_caption = Output label for new R-free flags
       .style = bold
-    include scope cctbx.miller.generate_r_free_params_str
+    include scope cctbx.r_free_utils.generate_r_free_params_str
     random_seed = None
       .type = int
       .short_caption = Seed for random number generator
@@ -188,6 +183,10 @@ class process_arrays (object) :
   def __init__ (self, params, input_files=None, log=sys.stderr,
       accumulation_callback=None, symmetry_callback=None) :
     adopt_init_args(self, locals())
+    from iotbx import file_reader
+    from cctbx import crystal
+    from cctbx import sgtbx
+    from scitbx.array_family import flex
     if len(params.mtz_file.miller_array) == 0 :
       raise Sorry("No Miller arrays have been selected for the output file.")
     elif len(params.mtz_file.miller_array) > 25 :
@@ -513,6 +512,7 @@ class process_arrays (object) :
       fake_label = 2 * string.uppercase[i]
       column_types = None
       if array_types[i] is not None :
+        import iotbx.mtz
         default_types = iotbx.mtz.default_column_types(output_array)
         if len(default_types) == len(array_types[i]) :
           print >> log, "Recovering original column types %s" % array_types[i]
@@ -543,6 +543,7 @@ class process_arrays (object) :
     #-------------------------------------------------------------------
     # EXISTING R-FREE ARRAYS
     if len(r_free_arrays) > 0 :
+      from iotbx.reflection_file_utils import get_r_free_flags_scores
       have_r_free_array = True
       if len(self.final_arrays) > 0 :
         complete_set = make_joined_set(self.final_arrays).complete_set()
@@ -707,6 +708,7 @@ class process_arrays (object) :
 
 #-----------------------------------------------------------------------
 def get_r_free_stats (miller_array, test_flag_value) :
+  from scitbx.array_family import flex
   array = get_r_free_as_bool(miller_array, test_flag_value)
   n_free = array.data().count(True)
   accu =  array.sort(by_value="resolution").r_free_flags_accumulation()
@@ -749,6 +751,7 @@ def get_best_resolution (miller_arrays) :
   return (best_d_max, best_d_min)
 
 def make_joined_set (miller_arrays) :
+  from cctbx import miller
   master_set = miller.set(
     crystal_symmetry=miller_arrays[0].crystal_symmetry(),
     indices=miller_arrays[0].indices(),
@@ -767,6 +770,7 @@ def make_joined_set (miller_arrays) :
   return master_set.unique_under_symmetry()
 
 def is_rfree_array (miller_array, array_info) :
+  from iotbx import reflection_file_utils
   return ((miller_array.is_integer_array() or
            miller_array.is_bool_array()) and
           reflection_file_utils.looks_like_r_free_flags_info(array_info))
@@ -780,6 +784,7 @@ def export_r_free_flags (miller_array, test_flag_value) :
   unique_values = set(data)
   if len(unique_values) > 2 : # XXX: is this safe?
     return miller_array
+  from scitbx.array_family import flex
   new_flags = flex.int(data.size())
   for i in range(data.size()) :
     if data[i] == test_flag_value :
@@ -840,6 +845,7 @@ def generate_params (file_name, miller_array, include_resolution=False) :
 
 #-----------------------------------------------------------------------
 def run (args, out=sys.stdout) :
+  from iotbx import file_reader
   crystal_symmetry_from_pdb = None
   crystal_symmetries_from_hkl = []
   reflection_files = []
