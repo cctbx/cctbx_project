@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import division
 import cctbx.sgtbx
 
@@ -692,6 +693,10 @@ class set(crystal.symmetry):
         n_shells=n_shells)
 
   def crystal_symmetry(self):
+    """Get crystal symmetry of the miller set
+
+    Returns: new crystal.symmetry
+    """
     return crystal.symmetry(
       unit_cell = self.unit_cell(),
       space_group_info = self.space_group_info())
@@ -889,6 +894,13 @@ class set(crystal.symmetry):
       deg=deg))
 
   def change_basis(self, cb_op):
+    """Get a new miller set with a different basis
+
+    Inputs:
+    cb_op -- string or sgtbx.change_of_basis_operator descibinge the desired transformation of the basis
+    
+    Returns: new miller.set
+    """
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     return set.customized_copy(self,
       crystal_symmetry=crystal.symmetry.change_basis(self, cb_op),
