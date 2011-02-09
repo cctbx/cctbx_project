@@ -1,5 +1,6 @@
 from __future__ import division
 
+import mmtbx.f_model_info
 import libtbx.load_env
 from cctbx.array_family import flex
 import math, sys, os, random, re, string
@@ -1867,7 +1868,6 @@ class manager(manager_mixin):
       free_reflections_per_bin= self.alpha_beta_params.free_reflections_per_bin
     if(max_number_of_bins is None):
       max_number_of_bins = self.max_number_of_bins
-    import mmtbx.f_model_info
     return mmtbx.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
@@ -2085,3 +2085,10 @@ def show_histogram(data, n_slots, log):
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
+
+# XXX backwards compatibility 2011-02-08
+class info (mmtbx.f_model_info.info) :
+  pass
+
+class resolution_bin (mmtbx.f_model_info.resolution_bin) :
+  pass
