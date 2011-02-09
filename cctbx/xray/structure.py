@@ -91,6 +91,10 @@ class structure(crystal.special_position_settings):
     return r0 + (",\n" + " "*15).join(r1) + "\n  )))"
 
   def crystal_symmetry(self):
+    """Get crystal symmetry of the structure
+
+    Returns: new crystal.symmetry
+    """
     return crystal.symmetry(
       unit_cell = self.unit_cell(),
       space_group_info = self.space_group_info())
@@ -125,6 +129,15 @@ class structure(crystal.special_position_settings):
     return self._scatterers
 
   def set_u_iso(self, value = None, values = None, selection = None):
+    """Set isotropic mean thermic displacements of scatterers
+
+    Input:
+    value -- (optional) a single double value to set all u_iso of selected scatterers to
+    values -- (optional) an array of double values to set all u_iso of selected scatterers to
+    selection -- (optional) an array of bools to select scatterers to be updated with new u_iso values
+
+    Returns: new cctbx.xray.structure
+    """
     assert [value, values].count(None) == 1
     s = self._scatterers
     if(selection is None): selection = flex.bool(s.size(), True)
@@ -137,6 +150,15 @@ class structure(crystal.special_position_settings):
     return self
 
   def set_b_iso(self, value = None, values = None, selection = None):
+    """Set isotropic Debye-Waller/temperature/B factors with automatic conversion to u_iso
+
+    Input:
+    value -- (optional) a single double value to set all b_iso of selected scatterers to
+    values -- (optional) an array of double values to set all b_iso of selected scatterers to
+    selection -- (optional) an array of bools to select scatterers to be updated with new b_iso values
+
+    Returns: new cctbx.xray.structure
+    """
     assert [value, values].count(None) == 1
     s = self._scatterers
     if(value is not None):
