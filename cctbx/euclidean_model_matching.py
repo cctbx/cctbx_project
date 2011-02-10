@@ -284,10 +284,9 @@ class match_refine(object):
 
   def calculate_rms(self):
     length = self.ref_model1.unit_cell().length
-    sum_dist2 = 0
-    for pair in self.pairs:
-      sum_dist2 += length(self.calculate_shortest_diff(pair))**2
-    self.rms = math.sqrt(sum_dist2 / len(self.pairs))
+    self.shortest_distances = flex.double([
+      length(d) for d in self.calculate_shortest_diffs() ])
+    self.rms = math.sqrt(flex.sum_sq(self.shortest_distances)/len(self.pairs))
 
   def show(self, f=None, truncate_singles=None, singles_per_line=5):
     if (f is None): f = sys.stdout
