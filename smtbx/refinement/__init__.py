@@ -3,9 +3,9 @@ import smtbx.utils
 
 class model(object):
 
-  def from_shelx(self, *args, **kwds):
+  def from_shelx(cls, *args, **kwds):
     from iotbx.shelx import smtbx_refinement_model_from as _
-    return _(self, *args, **kwds)
+    return _(cls, *args, **kwds)
   from_shelx = classmethod(from_shelx)
 
   def __init__(self, fo_sq, xray_structure,
