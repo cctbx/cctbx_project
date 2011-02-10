@@ -13,7 +13,7 @@ french_wilson {
     .short_caption = Reflections
     .help = '''input intensity data file (mtz)'''
     .style = bold file_type:hkl process_hkl child:iobs:intensity_labels \
-      child:rfree:r_free_label
+      child:rfree:r_free_flags.label
   intensity_labels = None
     .type = strings
     .style = bold renderer:draw_fobs_label_widget
@@ -26,9 +26,11 @@ french_wilson {
     .optional = True
     .help = '''Enter a .mtz output name'''
     .style = bold
+  include scope libtbx.phil.interface.tracking_params
   keep_r_free_flags = True
     .type = bool
     .help = "Keep R-free flag data if present"
+    .short_caption = Keep R-free flags if present in input file
   include scope cctbx.french_wilson.master_phil
 }
 """, process_includes=True)
