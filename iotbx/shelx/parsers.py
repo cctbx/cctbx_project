@@ -122,8 +122,10 @@ class instruction_parser(parser):
           if n_args > 9:
             twin['n'] = args[9]
         self.instructions['twin'] = twin
+        if 'basf' in self.instructions: self.issue_twinning()
       elif cmd == 'BASF':
         self.instructions['basf'] = args
+        if 'twin' in self.instructions: self.issue_twinning()
       elif cmd == 'EXTI':
         if len(args) == 1:
           self.instructions['exti'] = args[0]
@@ -132,6 +134,17 @@ class instruction_parser(parser):
     else:
       # All token have been read without errors or early bailout
       assert 'hklf' in self.instructions, "Missing HKLF instruction"
+
+  def issue_twinning(self):
+    twin_law = self.instructions['twin'].get('matrix',
+                                             sgtbx.rt_mx('-x,-y,-z'))
+    n = self.instructions['twin'].get('n', 2)
+    assert n - 1 == len(self.instructions['basf'])
+    self.builder.make_merohedral_twinning(
+      fractions=self.instructions['basf'],
+      twin_law=twin_law)
+
+
 
 class crystal_symmetry_parser(parser):
   """ A parser pulling out the crystal symmetry info from a command stream """

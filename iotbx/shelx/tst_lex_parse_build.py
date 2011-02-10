@@ -139,7 +139,8 @@ def exercise_instruction_parsing():
     _ = iotbx.builders.mixin_builder_class(
       "builder_to_test_instruction_parsing",
       iotbx.builders.reflection_data_source_builder,
-      iotbx.builders.weighting_scheme_builder)
+      iotbx.builders.weighting_scheme_builder,
+      iotbx.builders.twinning_builder)
     alternatives += (_(),)
   except AttributeError:
     pass
