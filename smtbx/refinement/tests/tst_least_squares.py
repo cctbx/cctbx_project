@@ -449,6 +449,8 @@ class twin_test(object):
     assert approx_equal(normal_eqns.objective(), 0, eps=1e-14)
     assert normal_eqns.n_parameters == 64
     # now with fixed twin fraction
+    xs.shake_sites_in_place(rms_difference=0.15)
+    xs.shake_adp()
     twin_components = tuple(
       [xray.twin_component(law, fraction, grad_twin_fraction=False)
        for law, fraction in zip(self.twin_laws, twin_fractions)])
