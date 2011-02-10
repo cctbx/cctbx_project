@@ -28,7 +28,7 @@ pair_asu_j_sym_groups = scitbx.stl.vector.set_unsigned
 pair_asu_j_sym_group = scitbx.stl.set.unsigned
 
 class symmetry(object):
-  """This class represents the symmerty of a crystal and bundles information on its unit cell and space group.
+  """This class represents the symmetry of a crystal and bundles information on its unit cell and space group.
   """
   def __init__(self,
         unit_cell=None,
@@ -41,15 +41,16 @@ class symmetry(object):
     """Initialises a new crystal.symmetry class object from different input data. Only one of space_group, space_group_info and space_group_symbol may be used.
 
     Input:
-    unit_cell -- (optional) tuple of lattice parameters or uctbx.ext.unit_cell object specifying the unit_cell properties
-    space_group_symbol -- (optional) Hermann-Mauguin symbol of the crystallographic space group as string
-    space_group_info -- (optional) sgtbx.space_group_info object describing the desired space group
-    space_group -- (optional) sgtbx.space_group object of the desired space group
-    correct_rhombohedral_setting_if_necessary -- (optional, default=False) If set to 'True' an automatic conversion between rhombohedral and hexagonal basis will be done
-    assert_is_compatible_unit_cell -- (optional, default=True) If set to 'True' a consistency check will be performed on the relation of space group to lattice parameters
-    force_compatible_unit_cell  -- (optional, default=True) If set to 'True' the crystal parameteers will be averaged to comply with the restrictions of the space group
+      :unit_cell:		tuple of lattice parameters or uctbx.ext.unit_cell object specifying the unit_cell properties
+      :space_group_symbol:	Hermann-Mauguin symbol of the crystallographic space group as string
+      :space_group_info:	sgtbx.space_group_info object describing the desired space group
+      :space_group:		sgtbx.space_group object of the desired space group
+      :correct_rhombohedral_setting_if_necessary:	If set to 'True' an automatic conversion between rhombohedral and hexagonal basis will be done
+      :assert_is_compatible_unit_cell:			If set to 'True' a consistency check will be performed on the relation of space group to lattice parameters
+      :force_compatible_unit_cell:  			If set to 'True' the crystal parameters will be averaged to comply with the restrictions of the space group
 
-    Returns: new crystal.symmetry
+    Returns:
+      new crystal.symmetry
     """
     assert [space_group_symbol, space_group_info, space_group].count(None)>=2
     if (    unit_cell is not None
