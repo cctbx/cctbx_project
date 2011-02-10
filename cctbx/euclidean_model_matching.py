@@ -413,6 +413,22 @@ def compute_refined_matches(ref_model1, ref_model2,
 
 
 class delegating_model_matches(object):
+  """
+  emma loops over all pairs of sites from the first and second structure.
+  If a pair is closer than tolerance (under Euclidean symmetry) it
+  initiates a "match and refine" procedure which incrementally adds the
+  "next closest" pair, with a distance below 2*tolerance. Each time
+  a pair is added the allowed origin shifts (if any) are refined to
+  minimize the rmsd of all the pairs matched so far. When there are
+  no more pairs to add, emma goes into a "weeding" procedure. This
+  procedure sorts the pairs by distance. If there are distances above
+  tolerance, the worst pair is removed, followed by the same allowed
+  origin shift refinement as before. The weeding is repeated until
+  there are no pairs above tolerance.
+
+  emma was written with substructures in mind, which usually have a few
+  (by macromolecular standards) sites placed far apart in space.
+  """
 
   def __init__(self, model1, model2,
                      tolerance=1.,
