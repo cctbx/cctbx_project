@@ -253,6 +253,28 @@ class reflection_data_source_builder(object):
     self.data_change_of_basis_op = change_of_basis_op
     self.data_scale = data_scale
 
+class twinning_builder(object):
+  """ Construct twin components
+      They come as a tuple of instances of xray.twin_component.
+      If R is the twin law, the i-th component corresponds to the domain
+      where Miller indices are to be transformed by R^(i+1). The domain
+      with untransformed Miller indices is omitted as its fraction is just
+      1 minus the sum of the listed fractions.
+      As a result, the 0th component holds the twin law.
+  """
+
+  twin_components = ()
+
+  def make_merohedral_twinning(self, twin_law, fractions):
+    self.twin_components = []
+    if isinstance(twin_law, sgtbx.rt_mx): twin_law = twin_law.r()
+    t = twin_law
+    for f in fractions:
+      self.twin_components.append(xray.twin_component(twin_law=t,
+                                                      twin_fraction=f,
+                                                      grad_twin_fraction=True))
+      t = t.multiply(twin_law)
+
 
 # **********************************************
 # Conditional import of smtbx-dependent builders
