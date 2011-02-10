@@ -282,7 +282,7 @@ def get_bin_centers(miller_array):
 def interpolate(pt_1, pt_2, delta):
   return ( ((1.0-delta)*pt_1) + (delta*pt_2) )
 
-def calculate_mean_intensities(miller_array, log=sys.stderr):
+def calculate_mean_intensities(miller_array, log=sys.stdout):
   print >> log, "** Calculating bin mean intensity values for each intensity **"
   bin_mean_intensities = miller_array.mean(use_binning=True).data
   bin_centers = get_bin_centers(miller_array=miller_array)

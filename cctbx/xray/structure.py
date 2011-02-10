@@ -154,9 +154,9 @@ class structure(crystal.special_position_settings):
     """Set isotropic Debye-Waller/temperature/B factors with automatic conversion to u_iso
 
     Input:
-      :value:		a single double value to set all b_iso of selected scatterers to
-      :values:		an array of double values to set all b_iso of selected scatterers to
-      :selection:	an array of bools to select scatterers to be updated with new b_iso values
+      :value:           a single double value to set all b_iso of selected scatterers to
+      :values:          an array of double values to set all b_iso of selected scatterers to
+      :selection:       an array of bools to select scatterers to be updated with new b_iso values
 
     Returns:
       cctbx.xray.structure
