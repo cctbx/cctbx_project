@@ -8,8 +8,10 @@ class two_stats(object):
     - self.lowest_mean: the mean of the weakest cluster data[n:]
   """
 
-  def __init__(self, data):
+  def __init__(self, data, already_sorted=False):
     self.n_data = n = len(data)
+    if not already_sorted:
+      data = data.select(flex.sort_permutation(data, reverse=True))
     if n == 0:
       self.cut = self.highest_stat = self.lowest_stat = None
       return
