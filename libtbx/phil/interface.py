@@ -4,6 +4,7 @@
 
 import os, sys, re, string
 import libtbx.phil
+from libtbx.phil import gui_objects
 from libtbx.utils import Sorry
 from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args
@@ -33,6 +34,7 @@ class index (object) :
     if parse is None :
       self.parse = libtbx.phil.parse
     self.setup_phil(working_phil, fetch_new)
+    self.parse_styles()
 
   def setup_phil (self, working_phil, fetch_new=False) :
     if working_phil is None :
@@ -348,6 +350,14 @@ class index (object) :
         return phil_def.extract()
     return None
 
+  def is_list_type (self, phil_scope_name) :
+    phil_object = self.get_scope_by_name(phil_scope_name)
+    if isinstance(phil_object, list) :
+      return False
+    elif phil_object.type.phil_type in ["strings", "ints", "floats"] :
+      return True
+    return False
+
   #---------------------------------------------------------------------
   # EDITING METHODS
   def reset_scope (self, phil_scope_name) :
@@ -461,6 +471,108 @@ class index (object) :
     self._log.write("%s (%s:%d): %s\n" %
       (f.f_code.co_name, filename, f.f_lineno, str(message).strip()))
 
+  #---------------------------------------------------------------------
+  # GUI style handling
+  def parse_styles (self) :
+    self.style = {}
+    self._event_handlers = {}
+    self._update_handlers = {}
+    self._renderers = {}
+    self._file_type_mappings = {}
+    self._menu_tree = gui_objects.menu_hierarchy("settings")
+    self.generate_gui_components(self.working_phil)
+
+  def create_style (self, style_string) :
+    return gui_objects.style(style_string)
+
+  def generate_gui_components (self, phil_scope, in_submenu=False,
+      current_menu=None) :
+    use_submenu = in_submenu
+    if not current_menu :
+      current_menu = self._menu_tree
+    if phil_scope.is_template < 0 :
+      return
+    for object in phil_scope.objects :
+      next_menu = None
+      full_object_path = object.full_path()
+      if object.style is not None and phil_scope.is_template != -1 :
+        style = self.create_style(object.style)
+        self.style[full_object_path] = style
+        if style.hidden :
+          self._hidden.append(full_object_path)
+        if style.OnUpdate is not None :
+          self._update_handlers[full_object_path] = style.OnUpdate
+        elif style.process_hkl :
+          self._update_handlers[full_object_path] = "auto_extract_hkl_params"
+        if style.OnChange is not None :
+          self._event_handlers[full_object_path] = style.OnChange
+        if style.renderer is not None :
+          self._renderers[full_object_path] = style.renderer
+        if style.menu_item :
+          if phil_scope.multiple and phil_scope.is_template == 0 :
+            pass
+          elif style.parent_submenu :
+            current_menu.add_submenu(style.parent_submenu)
+            current_menu.get_submenu(style.parent_submenu).add_menu_item(
+              full_object_path)
+          else :
+            current_menu.add_menu_item(full_object_path)
+        elif style.submenu :
+          if phil_scope.multiple and phil_scope.is_template == 0 :
+            pass
+          elif style.parent_submenu :
+            current_menu.add_submenu(style.parent_submenu)
+            parent_submenu = current_menu.get_submenu(style.parent_submenu)
+            parent_submenu.add_submenu(full_object_path)
+            next_menu = parent_submenu.get_submenu(full_object_path)
+          else :
+            current_menu.add_submenu(full_object_path)
+            next_menu = current_menu.get_submenu(full_object_path)
+      else :
+        self.style[full_object_path] = gui_objects.style()
+      if not object.is_definition :
+        self.generate_gui_components(object, use_submenu, next_menu)
+      use_submenu = False
+
+  def get_scope_style (self, scope_name=None) :
+    if scope_name in self.style :
+      return self.style[scope_name]
+    else :
+      return gui_objects.style()
+
+  def get_menu_db (self) :
+    return self._menu_tree
+
+  def get_file_type_map (self, file_type, default_label=None,
+      exclude_params=()) :
+    if (file_type in self._file_type_mappings) :
+      return self._file_type_mappings[file_type]
+    param_info = []
+    for path_name, def_style in self.style.iteritems() :
+      def_types = []
+      if (def_style.file_type is not None) :
+        def_types = def_style.get_list("file_type")
+        if (file_type in def_types) :
+          if def_style.no_map or (path_name in exclude_params) :
+            continue
+          phil_object = self.get_scope_by_name(path_name)
+          if isinstance(phil_object, list) :
+            phil_object = phil_object[0]
+          label = get_standard_phil_label(phil_object)
+          parent_scope = phil_object.primary_parent_scope
+          if ((phil_object.multiple) or (parent_scope.multiple) or
+              (phil_object.type.phil_type=="strings")) :
+            count = None
+          else :
+            count = 1
+          if def_style.file_type_default :
+            default_label = label
+          param_info.append((phil_object.full_path(), label, count))
+    type_map = gui_objects.file_type_map(param_info, default_label)
+    self._file_type_mappings[file_type] = type_map
+    return type_map
+
+########################################################################
 #--- STANDALONE FUNCTIONS
 def delete_phil_objects (current_phil, phil_path_list, only_scope=None) :
   i = 0

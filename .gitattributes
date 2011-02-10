@@ -859,6 +859,7 @@ libtbx/metric_prefixes.py svneol=native#text/x-python
 libtbx/object_oriented_patterns.py -text
 libtbx/phil/doc.txt svneol=native#text/plain
 libtbx/phil/example.params -text
+libtbx/phil/gui_objects.py -text
 libtbx/phil/interface.py -text
 libtbx/phil/tst_interface.py -text
 libtbx/pyplot.py svneol=native#text/x-python

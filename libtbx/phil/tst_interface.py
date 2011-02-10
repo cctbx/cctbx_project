@@ -268,6 +268,34 @@ refinement.output.title = Test refinement run
     ('data.mtz', 'Reflections file', 'refinement.input.xray_data.file_name'),
     ('ligand.cif', 'CIF File', 'refinement.input.monomers.file_name')])
   assert (i.get_run_title() == "Test refinement run")
+  #
+  # .style processing
+  style = i.get_scope_style("refinement.refine.strategy")
+  assert (style.auto_launch_dialog == [
+    'refinement.refine.sites.individual', 'refinement.refine.sites.individual',
+    'refinement.refine.sites.rigid_body', 'refinement.refine.adp.individual',
+    'refinement.refine.adp.group', 'refinement.refine.adp.tls',
+    'refinement.refine.occupancies', 'refinement.refine.anomalous_scatterers'])
+  assert (style.file_type is None)
+  style = i.get_scope_style("refinement.input.xray_data.file_name")
+  assert (style.get_list("file_type") == ["hkl"])
+  assert (style.get_child_params() == {'fobs': 'labels',
+    'd_max': 'low_resolution', 'd_min': 'high_resolution',
+    'rfree_file': 'r_free_flags.file_name'})
+  assert i.is_list_type("refinement.input.xray_data.labels")
+  style = i.get_scope_style("refinement.input.xray_data.labels")
+  assert (style.get_parent_params() == {"file_name" : "file_name"})
+  file_map = i.get_file_type_map("pdb")
+  assert (file_map.get_multiple_params() == ['refinement.input.pdb.file_name'])
+  assert (file_map.get_default_param() == "refinement.input.pdb.file_name")
+  file_map = i.get_file_type_map("hkl")
+  assert (file_map.get_overall_max_count() == 5)
+  assert (len(file_map.get_multiple_params()) == 0)
+  assert (file_map.get_max_count("refinement.input.xray_data.file_name") == 1)
+  menu = i.get_menu_db()
+  assert (len(menu.get_items()) > 15) # XXX ballpark (currently 17)
+  submenu = menu.get_submenu("Atom_selections")
+  assert (str(submenu.get_items()[0]) == "refinement.refine.sites")
 
 def exercise_3 () :
   try :
