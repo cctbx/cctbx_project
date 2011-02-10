@@ -6,11 +6,8 @@
 
 namespace scitbx { namespace math {
 
-  namespace af = scitbx::af;
-
   // http://en.wikipedia.org/wiki/Cubic_Hermite_spline
   // http://www.mvps.org/directx/articles/catmull
-  // XXX: convert to template with arbitary vector dimensionality
   template <typename PointType>
   af::shared< PointType > interpolate_catmull_rom_spline (
     PointType const& p0,
