@@ -12,7 +12,8 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
 
-  struct rot_mx_wrappers : boost_adaptbx::py_hashable<rot_mx>
+  struct rot_mx_wrappers : boost_adaptbx::py_hashable<rot_mx>,
+                           boost::python::pickle_suite
   {
     typedef rot_mx w_t;
 
@@ -23,6 +24,10 @@ namespace {
       scitbx::vec3<double> const& lhs)
     {
       return lhs * rhs;
+    }
+
+    static boost::python::tuple getinitargs(w_t const &self) {
+      return boost::python::make_tuple(self.num(), self.den());
     }
 
     static void
@@ -37,6 +42,8 @@ namespace {
         .def(init<sg_mat3 const&, optional<int> >((
           arg("m")=1,
           arg("denominator")=1)))
+        .def_pickle(rot_mx_wrappers()) // pickling is tested through the pickling
+                                       // of xray::twin_component
         .def("num", (sg_mat3 const&(w_t::*)() const) &w_t::num, ccr())
         .def("den", (int const&(w_t::*)() const) &w_t::den, ccr())
         .def("__eq__", &w_t::operator==)
