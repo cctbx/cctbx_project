@@ -5,7 +5,6 @@ from scitbx import matrix
 from scitbx.python_utils import dicts
 from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
-from libtbx import object_oriented_patterns as oop
 import sys, math
 
 import boost.python

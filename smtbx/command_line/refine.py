@@ -1,9 +1,6 @@
 import os
-from libtbx.utils import Sorry
 from scitbx import lstbx
 import scitbx.lstbx.normal_eqns_solving
-from cctbx import xray
-from iotbx.reflection_file_reader import any_reflection_file
 from smtbx import refinement
 
 allowed_input_file_extensions = ('.ins', '.res', '.cif')
