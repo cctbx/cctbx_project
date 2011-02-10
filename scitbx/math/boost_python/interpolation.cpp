@@ -1,4 +1,3 @@
-
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 
@@ -15,12 +14,17 @@ namespace {
   {
     using namespace boost::python;
     def("interpolate_catmull_rom_spline",
-      interpolate_catmull_rom_spline<PointType>, (
-      arg("p0"),
-      arg("p1"),
-      arg("p2"),
-      arg("p3"),
-      arg("n_points")));
+      (af::shared<PointType>(*)(
+        PointType const&,
+        PointType const&,
+        PointType const&,
+        PointType const&,
+        unsigned)) interpolate_catmull_rom_spline, (
+          arg("p0"),
+          arg("p1"),
+          arg("p2"),
+          arg("p3"),
+          arg("n_points")));
   }
 
 } // namespace <anonymous>
