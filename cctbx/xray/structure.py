@@ -132,11 +132,12 @@ class structure(crystal.special_position_settings):
     """Set isotropic mean thermic displacements of scatterers
 
     Input:
-    value -- (optional) a single double value to set all u_iso of selected scatterers to
-    values -- (optional) an array of double values to set all u_iso of selected scatterers to
-    selection -- (optional) an array of bools to select scatterers to be updated with new u_iso values
+      :value: a single double value to set all u_iso of selected scatterers to
+      :values: an array of double values to set all u_iso of selected scatterers to
+      :selection: an array of bools to select scatterers to be updated with new u_iso values
 
-    Returns: cctbx.xray.structure
+    Returns:
+      cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -153,11 +154,12 @@ class structure(crystal.special_position_settings):
     """Set isotropic Debye-Waller/temperature/B factors with automatic conversion to u_iso
 
     Input:
-    value -- (optional) a single double value to set all b_iso of selected scatterers to
-    values -- (optional) an array of double values to set all b_iso of selected scatterers to
-    selection -- (optional) an array of bools to select scatterers to be updated with new b_iso values
+      :value:		a single double value to set all b_iso of selected scatterers to
+      :values:		an array of double values to set all b_iso of selected scatterers to
+      :selection:	an array of bools to select scatterers to be updated with new b_iso values
 
-    Returns: cctbx.xray.structure
+    Returns:
+      cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -394,7 +396,8 @@ class structure(crystal.special_position_settings):
     Equivalent to:
       1.66042 * _chemical_formula_weight * _cell_formula_units_Z / _cell_volume
 
-    Returns: float
+    Returns:
+      float
     """
     from cctbx.eltbx import tiny_pse
     numerator = sum([
@@ -411,9 +414,10 @@ class structure(crystal.special_position_settings):
     contributions.
 
     Input:
-    include_inelastic_part -- (optional, default=False) If 'True' contributions due to dispersion are included in F(000).
+      :include_inelastic_part: If 'True' contributions due to dispersion are included in F(000).
 
-    Returns: float
+    Returns:
+      float
     """
     elastic_part = 0
     reg = self.scattering_type_registry()
