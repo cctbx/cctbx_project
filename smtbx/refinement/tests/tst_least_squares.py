@@ -447,6 +447,28 @@ class twin_test(object):
       [twin.twin_fraction for twin in normal_eqns.twin_components],
       self.twin_fractions)
     assert approx_equal(normal_eqns.objective(), 0, eps=1e-14)
+    assert normal_eqns.n_parameters == 64
+    # now with fixed twin fraction
+    twin_components = tuple(
+      [xray.twin_component(law, fraction, grad_twin_fraction=False)
+       for law, fraction in zip(self.twin_laws, twin_fractions)])
+    reparametrisation = constraints.reparametrisation(
+      structure=xs,
+      constraints=[],
+      connectivity_table=connectivity_table,
+      twin_components=twin_components)
+    normal_eqns = least_squares.crystallographic_ls(
+      self.fo_sq, reparametrisation,
+      weighting_scheme=least_squares.unit_weighting())
+    cycles = normal_eqns_solving.naive_iterations(
+      normal_eqns,
+      n_max_iterations=10,
+      track_all=True)
+    assert approx_equal(
+      [twin.twin_fraction for twin in normal_eqns.twin_components],
+      twin_fractions)
+    assert normal_eqns.objective() != 0 # since the twin fraction is not refined
+    assert normal_eqns.n_parameters == 63
 
 class site_refinement_in_p1_test(p1_test, site_refinement_test): pass
 
