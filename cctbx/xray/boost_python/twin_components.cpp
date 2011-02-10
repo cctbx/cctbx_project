@@ -16,9 +16,15 @@ namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
   template <typename FloatType>
-  struct twin_component_wrappers
+  struct twin_component_wrappers : boost::python::pickle_suite
   {
     typedef twin_component<FloatType> wt;
+
+    static boost::python::tuple
+    getinitargs(wt const &self) {
+      return boost::python::make_tuple(self.twin_law, self.twin_fraction,
+                                       self.grad_twin_fraction);
+    }
 
     static void
     wrap()
@@ -33,6 +39,7 @@ namespace {
                   ((arg("twin_law"),
                     arg("twin_fraction"),
                     arg("grad_twin_fraction"))))
+        .def_pickle(twin_component_wrappers())
         .def("set_grad_twin_fraction", &wt::set_grad_twin_fraction)
         .def_readonly("twin_law", &wt::twin_law)
         .add_property("grad_twin_fraction",

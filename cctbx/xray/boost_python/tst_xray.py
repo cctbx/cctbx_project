@@ -2004,6 +2004,13 @@ def exercise_twin_components():
   assert twin_a.grad_twin_fraction == True
   twin_a.set_grad_twin_fraction(False)
   assert twin_a.grad_twin_fraction == False
+  import cPickle
+  pickled_twin_a = cPickle.dumps(twin_a, cPickle.HIGHEST_PROTOCOL)
+  unpickled_twin_a = cPickle.loads(pickled_twin_a)
+  assert twin_a.twin_fraction == unpickled_twin_a.twin_fraction
+  assert twin_a.twin_law == unpickled_twin_a.twin_law
+  assert twin_a.grad_twin_fraction == unpickled_twin_a.grad_twin_fraction
+
   twin_b = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)),
                                twin_fraction=0.2)
   assert twin_b.grad_twin_fraction == False
