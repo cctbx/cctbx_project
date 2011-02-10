@@ -5,6 +5,7 @@ from scitbx import matrix
 from scitbx.python_utils import dicts
 from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
+from libtbx import object_oriented_patterns as oop
 import sys, math
 
 import boost.python
@@ -367,7 +368,7 @@ def match_rt_from_ref_eucl_rt(model1_cb_op, model2_cb_op, ref_eucl_rt):
 def compute_refined_matches(ref_model1, ref_model2,
                             tolerance,
                             models_are_diffraction_index_equivalent,
-                            break_if_match_with_no_singles):
+                            shall_break):
   match_symmetry = euclidean_match_symmetry(
     ref_model1.space_group_info(),
     use_k2l=True, use_l2n=(not models_are_diffraction_index_equivalent))
@@ -405,19 +406,21 @@ def compute_refined_matches(ref_model1, ref_model2,
             ref_model2.cb_op(),
             match.ref_eucl_rt)
           refined_matches.append(match)
-          if (break_if_match_with_no_singles):
-            if (len(match.singles1) == 0 or len(match.singles2) == 0):
+          if shall_break(match):
               return refined_matches
   #print accumulated_match_refine_times
   return refined_matches
 
-class model_matches(object):
+
+class delegating_model_matches(object):
 
   def __init__(self, model1, model2,
                      tolerance=1.,
                      models_are_diffraction_index_equivalent=False,
-                     break_if_match_with_no_singles=False,
+                     shall_break=None,
                      rms_penalty_per_site=0.05):
+    if shall_break is None:
+      def shall_break(match): return False
     adopt_init_args(self, locals())
     assert model1.cb_op().is_identity_op()
     assert model2.cb_op().is_identity_op()
@@ -432,10 +435,11 @@ class model_matches(object):
       ref_model1, ref_model2,
       tolerance,
       models_are_diffraction_index_equivalent,
-      break_if_match_with_no_singles)
+      shall_break)
     self.refined_matches.sort(match_sort_function)
     weed_refined_matches(model1.space_group_info().type().number(),
                          self.refined_matches, rms_penalty_per_site)
+
 
   def n_matches(self):
     return len(self.refined_matches)
@@ -473,3 +477,23 @@ class model_matches(object):
     for pos in source_model.positions():
       result.add_position(position(label=pos.label, site=(rt*pos.site).elems))
     return result
+
+
+class model_matches(delegating_model_matches):
+
+  def __init__(self, model1, model2,
+                     tolerance=1.,
+                     models_are_diffraction_index_equivalent=False,
+                     break_if_match_with_no_singles=False,
+                     rms_penalty_per_site=0.05):
+    if break_if_match_with_no_singles:
+      def shall_break(match):
+        return len(match.singles1) == 0 or len(match.singles2) == 0
+    else:
+      shall_break = None
+    super(model_matches, self).__init__(
+      model1, model2,
+      tolerance,
+      models_are_diffraction_index_equivalent,
+      shall_break,
+      rms_penalty_per_site)
