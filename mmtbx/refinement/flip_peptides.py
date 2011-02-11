@@ -322,7 +322,7 @@ def run(fmodel,
       target_map=target_map_data,
       geometry_restraints_manager=geometry_restraints_manager,
       real_space_target_weight=params.residue_iteration.real_space_refine_target_weight,
-      real_space_gradients_delta=fmodel.f_obs.d_min()/4,
+      real_space_gradients_delta=fmodel.f_obs().d_min()/4,
       max_iterations=params.residue_iteration.real_space_refine_max_iterations)
     residue_rsr_monitor = residue_iteration(
       pdb_hierarchy     = pdb_hierarchy,

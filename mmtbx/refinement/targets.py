@@ -114,20 +114,20 @@ class target_functor(object):
           "ml_sad target requires phaser extension, which is not available"
           " in this installation.")
       self.core = phaser_sad_target_functor(
-        f_obs=manager.f_obs,
-        r_free_flags=manager.r_free_flags,
+        f_obs=manager.f_obs(),
+        r_free_flags=manager.r_free_flags(),
         xray_structure=manager.xray_structure,
         f_calc=manager.f_model(),
         target_memory=manager._target_memory)
       manager._target_memory = self.core.target_memory()
     elif (attr.family == "ml"):
       if (attr.requires_experimental_phases()):
-        experimental_phases = manager.abcd
+        experimental_phases = manager.hl_coeffs()
       else:
         experimental_phases = None
       self.core = xray.target_functors.max_like(
-        f_obs=manager.f_obs,
-        r_free_flags=manager.r_free_flags,
+        f_obs=manager.f_obs(),
+        r_free_flags=manager.r_free_flags(),
         experimental_phases=experimental_phases,
         alpha_beta=manager.alpha_beta(),
         scale_factor=manager.scale_ml_wrapper(),
@@ -149,7 +149,7 @@ class target_functor(object):
         else:
           raise RuntimeError
       else:
-        f_obs = manager.f_obs
+        f_obs = manager.f_obs()
         if (target_name.startswith("ls_wunit_")):
           weights = flex.double(f_obs.data().size(), 1.0)
           if   (target_name == "ls_wunit_k1"):
@@ -194,7 +194,7 @@ class target_functor(object):
         apply_scale_to_f_calc=attr.ls_apply_scale_to_f_calc(),
         compute_scale_using_all_data=False,
         f_obs=f_obs,
-        r_free_flags=manager.r_free_flags,
+        r_free_flags=manager.r_free_flags(),
         weights=weights,
         scale_factor=scale_factor)
 

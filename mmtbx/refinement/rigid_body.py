@@ -500,11 +500,11 @@ class manager(object):
            n_rigid_body_minimizer_cycles = min(int(res),4)
         for i_macro_cycle in xrange(n_rigid_body_minimizer_cycles):
             if(bss is not None and params.bulk_solvent_and_scale):
-               if(fmodel_copy.f_obs.d_min() > 3.0):
+               if(fmodel_copy.f_obs().d_min() > 3.0):
                   bss.anisotropic_scaling=False
                fmodel_copy.update_solvent_and_scale(
                  params = bss, out = log, verbose = -1, optimize_mask=False)
-               if(fmodel_copy.f_obs.d_min() > 3.0):
+               if(fmodel_copy.f_obs().d_min() > 3.0):
                   assert save_bss_anisotropic_scaling is not None
                   bss.anisotropic_scaling = save_bss_anisotropic_scaling
                   bss.minimization_b_cart = save_bss_anisotropic_scaling
