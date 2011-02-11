@@ -1541,8 +1541,8 @@ def fmodel_simple(f_obs,
       else:
         f_model_data += fmodel.f_calc().data()
         f_mask_data += fmodel.f_mask().data()
-    fmodel_average = fmodel.f_obs.array(data = f_model_data)
-    f_mask_data_average = fmodel.f_obs.array(data = f_mask_data/len(xray_structures))
+    fmodel_average = fmodel.f_obs().array(data = f_model_data)
+    f_mask_data_average = fmodel.f_obs().array(data = f_mask_data/len(xray_structures))
     fmodel_result = fmodel_manager(
       f_obs        = f_obs.deep_copy(),
       r_free_flags = r_free_flags.deep_copy(),
@@ -2125,7 +2125,7 @@ class fmodel_from_xray_structure(object):
       sigmas = flex.double(self.f_model.data().size(),1)
       self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
-      self.r_free_flags = fmodel.r_free_flags
+      self.r_free_flags = fmodel.r_free_flags()
 
   def Sorry_high_resolution_is_not_defined(self):
     raise Sorry("High resolution limit is not defined. "\
@@ -2321,23 +2321,23 @@ def fill_missing_f_obs(fmodel, fill_mode):
     hkl         = f_calc_atoms_lone.indices(),
     uc          = f_mask_lone.unit_cell(),
     ss          = ss)
-  f_obs_orig = fmodel.f_obs.deep_copy()
-  r_free_flags_orig = fmodel.r_free_flags
+  f_obs_orig = fmodel.f_obs().deep_copy()
+  r_free_flags_orig = fmodel.r_free_flags()
   # compose new fileld fmodel
   filled_f_obs_selection = flex.bool(n_refl_orig, False)
   f_model_lone = abs(miller.array(
     miller_set = f_mask_lone,
     data       = f_model_core.f_model * fmodel.scale_k1()))
-  new_f_obs = fmodel.f_obs.concatenate(other = f_model_lone)
-  new_r_free_flags = fmodel.r_free_flags.concatenate(
+  new_f_obs = fmodel.f_obs().concatenate(other = f_model_lone)
+  new_r_free_flags = fmodel.r_free_flags().concatenate(
     other = r_free_flags_lone)
   filled_f_obs_selection = filled_f_obs_selection.concatenate(
     flex.bool(n_refl_lone, True))
   new_abcd = None
-  if(fmodel.abcd is not None):
-    new_abcd = fmodel.abcd.customized_copy(
+  if(fmodel.hl_coeffs() is not None):
+    new_abcd = fmodel.hl_coeffs().customized_copy(
       indices = new_f_obs.indices(),
-      data = fmodel.abcd.data().concatenate(
+      data = fmodel.hl_coeffs().data().concatenate(
         flex.hendrickson_lattman(n_refl_lone, [0,0,0,0])))
   fmodel = mmtbx.f_model.manager(
     xray_structure = fmodel.xray_structure,
@@ -2355,14 +2355,14 @@ def fill_missing_f_obs(fmodel, fill_mode):
   fmodel.update_solvent_and_scale(params = bss_params, optimize_mask=False)
   # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
   alpha, beta = maxlik.alpha_beta_est_manager(
-    f_obs                    = fmodel.f_obs,
+    f_obs                    = fmodel.f_obs(),
     f_calc                   = fmodel.f_model_scaled_with_k1(),
     free_reflections_per_bin = 100,
-    flags                    = fmodel.r_free_flags.data(),
+    flags                    = fmodel.r_free_flags().data(),
     interpolation            = True).alpha_beta()
   apply_alpha_sel = flex.bool(n_refl_orig, False).concatenate(
     flex.bool(n_refl_lone, True)) # assume order did not change
-  assert apply_alpha_sel.size() == fmodel.f_obs.data().size()
+  assert apply_alpha_sel.size() == fmodel.f_obs().data().size()
   alpha = alpha.select(apply_alpha_sel)
   # compose new fileld fmodel
   f_model_lone = abs(miller.array(

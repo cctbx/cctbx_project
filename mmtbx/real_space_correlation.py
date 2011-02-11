@@ -804,14 +804,14 @@ def simple(fmodel,
       raise Sorry("Not available for twinned data.")
     atom_detail, residue_detail, atom_radius = set_details_level_and_radius(
       details_level = details_level,
-      d_min         = fmodel.f_obs.d_min(),
+      d_min         = fmodel.f_obs().d_min(),
       atom_radius   = atom_radius)
     map_name_obj = mmtbx.map_names(map_name_string = map_1_name)
     grid_step = compute_grid_step_from_atom_radius_and_number_of_grid_points(
-      r = atom_radius, n = number_of_grid_points, d_min = fmodel.f_obs.d_min())
-    resolution_factor = grid_step/fmodel.f_obs.d_min()
+      r = atom_radius, n = number_of_grid_points, d_min = fmodel.f_obs().d_min())
+    resolution_factor = grid_step/fmodel.f_obs().d_min()
     if([map_name_obj.k, map_name_obj.n] == [0,-1] and not map_name_obj.ml_map):
-      complete_set = fmodel.f_obs.complete_set(d_min = fmodel.f_obs.d_min(),
+      complete_set = fmodel.f_obs.complete_set(d_min = fmodel.f_obs().d_min(),
         d_max=None)
       f_calc = complete_set.structure_factors_from_scatterers(
         xray_structure = fmodel.xray_structure).f_calc()

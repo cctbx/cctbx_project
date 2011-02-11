@@ -327,6 +327,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                map_types          = None,
                twin_target = master_params.extract().twin_target):
     self.fmodel_ts1 = None
+    self.f_obs_ = f_obs
     if(f_calc is not None): raise RuntimeError("Not implemented.")
     if(map_types is None):
       map_types = master_params.extract().detwin.map_types
@@ -365,14 +366,14 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.map_types = map_types
 
     assert (self.twin_law is not None)
-    self.f_obs = f_obs.map_to_asu()
-    self.r_free_flags = r_free_flags.map_to_asu()
+    f_obs = f_obs.map_to_asu()
+    self.f_obs_ = f_obs
+    self.r_free_flags_ = r_free_flags.map_to_asu()
+    assert self.f_obs_.indices().all_eq( self.r_free_flags_.indices() )
 
-    assert self.f_obs.indices().all_eq( self.r_free_flags.indices() )
-
-    self.f_obs_w = self.f_obs.select( ~self.r_free_flags.data() )
-    if(self.r_free_flags.data().count(True)>0):
-      self.f_obs_f = self.f_obs.select( self.r_free_flags.data() )
+    self.f_obs_w = f_obs.select( ~r_free_flags.data() )
+    if(r_free_flags.data().count(True)>0):
+      self.f_obs_f = f_obs.select( r_free_flags.data() )
     else:
       self.f_obs_f = self.f_obs_w.deep_copy()
     if(self.f_obs_w.data().size()==0 and self.f_obs_f.data().size()>0):
@@ -381,16 +382,16 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     #setup the binners if this has not been done yet
     self.max_bins = max_bins
     self.n_refl_bin = n_refl_bin
-    if (self.n_refl_bin>self.f_obs.data().size() ) or (self.n_refl_bin is None):
-      self.n_refl_bin = self.f_obs.data().size()
-    if self.f_obs.binner() is None:
-      if self.f_obs.indices().size()/float(n_refl_bin) > max_bins:
-        self.f_obs.setup_binner(n_bins = max_bins)
+    if (self.n_refl_bin>f_obs.data().size() ) or (self.n_refl_bin is None):
+      self.n_refl_bin = f_obs.data().size()
+    if f_obs.binner() is None:
+      if f_obs.indices().size()/float(n_refl_bin) > max_bins:
+        f_obs.setup_binner(n_bins = max_bins)
       else:
-        self.f_obs.setup_binner( reflections_per_bin=self.n_refl_bin )
+        f_obs.setup_binner( reflections_per_bin=self.n_refl_bin )
 
-    self.f_obs_w.use_binning_of( self.f_obs )
-    self.f_obs_f.use_binning_of( self.f_obs )
+    self.f_obs_w.use_binning_of( f_obs )
+    self.f_obs_f.use_binning_of( f_obs )
 
     self.xray_structure = xray_structure
     self.xs = crystal.symmetry( unit_cell=f_obs.unit_cell(),
@@ -408,7 +409,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.mask_params = mmtbx.masks.mask_master_params.extract()
 
 
-    self.norma_sum_f_sq = flex.sum( self.f_obs.data() * self.f_obs.data() )
+    self.norma_sum_f_sq = flex.sum(   f_obs.data() * f_obs.data() )
     self.norma_sum_f_sq_w = flex.sum( self.f_obs_w.data() * self.f_obs_w.data() )
     self.norma_sum_f_sq_f = flex.sum( self.f_obs_f.data() * self.f_obs_f.data() )
     #-------------------
@@ -449,8 +450,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       f_obs         = self.f_obs_w.data(),
       w_obs         = self.f_obs_w.sigmas(),
       hkl_calc      = self.f_atoms.indices(),
-      space_group   = self.f_obs.space_group(),
-      anomalous_flag= self.f_obs.anomalous_flag(),
+      space_group   = f_obs.space_group(),
+      anomalous_flag= f_obs.anomalous_flag(),
       alpha         = self.twin_fraction,
       twin_law      = self.twin_law.as_double_array()[0:9] )
 
@@ -462,23 +463,23 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
         f_obs          = self.f_obs_f.data(),
         w_obs          = self.f_obs_f.sigmas(),
         hkl_calc       = self.f_atoms.indices(),
-        space_group    = self.f_obs.space_group(),
-        anomalous_flag = self.f_obs.anomalous_flag(),
+        space_group    = f_obs.space_group(),
+        anomalous_flag = f_obs.anomalous_flag(),
         alpha          = self.twin_fraction,
         twin_law       = self.twin_law.as_double_array()[0:9] )
 
     self.r_all_object = xray.hemihedral_r_values(
-      hkl_obs        = self.f_obs.indices(),
+      hkl_obs        = f_obs.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs.space_group(),
-      anomalous_flag = self.f_obs.anomalous_flag(),
+      space_group    = f_obs.space_group(),
+      anomalous_flag = f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
     self.r_work_object = xray.hemihedral_r_values(
       hkl_obs        = self.f_obs_w.indices(),
       hkl_calc       = self.f_atoms.indices(),
       space_group    = self.f_obs_w.space_group(),
-      anomalous_flag = self.f_obs.anomalous_flag(),
+      anomalous_flag = f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
     self.r_free_object = xray.hemihedral_r_values(
@@ -506,10 +507,10 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
         twin_law       = self.twin_law.as_double_array()[0:9] )
 
     self.full_detwinner = xray.hemihedral_detwinner(
-      hkl_obs        = self.f_obs.indices(),
+      hkl_obs        = f_obs.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs.space_group(),
-      anomalous_flag = self.f_obs.anomalous_flag(),
+      space_group    = f_obs.space_group(),
+      anomalous_flag = f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
     if(self.sfg_params is not None):
@@ -535,6 +536,12 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
     self.epsilons_w = self.f_obs_w.epsilons().data().as_double()
     self.epsilons_f = self.f_obs_f.epsilons().data().as_double()
+
+  def f_obs(self):
+    return self.f_obs_
+
+  def r_free_flags(self):
+    return self.r_free_flags_
 
   def twin_test(self):
     return "yes"
@@ -591,9 +598,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def deep_copy(self):
     new_object = twin_model_manager(
-      f_obs              = self.f_obs.deep_copy(),
+      f_obs              = self.f_obs().deep_copy(),
       f_mask             = self.f_mask_array.deep_copy(),
-      r_free_flags       = self.r_free_flags.deep_copy(),
+      r_free_flags       = self.r_free_flags().deep_copy(),
       xray_structure     = self.xray_structure.deep_copy_scatterers(),
       scaling_parameters = self.scaling_parameters.deep_copy(),
       mask_params        = deepcopy(self.mask_params),
@@ -616,13 +623,13 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def resolution_filter(self,d_max=None,d_min=None):
     dc = self.deep_copy()
     # make a dummy copy of the observed data please
-    dummy_obs  = dc.f_obs.resolution_filter(d_max,d_min)
+    dummy_obs  = dc.f_obs().resolution_filter(d_max,d_min)
     twin_complete = dc.construct_miller_set(external_miller_array = dummy_obs )
     appropriate_f_mask_array = dc.f_mask_array.common_set( twin_complete )
     new_object = twin_model_manager(
       f_obs        = dummy_obs,
       f_mask             = appropriate_f_mask_array, #dc.f_mask_array.resolution_filter(d_max,d_min),
-      r_free_flags         = dc.r_free_flags.resolution_filter(d_max,d_min),
+      r_free_flags         = dc.r_free_flags().resolution_filter(d_max,d_min),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
       mask_params        = dc.mask_params,
@@ -648,7 +655,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     new_object = twin_model_manager(
       f_obs              = dc.f_obs.select(selection) ,
       f_mask             = dc.f_mask_array.select(selection), # XXX BUG, see commented assert above
-      r_free_flags       = dc.r_free_flags.select(selection),
+      r_free_flags       = dc.r_free_flags().select(selection),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
       mask_params        = dc.mask_params,
@@ -720,8 +727,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                verbose=-1,
                                initialise=False):
     self.fmodel_ts1 = mmtbx.f_model.manager(
-      f_obs          = self.f_obs,
-      r_free_flags   = self.r_free_flags,
+      f_obs          = self.f_obs(),
+      r_free_flags   = self.r_free_flags(),
       xray_structure = self.xray_structure,
       twin_law       = self.twin_law_str,
       mask_params    = self.mask_params,
@@ -730,6 +737,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       b_cart         = self.b_cart())
     self.twin_set = self.fmodel_ts1.twin_set
     self.active_arrays = self.fmodel_ts1.active_arrays
+    self.passive_arrays = self.fmodel_ts1.passive_arrays
     self.fmodel_ts1.update_twin_fraction()
     if(params is None):
       params = bss.master_params.extract()
@@ -760,6 +768,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                   k_overall     = None,
                   twin_fraction = None,
                   r_free_flags  = None):
+    if(r_free_flags is not None):
+      self.r_free_flags_ = r_free_flags
     if f_calc is not None:
       self.data_core.renew_fatoms( f_calc.data() )
       self.f_atoms = f_calc
@@ -847,15 +857,15 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if(f_obs is not None):
        assert f_obs.data().size() == self.f_obs.data().size()
        self.f_obs = f_obs
-       self.f_obs_w = self.f_obs.select(~self.r_free_flags.data() )
-       self.f_obs_f = self.f_obs.select( self.r_free_flags.data() )
+       self.f_obs_w = self.f_obs.select(~self.r_free_flags().data() )
+       self.f_obs_f = self.f_obs.select( self.r_free_flags().data() )
     if(f_mask is not None):
       assert f_mask.indices().all_eq( self.f_mask_array().indices() )
       assert f_mask.data().size() == self.f_mask_array().data().size()
       self.update_core(f_mask = f_mask)
 
     if(r_free_flags is not None):
-      self.update_r_free_flags(r_free_flags)
+      self.r_free_flags_ = r_free_flags
       self.update_core(r_free_flags = r_free_flags)
     if(b_cart is not None):
       try: assert b_cart.size() == 6
@@ -884,7 +894,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     completion = None
     tmp_miller = external_miller_array
     if tmp_miller is None:
-      tmp_miller = self.f_obs
+      tmp_miller = self.f_obs()
 
     completion = xray.twin_completion( tmp_miller.indices(),
                                        self.xs.space_group(),
@@ -903,7 +913,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     else:
       free_array_for_f_atoms = completion.get_free_model_selection(
         miller_set.indices(),
-        self.r_free_flags.data() )
+        self.r_free_flags().data() )
       return miller_set, free_array_for_f_atoms
 
 
@@ -964,7 +974,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
 
   def _get_step(self, update_f_ordered_solvent = False):
-    step = self.f_obs.d_min()/self.mask_params.grid_step_factor
+    step = self.f_obs().d_min()/self.mask_params.grid_step_factor
     if(step < 0.3): step = 0.3
     step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
@@ -1251,9 +1261,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       return r_abs_work_f_overall, r_abs_free_f_overall
 
   def r_all(self):
-    selection = flex.bool( self.f_obs.data().size(), True )
+    selection = flex.bool( self.f_obs().data().size(), True )
     overall_r = self.r_all_object.r_amplitude_abs(
-          f_obs         = self.f_obs.data(),
+          f_obs         = self.f_obs().data(),
           f_model       = self.data_core.f_model(),
           selection     = selection,
           twin_fraction = self.twin_fraction_object.twin_fraction)
@@ -1411,10 +1421,10 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     assert mode != "auto"
 
     #detwinning should be done against
-    tmp_i_obs = self.f_obs.deep_copy().f_as_f_sq()
-    untouched = self.f_obs.deep_copy().f_as_f_sq()
+    tmp_i_obs = self.f_obs().deep_copy().f_as_f_sq()
+    untouched = self.f_obs().deep_copy().f_as_f_sq()
     dt_f_obs = None
-    tmp_free = self.r_free_flags.deep_copy()
+    tmp_free = self.r_free_flags().deep_copy()
 
     # now please detwin the data
     if mode == "proportional":
@@ -1608,8 +1618,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         min_n_bins=1,
         min_refl_per_bin=100):
     assert free_reflections_per_bin > 0
-    n_refl = self.r_free_flags.data().size()
-    n_free = self.r_free_flags.data().count(True)
+    n_refl = self.r_free_flags().data().size()
+    n_free = self.r_free_flags().data().count(True)
     n_refl_per_bin = free_reflections_per_bin
     if (n_free != 0):
       n_refl_per_bin *= n_refl / n_free
@@ -1724,7 +1734,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       gradients = self.target_evaluator.d_target_d_fmodel(
         self.data_core.f_model() )
       gradients = self.f_atoms.customized_copy(
-        data = -gradients).common_set( self.f_obs )
+        data = -gradients).common_set( self.f_obs() )
       if map_type == "m_gradient":
         # get the FOMs please
         m = self.sigmaa_object().fom().common_set(self.f_obs).data()
@@ -1934,7 +1944,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     out.flush()
     p = " "
     if(header is None): header = ""
-    d_max, d_min = self.f_obs.d_max_min()
+    d_max, d_min = self.f_obs().d_max_min()
     line1 = "---(resolution: "
     line2 = n_as_s("%6.2f",d_min)
     line3 = n_as_s("%6.2f",d_max)

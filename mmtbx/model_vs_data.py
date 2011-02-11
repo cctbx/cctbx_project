@@ -524,7 +524,7 @@ def reflection_file_server(crystal_symmetry, reflection_files):
 def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, fmodel_cut):
   info = fmodel.info()
   flags_pc = \
-   fmodel.r_free_flags.data().count(True)*1./fmodel.r_free_flags.data().size()
+   fmodel.r_free_flags().data().count(True)*1./fmodel.r_free_flags().data().size()
   twinned = str(fmodel_cut.twin)
   if(fmodel_cut.twin != fmodel.twin):
     twinned = "May be, %s or %s"%(str(fmodel_cut.twin), str(fmodel.twin))
@@ -540,12 +540,12 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, fmodel_cut):
                     test_flag_value         = test_flag_value,
                     number_of_Fobs_outliers = n_outl,
                     twinned                 = twinned,
-                    anomalous_flag          = fmodel.f_obs.anomalous_flag())
+                    anomalous_flag          = fmodel.f_obs().anomalous_flag())
 
 def show_model_vs_data(fmodel):
-  d_max, d_min = fmodel.f_obs.d_max_min()
-  flags_pc = fmodel.r_free_flags.data().count(True)*100./\
-    fmodel.r_free_flags.data().size()
+  d_max, d_min = fmodel.f_obs().d_max_min()
+  flags_pc = fmodel.r_free_flags().data().count(True)*100./\
+    fmodel.r_free_flags().data().size()
   if(flags_pc == 0): r_free = None
   else: r_free = fmodel.r_free()
   sc = None
@@ -574,8 +574,9 @@ def maps(fmodel, mvd_obj, map_cutoff = 3.0, map_type = "mFo-DFc"):
     peaks_minus_9 = 0)
   params = mmtbx.find_peaks.master_params.extract()
   params.peak_search.min_cross_distance = 1.2
-  if(fmodel.twin and fmodel.r_free_flags.data().count(True)==0): # XXX
-    fmodel.r_free_flags = fmodel.r_free_flags.generate_r_free_flags() # XXX
+  if(fmodel.twin and fmodel.r_free_flags().data().count(True)==0): # XXX
+    rff = fmodel.r_free_flags().generate_r_free_flags()
+    fmodel.update(r_free_flags = rff) # XXX
   peaks_plus = mmtbx.find_peaks.manager(
     fmodel     = fmodel,
     map_type   = map_type,
@@ -789,7 +790,7 @@ def run(args,
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags)
-  n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
+  n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
   #
   # Extract information from PDB file header and output (if any)
@@ -826,22 +827,22 @@ def run(args,
   #
   # Recompute R-factors using published cutoffs
   fmodel_cut = fmodel
-  tmp_sel = flex.bool(fmodel.f_obs.data().size(), True)
-  if(pub_sigma is not None and fmodel.f_obs.sigmas() is not None):
-    tmp_sel &= fmodel.f_obs.data() > fmodel.f_obs.sigmas()*pub_sigma
-  if(pub_high is not None and abs(pub_high-fmodel.f_obs.d_min()) > 0.03):
-    tmp_sel &= fmodel.f_obs.d_spacings().data() > pub_high
-  if(pub_low is not None and abs(pub_low-fmodel.f_obs.d_max_min()[0]) > 0.03):
-    tmp_sel &= fmodel.f_obs.d_spacings().data() < pub_low
+  tmp_sel = flex.bool(fmodel.f_obs().data().size(), True)
+  if(pub_sigma is not None and fmodel.f_obs().sigmas() is not None):
+    tmp_sel &= fmodel.f_obs().data() > fmodel.f_obs().sigmas()*pub_sigma
+  if(pub_high is not None and abs(pub_high-fmodel.f_obs().d_min()) > 0.03):
+    tmp_sel &= fmodel.f_obs().d_spacings().data() > pub_high
+  if(pub_low is not None and abs(pub_low-fmodel.f_obs().d_max_min()[0]) > 0.03):
+    tmp_sel &= fmodel.f_obs().d_spacings().data() < pub_low
   if(tmp_sel.count(True) != tmp_sel.size() and tmp_sel.count(True) > 0):
     fmodel_cut = utils.fmodel_simple(
       xray_structures = xray_structures,
-      f_obs           = fmodel.f_obs.select(tmp_sel),
-      r_free_flags    = fmodel.r_free_flags.select(tmp_sel))
+      f_obs           = fmodel.f_obs().select(tmp_sel),
+      r_free_flags    = fmodel.r_free_flags().select(tmp_sel))
   mvd_obj.collect(misc = group_args(
     r_work_cutoff = fmodel_cut.r_work(),
     r_free_cutoff = fmodel_cut.r_free(),
-    n_refl_cutoff = fmodel_cut.f_obs.data().size()))
+    n_refl_cutoff = fmodel_cut.f_obs().data().size()))
   mvd_obj.collect(data =
     show_data(fmodel          = fmodel,
               n_outl          = n_outl,

@@ -88,7 +88,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
   # prepare Fobs for map calculation (apply scaling):
   f_obss = []
   for fmodel in fmodels:
-    obs = fmodel.f_obs
+    obs = fmodel.f_obs()
     fb_cart  = fmodel.fb_cart()
     scale_k2 = fmodel.scale_k2()
     f_obs_scale   = 1.0 / fb_cart * scale_k2

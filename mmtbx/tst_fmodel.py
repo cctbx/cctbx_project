@@ -52,7 +52,7 @@ def test_1(xray_structure):
                                               target_name       = "ls_wunit_k1",
                                               sf_and_grads_accuracy_params = sfg_params)
                       fmodel_info = fmodel.info()
-                      assert fmodel.f_obs.data().all_eq(f_obs.data())
+                      assert fmodel.f_obs().data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
@@ -120,7 +120,7 @@ def test_1(xray_structure):
                                               sf_and_grads_accuracy_params = sfg_params)
                       fmodel_info = fmodel.info()
                       fmodel.update(k_sol = 0.5, b_sol = 35.0)
-                      assert fmodel.f_obs.data().all_eq(f_obs.data())
+                      assert fmodel.f_obs().data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert fmodel.fb_cart().all_eq(1.0)
                       assert fmodel.fb_cart_work().all_eq(1.0)
@@ -159,7 +159,7 @@ def test_1(xray_structure):
                                               sf_and_grads_accuracy_params = sfg_params)
                       fmodel = fmodel_.deep_copy()
                       fmodel_info = fmodel.info()
-                      assert fmodel.f_obs.data().all_eq(f_obs.data())
+                      assert fmodel.f_obs().data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
@@ -247,8 +247,8 @@ def test_1(xray_structure):
                                 sf_and_grads_accuracy_params = sfg_params)
                       if(xrs is not None and algorithm=="fft"):
                         fmodel_1.update_xray_structure(update_f_calc=True) # XXX may be do it internally in fmodel ?
-                      assert fmodel_1.f_obs.data().all_eq(fmodel_2.f_obs.data())
-                      assert fmodel_1.r_free_flags.data().all_eq(fmodel_2.r_free_flags.data())
+                      assert fmodel_1.f_obs().data().all_eq(fmodel_2.f_obs().data())
+                      assert fmodel_1.r_free_flags().data().all_eq(fmodel_2.r_free_flags().data())
                       assert abs(fmodel_1.f_calc()).data().all_eq(abs(fmodel_2.f_calc()).data())
                       assert abs(fmodel_1.f_model()).data().all_eq(abs(fmodel_2.f_model()).data())
                       assert fmodel_1.fb_cart().all_eq(fmodel_2.fb_cart())
