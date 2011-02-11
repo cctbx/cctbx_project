@@ -1,13 +1,18 @@
 from cctbx import xray
 import sys, os
+op = os.path
 
-for f in sys.argv[1:]:
-  try:
-    xs = xray.structure.from_shelx(filename=f, strictly_shelxl=False)
-  except KeyboardInterrupt:
-    raise
-  except:
-    print "%s is not a .ins or a .res file" % f
-    continue
-  r, _ = os.path.splitext(f)
-  xs.as_cif_simple(out=open(r + '.cif', 'w'))
+def run(args):
+  for f in args:
+    try:
+      xs = xray.structure.from_shelx(filename=f, strictly_shelxl=False)
+    except KeyboardInterrupt:
+      raise
+    except:
+      print "%s is not a .ins or a .res file" % f
+      continue
+    r, _ = op.splitext(op.basename(f))
+    xs.as_cif_simple(out=open(r + '.cif', 'w'))
+
+if (__name__ == "__main__"):
+  run(args=sys.argv[1:])
