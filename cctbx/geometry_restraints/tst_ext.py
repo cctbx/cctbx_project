@@ -257,6 +257,11 @@ def exercise_bond():
   assert approx_equal(s[0][0].distance_ideal, 4)
   assert approx_equal(s[0][0].weight, 5)
   #
+  assert approx_equal(t.lookup(13, 0).weight, 2)
+  t.lookup(0, 13).weight = 48
+  assert approx_equal(t.lookup(0, 13).weight, 48)
+  t.lookup(13, 0).weight = 2
+  #
   rest = t.proxy_remove(selection=flex.bool([True]*14))
   assert [p.size() for p in rest] == [0]*14
   rest = t.proxy_remove(selection=flex.bool([False]*14))
@@ -1065,6 +1070,16 @@ def exercise_angle():
     assert approx_equal(p.angle_ideal, 95)
     assert approx_equal(p.weight, 1)
     assert p.slack == 0.0
+  check(p)
+  p.angle_ideal = 86
+  p.weight = 78
+  p.slack = 12
+  assert approx_equal(p.angle_ideal, 86)
+  assert approx_equal(p.weight, 78)
+  assert approx_equal(p.slack, 12)
+  p.angle_ideal = 95
+  p.weight = 1
+  p.slack = 0
   check(p)
   p = geometry_restraints.angle_proxy(
     i_seqs=[2,1,0],

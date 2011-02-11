@@ -34,6 +34,14 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
   elif (d >  half_period): d -= 2*half_period
   return d
 
+class _bond_params_table(boost.python.injector, bond_params_table):
+
+  def lookup(self, i_seq, j_seq):
+    if (i_seq > j_seq): i_seq, j_seq = j_seq, i_seq
+    bond_params_by_j_seq = self[i_seq]
+    if (j_seq not in bond_params_by_j_seq): return None
+    return bond_params_by_j_seq[j_seq]
+
 class proxy_registry_process_result(object):
 
   def __init__(self,
