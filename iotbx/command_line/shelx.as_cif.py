@@ -10,5 +10,4 @@ for f in sys.argv[1:]:
     print "%s is not a .ins or a .res file" % f
     continue
   r, _ = os.path.splitext(f)
-  with open(r + '.cif', 'w') as out:
-    xs.as_cif_simple(out)
+  xs.as_cif_simple(out=open(r + '.cif', 'w'))
