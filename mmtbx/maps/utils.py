@@ -289,6 +289,23 @@ def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     map_data=map_data,
     labels=flex.std_string(["mmtbx.utils.write_ccp4_map_box"]))
 
+class write_ccp4_maps_wrapper (object) :
+  def __init__ (self, pdb_hierarchy, map_coeffs, output_files,
+      resolution_factor) :
+    adopt_init_args(self, locals())
+
+  def run (self) :
+    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+    for map_coeffs, file_name in zip(self.map_coeffs, self.output_files) :
+      if (map_coeffs is None) :
+        continue
+      fft_map = map_coeffs.fft_map(resolution_factor=self.resolution_factor)
+      write_ccp4_map(sites_cart,
+        unit_cell=map_coeffs.unit_cell(),
+        map_data=fft_map.real_map(),
+        n_real=fft_map.n_real(),
+        file_name=file_name)
+
 # XXX backwards compatibility
 # TODO remove these ASAP once GUI is thoroughly tested
 def extract_map_coeffs (*args, **kwds) :
