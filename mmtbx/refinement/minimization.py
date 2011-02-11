@@ -99,7 +99,7 @@ class lbfgs(object):
       hrltisfh = \
         self.h_params.high_resolution_limit_to_include_scattering_from_h
     return self.h_params is not None and \
-      self.fmodels.fmodel_xray().f_obs.d_min() > hrltisfh and \
+      self.fmodels.fmodel_xray().f_obs().d_min() > hrltisfh and \
       (self.refine_xyz or self.refine_adp) and \
       self.h_params.refine == "riding" and \
       self.hd_flag and \
