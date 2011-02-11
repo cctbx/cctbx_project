@@ -7,10 +7,6 @@ from libtbx.utils import Sorry
 # example usage is given in cctbx/regression/tst_direct_scaling
 
 class pprocess:
-  """two things remain for the first version
-  2.  limits on # atoms, #hkl etc.
-  """
-
   """
   Software requirements for running direct summation using Cuda parallel processing units:
   1. numpy package (http://numpy.scipy.org) version 1.5.1 OK
@@ -62,13 +58,13 @@ class pprocess:
         unique_form_factor_at_x_sq += parameters[x] * math.exp(-parameters[x+1]*x_sq)
       print unique_form_factor_at_x_sq
 
-  def prepare_data_arrays_for_cuda(self,verbose=False):
+  def prepare_data_arrays_for_cuda(self,numpy,verbose=False):
 
     """ The number of miller indices and atoms each must be an exact
         multiple of the BLOCKSIZE (32), so zero-padding is employed"""
 
     # Transfer data from flex arrays to numpy & zero-pad
-    # Marshal the miller indices, fractional coordinates, and occupancies
+    # Marshal the miller indices, fractional coordinates, and weights
     # into numpy arrays for use in CUDA
 
     # Miller indices
@@ -87,28 +83,29 @@ class pprocess:
     flat_sites = sites.as_double().as_numpy_array()
     #print flat_sites.dtype,flat_sites.shape
 
-    # Occupancies
-    occupancies = self.scatterers.extract_occupancies().as_numpy_array()
-    #print occupancies.dtype,occupancies.shape
+    # weights: weight = site_multiplicity * occupancy
+    # for example, an atom on a three-fold has site_multiplicity 1/3
+    weights = numpy.array([S.weight() for S in self.scatterers])
+
     if n_sites%FHKL_BLOCKSIZE > 0:
       newsize = FHKL_BLOCKSIZE* (1+(n_sites/FHKL_BLOCKSIZE))
       if verbose:
         print "Scatterer xyzs: resetting %s array from size %d to %d"%(
               flat_sites.dtype,flat_sites.shape[0],3*newsize)
-        print "Occupancies   : resetting %s array from size %d to %d"%(
-              occupancies.dtype,occupancies.shape[0],newsize)
+        print "weights   : resetting %s array from size %d to %d"%(
+              weights.dtype,weights.shape[0],newsize)
         print
       flat_sites.resize(( 3*newsize,))
-      # zero-padding for occupancies guarantees no effect from padded sites
-      occupancies.resize(( newsize,))
+      # zero-padding for weights guarantees no effect from padded sites
+      weights.resize(( newsize,))
 
     self.n_sites = n_sites
     self.flat_mix = flat_mix
     self.flat_sites = flat_sites
-    self.occupancies = occupancies
+    self.weights = weights
 
   def prepare_registry_symmetry_cell(self,numpy):
-    # Marshall the scattering types, form factors, symmetry elements,
+    # Marshal the scattering types, form factors, symmetry elements,
     # and metrical matrix into numpy arrays for use in CUDA.
 
     # Scattering sites registry
@@ -117,7 +114,7 @@ class pprocess:
 
     if len(uniqueix)%FHKL_BLOCKSIZE > 0:
       uniqueix.resize(FHKL_BLOCKSIZE* (1+(len(uniqueix)/FHKL_BLOCKSIZE)),)
-    assert len(uniqueix) == len(self.occupancies)
+    assert len(uniqueix) == len(self.weights)
     self.uniqueix = uniqueix
 
     # Gaussian expansion for the unique scattering types
@@ -142,6 +139,17 @@ class pprocess:
     self.g_stride = 1 + 2 *self.n_terms_in_sum
     assert self.gaussians.shape[0] == self.n_gaussians * self.g_stride
 
+    # Space group symmetry
+    self.nsymop = self.space_group.order_z()
+    self.sym_stride = 12 # numbers to uniquely specify the symop
+    symmetry = flex.double()
+
+    for symop in self.space_group:
+      for item in symop.r().as_double():  symmetry.append(item)
+      for item in symop.t().as_double():  symmetry.append(item)
+    self.symmetry = symmetry.as_numpy_array()
+    assert self.symmetry.shape[0] == self.nsymop * self.sym_stride
+
     # Unit cell dimensions --> metrical matrix --> establishes dstar for given hkl
     self.reciprocal_metrical_matrix = numpy.array(
       self.unit_cell.reciprocal_metrical_matrix() )
@@ -149,20 +157,21 @@ class pprocess:
   def validate_the_inputs(self,manager,cuda):
 
     # Assess limits due to the current implementation:
-    # no support for space group symmetry, B factors, ADP's, f' or f"
+    # no support for B factors, ADP's, f' or f"
 
-    PyNX_implementation = "Fhkl = Sum(atoms) (occ * exp(2*pi*i(H*X)))"
+    PyNX_implementation = "Fhkl = Sum(atoms) (weight * exp(2*pi*i(H*X)))"
     # reference http://pynx.sourceforge.net (http://arxiv.org/abs/1010.2641v1)
 
-    Present_implementation = "Fhkl = Sum(atoms) (f0(d*) * occ * exp(2*pi*i(H*X)))"
+    Present_implementation = """Fhkl = Sum(atoms(X)) (f0(d*) * weight *
+        Sum(symops(SR,ST)) exp(2*pi*i(H*SR*X+H*ST)))"""
 
-    Future_implementation = """Fhkl = Sum(atoms(X)) ((f0(d*)+f'+i*f") * occ *
+    Future_implementation = """Fhkl = Sum(atoms(X)) ((f0(d*)+f'+i*f") * weight *
         Sum(symops(SR,ST)) exp(2*pi*i(H*SR*X+H*ST) + DW-factor)
       )"""
     try:
-      assert manager._miller_set.space_group_info().type().lookup_symbol()=="P 1"
+      assert len(self.miller_indices) > 0
     except:
-      raise Sorry("As presently implemented parallel processor direct summation only supports space group P 1.""")
+      raise Sorry("There must be at least one Miller index""")
 
     try:
       assert self.scatterers.extract_u_iso().count(0.0)==len(self.scatterers)
@@ -215,6 +224,7 @@ class pprocess:
     self.registry = instance._xray_structure.scattering_type_registry()
     self.miller_indices = instance._miller_set.indices()
     self.unit_cell = instance._miller_set.unit_cell()
+    self.space_group = instance._miller_set.space_group()
 
     if verbose: self.print_diagnostics() # some diagnostics used for development
 
@@ -232,7 +242,7 @@ class pprocess:
 
       self.validate_the_inputs(instance,cuda)
 
-      self.prepare_data_arrays_for_cuda()
+      self.prepare_data_arrays_for_cuda(algorithm.numpy)
 
       self.prepare_registry_symmetry_cell(algorithm.numpy)
 
@@ -244,8 +254,10 @@ class pprocess:
       device = cuda.Device(0)
       WARPSIZE=device.get_attribute(cuda.device_attribute.WARP_SIZE) # 32
       MULTIPROCESSOR_COUNT=device.get_attribute(cuda.device_attribute.MULTIPROCESSOR_COUNT)
-
-      mod = SourceModule(mod_fhkl_str%(self.gaussians.shape[0],self.g_stride),
+      mod = SourceModule(mod_fhkl_str%(self.gaussians.shape[0],
+                         self.symmetry.shape[0],
+                         self.sym_stride,
+                         self.g_stride, self.nsymop),
                          options=["-use_fast_math"])
 
       r_m_m_address = mod.get_global("reciprocal_metrical_matrix")[0]
@@ -254,12 +266,14 @@ class pprocess:
       gaussian_address = mod.get_global("gaussians")[0]
       cuda.memcpy_htod(gaussian_address, self.gaussians)
 
-      CUDA_fhkl = mod.get_function("CUDA_fhkl")
+      symmetry_address = mod.get_global("symmetry")[0]
+      cuda.memcpy_htod(symmetry_address, self.symmetry)
 
+      CUDA_fhkl = mod.get_function("CUDA_fhkl")
       CUDA_fhkl(cuda.InOut(fhkl_real),
                  cuda.InOut(fhkl_imag),
                  cuda.In(self.flat_sites),
-                 cuda.In(self.occupancies),
+                 cuda.In(self.weights),
                  cuda.In(self.uniqueix),
                  algorithm.numpy.int32(self.n_sites),
                  cuda.In(self.flat_mix),
@@ -278,6 +292,7 @@ FHKL_BLOCKSIZE=32
 mod_fhkl_str ="""
 __device__ __constant__ double reciprocal_metrical_matrix[6];
 __device__ __constant__ double gaussians[%%d];
+__device__ __constant__ double symmetry[%%d];
 
 __device__ double get_d_star_sq(double const& H,double const& K,double const& L){
    return
@@ -289,8 +304,31 @@ __device__ double get_d_star_sq(double const& H,double const& K,double const& L)
           + (2 * K * L) * reciprocal_metrical_matrix[5];
 }
 
+__device__ double get_H_dot_X(double* const& site, unsigned int const& i,
+                              double const& H,double const& K,double const& L,
+                              unsigned int const & isym){
+  # define SYM_STRIDE %%d
+  // case for space group P1
+  // return H * site[0] + K * site[1] + L * site[2];
+
+  // but in general,
+     return site[3*i+0] * (H * symmetry[SYM_STRIDE*isym]+
+                       K * symmetry[SYM_STRIDE*isym+3]+
+                       L * symmetry[SYM_STRIDE*isym+6])
+          + site[3*i+1] * (H * symmetry[SYM_STRIDE*isym+1]+
+                       K * symmetry[SYM_STRIDE*isym+4]+
+                       L * symmetry[SYM_STRIDE*isym+7])
+          + site[3*i+2] * (H * symmetry[SYM_STRIDE*isym+2]+
+                       K * symmetry[SYM_STRIDE*isym+5]+
+                       L * symmetry[SYM_STRIDE*isym+8])
+          + H * symmetry[SYM_STRIDE*isym+9]
+          + K * symmetry[SYM_STRIDE*isym+10]
+          + L * symmetry[SYM_STRIDE*isym+11]
+    ;
+}
+
 __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
-                        const double *xyzsites, const double *occupancy,
+                        const double *xyzsites, const double *weight,
                         const unsigned int *unique_scattering_type,
                         const long natoms,
                         const double *hkl)
@@ -309,7 +347,7 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
    double fr=0,fi=0;
 
    __shared__ double xyz[3*BLOCKSIZE];
-   __shared__ float occ[BLOCKSIZE];
+   __shared__ float wght[BLOCKSIZE];
    __shared__ unsigned int unique_type[BLOCKSIZE];
    long at=0;
    double x_sq = get_d_star_sq(h,k,l) / 4.;
@@ -318,7 +356,7 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
       xyz[threadIdx.x]=xyzsites[3*at+threadIdx.x];
       xyz[BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+BLOCKSIZE];
       xyz[2*BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+2*BLOCKSIZE];
-      occ[threadIdx.x]=occupancy[at+threadIdx.x];
+      wght[threadIdx.x]=weight[at+threadIdx.x];
       unique_type[threadIdx.x]=unique_scattering_type[at+threadIdx.x];
       __syncthreads();
 
@@ -337,16 +375,20 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
         }
         if (at+i>=natoms) form_factor = 0.;
 
-        double s,c;
-        /*do not use the faster, but less accurate intrinsic function.*/
-        sincos(twopi* (h*xyz[3*i] + k*xyz[3*i+1] + l*xyz[3*i+2]) , &s,&c);
-        fr += form_factor * occ[i]*c;
-        fi += form_factor * occ[i]*s;
+        double s,c,s_imag=0.,c_real=0.;
+        for(unsigned int isym=0; isym < %%d; isym++){
+          /*do not use the faster, but less accurate intrinsic function.*/
+          sincos(twopi* get_H_dot_X( xyz, i, h, k, l, isym), &s,&c);
+          c_real += c;
+          s_imag += s;
+        }
+        fr += form_factor * wght[i] * c_real;
+        fi += form_factor * wght[i] * s_imag;
       }
    }
 
-   fhkl_real[ix]+=fr;
-   fhkl_imag[ix]+=fi;
+   fhkl_real[ix] += fr;
+   fhkl_imag[ix] += fi;
 }
 """%(FHKL_BLOCKSIZE)
 

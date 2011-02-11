@@ -1,3 +1,7 @@
+import random
+random.seed(0)
+from scitbx.array_family import flex
+flex.set_random_seed(0)
 from math import pow,pi
 from cctbx import sgtbx
 from cctbx.development import random_structure
@@ -49,10 +53,11 @@ def exercise_direct(space_group_info,
 
   cuda_platform = direct_summation_cuda_platform()
 
-  for x in xrange(1,6):#(2,6):
+  for x in xrange(1,6):
     print "There are %d scatterers"%len(elements)
     number_of_reflections = pow(10.,x)
     Volume = number_of_reflections *  reciprocal_volume * 2. #2 P1 asymmetric units
+    Volume *= space_group_info.group().order_z() # take space group into acct.
     recip_radius = pow(3.*Volume/(4.*pi),1./3.)
     d_min = 1./recip_radius
 
@@ -83,21 +88,34 @@ def exercise_direct(space_group_info,
     simple_direct_f = simple_direct.f_calc()
 
     times.append((number_of_reflections,cpu_time,d_min,gpu_time,simple_time,fft_time))
-    assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data())
+    assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data(), eps=1e-5)
     # doesn't assert correctly assert approx_equal(cpu_direct_f.data(), fft_f.data())
-    assert approx_equal(cpu_direct_f.data(), simple_direct_f.data())
+    assert approx_equal(cpu_direct_f.data(), simple_direct_f.data(), eps=1e-6)
 
   show_times_vs_complexity(times, header="run time vs. # reflections")
 
 def run(args):
   show_times_at_exit()
   verbose = '--verbose' in args
-  sgi = sgtbx.space_group_info("P1")
   #count from 1hmg.pdb, chain A: C, 1583; N, 445; O, 495, S, 13
   elements = ['O']*19 + ['N']*18 + ['C']*62 + ['S']*1
-  elements = elements*10
+  allelements = elements*10
 
-  exercise_direct(sgi, elements, verbose=verbose)
+  if 0:
+    for sn in xrange(1,231):
+      try:
+        sgi = sgtbx.space_group_info(sn)
+        print "Space group",sgi,"number",sn
+        exercise_direct(sgi, allelements, verbose=verbose)
+      except Exception, e:
+        print e
+    return
+
+  if 1:
+    for symbol in ["P1","P3","P41","P212121","I41","F432"]:
+      sgi = sgtbx.space_group_info(symbol)
+      print "Space group",sgi
+      exercise_direct(sgi, allelements, verbose=verbose)
 
 if __name__ == '__main__':
   import sys
