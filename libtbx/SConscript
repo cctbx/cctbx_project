@@ -540,14 +540,17 @@ else:
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
       static_exe = None
+      lkfl = []
+
+    elif libtbx.env.build_options.debug_symbols:
+      lkfl = ["-rdynamic"]
+
+    else:
+      lkfl = ["-s"]
     env_etc.shlinkflags = ["-shared"]
     if (libtbx.env.build_options.mode == "profile"):
       env_base.Prepend(LINKFLAGS=["-pg"])
       env_etc.shlinkflags.append("-pg")
-    if (libtbx.env.build_options.debug_symbols):
-      lkfl = ["-rdynamic"]
-    else:
-      lkfl = ["-s"]
     env_base.Append(LINKFLAGS=lkfl)
     env_etc.shlinkflags.extend(lkfl)
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
