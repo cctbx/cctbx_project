@@ -1,0 +1,99 @@
+Before committing changes please be sure to complete the following steps.
+
+********************
+libtbx.check_clutter
+********************
+
+To avoid problems with platform-specific end-of-line conventions
+and stray whitespace characters such as tabs (see below) run the
+command
+
+  libtbx.find_clutter
+
+at the top level of each svn or cvs directory with changes to be
+committed. The command will recursively traverse all subdirectories
+and list the names of files that are not "clean."  To minimize
+the chance of accidents, libtbx.find_clutter does not modify
+the files listed. A convenient option for cleaning up the problem
+files is to use the libtbx.clean_clutter command, e.g.:
+
+  libtbx.clean_clutter path/to/file
+
+One can also issue
+
+  libtbx.clean_clutter -c
+
+which will recursively clean those files under the current directory which are modified or added, i.e. which would be committed.
+
+To convert files with Windows or Macintosh end-of-line conventions
+use the command:
+
+  libtbx.any2unix path/to/file
+
+# Why do we need libtbx.find_clutter?
+#
+#   We want to have an easy and reliable way to see who changed what exactly.
+#
+#   cctbx and phenix developers use many different editors. Some
+#   remove trailing whitespace, some insert tabs, etc. Without
+#   libtbx.clean_clutter we'd have a hard time seeing what was
+#   actually changed since we'd have many spurious diffs in the
+#   history.
+#   (diff -b -w helps, but it hides indentation changes.)
+
+************************
+Miscellaneous guidelines
+************************
+
+Please use 2-space indentation throughout
+-----------------------------------------
+  It is extremely tedious to re-factor code written by authors
+  using inconsistent indentation.
+
+Please break lines if they are longer than 80 characters
+--------------------------------------------------------
+  This will help make the sources more readable in various situations
+  (e.g. svn web view). Occasional longer lines are fine, e.g. for
+  certain assertions.
+  (Why 80 and not some other number? -- Obviously there has to be
+  *some* limit. 80 was chosen because it fits universally.)
+
+Please use only absolute Python imports
+---------------------------------------
+  Reasons:
+    - Scripts with relative imports cannot be moved to other locations.
+    - Python's relative import mechanism easily leads to confusion.
+  Good example:
+    from iotbx import reflection_file_reader
+  Bad example:
+    import reflection_file_reader
+
+Please do not use import *
+--------------------------
+  Reason:
+    - Reading code using import * is very difficult because
+      there is no easy way to tell where symbols come from.
+    - Name clashes may lead to subtle bugs.
+  Good example:
+    from iotbx import mtz
+    mtz_object = mtz.object(file_name="any.mtz")
+  Bad example:
+    from iotbx.mtz import *
+    # name clash: built-in object, iotbz.mtz.object
+
+Please use except KeyboardInterrupt in combination with bare excepts
+--------------------------------------------------------------------
+  Reason:
+    - A bare except will "swallow" keyboard interrupts (Ctrl-C),
+      forcing the user to hit Ctrl-C multiple times.
+  Good example:
+    try:
+      something()
+    except KeyboardInterrupt: raise
+    except:
+      pass
+  Bad example:
+    try:
+      something()
+    except:
+      pass
