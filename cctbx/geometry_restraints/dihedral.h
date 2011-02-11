@@ -27,14 +27,16 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       int periodicity_=0,
       alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
-      double limit_=-1.0)
+      double limit_=-1.0,
+      bool top_out_=false)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
       weight(weight_),
       periodicity(periodicity_),
       alt_angle_ideals(alt_angle_ideals_),
-      limit(limit_)
+      limit(limit_),
+      top_out(top_out_)
     {}
 
     //! Constructor.
@@ -45,7 +47,8 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       int periodicity_=0,
       alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
-      double limit_=-1.0)
+      double limit_=-1.0,
+      bool top_out_=false)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
@@ -53,7 +56,8 @@ namespace cctbx { namespace geometry_restraints {
       weight(weight_),
       periodicity(periodicity_),
       alt_angle_ideals(alt_angle_ideals_),
-      limit(limit_)
+      limit(limit_),
+      top_out(top_out_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -71,7 +75,8 @@ namespace cctbx { namespace geometry_restraints {
       weight(proxy.weight),
       periodicity(proxy.periodicity),
       alt_angle_ideals(proxy.alt_angle_ideals),
-      limit(proxy.limit)
+      limit(proxy.limit),
+      top_out(proxy.top_out)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -84,7 +89,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       return dihedral_proxy(
         i_seqs, sym_ops, angle_ideal, weight*factor,
-        periodicity, alt_angle_ideals, limit);
+        periodicity, alt_angle_ideals, limit, top_out);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
@@ -141,6 +146,8 @@ namespace cctbx { namespace geometry_restraints {
     //! Optional value to set a range for which the angle should be
     //! restrained
     double limit;
+    //! Use top-out function or not for residual/gradient
+    bool top_out;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
@@ -170,14 +177,16 @@ namespace cctbx { namespace geometry_restraints {
         double weight_,
         int periodicity_=0,
         alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
-        double limit_=-1.0)
+        double limit_=-1.0,
+        bool top_out_=false)
       :
         sites(sites_),
         angle_ideal(angle_ideal_),
         weight(weight_),
         periodicity(periodicity_),
         alt_angle_ideals(alt_angle_ideals_),
-        limit(limit_)
+        limit(limit_),
+        top_out(top_out_)
       {
         init_angle_model();
       }
@@ -193,7 +202,8 @@ namespace cctbx { namespace geometry_restraints {
         weight(proxy.weight),
         periodicity(proxy.periodicity),
         alt_angle_ideals(proxy.alt_angle_ideals),
-        limit(proxy.limit)
+        limit(proxy.limit),
+        top_out(proxy.top_out)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -216,7 +226,8 @@ namespace cctbx { namespace geometry_restraints {
         weight(proxy.weight),
         periodicity(proxy.periodicity),
         alt_angle_ideals(proxy.alt_angle_ideals),
-        limit(proxy.limit)
+        limit(proxy.limit),
+        top_out(proxy.top_out)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -260,6 +271,7 @@ namespace cctbx { namespace geometry_restraints {
       {
         using scitbx::constants::pi_180;
         double term, delta_local;
+        double top;
         if (limit >= 0){
           if(std::fabs(delta) > limit){
             delta_local = limit;
@@ -275,12 +287,17 @@ namespace cctbx { namespace geometry_restraints {
           term = 9600. / (periodicity * periodicity)
                * (1 - std::cos(periodicity * delta_local * pi_180));
         }
+        else if (top_out) {
+          top = limit * limit;
+          //top*(1-exp(-weight*x**2/top))
+          term = top * (1.0-std::exp(-weight*delta_local*delta_local/top));
+          return term;
+        }
         else {
           term = delta_local * delta_local;
         }
         return weight * term;
       }
-
       //! Gradient of delta with respect to the four sites.
       /*! The formula for the gradients is singular if certain vectors
           are collinear. However, the gradients converge to zero near
@@ -323,7 +340,6 @@ namespace cctbx { namespace geometry_restraints {
         }
         return result;
       }
-
       //! Gradient of R = w * delta^2 with respect to the four sites.
       /*! The formula for the gradients is singular if certain vectors
           are collinear. However, the gradients converge to zero near
@@ -340,13 +356,19 @@ namespace cctbx { namespace geometry_restraints {
       {
         using scitbx::constants::pi_180;
         double grad_factor;
+        double top;
         if (periodicity > 0) {
             grad_factor = 9600. * weight / periodicity * pi_180
                         * std::sin(periodicity * delta * pi_180);
-          }
-          else {
+        }
+        else if (top_out) {
+            //(2*weight*x/top)*exp(-(weight*x**2)/top)
+            top = limit * limit;
+            grad_factor = (2.0*weight*delta/top)*std::exp(-(weight*delta*delta)/top);
+        }
+        else {
             grad_factor = 2 * weight * delta;
-          }
+        }
         af::tiny<scitbx::vec3<double>, 4> result = grad_delta(epsilon);
         for (std::size_t i=0; i<4; i++) {
           result[i] *= grad_factor;
@@ -436,6 +458,8 @@ namespace cctbx { namespace geometry_restraints {
       alt_angle_ideals_type alt_angle_ideals;
       //! Optional limit on deviation for restraint calculation
       double limit;
+      //! Use top-out function or notabilities
+      bool top_out;
       //! false in singular situations.
       bool have_angle_model;
     public:
