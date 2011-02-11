@@ -1,7 +1,25 @@
+== In a nutshell ==
+
+In general normal Python coding style guidlines apply. Additionally please be aware of this:
+
+1. no tabs, only use spaces for indentation and alignment
+2. indent with 2 space characters per level
+3. no trailing whitespace
+4. wrap lines at 80 characters
+5. only import functions you actually use
+6. use only absolute and fine-grained Python imports
+7. try to add documentation (via docstrings) to all objects
+
+You can use libtbx.find_clutter to check your code before comitting.
+
+
+
+== In length ==
+
 Before committing changes please be sure to complete the following steps.
 
 ********************
-libtbx.check_clutter
+libtbx.find_clutter
 ********************
 
 To avoid problems with platform-specific end-of-line conventions
