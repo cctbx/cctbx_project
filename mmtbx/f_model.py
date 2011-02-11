@@ -347,12 +347,14 @@ class manager(manager_mixin):
     self.twin_law = twin_law
     self.twin_law_str = twin_law
     self.twin_fraction = twin_fraction
-    self.f_obs = f_obs
-    self.twin_set = self._set_twin_set()
-    self.r_free_flags = r_free_flags
-    if(self.r_free_flags is None):
-      self.r_free_flags = self.f_obs.array(
-        data = flex.bool(self.f_obs.data().size(),False))
+    #self.f_obs = f_obs
+    self.twin_set = self._set_twin_set(miller_array = f_obs)
+    #self.r_free_flags = r_free_flags
+    if(r_free_flags is None):
+      r_free_flags = f_obs.array(
+        data = flex.bool(f_obs.data().size(),False))
+    self.passive_arrays = group_args(f_obs = f_obs, r_free_flags = r_free_flags,
+      hl_coeffs = abcd)
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
     if(alpha_beta_params is None):
@@ -364,38 +366,44 @@ class manager(manager_mixin):
       self.filled_f_obs_selection.size() == f_obs.data().size()
     assert f_obs.is_real_array()
     self.sfg_params = sf_and_grads_accuracy_params
-    self.abcd              = abcd
+    #self.abcd              = abcd
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
     self.use_f_model_scaled= use_f_model_scaled
     self.max_number_of_bins = max_number_of_bins
-    self.mask_manager = mask_manager
     if(mask_params is not None):
        self.mask_params = mask_params
     else:
        self.mask_params = mmtbx.masks.mask_master_params.extract()
+    self.mask_manager = mask_manager
+    if(self.mask_manager is None):
+      self.mask_manager = masks.manager(
+        miller_array      = f_obs,
+        miller_array_twin = self.twin_set,
+        mask_params       = self.mask_params)
     if(r_free_flags is not None):
-      assert r_free_flags.indices().all_eq(self.f_obs.indices())
-    self.uc = self.f_obs.unit_cell()
+      assert r_free_flags.indices().all_eq(f_obs.indices())
+    self.uc = f_obs.unit_cell()
     if(f_part_base is None):
       assert k_part == 0 and b_part == 0
-      f_part_base = self.f_obs.array(
-        data = flex.complex_double(self.f_obs.data().size(),0+0j))
+      f_part_base = f_obs.array(
+        data = flex.complex_double(f_obs.data().size(),0+0j))
     if(self.xray_structure is None):
       assert [f_calc, f_mask].count(None) == 0
       assert f_mask.is_complex_array()
       assert f_calc.is_complex_array()
-      assert f_mask.indices().all_eq(self.f_obs.indices())
-      assert f_calc.indices().all_eq(self.f_obs.indices())
+      assert f_mask.data().size() <= f_obs.data().size()
+      assert f_calc.data().size() <= f_obs.data().size()
+      assert f_mask.data().size() == f_calc.data().size()
       f_calc_twin = None
       f_mask_twin = None
     else:
-      if(self.mask_manager is None):
-        self.mask_manager = masks.manager(
-          miller_array      = self.f_obs,
-          miller_array_twin = self.twin_set,
-          mask_params       = self.mask_params)
-      if(f_calc is None): f_calc = self.compute_f_calc()
+      #if(self.mask_manager is None):
+      #  self.mask_manager = masks.manager(
+      #    miller_array      = f_obs,
+      #    miller_array_twin = self.twin_set,
+      #    mask_params       = self.mask_params)
+      if(f_calc is None): f_calc = self.compute_f_calc(miller_array=f_obs)
       f_calc_twin = None
       if(self.twin_set is not None):
         f_calc_twin = self.compute_f_calc(miller_array = self.twin_set)
@@ -416,8 +424,8 @@ class manager(manager_mixin):
       k_part      = k_part,
       b_part      = b_part)
     assert len(b_cart) == 6
-    if(self.abcd is not None):
-       assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
+    if(abcd is not None):
+       assert abcd.indices().all_eq(f_obs.indices()) == 1
     self.set_target_name(target_name=target_name)
     self._target_memory = _target_memory
     self._structure_factor_gradients_w = None
@@ -448,21 +456,21 @@ class manager(manager_mixin):
 
   structure_factor_gradients_w = property(_get_structure_factor_gradients_w)
 
-  def _set_twin_set(self):
+  def _set_twin_set(self, miller_array):
     result = None
     if(self.twin_law is not None):
       twin_law_xyz = sgtbx.rt_mx(symbol=self.twin_law, r_den=12, t_den=144)
       twin_law_matrix = twin_law_xyz.as_double_array()[0:9]
       twin_mi = mmtbx.utils.create_twin_mate(
-        miller_indices  = self.f_obs.indices(),
+        miller_indices  = miller_array.indices(),
         twin_law_matrix = twin_law_matrix)
-      result = self.f_obs.customized_copy(
+      result = miller_array.customized_copy(
         indices = twin_mi,
-        crystal_symmetry = self.f_obs.crystal_symmetry())
+        crystal_symmetry = miller_array.crystal_symmetry())
     return result
 
   def compute_f_calc(self, miller_array = None):
-    if(miller_array is None): miller_array = self.f_obs
+    if(miller_array is None): miller_array = self.f_obs()
     p = self.sfg_params
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
@@ -533,16 +541,37 @@ class manager(manager_mixin):
 
   def outlier_selection(self, show = False, log = None):
     if(log is None): log = sys.stdout
-    n_free = self.r_free_flags.data().count(True)
+    n_free = self.r_free_flags().data().count(True)
     result = outlier_rejection.outlier_manager(
-      miller_obs   = self.f_obs,
-      r_free_flags = self.r_free_flags,
+      miller_obs   = self.passive_arrays.f_obs,
+      r_free_flags = self.passive_arrays.r_free_flags,
       out          = "silent")
     s1 = result.basic_wilson_outliers().data()
     s2 = result.extreme_wilson_outliers().data()
     s3 = result.beamstop_shadow_outliers().data()
     if(n_free > 0):
-      s4 = result.model_based_outliers(f_model = self.f_model()).data()
+      #######
+      ###XXXX
+      f_mask = self.mask_manager.f_mask()
+      if(f_mask is None): f_mask = self.f_mask()
+      assert f_mask.data().size() == self.passive_arrays.f_obs.data().size()
+      #XXXX
+      f_part_base = f_mask.array(
+        data = flex.complex_double(f_mask.data().size(),0+0j)) # XXX
+      if(self.xray_structure is not None):
+        core_ = core(
+          f_calc      = self.compute_f_calc(miller_array = f_mask),
+          f_mask      = f_mask,
+          k_sol       = self.k_sol(),
+          b_sol       = self.b_sol(),
+          f_part_base = f_part_base, #XXX
+          k_part      = self.k_part(),
+          b_part      = self.b_part(),
+          u_star      = self.u_star())
+        f_model = core_.f_model
+      else:
+        f_model = self.f_model()
+      s4 = result.model_based_outliers(f_model = f_model).data()
       result = s1 & s2 & s3 & s4
     else: result = s1 & s2 & s3
     if(show):
@@ -558,63 +587,91 @@ class manager(manager_mixin):
   def remove_outliers(self, show = False, log = None):
     if(log is None): log = sys.stdout
     if(show):
-      print >> log, "Distribution of F-obs values before outliers rejection:"
-      show_histogram(data = self.f_obs.data(), n_slots = 10, log = log)
-    result = self.select(selection = self.outlier_selection(show=show,log=log))
-    if(show):
-      print >> log, "\nDistribution of F-obs values after outliers rejection:"
-      show_histogram(data = result.f_obs.data(), n_slots = 10, log = log)
-    return result
+      print >> log, "Distribution of F-obs values:"
+      show_histogram(data = self.passive_arrays.f_obs.data(), n_slots = 10, log = log)
+    o_sel = self.outlier_selection(show = show, log = log)
+    if(o_sel.count(False) > 0):
+      assert self.twin_set is None #XXX twinning is not supported yet
+      assert self.active_arrays.core_twin is None
+      new_f_obs = self.passive_arrays.f_obs.select(o_sel)
+      new_r_free_flags = self.passive_arrays.r_free_flags.select(o_sel)
+      new_hl_coeffs = self.passive_arrays.hl_coeffs
+      if(new_hl_coeffs is not None):
+        new_hl_coeffs = self.passive_arrays.hl_coeffs.select(o_sel)
+      f_mask = self.mask_manager.f_mask().common_set(new_f_obs)
+      f_part_base = new_f_obs.array(
+        data = flex.complex_double(new_f_obs.data().size(),0+0j)) # XXX
+      core_ = core(
+        f_calc      = self.compute_f_calc(miller_array = new_f_obs),
+        f_mask      = f_mask,
+        k_sol       = self.k_sol(),
+        b_sol       = self.b_sol(),
+        f_part_base = f_part_base, #XXX
+        k_part      = self.k_part(),
+        b_part      = self.b_part(),
+        u_star      = self.u_star())
+      self.active_arrays = active_arrays(
+        core          = core_,
+        core_twin     = None, #XXX twinning is not supported yet
+        f_obs         = new_f_obs,
+        r_free_flags  = new_r_free_flags,
+        hl_coeffs     = new_hl_coeffs,
+        twin_fraction = self.twin_fraction)
+      if(show):
+        print >> log, "\nDistribution of active F-obs values after outliers rejection:"
+        show_histogram(data=self.active_arrays.f_obs.data(),n_slots=10,log=log)
+    return self
 
   def wilson_b(self, force_update = False):
     if(self.xray_structure is not None and (self._wilson_b is None or
        force_update)):
       result = absolute_scaling.ml_iso_absolute_scaling(
-        miller_array = self.f_obs,
+        miller_array = self.f_obs(),
         n_residues   = self.xray_structure.scatterers().size()/8).b_wilson
       self._wilson_b = result
     else: result = self._wilson_b
     return result
 
   def deep_copy(self):
-    selection = flex.bool(self.f_obs.data().size(), True)
-    return self.select(selection = selection)
+    return self.select()
 
-  def select(self, selection):
-    if (self.abcd is not None):
-      abcd = self.abcd.select(selection=selection)
+  def select(self, selection=None):
+    sel_passive = flex.bool(self.passive_arrays.f_obs.data().size(), True)
+    if(selection is None):
+      sel_active = flex.bool(self.f_obs().data().size(), True)
     else:
-      abcd = None
+      sel_active = selection
+    if(self.hl_coeffs() is not None):
+      new_hl_coeffs = self.passive_arrays.hl_coeffs.select(selection=sel_passive)
+    else:
+      new_hl_coeffs = None
     if(self.mask_manager is not None):
-      new_mask_manager = self.mask_manager.select(selection = selection)
+      new_mask_manager = self.mask_manager.select(selection = sel_passive) # XXX
     else:
       new_mask_manager = None
     if(self.filled_f_obs_selection is None):
       new_filled_f_obs_selection = self.filled_f_obs_selection
     else:
       new_filled_f_obs_selection = \
-        self.filled_f_obs_selection.select(selection)
-    r_free_flags = self.r_free_flags
-    if(r_free_flags is not None):
-      r_free_flags = self.r_free_flags.select(selection=selection)
+        self.filled_f_obs_selection.select(sel_active)
     xrs = self.xray_structure
     if(xrs is not None): xrs = self.xray_structure.deep_copy_scatterers()
     result = manager(
-      f_obs                        = self.f_obs.select(selection=selection),
-      r_free_flags                 = r_free_flags,
+      f_obs                        = self.passive_arrays.f_obs.select(selection=sel_passive),
+      r_free_flags                 = self.passive_arrays.r_free_flags.select(selection=sel_passive),
       b_cart                       = tuple(self.b_cart()),
       k_sol                        = self.k_sol(),
       b_sol                        = self.b_sol(),
       k_part                       = self.k_part(),
       b_part                       = self.b_part(),
-      f_part_base                  = self.f_part_base().select(selection=selection),
+      f_part_base                  = self.f_part_base().select(selection=sel_active),
       sf_and_grads_accuracy_params = deepcopy(self.sfg_params),
       target_name                  = self.target_name,
-      abcd                         = abcd,
+      abcd                         = new_hl_coeffs,
       alpha_beta_params            = deepcopy(self.alpha_beta_params),
       xray_structure               = xrs,
-      f_calc                       = self.f_calc().select(selection=selection),
-      f_mask                       = self.f_mask().select(selection=selection),
+      f_calc                       = self.f_calc().select(selection=sel_active),
+      f_mask                       = self.f_mask().select(selection=sel_active),
       mask_params                  = deepcopy(self.mask_params),
       mask_manager                 = new_mask_manager,
       twin_law                     = self.twin_law,
@@ -632,7 +689,7 @@ class manager(manager_mixin):
     if(d_min is None): d_min = 0
     if(d_max is None): d_max = 0
     return self.select(
-      selection=self.f_obs.resolution_filter_selection(d_max=d_max,d_min=d_min))
+      selection=self.f_obs().resolution_filter_selection(d_max=d_max,d_min=d_min))
 
   def apply_back_b_iso(self):
     if(self.xray_structure is None): return
@@ -682,6 +739,9 @@ class manager(manager_mixin):
       f_mask = self.mask_manager.f_mask(
         xray_structure_new = self.xray_structure,
         force_update       = force_update_f_mask)
+      if(f_mask is not None and self.f_mask() is not None and
+         f_mask.data().size() != self.f_mask().data().size()):
+        f_mask = f_mask.common_set(self.f_mask())
       f_mask_twin = self.mask_manager.f_mask_twin()
     if([f_calc, f_mask, f_calc_twin, f_mask_twin].count(None) == 4):
       set_core_flag = False
@@ -708,7 +768,7 @@ class manager(manager_mixin):
                         b_part      = None):
     if(b_cart is not None):# XXX
       u_star = adptbx.u_cart_as_u_star(
-        self.f_obs.unit_cell(),adptbx.b_as_u(b_cart))
+        self.f_obs().unit_cell(),adptbx.b_as_u(b_cart))
     core_ = None
     core_twin_ = None
     if(self.active_arrays is None):
@@ -722,10 +782,10 @@ class manager(manager_mixin):
         b_part      = b_part,
         u_star      = u_star)
       if(self.twin_set is not None):
-        if(f_part_base is None):
-          assert [k_part,b_part].count(None) == 2
-          f_part_base = self.f_obs.array(
-            data = flex.complex_double(self.f_obs.data().size(),0+0j)) # XXX
+        #if(f_part_base is None):
+        #  assert [k_part,b_part].count(None) == 2
+        f_part_base = self.twin_set.array(
+          data = flex.complex_double(self.twin_set.data().size(),0+0j)) # XXX
         core_twin_ = core(
           f_calc      = self.compute_f_calc(miller_array = self.twin_set),
           f_mask      = self.mask_manager.f_mask_twin(),
@@ -735,12 +795,19 @@ class manager(manager_mixin):
           f_part_base = f_part_base, # XXX
           k_part      = k_part,
           b_part      = b_part)
+      f_obs = self.passive_arrays.f_obs
+      r_free_flags = self.passive_arrays.r_free_flags
+      hl_coeffs = self.passive_arrays.hl_coeffs
+      if(f_obs.data().size() != core_.data.f_model.size()):
+        f_obs = f_obs.common_set(core_.f_model)
+        r_free_flags = r_free_flags.common_set(core_.f_model)
+        if(hl_coeffs is not None): hl_coeffs = hl_coeffs.common_set(core_.f_model)
       self.active_arrays = active_arrays(
         core          = core_,
         core_twin     = core_twin_,
-        f_obs         = self.f_obs,
-        r_free_flags  = self.r_free_flags,
-        hl_coeffs     = self.abcd,
+        f_obs         = f_obs,
+        r_free_flags  = r_free_flags,
+        hl_coeffs     = hl_coeffs,
         twin_fraction = self.twin_fraction)
     else:
       core_ = self.active_arrays.core.update(
@@ -753,10 +820,10 @@ class manager(manager_mixin):
         k_part      = k_part,
         b_part      = b_part)
       if(self.twin_set is not None):
-        if(f_part_base is None):
-          assert [k_part,b_part].count(None) == 2
-          f_part_base = self.f_obs.array(
-            data = flex.complex_double(self.f_obs.data().size(),0+0j)) # XXX
+        #if(f_part_base is None):
+        #  assert [k_part,b_part].count(None) == 2
+        f_part_base = self.twin_set.array(
+          data = flex.complex_double(self.twin_set.data().size(),0+0j)) # XXX
         core_twin_ = self.active_arrays.core_twin.update(
           f_calc      = f_calc_twin,
           f_mask      = f_mask_twin,
@@ -793,7 +860,7 @@ class manager(manager_mixin):
           self.mask_params.shrink_truncation_radius = r_shrink
           self.mask_params.grid_step_factor = gsf
           self.mask_manager = masks.manager(
-            miller_array      = self.f_obs,
+            miller_array      = self.f_obs(),
             miller_array_twin = self.twin_set,
             xray_structure    = self.xray_structure,
             mask_params       = self.mask_params)
@@ -823,7 +890,7 @@ class manager(manager_mixin):
     self.mask_params.shrink_truncation_radius = r_shrink_
     self.mask_params.grid_step_factor = gsf_
     self.mask_manager = masks.manager(
-      miller_array      = self.f_obs,
+      miller_array      = self.f_obs(),
       miller_array_twin = self.twin_set,
       xray_structure    = self.xray_structure,
       mask_params       = self.mask_params)
@@ -881,11 +948,12 @@ class manager(manager_mixin):
       else:                  r_shrink = max(1.1279*r_solv - 0.4082, 0)
       self.mask_params.solvent_radius = r_solv
       self.mask_params.shrink_truncation_radius = r_shrink
-      self.mask_manager = masks.manager(
-        miller_array      = self.f_obs,
-        miller_array_twin = self.twin_set,
-        xray_structure    = self.xray_structure,
-        mask_params       = self.mask_params)
+      self.mask_manager.mask_params = self.mask_params
+      #self.mask_manager = masks.manager(
+      #  miller_array      = self.f_obs(),
+      #  miller_array_twin = self.twin_set,
+      #  xray_structure    = self.xray_structure,
+      #  mask_params       = self.mask_params)
       self.update_xray_structure(
         xray_structure      = self.xray_structure,
         update_f_calc       = False,
@@ -910,11 +978,12 @@ class manager(manager_mixin):
     if(out is not None): print >> out
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
-    self.mask_manager = masks.manager(
-      miller_array      = self.f_obs,
-      miller_array_twin = self.twin_set,
-      xray_structure    = self.xray_structure,
-      mask_params       = self.mask_params)
+    self.mask_manager.mask_params = self.mask_params
+    #self.mask_manager = masks.manager(
+    #  miller_array      = self.f_obs(),
+    #  miller_array_twin = self.twin_set,
+    #  xray_structure    = self.xray_structure,
+    #  mask_params       = self.mask_params)
     self.update_xray_structure(xray_structure      = self.xray_structure,
                                update_f_calc       = False,
                                update_f_mask       = True,
@@ -1065,10 +1134,10 @@ class manager(manager_mixin):
     if(mask_params is not None):
        self.mask_params = mask_params
     if(f_obs is not None):
-      self.f_obs = f_obs
+      self.passive_arrays.f_obs = f_obs
       self.update_core()
     if(r_free_flags is not None):
-      self.update_r_free_flags(r_free_flags)
+      self.passive_arrays.r_free_flags = r_free_flags
     if(sf_and_grads_accuracy_params is not None):
       self.sfg_params = sf_and_grads_accuracy_params
       self.update_xray_structure(update_f_calc  = True)
@@ -1087,6 +1156,24 @@ class manager(manager_mixin):
                                   update_f_calc  = True)
     return self
 
+  def hl_coeffs(self):
+    if(self.active_arrays is None):
+      return self.passive_arrays.hl_coeffs
+    else:
+      return self.active_arrays.hl_coeffs
+
+  def f_obs(self):
+    if(self.active_arrays is None):
+      return self.passive_arrays.f_obs
+    else:
+      return self.active_arrays.f_obs
+
+  def r_free_flags(self):
+    if(self.active_arrays is None):
+      return self.passive_arrays.r_free_flags
+    else:
+      return self.active_arrays.r_free_flags
+
   def k_part(self):
     return self.active_arrays.core.data.k_part
 
@@ -1097,17 +1184,17 @@ class manager(manager_mixin):
     return self.active_arrays.core.f_part_base
 
   def f_bulk(self):
-    return miller.array(miller_set = self.active_arrays.f_obs,
+    return miller.array(miller_set = self.f_obs(),
       data = self.active_arrays.core.data.f_bulk)
 
   def f_bulk_w(self):
-    if(self.r_free_flags.data().count(True) > 0):
+    if(self.r_free_flags().data().count(True) > 0):
       return self.f_bulk().select(self.active_arrays.work_sel)
     else:
       return self.f_bulk()
 
   def f_bulk_t(self):
-    if(self.r_free_flags.data().count(True) > 0):
+    if(self.r_free_flags().data().count(True) > 0):
       return self.f_bulk().select(self.active_arrays.free_sel)
     else:
       return self.f_bulk()
@@ -1138,7 +1225,7 @@ class manager(manager_mixin):
 
   def f_model_scaled_with_k1(self):
     return miller.array(
-      miller_set = self.f_obs,
+      miller_set = self.f_obs(),
       data       = self.scale_k1()*self.f_model().data())
 
   def f_model_scaled_with_k1_t(self):
@@ -1154,24 +1241,22 @@ class manager(manager_mixin):
   def f_star_w_star_obj(self):
     alpha, beta = self.alpha_beta()
     obj = max_lik.f_star_w_star_mu_nu(
-      f_obs          = self.active_arrays.f_obs.data(),
+      f_obs          = self.f_obs().data(),
       f_model        = flex.abs(self.f_model().data()),
       alpha          = alpha.data(),
       beta           = beta.data(),
-      space_group    = self.active_arrays.f_obs.space_group(),
-      miller_indices = self.active_arrays.f_obs.indices())
+      space_group    = self.f_obs().space_group(),
+      miller_indices = self.f_obs().indices())
     return obj
 
   def f_star_w_star(self):
     obj = self.f_star_w_star_obj()
-    f_star = miller.array(miller_set = self.active_arrays.f_obs,
-      data = obj.f_star())
-    w_star = miller.array(miller_set = self.active_arrays.f_obs,
-      data = obj.w_star())
+    f_star = miller.array(miller_set = self.f_obs(), data = obj.f_star())
+    w_star = miller.array(miller_set = self.f_obs(), data = obj.w_star())
     return f_star, w_star
 
   def b_cart(self):
-    uc = self.f_obs.unit_cell()
+    uc = self.f_obs().unit_cell()
     b_cart = adptbx.u_as_b(
       adptbx.u_star_as_u_cart(uc, self.active_arrays.core.data.u_star))
     return b_cart
@@ -1187,16 +1272,14 @@ class manager(manager_mixin):
     return self.active_arrays.core.f_mask
 
   def f_mask_w(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_mask().select(~self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return self.f_mask().select(~self.r_free_flags().data())
     else:
       return self.f_mask()
 
   def f_mask_t(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_mask().select(self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return self.f_mask().select(self.r_free_flags().data())
     else:
       return self.f_mask()
 
@@ -1204,16 +1287,14 @@ class manager(manager_mixin):
     return self.active_arrays.core.f_calc
 
   def f_calc_w(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_calc().select(~self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return self.f_calc().select(~self.r_free_flags().data())
     else:
       return self.f_calc()
 
   def f_calc_t(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_calc().select(self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return self.f_calc().select(self.r_free_flags().data())
     else:
       return self.f_calc()
 
@@ -1228,9 +1309,9 @@ class manager(manager_mixin):
 
   def f_obs_vs_f_model(self, log=None):
     if(log is None): log = sys.stdout
-    for fo, fm, d in zip(self.active_arrays.f_obs.data(),
+    for fo, fm, d in zip(self.f_obs().data(),
                          abs(self.f_model_scaled_with_k1()),
-                         self.active_arrays.f_obs.d_spacings().data()):
+                         self.f_obs().d_spacings().data()):
       print >> log, "Fobe   Fmodel   resolution (A)"
       print >> log, "%12.3f %12.3f %6.3f"%(fo, fm, d)
 
@@ -1242,9 +1323,9 @@ class manager(manager_mixin):
     p = self.alpha_beta_params.sigmaa_estimator
     fmodel = self.f_model()
     eobs_norm_factor, ecalc_norm_factor = mmtbx.scaling.ta_alpha_beta_calc.ta_alpha_beta_calc(
-             miller_obs = self.f_obs,
+             miller_obs = self.f_obs(),
              miller_calc = fmodel,
-             r_free_flags = self.r_free_flags,
+             r_free_flags = self.r_free_flags(),
              ta_d = self.set_sigmaa,
              kernel_width_free_reflections=p.kernel_width_free_reflections,
              kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
@@ -1263,14 +1344,14 @@ class manager(manager_mixin):
         self.eobs_norm_factor /
         self.ecalc_norm_factor )
     beta  = (1.0 - self.set_sigmaa*self.set_sigmaa) * self.eobs_norm_factor
-    alpha = self.f_obs.array(data=alpha)
-    beta  = self.f_obs.array(data=beta)
+    alpha = self.f_obs().array(data=alpha)
+    beta  = self.f_obs().array(data=beta)
     return alpha, beta
 
   def alpha_beta(self, f_obs = None, f_model = None):
     global time_alpha_beta
     timer = user_plus_sys_time()
-    if(f_obs is None): f_obs = self.f_obs
+    if(f_obs is None): f_obs = self.f_obs()
     if(f_model is None): f_model = self.f_model()
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
@@ -1288,7 +1369,7 @@ class manager(manager_mixin):
              f_calc          = f_model,
              free_reflections_per_bin
                = self.alpha_beta_params.free_reflections_per_bin,
-             flags           = self.r_free_flags.data(),
+             flags           = self.r_free_flags().data(),
              interpolation   = self.alpha_beta_params.interpolation) \
                .alpha_beta()
          else:
@@ -1296,7 +1377,7 @@ class manager(manager_mixin):
            alpha, beta = sigmaa_estimator(
              miller_obs  = f_obs,
              miller_calc = f_model,
-             r_free_flags=self.r_free_flags,
+             r_free_flags=self.r_free_flags(),
              kernel_width_free_reflections=p.kernel_width_free_reflections,
              kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
              n_sampling_points=p.number_of_sampling_points,
@@ -1317,37 +1398,35 @@ class manager(manager_mixin):
          f_obs                    = f_obs,
          f_calc                   = f_model,
          free_reflections_per_bin = 140,
-         flags                    = self.r_free_flags.data(),
+         flags                    = self.r_free_flags().data(),
          interpolation            = False).alpha_beta()
     time_alpha_beta += timer.elapsed()
     return alpha, beta
 
   def alpha_beta_w(self, only_if_required_by_target=False):
-    if (only_if_required_by_target):
-      if (self.target_name not in ["ml", "mlhl"]): return None, None
-    assert self.r_free_flags is not None
+    if(only_if_required_by_target):
+      if(self.target_name not in ["ml", "mlhl"]): return None, None
     alpha, beta = self.alpha_beta()
-    if(self.r_free_flags.data().count(True) > 0):
-      return alpha.select(~self.r_free_flags.data()), \
-             beta.select(~self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return alpha.select(self.active_arrays.work_sel), \
+             beta.select(self.active_arrays.work_sel)
     else:
       return alpha, beta
 
   def alpha_beta_t(self):
-    assert self.r_free_flags is not None
     alpha, beta = self.alpha_beta()
-    if(self.r_free_flags.data().count(True) > 0):
-      return alpha.select(self.r_free_flags.data()), \
-             beta.select(self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return alpha.select(self.active_arrays.free_sel), \
+             beta.select(self.active_arrays.free_sel)
     else:
       return alpha, beta
 
   def sigmaa(self, f_obs = None, f_model = None):
     p = self.alpha_beta_params.sigmaa_estimator
     sigmaa_obj = sigmaa_estimator(
-      miller_obs                    = self.f_obs,
+      miller_obs                    = self.f_obs(),
       miller_calc                   = self.f_model(),
-      r_free_flags                  = self.r_free_flags,
+      r_free_flags                  = self.r_free_flags(),
       kernel_width_free_reflections = p.kernel_width_free_reflections,
       kernel_on_chebyshev_nodes     = p.kernel_on_chebyshev_nodes,
       n_sampling_points             = p.number_of_sampling_points,
@@ -1367,17 +1446,17 @@ class manager(manager_mixin):
     est_exceptions = []
     if(estimation_algorithm == "analytical"):
       alpha, beta = maxlik.alpha_beta_est_manager(
-        f_obs           = self.active_arrays.f_obs,
+        f_obs           = self.f_obs(),
         f_calc          = self.f_model_scaled_with_k1(),
         free_reflections_per_bin = free_reflections_per_bin,
-        flags           = self.active_arrays.r_free_flags.data(),
+        flags           = self.r_free_flags().data(),
         interpolation   = True).alpha_beta()
     else:
       p = self.alpha_beta_params.sigmaa_estimator
       alpha, beta = sigmaa_estimator(
-        miller_obs=self.active_arrays.f_obs,
+        miller_obs=self.f_obs(),
         miller_calc=self.f_model_scaled_with_k1(),
-        r_free_flags=self.active_arrays.r_free_flags,
+        r_free_flags=self.r_free_flags(),
         kernel_width_free_reflections=p.kernel_width_free_reflections,
         kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
         n_sampling_points=p.number_of_sampling_points,
@@ -1407,7 +1486,7 @@ class manager(manager_mixin):
       f_obs = self.f_obs_free().data()
       f_model = self.f_model_scaled_with_k1_t().data()
     elif(type == "all"):
-      f_obs = self.f_obs.data()
+      f_obs = self.f_obs().data()
       f_model = self.f_model_scaled_with_k1().data()
     else: raise RuntimeError
     if(selection is not None): assert [d_min, d_max].count(None) == 2
@@ -1453,14 +1532,14 @@ class manager(manager_mixin):
     if self.set_scale_switch is not None:
       if (self.set_scale_switch == 0):
         return _scale_helper(
-        num=self.f_obs.data(),
+        num=self.f_obs().data(),
         den=flex.abs(self.f_model().data()),
         selection=selection)
       if (self.set_scale_switch > 0):
         return self.set_scale_switch
     else:
       return _scale_helper(
-        num=self.f_obs.data(),
+        num=self.f_obs().data(),
         den=flex.abs(self.f_model().data()),
         selection=selection)
 
@@ -1487,7 +1566,7 @@ class manager(manager_mixin):
   def scale_k2(self, selection = None):
     return _scale_helper(
       num=flex.abs(self.active_arrays.f_model.data()),
-      den=self.active_arrays.f_obs.data(),
+      den=self.f_obs().data(),
       selection=selection)
 
   def scale_k2_w(self, selection = None):
@@ -1565,25 +1644,25 @@ class manager(manager_mixin):
        r_work_h = 0.0
     return r_work, r_work_l, r_work_h, n_low, n_high
 
-  def export_filled_f_obs(self, file_name):
-    assert self.filled_f_obs_selection is not None
-    warning = [
-      "THESE ARE MANIPULATED F-OBS.",
-      "Missing F-obs are replaced with D*Fmodel."]
-    width = max([len(line) for line in warning])
-    warning.insert(0, "*" * width)
-    warning.append(warning[0])
-    mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="F-obs")
-    mtz_dataset.add_miller_array(
-      miller_array=self.r_free_flags, column_root_label="R-free-flags")
-    mtz_history_buffer = flex.std_string(warning)
-    ha = mtz_history_buffer.append
-    ha(date_and_time())
-    ha("file name: %s" % os.path.basename(file_name))
-    ha("directory: %s" % os.path.dirname(file_name))
-    mtz_object = mtz_dataset.mtz_object()
-    mtz_object.add_history(lines=mtz_history_buffer)
-    mtz_object.write(file_name = file_name)
+  #XXXdef export_filled_f_obs(self, file_name):
+  #XXX  assert self.filled_f_obs_selection is not None
+  #XXX  warning = [
+  #XXX    "THESE ARE MANIPULATED F-OBS.",
+  #XXX    "Missing F-obs are replaced with D*Fmodel."]
+  #XXX  width = max([len(line) for line in warning])
+  #XXX  warning.insert(0, "*" * width)
+  #XXX  warning.append(warning[0])
+  #XXX  mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="F-obs")
+  #XXX  mtz_dataset.add_miller_array(
+  #XXX    miller_array=self.r_free_flags, column_root_label="R-free-flags")
+  #XXX  mtz_history_buffer = flex.std_string(warning)
+  #XXX  ha = mtz_history_buffer.append
+  #XXX  ha(date_and_time())
+  #XXX  ha("file name: %s" % os.path.basename(file_name))
+  #XXX  ha("directory: %s" % os.path.dirname(file_name))
+  #XXX  mtz_object = mtz_dataset.mtz_object()
+  #XXX  mtz_object.add_history(lines=mtz_history_buffer)
+  #XXX  mtz_object.write(file_name = file_name)
 
   def fill_missing_f_obs(self, fill_mode):
     #XXX ???
@@ -1632,20 +1711,19 @@ class manager(manager_mixin):
     global time_foms
     timer = user_plus_sys_time()
     result = max_lik.fom_and_phase_error(
-      f_obs          = self.active_arrays.f_obs.data(),
+      f_obs          = self.f_obs().data(),
       f_model        = flex.abs(self.active_arrays.f_model.data()),
       alpha          = alpha.data(),
       beta           = beta.data(),
-      space_group    = self.f_obs.space_group(),
-      miller_indices = self.f_obs.indices()).fom()
+      space_group    = self.f_obs().space_group(),
+      miller_indices = self.f_obs().indices()).fom()
     time_foms += timer.elapsed()
     return result
 
   def figures_of_merit_work(self):
-    assert self.r_free_flags is not None
     fom = self.figures_of_merit()
-    if(self.r_free_flags.data().count(True) > 0):
-      return fom.select(~self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return fom.select(self.active_arrays.work_sel)
     else:
       return fom
 
@@ -1654,42 +1732,40 @@ class manager(manager_mixin):
     global time_phase_errors
     timer = user_plus_sys_time()
     result = max_lik.fom_and_phase_error(
-      f_obs          = self.active_arrays.f_obs.data(),
+      f_obs          = self.f_obs().data(),
       f_model        = flex.abs(self.active_arrays.f_model.data()),
       alpha          = alpha.data(),
       beta           = beta.data(),
-      space_group    = self.f_obs.space_group(),
-      miller_indices = self.f_obs.indices()).phase_error()
+      space_group    = self.f_obs().space_group(),
+      miller_indices = self.f_obs().indices()).phase_error()
     time_phase_errors += timer.elapsed()
     return result
 
   def phase_errors_test(self):
-    assert self.r_free_flags is not None
     pher = self.phase_errors()
-    if(self.r_free_flags.data().count(True) > 0):
-      return pher.select(self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return pher.select(self.r_free_flags().data())
     else:
       return pher
 
   def phase_errors_work(self):
-    assert self.r_free_flags is not None
     pher = self.phase_errors()
-    if(self.r_free_flags.data().count(True) > 0):
-      return pher.select(~self.r_free_flags.data())
+    if(self.r_free_flags().data().count(True) > 0):
+      return pher.select(self.active_arrays.work_sel)
     else:
       return pher
 
   def filter_by_fom(self, fom_threshold = 0.2):
     fom = self.figures_of_merit()
     sel = fom > fom_threshold
-    dsel = self.f_obs.d_spacings().data() < 5.
+    dsel = self.f_obs().d_spacings().data() < 5.
     sel = sel.set_selected(~dsel,True)
     self = self.select(sel)
     return self
 
   def filter_by_delta_fofc(self):
     deltas = flex.double()
-    for fc, fo in zip(self.f_model_scaled_with_k1().data(), self.f_obs.data()):
+    for fc, fo in zip(self.f_model_scaled_with_k1().data(), self.f_obs().data()):
       deltas.append(abs(fo - abs(fc)))
     sel = flex.sort_permutation(deltas, reverse=True)
     self = self.select(sel)
@@ -1697,45 +1773,45 @@ class manager(manager_mixin):
     self = self.select(sel)
     return self
 
-  def back_scale_f_obs(self):
-    # XXX EXPERIMENTAL CODE
-    from mmtbx import bulk_solvent
-    m = max(self.b_cart())
-    bc = []
-    for b in self.b_cart(): # XXX need to do using eigen-value filtering
-      if(abs(abs(m)-abs(b))<0.01): bc.append(m)
-      else:bc.append(0)
-    fbc = bulk_solvent.fb_cart(
-       bc,
-       self.f_obs.indices(),
-       self.f_obs.unit_cell())
-    scale = 1./fbc
-    self.f_obs = self.f_obs.customized_copy(data=self.f_obs.data()*scale)
-    self.f_obs_w = self.f_obs.select(self.work)
-    self.f_obs_t = self.f_obs.select(self.test)
-    self.update(b_cart = [0,0,0,0,0,0])
-    self.update_solvent_and_scale(optimize_mask = False)
+  #XXXdef back_scale_f_obs(self):
+  #XXX  # XXX EXPERIMENTAL CODE
+  #XXX  from mmtbx import bulk_solvent
+  #XXX  m = max(self.b_cart())
+  #XXX  bc = []
+  #XXX  for b in self.b_cart(): # XXX need to do using eigen-value filtering
+  #XXX    if(abs(abs(m)-abs(b))<0.01): bc.append(m)
+  #XXX    else:bc.append(0)
+  #XXX  fbc = bulk_solvent.fb_cart(
+  #XXX     bc,
+  #XXX     self.f_obs().indices(),
+  #XXX     self.f_obs().unit_cell())
+  #XXX  scale = 1./fbc
+  #XXX  self.f_obs = self.f_obs.customized_copy(data=self.f_obs.data()*scale)
+  #XXX  self.f_obs_w = self.f_obs.select(self.work)
+  #XXX  self.f_obs_t = self.f_obs.select(self.test)
+  #XXX  self.update(b_cart = [0,0,0,0,0,0])
+  #XXX  self.update_solvent_and_scale(optimize_mask = False)
 
   def map_calculation_helper(self,
                              free_reflections_per_bin = 100,
                              interpolation = True):
     class result(object):
       def __init__(self, fmodel, free_reflections_per_bin, interpolation):
-        self.f_obs = fmodel.f_obs
+        self.f_obs = fmodel.f_obs()
         self.f_model = fmodel.f_model_scaled_with_k1()
         self.alpha, self.beta = maxlik.alpha_beta_est_manager(
           f_obs                    = self.f_obs,
           f_calc                   = self.f_model,
           free_reflections_per_bin = free_reflections_per_bin,
-          flags                    = fmodel.r_free_flags.data(),
+          flags                    = fmodel.r_free_flags().data(),
           interpolation            = interpolation).alpha_beta()
         self.fom = max_lik.fom_and_phase_error(
           f_obs          = self.f_obs.data(),
           f_model        = flex.abs(self.f_model.data()),
           alpha          = self.alpha.data(),
           beta           = self.beta.data(),
-          space_group    = fmodel.r_free_flags.space_group(),
-          miller_indices = fmodel.r_free_flags.indices()).fom()
+          space_group    = fmodel.r_free_flags().space_group(),
+          miller_indices = fmodel.r_free_flags().indices()).fom()
     return result(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
@@ -1760,18 +1836,18 @@ class manager(manager_mixin):
 
   def combined_hl_coefficients(self, map_calculation_helper):
     result = None
-    if(self.abcd is not None):
-      result = self.abcd.data() + self.f_model_phases_as_hl_coefficients(
+    if(self.hl_coeffs() is not None):
+      result = self.hl_coeffs().data() + self.f_model_phases_as_hl_coefficients(
         map_calculation_helper)
     return result
 
   def combine_phases(self, n_steps = 360, map_calculation_helper=None):
     result = None
-    if(self.abcd is not None):
+    if(self.hl_coeffs() is not None):
       integrator = miller.phase_integrator(n_steps = n_steps)
       phase_source = integrator(
-        space_group= self.f_obs.space_group(),
-        miller_indices = self.f_obs.indices(),
+        space_group= self.f_obs().space_group(),
+        miller_indices = self.f_obs().indices(),
         hendrickson_lattman_coefficients =
           self.combined_hl_coefficients(map_calculation_helper))
       class tmp:
@@ -1893,11 +1969,11 @@ class manager(manager_mixin):
         print >> out, "{ directory: %s }" % os.path.dirname(file_name)
       self.explain_members(out=out, prefix="{ ", suffix=" }")
       crystal_symmetry_as_cns_comments(
-        crystal_symmetry=self.f_obs, out=out)
-      print >> out, "NREFlections=%d" % self.f_obs.indices().size()
+        crystal_symmetry=self.f_obs(), out=out)
+      print >> out, "NREFlections=%d" % self.f_obs().indices().size()
       print >> out, "ANOMalous=%s" % {0: "FALSE"}.get(
-        int(self.f_obs.anomalous_flag()), "TRUE")
-      have_sigmas = self.f_obs.sigmas() is not None
+        int(self.f_obs().anomalous_flag()), "TRUE")
+      have_sigmas = self.f_obs().sigmas() is not None
       for n_t in [("FOBS", "REAL"),
                   ("SIGFOBS", "REAL"),
                   ("R_FREE_FLAGS", "INTEGER"),
@@ -1922,8 +1998,8 @@ class manager(manager_mixin):
       f_bulk_phases      = self.f_bulk().phases(deg=True).data()
       alpha, beta        = [item.data() for item in self.alpha_beta()]
       arrays = [
-        self.f_obs.indices(), self.f_obs.data(), self.f_obs.sigmas(),
-        self.r_free_flags.data(),
+        self.f_obs().indices(), self.f_obs().data(), self.f_obs().sigmas(),
+        self.r_free_flags().data(),
         f_model_amplitudes, f_model_phases,
         f_calc_amplitudes, f_calc_phases,
         f_mask_amplitudes, f_mask_phases,
@@ -1950,9 +2026,9 @@ class manager(manager_mixin):
         out.close()
     else:
       assert file_name is not None
-      mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="FOBS")
+      mtz_dataset = self.f_obs().as_mtz_dataset(column_root_label="FOBS")
       mtz_dataset.add_miller_array(
-        miller_array=self.r_free_flags, column_root_label="R_FREE_FLAGS")
+        miller_array=self.r_free_flags(), column_root_label="R_FREE_FLAGS")
       mtz_dataset.add_miller_array(
         miller_array=self.f_model_scaled_with_k1(), column_root_label="FMODEL")
       mtz_dataset.add_miller_array(
@@ -1962,10 +2038,10 @@ class manager(manager_mixin):
       mtz_dataset.add_miller_array(
         miller_array=self.f_bulk(), column_root_label="FBULK")
       mtz_dataset.add_miller_array(
-        miller_array=self.f_obs.array(data=self.fb_cart()),
+        miller_array=self.f_obs().array(data=self.fb_cart()),
         column_root_label="FB_CART", column_types="W")
       mtz_dataset.add_miller_array(
-        miller_array=self.f_obs.array(data=self.figures_of_merit()),
+        miller_array=self.f_obs().array(data=self.figures_of_merit()),
         column_root_label="FOM", column_types="W")
       alpha, beta = self.alpha_beta()
       mtz_dataset.add_miller_array(

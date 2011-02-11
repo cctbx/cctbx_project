@@ -18,8 +18,8 @@ class fmodels(object):
       scale_k1_x = self.fmodel_x.scale_k1()
       scale_k1_n = self.fmodel_n.scale_k1()
       xn_scale = scale_k1_x / scale_k1_n
-      f_obs_n_new = self.fmodel_n.f_obs.array(
-        data = self.fmodel_n.f_obs.data()*xn_scale)
+      f_obs_n_new = self.fmodel_n.f_obs().array(
+        data = self.fmodel_n.f_obs().data()*xn_scale)
       f_obs_n_new.set_observation_type_xray_amplitude()
       self.fmodel_n.update(f_obs = f_obs_n_new)
     #
@@ -132,7 +132,8 @@ class fmodels(object):
 
   def remove_outliers(self):
     from mmtbx.refinement import print_statistics
-    print_statistics.make_header("Outliers rejection", out = self.log)
+    n_old = self.fmodel_x.f_obs().size()
+    print_statistics.make_sub_header("Outliers rejection", out = self.log)
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):
         print_statistics.make_sub_header("x-ray data", out = self.log)
@@ -142,6 +143,10 @@ class fmodels(object):
       print_statistics.make_sub_header("neutron data", out = self.log)
       self.fmodel_n = self.fmodel_neutron().remove_outliers(
         show = True, log = self.log)
+    print >> self.log
+    n_new = self.fmodel_x.f_obs().size()
+    if(n_old != n_new):
+      self.create_target_functors() # XXX Cover neutrons
 
   def show_targets(self, log, text=""):
     prefix_x = ""

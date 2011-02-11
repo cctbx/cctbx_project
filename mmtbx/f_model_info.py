@@ -65,7 +65,7 @@ class info(object):
     self.overall_scale_k1 = fmodel.scale_k1()
     self.number_of_test_reflections = fmodel.f_calc_t().data().size()
     self.number_of_work_reflections = fmodel.f_calc_w().data().size()
-    self.number_of_reflections = fmodel.f_obs.data().size()
+    self.number_of_reflections = fmodel.f_obs().data().size()
     self.k_sol = fmodel.k_sol()
     self.b_sol = fmodel.b_sol()
     self.b_cart = fmodel.b_cart()
@@ -82,12 +82,12 @@ class info(object):
         self.sigmaa = None
     else :
       self.sigmaa = None
-    self.d_max, self.d_min = fmodel.f_obs.resolution_range()
-    self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
-    self.completeness_d_min_inf = fmodel.f_obs.completeness()
-    f_obs_6 = fmodel.f_obs.resolution_filter(d_min = 6)
+    self.d_max, self.d_min = fmodel.f_obs().resolution_range()
+    self.completeness_in_range = fmodel.f_obs().completeness(d_max = self.d_max)
+    self.completeness_d_min_inf = fmodel.f_obs().completeness()
+    f_obs_6 = fmodel.f_obs().resolution_filter(d_min = 6)
     self.completeness_6_inf = f_obs_6.completeness()
-    self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma(
+    self.min_f_obs_over_sigma = fmodel.f_obs().min_f_over_sigma(
       return_none_if_zero_sigmas=True)
     self.sf_algorithm = fmodel.sfg_params.algorithm
     alpha_w, beta_w = fmodel.alpha_beta_w()
@@ -128,10 +128,10 @@ class info(object):
     pher_w = fmodel.phase_errors_work()
     pher_t = fmodel.phase_errors_test()
     fom = fmodel.figures_of_merit_work()
-    fmodel.f_obs.setup_binner(n_bins=fmodel.determine_n_bins(
+    fmodel.f_obs().setup_binner(n_bins=fmodel.determine_n_bins(
       free_reflections_per_bin=free_reflections_per_bin,
       max_n_bins=max_number_of_bins))
-    fo_t.use_binning_of(fmodel.f_obs)
+    fo_t.use_binning_of(fmodel.f_obs())
     fc_t.use_binning_of(fo_t)
     fo_w.use_binning_of(fo_t)
     fc_w.use_binning_of(fo_t)
@@ -151,8 +151,8 @@ class info(object):
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
       sel_w = fo_w.binner().selection(i_bin)
-      sel_all = fmodel.f_obs.binner().selection(i_bin)
-      sel_fo_all = fmodel.f_obs.select(sel_all)
+      sel_all = fmodel.f_obs().binner().selection(i_bin)
+      sel_fo_all = fmodel.f_obs().select(sel_all)
       sel_fo_t = fo_t.select(sel_t)
       sel_fc_t = fc_t.select(sel_t)
       sel_fo_w = fo_w.select(sel_w)

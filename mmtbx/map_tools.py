@@ -97,8 +97,8 @@ class electron_density_map(object):
     self.fill_missing_f_obs = fill_missing_f_obs
     self.anom_diff = None
     self.mch = map_calculation_helper
-    if(self.fmodel.f_obs.anomalous_flag()):
-      self.anom_diff = self.fmodel.f_obs.anomalous_differences()
+    if(self.fmodel.f_obs().anomalous_flag()):
+      self.anom_diff = self.fmodel.f_obs().anomalous_differences()
       f_model = self.fmodel.f_model().as_non_anomalous_array().\
         merge_equivalents().array()
       fmodel_match_anom_diff, anom_diff_common = \
@@ -128,13 +128,13 @@ class electron_density_map(object):
     #
     # R.Read, SIGMAA: 2mFo-DFc (acentrics) & mFo (centrics)
     #
-    centric_flags = self.fmodel.f_obs.centric_flags().data()
+    centric_flags = self.fmodel.f_obs().centric_flags().data()
     if(map_name_manager.k != 0):
-      fo_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
-    else: fo_scale = flex.double(self.fmodel.f_obs.size(), 0.0)
+      fo_scale = flex.double(self.fmodel.f_obs().size(), 1.0)
+    else: fo_scale = flex.double(self.fmodel.f_obs().size(), 0.0)
     if(map_name_manager.n != 0):
-      fc_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
-    else: fc_scale = flex.double(self.fmodel.f_obs.size(), 0.0)
+      fc_scale = flex.double(self.fmodel.f_obs().size(), 1.0)
+    else: fc_scale = flex.double(self.fmodel.f_obs().size(), 0.0)
     if(map_name_manager.k != abs(map_name_manager.n) and
        abs(map_name_manager.k*map_name_manager.n) > 1.e-6):
       fo_scale.set_selected(~centric_flags, map_name_manager.k)
@@ -152,7 +152,7 @@ class electron_density_map(object):
       fc_scale *= map_name_manager.n
     if(not map_name_manager.ml_map):
        return self._map_coeff(
-         f_obs         = self.fmodel.f_obs,
+         f_obs         = self.fmodel.f_obs(),
          f_model       = self.fmodel.f_model_scaled_with_k1(),
          f_obs_scale   = fo_scale,
          f_model_scale = fc_scale)
@@ -164,7 +164,7 @@ class electron_density_map(object):
       if(external_alpha_fom_source is not None):
         alpha = external_alpha_fom_source.alpha
         fom = external_alpha_fom_source.fom
-      if(self.fmodel.abcd is None):
+      if(self.fmodel.hl_coeffs() is None):
         return self._map_coeff(
           f_obs         = self.mch.f_obs,
           f_model       = self.mch.f_model,

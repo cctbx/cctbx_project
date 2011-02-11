@@ -410,13 +410,13 @@ def set_ias_name_and_predicted_position(iass, params):
 def set_peaks(iass, fmodel, grid_step, map_type, scaling):
   assert grid_step > 0
   fft_map = fmodel.electron_density_map().fft_map(map_type = map_type,
-    resolution_factor = 1./(int(fmodel.f_obs.d_min()/grid_step)+1))
+    resolution_factor = 1./(int(fmodel.f_obs().d_min()/grid_step)+1))
   if(scaling == "volume"):
      fft_map.apply_volume_scaling()
   if(scaling == "sigma"):
      fft_map.apply_sigma_scaling()
   fft_map_data = fft_map.real_map_unpadded()
-  unit_cell = fmodel.f_obs.unit_cell()
+  unit_cell = fmodel.f_obs().unit_cell()
   for ias in iass:
     if(ias.type in ["B", "BH"] ):
        bp = find_peak_at_bond(map_data    = fft_map_data,
