@@ -47,9 +47,9 @@ namespace {
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
-        .def_readonly("angle_ideal", &w_t::angle_ideal)
-        .def_readonly("weight", &w_t::weight)
-        .def_readonly("slack", &w_t::slack)
+        .def_readwrite("angle_ideal", &w_t::angle_ideal)
+        .def_readwrite("weight", &w_t::weight)
+        .def_readwrite("slack", &w_t::slack)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
