@@ -2160,6 +2160,7 @@ class build_all_chain_proxies(object):
       if (isinstance(raw_records, str)):
         raw_records = flex.split_lines(raw_records)
       elif (not isinstance(raw_records, flex.std_string)):
+        assert raw_records is not None
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
     self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
