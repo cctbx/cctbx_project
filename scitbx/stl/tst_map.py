@@ -122,6 +122,17 @@ def exercise_int_stl_vector_unsigned():
   l = pickle.loads(d)
   assert l.keys() == [-1]
   assert list(l[-1]) == [10,20]
+  #
+  v = sv.get(-1)
+  v.append(30)
+  assert list(v) == [10,20,30]
+  assert list(sv[-1]) == [10,20,30]
+  l = sv.values()
+  l[0].append(40)
+  assert list(sv[-1]) == [10,20,30,40]
+  l = sv.items()
+  l[0][1].append(50)
+  assert list(sv[-1]) == [10,20,30,40,50]
 
 def exercise():
   exercise_long_long()

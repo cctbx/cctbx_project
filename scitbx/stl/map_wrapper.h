@@ -2,6 +2,7 @@
 #define SCITBX_BOOST_PYTHON_STL_MAP_WRAPPER_H
 
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/tuple.hpp>
@@ -89,17 +90,30 @@ namespace scitbx { namespace stl { namespace boost_python {
     }
 
     static boost::python::object
-    get(w_t& self, k_t const& k, boost::python::object x)
+    get(
+      boost::python::object self,
+      boost::python::object k,
+      boost::python::object d)
     {
-      if (self.find(k) == self.end()) return x;
-      return boost::python::object(self[k]);
+      namespace bp = boost::python;
+      bp::extract<w_t const&> self_proxy(self);
+      w_t const& c_self = self_proxy();
+      bp::extract<k_t const&> k_const_proxy(k);
+      if (k_const_proxy.check()) {
+        k_t c_k = k_const_proxy();
+        if (c_self.find(c_k) == c_self.end()) return d;
+      }
+      bp::extract<k_t> k_value_proxy(k);
+      k_t c_k = k_value_proxy();
+      if (c_self.find(c_k) == c_self.end()) return d;
+      return self[k]; // call through Python to use correct return value policy
     }
 
     static m_t&
-    setdefault_2(w_t& self, k_t const& k, m_t const& x)
+    setdefault_2(w_t& self, k_t const& k, m_t const& d)
     {
       if (self.find(k) == self.end()) {
-        self[k] = x;
+        self[k] = d;
       }
       return self[k];
     }
@@ -149,23 +163,36 @@ namespace scitbx { namespace stl { namespace boost_python {
     }
 
     static boost::python::list
-    values(w_t const& self)
+    values(
+      boost::python::object self)
     {
-      boost::python::list result;
+      namespace bp = boost::python;
+      bp::list result;
+      bp::extract<w_t const&> self_proxy(self);
+      w_t const& c_self = self_proxy();
       typename w_t::const_iterator i;
-      for(i=self.begin();i!=self.end();i++) {
-        result.append(i->second);
+      for(i=c_self.begin();i!=c_self.end();i++) {
+        result.append(
+          // call through Python to use correct return value policy
+          self[i->first]);
       }
       return result;
     }
 
     static boost::python::list
-    items(w_t const& self)
+    items(
+      boost::python::object self)
     {
-      boost::python::list result;
+      namespace bp = boost::python;
+      bp::list result;
+      bp::extract<w_t const&> self_proxy(self);
+      w_t const& c_self = self_proxy();
       typename w_t::const_iterator i;
-      for(i=self.begin();i!=self.end();i++) {
-        result.append(boost::python::make_tuple(i->first, i->second));
+      for(i=c_self.begin();i!=c_self.end();i++) {
+        result.append(bp::make_tuple(
+          i->first,
+          // call through Python to use correct return value policy
+          self[i->first]));
       }
       return result;
     }
@@ -188,7 +215,8 @@ namespace scitbx { namespace stl { namespace boost_python {
         boost::python::throw_error_already_set();
       }
       boost::python::tuple result = boost::python::make_tuple(
-        i->first, i->second);
+        i->first,
+        i->second); // value is copied; cannot use return value policy here
       self.erase(i);
       return result;
     }
@@ -201,24 +229,26 @@ namespace scitbx { namespace stl { namespace boost_python {
     }
 
     static boost::python::tuple
-    getinitargs(w_t const& self)
+    getinitargs(
+      boost::python::object self)
     {
-      return boost::python::make_tuple(boost::python::dict(items(self)));
+      namespace bp = boost::python;
+      return bp::make_tuple(bp::dict(items(self)));
     }
 
     static void
     wrap(std::string const& python_name)
     {
-      namespace bp = boost::python;
-      bp::class_<w_t, boost::shared_ptr<w_t> >(python_name.c_str())
-        .def(bp::init<w_t const&>())
+      using namespace boost::python;
+      class_<w_t, boost::shared_ptr<w_t> >(python_name.c_str())
+        .def(init<w_t const&>())
         .def("size", &w_t::size)
         .def("__len__", &w_t::size)
         .def("erase", (std::size_t(w_t::*)(k_t const&)) &w_t::erase)
         .def("clear", &w_t::clear)
         .def("__contains__", contains)
         .def("has_key", contains)
-        .def("get", get)
+        .def("get", get, (arg("k"), arg("d")=object()))
         .def("setdefault", setdefault_2, GetitemReturnValuePolicy())
         .def("setdefault", setdefault_1, GetitemReturnValuePolicy())
         .def("__getitem__", getitem, GetitemReturnValuePolicy())
