@@ -1,7 +1,5 @@
 
 from __future__ import division
-from scitbx.array_family import flex
-import boost.python
 import libtbx.load_env
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -60,6 +58,7 @@ refine_opt_params = libtbx.phil.parse("""
 """)
 
 def load_tables (params=None) :
+  import boost.python
   if (params is None) :
     params = master_phil.fetch().extract()
   if (params.scale_allowed <= 0.0) :
@@ -95,6 +94,7 @@ class proxy (object) :
     self.ignore_flag = None
 
 def show_histogram(data, n_slots, log):
+  from scitbx.array_family import flex
   hm = flex.histogram(data = data, n_slots = n_slots)
   lc_1 = hm.data_min()
   s_1 = enumerate(hm.slots())
@@ -106,6 +106,7 @@ def show_histogram(data, n_slots, log):
 
 class ramachandran_plot_data(object):
   def __init__(self):
+    from scitbx.array_family import flex
     self.gly = None
     self.pro = None
     self.prepro = None
@@ -141,14 +142,17 @@ class ramachandran_plot_data(object):
     self.general = self.normalize_general(data=self.general)
 
   def norm_to_max(self, data, val, sel, threshold=0.5):
+    from scitbx.array_family import flex
     vmax = flex.max(val.select(sel))
     sel1 = val > vmax*threshold
     return data.select((sel1&sel))
 
   def thin_data(self, x, step = 1):
+    from scitbx.array_family import flex
     return x.select(flex.size_t(range(0,x.size(),step)))
 
   def split_array(self, data):
+    from scitbx.array_family import flex
     phi = flex.double()
     psi = flex.double()
     val = flex.double()
@@ -253,10 +257,10 @@ class lookup_manager (object) :
                                gradient_array=None,
                                unit_cell=None) :
     from scitbx.array_family import flex
+    import boost.python
     ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
     from mmtbx_ramachandran_restraints_ext import target_and_gradients, target_phi_psi
     if(gradient_array is None) :
-      from scitbx.array_family import flex
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     target = 0
     if(self.params.rama_potential == "oldfield"):
