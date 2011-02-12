@@ -9,12 +9,14 @@ from iotbx import shelx
 from iotbx.shelx import hklf
 from iotbx.option_parser import option_parser
 
+from scitbx.math import distributions
 from smtbx import absolute_structure
 
 import glob, os, sys
 
 def crawl(directory, ext='cif', log=None, atomic_form_factors=None,
-          inelastic_form_factors="henke", chiral_space_groups_only=False):
+          inelastic_form_factors="henke", chiral_space_groups_only=False,
+          outlier_cutoff_factor=2):
   assert ext in ('res', 'ins', 'fcf', 'hkl', 'cif')
   for root, dirs, files in os.walk(directory):
     if '.olex' in root: continue # ignore Olex2 strdir subdirectories
@@ -23,12 +25,14 @@ def crawl(directory, ext='cif', log=None, atomic_form_factors=None,
       try:
         run_once(path, log=log, atomic_form_factors=atomic_form_factors,
                  inelastic_form_factors=inelastic_form_factors,
-                 chiral_space_groups_only=chiral_space_groups_only)
+                 chiral_space_groups_only=chiral_space_groups_only,
+                 outlier_cutoff_factor=outlier_cutoff_factor)
       except Exception, e:
         continue
 
 def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
-             inelastic_form_factors="henke", chiral_space_groups_only=False):
+             inelastic_form_factors="henke", chiral_space_groups_only=False,
+             outlier_cutoff_factor=2):
   if log is None:
     log = sys.stdout
   file_root, file_ext = os.path.splitext(file_path)
@@ -56,7 +60,8 @@ def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
     return
   print >> log, file_path
   fc.space_group_info().show_summary(f=log)
-  absolute_structure_analysis(xs, fo2, fc, scale, nu=nu, log=log)
+  absolute_structure_analysis(xs, fo2, fc, scale, nu=nu, log=log,
+                              outlier_cutoff_factor=outlier_cutoff_factor)
   log.flush()
 
 def structure_factors_from_fcf(file_path, xs=None):
@@ -123,11 +128,12 @@ def structure_factors_from_ins_res(file_path):
   return structure_factors_from_hkl(
     xs, hkl_path, weighting_scheme=custom_builder.weighting_scheme)
 
-def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None):
+def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
+                                outlier_cutoff_factor=2):
   if log is None:
     log = sys.stdout
   hooft_analysis = absolute_structure.hooft_analysis(
-    fo2, fc, scale_factor=scale)
+    fo2, fc, scale_factor=scale, outlier_cutoff_factor=outlier_cutoff_factor)
   print >> log, "Gaussian analysis:"
   hooft_analysis.show(out=log)
   NPP = absolute_structure.bijvoet_differences_probability_plot(
@@ -138,8 +144,14 @@ def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None):
   if nu is None:
     nu = absolute_structure.maximise_students_t_correlation_coefficient(
       NPP.y, min_nu=1, max_nu=200)
+  distribution = distributions.students_t_distribution(nu)
+  observed_deviations = NPP.y
+  expected_deviations = distribution.quantiles(observed_deviations.size())
+  fit = flex.linear_regression(
+    expected_deviations[5:-5], observed_deviations[5:-5])
   t_analysis = absolute_structure.students_t_hooft_analysis(
-    fo2, fc, nu, scale_factor=scale, probability_plot_slope=NPP.fit.slope())
+    fo2, fc, nu, scale_factor=scale, probability_plot_slope=fit.slope(),
+    outlier_cutoff_factor=outlier_cutoff_factor)
   tPP = absolute_structure.bijvoet_differences_probability_plot(
     t_analysis, use_students_t_distribution=True, students_t_nu=nu)
   print >> log, "Student's t analysis:"
@@ -162,10 +174,10 @@ def run(args):
                           action="store",
                           type="float")
                   .option(None, "--atomic_form_factors",
-                          action="store_true",
+                          action="store",
                           default="it1992")
                   .option(None, "--inelastic_form_factors",
-                          action="store_true",
+                          action="store",
                           default="henke")
                   .option(None, "--debug",
                           action="store_true")
@@ -175,6 +187,10 @@ def run(args):
                           action="store")
                   .option(None, "--chiral_space_groups_only",
                           action="store_true")
+                  .option(None, "--outlier_cutoff_factor",
+                          action="store",
+                          type="float",
+                          default=2)
                   ).process(args=args)
   if len(command_line.args) != 1:
     command_line.parser.show_help()
@@ -187,11 +203,13 @@ def run(args):
     crawl(command_line.args[0], ext=command_line.options.ext, log=log,
           atomic_form_factors=command_line.options.atomic_form_factors,
           inelastic_form_factors=command_line.options.inelastic_form_factors,
-          chiral_space_groups_only=command_line.options.chiral_space_groups_only)
+          chiral_space_groups_only=command_line.options.chiral_space_groups_only,
+          outlier_cutoff_factor=command_line.options.outlier_cutoff_factor)
   elif os.path.isfile(command_line.args[0]):
     run_once(command_line.args[0], nu=command_line.options.nu, log=log,
              atomic_form_factors=command_line.options.atomic_form_factors,
-             inelastic_form_factors=command_line.options.inelastic_form_factors)
+             inelastic_form_factors=command_line.options.inelastic_form_factors,
+             outlier_cutoff_factor=command_line.options.outlier_cutoff_factor)
   else:
     print "Please provide a valid file or directory"
 
