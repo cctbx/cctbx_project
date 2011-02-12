@@ -1,7 +1,9 @@
 
 from __future__ import division
-from math import sqrt, cos
+import libtbx.phil
 from libtbx import adopt_init_args
+from math import sqrt, cos
+import sys
 
 sigma_base = sqrt(2.0) / 3.0
 
@@ -69,7 +71,7 @@ class implicit_proxy (object) :
                 theta_low,
                 theta_high,
                 weight=1.0) :
-    assert (len(i_seqs) == 3))
+    assert (len(i_seqs) == 3)
     assert (distance_cut is None) or (distance_cut > distance_ideal)
     adopt_init_args(self, locals())
 
@@ -103,6 +105,92 @@ class distance_proxy (object) :
       i_seqs=i_seqs,
       distance_ideal=distance_ideal,
       weight=1/(sigma**2))
+
+def get_simple_bond_equivalents (proxies) :
+  """
+Given a list of proxies, extract the pair of atom indices representing the
+actual "bond", e.g. H-O or N-O.  These are used to exclude the atom pair from
+the nonbonded interaction restraints function.
+"""
+  bond_pairs = []
+  for proxy in proxies :
+    bond_pairs.append(_get_simple_bond(proxy))
+  return bond_pairs
+
+def _get_simple_bond (proxy) :
+  if isintance(proxy, distance_proxy) :
+    pair = proxy.i_seqs
+  elif isinstance(proxy, implicit_proxy) :
+    pair = proxy.i_seqs[0], proxy.i_seqs[1]
+  elif isinstance(proxy, explicit_proxy) :
+    pair = proxy.i_seqs[1], proxy.i_seqs[2]
+  else :
+    assert 0
+  return pair
+
+def _distance (sites_cart, i_seq, j_seq) :
+  (x1, y1, z1) = sites_cart[i_seq]
+  (x2, y2, z2) = sites_cart[j_seq]
+  dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+  return dist
+
+def filter_excessive_distances (proxies, sites_cart) :
+  filtered_proxies = []
+  for proxy in proxies :
+    i_seq, j_seq = _get_simple_bond(proxy)
+    distance = _distance(sites_cart, i_seq, j_seq)
+    if (distance > proxy.distance_cut) :
+      continue
+    filtered_proxies.append(proxy)
+  return filtered_proxies
+
+def as_pymol_dashes (proxies, pdb_hierarchy, filter=True, out=sys.stdout) :
+  pdb_atoms = pdb_hierarchy.atoms()
+  sites_cart = pdb_atoms.extract_xyz()
+  if (filter) :
+    proxies = filter_excessive_distances(proxies, sites_cart)
+  for proxy in proxies :
+    i_seq, j_seq = _get_simple_bond(proxy)
+    atom1 = atoms[i_seq].fetch_labels()
+    atom2 = atoms[i_seq].fetch_labels()
+    base_sele = """chain "%s" and resi %s and name %s"""
+    sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
+    sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
+    print >>out, "dist %s, %s" % (sele1, sele2)
+
+def as_refmac_restraints (proxies, pdb_hierarchy, filter=True, out=sys.stdout,
+    sigma=0.05) :
+  pdb_atoms = pdb_hierarchy.atoms()
+  sites_cart = pdb_atoms.extract_xyz()
+  if (filter) :
+    proxies = filter_excessive_distances(proxies, sites_cart)
+  for proxy in proxies :
+    i_seq, j_seq = _get_simple_bond(proxy)
+    atom1 = pdb_atoms[i_seq].fetch_labels()
+    atom2 = pdb_atoms[i_seq].fetch_labels()
+    cmd = (("exte dist first chain %s residue %s atom %s " +
+            "second chain %s residue %s atom %s value %.3f sigma %.2f") %
+      (atom1.chain_id, atom1.resseq, atom1.name, atom2.chain_id,
+       atom2.resseq, atom2.name, bond.distance_ideal, 0.05))
+    print >> out, cmd
+
+def as_kinemage (self, pdb_hierarchy, filter=True, out=sys.stdout) :
+  atoms = pdb_hierarchy.atoms()
+  print >> out, """\
+@group {PHENIX H-bonds}
+@subgroup {H-bond dots} dominant"""
+  for (i_seq, j_seq) in self.get_simple_bonds(filter=filter) :
+    a = atoms[i_seq].xyz
+    b = atoms[j_seq].xyz
+    ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
+    print >> out, """@dotlist {Drawn dots} color= green"""
+    for x in range(1, 12) :
+      fac = float(x) / 12
+      vec = (a[0] + (ab[0]*fac), a[1] + (ab[1]*fac), a[2] + (ab[2]*fac))
+      if (x == 1) :
+        print >> out, "{drawn} %.4f %.4f %.4f" % vec
+      else :
+        print >> out, "{''} %.4f %.4f %.4f" % vec
 
 def hbond_target_and_gradients (proxies,
                                 sites_cart,

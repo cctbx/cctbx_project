@@ -188,6 +188,275 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
 }""" % (prefix_scope, first_strand, "\n".join(strands))
     return phil_str
 
+def _create_hbond_proxy (
+    acceptor_atoms,
+    donor_atoms,
+    use_simple_restraints,
+    use_explicit_hydrogens,
+    simple_distance_ideal,
+    simple_distance_cut,
+    hbond_params,
+    weight=1.0) :
+  from mmtbx.geometry_restraints import hbond
+  proxy = None
+  for atom in acceptor_atoms :
+    if (atom.name == ' O  ') :
+      acceptor = atom.i_seq
+    elif (atom.name == ' C  ') :
+      acceptor_base = atom.i_seq
+  for atom in donor_atoms :
+    if (atom.name == ' N  ') :
+      donor = atom.i_seq
+    elif (atom.name == ' H  ') :
+      hydrogen = atom.i_seq
+  if ([donor,acceptor,acceptor_base].count(None) == 0) :
+    if (use_explicit_hydrogens) :
+      if (hydrogen is None) :
+        donor_resseq = donor_atoms[0].fetch_labels().resseq_as_int()
+        print >> log, "Missing hydrogen at %d" % donor_resseq
+        return None
+    # choose restraint type (simple, explicit-H, implicit-H)
+    if (use_simple_restraints) :
+      if (use_explicit_hydrogens) :
+        donor = hydrogen
+      proxy = hbond.distance_proxy(
+        i_seqs=[donor, acceptor],
+        distance_ideal=simple_distance_ideal,
+        distance_cut=simple_distance_cut,
+        sigma=hbond_params.sigma,
+        slack=hbond_params.slack,
+        weight=weight)
+    elif (use_explicit_hydrogens) :
+      proxy = hbond.explicit_proxy(
+        i_seqs=[donor, hydrogen, acceptor, acceptor_base],
+        distance_ideal=hbond_params.distance_ideal,
+        distance_cut=hbond_params.distance_cut,
+        theta_ideal=hbond_params.theta_ideal,
+        psi_ideal=hbond_params.psi_ideal,
+        weight=weight)
+    else :
+      proxy = hbond.implicit_proxy(
+        i_seqs=[donor, acceptor, acceptor_base],
+        distance_ideal=hbond_params.distance_ideal,
+        distance_cut=hbond_params.distance_cut,
+        theta_low=hbond_params.theta_low,
+        theta_high=hbond_params.theta_high,
+        weight=weight)
+  else :
+    print >> log, "WARNING: missing atoms!"
+  return proxy
+
+def create_helix_hydrogen_bond_proxies (
+    helix_selection,
+    helix_step,
+    pdb_hierarchy,
+    weight,
+    hbond_params,
+    use_explicit_hydrogens=False,
+    use_simple_restraints=False,
+    simple_distance_ideal=None,
+    simple_distance_cut=None,
+    log=sys.stdout) :
+  from mmtbx.geometry_restraints import hbond
+  assert ((not use_simple_restraints) or
+    ([simple_distance_ideal, simple_distance_cut].count(None) == 0))
+  proxies = []
+  helix_i_seqs = helix_selection.iselection()
+  assert (helix_step in [3, 4, 5])
+  for model in pdb_hierarchy.models() :
+    for chain in model.chains() :
+      for conformer in chain.conformers() :
+        chain_i_seqs = conformer.atoms().extract_i_seq()
+        both_i_seqs = chain_i_seqs.intersection(helix_i_seqs)
+        if (both_i_seqs.size() == 0) :
+          continue
+        residues = conformer.residues()
+        n_residues = len(residues)
+        for j_seq, residue in enumerate(residues) :
+          resi_atoms = residue.atoms()
+          resseq = residue.resseq_as_int()
+          donor = None
+          acceptor = None
+          acceptor_base = None
+          hydrogen = None
+          if (helix_selection[resi_atoms[0].i_seq] == True) :
+            k_seq = j_seq + helix_step
+            if (k_seq < n_residues) :
+              bonded_resi = residues[k_seq]
+              bonded_resseq = bonded_resi.resseq_as_int()
+              if (bonded_resi.resname == "PRO") :
+                print >> log, "Proline residue at %s %s - end of helix" % \
+                  (chain.id, bonded_resseq)
+                break # XXX is this safe?
+              elif (bonded_resseq != (resseq + helix_step)) :
+                print >> log, "Confusing residue numbering: %s %s -> %s %s" \
+                  (chain.id, residue.resid(), chain.id, bonded_resi.resid())
+                continue
+              bonded_atoms = bonded_resi.atoms()
+              if (helix_selection[bonded_atoms[0].i_seq] == True) :
+                proxy = _create_hbond_proxy(
+                  acceptor_atoms=resi_atoms,
+                  donor_atoms=bonded_atoms,
+                  use_simple_restraints=use_simple_restraints,
+                  use_explicit_hydrogens=use_explicit_hydrogens,
+                  simple_distance_ideal=simple_distance_ideal,
+                  simple_distance_cut=simple_distance_cut,
+                  hbond_params=hbond_params,
+                  weight=weight)
+                if (proxy is not None) :
+                  proxies.append(proxy)
+  return proxies
+
+def create_sheet_hydrogen_bond_proxies (
+    sheet_params,
+    pdb_hierarchy,
+    weight,
+    hbond_params,
+    use_explicit_hydrogens=False,
+    use_simple_restraints=False,
+    simple_distance_ideal=None,
+    simple_distance_cut=None,
+    log=sys.stdout) :
+  from mmtbx.geometry_restraints import hbond
+  assert ((not use_simple_restraints) or
+    ([simple_distance_ideal, simple_distance_cut].count(None) == 0))
+  proxies = []
+  cache = pdb_hierarchy.atom_selection_cache()
+  prev_strand = sheet_params.first_strand
+  prev_selection = cache.selection(prev_strand)
+  prev_residues = _get_strand_residues(
+    pdb_hierarchy=pdb_hierarchy,
+    strand_selection=prev_selection)
+  k = 0
+  while k < len(sheet_params.strand) :
+    curr_strand = sheet_params.strand[k]
+    curr_selection = cache.selection(curr_strand.selection)
+    curr_start = cache.selection(curr_strand.bond_start_current)
+    prev_start = cache.selection(curr_strand.bond_start_previous)
+    curr_residues = _get_strand_residues(
+      pdb_hierarchy=pdb_hierarchy,
+      strand_selection=curr_selection)
+    i = j = 0
+    if (len(curr_residues) > 0) and (len(prev_residues) > 0) :
+      i = _find_start_residue(
+        residues=prev_residues,
+        start_selection=prev_start)
+      j = _find_start_residue(
+        residues=curr_residues,
+        start_selection=curr_start)
+      if (i >= 0) and (j >= 0) :
+        if (curr_strand.sense == "parallel") :
+          while (i < len(prev_residues)) and (j < len(curr_residues)) :
+            if (prev_residues[i].resname.strip() != "PRO") :
+              proxy = _create_hbond_proxy(
+                acceptor_atoms=curr_residues[j].atoms(),
+                donor_atoms=prev_residues[i].atoms(),
+                use_simple_restraints=use_simple_restraints,
+                use_explicit_hydrogens=use_explicit_hydrogens,
+                simple_distance_ideal=simple_distance_ideal,
+                simple_distance_cut=simple_distance_cut,
+                hbond_params=hbond_params,
+                weight=weight)
+              if (proxy is not None) :
+                proxies.append(proxy)
+            if ((j + 2) >= len(curr_residues)) :
+              break
+            if (curr_residues[j+2].resname.strip() != "PRO") :
+              proxy = _create_hbond_proxy(
+                acceptor_atoms=prev_residues[i].atoms(),
+                donor_atoms=curr_residues[j+2].atoms(),
+                use_simple_restraints=use_simple_restraints,
+                use_explicit_hydrogens=use_explicit_hydrogens,
+                simple_distance_ideal=simple_distance_ideal,
+                simple_distance_cut=simple_distance_cut,
+                hbond_params=hbond_params,
+                weight=weight)
+              if (proxy is not None) :
+                proxies.append(proxy)
+            i += 2
+            j += 2
+        elif (curr_strand.sense == "antiparallel") :
+          while (i < len(prev_residues)) and (j > 0) :
+            if (prev_residues[i].resname.strip() != "PRO") :
+              proxy = _create_hbond_proxy(
+                acceptor_atoms=curr_residues[j].atoms(),
+                donor_atoms=prev_residues[i].atoms(),
+                use_simple_restraints=use_simple_restraints,
+                use_explicit_hydrogens=use_explicit_hydrogens,
+                simple_distance_ideal=simple_distance_ideal,
+                simple_distance_cut=simple_distance_cut,
+                hbond_params=hbond_params,
+                weight=weight)
+              if (proxy is not None) :
+                proxies.append(proxy)
+            if (curr_residues[j].resname.strip() != "PRO") :
+              proxy = _create_hbond_proxy(
+                acceptor_atoms=prev_residues[i].atoms(),
+                donor_atoms=curr_residues[j].atoms(),
+                use_simple_restraints=use_simple_restraints,
+                use_explicit_hydrogens=use_explicit_hydrogens,
+                simple_distance_ideal=simple_distance_ideal,
+                simple_distance_cut=simple_distance_cut,
+                hbond_params=hbond_params,
+                weight=weight)
+              if (proxy is not None) :
+                proxies.append(proxy)
+            i += 2
+            j -= 2
+        else :
+          print >> log, "WARNING: strand direction not defined!"
+          print >> log, "  previous: %s" % prev_strand
+          print >> log, "  current: %s" % curr_strand.selection
+      else :
+        print >> log, "WARNING: can't find start of bonding for strands!"
+        print >> log, "  previous: %s" % prev_strand
+        print >> log, "  current: %s" % curr_strand.selection
+    else :
+      print >> log, "WARNING: can't find one or more strands!"
+      print >> log, "  previous: %s" % prev_strand
+      print >> log, "  current: %s" % curr_strand.selection
+    k += 1
+    prev_strand = curr_strand
+    prev_selection = curr_selection
+    prev_residues = curr_residues
+  return proxies
+
+def _find_start_residue (
+    residues,
+    start_selection) :
+  start_i_seqs = start_selection.iselection()
+  for i, residue in enumerate(residues) :
+    atom_i_seqs = residue.atoms().extract_i_seq()
+    if (atom_i_seqs.intersection(start_i_seqs).size() > 0) :
+      return i
+  return -1
+
+def _get_strand_residues (
+    pdb_hierarchy,
+    strand_selection) :
+  strand_i_seqs = strand_selection.iselection()
+  strand_residues = []
+  for model in pdb_hierarchy.models() :
+    for chain in model.chains() :
+      for conformer in chain.conformers() :
+        chain_i_seqs = conformer.atoms().extract_i_seq()
+        both_i_seqs = chain_i_seqs.intersection(strand_i_seqs)
+        if (both_i_seqs.size() == 0) :
+          continue
+        residues = conformer.residues()
+        n_residues = len(residues)
+        for j_seq, residue in enumerate(residues) :
+          resi_atoms = residue.atoms()
+          if (strand_selection[resi_atoms[0].i_seq] == True) :
+            strand_residues.append(residue)
+        if (len(strand_residues) > 0) :
+          break
+      if (len(strand_residues) > 0) :
+        break
+    if (len(strand_residues) > 0) :
+      break
+  return strand_residues
+
 def donors_and_acceptors (base_sele, selection_cache, atoms, donor_name,
     ss_type) :
   isel = selection_cache.iselection
@@ -219,6 +488,7 @@ hydrogen_bonds_from_selections: incomplete non-PRO residues in %s.
       acceptor_sele, acceptor_isel.size()))
   return donor_isel, acceptor_isel
 
+# FIXME
 def _find_strand_bonding_start (atoms,
     prev_strand_donors,
     prev_strand_acceptors,
@@ -348,7 +618,7 @@ def restraint_groups_as_pdb_sheets (pdb_hierarchy, sheets, log=sys.stderr) :
       n_strands=1+len(sheet.strand),
       strands=[],
       registrations=[])
-    first_strand = __strand_group_as_pdb_strand(isel=isel,
+    first_strand = _strand_group_as_pdb_strand(isel=isel,
       selection=sheet.first_strand,
       atoms=atoms,
       log=log,
@@ -357,7 +627,7 @@ def restraint_groups_as_pdb_sheets (pdb_hierarchy, sheets, log=sys.stderr) :
     current_sheet.add_registration(None)
     base_sele = "(%s) and name N and (altloc 'A' or altloc ' ')"
     for strand in sheet.strand :
-      pdb_strand = __strand_group_as_pdb_strand(isel=isel,
+      pdb_strand = _strand_group_as_pdb_strand(isel=isel,
         selection=strand.selection,
         atoms=atoms,
         log=log,
@@ -387,7 +657,7 @@ def restraint_groups_as_pdb_sheets (pdb_hierarchy, sheets, log=sys.stderr) :
     pdb_sheets.append(current_sheet)
   return pdb_sheets
 
-def __strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
+def _strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
   if sense is None or sense == "unknown" :
     int_sense = 0
   elif sense == "parallel" :

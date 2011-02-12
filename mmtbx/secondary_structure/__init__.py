@@ -244,6 +244,89 @@ class hydrogen_bond_table (object) :
          acceptor.resseq, acceptor.name, bond.distance_ideal, bond.sigma))
       print >> out, cmd
 
+def hydrogen_bond_proxies_from_selections(
+    pdb_hierarchy,
+    params,
+    hbond_params=None,
+    use_explicit_hydrogens=False, # TODO set automatically
+    use_simple_restraints=True,
+    restrain_helices=True,
+    alpha_only=False,
+    restrain_sheets=True,
+    log=sys.stderr) :
+  from mmtbx.geometry_restraints import hbond
+  selection_cache = pdb_hierarchy.atom_selection_cache()
+  proxies = []
+  if (hbond_params is None) :
+    hbond_params = hbond.master_phil.fetch().extract()
+  weight = hbond_params.restraints_weight
+  if (use_simple_restraints) :
+    geo_params = hbond_params.simple
+  elif (use_explicit_hydrogens) :
+    geo_params = hbond_params.explicit
+  else :
+    geo_params = hbond_params.implicit
+  proxies = []
+  if (use_explicit_hydrogens) :
+    simple_distance_ideal = hbond_params.simple.distance_ideal_h_o
+    simple_distance_cut = hbond_params.simple.distance_cut_h_o
+  else :
+    simple_distance_ideal = hbond_params.simple.distance_ideal_n_o
+    simple_distance_cut = hbond_params.simple.distance_cut_n_o
+  if restrain_helices :
+    for helix in params.helix :
+      helix_class = helix.helix_type
+      if helix_class != "alpha" and params.h_bond_restraints.alpha_only :
+        print >> log, "Skipping non-alpha helix (class %s):" % helix_class
+        print >> log, "  %s" % helix.selection
+        continue
+      if helix_class == "alpha" :
+        helix_step = 4
+      elif helix_class == "pi" :
+        helix_step = 5
+      elif helix_class == "3_10" :
+        helix_step = 3
+      else :
+        print >> log, "Don't know bonding for helix class %s." % helix_class
+        continue
+      try :
+        helix_selection = selection_cache.selection(helix.selection)
+      except Exception, e :
+        print e
+      else :
+        helix_proxies = proteins.create_helix_hydrogen_bond_proxies(
+          helix_selection=helix_selection,
+          helix_step=helix_step,
+          pdb_hierarchy=pdb_hierarchy,
+          weight=hbond_params.restraints_weight,
+          hbond_params=geo_params,
+          use_explicit_hydrogens=use_explicit_hydrogens,
+          use_simple_restraints=use_simple_restraints,
+          simple_distance_ideal=simple_distance_ideal,
+          simple_distance_cut=simple_distance_cut,
+          log=log)
+        if (len(helix_proxies) == 0) :
+          print >> log, "No H-bonds generated for '%s'" % helix.selection
+          continue
+        proxies.extend(helix_proxies)
+  if (restrain_sheets) :
+    for k, sheet in enumerate(params.sheet) :
+      sheet_proxies = proteins.create_sheet_hydrogen_bond_proxies(
+        sheet_params=sheet,
+        pdb_hierarchy=pdb_hierarchy,
+        weight=hbond_params.restraints_weight,
+        hbond_params=geo_params,
+        use_explicit_hydrogens=use_explicit_hydrogens,
+        use_simple_restraints=use_simple_restraints,
+        simple_distance_ideal=simple_distance_ideal,
+        simple_distance_cut=simple_distance_cut,
+        log=sys.stdout)
+      if (len(helix_proxies) == 0) :
+        print >> log, "No H-bonds generated for sheet #%d" % k
+        continue
+      proxies.extend(sheet_proxies)
+  return proxies
+
 def hydrogen_bonds_from_selections (
     pdb_hierarchy,
     params,
@@ -543,6 +626,8 @@ class manager (object) :
                 tmp_dir=None,
                 verbose=-1) :
     adopt_init_args(self, locals())
+    i_seqs = pdb_hierarchy.atoms().extract_i_seq()
+    assert (not i_seqs.all_eq(0))
     self._was_initialized = False
     if self.params is None :
       self.params = sec_str_master_phil.fetch().extract()
@@ -701,6 +786,19 @@ class manager (object) :
       pdb_hierarchy=self.pdb_hierarchy,
       log=log)
     return bonds_table
+
+  def create_hbond_proxies (self, log=sys.stderr, hbond_params=None,
+      use_simple_restraints=True) :
+    params = self.params
+    use_explicit_hydrogens = not params.h_bond_restraints.substitute_n_for_h
+    proxies = hydrogen_bond_proxies_from_selections(
+      pdb_hierarchy=self.pdb_hierarchy,
+      params=params,
+      hbond_params=hbond_params,
+      use_explicit_hydrogens=use_explicit_hydrogens,
+      use_simple_restraints=use_simple_restraints,
+      log=log)
+    return proxies
 
   def calculate_structure_content (self) :
     isel = self.selection_cache.iselection
