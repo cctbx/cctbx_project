@@ -1,11 +1,10 @@
 from __future__ import division
 
-# TODO: regression testing
+# TODO: much better regression testing
 # TODO: confirm old_test_flag_value if ambiguous
 
 import iotbx.phil
 from libtbx.phil.command_line import argument_interpreter
-from libtbx.math_utils import iceil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 import sys, os, string, re, random
@@ -183,10 +182,6 @@ class process_arrays (object) :
   def __init__ (self, params, input_files=None, log=sys.stderr,
       accumulation_callback=None, symmetry_callback=None) :
     adopt_init_args(self, locals())
-    from iotbx import file_reader
-    from cctbx import crystal
-    from cctbx import sgtbx
-    from scitbx.array_family import flex
     if len(params.mtz_file.miller_array) == 0 :
       raise Sorry("No Miller arrays have been selected for the output file.")
     elif len(params.mtz_file.miller_array) > 25 :
@@ -198,6 +193,10 @@ class process_arrays (object) :
         params.mtz_file.r_free_flags.preserve_input_values) :
       raise Sorry("r_free_flags.preserve_input_values and r_free_flags.extend"+
         " may not be used together.")
+    from iotbx import file_reader
+    from cctbx import crystal
+    from cctbx import sgtbx
+    from scitbx.array_family import flex
 
     #-------------------------------------------------------------------
     # COLLECT ARRAYS
@@ -776,21 +775,10 @@ def is_rfree_array (miller_array, array_info) :
           reflection_file_utils.looks_like_r_free_flags_info(array_info))
 
 def export_r_free_flags (miller_array, test_flag_value) :
-  if miller_array.is_bool_array() : # XXX: in practice, this is always true
-    test_flag_value = True
-  else :
-    assert miller_array.is_integer_array()
-  data = miller_array.data()
-  unique_values = set(data)
-  if len(unique_values) > 2 : # XXX: is this safe?
-    return miller_array
-  from scitbx.array_family import flex
-  new_flags = flex.int(data.size())
-  for i in range(data.size()) :
-    if data[i] == test_flag_value :
-      new_flags[i] = 0
-    else :
-      new_flags[i] = iceil(random.random() * 19)
+  from cctbx import r_free_utils
+  new_flags = r_free_utils.export_r_free_flags(
+    flags=miller_array.data(),
+    test_flag_value=test_flag_value)
   return miller_array.customized_copy(data=new_flags)
 
 def get_original_array_types (input_file, original_labels) :
@@ -814,6 +802,50 @@ def guess_array_output_labels (miller_array) :
     else :
       output_labels = ["I", "SIGI"]
   return output_labels
+
+# XXX the requirement for defined crystal symmetry in phil input files is
+# problematic for automation, where labels and operations are very
+# standardized.  so I added this to identify unique symmetry information
+# in the collected input files.
+def collect_symmetries (file_names) :
+  from iotbx import crystal_symmetry_from_any
+  file_names = set(file_names)
+  file_symmetries = []
+  for file_name in file_names :
+    symm = crystal_symmetry_from_any.extract_from(file_name)
+    if (symm is not None) :
+      file_symmetries.append(symm)
+  return file_symmetries
+
+def resolve_symmetry (file_symmetries, current_space_group, current_unit_cell):
+  space_groups = []
+  unit_cells = []
+  for symm in file_symmetries :
+    if (symm is not None) :
+      space_group = symm.space_group_info()
+      unit_cell = symm.unit_cell()
+      if (space_group is not None) and (unit_cell is not None) :
+        if (current_space_group is None) :
+          group = space_group.group()
+          for other_sg in space_groups :
+            other_group = other_sg.group()
+            if (other_sg.type().number() != group.type().number()) :
+              raise Sorry("Ambiguous space group information in input files - "+
+                "please specify symmetry parameters.")
+        if (current_unit_cell is None) :
+          for other_uc in unit_cells :
+            if (not other_uc.is_similar_to(other_uc, 0.001, 0.1)) :
+              raise Sorry("Ambiguous unit cell information in input files - "+
+                "please specify symmetry parameters.")
+        space_groups.append(space_group)
+        unit_cells.append(unit_cell)
+  consensus_space_group = current_space_group
+  consensus_unit_cell = current_unit_cell
+  if (len(space_groups) > 0) and (current_space_group is None) :
+    consensus_space_group = space_groups[0]
+  if (len(unit_cells) > 0) and (current_unit_cell is None) :
+    consensus_unit_cell = unit_cells[0]
+  return (consensus_space_group, consensus_unit_cell)
 
 def usage (out=sys.stdout, attributes_level=0) :
   print >> out, """
@@ -849,6 +881,7 @@ def run (args, out=sys.stdout) :
   crystal_symmetry_from_pdb = None
   crystal_symmetries_from_hkl = []
   reflection_files = []
+  reflection_file_names = []
   user_phil = []
   all_arrays = []
   if len(args) == 0 :
@@ -872,18 +905,21 @@ def run (args, out=sys.stdout) :
         continue
       input_file = file_reader.any_file(full_path)
       if input_file.file_type == "hkl" :
-        miller_arrays = input_file.file_object.as_miller_arrays()
+        miller_arrays = input_file.file_server.miller_arrays
         for array in miller_arrays :
           symm = array.crystal_symmetry()
           if symm is not None :
             crystal_symmetries_from_hkl.append(symm)
             break
         reflection_files.append(input_file)
+        reflection_file_names.append(os.path.abspath(input_file.file_name))
       elif input_file.file_type == "pdb" :
         symm = input_file.file_object.crystal_symmetry()
         if symm is not None :
           crystal_symmetry_from_pdb = symm
     else :
+      if arg.startswith("--") :
+        arg = arg[2:] + "=True"
       try :
         cmdline_phil = interpreter.process(arg=arg)
       except Exception :
@@ -909,10 +945,21 @@ def run (args, out=sys.stdout) :
       crystal_symmetry_from_pdb.unit_cell()
   elif None in [params.mtz_file.crystal_symmetry.space_group,
                 params.mtz_file.crystal_symmetry.unit_cell] :
-    for i, symm in enumerate(crystal_symmetries_from_hkl) :
-      params.mtz_file.crystal_symmetry.space_group = symm.space_group_info()
-      params.mtz_file.crystal_symmetry.unit_cell = symm.unit_cell()
-      break
+    # extract symmetry information from all reflection files
+    all_hkl_file_names = [ p.file_name for p in params.mtz_file.miller_array ]
+    need_symmetry_for_files = []
+    for file_name in all_hkl_file_names :
+      file_name = os.path.abspath(file_name)
+      if (not file_name in reflection_file_names) :
+        need_symmetry_for_files.append(file_name)
+    crystal_symmetries_from_hkl.extend(
+      collect_symmetries(need_symmetry_for_files))
+    (space_group, unit_cell) = resolve_symmetry(
+      file_symmetries=crystal_symmetries_from_hkl,
+      current_space_group=params.mtz_file.crystal_symmetry.space_group,
+      current_unit_cell=params.mtz_file.crystal_symmetry.unit_cell)
+    params.mtz_file.crystal_symmetry.space_group = space_group
+    params.mtz_file.crystal_symmetry.unit_cell = unit_cell
   if params.mtz_file.output_file is None :
     n = 0
     for file_name in os.listdir(os.getcwd()) :
