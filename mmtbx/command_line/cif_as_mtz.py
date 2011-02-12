@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
 
 import sys, os, re
+import string
 from cctbx.array_family import flex
 from cctbx import miller
 from libtbx import runtime_utils
@@ -557,7 +558,8 @@ def create_mtz_object(pre_miller_arrays,
                       key_counter,
                       crystal_symmetry,
                       file_name,
-                      show_details_if_error):
+                      show_details_if_error,
+                      output_r_free_label):
   r_free_flags = None
   if(pre_miller_arrays.flags is not None):
     if(pre_miller_arrays.flags.size() > 0):
@@ -603,7 +605,7 @@ def create_mtz_object(pre_miller_arrays,
   if(r_free_flags is not None):
     mtz_dataset.add_miller_array(
       miller_array      = r_free_flags,
-      column_root_label = "R-free-flags")
+      column_root_label = output_r_free_label)
     assert r_free_flags.indices().all_eq(miller_array.indices())
   mtz_object = mtz_dataset.mtz_object()
   return mtz_object
@@ -635,6 +637,11 @@ def run(args, command_name = "phenix.cif_as_mtz"):
         default=None,
         type="int",
         help="Extract data set with given crystal_id.")
+      .option(None, "--output_r_free_label",
+        action="store",
+        default="R-free-flags",
+        type="string",
+        help="MTZ column label to use for R-free flags (default: R-free-flags)")
       .option("--show_details_if_error",
           action="store_true",
           help="Show data details for some errors.")
@@ -663,6 +670,12 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):
     raise Sorry("File is not found: %s"%file_name)
+  output_r_free_label = command_line.options.output_r_free_label
+  if ((not output_r_free_label[0] in string.uppercase) or
+      (re.search("[^a-zA-Z0-9_\-]", output_r_free_label))) :
+    raise Sorry(("%s is not a suitable column label.  MTZ format requires "+
+      "an uppercase letter as the first character, and only alphanumeric "+
+      "characters or hyphens in the rest of the string.")% output_r_free_label)
   process_files(
     file_name=file_name,
     crystal_symmetry=crystal_symmetry,
@@ -670,10 +683,17 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     output_file_name=command_line.options.output_file_name,
     wavelength_id=command_line.options.wavelength_id,
     crystal_id=command_line.options.crystal_id,
-    show_details_if_error=command_line.options.show_details_if_error)
+    show_details_if_error=command_line.options.show_details_if_error,
+    output_r_free_label=command_line.options.output_r_free_label)
 
-def process_files (file_name, crystal_symmetry, pdb_file_name,
-    output_file_name,wavelength_id, crystal_id, show_details_if_error) :
+def process_files (file_name,
+                   crystal_symmetry,
+                   pdb_file_name,
+                   output_file_name,
+                   wavelength_id,
+                   crystal_id,
+                   show_details_if_error,
+                   output_r_free_label) :
   file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
     file_name             = file_name,
@@ -681,7 +701,8 @@ def process_files (file_name, crystal_symmetry, pdb_file_name,
     crystal_symmetry      = crystal_symmetry,
     wavelength_id         = wavelength_id,
     crystal_id            = crystal_id,
-    show_details_if_error = show_details_if_error)
+    show_details_if_error = show_details_if_error,
+    output_r_free_label   = output_r_free_label)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -724,8 +745,13 @@ def process_files (file_name, crystal_symmetry, pdb_file_name,
     mtz_object.write(file_name = output_file_name)
     return mtz_object.n_reflections()
 
-def extract(file_name, file_lines, crystal_symmetry, wavelength_id, crystal_id,
-            show_details_if_error):
+def extract(file_name,
+            file_lines,
+            crystal_symmetry,
+            wavelength_id,
+            crystal_id,
+            show_details_if_error,
+            output_r_free_label):
   keys = extract_keys(file_name = file_name, file_lines = file_lines)
   if(len(keys) == 0): return None
   key_counter = count_keys(keys = keys, file_name = file_name)
@@ -749,7 +775,8 @@ def extract(file_name, file_lines, crystal_symmetry, wavelength_id, crystal_id,
     key_counter       = key_counter,
     crystal_symmetry  = crystal_symmetry,
     file_name         = file_name,
-    show_details_if_error = show_details_if_error)
+    show_details_if_error = show_details_if_error,
+    output_r_free_label=output_r_free_label)
   return mtz_object
 
 ########################################################################
@@ -885,7 +912,8 @@ def run2 (args,
     output_file_name=params.output_file_name,
     wavelength_id=params.input.wavelength_id,
     crystal_id=params.input.crystal_id,
-    show_details_if_error=params.options.show_details_if_error)
+    show_details_if_error=params.options.show_details_if_error,
+    output_r_free_label="FreeR_flag")
   return (params.output_file_name, n_refl)
 
 def validate_params (params) :
