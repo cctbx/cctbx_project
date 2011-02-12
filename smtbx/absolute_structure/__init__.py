@@ -41,7 +41,7 @@ class hooft_analysis(object):
 
   def __init__(self, fo2, fc,
                scale_factor=None,
-               outlier_cuttoff_factor=2,
+               outlier_cutoff_factor=2,
                probability_plot_slope=None):
     self.probability_plot_slope = probability_plot_slope
     assert fo2.is_xray_intensity_array()
@@ -54,7 +54,7 @@ class hooft_analysis(object):
     self.delta_fo2 = fo2.anomalous_differences()
     self.n_bijvoet_pairs = self.delta_fo2.size()
     cutoff_sel = flex.abs(self.delta_fo2.data()) > (
-      outlier_cuttoff_factor * scale_factor) * flex.max(
+      outlier_cutoff_factor * scale_factor) * flex.max(
         flex.abs(self.delta_fc2.data()))
     self.delta_fo2 = self.delta_fo2.select(~cutoff_sel)
     self.delta_fc2 = self.delta_fc2.select(~cutoff_sel)
@@ -277,12 +277,12 @@ class students_t_hooft_analysis(hooft_analysis):
   def __init__(self, fo2, fc,
                degrees_of_freedom,
                scale_factor=None,
-               outlier_cuttoff_factor=2,
+               outlier_cutoff_factor=2,
                probability_plot_slope=None):
     self.degrees_of_freedom = degrees_of_freedom
     hooft_analysis.__init__(self, fo2, fc,
                             scale_factor=scale_factor,
-                            outlier_cuttoff_factor=outlier_cuttoff_factor,
+                            outlier_cutoff_factor=outlier_cutoff_factor,
                             probability_plot_slope=probability_plot_slope)
 
   def log_p_obs_given_gamma(self, gamma):
