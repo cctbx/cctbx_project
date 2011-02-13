@@ -238,7 +238,7 @@ class bijvoet_differences_probability_plot(object):
     if out is None: out=sys.stdout
     print >> out, "y_intercept: %.3f" %self.fit.y_intercept()
     print >> out, "slope: %.3f" %self.fit.slope()
-    print >> out, "coefficient: %.4f" %self.correlation.coefficient()
+    print >> out, "correlation coefficient: %.4f" %self.correlation.coefficient()
 
 
 def maximise_students_t_correlation_coefficient(observed_deviations,
