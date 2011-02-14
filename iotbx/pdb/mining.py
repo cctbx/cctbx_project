@@ -116,41 +116,20 @@ def pdb_inp_generator(file_infos, chunk_n, chunk_i):
 def null_generator():
   for never in []: yield never
 
-def run_multi(cmd):
-  from libtbx import easy_run
-  print cmd
-  easy_run.call(command=cmd)
-
 def run(args, command_call, command_line_add_options=None):
   from iotbx.option_parser import option_parser as iotbx_option_parser
   import libtbx.utils
-  from libtbx.utils import escape_sh_double_quoted
   show_times = libtbx.utils.show_times(time_start="now")
   command_line = (iotbx_option_parser(
     usage=" ".join(command_call) + " [options] file|directory...")
     .enable_chunk(easy_all=True)
-    .option(None, "--multiprocessing",
-      action="store",
-      type="int",
-      default=None,
-      help="Use multiprocessing module.",
-      metavar="INT")
+    .enable_multiprocessing()
     .call_with_self_as_first_argument(callable=command_line_add_options)
   ).process(args=args)
-  n = command_line.options.multiprocessing
-  if (n is not None and n > 1):
-    if (command_line.chunk.n == 1):
-      cmds = []
-      for i in xrange(n):
-        cmd = command_call + args + ["--chunk=%d,%d" % (n,i)]
-        cmd = " ".join(['"'+escape_sh_double_quoted(s=arg)+'"' for arg in cmd])
-        cmds.append(cmd)
-      import multiprocessing
-      mp_pool = multiprocessing.Pool(processes=n)
-      mp_pool.map(run_multi, cmds)
-      show_times()
-      return command_line, null_generator()
-    command_line.chunk.redirect_chunk_stdout_and_stderr(have_array=True)
+  if (command_line.run_multiprocessing_chunks_if_applicable(
+        command_call=command_call)):
+    show_times()
+    return command_line, null_generator()
   #
   from libtbx.str_utils import show_string
   ca = command_line.args

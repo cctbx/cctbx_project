@@ -358,12 +358,9 @@ def exercise_compile_valid(regex_patterns, opts):
       n_failures += processor(file_info=file_info)
     return n_failures
   #
-  import libtbx.introspection
   n_proc = min(
     len(selected_file_names_and_expected_cout),
-    libtbx.introspection.number_of_processors())
-  if (opts.max_proc is not None):
-    n_proc = min(opts.max_proc, n_proc)
+    opts.max_proc)
   print "Number of processors:", n_proc
   import multiprocessing
   mp_pool = multiprocessing.Pool(processes=n_proc)
@@ -373,12 +370,7 @@ def run(args):
   from libtbx.option_parser import option_parser
   command_line = (option_parser(
     usage="fable.python %s [options] regex_pattern ..." % __file__)
-    .option(None, "--multiprocessing",
-      action="store_true",
-      default=False)
-    .option(None, "--max_proc",
-      action="store",
-      type="int")
+    .enable_multiprocessing()
     .option(None, "--dry_run",
       action="store_true",
       default=False)
