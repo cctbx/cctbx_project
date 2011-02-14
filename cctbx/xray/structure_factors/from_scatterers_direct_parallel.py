@@ -58,14 +58,13 @@ class pprocess:
         unique_form_factor_at_x_sq += parameters[x] * math.exp(-parameters[x+1]*x_sq)
       print unique_form_factor_at_x_sq
 
-  def prepare_data_arrays_for_cuda(self,numpy,verbose=False):
+  def prepare_miller_arrays_for_cuda(self,numpy,verbose=False):
 
     """ The number of miller indices and atoms each must be an exact
         multiple of the BLOCKSIZE (32), so zero-padding is employed"""
 
     # Transfer data from flex arrays to numpy & zero-pad
-    # Marshal the miller indices, fractional coordinates, and weights
-    # into numpy arrays for use in CUDA
+    # Marshal the miller indices into numpy arrays for use in CUDA
 
     # Miller indices
     flat_mix = self.miller_indices.as_vec3_double().as_double().as_numpy_array()
@@ -76,46 +75,70 @@ class pprocess:
       flat_mix.resize(( newsize,))
 
     self.n_flat_hkl = flat_mix.shape[0]/3
+    self.flat_mix = flat_mix
+
+  def prepare_scattering_sites_for_cuda(self,numpy,verbose=False):
+
+    # Transfer data from flex arrays to numpy & zero-pad
+    # Marshal the fractional coordinates, and weights
+    # into numpy arrays for use in CUDA
+
+    # inspect the unique scatterers in the registry, determine number of electrons
+    n_electrons = self.registry.unique_form_factors_at_d_star_sq(0.)
+
+    # scatterer id, listed in increasing order of electron content
+    self.scatterers.increasing_order = flex.sort_permutation(n_electrons)
+    self.scatterers.number_of_types = len(self.scatterers.increasing_order)
+    self.scatterers.index_begin = [0]
+
+    # Unique type labels for the scatterers
+    uniqueix = self.registry.unique_indices(self.scatterers)
+    for s in xrange(self.scatterers.number_of_types):
+      self.scatterers.index_begin.append(
+        self.scatterers.index_begin[s] +
+        uniqueix.count( self.scatterers.increasing_order[s] )
+      )
+    if verbose:
+      print list(self.scatterers.increasing_order)
+      print self.scatterers.number_of_types
+      print self.scatterers.index_begin
+
+    uniqueix_sort_order = flex.sort_permutation(uniqueix)
+    sorted_uniqueix = uniqueix.select(uniqueix_sort_order
+      ).as_numpy_array().astype(numpy.uint32)
 
     # Scattering sites
     sites = self.scatterers.extract_sites()
     n_sites = sites.size()
-    flat_sites = sites.as_double().as_numpy_array()
-    #print flat_sites.dtype,flat_sites.shape
+    sorted_flat_sites = sites.select(uniqueix_sort_order).as_double().as_numpy_array()
+    #print sorted_flat_sites.dtype,sorted_flat_sites.shape
 
     # weights: weight = site_multiplicity * occupancy
     # for example, an atom on a three-fold has site_multiplicity 1/3
-    weights = numpy.array([S.weight() for S in self.scatterers])
+    sorted_weights = flex.double([S.weight() for S in self.scatterers]).select(
+      uniqueix_sort_order).as_numpy_array()
 
     if n_sites%FHKL_BLOCKSIZE > 0:
       newsize = FHKL_BLOCKSIZE* (1+(n_sites/FHKL_BLOCKSIZE))
       if verbose:
         print "Scatterer xyzs: resetting %s array from size %d to %d"%(
-              flat_sites.dtype,flat_sites.shape[0],3*newsize)
+              sorted_flat_sites.dtype,sorted_flat_sites.shape[0],3*newsize)
         print "weights   : resetting %s array from size %d to %d"%(
-              weights.dtype,weights.shape[0],newsize)
+              sorted_weights.dtype,sorted_weights.shape[0],newsize)
         print
-      flat_sites.resize(( 3*newsize,))
+      sorted_flat_sites.resize(( 3*newsize,))
       # zero-padding for weights guarantees no effect from padded sites
-      weights.resize(( newsize,))
+      sorted_weights.resize(( newsize,))
+      sorted_uniqueix.resize((newsize,))
 
     self.n_sites = n_sites
-    self.flat_mix = flat_mix
-    self.flat_sites = flat_sites
-    self.weights = weights
+    self.flat_sites = sorted_flat_sites
+    self.weights = sorted_weights
+    self.uniqueix = sorted_uniqueix
 
-  def prepare_registry_symmetry_cell(self,numpy):
+  def prepare_gaussians_symmetries_cell(self,numpy):
     # Marshal the scattering types, form factors, symmetry elements,
     # and metrical matrix into numpy arrays for use in CUDA.
-
-    # Scattering sites registry
-    uniqueix = self.registry.unique_indices(self.scatterers
-      ).as_numpy_array().astype(numpy.uint32)
-
-    if len(uniqueix)%FHKL_BLOCKSIZE > 0:
-      uniqueix.resize(FHKL_BLOCKSIZE* (1+(len(uniqueix)/FHKL_BLOCKSIZE)),)
-    assert len(uniqueix) == len(self.weights)
-    self.uniqueix = uniqueix
 
     # Gaussian expansion for the unique scattering types
     gaussians = flex.double()
@@ -242,9 +265,11 @@ class pprocess:
 
       self.validate_the_inputs(instance,cuda)
 
-      self.prepare_data_arrays_for_cuda(algorithm.numpy)
+      self.prepare_miller_arrays_for_cuda(algorithm.numpy)
 
-      self.prepare_registry_symmetry_cell(algorithm.numpy)
+      self.prepare_scattering_sites_for_cuda(algorithm.numpy)
+
+      self.prepare_gaussians_symmetries_cell(algorithm.numpy)
 
       fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
       fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
