@@ -1027,6 +1027,7 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   pdb_structure = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
   pdb_hierarchy = pdb_structure.construct_hierarchy()
+  pdb_hierarchy.atoms().reset_i_seq()
   xray_structure = pdb_structure.xray_structure_simple()
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
