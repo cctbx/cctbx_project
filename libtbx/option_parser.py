@@ -22,17 +22,51 @@ class Option(DefaultOption):
 
 make_option = Option
 
+def run_multi(cmd):
+  from libtbx import easy_run
+  import traceback
+  print cmd
+  try:
+    easy_run.call(command=cmd)
+  except: # intentionally bare
+    sys.stdout.flush()
+    print >> sys.stderr, "CAUGHT EXCEPTION: run_multi(%s)" % cmd
+    traceback.print_exc()
+    sys.stderr.flush()
+
 class processed_options(object):
 
-  def __init__(self, parser, options, args,
+  def __init__(self, parser, options_and_args, options, args,
         show_defaults_callback,
         chunk_callback):
     self.parser = parser
+    self.options_and_args = options_and_args
     self.options = options
     self.args = args
     self.expert_level = show_defaults_callback.expert_level
     self.attributes_level = show_defaults_callback.attributes_level
     self.chunk = chunk_callback.chunk_manager()
+
+  def run_multiprocessing_chunks_if_applicable(self, command_call):
+    assert isinstance(command_call, list)
+    n = self.options.max_proc
+    if (n is not None and n > 1):
+      if (self.chunk.n == 1):
+        from libtbx.utils import escape_sh_double_quoted
+        cmds = []
+        for i in xrange(n):
+          cmd = command_call \
+              + self.options_and_args \
+              + ["--chunk=%d,%d" % (n,i)]
+          cmd = " ".join(['"'+escape_sh_double_quoted(s=arg)+'"'
+            for arg in cmd])
+          cmds.append(cmd)
+        import multiprocessing
+        mp_pool = multiprocessing.Pool(processes=n)
+        mp_pool.map(run_multi, cmds, chunksize=1)
+        return True
+      self.chunk.redirect_chunk_stdout_and_stderr(have_array=True)
+    return False
 
 class option_parser(OptionParser):
 
@@ -43,6 +77,7 @@ class option_parser(OptionParser):
     self.more_help = more_help
     self.show_defaults_callback = show_defaults_callback()
     self.chunk_callback = chunk_callback()
+    self.multiprocessing_is_enabled = False
 
   def call_with_self_as_first_argument(self, callable, **kw):
     if (callable is not None):
@@ -97,6 +132,20 @@ class option_parser(OptionParser):
     self.chunk_callback.easy_all = easy_all
     return self
 
+  def enable_multiprocessing(self):
+    self.add_option(make_option(None, "--multiprocessing",
+      action="store_true",
+      default=False,
+      help="Use multiple processes on local machine (all CPUs unless"
+           " --max-proc is also specified)"))
+    self.add_option(make_option(None, "--max_proc",
+      action="store",
+      help="Maximum number of processes on local machine",
+      type="int",
+      metavar="INT"))
+    self.multiprocessing_is_enabled = True
+    return self
+
   def process(self, args=None, nargs=None, min_nargs=None, max_nargs=None):
     if (self.show_defaults_callback.is_enabled
         and args is not None
@@ -104,6 +153,7 @@ class option_parser(OptionParser):
         and args[-1] == "--show_defaults"):
       args = args + ["0"]
     assert nargs is None or (min_nargs is None and max_nargs is None)
+    options_and_args = args
     (options, args) = self.parse_args(args)
     if (min_nargs is None): min_nargs = nargs
     if (min_nargs is not None):
@@ -118,7 +168,12 @@ class option_parser(OptionParser):
       if (len(args) > max_nargs):
         self.error("Too many arguments (at most %d allowed, %d given)." % (
           max_nargs, len(args)))
-    return self.processed_options_type(self, options, args,
+    if (self.multiprocessing_is_enabled):
+      if (options.multiprocessing and options.max_proc is None):
+        import libtbx.introspection
+        options.max_proc = libtbx.introspection.number_of_processors()
+    return self.processed_options_type(
+      self, options_and_args, options, args,
       show_defaults_callback=self.show_defaults_callback,
       chunk_callback=self.chunk_callback)
 
