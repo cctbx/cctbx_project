@@ -150,6 +150,9 @@ class ServerProxy (object) :
         elif str(e).startswith("<ProtocolError ") :
           self._pending = []
           break
+        elif str(e).contains("exceptions.SystemExit") :
+          self._pending = []
+          break
         else :
           print str(e)
           raise Exception("XMLRPC error: %s\nMethod: %s\nParams: %s\n" %
