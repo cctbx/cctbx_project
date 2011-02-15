@@ -565,13 +565,15 @@ Si*5  O     Si*6   146.93
     space_group_info = sgtbx.space_group_info("P1"),
     elements         = ["N"]*500,
     unit_cell        = (10, 20, 30, 70, 80, 120))
+  mt = flex.mersenne_twister(seed=0)
   errors = [0.0, 0.01, 0.1, 0.5, 1.5, 3.0, 10.0]
   for selection in [None, selection_]:
     for error in errors:
       xs_shaked = xs.deep_copy_scatterers()
       xs_shaked.shake_sites_in_place(
         mean_distance=error,
-        selection=selection)
+        selection=selection,
+        random_double=[None, mt.random_double][int(error<0.2)])
       sites_cart_xs        = xs.sites_cart()
       sites_cart_xs_shaked = xs_shaked.sites_cart()
       if(selection is None): selection=flex.bool(xs.scatterers().size(),True)

@@ -475,7 +475,9 @@ class structure(crystal.special_position_settings):
   def shake_sites_in_place(self,
         rms_difference=None,
         mean_distance=None,
-        selection=None):
+        selection=None,
+        allow_all_fixed=False,
+        random_double=None):
     assert [rms_difference, mean_distance].count(None) == 1
     if (rms_difference is not None):
       assert rms_difference >= 0
@@ -505,6 +507,8 @@ class structure(crystal.special_position_settings):
           selection_fixed.append(i)
     n_variable -= selection_fixed.size()
     if (n_variable == 0):
+      if (allow_all_fixed):
+        return False
       raise RuntimeError(
         "All%s scatterers are fixed on special positions." % all)
     if (n_variable == self._scatterers.size()):
@@ -512,8 +516,10 @@ class structure(crystal.special_position_settings):
     scatterers = self._scatterers
     frac = self.unit_cell().fractionalize
     orth = self.unit_cell().orthogonalize
+    if (random_double is None):
+      random_double = flex.random_double
     for i in count_max(assert_less_than=10):
-      shifts_cart = flex.vec3_double(flex.random_double(
+      shifts_cart = flex.vec3_double(random_double(
         size=self._scatterers.size()*3, factor=2) - 1)
       if (selection is not None):
         shifts_cart.set_selected(~selection, (0,0,0))
@@ -531,6 +537,7 @@ class structure(crystal.special_position_settings):
     shifts_cart *= (target_difference / difference)
     self.set_sites_frac(
       self.sites_frac() + self.unit_cell().fractionalize(shifts_cart))
+    return True
 
   def b_iso_min_max_mean(self):
     b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
