@@ -669,14 +669,14 @@ class reference_model(object):
                 atom_dict = all_dict.get(atom_group.altloc)
                 chis = sa.measureChiAngles(atom_group, atom_dict)
                 if chis is not None:
-                  key = '%s%4s %s' % (
-                      chain.id, residue_group.resseq,
+                  key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
                   model_chis[key] = chis
               except:
                 print >> log, \
-                  '  %s%4s %s is missing some sidechain atoms, **skipping**' % (
-                      chain.id, residue_group.resseq,
+                  '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
+                      chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
 
     for model in pdb_hierarchy_ref.models():
@@ -688,14 +688,14 @@ class reference_model(object):
                 atom_dict = all_dict.get(atom_group.altloc)
                 chis = sa.measureChiAngles(atom_group, atom_dict)
                 if chis is not None:
-                  key = '%s%4s %s' % (
-                      chain.id, residue_group.resseq,
+                  key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
                   reference_chis[key] = chis
               except:
                 print >> log, \
-                  '  %s%4s %s is missing some sidechain atoms, **skipping**' % (
-                      chain.id, residue_group.resseq,
+                  '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
+                      chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
 
     sites_cart_start = xray_structure.sites_cart()
@@ -703,8 +703,8 @@ class reference_model(object):
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           for atom_group in residue_group.atom_groups():
-            key = '%s%4s %s' % (
-                      chain.id, residue_group.resseq,
+            key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
             try:
               if model_hash[key] == 'OUTLIER' and reference_hash[key] != 'OUTLIER':
