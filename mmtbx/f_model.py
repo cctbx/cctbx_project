@@ -1038,10 +1038,11 @@ class manager(manager_mixin):
 
   def target_attributes(self):
     if (self.target_name is None): return None
-    try: return mmtbx.refinement.targets.target_names[self.target_name]
-    except AttributeError:
+    result = mmtbx.refinement.targets.target_names.get(self.target_name)
+    if (result is None):
       raise RuntimeError(
         "Unknown target name: %s" % show_string(self.target_name))
+    return result
 
   def target_functor(self):
     return mmtbx.refinement.targets.target_functor(manager=self)
