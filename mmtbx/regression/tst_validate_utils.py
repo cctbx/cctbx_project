@@ -59,69 +59,69 @@ def exercise_cbetadev():
                                                       outliers_only=True)
   assert not show_diff(output, """\
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
-pdb1jxt :a:ile: A:   7  :  0.260: -46.47:   0.45:a:
-pdb1jxt :b:val: A:   8  :  0.258:  80.92:   0.30:b:
-pdb1jxt :c:val: A:   8  :  0.641: -53.98:   0.20:c:
-pdb1jxt :b:thr: A:  30  :  0.812: -76.98:   0.30:b:
-pdb1jxt :b:thr: A:  39  :  0.924:  56.41:   0.30:b:
-pdb1jxt :b:asp: A:  43  :  0.500:   7.56:   0.25:b:""")
+pdb1jxt :a:ile: A:   7 :  0.260: -46.47:   0.45:a:
+pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:
+pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:
+pdb1jxt :b:thr: A:  30 :  0.812: -76.98:   0.30:b:
+pdb1jxt :b:thr: A:  39 :  0.924:  56.41:   0.30:b:
+pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:""")
 
   output, summary, output_list = cbetadev.analyze_pdb(r,filename=regression_pdb,
                                                       pdb_io=pdb_io,
                                                       outliers_only=False)
   assert not show_diff(output, """\
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
-pdb1jxt : :thr: A:   1  :  0.102:  11.27:   1.00: :
-pdb1jxt :a:thr: A:   2  :  0.022: -49.31:   0.67:a:
-pdb1jxt : :cys: A:   3  :  0.038: 103.68:   1.00: :
-pdb1jxt : :cys: A:   4  :  0.047:-120.73:   1.00: :
-pdb1jxt : :pro: A:   5  :  0.069:-121.41:   1.00: :
-pdb1jxt : :ser: A:   6  :  0.052: 112.87:   1.00: :
-pdb1jxt :a:ile: A:   7  :  0.260: -46.47:   0.45:a:
-pdb1jxt :b:ile: A:   7  :  0.153: 122.97:   0.55:b:
-pdb1jxt :a:val: A:   8  :  0.184:-155.36:   0.50:a:
-pdb1jxt :b:val: A:   8  :  0.258:  80.92:   0.30:b:
-pdb1jxt :c:val: A:   8  :  0.641: -53.98:   0.20:c:
-pdb1jxt : :ala: A:   9  :  0.061: -82.84:   1.00: :
-pdb1jxt :a:arg: A:  10  :  0.023: 172.24:   1.00:a:
-pdb1jxt : :ser: A:  11  :  0.028:-129.11:   1.00: :
-pdb1jxt :a:asn: A:  12  :  0.021: -80.80:   0.50:a:
-pdb1jxt :b:asn: A:  12  :  0.199:  50.01:   0.50:b:
-pdb1jxt :a:phe: A:  13  :  0.067: -37.32:   0.65:a:
-pdb1jxt :b:phe: A:  13  :  0.138:  19.24:   0.35:b:
-pdb1jxt : :asn: A:  14  :  0.065: -96.35:   1.00: :
-pdb1jxt : :val: A:  15  :  0.138: -96.63:   1.00: :
-pdb1jxt : :cys: A:  16  :  0.102: -28.64:   1.00: :
-pdb1jxt : :arg: A:  17  :  0.053:-106.79:   1.00: :
-pdb1jxt : :leu: A:  18  :  0.053:-141.51:   1.00: :
-pdb1jxt : :pro: A:  19  :  0.065:-146.95:   1.00: :
-pdb1jxt : :thr: A:  21  :  0.086:  53.80:   1.00: :
-pdb1jxt :a:pro: A:  22  :  0.092: -83.39:   0.55:a:
-pdb1jxt :a:glu: A:  23  :  0.014:-179.53:   0.50:a:
-pdb1jxt :b:glu: A:  23  :  0.050:-179.78:   0.50:b:
-pdb1jxt : :ala: A:  24  :  0.056: -88.96:   1.00: :
-pdb1jxt : :leu: A:  25  :  0.084:-106.42:   1.00: :
-pdb1jxt : :cys: A:  26  :  0.074: -94.70:   1.00: :
-pdb1jxt : :ala: A:  27  :  0.056: -62.15:   1.00: :
-pdb1jxt : :thr: A:  28  :  0.056:-114.82:   1.00: :
-pdb1jxt :a:tyr: A:  29  :  0.068:   0.22:   0.65:a:
-pdb1jxt :a:thr: A:  30  :  0.180: 103.27:   0.70:a:
-pdb1jxt :b:thr: A:  30  :  0.812: -76.98:   0.30:b:
-pdb1jxt : :cys: A:  32  :  0.029: -84.07:   1.00: :
-pdb1jxt : :ile: A:  33  :  0.048:-119.17:   1.00: :
-pdb1jxt : :ile: A:  34  :  0.045:  99.02:   1.00: :
-pdb1jxt : :ile: A:  35  :  0.052:-128.24:   1.00: :
-pdb1jxt : :pro: A:  36  :  0.084:-142.29:   1.00: :
-pdb1jxt : :ala: A:  38  :  0.039:  50.02:   1.00: :
-pdb1jxt :a:thr: A:  39  :  0.093: -96.63:   0.70:a:
-pdb1jxt :b:thr: A:  39  :  0.924:  56.41:   0.30:b:
-pdb1jxt : :cys: A:  40  :  0.013:-144.12:   1.00: :
-pdb1jxt : :pro: A:  41  :  0.039: -97.09:   1.00: :
-pdb1jxt :a:asp: A:  43  :  0.130:-146.91:   0.75:a:
-pdb1jxt :b:asp: A:  43  :  0.500:   7.56:   0.25:b:
-pdb1jxt : :tyr: A:  44  :  0.085:-143.63:   1.00: :
-pdb1jxt : :ala: A:  45  :  0.055:  33.32:   1.00: :
-pdb1jxt : :asn: A:  46  :  0.066: -50.46:   1.00: :""")
+pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :
+pdb1jxt :a:thr: A:   2 :  0.022: -49.31:   0.67:a:
+pdb1jxt : :cys: A:   3 :  0.038: 103.68:   1.00: :
+pdb1jxt : :cys: A:   4 :  0.047:-120.73:   1.00: :
+pdb1jxt : :pro: A:   5 :  0.069:-121.41:   1.00: :
+pdb1jxt : :ser: A:   6 :  0.052: 112.87:   1.00: :
+pdb1jxt :a:ile: A:   7 :  0.260: -46.47:   0.45:a:
+pdb1jxt :b:ile: A:   7 :  0.153: 122.97:   0.55:b:
+pdb1jxt :a:val: A:   8 :  0.184:-155.36:   0.50:a:
+pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:
+pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:
+pdb1jxt : :ala: A:   9 :  0.061: -82.84:   1.00: :
+pdb1jxt :a:arg: A:  10 :  0.023: 172.24:   1.00:a:
+pdb1jxt : :ser: A:  11 :  0.028:-129.11:   1.00: :
+pdb1jxt :a:asn: A:  12 :  0.021: -80.80:   0.50:a:
+pdb1jxt :b:asn: A:  12 :  0.199:  50.01:   0.50:b:
+pdb1jxt :a:phe: A:  13 :  0.067: -37.32:   0.65:a:
+pdb1jxt :b:phe: A:  13 :  0.138:  19.24:   0.35:b:
+pdb1jxt : :asn: A:  14 :  0.065: -96.35:   1.00: :
+pdb1jxt : :val: A:  15 :  0.138: -96.63:   1.00: :
+pdb1jxt : :cys: A:  16 :  0.102: -28.64:   1.00: :
+pdb1jxt : :arg: A:  17 :  0.053:-106.79:   1.00: :
+pdb1jxt : :leu: A:  18 :  0.053:-141.51:   1.00: :
+pdb1jxt : :pro: A:  19 :  0.065:-146.95:   1.00: :
+pdb1jxt : :thr: A:  21 :  0.086:  53.80:   1.00: :
+pdb1jxt :a:pro: A:  22 :  0.092: -83.39:   0.55:a:
+pdb1jxt :a:glu: A:  23 :  0.014:-179.53:   0.50:a:
+pdb1jxt :b:glu: A:  23 :  0.050:-179.78:   0.50:b:
+pdb1jxt : :ala: A:  24 :  0.056: -88.96:   1.00: :
+pdb1jxt : :leu: A:  25 :  0.084:-106.42:   1.00: :
+pdb1jxt : :cys: A:  26 :  0.074: -94.70:   1.00: :
+pdb1jxt : :ala: A:  27 :  0.056: -62.15:   1.00: :
+pdb1jxt : :thr: A:  28 :  0.056:-114.82:   1.00: :
+pdb1jxt :a:tyr: A:  29 :  0.068:   0.22:   0.65:a:
+pdb1jxt :a:thr: A:  30 :  0.180: 103.27:   0.70:a:
+pdb1jxt :b:thr: A:  30 :  0.812: -76.98:   0.30:b:
+pdb1jxt : :cys: A:  32 :  0.029: -84.07:   1.00: :
+pdb1jxt : :ile: A:  33 :  0.048:-119.17:   1.00: :
+pdb1jxt : :ile: A:  34 :  0.045:  99.02:   1.00: :
+pdb1jxt : :ile: A:  35 :  0.052:-128.24:   1.00: :
+pdb1jxt : :pro: A:  36 :  0.084:-142.29:   1.00: :
+pdb1jxt : :ala: A:  38 :  0.039:  50.02:   1.00: :
+pdb1jxt :a:thr: A:  39 :  0.093: -96.63:   0.70:a:
+pdb1jxt :b:thr: A:  39 :  0.924:  56.41:   0.30:b:
+pdb1jxt : :cys: A:  40 :  0.013:-144.12:   1.00: :
+pdb1jxt : :pro: A:  41 :  0.039: -97.09:   1.00: :
+pdb1jxt :a:asp: A:  43 :  0.130:-146.91:   0.75:a:
+pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:
+pdb1jxt : :tyr: A:  44 :  0.085:-143.63:   1.00: :
+pdb1jxt : :ala: A:  45 :  0.055:  33.32:   1.00: :
+pdb1jxt : :asn: A:  46 :  0.066: -50.46:   1.00: :""")
 #}}}
 
 #{{{ exercise_ramalyze
