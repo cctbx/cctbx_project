@@ -366,9 +366,9 @@ def rama_outliers(chain, pdbID, ram_outliers):
       for atom in atom_group.atoms():
         if atom.name == ' CA ':
           CA_xyz_dict[residue_group.resseq_as_int()] = atom.xyz
-          key = "%s%4s %s%s" % (
+          key = "%s%5s %s%s" % (
                      chain.id,
-                     residue_group.resseq,
+                     residue_group.resid(),
                      atom_group.altloc,
                      atom_group.resname)
           CA_key_dict[residue_group.resseq_as_int()] = key
@@ -421,9 +421,9 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
   for residue_group in chain.residue_groups():
     for conformer in residue_group.conformers():
       for residue in conformer.residues():
-        check_key = '%s%4s %s' % \
+        check_key = '%s%5s %s' % \
                     (chain.id,
-                     residue_group.resseq,
+                     residue_group.resid(),
                      conformer.altloc+residue.resname.strip())
         if check_key not in outlier_list:
           continue
