@@ -89,19 +89,27 @@ class pprocess:
     # scatterer id, listed in increasing order of electron content
     self.scatterers.increasing_order = flex.sort_permutation(n_electrons)
     self.scatterers.number_of_types = len(self.scatterers.increasing_order)
-    self.scatterers.index_begin = [0]
+    self.scatterers.unsorted_counts = []
+    self.scatterers.sorted_ranges = []
 
     # Unique type labels for the scatterers
     uniqueix = self.registry.unique_indices(self.scatterers)
     for s in xrange(self.scatterers.number_of_types):
-      self.scatterers.index_begin.append(
-        self.scatterers.index_begin[s] +
-        uniqueix.count( self.scatterers.increasing_order[s] )
-      )
+      self.scatterers.unsorted_counts.append( uniqueix.count(s) )
+      self.scatterers.sorted_ranges.append([0,0])
+    for s in xrange(self.scatterers.number_of_types):
+      self.scatterers.sorted_ranges[self.scatterers.increasing_order[s]][1]=\
+        self.scatterers.sorted_ranges[self.scatterers.increasing_order[s]][0]+\
+        self.scatterers.unsorted_counts[s]
+      if s+1 < self.scatterers.number_of_types:
+        self.scatterers.sorted_ranges[self.scatterers.increasing_order[s+1]][0]=\
+        self.scatterers.sorted_ranges[self.scatterers.increasing_order[s]][1]
+
     if verbose:
       print list(self.scatterers.increasing_order)
       print self.scatterers.number_of_types
-      print self.scatterers.index_begin
+      print self.scatterers.unsorted_counts
+      print self.scatterers.sorted_ranges
 
     uniqueix_sort_order = flex.sort_permutation(uniqueix)
     sorted_uniqueix = uniqueix.select(uniqueix_sort_order
@@ -271,15 +279,18 @@ class pprocess:
 
       self.prepare_gaussians_symmetries_cell(algorithm.numpy)
 
-      fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
-      fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
-
       assert cuda.Device.count() >= 1
 
       device = cuda.Device(0)
       WARPSIZE=device.get_attribute(cuda.device_attribute.WARP_SIZE) # 32
       MULTIPROCESSOR_COUNT=device.get_attribute(cuda.device_attribute.MULTIPROCESSOR_COUNT)
       mod = SourceModule(mod_fhkl_str%(self.gaussians.shape[0],
+                         self.symmetry.shape[0],
+                         self.sym_stride,
+                         self.g_stride, self.nsymop),
+                         options=["-use_fast_math"])
+
+      sort_mod = SourceModule(mod_fhkl_sorted%(self.gaussians.shape[0],
                          self.symmetry.shape[0],
                          self.sym_stride,
                          self.g_stride, self.nsymop),
@@ -293,6 +304,18 @@ class pprocess:
 
       symmetry_address = mod.get_global("symmetry")[0]
       cuda.memcpy_htod(symmetry_address, self.symmetry)
+
+      r_m_m_address = sort_mod.get_global("reciprocal_metrical_matrix")[0]
+      cuda.memcpy_htod(r_m_m_address, self.reciprocal_metrical_matrix)
+
+      gaussian_address = sort_mod.get_global("gaussians")[0]
+      cuda.memcpy_htod(gaussian_address, self.gaussians)
+
+      symmetry_address = sort_mod.get_global("symmetry")[0]
+      cuda.memcpy_htod(symmetry_address, self.symmetry)
+
+      fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+      fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
 
       CUDA_fhkl = mod.get_function("CUDA_fhkl")
       CUDA_fhkl(cuda.InOut(fhkl_real),
@@ -309,11 +332,152 @@ class pprocess:
       flex_fhkl_imag = flex.double(fhkl_imag[0:len(self.miller_indices)])
       flex_complex = flex.complex_double(flex_fhkl_real,flex_fhkl_imag)
 
-      instance._results = fcalc_container(flex_complex)
+      CUDA_fhkl = sort_mod.get_function("CUDA_fhkl")
+
+      intermediate_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+      intermediate_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+      for x in xrange(self.scatterers.number_of_types):
+        #print "Kernel iteration %d with %d,%d"%(x,
+        #self.scatterers.sorted_ranges[x][0],
+        #self.scatterers.sorted_ranges[x][1]),
+        #print "Scattering type",algorithm.numpy.uint32(self.scatterers.increasing_order[x])
+        fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+        fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+
+        CUDA_fhkl(cuda.InOut(fhkl_real),
+                 cuda.InOut(fhkl_imag),
+                 cuda.In(self.flat_sites),
+                 cuda.In(self.weights),
+                 algorithm.numpy.uint32(self.scatterers.increasing_order[x]),
+                 algorithm.numpy.uint32(self.scatterers.sorted_ranges[x][0]),
+                 algorithm.numpy.uint32(self.scatterers.sorted_ranges[x][1]),
+                 cuda.In(self.flat_mix),
+                 block=(FHKL_BLOCKSIZE,1,1),
+                 grid=((self.n_flat_hkl/FHKL_BLOCKSIZE,1)))
+
+        intermediate_real += fhkl_real
+        intermediate_imag += fhkl_imag
+
+      flex_fhkl_real = flex.double(intermediate_real[0:len(self.miller_indices)])
+      flex_fhkl_imag = flex.double(intermediate_imag[0:len(self.miller_indices)])
+
+      #print "result lengths",len(flex_fhkl_real),len(flex_fhkl_imag),len(flex_complex)
+
+      from libtbx.test_utils import approx_equal
+      assert approx_equal( flex.complex_double(flex_fhkl_real,flex_fhkl_imag),  flex_complex)
+      print "OK"
+
+      instance._results = fcalc_container(flex.complex_double(flex_fhkl_real,flex_fhkl_imag))
 
       return
 
 FHKL_BLOCKSIZE=32
+mod_fhkl_sorted ="""
+__device__ __constant__ double reciprocal_metrical_matrix[6];
+__device__ __constant__ double gaussians[%%d];
+__device__ __constant__ double symmetry[%%d];
+
+__device__ double get_d_star_sq(double const& H,double const& K,double const& L){
+   return
+            (H * H) * reciprocal_metrical_matrix[0]
+          + (K * K) * reciprocal_metrical_matrix[1]
+          + (L * L) * reciprocal_metrical_matrix[2]
+          + (2 * H * K) * reciprocal_metrical_matrix[3]
+          + (2 * H * L) * reciprocal_metrical_matrix[4]
+          + (2 * K * L) * reciprocal_metrical_matrix[5];
+}
+
+__device__ double get_H_dot_X(double* const& site, unsigned int const& i,
+                              double const& H,double const& K,double const& L,
+                              unsigned int const & isym){
+  # define SYM_STRIDE %%d
+  // case for space group P1
+  // return H * site[0] + K * site[1] + L * site[2];
+
+  // but in general,
+     return site[3*i+0] * (H * symmetry[SYM_STRIDE*isym]+
+                       K * symmetry[SYM_STRIDE*isym+3]+
+                       L * symmetry[SYM_STRIDE*isym+6])
+          + site[3*i+1] * (H * symmetry[SYM_STRIDE*isym+1]+
+                       K * symmetry[SYM_STRIDE*isym+4]+
+                       L * symmetry[SYM_STRIDE*isym+7])
+          + site[3*i+2] * (H * symmetry[SYM_STRIDE*isym+2]+
+                       K * symmetry[SYM_STRIDE*isym+5]+
+                       L * symmetry[SYM_STRIDE*isym+8])
+          + H * symmetry[SYM_STRIDE*isym+9]
+          + K * symmetry[SYM_STRIDE*isym+10]
+          + L * symmetry[SYM_STRIDE*isym+11]
+    ;
+}
+
+__global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
+                        const double *xyzsites, const double *weight,
+                        const unsigned int scattering_type,
+                        const unsigned int index_begin,
+                        const unsigned int index_end,
+                        const double *hkl)
+{
+   #define BLOCKSIZE %d
+   #define G_STRIDE %%d
+
+   const unsigned long ix=threadIdx.x+blockDim.x*blockIdx.x;
+
+   /*later figure out how to make this shared*/
+   const double twopi= 8.* atan(1.);
+   /* can the threads coalesce with a stride of 3? Make into __shared__ and See Programming Guide Fig. G-2 */
+   const double h = hkl[3*ix];
+   const double k = hkl[3*ix+1];
+   const double l = hkl[3*ix+2];
+   double fr=0,fi=0;
+
+   __shared__ double xyz[3*BLOCKSIZE];
+   __shared__ float wght[BLOCKSIZE];
+
+   const long base_atom = BLOCKSIZE*index_begin/BLOCKSIZE;
+   long at = base_atom;
+   double x_sq = get_d_star_sq(h,k,l) / 4.;
+
+   /* get unique form factors at d_star_sq.
+      all scatterers are the same for any particular kernel invocation; hence only one form factor
+    */
+   double form_factor = gaussians[G_STRIDE*scattering_type];// constant term
+   for (unsigned int term=1; term < G_STRIDE; term+=2){
+     form_factor += gaussians[G_STRIDE*scattering_type + term] *
+                    exp(-gaussians[G_STRIDE*scattering_type + term + 1] * x_sq);
+   }
+
+   for (;at<index_end;at+=BLOCKSIZE) {
+      xyz[threadIdx.x]=xyzsites[3*at+threadIdx.x];
+      xyz[BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+BLOCKSIZE];
+      xyz[2*BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+2*BLOCKSIZE];
+      wght[threadIdx.x]=weight[at+threadIdx.x];
+      __syncthreads();
+
+      for(unsigned int i=0;i<BLOCKSIZE;i++) {
+        double form_factor_mask = form_factor;
+        if (at+i < index_begin || at+i >= index_end) {
+          form_factor_mask = 0.;
+        }
+
+        double s,c,s_imag=0.,c_real=0.;
+        for(unsigned int isym=0; isym < %%d; isym++){
+          /*do not use the faster, but less accurate intrinsic function.*/
+          sincos(twopi* get_H_dot_X( xyz, i, h, k, l, isym), &s,&c);
+          c_real += c;
+          s_imag += s;
+        }
+        fr += form_factor_mask * wght[i] * c_real;
+        fi += form_factor_mask * wght[i] * s_imag;
+      }
+   }
+
+   fhkl_real[ix] += fr;
+   fhkl_imag[ix] += fi;
+   //if (ix==0) fhkl_real[ix]=(double)index_begin;
+   //if (ix==1) fhkl_real[ix]=(double)index_end;
+}
+"""%(FHKL_BLOCKSIZE)
+
 mod_fhkl_str ="""
 __device__ __constant__ double reciprocal_metrical_matrix[6];
 __device__ __constant__ double gaussians[%%d];
