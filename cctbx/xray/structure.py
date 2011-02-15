@@ -15,7 +15,7 @@ from itertools import count
 import types
 import sys
 import random
-from libtbx.utils import count_max, Sorry
+from libtbx.utils import count_max, Sorry, Keep
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from libtbx.assert_utils import is_string
@@ -40,9 +40,9 @@ class structure(crystal.special_position_settings):
         special_position_settings=None,
         scatterers=None,
         site_symmetry_table=None,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=False,
         scattering_type_registry=None,
-        crystal_symmetry=None,
-        non_unit_occupancy_implies_min_distance_sym_equiv_zero=False):
+        crystal_symmetry=None):
     assert [special_position_settings, crystal_symmetry].count(None) == 1
     assert scatterers is not None or site_symmetry_table is None
     if (special_position_settings is None):
@@ -51,13 +51,15 @@ class structure(crystal.special_position_settings):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
     self.erase_scatterers()
+    self._non_unit_occupancy_implies_min_distance_sym_equiv_zero \
+      = non_unit_occupancy_implies_min_distance_sym_equiv_zero
     self._scattering_type_registry = scattering_type_registry
     if (scatterers is not None):
       self.add_scatterers(
         scatterers=scatterers,
         site_symmetry_table=site_symmetry_table,
         non_unit_occupancy_implies_min_distance_sym_equiv_zero=
-          non_unit_occupancy_implies_min_distance_sym_equiv_zero)
+          self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     self.scattering_type_registry_params = None
 
   def _copy_constructor(self, other):
@@ -65,6 +67,8 @@ class structure(crystal.special_position_settings):
       self, special_position_settings)
     self._scatterers = other._scatterers
     self._site_symmetry_table = other._site_symmetry_table
+    self._non_unit_occupancy_implies_min_distance_sym_equiv_zero \
+      = other._non_unit_occupancy_implies_min_distance_sym_equiv_zero
     self._scattering_type_registry = other._scattering_type_registry
     self._scattering_type_registry_is_out_of_date \
       = other._scattering_type_registry_is_out_of_date
@@ -114,12 +118,37 @@ class structure(crystal.special_position_settings):
     Returns: new cctbx.xray.structure
     """
     cp = structure(self,
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero
+        =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     cp._scatterers = self._scatterers.deep_copy()
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
-    if (getattr(self, "scatterer_pdb_records", None) is not None):
-      cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
+
+  def customized_copy(self,
+        crystal_symmetry=Keep,
+        unit_cell=Keep,
+        space_group_info=Keep,
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=Keep):
+    if (crystal_symmetry is Keep):
+      crystal_symmetry = self
+    crystal_symmetry = crystal.symmetry.customized_copy(
+      crystal_symmetry,
+      unit_cell=unit_cell,
+      space_group_info=space_group_info)
+    if (non_unit_occupancy_implies_min_distance_sym_equiv_zero is Keep):
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero \
+        = self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
+    return structure(
+      special_position_settings=crystal.special_position_settings(
+        crystal_symmetry=crystal_symmetry,
+        min_distance_sym_equiv=self._min_distance_sym_equiv,
+        u_star_tolerance=self._u_star_tolerance,
+        assert_min_distance_sym_equiv=self._assert_min_distance_sym_equiv),
+      scatterers=self._scatterers,
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero
+        =non_unit_occupancy_implies_min_distance_sym_equiv_zero,
+      scattering_type_registry=self._scattering_type_registry)
 
   def scatterers(self):
     """Get all scatterers of the structure
@@ -127,6 +156,9 @@ class structure(crystal.special_position_settings):
     Returns: reference to array of cctbx.xray.scatterer
     """
     return self._scatterers
+
+  def non_unit_occupancy_implies_min_distance_sym_equiv_zero(self):
+    return self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
 
   def set_u_iso(self, value = None, values = None, selection = None):
     """Set isotropic mean thermic displacements of scatterers
@@ -195,13 +227,13 @@ class structure(crystal.special_position_settings):
 
   def replace_sites_frac(self, new_sites):
     cp = structure(self,
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero
+        =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
       scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
     new_scatterers.set_sites(new_sites)
     cp._scatterers = new_scatterers
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
-    if(getattr(self, "scatterer_pdb_records", None) is not None):
-      cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
 
   def replace_sites_cart(self, new_sites):
@@ -231,6 +263,8 @@ class structure(crystal.special_position_settings):
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
     cp = structure(self,
+      non_unit_occupancy_implies_min_distance_sym_equiv_zero
+        =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
       scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
     new_scatterers.set_sites(
@@ -238,8 +272,6 @@ class structure(crystal.special_position_settings):
         sites_cart=sites_cart+flex.vec3_double(sites_cart.size(),[x,y,z])))
     cp._scatterers = new_scatterers
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
-    if(getattr(self, "scatterer_pdb_records", None) is not None):
-      cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
 
   def mean_distance(self, other, selection = None):
