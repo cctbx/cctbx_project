@@ -854,7 +854,6 @@ libtbx/development/timers.py -text
 libtbx/dtrace/profile.d -text
 libtbx/easy_profile.py -text
 libtbx/find_reference_cycles.py -text
-libtbx/libtbx_refresh.py -text
 libtbx/lzw.py -text
 libtbx/metric_prefixes.py svneol=native#text/x-python
 libtbx/object_oriented_patterns.py -text
@@ -873,7 +872,6 @@ libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/smp_utils.py -text
-libtbx/sourceforge_checkout.py -text
 libtbx/subversion.py -text
 libtbx/thread_utils.py -text
 libtbx/topological_sort.py svneol=native#text/x-python
