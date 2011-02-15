@@ -950,7 +950,7 @@ class manager(manager_mixin):
       verbose              = True,
       resolution_factor    = 1./4,
       solvent_radius_inc   = 0.,
-      solvent_content      = 0.3,
+      solvent_content      = 0.5,
       log                  = log,
       debug                = True,
       diff_map_cutoff      = 1.5)
