@@ -334,10 +334,12 @@ def exercise_2():
       delta = flex.abs(f_calc_1-f_calc_2)
       assert approx_equal(flex.sum(delta), 0.0)
 
-def run():
+def run(args):
+  assert len(args) == 0
   exercise_1()
   exercise_2()
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
-  run()
-  print format_cpu_times()
+  import sys
+  run(args=sys.argv[1:])
