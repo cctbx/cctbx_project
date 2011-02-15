@@ -5,7 +5,7 @@ Installation overview
 ---------------------
 
 Periodically the most recent cctbx source code including all its
-dependencies is automatically exported from the source code databases
+dependencies is automatically exported from the source code repositories
 (SVN, CVS) and bundled into self-extracting files that are published
 at:
 
@@ -16,20 +16,18 @@ variety of platforms. It is most convenient to use these binary bundles
 if possible. Installation is very simple and fast. The minimal
 instructions are shown at the download page.
 
-Source code bundles are available if a binary distribution cannot be
-used. Under Unix, if Python 2.2.1 or higher is pre-installed on the
-target platform, the smaller ``cctbx_bundle.selfx`` can be. However, in
-general it will be best to download the ``cctbx_python_*_bundle.selfx``
-file because the installation script will automatically install Python
+Source code bundles are also available. Under Unix, if Python 2.3
+through 2.7 is pre-installed on the target platform, the smaller
+``cctbx_bundle.selfx`` can be used. However, in general it will be
+best to download the ``cctbx_python_*_bundle.selfx`` file because
+the installation script will automatically install a recent Python
 before proceeding with the installation of the cctbx modules.
 
 The Unix bundles include a file ``cctbx_install_script.csh``.
-This script is known to work with the following compilers:
+This script is known to work with:
 
-  - Linux: any gcc >= 3.0
-  - Tru64 Unix: cxx 6.5 or cxx 7.1
-  - IRIX: CC 7.41
-  - Mac OS 10.3 and OS 10.4 with Apple's compiler
+  - Linux: any gcc >= 3.2
+  - Mac OS 10.4 or higher with Apple's compiler
 
 Other Unix platforms will most likely require adjustments of the
 build scripts.
@@ -45,28 +43,28 @@ Please note: The following instructions are for developers! The
 self-extracting (.selfx) source bundles perform all the steps
 automatically.
 
-Building from sources requires Python 2.2.1 or higher and a suitable C++
-compiler (see above). If Python is not available already it can be
+Building from sources requires Python 2.3 through 2.7 and a C++
+compiler. If you like to use the most recent Python, it can be
 installed in the following way::
 
-  gunzip -c Python-2.5.1.tar.gz | tar xf -
-  cd Python-2.5.1
+  gunzip -c Python-2.7.1.tar.gz | tar xf -
+  cd Python-2.7.1
   ./configure --prefix=/your/choice
   make
   make install
 
-This installation does **not** require a privileged account (e.g. root).
 It may be convenient (but is not required) to add the directory
 ``/your/choice/bin`` to the command-line search ``PATH``, e.g. using
 ``csh``::
 
   set path=(/your/choice/bin $path)
 
-The most recent, complete cctbx source code is available in the file
+Recent self-contained cctbx sources are available in the file
 `cctbx_bundle.tar.gz <http://cci.lbl.gov/cctbx_build/results/last_published/cctbx_bundle.tar.gz>`_
-published at the cctbx build page. To unpack this file in a new, empty directory::
+published at the cctbx build page. To unpack this file in a new,
+empty directory::
 
-  gunzip -c cctbx_bundle.tar.gz | tar xf -
+  tar zxf cctbx_bundle.tar.gz
 
 This creates a subdirectory ``cctbx_sources``. The installation
 procedure should be executed in another directory, e.g.::
@@ -81,22 +79,20 @@ initialize a new shell or process with the cctbx settings::
 
   source setpaths.csh
 
-Shells other than ``csh`` may require a different command.
+There is also a ``setpaths.sh`` for ``bash`` users.
 
-To compile all cctbx modules enter::
+To compile enter::
 
-  libtbx.scons
+  make
 
-On a machine with multiple CPUs enter::
+This will actually run the ``libtbx.scons`` command using all
+available CPUs. You can also manually specify the number of CPUs to
+use, for example::
 
-  libtbx.scons -j N
+  libtbx.scons -j 4
 
-where N is the number of CPUs available. The speedup scales
-almost linearly with the number of CPUs available.
-
-``libtbx.scons`` is similar to the more familar ``make`` command,
-only much more versatile. ``libtbx.scons`` is a thin wrapper around
-SCons_. The `SCons documentation`_ applies without modification.
+Note that ``libtbx.scons`` is just a thin wrapper around SCons_. The
+`SCons documentation`_ applies without modification.
 
 To run some regression tests after the compilation is finished enter::
 
@@ -111,18 +107,18 @@ for problems.
 Manually building from sources under Windows 2000 or higher
 -----------------------------------------------------------
 
-The cctbx installation requires Visual C++ 7.1 (Visual Studio .NET 2003)
-or Visual C++ 8.0 (Visual Studio .NET 2005).
+The cctbx installation requires Visual C++ 8.0 (Visual Studio .NET
+2005) or higher.
 
-To install Python under Windows 2000 it is best to use a binary
+To install Python under Windows it is best to use a binary
 installer from the `Python download page <http://www.python.org/download/>`_.
 The default choices presented by the installation wizard are usually fine.
 
-The most recent, complete cctbx source code is available in the
+Recent self-contained cctbx sources are available in the
 self-extracting file
 `cctbx_bundle.exe <http://cci.lbl.gov/cctbx_build/results/last_published/cctbx_bundle.exe>`_
 published at the cctbx build page. To unpack this file in a new, empty
-directory simply enter::
+directory enter::
 
   cctbx_bundle.exe
 
@@ -131,7 +127,7 @@ procedure should be executed in another directory, e.g.::
 
   mkdir cctbx_build
   cd cctbx_build
-  C:\python25\python.exe ..\cctbx_sources\libtbx\configure.py mmtbx
+  C:\python27\python.exe ..\cctbx_sources\libtbx\configure.py mmtbx
 
 The last command initializes the ``cctbx_build`` directory and creates
 a file ``setpaths.bat`` (among others). This file must be used to
@@ -139,7 +135,7 @@ initialize a new shell or process with the cctbx settings::
 
   setpaths.bat
 
-To compile all cctbx modules enter::
+To compile enter::
 
   libtbx.scons
 
@@ -147,12 +143,10 @@ On a machine with multiple CPUs enter::
 
   libtbx.scons -j N
 
-where N is the number of CPUs available. The speedup scales
-almost linearly with the number of CPUs available.
+where N is the number of CPUs available.
 
-``libtbx.scons`` is similar to the more familar ``make`` command,
-only much more versatile. ``libtbx.scons`` is a thin wrapper around
-SCons_. The `SCons documentation`_ applies without modification.
+Note that ``libtbx.scons`` is just a thin wrapper around SCons_. The
+`SCons documentation`_ applies without modification.
 
 To run some regression tests after the compilation is finished enter::
 
@@ -196,36 +190,37 @@ Now switch to the build directory, then reconfigure and recompile::
 Objects for reading CBF-formatted files are defined in the
 iotbx.detectors package.
 
-----------------
-Migrating to SVN
-----------------
+------------------------------
+Using the cctbx SVN repository
+------------------------------
 
-To participate in the development of the cctbx modules or to get easy
-access to the most recent changes it may be useful to checkout some
-modules directly from the SVN databases maintained at Sourceforge_.
+To participate in the development of the cctbx project, or to
+get easy access to the most recent changes, it may be useful
+to checkout the cctbx project directly from the SVN repository
+maintained at Sourceforge_. An easy way to get started is::
 
-To replace the modules extracted from a source code bundle::
+  svn export https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk/libtbx/development/cctbx_svn_getting_started.csh
+  ./cctbx_svn_getting_started.csh
 
-  cd cctbx_sources
-  set modules=(libtbx boost_adaptbx omptbx scitbx chiltbx cctbx cbflib_adaptbx iotbx mmtbx clipper_adaptbx)
-  rm -rf $modules
-  libtbx.sourceforge_checkout cctbx $modules
+The script will create a ``sources`` directory with a ``cctbx_project``
+svn working copy checked out from SourceForge, and all other
+third-party sources (e.g. boost, scons) taken from the latest nightly
+cctbx build.
 
-To recompile run the ``libtbx.scons`` command again (``source setpaths.csh``
-or run ``setpaths.bat`` first if necessary).
+To configure a new build using the ``sources`` directory::
 
-It is also possible to replace the boost directory from a cctbx source
-code bundle with a working copy of the `boost SVN tree`_ .
-However, many Boost_ developers do not have access to all
-platforms for testing. In practice it sometimes happens that a
-``svn update`` of the boost tree leads to compilation errors on one
-platform or another. Therefore we believe that most users are best
-served by the tested boost libraries included in the cctbx source code
-bundles.
+  mkdir build
+  cd build
+  /your/choice/bin/python ../sources/libtbx/configure.py mmtbx
+  source setpaths.csh
+  make
 
-The source code in the ``ccp4io_502_cci`` module is kindly provided by
-CCP4_. We feel that it is not appropriate to keep this code in a SVN
-tree on Sourceforge.
+It is also possible to replace the ``sources/boost`` directory with
+a working copy of the `boost SVN tree`_ . However, in practice
+it sometimes happens that a ``svn update`` of the boost tree
+leads to compilation errors on some platforms. In most cases
+it will be best to use the boost sources obtained with the
+``cctbx_svn_getting_started.csh`` script.
 
 Back_
 
