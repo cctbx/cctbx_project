@@ -1,6 +1,7 @@
 /// Weighting schemes for L.S. (least_squares.h)
 
 #include <scitbx/array_family/shared.h>
+#include <smtbx/error.h>
 #include <smtbx/import_scitbx_af.h>
 
 #include <algorithm>
@@ -30,6 +31,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     bool f_calc_independent() const { return true; }
 
     T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
+      SMTBX_ASSERT(sigma > 0);
       return std::pow(sigma, -2);
     }
   };
