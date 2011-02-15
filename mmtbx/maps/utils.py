@@ -83,11 +83,15 @@ def get_maps_from_fmodel (fmodel, use_filled=False) :
   return (fwt_coeffs, delfwt_coeffs)
 
 def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name) :
+  import iotbx.mtz
+  decorator = iotbx.mtz.label_decorator(phases_prefix="PH")
   mtz_dataset = fwt_coeffs.as_mtz_dataset(
-    column_root_label="2FOFCWT")
+    column_root_label="2FOFCWT",
+    label_decorator=decorator)
   mtz_dataset.add_miller_array(
     miller_array=delfwt_coeffs,
-    column_root_label="FOFCWT")
+    column_root_label="FOFCWT",
+    label_decorator=decorator)
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name=file_name)
   del mtz_object
