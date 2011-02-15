@@ -108,8 +108,6 @@ class electron_density_map(object):
         phase_source = fmodel_match_anom_diff)
     if(self.fill_missing_f_obs):
       self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode)
-      if 0: # XXX make it an option
-        self.fmodel.export_filled_f_obs(file_name = filled_f_obs_file_name)
     #del self.fmodel # XXX
 
   def map_coefficients(self,

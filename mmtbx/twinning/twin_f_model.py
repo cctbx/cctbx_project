@@ -299,10 +299,10 @@ class scaling_parameter_mask(object):
     if u_sol:
       self.u_sol         = 1.0
 
-class target_attributes(mmtbx.f_model.target_attributes):
+class target_attributes(mmtbx.refinement.targets.target_attributes):
 
   def __init__(self):
-    mmtbx.f_model.target_attributes.__init__(self, family="ls")
+    mmtbx.refinement.targets.target_attributes.__init__(self, family="ls")
     self.twin = "amplitudes"
     self.pseudo_ml = False
 
