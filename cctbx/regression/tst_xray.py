@@ -110,6 +110,7 @@ def exercise_structure():
     xray.scatterer("O1", (0.18700, -0.20700, 0.83333))))
   xs = xray.structure(sp, scatterers)
   assert xs.scatterers().size() == 2
+  assert not xs.non_unit_occupancy_implies_min_distance_sym_equiv_zero()
   assert xs.n_undefined_multiplicities() == 0
   assert tuple(xs.special_position_indices()) == (0, 1)
   s = StringIO()
@@ -714,6 +715,12 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
 Si   Si     3 ( 0.5000  0.5000  0.3333) 1.00 0.0000 [ - ]
 O    O      6 ( 0.1970 -0.1970  0.8333) 1.00 0.0000 [ - ]
 """)
+  #
+  xs_p1 = xs.customized_copy(
+    space_group_info=sgtbx.space_group_info(symbol="P1"),
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero=True)
+  assert xs_p1.space_group_info().type().number() == 1
+  assert xs_p1.non_unit_occupancy_implies_min_distance_sym_equiv_zero()
 
 def exercise_closest_distances():
   xs = random_structure.xray_structure(

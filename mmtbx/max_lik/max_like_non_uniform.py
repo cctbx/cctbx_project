@@ -67,25 +67,8 @@ class ordered_solvent_distribution(object):
       elements.append( scatterer.element_symbol() )
     assert xyzf.size() == atmrad.size()
 
-# get residue name; wrong way to do the things ; must be improved later
-
-    #sel_flag = flex.int(xyzf.size(),1)
-    #if (getattr(self._structure, "scatterer_pdb_records", None) is not None):
-    #  i=0
-    #  for rec in self._structure.scatterer_pdb_records:
-    #    if(rec.resName == "HOH"):
-    #      sel_flag[i] = 0
-    #    i+=1
-
-    # !!! inverse logic for artificial case
     sel_flag = flex.int(xyzf.size(),1)
-    if (getattr(self._structure, "scatterer_pdb_records", None) is not None):
-      i=0
-      for rec in self._structure.scatterer_pdb_records:
-        if(rec.resName == "HOH"):
-          sel_flag[i] = 0
-        i+=1
-
+    # XXX removed 2011-02-14: set sel_flag to zero if resname is HOH
     assert sel_flag.size() == atmrad.size()
     self._distribution = wat_dist()
 
