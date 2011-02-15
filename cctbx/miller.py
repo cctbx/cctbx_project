@@ -21,7 +21,7 @@ from scitbx.python_utils.misc import store
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Keep, plural_s
-from libtbx import group_args
+from libtbx import group_args, Auto
 from itertools import count, izip
 import math
 import types
@@ -601,10 +601,16 @@ class set(crystal.symmetry):
       assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
     return self.select(pairs.column(1))
 
-  def common_sets(self, other, assert_is_similar_symmetry=True):
-    pairs = other.match_indices(
+  def common_sets(self,
+        other,
+        assert_is_similar_symmetry=True,
+        assert_no_singles=False):
+    matches = other.match_indices(
       other=self,
-      assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
+      assert_is_similar_symmetry=assert_is_similar_symmetry)
+    if (assert_no_singles):
+      assert not matches.have_singles()
+    pairs = matches.pairs()
     return [self.select(pairs.column(1)),
             other.select(pairs.column(0))]
 
@@ -2208,26 +2214,28 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
                 use_binning=False):
     """ sum ||F| - k|F'|| / sum |F|
     where F is self.data() and F' is other.data() and
-    k is the factor to put F' on the same scale as F """
+    k is the factor to put F' on the same scale as F"""
     assert not use_binning or self.binner() is not None
     assert (self.observation_type() is None
             or self.is_complex_array() or self.is_xray_amplitude_array())
-    assert (self.observation_type() is None
+    assert (other.observation_type() is None
             or other.is_complex_array() or other.is_xray_amplitude_array())
+    assert other.indices().size() == self.indices().size()
     if not use_binning:
       if self.data().size() == 0: return None
-      if assume_index_matching:
-        data0, data = self.data(), other.data()
+      if (assume_index_matching):
+        o, c = self, other
       else:
-        matching = match_indices(self.indices(), other.indices())
-        assert not matching.have_singles()
-        data0 = self.select(matching.pairs().column(0)).data()
-        data = other.select(matching.pairs().column(1)).data()
-      data  = flex.abs(data)
-      data0 = flex.abs(data0)
-      if scale_factor is not None:
-        data *= scale_factor
-      return flex.sum(flex.abs(data - data0)) / flex.sum(data0)
+        o, c = self.common_sets(other=other, assert_no_singles=True)
+      o  = flex.abs(o.data())
+      c = flex.abs(c.data())
+      if (scale_factor is Auto):
+        den = flex.sum(c * c)
+        if (den != 0):
+          c *= (flex.sum(o * c) / den)
+      elif (scale_factor is not None):
+        c *= scale_factor
+      return flex.sum(flex.abs(o - c)) / flex.sum(o)
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
@@ -2853,7 +2861,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
         return flex.sum(obs*calc) / flex.sum(flex.pow2(calc))
       else:
         return flex.sum(weights * obs * calc) \
-               / flex.sum(weights * flex.pow2(calc))
+             / flex.sum(weights * flex.pow2(calc))
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
