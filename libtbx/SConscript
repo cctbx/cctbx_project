@@ -619,6 +619,9 @@ else:
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=["-Bstatic"])
+      static_exe = None
   elif env_etc.compiler.startswith("darwin"):
     env_etc.gcc_version = libtbx.env_config.get_gcc_version()
     env_etc.static_libraries = 1
