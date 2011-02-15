@@ -287,9 +287,9 @@ class ramalyze(object):
                 ramaType = self.evaluateScore(resType, value)
                 #print params_old["outliersonly"]
                 if (not outliers_only or self.isOutlier(resType, value)):
-                  analysis += '%s%4s %s%s:%.2f:%.2f:%.2f:%s:%s\n' % \
+                  analysis += '%s%5s %s%s:%.2f:%.2f:%.2f:%s:%s\n' % \
                     (chain.id,
-                     residue_group.resseq,atom_group.altloc,
+                     residue_group.resid(),atom_group.altloc,
                      atom_group.resname,
                      value*100,
                      phi,
@@ -298,7 +298,7 @@ class ramalyze(object):
                      resType.capitalize())
 
                   output_list.append([chain.id,
-                                      residue_group.resseq,
+                                      residue_group.resid(),
                                       atom_group.altloc+atom_group.resname,
                                       value*100,
                                       phi,
