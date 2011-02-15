@@ -53,8 +53,8 @@ def exercise_direct(space_group_info,
 
   cuda_platform = direct_summation_cuda_platform()
 
-  for x in xrange(2,3):
-    #print "There are %d scatterers"%len(elements)
+  for x in xrange(1,7):
+    print "There are %d scatterers"%len(elements)
     number_of_reflections = pow(10.,x)
     Volume = number_of_reflections *  reciprocal_volume * 2. #2 P1 asymmetric units
     Volume *= space_group_info.group().order_z() # take space group into acct.
@@ -88,7 +88,7 @@ def exercise_direct(space_group_info,
     simple_direct_f = simple_direct.f_calc()
 
     times.append((number_of_reflections,cpu_time,d_min,gpu_time,simple_time,fft_time))
-    assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data(), eps=1e-5)
+    assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data(), eps=1e-4)
     # doesn't assert correctly assert approx_equal(cpu_direct_f.data(), fft_f.data())
     assert approx_equal(cpu_direct_f.data(), simple_direct_f.data(), eps=1e-6)
 
@@ -119,13 +119,21 @@ def run(args,multiplier):
         print e
     return
 
-  if 1:
+  if 0:
     for symbol in ["P1","P3","P41","P212121","I41","F432"]:
       sgi = sgtbx.space_group_info(symbol)
       print "Space group",sgi
       exercise_direct(sgi, allelements, verbose=verbose)
 
+  if 1:
+    sgi = sgtbx.space_group_info("P1")
+    print "Space group",sgi
+    exercise_direct(sgi, allelements, verbose=verbose)
+
 if __name__ == '__main__':
   import sys
-  #run(sys.argv[1:],10)
-  run_scattering_type_tests()
+  run(sys.argv[1:],10)
+  run(sys.argv[1:],20)
+  run(sys.argv[1:],40)
+  run(sys.argv[1:],80)
+  run(sys.argv[1:],160)
