@@ -194,6 +194,7 @@ class process_arrays (object) :
       raise Sorry("r_free_flags.preserve_input_values and r_free_flags.extend"+
         " may not be used together.")
     from iotbx import file_reader
+    import cctbx.miller
     from cctbx import crystal
     from cctbx import sgtbx
     from scitbx.array_family import flex
@@ -508,6 +509,7 @@ class process_arrays (object) :
 
       #-----------------------------------------------------------------
       # OUTPUT
+      assert isinstance(new_array, cctbx.miller.array)
       fake_label = 2 * string.uppercase[i]
       column_types = None
       if array_types[i] is not None :
