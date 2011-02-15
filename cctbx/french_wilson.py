@@ -119,7 +119,7 @@ def fw_centric(I, sigma_I, mean_intensity) :
   if (I/sigma_I) < -3.7 or h < -4.0:
     return -1.0, -1.0, -1.0, -1.0
   else:
-    if h < 4.0: #4.0 for truncate tables, 5.0 for ctruncate tables
+    if h < 4.0:
       point = 10.0*(h+4.0)
       pt_1 = int(point)
       pt_2 = pt_1 + 1
