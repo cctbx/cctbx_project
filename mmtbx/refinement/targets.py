@@ -9,6 +9,7 @@ import boost.python
 from libtbx.utils import Sorry, user_plus_sys_time
 from cctbx.eltbx.xray_scattering import wk1995
 from cctbx import adptbx
+from libtbx import adopt_init_args
 
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -24,6 +25,58 @@ time_r_factors                      = 0.0
 time_phase_errors                   = 0.0
 time_foms                           = 0.0
 time_show                           = 0.0
+
+class target_attributes(object):
+
+  def __init__(self,
+        family,
+        specialization=None,
+        requires_external_scale=False):
+    adopt_init_args(self, locals())
+    assert self.validate()
+
+  def validate(self):
+    if (self.family == "lsm"):
+      self.family = "ls"
+      self.pseudo_ml = True
+    else:
+      self.pseudo_ml = False
+    if (self.family == "ls"):
+      return self.specialization in [None, "k1", "k2"]
+    if (self.family == "ml"):
+      return self.specialization in [None, "hl", "sad"]
+    return False
+
+  def requires_experimental_phases(self):
+    return (self.family == "ml" and self.specialization == "hl")
+
+  def ls_apply_scale_to_f_calc(self):
+    if (self.family == "ls"):
+      return (self.specialization == "k1")
+    return None
+
+target_names = {
+  "ls_wunit_k1": target_attributes("ls", "k1"),
+  "ls_wunit_k2": target_attributes("ls", "k2"),
+  "ls_wunit_kunit": target_attributes("ls", "k1", True),
+  "ls_wunit_k1_fixed": target_attributes("ls", "k1"),
+  "ls_wunit_k1ask3_fixed": target_attributes("ls", "k1", True),
+  "ls_wexp_k1": target_attributes("ls", "k1"),
+  "ls_wexp_k2": target_attributes("ls", "k2"),
+  "ls_wexp_kunit": target_attributes("ls", "k1", True),
+  "ls_wff_k1": target_attributes("ls", "k1"),
+  "ls_wff_k2": target_attributes("ls", "k2"),
+  "ls_wff_kunit": target_attributes("ls", "k1", True),
+  "ls_wff_k1_fixed": target_attributes("ls", "k1"),
+  "ls_wff_k1ask3_fixed": target_attributes("ls", "k1", True),
+  "lsm_k1": target_attributes("lsm", "k1"),
+  "lsm_k2": target_attributes("lsm", "k2"),
+  "lsm_kunit": target_attributes("lsm", "k1", True),
+  "lsm_k1_fixed": target_attributes("lsm", "k1"),
+  "lsm_k1ask3_fixed": target_attributes("lsm", "k1", True),
+  "ml": target_attributes("ml"),
+  "mlhl": target_attributes("ml", "hl"),
+  "ml_sad": target_attributes("ml", "sad")}
 
 class phaser_sad_target_functor(object):
 

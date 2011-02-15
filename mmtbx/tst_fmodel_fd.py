@@ -90,7 +90,7 @@ def exercise(space_group_info,
       #flags = flags.array(data = flex.bool(f_obs.data().size(), False))
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
-      for target in mmtbx.f_model.manager.target_names:
+      for target in mmtbx.refinement.targets.target_names:
           if (quick):
             if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
               continue

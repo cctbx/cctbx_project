@@ -227,19 +227,21 @@ class manager(object):
     step = min(0.8, step)
     return step
 
-  def f_mask(self, xray_structure_new = None, force_update=False):
-    if(xray_structure_new is not None):
+  def f_mask(self, xray_structure = None, force_update=False):
+    if(xray_structure is not None):
       if(force_update or self._f_mask is None):
-        self.xray_structure = xray_structure_new.deep_copy_scatterers()
-        self.sites_cart = xray_structure_new.sites_cart()
+        self.xray_structure = xray_structure.deep_copy_scatterers()
+        self.sites_cart = xray_structure.sites_cart()
         self.compute_f_mask()
       else:
         flag = self._need_update_mask(sites_cart_new =
-          xray_structure_new.sites_cart())
+          xray_structure.sites_cart())
         if(flag):
-          self.xray_structure = xray_structure_new.deep_copy_scatterers()
-          self.sites_cart = xray_structure_new.sites_cart()
+          self.xray_structure = xray_structure.deep_copy_scatterers()
+          self.sites_cart = xray_structure.sites_cart()
           self.compute_f_mask()
+    elif(self._f_mask is None and self.xray_structure is not None):
+      self.compute_f_mask()
     return self._f_mask
 
   def f_mask_twin(self):
