@@ -174,20 +174,20 @@ def exercise_ramalyze():
   assert numtotal == 75+154+494
   output_lines = output.splitlines()
   assert len(output_lines) == 723
-  assert output_lines[0] == "A  15 SER:39.85:-83.26:131.88:Favored:General"
-  assert output_lines[1] == "A  16 SER:0.93:-111.53:71.36:Allowed:General"
-  assert output_lines[168] == "A 191 ASP:2.90:-42.39:121.87:Favored:Prepro"
-  assert output_lines[169] == "A 192 PRO:3.65:-39.12:-31.84:Favored:Proline"
-  assert output_lines[713] == "B 368 LYS:62.62:-62.97:-53.28:Favored:General"
-  assert output_lines[714] == "B 369 GLU:9.58:-44.36:-45.50:Favored:General"
-  assert output_lines[715] == "B 370 LYS:37.37:-50.00:-39.06:Favored:General"
-  assert output_lines[716] == "B 371 VAL:71.48:-60.38:-51.85:Favored:General"
-  assert output_lines[717] == "B 372 LEU:0.04:-61.13:-170.23:OUTLIER:General"
-  assert output_lines[718] == "B 373 ARG:0.03:60.09:-80.26:OUTLIER:General"
-  assert output_lines[719] == "B 374 ALA:0.57:-37.21:-36.12:Allowed:General"
-  assert output_lines[720] == "B 375 LEU:13.45:-89.81:-41.45:Favored:General"
-  assert output_lines[721] == "B 376 ASN:84.52:-58.30:-41.39:Favored:General"
-  assert output_lines[722] == "B 377 GLU:32.22:-56.79:-21.74:Favored:General"
+  assert output_lines[0] == "A  15  SER:39.85:-83.26:131.88:Favored:General"
+  assert output_lines[1] == "A  16  SER:0.93:-111.53:71.36:Allowed:General"
+  assert output_lines[168] == "A 191  ASP:2.90:-42.39:121.87:Favored:Prepro"
+  assert output_lines[169] == "A 192  PRO:3.65:-39.12:-31.84:Favored:Proline"
+  assert output_lines[713] == "B 368  LYS:62.62:-62.97:-53.28:Favored:General"
+  assert output_lines[714] == "B 369  GLU:9.58:-44.36:-45.50:Favored:General"
+  assert output_lines[715] == "B 370  LYS:37.37:-50.00:-39.06:Favored:General"
+  assert output_lines[716] == "B 371  VAL:71.48:-60.38:-51.85:Favored:General"
+  assert output_lines[717] == "B 372  LEU:0.04:-61.13:-170.23:OUTLIER:General"
+  assert output_lines[718] == "B 373  ARG:0.03:60.09:-80.26:OUTLIER:General"
+  assert output_lines[719] == "B 374  ALA:0.57:-37.21:-36.12:Allowed:General"
+  assert output_lines[720] == "B 375  LEU:13.45:-89.81:-41.45:Favored:General"
+  assert output_lines[721] == "B 376  ASN:84.52:-58.30:-41.39:Favored:General"
+  assert output_lines[722] == "B 377  GLU:32.22:-56.79:-21.74:Favored:General"
 
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
@@ -221,17 +221,17 @@ def exercise_ramalyze():
   assert r.get_prepro_count_and_fraction()    == (5, 5./numtotal)
   output_lines = output.splitlines()
   assert len(output_lines) == 48
-  assert output_lines[0] == "A   2 ATHR:33.82:-106.92:144.23:Favored:General"
-  assert output_lines[1] == "A   2 BTHR:40.03:-97.44:137.00:Favored:General"
-  assert output_lines[6] == "A   7 AILE:96.87:-61.91:-44.35:Favored:General"
-  assert output_lines[7] == "A   7 BILE:69.60:-56.21:-51.56:Favored:General"
-  assert output_lines[8] == "A   8 AVAL:48.16:-50.35:-49.64:Favored:General"
-  assert output_lines[9] == "A   8 BVAL:51.20:-83.20:-12.14:Favored:General"
-  assert output_lines[10] == "A   8 CVAL:82.24:-61.22:-36.49:Favored:General"
-  assert output_lines[44] == "A  43 AASP:42.93:-94.64:5.45:Favored:General"
-  assert output_lines[45] == "A  43 BASP:49.80:-88.69:-0.12:Favored:General"
-  assert output_lines[46] == "A  44 TYR:1.42:-133.10:58.75:Allowed:General"
-  assert output_lines[47] == "A  45 ALA:52.28:-86.61:-8.57:Favored:General"
+  assert output_lines[0] == "A   2  ATHR:33.82:-106.92:144.23:Favored:General"
+  assert output_lines[1] == "A   2  BTHR:40.03:-97.44:137.00:Favored:General"
+  assert output_lines[6] == "A   7  AILE:96.87:-61.91:-44.35:Favored:General"
+  assert output_lines[7] == "A   7  BILE:69.60:-56.21:-51.56:Favored:General"
+  assert output_lines[8] == "A   8  AVAL:48.16:-50.35:-49.64:Favored:General"
+  assert output_lines[9] == "A   8  BVAL:51.20:-83.20:-12.14:Favored:General"
+  assert output_lines[10] == "A   8  CVAL:82.24:-61.22:-36.49:Favored:General"
+  assert output_lines[44] == "A  43  AASP:42.93:-94.64:5.45:Favored:General"
+  assert output_lines[45] == "A  43  BASP:49.80:-88.69:-0.12:Favored:General"
+  assert output_lines[46] == "A  44  TYR:1.42:-133.10:58.75:Allowed:General"
+  assert output_lines[47] == "A  45  ALA:52.28:-86.61:-8.57:Favored:General"
 
 #}}}
 
@@ -257,7 +257,7 @@ def exercise_rotalyze():
   output_lines = output.splitlines()
   assert len(output_lines) == 113
   for lines in output_lines:
-    assert float(lines[10:13]) <= 1.0
+    assert float(lines[11:14]) <= 1.0
 
   output, output_list = r.analyze_pdb(pdb_io, outliers_only=False)
   assert output.count("OUTLIER") == 113
@@ -267,18 +267,18 @@ def exercise_rotalyze():
   assert output.count("t") == 495
   output_lines = output.splitlines()
   assert len(output_lines) == 643
-  assert output_lines[0]   == "A  14 MET:3.3:29.2:173.3:287.9::ptm"
-  assert output_lines[1]   == "A  15 SER:0.1:229.0::::OUTLIER"
-  assert output_lines[2]   == "A  16 SER:4.2:277.9::::m"
-  assert output_lines[42]  == "A  58 ASN:2.0:252.4:343.6:::m-20"
-  assert output_lines[43]  == "A  59 ILE:2.0:84.2:186.7:::pt"
-  assert output_lines[168] == "A 202 GLU:0.4:272.7:65.9:287.8::OUTLIER"
-  assert output_lines[169] == "A 203 ILE:5.0:292.9:199.6:::mt"
-  assert output_lines[450] == "B 154 THR:0.1:356.0::::OUTLIER"
-  assert output_lines[587] == "B 316 TYR:5.4:153.7:68.6:::t80"
-  assert output_lines[394] == "B  86 ASP:2.2:321.4:145.1:::m-20"
-  assert output_lines[641] == "B 377 GLU:45.3:311.7:166.2:160.1::mt-10"
-  assert output_lines[642] == "B 378 THR:23.5:309.4::::m"
+  assert output_lines[0]   == "A  14  MET:3.3:29.2:173.3:287.9::ptm"
+  assert output_lines[1]   == "A  15  SER:0.1:229.0::::OUTLIER"
+  assert output_lines[2]   == "A  16  SER:4.2:277.9::::m"
+  assert output_lines[42]  == "A  58  ASN:2.0:252.4:343.6:::m-20"
+  assert output_lines[43]  == "A  59  ILE:2.0:84.2:186.7:::pt"
+  assert output_lines[168] == "A 202  GLU:0.4:272.7:65.9:287.8::OUTLIER"
+  assert output_lines[169] == "A 203  ILE:5.0:292.9:199.6:::mt"
+  assert output_lines[450] == "B 154  THR:0.1:356.0::::OUTLIER"
+  assert output_lines[587] == "B 316  TYR:5.4:153.7:68.6:::t80"
+  assert output_lines[394] == "B  86  ASP:2.2:321.4:145.1:::m-20"
+  assert output_lines[641] == "B 377  GLU:45.3:311.7:166.2:160.1::mt-10"
+  assert output_lines[642] == "B 378  THR:23.5:309.4::::m"
 
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
@@ -289,60 +289,60 @@ def exercise_rotalyze():
   pdb_io = pdb.input(file_name=regression_pdb)
   r = rotalyze()
   output, output_list = r.analyze_pdb(pdb_io, outliers_only=True)
-  assert output == "A  29 BTYR:0.3:191.3:322.7:::OUTLIER"
+  assert output == "A  29  BTYR:0.3:191.3:322.7:::OUTLIER"
 
   output, output_list = r.analyze_pdb(pdb_io, outliers_only=False)
   assert not show_diff(output,"""\
-A   1 THR:96.6:299.5::::m
-A   2 ATHR:55.0:56.1::::p
-A   2 BTHR:93.8:298.1::::m
-A   3 CYS:28.5:310.5::::m
-A   4 CYS:89.0:293.1::::m
-A   5 PRO:90.6:30.2::::Cg_endo
-A   6 SER:84.6:68.4::::p
-A   7 AILE:62.7:290.8:178.2:::mt
-A   7 BILE:14.3:284.4:298.4:::mm
-A   8 AVAL:3.6:156.7::::t
-A   8 BVAL:9.7:71.3::::p
-A   8 CVAL:74.3:172.1::::t
-A  10 AARG:23.4:176.8:66.5:63.9:180.0:tpp180
-A  10 BARG:20.1:176.8:72.8:66.4:171.9:tpp180
-A  11 SER:49.6:300.9::::m
-A  12 AASN:96.0:286.1:343.8:::m-20
-A  12 BASN:99.2:288.4:337.6:::m-20
-A  13 APHE:42.3:187.2:276.4:::t80
-A  13 BPHE:84.7:179.6:263.1:::t80
-A  14 ASN:95.9:289.6:333.0:::m-20
-A  15 VAL:47.4:168.2::::t
-A  16 CYS:44.7:176.5::::t
-A  17 ARG:23.6:289.7:282.8:288.6:158.7:mmm180
-A  18 LEU:75.1:287.2:173.3:::mt
-A  19 PRO:43.6:24.4::::Cg_endo
-A  21 THR:8.5:314.0::::m
-A  22 APRO:78.5:333.5::::Cg_exo
-A  23 AGLU:92.5:290.9:187.1:341.8::mt-10
-A  23 BGLU:94.5:292.0:183.8:339.2::mt-10
-A  25 ALEU:96.7:294.4:173.6:::mt
-A  26 CYS:92.2:295.0::::m
-A  28 THR:37.5:52.9::::p
-A  29 ATYR:23.0:161.8:67.8:::t80
-A  29 BTYR:0.3:191.3:322.7:::OUTLIER
-A  30 ATHR:68.5:57.4::::p
-A  30 BTHR:8.8:78.1::::p
-A  32 CYS:69.2:301.7::::m
-A  33 ILE:37.5:66.5:173.4:::pt
-A  34 AILE:66.6:303.6:167.6:::mt
-A  34 BILE:33.9:308.5:296.8:::mm
-A  35 ILE:48.4:62.4:170.0:::pt
-A  36 PRO:36.1:22.5::::Cg_endo
-A  39 ATHR:18.3:311.0::::m
-A  39 BTHR:17.7:288.8::::m
-A  40 CYS:99.0:294.4::::m
-A  41 PRO:61.4:34.4::::Cg_endo
-A  43 AASP:29.6:56.5:340.3:::p-10
-A  43 BASP:45.3:59.6:349.3:::p-10
-A  44 TYR:85.6:290.9:85.1:::m-85
-A  46 ASN:34.0:301.6:117.9:::m120""")
+A   1  THR:96.6:299.5::::m
+A   2  ATHR:55.0:56.1::::p
+A   2  BTHR:93.8:298.1::::m
+A   3  CYS:28.5:310.5::::m
+A   4  CYS:89.0:293.1::::m
+A   5  PRO:90.6:30.2::::Cg_endo
+A   6  SER:84.6:68.4::::p
+A   7  AILE:62.7:290.8:178.2:::mt
+A   7  BILE:14.3:284.4:298.4:::mm
+A   8  AVAL:3.6:156.7::::t
+A   8  BVAL:9.7:71.3::::p
+A   8  CVAL:74.3:172.1::::t
+A  10  AARG:23.4:176.8:66.5:63.9:180.0:tpp180
+A  10  BARG:20.1:176.8:72.8:66.4:171.9:tpp180
+A  11  SER:49.6:300.9::::m
+A  12  AASN:96.0:286.1:343.8:::m-20
+A  12  BASN:99.2:288.4:337.6:::m-20
+A  13  APHE:42.3:187.2:276.4:::t80
+A  13  BPHE:84.7:179.6:263.1:::t80
+A  14  ASN:95.9:289.6:333.0:::m-20
+A  15  VAL:47.4:168.2::::t
+A  16  CYS:44.7:176.5::::t
+A  17  ARG:23.6:289.7:282.8:288.6:158.7:mmm180
+A  18  LEU:75.1:287.2:173.3:::mt
+A  19  PRO:43.6:24.4::::Cg_endo
+A  21  THR:8.5:314.0::::m
+A  22  APRO:78.5:333.5::::Cg_exo
+A  23  AGLU:92.5:290.9:187.1:341.8::mt-10
+A  23  BGLU:94.5:292.0:183.8:339.2::mt-10
+A  25  ALEU:96.7:294.4:173.6:::mt
+A  26  CYS:92.2:295.0::::m
+A  28  THR:37.5:52.9::::p
+A  29  ATYR:23.0:161.8:67.8:::t80
+A  29  BTYR:0.3:191.3:322.7:::OUTLIER
+A  30  ATHR:68.5:57.4::::p
+A  30  BTHR:8.8:78.1::::p
+A  32  CYS:69.2:301.7::::m
+A  33  ILE:37.5:66.5:173.4:::pt
+A  34  AILE:66.6:303.6:167.6:::mt
+A  34  BILE:33.9:308.5:296.8:::mm
+A  35  ILE:48.4:62.4:170.0:::pt
+A  36  PRO:36.1:22.5::::Cg_endo
+A  39  ATHR:18.3:311.0::::m
+A  39  BTHR:17.7:288.8::::m
+A  40  CYS:99.0:294.4::::m
+A  41  PRO:61.4:34.4::::Cg_endo
+A  43  AASP:29.6:56.5:340.3:::p-10
+A  43  BASP:45.3:59.6:349.3:::p-10
+A  44  TYR:85.6:290.9:85.1:::m-85
+A  46  ASN:34.0:301.6:117.9:::m120""")
 #}}}
 
 def run():

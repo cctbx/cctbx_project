@@ -164,13 +164,13 @@ class rotalyze(object):
                 #print chain.id + str(residue.seq) + residue.name.strip() + str(value)
                 if value != None:
                   self.numtotal += 1
-                  s = '%s%4s %s:%.1f' % \
+                  s = '%s%5s %s:%.1f' % \
                     (chain.id,
-                     residue_group.resseq,
+                     residue_group.resid(),
                      atom_group.altloc+atom_group.resname.strip(),
                      value*100)
                   res_out_list = [chain.id,
-                                  residue_group.resseq,
+                                  residue_group.resid(),
                                   atom_group.altloc+atom_group.resname,
                                   value*100]
                   #wrap_chis = []
@@ -204,8 +204,8 @@ class rotalyze(object):
                     output_list.append(res_out_list)
             except AttributeError:
               if show_errors:
-                print >> out, '%s%4s %s is missing some sidechain atoms' % (
-                    chain.id, residue_group.resseq,
+                print >> out, '%s%5s %s is missing some sidechain atoms' % (
+                    chain.id, residue_group.resid(),
                     atom_group.altloc+atom_group.resname)
     return analysis.rstrip(), output_list
   #}}}
