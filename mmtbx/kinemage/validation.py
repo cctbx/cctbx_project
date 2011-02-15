@@ -240,22 +240,24 @@ def cbeta_dev(chain, pdbID, deviations, ideal):
     if outlier.startswith('pdb:alt:res'):
       continue
     PDBfileStr,altchar,res,sub,resnum,dev,dihedralNABB,occ,segid,last = outlier.split(':')
-    key = '%s%4s %s' % \
+    key = '%s%5s %s' % \
              (sub.strip(),
-             resnum.rstrip(),
+             resnum,
              altchar+res.upper())
     outlier_list.append(key)
     angle_dict[key] = float(dihedralNABB)
     deviation_dict[key] = float(dev)
+  print >> sys.stderr, outlier_list
   for residue_group in chain.residue_groups():
     for atom_group in residue_group.atom_groups():
       altloc = atom_group.altloc
       if len(altloc) < 1:
         altloc = " "
-      check_key = '%s%4s %s' % \
+      check_key = '%s%5s %s' % \
                     (chain.id,
-                     residue_group.resseq,
+                     residue_group.resid(),
                      altloc+atom_group.resname.strip())
+      print >> sys.stderr, check_key
       if check_key not in outlier_list:
         continue
       for atom in atom_group.atoms():
@@ -267,13 +269,13 @@ def cbeta_dev(chain, pdbID, deviations, ideal):
           if len(chainid) == 1:
             chainid = " "+chainid
           ideal_key = altloc+atom_group.resname.lower()+ \
-                      chainid+residue_group.resseq+ "  "
+                      chainid+residue_group.resid()
           ideal_xyz = ideal[ideal_key]
           key = "%s %s %s%s  %.3f %.2f" % (
               atom.name.lower(),
               atom_group.resname.lower(),
               chain.id,
-              residue_group.resseq,
+              residue_group.resid(),
               deviation_dict[check_key],
               angle_dict[check_key])
           cbeta_out += '{%s} r=%.3f magenta  %.3f, %.3f, %.3f\n' % (
@@ -375,9 +377,9 @@ def rama_outliers(chain, pdbID, ram_outliers):
 
   for residue_group in chain.residue_groups():
     for atom_group in residue_group.atom_groups():
-      check_key = "%s%4s %s%s" % (
+      check_key = "%s%5s %s%s" % (
                      chain.id,
-                     residue_group.resseq,
+                     residue_group.resid(),
                      atom_group.altloc,
                      atom_group.resname)
       #print check_key
@@ -434,7 +436,7 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
               atom.name.lower(),
               residue.resname.lower(),
               chain.id,
-              residue.resseq,
+              residue.resid(),
               atom.b,
               pdbID)
           key_hash[atom.name.strip()] = key
@@ -516,7 +518,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
   c4_hash_key = {}
   c4_hash_xyz = {}
   for residue_group in chain.residue_groups():
-    cur_resid = residue_group.resseq
+    cur_resid = residue_group.resid()
     for atom_group in residue_group.atom_groups():
       key_hash = {}
       xyz_hash = {}
@@ -528,7 +530,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
               atom.name.lower(),
               atom_group.resname.lower(),
               chain.id,
-              residue_group.resseq,
+              residue_group.resid(),
               atom.b,
               pdbID)
         key_hash[atom.name.strip()] = key
