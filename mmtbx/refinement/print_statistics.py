@@ -305,7 +305,7 @@ class refinement_monitor(object):
               model                  = model,
               model_ini              = self.model_ini,
               model_ref              = self.model_ref,
-              compute_optimal_errors = self.params.main.compute_optimal_errors)
+              compute_optimal_errors = False)
     self.ds_ic_min       .append(rem.d_ic_min                     )
     self.ds_ic_max       .append(rem.d_ic_max                     )
     self.ds_ic_ave       .append(rem.d_ic_ave                     )
@@ -313,9 +313,6 @@ class refinement_monitor(object):
        self.ds_rc_min    .append(rem.d_rc_min                     )
        self.ds_rc_max    .append(rem.d_rc_max                     )
        self.ds_rc_ave    .append(rem.d_rc_ave                     )
-    if(self.params.main.compute_optimal_errors):
-       self.dopts_ic     .append(rem.dopt_ic                      )
-       self.dopts_rc     .append(rem.dopt_rc                      )
     if(fmodel.target_attributes().pseudo_ml):
        n_zero = fmodel.f_star_w_star_obj().number_of_f_star_zero()
        percent = n_zero*100./fmodel.f_obs.data().size()
@@ -705,7 +702,7 @@ class relative_errors(object):
              flex.max_default( array_of_distances_between_each_atom_ini_ref,0)
        self.d_rc_ave = \
              flex.mean_default(array_of_distances_between_each_atom_ini_ref,0)
-    if(compute_optimal_errors != False):
+    if(compute_optimal_errors):
        assert model.xray_structure.scatterers().size() == \
                                    model_ini.xray_structure.scatterers().size()
        xrs = model.xray_structure
