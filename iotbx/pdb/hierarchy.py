@@ -855,12 +855,15 @@ class _conformer(boost.python.injector, ext.conformer):
       i = j
     return result
 
-  def as_padded_sequence (self, missing_char='X') :
+  def as_padded_sequence (self, missing_char='X', skip_insertions=False) :
     seq = self.as_sequence()
     padded_seq = []
     last_resseq = 0
+    last_icode = " "
     i = 0
     for i, residue in enumerate(self.residues()) :
+      if (skip_insertions) and (residue.icode != " ") :
+        continue
       resseq = residue.resseq_as_int()
       if (resseq > (last_resseq + 1)) :
         for x in range(resseq - last_resseq - 1) :
