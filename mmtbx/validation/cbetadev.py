@@ -204,21 +204,19 @@ class cbetadev(object):
                     if(len(sub)==1):
                       sub=" "+sub
                     resnum=residue.resid()
-                    resins=" "
                     occ = resCB.occ
-                    analysis += '%s :%s:%s:%s:%4s%c:%7.3f:%7.2f:%7.2f:%s:\n' % \
-                      (PDBfileStr,altchar,res,sub,resnum,resins,dev,dihedralNABB,occ,altchar)
+                    analysis += '%s :%s:%s:%s:%5s:%7.3f:%7.2f:%7.2f:%s:\n' % \
+                      (PDBfileStr,altchar,res,sub,resnum,dev,dihedralNABB,occ,altchar)
                     if (dev >= 0.25):
-                      self.outliers += '%s :%s:%s:%s:%4s%c:%7.3f:%7.2f:%7.2f:%s:\n' % \
-                        (PDBfileStr,altchar,res,sub,resnum,resins,dev,dihedralNABB,occ,altchar)
-                    key = altchar+res+sub+resnum+resins
+                      self.outliers += '%s :%s:%s:%s:%5s:%7.3f:%7.2f:%7.2f:%s:\n' % \
+                        (PDBfileStr,altchar,res,sub,resnum,dev,dihedralNABB,occ,altchar)
+                    key = altchar+res+sub+resnum
                     self.beta_ideal[key] = betaxyz
                     output_list.append([PDBfileStr,
                                         altchar,
                                         res,
                                         sub,
                                         resnum,
-                                        resins,
                                         dev,
                                         dihedralNABB,
                                         occ,
