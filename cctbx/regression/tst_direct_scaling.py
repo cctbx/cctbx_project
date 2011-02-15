@@ -53,8 +53,8 @@ def exercise_direct(space_group_info,
 
   cuda_platform = direct_summation_cuda_platform()
 
-  for x in xrange(1,6):
-    print "There are %d scatterers"%len(elements)
+  for x in xrange(2,3):
+    #print "There are %d scatterers"%len(elements)
     number_of_reflections = pow(10.,x)
     Volume = number_of_reflections *  reciprocal_volume * 2. #2 P1 asymmetric units
     Volume *= space_group_info.group().order_z() # take space group into acct.
@@ -94,12 +94,20 @@ def exercise_direct(space_group_info,
 
   show_times_vs_complexity(times, header="run time vs. # reflections")
 
-def run(args):
+def run_scattering_type_tests():
+  for C in xrange(35):
+    for N in xrange(35):
+      for total in xrange(93,99):
+        elements = ['C']*C + ['N']*N + ['O']*(total-N-C)
+        print "".join(elements)
+        exercise_direct(sgtbx.space_group_info("P1"),elements)
+
+def run(args,multiplier):
   show_times_at_exit()
   verbose = '--verbose' in args
   #count from 1hmg.pdb, chain A: C, 1583; N, 445; O, 495, S, 13
   elements = ['O']*19 + ['N']*18 + ['C']*62 + ['S']*1
-  allelements = elements*10
+  allelements = elements*multiplier
 
   if 0:
     for sn in xrange(1,231):
@@ -119,4 +127,5 @@ def run(args):
 
 if __name__ == '__main__':
   import sys
-  run(sys.argv[1:])
+  #run(sys.argv[1:],10)
+  run_scattering_type_tests()
