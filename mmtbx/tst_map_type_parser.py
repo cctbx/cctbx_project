@@ -1,4 +1,4 @@
-from libtbx.utils import format_cpu_times
+from libtbx.utils import format_cpu_times, Sorry
 import mmtbx
 
 def exercise():
@@ -148,7 +148,7 @@ def exercise():
   def check_expected_error(s):
     cntr = 0
     try: r = mmtbx.map_names(map_name_string = s)
-    except RuntimeError, e:
+    except Sorry, e:
       assert str(e).count("Wrong map type requested: %s"%s)==1
       cntr += 1
     assert cntr == 1

@@ -1,4 +1,6 @@
 
+from libtbx.utils import Sorry
+
 class fmodels(object):
   def __init__(self, fmodel_xray = None,
                      fmodel_neutron = None,
@@ -344,7 +346,8 @@ class map_names(object):
         if(len(pc)==0): self.k = 1.
         elif(len(pc)==1 and pc in ["+","-"]): self.k = float("%s1"%pc)
         else: self.k = float(pc)
-      else: raise RuntimeError
+      else: raise RuntimeError("Error attempting to decode map name string "+
+        "'%s'" % map_name_string)
     if(self.k is not None):
       self.k = float(self.k)
       self.n = float(self.n)
@@ -363,7 +366,7 @@ Wrong map type requested: %s
             2mFobs-DFcalc_kick_fill, anom, anom_diff, anomalous_difference, Fo
 """
     format = "[p][m]Fo+[q][D]Fc[kick][filled]"
-    raise RuntimeError(msg%(s,format))
+    raise Sorry(msg%(s,format))
 
   def format(self):
     if(not self.anomalous):
