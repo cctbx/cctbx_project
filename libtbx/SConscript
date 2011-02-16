@@ -323,6 +323,7 @@ For newer versions, please adjust this SConscript.
       "/D_CRT_SECURE_NO_DEPRECATE",
       "/wd4996", # warning C4996: ... was declared deprecated
       "/wd4068", # warning C4068: unknown pragma
+      "/wd4267", # warning C4267: conversion from 'size_t' to 'int', possible loss of data
       "/Z7", # produce program database file containing debugging symbols.
              # Harmless for release builds
       "/Zm800"]
