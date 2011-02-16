@@ -17,7 +17,7 @@ def show_cc_r1(label, f_obs, xray_structure):
   print "%-12s cc, r1: %.3f %.3f" % (label, cc, r1)
   sys.stdout.flush()
 
-def smtbx_lsq_refine(f_obs, xray_structure, n_cycles):
+def smtbx_lsq_refine(cod_code, f_obs, xray_structure, n_cycles):
   import smtbx.refinement
   xray_structure.scatterers().flags_set_grads(state=False)
   for sc in xray_structure.scatterers():
@@ -26,8 +26,13 @@ def smtbx_lsq_refine(f_obs, xray_structure, n_cycles):
     sc.flags.set_grad_u_iso(True)
   fo_sq = f_obs.f_as_f_sq()
   assert fo_sq.sigmas() is not None
-  if (1):
-    fo_sq = fo_sq.select(~((fo_sq.data() == 0) & (fo_sq.sigmas() == 0)))
+  sel = (fo_sq.data() == 0) & (fo_sq.sigmas() == 0)
+  fo_sq = fo_sq.select(~sel)
+  fo_sq.select(fo_sq.sigmas() <= 0).show_array()
+  assert fo_sq.sigmas().all_gt(0)
+  if (1): # work around bug currently in smtbx weighting scheme implementation
+    from cctbx.array_family import flex
+    fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.data().size(), 1))
   tm = user_plus_sys_time()
   rm = smtbx.refinement.model(
     fo_sq=fo_sq,
@@ -38,7 +43,12 @@ def smtbx_lsq_refine(f_obs, xray_structure, n_cycles):
   ls = rm.least_squares()
   for i_cycle in xrange(n_cycles):
     ls.build_up()
-    ls.solve_and_step_forward()
+    try:
+      ls.solve_and_step_forward()
+    except RuntimeError, e:
+      if (str(e).find("cholesky.failure") <= 0): raise
+      print "Aborting smtbx_lsq_refine: cholesky.failure: %s" % cod_code
+      break
     for sc in xray_structure.scatterers():
       if (sc.u_iso <= 0 or sc.u_iso > 1):
         sc.u_iso = 0.05
@@ -86,6 +96,7 @@ def process(pickle_file_name):
     return
   #
   smtbx_lsq_refine(
+    cod_code=cod_code,
     f_obs=f_obs,
     xray_structure=structure_work,
     n_cycles=12)
