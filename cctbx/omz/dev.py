@@ -129,6 +129,9 @@ class ls_refinement(object):
     O.pseudo_curvs = None
     O.pseudo_curvs_i_info = None
     O.termination_remark = " UNDEFINED"
+    #
+    O.plot_samples()
+    #
     if (O.params.use_classic_lbfgs):
       O.classic_lbfgs()
     elif (O.params.use_lbfgs_emulation):
@@ -137,6 +140,24 @@ class ls_refinement(object):
       O.developmental_algorithms()
     print "Number of iterations, evaluations: %d %d%s" % (
       O.i_step+1, len(O.xfgc_infos), O.termination_remark)
+
+  def plot_samples(O):
+    p = O.params.plot_samples
+    ix = p.ix
+    if (ix is None): return
+    x_inp = O.x[ix]
+    xy = []
+    from libtbx.utils import xsamples
+    for x in xsamples(p.xmin, p.xmax, p.xstep):
+      O.x[ix] = x
+      ls = O.__get_ls()
+      y = ls.target_work()
+      xy.append((x,y))
+    O.x[ix] = x_inp
+    from libtbx import pyplot
+    pyplot.plot_pairs(xy, "r-")
+    pyplot.show()
+    STOP()
 
   def classic_lbfgs(O):
     import scitbx.lbfgs
@@ -265,13 +286,13 @@ class ls_refinement(object):
       cos_sin_table=False).f_calc()
     return xray.targets_ls_with_scale(
       apply_scale_to_f_calc=True,
-      compute_scale_using_all_data=False,
+      compute_scale_using_all_data=True,
       f_obs=O.f_obs.data(),
       weights=O.weights,
       r_free_flags=None,
       f_calc=f_calc.data(),
       compute_derivatives=2,
-      scale_factor=1)
+      scale_factor=O.params.f_calc_scale_factor)
 
   def update_fgc(O, is_iterate=False):
     if (len(O.xfgc_infos) != 0):
@@ -645,4 +666,16 @@ def get_master_phil(
       .type = bool
     try_approx_curvs = False
       .type = bool
+    f_calc_scale_factor = 0
+      .type = float
+    plot_samples {
+      ix = None
+        .type = int
+      xmin = 0
+        .type = float
+      xmax = 1
+        .type = float
+      xstep = 0.01
+        .type = float
+    }
 """ % vars() + additional_phil_string)
