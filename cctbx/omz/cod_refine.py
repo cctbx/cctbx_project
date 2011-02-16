@@ -167,7 +167,7 @@ def run(args):
   all_pickles = []
   for arg in remaining_args:
     if (op.isdir(arg)):
-      for node in os.listdir(arg):
+      for node in sorted(os.listdir(arg)):
         if (not node.endswith(".pickle")): continue
         all_pickles.append(op.join(arg, node))
     elif (op.isfile(arg)):

@@ -32,9 +32,11 @@ def run(args):
         iso = None
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
+  print "Number of results:", gaps.size()
+  print
   def stats(f):
     n = f.count(True)
-    return "%6d = %.3f%%" % (n, n / gaps.size())
+    return "%6d = %5.2f %%" % (n, 100 * n / gaps.size())
   print "gaps below -0.05:", stats(gaps < -0.05)
   print "gaps below -0.01:", stats(gaps < -0.01)
   print "gaps below  0.01:", stats(gaps <  0.01)
