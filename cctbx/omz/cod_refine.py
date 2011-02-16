@@ -1,9 +1,22 @@
+import libtbx.phil.command_line
 from libtbx import easy_pickle
 from libtbx.utils import user_plus_sys_time
 from libtbx import Auto
 import traceback
 import sys, os
 op = os.path
+
+def get_master_phil():
+  return libtbx.phil.parse("""
+    max_atoms = 100
+      .type = int
+    reset_u_iso = 0.05
+      .type = float
+    shake_sites_rmsd = 0.5
+      .type = float
+    smtbx_lsq_iterations = 12
+      .type = int
+""")
 
 def show_cc_r1(label, f_obs, xray_structure):
   f_calc = f_obs.structure_factors_from_scatterers(
@@ -55,7 +68,7 @@ def smtbx_lsq_refine(cod_code, f_obs, xray_structure, n_cycles):
     show_cc_r1("ls%02d" % (i_cycle+1), f_obs, xray_structure)
   tm.show_elapsed(prefix="time smtbx lsq: ")
 
-def process(pickle_file_name):
+def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
   print "cod_code:", cod_code
   f_obs, structure_cod = easy_pickle.load(file_name=pickle_file_name)
@@ -78,28 +91,30 @@ def process(pickle_file_name):
   if (1):
     structure_work.convert_to_isotropic()
     cc_r1("iso")
-  if (1):
-    structure_work.set_u_iso(value=0.05)
+  if (params.reset_u_iso is not None):
+    structure_work.set_u_iso(value=params.reset_u_iso)
     cc_r1("setu")
-  if (1):
+  if (params.shake_sites_rmsd is not None):
     from scitbx.array_family import flex
     mt = flex.mersenne_twister(seed=0)
     structure_work.shake_sites_in_place(
-      rms_difference=0.5,
+      rms_difference=params.shake_sites_rmsd,
       allow_all_fixed=True,
       random_double=mt.random_double)
     cc_r1("shake_xyz")
   #
-  n = structure_work.scatterers().size()
-  if (n > 100):
-    print "Skipping refinement of large model: %d atoms COD %s" % (n, cod_code)
-    return
+  if (params.max_atoms is not None):
+    n = structure_work.scatterers().size()
+    if (n > params.max_atoms):
+      print "Skipping refinement of large model: %d atoms COD %s" % (
+        n, cod_code)
+      return
   #
   smtbx_lsq_refine(
     cod_code=cod_code,
     f_obs=f_obs,
     xray_structure=structure_work,
-    n_cycles=12)
+    n_cycles=params.smtbx_lsq_iterations)
 
 def run(args):
   from iotbx.option_parser import option_parser as iotbx_option_parser
@@ -118,8 +133,23 @@ def run(args):
     return
   co = command_line.options
   #
-  all_pickles = []
+  master_phil = get_master_phil()
+  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
+    master_phil=master_phil)
+  phil_objects = []
+  remaining_args = []
   for arg in command_line.args:
+    if (arg.find("=") >= 0):
+      phil_objects.append(argument_interpreter.process(arg=arg))
+    else:
+      remaining_args.append(arg)
+  work_phil = master_phil.fetch(sources=phil_objects)
+  work_phil.show()
+  print
+  params = work_phil.extract()
+  #
+  all_pickles = []
+  for arg in remaining_args:
     if (op.isdir(arg)):
       for node in os.listdir(arg):
         if (not node.endswith(".pickle")): continue
@@ -135,7 +165,7 @@ def run(args):
   for i_pickle,pickle_file_name in enumerate(all_pickles):
     if (i_pickle % command_line.chunk.n != command_line.chunk.i): continue
     try:
-      process(pickle_file_name)
+      process(params, pickle_file_name)
     except KeyboardInterrupt:
       print "CAUGHT EXCEPTION: KeyboardInterrupt"
       return
