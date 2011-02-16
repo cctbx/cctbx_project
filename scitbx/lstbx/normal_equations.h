@@ -134,9 +134,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
      */
     void solve() {
       using scitbx::matrix::cholesky::u_transpose_u_decomposition_in_place;
-      u_transpose_u_decomposition_in_place<scalar_t> chol(normal_matrix_);
-      SCITBX_ASSERT(!chol.failure);
-      chol.solve_in_place(right_hand_side_);
+      u_transpose_u_decomposition_in_place<scalar_t> cholesky(normal_matrix_);
+      SCITBX_ASSERT(!cholesky.failure);
+      cholesky.solve_in_place(right_hand_side_);
       solved_ = true;
     }
 
