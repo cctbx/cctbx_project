@@ -19,6 +19,8 @@ from libtbx import easy_run, easy_pickle
 from iotbx.pdb import combine_unique_pdb_files
 from mmtbx.command_line import lockit
 from libtbx import runtime_utils
+import scitbx.matrix
+
 
 modify_params_str = """\
 selection = None
@@ -113,6 +115,14 @@ occupancies
     .type = float
     .help = Set all or selected occupancies to given value
     .short_caption=Set occupancies to
+}
+rotate_about_axis {
+  axis = None
+    .type = str
+  angle = None
+    .type = float
+  atom_selection = None
+    .type = str
 }
 renumber_residues = None
   .type = bool
@@ -267,6 +277,7 @@ class modify(object):
         all_chain_proxies = all_chain_proxies,
         selection_strings = [self.params.selection],
         xray_structure    = xray_structure)[0])
+    self._rotate_about_axis()
     self._process_adp()
     self._process_sites()
     self._process_occupancies(selection = self.top_selection)
@@ -483,6 +494,40 @@ class modify(object):
       self.remove_selection.show_summary(
         out = self.log,
         label = "Atoms to be kept: ")
+
+  def _rotate_about_axis(self):
+    raap = self.params.rotate_about_axis
+    sites_cart = self.xray_structure.sites_cart()
+    if([raap.axis, raap.atom_selection, raap.angle].count(None)==0):
+      axis = []
+      try:
+        for a in raap.axis.split():
+          axis.append(float(a))
+      except:
+        sel = utils.get_atom_selections(
+          iselection=False,
+          all_chain_proxies=self.all_chain_proxies,
+          selection_strings=raap.axis,
+          xray_structure=self.xray_structure)[0]
+        axis = [i for i in sites_cart.select(sel).as_double()]
+      if(len(axis)!=6):
+        raise Sorry("Bad selection rotate_about_axis.axis: %s"%str(raap.axis))
+      p1 = scitbx.matrix.col(axis[:3])
+      p2 = scitbx.matrix.col(axis[3:])
+      raa = p1.rt_for_rotation_around_axis_through(
+        point=p2, angle=raap.angle, deg=True)
+      #
+      sel = utils.get_atom_selections(
+          iselection=False,
+          all_chain_proxies=self.all_chain_proxies,
+          selection_strings=raap.atom_selection,
+          xray_structure=self.xray_structure)[0]
+      if(sel.count(True)==0):
+        raise Sorry(
+          "Empty selection rotate_about_axis.selection: %s"%str(raap.atom_selection))
+      sites_cart_rotated = raa * sites_cart.select(sel)
+      self.xray_structure.set_sites_cart(
+        sites_cart.set_selected(sel, sites_cart_rotated))
 
 def set_chemical_element_simple_if_necessary(hierarchy):
   for model in hierarchy.models():
