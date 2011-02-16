@@ -85,7 +85,23 @@ class site_refinement_test(refinement_test):
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
     )
+
     ls.build_up()
+
+    # Let's check that the computed singular directions span the same
+    # space as the expected ones
+    singular_test = flex.double()
+    m = 0
+    for s in ls.floating_origin_restraints.singular_directions:
+      assert s.norm() != 0
+      singular_test.extend(s)
+      m += 1
+    for s in self.continuous_origin_shift_basis:
+      singular_test.extend(flex.double(s))
+      m += 1
+    singular_test.reshape(flex.grid(m, n))
+    assert self.rank(singular_test) == len(self.continuous_origin_shift_basis)
+
     assert ls.opposite_of_gradient()\
              .all_approx_equal(0, eps_zero_rhs),\
            list(ls.gradient())
@@ -309,6 +325,25 @@ class pm_test(object):
     yield xray.scatterer("C2", (0, -0.3, 0.4)) # on mirror plane
     yield xray.scatterer("C3", (0.7, 0.1, -0.1))
 
+class all_special_position_test(object):
+  """ phenix-1.6.2-430/bintbx/cod_ma_xs/2104451.pickle
+      It was pointed out by Ralf that it crashes smtbx-refine:
+      it turned out to be a bug in floating origin restraint
+      and this is a regression test for that bug fix.
+  """
+
+  hall = "C 2c -2"
+  n_independent_params = 12
+  continuous_origin_shift_basis = [ (0, 1)*6 ]
+
+  def scatterers(self):
+    yield xray.scatterer('Ba', (0.500000, 0.369879, 0.431121))
+    yield xray.scatterer('Mg', (-0.000000, 0.385261, -0.084062))
+    yield xray.scatterer('F1', (0.000000, 0.291730, 0.783213))
+    yield xray.scatterer('F2', (0.000000, 0.328018, 0.303193))
+    yield xray.scatterer('F3', (0.000000, 0.506766, 0.591744))
+    yield xray.scatterer('F4', (0.500000, 0.414262, 1.002902))
+
 class twin_test(object):
 
   def __init__(self):
@@ -478,6 +513,10 @@ class site_refinement_in_p2_test(p2_test, site_refinement_test): pass
 
 class site_refinement_in_pm_test(pm_test, site_refinement_test): pass
 
+class site_refinement_with_all_on_special_positions(all_special_position_test,
+                                                    site_refinement_test):
+  pass
+
 
 class adp_refinement_in_p1_test(p1_test, adp_refinement_test): pass
 
@@ -487,6 +526,7 @@ class adp_refinement_in_pm_test(pm_test, adp_refinement_test): pass
 
 
 def exercise_normal_equations():
+  site_refinement_with_all_on_special_positions().run()
   adp_refinement_in_p1_test().run()
   adp_refinement_in_pm_test().run()
   adp_refinement_in_p2_test().run()

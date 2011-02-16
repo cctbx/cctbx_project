@@ -36,11 +36,7 @@ class crystallographic_ls(
       self.xray_structure)
     if self.weighting_scheme == "default":
       self.weighting_scheme = self.default_weighting_scheme()
-    self.floating_origin_restraints = floating_origin_restraints(
-      self.xray_structure.space_group(),
-      reparametrisation.asu_scatterer_parameters,
-      reparametrisation.jacobian_transpose_matching_grad_fc(),
-      self.floating_origin_restraint_relative_weight)
+    self.floating_origin_restraints = None
     self.taken_step = None
     self.restraints_normalisation_factor = None
 
@@ -79,6 +75,11 @@ class crystallographic_ls(
     if not self.finalised: #i.e. never been called
       self.reparametrisation.linearise()
       self.reparametrisation.store()
+      self.floating_origin_restraints = floating_origin_restraints(
+        self.xray_structure.space_group(),
+        self.reparametrisation.asu_scatterer_parameters,
+        self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+      self.floating_origin_restraint_relative_weight)
       scale_factor = self.initial_scale_factor
       if scale_factor is None: # we haven't got one from previous refinement
         result = ext.build_normal_equations(
