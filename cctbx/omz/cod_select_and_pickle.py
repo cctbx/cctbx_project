@@ -91,10 +91,10 @@ def build_hkl_cif(cod_codes):
   hkl_cif = []
   if (len(cod_codes) == 0):
     hkl_only = []
-    for sub_dir in os.listdir(hkl_dir):
+    for sub_dir in sorted(os.listdir(hkl_dir)):
       if (sub_dir.startswith(".")): continue
       hkl_sub_dir = op.join(hkl_dir, sub_dir)
-      for node in os.listdir(hkl_sub_dir):
+      for node in sorted(os.listdir(hkl_sub_dir)):
         if (node.startswith(".")): continue
         if (not node.endswith(".hkl")): continue
         cod_code = node[:-4]
