@@ -56,6 +56,9 @@ class cod_data(object):
     O.xray_structure.show_summary().show_scatterers()
     print "."*79
 
+  def have_zero_occupancies(O):
+    return not O.xray_structure.scatterers().extract_occupancies().all_ne(0)
+
   def have_bad_sigmas(O):
     if (O.f_obs.sigmas() is None):
       print "Missing sigmas:", O.cod_code
@@ -165,7 +168,8 @@ def run(args):
       sys.stderr.flush()
       n_caught += 1
     else:
-      if (not cd.have_bad_sigmas()
+      if (    not cd.have_zero_occupancies()
+          and not cd.have_bad_sigmas()
           and cd.f_obs_f_calc_correlation() >= co.min_f_obs_f_calc_correlation):
         easy_pickle.dump(
           file_name="cod_ma_xs/%s.pickle" % cod_code,
