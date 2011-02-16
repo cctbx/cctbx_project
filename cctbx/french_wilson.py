@@ -160,7 +160,9 @@ def get_mean_intensity(miller_array):
 # default number of bins is 60, but require that each bin has at least 40 reflections
 # if not try again with less bins until condition is satisfied
 # function runs recursively
-def f_w_binning(miller_array, max_bins=60, min_bin_size=40, log=sys.stderr):
+def f_w_binning(miller_array, max_bins=60, min_bin_size=40, log=None):
+  if log == None:
+    log = sys.stdout
   miller_array.setup_binner(n_bins=max_bins)
   for i_bin in miller_array.binner().range_all():
     sel = miller_array.binner().selection(i_bin)
@@ -185,7 +187,9 @@ def get_bin_centers(miller_array):
 def interpolate(pt_1, pt_2, delta):
   return ( ((1.0-delta)*pt_1) + (delta*pt_2) )
 
-def calculate_mean_intensities(miller_array, log=sys.stdout):
+def calculate_mean_intensities(miller_array, log=None):
+  if log == None:
+    log = sys.stdout
   print >> log, "** Calculating bin mean intensity values for each intensity **"
   bin_mean_intensities = miller_array.mean(use_binning=True).data
   bin_centers = get_bin_centers(miller_array=miller_array)
@@ -347,7 +351,9 @@ def french_wilson_scale(miller_array, params=None, log=None):
   show_rejected_summary(rejected=rejected, log=log)
   return f_obs
 
-def show_rejected_summary(rejected, log=sys.stderr):
+def show_rejected_summary(rejected, log=None):
+  if log == None:
+    log = sys.stdout
   print >> log, "** Summary or rejected intensities **"
   print >> log, "-----------------------------------------------------------------"
   print >> log, "Miller Index  :  Intesity  :  Sigma  :  Bin Mean Intensity"
