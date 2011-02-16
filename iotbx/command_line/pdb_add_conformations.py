@@ -1,39 +1,39 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.add_conformations
 
 import libtbx.phil.command_line
+from libtbx import runtime_utils
 from libtbx.utils import Sorry, Usage
 import libtbx.load_env # import dependency
-import cStringIO
 import string
 import os
 import sys
 
 master_phil = libtbx.phil.parse("""
-add_conformation
+add_conformations
   .caption = This utility will duplicate any set of atoms (by default, the \
     entire input model) to create alternate conformations.  If the new \
     occupancy is not specified, it will be split evently between each \
     conformation.  Please be aware that if alternate conformations or \
     reduced-occupancy atoms are already present in the starting model, the \
     program behavior is not well-defined, and it may fail.
-  .style = auto_align caption_img:icons/custom/phenix.pdbtools.png
+  .style = auto_align caption_img:icons/custom/iotbx.pdb.add_conformations64.png
 {
   pdb_file = None
     .type = path
     .short_caption = PDB file
-    .style = bold file_type:pdb
+    .style = bold file_type:pdb noauto
   atom_selection = None
     .type = str
     .input_size = 400
-    .style = bold
+    .style = bold noauto
   output = None
     .type = path
     .short_caption = Output file
-    .style = bold file_type:pdb new_file
+    .style = bold file_type:pdb new_file noauto
   n_confs = 2
     .type = int
     .short_caption = Total number of conformations
-    .style = bold spinner min:2 max:16
+    .style = bold spinner min:2 max:16 noauto
   new_occ = None
     .type = float
     .short_caption = New occupancy
@@ -41,13 +41,15 @@ add_conformation
   new_altloc = B
     .type = str
     .short_caption = Start at altloc
+    .input_size = 64
     .style = noauto
 }
 """)
+master_params = master_phil # XXX backwards compatibility for phenix gui
 
 def run (args=(), params=None, out=sys.stdout) :
   if (len(args) == 0) and (params is None) :
-    raise Usage("iotbx.pdb.add_conformation model.pdb [selection=...]\n"+
+    raise Usage("iotbx.pdb.add_conformations model.pdb [selection=...]\n"+
       "Full parameters:\n" + master_phil.as_str())
   from iotbx import file_reader
   pdb_in = None
@@ -62,9 +64,9 @@ def run (args=(), params=None, out=sys.stdout) :
         if (f.file_type == "pdb") :
           pdb_in = f.file_object
           user_phil.append(libtbx.phil.parse(
-            "add_conformation.pdb_file=\"%s\"" % f.file_name))
+            "add_conformations.pdb_file=\"%s\"" % f.file_name))
         elif (f.file_type == "phil") :
-          user_phil.append(f.file_content)
+          user_phil.append(f.file_object)
         else :
           raise Sorry("Unknown file type '%s' (%s)" % (f.file_type, arg))
       else :
@@ -76,7 +78,7 @@ def run (args=(), params=None, out=sys.stdout) :
           user_phil.append(arg_phil)
     params = master_phil.fetch(sources=user_phil).extract()
   validate_params(params)
-  params = params.add_conformation
+  params = params.add_conformations
   if (pdb_in is None) :
     f = file_reader.any_file(params.pdb_file)
     f.assert_file_type("pdb")
@@ -165,6 +167,7 @@ def run (args=(), params=None, out=sys.stdout) :
   print >> out, "Old model: %d atoms" % n_atoms
   print >> out, "Modified model: %d atoms" % n_atoms_new
   print >> out, "Wrote %s" % params.output
+  return params.output
 
 def increment_altloc (altloc) :
   if altloc.isupper() :
@@ -181,7 +184,7 @@ def increment_altloc (altloc) :
   return letters[i]
 
 def validate_params (params) :
-  params = params.add_conformation
+  params = params.add_conformations
   if (params.pdb_file is None) :
     raise Sorry("Please specify a PDB file!")
   if (params.new_altloc is None) or (len(params.new_altloc) != 1) :
@@ -195,66 +198,9 @@ def validate_params (params) :
     raise Sorry("new_occ must be between 0 and 1.0")
   return True
 
-def exercise () :
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/1ywf.pdb",
-    test=os.path.isfile)
-  if (pdb_file is None) :
-    print "phenix_regression not available, skipping test."
-    return
-  from libtbx.test_utils import contains_lines, Exception_expected
-  out = cStringIO.StringIO()
-  run([pdb_file], out=out)
-  assert contains_lines(out.getvalue(), "Modified model: 4254 atoms")
-  out = cStringIO.StringIO()
-  run([pdb_file, "atom_selection=\"chain A and not resname HOH\""], out=out)
-  assert contains_lines(out.getvalue(), "Modified model: 3990 atoms")
-  run([pdb_file, "new_occ=0.4", "atom_selection=\"resseq 1:275\""], out=out)
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
-  atoms = pdb_in.atoms()
-  occ = atoms.extract_occ()
-  assert (occ.count(0.6) == occ.count(0.4) == 1858)
-  out = cStringIO.StringIO()
-  run([pdb_file, "n_confs=3", "new_occ=0.25"], out=out)
-  pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
-  assert contains_lines(out.getvalue(), """\
-WARNING: zero-occupancy atom:
-HETATM 1941  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
-""")
-  atoms = pdb_in.atoms()
-  assert (atoms.size() == 6381)
-  occ = atoms.extract_occ()
-  assert (occ.count(0.5) == 2126) and (occ.count(0.25) == 4254)
-  try :
-    run([pdb_file, "atom_selection=\"chain G\""], out=out)
-  except Sorry, e :
-    assert (str(e) == "Empty selection.")
-  else :
-    raise Exception_expected
-  try :
-    run([pdb_file, "new_occ=2"], out=out)
-  except Sorry, e :
-    assert (str(e) == "new_occ must be between 0 and 1.0")
-  else :
-    raise Exception_expected
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/1akg.pdb",
-    test=os.path.isfile)
-  try :
-    run([pdb_file], out=out)
-  except Sorry, e :
-    assert (str(e) == """\
-Atom group included in selection already has one or more alternate conformers:
-ATOM     22  OG ASER     4      -1.752   0.849   3.272  0.50 11.67           O\
-""")
-  else :
-    raise Exception_expected
-  run([pdb_file, "atom_selection=\"not name OG\""], out=out)
-  print "OK"
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(args=list(self.args), out=sys.stdout)
 
 if (__name__ == "__main__") :
-  if ("--test" in sys.argv) :
-    exercise()
-  else :
-    run(sys.argv[1:])
+  run(sys.argv[1:])
