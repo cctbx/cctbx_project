@@ -3,6 +3,8 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/omz/tst_bfgs.py",
+  ["$D/omz/tst_dev.py", "P31"],
   "$D/geometry/tests/tst_geometry.py",
   "$D/covariance/tests/tst_covariance.py",
   "$D/symmetry_search/tests/tst_goodness_of_symmetry.py",
