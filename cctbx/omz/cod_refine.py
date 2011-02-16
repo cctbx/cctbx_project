@@ -11,7 +11,7 @@ op = os.path
 def get_master_phil():
   return omz.dev.get_master_phil(
     iteration_limit=100,
-    grads_mean_sq_threshold=1e-10,
+    grads_mean_sq_threshold=1e-6,
     additional_phil_string="""\
       max_atoms = 100
         .type = int
