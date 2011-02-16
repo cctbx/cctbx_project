@@ -150,7 +150,7 @@ class ls_refinement(object):
   def callback_after_step(O, minimizer):
     O.update_fgc(is_iterate=True)
     print "%4d: %s" % (O.i_step+1, O.format_rms_info())
-    if (O.grads_mean_sq < 1e-6):
+    if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
       O.termination_remark = ""
       return True
     if (O.i_step+1 == O.params.iteration_limit):
@@ -184,7 +184,7 @@ class ls_refinement(object):
       assert stp is not None
       O.update_fgc(is_iterate=True)
       print "%4d: %s" % (O.i_step+1, O.format_rms_info())
-      if (O.grads_mean_sq < 1e-6):
+      if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
         O.termination_remark = ""
         break
     else:
@@ -197,7 +197,7 @@ class ls_refinement(object):
       if (O.aq_sel_size is not None):
         s += " aq(%d, %d)" % (O.aq_sel_size, O.aq_n_used)
       print s
-      if (O.grads_mean_sq < 1e-6):
+      if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
         O.termination_remark = ""
         break
     else:
@@ -210,8 +210,9 @@ class ls_refinement(object):
     O.gact_indices = flex.size_t()
     O.dynamic_shift_limits = []
     site_limits = [0.15/p for p in xray_structure.unit_cell().parameters()[:3]]
-    sstab = xray_structure.site_symmetry_table()
     d_min = O.f_obs.d_min()
+    i_all = 0
+    sstab = xray_structure.site_symmetry_table()
     for i_sc,sc in enumerate(xray_structure.scatterers()):
       assert sc.flags.use_u_iso()
       assert not sc.flags.use_u_aniso()
@@ -226,13 +227,18 @@ class ls_refinement(object):
         l = site_symmetry.site_constraints().independent_params(
           all_params=site_limits)
       O.x.extend(flex.double(p))
-      O.gact_indices.extend(flex.size_t([i_sc*7+i for i in [0,1,2]]))
       O.dynamic_shift_limits.extend(
         [dynamic_shift_limit_site(width=width) for width in l])
+      for i in xrange(len(p)):
+        O.gact_indices.append(i_all)
+        i_all += 1
       #
       O.x.append(sc.u_iso)
-      O.gact_indices.append(i_sc*7+3)
       O.dynamic_shift_limits.append(dynamic_shift_limit_u_iso(d_min=d_min))
+      O.gact_indices.append(i_all)
+      i_all += 1
+      #
+      i_all += 3 # occ, fp, fdp
 
   def __unpack_variables(O):
     ix = 0
@@ -608,6 +614,7 @@ def run_refinement(structure_ideal, structure_shake, params, f_obs=None):
 
 def get_master_phil(
       iteration_limit=50,
+      grads_mean_sq_threshold=1e-6,
       additional_phil_string=""):
   return libtbx.phil.parse("""
     general_positions_only = True
@@ -620,6 +627,8 @@ def get_master_phil(
       .type = bool
     iteration_limit = %(iteration_limit)s
       .type = int
+    grads_mean_sq_threshold = %(grads_mean_sq_threshold)s
+      .type = float
     use_classic_lbfgs = False
       .type = bool
     use_lbfgs_emulation = False

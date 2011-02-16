@@ -1,3 +1,5 @@
+from cctbx import omz
+import cctbx.omz.dev
 import libtbx.phil.command_line
 from libtbx import easy_pickle
 from libtbx.utils import user_plus_sys_time
@@ -7,15 +9,18 @@ import sys, os
 op = os.path
 
 def get_master_phil():
-  return libtbx.phil.parse("""
-    max_atoms = 100
-      .type = int
-    reset_u_iso = 0.05
-      .type = float
-    shake_sites_rmsd = 0.5
-      .type = float
-    smtbx_lsq_iterations = 12
-      .type = int
+  return omz.dev.get_master_phil(
+    iteration_limit=100,
+    grads_mean_sq_threshold=1e-10,
+    additional_phil_string="""\
+      max_atoms = 100
+        .type = int
+      reset_u_iso = 0.05
+        .type = float
+      optimizers = *dev smtbx_lsq
+        .type = choice(multi=True)
+      smtbx_lsq_iterations = 12
+        .type = int
 """)
 
 def show_cc_r1(label, f_obs, xray_structure):
@@ -83,14 +88,14 @@ def process(params, pickle_file_name):
   #
   cc_r1("cod")
   #
-  if (1):
-    sel = structure_work.hd_selection()
-    print "Removing hydrogen atoms:", sel.count(True)
-    structure_work = structure_work.select(selection=~sel)
-    cc_r1("no_h")
-  if (1):
-    structure_work.convert_to_isotropic()
-    cc_r1("iso")
+  sel = structure_work.hd_selection()
+  print "Removing hydrogen atoms:", sel.count(True)
+  structure_work = structure_work.select(selection=~sel)
+  cc_r1("no_h")
+  structure_work.convert_to_isotropic()
+  cc_r1("iso")
+  structure_iso = structure_work.deep_copy_scatterers()
+  #
   if (params.reset_u_iso is not None):
     structure_work.set_u_iso(value=params.reset_u_iso)
     cc_r1("setu")
@@ -110,11 +115,22 @@ def process(params, pickle_file_name):
         n, cod_code)
       return
   #
-  smtbx_lsq_refine(
-    cod_code=cod_code,
-    f_obs=f_obs,
-    xray_structure=structure_work,
-    n_cycles=params.smtbx_lsq_iterations)
+  if ("smtbx_lsq" in params.optimizers):
+    structure_smtbx_lsq = structure_work.deep_copy_scatterers()
+    smtbx_lsq_refine(
+      cod_code=cod_code,
+      f_obs=f_obs,
+      xray_structure=structure_smtbx_lsq,
+      n_cycles=params.smtbx_lsq_iterations)
+  #
+  if ("dev" in params.optimizers):
+    structure_dev = structure_work.deep_copy_scatterers()
+    omz.dev.ls_refinement(
+      f_obs=f_obs,
+      xray_structure=structure_dev,
+      params=params,
+      reference_structure=structure_iso)
+    show_cc_r1("dev", f_obs, structure_dev)
 
 def run(args):
   from iotbx.option_parser import option_parser as iotbx_option_parser
