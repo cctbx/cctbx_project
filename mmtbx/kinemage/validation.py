@@ -247,7 +247,6 @@ def cbeta_dev(chain, pdbID, deviations, ideal):
     outlier_list.append(key)
     angle_dict[key] = float(dihedralNABB)
     deviation_dict[key] = float(dev)
-  print >> sys.stderr, outlier_list
   for residue_group in chain.residue_groups():
     for atom_group in residue_group.atom_groups():
       altloc = atom_group.altloc
@@ -257,7 +256,6 @@ def cbeta_dev(chain, pdbID, deviations, ideal):
                     (chain.id,
                      residue_group.resid(),
                      altloc+atom_group.resname.strip())
-      print >> sys.stderr, check_key
       if check_key not in outlier_list:
         continue
       for atom in atom_group.atoms():
