@@ -23,7 +23,7 @@ windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
-def xfrange(start, stop=None, step=None):
+def xfrange(start, stop=None, step=None, tolerance=None):
   """A float range generator."""
 
   if stop is None:
@@ -36,11 +36,20 @@ def xfrange(start, stop=None, step=None):
   else:
     assert step != 0.0
   count = int(math.ceil((stop - start) / step))
+  if (    tolerance is not None
+      and abs(start + count * step - stop) < abs(step * tolerance)):
+    count += 1
   for i in xrange(count):
     yield start + i * step
 
 def frange(start, stop=None, step=None):
   return list(xfrange(start, stop=stop, step=step))
+
+def xsamples(start, stop=None, step=None, tolerance=1e-6):
+  return xfrange(start, stop, step, tolerance)
+
+def samples(start, stop=None, step=None, tolerance=1e-6):
+  return list(xsamples(start, stop, step, tolerance))
 
 def escape_sh_double_quoted(s):
   "the result is supposed to be double-quoted when passed to sh"
@@ -1011,13 +1020,21 @@ def exercise():
   b.raise_if_errors_or_output()
   #
   assert approx_equal([i/10. for i in range(-2,2)], frange(-0.2,0.2,0.1))
+  assert approx_equal([i/10. for i in range(-2,2+1)], samples(-0.2,0.2,0.1))
   assert approx_equal([i/10. for i in range(2,-2,-1)], frange(0.2,-0.2,-0.1))
+  assert approx_equal([i/10. for i in range(2,-2-1,-1)], samples(0.2,-0.2,-0.1))
   assert approx_equal([i/4. for i in range(4,8)], frange(1, 2, 0.25))
-  assert approx_equal([0.2+i/3. for i in range(0,4)], frange(0.2, 1.3, 1./3))
+  assert approx_equal([i/4. for i in range(4,8+1)], samples(1, 2, 0.25))
+  assert approx_equal([0.2+i/3. for i in range(4)], frange(0.2, 1.3, 1./3))
+  assert approx_equal([0.2+i/3. for i in range(4)], samples(0.2, 1.3, 1./3))
   assert approx_equal(range(5) , frange(5))
+  assert approx_equal(range(5+1) , samples(5))
   assert approx_equal(range(-5), frange(-5))
+  assert approx_equal(range(-5-1), samples(-5))
   assert approx_equal(range(1,3), frange(1, 3))
+  assert approx_equal(range(1,3+1), samples(1, 3))
   assert approx_equal([i/10. for i in range(20,9,-2)], frange(2.0,0.9,-0.2))
+  assert approx_equal([i/10. for i in range(20,9,-2)], samples(2.0,0.9,-0.2))
   #
   assert format_float_with_standard_uncertainty(21.234567, 0.0013) \
       == "21.2346(13)"
