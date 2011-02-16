@@ -110,6 +110,7 @@ cctbx/omz/cif_refine.py svneol=native#text/x-python
 cctbx/omz/cod_refine.py svneol=native#text/x-python
 cctbx/omz/cod_select_and_pickle.py svneol=native#text/x-python
 cctbx/omz/dev.py svneol=native#text/x-python
+cctbx/omz/eval_iso_vs_refined.py svneol=native#text/x-python
 cctbx/omz/tst_bfgs.py svneol=native#text/x-python
 cctbx/omz/tst_dev.py svneol=native#text/x-python
 cctbx/r_free_utils.py svneol=native#text/x-python
