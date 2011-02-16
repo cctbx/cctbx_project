@@ -48,6 +48,8 @@ def run():
   "$D/tst_csv_utils.py",
   "$D/tst_file_reader.py",
   "$D/tst_bioinformatics.py",
+  "$D/regression/tst_add_conformations.py",
+  "$D/gui_tools/tst.py",
   )
 
   build_dir = libtbx.env.under_build("iotbx")
