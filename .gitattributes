@@ -104,6 +104,14 @@ cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/f_calc_map.h -text
 cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/miller/union_of_indices.h svneol=native#text/plain
+cctbx/omz/__init__.py svneol=native#text/x-python
+cctbx/omz/bfgs.py svneol=native#text/x-python
+cctbx/omz/cif_refine.py svneol=native#text/x-python
+cctbx/omz/cod_refine.py svneol=native#text/x-python
+cctbx/omz/cod_select_and_pickle.py svneol=native#text/x-python
+cctbx/omz/dev.py svneol=native#text/x-python
+cctbx/omz/tst_bfgs.py svneol=native#text/x-python
+cctbx/omz/tst_dev.py svneol=native#text/x-python
 cctbx/r_free_utils.py svneol=native#text/x-python
 cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
