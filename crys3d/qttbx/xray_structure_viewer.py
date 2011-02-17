@@ -89,6 +89,7 @@ class xray_structure_viewer(qttbx.widget):
                                       xs.space_group().type().hall_symbol()))
     sites_frac = xs.sites_frac()
     self.set_extent(sites_frac.min(), sites_frac.max())
+    self.is_unit_cell_shown = False
 
     sites_cart = self.sites_cart = xs.sites_cart()
     thermal_tensors = xs.extract_u_cart_plus_u_iso()
