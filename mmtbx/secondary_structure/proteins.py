@@ -1,6 +1,7 @@
 
 from __future__ import division
 import iotbx.pdb.secondary_structure
+import libtbx.phil
 import libtbx.object_oriented_patterns as oop
 from libtbx.utils import Sorry
 from libtbx import group_args
@@ -488,29 +489,6 @@ hydrogen_bonds_from_selections: incomplete non-PRO residues in %s.
       acceptor_sele, acceptor_isel.size()))
   return donor_isel, acceptor_isel
 
-# FIXME
-def _find_strand_bonding_start (atoms,
-    prev_strand_donors,
-    prev_strand_acceptors,
-    curr_strand_donors,
-    curr_strand_acceptors,
-    sense,
-    max_distance_cutoff=4.5) :
-  assert sense != "unknown"
-  assert prev_strand_donors.size() == prev_strand_acceptors.size()
-  assert curr_strand_donors.size() == curr_strand_acceptors.size()
-  sites_cart = atoms.extract_xyz()
-  min_dist = max_distance_cutoff
-  best_pair = (None, None)
-  for donor_i_seq in prev_strand_donors :
-    for acceptor_j_seq in curr_strand_acceptors :
-      (x1, y1, z1) = sites_cart[donor_i_seq]
-      (x2, y2, z2) = sites_cart[acceptor_j_seq]
-      dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-      if (dist < min_dist) :
-        best_pair = (donor_i_seq, acceptor_i_seq)
-  return best_pair
-
 def hydrogen_bonds_from_strand_pair (atoms,
     prev_strand_donors,
     prev_strand_acceptors,
@@ -681,3 +659,140 @@ def _strand_group_as_pdb_strand (isel, selection, atoms, log, sense) :
     end_icode=end_atom.icode,
     sense=int_sense)
   return pdb_strand
+
+########################################################################
+# ANNOTATION
+#
+class find_helices_simple (object) :
+  """
+  Identify helical regions, defined as any three or more contiguous residues
+  with phi and psi within specified limits:
+    -120 < phi < -20
+    -80 < psi < -10
+  This is much more tolerant of distorted models than KSDSSP, but will still
+  miss helices in poor structures.
+  """
+  def __init__ (self, pdb_hierarchy) :
+    self.pdb_hierarchy = pdb_hierarchy
+    self._helices = []
+    self._current_helix = []
+    self.run()
+
+  def process_break (self) :
+    if (len(self._current_helix) > 3) :
+      self._helices.append(self._current_helix)
+    self._current_helix = []
+
+  def push_back (self, chain_id, resseq) :
+    if (len(self._current_helix) > 0) :
+      last_chain, last_resseq = self._current_helix[-1]
+      if (last_chain == chain_id) :
+        self._current_helix.append((chain_id,resseq))
+    else :
+      self._current_helix = [(chain_id, resseq)]
+
+  def run (self) :
+    import mmtbx.rotamer
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    atoms = self.pdb_hierarchy.atoms()
+    sites_cart = atoms.extract_xyz()
+    current_helix = []
+    for model in self.pdb_hierarchy.models() :
+      for chain in model.chains() :
+        main_conf = chain.conformers()[0]
+        residues = main_conf.residues()
+        for i_res in range(len(residues) - 1) :
+          residue1 = residues[i_res]
+          if (get_class(residue1.resname) == "common_amino_acid") :
+            residue0 = None
+            if (i_res > 0) :
+              residue0 = residues[i_res - 1]
+            residue2 = residues[i_res+1]
+            resseq1 = residue1.resseq_as_int()
+            resseq2 = residue2.resseq_as_int()
+            if (residue0 is not None) :
+              if ((resseq2 == (resseq1 + 1)) or
+                  ((resseq2 == resseq1) and
+                   (residue1.icode != residue2.icode))) :
+                resseq0 = residue0.resseq_as_int()
+                if ((resseq0 == (resseq1 - 1)) or ((resseq0 == resseq1) and
+                    (residue0.icode != residue1.icode))) :
+                  phi_psi_i_seqs = mmtbx.rotamer.get_phi_psi_indices(
+                    prev_res=residue0,
+                    residue=residue1,
+                    next_res=residue2)
+                  (phi, psi) = mmtbx.rotamer.phi_psi_from_sites(
+                    i_seqs=phi_psi_i_seqs,
+                    sites_cart=sites_cart)
+                  if is_approximately_helical(phi, psi) :
+                    self.push_back(chain.id, resseq1)
+                    continue
+                  else :
+                    pass
+            self.process_break()
+
+  def build_selections (self) :
+    atom_selections = []
+    for helix in self._helices :
+      chain_id = helix[0][0]
+      selection = """chain '%s' and resseq %d:%d""" % (helix[0][0],
+        helix[0][1], helix[-1][1])
+      atom_selections.append(selection)
+    return atom_selections
+
+  def as_restraint_group_phil (self) :
+    phil_strs = []
+    for selection in self.build_selections() :
+      helix_str = """helix {\n  selection = "%s"\n}""" % selection
+      phil_strs.append(helix_str)
+    if (len(phil_strs) > 0) :
+      master_phil = libtbx.phil.parse(helix_group_params_str)
+      helix_phil = libtbx.phil.parse("\n".join(phil_strs))
+      return master_phil.fetch(source=helix_phil)
+    return None
+
+  def as_restraint_groups (self) :
+    helix_phil = self.as_restraint_group_phil()
+    if (helix_phil is not None) :
+      return helix_phil.extract()
+    return None
+
+  def as_pdb_records (self) :
+    pass
+
+  def show (self, out=sys.stdout) :
+    if (len(self._helices) == 0) :
+      print >> out, "No recognizable helices."
+    else :
+      print >> out, "%d helix-like regions found:" % len(self._helices)
+    for selection in self.build_selections() :
+      print >> out, "  %s" % selection
+
+def is_approximately_helical (phi, psi) :
+  if (-120 < phi < -20) and (-80 < psi < -10) :
+    return True
+  return False
+
+# FIXME
+def _find_strand_bonding_start (atoms,
+    prev_strand_donors,
+    prev_strand_acceptors,
+    curr_strand_donors,
+    curr_strand_acceptors,
+    sense,
+    max_distance_cutoff=4.5) :
+  assert sense != "unknown"
+  assert prev_strand_donors.size() == prev_strand_acceptors.size()
+  assert curr_strand_donors.size() == curr_strand_acceptors.size()
+  sites_cart = atoms.extract_xyz()
+  min_dist = max_distance_cutoff
+  best_pair = (None, None)
+  for donor_i_seq in prev_strand_donors :
+    for acceptor_j_seq in curr_strand_acceptors :
+      (x1, y1, z1) = sites_cart[donor_i_seq]
+      (x2, y2, z2) = sites_cart[acceptor_j_seq]
+      dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+      if (dist < min_dist) :
+        best_pair = (donor_i_seq, acceptor_i_seq)
+  return best_pair

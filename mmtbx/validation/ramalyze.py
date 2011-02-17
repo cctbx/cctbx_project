@@ -79,13 +79,13 @@ molprobity_fascinating_clusters_things_gui(
 #}}}
 
 import sys, os
+import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
-from cctbx import geometry_restraints
-import iotbx.phil
+import libtbx.phil
 from libtbx.utils import Usage
 
 def get_master_phil():
-  return iotbx.phil.parse(
+  return libtbx.phil.parse(
     input_string="""
     ramalyze {
       pdb = None
@@ -349,17 +349,7 @@ class ramalyze(object):
         if (atom.name == " CA "): resCA = atom
         if (atom.name == " C  "): resC = atom
     if (prevC is not None and resN is not None and resCA is not None and resC is not None):
-      b = geometry_restraints.bond(
-        sites=[prevC.xyz,resN.xyz],
-        distance_ideal=1,
-        weight=1)
-      # check to see if residues are actually bonded.
-      if (b.distance_model > 4): return None
-      d = geometry_restraints.dihedral(
-        sites=[prevC.xyz,resN.xyz,resCA.xyz,resC.xyz],
-        angle_ideal=-40,
-        weight=1)
-      return d.angle_model
+      return mmtbx.rotamer.phi_from_atoms(prevC, resN, resCA, resC)
   #}}}
 
   #{{{ get_psi
@@ -374,16 +364,7 @@ class ramalyze(object):
         if (atom.name == " CA "): resCA = atom
         if (atom.name == " C  "): resC = atom
     if (nextN is not None and resN is not None and resCA is not None and resC is not None):
-      b = geometry_restraints.bond(
-        sites=[resC.xyz,nextN.xyz],
-        distance_ideal=1,
-        weight=1)
-      if (b.distance_model > 4): return None
-      d = geometry_restraints.dihedral(
-        sites=[resN.xyz,resCA.xyz,resC.xyz,nextN.xyz],
-        angle_ideal=-40,
-        weight=1)
-      return d.angle_model
+      return mmtbx.rotamer.psi_from_atoms(resN, resCA, resC, nextN)
   #}}}
 
   #{{{ construct_complete_residues

@@ -24,11 +24,13 @@ def run (args, out=sys.stdout) :
     out=out)
   print >> out, ""
   print_statistics.make_header("Analyzing peptide bonds", out=out)
+  fmodel = cmdline.fmodel
   flip_peptides.run(
-    fmodel=cmdline.fmodel,
+    fmodel=fmodel,
     geometry_restraints_manager=cmdline.geometry,
     pdb_hierarchy=cmdline.pdb_hierarchy,
-    solvent_selection=None)
+    solvent_selection=None,
+    params=cmdline.params.flip_peptides)
   if (len(cmdline.params.input.pdb.file_name) == 1) :
     pdb_file = cmdline.params.input.pdb.file_name[0]
     pdb_out = os.path.splitext(os.path.basename(pdb_file))[0] + "_new.pdb"
