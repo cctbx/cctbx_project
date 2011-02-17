@@ -44,13 +44,11 @@ class widget(QGLWidget):
     self.object_centre_wrt_frac = (self.from_here + self.to_there)/2
     self.object_centre_wrt_cart = mat.col(
       self.unit_cell.orthogonalize(self.object_centre_wrt_frac))
-    x0, y0, z0 = self.from_here
-    x1, y1, z1 = self.to_there
-    dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
-    diameter = max([
-      self.unit_cell.length(u)
-      for u in [(dx, dy, dz), (dx, dy, -dz), (dx, -dy, dz), (-dx, dy, dz) ] ])
-    self.object_radius = diameter/2
+    dx, dy, dz = self.unit_cell.orthogonalize(self.to_there - self.from_here)
+    diameter_sq = max(
+      u**2 + v**2 + w**2
+      for u,v,w in ((dx, dy, dz), (dx, dy, -dz), (dx, -dy, dz), (-dx, dy, dz)))
+    self.object_radius = math.sqrt(diameter_sq)/2
 
   def show_unit_cell(self, flag):
     self.is_unit_cell_shown = flag
