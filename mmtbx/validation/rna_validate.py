@@ -334,7 +334,7 @@ class rna_validate(object):
               residue_2_p_atom=residue_2_p_atom)
             self.pucker_states.append(ana)
             if ana.is_delta_outlier or ana.is_epsilon_outlier:
-              key = residue.find_atom_by(name=" P  ").pdb_label_columns()[4:]
+              key = residue.id_str()[8:-1]
               outliers.append([key,
                                [ana.delta,
                                ana.is_delta_outlier,
