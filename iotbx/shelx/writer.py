@@ -17,6 +17,7 @@ def generator(xray_structure,
               wavelength=None,
               temperature=None,
               full_matrix_least_squares_cycles=None,
+              conjugate_gradient_least_squares_cycles=None,
               overall_scale_factor=None,
               weighting_scheme_params=None,
               sort_scatterers = True,
@@ -24,6 +25,8 @@ def generator(xray_structure,
   space_group = xray_structure.space_group()
   assert not space_group.is_centric() or space_group.is_origin_centric(),\
          centric_implies_centrosymmetric_error_msg
+  assert [full_matrix_least_squares_cycles,
+          conjugate_gradient_least_squares_cycles].count(None) in (0, 1)
   if title is None:
     title = '????'
   if wavelength is None:
@@ -72,6 +75,9 @@ def generator(xray_structure,
 
   if full_matrix_least_squares_cycles:
     yield 'L.S. %i\n' % full_matrix_least_squares_cycles
+
+  if conjugate_gradient_least_squares_cycles:
+    yield 'CGLS %i\n' % conjugate_gradient_least_squares_cycles
 
   yield '\n'
 
