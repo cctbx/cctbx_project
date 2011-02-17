@@ -406,7 +406,7 @@ def compute_refined_matches(ref_model1, ref_model2,
             match.ref_eucl_rt)
           refined_matches.append(match)
           if shall_break(match):
-              return refined_matches
+            return refined_matches
   #print accumulated_match_refine_times
   return refined_matches
 
