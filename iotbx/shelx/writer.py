@@ -106,7 +106,7 @@ def generator(xray_structure,
     assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso(),\
            both_iso_and_aniso_in_use_error_msg
     params = (sc.label, sf_idx[sc.scattering_type]) + sc.site
-    occ = sc.occupancy
+    occ = sc.weight()
     if not sc.flags.grad_occupancy(): occ += 10
     params += (occ, )
     if sc.flags.use_u_iso():
