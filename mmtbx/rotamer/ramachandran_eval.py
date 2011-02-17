@@ -1,3 +1,4 @@
+import mmtbx.rotamer
 from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from mmtbx.rotamer.rotamer_eval import open_rotarama_dlite
@@ -57,6 +58,13 @@ class RamachandranEval:
         ndt = self.aaTables.get(aaName.lower())
         if (ndt is None): return None
         return ndt.valueAt(phiPsi)
+
+    def evaluate_sites (self, aaName, phi_psi_i_seqs, sites_cart) :
+      assert (aaName in ["general", "glycine", "proline", "prepro"])
+      (phi, psi) = mmtbx.rotamer.phi_psi_from_sites(
+        i_seqs=phi_psi_i_seqs,
+        sites_cart=sites_cart)
+      return self.evaluate(aaName, (phi,psi))
 
 def exercise(args):
   if (find_rotarama_data_dir(optional=True) is None):

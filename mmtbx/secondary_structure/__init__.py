@@ -82,6 +82,10 @@ input
   find_automatically = None
     .type = bool
     .style = bold tribool
+  helices_from_phi_psi = False
+    .type = bool
+    .short_caption = Use phi/psi angles to identify helices
+    .expert_level = 2
   preserve_protein_segid = False
     .type = bool
     .style = bold
@@ -730,6 +734,13 @@ class manager (object) :
         annotations.append((sec_str_from_pdb_file, segid))
     return annotations
 
+  def find_approximate_helices (self, log=sys.stderr) :
+    find_helices = proteins.find_helices_simple(self.pdb_hierarchy)
+    find_helices.show(out=log)
+    restraint_groups = find_helices.as_restraint_groups()
+    if (restraint_groups is not None) :
+      self.params.helix = restraint_groups.helix
+
   def find_base_pairs (self, log=sys.stderr) :
     base_pairs = base_pairing.get_phil_base_pairs(
       pdb_hierarchy=self.pdb_hierarchy,
@@ -819,11 +830,14 @@ class manager (object) :
     print >> out, "  %d helices and %d sheets defined" % (n_helices,n_sheets)
     print >> out, "  %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
 
-  def alpha_selections (self, limit=None, main_conf_only=False) :
+  def helix_selections (self, limit=None, main_conf_only=False,
+      alpha_only=False) :
     sele = self.selection_cache.selection
     all_selections = []
     for helix in self.params.helix :
-      if helix.selection is not None :
+      if (helix.selection is not None) :
+        if (alpha_only) and (helix.helix_type != "alpha") :
+          continue
         clauses = [ "(%s)" % helix.selection ]
         if (limit is not None) :
           assert isinstance(limit, str)
@@ -837,11 +851,18 @@ class manager (object) :
   def get_helix_types (self) :
     return [ helix.helix_type for helix in self.params.helix ]
 
-  def alpha_selection (self, **kwds) :
+  def helix_selection (self, **kwds) :
     whole_selection = flex.bool(self.xray_structure.sites_cart().size())
-    for helix in self.alpha_selections(**kwds) :
+    for helix in self.helix_selections(**kwds) :
       whole_selection |= helix
     return whole_selection
+
+  # FIXME backwards compatibility
+  def alpha_selection (self, **kwds) :
+    return self.helix_selection(**kwds)
+
+  def alpha_selections (self, **kwds) :
+    return self.helix_selections(**kwds)
 
   def beta_selections (self, limit=None, main_conf_only=False) :
     sele = self.selection_cache.selection

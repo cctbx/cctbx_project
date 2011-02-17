@@ -35,24 +35,17 @@ torsion_search
 }
 """
 
-master_params_str = """\
-fit_side_chains
-  .short_caption = Sidechain rotamer fitting
-  .style = menu_item auto_align
-{
+local_fix_params_str = """\
   number_of_macro_cycles = 1
     .type = int
+    .short_caption = Run overall real-space refinement (RSR)
   real_space_refine_overall = False
     .type = bool
   validate_change = True
     .type = bool
   exclude_hydrogens = True
     .type = bool
-  use_dihedral_restraints = False
-    .type = bool
-  ignore_water_when_move_sidechains = True
-    .type = bool
-    .short_caption = Ignore water when moving sidechains
+    .short_caption = Exclude hydrogens from RSR
   filter_residual_map_value = 2.0
     .type = float
   filter_2fofc_map = None
@@ -63,6 +56,19 @@ fit_side_chains
     .type = str
   model_map = Fc
     .type = str
+"""
+
+master_params_str = """\
+fit_side_chains
+  .short_caption = Sidechain rotamer fitting
+  .style = menu_item auto_align
+{
+  %s
+  use_dihedral_restraints = False
+    .type = bool
+  ignore_water_when_move_sidechains = True
+    .type = bool
+    .short_caption = Ignore water when moving sidechains
   residue_iteration
     .style = box auto_align
   {
@@ -85,7 +91,7 @@ fit_side_chains
     %s
   }
 }
-"""%torsion_search_params_str
+"""% (local_fix_params_str, torsion_search_params_str)
 
 def master_params():
   return iotbx.phil.parse(input_string = master_params_str)
@@ -235,7 +241,9 @@ class residue_rsr_monitor(object):
                sites_cart = None,
                twomfodfc = None,
                mfodfc = None,
-               cc = None):
+               cc = None,
+               residue_type = None,
+               validate_iselection = None):
     adopt_init_args(self, locals())
 
 class select_map(object):
@@ -700,7 +708,8 @@ def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False):
     map_data = fft_map.real_map_unpadded()
   return map_data,fft_map
 
-def validate_changes(fmodel, residue_rsr_monitor, log):
+def validate_changes(fmodel, residue_rsr_monitor, validate_method, log):
+  assert (validate_method is None) or (hasattr(validate_method, "__call__"))
   xray_structure = fmodel.xray_structure
   target_map_data,fft_map_1 = get_map_data(
     fmodel = fmodel, map_type = "2mFo-DFc", kick=False)
@@ -743,7 +752,16 @@ def validate_changes(fmodel, residue_rsr_monitor, log):
       dmif5 = abs(rm.mfodfc)<0.5 and t2<-5.
       dmif6 = rm.cc > cc and abs(rm.mfodfc)<0.5 and t2 < -5.
       dmif = dmif1 or dmif2
-      if((cc < rm.cc or t1 < rm.twomfodfc) and dmif or dmif4 or dmif5 or dmif6 or dmif41): flag = " <<<"
+      if((cc < rm.cc or t1 < rm.twomfodfc) and
+         (dmif or dmif4 or dmif5 or dmif6 or dmif41)):
+        flag = " <<<"
+      elif (validate_method is not None) :
+        is_outlier = validate_method(
+          res_type=rm.residue_type,
+          i_seqs=rm.validate_iselection,
+          sites_cart=sites_cart)
+        if (is_outlier) :
+          flag = " <<<"
       print >> log, fmt3 % (
         rm.residue_id_str, rm.cc, rm.twomfodfc, rm.mfodfc, cc,t1,t2), flag
       if(len(flag)>0):
@@ -753,6 +771,29 @@ def validate_changes(fmodel, residue_rsr_monitor, log):
   fmodel.update_xray_structure(xray_structure = xray_structure,
     update_f_calc=True, update_f_mask=True)
   print >> log, "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
+
+def rsr_overall (model,
+                 fmodel,
+                 params,
+                 optimize_hd,
+                 macro_cycle,
+                 log) :
+  assert model.xray_structure is fmodel.xray_structure
+  rsr_params = mmtbx.refinement.real_space.master_params().extract()
+  rsr_params.real_space_refinement.mode="diff_map"
+  if(params.exclude_hydrogens and optimize_hd):
+    hd_selection = fmodel.xray_structure.hd_selection()
+    occupancies_cache= fmodel.xray_structure.scatterers().extract_occupancies()
+    fmodel.xray_structure.set_occupancies(value=0, selection=hd_selection)
+  mmtbx.refinement.real_space.run(
+    fmodel = fmodel, # XXX neutron ?
+    model  = model,
+    params = rsr_params.real_space_refinement,
+    log    = log)
+  if(params.exclude_hydrogens and optimize_hd):
+    fmodel.xray_structure.set_occupancies(value = occupancies_cache)
+  assert model.xray_structure is fmodel.xray_structure
+  fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
 
 def run(fmodel,
         geometry_restraints_manager,
@@ -820,24 +861,16 @@ def run(fmodel,
     print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     del target_map_data, model_map_data, residual_map_data, fft_map_1, fft_map_2, fft_map_3
     if(params.real_space_refine_overall):
-      assert model.xray_structure is fmodel.xray_structure
-      rsr_params = mmtbx.refinement.real_space.master_params().extract()
-      rsr_params.real_space_refinement.mode="diff_map"
-      if(params.exclude_hydrogens and optimize_hd):
-        hd_selection = fmodel.xray_structure.hd_selection()
-        occupancies_cache= fmodel.xray_structure.scatterers().extract_occupancies()
-        fmodel.xray_structure.set_occupancies(value=0, selection=hd_selection)
-      mmtbx.refinement.real_space.run(
-        fmodel = fmodel, # XXX neutron ?
-        model  = model,
-        params = rsr_params.real_space_refinement,
-        log    = log)
-      if(params.exclude_hydrogens and optimize_hd):
-        fmodel.xray_structure.set_occupancies(value = occupancies_cache)
-      assert model.xray_structure is fmodel.xray_structure
-      fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
+      rsr_overall(
+        model=model,
+        fmodel=fmodel,
+        params=params,
+        optimize_hd=optimize_hd,
+        macro_cycle=macro_cycle,
+        log=log)
       print >> log, "2:",fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     if(params.validate_change):
       validate_changes(fmodel = fmodel,
                        residue_rsr_monitor = residue_rsr_monitor,
+                       validate_method=None,
                        log = log)

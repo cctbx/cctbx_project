@@ -3,6 +3,82 @@ import libtbx.load_env
 from libtbx import group_args
 import os
 
+def get_phi_psi_atoms (prev_res, residue, next_res) :
+  c1, n2, ca2, c2, n3 = None, None, None, None, None
+  for atom in prev_res.atoms() :
+    if (atom.name == " C  ") :
+      c1 = atom
+      break
+  for atom in residue.atoms() :
+    if (atom.name == " N  ") :
+      n2 = atom
+    elif (atom.name == " CA ") :
+      ca2 = atom
+    elif (atom.name == " C  ") :
+      c2 = atom
+  for atom in next_res.atoms() :
+    if (atom.name == " N  ") :
+      n3 = atom
+  return (c1, n2, ca2, c2, n3)
+
+def get_phi_psi_indices (prev_res, residue, next_res) :
+  (c1, n2, ca2, c2, n3) = get_phi_psi_atoms(
+    prev_res=prev_res,
+    residue=residue,
+    next_res=next_res)
+  if (not None in [c1, n2, ca2, c2, n3]) :
+    return [c1.i_seq, n2.i_seq, ca2.i_seq, c2.i_seq, n3.i_seq]
+  return [None] * 5
+
+def phi_from_atoms (prevC, resN, resCA, resC) :
+  assert (not None in [prevC, resN, resCA, resC])
+  return phi_from_sites(prevC.xyz, resN.xyz, resCA.xyz, resC.xyz)
+
+def phi_from_sites (prevC, resN, resCA, resC) :
+  from cctbx import geometry_restraints
+  b = geometry_restraints.bond(
+    sites=[prevC,resN],
+    distance_ideal=1,
+    weight=1)
+  # check to see if residues are actually bonded.
+  if (b.distance_model > 4): return None
+  d = geometry_restraints.dihedral(
+    sites=[prevC,resN,resCA,resC],
+    angle_ideal=-40,
+    weight=1)
+  return d.angle_model
+
+def psi_from_atoms (resN, resCA, resC, nextN) :
+  assert (not None in [resN, resCA, resC, nextN])
+  return psi_from_sites(resN.xyz, resCA.xyz, resC.xyz, nextN.xyz)
+
+def psi_from_sites (resN, resCA, resC, nextN) :
+  from cctbx import geometry_restraints
+  b = geometry_restraints.bond(
+    sites=[resC,nextN],
+    distance_ideal=1,
+    weight=1)
+  if (b.distance_model > 4): return None
+  d = geometry_restraints.dihedral(
+    sites=[resN,resCA,resC,nextN],
+    angle_ideal=-40,
+    weight=1)
+  return d.angle_model
+
+def phi_psi_from_sites (i_seqs, sites_cart) :
+  assert (not None in i_seqs) and (len(i_seqs) == 5)
+  phi = phi_from_sites(
+    prevC=sites_cart[i_seqs[0]],
+    resN=sites_cart[i_seqs[1]],
+    resCA=sites_cart[i_seqs[2]],
+    resC=sites_cart[i_seqs[3]])
+  psi = psi_from_sites(
+    resN=sites_cart[i_seqs[1]],
+    resCA=sites_cart[i_seqs[2]],
+    resC=sites_cart[i_seqs[3]],
+    nextN=sites_cart[i_seqs[4]])
+  return (phi, psi)
+
 def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
   from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
   from cctbx import geometry_restraints
@@ -32,21 +108,8 @@ def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
               continue
             next_res = residues[i+1]
           if (next_res is not None) and (prev_res is not None) :
-            c1, n2, ca2, c2, n3 = None, None, None, None, None
-            for atom in prev_res.atoms() :
-              if (atom.name == " C  ") :
-                c1 = atom
-                break
-            for atom in residue.atoms() :
-              if (atom.name == " N  ") :
-                n2 = atom
-              elif (atom.name == " CA ") :
-                ca2 = atom
-              elif (atom.name == " C  ") :
-                c2 = atom
-            for atom in next_res.atoms() :
-              if (atom.name == " N  ") :
-                n3 = atom
+            (c1, n2, ca2, c2, n3) = get_phi_psi_atoms(prev_res,
+              residue, next_res)
             if (None in [c1, n2, ca2, c2, n3]) :
               #print >> log, "  incomplete backbone for %s %d-%d, skipping." % \
               #  (chain.id, resseq1, resseq3)
