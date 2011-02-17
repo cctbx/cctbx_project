@@ -541,14 +541,14 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
             cur_CA_key = key
             cur_CA_xyz = atom.xyz
             if prev_CA_key != None and prev_CA_xyz != None:
-              if int(residue_group.resid()) - int(prev_resid) == 1:
+              if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
                 try:
                   ca_trace += kin_vec(prev_CA_key, prev_CA_xyz, key, atom.xyz)
                 except:
                   pass
           if atom.name == ' N  ':
             if prev_C_key != None and prev_C_xyz != None:
-              if int(residue_group.resid()) - int(prev_resid) == 1:
+              if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
                 try:
                   mc_veclist += kin_vec(prev_C_key, prev_C_xyz, key, atom.xyz)
                 except:
@@ -559,7 +559,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
             cur_O3_key = key
           elif atom.name == ' P  ':
             if prev_O3_key != None and prev_O3_xyz != None:
-              if int(residue_group.resid()) - int(prev_resid) == 1:
+              if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
                 try:
                   mc_veclist += kin_vec(prev_O3_key, prev_O3_xyz, key, atom.xyz)
                 except:
