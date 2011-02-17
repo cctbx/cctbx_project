@@ -17,9 +17,13 @@ def get_master_phil():
         .type = int
       reset_u_iso = 0.05
         .type = float
-      optimizers = *dev smtbx_lsq
+      optimizers = *dev smtbx_lsq shelxl_fm shelxl_cg
         .type = choice(multi=True)
       smtbx_lsq_iterations = 12
+        .type = int
+      shelxl_fm_iterations = 12
+        .type = int
+      shelxl_cg_iterations = 12
         .type = int
 """)
 
@@ -72,6 +76,51 @@ def smtbx_lsq_refine(cod_code, f_obs, xray_structure, n_cycles):
         sc.u_iso = 0.05
     show_cc_r1("ls%02d" % (i_cycle+1), f_obs, xray_structure)
   tm.show_elapsed(prefix="time smtbx lsq: ")
+
+def run_shelxl(
+      mode,
+      cod_code,
+      f_obs,
+      xray_structure,
+      params,
+      reference_structure):
+  if (mode == "fm"):
+    fm_cycles = 0#params.shelxl_fm_iterations
+    cg_cycles = None
+  elif (mode == "cg"):
+    fm_cycles = None
+    cg_cycles = params.shelxl_cg_iterations
+  else:
+    raise RuntimeError("Unknown mode: " + mode)
+  for fn in ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]:
+    if (op.isfile(fn)):
+      os.remove(fn)
+    assert not op.exists(fn)
+  import iotbx.shelx
+  open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
+    xray_structure=xray_structure,
+    data_are_intensities=False,
+    title="cod_code=%s mode=%s" % (cod_code, mode),
+    wavelength=1,
+    full_matrix_least_squares_cycles=fm_cycles,
+    conjugate_gradient_least_squares_cycles=cg_cycles,
+    weighting_scheme_params=(0,0),
+    sort_scatterers=False))
+  f_obs.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
+  from libtbx import easy_run
+  buffers = easy_run.fully_buffered("shelxl tmp")
+  buffers.raise_if_errors()
+  refined = xray_structure.from_shelx(filename="tmp.res")
+  print "."*79
+  xray_structure.show_summary().show_scatterers()
+  print "."*79
+  refined.show_summary().show_scatterers()
+  print "."*79
+  assert refined.crystal_symmetry().is_similar_symmetry(
+    xray_structure)
+  assert refined.special_position_indices().size() \
+      == xray_structure.special_position_indices().size()
+  xray_structure.replace_scatterers(refined.scatterers())
 
 def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
@@ -132,6 +181,22 @@ def process(params, pickle_file_name):
       params=params,
       reference_structure=structure_iso)
     show_cc_r1("dev", f_obs, structure_dev)
+  #
+  def use_shelxl(mode):
+    if ("shelxl_"+mode not in params.optimizers):
+      return None
+    result = structure_work.deep_copy_scatterers()
+    run_shelxl(
+      mode=mode,
+      cod_code=cod_code,
+      f_obs=f_obs,
+      xray_structure=result,
+      params=params,
+      reference_structure=structure_iso)
+    show_cc_r1("shelxl_"+mode, f_obs, result)
+    return result
+  structure_shelxl_fm = use_shelxl("fm")
+  structure_shelxl_cg = use_shelxl("cg")
 
 def run(args):
   from iotbx.option_parser import option_parser as iotbx_option_parser
