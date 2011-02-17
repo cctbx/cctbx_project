@@ -24,6 +24,7 @@ class widget(QGLWidget):
   mouse_translation_scale = 0.01
   unit_cell_axis_label_font = QFont("Helvetica", pointSize=16)
   is_unit_cell_shown = True
+  is_bounding_box_shown = False
 
   def __init__(self, unit_cell, light_position, **kwds):
     super(widget, self).__init__(QGLFormat(QGL.SampleBuffers),)
@@ -121,6 +122,7 @@ class widget(QGLWidget):
     self.orthogonaliser.multiply()
     glTranslatef(*-self.object_centre_wrt_frac)
     if self.is_unit_cell_shown: self.draw_unit_cell()
+    if self.is_bounding_box_shown: self.draw_bounding_box()
     self.draw_object_in_fractional_coordinates()
     glPopMatrix()
 
@@ -166,6 +168,45 @@ class widget(QGLWidget):
     glVertex3f(1,1,1)
     glVertex3f(0,1,0)
     glVertex3f(0,1,1)
+    glEnd()
+
+    glPopAttrib() # line
+
+    glPopAttrib() # light
+
+  def draw_bounding_box(self):
+    glPushAttrib(GL_LIGHTING_BIT)
+    glDisable(GL_LIGHTING)
+
+    glColor3f(0.8, 0.5, 0.1)
+
+    glPushAttrib(GL_LINE_BIT)
+    glLineWidth(3)
+
+    x0, y0, z0 = self.from_here
+    x1, y1, z1 = self.to_there
+
+    glBegin(GL_LINE_LOOP)
+    glVertex3f(x0,y0,z0)
+    glVertex3f(x1,y0,z0)
+    glVertex3f(x1,y1,z0)
+    glVertex3f(x0,y1,z0)
+    glEnd()
+    glBegin(GL_LINE_LOOP)
+    glVertex3f(x0,y0,z1)
+    glVertex3f(x1,y0,z1)
+    glVertex3f(x1,y1,z1)
+    glVertex3f(x0,y1,z1)
+    glEnd()
+    glBegin(GL_LINES)
+    glVertex3f(x0,y0,z0)
+    glVertex3f(x0,y0,z1)
+    glVertex3f(x1,y0,z0)
+    glVertex3f(x1,y0,z1)
+    glVertex3f(x1,y1,z0)
+    glVertex3f(x1,y1,z1)
+    glVertex3f(x0,y1,z0)
+    glVertex3f(x0,y1,z1)
     glEnd()
 
     glPopAttrib() # line
