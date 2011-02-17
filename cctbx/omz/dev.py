@@ -130,7 +130,7 @@ class ls_refinement(object):
     O.pseudo_curvs_i_info = None
     O.termination_remark = " UNDEFINED"
     #
-    O.plot_samples()
+    O.plot_samples("initial")
     #
     if (O.params.use_classic_lbfgs):
       O.classic_lbfgs()
@@ -140,11 +140,15 @@ class ls_refinement(object):
       O.developmental_algorithms()
     print "Number of iterations, evaluations: %d %d%s" % (
       O.i_step+1, len(O.xfgc_infos), O.termination_remark)
+    #
+    O.plot_samples("final")
 
-  def plot_samples(O):
+  def plot_samples(O, stage):
     p = O.params.plot_samples
+    if (p.stage != stage):
+      return
     ix = p.ix
-    if (ix is None): return
+    assert ix is not None
     x_inp = O.x[ix]
     xy = []
     from libtbx.utils import xsamples
@@ -276,6 +280,25 @@ class ls_refinement(object):
         ix += np
       sc.u_iso = O.x[ix]
       ix += 1
+    assert ix == O.x.size()
+
+  def show_dests(O, dests):
+    from libtbx.str_utils import format_value
+    ix = 0
+    sstab = O.xray_structure.site_symmetry_table()
+    for i_sc,sc in enumerate(O.xray_structure.scatterers()):
+      site_symmetry = sstab.get(i_sc)
+      if (site_symmetry.is_point_group_1()):
+        vals = list(dests[ix:ix+3])
+        ix += 3
+      else:
+        constr = site_symmetry.site_constraints()
+        np = constr.n_independent_params()
+        vals = list(dests[ix:ix+np]) + [None] * (3-np)
+        ix += np
+      vals.append(dests[ix])
+      ix += 1
+      print " ".join([format_value("%15.6f", v) for v in vals])
     assert ix == O.x.size()
 
   def __get_ls(O):
@@ -519,13 +542,7 @@ class ls_refinement(object):
       print "dest_adj:", dest_adj
       if (dest_adj is not None and dest_adj < 1):
         dests *= dest_adj
-    if (0):
-      assert dests.size() % 4 == 0
-      def fmtfour(vals):
-        return " ".join(["%15.6f" % v for v in vals])
-      print "dest:", fmtfour(dests[:4])
-      print "     ", fmtfour(dests[4:8])
-      print "     ", fmtfour(dests[8:])
+    if (O.params.show_dests): O.show_dests(dests)
     O.x = O.x_before_line_search + dests
     O.update_fgc(is_iterate=True)
 
@@ -577,17 +594,24 @@ class ls_refinement(object):
     rs = O.reference_structure
     xf = xs.sites_frac()
     rf = rs.sites_frac()
+    cd = xf - rf
     # TODO: use scattering power as weights, move to method of xray.structure
-    ave_csh = matrix.col((xf-rf).mean())
+    ave_csh = matrix.col(cd.mean())
     ave_csh_perp = matrix.col(xs.space_group_info()
       .subtract_continuous_allowed_origin_shifts(translation_frac=ave_csh))
     caosh_corr = ave_csh - ave_csh_perp
+    ad = xf - rf + caosh_corr
+    ud = xs.scatterers().extract_u_iso() \
+       - rs.scatterers().extract_u_iso()
     omx = xs.unit_cell().orthogonalization_matrix()
-    O.crmsd = (omx * (rf - xf)).rms_length()
-    O.armsd = (omx * (rf - xf + caosh_corr)).rms_length()
-    O.urmsd = flex.mean_sq(
-        xs.scatterers().extract_u_iso()
-      - rs.scatterers().extract_u_iso())**0.5
+    O.crmsd = (omx * cd).rms_length()
+    O.armsd = (omx * ad).rms_length()
+    O.urmsd = flex.mean_sq(ud)**0.5
+    if (O.params.show_distances_to_reference_structure):
+      for sc, a, u in zip(xs.scatterers(), omx * ad, ud):
+        print "    %-10s" % sc.label, \
+          " ".join(["%6.3f" % v for v in a]), \
+          "%6.3f" % u
     return (O.crmsd, O.armsd, O.urmsd)
 
   def format_rms_info(O):
@@ -668,7 +692,13 @@ def get_master_phil(
       .type = bool
     f_calc_scale_factor = 0
       .type = float
+    show_dests = False
+      .type = bool
+    show_distances_to_reference_structure = False
+      .type = bool
     plot_samples {
+      stage = initial final
+        .type = choice
       ix = None
         .type = int
       xmin = 0

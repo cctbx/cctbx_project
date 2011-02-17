@@ -78,6 +78,7 @@ def process(params, pickle_file_name):
   print "cod_code:", cod_code
   f_obs, structure_cod = easy_pickle.load(file_name=pickle_file_name)
   structure_cod.show_summary().show_scatterers()
+  structure_cod.scattering_type_registry(d_min=f_obs.d_min()).show()
   print "."*79
   f_obs.show_comprehensive_summary()
   print "."*79
