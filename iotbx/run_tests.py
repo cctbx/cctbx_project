@@ -15,6 +15,7 @@ def run():
   "$D/cif/tests/tst_validation.py",
   "$D/shelx/tst_lex_parse_build.py",
   "$D/shelx/tst_hklf.py",
+  "$D/shelx/tst_writer.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
   "$B/pdb/hybrid_36_fem",
   "$D/pdb/tst_hierarchy.py",

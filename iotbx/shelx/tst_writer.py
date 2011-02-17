@@ -1,6 +1,6 @@
 import itertools
 import cStringIO
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 from scitbx.random import variate, bernoulli_distribution
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -30,10 +30,21 @@ def exercise(flags, space_group_info):
       sc.flags.set_grad_u_aniso(True)
 
   res = cStringIO.StringIO()
-  res.writelines(shelx.writer.generator(xs,
-                                        least_square_cyles=4,
-                                        weighting_scheme_params=(0,0),
-                                        sort_scatterers=False))
+  try:
+    res.writelines(shelx.writer.generator(xs,
+                                          full_matrix_least_squares_cycles=4,
+                                          weighting_scheme_params=(0,0),
+                                          sort_scatterers=False))
+    if (xs.space_group().is_centric()
+        and not xs.space_group().is_origin_centric()):
+      raise Exception_expected
+  except AssertionError, err:
+    if (xs.space_group().is_centric()
+        and not xs.space_group().is_origin_centric()):
+      print ("Skipped %s \nbecause it is centric but not origin centric"
+             % xs.space_group().type().hall_symbol())
+      return
+
   ins = cStringIO.StringIO(res.getvalue())
   xs1 = xs.from_shelx(file=ins)
   xs.crystal_symmetry().is_similar_symmetry(
