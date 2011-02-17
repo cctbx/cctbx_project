@@ -1,0 +1,63 @@
+import itertools
+import cStringIO
+from libtbx.test_utils import approx_equal
+from scitbx.random import variate, bernoulli_distribution
+from cctbx.development import random_structure
+from cctbx.development import debug_utils
+from cctbx import adptbx
+from iotbx import shelx
+
+def exercise(flags, space_group_info):
+  # Prepare a structure compatible with the ShelX model
+  xs = random_structure.xray_structure(
+    space_group_info,
+    elements="random",
+    n_scatterers=10,
+    use_u_iso=True, random_u_iso=True,
+    use_u_aniso=True)
+  xs.apply_symmetry_sites()
+  xs.apply_symmetry_u_stars()
+  for isotropic, sc in itertools.izip(variate(bernoulli_distribution(0.4)),
+                                      xs.scatterers()):
+    sc.flags.set_grad_site(True)
+    if isotropic:
+      sc.flags.set_use_u_iso(True)
+      sc.flags.set_use_u_aniso(False)
+      sc.flags.set_grad_u_iso(True)
+    else:
+      sc.flags.set_use_u_iso(False)
+      sc.flags.set_use_u_aniso(True)
+      sc.flags.set_grad_u_aniso(True)
+
+  res = cStringIO.StringIO()
+  res.writelines(shelx.writer.generator(xs,
+                                        least_square_cyles=4,
+                                        weighting_scheme_params=(0,0),
+                                        sort_scatterers=False))
+  ins = cStringIO.StringIO(res.getvalue())
+  xs1 = xs.from_shelx(file=ins)
+  xs.crystal_symmetry().is_similar_symmetry(
+    xs1.crystal_symmetry(),
+    relative_length_tolerance=1e-3,
+    absolute_angle_tolerance=1e-3)
+  uc = xs.unit_cell()
+  uc1 = xs1.unit_cell()
+  for sc, sc1 in itertools.izip(xs.scatterers(), xs1.scatterers()):
+    assert sc.label.upper() == sc1.label.upper()
+    assert sc.scattering_type == sc1.scattering_type
+    assert sc.flags.bits == sc1.flags.bits
+    assert approx_equal(sc.site, sc1.site, eps=1e-6)
+    if sc.flags.use_u_iso():
+      assert approx_equal(sc.u_iso, sc1.u_iso, eps=1e-5)
+    else:
+      assert approx_equal(adptbx.u_star_as_u_cif(uc, sc.u_star),
+                          adptbx.u_star_as_u_cif(uc1, sc1.u_star),
+                          eps=1e-5)
+
+def run():
+  import sys
+  debug_utils.parse_options_loop_space_groups(
+    sys.argv[1:], exercise)
+
+if __name__ == '__main__':
+  run()
