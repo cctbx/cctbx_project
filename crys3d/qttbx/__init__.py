@@ -91,19 +91,22 @@ class widget(QGLWidget):
     glViewport(0, 0, w, h)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
+    zoomed_radius = self.object_radius / self.zoom
+    far = self.eye_distance + zoomed_radius
+    near = self.eye_distance - zoomed_radius
     if self.orthographic:
-      left = bottom = -self.object_radius * self.zoom
-      right = top = self.object_radius * self.zoom
+      left = bottom = -zoomed_radius
+      right = top = zoomed_radius
       if aspect < 1:
         bottom /= aspect
         top /= aspect
       else:
         left *= aspect
         right *= aspect
-      glOrtho(left, right, bottom, top, 0.1, 100)
+      glOrtho(left, right, bottom, top, near, far)
     else:
-      gluPerspective(aspect=w/h, fovy=self.fovy*self.zoom,
-                     zNear=0.1, zFar=100)
+      gluPerspective(aspect=w/h, fovy=self.fovy/self.zoom,
+                     zNear=near, zFar=far)
 
   def paintGL(self):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -258,7 +261,14 @@ class widget(QGLWidget):
   def wheelEvent(self, event):
     if not self.dolly: return
     s = event.delta()*self.mouse_wheel_scale
-    self.zoom -= s
+    # s > 0 when wheel rotated forward away from the user
+    # then we increase zoom, i.e. zoom in
+    # i.e. we chose to make the wheel control the camera:
+    # forward means get closer, or zoom in
+    # unlike the rotation of the structure where we manipulate the object
+    # instead, but like scrolling where we move the viewing point and not
+    # the text
+    self.zoom += s
     self.resizeGL()
     self.updateGL()
 
