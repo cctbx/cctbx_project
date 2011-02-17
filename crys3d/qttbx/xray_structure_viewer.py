@@ -77,7 +77,6 @@ class xray_structure_viewer(qttbx.widget):
 
   def __init__(self, xray_structure, name='??',
                **kwds):
-    self.xray_structure = xs = xray_structure
     super(xray_structure_viewer, self).__init__(
       unit_cell=xray_structure.unit_cell(),
       orthographic=True,
@@ -85,6 +84,7 @@ class xray_structure_viewer(qttbx.widget):
       **kwds)
     assert self.bonding in ("covalent", "all")
     assert self.bonding != "all" or self.distance_cutoff is not None
+    self.xray_structure = xs = xray_structure
     self.setWindowTitle("%s in %s" % (name,
                                       xs.space_group().type().hall_symbol()))
     sites_frac = xs.sites_frac()
