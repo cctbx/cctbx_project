@@ -2,18 +2,28 @@ from cctbx.array_family import flex # import dependency
 from cctbx.eltbx import wavelengths, tiny_pse
 from cctbx import adptbx
 
+centric_implies_centrosymmetric_error_msg = """\
+If the structure is centrosymmetric, the origin MUST lie on a center of
+symmetry.
+"""
+
+both_iso_and_aniso_in_use_error_msg = """\
+ShelX supports only the specification either of u_iso or of u_aniso,
+each one excluding the other"""
+
 def generator(xray_structure,
               data_are_intensities=True,
               title=None,
               wavelength=None,
               temperature=None,
-              least_square_cyles=None,
+              full_matrix_least_squares_cycles=None,
               overall_scale_factor=None,
               weighting_scheme_params=None,
               sort_scatterers = True,
               ):
   space_group = xray_structure.space_group()
-  assert not space_group.is_centric() or space_group.is_origin_centric()
+  assert not space_group.is_centric() or space_group.is_origin_centric(),\
+         centric_implies_centrosymmetric_error_msg
   if title is None:
     title = '????'
   if wavelength is None:
@@ -60,8 +70,8 @@ def generator(xray_structure,
   if temperature:
     yield 'TEMP %.0f\n' % temperature
 
-  if least_square_cyles:
-    yield 'L.S. %i\n' % least_square_cyles
+  if full_matrix_least_squares_cycles:
+    yield 'L.S. %i\n' % full_matrix_least_squares_cycles
 
   yield '\n'
 
@@ -87,7 +97,8 @@ def generator(xray_structure,
   else:
     scatterers = xray_structure.scatterers()
   for sc in scatterers:
-    assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso()
+    assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso(),\
+           both_iso_and_aniso_in_use_error_msg
     params = (sc.label, sf_idx[sc.scattering_type]) + sc.site
     occ = sc.occupancy
     if not sc.flags.grad_occupancy(): occ += 10
