@@ -28,10 +28,11 @@ def generator(xray_structure,
   yield 'ZERR %i 0. 0. 0. 0. 0. 0.\n' % sgi.group().order_z()
 
   latt = 1 + 'PIRFABC'.find(sgi.group().conventional_centring_type_symbol())
-  if space_group.is_origin_centric(): latt = -latt
+  if not space_group.is_origin_centric(): latt = -latt
   yield 'LATT %i\n' % latt
   for i in xrange(space_group.n_smx()):
     rt_mx = space_group(0, 0, i)
+    if rt_mx.is_unit_mx(): continue
     yield 'SYMM %s\n' % rt_mx
   yield '\n'
 
