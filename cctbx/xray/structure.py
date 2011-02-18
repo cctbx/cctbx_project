@@ -35,7 +35,18 @@ class scattering_type_registry_params(object):
                                         types_without_a_scattering_contribution
 
 class structure(crystal.special_position_settings):
+  """A class to describe and handle information related to a crystal structure.
 
+  It offers various methods to modify the crystallographic information contained.
+
+  Important members are:
+
+  - .special_position_settings (base class)
+  - .scatterers
+  - .site_symmetry
+  - .crystal_symmetry
+
+  """
   def __init__(self,
         special_position_settings=None,
         scatterers=None,
@@ -76,7 +87,7 @@ class structure(crystal.special_position_settings):
   scatterer_number_cutoff_for__repr__ = 100
 
   def __repr__(self):
-    """ eval(repr(self)) is usually equal to self, which may be useful
+    """eval(repr(self)) is usually equal to self, which may be useful
     to dump a structure as a chunk of Python code that can then be used
     in self-contained test units.
     However, if there are more scatterers than
@@ -97,7 +108,8 @@ class structure(crystal.special_position_settings):
   def crystal_symmetry(self):
     """Get crystal symmetry of the structure
 
-    Returns: new crystal.symmetry
+    :returns: a new crystal symmetry object
+    :rtype: cctbx.crystal.symmetry
     """
     return crystal.symmetry(
       unit_cell = self.unit_cell(),
@@ -106,7 +118,7 @@ class structure(crystal.special_position_settings):
   def erase_scatterers(self):
     """Remove all scatterers from structure
 
-    Returns: None
+    :returns: None
     """
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
@@ -115,7 +127,8 @@ class structure(crystal.special_position_settings):
   def deep_copy_scatterers(self):
     """Create a deep copy of the structure with all scatterers
 
-    Returns: new cctbx.xray.structure
+    :returns: a new cctbx.xray.structure object
+    :rtype: cctbx.xray.structure
     """
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry,
@@ -153,7 +166,8 @@ class structure(crystal.special_position_settings):
   def scatterers(self):
     """Get all scatterers of the structure
 
-    Returns: reference to array of cctbx.xray.scatterer
+    :returns: a reference to an array of cctbx.xray.scatterer
+    :rtype: cctbx.xray.scatterer[]
     """
     return self._scatterers
 
@@ -163,13 +177,15 @@ class structure(crystal.special_position_settings):
   def set_u_iso(self, value = None, values = None, selection = None):
     """Set isotropic mean thermic displacements of scatterers
 
-    Input:
-      :value: a single double value to set all u_iso of selected scatterers to
-      :values: an array of double values to set all u_iso of selected scatterers to
-      :selection: an array of bools to select scatterers to be updated with new u_iso values
+    :param value: a single double value to set all u_iso of selected scatterers to
+    :type value: double
+    :param values: an array of double values to set all u_iso of selected scatterers to
+    :type values: double[]
+    :param selection: an array of bools to select scatterers to be updated with new u_iso values
+    :type selection: boolean[]
 
-    Returns:
-      cctbx.xray.structure
+    :returns: the modified base object
+    :rtype: cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -185,13 +201,15 @@ class structure(crystal.special_position_settings):
   def set_b_iso(self, value = None, values = None, selection = None):
     """Set isotropic Debye-Waller/temperature/B factors with automatic conversion to u_iso
 
-    Input:
-      :value:           a single double value to set all b_iso of selected scatterers to
-      :values:          an array of double values to set all b_iso of selected scatterers to
-      :selection:       an array of bools to select scatterers to be updated with new b_iso values
+    :param value: a single double value to set all b_iso of selected scatterers to
+    :type value: double
+    :param values: an array of double values to set all b_iso of selected scatterers to
+    :type values: double[]
+    :param selection: an array of bools to select scatterers to be updated with new b_iso values
+    :type selection: boolean[]
 
-    Returns:
-      cctbx.xray.structure
+    :returns: the modified base object
+    :rtype: cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -428,8 +446,8 @@ class structure(crystal.special_position_settings):
     Equivalent to:
       1.66042 * _chemical_formula_weight * _cell_formula_units_Z / _cell_volume
 
-    Returns:
-      float
+    :returns: chemical density in megagrams per cubic metre (=grams per cubic centimetre)
+    :rtype: float
     """
     from cctbx.eltbx import tiny_pse
     numerator = sum([
@@ -445,11 +463,11 @@ class structure(crystal.special_position_settings):
     According to the CIF definition, this item **may** contain dispersion
     contributions.
 
-    Input:
-      :include_inelastic_part: If 'True' contributions due to dispersion are included in F(000).
+    :param include_inelastic_part: If 'True' contributions due to dispersion are included in F(000).
+    :type include_inelastic_part: boolean
 
-    Returns:
-      float
+    :returns: F(000)
+    :rtype: float
     """
     elastic_part = 0
     reg = self.scattering_type_registry()
