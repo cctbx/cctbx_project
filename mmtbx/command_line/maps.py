@@ -13,24 +13,29 @@ from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
 
 legend = """
-phenix.maps: a command line tool to compute various maps.
+phenix.maps: a command line tool to compute various maps and save them in most
+             of known formats.
 
-How to run:
+How to run the command line version:
 
   1. Run phenix.maps without any arguments: just type phenix.maps in the command
      line and hit Enter. This will creare a parameter file called maps.params,
      which can be renamed if desired.
 
-  2. Edit maps.params file to specify input/output file names, data labesl and
+  2. Edit maps.params file to specify input/output file names, data labels and
      the desired maps. It is possible to request as many maps as desired. By
      default, the file maps.params specifies 5 maps to be created: 2mFo-DFc,
      2mFo-DFc with missing Fobs filled with DFcalc, mFo-DFc and anomalous
      difference maps will be output in MTZ format, and one 2mFo-DFc map will be
      output in X-plor formatted file.
+     NOTE: the anomalous difference map will only be created if the input
+     reflection data file contains Bijvoet maps (F+/F- or I+/I-).
 
   3. Run this command to compute requested maps: phenix.maps maps.params
 
-Remarks:
+Important Facts:
+
+  - phenix.maps is available in PHENIX GUI.
 
   - The scope of parameters 'map_coefficients' defines the map that will be
     output as Fourier map coefficients. The scope of parameters 'map' defines
@@ -42,7 +47,7 @@ Remarks:
 
   - A map is defined by specifying a map type using 'map_type' keyword available
     within each scope of parameters: 'map_coefficients' or 'map'. The general
-    supported format for 'map_type' is: [p][m]Fo+[q][D]Fc[kick][filled]. For
+    supported format for 'map_type' is: [p][m]Fo+[q][D]Fc[_kick][_filled]. For
     example: 2Fo-Fc, 2mFobs-DFcalc, 3Fobs-2Fmodel, Fo-Fc, mfobs-Dfcalc, anom.
     The 'map_type' parser will automatically recognize which map is requested.
 
@@ -64,6 +69,10 @@ Remarks:
 
   - For those who likes to experiment: bulk solvent correction and anisotropic
     scaling can be turned off, the data can be filtered by sigma and resolution.
+
+  - For some map types certain 'map_coefficients' or 'map' scope parameters may
+    not be applicable. For example, for "map_type=anomalous" the keywords
+    "kicked", "fill_missing_f_obs" and some other are not applicable.
 """
 
 default_params = """\
@@ -134,19 +143,21 @@ def analyze_input_params(params):
 def run(args, log = sys.stdout):
   print >> log, legend
   print >> log, "-"*79
-  if(len(args) == 0):
-    parameter_file_name = "maps.params"
-    print >> log, "Creating parameter file '%s' in the following directory:\n%s"%(
-      parameter_file_name, os.path.abspath('.'))
-    if(os.path.isfile(parameter_file_name)):
-      msg="File '%s' exists already. Re-name it or move and run the command again."
-      raise Sorry(msg%parameter_file_name)
-    pfo = open(parameter_file_name, "w")
+  if(len(args)==0 or (len(args)==1 and args[0]=="NO_PARAMETER_FILE")):
+    if(not (len(args)==1 and args[0]=="NO_PARAMETER_FILE")):
+      parameter_file_name = "maps.params"
+      print >> log, "Creating parameter file '%s' in the following directory:\n%s"%(
+        parameter_file_name, os.path.abspath('.'))
+      if(os.path.isfile(parameter_file_name)):
+        msg="File '%s' exists already. Re-name it or move and run the command again."
+        raise Sorry(msg%parameter_file_name)
+      pfo = open(parameter_file_name, "w")
+    else:
+      pfo = log
+      print >> pfo, "\nAll phenix.maps parameters::\n"
     master_params = mmtbx.maps.maps_including_IO_master_params()
     master_params = master_params.fetch(iotbx.phil.parse(default_params))
-    master_params.show(out = pfo)
-    pfo.close()
-    print >> log, "-"*79
+    master_params.show(out = pfo, prefix = " ")
     return
   processed_args = mmtbx.utils.process_command_line_args(args = args, log = log,
     master_params = mmtbx.maps.maps_including_IO_master_params())

@@ -32,7 +32,6 @@ selection = None
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
-  .expert_level=2
   .short_caption=Modify ADPs
   .style = auto_align menu_item parent_submenu:model_modifications noauto
 {
@@ -70,7 +69,6 @@ sites
   .help = Scope of options to modify coordinates of selected atoms
   .multiple = True
   .short_caption=Modify coordinates
-  .expert_level=2
   .style = auto_align noauto menu_item parent_submenu:model_modifications
 {
   atom_selection = None
@@ -99,13 +97,11 @@ sites
     .help = Rotational shift
   euler_angle_convention = *xyz zyz
     .type = choice
-    .expert_level=2
     .help = Euler angles convention to be used for rotation
 }
 occupancies
   .help = Scope of options to modify occupancies of selected atoms
   .short_caption=Modify occupancies
-  .expert_level=2
   .style  = noauto menu_item parent_submenu:model_modifications
 {
   randomize = None
@@ -160,7 +156,6 @@ output
 random_seed = None
   .type = int
   .help = Random seed
-  .expert_level=2
 """
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
@@ -185,7 +180,6 @@ keep = None
 put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.
-  .expert_level = 2
 %s
 }
 input {
@@ -210,6 +204,7 @@ input {
 pdb_interpretation
   .short_caption = PDB Interpretation
   .style = menu_item
+  .expert_level=3
 {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
 }
