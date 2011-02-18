@@ -85,42 +85,54 @@ def run_shelxl(
       params,
       reference_structure):
   if (mode == "fm"):
-    fm_cycles = 0#params.shelxl_fm_iterations
+    fm_cycles = params.shelxl_fm_iterations
     cg_cycles = None
   elif (mode == "cg"):
     fm_cycles = None
     cg_cycles = params.shelxl_cg_iterations
   else:
     raise RuntimeError("Unknown mode: " + mode)
-  for fn in ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]:
-    if (op.isfile(fn)):
-      os.remove(fn)
-    assert not op.exists(fn)
-  import iotbx.shelx
-  open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
-    xray_structure=xray_structure,
-    data_are_intensities=False,
-    title="cod_code=%s mode=%s" % (cod_code, mode),
-    wavelength=1,
-    full_matrix_least_squares_cycles=fm_cycles,
-    conjugate_gradient_least_squares_cycles=cg_cycles,
-    weighting_scheme_params=(0,0),
-    sort_scatterers=False))
-  f_obs.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
-  from libtbx import easy_run
-  buffers = easy_run.fully_buffered("shelxl tmp")
-  buffers.raise_if_errors()
-  refined = xray_structure.from_shelx(filename="tmp.res")
-  print "."*79
-  xray_structure.show_summary().show_scatterers()
-  print "."*79
-  refined.show_summary().show_scatterers()
-  print "."*79
-  assert refined.crystal_symmetry().is_similar_symmetry(
-    xray_structure)
-  assert refined.special_position_indices().size() \
-      == xray_structure.special_position_indices().size()
-  xray_structure.replace_scatterers(refined.scatterers())
+  cwd_orig = os.getcwd()
+  wdir = "wdir_%s" % cod_code
+  wdir_is_new = False
+  if (not op.isdir(wdir)):
+    os.mkdir(wdir)
+    wdir_is_new = True
+  remove_wdir = False
+  try:
+    os.chdir(wdir)
+    def remove_tmp():
+      for fn in ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]:
+        if (op.isfile(fn)):
+          os.remove(fn)
+        assert not op.exists(fn)
+    remove_tmp()
+    import iotbx.shelx
+    open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
+      xray_structure=xray_structure,
+      data_are_intensities=False,
+      title="cod_code=%s mode=%s" % (cod_code, mode),
+      wavelength=1,
+      full_matrix_least_squares_cycles=fm_cycles,
+      conjugate_gradient_least_squares_cycles=cg_cycles,
+      weighting_scheme_params=(0,0),
+      sort_scatterers=False))
+    f_obs.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
+    from libtbx import easy_run
+    buffers = easy_run.fully_buffered("shelxl tmp")
+    buffers.raise_if_errors()
+    refined = xray_structure.from_shelx(filename="tmp.res")
+    assert refined.crystal_symmetry().is_similar_symmetry(
+      xray_structure)
+    assert refined.special_position_indices().size() \
+        == xray_structure.special_position_indices().size()
+    xray_structure.replace_scatterers(refined.scatterers())
+    remove_tmp()
+    remove_wdir = wdir_is_new
+  finally:
+    os.chdir(cwd_orig)
+    if (remove_wdir):
+      os.rmdir(wdir)
 
 def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
