@@ -281,7 +281,8 @@ class iotbx_data_plot_base (plot_container) :
 
   def OnRightClick (self, event) :
     menu = wx.Menu()
-    menu.add_command("Save image", self.OnSave)
+    menu_item = menu.Append(-1, "Save image")
+    self.parent.Bind(wx.EVT_MENU, self.OnSave, menu_item)
     self.parent.PopupMenu(menu)
 
   def OnSave (self, event=None) :
