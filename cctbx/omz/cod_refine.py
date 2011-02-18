@@ -17,9 +17,9 @@ def get_master_phil():
         .type = int
       reset_u_iso = 0.05
         .type = float
-      optimizers = *dev smtbx_lsq shelxl_fm shelxl_cg
+      optimizers = *dev ls_simple ls_lm shelxl_fm shelxl_cg
         .type = choice(multi=True)
-      smtbx_lsq_iterations = 12
+      ls_simple_iterations = 12
         .type = int
       shelxl_fm_iterations = 12
         .type = int
@@ -39,7 +39,7 @@ def show_cc_r1(label, f_obs, xray_structure):
   print "%-12s cc, r1: %.3f %.3f" % (label, cc, r1)
   sys.stdout.flush()
 
-def smtbx_lsq_refine(cod_code, f_obs, xray_structure, n_cycles):
+def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   import smtbx.refinement
   xray_structure.scatterers().flags_set_grads(state=False)
   for sc in xray_structure.scatterers():
@@ -63,19 +63,40 @@ def smtbx_lsq_refine(cod_code, f_obs, xray_structure, n_cycles):
     restraints_manager=smtbx.refinement.restraints.manager(),
     weighting_scheme=smtbx.refinement.least_squares.unit_weighting())
   ls = rm.least_squares()
-  for i_cycle in xrange(n_cycles):
-    ls.build_up()
+  if (mode == "simple"):
+    for i_cycle in xrange(params.ls_simple_iterations):
+      ls.build_up()
+      try:
+        ls.solve_and_step_forward()
+      except RuntimeError, e:
+        if (str(e).find("cholesky.failure") <= 0): raise
+        print 'Aborting run_smtbx_ls("simple"): cholesky.failure: %s' \
+          % cod_code
+        break
+      for sc in xray_structure.scatterers():
+        if (sc.u_iso <= 0 or sc.u_iso > 1):
+          sc.u_iso = 0.05
+      show_cc_r1("ls%02d" % (i_cycle+1), f_obs, xray_structure)
+    tm.show_elapsed(prefix="time smtbx_ls_simple_iterations: ")
+  elif (mode == "lm"):
+    from scitbx.lstbx import normal_eqns_solving
+    thresh = 1e-6
     try:
-      ls.solve_and_step_forward()
+      cycles = normal_eqns_solving.levenberg_marquardt_iterations(
+        ls,
+        gradient_threshold=thresh,
+        step_threshold=thresh,
+        tau=1e-7)
     except RuntimeError, e:
-      if (str(e).find("cholesky.failure") <= 0): raise
-      print "Aborting smtbx_lsq_refine: cholesky.failure: %s" % cod_code
-      break
-    for sc in xray_structure.scatterers():
-      if (sc.u_iso <= 0 or sc.u_iso > 1):
-        sc.u_iso = 0.05
-    show_cc_r1("ls%02d" % (i_cycle+1), f_obs, xray_structure)
-  tm.show_elapsed(prefix="time smtbx lsq: ")
+      if (not str(e).startswith(
+            "cctbx::adptbx::debye_waller_factor_exp: max_arg exceeded")):
+        raise
+      print 'Aborting run_smtbx_ls("lm"):' \
+        ' debye_waller_factor_exp failure: %s' % cod_code
+    show_cc_r1("smtbx_lm", f_obs, xray_structure)
+    tm.show_elapsed(prefix="time levenberg_marquardt_iterations: ")
+  else:
+    raise RuntimeError('Unknown run_smtbx_ls(mode="%s")' % mode)
 
 def run_shelxl(
       mode,
@@ -148,6 +169,9 @@ def process(params, pickle_file_name):
       print '  changed: "%s" -> "%s"' % change
   structure_cod.scattering_type_registry(d_min=f_obs.d_min()).show()
   print "."*79
+  if (f_obs.anomalous_flag()):
+    print "INFO: anomalous f_obs converted to non-anomalous."
+    f_obs = f_obs.average_bijvoet_mates()
   f_obs.show_comprehensive_summary()
   print "."*79
   #
@@ -184,15 +208,9 @@ def process(params, pickle_file_name):
         n, cod_code)
       return
   #
-  if ("smtbx_lsq" in params.optimizers):
-    structure_smtbx_lsq = structure_work.deep_copy_scatterers()
-    smtbx_lsq_refine(
-      cod_code=cod_code,
-      f_obs=f_obs,
-      xray_structure=structure_smtbx_lsq,
-      n_cycles=params.smtbx_lsq_iterations)
-  #
-  if ("dev" in params.optimizers):
+  if ("dev" not in params.optimizers):
+    structure_dev = None
+  else:
     structure_dev = structure_work.deep_copy_scatterers()
     omz.dev.ls_refinement(
       f_obs=f_obs,
@@ -200,6 +218,21 @@ def process(params, pickle_file_name):
       params=params,
       reference_structure=structure_iso)
     show_cc_r1("dev", f_obs, structure_dev)
+  #
+  def use_smtbx_ls(mode):
+    if ("ls_"+mode not in params.optimizers):
+      return None
+    result = structure_work.deep_copy_scatterers()
+    run_smtbx_ls(
+      mode=mode,
+      cod_code=cod_code,
+      f_obs=f_obs,
+      xray_structure=result,
+      params=params)
+    show_cc_r1("ls_"+mode, f_obs, result)
+    return result
+  structure_ls_simple = use_smtbx_ls("simple")
+  structure_ls_lm = use_smtbx_ls("lm")
   #
   def use_shelxl(mode):
     if ("shelxl_"+mode not in params.optimizers):

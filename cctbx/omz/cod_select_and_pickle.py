@@ -59,6 +59,14 @@ class cod_data(object):
   def have_zero_occupancies(O):
     return not O.xray_structure.scatterers().extract_occupancies().all_ne(0)
 
+  def have_shelxl_compatible_scattering_types(O):
+    from cctbx.eltbx.xray_scattering import \
+      shelxl_97_2_980324_tabulated_chemical_elements as known
+    for sc in O.xray_structure.scatterers():
+      if (sc.scattering_type.strip().upper() not in known):
+        return False
+    return True
+
   def have_bad_sigmas(O):
     if (O.f_obs.sigmas() is None):
       print "Missing sigmas:", O.cod_code
@@ -169,6 +177,7 @@ def run(args):
       n_caught += 1
     else:
       if (    not cd.have_zero_occupancies()
+          and cd.have_shelxl_compatible_scattering_types()
           and not cd.have_bad_sigmas()
           and cd.f_obs_f_calc_correlation() >= co.min_f_obs_f_calc_correlation):
         easy_pickle.dump(
