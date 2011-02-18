@@ -91,10 +91,9 @@ def generator(xray_structure,
   if overall_scale_factor is not None:
     yield 'FVAR %.5f' % overall_scale_factor
 
-  fmt_tmpl = ('%-4s', '%-2i') + ('%.6f',)*3 + ('%.5f',)
-  fmt_iso = ' '.join(fmt_tmpl + ('%.5f', '\n'))
-  fmt_aniso = ' '.join(
-    fmt_tmpl + ('%.5f',)*2 + ('=\n ',) + ('%.5f',)*4 + ('\n',))
+  fmt_tmpl = ('%-4s', '%2i') + ('%11.6f',)*3 + ('%11.5f',)
+  fmt_iso = ' '.join(fmt_tmpl + ('%10.5f',))
+  fmt_aniso = ' '.join(fmt_tmpl + ('%.5f',)*2 + ('=\n ',) + ('%.5f',)*4)
   if sort_scatterers:
     dsu = [ (tiny_pse.table(sc.scattering_type).atomic_number(), sc)
             for sc in xray_structure.scatterers() ]
@@ -110,10 +109,10 @@ def generator(xray_structure,
     if not sc.flags.grad_occupancy(): occ += 10
     params += (occ, )
     if sc.flags.use_u_iso():
-      yield fmt_iso %  (params + (sc.u_iso,))
+      yield fmt_iso % (params + (sc.u_iso,)) + "\n"
     else:
       u11, u22, u33, u12, u13, u23 = adptbx.u_star_as_u_cif(uc, sc.u_star)
-      yield fmt_aniso % (params + (u11, u22, u33, u23, u13, u12))
+      yield fmt_aniso % (params + (u11, u22, u33, u23, u13, u12)) + "\n"
 
   if data_are_intensities: hklf = 4
   else: hklf = 3
