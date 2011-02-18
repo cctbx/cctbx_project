@@ -7,6 +7,13 @@ from cctbx_eltbx_xray_scattering_ext import *
 
 import sys
 
+# grep 'DATA KQ' shelxl.f | cut -d"'" -f2 | grep -v NCSY
+shelxl_97_2_980324_tabulated_chemical_elements = """\
+H HE LI BE B C N O F NE NA MG AL SI P S CL AR K CA SC TI V CR MN FE
+CO NI CU ZN GA GE AS SE BR KR RB SR Y ZR NB MO TC RU RH PD AG CD IN
+SN SB TE I XE CS BA LA CE PR ND PM SM EU GD TB DY HO ER TM YB LU HF
+TA W RE OS IR PT AU HG TL PB BI PO AT RN FR RA AC TH PA U NP PU""".split()
+
 def get_element_and_charge_symbols(scattering_type, exact=True):
   sl = get_standard_label(label=scattering_type, exact=exact, optional=True)
   if (sl is None): return "", ""
