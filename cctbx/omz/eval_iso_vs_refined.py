@@ -19,7 +19,9 @@ def run(args):
         assert cod_code is not None
         assert iso is None
         iso = line.split(": ",1)[1]
-      elif (   line.startswith("ls12         cc, r1: ")
+      elif (   line.startswith("shelxl_fm    cc, r1: ")
+            or line.startswith("shelxl_cg    cc, r1: ")
+            or line.startswith("ls12         cc, r1: ")
             or line.startswith("dev          cc, r1: ")):
         assert iso is not None
         ref = line.split(": ",1)[1]
