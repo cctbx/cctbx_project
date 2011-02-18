@@ -38,10 +38,6 @@ from copy import deepcopy
 from libtbx import group_args
 import mmtbx.scaling.ta_alpha_beta_calc
 import mmtbx.refinement.targets
-if(not libtbx.env.has_module(name="solve_resolve")):
-  phenix_masks = None
-else:
-  import solve_resolve.masks as phenix_masks
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -944,6 +940,11 @@ class manager(manager_mixin):
     return result
 
   def compute_f_part(self, log = None):
+    phenix_masks = None
+    if(not libtbx.env.has_module(name="solve_resolve")):
+      raise Sorry("solve_resolve not installed or not configured.")
+    else:
+      import solve_resolve.masks as phenix_masks
     if(log is None): log = sys.stdout
     return phenix_masks.nu(
       fmodel               = self,

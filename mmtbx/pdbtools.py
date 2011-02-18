@@ -657,7 +657,8 @@ def run(args, command_name="phenix.pdbtools"):
   utils.print_header("Complete set of parameters", out = log)
   master_params.format(command_line_interpreter.params).show(out = log)
 ### run geometry regularization
-  if(command_line_interpreter.command_line.options.geometry_regularization):
+  if((command_line_interpreter.command_line.options.geometry_regularization) or
+     (command_line_interpreter.params.regularize_geometry)) :
     utils.print_header("Geometry regularization", out = log)
     from mmtbx.command_line import geometry_minimization
     sites_cart = geometry_minimization.run(
