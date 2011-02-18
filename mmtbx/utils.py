@@ -35,6 +35,7 @@ import mmtbx.restraints
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel
+from cctbx import french_wilson
 import math
 
 import boost.python
@@ -119,6 +120,13 @@ data_and_flags_str_part1 = """\
     .type=bool
     .short_caption = Reject outliers
     .expert_level = 0
+  french_wilson_scale = False
+    .type=bool
+    .short_caption = use French-Wilson method to handle negative intensities
+  french_wilson
+  {
+     include scope cctbx.french_wilson.master_phil
+  }
   sigma_fobs_rejection_criterion = 0.0
     .type=float
     .short_caption = Sigma(Fobs) rejection criterion
@@ -261,7 +269,14 @@ class determine_data_and_flags(object):
       self.raw_flags = self.extract_flags(data = self.raw_data)
       if(self.raw_flags is not None):
         flags_info = self.raw_flags.info()
-    self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
+    if(self.parameters.french_wilson_scale and \
+       self.raw_data.is_xray_intensity_array()):
+      self.f_obs = french_wilson.french_wilson_scale(
+                     miller_array=self.raw_data,
+                     params=self.parameters.french_wilson,
+                     log=log)
+    else:
+      self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
     if(extract_r_free_flags and self.raw_flags is not None):
       self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
