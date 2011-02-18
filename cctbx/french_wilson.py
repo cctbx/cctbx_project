@@ -282,7 +282,8 @@ def french_wilson_scale(miller_array, params=None, log=None):
   if log == None:
     log = sys.stdout
   rejected = []
-  print >> log, "** Scaling input intensities via French-Wilson Method **"
+  print >> log, \
+  "============== Scaling input intensities via French-Wilson Method =============="
   print >> log, "Trying %d bins..." % params.max_bins
   f_w_binning(miller_array=miller_array,
               max_bins=params.max_bins,
