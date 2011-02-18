@@ -1467,6 +1467,73 @@ class structure(crystal.special_position_settings):
                   for r in self.scattering_types_counts_and_occupancy_sums()
                   if not omit or r.scattering_type not in omit ])
 
+  def make_scatterer_labels_shelx_compatible_in_place(self):
+    result = []
+    upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    digits = "0123456789"
+    def is_useful_label(lbl):
+      if (len(lbl) == 0): return False
+      if (len(lbl) > 4): return False
+      if (lbl[0] not in upper): return False
+      for c in lbl[1:]:
+        if (    c not in upper
+            and c not in digits):
+          return False
+      return True
+    lbl_set = set()
+    def reset(label):
+      if (sc.label != label):
+        result.append((sc.label, label))
+        sc.label = label
+      lbl_set.add(label)
+    for sc in self.scatterers():
+      lbl = sc.label.strip().replace(" ", "").upper()
+      lbl_is_useful = is_useful_label(lbl)
+      if (lbl not in lbl_set and lbl_is_useful):
+        reset(label=lbl)
+      else:
+        def find_tail_replacement(fmt, n):
+          for i in xrange(1,n):
+            s = fmt % i
+            trial = lbl[:4-len(s)]+s
+            if (trial not in lbl_set):
+              reset(label=trial)
+              return True
+          return False
+        def find_replacement_using_scattering_type():
+          from cctbx.eltbx.xray_scattering import get_element_and_charge_symbols
+          e, _ = get_element_and_charge_symbols(
+            scattering_type=sc.scattering_type,
+            exact=False)
+          if (len(e) == 0): return False
+          assert len(e) <= 2
+          if (len(e) == 1): fmt, n = "%03d", 1000
+          else:             fmt, n = "%02d", 100
+          e = e.upper()
+          for i in xrange(1,n):
+            trial = e + fmt % i
+            if (trial not in lbl_set):
+              reset(label=trial)
+              return True
+          return False
+        def find_complete_replacement():
+          for c in upper:
+            for i in xrange(1,1000):
+              trial = c + "%03d" % i
+              if (trial not in lbl_set):
+                reset(label=trial)
+                return True
+          return False
+        if (lbl_is_useful):
+          if (find_tail_replacement("%d", 10)): continue
+          if (find_tail_replacement("%02d", 100)): continue
+          if (find_tail_replacement("%03d", 1000)): continue
+        if (find_replacement_using_scattering_type()): continue
+        if (find_complete_replacement()): continue
+        raise RuntimeError(
+          "Unable to find unused SHELX-compatible scatterer label.")
+    return result
+
 class conservative_pair_proxies(object):
 
   def __init__(self, structure, bond_sym_table, conserve_angles):
