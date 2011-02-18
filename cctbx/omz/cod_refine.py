@@ -101,12 +101,12 @@ def run_shelxl(
   remove_wdir = False
   try:
     os.chdir(wdir)
-    def remove_tmp():
+    def remove_tmp_files():
       for fn in ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]:
         if (op.isfile(fn)):
           os.remove(fn)
         assert not op.exists(fn)
-    remove_tmp()
+    remove_tmp_files()
     import iotbx.shelx
     open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
       xray_structure=xray_structure,
@@ -121,14 +121,14 @@ def run_shelxl(
     from libtbx import easy_run
     buffers = easy_run.fully_buffered("shelxl tmp")
     buffers.raise_if_errors()
-    refined = xray_structure.from_shelx(filename="tmp.res")
+    refined = xray_structure.from_shelx(
+      filename="tmp.res", min_distance_sym_equiv=0)
     assert refined.crystal_symmetry().is_similar_symmetry(
       xray_structure)
-    assert refined.special_position_indices().size() \
-        == xray_structure.special_position_indices().size()
     xray_structure.replace_scatterers(refined.scatterers())
-    remove_tmp()
-    remove_wdir = wdir_is_new
+    if (1):
+      remove_tmp_files()
+      remove_wdir = wdir_is_new
   finally:
     os.chdir(cwd_orig)
     if (remove_wdir):
@@ -138,7 +138,14 @@ def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
   print "cod_code:", cod_code
   f_obs, structure_cod = easy_pickle.load(file_name=pickle_file_name)
+  changes = structure_cod.make_scatterer_labels_shelx_compatible_in_place()
   structure_cod.show_summary().show_scatterers()
+  if (len(changes) != 0):
+    from libtbx.utils import plural_s
+    print "INFO: %d atom name%s changed for compatibility with SHELXL:" \
+      % plural_s(len(changes))
+    for change in changes:
+      print '  changed: "%s" -> "%s"' % change
   structure_cod.scattering_type_registry(d_min=f_obs.d_min()).show()
   print "."*79
   f_obs.show_comprehensive_summary()

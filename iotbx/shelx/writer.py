@@ -63,8 +63,9 @@ def generator(xray_structure,
   dsu.sort()
   sorted = [ item[-1] for item in dsu ]
   for e in sorted:
-    sfac.append(e)
-    unit.append(uc_content[e])
+    if (e not in prior):
+      sfac.append(e)
+      unit.append(uc_content[e])
   yield 'SFAC %s\n' % ' '.join(sfac)
   yield 'UNIT %s\n' % ' '.join(unit)
   sf_idx = dict([ (e, i + 1) for i, e in enumerate(sfac) ])
@@ -101,10 +102,17 @@ def generator(xray_structure,
     scatterers = flex.xray_scatterer([ item[-1] for item in dsu ])
   else:
     scatterers = xray_structure.scatterers()
+  atomname_set = set()
   for sc in scatterers:
     assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso(),\
            both_iso_and_aniso_in_use_error_msg
-    params = (sc.label, sf_idx[sc.scattering_type]) + sc.site
+    atomname = sc.label.strip()
+    assert len(atomname) != 0
+    assert len(atomname) <= 4
+    if (atomname in atomname_set):
+      raise RuntimeError('Duplicate atom name: "%s"' % atomname)
+    atomname_set.add(atomname)
+    params = (atomname, sf_idx[sc.scattering_type]) + sc.site
     occ = sc.weight()
     if not sc.flags.grad_occupancy(): occ += 10
     params += (occ, )

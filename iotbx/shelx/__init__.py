@@ -8,9 +8,12 @@ ext = boost.python.import_ext("iotbx_shelx_ext")
 
 def cctbx_xray_structure_from(cls, file=None, filename=None,
                               set_grad_flags=True,
+                              min_distance_sym_equiv=0.5,
                               strictly_shelxl=True):
   from iotbx import builders
-  builder = builders.crystal_structure_builder(set_grad_flags=set_grad_flags)
+  builder = builders.crystal_structure_builder(
+    set_grad_flags=set_grad_flags,
+    min_distance_sym_equiv=min_distance_sym_equiv)
   stream = command_stream(file=file, filename=filename)
   stream = crystal_symmetry_parser(stream, builder)
   stream = atom_parser(stream.filtered_commands(), builder, strictly_shelxl)
