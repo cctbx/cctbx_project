@@ -677,8 +677,8 @@ class set(crystal.symmetry):
   def crystal_symmetry(self):
     """Get crystal symmetry of the miller set
 
-    Returns:
-      new crystal.symmetry
+    :returns: a new crystal.symmetry object
+    :rtype: cctbx.crystal.symmetry
     """
     return crystal.symmetry(
       unit_cell = self.unit_cell(),
@@ -883,11 +883,11 @@ class set(crystal.symmetry):
   def change_basis(self, cb_op):
     """Get a transformation of the miller set with a new basis specified by cb_op
 
-    Inputs:
-      :cb_op: string or sgtbx.change_of_basis_operator describing the desired transformation of the basis
+    :param cb_op: object describing the desired transformation of the basis
+    :type cb_op: string or sgtbx.change_of_basis_operator
 
-    Returns:
-      new miller.set
+    :returns: a new miller set with the new basis
+    :rtype: cctbx.miller.set
     """
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     return set.customized_copy(self,
@@ -897,8 +897,8 @@ class set(crystal.symmetry):
   def expand_to_p1(self):
     """Get a transformation of the miller set to spacegroup P1
 
-    Returns:
-      new set(crystal.symmetry, miller.indices, boolean)
+    :returns: a new set of parameters (symmetry, miller indices, anomalous_flag) in spacegroup P1
+    :rtype: set(cctbx.crystal.symmetry, cctbx.miller.indices, boolean)
     """
     assert self.space_group_info() is not None
     assert self.indices() is not None
@@ -1925,7 +1925,7 @@ phases are determined on the fly using the given step size.
        for i_column in (0,1)])
 
   def anomalous_signal(self, use_binning=False):
-    "sqrt((<||F(+)|-|F(-)||**2>)/(1/2(<|F(+)|>**2+<|F(-)|>**2)))"
+    """sqrt((<||F(+)|-|F(-)||**2>)/(1/2(<|F(+)|>**2+<|F(-)|>**2)))"""
     assert not use_binning or self.binner() is not None
     if (not use_binning):
       obs = self.select(self.data() > 0)
@@ -2027,7 +2027,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def second_moment(self, use_binning=False):
-    "<data^2>/(<data>)^2"
+    """<data^2>/(<data>)^2"""
     assert not use_binning or self.binner() is not None
     if (not use_binning):
       if (self.indices().size() == 0): return None
@@ -2132,7 +2132,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 
 
   def second_moment_of_intensities(self, use_binning=False):
-    "<I^2>/(<I>)^2 (2.0 for untwinned, 1.5 for twinned data)"
+    """<I^2>/(<I>)^2 (2.0 for untwinned, 1.5 for twinned data)"""
     if (self.is_xray_intensity_array()):
       a = self
     else:
@@ -2142,7 +2142,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return a.second_moment(use_binning=use_binning)
 
   def wilson_ratio(self, use_binning=False):
-    "(<F>)^2/<F^2> (0.785 for untwinned, 0.885 for twinned data)"
+    """(<F>)^2/<F^2> (0.785 for untwinned, 0.885 for twinned data)"""
     if (not self.is_xray_intensity_array()):
       a = self
     else:
@@ -2683,7 +2683,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return binned_data(binner=lhs.binner(), data=data, data_fmt="%6.3f")
 
   def show_array(self, f=None, prefix="", deg=None):
-    "Listing of Miller indices and data"
+    """Listing of Miller indices and data"""
     if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
     if (self.is_complex_array() and deg is not None):
