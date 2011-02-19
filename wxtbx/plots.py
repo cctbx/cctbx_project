@@ -152,6 +152,63 @@ class histogram (plot_container) :
       self.canvas.draw()
     return p
 
+def convert_xyz_value_list (values, null_value=0.0) :
+  import numpy
+  values = sorted(list(values), cmp=lambda x,y: cmp(x[0], y[0]))
+  x_rows = [[values[0]]]
+  for i, xyz in enumerate(values[1:]) :
+    if (xyz[0] != x_rows[-1][-1][0]) :
+      x_rows.append([])
+    x_rows[-1].append(xyz)
+  x_values = [ x_row[0][0] for x_row in x_rows ]
+  y_values = sorted([ x_rows[0][n][1] for n in range(len(x_rows[0])) ])
+  assert (len(values) == (len(x_values) * len(y_values)))
+  z_values = []
+  for j in range(len(y_values)) :
+    z_values.append([])
+  for i, x_row in enumerate(x_rows) :
+    x_row = sorted(x_row, cmp=lambda x,y: cmp(x[1], y[1]))
+    for j, (x,y,z) in enumerate(x_row) :
+      assert (y in y_values)
+      if (z is not None) :
+        assert (isinstance(z, int) or isinstance(z, float))
+        z_values[j].append(z)
+      else :
+        z_values[j].append(null_value)
+  return (numpy.array(x_values), numpy.array(y_values), numpy.array(z_values))
+
+class image_plot (plot_container) :
+  def show_plot (self,
+                 x_data=(),
+                 y_data=(),
+                 z_data=(),
+                 values=(),
+                 x_label=None,
+                 y_label=None,
+                 title=None,
+                 cmap=None,
+                 interpolation="nearest") :
+    if (len(values) > 0) :
+      assert (len(x_data) == len(y_data) == len(z_data) == 0)
+      (x_data, y_data, z_data) = convert_xyz_value_list(values)
+    from matplotlib.image import NonUniformImage
+    self.figure.clear()
+    ax = self.figure.add_subplot(111)
+    im = NonUniformImage(ax, interpolation=interpolation)
+    if (cmap is not None) :
+      im.set_cmap(get_colormap(cmap))
+    im.set_data(x_data, y_data, z_data)
+    ax.images.append(im)
+    ax.set_xlim(x_data[0], x_data[-1])
+    ax.set_ylim(y_data[0], y_data[-1])
+    if (x_label is not None) :
+      ax.set_xlabel(x_label)
+    if (y_label is not None) :
+      ax.set_ylabel(y_label)
+    if (title is not None) :
+      ax.set_title(title)
+    self.canvas.draw()
+
 class iotbx_data_plot_base (plot_container) :
   def __init__ (self,
                 parent,
@@ -520,11 +577,31 @@ def get_colormap (cm_name) :
   for cm_id, cm_name2 in standard_colormaps :
     if cm_name2 == cm_name :
       cm = getattr(matplotlib.cm, cm_id, None)
+      break
+  else :
+    cm = getattr(matplotlib.cm, cm_name, None)
   if cm is None :
     cm = matplotlib.cm.jet
   return cm
 
 def exercise () :
+  values = [
+    (1.5, 3.0, 40.2),
+    (2.5, 3.5, 35.1),
+    (1.5, 3.5, 45.6),
+    (2.0, 3.5, 54.2),
+    (1.5, 4.5, 48.2),
+    (2.5, 4.5, 28.4),
+    (2.5, 4.0, 37.6),
+    (2.0, 2.5, 25.1),
+    (2.0, 3.0, 29.8),
+    (2.0, 4.0, 36.7),
+    (2.0, 4.5, 33.2),
+    (2.5, 2.5, 14.5),
+    (1.5, 2.5, 39.5),
+    (2.5, 3.0, 25.3),
+    (1.5, 4.0, 50.9),
+  ]
   sys.path.pop(0)
   from iotbx import data_plots
   loggraph1 = """\
@@ -550,6 +627,17 @@ $$
     tables=None,
     processed_lines=loggraph1.splitlines())
   frame.Show()
+  frame2 = wx.Frame(None, -1, "Heat map")
+  panel = wx.Panel(frame2, -1)
+  sizer2 = wx.BoxSizer(wx.VERTICAL)
+  frame2.SetSizer(sizer2)
+  sizer2.Add(panel, 1, wx.EXPAND)
+  implot = image_plot(panel)
+  implot.show_plot(values=values, x_label="RMSD", y_label="resolution",
+    cmap="autumn")
+  sizer2.Layout()
+  frame2.Fit()
+  frame2.Show()
   app.MainLoop()
 
 if __name__ == "__main__" :
