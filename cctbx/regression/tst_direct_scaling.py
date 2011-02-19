@@ -53,6 +53,8 @@ def exercise_direct(space_group_info,
 
   cuda_platform = direct_summation_cuda_platform()
 
+  direct_reference = True
+
   for x in xrange(1,7):
     print "There are %d scatterers"%len(elements)
     number_of_reflections = pow(10.,x)
@@ -66,11 +68,20 @@ def exercise_direct(space_group_info,
     if 1:
       cos_sin_table = False
 
-    timer = wall_clock_time()
-    cpu_direct = xs.structure_factors(d_min=d_min,algorithm="direct",
+    if direct_reference:
+      timer = wall_clock_time()
+      cpu_direct = xs.structure_factors(d_min=d_min,algorithm="direct",
                                             cos_sin_table=cos_sin_table)
-    cpu_time = timer.elapsed()
-    cpu_direct_f = cpu_direct.f_calc()
+      cpu_time = timer.elapsed()
+      cpu_direct_f = cpu_direct.f_calc()
+
+      timer = wall_clock_time()
+      simple_direct = xs.structure_factors(d_min=d_min,algorithm=direct_summation_simple())
+      simple_time = timer.elapsed()
+      simple_direct_f = simple_direct.f_calc()
+    else:
+      cpu_time=0
+      simple_time=0
 
     timer = wall_clock_time()
     gpu_direct = xs.structure_factors(d_min=d_min,algorithm=cuda_platform)
@@ -82,15 +93,11 @@ def exercise_direct(space_group_info,
     fft_time = timer.elapsed()
     fft_f = fft_algorithm.f_calc()
 
-    timer = wall_clock_time()
-    simple_direct = xs.structure_factors(d_min=d_min,algorithm=direct_summation_simple())
-    simple_time = timer.elapsed()
-    simple_direct_f = simple_direct.f_calc()
-
     times.append((number_of_reflections,cpu_time,d_min,gpu_time,simple_time,fft_time))
-    assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data(), eps=1e-4)
-    # doesn't assert correctly assert approx_equal(cpu_direct_f.data(), fft_f.data())
-    assert approx_equal(cpu_direct_f.data(), simple_direct_f.data(), eps=1e-6)
+    # doesn't assert correctly: assert approx_equal(cpu_direct_f.data(), fft_f.data())
+    if direct_reference:
+     assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data(), eps=1e-6)
+     assert approx_equal(cpu_direct_f.data(), simple_direct_f.data(), eps=1e-6)
 
   show_times_vs_complexity(times, header="run time vs. # reflections")
 

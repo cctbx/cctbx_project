@@ -126,6 +126,9 @@ class pprocess:
     sorted_weights = flex.double([S.weight() for S in self.scatterers]).select(
       uniqueix_sort_order).as_numpy_array()
 
+    sorted_u_iso = self.scatterers.extract_u_iso().select(
+      uniqueix_sort_order).as_numpy_array()
+
     if n_sites%FHKL_BLOCKSIZE > 0:
       newsize = FHKL_BLOCKSIZE* (1+(n_sites/FHKL_BLOCKSIZE))
       if verbose:
@@ -137,11 +140,13 @@ class pprocess:
       sorted_flat_sites.resize(( 3*newsize,))
       # zero-padding for weights guarantees no effect from padded sites
       sorted_weights.resize(( newsize,))
+      sorted_u_iso.resize(( newsize,))
       sorted_uniqueix.resize((newsize,))
 
     self.n_sites = n_sites
     self.flat_sites = sorted_flat_sites
     self.weights = sorted_weights
+    self.u_iso = sorted_u_iso
     self.uniqueix = sorted_uniqueix
 
   def prepare_gaussians_symmetries_cell(self,numpy):
@@ -188,13 +193,14 @@ class pprocess:
   def validate_the_inputs(self,manager,cuda):
 
     # Assess limits due to the current implementation:
-    # no support for B factors, ADP's, f' or f"
+    # no support for ADP's, f' or f"
 
     PyNX_implementation = "Fhkl = Sum(atoms) (weight * exp(2*pi*i(H*X)))"
     # reference http://pynx.sourceforge.net (http://arxiv.org/abs/1010.2641v1)
 
     Present_implementation = """Fhkl = Sum(atoms(X)) (f0(d*) * weight *
-        Sum(symops(SR,ST)) exp(2*pi*i(H*SR*X+H*ST)))"""
+        Sum(symops(SR,ST)) exp(2*pi*i(H*SR*X+H*ST) + DW-factor)
+      )"""
 
     Future_implementation = """Fhkl = Sum(atoms(X)) ((f0(d*)+f'+i*f") * weight *
         Sum(symops(SR,ST)) exp(2*pi*i(H*SR*X+H*ST) + DW-factor)
@@ -204,10 +210,8 @@ class pprocess:
     except:
       raise Sorry("There must be at least one Miller index""")
 
-    try:
-      assert self.scatterers.extract_u_iso().count(0.0)==len(self.scatterers)
-    except:
-      raise Sorry("As presently implemented parallel processor direct summation doesn't support non-zero B factors""")
+    self.use_debye_waller = (
+      self.scatterers.extract_u_iso().count(0.0)<len(self.scatterers) )
 
     try:
       assert self.scatterers.extract_use_u_aniso().count(True)==0
@@ -288,8 +292,10 @@ class pprocess:
       sort_mod = SourceModule(mod_fhkl_sorted%(self.gaussians.shape[0],
                          self.symmetry.shape[0],
                          self.sym_stride,
-                         self.g_stride, self.nsymop),
-                         options=["-use_fast_math"])
+                         self.g_stride,
+                         int(self.use_debye_waller),
+                         self.nsymop),
+                         )
 
       r_m_m_address = sort_mod.get_global("reciprocal_metrical_matrix")[0]
       cuda.memcpy_htod(r_m_m_address, self.reciprocal_metrical_matrix)
@@ -312,6 +318,7 @@ class pprocess:
                  cuda.InOut(fhkl_imag),
                  cuda.In(self.flat_sites),
                  cuda.In(self.weights),
+                 cuda.In(self.u_iso),
                  algorithm.numpy.uint32(self.scatterers.increasing_order[x]),
                  algorithm.numpy.uint32(self.scatterers.sorted_ranges[x][0]),
                  algorithm.numpy.uint32(self.scatterers.sorted_ranges[x][1]),
@@ -370,6 +377,7 @@ __device__ double get_H_dot_X(double* const& site, unsigned int const& i,
 
 __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
                         const double *xyzsites, const double *weight,
+                        const double *u_iso,
                         const unsigned int scattering_type,
                         const unsigned int index_begin,
                         const unsigned int index_end,
@@ -377,11 +385,16 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
 {
    #define BLOCKSIZE %d
    #define G_STRIDE %%d
+   #define USE_DEBYE_WALLER %%d
 
    const unsigned long ix=threadIdx.x+blockDim.x*blockIdx.x;
 
    /*later figure out how to make this shared*/
    const double twopi= 8.* atan(1.);
+   #if USE_DEBYE_WALLER
+     const double eight_pi_sq = 2.* twopi * twopi;
+     __shared__ double b_iso[BLOCKSIZE];
+   #endif
    /* can the threads coalesce with a stride of 3? Make into __shared__ and See Programming Guide Fig. G-2 */
    const double h = hkl[3*ix];
    const double k = hkl[3*ix+1];
@@ -389,7 +402,7 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
    double fr=0,fi=0;
 
    __shared__ double xyz[3*BLOCKSIZE];
-   __shared__ float wght[BLOCKSIZE];
+   __shared__ double wght[BLOCKSIZE];
 
    long at = BLOCKSIZE*index_begin/BLOCKSIZE;
    double x_sq = get_d_star_sq(h,k,l) / 4.;
@@ -408,12 +421,20 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
       xyz[BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+BLOCKSIZE];
       xyz[2*BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+2*BLOCKSIZE];
       wght[threadIdx.x]=weight[at+threadIdx.x];
+      #if USE_DEBYE_WALLER
+        b_iso[threadIdx.x] = eight_pi_sq * u_iso[at+threadIdx.x];
+      #endif
       __syncthreads();
 
       for(unsigned int i=0;i<BLOCKSIZE;i++) {
         double form_factor_mask = form_factor;
+        double debye_waller_factor = 1.;
+        #if USE_DEBYE_WALLER
+          debye_waller_factor *= exp( -b_iso[i] * x_sq );
+        #endif
         if (at+i < index_begin || at+i >= index_end) {
           form_factor_mask = 0.;
+          debye_waller_factor = 0.;
         }
 
         double s,c,s_imag=0.,c_real=0.;
@@ -423,8 +444,8 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
           c_real += c;
           s_imag += s;
         }
-        fr += form_factor_mask * wght[i] * c_real;
-        fi += form_factor_mask * wght[i] * s_imag;
+        fr += form_factor_mask * wght[i] * c_real * debye_waller_factor;
+        fi += form_factor_mask * wght[i] * s_imag * debye_waller_factor;
       }
    }
 
