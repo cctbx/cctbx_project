@@ -2,6 +2,7 @@
 from libtbx import easy_pickle
 from libtbx import group_args
 import os.path
+import sys
 
 def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
   import numpy
@@ -68,6 +69,36 @@ def decode_atom_str (atom_id) :
     resid = atom_id[10:],
     resseq = atom_id[10:-1].strip())
 
+def find_sequence_mismatches (pdb_hierarchy,
+                              sequences,
+                              assume_same_order=True,
+                              expected_sequence_identity=0.8,
+                              log=sys.stdout) :
+  chains = pdb_hierarchy.models()[0].chains()
+  chain_ids = []
+  actual_seqs = []
+  expected_seqs = []
+  if (len(chains) != len(sequences)) or (not assume_same_order) :
+    print >> log, "Can't determine sequence->chain mapping autoamtically"
+    print >> log, "Running sequence alignements. . ."
+    from mmtbx.alignment import pairwise_global_wrapper
+    for chain in chains :
+      main_conf = chain.conformers()[0]
+      chain_seq = main_conf.as_padded_sequence()
+      actual_seqs.append(chain_seq)
+      chain_ids.append(chain.id)
+      best_identity = 0
+      best_sequence = None
+      for sequence in sequences :
+        pg = pairwise_global_wrapper(chain_seq, sequence)
+        identity = pg.calculate_sequence_identity()
+        if (identity >= expected_sequence_identity) :
+          if (identity >= best_identity) :
+            best_identity = identity
+            best_sequence = sequence
+      expected_seqs.append(best_sequence)
+  mismatches = []
+
 def exercise () :
   try :
     import numpy
@@ -88,6 +119,10 @@ def exercise () :
   z_data = get_rotarama_data(residue_type="phe",
     db="rota",
     convert_to_numpy_array=test_numpy)
+  atom_info = decode_atom_str(" OD2 ASP A  14L")
+  assert (atom_info.name == " OD2") and (atom_info.resname == "ASP")
+  assert (atom_info.altloc == " ") and (atom_info.chain_id == "A")
+  assert (atom_info.resid == "  14L") and (atom_info.resseq == "14")
 
 if __name__ == "__main__" :
   exercise()
