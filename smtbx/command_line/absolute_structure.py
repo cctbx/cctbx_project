@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME smtbx.absolute_structure
 
 from cctbx.array_family import flex
-from cctbx import sgtbx
 import iotbx.builders
 import iotbx.cif
 import iotbx.cif.builders
@@ -60,6 +59,7 @@ def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
     return
   print >> log, file_path
   fc.space_group_info().show_summary(f=log)
+  print >> log, "space_group.is_chiral(): " + str(fc.space_group().is_chiral())
   absolute_structure_analysis(xs, fo2, fc, scale, nu=nu, log=log,
                               outlier_cutoff_factor=outlier_cutoff_factor)
   log.flush()
@@ -100,15 +100,14 @@ def structure_factors_from_ins_res(file_path):
        import weighted_constrained_restrained_crystal_structure_builder
   hkl_path = os.path.splitext(file_path)[0] + ".hkl"
   if not os.path.exists(hkl_path): return [None]*3
-  custom_builder = iotbx.builders.mixin_builder_class(
-    "custom_builder",
+  builder = iotbx.builders.mixin_builder_class(
+    "builder",
+    iotbx.builders.twinning_builder,
     iotbx.builders.reflection_data_source_builder,
-    iotbx.builders.weighting_scheme_builder)()
-  builder = \
-    weighted_constrained_restrained_crystal_structure_builder()
+    iotbx.builders.weighted_constrained_restrained_crystal_structure_builder)()
   stream = iotbx.shelx.command_stream(filename=file_path)
-  l_ins = iotbx.shelx.instruction_parser(stream, custom_builder)
-  stream = iotbx.shelx.crystal_symmetry_parser(l_ins.filtered_commands(),
+  stream = iotbx.shelx.instruction_parser(stream, builder)
+  stream = iotbx.shelx.crystal_symmetry_parser(stream.filtered_commands(),
                                                builder)
   stream = iotbx.shelx.wavelength_parser(stream.filtered_commands(), builder)
   stream = iotbx.shelx.afix_parser(stream.filtered_commands(), builder)
@@ -117,16 +116,15 @@ def structure_factors_from_ins_res(file_path):
   stream = iotbx.shelx.restraint_parser(stream.filtered_commands(), builder)
   stream.parse()
   xs = builder.structure
-  twin = l_ins.instructions.get('twin')
-  if twin is not None and not xs.space_group().is_centric():
+  twin_components = builder.twin_components
+  if twin_components and not xs.space_group().is_centric():
     print file_path
-    matrix = twin.get('matrix', sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)))
-    print 'twin: ', matrix
+    print 'twin: ', twin_components[0].twin_law.as_hkl()
 
   xs.set_inelastic_form_factors(
     photon=builder.wavelength_in_angstrom, table="sasaki")
   return structure_factors_from_hkl(
-    xs, hkl_path, weighting_scheme=custom_builder.weighting_scheme)
+    xs, hkl_path, weighting_scheme=builder.weighting_scheme)
 
 def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
                                 outlier_cutoff_factor=2):
