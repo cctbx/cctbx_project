@@ -174,7 +174,8 @@ def convert_xyz_value_list (values, null_value=0.0) :
         assert (isinstance(z, int) or isinstance(z, float))
         z_values[j].append(z)
       else :
-        z_values[j].append(null_value)
+        z_values[j].append(numpy.NaN)
+      #  z_values[j].append(null_value)
   return (numpy.array(x_values), numpy.array(y_values), numpy.array(z_values))
 
 class image_plot (plot_container) :
@@ -593,13 +594,13 @@ def exercise () :
     (1.5, 4.5, 48.2),
     (2.5, 4.5, 28.4),
     (2.5, 4.0, 37.6),
-    (2.0, 2.5, 25.1),
+    (2.0, 2.5, None),
     (2.0, 3.0, 29.8),
     (2.0, 4.0, 36.7),
     (2.0, 4.5, 33.2),
-    (2.5, 2.5, 14.5),
+    (2.5, 2.5, None),
     (1.5, 2.5, 39.5),
-    (2.5, 3.0, 25.3),
+    (2.5, 3.0, None),
     (1.5, 4.0, 50.9),
   ]
   sys.path.pop(0)
