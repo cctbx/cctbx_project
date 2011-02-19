@@ -293,6 +293,9 @@ class space_group_info(object):
     if (f is None): f = sys.stdout
     print >> f, "%s%s" % (prefix, self.symbol_and_number())
 
+  def number_of_continuous_allowed_origin_shifts(self):
+    return self.structure_seminvariants().select(False).size()
+
   def subtract_continuous_allowed_origin_shifts(self, translation_frac):
     cb_op = self.change_of_basis_op_to_reference_setting()
     return cb_op.c_inv() * self.reference_setting().structure_seminvariants() \

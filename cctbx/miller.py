@@ -448,6 +448,9 @@ class set(crystal.symmetry):
     return tuple([uctbx.d_star_sq_as_d(d_star_sq)
       for d_star_sq in self.min_max_d_star_sq()])
 
+  def minimum_wavelength_based_on_d_min(self, tolerance=1e-2):
+    return 2 * self.d_min() * (1-tolerance)
+
   def resolution_range(self):
     return self.d_max_min()
 
@@ -2905,7 +2908,6 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
   def apply_shelxl_extinction_correction(self, x, wavelength):
     correction = self.shelxl_extinction_correction(x, wavelength)
     return self.customized_copy(data=self.data() * correction)
-
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 

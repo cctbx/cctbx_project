@@ -48,6 +48,9 @@ def exercise_set():
   assert approx_equal(ms.d_min(), 1.177603)
   assert approx_equal(ms.d_max_min(), [1.25,1.177603])
   assert approx_equal(ms.resolution_range(), (1.25, 1.177603))
+  assert approx_equal(ms.minimum_wavelength_based_on_d_min(), 2.33165395578)
+  assert approx_equal(ms.minimum_wavelength_based_on_d_min(tolerance=0.1),
+    2.11968541434)
   p1 = ms.expand_to_p1()
   assert p1.indices().size() == 6
   b = p1.setup_binner(auto_binning=True)

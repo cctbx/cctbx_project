@@ -4,6 +4,7 @@ import libtbx.phil.command_line
 from libtbx import easy_pickle
 from libtbx.utils import user_plus_sys_time
 from libtbx import Auto
+from cStringIO import StringIO
 import traceback
 import sys, os
 op = os.path
@@ -25,6 +26,8 @@ def get_master_phil():
         .type = int
       shelxl_cg_iterations = 12
         .type = int
+      keep_tmp_files = False
+        .type = bool
 """)
 
 def show_cc_r1(label, f_obs, xray_structure):
@@ -133,7 +136,7 @@ def run_shelxl(
       xray_structure=xray_structure,
       data_are_intensities=False,
       title="cod_code=%s mode=%s" % (cod_code, mode),
-      wavelength=1,
+      wavelength=f_obs.minimum_wavelength_based_on_d_min(),
       full_matrix_least_squares_cycles=fm_cycles,
       conjugate_gradient_least_squares_cycles=cg_cycles,
       weighting_scheme_params=(0,0),
@@ -142,12 +145,59 @@ def run_shelxl(
     from libtbx import easy_run
     buffers = easy_run.fully_buffered("shelxl tmp")
     buffers.raise_if_errors()
+    refinement_unstable = False
+    for line in buffers.stdout_lines:
+      if (line.find("** REFINEMENT UNSTABLE **") >= 0):
+        refinement_unstable = True
+        print "Aborted: shelxl %s refinement unstable: %s" % (mode, cod_code)
+        break
+    res = open("tmp.res").read()
     refined = xray_structure.from_shelx(
-      filename="tmp.res", min_distance_sym_equiv=0)
+      file=StringIO(res),
+      min_distance_sym_equiv=0)
     assert refined.crystal_symmetry().is_similar_symmetry(
       xray_structure)
     xray_structure.replace_scatterers(refined.scatterers())
-    if (1):
+    res_hkl_count = None
+    res_r1 = None
+    res_n_parameters = None
+    res_n_restraints = None
+    for line in res.splitlines():
+      if (not line.startswith("REM ")): continue
+      assert not refinement_unstable
+      if (line.startswith("REM R1 =")):
+        flds = line.split()
+        assert len(flds) == 15
+        res_hkl_count = int(flds[13])
+        res_r1 = float(flds[10])
+      elif (line.find(" parameters refined ") >= 0):
+        assert line.endswith(" restraints")
+        flds = line.split()
+        assert len(flds) == 7
+        res_n_parameters = int(flds[1])
+        res_n_restraints = int(flds[-2])
+    if (not refinement_unstable):
+      assert res_hkl_count is not None
+      assert res_r1 is not None
+      assert res_n_parameters is not None
+      assert res_n_restraints is not None
+      #
+      assert res_hkl_count == f_obs.indices().size()
+      n_caos = f_obs.space_group_info() \
+        .number_of_continuous_allowed_origin_shifts()
+      if (res_n_restraints != n_caos):
+        sg_symbol = str(f_obs.space_group_info())
+        if (sg_symbol in ["P 63 m c", "P 63 c m"]):
+          assert n_caos == 1
+          assert res_n_restraints == 0
+          print "INFO: SHELXL restraint count incorrect? code_code:", cod_code
+        else:
+          raise RuntimeError(
+            "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
+              res_n_restraints, n_caos))
+      # TODO validate res_n_parameters
+      # TODO validate res_r1
+    if (not params.keep_tmp_files):
       remove_tmp_files()
       remove_wdir = wdir_is_new
   finally:

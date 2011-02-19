@@ -67,6 +67,12 @@ class cod_data(object):
         return False
     return True
 
+  def have_sys_absent(O):
+    return (O.f_obs.sys_absent_flags().data().count(True) != 0)
+
+  def have_redundant_data(O):
+    return not O.f_obs.is_unique_set_under_symmetry()
+
   def have_bad_sigmas(O):
     if (O.f_obs.sigmas() is None):
       print "Missing sigmas:", O.cod_code
@@ -178,11 +184,15 @@ def run(args):
     else:
       if (    not cd.have_zero_occupancies()
           and cd.have_shelxl_compatible_scattering_types()
+          and not cd.have_sys_absent()
+          and not cd.have_redundant_data()
           and not cd.have_bad_sigmas()
           and cd.f_obs_f_calc_correlation() >= co.min_f_obs_f_calc_correlation):
         easy_pickle.dump(
           file_name="cod_ma_xs/%s.pickle" % cod_code,
           obj=(cd.f_obs, cd.xray_structure))
+      else:
+        print "filtering out:", cod_code
       print "done_with:", cod_code
       print
   print
