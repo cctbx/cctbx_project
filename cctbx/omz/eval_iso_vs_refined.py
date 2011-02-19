@@ -4,6 +4,10 @@ def run(args):
   from scitbx.array_family import flex
   gaps = flex.double()
   infos = flex.std_string()
+  n_exception = 0
+  n_traceback = 0
+  n_abort = 0
+  seconds = []
   for file_name in args:
     cod_code = None
     n_scatt = None
@@ -33,9 +37,27 @@ def run(args):
         cod_code = None
         n_scatt = None
         iso = None
+      else:
+        if (line.find("EXCEPTION") >= 0):
+          n_exception += 1
+        if (line.startswith("Traceback")):
+          n_traceback += 1
+        if (line.find("Abort") >= 0):
+          n_abort += 1
+        if (line.startswith("wall clock time: ")):
+          if (line.endswith(" seconds")):
+            secs = float(line.split()[-2])
+          else:
+            _, fld = line.split("(", 1)
+            assert fld.endswith(" seconds total)")
+            secs = float(fld.split()[0])
+          seconds.append(secs)
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
   print "Number of results:", gaps.size()
+  print "Exceptions, Tracebacks, Abort:", n_exception, n_traceback, n_abort
+  if (len(seconds) != 0):
+    print "min, max seconds:", min(seconds), max(seconds)
   print
   def stats(f):
     n = f.count(True)
