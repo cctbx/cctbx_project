@@ -112,7 +112,8 @@ class ls_refinement(object):
         f_obs,
         xray_structure,
         params,
-        reference_structure):
+        reference_structure,
+        expected_n_refinable_parameters=None):
     O.f_obs = f_obs
     O.weights = flex.double(f_obs.data().size(), 1)
     O.xray_structure = xray_structure
@@ -124,6 +125,8 @@ class ls_refinement(object):
     O.show_rms_info()
     O.pack_variables()
     print "Number of variables:", O.x.size()
+    if (expected_n_refinable_parameters is not None):
+      assert O.x.size() == expected_n_refinable_parameters
     O.xfgc_infos = []
     O.update_fgc(is_iterate=True)
     O.pseudo_curvs = None

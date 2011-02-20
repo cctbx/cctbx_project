@@ -557,6 +557,103 @@ class structure(crystal.special_position_settings):
       self.sites_frac() + self.unit_cell().fractionalize(shifts_cart))
     return True
 
+  def shift_sites_in_place(self, shift_length, mersenne_twister=None):
+    if (shift_length == 0): return
+    sst = self._site_symmetry_table
+    assert sst.indices().size() == self._scatterers.size()
+    frac = self.unit_cell().fractionalize
+    orth = self.unit_cell().orthogonalize
+    if (mersenne_twister is None):
+      mersenne_twister = flex.mersenne_twister
+    col = matrix.col
+    for i_sc,sc in enumerate(self._scatterers):
+      site_frac = col(sc.site)
+      ss = sst.get(i_sc)
+      constr = ss.site_constraints()
+      np = constr.n_independent_params()
+      if (np == 0):
+        continue
+      if (np == 3):
+        def find_3():
+          sl = shift_length
+          while (sl != 0):
+            for i_trial in xrange(10):
+              shift_frac = col(frac(
+                col(mersenne_twister.random_double_point_on_sphere()) * sl))
+              site_mod = site_frac + shift_frac
+              ss_mod = self.site_symmetry(site=site_mod)
+              if (ss_mod.is_point_group_1()):
+                sc.site = site_mod
+                return
+            sl *= 0.5
+        find_3()
+      elif (np == 2):
+        plane_vectors = []
+        for s0 in [-1,0,1]:
+          for s1 in [-1,0,1]:
+            indep = list(constr.independent_params(site_frac))
+            indep[0] += s0
+            indep[1] += s1
+            plane_vectors.append(col(orth(
+              col(constr.all_params(indep)) - site_frac)))
+        assert len(plane_vectors) == 9
+        axis = None
+        axis_length = None
+        for i in xrange(8):
+          vi = plane_vectors[i]
+          for j in xrange(i+1,9):
+            vj = plane_vectors[j]
+            cross = vi.cross(vj)
+            length = cross.length()
+            if (axis is None or length > axis_length):
+              axis = cross
+              axis_length = length
+        assert axis is not None
+        assert axis_length != 0
+        v_max = None
+        l_max = None
+        for v in plane_vectors:
+          l = v.length()
+          if (l_max is None or l > l_max):
+            v_max = v
+            l_max = l
+        assert v_max is not None
+        def find_2():
+          sl = shift_length
+          while (sl != 0):
+            for i_trial in count_max(assert_less_than=10):
+              r = axis.axis_and_angle_as_r3_rotation_matrix(
+                angle = mersenne_twister.random_double() * 2 * math.pi)
+              shift_frac = col(frac((r * v).normalize() * sl))
+              site_mod = site_frac + shift_frac
+              ss_mod = self.site_symmetry(site=site_mod)
+              if (ss_mod.special_op() == ss.special_op()):
+                sc.site = site_mod
+                return
+            sl *= 0.5
+        find_2()
+      else:
+        def find_1():
+          sl = shift_length
+          while (sl != 0):
+            if (mersenne_twister.random_double() < 0.5):
+              us = [1, -1]
+            else:
+              us = [-1, 1]
+            for u in us:
+              indep = list(constr.independent_params(site_frac))
+              indep[0] += u
+              v = col(orth(col(constr.all_params(indep)) - site_frac))
+              assert v.length() != 0
+              shift_frac = col(frac(v.normalize() * shift_length))
+              site_mod = site_frac + shift_frac
+              ss_mod = self.site_symmetry(site=site_mod)
+              if (ss_mod.special_op() == ss.special_op()):
+                sc.site = site_mod
+                return
+            sl *= 0.5
+        find_1()
+
   def b_iso_min_max_mean(self):
     b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
     b_min  = flex.min(b_isos)
@@ -1233,19 +1330,37 @@ class structure(crystal.special_position_settings):
   def set_scatterer_flags(self, scatterer_flags):
     scatterer_flags.assign_to(self.scatterers())
 
-  def n_parameters(self):
+  def n_parameters(self, considering_site_symmetry_constraints=False):
     # XXX move to C++
     result = 0
-    for scatterer in self.scatterers():
-      flags = scatterer.flags
-      if (flags.grad_site()):       result += 3
+    if (considering_site_symmetry_constraints):
+      sstab = self.site_symmetry_table()
+    else:
+      sstab = None
+    for i_sc,sc in enumerate(self.scatterers()):
+      flags = sc.flags
+      if (sstab is None):
+        site_symmetry = None
+      else:
+        site_symmetry = sstab.get(i_sc)
+        if (site_symmetry.is_point_group_1()):
+          site_symmetry = None
+      if (flags.grad_site()):
+        if (site_symmetry is None):
+          result += 3
+        else:
+          result += site_symmetry.site_constraints().n_independent_params()
       if (    flags.grad_u_iso()
-          and flags.use_u_iso()):   result += 1
+          and flags.use_u_iso()): result += 1
       if (    flags.grad_u_aniso()
-          and flags.use_u_aniso()): result += 6
-      if (flags.grad_occupancy()):  result += 1
-      if (flags.grad_fp()):         result += 1
-      if (flags.grad_fdp()):        result += 1
+          and flags.use_u_aniso()):
+        if (site_symmetry is None):
+          result += 6
+        else:
+          result += site_symmetry.adp_constraints().n_independent_params()
+      if (flags.grad_occupancy()): result += 1
+      if (flags.grad_fp()): result += 1
+      if (flags.grad_fdp()): result += 1
     return result
 
   def n_grad_u_iso(self):

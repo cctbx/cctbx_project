@@ -204,6 +204,7 @@ def exercise_structure():
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
   assert xs.n_parameters() == 14
+  assert xs.n_parameters(considering_site_symmetry_constraints=True) == 9
   g = flex.vec3_double(((0.1,0.2,0.3),(0.2,0.3,0.4)))
   xs.apply_special_position_ops_d_target_d_site(g)
   assert approx_equal(g[0], (0,0,0))
