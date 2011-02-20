@@ -150,98 +150,106 @@ def run_shelxl(
         print "Aborted: shelxl %s refinement unstable: %s" % (mode, cod_code)
         break
     res = open("tmp.res").read()
-    refined = xray_structure.from_shelx(
-      file=StringIO(res),
-      min_distance_sym_equiv=0,
-      strictly_shelxl=False)
-    assert refined.crystal_symmetry().is_similar_symmetry(
-      xray_structure)
-    for sc,rsc in zip(xray_structure.scatterers(), refined.scatterers()):
-      assert rsc.label == sc.label
-      assert approx_equal(rsc.occupancy, sc.weight(), 1e-4)
-      rsc.occupancy = sc.occupancy # XXX bug in res file reader
-    def check_special_positions():
-      result = True
-      uc = xray_structure.unit_cell()
-      sstab = xray_structure.site_symmetry_table()
-      for i_sc in xray_structure.special_position_indices():
-        sc = refined.scatterers()[i_sc]
-        site_symmetry = sstab.get(i_sc)
-        assert not site_symmetry.is_point_group_1()
-        site_special = site_symmetry.special_op() * sc.site
-        d = uc.mod_short_distance(sc.site, site_special)
-        if (d > 1e-3):
-          print "site moved off special position:"
-          print "  %s" % sc.label
-          print "    shelxl res: %11.6f %11.6f %11.6f" % sc.site
-          print "    special_op: %11.6f %11.6f %11.6f" % site_special
-          print "    distance moved: %.3f" % d
-          result = False
-      return result
-    assert check_special_positions()
-    xray_structure.replace_scatterers(refined.scatterers())
-    res_fvar = None
-    res_hkl_count = None
-    res_r1 = None
-    res_n_parameters = None
-    res_n_restraints = None
-    for line in res.splitlines():
-      if (line.startswith("FVAR ")):
-        flds = line.split()
-        assert len(flds) == 2
-        res_fvar = float(flds[1])
-        continue
-      if (not line.startswith("REM ")): continue
-      assert not refinement_unstable
-      if (line.startswith("REM R1 =")):
-        flds = line.split()
-        assert len(flds) == 15
-        res_hkl_count = int(flds[13])
-        res_r1 = float(flds[10])
-      elif (line.find(" parameters refined ") >= 0):
-        assert line.endswith(" restraints")
-        flds = line.split()
-        assert len(flds) == 7
-        res_n_parameters = int(flds[1])
-        res_n_restraints = int(flds[-2])
-    if (not refinement_unstable):
-      assert res_fvar is not None
-      assert res_hkl_count is not None
-      assert res_r1 is not None
-      assert res_n_parameters is not None
-      assert res_n_restraints is not None
-      #
-      assert res_hkl_count == f_obs.indices().size()
-      def raise_unexpected_restraints(n_expected):
-        raise RuntimeError(
-          "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
-            res_n_restraints, n_expected))
-      if (mode == "fm"):
-        n_caos = f_obs.space_group_info() \
-          .number_of_continuous_allowed_origin_shifts()
-        if (res_n_restraints != n_caos):
-          sg_symbol = str(f_obs.space_group_info())
-          if (sg_symbol in ["P 63 m c", "P 63 c m"]):
-            assert n_caos == 1
-            assert res_n_restraints == 0
-            print "INFO: SHELXL restraint count incorrect? code_code:", \
-              cod_code
-          else:
-            raise_unexpected_restraints(n_caos)
-      elif (mode == "cg"):
-        if (res_n_restraints != 0):
-          raise_unexpected_restraints(0)
-      else:
-        raise RuntimeError("Unknown mode: " + mode)
-      assert res_n_parameters == expected_n_refinable_parameters + 1
-      _, r1_fvar = show_cc_r1("fvar_"+mode, f_obs, xray_structure, res_fvar)
-      r1_diff = r1_fvar - res_r1
-      print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
-        mode, r1_fvar, res_r1, r1_diff, cod_code)
-      if (abs(r1_diff) > 0.01):
-        raise RuntimeError("R1 MISMATCH %s" % cod_code)
-      _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
-      print "R1 FVAR-Auto %s: %.4f" % (cod_code, r1_fvar - r1_auto)
+    try:
+      refined = xray_structure.from_shelx(
+        file=StringIO(res),
+        min_distance_sym_equiv=0,
+        strictly_shelxl=False)
+    except iotbx.shelx.error, e:
+      if (str(e).find("scatterer parameter") < 0):
+        raise
+      print "Aborted: shelxl %s refinement apparently unstable: %s" % (
+        mode, cod_code)
+      refined = None
+    if (refined is not None):
+      assert refined.crystal_symmetry().is_similar_symmetry(
+        xray_structure)
+      for sc,rsc in zip(xray_structure.scatterers(), refined.scatterers()):
+        assert rsc.label == sc.label
+        assert approx_equal(rsc.occupancy, sc.weight(), 1e-4)
+        rsc.occupancy = sc.occupancy # XXX bug in res file reader
+      def check_special_positions():
+        result = True
+        uc = xray_structure.unit_cell()
+        sstab = xray_structure.site_symmetry_table()
+        for i_sc in xray_structure.special_position_indices():
+          sc = refined.scatterers()[i_sc]
+          site_symmetry = sstab.get(i_sc)
+          assert not site_symmetry.is_point_group_1()
+          site_special = site_symmetry.special_op() * sc.site
+          d = uc.mod_short_distance(sc.site, site_special)
+          if (d > 1e-3):
+            print "site moved off special position:"
+            print "  %s" % sc.label
+            print "    shelxl res: %11.6f %11.6f %11.6f" % sc.site
+            print "    special_op: %11.6f %11.6f %11.6f" % site_special
+            print "    distance moved: %.3f" % d
+            result = False
+        return result
+      assert check_special_positions()
+      xray_structure.replace_scatterers(refined.scatterers())
+      res_fvar = None
+      res_hkl_count = None
+      res_r1 = None
+      res_n_parameters = None
+      res_n_restraints = None
+      for line in res.splitlines():
+        if (line.startswith("FVAR ")):
+          flds = line.split()
+          assert len(flds) == 2
+          res_fvar = float(flds[1])
+          continue
+        if (not line.startswith("REM ")): continue
+        assert not refinement_unstable
+        if (line.startswith("REM R1 =")):
+          flds = line.split()
+          assert len(flds) == 15
+          res_hkl_count = int(flds[13])
+          res_r1 = float(flds[10])
+        elif (line.find(" parameters refined ") >= 0):
+          assert line.endswith(" restraints")
+          flds = line.split()
+          assert len(flds) == 7
+          res_n_parameters = int(flds[1])
+          res_n_restraints = int(flds[-2])
+      if (not refinement_unstable):
+        assert res_fvar is not None
+        assert res_hkl_count is not None
+        assert res_r1 is not None
+        assert res_n_parameters is not None
+        assert res_n_restraints is not None
+        #
+        assert res_hkl_count == f_obs.indices().size()
+        def raise_unexpected_restraints(n_expected):
+          raise RuntimeError(
+            "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
+              res_n_restraints, n_expected))
+        if (mode == "fm"):
+          n_caos = f_obs.space_group_info() \
+            .number_of_continuous_allowed_origin_shifts()
+          if (res_n_restraints != n_caos):
+            sg_symbol = str(f_obs.space_group_info())
+            if (sg_symbol in ["P 63 m c", "P 63 c m"]):
+              assert n_caos == 1
+              assert res_n_restraints == 0
+              print "INFO: SHELXL restraint count incorrect? code_code:", \
+                cod_code
+            else:
+              raise_unexpected_restraints(n_caos)
+        elif (mode == "cg"):
+          if (res_n_restraints != 0):
+            raise_unexpected_restraints(0)
+        else:
+          raise RuntimeError("Unknown mode: " + mode)
+        assert res_n_parameters == expected_n_refinable_parameters + 1
+        _, r1_fvar = show_cc_r1("fvar_"+mode, f_obs, xray_structure, res_fvar)
+        r1_diff = r1_fvar - res_r1
+        print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
+          mode, r1_fvar, res_r1, r1_diff, cod_code)
+        if (abs(r1_diff) > 0.01):
+          raise RuntimeError("R1 MISMATCH %s" % cod_code)
+        _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
+        print "R1 FVAR-Auto %s: %.4f" % (cod_code, r1_fvar - r1_auto)
     if (not params.keep_tmp_files):
       remove_tmp_files()
       remove_wdir = wdir_is_new
