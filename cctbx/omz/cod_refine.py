@@ -152,7 +152,8 @@ def run_shelxl(
     res = open("tmp.res").read()
     refined = xray_structure.from_shelx(
       file=StringIO(res),
-      min_distance_sym_equiv=0)
+      min_distance_sym_equiv=0,
+      strictly_shelxl=False)
     assert refined.crystal_symmetry().is_similar_symmetry(
       xray_structure)
     for sc,rsc in zip(xray_structure.scatterers(), refined.scatterers()):
