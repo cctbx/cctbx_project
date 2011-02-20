@@ -153,6 +153,25 @@ def run_shelxl(
       min_distance_sym_equiv=0)
     assert refined.crystal_symmetry().is_similar_symmetry(
       xray_structure)
+    def check_special_positions():
+      result = True
+      uc = xray_structure.unit_cell()
+      sstab = xray_structure.site_symmetry_table()
+      for i_sc in xray_structure.special_position_indices():
+        sc = refined.scatterers()[i_sc]
+        site_symmetry = sstab.get(i_sc)
+        assert not site_symmetry.is_point_group_1()
+        site_special = site_symmetry.special_op() * sc.site
+        d = uc.mod_short_distance(sc.site, site_special)
+        if (d > 1e-3):
+          print "site moved off special position:"
+          print "  %s" % sc.label
+          print "    shelxl res: %11.6f %11.6f %11.6f" % sc.site
+          print "    special_op: %11.6f %11.6f %11.6f" % site_special
+          print "    distance moved: %.3f" % d
+          result = False
+      return result
+    assert check_special_positions()
     xray_structure.replace_scatterers(refined.scatterers())
     res_hkl_count = None
     res_r1 = None
@@ -179,18 +198,27 @@ def run_shelxl(
       assert res_n_restraints is not None
       #
       assert res_hkl_count == f_obs.indices().size()
-      n_caos = f_obs.space_group_info() \
-        .number_of_continuous_allowed_origin_shifts()
-      if (res_n_restraints != n_caos):
-        sg_symbol = str(f_obs.space_group_info())
-        if (sg_symbol in ["P 63 m c", "P 63 c m"]):
-          assert n_caos == 1
-          assert res_n_restraints == 0
-          print "INFO: SHELXL restraint count incorrect? code_code:", cod_code
-        else:
-          raise RuntimeError(
-            "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
-              res_n_restraints, n_caos))
+      def raise_unexpected_restraints(n_expected):
+        raise RuntimeError(
+          "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
+            res_n_restraints, n_expected))
+      if (mode == "fm"):
+        n_caos = f_obs.space_group_info() \
+          .number_of_continuous_allowed_origin_shifts()
+        if (res_n_restraints != n_caos):
+          sg_symbol = str(f_obs.space_group_info())
+          if (sg_symbol in ["P 63 m c", "P 63 c m"]):
+            assert n_caos == 1
+            assert res_n_restraints == 0
+            print "INFO: SHELXL restraint count incorrect? code_code:", \
+              cod_code
+          else:
+            raise_unexpected_restraints(n_caos)
+      elif (mode == "cg"):
+        if (res_n_restraints != 0):
+          raise_unexpected_restraints(0)
+      else:
+        raise RuntimeError("Unknown mode: " + mode)
       assert res_n_parameters == expected_n_refinable_parameters + 1
       # TODO validate res_r1
     if (not params.keep_tmp_files):
