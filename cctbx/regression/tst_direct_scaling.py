@@ -40,10 +40,12 @@ def show_diagnostics(xs):
 def exercise_direct(space_group_info,
                     elements,
                     anomalous_flag=False,
+                    use_random_u_iso=False,
                     verbose=0):
   xs = random_structure.xray_structure(
     space_group_info=space_group_info,
     elements=elements,
+    random_u_iso=use_random_u_iso,
     volume_per_atom=18.6,
     min_distance=1.2)
   #show_diagnostics(xs)
@@ -112,6 +114,7 @@ def run_scattering_type_tests():
 def run(args,multiplier):
   show_times_at_exit()
   verbose = '--verbose' in args
+  use_random_u_iso = '--use_random_u_iso' in args
   #count from 1hmg.pdb, chain A: C, 1583; N, 445; O, 495, S, 13
   elements = ['O']*19 + ['N']*18 + ['C']*62 + ['S']*1
   allelements = elements*multiplier
@@ -121,7 +124,7 @@ def run(args,multiplier):
       try:
         sgi = sgtbx.space_group_info(sn)
         print "Space group",sgi,"number",sn
-        exercise_direct(sgi, allelements, verbose=verbose)
+        exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
       except Exception, e:
         print e
     return
@@ -130,12 +133,12 @@ def run(args,multiplier):
     for symbol in ["P1","P3","P41","P212121","I41","F432"]:
       sgi = sgtbx.space_group_info(symbol)
       print "Space group",sgi
-      exercise_direct(sgi, allelements, verbose=verbose)
+      exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
 
   if 1:
     sgi = sgtbx.space_group_info("P1")
     print "Space group",sgi
-    exercise_direct(sgi, allelements, verbose=verbose)
+    exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
 
 if __name__ == '__main__':
   import sys
