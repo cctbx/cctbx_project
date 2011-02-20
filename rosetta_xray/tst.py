@@ -1,6 +1,4 @@
-
 import os
-import sys
 
 def exercise () :
   from rosetta_xray.xray_target import xray_target, master_phil
