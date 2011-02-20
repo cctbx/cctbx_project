@@ -31,7 +31,7 @@ def get_master_phil():
         .type = bool
 """)
 
-def show_cc_r1(label, f_obs, xray_structure):
+def show_cc_r1(label, f_obs, xray_structure, scale_factor=Auto):
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=xray_structure).f_calc().amplitudes()
   from cctbx.array_family import flex
@@ -39,7 +39,7 @@ def show_cc_r1(label, f_obs, xray_structure):
   assert corr.is_well_defined()
   cc = corr.coefficient()
   r1 = f_obs.r1_factor(
-    other=f_calc, scale_factor=Auto, assume_index_matching=True)
+    other=f_calc, scale_factor=scale_factor, assume_index_matching=True)
   print "%-12s cc, r1: %.3f %.3f" % (label, cc, r1)
   sys.stdout.flush()
   return cc, r1
@@ -179,11 +179,17 @@ def run_shelxl(
       return result
     assert check_special_positions()
     xray_structure.replace_scatterers(refined.scatterers())
+    res_fvar = None
     res_hkl_count = None
     res_r1 = None
     res_n_parameters = None
     res_n_restraints = None
     for line in res.splitlines():
+      if (line.startswith("FVAR ")):
+        flds = line.split()
+        assert len(flds) == 2
+        res_fvar = float(flds[1])
+        continue
       if (not line.startswith("REM ")): continue
       assert not refinement_unstable
       if (line.startswith("REM R1 =")):
@@ -198,6 +204,7 @@ def run_shelxl(
         res_n_parameters = int(flds[1])
         res_n_restraints = int(flds[-2])
     if (not refinement_unstable):
+      assert res_fvar is not None
       assert res_hkl_count is not None
       assert res_r1 is not None
       assert res_n_parameters is not None
@@ -226,12 +233,14 @@ def run_shelxl(
       else:
         raise RuntimeError("Unknown mode: " + mode)
       assert res_n_parameters == expected_n_refinable_parameters + 1
-      _, r1 = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
-      r1_diff = r1 - res_r1
+      _, r1_fvar = show_cc_r1("fvar_"+mode, f_obs, xray_structure, res_fvar)
+      r1_diff = r1_fvar - res_r1
       print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
-        mode, r1, res_r1, r1_diff, cod_code)
+        mode, r1_fvar, res_r1, r1_diff, cod_code)
       if (abs(r1_diff) > 0.01):
         raise RuntimeError("R1 MISMATCH %s" % cod_code)
+      _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
+      print "R1 FVAR-Auto %s: %.4f" % (cod_code, r1_fvar - r1_auto)
     if (not params.keep_tmp_files):
       remove_tmp_files()
       remove_wdir = wdir_is_new
