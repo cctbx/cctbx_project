@@ -251,32 +251,41 @@ class hydrogen_bond_table (object) :
 def hydrogen_bond_proxies_from_selections(
     pdb_hierarchy,
     params,
+    restraint_type,
     hbond_params=None,
-    use_explicit_hydrogens=False, # TODO set automatically
-    use_simple_restraints=True,
     restrain_helices=True,
     alpha_only=False,
     restrain_sheets=True,
+    as_python_objects=False,
     log=sys.stderr) :
   from mmtbx.geometry_restraints import hbond
   selection_cache = pdb_hierarchy.atom_selection_cache()
-  proxies = []
   if (hbond_params is None) :
     hbond_params = hbond.master_phil.fetch().extract()
   weight = hbond_params.restraints_weight
-  if (use_simple_restraints) :
+  simple_distance_ideal = simple_distance_cut = None
+  if (restraint_type == "simple_explicit") :
     geo_params = hbond_params.simple
-  elif (use_explicit_hydrogens) :
-    geo_params = hbond_params.explicit
-  else :
-    geo_params = hbond_params.implicit
-  proxies = []
-  if (use_explicit_hydrogens) :
     simple_distance_ideal = hbond_params.simple.distance_ideal_h_o
     simple_distance_cut = hbond_params.simple.distance_cut_h_o
-  else :
+    build_proxies = hbond.build_simple_hbond_proxies()
+  elif (restraint_type == "simple_implicit") :
+    geo_params = hbond_params.simple
     simple_distance_ideal = hbond_params.simple.distance_ideal_n_o
     simple_distance_cut = hbond_params.simple.distance_cut_n_o
+    build_proxies = hbond.build_simple_hbond_proxies()
+  elif (restraint_type == "explicit") :
+    geo_params = hbond_params.explicit
+    build_proxies = hbond.build_explicit_hbond_proxies()
+  elif (restraint_type == "implicit") :
+    geo_params = hbond_params.implicit
+    build_proxies = hbond.build_implicit_hbond_proxies()
+  else :
+    raise RuntimeError("Inappropriate restraint type '%s'." % restraint_type)
+  if (as_python_objects) :
+    build_proxies = hbond.build_distance_proxies()
+  if (simple_distance_cut is None) :
+    simple_distance_cut = -1
   if restrain_helices :
     for helix in params.helix :
       helix_class = helix.helix_type
@@ -298,38 +307,36 @@ def hydrogen_bond_proxies_from_selections(
       except Exception, e :
         print e
       else :
-        helix_proxies = proteins.create_helix_hydrogen_bond_proxies(
+        n_proxies = proteins.create_helix_hydrogen_bond_proxies(
           helix_selection=helix_selection,
           helix_step=helix_step,
           pdb_hierarchy=pdb_hierarchy,
+          restraint_type=restraint_type,
+          build_proxies=build_proxies,
           weight=hbond_params.restraints_weight,
           hbond_params=geo_params,
-          use_explicit_hydrogens=use_explicit_hydrogens,
-          use_simple_restraints=use_simple_restraints,
           simple_distance_ideal=simple_distance_ideal,
           simple_distance_cut=simple_distance_cut,
           log=log)
-        if (len(helix_proxies) == 0) :
+        if (n_proxies == 0) :
           print >> log, "No H-bonds generated for '%s'" % helix.selection
           continue
-        proxies.extend(helix_proxies)
   if (restrain_sheets) :
     for k, sheet in enumerate(params.sheet) :
-      sheet_proxies = proteins.create_sheet_hydrogen_bond_proxies(
+      n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
         sheet_params=sheet,
         pdb_hierarchy=pdb_hierarchy,
+        restraint_type=restraint_type,
+        build_proxies=build_proxies,
         weight=hbond_params.restraints_weight,
         hbond_params=geo_params,
-        use_explicit_hydrogens=use_explicit_hydrogens,
-        use_simple_restraints=use_simple_restraints,
         simple_distance_ideal=simple_distance_ideal,
         simple_distance_cut=simple_distance_cut,
         log=sys.stdout)
-      if (len(helix_proxies) == 0) :
+      if (n_proxies == 0) :
         print >> log, "No H-bonds generated for sheet #%d" % k
         continue
-      proxies.extend(sheet_proxies)
-  return proxies
+  return build_proxies.proxies
 
 def hydrogen_bonds_from_selections (
     pdb_hierarchy,
@@ -799,15 +806,21 @@ class manager (object) :
     return bonds_table
 
   def create_hbond_proxies (self, log=sys.stderr, hbond_params=None,
-      use_simple_restraints=True) :
+      restraint_type=None) :
     params = self.params
-    use_explicit_hydrogens = not params.h_bond_restraints.substitute_n_for_h
+    if (restraint_type is None) :
+      if (not params.h_bond_restraints.substitute_n_for_h) :
+        restraint_type = "simple_explicit"
+      else :
+        restraint_type = "simple_implicit"
+    else :
+      assert (restraint_type in ["simple_explicit", "simple_implicit",
+                                 "explicit", "implicit"])
     proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
+      restraint_type=restraint_type,
       hbond_params=hbond_params,
-      use_explicit_hydrogens=use_explicit_hydrogens,
-      use_simple_restraints=use_simple_restraints,
       log=log)
     return proxies
 

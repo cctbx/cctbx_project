@@ -1,7 +1,7 @@
 
 from __future__ import division
 import libtbx.phil
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, group_args
 from math import sqrt, cos
 import sys
 
@@ -63,6 +63,31 @@ master_phil = libtbx.phil.parse("""
   }
 """)
 
+# XXX this is gross, but I'd prefer to delay importing yet another shared
+# library until the last minute, in order to reduce startup time
+class build_proxies (object) :
+  proxy_array_type = None #"shared_h_bond_simple_proxy"
+  proxy_type = None
+  def __init__ (self) :
+    import boost.python
+    self.ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
+    self.proxies = getattr(self.ext, self.proxy_array_type)()
+    self.exclude_nb_list = []
+
+  def add_nonbonded_exclusion (self, i_seq, j_seq) :
+    self.exclude_nb_list.append((i_seq, j_seq))
+
+  def add_proxy (self, **kwds) :
+    proxy_class = getattr(self.ext, self.proxy_type)
+    proxy = proxy_class(**kwds)
+    self.proxies.append(proxy)
+
+class build_simple_hbond_proxies (build_proxies) :
+  proxy_array_type = "shared_h_bond_simple_proxy"
+  proxy_type = "h_bond_simple_proxy"
+
+# Fabiola et al. (2002) Protein Sci. 11:1415-23
+# http://www.ncbi.nlm.nih.gov/pubmed/12021440
 class implicit_proxy (object) :
   def __init__ (self,
                 i_seqs, # donor, acceptor, acceptor base
@@ -74,6 +99,18 @@ class implicit_proxy (object) :
     assert (len(i_seqs) == 3)
     assert (distance_cut is None) or (distance_cut > distance_ideal)
     adopt_init_args(self, locals())
+
+class build_implicit_hbond_proxies (object) :
+  def __init__ (self) :
+    self.proxies = []
+    self.exclude_nb_list = []
+
+  def add_nonbonded_exclusion (self, i_seq, j_seq) :
+    self.exclude_nb_list.append((i_seq, j_seq))
+
+  def add_proxy (self, **kwds) :
+    proxy = implicit_proxy(**kwds)
+    self.proxies.append(proxy)
 
 class explicit_proxy (object) :
   def __init__ (self,
@@ -89,22 +126,50 @@ class explicit_proxy (object) :
     assert (distance_cut is None) or (distance_cut > distance_ideal)
     adopt_init_args(self, locals())
 
-class distance_proxy (object) :
-  def __init__ (self,
-                i_seqs,
-                distance_ideal,
-                distance_cut,
-                sigma,
-                slack,
-                weight=1.0) :
-    assert (len(i_seqs) == 2)
-    assert (distance_cut is None) or (distance_cut > distance_ideal)
-    adopt_init_args(self, locals())
-    import cctbx.geometry_restraints
-    self.cctbx_proxy = cctbx.geometry_restraints.bond_simple_proxy(
-      i_seqs=i_seqs,
-      distance_ideal=distance_ideal,
-      weight=1/(sigma**2))
+class build_explicit_hbond_proxies (build_implicit_hbond_proxies) :
+  def add_proxy (self, **kwds) :
+    proxy = explicit_proxy(**kwds)
+    self.proxies.append(proxy)
+
+# This is not used for actual restraints, but for storing data to be output
+# in other formats (e.g. PyMOL, REFMAC, kinemage, etc.)
+class distance_proxy (group_args) :
+  pass
+
+class build_distance_proxies (build_implicit_hbond_proxies) :
+  def add_proxy (self, **kwds) :
+    proxy = distance_proxy(**kwds)
+    self.proxies.append(proxy)
+
+def target_and_gradients (proxies,
+                          sites_cart,
+                          gradient_array=None,
+                          hbond_weight=1.0,
+                          falloff_distance=0.05) :
+  from scitbx.array_family import flex
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
+  if (gradient_array is None) :
+    gradient_array = flex.vec3_double(sites_cart.size(), (0,0,0))
+  sum = 0.0
+  if (type(proxies).__name__ == "shared_h_bond_simple_proxy") :
+    sum = ext.h_bond_simple_residual_sum(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      gradient_array=gradient_array,
+      hbond_weight=hbond_weight,
+      falloff_distance=falloff_distance)
+  else :
+    for proxy in proxies :
+      if isinstance(proxy, implicit_proxy) :
+        sum += _implicit_target_and_gradients_fd(
+          proxy=proxy,
+          sites_cart=sites_cart)
+      elif isinstance(proxy, explicit_proxy) :
+        pass
+      else :
+        assert False, "Not a recognized H-bond proxy type"
+  return sum
 
 def get_simple_bond_equivalents (proxies) :
   """
@@ -118,7 +183,8 @@ the nonbonded interaction restraints function.
   return bond_pairs
 
 def _get_simple_bond (proxy) :
-  if isintance(proxy, distance_proxy) :
+  import scitbx.array_family # import dependency
+  if (type(proxy).__name__ == "h_bond_simple_proxy") :
     pair = proxy.i_seqs
   elif isinstance(proxy, implicit_proxy) :
     pair = proxy.i_seqs[0], proxy.i_seqs[1]
@@ -192,26 +258,10 @@ def as_kinemage (self, pdb_hierarchy, filter=True, out=sys.stdout) :
       else :
         print >> out, "{''} %.4f %.4f %.4f" % vec
 
-def hbond_target_and_gradients (proxies,
-                                sites_cart,
-                                gradient_array=None) :
-  from scitbx.array_family import flex
-  if (gradient_array is None) :
-    gradient_array = flex.vec3_double(sites_cart.size(), (0,0,0))
-  sum = 0.0
-  for proxy in proxies :
-    if isinstance(proxy, implicit_proxy) :
-      sum += _implicit_target_and_gradients_fd(
-        proxy=proxy,
-        sites_cart=sites_cart)
-    elif isinstance(proxy, explicit_proxy) :
-      pass
-    elif isinstance(proxy, distance_proxy) :
-      pass
-    else :
-      assert False, "Not a recognized H-bond proxy type"
-  return sum
-
+########################################################################
+# CALCULATIONS FOR ADVANCED POTENTIALS
+# TODO everything below here needs to be converted to C++ eventually
+#
 # Fabiola et al. (2002) Protein Sci. 11:1415-23
 # http://www.ncbi.nlm.nih.gov/pubmed/12021440
 def _implicit_target_and_gradients_fd (proxy,
