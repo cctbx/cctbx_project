@@ -5,7 +5,7 @@ import math
 
 """
 This example shows and easy way of obtaining reasonable estimates of
-standard deviations of refineable parameters.
+standard deviations of refinable parameters.
 
 A sample run is shown below:
 

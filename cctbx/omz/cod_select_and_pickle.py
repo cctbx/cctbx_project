@@ -154,6 +154,9 @@ def run(args):
       type="float",
       default=0.99,
       metavar="FLOAT")
+    .option(None, "--at_least_one_special_position",
+      action="store_true",
+      default=False)
   ).process(args=args)
   if (command_line.run_multiprocessing_chunks_if_applicable(
         command_call=command_call)):
@@ -163,8 +166,11 @@ def run(args):
   #
   hkl_cif = build_hkl_cif(cod_codes=command_line.args)
   #
-  if (not op.isdir("cod_ma_xs")):
-    os.makedirs("cod_ma_xs")
+  pickle_dir = "cod_ma_xs"
+  if (co.at_least_one_special_position):
+    pickle_dir += "_special"
+  if (not op.isdir(pickle_dir)):
+    os.makedirs(pickle_dir)
   n_caught = 0
   for i_pair,pair in enumerate(hkl_cif):
     cod_code = op.basename(pair[0])[:-4]
@@ -187,9 +193,11 @@ def run(args):
           and not cd.have_sys_absent()
           and not cd.have_redundant_data()
           and not cd.have_bad_sigmas()
-          and cd.f_obs_f_calc_correlation() >= co.min_f_obs_f_calc_correlation):
+          and cd.f_obs_f_calc_correlation() >= co.min_f_obs_f_calc_correlation
+          and (not co.at_least_one_special_position
+                 or cd.xray_structure.special_position_indices().size() != 0)):
         easy_pickle.dump(
-          file_name="cod_ma_xs/%s.pickle" % cod_code,
+          file_name="%s/%s.pickle" % (pickle_dir, cod_code),
           obj=(cd.f_obs, cd.xray_structure))
       else:
         print "filtering out:", cod_code

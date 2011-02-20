@@ -44,11 +44,6 @@ def show_cc_r1(label, f_obs, xray_structure):
 
 def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   import smtbx.refinement
-  xray_structure.scatterers().flags_set_grads(state=False)
-  for sc in xray_structure.scatterers():
-    sc.flags.set_grad_site(True)
-    assert sc.flags.use_u_iso_only()
-    sc.flags.set_grad_u_iso(True)
   fo_sq = f_obs.f_as_f_sq()
   assert fo_sq.sigmas() is not None
   sel = (fo_sq.data() == 0) & (fo_sq.sigmas() == 0)
@@ -107,7 +102,8 @@ def run_shelxl(
       f_obs,
       xray_structure,
       params,
-      reference_structure):
+      reference_structure,
+      expected_n_refinable_parameters):
   if (mode == "fm"):
     fm_cycles = params.shelxl_fm_iterations
     cg_cycles = None
@@ -195,7 +191,7 @@ def run_shelxl(
           raise RuntimeError(
             "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
               res_n_restraints, n_caos))
-      # TODO validate res_n_parameters
+      assert res_n_parameters == expected_n_refinable_parameters + 1
       # TODO validate res_r1
     if (not params.keep_tmp_files):
       remove_tmp_files()
@@ -245,11 +241,12 @@ def process(params, pickle_file_name):
   if (params.shake_sites_rmsd is not None):
     from scitbx.array_family import flex
     mt = flex.mersenne_twister(seed=0)
-    structure_work.shake_sites_in_place(
-      rms_difference=params.shake_sites_rmsd,
-      allow_all_fixed=True,
-      random_double=mt.random_double)
-    cc_r1("shake_xyz")
+    structure_work.shift_sites_in_place(
+      shift_length=params.shake_sites_rmsd,
+      mersenne_twister=mt)
+    print "rms difference after shift_sites_in_place: %.3f" \
+      % structure_iso.rms_difference(structure_work)
+    cc_r1("shift_xyz")
   #
   if (params.max_atoms is not None):
     n = structure_work.scatterers().size()
@@ -257,6 +254,15 @@ def process(params, pickle_file_name):
       print "Skipping refinement of large model: %d atoms COD %s" % (
         n, cod_code)
       return
+  #
+  structure_work.scatterers().flags_set_grads(state=False)
+  for sc in structure_work.scatterers():
+    sc.flags.set_grad_site(True)
+    assert sc.flags.use_u_iso_only()
+    sc.flags.set_grad_u_iso(True)
+  n_refinable_parameters = structure_work.n_parameters(
+    considering_site_symmetry_constraints=True)
+  print "Number of refinable parameters:", n_refinable_parameters
   #
   if ("dev" not in params.optimizers):
     structure_dev = None
@@ -266,7 +272,8 @@ def process(params, pickle_file_name):
       f_obs=f_obs,
       xray_structure=structure_dev,
       params=params,
-      reference_structure=structure_iso)
+      reference_structure=structure_iso,
+      expected_n_refinable_parameters=n_refinable_parameters)
     show_cc_r1("dev", f_obs, structure_dev)
   #
   def use_smtbx_ls(mode):
@@ -294,7 +301,8 @@ def process(params, pickle_file_name):
       f_obs=f_obs,
       xray_structure=result,
       params=params,
-      reference_structure=structure_iso)
+      reference_structure=structure_iso,
+      expected_n_refinable_parameters=n_refinable_parameters)
     show_cc_r1("shelxl_"+mode, f_obs, result)
     return result
   structure_shelxl_fm = use_shelxl("fm")
