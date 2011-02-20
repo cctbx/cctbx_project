@@ -204,11 +204,13 @@ class variable_decoder(object):
     values = []
     behaviours = []
     for i, coded_variable in enumerate(coded_variables):
+      def raise_parameter_error():
+        raise shelx_error("scatterer parameter #%d '%s'",
+                          self.line, i+1, coded_variable)
       try:
         m,p = scitbx.math.divmod(coded_variable, 10)
       except ArgumentError:
-        raise shelx_error("%i-th scatterer parameter '%s'",
-                          self.line, i, coded_variable)
+        raise_parameter_error()
       if m <= -2:
         # p*(fv_{-m} - 1)
         m = -m-1 # indexing thanks to (b) above
@@ -238,7 +240,9 @@ class variable_decoder(object):
         behaviours.append(
           (_.constant_times_independent_scalar_parameter, p, m))
       else:
-        # m == -1
+        assert m == -1
+        if (not self.strictly_shelxl):
+          raise_parameter_error()
         # undocumented, rather pathological case
         # but I carefully checked that ShelXL does indeed behave so!
         values.append(0)

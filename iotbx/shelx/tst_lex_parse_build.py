@@ -923,7 +923,7 @@ END
 WGHT      0.0534      0.3514
 """
 
-ins_disordered = """
+ins_disordered = """\
 TITL 97srv101 in P-1
 CELL 0.71073   6.033   6.830   7.862 107.70 103.17  95.81
 ZERR    1.00   0.002   0.001   0.004   0.02   0.01   0.01
@@ -973,7 +973,7 @@ H132  2    0.194195    0.626606    0.130621   -21.00000   -1.50000
 H133  2    0.407982    0.771230    0.112116   -21.00000   -1.50000
 """
 
-ins_disordered_with_part_sof = """
+ins_disordered_with_part_sof = """\
 TITL 02srv053 SADABS in P2(1)/n
 CELL 0.71073  12.823  13.422  18.550  90.000 103.91  90.000
 ZERR    4.00   0.003   0.003   0.004   0.000   0.01   0.000
@@ -1008,24 +1008,24 @@ PART 0
 HKLF 4
 """
 
-ins_missing_sfac = """
+ins_missing_sfac = """\
 CELL 0 1 2 3 90 90 90
 O 4 0.1 0.2 0.3 11 0.04
 """
 
-ins_invalid_scatt = """
+ins_invalid_scatt = """\
 CELL 0 1 2 3 90 90 90
 SFAC C O
 O 4 0.1 0.2 0.3. 11 0.04
 """
 
-ins_invalid_scatt_1 = """
+ins_invalid_scatt_1 = """\
 CELL 0 1 2 3 90 90 90
 SFAC C O
 O 4 0.1 0.2 0.3 11
 """
 
-ins_dfix_across_symm="""
+ins_dfix_across_symm="""\
 TITL s031 in C2/c #15
 CELL 0.71073 28.3148 15.8506 18.226 90 118.092 90
 ZERR 4 0.0006 0.0003 0.0004 0 0.001 0
@@ -1046,7 +1046,7 @@ C0AA  1     0.50786  0.40217  0.27444  10.25000  0.03965
 HKLF 4
 """
 
-ins_sadi = """
+ins_sadi = """\
 CELL 0 1 2 3 90 90 90
 SFAC C
 SADI 0.04 C1 C3 C2 C4
@@ -1056,7 +1056,7 @@ C3    1     0.00000  0.25000  0.25000  11.00000  0.05233
 C4    1     0.00000  0.25000  0.25000  11.00000  0.05233
 """
 
-ins_sadi_with_sym = """
+ins_sadi_with_sym = """\
 CELL 0 1 2 3 90 90 90
 SYMM -X,+Y,0.5-Z
 EQIV $1 1-X,+Y,0.5-Z
@@ -1068,7 +1068,7 @@ C3    1     0.00000  0.25000  0.25000  11.00000  0.05233
 C4    1     0.00000  0.25000  0.25000  11.00000  0.05233
 """
 
-ins_flat="""
+ins_flat="""\
 TITL fred in P2(1)/c
 CELL 0.71073 15.149 11.4915 16.2458 90 99.462 90
 ZERR 3 0.0054 0.0043 0.006 0 0.007 0
@@ -1115,7 +1115,7 @@ HKLF 4
 """
 
 def template_ins(instruction):
-  return """
+  return """\
 CELL 0 5 10 15 90 90 90
 SFAC C
 %s
