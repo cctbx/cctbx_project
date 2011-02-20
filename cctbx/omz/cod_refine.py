@@ -1,6 +1,7 @@
 from cctbx import omz
 import cctbx.omz.dev
 import libtbx.phil.command_line
+from libtbx.test_utils import approx_equal
 from libtbx import easy_pickle
 from libtbx.utils import user_plus_sys_time
 from libtbx import Auto
@@ -41,6 +42,7 @@ def show_cc_r1(label, f_obs, xray_structure):
     other=f_calc, scale_factor=Auto, assume_index_matching=True)
   print "%-12s cc, r1: %.3f %.3f" % (label, cc, r1)
   sys.stdout.flush()
+  return cc, r1
 
 def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   import smtbx.refinement
@@ -153,6 +155,10 @@ def run_shelxl(
       min_distance_sym_equiv=0)
     assert refined.crystal_symmetry().is_similar_symmetry(
       xray_structure)
+    for sc,rsc in zip(xray_structure.scatterers(), refined.scatterers()):
+      assert rsc.label == sc.label
+      assert approx_equal(rsc.occupancy, sc.weight(), 1e-4)
+      rsc.occupancy = sc.occupancy # XXX bug in res file reader
     def check_special_positions():
       result = True
       uc = xray_structure.unit_cell()
@@ -220,7 +226,12 @@ def run_shelxl(
       else:
         raise RuntimeError("Unknown mode: " + mode)
       assert res_n_parameters == expected_n_refinable_parameters + 1
-      # TODO validate res_r1
+      _, r1 = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
+      r1_diff = r1 - res_r1
+      print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
+        mode, r1, res_r1, r1_diff, cod_code)
+      if (abs(r1_diff) > 0.01):
+        raise RuntimeError("R1 MISMATCH %s" % cod_code)
     if (not params.keep_tmp_files):
       remove_tmp_files()
       remove_wdir = wdir_is_new
@@ -250,6 +261,7 @@ def process(params, pickle_file_name):
   print "."*79
   #
   structure_work = structure_cod.deep_copy_scatterers()
+  structure_work.scattering_type_registry(table="it1992")
   def cc_r1(label):
     show_cc_r1(label, f_obs, structure_work)
   #
@@ -331,7 +343,6 @@ def process(params, pickle_file_name):
       params=params,
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)
-    show_cc_r1("shelxl_"+mode, f_obs, result)
     return result
   structure_shelxl_fm = use_shelxl("fm")
   structure_shelxl_cg = use_shelxl("cg")

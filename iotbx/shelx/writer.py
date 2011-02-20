@@ -67,6 +67,8 @@ def generator(xray_structure,
       sfac.append(e)
       unit.append(uc_content[e])
   yield 'SFAC %s\n' % ' '.join(sfac)
+  for e in sfac:
+    yield 'DISP %s 0 0 0\n' % e
   yield 'UNIT %s\n' % ' '.join(unit)
   sf_idx = dict([ (e, i + 1) for i, e in enumerate(sfac) ])
   yield '\n'
@@ -104,6 +106,8 @@ def generator(xray_structure,
     scatterers = xray_structure.scatterers()
   atomname_set = set()
   for sc in scatterers:
+    assert sc.fp == 0 # not implemented
+    assert sc.fdp == 0 # not implemented
     assert sc.flags.use_u_iso() ^ sc.flags.use_u_aniso(),\
            both_iso_and_aniso_in_use_error_msg
     atomname = sc.label.strip()
