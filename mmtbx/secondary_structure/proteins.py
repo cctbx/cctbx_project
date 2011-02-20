@@ -192,14 +192,12 @@ class _pdb_sheet (oop.injector, iotbx.pdb.secondary_structure.pdb_sheet) :
 def _create_hbond_proxy (
     acceptor_atoms,
     donor_atoms,
-    use_simple_restraints,
-    use_explicit_hydrogens,
+    restraint_type,
+    build_proxies,
     simple_distance_ideal,
     simple_distance_cut,
     hbond_params,
     weight=1.0) :
-  from mmtbx.geometry_restraints import hbond
-  proxy = None
   for atom in acceptor_atoms :
     if (atom.name == ' O  ') :
       acceptor = atom.i_seq
@@ -211,57 +209,59 @@ def _create_hbond_proxy (
     elif (atom.name == ' H  ') :
       hydrogen = atom.i_seq
   if ([donor,acceptor,acceptor_base].count(None) == 0) :
-    if (use_explicit_hydrogens) :
+    if (restraint_type in ["simple_explicit", "explicit"]) :
       if (hydrogen is None) :
         donor_resseq = donor_atoms[0].fetch_labels().resseq_as_int()
         print >> log, "Missing hydrogen at %d" % donor_resseq
-        return None
+        return 0
     # choose restraint type (simple, explicit-H, implicit-H)
-    if (use_simple_restraints) :
-      if (use_explicit_hydrogens) :
+    if (restraint_type in ["simple_explicit", "simple_implicit"]) :
+      if (restraint_type == "simple_explicit") :
         donor = hydrogen
-      proxy = hbond.distance_proxy(
+      build_proxies.add_proxy(
         i_seqs=[donor, acceptor],
         distance_ideal=simple_distance_ideal,
         distance_cut=simple_distance_cut,
-        sigma=hbond_params.sigma,
-        slack=hbond_params.slack,
-        weight=weight)
-    elif (use_explicit_hydrogens) :
-      proxy = hbond.explicit_proxy(
+        weight=1/(hbond_params.sigma ** 2),
+        slack=hbond_params.slack)
+      build_proxies.add_nonbonded_exclusion(donor, acceptor)
+    elif (restraint_type == "explicit") :
+      build_proxies.add_proxy(
         i_seqs=[donor, hydrogen, acceptor, acceptor_base],
         distance_ideal=hbond_params.distance_ideal,
         distance_cut=hbond_params.distance_cut,
         theta_ideal=hbond_params.theta_ideal,
         psi_ideal=hbond_params.psi_ideal,
         weight=weight)
+      build_proxies.add_nonbonded_exclusion(donor, hydrogen)
     else :
-      proxy = hbond.implicit_proxy(
+      build_proxies.add_proxy(
         i_seqs=[donor, acceptor, acceptor_base],
         distance_ideal=hbond_params.distance_ideal,
         distance_cut=hbond_params.distance_cut,
         theta_low=hbond_params.theta_low,
         theta_high=hbond_params.theta_high,
         weight=weight)
+      build_proxies.add_nonbonded_exclusion(donor, acceptor)
+    return 1
   else :
     print >> log, "WARNING: missing atoms!"
-  return proxy
+    return 0
 
 def create_helix_hydrogen_bond_proxies (
     helix_selection,
     helix_step,
     pdb_hierarchy,
+    restraint_type,
+    build_proxies,
     weight,
     hbond_params,
-    use_explicit_hydrogens=False,
-    use_simple_restraints=False,
     simple_distance_ideal=None,
     simple_distance_cut=None,
     log=sys.stdout) :
-  from mmtbx.geometry_restraints import hbond
-  assert ((not use_simple_restraints) or
+  assert ((not restraint_type in ["simple_explicit", "simple_implicit"]) or
     ([simple_distance_ideal, simple_distance_cut].count(None) == 0))
-  proxies = []
+  n_proxies = 0
   helix_i_seqs = helix_selection.iselection()
   assert (helix_step in [3, 4, 5])
   for model in pdb_hierarchy.models() :
@@ -295,39 +295,36 @@ def create_helix_hydrogen_bond_proxies (
                 continue
               bonded_atoms = bonded_resi.atoms()
               if (helix_selection[bonded_atoms[0].i_seq] == True) :
-                proxy = _create_hbond_proxy(
+                n_proxies += _create_hbond_proxy(
                   acceptor_atoms=resi_atoms,
                   donor_atoms=bonded_atoms,
-                  use_simple_restraints=use_simple_restraints,
-                  use_explicit_hydrogens=use_explicit_hydrogens,
+                  restraint_type=restraint_type,
+                  build_proxies=build_proxies,
                   simple_distance_ideal=simple_distance_ideal,
                   simple_distance_cut=simple_distance_cut,
                   hbond_params=hbond_params,
                   weight=weight)
-                if (proxy is not None) :
-                  proxies.append(proxy)
-  return proxies
+  return n_proxies
 
 def create_sheet_hydrogen_bond_proxies (
     sheet_params,
     pdb_hierarchy,
+    build_proxies,
+    restraint_type,
     weight,
     hbond_params,
-    use_explicit_hydrogens=False,
-    use_simple_restraints=False,
     simple_distance_ideal=None,
     simple_distance_cut=None,
     log=sys.stdout) :
-  from mmtbx.geometry_restraints import hbond
-  assert ((not use_simple_restraints) or
+  assert ((not restraint_type in ["simple_explicit", "simple_implicit"]) or
     ([simple_distance_ideal, simple_distance_cut].count(None) == 0))
-  proxies = []
   cache = pdb_hierarchy.atom_selection_cache()
   prev_strand = sheet_params.first_strand
   prev_selection = cache.selection(prev_strand)
   prev_residues = _get_strand_residues(
     pdb_hierarchy=pdb_hierarchy,
     strand_selection=prev_selection)
+  n_proxies = 0
   k = 0
   while k < len(sheet_params.strand) :
     curr_strand = sheet_params.strand[k]
@@ -349,59 +346,51 @@ def create_sheet_hydrogen_bond_proxies (
         if (curr_strand.sense == "parallel") :
           while (i < len(prev_residues)) and (j < len(curr_residues)) :
             if (prev_residues[i].resname.strip() != "PRO") :
-              proxy = _create_hbond_proxy(
+              n_proxies += _create_hbond_proxy(
                 acceptor_atoms=curr_residues[j].atoms(),
                 donor_atoms=prev_residues[i].atoms(),
-                use_simple_restraints=use_simple_restraints,
-                use_explicit_hydrogens=use_explicit_hydrogens,
+                build_proxies=build_proxies,
+                restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
                 hbond_params=hbond_params,
                 weight=weight)
-              if (proxy is not None) :
-                proxies.append(proxy)
             if ((j + 2) >= len(curr_residues)) :
               break
             if (curr_residues[j+2].resname.strip() != "PRO") :
-              proxy = _create_hbond_proxy(
+              n_proxies += _create_hbond_proxy(
                 acceptor_atoms=prev_residues[i].atoms(),
                 donor_atoms=curr_residues[j+2].atoms(),
-                use_simple_restraints=use_simple_restraints,
-                use_explicit_hydrogens=use_explicit_hydrogens,
+                build_proxies=build_proxies,
+                restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
                 hbond_params=hbond_params,
                 weight=weight)
-              if (proxy is not None) :
-                proxies.append(proxy)
             i += 2
             j += 2
         elif (curr_strand.sense == "antiparallel") :
           while (i < len(prev_residues)) and (j > 0) :
             if (prev_residues[i].resname.strip() != "PRO") :
-              proxy = _create_hbond_proxy(
+              n_proxies += _create_hbond_proxy(
                 acceptor_atoms=curr_residues[j].atoms(),
                 donor_atoms=prev_residues[i].atoms(),
-                use_simple_restraints=use_simple_restraints,
-                use_explicit_hydrogens=use_explicit_hydrogens,
+                build_proxies=build_proxies,
+                restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
                 hbond_params=hbond_params,
                 weight=weight)
-              if (proxy is not None) :
-                proxies.append(proxy)
             if (curr_residues[j].resname.strip() != "PRO") :
-              proxy = _create_hbond_proxy(
+              n_proxies += _create_hbond_proxy(
                 acceptor_atoms=prev_residues[i].atoms(),
                 donor_atoms=curr_residues[j].atoms(),
-                use_simple_restraints=use_simple_restraints,
-                use_explicit_hydrogens=use_explicit_hydrogens,
+                build_proxies=build_proxies,
+                restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
                 hbond_params=hbond_params,
                 weight=weight)
-              if (proxy is not None) :
-                proxies.append(proxy)
             i += 2
             j -= 2
         else :
@@ -420,7 +409,7 @@ def create_sheet_hydrogen_bond_proxies (
     prev_strand = curr_strand
     prev_selection = curr_selection
     prev_residues = curr_residues
-  return proxies
+  return n_proxies
 
 def _find_start_residue (
     residues,

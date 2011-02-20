@@ -31,10 +31,11 @@ def exercise_extract_hbonds () :
       xray_structure=xray_structure,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.find_automatically(log=log)
-    proxies = m.create_hbond_proxies(log=log)
+    proxies = m.create_hbond_proxies(restraint_type="simple_%s" %
+      potential_type, log=log)
     assert (len(proxies) == 109)
-    assert (type(proxies[0]).__name__ == "distance_proxy")
-    proxies = m.create_hbond_proxies(use_simple_restraints=False, log=log)
+    assert (type(proxies[0]).__name__ == "h_bond_simple_proxy")
+    proxies = m.create_hbond_proxies(restraint_type=potential_type, log=log)
     assert (len(proxies) == 109)
     assert (type(proxies[0]).__name__ == "%s_proxy" % potential_type)
 
