@@ -30,10 +30,9 @@ class pprocess:
   5.  cuda 3.2 separately installed is required for pycuda 2011.1
         (http://developer.nvidia.com/object/cuda_3_2_downloads.html)
 
-  Suggested hardware:
-    as tested, the Nvidia Tesla C2050 (Fermi, compute capability 2.0)
-               gave 50-fold performance improvement over CPU.
-    The Nvidia Tesla C1060 (compute capability 1.3) gave 15-fold performance improvement.
+  Suggested hardware as tested:
+    Nvidia Tesla C2050 (Fermi, compute capability 2.0): 225-fold performance improvement over CPU.
+    Nvidia Tesla C1060 (compute capability 1.3): 24-fold performance improvement.
   """
 
   def print_diagnostics(self):
@@ -176,7 +175,9 @@ class pprocess:
     assert self.gaussians.shape[0] == self.n_gaussians * self.g_stride
 
     # Space group symmetry
-    self.nsymop = self.space_group.order_z()
+    self.order_z = self.space_group.order_z() # Total No. Symmetry Operators
+    self.order_p = self.space_group.order_p() # No. Symops / No. Centring Vectors
+
     self.sym_stride = 12 # numbers to uniquely specify the symop
     symmetry = flex.double()
 
@@ -184,7 +185,7 @@ class pprocess:
       for item in symop.r().as_double():  symmetry.append(item)
       for item in symop.t().as_double():  symmetry.append(item)
     self.symmetry = symmetry.as_numpy_array()
-    assert self.symmetry.shape[0] == self.nsymop * self.sym_stride
+    assert self.symmetry.shape[0] == self.order_z * self.sym_stride
 
     # Unit cell dimensions --> metrical matrix --> establishes dstar for given hkl
     self.reciprocal_metrical_matrix = numpy.array(
@@ -208,7 +209,7 @@ class pprocess:
     try:
       assert len(self.miller_indices) > 0
     except:
-      raise Sorry("There must be at least one Miller index""")
+      raise Sorry("There must be at least one Miller index")
 
     self.use_debye_waller = (
       self.scatterers.extract_u_iso().count(0.0)<len(self.scatterers) )
@@ -216,13 +217,19 @@ class pprocess:
     try:
       assert self.scatterers.extract_use_u_aniso().count(True)==0
     except:
-      raise Sorry("As presently implemented parallel processor direct summation doesn't support anisotropic displacement factors""")
+      raise Sorry("As presently implemented parallel processor direct summation doesn't support anisotropic displacement factors")
 
     try:
       assert [S.fp for S in self.scatterers].count(0.0)==len(self.scatterers)
       assert [S.fdp for S in self.scatterers].count(0.0)==len(self.scatterers)
     except:
-      raise Sorry("As presently implemented parallel processor direct summation doesn't support anomalous scatterers""")
+      raise Sorry("As presently implemented parallel processor direct summation doesn't support anomalous scatterers")
+
+    # Assess limits based on CUDA compute capability: require double precision
+    try:
+      cc = cuda.Device(0).compute_capability() ; assert cc >= (1,3)
+    except:
+      raise Sorry("Implementation assumes CUDA compute capability >= 1.3; found %d.%d"%cc)
 
     # Assess limits based on global memory size of parallel unit
     n_atoms = len(self.scatterers)
@@ -259,7 +266,7 @@ class pprocess:
     self.registry = instance._xray_structure.scattering_type_registry()
     self.miller_indices = instance._miller_set.indices()
     self.unit_cell = instance._miller_set.unit_cell()
-    self.space_group = instance._miller_set.space_group()
+    self.space_group = instance._miller_set.space_group().make_tidy()
 
     if verbose: self.print_diagnostics() # some diagnostics used for development
 
@@ -294,7 +301,7 @@ class pprocess:
                          self.sym_stride,
                          self.g_stride,
                          int(self.use_debye_waller),
-                         self.nsymop),
+                         self.order_z,self.order_p),
                          )
 
       r_m_m_address = sort_mod.get_global("reciprocal_metrical_matrix")[0]
@@ -352,10 +359,22 @@ __device__ double get_d_star_sq(double const& H,double const& K,double const& L)
           + (2 * K * L) * reciprocal_metrical_matrix[5];
 }
 
+# define SYM_STRIDE %%d
+
+__device__ double get_H_dot_translation(
+                              double const& H,double const& K,double const& L,
+                              unsigned int const & isym){
+  // case for primitive cells: return 0
+  // but in general,
+     return H * symmetry[SYM_STRIDE*isym+9]
+          + K * symmetry[SYM_STRIDE*isym+10]
+          + L * symmetry[SYM_STRIDE*isym+11]
+    ;
+}
+
 __device__ double get_H_dot_X(double* const& site, unsigned int const& i,
                               double const& H,double const& K,double const& L,
                               unsigned int const & isym){
-  # define SYM_STRIDE %%d
   // case for space group P1
   // return H * site[0] + K * site[1] + L * site[2];
 
@@ -386,6 +405,9 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
    #define BLOCKSIZE %d
    #define G_STRIDE %%d
    #define USE_DEBYE_WALLER %%d
+   #define ORDER_Z %%d
+   #define ORDER_P %%d
+   #define ORDER_T ORDER_Z/ORDER_P
 
    const unsigned long ix=threadIdx.x+blockDim.x*blockIdx.x;
 
@@ -438,7 +460,7 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
         }
 
         double s,c,s_imag=0.,c_real=0.;
-        for(unsigned int isym=0; isym < %%d; isym++){
+        for(unsigned int isym=0; isym < ORDER_P; isym++){
           /*do not use the faster, but less accurate intrinsic function.*/
           sincos(twopi* get_H_dot_X( xyz, i, h, k, l, isym), &s,&c);
           c_real += c;
@@ -449,8 +471,16 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
       }
    }
 
-   fhkl_real[ix] += fr;
-   fhkl_imag[ix] += fi;
+   //multiply factor from centring translations
+   double s,c,s_imag_trans=0.,c_real_trans=0.;
+   for(unsigned int isym=0; isym < ORDER_T; isym+=ORDER_P){
+     sincos(twopi* get_H_dot_translation( h, k, l, isym), &s,&c);
+     c_real_trans += c;
+     s_imag_trans += s;
+   }
+
+   fhkl_real[ix] += ORDER_T * (c_real_trans * fr - s_imag_trans * fi);
+   fhkl_imag[ix] += ORDER_T * (s_imag_trans * fr + c_real_trans * fi);
 }
 """%(FHKL_BLOCKSIZE)
 
