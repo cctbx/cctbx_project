@@ -760,7 +760,7 @@ class show_distances(object):
       self.pair_asu_table = None
     asu_mappings = pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
-    self._i_seqs = flex.size_t()
+    self._i_seqs = set()
     if (sites_frac is None):
       sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     if (site_labels is None):
@@ -780,8 +780,9 @@ class show_distances(object):
     for d in distances:
       i_seq, j_seq = d.i_seq, d.j_seq
       rt_mx_ji = d.rt_mx_ji
-      if i_seq not in self._i_seqs:
-        self._i_seqs.append(i_seq)
+      first_time_i_seq = (i_seq not in self._i_seqs)
+      if (first_time_i_seq):
+        self._i_seqs.add(i_seq)
         if (site_labels is None):
           s = label_fmt % (i_seq+1)
         else:
@@ -813,7 +814,7 @@ class show_distances(object):
       s += " (" + ",".join(formatted_site) +")"
       print >> out, s
 
-      if i_seq == self._i_seqs[-1] and d.pair_count == 0:
+      if first_time_i_seq and d.pair_count == 0:
         print >> out, "  no neighbors"
 
     self.distances = distances.distances
