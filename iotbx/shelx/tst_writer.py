@@ -29,23 +29,27 @@ def exercise(flags, space_group_info):
       sc.flags.set_use_u_aniso(True)
       sc.flags.set_grad_u_aniso(True)
 
-  res = cStringIO.StringIO()
+  not_origin_centric = (
+            xs.space_group().is_centric()
+    and not xs.space_group().is_origin_centric())
+
   try:
-    res.writelines(shelx.writer.generator(xs,
-                                          full_matrix_least_squares_cycles=4,
-                                          weighting_scheme_params=(0,0),
-                                          sort_scatterers=False))
-    if (xs.space_group().is_centric()
-        and not xs.space_group().is_origin_centric()):
-      raise Exception_expected
-  except AssertionError, err:
-    if (xs.space_group().is_centric()
-        and not xs.space_group().is_origin_centric()):
-      print ("Skipped %s \nbecause it is centric but not origin centric"
+    ins = list(shelx.writer.generator(
+      xs,
+      full_matrix_least_squares_cycles=4,
+      weighting_scheme_params=(0,0),
+      sort_scatterers=False))
+  except AssertionError:
+    if (not_origin_centric):
+      print ("Skipped %s\n  because it is centric but not origin centric"
              % xs.space_group().type().hall_symbol())
       return
+    raise
+  else:
+    if (not_origin_centric):
+      raise Exception_expected
 
-  ins = cStringIO.StringIO(res.getvalue())
+  ins = cStringIO.StringIO("".join(ins))
   xs1 = xs.from_shelx(file=ins)
   xs.crystal_symmetry().is_similar_symmetry(
     xs1.crystal_symmetry(),
