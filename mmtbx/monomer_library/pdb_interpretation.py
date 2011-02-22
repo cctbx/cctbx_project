@@ -3226,6 +3226,21 @@ class build_all_chain_proxies(object):
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
 
+  def process_custom_nonbonded_exclusions (self, log, exclude_pair_indices,
+      shell_asu_tables) :
+    space_group = self.special_position_settings.space_group()
+    rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
+    have_header = False
+    for (i_seq, j_seq) in exclude_pair_indices :
+      if (not have_header) :
+        print >> log
+        print >> log, "  Custom nonbonded exclusions (H-bonds, etc.):"
+        have_header = True
+      shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
+      #shell_sym_tables[1][i_seq][j_seq].add(rt_mx_ji)
+      print >> log, "  %s  %s" % (self.pdb_atoms[i_seq].id_str(),
+                                  self.pdb_atoms[j_seq].id_str())
+
   def process_custom_nonbonded_symmetry_exclusions(self,
         log, curr_sym_excl_index):
     have_header = False
@@ -3287,7 +3302,9 @@ class build_all_chain_proxies(object):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        h_bond_table=None,
+        hydrogen_bond_proxies=None,
+        hydrogen_bond_params=None,
+        custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
         ramachandran_atom_selection=None,
@@ -3334,13 +3351,13 @@ class build_all_chain_proxies(object):
         params=params_edits, log=log)
       max_bond_distance = max(max_bond_distance,
         processed_edits.bond_distance_model_max)
-    if (h_bond_table is None) :
-      hydrogen_bonds = None
-    else :
-      hydrogen_bonds = self.process_hydrogen_bonds(h_bond_table,
-        log=log)
-      max_bond_distance = max(max_bond_distance,
-        hydrogen_bonds.bond_distance_model_max)
+    #if (h_bond_table is None) :
+    #  hydrogen_bonds = None
+    #else :
+    #  hydrogen_bonds = self.process_hydrogen_bonds(h_bond_table,
+    #    log=log)
+    #  max_bond_distance = max(max_bond_distance,
+    #    hydrogen_bonds.bond_distance_model_max)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=max_bond_distance*3)
         # factor 3 is to reach 1-4 interactions
@@ -3385,19 +3402,24 @@ class build_all_chain_proxies(object):
       for proxy in processed_edits.planarity_proxies:
         self.geometry_proxy_registries.planarity.append_custom_proxy(proxy=proxy)
     #
-    if (hydrogen_bonds is not None) :
-      for proxy in hydrogen_bonds.bond_sym_proxies :
-        if (proxy.weight <= 0): continue
-        i_seq, j_seq = proxy.i_seqs
-        bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
-        bond_asu_table.add_pair(
-          i_seq=i_seq,
-          j_seq=j_seq,
-          rt_mx_ji=proxy.rt_mx_ji)
+    #if (hydrogen_bonds is not None) :
+    #  for proxy in hydrogen_bonds.bond_sym_proxies :
+    #    if (proxy.weight <= 0): continue
+    #    i_seq, j_seq = proxy.i_seqs
+    #    bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
+    #    bond_asu_table.add_pair(
+    #      i_seq=i_seq,
+    #      j_seq=j_seq,
+    #      rt_mx_ji=proxy.rt_mx_ji)
     #
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
       max_shell=3)
+    if (custom_nonbonded_exclusions is not None) :
+      self.process_custom_nonbonded_exclusions(
+        log=log,
+        exclude_pair_indices=custom_nonbonded_exclusions,
+        shell_asu_tables=shell_asu_tables)
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     #
@@ -3414,7 +3436,9 @@ class build_all_chain_proxies(object):
         params=self.params.peptide_link)
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
       ramachandran_proxies=ramachandran_proxies,
-      ramachandran_lookup=ramachandran_lookup)
+      ramachandran_lookup=ramachandran_lookup,
+      hydrogen_bond_proxies=hydrogen_bond_proxies,
+      hydrogen_bond_params=hydrogen_bond_params)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -3438,8 +3462,7 @@ class build_all_chain_proxies(object):
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
-      generic_proxies=generic_restraints_manager.get_proxies(),
-      generic_restraints_helper=generic_restraints_manager,
+      generic_restraints_manager=generic_restraints_manager,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
       plain_pairs_radius=plain_pairs_radius)
@@ -3581,7 +3604,9 @@ class process(object):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        h_bond_table=None,
+        hydrogen_bond_proxies=None,
+        hydrogen_bond_params=None,
+        custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
@@ -3596,7 +3621,9 @@ class process(object):
             plain_pairs_radius=plain_pairs_radius,
             params_edits=params_edits,
             params_remove=params_remove,
-            h_bond_table=h_bond_table,
+            hydrogen_bond_proxies=hydrogen_bond_proxies,
+            hydrogen_bond_params=hydrogen_bond_params,
+            custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
             log=self.log)

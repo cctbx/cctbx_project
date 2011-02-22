@@ -3,30 +3,23 @@ from __future__ import division
 from mmtbx.secondary_structure import base_pairing, proteins
 import iotbx.pdb
 import iotbx.pdb.secondary_structure
-from scitbx.array_family import shared, flex
+from scitbx.array_family import flex
 import libtbx.phil.command_line
 from libtbx import easy_run
 from libtbx.utils import Sorry
-from libtbx import adopt_init_args, group_args
+from libtbx import adopt_init_args, Auto
 import libtbx.load_env
 from math import sqrt
 import cStringIO
 import sys, os
 
-default_sigma = 0.05
-default_slack = 0.00
-h_o_distance_ideal = 1.975
-h_o_distance_max = 2.5
-n_o_distance_ideal = 2.9
-n_o_distance_max = 3.5
-
 ss_restraint_params_str = """
   verbose = False
     .type = bool
-  substitute_n_for_h = None
-    .type = bool
-    .short_caption = Substitute N for H
-    .style = tribool
+  restraint_type = *Auto simple_explicit simple_implicit implicit
+    .type = choice
+    .short_caption = Hydrogen bond restraint type
+    .caption = Automatic Simple_(H-O) Simple_(N-O)
   restrain_helices = True
     .type = bool
   alpha_only = False
@@ -39,31 +32,7 @@ ss_restraint_params_str = """
   remove_outliers = True
     .type = bool
     .short_caption = Filter bond outliers
-  restrain_initial_values = False
-    .type = bool
-    .style = hidden
-  sigma = %.3f
-    .type = float
-    .short_caption = Restraint sigma
-    .style = bold
-  slack = %.3f
-    .type = float
-    .short_caption = Restraint slack
-    .style = bold
-  h_o_distance_ideal = %.3f
-    .type = float
-    .short_caption = Ideal H-O distance
-  h_o_distance_max = %.3f
-    .type = float
-    .short_caption = Max. allowable H-O distance
-  n_o_distance_ideal = %.3f
-    .type = float
-    .short_caption = Ideal N-O distance
-  n_o_distance_max = %.3f
-    .type = float
-    .short_caption = Max. allowable N-O distance
-""" % (default_sigma, default_slack, h_o_distance_ideal, h_o_distance_max,
-       n_o_distance_ideal, n_o_distance_max)
+"""
 
 ss_tardy_params_str = """\
   group_helix_backbone = False
@@ -105,12 +74,6 @@ h_bond_restraints
 {
 %s
 }
-tardy
-  .help = UNUSED
-  .style = box auto_align noauto
-{
-%s
-}
 %s
 nucleic_acids
   .caption = If sigma and slack are not defined for nucleic acids, the \
@@ -136,7 +99,7 @@ nucleic_acids
   %s
 }
 """ % (iotbx.pdb.secondary_structure.ss_input_params_str,
-       ss_restraint_params_str, ss_tardy_params_str, ss_group_params_str,
+       ss_restraint_params_str, ss_group_params_str,
        base_pairing.dna_rna_params_str)
 
 sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
@@ -146,107 +109,39 @@ def sec_str_from_phil (phil_str) :
   ss_phil = libtbx.phil.parse(phil_str)
   return sec_str_master_phil.fetch(source=ss_phil).extract()
 
-class hydrogen_bond_table (object) :
-  def __init__ (self, bonds, distance, sigma, slack, bond_lengths) :
-    assert (bonds.size() == distance.size() == sigma.size() == slack.size() ==
-      bond_lengths.size())
-    self.bonds = bonds
-    self.distance = distance
-    self.sigma = sigma
-    self.slack = slack
-    self.bond_lengths = bond_lengths
-    self.flag_use_bond = flex.bool(bonds.size(), True)
-
-  def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stderr) :
-    atoms = None
-    if params.verbose :
-      assert pdb_hierarchy is not None
-      atoms = pdb_hierarchy.atoms()
-    remove_outliers = params.remove_outliers
-    distance_max = params.h_o_distance_max
-    distance_ideal = params.h_o_distance_ideal
-    if params.substitute_n_for_h :
-      distance_max = params.n_o_distance_max
-      distance_ideal = params.n_o_distance_ideal
+def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stderr) :
+  atoms = None
+  if params.verbose :
+    assert pdb_hierarchy is not None
     atoms = pdb_hierarchy.atoms()
-    hist =  flex.histogram(self.bond_lengths, 10)
-    print >> log, "  Distribution of hydrogen bond lengths without filtering:"
-    hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-    print >> log, ""
-    if not remove_outliers :
-      return False
-    for i, distance in enumerate(self.bond_lengths) :
-      if distance > distance_max :
-        self.flag_use_bond[i] = False
-        if params.verbose :
-          print >> log, "Excluding H-bond with length %.3fA" % distance
-          i_seq, j_seq = self.bonds[i]
-          print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
-          print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
-    print >> log, "  After filtering: %d bonds remaining." % \
-      self.flag_use_bond.count(True)
-    print >> log, "  Distribution of hydrogen bond lengths after applying cutoff:"
-    hist = flex.histogram(self.bond_lengths.select(self.flag_use_bond), 10)
-    hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-    print >> log, ""
-    return True
-
-  def get_bond_restraint_data (self, filter=True) :
-    for i, (donor_i_seq, acceptor_i_seq) in enumerate(self.bonds) :
-      if not filter or self.flag_use_bond[i] :
-        yield group_args(donor_i_seq=donor_i_seq,
-          acceptor_i_seq=acceptor_i_seq,
-          sigma=self.sigma[i],
-          slack=self.slack[i],
-          distance_ideal=self.distance[i])
-
-  def get_simple_bonds (self, filter=True) :
-    if filter :
-      for i, bond in enumerate(self.bonds) :
-        if self.flag_use_bond[i] :
-          yield bond
-    else :
-      for i, bond in enumerate(self.bonds) :
-        yield bond
-
-  def as_pymol_dashes (self, pdb_hierarchy, filter=True, out=sys.stdout) :
-    atoms = pdb_hierarchy.atoms()
-    for (i_seq, j_seq) in self.get_simple_bonds(filter=filter) :
-      atom1 = atoms[i_seq].fetch_labels()
-      atom2 = atoms[j_seq].fetch_labels()
-      base_sele = """chain "%s" and resi %s and name %s"""
-      sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
-      sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
-      print >>out, "dist %s, %s" % (sele1, sele2)
-
-  def as_kinemage (self, pdb_hierarchy, filter=True, out=sys.stdout) :
-    atoms = pdb_hierarchy.atoms()
-    print >> out, """\
-@group {PHENIX H-bonds}
-@subgroup {H-bond dots} dominant"""
-    for (i_seq, j_seq) in self.get_simple_bonds(filter=filter) :
-      a = atoms[i_seq].xyz
-      b = atoms[j_seq].xyz
-      ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
-      print >> out, """@dotlist {Drawn dots} color= green"""
-      for x in range(1, 12) :
-        fac = float(x) / 12
-        vec = (a[0] + (ab[0]*fac), a[1] + (ab[1]*fac), a[2] + (ab[2]*fac))
-        if (x == 1) :
-          print "{drawn} %.4f %.4f %.4f" % vec
-        else :
-          print "{''} %.4f %.4f %.4f" % vec
-
-  def as_refmac_restraints (self, pdb_hierarchy, filter=True, out=sys.stdout) :
-    atoms = pdb_hierarchy.atoms()
-    for bond in self.get_bond_restraint_data(filter=filter) :
-      donor = atoms[bond.donor_i_seq].fetch_labels()
-      acceptor = atoms[bond.acceptor_i_seq].fetch_labels()
-      cmd = (("exte dist first chain %s residue %s atom %s " +
-              "second chain %s residue %s atom %s value %.3f sigma %.2f") %
-        (donor.chain_id, donor.resseq, donor.name, acceptor.chain_id,
-         acceptor.resseq, acceptor.name, bond.distance_ideal, bond.sigma))
-      print >> out, cmd
+  remove_outliers = params.remove_outliers
+  distance_max = params.h_o_distance_max
+  distance_ideal = params.h_o_distance_ideal
+  if params.substitute_n_for_h :
+    distance_max = params.n_o_distance_max
+    distance_ideal = params.n_o_distance_ideal
+  atoms = pdb_hierarchy.atoms()
+  hist =  flex.histogram(self.bond_lengths, 10)
+  print >> log, "  Distribution of hydrogen bond lengths without filtering:"
+  hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
+  print >> log, ""
+  if not remove_outliers :
+    return False
+  for i, distance in enumerate(self.bond_lengths) :
+    if distance > distance_max :
+      self.flag_use_bond[i] = False
+      if params.verbose :
+        print >> log, "Excluding H-bond with length %.3fA" % distance
+        i_seq, j_seq = self.bonds[i]
+        print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
+        print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
+  print >> log, "  After filtering: %d bonds remaining." % \
+    self.flag_use_bond.count(True)
+  print >> log, "  Distribution of hydrogen bond lengths after applying cutoff:"
+  hist = flex.histogram(self.bond_lengths.select(self.flag_use_bond), 10)
+  hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
+  print >> log, ""
+  return True
 
 def hydrogen_bond_proxies_from_selections(
     pdb_hierarchy,
@@ -256,14 +151,24 @@ def hydrogen_bond_proxies_from_selections(
     restrain_helices=True,
     alpha_only=False,
     restrain_sheets=True,
+    restrain_base_pairs=True,
     as_python_objects=False,
     log=sys.stderr) :
   from mmtbx.geometry_restraints import hbond
+  from scitbx.array_family import flex
+  atoms = pdb_hierarchy.atoms()
+  hbond_counts = flex.int(atoms.size(), 0)
   selection_cache = pdb_hierarchy.atom_selection_cache()
   if (hbond_params is None) :
     hbond_params = hbond.master_phil.fetch().extract()
   weight = hbond_params.restraints_weight
   simple_distance_ideal = simple_distance_cut = None
+  if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
+    if (not restraint_type.startswith("simple")) :
+      print >> log, "  Nucleic acids are being restrained (%d base pairs)"
+      print >> log, "  Only the simple H-bond potential is available; will "
+      print >> log, "  switch automatically to use this restraint type."
+      restraint_type = "simple_%s" % restraint_type
   if (restraint_type == "simple_explicit") :
     geo_params = hbond_params.simple
     simple_distance_ideal = hbond_params.simple.distance_ideal_h_o
@@ -286,12 +191,12 @@ def hydrogen_bond_proxies_from_selections(
     build_proxies = hbond.build_distance_proxies()
   if (simple_distance_cut is None) :
     simple_distance_cut = -1
-  if restrain_helices :
+  if (restrain_helices) :
     for helix in params.helix :
       helix_class = helix.helix_type
       if helix_class != "alpha" and params.h_bond_restraints.alpha_only :
-        print >> log, "Skipping non-alpha helix (class %s):" % helix_class
-        print >> log, "  %s" % helix.selection
+        print >> log, "  Skipping non-alpha helix (class %s):" % helix_class
+        print >> log, "    %s" % helix.selection
         continue
       if helix_class == "alpha" :
         helix_step = 4
@@ -300,7 +205,7 @@ def hydrogen_bond_proxies_from_selections(
       elif helix_class == "3_10" :
         helix_step = 3
       else :
-        print >> log, "Don't know bonding for helix class %s." % helix_class
+        print >> log, "  Don't know bonding for helix class %s." % helix_class
         continue
       try :
         helix_selection = selection_cache.selection(helix.selection)
@@ -315,11 +220,12 @@ def hydrogen_bond_proxies_from_selections(
           build_proxies=build_proxies,
           weight=hbond_params.restraints_weight,
           hbond_params=geo_params,
+          hbond_counts=hbond_counts,
           simple_distance_ideal=simple_distance_ideal,
           simple_distance_cut=simple_distance_cut,
           log=log)
         if (n_proxies == 0) :
-          print >> log, "No H-bonds generated for '%s'" % helix.selection
+          print >> log, "  No H-bonds generated for '%s'" % helix.selection
           continue
   if (restrain_sheets) :
     for k, sheet in enumerate(params.sheet) :
@@ -330,253 +236,34 @@ def hydrogen_bond_proxies_from_selections(
         build_proxies=build_proxies,
         weight=hbond_params.restraints_weight,
         hbond_params=geo_params,
+        hbond_counts=hbond_counts,
         simple_distance_ideal=simple_distance_ideal,
         simple_distance_cut=simple_distance_cut,
         log=sys.stdout)
       if (n_proxies == 0) :
-        print >> log, "No H-bonds generated for sheet #%d" % k
+        print >> log, "  No H-bonds generated for sheet #%d" % k
         continue
-  return build_proxies.proxies
-
-def hydrogen_bonds_from_selections (
-    pdb_hierarchy,
-    params,
-    log=sys.stderr) :
-  bond_i_seqs = shared.stl_set_unsigned()
-  sigmas = flex.double()
-  slacks = flex.double()
-  distances = flex.double()
-  atoms = pdb_hierarchy.atoms()
-  n_atoms = atoms.size()
-  sites = atoms.extract_xyz()
-  has_bond = flex.int(sites.size(), 0)
-  selection_cache = pdb_hierarchy.atom_selection_cache()
-  isel = selection_cache.iselection
-  donor_name = "H"
-  distance_ideal = params.h_bond_restraints.h_o_distance_ideal
-  if params.h_bond_restraints.substitute_n_for_h :
-    distance_ideal = params.h_bond_restraints.n_o_distance_ideal
-    donor_name = "N"
-  if params.h_bond_restraints.restrain_helices :
-    for helix in params.helix :
-      helix_class = helix.helix_type
-      if helix_class != "alpha" and params.h_bond_restraints.alpha_only :
-        print >> log, "Skipping non-alpha helix (class %s):" % helix_class
-        print >> log, "  %s" % helix.selection
-        continue
-      try :
-        donor_isel, acceptor_isel = proteins.donors_and_acceptors(
-          base_sele=helix.selection,
-          selection_cache=selection_cache,
-          atoms=atoms,
-          donor_name=donor_name,
-          ss_type="helix")
-      except RuntimeError, e :
-        print >> log, str(e)
-        continue
-      else :
-        if helix_class == "alpha" :
-          j = 4
-        elif helix_class == "pi" :
-          j = 5
-        elif helix_class == "3_10" :
-          j = 3
-        else :
-          print >> log, "Don't know bonding for helix class %s." % helix_class
-          continue
-        sigma = params.h_bond_restraints.sigma
-        if helix.restraint_sigma is not None :
-          sigma = helix.restraint_sigma
-        elif sigma is None :
-          raise Sorry(("Please either set the global sigma for hydrogen bond "+
-            "restraints, or set the sigma for helix '%s'.") % helix.selection)
-        slack = params.h_bond_restraints.slack
-        if helix.restraint_slack is not None :
-          slack = helix.restraint_slack
-        elif slack is None :
-          raise Sorry(("Please either set the global slack for hydrogen bond "+
-            "restraints, or set the slack for helix '%s'.") % helix.selection)
-        n_donors = acceptor_isel.size()
-        for n, i_seq in enumerate(acceptor_isel) :
-          if (n + j) < n_donors :
-            j_seq =  donor_isel[n+j]
-            if j_seq == n_atoms :
-              continue # dummy index - missing H from PRO
-            elif atoms[j_seq].fetch_labels().resname == "PRO" :
-              print >> log, "Skipping proline residue in middle of helix:"
-              print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
-              continue
-            if has_bond[i_seq] or has_bond[j_seq] :
-              print >> log, "One or more atoms already bonded:"
-              print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
-              print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
-              continue
-            has_bond[i_seq] += 1
-            has_bond[j_seq] += 1
-            bond_i_seqs.append((j_seq, i_seq))
-            distances.append(distance_ideal)
-            sigmas.append(sigma)
-            slacks.append(slack)
-          else :
-            break
-  if params.h_bond_restraints.restrain_sheets :
-    for i_sheet, sheet in enumerate(params.sheet) :
-      if sheet.first_strand is None :
-        raise Sorry("First strand must be a valid atom selection.")
-      sheet_bonds = []
-      prev_strand_sele = sheet.first_strand
-      for curr_strand in sheet.strand :
-        if curr_strand.selection is None :
-          raise Sorry("All strands must have a valid atom selection.")
-        elif curr_strand.bond_start_current is None :
-          raise Sorry("Missing start of bonding for strand '%s'." %
-            curr_strand.selection)
-        elif curr_strand.bond_start_previous is None :
-          raise Sorry("Missing start of bonding for strand previous to '%s'." %
-            curr_strand.selection)
-        try :
-          try :
-            if curr_strand.sense == "unknown" :
-              raise RuntimeError(("Skipping strand of unknown sense:\n" +
-                "%s") % curr_strand.selection)
-            curr_donors, curr_acceptors = proteins.donors_and_acceptors(
-              base_sele=curr_strand.selection,
-              selection_cache=selection_cache,
-              atoms=atoms,
-              donor_name=donor_name,
-              ss_type="sheet")
-            prev_donors, prev_acceptors = proteins.donors_and_acceptors(
-              base_sele=prev_strand_sele,
-              selection_cache=selection_cache,
-              atoms=atoms,
-              donor_name=donor_name,
-              ss_type="sheet")
-            curr_donor_start, curr_acceptor_start = proteins.donors_and_acceptors(
-              base_sele=curr_strand.bond_start_current,
-              selection_cache=selection_cache,
-              atoms=atoms,
-              donor_name=donor_name,
-              ss_type="sheet")
-            prev_donor_start, prev_acceptor_start = proteins.donors_and_acceptors(
-              base_sele=curr_strand.bond_start_previous,
-              selection_cache=selection_cache,
-              atoms=atoms,
-              donor_name=donor_name,
-              ss_type="sheet")
-            new_bonds = proteins.hydrogen_bonds_from_strand_pair(atoms=atoms,
-              prev_strand_donors=prev_donors,
-              prev_strand_acceptors=prev_acceptors,
-              prev_strand_start=prev_donor_start[0],
-              curr_strand_donors=curr_donors,
-              curr_strand_acceptors=curr_acceptors,
-              curr_strand_start=curr_acceptor_start[0],
-              sense=curr_strand.sense)
-            if new_bonds is None :
-              raise RuntimeError(
-                ("Can't determine start of bonding for strand pair:\n" +
-                "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
-            elif len(new_bonds) == 0 :
-              raise RuntimeError(("No bonds found for strand pair:\n"+
-                "  %s\n  %s\n") % (prev_strand_sele, curr_strand.selection))
-            sheet_bonds.extend(new_bonds)
-          except RuntimeError, e :
-            print >> log, str(e)
-        finally :
-          prev_strand_sele = curr_strand.selection
-      sigma = params.h_bond_restraints.sigma
-      if sheet.restraint_sigma is not None :
-        sigma = sheet.restraint_sigma
-      elif sigma is None :
-        raise Sorry(("Please either set the global sigma for hydrogen bond "+
-          "restraints, or set the sigma for sheet #%d.") % i_sheet)
-      slack = params.h_bond_restraints.slack
-      if sheet.restraint_slack is not None :
-        slack = sheet.restraint_slack
-      elif slack is None :
-        raise Sorry(("Please either set the global slack for hydrogen bond "+
-          "restraints, or set the slack for sheet #%d.") % i_sheet)
-      for (i_seq, j_seq) in sheet_bonds :
-        if has_bond[i_seq] or has_bond[j_seq] :
-          print >> log, "One or more atoms already bonded:"
-          print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
-          print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
-          continue
-        has_bond[i_seq] += 1
-        has_bond[j_seq] += 1
-        bond_i_seqs.append((i_seq, j_seq))
-        distances.append(distance_ideal)
-        sigmas.append(sigma)
-        slacks.append(slack)
-  if params.h_bond_restraints.restrain_base_pairs :
+  if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
     sigma = params.nucleic_acids.sigma
-    if sigma is None :
-      sigma = params.h_bond_restraints.sigma
+    if (sigma is None) :
+      sigma = geo_params.sigma
     slack = params.nucleic_acids.slack
-    if slack is None :
-      slack = params.h_bond_restraints.slack
-    for i, base_pair in enumerate(params.nucleic_acids.base_pair) :
-      try :
-        resname1 = _get_residue_name_from_selection(
-          resi_sele=base_pair.base1,
-          selection_cache=selection_cache,
-          atoms=atoms)
-        resname2 = _get_residue_name_from_selection(
-          resi_sele=base_pair.base2,
-          selection_cache=selection_cache,
-          atoms=atoms)
-        atom_pairs = base_pairing.get_h_bond_atoms(
-          residues=(resname1,resname2),
-          saenger_class=base_pair.saenger_class,
-          leontis_westhof_class=base_pair.leontis_westhof_class,
-          use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
-        distance_values = base_pairing.get_distances(
-          residues=(resname1,resname2),
-          saenger_class=base_pair.saenger_class,
-          leontis_westhof_class=base_pair.leontis_westhof_class,
-          use_hydrogens=(not params.h_bond_restraints.substitute_n_for_h))
-        for i, (name1, name2) in enumerate(atom_pairs) :
-          sele1 = """name %s and %s""" % (name1, base_pair.base1)
-          sele2 = """name %s and %s""" % (name2, base_pair.base2)
-          # XXX these aren't necessarily in donor/acceptor order, but it
-          # doesn't really matter here.
-          (i_seq,j_seq) = _hydrogen_bond_from_selection_pair(sele1, sele2,
-            selection_cache)
-          if (has_bond[i_seq] > 2) \
-             or (has_bond[j_seq] > 2):
-            print >> log, "One or more atoms already bonded:"
-            print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
-            print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
-            continue
-          has_bond[i_seq] += 1
-          has_bond[j_seq] += 1
-          if params.nucleic_acids.use_db_values :
-            if distance_values[i][0] != '_':
-              cur_distance = float(distance_values[i][0])
-            else:
-              cur_distance = distance_ideal
-            if distance_values[i][1] != '_':
-              cur_sigma = float(distance_values[i][1])
-            else:
-              cur_sigma = sigma
-            if distance_values[i][2] != '_':
-              cur_slack = float(distance_values[i][2])
-            else:
-              cur_slack = slack
-          else :
-            cur_distance = distance_ideal
-            cur_sigma = sigma
-            cur_slack = slack
-          bond_i_seqs.append((i_seq, j_seq))
-          distances.append(cur_distance)
-          sigmas.append(cur_sigma)
-          slacks.append(cur_slack)
-      except RuntimeError, e :
-        print >> log, str(e)
-  return hydrogen_bond_table(bonds=bond_i_seqs,
-    distance=distances,
-    sigma=sigmas,
-    slack=slacks,
-    bond_lengths=_get_distances(bond_i_seqs, sites))
+    if (slack is None) :
+      slack = geo_params.slack
+    n_proxies = base_pairing.create_hbond_proxies(
+      build_proxies=build_proxies,
+      base_pairs=params.nucleic_acids.base_pair,
+      pdb_hierarchy=pdb_hierarchy,
+      restraint_type=restraint_type,
+      hbond_counts=hbond_counts,
+      distance_ideal=simple_distance_ideal,
+      distance_cut=simple_distance_cut,
+      sigma=sigma,
+      slack=slack,
+      use_db_values=params.nucleic_acids.use_db_values)
+    if (n_proxies == 0) :
+      print >> log, "  No H-bonds generated for nucleic acids"
+  return build_proxies
 
 def _get_distances (bonds, sites_cart) :
   distances = flex.double(bonds.size(), -1)
@@ -586,40 +273,6 @@ def _get_distances (bonds, sites_cart) :
     dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
     distances[k] = dist
   return distances
-
-def _get_residue_name_from_selection (resi_sele, selection_cache, atoms) :
-  i_seqs = selection_cache.iselection(resi_sele)
-  if len(i_seqs) == 0 :
-    raise RuntimeError("Empty selection '%s'" % resi_sele)
-  resnames = []
-  for i_seq in i_seqs :
-    resnames.append(atoms[i_seq].fetch_labels().resname)
-  unique_resnames = set(resnames)
-  assert len(unique_resnames) != 0
-  if len(unique_resnames) > 1 :
-    raise RuntimeError("More than one residue name in selection '%s' (%s)" %
-      (resi_sele, ", ".join(unique_resnames)))
-  else :
-    return resnames[0]
-
-def _hydrogen_bond_from_selection_pair (donor_sele, acceptor_sele,
-    selection_cache) :
-  isel = selection_cache.iselection
-  donor_i_seqs = isel(donor_sele)
-  acceptor_i_seqs = isel(acceptor_sele)
-  n_donor_sel = donor_i_seqs.size()
-  n_acceptor_sel = acceptor_i_seqs.size()
-  if n_donor_sel == 0 or n_acceptor_sel == 0 :
-    raise RuntimeError("""\
-analyze_h_bonds: one or more atoms missing
-  %s (%d atoms)
-  %s (%d atoms)""" % (donor_sele, n_donor_sel, acceptor_sele, n_acceptor_sel))
-  elif n_donor_sel > 1 or n_acceptor_sel > 1 :
-    raise RuntimeError("""\
-analyze_h_bonds: multiple atoms matching a selection
-  %s (%d atoms)
-  %s (%d atoms)""" % (donor_sele, n_donor_sel, acceptor_sele, n_acceptor_sel))
-  return (donor_i_seqs[0], acceptor_i_seqs[0])
 
 def get_pdb_hierarchy (file_names) :
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=file_names)
@@ -652,9 +305,6 @@ class manager (object) :
       self.assume_hydrogens_all_missing = not ("H" in sctr_keys or
         "D" in sctr_keys)
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
-    if self.params.h_bond_restraints.substitute_n_for_h is None :
-      self.params.h_bond_restraints.substitute_n_for_h = \
-        self.assume_hydrogens_all_missing
 
   def as_phil_str (self, master_phil=sec_str_master_phil) :
     return master_phil.format(python_object=self.params)
@@ -783,46 +433,37 @@ class manager (object) :
   def apply_params (self, params) :
     self.params.helix = params.helix
     self.params.sheet = params.sheet
-    if self.params.h_bond_restraints.substitute_n_for_h is None :
-      self.params.h_bond_restraints.substitute_n_for_h = \
-        self.assume_hydrogens_all_missing
 
-  def get_bonds_table (self, log=sys.stderr, verbose=True) :
-    params = self.params
-    bonds_table = hydrogen_bonds_from_selections(
-      pdb_hierarchy=self.pdb_hierarchy,
-      params=params,
-      log=log)
-    if (bonds_table.bonds.size() == 0) :
-      print >> log, ""
-      print >> log, "  No hydrogen bonds defined."
-      return None
-    if verbose :
-      print >> log, ""
-      print >> log, "  %d hydrogen bonds defined." % bonds_table.bonds.size()
-    bonds_table.analyze_distances(params=params.h_bond_restraints,
-      pdb_hierarchy=self.pdb_hierarchy,
-      log=log)
-    return bonds_table
-
-  def create_hbond_proxies (self, log=sys.stderr, hbond_params=None,
-      restraint_type=None) :
+  def create_hbond_proxies (self, log=sys.stdout, hbond_params=None,
+      restraint_type=None, as_python_objects=False) :
     params = self.params
     if (restraint_type is None) :
-      if (not params.h_bond_restraints.substitute_n_for_h) :
-        restraint_type = "simple_explicit"
-      else :
-        restraint_type = "simple_implicit"
+      restraint_type = self.params.h_bond_restraints.restraint_type
+      if (restraint_type == "Auto") :
+        if (not self.assume_hydrogens_all_missing) :
+          restraint_type = "simple_explicit"
+        else :
+          restraint_type = "simple_implicit"
     else :
       assert (restraint_type in ["simple_explicit", "simple_implicit",
                                  "explicit", "implicit"])
-    proxies = hydrogen_bond_proxies_from_selections(
+    build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
       restraint_type=restraint_type,
       hbond_params=hbond_params,
+      as_python_objects=as_python_objects,
       log=log)
-    return proxies
+    if isinstance(build_proxies.proxies, list) :
+      n_proxies = len(build_proxies.proxies)
+    else :
+      n_proxies = build_proxies.proxies.size()
+    print >> log, ""
+    if (n_proxies == 0) :
+      print >> log, "  No hydrogen bonds defined."
+    else :
+      print >> log, "  %d hydrogen bonds defined." % n_proxies
+    return build_proxies
 
   def calculate_structure_content (self) :
     isel = self.selection_cache.iselection
@@ -1019,12 +660,20 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       .type = bool
     show_histograms = False
       .type = bool
+    filter_outliers = True
+      .type = bool
     format = *phenix phenix_bonds pymol refmac kinemage
       .type = choice
     quiet = False
       .type = bool
-%s""" % sec_str_master_phil_str
-  master_phil = libtbx.phil.parse(master_phil_str)
+    secondary_structure {
+      %s
+    }
+    hydrogen_bonding {
+      include scope mmtbx.geometry_restraints.hbond.master_phil
+    }
+""" % sec_str_master_phil_str
+  master_phil = libtbx.phil.parse(master_phil_str, process_includes=True)
   parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil,
     home_scope="")
@@ -1050,11 +699,12 @@ def run (args, out=sys.stdout, log=sys.stderr) :
       except RuntimeError :
         print "Unrecognizable parameter %s" % arg
   params = master_phil.fetch(sources=sources).extract()
+  ss_params = params.secondary_structure
   if params.quiet :
     out = cStringIO.StringIO()
   if len(pdb_files) > 0 :
-    params.input.file_name.extend(pdb_files)
-  pdb_files = params.input.file_name
+    ss_params.input.file_name.extend(pdb_files)
+  pdb_files = ss_params.input.file_name
   if len(pdb_files) == 0 :
     raise Sorry("No PDB files specified.")
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
@@ -1068,34 +718,47 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   m = manager(pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure,
     sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
-    params=params)
+    params=ss_params)
   m.find_automatically(log=log)
   prefix_scope="refinement.secondary_structure"
   if params.show_histograms or params.format != "phenix" :
     prefix_scope = ""
   ss_phil = None
-  working_phil = m.as_phil_str(master_phil=master_phil)
+  working_phil = m.as_phil_str(master_phil=sec_str_master_phil)
   phil_diff = sec_str_master_phil.fetch_diff(source=working_phil)
   #params = working_phil.extract()
-  if params.show_histograms :
-    #working_phil.show()
-    phil_diff.show()
-    print >> out, ""
-    print >> out, "========== Analyzing hydrogen bonding distances =========="
-    print >> out, ""
-    bonds_table = m.get_bonds_table(log=log)
-  elif params.format == "phenix_bonds" :
+  #if params.show_histograms :
+  #  #working_phil.show()
+  #  phil_diff.show()
+  #  print >> out, ""
+  #  print >> out, "========== Analyzing hydrogen bonding distances =========="
+  #  print >> out, ""
+  #  bonds_table = m.get_bonds_table(log=log)
+  if params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif params.format in ["pymol", "refmac", "kinemage"] :
-    bonds_table = m.get_bonds_table(log=log)
-    if (bonds_table is None) :
+    from mmtbx.geometry_restraints import hbond
+    build_proxies = m.create_hbond_proxies(
+      log=log,
+      restraint_type=None,
+      as_python_objects=True)
+    if (len(proxies) == 0) :
       pass
     elif params.format == "pymol" :
-      bonds_table.as_pymol_dashes(pdb_hierarchy, filter=True, out=out)
+      hbond.as_pymol_dashes(proxies=proxies,
+        pdb_hierarchy=pdb_hierarchy,
+        filter=params.filter_outliers,
+        out=out)
     elif params.format == "kinemage" :
-      bonds_table.as_kinemage(pdb_hierarchy, filter=True, out=out)
+      hbond.as_kinemage(proxies=proxies,
+        pdb_hierarchy=pdb_hierarchy,
+        filter=params.filter_outliers,
+        out=out)
     else :
-      bonds_table.as_refmac_restraints(pdb_hierarchy, filter=True, out=out)
+      hbond.as_refmac_restraints(
+        pdb_hierarchy=pdb_hierarchy,
+        filter=params.filter_outliers,
+        out=out)
   else :
     #working_phil.show(out=out)
     print >> out, "# These parameters are suitable for use in phenix.refine."

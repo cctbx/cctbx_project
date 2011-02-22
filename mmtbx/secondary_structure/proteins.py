@@ -194,26 +194,39 @@ def _create_hbond_proxy (
     donor_atoms,
     restraint_type,
     build_proxies,
+    hbond_counts,
     simple_distance_ideal,
     simple_distance_cut,
     hbond_params,
     weight=1.0) :
+  donor_labels = None
+  acceptor_labels = None
   for atom in acceptor_atoms :
     if (atom.name == ' O  ') :
       acceptor = atom.i_seq
+      acceptor_labels = atom.fetch_labels()
     elif (atom.name == ' C  ') :
       acceptor_base = atom.i_seq
   for atom in donor_atoms :
     if (atom.name == ' N  ') :
       donor = atom.i_seq
+      donor_labels = atom.fetch_labels()
     elif (atom.name == ' H  ') :
       hydrogen = atom.i_seq
   if ([donor,acceptor,acceptor_base].count(None) == 0) :
     if (restraint_type in ["simple_explicit", "explicit"]) :
       if (hydrogen is None) :
         donor_resseq = donor_atoms[0].fetch_labels().resseq_as_int()
-        print >> log, "Missing hydrogen at %d" % donor_resseq
+        print >> log, "  Missing hydrogen at %d" % donor_resseq
         return 0
+    if (hbond_counts[donor] > 0) :
+      print >> log, "  WARNING: donor atom is already bonded, skipping"
+      print >> log, "    %s" % donor_labels.id_str()
+      return 0
+    elif (hbond_counts[acceptor] > 0) :
+      print >> log, "  WARNING: acceptor atom is already bonded, skipping"
+      print >> log, "    %s" % acceptor_labels.id_str()
+      return 0
     # choose restraint type (simple, explicit-H, implicit-H)
     if (restraint_type in ["simple_explicit", "simple_implicit"]) :
       if (restraint_type == "simple_explicit") :
@@ -222,7 +235,7 @@ def _create_hbond_proxy (
         i_seqs=[donor, acceptor],
         distance_ideal=simple_distance_ideal,
         distance_cut=simple_distance_cut,
-        weight=1/(hbond_params.sigma ** 2),
+        weight=weight/(hbond_params.sigma ** 2),
         slack=hbond_params.slack)
       build_proxies.add_nonbonded_exclusion(donor, acceptor)
     elif (restraint_type == "explicit") :
@@ -239,7 +252,7 @@ def _create_hbond_proxy (
         i_seqs=[donor, acceptor, acceptor_base],
         distance_ideal=hbond_params.distance_ideal,
         distance_cut=hbond_params.distance_cut,
-        theta_low=hbond_params.theta_low,
+        theta_low=-1,#hbond_params.theta_low,
         theta_high=hbond_params.theta_high,
         weight=weight)
       build_proxies.add_nonbonded_exclusion(donor, acceptor)
@@ -256,6 +269,7 @@ def create_helix_hydrogen_bond_proxies (
     build_proxies,
     weight,
     hbond_params,
+    hbond_counts,
     simple_distance_ideal=None,
     simple_distance_cut=None,
     log=sys.stdout) :
@@ -286,12 +300,12 @@ def create_helix_hydrogen_bond_proxies (
               bonded_resi = residues[k_seq]
               bonded_resseq = bonded_resi.resseq_as_int()
               if (bonded_resi.resname == "PRO") :
-                print >> log, "Proline residue at %s %s - end of helix" % \
+                print >> log, "  Proline residue at %s %s - end of helix" % \
                   (chain.id, bonded_resseq)
                 break # XXX is this safe?
               elif (bonded_resseq != (resseq + helix_step)) :
-                print >> log, "Confusing residue numbering: %s %s -> %s %s" \
-                  (chain.id, residue.resid(), chain.id, bonded_resi.resid())
+                print >> log, "  Confusing residue numbering: %s %s -> %s %s" \
+                  % (chain.id, residue.resid(), chain.id, bonded_resi.resid())
                 continue
               bonded_atoms = bonded_resi.atoms()
               if (helix_selection[bonded_atoms[0].i_seq] == True) :
@@ -300,6 +314,7 @@ def create_helix_hydrogen_bond_proxies (
                   donor_atoms=bonded_atoms,
                   restraint_type=restraint_type,
                   build_proxies=build_proxies,
+                  hbond_counts=hbond_counts,
                   simple_distance_ideal=simple_distance_ideal,
                   simple_distance_cut=simple_distance_cut,
                   hbond_params=hbond_params,
@@ -313,6 +328,7 @@ def create_sheet_hydrogen_bond_proxies (
     restraint_type,
     weight,
     hbond_params,
+    hbond_counts,
     simple_distance_ideal=None,
     simple_distance_cut=None,
     log=sys.stdout) :
@@ -350,6 +366,7 @@ def create_sheet_hydrogen_bond_proxies (
                 acceptor_atoms=curr_residues[j].atoms(),
                 donor_atoms=prev_residues[i].atoms(),
                 build_proxies=build_proxies,
+                hbond_counts=hbond_counts,
                 restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
@@ -362,6 +379,7 @@ def create_sheet_hydrogen_bond_proxies (
                 acceptor_atoms=prev_residues[i].atoms(),
                 donor_atoms=curr_residues[j+2].atoms(),
                 build_proxies=build_proxies,
+                hbond_counts=hbond_counts,
                 restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
@@ -376,6 +394,7 @@ def create_sheet_hydrogen_bond_proxies (
                 acceptor_atoms=curr_residues[j].atoms(),
                 donor_atoms=prev_residues[i].atoms(),
                 build_proxies=build_proxies,
+                hbond_counts=hbond_counts,
                 restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
@@ -386,6 +405,7 @@ def create_sheet_hydrogen_bond_proxies (
                 acceptor_atoms=prev_residues[i].atoms(),
                 donor_atoms=curr_residues[j].atoms(),
                 build_proxies=build_proxies,
+                hbond_counts=hbond_counts,
                 restraint_type=restraint_type,
                 simple_distance_ideal=simple_distance_ideal,
                 simple_distance_cut=simple_distance_cut,
@@ -394,17 +414,17 @@ def create_sheet_hydrogen_bond_proxies (
             i += 2
             j -= 2
         else :
-          print >> log, "WARNING: strand direction not defined!"
-          print >> log, "  previous: %s" % prev_strand
-          print >> log, "  current: %s" % curr_strand.selection
+          print >> log, "  WARNING: strand direction not defined!"
+          print >> log, "    previous: %s" % prev_strand
+          print >> log, "    current: %s" % curr_strand.selection
       else :
-        print >> log, "WARNING: can't find start of bonding for strands!"
-        print >> log, "  previous: %s" % prev_strand
-        print >> log, "  current: %s" % curr_strand.selection
+        print >> log, "  WARNING: can't find start of bonding for strands!"
+        print >> log, "    previous: %s" % prev_strand
+        print >> log, "    current: %s" % curr_strand.selection
     else :
-      print >> log, "WARNING: can't find one or more strands!"
-      print >> log, "  previous: %s" % prev_strand
-      print >> log, "  current: %s" % curr_strand.selection
+      print >> log, "  WARNING: can't find one or more strands!"
+      print >> log, "    previous: %s" % prev_strand
+      print >> log, "    current: %s" % curr_strand.selection
     k += 1
     prev_strand = curr_strand
     prev_selection = curr_selection
@@ -446,97 +466,6 @@ def _get_strand_residues (
     if (len(strand_residues) > 0) :
       break
   return strand_residues
-
-def donors_and_acceptors (base_sele, selection_cache, atoms, donor_name,
-    ss_type) :
-  isel = selection_cache.iselection
-  donor_sele = "(%s) and (altloc 'A' or altloc ' ') and name %s" % (
-    base_sele, donor_name)
-  acceptor_sele = "(%s) and (altloc 'A' or altloc ' ') and name O"% base_sele
-  donor_isel = isel(donor_sele)
-  acceptor_isel = isel(acceptor_sele)
-  n_donors = donor_isel.size()
-  n_acceptors = acceptor_isel.size()
-  n_atoms = atoms.size()
-  if n_acceptors == 0 :
-    raise RuntimeError("No atoms for selection %s." % acceptor_sele)
-  elif n_donors != n_acceptors :
-    n_pro = 0
-    for k, i_seq in enumerate(acceptor_isel) :
-      acceptor_atom = atoms[i_seq].fetch_labels()
-      if acceptor_atom.resname.strip() == "PRO" :
-        if (k < len(donor_isel)) :
-          donor_isel.insert(k, n_atoms)
-        else :
-          donor_isel.append(n_atoms)
-        n_pro += 1
-    if (n_donors + n_pro) != n_acceptors :
-      raise RuntimeError("""\
-hydrogen_bonds_from_selections: incomplete non-PRO residues in %s.
-  \"%s\" => %d donors
-  \"%s\" => %d acceptors""" % (ss_type, donor_sele, donor_isel.size(),
-      acceptor_sele, acceptor_isel.size()))
-  return donor_isel, acceptor_isel
-
-def hydrogen_bonds_from_strand_pair (atoms,
-    prev_strand_donors,
-    prev_strand_acceptors,
-    prev_strand_start,
-    curr_strand_donors,
-    curr_strand_acceptors,
-    curr_strand_start,
-    sense) :
-  n_atoms = atoms.size()
-  assert sense != "unknown"
-  assert prev_strand_donors.size() == prev_strand_acceptors.size()
-  assert curr_strand_donors.size() == curr_strand_acceptors.size()
-  start_bonding = False
-  bonds = []
-  n_prev_strand = prev_strand_donors.size()
-  n_curr_strand = curr_strand_donors.size()
-  i = j = None
-  for k, donor_i_seq in enumerate(prev_strand_donors) :
-    if donor_i_seq == prev_strand_start :
-      i = k
-      break
-  #print curr_strand_start, curr_strand_acceptors
-  for k, acceptor_i_seq in enumerate(curr_strand_acceptors) :
-    if acceptor_i_seq == curr_strand_start :
-      j = k
-      break
-  if None in [i, j] :
-    return None
-  if sense == "antiparallel" :
-    while (i < n_prev_strand) and (j > 0) :
-      donor1_i_seq = prev_strand_donors[i]
-      acceptor1_i_seq = curr_strand_acceptors[j]
-      labels1 = atoms[donor1_i_seq].fetch_labels()
-      if ((donor1_i_seq != n_atoms) and (labels1.resname.strip() != "PRO")) :
-        bonds.append((donor1_i_seq, acceptor1_i_seq))
-      donor2_i_seq = curr_strand_donors[j]
-      acceptor2_i_seq = prev_strand_acceptors[i]
-      labels2 = atoms[donor2_i_seq].fetch_labels()
-      if ((donor2_i_seq != n_atoms) and (labels2.resname.strip() != "PRO")) :
-        bonds.append((donor2_i_seq, acceptor2_i_seq))
-      i += 2
-      j -= 2
-  else :
-    while i < n_prev_strand and j < n_curr_strand :
-      donor1_i_seq = prev_strand_donors[i]
-      acceptor1_i_seq = curr_strand_acceptors[j]
-      labels1 = atoms[donor1_i_seq].fetch_labels()
-      if ((donor1_i_seq != n_atoms) and (labels1.resname.strip() != "PRO")) :
-        bonds.append((donor1_i_seq, acceptor1_i_seq))
-      if (j + 2) >= n_curr_strand :
-        break
-      donor2_i_seq = curr_strand_donors[j+2]
-      acceptor2_i_seq = prev_strand_acceptors[i]
-      labels2 = atoms[donor2_i_seq].fetch_labels()
-      if ((donor2_i_seq != n_atoms) and (labels2.resname.strip() != "PRO")) :
-        bonds.append((donor2_i_seq, acceptor2_i_seq))
-      i += 2
-      j += 2
-  return bonds
 
 def restraint_groups_as_pdb_helices (pdb_hierarchy, helices, log=sys.stderr) :
   isel = pdb_hierarchy.atom_selection_cache().iselection

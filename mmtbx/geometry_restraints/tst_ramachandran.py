@@ -261,9 +261,7 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
   restraints_helper = mmtbx.geometry_restraints.manager(
     ramachandran_proxies=proxies,
     ramachandran_lookup=rama_lookup)
-  grm.set_generic_restraints(
-    proxies=proxies,
-    restraints_helper=restraints_helper)
+  grm.set_generic_restraints(restraints_helper)
   lbfgs = geometry_minimization.lbfgs(
     sites_cart=sites_cart_2,
     geometry_restraints_manager=grm,
