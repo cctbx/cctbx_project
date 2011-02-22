@@ -14,10 +14,10 @@
 
 namespace mmtbx { namespace geometry_restraints {
 namespace {
+  using namespace boost::python;
 
-  void wrap_hbond_restraints()
+  void wrap_simple_restraints()
   {
-    using namespace boost::python;
     typedef h_bond_simple_proxy w_t;
     class_<w_t>("h_bond_simple_proxy", no_init)
       .def(init<
@@ -52,13 +52,55 @@ namespace {
       arg("gradient_array"),
       arg("hbond_weight")=1.0,
       arg("falloff_distance")=0.05));
-
   }
+
+  void wrap_implicit_restraints ()
+  {
+    typedef h_bond_implicit_proxy w_t;
+    class_<w_t>("h_bond_implicit_proxy", no_init)
+      .def(init<
+        af::tiny<unsigned,3> const&, double, double, double, double, double >((
+          arg("i_seqs"),
+          arg("distance_ideal"),
+          arg("distance_cut"),
+          arg("theta_high"),
+          arg("theta_low"),
+          arg("weight"))))
+      .def_readonly("distance_ideal", &w_t::distance_ideal)
+      .def_readonly("distance_cut", &w_t::distance_cut)
+      .def_readonly("theta_high", &w_t::theta_high)
+      .def_readonly("theta_low", &w_t::theta_low)
+      .def_readonly("weight", &w_t::weight)
+    ;
+    {
+      typedef return_internal_reference<> rir;
+      scitbx::af::boost_python::shared_wrapper<h_bond_implicit_proxy,rir>::wrap(
+        "shared_h_bond_implicit_proxy");
+    }
+
+    def("h_bond_implicit_residual_sum_fd",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<h_bond_implicit_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&,
+        double,
+        double))
+      h_bond_implicit_residual_sum_fd, (
+      arg("sites_cart"),
+      arg("proxies"),
+      arg("gradient_array"),
+      arg("falloff_distance")=0.05,
+      arg("epsilon")=0.0001));
+  }
+
 } // namespace anonymous
 
 namespace boost_python {
 
-  void wrap_hbond() { wrap_hbond_restraints(); }
+  void wrap_hbond() {
+    wrap_simple_restraints();
+    wrap_implicit_restraints();
+  }
 
 } // namespace boost_python
 

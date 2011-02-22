@@ -2,10 +2,7 @@
 from libtbx.test_utils import approx_equal
 import cStringIO
 
-def exercise_simple () :
-  from mmtbx.geometry_restraints import hbond
-  import cctbx.geometry_restraints
-  from scitbx.array_family import flex
+def simple_pdb () :
   import iotbx.pdb
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      1  N   ALA A   1       4.288  62.025  -3.678  1.00 27.96           N
@@ -21,6 +18,14 @@ ATOM     28  O   ALA A   5       1.213  70.964  -2.365  1.00 30.52           O
 ATOM     29  CB  ALA A   5       0.345  67.845  -2.558  1.00 30.05           C
 ATOM     30  H   ALA A   5       2.547  66.981  -3.333  1.00 29.64           H
 """)
+  return pdb_in
+
+def exercise_simple () :
+  from mmtbx.geometry_restraints import hbond
+  import cctbx.geometry_restraints
+  from scitbx.array_family import flex
+  import iotbx.pdb
+  pdb_in = simple_pdb()
   hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
   sites_cart = hierarchy.atoms().extract_xyz()
@@ -39,16 +44,23 @@ ATOM     30  H   ALA A   5       2.547  66.981  -3.333  1.00 29.64           H
     sites=[sites_cart[i_seq_1[0]], sites_cart[i_seq_2[0]]],
     distance_ideal=1.975,
     weight=1/(0.05**2))
-  residual = hbond.target_and_gradients(
-    proxies=build_proxies.proxies,
-    sites_cart=sites_cart)
-  assert (residual == cctbx_bond.residual())
   grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   residual = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
-    gradient_array=grads,
-    hbond_weight=0.5)
+    gradient_array=grads)
+  assert (residual == cctbx_bond.residual())
+  grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  build_proxies = hbond.build_simple_hbond_proxies()
+  build_proxies.add_proxy(
+    i_seqs=[i_seq_1[0], i_seq_2[0]],
+    distance_ideal=1.975,
+    distance_cut=2.5,
+    weight=0.5/(0.05**2))
+  residual = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=grads)
   assert approx_equal(residual, 3.22963, eps=0.00001)
   build_proxies = hbond.build_simple_hbond_proxies()
   build_proxies.add_proxy(
@@ -81,7 +93,65 @@ ATOM     30  H   ALA A   5       2.547  66.981  -3.333  1.00 29.64           H
 #  hbond.as_refmac_restraints(build_proxies.proxies, hierarchy, out=out,
 #    sigma=0.1)
 #  print out.getvalue()
-  print "OK"
+
+def exercise_implicit () :
+  from mmtbx.geometry_restraints import hbond
+  import cctbx.geometry_restraints
+  from scitbx.array_family import flex
+  pdb_in = simple_pdb()
+  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy.atoms().reset_i_seq()
+  sites_cart = hierarchy.atoms().extract_xyz()
+  cache = hierarchy.atom_selection_cache()
+  i_seq_1 = cache.selection("resseq 5 and name N").iselection()[0]
+  i_seq_2 = cache.selection("resseq 1 and name O").iselection()[0]
+  i_seq_3 = cache.selection("resseq 1 and name C").iselection()[0]
+  build_proxies = hbond.build_implicit_hbond_proxies()
+  build_proxies.add_proxy(
+    i_seqs=[i_seq_1, i_seq_2, i_seq_3],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    theta_low=110.0,
+    theta_high=160.0,
+    weight=1.0)
+  grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  residual = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=grads)
+  sites_cart = flex.vec3_double([(0.0,2.9,0.0), (0.0,0.0,0.0),
+    (0.5774,-1.0,0.0)])
+  build_proxies = hbond.build_implicit_hbond_proxies()
+  build_proxies.add_proxy(
+    i_seqs=[0,1,2],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    theta_low=110.0,
+    theta_high=150.0,
+    weight=1.0)
+  g0 = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  r0 = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=g0)
+  assert approx_equal(r0, -0.148148146, eps=0.000001)
+  assert (g0[0][2] == g0[1][2] == g0[2][2] == 0.0)
+  sites_cart[0] = (0.0, 3.0, 0.0)
+  g1 = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  r1 = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=g1)
+  assert approx_equal(r1, -0.146321607, eps=0.000001)
+  sites_cart[0] = (0.0, 2.8, 0.0)
+  g2 = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  r2 = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=g2)
+  assert approx_equal(r2, -0.145684997, eps=0.000001)
 
 if (__name__ == "__main__") :
   exercise_simple()
+  exercise_implicit()
+  print "OK"

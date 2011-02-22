@@ -320,6 +320,91 @@ def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
     return """%s {\n%s\n}""" % (prefix, phil_str)
   return phil_str
 
+def create_hbond_proxies (
+    build_proxies,
+    base_pairs,
+    pdb_hierarchy,
+    restraint_type,
+    hbond_counts,
+    distance_ideal,
+    distance_cut,
+    sigma,
+    slack,
+    use_db_values=True) :
+  assert (restraint_type in ["simple_implicit", "simple_explicit"])
+  assert (slack >= 0) and (sigma >= 0)
+  from mmtbx.secondary_structure import utils as ss_utils
+  selection_cache = pdb_hierarchy.atom_selection_cache()
+  atoms = pdb_hierarchy.atoms()
+  n_proxies = 0
+  for base_pair in base_pairs :
+    try :
+      resname1 = ss_utils.get_residue_name_from_selection(
+        resi_sele=base_pair.base1,
+        selection_cache=selection_cache,
+        atoms=atoms)
+      resname2 = ss_utils.get_residue_name_from_selection(
+        resi_sele=base_pair.base2,
+        selection_cache=selection_cache,
+        atoms=atoms)
+      atom_pairs = get_h_bond_atoms(
+        residues=(resname1,resname2),
+        saenger_class=base_pair.saenger_class,
+        leontis_westhof_class=base_pair.leontis_westhof_class,
+        use_hydrogens=(restraint_type == "simple_explicit"))
+      distance_values = get_distances(
+        residues=(resname1,resname2),
+        saenger_class=base_pair.saenger_class,
+        leontis_westhof_class=base_pair.leontis_westhof_class,
+        use_hydrogens=(restraint_type == "simple_explicit"))
+      for i, (name1, name2) in enumerate(atom_pairs) :
+        sele1 = """name %s and %s""" % (name1, base_pair.base1)
+        sele2 = """name %s and %s""" % (name2, base_pair.base2)
+        # XXX these aren't necessarily in donor/acceptor order, but it
+        # doesn't really matter here since we're only using the simple
+        # potential type.
+        (i_seq,j_seq) = ss_utils.hydrogen_bond_from_selection_pair(sele1,
+          sele2, selection_cache)
+        if (hbond_counts[i_seq] > 2) \
+           or (hbond_counts[j_seq] > 2):
+          print >> log, "One or more atoms already bonded:"
+          print >> log, "  %s" % atoms[i_seq].fetch_labels().id_str()
+          print >> log, "  %s" % atoms[j_seq].fetch_labels().id_str()
+          continue
+        hbond_counts[i_seq] += 1
+        hbond_counts[j_seq] += 1
+        if (use_db_values) :
+          bp_distance_cut = -1
+          if distance_values[i][0] != '_':
+            bp_distance = float(distance_values[i][0])
+          else:
+            bp_distance = distance_ideal
+          if distance_values[i][1] != '_':
+            bp_sigma = float(distance_values[i][1])
+          else:
+            bp_sigma = sigma
+          if distance_values[i][2] != '_':
+            bp_slack = float(distance_values[i][2])
+          else:
+            bp_slack = slack
+        else :
+          bp_distance = distance_ideal
+          bp_distance_cut = distance_cut
+          bp_sigma = sigma
+          bp_slack = slack
+        build_proxies.add_proxy(
+          i_seqs=[i_seq,j_seq],
+          distance_ideal=bp_distance,
+          distance_cut=bp_distance_cut,
+          weight=1/(bp_sigma ** 2),
+          slack=bp_slack)
+        build_proxies.add_nonbonded_exclusion(i_seq, j_seq)
+        n_proxies += 1
+    except RuntimeError, e :
+      print >> log, "  %s" % str(e)
+  return n_proxies
+
+############e###########################################################
 def exercise () :
   import libtbx.load_env
   if libtbx.env.has_module("probe") and libtbx.env.has_module("reduce"):
