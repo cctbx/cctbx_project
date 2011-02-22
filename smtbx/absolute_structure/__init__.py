@@ -41,7 +41,7 @@ class hooft_analysis(object):
 
   def __init__(self, fo2, fc,
                scale_factor=None,
-               outlier_cutoff_factor=2,
+               outlier_cutoff_factor=None,
                probability_plot_slope=None):
     self.probability_plot_slope = probability_plot_slope
     assert fo2.is_xray_intensity_array()
@@ -53,11 +53,12 @@ class hooft_analysis(object):
     self.delta_fc2 = fc2.anomalous_differences()
     self.delta_fo2 = fo2.anomalous_differences()
     self.n_bijvoet_pairs = self.delta_fo2.size()
-    cutoff_sel = flex.abs(self.delta_fo2.data()) > (
-      outlier_cutoff_factor * scale_factor) * flex.max(
-        flex.abs(self.delta_fc2.data()))
-    self.delta_fo2 = self.delta_fo2.select(~cutoff_sel)
-    self.delta_fc2 = self.delta_fc2.select(~cutoff_sel)
+    if outlier_cutoff_factor is not None:
+      cutoff_sel = flex.abs(self.delta_fo2.data()) > (
+        outlier_cutoff_factor * scale_factor) * flex.max(
+          flex.abs(self.delta_fc2.data()))
+      self.delta_fo2 = self.delta_fo2.select(~cutoff_sel)
+      self.delta_fc2 = self.delta_fc2.select(~cutoff_sel)
     self.delta_fc2 = self.delta_fc2.customized_copy(
       data=self.delta_fc2.data() * scale_factor)
     if not self.delta_fo2.size():
@@ -277,7 +278,7 @@ class students_t_hooft_analysis(hooft_analysis):
   def __init__(self, fo2, fc,
                degrees_of_freedom,
                scale_factor=None,
-               outlier_cutoff_factor=2,
+               outlier_cutoff_factor=None,
                probability_plot_slope=None):
     self.degrees_of_freedom = degrees_of_freedom
     hooft_analysis.__init__(self, fo2, fc,
