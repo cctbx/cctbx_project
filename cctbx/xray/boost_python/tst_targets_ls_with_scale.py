@@ -7,9 +7,10 @@ import sys
 
 class random_inputs(object):
 
-  def __init__(O, mt, n_refl, apply_scale_to_f_calc):
+  def __init__(O, mt, n_refl, apply_scale_to_f_calc, obs_type):
     O.apply_scale_to_f_calc = apply_scale_to_f_calc
-    O.f_obs = mt.random_double(size=n_refl)
+    O.obs_type = obs_type
+    O.obs = mt.random_double(size=n_refl)
     O.weights = mt.random_double(size=n_refl)
     rff = flex.bool(max(1,iceil(n_refl*0.6)), False)
     rff.resize(n_refl, True)
@@ -19,14 +20,25 @@ class random_inputs(object):
     O.b = mt.random_double(size=n_refl)
 
   def get(O, compute_derivatives=0):
-    return ext.targets_ls_with_scale(
-      apply_scale_to_f_calc=O.apply_scale_to_f_calc,
+    if (O.apply_scale_to_f_calc is not None):
+      assert O.obs_type is None
+      return ext.targets_ls_with_scale(
+        apply_scale_to_f_calc=O.apply_scale_to_f_calc,
+        compute_scale_using_all_data=False,
+        f_obs=O.obs,
+        weights=O.weights,
+        r_free_flags=O.r_free_flags,
+        f_calc=flex.complex_double(O.a, O.b),
+        compute_derivatives=compute_derivatives,
+        scale_factor=O.scale_factor)
+    return ext.targets_least_squares(
       compute_scale_using_all_data=False,
-      f_obs=O.f_obs,
+      obs_type=O.obs_type,
+      obs=O.obs,
       weights=O.weights,
       r_free_flags=O.r_free_flags,
       f_calc=flex.complex_double(O.a, O.b),
-      compute_derivatives=compute_derivatives,
+      derivatives_depth=compute_derivatives,
       scale_factor=O.scale_factor)
 
   def gradients_work_fd(O, eps=1.e-6):
@@ -66,19 +78,27 @@ class random_inputs(object):
 def exercise_random(n_trials=10, n_refl=30):
   mt = flex.mersenne_twister(seed=0)
   for i_trial in xrange(n_trials):
-    for apply_scale_to_f_calc in [True, False]:
-      ri = random_inputs(
-        mt=mt, n_refl=n_refl, apply_scale_to_f_calc=apply_scale_to_f_calc)
-      ls = ri.get(compute_derivatives=2)
-      ga = ls.gradients_work()
-      gf = ri.gradients_work_fd()
-      assert approx_equal(ga, gf)
-      ca = ls.curvatures_work()
-      cf = ri.curvatures_work_fd()
-      assert approx_equal(ca, cf)
+    for apply_scale_to_f_calc in [True, False, None]:
+      if (apply_scale_to_f_calc is None):
+        obs_types = ["F", "I"]
+      else:
+        obs_types = [None]
+      for obs_type in obs_types:
+        ri = random_inputs(
+          mt=mt,
+          n_refl=n_refl,
+          apply_scale_to_f_calc=apply_scale_to_f_calc,
+          obs_type=obs_type)
+        ls = ri.get(compute_derivatives=2)
+        ga = ls.gradients_work()
+        gf = ri.gradients_work_fd()
+        assert approx_equal(ga, gf)
+        ca = ls.curvatures_work()
+        cf = ri.curvatures_work_fd()
+        assert approx_equal(ca, cf)
 
 def exercise_singular():
-  f_obs = flex.double([1.234])
+  obs = flex.double([1.234])
   weights = flex.double([2.345])
   r_free_flags = flex.bool([False])
   scale_factor = 3.456
@@ -88,11 +108,24 @@ def exercise_singular():
     ls = ext.targets_ls_with_scale(
       apply_scale_to_f_calc=apply_scale_to_f_calc,
       compute_scale_using_all_data=False,
-      f_obs=f_obs,
+      f_obs=obs,
       weights=weights,
       r_free_flags=r_free_flags,
       f_calc=flex.complex_double(a, b),
       compute_derivatives=2,
+      scale_factor=scale_factor)
+    assert list(ls.gradients_work()) == [0j]
+    assert list(ls.curvatures_work()) == [(1,1,1)]
+  #
+  for obs_type in ["F", "I"]:
+    ls = ext.targets_least_squares(
+      compute_scale_using_all_data=False,
+      obs_type=obs_type,
+      obs=obs,
+      weights=weights,
+      r_free_flags=r_free_flags,
+      f_calc=flex.complex_double(a, b),
+      derivatives_depth=2,
       scale_factor=scale_factor)
     assert list(ls.gradients_work()) == [0j]
     assert list(ls.curvatures_work()) == [(1,1,1)]

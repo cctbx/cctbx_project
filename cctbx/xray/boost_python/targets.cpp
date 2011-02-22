@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/targets.h>
+#include <cctbx/xray/targets/least_squares.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
@@ -50,6 +51,40 @@ namespace {
     }
   };
 
+  struct least_squares_wrappers
+  {
+    typedef least_squares w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<common_results> >(
+          "targets_least_squares", no_init)
+        .def(init<
+          bool,
+          char,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref< std::complex<double> > const&,
+          int,
+          double>((
+            arg("compute_scale_using_all_data"),
+            arg("obs_type"),
+            arg("obs"),
+            arg("weights"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("derivatives_depth"),
+            arg("scale_factor"))))
+        .def("compute_scale_using_all_data",&w_t::compute_scale_using_all_data)
+        .def("obs_type", &w_t::obs_type)
+        .def("scale_factor", &w_t::scale_factor)
+      ;
+    }
+  };
+
   struct ls_with_scale_wrappers
   {
     typedef ls_with_scale w_t;
@@ -58,7 +93,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<common_results> >("targets_ls_with_scale", no_init)
         .def(init<
           bool,
@@ -212,6 +246,7 @@ namespace boost_python {
   void wrap_targets()
   {
     targets::boost_python::common_results_wrappers::wrap();
+    targets::boost_python::least_squares_wrappers::wrap();
     targets::boost_python::ls_with_scale_wrappers::wrap();
     targets::boost_python::least_squares_residual_wrappers<
       cctbx::xray::targets::f_calc_modulus>::wrap(

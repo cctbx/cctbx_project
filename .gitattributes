@@ -174,6 +174,8 @@ cctbx/xray/grouped_data.h -text
 cctbx/xray/least-squares.tex -text
 cctbx/xray/raw_multithreading/structure_factors_direct.h -text
 cctbx/xray/structure_factors/from_scatterers_direct_parallel.py -text
+cctbx/xray/targets/common_results.h svneol=native#text/plain
+cctbx/xray/targets/least_squares.h svneol=native#text/plain
 cctbx/xray/weighting_schemes.py -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text
