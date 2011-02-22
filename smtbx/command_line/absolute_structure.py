@@ -127,7 +127,7 @@ def structure_factors_from_ins_res(file_path):
     xs, hkl_path, weighting_scheme=builder.weighting_scheme)
 
 def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
-                                outlier_cutoff_factor=2):
+                                outlier_cutoff_factor=None):
   if log is None:
     log = sys.stdout
   hooft_analysis = absolute_structure.hooft_analysis(
@@ -187,8 +187,7 @@ def run(args):
                           action="store_true")
                   .option(None, "--outlier_cutoff_factor",
                           action="store",
-                          type="float",
-                          default=2)
+                          type="float")
                   ).process(args=args)
   if len(command_line.args) != 1:
     command_line.parser.show_help()
