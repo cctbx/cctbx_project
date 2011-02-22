@@ -1010,7 +1010,6 @@ mmtbx/refinement/tst_tardy_pdb.py svneol=native#text/x-python
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
-mmtbx/regression/tst_flip_peptides.py -text
 mmtbx/regression/tst_kinemage.py svneol=native#text/x-python
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
 mmtbx/rotamer/rotamer_names.props -text
