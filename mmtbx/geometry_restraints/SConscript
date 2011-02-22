@@ -3,12 +3,11 @@ Import("env_etc")
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")
   env = env_iotbx_boost_python_ext.Clone()
-  env.Prepend(LIBS=["cctbx"])
+  env.Prepend(LIBS=["cctbx", "scitbx_boost_python"])
   env_etc.enable_more_warnings(env=env)
   env.SharedLibrary(
     target="#lib/mmtbx_ramachandran_restraints_ext",
     source=["boost_python/ramachandran_ext.cpp"])
-  #env.Prepend(LIBS=[
   env.SharedLibrary(
     target="#lib/mmtbx_hbond_restraints_ext",
     source=["boost_python/hbond_ext.cpp"])
