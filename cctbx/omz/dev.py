@@ -115,6 +115,7 @@ class ls_refinement(object):
         reference_structure,
         expected_n_refinable_parameters=None):
     O.f_obs = f_obs
+    O.i_obs = f_obs.f_as_f_sq()
     O.weights = flex.double(f_obs.data().size(), 1)
     O.xray_structure = xray_structure
     O.params = params
@@ -310,10 +311,14 @@ class ls_refinement(object):
       xray_structure=O.xray_structure,
       algorithm="direct",
       cos_sin_table=False).f_calc()
+    if (O.params.ls_obs_type == "F"):
+      obs = O.f_obs
+    else:
+      obs = O.i_obs
     return xray.targets_least_squares(
       compute_scale_using_all_data=True,
-      obs_type="F",
-      obs=O.f_obs.data(),
+      obs_type=O.params.ls_obs_type,
+      obs=obs.data(),
       weights=O.weights,
       r_free_flags=None,
       f_calc=f_calc.data(),
@@ -673,6 +678,8 @@ def get_master_phil(
       .type = float
     show_distances = False
       .type = bool
+    ls_obs_type = *F I
+      .type = choice
     iteration_limit = %(iteration_limit)s
       .type = int
     grads_mean_sq_threshold = %(grads_mean_sq_threshold)s
