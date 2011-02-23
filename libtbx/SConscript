@@ -603,7 +603,8 @@ else:
       SHLINK="icpc",
     )
     env_etc.c_link = "icc"
-    env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing", "-wd161,167"]
+    env_etc.ccflags_base = [
+      "-fPIC", "-fno-strict-aliasing", "-vec_report0", "-wd161,167"]
     env_etc.cxxflags_base = ["-Wno-deprecated"]
     if (env_etc.icc_version >= 100000 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
