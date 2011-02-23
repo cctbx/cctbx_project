@@ -6,7 +6,6 @@ from libtbx import adopt_init_args
 class least_squares(object):
 
   def __init__(self,
-        apply_scale_to_f_calc,
         compute_scale_using_all_data,
         f_obs,
         weights,
@@ -19,7 +18,7 @@ class least_squares(object):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
     return ext.targets_ls_with_scale(
-      apply_scale_to_f_calc=self.apply_scale_to_f_calc,
+      apply_scale_to_f_calc=True,
       compute_scale_using_all_data=self.compute_scale_using_all_data,
       f_obs=self.f_obs.data(),
       weights=self.weights,

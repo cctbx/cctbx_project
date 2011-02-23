@@ -46,7 +46,6 @@ def get_curvs_work(f_obs, weights, xray_structure, lim_eps):
     algorithm="direct",
     cos_sin_table=False).f_calc()
   ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
     compute_scale_using_all_data=False,
     f_obs=abs(f_calc).data(),
     weights=weights,
@@ -248,7 +247,6 @@ class ls_refinement(object):
       sys.stdout.flush()
       raise RuntimeError("f_calc")
     ls = xray.targets_ls_with_scale(
-      apply_scale_to_f_calc=True,
       compute_scale_using_all_data=False,
       f_obs=O.f_obs.data(),
       weights=O.weights,

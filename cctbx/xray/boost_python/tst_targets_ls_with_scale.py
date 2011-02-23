@@ -7,8 +7,7 @@ import sys
 
 class random_inputs(object):
 
-  def __init__(O, mt, n_refl, apply_scale_to_f_calc, obs_type):
-    O.apply_scale_to_f_calc = apply_scale_to_f_calc
+  def __init__(O, mt, n_refl, obs_type):
     O.obs_type = obs_type
     O.obs = mt.random_double(size=n_refl)
     O.weights = mt.random_double(size=n_refl)
@@ -20,10 +19,10 @@ class random_inputs(object):
     O.b = mt.random_double(size=n_refl)
 
   def get(O, compute_derivatives=0):
-    if (O.apply_scale_to_f_calc is not None):
+    if (O.obs_type is None):
       assert O.obs_type is None
       return ext.targets_ls_with_scale(
-        apply_scale_to_f_calc=O.apply_scale_to_f_calc,
+        apply_scale_to_f_calc=True,
         compute_scale_using_all_data=False,
         f_obs=O.obs,
         weights=O.weights,
@@ -78,24 +77,15 @@ class random_inputs(object):
 def exercise_random(n_trials=10, n_refl=30):
   mt = flex.mersenne_twister(seed=0)
   for i_trial in xrange(n_trials):
-    for apply_scale_to_f_calc in [True, False, None]:
-      if (apply_scale_to_f_calc is None):
-        obs_types = ["F", "I"]
-      else:
-        obs_types = [None]
-      for obs_type in obs_types:
-        ri = random_inputs(
-          mt=mt,
-          n_refl=n_refl,
-          apply_scale_to_f_calc=apply_scale_to_f_calc,
-          obs_type=obs_type)
-        ls = ri.get(compute_derivatives=2)
-        ga = ls.gradients_work()
-        gf = ri.gradients_work_fd()
-        assert approx_equal(ga, gf)
-        ca = ls.curvatures_work()
-        cf = ri.curvatures_work_fd()
-        assert approx_equal(ca, cf)
+    for obs_type in [None, "F", "I"]:
+      ri = random_inputs(mt=mt, n_refl=n_refl, obs_type=obs_type)
+      ls = ri.get(compute_derivatives=2)
+      ga = ls.gradients_work()
+      gf = ri.gradients_work_fd()
+      assert approx_equal(ga, gf)
+      ca = ls.curvatures_work()
+      cf = ri.curvatures_work_fd()
+      assert approx_equal(ca, cf)
 
 def exercise_singular():
   obs = flex.double([1.234])
@@ -104,18 +94,17 @@ def exercise_singular():
   scale_factor = 3.456
   a = flex.double([0])
   b = flex.double([0])
-  for apply_scale_to_f_calc in [True, False]:
-    ls = ext.targets_ls_with_scale(
-      apply_scale_to_f_calc=apply_scale_to_f_calc,
-      compute_scale_using_all_data=False,
-      f_obs=obs,
-      weights=weights,
-      r_free_flags=r_free_flags,
-      f_calc=flex.complex_double(a, b),
-      compute_derivatives=2,
-      scale_factor=scale_factor)
-    assert list(ls.gradients_work()) == [0j]
-    assert list(ls.curvatures_work()) == [(1,1,1)]
+  ls = ext.targets_ls_with_scale(
+    apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=False,
+    f_obs=obs,
+    weights=weights,
+    r_free_flags=r_free_flags,
+    f_calc=flex.complex_double(a, b),
+    compute_derivatives=2,
+    scale_factor=scale_factor)
+  assert list(ls.gradients_work()) == [0j]
+  assert list(ls.curvatures_work()) == [(1,1,1)]
   #
   for obs_type in ["F", "I"]:
     ls = ext.targets_least_squares(

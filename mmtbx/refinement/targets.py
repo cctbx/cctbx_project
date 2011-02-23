@@ -28,10 +28,7 @@ time_show                           = 0.0
 
 class target_attributes(object):
 
-  def __init__(self,
-        family,
-        specialization=None,
-        requires_external_scale=False):
+  def __init__(self, family, specialization=None):
     adopt_init_args(self, locals())
     assert self.validate()
 
@@ -42,34 +39,29 @@ class target_attributes(object):
     else:
       self.pseudo_ml = False
     if (self.family == "ls"):
-      return self.specialization in [None, "k1"]
-    if (self.family == "ml"):
+      return self.specialization is None
+    elif (self.family == "ml"):
       return self.specialization in [None, "hl", "sad"]
     return False
 
   def requires_experimental_phases(self):
     return (self.family == "ml" and self.specialization == "hl")
 
-  def ls_apply_scale_to_f_calc(self):
-    if (self.family == "ls"):
-      return (self.specialization == "k1")
-    return None
-
 target_names = {
-  "ls_wunit_k1": target_attributes("ls", "k1"),
-  "ls_wunit_kunit": target_attributes("ls", "k1", True),
-  "ls_wunit_k1_fixed": target_attributes("ls", "k1"),
-  "ls_wunit_k1ask3_fixed": target_attributes("ls", "k1", True),
-  "ls_wexp_k1": target_attributes("ls", "k1"),
-  "ls_wexp_kunit": target_attributes("ls", "k1", True),
-  "ls_wff_k1": target_attributes("ls", "k1"),
-  "ls_wff_kunit": target_attributes("ls", "k1", True),
-  "ls_wff_k1_fixed": target_attributes("ls", "k1"),
-  "ls_wff_k1ask3_fixed": target_attributes("ls", "k1", True),
-  "lsm_k1": target_attributes("lsm", "k1"),
-  "lsm_kunit": target_attributes("lsm", "k1", True),
-  "lsm_k1_fixed": target_attributes("lsm", "k1"),
-  "lsm_k1ask3_fixed": target_attributes("lsm", "k1", True),
+  "ls_wunit_k1": target_attributes("ls"),
+  "ls_wunit_kunit": target_attributes("ls"),
+  "ls_wunit_k1_fixed": target_attributes("ls"),
+  "ls_wunit_k1ask3_fixed": target_attributes("ls"),
+  "ls_wexp_k1": target_attributes("ls"),
+  "ls_wexp_kunit": target_attributes("ls"),
+  "ls_wff_k1": target_attributes("ls"),
+  "ls_wff_kunit": target_attributes("ls"),
+  "ls_wff_k1_fixed": target_attributes("ls"),
+  "ls_wff_k1ask3_fixed": target_attributes("ls"),
+  "lsm_k1": target_attributes("lsm"),
+  "lsm_kunit": target_attributes("lsm"),
+  "lsm_k1_fixed": target_attributes("lsm"),
+  "lsm_k1ask3_fixed": target_attributes("lsm"),
   "ml": target_attributes("ml"),
   "mlhl": target_attributes("ml", "hl"),
   "ml_sad": target_attributes("ml", "sad")}
@@ -232,7 +224,6 @@ class target_functor(object):
         else:
           raise RuntimeError
       self.core = xray.target_functors.least_squares(
-        apply_scale_to_f_calc=attr.ls_apply_scale_to_f_calc(),
         compute_scale_using_all_data=False,
         f_obs=f_obs,
         r_free_flags=manager.r_free_flags(),
