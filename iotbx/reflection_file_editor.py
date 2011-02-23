@@ -427,7 +427,7 @@ class process_arrays (object) :
           new_array = new_array
         new_array = new_array.change_basis(cb_op=cb_op)
         print >> log, "  Crystal symmetry after change of basis:"
-        crystal.symmetry.show_summary(new_array, out=out, prefix="    ")
+        crystal.symmetry.show_summary(new_array, out=log, prefix="    ")
 
       #-----------------------------------------------------------------
       # OTHER FILTERING
