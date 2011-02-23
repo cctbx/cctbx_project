@@ -157,6 +157,7 @@ namespace mmtbx { namespace geometry_restraints {
       }
       double weight = proxy.weight;
       angle<double> theta(sites);
+      if (!theta.have_angle_model) continue;
       double angle_ideal, delta_theta;
       double delta_high = theta.angle_model - proxy.theta_high;
       double delta_low = theta.angle_model - proxy.theta_low;
@@ -179,6 +180,7 @@ namespace mmtbx { namespace geometry_restraints {
           for (unsigned k = 0; k < 3; k++) {
             sites[j][k] -= epsilon;
             angle<double> theta_1(sites);
+            if (!theta_1.have_angle_model) continue;
             double delta_theta_1 = theta_1.angle_model - angle_ideal;
             double e1 = residual_implicit(
               sites,
@@ -189,6 +191,7 @@ namespace mmtbx { namespace geometry_restraints {
               falloff_distance);
             sites[j][k] += two_epsilon;
             angle<double> theta_2(sites);
+            if (!theta_2.have_angle_model) continue;
             double delta_theta_2 = theta_2.angle_model - angle_ideal;
             double e2 = residual_implicit(
               sites,
