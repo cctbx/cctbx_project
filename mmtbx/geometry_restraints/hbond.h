@@ -135,17 +135,17 @@ namespace mmtbx { namespace geometry_restraints {
     return residual;
   }
 
-  // gradients by finite differences
   inline
   double
-  h_bond_implicit_residual_sum_fd(
+  h_bond_implicit_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<h_bond_implicit_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     double falloff_distance=0.05,
-    double epsilon=0.0001)
+    double epsilon=0.0001,
+    bool use_finite_differences=true)
   {
-    using cctbx::geometry::angle;
+    using namespace cctbx::geometry;
     double residual_sum = 0.0;
     double two_epsilon = epsilon * 2;
     for (std::size_t i = 0; i < proxies.size(); i++) {
@@ -176,32 +176,63 @@ namespace mmtbx { namespace geometry_restraints {
         delta_theta,
         falloff_distance);
       if (gradient_array.size() != 0) {
-        for (unsigned j = 0; j < 3; j++) {
-          for (unsigned k = 0; k < 3; k++) {
-            sites[j][k] -= epsilon;
-            angle<double> theta_1(sites);
-            if (!theta_1.have_angle_model) continue;
-            double delta_theta_1 = theta_1.angle_model - angle_ideal;
-            double e1 = residual_implicit(
-              sites,
-              proxy.distance_ideal,
-              proxy.distance_cut,
-              weight,
-              delta_theta_1,
-              falloff_distance);
-            sites[j][k] += two_epsilon;
-            angle<double> theta_2(sites);
-            if (!theta_2.have_angle_model) continue;
-            double delta_theta_2 = theta_2.angle_model - angle_ideal;
-            double e2 = residual_implicit(
-              sites,
-              proxy.distance_ideal,
-              proxy.distance_cut,
-              weight,
-              delta_theta_2,
-              falloff_distance);
-            gradient_array[i_seqs[j]][k] += (e2 - e1) / two_epsilon;
-            sites[j][k] -= epsilon;
+        if (!use_finite_differences) { // analytic gradients
+          af::tiny<scitbx::vec3<double>, 2> bond_sites;
+          bond_sites[0] = sites[0];
+          bond_sites[1] = sites[1];
+          distance<double> r_da(bond_sites);
+          af::tiny<scitbx::vec3<double>, 2> d_R_d_xyz = \
+            r_da.d_distance_d_sites();
+          af::tiny<scitbx::vec3<double>, 3> d_theta_d_xyz = \
+            theta.d_angle_d_sites();
+          double R = r_da.distance_model;
+          double sigma = proxy.distance_ideal * SIGMA_BASE;
+          double f_R = weight * (std::pow(sigma/R, 6) - std::pow(sigma/R, 4));
+          double d_f_d_R = (-6 * std::pow(sigma, 6) / std::pow(R, 7)) +
+                           (4 * std::pow(sigma, 4) / std::pow(R, 5));
+          double cos_delta_theta = std::cos(delta_theta * TWOPI_180);
+          double g_theta = weight * std::pow(cos_delta_theta, 4);
+          double d_g_d_theta = 4 * std::pow(cos_delta_theta, 3) *
+                               std::sin(delta_theta * TWOPI_180);
+          for (unsigned j = 0; j < 3; j++) {
+            scitbx::vec3<double> d_g_d_xyz = d_g_d_theta * d_theta_d_xyz[j];
+            scitbx::vec3<double> grads = f_R * d_g_d_xyz * TWOPI_180;
+            if (j != 2) {
+              scitbx::vec3<double> d_f_d_xyz = d_f_d_R * d_R_d_xyz[j];
+              grads -= g_theta * d_f_d_xyz; // XXX why minus?
+            }
+            // XXX this does not properly deal with the cutoff!  can't really
+            // use the analytic form until it does...
+            gradient_array[i_seqs[j]] += grads;
+          }
+        } else { // finite differences
+          for (unsigned j = 0; j < 3; j++) {
+            for (unsigned k = 0; k < 3; k++) {
+              sites[j][k] -= epsilon;
+              angle<double> theta_1(sites);
+              if (!theta_1.have_angle_model) continue;
+              double delta_theta_1 = theta_1.angle_model - angle_ideal;
+              double e1 = residual_implicit(
+                sites,
+                proxy.distance_ideal,
+                proxy.distance_cut,
+                weight,
+                delta_theta_1,
+                falloff_distance);
+              sites[j][k] += two_epsilon;
+              angle<double> theta_2(sites);
+              if (!theta_2.have_angle_model) continue;
+              double delta_theta_2 = theta_2.angle_model - angle_ideal;
+              double e2 = residual_implicit(
+                sites,
+                proxy.distance_ideal,
+                proxy.distance_cut,
+                weight,
+                delta_theta_2,
+                falloff_distance);
+              gradient_array[i_seqs[j]][k] += (e2 - e1) / two_epsilon;
+              sites[j][k] -= epsilon;
+            }
           }
         }
       }

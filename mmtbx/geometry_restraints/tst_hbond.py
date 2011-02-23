@@ -114,11 +114,23 @@ def exercise_implicit () :
     theta_low=110.0,
     theta_high=160.0,
     weight=1.0)
-  grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-  residual = hbond.target_and_gradients(
+  grads_fd = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  residual_fd = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
-    gradient_array=grads)
+    gradient_array=grads_fd,
+    use_finite_differences=True)
+  assert approx_equal(residual_fd, -0.11357803, eps=0.000001)
+  grads_an = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  residual_an = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=grads_an,
+    use_finite_differences=False)
+  assert (residual_an == residual_fd)
+  for i in [i_seq_1, i_seq_2, i_seq_3] :
+    for j in range(3) :
+      assert approx_equal(grads_fd[i][j], grads_an[i][j], eps=0.000001)
   sites_cart = flex.vec3_double([(0.0,2.9,0.0), (0.0,0.0,0.0),
     (0.5774,-1.0,0.0)])
   build_proxies = hbond.build_implicit_hbond_proxies()
@@ -133,8 +145,19 @@ def exercise_implicit () :
   r0 = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
-    gradient_array=g0)
+    gradient_array=g0,
+    use_finite_differences=True)
   assert approx_equal(r0, -0.148148146, eps=0.000001)
+  g0_an = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  r0_an = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=g0_an,
+    use_finite_differences=False)
+  assert (r0_an == r0)
+  for i in [0,1,2] :
+    for j in range(3) :
+      assert approx_equal(g0[i][j], g0_an[i][j], eps=0.000001)
   assert (g0[0][2] == g0[1][2] == g0[2][2] == 0.0)
   sites_cart[0] = (0.0, 3.0, 0.0)
   g1 = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
