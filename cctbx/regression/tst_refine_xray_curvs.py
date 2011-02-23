@@ -57,7 +57,7 @@ def get_curvs_work(f_obs, weights, xray_structure, lim_eps):
   gact = xray_structure.grads_and_curvs_target_simple(
     miller_indices=f_obs.indices(),
     da_db=ls.gradients_work(),
-    daa_dbb_dab=ls.curvatures_work())
+    daa_dbb_dab=ls.hessian_work())
   c_all = gact.curvs
   c_active_site = flex.double()
   c_active_u_iso = flex.double()
@@ -259,7 +259,7 @@ class ls_refinement(object):
     gact = O.xray_structure.grads_and_curvs_target_simple(
       miller_indices=O.f_obs.indices(),
       da_db=ls.gradients_work(),
-      daa_dbb_dab=ls.curvatures_work())
+      daa_dbb_dab=ls.hessian_work())
     g_all = gact.grads
     g_active = flex.double()
     i_all = 0

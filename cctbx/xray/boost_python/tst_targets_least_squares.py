@@ -43,7 +43,7 @@ class random_inputs(object):
       result.append(complex(fd(a, O.a), fd(b, O.b)))
     return result
 
-  def curvatures_work_fd(O, eps=1.e-6):
+  def hessian_work_fd(O, eps=1.e-6):
     result = flex.vec3_double()
     for ih,a,b,f in zip(count(), O.a, O.b, O.r_free_flags):
       if (f): continue
@@ -72,8 +72,8 @@ def exercise_random(n_trials=10, n_refl=30):
       ga = ls.gradients_work()
       gf = ri.gradients_work_fd()
       assert approx_equal(ga, gf)
-      ca = ls.curvatures_work()
-      cf = ri.curvatures_work_fd()
+      ca = ls.hessian_work()
+      cf = ri.hessian_work_fd()
       assert approx_equal(ca, cf)
 
 def exercise_singular():
@@ -94,7 +94,7 @@ def exercise_singular():
       derivatives_depth=2,
       scale_factor=scale_factor)
     assert list(ls.gradients_work()) == [0j]
-    assert list(ls.curvatures_work()) == [(1,1,1)]
+    assert list(ls.hessian_work()) == [(1,1,1)]
 
 def run(args):
   assert len(args) == 0

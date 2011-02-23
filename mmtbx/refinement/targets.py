@@ -140,7 +140,7 @@ class phaser_sad_target_functor(object):
       target_work=target_work,
       target_test=target_test,
       gradients_work=da_db.data(),
-      curvatures_work=daa_dbb_dab.data())
+      hessian_work=daa_dbb_dab.data())
 
 class target_functor(object):
 
