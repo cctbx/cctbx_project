@@ -331,7 +331,7 @@ class ls_refinement(object):
     gact = O.xray_structure.grads_and_curvs_target_simple(
       miller_indices=O.f_obs.indices(),
       da_db=ls.gradients_work(),
-      daa_dbb_dab=ls.curvatures_work())
+      daa_dbb_dab=ls.hessian_work())
     O.funcl = ls.target_work()
     O.grads = gact.grads.select(O.gact_indices)
     O.curvs = gact.curvs.select(O.gact_indices)
