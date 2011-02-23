@@ -78,19 +78,21 @@ namespace {
         "shared_h_bond_implicit_proxy");
     }
 
-    def("h_bond_implicit_residual_sum_fd",
+    def("h_bond_implicit_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<h_bond_implicit_proxy> const&,
         af::ref<scitbx::vec3<double> > const&,
         double,
-        double))
-      h_bond_implicit_residual_sum_fd, (
+        double,
+        bool))
+      h_bond_implicit_residual_sum, (
       arg("sites_cart"),
       arg("proxies"),
       arg("gradient_array"),
       arg("falloff_distance")=0.05,
-      arg("epsilon")=0.0001));
+      arg("epsilon")=0.0001,
+      arg("use_finite_differences")=true));
   }
 
 } // namespace anonymous

@@ -131,7 +131,8 @@ class build_distance_proxies (core) :
 def target_and_gradients (proxies,
                           sites_cart,
                           gradient_array=None,
-                          falloff_distance=0.05) :
+                          falloff_distance=0.05,
+                          use_finite_differences=True) :
   from scitbx.array_family import flex
   import boost.python
   ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
@@ -145,11 +146,12 @@ def target_and_gradients (proxies,
       gradient_array=gradient_array,
       falloff_distance=falloff_distance)
   elif (type(proxies).__name__ == "shared_h_bond_implicit_proxy") :
-    sum = ext.h_bond_implicit_residual_sum_fd(
+    sum = ext.h_bond_implicit_residual_sum(
       sites_cart=sites_cart,
       proxies=proxies,
       gradient_array=gradient_array,
-      falloff_distance=falloff_distance)
+      falloff_distance=falloff_distance,
+      use_finite_differences=use_finite_differences)
   else :
     assert 0
   return sum
