@@ -159,6 +159,31 @@ namespace cctbx { namespace xray { namespace targets {
 
     double
     scale_factor() const { return scale_factor_; }
+
+    /* Mathematica input for gradients, hessian, analytical scale_factor (k) :
+
+       obs_type == 'F':
+         t=w(fo-k Sqrt[a^2+b^2])^2
+         D[t,a]
+         D[t,b]
+         D[D[t,a],a]
+         D[D[t,b],b]
+         D[D[t,a],b]
+
+         t=w1(fo1-k Sqrt[a1^2+b1^2])^2 + w2(fo2-k Sqrt[a2^2+b2^2])^2
+         Solve[D[t,k]==0,k]
+
+       obs_type == 'I':
+         t=w(io-k (a^2+b^2))^2
+         D[t,a]
+         D[t,b]
+         D[D[t,a],a]
+         D[D[t,b],b]
+         D[D[t,a],b]
+
+         t=w1(io1-k(a1^2+b1^2))^2 + w2(io2-k(a2^2+b2^2))^2
+         Solve[D[t,k]==0,k]
+     */
   };
 
 }}} // namespace cctbx::xray::targets
