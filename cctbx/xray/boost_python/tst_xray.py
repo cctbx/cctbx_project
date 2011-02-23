@@ -1631,35 +1631,34 @@ def exercise_targets_common_results():
   assert approx_equal(r.target_test(), 53)
   assert r.gradients_work().size() == 0
 
-def exercise_targets_ls_with_scale():
+def exercise_targets_least_squares():
   f_obs = flex.double((1,2,3,4,5))
   w = flex.double((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=True,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_derivatives=0,
+    derivatives_depth=0,
     scale_factor=0)
-  assert ls.apply_scale_to_f_calc()
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target_per_reflection(), [0]*5)
   assert approx_equal(ls.target_work(), 0)
   assert ls.target_test() is None
   assert ls.gradients_work().size() == 0
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=True,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_derivatives=0,
+    derivatives_depth=0,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
   assert approx_equal(ls.target_per_reflection(), [1,4,9,16,25])
@@ -1670,28 +1669,28 @@ def exercise_targets_ls_with_scale():
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((4,5,6))
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=True,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_derivatives=1,
+    derivatives_depth=1,
     scale_factor=0)
   assert approx_equal(ls.scale_factor(), 50./134.)
   assert approx_equal(ls.target_work(), 0.0671641791)
   assert approx_equal(ls.gradients_work(),
                      ((0.0551347738+0j),(-0.0100245043+0j),(-0.0284027623+0j)) )
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=True,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_derivatives=1,
+    derivatives_depth=1,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
   assert approx_equal(ls.target_work(),17.8)
@@ -1701,14 +1700,14 @@ def exercise_targets_ls_with_scale():
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j))
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=True,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=None,
     f_calc=f_calc,
-    compute_derivatives=1,
+    derivatives_depth=1,
     scale_factor=0)
   assert approx_equal(ls.scale_factor(), 0.4773772552)
   assert approx_equal(ls.target_work(), 0.2023883467)
@@ -1721,98 +1720,26 @@ def exercise_targets_ls_with_scale():
   w = flex.double((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=False,
-    compute_scale_using_all_data=True,
-    f_obs=f_obs,
-    weights=w,
-    r_free_flags=None,
-    f_calc=f_calc,
-    compute_derivatives=0,
-    scale_factor=0)
-  assert not ls.apply_scale_to_f_calc()
-  assert ls.compute_scale_using_all_data()
-  assert approx_equal(ls.scale_factor(), 1)
-  assert approx_equal(ls.target_work(), 0)
-  assert ls.gradients_work().size() == 0
-  #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=False,
-    compute_scale_using_all_data=True,
-    f_obs=f_obs,
-    weights=w,
-    r_free_flags=None,
-    f_calc=f_calc,
-    compute_derivatives=0,
-    scale_factor=2.0)
-  assert approx_equal(ls.scale_factor(), 2.0)
-  assert approx_equal(ls.target_work(),1.0)
-  assert ls.gradients_work().size() == 0
-  #
   f_obs = flex.double((1,2,3))
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((4,5,6))
-  #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=False,
-    compute_scale_using_all_data=True,
-    f_obs=f_obs,
-    weights=w,
-    r_free_flags=None,
-    f_calc=f_calc,
-    compute_derivatives=1,
-    scale_factor=0)
-  assert approx_equal(ls.scale_factor(), 50./20.)
-  assert approx_equal(ls.target_work(), 0.45)
-  assert approx_equal(ls.gradients_work(),
-                     ((0.45000000000000001+0j), 0j, (-0.15000000000000002+0j)) )
-  #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=False,
-    compute_scale_using_all_data=True,
-    f_obs=f_obs,
-    weights=w,
-    r_free_flags=None,
-    f_calc=f_calc,
-    compute_derivatives=1,
-    scale_factor=2.0)
-  assert approx_equal(ls.scale_factor(), 2.0)
-  assert approx_equal(ls.target_work(),0.7)
-  assert approx_equal(ls.gradients_work(), ((0.6+0j),(0.2+0j),(0.0+0j)))
   #
   f_obs = flex.double((1,2,3))
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j))
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=False,
-    compute_scale_using_all_data=True,
-    f_obs=f_obs,
-    weights=w,
-    r_free_flags=None,
-    f_calc=f_calc,
-    compute_derivatives=1,
-    scale_factor=0)
-  scale = flex.sum(w*flex.abs(f_calc)*f_obs)/flex.sum(w*f_obs*f_obs)
-  assert approx_equal(ls.scale_factor(), 1.6708203932)
-  assert approx_equal(ls.target_work(), 0.7083592135)
-  assert approx_equal(ls.gradients_work(),
-                       ((0.075835921350012631+0.15167184270002526j),
-                        (0.19900310562001516+0.26533747416002024j),
-                        (0.12416407864998737+0.24832815729997473j)) )
-  #
   f_obs = flex.double((1,2,3,4,5))
   w = flex.double((1,1,1,1,1))
   r_free_flags = flex.bool([False,True,False,True,False])
   f_calc = flex.complex_double((2,3,4,5,6))
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=False,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=r_free_flags,
     f_calc=f_calc,
-    compute_derivatives=1,
+    derivatives_depth=1,
     scale_factor=0)
   assert not ls.compute_scale_using_all_data()
   assert approx_equal(ls.scale_factor(), 0.785714285714)
@@ -1823,14 +1750,14 @@ def exercise_targets_ls_with_scale():
     0.0064139941690962068+0j,
     -0.012827988338192414-0j])
   #
-  ls = xray.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=False,
-    f_obs=f_obs,
+    obs_type="F",
+    obs=f_obs,
     weights=w,
     r_free_flags=r_free_flags,
     f_calc=flex.complex_double(5), # all f_calc 0
-    compute_derivatives=1,
+    derivatives_depth=1,
     scale_factor=1)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target_work(), 1)
@@ -2039,7 +1966,7 @@ def run():
   exercise_minimization_add_gradients()
   exercise_asu_mappings()
   exercise_targets_common_results()
-  exercise_targets_ls_with_scale()
+  exercise_targets_least_squares()
   exercise_maximum_likelihood_targets()
   print "OK"
 

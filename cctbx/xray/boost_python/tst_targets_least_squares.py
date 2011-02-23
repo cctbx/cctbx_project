@@ -18,18 +18,7 @@ class random_inputs(object):
     O.a = mt.random_double(size=n_refl)
     O.b = mt.random_double(size=n_refl)
 
-  def get(O, compute_derivatives=0):
-    if (O.obs_type is None):
-      assert O.obs_type is None
-      return ext.targets_ls_with_scale(
-        apply_scale_to_f_calc=True,
-        compute_scale_using_all_data=False,
-        f_obs=O.obs,
-        weights=O.weights,
-        r_free_flags=O.r_free_flags,
-        f_calc=flex.complex_double(O.a, O.b),
-        compute_derivatives=compute_derivatives,
-        scale_factor=O.scale_factor)
+  def get(O, derivatives_depth=0):
     return ext.targets_least_squares(
       compute_scale_using_all_data=False,
       obs_type=O.obs_type,
@@ -37,7 +26,7 @@ class random_inputs(object):
       weights=O.weights,
       r_free_flags=O.r_free_flags,
       f_calc=flex.complex_double(O.a, O.b),
-      derivatives_depth=compute_derivatives,
+      derivatives_depth=derivatives_depth,
       scale_factor=O.scale_factor)
 
   def gradients_work_fd(O, eps=1.e-6):
@@ -48,7 +37,7 @@ class random_inputs(object):
         fs = []
         for signed_eps in [eps, -eps]:
           Ox[ih] = x + signed_eps
-          fs.append(O.get(compute_derivatives=0).target_work())
+          fs.append(O.get(derivatives_depth=0).target_work())
         Ox[ih] = x
         return (fs[0]-fs[1])/(2*eps)
       result.append(complex(fd(a, O.a), fd(b, O.b)))
@@ -62,7 +51,7 @@ class random_inputs(object):
         fs = []
         for signed_eps in [eps, -eps]:
           Ox[ih] = x + signed_eps
-          ga = O.get(compute_derivatives=1).gradients_work()
+          ga = O.get(derivatives_depth=1).gradients_work()
           fs.append(getattr(ga[len(result)], ri))
         Ox[ih] = x
         return (fs[0]-fs[1])/(2*eps)
@@ -77,9 +66,9 @@ class random_inputs(object):
 def exercise_random(n_trials=10, n_refl=30):
   mt = flex.mersenne_twister(seed=0)
   for i_trial in xrange(n_trials):
-    for obs_type in [None, "F", "I"]:
+    for obs_type in ["F", "I"]:
       ri = random_inputs(mt=mt, n_refl=n_refl, obs_type=obs_type)
-      ls = ri.get(compute_derivatives=2)
+      ls = ri.get(derivatives_depth=2)
       ga = ls.gradients_work()
       gf = ri.gradients_work_fd()
       assert approx_equal(ga, gf)
@@ -94,18 +83,6 @@ def exercise_singular():
   scale_factor = 3.456
   a = flex.double([0])
   b = flex.double([0])
-  ls = ext.targets_ls_with_scale(
-    apply_scale_to_f_calc=True,
-    compute_scale_using_all_data=False,
-    f_obs=obs,
-    weights=weights,
-    r_free_flags=r_free_flags,
-    f_calc=flex.complex_double(a, b),
-    compute_derivatives=2,
-    scale_factor=scale_factor)
-  assert list(ls.gradients_work()) == [0j]
-  assert list(ls.curvatures_work()) == [(1,1,1)]
-  #
   for obs_type in ["F", "I"]:
     ls = ext.targets_least_squares(
       compute_scale_using_all_data=False,

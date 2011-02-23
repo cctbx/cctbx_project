@@ -17,14 +17,14 @@ class least_squares(object):
   def __call__(self, f_calc, compute_gradients):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
-    return ext.targets_ls_with_scale(
-      apply_scale_to_f_calc=True,
+    return ext.targets_least_squares(
       compute_scale_using_all_data=self.compute_scale_using_all_data,
-      f_obs=self.f_obs.data(),
+      obs_type="F",
+      obs=self.f_obs.data(),
       weights=self.weights,
       r_free_flags=self.r_free_flags.data(),
       f_calc=f_calc.data(),
-      compute_derivatives=int(compute_gradients),
+      derivatives_depth=int(compute_gradients),
       scale_factor=self.scale_factor)
 
 class max_like(object):
