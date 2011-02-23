@@ -14,10 +14,10 @@
 
 namespace mmtbx { namespace geometry_restraints {
 namespace {
-  using namespace boost::python;
 
   void wrap_simple_restraints()
   {
+    using namespace boost::python;
     typedef h_bond_simple_proxy w_t;
     class_<w_t>("h_bond_simple_proxy", no_init)
       .def(init<
@@ -56,6 +56,7 @@ namespace {
 
   void wrap_implicit_restraints ()
   {
+    using namespace boost::python;
     typedef h_bond_implicit_proxy w_t;
     class_<w_t>("h_bond_implicit_proxy", no_init)
       .def(init<
