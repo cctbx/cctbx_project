@@ -310,14 +310,14 @@ class ls_refinement(object):
       xray_structure=O.xray_structure,
       algorithm="direct",
       cos_sin_table=False).f_calc()
-    return xray.targets_ls_with_scale(
-      apply_scale_to_f_calc=True,
+    return xray.targets_least_squares(
       compute_scale_using_all_data=True,
-      f_obs=O.f_obs.data(),
+      obs_type="F",
+      obs=O.f_obs.data(),
       weights=O.weights,
       r_free_flags=None,
       f_calc=f_calc.data(),
-      compute_derivatives=2,
+      derivatives_depth=2,
       scale_factor=O.params.f_calc_scale_factor)
 
   def update_fgc(O, is_iterate=False):

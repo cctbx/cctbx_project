@@ -85,39 +85,6 @@ namespace {
     }
   };
 
-  struct ls_with_scale_wrappers
-  {
-    typedef ls_with_scale w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      class_<w_t, bases<common_results> >("targets_ls_with_scale", no_init)
-        .def(init<
-          bool,
-          bool,
-          af::const_ref<double> const&,
-          af::const_ref<double> const&,
-          af::const_ref<bool> const&,
-          af::const_ref< std::complex<double> > const&,
-          int,
-          double>((
-            arg("apply_scale_to_f_calc"),
-            arg("compute_scale_using_all_data"),
-            arg("f_obs"),
-            arg("weights"),
-            arg("r_free_flags"),
-            arg("f_calc"),
-            arg("compute_derivatives"),
-            arg("scale_factor"))))
-        .def("apply_scale_to_f_calc", &w_t::apply_scale_to_f_calc)
-        .def("compute_scale_using_all_data",&w_t::compute_scale_using_all_data)
-        .def("scale_factor", &w_t::scale_factor)
-      ;
-    }
-  };
-
   template <template<typename> class FcalcFunctor>
   struct least_squares_residual_wrappers
   {
@@ -247,7 +214,6 @@ namespace boost_python {
   {
     targets::boost_python::common_results_wrappers::wrap();
     targets::boost_python::least_squares_wrappers::wrap();
-    targets::boost_python::ls_with_scale_wrappers::wrap();
     targets::boost_python::least_squares_residual_wrappers<
       cctbx::xray::targets::f_calc_modulus>::wrap(
       "targets_least_squares_residual");

@@ -45,13 +45,14 @@ def get_curvs_work(f_obs, weights, xray_structure, lim_eps):
     xray_structure=xray_structure,
     algorithm="direct",
     cos_sin_table=False).f_calc()
-  ls = xray.targets_ls_with_scale(
+  ls = xray.targets_least_squares(
     compute_scale_using_all_data=False,
-    f_obs=abs(f_calc).data(),
+    obs_type="F",
+    obs=abs(f_calc).data(),
     weights=weights,
     r_free_flags=None,
     f_calc=f_calc.data(),
-    compute_derivatives=2,
+    derivatives_depth=2,
     scale_factor=1)
   gact = xray_structure.grads_and_curvs_target_simple(
     miller_indices=f_obs.indices(),
@@ -246,13 +247,14 @@ class ls_refinement(object):
       print "RuntimeError f_calc:", e
       sys.stdout.flush()
       raise RuntimeError("f_calc")
-    ls = xray.targets_ls_with_scale(
+    ls = xray.targets_least_squares(
       compute_scale_using_all_data=False,
-      f_obs=O.f_obs.data(),
+      obs_type="F",
+      obs=O.f_obs.data(),
       weights=O.weights,
       r_free_flags=None,
       f_calc=f_calc.data(),
-      compute_derivatives=2,
+      derivatives_depth=2,
       scale_factor=1)
     gact = O.xray_structure.grads_and_curvs_target_simple(
       miller_indices=O.f_obs.indices(),

@@ -186,7 +186,7 @@ K^* = \frac{\sum_h w_h y_o(h) y_c(h)}{\sum_h w_h y_c(h)^2}.
 \end{equation}
 Obviously, $K^*$ is a function of the crystallographic parameters that $y_c(h)$ is a function of. It is then obvious that minimising $L|_{K=K^*}$ is still a least-squares problem since that last expression is a sum of squares too.  The normal equations for the minimisation of $L|_{K=K^*}$ can easily be computed as a correction to the normal equations for the minimisation of $L|_{\text{fixed $K$}}$. Only second order derivatives of $L$ need to be corrected actually, since by definition of $K^*$, the first order derivatives are obtained by merely plugging $K^*$ in the generic formula valid for any $K$. This is implemented in the \cpp class \code{normal_equations_separating_scale_factor} defined in \code{scitbx/lstbx/normal_equations.h}. This crystallography-agnostic code is in turn used by the \smtbx, specifically the function \code{build_normal_equations} defined in \code{smtbx/refinement/least_squares.h}.
 
-It should be noted that \eqnref{optimalK} is used in the \cctbx too but in the context of LBFGS minimisation, in the \cpp class \code{ls_with_scale} defined in \code{cctbx/xray/targets.h}. Because of the remark just made about first-order derivatives, this choice of $K$ is totally invisible from the point of view of LBFGS.
+It should be noted that \eqnref{optimalK} is used in the \cctbx too but in the context of LBFGS minimisation, in the \cpp class \code{least_squares} defined in \code{cctbx/xray/targets/least_squares.h}. Because of the remark just made about first-order derivatives, this choice of $K$ is totally invisible from the point of view of LBFGS.
 
 \subsection{Floating origin}
 
