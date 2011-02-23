@@ -4,6 +4,7 @@ def run(args):
   from scitbx.array_family import flex
   gaps = flex.double()
   infos = flex.std_string()
+  n_stale = 0
   n_exception = 0
   n_traceback = 0
   n_abort = 0
@@ -12,7 +13,11 @@ def run(args):
     cod_code = None
     n_scatt = None
     iso = None
-    for line in open(file_name).read().splitlines():
+    file_str = open(file_name).read()
+    if (file_str.find(chr(0)) >= 0):
+      n_stale += 1
+      continue
+    for line in file_str.splitlines():
       if (line.startswith("cod_code: ")):
         cod_code = line[10:]
         iso = None
@@ -55,7 +60,8 @@ def run(args):
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
   print "Number of results:", gaps.size()
-  print "Exceptions, Tracebacks, Abort:", n_exception, n_traceback, n_abort
+  print "Stale, Exceptions, Tracebacks, Abort:", \
+    n_stale, n_exception, n_traceback, n_abort
   if (len(seconds) != 0):
     print "min, max seconds:", min(seconds), max(seconds)
   print
