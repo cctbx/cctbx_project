@@ -42,7 +42,7 @@ class target_attributes(object):
     else:
       self.pseudo_ml = False
     if (self.family == "ls"):
-      return self.specialization in [None, "k1", "k2"]
+      return self.specialization in [None, "k1"]
     if (self.family == "ml"):
       return self.specialization in [None, "hl", "sad"]
     return False
@@ -57,20 +57,16 @@ class target_attributes(object):
 
 target_names = {
   "ls_wunit_k1": target_attributes("ls", "k1"),
-  "ls_wunit_k2": target_attributes("ls", "k2"),
   "ls_wunit_kunit": target_attributes("ls", "k1", True),
   "ls_wunit_k1_fixed": target_attributes("ls", "k1"),
   "ls_wunit_k1ask3_fixed": target_attributes("ls", "k1", True),
   "ls_wexp_k1": target_attributes("ls", "k1"),
-  "ls_wexp_k2": target_attributes("ls", "k2"),
   "ls_wexp_kunit": target_attributes("ls", "k1", True),
   "ls_wff_k1": target_attributes("ls", "k1"),
-  "ls_wff_k2": target_attributes("ls", "k2"),
   "ls_wff_kunit": target_attributes("ls", "k1", True),
   "ls_wff_k1_fixed": target_attributes("ls", "k1"),
   "ls_wff_k1ask3_fixed": target_attributes("ls", "k1", True),
   "lsm_k1": target_attributes("lsm", "k1"),
-  "lsm_k2": target_attributes("lsm", "k2"),
   "lsm_kunit": target_attributes("lsm", "k1", True),
   "lsm_k1_fixed": target_attributes("lsm", "k1"),
   "lsm_k1ask3_fixed": target_attributes("lsm", "k1", True),
@@ -191,8 +187,6 @@ class target_functor(object):
         weights = weights.data()
         if   (target_name == "lsm_k1"):
           scale_factor = 0
-        elif (target_name == "lsm_k2"):
-          scale_factor = 0
         elif (target_name == "lsm_k1ask3_fixed"):
           scale_factor = manager.scale_k3_w()
         elif (target_name == "lsm_k1_fixed"):
@@ -209,8 +203,6 @@ class target_functor(object):
             scale_factor = 0
           elif (target_name == "ls_wunit_k1_fixed"):
             scale_factor = manager.scale_k1_w()
-          elif (target_name == "ls_wunit_k2"):
-            scale_factor = 0
           elif (target_name == "ls_wunit_kunit"):
             scale_factor = 1.0
           elif (target_name == "ls_wunit_k1ask3_fixed"):
@@ -220,8 +212,6 @@ class target_functor(object):
         elif (target_name.startswith("ls_wexp_")):
           weights = ls_sigma_weights(f_obs)
           if   (target_name == "ls_wexp_k1"):
-            scale_factor = 0
-          elif (target_name == "ls_wexp_k2"):
             scale_factor = 0
           elif (target_name == "ls_wexp_kunit"):
             scale_factor = 1.0
@@ -235,8 +225,6 @@ class target_functor(object):
             scale_factor = manager.scale_k1_w()
           elif (target_name == "ls_wff_k1ask3_fixed"):
             scale_factor = manager.scale_k3_w()
-          elif (target_name == "ls_wff_k2"):
-            scale_factor = 0
           elif (target_name == "ls_wff_kunit"):
             scale_factor = 1.0
           else:
