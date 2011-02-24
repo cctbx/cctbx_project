@@ -262,6 +262,17 @@ class structure(crystal.special_position_settings):
     self._scatterers.adjust_u_iso()
 
   def adjust_occupancy(self, occ_max, occ_min, selection = None):
+    """Adjust site occupancy factor for selected sites to be between occ_min and occ_max.
+
+    :param occ_max: maximal site occupancy factor
+    :type occ_max: float
+    :param occ_min: minimal site occupancy factor
+    :type occ_min: float
+    :param selection: an array of bools to select scatterers to be adjusted
+    :type selection: boolean[]
+
+    :returns: none
+    """
     if(selection is not None):
       if(("%s"%selection.__class__).count("array_family_flex_ext.size_t") > 0):
         selection = flex.bool(self._scatterers.size(), selection)
@@ -276,9 +287,26 @@ class structure(crystal.special_position_settings):
       self._scatterers.set_occupancies(occ, selection)
 
   def all_selection(self):
+    """Get a selector array for all scatterers of the structure.
+
+    :returns: an array to select all scatterers of the structure
+    :rtype: boolean[]
+    """
     return flex.bool(self._scatterers.size(), True)
 
   def translate(self, x=0, y=0, z=0):
+    """Translates all scatterers of this structure by x,y,z.
+
+    :param x: x component of the translation vector
+    :type x: float
+    :param y: y component of the translation vector
+    :type y: float
+    :param z: z component of the translation vector
+    :type z: float
+
+    :returns: a new translated copy of the structure
+    :rtype: cctbx.xray.structure
+    """
     sites_cart = self.sites_cart()
     cp = structure(self,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
