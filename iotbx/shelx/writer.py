@@ -85,11 +85,14 @@ def generator(xray_structure,
   yield '\n'
 
   if weighting_scheme_params is not None:
-    a, b = weighting_scheme_params
-    if b is None:
-      yield 'WGHT %.6f\n' % a
+    if (isinstance(weighting_scheme_params, str)):
+      yield 'WGHT %s\n' % weighting_scheme_params
     else:
-      yield 'WGHT %.6f %.6f\n' % (a, b)
+      a, b = weighting_scheme_params
+      if b is None:
+        yield 'WGHT %.6f\n' % a
+      else:
+        yield 'WGHT %.6f %.6f\n' % (a, b)
 
   if overall_scale_factor is not None:
     yield 'FVAR %.5f' % overall_scale_factor
