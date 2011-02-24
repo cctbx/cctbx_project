@@ -72,11 +72,16 @@ def exercise_weighting_schemes():
     str(shelx_weighting),
     "w=1/[\s^2^(Fo^2^)+(0.1234P)^2^+0.5678P] where P=(Fo^2^+2Fc^2^)/3")
 
-def run():
+def run(args):
+  if "--fix_random_seeds" in args:
+    random.seed(1)
+    flex.set_random_seed(1)
+    scitbx.random.set_random_seed(1)
   libtbx.utils.show_times_at_exit()
   for i in range(10):
     exercise_optimise_shelxl_weights()
   exercise_weighting_schemes()
 
 if __name__ == '__main__':
-  run()
+  import sys
+  run(sys.argv[1:])
