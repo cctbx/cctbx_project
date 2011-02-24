@@ -607,8 +607,8 @@ class ls_refinement(object):
     ave_csh = matrix.col(cd.mean())
     ave_csh_perp = matrix.col(xs.space_group_info()
       .subtract_continuous_allowed_origin_shifts(translation_frac=ave_csh))
-    caosh_corr = ave_csh - ave_csh_perp
-    ad = xf - rf + caosh_corr
+    caosh_corr = ave_csh_perp - ave_csh
+    ad = cd + caosh_corr
     ud = xs.scatterers().extract_u_iso() \
        - rs.scatterers().extract_u_iso()
     omx = xs.unit_cell().orthogonalization_matrix()
