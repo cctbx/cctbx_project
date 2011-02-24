@@ -51,6 +51,7 @@ idnint
 index
 int
 ishft
+isign
 len
 len_trim
 lge
