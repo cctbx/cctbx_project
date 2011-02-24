@@ -85,3 +85,4 @@ class shared_u(object):
             self.indices[i]])
       reparametrisation.shared_Us[self.indices[i]] = u_c
       reparametrisation.asu_scatterer_parameters[self.indices[i]].u = param
+    self.value = u_c
