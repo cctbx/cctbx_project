@@ -208,6 +208,12 @@ crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_model_viewer.py -text
 crys3d/wx_selection_editor.py -text
+dox.sphinx/Makefile -text
+dox.sphinx/conf.py -text
+dox.sphinx/generate_modules.py -text
+dox.sphinx/generate_modules_README.txt -text
+dox.sphinx/index.rst -text
+dox.sphinx/make.bat -text
 dox/cctbx_notations.sty -text
 dox/cctbx_preamble.sty -text
 dox/cctbx_references.bib -text
