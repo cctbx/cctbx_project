@@ -25,6 +25,14 @@ def get_master_phil():
         .type = choice(multi=True)
       ls_simple_iterations = 12
         .type = int
+      shelxl_wght = None
+        .type = str
+        .help = '''
+          SHELX-97 Manual 7-31:
+            Refinement against F2 requires different weights to refinement
+            against F; in particular, making all the weights equal ('unit
+            weights'), although useful in the initial stages of refinement
+            against F, is NEVER a sensible option for F2.'''
       shelxl_fm_iterations = 12
         .type = int
       shelxl_cg_iterations = 12
@@ -139,7 +147,7 @@ def run_shelxl(
       wavelength=f_obs.minimum_wavelength_based_on_d_min(),
       full_matrix_least_squares_cycles=fm_cycles,
       conjugate_gradient_least_squares_cycles=cg_cycles,
-      weighting_scheme_params=(0,0),
+      weighting_scheme_params=params.shelxl_wght,
       sort_scatterers=False))
     f_obs.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
     from libtbx import easy_run
