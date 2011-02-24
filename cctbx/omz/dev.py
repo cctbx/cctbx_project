@@ -305,12 +305,19 @@ class ls_refinement(object):
       print " ".join([format_value("%15.6f", v) for v in vals])
     assert ix == O.x.size()
 
-  def __get_ls(O):
-    O.__unpack_variables()
-    f_calc = O.f_obs.structure_factors_from_scatterers(
+  def get_f_calc(O):
+    return O.f_obs.structure_factors_from_scatterers(
       xray_structure=O.xray_structure,
       algorithm="direct",
       cos_sin_table=False).f_calc()
+
+  def r1_factor(O):
+    from libtbx import Auto
+    return O.f_obs.r1_factor(
+      other=O.get_f_calc(), scale_factor=Auto, assume_index_matching=True)
+
+  def __get_ls(O):
+    O.__unpack_variables()
     if (O.params.ls_obs_type == "F"):
       obs = O.f_obs
     else:
@@ -321,7 +328,7 @@ class ls_refinement(object):
       obs=obs.data(),
       weights=O.weights,
       r_free_flags=None,
-      f_calc=f_calc.data(),
+      f_calc=O.get_f_calc().data(),
       derivatives_depth=2,
       scale_factor=O.params.f_calc_scale_factor)
 
