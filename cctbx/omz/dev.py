@@ -114,16 +114,30 @@ class ls_refinement(object):
         params,
         reference_structure,
         expected_n_refinable_parameters=None):
+    O.params = params
     O.f_obs = f_obs
     O.i_obs = f_obs.f_as_f_sq()
     O.weights = flex.double(f_obs.data().size(), 1)
+    if (O.params.ls_obs_type == "I"):
+      if (O.params.i_obs_weights == "unit"):
+        pass
+      elif (O.params.i_obs_weights == "one_over_i_obs"):
+        sel = O.i_obs.data() > 0
+        O.weights.set_selected(sel, 1 / O.i_obs.data().select(sel))
+      else:
+        raise RuntimeError(
+          "Unknown: i_obs_weights = %s" % O.params.i_obs_weights)
     O.xray_structure = xray_structure
-    O.params = params
     O.reference_structure = reference_structure
     O.grads = None
     O.curvs = None
     O.grads_mean_sq = None
     O.show_rms_info()
+    if (O.reference_structure is None):
+      O.x_reference = None
+    else:
+      O.pack_variables(xray_structure=O.reference_structure)
+      O.x_reference = O.x
     O.pack_variables()
     print "Number of variables:", O.x.size()
     if (expected_n_refinable_parameters is not None):
@@ -155,17 +169,22 @@ class ls_refinement(object):
     assert ix is not None
     x_inp = O.x[ix]
     xy = []
+    ys = []
     from libtbx.utils import xsamples
     for x in xsamples(p.xmin, p.xmax, p.xstep):
       O.x[ix] = x
       ls = O.__get_ls()
       y = ls.target_work()
       xy.append((x,y))
+      ys.append(y)
     O.x[ix] = x_inp
     from libtbx import pyplot
     pyplot.plot_pairs(xy, "r-")
+    pyplot.plot_pairs([(x_inp,min(ys)), (x_inp,max(ys))], "k--")
+    if (O.x_reference is not None):
+      x = O.x_reference[ix]
+      pyplot.plot_pairs([(x,min(ys)), (x,max(ys))], "r--")
     pyplot.show()
-    STOP()
 
   def classic_lbfgs(O):
     import scitbx.lbfgs
@@ -686,6 +705,8 @@ def get_master_phil(
     show_distances = False
       .type = bool
     ls_obs_type = *F I
+      .type = choice
+    i_obs_weights = *unit one_over_i_obs
       .type = choice
     iteration_limit = %(iteration_limit)s
       .type = int

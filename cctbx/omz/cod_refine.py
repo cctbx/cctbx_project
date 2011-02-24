@@ -19,6 +19,8 @@ def get_master_phil():
         .type = int
       reset_u_iso = 0.05
         .type = float
+      sites_mod_positive = True
+        .type = bool
       optimizers = *dev ls_simple ls_lm shelxl_fm shelxl_cg
         .type = choice(multi=True)
       ls_simple_iterations = 12
@@ -278,7 +280,10 @@ def process(params, pickle_file_name):
   f_obs.show_comprehensive_summary()
   print "."*79
   #
-  structure_work = structure_cod.deep_copy_scatterers()
+  if (params.sites_mod_positive):
+    structure_work = structure_cod.sites_mod_positive()
+  else:
+    structure_work = structure_cod.deep_copy_scatterers()
   structure_work.scattering_type_registry(table="it1992")
   def cc_r1(label):
     show_cc_r1(label, f_obs, structure_work)
