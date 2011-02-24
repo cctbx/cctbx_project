@@ -23,10 +23,12 @@ def run_call_back(flags, space_group_info, params):
   structure_shake.shake_sites_in_place(rms_difference=params.shake_sites_rmsd)
   structure_shake.shake_adp(spread=params.shake_adp_spread)
   #
-  dev.run_refinement(
+  r1 = dev.run_refinement(
     structure_ideal=structure_ideal,
     structure_shake=structure_shake,
-    params=params)
+    params=params).r1_factor()
+  print "R1: %.4f" % r1
+  print
 
 def run(args):
   master_phil = dev.get_master_phil()
