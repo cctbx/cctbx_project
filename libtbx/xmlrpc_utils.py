@@ -150,7 +150,7 @@ class ServerProxy (object) :
         elif str(e).startswith("<ProtocolError ") :
           self._pending = []
           break
-        elif str(e).contains("exceptions.SystemExit") :
+        elif ("exceptions.SystemExit" in str(e)) :
           self._pending = []
           break
         else :
