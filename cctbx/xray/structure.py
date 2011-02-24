@@ -321,8 +321,8 @@ class structure(crystal.special_position_settings):
     return cp
 
   def distances(self, other, selection = None):
-    """Calculates distances between the atoms of this structure and another
-    structure with the same number of scatterers pair by pair.
+    """Calculates pairwise distances between the atoms of this structure and another
+    structure with the same number of scatterers.
 
     :param other: the other structure
     :type other: cctbx.xray.structure
@@ -340,7 +340,7 @@ class structure(crystal.special_position_settings):
     return flex.sqrt((s1 - s2).dot())
 
   def max_distance(self, other, selection = None):
-    """Calculates the maximum pair-by-pair distance between the atoms of this
+    """Calculates the maximum pairwise distance between the atoms of this
     structure and another structure with the same number of scatterers.
 
     :param other: the other structure
@@ -354,7 +354,7 @@ class structure(crystal.special_position_settings):
     return flex.max( self.distances(other = other, selection = selection) )
 
   def min_distance(self, other, selection = None):
-    """Calculates the minimum pair-by-pair distance between the atoms of this
+    """Calculates the minimum pairwise distance between the atoms of this
     structure and another structure with the same number of scatterers.
 
     :param other: the other structure
@@ -368,7 +368,7 @@ class structure(crystal.special_position_settings):
     return flex.min( self.distances(other = other, selection = selection) )
 
   def mean_distance(self, other, selection = None):
-    """Calculates the arithmatic mean pair-by-pair distance between the atoms
+    """Calculates the arithmetic mean pairwise distance between the atoms
     of this structure and another structure with the same number of scatterers.
 
     :param other: the other structure
@@ -376,7 +376,7 @@ class structure(crystal.special_position_settings):
     :param selection: an array of bools to select scatterers to be taken into calculation
     :type selection: boolean[]
 
-    :returns: the mean pair-by-pair distance of the selected scatterers
+    :returns: the mean pairwise distance of the selected scatterers
     :rtype: float
     """
     return flex.mean( self.distances(other = other, selection = selection) )
