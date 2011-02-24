@@ -209,7 +209,7 @@ class structure(crystal.special_position_settings):
     :type selection: boolean[]
 
     :returns: the modified base object
-    :rtype: cctbx.xray.structure
+    :rtype: :py:class:'cctbx.xray.structure'
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -292,22 +292,66 @@ class structure(crystal.special_position_settings):
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     return cp
 
-  def mean_distance(self, other, selection = None):
-    return flex.mean( self.distances(other = other, selection = selection) )
-
   def distances(self, other, selection = None):
+    """Calculates distances between the atoms of this structure and another
+    structure with the same number of scatterers pair by pair.
+
+    :param other: the other structure
+    :type other: cctbx.xray.structure
+    :param selection: an array of bools to select scatterers to be taken into calculation
+    :type selection: boolean[]
+
+    :returns: an array of distances for the selected scatterers
+    :rtype: float[]
+    """
     if(selection is None): selection = flex.bool(self._scatterers.size(), True)
     s1 = self.sites_cart().select(selection)
     s2 = other.sites_cart().select(selection)
     if(s1.size() != s2.size()):
-      raise RuntimeError("Models must of equal size.")
+      raise RuntimeError("Models must be of equal size.")
     return flex.sqrt((s1 - s2).dot())
 
   def max_distance(self, other, selection = None):
+    """Calculates the maximum pair-by-pair distance between the atoms of this
+    structure and another structure with the same number of scatterers.
+
+    :param other: the other structure
+    :type other: cctbx.xray.structure
+    :param selection: an array of bools to select scatterers to be taken into calculation
+    :type selection: boolean[]
+
+    :returns: the maximum distance of two corresponding scatterers out of the selected scatterers
+    :rtype: float
+    """
     return flex.max( self.distances(other = other, selection = selection) )
 
   def min_distance(self, other, selection = None):
+    """Calculates the minimum pair-by-pair distance between the atoms of this
+    structure and another structure with the same number of scatterers.
+
+    :param other: the other structure
+    :type other: cctbx.xray.structure
+    :param selection: an array of bools to select scatterers to be taken into calculation
+    :type selection: boolean[]
+
+    :returns: the minimum distance of two corresponding scatterers out of the selected scatterers
+    :rtype: float
+    """
     return flex.min( self.distances(other = other, selection = selection) )
+
+  def mean_distance(self, other, selection = None):
+    """Calculates the arithmatic mean pair-by-pair distance between the atoms
+    of this structure and another structure with the same number of scatterers.
+
+    :param other: the other structure
+    :type other: cctbx.xray.structure
+    :param selection: an array of bools to select scatterers to be taken into calculation
+    :type selection: boolean[]
+
+    :returns: the mean pair-by-pair distance of the selected scatterers
+    :rtype: float
+    """
+    return flex.mean( self.distances(other = other, selection = selection) )
 
   def scale_adp(self, factor, selection=None):
     if(selection is not None):
