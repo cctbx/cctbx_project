@@ -88,6 +88,7 @@ namespace mmtbx { namespace geometry_restraints {
       bond restraint(sites, proxy.distance_ideal, proxy.weight, proxy.slack);
       double cutoff_weight = hbond_weight;
       double cutoff_delta = restraint.distance_model - proxy.distance_cut;
+      // FIXME this is really bad
       if (proxy.distance_cut <= 0) {
         cutoff_delta = 1.0;
       } else if (cutoff_delta > falloff_distance) {
@@ -106,6 +107,56 @@ namespace mmtbx { namespace geometry_restraints {
     return residual_sum;
   }
 
+  // Switching function for Lennard-Jones-like potentials
+  // I couldn't figure out how the version in the X-PLOR manual is supposed to
+  // work, but NAMD has something similar:
+  //   http://www.ks.uiuc.edu/Research/namd/1.5/ug/node52.html
+  // which is implemented here
+  inline
+  double
+  switch_fn (
+    double R_ij,
+    double R_on,
+    double R_off)
+  {
+    if (R_ij < R_on) {
+      return 1.0;
+    } else if (R_ij > R_off) {
+      return 0.0;
+    }
+    double R_off_sq = R_off * R_off;
+    double R_on_sq = R_on * R_on;
+    double R_ij_sq = R_ij * R_ij;
+    double sw = (R_off_sq - R_ij_sq) * (R_off_sq - R_ij_sq) * \
+                (R_off_sq + (2 * R_ij_sq) - (3 * R_on_sq)) /
+                std::pow((R_off_sq - R_on_sq), 3);
+    return sw;
+  }
+
+  // from Mathematica
+  //  f[r_] := ((a^2 - r^2)^2) * (a^2 + (2 * r^2) - (3 * b^2)) /((a^2 - b^2)^3)
+  //  D[f[r], r]
+  inline
+  double
+  d_switch_d_distance (
+    double R_ij,
+    double R_on,
+    double R_off)
+  {
+    if ((R_ij < R_on) || (R_ij > R_off)) {
+      return 0.0;
+    }
+    double R_off_sq = R_off * R_off;
+    double R_on_sq = R_on * R_on;
+    double R_ij_sq = R_ij * R_ij;
+    double R_off_sq_minus_R_on_sq_cub = std::pow((R_off_sq - R_on_sq), 3);
+    double d_sw_d_R = ((4*R_ij*(R_off_sq-R_ij_sq)*(R_off_sq-R_ij_sq)) /
+                        R_off_sq_minus_R_on_sq_cub) -
+         ((4*R_ij*(R_off_sq-R_ij_sq)*(R_off_sq-(3*R_on_sq)+(2*R_ij_sq))) /
+                        R_off_sq_minus_R_on_sq_cub);
+    return d_sw_d_R;
+  }
+
   // Fabiola et al. (2002) Protein Sci. 11:1415-23
   // http://www.ncbi.nlm.nih.gov/pubmed/12021440
   inline
@@ -120,8 +171,8 @@ namespace mmtbx { namespace geometry_restraints {
   {
     double bond_dist = (sites[1] - sites[0]).length();
     //std::cout << bond_dist << "\n";
-    double delta_cut = bond_dist - distance_cut;
-    if (delta_cut > falloff_distance) {
+    double R_off = distance_cut + falloff_distance;
+    if (bond_dist > R_off) {
       return 0.0;
     }
     double sigma_over_dist = distance_ideal * SIGMA_BASE / bond_dist;
@@ -129,9 +180,7 @@ namespace mmtbx { namespace geometry_restraints {
     double residual = weight * ((s_over_d_sq * s_over_d_sq * s_over_d_sq) - \
                                 (s_over_d_sq * s_over_d_sq)) * \
                       std::pow(std::cos(delta_theta * TWOPI_180), 4);
-    if (delta_cut > 0) {
-      residual *= (falloff_distance - delta_cut) / falloff_distance;
-    }
+    residual *= switch_fn(bond_dist, distance_cut, R_off);
     return residual;
   }
 
@@ -185,7 +234,14 @@ namespace mmtbx { namespace geometry_restraints {
             r_da.d_distance_d_sites();
           af::tiny<scitbx::vec3<double>, 3> d_theta_d_xyz = \
             theta.d_angle_d_sites();
+          // f(R) = L-J term
+          // g(theta) = angle term
+          // h(R) = switching function
           double R = r_da.distance_model;
+          double R_on = proxy.distance_cut;
+          double R_off = R_on + falloff_distance;
+          double h_R = switch_fn(R, R_on, R_off);
+          double d_h_d_R = d_switch_d_distance(R, R_on, R_off) / weight;
           double sigma = proxy.distance_ideal * SIGMA_BASE;
           double f_R = weight * (std::pow(sigma/R, 6) - std::pow(sigma/R, 4));
           double d_f_d_R = (-6 * std::pow(sigma, 6) / std::pow(R, 7)) +
@@ -196,13 +252,13 @@ namespace mmtbx { namespace geometry_restraints {
                                std::sin(delta_theta * TWOPI_180);
           for (unsigned j = 0; j < 3; j++) {
             scitbx::vec3<double> d_g_d_xyz = d_g_d_theta * d_theta_d_xyz[j];
-            scitbx::vec3<double> grads = f_R * d_g_d_xyz * TWOPI_180;
+            scitbx::vec3<double> grads = f_R * h_R * d_g_d_xyz * TWOPI_180;
             if (j != 2) {
+              scitbx::vec3<double> d_h_d_xyz = d_h_d_R * d_R_d_xyz[j];
+              grads -= f_R * g_theta * d_h_d_xyz;
               scitbx::vec3<double> d_f_d_xyz = d_f_d_R * d_R_d_xyz[j];
-              grads -= g_theta * d_f_d_xyz; // XXX why minus?
+              grads -= h_R * g_theta * d_f_d_xyz; // XXX why minus?
             }
-            // XXX this does not properly deal with the cutoff!  can't really
-            // use the analytic form until it does...
             gradient_array[i_seqs[j]] += grads;
           }
         } else { // finite differences
