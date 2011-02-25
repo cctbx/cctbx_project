@@ -362,7 +362,7 @@ namespace cctbx { namespace geometry_restraints {
         else if (top_out) {
             //(2*weight*x/top)*exp(-(weight*x**2)/top)
             top = limit * limit;
-            grad_factor = (2.0*weight*delta/top)*std::exp(-(weight*delta*delta)/top);
+            grad_factor = (2.0*weight*delta)*std::exp(-(weight*delta*delta)/top);
         }
         else {
             grad_factor = 2 * weight * delta;
