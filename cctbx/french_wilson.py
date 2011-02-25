@@ -277,6 +277,11 @@ def french_wilson_scale(miller_array, params=None, log=None):
   from cctbx.array_family import flex
   if not miller_array.is_xray_intensity_array():
     raise Sorry("Input array appears to be amplitudes. This method is only appropriate for input intensities.")
+  if miller_array.unit_cell() is None:
+    raise Sorry("No unit cell information found. Please supply unit cell data.")
+  if miller_array.crystal_symmetry() is None:
+    raise Sorry("No crystal symmetry information found. Please supply "+
+                "crystal symmetry data.")
   if params == None:
     params = master_phil.extract()
   if log == None:
@@ -355,11 +360,12 @@ def french_wilson_scale(miller_array, params=None, log=None):
 def show_rejected_summary(rejected, log=None):
   if log == None:
     log = sys.stdout
-  print >> log, "** Summary or rejected intensities **"
-  print >> log, "-----------------------------------------------------------------"
-  print >> log, "Miller Index  :  Intesity  :  Sigma  :  Bin Mean Intensity"
-  for rej in rejected:
-    print >> log, "%s    %.3f      %.3f    %.3f" % \
-                  (str(rej[0]),rej[1],rej[2],rej[3])
-  print >> log, "-----------------------------------------------------------------"
   print >> log, "** Total # rejected intensities: %d **" % len(rejected)
+  if len(rejected) > 0:
+    print >> log, "** Summary or rejected intensities **"
+    print >> log, "-----------------------------------------------------------------"
+    print >> log, "Miller Index  :  Intesity  :  Sigma  :  Bin Mean Intensity"
+    for rej in rejected:
+      print >> log, "%s    %.3f      %.3f    %.3f" % \
+                    (str(rej[0]),rej[1],rej[2],rej[3])
+    print >> log, "-----------------------------------------------------------------"
