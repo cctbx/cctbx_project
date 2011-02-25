@@ -86,7 +86,7 @@ namespace cctbx { namespace xray { namespace targets {
         }
         gradients_work_.reserve(n_work);
         if (derivatives_depth == 2) {
-          hessian_work_.reserve(n_work);
+          hessians_work_.reserve(n_work);
         }
       }
       double target_test = 0;
@@ -113,7 +113,7 @@ namespace cctbx { namespace xray { namespace targets {
             if (c == 0 || c_cub == 0) {
               gradients_work_.push_back(std::complex<double>(0,0));
               if (derivatives_depth == 2) {
-                hessian_work_.push_back(scitbx::vec3<double>(1,1,1));
+                hessians_work_.push_back(scitbx::vec3<double>(1,1,1));
               }
             }
             else {
@@ -135,7 +135,7 @@ namespace cctbx { namespace xray { namespace targets {
                   /*dbb*/ cw[1] = term * b * b + gf;
                   /*dab*/ cw[2] = term * a * b;
                 }
-                hessian_work_.push_back(cw);
+                hessians_work_.push_back(cw);
               }
             }
           }

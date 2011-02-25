@@ -41,12 +41,12 @@ namespace {
             arg("target_work"),
             arg("target_test"),
             arg("gradients_work"),
-            arg("hessian_work"))))
+            arg("hessians_work"))))
         .def("target_per_reflection", &w_t::target_per_reflection, ccr())
         .def("target_work", &w_t::target_work)
         .def("target_test", &w_t::target_test)
         .def("gradients_work", &w_t::gradients_work, ccr())
-        .def("hessian_work", &w_t::hessian_work, ccr())
+        .def("hessians_work", &w_t::hessians_work, ccr())
       ;
     }
   };
