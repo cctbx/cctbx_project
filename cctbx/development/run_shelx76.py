@@ -57,10 +57,12 @@ def atoms(lapp, sfac_indices, xray_structure):
         dot6gdot_list(u[:2])))
       lapp("    %s" % dot6gdot_list((u[2], u[5], u[4], u[3])))
 
-def write_shelx76_ls(titl, xray_structure, f_obs, l_s_parameters="0"):
+def write_shelx76_ls(xray_structure, f_obs, titl=None, l_s_parameters="0"):
   assert xray_structure.scatterers().size() > 0
   lines = []
   lapp = lines.append
+  if (titl is None):
+    titl = str(xray_structure.space_group_info())
   lapp("TITL " + titl)
   lapp("CELL 1.0 " + dot6gdot_list(xray_structure.unit_cell().parameters()))
   s = StringIO()
@@ -75,7 +77,7 @@ def write_shelx76_ls(titl, xray_structure, f_obs, l_s_parameters="0"):
   print >> open("tmp.ins", "w"), "\n".join(lines)
 
 def run_shelx76(titl, xray_structure, f_obs):
-  write_shelx76_ls(titl, xray_structure, f_obs)
+  write_shelx76_ls(xray_structure, f_obs, titl)
   shelx_out = easy_run.fully_buffered(command="shelx76 < tmp.ins") \
     .raise_if_errors() \
     .stdout_lines

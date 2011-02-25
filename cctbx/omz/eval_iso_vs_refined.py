@@ -32,7 +32,8 @@ def run(args):
             or line.startswith("ls_simple    cc, r1: ")
             or line.startswith("ls_lm        cc, r1: ")
             or line.startswith("shelxl_fm    cc, r1: ")
-            or line.startswith("shelxl_cg    cc, r1: ")):
+            or line.startswith("shelxl_cg    cc, r1: ")
+            or line.startswith("shelx76      cc, r1: ")):
         assert iso is not None
         ref = line.split(": ",1)[1]
         gap = float(ref.split()[1]) - float(iso.split()[1])
@@ -67,7 +68,7 @@ def run(args):
   print
   def stats(f):
     n = f.count(True)
-    return "%6d = %5.2f %%" % (n, 100 * n / gaps.size())
+    return "%6d = %5.2f %%" % (n, 100 * n / max(1,gaps.size()))
   print "gaps below -0.05:", stats(gaps < -0.05)
   print "gaps below -0.01:", stats(gaps < -0.01)
   print "gaps below  0.01:", stats(gaps <  0.01)

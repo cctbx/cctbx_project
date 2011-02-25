@@ -2,6 +2,7 @@ from cctbx import omz
 import cctbx.omz.dev
 import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
+from libtbx import easy_run
 from libtbx import easy_pickle
 from libtbx.utils import user_plus_sys_time
 from libtbx import Auto
@@ -21,7 +22,7 @@ def get_master_phil():
         .type = float
       sites_mod_positive = True
         .type = bool
-      optimizers = *dev ls_simple ls_lm shelxl_fm shelxl_cg
+      optimizers = *dev ls_simple ls_lm shelxl_fm shelxl_cg shelx76
         .type = choice(multi=True)
       ls_simple_iterations = 12
         .type = int
@@ -36,6 +37,8 @@ def get_master_phil():
       shelxl_fm_iterations = 12
         .type = int
       shelxl_cg_iterations = 12
+        .type = int
+      shelx76_iterations = 12
         .type = int
       keep_tmp_files = False
         .type = bool
@@ -108,6 +111,12 @@ def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   else:
     raise RuntimeError('Unknown run_smtbx_ls(mode="%s")' % mode)
 
+def remove_tmp_files(file_names):
+  for fn in file_names:
+    if (op.isfile(fn)):
+      os.remove(fn)
+    assert not op.exists(fn)
+
 def run_shelxl(
       mode,
       cod_code,
@@ -133,12 +142,8 @@ def run_shelxl(
   remove_wdir = False
   try:
     os.chdir(wdir)
-    def remove_tmp_files():
-      for fn in ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]:
-        if (op.isfile(fn)):
-          os.remove(fn)
-        assert not op.exists(fn)
-    remove_tmp_files()
+    tmp_file_names = ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]
+    remove_tmp_files(tmp_file_names)
     import iotbx.shelx
     open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
       xray_structure=xray_structure,
@@ -150,7 +155,6 @@ def run_shelxl(
       weighting_scheme_params=params.shelxl_wght,
       sort_scatterers=False))
     f_obs.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
-    from libtbx import easy_run
     buffers = easy_run.fully_buffered("shelxl tmp")
     buffers.raise_if_errors()
     refinement_unstable = False
@@ -261,7 +265,55 @@ def run_shelxl(
         _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
         print "R1 FVAR-Auto %s: %.4f" % (cod_code, r1_fvar - r1_auto)
     if (not params.keep_tmp_files):
-      remove_tmp_files()
+      remove_tmp_files(tmp_file_names)
+      remove_wdir = wdir_is_new
+  finally:
+    os.chdir(cwd_orig)
+    if (remove_wdir):
+      os.rmdir(wdir)
+
+def run_shelx76(
+      cod_code,
+      f_obs,
+      xray_structure,
+      params,
+      reference_structure,
+      expected_n_refinable_parameters):
+  cwd_orig = os.getcwd()
+  wdir = "wdir_%s" % cod_code
+  wdir_is_new = False
+  if (not op.isdir(wdir)):
+    os.mkdir(wdir)
+    wdir_is_new = True
+  remove_wdir = False
+  try:
+    os.chdir(wdir)
+    tmp_file_names = [
+      "tmp.ins", "tmp.lst", "fort.2", "fort.3", "fort.4", "fort.7"]
+    remove_tmp_files(tmp_file_names)
+    assert not op.exists("tmp.ins")
+    from cctbx.development import run_shelx76
+    run_shelx76.write_shelx76_ls(
+      xray_structure=xray_structure,
+      f_obs=f_obs,
+      l_s_parameters=str(params.shelx76_iterations))
+    assert op.exists("tmp.ins")
+    buffers = easy_run.fully_buffered("shelx76 < tmp.ins > tmp.lst")
+    buffers.raise_if_errors_or_output()
+    lst = open("tmp.lst").read().splitlines()
+    r_from_lst = None
+    for line in lst:
+      l = line.lstrip()
+      if (l.startswith("R = ")):
+        print l
+        flds = l.split()
+        assert len(flds) == 12
+        assert flds[2].lower() != "nan"
+        r_from_lst = float(flds[2])
+    assert r_from_lst is not None
+    print "%-12s cc, r1: None %.3f" % ("shelx76", r_from_lst)
+    if (not params.keep_tmp_files):
+      remove_tmp_files(tmp_file_names)
       remove_wdir = wdir_is_new
   finally:
     os.chdir(cwd_orig)
@@ -377,6 +429,18 @@ def process(params, pickle_file_name):
     return result
   structure_shelxl_fm = use_shelxl("fm")
   structure_shelxl_cg = use_shelxl("cg")
+  #
+  if ("shelx76" not in params.optimizers):
+    structure_shelx76 = None
+  else:
+    structure_shelx76 = structure_work.deep_copy_scatterers()
+    run_shelx76(
+      cod_code=cod_code,
+      f_obs=f_obs,
+      xray_structure=structure_shelx76,
+      params=params,
+      reference_structure=structure_iso,
+      expected_n_refinable_parameters=n_refinable_parameters)
 
 def run(args):
   from iotbx.option_parser import option_parser as iotbx_option_parser
