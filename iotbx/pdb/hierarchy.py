@@ -10,6 +10,8 @@ from libtbx import Auto, dict_with_default_0
 from cStringIO import StringIO
 import sys
 
+class pickle_import_trigger(object): pass
+
 level_ids = ["model", "chain", "residue_group", "atom_group", "atom"]
 
 def _show_residue_group(rg, out, prefix):
@@ -320,7 +322,7 @@ class overall_counts(object):
 class _root(boost.python.injector, ext.root):
 
   def __getstate__(self):
-    version = 1
+    version = 2
     pdb_string = StringIO()
     self._as_pdb_string_cstringio(
       cstringio=pdb_string,
@@ -331,16 +333,19 @@ class _root(boost.python.injector, ext.root):
       sigatm=True,
       anisou=True,
       siguij=True)
-    return (version, self.info, pdb_string.getvalue())
+    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
 
   def __setstate__(self, state):
-    assert len(state) == 3
-    assert state[0] == 1 # version
-    self.info = state[1]
+    assert len(state) >= 3
+    version = state[0]
+    if   (version == 1): assert len(state) == 3
+    elif (version == 2): assert len(state) == 4
+    else: raise RuntimeError("Unknown version of pickled state.")
+    self.info = state[-2]
     import iotbx.pdb
     models = iotbx.pdb.input(
       source_info="pickle",
-      lines=flex.split_lines(state[2])).construct_hierarchy().models()
+      lines=flex.split_lines(state[-1])).construct_hierarchy().models()
     self.pre_allocate_models(number_of_additional_models=len(models))
     for model in models:
       self.append_model(model=model)
