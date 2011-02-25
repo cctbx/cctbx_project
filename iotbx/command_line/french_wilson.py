@@ -68,6 +68,10 @@ def run (args, out=sys.stdout) :
   if (crystal_symmetry is None) :
     raise Sorry("No crystal symmetry found.  This program requires an input "+
       "format with complete symmetry information.")
+  unit_cell = xray_data_server.miller_arrays[0].unit_cell()
+  if (unit_cell is None) :
+    raise Sorry("No unit cell found.  This program requires an input "+
+      "format with complete unit cell information.")
   i_obs = None
   i_obs = xray_data_server.get_xray_data(
     file_name = params.file_name,
@@ -75,6 +79,8 @@ def run (args, out=sys.stdout) :
     ignore_all_zeros = True,
     parameter_scope = 'french_wilson',
     parameter_name = 'intensity_labels')
+  import cStringIO
+  xray_data_server.err = cStringIO.StringIO()
   try :
     r_free_flags, test_flag_value = xray_data_server.get_r_free_flags(
       file_name = params.file_name,
