@@ -1,4 +1,4 @@
-def LATT_SYMM(s, space_group):
+def LATT_SYMM(s, space_group, decimal=False):
   Z = space_group.conventional_centring_type_symbol()
   Z_dict = {
     "P": 1,
@@ -24,7 +24,11 @@ def LATT_SYMM(s, space_group):
   print >> s, "LATT", LATT_N
   # The operator x,y,z is always assumed, so MUST NOT be input.
   for i in xrange(1, space_group.n_smx()):
-    print >> s, "SYMM", space_group(i).as_xyz(False, False, "XYZ", ",")
+    print >> s, "SYMM", space_group(i).as_xyz(
+      decimal=decimal,
+      t_first=False,
+      symbol_letters="XYZ",
+      separator=",")
 
 def shelxd(s,
       title,

@@ -6,15 +6,10 @@ from cctbx.development import debug_utils
 from cctbx.development.fmt_utils import *
 from iotbx.shelx.write_ins import LATT_SYMM
 from scitbx.python_utils import dicts
+import libtbx.path
 from libtbx import easy_run
 from cStringIO import StringIO
 import sys, os
-
-def check_shelx_availability():
-  shelxl_out = easy_run.fully_buffered(command="shelxl").stdout_lines
-  if (len(shelxl_out) == 0):
-    print "SHELX not available."
-    sys.exit(1)
 
 def calculate_cell_content(xray_structure):
   result = dicts.with_default_value(0)
@@ -87,17 +82,15 @@ def atoms(xray_structure, short_sfac):
       l("    %s" % dot6gdot_list((u[2], u[5], u[4], u[3])))
   return lines
 
-def HKLF(f_calc):
-  lines = []
-  l = lines.append
-  l("HKLF -3")
+def HKLF(lapp, f_calc, skip_zeros=False):
+  lapp("HKLF -3")
   for i,h in enumerate(f_calc.indices()):
     f = abs(f_calc.data()[i])
     s = "%8.2f" % (f,)
     assert  len(s) == 8, "structure factor does not fit f8.2 format."
-    l("%4d%4d%4d%s%8.2f" % (h + (s, 0.01)))
-  l("   0   0   0    0.00    0.00")
-  return lines
+    if (not skip_zeros or s != "    0.00"):
+      lapp("%4d%4d%4d%s%8.2f" % (h + (s, 0.01)))
+  lapp("   0   0   0    0.00    0.00")
 
 def pre_check(xray_structure):
   if (len(xray_structure.scatterers()) > 99):
@@ -185,7 +178,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
   l("SPEC -0.1")
   l("WPDB 2")
   lines += atoms(xray_structure, short_sfac)
-  lines += HKLF(f_calc)
+  HKLF(l, f_calc)
   f = open("tmp.ins", "w")
   for l in lines:
     if (0 or verbose): print l
@@ -248,9 +241,11 @@ def run_call_back(flags, space_group_info):
       exercise(space_group_info, anomalous_flag, use_u_aniso,
                verbose=flags.Verbose)
 
-def run():
-  check_shelx_availability()
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+def run(args):
+  if (libtbx.path.full_command_path(command="shelxl") is None):
+    print "shelxl not available."
+    return
+  debug_utils.parse_options_loop_space_groups(args, run_call_back)
 
 if (__name__ == "__main__"):
-  run()
+  run(args=sys.argv[1:])

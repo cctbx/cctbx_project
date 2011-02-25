@@ -93,6 +93,7 @@ def run():
   ["$D/development/tst_cns_epsilon.py", "P31"],
   ["$D/development/tst_cns_hl.py", "P31"],
   ["$D/development/run_shelx.py", "P31"],
+  ["$D/development/run_shelx76.py", "P31"],
    "$D/regression/tst_pointgroup_tools.py",
    "$D/sgtbx/sub_lattice_tools.py",
    "$D/sgtbx/rational_matrices_point_groups.py",
