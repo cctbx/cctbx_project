@@ -16,7 +16,7 @@ from mmtbx import secondary_structure
 from iotbx.pdb import common_residue_names_get_class
 import sys, re
 
-TOP_OUT_FLAG = False
+TOP_OUT_FLAG = True
 
 reference_group_params = iotbx.phil.parse("""
  reference_group
@@ -72,7 +72,7 @@ class reference_model(object):
     return top*(1-exp(-weight*x**2/top))
 
   def top_out_gradient(self, x, weight, top):
-    return (2*weight*x/top)*exp(-(weight*x**2)/top)
+    return (2*weight*x)*exp(-(weight*x**2)/top)
 
   def top_out_curvature(self, x, weight, top):
     return (2*weight*(top - 2*weight*x**2))/top**2*exp(-(weight*x**2)/top)
