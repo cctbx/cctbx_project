@@ -20,7 +20,7 @@ namespace targets {
       double target_work_;
       boost::optional<double> target_test_;
       af::shared<std::complex<double> > gradients_work_;
-      af::shared<scitbx::vec3<double> > hessian_work_;
+      af::shared<scitbx::vec3<double> > hessians_work_;
       public:
 
     common_results()
@@ -57,27 +57,27 @@ namespace targets {
       double target_work,
       boost::optional<double> const& target_test,
       af::shared<std::complex<double> > const& gradients_work,
-      af::shared<scitbx::vec3<double> > const& hessian_work)
+      af::shared<scitbx::vec3<double> > const& hessians_work)
     :
       target_per_reflection_(target_per_reflection),
       target_work_(target_work),
       target_test_(target_test),
       gradients_work_(gradients_work),
-      hessian_work_(hessian_work)
+      hessians_work_(hessians_work)
     {
       if (target_per_reflection.size() != 0) {
         if (gradients_work.size() != 0) {
           TBXX_ASSERT(
             gradients_work.size() <= target_per_reflection.size());
         }
-        if (hessian_work.size() != 0) {
+        if (hessians_work.size() != 0) {
           TBXX_ASSERT(
-            hessian_work.size() <= target_per_reflection.size());
+            hessians_work.size() <= target_per_reflection.size());
         }
       }
       if (   gradients_work.size() != 0
-          && hessian_work.size() != 0) {
-        TBXX_ASSERT(hessian_work.size() == gradients_work.size());
+          && hessians_work.size() != 0) {
+        TBXX_ASSERT(hessians_work.size() == gradients_work.size());
       }
     }
 
@@ -96,7 +96,7 @@ namespace targets {
 
     //! daa, dbb, dab
     af::shared<scitbx::vec3<double> > const&
-    hessian_work() { return hessian_work_; }
+    hessians_work() { return hessians_work_; }
   };
 
 }}} // namespace cctbx::xray::targets
