@@ -16,7 +16,7 @@ def get_master_phil():
     iteration_limit=100,
     grads_mean_sq_threshold=1e-6,
     additional_phil_string="""\
-      max_atoms = 100
+      max_atoms = 99
         .type = int
       reset_u_iso = 0.05
         .type = float
@@ -308,13 +308,18 @@ def run_shelx76(
         print l
         flds = l.split()
         assert len(flds) == 12
-        assert flds[2].lower() != "nan"
+        if (flds[2].lower() == "nan"):
+          print "Aborted: shelx76 refinement apparently unstable: %s" % (
+            cod_code)
+          r_from_lst = "nan"
+          break
         r_from_lst = float(flds[2])
     assert r_from_lst is not None
-    print "%-12s cc, r1: None %.3f" % ("shelx76", r_from_lst)
-    if (not params.keep_tmp_files):
-      remove_tmp_files(tmp_file_names)
-      remove_wdir = wdir_is_new
+    if (r_from_lst != "nan"):
+      print "%-12s cc, r1: None %.3f" % ("shelx76", r_from_lst)
+      if (not params.keep_tmp_files):
+        remove_tmp_files(tmp_file_names)
+        remove_wdir = wdir_is_new
   finally:
     os.chdir(cwd_orig)
     if (remove_wdir):
