@@ -64,7 +64,7 @@ def write_shelx76_ls(xray_structure, f_obs, titl=None, l_s_parameters="0"):
   if (titl is None):
     titl = str(xray_structure.space_group_info())
   lapp("TITL " + titl)
-  lapp("CELL 1.0 " + dot6gdot_list(xray_structure.unit_cell().parameters()))
+  lapp("CELL 0.7 " + dot6gdot_list(xray_structure.unit_cell().parameters()))
   s = StringIO()
   LATT_SYMM(s, xray_structure.space_group(), decimal=True)
   lapp(s.getvalue()[:-1])
