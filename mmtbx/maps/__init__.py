@@ -174,7 +174,7 @@ maps {
 master_params = maps_including_IO_params_str
 
 def maps_including_IO_master_params():
-  return libtbx.phil.parse(maps_including_IO_params_str, process_includes=False)
+  return libtbx.phil.parse(maps_including_IO_params_str, process_includes=True)
 
 def cast_map_coeff_params(map_type_obj):
   map_coeff_params_str = """\
