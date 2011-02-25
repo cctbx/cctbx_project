@@ -80,6 +80,7 @@ class build_proxies (core) :
   proxy_type = None
   def __init__ (self) :
     core.__init__(self)
+    import cctbx.geometry_restraints # import dependency
     import boost.python
     self.ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
     self.proxies = getattr(self.ext, self.proxy_array_type)()
