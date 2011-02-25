@@ -272,16 +272,14 @@ namespace cctbx { namespace geometry_restraints {
         using scitbx::constants::pi_180;
         double term, delta_local;
         double top;
-        if (limit >= 0){
-          if(std::fabs(delta) > limit){
+        delta_local = delta;
+        if (limit >= 0 && top_out == false){
+          if(delta > limit){
             delta_local = limit;
           }
-          else{
-            delta_local = delta;
+          else if(delta < (-1.0*limit)){
+            delta_local = (-1.0*limit);
           }
-        }
-        else{
-          delta_local = delta;
         }
         if (periodicity > 0) {
           term = 9600. / (periodicity * periodicity)
@@ -313,7 +311,7 @@ namespace cctbx { namespace geometry_restraints {
       grad_delta(double epsilon=1e-100) const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
-        if(limit >= 0){
+        if(limit >= 0 && top_out==false){
           if (std::fabs(delta) > limit){
             result.fill(scitbx::vec3<double>(0,0,0));
             return result;
