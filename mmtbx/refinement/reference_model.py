@@ -13,7 +13,10 @@ from libtbx import Auto
 import libtbx.load_env
 from libtbx.utils import format_exception, Sorry
 from mmtbx import secondary_structure
+from iotbx.pdb import common_residue_names_get_class
 import sys, re
+
+TOP_OUT_FLAG = False
 
 reference_group_params = iotbx.phil.parse("""
  reference_group
@@ -64,6 +67,15 @@ reference_group_params = iotbx.phil.parse("""
 """)
 
 class reference_model(object):
+
+  def top_out_function(self, x, weight, top):
+    return top*(1-exp(-weight*x**2/top))
+
+  def top_out_gradient(self, x, weight, top):
+    return (2*weight*x/top)*exp(-(weight*x**2)/top)
+
+  def top_out_curvature(self, x, weight, top):
+    return (2*weight*(top - 2*weight*x**2))/top**2*exp(-(weight*x**2)/top)
 
   def selection(self, string, cache):
     return cache.selection(
@@ -148,7 +160,8 @@ class reference_model(object):
                     pdb_hierarchy_ref,
                     params,
                     selections,
-                    log=sys.stdout):
+                    log=None):
+    if(log is None): log = sys.stdout
     res_match_hash = {}
     model_mseq_res_hash = {}
     model_seq, model_structures = self.extract_sequence_and_sites(
@@ -191,7 +204,8 @@ class reference_model(object):
                                pdb_hierarchy,
                                pdb_hierarchy_ref,
                                params,
-                               log=sys.stdout):
+                               log=None):
+    if(log is None): log = sys.stdout
     model_iseq_hash = self.build_iseq_hash(pdb_hierarchy=pdb_hierarchy)
     model_name_hash = self.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     ref_iseq_hash = self.build_iseq_hash(pdb_hierarchy=pdb_hierarchy_ref)
@@ -355,17 +369,66 @@ class reference_model(object):
             continue
     return match_map
 
+  def modernize_rna_resname(self, resname):
+    if common_residue_names_get_class(resname,
+         consider_ccp4_mon_lib_rna_dna=True) == "common_rna_dna" or \
+       common_residue_names_get_class(resname,
+         consider_ccp4_mon_lib_rna_dna=True) == "ccp4_mon_lib_rna_dna":
+      tmp_resname = resname.strip()
+      if len(tmp_resname) == 1:
+        return "  "+tmp_resname
+      elif len(tmp_resname) == 2:
+        if tmp_resname[0:1].upper() == 'D':
+          return " "+tmp_resname.upper()
+        elif tmp_resname[1:].upper() == 'D':
+          return " D"+tmp_resname[0:1].upper()
+        elif tmp_resname[1:].upper() == 'R':
+          return "  "+tmp_resname[0:1].upper()
+    return resname
+
+  def modernize_rna_atom_name(self, atom):
+     new_atom = atom.replace('*',"'")
+     if new_atom == " O1P":
+       new_atom = " OP1"
+     elif new_atom == " O2P":
+       new_atom = " OP2"
+     return new_atom
+
   def build_name_hash(self, pdb_hierarchy):
     i_seq_name_hash = dict()
     for atom in pdb_hierarchy.atoms():
-      i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
+      atom_name = atom.pdb_label_columns()[0:4]
+      resname = atom.pdb_label_columns()[5:8]
+      updated_resname = self.modernize_rna_resname(resname)
+      if common_residue_names_get_class(updated_resname) == "common_rna_dna":
+        updated_atom = self.modernize_rna_atom_name(atom=atom_name)
+      else:
+        updated_atom = atom_name
+      key = updated_atom+atom.pdb_label_columns()[4:5]+\
+            updated_resname+atom.pdb_label_columns()[8:]
+      i_seq_name_hash[atom.i_seq]=key
     return i_seq_name_hash
 
   def build_iseq_hash(self, pdb_hierarchy):
     name_i_seq_hash = dict()
     for atom in pdb_hierarchy.atoms():
-      name_i_seq_hash[atom.pdb_label_columns()]=atom.i_seq
+      atom_name = atom.pdb_label_columns()[0:4]
+      resname = atom.pdb_label_columns()[5:8]
+      updated_resname = self.modernize_rna_resname(resname)
+      if common_residue_names_get_class(updated_resname) == "common_rna_dna":
+        updated_atom = self.modernize_rna_atom_name(atom=atom_name)
+      else:
+        updated_atom = atom_name
+      key = updated_atom+atom.pdb_label_columns()[4:5]+\
+            updated_resname+atom.pdb_label_columns()[8:]
+      name_i_seq_hash[key]=atom.i_seq
     return name_i_seq_hash
+
+  def build_xyz_hash(self, pdb_hierarchy):
+    name_xyz_hash = dict()
+    for atom in pdb_hierarchy.atoms():
+      name_xyz_hash[atom.pdb_label_columns()]=atom.xyz
+    return name_xyz_hash
 
   def build_element_hash(self, pdb_hierarchy):
     i_seq_element_hash = dict()
@@ -477,7 +540,8 @@ class reference_model(object):
                                 geometry_ref,
                                 sites_cart_ref,
                                 pdb_hierarchy_ref,
-                                log=sys.stdout):
+                                log=None):
+    if(log is None): log = sys.stdout
     ss_selection = None
     residue_match_hash = {}
     reference_dihedral_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
@@ -548,21 +612,24 @@ class reference_model(object):
               i_seqs=dp.i_seqs,
               angle_ideal=reference_angle,
               weight=1/(1.0**2),
-              limit=30.0)
+              limit=30.0,
+              top_out=TOP_OUT_FLAG)
             reference_dihedral_proxies.append(dp_add)
           else:
             dp_add = cctbx.geometry_restraints.dihedral_proxy(
               i_seqs=dp.i_seqs,
               angle_ideal=reference_angle,
               weight=1/(5.0**2),
-              limit=15.0)
+              limit=15.0,
+              top_out=TOP_OUT_FLAG)
             reference_dihedral_proxies.append(dp_add)
       else:
         dp_add = cctbx.geometry_restraints.dihedral_proxy(
           i_seqs=dp.i_seqs,
           angle_ideal=reference_angle,
           weight=1/sigma**2,
-          limit=limit)
+          limit=limit,
+          top_out=TOP_OUT_FLAG)
         reference_dihedral_proxies.append(dp_add)
 
     for cp in geometry.chirality_proxies:
@@ -601,26 +668,30 @@ class reference_model(object):
               i_seqs=i_seqs,
               angle_ideal=reference_angle,
               weight=1/(1.0**2),
-              limit=30.0)
+              limit=30.0,
+              top_out=TOP_OUT_FLAG)
             reference_dihedral_proxies.append(dp_add)
           else:
             dp_add = cctbx.geometry_restraints.dihedral_proxy(
               i_seqs=i_seqs,
               angle_ideal=reference_angle,
               weight=1/(5.0**2),
-              limit=15.0)
+              limit=15.0,
+              top_out=TOP_OUT_FLAG)
             reference_dihedral_proxies.append(dp_add)
       else:
         dp_add = cctbx.geometry_restraints.dihedral_proxy(
           i_seqs=i_seqs,
           angle_ideal=reference_angle,
           weight=1/sigma**2,
-          limit=limit)
+          limit=limit,
+          top_out=TOP_OUT_FLAG)
         reference_dihedral_proxies.append(dp_add)
     self.residue_match_hash = residue_match_hash
     return reference_dihedral_proxies
 
-  def show_reference_summary(self, log=sys.stdout):
+  def show_reference_summary(self, log=None):
+    if(log is None): log = sys.stdout
     print >> log, "--------------------------------------------------------"
     print >> log, "Reference Model Matching Summary:"
     print >> log, "Model:              Reference:"
@@ -630,6 +701,7 @@ class reference_model(object):
     keys.sort(key=get_key_chain_num)
     for key in keys:
       print >> log, "%s  <=====>  %s" % (key, self.residue_match_hash[key])
+    print >> log, "Total # of matched residue pairs: %d" % len(keys)
     print >> log, "--------------------------------------------------------"
 
   def add_reference_dihedral_proxies(self, geometry, reference_dihedral_proxies):
