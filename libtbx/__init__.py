@@ -10,6 +10,10 @@ def _STOP(exit_status=0):
   sys.exit(exit_status)
 __builtins__["STOP"] = _STOP
 
+def _numstr(values, fmt="%.6g", sep=", ", brackets=("[","]")):
+  return brackets[0] + sep.join([fmt % v for v in values]) + brackets[1]
+__builtins__["numstr"] = _numstr
+
 class AutoType(object):
 
   def __str__(self): return "Auto"

@@ -92,9 +92,6 @@ def number_from_string(string):
       'Error interpreting "%s" as a numeric expression: %s' % (
         string, format_exception()))
 
-def numbers_as_str(values, fmt="%.6g", sep=", ", brackets=("[","]")):
-  return brackets[0] + sep.join([fmt % v for v in values]) + brackets[1]
-
 def gzip_open(file_name, mode):
   assert mode in ["r", "rb", "w", "wb", "a", "ab"]
   if (gzip is None):
@@ -959,7 +956,7 @@ def exercise():
   else: raise Exception_expected
   #
   s = "[0.143139, -0.125121, 0.108699, -0.308607]"
-  assert numbers_as_str(values=eval(s)) == s
+  assert numstr(values=eval(s)) == s
   #
   for s,i in {"2000000" : 2000000,
               "2k" : 2048,
