@@ -7,7 +7,8 @@ import sys
 
 class random_inputs(object):
 
-  def __init__(O, mt, n_refl, obs_type):
+  def __init__(O, mt, n_refl, target_type, obs_type):
+    O.target_type = target_type
     O.obs_type = obs_type
     O.obs = mt.random_double(size=n_refl)
     O.weights = mt.random_double(size=n_refl)
@@ -19,15 +20,25 @@ class random_inputs(object):
     O.b = mt.random_double(size=n_refl)
 
   def get(O, derivatives_depth=0):
-    return ext.targets_least_squares(
-      compute_scale_using_all_data=False,
-      obs_type=O.obs_type,
-      obs=O.obs,
-      weights=O.weights,
-      r_free_flags=O.r_free_flags,
-      f_calc=flex.complex_double(O.a, O.b),
-      derivatives_depth=derivatives_depth,
-      scale_factor=O.scale_factor)
+    if (O.target_type == "ls"):
+      return ext.targets_least_squares(
+        compute_scale_using_all_data=False,
+        obs_type=O.obs_type,
+        obs=O.obs,
+        weights=O.weights,
+        r_free_flags=O.r_free_flags,
+        f_calc=flex.complex_double(O.a, O.b),
+        derivatives_depth=derivatives_depth,
+        scale_factor=O.scale_factor)
+    if (O.target_type == "cc"):
+      return ext.targets_correlation(
+        obs_type=O.obs_type,
+        obs=O.obs,
+        weights=O.weights,
+        r_free_flags=O.r_free_flags,
+        f_calc=flex.complex_double(O.a, O.b),
+        derivatives_depth=min(1,derivatives_depth)) # XXX
+    raise RuntimeError("Unknown target_type.")
 
   def gradients_work_fd(O, eps=1.e-6):
     result = flex.complex_double()
@@ -65,16 +76,19 @@ class random_inputs(object):
 
 def exercise_random(n_trials=10, n_refl=30):
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
-    for obs_type in ["F", "I"]:
-      ri = random_inputs(mt=mt, n_refl=n_refl, obs_type=obs_type)
-      ls = ri.get(derivatives_depth=2)
-      ga = ls.gradients_work()
-      gf = ri.gradients_work_fd()
-      assert approx_equal(ga, gf)
-      ca = ls.hessians_work()
-      cf = ri.hessians_work_fd()
-      assert approx_equal(ca, cf)
+  for target_type in ["ls", "cc"]:
+    for i_trial in xrange(n_trials):
+      for obs_type in ["F", "I"]:
+        ri = random_inputs(
+          mt=mt, n_refl=n_refl, target_type=target_type, obs_type=obs_type)
+        tg = ri.get(derivatives_depth=2)
+        ga = tg.gradients_work()
+        gf = ri.gradients_work_fd()
+        assert approx_equal(ga, gf)
+        if (target_type == "cc"): continue # XXX
+        ca = tg.hessians_work()
+        cf = ri.hessians_work_fd()
+        assert approx_equal(ca, cf)
 
 def exercise_singular():
   obs = flex.double([1.234])
@@ -84,7 +98,7 @@ def exercise_singular():
   a = flex.double([0])
   b = flex.double([0])
   for obs_type in ["F", "I"]:
-    ls = ext.targets_least_squares(
+    tg = ext.targets_least_squares(
       compute_scale_using_all_data=False,
       obs_type=obs_type,
       obs=obs,
@@ -93,8 +107,8 @@ def exercise_singular():
       f_calc=flex.complex_double(a, b),
       derivatives_depth=2,
       scale_factor=scale_factor)
-    assert list(ls.gradients_work()) == [0j]
-    assert list(ls.hessians_work()) == [(1,1,1)]
+    assert list(tg.gradients_work()) == [0j]
+    assert list(tg.hessians_work()) == [(1,1,1)]
 
 def run(args):
   assert len(args) == 0

@@ -2,6 +2,7 @@
 
 #include <cctbx/xray/targets.h>
 #include <cctbx/xray/targets/least_squares.h>
+#include <cctbx/xray/targets/correlation.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
@@ -67,7 +68,7 @@ namespace {
           af::const_ref<double> const&,
           af::const_ref<double> const&,
           af::const_ref<bool> const&,
-          af::const_ref< std::complex<double> > const&,
+          af::const_ref<std::complex<double> > const&,
           int,
           double>((
             arg("compute_scale_using_all_data"),
@@ -81,6 +82,35 @@ namespace {
         .def("compute_scale_using_all_data",&w_t::compute_scale_using_all_data)
         .def("obs_type", &w_t::obs_type)
         .def("scale_factor", &w_t::scale_factor)
+      ;
+    }
+  };
+
+  struct correlation_wrappers
+  {
+    typedef correlation w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<common_results> >(
+          "targets_correlation", no_init)
+        .def(init<
+          char,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          int>((
+            arg("obs_type"),
+            arg("obs"),
+            arg("weights"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("derivatives_depth"))))
+        .def("obs_type", &w_t::obs_type)
+        .def("cc", &w_t::cc)
       ;
     }
   };
@@ -214,6 +244,7 @@ namespace boost_python {
   {
     targets::boost_python::common_results_wrappers::wrap();
     targets::boost_python::least_squares_wrappers::wrap();
+    targets::boost_python::correlation_wrappers::wrap();
     targets::boost_python::least_squares_residual_wrappers<
       cctbx::xray::targets::f_calc_modulus>::wrap(
       "targets_least_squares_residual");

@@ -11,7 +11,7 @@ def run():
   ["$D/symmetry_search/tests/tst_from_map.py", "P312"],
   "$D/regression/tst_adp_aniso_restraints.py",
   "$D/math/boost_python/tst_math.py",
-  "$D/xray/boost_python/tst_targets_least_squares.py",
+  "$D/xray/boost_python/tst_targets_fd.py",
   "$D/xray/boost_python/tst_f_model.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",

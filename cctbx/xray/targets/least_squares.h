@@ -14,6 +14,8 @@ namespace cctbx { namespace xray { namespace targets {
       double scale_factor_;
       public:
 
+    least_squares() {}
+
     //! derivatives_depth == -1: compute only scale factor
     least_squares(
       bool compute_scale_using_all_data,
@@ -39,7 +41,7 @@ namespace cctbx { namespace xray { namespace targets {
       TBXX_ASSERT(!(derivatives_depth == -1 && scale_factor != 0));
       const double* wghts = weights.begin();
       const bool* rff = r_free_flags.begin();
-      if (!rff) compute_scale_using_all_data = true;
+      if (rff == 0) compute_scale_using_all_data = true;
       std::size_t n_work = 0;
       double sum_w_o_sq_work = 0;
       double sum_w_o_sq_test = 0;
@@ -59,7 +61,7 @@ namespace cctbx { namespace xray { namespace targets {
             num += w_o * c;
             denom += w * c * c;
           }
-          if (!rff || !rff[i]) {
+          if (rff == 0 || !rff[i]) {
             n_work++;
             sum_w_o_sq_work += w_o_sq;
           }
@@ -103,7 +105,7 @@ namespace cctbx { namespace xray { namespace targets {
         double wd =  w * delta;
         double t = wd * delta;
         target_per_reflection_[i] = t;
-        if (rff && rff[i]) {
+        if (rff != 0 && rff[i]) {
           target_test += t;
         }
         else {
@@ -142,7 +144,7 @@ namespace cctbx { namespace xray { namespace targets {
         }
       }
       target_work_ /= sum_w_o_sq_work;
-      if (rff && sum_w_o_sq_test > 0) {
+      if (rff != 0 && sum_w_o_sq_test > 0) {
         target_test_ = boost::optional<double>(
           target_test / sum_w_o_sq_test);
       }
