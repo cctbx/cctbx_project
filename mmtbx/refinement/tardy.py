@@ -9,7 +9,7 @@ from cctbx.array_family import flex
 import scitbx.rigid_body
 from scitbx.graph import tardy_tree
 from scitbx import matrix
-from libtbx.utils import Sorry, numbers_as_str
+from libtbx.utils import Sorry
 from libtbx.str_utils import format_value, show_string
 from libtbx import group_args
 import os
@@ -425,7 +425,7 @@ def action(
       out=log, prefix="    ")
     print >> log, \
       "  sum of allowed origin shift velocity corrections (vectors):"
-    print >> log, "   ", numbers_as_str(
+    print >> log, "   ", numstr(
       values=sum_of_allowed_origin_shift_velocity_corrections[0].elems,
       fmt="%.5f",
       brackets=("(",")"))
