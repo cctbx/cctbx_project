@@ -227,6 +227,11 @@ namespace boost_python {
         (versa<double, c_grid<2> >(*)(
            const_ref<double> const&,
            const_ref<double> const&)) matrix::outer_product, (arg("rhs")))
+      .def("matrix_outer_product",
+        (versa<double, c_grid<2> >(*)(
+           const_ref<double> const&,
+           double const&,
+           int)) matrix::outer_product, (arg("rhs"), arg("rhs_size")=-1))
       .def("matrix_lu_decomposition_in_place",
         (shared<std::size_t>(*)(
           ref<double, c_grid<2> > const&)) matrix_lu_decomposition_in_place)
