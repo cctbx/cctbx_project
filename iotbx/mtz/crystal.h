@@ -87,7 +87,7 @@ namespace iotbx { namespace mtz {
       af::shared<dataset>
       datasets() const;
 
-      //! Adds a new dataset the this crystal.
+      //! Adds a new dataset to this crystal.
       dataset
       add_dataset(
         const char *name,
