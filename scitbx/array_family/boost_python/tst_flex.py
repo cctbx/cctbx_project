@@ -1936,11 +1936,20 @@ def exercise_matrix():
   assert approx_equal(c, matrix.rec(b, b.focus())*matrix.rec(a, a.focus()))
   #
   assert flex.double().matrix_outer_product(rhs=flex.double()).size() == 0
+  assert flex.double().matrix_outer_product(rhs=1, rhs_size=0).size() == 0
   assert flex.double([1]).matrix_outer_product(rhs=flex.double()).size() == 0
+  assert flex.double([1]).matrix_outer_product(rhs=1, rhs_size=0).size() == 0
   assert flex.double().matrix_outer_product(rhs=flex.double([1])).size() == 0
+  assert flex.double().matrix_outer_product(rhs=1, rhs_size=1).size() == 0
   op = flex.double([1,2,3]).matrix_outer_product(rhs=flex.double([4,5]))
   assert op.focus() == (3,2)
   assert approx_equal(op, [4,5,8,10,12,15])
+  op = flex.double([1,2,3]).matrix_outer_product(rhs=-1)
+  assert op.focus() == (3,3)
+  assert approx_equal(op, [-1,-1,-1,-2,-2,-2,-3,-3,-3])
+  op = flex.double([1,2,3]).matrix_outer_product(rhs=-1, rhs_size=2)
+  assert op.focus() == (3,2)
+  assert approx_equal(op, [-1,-1,-2,-2,-3,-3])
   lu = flex.double([1,0,0,0,1,0,0,0,1])
   lu.resize(flex.grid(3,3))
   pivot_indices = lu.matrix_lu_decomposition_in_place()
