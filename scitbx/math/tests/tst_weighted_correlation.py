@@ -20,14 +20,11 @@ def weighted_correlation(w, x, y, compute_d_cc_d_y=False):
     return cc
   #
   # derivatives w.r.t. y
-  d_wym = w / sum_w
-  d_yc = d_wym.matrix_outer_product(-1)
-  d_yc.matrix_diagonal_add_in_place(1)
-  d_sum_wxy = d_yc.matrix_multiply(w * xc)
-  d_sum_wyy = d_yc.matrix_multiply(2 * w * yc)
+  d_sum_wxy = w * xc
+  d_sum_wyy = 2 * w * yc
   d_cc_den_sq = sum_wxx * d_sum_wyy
   d_cc_den = 1 / (2 * cc_den) * d_cc_den_sq
-  d_cc = (d_sum_wxy * cc_den - sum_wxy * d_cc_den) / cc_den**2
+  d_cc = (d_sum_wxy * cc_den - sum_wxy * d_cc_den) / cc_den_sq
   return cc, d_cc
 
 def d_cc_d_y_fd(w, x, y, eps=1e-6):
