@@ -57,7 +57,7 @@ class pprocess:
         unique_form_factor_at_x_sq += parameters[x] * math.exp(-parameters[x+1]*x_sq)
       print unique_form_factor_at_x_sq
 
-  def prepare_miller_arrays_for_cuda(self,numpy,verbose=False):
+  def prepare_miller_arrays_for_cuda(self,algorithm,verbose=False):
 
     """ The number of miller indices and atoms each must be an exact
         multiple of the BLOCKSIZE (32), so zero-padding is employed"""
@@ -66,7 +66,7 @@ class pprocess:
     # Marshal the miller indices into numpy arrays for use in CUDA
 
     # Miller indices
-    flat_mix = self.miller_indices.as_vec3_double().as_double().as_numpy_array()
+    flat_mix = self.miller_indices.as_vec3_double().as_double().as_numpy_array().astype(algorithm.numpy_t)
     if self.miller_indices.size()%FHKL_BLOCKSIZE > 0:
       newsize = 3*FHKL_BLOCKSIZE* (1+(self.miller_indices.size()/FHKL_BLOCKSIZE))
       if verbose: print "Miller indices: resetting %s array from size %d to %d"%(
@@ -76,7 +76,7 @@ class pprocess:
     self.n_flat_hkl = flat_mix.shape[0]/3
     self.flat_mix = flat_mix
 
-  def prepare_scattering_sites_for_cuda(self,numpy,verbose=False):
+  def prepare_scattering_sites_for_cuda(self,algorithm,verbose=False):
 
     # Transfer data from flex arrays to numpy & zero-pad
     # Marshal the fractional coordinates, and weights
@@ -112,21 +112,21 @@ class pprocess:
 
     uniqueix_sort_order = flex.sort_permutation(uniqueix)
     sorted_uniqueix = uniqueix.select(uniqueix_sort_order
-      ).as_numpy_array().astype(numpy.uint32)
+      ).as_numpy_array().astype(algorithm.numpy.uint32)
 
     # Scattering sites
     sites = self.scatterers.extract_sites()
     n_sites = sites.size()
-    sorted_flat_sites = sites.select(uniqueix_sort_order).as_double().as_numpy_array()
+    sorted_flat_sites = sites.select(uniqueix_sort_order).as_double().as_numpy_array().astype(algorithm.numpy_t)
     #print sorted_flat_sites.dtype,sorted_flat_sites.shape
 
     # weights: weight = site_multiplicity * occupancy
     # for example, an atom on a three-fold has site_multiplicity 1/3
     sorted_weights = flex.double([S.weight() for S in self.scatterers]).select(
-      uniqueix_sort_order).as_numpy_array()
+      uniqueix_sort_order).as_numpy_array().astype(algorithm.numpy_t)
 
     sorted_u_iso = self.scatterers.extract_u_iso().select(
-      uniqueix_sort_order).as_numpy_array()
+      uniqueix_sort_order).as_numpy_array().astype(algorithm.numpy_t)
 
     if n_sites%FHKL_BLOCKSIZE > 0:
       newsize = FHKL_BLOCKSIZE* (1+(n_sites/FHKL_BLOCKSIZE))
@@ -148,7 +148,7 @@ class pprocess:
     self.u_iso = sorted_u_iso
     self.uniqueix = sorted_uniqueix
 
-  def prepare_gaussians_symmetries_cell(self,numpy):
+  def prepare_gaussians_symmetries_cell(self,algorithm):
     # Marshal the scattering types, form factors, symmetry elements,
     # and metrical matrix into numpy arrays for use in CUDA.
 
@@ -170,7 +170,7 @@ class pprocess:
       for item in terms:
         gaussians.append(item)
 
-    self.gaussians = gaussians.as_numpy_array()
+    self.gaussians = gaussians.as_numpy_array().astype(algorithm.numpy_t)
     self.g_stride = 1 + 2 *self.n_terms_in_sum
     assert self.gaussians.shape[0] == self.n_gaussians * self.g_stride
 
@@ -184,14 +184,14 @@ class pprocess:
     for symop in self.space_group:
       for item in symop.r().as_double():  symmetry.append(item)
       for item in symop.t().as_double():  symmetry.append(item)
-    self.symmetry = symmetry.as_numpy_array()
+    self.symmetry = symmetry.as_numpy_array().astype(algorithm.numpy_t)
     assert self.symmetry.shape[0] == self.order_z * self.sym_stride
 
     # Unit cell dimensions --> metrical matrix --> establishes dstar for given hkl
-    self.reciprocal_metrical_matrix = numpy.array(
-      self.unit_cell.reciprocal_metrical_matrix() )
+    self.reciprocal_metrical_matrix = algorithm.numpy.array(
+      self.unit_cell.reciprocal_metrical_matrix() ).astype(algorithm.numpy_t)
 
-  def validate_the_inputs(self,manager,cuda):
+  def validate_the_inputs(self,manager,cuda,algorithm):
 
     # Assess limits due to the current implementation:
     # no support for ADP's, f' or f"
@@ -230,6 +230,13 @@ class pprocess:
       cc = cuda.Device(0).compute_capability() ; assert cc >= (1,3)
     except:
       raise Sorry("Implementation assumes CUDA compute capability >= 1.3; found %d.%d"%cc)
+
+    # float precision failed on Tesla C1060 test with compute capability 1.3. Alignment problem copying from global to __shared__?
+    try:
+      if algorithm.float_t=="float":
+        assert cc >= (2,0)
+    except:
+      raise Sorry("Float32 kernel tests correctly only with CUDA compute capability >= 2.0; found %d.%d"%cc)
 
     # Assess limits based on global memory size of parallel unit
     n_atoms = len(self.scatterers)
@@ -282,13 +289,13 @@ class pprocess:
       import pycuda.driver as cuda
       from pycuda.compiler import SourceModule
 
-      self.validate_the_inputs(instance,cuda)
+      self.validate_the_inputs(instance,cuda,algorithm)
 
-      self.prepare_miller_arrays_for_cuda(algorithm.numpy)
+      self.prepare_miller_arrays_for_cuda(algorithm)
 
-      self.prepare_scattering_sites_for_cuda(algorithm.numpy)
+      self.prepare_scattering_sites_for_cuda(algorithm)
 
-      self.prepare_gaussians_symmetries_cell(algorithm.numpy)
+      self.prepare_gaussians_symmetries_cell(algorithm)
 
       assert cuda.Device.count() >= 1
 
@@ -296,12 +303,12 @@ class pprocess:
       WARPSIZE=device.get_attribute(cuda.device_attribute.WARP_SIZE) # 32
       MULTIPROCESSOR_COUNT=device.get_attribute(cuda.device_attribute.MULTIPROCESSOR_COUNT)
 
-      sort_mod = SourceModule(mod_fhkl_sorted%(self.gaussians.shape[0],
+      sort_mod = SourceModule((mod_fhkl_sorted%(self.gaussians.shape[0],
                          self.symmetry.shape[0],
                          self.sym_stride,
                          self.g_stride,
                          int(self.use_debye_waller),
-                         self.order_z,self.order_p),
+                         self.order_z,self.order_p)).replace("floating_point_t",algorithm.float_t)
                          )
 
       r_m_m_address = sort_mod.get_global("reciprocal_metrical_matrix")[0]
@@ -315,11 +322,11 @@ class pprocess:
 
       CUDA_fhkl = sort_mod.get_function("CUDA_fhkl")
 
-      intermediate_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
-      intermediate_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+      intermediate_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
+      intermediate_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
       for x in xrange(self.scatterers.number_of_types):
-        fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
-        fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy.float64)
+        fhkl_real = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
+        fhkl_imag = algorithm.numpy.zeros((self.n_flat_hkl,),algorithm.numpy_t)
 
         CUDA_fhkl(cuda.InOut(fhkl_real),
                  cuda.InOut(fhkl_imag),
@@ -336,8 +343,8 @@ class pprocess:
         intermediate_real += fhkl_real
         intermediate_imag += fhkl_imag
 
-      flex_fhkl_real = flex.double(intermediate_real[0:len(self.miller_indices)])
-      flex_fhkl_imag = flex.double(intermediate_imag[0:len(self.miller_indices)])
+      flex_fhkl_real = flex.double(intermediate_real[0:len(self.miller_indices)].astype(algorithm.numpy.float64))
+      flex_fhkl_imag = flex.double(intermediate_imag[0:len(self.miller_indices)].astype(algorithm.numpy.float64))
 
       instance._results = fcalc_container(flex.complex_double(flex_fhkl_real,flex_fhkl_imag))
 
@@ -345,11 +352,11 @@ class pprocess:
 
 FHKL_BLOCKSIZE=32
 mod_fhkl_sorted ="""
-__device__ __constant__ double reciprocal_metrical_matrix[6];
-__device__ __constant__ double gaussians[%%d];
-__device__ __constant__ double symmetry[%%d];
+__device__ __constant__ floating_point_t reciprocal_metrical_matrix[6];
+__device__ __constant__ floating_point_t gaussians[%%d];
+__device__ __constant__ floating_point_t symmetry[%%d];
 
-__device__ double get_d_star_sq(double const& H,double const& K,double const& L){
+__device__ floating_point_t get_d_star_sq(floating_point_t const& H,floating_point_t const& K,floating_point_t const& L){
    return
             (H * H) * reciprocal_metrical_matrix[0]
           + (K * K) * reciprocal_metrical_matrix[1]
@@ -361,19 +368,19 @@ __device__ double get_d_star_sq(double const& H,double const& K,double const& L)
 
 # define SYM_STRIDE %%d
 
-__device__ double get_H_dot_translation(
-                              double const& H,double const& K,double const& L,
+__device__ floating_point_t get_H_dot_translation(
+                              floating_point_t const& H,floating_point_t const& K,floating_point_t const& L,
                               unsigned int const & isym){
   // case for primitive cells: return 0
   // but in general,
-     return H * symmetry[SYM_STRIDE*isym+9]
-          + K * symmetry[SYM_STRIDE*isym+10]
-          + L * symmetry[SYM_STRIDE*isym+11]
+     return H * (symmetry[SYM_STRIDE*isym+9])
+          + K * (symmetry[SYM_STRIDE*isym+10])
+          + L * (symmetry[SYM_STRIDE*isym+11])
     ;
 }
 
-__device__ double get_H_dot_X(double* const& site, unsigned int const& i,
-                              double const& H,double const& K,double const& L,
+__device__ floating_point_t get_H_dot_X(floating_point_t* const& site, unsigned int const& i,
+                              floating_point_t const& H,floating_point_t const& K,floating_point_t const& L,
                               unsigned int const & isym){
   // case for space group P1
   // return H * site[0] + K * site[1] + L * site[2];
@@ -394,13 +401,13 @@ __device__ double get_H_dot_X(double* const& site, unsigned int const& i,
     ;
 }
 
-__global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
-                        const double *xyzsites, const double *weight,
-                        const double *u_iso,
+__global__ void CUDA_fhkl(floating_point_t *fhkl_real,floating_point_t *fhkl_imag,
+                        const floating_point_t *xyzsites, const floating_point_t *weight,
+                        const floating_point_t *u_iso,
                         const unsigned int scattering_type,
                         const unsigned int index_begin,
                         const unsigned int index_end,
-                        const double *hkl)
+                        const floating_point_t *hkl)
 {
    #define BLOCKSIZE %d
    #define G_STRIDE %%d
@@ -412,67 +419,65 @@ __global__ void CUDA_fhkl(double *fhkl_real,double *fhkl_imag,
    const unsigned long ix=threadIdx.x+blockDim.x*blockIdx.x;
 
    /*later figure out how to make this shared*/
-   const double twopi= 8.* atan(1.);
+   const floating_point_t twopi= 8.* atan(1.);
    #if USE_DEBYE_WALLER
-     const double eight_pi_sq = 2.* twopi * twopi;
-     __shared__ double b_iso[BLOCKSIZE];
+     const floating_point_t eight_pi_sq = 2.* twopi * twopi;
+     __shared__ floating_point_t b_iso[BLOCKSIZE];
    #endif
    /* can the threads coalesce with a stride of 3? Make into __shared__ and See Programming Guide Fig. G-2 */
-   const double h = hkl[3*ix];
-   const double k = hkl[3*ix+1];
-   const double l = hkl[3*ix+2];
-   double fr=0,fi=0;
+   const floating_point_t h = hkl[3*ix];
+   const floating_point_t k = hkl[3*ix+1];
+   const floating_point_t l = hkl[3*ix+2];
+   floating_point_t fr=0,fi=0;
 
-   __shared__ double xyz[3*BLOCKSIZE];
-   __shared__ double wght[BLOCKSIZE];
+   __shared__ floating_point_t xyz[3*BLOCKSIZE];
+   __shared__ floating_point_t wght[BLOCKSIZE];
 
-   long at = BLOCKSIZE*index_begin/BLOCKSIZE;
-   double x_sq = get_d_star_sq(h,k,l) / 4.;
+   long atom_p = BLOCKSIZE*index_begin/BLOCKSIZE;
+   floating_point_t x_sq = get_d_star_sq(h,k,l) / 4.;
 
    /* get unique form factors at d_star_sq.
       all scatterers are the same for any particular kernel invocation; hence only one form factor
     */
-   double form_factor = gaussians[G_STRIDE*scattering_type];// constant term
+   floating_point_t form_factor = gaussians[G_STRIDE*scattering_type];// constant term
    for (unsigned int term=1; term < G_STRIDE; term+=2){
      form_factor += gaussians[G_STRIDE*scattering_type + term] *
                     exp(-gaussians[G_STRIDE*scattering_type + term + 1] * x_sq);
    }
 
-   for (;at<index_end;at+=BLOCKSIZE) {
-      xyz[threadIdx.x]=xyzsites[3*at+threadIdx.x];
-      xyz[BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+BLOCKSIZE];
-      xyz[2*BLOCKSIZE+threadIdx.x]=xyzsites[3*at+threadIdx.x+2*BLOCKSIZE];
-      wght[threadIdx.x]=weight[at+threadIdx.x];
+   for ( ;atom_p<index_end; atom_p+=BLOCKSIZE ) {
+      xyz[threadIdx.x]=xyzsites[3*atom_p+threadIdx.x];
+      xyz[BLOCKSIZE+threadIdx.x]=xyzsites[3*atom_p+threadIdx.x+BLOCKSIZE];
+      xyz[2*BLOCKSIZE+threadIdx.x]=xyzsites[3*atom_p+threadIdx.x+2*BLOCKSIZE];
+      wght[threadIdx.x]=weight[atom_p+threadIdx.x];
       #if USE_DEBYE_WALLER
-        b_iso[threadIdx.x] = eight_pi_sq * u_iso[at+threadIdx.x];
+        b_iso[threadIdx.x] = eight_pi_sq * u_iso[atom_p+threadIdx.x];
       #endif
       __syncthreads();
 
       for(unsigned int i=0;i<BLOCKSIZE;i++) {
-        double form_factor_mask = form_factor;
-        double debye_waller_factor = 1.;
+        floating_point_t form_factor_mask = form_factor;
+        floating_point_t debye_waller_factor = 1.;
         #if USE_DEBYE_WALLER
           debye_waller_factor *= exp( -b_iso[i] * x_sq );
         #endif
-        if (at+i < index_begin || at+i >= index_end) {
-          form_factor_mask = 0.;
-          debye_waller_factor = 0.;
-        }
 
-        double s,c,s_imag=0.,c_real=0.;
+        floating_point_t s,c,s_imag=0.,c_real=0.;
         for(unsigned int isym=0; isym < ORDER_P; isym++){
           /*do not use the faster, but less accurate intrinsic function.*/
           sincos(twopi* get_H_dot_X( xyz, i, h, k, l, isym), &s,&c);
           c_real += c;
           s_imag += s;
         }
-        fr += form_factor_mask * wght[i] * c_real * debye_waller_factor;
-        fi += form_factor_mask * wght[i] * s_imag * debye_waller_factor;
+        if (atom_p+i >= index_begin && atom_p+i < index_end) {
+          fr += form_factor_mask * wght[i] * c_real * debye_waller_factor;
+          fi += form_factor_mask * wght[i] * s_imag * debye_waller_factor;
+        }
       }
    }
 
    //multiply factor from centring translations
-   double s,c,s_imag_trans=0.,c_real_trans=0.;
+   floating_point_t s,c,s_imag_trans=0.,c_real_trans=0.;
    for(unsigned int isym=0; isym < ORDER_T; isym+=ORDER_P){
      sincos(twopi* get_H_dot_translation( h, k, l, isym), &s,&c);
      c_real_trans += c;
@@ -497,15 +502,20 @@ class direct_summation_simple:
     return other=="direct"
 
 class direct_summation_cuda_platform(direct_summation_simple):
-  def __init__(self):
+  def __init__(self,float_t="double"):
     self.pycuda=True
+    self.float_t = float_t
     self.validate_platform_resources()
+
   def validate_platform_resources(self):
     try:
       import numpy
       self.numpy = numpy
     except:
       raise Sorry("""Module numpy must be installed for parallel processor direct summation.""")
+
+    assert self.float_t in ["double","float"]
+    self.numpy_t = {"double":numpy.float64,"float":numpy.float32}[self.float_t]
 
     try:
       import pycuda.autoinit # import dependency
