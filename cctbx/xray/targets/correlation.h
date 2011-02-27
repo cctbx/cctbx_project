@@ -79,13 +79,13 @@ namespace cctbx { namespace xray { namespace targets {
         sum_wyy += w * yc * yc;
       }
       double cc_den_sq = sum_wxx * sum_wyy;
-      if (cc_den_sq != 0) {
+      double cc_den_qu = cc_den_sq * cc_den_sq;
+      if (cc_den_qu != 0) {
         double cc_den = std::sqrt(cc_den_sq);
         TBXX_ASSERT(cc_den != 0);
         double cc = sum_wxy / cc_den;
         if (derivatives_depth != 0) {
           gradients_work_.reserve(n_work);
-          TBXX_ASSERT(derivatives_depth != 2); // not implemented
           if (derivatives_depth == 2) {
             hessians_work_.reserve(n_work);
           }
@@ -100,17 +100,56 @@ namespace cctbx { namespace xray { namespace targets {
               double d_sum_wyy = 2 * w * yc;
               double d_cc_den_sq = sum_wxx * d_sum_wyy;
               double d_cc_den = 1 / (2 * cc_den) * d_cc_den_sq;
-              double d_cc = (d_sum_wxy * cc_den - sum_wxy * d_cc_den)
-                          / cc_den_sq;
-              double gf;
+              double d_cc_num = d_sum_wxy * cc_den - sum_wxy * d_cc_den;
+              double d_cc = d_cc_num / cc_den_sq;
+              //
+              double a = f_calc[i].real();
+              double b = f_calc[i].imag();
+              double y = 0;
+              double y3 = 0;
+              double gf = 0;
               if (obs_type == 'F') {
-                gf = std::abs(f_calc[i]);
-                if (gf != 0) gf = d_cc / gf;
+                y = std::sqrt(a*a + b*b);
+                y3 = y * y * y;
+                if (y3 != 0) gf = d_cc / y;
               }
               else {
                 gf = 2 * d_cc;
               }
-              gradients_work_.push_back(-gf * f_calc[i]);
+              gradients_work_.push_back(std::complex<double>(-gf*a, -gf*b));
+              if (derivatives_depth == 2) {
+                double d_yc = 1 - w / sum_w;
+                double d2_sum_wyy = 2 * w * d_yc;
+                double d2_cc_den_sq = sum_wxx * d2_sum_wyy;
+                double d2_cc_den = 0.5 * (d2_cc_den_sq / cc_den
+                  - d_cc_den_sq * d_cc_den / cc_den_sq);
+                double d2_cc_num = -sum_wxy * d2_cc_den;
+                double d2_cc = d2_cc_num / cc_den_sq
+                  - d_cc_num * d_cc_den_sq / cc_den_qu;
+                scitbx::vec3<double> cw;
+                if (obs_type == 'F') {
+                  if (y3 == 0) {
+                    cw.fill(1);
+                  }
+                  else {
+                    TBXX_ASSERT(y != 0);
+                    double dya = a / y;
+                    double dyb = b / y;
+                    double d2yaa = b*b / y3;
+                    double d2ybb = a*a / y3;
+                    double d2yab = -a*b / y3;
+                    /*daa*/ cw[0] = -(d2_cc * dya * dya + d_cc * d2yaa);
+                    /*dbb*/ cw[1] = -(d2_cc * dyb * dyb + d_cc * d2ybb);
+                    /*dab*/ cw[2] = -(d2_cc * dyb * dya + d_cc * d2yab);
+                  }
+                }
+                else {
+                  /*daa*/ cw[0] = -(d2_cc * 4 * a * a + d_cc * 2);
+                  /*dbb*/ cw[1] = -(d2_cc * 4 * b * b + d_cc * 2);
+                  /*dab*/ cw[2] = -(d2_cc * 4 * a * b);
+                }
+                hessians_work_.push_back(cw);
+              }
             }
           }
         }

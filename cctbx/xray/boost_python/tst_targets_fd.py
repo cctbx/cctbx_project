@@ -37,7 +37,7 @@ class random_inputs(object):
         weights=O.weights,
         r_free_flags=O.r_free_flags,
         f_calc=flex.complex_double(O.a, O.b),
-        derivatives_depth=min(1,derivatives_depth)) # XXX
+        derivatives_depth=derivatives_depth)
     raise RuntimeError("Unknown target_type.")
 
   def gradients_work_fd(O, eps=1.e-6):
@@ -85,7 +85,6 @@ def exercise_random(n_trials=10, n_refl=30):
         ga = tg.gradients_work()
         gf = ri.gradients_work_fd()
         assert approx_equal(ga, gf)
-        if (target_type == "cc"): continue # XXX
         ca = tg.hessians_work()
         cf = ri.hessians_work_fd()
         assert approx_equal(ca, cf)
