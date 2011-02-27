@@ -9,20 +9,24 @@ from cctbx.xray.structure_factors.from_scatterers_direct_parallel import direct_
 from cctbx.xray.structure_factors.from_scatterers_direct_parallel import direct_summation_cuda_platform
 from libtbx.utils import wall_clock_time, show_times_at_exit
 from libtbx.test_utils import approx_equal
+from libtbx import table_utils
 
 def show_times_vs_complexity(times, header):
-  cols = [ "# HKL" + " "*3,
-           "cpu-time" + " "*3,
-           "simple-tm" + " "*3,
-           "fft-time" + " "*3,
-           "gpu-time" + " "*3,
+
+  table_header = [ "# HKL",
+           "cpu-time",
+           "simple-tm",
+           "fft-time","R(%)",
+           "gpu-time",
+           "gpuf-tm","R(%)",
            "d-min(angstrom)" ]
-  print header
-  print ''.join(cols)
-  fmt = "%%-%ii%%-%i.2f%%-%i.2f%%-%i.2f%%-%i.2f%%5.2f" % tuple(
-   [ len(c) for c in cols[:5] ])
-  for i,t,d,g,s,f in times:
-    print fmt % (i,t,s,f,g,d)
+  table_data = [table_header]
+  for i,t,d,g,gf,gfR,s,f,fR in times:
+    table_row = ["%.0f"%i,"%.2f"%t,"%.2f"%s,"%.2f"%f,"%.2f"%fR,
+                 "%.2f"%g,"%.2f"%gf,"%.5f"%gfR,"%5.2f"%d]
+    table_data.append(table_row)
+  print table_utils.format(table_data,has_header=True,justify="left",
+    prefix="| ",postfix=" |")
 
 def show_diagnostics(xs):
   #help(xs.scatterers())
@@ -54,6 +58,7 @@ def exercise_direct(space_group_info,
   times = []
 
   cuda_platform = direct_summation_cuda_platform()
+  cuda_platform_float = direct_summation_cuda_platform(float_t="float")
 
   direct_reference = True
 
@@ -89,13 +94,33 @@ def exercise_direct(space_group_info,
     gpu_direct = xs.structure_factors(d_min=d_min,algorithm=cuda_platform)
     gpu_time = timer.elapsed()
     gpu_direct_f = gpu_direct.f_calc()
+    gpu_amplitude = gpu_direct_f.as_amplitude_array()
+    sum_amp = flex.sum(gpu_amplitude.data())
+
+    timer = wall_clock_time()
+    gpuf_direct = xs.structure_factors(d_min=d_min,algorithm=cuda_platform_float)
+    gpuf_time = timer.elapsed()
+    gpuf_direct_f = gpuf_direct.f_calc()
+    gpuf_amplitude = gpuf_direct_f.as_amplitude_array()
+
+    abs_diff = flex.abs(gpuf_amplitude.data() - gpu_amplitude.data())
+    sum_diff = flex.sum(abs_diff)
+    gpuf_Rfactor = 100.*sum_diff/sum_amp
 
     timer = wall_clock_time()
     fft_algorithm = xs.structure_factors(d_min=d_min,algorithm="fft")
     fft_time = timer.elapsed()
     fft_f = fft_algorithm.f_calc()
+    fft_amplitude = fft_f.as_amplitude_array()
+    abs_diff = flex.abs(fft_amplitude.data() - gpu_amplitude.data())
+    sum_diff = flex.sum(abs_diff)
+    fft_Rfactor = 100.*sum_diff/sum_amp
 
-    times.append((number_of_reflections,cpu_time,d_min,gpu_time,simple_time,fft_time))
+    times.append((number_of_reflections,cpu_time,d_min,
+                  gpu_time,
+                  gpuf_time,gpuf_Rfactor,
+                  simple_time,
+                  fft_time,fft_Rfactor))
     # doesn't assert correctly: assert approx_equal(cpu_direct_f.data(), fft_f.data())
     if direct_reference:
      assert approx_equal(cpu_direct_f.data(), gpu_direct_f.data(), eps=1e-6)
@@ -142,8 +167,9 @@ def run(args,multiplier):
 
 if __name__ == '__main__':
   import sys
-  run(sys.argv[1:],10)
-  run(sys.argv[1:],20)
-  run(sys.argv[1:],40)
-  run(sys.argv[1:],80)
-  run(sys.argv[1:],160)
+
+  for size in [10,20,40,80,160,320]:
+    if "--fileout" in sys.argv[1:]:
+      result_base = sys.argv[ sys.argv.index("--fileout") + 1 ]
+      sys.stdout = open("%s%03d.log"%(result_base,size),"w")
+    run(sys.argv[1:],size)
