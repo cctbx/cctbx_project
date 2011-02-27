@@ -66,7 +66,10 @@ class pprocess:
     # Marshal the miller indices into numpy arrays for use in CUDA
 
     # Miller indices
-    flat_mix = self.miller_indices.as_vec3_double().as_double().as_numpy_array().astype(algorithm.numpy_t)
+    if hasattr(self.miller_indices,"as_vec3_double"):
+      flat_mix = self.miller_indices.as_vec3_double().as_double().as_numpy_array().astype(algorithm.numpy_t)
+    else: #it's already a vec3 double array (e.g., single particle diffraction)
+      flat_mix = self.miller_indices.as_double().as_numpy_array().astype(algorithm.numpy_t)
     if self.miller_indices.size()%FHKL_BLOCKSIZE > 0:
       newsize = 3*FHKL_BLOCKSIZE* (1+(self.miller_indices.size()/FHKL_BLOCKSIZE))
       if verbose: print "Miller indices: resetting %s array from size %d to %d"%(
