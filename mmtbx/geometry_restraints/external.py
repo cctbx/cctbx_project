@@ -46,6 +46,7 @@ def get_rosetta_manager (pdb_hierarchy,
                          params,
                          log=sys.stdout) :
   import rosetta_adaptbx # import dependency
+  rosetta_adaptbx.init()
   from rosetta_adaptbx import scoring
   manager = scoring.manager(
     pdb_hierarchy=pdb_hierarchy,
