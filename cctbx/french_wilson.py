@@ -1,4 +1,5 @@
 import sys, math
+from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
 import libtbx.phil
 
@@ -287,8 +288,8 @@ def french_wilson_scale(miller_array, params=None, log=None):
   if log == None:
     log = sys.stdout
   rejected = []
-  print >> log, \
-  "============== Scaling input intensities via French-Wilson Method =============="
+  make_sub_header("Scaling input intensities via French-Wilson Method",
+    out=log)
   print >> log, "Trying %d bins..." % params.max_bins
   f_w_binning(miller_array=miller_array,
               max_bins=params.max_bins,
