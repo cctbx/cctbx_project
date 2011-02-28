@@ -37,19 +37,41 @@ def sfac_unit(lapp, xray_structure):
   return sfac_indices
 
 def atoms(lapp, sfac_indices, xray_structure):
-  for scatterer in xray_structure.scatterers():
-    st = scatterer.scattering_type
+  ss = xray_structure.space_group_info().structure_seminvariants()
+  if (ss.number_of_continuous_allowed_origin_shifts() == 0):
+    caosh_flags = None
+    caosh_i_sc = None
+  else:
+    assert ss.continuous_shifts_are_principal()
+    caosh_flags = ss.principal_continuous_shift_flags()
+    reg = xray_structure.scattering_type_registry()
+    w_max = None
+    for i_sc,sc in enumerate(xray_structure.scatterers()):
+      gaussian = reg.gaussian(sc.scattering_type)
+      w = abs(sc.weight() * gaussian.at_stol(0))
+      if (w_max is None or w_max < w):
+        w_max = w
+        caosh_i_sc = i_sc
+    assert w_max is not None
+  for i_sc,sc in enumerate(xray_structure.scatterers()):
+    st = sc.scattering_type
     lbl = st + str(sfac_indices[st])
     sfac = sfac_indices[st]
     coor = []
-    for x in scatterer.site: coor.append(NOFIX(x))
-    coor = dot5fdot_list(coor)
-    sof = FIX(scatterer.weight())
-    if (not scatterer.flags.use_u_aniso()):
-      lapp("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),
-        dot6gdot(NOFIX(scatterer.u_iso))))
+    if (caosh_i_sc is None or i_sc != caosh_i_sc):
+      for x in sc.site: coor.append(NOFIX(x))
     else:
-      u = adptbx.u_star_as_u_cif(xray_structure.unit_cell(), scatterer.u_star)
+      for x,f in zip(sc.site, caosh_flags):
+        if (f): fix = FIX
+        else:   fix = NOFIX
+        coor.append(fix(x))
+    coor = dot5fdot_list(coor)
+    sof = FIX(sc.weight())
+    if (not sc.flags.use_u_aniso()):
+      lapp("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),
+        dot6gdot(NOFIX(sc.u_iso))))
+    else:
+      u = adptbx.u_star_as_u_cif(xray_structure.unit_cell(), sc.u_star)
       u_fix = []
       for c in u: u_fix.append(NOFIX(c))
       u = u_fix
