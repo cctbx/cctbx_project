@@ -118,7 +118,7 @@ class ls_refinement(object):
     O.f_obs = f_obs
     O.i_obs = f_obs.f_as_f_sq()
     O.weights = flex.double(f_obs.data().size(), 1)
-    if (O.params.ls_obs_type == "I"):
+    if (O.params.target_obs_type == "I"):
       if (O.params.i_obs_weights == "unit"):
         pass
       elif (O.params.i_obs_weights == "one_over_i_obs"):
@@ -337,19 +337,29 @@ class ls_refinement(object):
 
   def __get_ls(O):
     O.__unpack_variables()
-    if (O.params.ls_obs_type == "F"):
+    if (O.params.target_obs_type == "F"):
       obs = O.f_obs
     else:
       obs = O.i_obs
-    return xray.targets_least_squares(
-      compute_scale_using_all_data=True,
-      obs_type=O.params.ls_obs_type,
-      obs=obs.data(),
-      weights=O.weights,
-      r_free_flags=None,
-      f_calc=O.get_f_calc().data(),
-      derivatives_depth=2,
-      scale_factor=O.params.f_calc_scale_factor)
+    if (O.params.target_type == "ls"):
+      return xray.targets_least_squares(
+        compute_scale_using_all_data=True,
+        obs_type=O.params.target_obs_type,
+        obs=obs.data(),
+        weights=O.weights,
+        r_free_flags=None,
+        f_calc=O.get_f_calc().data(),
+        derivatives_depth=2,
+        scale_factor=O.params.f_calc_scale_factor)
+    elif (O.params.target_type == "cc"):
+      return xray.targets_correlation(
+        obs_type=O.params.target_obs_type,
+        obs=obs.data(),
+        weights=O.weights,
+        r_free_flags=None,
+        f_calc=O.get_f_calc().data(),
+        derivatives_depth=2)
+    raise RuntimeError("Unknown target_type.")
 
   def update_fgc(O, is_iterate=False):
     if (len(O.xfgc_infos) != 0):
@@ -704,7 +714,9 @@ def get_master_phil(
       .type = float
     show_distances = False
       .type = bool
-    ls_obs_type = *F I
+    target_type = *ls cc
+      .type = choice
+    target_obs_type = *F I
       .type = choice
     i_obs_weights = *unit one_over_i_obs
       .type = choice
