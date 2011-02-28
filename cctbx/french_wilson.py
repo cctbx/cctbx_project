@@ -308,20 +308,27 @@ def french_wilson_scale(miller_array, params=None, log=None):
     sel = miller_array.binner().selection(i_bin)
     bin = miller_array.select(sel)
     if bin.size() > 0:
-      bin_mean_intensity = bin_mean_intensities[i_bin]
+      #bin_mean_intensity = bin_mean_intensities[i_bin]
       cen = bin.select_centric()
       acen = bin.select_acentric()
       for I, sigma_I, index in zip(cen.data(),
                                    cen.sigmas(),
                                    cen.indices()):
         if (sigma_I <= 0) :
-          rejected.append( (index, I, sigma_I, mean_intensity) )
-          continue
-        mean_intensity = d_mean_intensities[index]
-        J, sigma_J, F, sigma_F = fw_centric(
-                                   I=I,
-                                   sigma_I=sigma_I,
-                                   mean_intensity=mean_intensity)
+          if I <= 0 or sigma_I < 0 :
+            rejected.append( (index, I, sigma_I, mean_intensity) )
+            continue
+          else:
+            J = I
+            sigma_J = sigma_I
+            F = math.sqrt(I)
+            sigma_F = sigma_I
+        else :
+          mean_intensity = d_mean_intensities[index]
+          J, sigma_J, F, sigma_F = fw_centric(
+                                     I=I,
+                                     sigma_I=sigma_I,
+                                     mean_intensity=mean_intensity)
         if J >= 0:
           assert sigma_J >= 0 and F >= 0 and sigma_F >= 0
           new_I.append(J)
@@ -335,13 +342,20 @@ def french_wilson_scale(miller_array, params=None, log=None):
                                    acen.sigmas(),
                                    acen.indices()):
         if (sigma_I <= 0) :
-          rejected.append( (index, I, sigma_I, mean_intensity) )
-          continue
-        mean_intensity = d_mean_intensities[index]
-        J, sigma_J, F, sigma_F = fw_acentric(
-                                   I=I,
-                                   sigma_I=sigma_I,
-                                   mean_intensity=mean_intensity)
+          if I <= 0 or sigma_I < 0 :
+            rejected.append( (index, I, sigma_I, mean_intensity) )
+            continue
+          else:
+            J = I
+            sigma_J = sigma_I
+            F = math.sqrt(I)
+            sigma_F = sigma_I
+        else :
+          mean_intensity = d_mean_intensities[index]
+          J, sigma_J, F, sigma_F = fw_acentric(
+                                     I=I,
+                                     sigma_I=sigma_I,
+                                     mean_intensity=mean_intensity)
         if J >= 0:
           assert sigma_J >= 0 and F >= 0 and sigma_F >= 0
           new_I.append(J)
