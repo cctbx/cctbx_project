@@ -481,14 +481,14 @@ __global__ void CUDA_fhkl(floating_point_t *fhkl_real,floating_point_t *fhkl_ima
 
    //multiply factor from centring translations
    floating_point_t s,c,s_imag_trans=0.,c_real_trans=0.;
-   for(unsigned int isym=0; isym < ORDER_T; isym+=ORDER_P){
+   for(unsigned int isym=0; isym < ORDER_Z; isym+=ORDER_P){
      sincos(twopi* get_H_dot_translation( h, k, l, isym), &s,&c);
      c_real_trans += c;
      s_imag_trans += s;
    }
 
-   fhkl_real[ix] += ORDER_T * (c_real_trans * fr - s_imag_trans * fi);
-   fhkl_imag[ix] += ORDER_T * (s_imag_trans * fr + c_real_trans * fi);
+   fhkl_real[ix] += (c_real_trans * fr - s_imag_trans * fi);
+   fhkl_imag[ix] += (s_imag_trans * fr + c_real_trans * fi);
 }
 """%(FHKL_BLOCKSIZE)
 
