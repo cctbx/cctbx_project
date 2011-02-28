@@ -11,7 +11,7 @@ namespace cctbx { namespace xray { namespace targets {
     protected:
       bool compute_scale_using_all_data_;
       char obs_type_;
-      double scale_factor_;
+      boost::optional<double> scale_factor_;
       public:
 
     least_squares() {}
@@ -70,15 +70,15 @@ namespace cctbx { namespace xray { namespace targets {
           }
         }
         if (scale_factor == 0) {
-          TBXX_ASSERT(denom > 0);
-          scale_factor_ = num / denom;
-          if (derivatives_depth == -1) return;
+          if (denom <= 0) return;
+          scale_factor = num / denom;
         }
-        else {
-          scale_factor_ = scale_factor;
-        }
+        scale_factor_ = scale_factor;
+        if (derivatives_depth == -1) return;
       }
-      TBXX_ASSERT(sum_w_o_sq_work > 0);
+      if (sum_w_o_sq_work <= 0) {
+        return;
+      }
       if (derivatives_depth != 0) {
         if (compute_scale_using_all_data && n_work != obs.size()) {
           throw std::runtime_error(
@@ -91,9 +91,10 @@ namespace cctbx { namespace xray { namespace targets {
           hessians_work_.reserve(n_work);
         }
       }
-      double target_test = 0;
+      double wdsq_work = 0;
+      double wdsq_test = 0;
       double grad_factor = (obs_type == 'F' ? -2 : -4)
-                         * scale_factor_ / sum_w_o_sq_work;
+                         * scale_factor / sum_w_o_sq_work;
       for(std::size_t i=0;i<obs.size();i++) {
         double o = obs[i];
         double w = (wghts ? wghts[i] : 1);
@@ -101,15 +102,15 @@ namespace cctbx { namespace xray { namespace targets {
         double b = f_calc[i].imag();
         double aabb = a*a + b*b;
         double c = (obs_type == 'F' ? std::sqrt(aabb) : aabb);
-        double delta = o - scale_factor_ * c;
+        double delta = o - scale_factor * c;
         double wd =  w * delta;
-        double t = wd * delta;
-        target_per_reflection_[i] = t;
+        double wdsq = wd * delta;
+        target_per_reflection_[i] = wdsq;
         if (rff != 0 && rff[i]) {
-          target_test += t;
+          wdsq_test += wdsq;
         }
         else {
-          target_work_ += t;
+          wdsq_work += wdsq;
           if (derivatives_depth != 0) {
             double c_cub = c * c * c;
             if (c == 0 || c_cub == 0) {
@@ -127,12 +128,12 @@ namespace cctbx { namespace xray { namespace targets {
                 if (obs_type == 'F') {
                   double term = -grad_factor * w;
                   double oocc = o / c_cub;
-                  /*daa*/ cw[0] = term * (scale_factor_ - b * b * oocc);
-                  /*dbb*/ cw[1] = term * (scale_factor_ - a * a * oocc);
+                  /*daa*/ cw[0] = term * (scale_factor - b * b * oocc);
+                  /*dbb*/ cw[1] = term * (scale_factor - a * a * oocc);
                   /*dab*/ cw[2] = term * a * b * oocc;
                 }
                 else {
-                  double term = -2 * grad_factor * scale_factor_ * w;
+                  double term = -2 * grad_factor * scale_factor * w;
                   /*daa*/ cw[0] = term * a * a + gf;
                   /*dbb*/ cw[1] = term * b * b + gf;
                   /*dab*/ cw[2] = term * a * b;
@@ -143,10 +144,11 @@ namespace cctbx { namespace xray { namespace targets {
           }
         }
       }
-      target_work_ /= sum_w_o_sq_work;
+      if (sum_w_o_sq_work > 0) {
+        target_work_ = wdsq_work / sum_w_o_sq_work;
+      }
       if (rff != 0 && sum_w_o_sq_test > 0) {
-        target_test_ = boost::optional<double>(
-          target_test / sum_w_o_sq_test);
+        target_test_ = wdsq_test / sum_w_o_sq_test;
       }
     }
 
@@ -159,7 +161,7 @@ namespace cctbx { namespace xray { namespace targets {
     char
     obs_type() const { return obs_type_; }
 
-    double
+    boost::optional<double>
     scale_factor() const { return scale_factor_; }
 
     /* Mathematica input for gradients, hessian, analytical scale_factor (k) :

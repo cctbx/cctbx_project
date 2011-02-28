@@ -25,7 +25,7 @@ namespace {
       class_<w_t>("targets_common_results", no_init)
         .def(init<
           af::shared<double> const&,
-          double,
+          boost::optional<double> const&,
           boost::optional<double> const&,
           af::shared<std::complex<double> > const&>((
             arg("target_per_reflection"),
@@ -34,7 +34,7 @@ namespace {
             arg("gradients_work"))))
         .def(init<
           af::shared<double> const&,
-          double,
+          boost::optional<double> const&,
           boost::optional<double> const&,
           af::shared<std::complex<double> > const&,
           af::shared<scitbx::vec3<double> > const&>((
