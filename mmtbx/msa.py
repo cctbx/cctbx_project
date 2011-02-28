@@ -83,6 +83,11 @@ class align_pdb_residues (object) :
         assert (j == len(new_resseqs))
         self._lookup_table[name] = new_resseqs
 
+  def write_file (self, file_name) :
+    f = open(file_name, "w")
+    f.write(str(self.muscle_aln))
+    f.close()
+
   def get_name_index (self, pdb_name) :
     if (self._name_lookup is not None) :
       return self._name_lookup[pdb_name]
