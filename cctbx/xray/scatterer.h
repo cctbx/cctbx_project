@@ -269,9 +269,8 @@ namespace xray {
         FloatType const& anisotropy_min)
       {
         if(flags.use_u_aniso()) {
-           CCTBX_ASSERT(u_star !=
-                               scitbx::sym_mat3<FloatType>(-1,-1,-1,-1,-1,-1));
-           scitbx::sym_mat3<FloatType> u_iso_star;
+           CCTBX_ASSERT(
+             u_star != scitbx::sym_mat3<FloatType>(-1,-1,-1,-1,-1,-1));
            u_star = site_symmetry_ops.average_u_star(u_star);
            scitbx::sym_mat3<FloatType>
              u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);

@@ -22,6 +22,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
   {
     typedef typename ScattererType::float_type float_type;
 
+    std::complex<float_type> f0_fp_fdp;
+    std::complex<float_type> const_h_sum;
+    fractional<float_type> d_target_d_site_frac;
+    scitbx::sym_mat3<float_type> d_target_d_u_star;
+
     gradients_direct_one_h_one_scatterer(
       CosSinType const& cos_sin,
       sgtbx::space_group const& space_group,
@@ -31,16 +36,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
       ScattererType const& scatterer,
       std::complex<float_type> const& d_target_d_f_calc)
     :
-      const_h_sum(0,0)
+      f0_fp_fdp(f0 + std::complex<float_type>(scatterer.fp, scatterer.fdp)),
+      const_h_sum(0,0),
+      d_target_d_site_frac(0,0,0),
+      d_target_d_u_star(0,0,0,0,0,0)
     {
       typedef float_type f_t;
       typedef std::complex<f_t> c_t;
-      if (scatterer.flags.grad_site()) d_target_d_site_frac.fill(0);
-      if (scatterer.flags.grad_u_aniso() &&
-          scatterer.flags.use_u_aniso()) d_target_d_u_star.fill(0);
-      fractional<float_type> dtds_term;
       scitbx::sym_mat3<f_t> dw_coeff;
-      f0_fp_fdp = f0 + c_t(scatterer.fp, scatterer.fdp);
       c_t f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
       f_t dw_iso = 0;
       if (scatterer.flags.use_u_iso()) {
@@ -52,12 +55,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
         f_t hrx = g.hr * scatterer.site;
         f_t ht = g.ht;
         if (scatterer.flags.use_u_aniso()) {
-        //if (scatterer.flags.grad_u_aniso() && scatterer.flags.use_u_aniso()) {
           dw_coeff = adptbx::debye_waller_factor_u_star_gradient_coefficients(
             g.hr, scitbx::type_holder<f_t>());
         }
         c_t sum_inv(0,0);
-        if (scatterer.flags.grad_site()) dtds_term.fill(0);
+        fractional<float_type> dtds_term(0,0,0);
         for(std::size_t i=0;i<space_group.f_inv();i++) {
           if (i) {
             hrx *= -1;
@@ -80,8 +82,10 @@ namespace cctbx { namespace xray { namespace structure_factors {
           dw *= adptbx::debye_waller_factor_u_star(g.hr, scatterer.u_star);
         }
         sum_inv *= dw;
-        if (scatterer.flags.grad_site()) dtds_term *= dw;
-        if (scatterer.flags.grad_site()) d_target_d_site_frac += dtds_term;
+        if (scatterer.flags.grad_site()) {
+          dtds_term *= dw;
+          d_target_d_site_frac += dtds_term;
+        }
         if (scatterer.flags.grad_u_aniso() && scatterer.flags.use_u_aniso()) {
           c_t f = f0_fp_fdp_w * sum_inv;
           f_t c = d_target_d_f_calc.real() * f.real()
@@ -91,11 +95,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
         const_h_sum += sum_inv;
       }
     }
-
-    std::complex<float_type> f0_fp_fdp;
-    std::complex<float_type> const_h_sum;
-    fractional<float_type> d_target_d_site_frac;
-    scitbx::sym_mat3<float_type> d_target_d_u_star;
   };
 
   namespace detail {
@@ -394,8 +393,10 @@ namespace cctbx { namespace xray { namespace structure_factors {
           float_type* d_t_d_u = d_target_d_u_iso_.begin();
           for(std::size_t i=0;i<scatterers.size();i++,d_t_d_u++) {
             ScattererType const& scatterer = scatterers[i];
-            if (scatterer.flags.tan_u_iso() && scatterer.flags.use_u_iso() &&
-                                                   scatterer.flags.param > 0 && scatterer.flags.grad_u_iso()) {
+            if (   scatterer.flags.tan_u_iso()
+                && scatterer.flags.use_u_iso()
+                && scatterer.flags.param > 0
+                && scatterer.flags.grad_u_iso()) {
               f_t pi = scitbx::constants::pi;
               f_t u_iso_max = adptbx::b_as_u(
                                       static_cast<f_t>(scatterer.flags.param));
@@ -422,14 +423,12 @@ namespace cctbx { namespace xray { namespace structure_factors {
               }
             }
             if(scatterer.flags.use_u_iso()) {
-              //if (grad_flags_counts.u_iso != 0) {
               if (scatterer.flags.grad_u_iso()) {
                 packed_.push_back(gr_refs.u_iso[i]);
               }
             }
             if(scatterer.flags.use_u_aniso()) {
                if(scatterer.flags.grad_u_aniso()) {
-               //if (grad_flags_counts.u_aniso != 0) {
                  scitbx::sym_mat3<double> d_target_d_u_cart =
                    adptbx::grad_u_star_as_u_cart(
                      unit_cell, gr_refs.u_star[i]);
