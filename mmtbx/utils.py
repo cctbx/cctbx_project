@@ -268,7 +268,7 @@ class determine_data_and_flags(object):
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
     self.f_obs.set_info(data_info)
     if(extract_r_free_flags):
-      self.raw_flags = self.extract_flags(data = self.f_obs)
+      self.raw_flags = self.extract_flags(data = self.raw_data)
       if(self.raw_flags is not None):
         flags_info = self.raw_flags.info()
     if(extract_r_free_flags and self.raw_flags is not None):
