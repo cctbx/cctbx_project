@@ -335,7 +335,7 @@ class ls_refinement(object):
     return O.f_obs.r1_factor(
       other=O.get_f_calc(), scale_factor=Auto, assume_index_matching=True)
 
-  def __get_ls(O):
+  def __get_tg(O):
     O.__unpack_variables()
     if (O.params.target_obs_type == "F"):
       obs = O.f_obs
@@ -368,12 +368,13 @@ class ls_refinement(object):
         if (not prev_xfgc.is_iterate):
           prev_xfgc.is_iterate = is_iterate
         return
-    ls = O.__get_ls()
+    tg = O.__get_tg()
+    assert tg.target_work() is not None
     gact = O.xray_structure.grads_and_curvs_target_simple(
       miller_indices=O.f_obs.indices(),
-      da_db=ls.gradients_work(),
-      daa_dbb_dab=ls.hessians_work())
-    O.funcl = ls.target_work()
+      da_db=tg.gradients_work(),
+      daa_dbb_dab=tg.hessians_work())
+    O.funcl = tg.target_work()
     O.grads = gact.grads.select(O.gact_indices)
     O.curvs = gact.curvs.select(O.gact_indices)
     O.grads_mean_sq = flex.mean_sq(O.grads)
