@@ -14,6 +14,8 @@ namespace cctbx { namespace xray { namespace targets {
       boost::optional<double> cc_;
       public:
 
+    static const double numeric_epsilon = 1e-12;
+
     correlation() {}
 
     correlation(
@@ -70,15 +72,39 @@ namespace cctbx { namespace xray { namespace targets {
       double sum_wxy = 0;
       double sum_wxx = 0;
       double sum_wyy = 0;
-      for(std::size_t i_work=0;i_work<n_work;i_work++) {
-        double w = wb[i_work];
-        double& xc = xb[i_work];
-        double& yc = yb[i_work];
-        xc -= wxm;
-        yc -= wym;
-        sum_wxy += w * xc * yc;
-        sum_wxx += w * xc * xc;
-        sum_wyy += w * yc * yc;
+      {
+        double min_x = xb[0];
+        double max_x = min_x;
+        double min_y = yb[0];
+        double max_y = min_y;
+        for(std::size_t i_work=0;i_work<n_work;i_work++) {
+          double w = wb[i_work];
+          double& xc = xb[i_work];
+          double& yc = yb[i_work];
+          if (min_x > xc) min_x = xc;
+          if (max_x < xc) max_x = xc;
+          if (min_y > yc) min_y = yc;
+          if (max_y < yc) max_y = yc;
+          xc -= wxm;
+          yc -= wym;
+          sum_wxy += w * xc * yc;
+          sum_wxx += w * xc * xc;
+          sum_wyy += w * yc * yc;
+        }
+        double range_x = max_x - min_x;
+        if (min_x < 0) min_x *= -1;
+        if (max_x < 0) max_x *= -1;
+        if (max_x < min_x) max_x = min_x;
+        if (range_x <= max_x * numeric_epsilon) {
+          return;
+        }
+        double range_y = max_y - min_y;
+        if (min_y < 0) min_y *= -1;
+        if (max_y < 0) max_y *= -1;
+        if (max_y < min_y) max_y = min_y;
+        if (range_y <= max_y * numeric_epsilon) {
+          return;
+        }
       }
       double cc_den_sq = sum_wxx * sum_wyy;
       double cc_den_qu = cc_den_sq * cc_den_sq;
@@ -87,6 +113,10 @@ namespace cctbx { namespace xray { namespace targets {
       }
       double cc_den = std::sqrt(cc_den_sq);
       TBXX_ASSERT(cc_den != 0);
+      if (    sum_wxy > cc_den
+          || -sum_wxy > cc_den) {
+        return;
+      }
       double cc = sum_wxy / cc_den;
       cc_ = cc;
       target_work_ = 1 - cc;
