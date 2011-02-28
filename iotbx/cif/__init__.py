@@ -337,6 +337,7 @@ class distances_as_cif_loop(object):
                          distance,
                          sym_code))
     self.distances = distances.distances
+    self.variances = distances.variances
     self.pair_counts = distances.pair_counts
 
 class angles_as_cif_loop(object):
@@ -388,6 +389,7 @@ class angles_as_cif_loop(object):
                          sym_code_ki,
                          ))
     self.angles = angles.angles
+    self.variances = angles.variances
 
 
 def cctbx_data_structure_from_cif(

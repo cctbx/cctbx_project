@@ -673,6 +673,10 @@ class calculate_distances(object):
                parameter_map=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
+    if self.covariance_matrix is not None:
+      self.variances = flex.double()
+    else:
+      self.variances = None
     self.pair_counts = flex.size_t()
 
   def __iter__(self):
@@ -734,6 +738,7 @@ class calculate_distances(object):
                 cov, self.cell_covariance_matrix, unit_cell, rt_mx_ji)
             else:
               var = d.variance(cov, unit_cell, rt_mx_ji)
+            self.variances.append(var)
           else:
             var = None
           yield distance(
@@ -832,6 +837,10 @@ class calculate_angles(object):
                parameter_map=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
+    if self.covariance_matrix is not None:
+      self.variances = flex.double()
+    else:
+      self.variances = None
     self.angles = flex.double()
     self.pair_counts = flex.size_t()
 
@@ -896,6 +905,7 @@ class calculate_angles(object):
                     else:
                       var = a.variance(
                         cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
+                    self.variances.append(var)
                   else:
                     var = None
                   yield angle(angle_, (j_seq, i_seq, k_seq),
