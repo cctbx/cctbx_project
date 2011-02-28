@@ -265,22 +265,15 @@ class determine_data_and_flags(object):
       print_statistics.make_header(data_description, out = log)
     self.raw_data = self.extract_data()
     data_info = self.raw_data.info()
+    self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
+    self.f_obs.set_info(data_info)
     if(extract_r_free_flags):
-      self.raw_flags = self.extract_flags(data = self.raw_data)
+      self.raw_flags = self.extract_flags(data = self.f_obs)
       if(self.raw_flags is not None):
         flags_info = self.raw_flags.info()
-    if(self.parameters.french_wilson_scale and \
-       self.raw_data.is_xray_intensity_array()):
-      self.f_obs = french_wilson.french_wilson_scale(
-                     miller_array=self.raw_data,
-                     params=self.parameters.french_wilson,
-                     log=log)
-    else:
-      self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
     if(extract_r_free_flags and self.raw_flags is not None):
       self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
-    self.f_obs.set_info(data_info)
 
   def get_r_free_flags(self):
     self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
@@ -418,15 +411,21 @@ class determine_data_and_flags(object):
     print >> self.log
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     if(f_obs.is_xray_intensity_array()):
-      selection_by_isigma = self._apply_sigma_cutoff(
-        f_obs   = f_obs,
-        n       = self.parameters.sigma_iobs_rejection_criterion,
-        message = "Number of reflections with |Iobs|/sigma(Iobs) < %5.2f: %d")
-      if(selection_by_isigma is not None):
-        f_obs = f_obs.select(selection_by_isigma)
+      if(self.parameters.french_wilson_scale) :
+        f_obs = french_wilson.french_wilson_scale(
+          miller_array=f_obs,
+          params=self.parameters.french_wilson,
+          log=self.log)
+      else :
+        selection_by_isigma = self._apply_sigma_cutoff(
+          f_obs   = f_obs,
+          n       = self.parameters.sigma_iobs_rejection_criterion,
+          message = "Number of reflections with |Iobs|/sigma(Iobs) < %5.2f: %d")
+        if(selection_by_isigma is not None):
+          f_obs = f_obs.select(selection_by_isigma)
+        f_obs = f_obs.f_sq_as_f()
       print >> self.log, \
         "Intensities converted to amplitudes for use in refinement."
-      f_obs = f_obs.f_sq_as_f()
       print >> self.log
     f_obs.set_observation_type_xray_amplitude()
     f_obs = f_obs.map_to_asu()
