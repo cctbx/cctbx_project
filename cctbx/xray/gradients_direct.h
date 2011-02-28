@@ -42,7 +42,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       scitbx::sym_mat3<f_t> dw_coeff;
       f0_fp_fdp = f0 + c_t(scatterer.fp, scatterer.fdp);
       c_t f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
-      f_t dw_iso;
+      f_t dw_iso = 0;
       if (scatterer.flags.use_u_iso()) {
         dw_iso = adptbx::debye_waller_factor_u_iso(
           d_star_sq/4, scatterer.u_iso);

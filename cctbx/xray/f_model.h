@@ -15,6 +15,13 @@ namespace cctbx { namespace xray { namespace f_model_core_data {
 
  template<typename FloatType>
  class f_model_core_data_derivative_holder{
+ protected:
+   FloatType koverall_;
+   FloatType ksol_;
+   FloatType usol_;
+   FloatType kpart_;
+   FloatType upart_;
+   scitbx::sym_mat3<FloatType> ustar_;
  public:
    f_model_core_data_derivative_holder():
    koverall_(0),
@@ -47,14 +54,6 @@ namespace cctbx { namespace xray { namespace f_model_core_data {
      upart_ += other.upart();
      ustar_ += other.ustar();
    }
-
- protected:
-   FloatType koverall_;
-   scitbx::sym_mat3<FloatType> ustar_;
-   FloatType ksol_;
-   FloatType usol_;
-   FloatType kpart_;
-   FloatType upart_;
  };
 
 
@@ -850,20 +849,6 @@ namespace cctbx { namespace xray { namespace f_model_core_data {
     mutable bool recompute_part_;
     mutable bool recompute_total_;
  };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }}}
 
