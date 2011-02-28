@@ -294,7 +294,8 @@ class space_group_info(object):
     print >> f, "%s%s" % (prefix, self.symbol_and_number())
 
   def number_of_continuous_allowed_origin_shifts(self):
-    return self.structure_seminvariants().select(False).size()
+    return self.structure_seminvariants() \
+      .number_of_continuous_allowed_origin_shifts()
 
   def subtract_continuous_allowed_origin_shifts(self, translation_frac):
     cb_op = self.change_of_basis_op_to_reference_setting()
@@ -575,3 +576,6 @@ class _structure_seminvariants(boost.python.injector, structure_seminvariants):
     for vm in self.vectors_and_moduli():
       result.append((vm.m,) + vm.v)
     return '\n'.join([ "%i: (%i, %i, %i)" % item for item in result ])
+
+  def number_of_continuous_allowed_origin_shifts(self):
+    return self.select(False).size()
