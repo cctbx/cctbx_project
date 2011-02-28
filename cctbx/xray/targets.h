@@ -627,6 +627,7 @@ namespace cctbx { namespace xray { namespace targets {
         if (compute_gradients) {
           gradients_work_.reserve(rffs.n_work);
         }
+        double target_work = 0;
         double target_test = 0;
         for(std::size_t i=0;i<f_obs.size();i++) {
           double fo = f_obs[i];
@@ -639,7 +640,7 @@ namespace cctbx { namespace xray { namespace targets {
             fo, fc, a, b, scale_factor, e, c);
           target_per_reflection_[i] = t;
           if (rffs.is_work_refl(i)) {
-            target_work_ += t;
+            target_work += t;
             if (compute_gradients) {
               gradients_work_.push_back(std::conj(
                 d_maximum_likelihood_target_one_h_over_fc(
@@ -650,7 +651,7 @@ namespace cctbx { namespace xray { namespace targets {
             target_test += t;
           }
         }
-        target_work_ *= one_over_n_work;
+        target_work_ = target_work * one_over_n_work;
         if (rffs.n_test != 0) {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }
@@ -876,6 +877,7 @@ namespace cctbx { namespace xray { namespace targets {
         CCTBX_ASSERT(cos_sin_table.n_steps > 0);
         boost::scoped_array<double> workspace(
           new double[cos_sin_table.n_steps]);
+        double target_work = 0;
         double target_test = 0;
         for(std::size_t i=0;i<f_obs.size();i++) {
           double fo = f_obs[i];
@@ -899,7 +901,7 @@ namespace cctbx { namespace xray { namespace targets {
             workspace.get());
           target_per_reflection_[i] = t;
           if (rffs.is_work_refl(i)) {
-            target_work_ += t;
+            target_work += t;
             if (compute_gradients) {
               gradients_work_.push_back(std::conj(
                 detail::mlhl_d_target_d_f_calc_one_h(
@@ -923,7 +925,7 @@ namespace cctbx { namespace xray { namespace targets {
             target_test += t;
           }
         }
-        target_work_ *= one_over_n_work;
+        target_work_ = target_work * one_over_n_work;
         if (rffs.n_test != 0) {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }

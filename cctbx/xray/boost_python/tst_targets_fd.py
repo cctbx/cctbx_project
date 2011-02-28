@@ -89,30 +89,71 @@ def exercise_random(n_trials=10, n_refl=30):
         cf = ri.hessians_work_fd()
         assert approx_equal(ca, cf)
 
-def exercise_singular():
+def exercise_singular_least_squares():
   obs = flex.double([1.234])
-  weights = flex.double([2.345])
+  weights_2345 = flex.double([2.345])
+  weights_zero = flex.double([0])
   r_free_flags = flex.bool([False])
-  scale_factor = 3.456
   a = flex.double([0])
   b = flex.double([0])
   for obs_type in ["F", "I"]:
-    tg = ext.targets_least_squares(
-      compute_scale_using_all_data=False,
-      obs_type=obs_type,
-      obs=obs,
-      weights=weights,
-      r_free_flags=r_free_flags,
-      f_calc=flex.complex_double(a, b),
-      derivatives_depth=2,
-      scale_factor=scale_factor)
-    assert list(tg.gradients_work()) == [0j]
-    assert list(tg.hessians_work()) == [(1,1,1)]
+    for weights,scale_factor in [
+          (weights_2345, 3.456),
+          (weights_zero, 0)]:
+      tg = ext.targets_least_squares(
+        compute_scale_using_all_data=False,
+        obs_type=obs_type,
+        obs=obs,
+        weights=weights,
+        r_free_flags=r_free_flags,
+        f_calc=flex.complex_double(a, b),
+        derivatives_depth=2,
+        scale_factor=scale_factor)
+      if (weights is weights_2345):
+        assert approx_equal(tg.scale_factor(), scale_factor)
+        assert list(tg.gradients_work()) == [0j]
+        assert list(tg.hessians_work()) == [(1,1,1)]
+      else:
+        assert tg.scale_factor() is None
+        assert tg.target_work() is None
+        assert tg.target_test() is None
+        assert tg.gradients_work().size() == 0
+        assert tg.hessians_work().size() == 0
+
+def exercise_singular_correlation():
+  def check():
+    for obs_type in ["F", "I"]:
+      tg = ext.targets_correlation(
+        obs_type=obs_type,
+        obs=obs,
+        weights=weights,
+        r_free_flags=None,
+        f_calc=flex.complex_double(a, b),
+        derivatives_depth=2)
+      assert tg.cc() is None
+      assert tg.target_work() is None
+      assert tg.target_test() is None
+      assert tg.gradients_work().size() == 0
+      assert tg.hessians_work().size() == 0
+  obs = flex.double([1.234])
+  weights = None
+  a = flex.double([0])
+  b = flex.double([0])
+  check()
+  obs = flex.double([1.234, 2.345])
+  a = flex.double([1, 1])
+  b = flex.double([2, 2])
+  check()
+  weights = flex.double([0,0])
+  a = flex.double([1, 2])
+  b = flex.double([3, 4])
+  check()
 
 def run(args):
   assert len(args) == 0
   exercise_random()
-  exercise_singular()
+  exercise_singular_least_squares()
+  exercise_singular_correlation()
   print "OK"
 
 if (__name__ == "__main__"):
