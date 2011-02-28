@@ -17,6 +17,17 @@ namespace cctbx { namespace xray {
       public:
         typedef gaussian_fourier_transformed<FloatType> base_t;
 
+      protected:
+        std::size_t i_const_term;
+        af::tiny<FloatType, base_t::max_n_rho_real_terms> b_;
+        af::tiny<FloatType, base_t::max_n_rho_real_terms> detb_;
+        af::tiny<scitbx::sym_mat3<FloatType>, base_t::max_n_rho_real_terms>
+          bcfmt_;
+        af::tiny<FloatType, base_t::max_n_rho_real_terms> as_occupancy_real_;
+        FloatType as_occupancy_imag_;
+        FloatType eight_pi_pow_3_2_w_d_;
+
+      public:
         d_gaussian_fourier_transformed() {}
 
         d_gaussian_fourier_transformed(
@@ -34,12 +45,11 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra, true),
           i_const_term(gaussian.n_terms())
         {
-          //if (scf.grad_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
-          if (scf.use_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
-          //if (scf.grad_u_iso() || scf.use_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
+          if (   scf.use_u_iso()
+              || scf.grad_occupancy()
+              || scf.grad_fp()
+              || scf.grad_fdp()) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
-            //if (scf.grad_u_iso())
-            //if (scf.grad_u_iso() || scf.use_u_iso())
             if (scf.use_u_iso())
             {
               std::size_t i = 0;
@@ -69,6 +79,9 @@ namespace cctbx { namespace xray {
               eight_pi_pow_3_2_w_d_ = eight_pi_pow_3_2 * w / std::sqrt(d);
             }
           }
+          else {
+            as_occupancy_real_.fill(0); // to avoid g++ 4.4 warnings
+          }
         }
 
         d_gaussian_fourier_transformed(
@@ -86,10 +99,7 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra, true),
           i_const_term(gaussian.n_terms())
         {
-         //XXX re-think this (I mean "use_u_" usage) ?
-          //if (scf.grad_u_aniso() || scf.use_u_aniso()) {
           if (scf.use_u_aniso()) {
-          //if (scf.grad_u_aniso() || need_iso) {
             for(std::size_t i=0;i<gaussian.n_terms();i++) {
               scitbx::sym_mat3<FloatType>
                 b_all = compose_anisotropic_b_all(
@@ -98,15 +108,11 @@ namespace cctbx { namespace xray {
               bcfmt_[i] = b_all.co_factor_matrix_transposed();
             }
           }
-          //if (scf.grad_u_aniso() || need_iso || scf.grad_fp() || scf.grad_fdp()) {
           if (scf.use_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
-          //if (scf.grad_u_aniso() || scf.use_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
             scitbx::sym_mat3<FloatType>
               b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
             FloatType d = b_all.determinant();
-            //if (scf.grad_u_aniso() || need_iso) {
             if (scf.use_u_aniso()) {
-            //if (scf.grad_u_aniso() || scf.use_u_aniso()) {
               detb_[i_const_term] = d;
               bcfmt_[i_const_term] = b_all.co_factor_matrix_transposed();
             }
@@ -365,16 +371,6 @@ namespace cctbx { namespace xray {
         {
           return d_rho_real_d_fp(d_or_d_sq);
         }
-
-      protected:
-        std::size_t i_const_term;
-        af::tiny<FloatType, base_t::max_n_rho_real_terms> b_;
-        af::tiny<FloatType, base_t::max_n_rho_real_terms> detb_;
-        af::tiny<scitbx::sym_mat3<FloatType>, base_t::max_n_rho_real_terms>
-          bcfmt_;
-        af::tiny<FloatType, base_t::max_n_rho_real_terms> as_occupancy_real_;
-        FloatType as_occupancy_imag_;
-        FloatType eight_pi_pow_3_2_w_d_;
     };
 
   } // namespace detail

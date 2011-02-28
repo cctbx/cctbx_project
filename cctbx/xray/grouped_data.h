@@ -17,21 +17,36 @@
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
 
-#include <iostream>
-
-
 namespace cctbx { namespace xray { namespace grouped_data {
 
   template<typename FloatType>
   class unmerged_data{
+    protected:
+      scitbx::af::shared< cctbx::miller::index<> > hkl_obs_;
+      scitbx::af::shared< cctbx::miller::index<> > asu_hkl_;
+        // these are ONLY indices in the ASU, in the same order as
+        // Fmodel/Fcalc for instance
+      scitbx::af::shared< long int > map_hkl_obs_to_asu_hkl_;
+        // maps hkl_obs_ position to asu_hkl_ position
+        // (includes symmetry ops to asu)
+      scitbx::af::shared< std::vector<long int> > map_asu_hkl_to_hkl_obs_;
+        // an array of observations that is associated with a particular
+      cctbx::miller::lookup_utils::lookup_tensor<FloatType> asu_lookup_table_;
+        // a lookup function that finds for any index the corresponding
+        // asu index in a supplied array
+      sgtbx::space_group space_group_;
+      bool anomalous_flag_;
+
     public:
-      unmerged_data(scitbx::af::const_ref< cctbx::miller::index<> > hkl_obs,
-                    scitbx::af::const_ref< cctbx::miller::index<> > asu_hkl,
-                    sgtbx::space_group                              const& space_group,
-                    bool                                            const& anomalous_flag):
-      space_group_(space_group),
-      anomalous_flag_(anomalous_flag),
-      asu_lookup_table_(asu_hkl,space_group,anomalous_flag)
+      unmerged_data(
+        scitbx::af::const_ref< cctbx::miller::index<> > hkl_obs,
+        scitbx::af::const_ref< cctbx::miller::index<> > asu_hkl,
+        sgtbx::space_group const& space_group,
+        bool const& anomalous_flag)
+      :
+        asu_lookup_table_(asu_hkl,space_group,anomalous_flag),
+        space_group_(space_group),
+        anomalous_flag_(anomalous_flag)
       {
         long int tmp_index;
 
@@ -70,21 +85,7 @@ namespace cctbx { namespace xray { namespace grouped_data {
       {
         return (map_asu_hkl_to_hkl_obs_);
       }
-
-
-    protected:
-      scitbx::af::shared< cctbx::miller::index<> > hkl_obs_;                   // the hkl as observed
-      scitbx::af::shared< cctbx::miller::index<> > asu_hkl_;                   // these are ONLY indices in the ASU, in the same order as Fmodel/Fcalc for instance
-      scitbx::af::shared< long int >               map_hkl_obs_to_asu_hkl_;    // maps hkl_obs_ position to asu_hkl_ position (includes symmetry ops to asu)
-      scitbx::af::shared< std::vector<long int> >  map_asu_hkl_to_hkl_obs_;    // an array of observations that is associated with a particular
-      cctbx::miller::lookup_utils::lookup_tensor<FloatType> asu_lookup_table_; // a lookup function that finds for any index the corresponding asu index in a supplied array
-      sgtbx::space_group space_group_;
-      bool anomalous_flag_;
-
   };
-
-
-
 
   /*
    * Below some applications for the unmerged data objects are found
@@ -129,8 +130,6 @@ namespace cctbx { namespace xray { namespace grouped_data {
     }
     return(norma_I_array);
   }
-
-
 
   template<typename FloatType>
   class merger{
@@ -245,7 +244,6 @@ namespace cctbx { namespace xray { namespace grouped_data {
 
       }
 
-
       FloatType bic()
       {
         // Here we compute the 'Schwartz's Bayesian Information Criterion'
@@ -262,7 +260,7 @@ namespace cctbx { namespace xray { namespace grouped_data {
 
       FloatType r_abs()
       {
-        FloatType top=0.0, bottom=0.0, mean_I;
+        FloatType top=0, bottom=0;
 
         std::vector<FloatType> tmp_result;
         for (long int ii=0;ii<asu_hkl_.size();ii++){
@@ -272,7 +270,6 @@ namespace cctbx { namespace xray { namespace grouped_data {
         }
         return top/(std::max(bottom,1e-12));
       }
-
 
     protected:
       scitbx::af::shared< cctbx::miller::index<> >           hkl_obs_;
@@ -290,8 +287,6 @@ namespace cctbx { namespace xray { namespace grouped_data {
       bool                                            anomalous_flag_;
       cctbx::uctbx::unit_cell                              unit_cell_;
   };
-
-
 
 }}}
 

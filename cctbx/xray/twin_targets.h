@@ -17,7 +17,6 @@
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
 
-
 namespace cctbx { namespace xray { namespace twin_targets {
 
   template<typename FloatType>
@@ -44,110 +43,6 @@ namespace cctbx { namespace xray { namespace twin_targets {
 
   template<typename FloatType>
   class twin_completion{
-  public:
-    twin_completion( scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
-                     sgtbx::space_group                              const& space_group,
-                     bool                                            const& anomalous_flag,
-                     scitbx::mat3<FloatType>                         const& twin_law ):
-      space_group_( space_group ),
-      twin_law_(twin_law),
-      anomalous_flag_(anomalous_flag),
-      ori_lookup_table_(hkl,space_group,anomalous_flag)
-      {
-        CCTBX_ASSERT( hkl.size() > 0 );
-        for (std::size_t ii=0; ii<hkl.size(); ii++){
-          hkl_.push_back( hkl[ii] );
-          twin_hkl_.push_back( twin_mate( hkl[ii], twin_law ) );
-        }
-
-      }
-
-      scitbx::af::shared< cctbx::miller::index<> > twin_complete()
-      {
-        scitbx::af::shared< cctbx::miller::index<> > tmp;
-        for (std::size_t ii=0;ii<hkl_.size();ii++){
-          tmp.push_back( hkl_[ii] );
-          tmp.push_back( twin_hkl_[ii] );
-        }
-        scitbx::af::shared< std::size_t > unique;
-        unique = cctbx::miller::unique_under_symmetry_selection(
-          sgtbx::space_group_type( space_group_ ),
-          anomalous_flag_,
-          tmp.const_ref() );
-
-        scitbx::af::shared< cctbx::miller::index<> > unique_index;
-        for (std::size_t ii=0;ii<unique.size();ii++){
-          unique_index.push_back( tmp[ unique[ii] ] );
-        }
-        return(unique_index);
-      }
-
-
-      bool check_free_flags(scitbx::af::const_ref< bool > const& flags )
-      {
-        CCTBX_ASSERT( flags.size() == hkl_.size() );
-        bool all_is_okai=true;
-        // loop over all flags
-        bool ori,twin;
-        for (std::size_t ii=0; ii<hkl_.size();ii++){
-          ori = flags[ii];
-          long tmp_loc = ori_lookup_table_.find_hkl( twin_hkl_[ii] );
-          if (tmp_loc >= 0){
-            twin = flags[ tmp_loc ];
-            if (ori != twin ){ // they are not equal. This is a problem
-              return (false);
-            }
-          }
-        }
-        return( true );
-      }
-
-      scitbx::af::shared<bool>  get_free_model_selection(scitbx::af::const_ref< cctbx::miller::index<> > hkl_calc,
-                                                         scitbx::af::const_ref< bool > const& flags )
-      {
-        // Declare an array with results
-        scitbx::af::shared<bool> result(hkl_calc.size(),0);
-        for( std::size_t ii=0;ii<hkl_calc.size();ii++){
-          long index = ori_lookup_table_.find_hkl( hkl_calc[ii] );
-          if (index < 0 ){
-            index = ori_lookup_table_.find_hkl( twin_mate(hkl_calc[ii], twin_law_) );
-          }
-          if (index < 0){
-            // this means that neither hkl_calc or its twin mate is in the observed data
-            // this means that in all reasonability, it is a 'free' reflection. Free reflections are marked as 'True'
-            result[ii]=true;
-          }
-          else{
-            CCTBX_ASSERT( index < flags.size() );
-            result[ii] = flags[index];
-          }
-        }
-        return(result);
-      }
-
-      scitbx::af::shared<FloatType> twin_sum(scitbx::af::const_ref< FloatType > data, FloatType const& alpha)
-      {
-        scitbx::af::shared<FloatType> result(hkl_.size(),0);
-        FloatType a,b;
-        for (std::size_t ii=0;ii<hkl_.size();ii++){
-          a = data[ii];
-          long indx = ori_lookup_table_.find_hkl( twin_hkl_[ii] );
-          if (indx>=0){
-            b = data[indx];
-          } else {
-            b = a;
-          }
-          result[ii] = (1-alpha)*a + alpha*b;
-        }
-          return(result);
-      }
-
-
-
-
-
-
-
   protected:
     scitbx::mat3<FloatType> twin_law_;
     bool anomalous_flag_;
@@ -155,191 +50,288 @@ namespace cctbx { namespace xray { namespace twin_targets {
     scitbx::af::shared<cctbx::miller::index<> > hkl_;
     scitbx::af::shared<cctbx::miller::index<> > twin_hkl_;
     cctbx::miller::lookup_utils::lookup_tensor<FloatType> ori_lookup_table_;
+  public:
+    twin_completion(
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+      sgtbx::space_group const& space_group,
+      bool const& anomalous_flag,
+      scitbx::mat3<FloatType> const& twin_law)
+    :
+      twin_law_(twin_law),
+      anomalous_flag_(anomalous_flag),
+      space_group_( space_group ),
+      ori_lookup_table_(hkl,space_group,anomalous_flag)
+    {
+      CCTBX_ASSERT( hkl.size() > 0 );
+      for (std::size_t ii=0; ii<hkl.size(); ii++){
+        hkl_.push_back( hkl[ii] );
+        twin_hkl_.push_back( twin_mate( hkl[ii], twin_law ) );
+      }
+
+    }
+
+    scitbx::af::shared< cctbx::miller::index<> > twin_complete()
+    {
+      scitbx::af::shared< cctbx::miller::index<> > tmp;
+      for (std::size_t ii=0;ii<hkl_.size();ii++){
+        tmp.push_back( hkl_[ii] );
+        tmp.push_back( twin_hkl_[ii] );
+      }
+      scitbx::af::shared< std::size_t > unique;
+      unique = cctbx::miller::unique_under_symmetry_selection(
+        sgtbx::space_group_type( space_group_ ),
+        anomalous_flag_,
+        tmp.const_ref() );
+
+      scitbx::af::shared< cctbx::miller::index<> > unique_index;
+      for (std::size_t ii=0;ii<unique.size();ii++){
+        unique_index.push_back( tmp[ unique[ii] ] );
+      }
+      return(unique_index);
+    }
+
+
+    bool check_free_flags(scitbx::af::const_ref< bool > const& flags )
+    {
+      CCTBX_ASSERT( flags.size() == hkl_.size() );
+      // loop over all flags
+      bool ori,twin;
+      for (std::size_t ii=0; ii<hkl_.size();ii++){
+        ori = flags[ii];
+        long tmp_loc = ori_lookup_table_.find_hkl( twin_hkl_[ii] );
+        if (tmp_loc >= 0){
+          twin = flags[ tmp_loc ];
+          if (ori != twin ){ // they are not equal. This is a problem
+            return (false);
+          }
+        }
+      }
+      return( true );
+    }
+
+    scitbx::af::shared<bool>  get_free_model_selection(scitbx::af::const_ref< cctbx::miller::index<> > hkl_calc,
+                                                       scitbx::af::const_ref< bool > const& flags )
+    {
+      // Declare an array with results
+      scitbx::af::shared<bool> result(hkl_calc.size(),0);
+      for( std::size_t ii=0;ii<hkl_calc.size();ii++){
+        long index = ori_lookup_table_.find_hkl( hkl_calc[ii] );
+        if (index < 0 ){
+          index = ori_lookup_table_.find_hkl( twin_mate(hkl_calc[ii], twin_law_) );
+        }
+        if (index < 0){
+          // this means that neither hkl_calc or its twin mate is in the observed data
+          // this means that in all reasonability, it is a 'free' reflection. Free reflections are marked as 'True'
+          result[ii]=true;
+        }
+        else{
+          CCTBX_ASSERT( index < flags.size() );
+          result[ii] = flags[index];
+        }
+      }
+      return(result);
+    }
+
+    scitbx::af::shared<FloatType> twin_sum(scitbx::af::const_ref< FloatType > data, FloatType const& alpha)
+    {
+      scitbx::af::shared<FloatType> result(hkl_.size(),0);
+      FloatType a,b;
+      for (std::size_t ii=0;ii<hkl_.size();ii++){
+        a = data[ii];
+        long indx = ori_lookup_table_.find_hkl( twin_hkl_[ii] );
+        if (indx>=0){
+          b = data[indx];
+        } else {
+          b = a;
+        }
+        result[ii] = (1-alpha)*a + alpha*b;
+      }
+        return(result);
+    }
   };
 
+  template<typename FloatType>
+  class least_squares_hemihedral_twinning_on_i {
+  protected:
+    scitbx::af::shared<FloatType> i_obs_;
+    scitbx::af::shared<FloatType> w_obs_;
 
+    scitbx::mat3<FloatType> twin_law_;
+    cctbx::sgtbx::space_group space_group_;
 
-  template<typename FloatType> class least_squares_hemihedral_twinning_on_i{
+    FloatType alpha_;
+
+    scitbx::af::shared<long> calc_ori_lookup_table_;
+    scitbx::af::shared<long> calc_twin_lookup_table_;
+
   public:
-  // You want to use this constructor
+    // You want to use this constructor
     least_squares_hemihedral_twinning_on_i(
-      scitbx::af::const_ref< cctbx::miller::index<> >  const& hkl_obs,       //1 indices for calculated data
-      scitbx::af::const_ref< FloatType >               const& i_obs,         //2 f calc
-      scitbx::af::const_ref< FloatType >               const& w_obs,         //3 f bulk solvent
-      scitbx::af::const_ref< cctbx::miller::index<> >  const& hkl_calc,      //4 f_model; not const to avoid CV issues
-      sgtbx::space_group                               const& space_group,   //5 space group
-      bool                                             const& anomalous_flag,//6 anomalous_flag
-      FloatType                                        const& alpha,         //7 twin fraction
-      scitbx::mat3<FloatType>                          const& twin_law       //8 twin law
-      ):
-      space_group_( space_group ),
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_obs,
+        //1 indices for calculated data
+      scitbx::af::const_ref< FloatType > const& i_obs, //2 f calc
+      scitbx::af::const_ref< FloatType > const& w_obs, //3 f bulk solvent
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_calc,
+        //4 f_model; not const to avoid CV issues
+      sgtbx::space_group const& space_group,   //5 space group
+      bool const& anomalous_flag, //6 anomalous_flag
+      FloatType const& alpha, //7 twin fraction
+      scitbx::mat3<FloatType> const& twin_law) //8 twin law
+    :
       twin_law_(twin_law),
+      space_group_( space_group ),
       alpha_(alpha)
+    {
+      CCTBX_ASSERT( (alpha >=0) && (alpha<=1.00) );
+      CCTBX_ASSERT( hkl_obs.size() > 0);
+      CCTBX_ASSERT( hkl_obs.size() == i_obs.size() );
+      CCTBX_ASSERT( (hkl_obs.size() == w_obs.size()) || (w_obs.size()==0) );
+
+      cctbx::miller::lookup_utils::lookup_tensor<FloatType>
+        tmp_lookup_object( hkl_calc, space_group, anomalous_flag  );
+
+      for (std::size_t ii=0;ii<hkl_obs.size();ii++){
+        i_obs_.push_back( i_obs[ii] );
+        if (w_obs.size() > 0){
+          w_obs_.push_back( w_obs[ii] );
+        }
+        else {
+          w_obs_.push_back( 1.0 );
+        }
+        long tmp_loc = tmp_lookup_object.find_hkl( hkl_obs[ii] );
+        CCTBX_ASSERT( tmp_loc >= 0 );
+        calc_ori_lookup_table_.push_back( tmp_loc );
+        tmp_loc = tmp_lookup_object.find_hkl( twin_mate( hkl_obs[ii],twin_law ) );
+        CCTBX_ASSERT( tmp_loc >= 0 );
+        calc_twin_lookup_table_ .push_back( tmp_loc );
+      }
+    }
+
+
+    FloatType target(scitbx::af::const_ref<std::complex<FloatType> >
+                     const& f_model) const
+    {
+      FloatType result=0,aa,ba,ab,bb,obs,calc;
+      for (std::size_t ii=0;ii<i_obs_.size();ii++){
+        long calc_index_a = calc_ori_lookup_table_[ ii ];
+        long calc_index_b = calc_twin_lookup_table_[ ii ];
+        aa = f_model[calc_index_a].real();
+        ba = f_model[calc_index_a].imag();
+        ab = f_model[calc_index_b].real();
+        bb = f_model[calc_index_b].imag();
+        calc = (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb);
+        obs = i_obs_[ii];
+        //std::cout << ii << " " << calc << " " << obs <<  " " << std::endl;
+        result += w_obs_[ii]*(obs-calc)*(obs-calc);
+      }
+      return( result );
+    }
+
+
+    scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > d_target_d_ab
+    (scitbx::af::const_ref<std::complex<FloatType> > const& f_model) const
       {
-        CCTBX_ASSERT( (alpha >=0) && (alpha<=1.00) );
-        CCTBX_ASSERT( hkl_obs.size() > 0);
-        CCTBX_ASSERT( hkl_obs.size() == i_obs.size() );
-        CCTBX_ASSERT( (hkl_obs.size() == w_obs.size()) || (w_obs.size()==0) );
+      scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
+      scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
 
-        cctbx::miller::lookup_utils::lookup_tensor<FloatType>
-          tmp_lookup_object( hkl_calc, space_group, anomalous_flag  );
+      FloatType aa,ba,ab,bb,obs,calc;
+      FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
+      FloatType dt1daa,dt1dba,dt1dab,dt1dbb;
 
-        for (std::size_t ii=0;ii<hkl_obs.size();ii++){
-          i_obs_.push_back( i_obs[ii] );
-          if (w_obs.size() > 0){
-            w_obs_.push_back( w_obs[ii] );
-          }
-          else {
-            w_obs_.push_back( 1.0 );
-          }
-          long tmp_loc = tmp_lookup_object.find_hkl( hkl_obs[ii] );
-          CCTBX_ASSERT( tmp_loc >= 0 );
-          calc_ori_lookup_table_.push_back( tmp_loc );
-          tmp_loc = tmp_lookup_object.find_hkl( twin_mate( hkl_obs[ii],twin_law ) );
-          CCTBX_ASSERT( tmp_loc >= 0 );
-          calc_twin_lookup_table_ .push_back( tmp_loc );
-        }
+      for (std::size_t ii=0;ii<i_obs_.size();ii++){
+        long calc_index_a = calc_ori_lookup_table_[ ii ];
+        long calc_index_b = calc_twin_lookup_table_[ ii ];
+        aa = f_model[calc_index_a].real();
+        ba = f_model[calc_index_a].imag();
+        ab = f_model[calc_index_b].real();
+        bb = f_model[calc_index_b].imag();
+        calc = (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb);
+        obs = i_obs_[ii];
+        t1 = (obs-calc);
+        dt1daa = 2.0*aa*(1-alpha_);
+        dt1dba = 2.0*ba*(1-alpha_);
+        dt1dab = 2.0*ab*(alpha_);
+        dt1dbb = 2.0*bb*(alpha_);
+        dqdaa = -2.0*t1*dt1daa;
+        dqdba = -2.0*t1*dt1dba;
+        dqdab = -2.0*t1*dt1dab;
+        dqdbb = -2.0*t1*dt1dbb;
+        // place them in the correct positions please
+        dtda[ calc_index_a ] += dqdaa;
+        dtdb[ calc_index_a ] += dqdba;
+        dtda[ calc_index_b ] += dqdab;
+        dtdb[ calc_index_b ] += dqdbb;
       }
+      scitbx::af::tiny<scitbx::af::shared<FloatType>,2> result(dtda,dtdb);
+      return( result  );
+    }
 
+    scitbx::af::shared< std::complex<FloatType> > d_target_d_fmodel
+    (scitbx::af::const_ref<std::complex<FloatType> > const& f_model){
+      scitbx::af::shared<std::complex<FloatType> > result;
 
-      FloatType target(scitbx::af::const_ref<std::complex<FloatType> >
-                       const& f_model) const
-      {
-        FloatType result=0,aa,ba,ab,bb,obs,calc;
-        for (std::size_t ii=0;ii<i_obs_.size();ii++){
-          long calc_index_a = calc_ori_lookup_table_[ ii ];
-          long calc_index_b = calc_twin_lookup_table_[ ii ];
-          aa = f_model[calc_index_a].real();
-          ba = f_model[calc_index_a].imag();
-          ab = f_model[calc_index_b].real();
-          bb = f_model[calc_index_b].imag();
-          calc = (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb);
-          obs = i_obs_[ii];
-          //std::cout << ii << " " << calc << " " << obs <<  " " << std::endl;
-          result += w_obs_[ii]*(obs-calc)*(obs-calc);
-        }
-        return( result );
+      scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > derivs;
+      derivs =  d_target_d_ab( f_model );
+
+      for (std::size_t ii=0;ii<f_model.size();ii++){
+        std::complex<FloatType> tmp(derivs[0][ii],derivs[1][ii] );
+        result.push_back( tmp );
       }
+      return result;
+    }
 
-
-      scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > d_target_d_ab
-      (scitbx::af::const_ref<std::complex<FloatType> > const& f_model) const
-        {
-        scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
-        scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
-
-        FloatType aa,ba,ab,bb,obs,calc;
-        FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
-        FloatType dt1daa,dt1dba,dt1dab,dt1dbb;
-
-        for (std::size_t ii=0;ii<i_obs_.size();ii++){
-          long calc_index_a = calc_ori_lookup_table_[ ii ];
-          long calc_index_b = calc_twin_lookup_table_[ ii ];
-          aa = f_model[calc_index_a].real();
-          ba = f_model[calc_index_a].imag();
-          ab = f_model[calc_index_b].real();
-          bb = f_model[calc_index_b].imag();
-          calc = (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb);
-          obs = i_obs_[ii];
-          t1 = (obs-calc);
-          dt1daa = 2.0*aa*(1-alpha_);
-          dt1dba = 2.0*ba*(1-alpha_);
-          dt1dab = 2.0*ab*(alpha_);
-          dt1dbb = 2.0*bb*(alpha_);
-          dqdaa = -2.0*t1*dt1daa;
-          dqdba = -2.0*t1*dt1dba;
-          dqdab = -2.0*t1*dt1dab;
-          dqdbb = -2.0*t1*dt1dbb;
-          // place them in the correct positions please
-          dtda[ calc_index_a ] += dqdaa;
-          dtdb[ calc_index_a ] += dqdba;
-          dtda[ calc_index_b ] += dqdab;
-          dtdb[ calc_index_b ] += dqdbb;
-        }
-        scitbx::af::tiny<scitbx::af::shared<FloatType>,2> result(dtda,dtdb);
-        return( result  );
+    FloatType d_target_d_alpha
+    (scitbx::af::const_ref<std::complex<FloatType> > const& f_model) const
+    {
+      FloatType result=0,aa,ba,ab,bb,obs,ia,ib;
+      for (std::size_t ii=0;ii<i_obs_.size();ii++){
+        long calc_index_a = calc_ori_lookup_table_[ ii ];
+        long calc_index_b = calc_twin_lookup_table_[ ii ];
+        aa = f_model[calc_index_a].real();
+        ba = f_model[calc_index_a].imag();
+        ab = f_model[calc_index_b].real();
+        bb = f_model[calc_index_b].imag();
+        ia=aa*aa+ba*ba;
+        ib=ab*ab+bb*bb;
+        obs = i_obs_[ii];
+        //std::cout << obs << " " << ia << " " << ib << " " << ( -(1.0-alpha_)*ia - alpha_*ib + obs ) << std::endl;
+        result += 2.0*(ia-ib)*( -(1.0-alpha_)*ia - alpha_*ib + obs )*w_obs_[ii];
       }
+      return result;
+    }
 
-      scitbx::af::shared< std::complex<FloatType> > d_target_d_fmodel
-      (scitbx::af::const_ref<std::complex<FloatType> > const& f_model){
-        scitbx::af::shared<std::complex<FloatType> > result;
+    void alpha( FloatType tmp_alpha )
+    {
+       alpha_ = tmp_alpha;
+    }
 
-        scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > derivs;
-        derivs =  d_target_d_ab( f_model );
+    FloatType alpha()
+    {
+       return(alpha_);
+    }
 
-        for (std::size_t ii=0;ii<f_model.size();ii++){
-          std::complex<FloatType> tmp(derivs[0][ii],derivs[1][ii] );
-          result.push_back( tmp );
-        }
-        return result;
+    void set_weights( scitbx::af::const_ref<FloatType> const& weights  ){
+      for (std::size_t ii=0;ii<w_obs_.size();ii++){
+        w_obs_[ii] = weights[ii];
       }
+    }
+  };
 
-      FloatType d_target_d_alpha
-      (scitbx::af::const_ref<std::complex<FloatType> > const& f_model) const
-      {
-        FloatType result=0,aa,ba,ab,bb,obs,ia,ib;
-        for (std::size_t ii=0;ii<i_obs_.size();ii++){
-          long calc_index_a = calc_ori_lookup_table_[ ii ];
-          long calc_index_b = calc_twin_lookup_table_[ ii ];
-          aa = f_model[calc_index_a].real();
-          ba = f_model[calc_index_a].imag();
-          ab = f_model[calc_index_b].real();
-          bb = f_model[calc_index_b].imag();
-          ia=aa*aa+ba*ba;
-          ib=ab*ab+bb*bb;
-          obs = i_obs_[ii];
-          //std::cout << obs << " " << ia << " " << ib << " " << ( -(1.0-alpha_)*ia - alpha_*ib + obs ) << std::endl;
-          result += 2.0*(ia-ib)*( -(1.0-alpha_)*ia - alpha_*ib + obs )*w_obs_[ii];
-        }
-        return result;
-      }
+  template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
+  protected:
+    scitbx::af::shared<FloatType> f_obs_;
+    scitbx::af::shared<FloatType> w_obs_;
 
-      void alpha( FloatType tmp_alpha )
-      {
-         alpha_ = tmp_alpha;
-      }
+    scitbx::mat3<FloatType> twin_law_;
+    cctbx::sgtbx::space_group space_group_;
 
-      FloatType alpha()
-      {
-         return(alpha_);
-      }
+    FloatType eps_;
+    FloatType alpha_;
 
-      void set_weights( scitbx::af::const_ref<FloatType> const& weights  ){
-        for (std::size_t ii=0;ii<w_obs_.size();ii++){
-          w_obs_[ii] = weights[ii];
-        }
-      }
-
-
-
-
- protected:
-      scitbx::af::shared<FloatType> i_obs_;
-      scitbx::af::shared<FloatType> w_obs_;
-
-      scitbx::mat3<FloatType> twin_law_;
-      cctbx::sgtbx::space_group space_group_;
-
-      //scitbx::af::shared<cctbx::miller::index<> > hkl_calc_;
-      FloatType alpha_;
-
-      scitbx::af::shared<long> calc_ori_lookup_table_;
-      scitbx::af::shared<long> calc_twin_lookup_table_;
-
- };
-
-
-
-
-
-
-
-
-
-
-template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
- public:
-  // You want to use this constructor
+    scitbx::af::shared<long> calc_ori_lookup_table_;
+    scitbx::af::shared<long> calc_twin_lookup_table_;
+  public:
+    // You want to use this constructor
     least_squares_hemihedral_twinning_on_f(
       scitbx::af::const_ref< cctbx::miller::index<> >  const& hkl_obs,       //1 indices for calculated data
       scitbx::af::const_ref< FloatType >               const& f_obs,         //2 f calc
@@ -350,8 +342,8 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       FloatType                                        const& alpha,         //7 twin fraction
       scitbx::mat3<FloatType>                          const& twin_law       //8 twin law
       ):
-      space_group_( space_group ),
       twin_law_(twin_law),
+      space_group_( space_group ),
       eps_(1e-5),
       alpha_(alpha)
       {
@@ -531,22 +523,6 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           w_obs_[ii] = weights[ii];
         }
       }
-
-
-
- protected:
-      scitbx::af::shared<FloatType> f_obs_;
-      scitbx::af::shared<FloatType> w_obs_;
-
-      scitbx::mat3<FloatType> twin_law_;
-      cctbx::sgtbx::space_group space_group_;
-
-      FloatType eps_;
-      FloatType alpha_;
-
-      scitbx::af::shared<long> calc_ori_lookup_table_;
-      scitbx::af::shared<long> calc_twin_lookup_table_;
-
  };
 
  template<typename FloatType>
@@ -1515,10 +1491,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
     int n_quad_;
     scitbx::af::shared<FloatType> x_quad_;
     scitbx::af::shared<FloatType> w_quad_;
-
-
   };
-
 
 }}}
 

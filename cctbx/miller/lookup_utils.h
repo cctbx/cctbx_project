@@ -23,27 +23,38 @@ namespace lookup_utils{
   template <typename FloatType=double>
   class lookup_tensor
   {
-    typedef std::map<cctbx::miller::index<>,
-                     std::size_t,
-                     cctbx::miller::fast_less_than<> > lookup_map_type;
-    public:
+    protected:
+      typedef std::map<
+        cctbx::miller::index<>,
+        std::size_t,
+        cctbx::miller::fast_less_than<> > lookup_map_type;
+
+      int n_duplicates_;
+      int n_indices_;
+      cctbx::sgtbx::space_group space_group_;
+      cctbx::sgtbx::space_group_type sgtype_;
+      cctbx::sgtbx::reciprocal_space::asu asu_choice_;
+      lookup_map_type hkl_lookup_;
+      bool anomalous_flag_;
+      public:
+
     /*! Default constructor */
     lookup_tensor() {}
+
     /*! Constructor with a given list of of HKL's */
     lookup_tensor(
       scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
       cctbx::sgtbx::space_group const& space_group,
       bool const& anomalous_flag)
     :
-    space_group_(space_group),
-    sgtype_(space_group_),
-    asu_choice_(sgtype_),
-    hkl_lookup_(),
-    n_duplicates_( 0 ),
-    anomalous_flag_(anomalous_flag),
-    n_indices_( hkl.size() )
+      n_duplicates_( 0 ),
+      n_indices_( hkl.size() ),
+      space_group_(space_group),
+      sgtype_(space_group_),
+      asu_choice_(sgtype_),
+      hkl_lookup_(),
+      anomalous_flag_(anomalous_flag)
     {
-
       for (unsigned ii=0;ii<hkl.size();ii++){
         cctbx::miller::asym_index asumap(space_group_,
                                          asu_choice_,
@@ -103,16 +114,6 @@ namespace lookup_utils{
       }
       return(permutation_table);
     }
-
-    protected:
-    int n_duplicates_;
-    int n_indices_;
-    cctbx::sgtbx::space_group space_group_;
-    cctbx::sgtbx::space_group_type sgtype_;
-    cctbx::sgtbx::reciprocal_space::asu asu_choice_;
-    lookup_map_type hkl_lookup_;
-    bool anomalous_flag_;
-
   };
 
 

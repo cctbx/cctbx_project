@@ -708,10 +708,6 @@ namespace cctbx { namespace xray {
       XrayScattererType const& scatterer = scatterers[i_seq];
       FloatType w = scatterer.weight();
       if (w == 0) continue;
-      eltbx::xray_scattering::gaussian const&
-        gaussian = scattering_type_registry.gaussian_not_optional(
-          scatterer.scattering_type);
-      FloatType gaussian_a = scitbx::fn::absolute(gaussian.at_stol_sq(0));
       n_contributing_scatterers_++;
       if (scatterer.fdp != 0) {
         n_anomalous_scatterers_++;
