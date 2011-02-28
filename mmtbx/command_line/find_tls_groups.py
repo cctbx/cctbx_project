@@ -796,11 +796,12 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
       chains_and_atom_selection_strings.append([crs[0],
         permutations_as_atom_selection_string(groups, perm_choice)])
       #
-  external_tls_selections = external_tls(
-    pdb_inp       = pdb_inp,
-    pdb_hierarchy = pdb_hierarchy,
-    sites_cart    = sites_cart,
-    u_iso         = u_iso)
+  if (pdb_inp is not None) :
+    external_tls_selections = external_tls(
+      pdb_inp       = pdb_inp,
+      pdb_hierarchy = pdb_hierarchy,
+      sites_cart    = sites_cart,
+      u_iso         = u_iso)
   print_statistics.make_header("SUMMARY", out = sys.stdout)
   #print "Optimal TLS groups:"
   #for chain_and_permutation in chains_and_permutations:
@@ -853,6 +854,7 @@ class _run_find_tls (object) :
   def __call__ (self, *args, **kwds) :
     return find_tls(
       params=self.params,
+      pdb_inp=None,
       pdb_hierarchy=self.pdb_hierarchy,
       xray_structure=self.xray_structure)
 
