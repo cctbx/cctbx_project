@@ -173,7 +173,7 @@ class ls_refinement(object):
     from libtbx.utils import xsamples
     for x in xsamples(p.xmin, p.xmax, p.xstep):
       O.x[ix] = x
-      ls = O.__get_ls()
+      ls = O.__get_tg()
       y = ls.target_work()
       xy.append((x,y))
       ys.append(y)
