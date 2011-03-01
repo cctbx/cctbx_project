@@ -2920,10 +2920,11 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
         f_calc is complex array or amplitude array.
     """
     assert f_calc.indices().all_eq(self.indices())
-    x = f_calc.data()
     if (f_calc.is_complex_array()):
-      x = flex.abs(x)
-    y = self.data()
+      x = flex.abs(f_calc.data())
+    else:
+      x = f_calc.data().deep_copy()
+    y = self.data().deep_copy()
     if (flex.min(y) < 0):
       return None
     sum_xx = flex.sum_sq(x)
