@@ -18,6 +18,9 @@ def get_master_phil():
     additional_phil_string="""\
       max_atoms = 99
         .type = int
+      f_obs_f_calc_fan_outliers = *remove keep
+        .type = choice
+        .optional = False
       reset_u_iso = 0.05
         .type = float
       sites_mod_positive = True
@@ -339,6 +342,18 @@ def process(params, pickle_file_name):
       print '  changed: "%s" -> "%s"' % change
   structure_cod.scattering_type_registry(d_min=f_obs.d_min()).show()
   print "."*79
+  f_calc = f_obs.structure_factors_from_scatterers(
+    xray_structure=structure_cod,
+    algorithm="direct",
+    cos_sin_table=False).f_calc()
+  sel = f_obs.f_obs_f_calc_fan_outlier_selection(f_calc=f_calc)
+  assert sel is not None
+  n_outliers = sel.count(True)
+  if (n_outliers != 0):
+    action = params.f_obs_f_calc_fan_outliers
+    print "INFO: f_obs_f_calc_fan_outliers = %s: %d" % (action, n_outliers)
+    if (action == "remove"):
+      f_obs = f_obs.select(~sel)
   if (f_obs.anomalous_flag()):
     print "INFO: anomalous f_obs converted to non-anomalous."
     f_obs = f_obs.average_bijvoet_mates()
