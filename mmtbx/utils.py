@@ -120,7 +120,7 @@ data_and_flags_str_part1 = """\
     .type=bool
     .short_caption = Reject outliers
     .expert_level = 0
-  french_wilson_scale = False
+  french_wilson_scale = True
     .type=bool
     .short_caption = use French-Wilson method to handle negative intensities
   french_wilson
@@ -237,9 +237,9 @@ def data_and_flags_master_params(master_scope_name=None):
 %s
 }
 """
-    return iotbx.phil.parse(p%(master_scope_name, data_and_flags_str))
+    return iotbx.phil.parse(p%(master_scope_name, data_and_flags_str), process_includes=True)
   else:
-    return iotbx.phil.parse(data_and_flags_str)
+    return iotbx.phil.parse(data_and_flags_str, process_includes=True)
 
 class determine_data_and_flags(object):
   def __init__(self, reflection_file_server,
