@@ -1184,6 +1184,12 @@ class manager(manager_mixin):
       miller_set = self.f_obs(),
       data       = self.scale_k1()*self.f_model().data())
 
+  def f_model_scaled_with_k1_composite_work_free(self):
+    ma_w = self.f_model_scaled_with_k1_w()
+    ma_f = self.f_model_scaled_with_k1_t()
+    if(ma_w.indices().size() == ma_f.indices().size()): return ma_w
+    return ma_w.concatenate(ma_f)
+
   def f_model_scaled_with_k1_t(self):
     return miller.array(
       miller_set = self.f_obs_free(),

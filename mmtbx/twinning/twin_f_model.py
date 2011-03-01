@@ -671,6 +671,12 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     new_object.did_search = self.did_search
     return new_object
 
+  def f_model_scaled_with_k1_composite_work_free(self):
+    # XXX scaled with k1 ???
+    ma_w = self.f_model_w()
+    ma_f = self.f_model_t()
+    if(ma_w.indices().size() == ma_f.indices().size()): return ma_w
+    return ma_w.concatenate(ma_f)
 
   def f_model(self):
     tmp_f_model = self.f_atoms.customized_copy(

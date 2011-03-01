@@ -541,11 +541,21 @@ class reflection_file_server(object):
       ignore_all_zeros=ignore_all_zeros)
     if return_all_valid_arrays :
       return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
+    # Recognize phenix.refine file and do the "right thing". May be too ad hoc..
+    new_miller_arrays = []
+    new_data_scores = []
+    for ma, ds in zip(miller_arrays, data_scores):
+      if(not (ma.info().labels == ['F-obs-filtered', 'SIGF-obs-filtered'] or
+         ma.info().labels == ['F-model', 'PHIF-model'] or
+         isinstance(ma.data(), flex.complex_double))):
+        new_miller_arrays.append(ma)
+        new_data_scores.append(ds)
+    #
     i = select_array(
       parameter_name=parameter_scope+"."+parameter_name,
       labels=labels,
-      miller_arrays=miller_arrays,
-      data_scores=data_scores,
+      miller_arrays=new_miller_arrays,
+      data_scores=new_data_scores,
       err=self.err,
       error_message_no_array
         ="No array of observed xray data found.",
@@ -553,7 +563,7 @@ class reflection_file_server(object):
         ="Not a suitable array of observed xray data: ",
       error_message_multiple_equally_suitable
         ="Multiple equally suitable arrays of observed xray data found.")
-    return miller_arrays[i]
+    return new_miller_arrays[i]
 
   def get_r_free_flags(self,
         file_name,
