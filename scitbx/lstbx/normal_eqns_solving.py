@@ -84,6 +84,10 @@ class iterations(object):
   Methods for non-linear least-squares problems,
   K. Madsen, H.B. Nielsen, O. Tingleff,
   http://www2.imm.dtu.dk/pubdb/views/edoc_download.php/3215/pdf/imm3215.pdf
+
+  The do_damping function implements the shelxl damping as described here:
+  http://shelx.uni-ac.gwdg.de/SHELX/shelx.pdf
+  and does nothing unless called by a derived class
   """
 
   track_step = False
@@ -92,6 +96,7 @@ class iterations(object):
   n_max_iterations = 100
   gradient_threshold = None
   step_threshold = None
+  damping_value = 0.0007
 
   def __init__(self, non_linear_ls, **kwds):
     """
@@ -115,6 +120,11 @@ class iterations(object):
     h = self.step_norm_history[-1]
     return h <= eps_2*(x + eps_2)
 
+  def do_damping(self, value):
+    if value == 0:  return
+    a = self.non_linear_ls.normal_matrix_packed_u()
+    a.matrix_packed_u_diagonal_add_in_place(value*a.matrix_packed_u_diagonal())
+
   def do(self):
     raise NotImplementedError
 
@@ -133,6 +143,29 @@ class naive_iterations(iterations):
 
   def __str__(self):
     return "pure Gauss-Newton"
+
+
+class naive_iterations_with_damping(iterations):
+
+  def do(self):
+    self.n_iterations = 0
+    do_last = False
+    while self.n_iterations < self.n_max_iterations:
+      self.non_linear_ls.build_up()
+      if self.has_gradient_converged_to_zero():
+        do_last = True
+      if not do_last and self.n_iterations+1 < self.n_max_iterations:
+        self.do_damping(self.damping_value)
+      self.non_linear_ls.solve()
+      step_too_small = self.had_too_small_a_step()
+      self.non_linear_ls.step_forward()
+      self.n_iterations += 1
+      if do_last: break
+      if step_too_small:
+        do_last = True
+
+  def __str__(self):
+    return "pure Gauss-Newton with damping"
 
 
 class levenberg_marquardt_iterations(iterations):
