@@ -1069,6 +1069,25 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   assert approx_equal(maa.as_intensity_array().data(), [5, 13])
   assert approx_equal(maa.as_intensity_array().sigmas(), mai.sigmas())
   assert approx_equal(mai.as_amplitude_array().data(), [5**0.5, 13**0.5])
+  #
+  ms = miller.build_set(
+    crystal_symmetry=xs,
+    anomalous_flag=False,
+    d_min=2)
+  sz = ms.indices().size()
+  assert sz >= 10
+  mt = flex.mersenne_twister(seed=1)
+  mc = ms.array(
+    data=flex.complex_double(
+      mt.random_double(sz)*2-1,
+      mt.random_double(sz)*2-1))
+  mb = ms.array(data=mt.random_double(sz))
+  ma = mc.as_amplitude_array()
+  for fc in [mc, ma]:
+    sel = ma.f_obs_f_calc_fan_outlier_selection(f_calc=fc)
+    assert sel.count(True) == 0
+    sel = mb.f_obs_f_calc_fan_outlier_selection(f_calc=fc)
+    assert sel.count(True) == 8 # depends on mt seed above
 
 def exercise_r1_factor():
   cs = crystal.symmetry((1,2,3), "P21/a")

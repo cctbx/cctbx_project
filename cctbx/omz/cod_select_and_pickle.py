@@ -1,3 +1,4 @@
+from __future__ import division
 import traceback
 import sys, os
 op = os.path
@@ -84,18 +85,60 @@ class cod_data(object):
       print "Zero or negative sigmas:", O.cod_code
     return result
 
-  def f_obs_f_calc_correlation(O):
-    f_calc = O.f_obs.structure_factors_from_scatterers(
-      xray_structure=O.xray_structure).f_calc()
+  def f_obs_and_f_calc_agree_well(O, co):
+    if (O.f_obs.indices().size() == 0): return False
     from cctbx.array_family import flex
-    lc = flex.linear_correlation(
-      x=O.f_obs.data(),
-      y=f_calc.amplitudes().data())
+    f_calc = O.f_obs.structure_factors_from_scatterers(
+      xray_structure=O.xray_structure).f_calc().amplitudes()
+    fan_sel = O.f_obs.f_obs_f_calc_fan_outlier_selection(
+      f_calc=f_calc,
+      offset_low=co.fan_offset_low,
+      offset_high=co.fan_offset_high,
+      also_return_x_and_y=True)
+    if (fan_sel is None):
+      return False
+    fan_sel, x, y = fan_sel
+    if (co.f_obs_f_calc_plot):
+      from libtbx import pyplot
+      xs = x.select(fan_sel)
+      ys = y.select(fan_sel)
+      if (xs.size() == 0):
+        pyplot.plot(x.as_numpy_array(), y.as_numpy_array(), "bo")
+      else:
+        pyplot.plot(xs.as_numpy_array(), ys.as_numpy_array(), "ro")
+        xs = x.select(~fan_sel)
+        ys = y.select(~fan_sel)
+        if (xs.size() != 0):
+          pyplot.plot(xs.as_numpy_array(), ys.as_numpy_array(), "bo")
+      pyplot.plot_pairs(
+        [(co.fan_offset_low,0), (1,1-co.fan_offset_high)], "r-")
+      pyplot.plot_pairs(
+        [(0,co.fan_offset_low), (1-co.fan_offset_high,1)], "r-")
+      pyplot.plot_pairs([(0,0), (1,1)], "k--")
+      pyplot.show()
+    fan_outlier_fraction = fan_sel.count(True) / fan_sel.size()
+    lc = flex.linear_correlation(O.f_obs.data(), f_calc.data())
     assert lc.is_well_defined()
-    result = lc.coefficient()
-    print "f_obs_f_calc_correlation: %.3f %s" % (
-      lc.coefficient(), O.cod_code)
-    return result
+    cc = lc.coefficient()
+    print "f_obs_f_calc cc, fan: %.3f %.3f %s" % (
+      lc.coefficient(), fan_outlier_fraction, O.cod_code)
+    if (fan_outlier_fraction > co.max_fan_outlier_fraction):
+      return False
+    if (cc < co.min_f_obs_f_calc_correlation):
+      return False
+    return True
+
+  def is_useful(O, co):
+    if (O.have_zero_occupancies()): return False
+    if (not O.have_shelxl_compatible_scattering_types()): return False
+    if (O.have_sys_absent()): return False
+    if (O.have_redundant_data()): return False
+    if (O.have_bad_sigmas()): return False
+    if (not O.f_obs_and_f_calc_agree_well(co)): return False
+    if (    co.at_least_one_special_position
+        and O.xray_structure.special_position_indices().size() == 0):
+      return False
+    return True
 
 def build_hkl_cif(cod_codes):
   cod_svn = os.environ.get("COD_SVN_WORKING_COPY")
@@ -150,6 +193,21 @@ def run(args):
     usage=" ".join(command_call) + " [options] [cod_code...]")
     .enable_chunk(easy_all=True)
     .enable_multiprocessing()
+    .option(None, "--f_obs_f_calc_plot",
+      action="store_true",
+      default=False)
+    .option(None, "--max_fan_outlier_fraction",
+      type="float",
+      default=0.05,
+      metavar="FLOAT")
+    .option(None, "--fan_offset_low",
+      type="float",
+      default=0.05,
+      metavar="FLOAT")
+    .option(None, "--fan_offset_high",
+      type="float",
+      default=0.10,
+      metavar="FLOAT")
     .option(None, "--min_f_obs_f_calc_correlation",
       type="float",
       default=0.99,
@@ -188,14 +246,7 @@ def run(args):
       sys.stderr.flush()
       n_caught += 1
     else:
-      if (    not cd.have_zero_occupancies()
-          and cd.have_shelxl_compatible_scattering_types()
-          and not cd.have_sys_absent()
-          and not cd.have_redundant_data()
-          and not cd.have_bad_sigmas()
-          and cd.f_obs_f_calc_correlation() >= co.min_f_obs_f_calc_correlation
-          and (not co.at_least_one_special_position
-                 or cd.xray_structure.special_position_indices().size() != 0)):
+      if (cd.is_useful(co)):
         easy_pickle.dump(
           file_name="%s/%s.pickle" % (pickle_dir, cod_code),
           obj=(cd.f_obs, cd.xray_structure))

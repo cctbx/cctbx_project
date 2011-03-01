@@ -2909,6 +2909,44 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     correction = self.shelxl_extinction_correction(x, wavelength)
     return self.customized_copy(data=self.data() * correction)
 
+  def f_obs_f_calc_fan_outlier_selection(self,
+        f_calc,
+        offset_low=0.05,
+        offset_high=0.10,
+        also_return_x_and_y=False):
+    """\
+      Preconditions (not checked explicitly):
+        self is amplitude array,
+        f_calc is complex array or amplitude array.
+    """
+    assert f_calc.indices().all_eq(self.indices())
+    x = f_calc.data()
+    if (f_calc.is_complex_array()):
+      x = flex.abs(x)
+    y = self.data()
+    if (flex.min(y) < 0):
+      return None
+    sum_xx = flex.sum_sq(x)
+    sum_xy = flex.sum(x * y)
+    if (sum_xx == 0):
+      return None
+    x *= (sum_xy / sum_xx)
+    s = max(flex.max(x), flex.max(y))
+    if (s == 0):
+      return None
+    x *= (1/s)
+    y *= (1/s)
+    m_low = (1-offset_high) / (1-offset_low)
+    b_low = -m_low * offset_low
+    m_high = 1/m_low
+    b_high = offset_low
+    result = (
+        (y < m_low  * x + b_low)
+      | (y > m_high * x + b_high))
+    if (also_return_x_and_y):
+      return result, x, y
+    return result
+
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
   def __init__(self, miller_array,
