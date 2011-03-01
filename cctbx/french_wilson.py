@@ -302,7 +302,7 @@ def french_wilson_scale(miller_array, params=None, log=None):
   new_sigma_F = flex.double()
   new_indices = flex.miller_index()
   bin_mean_intensities = miller_array.mean(use_binning=True).data
-  d_mean_intensities = calculate_mean_intensities(miller_array=miller_array)
+  d_mean_intensities = calculate_mean_intensities(miller_array=miller_array, log=log)
   assert len(d_mean_intensities) == miller_array.data().size()
   for i_bin in miller_array.binner().range_all():
     sel = miller_array.binner().selection(i_bin)
