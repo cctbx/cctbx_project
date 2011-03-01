@@ -410,13 +410,16 @@ class determine_data_and_flags(object):
     f_obs_data_size = f_obs.data().size()
     print >> self.log
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
+    f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
       if(self.parameters.french_wilson_scale) :
-        f_obs = french_wilson.french_wilson_scale(
+        f_obs_fw = french_wilson.french_wilson_scale(
           miller_array=f_obs,
           params=self.parameters.french_wilson,
           log=self.log)
-      else :
+        if f_obs_fw is not None:
+          f_obs = f_obs_fw
+      if (not self.parameters.french_wilson_scale or f_obs_fw is None) :
         selection_by_isigma = self._apply_sigma_cutoff(
           f_obs   = f_obs,
           n       = self.parameters.sigma_iobs_rejection_criterion,
