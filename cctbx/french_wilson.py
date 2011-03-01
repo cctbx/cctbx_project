@@ -160,20 +160,28 @@ def get_mean_intensity(miller_array):
 
 # default number of bins is 60, but require that each bin has at least 40 reflections
 # if not try again with less bins until condition is satisfied
-# function runs recursively
 def f_w_binning(miller_array, max_bins=60, min_bin_size=40, log=None):
   if log == None:
     log = sys.stdout
-  miller_array.setup_binner(n_bins=max_bins)
-  for i_bin in miller_array.binner().range_all():
-    sel = miller_array.binner().selection(i_bin)
-    bin = miller_array.select(sel)
-    if bin.size() > 0:
-      if bin.size() < min_bin_size:
-        new_max_bins = max_bins - 1
-        print >> log, "bin too small, trying %d bins" % new_max_bins
-        f_w_binning(miller_array, max_bins=new_max_bins)
-        break
+  bin_success = False
+  while not bin_success:
+    miller_array.setup_binner(n_bins=max_bins)
+    bin_success = True
+    for i_bin in miller_array.binner().range_all():
+      sel = miller_array.binner().selection(i_bin)
+      bin = miller_array.select(sel)
+      if bin.size() > 0:
+        if bin.size() < min_bin_size:
+          max_bins = max_bins - 1
+          if max_bins == 0:
+            print >> log, "not enough reflections for accurate binning\n"+ \
+                          "** skipping French-Wilson scaling **"
+            return False
+          print >> log, "bin too small, trying %d bins" % max_bins
+          bin_success = False
+          break
+          #f_w_binning(miller_array, max_bins=new_max_bins, log=log)
+  return True
 
 def get_bin_centers(miller_array):
   from cctbx.array_family import flex
@@ -291,10 +299,11 @@ def french_wilson_scale(miller_array, params=None, log=None):
   make_sub_header("Scaling input intensities via French-Wilson Method",
     out=log)
   print >> log, "Trying %d bins..." % params.max_bins
-  f_w_binning(miller_array=miller_array,
+  if not f_w_binning(miller_array=miller_array,
               max_bins=params.max_bins,
               min_bin_size=params.min_bin_size,
-              log=log)
+              log=log):
+    return None
   print >> log, "Number of bins = %d" % miller_array.binner().n_bins_used()
   new_I = flex.double()
   new_sigma_I = flex.double()
