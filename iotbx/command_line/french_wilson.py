@@ -95,6 +95,9 @@ def run (args, out=sys.stdout) :
   f_obs = french_wilson.french_wilson_scale(miller_array=i_obs,
     params=params,
     log=out)
+  if f_obs is None:
+    raise Sorry("Not enough data to accurately apply the French-Wilson method."+\
+                " Exiting.")
   if params.output_file == None:
     output_file = "french_wilson.mtz"
   else:
