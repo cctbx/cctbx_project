@@ -333,7 +333,7 @@ class manager (object) :
     if len(params.helix) == 0 and len(params.sheet) == 0 :
       if(self.verbose>0):
         print >> log, "No existing secondary structure definitions found."
-      if self.sec_str_from_pdb_file is None and find_automatically != False :
+      if (self.sec_str_from_pdb_file is None) and (find_automatically!=False) :
         if(self.verbose>0):
           print >> log, "No HELIX or SHEET records found in PDB file."
         find_automatically = True
@@ -342,7 +342,7 @@ class manager (object) :
         self.sec_str_from_pdb_file = self.find_sec_str_with_segids(log=log)
       else :
         self.sec_str_from_pdb_file = self.find_sec_str(log=log)
-    if self.sec_str_from_pdb_file is not None :
+    if (self.sec_str_from_pdb_file is not None) :
       if isinstance(self.sec_str_from_pdb_file, list) :
         if(self.verbose>0):
           print >> log, "  Interpreting HELIX and SHEET records for individual chains"
@@ -359,6 +359,10 @@ class manager (object) :
         ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
           prefix_scope="")
       self.apply_phil_str(ss_params_str, log=log)
+    if (find_automatically) and (self.params.input.helices_from_phi_psi) :
+      restraint_groups = self.find_approximate_helices(log=log)
+      if (restraint_groups is not None) :
+        self.params.helix = restraint_groups.helix
     # Step 2: nucleic acids
     if (find_nucleic_acids(self.pdb_hierarchy) or
         params.input.force_nucleic_acids) :
@@ -403,11 +407,12 @@ class manager (object) :
     return annotations
 
   def find_approximate_helices (self, log=sys.stderr) :
+    print >> log, "  Looking for approximately helical regions. . ."
+    print >> log, "    warning: experimental, results not guaranteed to work!"
     find_helices = proteins.find_helices_simple(self.pdb_hierarchy)
     find_helices.show(out=log)
     restraint_groups = find_helices.as_restraint_groups()
-    if (restraint_groups is not None) :
-      self.params.helix = restraint_groups.helix
+    return restraint_groups
 
   def find_base_pairs (self, log=sys.stderr) :
     base_pairs = base_pairing.get_phil_base_pairs(

@@ -3239,7 +3239,12 @@ class build_all_chain_proxies(object):
       if (verbose) :
         print >> log, "    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
                                       self.pdb_atoms[j_seq].id_str())
-      shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
+      try :
+        shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
+      except RuntimeError, e :
+        print >> log, "    WARNING: could not process nonbonded pair"
+        print >> log, "    Original error:"
+        print >> log, "      %s" % str(e)
       #shell_sym_tables[1][i_seq][j_seq].add(rt_mx_ji)
 
   def process_custom_nonbonded_symmetry_exclusions(self,
