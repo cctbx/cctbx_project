@@ -94,6 +94,20 @@ END
     raise Exception_expected(
       "Expected exception for 'pdb.assert_file_type(\"txt\")'.")
   pdb.assert_file_type("pdb")
+  pdb.check_file_type("pdb")
+  try :
+    pdb.check_file_type("hkl")
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  try :
+    pdb.check_file_type(multiple_formats=["hkl","seq"])
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  pdb.check_file_type(multiple_formats=["hkl","pdb"])
   os.remove("tmp1.pdb")
 
   #--- PHIL

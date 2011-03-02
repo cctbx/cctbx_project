@@ -802,7 +802,7 @@ def known_sequence_formats():
 
   return _implemented_sequence_parsers.keys()
 
-def any_sequence_format (file_name) :
+def any_sequence_format (file_name, assign_name_if_not_defined=False) :
   format_parser = sequence_parser_for(file_name)
   data = open(file_name, "r").read()
   seq_object = None
@@ -814,6 +814,12 @@ def any_sequence_format (file_name) :
     except Exception, e :
       pass
     else :
+      if (assign_name_if_not_defined) :
+        base_name = os.path.splitext(os.path.basename(file_name))[0]
+        for k, seq in enumerate(objects) :
+          if (seq.name == "") :
+            seq.name = "%s_%d" % (base_name, k+1)
+            print seq.name
       return objects, non_compliant
   for other_parser in [fasta_sequence_parse.parse, pir_sequence_parse.parse,
                        seq_sequence_parse.parse, tf_sequence_parse] :
@@ -825,11 +831,19 @@ def any_sequence_format (file_name) :
       except Exception, e :
         pass
       else :
+        if (assign_name_if_not_defined) :
+          base_name = os.path.splitext(os.path.basename(file_name))[0]
+          for k, seq in enumerate(objects) :
+            if (seq.name == "") :
+              seq.name = "%s_%d" % (base_name, k+1)
+              print seq.name
         return objects, non_compliant
   # fallback: unformatted
   data = re.sub("\s", "", data)
   if (re.search("[^a-zA-Z\*]", data) is None) :
     seq = sequence(data)
+    if (assign_name_if_not_defined ):
+      seq.name = os.path.splitext(os.path.basename(file_name))[0]
     return [seq], []
   return None, None
 
