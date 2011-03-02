@@ -939,24 +939,16 @@ class manager(manager_mixin):
       self.update(k_sol = 0, b_sol = 0)
     return result
 
-  def compute_f_part(self, log = None):
+  def compute_f_part(self, params, log = None):
     phenix_masks = None
     if(not libtbx.env.has_module(name="solve_resolve")):
       raise Sorry("solve_resolve not installed or not configured.")
     else:
       import solve_resolve.masks as phenix_masks
     if(log is None): log = sys.stdout
-    return phenix_masks.nu(
-      fmodel               = self,
-      verbose              = True,
-      resolution_factor    = 1./4,
-      solvent_radius_inc   = 0.,
-      solvent_content      = 0.5,
-      log                  = log,
-      debug                = True,
-      diff_map_cutoff      = 1.5)
+    return phenix_masks.nu(fmodel = self, params = params)
 
-  def update_f_part(self, log=None):
+  def update_f_part(self, params, log=None):
     def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
       fmt = "%s %6.4f %6.4f %5.2f %6.2f %5.2f %6.2f"
       print >> log, fmt % (prefix,r_work,r_free,k_part,b_part,k_sol,b_sol)
@@ -964,6 +956,7 @@ class manager(manager_mixin):
          b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
          prefix="Start:", log=log)
     self.update_core(k_part = 0, b_part = 0)
+    self.update_xray_structure(update_f_mask=True)
     show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
          b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
          prefix="  ", log=log)
@@ -971,7 +964,7 @@ class manager(manager_mixin):
     show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
          b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
          prefix="  ", log=log)
-    nuo = self.compute_f_part(log = log)
+    nuo = self.compute_f_part(params = params, log = log)
     self.passive_arrays.f_part_base = nuo.f_part
     self.update_core(f_mask      = nuo.f_mask_new.common_set(self.f_obs()),
                      f_part_base = nuo.f_part.common_set(self.f_obs()))
@@ -1006,8 +999,7 @@ class manager(manager_mixin):
     show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
          b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
          prefix="Final:", log=log)
-    print
-
+    print >> log
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
                                      optimize_mask = True):
