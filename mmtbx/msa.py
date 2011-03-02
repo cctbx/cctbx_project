@@ -4,6 +4,7 @@ import libtbx.phil
 import libtbx.load_env
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+from cStringIO import StringIO
 import os
 import sys
 
@@ -151,13 +152,16 @@ muscle
     program MUSCLE, written by Bob Edgar.  It can produce output identical in \
     format to CLUSTALW, which is suitable for input to the Sculptor model \
     preparation program.  You may provide all sequences in a single file, \
-    or in as many different files as desired.
+    or in as many different files as desired.  Alternately, you may provide \
+    one or more PDB files from which the chain sequence(s) will be extracted \
+    (note however that this is only useful for homogenous models).
+  .style = caption_img:icons/custom/msa64.png caption_width:480
 {
   seq_file = None
     .type = path
     .multiple = True
     .short_caption = Sequence file
-    .style = file_type:seq use_list
+    .style = file_type:seq,pdb use_list
   output_file = None
     .type = path
     .style = bold file_type:aln new_file
@@ -172,11 +176,34 @@ def run (args=(), params=None, out=sys.stdout) :
   output_file = params.muscle.output_file
   if (output_file is None) or (output_file == "") :
     output_file = os.path.join(os.getcwd(), "muscle.aln")
-  from iotbx.bioinformatics import any_sequence_format
+  from iotbx import file_reader
+  from iotbx.bioinformatics import any_sequence_format, sequence
   seqs = []
-  for seq_file in seq_files :
-    seq_objects, non_compliant = any_sequence_format(seq_file)
-    seqs.extend(seq_objects)
+  for file_name in seq_files :
+    if (file_name.endswith(".pdb") or file_name.endswith(".ent") or
+        file_name.endswith(".pdb.gz") or file_name.endswith(".ent.gz")) :
+      pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
+      hierarchy = pdb_in.construct_hierarchy()
+      first_model = hierarchy.models()[0]
+      found_protein = False
+      for chain in first_model.chains() :
+        first_conf = chain.conformers()[0]
+        if first_conf.is_protein() :
+          chain_seq = first_conf.as_padded_sequence()
+          base_name = os.path.basename(file_name)
+          seq_name = "%s_%s" % (os.path.splitext(base_name)[0], chain.id)
+          seqs.append(sequence(chain_seq, seq_name))
+          found_protein = True
+      if (not found_protein) :
+        raise Sorry(("The PDB file %s does not contain any recognizable "+
+          "protein chains.") % file_name)
+    else :
+      try :
+        seq_objects, non_compliant = any_sequence_format(file_name)
+        seqs.extend(seq_objects)
+      except Exception, e :
+        raise Sorry(("Error parsing '%s' - not a recognizable sequence "+
+          "format.  (Original message: %s)") % (file_name, str(e)))
   if (len(seqs) < 2) :
     raise Sorry("Need at least two valid sequences to run MUSCLE.")
   combined = "\n".join([ seq.format(80) for seq in seqs ])
@@ -236,8 +263,32 @@ DKKEKTLLQKLLSKKPEDRPNTSEILRTLTVWKKSPEKNERHTA"""
     assert (m.convert_residue_number("pdb2", 18) is None)
     assert (m.convert_residue_number("pdb1", 27) == 27)
     assert (m.convert_residue_number("pdb2", 30) == 30)
-
-  #print m.muscle_aln.format(80,10)
+  pdb_str = """\
+ATOM      2  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A   4      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   5      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN A   6       0.384   1.888   3.199  1.00 10.53           C
+ATOM     22  CA  ALA A   6A      0.384   1.888   3.199  1.00 10.53           C
+ATOM     22  CA  GLY A   6B      0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN A   7       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN A   8       6.831   2.310   4.318  1.00 12.30           C
+ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
+TER
+ATOM     50  O   HOH     1       0.000   0.000   0.000  1.0  20.0            O
+END
+"""
+  open("tmp1.pdb", "w").write(pdb_str)
+  open("tmp2.fa", "w").write(">tmp2\nAVGNNQQNY")
+  open("tmp3.fa", "w").write(">tmp3\nNNQQNY")
+  params = master_phil.fetch().extract()
+  params.muscle.seq_file.extend(["tmp1.pdb", "tmp2.fa", "tmp3.fa"])
+  (aln_file, alignment) = run(params=params, out=StringIO)
+  assert (alignment ==
+    "MUSCLE (3.8) multiple sequence alignment\n\n\n"+
+    "tmp2            AVGNNQ--QNY\n"
+    "tmp3            ---NNQ--QNY\n"
+    "tmp1_A          XXGNNQAGQNY\n"
+    "                   ***  ***")
   print "OK"
 
 if __name__ == "__main__" :
