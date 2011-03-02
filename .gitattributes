@@ -814,6 +814,7 @@ iotbx/ranges.py -text
 iotbx/reflection_file_editor.py -text
 iotbx/regression/tst_add_conformations.py -text
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
+iotbx/regression/tst_pdb_as_fasta.py -text
 iotbx/shelx/errors.py -text
 iotbx/shelx/fcf.py -text
 iotbx/shelx/lexer.py -text

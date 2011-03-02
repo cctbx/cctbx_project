@@ -803,7 +803,7 @@ class _conformer(boost.python.injector, ext.conformer):
       residue_classes[c] += 1
     return (rn_seq, residue_classes)
 
-  def is_protein (self, min_content=0.95) :
+  def is_protein (self, min_content=0.8) :
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
@@ -860,7 +860,8 @@ class _conformer(boost.python.injector, ext.conformer):
       i = j
     return result
 
-  def as_padded_sequence (self, missing_char='X', skip_insertions=False) :
+  def as_padded_sequence (self, missing_char='X', skip_insertions=False,
+      pad=True) :
     seq = self.as_sequence()
     padded_seq = []
     last_resseq = 0
@@ -870,7 +871,7 @@ class _conformer(boost.python.injector, ext.conformer):
       if (skip_insertions) and (residue.icode != " ") :
         continue
       resseq = residue.resseq_as_int()
-      if (resseq > (last_resseq + 1)) :
+      if (pad) and (resseq > (last_resseq + 1)) :
         for x in range(resseq - last_resseq - 1) :
           padded_seq.append(missing_char)
       last_resseq = resseq
