@@ -16,7 +16,7 @@ import sys, os
 ss_restraint_params_str = """
   verbose = False
     .type = bool
-  restraint_type = *Auto simple_explicit simple_implicit implicit
+  restraint_type = *Auto simple lennard_jones implicit
     .type = choice
     .short_caption = Hydrogen bond restraint type
     .caption = Automatic Simple_(H-O) Simple_(N-O)
@@ -29,9 +29,10 @@ ss_restraint_params_str = """
     .type = bool
   restrain_base_pairs = True
     .type = bool
-  remove_outliers = True
+  remove_outliers = None
     .type = bool
     .short_caption = Filter bond outliers
+    .style = tribool
 """
 
 ss_tardy_params_str = """\
@@ -147,12 +148,14 @@ def hydrogen_bond_proxies_from_selections(
     pdb_hierarchy,
     params,
     restraint_type,
+    use_hydrogens,
     hbond_params=None,
     restrain_helices=True,
     alpha_only=False,
     restrain_sheets=True,
     restrain_base_pairs=True,
     as_python_objects=False,
+    remove_outliers=False,
     log=sys.stderr) :
   from mmtbx.geometry_restraints import hbond
   from scitbx.array_family import flex
@@ -162,23 +165,25 @@ def hydrogen_bond_proxies_from_selections(
   if (hbond_params is None) :
     hbond_params = hbond.master_phil.fetch().extract()
   weight = hbond_params.restraints_weight
-  simple_distance_ideal = simple_distance_cut = None
+  distance_ideal = distance_cut = None
   if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
     if (not restraint_type.startswith("simple")) :
       print >> log, "  Nucleic acids are being restrained (%d base pairs)"
       print >> log, "  Only the simple H-bond potential is available; will "
       print >> log, "  switch automatically to use this restraint type."
-      restraint_type = "simple_%s" % restraint_type
-  if (restraint_type == "simple_explicit") :
+      restraint_type = "simple"
+  if (use_hydrogens) :
+    distance_ideal = hbond_params.distance_ideal_h_o
+    distance_cut = hbond_params.distance_cut_h_o
+  else :
+    distance_ideal = hbond_params.distance_ideal_n_o
+    distance_cut = hbond_params.distance_cut_n_o
+  if (restraint_type == "simple") :
     geo_params = hbond_params.simple
-    simple_distance_ideal = hbond_params.simple.distance_ideal_h_o
-    simple_distance_cut = hbond_params.simple.distance_cut_h_o
     build_proxies = hbond.build_simple_hbond_proxies()
-  elif (restraint_type == "simple_implicit") :
-    geo_params = hbond_params.simple
-    simple_distance_ideal = hbond_params.simple.distance_ideal_n_o
-    simple_distance_cut = hbond_params.simple.distance_cut_n_o
-    build_proxies = hbond.build_simple_hbond_proxies()
+  elif (restraint_type == "lennard_jones") :
+    geo_params = hbond_params.lennard_jones
+    build_proxies = hbond.build_lennard_jones_proxies()
   elif (restraint_type == "explicit") :
     geo_params = hbond_params.explicit
     build_proxies = hbond.build_explicit_hbond_proxies()
@@ -189,8 +194,8 @@ def hydrogen_bond_proxies_from_selections(
     raise RuntimeError("Inappropriate restraint type '%s'." % restraint_type)
   if (as_python_objects) :
     build_proxies = hbond.build_distance_proxies()
-  if (simple_distance_cut is None) :
-    simple_distance_cut = -1
+  if (distance_cut is None) :
+    distance_cut = -1
   if (restrain_helices) :
     for helix in params.helix :
       helix_class = helix.helix_type
@@ -221,8 +226,10 @@ def hydrogen_bond_proxies_from_selections(
           weight=hbond_params.restraints_weight,
           hbond_params=geo_params,
           hbond_counts=hbond_counts,
-          simple_distance_ideal=simple_distance_ideal,
-          simple_distance_cut=simple_distance_cut,
+          distance_ideal=distance_ideal,
+          distance_cut=distance_cut,
+          remove_outliers=remove_outliers,
+          use_hydrogens=use_hydrogens,
           log=log)
         if (n_proxies == 0) :
           print >> log, "  No H-bonds generated for '%s'" % helix.selection
@@ -237,8 +244,10 @@ def hydrogen_bond_proxies_from_selections(
         weight=hbond_params.restraints_weight,
         hbond_params=geo_params,
         hbond_counts=hbond_counts,
-        simple_distance_ideal=simple_distance_ideal,
-        simple_distance_cut=simple_distance_cut,
+        distance_ideal=distance_ideal,
+        distance_cut=distance_cut,
+        remove_outliers=remove_outliers,
+        use_hydrogens=use_hydrogens,
         log=sys.stdout)
       if (n_proxies == 0) :
         print >> log, "  No H-bonds generated for sheet #%d" % k
@@ -256,8 +265,10 @@ def hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=pdb_hierarchy,
       restraint_type=restraint_type,
       hbond_counts=hbond_counts,
-      distance_ideal=simple_distance_ideal,
-      distance_cut=simple_distance_cut,
+      distance_ideal=distance_ideal,
+      distance_cut=distance_cut,
+      remove_outliers=remove_outliers,
+      use_hydrogens=use_hydrogens,
       sigma=sigma,
       slack=slack,
       use_db_values=params.nucleic_acids.use_db_values)
@@ -440,19 +451,24 @@ class manager (object) :
     if (restraint_type is None) :
       restraint_type = self.params.h_bond_restraints.restraint_type
       if (restraint_type == "Auto") :
-        if (not self.assume_hydrogens_all_missing) :
-          restraint_type = "simple_explicit"
-        else :
-          restraint_type = "simple_implicit"
+        restraint_type = "simple"
     else :
-      assert (restraint_type in ["simple_explicit", "simple_implicit",
+      assert (restraint_type in ["simple", "lennard_jones",
                                  "explicit", "implicit"])
+    remove_outliers = self.params.h_bond_restraints.remove_outliers
+    if (remove_outliers is None) :
+      if (restraint_type == "simple") :
+        remove_outliers = True
+      else :
+        remove_outliers = False
     build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
       restraint_type=restraint_type,
+      use_hydrogens=(not self.assume_hydrogens_all_missing),
       hbond_params=hbond_params,
       as_python_objects=as_python_objects,
+      remove_outliers=remove_outliers,
       log=log)
     if isinstance(build_proxies.proxies, list) :
       n_proxies = len(build_proxies.proxies)

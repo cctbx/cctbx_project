@@ -1,6 +1,5 @@
 
 from libtbx.test_utils import approx_equal
-import cStringIO
 import sys
 
 def simple_pdb () :
@@ -33,13 +32,14 @@ def exercise_simple () :
   cache = hierarchy.atom_selection_cache()
   i_seq_1 = cache.selection("resseq 1 and name O").iselection()
   i_seq_2 = cache.selection("resseq 5 and name H").iselection()
-  assert (i_seq_1.size() == i_seq_2.size() == 1)
+  i_seq_3 = cache.selection("resseq 5 and name N").iselection()
+  assert (i_seq_1.size() == i_seq_2.size() == i_seq_3.size() == 1)
   build_proxies = hbond.build_simple_hbond_proxies()
   # XXX note: actual bond length is approximately 2.1021
   build_proxies.add_proxy(
     i_seqs=[i_seq_1[0], i_seq_2[0]],
     distance_ideal=1.975,
-    distance_cut=2.5,
+    distance_cut=-1,
     weight=1/(0.05**2))
   cctbx_bond = cctbx.geometry_restraints.bond(
     sites=[sites_cart[i_seq_1[0]], sites_cart[i_seq_2[0]]],
@@ -51,49 +51,97 @@ def exercise_simple () :
     sites_cart=sites_cart,
     gradient_array=grads)
   assert (residual == cctbx_bond.residual())
-  grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+  assert approx_equal(residual, 6.45926322152, eps=0.00001)
+  # as before, but with N-O restrained
   build_proxies = hbond.build_simple_hbond_proxies()
   build_proxies.add_proxy(
-    i_seqs=[i_seq_1[0], i_seq_2[0]],
-    distance_ideal=1.975,
-    distance_cut=2.5,
+    i_seqs=[i_seq_1[0], i_seq_3[0]],
+    distance_ideal=2.9,
+    distance_cut=3.5,
     weight=0.5/(0.05**2))
   residual = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
     gradient_array=grads)
-  assert approx_equal(residual, 3.22963, eps=0.00001)
-  build_proxies = hbond.build_simple_hbond_proxies()
+  cctbx_bond = cctbx.geometry_restraints.bond(
+    sites=[sites_cart[i_seq_1[0]], sites_cart[i_seq_3[0]]],
+    distance_ideal=2.9,
+    weight=0.5/(0.05**2))
+  assert (residual == cctbx_bond.residual())
+
+def compare_analytical_and_fd (proxies) :
+  from mmtbx.geometry_restraints import hbond
+  from scitbx.array_family import flex
+  distances = []
+  for i in range(250) :
+    distances.append(2.0 + (i * 0.01))
+  for dist in distances :
+    sites_cart = flex.vec3_double([(0.0,dist,0.0), (0.0,0.0,0.0),
+      (0.5774,-1.0,0.0)])
+    g1 = flex.vec3_double(3, (0.0,0.0,0.0))
+    r1 = hbond.target_and_gradients(
+      proxies=proxies,
+      sites_cart=sites_cart,
+      gradient_array=g1,
+      use_finite_differences=True)
+    g2 = flex.vec3_double(3, (0.0,0.0,0.0))
+    r2 = hbond.target_and_gradients(
+      proxies=proxies,
+      sites_cart=sites_cart,
+      gradient_array=g2,
+      use_finite_differences=False)
+    assert (r2 == r1)
+    if (dist == 3.5) or (dist == 3.55) :
+      continue
+    for (dx1,dy1,dz1), (dx2,dy2,dz2) in zip(g1, g2) :
+      if (dist >= 3.5) and (dist <= 3.55) :
+        assert approx_equal(dx1, dx2, eps=0.1)
+        assert approx_equal(dy1, dy2, eps=0.1)
+        assert approx_equal(dz1, dz2, eps=0.1)
+      else :
+        assert approx_equal(dx1, dx2, eps=0.00001)
+        assert approx_equal(dy1, dy2, eps=0.00001)
+        assert approx_equal(dz1, dz2, eps=0.00001)
+
+def exercise_lennard_jones () :
+  from mmtbx.geometry_restraints import hbond
+  import cctbx.geometry_restraints
+  from scitbx.array_family import flex
+  build_proxies = hbond.build_lennard_jones_proxies()
   build_proxies.add_proxy(
-    i_seqs=[i_seq_1[0], i_seq_2[0]],
-    distance_ideal=1.975,
-    distance_cut=2.05, # unrealistic, but useful for test
-    weight=1/(0.05**2))
-  grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    i_seqs=[0,1],
+    distance_ideal=2.9,
+    distance_cut=3.5)
+  sites_cart = flex.vec3_double([(0.0,2.9,0.0), (0.0,0.0,0.0),
+    (0.5774,-1.0,0.0)])
+  grads = flex.vec3_double(3, (0,0,0))
   residual = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
-    gradient_array=grads)
-  assert (residual == 0.0) and (grads.sum() == (0.0,0.0,0.0))
-  build_proxies = hbond.build_simple_hbond_proxies()
-  build_proxies.add_proxy(
-    i_seqs=[i_seq_1[0], i_seq_2[0]],
-    distance_ideal=1.975,
-    distance_cut=2.08, # unrealistic, but useful for test
-    weight=1/(0.05**2))
+    gradient_array=grads,
+    use_finite_differences=False)
+  assert approx_equal(residual, -59.259259, eps=0.0001)
+  for (dx,dy,dz) in grads :
+    assert approx_equal(dx, 0, eps=0.000000001)
+    assert approx_equal(dy, 0, eps=0.000000001)
+    assert approx_equal(dz, 0, eps=0.000000001)
+  sites_cart[0] = (0.0, 3.0, 0.0)
+  grads = flex.vec3_double(3, (0,0,0))
   residual = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
-    gradient_array=grads)
-  assert approx_equal(residual, 3.6074464444, eps=0.0000001)
-  #print grads.sum()
-#  out = cStringIO.StringIO()
-#  hbond.as_pymol_dashes(build_proxies.proxies, hierarchy, out=out)
-#  print out.getvalue()
-#  out = cStringIO.StringIO()
-#  hbond.as_refmac_restraints(build_proxies.proxies, hierarchy, out=out,
-#    sigma=0.1)
-#  print out.getvalue()
+    gradient_array=grads,
+    use_finite_differences=False)
+  assert approx_equal(residual, -58.5286436, eps=0.0001)
+  compare_analytical_and_fd(build_proxies.proxies)
+  grads = flex.vec3_double(3, (0,0,0))
+  residual = hbond.target_and_gradients(
+    proxies=build_proxies.proxies,
+    sites_cart=sites_cart,
+    gradient_array=grads,
+    use_finite_differences=False,
+    lennard_jones_potential="6_12")
+  assert approx_equal(residual, -60.38271638, eps=0.00001)
 
 def exercise_implicit () :
   from mmtbx.geometry_restraints import hbond
@@ -115,23 +163,17 @@ def exercise_implicit () :
     theta_low=110.0,
     theta_high=160.0,
     weight=1.0)
-  grads_fd = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-  residual_fd = hbond.target_and_gradients(
-    proxies=build_proxies.proxies,
-    sites_cart=sites_cart,
-    gradient_array=grads_fd,
-    use_finite_differences=True)
-  assert approx_equal(residual_fd, -0.11357803, eps=0.000001)
   grads_an = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   residual_an = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
-    gradient_array=grads_an,
-    use_finite_differences=False)
-  assert (residual_an == residual_fd)
-  for i in [i_seq_1, i_seq_2, i_seq_3] :
-    for j in range(3) :
-      assert approx_equal(grads_fd[i][j], grads_an[i][j], eps=0.000001)
+    gradient_array=grads_an)
+  #assert approx_equal(residual_fd, -0.11357803, eps=0.000001)
+  assert approx_equal(residual_an, -54.517427, eps=0.00001)
+  (21.36455693329907, 13.332353726790171, 17.10498505822002)
+  assert approx_equal(grads_an[2][0], 21.36455693, eps=0.00001)
+  assert approx_equal(grads_an[2][2], 17.104985058, eps=0.00001)
+  assert approx_equal(grads_an[3][1], -29.0568888, eps=0.00001)
   build_proxies = hbond.build_implicit_hbond_proxies()
   build_proxies.add_proxy(
     i_seqs=[0,1,2],
@@ -140,36 +182,6 @@ def exercise_implicit () :
     theta_low=110.0,
     theta_high=150.0,
     weight=1.0)
-  distances = []
-  for i in range(250) :
-    distances.append(2.0 + (i * 0.01))
-  for dist in distances :
-    sites_cart = flex.vec3_double([(0.0,dist,0.0), (0.0,0.0,0.0),
-      (0.5774,-1.0,0.0)])
-    g1 = flex.vec3_double(3, (0.0,0.0,0.0))
-    r1 = hbond.target_and_gradients(
-      proxies=build_proxies.proxies,
-      sites_cart=sites_cart,
-      gradient_array=g1,
-      use_finite_differences=True)
-    g2 = flex.vec3_double(3, (0.0,0.0,0.0))
-    r2 = hbond.target_and_gradients(
-      proxies=build_proxies.proxies,
-      sites_cart=sites_cart,
-      gradient_array=g2,
-      use_finite_differences=False)
-    assert (r2 == r1)
-    if (dist == 3.5) or (dist == 3.55) :
-      continue
-    for (dx1,dy1,dz1), (dx2,dy2,dz2) in zip(g1, g2) :
-      if (dist >= 3.5) and (dist <= 3.55) :
-        assert approx_equal(dx1, dx2, eps=0.0001)
-        assert approx_equal(dy1, dy2, eps=0.0001)
-        assert approx_equal(dz1, dz2, eps=0.0001)
-      else :
-        assert approx_equal(dx1, dx2, eps=0.000001)
-        assert approx_equal(dy1, dy2, eps=0.000001)
-        assert approx_equal(dz1, dz2, eps=0.000001)
   sites_cart = flex.vec3_double([(0.0,2.9,0.0), (0.0,0.0,0.0),
     (0.5774,-1.0,0.0)])
   sites_cart[0] = (0.0, 3.0, 0.0)
@@ -178,69 +190,63 @@ def exercise_implicit () :
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
     gradient_array=g1)
-  assert approx_equal(r1, -0.146321607, eps=0.000001)
+  assert approx_equal(r1, -58.5286434789, eps=0.00001)
   sites_cart[0] = (0.0, 2.8, 0.0)
   g2 = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   r2 = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
     gradient_array=g2)
-  assert approx_equal(r2, -0.145684997, eps=0.000001)
+  assert approx_equal(r2, -58.273999, eps=0.000001)
+  assert approx_equal(g2[0][1], -21.2470231559, eps=0.00001)
+  assert approx_equal(g2[0][0], 0.00310495, eps=0.00001)
+  assert approx_equal(g2[2][0], 0.00652011, eps=0.00001)
 
 def plot_potentials () :
   from mmtbx.geometry_restraints import hbond
   from scitbx.array_family import flex
-  simple_proxies = hbond.build_simple_hbond_proxies()
-  simple_proxies.add_proxy(
+  lj_proxies = hbond.build_lennard_jones_proxies()
+  lj_proxies.add_proxy(
     i_seqs=[0,1],
     distance_ideal=2.9,
-    distance_cut=3.5,
-    weight=1/(0.05**2))
-  imp_proxies = hbond.build_implicit_hbond_proxies()
-  imp_proxies.add_proxy(
-    i_seqs=[0,1,2],
-    distance_ideal=2.9,
-    distance_cut=3.5,
-    theta_low=110.0,
-    theta_high=160.0,
-    weight=1)
+    distance_cut=3.5)
   distances = []
   for i in range(200) :
-    distances.append(3.48 + (i * 0.001))
-  for builder,name in zip([simple_proxies,imp_proxies],["simple","implicit"]) :
-    y_vals = []
-    y2_vals = []
-    y3_vals = []
-    for dist in distances :
-      sites_cart = flex.vec3_double([(0.0,dist,0.0), (0.0,0.0,0.0),
-        (0.5774,-1.0,0.0)])
-      g = flex.vec3_double(3, (0.0,0.0,0.0))
-      r = hbond.target_and_gradients(
-        proxies=builder.proxies,
-        sites_cart=sites_cart,
-        gradient_array=g)
-      y_vals.append(r)
-      y2_vals.append(g[0][1])
-      g2 = flex.vec3_double(3, (0.0,0.0,0.0))
-      r = hbond.target_and_gradients(
-        proxies=builder.proxies,
-        sites_cart=sites_cart,
-        gradient_array=g2,
-        use_finite_differences=False)
-      y3_vals.append(g2[0][1])
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.plot(distances, y_vals, '-')
-    ax.plot(distances, y2_vals, '-')
-    ax.plot(distances, y3_vals, '-')
-    ax.set_title(name + " H-bond potential")
-    plt.show()
+    distances.append(2.5 + (i * 0.005))
+  y_vals = []
+  y2_vals = []
+  y3_vals = []
+  for dist in distances :
+    sites_cart = flex.vec3_double([(0.0,dist,0.0), (0.0,0.0,0.0),
+      (0.5774,-1.0,0.0)])
+    g = flex.vec3_double(3, (0.0,0.0,0.0))
+    r = hbond.target_and_gradients(
+      proxies=lj_proxies.proxies,
+      sites_cart=sites_cart,
+      gradient_array=g)
+    y_vals.append(r)
+    y2_vals.append(g[0][1])
+    g2 = flex.vec3_double(3, (0.0,0.0,0.0))
+    r = hbond.target_and_gradients(
+      proxies=lj_proxies.proxies,
+      sites_cart=sites_cart,
+      gradient_array=g2,
+      use_finite_differences=True)
+    y3_vals.append(g2[0][1])
+  import matplotlib.pyplot as plt
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.plot(distances, y_vals, '-')
+  ax.plot(distances, y2_vals, '-')
+  ax.plot(distances, y3_vals, '-')
+  ax.set_title("Lennard-Jones H-bond potential")
+  plt.show()
 
 if (__name__ == "__main__") :
   if ("--plot" in sys.argv) :
     plot_potentials()
   else :
     exercise_simple()
+    exercise_lennard_jones()
     exercise_implicit()
     print "OK"

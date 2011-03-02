@@ -54,6 +54,47 @@ namespace {
       arg("falloff_distance")=0.05));
   }
 
+  void wrap_lennard_jones() {
+    using namespace boost::python;
+    typedef h_bond_lj_proxy w_t;
+    class_<w_t>("h_bond_lj_proxy", no_init)
+      .def(init<
+        af::tiny<unsigned, 2> const&, double, double >((
+          arg("i_seqs"),
+          arg("distance_ideal"),
+          arg("distance_cut"))))
+      //.def_readonly("i_seqs", &w_t::i_seqs)
+      .def_readonly("distance_ideal", &w_t::distance_ideal)
+      .def_readonly("distance_cut", &w_t::distance_cut);
+    {
+      typedef return_internal_reference<> rir;
+      scitbx::af::boost_python::shared_wrapper<h_bond_lj_proxy, rir>::wrap(
+        "shared_h_bond_lennard_jones_proxy");
+    }
+
+    def("h_bond_lennard_jones_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<h_bond_lj_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&,
+        double,
+        double,
+        int,
+        int,
+        double,
+        bool))
+      h_bond_lennard_jones_residual_sum, (
+      arg("sites_cart"),
+      arg("proxies"),
+      arg("gradient_array"),
+      arg("falloff_distance")=0.05,
+      arg("sigma_base")=0.81649658092772603,
+      arg("a")=6,
+      arg("b")=4,
+      arg("scale")=1.0,
+      arg("use_finite_differences")=true));
+  }
+
   void wrap_implicit_restraints ()
   {
     using namespace boost::python;
@@ -102,6 +143,7 @@ namespace boost_python {
 
   void wrap_hbond() {
     wrap_simple_restraints();
+    wrap_lennard_jones();
     wrap_implicit_restraints();
   }
 

@@ -323,7 +323,8 @@ def extract_proxies (pdb_hierarchy,
                     residue_type=angle.residue_type,
                     residue_name=residue_name)
     proxies.append(phi_psi)
-  print >> log, "%d Ramachandran restraints generated." % len(proxies)
+  print >> log, ""
+  print >> log, "  %d Ramachandran restraints generated." % len(proxies)
   return proxies
 
 def process_refinement_settings (

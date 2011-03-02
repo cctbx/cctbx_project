@@ -12,14 +12,18 @@ master_phil = libtbx.phil.parse("""
     .type = float
   exclude_nonbonded = True
     .type = bool
+  distance_ideal_h_o = 1.975
+    .type = float
+  distance_cut_h_o = 2.5
+    .type = float
+  distance_ideal_n_o = 2.9
+    .type = float
+  distance_cut_n_o = 3.5
+    .type = float
   implicit
     .short_caption = Implicit hydrogens
     .help = Based on H-bond potential for CNS by Chapman lab
   {
-    distance_ideal = 2.9
-      .type = float
-    distance_cut = 3.5
-      .type = float
     theta_high = 155
       .type = float
     theta_low = 115
@@ -29,12 +33,6 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Explicit hydrogens
     .help = Similar to Rosetta H-bond energy (Kortemme & Baker)
   {
-    distance_ideal = 1.975
-      .type = float
-    distance_cut = None
-      .type = float
-    distance_sigma = 0.05
-      .type = float
     theta_ideal = 180
       .type = float
     theta_sigma = 5
@@ -46,18 +44,14 @@ master_phil = libtbx.phil.parse("""
     relative_weights = 1.0 1.0 1.0
       .type = floats(size=3)
   }
+  lennard_jones {
+    potential = *4_6 6_12
+      .type = choice
+  }
   simple
-    .short_caption = Simple distance-based potential
+    .short_caption = Simple distance-based potentials
     .help = Pseudo-bond restraints
   {
-    distance_ideal_h_o = 1.975
-      .type = float
-    distance_cut_h_o = 2.5
-      .type = float
-    distance_ideal_n_o = 2.9
-      .type = float
-    distance_cut_n_o = 3.5
-      .type = float
     sigma = 0.05
       .type = float
     slack = 0.0
@@ -93,6 +87,10 @@ class build_proxies (core) :
 class build_simple_hbond_proxies (build_proxies) :
   proxy_array_type = "shared_h_bond_simple_proxy"
   proxy_type = "h_bond_simple_proxy"
+
+class build_lennard_jones_proxies (build_proxies) :
+  proxy_array_type = "shared_h_bond_lennard_jones_proxy"
+  proxy_type = "h_bond_lj_proxy"
 
 # Fabiola et al. (2002) Protein Sci. 11:1415-23
 # http://www.ncbi.nlm.nih.gov/pubmed/12021440
@@ -133,7 +131,8 @@ def target_and_gradients (proxies,
                           sites_cart,
                           gradient_array=None,
                           falloff_distance=0.05,
-                          use_finite_differences=True) :
+                          use_finite_differences=True,
+                          lennard_jones_potential="4_6") :
   from scitbx.array_family import flex
   import boost.python
   ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
@@ -146,13 +145,33 @@ def target_and_gradients (proxies,
       proxies=proxies,
       gradient_array=gradient_array,
       falloff_distance=falloff_distance)
+  elif (type(proxies).__name__ == "shared_h_bond_lennard_jones_proxy") :
+    if (lennard_jones_potential == "4_6") :
+      weight_scale = 400
+      a = 6
+      b = 4
+      sigma_base = 0.81649658092772603
+    elif (lennard_jones_potential == "6_12") :
+      weight_scale = 250
+      a = 12
+      b = 6
+      sigma_base = 0.89089871814033927
+    sum = ext.h_bond_lennard_jones_residual_sum(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      gradient_array=gradient_array,
+      falloff_distance=falloff_distance,
+      a=a,
+      b=b,
+      scale=weight_scale,
+      sigma_base=sigma_base,
+      use_finite_differences=use_finite_differences)
   elif (type(proxies).__name__ == "shared_h_bond_implicit_proxy") :
     sum = ext.h_bond_implicit_residual_sum(
       sites_cart=sites_cart,
       proxies=proxies,
       gradient_array=gradient_array,
-      falloff_distance=falloff_distance,
-      use_finite_differences=use_finite_differences)
+      falloff_distance=falloff_distance)
   else :
     assert 0
   return sum
