@@ -204,6 +204,7 @@ def _create_hbond_proxy (
     log=sys.stdout) :
   donor_labels = None
   acceptor_labels = None
+  [donor,acceptor,acceptor_base,hydrogen] = [None] * 4
   for atom in acceptor_atoms :
     if (atom.name == ' O  ') :
       acceptor = atom
