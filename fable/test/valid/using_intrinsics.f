@@ -5,6 +5,7 @@
       call exercise_double
       call exercise_string
       call exercise_index
+      call exercise_min_max
       end
 
       subroutine exercise_c_keywords
@@ -57,4 +58,15 @@
       write(6, *) index(digits, '9')
       write(6, *) index(digits, '24')
       write(6, *) index(digits, '34')
+      end
+
+      subroutine exercise_min_max
+      real a,b,c,d,e
+      a = 2
+      b = 4
+      c = 0
+      d = 3
+      e = 1
+      write(6, *) amin1(a,b,c,d,e)
+      write(6, *) amax1(a,b,c,d,e)
       end

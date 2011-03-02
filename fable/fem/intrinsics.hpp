@@ -361,6 +361,30 @@ namespace fem {
 
   inline
   float
+  amin1(
+    float const& v1,
+    float const& v2,
+    float const& v3) { return amin1(amin1(v1, v2), v3); }
+
+  inline
+  float
+  amin1(
+    float const& v1,
+    float const& v2,
+    float const& v3,
+    float const& v4) { return amin1(amin1(v1, v2, v3), v4); }
+
+  inline
+  float
+  amin1(
+    float const& v1,
+    float const& v2,
+    float const& v3,
+    float const& v4,
+    float const& v5) { return amin1(amin1(v1, v2, v3, v4), v5); }
+
+  inline
+  float
   min(
     float const& v1,
     float const& v2) { return std::min(v1, v2); }
@@ -410,13 +434,6 @@ namespace fem {
   {
     return min(v1, min(v2, v3));
   }
-
-  inline
-  float
-  amin1(
-    float const& v1,
-    float const& v2,
-    float const& v3) { return amin1(amin1(v1, v2), v3); }
 
   inline
   int
@@ -498,7 +515,7 @@ namespace fem {
 
   inline
   float
-  max(
+  amax1(
     float const& v1,
     float const& v2,
     float const& v3,
@@ -510,7 +527,16 @@ namespace fem {
     float const& v1,
     float const& v2,
     float const& v3,
-    float const& v4) { return amax1(amax1(v1, v2, v3), v4); }
+    float const& v4,
+    float const& v5) { return amax1(amax1(v1, v2, v3, v4), v5); }
+
+  inline
+  float
+  max(
+    float const& v1,
+    float const& v2,
+    float const& v3,
+    float const& v4) { return amax1(v1, v2, v3, v4); }
 
   inline
   float
