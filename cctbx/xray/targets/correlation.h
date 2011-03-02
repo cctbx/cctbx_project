@@ -14,7 +14,8 @@ namespace cctbx { namespace xray { namespace targets {
       boost::optional<double> cc_;
       public:
 
-    static const double numeric_epsilon = 1e-12;
+    static double
+    numeric_epsilon() { return 1e-12; }
 
     correlation() {}
 
@@ -95,14 +96,14 @@ namespace cctbx { namespace xray { namespace targets {
         if (min_x < 0) min_x *= -1;
         if (max_x < 0) max_x *= -1;
         if (max_x < min_x) max_x = min_x;
-        if (range_x <= max_x * numeric_epsilon) {
+        if (range_x <= max_x * numeric_epsilon()) {
           return;
         }
         double range_y = max_y - min_y;
         if (min_y < 0) min_y *= -1;
         if (max_y < 0) max_y *= -1;
         if (max_y < min_y) max_y = min_y;
-        if (range_y <= max_y * numeric_epsilon) {
+        if (range_y <= max_y * numeric_epsilon()) {
           return;
         }
       }
