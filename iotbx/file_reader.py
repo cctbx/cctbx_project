@@ -302,6 +302,15 @@ class any_file_input (object) :
         "almost certainly a bug; please contact the developers.") %
         (expected_type, str(self.file_name), str(self.file_type)))
 
+  def check_file_type (self, expected_type) :
+    try :
+      self.assert_file_type(expected_type)
+    except Sorry :
+      raise Sorry(("This file format ('%s') is not supported as input for "+
+        "this field; only files of type '%s' are allowed.") % (
+        standard_file_descriptions.get(self.file_type, "Unknown"),
+        standard_file_descriptions.get(expected_type, "Unknown")))
+
 class directory_input (object) :
   def __init__ (self, dir_name) :
     self.file_name = dir_name
