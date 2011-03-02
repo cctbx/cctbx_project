@@ -32,12 +32,12 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
       gaussian=eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
       a = gaussian.array_of_a()
       b = gaussian.array_of_b()
-      l("SFAC %s %.6g %.6g %.6g %.6g %.6g %.6g =" %
+      l("SFAC %s %.8f %.8f %.8f %.8f %.8f %.8f =" %
         (scatterer.label,
          a[0], b[0],
          a[1], b[1],
          a[2], b[2]))
-      l("     %.6g %.6g %.6g %.6g %.6g 0 1 1" %
+      l("     %.8f %.8f %.8f %.8f %.8f 0 1 1" %
         (a[3], b[3], gaussian.c(),
          scatterer.fp, scatterer.fdp))
       UNIT.append(

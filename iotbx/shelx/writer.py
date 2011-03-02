@@ -95,7 +95,7 @@ def generator(xray_structure,
         yield 'WGHT %.6f %.6f\n' % (a, b)
 
   if overall_scale_factor is not None:
-    yield 'FVAR %.5f' % overall_scale_factor
+    yield 'FVAR %.8f\n' % overall_scale_factor
 
   fmt_tmpl = ('%-4s', '%2i') + ('%11.6f',)*3 + ('%11.5f',)
   fmt_iso = ' '.join(fmt_tmpl + ('%10.5f',))
