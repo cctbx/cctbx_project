@@ -52,17 +52,38 @@ def get_master_phil():
         .type = bool
 """)
 
-def show_cc_r1(label, f_obs, xray_structure, scale_factor=Auto):
-  f_calc = f_obs.structure_factors_from_scatterers(
-    xray_structure=xray_structure).f_calc().amplitudes()
-  corr = flex.linear_correlation(x=f_obs.data(), y=f_calc.data())
+def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
+  assert sigmas.size() == fo_sq.size()
+  assert fc_sq.size() == fo_sq.size()
+  result = flex.double()
+  for o,s,c in zip(fo_sq, sigmas, fc_sq):
+    o /= scale_factor
+    s /= scale_factor
+    p = (max(o, 0) + 2 * c) / 3
+    den = s**2 + (a*p)**2 + b*p
+    if (den < 1e-6):
+      w = 1
+    else:
+      w = 1 / den
+    result.append(w)
+  return result
+
+def show_cc_r1(
+      label, f_obs, xray_structure=None, fc_abs=None, scale_factor=Auto):
+  assert [xray_structure, fc_abs].count(None) == 1
+  if (fc_abs is None):
+    fc_abs = f_obs.structure_factors_from_scatterers(
+      xray_structure=xray_structure,
+      algorithm="direct",
+      cos_sin_table=False).f_calc().amplitudes()
+  corr = flex.linear_correlation(x=f_obs.data(), y=fc_abs.data())
   assert corr.is_well_defined()
   cc = corr.coefficient()
   r1 = f_obs.r1_factor(
-    other=f_calc, scale_factor=scale_factor, assume_index_matching=True)
+    other=fc_abs, scale_factor=scale_factor, assume_index_matching=True)
   print "%-12s cc, r1: %.3f %.3f" % (label, cc, r1)
   sys.stdout.flush()
-  return cc, r1
+  return fc_abs, cc, r1
 
 def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   import smtbx.refinement
@@ -265,14 +286,42 @@ def run_shelxl(
         else:
           raise RuntimeError("Unknown mode: " + mode)
         assert res_n_parameters == expected_n_refinable_parameters + 1
-        _, r1_fvar = show_cc_r1("fvar_"+mode, f_obs, xray_structure, res_fvar)
+        fc_abs, _, r1_fvar = show_cc_r1(
+          "fvar_"+mode, f_obs, xray_structure, scale_factor=res_fvar)
         r1_diff = r1_fvar - res_r1
         print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
           mode, r1_fvar, res_r1, r1_diff, cod_code)
         if (abs(r1_diff) > 0.01):
           raise RuntimeError("R1 MISMATCH %s" % cod_code)
-        _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, xray_structure)
+        _, _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, fc_abs=fc_abs)
         print "R1 FVAR-Auto %s: %.4f" % (cod_code, r1_fvar - r1_auto)
+        #
+        lst_r1 = None
+        lst_wr2 = None
+        for line in open("tmp.lst").read().splitlines():
+          l = line.strip()
+          if (l.startswith("R1 = ")):
+            lst_r1 = float(l.split()[9])
+          elif (l.startswith("wR2 = ") and l.endswith(" for all data")):
+            lst_wr2 = float(l.replace(","," ").split()[2])
+        assert lst_r1 is not None
+        assert lst_wr2 is not None
+        assert lst_r1 == res_r1
+        #
+        fo_sq = f_obs.f_as_f_sq()
+        fc_sq = fc_abs.f_as_f_sq()
+        weights = shelxl_weights(
+          fo_sq=fo_sq.data(),
+          sigmas=fo_sq.sigmas(),
+          fc_sq=fc_sq.data(),
+          scale_factor=res_fvar)
+        num = flex.sum(
+          weights * flex.pow2(fo_sq.data() - res_fvar * fc_sq.data()))
+        den = flex.sum(
+          weights * flex.pow2(fo_sq.data()))
+        assert den != 0
+        wr2 = (num / den)**0.5
+        print "COMPARE lst_wr2, wr2:", lst_wr2, wr2, wr2-lst_wr2
     if (not params.keep_tmp_files):
       remove_tmp_files(tmp_file_names)
       remove_wdir = wdir_is_new
@@ -346,7 +395,7 @@ def process(params, pickle_file_name):
       % plural_s(len(changes))
     for change in changes:
       print '  changed: "%s" -> "%s"' % change
-  structure_cod.scattering_type_registry(d_min=f_obs.d_min()).show()
+  structure_cod.scattering_type_registry(table="it1992").show()
   print "."*79
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_cod,
