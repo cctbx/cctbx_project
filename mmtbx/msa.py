@@ -199,7 +199,8 @@ def run (args=(), params=None, out=sys.stdout) :
           "protein chains.") % file_name)
     else :
       try :
-        seq_objects, non_compliant = any_sequence_format(file_name)
+        seq_objects, non_compliant = any_sequence_format(file_name,
+          assign_name_if_not_defined=True)
         seqs.extend(seq_objects)
       except Exception, e :
         raise Sorry(("Error parsing '%s' - not a recognizable sequence "+
@@ -280,15 +281,17 @@ END
   open("tmp1.pdb", "w").write(pdb_str)
   open("tmp2.fa", "w").write(">tmp2\nAVGNNQQNY")
   open("tmp3.fa", "w").write(">tmp3\nNNQQNY")
+  open("tmp4.dat", "w").write("AVNNQQNF")
   params = master_phil.fetch().extract()
-  params.muscle.seq_file.extend(["tmp1.pdb", "tmp2.fa", "tmp3.fa"])
+  params.muscle.seq_file.extend(["tmp1.pdb", "tmp2.fa", "tmp3.fa", "tmp4.dat"])
   (aln_file, alignment) = run(params=params, out=StringIO)
   assert (alignment ==
     "MUSCLE (3.8) multiple sequence alignment\n\n\n"+
+    "tmp4            AV-NNQ--QNF\n"
+    "tmp1_A          XXGNNQAGQNY\n"
     "tmp2            AVGNNQ--QNY\n"
     "tmp3            ---NNQ--QNY\n"
-    "tmp1_A          XXGNNQAGQNY\n"
-    "                   ***  ***")
+    "                   ***  **:")
   print "OK"
 
 if __name__ == "__main__" :

@@ -302,14 +302,21 @@ class any_file_input (object) :
         "almost certainly a bug; please contact the developers.") %
         (expected_type, str(self.file_name), str(self.file_type)))
 
-  def check_file_type (self, expected_type) :
-    try :
-      self.assert_file_type(expected_type)
-    except Sorry :
-      raise Sorry(("This file format ('%s') is not supported as input for "+
-        "this field; only files of type '%s' are allowed.") % (
-        standard_file_descriptions.get(self.file_type, "Unknown"),
-        standard_file_descriptions.get(expected_type, "Unknown")))
+  def check_file_type (self, expected_type=None, multiple_formats=()) :
+    if (expected_type is not None) :
+      if (self.file_type != expected_type) :
+        raise Sorry(("This file format ('%s') is not supported as input for "+
+          "this field; only files of type '%s' are allowed.") % (
+          standard_file_descriptions.get(self.file_type, "Unknown"),
+          standard_file_descriptions.get(expected_type, "Unknown")))
+    else :
+      assert (len(multiple_formats) > 0)
+      if (not self.file_type in multiple_formats) :
+        raise Sorry(("This file format ('%s') is not supported as input for "+
+          "this field; only the following types are supported:\n  %s") % (
+          standard_file_descriptions.get(self.file_type, "Unknown"),
+          "\n  ".join([ standard_file_descriptions.get(f, "Unknown")
+                        for f in multiple_formats ])))
 
 class directory_input (object) :
   def __init__ (self, dir_name) :
