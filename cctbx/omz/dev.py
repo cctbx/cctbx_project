@@ -106,7 +106,7 @@ def sign0(x):
   if (x > 0): return 1
   return 0
 
-class ls_refinement(object):
+class refinement(object):
 
   def __init__(O,
         f_obs,
@@ -696,7 +696,7 @@ def run_refinement(structure_ideal, structure_shake, params, f_obs=None):
       d_min=1,
       algorithm="direct",
       cos_sin_table=False).f_calc().amplitudes()
-  return ls_refinement(
+  return refinement(
     f_obs=f_obs,
     xray_structure=structure_shake,
     params=params,

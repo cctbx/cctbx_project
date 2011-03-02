@@ -1,5 +1,6 @@
 from cctbx import omz
 import cctbx.omz.dev
+from cctbx.array_family import flex
 import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
 from libtbx import easy_run
@@ -37,6 +38,8 @@ def get_master_phil():
             against F; in particular, making all the weights equal ('unit
             weights'), although useful in the initial stages of refinement
             against F, is NEVER a sensible option for F2.'''
+      shelxl_reset_sigmas = None
+        .type = float
       shelxl_fm_iterations = 12
         .type = int
       shelxl_cg_iterations = 12
@@ -45,12 +48,13 @@ def get_master_phil():
         .type = int
       keep_tmp_files = False
         .type = bool
+      export_refined = False
+        .type = bool
 """)
 
 def show_cc_r1(label, f_obs, xray_structure, scale_factor=Auto):
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=xray_structure).f_calc().amplitudes()
-  from cctbx.array_family import flex
   corr = flex.linear_correlation(x=f_obs.data(), y=f_calc.data())
   assert corr.is_well_defined()
   cc = corr.coefficient()
@@ -69,7 +73,6 @@ def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   fo_sq.select(fo_sq.sigmas() <= 0).show_array()
   assert fo_sq.sigmas().all_gt(0)
   if (1): # work around bug currently in smtbx weighting scheme implementation
-    from cctbx.array_family import flex
     fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.data().size(), 1))
   tm = user_plus_sys_time()
   rm = smtbx.refinement.model(
@@ -147,6 +150,9 @@ def run_shelxl(
     os.chdir(wdir)
     tmp_file_names = ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]
     remove_tmp_files(tmp_file_names)
+    if (params.shelxl_reset_sigmas):
+      f_obs = f_obs.customized_copy(
+        sigmas=flex.double(f_obs.indices().size(), params.shelxl_reset_sigmas))
     import iotbx.shelx
     open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
       xray_structure=xray_structure,
@@ -357,6 +363,18 @@ def process(params, pickle_file_name):
   if (f_obs.anomalous_flag()):
     print "INFO: anomalous f_obs converted to non-anomalous."
     f_obs = f_obs.average_bijvoet_mates()
+  f_calc = f_obs.structure_factors_from_scatterers(
+    xray_structure=structure_cod,
+    algorithm="direct",
+    cos_sin_table=False).f_calc()
+  k = f_obs.scale_factor(f_calc=f_calc)
+  assert k != 0
+  s = 1/k
+  print "INFO: scaling f_obs to f_calc by multiplying f_obs with: %.6g" % s
+    # scaling applied so that the data written in shelx hklf format
+    # have sufficient significant digits, and FVAR is 1 (shelx76 seems
+    # to be especially sensitive to FVAR >> 1)
+  f_obs = f_obs.customized_copy(data=f_obs.data()*s, sigmas=f_obs.sigmas()*s)
   f_obs.show_comprehensive_summary()
   print "."*79
   #
@@ -382,7 +400,6 @@ def process(params, pickle_file_name):
     structure_work.set_u_iso(value=params.reset_u_iso)
     cc_r1("setu")
   if (params.shake_sites_rmsd is not None):
-    from scitbx.array_family import flex
     mt = flex.mersenne_twister(seed=0)
     structure_work.shift_sites_in_place(
       shift_length=params.shake_sites_rmsd,
@@ -411,13 +428,18 @@ def process(params, pickle_file_name):
     structure_dev = None
   else:
     structure_dev = structure_work.deep_copy_scatterers()
-    omz.dev.ls_refinement(
+    omz.dev.refinement(
       f_obs=f_obs,
       xray_structure=structure_dev,
       params=params,
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)
     show_cc_r1("dev", f_obs, structure_dev)
+    if (params.export_refined):
+      file_name = "dev_%s_%s_%s.pdb" % (
+        params.target_type, params.target_obs_type.lower(), cod_code)
+      open(file_name, "w").write(structure_dev.as_pdb_file(
+        remarks=[file_name]))
   #
   def use_smtbx_ls(mode):
     if ("ls_"+mode not in params.optimizers):
@@ -446,6 +468,10 @@ def process(params, pickle_file_name):
       params=params,
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)
+    if (params.export_refined):
+      file_name = "shelxl_%s_%s.pdb" % (mode, cod_code)
+      open(file_name, "w").write(result.as_pdb_file(
+        remarks=[file_name]))
     return result
   structure_shelxl_fm = use_shelxl("fm")
   structure_shelxl_cg = use_shelxl("cg")
@@ -461,6 +487,10 @@ def process(params, pickle_file_name):
       params=params,
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)
+    if (params.export_refined):
+      file_name = "shelx76_%s.pdb" % cod_code
+      open(file_name, "w").write(structure_shelx76.as_pdb_file(
+        remarks=[file_name]))
 
 def run(args):
   from iotbx.option_parser import option_parser as iotbx_option_parser

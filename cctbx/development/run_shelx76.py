@@ -26,11 +26,11 @@ def sfac_unit(lapp, xray_structure):
     assert gaussian.use_c()
     a = gaussian.array_of_a()
     b = gaussian.array_of_b()
-    lapp("SFAC %.6g %.6g %.6g %.6g %.6g %.6g =" % (
+    lapp("SFAC %.8f %.8f %.8f %.8f %.8f %.8f =" % (
       a[0], b[0],
       a[1], b[1],
       a[2], b[2]))
-    lapp("     %.6g %.6g %.6g 0 0 0 1" % (
+    lapp("     %.8f %.8f %.8f 0 0 0 1" % (
       a[3], b[3], gaussian.c()))
     unit.append("%.0f" % unit_cell_occupancy_sums[reg.unique_index(st)])
   lapp("UNIT " + " ".join(unit))
@@ -55,7 +55,7 @@ def atoms(lapp, sfac_indices, xray_structure):
     assert w_max is not None
   for i_sc,sc in enumerate(xray_structure.scatterers()):
     st = sc.scattering_type
-    lbl = st + str(sfac_indices[st])
+    lbl = "%s%02d" % (st, i_sc+1)
     sfac = sfac_indices[st]
     coor = []
     if (caosh_i_sc is None or i_sc != caosh_i_sc):
