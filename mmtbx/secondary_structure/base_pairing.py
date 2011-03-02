@@ -328,10 +328,12 @@ def create_hbond_proxies (
     hbond_counts,
     distance_ideal,
     distance_cut,
+    remove_outliers,
+    use_hydrogens,
     sigma,
     slack,
     use_db_values=True) :
-  assert (restraint_type in ["simple_implicit", "simple_explicit"])
+  assert (restraint_type in ["simple", "lennard_jones"])
   assert (slack >= 0) and (sigma >= 0)
   from mmtbx.secondary_structure import utils as ss_utils
   selection_cache = pdb_hierarchy.atom_selection_cache()
@@ -351,12 +353,12 @@ def create_hbond_proxies (
         residues=(resname1,resname2),
         saenger_class=base_pair.saenger_class,
         leontis_westhof_class=base_pair.leontis_westhof_class,
-        use_hydrogens=(restraint_type == "simple_explicit"))
+        use_hydrogens=use_hydrogens)
       distance_values = get_distances(
         residues=(resname1,resname2),
         saenger_class=base_pair.saenger_class,
         leontis_westhof_class=base_pair.leontis_westhof_class,
-        use_hydrogens=(restraint_type == "simple_explicit"))
+        use_hydrogens=use_hydrogens)
       for i, (name1, name2) in enumerate(atom_pairs) :
         sele1 = """name %s and %s""" % (name1, base_pair.base1)
         sele2 = """name %s and %s""" % (name2, base_pair.base2)
@@ -392,6 +394,10 @@ def create_hbond_proxies (
           bp_distance_cut = distance_cut
           bp_sigma = sigma
           bp_slack = slack
+        if (remove_outliers) and (distance_cut > 0) :
+          dist = atoms[i_seq].distance(atoms[j_seq])
+          if (dist > distance_cut) :
+            continue
         build_proxies.add_proxy(
           i_seqs=[i_seq,j_seq],
           distance_ideal=bp_distance,

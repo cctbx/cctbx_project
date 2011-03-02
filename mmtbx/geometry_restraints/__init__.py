@@ -41,9 +41,11 @@ class manager (object) :
         gradient_array=gradient_array)
     if (self.hydrogen_bond_proxies is not None) :
       from mmtbx.geometry_restraints import hbond
+      lj_potential = self.hydrogen_bond_params.lennard_jones.potential
       target += hbond.target_and_gradients(
         proxies=self.hydrogen_bond_proxies,
         sites_cart=sites_cart,
         gradient_array=gradient_array,
-        falloff_distance=self.hydrogen_bond_params.falloff_distance)
+        falloff_distance=self.hydrogen_bond_params.falloff_distance,
+        lennard_jones_potential=lj_potential)
     return target

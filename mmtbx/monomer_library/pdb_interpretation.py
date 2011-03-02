@@ -3227,19 +3227,20 @@ class build_all_chain_proxies(object):
       bond_distance_model_max=bond_distance_model_max)
 
   def process_custom_nonbonded_exclusions (self, log, exclude_pair_indices,
-      shell_asu_tables) :
+      shell_asu_tables, verbose=True) :
     space_group = self.special_position_settings.space_group()
     rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
     have_header = False
     for (i_seq, j_seq) in exclude_pair_indices :
-      if (not have_header) :
+      if (verbose) and (not have_header) :
         print >> log
         print >> log, "  Custom nonbonded exclusions (H-bonds, etc.):"
         have_header = True
+      if (verbose) :
+        print >> log, "    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
+                                      self.pdb_atoms[j_seq].id_str())
       shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
       #shell_sym_tables[1][i_seq][j_seq].add(rt_mx_ji)
-      print >> log, "  %s  %s" % (self.pdb_atoms[i_seq].id_str(),
-                                  self.pdb_atoms[j_seq].id_str())
 
   def process_custom_nonbonded_symmetry_exclusions(self,
         log, curr_sym_excl_index):

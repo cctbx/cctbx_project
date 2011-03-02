@@ -35,11 +35,12 @@ def exercise_protein () :
       xray_structure=xray_structure,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.find_automatically(log=log)
-    build_proxies = m.create_hbond_proxies(restraint_type="simple_%s" %
-      potential_type, log=log)
+    m.params.h_bond_restraints.remove_outliers = False
+    build_proxies = m.create_hbond_proxies(restraint_type="simple", log=log)
     proxies = build_proxies.proxies
     assert (len(proxies) == len(build_proxies.exclude_nb_list) == 109)
     assert (type(proxies[0]).__name__ == "h_bond_simple_proxy")
+    m.params.h_bond_restraints.remove_outliers = None
     build_proxies = m.create_hbond_proxies(restraint_type=potential_type,
       log=log)
     proxies = build_proxies.proxies
@@ -57,8 +58,18 @@ def exercise_protein () :
         xray_structure=xray_structure,
         sec_str_from_pdb_file=None)
       m.find_automatically(log=log)
-      build_proxies = m.create_hbond_proxies(restraint_type="simple_%s" %
-        potential_type, log=log)
+      m.params.h_bond_restraints.remove_outliers = False
+      build_proxies = m.create_hbond_proxies(restraint_type="simple", log=log)
+      assert (build_proxies.proxies.size() == 81)
+      m.params.h_bond_restraints.remove_outliers = True
+      build_proxies = m.create_hbond_proxies(restraint_type="simple", log=log)
+      if (potential_type == "implicit") :
+        assert (build_proxies.proxies.size() == 76)
+      else :
+        assert (build_proxies.proxies.size() == 74)
+      m.params.h_bond_restraints.remove_outliers = None
+      build_proxies = m.create_hbond_proxies(restraint_type="lennard_jones",
+        log=log)
       assert (build_proxies.proxies.size() == 81)
 
 def exercise_nucleic_acids () :
