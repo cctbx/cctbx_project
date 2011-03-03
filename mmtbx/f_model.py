@@ -948,7 +948,7 @@ class manager(manager_mixin):
     if(log is None): log = sys.stdout
     return phenix_masks.nu(fmodel = self, params = params)
 
-  def update_f_part(self, params, log=None):
+  def update_f_part(self, params=None, log=None):
     def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
       fmt = "%s %6.4f %6.4f %5.2f %6.2f %5.2f %6.2f"
       print >> log, fmt % (prefix,r_work,r_free,k_part,b_part,k_sol,b_sol)
@@ -1599,7 +1599,9 @@ class manager(manager_mixin):
     return r_work, r_work_l, r_work_h, n_low, n_high
 
   def fill_missing_f_obs(self, fill_mode):
-    return mmtbx.utils.fill_missing_f_obs(fmodel=self, fill_mode=fill_mode) #XXX
+    import mmtbx.missing_reflections_handler
+    return mmtbx.missing_reflections_handler.fill_missing_f_obs(
+      fmodel=self, fill_mode=fill_mode)
 
   def remove_filled_f_obs(self):
     if(self.filled_f_obs_selection is not None):

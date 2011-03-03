@@ -979,6 +979,7 @@ mmtbx/masks/grid_symop.h svneol=native#text/plain
 mmtbx/masks/tst_asu_mask.py svneol=native#text/x-python
 mmtbx/masks/tst_mask.cpp svneol=native#text/plain
 mmtbx/masks/util.h svneol=native#text/plain
+mmtbx/missing_reflections_handler.py -text
 mmtbx/model_statistics.py -text
 mmtbx/model_vs_data.py -text
 mmtbx/monomer_library/cif_triage.py svneol=native#text/x-python
@@ -1022,6 +1023,7 @@ mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_kinemage.py svneol=native#text/x-python
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
+mmtbx/resolve_resources.py -text
 mmtbx/rotamer/rotamer_names.props -text
 mmtbx/rotamer/sidechain_angles.props -text
 mmtbx/rotamer/sidechain_angles.py -text
