@@ -85,9 +85,13 @@ class iterations(object):
   K. Madsen, H.B. Nielsen, O. Tingleff,
   http://www2.imm.dtu.dk/pubdb/views/edoc_download.php/3215/pdf/imm3215.pdf
 
-  The do_damping function implements the shelxl damping as described here:
+  The do_damping and do_scale_shifts function implements the shelxl damping as
+  described here:
   http://shelx.uni-ac.gwdg.de/SHELX/shelx.pdf
-  and does nothing unless called by a derived class
+  do_scale_shifts aslo compares the maximum shift/esd with
+  convergence_as_shift_over_esd and returns boolean to indicate if
+  the refinement converged according to this criterion
+  These functions do nothing unless called by a derived class
   """
 
   track_step = False
@@ -97,6 +101,8 @@ class iterations(object):
   gradient_threshold = None
   step_threshold = None
   damping_value = 0.0007
+  max_shift_over_esd = 15
+  convergence_as_shift_over_esd = 1e-5
 
   def __init__(self, non_linear_ls, **kwds):
     """
@@ -121,9 +127,21 @@ class iterations(object):
     return h <= eps_2*(x + eps_2)
 
   def do_damping(self, value):
-    if value == 0:  return
     a = self.non_linear_ls.normal_matrix_packed_u()
     a.matrix_packed_u_diagonal_add_in_place(value*a.matrix_packed_u_diagonal())
+
+  def do_scale_shifts(self, max_shift_over_esd):
+    x = self.non_linear_ls.step()
+    esd = self.non_linear_ls.covariance_matrix().matrix_packed_u_diagonal()
+    x_over_esd = x/flex.sqrt(esd)
+    max_ind = flex.max_index(x_over_esd)
+    max_val = x_over_esd[max_ind]
+    if max_val < self.convergence_as_shift_over_esd:
+      return True
+    if max_val > max_shift_over_esd:
+      shift_scale = max_shift_over_esd/max_val
+      x *= shift_scale
+    return False
 
   def do(self):
     raise NotImplementedError
@@ -166,6 +184,32 @@ class naive_iterations_with_damping(iterations):
 
   def __str__(self):
     return "pure Gauss-Newton with damping"
+
+
+class naive_iterations_with_damping_and_shift_limit(iterations):
+
+  def do(self):
+    self.n_iterations = 0
+    do_last = False
+    while self.n_iterations < self.n_max_iterations:
+      self.non_linear_ls.build_up()
+      if self.has_gradient_converged_to_zero():
+        do_last = True
+      if not do_last and self.n_iterations+1 < self.n_max_iterations:
+        self.do_damping(self.damping_value)
+      self.non_linear_ls.solve()
+      step_too_small = self.had_too_small_a_step()
+      if not do_last and not step_too_small and\
+         self.do_scale_shifts(self.max_shift_over_esd):
+        do_last = True
+      self.non_linear_ls.step_forward()
+      self.n_iterations += 1
+      if do_last: break
+      if step_too_small:
+        do_last = True
+
+  def __str__(self):
+    return "pure Gauss-Newton with damping and shift scaling"
 
 
 class levenberg_marquardt_iterations(iterations):
