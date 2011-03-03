@@ -209,7 +209,7 @@ class structure(crystal.special_position_settings):
     :type selection: boolean[]
 
     :returns: the modified base object
-    :rtype: :py:class:'cctbx.xray.structure'
+    :rtype: cctbx.xray.structure
     """
     assert [value, values].count(None) == 1
     s = self._scatterers
@@ -568,6 +568,22 @@ class structure(crystal.special_position_settings):
         selection=None,
         allow_all_fixed=False,
         random_double=None):
+    """Shake the coordinates of the selected scatterers in this structure.
+
+    :param rms_difference: radial mean square displacement (>=0) to apply to selected scatterers
+    :type rms_difference: float
+    :param mean_distance: a mean distance shift (>=0) to apply to selected scatterers
+    :type mean_distance: float
+    :param selection: an array of bools to select scatterers to be shaken
+    :type selection: boolean[]
+    :param allow_all_fixed: if set to 'True' shaking a structure with all scatterers on fixed special positions will not cause an error
+    :type allow_all_fixed: boolean
+    :param random_double: "random" numbers to use for displacements
+    :type random_double: float[]
+
+    :returns: 'True' if at least one scatterer was moved, 'False' otherwise
+    :rtype: boolean
+    """
     assert [rms_difference, mean_distance].count(None) == 1
     if (rms_difference is not None):
       assert rms_difference >= 0
@@ -630,6 +646,15 @@ class structure(crystal.special_position_settings):
     return True
 
   def shift_sites_in_place(self, shift_length, mersenne_twister=None):
+    """Shifts the coordinates of all scatterers in this structure.
+
+    :param shift_length: the distance to shift each scatterer with
+    :type shift_length: float
+    :param mersenne_twister: a mersenne twister to use as entropy source
+    :type mersenne_twister: flex.mersenne_twister
+
+    :returns: none
+    """
     if (shift_length == 0): return
     sst = self._site_symmetry_table
     assert sst.indices().size() == self._scatterers.size()
@@ -1258,6 +1283,15 @@ class structure(crystal.special_position_settings):
     return self.change_basis(ch_op)
 
   def expand_to_p1(self, append_number_to_labels=False):
+    """Get the current structure expanded into spacegroup P1.
+    This turns all symmetry induced scatterers into independent individual scatterers.
+
+    :param append_number_to_labels: If set to 'True' scatterers generated from symmetry will be labeld with a numerical suffix
+    :type append_number_to_labels: boolean
+
+    :returns: a new instance of the structure expanded into P1
+    :rtype: cctbx.xray.structure
+    """
     return structure(
       special_position_settings
         =crystal.special_position_settings(
