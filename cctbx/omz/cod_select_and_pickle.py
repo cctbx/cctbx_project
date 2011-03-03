@@ -78,9 +78,8 @@ class cod_data(object):
     if (O.f_obs.sigmas() is None):
       print "Missing sigmas:", O.cod_code
       return True
-    f_sq = O.f_obs.f_as_f_sq()
-    sel = (f_sq.data() == 0) & (f_sq.sigmas() == 0)
-    result = not f_sq.select(~sel).sigmas().all_gt(0)
+    sel = (O.f_obs.data() == 0) & (O.f_obs.sigmas() == 0)
+    result = not O.f_obs.select(~sel).sigmas().all_gt(0)
     if (result):
       print "Zero or negative sigmas:", O.cod_code
     return result

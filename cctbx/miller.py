@@ -1511,14 +1511,25 @@ class array(set):
       result.set_observation_type_xray_amplitude()
     return result
 
-  def f_as_f_sq(self):
+  def f_as_f_sq(self, algorithm="simple"):
+    assert algorithm in ["simple", "shelxl"]
     from cctbx import xray
     assert self.observation_type() is None or self.is_xray_amplitude_array()
     if (self.sigmas() is None):
       result = array(self, xray.array_f_as_f_sq(self.data()).f_sq)
-    else:
+    elif (algorithm == "simple"):
       r = xray.array_f_as_f_sq(self.data(), self.sigmas())
       result = array(self, r.f_sq, r.sigma_f_sq)
+    else:
+      # shelx97-2.980324 shelxl.f line 6247:
+      #   S=2.*AMAX1(.01,S)*ABS(AMAX1(.01,ABS(T),S))
+      #   T=T**2
+      f_sq = flex.double()
+      s_sq = flex.double()
+      for f,s in zip(self.data(), self.sigmas()):
+        f_sq.append(f**2)
+        s_sq.append(2 * max(.01, s) * abs(max(.01, abs(f), s)))
+      result = array(miller_set=self, data=f_sq, sigmas=s_sq)
     if (self.is_xray_amplitude_array()):
       result.set_observation_type_xray_intensity()
     return result
