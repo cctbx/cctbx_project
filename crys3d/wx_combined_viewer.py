@@ -135,9 +135,6 @@ class map_viewer_mixin (wxGLWindow) :
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
     glEnable(GL_DEPTH_TEST)
     glShadeModel(GL_SMOOTH)
-    vendor = glGetString(GL_VENDOR)
-    if (sys.platform == "darwin") and vendor.startswith("NVIDIA") :
-      print vendor
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
     self.initialize_modelview()
@@ -270,16 +267,19 @@ class map_viewer_mixin (wxGLWindow) :
     gltbx.util.handle_error()
     if self.flag_use_materials :
       glLightfv(GL_LIGHT0, GL_AMBIENT, [0., 0., 0., 1.])
-    #elif self.flag_use_lights :
-    # FIXME
-    # this looks good on ATI - what about NVidia?
     glDisable(GL_LIGHT0)
     glDisable(GL_LIGHTING)
     glDisable(GL_BLEND)
-    #glEnable(GL_LINE_SMOOTH)
-    glLineWidth(0.1)
+    vendor = glGetString(GL_VENDOR)
+    if (sys.platform == "darwin") and vendor.startswith("NVIDIA") :
+      glDisable(GL_LINE_SMOOTH) # XXX what about Linux?
+    line_width = 0.1
+    w_range = [0.0,0.0]
+    glGetFloatv(GL_LINE_WIDTH_RANGE, w_range)
+    if (w_range[0] > 0.1) :
+      line_width = w_range[0]
+    glLineWidth(line_width)
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-    #glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
     for map_id, scene in self.map_scenes.iteritems() :
