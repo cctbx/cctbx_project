@@ -1286,7 +1286,7 @@ class structure(crystal.special_position_settings):
     """Get the current structure expanded into spacegroup P1.
     This turns all symmetry induced scatterers into independent individual scatterers.
 
-    :param append_number_to_labels: If set to 'True' scatterers generated from symmetry will be labeld with a numerical suffix
+    :param append_number_to_labels: If set to 'True' scatterers generated from symmetry will be labelled with a numerical suffix
     :type append_number_to_labels: boolean
 
     :returns: a new instance of the structure expanded into P1
