@@ -71224,7 +71224,6 @@ test_kin_text = """
 @master {base-P perp} on
 @master {hets} on
 """
-
 def exercise_kinemage():
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb103l.ent",
