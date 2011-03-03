@@ -188,6 +188,11 @@ public:
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose) = 0;
 
+  /** This is called after the shifts are applied to give some parameters
+  a way to 'recover' if their value goes to physically unacceptable value...
+  */
+  virtual void validate() {}
+
 protected:
   /// This is to be used by heirs to set the arguments at construction
   //@{
@@ -551,6 +556,7 @@ public:
                                   std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
+  virtual void validate();
 };
 
 
@@ -589,6 +595,7 @@ public:
                                   std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
+  virtual void validate();
 };
 
 

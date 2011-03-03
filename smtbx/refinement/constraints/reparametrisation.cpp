@@ -148,6 +148,9 @@ namespace smtbx { namespace refinement { namespace constraints {
   void asu_occupancy_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->occupancy = value;
   }
+  void asu_occupancy_parameter::validate() {
+    if (value < 0) value = 1e-4;
+  }
 
   // independent Occupancy
 
@@ -175,6 +178,10 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
   void asu_u_iso_parameter::store(uctbx::unit_cell const &unit_cell) const {
     scatterer->u_iso = value;
+  }
+  void asu_u_iso_parameter::validate() {
+    if (value < 0) value = 1e-4;
+    else if (value > 1) value = 1;
   }
 
   // independent u_iso
@@ -272,6 +279,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         double const *s = &shifts[p->index()];
         af::ref<double> x = p->components();
         for (std::size_t i=0; i<x.size(); ++i) x[i] += s[i];
+        p->validate();
       }
     }
   }
