@@ -52,17 +52,21 @@ def get_master_phil():
         .type = bool
 """)
 
-def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
+def shelxl_weights(f_obs, fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
   assert sigmas.size() == fo_sq.size()
   assert fc_sq.size() == fo_sq.size()
   result = flex.double()
-  for o,s,c in zip(fo_sq, sigmas, fc_sq):
+  from itertools import count
+  for i,o,s,c in zip(count(), fo_sq, sigmas, fc_sq):
     o /= scale_factor
     s /= scale_factor
     p = (max(o, 0) + 2 * c) / 3
     den = s**2 + (a*p)**2 + b*p
     if (den < 1e-6):
       w = 1
+      print "UNREASONABLE denominator in weight calculation", den, \
+        f_obs.indices()[i], fo_sq[i], sigmas[i], \
+        f_obs.data()[i], f_obs.sigmas()[i]
     else:
       w = 1 / den
     result.append(w)
@@ -311,6 +315,7 @@ def run_shelxl(
         fo_sq = f_obs.f_as_f_sq()
         fc_sq = fc_abs.f_as_f_sq()
         weights = shelxl_weights(
+          f_obs=f_obs,
           fo_sq=fo_sq.data(),
           sigmas=fo_sq.sigmas(),
           fc_sq=fc_sq.data(),
@@ -410,8 +415,14 @@ def process(params, pickle_file_name):
     if (action == "remove"):
       f_obs = f_obs.select(~sel)
   if (f_obs.anomalous_flag()):
-    print "INFO: anomalous f_obs converted to non-anomalous."
+    print "INFO: converting anomalous f_obs to non-anomalous."
     f_obs = f_obs.average_bijvoet_mates()
+  sel = (f_obs.data() == 0) & (f_obs.sigmas() == 0)
+  n_zero_f_and_s = sel.count(True)
+  if (n_zero_f_and_s != 0):
+    print "INFO: removing reflections with f_obs=0 and sigma=0:", \
+      n_zero_f_and_s
+    f_obs = f_obs.select(~sel)
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_cod,
     algorithm="direct",

@@ -92,7 +92,12 @@ namespace cctbx { namespace xray {
               FloatType const& sigma_f)
     {
       f_sq = f * f;
-      sigma_f_sq = 2 * f * sigma_f;
+      if (f == 0) {
+        sigma_f_sq = sigma_f * sigma_f;
+      }
+      else {
+        sigma_f_sq = 2 * f * sigma_f;
+      }
     }
 
     f_as_f_sq(FloatType const& f)
