@@ -133,9 +133,8 @@ class iterations(object):
   def do_scale_shifts(self, max_shift_over_esd):
     x = self.non_linear_ls.step()
     esd = self.non_linear_ls.covariance_matrix().matrix_packed_u_diagonal()
-    x_over_esd = x/flex.sqrt(esd)
-    max_ind = flex.max_index(x_over_esd)
-    max_val = x_over_esd[max_ind]
+    x_over_esd = flex.abs(x/flex.sqrt(esd))
+    max_val = flex.max(x_over_esd)
     if max_val < self.convergence_as_shift_over_esd:
       return True
     if max_val > max_shift_over_esd:
@@ -199,9 +198,8 @@ class naive_iterations_with_damping_and_shift_limit(iterations):
         self.do_damping(self.damping_value)
       self.non_linear_ls.solve()
       step_too_small = self.had_too_small_a_step()
-      if not do_last and not step_too_small and\
-         self.do_scale_shifts(self.max_shift_over_esd):
-        do_last = True
+      if not do_last and not step_too_small:
+        step_too_small = self.do_scale_shifts(self.max_shift_over_esd)
       self.non_linear_ls.step_forward()
       self.n_iterations += 1
       if do_last: break
