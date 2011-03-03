@@ -52,23 +52,17 @@ def get_master_phil():
         .type = bool
 """)
 
-def shelxl_weights(f_obs, fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
+def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
   assert sigmas.size() == fo_sq.size()
   assert fc_sq.size() == fo_sq.size()
   result = flex.double()
-  from itertools import count
-  for i,o,s,c in zip(count(), fo_sq, sigmas, fc_sq):
+  for o,s,c in zip(fo_sq, sigmas, fc_sq):
     o /= scale_factor
     s /= scale_factor
     p = (max(o, 0) + 2 * c) / 3
     den = s**2 + (a*p)**2 + b*p
-    if (den < 1e-6):
-      w = 1
-      print "UNREASONABLE denominator in weight calculation", den, \
-        f_obs.indices()[i], fo_sq[i], sigmas[i], \
-        f_obs.data()[i], f_obs.sigmas()[i]
-    else:
-      w = 1 / den
+    assert den > 1e-8
+    w = 1 / den
     result.append(w)
   return result
 
@@ -91,7 +85,7 @@ def show_cc_r1(
 
 def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
   import smtbx.refinement
-  fo_sq = f_obs.f_as_f_sq()
+  fo_sq = f_obs.f_as_f_sq(algorithm="shelxl")
   assert fo_sq.sigmas() is not None
   sel = (fo_sq.data() == 0) & (fo_sq.sigmas() == 0)
   fo_sq = fo_sq.select(~sel)
@@ -312,21 +306,31 @@ def run_shelxl(
         assert lst_wr2 is not None
         assert lst_r1 == res_r1
         #
-        fo_sq = f_obs.f_as_f_sq()
+        import iotbx.shelx.hklf
+        fo_wr = iotbx.shelx.hklf.reader(file_name="tmp.hkl") \
+          .as_miller_arrays(crystal_symmetry=f_obs)[0]
+        fo_sq = fo_wr.f_as_f_sq(algorithm="shelxl")
         fc_sq = fc_abs.f_as_f_sq()
         weights = shelxl_weights(
-          f_obs=f_obs,
           fo_sq=fo_sq.data(),
           sigmas=fo_sq.sigmas(),
           fc_sq=fc_sq.data(),
           scale_factor=res_fvar)
         num = flex.sum(
-          weights * flex.pow2(fo_sq.data() - res_fvar * fc_sq.data()))
+          weights * flex.pow2(fo_sq.data() / res_fvar - fc_sq.data()))
         den = flex.sum(
-          weights * flex.pow2(fo_sq.data()))
+          weights * flex.pow2(fo_sq.data() / res_fvar))
         assert den != 0
         wr2 = (num / den)**0.5
-        print "COMPARE lst_wr2, wr2:", lst_wr2, wr2, wr2-lst_wr2
+        wr2_diff = wr2 - lst_wr2
+        if (abs(wr2_diff) > 0.01):
+          info = " significantly different"
+        else:
+          info = ""
+        print "wR2 recomputed - shelxl_%s.lst: %.4f - %.4f = %.4f %s%s" % (
+          mode, lst_wr2, wr2, wr2_diff, cod_code, info)
+        if (abs(wr2_diff) / max(lst_wr2, wr2) > 0.2):
+          raise RuntimeError("wR2 MISMATCH %s" % cod_code)
     if (not params.keep_tmp_files):
       remove_tmp_files(tmp_file_names)
       remove_wdir = wdir_is_new
