@@ -15,8 +15,8 @@ namespace {
   getinitargs(core<> const& self)
   {
     return boost::python::make_tuple(self.f_calc,
-                                     self.f_mask,
-                                     self.k_sol,
+                                     self.f_mask(),
+                                     self.k_sol(),
                                      self.b_sol,
                                      self.f_part,
                                      self.k_part,
@@ -35,6 +35,16 @@ namespace {
   {
     using namespace boost::python;
     using boost::python::arg;
+
+
+    boost::python::to_python_converter<
+      af::small< af::shared<std::complex<double> >, max_n_shells> ,
+      scitbx::boost_python::container_conversions::to_tuple<
+        af::small< af::shared<std::complex<double> >, max_n_shells>   > >();
+
+    scitbx::boost_python::container_conversions::from_python_sequence<
+      af::small< af::shared<std::complex<double> >, max_n_shells>,
+      scitbx::boost_python::container_conversions::fixed_capacity_policy>();
 
     typedef return_value_policy<return_by_value> rbv;
     class_<core<> >("core")
@@ -61,9 +71,30 @@ namespace {
                                                          arg("hkl"),
                                                          arg("uc"),
                                                          arg("ss"))))
+      .def(init<
+           af::shared<std::complex<double> >      const&,
+           af::small< af::shared<std::complex<double> >, max_n_shells > const&,
+           af::small< double, max_n_shells>       const&,
+           double                                 const&,
+           af::shared<std::complex<double> >      const&,
+           double                                 const&,
+           double                                 const&,
+           scitbx::sym_mat3<double>               const&,
+           af::shared<cctbx::miller::index<> >    const&,
+           cctbx::uctbx::unit_cell                const&,
+           af::shared<double>                     const& >(
+                                                        (arg("f_calc"),
+                                                         arg("shell_f_masks"),
+                                                         arg("shell_k_sols"),
+                                                         arg("b_sol"),
+                                                         arg("f_part_base"),
+                                                         arg("k_part"),
+                                                         arg("b_part"),
+                                                         arg("u_star"),
+                                                         arg("hkl"),
+                                                         arg("uc"),
+                                                         arg("ss"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
-      .add_property("f_mask",        make_getter(&core<>::f_mask,       rbv()))
-      .add_property("k_sol",         make_getter(&core<>::k_sol,        rbv()))
       .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
       .add_property("f_part",        make_getter(&core<>::f_part,       rbv()))
       .add_property("k_part",        make_getter(&core<>::k_part,       rbv()))
@@ -76,6 +107,13 @@ namespace {
       .add_property("f_aniso",       make_getter(&core<>::f_aniso,      rbv()))
       .add_property("f_b_sol",       make_getter(&core<>::f_b_sol,      rbv()))
       .add_property("ss",            make_getter(&core<>::ss,           rbv()))
+      .def("n_shells", &core<>::n_shells)
+      .def("k_sol", &core<>::k_sol)
+      .def("shell_k_sol", &core<>::shell_k_sol)
+      .def("shell_k_sols", &core<>::shell_k_sols)
+      .def("f_mask", &core<>::f_mask)
+      .def("shell_f_mask", &core<>::shell_f_mask)
+      .def("shell_f_masks", &core<>::shell_f_masks)
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
