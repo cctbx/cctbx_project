@@ -3,13 +3,21 @@ iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys
 from cctbx.array_family import flex
 
-def miller_array_export_as_shelx_hklf(miller_array, file_object=None):
+def miller_array_export_as_shelx_hklf(miller_array, file_object=None,
+                                      normalise_if_format_overflow=False):
+  """ If the maximum data value does not fit into the 8.2 float point format:
+  normalise_if_format_overflow=False: RuntimeError is thrown
+  normalise_if_format_overflow=True: data is normalised to the largest
+  number to fit 8.2 format
+  """
   assert miller_array.is_real_array()
   if (file_object is None): file_object = sys.stdout
   data = miller_array.data()
   max_val = flex.max(data)
   scale = 1
   if max_val > 99999.99: #scale if needed to avoid format overflow
+    if not normalise_if_format_overflow:
+      raise RuntimeError('8.2 HKL file format overflow')
     scale = 99999.99/max_val
   sigmas = miller_array.sigmas()
   s = 0.01
