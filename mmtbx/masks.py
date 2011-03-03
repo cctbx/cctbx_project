@@ -42,6 +42,9 @@ mask_master_params = iotbx.phil.parse("""\
   ignore_hydrogens = False
     .type = bool
     .help = Ignore H or D atoms in mask calculation
+  n_radial_shells = 1
+    .type = int
+    .help = Number of shells in a radial shell bulk solvent model
 """)
 
 class bulk_solvent(around_atoms):
@@ -166,7 +169,13 @@ class asu_mask(object):
     sites_frac = self.xray_structure.sites_frac()
     sites_frac = sites_frac.select(selection)
     atom_radii = self.atom_radii.select(selection)
-    self.asu_mask.compute(sites_frac, atom_radii)
+    if(self.mask_params.n_radial_shells > 1):
+      # number of shell radii is one less than number of shells
+      # last shell is of unknown radius
+      shell_rads = [3.]*(self.mask_params.n_radial_shells-1)
+      self.asu_mask.compute(sites_frac, atom_radii, shell_rads)
+    else:
+      self.asu_mask.compute(sites_frac, atom_radii)
 
   def mask_data_whole_uc(self):
     mask_data = self.asu_mask.mask_data_whole_uc() / \
@@ -196,6 +205,8 @@ class manager(object):
       twin=False
       if(self.miller_array_twin is not None): twin=True
       if(compute_mask): self.compute_f_mask()
+    if( not (self._f_mask is None) ):
+      assert self._f_mask[0].data().size() == self.miller_array.indices().size()
 
   def deep_copy(self):
     return self.select(flex.bool(self.miller_array.indices().size(),True))
@@ -211,9 +222,15 @@ class manager(object):
       mask_params       = deepcopy(self.mask_params),
       compute_mask      = False)
     if(self._f_mask is not None):
-      new_manager._f_mask = self._f_mask.select(selection = selection)
+      assert self._f_mask[0].data().size() == self.miller_array.indices().size()
+      new_manager._f_mask = []
+      for fm in self._f_mask:
+        assert fm.data().size() == selection.size(), (fm.data().size(), "!=", selection.size())
+        new_manager._f_mask.append(fm.select(selection = selection))
     if(self._f_mask_twin is not None):
-      new_manager._f_mask_twin = self._f_mask_twin.select(selection = selection)
+      new_manager._f_mask_twin = []
+      for fm in self._f_mask_twin:
+        new_manager._f_mask_twin.append( fm.select(selection = selection) )
     new_manager.solvent_content_via_mask = self.solvent_content_via_mask
     return new_manager
 
@@ -227,7 +244,7 @@ class manager(object):
     step = min(0.8, step)
     return step
 
-  def f_mask(self, xray_structure = None, force_update=False):
+  def shell_f_masks(self, xray_structure = None, force_update=False):
     if(xray_structure is not None):
       if(force_update or self._f_mask is None):
         self.xray_structure = xray_structure.deep_copy_scatterers()
@@ -242,10 +259,26 @@ class manager(object):
           self.compute_f_mask()
     elif(self._f_mask is None and self.xray_structure is not None):
       self.compute_f_mask()
+    # TODO: should return self._f_mask[:], to avoid modification in upper levels?
     return self._f_mask
 
-  def f_mask_twin(self):
+  def f_mask(self, xray_structure = None, force_update=False):
+    assert self.mask_params.n_radial_shells <= 1
+    fmsks = self.shell_f_masks(xray_structure, force_update)
+    if( fmsks is None ):
+      return None
+    assert len(fmsks) == 1
+    return fmsks[0]
+
+  def shell_f_masks_twin(self):
     return self._f_mask_twin
+
+  def f_mask_twin(self):
+    assert self.mask_params.n_radial_shells <= 1
+    if( self._f_mask_twin is None ):
+      return None
+    assert len(self._f_mask_twin) == 1
+    return self._f_mask_twin[0]
 
   def _need_update_mask(self, sites_cart_new):
     if(self.sites_cart is not None and
@@ -260,12 +293,13 @@ class manager(object):
 
   def compute_f_mask(self):
     if(not self.mask_params.use_asu_masks):
+      assert self.mask_params.n_radial_shells <= 1
       bulk_solvent_mask_obj = self.bulk_solvent_mask()
-      self._f_mask = bulk_solvent_mask_obj.structure_factors(
-        miller_set = self.miller_array)
+      self._f_mask = [bulk_solvent_mask_obj.structure_factors(
+        miller_set = self.miller_array)]
       if(self.miller_array_twin is not None):
-        self._f_mask_twin = bulk_solvent_mask_obj.structure_factors(
-          miller_set = self.miller_array_twin)
+        self._f_mask_twin = [bulk_solvent_mask_obj.structure_factors(
+          miller_set = self.miller_array_twin)]
       self.solvent_content_via_mask = bulk_solvent_mask_obj \
         .contact_surface_fraction
     else:
@@ -273,14 +307,19 @@ class manager(object):
         xray_structure = self.xray_structure,
         d_min          = self.miller_array.d_min(),
         mask_params    = self.mask_params).asu_mask
-      fm_asu = asu_mask_obj.structure_factors(self.miller_array.indices())
-      self._f_mask = self.miller_array.set().array(data = fm_asu)
+      self._f_mask = []
+      for i in range(0, self.mask_params.n_radial_shells):
+        fm_asu = asu_mask_obj.structure_factors(self.miller_array.indices(),i+1)
+        self._f_mask.append( self.miller_array.set().array(data = fm_asu) )
       if(self.miller_array_twin is not None):
         assert self.miller_array.indices().size() == \
                self.miller_array_twin.indices().size()
-        fm_asu = asu_mask_obj.structure_factors(self.miller_array_twin.indices())
-        self._f_mask_twin = self.miller_array_twin.set().array(data = fm_asu)
+        self._f_mask_twin = []
+        for i in range(0,self.mask_params.n_radial_shells):
+          fm_asu = asu_mask_obj.structure_factors(self.miller_array_twin.indices())
+          self._f_mask_twin.append( self.miller_array_twin.set().array(data = fm_asu) )
       self.solvent_content_via_mask = asu_mask_obj.contact_surface_fraction
+    assert self._f_mask[0].data().size() == self.miller_array.data().size()
 
   def bulk_solvent_mask(self):
     mp = self.mask_params

@@ -125,7 +125,13 @@ class kbu_minimizer(object):
                b_sol_min =-500.):
     adopt_init_args(self, locals())
     assert [fmodel_core_data1,twin_fraction].count(None) in [0,2]
+    self.n_shells = self.fmodel_core_data.data.n_shells()
+    if not self.fmodel_core_data1 is None:
+      assert self.fmodel_core_data1.data.n_shells() == self.n_shells
+    assert self.n_shells > 0  and self.n_shells <= 10
+    assert self.n_shells == 1 # TODO: remove this line
     self.k_min = self.k_initial
+    assert len(self.k_min) == self.n_shells
     self.b_min = self.b_initial
     self.u_min = self.u_initial
     self.u_factor = self.fmodel_core_data.uc.volume()**(2/3.)
@@ -163,9 +169,11 @@ class kbu_minimizer(object):
     del self.x
 
   def pack(self, u, k, b, u_factor):
+    assert type(k) is list
+    assert len(k) == self.n_shells
     v = []
     if (self.refine_u): v += [ui*u_factor for ui in u]
-    if (self.refine_k): v.append(k)
+    if (self.refine_k): v += k
     if (self.refine_b): v.append(b)
     return flex.double(v)
 
@@ -179,8 +187,10 @@ class kbu_minimizer(object):
         self.u_min = list(iter(self.x[i:self.dim_u]/self.u_factor))
       i = self.dim_u
     if(self.refine_k):
-      self.k_min = self.x[i]
-      i += 1
+      self.k_min = list(iter(self.x[i:i+self.n_shells]))
+      assert len(self.k_min)==self.n_shells
+      assert len(self.k_min)==1 # TODO: remove this line
+      i += self.n_shells
     if(self.refine_b):
       self.b_min = self.x[i]
 
@@ -190,8 +200,8 @@ class kbu_minimizer(object):
       for v in self.u_min])
     if(self.b_min > self.b_sol_max): self.b_min = self.b_sol_max
     if(self.b_min < self.b_sol_min): self.b_min = self.b_sol_min
-    if(self.k_min > self.k_sol_max): self.k_min = self.k_sol_max
-    if(self.k_min < self.k_sol_min): self.k_min = self.k_sol_min
+    self.k_min = [max(self.k_sol_min, min(self.k_sol_max, v))
+      for v in self.k_min]
     if(self.twin_fraction is None):
       self.fmodel_core_data.update(k_sol = self.k_min, b_sol = self.b_min,
         u_star = self.u_min)
@@ -215,11 +225,13 @@ class kbu_minimizer(object):
         compute_b_sol_grad  = self.refine_b,
         compute_u_star_grad = self.refine_u)
     self.f = tg.target()
-    gk=0
+    gk=[0.0]*self.n_shells
     gb=0
     gu=[0,0,0,0,0,0]
     if(self.refine_k or self.refine_b):
-      gk = tg.grad_k_sol()
+      gk = list(tg.grad_shell_k_sols())
+      assert len(gk) == self.n_shells
+      assert len(gk) == 1 # TODO: remove this line
       gb = tg.grad_b_sol()
     if(self.refine_u): gu = list(tg.grad_u_star())
     if(self.symmetry_constraints_on_b_cart and self.refine_u):
@@ -245,7 +257,7 @@ def k_sol_b_sol_b_cart_minimizer(
   return kbu_minimizer(
     fmodel_core_data = fmodel_core_data_work,
     f_obs            = fmodel.f_obs_work(),
-    k_initial        = fmodel_core_data_work.k_sol,
+    k_initial        = fmodel_core_data_work.shell_k_sols,
     b_initial        = fmodel_core_data_work.b_sol,
     u_initial        = fmodel_core_data_work.u_star,
     refine_k         = refine_k_sol,
@@ -443,6 +455,9 @@ class bulk_solvent_and_scales(object):
     minimizer_obj = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
       params = self.params, refine_k_sol = True, refine_b_sol = True)
     ksol, bsol = minimizer_obj.k_min, minimizer_obj.b_min
+    assert type(ksol) is list
+    assert len(ksol) == 1 # TODO: remove this
+    ksol = ksol[0] # TODO: remove this
     if(ksol < self.params.k_sol_min): ksol = self.params.k_sol_min
     if(ksol > self.params.k_sol_max): ksol = self.params.k_sol_max
     if(bsol < self.params.b_sol_min): bsol = self.params.b_sol_min

@@ -1542,7 +1542,7 @@ def fmodel_simple(f_obs,
     # XXX Automatic twin detection is not available for multi-model.
     f_model_data = None
     xrs_as_one_structure = xray_structures[0].deep_copy_scatterers()
-    f_mask_data = None
+    f_masks_data = []
     for i_seq, xray_structure in enumerate(xray_structures):
       fmodel = fmodel_manager(
         xray_structure = xray_structure,
@@ -1554,18 +1554,25 @@ def fmodel_simple(f_obs,
         xrs_as_one_structure = xrs_as_one_structure.concatenate(xray_structure)
       if(i_seq == 0):
         f_model_data = fmodel.f_calc().data()
-        f_mask_data = fmodel.f_mask().data()
+        f_masks_data = []
+        for f in fmodel.shell_f_masks():
+          f_masks_data.append(f.data())
       else:
         f_model_data += fmodel.f_calc().data()
-        f_mask_data += fmodel.f_mask().data()
+        fmsks = fmodel.shell_f_masks()
+        assert len(f_masks_data) == len(fmsks)
+        for ifmd in range(len(f_masks_data)):
+          f_masks_data[ifmd] += fmsks[ifmd].data()
     fmodel_average = fmodel.f_obs().array(data = f_model_data)
-    f_mask_data_average = fmodel.f_obs().array(data = f_mask_data/len(xray_structures))
+    f_masks_data_average = []
+    for f in f_masks_data:
+      f_masks_data_average.append(fmodel.f_obs().array(data = f/len(xray_structures)))
     fmodel_result = fmodel_manager(
       f_obs        = f_obs.deep_copy(),
       r_free_flags = r_free_flags.deep_copy(),
       f_calc       = fmodel_average,
       mask_params  = mask_params,
-      f_mask       = f_mask_data_average,
+      f_mask       = f_masks_data_average,
       twin_law     = None)
     if 0:
       # XXX this makes test perfect when fobs are computed with pdbtools

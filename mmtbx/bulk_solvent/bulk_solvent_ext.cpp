@@ -7,6 +7,7 @@
 #include <mmtbx/bulk_solvent/bulk_solvent.h>
 #include <mmtbx/f_model/f_model.h>
 
+
 namespace mmtbx { namespace bulk_solvent {
 namespace {
 
@@ -66,6 +67,8 @@ namespace {
       .def("target", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::target)
       .def("grad_u_star", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_u_star)
       .def("grad_k_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_k_sol)
+      .def("grad_shell_k_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_shell_k_sol)
+      .def("grad_shell_k_sols", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_shell_k_sols)
       .def("grad_b_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_b_sol)
    ;
     def("r_factor",
