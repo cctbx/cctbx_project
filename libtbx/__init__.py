@@ -11,7 +11,13 @@ def _STOP(exit_status=0):
 __builtins__["STOP"] = _STOP
 
 def _numstr(values, fmt="%.6g", sep=", ", brackets=("[","]")):
-  return brackets[0] + sep.join([fmt % v for v in values]) + brackets[1]
+  flds = []
+  for v in values:
+    s = fmt % v
+    if (s.strip().replace("0", "") in ["-", "-."]):
+      s = fmt % 0
+    flds.append(s)
+  return brackets[0] + sep.join(flds) + brackets[1]
 __builtins__["numstr"] = _numstr
 
 class AutoType(object):
