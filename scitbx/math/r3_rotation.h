@@ -403,7 +403,7 @@ namespace scitbx { namespace math {
         q0**2+q1**2+q2**2+q3**3 = 1
       but this is not checked.
 
-      Also implemented in Python: scitbx/matrix.py
+      Also implemented in Python: scitbx/matrix/__init__.py
    */
   template <typename FloatType>
   mat3<FloatType>
@@ -444,7 +444,7 @@ namespace scitbx { namespace math {
         Sam Buss, http://math.ucsd.edu/~sbuss/MathCG
         Robert Hanson, jmol/Jmol/src/org/jmol/util/Quaternion.java
 
-      Also implemented in Python: scitbx/matrix.py
+      Also implemented in Python: scitbx/matrix/__init__.py
    */
   template <typename FloatType>
   af::tiny<FloatType, 4>

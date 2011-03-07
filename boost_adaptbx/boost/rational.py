@@ -21,8 +21,8 @@ def vector(numerators, denominators):
     result.append(int(numerators[i], denominators[i]))
   return result
 
-def lcm_denominators(a):
+def lcm_denominators(array):
   l = 1
-  for r in a:
+  for r in array:
     l = lcm(l, r.denominator())
   return l

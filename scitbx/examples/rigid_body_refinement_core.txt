@@ -109,7 +109,7 @@ algorithms, e.g. the matrix product, dot product, cross product,
 matrix inversion etc. The ``rigid_body`` constructor uses the
 ``scitbx.matrix.col`` (column) type to store the center of mass,
 the Euler angles, and the linear translation vector. It is
-highly recommended to spend a few minutes reading the `matrix.py`_
+highly recommended to spend a few minutes reading the `matrix/__init__.py`_
 script. Since it is quite short and mostly implemented in pure Python_
 it is largely self-explanatory.
 
@@ -393,7 +393,7 @@ there are many developers.
 
 .. _`LBFGS`: http://cctbx.sourceforge.net/current/c_plus_plus/namespacescitbx_1_1lbfgs.html#_details
 
-.. _`matrix.py`: http://cci.lbl.gov/cctbx_sources/scitbx/matrix.py
+.. _`matrix/__init__.py`: http://cci.lbl.gov/cctbx_sources/scitbx/matrix/__init__.py
 
 .. _`Euler angles`: http://en.wikipedia.org/wiki/Euler_angles
 

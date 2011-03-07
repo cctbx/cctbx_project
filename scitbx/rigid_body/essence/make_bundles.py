@@ -46,7 +46,7 @@ Files::
   spatial_lib.py:    spatial algebra, also based on Roy Featherstone's library
   joint_lib.py:      some joint models
   body_lib.py:       corresponding body objects
-  scitbx_matrix.py:  general matrix algorithm (copy of scitbx/matrix.py)
+  scitbx_matrix.py:  general matrix algorithm (copy of scitbx/matrix/__init__.py)
   tst_basic.py:      unit tests compatible with Python 2.2 or higher
 
 Download all files at once:
@@ -105,7 +105,7 @@ def run(args):
   scitbx_dist = libtbx.env.dist_path(module_name="scitbx")
   def cp(file_name, target="."):
     copy_file(os.path.join(scitbx_dist, file_name), target)
-  cp("matrix.py", "scitbx_matrix.py")
+  cp("matrix/__init__.py", "scitbx_matrix.py")
   cp("rigid_body/essence/featherstone.py")
   cp("rigid_body/essence/spatial_lib.py")
   cp("rigid_body/essence/joint_lib.py")
