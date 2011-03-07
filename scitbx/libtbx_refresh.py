@@ -1,6 +1,10 @@
 import os
 op = os.path
 
+self.remove_obsolete_pyc_if_possible(pyc_file_names=[
+  "matrix.pyc", # XXX backward compatibility 2011-03-06
+])
+
 if (self.env.is_ready_for_build()):
   from scitbx.source_generators.array_family import generate_all
   target_dir = self.env.under_build("include/scitbx/array_family/detail")
