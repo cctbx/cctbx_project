@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import math
 
-from cctbx import matrix
+from scitbx import matrix
 from rstbx.diffraction import partial_spot_position_partial_H
 from libtbx.test_utils import approx_equal
 from cctbx.crystal_orientation import crystal_orientation

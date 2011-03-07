@@ -1,5 +1,5 @@
 from libtbx.test_utils import Exception_expected
-import cctbx.matrix as mat
+import scitbx.matrix as mat
 
 def exercise_basis_of_mirror_plane_with_normal():
   from cctbx.math_module import basis_of_mirror_plane_with_normal

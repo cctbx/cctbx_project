@@ -1,5 +1,4 @@
 from cctbx.array_family import flex
-from cctbx import matrix
 from cctbx import sgtbx
 from cctbx.crystal.find_best_cell import alternative_find_best_cell
 from cctbx.sgtbx import cosets
@@ -7,8 +6,9 @@ from cctbx import crystal
 from cctbx import miller
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
-from libtbx.utils import Sorry
+from scitbx import matrix
 from scitbx.python_utils import graph_tools
+from libtbx.utils import Sorry
 import sys
 
 
