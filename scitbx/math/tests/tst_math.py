@@ -908,9 +908,9 @@ def exercise_phase_error():
 
 def exercise_row_echelon():
   m = flex.int((1,1,1,1))
-  m.resize(flex.grid(2,2))
+  m.reshape(flex.grid(2,2))
   t = flex.int((2,3))
-  t.resize(flex.grid(2,1))
+  t.reshape(flex.grid(2,1))
   assert scitbx.math.row_echelon_form_t(m, t) == 1
   assert m.focus() == (1,2)
   assert tuple(m) == (1,1)
@@ -919,13 +919,13 @@ def exercise_row_echelon():
   assert m.focus() == (1,2)
   assert tuple(m) == (1,1)
   m = flex.int((0,-24,0,0,0,-24,24,0,24))
-  m.resize(flex.grid(3,3))
+  m.reshape(flex.grid(3,3))
   t = flex.int((-3, -6, 0))
-  t.resize(flex.grid(3,1))
+  t.reshape(flex.grid(3,1))
   assert scitbx.math.row_echelon_form_t(m, t) == 3
   assert tuple(m) == (24,0,24,0,24,0,0,0,24)
   assert tuple(t) == (0,3,6)
-  t.resize(flex.grid(3))
+  t.reshape(flex.grid(3))
   sol = flex.int(3)
   assert scitbx.math.row_echelon_back_substitution_int(m, t, sol) == 8
   assert tuple(sol) == (-2,1,2)
@@ -941,7 +941,7 @@ def exercise_row_echelon():
         for i in xrange(n_rows):
           coeffs = flex.int([random.randrange(-5,5) for j in xrange(n_cols)])
           m.extend(coeffs)
-        m.resize(flex.grid(n_rows,n_cols))
+        m.reshape(flex.grid(n_rows,n_cols))
         rank = scitbx.math.row_echelon_form(m)
         assert m.focus()[0] == rank
         assert m.focus()[1] == n_cols

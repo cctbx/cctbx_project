@@ -338,7 +338,7 @@ def exercise_standalone(tmpdir="tst_featherstone_tmpdir"):
   scitbx_dist = libtbx.env.dist_path(module_name="scitbx")
   def cp(file_name, target="."):
     copy_file(os.path.join(scitbx_dist, file_name), target)
-  cp("matrix.py", "scitbx_matrix.py")
+  cp("matrix/__init__.py", "scitbx_matrix.py")
   cp("rigid_body/proto/featherstone.py")
   cp("rigid_body/proto/tst_featherstone.py")
 
