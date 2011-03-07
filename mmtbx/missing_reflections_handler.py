@@ -4,6 +4,43 @@ import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
+from libtbx import group_args
+
+def compute_new_f_obs(fmodel):
+  from mmtbx.max_lik import maxlik
+  csc = fmodel.complete_set_core()
+  f_obs = fmodel.f_obs()
+  r_free_flags = fmodel.r_free_flags()
+  f_model_scaled_with_k1 = csc.f_model.array(
+    data = csc.f_model.data()*fmodel.scale_k1())
+  f_obs_lone = abs(f_model_scaled_with_k1.lone_set(other = f_obs))
+  new_f_obs = f_obs.concatenate(other = f_obs_lone)
+  new_f_obs, f_model_scaled_with_k1 = new_f_obs.common_sets(f_model_scaled_with_k1)
+  r_free_flags, dummy = r_free_flags.common_sets(f_model_scaled_with_k1)
+  new_r_free_flags = r_free_flags.data().concatenate(
+    flex.bool(f_obs_lone.size(), False))
+  alpha, beta = maxlik.alpha_beta_est_manager(
+    f_obs                    = new_f_obs,
+    f_calc                   = f_model_scaled_with_k1,
+    free_reflections_per_bin = 100,
+    flags                    = new_r_free_flags,
+    interpolation            = True).alpha_beta()
+  apply_alpha_sel = flex.bool(f_obs.size(), False).concatenate(
+    flex.bool(f_obs_lone.size(), True))
+  alpha = alpha.select(apply_alpha_sel)
+  f_obs_lone = f_obs_lone.array(data=f_obs_lone.data()*alpha.data())
+  new_f_obs = f_obs.concatenate(other = f_obs_lone)
+  new_abcd = None
+  if(fmodel.hl_coeffs() is not None):
+    new_abcd = fmodel.hl_coeffs().customized_copy(
+      indices = new_f_obs.indices(),
+      data = fmodel.hl_coeffs().data().concatenate(
+        flex.hendrickson_lattman(f_obs_lone.size(), [0,0,0,0])))
+  return group_args(
+    f_obs = new_f_obs,
+    r_free_flags = new_f_obs.array(data=new_r_free_flags),
+    filled_f_obs_selection = apply_alpha_sel,
+    hl_coeffs = new_abcd)
 
 def fill_missing_f_obs(fmodel, fill_mode):
   assert fill_mode in ["fobs_mean_mixed_with_dfmodel",
@@ -11,93 +48,14 @@ def fill_missing_f_obs(fmodel, fill_mode):
                        "fobs_mean",
                        "dfmodel"]
   from mmtbx import masks
-  from mmtbx.max_lik import maxlik
   use_f_part = fmodel.k_part() > 0
   bss_params = bss.master_params.extract()
   bss_params.k_sol_b_sol_grid_search = False
   bss_params.b_sol_max = 150.0
   bss_params.number_of_macro_cycles = 1
-  f_model = fmodel.f_model()
-  n_refl_orig = f_model.data().size()
-  complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
-  f_calc_atoms = complete_set.structure_factors_from_scatterers(
-    xray_structure = fmodel.xray_structure).f_calc()
-  f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
-  n_refl_lone = f_calc_atoms_lone.data().size()
-  if(fmodel.k_sol()>0):
-    f_mask = masks.manager(
-      miller_array   = f_calc_atoms,
-      mask_params    = fmodel.mask_params,
-      xray_structure = fmodel.xray_structure).f_mask()
-  else:
-    f_mask = f_calc_atoms.array(data = f_calc_atoms.data()*0)
-  f_mask_lone = f_mask.lone_set(other = f_model)
-  ss = 1./flex.pow2(f_mask_lone.d_spacings().data())/4.
-  r_free_flags_lone = f_mask_lone.array(
-    data = flex.bool(f_mask_lone.size(), False))
-  f_model_core = ext.core(
-    f_calc      = f_calc_atoms_lone.data(),
-    f_mask      = f_mask_lone.data(),
-    k_sol       = fmodel.k_sol(),
-    b_sol       = fmodel.b_sol(),
-    f_part_base = f_calc_atoms_lone.data()*0,
-    k_part      = 0,
-    b_part      = 0,
-    u_star      = fmodel.u_star(),
-    hkl         = f_calc_atoms_lone.indices(),
-    uc          = f_mask_lone.unit_cell(),
-    ss          = ss)
-  f_obs_orig = fmodel.f_obs().deep_copy()
-  r_free_flags_orig = fmodel.r_free_flags()
-  # compose new fileld fmodel
-  filled_f_obs_selection = flex.bool(n_refl_orig, False)
-  f_model_lone = abs(miller.array(
-    miller_set = f_mask_lone,
-    data       = f_model_core.f_model * fmodel.scale_k1()))
-  new_f_obs = fmodel.f_obs().concatenate(other = f_model_lone)
-  new_r_free_flags = fmodel.r_free_flags().concatenate(
-    other = r_free_flags_lone)
-  filled_f_obs_selection = filled_f_obs_selection.concatenate(
-    flex.bool(n_refl_lone, True))
-  new_abcd = None
-  if(fmodel.hl_coeffs() is not None):
-    new_abcd = fmodel.hl_coeffs().customized_copy(
-      indices = new_f_obs.indices(),
-      data = fmodel.hl_coeffs().data().concatenate(
-        flex.hendrickson_lattman(n_refl_lone, [0,0,0,0])))
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = fmodel.xray_structure,
-    r_free_flags   = new_r_free_flags,
-    target_name    = "ls_wunit_k1",
-    f_obs          = new_f_obs,
-    abcd           = new_abcd,
-    mask_params    = fmodel.mask_params,
-    k_sol          = fmodel.k_sol(),
-    b_sol          = fmodel.b_sol(),
-    b_cart         = fmodel.b_cart())
-  fmodel.update_solvent_and_scale(params = bss_params, optimize_mask=False)
-  if(use_f_part): fmodel.update_f_part()
-  # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
-  alpha, beta = maxlik.alpha_beta_est_manager(
-    f_obs                    = fmodel.f_obs(),
-    f_calc                   = fmodel.f_model_scaled_with_k1(),
-    free_reflections_per_bin = 100,
-    flags                    = fmodel.r_free_flags().data(),
-    interpolation            = True).alpha_beta()
-  apply_alpha_sel = flex.bool(n_refl_orig, False).concatenate(
-    flex.bool(n_refl_lone, True)) # assume order did not change
-  assert apply_alpha_sel.size() == fmodel.f_obs().data().size()
-  alpha = alpha.select(apply_alpha_sel)
-  # compose new fileld fmodel
-  f_model_lone = abs(miller.array(
-    miller_set = f_mask_lone,
-    data       = f_model_core.f_model * fmodel.scale_k1()*alpha.data()))
-  new_f_obs = f_obs_orig.concatenate(other = f_model_lone)
-  new_r_free_flags = r_free_flags_orig.concatenate(
-    other = r_free_flags_lone)
-  # XXX implement and use fmodel.customized_copy() instead of creating a new one
-  new_f_obs.set_observation_type_xray_amplitude()
-  assert new_f_obs.data().size() == filled_f_obs_selection.size()
+
+  new_f_obs_obj = compute_new_f_obs(fmodel)
+  new_f_obs = new_f_obs_obj.f_obs
   #
   if(fill_mode == "fobs_mean"):
     sel = new_f_obs.sort_permutation(by_value = "resolution")
@@ -217,16 +175,16 @@ def fill_missing_f_obs(fmodel, fill_mode):
   #
   fmodel_result = mmtbx.f_model.manager(
     xray_structure         = fmodel.xray_structure,
-    r_free_flags           = new_r_free_flags,
+    r_free_flags           = new_f_obs_obj.r_free_flags,
     target_name            = fmodel.target_name,
     f_obs                  = new_f_obs,
-    abcd                   = new_abcd,
+    abcd                   = new_f_obs_obj.hl_coeffs,
     k_sol                  = fmodel.k_sol(),
     b_sol                  = fmodel.b_sol(),
     b_cart                 = fmodel.b_cart(),
     mask_params            = fmodel.mask_params,
-    filled_f_obs_selection = filled_f_obs_selection)
+    filled_f_obs_selection = new_f_obs_obj.filled_f_obs_selection)
   fmodel_result.update_solvent_and_scale(params = bss_params,
     optimize_mask=False)
-  if(use_f_part): fmodel.update_f_part()
+  if(use_f_part): fmodel_result.update_f_part()
   return fmodel_result

@@ -1064,6 +1064,27 @@ class manager(manager_mixin):
       params.bulk_solvent = save_params_bulk_solvent
     time_bulk_solvent_and_scale += timer.elapsed()
 
+  def complete_set_core(self, d_min=None, d_max=None):
+    if(d_min is None): d_min = self.f_model().d_min()
+    complete_set = self.f_model().complete_set(d_min = d_min, d_max = d_max)
+    f_calc = self.compute_f_calc(miller_array = complete_set)
+    f_mask = masks.manager(
+      miller_array   = f_calc,
+      mask_params    = self.mask_params,
+      xray_structure = self.xray_structure).f_mask()
+    lone_set = f_calc.lone_set(other = self.f_model())
+    f_part_base_lone = lone_set.array(data = lone_set.data()*0)
+    f_part_base = self.f_part_base().concatenate(other = f_part_base_lone)
+    return core(
+      f_calc      = f_calc,
+      f_mask      = f_mask,
+      shell_k_sols= self.shell_k_sols(),
+      b_sol       = self.b_sol(),
+      f_part_base = f_part_base,
+      k_part      = self.k_part(),
+      b_part      = self.b_part(),
+      u_star      = self.u_star())
+
   def _get_target_name(self): return self._target_name
   target_name = property(_get_target_name)
 
@@ -1105,6 +1126,7 @@ class manager(manager_mixin):
                    f_obs                        = None,
                    f_mask                       = None,
                    r_free_flags                 = None,
+                   f_part_base                  = None,
                    b_cart                       = None,
                    k_sol                        = None,
                    b_sol                        = None,
@@ -1116,7 +1138,7 @@ class manager(manager_mixin):
                    xray_structure               = None,
                    mask_params                  = None):
     self.update_core(f_calc = f_calc, f_mask = f_mask, b_cart = b_cart,
-      k_sol = k_sol, b_sol = b_sol)
+      k_sol = k_sol, b_sol = b_sol, f_part_base = f_part_base)
     if(mask_params is not None):
        self.mask_params = mask_params
     if(f_obs is not None):
