@@ -1,4 +1,5 @@
 from mmtbx.kinemage import validation
+from libtbx.test_utils import show_diff
 import libtbx.load_env
 import os
 
@@ -71246,7 +71247,7 @@ def exercise_kinemage():
       continue
     else:
       kin += line
-  assert kin == test_kin_text
+  assert not show_diff(kin, test_kin_text)
 
 def run():
   if (not libtbx.env.has_module(name="probe")):
