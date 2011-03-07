@@ -2,7 +2,7 @@
 import math
 
 from cctbx.uctbx import unit_cell
-from cctbx import matrix
+from scitbx import matrix
 from rstbx.diffraction import rotation_angles
 from libtbx.test_utils import approx_equal
 
