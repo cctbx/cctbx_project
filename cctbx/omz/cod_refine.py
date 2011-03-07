@@ -395,106 +395,17 @@ def run_shelx76(
     if (remove_wdir):
       os.rmdir(wdir)
 
-class row_expr(object):
-  __slots__ = ["indices", "multipliers", "constant"]
-  def __init__(O, indices, multipliers, constant):
-    O.indices = indices
-    O.multipliers = multipliers
-    O.constant = constant
-  def __str__(O):
-    s = ""
-    for i,m in zip(O.indices, O.multipliers):
-      assert m != 0
-      if (m < 0):
-        s += "-"
-        m = -m
-      elif (len(s) != 0):
-        s += "+"
-      if (m != 1):
-        s += str(m) + "*"
-      s += "xyz"[i]
-    c = O.constant
-    if (c != 0 or len(s) == 0):
-      if (c < 0):
-        s += "-"
-        c = -c
-      elif (len(s) != 0):
-        s += "+"
-      s += str(c)
-    return s
-
-def vector_multiplier(a, b):
-  result = None
-  for i,j in zip(a,b):
-    if (i == 0):
-      if (j != 0): return None
-    else:
-      if (j == 0): return None
-      m = j / i
-      if (result is None):
-        result = m
-      elif (result != m):
-        return None
-  return result
-
-def special_op_simplifier(special_op):
-  rt = special_op.as_rational()
-  r = rt.r
-  t = rt.t
-  rows = [r[:3], r[3:6], r[6:]]
-  result = [None, None, None]
-  import boost.rational
-  r0 = boost.rational.int(0)
-  r1 = boost.rational.int(1)
-  n_done = 0
-  for i_row,row in enumerate(rows):
-    if (row == (0,0,0)):
-      result[i_row] = row_expr([], [], t[i_row])
-      n_done += 1
-  if (n_done == 3):
-    return result
-  if (n_done == 0):
-    m = []
-    v = []
-    for i in xrange(3):
-      m.append([r[i+0], r[i+3]])
-      v.append(r[i+6])
-    from scitbx.matrix import row_echelon
-    free_vars = row_echelon.form_rational(m, v)
-    if (len(free_vars) == 0):
-      sol = row_echelon.back_substitution_rational(m, v, free_vars, [None]*2)
-      if (sol is not None and sol.count(0) == 0):
-        for i_row in [0,1]:
-          result[i_row] = row_expr([i_row], [r1], r0)
-        result[2] = row_expr([0,1], sol, t[2] - sol[0]*t[0] - sol[1]*t[1])
-        return result
-  for i_row in xrange(3):
-    if (result[i_row] is not None): continue
-    result[i_row] = row_expr([i_row], [r1], r0)
-    for j_row in xrange(i_row+1,3):
-      if (result[j_row] is not None): continue
-      m = vector_multiplier(rows[i_row], rows[j_row])
-      if (m is None): continue
-      result[j_row] = row_expr([i_row], [m], t[j_row] - m*t[i_row])
-  return result
-
 def sx76ss(xs):
   scs = xs.scatterers()
   sstab = xs.site_symmetry_table()
   for i_sc in xs.special_position_indices():
     ss = sstab.get(i_sc)
-    con = ss.site_constraints()
     sc = scs[i_sc]
-    site_indep = con.independent_params(all_params=sc.site)
     print "%-10s" % sc.label, numstr(sc.site)
-    print ss.special_op()
-    sos = special_op_simplifier(ss.special_op())
+    sos = ss.special_op_simplified()
     expr = ",".join([str(e) for e in sos])
+    print xs.space_group_info()
     print "LOOK", expr
-    ns = dict(zip("xyz", sc.site))
-    expr_site = eval(expr, ns, {})
-    print "expr_site:", numstr(expr_site)
-    assert approx_equal(expr_site, sc.site, 1e-4)
     print
 
 def process(params, pickle_file_name):
@@ -505,7 +416,6 @@ def process(params, pickle_file_name):
   structure_cod.show_summary().show_scatterers()
   if (params.try_special_op_simplifier):
     sx76ss(structure_cod)
-    sx76ss(structure_cod.niggli_cell())
     return
   if (len(changes) != 0):
     from libtbx.utils import plural_s

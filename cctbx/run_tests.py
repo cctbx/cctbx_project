@@ -52,6 +52,7 @@ def run():
   "$D/regression/tst_sgtbx_site_constraints.py",
   "$D/regression/tst_reflection_statistics.py",
   "$D/regression/tst_sgtbx_harker.py",
+  "$D/regression/tst_sgtbx_special_op_simplifier.py",
   "$D/regression/tst_twin_target.py",
   "$D/sgtbx/symbol_confidence.py",
   "$D/sgtbx/bravais_types.py",
