@@ -157,7 +157,7 @@ def run(args, log = sys.stdout):
       print >> pfo, "\nAll phenix.maps parameters::\n"
     master_params = mmtbx.maps.maps_including_IO_master_params()
     master_params = master_params.fetch(iotbx.phil.parse(default_params))
-    master_params.show(out = pfo, prefix = " ")
+    master_params.show(out = pfo, prefix = " ", expert_level=1)
     return
   processed_args = mmtbx.utils.process_command_line_args(args = args, log = log,
     master_params = mmtbx.maps.maps_including_IO_master_params())

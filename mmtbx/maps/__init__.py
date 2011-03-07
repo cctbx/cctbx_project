@@ -5,6 +5,7 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
 import os
+from scitbx.array_family import flex
 
 map_coeff_params_str = """\
   map_coefficients
@@ -50,6 +51,17 @@ map_coeff_params_str = """\
       .type = float
       .help = Optional sharpening B-factor value
       .short_caption = Sharpening B-factor value (optional)
+    exclude_free_r_reflections = False
+      .type = bool
+      .help = Exclude free-R selected reflections from output map coefficients
+    dev
+      .expert_level=3
+    {
+      complete_set_up_to_d_min = False
+        .type = bool
+      aply_same_incompleteness_to_complete_set_at = randomly low high
+        .type = choice(multi=False)
+    }
   }
 """
 
@@ -81,6 +93,7 @@ map_params_str ="""\
       .expert_level=0
     scale = *sigma volume
       .type = choice(multi=False)
+      .expert_level=2
     region = *selection cell
       .type = choice
       .caption = Atom_selection Unit_cell
@@ -94,10 +107,12 @@ map_params_str ="""\
     acentrics_scale = 2.0
       .type = float
       .help = Scale terms corresponding to acentric reflections (residual maps only: k==n)
+      .expert_level=2
     centrics_pre_scale = 1.0
       .type = float
       .help = Centric reflections, k!=n and k*n != 0: \
               max(k-centrics_pre_scale,0)*Fo-max(n-centrics_pre_scale,0)*Fc
+      .expert_level=2
     sharpening = False
       .type = bool
       .help = Apply B-factor sharpening
@@ -107,6 +122,9 @@ map_params_str ="""\
       .type = float
       .help = Optional sharpening B-factor value
       .short_caption = Sharpening B-factor value (optional)
+    exclude_free_r_reflections = False
+      .type = bool
+      .help = Exclude free-R selected reflections from map calculation
   }
 """
 
@@ -279,9 +297,45 @@ class write_xplor_map_file(object):
       raise Sorry('Empty atom selection: %s' % self.params.atom_selection)
     return result
 
+# Fmodel (and not Fcalc) maigh go here
+def compute_f_calc(fmodel, params):
+  from cctbx import miller
+  coeffs_partial_set = fmodel.f_obs().structure_factors_from_scatterers(
+    xray_structure = fmodel.xray_structure).f_calc()
+  if(params.dev.complete_set_up_to_d_min):
+    coeffs = fmodel.xray_structure.structure_factors(
+      d_min = fmodel.f_obs().d_min()).f_calc()
+    frac_inc = 1.*coeffs_partial_set.data().size()/coeffs.data().size()
+    n_miss = coeffs.data().size() - coeffs_partial_set.data().size()
+    if(params.dev.aply_same_incompleteness_to_complete_set_at == "randomly"):
+      sel = flex.random_bool(coeffs.data().size(), frac_inc)
+      coeffs = coeffs.select(sel)
+    elif(params.dev.aply_same_incompleteness_to_complete_set_at == "low"):
+      coeffs = coeffs.sort()
+      coeffs = miller.set(
+        crystal_symmetry = coeffs,
+        indices = coeffs.indices()[n_miss+1:],
+        anomalous_flag = coeffs.anomalous_flag()).array(
+        data = coeffs.data()[n_miss+1:])
+    elif(params.dev.aply_same_incompleteness_to_complete_set_at == "high"):
+      coeffs = coeffs.sort(reverse=True)
+      coeffs = miller.set(
+        crystal_symmetry = coeffs,
+        indices = coeffs.indices()[n_miss+1:],
+        anomalous_flag = coeffs.anomalous_flag()).array(
+        data = coeffs.data()[n_miss+1:])
+  else:
+    coeffs = coeffs_partial_set
+  return coeffs
+
 def map_coefficients_from_fmodel(fmodel, params):
   from mmtbx import map_tools
   import mmtbx
+  #
+  map_name_manager = mmtbx.map_names(map_name_string = params.map_type)
+  if(map_name_manager.k==0 and map_name_manager.n==1):
+    return compute_f_calc(fmodel, params)
+  #
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
     fill_mode          = "dfmodel")
@@ -307,6 +361,8 @@ def map_coefficients_from_fmodel(fmodel, params):
   if(coeffs is not None and coeffs.anomalous_flag() and not
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()
+  if(params.exclude_free_r_reflections):
+    coeffs = coeffs.select(~fmodel.r_free_flags.data())
   return coeffs
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
