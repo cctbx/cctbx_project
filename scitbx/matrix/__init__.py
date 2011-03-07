@@ -769,6 +769,23 @@ robotics and classical mechanics literature.
      v2,   0, -v0,
     -v1,  v0,   0))
 
+def linearly_dependent_pair_scaling_factor(vector_1, vector_2):
+  assert len(vector_1) == len(vector_2)
+  result = None
+  for e1,e2 in zip(vector_1, vector_2):
+    if (e1 == 0):
+      if (e2 != 0): return None
+    else:
+      if (e2 == 0): return None
+      m = e2 / e1
+      if (result is None):
+        result = m
+      elif (result != m):
+        return None
+  if (result is None):
+    return 0
+  return result
+
 def _dihedral_angle(sites, deg):
   assert len(sites) == 4
   d_01 = sites[0] - sites[1]
@@ -1346,6 +1363,13 @@ def exercise():
   a = col((1.43416642866471794, -2.47841960952275497, -0.7632916804502845))
   b = col((0.34428681113080323, -1.85983494542314587, 0.37702845822372399))
   assert approx_equal(a.cross(b), cross_product_matrix(a) * b)
+  #
+  f = linearly_dependent_pair_scaling_factor
+  assert approx_equal(f(vector_1=[1,2,3], vector_2=[3,6,9]), 3)
+  assert approx_equal(f(vector_1=[3,6,9], vector_2=[1,2,3]), 1/3)
+  assert f(vector_1=col([0,1,1]), vector_2=[1,1,1]) is None
+  assert f(vector_1=[1,1,1], vector_2=col([0,1,1])) is None
+  assert f(vector_1=col([0,0,0]), vector_2=col([0,0,0])) is 0
   #
   a = col_list(seq=[(1,2), (2,3)])
   for e in a: assert isinstance(e, col)
