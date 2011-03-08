@@ -73,10 +73,17 @@ def exercise_01_general(d_mins = [1.6,],
             target_name    = target_name)
           fmodel.update_solvent_and_scale(verbose = -1)
           r_work = fmodel.r_work()*100.
-          assert approx_equal(r_work,             0.0, eps = 0.012)
-          assert approx_equal(fmodel.k_sol(),   kb[0], eps = 0.001)
-          assert approx_equal(fmodel.b_sol(),   kb[1], eps = 0.1)
-          assert approx_equal(fmodel.b_cart(), b_cart, eps = 0.004)
+          assert approx_equal(r_work,             0.0)
+          assert approx_equal(fmodel.k_sol(),   kb[0])
+          assert approx_equal(fmodel.b_sol(),   kb[1])
+          assert approx_equal(fmodel.b_cart(), b_cart)
+          print
+          print list(fmodel.b_cart())
+          print b_cart
+          print "bsol", fmodel.b_sol(),   kb[1]
+          print "ksol", fmodel.k_sol(),   kb[0]
+          print "r", r_work
+          print
           if(abs(kb[0])<0.0001 and abs(kb[1])<0.0001 and
             abs(flex.sum(flex.double(b_cart))) < 0.001):
             assert approx_equal(r_work,             0.0, eps = 1.e-6)
@@ -84,7 +91,7 @@ def exercise_01_general(d_mins = [1.6,],
             assert approx_equal(fmodel.b_sol(),   kb[1], eps = 1.e-6)
             assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
-def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 0.00001):
+def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 1.e-6):
   for symbol in sgtbx.bravais_types.acentric + sgtbx.bravais_types.centric:
     space_group_info = sgtbx.space_group_info(symbol = symbol)
     xray_structure = get_xray_structure_random(space_group_info)

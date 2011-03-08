@@ -374,13 +374,23 @@ class manager(object):
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
-    return find_peaks.manager(fmodel          = self.fmodel,
-                              map_type        = map_type,
-                              map_cutoff      = map_cutoff,
-                              params          = self.find_peaks_params,
-                              use_kick_map    = use_kick_map,
-                              kick_map_params = self.params.kick_map,
-                              log             = self.log)
+    mnm = mmtbx.map_names(map_name_string = map_type)
+    save_k_part, save_b_part = None, None
+    if(abs(mnm.k) == abs(mnm.n) and self.fmodel.k_part()!=0):
+      save_k_part = self.fmodel.k_part()
+      save_b_part = self.fmodel.b_part()
+      self.fmodel.update_core(k_part=0, b_part=0)
+    result = find_peaks.manager(
+      fmodel          = self.fmodel,
+      map_type        = map_type,
+      map_cutoff      = map_cutoff,
+      params          = self.find_peaks_params,
+      use_kick_map    = use_kick_map,
+      kick_map_params = self.params.kick_map,
+      log             = self.log)
+    if(abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
+      self.fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
+    return result
 
   def correct_drifted_waters(self, map_cutoff):
     self.fmodel.update_xray_structure(

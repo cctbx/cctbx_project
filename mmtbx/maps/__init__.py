@@ -331,11 +331,14 @@ def compute_f_calc(fmodel, params):
 def map_coefficients_from_fmodel(fmodel, params):
   from mmtbx import map_tools
   import mmtbx
-  #
-  map_name_manager = mmtbx.map_names(map_name_string = params.map_type)
-  if(map_name_manager.k==0 and map_name_manager.n==1):
+  mnm = mmtbx.map_names(map_name_string = params.map_type)
+  if(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
-  #
+  save_k_part, save_b_part = None, None
+  if(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
+    save_k_part = fmodel.k_part()
+    save_b_part = fmodel.b_part()
+    fmodel.update_core(k_part=0, b_part=0)
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
     fill_mode          = "dfmodel")
@@ -363,6 +366,8 @@ def map_coefficients_from_fmodel(fmodel, params):
     coeffs = coeffs.average_bijvoet_mates()
   if(params.exclude_free_r_reflections):
     coeffs = coeffs.select(~fmodel.r_free_flags.data())
+  if(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
+    fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   return coeffs
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,

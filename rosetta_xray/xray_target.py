@@ -212,8 +212,7 @@ class xray_target (object) :
                         grid_resolution_factor=1/3) :
     map_manager = self.fmodel.electron_density_map(
       fill_missing_f_obs=fill_missing_f_obs,
-      fill_mode="dfmodel",
-      filled_f_obs_file_name="none")
+      fill_mode="dfmodel")
     map_coeffs = map_manager.map_coefficients(map_type=map_type)
     if map_coeffs.anomalous_flag() :
       map_coeffs = map_coeffs.average_bijvoet_mates()

@@ -90,7 +90,6 @@ class electron_density_map(object):
   def __init__(self,
                fmodel,
                fill_missing_f_obs = False,
-               filled_f_obs_file_name = None,
                fill_mode = None,
                map_calculation_helper = None):
     self.fmodel = fmodel.deep_copy()

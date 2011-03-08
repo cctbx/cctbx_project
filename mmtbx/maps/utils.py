@@ -72,8 +72,7 @@ class fast_maps_from_hkl_file (object) :
 
 def get_maps_from_fmodel (fmodel, use_filled=False) :
   map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
-                                            fill_mode="dfmodel",
-                                            filled_f_obs_file_name="none")
+                                            fill_mode="dfmodel")
   fwt_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc")
   if fwt_coeffs.anomalous_flag() :
     fwt_coeffs = fwt_coeffs.average_bijvoet_mates()

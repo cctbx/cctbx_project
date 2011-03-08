@@ -1855,13 +1855,11 @@ class manager(manager_mixin):
 
   def electron_density_map(self,
                            fill_missing_f_obs = False,
-                           filled_f_obs_file_name = None,
                            fill_mode = None,
                            reverse_scale = True):
     return map_tools.electron_density_map(
       fmodel                 = self,
       fill_missing_f_obs     = fill_missing_f_obs,
-      filled_f_obs_file_name = filled_f_obs_file_name,
       fill_mode              = fill_mode)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
