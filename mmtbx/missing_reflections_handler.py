@@ -1,4 +1,3 @@
-from cctbx import miller
 from cctbx.array_family import flex
 import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
@@ -47,7 +46,6 @@ def fill_missing_f_obs(fmodel, fill_mode):
                        "random",
                        "fobs_mean",
                        "dfmodel"]
-  from mmtbx import masks
   use_f_part = fmodel.k_part() > 0
   bss_params = bss.master_params.extract()
   bss_params.k_sol_b_sol_grid_search = False
