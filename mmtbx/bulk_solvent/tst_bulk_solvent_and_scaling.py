@@ -35,7 +35,11 @@ def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure):
     anomalous_flag = False).f_calc())
   r_free_flags = f_dummy.generate_r_free_flags(fraction = 0.1,
                                                max_free = 99999999)
+  mask_params = mmtbx.masks.mask_master_params.extract()
+  if( type(k_sol) is list):
+    mask_params.n_radial_shells = len(k_sol)
   fmodel = mmtbx.f_model.manager(
+    mask_params    = mask_params,
     r_free_flags   = r_free_flags,
     f_obs          = f_dummy,
     xray_structure = xray_structure,
@@ -270,7 +274,53 @@ def exercise_06_b_cart_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
+def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1"):
+  import sys
+  xray_structure = get_xray_structure_from_file()
+  b_sol = 34.0
+  b_cart = [1,2,3,0,4,0]
+  f_obs, r_free_flags = get_f_obs_freer(
+    d_min  = d_min,
+    k_sol  = k_sol,
+    b_sol  = b_sol,
+    b_cart = b_cart,
+    xray_structure = xray_structure)
+  mask_params = mmtbx.masks.mask_master_params.extract()
+  if( type(k_sol) is list ):
+    mask_params.n_radial_shells = len(k_sol)
+  else:
+    mask_params.n_radial_shells = 2
+  fmodel = mmtbx.f_model.manager(
+    r_free_flags   = r_free_flags,
+    f_obs          = f_obs,
+    xray_structure = xray_structure,
+    b_cart         = b_cart,
+    mask_params    = mask_params,
+    target_name    = target_name)
+  r_work_start = fmodel.r_work()*100.
+  params = bss.master_params.extract()
+  params.anisotropic_scaling = False
+  params.apply_back_trace_of_b_cart=False
+  params.k_sol_b_sol_grid_search = False
+  fmodel.update_solvent_and_scale(params = params, out=sys.stdout, verbose = -1,
+    optimize_mask = False)
+  r_work = fmodel.r_work()*100.
+  assert r_work_start > 0.0
+  assert approx_equal(r_work,             0.0, eps = 1.e-6)
+  if( type(k_sol) is list ):
+    ksols = fmodel.shell_k_sols()
+    assert len(k_sol) == len(ksols)
+    for ik in range(len(k_sol)):
+      assert approx_equal(ksols[ik], k_sol[ik], eps=1.e-6)
+  else:
+    for ksol in fmodel.shell_k_sols():
+      assert approx_equal(ksol,   k_sol, eps = 1.e-6)
+  assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
+  assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
+
 def run():
+  exercise_radial_shells()
+  exercise_radial_shells(k_sol=[0.33,0.1])
   exercise_01_general()
   exercise_02_b_cart_sym_constr()
   exercise_03_do_nothing()

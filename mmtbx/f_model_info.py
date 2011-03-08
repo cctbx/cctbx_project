@@ -66,7 +66,7 @@ class info(object):
     self.number_of_test_reflections = fmodel.f_calc_t().data().size()
     self.number_of_work_reflections = fmodel.f_calc_w().data().size()
     self.number_of_reflections = fmodel.f_obs().data().size()
-    self.k_sol = fmodel.k_sol()
+    self.k_sol = fmodel.shell_k_sols()
     self.b_sol = fmodel.b_sol()
     self.b_cart = fmodel.b_cart()
     self.b_iso = fmodel.b_iso()
@@ -251,7 +251,11 @@ class info(object):
     print >> out,pr+" SOLVENT RADIUS     : %s"%format_value("%-8.2f", self.mask_solvent_radius)
     print >> out,pr+" SHRINKAGE RADIUS   : %s"%format_value("%-8.2f", self.mask_shrink_radius)
     print >> out,pr+" GRID STEP FACTOR   : %s"%format_value("%-8.2f", self.mask_grid_step_factor)
-    print >> out,pr+" K_SOL              : %s"%format_value("%-8.3f", self.k_sol)
+    if( len(self.k_sol) == 1 ):
+      print >> out,pr+" K_SOL              : %s"%format_value("%-8.3f", self.k_sol[0])
+    else:
+      # TODO: pretty print
+      print >> out,pr," K_SOLS    : ", self.k_sol
     print >> out,pr+" B_SOL              : %s"%format_value("%-8.3f", self.b_sol)
     print >> out,pr
     if(self.twin_fraction is not None):
@@ -326,7 +330,11 @@ class info(object):
     r_work = format_value("%6.4f",self.r_work).strip()
     r_free = format_value("%6.4f",self.r_free).strip()
     scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    k_sol  = format_value("%4.2f",self.k_sol).strip()
+    if( len(self.k_sol)==1 ):
+      k_sol  = format_value("%4.2f",self.k_sol[0]).strip()
+    else:
+      # TODO: pretty print
+      k_sol = str(self.k_sol)
     b_sol  = format_value("%6.2f",self.b_sol).strip()
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
     b_iso  = format_value("%7.2f",self.b_iso).strip()

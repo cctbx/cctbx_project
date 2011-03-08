@@ -209,22 +209,27 @@ class core
       MMTBX_ASSERT( k_sols.size() == f_masks.size() );
       shell_k_sols_ = k_sols;
       shell_f_masks_ = f_masks;
-      MMTBX_ASSERT( this->n_shells() == 1U ); // TODO: remove this line
-      MMTBX_ASSERT(f_calc.size() == this->f_mask().size());
+      MMTBX_ASSERT( this->n_shells() >= 1U );
+      for(short j=0; j<shell_f_masks_.size(); ++j)
+        MMTBX_ASSERT(f_calc.size() == this->shell_f_masks_[j].size());
       FloatType*   f_aniso_  = f_aniso.begin();
       FloatType*   f_b_sol_  = f_b_sol.begin();
       FloatType*   ss__      = ss.begin();
       ComplexType* f_bulk_   = f_bulk.begin();
       ComplexType* f_model_  = f_model.begin();
       ComplexType* f_calc__  = f_calc.begin();
-      // TODO: need to use all masks
-      ComplexType* f_mask__  = this->f_mask().begin();
+      scitbx::af::small<ComplexType*,max_n_shells> f_masks__;
+      for(short j=0; j<shell_f_masks_.size(); ++j)
+        f_masks__.push_back(shell_f_masks_[j].begin());
       ComplexType* f_part_   = f_part.begin();
       ComplexType* f_part_base__ = f_part_base.begin();
       for(std::size_t i=0; i < hkl.size(); i++) {
         f_aniso_[i] = f_aniso_one_h(hkl[i], u_star);
         f_b_sol_[i] = f_b_exp_one_h(ss__[i], b_sol);
-        f_bulk_[i]  = f_k_bexp_f_one_h(f_mask__[i], f_b_sol_[i], this->k_sol());
+        // TODO: optimize
+        f_bulk_[i] = f_k_bexp_f_one_h(f_masks__[0][i], f_b_sol_[i], shell_k_sols_[0]);
+        for(short j=1; j<shell_k_sols_.size(); ++j)
+          f_bulk_[i] += f_k_bexp_f_one_h(f_masks__[j][i], f_b_sol_[i], shell_k_sols_[j]);
         f_part_[i]  = f_k_bexp_f_one_h(f_part_base__[i],
                                        f_b_exp_one_h(ss__[i], b_part), k_part);
         f_model_[i] = f_model_one_h(f_calc__[i], f_bulk_[i], f_part_[i], f_aniso_[i]);

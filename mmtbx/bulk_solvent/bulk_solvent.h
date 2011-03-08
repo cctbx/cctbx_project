@@ -19,22 +19,23 @@ public:
   {
     grad_b_sol = 0;
     grad_shell_k_sols.resize(fm.n_shells(), 0.);
-    FloatType f_model_abs = std::abs(fm.f_model[i]);
+    ComplexType f_mdl = fm.f_model[i];
+    FloatType f_model_abs = std::abs(f_mdl);
     if(f_model_abs > 0){
-      ComplexType f_c = fm.f_calc[i];
       FloatType f_b = fm.f_b_sol[i];
+      ComplexType k_f_mask(0.,0.);
       for(unsigned short j=0; j<fm.n_shells(); ++j)
       {
         ComplexType f_m = fm.shell_f_mask(j)[i];
-        FloatType f_b_k = f_b * fm.shell_k_sol(j);
-        FloatType uvs_plus_usv = std::real(f_c*std::conj(f_m)+f_m*std::conj(f_c));
-        FloatType mod_v_sq = std::abs(f_m) * std::abs(f_m);
-        FloatType theta = (uvs_plus_usv+2*f_b_k*mod_v_sq)/(f_model_abs*2);
-        FloatType coeff = theta * fm.f_aniso[i] * fm.f_aniso[i];
+        FloatType ksol = fm.shell_k_sol(j);
+        FloatType uvs_plus_usv = std::real(f_mdl*std::conj(f_m)+f_m*std::conj(f_mdl));
+        k_f_mask += ksol * f_m;
+        FloatType theta = (uvs_plus_usv)/(f_model_abs*2);
+        FloatType coeff = theta * fm.f_aniso[i];
         grad_shell_k_sols[j] =  coeff * f_b;
-        // TODO: !!! grad_b_sol correct only n_shells=1, FIX!!!
-        grad_b_sol = -coeff * f_b_k * fm.ss[i];
       }
+      FloatType uvs_plus_usv_bsol = std::real(f_mdl*std::conj(k_f_mask)+k_f_mask*std::conj(f_mdl));
+      grad_b_sol = -uvs_plus_usv_bsol*fm.f_aniso[i] * f_b * fm.ss[i] / (f_model_abs*2);
     }
   }
   FloatType grad_b_sol;

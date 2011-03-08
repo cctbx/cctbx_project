@@ -172,7 +172,8 @@ class asu_mask(object):
     if(self.mask_params.n_radial_shells > 1):
       # number of shell radii is one less than number of shells
       # last shell is of unknown radius
-      shell_rads = [3.]*(self.mask_params.n_radial_shells-1)
+      # TODO: Should shell width be constant, approx 2.5 ?
+      shell_rads = [0.5]*(self.mask_params.n_radial_shells-1)
       self.asu_mask.compute(sites_frac, atom_radii, shell_rads)
     else:
       self.asu_mask.compute(sites_frac, atom_radii)
