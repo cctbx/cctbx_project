@@ -770,6 +770,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                   b_cart        = None,
                   k_sol         = None,
                   b_sol         = None,
+                  k_part        = None,
+                  b_part        = None,
                   u_sol         = None,
                   k_overall     = None,
                   twin_fraction = None,
@@ -1752,6 +1754,10 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
       return gradients
 
+  def k_part(self): return 0 # XXX to be compatible with non-twin fmodel
+
+  def b_part(self): return 0 # XXX to be compatible with non-twin fmodel
+
   def electron_density_map(self, k                 = 1,
                                  n                 = 1,
                                  w1                = None,
@@ -1759,7 +1765,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                  resolution_factor = 1/3.,
                                  fill_missing_f_obs = True, # XXX not used since not available for twin case.
                                  symmetry_flags = None,
-                                 filled_f_obs_file_name = None,
                                  fill_mode = None,
                                  reverse_scale = True # XXX Dummy parameter, not used here.
                                  ):                   # XXX Added for compatibility.
