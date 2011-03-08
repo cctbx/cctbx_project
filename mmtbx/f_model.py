@@ -983,8 +983,10 @@ class manager(manager_mixin):
         result = True
     if result:
       bsol = self.b_sol()
+      result = False
       if( ksols.count(0)==len(ksols) ):
         bsol = 0
+        result = True
       self.update(k_sol = ksols, b_sol = bsol)
     return result
 
@@ -1059,9 +1061,6 @@ class manager(manager_mixin):
     if(params is None): params = bss.master_params.extract()
     if(verbose is not None): params.verbose=verbose
     save_params_bulk_solvent = params.bulk_solvent
-    # TODO: the following could disable bulk solvent refinement
-    # even if there are non-zero masks
-    # FIX!!!
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     is_mask_optimized = False
     self.update_core()
@@ -1995,9 +1994,6 @@ class manager(manager_mixin):
       f_model_phases     = f_model.phases(deg=True).data()
       f_calc_amplitudes  = self.f_calc().amplitudes().data()
       f_calc_phases      = self.f_calc().phases(deg=True).data()
-      # TODO: mrt fix the following
-      f_mask_amplitudes  = self.shell_f_masks()[0].amplitudes().data()
-      f_mask_phases      = self.shell_f_masks()[0].phases(deg=True).data()
       f_bulk_amplitudes  = self.f_bulk().amplitudes().data()
       f_bulk_phases      = self.f_bulk().phases(deg=True).data()
       alpha, beta        = [item.data() for item in self.alpha_beta()]
@@ -2005,12 +2001,24 @@ class manager(manager_mixin):
         self.f_obs().indices(), self.f_obs().data(), self.f_obs().sigmas(),
         self.r_free_flags().data(),
         f_model_amplitudes, f_model_phases,
-        f_calc_amplitudes, f_calc_phases,
-        f_mask_amplitudes, f_mask_phases,
+        f_calc_amplitudes, f_calc_phases]
+      f_masks = self.shell_f_masks()
+      n_masks = len(f_masks)
+      masks_format = ""
+      for ifm,fm in enumerate(f_masks):
+        f_mask_amplitudes = fm.amplitudes().data()
+        f_mask_phases = fm.phases(deg=True).data()
+        arrays.extend( [f_mask_amplitudes, f_mask_phases] )
+        if( n_masks==1 ):
+          mask_format = " FMASK="
+        else:
+          mask_format = " FMASK%d="%(ifm+1)
+        masks_format += (mask_format+" %.6g %.6g")
+      arrays.extend([
         f_bulk_amplitudes, f_bulk_phases,
         self.fb_cart(),
         self.figures_of_merit(),
-        alpha, beta]
+        alpha, beta])
       if (not have_sigmas):
         del arrays[2]
         i_r_free_flags = 2
@@ -2023,9 +2031,11 @@ class manager(manager_mixin):
           print >> out, " SIGFOBS= %.6g" % values[2],
         print >> out, \
           " R_FREE_FLAGS= %d FMODEL= %.6g %.6g\n" \
-          " FCALC= %.6g %.6g FMASK= %.6g %.6g FBULK= %.6g %.6g\n" \
+          " FCALC= %.6g %.6g" % values[i_r_free_flags:5],
+        print >>out, masks_format % values[i_r_free_flags+5:(n_masks*2)],
+        print >>out, " FBULK= %.6g %.6g\n" \
           " FB_CART= %.6g FOM= %.6g ALPHA= %.6g BETA= %.6g"  \
-            % values[i_r_free_flags:]
+            % values[i_r_free_flags+5+(n_masks*2):]
       if (file_name is not None):
         out.close()
     else:
@@ -2037,9 +2047,13 @@ class manager(manager_mixin):
         miller_array=self.f_model_scaled_with_k1(), column_root_label="FMODEL")
       mtz_dataset.add_miller_array(
         miller_array=self.f_calc(), column_root_label="FCALC")
-      # TODO: mrt fix the following
-      mtz_dataset.add_miller_array(
-        miller_array=self.shell_f_masks()[0], column_root_label="FMASK")
+      for ifm,fm in enumerate(self.shell_f_masks()):
+        if( len(self.shell_f_masks())==1 ):
+          label = "FMASK"
+        else:
+          label= "FMASK%d"%(ifm+1)
+        mtz_dataset.add_miller_array(
+          miller_array=fm, column_root_label=label)
       mtz_dataset.add_miller_array(
         miller_array=self.f_bulk(), column_root_label="FBULK")
       mtz_dataset.add_miller_array(
