@@ -74,6 +74,31 @@ namespace {
     static w_t div_ri(w_t const& lhs, int rhs) { return lhs/rhs; }
     static w_t rdiv_ir(w_t const& rhs, int lhs) { return lhs/rhs; }
 
+    static int floordiv_rr(w_t const& lhs, w_t const& rhs)
+    {
+      w_t div = lhs / rhs;
+      int n = div.numerator();
+      int d = div.denominator();
+      int result = n / d;
+      if (n < 0 && result * d != n) result--;
+      return result;
+    }
+    static int floordiv_ri(w_t const& lhs, int rhs)
+    {
+      return floordiv_rr(lhs, rhs);
+    }
+    static int rfloordiv_ir(w_t const& rhs, int lhs)
+    {
+      return floordiv_rr(lhs, rhs);
+    }
+
+    static w_t mod_rr(w_t const& lhs, w_t const& rhs)
+    {
+      return lhs - rhs * floordiv_rr(lhs, rhs);
+    }
+    static w_t mod_ri(w_t const& lhs, int rhs) { return mod_rr(lhs, rhs); }
+    static w_t rmod_ir(w_t const& rhs, int lhs) { return mod_rr(lhs, rhs); }
+
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
     static bool ne_rr(w_t const& lhs, w_t const& rhs) { return lhs != rhs; }
     static bool lt_rr(w_t const& lhs, w_t const& rhs) { return lhs < rhs; }
@@ -110,19 +135,22 @@ namespace {
         .def(self * self)
         .def("__div__", div_rr)
         .def("__truediv__", div_rr)
-        .def("__floordiv__", div_rr)
+        .def("__floordiv__", floordiv_rr)
+        .def("__mod__", mod_rr)
         .def(self + int())
         .def(self - int())
         .def(self * int())
         .def("__div__", div_ri)
         .def("__truediv__", div_ri)
-        .def("__floordiv__", div_ri)
+        .def("__floordiv__", floordiv_ri)
+        .def("__mod__", mod_ri)
         .def(int() + self)
         .def(int() - self)
         .def(int() * self)
         .def("__rdiv__", rdiv_ir)
         .def("__rtruediv__", rdiv_ir)
-        .def("__rfloordiv__", rdiv_ir)
+        .def("__rfloordiv__", rfloordiv_ir)
+        .def("__rmod__", rmod_ir)
         .def("__eq__", eq_rr)
         .def("__ne__", ne_rr)
         .def("__lt__", lt_rr)
