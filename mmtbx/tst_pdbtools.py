@@ -517,6 +517,17 @@ TER
     line2 = line2.strip()
     assert line1 == line2
 
+def exercise_remove_first_n_atoms_fraction(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "enk_gbr.pdb")
+  n_atoms_start = iotbx.pdb.hierarchy.input(
+    file_name=file_name).xray_structure_simple().scatterers().size()
+  cmd = "phenix.pdbtools %s remove_first_n_atoms_fraction=0.6"%file_name
+  run_command(command=cmd, verbose=verbose)
+  pdb_inp = iotbx.pdb.hierarchy.input(file_name="enk_gbr.pdb_modified.pdb")
+  n_atoms_final = iotbx.pdb.hierarchy.input(
+    file_name="enk_gbr.pdb_modified.pdb").xray_structure_simple().scatterers().size()
+  assert n_atoms_final*1./n_atoms_start == 0.4
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -539,6 +550,7 @@ def exercise(args):
   exercise_02(**eargs)
   exercise_truncate_to_polyala(**eargs)
   exercise_renumber_residues()
+  exercise_remove_first_n_atoms_fraction(**eargs)
   print "OK"
 
 if (__name__ == "__main__"):

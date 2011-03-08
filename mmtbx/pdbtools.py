@@ -153,6 +153,8 @@ output
             replaced by "_modified.pdb".
     .style = bold
 }
+remove_first_n_atoms_fraction = None
+  .type = float
 random_seed = None
   .type = int
   .help = Random seed
@@ -272,6 +274,7 @@ class modify(object):
         all_chain_proxies = all_chain_proxies,
         selection_strings = [self.params.selection],
         xray_structure    = xray_structure)[0])
+    self._process_remove_first_n_atoms_fraction()
     self._rotate_about_axis()
     self._process_adp()
     self._process_sites()
@@ -279,6 +282,16 @@ class modify(object):
     try: self._put_in_box()
     except KeyboardInterrupt: raise
     except: pass
+
+  def _process_remove_first_n_atoms_fraction(self):
+    if(self.params.remove_first_n_atoms_fraction is not None):
+      scatterers = self.xray_structure.scatterers()
+      n_remove = int(scatterers.size()*self.params.remove_first_n_atoms_fraction)
+      sel = flex.bool(n_remove, False).concatenate(
+        flex.bool(scatterers.size()-n_remove, True))
+      if(self.remove_selection is not None):
+        sel = sel & self.remove_selection.flags
+      self.remove_selection = flex.smart_selection(flags=sel)
 
   def _put_in_box(self):
     if(self.params.put_into_box_with_buffer is not None):
