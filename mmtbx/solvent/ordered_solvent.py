@@ -154,6 +154,13 @@ class manager(object):
                      find_peaks_params = None,
                      log = None):
     adopt_init_args(self, locals())
+    #
+    save_k_part, save_b_part = None, None
+    if(self.fmodel.k_part()!=0):
+      save_k_part = self.fmodel.k_part()
+      save_b_part = self.fmodel.b_part()
+      self.fmodel.update_core(k_part=0, b_part=0)
+    #
     assert self.fmodel.xray_structure is self.model.xray_structure
     if(self.params is None): self.params = master_params().extract()
     if(self.find_peaks_params is None):
@@ -224,6 +231,11 @@ class manager(object):
     self.move_solvent_to_the_end_of_atom_list()
     self.convert_water_adp()
     assert self.fmodel.xray_structure is self.model.xray_structure
+    #
+    if(save_k_part is not None):
+      self.fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
+      self.fmodel.update_f_part()
+    #
 
   def convert_water_adp(self):
     sol_sel = self.model.solvent_selection().iselection()
@@ -374,13 +386,7 @@ class manager(object):
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
-    mnm = mmtbx.map_names(map_name_string = map_type)
-    save_k_part, save_b_part = None, None
-    if(abs(mnm.k) == abs(mnm.n) and self.fmodel.k_part()!=0):
-      save_k_part = self.fmodel.k_part()
-      save_b_part = self.fmodel.b_part()
-      self.fmodel.update_core(k_part=0, b_part=0)
-    result = find_peaks.manager(
+    return find_peaks.manager(
       fmodel          = self.fmodel,
       map_type        = map_type,
       map_cutoff      = map_cutoff,
@@ -388,9 +394,6 @@ class manager(object):
       use_kick_map    = use_kick_map,
       kick_map_params = self.params.kick_map,
       log             = self.log)
-    if(abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
-      self.fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
-    return result
 
   def correct_drifted_waters(self, map_cutoff):
     self.fmodel.update_xray_structure(
