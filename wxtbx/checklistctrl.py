@@ -21,6 +21,19 @@ button_ok = PyEmbeddedImage(
     "9qnbyntLExfCp1nuqZzhk18rNUsJtuhSd0j0rjm/uq+OXRH+ZOhvD8fi+2k6iqel8lL5Dvo2"
     "ZEkd1D8WAAAAAElFTkSuQmCC")
 
+empty_box = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAlwSFlz"
+    "AAALEwAACxMBAJqcGAAAAAd0SU1FB9sDCBYrMH47BnQAAAGQSURBVDjLpZO7L2xRFMZ/+5wx"
+    "jhMTg0syhUgIQeN/EJFoEIUE8YpC5W8wFGqSKUWpm0QIExq3uAWSW1B4NETQSLzunWT2PM4s"
+    "hcOc4xGvnaxi77XWt771rbWViPCTY3w1oSSmvg9gLyrC5xVUDIef3wLeAKXUNXAC3AF54Kk/"
+    "5RYLp7ipG1rsqzS7FM6K+AHc5CXgEEi/8BUDzcDARfaC7o5OjA6jAFC1FAS4Bw6AHUC/ALBc"
+    "RvcHuT2yv4uwTfNRAyumaLxqBXCADKBFREfito5MlevE+ap2ATOAc7OWIvn/jmQii1E9a9OW"
+    "ayfaNY2nZ+rXf1F0FGJ+PMbqddzLRFQ+T3rjMdT49zdHTUOEreSmj6+5HWJmdIbd9B9OrWOf"
+    "L50o7E5AxzOU9Fg09dY8qQ1AdHKKQ2efy9IzzNugb1jeSwAgtawxewwAEwgC1mD1GG+IGHRj"
+    "Xu+Bs5xHKVUGtLhV3htjmY+O9y98ZpGAOhGpLEgq8spCIzb10VoWZO5Nv9fedUzo/g+TRcTf"
+    "wnfOAyHF1dviqZJ4AAAAAElFTkSuQmCC")
+
+
 blank = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAXNSR0IArs4c6QAAAAJiS0dE"
     "AP+Hj8y/AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH2QsNFBwTBbkZpAAAABl0RVh0"
@@ -28,6 +41,7 @@ blank = PyEmbeddedImage(
     "kgAAAABJRU5ErkJggg==")
 
 class CheckListCtrl (wx.ListCtrl) :
+  use_blank = True
   def __init__ (self, *args, **kwds) :
     wx.ListCtrl.__init__(self, *args, **kwds)
     self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
@@ -36,7 +50,10 @@ class CheckListCtrl (wx.ListCtrl) :
     self.Bind(wx.EVT_CHAR, self.OnChar)
     self._checklist = []
     il = wx.ImageList(16, 16, True)
-    il.Add(blank.GetBitmap())
+    if (self.use_blank) :
+      il.Add(blank.GetBitmap())
+    else :
+      il.Add(empty_box.GetBitmap())
     il.Add(button_ok.GetBitmap())
     self.AssignImageList(il, wx.IMAGE_LIST_SMALL)
     self._multiple_sele = not (self.GetWindowStyle() & wx.LC_SINGLE_SEL)
