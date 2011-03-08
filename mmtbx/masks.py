@@ -45,6 +45,9 @@ mask_master_params = iotbx.phil.parse("""\
   n_radial_shells = 1
     .type = int
     .help = Number of shells in a radial shell bulk solvent model
+  radial_shell_width = 0.5
+    .type = float
+    .help = Radial shell width TODO: default 2.5?
 """)
 
 class bulk_solvent(around_atoms):
@@ -172,8 +175,7 @@ class asu_mask(object):
     if(self.mask_params.n_radial_shells > 1):
       # number of shell radii is one less than number of shells
       # last shell is of unknown radius
-      # TODO: Should shell width be constant, approx 2.5 ?
-      shell_rads = [0.5]*(self.mask_params.n_radial_shells-1)
+      shell_rads = [self.mask_params.radial_shell_width]*(self.mask_params.n_radial_shells-1)
       self.asu_mask.compute(sites_frac, atom_radii, shell_rads)
     else:
       self.asu_mask.compute(sites_frac, atom_radii)

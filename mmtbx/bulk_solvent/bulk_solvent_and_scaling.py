@@ -376,7 +376,7 @@ class bulk_solvent_and_scales(object):
 
   def _ksol_bsol_grid_search(self, fmodel):
     start_r_work = fmodel.r_work()
-    final_ksol = fmodel.k_sol()
+    final_ksol = fmodel.shell_k_sols()
     final_bsol = fmodel.b_sol()
     final_b_cart = fmodel.b_cart()
     final_r_work = start_r_work
@@ -392,7 +392,8 @@ class bulk_solvent_and_scales(object):
           if(abs(bc) > 300.):
             fmodel.update(b_cart = [0,0,0,0,0,0])
             break
-        fmodel.update(k_sol = ksol, b_sol = bsol)
+        ksol_list = [ksol]*len(final_ksol)
+        fmodel.update(k_sol = ksol_list, b_sol = bsol)
         if(self.params.minimization_k_sol_b_sol):
           ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
           fmodel.update(k_sol = ksol_, b_sol = bsol_)
@@ -402,7 +403,7 @@ class bulk_solvent_and_scales(object):
         r_work = fmodel.r_work()
         if(r_work < final_r_work):
           final_r_work = r_work
-          final_ksol = fmodel.k_sol()
+          final_ksol = fmodel.shell_k_sols()
           final_bsol = fmodel.b_sol()
           final_b_cart = fmodel.b_cart()
           fmodel.update(k_sol=final_ksol,b_sol=final_bsol,b_cart=final_b_cart)
@@ -477,14 +478,16 @@ class bulk_solvent_and_scales(object):
     else: return ksol, bsol
 
   def _is_within_grid_search(self, fmodel):
-    result = False
-    ksol, bsol = fmodel.k_sol_b_sol()
+    result = True
+    ksols = fmodel.shell_k_sols()
+    bsol = fmodel.b_sol()
     keps = 0.05
     beps = 5.0
-    if(ksol >= self.params.k_sol_grid_search_min+keps and
-       ksol <= self.params.k_sol_grid_search_max-keps and
-       bsol >= self.params.b_sol_grid_search_min+beps and
-       bsol <= self.params.b_sol_grid_search_max-beps): result = True
+    for ksol in ksols:
+      result = result and ksol >= self.params.k_sol_grid_search_min+keps and \
+        ksol <= self.params.k_sol_grid_search_max-keps
+    result = result and bsol >= self.params.b_sol_grid_search_min+beps and \
+       bsol <= self.params.b_sol_grid_search_max-beps
     return result
 
   def ERROR_MESSAGE(self, status):

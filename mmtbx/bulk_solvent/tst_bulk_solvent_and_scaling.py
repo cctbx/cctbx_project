@@ -274,7 +274,8 @@ def exercise_06_b_cart_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
-def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1"):
+def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1",
+    grid_search=False):
   import sys
   xray_structure = get_xray_structure_from_file()
   b_sol = 34.0
@@ -301,9 +302,8 @@ def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1")
   params = bss.master_params.extract()
   params.anisotropic_scaling = False
   params.apply_back_trace_of_b_cart=False
-  params.k_sol_b_sol_grid_search = False
-  fmodel.update_solvent_and_scale(params = params, out=sys.stdout, verbose = -1,
-    optimize_mask = False)
+  params.k_sol_b_sol_grid_search = grid_search
+  fmodel.update_solvent_and_scale(params = params, out=sys.stdout, verbose = -1)
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,             0.0, eps = 1.e-6)
@@ -321,6 +321,7 @@ def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1")
 def run():
   exercise_radial_shells()
   exercise_radial_shells(k_sol=[0.33,0.1])
+  exercise_radial_shells(k_sol=[0.33,0.1],grid_search=True)
   exercise_01_general()
   exercise_02_b_cart_sym_constr()
   exercise_03_do_nothing()
