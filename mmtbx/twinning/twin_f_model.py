@@ -1844,6 +1844,11 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def k_sol(self):
     return self.data_core.ksol()
 
+  def shell_k_sols(self):
+    # This is a dummy, making twin_f_model compatible with f_model
+    # Radial shell mask model is not implemented for twin_f_model
+    return [self.k_sol()]
+
   def u_sol(self):
     return self.data_core.usol()
 

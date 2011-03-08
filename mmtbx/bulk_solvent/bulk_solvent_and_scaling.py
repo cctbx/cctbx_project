@@ -129,7 +129,6 @@ class kbu_minimizer(object):
     if not self.fmodel_core_data1 is None:
       assert self.fmodel_core_data1.data.n_shells() == self.n_shells
     assert self.n_shells > 0  and self.n_shells <= 10
-    assert self.n_shells == 1 # TODO: remove this line
     self.k_min = self.k_initial
     assert len(self.k_min) == self.n_shells
     self.b_min = self.b_initial
@@ -189,7 +188,6 @@ class kbu_minimizer(object):
     if(self.refine_k):
       self.k_min = list(iter(self.x[i:i+self.n_shells]))
       assert len(self.k_min)==self.n_shells
-      assert len(self.k_min)==1 # TODO: remove this line
       i += self.n_shells
     if(self.refine_b):
       self.b_min = self.x[i]
@@ -231,7 +229,6 @@ class kbu_minimizer(object):
     if(self.refine_k or self.refine_b):
       gk = list(tg.grad_shell_k_sols())
       assert len(gk) == self.n_shells
-      assert len(gk) == 1 # TODO: remove this line
       gb = tg.grad_b_sol()
     if(self.refine_u): gu = list(tg.grad_u_star())
     if(self.symmetry_constraints_on_b_cart and self.refine_u):
@@ -359,8 +356,18 @@ class bulk_solvent_and_scales(object):
          self.show(fmodel = fmodel,
            message = m+str(mc)+": apply back trace(b_cart)")
        fmodel.update(target_name = fmodel_target)
-       if(abs(fmodel.k_sol()) < 0.01):
-         fmodel.update(k_sol = 0.0, b_sol = 0.0)
+       ksols = fmodel.shell_k_sols()[:]
+       do_update = False
+       for ik in range(len(ksols)):
+         if(abs(ksols[ik]) < 0.01):
+           ksols[ik] = 0.
+           do_update = True
+       if( do_update ):
+         if( ksols.count(0) == len(ksols) ):
+           bsol = 0.
+         else:
+           bsol = fmodel.b_sol()
+         fmodel.update(k_sol = ksols, b_sol = bsol)
 
   def show(self, fmodel, message):
     if(self.params.verbose > 0):
@@ -408,7 +415,7 @@ class bulk_solvent_and_scales(object):
 
   def _ksol_bsol_cart_minimizer(self, fmodel):
     start_r_work = fmodel.r_work()
-    final_ksol = fmodel.k_sol()
+    final_ksol = fmodel.shell_k_sols()
     final_bsol = fmodel.b_sol()
     final_r_work = fmodel.r_work()
     ksol, bsol = self._k_sol_b_sol_minimization_helper(fmodel = fmodel)
@@ -450,16 +457,16 @@ class bulk_solvent_and_scales(object):
     else: return b_cart
 
   def _k_sol_b_sol_minimization_helper(self, fmodel):
-    ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
+    ksol_orig = fmodel.shell_k_sols()
+    bsol_orig = fmodel.b_sol()
     r_start = fmodel.r_work()
     minimizer_obj = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
       params = self.params, refine_k_sol = True, refine_b_sol = True)
     ksol, bsol = minimizer_obj.k_min, minimizer_obj.b_min
     assert type(ksol) is list
-    assert len(ksol) == 1 # TODO: remove this
-    ksol = ksol[0] # TODO: remove this
-    if(ksol < self.params.k_sol_min): ksol = self.params.k_sol_min
-    if(ksol > self.params.k_sol_max): ksol = self.params.k_sol_max
+    assert len(ksol) >= 1
+    ksol = [max(self.params.k_sol_min, min(self.params.k_sol_max, v))
+      for v in ksol]
     if(bsol < self.params.b_sol_min): bsol = self.params.b_sol_min
     if(bsol > self.params.b_sol_max): bsol = self.params.b_sol_max
     fmodel.update(k_sol = ksol, b_sol = bsol)

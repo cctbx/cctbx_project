@@ -143,7 +143,7 @@ class core(object):
       assert (type(self.shell_k_sols) is float) or \
         (type(self.shell_k_sols) is int), type(self.shell_k_sols)
       self.shell_k_sols = [self.shell_k_sols]
-    assert len(self.shell_k_sols) == 1 # TODO: remove this line
+    assert len(self.shell_k_sols) >= 1
     typfm = type(self.f_mask)
     if( not((typfm is list) or (typfm is None)) ):
       self.f_mask = [self.f_mask]
@@ -289,7 +289,7 @@ class manager(manager_mixin):
          f_calc                       = None,
          abcd                         = None,
          b_cart                       = [0.,0.,0.,0.,0.,0.],
-         k_sol                        = [0.0],
+         k_sol                        = None, # TODO: [0.], caused weired bug,
          b_sol                        = 0.0,
          k_part                       = 0.0,
          b_part                       = 0.0,
@@ -305,6 +305,10 @@ class manager(manager_mixin):
          max_number_of_bins           = 30,
          filled_f_obs_selection       = None,
          _target_memory               = None):
+    if( k_sol is None ):
+      k_sol = [0.]
+    if( type(k_sol) is not list ):
+      k_sol = [k_sol]
     if(twin_law is not None): target_name = "twin_lsq_f"
     self.active_arrays = None
     self.twin_law = twin_law
@@ -369,6 +373,11 @@ class manager(manager_mixin):
         f_mask = self.mask_manager.shell_f_masks(
           xray_structure = self.xray_structure,
           force_update       = True)
+        if( len(k_sol) != len(f_mask) ):
+          assert len(k_sol) == 1
+          assert len(f_mask) > 1
+          k_sol.extend( [k_sol[0]]*(len(f_mask)-1) )
+          assert len(k_sol) == len(f_mask)
       f_mask_twin = self.mask_manager.shell_f_masks_twin()
     self.update_core(
       f_calc      = f_calc,
@@ -907,6 +916,8 @@ class manager(manager_mixin):
     print >> out
 
   def optimize_mask(self, params = None, out = None):
+    if( len(self.shell_k_sols()) != 1 ):
+      return False
     if(self.k_sol() == 0): return False
     rw_ = self.r_work()
     rf_ = self.r_free()
@@ -1048,6 +1059,9 @@ class manager(manager_mixin):
     if(params is None): params = bss.master_params.extract()
     if(verbose is not None): params.verbose=verbose
     save_params_bulk_solvent = params.bulk_solvent
+    # TODO: the following could disable bulk solvent refinement
+    # even if there are non-zero masks
+    # FIX!!!
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     is_mask_optimized = False
     self.update_core()
