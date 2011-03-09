@@ -21,9 +21,11 @@ class fast_maps_from_hkl_file (object) :
                 f_label=None,
                 map_out=None,
                 log=sys.stdout,
-                auto_run=True) :
+                auto_run=True,
+                quiet=False,
+                ) :
     adopt_init_args(self, locals())
-    if f_label is None :
+    if f_label is None and not quiet:
       print >> log, "      no label for %s, will try default labels" % \
         os.path.basename(file_name)
     f_obs = None
@@ -56,7 +58,7 @@ class fast_maps_from_hkl_file (object) :
     if auto_run :
       self.run()
 
-  def run (self) :
+  def get_maps_from_fmodel(self):
     import mmtbx.utils
     from scitbx.array_family import flex
     f_obs = self.f_obs
@@ -66,6 +68,10 @@ class fast_maps_from_hkl_file (object) :
       f_obs=f_obs,
       r_free_flags=r_free_flags)
     (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=True)
+    return f_map, df_map
+
+  def run (self) :
+    (f_map, df_map) = self.get_maps_from_fmodel()
     if self.map_out is None :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
     write_map_coeffs(f_map, df_map, self.map_out)
