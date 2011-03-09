@@ -818,6 +818,7 @@ iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
 iotbx/regression/tst_pdb_as_fasta.py -text
 iotbx/shelx/errors.py -text
 iotbx/shelx/fcf.py -text
+iotbx/shelx/fvar_encoding.py svneol=native#text/x-python
 iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
 iotbx/shelx/tst_lex_parse_build.py -text

@@ -396,6 +396,7 @@ def run_shelx76(
       os.rmdir(wdir)
 
 def sx76ss(xs):
+  from iotbx.shelx.parsers import decode_variables
   scs = xs.scatterers()
   sstab = xs.site_symmetry_table()
   for i_sc in xs.special_position_indices():
@@ -403,9 +404,20 @@ def sx76ss(xs):
     sc = scs[i_sc]
     print "%-10s" % sc.label, numstr(sc.site)
     sos = ss.special_op_simplified()
-    expr = ",".join([str(e) for e in sos])
-    print xs.space_group_info()
-    print "LOOK", expr
+    print sos
+    fvars = [None]
+    coded_variables = sos.shelx_fvar_encoding(site=sc.site, fvars=fvars)
+    if (coded_variables is None):
+      print "ERROR fvar_encoding:", sos
+    else:
+      values, behaviors = decode_variables(
+        free_variable=fvars, coded_variables=coded_variables)
+      print numstr(fvars)
+      print numstr(coded_variables)
+      print numstr(values)
+      mismatch = xs.unit_cell().mod_short_distance(sc.site, values)
+      print "mismatch:", mismatch
+      assert mismatch < 1e-10
     print
 
 def process(params, pickle_file_name):
