@@ -960,6 +960,63 @@ namespace cctbx {
         return result;
       }
 
+      //! Squared sine of the diffraction angle 2-theta, given wavelength.
+      /*! The result is always positive, using  trigonometric identities:
+          sin(2a) = 2*sin(a)*cos(a) and cos^2(a) = 1-sin^2(a)
+      */
+      template <typename NumType>
+      double
+      sin_sq_two_theta(
+        miller::index<NumType> const& miller_index,
+        double wavelength) const
+      {
+        const double x = d_star_sq_as_stol_sq(d_star_sq(miller_index)) *
+          std::pow(wavelength, 2.0);
+        return std::max(0.0, 4*x*(1-x));
+      }
+
+      //! Squared sine of the diffraction angle 2-theta, given wavelength.
+      template <typename NumType>
+      af::shared<double>
+      sin_sq_two_theta(
+        af::const_ref<miller::index<NumType> > const& miller_indices,
+        double wavelength) const
+      {
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = sin_sq_two_theta(miller_indices[i], wavelength);
+        }
+        return result;
+      }
+
+      //! Sine of the diffraction angle 2-theta, given wavelength.
+      template <typename NumType>
+      double
+      sin_two_theta(
+        miller::index<NumType> const& miller_index,
+        double wavelength) const
+      {
+        const double x = d_star_sq_as_stol_sq(d_star_sq(miller_index)) *
+          std::pow(wavelength, 2.0);
+        return 2*std::sqrt(std::max(0.0, x*(1-x)));
+      }
+
+      //! Sine of the diffraction angle 2-theta, given wavelength.
+      template <typename NumType>
+      af::shared<double>
+      sin_two_theta(
+        af::const_ref<miller::index<NumType> > const& miller_indices,
+        double wavelength) const
+      {
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = sin_two_theta(miller_indices[i], wavelength);
+        }
+        return result;
+      }
+
       //! Simple measure for the similarity of two unit cells.
       /*! The result is the mean of the squared differences between
           basis vectors. The basis vectors are defined by the columns

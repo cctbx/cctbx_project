@@ -234,6 +234,22 @@ namespace {
           (sh_dbl_t(w_t::*)(cr_mix_t const&, double, bool) const)
             &w_t::two_theta, (
               arg("miller_indices"), arg("wavelength"), arg("deg")=false))
+        .def("sin_sq_two_theta",
+          (double(w_t::*)(mix_t const&, double) const)
+            &w_t::sin_sq_two_theta, (
+              arg("miller_index"), arg("wavelength")))
+        .def("sin_sq_two_theta",
+          (sh_dbl_t(w_t::*)(cr_mix_t const&, double) const)
+            &w_t::sin_sq_two_theta, (
+              arg("miller_indices"), arg("wavelength")))
+        .def("sin_two_theta",
+          (double(w_t::*)(mix_t const&, double) const)
+            &w_t::sin_two_theta, (
+              arg("miller_index"), arg("wavelength")))
+        .def("sin_two_theta",
+          (sh_dbl_t(w_t::*)(cr_mix_t const&, double) const)
+            &w_t::sin_two_theta, (
+              arg("miller_indices"), arg("wavelength")))
         .def("bases_mean_square_difference",
           &w_t::bases_mean_square_difference,
             (arg("other")))

@@ -1,5 +1,5 @@
 from __future__ import division
-from math import pi, cos, asin, sqrt
+from math import pi, sin, cos, asin, sqrt
 import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
@@ -292,6 +292,12 @@ def exercise_miller_index_methods():
   assert approx_equal(
     u.two_theta(h, 1.5)*180/pi,
     u.two_theta(h, 1.5, True))
+  assert approx_equal(
+    pow(sin(u.two_theta(h, 1.5)),2),
+    u.sin_sq_two_theta(h, 1.5))
+  assert approx_equal(
+    sin(u.two_theta(h, 1.5)),
+    u.sin_two_theta(h, 1.5))
   miller_indices = flex.miller_index(((1,2,3), (-3,4,-5), (2,-3,4)))
   for d_spacing_measure in (u.d_star_sq,
                             u.stol_sq,
@@ -320,6 +326,16 @@ def exercise_miller_index_methods():
     u.min_max_d_star_sq(miller_indices),
     [u.d_star_sq((1,2,3)), u.d_star_sq((-3,4,-5))],
     eps=1e-10)
+  values = u.sin_two_theta(miller_indices, wavelength)
+  for i, v in enumerate(values):
+    assert approx_equal(
+      sin(u.two_theta(miller_indices[i], wavelength)),
+      v)
+  values = u.sin_sq_two_theta(miller_indices, wavelength)
+  for i, v in enumerate(values):
+    assert approx_equal(
+      pow(sin(u.two_theta(miller_indices[i], wavelength)), 2),
+      v)
 
 def exercise_compare():
   u1 = uctbx.unit_cell((3,2,5,90,100,90))
