@@ -31,8 +31,8 @@ namespace cctbx { namespace xray {
 
     sgtbx::rot_mx twin_law;
     FloatType twin_fraction;
-    int grad_index;
     bool grad_twin_fraction;
+    int grad_index;
   };
 
   template <typename FloatType>

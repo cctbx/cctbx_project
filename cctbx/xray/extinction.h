@@ -9,6 +9,7 @@ namespace cctbx { namespace xray {
   /// extinction correction iterface
   template <typename FloatType>
   struct extinction_correction {
+    virtual ~extinction_correction() {}
     // return multiplier for Fc_sq
     virtual FloatType compute(const miller::index<>& h,
       FloatType Fc_sq,
@@ -71,12 +72,12 @@ namespace cctbx { namespace xray {
         uctbx::d_star_sq_as_two_theta(u_cell.d_star_sq(h), lambda)));
       return Fc_sq*std::pow(lambda,3)/(sin_2t*1000);
     }
+
+    uctbx::unit_cell const &u_cell;
   public:
     FloatType lambda, value;
     int grad_index;
     bool grad;
-  private:
-    const uctbx::unit_cell& u_cell;
   };
 
 }} // namespace cctbx::xray
