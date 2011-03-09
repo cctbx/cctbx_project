@@ -7,23 +7,23 @@ from smtbx_refinement_restraints_ext import *
 
 from cctbx.xray import parameter_map
 
-from libtbx import adopt_init_args
+from libtbx import adopt_optional_init_args
 
 import sys
 
 class manager(object):
+  bond_proxies=None
+  angle_proxies=None
+  dihedral_proxies=None
+  chirality_proxies=None
+  planarity_proxies=None
+  bond_similarity_proxies=None
+  adp_similarity_proxies=None
+  rigid_bond_proxies=None
+  isotropic_adp_proxies=None
 
-  def __init__(self,
-               bond_proxies=None,
-               angle_proxies=None,
-               dihedral_proxies=None,
-               chirality_proxies=None,
-               planarity_proxies=None,
-               bond_similarity_proxies=None,
-               adp_similarity_proxies=None,
-               rigid_bond_proxies=None,
-               isotropic_adp_proxies=None):
-    adopt_init_args(self, locals())
+  def __init__(self, **kwds):
+    adopt_optional_init_args(self, kwds)
 
   def show_sorted(self, xray_structure,
                   f=None,
@@ -90,6 +90,17 @@ class manager(object):
         site_labels=site_labels, u_cart=u_cart,
         f=f, prefix=prefix, max_items=max_items)
       print >> f
+
+  def add_to_cif_block(self, cif_block, xray_structure):
+    import iotbx.cif.restraints
+    iotbx.cif.restraints.add_to_cif_block(
+      cif_block, xray_structure,
+      bond_proxies=self.bond_proxies,
+      angle_proxies=self.angle_proxies,
+      bond_similarity_proxies=self.bond_similarity_proxies,
+      rigid_bond_proxies=self.rigid_bond_proxies,
+      adp_similarity_proxies=self.adp_similarity_proxies,
+      isotropic_adp_proxies=self.isotropic_adp_proxies)
 
   def build_linearised_eqns(self, xray_structure, parameter_map):
     n_restraints = 0
