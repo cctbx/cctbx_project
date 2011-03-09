@@ -1,4 +1,4 @@
-def process_each(process, file_names):
+def process_each(process, file_names, report_success=False):
   import traceback
   n_fail = 0
   n_succ = 0
@@ -10,6 +10,8 @@ def process_each(process, file_names):
       print "FAILING:", file_name
       print traceback.format_exc(limit=None)
     else:
+      if (report_success):
+        print "SUCCESS:", file_name
       n_succ += 1
   if (n_fail != 0):
     print "Failing:", n_fail
@@ -44,6 +46,9 @@ def run(args):
     .option(None, "--each",
       action="store_true",
       default=False)
+    .option(None, "--report_success",
+      action="store_true",
+      default=False)
     .option(None, "--warnings",
       action="store_true",
       default=False)
@@ -58,7 +63,10 @@ def run(args):
     if (co.warnings): sorry_exclusive("warnings")
   from fable.read import process
   if (co.each):
-    process_each(process=process, file_names=command_line.args)
+    process_each(
+      process=process,
+      file_names=command_line.args,
+      report_success=co.report_success)
   else:
     all_fprocs = process(file_names=command_line.args)
     if (co.warnings):
