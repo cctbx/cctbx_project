@@ -489,16 +489,26 @@ class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
     print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
     print >> f, "use_seminvariants:", self.use_seminvariants()
 
-class simplified_special_op_term(object):
-  __slots__ = ["indices", "multipliers", "constant"]
-  def __init__(O, indices, multipliers, constant):
-    O.indices = indices
+class special_op_simplified_term(object):
+
+  __slots__ = ["i_vars", "multipliers", "constant"]
+
+  def __init__(O, i_vars, multipliers, constant):
+    assert len(i_vars) == len(multipliers)
+    assert multipliers.count(0) == 0
+    O.i_vars = i_vars
     O.multipliers = multipliers
     O.constant = constant
+
+  def is_identity(O):
+    if (len(O.multipliers) != 1): return False
+    if (O.multipliers[0] != 1): return False
+    if (O.constant != 0): return False
+    return True
+
   def __str__(O):
     s = ""
-    for i,m in zip(O.indices, O.multipliers):
-      assert m != 0
+    for i,m in zip(O.i_vars, O.multipliers):
       if (m < 0):
         s += "-"
         m = -m
@@ -517,21 +527,36 @@ class simplified_special_op_term(object):
       s += str(c)
     return s
 
+class special_op_simplified(object):
+
+  __slots__ = ["terms"]
+
+  def __init__(O, terms):
+    O.terms = terms
+
+  def __str__(O):
+    return ",".join([str(term) for term in O.terms])
+
+  def shelx_fvar_encoding(self, fvars, site, p_tolerance=1e-5):
+    from iotbx.shelx import fvar_encoding
+    return fvar_encoding.site_constraints_special_op_simplified(
+      O=self, fvars=fvars, site=site, p_tolerance=p_tolerance)
+
 def special_op_simplifier(special_op):
   rt = special_op.as_rational()
   r = rt.r
   t = rt.t
   rows = [r[:3], r[3:6], r[6:]]
-  result = [None, None, None]
+  terms = [None, None, None]
   r0 = rational.int(0)
   r1 = rational.int(1)
   n_done = 0
   for i_row,row in enumerate(rows):
     if (row == (0,0,0)):
-      result[i_row] = simplified_special_op_term([], [], t[i_row])
+      terms[i_row] = special_op_simplified_term([], [], t[i_row])
       n_done += 1
   if (n_done == 3):
-    return result
+    return special_op_simplified(terms=terms)
   if (n_done == 0):
     m, v = [], []
     for i in xrange(3):
@@ -543,22 +568,22 @@ def special_op_simplifier(special_op):
       sol = row_echelon.back_substitution_rational(m, v, free_vars, [None]*2)
       if (sol is not None and sol.count(0) == 0):
         for i_row in [0,1]:
-          result[i_row] = simplified_special_op_term([i_row], [r1], r0)
-        result[2] = simplified_special_op_term(
+          terms[i_row] = special_op_simplified_term([i_row], [r1], r0)
+        terms[2] = special_op_simplified_term(
           [0,1], sol, t[2] - sol[0]*t[0] - sol[1]*t[1])
-        return result
+        return special_op_simplified(terms=terms)
   for i_row in xrange(3):
-    if (result[i_row] is not None): continue
-    result[i_row] = simplified_special_op_term([i_row], [r1], r0)
+    if (terms[i_row] is not None): continue
+    terms[i_row] = special_op_simplified_term([i_row], [r1], r0)
     for j_row in xrange(i_row+1,3):
-      if (result[j_row] is not None): continue
+      if (terms[j_row] is not None): continue
       m = matrix.linearly_dependent_pair_scaling_factor(
         vector_1=rows[i_row], vector_2=rows[j_row])
       if (m is None): continue
       assert m != 0
-      result[j_row] = simplified_special_op_term(
+      terms[j_row] = special_op_simplified_term(
         [i_row], [m], t[j_row] - m*t[i_row])
-  return result
+  return special_op_simplified(terms=terms)
 
 class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
 
@@ -567,6 +592,11 @@ class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
 
   def special_op_simplified(self):
     return special_op_simplifier(special_op=self.special_op())
+
+  def shelx_fvar_encoding(self, fvars, site, p_tolerance=1e-5):
+    from iotbx.shelx import fvar_encoding
+    return fvar_encoding.site_constraints_site_symmetry_ops(
+      O=self, fvars=fvars, site=site, p_tolerance=p_tolerance)
 
 class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
 
