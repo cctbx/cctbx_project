@@ -25,6 +25,7 @@ sources = [
   "grouped_data.cpp",
   "parameter_map.cpp",
   "twin_components.cpp",
+  "extinction.cpp",
 ]
 
 raw_multithreaded_sources = [

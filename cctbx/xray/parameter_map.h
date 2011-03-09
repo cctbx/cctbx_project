@@ -54,20 +54,7 @@ class parameter_map
       init_scatterer_part(scatterers);
     }
 
-    parameter_map(af::const_ref<xray_scatterer_type> const &scatterers,
-                  af::shared<twin_component<double> *> const &twin_components)
-      : map(scatterers.size()),
-        params(0),
-        twin_fractions(twin_components.size(), -1)
-    {
-      init_scatterer_part(scatterers);
-      for (int i_twin=0; i_twin < twin_components.size(); i_twin++) {
-        if (twin_components[i_twin]->grad_twin_fraction) {
-          twin_fractions[i_twin] = params++;
-        }
-      }
-    }
-
+    int add_independent_scalar() { return ++params; }
 private:
     void init_scatterer_part(af::const_ref<xray_scatterer_type> const &scatterers)
     {
@@ -101,8 +88,6 @@ public:
     int n_scatterers() const { return size(); }
 
     int n_parameters() const { return params; }
-
-    af::shared<int> twin_fractions;
 };
 
 }} // cctbx::xray

@@ -62,6 +62,7 @@ class reparametrisation(ext.reparametrisation):
 
   temperature = 20 # Celsius
   twin_components = None
+  extinction = None
 
   def __init__(self,
                structure,
@@ -108,7 +109,11 @@ class reparametrisation(ext.reparametrisation):
       self.add_new_occupancy_parameter(i_sc)
     if self.twin_components is not None:
       for component in self.twin_components:
-        self.add_new_twin_component_parameter(component)
+        if component.grad_twin_fraction:
+          self.add_new_twin_component_parameter(component)
+    if self.extinction is not None and self.extinction.grad:
+      p = self.add(extinction_parameter, self.extinction)
+      self.independent_scalar_parameters.append(p)
     self.finalise()
 
   def finalise(self):
@@ -119,6 +124,25 @@ class reparametrisation(ext.reparametrisation):
         self.independent_scalar_parameters.mapping_to_grad_fc()
     self.mapping_to_grad_fc_all = self.mapping_to_grad_fc.deep_copy()
     self.mapping_to_grad_fc_all.extend(self.mapping_to_grad_fc_independent_scalars)
+    #set the grad indices for independent parameters: BASF, EXTI
+    # count the number of refined independent params
+    independent_grad_cnt = 0
+    if self.twin_components is not None:
+      for component in self.twin_components:
+        if component.grad_twin_fraction:
+          independent_grad_cnt += 1
+    if self.extinction is not None and self.extinction.grad:
+      independent_grad_cnt += 1
+    #update the grad indices
+    independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
+    if self.twin_components is not None:
+      for component in self.twin_components:
+        if component.grad_twin_fraction:
+          component.grad_index = independent_grad_i
+          independent_grad_i += 1
+    if self.extinction is not None and self.extinction.grad:
+      self.extinction.grad_index = independent_grad_i
+      independent_grad_i += 1
 
   def apply_shifts(self, shifts):
     ext.reparametrisation.apply_shifts(self, shifts)
@@ -210,7 +234,11 @@ class reparametrisation(ext.reparametrisation):
     return p
 
   def parameter_map(self):
-    if self.twin_components is None:
-      return xray.parameter_map(self.structure.scatterers())
-    else:
-      return xray.parameter_map(self.structure.scatterers(), self.twin_components)
+    rv = xray.parameter_map(self.structure.scatterers())
+    if self.twin_components is not None:
+      for component in self.twin_components:
+        if component.grad_twin_fraction:
+          rv.add_independent_scalar()
+    if self.extinction is not None and self.extinction.grad:
+      rv.add_independent_scalar()
+    return rv

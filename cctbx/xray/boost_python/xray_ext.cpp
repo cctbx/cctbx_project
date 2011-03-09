@@ -22,6 +22,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_grouped_data();
   void wrap_parameter_map();
   void wrap_twin_component();
+  void wrap_extinction_correction();
 
 namespace {
 
@@ -49,6 +50,7 @@ namespace {
     wrap_grouped_data();
     wrap_parameter_map();
     wrap_twin_component();
+    wrap_extinction_correction();
   }
 
 } // namespace <anonymous>
