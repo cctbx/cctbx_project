@@ -1,6 +1,7 @@
 == In a nutshell ==
 
-In general normal Python coding style guidlines apply. Additionally please be aware of this:
+In general normal Python coding style guidlines apply. Additionally
+please be aware of this:
 
 1. no tabs, only use spaces for indentation and alignment
 2. indent with 2 space characters per level
@@ -8,13 +9,27 @@ In general normal Python coding style guidlines apply. Additionally please be aw
 4. wrap lines at 80 characters
 5. only import functions you actually use
 6. use only absolute and fine-grained Python imports
-7. try to add documentation (via docstrings) to all objects
+7. try to make the code self-documenting by using (long) meaningful
+   names and by keeping functions small
 
-You can use libtbx.find_clutter to check your code before comitting.
+Capitalization:
+  C++ (Boost conventions):
+    simple_identifiers_all_lower_case
+    TemplateParametersMixedCase
+    MACROS_ALL_UPPER_CASE
+  Python:
+    all_identifiers_all_lower_case
+    ExceptionsMixedCase
 
+Please use libtbx.find_clutter to check your code before comitting.
 
 
 == In length ==
+
+Capitalization:
+  Strictly following the rules is more important in C++ than in Python
+  since C++ code is inherently more difficult to read.
+  Following the rules in Python helps when moving code from Python to C++.
 
 Before committing changes please be sure to complete the following steps.
 
