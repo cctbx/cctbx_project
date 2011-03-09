@@ -286,7 +286,7 @@ namespace cctbx { namespace geometry_restraints {
                * (1 - std::cos(periodicity * delta_local * pi_180));
         }
         else if (top_out) {
-          top = limit * limit;
+          top = weight* limit * limit;
           //top*(1-exp(-weight*x**2/top))
           term = top * (1.0-std::exp(-weight*delta_local*delta_local/top));
           return term;
@@ -360,8 +360,8 @@ namespace cctbx { namespace geometry_restraints {
                         * std::sin(periodicity * delta * pi_180);
         }
         else if (top_out) {
-            //(2*weight*x/top)*exp(-(weight*x**2)/top)
-            top = limit * limit;
+            //(2*weight^2*x)*exp(-(weight*x**2)/top)
+            top = weight*limit * limit;
             grad_factor = (2.0*weight*delta)*std::exp(-(weight*delta*delta)/top);
         }
         else {
