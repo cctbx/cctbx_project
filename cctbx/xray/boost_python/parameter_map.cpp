@@ -45,15 +45,12 @@ struct parameter_map_wrapper
     class_<wt>("parameter_map", no_init)
       .def(init<af::const_ref<typename wt::xray_scatterer_type> const &>((
             arg("scatterers"))))
-      .def(init<af::const_ref<typename wt::xray_scatterer_type> const &,
-                af::shared<twin_component<double> *> const &>((
-            arg("scatterers"), arg("twin_components"))))
+      .def("add_independent_scalar", &wt::add_independent_scalar)
       .def("__len__", &wt::size)
       .def("__getitem__", &wt::operator[], ccr())
       .def("__iter__", iterator<wt, ccr>())
       .add_property("n_parameters", &wt::n_parameters)
       .add_property("n_scatterers", &wt::n_scatterers)
-      .add_property("twin_fractions", make_getter(&wt::twin_fractions, rbv()))
       ;
   }
 };

@@ -20,7 +20,8 @@ namespace cctbx { namespace xray {
       :
     twin_law(twin_law_),
     twin_fraction(twin_fraction_),
-    grad_twin_fraction(grad_twin_fraction_)
+    grad_twin_fraction(grad_twin_fraction_),
+    grad_index(-1)
     {}
 
     void set_grad_twin_fraction(bool grad_twin_fraction_=true)
@@ -30,6 +31,7 @@ namespace cctbx { namespace xray {
 
     sgtbx::rot_mx twin_law;
     FloatType twin_fraction;
+    int grad_index;
     bool grad_twin_fraction;
   };
 

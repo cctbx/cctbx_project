@@ -159,6 +159,21 @@ namespace boost_python {
     }
   };
 
+  struct extinction_parameter_wrapper
+  {
+    typedef extinction_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<independent_scalar_parameter>,
+             std::auto_ptr<wt> >("extinction_parameter", no_init)
+        .def(init<cctbx::xray::extinction_correction<double> *>((
+          arg("extinction"))));
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
   template <int N>
   struct small_vector_parameter_wrapper
   {
@@ -449,6 +464,8 @@ namespace boost_python {
     independent_scalar_parameter_wrapper::wrap();
 
     twin_component_parameter_wrapper::wrap();
+
+    extinction_parameter_wrapper::wrap();
 
     small_vector_parameter_wrapper<3>::wrap();
     independent_small_vector_parameter_wrapper<3>::wrap();

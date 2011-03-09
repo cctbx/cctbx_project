@@ -1208,10 +1208,12 @@ def exercise_parameter_map():
   m1 = xs.parameter_map()
   twins = (xray.twin_component(sgtbx.rot_mx((1,0,0,0,1,0,0,0,-1)),0.5, True),
            xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, False))
-  m2 = xray.parameter_map(xs.scatterers(), twins)
+  m2 = xray.parameter_map(xs.scatterers())
+  for t in twins:
+    if t.grad_twin_fraction:
+      m2.add_independent_scalar()
   assert m1.n_parameters == xs.n_parameters()
   assert m2.n_parameters == xs.n_parameters()+1
-  assert approx_equal(m2.twin_fractions, (33,-1))
 
   for m in (m1, m2):
     indices = m[0]

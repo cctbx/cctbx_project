@@ -12,6 +12,7 @@
 #include <cctbx/sgtbx/rot_mx.h>
 #include <cctbx/xray/twin_targets.h>
 #include <cctbx/xray/twin_component.h>
+#include <cctbx/xray/extinction.h>
 
 #include <smtbx/refinement/constraints/scatterer_parameters.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
@@ -242,6 +243,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
       af::shared<cctbx::xray::twin_component<FloatType> *> twin_components,
+      cctbx::xray::extinction_correction<FloatType> &exti,
       bool objective_only=false)
     :
       f_calc_(miller_indices.size()),
@@ -265,10 +267,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
          the weighting scheme class plays ball.
        */
       FloatType scale_factor_ = scale_factor ? *scale_factor : 0;
-
-      af::shared<FloatType> gradient(
-        jacobian_transpose_matching_grad_fc.n_rows(),
-        af::init_functor_null<FloatType>());
+      af::shared<FloatType> gradient =
+        compute_grad ? af::shared<FloatType> (
+                         jacobian_transpose_matching_grad_fc.n_rows(),
+                         af::init_functor_null<FloatType>())
+                      :
+                        af::shared<FloatType>();
       for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
         miller::index<> const &h = miller_indices[i_h];
         if (f_mask.size()) {
@@ -277,38 +281,20 @@ namespace smtbx { namespace refinement { namespace least_squares {
         else {
           f_calc_func.compute(h, compute_grad);
         }
-        FloatType observable = f_calc_func.observable;
         if (compute_grad) {
           gradient =
             jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
         }
         // sort out twinning
-        if (twin_components.size()) {
-          FloatType identity_part = observable;
-          FloatType one_minus_sum_twin_fractions = \
-            1-cctbx::xray::sum_twin_fractions(twin_components);
-          observable *= one_minus_sum_twin_fractions;
-          if (compute_grad) {
-            gradient *= one_minus_sum_twin_fractions;
-          }
-          for (std::size_t i_twin=0;i_twin<twin_components.size();i_twin++) {
-            FloatType twin_fraction = twin_components[i_twin]->twin_fraction;
-            sgtbx::rot_mx const &twin_law = twin_components[i_twin]->twin_law;
-            miller::index<> const &twin_h = cctbx::xray::twin_targets::twin_mate(
-              h, twin_law.as_floating_point(scitbx::type_holder<FloatType>()));
-            f_calc_func.compute(twin_h, compute_grad);
-            observable += twin_fraction*f_calc_func.observable;
-            if (compute_grad) {
-              af::shared<FloatType> grad_tmp =
-                jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
-              gradient += twin_fraction*grad_tmp;
-              gradient[gradient.size()-twin_components.size()+i_twin] +=
-                f_calc_func.observable - identity_part;
-            }
-          }
-        }
-        f_calc_[i_h] = f_calc_func.f_calc;
+        FloatType observable =
+          process_twinning(h, f_calc_func, twin_components,
+            gradient, jacobian_transpose_matching_grad_fc, compute_grad);
+        // extinction correction
+        FloatType exti_k = exti.compute(h, observable, gradient, compute_grad);
+        observable *= exti_k;
+        f_calc_[i_h] = f_calc_func.f_calc*std::sqrt(exti_k);
         observables_[i_h] = observable;
+
         FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
                                             observable, scale_factor_);
         weights_[i_h] = weight;
@@ -332,6 +318,47 @@ namespace smtbx { namespace refinement { namespace least_squares {
     af::shared<FloatType> observables() { return observables_; }
 
     af::shared<FloatType> weights() { return weights_; }
+
+  protected:
+    template <class OneMillerIndexFcalc>
+    FloatType process_twinning(
+      const miller::index<>& h,
+      f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>& f_calc_func,
+      af::shared<cctbx::xray::twin_component<FloatType> *> twin_components,
+      af::shared<FloatType> &gradient,
+      scitbx::sparse::matrix<FloatType> const
+        &jacobian_transpose_matching_grad_fc,
+      bool compute_grad)
+    {
+      FloatType obs = f_calc_func.observable;
+      if (twin_components.size()) {
+        const FloatType identity_part = obs;
+        FloatType one_minus_sum_twin_fractions =
+          1-cctbx::xray::sum_twin_fractions(twin_components);
+        obs *= one_minus_sum_twin_fractions;
+        if (compute_grad) {
+          gradient *= one_minus_sum_twin_fractions;
+        }
+        for (std::size_t i_twin=0;i_twin<twin_components.size();i_twin++) {
+          FloatType twin_fraction = twin_components[i_twin]->twin_fraction;
+          sgtbx::rot_mx const &twin_law = twin_components[i_twin]->twin_law;
+          miller::index<> const &twin_h = cctbx::xray::twin_targets::twin_mate(
+            h, twin_law.as_floating_point(scitbx::type_holder<FloatType>()));
+          f_calc_func.compute(twin_h, compute_grad);
+          obs += twin_fraction*f_calc_func.observable;
+          if (compute_grad) {
+            af::shared<FloatType> tmp_gradient =
+              jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
+            gradient += twin_fraction*tmp_gradient;
+            if (twin_components[i_twin]->grad_twin_fraction) {
+              gradient[twin_components[i_twin]->grad_index] +=
+                f_calc_func.observable - identity_part;
+            }
+          }
+        }
+      }
+      return obs;
+    }
 
   private:
     af::shared<std::complex<FloatType> > f_calc_;

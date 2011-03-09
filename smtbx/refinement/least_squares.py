@@ -3,7 +3,7 @@ ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
 
 import smtbx.refinement.weighting_schemes # import dependency
-
+from cctbx import xray
 import libtbx
 from libtbx import adopt_optional_init_args
 from scitbx import linalg
@@ -57,6 +57,10 @@ class crystallographic_ls(
     if twin_components is None:
       twin_components = ()
 
+    extinction_correction = self.reparametrisation.extinction
+    if extinction_correction is None:
+      extinction_correction = xray.dummy_extinction_correction()
+
     def args(scale_factor, weighting_scheme, objective_only):
       args = (self,
               self.fo_sq.indices(),
@@ -67,7 +71,9 @@ class crystallographic_ls(
               scale_factor,
               self.one_h_linearisation,
               self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-              twin_components)
+              twin_components,
+              extinction_correction
+              )
       if objective_only:
         args += (True,)
       return args

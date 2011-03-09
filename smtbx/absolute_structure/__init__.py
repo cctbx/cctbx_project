@@ -296,7 +296,7 @@ class students_t_hooft_analysis(hooft_analysis):
 
 class flack_analysis(object):
 
-  def __init__(self, xray_structure, fo2):
+  def __init__(self, xray_structure, fo2, exti):
     adopt_init_args(self, locals())
     assert fo2.anomalous_flag()
     xray_structure = xray_structure.deep_copy_scatterers()
@@ -311,7 +311,9 @@ class flack_analysis(object):
       xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True),)
     reparametrisation = constraints.reparametrisation(
       xray_structure, [], smtbx.utils.connectivity_table(xray_structure),
-      twin_components=twin_components)
+      twin_components=twin_components,
+      extinction=exti
+    )
     normal_eqns = least_squares.crystallographic_ls(
       fo2, reparametrisation)
     cycles = normal_eqns_solving.naive_iterations(

@@ -33,10 +33,19 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // twin_component_parameter
 
-  void twin_component_parameter::store() const {
-    twin_component->twin_fraction = value;
+  af::ref<double> twin_component_parameter::components() {
+    return af::ref<double>(&twin_component->twin_fraction, 1);
   }
 
+  // extinction_correction_parameter
+
+  af::ref<double> extinction_parameter::components() {
+    return af::ref<double>(&exti->get_value(), 1);
+  }
+
+  void extinction_parameter::validate() {
+    if (exti->get_value() < 0) exti->get_value() = 0;
+  }
   // single_scatterer_parameter
 
   asu_parameter::scatterer_sequence_type
@@ -300,10 +309,6 @@ namespace smtbx { namespace refinement { namespace constraints {
     BOOST_FOREACH(parameter *p, all) {
       asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
       if (cp) cp->store(unit_cell);
-      else {
-        storable_parameter *cp = dynamic_cast<storable_parameter *> (p);
-        if (cp) cp->store();
-      }
     }
   }
 

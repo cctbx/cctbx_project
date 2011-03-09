@@ -47,6 +47,7 @@ namespace {
                       make_setter(&wt::grad_twin_fraction, dcp()))
         .add_property("twin_fraction", make_getter(&wt::twin_fraction, rbv()),
                                        make_setter(&wt::twin_fraction, dcp()))
+        .def_readwrite("grad_index", &wt::grad_index)
       ;
     }
   };

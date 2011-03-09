@@ -7,6 +7,7 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/xray/twin_component.h>
+#include <cctbx/xray/extinction.h>
 #include <smtbx/import_cctbx.h>
 #include <smtbx/error.h>
 
@@ -128,7 +129,7 @@ public:
   /// Construct a parameter with the given number of arguments
   parameter(std::size_t n_arguments)
     : colour_(white), variable(true), root(false), n_args(n_arguments),
-      arg(new parameter *[n_arguments])
+      arg(new parameter *[n_arguments]), index_(-1)
   {}
 
   virtual ~parameter();
@@ -296,6 +297,42 @@ public:
                          sparse_matrix_type *jacobian_transpose);
 };
 
+/// Twin component parameter
+class twin_component_parameter : public independent_scalar_parameter
+{
+public:
+  twin_component_parameter(cctbx::xray::twin_component<double> *twin_component)
+  :
+  parameter(0), twin_component(twin_component),
+  independent_scalar_parameter(
+    twin_component->twin_fraction, twin_component->grad_twin_fraction)
+  {}
+
+  virtual af::ref<double> components();
+
+protected:
+  /// The twin_component this parameter belongs to
+  cctbx::xray::twin_component<double> *twin_component;
+};
+
+
+/// Extinction correction parameter
+class extinction_parameter : public independent_scalar_parameter {
+  typedef cctbx::xray::extinction_correction<double> extinction_correction_t;
+public:
+  extinction_parameter(extinction_correction_t *_exti)
+  :
+  parameter(0), exti(_exti),
+  independent_scalar_parameter(
+    _exti->get_value(), _exti->grad_value())
+  {}
+
+  virtual af::ref<double> components();
+  virtual void validate();
+
+protected:
+  extinction_correction_t *exti;
+};
 
 template <int N>
 class small_vector_parameter : public virtual parameter
@@ -333,39 +370,6 @@ public:
   {}
 
 };
-
-
-/// Base class for an independent scalar parameter that defines a store method
-class storable_parameter : public independent_scalar_parameter
-{
-public:
-  storable_parameter(double value, bool variable=true)
-  : parameter(0), independent_scalar_parameter(value, variable)
-  {}
-
-  virtual void store() const = 0;
-};
-
-
-/// Twin component parameter
-class twin_component_parameter : public storable_parameter
-{
-public:
-  twin_component_parameter(cctbx::xray::twin_component<double> *twin_component)
-  :
-  parameter(0), twin_component(twin_component),
-  storable_parameter(
-    twin_component->twin_fraction, twin_component->grad_twin_fraction)
-  {}
-
-  /// Store its value into the corresponding twin_component
-  virtual void store() const;
-
-protected:
-  /// The twin_component this parameter belongs to
-  cctbx::xray::twin_component<double> *twin_component;
-};
-
 
 /// Site, isotropic or anisotropic displacement, etc., or combination of those.
 /** They belong to one or more scatterers in the asymmetric unit.
