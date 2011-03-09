@@ -195,6 +195,10 @@ class dictionary(model.cif):
       else:
         for k, v in self.iteritems():
           if k == 'on_this_dictionary': continue
+          elif isinstance(v['_name'], basestring):
+            if v['_name'] == key:
+              self.look_up_table.setdefault(key, key_)
+              return k
           elif key in v['_name']:
             self.look_up_table.setdefault(key, key_)
             return k
@@ -339,15 +343,18 @@ class dictionary(model.cif):
             and list_category != definition.category):
         self.report_error(2502) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
-      reference = definition.get('_list_reference')
-      if reference is not None:
-        ref_data = self.get_definition(reference)
-        ref_names = ref_data['_name']
-        if isinstance(ref_names, basestring):
-          ref_names = [ref_names]
-        for name in ref_names:
-          if name not in loop:
-            self.report_error(2505, key=key, reference=name) # missing _list_reference
+      references = definition.get('_list_reference')
+      if references is not None:
+        if isinstance(references, basestring):
+          references = [references]
+        for reference in references:
+          ref_data = self.get_definition(reference)
+          ref_names = ref_data['_name']
+          if isinstance(ref_names, basestring):
+            ref_names = [ref_names]
+          for name in ref_names:
+            if name not in loop:
+              self.report_error(2505, key=key, reference=name) # missing _list_reference
       elif (self.DDL_version == 2
             and isinstance(definition.category, basestring)):
         category_def = self.get_definition(definition.category)
