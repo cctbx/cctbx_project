@@ -58,7 +58,7 @@ namespace cctbx { namespace xray {
         k = 1+p*value,
         k_sqrt = std::sqrt(k);
       if( calc_grad && grad ) {
-        gradient[grad_index] += Fc_sq*(1-p/(2*k*k_sqrt)); // pow(k,-3/2)
+        gradient[grad_index] -= Fc_sq*p/(2*k*k_sqrt); // pow(k,-3/2)
       }
       return 1/k_sqrt;
     }
@@ -68,8 +68,7 @@ namespace cctbx { namespace xray {
     FloatType calc_factor(const miller::index<>& h,
       FloatType Fc_sq) const
     {
-      const FloatType sin_2t = std::abs(std::sin(
-        uctbx::d_star_sq_as_two_theta(u_cell.d_star_sq(h), lambda)));
+      const FloatType sin_2t = u_cell.sin_two_theta(h, lambda);
       return Fc_sq*std::pow(lambda,3)/(sin_2t*1000);
     }
 
