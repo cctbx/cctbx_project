@@ -13,9 +13,12 @@ __builtins__["STOP"] = _STOP
 def _numstr(values, fmt="%.6g", sep=", ", brackets=("[","]")):
   flds = []
   for v in values:
-    s = fmt % v
-    if (s.strip().replace("0", "") in ["-", "-."]):
-      s = fmt % 0
+    if (v is None):
+      s = " "*(max(0,len(fmt % 0)-4)) + "None"
+    else:
+      s = fmt % v
+      if (s.strip().replace("0", "") in ["-", "-."]):
+        s = fmt % 0
     flds.append(s)
   return brackets[0] + sep.join(flds) + brackets[1]
 __builtins__["numstr"] = _numstr

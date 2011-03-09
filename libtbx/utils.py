@@ -955,7 +955,7 @@ def exercise():
       'Error interpreting "xxx(0)" as a numeric expression: ')
   else: raise Exception_expected
   #
-  s = "[0.143139, -0.125121, 0.108699, -0.308607]"
+  s = "[0.143139, -0.125121, None, -0.308607]"
   assert numstr(values=eval(s)) == s
   #
   for s,i in {"2000000" : 2000000,
