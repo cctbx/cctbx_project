@@ -7,7 +7,8 @@ def run(args):
   op = os.path
   n_files_changed = 0
   for file_name in args[1:]:
-    all_fprocs = fable.read.process(file_names=[op.abspath(file_name)])
+    file_name = op.abspath(file_name)
+    all_fprocs = fable.read.process(file_names=[file_name])
     insert_info = []
     for fproc in all_fprocs.all_in_input_order:
       if (fproc.fproc_type == "blockdata"): continue
