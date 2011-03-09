@@ -1,9 +1,8 @@
-#include <cctbx/xray/extinction.h>
-
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 
+#include <cctbx/xray/extinction.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
