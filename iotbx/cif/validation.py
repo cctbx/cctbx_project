@@ -373,10 +373,10 @@ class dictionary(model.cif):
       link_parent = definition.get(
         '_list_link_parent', self.child_parent_relations.get(key))
       if link_parent is not None:
-        parent_values = block.get(link_parent)
+        parent_values = loop.get(link_parent, block.get(link_parent))
         if parent_values is not None:
           for v in loop[key]:
-            if v not in parent_values:
+            if v != '.' and v not in parent_values:
               # missing parent value
               self.report_error(2503, value=v, child=key, parent=link_parent)
         else:
