@@ -157,6 +157,8 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     yield cmd
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
+  if isinstance(a1, str) or isinstance(a1, unicode):
+    return a1 == a2
   if hasattr(a1, "__len__"): # traverse list
     if (len(a1) != len(a2)):
       raise AssertionError(
