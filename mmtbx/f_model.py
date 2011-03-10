@@ -977,14 +977,14 @@ class manager(manager_mixin):
     result = False
     ksols = self.shell_k_sols()[:] # copy
     fmsks = self.shell_f_masks()
+    results = [False]*len(ksols)
     for i in range(len(ksols)):
       if(flex.abs(fmsks[i].data()).all_eq(0)):
         ksols[i] = 0
-        result = True
-    if result:
+        results[i] = True
+    if results.count(True)!=0:
       bsol = self.b_sol()
-      result = False
-      if( ksols.count(0)==len(ksols) ):
+      if( results.count(False)==0 ):
         bsol = 0
         result = True
       self.update(k_sol = ksols, b_sol = bsol)

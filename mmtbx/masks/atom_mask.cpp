@@ -809,6 +809,8 @@ namespace mmtbx { namespace masks {
     register size_t nsolv = 0;
     af::ref<data_type, asu_grid_t > data_ref = data.ref();
     std::size_t data_size = data_ref.size();
+    af::small<std::size_t,max_n_layers+2U> nsolvs;
+    nsolvs.resize(this->n_solvent_layers()+2U,0UL);
     if(shrink_truncation_radius == 0) {
       for(std::size_t ilxyz=0;ilxyz<data_size;ilxyz++)
       {
@@ -816,56 +818,68 @@ namespace mmtbx { namespace masks {
         if( d.is_contact() || d.is_outside() )
           d.set_zero();
         nsolv += static_cast<size_t>(d.multiplicity());
+        nsolvs[d.layer()] += static_cast<size_t>(d.multiplicity());
       }
       contact_surface_fraction = accessible_surface_fraction
         = static_cast<double>(nsolv) / this->grid_size_1d();
-      return;
+    }
+    else
+    {
+      af::versa<data_type, asu_grid_t > datacopy = data.deep_copy();
+      const af::const_ref<data_type, asu_grid_t > datacopy_ref
+        = datacopy.const_ref();
+      const scitbx::vec3<long> n(datacopy_ref.accessor().all());
+      std::vector<long> neighbors;
+      find_neighbors(neighbors, unit_cell, this->grid_size(), n,
+        shrink_truncation_radius);
+      MMTBX_ASSERT(neighbors.size()>0U);
+      size_t n_access=0;
+      const data_type *datacopy_ptr = datacopy_ref.begin();
+      for(data_type *data_ptr = data_ref.begin(); data_ptr!=data_ref.end();
+        ++data_ptr, ++datacopy_ptr)
+      {
+        const data_type d_copy = *datacopy_ptr;
+        data_type &dr = *data_ptr;
+        if( d_copy.is_outside() )
+          dr.set_zero();
+        else if( d_copy.is_solvent() )
+          n_access += static_cast<size_t>( d_copy.multiplicity() );
+        else if( d_copy.is_contact() )
+        {
+          for(std::vector<long>::const_iterator neighbor=neighbors.begin();
+            neighbor!=neighbors.end(); ++neighbor)
+          {
+            // neighbor could be outside the asu, but must be inside the
+            // expanded asu
+            if( datacopy_ptr[*neighbor].is_solvent() )
+            {
+              MMTBX_ASSERT( dr.is_contact() );
+              dr.set_nearest_solvent();
+              MMTBX_ASSERT( dr.multiplicity() > 0 );
+              MMTBX_ASSERT( dr.is_solvent() );
+              goto end_of_neighbors_loop;
+            }
+          }
+          dr.set_zero();
+          end_of_neighbors_loop:;
+        }
+        nsolv += dr.multiplicity();
+        nsolvs[dr.layer()] += static_cast<size_t>(dr.multiplicity());
+      } // data_ref array
+      // currently data is not padded 3-D array, data.size is correct here
+      contact_surface_fraction = static_cast<double>(nsolv)/this->grid_size_1d();
+      accessible_surface_fraction = static_cast<double>(n_access)
+        / this->grid_size_1d();
     }
 
-    af::versa<data_type, asu_grid_t > datacopy = data.deep_copy();
-    const af::const_ref<data_type, asu_grid_t > datacopy_ref
-      = datacopy.const_ref();
-    const scitbx::vec3<long> n(datacopy_ref.accessor().all());
-    std::vector<long> neighbors;
-    find_neighbors(neighbors, unit_cell, this->grid_size(), n,
-      shrink_truncation_radius);
-    MMTBX_ASSERT(neighbors.size()>0U);
-    size_t n_access=0;
-    const data_type *datacopy_ptr = datacopy_ref.begin();
-    for(data_type *data_ptr = data_ref.begin(); data_ptr!=data_ref.end();
-      ++data_ptr, ++datacopy_ptr)
+    layer_volume_fractions_.resize(this->n_solvent_layers(),0.0);
+    std::size_t nsolvt=0;
+    for(unsigned short j=2; j<nsolvs.size(); ++j)
     {
-      const data_type d_copy = *datacopy_ptr;
-      data_type &dr = *data_ptr;
-      if( d_copy.is_outside() )
-        dr.set_zero();
-      else if( d_copy.is_solvent() )
-        n_access += static_cast<size_t>( d_copy.multiplicity() );
-      else if( d_copy.is_contact() )
-      {
-        for(std::vector<long>::const_iterator neighbor=neighbors.begin();
-          neighbor!=neighbors.end(); ++neighbor)
-        {
-          // neighbor could be outside the asu, but must be inside the
-          // expanded asu
-          if( datacopy_ptr[*neighbor].is_solvent() )
-          {
-            MMTBX_ASSERT( dr.is_contact() );
-            dr.set_nearest_solvent();
-            MMTBX_ASSERT( dr.multiplicity() > 0 );
-            MMTBX_ASSERT( dr.is_solvent() );
-            goto end_of_neighbors_loop;
-          }
-        }
-        dr.set_zero();
-        end_of_neighbors_loop:;
-      }
-      nsolv += dr.multiplicity();
-    } // data_ref array
-    // currently data is not padded 3-D array, data.size is correct here
-    contact_surface_fraction =  static_cast<double>(nsolv)/this->grid_size_1d();
-    accessible_surface_fraction = static_cast<double>(n_access)
-      / this->grid_size_1d();
+      layer_volume_fractions_[j-2] = nsolvs[j]/static_cast<double>(this->grid_size_1d());
+      nsolvt += nsolvs[j];
+    }
+    MMTBX_ASSERT( nsolv == nsolvt );
   }
 
 

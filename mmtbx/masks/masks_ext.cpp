@@ -69,6 +69,7 @@ namespace {
       .def("n_solvent_layers", &w_t::n_solvent_layers)
       .def("xplor_write_map", &w_t::xplor_write_map, (arg("file_name"),
          arg("layer")=0, arg("invert")=false) )
+      .def("layer_volume_fractions", &w_t::layer_volume_fractions)
       .def_readonly("solvent_radius",
                &w_t::solvent_radius)
       .def_readonly("shrink_truncation_radius",

@@ -45,7 +45,7 @@ mask_master_params = iotbx.phil.parse("""\
   n_radial_shells = 1
     .type = int
     .help = Number of shells in a radial shell bulk solvent model
-  radial_shell_width = 0.5
+  radial_shell_width = 1.5
     .type = float
     .help = Radial shell width TODO: default 2.5?
 """)
@@ -176,6 +176,7 @@ class asu_mask(object):
       # number of shell radii is one less than number of shells
       # last shell is of unknown radius
       shell_rads = [self.mask_params.radial_shell_width]*(self.mask_params.n_radial_shells-1)
+      shell_rads[0] = 0.
       self.asu_mask.compute(sites_frac, atom_radii, shell_rads)
     else:
       self.asu_mask.compute(sites_frac, atom_radii)
@@ -322,6 +323,7 @@ class manager(object):
           fm_asu = asu_mask_obj.structure_factors(self.miller_array_twin.indices())
           self._f_mask_twin.append( self.miller_array_twin.set().array(data = fm_asu) )
       self.solvent_content_via_mask = asu_mask_obj.contact_surface_fraction
+      self.layer_volume_fractions = asu_mask_obj.layer_volume_fractions()
     assert self._f_mask[0].data().size() == self.miller_array.data().size()
 
   def bulk_solvent_mask(self):
