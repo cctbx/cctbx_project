@@ -3,7 +3,7 @@ from cctbx import eltbx
 import cctbx.eltbx.xray_scattering
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from cctbx.development.fmt_utils import *
+from cctbx.development.fmt_utils import dot6fdot_list, dot6gdot, dot6gdot_list
 from iotbx.shelx.write_ins import LATT_SYMM
 from scitbx.python_utils import dicts
 import libtbx.path
@@ -46,9 +46,13 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
   return lines
 
 def NOFIX(x):
+  assert x > -5
+  assert x < 5
   return x
 
 def FIX(x):
+  assert x > -5
+  assert x < 5
   if (x < 0.): return -10. + x
   return 10. + x
 
@@ -67,7 +71,7 @@ def atoms(xray_structure, short_sfac):
       sfac = i
     coor = []
     for x in scatterer.site: coor.append(NOFIX(x))
-    coor = dot5fdot_list(coor)
+    coor = dot6fdot_list(coor)
     sof = NOFIX(scatterer.weight())
     if (not scatterer.flags.use_u_aniso()):
       l("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),

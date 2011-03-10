@@ -14,14 +14,14 @@ def dot6gdot_list(l):
   for x in l: s += " " + dot6gdot(x)
   return s[1:]
 
-def dot5fdot(x):
-  s = "%.5f" % (x,)
+def dot6fdot(x):
+  s = "%.6f" % (x,)
   if ("." in s): return s
   return "." + s
 
-def dot5fdot_list(l):
+def dot6fdot_list(l):
   s = ""
-  for x in l: s += " " + dot5fdot(x)
+  for x in l: s += " " + dot6fdot(x)
   return s[1:]
 
 def xtal6g(x):
