@@ -247,8 +247,12 @@ def setup_clang_warning(env_etc, warning_level):
     # - pure C code is only 3rd party library we don't care cleaning up bad
     #   programming style: hence no warning
     #
-    # - for our C++ code, clang defaults are sound, so we do nothing
+    # - for our C++ code, Boost recent versions started to use C++0x features
+    #   that clang warns about, so disable that. Disable array bound checking
+    #   as Boost is again too tricky for clang to reason on
     env_etc.cflags_base.extend([ '-w' ])
+    env_etc.ccflags_base.extend([ '-Wno-c++0x-extensions',
+                                  '-Wno-array-bounds' ])
     env_etc._enable_more_warnings = "clang"
   elif warning_level == 1:
     # not sure about whether -Wmost is the best choice yet
