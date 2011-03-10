@@ -165,6 +165,15 @@ class rec(object):
   def each_abs(self):
     return rec([abs(e) for e in self.elems], self.n)
 
+  def each_mod_short(self, period=1):
+    half = period / 2.0
+    def mod_short(e):
+      r = math.fmod(e, period)
+      if   (r < -half): r += period
+      elif (r >  half): r -= period
+      return r
+    return rec([mod_short(e) for e in self.elems], self.n)
+
   def min(self):
     result = None
     for e in self.elems:
@@ -1179,6 +1188,7 @@ def exercise():
   #
   assert approx_equal(col((-2,3,-6)).normalize().elems, (-2/7.,3/7.,-6/7.))
   assert col((-1,2,-3)).each_abs().elems == (1,2,3)
+  assert approx_equal(col((-1.7,2.8,3.4)).each_mod_short(), (0.3,-0.2,0.4))
   assert col((5,3,4)).min() == 3
   assert col((4,5,3)).max() == 5
   assert col((5,3,4)).min_index() == 1
