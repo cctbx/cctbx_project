@@ -45,9 +45,9 @@ def exercise_reflections () :
   assert approx_equal(d_min, 1.93, eps=0.01)
   assert hkl_handler.space_group_as_str() == "P 61 2 2"
   assert (hkl_handler.unit_cell_as_str() ==
-          "33.034 33.034 78.440 90.000 90.000 120.000")
+          "33.0343 33.0343 78.4404 90 90 120")
   assert (hkl_handler.unit_cell_as_str(separator=",") ==
-          "33.034,33.034,78.440,90.000,90.000,120.000")
+          "33.0343,33.0343,78.4404,90,90,120")
   cns_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/enk.hkl",
     test=os.path.isfile)
@@ -109,7 +109,7 @@ def exercise_reflections () :
   descriptions = []
   for miller_array in hkl_server.miller_arrays :
     (sg, uc) = reflections.get_miller_array_symmetry(miller_array)
-    assert (uc == "60.832 38.293 42.211  90 90 90")
+    assert (uc == "60.832 38.293 42.211 90 90 90")
     assert str(sg) == "C 2 2 21"
     descriptions.append(reflections.get_array_description(miller_array))
   assert descriptions == [
@@ -178,14 +178,14 @@ def exercise_model () :
   symm = model_handler.get_pdb_file_symmetry(pdb_file2)
   assert (str(symm.space_group_info()) == "I 41")
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
-          "113.068 113.068 53.292 90.000 90.000 90.000")
+          "113.068 113.068 53.292 90 90 90")
   f = model_handler.create_copy_with_fake_symmetry(pdb_file2,
     tmp_dir=os.getcwd())
   pdb_in = file_reader.any_file(f, force_type="pdb").file_object
   symm = pdb_in.crystal_symmetry()
   assert (str(symm.space_group_info()) == "P 1")
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
-          "59.227 55.922 60.264 90.000 90.000 90.000")
+          "59.227 55.922 60.264 90 90 90")
 
 def exercise_symmetry () :
   from cctbx import sgtbx, uctbx
