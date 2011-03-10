@@ -28,9 +28,13 @@ namespace cctbx { namespace xray {
   /// dummy extinction implementation
   template <typename FloatType>
   struct dummy_extinction_correction : public extinction_correction<FloatType> {
+    dummy_extinction_correction() {}
     virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
       FloatType fc_sq,
-      bool compute_gradient) { return build_return_value(1); }
+      bool compute_gradient)
+      {
+        return extinction_correction<FloatType>::build_return_value(1);
+      }
 
     virtual FloatType& get_value() {
       static FloatType value = 0;
@@ -45,7 +49,8 @@ namespace cctbx { namespace xray {
   coefficient
   */
   template <typename FloatType>
-  struct shelx_extinction_correction : extinction_correction<FloatType> {
+  struct shelx_extinction_correction : public extinction_correction<FloatType> {
+    typedef extinction_correction<FloatType> exti_t;
     shelx_extinction_correction(uctbx::unit_cell const &u_cell_,
       FloatType wavelength_, FloatType value_)
       : u_cell(u_cell_),
@@ -54,7 +59,7 @@ namespace cctbx { namespace xray {
         grad_index(-1),
         grad(false) {}
 
-    af::tiny<FloatType,2> compute(miller::index<> const &h,
+    virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
       FloatType fc_sq,
       bool compute_grad)
     {
@@ -63,9 +68,9 @@ namespace cctbx { namespace xray {
         k = 1+p*value,
         k_sqrt = std::sqrt(k);
       if( grad && compute_grad ) {
-        return build_return_value(1/k_sqrt, -fc_sq*p/(2*k*k_sqrt));
+        return exti_t::build_return_value(1/k_sqrt, -fc_sq*p/(2*k*k_sqrt));
       }
-      return build_return_value(1/k_sqrt);
+      return exti_t::build_return_value(1/k_sqrt);
     }
     virtual FloatType& get_value() { return value; }
     virtual bool grad_value() const { return grad; }
