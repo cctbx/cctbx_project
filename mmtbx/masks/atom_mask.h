@@ -305,6 +305,13 @@ namespace mmtbx {
 
       bool debug_has_enclosed_box;
 
+      // TODO: it should return const ref
+      // but I do not no how to export into python
+      scitbx::af::small<double,max_n_layers> layer_volume_fractions() const
+      {
+        return layer_volume_fractions_;
+      }
+
     private:
 
       typedef std::pair< scitbx::double3, double > atom_t;
@@ -332,6 +339,7 @@ namespace mmtbx {
       mask_array_t data;
       // n_layers == n_shells + 1
       unsigned short n_layers;
+      scitbx::af::small<double,max_n_layers> layer_volume_fractions_;
   }; // class atom_mask
 
 }} // namespace mmtbx::masks

@@ -30,12 +30,15 @@ def get_xray_structure_random(space_group_info):
       random_u_iso      = True)
   return xray_structure
 
-def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure):
+def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure,
+    radial_shell_width=None):
   f_dummy = abs(xray_structure.structure_factors(d_min = d_min,
     anomalous_flag = False).f_calc())
   r_free_flags = f_dummy.generate_r_free_flags(fraction = 0.1,
                                                max_free = 99999999)
   mask_params = mmtbx.masks.mask_master_params.extract()
+  if( radial_shell_width is not None ):
+    mask_params.radial_shell_width = radial_shell_width
   if( type(k_sol) is list):
     mask_params.n_radial_shells = len(k_sol)
   fmodel = mmtbx.f_model.manager(
@@ -275,7 +278,7 @@ def exercise_06_b_cart_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
 def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1",
-    grid_search=False):
+    grid_search=False, shell_width=0.3):
   import sys
   xray_structure = get_xray_structure_from_file()
   b_sol = 34.0
@@ -285,8 +288,10 @@ def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1",
     k_sol  = k_sol,
     b_sol  = b_sol,
     b_cart = b_cart,
-    xray_structure = xray_structure)
+    xray_structure = xray_structure,
+    radial_shell_width=shell_width)
   mask_params = mmtbx.masks.mask_master_params.extract()
+  mask_params.radial_shell_width = shell_width
   if( type(k_sol) is list ):
     mask_params.n_radial_shells = len(k_sol)
   else:
@@ -299,14 +304,27 @@ def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1",
     mask_params    = mask_params,
     target_name    = target_name)
   r_work_start = fmodel.r_work()*100.
+  msk = fmodel.mask_manager
+  print 'Solvent content: ', msk.solvent_content_via_mask
+  print 'Layer volume fractions: ', msk.layer_volume_fractions
+  if( type(k_sol) is list):
+    for i in range(len(k_sol)):
+      if( msk.layer_volume_fractions[i] == 0. ):
+        k_sol[i] = 0.
   params = bss.master_params.extract()
   params.anisotropic_scaling = False
   params.apply_back_trace_of_b_cart=False
   params.k_sol_b_sol_grid_search = grid_search
-  fmodel.update_solvent_and_scale(params = params, out=sys.stdout, verbose = -1)
+  if( not params.k_sol_b_sol_grid_search ):
+    params.number_of_macro_cycles = 3
+  params.k_sol_max = 1.2
+  fmodel.update_solvent_and_scale(params = params, out=sys.stdout, verbose = 1)
+  sys.stdout.flush()
   r_work = fmodel.r_work()*100.
+  print 'R-work: ', r_work
+  print 'Solvent radius: ', fmodel.mask_params.solvent_radius
   assert r_work_start > 0.0
-  assert approx_equal(r_work,             0.0, eps = 1.e-6)
+  assert approx_equal(r_work,             0.0, eps = 1.e-4)
   if( type(k_sol) is list ):
     ksols = fmodel.shell_k_sols()
     assert len(k_sol) == len(ksols)
@@ -320,8 +338,9 @@ def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1",
 
 def run():
   exercise_radial_shells()
-  exercise_radial_shells(k_sol=[0.33,0.1])
-  exercise_radial_shells(k_sol=[0.33,0.1],grid_search=True)
+  exercise_radial_shells(k_sol=[0.33,0.1, 0.9])
+  exercise_radial_shells(k_sol=[0.33,0.1,0.9],grid_search=True,shell_width=1.)
+  exercise_radial_shells(k_sol=[0.33,0.1,0.9,0.25],grid_search=True,shell_width=1.)
   exercise_01_general()
   exercise_02_b_cart_sym_constr()
   exercise_03_do_nothing()
