@@ -8,8 +8,7 @@ namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
   template <typename FloatType>
-  struct extinction_correction_wrapper
-  {
+  struct extinction_correction_wrapper {
     typedef extinction_correction<FloatType> wt;
 
     static void wrap() {
@@ -17,16 +16,14 @@ namespace {
       class_<wt, boost::noncopyable>("extinction_correction", no_init)
         .def("compute", &wt::compute,
           (arg("index"),
-           arg("Fc"),
+           arg("fc"),
            arg("gradient"),
-           arg("compute_gradient")))
-        ;
+           arg("compute_gradient")));
     }
   };
 
   template <typename FloatType>
-  struct dummy_extinction_correction_wrapper
-  {
+  struct dummy_extinction_correction_wrapper {
     typedef dummy_extinction_correction<FloatType> wt;
 
     static void wrap() {
@@ -41,8 +38,7 @@ namespace {
   };
 
   template <typename FloatType>
-  struct shelx_extinction_correction_wrapper
-  {
+  struct shelx_extinction_correction_wrapper {
     typedef shelx_extinction_correction<FloatType> wt;
 
     static void wrap() {
@@ -54,7 +50,7 @@ namespace {
                   FloatType,
                   FloatType>
              ((arg("unit_cell"),
-               arg("lambda"),
+               arg("wavelength"),
                arg("value"))))
         .def_readwrite("value", &wt::value)
         .def_readwrite("grad_index", &wt::grad_index)
