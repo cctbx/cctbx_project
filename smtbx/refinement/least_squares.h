@@ -267,7 +267,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
          the weighting scheme class plays ball.
        */
       FloatType scale_factor_ = scale_factor ? *scale_factor : 0;
-      af::shared<FloatType> gradient =
+      af::shared<FloatType> gradients =
         compute_grad ? af::shared<FloatType> (
                          jacobian_transpose_matching_grad_fc.n_rows(),
                          af::init_functor_null<FloatType>())
@@ -282,17 +282,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
           f_calc_func.compute(h, compute_grad);
         }
         if (compute_grad) {
-          gradient =
+          gradients =
             jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
         }
         // sort out twinning
         FloatType observable =
           process_twinning(h, f_calc_func, twin_components,
-            gradient, jacobian_transpose_matching_grad_fc, compute_grad);
+            gradients, jacobian_transpose_matching_grad_fc, compute_grad);
         // extinction correction
-        FloatType exti_k = exti.compute(h, observable, gradient, compute_grad);
-        observable *= exti_k;
-        f_calc_[i_h] = f_calc_func.f_calc*std::sqrt(exti_k);
+        af::tiny<FloatType,2> exti_k = exti.compute(h, observable, compute_grad);
+        observable *= exti_k[0];
+        f_calc_[i_h] = f_calc_func.f_calc*std::sqrt(exti_k[0]);
         observables_[i_h] = observable;
 
         FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
@@ -304,8 +304,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
                                         weight);
         }
         else {
+          int grad_index = exti.get_grad_index();
+          CCTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
+          gradients[grad_index] += exti_k[1];
           normal_equations.add_equation(observable,
-                                        gradient.ref(),
+                                        gradients.ref(),
                                         data[i_h],
                                         weight);
         }
@@ -325,7 +328,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       const miller::index<>& h,
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>& f_calc_func,
       af::shared<cctbx::xray::twin_component<FloatType> *> twin_components,
-      af::shared<FloatType> &gradient,
+      af::shared<FloatType> &gradients,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
       bool compute_grad)
@@ -337,7 +340,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           1-cctbx::xray::sum_twin_fractions(twin_components);
         obs *= one_minus_sum_twin_fractions;
         if (compute_grad) {
-          gradient *= one_minus_sum_twin_fractions;
+          gradients *= one_minus_sum_twin_fractions;
         }
         for (std::size_t i_twin=0;i_twin<twin_components.size();i_twin++) {
           FloatType twin_fraction = twin_components[i_twin]->twin_fraction;
@@ -347,12 +350,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
           f_calc_func.compute(twin_h, compute_grad);
           obs += twin_fraction*f_calc_func.observable;
           if (compute_grad) {
-            af::shared<FloatType> tmp_gradient =
+            af::shared<FloatType> tmp_gradients =
               jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
-            gradient += twin_fraction*tmp_gradient;
+            gradients += twin_fraction*tmp_gradients;
             if (twin_components[i_twin]->grad_twin_fraction) {
-              gradient[twin_components[i_twin]->grad_index] +=
-                f_calc_func.observable - identity_part;
+              int grad_index = twin_components[i_twin]->grad_index;
+              SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
+              gradients[grad_index] += f_calc_func.observable - identity_part;
             }
           }
         }

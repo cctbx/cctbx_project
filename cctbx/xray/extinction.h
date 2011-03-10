@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_EXTINCTION_H
 #define CCTBX_XRAY_EXTINCTION_H
 #include <cctbx/uctbx.h>
-#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/tiny.h>
 #include <scitbx/sparse/matrix.h>
 
 namespace cctbx { namespace xray {
@@ -11,27 +11,33 @@ namespace cctbx { namespace xray {
   struct extinction_correction {
     virtual ~extinction_correction() {}
     // return multiplier for Fc_sq
-    virtual FloatType compute(const miller::index<>& h,
-      FloatType Fc_sq,
-      af::shared<FloatType> &gradient,
-      bool calc_grad) = 0;
+    virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
+      FloatType fc_sq,
+      bool compute_gradient) = 0;
     virtual FloatType& get_value() = 0;
     virtual bool grad_value() const = 0;
+    virtual int get_grad_index() const = 0;
+    static af::tiny<FloatType,2> build_return_value(FloatType v, FloatType g=0) {
+      af::tiny<FloatType,2> rv;
+      rv[0] = v;
+      rv[1] = g;
+      return rv;
+    }
   };
 
   /// dummy extinction implementation
   template <typename FloatType>
   struct dummy_extinction_correction : public extinction_correction<FloatType> {
-    virtual FloatType compute(const miller::index<>& h,
-      FloatType Fc_sq,
-      af::shared<FloatType> &gradient,
-      bool calc_grad) { return 1; }
+    virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
+      FloatType fc_sq,
+      bool compute_gradient) { return build_return_value(1); }
 
     virtual FloatType& get_value() {
       static FloatType value = 0;
       return value;
     }
     virtual bool grad_value() const { return false; }
+    virtual int get_grad_index() const { return -1; }
   };
 
   /* shelx-like extinction correction, shelx manual 7-7
@@ -40,41 +46,41 @@ namespace cctbx { namespace xray {
   */
   template <typename FloatType>
   struct shelx_extinction_correction : extinction_correction<FloatType> {
-    shelx_extinction_correction(uctbx::unit_cell const &_u_cell,
-      FloatType _lambda, FloatType _value)
-      : u_cell(_u_cell),
-        lambda(_lambda),
-        value(_value),
+    shelx_extinction_correction(uctbx::unit_cell const &u_cell_,
+      FloatType wavelength_, FloatType value_)
+      : u_cell(u_cell_),
+        wavelength(wavelength_),
+        value(value_),
         grad_index(-1),
         grad(false) {}
 
-    FloatType compute(const miller::index<>& h,
-      FloatType Fc_sq,
-      af::shared<FloatType> &gradient,
-      bool calc_grad)
+    af::tiny<FloatType,2> compute(miller::index<> const &h,
+      FloatType fc_sq,
+      bool compute_grad)
     {
       const FloatType
-        p = calc_factor(h, Fc_sq),
+        p = calc_factor(h, fc_sq),
         k = 1+p*value,
         k_sqrt = std::sqrt(k);
-      if( calc_grad && grad ) {
-        gradient[grad_index] -= Fc_sq*p/(2*k*k_sqrt); // pow(k,-3/2)
+      if( grad && compute_grad ) {
+        return build_return_value(1/k_sqrt, -fc_sq*p/(2*k*k_sqrt));
       }
-      return 1/k_sqrt;
+      return build_return_value(1/k_sqrt);
     }
     virtual FloatType& get_value() { return value; }
     virtual bool grad_value() const { return grad; }
+    virtual int get_grad_index() const { return grad_index; }
   protected:
     FloatType calc_factor(const miller::index<>& h,
-      FloatType Fc_sq) const
+      FloatType fc_sq) const
     {
-      const FloatType sin_2t = u_cell.sin_two_theta(h, lambda);
-      return Fc_sq*std::pow(lambda,3)/(sin_2t*1000);
+      const FloatType sin_2t = u_cell.sin_two_theta(h, wavelength);
+      return fc_sq*std::pow(wavelength,3)/(sin_2t*1000);
     }
 
-    uctbx::unit_cell const &u_cell;
+    uctbx::unit_cell u_cell;
   public:
-    FloatType lambda, value;
+    FloatType wavelength, value;
     int grad_index;
     bool grad;
   };

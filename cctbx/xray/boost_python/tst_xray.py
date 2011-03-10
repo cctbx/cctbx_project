@@ -1947,8 +1947,32 @@ def exercise_twin_components():
   assert twin_b.grad_twin_fraction == True
   assert xray.sum_twin_fractions(twins) == 0.7
 
+def exercise_extinction_correction():
+  uc = uctbx.unit_cell((13,15,17,85,95,105))
+  wavelength = 1.3
+  extinction_val = 0.134
+  h = (1,2,3)
+  fc_sq = 3.456
+  ec = xray.shelx_extinction_correction(uc, wavelength, value=extinction_val)
+  ec.grad = True
+  c = ec.compute(h, fc_sq, True)
+  # just check that the formulae are the same one...
+  p = 0.001*pow(wavelength,3)*fc_sq/uc.sin_two_theta(h, wavelength)
+  c_v = pow(1+extinction_val*p,-0.5)
+  c_g = -0.5*fc_sq*p*pow(1+p*extinction_val,-1.5)
+  assert approx_equal(c[0], c_v)
+  assert approx_equal(c[1], c_g)
+  #now try numerical differentiation and compare
+  step = 1e-8
+  c_g_n = -ec.compute(h, fc_sq, False)[0]
+  ec.value += step
+  c_g_n += ec.compute(h, fc_sq, False)[0]
+  c_g_n = c_g_n*fc_sq/step
+  assert approx_equal(c[1], c_g_n)
+
 
 def run():
+  exercise_extinction_correction()
   exercise_twin_components()
   exercise_scatterer_flags()
   exercise_set_selected_scatterer_grad_flags()
