@@ -304,9 +304,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
                                         weight);
         }
         else {
-          int grad_index = exti.get_grad_index();
-          CCTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-          gradients[grad_index] += exti_k[1];
+          if (exti.grad_value()) {
+            int grad_index = exti.get_grad_index();
+            SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
+            gradients[grad_index] += exti_k[1];
+          }
           normal_equations.add_equation(observable,
                                         gradients.ref(),
                                         data[i_h],
