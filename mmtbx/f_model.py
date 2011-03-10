@@ -1017,7 +1017,10 @@ class manager(manager_mixin):
          prefix="  ", log=log)
     nuo = self.compute_f_part(params = params, log = log)
     self.passive_arrays.f_part_base = nuo.f_part
-    self.update_core(f_mask      = nuo.f_mask_new.common_set(self.f_obs()),
+    # This is how it should be in theory, but in practice is not the case...
+    #self.update_core(f_mask      = nuo.f_mask_new.common_set(self.f_obs()),
+    #                 f_part_base = nuo.f_part.common_set(self.f_obs()))
+    self.update_core(f_mask      = nuo.f_mask.common_set(self.f_obs()),
                      f_part_base = nuo.f_part.common_set(self.f_obs()))
     show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
          b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
