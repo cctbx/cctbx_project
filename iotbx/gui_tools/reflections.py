@@ -17,7 +17,7 @@ def space_group_as_str (space_group) :
 def unit_cell_as_str (unit_cell, separator=" ") :
   assert isinstance(separator, str) and separator != ""
   if unit_cell is not None :
-    format = separator.join([ "%.3f" for i in range(6) ])
+    format = separator.join([ "%g" for i in range(6) ])
     return format % unit_cell.parameters()
   else :
     return ""
@@ -366,7 +366,7 @@ def get_miller_array_symmetry (miller_array) :
     return (None, None)
   unit_cell = symm.unit_cell()
   if (unit_cell is not None) :
-    uc = "%.5g %.5g %.5g  %.5g %.5g %.5g" % unit_cell.parameters()
+    uc = unit_cell_as_str(unit_cell)
   else :
     uc = None
   space_group = symm.space_group()
