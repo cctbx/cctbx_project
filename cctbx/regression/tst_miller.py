@@ -1714,8 +1714,16 @@ def exercise_shelxl_extinction_correction():
   ms = miller.set(cs, mi, anomalous_flag=True)
   data = flex.complex_double((1+2j, 2+3j))
   fc = miller.array(miller_set=ms, data=data)
-  corr = fc.shelxl_extinction_correction(x=0.44, wavelength=0.71073)
+  exti_val = 0.44
+  wavelength = 0.71073
+  corr = fc.shelxl_extinction_correction(x=exti_val, wavelength=wavelength)
   assert approx_equal(corr, [0.99965712792728978, 0.99906041805376866])
+  ec = xray.shelx_extinction_correction(cs.unit_cell(), value=exti_val,
+                                        wavelength=wavelength)
+  fc_sq = fc.as_intensity_array().data()
+  coef = [math.sqrt(ec.compute(mi[0],fc_sq[0],False)[0]),
+          math.sqrt(ec.compute(mi[1],fc_sq[1],False)[0])]
+  assert approx_equal(corr, coef)
 
 def run(args):
   exercise_shelxl_extinction_correction()

@@ -2909,8 +2909,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     """
     assert self.is_complex_array()
     fc2 = self.as_intensity_array().data()
-    sin_2_theta = flex.sin(
-      uctbx.d_star_sq_as_two_theta(self.d_star_sq().data(), wavelength))
+    sin_2_theta = self.unit_cell().sin_two_theta(self.indices(), wavelength)
     correction = 0.001 * x * fc2 * math.pow(wavelength, 3) / sin_2_theta
     correction += 1
     correction = flex.pow(correction, -1./4)
