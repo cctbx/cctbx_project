@@ -88,13 +88,96 @@ def site_constraints_special_op_simplified(O, fvars, site, p_tolerance):
   fvars.extend(new_fvars)
   return coded_variables
 
+def raise_special_position_constraints_cannot_be_encoded(sos):
+  from iotbx.shelx.errors import error
+  raise error(
+    "The special position constraints %s cannot be encoded using the"
+    " SHELX FVAR mechanism." % str(sos), line=None)
+
 def site_constraints_site_symmetry_ops(O, fvars, site, p_tolerance):
   sos = O.special_op_simplified()
   result = sos.shelx_fvar_encoding(
     fvars=fvars, site=site, p_tolerance=p_tolerance)
   if (result is None):
-    from iotbx.shelx.errors import error
-    raise error(
-      "The special position constraints %s cannot be encoded using the"
-      " SHELX FVAR mechanism." % str(sos), line=None)
+    raise_special_position_constraints_cannot_be_encoded(sos)
   return result
+
+unit_shifts_prioritized = (
+  (0,0,0),
+  (0,0,1),
+  (0,1,0),
+  (1,0,0),
+  (0,0,-1),
+  (0,-1,0),
+  (-1,0,0),
+  (1,1,0),
+  (0,1,1),
+  (1,0,1),
+  (1,-1,0),
+  (0,1,-1),
+  (1,0,-1),
+  (-1,1,0),
+  (0,-1,1),
+  (-1,0,1),
+  (-1,-1,0),
+  (0,-1,-1),
+  (-1,0,-1),
+  (1,1,1),
+  (1,1,-1),
+  (1,-1,1),
+  (-1,1,1),
+  (1,-1,-1),
+  (-1,-1,1),
+  (-1,1,-1),
+  (-1,-1,-1))
+
+def move_sites_if_necessary_for_shelx_fvar_encoding(xray_structure):
+  from cctbx import xray
+  from scitbx import matrix
+  xs = xray_structure
+  scs = xs.scatterers().deep_copy()
+  sstab = xs.site_symmetry_table()
+  for i_sc in xs.special_position_indices():
+    site = scs[i_sc].site
+    ss = sstab.get(i_sc)
+    sos = sos_orig = ss.special_op_simplified()
+    fvars = [None]
+    coded_variables = sos.shelx_fvar_encoding(site=site, fvars=fvars)
+    if (coded_variables is None):
+      site_0 = matrix.col(site).each_mod_short()
+      for u in unit_shifts_prioritized:
+        site = site_0 + matrix.col(u)
+        ss = xs.site_symmetry(site)
+        sos = ss.special_op_simplified()
+        coded_variables = sos.shelx_fvar_encoding(site=site, fvars=fvars)
+        if (coded_variables is not None):
+          scs[i_sc].site = site
+          break
+      else:
+        raise_special_position_constraints_cannot_be_encoded(sos_orig)
+  result = xray.structure(
+    special_position_settings=xs,
+    scatterers=scs,
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero
+      =xs.non_unit_occupancy_implies_min_distance_sym_equiv_zero(),
+    scattering_type_registry=xs.scattering_type_registry())
+  assert result.special_position_indices().all_eq(xs.special_position_indices())
+  return result
+
+def dev_build_shelx76_fvars(xray_structure, validation_tolerance=1e-10):
+  from iotbx.shelx.parsers import decode_variables
+  fvars = [1]
+  encoded_sites = []
+  scs = xray_structure.scatterers()
+  sstab = xray_structure.site_symmetry_table()
+  for i_sc in xray_structure.special_position_indices():
+    site = scs[i_sc].site
+    ss = sstab.get(i_sc)
+    coded_variables = ss.shelx_fvar_encoding(site=site, fvars=fvars)
+    if (validation_tolerance is not None):
+      values, behaviors = decode_variables(
+        free_variable=fvars, coded_variables=coded_variables)
+      mismatch = xray_structure.unit_cell().distance(site, values)
+      assert mismatch < validation_tolerance
+    encoded_sites.append(coded_variables)
+  return fvars, encoded_sites

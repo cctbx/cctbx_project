@@ -25,7 +25,7 @@ def get_master_phil():
         .optional = False
       reset_u_iso = 0.05
         .type = float
-      sites_mod_positive = True
+      sites_mod_short = True
         .type = bool
       optimizers = *dev ls_simple ls_lm shelxl_fm shelxl_cg shelx76
         .type = choice(multi=True)
@@ -50,8 +50,6 @@ def get_master_phil():
       keep_tmp_files = False
         .type = bool
       export_refined = False
-        .type = bool
-      try_special_op_simplifier = False
         .type = bool
 """)
 
@@ -346,6 +344,8 @@ def run_shelx76(
       cod_code,
       f_obs,
       xray_structure,
+      fvars,
+      encoded_sites,
       params,
       reference_structure,
       expected_n_refinable_parameters):
@@ -364,8 +364,10 @@ def run_shelx76(
     assert not op.exists("tmp.ins")
     from cctbx.development import run_shelx76
     run_shelx76.write_shelx76_ls(
-      xray_structure=xray_structure,
       f_obs=f_obs,
+      xray_structure=xray_structure,
+      fvars=fvars,
+      encoded_sites=encoded_sites,
       l_s_parameters=str(params.shelx76_iterations))
     assert op.exists("tmp.ins")
     buffers = easy_run.fully_buffered("shelx76 < tmp.ins > tmp.lst")
@@ -395,50 +397,32 @@ def run_shelx76(
     if (remove_wdir):
       os.rmdir(wdir)
 
-def sx76ss(xs):
-  from iotbx.shelx.parsers import decode_variables
-  scs = xs.scatterers()
-  sstab = xs.site_symmetry_table()
-  for i_sc in xs.special_position_indices():
-    ss = sstab.get(i_sc)
-    sc = scs[i_sc]
-    print "%-10s" % sc.label, numstr(sc.site)
-    sos = ss.special_op_simplified()
-    print sos
-    fvars = [None]
-    coded_variables = sos.shelx_fvar_encoding(site=sc.site, fvars=fvars)
-    if (coded_variables is None):
-      print "ERROR fvar_encoding:", sos
-    else:
-      values, behaviors = decode_variables(
-        free_variable=fvars, coded_variables=coded_variables)
-      print numstr(fvars)
-      print numstr(coded_variables)
-      print numstr(values)
-      mismatch = xs.unit_cell().mod_short_distance(sc.site, values)
-      print "mismatch:", mismatch
-      assert mismatch < 1e-10
-    print
-
 def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
   print "cod_code:", cod_code
-  f_obs, structure_cod = easy_pickle.load(file_name=pickle_file_name)
-  changes = structure_cod.make_scatterer_labels_shelx_compatible_in_place()
-  structure_cod.show_summary().show_scatterers()
-  if (params.try_special_op_simplifier):
-    sx76ss(structure_cod)
-    return
+  f_obs, structure_prep = easy_pickle.load(file_name=pickle_file_name)
+  changes = structure_prep.make_scatterer_labels_shelx_compatible_in_place()
+  if (params.sites_mod_short):
+    structure_prep = structure_prep.sites_mod_short()
+  from iotbx.shelx import fvar_encoding
+  structure_prep = \
+    fvar_encoding.move_sites_if_necessary_for_shelx_fvar_encoding(
+      xray_structure=structure_prep)
+  structure_prep.show_summary().show_scatterers()
   if (len(changes) != 0):
     from libtbx.utils import plural_s
     print "INFO: %d atom name%s changed for compatibility with SHELXL:" \
       % plural_s(len(changes))
     for change in changes:
       print '  changed: "%s" -> "%s"' % change
-  structure_cod.scattering_type_registry(table="it1992").show()
+  structure_prep.scattering_type_registry(table="it1992").show()
+  fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_prep)
+  print "Number of FVARs for special position constraints:", len(fvars)-1
   print "."*79
+  if (len(params.optimizers) == 0):
+    return
   f_calc = f_obs.structure_factors_from_scatterers(
-    xray_structure=structure_cod,
+    xray_structure=structure_prep,
     algorithm="direct",
     cos_sin_table=False).f_calc()
   sel = f_obs.f_obs_f_calc_fan_outlier_selection(f_calc=f_calc)
@@ -459,7 +443,7 @@ def process(params, pickle_file_name):
       n_zero_f_and_s
     f_obs = f_obs.select(~sel)
   f_calc = f_obs.structure_factors_from_scatterers(
-    xray_structure=structure_cod,
+    xray_structure=structure_prep,
     algorithm="direct",
     cos_sin_table=False).f_calc()
   k = f_obs.scale_factor(f_calc=f_calc)
@@ -473,11 +457,7 @@ def process(params, pickle_file_name):
   f_obs.show_comprehensive_summary()
   print "."*79
   #
-  if (params.sites_mod_positive):
-    structure_work = structure_cod.sites_mod_positive()
-  else:
-    structure_work = structure_cod.deep_copy_scatterers()
-  structure_work.scattering_type_registry(table="it1992")
+  structure_work = structure_prep.deep_copy_scatterers()
   def cc_r1(label):
     show_cc_r1(label, f_obs, structure_work)
   #
@@ -579,6 +559,8 @@ def process(params, pickle_file_name):
       cod_code=cod_code,
       f_obs=f_obs,
       xray_structure=structure_shelx76,
+      fvars=fvars,
+      encoded_sites=encoded_sites,
       params=params,
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)

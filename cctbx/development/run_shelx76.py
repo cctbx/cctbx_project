@@ -2,7 +2,7 @@ from __future__ import division
 from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from cctbx.development.fmt_utils import dot5fdot_list, dot6gdot, dot6gdot_list
+from cctbx.development.fmt_utils import dot6fdot_list, dot6gdot, dot6gdot_list
 from cctbx.development.run_shelx import FIX, NOFIX, HKLF
 from iotbx.shelx.write_ins import LATT_SYMM
 from libtbx.test_utils import is_below_limit
@@ -36,7 +36,13 @@ def sfac_unit(lapp, xray_structure):
   lapp("UNIT " + " ".join(unit))
   return sfac_indices
 
-def atoms(lapp, sfac_indices, xray_structure):
+def atoms(lapp, sfac_indices, xray_structure, encoded_sites):
+  spis = xray_structure.special_position_indices()
+  if (encoded_sites is None):
+    enc_dict = {}
+  else:
+    assert len(encoded_sites) == spis.size()
+    enc_dict = dict(zip(spis, encoded_sites))
   ss = xray_structure.space_group_info().structure_seminvariants()
   if (ss.number_of_continuous_allowed_origin_shifts() == 0):
     caosh_flags = None
@@ -57,15 +63,26 @@ def atoms(lapp, sfac_indices, xray_structure):
     st = sc.scattering_type
     lbl = "%s%02d" % (st, i_sc+1)
     sfac = sfac_indices[st]
+    enc_site = enc_dict.get(i_sc)
     coor = []
     if (caosh_i_sc is None or i_sc != caosh_i_sc):
-      for x in sc.site: coor.append(NOFIX(x))
+      if (enc_site is None):
+        for x in sc.site: coor.append(NOFIX(x))
+      else:
+        coor = enc_site
     else:
-      for x,f in zip(sc.site, caosh_flags):
-        if (f): fix = FIX
-        else:   fix = NOFIX
-        coor.append(fix(x))
-    coor = dot5fdot_list(coor)
+      if (enc_site is None):
+        for x,f in zip(sc.site, caosh_flags):
+          if (f): fix = FIX
+          else:   fix = NOFIX
+          coor.append(fix(x))
+      else:
+        for x,f in zip(enc_site, caosh_flags):
+          if (f):
+            coor.append(FIX(x))
+          else:
+            coor.append(x)
+    coor = dot6fdot_list(coor)
     sof = FIX(sc.weight())
     if (not sc.flags.use_u_aniso()):
       lapp("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),
@@ -79,8 +96,15 @@ def atoms(lapp, sfac_indices, xray_structure):
         dot6gdot_list(u[:2])))
       lapp("    %s" % dot6gdot_list((u[2], u[5], u[4], u[3])))
 
-def write_shelx76_ls(xray_structure, f_obs, titl=None, l_s_parameters="0"):
+def write_shelx76_ls(
+      f_obs,
+      xray_structure,
+      titl=None,
+      l_s_parameters="0",
+      fvars=None,
+      encoded_sites=None):
   assert xray_structure.scatterers().size() > 0
+  assert (fvars is None) == (encoded_sites is None)
   lines = []
   lapp = lines.append
   if (titl is None):
@@ -91,15 +115,19 @@ def write_shelx76_ls(xray_structure, f_obs, titl=None, l_s_parameters="0"):
   LATT_SYMM(s, xray_structure.space_group(), decimal=True)
   lapp(s.getvalue()[:-1])
   sfac_indices = sfac_unit(lapp, xray_structure)
-  lapp("FVAR 1.")
+  if (fvars is None):
+    lapp("FVAR 1.0")
+  else:
+    for fv in fvars:
+      lapp("FVAR %.6f" % fv)
   lapp("L.S. %s" % l_s_parameters)
-  atoms(lapp, sfac_indices, xray_structure)
+  atoms(lapp, sfac_indices, xray_structure, encoded_sites)
   HKLF(lapp, f_obs, skip_zeros=True)
   lapp("END")
   print >> open("tmp.ins", "w"), "\n".join(lines)
 
 def run_shelx76(titl, xray_structure, f_obs):
-  write_shelx76_ls(xray_structure, f_obs, titl)
+  write_shelx76_ls(f_obs, xray_structure, titl)
   shelx_out = easy_run.fully_buffered(command="shelx76 < tmp.ins") \
     .raise_if_errors() \
     .stdout_lines
