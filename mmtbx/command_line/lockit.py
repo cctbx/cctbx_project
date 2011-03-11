@@ -1026,7 +1026,10 @@ def run_coordinate_refinement(
       best_info.fgm_region_cc = None
   return best_info
 
-def run(args):
+def run(args,log=None):
+  if log is None:
+    log = sys.stdout
+
   show_times = libtbx.utils.show_times(time_start="now")
   master_phil = get_master_phil()
   import iotbx.utils
@@ -1036,9 +1039,9 @@ def run(args):
     input_types=("mtz", "pdb", "cif"))
   work_phil = master_phil.fetch(sources=input_objects["phil"])
   work_phil.show()
-  print
-  print "#phil __OFF__"
-  print
+  print >> log
+  print >> out, "#phil __OFF__"
+  print >> out
   work_params = work_phil.extract()
   #
   assert len(input_objects["mtz"]) == 1
@@ -1056,26 +1059,26 @@ def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   for file_obj in input_objects["cif"]:
-    print "Processing CIF file: %s" % show_string(file_obj.file_name)
+    print >> log, "Processing CIF file: %s" % show_string(file_obj.file_name)
     for srv in [mon_lib_srv, ener_lib]:
       srv.process_cif_object(
         cif_object=file_obj.file_content,
         file_name=file_obj.file_name)
   if (len(input_objects["cif"]) != 0):
-    print
+    print >> log
   #
   assert len(input_objects["pdb"]) == 1 # TODO not implemented
   file_obj = input_objects["pdb"][0]
   input_pdb_file_name = file_obj.file_name
-  print "Crystal symmetry (from map file):"
+  print >> log, "Crystal symmetry (from map file):"
   map_coeffs.crystal_symmetry().show_summary(prefix="  ")
   pdb_crystal_symmetry = file_obj.file_content.crystal_symmetry()
   if (    pdb_crystal_symmetry is not None
       and not pdb_crystal_symmetry.is_similar_symmetry(
             map_coeffs.crystal_symmetry())):
-    print "  NOTE: Crystal symmetry from PDB file is different:"
+    print >>log, "  NOTE: Crystal symmetry from PDB file is different:"
     pdb_crystal_symmetry.show_summary(prefix="    Ignored: ")
-  print
+  print >> log
   processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
@@ -1095,16 +1098,16 @@ def run(args):
   grm = processed_pdb_file.geometry_restraints_manager(
     params_edits=work_params.geometry_restraints.edits,
     params_remove=work_params.geometry_restraints.remove)
-  print
+  print >> log
   sys.stdout.flush()
   #
   def show_completeness(annotation):
-    print "Completeness of %s map coefficients:" % annotation
+    print >>log, "Completeness of %s map coefficients:" % annotation
     map_coeffs.setup_binner(auto_binning=True)
     if (map_coeffs.binner().n_bins_used() > 12):
       map_coeffs.setup_binner(n_bins=12)
     map_coeffs.completeness(use_binning=True).show(prefix="  ")
-    print
+    print >> log
     sys.stdout.flush()
   show_completeness("input")
   map_coeffs_input = map_coeffs
@@ -1115,11 +1118,11 @@ def run(args):
   d_max_apply, d_min_apply = None, None
   if (low_res is not None and low_res < d_max):
     d_max_apply = low_res
-    print "Applying low resolution cutoff to map coefficients:" \
+    print >> log , "Applying low resolution cutoff to map coefficients:" \
       " d_max=%.6g" % d_max_apply
   if (high_res is not None and high_res > d_min):
     d_min_apply = high_res
-    print "Applying high resolution cutoff to map coefficients:" \
+    print >> log, "Applying high resolution cutoff to map coefficients:" \
       " d_min=%.6g" % d_min_apply
   if (d_max_apply is not None or d_min_apply is not None):
     map_coeffs = map_coeffs.resolution_filter(
@@ -1129,7 +1132,7 @@ def run(args):
         d_max=d_max_apply, d_min=d_min_apply)
     if (d_min_apply is not None):
       d_min = d_min_apply
-    print
+    print >> log
     sys.stdout.flush()
   #
   if (map_coeffs is not map_coeffs_input):
@@ -1153,8 +1156,8 @@ def run(args):
   #
   real_space_gradients_delta = \
     d_min * work_params.real_space_gradients_delta_resolution_factor
-  print "real_space_gradients_delta: %.6g" % real_space_gradients_delta
-  print
+  print >> log, "real_space_gradients_delta: %.6g" % real_space_gradients_delta
+  print >> log
   sys.stdout.flush()
   #
   if (work_params.rotamer_score_and_choose_best.run):
@@ -1226,16 +1229,16 @@ def run(args):
     pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     sites_cart = pdb_atoms.extract_xyz()
     site_labels = [atom.id_str() for atom in pdb_atoms]
-    print "Writing file: %s" % show_string(file_name)
+    print >> log, "Writing file: %s" % show_string(file_name)
     sys.stdout.flush()
     f = open(file_name, "w")
     grm.show_sorted(sites_cart=sites_cart, site_labels=site_labels, f=f)
     del f
-    print
+    print >> log
   #
   show_times()
   sys.stdout.flush()
   return best_info
 
 if (__name__ == "__main__"):
-  run(args=sys.argv[1:])
+  run(args=sys.argv[1:],out=None)
