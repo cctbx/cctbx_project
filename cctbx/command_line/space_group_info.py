@@ -13,8 +13,9 @@ def run(args):
     print "  Lattice centering operations:", gr.n_ltr()
     if (gr.n_ltr() != 1):
       print "  Symmetry operations in primitive setting:", gr.order_p()
-    if (gr.is_centric()):
-      print "  Center of inversion:", gr(0, 1, 0)
+    if (gr.is_centric()): s = gr(0, 1, 0)
+    else:                 s = None
+    print "  Center of inversion:", s
     print "  Dimensionality of continuous allowed origin shifts:", \
       sgi.number_of_continuous_allowed_origin_shifts()
     ssi_vm = sgi.structure_seminvariants().vectors_and_moduli()
