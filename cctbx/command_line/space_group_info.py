@@ -18,7 +18,7 @@ def run(args):
     print "  Dimensionality of continuous allowed origin shifts:", \
       sgi.number_of_continuous_allowed_origin_shifts()
     ssi_vm = sgi.structure_seminvariants().vectors_and_moduli()
-    print "  Structure-structure_seminvariant vectors and moduli:", \
+    print "  Structure-seminvariant vectors and moduli:", \
       len(ssi_vm)
     if (len(ssi_vm) != 0):
       for vm in ssi_vm:
