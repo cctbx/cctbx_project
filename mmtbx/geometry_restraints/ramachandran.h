@@ -6,6 +6,7 @@
 //#include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
 
+#include <mmtbx/geometry_restraints/rotamer.h>
 #include <mmtbx/error.h>
 #include <cctbx/geometry_restraints/dihedral.h>
 #include <scitbx/array_family/versa.h>
@@ -15,7 +16,8 @@
 #include <cmath>
 #include <iostream>
 
-namespace mmtbx { namespace ramachandran {
+namespace mmtbx { namespace geometry_restraints {
+
   namespace af = scitbx::af;
   using cctbx::geometry_restraints::dihedral;
   namespace gr = cctbx::geometry_restraints;
@@ -132,14 +134,18 @@ namespace mmtbx { namespace ramachandran {
       compute_gradients (
         af::ref<scitbx::vec3<double> > const& gradient_array,
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        af::tiny<unsigned, 5> const& i_seqs,
+        rotamer_proxy const& proxy,
         double weight=1.0,
         double epsilon=0.1)
       {
         MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
         MMTBX_ASSERT(epsilon > 0.0);
+        if (! proxy.have_phi_psi) {
+          return 0;
+        }
         af::tiny<scitbx::vec3<double>, 4> phi_sites;
         af::tiny<scitbx::vec3<double>, 4> psi_sites;
+        af::tiny<unsigned, 5> const i_seqs = proxy.phi_psi_i_seqs;
         for (unsigned i = 0; i < 4; i++) {
           phi_sites[i] = sites_cart[i_seqs[i]];
           psi_sites[i] = sites_cart[i_seqs[i+1]];
@@ -169,58 +175,6 @@ namespace mmtbx { namespace ramachandran {
         return residual * weight;
       }
 
-      double
-      compute_gradients_finite_differences (
-        af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        af::tiny<unsigned, 5> const& i_seqs,
-        double weight=1.0,
-        double epsilon=0.01)
-      {
-        MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
-        MMTBX_ASSERT(epsilon > 0.0);
-        af::tiny<scitbx::vec3<double>, 4> phi_sites;
-        af::tiny<scitbx::vec3<double>, 4> psi_sites;
-        for (unsigned k = 0; k < 4; k++) {
-          phi_sites[k] = sites_cart[i_seqs[k]];
-          psi_sites[k] = sites_cart[i_seqs[k+1]];
-        }
-        dihedral phi(phi_sites, 0, 1.0);
-        dihedral psi(psi_sites, 0, 1.0);
-        double residual = get_energy(phi.angle_model, psi.angle_model);
-        for (unsigned k = 0; k < 5; k++) {
-          std::size_t i_seq = i_seqs[k];
-          for (unsigned u = 0; u < 3; u++) {
-            if (k < 4) {
-              phi_sites[k][u] -= epsilon;
-            }
-            if (k > 0) {
-              psi_sites[k-1][u] -= epsilon;
-            }
-            dihedral phi1(phi_sites, 0, 1.0);
-            dihedral psi1(psi_sites, 0, 1.0);
-            if (k < 4) {
-              phi_sites[k][u] += epsilon * 2;
-            }
-            if (k > 0) {
-              psi_sites[k-1][u] += epsilon * 2;
-            }
-            dihedral phi2(phi_sites, 0, 1.0);
-            dihedral psi2(psi_sites, 0, 1.0);
-            if (k < 4) {
-              phi_sites[k][u] -= epsilon;
-            }
-            if (k > 0) {
-              psi_sites[k-1][u] -= epsilon;
-            }
-            double r1 = get_energy(phi1.angle_model, psi1.angle_model);
-            double r2 = get_energy(phi2.angle_model, psi2.angle_model);
-            gradient_array[i_seq][u] += weight * ((r2-r1) / (epsilon*2));
-          }
-        }
-        return residual * weight;
-      }
-
     private :
       double get_point (
         int phi,
@@ -238,22 +192,23 @@ namespace mmtbx { namespace ramachandran {
   };
 
   // QUANTA-like harmonic restraints (rama_potential=oldfield)
-  class target_and_gradients
+  class rama_target_and_gradients
   {
     public:
-      target_and_gradients (
+      rama_target_and_gradients (
         af::ref<scitbx::vec3<double> > const& gradient_array,
         double const& phi_target,
         double const& psi_target,
         double const& weight,
         af::const_ref<scitbx::vec3<double> > const& rama_table,
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        af::tiny<unsigned, 5> const& i_seqs)
+        rotamer_proxy const& proxy)
       {
         MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
         gradients_.resize(sites_cart.size(), scitbx::vec3<double>(0,0,0));
         af::tiny<scitbx::vec3<double>, 4> phi_sites;
         af::tiny<scitbx::vec3<double>, 4> psi_sites;
+        af::tiny<unsigned, 5> const i_seqs = proxy.phi_psi_i_seqs;
         for (unsigned i = 0; i < 4; i++) {
           phi_sites[i] = sites_cart[i_seqs[i]];
           psi_sites[i] = sites_cart[i_seqs[i+1]];
@@ -283,8 +238,9 @@ namespace mmtbx { namespace ramachandran {
   af::tiny<FloatType, 3>
     target_phi_psi(af::const_ref<scitbx::vec3<double> > const& rama_table,
                    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-                   af::tiny<unsigned, 5> const& i_seqs)
+                   rotamer_proxy const& proxy)
   {
+    af::tiny<unsigned, 5> const i_seqs = proxy.phi_psi_i_seqs;
     af::tiny<scitbx::vec3<double>, 4> phi_sites;
     af::tiny<scitbx::vec3<double>, 4> psi_sites;
     for (unsigned i = 0; i < 4; i++) {
@@ -325,4 +281,4 @@ namespace mmtbx { namespace ramachandran {
     return af::tiny<double, 3> (phi_t,psi_t,dist_to_allowed) ;
   };
 
-}} // namespace mmtbx::ramachandran
+}} // namespace mmtbx::geometry_restraints

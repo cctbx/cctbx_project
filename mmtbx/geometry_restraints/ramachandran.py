@@ -7,6 +7,19 @@ from libtbx import adopt_init_args
 import sys
 import os
 
+if libtbx.env.has_module("rosetta_adaptbx") :
+  potential_phil = """\
+   rama_potential = *oldfield emsley rosetta
+    .type = choice(multi=False)
+    .short_caption = Ramachandran potential
+    .caption = Oldfield Coot Rosetta"""
+else :
+  potential_phil = """\
+   rama_potential = *oldfield emsley
+    .type = choice(multi=False)
+    .short_caption = Ramachandran potential
+    .caption = Oldfield Coot"""
+
 master_phil = libtbx.phil.parse("""
   rama_weight = 1.0
     .type = float
@@ -15,15 +28,7 @@ master_phil = libtbx.phil.parse("""
   scale_allowed = 1.0
     .type = float
     .short_caption = Rescale allowed region pseudo-energy by
-  use_finite_differences = False
-    .type = bool
-    .help = Used for testing - not suitable for real structures.
-    .short_caption = Use finite differences (DEVELOPERS ONLY)
-    .expert_level = 3
-   rama_potential = *oldfield emsley
-    .type = choice(multi=False)
-    .short_caption = Ramachandran potential
-    .caption = Oldfield Coot
+  %s
   oldfield
     .short_caption = Oldfield potential parameters
   {
@@ -40,7 +45,7 @@ master_phil = libtbx.phil.parse("""
       .type = float
       .expert_level = 2
   }
-""")
+""" % potential_phil)
 
 refine_opt_params = libtbx.phil.parse("""
 #  min_allowed_d_min = 3.0
@@ -64,8 +69,8 @@ def load_tables (params=None) :
   if (params.scale_allowed <= 0.0) :
     raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
       "a positive number (current value: %g)." % params.scale_allowed)
-  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-  from mmtbx_ramachandran_restraints_ext import lookup_table
+  ext = boost.python.import_ext("mmtbx_rotamer_restraints_ext")
+  from mmtbx_rotamer_restraints_ext import lookup_table
   from scitbx.array_family import flex
   tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
@@ -82,16 +87,6 @@ def load_tables (params=None) :
     t = lookup_table(data, 180, params.scale_allowed)
     tables[residue_type] = t
   return tables
-
-class proxy (object) :
-  def __init__ (self, i_seqs, residue_type, residue_name) :
-    assert (len(i_seqs) == 5)
-    self.i_seqs = i_seqs
-    self.residue_type = residue_type
-    # XXX the Rosetta AA lookup function will crash if passed a non-standard
-    # residue name, so it is validated first if Rosetta is being used
-    self.residue_name = residue_name
-    self.ignore_flag = None
 
 def show_histogram(data, n_slots, log):
   from scitbx.array_family import flex
@@ -248,6 +243,10 @@ class lookup_manager (object) :
     adopt_init_args(self, locals())
     if(self.params.rama_potential == "oldfield"):
       self.tables = ramachandran_plot_data()
+    elif (self.params.rama_potential == "rosetta") :
+      import rosetta_adaptbx
+      rosetta_adaptbx.init()
+      self.tables = rosetta_adaptbx.ext.ramachandran()
     else :
       self.tables = load_tables(params)
 
@@ -258,8 +257,8 @@ class lookup_manager (object) :
                                unit_cell=None) :
     from scitbx.array_family import flex
     import boost.python
-    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-    from mmtbx_ramachandran_restraints_ext import target_and_gradients, target_phi_psi
+    ext = boost.python.import_ext("mmtbx_rotamer_restraints_ext")
+    from mmtbx_rotamer_restraints_ext import rama_target_and_gradients, target_phi_psi
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     target = 0
@@ -273,58 +272,60 @@ class lookup_manager (object) :
         r = target_phi_psi(
           rama_table     = rama_table,
           sites_cart     = sites_cart,
-          i_seqs         = proxy.i_seqs)
+          proxy          = proxy)
         if(op.weight is None):
           weight = 1./(op.esd**2)*min(r[2],op.dist_weight_max)*op.weight_scale
         else: weight = op.weight
-        tg = target_and_gradients(
+        tg = rama_target_and_gradients(
            gradient_array = gradient_array,
            phi_target     = r[0],
            psi_target     = r[1],
            weight         = weight,
            rama_table     = rama_table,
            sites_cart     = sites_cart,
-           i_seqs         = proxy.i_seqs)
+           proxy          = proxy)
         target += tg.target()
       return target
+    elif (self.params.rama_potential == "rosetta") :
+      for proxy in proxies :
+        target += self.tables.residue_target_and_gradients(
+          gradient_array=gradient_array,
+          sites_cart=sites_cart,
+          proxy=proxy,
+          weight=self.params.rama_weight)
     else:
       assert (self.params.rama_weight >= 0.0)
       for proxy in proxies :
         rama_table = self.tables[proxy.residue_type]
-        if self.params.use_finite_differences :
-          target += rama_table.compute_gradients_finite_differences(
-            gradient_array=gradient_array,
-            sites_cart=sites_cart,
-            i_seqs=proxy.i_seqs,
-            weight=self.params.rama_weight,
-            epsilon=0.001)
-        else :
-          target += rama_table.compute_gradients(
-            gradient_array=gradient_array,
-            sites_cart=sites_cart,
-            i_seqs=proxy.i_seqs,
-            weight=self.params.rama_weight,
-            epsilon=0.001)
+        target += rama_table.compute_gradients(
+          gradient_array=gradient_array,
+          sites_cart=sites_cart,
+          proxy=proxy,
+          weight=self.params.rama_weight,
+          epsilon=0.001)
     return target
 
 def extract_proxies (pdb_hierarchy,
                      atom_selection=None,
                      log=sys.stdout) :
   import mmtbx.rotamer
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_rotamer_restraints_ext")
   angles = mmtbx.rotamer.extract_phi_psi(
     pdb_hierarchy=pdb_hierarchy,
     atom_selection=atom_selection)
-  proxies = []
+  proxies = ext.shared_rotamer_proxy()
   for angle in angles :
     residue_name = angle.residue_name
     if (residue_name == "MSE") :
       residue_name = "MET"
-    phi_psi = proxy(i_seqs=angle.i_seqs,
-                    residue_type=angle.residue_type,
-                    residue_name=residue_name)
-    proxies.append(phi_psi)
+    proxy = ext.rotamer_proxy(
+      residue_name=residue_name,
+      residue_type=angle.residue_type,
+      phi_psi=angle.i_seqs)
+    proxies.append(proxy)
   print >> log, ""
-  print >> log, "  %d Ramachandran restraints generated." % len(proxies)
+  print >> log, "  %d Ramachandran restraints generated." % proxies.size()
   return proxies
 
 def process_refinement_settings (
