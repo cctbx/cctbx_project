@@ -686,9 +686,10 @@ def run_refinement(structure_ideal, structure_shake, params, f_obs=None):
   print "rms difference:", \
     structure_ideal.rms_difference(other=structure_shake)
   print
-  if (params.show_distances):
+  sdt = params.show_distances_threshold
+  if (sdt > 0):
     print "structure_shake inter-atomic distances:"
-    structure_shake.show_distances(distance_cutoff=3)
+    structure_shake.show_distances(distance_cutoff=sdt)
     print
   if (f_obs is None):
     f_obs = structure_ideal.structure_factors(
@@ -704,6 +705,7 @@ def run_refinement(structure_ideal, structure_shake, params, f_obs=None):
 
 def get_master_phil(
       iteration_limit=50,
+      show_distances_threshold=0,
       grads_mean_sq_threshold=1e-6,
       additional_phil_string=""):
   return libtbx.phil.parse("""
@@ -713,8 +715,8 @@ def get_master_phil(
       .type = float
     shake_adp_spread = 20
       .type = float
-    show_distances = False
-      .type = bool
+    show_distances_threshold = %(show_distances_threshold)s
+      .type = float
     target_type = *ls cc
       .type = choice
     target_obs_type = *F I

@@ -68,6 +68,26 @@ class cod_data(object):
         return False
     return True
 
+  def have_close_contacts(O, min_distance):
+    if (min_distance <= 0):
+      return False
+    xs = O.xray_structure
+    sel = xs.hd_selection()
+    no_h = xs.select(selection=~sel)
+    pat = no_h.pair_asu_table(distance_cutoff=min_distance)
+    pst = pat.extract_pair_sym_table()
+    from cctbx import crystal
+    from cctbx.array_family import flex
+    dists = crystal.get_distances(
+      pair_sym_table=pst,
+      orthogonalization_matrix=no_h.unit_cell().orthogonalization_matrix(),
+      sites_frac=no_h.sites_frac())
+    print "Close contacts:", dists.size()
+    if (dists.size() != 0):
+      pat.show_distances(sites_frac=no_h.sites_frac())
+      return True
+    return False
+
   def have_sys_absent(O):
     return (O.f_obs.sys_absent_flags().data().count(True) != 0)
 
@@ -129,6 +149,7 @@ class cod_data(object):
 
   def is_useful(O, co):
     if (O.have_zero_occupancies()): return False
+    if (O.have_close_contacts(co.min_distance)): return False
     if (not O.have_shelxl_compatible_scattering_types()): return False
     if (O.have_sys_absent()): return False
     if (O.have_redundant_data()): return False
@@ -192,6 +213,10 @@ def run(args):
     usage=" ".join(command_call) + " [options] [cod_code...]")
     .enable_chunk(easy_all=True)
     .enable_multiprocessing()
+    .option(None, "--min_distance",
+      type="float",
+      default=0.5,
+      metavar="FLOAT")
     .option(None, "--f_obs_f_calc_plot",
       action="store_true",
       default=False)
