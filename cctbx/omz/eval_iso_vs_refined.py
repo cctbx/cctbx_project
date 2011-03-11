@@ -1,6 +1,9 @@
 from __future__ import division
+import sys, os
+op = os.path
 
-def run(args):
+def eval_logs(file_names, out=None):
+  if (out is None): out = sys.stdout
   from scitbx.array_family import flex
   gaps = flex.double()
   infos = flex.std_string()
@@ -10,7 +13,7 @@ def run(args):
   n_abort = 0
   seconds = []
   space_groups_by_cod_code = {}
-  for file_name in args:
+  for file_name in file_names:
     cod_code = None
     n_scatt = None
     iso = None
@@ -67,28 +70,52 @@ def run(args):
           seconds.append(secs)
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
-  print "Number of results:", gaps.size()
-  print "Stale, Exceptions, Tracebacks, Abort:", \
+  print >> out, "Number of results:", gaps.size()
+  print >> out, "Stale, Exceptions, Tracebacks, Abort:", \
     n_stale, n_exception, n_traceback, n_abort
   if (len(seconds) != 0):
-    print "min, max seconds:", min(seconds), max(seconds)
-  print
+    print >> out, "min, max seconds:", min(seconds), max(seconds)
+  print >> out
   def stats(f):
     n = f.count(True)
     return "%6d = %5.2f %%" % (n, 100 * n / max(1,gaps.size()))
-  print "gaps below -0.05:", stats(gaps < -0.05)
-  print "gaps below -0.01:", stats(gaps < -0.01)
-  print "gaps below  0.01:", stats(gaps <  0.01)
-  print "gaps above  0.01:", stats(gaps >  0.01)
-  print "gaps above  0.05:", stats(gaps >  0.05)
-  print
-  print "Histogram of gaps:"
-  flex.histogram(gaps, n_slots=10).show()
-  print
+  print >> out, "gaps below -0.05:", stats(gaps < -0.05)
+  print >> out, "gaps below -0.01:", stats(gaps < -0.01)
+  print >> out, "gaps below  0.01:", stats(gaps <  0.01)
+  print >> out, "gaps above  0.01:", stats(gaps >  0.01)
+  print >> out, "gaps above  0.05:", stats(gaps >  0.05)
+  print >> out
+  print >> out, "Histogram of gaps:"
+  flex.histogram(gaps, n_slots=10).show(f=out)
+  print >> out
   infos = infos.select(perm)
   for info in infos:
-    print info
+    print >> out, info
+
+def run(args):
+  file_names = []
+  dir_names = []
+  for arg in args:
+    if (op.isfile(arg)):
+      file_names.append(arg)
+    elif (op.isdir(arg)):
+      dir_names.append(arg)
+  assert len(file_names) == 0 or len(dir_names) == 0
+  if (len(file_names) != 0):
+    eval_logs(file_names)
+    return
+  for dir_name in dir_names:
+    file_names = []
+    for node in sorted(os.listdir(dir_name)):
+      if (node.startswith("log")):
+        path = op.join(dir_name, node)
+        if (op.isfile(path)):
+          file_names.append(path)
+    if (len(file_names) != 0):
+      outfn = op.join(dir_name, "stats")
+      print outfn
+      sys.stdout.flush()
+      eval_logs(file_names, out=open(outfn, "w"))
 
 if (__name__ == "__main__"):
-  import sys
   run(args=sys.argv[1:])
