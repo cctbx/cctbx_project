@@ -237,11 +237,11 @@ class manager(object):
             force_update_f_mask = True)
           if fcalc_total == None:
             fcalc_total = self.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total = self.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total = self.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr = 1
           else:
             fcalc_total += self.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total += self.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total += self.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr += 1
         if x == total_number_xrs-1:
           self.fmodel_ens.update(
@@ -355,11 +355,11 @@ class manager(object):
                                                 force_update_f_mask = True)
           if fcalc_total == None:
             fcalc_total = self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total = self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total = self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr = 1
           else:
             fcalc_total += self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total += self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total += self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr += 1
         if x == len(best_xrs)-1:
           self.ta_obj.fmodel_ens.update(
@@ -398,11 +398,11 @@ class manager(object):
           print  >> self.ta_obj.log, self.ta_obj.fmodel_ens.r_free()
           if fcalc_total == None:
             fcalc_total = self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total = self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total = self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr = 1
           else:
             fcalc_total += self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total += self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total += self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr += 1
         else:
           self.ta_obj.fmodel_ens.update(
@@ -435,11 +435,11 @@ class manager(object):
             force_update_f_mask = True)
           if fcalc_total == None:
             fcalc_total = self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total = self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total = self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr = 1
           else:
             fcalc_total += self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total += self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total += self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr += 1
         if x == total_number_xrs-1:
           self.ta_obj.fmodel_ens.update(
@@ -472,11 +472,11 @@ class manager(object):
             force_update_f_mask = True)
           if fcalc_total == None:
             fcalc_total = self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total = self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total = self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr = 1
           else:
             fcalc_total += self.ta_obj.fmodel_ens.f_calc().data().deep_copy()
-            fmask_total += self.ta_obj.fmodel_ens.f_mask().data().deep_copy()
+            fmask_total += self.ta_obj.fmodel_ens.f_mask()[0].data().deep_copy()
             cntr += 1
         if x == total_number_xrs-1:
           self.ta_obj.fmodel_ens.update(
