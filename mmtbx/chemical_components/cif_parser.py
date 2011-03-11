@@ -130,9 +130,9 @@ def run(filename):
       for i in merge:
         if lines[i][1:].strip():
           if lines[i][0] in [";"]:
-            lines[i-1] += '"%s"' % lines[i][1:].strip()
+            lines[i-1] += ' "%s"' % lines[i][1:].strip()
           else:
-            lines[i-1] += '"%s"' % lines[i].strip()
+            lines[i-1] += ' "%s"' % lines[i].strip()
         del lines[i]
 
   line_iter = iter(lines)
