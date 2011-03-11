@@ -16,6 +16,7 @@ op = os.path
 def get_master_phil():
   return omz.dev.get_master_phil(
     iteration_limit=100,
+    show_distances_threshold=0.5,
     grads_mean_sq_threshold=1e-6,
     additional_phil_string="""\
       max_atoms = 99
@@ -457,14 +458,22 @@ def process(params, pickle_file_name):
   print "."*79
   #
   structure_work = structure_prep.deep_copy_scatterers()
-  def cc_r1(label):
-    show_cc_r1(label, f_obs, structure_work)
-  #
-  cc_r1("cod")
-  #
   sel = structure_work.hd_selection()
   print "Removing hydrogen atoms:", sel.count(True)
   structure_work = structure_work.select(selection=~sel)
+  sdt = params.show_distances_threshold
+  if (sdt > 0):
+    print "Distances smaller than %.6g A:" % sdt
+    structure_work.show_distances(distance_cutoff=sdt)
+    print "."*79
+  #
+  fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_work)
+  print "Number of FVARs for special position constraints:", len(fvars)-1
+  print "."*79
+  #
+  show_cc_r1("prep", f_obs, structure_prep)
+  def cc_r1(label):
+    show_cc_r1(label, f_obs, structure_work)
   cc_r1("no_h")
   structure_work.convert_to_isotropic()
   cc_r1("iso")
@@ -481,10 +490,6 @@ def process(params, pickle_file_name):
     print "rms difference after shift_sites_in_place: %.3f" \
       % structure_iso.rms_difference(structure_work)
     cc_r1("shift_xyz")
-  #
-  fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_work)
-  print "Number of FVARs for special position constraints:", len(fvars)-1
-  print "."*79
   #
   if (params.max_atoms is not None):
     n = structure_work.scatterers().size()
