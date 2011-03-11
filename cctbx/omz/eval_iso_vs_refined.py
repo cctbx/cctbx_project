@@ -9,6 +9,7 @@ def run(args):
   n_traceback = 0
   n_abort = 0
   seconds = []
+  space_groups_by_cod_code = {}
   for file_name in args:
     cod_code = None
     n_scatt = None
@@ -21,6 +22,11 @@ def run(args):
       if (line.startswith("cod_code: ")):
         cod_code = line[10:]
         iso = None
+      elif (line.startswith("Space group: ")):
+        assert cod_code is not None
+        space_group = line.split(None, 2)[2]
+        tabulated = space_groups_by_cod_code.setdefault(cod_code, space_group)
+        assert tabulated == space_group
       elif (line.startswith("Number of scatterers: ")):
         assert cod_code is not None
         n_scatt = int(line.split(": ",1)[1])
@@ -39,7 +45,8 @@ def run(args):
         gap = float(ref.split()[1]) - float(iso.split()[1])
         gaps.append(gap)
         infos.append(" : ".join([
-          cod_code, iso, ref, "%.3f" % gap, str(n_scatt)]))
+          cod_code, iso, ref, "%.3f" % gap, str(n_scatt),
+          space_groups_by_cod_code[cod_code]]))
         cod_code = None
         n_scatt = None
         iso = None
