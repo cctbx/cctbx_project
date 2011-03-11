@@ -52,6 +52,8 @@ def get_master_phil():
         .type = bool
       export_refined = False
         .type = bool
+      wdir_root = None
+        .type = str
 """)
 
 def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
@@ -161,7 +163,9 @@ def run_shelxl(
   else:
     raise RuntimeError("Unknown mode: " + mode)
   cwd_orig = os.getcwd()
-  wdir = "wdir_%s" % cod_code
+  wdir = "wdir_%s_shelxl_%s_%s" % (cod_code, mode, os.getpid())
+  if (params.wdir_root is not None):
+    wdir = op.join(params.wdir_root, wdir)
   wdir_is_new = False
   if (not op.isdir(wdir)):
     os.mkdir(wdir)
@@ -339,7 +343,8 @@ def run_shelxl(
   finally:
     os.chdir(cwd_orig)
     if (remove_wdir):
-      os.rmdir(wdir)
+      try: os.rmdir(wdir)
+      except Exception: pass
 
 def run_shelx76(
       cod_code,
@@ -351,7 +356,9 @@ def run_shelx76(
       reference_structure,
       expected_n_refinable_parameters):
   cwd_orig = os.getcwd()
-  wdir = "wdir_%s" % cod_code
+  wdir = "wdir_%s_shelx76_%s" % (cod_code, os.getpid())
+  if (params.wdir_root is not None):
+    wdir = op.join(params.wdir_root, wdir)
   wdir_is_new = False
   if (not op.isdir(wdir)):
     os.mkdir(wdir)
@@ -396,7 +403,8 @@ def run_shelx76(
   finally:
     os.chdir(cwd_orig)
     if (remove_wdir):
-      os.rmdir(wdir)
+      try: os.rmdir(wdir)
+      except Exception: pass
 
 def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
@@ -622,9 +630,22 @@ def run(args):
   print "Number of pickle files:", len(all_pickles)
   print
   #
+  if (params.wdir_root is not None):
+    import time
+    for i_trial in xrange(10):
+      if (op.exists(params.wdir_root)):
+        time.sleep(0.01)
+        break
+      try:
+        os.makedirs(params.wdir_root)
+      except Exception:
+        time.sleep(0.5)
+    assert op.isdir(params.wdir_root)
+  #
   n_caught = 0
   for i_pickle,pickle_file_name in enumerate(all_pickles):
     if (i_pickle % command_line.chunk.n != command_line.chunk.i): continue
+    tm = user_plus_sys_time()
     try:
       process(params, pickle_file_name)
     except KeyboardInterrupt:
@@ -638,7 +659,7 @@ def run(args):
       sys.stderr.flush()
       n_caught += 1
     else:
-      print "done_with: %s" % pickle_file_name
+      print "done_with: %s (%.2f seconds)" % (pickle_file_name, tm.elapsed())
       print
       sys.stdout.flush()
   print
