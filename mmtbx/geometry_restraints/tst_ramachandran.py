@@ -1,5 +1,6 @@
 
 from __future__ import division
+from scitbx.array_family import flex #import dependency
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
 from mmtbx.validation.ramalyze import ramalyze
@@ -9,7 +10,6 @@ from iotbx import file_reader
 import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
-from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from libtbx import group_args
@@ -129,6 +129,7 @@ ATOM     61  CZ3 TRP A   4       0.960   7.272   2.810  1.00  0.00           C
 ATOM     62  CH2 TRP A   4       0.788   6.958   1.455  1.00  0.00           C
 END
 """
+  residuals = [0.00024512, 307.616444, 294.913714]
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
@@ -151,28 +152,12 @@ END
     gradients_fd = flex.vec3_double(sites_cart_1.size(), (0,0,0))
     gradients_an = flex.vec3_double(sites_cart_1.size(), (0,0,0))
     params = ramachandran.master_phil.fetch().extract()
-    params.use_finite_differences = False
     restraints_helper = ramachandran.lookup_manager(params)
-    residual_fd = restraints_helper.restraints_residual_sum(
-      sites_cart=sites_cart_1,
-      proxies=proxies,
-      gradient_array=gradients_fd)
-    params.use_finite_differences = True
-    #restraints_helper = ramachandran.generic_restraints_helper(params)
     residual_an = restraints_helper.restraints_residual_sum(
       sites_cart=sites_cart_1,
       proxies=proxies,
       gradient_array=gradients_an)
-    assert approx_equal(residual_fd, residual_an, eps=0.01)
-    if verbose :
-      print "peptide %d gradients" % (i+1)
-    for g1, g2 in zip(gradients_fd, gradients_an) :
-      if (g1 != (0.0,0.0,0.0)) or (g2 != (0.0,0.0,0.0)) :
-        if verbose :
-          print ("  (%.2f, %.2f, %.2f)" % tuple(g1)), \
-                ("(%.2f, %.2f, %.2f)" % tuple(g2))
-        for u in range(3) :
-          assert approx_equal(g1[u], g2[u], eps=0.01)
+    assert approx_equal(residual_an, residuals[i], eps=0.00001)
   if verbose :
     print ""
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
