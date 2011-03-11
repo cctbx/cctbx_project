@@ -692,7 +692,7 @@ class manager(manager_mixin):
       b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
                     b_cart[3],      b_cart[4],      b_cart[5]]
       self.update(b_cart = b_cart_new)
-      self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
+      self.update(b_sol = self.b_sol() + b_adj)
       self.xray_structure.shift_us(b_shift = b_adj)
       b_min = min(self.b_sol(),
         self.xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
@@ -2027,6 +2027,8 @@ class manager(manager_mixin):
         i_r_free_flags = 2
       else:
         i_r_free_flags = 3
+      im1 = i_r_free_flags+5
+      im2 = im1 + (n_masks*2)
       for values in zip(*arrays):
         print >> out, "INDE %d %d %d" % values[0]
         print >> out, " FOBS= %.6g" % values[1],
@@ -2034,11 +2036,10 @@ class manager(manager_mixin):
           print >> out, " SIGFOBS= %.6g" % values[2],
         print >> out, \
           " R_FREE_FLAGS= %d FMODEL= %.6g %.6g\n" \
-          " FCALC= %.6g %.6g" % values[i_r_free_flags:5],
-        print >>out, masks_format % values[i_r_free_flags+5:(n_masks*2)],
+          " FCALC= %.6g %.6g" % values[i_r_free_flags:im1],
+        print >>out, masks_format % values[im1:im2],
         print >>out, " FBULK= %.6g %.6g\n" \
-          " FB_CART= %.6g FOM= %.6g ALPHA= %.6g BETA= %.6g"  \
-            % values[i_r_free_flags+5+(n_masks*2):]
+          " FB_CART= %.6g FOM= %.6g ALPHA= %.6g BETA= %.6g" % values[im2:]
       if (file_name is not None):
         out.close()
     else:
