@@ -416,8 +416,7 @@ def process(params, pickle_file_name):
     for change in changes:
       print '  changed: "%s" -> "%s"' % change
   structure_prep.scattering_type_registry(table="it1992").show()
-  fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_prep)
-  print "Number of FVARs for special position constraints:", len(fvars)-1
+  fvar_encoding.dev_build_shelx76_fvars(structure_prep) # only an exercise
   print "."*79
   if (len(params.optimizers) == 0):
     return
@@ -482,6 +481,10 @@ def process(params, pickle_file_name):
     print "rms difference after shift_sites_in_place: %.3f" \
       % structure_iso.rms_difference(structure_work)
     cc_r1("shift_xyz")
+  #
+  fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_work)
+  print "Number of FVARs for special position constraints:", len(fvars)-1
+  print "."*79
   #
   if (params.max_atoms is not None):
     n = structure_work.scatterers().size()
