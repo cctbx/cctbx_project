@@ -175,7 +175,12 @@ class asu_mask(object):
     if(self.mask_params.n_radial_shells > 1):
       # number of shell radii is one less than number of shells
       # last shell is of unknown radius
-      shell_rads = [self.mask_params.radial_shell_width]*(self.mask_params.n_radial_shells-1)
+      shell_rads = [self.mask_params.radial_shell_width] * \
+        (self.mask_params.n_radial_shells-1)
+      # TODO: Should first shell width be: 
+      # shell_rads[0] -= self.mask_params.solvent_radius
+      # if( shell_rads[0]<0. ):
+      #   shell_rads[0] = 0.
       shell_rads[0] = 0.
       self.asu_mask.compute(sites_frac, atom_radii, shell_rads)
     else:
@@ -200,6 +205,7 @@ class manager(object):
     self._f_mask = None
     self._f_mask_twin = None
     self.solvent_content_via_mask = None
+    self.layer_volume_fractions = None
     self.sites_cart = None
     if(xray_structure is not None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
