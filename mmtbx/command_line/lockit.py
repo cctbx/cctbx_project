@@ -1040,8 +1040,8 @@ def run(args,log=None):
   work_phil = master_phil.fetch(sources=input_objects["phil"])
   work_phil.show()
   print >> log
-  print >> out, "#phil __OFF__"
-  print >> out
+  print >> log, "#phil __OFF__"
+  print >> log
   work_params = work_phil.extract()
   #
   assert len(input_objects["mtz"]) == 1
