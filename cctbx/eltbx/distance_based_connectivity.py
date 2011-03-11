@@ -1,3 +1,5 @@
+from stdlib import math as smath
+
 expected_bond_lengths_by_element_pair = {
   # based on elbow/chemistry/BondLengths.py rev. 42
   # max of averages, rounded to one decimal
@@ -46,3 +48,39 @@ expected_bond_lengths_by_element_pair = {
 ('O', 'W'): 2.0,
 ('P', 'S'): 1.7,
 ('S', 'S'): 2.0}
+
+
+def build_edge_list(sites_cart, elements,slop=0.2):
+  result = []
+  for ii in range(len(sites_cart)):
+    x1,y1,z1 = sites_cart[ii]
+    for jj in range(ii+1,len(sites_cart)):
+      x2,y2,z2 = sites_cart[jj]
+      x2 = x2-x1
+      y2 = y2-y1
+      z2 = z2-z1
+      dd = smath.sqrt( x2*x2+y2*y2+z2*z2 )
+      expected_dist =  expected_bond_lengths_by_element_pair.get( (elements[ii], elements[jj]), False )
+      if not expected_dist:
+        expected_dist = expected_bond_lengths_by_element_pair.get( (elements[jj], elements[ii]), False )
+      if not expected_dist:
+        expected_dist = 1.7
+
+      if dd <= expected_dist+slop:
+        result.append( (ii,jj) )
+      print dd, expected_dist
+
+  return result
+
+
+def tst_build_edge_list():
+  sites_cart = [ (0,0,0), (0,0,1.53), (0,0,3.06) ]
+  elements  =  [ 'C', 'O', 'N' ]
+  tmp = build_edge_list(sites_cart, elements)
+  assert (0,1) in tmp
+  assert (1,2) in tmp
+  assert (0,2) not in tmp
+
+if __name__ == "__main__":
+  tst_build_edge_list()
+  print "OK"
