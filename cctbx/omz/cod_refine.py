@@ -48,6 +48,8 @@ def get_master_phil():
         .type = int
       shelx76_iterations = 12
         .type = int
+      apply_iteration_limit_to_all = False
+        .type = bool
       keep_tmp_files = False
         .type = bool
       export_refined = False
@@ -155,11 +157,17 @@ def run_shelxl(
       reference_structure,
       expected_n_refinable_parameters):
   if (mode == "fm"):
-    fm_cycles = params.shelxl_fm_iterations
+    if (params.apply_iteration_limit_to_all):
+      fm_cycles = params.iteration_limit
+    else:
+      fm_cycles = params.shelxl_fm_iterations
     cg_cycles = None
   elif (mode == "cg"):
     fm_cycles = None
-    cg_cycles = params.shelxl_cg_iterations
+    if (params.apply_iteration_limit_to_all):
+      cg_cycles = params.iteration_limit
+    else:
+      cg_cycles = params.shelxl_cg_iterations
   else:
     raise RuntimeError("Unknown mode: " + mode)
   cwd_orig = os.getcwd()
@@ -355,6 +363,10 @@ def run_shelx76(
       params,
       reference_structure,
       expected_n_refinable_parameters):
+  if (params.apply_iteration_limit_to_all):
+    ls_cycles = params.iteration_limit
+  else:
+    ls_cycles = params.shelx76_iterations
   cwd_orig = os.getcwd()
   wdir = "wdir_%s_shelx76_%s" % (cod_code, os.getpid())
   if (params.wdir_root is not None):
@@ -376,7 +388,7 @@ def run_shelx76(
       xray_structure=xray_structure,
       fvars=fvars,
       encoded_sites=encoded_sites,
-      l_s_parameters=str(params.shelx76_iterations))
+      l_s_parameters=str(ls_cycles))
     assert op.exists("tmp.ins")
     buffers = easy_run.fully_buffered("shelx76 < tmp.ins > tmp.lst")
     buffers.raise_if_errors_or_output()
