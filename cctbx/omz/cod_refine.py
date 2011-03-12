@@ -56,6 +56,14 @@ def get_master_phil():
         .type = bool
       wdir_root = None
         .type = str
+      suppress_sorting_of_pickle_files = False
+        .type = bool
+      random_subset {
+        size = None
+          .type = int
+        seed = 0
+          .type = int
+      }
 """)
 
 def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
@@ -629,18 +637,55 @@ def run(args):
   print
   params = work_phil.extract()
   #
+  qi_dict = {}
   all_pickles = []
   for arg in remaining_args:
     if (op.isdir(arg)):
       for node in sorted(os.listdir(arg)):
-        if (not node.endswith(".pickle")): continue
-        all_pickles.append(op.join(arg, node))
+        if (node.endswith(".pickle")):
+          all_pickles.append(op.join(arg, node))
+        elif (node.startswith("qi_") and len(node) == 10):
+          qi = open(op.join(arg, node)).read().splitlines()
+          if (len(qi) == 1):
+            cod_code = node[3:]
+            quick_info = eval(qi[0])
+            assert cod_code not in qi_dict
+            qi_dict[cod_code] = quick_info
     elif (op.isfile(arg)):
       all_pickles.append(arg)
     else:
       raise RuntimeError("Not a file or directory: %s" % arg)
   print "Number of pickle files:", len(all_pickles)
+  print "Number of quick_infos:", len(qi_dict)
+  if (len(qi_dict) != 0 and not params.suppress_sorting_of_pickle_files):
+    print "Sorting pickle files, largest n_atoms * n_refl first."
+    def sort_largest_first():
+      buffer = []
+      for i,path in enumerate(all_pickles):
+        cod_code = op.basename(path).split(".",1)[0]
+        qi = qi_dict.get(cod_code)
+        if (qi is None): nn = 2**31
+        else:            nn = qi[0] * qi[1] * qi[2]
+        buffer.append((nn, -i, path))
+      buffer.sort()
+      buffer.reverse()
+      result = []
+      for elem in buffer:
+        result.append(elem[-1])
+      return result
+    all_pickles = sort_largest_first()
   print
+  #
+  rss = params.random_subset.size
+  if (rss is not None and rss > 0):
+    seed = params.random_subset.seed
+    print "Selecting subset of %d pickle files using random seed %d" % (
+      rss, seed)
+    mt = flex.mersenne_twister(seed=seed)
+    perm = mt.random_permutation(size=len(all_pickles))[:rss]
+    flags = flex.bool(len(all_pickles), False).set_selected(perm, True)
+    all_pickles = flex.select(all_pickles, permutation=flags.iselection())
+    print
   #
   if (params.wdir_root is not None):
     from libtbx.path import makedirs_race
