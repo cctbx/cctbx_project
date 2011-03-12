@@ -49,7 +49,8 @@ expected_bond_lengths_by_element_pair = {
 ('P', 'S'): 1.7,
 ('S', 'S'): 2.0}
 
-
+# XXX cctbx.crystal.distance_based_connectivity.build_simple_two_way_bond_sets
+# XXX should be used instead
 def build_edge_list(sites_cart, elements,slop=0.2):
   result = []
   for ii in range(len(sites_cart)):
@@ -60,18 +61,18 @@ def build_edge_list(sites_cart, elements,slop=0.2):
       y2 = y2-y1
       z2 = z2-z1
       dd = smath.sqrt( x2*x2+y2*y2+z2*z2 )
-      expected_dist =  expected_bond_lengths_by_element_pair.get( (elements[ii], elements[jj]), False )
+      expected_dist =  expected_bond_lengths_by_element_pair.get(
+        (elements[ii], elements[jj]), False )
       if not expected_dist:
-        expected_dist = expected_bond_lengths_by_element_pair.get( (elements[jj], elements[ii]), False )
+        expected_dist = expected_bond_lengths_by_element_pair.get(
+          (elements[jj], elements[ii]), False )
       if not expected_dist:
         expected_dist = 1.7
 
       if dd <= expected_dist+slop:
         result.append( (ii,jj) )
-      print dd, expected_dist
 
   return result
-
 
 def tst_build_edge_list():
   sites_cart = [ (0,0,0), (0,0,1.53), (0,0,3.06) ]
