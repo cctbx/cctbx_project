@@ -297,5 +297,6 @@ def exercise_other () :
 if __name__ == "__main__" :
   exercise_basic()
   exercise_lbfgs_simple(("--verbose" in sys.argv) or ("-v" in sys.argv))
-  exercise_lbfgs_big(("--verbose" in sys.argv) or ("-v" in sys.argv))
+  if ("--full" in sys.argv) :
+    exercise_lbfgs_big(("--verbose" in sys.argv) or ("-v" in sys.argv))
   print "OK"
