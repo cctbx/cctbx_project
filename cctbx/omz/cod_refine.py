@@ -631,16 +631,8 @@ def run(args):
   print
   #
   if (params.wdir_root is not None):
-    import time
-    for i_trial in xrange(10):
-      if (op.exists(params.wdir_root)):
-        time.sleep(0.01)
-        break
-      try:
-        os.makedirs(params.wdir_root)
-      except Exception:
-        time.sleep(0.5)
-    assert op.isdir(params.wdir_root)
+    from libtbx.path import makedirs_race
+    makedirs_race(path=params.wdir_root)
   #
   n_caught = 0
   for i_pickle,pickle_file_name in enumerate(all_pickles):

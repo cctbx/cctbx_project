@@ -115,3 +115,26 @@ def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
       return name
   else:
     raise AssertionError
+
+def makedirs_race(
+      path=None,
+      max_trials=10,
+      delay_if_exists=0.001,
+      delay_after_exception=0.5):
+  if (path is None):
+    path = random_new_directory_name()
+  import time
+  for i_trial in xrange(max_trials):
+    if (op.exists(path)):
+      if (delay_if_exists is not None):
+        # in case the OS needs time to finalize makedirs from another process
+        time.sleep(delay_if_exists)
+      break
+    try:
+      os.makedirs(path)
+    except Exception:
+      if (delay_after_exception is not None):
+        time.sleep(delay_after_exception)
+  if (not op.isdir(path)):
+    raise RuntimeError("makedirs_race(%s) failure." % path)
+  return path
