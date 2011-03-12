@@ -1,6 +1,5 @@
-
 from __future__ import division
-from scitbx.array_family import flex #import dependency
+from scitbx.array_family import flex
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
 from mmtbx.validation.ramalyze import ramalyze

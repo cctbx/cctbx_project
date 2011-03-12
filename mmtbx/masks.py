@@ -177,7 +177,7 @@ class asu_mask(object):
       # last shell is of unknown radius
       shell_rads = [self.mask_params.radial_shell_width] * \
         (self.mask_params.n_radial_shells-1)
-      # TODO: Should first shell width be: 
+      # TODO: Should first shell width be:
       # shell_rads[0] -= self.mask_params.solvent_radius
       # if( shell_rads[0]<0. ):
       #   shell_rads[0] = 0.
