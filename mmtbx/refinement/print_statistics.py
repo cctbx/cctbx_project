@@ -259,6 +259,13 @@ class refinement_monitor(object):
     self.betas           .append(flex.mean_default(beta.data(),0)           )
     self.foms            .append(flex.mean_default(fmodel.figures_of_merit(),0))
     self.phers           .append(flex.mean_default(fmodel.phase_errors(),0) )
+    geom = model.geometry_statistics(ignore_hd = True,
+                                     ignore_side_chain = True,
+                                     )
+    self.main_chain_geometry_statistics = geom
+    if False:
+      print "Main chain stats"
+      geom.show()
     geom = model.geometry_statistics(ignore_hd = not self.neutron_refinement)
     if(geom is not None):
       self.as_ave          .append(geom.a_mean                      )

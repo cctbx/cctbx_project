@@ -1241,4 +1241,4 @@ def run(args,log=None):
   return best_info
 
 if (__name__ == "__main__"):
-  run(args=sys.argv[1:],out=None)
+  run(args=sys.argv[1:],log=None)
