@@ -5,6 +5,9 @@ op = os.path
 def eval_logs(file_names, out=None):
   if (out is None): out = sys.stdout
   from scitbx.array_family import flex
+  from libtbx.str_utils import format_value
+  min_secs_epoch = None
+  max_secs_epoch = None
   gaps = flex.double()
   infos = flex.std_string()
   n_stale = 0
@@ -54,6 +57,8 @@ def eval_logs(file_names, out=None):
         n_scatt = None
         iso = None
       else:
+        def get_secs_epoch():
+          return float(line.split()[-2][1:])
         if (line.find("EXCEPTION") >= 0):
           n_exception += 1
         if (line.startswith("Traceback")):
@@ -68,13 +73,24 @@ def eval_logs(file_names, out=None):
             assert fld.endswith(" seconds total)")
             secs = float(fld.split()[0])
           seconds.append(secs)
+        elif (line.startswith("TIME BEGIN cod_refine: ")):
+          s = get_secs_epoch()
+          if (min_secs_epoch is None or s < min_secs_epoch): min_secs_epoch = s
+        elif (line.startswith("TIME END cod_refine: ")):
+          s = get_secs_epoch()
+          if (max_secs_epoch is None or s > max_secs_epoch): max_secs_epoch = s
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
   print >> out, "Number of results:", gaps.size()
   print >> out, "Stale, Exceptions, Tracebacks, Abort:", \
     n_stale, n_exception, n_traceback, n_abort
   if (len(seconds) != 0):
-    print >> out, "min, max seconds:", min(seconds), max(seconds)
+    if (min_secs_epoch is not None and max_secs_epoch is not None):
+      g = max_secs_epoch - min_secs_epoch
+    else:
+      g = None
+    print >> out, "min, max, global seconds: %.2f %.2f %s" % (
+      min(seconds), max(seconds), format_value("%.2f", g))
   print >> out
   def stats(f):
     n = f.count(True)
@@ -91,6 +107,7 @@ def eval_logs(file_names, out=None):
   infos = infos.select(perm)
   for info in infos:
     print >> out, info
+  return (min_secs_epoch, max_secs_epoch)
 
 def run(args):
   file_names = []
@@ -101,21 +118,32 @@ def run(args):
     elif (op.isdir(arg)):
       dir_names.append(arg)
   assert len(file_names) == 0 or len(dir_names) == 0
+  min_max_secs_epoch = [None, None]
+  def track_times(min_max):
+    a, b = min_max_secs_epoch[0], min_max[0]
+    if (b is not None):
+      if (a is None or a > b): min_max_secs_epoch[0] = b
+    a, b = min_max_secs_epoch[1], min_max[1]
+    if (b is not None):
+      if (a is None or a < b): min_max_secs_epoch[1] = b
   if (len(file_names) != 0):
-    eval_logs(file_names)
-    return
-  for dir_name in dir_names:
-    file_names = []
-    for node in sorted(os.listdir(dir_name)):
-      if (node.startswith("log")):
-        path = op.join(dir_name, node)
-        if (op.isfile(path)):
-          file_names.append(path)
-    if (len(file_names) != 0):
-      outfn = op.join(dir_name, "stats")
-      print outfn
-      sys.stdout.flush()
-      eval_logs(file_names, out=open(outfn, "w"))
+    track_times(eval_logs(file_names))
+  else:
+    for dir_name in dir_names:
+      file_names = []
+      for node in sorted(os.listdir(dir_name)):
+        if (node.startswith("log")):
+          path = op.join(dir_name, node)
+          if (op.isfile(path)):
+            file_names.append(path)
+      if (len(file_names) != 0):
+        outfn = op.join(dir_name, "stats")
+        print outfn
+        sys.stdout.flush()
+        track_times(eval_logs(file_names, out=open(outfn, "w")))
+  if (min_max_secs_epoch.count(None) == 0):
+    print "global seconds: %.2f" % (
+      min_max_secs_epoch[1] - min_max_secs_epoch[0])
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

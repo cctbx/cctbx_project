@@ -6,7 +6,7 @@ import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
 from libtbx import easy_run
 from libtbx import easy_pickle
-from libtbx.utils import user_plus_sys_time
+from libtbx.utils import date_and_time, user_plus_sys_time
 from libtbx import Auto
 from cStringIO import StringIO
 import traceback
@@ -622,6 +622,9 @@ def run(args):
     return
   co = command_line.options
   #
+  print "TIME BEGIN cod_refine:", date_and_time()
+  print
+  #
   master_phil = get_master_phil()
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil)
@@ -715,6 +718,8 @@ def run(args):
   print "Number of exceptions caught:", n_caught
   #
   show_times()
+  print
+  print "TIME END cod_refine:", date_and_time()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
