@@ -252,7 +252,8 @@ def run(args):
   if (co.at_least_one_special_position):
     pickle_dir += "_special"
   if (not op.isdir(pickle_dir)):
-    os.makedirs(pickle_dir)
+    from libtbx.path import makedirs_race
+    makedirs_race(path=pickle_dir)
   n_caught = 0
   for i_pair,pair in enumerate(hkl_cif):
     cod_code = op.basename(pair[0])[:-4]
