@@ -275,6 +275,29 @@ def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
     resolution_factor=resolution_factor,
     force=force)
 
+def ccp4_map_from_coeffs (miller_array, output_file, pdb_file=None,
+    xray_structure=None, grid_resolution_factor=0.33) :
+  assert miller_array.is_complex_array()
+  import mmtbx.maps
+  from iotbx import file_reader
+  map_phil = libtbx.phil.parse("""map.file_name = %s """ % output_file)
+  if (xray_structure is None) :
+    if (pdb_file is not None) and (os.path.isfile(pdb_file)) :
+      pdb_in = file_reader.any_file(pdb_file)
+      assert (pdb_in.file_type == "pdb")
+      xray_structure = pdb_in.file_object.xray_structure_simple()
+  sites_cart = None
+  if (xray_structure is not None) :
+    sites_cart = xray_structure.sites_cart()
+  fft_map = miller_array.fft_map(resolution_factor=grid_resolution_factor)
+  fft_map.apply_sigma_scaling()
+  write_ccp4_map(
+    sites_cart=sites_cart,
+    unit_cell=miller_array.unit_cell(),
+    map_data=fft_map.real_map(),
+    n_real=fft_map.n_real(),
+    file_name=output_file)
+
 def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
   import iotbx.ccp4_map
