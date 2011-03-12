@@ -56,6 +56,8 @@ class cod_data(object):
       crystal_symmetry=combined_cs)
     O.xray_structure.show_summary().show_scatterers()
     print "."*79
+    #
+    O.non_hydrogen_selection = (~O.xray_structure.hd_selection()).iselection()
 
   def have_zero_occupancies(O):
     return not O.xray_structure.scatterers().extract_occupancies().all_ne(0)
@@ -71,20 +73,18 @@ class cod_data(object):
   def have_close_contacts(O, min_distance):
     if (min_distance <= 0):
       return False
-    xs = O.xray_structure
-    sel = xs.hd_selection()
-    no_h = xs.select(selection=~sel)
-    pat = no_h.pair_asu_table(distance_cutoff=min_distance)
+    xs = O.xray_structure.select(selection=O.non_hydrogen_selection)
+    pat = xs.pair_asu_table(distance_cutoff=min_distance)
     pst = pat.extract_pair_sym_table()
     from cctbx import crystal
     from cctbx.array_family import flex
     dists = crystal.get_distances(
       pair_sym_table=pst,
-      orthogonalization_matrix=no_h.unit_cell().orthogonalization_matrix(),
-      sites_frac=no_h.sites_frac())
+      orthogonalization_matrix=xs.unit_cell().orthogonalization_matrix(),
+      sites_frac=xs.sites_frac())
     print "Close contacts:", dists.size()
     if (dists.size() != 0):
-      pat.show_distances(sites_frac=no_h.sites_frac())
+      pat.show_distances(sites_frac=xs.sites_frac())
       return True
     return False
 
@@ -148,6 +148,7 @@ class cod_data(object):
     return True
 
   def is_useful(O, co):
+    if (O.non_hydrogen_selection.size() > co.max_atoms): return False
     if (O.have_zero_occupancies()): return False
     if (O.have_close_contacts(co.min_distance)): return False
     if (not O.have_shelxl_compatible_scattering_types()): return False
@@ -159,6 +160,12 @@ class cod_data(object):
         and O.xray_structure.special_position_indices().size() == 0):
       return False
     return True
+
+  def quick_info(O):
+    return (
+      O.non_hydrogen_selection.size(),
+      O.f_obs.indices().size(),
+      O.f_obs.d_min())
 
 def build_hkl_cif(cod_codes):
   cod_svn = os.environ.get("COD_SVN_WORKING_COPY")
@@ -213,6 +220,10 @@ def run(args):
     usage=" ".join(command_call) + " [options] [cod_code...]")
     .enable_chunk(easy_all=True)
     .enable_multiprocessing()
+    .option(None, "--max_atoms",
+      type="int",
+      default=99,
+      metavar="INT")
     .option(None, "--min_distance",
       type="float",
       default=0.5,
@@ -275,6 +286,8 @@ def run(args):
         easy_pickle.dump(
           file_name="%s/%s.pickle" % (pickle_dir, cod_code),
           obj=(cd.f_obs, cd.xray_structure))
+        print >> open("%s/qi_%s" % (pickle_dir, cod_code), "w"), \
+          cd.quick_info()
       else:
         print "filtering out:", cod_code
       print "done_with:", cod_code
