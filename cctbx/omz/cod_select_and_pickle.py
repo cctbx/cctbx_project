@@ -164,6 +164,7 @@ class cod_data(object):
   def quick_info(O):
     return (
       O.non_hydrogen_selection.size(),
+      O.f_obs.space_group().order_p(),
       O.f_obs.indices().size(),
       O.f_obs.d_min())
 
