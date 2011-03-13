@@ -58,6 +58,10 @@ class cod_data(object):
     print "."*79
     #
     O.non_hydrogen_selection = (~O.xray_structure.hd_selection()).iselection()
+    #
+    O.edge_list = O.process_geom_bond(model_cif)
+    if (O.edge_list is not None):
+      print "len(edge_list):", len(O.edge_list), cod_code
 
   def have_zero_occupancies(O):
     return not O.xray_structure.scatterers().extract_occupancies().all_ne(0)
@@ -160,6 +164,29 @@ class cod_data(object):
         and O.xray_structure.special_position_indices().size() == 0):
       return False
     return True
+
+  def process_geom_bond(O, model_cif):
+    xs = O.xray_structure
+    scs = xs.scatterers()
+    i_seq_by_lbl = dict(zip(scs.extract_labels(), range(scs.size())))
+    if (len(i_seq_by_lbl) != scs.size()):
+      return None
+    edge_set = set()
+    for cif_block in model_cif.model().values():
+      lbl_lists = [cif_block.get("_geom_bond_atom_site_label_"+s)
+        for s in "12"]
+      if (lbl_lists.count(None) != 0):
+        return None
+      if (len(lbl_lists[0]) != len(lbl_lists[1])):
+        return None
+      for lbl_pair in zip(*lbl_lists):
+        i_seqs = tuple(sorted([i_seq_by_lbl.get(lbl) for lbl in lbl_pair]))
+        if (i_seqs.count(None) != 0):
+          return None
+        if (i_seqs in edge_set):
+          return None
+        edge_set.add(i_seqs)
+    return sorted(edge_set)
 
   def quick_info(O):
     return (
@@ -286,7 +313,7 @@ def run(args):
       if (cd.is_useful(co)):
         easy_pickle.dump(
           file_name="%s/%s.pickle" % (pickle_dir, cod_code),
-          obj=(cd.f_obs, cd.xray_structure))
+          obj=(cd.f_obs, cd.xray_structure, cd.edge_list))
         print >> open("%s/qi_%s" % (pickle_dir, cod_code), "w"), \
           cd.quick_info()
       else:

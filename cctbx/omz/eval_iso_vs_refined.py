@@ -11,12 +11,14 @@ def eval_logs(file_names, out=None):
   gaps = flex.double()
   infos = flex.std_string()
   n_stale = 0
+  n_unfinished = 0
   n_exception = 0
   n_traceback = 0
   n_abort = 0
   seconds = []
   space_groups_by_cod_code = {}
   for file_name in file_names:
+    have_time_end = False
     cod_code = None
     n_scatt = None
     iso = None
@@ -79,11 +81,14 @@ def eval_logs(file_names, out=None):
         elif (line.startswith("TIME END cod_refine: ")):
           s = get_secs_epoch()
           if (max_secs_epoch is None or s > max_secs_epoch): max_secs_epoch = s
+          have_time_end = True
+    if (not have_time_end):
+      n_unfinished += 1
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
   print >> out, "Number of results:", gaps.size()
-  print >> out, "Stale, Exceptions, Tracebacks, Abort:", \
-    n_stale, n_exception, n_traceback, n_abort
+  print >> out, "Stale, Unfinished, Exceptions, Tracebacks, Abort:", \
+    n_stale, n_unfinished, n_exception, n_traceback, n_abort
   if (len(seconds) != 0):
     if (min_secs_epoch is not None and max_secs_epoch is not None):
       g = max_secs_epoch - min_secs_epoch
@@ -107,7 +112,7 @@ def eval_logs(file_names, out=None):
   infos = infos.select(perm)
   for info in infos:
     print >> out, info
-  return (min_secs_epoch, max_secs_epoch)
+  return (len(file_names), n_unfinished, min_secs_epoch, max_secs_epoch)
 
 def run(args):
   file_names = []
@@ -118,12 +123,17 @@ def run(args):
     elif (op.isdir(arg)):
       dir_names.append(arg)
   assert len(file_names) == 0 or len(dir_names) == 0
+  n_files_accu = [0]
+  n_unfinished_accu = [0]
   min_max_secs_epoch = [None, None]
-  def track_times(min_max):
-    a, b = min_max_secs_epoch[0], min_max[0]
+  def track_times(stats):
+    n_files, n_unfinished, min_secs, max_secs = stats
+    n_unfinished_accu[0] += n_unfinished
+    n_files_accu[0] += n_files
+    a, b = min_max_secs_epoch[0], min_secs
     if (b is not None):
       if (a is None or a > b): min_max_secs_epoch[0] = b
-    a, b = min_max_secs_epoch[1], min_max[1]
+    a, b = min_max_secs_epoch[1], max_secs
     if (b is not None):
       if (a is None or a < b): min_max_secs_epoch[1] = b
   if (len(file_names) != 0):
@@ -138,12 +148,19 @@ def run(args):
             file_names.append(path)
       if (len(file_names) != 0):
         outfn = op.join(dir_name, "stats")
-        print outfn
+        print outfn, len(file_names)
         sys.stdout.flush()
         track_times(eval_logs(file_names, out=open(outfn, "w")))
   if (min_max_secs_epoch.count(None) == 0):
     print "global seconds: %.2f" % (
       min_max_secs_epoch[1] - min_max_secs_epoch[0])
+  print "Number of files:", n_files_accu[0]
+  n = n_unfinished_accu[0]
+  if (n == 0):
+    print "unfinished:", n
+  else:
+    print "UNFINISHED:", n
+  sys.stdout.flush()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

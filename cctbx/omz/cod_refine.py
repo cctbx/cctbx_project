@@ -56,13 +56,24 @@ def get_master_phil():
         .type = bool
       wdir_root = None
         .type = str
-      suppress_sorting_of_pickle_files = False
-        .type = bool
+      sorting_of_pickle_files = *down up
+        .type = choice
+        .optional = True
       random_subset {
         size = None
           .type = int
         seed = 0
           .type = int
+      }
+      tardy_samples {
+        iq = None
+          .type = int
+        qmin = -180
+          .type = float
+        qmax = 180
+          .type = float
+        qstep = 3
+          .type = float
       }
 """)
 
@@ -429,7 +440,8 @@ def run_shelx76(
 def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
   print "cod_code:", cod_code
-  f_obs, structure_prep = easy_pickle.load(file_name=pickle_file_name)
+  f_obs, structure_prep, edge_list = easy_pickle.load(
+    file_name=pickle_file_name)
   changes = structure_prep.make_scatterer_labels_shelx_compatible_in_place()
   if (params.sites_mod_short):
     structure_prep = structure_prep.sites_mod_short()
@@ -494,6 +506,18 @@ def process(params, pickle_file_name):
     print "Distances smaller than %.6g A:" % sdt
     structure_work.show_distances(distance_cutoff=sdt)
     print "."*79
+  #
+  if (params.tardy_samples.iq is not None):
+    from cctbx.omz import tardy_adaptor
+    print
+    tardy_adaptor.sample_e_pot(
+      id_code=cod_code,
+      f_obs=f_obs,
+      xray_structure=structure_prep,
+      edge_list=edge_list,
+      params=params.tardy_samples)
+    print
+    return
   #
   fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_work)
   print "Number of FVARs for special position constraints:", len(fvars)-1
@@ -660,23 +684,28 @@ def run(args):
       raise RuntimeError("Not a file or directory: %s" % arg)
   print "Number of pickle files:", len(all_pickles)
   print "Number of quick_infos:", len(qi_dict)
-  if (len(qi_dict) != 0 and not params.suppress_sorting_of_pickle_files):
-    print "Sorting pickle files, largest n_atoms * n_refl first."
-    def sort_largest_first():
+  sort_choice = params.sorting_of_pickle_files
+  if (len(qi_dict) != 0 and sort_choice is not None):
+    print "Sorting pickle files by n_atoms * n_refl:", sort_choice
+    assert sort_choice in ["down", "up"]
+    def sort_pickle_files():
+      if (sort_choice == "down"): i_sign = -1
+      else:                       i_sign = 1
       buffer = []
       for i,path in enumerate(all_pickles):
         cod_code = op.basename(path).split(".",1)[0]
         qi = qi_dict.get(cod_code)
         if (qi is None): nn = 2**31
         else:            nn = qi[0] * qi[1] * qi[2]
-        buffer.append((nn, -i, path))
+        buffer.append((nn, i_sign*i, path))
       buffer.sort()
-      buffer.reverse()
+      if (i_sign < 0):
+        buffer.reverse()
       result = []
       for elem in buffer:
         result.append(elem[-1])
       return result
-    all_pickles = sort_largest_first()
+    all_pickles = sort_pickle_files()
   print
   #
   rss = params.random_subset.size
