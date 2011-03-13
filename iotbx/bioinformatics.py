@@ -685,7 +685,7 @@ fasta_sequence_parse = generic_sequence_parser(
   regex = re.compile(
     r"""
     ^ > \s*
-    (?P<name> [^\s^:]+ ) :? \s*
+    (?P<name> [^\s^:]+ ) [ :]? [ \t]*
     (?P<description> [^\n]* ) \n
     (?P<sequence> [^>]* )
     \s*
