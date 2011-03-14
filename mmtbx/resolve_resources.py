@@ -13,6 +13,8 @@ diff_map_cutoff = 1.5
   .type = float
 output_all_masks = False
   .type = bool
+use_dm_map = False
+  .type = bool
 """
 
 def get_phenix_masks_master_params():
