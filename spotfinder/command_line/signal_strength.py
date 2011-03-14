@@ -45,6 +45,17 @@ distl {
   verbose = False
     .type = bool
     .help="Lengthy spot printout"
+  bins {
+    verbose = False
+      .type = bool
+      .help="Additional printout binned by resolution range"
+    N = 20
+      .type = int
+      .help="Maximum number of bins, but fewer can result if there are few spots"
+    corner = True
+      .type = bool
+      .help="Extend the binning all the way to detector corner, otherwise to outermost spot on first image"
+  }
 }
 """+additional_spotfinder_phil_defs)
 
