@@ -24,6 +24,7 @@ spot::find_weighted_center(image_rawdata_t const& pixelvalue,
     pts.push_back(scitbx::vec2<double>(q->x, q->y));
     wts.push_back(static_cast<double>(pixelvalue[q->x][q->y])
                  - pixellocalmean[q->x][q->y]);
+    bkg.push_back(pixellocalmean[q->x][q->y]);
   }
   model_ellipse(pts.const_ref(),wts.const_ref());
   //show_summary(pixelvalue,pixellocalmean);

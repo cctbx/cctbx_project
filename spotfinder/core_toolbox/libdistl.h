@@ -189,7 +189,8 @@ public:
   double peakintensity;
   double peakheight;
   double angle;
-  scitbx::af::shared<double> wts;
+  scitbx::af::shared<double> wts; // pixel-by-pixel ADC units above local background
+  scitbx::af::shared<double> bkg; // pixel-by-pixel local background
   int nmaxima;         // number of local maximas
   inline spot():p_gotaxes(false){}
   spot(scitbx::af::flex_int::const_iterator);/* Special method to reconstruct
@@ -292,6 +293,13 @@ private:
         double resol_to_r2(const double) const;
         double r2_to_resol(const double) const;
         double xy2resol(const double, const double) const;
+
+        //! Convert x,y pixel coordinates to resolution
+        /*! Gives exact same answer as xy2resol() to 12 decimal places.
+            Prove the identity???
+            Future: libdistl should implement two-theta/detector tilt.
+         */
+        double xy2resol_exact_normal(const double, const double) const;
         background_plane_stats* BP;
 public:
         // Image facts
@@ -420,6 +428,9 @@ public:
 
         int process();
         double resolution_outer; //initialize with negative value; >0 means impose a limit
+        scitbx::af::shared<double> scanbox_background_resolutions;
+        scitbx::af::shared<double> scanbox_background_means;
+        scitbx::af::shared<double> scanbox_background_wndw_sz;
 };
 
 

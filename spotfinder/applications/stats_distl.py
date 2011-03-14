@@ -35,6 +35,7 @@ def key_adaptor(mapping,key):
 def key_safe_items(image):
   return [
       ("%6d","Spot Total",key_adaptor(image,'N_spots_total')),
+      ("%6d","Remove Ice",key_adaptor(image,'N_ice_free_resolution_spots')),
       ("%6d","In-Resolution Total",key_adaptor(image,'N_spots_resolution')),
       ("%6d","Good Bragg Candidates",key_adaptor(image,'N_spots_inlier')),
       ("%6d","Ice Rings",key_adaptor(image,'ice-ring_impact')),

@@ -342,6 +342,9 @@ void diffimage::pxlclassify()
         pixellocalmean = float_array_t(
                            pixelvalue.nx, vector<float>(pixelvalue.ny, 0.0));
         for (int i=0; i<npxclassifyscan; i++) {
+                scanbox_background_resolutions.clear();
+                scanbox_background_means.clear();
+                scanbox_background_wndw_sz.clear();
                 if (scanboxsize[i] == 0)
                         continue;
 
@@ -402,7 +405,15 @@ clear(); }
   }
   virtual inline double localmean (const int&, const int&) {
       //cout<<"base mean "<<boxmean<<endl;
-return boxmean; }
+    return boxmean; }
+
+  // Trivial calculation of detector gain; re-check derivation before commenting in
+  //inline double gain () const { //Suggested by Mosflm manual: digitized value = GAIN * Equiv # of photons
+  //  double sample_average = Sum_x/boxnbg;
+  //  double sample_variance = (1./boxnbg)*(Sum_x2 - sample_average*sample_average);
+  //  return std::sqrt(sample_variance) / sample_average; // is mean_squared / mean
+  //}
+
   virtual ~backplane(){}
 };
 
@@ -591,6 +602,9 @@ void diffimage::pxlclassify_scanbox(const int xstart, const int xend,
           //pixellocalstd[x][y] = boxstd;
     }
   }
+  scanbox_background_resolutions.push_back(xy2resol( int((xstart+xend)/2.),int((ystart+yend)/2.) ));
+  scanbox_background_means.push_back( bp->localmean(int((xstart+xend)/2.),int((ystart+yend)/2.)));
+  scanbox_background_wndw_sz.push_back( bp->boxnbg );
   delete bp;
 }
 
@@ -1299,6 +1313,14 @@ double diffimage::xy2resol(const double x, const double y) const
         return r2_to_resol(r2);
 }
 
+double diffimage::xy2resol_exact_normal(const double x, const double y) const
+{
+        double lin_radius = pixel_size *
+                            std::sqrt((x - beam_x)*(x - beam_x) + (y - beam_y)*(y - beam_y));
+        double two_sin_theta = 2. * std::sin(0.5*std::atan(lin_radius/distance));
+        if (two_sin_theta<10e-8) {return(10e8);}
+        return wavelength/two_sin_theta;
+}
 
 
 double diffimage::resol_to_r2(const double resol) const

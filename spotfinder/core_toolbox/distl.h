@@ -105,6 +105,21 @@ public:
   bool isIsolated(const w_spot&, const double&) const;
   scitbx::af::shared<Distl::icering> icerings;
   inline double imgresol() { return finder.imgresol; }
+
+  inline
+  af::shared<double>
+  background_resolutions(){
+    return finder.scanbox_background_resolutions; }
+
+  inline
+  af::shared<double>
+  background_means() const {
+    return finder.scanbox_background_means; }
+
+  inline
+  af::shared<double>
+  background_wndw_sz() const {
+    return finder.scanbox_background_wndw_sz; }
 };
 
 } //namespace
