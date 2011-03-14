@@ -131,6 +131,27 @@ namespace spotfinder { namespace distltbx { namespace boost_python {
       return distance * std::tan(2.0*theta);
     }
 
+    //! Quick and dirty calculation of resolution at each detector edge
+    /*  Dirty calculation--assumes detector is normal to the beam, so
+        there is no account for two theta swing or detector tilt.
+        So this will have to be redone in near future;
+        want a more general treatment that can be expanded.
+     */
+    scitbx::af::shared<double> corner_resolutions() const {
+      // detector_origin is the origin of the coordinate system.  Xtal has negative z coordinate.
+      point crystal_position = beamspot + point(0.,0.,-distance);
+      scitbx::af::shared<double> result;
+      point beam_vector = beamspot - crystal_position;
+      for (int icor = 0; icor < corners.size(); ++icor){
+        point xtal_to_corner_vector = corners[icor] - crystal_position;
+        double twotheta = std::acos((beam_vector * xtal_to_corner_vector)/
+                                   (beam_vector.length()*xtal_to_corner_vector.length()) );
+        // n * lambda = 2 d sin theta
+        result.push_back( (wavelength/(2. * std::sin(twotheta/2.))) );
+      }
+      return result;
+    }
+
   };
 
 }}} // namespace spotfinder::distltbx::boost_python
@@ -149,6 +170,7 @@ namespace spotfinder { namespace distltbx { namespace boost_python {
                   arg("wavelength")
                 )))
       .def("__call__", &geometry_2d_base::operator())
+      .def("corner_resolutions",&geometry_2d_base::corner_resolutions)
     ;
   }
 
