@@ -8,6 +8,7 @@ def eval_logs(file_names, out=None):
   from libtbx.str_utils import format_value
   min_secs_epoch = None
   max_secs_epoch = None
+  n_refinements_initialized = 0
   gaps = flex.double()
   infos = flex.std_string()
   n_stale = 0
@@ -38,6 +39,9 @@ def eval_logs(file_names, out=None):
       elif (line.startswith("Number of scatterers: ")):
         assert cod_code is not None
         n_scatt = int(line.split(": ",1)[1])
+      elif (line.startswith("Number of refinable parameters: ")):
+        assert cod_code is not None
+        n_refinements_initialized += 1
       elif (line.startswith("iso          cc, r1: ")):
         assert cod_code is not None
         assert iso is None
@@ -86,9 +90,13 @@ def eval_logs(file_names, out=None):
       n_unfinished += 1
   perm = flex.sort_permutation(gaps)
   gaps = gaps.select(perm)
-  print >> out, "Number of results:", gaps.size()
+  n_missing = n_refinements_initialized - gaps.size()
+  print >> out, "Number of results: %d (%d missing)" % (gaps.size(), n_missing)
+  assert n_missing >= 0
   print >> out, "Stale, Unfinished, Exceptions, Tracebacks, Abort:", \
     n_stale, n_unfinished, n_exception, n_traceback, n_abort
+  if (n_exception + n_abort < n_missing):
+    print "WARNING: more missing results than expected."
   if (len(seconds) != 0):
     if (min_secs_epoch is not None and max_secs_epoch is not None):
       g = max_secs_epoch - min_secs_epoch
@@ -99,7 +107,7 @@ def eval_logs(file_names, out=None):
   print >> out
   def stats(f):
     n = f.count(True)
-    return "%6d = %5.2f %%" % (n, 100 * n / max(1,gaps.size()))
+    return "%6d = %5.2f %%" % (n, 100 * n / max(1,n_refinements_initialized))
   print >> out, "gaps below -0.05:", stats(gaps < -0.05)
   print >> out, "gaps below -0.01:", stats(gaps < -0.01)
   print >> out, "gaps below  0.01:", stats(gaps <  0.01)
