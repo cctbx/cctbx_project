@@ -557,7 +557,6 @@ class manager(manager_mixin):
     return result
 
   def remove_outliers(self, show = False, log = None):
-    #assert 0
     if(log is None): log = sys.stdout
     if(show):
       print >> log, "Distribution of F-obs values:"
@@ -1690,6 +1689,7 @@ class manager(manager_mixin):
     return r_work, r_work_l, r_work_h, n_low, n_high
 
   def fill_missing_f_obs(self, fill_mode):
+    if(self.k_part() != 0): return None # do not fill if Fpart is used.
     import mmtbx.missing_reflections_handler
     return mmtbx.missing_reflections_handler.fill_missing_f_obs(
       fmodel=self, fill_mode=fill_mode)
