@@ -129,6 +129,7 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
                                    make_setter(&w_spot::peakintensity,dcp()))
      .add_property("wts",          make_getter(&w_spot::wts,rbv()),
                                    make_setter(&w_spot::wts,dcp()))
+     .add_property("bkg",          make_getter(&w_spot::bkg,rbv()))
      //type scitbx::sf::shared must be exposed using add_property,
      // which can specify a return value policy, rather than def_readonly
    ;
@@ -156,6 +157,9 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
      .def("isIsolated",&w_Distl::isIsolated)
      .add_property("icerings",make_getter(&w_Distl::icerings,rbv()))
      .def("imgresol",&w_Distl::imgresol)
+     .def("background_resolutions",&w_Distl::background_resolutions)
+     .def("background_means",&w_Distl::background_means)
+     .def("background_wndw_sz",&w_Distl::background_wndw_sz)
    ;
 
    def("linear_char_scratchpad",&spotfinder::distltbx::linear_char_scratchpad);

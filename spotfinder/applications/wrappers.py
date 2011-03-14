@@ -2,7 +2,7 @@ import os
 from labelit.command_line.imagefiles import ImageFiles
 from labelit.preferences import procedure_preferences
 from labelit import tnear2
-from labelit.command_line.stats_distl import pretty_image_stats,notes
+from spotfinder.applications.stats_distl import pretty_image_stats,notes
 
 def spotfinder_factory(absrundir,frames):
 
