@@ -214,6 +214,9 @@ class block_base(DictMixin):
       dictionary.validate_single_item(key, value, self)
     for loop in self.loops.values():
       dictionary.validate_loop(loop, self)
+    if isinstance(self, block):
+      for value in self.saves.itervalues():
+        value.validate(dictionary)
 
   def sort(self, recursive=False, key=None, reverse=False):
     self._set = OrderedSet(

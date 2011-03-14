@@ -292,6 +292,11 @@ class dictionary(model.cif):
             self.report_error(
               2101, key=key, value=value, enum="%s:%s" %(enum_min, enum_max))
         else:
+          if enum_min is None and enum_max is None: return
+          elif enum_min is None:
+            enum_min = '.'*len(enum_max)
+          elif enum_max is None:
+            enum_max = '.'*len(enum_min)
           for min, max in zip(enum_min, enum_max):
             if ((min == '.' or v > float(min)) and
                 (max == '.' or v < float(max))):
