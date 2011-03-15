@@ -187,6 +187,7 @@ class energies(scitbx.restraints.energies):
       self.external_energy = external_energy_function(
         sites_cart=sites_cart,
         gradient_array=self.gradients)
+      self.residual_sum += self.external_energy
     else :
       self.external_energy = 0
     for extension_obj in self.extension_objects:
