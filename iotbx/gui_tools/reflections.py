@@ -465,7 +465,9 @@ def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
   for miller_array in miller_arrays :
     if miller_array.is_complex_array() :
       labels = miller_array.info().label_string()
-      if limit_arrays is not None and not labels in limit_arrays :
+      if labels.startswith("F-model") :
+        continue
+      if (limit_arrays is not None) and (not labels in limit_arrays) :
         continue
       f_label = miller_array.info().labels[0]
       map_name = map_names.get(f_label)
