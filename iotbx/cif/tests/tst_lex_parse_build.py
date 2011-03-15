@@ -53,9 +53,22 @@ def exercise_lex_parse_build():
   b = cif.reader(input_string=cif_invalid_missing_value).model()
   assert b['global'].items() == [('_a', '1')]
   c = cif.reader(input_string=cif_invalid_string).model()
-  sys.stdout = stdout
   a = cif.reader(input_string=cif_cod)
   assert a.error_count() == 0
+  c = cif.reader(input_string=cif_invalid_semicolon_text_field)
+  assert c.error_count() > 0
+  assert c.model()['1']['_a'] == ';'
+  d = cif.reader(input_string=cif_valid_semicolon_text_field)
+  assert d.error_count() == 0
+  assert d.model()['1']['_a'] == ';\n1\n;'
+  e = cif.reader(input_string=cif_unquoted_string_semicolon)
+  assert not show_diff(str(e.model()), """\
+data_1
+_a                                ;1
+_b                                ;
+_c                                2
+""")
+  sys.stdout = stdout
 
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
@@ -306,6 +319,29 @@ data_global
 _a 'no closing quote
 _b 1
 """
+
+cif_invalid_semicolon_text_field = """\
+data_1
+_a ;
+1
+;
+"""
+
+cif_valid_semicolon_text_field = """\
+data_1
+_a
+;
+1
+;
+"""
+
+cif_unquoted_string_semicolon = """\
+data_1
+_a ;1
+_b ;
+_c 2
+"""
+
 
 def exercise_partial_crystal_symmetry():
   def get_inp(u, s):
