@@ -233,16 +233,6 @@ fragment ANY_PRINT_CHAR
 
 TAG	:	'_' (NON_BLANK_CHAR_)+ ;
 
-/*------------------------------------------------------------------
- * CHARACTER STRINGS AND FIELDS
- *------------------------------------------------------------------*/
-
-SEMI_COLON_TEXT_FIELD
-	:	';'
-		( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
-		( (TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL)* )
-		';'
-	;
 
 /*------------------------------------------------------------------
  * RESERVED WORDS - define these after semicolon text field
@@ -274,19 +264,6 @@ SAVE_FRAME_HEADING
 
 SAVE	:	SAVE_ ;
 
-// apparently a single quoted string such as 'a dog's life' is legal...
-fragment SINGLE_QUOTED_STRING
-	:	SINGLE_QUOTE
-		( ( (SINGLE_QUOTE NON_BLANK_CHAR_)=>SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
-		SINGLE_QUOTE
-	;
-
-fragment DOUBLE_QUOTED_STRING
-	:	DOUBLE_QUOTE
-		( ( (DOUBLE_QUOTE NON_BLANK_CHAR_)=>DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
-	        DOUBLE_QUOTE
-	;
-
 /*------------------------------------------------------------------
  * NUMERICS
  *------------------------------------------------------------------*/
@@ -303,13 +280,37 @@ FLOAT
 UNSIGNED_INTEGER
 	:	(DIGIT)+ ;
 
-// UNQUOTED_STRING must be defined after the digits if we want to catch digits first
+/*------------------------------------------------------------------
+ * CHARACTER STRINGS AND FIELDS
+ *------------------------------------------------------------------*/
+
 fragment UNQUOTED_STRING
 
-	:	( ORDINARY_CHAR | ';' ) (NON_BLANK_CHAR_)* ;
+	:	(({ GETCHARPOSITIONINLINE() > 0 }?=> ';')
+		  | ORDINARY_CHAR ) (NON_BLANK_CHAR_)* ;
+
+// apparently a single quoted string such as 'a dog's life' is legal...
+fragment SINGLE_QUOTED_STRING
+	:	SINGLE_QUOTE
+		( ( (SINGLE_QUOTE NON_BLANK_CHAR_)=>SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
+		SINGLE_QUOTE
+	;
+
+fragment DOUBLE_QUOTED_STRING
+	:	DOUBLE_QUOTE
+		( ( (DOUBLE_QUOTE NON_BLANK_CHAR_)=>DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
+	        DOUBLE_QUOTE
+	;
 
 CHAR_STRING
-	:	SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING;
+	:	UNQUOTED_STRING | SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING;
+
+SEMI_COLON_TEXT_FIELD
+	:	( { GETCHARPOSITIONINLINE() == 0 }?=> ';')
+		( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
+		( (TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL)* )
+		';'
+	;
 
 /*------------------------------------------------------------------
  * WHITE SPACE AND COMMENTS
