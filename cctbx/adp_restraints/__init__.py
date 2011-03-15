@@ -103,14 +103,6 @@ class adp_aniso_restraints(object):
     # In SHELX this called SIMU restraints
     unit_cell = xray_structure.unit_cell()
     n_grad_u_iso = xray_structure.n_grad_u_iso()
-    if(n_grad_u_iso == 0):
-       self.gradients_iso = None
-    else:
-       self.gradients_iso = flex.double(xray_structure.scatterers().size())
-    self.number_of_restraints = 0
-    self.target = 0.0
-    self.gradients_aniso_cart = flex.sym_mat3_double(
-                                            xray_structure.scatterers().size())
     u_cart = xray_structure.scatterers().extract_u_cart(unit_cell)
     u_iso  = xray_structure.scatterers().extract_u_iso()
     scatterers = xray_structure.scatterers()
@@ -122,86 +114,24 @@ class adp_aniso_restraints(object):
     if(selection is None):
       selection = flex.bool(scatterers.size(), True)
     hd_selection = xray_structure.hd_selection()
-    for proxy in bond_proxies_simple:
-        i,j = proxy.i_seqs
-        tmp_flag = True
-        if(not use_hd):
-          if(hd_selection[i] or hd_selection[j]):
-            tmp_flag = False
-        if(selection[i] and selection[j] and tmp_flag):
-          fl_i = scatterers[i].flags
-          fl_j = scatterers[j].flags
-          self.check_flags(fl_i)
-          self.check_flags(fl_j)
-          if(fl_i.use_u_aniso() and fl_j.use_u_aniso()):
-             u_i = u_cart[i]
-             u_j = u_cart[j]
-             g_i = flex.double(self.gradients_aniso_cart[i])
-             g_j = flex.double(self.gradients_aniso_cart[j])
-             for i_seq in xrange(6):
-                 diff = u_i[i_seq] - u_j[i_seq]
-                 self.target += diff**2
-                 if(fl_i.grad_u_aniso()): g_i[i_seq] +=  2.0 * diff
-                 if(fl_j.grad_u_aniso()): g_j[i_seq] += -2.0 * diff
-                 self.number_of_restraints += 1
-             self.gradients_aniso_cart[i] = list(g_i)
-             self.gradients_aniso_cart[j] = list(g_j)
-          if(fl_i.use_u_iso() and fl_j.use_u_iso()):
-             u_i = u_iso[i]
-             u_j = u_iso[j]
-             diff = u_i - u_j
-             self.target += diff**2
-             if(fl_i.grad_u_iso()): self.gradients_iso[i] +=  2.0 * diff
-             if(fl_j.grad_u_iso()): self.gradients_iso[j] += -2.0 * diff
-             self.number_of_restraints += 1
-          if (fl_i.use_u_aniso() and fl_j.use_u_iso()):
-             u_i = u_cart[i]
-             u_j = u_iso[j]
-             u_j_cart = adptbx.u_iso_as_u_cart(u_j)
-             g_i = flex.double(self.gradients_aniso_cart[i])
-             g_j = flex.double([0,0,0,0,0,0])
-             for i_seq in xrange(3):
-                 diff = u_i[i_seq] - u_j_cart[i_seq]
-                 self.target += diff**2
-                 if(fl_i.grad_u_aniso()): g_i[i_seq] +=  2.0 * diff
-                 if(fl_j.grad_u_iso()):   g_j[i_seq] += -2.0 * diff
-                 self.number_of_restraints += 1
-             if(fl_i.grad_u_aniso()):
-                self.gradients_aniso_cart[i] = list(g_i)
-             if(fl_j.grad_u_iso()):
-                self.gradients_iso[j] += (g_j[0]+g_j[1]+g_j[2])
-          if(fl_i.use_u_iso() and fl_j.use_u_aniso()):
-             u_i = u_iso[i]
-             u_j = u_cart[j]
-             u_i_cart = adptbx.u_iso_as_u_cart(u_i)
-             g_j = flex.double(self.gradients_aniso_cart[j])
-             g_i = flex.double([0,0,0,0,0,0])
-             for i_seq in xrange(3):
-                 diff = u_i_cart[i_seq] - u_j[i_seq]
-                 self.target += diff**2
-                 if(fl_i.grad_u_iso()):   g_i[i_seq] +=  2.0 * diff
-                 if(fl_j.grad_u_aniso()): g_j[i_seq] += -2.0 * diff
-                 self.number_of_restraints += 1
-             if(fl_j.grad_u_aniso()):
-                self.gradients_aniso_cart[j] = list(g_j)
-             if(fl_i.grad_u_iso()):
-                self.gradients_iso[i] += (g_i[0]+g_i[1]+g_i[2])
+    result = eval_adp_aniso_restraints(
+      scatterers=scatterers,
+      u_cart=u_cart,
+      u_iso=u_iso,
+      bond_proxies=bond_proxies_simple,
+      selection=selection,
+      hd_selection=hd_selection,
+      n_grad_u_iso=n_grad_u_iso,
+      use_hd=use_hd)
+    self.target = result.target
+    self.number_of_restraints = result.number_of_restraints
+    if (n_grad_u_iso == 0) :
+      self.gradients_iso = None
+    else :
+      self.gradients_iso = result.gradients_iso()
+    self.gradients_aniso_cart = result.gradients_aniso_cart()
     self.gradients_aniso_star = adptbx.grad_u_cart_as_u_star(unit_cell,
-                                                     self.gradients_aniso_cart)
-
-  def check_flags(self, fl):
-    if(fl.grad_u_iso()):
-       assert not fl.grad_u_aniso()
-       assert fl.use_u_iso()
-       assert fl.use()
-    if(fl.grad_u_aniso()):
-       assert not fl.grad_u_iso()
-       assert fl.use_u_aniso()
-       assert fl.use()
-    #if(fl.use_u_iso()):
-    #   assert not fl.use_u_aniso()
-    #if(fl.use_u_aniso()):
-    #   assert not fl.use_u_iso()
+                                               self.gradients_aniso_cart)
 
 class _adp_similarity(boost.python.injector, adp_similarity):
 
