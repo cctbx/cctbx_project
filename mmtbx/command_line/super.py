@@ -169,7 +169,7 @@ of the aligned length of the fixed molecule sequence.
     reference_sites=fixed_sites_sel,
     other_sites=moving_sites_sel)
   rmsd = fixed_sites_sel.rms_difference(lsq_fit.other_sites_best_fit())
-  print "  RSMD between the aligned C-alpha atoms: %.3f" % rmsd
+  print "  RMSD between the aligned C-alpha atoms: %.3f" % rmsd
   print
 
   print "Writing moved pdb to file: %s" % params.super.moved
