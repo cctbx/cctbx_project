@@ -422,6 +422,7 @@ class xtriage_analyses(object):
        self.params,
        out=self.text_out,
        out_plot=self.plot_out,
+       miller_calc = miller_calc,
        verbose=1)
     # outliers are removed, make a new copy
     try:
