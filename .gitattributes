@@ -1045,6 +1045,7 @@ mmtbx/rsr/rsr_ext.cpp -text
 mmtbx/rsr/tst.py -text
 mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
+mmtbx/scaling/relative_wilson.py -text
 mmtbx/scaling/ta_alpha_beta_calc.py svneol=native#text/x-python
 mmtbx/secondary_structure/__init__.py -text
 mmtbx/secondary_structure/base_pairing.data -text
