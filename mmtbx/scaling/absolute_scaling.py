@@ -3,15 +3,11 @@ from cctbx.array_family import flex
 from mmtbx import scaling
 from cctbx import uctbx
 from cctbx import adptbx
-from cctbx import sgtbx
-from cctbx import eltbx
 from cctbx.eltbx import xray_scattering
-from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
-from scitbx.math import matrix
-from scitbx.math import eigensystem
-from libtbx.utils import Sorry, show_exception_info_if_full_testing
+from scitbx.linalg import eigensystem
+from libtbx.utils import show_exception_info_if_full_testing
 import scitbx.lbfgs
 import math
 import sys
