@@ -15,37 +15,53 @@ mtz_file = None
   .type = path
   .short_caption = MTZ file
   .style = bold file_type:hkl OnUpdate:extract_map_coeffs_for_fft
+  .help = MTZ file containing map coefficients
 pdb_file = None
   .type = path
   .short_caption = PDB file
+  .help = PDB file around which to draw the map.  If not supplied, the map \
+    will fill the unit cell.
 labels = None
   .type = strings
   .multiple = True
+  .help = Map column labels.  Common examples are "2FOFCWT,PH2FOFCWT" and \
+    "FP,SIGFP" "PHIM" "FOMM".  If left blank, all maps present in the input \
+    file will be used.
 buffer = 5.0
   .type = float
   .short_caption = Region padding
+  .help = Extra padding (in Angstroms) around the selected region (or unit \
+    cell)
 selection = None
   .type = str
   .input_size = 400
   .short_caption = Atom selection
+  .help = Atom selection around which to draw map (plus buffer).  If left \
+    blank, the entire PDB file will be used.
 d_min = None
   .type = float
+  .help = High-resolution cutoff
 d_max = None
   .type = float
+  .help = Low-resolution cutoff
 grid_resolution_factor = 1.0 / 3
   .type = float
+  .help = Grid spacing (multiplied by the high-resolution limit)
 scale = *sigma volume
   .type = choice(multi=False)
   .expert_level = 1
   .short_caption = Map scaling
+  .help = Scaling method for map values
 output {
   directory = None
     .type = path
     .short_caption = Output directory
+    .help = Output directory (defaults to current)
   prefix = None
     .type = str
     .input_size = 400
     .short_caption = Output file prefix
+    .help = Output file prefix (defaults to the MTZ file name base)
   include scope libtbx.phil.interface.tracking_params
   format = xplor *ccp4
     .type = choice
@@ -66,6 +82,7 @@ output {
 show_maps = False
   .type = bool
 """, process_includes=True)
+master_params = master_phil
 
 def find_array (miller_arrays, labels) :
   for array in miller_arrays :
