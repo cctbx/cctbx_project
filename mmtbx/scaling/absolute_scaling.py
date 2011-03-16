@@ -3,11 +3,15 @@ from cctbx.array_family import flex
 from mmtbx import scaling
 from cctbx import uctbx
 from cctbx import adptbx
+from cctbx import sgtbx
+from cctbx import eltbx
 from cctbx.eltbx import xray_scattering
+from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
-from scitbx.linalg import eigensystem
-from libtbx.utils import show_exception_info_if_full_testing
+from scitbx.math import matrix
+from scitbx.math import eigensystem
+from libtbx.utils import Sorry, show_exception_info_if_full_testing
 import scitbx.lbfgs
 import math
 import sys
@@ -517,7 +521,7 @@ class ml_iso_absolute_scaling(object):
     if verbose>0:
       print >> out, "ML estimate of overall B value of %s:" \
             % str(self.info)
-      print >> out, "%s"%format_value("%5.2f", self.b_wilson), "A**2"
+      print >> out, "%s"%format_value("%5.2f", self.b_wilson), "A**(-2)"
       print >> out, "Estimated -log of scale factor of %s:" \
             % str(self.info)
       print >> out, "%s"%format_value("%5.2f", self.p_scale)
@@ -622,6 +626,8 @@ class ml_aniso_absolute_scaling(object):
         self.eigen_values = eigen.values()
         self.eigen_vectors = eigen.vectors()
 
+        self.work_array  = work_array # i need this for further analyses
+
         del self.x
         del self.f_obs
         del self.sigma_f_obs
@@ -683,6 +689,114 @@ class ml_aniso_absolute_scaling(object):
     return(xx)
 
 
+  def aniso_ratio_p_value(self,rat):
+    return -3
+    coefs = flex.double( [-1.7647171873040273, -3.4427008004789115, -1.097150249786379, 0.17303317520973829, 0.35955513268118661, 0.066276397961476205, -0.064575726062529232, -0.0063025873711609016, 0.0749945566688624, 0.14803702885155121, 0.154284467861286])
+    fit_e = scitbx.math.chebyshev_polynome(11,0,1.0,coefs)
+    x = flex.double( range(1000) )/999.0
+    start = int(rat*1000)
+    norma = flex.sum(flex.exp(fit_e.f(x)))/x[1]
+    x = x*(1-rat)+rat
+    norma2 = flex.sum(flex.exp(fit_e.f(x)))/(x[1]-x[0])
+    return -math.log(norma2/norma )
+
+
+  def analyze_aniso_correction(self, n_check=2000, p_check=0.25, level=3, z_level=9):
+
+    correction_factors = self.work_array.customized_copy(
+                 data=self.work_array.data()*0.0+1.0, sigmas=None )
+
+    correction_factors = anisotropic_correction(
+      correction_factors,0.0,self.u_star ).data()
+
+    self.work_array = self.work_array.f_as_f_sq()
+
+    isigi = self.work_array.data() / (
+              self.work_array.sigmas()+max(1e-8,flex.min(self.work_array.sigmas()))
+            )
+    d_spacings = self.work_array.d_spacings().data().as_double()
+
+    d_sort   = flex.sort_permutation( d_spacings )
+    d_select = d_sort[0:n_check]
+
+    min_d = d_spacings[ d_select[0] ]
+    max_d = d_spacings[ d_select[ n_check-1] ]
+
+    isigi = isigi.select( d_select )
+    mean_isigi = flex.mean( isigi )
+    observed_count = flex.bool( isigi > level ).as_double()
+    mean_count = flex.mean( observed_count )
+    correction_factors = correction_factors.select( d_select )
+
+    isigi_rank      = flex.sort_permutation(isigi)
+    correction_rank = flex.sort_permutation(correction_factors, reverse=True)
+
+    n_again = int(correction_rank.size()*p_check )
+    sel_hc = correction_rank[0:n_again]
+    sel_lc = correction_rank[n_again:]
+    mean_isigi_low_correction_factor  = flex.mean( isigi.select(sel_lc) )
+    mean_isigi_high_correction_factor = flex.mean( isigi.select(sel_hc) )
+    frac_below_low_correction         = flex.mean( observed_count.select(sel_lc) )
+    frac_below_high_correction        = flex.mean( observed_count.select(sel_hc) )
+    mu = flex.mean( observed_count )
+    var = math.sqrt(mu*(1.0-mu)/n_again)
+    z_low  = abs(frac_below_low_correction-mean_count)/max(1e-8,var)
+    z_high = abs(frac_below_high_correction-mean_count)/max(1e-8,var)
+    z_tot  = math.sqrt( (z_low*z_low + z_high*z_high) )
+
+    message = """indicates that there probably is no significant systematic
+noise amplification."""
+    if z_tot > z_level:
+      if mean_isigi_high_correction_factor < level:
+        message =  """indicates that there probably is significant
+systematic noise amplification that could possibly lead to artefacts in the
+maps or difficulties in refinement"""
+      else:
+        message =  """indicates that there probably is some systematic dependence
+between the anisotropy and not-so-well-defined  intensities. Because the signal
+to noise for the most affected intensities is relatively good, the affect on maps
+or refinement behavoir is most likely not very serious."""
+
+    txt = """
+For the resolution shell spanning between %4.2f - %4.2f Angstrom,
+the mean I/sigI is equal to %5.2f. %4.1f %% of these intensities have
+an I/sigI > 3. When sorting these intensities by their anisotropic
+correction factor and analysing the I/sigI behavoir for this ordered
+list, we can gauge the presence of 'anisotropy induced noise amplification'
+in reciprocal space.
+
+  The quarter of Intensities *least* affected by the anisotropy correction show
+    <I/sigI>                 :   %5.2e
+    Fraction of I/sigI > 3   :   %5.2e     ( Z = %8.2f )
+
+  The quarter of Intensities *most* affected by the anisotropy correction show
+    <I/sigI>                 :   %5.2e
+    Fraction of I/sigI > 3   :   %5.2e     ( Z = %8.2f )
+
+The combined Z-score of %8.2f %s
+
+Z-scores are computed on the basis of a Bernoulli model assuming independence of weak reflections wrst anisotropy.
+
+    """%(max_d, min_d,
+         mean_isigi, 100.0*mean_count,
+         mean_isigi_low_correction_factor, frac_below_low_correction,  z_low,
+         mean_isigi_high_correction_factor, frac_below_high_correction, z_high,
+         z_tot, message
+        )
+
+
+    #assert 3 ==0
+    return txt
+
+
+
+
+
+
+
+
+
+
   def show(self,
            out=None,
            verbose=1):
@@ -696,6 +810,9 @@ class ml_aniso_absolute_scaling(object):
       return
 
     if verbose>0:
+
+      print >> out
+      print >> out
       print >> out,"ML estimate of overall B_cart value of %s:" \
             % str(self.info)
       # XXX: for GUI
@@ -737,9 +854,25 @@ class ml_aniso_absolute_scaling(object):
              % str(self.info)
       print >> out,"%5.2f" %(self.p_scale)
 
+      print >> out
+      print >> out
+      print >> out, "----------------    Anisotropicity analyses     ----------------"
+      print >> out
+      anirat = abs(self.eigen_values[0]-self.eigen_values[2])/self.eigen_values[0]
+      self.anirat = anirat
+      ani_rat_p = self.aniso_ratio_p_value(anirat)
+      if ani_rat_p < 0:
+        ani_rat_p = 0.0
+      print >> out, "Anisotropicity   ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e"%(anirat)
+      print >> out, "                             Anisotropic ratio p-value :  %7.3e"%(ani_rat_p)
+      print >> out
+      print >> out, "     The p-value is a measure of of the severity of anisotropy as observed in the PDB."
+      print >> out, "     The p-value of %5.3e indicates that roughly %4.1f %% of dataset available in the PDB have"%(ani_rat_p,100.0*math.exp(-ani_rat_p))
+      print >> out, "     an anisotropy equal or worse as compared to this dataset."
+      print >> out
 
-
-
+      print >> out, self.analyze_aniso_correction()
+      print >> out
 
 
 
@@ -830,10 +963,32 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
+
+    self.var_I_array = scaling.kernel_normalisation(
+      d_star_sq_hkl = d_star_sq_hkl,
+      I_hkl = I_obs*I_obs,
+      epsilon = epsilons*epsilons,
+      d_star_sq_array = self.d_star_sq_array,
+      kernel_width = self.kernel_width
+      )
+
+    self.var_I_array = self.var_I_array - self.mean_I_array*self.mean_I_array
+
+    self.weight_sum = self.var_I_array = scaling.kernel_normalisation(
+      d_star_sq_hkl = d_star_sq_hkl,
+      I_hkl = I_obs*0.0+1.0,
+      epsilon = epsilons*0.0+1.0,
+      d_star_sq_array = self.d_star_sq_array,
+      kernel_width = self.kernel_width
+      )
+
+
     #assert flex.min( self.mean_I_array ) > 0
     sel_pos = self.mean_I_array > 0
     self.mean_I_array = self.mean_I_array.select(sel_pos)
     self.d_star_sq_array = self.d_star_sq_array.select(sel_pos)
+    self.var_I_array = flex.log( self.var_I_array.select( sel_pos ) )
+
 
     self.mean_I_array = flex.log( self.mean_I_array )
     ## Fit a chebyshev polynome please
@@ -847,10 +1002,38 @@ class kernel_normalisation(object):
       d_star_sq_high,
       normalizer_fit_lsq.coefs)
 
+    var_lsq_fit = chebyshev_lsq_fit.chebyshev_lsq_fit(
+      n_term,
+      self.d_star_sq_array,
+      self.var_I_array )
+    self.var_norm = chebyshev_polynome(
+      n_term,
+      d_star_sq_low,
+      d_star_sq_high,
+      var_lsq_fit.coefs)
+
+    ws_fit = chebyshev_lsq_fit.chebyshev_lsq_fit(
+      n_term,
+      self.d_star_sq_array,
+      self.weight_sum )
+    self.weight_sum = chebyshev_polynome(
+      n_term,
+      d_star_sq_low,
+      d_star_sq_high,
+      ws_fit.coefs)
+
+
+
+
     ## The data wil now be normalised using the
     ## chebyshev polynome we have just obtained
     self.mean_I_array = flex.exp( self.mean_I_array)
     self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )
+
+    self.var_I_array = flex.exp( self.var_I_array )
+    self.var_norm = flex.exp( self.var_norm.f(d_star_sq_hkl) )
+    self.weight_sum = flex.exp( self.weight_sum.f(d_star_sq_hkl))
+
 
     self.normalised_miller = None
     self.normalised_miller_dev_eps = None
