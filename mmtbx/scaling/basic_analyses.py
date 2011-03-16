@@ -2,7 +2,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, show_exception_info_if_full_testing
 import mmtbx.scaling
-from mmtbx.scaling import absolute_scaling
+from mmtbx.scaling import absolute_scaling, relative_wilson
 from mmtbx.scaling import matthews
 from mmtbx.scaling import data_statistics
 import sys
@@ -13,7 +13,7 @@ class basic_analyses(object):
                miller_array,
                phil_object,
                out=None,
-               out_plot=None,
+               out_plot=None, miller_calc=None,
                verbose=0):
     if out is None:
       out=sys.stdout
@@ -188,6 +188,11 @@ class basic_analyses(object):
       out_plot=out_plot)
     self.basic_data_stats = basic_data_stats
     self.miller_array = basic_data_stats.new_miller
+
+    #relative wilson plot
+    if miller_calc is not None:
+      self.rel_wilson = relative_wilson.relative_wilson(miller_array, miller_calc)
+
 
 
     if verbose>0:
