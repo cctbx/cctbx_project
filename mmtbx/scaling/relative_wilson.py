@@ -1,5 +1,6 @@
+from mmtbx.scaling import absolute_scaling
+from iotbx import data_plots
 from scitbx.array_family import flex
-import absolute_scaling
 from scitbx.math import scale_curves
 from scitbx import simplex
 from scitbx.math import chebyshev_polynome
@@ -93,6 +94,19 @@ class relative_wilson(object):
     z = flex.abs(ratio-mean)/var
     return z
 
+  def get_data_plot (self) :
+    table = data_plots.table_data(
+      title="Relative Wilson plot",
+      column_labels=["Max. resolution", "log(I_exp/I_obs)", "Z-score",
+        "Reference curve"],
+      graph_names=["Relative Wilson plot"],
+      graph_labels=[("High resolution", "")],
+      graph_columns=[list(range(4))],
+      x_is_inverse_d_min=True)
+    ss,rr,zz,ii = self.get_all_curves()
+    for s,z,r,i in zip(ss,zz,rr,ii):
+      table.add_row([s,z,r,i])
+    return table
 
   def get_all_curves(self):
     i_scaled = flex.exp( self.calc_d_star_sq*self.b_value )*self.mean_calc*self.scale
