@@ -190,6 +190,7 @@ class basic_analyses(object):
     self.miller_array = basic_data_stats.new_miller
 
     #relative wilson plot
+    self.rel_wilson = None
     if miller_calc is not None:
       self.rel_wilson = relative_wilson.relative_wilson(miller_array, miller_calc)
 

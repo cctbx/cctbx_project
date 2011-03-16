@@ -938,6 +938,12 @@ class xtriage_summary (object) :
     self.meas_info = getattr(meas_anal, "message", None)
     self.low_d_cut = getattr(meas_anal, "low_d_cut", None)
     self.high_d_cut = getattr(meas_anal, "high_d_cut", None)
+    rel_wilson = getattr(basic_results, "rel_wilson", None)
+    if (rel_wilson is not None) :
+      caption_out = StringIO()
+      rel_wilson.show_summary(out=caption_out)
+      self.rel_wilson_caption = caption_out.getvalue()
+      self.rel_wilson_plot = rel_wilson.get_data_plot()
     outliers = getattr(basic_results.basic_data_stats, "outlier", None)
     if outliers is not None :
       self.acentric_outliers = outliers.acentric_outliers_table
@@ -999,6 +1005,12 @@ class xtriage_summary (object) :
     self.check_sg = getattr(twin_results, "check_sg", None)
     self.suggested_space_group = getattr(twin_results, "suggested_space_group",
                                          None)
+
+  def get_relative_wilson (self) :
+    if hasattr(self, "rel_wilson_caption") :
+      return (self.rel_wilson_caption, self.rel_wilson_plot)
+    else :
+      return (None, None)
 
 class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
