@@ -2765,10 +2765,14 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       sharpening=sharpening,
       origin_peak_removal=origin_peak_removal)
 
-  def export_as_shelx_hklf(self, file_object=None):
+  def export_as_shelx_hklf(self,
+        file_object=None,
+        normalise_if_format_overflow=False):
     from iotbx.shelx import hklf
     hklf.miller_array_export_as_shelx_hklf(
-      miller_array=self, file_object=file_object)
+      miller_array=self,
+      file_object=file_object,
+      normalise_if_format_overflow=normalise_if_format_overflow)
 
   def export_as_cns_hkl(self,
         file_object,

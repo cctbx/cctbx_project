@@ -3,29 +3,64 @@ iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys
 from cctbx.array_family import flex
 
-def miller_array_export_as_shelx_hklf(miller_array, file_object=None,
-                                      normalise_if_format_overflow=False):
-  """ If the maximum data value does not fit into the 8.2 float point format:
+def miller_array_export_as_shelx_hklf(
+      miller_array,
+      file_object=None,
+      normalise_if_format_overflow=False):
+  """\
+  If the maximum data value does not fit into the f8.2/f8.0 format:
   normalise_if_format_overflow=False: RuntimeError is thrown
   normalise_if_format_overflow=True: data is normalised to the largest
-  number to fit 8.2 format
+  number to fit f8.2/f8.0 format
   """
   assert miller_array.is_real_array()
   if (file_object is None): file_object = sys.stdout
+  def raise_f8_overflow(v):
+    raise RuntimeError("SHELX HKL file F8.2/F8.0 format overflow: %.8g" % v)
   data = miller_array.data()
+  sigmas = miller_array.sigmas()
+  assert data is not None
+  min_val = flex.min(data)
   max_val = flex.max(data)
-  scale = 1
-  if max_val > 99999.99: #scale if needed to avoid format overflow
-    if not normalise_if_format_overflow:
-      raise RuntimeError('8.2 HKL file format overflow')
-    scale = 99999.99/max_val
+  if (sigmas is not None):
+    min_val = min(min_val, flex.min(sigmas))
+    max_val = max(max_val, flex.max(sigmas))
+  min_sc = 1
+  max_sc = 1
+  if (min_val < 0):
+    s = "%8.0f" % min_val
+    if (len(s) > 8):
+      if (not normalise_if_format_overflow):
+        raise_f8_overflow(min_val)
+      min_sc = -9999999. / min_val
+  if (max_val > 0):
+    s = "%8.0f" % max_val
+    if (len(s) > 8):
+      if (not normalise_if_format_overflow):
+        raise_f8_overflow(max_val)
+      max_sc = 99999999. / max_val
+  scale = min(min_sc, max_sc)
   sigmas = miller_array.sigmas()
   s = 0.01
-  fmt = "%4d%4d%4d%8.2f%8.2f"
   for i,h in enumerate(miller_array.indices()):
     if (sigmas is not None): s = sigmas[i]
-    print >> file_object, fmt % (h + (data[i]*scale,s*scale))
-  print >> file_object, fmt % (0,0,0,0,0)
+    def fmt_3i4(h):
+      result = "%4d%4d%4d" % h
+      if (len(result) != 12):
+        raise RuntimeError(
+          "SHELXL HKL file 3I4 format overflow: %s" % result)
+      return result
+    def fmt_f8(v):
+      result = "%8.2f" % v
+      if (len(result) != 8):
+        result = "%8.1f" % v
+        if (len(result) != 8):
+          result = "%8.0f" % v
+          assert len(result) == 8
+      return result
+    line = fmt_3i4(h) + fmt_f8(data[i]*scale) + fmt_f8(s*scale)
+    print >> file_object, line
+  print >> file_object, "   0   0   0    0.00    0.00"
 
 class reader(iotbx_shelx_ext.hklf_reader):
 
