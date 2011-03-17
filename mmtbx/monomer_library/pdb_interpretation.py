@@ -1622,6 +1622,10 @@ def ener_lib_as_nonbonded_params(
   tables = {"": [], "h": []}
   for vdw in ener_lib.lib_vdw:
     assert vdw.H_flag in ["", "h"]
+    #if vdw.H_flag == "":
+    #  tables[""].append(vdw)
+    #elif vdw.H_flag == "h":
+    #  tables["h"].append(vdw)
   if (assume_hydrogens_all_missing):
     reverse_prefs = ["", "h"]
   else:
