@@ -297,6 +297,31 @@ namespace gltbx { namespace viewer_utils {
     handle_error();
   }
 
+  void
+  draw_noncovalent_bonds (
+    af::const_ref< scitbx::vec3<double> > const& points,
+    af::const_ref< std::set< unsigned > > const& bonds,
+    af::const_ref< bool > const& bonds_visible)
+  {
+    GLTBX_ASSERT(bonds_visible.size() == points.size());
+    unsigned n_atoms = points.size();
+    typedef std::set< unsigned >::const_iterator it;
+    for (unsigned k = 0; k < bonds.size(); k++) {
+      GLTBX_ASSERT(bonds[k].size() == 2);
+      it i_seq_ = bonds[k].begin();
+      unsigned i_seq = *i_seq_;
+      unsigned j_seq = *(++i_seq_);
+      if ((! bonds_visible[i_seq]) || (! bonds_visible[j_seq])) continue;
+      scitbx::vec3<double> const& pi = points[i_seq];
+      scitbx::vec3<double> const& pj = points[j_seq];
+      glBegin(GL_LINES);
+      glVertex3f(pi[0], pi[1], pi[2]);
+      glVertex3f(pj[0], pj[1], pj[2]);
+      glEnd();
+    }
+    handle_error();
+  }
+
   double line_given_points_distance_sq (
     scitbx::vec3<double> point,
     scitbx::vec3<double> reference_point,
@@ -366,6 +391,10 @@ namespace gltbx { namespace viewer_utils {
       arg("points"),
       arg("bonds"),
       arg("atom_colors"),
+      arg("bonds_visible")));
+    def("draw_noncovalent_bonds", draw_noncovalent_bonds, (
+      arg("points"),
+      arg("bonds"),
       arg("bonds_visible")));
     def("closest_visible_point", closest_visible_point, (
       arg("points"),
