@@ -68,6 +68,9 @@ def exercise_simple () :
     distance_ideal=2.9,
     weight=0.5/(0.05**2))
   assert (residual == cctbx_bond.residual())
+  simple_bonds = hbond.get_simple_bonds(build_proxies.proxies)
+  assert (simple_bonds.size() == 1)
+  assert (list(simple_bonds[0]) == [3,6])
 
 def compare_analytical_and_fd (proxies) :
   from mmtbx.geometry_restraints import hbond
@@ -142,6 +145,9 @@ def exercise_lennard_jones () :
     use_finite_differences=False,
     lennard_jones_potential="6_12")
   assert approx_equal(residual, -60.38271638, eps=0.00001)
+  simple_bonds = hbond.get_simple_bonds(build_proxies.proxies)
+  assert (simple_bonds.size() == 1)
+  assert (list(simple_bonds[0]) == [0,1])
 
 def exercise_implicit () :
   from mmtbx.geometry_restraints import hbond
@@ -201,6 +207,9 @@ def exercise_implicit () :
   assert approx_equal(g2[0][1], -21.2470231559, eps=0.00001)
   assert approx_equal(g2[0][0], 0.00310495, eps=0.00001)
   assert approx_equal(g2[2][0], 0.00652011, eps=0.00001)
+  simple_bonds = hbond.get_simple_bonds(build_proxies.proxies)
+  assert (simple_bonds.size() == 1)
+  assert (list(simple_bonds[0]) == [0,1])
 
 def plot_potentials () :
   from mmtbx.geometry_restraints import hbond

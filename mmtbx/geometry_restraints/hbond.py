@@ -176,6 +176,17 @@ def target_and_gradients (proxies,
     assert 0
   return sum
 
+def get_simple_bonds (proxies) :
+  from scitbx.array_family import shared # import dependency
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
+  if (type(proxies).__name__ == "shared_h_bond_simple_proxy") :
+    return ext.simple_hbonds_as_simple_bonds(proxies)
+  elif (type(proxies).__name__ == "shared_h_bond_lennard_jones_proxy") :
+    return ext.lj_hbonds_as_simple_bonds(proxies)
+  elif (type(proxies).__name__ == "shared_h_bond_implicit_proxy") :
+    return ext.implicit_hbonds_as_simple_bonds(proxies)
+
 def get_simple_bond_equivalents (proxies) :
   """
 Given a list of proxies, extract the pair of atom indices representing the
