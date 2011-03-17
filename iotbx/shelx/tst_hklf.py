@@ -1,6 +1,7 @@
-from libtbx.test_utils import approx_equal
-from libtbx.test_utils import Exception_expected
 from iotbx.shelx import hklf
+from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, show_diff
 from cStringIO import StringIO
 
 def exercise_hklf_reader():
@@ -108,14 +109,57 @@ def exercise_miller_export_as_shelx_hklf():
    2  -3   9   12.45    6.12
 99999999999999999.9999999.99
 -999-999-999-9999.99-9999.99
+   3   4   5999999.999999999
+   3   4   5-99999.9-9999999
 """
   ma = hklf.reader(file_object=StringIO(s)).as_miller_arrays()[0]
-  so = StringIO()
-  ma.export_as_shelx_hklf(file_object=so)
-  ma2 = hklf.reader(file_object=StringIO(so.getvalue())).as_miller_arrays()[0]
+  sio = StringIO()
+  ma.export_as_shelx_hklf(file_object=sio)
+  ma2 = hklf.reader(file_object=StringIO(sio.getvalue())).as_miller_arrays()[0]
   assert approx_equal(ma.indices(), ma2.indices())
   assert approx_equal(ma.data(), ma2.data())
   assert approx_equal(ma.sigmas(), ma2.sigmas())
+  #
+  ma = ma.select(flex.size_t([0]))
+  def check(d, s, f):
+    if (s is not None): s = flex.double([s])
+    ma2 = ma.array(data=flex.double([d]), sigmas=s)
+    sio = StringIO()
+    ma2.export_as_shelx_hklf(sio, normalise_if_format_overflow=True)
+    assert not show_diff(sio.getvalue(), """\
+   1   2  -1%s
+   0   0   0    0.00    0.00
+""" % f)
+    try: ma2.export_as_shelx_hklf(sio)
+    except RuntimeError: pass
+    else: raise Exception_expected
+  check(-12345678, 1, "-9999999    0.81")
+  check(-12345678, None, "-9999999    0.01")
+  check(2, -12345678, "    1.62-9999999")
+  check(123456789, 3, "99999999    2.43")
+  check(123456789, None, "99999999    0.01")
+  check(4, 123456789, "    3.2499999999")
+  check(-23456789, 123456789, "-999999952631576")
+  check(123456789, -23456789, "52631576-9999999")
+  #
+  ma = hklf.reader(file_object=StringIO(s)).as_miller_arrays()[0]
+  ma = ma.select(flex.size_t([0,1]))
+  ma2 = ma.array(data=flex.double([123456789, -23456789]))
+  sio = StringIO()
+  ma2.export_as_shelx_hklf(sio, normalise_if_format_overflow=True)
+  assert not show_diff(sio.getvalue(), """\
+   1   2  -152631576    0.00
+   2  -3   9-9999999    0.00
+   0   0   0    0.00    0.00
+""")
+  ma2 = ma.array(data=flex.double([-23456789, 823456789]))
+  sio = StringIO()
+  ma2.export_as_shelx_hklf(sio, normalise_if_format_overflow=True)
+  assert not show_diff(sio.getvalue(), """\
+   1   2  -1-2848576    0.00
+   2  -3   999999999    0.00
+   0   0   0    0.00    0.00
+""")
 
 def run():
   exercise_hklf_reader()
