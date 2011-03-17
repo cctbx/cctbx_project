@@ -711,10 +711,10 @@ class ml_aniso_absolute_scaling(object):
               self.work_array.sigmas()+max(1e-8,flex.min(self.work_array.sigmas()))
             )
     d_spacings = self.work_array.d_spacings().data().as_double()
-
+    if d_spacings.size() <= n_check:
+      n_check = d_spacings.size()-2
     d_sort   = flex.sort_permutation( d_spacings )
     d_select = d_sort[0:n_check]
-
     min_d = d_spacings[ d_select[0] ]
     max_d = d_spacings[ d_select[ n_check-1] ]
 
