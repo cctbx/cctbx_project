@@ -698,6 +698,8 @@ class ml_aniso_absolute_scaling(object):
 
 
   def analyze_aniso_correction(self, n_check=2000, p_check=0.25, level=3, z_level=9):
+    if self.work_array.sigmas() is None:
+       return "No further analysis of anisotropy carried out because of absence of sigmas"
 
     correction_factors = self.work_array.customized_copy(
                  data=self.work_array.data()*0.0+1.0, sigmas=None )
