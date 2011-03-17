@@ -117,7 +117,7 @@ class refinement(object):
     O.params = params
     O.f_obs = f_obs
     O.i_obs = f_obs.f_as_f_sq()
-    O.weights = flex.double(f_obs.data().size(), 1)
+    O.weights = None
     if (O.params.target_obs_type == "I"):
       if (O.params.i_obs_weights == "unit"):
         pass
@@ -198,6 +198,7 @@ class refinement(object):
   def callback_after_step(O, minimizer):
     O.update_fgc(is_iterate=True)
     print "%4d: %s" % (O.i_step+1, O.format_rms_info())
+    sys.stdout.flush()
     if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
       O.termination_remark = ""
       return True
@@ -232,6 +233,7 @@ class refinement(object):
       assert stp is not None
       O.update_fgc(is_iterate=True)
       print "%4d: %s" % (O.i_step+1, O.format_rms_info())
+      sys.stdout.flush()
       if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
         O.termination_remark = ""
         break
@@ -245,6 +247,7 @@ class refinement(object):
       if (O.aq_sel_size is not None):
         s += " aq(%d, %d)" % (O.aq_sel_size, O.aq_n_used)
       print s
+      sys.stdout.flush()
       if (O.grads_mean_sq < O.params.grads_mean_sq_threshold):
         O.termination_remark = ""
         break

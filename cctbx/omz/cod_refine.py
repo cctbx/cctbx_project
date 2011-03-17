@@ -79,9 +79,18 @@ def get_master_phil():
       }
 """)
 
-def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, a=0.1, b=0):
+def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, shelxl_wght):
   assert sigmas.size() == fo_sq.size()
   assert fc_sq.size() == fo_sq.size()
+  if (shelxl_wght is None):
+    shelxl_wght = ""
+  vals = [float(s) for s in shelxl_wght.split()]
+  assert len(vals) <= 6
+  a, b, c, d, e, f = vals + [0.1, 0, 0, 0, 0, 0.33333][len(vals):]
+  assert c == 0
+  assert d == 0
+  assert e == 0
+  assert f == 0.33333
   result = flex.double()
   for o,s,c in zip(fo_sq, sigmas, fc_sq):
     o /= scale_factor
@@ -204,20 +213,24 @@ def run_shelxl(
     os.chdir(wdir)
     tmp_file_names = ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]
     remove_tmp_files(tmp_file_names)
+    fo_sq = f_obs.f_as_f_sq(algorithm="shelxl")
     if (params.shelxl_reset_sigmas):
-      f_obs = f_obs.customized_copy(
-        sigmas=flex.double(f_obs.indices().size(), params.shelxl_reset_sigmas))
+      fo_sq = fo_sq.customized_copy(
+        sigmas=flex.double(fo_sq.indices().size(), params.shelxl_reset_sigmas))
     import iotbx.shelx
     open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
       xray_structure=xray_structure,
-      data_are_intensities=False,
+      data_are_intensities=True,
       title="cod_code=%s mode=%s" % (cod_code, mode),
-      wavelength=f_obs.minimum_wavelength_based_on_d_min(),
+      wavelength=fo_sq.minimum_wavelength_based_on_d_min(),
       full_matrix_least_squares_cycles=fm_cycles,
       conjugate_gradient_least_squares_cycles=cg_cycles,
       weighting_scheme_params=params.shelxl_wght,
       sort_scatterers=False))
-    f_obs.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
+    fo_sq.export_as_shelx_hklf(file_object=open("tmp.hkl", "w"))
+    import iotbx.shelx.hklf
+    fo_sq = iotbx.shelx.hklf.reader(file_name="tmp.hkl") \
+      .as_miller_arrays(crystal_symmetry=fo_sq)[0]
     buffers = easy_run.fully_buffered("shelxl tmp")
     buffers.raise_if_errors()
     refinement_unstable = False
@@ -296,16 +309,16 @@ def run_shelxl(
         assert res_n_parameters is not None
         assert res_n_restraints is not None
         #
-        assert res_hkl_count == f_obs.indices().size()
+        assert res_hkl_count == fo_sq.indices().size()
         def raise_unexpected_restraints(n_expected):
           raise RuntimeError(
             "Unexpected number of SHELXL restraints: %d (vs. %d expected)" % (
               res_n_restraints, n_expected))
         if (mode == "fm"):
-          n_caos = f_obs.space_group_info() \
+          n_caos = fo_sq.space_group_info() \
             .number_of_continuous_allowed_origin_shifts()
           if (res_n_restraints != n_caos):
-            sg_symbol = str(f_obs.space_group_info())
+            sg_symbol = str(fo_sq.space_group_info())
             if (sg_symbol in ["P 63 m c", "P 63 c m"]):
               assert n_caos == 1
               assert res_n_restraints == 0
@@ -341,20 +354,17 @@ def run_shelxl(
         assert lst_wr2 is not None
         assert lst_r1 == res_r1
         #
-        import iotbx.shelx.hklf
-        fo_wr = iotbx.shelx.hklf.reader(file_name="tmp.hkl") \
-          .as_miller_arrays(crystal_symmetry=f_obs)[0]
-        fo_sq = fo_wr.f_as_f_sq(algorithm="shelxl")
         fc_sq = fc_abs.f_as_f_sq()
         weights = shelxl_weights(
           fo_sq=fo_sq.data(),
           sigmas=fo_sq.sigmas(),
           fc_sq=fc_sq.data(),
-          scale_factor=res_fvar)
+          scale_factor=res_fvar,
+          shelxl_wght=params.shelxl_wght)
         num = flex.sum(
-          weights * flex.pow2(fo_sq.data() / res_fvar - fc_sq.data()))
+          weights * flex.pow2(fo_sq.data() / res_fvar**2 - fc_sq.data()))
         den = flex.sum(
-          weights * flex.pow2(fo_sq.data() / res_fvar))
+          weights * flex.pow2(fo_sq.data() / res_fvar**2))
         assert den != 0
         wr2 = (num / den)**0.5
         wr2_diff = wr2 - lst_wr2
@@ -363,7 +373,7 @@ def run_shelxl(
         else:
           info = ""
         print "wR2 recomputed - shelxl_%s.lst: %.4f - %.4f = %.4f %s%s" % (
-          mode, lst_wr2, wr2, wr2_diff, cod_code, info)
+          mode, wr2, lst_wr2, wr2_diff, cod_code, info)
         if (abs(wr2_diff) / max(lst_wr2, wr2) > 0.2):
           raise RuntimeError("wR2 MISMATCH %s" % cod_code)
     if (not params.keep_tmp_files):
