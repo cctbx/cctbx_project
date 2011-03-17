@@ -54,6 +54,8 @@ def get_master_phil():
         .type = bool
       export_refined = False
         .type = bool
+      pickle_refined_dir = None
+        .type = str
       wdir_root = None
         .type = str
       sorting_of_pickle_files = *down up
@@ -440,8 +442,9 @@ def run_shelx76(
 def process(params, pickle_file_name):
   cod_code = op.basename(pickle_file_name).split(".",1)[0]
   print "cod_code:", cod_code
-  f_obs, structure_prep, edge_list = easy_pickle.load(
+  f_obs_from_pickle, structure_prep, edge_list = easy_pickle.load(
     file_name=pickle_file_name)
+  f_obs = f_obs_from_pickle
   changes = structure_prep.make_scatterer_labels_shelx_compatible_in_place()
   if (params.sites_mod_short):
     structure_prep = structure_prep.sites_mod_short()
@@ -575,6 +578,15 @@ def process(params, pickle_file_name):
         params.target_type, params.target_obs_type.lower(), cod_code)
       open(file_name, "w").write(structure_dev.as_pdb_file(
         remarks=[file_name]))
+    if (params.pickle_refined_dir is not None):
+      easy_pickle.dump(
+        file_name=op.join(params.pickle_refined_dir, cod_code+".pickle"),
+        obj=(f_obs_from_pickle, structure_dev, None))
+      print >> open("%s/qi_%s" % (params.pickle_refined_dir, cod_code), "w"), (
+        structure_dev.scatterers().size(),
+        f_obs_from_pickle.space_group().order_p(),
+        f_obs_from_pickle.indices().size(),
+        f_obs_from_pickle.d_min())
   #
   def use_smtbx_ls(mode):
     if ("ls_"+mode not in params.optimizers):
@@ -631,7 +643,6 @@ def process(params, pickle_file_name):
 
 def run(args):
   from iotbx.option_parser import option_parser as iotbx_option_parser
-  from libtbx import easy_pickle
   import libtbx.utils
   show_times = libtbx.utils.show_times(time_start="now")
   command_call = ["iotbx.python", __file__]
@@ -719,9 +730,11 @@ def run(args):
     all_pickles = flex.select(all_pickles, permutation=flags.iselection())
     print
   #
+  from libtbx.path import makedirs_race
   if (params.wdir_root is not None):
-    from libtbx.path import makedirs_race
     makedirs_race(path=params.wdir_root)
+  if (params.pickle_refined_dir is not None):
+    makedirs_race(path=params.pickle_refined_dir)
   #
   n_caught = 0
   for i_pickle,pickle_file_name in enumerate(all_pickles):
