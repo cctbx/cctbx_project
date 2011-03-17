@@ -12,6 +12,7 @@
 #include <cctbx/geometry/geometry.h>
 
 #include <cmath>
+#include <set>
 #include <iostream>
 
 namespace mmtbx { namespace geometry_restraints {
@@ -373,6 +374,45 @@ namespace mmtbx { namespace geometry_restraints {
       }
     }
     return residual_sum;
+  }
+
+  af::shared<std::set<unsigned> > simple_hbonds_as_simple_bonds (
+    af::const_ref<h_bond_simple_proxy> const& proxies)
+  {
+    af::shared<std::set<unsigned> > bonded_pairs;
+    for (unsigned i = 0; i < proxies.size(); i++) {
+      std::set<unsigned> pair;
+      pair.insert(proxies[i].i_seqs[0]);
+      pair.insert(proxies[i].i_seqs[1]);
+      bonded_pairs.push_back(pair);
+    }
+    return bonded_pairs;
+  }
+
+  af::shared<std::set<unsigned> > lj_hbonds_as_simple_bonds (
+    af::const_ref<h_bond_lj_proxy> const& proxies)
+  {
+    af::shared<std::set<unsigned> > bonded_pairs;
+    for (unsigned i = 0; i < proxies.size(); i++) {
+      std::set<unsigned> pair;
+      pair.insert(proxies[i].i_seqs[0]);
+      pair.insert(proxies[i].i_seqs[1]);
+      bonded_pairs.push_back(pair);
+    }
+    return bonded_pairs;
+  }
+
+  af::shared<std::set<unsigned> > implicit_hbonds_as_simple_bonds (
+    af::const_ref<h_bond_implicit_proxy> const& proxies)
+  {
+    af::shared<std::set<unsigned> > bonded_pairs;
+    for (unsigned i = 0; i < proxies.size(); i++) {
+      std::set<unsigned> pair;
+      pair.insert(proxies[i].i_seqs[0]);
+      pair.insert(proxies[i].i_seqs[1]);
+      bonded_pairs.push_back(pair);
+    }
+    return bonded_pairs;
   }
 
 }} // namespace mmtbx::geometry_restraints

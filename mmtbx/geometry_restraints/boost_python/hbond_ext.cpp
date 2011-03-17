@@ -137,6 +137,16 @@ namespace {
       arg("use_finite_differences")=true));
   }
 
+  void wrap_misc () {
+    using namespace boost::python;
+    def("simple_hbonds_as_simple_bonds", simple_hbonds_as_simple_bonds, (
+      arg("proxies")));
+    def("lj_hbonds_as_simple_bonds", lj_hbonds_as_simple_bonds, (
+      arg("proxies")));
+    def("implicit_hbonds_as_simple_bonds", implicit_hbonds_as_simple_bonds, (
+      arg("proxies")));
+  }
+
 } // namespace anonymous
 
 namespace boost_python {
@@ -145,6 +155,7 @@ namespace boost_python {
     wrap_simple_restraints();
     wrap_lennard_jones();
     wrap_implicit_restraints();
+    wrap_misc();
   }
 
 } // namespace boost_python
