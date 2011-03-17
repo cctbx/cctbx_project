@@ -1613,29 +1613,31 @@ def ener_lib_as_nonbonded_params(
       assume_hydrogens_all_missing,
       factor_1_4_interactions,
       default_distance,
-      minimum_distance):
+      minimum_distance,
+      use_lib_vdw=False):
   params = geometry_restraints.nonbonded_params(
     factor_1_4_interactions=factor_1_4_interactions,
     const_shrink_1_4_interactions=0,
     default_distance=default_distance,
     minimum_distance=minimum_distance)
-  tables = {"": [], "h": []}
-  for vdw in ener_lib.lib_vdw:
-    assert vdw.H_flag in ["", "h"]
-    #if vdw.H_flag == "":
-    #  tables[""].append(vdw)
-    #elif vdw.H_flag == "h":
-    #  tables["h"].append(vdw)
-  if (assume_hydrogens_all_missing):
-    reverse_prefs = ["", "h"]
-  else:
-    reverse_prefs = ["h", ""]
-  for code in reverse_prefs:
-    for vdw in tables[code]:
-      atom_types = [vdw.atom_type_1, vdw.atom_type_2]
-      atom_types.sort()
-      params.distance_table.setdefault(
-        atom_types[0])[atom_types[1]] = vdw.radius_min
+  if (use_lib_vdw):
+    tables = {"": [], "h": []}
+    for vdw in ener_lib.lib_vdw:
+      assert vdw.H_flag in ["", "h"]
+      if (vdw.H_flag == ""):
+        tables[""].append(vdw)
+      else:
+        tables["h"].append(vdw)
+    if (assume_hydrogens_all_missing):
+      reverse_prefs = ["", "h"]
+    else:
+      reverse_prefs = ["h", ""]
+    for code in reverse_prefs:
+      for vdw in tables[code]:
+        atom_types = [vdw.atom_type_1, vdw.atom_type_2]
+        atom_types.sort()
+        params.distance_table.setdefault(
+          atom_types[0])[atom_types[1]] = vdw.radius_min
   if (assume_hydrogens_all_missing):
     pref1, pref2 = ["vdwh_radius", "vdw_radius"]
   else:
