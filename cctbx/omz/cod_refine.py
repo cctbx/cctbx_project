@@ -79,9 +79,21 @@ def get_master_phil():
       }
 """)
 
-def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, shelxl_wght):
+def shelxl_weights_a_b(fo_sq, sigmas, fc_sq, osf_sq, a, b):
   assert sigmas.size() == fo_sq.size()
   assert fc_sq.size() == fo_sq.size()
+  result = flex.double()
+  for o,s,c in zip(fo_sq, sigmas, fc_sq):
+    o /= osf_sq
+    s /= osf_sq
+    p = (max(o, 0) + 2 * c) / 3
+    den = s**2 + (a*p)**2 + b*p
+    assert den > 1e-8
+    w = 1 / den
+    result.append(w)
+  return result
+
+def shelxl_weights(fo_sq, sigmas, fc_sq, osf_sq, shelxl_wght):
   if (shelxl_wght is None):
     shelxl_wght = ""
   vals = [float(s) for s in shelxl_wght.split()]
@@ -91,16 +103,7 @@ def shelxl_weights(fo_sq, sigmas, fc_sq, scale_factor, shelxl_wght):
   assert d == 0
   assert e == 0
   assert f == 0.33333
-  result = flex.double()
-  for o,s,c in zip(fo_sq, sigmas, fc_sq):
-    o /= scale_factor
-    s /= scale_factor
-    p = (max(o, 0) + 2 * c) / 3
-    den = s**2 + (a*p)**2 + b*p
-    assert den > 1e-8
-    w = 1 / den
-    result.append(w)
-  return result
+  return shelxl_weights_a_b(fo_sq, sigmas, fc_sq, osf_sq, a, b)
 
 def show_cc_r1(
       label, f_obs, xray_structure=None, fc_abs=None, scale_factor=Auto):
@@ -278,7 +281,7 @@ def run_shelxl(
         return result
       assert check_special_positions()
       xray_structure.replace_scatterers(refined.scatterers())
-      res_fvar = None
+      res_osf = None
       res_hkl_count = None
       res_r1 = None
       res_n_parameters = None
@@ -287,7 +290,7 @@ def run_shelxl(
         if (line.startswith("FVAR ")):
           flds = line.split()
           assert len(flds) == 2
-          res_fvar = float(flds[1])
+          res_osf = float(flds[1])
           continue
         if (not line.startswith("REM ")): continue
         assert not refinement_unstable
@@ -303,7 +306,7 @@ def run_shelxl(
           res_n_parameters = int(flds[1])
           res_n_restraints = int(flds[-2])
       if (not refinement_unstable):
-        assert res_fvar is not None
+        assert res_osf is not None
         assert res_hkl_count is not None
         assert res_r1 is not None
         assert res_n_parameters is not None
@@ -333,7 +336,7 @@ def run_shelxl(
           raise RuntimeError("Unknown mode: " + mode)
         assert res_n_parameters == expected_n_refinable_parameters + 1
         fc_abs, _, r1_fvar = show_cc_r1(
-          "fvar_"+mode, f_obs, xray_structure, scale_factor=res_fvar)
+          "fvar_"+mode, f_obs, xray_structure, scale_factor=res_osf)
         r1_diff = r1_fvar - res_r1
         print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
           mode, r1_fvar, res_r1, r1_diff, cod_code)
@@ -359,12 +362,12 @@ def run_shelxl(
           fo_sq=fo_sq.data(),
           sigmas=fo_sq.sigmas(),
           fc_sq=fc_sq.data(),
-          scale_factor=res_fvar,
+          osf_sq=res_osf**2,
           shelxl_wght=params.shelxl_wght)
         num = flex.sum(
-          weights * flex.pow2(fo_sq.data() / res_fvar**2 - fc_sq.data()))
+          weights * flex.pow2(fo_sq.data() / res_osf**2 - fc_sq.data()))
         den = flex.sum(
-          weights * flex.pow2(fo_sq.data() / res_fvar**2))
+          weights * flex.pow2(fo_sq.data() / res_osf**2))
         assert den != 0
         wr2 = (num / den)**0.5
         wr2_diff = wr2 - lst_wr2
