@@ -275,6 +275,43 @@ def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
     resolution_factor=resolution_factor,
     force=force)
 
+def convert_map_coefficients (map_coefficients,
+                              mtz_file,
+                              pdb_file=None,
+                              grid_resolution_factor=0.33) :
+  assert os.path.isfile(mtz_file)
+  map_files = []
+  from iotbx import file_reader
+  mtz_in = file_reader.any_file(mtz_file)
+  mtz_in.assert_file_type("hkl")
+  xray_structure = None
+  if (pdb_file is not None) :
+    pdb_in = file_reader.any_file(pdb_file)
+    pdb_in.assert_file_type("pdb")
+    xray_structure = pdb_in.file_object.xray_structure_simple()
+  for map in map_coefficients :
+    array_label = map.mtz_label_amplitudes + "," + map.mtz_label_phases
+    map_array = None
+    for miller_array in mtz_in.file_server.miller_arrays :
+      if (miller_array.info().label_string() == array_label) :
+        map_array = miller_array
+        break
+    if (miller_array is None) :
+      print "Can't find %s" % array_label
+      continue
+    if mtz_file.endswith("_map_coeffs.mtz") :
+      base_file = re.sub("_map_coeffs.mtz", "", mtz_file)
+    else :
+      base_file, ext = os.path.splitext(mtz_file)
+    output_file = base_file + "_%s.ccp4" % map.map_type
+    ccp4_map_from_coeffs(
+      miller_array=map_array,
+      output_file=map_file,
+      xray_structure=xray_structure,
+      grid_resolution_factor=grid_resolution_factor)
+    map_files.append((map_file, map.map_type))
+  return map_files
+
 def ccp4_map_from_coeffs (miller_array, output_file, pdb_file=None,
     xray_structure=None, grid_resolution_factor=0.33) :
   assert miller_array.is_complex_array()

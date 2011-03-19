@@ -49,3 +49,9 @@ class manager (object) :
         falloff_distance=self.hydrogen_bond_params.falloff_distance,
         lennard_jones_potential=lj_potential)
     return target
+
+  def hbonds_as_simple_bonds (self) :
+    if (self.hydrogen_bond_proxies is not None) :
+      from mmtbx.geometry_restraints import hbond
+      return hbond.get_simple_bonds(self.hydrogen_bond_proxies)
+    return []

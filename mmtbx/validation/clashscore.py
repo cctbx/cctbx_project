@@ -102,7 +102,7 @@ class clashscore(object):
       pdb_io = pdb.input(filename)
       pass
     else:
-      print "Please enter a file name"
+      print >> log, "Please enter a file name"
       return
     clashscore, bad_clashes = self.analyze_clashes(pdb_io=pdb_io,
         keep_hydrogens=self.params.clashscore.keep_hydrogens)
