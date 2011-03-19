@@ -9,7 +9,9 @@ import libtbx.phil
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
-import os, sys
+import os
+import re
+import sys
 
 #-----------------------------------------------------------------------
 # MAP COEFFICIENT MANIPULATION
