@@ -27,6 +27,9 @@ opengl {
   nonbonded_line_width = 2
     .type = int
     .style = spinner min:1 max:10
+  hydrogen_bond_width = 2
+    .type = int
+    .style = spinner min:1 max:10
   map_radius = 10
     .type = int
     .style = spinner min:1 max:40
@@ -216,13 +219,10 @@ class model_scene (object) :
     if self.nc_display_list is None :
       self.nc_display_list = gltbx.gl_managed.display_list()
       self.nc_display_list.compile()
-      points = self.points
-      bonded_atoms = self.noncovalent_bonds
-      for i_seq, j_seq in bonded_atoms :
-        glBegin(GL_LINES)
-        glVertex3f(*points[i_seq])
-        glVertex3f(*points[j_seq])
-        glEnd()
+      viewer_utils.draw_noncovalent_bonds(
+        points=self.points,
+        bonds=self.noncovalent_bonds,
+        bonds_visible=self.bonds_visible)
       self.nc_display_list.end()
     self.nc_display_list.call()
 
@@ -275,7 +275,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.flag_show_labels                  = True
     self.flag_show_trace                   = False
     self.flag_show_ribbon                  = True
-    self.flag_show_noncovalent_bonds       = False
+    self.flag_show_noncovalent_bonds       = True
     self.flag_show_hydrogens               = False
     self.flag_show_ellipsoids              = True
     self.flag_smooth_lines                 = True
@@ -423,8 +423,9 @@ class model_viewer_mixin (wxGLWindow) :
   def draw_noncovalent_bonds (self) :
     glDisable(GL_LIGHTING)
     glColor3f(0.0, 1.0, 0.0)
-    glLineStipple(4, 0xAAAA)
     glEnable(GL_LINE_STIPPLE)
+    glLineStipple(4, 0xAAAA)
+    glLineWidth(self.settings.opengl.hydrogen_bond_width)
     for model_id, model in self.iter_models() :
       if self.show_object[model_id] and model.flag_show_noncovalent_bonds :
         self.scene_objects[model_id].draw_noncovalent_bonds()
