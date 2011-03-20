@@ -2803,6 +2803,20 @@ def exercise_matrix_packed_u_diagonal():
   a.matrix_packed_u_diagonal_add_in_place(1)
   assert tuple(a.matrix_packed_u_diagonal()) == (2, 6, 9, 11)
 
+def exercise_python_functions():
+  a = flex.int([1,2,3,4,5,6])
+  a.reshape(flex.grid(2,3))
+  rows = list(flex.rows(a))
+  assert len(rows) == 2
+  assert list(rows[0]) == [1,2,3]
+  assert list(rows[1]) == [4,5,6]
+  a.reshape(flex.grid(3,2))
+  rows = list(flex.rows(a))
+  assert len(rows) == 3
+  assert list(rows[0]) == [1,2]
+  assert list(rows[1]) == [3,4]
+  assert list(rows[2]) == [5,6]
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -2852,6 +2866,7 @@ def run(iterations):
     pickle_large_arrays(max_exp=2, verbose=0)
     exercise_py_object()
     exercise_condense_as_ranges()
+    exercise_python_functions()
     i += 1
 
 if (__name__ == "__main__"):

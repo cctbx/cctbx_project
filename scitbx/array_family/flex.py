@@ -31,9 +31,20 @@ class grid_(boost.python.injector, grid):
     return self
 
 def show(a):
+  assert a.nd() == 2
+  assert a.is_0_based()
+  assert not a.is_padded()
   import scitbx.matrix
   print scitbx.matrix.rec(
     a, a.focus()).mathematica_form(one_row_per_line=True)
+
+def rows(a):
+  assert a.nd() == 2
+  assert a.is_0_based()
+  assert not a.is_padded()
+  nr,nc = a.focus()
+  for ir in xrange(nr):
+    yield a[ir*nc:(ir+1)*nc]
 
 def upper_bidiagonal(d, f):
   n = len(d)
@@ -56,6 +67,7 @@ def lower_bidiagonal(d, f):
 def export_to(target_module_name):
   export_list = [
     "show",
+    "rows",
     "to_list",
     "min_default",
     "max_default",
