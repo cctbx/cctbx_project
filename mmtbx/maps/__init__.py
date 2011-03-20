@@ -54,6 +54,10 @@ map_coeff_params_str = """\
     exclude_free_r_reflections = False
       .type = bool
       .help = Exclude free-R selected reflections from output map coefficients
+    isotropize = True
+      .type = bool
+    resharp_after_isotropize = False
+      .type = bool
     dev
       .expert_level=3
     {
@@ -125,6 +129,10 @@ map_params_str ="""\
     exclude_free_r_reflections = False
       .type = bool
       .help = Exclude free-R selected reflections from map calculation
+    isotropize = True
+      .type = bool
+    resharp_after_isotropize = False
+      .type = bool
   }
 """
 
@@ -356,8 +364,10 @@ def map_coefficients_from_fmodel(fmodel, params):
         "corresponding box in the Phenix GUI).")
     if(params.map_type.count("anom")==0):
       coeffs = map_tools.kick_map(
-        fmodel   = e_map_obj.fmodel,
-        map_type = params.map_type).map_coeffs
+        fmodel     = e_map_obj.fmodel,
+        map_type   = params.map_type,
+        isotropize = params.isotropize,
+        resharp    = params.resharp_after_isotropize).map_coeffs
   if(coeffs is not None and params.sharpening):
     coeffs = map_tools.b_sharp_map(map_coefficients = coeffs, b_sharp =
       params.sharpening_b_factor)
@@ -397,6 +407,51 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
       output_files.append(mp.file_name)
   return output_files
 
+def subtract_min_eigenvalue(x):
+  from scitbx import linalg
+  import scitbx.linalg.eigensystem
+  es = linalg.eigensystem.real_symmetric(x)
+  from scitbx import matrix
+  vals = matrix.col((es.values()))
+  min_v = min(vals.elems)
+  vals = matrix.col([e-min_v for e in vals])
+  vecs = matrix.sqr((es.vectors()))
+  vecs_inv = vecs.inverse()
+  m = vecs_inv * matrix.sym(sym_mat3=vals.elems+(0,0,0)) * vecs_inv.transpose()
+  m = m.as_sym_mat3()
+  return m
+  tmp = [i for i in m.elems]
+  return flex.sym_mat3_double([tmp])[0]
+
+def isotropizer(fmodel, map_coeffs, resharp, b_sharp_ext=None):
+  from cctbx import miller
+  fb = miller.set(crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
+    indices = fmodel.f_obs().indices(),
+    anomalous_flag=False).array(data=fmodel.fb_cart())
+  fb = fb.average_bijvoet_mates()
+  sc2=1
+  if(resharp):
+    ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
+    from cctbx import adptbx
+    from scitbx import linalg
+    import scitbx.linalg.eigensystem
+    es = linalg.eigensystem.real_symmetric(fmodel.b_cart())
+    from scitbx import matrix
+    vals = matrix.col((es.values()))
+    b_sharp = min(vals.elems)
+    if(b_sharp_ext is not None):
+      assert b_sharp_ext >= 0
+      b_sharp -= b_sharp_ext
+    print "b_sharp", b_sharp
+    print list(fmodel.b_cart())
+    if(b_sharp < 0):
+      sc2 = flex.exp(-b_sharp*ss)
+  sc1 = 1./fb.data()
+  if(map_coeffs.data().size() == fb.data().size()):
+    map_coeffs = map_coeffs.array(data = map_coeffs.data()*sc1*sc2)
+  map_coeffs.indices().all_eq(fb.indices())
+  return map_coeffs
+
 class compute_map_coefficients(object):
 
   def __init__(self,
@@ -410,10 +465,17 @@ class compute_map_coefficients(object):
       if(mcp.map_type is not None):
         # XXX
         if(fmodel.__class__.__name__ == "twin_model_manager" and
-            mcp.map_type == "anomalous"):
+            (mcp.map_type == "anomalous" or mcp.isotropize)):
           continue
         # XXX
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
+        # Randy Read's map de-anisotropization
+        if(mcp.map_type != "anomalous" and mcp.isotropize and not mcp.kicked):
+          coeffs = isotropizer(
+            fmodel     = fmodel,
+            map_coeffs = coeffs,
+            resharp    = mcp.resharp_after_isotropize)
+        ####
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):

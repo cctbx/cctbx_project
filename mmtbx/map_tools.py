@@ -3,6 +3,7 @@ from cctbx import miller
 from cctbx import maptbx
 import boost.python
 import mmtbx
+import sys, math
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -10,21 +11,25 @@ class kick_map(object):
 
   def __init__(self, fmodel,
                      map_type,
-                     kick_sizes         = [0,0.2,0.4,0.6,0.8],
-                     number_of_kicks    = 30,
+                     kick_sizes         = [1.0],
+                     number_of_kicks    = 100,
                      acentrics_scale    = 2.0,
-                     centrics_pre_scale = 1.0):
+                     centrics_pre_scale = 1.0,
+                     isotropize         = False,
+                     resharp            = False
+                     ):
     self.map_coeffs = None
     fmodel_tmp = fmodel.deep_copy()
     map_helper_obj = fmodel.map_calculation_helper()
     map_coeff_data = None
+    f_obs_orig = fmodel.f_obs().deep_copy()
     counter = 0
     for kick_size in kick_sizes:
       for kick in xrange(number_of_kicks):
         counter += 1
-        print kick_size, kick
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
+        #
         fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
                                          update_f_calc  = True,
                                          update_f_mask  = True,
@@ -32,13 +37,29 @@ class kick_map(object):
         self.map_coeffs = fmodel_tmp.electron_density_map().map_coefficients(
           map_type = map_type,
           external_alpha_fom_source = map_helper_obj)
+        #s = flex.random_bool(fmodel.f_obs().data().size(), 0.1)
+        #self.map_coeffs = miller.set(
+        #  crystal_symmetry = self.map_coeffs.crystal_symmetry(),
+        #  indices          = self.map_coeffs.indices(),
+        #  anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
+        #    data = self.map_coeffs.data().set_selected(s, 0+0j))
+        if(isotropize):
+          self.map_coeffs = mmtbx.maps.isotropizer(
+              fmodel     = fmodel_tmp,
+              map_coeffs = self.map_coeffs,
+              resharp    = resharp#,
+              #b_sharp_ext= 8.0*math.pi**2/3*(kick_size/2.)**2
+              )
         if(map_coeff_data is None):
           map_coeff_data = self.map_coeffs.data()
         else:
           map_coeff_data = map_coeff_data + self.map_coeffs.data()
     if(self.map_coeffs is not None):
-      self.map_coeffs = self.map_coeffs.customized_copy(
-        data = map_coeff_data/counter)
+      self.map_coeffs = miller.set(
+        crystal_symmetry = self.map_coeffs.crystal_symmetry(),
+        indices          = self.map_coeffs.indices(),
+        anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
+          data = map_coeff_data/counter)
 
 def b_sharp_map(map_coefficients,
                 resolution_factor = 1/4.,

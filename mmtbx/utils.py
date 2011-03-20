@@ -1505,6 +1505,7 @@ def fmodel_simple(f_obs,
       xray_structure = xrs.deep_copy_scatterers(),
       f_obs          = f_obs.deep_copy(),
       r_free_flags   = flags.deep_copy(),
+      target_name    = target_name,
       mask_params    = mp,
       twin_law       = tl)
     if(bssf):
@@ -1546,6 +1547,7 @@ def fmodel_simple(f_obs,
     for i_seq, xray_structure in enumerate(xray_structures):
       fmodel = fmodel_manager(
         xray_structure = xray_structure,
+        target_name    = target_name,
         f_obs          = f_obs.deep_copy(),
         r_free_flags   = r_free_flags.deep_copy(),
         mask_params    = mask_params,
@@ -1571,6 +1573,7 @@ def fmodel_simple(f_obs,
       f_obs        = f_obs.deep_copy(),
       r_free_flags = r_free_flags.deep_copy(),
       f_calc       = fmodel_average,
+      target_name  = target_name,
       mask_params  = mask_params,
       f_mask       = f_masks_data_average,
       twin_law     = None)
