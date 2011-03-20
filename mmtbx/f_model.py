@@ -1157,7 +1157,8 @@ class manager(manager_mixin):
     if(mask_params is not None):
        self.mask_params = mask_params
     if(f_obs is not None):
-      self.passive_arrays.f_obs = f_obs
+      #BAD IDEA ? self.passive_arrays.f_obs = f_obs
+      self.active_arrays.f_obs = f_obs
       self.update_core()
     if(r_free_flags is not None):
       self.passive_arrays.r_free_flags = r_free_flags
