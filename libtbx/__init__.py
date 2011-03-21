@@ -23,6 +23,10 @@ def _numstr(values, fmt="%.6g", sep=", ", brackets=("[","]")):
   return brackets[0] + sep.join(flds) + brackets[1]
 __builtins__["numstr"] = _numstr
 
+def _real_imag(complex_number):
+  return (complex_number.real, complex_number.imag)
+__builtins__["real_imag"] = _real_imag
+
 class AutoType(object):
 
   def __str__(self): return "Auto"
