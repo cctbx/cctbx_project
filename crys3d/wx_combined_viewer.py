@@ -1,6 +1,6 @@
 from __future__ import division
 
-import sys, os
+from crys3d import wx_tools
 from crys3d.wx_selection_editor import selection_editor_mixin
 import iotbx.phil
 from gltbx.wx_viewer import wxGLWindow
@@ -12,6 +12,8 @@ from scitbx.array_family import flex
 from scitbx import iso_surface
 from libtbx import adopt_init_args
 import wx
+import os
+import sys
 
 viewer_phil = iotbx.phil.parse("""
   include scope crys3d.wx_selection_editor.viewer_phil
@@ -118,7 +120,7 @@ class map_viewer_mixin (wxGLWindow) :
     self.map_objects = []
     self.map_scenes  = {}
     self.show_object = {}
-    self.map_ctrls = {}
+    self.map_panel = None
     # user settings
     self.mesh_line_width = 0.25 # very buggy on OS X + NVidia (and ???)
     self.selected_map_id = None
@@ -199,17 +201,28 @@ class map_viewer_mixin (wxGLWindow) :
       map_object.update_map_data(map)
       self.update_maps = True
 
-  def show_map_ctrls (self, map_id) :
-    map_object = self.get_map(map_id)
-    if map_object is None :
-      print "oops"
-      return
-    elif self.map_ctrls.get(map_id) is not None :
-      self.map_ctrls[map_id].Raise()
-    else :
-      frame = MapEditor(self, map_object, map_id)
-      frame.Show()
-      self.map_ctrls[map_id] = frame
+  def show_map_ctrls (self) :
+    if (self.map_panel is None) :
+      if (self.model_panel is not None) :
+        frame_rect = self.model_panel.GetRect()
+        pos = (frame_rect[0], frame_rect[1] + frame_rect[3])
+      else :
+        frame_rect = self.GetParent().GetRect()
+        display_rect = wx.GetClientDisplayRect()
+        x_start = frame_rect[0] + frame_rect[2]
+        if (x_start > (display_rect[2] - 400)) :
+          x_start = display_rect[2] - 400
+        y_start = frame_rect[1] + 200
+        if (y_start > (display_rect[3] - 200)) :
+          y_start = display_rect[3] - 200
+        pos = (x_start, y_start)
+      self.map_panel = wx_tools.MapControlPanel(
+        parent=self,
+        id=-1,
+        title="Map controls",
+        style=wx.CLOSE_BOX|wx.CAPTION,
+        pos=pos)
+      self.map_panel.Show()
 
   def update_map_from_miller_array (self, map_id, map_coeffs,
       resolution_factor=0.33) :
@@ -243,9 +256,6 @@ class map_viewer_mixin (wxGLWindow) :
       self.selected_map_id = None
     else :
       self.selected_map_id = map_id
-    for other_id, ctrl_frame in self.map_ctrls.iteritems() :
-      if ctrl_frame is not None :
-        ctrl_frame.refresh_attach_mouse()
 
   def get_selected_map (self) :
     return self.get_map(self.selected_map_id)
@@ -253,8 +263,8 @@ class map_viewer_mixin (wxGLWindow) :
   def increment_map_iso_levels (self, inc) :
     if self.get_selected_map() is not None :
       self.get_selected_map().increment_iso_levels(inc)
-      if self.map_ctrls.get(self.selected_map_id) is not None :
-        self.map_ctrls[self.selected_map_id].refresh_iso_levels()
+      if (self.map_panel is not None) :
+        self.map_panel.refresh_iso_levels()
       self.update_maps = True
 
   def update_map_scenes (self) :
@@ -367,85 +377,5 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def update_all_settings (self, params, redraw=False) :
     selection_editor_mixin.update_settings(self, params, redraw)
     self.update_maps = True
-
-########################################################################
-class MapEditor (wx.MiniFrame) :
-  def __init__ (self, parent, map_object, map_id) :
-    import wx.lib.colourselect
-    adopt_init_args(self, locals())
-    wx.MiniFrame.__init__(self, parent, -1, map_id,
-      style=wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER)
-    panel = wx.Panel(self, -1)
-    main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(main_sizer)
-    self.ctrls = []
-    for iso_level, color in zip(map_object.iso_levels, map_object.colors) :
-      level_sizer = wx.BoxSizer(wx.HORIZONTAL)
-      slider = wx.Slider(panel,
-                         size=(160,-1),
-                         minValue=-100,
-                         maxValue=100,
-                         value=int(iso_level * 10),
-                         style=wx.SL_AUTOTICKS)
-      level_txt = wx.TextCtrl(panel,
-                              size=(64,-1),
-                              style=wx.TE_READONLY|wx.TE_RIGHT)
-      level_txt.SetValue("%.2f" % iso_level)
-      initial_color = [ int(x*255) for x in color ]
-      color_ctrl = wx.lib.colourselect.ColourSelect(panel,
-                                                    colour=initial_color)
-      level_sizer.Add(slider, 0, wx.ALL, 5)
-      level_sizer.Add(level_txt, 0, wx.ALL, 5)
-      level_sizer.Add(color_ctrl, 0, wx.ALL, 5)
-      main_sizer.Add(level_sizer, 1, wx.ALL, 5)
-      self.ctrls.append((slider, level_txt, color_ctrl))
-    self.attach_mouse_wheel = wx.CheckBox(panel,
-      label="Attach mouse wheel to this map")
-    self.attach_mouse_wheel.SetValue(map_id == parent.selected_map_id)
-    main_sizer.Add(self.attach_mouse_wheel, 0, wx.ALL, 5)
-    main_sizer.Fit(panel)
-    self.Fit()
-    self.Bind(wx.EVT_CHECKBOX, self.OnAttachMouse, self.attach_mouse_wheel)
-    self.Bind(wx.EVT_SLIDER, self.OnUpdate)
-    self.Bind(wx.lib.colourselect.EVT_COLOURSELECT, self.OnUpdate)
-    self.Bind(wx.EVT_CLOSE, self.OnClose)
-    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
-
-  def OnUpdate (self, event) :
-    source_ctrl = event.GetEventObject()
-    for i, (s, t, c) in enumerate(self.ctrls) :
-      if source_ctrl is s :
-        new_level = s.GetValue() / 10.0
-        self.map_object.iso_levels[i] = new_level
-        t.SetValue("%.2f" % new_level)
-        self.parent.update_maps = True
-      elif source_ctrl is c :
-        new_color = c.GetValue()
-        new_color = [ x / 255.0 for x in new_color ]
-        self.map_object.colors[i] = new_color
-        self.parent.update_maps = True
-    self.parent.OnRedrawGL()
-
-  def OnClose (self, event) :
-    self.Destroy()
-
-  def OnDestroy (self, event) :
-    self.parent.map_ctrls.pop(self.map_id)
-
-  def refresh_iso_levels (self) :
-    levels = self.map_object.iso_levels
-    assert len(levels) == len(self.ctrls)
-    for i, (s, t, c) in enumerate(self.ctrls) :
-      s.SetValue(int(10 * levels[i]))
-      t.SetValue("%.2f" % levels[i])
-
-  def refresh_attach_mouse (self) :
-    self.attach_mouse_wheel.SetValue(self.map_id==self.parent.selected_map_id)
-
-  def OnAttachMouse (self, event) :
-    if self.attach_mouse_wheel.GetValue() == True :
-      self.parent.set_selected_map(self.map_id)
-    else :
-      self.parent.set_selected_map(None)
 
 #---end
