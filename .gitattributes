@@ -216,6 +216,7 @@ crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_model_viewer.py -text
 crys3d/wx_selection_editor.py -text
+crys3d/wx_tools.py -text
 dox.sphinx/Makefile -text
 dox.sphinx/conf.py -text
 dox.sphinx/generate_modules.py -text
