@@ -1,8 +1,8 @@
-
-#include <mmtbx/secondary_structure/identify.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+
+#include <mmtbx/secondary_structure/identify.hpp>
 
 namespace mmtbx { namespace secondary_structure {
 namespace {
