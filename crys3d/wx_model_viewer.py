@@ -5,6 +5,7 @@ from __future__ import division
 # TODO: hide nonbonded point for any atom that has an ellipsoid drawn
 # TODO: clean up handling of changes in atom count
 
+from crys3d import wx_tools
 from crys3d.model import model_data
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
@@ -56,20 +57,6 @@ opengl {
     .type = bool
 }
 """)
-
-draw_modes = [ ("trace", "Show trace"),
-               ("all_atoms", "Show all atoms"),
-               ("bonded_only", "Show bonded atoms"),
-               #("ribbon", "Show ribbon"),
-             ]
-draw_flags = [ ("flag_show_hydrogens", "Show hydrogens"),
-               ("flag_show_ellipsoids", "Show B-factor ellipsoids"),
-               ("flag_show_labels", "Show labels"),
-               ("flag_show_noncovalent_bonds", "Show non-covalent bonds"), ]
-color_modes = [ ("rainbow", "Color rainbow"),
-                ("b", "Color by B-factor"),
-                ("element", "Color by element"),
-                ("chain", "Color by chain"), ]
 
 #-----------------------------------------------------------------------
 # XXX: this class contains only the information needed for OpenGL commands,
@@ -249,6 +236,7 @@ class model_viewer_mixin (wxGLWindow) :
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.Connect(-1, -1, UPDATE_MODEL_ID, self.OnUpdateModel)
     self.Connect(-1, -1, ADD_MODEL_ID, self.OnAddModel)
+    self.model_panel = None
     self.minimum_covering_sphere = None
     self.show_object = {}
     self.pick_object = {}
@@ -464,59 +452,6 @@ class model_viewer_mixin (wxGLWindow) :
         return model
     return None
 
-  def show_model_controls_menu (self, object_id, source_widget) :
-    model = self.get_model(object_id)
-    if model is None :
-      return
-    menu = wx.Menu(title=object_id)
-    for mode_name, mode_label in draw_modes :
-      item = menu.AppendCheckItem(-1, mode_label)
-      if model.draw_mode == mode_name :
-        item.Check(True)
-      source_widget.Bind(wx.EVT_MENU, self.OnModelMenu, item)
-    menu.AppendSeparator()
-    for flag_name, flag_label in draw_flags :
-      item = menu.AppendCheckItem(-1, flag_label)
-      if getattr(model, flag_name, False) :
-        item.Check(True)
-      source_widget.Bind(wx.EVT_MENU, self.OnModelMenu, item)
-    menu.AppendSeparator()
-    for color_name, color_label in color_modes :
-      item = menu.AppendCheckItem(-1, color_label)
-      if model.color_mode == color_name :
-        item.Check(True)
-      source_widget.Bind(wx.EVT_MENU, self.OnModelMenu, item)
-    menu.AppendSeparator()
-    item = menu.Append(-1, "Change base color. . .")
-    source_widget.Bind(wx.EVT_MENU, self.OnChangeModelColor, item)
-    source_widget.PopupMenu(menu)
-    menu.Destroy()
-    self.OnRedrawGL()
-
-  def process_model_menu_event (self, object_id, menu_item) :
-    model = self.get_model(object_id)
-    if model is None :
-      return
-    item_label = menu_item.GetText()
-    is_checked = menu_item.IsChecked()
-    for mode, label in draw_modes :
-      if label == item_label and is_checked :
-        model.set_draw_mode(mode)
-        self.update_scene = True
-        return True
-    for mode, label in color_modes :
-      if label == item_label and is_checked :
-        model.set_color_mode(mode)
-        self.update_scene = True
-        return True
-    for flag, label in draw_flags :
-      if label == item_label :
-        setattr(model, flag, is_checked)
-        model.refresh()
-        self.update_scene = True
-        return True
-    return False
-
   def set_model_state (self, object_id, model_state) :
     model = self.get_model(object_id)
     for name in model_state :
@@ -703,6 +638,7 @@ class model_viewer_mixin (wxGLWindow) :
   def toggle_visibility (self, show_object, object_id=None) :
     for model_id, model in self.iter_models() :
       if object_id is None or object_id == model_id :
+        print model_id, show_object
         self.show_object[model_id] = show_object
     self.update_scene = True
 
@@ -774,6 +710,21 @@ class model_viewer_mixin (wxGLWindow) :
       scene.clear_labels()
 
   #---------------------------------------------------------------------
+  def show_model_controls (self) :
+    if (self.model_panel is None) :
+      frame_rect = self.GetParent().GetRect()
+      display_rect = wx.GetClientDisplayRect()
+      x_start = frame_rect[0] + frame_rect[2]
+      if (x_start > (display_rect[2] - 400)) :
+        x_start = display_rect[2] - 400
+      pos = (x_start, frame_rect[1] + 10)
+      self.model_panel = wx_tools.ModelControlPanel(self, -1,
+        title="Model controls",
+        style=wx.CLOSE_BOX|wx.CAPTION,
+        pos=pos)
+      self.model_panel.Show()
+
+  #---------------------------------------------------------------------
   # EVENTS
   @debug
   def OnUpdate (self, event) :
@@ -815,12 +766,6 @@ class model_viewer_mixin (wxGLWindow) :
       elif self.slab_scale < 0.01 :
         self.slab_scale = 0.01
     self.OnRedrawGL()
-
-  def OnModelMenu (self, event) :
-    menu = event.GetEventObject()
-    item = menu.FindItemById(event.GetId())
-    model_id = menu.GetTitle()
-    self.process_model_menu_event(model_id, item)
 
   def OnChangeModelColor (self, event) :
     menu = event.GetEventObject()
