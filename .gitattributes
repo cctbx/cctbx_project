@@ -1049,9 +1049,12 @@ mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
 mmtbx/scaling/relative_wilson.py -text
 mmtbx/scaling/ta_alpha_beta_calc.py svneol=native#text/x-python
+mmtbx/secondary_structure/SConscript -text
 mmtbx/secondary_structure/__init__.py -text
 mmtbx/secondary_structure/base_pairing.data -text
 mmtbx/secondary_structure/base_pairing.py -text
+mmtbx/secondary_structure/ext.cpp -text
+mmtbx/secondary_structure/identify.hpp -text
 mmtbx/secondary_structure/proteins.py -text
 mmtbx/secondary_structure/tst.py -text
 mmtbx/secondary_structure/utils.py -text

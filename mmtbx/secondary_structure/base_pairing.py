@@ -1,6 +1,7 @@
 
 from libtbx import easy_run
 from libtbx.utils import Sorry
+from libtbx import Auto
 import os, sys, re
 
 dna_rna_params_str = """
@@ -18,7 +19,7 @@ base_pair
     .optional = True
     .caption = Saenger number if applicable
     .help = reference
-  leontis_westhof_class = *wwt
+  leontis_westhof_class = *wwt Auto
     .type = choice
     .caption = Watson-Crick
     .help = reference
@@ -70,6 +71,20 @@ class pair_database (object) :
           else :
             db[key] = {}
           db[key][paired_bases] = [atom_pairs,distances]
+
+  def get_pair_saenger_classes (self, base_pair, use_hydrogens=False) :
+    if use_hydrogens :
+      db = self._h_bond_pairs
+    else :
+      db = self._pseudo_bond_pairs
+    allowed_types = []
+    for pair_type, pair_rules in db.iteritems() :
+      if (not pair_type in saenger_list) :
+        continue
+      if base_pair in pair_rules :
+        atom_pairs, distances = pair_rules[base_pair]
+        allowed_types.append((pair_type, atom_pairs, distances))
+    return allowed_types
 
   def invert_bases (self, base_pair) :
     bases = base_pair.split('-')
@@ -410,9 +425,89 @@ def create_hbond_proxies (
       print >> log, "  %s" % str(e)
   return n_proxies
 
+def identify_base_pairs (base_pairs,
+                         pdb_hierarchy,
+                         use_hydrogens,
+                         distance_ideal,
+                         use_db_values=True) :
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_secondary_structure_ext")
+  atoms = pdb_hierarchy.atoms()
+  atom_names = atoms.extract_name().strip()
+  sites_cart = atoms.extract_xyz()
+  sel_cache = pdb_hierarchy.atom_selection_cache()
+  for base_pair in base_pairs :
+    if ((base_pair.saenger_class is not None) or
+        (base_pair.leontis_westhof_class != "Auto")) :
+      continue
+    base_1 = sel_cache.selection(base_pair.base1).iselection()
+    base_2 = sel_cache.selection(base_pair.base2).iselection()
+    basecode_1 = atoms[base_1[0]].fetch_labels().resname.strip()[0]
+    basecode_2 = atoms[base_2[0]].fetch_labels().resname.strip()[0]
+    bp = "%s-%s" % (basecode_1, basecode_2)
+    classes = db.get_pair_saenger_classes(bp)
+    class_dist_sq = []
+    for (class_name, atom_pairs, distances) in classes :
+      dist_sq = _get_distance_score_for_class(
+        atom_pairs=atom_pairs,
+        distances=distances,
+        base_1=base_1,
+        base_2=base_2,
+        atom_names=atom_names,
+        sites_cart=sites_cart,
+        distance_ideal=distance_ideal)
+      class_dist_sq.append((class_name, dist_sq))
+    classes2 = db.get_pair_saenger_classes(bp[::-1])
+    for (class_name, atom_pairs, distances) in classes2 :
+      dist_sq = _get_distance_score_for_class(
+        atom_pairs=atom_pairs,
+        distances=distances,
+        base_1=base_2, # note switch in order
+        base_2=base_1,
+        atom_names=atom_names,
+        sites_cart=sites_cart,
+        distance_ideal=distance_ideal)
+      class_dist_sq.append((class_name, dist_sq))
+    if (len(class_dist_sq) == 0) :
+      continue
+    class_dist_sq.sort(lambda x,y: cmp(x[1], y[1]))
+    base_pair.saenger_class = class_dist_sq[0][0]
+    #print base_pair.base1, base_pair.base2
+    #for class_name, d_sq in class_dist_sq :
+    #  print "%s %.3f" % (class_name, d_sq)
+
+def _get_distance_score_for_class (atom_pairs,
+                                   distances,
+                                   base_1,
+                                   base_2,
+                                   atom_names,
+                                   sites_cart,
+                                   distance_ideal) :
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_secondary_structure_ext")
+  sum_dist_sq = 0
+  for k, (atm1, atm2) in enumerate(atom_pairs) :
+    pair_dist_ = distances[k][0]
+    if (pair_dist_ != '_') :
+      pair_dist = float(pair_dist_)
+    else :
+      pair_dist = distance_ideal
+    sum_dist_sq += ext.delta_distance_squared(
+      base_1=base_1,
+      base_2=base_2,
+      name_1=atm1,
+      name_2=atm2,
+      atom_names=atom_names,
+      sites_cart=sites_cart,
+      distance_ideal=pair_dist)
+  return sum_dist_sq
+
+
 ############e###########################################################
 def exercise () :
   import libtbx.load_env
+  gu_classes = db.get_pair_saenger_classes("G-U")
+  assert (gu_classes[0][0] == "XXVII")
   if libtbx.env.has_module("probe") and libtbx.env.has_module("reduce"):
     assert (db.get_atoms("A-U", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
     assert (db.get_atoms("DA-DT", "WWT", False) == [('N6', 'O4'), ('N1', 'N3')])
@@ -426,6 +521,39 @@ def exercise () :
     assert db.get_pair_type("C-G", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
   else:
     print "Skipping: probe and/or reduce not available"
+  if libtbx.env.has_module("phenix_regression") :
+    pdb_file = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/1u8d.pdb",
+      test=os.path.isfile)
+    from iotbx.file_reader import any_file
+    import libtbx.phil
+    pdb_in = any_file(pdb_file).file_object
+    hierarchy = pdb_in.construct_hierarchy()
+    hierarchy.atoms().reset_i_seq()
+    bp_phil = libtbx.phil.parse(dna_rna_params_str)
+    params = bp_phil.fetch(source=libtbx.phil.parse("""
+      base_pair {
+        base1 = chain A and resseq 18
+        base2 = chain A and resseq 78
+        leontis_westhof_class = *Auto
+      }
+      base_pair {
+        base1 = chain A and resseq 21
+        base2 = chain A and resseq 75
+        leontis_westhof_class = *Auto
+      }
+      base_pair {
+        base1 = chain A and resseq 33
+        base2 = chain A and resseq 66
+        leontis_westhof_class = *Auto
+      }""")).extract()
+    identify_base_pairs(
+      pdb_hierarchy=hierarchy,
+      base_pairs=params.base_pair,
+      use_hydrogens=False,
+      distance_ideal=3.0)
+    classes = [ bp.saenger_class for bp in params.base_pair ]
+    assert (classes == ["XIX", "XX", "V"])
   print "OK"
 
 if __name__ == "__main__" :
