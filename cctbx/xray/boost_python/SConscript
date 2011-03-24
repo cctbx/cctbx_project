@@ -1,6 +1,7 @@
 import libtbx.load_env
 Import('env_etc', "env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Clone()
+env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
 env_etc.enable_more_warnings(env=env)
 
 libs = ["cctbx", "omptbx"]
@@ -26,6 +27,7 @@ sources = [
   "parameter_map.cpp",
   "twin_components.cpp",
   "extinction.cpp",
+  "../targets/shelxl_wght_ls_bpl.cpp",
 ]
 
 raw_multithreaded_sources = [
