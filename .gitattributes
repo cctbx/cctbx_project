@@ -183,6 +183,7 @@ cctbx/xray/raw_multithreading/structure_factors_direct.h -text
 cctbx/xray/structure_factors/from_scatterers_direct_parallel.py -text
 cctbx/xray/targets/common_results.h svneol=native#text/plain
 cctbx/xray/targets/correlation.h svneol=native#text/plain
+cctbx/xray/targets/kwt_b_patch -text
 cctbx/xray/targets/least_squares.h svneol=native#text/plain
 cctbx/xray/targets/shelxl_wght_ls.f -text
 cctbx/xray/targets/shelxl_wght_ls.hpp svneol=native#text/plain
