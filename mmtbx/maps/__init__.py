@@ -432,7 +432,6 @@ def isotropizer(fmodel, map_coeffs, resharp, b_sharp_ext=None):
   sc2=1
   if(resharp):
     ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
-    from cctbx import adptbx
     from scitbx import linalg
     import scitbx.linalg.eigensystem
     es = linalg.eigensystem.real_symmetric(fmodel.b_cart())
