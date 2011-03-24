@@ -6,7 +6,7 @@ import os
 class Job:
   def __init__(self, name, execObj, modules=[], pythonExec='python'):
     '''name must be unique, execObj must be pickle_able and have a run method
-	pythonExec is the python command to use e.g. phenix.python'''
+        pythonExec is the python command to use e.g. phenix.python'''
     self.name=name
     self.execObj=execObj
     self.submitted=False
@@ -29,7 +29,7 @@ class Job:
     print >> scriptFile, 'f.close()'
     print >> scriptFile, 'result=execObj.run()'
     print >> scriptFile, 'f=open("%s","wb")' % self.pickleOutputFileName
-    print >> scriptFile, 'pickle.dump(result,f)' 
+    print >> scriptFile, 'pickle.dump(result,f)'
     print >> scriptFile, 'f.close()'
     scriptFile.close()
     cmd='bsub -K %s %s' % (
@@ -49,7 +49,7 @@ class Job:
       raise Exception('Job not finished')
     f=open(self.pickleOutputFileName,'rb')
     result=pickle.load(f)
-    f.close()	
+    f.close()
     if self.process.poll() != 0:
       raise Exception("process %s failed" % self.name)
     os.remove(self.pickleInputFileName)
