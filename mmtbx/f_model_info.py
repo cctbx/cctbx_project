@@ -333,8 +333,7 @@ class info(object):
     if( len(self.k_sol)==1 ):
       k_sol  = format_value("%4.2f",self.k_sol[0]).strip()
     else:
-      # TODO: pretty print
-      k_sol = str(self.k_sol)
+      k_sol = (('%4.2f '*len(self.k_sol))%tuple(self.k_sol)).strip()
     b_sol  = format_value("%6.2f",self.b_sol).strip()
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
     b_iso  = format_value("%7.2f",self.b_iso).strip()
