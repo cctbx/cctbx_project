@@ -184,6 +184,10 @@ cctbx/xray/structure_factors/from_scatterers_direct_parallel.py -text
 cctbx/xray/targets/common_results.h svneol=native#text/plain
 cctbx/xray/targets/correlation.h svneol=native#text/plain
 cctbx/xray/targets/least_squares.h svneol=native#text/plain
+cctbx/xray/targets/shelxl_wght_ls.f -text
+cctbx/xray/targets/shelxl_wght_ls.hpp svneol=native#text/plain
+cctbx/xray/targets/shelxl_wght_ls_bpl.cpp svneol=native#text/plain
+cctbx/xray/targets/tst_shelxl_wght_ls.py svneol=native#text/x-python
 cctbx/xray/weighting_schemes.py -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text
@@ -1183,6 +1187,7 @@ scitbx/array_family/tst_ref_matrix_facet.cpp -text
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
 scitbx/boost_python/sequence_as_array.h svneol=native#text/plain
+scitbx/command_line/apply_tapenade_hints.py svneol=native#text/x-python
 scitbx/command_line/generate_error_h.py -text
 scitbx/command_line/show_sizes.py svneol=native#text/x-python
 scitbx/command_line/unicode_examples.py svneol=native#text/x-python
