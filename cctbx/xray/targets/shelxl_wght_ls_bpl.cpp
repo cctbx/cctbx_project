@@ -4,17 +4,19 @@ http://tapenade.inria.fr:8080/tapenade/paste.jsp
     top: kwt
     dependent: t
     independent: ic
-    Tangent Multidirectional Mode
-  Download differentiated file
-  unzip TapenadeResults.zip default_dv-all.f
-  scitbx.apply_tapenade_hints default_dv-all.f --no-comments
+    Reverse Mode
+  unzip TapenadeResults.zip default_b-all.f
+  scitbx.apply_tapenade_hints default_b-all.f > kwt_b.f
+  diff -u kwt_b.f kwt_b_edited.f > kwt_b_patch
+  cat shelxl_wght_ls.f kwt_b_edited.f | grep -v '^C'
   Paste output
-    top: kwt_dv
-    dependent: t td
+    top: kwt_b
+    dependent: t icb
     independent: ic
     Tangent Multidirectional Mode
-  scitbx.apply_tapenade_hints default_dv-all.f --no-comments > kwt_dv_dv.f
-  fable.cout kwt_dv_dv.f --inline-all --no-fem-do-safe --namespace=cctbx::xray::targets > shelxl_wght_ls.hpp
+  unzip TapenadeResults.zip default_dv-all.f
+  scitbx.apply_tapenade_hints default_dv-all.f > kwt_b_dv.f
+  fable.cout shelxl_wght_ls.f kwt_b_dv.f --inline-all --no-fem-do-safe --namespace=cctbx::xray::targets > shelxl_wght_ls.hpp
 */
 
 #include <boost/python.hpp>
@@ -27,7 +29,7 @@ http://tapenade.inria.fr:8080/tapenade/paste.jsp
 namespace cctbx { namespace xray { namespace boost_python {
 
 boost::python::tuple
-kwt_dv_dv_wrapper(
+kwt_b_dv_wrapper(
   af::const_ref<double> const& f_obs,
   af::const_ref<double> const& i_obs,
   af::const_ref<double> const& i_sig,
@@ -39,36 +41,33 @@ kwt_dv_dv_wrapper(
   TBXX_ASSERT(i_sig.size() == f_obs.size());
   TBXX_ASSERT(ic.size() == f_obs.size());
   std::size_t nh = static_cast<int>(f_obs.size());
-  double t;
-  af::shared<double> td0(nh);
-  af::shared<double> td(nh);
-  af::versa<double, af::flex_grid<> > tdd(af::flex_grid<>(nh, nh));
+  double tb = 1;
+  af::shared<double> icb(nh);
   af::versa<double, af::flex_grid<> > icd(af::flex_grid<>(nh, nh));
   for(unsigned ih=0;ih<nh;ih++) icd(ih,ih) = 1;
-  targets::kwt_dv_dv(
-    t,
-    td0.front(),
-    td.front(),
-    tdd.front(),
+  af::versa<double, af::flex_grid<> > icbd(af::flex_grid<>(nh, nh));
+  targets::kwt_b_dv(
+    0,
+    tb,
     nh,
     f_obs.front(),
     i_obs.front(),
     i_sig.front(),
     ic.front(),
     icd.front(),
-    icd.front(),
+    icb.front(),
+    icbd.front(),
     wa,
     wb,
-    nh,
     nh);
-  return boost::python::make_tuple(t, td0, td, tdd);
+  return boost::python::make_tuple(icb, icbd);
 }
 
 void
 wrap_targets_shelxl_wght_ls()
 {
   using namespace boost::python;
-  def("targets_shelxl_wght_ls_kwt_dv_dv", kwt_dv_dv_wrapper, (
+  def("targets_shelxl_wght_ls_kwt_b_dv", kwt_b_dv_wrapper, (
     arg("f_obs"), arg("i_obs"), arg("i_sig"),
     arg("ic"),
     arg("wa"), arg("wb")));

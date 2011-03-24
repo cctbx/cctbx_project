@@ -1,0 +1,38 @@
+--- kwt_b.f	2011-03-24 14:59:15.810348893 -0700
++++ kwt_b_edited.f	2011-03-24 14:57:14.786715983 -0700
+@@ -88,19 +88,11 @@
+       DOUBLE PRECISION temp
+ C
+       k_sq = k**2
+-      DO ih=1,nh
+-        ik = io(ih)/k_sq
+-        IF (ik .LT. 0) THEN
+-          ik = 0
+-          CALL PUSHCONTROL1B(0)
+-        ELSE
+-          CALL PUSHCONTROL1B(1)
+-        END IF
+-        CALL PUSHREAL8(p)
+-        p = (ik+2*ic(ih))/3
+-      ENDDO
+       k_sqb = 0.D0
+       DO ih=nh,1,-1
++        ik = io(ih)/k_sq
++        IF (ik .LT. 0) ik = 0
++        p = (ik+2*ic(ih))/3
+         sk = so(ih)/k_sq
+         sk_sq = sk**2
+         wa_p_sq = (wa*p)**2
+@@ -111,11 +103,9 @@
+         pb = 2*wa**2*p*wa_p_sqb + wb*tempb
+         wb0(ih) = 0.D0
+         skb = 2*sk*sk_sqb
+-        CALL POPREAL8(p)
+         ikb = pb/3
+         icb(ih) = icb(ih) + 2*pb/3
+-        CALL POPCONTROL1B(branch)
+-        IF (branch .EQ. 0) ikb = 0.D0
++        if (ik .lt. 0) ikb = 0
+         k_sqb = k_sqb - io(ih)*ikb/k_sq**2 - so(ih)*skb/k_sq**2
+       ENDDO
+       kb = kb + 2*k*k_sqb
