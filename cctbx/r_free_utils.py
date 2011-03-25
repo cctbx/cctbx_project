@@ -77,14 +77,16 @@ def export_r_free_flags (flags, test_flag_value) :
   if len(unique_values) > 2 : # XXX: is this safe?
     return flags
   new_flags = flex.int(flags.size())
+  n_bins = iceil(flags.size() / flags.count(test_flag_value))
   for i in range(flags.size()) :
     if flags[i] == test_flag_value :
       new_flags[i] = 0
     else :
-      new_flags[i] = iceil(random.random() * 19)
+      new_flags[i] = iceil(random.random() * (n_bins - 1))
   return new_flags
 
 def exercise () :
+  from scitbx.array_family import flex
   flags_1 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05)
   assert (flags_1.count(True) == 5000)
   flags_2 = assign_r_free_flags_by_shells(n_refl=100000,
@@ -93,6 +95,12 @@ def exercise () :
   assert (flags_2.count(True) == 5000)
   ccp4_flags = export_r_free_flags(flags_1, True)
   assert (ccp4_flags.count(0) == flags_1.count(True))
+  assert (flex.max(ccp4_flags) == 19)
+  flags_3 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.025)
+  assert (flags_3.count(True) == 2500)
+  ccp4_flags = export_r_free_flags(flags_3, True)
+  assert (ccp4_flags.count(0) == flags_3.count(True))
+  assert (flex.max(ccp4_flags) == 39)
 
 if (__name__ == "__main__") :
   exercise()
