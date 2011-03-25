@@ -795,3 +795,16 @@ class target_and_grads(object):
 
   def gradients_wrt_t(self):
     return self.grads_wrt_t
+
+# XXX this is a lot dumber than the method name implies - it simply looks for
+# protein or nucleic acid chains, and extracts the atom selection for each
+def identify_rigid_groups (pdb_hierarchy) :
+  assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
+  model = pdb_hierarchy.models()[0]
+  selections = []
+  for chain in model.chains() :
+    main_conf = chain.conformers()[0]
+    if (main_conf.is_protein() or main_conf.is_na()) :
+      chain_sele = chain.atoms().extract_i_seq()
+      selections.append(chain_sele)
+  return selections
