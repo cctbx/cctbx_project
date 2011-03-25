@@ -6,126 +6,6 @@ namespace targets {
 
 using namespace fem::major_types;
 
-using fem::common;
-
-inline
-void
-calc_k(
-  double& k,
-  int const& nh,
-  arr_cref<double> fo,
-  arr_cref<double> ic)
-{
-  fo(dimension(nh));
-  ic(dimension(nh));
-  //C
-  double k_num = 0;
-  double k_den = 0;
-  int ih = fem::int0;
-  FEM_DO(ih, 1, nh) {
-    k_num += fo(ih) * fem::sqrt(ic(ih));
-    k_den += ic(ih);
-  }
-  k = k_num / k_den;
-}
-
-//C
-//C-----
-//C
-inline
-void
-calc_w(
-  arr_ref<double> w,
-  int const& nh,
-  arr_cref<double> io,
-  arr_cref<double> so,
-  arr_cref<double> ic,
-  double const& k,
-  double const& wa,
-  double const& wb)
-{
-  w(dimension(nh));
-  io(dimension(nh));
-  so(dimension(nh));
-  ic(dimension(nh));
-  //C
-  double k_sq = fem::pow2(k);
-  int ih = fem::int0;
-  double ik = fem::double0;
-  double sk = fem::double0;
-  double p = fem::double0;
-  double sk_sq = fem::double0;
-  double wa_p_sq = fem::double0;
-  FEM_DO(ih, 1, nh) {
-    ik = io(ih) / k_sq;
-    sk = so(ih) / k_sq;
-    if (ik < 0) {
-      ik = 0;
-    }
-    p = (ik + 2 * ic(ih)) / 3;
-    sk_sq = fem::pow2(sk);
-    wa_p_sq = fem::pow2((wa * p));
-    w(ih) = 1 / (sk_sq + wa_p_sq + wb * p);
-  }
-}
-
-//C
-//C-----
-//C
-inline
-void
-calc_t(
-  double& t,
-  int const& nh,
-  arr_cref<double> io,
-  arr_cref<double> ic,
-  double const& k,
-  arr_cref<double> w)
-{
-  io(dimension(nh));
-  ic(dimension(nh));
-  w(dimension(nh));
-  //C
-  double k_sq = fem::pow2(k);
-  double t_num = 0;
-  double t_den = 0;
-  int ih = fem::int0;
-  FEM_DO(ih, 1, nh) {
-    t_num += w(ih) * fem::pow2((io(ih) - k_sq * ic(ih)));
-    t_den += w(ih) * fem::pow2(io(ih));
-  }
-  t = t_num / t_den;
-  //C
-}
-
-//C
-//C-----
-//C
-inline
-void
-kwt(
-  double& t,
-  int const& nh,
-  arr_cref<double> fo,
-  arr_cref<double> io,
-  arr_cref<double> so,
-  arr_cref<double> ic,
-  double const& wa,
-  double const& wb)
-{
-  fo(dimension(nh));
-  io(dimension(nh));
-  so(dimension(nh));
-  ic(dimension(nh));
-  //C
-  double k = fem::double0;
-  calc_k(k, nh, fo, ic);
-  arr<double> w(dimension(nh), fem::fill0);
-  calc_w(w, nh, io, so, ic, k, wa, wb);
-  calc_t(t, nh, io, ic, k, w);
-  //C
-}
-
 //C
 //C  Differentiation of calc_k in forward (tangent) mode: (multi-directional mode)
 //C   variations   of useful results: k
@@ -170,6 +50,7 @@ calc_k_dv(
   FEM_DO(nd, 1, nbdirs) {
     kd(nd) = (k_numd(nd) * k_den - k_num * k_dend(nd)) / fem::pow2(k_den);
   }
+  TBXX_ASSERT(k_den != 0);
   k = k_num / k_den;
 }
 
@@ -243,7 +124,9 @@ calc_w_dv(
       wd(nd, ih) = (-(sk_sqd(nd) + wa_p_sqd(nd) + wb * pd(nd))) /
         fem::pow2((sk_sq + wa_p_sq + wb * p));
     }
-    w(ih) = 1 / (sk_sq + wa_p_sq + wb * p);
+    double den = sk_sq + wa_p_sq + wb * p;
+    TBXX_ASSERT(den != 0);
+    w(ih) = 1 / den;
   }
 }
 
@@ -255,7 +138,6 @@ calc_w_dv(
 inline
 void
 calc_k_b_dv(
-  double const& /* k */,
   double const& kb,
   arr_cref<double> kbd,
   int const& nh,
@@ -293,6 +175,7 @@ calc_k_b_dv(
     k_num += fo(ih) * result1;
     k_den += ic(ih);
   }
+  TBXX_ASSERT(k_den != 0);
   arr<double> k_numbd(dimension(nbdirs), fem::fill0);
   arr<double> k_denbd(dimension(nbdirs), fem::fill0);
   FEM_DO(nd, 1, nbdirs) {
@@ -334,7 +217,6 @@ calc_k_b_dv(
 inline
 void
 calc_w_b_dv(
-  arr_cref<double> /* w */,
   arr_ref<double> wb0,
   arr_ref<double, 2> wb0d,
   int const& nh,
@@ -466,7 +348,7 @@ calc_w_b_dv(
 inline
 void
 calc_t_b_dv(
-  double const& /* t */,
+  double& t,
   double const& tb,
   int const& nh,
   arr_cref<double> io,
@@ -514,6 +396,8 @@ calc_t_b_dv(
     t_num += w(ih) * fem::pow2((io(ih) - k_sq * ic(ih)));
     t_den += w(ih) * fem::pow2(io(ih));
   }
+  TBXX_ASSERT(t_den != 0);
+  t = t_num / t_den;
   arr<double> t_numbd(dimension(nbdirs), fem::fill0);
   arr<double> t_denbd(dimension(nbdirs), fem::fill0);
   FEM_DO(nd, 1, nbdirs) {
@@ -564,7 +448,9 @@ calc_t_b_dv(
 inline
 void
 kwt_b_dv(
-  double const& t,
+  double& k,
+  arr_ref<double> w,
+  double& t,
   double& tb,
   int const& nh,
   arr_cref<double> fo,
@@ -583,10 +469,8 @@ kwt_b_dv(
   ic(dimension(nh));
   icb(dimension(nh));
   icbd(dimension(nh));
-  double k = fem::double0;
   arr<double> kd(dimension(nbdirs), fem::fill0);
   calc_k_dv(k, kd, nh, fo, ic);
-  arr<double> w(dimension(nh), fem::fill0);
   arr<double, 2> wd(dimension(nbdirs, nh), fem::fill0);
   calc_w_dv(w, wd, nh, io, so, ic, k, kd, wa, wb);
   double kb = fem::double0;
@@ -595,9 +479,9 @@ kwt_b_dv(
   arr<double, 2> wb0d(dimension(nbdirs, nh), fem::fill0);
   calc_t_b_dv(t, tb, nh, io, ic, icb, icbd, k, kd, kb, kbd, w,
     wd, wb0, wb0d);
-  calc_w_b_dv(w, wb0, wb0d, nh, io, so, ic, icb, icbd, k, kd,
+  calc_w_b_dv(wb0, wb0d, nh, io, so, ic, icb, icbd, k, kd,
     kb, kbd, wa, wb);
-  calc_k_b_dv(k, kb, kbd, nh, fo, ic, icb, icbd);
+  calc_k_b_dv(kb, kbd, nh, fo, ic, icb, icbd);
   tb = 0.e0;
 }
 

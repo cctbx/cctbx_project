@@ -40,11 +40,16 @@ kwt_b_dv_wrapper(
   TBXX_ASSERT(i_sig.size() == f_obs.size());
   TBXX_ASSERT(ic.size() == f_obs.size());
   std::size_t nh = static_cast<int>(f_obs.size());
+  double k = 0;
+  af::shared<double> w(nh);
+  double t = 0;
   double tb = 1;
   af::shared<double> icb(nh);
   af::shared<double> icbd(nh);
   targets::kwt_b_dv(
-    0,
+    k,
+    w.front(),
+    t,
     tb,
     nh,
     f_obs.front(),
@@ -55,7 +60,7 @@ kwt_b_dv_wrapper(
     icbd.front(),
     wa,
     wb);
-  return boost::python::make_tuple(icb, icbd);
+  return boost::python::make_tuple(k, w, t, icb, icbd);
 }
 
 void
