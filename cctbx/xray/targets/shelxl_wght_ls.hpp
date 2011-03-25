@@ -591,7 +591,7 @@ kwt_b_dv(
   arr_cref<double> so,
   arr_cref<double> ic,
   arr_ref<double> icb,
-  arr_ref<double, 2> icbd,
+  arr_ref<double> icbd,
   double const& wa,
   double const& wb)
 {
