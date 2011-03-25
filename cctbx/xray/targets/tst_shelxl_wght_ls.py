@@ -61,7 +61,7 @@ def kwt(f_obs, i_obs, i_sig, i_calc, wa, wb):
     wb=wb)
   assert len(result) == 2
   icb, icbd = result
-  return t, icb, icbd.matrix_diagonal()
+  return t, icb, icbd
 
 def exercise(mt, n_refl):
   f_obs = mt.random_double(size=n_refl)
