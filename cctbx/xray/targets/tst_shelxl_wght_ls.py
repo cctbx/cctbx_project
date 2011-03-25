@@ -59,8 +59,11 @@ def kwt(f_obs, i_obs, i_sig, i_calc, wa, wb):
     ic=i_calc,
     wa=wa,
     wb=wb)
-  assert len(result) == 2
-  icb, icbd = result
+  assert len(result) == 5
+  kc, wc, tc, icb, icbd = result
+  assert approx_equal(kc, k)
+  assert approx_equal(wc, weights)
+  assert approx_equal(tc, t)
   return t, icb, icbd
 
 def exercise(mt, n_refl):
