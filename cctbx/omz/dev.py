@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx.omz import bfgs
 from cctbx import xray
+import cctbx.xray.targets
 from cctbx.array_family import flex
 from scitbx import matrix
 import libtbx.phil
@@ -117,16 +118,6 @@ class refinement(object):
     O.params = params
     O.f_obs = f_obs
     O.i_obs = f_obs.f_as_f_sq()
-    O.weights = None
-    if (O.params.target_obs_type == "I"):
-      if (O.params.i_obs_weights == "unit"):
-        pass
-      elif (O.params.i_obs_weights == "one_over_i_obs"):
-        sel = O.i_obs.data() > 0
-        O.weights.set_selected(sel, 1 / O.i_obs.data().select(sel))
-      else:
-        raise RuntimeError(
-          "Unknown: i_obs_weights = %s" % O.params.i_obs_weights)
     O.xray_structure = xray_structure
     O.reference_structure = reference_structure
     O.grads = None
@@ -345,20 +336,36 @@ class refinement(object):
     else:
       obs = O.i_obs
     if (O.params.target_type == "ls"):
-      return xray.targets_least_squares(
-        compute_scale_using_all_data=True,
-        obs_type=O.params.target_obs_type,
-        obs=obs.data(),
-        weights=O.weights,
-        r_free_flags=None,
+      if (O.params.i_obs_weights == "unit"):
+        return xray.targets_least_squares(
+          compute_scale_using_all_data=True,
+          obs_type=O.params.target_obs_type,
+          obs=obs.data(),
+          weights=None,
+          r_free_flags=None,
+          f_calc=O.get_f_calc().data(),
+          derivatives_depth=2,
+          scale_factor=O.params.f_calc_scale_factor)
+      if (O.params.i_obs_weights != "shelxl_wght"):
+        raise RuntimeError(
+          "Unknown: i_obs_weights = %s" % O.params.i_obs_weights)
+      if (O.params.target_obs_type == "F"):
+        raise RuntimeError(
+          "Unsupported parameter combination:"
+          " i_obs_weights=shelxl_wght with target_obs_type=F")
+      return xray.targets.shelxl_wght_ls(
+        f_obs=O.f_obs.data(),
+        i_obs=O.i_obs.data(),
+        i_sig=O.i_obs.sigmas(),
         f_calc=O.get_f_calc().data(),
-        derivatives_depth=2,
-        scale_factor=O.params.f_calc_scale_factor)
+        i_calc=None,
+        wa=0.1,
+        wb=0)
     elif (O.params.target_type == "cc"):
       return xray.targets_correlation(
         obs_type=O.params.target_obs_type,
         obs=obs.data(),
-        weights=O.weights,
+        weights=None,
         r_free_flags=None,
         f_calc=O.get_f_calc().data(),
         derivatives_depth=2)
@@ -724,7 +731,7 @@ def get_master_phil(
       .type = choice
     target_obs_type = *F I
       .type = choice
-    i_obs_weights = *unit one_over_i_obs
+    i_obs_weights = *unit shelxl_wght
       .type = choice
     iteration_limit = %(iteration_limit)s
       .type = int
