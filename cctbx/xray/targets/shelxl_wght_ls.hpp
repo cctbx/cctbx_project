@@ -209,12 +209,6 @@ calc_w_dv(
   }
   //C
   double k_sq = fem::pow2(k);
-  int ii1 = fem::int0;
-  FEM_DO(nd, 1, nbdirs) {
-    ii1 = nd; {
-      wd(nd, ii1) = 0.e0;
-    }
-  }
   int ih = fem::int0;
   arr<double> ikd(dimension(nbdirs), fem::fill0);
   arr<double> skd(dimension(nbdirs), fem::fill0);
@@ -529,20 +523,7 @@ calc_t_b_dv(
   }
   double t_numb = tb / t_den;
   double t_denb = -(t_num * tb / fem::pow2(t_den));
-  int ii1 = fem::int0;
-  FEM_DO(ii1, 1, nh) {
-    nd = ii1; {
-      wbd(nd, ii1) = 0.e0;
-    }
-    wb(ii1) = 0.e0;
-  }
   double k_sqb = 0.e0;
-  int ii10 = fem::int0;
-  FEM_DO(nd, 1, nbdirs) {
-    ii10 = nd; {
-      wbd(nd, ii10) = 0.e0;
-    }
-  }
   arr<double> k_sqbd(dimension(nbdirs), fem::fill0);
   double temp = fem::double0;
   double tempb = fem::double0;
