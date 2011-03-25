@@ -150,18 +150,12 @@ calc_k_dv(
   double k_den = 0;
   int nd = fem::int0;
   arr<double> k_dend(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    k_dend(nd) = 0.e0;
-  }
   arr<double> k_numd(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    k_numd(nd) = 0.e0;
-  }
   int ih = fem::int0;
   arr<double> result1d(dimension(nbdirs), fem::fill0);
   double result1 = fem::double0;
   FEM_DO(ih, 1, nh) {
-    FEM_DO(nd, 1, nbdirs) {
+    nd = ih; {
       if (ic(ih) == 0.0f) {
         result1d(nd) = 0.e0;
       }
@@ -221,7 +215,7 @@ calc_w_dv(
   double k_sq = fem::pow2(k);
   int ii1 = fem::int0;
   FEM_DO(nd, 1, nbdirs) {
-    FEM_DO(ii1, 1, nh) {
+    ii1 = nd; {
       wd(nd, ii1) = 0.e0;
     }
   }
@@ -292,18 +286,12 @@ calc_k_b_dv(
   double k_den = 0;
   int nd = fem::int0;
   arr<double> k_dend(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    k_dend(nd) = 0.e0;
-  }
   arr<double> k_numd(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    k_numd(nd) = 0.e0;
-  }
   int ih = fem::int0;
   arr<double> result1d(dimension(nbdirs), fem::fill0);
   double result1 = fem::double0;
   FEM_DO(ih, 1, nh) {
-    FEM_DO(nd, 1, nbdirs) {
+    nd = ih; {
       if (ic(ih) == 0.0f) {
         result1d(nd) = 0.e0;
       }
@@ -329,14 +317,14 @@ calc_k_b_dv(
   double k_denb = -(k_num * kb / fem::pow2(k_den));
   FEM_DOSTEP(ih, nh, 1, -1) {
     if (ic(ih) == 0.0f) {
-      FEM_DO(nd, 1, nbdirs) {
+      nd = ih; {
         icbd(nd, ih) += k_denbd(nd);
       }
       icb(ih) += k_denb;
     }
     else {
       result1 = fem::sqrt(ic(ih));
-      FEM_DO(nd, 1, nbdirs) {
+      nd = ih; {
         if (ic(ih) == 0.0f) {
           result1d(nd) = 0.e0;
         }
@@ -396,9 +384,6 @@ calc_w_b_dv(
   double k_sq = fem::pow2(k);
   double k_sqb = 0.e0;
   arr<double> k_sqbd(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    k_sqbd(nd) = 0.e0;
-  }
   int ih = fem::int0;
   arr<double> ikd(dimension(nbdirs), fem::fill0);
   double ik = fem::double0;
@@ -533,13 +518,7 @@ calc_t_b_dv(
   double t_num = 0;
   double t_den = 0;
   arr<double> t_dend(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    t_dend(nd) = 0.e0;
-  }
   arr<double> t_numd(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    t_numd(nd) = 0.e0;
-  }
   int ih = fem::int0;
   FEM_DO(ih, 1, nh) {
     FEM_DO(nd, 1, nbdirs) {
@@ -562,13 +541,13 @@ calc_t_b_dv(
   double t_denb = -(t_num * tb / fem::pow2(t_den));
   int ii1 = fem::int0;
   FEM_DO(ii1, 1, nh) {
-    FEM_DO(nd, 1, nbdirs) {
+    nd = ii1; {
       wbd(nd, ii1) = 0.e0;
     }
     wb(ii1) = 0.e0;
   }
   FEM_DO(ii1, 1, nh) {
-    FEM_DO(nd, 1, nbdirs) {
+    nd = ii1; {
       icbd(nd, ii1) = 0.e0;
     }
     icb(ii1) = 0.e0;
@@ -576,19 +555,16 @@ calc_t_b_dv(
   double k_sqb = 0.e0;
   int ii10 = fem::int0;
   FEM_DO(nd, 1, nbdirs) {
-    FEM_DO(ii10, 1, nh) {
+    ii10 = nd; {
       icbd(nd, ii10) = 0.e0;
     }
   }
   FEM_DO(nd, 1, nbdirs) {
-    FEM_DO(ii10, 1, nh) {
+    ii10 = nd; {
       wbd(nd, ii10) = 0.e0;
     }
   }
   arr<double> k_sqbd(dimension(nbdirs), fem::fill0);
-  FEM_DO(nd, 1, nbdirs) {
-    k_sqbd(nd) = 0.e0;
-  }
   double temp = fem::double0;
   double tempb = fem::double0;
   arr<double> tempd(dimension(nbdirs), fem::fill0);
