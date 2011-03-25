@@ -23,7 +23,6 @@ http://tapenade.inria.fr:8080/tapenade/paste.jsp
 #include <cctbx/xray/targets/shelxl_wght_ls.hpp>
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/array_family/shared.h>
-#include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/mat_grid.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
@@ -43,7 +42,7 @@ kwt_b_dv_wrapper(
   std::size_t nh = static_cast<int>(f_obs.size());
   double tb = 1;
   af::shared<double> icb(nh);
-  af::versa<double, af::flex_grid<> > icbd(af::flex_grid<>(nh, nh));
+  af::shared<double> icbd(nh);
   targets::kwt_b_dv(
     0,
     tb,
