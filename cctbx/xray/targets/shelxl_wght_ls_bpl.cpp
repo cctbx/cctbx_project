@@ -43,8 +43,6 @@ kwt_b_dv_wrapper(
   std::size_t nh = static_cast<int>(f_obs.size());
   double tb = 1;
   af::shared<double> icb(nh);
-  af::versa<double, af::flex_grid<> > icd(af::flex_grid<>(nh, nh));
-  for(unsigned ih=0;ih<nh;ih++) icd(ih,ih) = 1;
   af::versa<double, af::flex_grid<> > icbd(af::flex_grid<>(nh, nh));
   targets::kwt_b_dv(
     0,
@@ -54,12 +52,10 @@ kwt_b_dv_wrapper(
     i_obs.front(),
     i_sig.front(),
     ic.front(),
-    icd.front(),
     icb.front(),
     icbd.front(),
     wa,
-    wb,
-    nh);
+    wb);
   return boost::python::make_tuple(icb, icbd);
 }
 
