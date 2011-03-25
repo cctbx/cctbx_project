@@ -3,6 +3,13 @@ import traceback
 import sys, os
 op = os.path
 
+def report_fraction_of_negative_observations(id_code, obs):
+  n_neg = (obs.data() < 0).count(True)
+  n_all = obs.data().size()
+  if (n_neg != 0 and n_all != 0):
+    print "fraction_of_negative_obs: %.6g (%d of %d)" % (
+      n_neg / n_all, n_neg, n_all)
+
 class cod_data(object):
 
   def __init__(O, cod_code, hkl_cif_pair):
@@ -38,6 +45,7 @@ class cod_data(object):
         if (ma.is_xray_amplitude_array()):
           meas_a.append(ma)
         elif (ma.is_xray_intensity_array()):
+          report_fraction_of_negative_observations(cod_code, ma)
           meas_i.append(ma)
     if (len(meas_a) != 0):
       O.f_obs = meas_a[0]
