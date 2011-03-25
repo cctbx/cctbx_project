@@ -54,8 +54,10 @@ def kwt(f_obs, i_obs, i_sig, f_calc, i_calc, wa, wb):
     i_calc=i_calc,
     k=k,
     weights=weights)
-  if (f_calc is not None):
-    i_calc = None
+  return k, weights, t
+
+def kwt2(f_obs, i_obs, i_sig, f_calc, i_calc, wa, wb):
+  k, weights, t = kwt(f_obs, i_obs, i_sig, f_calc, i_calc, wa, wb)
   trg = cctbx.xray.targets.shelxl_wght_ls(
     f_obs=f_obs,
     i_obs=i_obs,
@@ -79,7 +81,7 @@ def exercise(mt, n_refl):
   i_calc = flex.norm(f_calc)
   wa = 1.23
   wb = 2.34
-  trg = kwt(
+  trg = kwt2(
     f_obs=f_obs, i_obs=i_obs, i_sig=i_sig,
     f_calc=f_calc, i_calc=None, wa=wa, wb=wb)
   def check_i_derivs():
@@ -94,7 +96,7 @@ def exercise(mt, n_refl):
       c_orig = i_calc[ih]
       for signed_eps in [eps, -eps]:
         i_calc[ih] = c_orig + signed_eps
-        trg_eps = kwt(
+        trg_eps = kwt2(
           f_obs=f_obs, i_obs=i_obs, i_sig=i_sig,
           f_calc=None, i_calc=i_calc, wa=wa, wb=wb)
         fs.append(trg_eps.target)
@@ -122,7 +124,7 @@ def exercise(mt, n_refl):
             f_calc[ih] = complex(c_orig.real + signed_eps, c_orig.imag)
           else:
             f_calc[ih] = complex(c_orig.real, c_orig.imag + signed_eps)
-          trg_eps = kwt(
+          trg_eps = kwt2(
             f_obs=f_obs, i_obs=i_obs, i_sig=i_sig,
             f_calc=f_calc, i_calc=None, wa=wa, wb=wb)
           fs.append(trg_eps.target)

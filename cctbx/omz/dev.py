@@ -119,6 +119,7 @@ class refinement(object):
     O.f_obs = f_obs
     O.i_obs = f_obs.f_as_f_sq()
     O.xray_structure = xray_structure
+    O.calc_weights_if_needed()
     O.reference_structure = reference_structure
     O.grads = None
     O.curvs = None
@@ -329,6 +330,23 @@ class refinement(object):
     return O.f_obs.r1_factor(
       other=O.get_f_calc(), scale_factor=Auto, assume_index_matching=True)
 
+  def calc_weights_if_needed(O):
+    O.weights = None
+    if (O.params.i_obs_weights == "shelxl_wght_once"):
+      assert O.params.target_obs_type == "I"
+      f_calc = O.get_f_calc()
+      i_calc = flex.norm(f_calc.data())
+      from cctbx.xray.targets.tst_shelxl_wght_ls import calc_k, calc_w
+      k = calc_k(f_obs=O.f_obs.data(), i_calc=i_calc)
+      assert O.i_obs.sigmas().all_ge(0.01)
+      O.weights = calc_w(
+        wa=0.1,
+        wb=0,
+        i_obs=O.i_obs.data(),
+        i_sig=O.i_obs.sigmas(),
+        i_calc=i_calc,
+        k=k)
+
   def __get_tg(O):
     O.__unpack_variables()
     if (O.params.target_obs_type == "F"):
@@ -336,12 +354,12 @@ class refinement(object):
     else:
       obs = O.i_obs
     if (O.params.target_type == "ls"):
-      if (O.params.i_obs_weights == "unit"):
+      if (O.params.i_obs_weights in ["unit", "shelxl_wght_once"]):
         return xray.targets_least_squares(
           compute_scale_using_all_data=True,
           obs_type=O.params.target_obs_type,
           obs=obs.data(),
-          weights=None,
+          weights=O.weights,
           r_free_flags=None,
           f_calc=O.get_f_calc().data(),
           derivatives_depth=2,
@@ -349,10 +367,7 @@ class refinement(object):
       if (O.params.i_obs_weights != "shelxl_wght"):
         raise RuntimeError(
           "Unknown: i_obs_weights = %s" % O.params.i_obs_weights)
-      if (O.params.target_obs_type == "F"):
-        raise RuntimeError(
-          "Unsupported parameter combination:"
-          " i_obs_weights=shelxl_wght with target_obs_type=F")
+      assert O.params.target_obs_type == "I"
       return xray.targets.shelxl_wght_ls(
         f_obs=O.f_obs.data(),
         i_obs=O.i_obs.data(),
@@ -365,7 +380,7 @@ class refinement(object):
       return xray.targets_correlation(
         obs_type=O.params.target_obs_type,
         obs=obs.data(),
-        weights=None,
+        weights=O.weights,
         r_free_flags=None,
         f_calc=O.get_f_calc().data(),
         derivatives_depth=2)
@@ -677,6 +692,7 @@ class refinement(object):
         s += " %5.3f" % r
     if (O.grads_mean_sq is not None):
       s += " f=%8.2e |g|=%8.2e" % (O.funcl, O.grads_mean_sq)
+    s += " r1=%.3f" % O.r1_factor()
     return s
 
   def show_rms_info(O):
@@ -731,7 +747,7 @@ def get_master_phil(
       .type = choice
     target_obs_type = *F I
       .type = choice
-    i_obs_weights = *unit shelxl_wght
+    i_obs_weights = *unit shelxl_wght shelxl_wght_once
       .type = choice
     iteration_limit = %(iteration_limit)s
       .type = int

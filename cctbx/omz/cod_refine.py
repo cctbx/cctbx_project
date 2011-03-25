@@ -82,16 +82,10 @@ def get_master_phil():
 def shelxl_weights_a_b(fo_sq, sigmas, fc_sq, osf_sq, a, b):
   assert sigmas.size() == fo_sq.size()
   assert fc_sq.size() == fo_sq.size()
-  result = flex.double()
-  for o,s,c in zip(fo_sq, sigmas, fc_sq):
-    o /= osf_sq
-    s /= osf_sq
-    p = (max(o, 0) + 2 * c) / 3
-    den = s**2 + (a*p)**2 + b*p
-    assert den > 1e-8
-    w = 1 / den
-    result.append(w)
-  return result
+  from cctbx.xray.targets.tst_shelxl_wght_ls import calc_w
+  assert sigmas.all_ge(0.01)
+  return calc_w(
+    wa=a, wb=b, i_obs=fo_sq, i_sig=sigmas, i_calc=fc_sq, k=osf_sq**0.5)
 
 def shelxl_weights(fo_sq, sigmas, fc_sq, osf_sq, shelxl_wght):
   if (shelxl_wght is None):
