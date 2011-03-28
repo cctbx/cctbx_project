@@ -929,8 +929,8 @@ class environment:
     open(target_file, "wb").write(
       self.windows_dispatcher(
         command_path=source_file,
-        dispatcher_name=op.splitext(op.basename(target_file))[0]),
-        source_is_python_exe=source_is_python_exe)
+        dispatcher_name=op.splitext(op.basename(target_file))[0],
+        source_is_python_exe=source_is_python_exe))
 
   def write_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
