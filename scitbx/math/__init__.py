@@ -14,7 +14,7 @@ class line_given_points(object):
   def __init__(self, points):
     self.points = [matrix.col(point) for point in points]
     self.delta = self.points[1] - self.points[0]
-    self.delta_norm_sq = self.delta.norm_sq()
+    self.delta_norm_sq = float(self.delta.norm_sq())
 
   def distance_sq(self, point):
     "http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html"
