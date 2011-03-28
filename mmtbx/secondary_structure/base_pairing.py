@@ -1,4 +1,5 @@
 
+from __future__ import division
 from libtbx import easy_run
 from libtbx.utils import Sorry
 from libtbx import Auto
@@ -19,7 +20,7 @@ base_pair
     .optional = True
     .caption = Saenger number if applicable
     .help = reference
-  leontis_westhof_class = *wwt Auto
+  leontis_westhof_class = *Auto wwt
     .type = choice
     .caption = Watson-Crick
     .help = reference
@@ -455,7 +456,8 @@ def identify_base_pairs (base_pairs,
         base_2=base_2,
         atom_names=atom_names,
         sites_cart=sites_cart,
-        distance_ideal=distance_ideal)
+        distance_ideal=distance_ideal,
+        use_db_values=use_db_values)
       class_dist_sq.append((class_name, dist_sq))
     classes2 = db.get_pair_saenger_classes(bp[::-1])
     for (class_name, atom_pairs, distances) in classes2 :
@@ -466,7 +468,8 @@ def identify_base_pairs (base_pairs,
         base_2=base_1,
         atom_names=atom_names,
         sites_cart=sites_cart,
-        distance_ideal=distance_ideal)
+        distance_ideal=distance_ideal,
+        use_db_values=use_db_values)
       class_dist_sq.append((class_name, dist_sq))
     if (len(class_dist_sq) == 0) :
       continue
@@ -482,16 +485,18 @@ def _get_distance_score_for_class (atom_pairs,
                                    base_2,
                                    atom_names,
                                    sites_cart,
-                                   distance_ideal) :
+                                   distance_ideal,
+                                   use_db_values) :
   import boost.python
   ext = boost.python.import_ext("mmtbx_secondary_structure_ext")
   sum_dist_sq = 0
   for k, (atm1, atm2) in enumerate(atom_pairs) :
-    pair_dist_ = distances[k][0]
-    if (pair_dist_ != '_') :
-      pair_dist = float(pair_dist_)
-    else :
-      pair_dist = distance_ideal
+    if (use_db_values) :
+      pair_dist_ = distances[k][0]
+      if (pair_dist_ != '_') :
+        pair_dist = float(pair_dist_)
+      else :
+        pair_dist = distance_ideal
     sum_dist_sq += ext.delta_distance_squared(
       base_1=base_1,
       base_2=base_2,
@@ -500,10 +505,9 @@ def _get_distance_score_for_class (atom_pairs,
       atom_names=atom_names,
       sites_cart=sites_cart,
       distance_ideal=pair_dist)
-  return sum_dist_sq
+  return sum_dist_sq / len(atom_pairs)
 
-
-############e###########################################################
+########################################################################
 def exercise () :
   import libtbx.load_env
   gu_classes = db.get_pair_saenger_classes("G-U")
