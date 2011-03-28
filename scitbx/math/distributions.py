@@ -8,9 +8,7 @@ else:
       raise RuntimeError("Implementation not available in this build.")
 import boost.python
 
-class _injector(boost.python.injector,
-                normal_distribution,
-                students_t_distribution):
+class __distribution_mixin(object):
 
   def mean(self):
     return ext.mean(self)
@@ -44,3 +42,9 @@ class _injector(boost.python.injector,
 
   def quantiles(self, n):
     return ext.quantiles(self, n)
+
+class _(boost.python.injector, normal_distribution, __distribution_mixin):
+  pass
+
+class _(boost.python.injector, students_t_distribution, __distribution_mixin):
+  pass

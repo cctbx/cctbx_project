@@ -168,18 +168,26 @@ class gcc_version(object):
 
 
 class injector(object):
-  "see boost/libs/python/doc/tutorial/doc/quickstart.txt"
 
   class __metaclass__(meta_class):
 
     def __init__(self, name, bases, dict):
-      for b in bases:
-        if type(b) not in (self, type):
-          for k,v in dict.items():
-            if (k in ("__init__", "__del__", "__module__", "__file__")):
-              continue
-            setattr(b,k,v)
-      return type.__init__(self, name, bases, dict)
+      if (len(bases) > 1):
+        # bases[0] is this injector
+        target = bases[1] # usually a Boost.Python class
+        def setattr_from_dict(d):
+          for k,v in d.items():
+            if (k not in (
+                  "__init__",
+                  "__del__",
+                  "__module__",
+                  "__file__",
+                  "__dict__")):
+              setattr(target,k,v)
+        setattr_from_dict(dict)
+        for b in bases[2:]: # usually mix-in classes, if any
+          setattr_from_dict(b.__dict__)
+      return type.__init__(self, name, (), {})
 
 def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
   from_env = os.environ.get(env_var)

@@ -319,7 +319,17 @@ class overall_counts(object):
     msg = sio.getvalue()
     if (len(msg) != 0): raise Sorry(msg.rstrip())
 
-class _root(boost.python.injector, ext.root):
+class __hash_eq_mixin(object):
+
+  def __hash__(self):
+    return hash(self.memory_id())
+
+  def __eq__(self, other):
+    if (isinstance(other, self.__class__)):
+      return (self.memory_id() == other.memory_id())
+    return False
+
+class _root(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def __getstate__(self):
     version = 2
@@ -640,19 +650,7 @@ class _root(boost.python.injector, ext.root):
       fallback_expected_bond_length=fallback_expected_bond_length,
       fallback_search_max_distance=fallback_search_max_distance)
 
-  def __hash__(self):
-
-    return hash( self.memory_id() )
-
-  def __eq__(self, other):
-
-    if isinstance( other, self.__class__ ):
-      return self.memory_id() == other.memory_id()
-
-    else:
-      return False
-
-class _model(boost.python.injector, ext.model):
+class _model(boost.python.injector, ext.model, __hash_eq_mixin):
 
   def residue_groups(self):
     for chain in self.chains():
@@ -684,19 +682,7 @@ class _model(boost.python.injector, ext.model):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def __hash__(self):
-
-    return hash( self.memory_id() )
-
-  def __eq__(self, other):
-
-    if isinstance( other, self.__class__ ):
-      return self.memory_id() == other.memory_id()
-
-    else:
-      return False
-
-class _chain(boost.python.injector, ext.chain):
+class _chain(boost.python.injector, ext.chain, __hash_eq_mixin):
 
   def atom_groups(self):
     for rg in self.residue_groups():
@@ -767,19 +753,7 @@ class _chain(boost.python.injector, ext.chain):
     result.sort(groups_cmp)
     return result
 
-  def __hash__(self):
-
-    return hash( self.memory_id() )
-
-  def __eq__(self, other):
-
-    if isinstance( other, self.__class__ ):
-      return self.memory_id() == other.memory_id()
-
-    else:
-      return False
-
-class _residue_group(boost.python.injector, ext.residue_group):
+class _residue_group(boost.python.injector, ext.residue_group, __hash_eq_mixin):
 
   def only_atom_group(self):
     assert self.atom_groups_size() == 1
@@ -788,37 +762,13 @@ class _residue_group(boost.python.injector, ext.residue_group):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def __hash__(self):
-
-    return hash( self.memory_id() )
-
-  def __eq__(self, other):
-
-    if isinstance( other, self.__class__ ):
-      return self.memory_id() == other.memory_id()
-
-    else:
-      return False
-
-class _atom_group(boost.python.injector, ext.atom_group):
+class _atom_group(boost.python.injector, ext.atom_group, __hash_eq_mixin):
 
   def only_atom(self):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
-  def __hash__(self):
-
-    return hash( self.memory_id() )
-
-  def __eq__(self, other):
-
-    if isinstance( other, self.__class__ ):
-      return self.memory_id() == other.memory_id()
-
-    else:
-      return False
-
-class _atom(boost.python.injector, ext.atom):
+class _atom(boost.python.injector, ext.atom, __hash_eq_mixin):
 
   def set_element_and_charge_from_scattering_type_if_necessary(self,
         scattering_type):
@@ -837,18 +787,6 @@ class _atom(boost.python.injector, ext.atom):
     self.element = "%2s" % sct_e.upper()
     self.charge = "%-2s" % sct_c
     return True
-
-  def __hash__(self):
-
-    return hash( self.memory_id() )
-
-  def __eq__(self, other):
-
-    if isinstance( other, self.__class__ ):
-      return self.memory_id() == other.memory_id()
-
-    else:
-      return False
 
 class _conformer(boost.python.injector, ext.conformer):
 
