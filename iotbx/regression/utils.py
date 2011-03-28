@@ -22,7 +22,7 @@ def random_f_calc(space_group_info, n_scatterers, d_min, anomalous_flag,
     data=f_calc.data()/flex.mean(flex.abs(f_calc.data())))
   if (f_calc.anomalous_flag()):
     selection = flex.bool(f_calc.indices().size(), True)
-    for i in xrange(f_calc.indices().size()/10):
+    for i in xrange(f_calc.indices().size()//10):
       j = random.randrange(f_calc.indices().size())
       selection[j] = False
     f_calc = f_calc.select(selection)

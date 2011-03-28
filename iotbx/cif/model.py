@@ -338,7 +338,7 @@ class loop(DictMixin):
       if data is not None:
         # the number of data items must be an exact multiple of the number of headers
         assert len(data) % len(header) == 0, "Wrong number of data items for loop"
-        n_rows = len(data)/len(header)
+        n_rows = len(data)//len(header)
         n_columns = len(header)
         for i in range(n_rows):
           self.add_row([data[i*n_columns+j] for j in range(n_columns)])

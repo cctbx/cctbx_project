@@ -512,7 +512,7 @@ class find_peak_at_bond(object):
     for i_seq, d in enumerate(self.dist):
       peak_width_ += d
       if(peak_width_ >= peak_width): break
-    n_points = max(0, i_seq-1)/2+1
+    n_points = max(0, i_seq-1)//2+1
     tol = max(0, i_seq-1)
     i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
     peak_i_seqs = []

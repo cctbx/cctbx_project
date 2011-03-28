@@ -55,7 +55,7 @@ def macro_cycle_header(macro_cycle, number_of_macro_cycles, out=None):
   line_len = len(" REFINEMENT MACRO_CYCLE "+macro_cycle+" OF "+\
              number_of_macro_cycles)+1
   fill_len = header_len - line_len
-  fill_rl = fill_len/2
+  fill_rl = fill_len//2
   fill_r = fill_rl
   fill_l = fill_rl
   if (fill_rl*2 != fill_len): fill_r +=1
