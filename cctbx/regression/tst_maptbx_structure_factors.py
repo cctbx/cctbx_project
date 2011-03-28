@@ -217,7 +217,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     else:
       maptbx.statistics(flex.real(real_map)).show_summary()
       maptbx.statistics(flex.imag(real_map)).show_summary()
-  n_real_under_sampled = [n/under_sampling for n in n_real]
+  n_real_under_sampled = [n//under_sampling for n in n_real]
   if (not anomalous_flag):
     rfft = fftpack.real_to_complex_3d(n_real_under_sampled)
     n_complex_under_sampled = rfft.n_complex()

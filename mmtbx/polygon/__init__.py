@@ -249,9 +249,9 @@ def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
   min_val = flex.min(diff)
   i_min_sel = (diff == min_val).iselection()
   assert i_min_sel.size() > 0
-  i_min = i_min_sel[i_min_sel.size()/2]
-  i_l = max(0, i_min-max_models_for_default_filter/2)
-  i_r = min(values.size()-1, i_min+max_models_for_default_filter/2)
+  i_min = i_min_sel[i_min_sel.size()//2]
+  i_l = max(0, i_min-max_models_for_default_filter//2)
+  i_r = min(values.size()-1, i_min+max_models_for_default_filter//2)
   #
   print "apply_default_filter:"
   print "  found data points dmin->higher =", abs(i_l-i_min)
@@ -312,10 +312,10 @@ def polygon(params = master_params.extract(), d_min = None,
         "min/max/mean= %12.4f %12.4f %12.4f"%data.min_max_mean().as_tuple()
       n_slots = params.polygon.number_of_histogram_slots
       if(n_slots is None):
-        n_slots = data.size()/50
+        n_slots = data.size()//50
         if(n_slots < 5):
           for scale in range(25,10,-1):
-            n_slots = data.size()/scale
+            n_slots = data.size()//scale
             if(n_slots >= 10): break
       if(n_slots == 0):
         raise Sorry("Not enough data selected.")

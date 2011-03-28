@@ -558,7 +558,7 @@ def exercise_mask_data_1(space_group_info, n_sites=100):
     for resolution_factor in [1./2, 1./3, 1./4, 1./5]:
       xrs = random_structure.xray_structure(
         space_group_info=space_group_info,
-        elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+        elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
         volume_per_atom=30,
         min_distance=1)
       atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
@@ -604,7 +604,7 @@ def exercise_mask_data_2(space_group_info, n_sites=100, d_min=2.0,
   for yn in [0,1]:
     xrs = random_structure.xray_structure(
       space_group_info=space_group_info,
-      elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+      elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
       volume_per_atom=50,
       min_distance=1.5)
     atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)

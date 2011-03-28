@@ -1524,7 +1524,7 @@ def exercise_phase_integrals(space_group_info):
     if (anomalous_flag):
       exercise_average_and_generate_bijvoet_mates_hl(sg_hl)
     p1_hl = sg_hl.expand_to_p1()
-    sg_phase_integrals = sg_hl.phase_integrals(n_steps=360/5)
+    sg_phase_integrals = sg_hl.phase_integrals(n_steps=360//5)
     p1_phase_integrals = p1_hl.phase_integrals()
     p1_sg_phase_integrals = sg_phase_integrals.expand_to_p1()
     assert p1_sg_phase_integrals.indices().all_eq(p1_phase_integrals.indices())
@@ -1550,7 +1550,7 @@ def exercise_phase_integrals(space_group_info):
     amplitude_array = miller.array(
       miller_set=miller_set,
       data=flex.random_double(size=miller_set.indices().size()))
-    for phase_integrator_n_steps in [None, 360/5]:
+    for phase_integrator_n_steps in [None, 360//5]:
       with_phases = amplitude_array.phase_transfer(
         phase_source=sg_hl,
         phase_integrator_n_steps=phase_integrator_n_steps)

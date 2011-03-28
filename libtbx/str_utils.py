@@ -72,7 +72,7 @@ def make_header (line, out=None, header_len=80):
   line_len = len(line)
   #assert line_len <= header_len
   fill_len = header_len - line_len
-  fill_rl = fill_len/2
+  fill_rl = fill_len//2
   fill_r = fill_rl
   fill_l = fill_rl
   if (fill_rl*2 != fill_len):
@@ -89,7 +89,7 @@ def make_sub_header(text, out=None, header_len=80):
   line_len = len(line)
   #assert line_len <= header_len
   fill_len = header_len - line_len
-  fill_rl = fill_len/2
+  fill_rl = fill_len//2
   fill_r = fill_rl
   fill_l = fill_rl
   if (fill_rl*2 != fill_len):

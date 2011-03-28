@@ -216,7 +216,7 @@ def exercise_3():
 def exercise_centrics(space_group_info, n_sites=10):
   structure = random_structure.xray_structure(
     space_group_info=space_group_info,
-    elements=(("O","N","C")*(n_sites/3+1))[:n_sites],
+    elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
     volume_per_atom=30,
     min_distance=1)
   for anomalous_flag in [False, True]:

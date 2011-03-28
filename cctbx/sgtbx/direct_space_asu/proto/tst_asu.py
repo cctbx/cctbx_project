@@ -33,7 +33,7 @@ def loop_grid(asu, n, mn, mx, asu2=None):
   grid = ()
   for s in step:
     g = rint(1) / s
-    g = g.numerator()/g.denominator() + 1
+    g = g.numerator()//g.denominator() + 1
     assert g > 0, "Step = "+str(step)
     grid += tuple([g])
   mna = list(mn)
@@ -41,10 +41,10 @@ def loop_grid(asu, n, mn, mx, asu2=None):
   for i in xrange(3):
     mna[i] -= 5*step[i]
     mna[i] *= grid[i]
-    mna[i] = mna[i].numerator()/mna[i].denominator()-1
+    mna[i] = mna[i].numerator()//mna[i].denominator()-1
     mxa[i] += 5*step[i]
     mxa[i] *= grid[i]
-    mxa[i] = mxa[i].numerator()/mxa[i].denominator()+1
+    mxa[i] = mxa[i].numerator()//mxa[i].denominator()+1
   print >>cout, "grid test  step= ", step, "  min= ", mna, "  max= ", mxa, \
       "   grid=", grid
   if isinstance(asu, new_asu.direct_space_asu):

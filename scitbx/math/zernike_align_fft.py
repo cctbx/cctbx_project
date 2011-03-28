@@ -80,7 +80,7 @@ class align(object):
 
 
 
-    b=self.best_indx/(self.ngrid*self.ngrid)
+    b=self.best_indx//(self.ngrid*self.ngrid)
     a=(self.best_indx - self.ngrid*self.ngrid*b ) / self.ngrid
     g=self.best_indx - self.ngrid*self.ngrid*b - self.ngrid*a
 
@@ -119,7 +119,7 @@ class align(object):
     orders = flex.sort_permutation( self.scores )
     for ii in range( topn ):
       o = orders[ii]
-      b=o/(self.ngrid*self.ngrid)
+      b=o//(self.ngrid*self.ngrid)
       a=(o - self.ngrid*self.ngrid*b ) / self.ngrid
       g=o - self.ngrid*self.ngrid*b - self.ngrid*a
 

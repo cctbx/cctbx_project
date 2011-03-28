@@ -138,7 +138,7 @@ class structure_factor:
       ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
       ff = (ffp + 1j * fdp)
-      d2_site_site = flex.complex_double(3*(3+1)/2, 0j)
+      d2_site_site = flex.complex_double(3*(3+1)//2, 0j)
       if (not scatterer.flags.use_u_aniso()):
         d2_site_u_iso = flex.complex_double(flex.grid(3,1), 0j)
         d2_site_u_star = None
@@ -154,7 +154,7 @@ class structure_factor:
         d2_u_iso_fp = 0j
         d2_u_iso_fdp = 0j
       else:
-        d2_u_star_u_star = flex.complex_double(6*(6+1)/2, 0j)
+        d2_u_star_u_star = flex.complex_double(6*(6+1)//2, 0j)
         d2_u_star_occ = flex.complex_double(flex.grid(6,1), 0j)
         d2_u_star_fp = flex.complex_double(flex.grid(6,1), 0j)
         d2_u_star_fdp = flex.complex_double(flex.grid(6,1), 0j)
@@ -300,11 +300,11 @@ class structure_factor:
       ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
       ff = (ffp + 1j * fdp)
-      d2_site_site = flex.complex_double(3*(3+1)/2, 0j)
+      d2_site_site = flex.complex_double(3*(3+1)//2, 0j)
       if (not scatterer.flags.use_u_aniso()):
         d2_u_iso_u_iso = 0j
       else:
-        d2_u_star_u_star = flex.complex_double(6*(6+1)/2, 0j)
+        d2_u_star_u_star = flex.complex_double(6*(6+1)//2, 0j)
       for s in self.space_group:
         r = s.r().as_rational().as_float()
         s_site = s * scatterer.site

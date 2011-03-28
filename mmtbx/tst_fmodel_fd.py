@@ -50,7 +50,7 @@ def exercise(space_group_info,
              verbose=0):
   xray_structure = random_structure.xray_structure(
     space_group_info       = space_group_info,
-    elements               =(("O","N","C")*(n_elements/3+1))[:n_elements],
+    elements               =(("O","N","C")*(n_elements//3+1))[:n_elements],
     volume_per_atom        = 100,
     min_distance           = 1.5,
     general_positions_only = True,

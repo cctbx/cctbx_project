@@ -95,7 +95,7 @@ def exercise_float_asu(space_group_info, n_grid=6):
   float_asu = inp_asu.add_buffer(unit_cell=unit_cell, thickness=0.001)
   cb_mx_ref_inp = space_group_info.type().cb_op().c_inv().as_rational()
   n = n_grid
-  for ref_n in flex.nested_loop((-n/2,-n/2,-n/2),(n,n,n),False):
+  for ref_n in flex.nested_loop((-n//2,-n//2,-n//2),(n,n,n),False):
     # check correctness of space_group_info.direct_space_asu()
     ref_r = matrix.col([rational.int(g,n) for g in ref_n])
     inp_r = cb_mx_ref_inp * ref_r
