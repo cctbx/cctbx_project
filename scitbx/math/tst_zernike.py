@@ -102,9 +102,9 @@ def tst_zernike_grid(skip_iteration_probability=0.95):
       t2 = 100.0*(abs(t2-t3)/t3)
       # unfortunately, this numerical integration scheme is not optimal. For certain
       # combinations of nlm, we see significant non-orthogonality that reduces when
-      # we increase the number of points. A similar behavoir is seen in the radial
+      # we increase the number of points. A similar behavior is seen in the radial
       # part of the Zernike polynome. If we compile withiout the radial function, similar
-      # behavoir is seen using only the spherical harmonics functions.
+      # behavior is seen using only the spherical harmonics functions.
       # For this reason, the liberal limts set below are ok
       assert t1<2.0
       assert t2<5.0

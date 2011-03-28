@@ -1666,7 +1666,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     if not map_type in supported_types :
       raise Sorry(("Map type '%s' not supported for twinned structures. "+
         "Allowed types: %s.") % (map_type, ", ".join(supported_types)))
-    # this is to modify default behavoir of phenix.refine
+    # this is to modify default behavior of phenix.refine
     if (map_type == "mFo-DFc") or (map_type == "mFobs-DFmodel") :
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
