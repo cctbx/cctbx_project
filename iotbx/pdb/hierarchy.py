@@ -646,7 +646,11 @@ class _root(boost.python.injector, ext.root):
 
   def __eq__(self, other):
 
-    return self.memory_id() == other.memory_id()
+    if isinstance( other, self.__class__ ):
+      return self.memory_id() == other.memory_id()
+
+    else:
+      return False
 
 class _model(boost.python.injector, ext.model):
 
@@ -686,7 +690,11 @@ class _model(boost.python.injector, ext.model):
 
   def __eq__(self, other):
 
-    return self.memory_id() == other.memory_id()
+    if isinstance( other, self.__class__ ):
+      return self.memory_id() == other.memory_id()
+
+    else:
+      return False
 
 class _chain(boost.python.injector, ext.chain):
 
@@ -765,7 +773,11 @@ class _chain(boost.python.injector, ext.chain):
 
   def __eq__(self, other):
 
-    return self.memory_id() == other.memory_id()
+    if isinstance( other, self.__class__ ):
+      return self.memory_id() == other.memory_id()
+
+    else:
+      return False
 
 class _residue_group(boost.python.injector, ext.residue_group):
 
@@ -782,7 +794,11 @@ class _residue_group(boost.python.injector, ext.residue_group):
 
   def __eq__(self, other):
 
-    return self.memory_id() == other.memory_id()
+    if isinstance( other, self.__class__ ):
+      return self.memory_id() == other.memory_id()
+
+    else:
+      return False
 
 class _atom_group(boost.python.injector, ext.atom_group):
 
@@ -796,7 +812,11 @@ class _atom_group(boost.python.injector, ext.atom_group):
 
   def __eq__(self, other):
 
-    return self.memory_id() == other.memory_id()
+    if isinstance( other, self.__class__ ):
+      return self.memory_id() == other.memory_id()
+
+    else:
+      return False
 
 class _atom(boost.python.injector, ext.atom):
 
@@ -824,7 +844,11 @@ class _atom(boost.python.injector, ext.atom):
 
   def __eq__(self, other):
 
-    return self.memory_id() == other.memory_id()
+    if isinstance( other, self.__class__ ):
+      return self.memory_id() == other.memory_id()
+
+    else:
+      return False
 
 class _conformer(boost.python.injector, ext.conformer):
 
