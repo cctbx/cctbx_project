@@ -172,11 +172,17 @@ class refinement(object):
     O.x[ix] = x_inp
     from libtbx import pyplot
     pyplot.plot_pairs(xy, "r-")
+    f = open("tmp.xy", "w")
+    for x,y in xy:
+      print >> f, x, y
+    del f
     pyplot.plot_pairs([(x_inp,min(ys)), (x_inp,max(ys))], "k--")
     if (O.x_reference is not None):
       x = O.x_reference[ix]
       pyplot.plot_pairs([(x,min(ys)), (x,max(ys))], "r--")
-    pyplot.show()
+    pyplot.savefig("tmp.pdf", bbox_inches="tight")
+    if (p.gui):
+      pyplot.show()
 
   def classic_lbfgs(O):
     import scitbx.lbfgs
@@ -786,5 +792,7 @@ def get_master_phil(
         .type = float
       xstep = 0.01
         .type = float
+      gui = True
+        .type = bool
     }
 """ % vars() + additional_phil_string)
