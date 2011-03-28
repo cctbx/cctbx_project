@@ -5,7 +5,7 @@ from mmtbx.geometry_restraints import hbond
 import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
-import libtbx.phil
+import libtbx.phil.command_line
 import cStringIO
 import os
 import sys
