@@ -200,12 +200,8 @@ the nonbonded interaction restraints function.
 
 def _get_simple_bond (proxy) :
   import scitbx.array_family # import dependency
-  if (type(proxy).__name__ == "h_bond_simple_proxy") :
-    pair = proxy.i_seqs
-  elif isinstance(proxy, implicit_proxy) :
+  if isinstance(proxy, distance_proxy) :
     pair = proxy.i_seqs[0], proxy.i_seqs[1]
-  elif isinstance(proxy, explicit_proxy) :
-    pair = proxy.i_seqs[1], proxy.i_seqs[2]
   else :
     assert 0
   return pair
@@ -221,7 +217,7 @@ def filter_excessive_distances (proxies, sites_cart) :
   for proxy in proxies :
     i_seq, j_seq = _get_simple_bond(proxy)
     distance = _distance(sites_cart, i_seq, j_seq)
-    if (distance > proxy.distance_cut) :
+    if (proxy.distance_cut > 0) and (distance > proxy.distance_cut) :
       continue
     filtered_proxies.append(proxy)
   return filtered_proxies
@@ -233,8 +229,8 @@ def as_pymol_dashes (proxies, pdb_hierarchy, filter=True, out=sys.stdout) :
     proxies = filter_excessive_distances(proxies, sites_cart)
   for proxy in proxies :
     i_seq, j_seq = _get_simple_bond(proxy)
-    atom1 = atoms[i_seq].fetch_labels()
-    atom2 = atoms[i_seq].fetch_labels()
+    atom1 = pdb_atoms[i_seq].fetch_labels()
+    atom2 = pdb_atoms[j_seq].fetch_labels()
     base_sele = """chain "%s" and resi %s and name %s"""
     sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
     sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
@@ -249,7 +245,7 @@ def as_refmac_restraints (proxies, pdb_hierarchy, filter=True, out=sys.stdout,
   for proxy in proxies :
     i_seq, j_seq = _get_simple_bond(proxy)
     atom1 = pdb_atoms[i_seq].fetch_labels()
-    atom2 = pdb_atoms[i_seq].fetch_labels()
+    atom2 = pdb_atoms[j_seq].fetch_labels()
     cmd = (("exte dist first chain %s residue %s atom %s " +
             "second chain %s residue %s atom %s value %.3f sigma %.2f") %
       (atom1.chain_id, atom1.resseq, atom1.name, atom2.chain_id,

@@ -4,13 +4,11 @@ from mmtbx.secondary_structure import base_pairing, proteins
 import iotbx.pdb
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import flex
-import libtbx.phil.command_line
+import libtbx.phil
 from libtbx import easy_run
-from libtbx.utils import Sorry
 from libtbx import adopt_init_args, Auto
 import libtbx.load_env
 from math import sqrt
-import cStringIO
 import sys, os
 
 ss_restraint_params_str = """
@@ -259,6 +257,12 @@ def hydrogen_bond_proxies_from_selections(
     slack = params.nucleic_acids.slack
     if (slack is None) :
       slack = geo_params.slack
+    base_pairing.identify_base_pairs(
+      base_pairs=params.nucleic_acids.base_pair,
+      pdb_hierarchy=pdb_hierarchy,
+      use_hydrogens=use_hydrogens,
+      distance_ideal=distance_ideal,
+      use_db_values=(params.nucleic_acids.use_db_values and not use_hydrogens))
     n_proxies = base_pairing.create_hbond_proxies(
       build_proxies=build_proxies,
       base_pairs=params.nucleic_acids.base_pair,
@@ -368,7 +372,7 @@ class manager (object) :
         params.input.force_nucleic_acids) :
       find_automatically = params.input.find_automatically
       if (len(params.nucleic_acids.base_pair) == 0) :
-        if find_automatically != False :
+        if (find_automatically != False) :
           find_automatically = True
       if find_automatically :
         if params.input.preserve_nucleic_acid_segid :
@@ -661,138 +665,3 @@ def calculate_structure_content (pdb_file) :
   ss_manager = manager_from_pdb_file(pdb_file)
   ss_manager.find_automatically()
   return ss_manager.calculate_structure_content()
-
-def find_ss_phil (user_phil) :
-  scope = user_phil.get("refinement.secondary_structure")
-  if (len(scope.objects) > 0) :
-    scope.objects[0].name = ""
-    out = cStringIO.StringIO()
-    scope.show(out=out)
-    if (out.getvalue() != "") :
-      return libtbx.phil.parse(out.getvalue())
-  return user_phil
-
-def run (args, out=sys.stdout, log=sys.stderr) :
-  pdb_files = []
-  sources = []
-  force_new_annotation = False
-  master_phil_str = """
-    show_all_params = False
-      .type = bool
-    show_histograms = False
-      .type = bool
-    filter_outliers = True
-      .type = bool
-    format = *phenix phenix_bonds pymol refmac kinemage
-      .type = choice
-    quiet = False
-      .type = bool
-    secondary_structure {
-      %s
-    }
-    hydrogen_bonding {
-      include scope mmtbx.geometry_restraints.hbond.master_phil
-    }
-""" % sec_str_master_phil_str
-  master_phil = libtbx.phil.parse(master_phil_str, process_includes=True)
-  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
-    home_scope="")
-  for arg in args :
-    if os.path.isfile(arg) :
-      if iotbx.pdb.is_pdb_file(arg) :
-        pdb_files.append(os.path.abspath(arg))
-      else :
-        try :
-          user_phil = libtbx.phil.parse(file_name=arg)
-        except RuntimeError :
-          print "Unrecognizable file format for %s" % arg
-        else :
-          user_phil = find_ss_phil(user_phil)
-          #user_phil.show()
-          sources.append(user_phil)
-    else :
-      if arg.startswith("--") :
-        arg = arg[2:] + "=True"
-      try :
-        user_phil = parameter_interpreter.process(arg=arg)
-        sources.append(user_phil)
-      except RuntimeError :
-        print "Unrecognizable parameter %s" % arg
-  params = master_phil.fetch(sources=sources).extract()
-  ss_params = params.secondary_structure
-  if params.quiet :
-    out = cStringIO.StringIO()
-  if len(pdb_files) > 0 :
-    ss_params.input.file_name.extend(pdb_files)
-  pdb_files = ss_params.input.file_name
-  if len(pdb_files) == 0 :
-    raise Sorry("No PDB files specified.")
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
-  pdb_structure = iotbx.pdb.input(source_info=None,
-    lines=flex.std_string(pdb_combined.raw_records))
-  pdb_hierarchy = pdb_structure.construct_hierarchy()
-  pdb_hierarchy.atoms().reset_i_seq()
-  xray_structure = pdb_structure.xray_structure_simple()
-  if len(pdb_hierarchy.models()) != 1 :
-    raise Sorry("Multiple models not supported.")
-  m = manager(pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure,
-    sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
-    params=ss_params)
-  m.find_automatically(log=log)
-  prefix_scope="refinement.secondary_structure"
-  if params.show_histograms or params.format != "phenix" :
-    prefix_scope = ""
-  ss_phil = None
-  working_phil = m.as_phil_str(master_phil=sec_str_master_phil)
-  phil_diff = sec_str_master_phil.fetch_diff(source=working_phil)
-  #params = working_phil.extract()
-  #if params.show_histograms :
-  #  #working_phil.show()
-  #  phil_diff.show()
-  #  print >> out, ""
-  #  print >> out, "========== Analyzing hydrogen bonding distances =========="
-  #  print >> out, ""
-  #  bonds_table = m.get_bonds_table(log=log)
-  if params.format == "phenix_bonds" :
-    raise Sorry("Not yet implemented.")
-  elif params.format in ["pymol", "refmac", "kinemage"] :
-    from mmtbx.geometry_restraints import hbond
-    build_proxies = m.create_hbond_proxies(
-      log=log,
-      restraint_type=None,
-      as_python_objects=True)
-    if (len(proxies) == 0) :
-      pass
-    elif params.format == "pymol" :
-      hbond.as_pymol_dashes(proxies=proxies,
-        pdb_hierarchy=pdb_hierarchy,
-        filter=params.filter_outliers,
-        out=out)
-    elif params.format == "kinemage" :
-      hbond.as_kinemage(proxies=proxies,
-        pdb_hierarchy=pdb_hierarchy,
-        filter=params.filter_outliers,
-        out=out)
-    else :
-      hbond.as_refmac_restraints(
-        pdb_hierarchy=pdb_hierarchy,
-        filter=params.filter_outliers,
-        out=out)
-  else :
-    #working_phil.show(out=out)
-    print >> out, "# These parameters are suitable for use in phenix.refine."
-    if (prefix_scope != "") :
-      print >> out, "%s {" % prefix_scope
-    if params.show_all_params :
-      working_phil.show(prefix="  ", out=out)
-    else :
-      phil_diff.show(prefix="  ", out=out)
-    if (prefix_scope != "") :
-      print >> out, "}"
-    #print >> out, ss_params_str
-    return working_phil.as_str()
-
-if __name__ == "__main__" :
-  exercise()
