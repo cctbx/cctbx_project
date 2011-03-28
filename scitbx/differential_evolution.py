@@ -51,7 +51,7 @@ have about the problem should be worked into the objective function. A good obje
 function can make all the difference.
 
 Note: NP is called population size in the routine below.)
-Note: [0.5,1.0] dither is the default behavoir unless f is set to a value other then None.
+Note: [0.5,1.0] dither is the default behavior unless f is set to a value other then None.
 
   """
 

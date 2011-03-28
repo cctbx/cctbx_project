@@ -1732,7 +1732,7 @@ class twin_results_interpretation(object):
            "Show more centric character than is expected for acentric data."
         if self.twin_results.patterson_p_value <= self.patterson_p_cut:
           print >> self.twinning_verdict, \
-            "This behavoir might be explained by the presence of the detected pseudo translation."
+            "This behavior might be explained by the presence of the detected pseudo translation."
           self.twinning_short=False
 
     else:

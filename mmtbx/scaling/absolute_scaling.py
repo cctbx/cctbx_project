@@ -753,13 +753,13 @@ maps or difficulties in refinement"""
         message =  """indicates that there probably is some systematic dependence
 between the anisotropy and not-so-well-defined  intensities. Because the signal
 to noise for the most affected intensities is relatively good, the affect on maps
-or refinement behavoir is most likely not very serious."""
+or refinement behavior is most likely not very serious."""
 
     txt = """
 For the resolution shell spanning between %4.2f - %4.2f Angstrom,
 the mean I/sigI is equal to %5.2f. %4.1f %% of these intensities have
 an I/sigI > 3. When sorting these intensities by their anisotropic
-correction factor and analysing the I/sigI behavoir for this ordered
+correction factor and analysing the I/sigI behavior for this ordered
 list, we can gauge the presence of 'anisotropy induced noise amplification'
 in reciprocal space.
 
