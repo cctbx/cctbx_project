@@ -15,7 +15,7 @@ class symbol_table(object):
   def format_html(self, f, n_columns):
     print >> f, "<table border=2 cellpadding=2>"
     n_symbols = len(self.table)
-    n_rows = n_symbols / n_columns
+    n_rows = n_symbols // n_columns
     if (n_rows * n_columns < n_symbols): n_rows += 1
     for i_row in xrange(n_rows):
       print >> f, "<tr>"

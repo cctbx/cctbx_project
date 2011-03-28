@@ -93,14 +93,14 @@ def exercise_floating_point_epsilon():
 
 def exercise_line_given_points():
   lgp = line_given_points(points=[(0,0,0), (0,0,0)])
-  assert lgp.distance_sq(point=matrix.col((0,0,0))) == 0
-  assert lgp.distance_sq(point=matrix.col((0,0,1))) == 1
+  assert approx_equal(lgp.distance_sq(point=matrix.col((0,0,0))), 0)
+  assert approx_equal(lgp.distance_sq(point=matrix.col((0,0,1))), 1)
   lgp = line_given_points(points=[(0,0,1), (0,0,0)])
-  assert lgp.distance_sq(point=matrix.col((0,0,1))) == 0
-  assert lgp.distance_sq(point=matrix.col((0,1,0))) == 1
+  assert approx_equal(lgp.distance_sq(point=matrix.col((0,0,1))), 0)
+  assert approx_equal(lgp.distance_sq(point=matrix.col((0,1,0))), 1)
   lgp = line_given_points(points=[(1,2,3), (3,1,4)])
-  assert lgp.distance_sq(point=matrix.col((0,0,0))) == 12
-  assert lgp.distance_sq(point=matrix.col((0,0,1))) == 8
+  assert approx_equal(lgp.distance_sq(point=matrix.col((0,0,0))), 12.5)
+  assert approx_equal(lgp.distance_sq(point=matrix.col((0,0,1))), 25/3.)
 
 def exercise_dihedral_angle():
   def dihe(sites):

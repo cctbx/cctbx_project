@@ -314,7 +314,7 @@ class adp(object):
       high_cutoff_1 = histogram.data_min() + histogram.slot_width()*(i_1+1)
       result.append([i_1,low_cutoff_1,high_cutoff_1,n_1])
       low_cutoff_1 = high_cutoff_1
-    result1, result2 = result[:len(result)/2], result[len(result)/2:]
+    result1, result2 = result[:len(result)//2], result[len(result)//2:]
     fmt = "|"+pad_l+"   %d:%10.3f -%8.3f:%5d   |   %d:%10.3f -%8.3f:%5d    "+pad_r+"|"
     for r1, r2 in zip(result1, result2):
       print >> out, fmt%(r1[0],r1[1],r1[2],r1[3], r2[0],r2[1],r2[2],r2[3])

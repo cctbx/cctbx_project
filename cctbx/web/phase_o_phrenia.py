@@ -103,7 +103,7 @@ def run(server_info, inp, status):
 
     plot_nx = min(len(reduced_peaks), 60)
     if (plot_nx > 0):
-      plot_ny = max(10, plot_nx/3)
+      plot_ny = max(10, plot_nx//3)
       if (plot_nx != max_reduced_peaks):
         print "Number of peaks used for plot:", plot_nx
         print

@@ -257,8 +257,8 @@ class NamedRot:
 
   def contains(self, angles):
     for i in range(0, len(self.bounds), 2):
-      #print str(angles[i/2]) + " is between " + str(self.bounds[i]) + " and " + str(self.bounds[i+1])
-      if (angles[i/2] < self.bounds[i] or angles[i/2] > self.bounds[i+1]): return False
+      if (   angles[i//2] < self.bounds[i]
+          or angles[i//2] > self.bounds[i+1]): return False
     return True
 #}}}
 

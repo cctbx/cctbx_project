@@ -135,7 +135,7 @@ def exercise_gill_murray_wright_cholesky_decomposition():
       assert approx_equal(e, [0]*n)
   # random matrices
   for n in xrange(1,n_max+1):
-    size = n*(n+1)/2
+    size = n*(n+1)//2
     for i_trial in xrange(n_trials_per_n):
       a = (flex.random_double(size=size, factor=2)-1) \
             .matrix_packed_u_as_symmetric()

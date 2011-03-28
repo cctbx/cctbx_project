@@ -21,7 +21,7 @@ def divisor(n, pairs=False):
   for trial_div in xrange(1, w_n+1):
     if d_n%trial_div == 0:
       a = trial_div
-      b = i_n/trial_div
+      b = i_n//trial_div
       if not pairs:
         result.append( a )
         if a != b:
@@ -123,28 +123,28 @@ def generate_matrix( order ):
 
     if a%2 == 0:
       # a is even
-      tmp = -a/2+1
-      while tmp <= a/2:
+      tmp = -a//2+1
+      while tmp <= a//2:
         d_and_e.append( tmp )
         tmp +=1
     if a%2 != 0 :
       # a is odd
-      tmp = -(a-1)/2
-      while tmp <= (a-1)/2:
+      tmp = -(a-1)//2
+      while tmp <= (a-1)//2:
         d_and_e.append( tmp )
         tmp += 1
 
     if b%2 == 0:
       # b is even
-      tmp = -b/2+1
-      while tmp <= b/2:
+      tmp = -b//2+1
+      while tmp <= b//2:
         f_list.append( tmp )
         tmp +=1
 
     if b%2 != 0:
       # b is odd
-      tmp = -(b-1)/2
-      while tmp <= (b-1)/2:
+      tmp = -(b-1)//2
+      while tmp <= (b-1)//2:
         f_list.append( tmp )
         tmp += 1
 

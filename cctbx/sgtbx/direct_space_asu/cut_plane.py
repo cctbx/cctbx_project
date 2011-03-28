@@ -192,12 +192,15 @@ class cut(cut_expr_ops):
     return cut(n=self.n, c=other*self.c,
                inclusive=self.inclusive, cut_expr=self.cut_expr)
 
-  def __div__(self, other):
+  def __truediv__(self, other):
     assert isinstance(other, int)
     assert other != 0
     assert self.c != 0
     return cut(n=self.n, c=rational.int(1)*self.c/other,
                inclusive=self.inclusive, cut_expr=self.cut_expr)
+
+  def __div__(self, other):
+    return self.__truediv__(other)
 
   def one(self):
     return cut(n=self.n, c=1,

@@ -1888,7 +1888,7 @@ def exercise_matrix():
     for n_columns in xrange(10):
       m = flex.random_double(size=n_rows*n_columns)*4-2
       m.reshape(flex.grid(n_rows,n_columns))
-      p = flex.random_double(size=n_columns*(n_columns+1)/2)
+      p = flex.random_double(size=n_columns*(n_columns+1)//2)
       nopt = m.matrix_multiply(p.matrix_packed_u_as_symmetric())
       assert nopt.focus() == (n_rows, n_columns)
       opt = m.matrix_multiply_packed_u(p)
@@ -1904,8 +1904,8 @@ def exercise_matrix():
         p.matrix_packed_u_diagonal())
       #
       p = flex.complex_double(
-        reals=flex.random_double(size=n_columns*(n_columns+1)/2),
-        imags=flex.random_double(size=n_columns*(n_columns+1)/2))
+        reals=flex.random_double(size=n_columns*(n_columns+1)//2),
+        imags=flex.random_double(size=n_columns*(n_columns+1)//2))
       ps = p.matrix_packed_u_as_symmetric()
       nopt = m.matrix_multiply(ps)
       assert nopt.focus() == (n_rows, n_columns)
@@ -2110,7 +2110,7 @@ def exercise_matrix():
     u=flex.double([1,-2,3,4,-5,6,-7,8,9,-10]),
     l=flex.double([1,-2,-5,3,6,8,4,-7,9,-10]))
   for n in xrange(20):
-    p = flex.random_double(size=n*(n+1)/2)
+    p = flex.random_double(size=n*(n+1)//2)
     exercise_packed(
       n=n,
       s=p.matrix_packed_u_as_symmetric(),
@@ -2760,7 +2760,7 @@ def exercise_versa_packed_u_to_flex():
 
 def exercise_triangular_systems():
   for n in xrange(1,5):
-    a = flex.random_double(n*(n+1)/2)
+    a = flex.random_double(n*(n+1)//2)
     isinstance(a, flex.double)
     b = flex.random_double(n)
 
