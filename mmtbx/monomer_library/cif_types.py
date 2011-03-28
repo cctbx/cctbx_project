@@ -30,10 +30,20 @@ class looped_data(object):
       if (typ is not None):
         if (val == ""): val = None
         if (val is not None):
+          def raise_value_error(expected_type):
+            raise ValueError(
+              "%s value expected in CIF file: %s %s" % (
+                expected_type, looped_id.split(":",1)[0], val))
           if (typ == "int"):
-            val = int(val)
+            try:
+              val = int(val)
+            except ValueError:
+              raise_value_error("Integer")
           else:
-            val = float(val)
+            try:
+              val = float(val)
+            except ValueError:
+              raise_value_error("Floating-point")
       setattr(self, key, val)
       self._cif_keywords.append(key)
 
