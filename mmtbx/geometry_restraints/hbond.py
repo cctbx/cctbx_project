@@ -249,7 +249,7 @@ def as_refmac_restraints (proxies, pdb_hierarchy, filter=True, out=sys.stdout,
     cmd = (("exte dist first chain %s residue %s atom %s " +
             "second chain %s residue %s atom %s value %.3f sigma %.2f") %
       (atom1.chain_id, atom1.resseq, atom1.name, atom2.chain_id,
-       atom2.resseq, atom2.name, bond.distance_ideal, 0.05))
+       atom2.resseq, atom2.name, proxy.distance_ideal, 0.05))
     print >> out, cmd
 
 def as_kinemage (proxies, pdb_hierarchy, filter=True, out=sys.stdout) :
