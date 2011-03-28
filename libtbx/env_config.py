@@ -758,7 +758,8 @@ class environment:
       return self._dispatcher_include_at_start
     return self._dispatcher_include_before_command
 
-  def write_bin_sh_dispatcher(self, source_file, target_file):
+  def write_bin_sh_dispatcher(self,
+        source_file, target_file, source_is_python_exe=False):
     f = open(target_file, "w")
     if (source_file is not None):
       print >> f, '#! /bin/sh'
@@ -852,14 +853,16 @@ class environment:
                     pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
+    qnew = ["", " -Qnew"][0] # XXX
     if (source_file is not None):
       start_python = False
       cmd = ""
       if (source_is_py):
-        cmd += ' %s"%s%s$LIBTBX_PYEXE_BASENAME"' % (
+        cmd += ' %s"%s%s$LIBTBX_PYEXE_BASENAME"%s' % (
           ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit],
           escape_sh_double_quoted(pyexe_dirname),
-          os.sep)
+          os.sep,
+          qnew)
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
@@ -868,6 +871,8 @@ class environment:
         cmd += (" %s'"+source_file+"'") % [
           '', '/usr/bin/arch -i386 '][self.build_options.force_32bit
                                       and not source_is_py]
+      if (source_is_python_exe):
+        cmd += qnew
       print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
       print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
       print >> f, "elif [ $# -eq 0 ]; then"
@@ -879,6 +884,7 @@ class environment:
     os.chmod(target_file, 0755)
 
   def windows_dispatcher(self, command_path, dispatcher_name,
+        source_is_python_exe=False,
         unique_pattern="0W6I0N6D0O2W8S5_0D0I8S1P4A3T6C4H9E4R7",
         libtbx_build="3L0I2B2T9B4X2_8B5U5I5L2D4",
         libtbx_dispatcher_name="6L6I7B2T3B2X5_6D8I7S0P2A0T5C8H1E8R3_1N0A9M9E",
@@ -887,6 +893,7 @@ class environment:
         main_path="1M5A1I0N4_8P7A0T9H9",
         target_command="5T4A3R7G8E3T7_6C5O0M0M3A8N8D2",
         dispatcher_exe_file_name="windows_dispatcher.exe"):
+    # XXX TODO -Qnew
     if (os.name == "nt"
         and self.partially_customized_windows_dispatcher is None):
       try:
@@ -917,13 +924,16 @@ class environment:
       place_holder=target_command,
       actual_value=command_path)
 
-  def write_win32_dispatcher(self, source_file, target_file):
+  def write_win32_dispatcher(self,
+        source_file, target_file, source_is_python_exe=False):
     open(target_file, "wb").write(
       self.windows_dispatcher(
         command_path=source_file,
-        dispatcher_name=op.splitext(op.basename(target_file))[0]))
+        dispatcher_name=op.splitext(op.basename(target_file))[0]),
+        source_is_python_exe=source_is_python_exe)
 
-  def write_dispatcher(self, source_file, target_file):
+  def write_dispatcher(self,
+        source_file, target_file, source_is_python_exe=False):
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
     if (reg != source_file):
       if (not op.isfile(reg)):
@@ -947,13 +957,15 @@ class environment:
       ext = ""
     target_file_ext = target_file + ext
     remove_or_rename(target_file_ext)
-    try: action(source_file, target_file_ext)
+    try: action(source_file, target_file_ext, source_is_python_exe)
     except IOError, e: print "  Ignored:", e
 
-  def _write_dispatcher_in_bin(self, source_file, target_file):
+  def _write_dispatcher_in_bin(self,
+        source_file, target_file, source_is_python_exe=False):
     self.write_dispatcher(
       source_file=source_file,
-      target_file=self.under_build("bin/"+target_file))
+      target_file=self.under_build("bin/"+target_file),
+      source_is_python_exe=source_is_python_exe)
 
   def write_dispatcher_in_bin(self, source_file, target_file):
     self._write_dispatcher_in_bin(
@@ -1193,14 +1205,16 @@ selfx:
     for module_name in module_names:
       self._write_dispatcher_in_bin(
         source_file=self.python_exe,
-        target_file=module_name+".python")
+        target_file=module_name+".python",
+        source_is_python_exe=True)
     d, b = op.split(self.python_exe)
     pythonw_exe = op.join(d, b.replace("python", "pythonw"))
     if (op.isfile(pythonw_exe)):
       for module_name in module_names:
         self._write_dispatcher_in_bin(
           source_file=pythonw_exe,
-          target_file=module_name+".pythonw")
+          target_file=module_name+".pythonw",
+          source_is_python_exe=True)
     def have_ipython():
       for file_name in os.listdir(self.bin_path):
         file_name_lower = file_name.lower()
@@ -1291,7 +1305,8 @@ selfx:
     for file_name in python_dispatchers:
       self._write_dispatcher_in_bin(
         source_file=self.python_exe,
-        target_file=file_name)
+        target_file=file_name,
+        source_is_python_exe=True)
     for module in self.module_list:
       module.process_command_line_directories()
     for path in self.pythonpath:
