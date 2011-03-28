@@ -264,7 +264,7 @@ def exercise_a_tr_b_a():
         m, n, density=0.6,
         elements=uniform_distribution(min=-3, max=10)))
     for n_test in xrange(50):
-      b = flex.random_double(m*(m+1)/2)
+      b = flex.random_double(m*(m+1)//2)
       a = random_matrices.next()
       c = a.self_transpose_times_symmetric_times_self(b)
       aa = a.as_dense_matrix()
@@ -282,7 +282,7 @@ def exercise_a_b_a_tr():
         m, n, density=0.6,
         elements=uniform_distribution(min=-3, max=10)))
     for n_test in xrange(50):
-      b = flex.random_double(n*(n+1)/2)
+      b = flex.random_double(n*(n+1)//2)
       a = random_matrices.next()
       c = a.self_times_symmetric_times_self_transpose(b)
       aa = a.as_dense_matrix()

@@ -183,7 +183,7 @@ def exercise(space_group_info, out):
   space_group = space_group_info.group()
   adp_constraints = space_group.adp_constraints()
   m = adp_constraints.row_echelon_form()
-  print >> out, matrix.rec(m, (m.size()/6, 6)).mathematica_form(
+  print >> out, matrix.rec(m, (m.size()//6, 6)).mathematica_form(
     one_row_per_line=True)
   print >> out, list(adp_constraints.independent_indices)
   u_cart_p1 = adptbx.random_u_cart()
