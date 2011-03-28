@@ -5683,6 +5683,57 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert (main_conf.as_padded_sequence() == "XXGNNQAGQNY")
   assert (main_conf.as_padded_sequence(skip_insertions=True) == "XXGNNQQNY")
 
+def exercise_equality_and_hashing():
+
+  root = pdb.hierarchy.root()
+  model = pdb.hierarchy.model()
+  root.append_model( model )
+  chain = pdb.hierarchy.chain()
+  model.append_chain( chain )
+  rg = pdb.hierarchy.residue_group()
+  chain.append_residue_group( rg )
+  ag = pdb.hierarchy.atom_group()
+  rg.append_atom_group( ag )
+  atom = pdb.hierarchy.atom()
+  ag.append_atom( atom )
+  collection = set( [ root, model, chain, rg, ag, atom ] )
+
+  # Root
+  pr = model.parent()
+  assert pr is not root
+  assert pr == root
+  assert pr in collection
+
+  # Model
+  pm = chain.parent()
+  assert pm is not model
+  assert pm == model
+  assert pm in collection
+
+  # Chain
+  pc = rg.parent()
+  assert pc is not chain
+  assert pc == chain
+  assert pc in collection
+
+  # Residue group
+  prg = ag.parent()
+  assert prg is not rg
+  assert prg == rg
+  assert prg in collection
+
+  # Atom group
+  pag = atom.parent()
+  assert pag is not ag
+  assert pag == ag
+  assert pag in collection
+
+  # Atom
+  pa = ag.atoms()[0]
+  assert pa is not atom
+  assert pa == atom
+  assert pa in collection
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -5741,6 +5792,7 @@ def exercise(args):
     exercise_residue_pickling()
     exercise_hierarchy_input()
     exercise_other()
+    exercise_equality_and_hashing()
     if (not forever): break
   print format_cpu_times()
 
