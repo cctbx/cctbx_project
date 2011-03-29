@@ -33,6 +33,13 @@ python_executable =
 "5N8_0E7X9E7C8U6T4A9B9L5E3_5P2Y5T7H2O5N8_0E7X9E7C8U6T4A9B9L5E3_5P2Y5T7H2O5N8_0"
 "E7X9E7C8U6T4A9B9L5E3_5P2";
 
+static char* /* PYTHON_OPTIONS interleaved with random digits */
+python_options =
+"5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0_5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0_5P6Y5T2H5O4N6_1O6"
+"P7T3I1O6N6S0_5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0_5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0_5P6Y"
+"5T2H5O4N6_1O6P7T3I1O6N6S0_5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0_5P6Y5T2H5O4N6_1O6P7T3"
+"I1O6N6S0_5P6Y5T2H5O4N6_1O";
+
 static char* /* PYTHONPATH interleaved with random digits */
 pythonpath =
 "2P0Y1T7H3O2N7P7A2T5H8_2P0Y1T7H3O2N7P7A2T5H8_2P0Y1T7H3O2N7P7A2T5H8_2P0Y1T7H3O2"
@@ -79,6 +86,13 @@ target_command =
 "O0M0M3A8N8D2_5T4A3R7G8E3T7_6C5O0M0M3A8N8D2_5T4A3R7G8E3T7_6C5O0M0M3A8N8D2_5T4A"
 "3R7G8E3T7_6C5O0M0M3A8N8D2_5T4A3R7G8E3T7_6C5O0M0M3A8N8D2_5T4A3R7G8E3T7_6C5O0M0"
 "M3A8N8D2_5T4A3R7G8E3T7_6";
+
+static char* /* TARGET_OPTIONS interleaved with random digits */
+target_options =
+"9T0A6R9G5E7T6_6O5P3T0I6O6N4S5_9T0A6R9G5E7T6_6O5P3T0I6O6N4S5_9T0A6R9G5E7T6_6O5"
+"P3T0I6O6N4S5_9T0A6R9G5E7T6_6O5P3T0I6O6N4S5_9T0A6R9G5E7T6_6O5P3T0I6O6N4S5_9T0A"
+"6R9G5E7T6_6O5P3T0I6O6N4S5_9T0A6R9G5E7T6_6O5P3T0I6O6N4S5_9T0A6R9G5E7T6_6O5P3T0"
+"I6O6N4S5_9T0A6R9G5E7T6_6O";
 
 int
 is_py(const char* path)
@@ -144,12 +158,18 @@ main(int argc, char *const argv[])
   _putenv(libtbx_dispatcher_name);
   prepend_path_element(argv[0], "PYTHONPATH", pythonpath);
   prepend_path_element(argv[0], "PATH", main_path);
-  extended_argv = malloc_certain(argv[0], (argc + 2) * sizeof(char*));
+  extended_argv = malloc_certain(argv[0], (argc + 4) * sizeof(char*));
   n = 0;
   if (is_py(target_command)) {
     extended_argv[n++] = python_executable;
+    if (python_options[0] != '\0') {
+      extended_argv[n++] = python_options;
+    }
   }
   extended_argv[n++] = target_command;
+  if (target_options[0] != '\0') {
+    extended_argv[n++] = target_options;
+  }
   for(i=1;i<argc;i++,n++) {
     extended_argv[n] = malloc_certain(argv[0], strlen(argv[i]) + 3);
     strcpy(extended_argv[n], "\"");

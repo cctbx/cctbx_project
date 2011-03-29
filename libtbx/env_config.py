@@ -1,3 +1,5 @@
+qnew = ["", " -Qnew"][0] # XXX backward compatibility 2011-03-29
+
 import libtbx.path
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, detect_binary_file
@@ -859,7 +861,6 @@ class environment:
                     pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
-    qnew = ["", " -Qnew"][0] # XXX
     if (source_file is not None):
       start_python = False
       cmd = ""
@@ -895,13 +896,15 @@ class environment:
         libtbx_build="3L0I2B2T9B4X2_8B5U5I5L2D4",
         libtbx_dispatcher_name="6L6I7B2T3B2X5_6D8I7S0P2A0T5C8H1E8R3_1N0A9M9E",
         python_executable="5P2Y5T7H2O5N8_0E7X9E7C8U6T4A9B9L5E3",
+        python_options="5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0",
         pythonpath="2P0Y1T7H3O2N7P7A2T5H8",
         main_path="1M5A1I0N4_8P7A0T9H9",
         target_command="5T4A3R7G8E3T7_6C5O0M0M3A8N8D2",
+        target_options="9T0A6R9G5E7T6_6O5P3T0I6O6N4S5",
         dispatcher_exe_file_name="windows_dispatcher.exe"):
-    # XXX TODO -Qnew
-    if (os.name == "nt"
-        and self.partially_customized_windows_dispatcher is None):
+    assert os.name == "nt"
+    assert command_path is not None
+    if (self.partially_customized_windows_dispatcher is None):
       try:
         self.partially_customized_windows_dispatcher = open(self.under_dist(
           "libtbx", dispatcher_exe_file_name), "rb").read()
@@ -912,23 +915,32 @@ class environment:
           unique_pattern, dispatcher_exe_file_name))
       self.windows_dispatcher_unique_pattern = unique_pattern
       for place_holder,actual_value in [
-           (libtbx_build, self.build_path),
-           (libtbx_dispatcher_name, dispatcher_name),
-           (python_executable, self.python_exe),
-           (pythonpath, os.pathsep.join(self.pythonpath)),
-           (main_path, os.pathsep.join([self.bin_path, self.lib_path]))]:
+            (libtbx_build, self.build_path),
+            (libtbx_dispatcher_name, dispatcher_name),
+            (python_executable, self.python_exe),
+            (python_options, qnew[1:]),
+            (pythonpath, os.pathsep.join(self.pythonpath)),
+            (main_path, os.pathsep.join([self.bin_path, self.lib_path])),
+            (target_options, target_options)]:
        self.partially_customized_windows_dispatcher = patch_windows_dispatcher(
          dispatcher_exe_file_name=dispatcher_exe_file_name,
          binary_string=self.partially_customized_windows_dispatcher,
          place_holder=place_holder,
          actual_value=actual_value)
-    if (command_path is None):
-      return self.partially_customized_windows_dispatcher
-    return patch_windows_dispatcher(
-      dispatcher_exe_file_name=dispatcher_exe_file_name,
-      binary_string=self.partially_customized_windows_dispatcher,
-      place_holder=target_command,
-      actual_value=command_path)
+    if (source_is_python_exe):
+      trg_opt = qnew[1:]
+    else:
+      trg_opt = ""
+    result = self.partially_customized_windows_dispatcher
+    for place_holder,actual_value in [
+          (target_options, trg_opt),
+          (target_command, command_path)]:
+     result = patch_windows_dispatcher(
+       dispatcher_exe_file_name=dispatcher_exe_file_name,
+       binary_string=result,
+       place_holder=place_holder,
+       actual_value=actual_value)
+    return result
 
   def write_win32_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
