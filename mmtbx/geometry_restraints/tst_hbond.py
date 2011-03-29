@@ -50,7 +50,7 @@ def exercise_simple () :
     proxies=build_proxies.proxies,
     sites_cart=sites_cart,
     gradient_array=grads)
-  assert (residual == cctbx_bond.residual())
+  assert approx_equal(residual, cctbx_bond.residual())
   assert approx_equal(residual, 6.45926322152, eps=0.00001)
   # as before, but with N-O restrained
   build_proxies = hbond.build_simple_hbond_proxies()
@@ -67,7 +67,7 @@ def exercise_simple () :
     sites=[sites_cart[i_seq_1[0]], sites_cart[i_seq_3[0]]],
     distance_ideal=2.9,
     weight=0.5/(0.05**2))
-  assert (residual == cctbx_bond.residual())
+  assert approx_equal(residual, cctbx_bond.residual())
   simple_bonds = hbond.get_simple_bonds(build_proxies.proxies)
   assert (simple_bonds.size() == 1)
   assert (list(simple_bonds[0]) == [3,6])
