@@ -7,6 +7,7 @@ if has_antlr3:
 
 from cctbx.array_family import flex
 from cctbx import adptbx
+from cctbx import covariance
 from iotbx.cif import model, builders, geometry
 from libtbx.containers import OrderedDict
 from libtbx.utils import format_float_with_standard_uncertainty \
@@ -19,7 +20,7 @@ import math, sys
 distances_as_cif_loop = geometry.distances_as_cif_loop
 angles_as_cif_loop = geometry.angles_as_cif_loop
 
-class reader:
+class reader(object):
 
   def __init__(self, file_path=None, file_object=None, input_string=None,
                builder=None, max_errors=50):
@@ -73,7 +74,7 @@ class reader:
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
-class crystal_symmetry_as_cif_block:
+class crystal_symmetry_as_cif_block(object):
 
   def __init__(self, crystal_symmetry, cell_covariance_matrix=None):
     self.cif_block = model.block()
@@ -236,7 +237,7 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
     self.cif_block.add_loop(atom_type_loop)
 
 
-class miller_indices_as_cif_loop:
+class miller_indices_as_cif_loop(object):
 
   def __init__(self, indices, prefix='_refln_'):
     self.refln_loop = model.loop(header=(
