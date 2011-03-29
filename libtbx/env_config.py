@@ -35,12 +35,18 @@ def unique_paths(paths):
 
 def darwin_shlinkcom(env_etc, env, lo, dylib):
   if env_etc.compiler.startswith('darwin_'):
+    print env_etc.gcc_version
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o"
     else :
       dylib1 = " ".join(env_etc.shlinkflags)
+    if (    env_etc.gcc_version is not None
+        and env_etc.gcc_version >= 40201):
+      opt_m = ""
+    else:
+      opt_m = " -m"
     shlinkcom = [
-      "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
+      "ld -dynamic%s -r -d -bind_at_load -o %s $SOURCES" % (opt_m, lo),
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
         " %s -o %s %s" % (dylib1, dylib, lo)]
     if (env_etc.mac_os_use_dsymutil):
