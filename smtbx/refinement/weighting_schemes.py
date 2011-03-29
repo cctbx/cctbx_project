@@ -19,8 +19,7 @@ from cctbx.array_family import flex
 import math
 
 
-class _mainstream_shelx_weighting(boost.python.injector,
-                                  ext.mainstream_shelx_weighting):
+class _(boost.python.injector, ext.mainstream_shelx_weighting):
 
   def __str__(self):
     if round(self.a, 4) in (0.1, 0.2):
@@ -148,8 +147,7 @@ class _mainstream_shelx_weighting(boost.python.injector,
     weighting.b = start_b
     return weighting
 
-class _unit_weighting(boost.python.injector,
-                      ext.unit_weighting):
+class _(boost.python.injector, ext.unit_weighting):
 
   def __str__(self):
     return "w=1"
@@ -162,7 +160,7 @@ class _unit_weighting(boost.python.injector,
     # no parameters to optimise!
     return self
 
-class _sigma_weighting(boost.python.injector, ext.sigma_weighting):
+class _(boost.python.injector, ext.sigma_weighting):
 
   def __str__(self): return "w=1/sigma^2"
 

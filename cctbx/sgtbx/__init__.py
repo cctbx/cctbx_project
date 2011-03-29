@@ -36,7 +36,7 @@ def vec3_rat_from_str(s):
     result.append(rational.int(n, d))
   return result
 
-class _space_group(boost.python.injector, ext.space_group):
+class _(boost.python.injector, ext.space_group):
 
   def smx(self, with_inversion=False):
     if with_inversion: n = 2*self.n_smx()
@@ -381,7 +381,7 @@ def reference_space_group_infos():
   for number in xrange(1,230+1):
     yield space_group_info(number=number)
 
-class _tr_vec(boost.python.injector, tr_vec):
+class _(boost.python.injector, tr_vec):
 
   def as_rational(self):
     return matrix.col(rational.vector(self.num(), self.den()))
@@ -402,7 +402,7 @@ class le_page_1982_delta_details:
     else:
       self.delta = self.t.accute_angle(self.tau, deg=deg)
 
-class _rot_mx(boost.python.injector, rot_mx):
+class _(boost.python.injector, rot_mx):
 
   def as_rational(self):
     return matrix.sqr(rational.vector(self.num(), self.den()))
@@ -423,7 +423,7 @@ class _rot_mx(boost.python.injector, rot_mx):
     return ((sirms * sirms).trace() / 12)**0.5
 
 
-class _rot_mx_info(boost.python.injector, rot_mx_info):
+class _(boost.python.injector, rot_mx_info):
 
   def basis_of_invariant(self):
     from cctbx.math_module import basis_of_mirror_plane_with_normal
@@ -445,7 +445,7 @@ class _rot_mx_info(boost.python.injector, rot_mx_info):
     result += " |(%i, %i, %i)" % self.ev()
     return result
 
-class _translation_part_info(boost.python.injector, translation_part_info):
+class _(boost.python.injector, translation_part_info):
 
   def __str__(self):
     result = "+(%s) @(%s) t_l=(%s)" % (self.intrinsic_part().mod_positive(),
@@ -454,7 +454,7 @@ class _translation_part_info(boost.python.injector, translation_part_info):
     return result
 
 
-class _rt_mx(boost.python.injector, ext.rt_mx):
+class _(boost.python.injector, ext.rt_mx):
 
   def __getinitargs__(self):
     return (flex.int(self.as_int_array() + (self.r().den(), self.t().den())),)
@@ -479,7 +479,7 @@ class _rt_mx(boost.python.injector, ext.rt_mx):
     t_info = translation_part_info(self)
     print >>out, "%s %s" % (r_info, t_info)
 
-class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
+class _(boost.python.injector, ext.search_symmetry_flags):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -585,7 +585,7 @@ def special_op_simplifier(special_op):
         [i_row], [m], t[j_row] - m*t[i_row])
   return special_op_simplified(terms=terms)
 
-class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
+class _(boost.python.injector, ext.site_symmetry_ops):
 
   def __getinitargs__(self):
     return (self.multiplicity(), self.special_op(), self.matrices())
@@ -598,7 +598,7 @@ class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
     return fvar_encoding.site_constraints_site_symmetry_ops(
       O=self, fvars=fvars, site=site, p_tolerance=p_tolerance)
 
-class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
+class _(boost.python.injector, ext.site_symmetry_table):
 
   def __getinitargs__(self):
     return (self.indices(), self.table(), self.special_position_indices())
@@ -653,7 +653,7 @@ class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
         s = str(special_ops.special_op())
         print >> out, prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s
 
-class _wyckoff_table(boost.python.injector, wyckoff_table):
+class _(boost.python.injector, wyckoff_table):
 
   def random_site_symmetry(self,
         special_position_settings,
@@ -673,7 +673,7 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
 
-class _structure_seminvariants(boost.python.injector, structure_seminvariants):
+class _(boost.python.injector, structure_seminvariants):
 
   def __str__(self):
     result = []

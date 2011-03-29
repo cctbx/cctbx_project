@@ -600,7 +600,7 @@ def correct_special_position(
     return site_special_frac
   return unit_cell.orthogonalize(site_special_frac)
 
-class _pair_asu_table(boost.python.injector, pair_asu_table):
+class _(boost.python.injector, pair_asu_table):
 
   def as_nested_lists(self):
     result = []
@@ -988,7 +988,7 @@ class sym_pair(libtbx.slots_getstate_setstate):
   def i_seqs(self):
     return (self.i_seq, self.j_seq)
 
-class _pair_sym_table(boost.python.injector, pair_sym_table):
+class _(boost.python.injector, pair_sym_table):
 
   def iterator(self):
     for i_seq,pair_sym_dict in enumerate(self):

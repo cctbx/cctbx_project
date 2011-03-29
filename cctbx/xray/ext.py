@@ -5,8 +5,7 @@ from cctbx_xray_ext import *
 from cctbx.array_family import flex
 import sys
 
-class _scattering_type_registry(
-        boost.python.injector, scattering_type_registry):
+class _(boost.python.injector, scattering_type_registry):
 
   def type_count_dict(self):
     result = {}
@@ -109,8 +108,7 @@ class _scattering_type_registry(
       result[t] = ugs[i]
     return result
 
-class _sampled_model_density(
-        boost.python.injector, sampled_model_density):
+class _(boost.python.injector, sampled_model_density):
 
   def real_map_unpadded(self):
     from cctbx import maptbx

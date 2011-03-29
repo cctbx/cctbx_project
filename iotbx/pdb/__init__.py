@@ -580,7 +580,7 @@ input_sections = (
   "connectivity_section",
   "bookkeeping_section")
 
-class _input(boost.python.injector, ext.input):
+class _(boost.python.injector, ext.input):
 
   def __getinitargs__(self):
     lines = flex.std_string()

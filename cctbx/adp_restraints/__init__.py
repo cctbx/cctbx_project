@@ -133,7 +133,7 @@ class adp_aniso_restraints(object):
     self.gradients_aniso_star = adptbx.grad_u_cart_as_u_star(unit_cell,
                                                self.gradients_aniso_cart)
 
-class _adp_similarity(boost.python.injector, adp_similarity):
+class _(boost.python.injector, adp_similarity):
 
   def _show_sorted_item(self, f, prefix):
     adp_labels = ("U11","U22","U33","U12","U13","U23")
@@ -157,8 +157,7 @@ class _adp_similarity(boost.python.injector, adp_similarity):
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
       rdr = ""
 
-class _shared_adp_similarity_proxy(
-  boost.python.injector, shared_adp_similarity_proxy):
+class _(boost.python.injector, shared_adp_similarity_proxy):
 
   def deltas_rms(self, u_cart, u_iso, use_u_aniso):
     return adp_similarity_deltas_rms(
@@ -186,7 +185,7 @@ class _shared_adp_similarity_proxy(
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-class _isotropic_adp(boost.python.injector, isotropic_adp):
+class _(boost.python.injector, isotropic_adp):
 
   def _show_sorted_item(self, f, prefix):
     adp_labels = ("U11","U22","U33","U12","U13","U23")
@@ -200,8 +199,7 @@ class _isotropic_adp(boost.python.injector, isotropic_adp):
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
       rdr = ""
 
-class _shared_isotropic_adp_proxy(
-  boost.python.injector, shared_isotropic_adp_proxy):
+class _(boost.python.injector, shared_isotropic_adp_proxy):
 
   def deltas_rms(self, u_cart):
     return isotropic_adp_deltas_rms(u_cart=u_cart, proxies=self)
@@ -225,7 +223,7 @@ class _shared_isotropic_adp_proxy(
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-class _rigid_bond(boost.python.injector, rigid_bond):
+class _(boost.python.injector, rigid_bond):
 
   def _show_sorted_item(self, f, prefix):
     print >> f, \
@@ -234,8 +232,7 @@ class _rigid_bond(boost.python.injector, rigid_bond):
       prefix, self.delta_z(), weight_as_sigma(weight=self.weight),
       self.weight, self.residual())
 
-class _shared_rigid_bond_proxy(
-  boost.python.injector, shared_rigid_bond_proxy):
+class _(boost.python.injector, shared_rigid_bond_proxy):
 
   def deltas(self, sites_cart, u_cart):
     return rigid_bond_deltas(

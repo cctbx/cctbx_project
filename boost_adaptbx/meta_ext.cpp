@@ -1,7 +1,6 @@
 /* The main purpose of this module is to provide access to the
    Boost.Python metaclass.
    See also:
-     boost/libs/python/doc/tutorial/doc/quickstart.txt, keyword injector
      boost.python.injector (boost/python.py)
  */
 

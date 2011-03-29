@@ -48,7 +48,7 @@ class vdw_radii:
     print >> log
 
 
-class _flood_fill(boost.python.injector, flood_fill):
+class _(boost.python.injector, flood_fill):
 
   def eigensystems_frac(self):
     inertia_tensors = self.inertia_tensors_frac()

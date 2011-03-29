@@ -54,7 +54,7 @@ class non_linear_ls_mixin(object):
     return self.step_equations().solution()
 
 
-class linear_ls_extension(boost.python.injector, linear_ls):
+class _(boost.python.injector, linear_ls):
 
   def __iter__(self):
     yield self.normal_matrix_packed_u()

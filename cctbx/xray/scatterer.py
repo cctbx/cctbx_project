@@ -27,7 +27,7 @@ class scatterer(ext.scatterer):
     ext.scatterer.__init__(
       self, label, site, u, occupancy, scattering_type, fp, fdp)
 
-class _scatterer(boost.python.injector, ext.scatterer):
+class _(boost.python.injector, ext.scatterer):
 
   def customized_copy(self,
         label=None,

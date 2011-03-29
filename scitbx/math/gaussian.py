@@ -8,7 +8,7 @@ from scitbx.array_family import flex
 import boost.python
 import sys
 
-class _sum(boost.python.injector, sum):
+class _(boost.python.injector, sum):
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
@@ -29,7 +29,7 @@ class _sum(boost.python.injector, sum):
       self.c(),
       self.use_c())
 
-class _fit(boost.python.injector, fit):
+class _(boost.python.injector, fit):
 
   def show_table(self, f=None):
     if (f is None): f = sys.stdout

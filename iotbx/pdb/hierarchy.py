@@ -329,7 +329,7 @@ class __hash_eq_mixin(object):
       return (self.memory_id() == other.memory_id())
     return False
 
-class _root(boost.python.injector, ext.root, __hash_eq_mixin):
+class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def __getstate__(self):
     version = 2
@@ -650,7 +650,7 @@ class _root(boost.python.injector, ext.root, __hash_eq_mixin):
       fallback_expected_bond_length=fallback_expected_bond_length,
       fallback_search_max_distance=fallback_search_max_distance)
 
-class _model(boost.python.injector, ext.model, __hash_eq_mixin):
+class _(boost.python.injector, ext.model, __hash_eq_mixin):
 
   def residue_groups(self):
     for chain in self.chains():
@@ -682,7 +682,7 @@ class _model(boost.python.injector, ext.model, __hash_eq_mixin):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-class _chain(boost.python.injector, ext.chain, __hash_eq_mixin):
+class _(boost.python.injector, ext.chain, __hash_eq_mixin):
 
   def atom_groups(self):
     for rg in self.residue_groups():
@@ -753,7 +753,7 @@ class _chain(boost.python.injector, ext.chain, __hash_eq_mixin):
     result.sort(groups_cmp)
     return result
 
-class _residue_group(boost.python.injector, ext.residue_group, __hash_eq_mixin):
+class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
 
   def only_atom_group(self):
     assert self.atom_groups_size() == 1
@@ -762,13 +762,13 @@ class _residue_group(boost.python.injector, ext.residue_group, __hash_eq_mixin):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-class _atom_group(boost.python.injector, ext.atom_group, __hash_eq_mixin):
+class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
 
   def only_atom(self):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
-class _atom(boost.python.injector, ext.atom, __hash_eq_mixin):
+class _(boost.python.injector, ext.atom, __hash_eq_mixin):
 
   def set_element_and_charge_from_scattering_type_if_necessary(self,
         scattering_type):
@@ -788,7 +788,7 @@ class _atom(boost.python.injector, ext.atom, __hash_eq_mixin):
     self.charge = "%-2s" % sct_c
     return True
 
-class _conformer(boost.python.injector, ext.conformer):
+class _(boost.python.injector, ext.conformer):
 
   def only_residue(self):
     residues = self.residues()
@@ -913,7 +913,7 @@ class _conformer(boost.python.injector, ext.conformer):
       last_resseq = resseq
     return "".join(ss_seq)
 
-class _residue(boost.python.injector, ext.residue):
+class _(boost.python.injector, ext.residue):
 
   def __getinitargs__(self):
     result_root = self.root()
