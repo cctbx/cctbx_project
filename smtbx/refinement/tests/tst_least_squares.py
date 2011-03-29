@@ -225,7 +225,7 @@ class site_refinement_test(refinement_test):
     assert (
       cycles.objective_history[0]
       >= cycles.objective_history[1]
-      >= cycles.objective_history[3]), cycles.objective_history
+      >= cycles.objective_history[3]), numstr(cycles.objective_history)
     assert approx_equal(cycles.gradient_norm_history[-1], 0, eps=1e-9)
 
     match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
