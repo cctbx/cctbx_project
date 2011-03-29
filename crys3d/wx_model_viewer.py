@@ -503,6 +503,9 @@ class model_viewer_mixin (wxGLWindow) :
       self.update_scene = True
 
   def set_noncovalent_bonds (self, model_id, bonded_atoms, auto_show=False) :
+    if isinstance(bonded_atoms, list) :
+      from scitbx.array_family import shared
+      bonded_atoms = shared.stl_set_unsigned(bonded_atoms)
     model = self.get_model(model_id)
     if model is not None :
       model.set_noncovalent_bonds(bonded_atoms)
