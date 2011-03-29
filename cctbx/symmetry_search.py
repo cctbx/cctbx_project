@@ -184,8 +184,11 @@ class structure_factor_symmetry(object):
     f0 = self.f_in_p1
     for op in self.possible_point_group_generators():
       f, op_times_f = f0.common_sets(
-        f0.change_basis(sgtbx.change_of_basis_op(op)))
-      assert f.size() == f0.size()
+        f0.change_basis(sgtbx.change_of_basis_op(op)),
+        assert_is_similar_symmetry=False)
+      #assert f.size() == f0.size()
+      #XXX a better sanity check is needed here to check the amount of overlap
+      #XXX between transformed indices
       cc_sf = f * op_times_f.conjugate().data() / f.sum_sq()
       cc_map = cc_sf.fft_map(
         symmetry_flags=maptbx.use_space_group_symmetry,
@@ -207,7 +210,8 @@ class structure_factor_symmetry(object):
     for i, (r, d) in enumerate(self.cross_correlation_peaks()):
       t = sgtbx.tr_vec((d*denominator).as_int(), tr_den=denominator)
       cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(r, t))
-      phi_sym = self.f_in_p1.symmetry_agreement_factor(cb_op)
+      phi_sym = self.f_in_p1.symmetry_agreement_factor(
+        cb_op, assert_is_similar_symmetry=False)
       if phi_sym < self.phi_sym_acceptance_cutoff:
         status = possible_symmetry.accepted
       elif phi_sym < self.phi_sym_rejection_cutoff:
