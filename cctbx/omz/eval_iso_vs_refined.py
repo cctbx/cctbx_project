@@ -17,10 +17,10 @@ def eval_logs(file_names, out=None):
   n_traceback = 0
   n_abort = 0
   seconds = []
-  space_groups_by_cod_code = {}
+  space_groups_by_cod_id = {}
   for file_name in file_names:
     have_time_end = False
-    cod_code = None
+    cod_id = None
     n_scatt = None
     iso = None
     file_str = open(file_name).read()
@@ -28,22 +28,22 @@ def eval_logs(file_names, out=None):
       n_stale += 1
       continue
     for line in file_str.splitlines():
-      if (line.startswith("cod_code: ")):
-        cod_code = line[10:]
+      if (line.startswith("cod_id: ")):
+        cod_id = line[10:]
         iso = None
       elif (line.startswith("Space group: ")):
-        assert cod_code is not None
+        assert cod_id is not None
         space_group = line.split(None, 2)[2]
-        tabulated = space_groups_by_cod_code.setdefault(cod_code, space_group)
+        tabulated = space_groups_by_cod_id.setdefault(cod_id, space_group)
         assert tabulated == space_group
       elif (line.startswith("Number of scatterers: ")):
-        assert cod_code is not None
+        assert cod_id is not None
         n_scatt = int(line.split(": ",1)[1])
       elif (line.startswith("Number of refinable parameters: ")):
-        assert cod_code is not None
+        assert cod_id is not None
         n_refinements_initialized += 1
       elif (line.startswith("iso          cc, r1: ")):
-        assert cod_code is not None
+        assert cod_id is not None
         assert iso is None
         iso = line.split(": ",1)[1]
       elif (   line.startswith("dev          cc, r1: ")
@@ -57,9 +57,9 @@ def eval_logs(file_names, out=None):
         gap = float(ref.split()[1]) - float(iso.split()[1])
         gaps.append(gap)
         infos.append(" : ".join([
-          cod_code, iso, ref, "%.3f" % gap, str(n_scatt),
-          space_groups_by_cod_code[cod_code]]))
-        cod_code = None
+          cod_id, iso, ref, "%.3f" % gap, str(n_scatt),
+          space_groups_by_cod_id[cod_id]]))
+        cod_id = None
         n_scatt = None
         iso = None
       else:

@@ -12,8 +12,8 @@ def report_fraction_of_negative_observations(id_code, obs):
 
 class cod_data(object):
 
-  def __init__(O, cod_code, hkl_cif_pair):
-    O.cod_code = cod_code
+  def __init__(O, cod_id, hkl_cif_pair):
+    O.cod_id = cod_id
     refl_file, model_file = hkl_cif_pair
     import iotbx.cif.builders
     print "refl_file:", refl_file
@@ -45,7 +45,7 @@ class cod_data(object):
         if (ma.is_xray_amplitude_array()):
           meas_a.append(ma)
         elif (ma.is_xray_intensity_array()):
-          report_fraction_of_negative_observations(cod_code, ma)
+          report_fraction_of_negative_observations(cod_id, ma)
           meas_i.append(ma)
     if (len(meas_a) != 0):
       O.f_obs = meas_a[0]
@@ -69,7 +69,7 @@ class cod_data(object):
     #
     O.edge_list = O.process_geom_bond(model_cif)
     if (O.edge_list is not None):
-      print "len(edge_list):", len(O.edge_list), cod_code
+      print "len(edge_list):", len(O.edge_list), cod_id
 
   def have_zero_occupancies(O):
     return not O.xray_structure.scatterers().extract_occupancies().all_ne(0)
@@ -108,12 +108,12 @@ class cod_data(object):
 
   def have_bad_sigmas(O):
     if (O.f_obs.sigmas() is None):
-      print "Missing sigmas:", O.cod_code
+      print "Missing sigmas:", O.cod_id
       return True
     sel = (O.f_obs.data() == 0) & (O.f_obs.sigmas() == 0)
     result = not O.f_obs.select(~sel).sigmas().all_gt(0)
     if (result):
-      print "Zero or negative sigmas:", O.cod_code
+      print "Zero or negative sigmas:", O.cod_id
     return result
 
   def f_obs_and_f_calc_agree_well(O, co):
@@ -152,7 +152,7 @@ class cod_data(object):
     assert lc.is_well_defined()
     cc = lc.coefficient()
     print "f_obs_f_calc cc, fan: %.3f %.3f %s" % (
-      lc.coefficient(), fan_outlier_fraction, O.cod_code)
+      lc.coefficient(), fan_outlier_fraction, O.cod_id)
     if (fan_outlier_fraction > co.max_fan_outlier_fraction):
       return False
     if (cc < co.min_f_obs_f_calc_correlation):
@@ -203,13 +203,13 @@ class cod_data(object):
       O.f_obs.indices().size(),
       O.f_obs.d_min())
 
-def build_hkl_cif(cod_codes):
+def build_hkl_cif(cod_ids):
   cod_svn = os.environ.get("COD_SVN_WORKING_COPY")
   assert cod_svn is not None
   cif_dir = op.join(cod_svn, "cif")
   hkl_dir = op.join(cod_svn, "hkl")
   hkl_cif = []
-  if (len(cod_codes) == 0):
+  if (len(cod_ids) == 0):
     hkl_only = []
     for sub_dir in sorted(os.listdir(hkl_dir)):
       if (sub_dir.startswith(".")): continue
@@ -217,9 +217,9 @@ def build_hkl_cif(cod_codes):
       for node in sorted(os.listdir(hkl_sub_dir)):
         if (node.startswith(".")): continue
         if (not node.endswith(".hkl")): continue
-        cod_code = node[:-4]
+        cod_id = node[:-4]
         hkl_path = op.join(hkl_sub_dir, node)
-        cif_path = op.join(cif_dir, sub_dir, cod_code+".cif")
+        cif_path = op.join(cif_dir, sub_dir, cod_id+".cif")
         if (not op.isfile(cif_path)):
           hkl_only.append(hkl_path)
         else:
@@ -227,9 +227,9 @@ def build_hkl_cif(cod_codes):
     print "Number of hkl without cif:", len(hkl_only)
   else:
     n_missing_all = 0
-    for cod_code in cod_codes:
-      hkl_path = op.join(hkl_dir, cod_code[0], cod_code+".hkl")
-      cif_path = op.join(cif_dir, cod_code[0], cod_code+".cif")
+    for cod_id in cod_ids:
+      hkl_path = op.join(hkl_dir, cod_id[0], cod_id+".hkl")
+      cif_path = op.join(cif_dir, cod_id[0], cod_id+".cif")
       n_missing = 0
       if (not op.isfile(cif_path)):
         print "Missing COD cif file:", cif_path
@@ -253,7 +253,7 @@ def run(args):
   show_times = libtbx.utils.show_times(time_start="now")
   command_call = ["iotbx.python", __file__]
   command_line = (iotbx_option_parser(
-    usage=" ".join(command_call) + " [options] [cod_code...]")
+    usage=" ".join(command_call) + " [options] [cod_id...]")
     .enable_chunk(easy_all=True)
     .enable_multiprocessing()
     .option(None, "--max_atoms",
@@ -293,7 +293,7 @@ def run(args):
     return
   co = command_line.options
   #
-  hkl_cif = build_hkl_cif(cod_codes=command_line.args)
+  hkl_cif = build_hkl_cif(cod_ids=command_line.args)
   #
   pickle_dir = "cod_ma_xs"
   if (co.at_least_one_special_position):
@@ -303,16 +303,16 @@ def run(args):
     makedirs_race(path=pickle_dir)
   n_caught = 0
   for i_pair,pair in enumerate(hkl_cif):
-    cod_code = op.basename(pair[0])[:-4]
+    cod_id = op.basename(pair[0])[:-4]
     if (i_pair % command_line.chunk.n != command_line.chunk.i): continue
     try:
-      cd = cod_data(cod_code=cod_code, hkl_cif_pair=pair)
+      cd = cod_data(cod_id=cod_id, hkl_cif_pair=pair)
     except KeyboardInterrupt:
       print "CAUGHT EXCEPTION: KeyboardInterrupt"
       return
     except Exception:
       sys.stdout.flush()
-      print >> sys.stderr, "CAUGHT EXCEPTION: cod.py: %s" % cod_code
+      print >> sys.stderr, "CAUGHT EXCEPTION: cod.py: %s" % cod_id
       traceback.print_exc()
       print >> sys.stderr
       sys.stderr.flush()
@@ -320,13 +320,13 @@ def run(args):
     else:
       if (cd.is_useful(co)):
         easy_pickle.dump(
-          file_name="%s/%s.pickle" % (pickle_dir, cod_code),
+          file_name="%s/%s.pickle" % (pickle_dir, cod_id),
           obj=(cd.f_obs, cd.xray_structure, cd.edge_list))
-        print >> open("%s/qi_%s" % (pickle_dir, cod_code), "w"), \
+        print >> open("%s/qi_%s" % (pickle_dir, cod_id), "w"), \
           cd.quick_info()
       else:
-        print "filtering out:", cod_code
-      print "done_with:", cod_code
+        print "filtering out:", cod_id
+      print "done_with:", cod_id
       print
   print
   print "Number of exceptions caught:", n_caught

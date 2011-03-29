@@ -116,7 +116,7 @@ def show_cc_r1(
   sys.stdout.flush()
   return fc_abs, cc, r1
 
-def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
+def run_smtbx_ls(mode, cod_id, f_obs, xray_structure, params):
   import smtbx.refinement
   fo_sq = f_obs.f_as_f_sq(algorithm="shelxl")
   assert fo_sq.sigmas() is not None
@@ -142,7 +142,7 @@ def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
       except RuntimeError, e:
         if (str(e).find("cholesky.failure") <= 0): raise
         print 'Aborting run_smtbx_ls("simple"): cholesky.failure: %s' \
-          % cod_code
+          % cod_id
         break
       for sc in xray_structure.scatterers():
         if (sc.u_iso <= 0 or sc.u_iso > 1):
@@ -163,7 +163,7 @@ def run_smtbx_ls(mode, cod_code, f_obs, xray_structure, params):
             "cctbx::adptbx::debye_waller_factor_exp: max_arg exceeded")):
         raise
       print 'Aborting run_smtbx_ls("lm"):' \
-        ' debye_waller_factor_exp failure: %s' % cod_code
+        ' debye_waller_factor_exp failure: %s' % cod_id
     show_cc_r1("smtbx_lm", f_obs, xray_structure)
     tm.show_elapsed(prefix="time levenberg_marquardt_iterations: ")
   else:
@@ -177,7 +177,7 @@ def remove_tmp_files(file_names):
 
 def run_shelxl(
       mode,
-      cod_code,
+      cod_id,
       f_obs,
       xray_structure,
       params,
@@ -198,7 +198,7 @@ def run_shelxl(
   else:
     raise RuntimeError("Unknown mode: " + mode)
   cwd_orig = os.getcwd()
-  wdir = "wdir_%s_shelxl_%s_%s" % (cod_code, mode, os.getpid())
+  wdir = "wdir_%s_shelxl_%s_%s" % (cod_id, mode, os.getpid())
   if (params.wdir_root is not None):
     wdir = op.join(params.wdir_root, wdir)
   wdir_is_new = False
@@ -218,7 +218,7 @@ def run_shelxl(
     open("tmp.ins", "w").writelines(iotbx.shelx.writer.generator(
       xray_structure=xray_structure,
       data_are_intensities=True,
-      title="cod_code=%s mode=%s" % (cod_code, mode),
+      title="cod_id=%s mode=%s" % (cod_id, mode),
       wavelength=fo_sq.minimum_wavelength_based_on_d_min(),
       full_matrix_least_squares_cycles=fm_cycles,
       conjugate_gradient_least_squares_cycles=cg_cycles,
@@ -234,7 +234,7 @@ def run_shelxl(
     for line in buffers.stdout_lines:
       if (line.find("** REFINEMENT UNSTABLE **") >= 0):
         refinement_unstable = True
-        print "Aborted: shelxl %s refinement unstable: %s" % (mode, cod_code)
+        print "Aborted: shelxl %s refinement unstable: %s" % (mode, cod_id)
         break
     res = open("tmp.res").read()
     try:
@@ -246,7 +246,7 @@ def run_shelxl(
       if (str(e).find("scatterer parameter") < 0):
         raise
       print "Aborted: shelxl %s refinement apparently unstable: %s" % (
-        mode, cod_code)
+        mode, cod_id)
       refined = None
     if (refined is not None):
       assert refined.crystal_symmetry().is_similar_symmetry(
@@ -320,7 +320,7 @@ def run_shelxl(
               assert n_caos == 1
               assert res_n_restraints == 0
               print "INFO: SHELXL restraint count incorrect? code_code:", \
-                cod_code
+                cod_id
             else:
               raise_unexpected_restraints(n_caos)
         elif (mode == "cg"):
@@ -333,11 +333,11 @@ def run_shelxl(
           "fvar_"+mode, f_obs, xray_structure, scale_factor=res_osf)
         r1_diff = r1_fvar - res_r1
         print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
-          mode, r1_fvar, res_r1, r1_diff, cod_code)
+          mode, r1_fvar, res_r1, r1_diff, cod_id)
         if (abs(r1_diff) > 0.01):
-          raise RuntimeError("R1 MISMATCH %s" % cod_code)
+          raise RuntimeError("R1 MISMATCH %s" % cod_id)
         _, _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, fc_abs=fc_abs)
-        print "R1 FVAR-Auto %s: %.4f" % (cod_code, r1_fvar - r1_auto)
+        print "R1 FVAR-Auto %s: %.4f" % (cod_id, r1_fvar - r1_auto)
         #
         lst_r1 = None
         lst_wr2 = None
@@ -370,9 +370,9 @@ def run_shelxl(
         else:
           info = ""
         print "wR2 recomputed - shelxl_%s.lst: %.4f - %.4f = %.4f %s%s" % (
-          mode, wr2, lst_wr2, wr2_diff, cod_code, info)
+          mode, wr2, lst_wr2, wr2_diff, cod_id, info)
         if (abs(wr2_diff) / max(lst_wr2, wr2) > 0.2):
-          raise RuntimeError("wR2 MISMATCH %s" % cod_code)
+          raise RuntimeError("wR2 MISMATCH %s" % cod_id)
     if (not params.keep_tmp_files):
       remove_tmp_files(tmp_file_names)
       remove_wdir = wdir_is_new
@@ -383,7 +383,7 @@ def run_shelxl(
       except Exception: pass
 
 def run_shelx76(
-      cod_code,
+      cod_id,
       f_obs,
       xray_structure,
       fvars,
@@ -396,7 +396,7 @@ def run_shelx76(
   else:
     ls_cycles = params.shelx76_iterations
   cwd_orig = os.getcwd()
-  wdir = "wdir_%s_shelx76_%s" % (cod_code, os.getpid())
+  wdir = "wdir_%s_shelx76_%s" % (cod_id, os.getpid())
   if (params.wdir_root is not None):
     wdir = op.join(params.wdir_root, wdir)
   wdir_is_new = False
@@ -430,7 +430,7 @@ def run_shelx76(
         assert len(flds) == 12
         if (flds[2].lower() == "nan"):
           print "Aborted: shelx76 refinement apparently unstable: %s" % (
-            cod_code)
+            cod_id)
           r_from_lst = "nan"
           break
         r_from_lst = float(flds[2])
@@ -447,8 +447,8 @@ def run_shelx76(
       except Exception: pass
 
 def process(params, pickle_file_name):
-  cod_code = op.basename(pickle_file_name).split(".",1)[0]
-  print "cod_code:", cod_code
+  cod_id = op.basename(pickle_file_name).split(".",1)[0]
+  print "cod_id:", cod_id
   f_obs_from_pickle, structure_prep, edge_list = easy_pickle.load(
     file_name=pickle_file_name)
   f_obs = f_obs_from_pickle
@@ -521,7 +521,7 @@ def process(params, pickle_file_name):
     from cctbx.omz import tardy_adaptor
     print
     tardy_adaptor.sample_e_pot(
-      id_code=cod_code,
+      id_code=cod_id,
       f_obs=f_obs,
       xray_structure=structure_prep,
       edge_list=edge_list,
@@ -557,7 +557,7 @@ def process(params, pickle_file_name):
     n = structure_work.scatterers().size()
     if (n > params.max_atoms):
       print "Skipping refinement of large model: %d atoms COD %s" % (
-        n, cod_code)
+        n, cod_id)
       return
   #
   structure_work.scatterers().flags_set_grads(state=False)
@@ -582,14 +582,14 @@ def process(params, pickle_file_name):
     show_cc_r1("dev", f_obs, structure_dev)
     if (params.export_refined):
       file_name = "dev_%s_%s_%s.pdb" % (
-        params.target_type, params.target_obs_type.lower(), cod_code)
+        params.target_type, params.target_obs_type.lower(), cod_id)
       open(file_name, "w").write(structure_dev.as_pdb_file(
         remarks=[file_name]))
     if (params.pickle_refined_dir is not None):
       easy_pickle.dump(
-        file_name=op.join(params.pickle_refined_dir, cod_code+".pickle"),
+        file_name=op.join(params.pickle_refined_dir, cod_id+".pickle"),
         obj=(f_obs_from_pickle, structure_dev, None))
-      print >> open("%s/qi_%s" % (params.pickle_refined_dir, cod_code), "w"), (
+      print >> open("%s/qi_%s" % (params.pickle_refined_dir, cod_id), "w"), (
         structure_dev.scatterers().size(),
         f_obs_from_pickle.space_group().order_p(),
         f_obs_from_pickle.indices().size(),
@@ -601,7 +601,7 @@ def process(params, pickle_file_name):
     result = structure_work.deep_copy_scatterers()
     run_smtbx_ls(
       mode=mode,
-      cod_code=cod_code,
+      cod_id=cod_id,
       f_obs=f_obs,
       xray_structure=result,
       params=params)
@@ -616,14 +616,14 @@ def process(params, pickle_file_name):
     result = structure_work.deep_copy_scatterers()
     run_shelxl(
       mode=mode,
-      cod_code=cod_code,
+      cod_id=cod_id,
       f_obs=f_obs,
       xray_structure=result,
       params=params,
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)
     if (params.export_refined):
-      file_name = "shelxl_%s_%s.pdb" % (mode, cod_code)
+      file_name = "shelxl_%s_%s.pdb" % (mode, cod_id)
       open(file_name, "w").write(result.as_pdb_file(
         remarks=[file_name]))
     return result
@@ -635,7 +635,7 @@ def process(params, pickle_file_name):
   else:
     structure_shelx76 = structure_work.deep_copy_scatterers()
     run_shelx76(
-      cod_code=cod_code,
+      cod_id=cod_id,
       f_obs=f_obs,
       xray_structure=structure_shelx76,
       fvars=fvars,
@@ -644,7 +644,7 @@ def process(params, pickle_file_name):
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters)
     if (params.export_refined):
-      file_name = "shelx76_%s.pdb" % cod_code
+      file_name = "shelx76_%s.pdb" % cod_id
       open(file_name, "w").write(structure_shelx76.as_pdb_file(
         remarks=[file_name]))
 
@@ -692,10 +692,10 @@ def run(args):
         elif (node.startswith("qi_") and len(node) == 10):
           qi = open(op.join(arg, node)).read().splitlines()
           if (len(qi) == 1):
-            cod_code = node[3:]
+            cod_id = node[3:]
             quick_info = eval(qi[0])
-            assert cod_code not in qi_dict
-            qi_dict[cod_code] = quick_info
+            assert cod_id not in qi_dict
+            qi_dict[cod_id] = quick_info
     elif (op.isfile(arg)):
       all_pickles.append(arg)
     else:
@@ -711,8 +711,8 @@ def run(args):
       else:                       i_sign = 1
       buffer = []
       for i,path in enumerate(all_pickles):
-        cod_code = op.basename(path).split(".",1)[0]
-        qi = qi_dict.get(cod_code)
+        cod_id = op.basename(path).split(".",1)[0]
+        qi = qi_dict.get(cod_id)
         if (qi is None): nn = 2**31
         else:            nn = qi[0] * qi[1] * qi[2]
         buffer.append((nn, i_sign*i, path))
