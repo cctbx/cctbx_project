@@ -7,7 +7,7 @@ import libtbx.phil
 from libtbx.phil import gui_objects
 from libtbx.utils import Sorry
 from libtbx import easy_pickle, str_utils, smart_open
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, Auto
 
 tracking_params = libtbx.phil.parse("""
   job_title = None
@@ -98,8 +98,13 @@ class index (object) :
                          path_index=self._full_path_index,
                          only_scope=only_scope)
 
-  def save_param_file (self, file_name, sources=None, extra_phil="",
-      diff_only=False, save_state=False) :
+  def save_param_file (self,
+                       file_name,
+                       sources=None,
+                       extra_phil="",
+                       diff_only=False,
+                       save_state=False,
+                       replace_path=None) :
     if sources is None :
       sources = []
     if extra_phil != "" :
@@ -110,11 +115,18 @@ class index (object) :
       output_phil = self.master_phil.fetch_diff(source=final_phil)
     else :
       output_phil = final_phil
+    if (replace_path is not None) :
+      _substitute_directory_name(
+        phil_object=output_phil,
+        path_name=replace_path,
+        sub_name="LIBTBX_BASE_DIR")
     try :
       f = smart_open.for_writing(file_name, "w")
     except IOError, e :
       raise Sorry(str(e))
     else :
+      if (replace_path is not None) :
+        f.write("LIBTBX_BASE_DIR = \"%s\"\n" % replace_path)
       output_phil.show(out=f)
       f.close()
     if save_state :
@@ -127,8 +139,10 @@ class index (object) :
     new_phil = self.master_phil.fetch(sources=[self.working_phil]+sources)
     return new_phil
 
-  def save_diff (self, file_name) :
-    self.save_param_file(file_name=file_name, diff_only=True)
+  def save_diff (self, file_name, replace_path=None) :
+    self.save_param_file(file_name=file_name,
+      diff_only=True,
+      replace_path=replace_path)
 
   def get_diff (self) :
     return self.master_phil.fetch_diff(source=self.working_phil)
@@ -360,6 +374,12 @@ class index (object) :
 
   #---------------------------------------------------------------------
   # EDITING METHODS
+  def substitute_directory (self, path_name, sub_name) :
+    _substitute_directory_name(
+      phil_object=self.working_phil,
+      path_name=path_name,
+      sub_name=sub_name)
+
   def reset_scope (self, phil_scope_name) :
     old_phil = self.working_phil
     delete_phil_objects(old_phil, [phil_scope_name])
@@ -723,6 +743,58 @@ def reindex_phil_objects (phil_object, path_index, only_scope=None) :
   if phil_object.is_scope :
     for object in phil_object.objects :
       reindex_phil_objects(object, path_index)
+
+non_alnum = re.compile("[^A-Za-z0-9_]")
+def _substitute_directory_name (phil_object, path_name, sub_name,
+    treat_name_as_var_name=True) :
+  assert (not non_alnum.search(sub_name))
+  if (treat_name_as_var_name) :
+    sub_var = "$(" + sub_name + ")"
+  else :
+    sub_var = sub_name
+  if path_name.endswith("/") :
+    path_name = path_name[:-1]
+  for object in phil_object.objects :
+    if object.is_definition :
+      if (object.type.phil_type == "path") :
+        py_object = object.extract()
+        if (py_object is None) or (py_object is Auto) : continue
+        py_object = re.sub(path_name, sub_var, py_object)
+        new_object = object.format(python_object=py_object)
+        object.words = new_object.words
+    else :
+      _substitute_directory_name(object, path_name, sub_name)
+
+def update_phil_file_paths (master_phil, file_name, old_path, new_path,
+    use_iotbx_parser=False) :
+  if (use_iotbx_parser) :
+    import iotbx.phil
+    parse = iotbx.phil.parse
+  else :
+    parse = libtbx.phil.parse
+  phil_in = open(file_name).read()
+  new_format = False
+  out_lines = []
+  for line in phil_in.splitlines() :
+    if line.startswith("LIBTBX_BASE_DIR") :
+      line = re.sub(old_path, new_path, line)
+      new_format = True
+      out_lines.append(line)
+    else :
+      out_lines.append(line)
+  if (new_format) :
+    open(file_name, "w").write("\n".join(out_lines))
+  else :
+    file_phil = parse(file_name=file_name)
+    working_phil = master_phil.fetch(source=file_phil)
+    _substitute_directory_name(
+      phil_object=working_phil,
+      path_name=old_path,
+      sub_name="LIBTBX_BASE_DIR")
+    f = open(file_name, "w")
+    f.write("LIBTBX_BASE_DIR = \"%s\"\n" % new_path)
+    working_phil.show(out=f)
+    f.close()
 
 def get_standard_phil_label (phil_object=None, phil_name=None, append="") :
   if phil_object is None and phil_name is None :

@@ -298,9 +298,9 @@ refinement.output.title = Test refinement run
   assert (str(submenu.get_items()[0]) == "refinement.refine.sites")
 
 def exercise_3 () :
+  import iotbx.phil
   try :
     import phaser.phenix_interface
-    import iotbx.phil
   except ImportError :
     print "Phaser sources not found, skipping advanced tests"
     return False
@@ -333,12 +333,66 @@ phaser {
   }
 }
 """)
-  print i.get_input_files()
+  files_in = [
+    ('/Users/nat/Documents/beta-blip/beta_blip_P3221.mtz', 'Data file',
+      'phaser.hklin'),
+    ('/Users/nat/Documents/beta-blip/blip.seq', 'Sequence file',
+      'phaser.composition.chain.sequence_file'),
+    ('/Users/nat/Documents/beta-blip/blip.pdb', 'Ensemble model',
+      'phaser.ensemble.coordinates.pdb')
+  ]
+  assert (i.get_input_files() == files_in)
+  i.save_param_file(
+    file_name="phaser.eff",
+    extra_phil="""
+phaser.search {
+  ensembles = beta
+  copies = 1
+}
+phaser.search {
+  ensembles = blip
+  copies = 1
+}""",
+    replace_path="/Users/nat/Documents/beta-blip")
+  i = interface.index(master_phil=master_phil,
+    parse=iotbx.phil.parse)
+  i.merge_phil(phil_file="phaser.eff")
+  p = i.get_python_object().phaser
+  assert (i.get_input_files() == files_in)
+  assert (p.hklin == "/Users/nat/Documents/beta-blip/beta_blip_P3221.mtz")
+  assert (len(p.search) == 2)
+  assert (p.search[0].ensembles == ["beta"])
+  # update file in-place (with variable substitution)
+  interface.update_phil_file_paths(
+    master_phil=master_phil,
+    file_name="phaser.eff",
+    old_path="/Users/nat/Documents/beta-blip",
+    new_path="/Users/nat/Documents/projects/beta-blip",
+    use_iotbx_parser=True)
+  i = interface.index(master_phil=master_phil,
+    parse=iotbx.phil.parse)
+  i.merge_phil(phil_file="phaser.eff")
+  p = i.get_python_object().phaser
+  assert (p.hklin ==
+    "/Users/nat/Documents/projects/beta-blip/beta_blip_P3221.mtz")
+  # update file in-place, by modifying phil objects directly
+  i.save_param_file(file_name="phaser2.eff")
+  interface.update_phil_file_paths(
+    master_phil=master_phil,
+    file_name="phaser2.eff",
+    old_path="/Users/nat/Documents/projects/beta-blip",
+    new_path="/home/nat/projects/beta-blip",
+    use_iotbx_parser=True)
+  i = interface.index(master_phil=master_phil,
+    parse=iotbx.phil.parse)
+  i.merge_phil(phil_file="phaser2.eff")
+  p = i.get_python_object().phaser
+  assert (p.hklin == "/home/nat/projects/beta-blip/beta_blip_P3221.mtz")
 
 if __name__ == "__main__" :
   exercise()
   exercise_2(verbose=("-v" in sys.argv[1:] or "--verbose" in sys.argv[1:]))
-#  exercise_3()
+  exercise_3()
   print "OK"
 
 #---end
