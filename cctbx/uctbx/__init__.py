@@ -29,7 +29,7 @@ class unit_cell(ext.unit_cell):
     else:
       ext.unit_cell.__init__(self, parameters=[])
 
-class _unit_cell(boost.python.injector, ext.unit_cell):
+class _(boost.python.injector, ext.unit_cell):
 
   def __str__(self):
     return "(%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" % self.parameters()

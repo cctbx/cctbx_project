@@ -6,7 +6,7 @@ from scitbx_rigid_body_ext import *
 
 class pickle_import_trigger(object): pass
 
-class _tardy_model(boost.python.injector, ext.tardy_model):
+class _(boost.python.injector, ext.tardy_model):
 
   def __getinitargs__(O):
     return (

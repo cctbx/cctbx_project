@@ -29,7 +29,7 @@ class statistics(ext.statistics):
   def __init__(self, map):
     ext.statistics.__init__(self, map)
 
-class _statistics(boost.python.injector, ext.statistics):
+class _(boost.python.injector, ext.statistics):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout

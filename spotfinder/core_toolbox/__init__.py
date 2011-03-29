@@ -89,7 +89,7 @@ class Distl(w_Distl):
         raise Sorry( (template%("spot_area_maximum_factor (%.2f)","-s7",self.options)%(
         self.params.distl.spot_area_maximum_factor,)) )
 
-class _SpotFilterAgent(boost.python.injector, SpotFilterAgent):
+class _(boost.python.injector, SpotFilterAgent):
   def __getinitargs__(self):
     return (self.pixel_size, self.xbeam, self.ybeam, self.distance,
             self.wavelength, self.icerings)

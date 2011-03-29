@@ -20,7 +20,7 @@ def bool_md5(self):
   return result
 bool.md5 = bool_md5
 
-class grid_(boost.python.injector, grid):
+class _(boost.python.injector, grid):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -129,7 +129,7 @@ def _format_mean(values, format):
   return format_value(
     format=format, value=mean_default(values=values, default=None))
 
-class _min_max_mean_double(boost.python.injector, ext.min_max_mean_double):
+class _(boost.python.injector, ext.min_max_mean_double):
 
   def show(self, out=None, prefix="", format="%.6g", show_n=True):
     if (out is None): out = sys.stdout
@@ -241,8 +241,7 @@ class py_object(object):
   def __setitem__(self, index, value):
     self._data[self._accessor(index)] = value
 
-class _linear_regression_core(boost.python.injector,
-                              ext.linear_regression_core):
+class _(boost.python.injector, ext.linear_regression_core):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -250,7 +249,7 @@ class _linear_regression_core(boost.python.injector,
     print >> f, "y_intercept:", self.y_intercept()
     print >> f, "slope:", self.slope()
 
-class _linear_correlation(boost.python.injector, ext.linear_correlation):
+class _(boost.python.injector, ext.linear_correlation):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -266,7 +265,7 @@ class histogram_slot_info(object):
     self.high_cutoff = high_cutoff
     self.n = n
 
-class _histogram(boost.python.injector, ext.histogram):
+class _(boost.python.injector, ext.histogram):
 
   def __getinitargs__(self):
     return (

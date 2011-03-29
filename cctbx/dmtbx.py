@@ -4,8 +4,7 @@ import boost.python
 ext = boost.python.import_ext("cctbx_dmtbx_ext")
 from cctbx_dmtbx_ext import *
 
-class _weighted_triplet_phase_relation(
-  boost.python.injector, weighted_triplet_phase_relation):
+class _(boost.python.injector, weighted_triplet_phase_relation):
 
   def format(self, miller_indices, ih=None):
     l = [miller_indices[self.ik()],
@@ -26,7 +25,7 @@ def triplet_generator(miller_set,
     amplitudes, max_relations_per_reflection,
     sigma_2_only, discard_weights)
 
-class _triplet_generator(boost.python.injector, ext.triplet_generator):
+class _(boost.python.injector, ext.triplet_generator):
 
   def apply_tangent_formula(self, amplitudes, phases_rad,
                                   selection_fixed=None,

@@ -40,7 +40,7 @@ class direct_space_asu(sgtbx.direct_space_asu.direct_space_asu):
       thickness=thickness,
       relative_thickness=relative_thickness)
 
-class _float_asu(boost.python.injector, float_asu):
+class _(boost.python.injector, float_asu):
 
   def add_buffer(self, thickness=None, relative_thickness=None):
     assert [thickness, relative_thickness].count(None) > 0
@@ -50,7 +50,7 @@ class _float_asu(boost.python.injector, float_asu):
       thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
     return self._add_buffer(thickness)
 
-class _asu_mappings(boost.python.injector, asu_mappings):
+class _(boost.python.injector, asu_mappings):
 
   def get_rt_mx_ji(self, pair):
     return self.get_rt_mx_i(pair).inverse().multiply(self.get_rt_mx_j(pair))

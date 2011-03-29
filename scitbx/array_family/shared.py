@@ -7,7 +7,7 @@ import scitbx_array_family_shared_ext as ext
 
 class pickle_import_trigger(object): pass
 
-class _stl_set_unsigned(boost.python.injector, ext.stl_set_unsigned):
+class _(boost.python.injector, ext.stl_set_unsigned):
 
   def __getstate__(self): # XXX slow, move to C++
     version = 2

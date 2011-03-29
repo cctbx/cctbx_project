@@ -34,7 +34,7 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
   elif (d >  half_period): d -= 2*half_period
   return d
 
-class _bond_params_table(boost.python.injector, bond_params_table):
+class _(boost.python.injector, bond_params_table):
 
   def lookup(self, i_seq, j_seq):
     if (i_seq > j_seq): i_seq, j_seq = j_seq, i_seq
@@ -305,8 +305,7 @@ class planarity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1
     return result
 
-class _prolsq_repulsion_function(
-        boost.python.injector, prolsq_repulsion_function):
+class _(boost.python.injector, prolsq_repulsion_function):
 
   def customized_copy(O, c_rep=None, k_rep=None, irexp=None, rexp=None):
     if (c_rep is None): c_rep = O.c_rep
@@ -365,7 +364,7 @@ def _bond_show_sorted_impl(self,
   if (n_not_shown != 0):
     print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
-class _bond_simple_proxy(boost.python.injector, shared_bond_simple_proxy):
+class _(boost.python.injector, shared_bond_simple_proxy):
 
   def get_sorted(self,
         by_value,
@@ -453,7 +452,7 @@ class _bond_simple_proxy(boost.python.injector, shared_bond_simple_proxy):
         unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
 
-class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
+class _(boost.python.injector, bond_sorted_asu_proxies):
 
   def show_histogram_of_model_distances(self,
         sites_cart,
@@ -588,8 +587,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
                            prefix=prefix,
                            max_items=max_items)
 
-class _nonbonded_sorted_asu_proxies(boost.python.injector,
-        nonbonded_sorted_asu_proxies):
+class _(boost.python.injector, nonbonded_sorted_asu_proxies):
 
   def deltas(self, sites_cart):
     return nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
@@ -677,7 +675,7 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
-class _angle(boost.python.injector, angle):
+class _(boost.python.injector, angle):
 
   def _show_sorted_item(O, f, prefix):
     print >> f, "%s    ideal   model   delta" \
@@ -691,7 +689,7 @@ class _angle(boost.python.injector, angle):
     return [O.angle_ideal, O.angle_model, O.delta,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
+class _(boost.python.injector, shared_angle_proxy):
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -746,7 +744,7 @@ class _shared_angle_proxy(boost.python.injector, shared_angle_proxy):
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
 
-class _dihedral(boost.python.injector, dihedral):
+class _(boost.python.injector, dihedral):
 
   def _show_sorted_item(O, f, prefix):
     print >> f, "%s    ideal   model   delta" \
@@ -761,7 +759,7 @@ class _dihedral(boost.python.injector, dihedral):
     return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
+class _(boost.python.injector, shared_dihedral_proxy):
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -821,7 +819,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
 
-class _chirality(boost.python.injector, chirality):
+class _(boost.python.injector, chirality):
 
   def _show_sorted_item(O, f, prefix):
     print >> f, "%s  both_signs  ideal   model" \
@@ -835,7 +833,7 @@ class _chirality(boost.python.injector, chirality):
     return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
+class _(boost.python.injector, shared_chirality_proxy):
 
   def deltas(self, sites_cart):
     return chirality_deltas(sites_cart=sites_cart, proxies=self)
@@ -879,7 +877,7 @@ class _shared_chirality_proxy(boost.python.injector, shared_chirality_proxy):
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
 
-class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
+class _(boost.python.injector, shared_planarity_proxy):
 
   def deltas_rms(O, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1023,8 +1021,7 @@ class _shared_planarity_proxy(boost.python.injector, shared_planarity_proxy):
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
-class _shared_bond_similarity_proxy(
-  boost.python.injector, shared_bond_similarity_proxy):
+class _(boost.python.injector, shared_bond_similarity_proxy):
 
   def deltas_rms(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -1280,7 +1277,7 @@ class pair_proxies(object):
         min_cubicle_edge=min_cubicle_edge,
         shell_asu_tables=shell_asu_tables)
 
-class _motif(boost.python.injector, ext.motif):
+class _(boost.python.injector, ext.motif):
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -1391,7 +1388,7 @@ class _motif(boost.python.injector, ext.motif):
           print >> out, prefix+"  atom = %s %.6g" % (show_string(an), w)
         print >> out, prefix+"}"
 
-class _motif_alteration(boost.python.injector, ext.motif_alteration):
+class _(boost.python.injector, ext.motif_alteration):
 
   def show(self, out=None, prefix="", previous_help=None):
     if (out is None): out = sys.stdout
@@ -1603,7 +1600,7 @@ class _motif_alteration(boost.python.injector, ext.motif_alteration):
       raise RuntimeError("Internal Error: unknown operand: %s" % operand)
     return help
 
-class _motif_manipulation(boost.python.injector, ext.motif_manipulation):
+class _(boost.python.injector, ext.motif_manipulation):
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout

@@ -8,7 +8,7 @@ class basis_type:
   direct = False
   reciprocal = True
 
-class _crystal_orientation(boost.python.injector,ext.crystal_orientation):
+class _(boost.python.injector,ext.crystal_orientation):
 
   def __getattr__(self,tag):
     mm = self.unit_cell().metrical_matrix()

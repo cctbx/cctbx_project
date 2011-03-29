@@ -10,7 +10,7 @@ import math
 from cctbx.crystal_orientation import basis_type
 from cctbx.crystal_orientation import ext as coext
 
-class _crystal_orientation(boost.python.injector, coext.crystal_orientation):
+class _(boost.python.injector, coext.crystal_orientation):
 
   def constrain(self,constraints):
 
