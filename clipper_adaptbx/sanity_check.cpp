@@ -40,9 +40,7 @@ show_as_unsigned(const char* label, FloatType const& x)
   std::cout << "  isnan:   " << Util::isnan(x) << std::endl;;
   std::cout << "  is_null: " << Util::is_null(x) << std::endl;;
   std::cout << "  x!=x:    " << (x!=x) << std::endl;;
-#if defined(FP_NAN) \
- && !(defined(__APPLE__) && defined(__MACH__) \
-      && defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ == 0)
+#if defined(FP_NAN) && !defined(__APPLE__)
   std::cout << "  isnanf() system macro: " << isnanf(x) << std::endl;
   std::cout << "  isnan()  system macro: " << isnan(x) << std::endl;
 #endif
