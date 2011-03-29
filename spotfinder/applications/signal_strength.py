@@ -21,6 +21,7 @@ def run_signal_strength(params):
   procedure_preferences.phil.distl.minimum_signal_height = params.distl.minimum_signal_height
   procedure_preferences.phil.distl.minimum_spot_height = params.distl.minimum_spot_height
   procedure_preferences.phil.distl.spot_area_maximum_factor = params.distl.spot_area_maximum_factor
+  procedure_preferences.phil.distl.scanbox_windows = params.distl.scanbox_windows
   procedure_preferences.phil.distl_force_binning = False
   procedure_preferences.phil.distl_permit_binning = False
   procedure_preferences.override_pickled_spotfinders = 0

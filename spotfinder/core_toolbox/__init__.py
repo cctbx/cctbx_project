@@ -33,6 +33,7 @@ class Distl(w_Distl):
           self.set_minimum_spot_height(params.distl.minimum_spot_height)
         if params.distl.spot_area_maximum_factor != None:
           self.set_spot_area_maximum_factor(params.distl.spot_area_maximum_factor)
+        self.set_scanbox_windows(params.distl.scanbox_windows)
     self.parameter_guarantees()
 
     self.get_underload()
@@ -88,6 +89,11 @@ class Distl(w_Distl):
       if self.options.find("-s7") >= 0:
         raise Sorry( (template%("spot_area_maximum_factor (%.2f)","-s7",self.options)%(
         self.params.distl.spot_area_maximum_factor,)) )
+
+    # scanbox_window <==> -bx0,1,2 <==> spot_area_maximum_factor
+    if self.options.find("-bx0") >= 0 or self.options.find("-bx1") >= 0 or self.options.find("-bx2") >= 0:
+        raise Sorry( """dataset_preferences.py parameters -bx0 -bx1 -bx2 are no longer allowed; found %s.
+    Use command line option distl.scanbox_windows=bx0,bx1,bx2 instead with three integer arguments."""%self.options)
 
 class _(boost.python.injector, SpotFilterAgent):
   def __getinitargs__(self):
