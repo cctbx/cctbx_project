@@ -12,8 +12,7 @@ def run_signal_strength(params):
   if params.distl.res.inner!=None:
     procedure_preferences.distl_lowres_limit = params.distl.res.inner
   if params.distl.res.outer!=None:
-    procedure_preferences.distl_aggressive["force_outer_resolution"] = \
-    params.distl.res.outer
+    procedure_preferences.force_method2_resolution_limit = params.distl.res.outer
     procedure_preferences.distl_highres_limit = params.distl.res.outer
 
   #ad hoc; transfer spot area from one phil object to another.

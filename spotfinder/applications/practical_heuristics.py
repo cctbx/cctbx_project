@@ -536,10 +536,9 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
 
         #option for overriding the resolution analysis based on falloff
         # of spot count.  Force spots at least this far out
-        if procedure_preferences.distl_aggressive.has_key("force_outer_resolution"):
+        if procedure_preferences.force_method2_resolution_limit is not None:
           for x in xrange(Shell.rows()):
-            if Shell.Limit[x]<procedure_preferences.distl_aggressive[
-                "force_outer_resolution"] and lastshell<x:
+            if Shell.Limit[x]<procedure_preferences.force_method2_resolution_limit and lastshell<x:
               lastshell = x
               break
 
