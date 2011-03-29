@@ -77,6 +77,12 @@ public:
   inline void set_spot_area_maximum_factor(const double& A){
     finder.spotareamaxfactor = A;}
 
+  inline void set_scanbox_windows(af::shared<int> A){
+    finder.scanboxsize[0] = A[0];
+    finder.scanboxsize[1] = A[1];
+    finder.scanboxsize[2] = A[2];
+    }
+
   inline void parameter_guarantees(){
     // difflowerint (minimum_spot_height) >= bgupperint (minimum_signal_height)
     double* max_bg = std::max_element(finder.bgupperint, finder.bgupperint+2);

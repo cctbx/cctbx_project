@@ -17,6 +17,10 @@ distl {
   spot_area_maximum_factor = None
     .type = float
     .help = "Expert use only; max spot area expressed as a multiple of minimum_spot_area. Default=5.0"
+  scanbox_windows = 101 51 51
+    #.type = ints(size_min=1, size_max=3, value_min=3) #future: variable number of window passes
+    .type = ints(size=3, value_min=3)
+    .help = "Integer scanbox sizes for calculating background, for cycles 1,2, and 3, respectively. Program defaults are 101, 51, and 51 pixels"
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"
