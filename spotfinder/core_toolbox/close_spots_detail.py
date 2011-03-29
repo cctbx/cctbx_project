@@ -26,7 +26,7 @@ class NearNeighborVectors:
     for x in xrange(-self.deltaxylimit,self.deltaxylimit+1):
       self.plot[x]=flex.int(2*self.deltaxylimit+1)
 
-    for d in xrange(len(query_centers)/2):
+    for d in xrange(len(query_centers)//2):
       vector = (int( fstats.master[ann_adaptor.nn[d]].max_pxl_x()-query_centers[2*d] ),
                 int( fstats.master[ann_adaptor.nn[d]].max_pxl_y()-query_centers[2*d+1]))
       if abs(vector[0])<=self.deltaxylimit and \
@@ -66,7 +66,7 @@ class NearNeighborVectors:
   def show_vector_map(self):
      for x in xrange(-self.deltaxylimit,self.deltaxylimit+1):
       for i,y in enumerate(self.plot[x]):
-        if x==0 and i==len(self.plot[x])/2:
+        if x==0 and i==len(self.plot[x])//2:
           print "   X",
         else:
           print "%4d"%y,
