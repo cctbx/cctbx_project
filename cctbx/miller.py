@@ -1765,13 +1765,15 @@ class array(set):
       data=result.data,
       sigmas=result_sigmas).set_observation_type(self.observation_type())
 
-  def symmetry_agreement_factor(self, op):
+  def symmetry_agreement_factor(self, op, assert_is_similar_symmetry=True):
     """ The factor phi_{sym} quantifying whether complex structure factors
     are invariant under the given symmetry operator, as used in Superflip.
     Ref: J. Appl. Cryst. (2008). 41, 975-984
     """
     assert self.is_complex_array()
-    f, op_f = self.common_sets(self.change_basis(op))
+    f, op_f = self.common_sets(
+      self.change_basis(op),
+      assert_is_similar_symmetry=assert_is_similar_symmetry)
     assert f.size() == op_f.size()
     f, op_f = f.data(), op_f.data()
     cc_sf = f * flex.conj(op_f) # structure factors of cross-correlation
