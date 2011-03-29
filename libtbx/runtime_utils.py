@@ -315,6 +315,16 @@ class detached_process_client (detached_base) :
   def abort (self) :
     touch_file(self.stop_file)
 
+  def purge_files (self) :
+    files = ["start","stdout","error","stop","abort","result","info","state"]
+    for fn in files :
+      file_name = getattr(self, "%s_file" % fn)
+      if os.path.exists(file_name) :
+        try :
+          os.remove(file_name)
+        except Exception, e :
+          print e
+
 def touch_file (file_name) :
   f = open(file_name, "w").close()
 
