@@ -296,9 +296,12 @@ def create_helix_hydrogen_bond_proxies (
     distance_cut,
     remove_outliers,
     use_hydrogens,
+    master_selection,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
   assert (helix_step in [3, 4, 5])
+  if (not master_selection.is_super_set(helix_selection)) :
+    return 0
   n_proxies = 0
   helix_i_seqs = helix_selection.iselection()
   for model in pdb_hierarchy.models() :
@@ -359,11 +362,14 @@ def create_sheet_hydrogen_bond_proxies (
     distance_cut,
     remove_outliers,
     use_hydrogens,
+    master_selection,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
   cache = pdb_hierarchy.atom_selection_cache()
   prev_strand = sheet_params.first_strand
   prev_selection = cache.selection(prev_strand)
+  if (not master_selection.is_super_set(prev_selection)) :
+    return 0
   prev_residues = _get_strand_residues(
     pdb_hierarchy=pdb_hierarchy,
     strand_selection=prev_selection)

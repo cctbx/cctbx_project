@@ -62,6 +62,7 @@ def run():
   "$D/alignment.py",
   "$D/invariant_domain.py",
   "$D/secondary_structure/tst.py",
+  "$D/geometry_restraints/tst_hbond.py",
   )
 
   build_dir = libtbx.env.under_build("mmtbx")
