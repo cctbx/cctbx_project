@@ -46,5 +46,6 @@ class __distribution_mixin(object):
 class _(boost.python.injector, normal_distribution, __distribution_mixin):
   pass
 
-class _(boost.python.injector, students_t_distribution, __distribution_mixin):
-  pass
+if (hasattr(ext, "students_t_distribution")):
+  class _(boost.python.injector, students_t_distribution, __distribution_mixin):
+    pass
