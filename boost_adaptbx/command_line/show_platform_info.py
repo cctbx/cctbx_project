@@ -22,6 +22,8 @@ def run (out=None, omit_unicode_experiment=False):
   try: import thread
   except ImportError: print >> out, "import thread: NO"
   else: print >> out, "import thread: OK"
+  print "Division operator semantics: %s division" \
+    % ["floor", "true"][int(1/2 != 0)]
   c = getattr(boost.python.ext, "str_or_unicode_as_char_list", None)
   if (c is not None and not omit_unicode_experiment):
     print >> out, '"hello" =', c("hello")
