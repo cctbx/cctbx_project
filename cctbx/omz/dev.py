@@ -172,15 +172,22 @@ class refinement(object):
     O.x[ix] = x_inp
     from libtbx import pyplot
     pyplot.plot_pairs(xy, "r-")
-    f = open("tmp.xy", "w")
-    for x,y in xy:
-      print >> f, x, y
-    del f
+    def write_xy():
+      if (p.file_prefix is None): return
+      fn = "%s_%03d.xy" % (p.file_prefix, ix)
+      f = open(fn, "w")
+      for x,y in xy:
+        print >> f, x, y
+    write_xy()
     pyplot.plot_pairs([(x_inp,min(ys)), (x_inp,max(ys))], "k--")
     if (O.x_reference is not None):
       x = O.x_reference[ix]
       pyplot.plot_pairs([(x,min(ys)), (x,max(ys))], "r--")
-    pyplot.savefig("tmp.pdf", bbox_inches="tight")
+    def write_pdf():
+      if (p.file_prefix is None): return
+      fn = "%s_%03d.pdf" % (p.file_prefix, ix)
+      pyplot.savefig(fn, bbox_inches="tight")
+    write_pdf()
     if (p.gui):
       pyplot.show()
 
@@ -794,5 +801,7 @@ def get_master_phil(
         .type = float
       gui = True
         .type = bool
+      file_prefix = None
+        .type = str
     }
 """ % vars() + additional_phil_string)
