@@ -183,7 +183,8 @@ class injector(object):
                   "__module__",
                   "__file__",
                   "__dict__")):
-              setattr(target,k,v)
+              if (k != "__doc__" or v is not None):
+                setattr(target,k,v)
         setattr_from_dict(dict)
         for b in bases[2:]: # usually mix-in classes, if any
           setattr_from_dict(b.__dict__)
