@@ -6,6 +6,8 @@ from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx import adopt_init_args
 
+import math
+
 
 class distances_as_cif_loop(object):
 
@@ -17,6 +19,7 @@ class distances_as_cif_loop(object):
                covariance_matrix=None,
                cell_covariance_matrix=None,
                parameter_map=None,
+               include_bonds_to_hydrogen=False,
                eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.4f"
@@ -37,7 +40,9 @@ class distances_as_cif_loop(object):
       cell_covariance_matrix=cell_covariance_matrix,
       parameter_map=parameter_map)
     for d in distances:
-      if site_labels[d.i_seq].startswith('H') or site_labels[d.j_seq].startswith('H'):
+      if (not include_bonds_to_hydrogen
+          and (site_labels[d.i_seq].startswith('H') or
+               site_labels[d.j_seq].startswith('H'))):
         continue
       if d.variance is not None and d.variance > eps:
         distance = format_float_with_su(d.distance, math.sqrt(d.variance))
@@ -63,6 +68,7 @@ class angles_as_cif_loop(object):
                covariance_matrix=None,
                cell_covariance_matrix=None,
                parameter_map=None,
+               include_bonds_to_hydrogen=False,
                eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.1f"
@@ -86,7 +92,9 @@ class angles_as_cif_loop(object):
       parameter_map=parameter_map)
     for a in angles:
       i_seq, j_seq, k_seq = a.i_seqs
-      if site_labels[i_seq].startswith('H') or site_labels[k_seq].startswith('H'):
+      if (not include_bonds_to_hydrogen
+          and (site_labels[i_seq].startswith('H') or
+               site_labels[k_seq].startswith('H'))):
         continue
       sym_code_ji = space_group_info.cif_symmetry_code(a.rt_mx_ji)
       sym_code_ki = space_group_info.cif_symmetry_code(a.rt_mx_ki)
