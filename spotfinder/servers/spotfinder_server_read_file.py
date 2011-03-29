@@ -153,7 +153,7 @@ class image_request_handler(BaseHTTPRequestHandler):
 def common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height):
     from labelit.preferences import procedure_preferences
     if outer_resolution != None:
-      procedure_preferences.distl_aggressive["force_outer_resolution"] = outer_resolution
+      procedure_preferences.force_method2_resolution_limit = outer_resolution
       procedure_preferences.distl_highres_limit = outer_resolution
     procedure_preferences.phil.distl_force_binning = False
     procedure_preferences.phil.distl_permit_binning = False
