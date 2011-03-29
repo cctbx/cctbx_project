@@ -8,6 +8,7 @@ import libtbx.phil
 from libtbx import easy_run
 from libtbx import adopt_init_args, Auto
 import libtbx.load_env
+import cStringIO
 from math import sqrt
 import sys, os
 
@@ -154,12 +155,17 @@ def hydrogen_bond_proxies_from_selections(
     restrain_base_pairs=True,
     as_python_objects=False,
     remove_outliers=False,
+    master_selection=None,
     log=sys.stderr) :
   from mmtbx.geometry_restraints import hbond
   from scitbx.array_family import flex
   atoms = pdb_hierarchy.atoms()
   hbond_counts = flex.int(atoms.size(), 0)
   selection_cache = pdb_hierarchy.atom_selection_cache()
+  if (master_selection is None) :
+    master_selection = flex.bool(atoms.size(), True)
+  elif (isinstance(master_selection, str)) :
+    master_selection = selection_cache.seletion(master_selection)
   if (hbond_params is None) :
     hbond_params = hbond.master_phil.fetch().extract()
   weight = hbond_params.restraints_weight
@@ -228,6 +234,7 @@ def hydrogen_bond_proxies_from_selections(
           distance_cut=distance_cut,
           remove_outliers=remove_outliers,
           use_hydrogens=use_hydrogens,
+          master_selection=master_selection,
           log=log)
         if (n_proxies == 0) :
           print >> log, "  No H-bonds generated for '%s'" % helix.selection
@@ -246,6 +253,7 @@ def hydrogen_bond_proxies_from_selections(
         distance_cut=distance_cut,
         remove_outliers=remove_outliers,
         use_hydrogens=use_hydrogens,
+        master_selection=master_selection,
         log=sys.stdout)
       if (n_proxies == 0) :
         print >> log, "  No H-bonds generated for sheet #%d" % k
@@ -454,8 +462,12 @@ class manager (object) :
     self.params.helix = params.helix
     self.params.sheet = params.sheet
 
-  def create_hbond_proxies (self, log=sys.stdout, hbond_params=None,
-      restraint_type=None, as_python_objects=False) :
+  def create_hbond_proxies (self,
+                            log=sys.stdout,
+                            hbond_params=None,
+                            restraint_type=None,
+                            as_python_objects=False,
+                            master_selection=None) :
     params = self.params
     if (restraint_type is None) :
       restraint_type = self.params.h_bond_restraints.restraint_type
@@ -478,6 +490,7 @@ class manager (object) :
       hbond_params=hbond_params,
       as_python_objects=as_python_objects,
       remove_outliers=remove_outliers,
+      master_selection=master_selection,
       log=log)
     if isinstance(build_proxies.proxies, list) :
       n_proxies = len(build_proxies.proxies)
@@ -489,6 +502,27 @@ class manager (object) :
     else :
       print >> log, "  %d hydrogen bonds defined." % n_proxies
     return build_proxies
+
+  def get_simple_bonds (self, selection_phil=None) :
+    if (selection_phil is not None) :
+      if isinstance(selection_phil, str) :
+        selection_phil = libtbx.phil.parse(selection_phil)
+      params = sec_str_master_phil.fetch(source=selection_phil).extract()
+    else :
+      params = self.params
+    from mmtbx.geometry_restraints import hbond
+    build_proxies = hydrogen_bond_proxies_from_selections(
+      pdb_hierarchy=self.pdb_hierarchy,
+      params=params,
+      restraint_type="simple",
+      use_hydrogens=(not self.assume_hydrogens_all_missing),
+      hbond_params=None,
+      as_python_objects=True,
+      remove_outliers=self.params.h_bond_restraints.remove_outliers,
+      master_selection=None,
+      log=cStringIO.StringIO())
+    bonds = hbond.get_simple_bonds(build_proxies.proxies)
+    return bonds
 
   def calculate_structure_content (self) :
     isel = self.selection_cache.iselection
