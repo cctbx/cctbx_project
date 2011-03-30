@@ -172,6 +172,7 @@ cctbx/translation_search/notes.tex -text
 cctbx/translation_search/timing.py -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
 cctbx/uctbx/crystal_orientation.cpp -text
+cctbx/uctbx/rank-2[!!-~]tensor[!!-~]algebra.nb -text
 cctbx/xray/boost_python/curvatures_simple.cpp svneol=native#text/plain
 cctbx/xray/boost_python/grouped_data.cpp -text
 cctbx/xray/boost_python/raw_multithreading/structure_factors_direct.cpp -text
