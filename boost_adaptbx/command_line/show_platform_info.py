@@ -5,6 +5,10 @@ from libtbx import introspection
 import platform
 import sys, os
 
+class div_probe(object):
+  def __div__(O, other): return "floor"
+  def __truediv__(O, other): return "true"
+
 def run (out=None, omit_unicode_experiment=False):
   if (out is None): out = sys.stdout
   out.write(boost.python.platform_info)
@@ -22,8 +26,7 @@ def run (out=None, omit_unicode_experiment=False):
   try: import thread
   except ImportError: print >> out, "import thread: NO"
   else: print >> out, "import thread: OK"
-  print "Division operator semantics: %s division" \
-    % ["floor", "true"][int(1/2 != 0)]
+  print "Division operator semantics: %s division" % (div_probe() / 0)
   c = getattr(boost.python.ext, "str_or_unicode_as_char_list", None)
   if (c is not None and not omit_unicode_experiment):
     print >> out, '"hello" =', c("hello")

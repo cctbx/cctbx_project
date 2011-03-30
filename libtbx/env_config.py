@@ -1,5 +1,3 @@
-qnew = ["", " -Qnew"][0] # XXX backward compatibility 2011-03-29
-
 import libtbx.path
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, detect_binary_file
@@ -11,6 +9,11 @@ from cStringIO import StringIO
 import re
 import sys, os
 op = os.path
+
+# XXX backward compatibility 2011-03-29
+qnew = 1
+if (qnew == 1 and sys.version_info[:2] < (2,7)): qnew = 0
+qnew = ["", " -Qwarn", " -Qnew"][qnew]
 
 def bool_literal(b):
   if (b): return "True"
