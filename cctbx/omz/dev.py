@@ -166,20 +166,44 @@ class refinement(object):
     if (stage not in p.stages):
       return
     ix = p.ix
-    x_inp = O.x[ix]
-    xy = []
+    i_sc, x_type = O.x_info[ix]
+    xs = O.xray_structure
+    site_inp = xs.scatterers()[i_sc].site
     ys = []
-    from libtbx.utils import xsamples
-    for x in xsamples(p.xmin, p.xmax, p.xstep):
-      O.x[ix] = x
-      ls = O.__get_tg()
-      y = ls.target_work()
-      xy.append((x,y))
-      ys.append(y)
-    O.x[ix] = x_inp
+    xy = []
+    x_inp = O.x[ix]
+    try:
+      if (x_type == "u"):
+        assert p.u_min < p.u_max
+        assert p.u_steps > 0
+        for i_step in xrange(p.u_steps+1):
+          u = p.u_min + i_step / p.u_steps * (p.u_max - p.u_min)
+          O.x[ix] = u
+          ls = O.__get_tg()
+          y = ls.target_work()
+          ys.append(y)
+          xy.append((u,y))
+      else:
+        assert p.x_radius > 0
+        assert p.x_steps > 0
+        O.x[ix] = x_inp + 1
+        O.__unpack_variables()
+        dist = xs.unit_cell().distance(xs.scatterers()[i_sc].site, site_inp)
+        assert dist != 0
+        x_scale = p.x_radius / dist
+        for i_step in xrange(-p.x_steps//2, p.x_steps//2+1):
+          x = i_step / p.x_steps * 2 * x_scale
+          O.x[ix] = x_inp + x
+          ls = O.__get_tg()
+          y = ls.target_work()
+          ys.append(y)
+          dist = xs.unit_cell().distance(xs.scatterers()[i_sc].site, site_inp)
+          if (i_step < 0): dist *= -1
+          xy.append((dist,y))
+    finally:
+      O.x[ix] = x_inp
+      O.__unpack_variables()
     def build_info_str():
-      i_sc, x_type = O.x_info[ix]
-      xs = O.xray_structure
       sc = xs.scatterers()[i_sc]
       ss = xs.site_symmetry_table().get(i_sc)
       return "%s|%03d|%03d|%s|%s|%s|%s" % (
@@ -192,23 +216,29 @@ class refinement(object):
         x_type)
     info_str = build_info_str()
     base_name_plot_files = "%s_%03d_%s" % (p.file_prefix, ix, stage)
-    from libtbx import pyplot
-    pyplot.plot_pairs(xy, "r-")
     def write_xy():
       if (p.file_prefix is None): return
       f = open(base_name_plot_files+".xy", "w")
       print >> f, "# %s" % info_str
+      print >> f, "# %s" % str(xs.unit_cell())
+      print >> f, "# %s" % str(xs.space_group_info().symbol_and_number())
       for x,y in xy:
         print >> f, x, y
     write_xy()
-    pyplot.plot_pairs([(x_inp,min(ys)), (x_inp,max(ys))], "k--")
+    from libtbx import pyplot
+    fig = pyplot.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    x,y = zip(*xy)
+    ax.plot(x,y, "r-")
+    ax.plot([x_inp, x_inp], [min(ys), max(ys)], "k--")
     if (O.x_reference is not None):
       x = O.x_reference[ix]
-      pyplot.plot_pairs([(x,min(ys)), (x,max(ys))], "r--")
-    pyplot.title(info_str, fontsize=12)
+      ax.plot([x, x], [min(ys), max(ys)], "r--")
+    ax.set_title(info_str, fontsize=12)
+    ax.axis([xy[0][0], xy[-1][0], None, None])
     def write_pdf():
       if (p.file_prefix is None): return
-      pyplot.savefig(base_name_plot_files+".pdf", bbox_inches="tight")
+      fig.savefig(base_name_plot_files+".pdf", bbox_inches="tight")
     write_pdf()
     if (p.gui):
       pyplot.show()
@@ -818,12 +848,16 @@ def get_master_phil(
         .type = choice(multi=True)
       ix = None
         .type = int
-      xmin = 0
+      x_radius = 5
         .type = float
-      xmax = 1
+      x_steps = 100
+        .type = int
+      u_min = 0
         .type = float
-      xstep = 0.01
+      u_max = 0.5
         .type = float
+      u_steps = 100
+        .type = int
       gui = True
         .type = bool
       file_prefix = None
