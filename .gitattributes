@@ -191,6 +191,7 @@ cctbx/xray/targets/shelxl_wght_ls.f -text
 cctbx/xray/targets/shelxl_wght_ls.hpp svneol=native#text/plain
 cctbx/xray/targets/shelxl_wght_ls_bpl.cpp svneol=native#text/plain
 cctbx/xray/targets/tst_shelxl_wght_ls.py svneol=native#text/x-python
+cctbx/xray/weighting_scheme_differentiation.tex -text
 cctbx/xray/weighting_schemes.py -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text
