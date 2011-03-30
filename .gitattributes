@@ -1329,9 +1329,11 @@ scitbx/matrix/tests/SConscript -text
 scitbx/matrix/tests/tst_cholesky.cpp -text
 scitbx/matrix/tests/tst_givens.cpp -text
 scitbx/matrix/tests/tst_householder.cpp -text
+scitbx/matrix/tests/tst_householder.nb -text
 scitbx/matrix/tests/tst_row_echelon.py svneol=native#text/x-python
 scitbx/matrix/tests/tst_svd.cpp -text
 scitbx/matrix/tests/tst_svd.nb -text
+scitbx/matrix/tests/tst_svd_accuracy.nb -text
 scitbx/matrix/tests/utils.h -text
 scitbx/matrix/triangular_systems.h -text
 scitbx/matrix/vector_operations.h -text
