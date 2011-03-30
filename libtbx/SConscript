@@ -754,6 +754,16 @@ else:
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
 
+if ARGUMENTS.get('TERSE') == '1':
+  compiling_message = "Compiling $TARGET"
+  linking_message   = "Linking $TARGET"
+  env_base['CCCOMSTR']     = compiling_message
+  env_base['CXXCOMSTR']    = compiling_message
+  env_base['LINKCOMSTR']   = linking_message
+  env_base['SHCCCOMSTR']   = compiling_message
+  env_base['SHCXXCOMSTR']  = compiling_message
+  env_base['SHLINKCOMSTR'] = linking_message
+
 env_base.Replace(LIBPATH=["#lib"])
 env_base.Replace(SHOBJSUFFIX=env_base["OBJSUFFIX"])
 
