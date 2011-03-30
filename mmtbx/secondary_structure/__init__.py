@@ -254,7 +254,7 @@ def hydrogen_bond_proxies_from_selections(
         remove_outliers=remove_outliers,
         use_hydrogens=use_hydrogens,
         master_selection=master_selection,
-        log=sys.stdout)
+        log=log)
       if (n_proxies == 0) :
         print >> log, "  No H-bonds generated for sheet #%d" % k
         continue
@@ -283,7 +283,8 @@ def hydrogen_bond_proxies_from_selections(
       use_hydrogens=use_hydrogens,
       sigma=sigma,
       slack=slack,
-      use_db_values=params.nucleic_acids.use_db_values)
+      use_db_values=params.nucleic_acids.use_db_values,
+      log=log)
     if (n_proxies == 0) :
       print >> log, "  No H-bonds generated for nucleic acids"
   return build_proxies
