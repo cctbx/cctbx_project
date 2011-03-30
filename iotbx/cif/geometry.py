@@ -154,6 +154,7 @@ class hbonds_as_cif_loop(object):
     else: self.covariance_matrix_cart = None
     self.cell_covariance_matrix = cell_covariance_matrix
     self.eps = eps
+    self.parameter_map = parameter_map
     self.loop = model.loop(header=(
       "_geom_hbond_atom_site_label_D",
       "_geom_hbond_atom_site_label_H",
@@ -223,10 +224,10 @@ class hbonds_as_cif_loop(object):
         self.covariance_matrix_cart,
         self.parameter_map)
       if self.cell_covariance_matrix is not None:
-        var = angle.variance(
-          cov, self.cell_covariance_matrix, self.unit_cell, rt_mx_ki)
+        var = angle.variance(cov, self.cell_covariance_matrix, self.unit_cell,
+                             (unit_mx, unit_mx, rt_mx_ki))
       else:
-        var = angle.variance(cov, self.unit_cell, rt_mx_ji)
+        var = angle.variance(cov, self.unit_cell, (unit_mx, unit_mx, rt_mx_ki))
       if var > self.eps:
-        return format_float_with_su(angle.distance_model, math.sqrt(var))
+        return format_float_with_su(angle.angle_model, math.sqrt(var))
     return "%.1f" %angle.angle_model

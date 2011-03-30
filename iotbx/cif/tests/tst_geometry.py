@@ -3,6 +3,7 @@ from cctbx.eltbx import covalent_radii
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 from iotbx.cif import geometry
+from scitbx import matrix
 from cStringIO import StringIO
 
 def exercise_cif_from_cctbx():
@@ -56,6 +57,8 @@ loop_
 
 def exercise_hbond_as_cif_loop():
   xs = sucrose()
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True)
   radii = [
     covalent_radii.table(elt).radius() for elt in
     xs.scattering_type_registry().type_index_pairs_as_dict() ]
@@ -96,6 +99,66 @@ loop_
    O8 H8 O9 0.8200 2.1407 2.8943 152.8 2_456
    O9 H9 O8 0.8200 2.1031 2.8943 162.1 2_446
    O10 H10 O5 0.8200 2.0167 2.7979 159.1 .
+
+""")
+  # with a covariance matrix
+  flex.set_random_seed(1)
+  vcv_matrix = matrix.diag(
+    flex.random_double(size=xs.n_parameters(), factor=1e-5))\
+             .as_flex_double_matrix().matrix_symmetric_as_packed_u()
+  loop = geometry.hbonds_as_cif_loop(
+    hbonds, pair_asu_table, xs.scatterers().extract_labels(),
+    sites_frac=xs.sites_frac(),
+    covariance_matrix=vcv_matrix,
+    parameter_map=xs.parameter_map()).loop
+  s = StringIO()
+  print >> s, loop
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _geom_hbond_atom_site_label_D
+  _geom_hbond_atom_site_label_H
+  _geom_hbond_atom_site_label_A
+  _geom_hbond_distance_DH
+  _geom_hbond_distance_HA
+  _geom_hbond_distance_DA
+  _geom_hbond_angle_DHA
+  _geom_hbond_site_symmetry_A
+   O2 H2 O4 0.82(3) 2.06(3) 2.86(3) 165.0(18) 2_557
+   O4 H4 O9 0.82(4) 2.06(4) 2.87(4) 175(2) 2_546
+   O5 H5 O7 0.82(2) 2.05(2) 2.859(19) 169.0(18) 1_655
+   O7 H7 O1 0.82(2) 2.06(2) 2.86(2) 167(2) .
+   O8 H8 O9 0.82(3) 2.14(3) 2.89(3) 153(3) 2_456
+   O9 H9 O8 0.82(3) 2.10(3) 2.89(3) 162(2) 2_446
+   O10 H10 O5 0.82(3) 2.02(3) 2.80(3) 159(3) .
+
+""")
+  cell_vcv = flex.pow2(matrix.diag(flex.random_double(size=6,factor=1e-1))\
+                       .as_flex_double_matrix().matrix_symmetric_as_packed_u())
+  loop = geometry.hbonds_as_cif_loop(
+    hbonds, pair_asu_table, xs.scatterers().extract_labels(),
+    sites_frac=xs.sites_frac(),
+    covariance_matrix=vcv_matrix,
+    cell_covariance_matrix=cell_vcv,
+    parameter_map=xs.parameter_map()).loop
+  s = StringIO()
+  print >> s, loop
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _geom_hbond_atom_site_label_D
+  _geom_hbond_atom_site_label_H
+  _geom_hbond_atom_site_label_A
+  _geom_hbond_distance_DH
+  _geom_hbond_distance_HA
+  _geom_hbond_distance_DA
+  _geom_hbond_angle_DHA
+  _geom_hbond_site_symmetry_A
+   O2 H2 O4 0.82(3) 2.06(4) 2.86(4) 165.0(18) 2_557
+   O4 H4 O9 0.82(4) 2.06(4) 2.87(4) 175(2) 2_546
+   O5 H5 O7 0.82(2) 2.05(2) 2.86(2) 169.0(18) 1_655
+   O7 H7 O1 0.82(2) 2.06(3) 2.86(3) 167(2) .
+   O8 H8 O9 0.82(3) 2.14(4) 2.89(4) 153(3) 2_456
+   O9 H9 O8 0.82(3) 2.10(3) 2.89(4) 162(2) 2_446
+   O10 H10 O5 0.82(3) 2.02(3) 2.80(3) 159(3) .
 
 """)
 
