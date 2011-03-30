@@ -42,6 +42,7 @@ def key_safe_items(image):
       ("%6.2f","Method 1 Resolution",key_adaptor(image,'distl_resolution')),
       ("%6.2f","Method 2 Resolution",key_adaptor(image,'resolution')),
       ("%6.1f","Maximum unit cell",key_adaptor(image,'maxcel')),
+      ("%7.3f ","<Spot model eccentricity>",image['eccen'][0]),
   ]
 
 def key_safe_items_webice(image):
