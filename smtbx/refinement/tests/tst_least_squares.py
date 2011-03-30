@@ -204,6 +204,10 @@ class site_refinement_test(refinement_test):
   def exercise_ls_cycles(self):
     xs = self.xray_structure.deep_copy_scatterers()
     connectivity_table = smtbx.utils.connectivity_table(xs)
+    emma_ref = xs.as_emma_model()
+    # shaking must happen before the reparametrisation is constructed,
+    # otherwise the original values will prevail
+    xs.shake_sites_in_place(rms_difference=0.1)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
       constraints=[],
@@ -211,8 +215,6 @@ class site_refinement_test(refinement_test):
     ls = least_squares.crystallographic_ls(
       self.fo_sq, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
-    emma_ref = xs.as_emma_model()
-    xs.shake_sites_in_place(rms_difference=0.1)
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
