@@ -36,7 +36,7 @@ def exercise_SFweight_spline_core(structure, d_min, verbose=0):
     f_obs_sigmas=f_obs.sigmas(),
     f_calc=f_calc.data(),
     test_set_flags=test_set_flags,
-    n_refln=f_obs.indices().size()/10,
+    n_refln=f_obs.indices().size()//10,
     n_param=20)
   if (0 or verbose):
     print "number_of_spline_parameters:",sfweight.number_of_spline_parameters()
