@@ -4,6 +4,45 @@ import cStringIO
 import os
 import sys
 
+class summary (object) :
+  def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None) :
+    if (pdb_hierarchy is None) :
+      assert (pdb_file is not None)
+      from iotbx import file_reader
+      pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+      pdb_in.assert_file_type("pdb")
+      pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+      pdb_hierarchy.atoms().reset_i_seq()
+    if (sites_cart is not None) :
+      pdb_hierarchy.atoms().set_xyz(sites_cart)
+    from mmtbx.validation import ramalyze, rotalyze, cbetadev, clashscore
+    log = cStringIO.StringIO()
+    rama = ramalyze.ramalyze()
+    rama.analyze_pdb(hierarchy=pdb_hierarchy)
+    rama_out_count, rama_out_percent = rama.get_outliers_count_and_fraction()
+    rama_fav_count, rama_fav_percent = rama.get_favored_count_and_fraction()
+    self.rama_fav = rama_fav_percent * 100.0
+    self.rama_out = rama_out_percent * 100.0
+    rota = rotalyze.rotalyze()
+    rota.analyze_pdb(hierarchy=pdb_hierarchy)
+    rota_count, rota_perc = rota.get_outliers_count_and_fraction()
+    self.rota_out = rota_perc * 100.0
+    cs = clashscore.clashscore()
+    clash_dict, clash_list = cs.analyze_clashes(hierarchy=pdb_hierarchy)
+    self.clash_score = clash_dict['']
+    cbeta = cbetadev.cbetadev()
+    cbeta_txt, cbeta_summ, cbeta_list = cbeta.analyze_pdb(
+      hierarchy=pdb_hierarchy,
+      outliers_only=True)
+    self.cbeta_out = len(cbeta_list)
+
+  def show (self, out=sys.stdout) :
+    print >> out, "  Ramachandran outliers = %6.2f %%" % self.rama_out
+    print >> out, "               favored  = %6.2f %%" % self.rama_fav
+    print >> out, "  Rotamer outliers      = %6.2f %%" % self.rota_out
+    print >> out, "  C-beta deviations     = %6d" % self.cbeta_out
+    print >> out, "  Clashscore            = %6.2f" % self.clash_score
+
 def run (args, out=sys.stdout) :
   if (len(args) == 0) :
     raise Usage("""
@@ -18,20 +57,7 @@ run phenix.model_vs_data or the validation GUI.)
   pdb_file = args[0]
   if (not os.path.isfile(pdb_file)) :
     raise Sorry("Not a file: %s" % pdb_file)
-  from mmtbx.validation import ramalyze, rotalyze, cbetadev, clashscore
-  log = cStringIO.StringIO()
-  cs = clashscore.clashscore()
-  clash_score = cs.run(args=[pdb_file], out=log, quiet=True)['']
-  rama = ramalyze.ramalyze()
-  rama.run(args=[pdb_file], out=log, quiet=True)
-  rama_fav = rama.fav_percent
-  rama_out = rama.out_percent
-  rota = rotalyze.rotalyze()
-  rota.run(args=[pdb_file], out=log, quiet=True)
-  rota_out = rota.out_percent
-  cbeta = cbetadev.cbetadev()
-  cbeta_out = len(cbeta.run(args=[pdb_file, "cbetadev.outliers_only=True"],
-    out=log, quiet=True))
+  s = summary(pdb_file=pdb_file)
   pdb_lines = open(pdb_file, "r").readlines()
   r_work = None
   r_free = None
@@ -51,19 +77,15 @@ run phenix.model_vs_data or the validation GUI.)
           elif (field == "angles") :
             rms_angles = float(fields[i+2])
         break
-      elif ("R VALUE            (WORKING SET)" in line) :
+      elif ("3   R VALUE            (WORKING SET)" in line) :
         r_work = float(line.split(":")[1].strip())
-      elif ("FREE R VALUE                    " in line) :
+      elif ("3   FREE R VALUE                    " in line) :
         r_free = float(line.split(":")[1].strip())
     elif (line.startswith("REMARK 200")) :
       break
   print >> out, ""
   print >> out, "Validation summary for %s:" % pdb_file
-  print >> out, "  Ramachandran outliers = %6.2f %%" % rama_out
-  print >> out, "               favored  = %6.2f %%" % rama_fav
-  print >> out, "  Rotamer outliers      = %6.2f %%" % rota_out
-  print >> out, "  C-beta deviations     = %6d" % cbeta_out
-  print >> out, "  Clashscore            = %6.2f" % clash_score
+  s.show(out=out)
   if (r_work is not None) :
     print >> out, "  R-work                = %8.4f" % r_work
   if (r_free is not None) :
