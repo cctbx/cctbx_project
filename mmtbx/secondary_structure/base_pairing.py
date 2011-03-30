@@ -348,7 +348,9 @@ def create_hbond_proxies (
     use_hydrogens,
     sigma,
     slack,
-    use_db_values=True) :
+    use_db_values=True,
+    raise_error_if_missing_selection=False,
+    log=sys.stderr) :
   assert (restraint_type in ["simple", "lennard_jones"])
   assert (slack >= 0) and (sigma >= 0)
   from mmtbx.secondary_structure import utils as ss_utils
@@ -356,6 +358,15 @@ def create_hbond_proxies (
   atoms = pdb_hierarchy.atoms()
   n_proxies = 0
   for base_pair in base_pairs :
+    if (base_pair.base1 is None) or (base_pair.base2 is None) :
+      msg = ("  One or more selections missing for base pair:\n" +
+          "    base 1: %s\n" +
+          "    base 2: %s") % (str(base_pair.base1),str(base_pair.base2))
+      if (raise_error_if_missing_selection) :
+        raise Sorry("%s\n  Please define both bases." % msg)
+      else :
+        print >> log, msg
+        continue
     try :
       resname1 = ss_utils.get_residue_name_from_selection(
         resi_sele=base_pair.base1,
