@@ -13,6 +13,8 @@ def exercise_cif_from_cctbx():
     scatterers=flex.xray_scatterer([
       xray.scatterer("Si", (1/2.,1/2.,1/3.)),
       xray.scatterer("O", (0.197,-0.197,0.83333))]))
+  for sc in quartz.scatterers():
+    sc.flags.set_grad_site(True)
   s = StringIO()
   loop = geometry.distances_as_cif_loop(
     quartz.pair_asu_table(distance_cutoff=2),
@@ -54,6 +56,80 @@ loop_
    Si O Si 146.9 3 5
 
 """)
+  # with a covariance matrix
+  flex.set_random_seed(1)
+  vcv_matrix = matrix.diag(
+    flex.random_double(size=quartz.n_parameters(), factor=1e-5))\
+             .as_flex_double_matrix().matrix_symmetric_as_packed_u()
+  s = StringIO()
+  loop = geometry.distances_as_cif_loop(
+    quartz.pair_asu_table(distance_cutoff=2),
+    site_labels=quartz.scatterers().extract_labels(),
+    sites_frac=quartz.sites_frac(),
+    covariance_matrix=vcv_matrix,
+    parameter_map=quartz.parameter_map()).loop
+  print >> s, loop
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _geom_bond_atom_site_label_1
+  _geom_bond_atom_site_label_2
+  _geom_bond_distance
+  _geom_bond_site_symmetry_2
+   Si O 1.616(14) 4_554
+   Si O 1.616(12) 2_554
+   Si O 1.616(14) 3_664
+   Si O 1.616(12) 5_664
+
+""")
+  s = StringIO()
+  loop = geometry.angles_as_cif_loop(
+    quartz.pair_asu_table(distance_cutoff=2),
+    site_labels=quartz.scatterers().extract_labels(),
+    sites_frac=quartz.sites_frac(),
+    covariance_matrix=vcv_matrix,
+    parameter_map=quartz.parameter_map()).loop
+  print >> s, loop
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _geom_angle_atom_site_label_1
+  _geom_angle_atom_site_label_2
+  _geom_angle_atom_site_label_3
+  _geom_angle
+  _geom_angle_site_symmetry_1
+  _geom_angle_site_symmetry_3
+   O Si O 101.3(8) 2_554 4_554
+   O Si O 111.3(10) 3_664 4_554
+   O Si O 116.1(9) 3_664 2_554
+   O Si O 116.1(9) 5_664 4_554
+   O Si O 111.3(10) 5_664 2_554
+   O Si O 101.3(8) 5_664 3_664
+   Si O Si 146.9(9) 3 5
+
+""")
+  cell_vcv = flex.pow2(matrix.diag(flex.random_double(size=6,factor=1e-1))\
+                       .as_flex_double_matrix().matrix_symmetric_as_packed_u())
+  s = StringIO()
+  loop = geometry.distances_as_cif_loop(
+    quartz.pair_asu_table(distance_cutoff=2),
+    site_labels=quartz.scatterers().extract_labels(),
+    sites_frac=quartz.sites_frac(),
+    covariance_matrix=vcv_matrix,
+    cell_covariance_matrix=cell_vcv,
+    parameter_map=quartz.parameter_map()).loop
+  print >> s, loop
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _geom_bond_atom_site_label_1
+  _geom_bond_atom_site_label_2
+  _geom_bond_distance
+  _geom_bond_site_symmetry_2
+   Si O 1.616(15) 4_554
+   Si O 1.616(19) 2_554
+   Si O 1.616(15) 3_664
+   Si O 1.616(19) 5_664
+
+""")
+
 
 def exercise_hbond_as_cif_loop():
   xs = sucrose()
