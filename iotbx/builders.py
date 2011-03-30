@@ -264,6 +264,7 @@ class twinning_builder(object):
   """
 
   twin_components = ()
+  non_merohedral_twin_components_with_transformed_hkl = ()
 
   def make_merohedral_twinning(self, twin_law, fractions):
     self.twin_components = []
@@ -274,6 +275,9 @@ class twinning_builder(object):
                                                       twin_fraction=f,
                                                       grad_twin_fraction=True))
       t = t.multiply(twin_law)
+
+  def make_non_merohedral_twinning_with_transformed_hkl(self, fractions):
+    self.non_merohedral_twin_components_with_transformed_hkl = fractions
 
 
 # **********************************************

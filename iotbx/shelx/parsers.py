@@ -111,6 +111,9 @@ class instruction_parser(parser):
           format=hklf['n'],
           indices_transform=hklf['matrix'],
           data_scale=hklf['s'])
+        if 'basf' in self.instructions and hklf['n'] == 5:
+          self.builder.make_non_merohedral_twinning_with_transformed_hkl(
+            fractions=self.instructions['basf'])
       elif cmd == 'TWIN':
         # only ONE twin instruction allowed
         assert 'twin' not in self.instructions
@@ -122,10 +125,10 @@ class instruction_parser(parser):
           if n_args > 9:
             twin['n'] = args[9]
         self.instructions['twin'] = twin
-        if 'basf' in self.instructions: self.issue_twinning()
+        if 'basf' in self.instructions: self.issue_merohedral_twinning()
       elif cmd == 'BASF':
         self.instructions['basf'] = args
-        if 'twin' in self.instructions: self.issue_twinning()
+        if 'twin' in self.instructions: self.issue_merohedral_twinning()
       elif cmd == 'EXTI':
         if len(args) == 1:
           self.instructions['exti'] = args[0]
@@ -135,7 +138,7 @@ class instruction_parser(parser):
       # All token have been read without errors or early bailout
       assert 'hklf' in self.instructions, "Missing HKLF instruction"
 
-  def issue_twinning(self):
+  def issue_merohedral_twinning(self):
     twin_law = self.instructions['twin'].get('matrix',
                                              sgtbx.rt_mx('-x,-y,-z'))
     n = self.instructions['twin'].get('n', 2)
