@@ -890,6 +890,7 @@ libtbx/development/cctbx_svn_getting_started.csh -text
 libtbx/development/dev_guidelines.txt svneol=native#text/plain
 libtbx/development/move_obsolete_from_bundle.csh -text
 libtbx/development/timers.py -text
+libtbx/development/xcode_build_phase.sh -text
 libtbx/dtrace/profile.d -text
 libtbx/easy_profile.py -text
 libtbx/find_reference_cycles.py -text
