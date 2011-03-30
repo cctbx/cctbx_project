@@ -114,7 +114,8 @@ class refinement(object):
         xray_structure,
         params,
         reference_structure,
-        expected_n_refinable_parameters=None):
+        expected_n_refinable_parameters=None,
+        plot_samples_id=None):
     O.params = params
     O.f_obs = f_obs
     O.i_obs = f_obs.f_as_f_sq()
@@ -134,6 +135,13 @@ class refinement(object):
     print "Number of variables:", O.x.size()
     if (expected_n_refinable_parameters is not None):
       assert O.x.size() == expected_n_refinable_parameters
+    #
+    O.plot_samples_id = plot_samples_id
+    if (len(O.params.plot_samples.stages) != 0):
+      ix = O.params.plot_samples.ix
+      if (ix is None or ix < 0 or ix >= O.x.size()):
+        raise RuntimeError("Out of range: plot_samples.ix = %s" % str(ix))
+    #
     O.xfgc_infos = []
     O.update_fgc(is_iterate=True)
     O.pseudo_curvs = None
@@ -155,10 +163,9 @@ class refinement(object):
 
   def plot_samples(O, stage):
     p = O.params.plot_samples
-    if (p.stage != stage):
+    if (stage not in p.stages):
       return
     ix = p.ix
-    assert ix is not None
     x_inp = O.x[ix]
     xy = []
     ys = []
@@ -170,12 +177,27 @@ class refinement(object):
       xy.append((x,y))
       ys.append(y)
     O.x[ix] = x_inp
+    def build_info_str():
+      i_sc, x_type = O.x_info[ix]
+      xs = O.xray_structure
+      sc = xs.scatterers()[i_sc]
+      ss = xs.site_symmetry_table().get(i_sc)
+      return "%s|%03d|%03d|%s|%s|%s|%s" % (
+        O.plot_samples_id,
+        ix,
+        i_sc,
+        sc.label,
+        sc.scattering_type,
+        ss.special_op_simplified(),
+        x_type)
+    info_str = build_info_str()
+    base_name_plot_files = "%s_%03d_%s" % (p.file_prefix, ix, stage)
     from libtbx import pyplot
     pyplot.plot_pairs(xy, "r-")
     def write_xy():
       if (p.file_prefix is None): return
-      fn = "%s_%03d.xy" % (p.file_prefix, ix)
-      f = open(fn, "w")
+      f = open(base_name_plot_files+".xy", "w")
+      print >> f, "# %s" % info_str
       for x,y in xy:
         print >> f, x, y
     write_xy()
@@ -183,10 +205,10 @@ class refinement(object):
     if (O.x_reference is not None):
       x = O.x_reference[ix]
       pyplot.plot_pairs([(x,min(ys)), (x,max(ys))], "r--")
+    pyplot.title(info_str, fontsize=12)
     def write_pdf():
       if (p.file_prefix is None): return
-      fn = "%s_%03d.pdf" % (p.file_prefix, ix)
-      pyplot.savefig(fn, bbox_inches="tight")
+      pyplot.savefig(base_name_plot_files+".pdf", bbox_inches="tight")
     write_pdf()
     if (p.gui):
       pyplot.show()
@@ -263,6 +285,7 @@ class refinement(object):
     if (xray_structure is None):
       xray_structure = O.xray_structure
     O.x = flex.double()
+    O.x_info = []
     O.gact_indices = flex.size_t()
     O.dynamic_shift_limits = []
     site_limits = [0.15/p for p in xray_structure.unit_cell().parameters()[:3]]
@@ -283,6 +306,7 @@ class refinement(object):
         l = site_symmetry.site_constraints().independent_params(
           all_params=site_limits)
       O.x.extend(flex.double(p))
+      O.x_info.extend([(i_sc,"xyz"[i]) for i in xrange(len(p))])
       O.dynamic_shift_limits.extend(
         [dynamic_shift_limit_site(width=width) for width in l])
       for i in xrange(len(p)):
@@ -290,6 +314,7 @@ class refinement(object):
         i_all += 1
       #
       O.x.append(sc.u_iso)
+      O.x_info.append((i_sc,"u"))
       O.dynamic_shift_limits.append(dynamic_shift_limit_u_iso(d_min=d_min))
       O.gact_indices.append(i_all)
       i_all += 1
@@ -789,8 +814,8 @@ def get_master_phil(
     show_distances_to_reference_structure = False
       .type = bool
     plot_samples {
-      stage = initial final
-        .type = choice
+      stages = initial final
+        .type = choice(multi=True)
       ix = None
         .type = int
       xmin = 0

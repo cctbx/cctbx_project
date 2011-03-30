@@ -389,8 +389,7 @@ def run_shelx76(
       fvars,
       encoded_sites,
       params,
-      reference_structure,
-      expected_n_refinable_parameters):
+      reference_structure):
   if (params.apply_iteration_limit_to_all):
     ls_cycles = params.iteration_limit
   else:
@@ -578,7 +577,8 @@ def process(params, pickle_file_name):
       xray_structure=structure_dev,
       params=params,
       reference_structure=structure_iso,
-      expected_n_refinable_parameters=n_refinable_parameters)
+      expected_n_refinable_parameters=n_refinable_parameters,
+      plot_samples_id=cod_id)
     show_cc_r1("dev", f_obs, structure_dev)
     if (params.export_refined):
       file_name = "dev_%s_%s_%s.pdb" % (
@@ -641,8 +641,7 @@ def process(params, pickle_file_name):
       fvars=fvars,
       encoded_sites=encoded_sites,
       params=params,
-      reference_structure=structure_iso,
-      expected_n_refinable_parameters=n_refinable_parameters)
+      reference_structure=structure_iso)
     if (params.export_refined):
       file_name = "shelx76_%s.pdb" % cod_id
       open(file_name, "w").write(structure_shelx76.as_pdb_file(
