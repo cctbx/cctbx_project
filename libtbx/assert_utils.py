@@ -43,7 +43,7 @@ if __name__ == '__main__':
     assert is_numeric(flex.double((1,2,3)))
 
   def f(x,y,z):
-    z/(x-y)
+    z//(x-y)
   assert shall_raise(f, ZeroDivisionError)(1,1,1)
   assert not shall_raise(f, ZeroDivisionError)(x=1, y=0, z=0)
 

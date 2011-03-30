@@ -35,9 +35,9 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
     p = space_group.phase_restriction(h).ht_angle(True)
 
     if (c or anomalous_flag):
-      assert e == space_group.order_p() / m
+      assert e == space_group.order_p() // m
     else:
-      assert e == (2 * space_group.order_p()) / m
+      assert e == (2 * space_group.order_p()) // m
 
     try:
       assert m_i == m, 'multiplicity mismatch'
@@ -54,7 +54,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
       raise AssertionError, exc
 
     assert (not space_group.is_sys_absent(h))
-    assert (e == space_group.order_p() / space_group.multiplicity(h, True))
+    assert (e == space_group.order_p() // space_group.multiplicity(h, True))
     eq = miller.sym_equiv_indices(space_group, h)
     assert (eq.multiplicity(anomalous_flag) == m)
     assert (eq.epsilon() == e)

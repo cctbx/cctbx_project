@@ -80,7 +80,7 @@ def run():
   for key in keys:
     v = match_histogram[key]
     s += v
-    print "  %3d: %3d = %5.1f%%, %5.1f%%" % (key, v, 100*v/sum, 100*s/sum)
+    print "  %3d: %3d = %5.1f%%, %5.1f%%" % (key, v, 100.*v/sum, 100.*s/sum)
   print
   sys.stdout.flush()
 

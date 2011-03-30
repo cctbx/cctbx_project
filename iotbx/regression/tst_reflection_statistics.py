@@ -83,7 +83,7 @@ def exercise_reflection_statistics(
         if (float("%6.3f" % ma_i.correlation(ma_j).coefficient()) != cc):
           raise AssertionError(line.strip())
   n = len(file_names)
-  expected_number_of_cc_lines = n*(n-1)/2
+  expected_number_of_cc_lines = n*(n-1)//2
   if (anomalous_flag):
     expected_number_of_cc_lines *= 2
   assert len(done) == expected_number_of_cc_lines

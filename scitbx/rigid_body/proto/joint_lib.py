@@ -327,8 +327,8 @@ def euler_params_qE_as_euler_angles_xyz_qE(qE):
   return matrix.col((q1,q2,q3))
 
 def euler_angles_xyz_qE_as_euler_params_qE(qE):
-  s1,s2,s3 = [math.sin(q/2) for q in qE]
-  c1,c2,c3 = [math.cos(q/2) for q in qE]
+  s1,s2,s3 = [math.sin(q/2.) for q in qE]
+  c1,c2,c3 = [math.cos(q/2.) for q in qE]
   return matrix.col((
     c1*c2*c3+s1*s2*s3,
     c1*c2*s3-s1*s2*c3,

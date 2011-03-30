@@ -776,7 +776,7 @@ class manager(object):
     occ_min = flex.min(occ)
     occ_max = flex.max(occ)
     n_zeros = (occ < 0.1).count(True)
-    percent_small = n_zeros * 100 / occ.size()
+    percent_small = n_zeros * 100. / occ.size()
     n_large = (occ > 2.0).count(True)
     if(occ_min < 0.0):
        self.xray_structure.set_occupancies(value=0., selection = less_than_zero)

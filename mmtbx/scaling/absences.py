@@ -588,7 +588,7 @@ the number of violations in the non-absent class.
         self.i_tot.append(i_tot)
 
         self.op_name.append( condition )
-        score = score/max(1,n_abs+n_n_abs)
+        score = float(score)/max(1,n_abs+n_n_abs)
         self.score.append( score )
 
 

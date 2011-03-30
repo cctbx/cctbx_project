@@ -54,9 +54,9 @@ def exercise_cumulative_intensity_distribution(space_group_info, anomalous_flag,
         dist = statistics.cumulative_intensity_distribution(f_obs_sq=ma)
       n_bins_used = f_obs.binner().n_bins_used()
       x_index = {}
-      x_index[0.1] = int(n_bins_used/10)
-      x_index[0.5] = int(n_bins_used/2)
-      x_index[0.9] = int(9*n_bins_used/10)
+      x_index[0.1] = n_bins_used//10
+      x_index[0.5] = n_bins_used//2
+      x_index[0.9] = 9*n_bins_used//10
       if space_group_info.group().is_centric():
         assert 0.23 < dist.y[x_index[0.1]] < 0.32
         assert 0.49 < dist.y[x_index[0.5]] < 0.57

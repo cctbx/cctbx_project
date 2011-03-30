@@ -15,7 +15,7 @@ def exercise(space_group_info,
              shifted_origin=None,
              elements=None,
              d_min=0.8,
-             grid_resolution_factor=1/3,
+             grid_resolution_factor=1/3.,
              verbose=False,
              **kwds):
   if elements is None:

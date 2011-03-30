@@ -95,7 +95,7 @@ def notes(Spotfinder,key):
     image = Spotfinder.images[key]
     if image.has_key('resolution_divisor'):
       print "Bin population cutoff for method 2 resolution: %.0f%%"%(
-        100/image['resolution_divisor'])
+        100./image['resolution_divisor'])
 
 if __name__=='__main__':
   Spotfinder = unpickle_spotfinder()

@@ -43,7 +43,7 @@ def exercise():
     for ffp in xrange(-3,4):
       for fdp in xrange(-3,4):
         for alpha_deg in xrange(0,360,15):
-          empirical_proof(g, ffp, fdp, alpha_deg/180*math.pi)
+          empirical_proof(g, ffp, fdp, alpha_deg*math.pi/180)
   print "OK"
 
 if (__name__ == "__main__"):
