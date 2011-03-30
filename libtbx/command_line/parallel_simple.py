@@ -25,18 +25,18 @@ def process_dollar_multi(line):
   def rapp(a):
     result.append(line[:i] + str(a) + line[j:])
   for fld in flds:
-    m = re.match(r"(\d+)-(\d+)$", fld)
+    fld = op.expandvars(fld)
+    m = re.match(r"(\d+)([-:])(\d+)$", fld)
     if (m is None):
       rapp(fld)
     else:
       f = int(m.group(1))
-      l = int(m.group(2))
-      if (f <= l):
-        for a in xrange(f,l+1):
-          rapp(a)
-      else:
-        for a in xrange(f,l-1,-1):
-          rapp(a)
+      o =     m.group(2)
+      l = int(m.group(3))
+      s = [1,-1][int(f > l)]
+      if (o == "-"): l += s
+      for a in xrange(f,l,s):
+        rapp(a)
   return result
 
 def run_one_cmd(cmd_info):
@@ -63,13 +63,14 @@ def run_one_cmd(cmd_info):
       from cStringIO import StringIO
       sio = StringIO()
       show_traceback(file=sio)
-    else:
-      f = open(cmd_info.log, "w")
+      buffers = None
+    f = open(cmd_info.log, "w")
+    if (buffers is not None):
       f.write(buffers.stdout_buffer)
-      if (sio is not None):
-        f.write(sio.getvalue())
-      print >> f, fmt_time(t0)
-      del f
+    if (sio is not None):
+      f.write(sio.getvalue())
+    print >> f, fmt_time(t0)
+    del f
   sys.stdout.flush()
 
 def run_in_dir(cmd_info):
@@ -107,7 +108,7 @@ def run(args):
   import libtbx.load_env
   from libtbx.option_parser import option_parser
   command_line = (option_parser(
-    usage="%s [options] [file_listing_commands] [...]"
+    usage="%s [options] [var=value] [...] [file_listing_commands] [...]"
       % libtbx.env.dispatcher_name)
     .option(None, "--dirs",
       action="store",
@@ -133,6 +134,16 @@ def run(args):
   from libtbx.str_utils import show_string
   import multiprocessing
   #
+  files_listing_commands = []
+  for arg in command_line.args:
+    earg = op.expandvars(arg)
+    flds = earg.split("=", 1)
+    if (len(flds) != 2):
+      files_listing_commands.append(earg)
+    else:
+      k,v = flds
+      os.environ[k] = v
+  #
   cmd_infos = []
   def cmd_infos_append(line):
     for l in process_dollar_multi(line):
@@ -141,8 +152,7 @@ def run(args):
   if (co.command is not None):
     for line in co.command:
       cmd_infos_append(line=line)
-  for file_listing_commands in command_line.args:
-    file_name = op.expandvars(file_listing_commands)
+  for file_name in files_listing_commands:
     file_dir = op.dirname(file_name)
     for line in open(file_name).read().splitlines():
       ll = line.lstrip()
