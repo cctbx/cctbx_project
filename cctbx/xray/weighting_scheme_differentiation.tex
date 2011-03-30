@@ -1,0 +1,51 @@
+\documentclass[11pt]{article}
+\usepackage{cctbx_preamble}
+\usepackage{amscd}
+
+\title{Differentiation of L.S. with a weighting scheme}
+\author{\lucjbourhis}
+\date{\today}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+In small molecule crystallography, it is customary to use a so-called weighting scheme for the L.S. fits of the atomic model to the reflection data, which result in replacing the traditional weights $1/\sigma^2$ by weights that depends on the computed structure factors. Thus a rigorous mathematical treatment requires one investigates whether it is necessary to differentiate those weights with respect to the crystallographic parameters of the model that are fitted to the data. 
+\end{abstract}
+
+The objective function reads
+\begin{align}
+L = \frac{1}{2}\sum_h w(y_c(x; h), y_o(h)) \big[y_c(x;h) - y_o(h)\big]^2
+\end{align}
+where the summation is over $m$ Miller indices $h$ and $y$ denotes either $F$ or $F^2$. The model $y_c(x;h)$ depends non only on $h$ but also on atomic sites, ADP's, etc, which are collective denoted as the vector $x$ whose dimension will be denoted by $n$. The only properties required for the weighting function $w$ are that it is positive and differentiable with respect to its first argument $y_c$.
+
+The first step is to preserve the minimisation as a L.S. problem. By introducing the residuals,
+\begin{align}
+\rho_h &= y_c(x;h) - y_o(h),\\
+w_h &= w(y_c(x;h), y_o(h)),\\
+r_h &= \sqrt{w_h} \rho_h,\\
+\intertext{we get a L.S. minimisation problem,}
+L &= \frac{1}{2}\sum_h r_h^2.
+\end{align}
+
+We can now use the Gauss-Newton approach, which results in the minimisation step $p$ being solution of the so-called normal equations,
+\begin{align}
+J^T J p &= -J^T r,\\
+\intertext{where}
+r &= \left[ r_{h_i} \right]_{1\le i \le m}\\
+\intertext{is the residual vector, and}
+J &= \left[ \partialder{r_{h_i}}{x_j} \right]_{\begin{subarray}{l} 1 \le i \le m\\1 \le j \le n \end{subarray}}
+\end{align}
+is the Jacobian of the residual vector. In this approach, $J^T r$ is the faithful differential of the objective whereas $J^T J$ is only an approximation of the Hessian of the objective that is obtained by neglecting $O(r)$ terms.
+
+The final step consists in differentiating the residual $r$'s. We will keep the dependence on $h$ implicit for the rest of this note. The chain rule first gives
+\begin{align}
+\partialder{r}{x_j} &= \frac{dr}{dy_c}\partialder{y_c}{x_j},\\
+\intertext{where the derivative of $r$ reads}
+\frac{dr}{dy_c} &= \frac{1}{2w}\frac{dw}{dy_c} r + \sqrt{w}.
+\end{align}
+
+Keeping in line with the Gauss-Newton approximation, it is natural to ignore the first term of $\frac{dr}{dy_c}$, which is proportional to $r$, especially since the coefficient of $r$ is a logarithmic derivative, and therefore to ignore the derivative of the weights altogether in the process of solving the L.S. minimisation problem.
+
+\bibliography{cctbx_references}
+
+\end{document}  
