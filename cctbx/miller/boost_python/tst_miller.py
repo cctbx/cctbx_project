@@ -83,7 +83,7 @@ def exercise_sym_equiv():
   r = e.phase_restriction()
   assert r.ht() == 0
   j = e.p1_listing(False)
-  assert len(j) == len(i)/2
+  assert len(j) == len(i)//2
 
 def exercise_map_to_asu(sg_symbol):
   sg_type = sgtbx.space_group_type(sg_symbol)
@@ -546,7 +546,7 @@ def exercise_phase_integral():
   integrator = miller.phase_integrator(n_steps=10)
   assert integrator.n_steps() == 10
   integrator = miller.phase_integrator()
-  assert integrator.n_steps() == 360/5
+  assert integrator.n_steps() == 360//5
   assert approx_equal(integrator(sg.phase_restriction(i[0]), hl[0]),
     0.78832161462+0.466993941292j)
   assert approx_equal(integrator(sg.phase_restriction(i[1]), hl[1]),

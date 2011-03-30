@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.math
 from scitbx.math import r3_rotation_vector_to_vector as vector_to_vector
 from scitbx.math import r3_rotation_vector_to_001 as vector_to_001

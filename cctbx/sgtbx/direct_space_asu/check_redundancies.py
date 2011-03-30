@@ -163,7 +163,7 @@ def rt_times_grid_point(rt, i_grid, n):
   for i in xrange(3):
     eg = iround(eq_pt.elems[i]*n[i])
     eq_gpt[i] = eg % n[i]
-    u = (eq_gpt[i] - eg) / n[i]
+    u = float(eq_gpt[i] - eg) / n[i]
     unit_shifts[i] = iround(u)
     assert abs(u - unit_shifts[i]) < 1.e-5
   return tuple(eq_gpt), rt_plus_unit_shifts(rt, unit_shifts)

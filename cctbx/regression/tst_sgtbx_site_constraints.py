@@ -106,7 +106,7 @@ def exercise(structure, out):
     assert approx_equal(independent_gradients, [0]*nip)
     independent_curvatures = site_constraints.independent_curvatures(
       all_curvatures=flex.double(6, 0))
-    assert len(independent_curvatures) == nip*(nip+1)/2
+    assert len(independent_curvatures) == nip*(nip+1)//2
     assert approx_equal(independent_curvatures, [0]*(nip*(nip+1)//2))
     #
     h = math.pi * flex.random_double(size=3)*2-1

@@ -229,7 +229,7 @@ def print_banner(appl, out=None):
   hashes = "#############################################################"
   def print_centered(s):
     b = max(0, len(hashes) - len(s) - 4)
-    l = int(b / 2)
+    l = int(b // 2)
     r = b - l
     print >> out, "##%s%s%s##" % (" "*l, s, " "*r)
   print >> out, hashes

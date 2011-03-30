@@ -290,7 +290,7 @@ def exercise_grid(quick=False, verbose=0):
                 assert det_g <= 1.e-5
                 continue
               assert abs(det_g-unit_cell.volume()**2) < 1.e-5
-              if (unit_cell.volume() < a*b*c/1000): continue
+              if (unit_cell.volume() < a*b*c/1000.): continue
               n_trials += 1
               reduce(unit_cell)
   if (0 or verbose):

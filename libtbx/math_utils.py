@@ -96,7 +96,7 @@ def prime_factors_of(n):
   while (n > 1):
     while (n % candidate == 0):
       result.append(candidate)
-      n /= candidate
+      n //= candidate
     candidate += 1
   return result
 

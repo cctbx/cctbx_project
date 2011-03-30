@@ -135,7 +135,7 @@ def build_struc(spgr_symbol, n, atom_volume):
       element = Elements[i]
     else:
       element = "C"
-    site = ( (i%(n/2))/float(n), (n-i%(n/3))/float(n), (i%(n/4))/float(n) )
+    site = ( (i%(n//2))/float(n), (n-i%(n//3))/float(n), (i%(n//4))/float(n) )
     scatterer = xray.scatterer(
                    site = site,
                    u = 0.1,

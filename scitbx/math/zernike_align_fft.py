@@ -18,7 +18,7 @@ class align(object):
     self.moving = moving
     self.beta = smath.pi*2.0/float(n_beta-1)*flex.double( range(n_beta) )
     self.nb = n_beta
-    self.pad = max(0, (ngrid-1)/2 - nmax )
+    self.pad = max(0, (ngrid-1)//2 - nmax )
     self.ngrid = (self.pad+nmax) * 2 + 1
     self.dx = smath.pi*2.0/(self.ngrid*10)
     self.topn = topn
@@ -81,7 +81,7 @@ class align(object):
 
 
     b=self.best_indx//(self.ngrid*self.ngrid)
-    a=(self.best_indx - self.ngrid*self.ngrid*b ) / self.ngrid
+    a=(self.best_indx - self.ngrid*self.ngrid*b ) // self.ngrid
     g=self.best_indx - self.ngrid*self.ngrid*b - self.ngrid*a
 
     b = self.beta[b]
@@ -120,7 +120,7 @@ class align(object):
     for ii in range( topn ):
       o = orders[ii]
       b=o//(self.ngrid*self.ngrid)
-      a=(o - self.ngrid*self.ngrid*b ) / self.ngrid
+      a=(o - self.ngrid*self.ngrid*b ) // self.ngrid
       g=o - self.ngrid*self.ngrid*b - self.ngrid*a
 
       b = self.beta[b]

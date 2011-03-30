@@ -1,4 +1,4 @@
-
+from __future__ import division
 from libtbx.math_utils import iceil
 from itertools import count
 import random

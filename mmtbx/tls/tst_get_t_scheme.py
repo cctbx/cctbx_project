@@ -177,7 +177,7 @@ def exercise_branch_2_1(small = 1.e-9):
       if(qq.branch_1_2_3_1()):   branch_1_2_3_1 += 1
       if(qq.branch_1_2_3_2()):   branch_1_2_3_2 += 1
 
-      if (counter / 10000 == 1):
+      if (counter >= 10000):
          counter = 0
          print "."*30
          print "i= ", i, "out of ", trials
@@ -270,7 +270,7 @@ def exercise(small = 1.e-9):
           if(qq.branch_1_2_3_2()):   branch_1_2_3_2 += 1
 
 
-          if (counter / 10000 == 1):
+          if (counter >= 10000):
              counter = 0
              print "."*30, symbol
              print "i= ", i, "out of ", trials

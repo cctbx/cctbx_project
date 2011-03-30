@@ -53,7 +53,7 @@ def run():
   cc = adptbx.debye_waller_factor_u_star_curvature_coefficients(h)
   # all_curvatures is an array of 21 values (upper triangle of 6x6 matrix)
   all_curvatures = (-2*math.pi**2)**2 * dwf * cc
-  assert len(all_curvatures) == 6*(6+1)/2
+  assert len(all_curvatures) == 6*(6+1)//2
 
   #
   # here we apply the symmetry constraints to the gradients and curvatures
@@ -65,7 +65,7 @@ def run():
   # c_indep is an array of n_indep*(n_indep+1)/2 values (upper triangle)
   c_indep = adp_constraints.independent_curvatures(
     all_curvatures=all_curvatures)
-  assert len(c_indep) == n_indep*(n_indep+1)/2
+  assert len(c_indep) == n_indep*(n_indep+1)//2
   # feed g_indep and c_indep to the minimizer
 
   #

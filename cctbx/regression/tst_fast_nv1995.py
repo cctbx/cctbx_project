@@ -226,7 +226,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
   structure_fixed = xray.structure(special_position_settings=structure)
   for scatterer in structure.scatterers():
     if (flag_f_part and   structure_fixed.scatterers().size()
-                        < structure.scatterers().size()/2):
+                        < structure.scatterers().size()//2):
       structure_fixed.add_scatterer(scatterer)
     else:
       structure_p1.add_scatterer(scatterer)
