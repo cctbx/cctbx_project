@@ -31,11 +31,11 @@ namespace{
                     arg("space_group"),
                     arg("anomalous_flag") )))
         .def("n_duplicates", &w_t::n_duplicates)
-        .def("find_hkl", (long(w_t::*)(cctbx::miller::index<> const&))
+        .def("find_hkl", (long(w_t::*)(cctbx::miller::index<> const&) const)
              &w_t::find_hkl)
         .def("find_hkl", (scitbx::af::shared< long >(w_t::*)
                           (scitbx::af::const_ref< cctbx::miller::index<> >
-                           const&))
+                           const&) const)
              &w_t::find_hkl)
         ;
     }
