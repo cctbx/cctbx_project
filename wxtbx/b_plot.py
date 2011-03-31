@@ -224,6 +224,9 @@ class b_plot_panel (plots.plot_container) :
     self._ymax = ymax
 
   def set_plot (self, plot) :
+    from matplotlib import cm
+    from matplotlib.colors import BoundaryNorm
+    from matplotlib.collections import LineCollection
     import numpy
     avg_b, is_alt, is_partial = plot[1], plot[2], plot[3]
     assert (len(avg_b) == len(is_alt) == len(is_partial))
@@ -233,20 +236,27 @@ class b_plot_panel (plots.plot_container) :
     a.set_ylabel("B-factor")
     a.set_xlabel("Residue")
     p.set_title("Average B-factor: %s" % plot[0])
-    x = range(1, len(plot[1]) + 1)
-    p.plot(x, avg_b, "-", linewidth=1, color="r")
+    y = numpy.array(avg_b)
+    x = numpy.linspace(1, y.size, y.size)
+    points = numpy.array([x, y]).T.reshape(-1,1,2)
+    yy = numpy.linspace(y.min(), y.max(), cm.jet.N)
+    norm = BoundaryNorm(yy, 256)
+    segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
+    lc = LineCollection(segments, cmap=cm.jet, norm=norm)
+    lc.set_array(y)
+    p.add_collection(lc)
     xmarks, xlabels = extract_labels(plot[4])
     a.set_xticks(xmarks)
     a.set_xticklabels(xlabels)
     a.set_ylim(0, self._ymax)
     plot_labels = ["B(iso)"]
     if (set(is_alt) != set([numpy.NaN])) :
-      p.plot(x, is_alt, "o")
+      p.plot(x, is_alt, "d", color='m')
       plot_labels.append("Alt. conf.")
     if (set(is_partial) != set([numpy.NaN])) :
-      p.plot(x, is_partial, "^")
+      p.plot(x, is_partial, "^", color='c')
       plot_labels.append("Partial occupancy")
-    self.figure.legend(p.lines, plot_labels, prop=self.get_font("legend"))
+    self.figure.legend(p.collections + p.lines, plot_labels, prop=self.get_font("legend"))
     self.canvas.draw()
     self.parent.Refresh()
 
