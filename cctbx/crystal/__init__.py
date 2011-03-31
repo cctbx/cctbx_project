@@ -734,8 +734,14 @@ class calculate_distances(object):
             cov = covariance.extract_covariance_matrix_for_sites(
               flex.size_t((i_seq,j_seq)), cov_cart, self.parameter_map)
             if self.cell_covariance_matrix is not None:
-              var = d.variance(
-                cov, self.cell_covariance_matrix, unit_cell, rt_mx_ji)
+              var = d.variance(cov, unit_cell, rt_mx_ji)
+              # a bit of a hack - if the variance is approx zero, we assume
+              # that the distance is constrained (e.g. as part of a rigid body)
+              # unless it is a distance between two symmetry-related atoms, in
+              # which case we include the cell errors into the variance calculation
+              if var > 2e-16 or (i_seq == j_seq and not rt_mx_ji.is_unit_mx()):
+                var = d.variance(
+                  cov, self.cell_covariance_matrix, unit_cell, rt_mx_ji)
             else:
               var = d.variance(cov, unit_cell, rt_mx_ji)
             self.variances.append(var)
@@ -902,8 +908,15 @@ class calculate_angles(object):
                       cov_cart, self.parameter_map)
                     if self.cell_covariance_matrix is not None:
                       var = a.variance(
-                        cov, self.cell_covariance_matrix, unit_cell,
-                        (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
+                        cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
+                      # a bit of a hack - see equivalent comment in
+                      # calculate_distances
+                      if (var > 2e-15 or
+                          (i_seq == j_seq and not rt_mx_ji.is_unit_mx()) or
+                          (i_seq == k_seq and not rt_mx_ki.is_unit_mx())):
+                        var = a.variance(
+                          cov, self.cell_covariance_matrix, unit_cell,
+                          (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
                     else:
                       var = a.variance(
                         cov, unit_cell, (rt_mx_ji, sgtbx.rt_mx(), rt_mx_ki))
