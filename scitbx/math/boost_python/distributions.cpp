@@ -38,7 +38,17 @@ namespace {
   template <typename FloatType>
   struct students_t_distribution_wrappers
   {
+    typedef FloatType ft;
     typedef boost::math::students_t_distribution<FloatType> wt;
+
+    // workaround for Intel C++ 12.0.3
+    static FloatType
+    find_degrees_of_freedom_wrapper(
+      ft difference_from_mean, ft alpha, ft beta, ft sd, ft hint)
+    {
+      return wt::find_degrees_of_freedom(
+        difference_from_mean, alpha, beta, sd, hint);
+    }
 
     static void
     wrap()
@@ -48,7 +58,13 @@ namespace {
       class_<wt>("students_t_distribution", no_init)
         .def(init<FloatType>(arg("v")))
         .def("degrees_of_freedom", &wt::degrees_of_freedom)
-        .def("find_degrees_of_freedom", &wt::find_degrees_of_freedom)
+        .def("find_degrees_of_freedom", find_degrees_of_freedom_wrapper, (
+          arg("difference_from_mean"),
+          arg("alpha"),
+          arg("beta"),
+          arg("sd"),
+          arg("hint")=100))
+        .staticmethod("find_degrees_of_freedom")
       ;
     }
   };
