@@ -75,13 +75,13 @@ namespace lookup_utils{
     }
 
     long
-    n_duplicates()
+    n_duplicates() const
     {
        return( n_duplicates_ );
     }
 
     long
-    find_hkl( cctbx::miller::index<> const& target_hkl)
+    find_hkl( cctbx::miller::index<> const& target_hkl) const
     {
       long hkl_location;
       // move the index to the ASU
@@ -106,7 +106,7 @@ namespace lookup_utils{
 
     scitbx::af::shared<long>
     find_hkl( scitbx::af::const_ref<cctbx::miller::index<> >
-              const& target_hkl )
+              const& target_hkl ) const
     {
       scitbx::af::shared< long > permutation_table( target_hkl.size(), -1 );
       for (unsigned ii=0;ii<target_hkl.size();ii++){
