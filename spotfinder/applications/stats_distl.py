@@ -26,9 +26,11 @@ def optionally_add_saturation_webice(canonical_info,image):
                       image['saturation'].format2())
     canonical_info.append(sat_info)
 
-def key_adaptor(mapping,key):
+def key_adaptor(mapping,key,idx=None):
   if mapping.has_key(key):
-    return mapping[key]
+    if idx == None:
+      return mapping[key]
+    else: return mapping[key][idx]
   else:
     return None
 
@@ -42,7 +44,7 @@ def key_safe_items(image):
       ("%6.2f","Method 1 Resolution",key_adaptor(image,'distl_resolution')),
       ("%6.2f","Method 2 Resolution",key_adaptor(image,'resolution')),
       ("%6.1f","Maximum unit cell",key_adaptor(image,'maxcel')),
-      ("%7.3f ","<Spot model eccentricity>",image['eccen'][0]),
+      ("%7.3f ","<Spot model eccentricity>",key_adaptor(image,'eccen',0)),
   ]
 
 def key_safe_items_webice(image):
