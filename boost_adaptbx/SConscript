@@ -79,6 +79,16 @@ if (not env_etc.no_boost_python):
       env_etc.boost_include,
       env_etc.python_include])
   conf = env_pure_boost_python_ext.Clone().Configure()
+  if (not conf.TryCompile("#include <iostream>", extension=".cpp")):
+    raise RuntimeError("""\
+FATAL:
+
+********************** C++ compiler does not work. **********************
+
+See config.log for details.
+""")
+  conf.Finish()
+  conf = env_pure_boost_python_ext.Clone().Configure()
   if (not conf.TryCompile("#include <Python.h>", extension=".cpp")):
     raise RuntimeError("""\
 FATAL:
