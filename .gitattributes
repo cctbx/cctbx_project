@@ -1479,9 +1479,11 @@ tbxx/libc_backtrace.hpp svneol=native#text/plain
 tbxx/optional_copy.hpp svneol=native#text/plain
 tbxx/time_accu.hpp svneol=native#text/plain
 wxtbx/__init__.py -text
+wxtbx/b_plot.py -text
 wxtbx/bitmaps.py svneol=native#text/x-python
 wxtbx/browser.py -text
 wxtbx/checklistctrl.py -text
+wxtbx/command_line/b_plot.py -text
 wxtbx/command_line/loggraph.py -text
 wxtbx/layout.py -text
 wxtbx/listeditor.py -text
