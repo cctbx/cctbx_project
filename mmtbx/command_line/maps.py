@@ -277,6 +277,10 @@ def run(args, log = sys.stdout):
       params.maps.output.fmodel_data_file_format)
     fmodel_file_object.close()
   print >> log, "All done."
+  if (map_coeff_file_name is not None) :
+    print >> log, "Map coefficients: %s" % map_coeff_file_name
+  for file_name in xplor_maps :
+    print >> log, "XPLOR or CCP4 map: %s" % file_name
   print >> log, "-"*79
   return (map_coeff_file_name, xplor_maps)
 
