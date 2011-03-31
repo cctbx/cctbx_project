@@ -347,7 +347,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         for (std::size_t i_twin=0;i_twin<twin_components.size();i_twin++) {
           FloatType twin_fraction = twin_components[i_twin]->twin_fraction;
           sgtbx::rot_mx const &twin_law = twin_components[i_twin]->twin_law;
-          miller::index<> const &twin_h = cctbx::xray::twin_targets::twin_mate(
+          miller::index<> twin_h = cctbx::xray::twin_targets::twin_mate(
             h, twin_law.as_floating_point(scitbx::type_holder<FloatType>()));
           f_calc_func.compute(twin_h, compute_grad);
           obs += twin_fraction*f_calc_func.observable;
