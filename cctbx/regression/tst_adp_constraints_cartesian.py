@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import adptbx, sgtbx
 from cctbx.development import debug_utils
 from scitbx.math import row_echelon_full_pivoting

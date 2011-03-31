@@ -10,6 +10,7 @@ They all feature:
 """
 
 
+from __future__ import division
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 
@@ -93,7 +94,7 @@ class _(boost.python.injector, ext.mainstream_shelx_weighting):
       bin_limits.append(int(math.ceil((i+1) * fc_sq.size()/n_bins)))
       bin_count.append(bin_limits[i+1] - bin_limits[i])
 
-    n = fo_sq.size()/(fo_sq.size()-n_independent_params)
+    n = fo_sq.size()//(fo_sq.size()-n_independent_params)
 
     # search on a 9x9 grid to determine best values of a and b
     gridding = flex.grid(9,9)
