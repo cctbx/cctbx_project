@@ -206,12 +206,13 @@ class refinement(object):
     def build_info_str():
       sc = xs.scatterers()[i_sc]
       ss = xs.site_symmetry_table().get(i_sc)
-      return "%s|%03d|%03d|%s|%s|%s|%s" % (
+      return "%s|%03d|%03d|%s|%s|occ=%.2f|%s|%s" % (
         O.plot_samples_id,
         ix,
         i_sc,
         sc.label,
         sc.scattering_type,
+        sc.occupancy,
         ss.special_op_simplified(),
         x_type)
     info_str = build_info_str()

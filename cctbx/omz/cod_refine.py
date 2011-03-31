@@ -24,6 +24,8 @@ def get_master_phil():
       f_obs_f_calc_fan_outliers = *remove keep
         .type = choice
         .optional = False
+      use_f_calc_as_f_obs = False
+        .type = bool
       reset_u_iso = 0.05
         .type = float
       sites_mod_short = True
@@ -468,8 +470,10 @@ def process(params, pickle_file_name):
   structure_prep.scattering_type_registry(table="it1992").show()
   fvar_encoding.dev_build_shelx76_fvars(structure_prep) # only an exercise
   print "."*79
+  #
   if (len(params.optimizers) == 0):
     return
+  #
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_prep,
     algorithm="direct",
@@ -495,6 +499,10 @@ def process(params, pickle_file_name):
     xray_structure=structure_prep,
     algorithm="direct",
     cos_sin_table=False).f_calc()
+  if (params.use_f_calc_as_f_obs):
+    print "INFO: using f_calc as f_obs"
+    f_obs = f_calc.amplitudes().customized_copy(
+      sigmas=flex.double(f_calc.indices().size(), 1))
   k = f_obs.scale_factor(f_calc=f_calc)
   assert k != 0
   s = 1/k
@@ -567,6 +575,9 @@ def process(params, pickle_file_name):
   n_refinable_parameters = structure_work.n_parameters(
     considering_site_symmetry_constraints=True)
   print "Number of refinable parameters:", n_refinable_parameters
+  #
+  if (params.iteration_limit < 1):
+    return
   #
   if ("dev" not in params.optimizers):
     structure_dev = None
