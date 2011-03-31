@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 import libtbx.utils
