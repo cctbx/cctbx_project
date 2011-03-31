@@ -1,3 +1,4 @@
+from __future__ import division
 from fable \
   import unsigned_integer_scan, \
   identifier_scan, \
@@ -2719,8 +2720,12 @@ class fproc(fproc_p_methods):
     exec_locals = {}
     exec(code, exec_globals, exec_locals)
     if (identifier is None):
-      return exec_locals["_"]
-    return exec_locals[identifier]
+      result = exec_locals["_"]
+    else:
+      result = exec_locals[identifier]
+    if (isinstance(result, float) and int(result) == result):
+      result = int(result)
+    return result
 
   def eval_dimensions_simple(O, dim_tokens, allow_power=True):
     vals = []
