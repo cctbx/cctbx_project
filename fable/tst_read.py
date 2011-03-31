@@ -1,5 +1,5 @@
 from fable import read
-from libtbx.test_utils import Exception_expected, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 import os
 op = os.path
@@ -875,6 +875,8 @@ def exercise_eval_const_expression_simple(verbose):
   unit = all_fprocs.all_in_input_order[0]
   val = unit.eval_const_expression_simple(identifier="n5")
   assert val == 296356
+  val = unit.eval_const_expression_simple(identifier="n5f")
+  assert approx_equal(val, 297845.226131)
   for identifier,expected_vals in [
         ("nums1", [3,2]),
         ("nums2", [1,3]),

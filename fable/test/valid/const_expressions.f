@@ -4,6 +4,7 @@
       parameter(n3=(n2+n1)*5)
       parameter(n4=(n3-n2)**3)
       parameter(n5=n2*(n4+1)/2)
+      parameter(n5f=n2*(n4+1)/1.99)
       parameter(n6=n1**2)
       dimension nums1(n2-5, n3-48)
       dimension nums2(n1:2, -1:1)
@@ -13,6 +14,7 @@
       write(6, *) n3
       write(6, *) n4
       write(6, *) n5
+      write(6, *) n5f
       call sub(3, 2, nums1)
       write(6, *) nums1
       call sub(1, 3, nums2)
