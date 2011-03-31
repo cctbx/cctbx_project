@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from scitbx.math import correlation
 from stdlib import math as smath
