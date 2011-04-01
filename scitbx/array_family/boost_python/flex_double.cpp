@@ -38,9 +38,13 @@ namespace {
       if (open_bracket_i == std::string::npos) {
         value = boost::lexical_cast<double>(s);
       }
+      else if (close_bracket_i == std::string::npos) {
+        throw std::runtime_error("Missing closing parenthesis: '" + s + "'");
+      }
       else {
         if (close_bracket_i != s.size()-1) {
-          throw std::runtime_error("Unexpected trailing characters after ')'");
+          throw std::runtime_error(
+            "Unexpected trailing characters after ')': '" + s + "'");
         }
         value = boost::lexical_cast<double>(s.substr(0, open_bracket_i));
         // check that value between brackets is a valid integer
