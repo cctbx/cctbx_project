@@ -4975,6 +4975,22 @@ a=1 %s
       assert not show_diff(str(e),
         "a element cannot be %s" % value)
     else: raise Exception_expected
+  #
+  master_phil = phil.parse(input_string="""\
+a = None
+  .type = floats
+b = None
+  .type = ints
+""")
+  user_phil = phil.parse(input_string="""\
+a = ([12.34, 45.67])
+b = [(3,4)]
+""")
+  work_phil = master_phil.fetch(user_phil)
+  assert not show_diff(work_phil.extract_format().as_str(), """\
+a = 12.34 45.67
+b = 3 4
+""")
 
 def exercise_definition_validate_etc():
   working_phil = phil.parse(input_string="""\
