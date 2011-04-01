@@ -245,6 +245,8 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   for cut in asu.cuts:
     l("  "+str(cut))
   l("</pre>")
+  l('<a href="http://scripts.iucr.org/cgi-bin/paper?pz5088" target="external">'
+    '[Acta Cryst. article]</a>')
   l("</td>")
   l("</tr>")
   l("</table>")
