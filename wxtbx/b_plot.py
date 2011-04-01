@@ -99,9 +99,9 @@ class analyze (object) :
       plot_range = self.plot_range
     import numpy
     plots = []
-    altconf_val = 2 #max(min([ resi.avg_b for resi in self.residues ]) - 2, 0)
     if (plot_range == "by_chain") :
       for chain, residues in zip(self.chains, self.residues) :
+        altconf_val = max(min([ resi.avg_b for resi in residues ]) - 2, 0)
         resid_start = ("%d%s" % (residues[0].resseq,residues[0].icode)).strip()
         resid_end = ("%d%s" % (residues[-1].resseq,residues[-1].icode)).strip()
         chain_vals = [] #numpy.array([])
@@ -239,8 +239,10 @@ class b_plot_panel (plots.plot_container) :
     y = numpy.array(avg_b)
     x = numpy.linspace(1, y.size, y.size)
     points = numpy.array([x, y]).T.reshape(-1,1,2)
-    yy = numpy.linspace(y.min(), y.max(), cm.jet.N)
-    norm = BoundaryNorm(yy, 256)
+    yy = numpy.nan_to_num(y)
+    yyy = yy[yy>0]
+    b_range = numpy.linspace(yyy.min(), yyy.max(), cm.jet.N)
+    norm = BoundaryNorm(b_range, 256)
     segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
     lc = LineCollection(segments, cmap=cm.jet, norm=norm)
     lc.set_array(y)
@@ -248,7 +250,7 @@ class b_plot_panel (plots.plot_container) :
     xmarks, xlabels = extract_labels(plot[4])
     a.set_xticks(xmarks)
     a.set_xticklabels(xlabels)
-    a.set_ylim(0, self._ymax)
+    a.set_ylim(self._ymin, self._ymax)
     plot_labels = ["B(iso)"]
     if (set(is_alt) != set([numpy.NaN])) :
       p.plot(x, is_alt, "d", color='m')
