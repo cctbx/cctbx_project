@@ -448,6 +448,13 @@ class set(crystal.symmetry):
     return tuple([uctbx.d_star_sq_as_d(d_star_sq)
       for d_star_sq in self.min_max_d_star_sq()])
 
+  def index_span(self):
+    return index_span(self.indices())
+
+  def min_max_indices(self):
+    span = self.index_span()
+    return (span.min(), span.max())
+
   def minimum_wavelength_based_on_d_min(self, tolerance=1e-2):
     return 2 * self.d_min() * (1-tolerance)
 
