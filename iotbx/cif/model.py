@@ -181,7 +181,11 @@ class block_base(DictMixin):
     self[tag] = value
 
   def add_loop(self, loop):
-    self.setdefault(loop.name(), loop)
+    try:
+      self.setdefault(loop.name(), loop)
+    except Sorry:
+      # create a unique loop name
+      self.setdefault('_'+str(hash(tuple(loop.keys()))), loop)
 
   def __copy__(self):
     new = self.__class__()

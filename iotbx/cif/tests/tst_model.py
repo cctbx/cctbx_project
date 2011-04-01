@@ -72,6 +72,10 @@ def exercise_cif_model():
   try: block['_loop_c']
   except KeyError: pass
   else: raise Exception_expected
+  bad_loop = model.loop(header=("_a", "_b"), data=(1,2,3,4,5,6))
+  block1.add_loop(bad_loop)
+  assert "_a" in block1
+  assert "_b" in block1
   #
   cif_model = model.cif()
   cif_model["fred"] = block
