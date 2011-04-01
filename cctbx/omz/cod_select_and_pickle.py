@@ -232,8 +232,17 @@ class cod_data(object):
       O.c_obs.d_min())
 
 def build_hkl_cif(cod_ids):
-  cod_svn = os.environ.get("COD_SVN_WORKING_COPY")
-  assert cod_svn is not None
+  envar = "COD_SVN_WORKING_COPY"
+  cod_svn = os.environ.get(envar)
+  if (cod_svn is None):
+    msg = [
+      "Environment variable %s not defined:" % envar,
+      "  Usage:",
+      "    mkdir /some/path",
+      "    cd /some/path",
+      "    svn checkout svn://www.crystallography.net/cod",
+      "    export %s=/some/path/cod" % envar]
+    raise RuntimeError("\n".join(msg))
   cif_dir = op.join(cod_svn, "cif")
   hkl_dir = op.join(cod_svn, "hkl")
   hkl_cif = []
