@@ -69,19 +69,19 @@ def exercise_valid(verbose):
     module_name="fable", path="test/valid", test=op.isdir)
   #
   read_already = set()
-  def get_units(file_name):
+  def get_fprocs(file_name):
     if (verbose):
       print "exercise_valid:", file_name
     read_already.add(file_name)
     return read.process(file_names=[op.join(t_dir, file_name)])
   #
   def get_program(file_name):
-    units = get_units(file_name)
-    assert len(units.program) == 1
-    assert len(units.subroutine) == 0
-    assert len(units.function) == 0
-    assert len(units.blockdata) == 0
-    return units.program[0]
+    fprocs = get_fprocs(file_name)
+    assert len(fprocs.program) == 1
+    assert len(fprocs.subroutine) == 0
+    assert len(fprocs.function) == 0
+    assert len(fprocs.blockdata) == 0
+    return fprocs.program[0]
   #
   prog = get_program("goto_forms.f")
   keys = [ei.key for ei in prog.executable]
@@ -95,13 +95,13 @@ continue""")
   #
   get_program("string_spanning_continuation_lines.f")
   #
-  units = get_units("sf.f")
-  assert len(units.program) == 1
-  assert len(units.subroutine) == 1
+  fprocs = get_fprocs("sf.f")
+  assert len(fprocs.program) == 1
+  assert len(fprocs.subroutine) == 1
   #
   for file_name in sorted(os.listdir(t_dir)):
     if (file_name.endswith(".f") and not file_name in read_already):
-      get_units(file_name)
+      get_fprocs(file_name)
 
 def exercise_lenient(verbose):
   t_dir = libtbx.env.under_dist(
@@ -814,14 +814,14 @@ def exercise_tokens_as_string(verbose):
     if (not file_name.endswith(".f")): continue
     if (verbose):
       print "exercise_tokens_as_string:", file_name
-    units = read.process(file_names=[op.join(t_dir, file_name)])
-    for unit in units.all_in_input_order:
-      for ei in unit.executable:
+    all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
+    for fproc in all_fprocs.all_in_input_order:
+      for ei in fproc.executable:
         if (ei.key == "write"):
           s = tokens_as_string(tokens=ei.iolist)
           if (verbose):
             print s
-      for tokens in unit.format.values():
+      for tokens in fproc.format.values():
         s = tokens_as_string(tokens=tokens)
         if (verbose):
           print s
@@ -872,26 +872,31 @@ def exercise_eval_const_expression_simple(verbose):
   file_name = "const_expressions.f"
   all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
   assert len(all_fprocs.all_in_input_order) == 2
-  unit = all_fprocs.all_in_input_order[0]
-  val = unit.eval_const_expression_simple(identifier="n5")
+  fproc = all_fprocs.all_in_input_order[0]
+  val = fproc.eval_const_expression_simple(identifier="n5")
   assert val == 296356
-  val = unit.eval_const_expression_simple(identifier="n5f")
-  assert approx_equal(val, 297845.226131)
   for identifier,expected_vals in [
         ("nums1", [3,2]),
         ("nums2", [1,3]),
         ("nums3", [4])]:
-    vals = unit.eval_dimensions_simple(
-      dim_tokens=unit.fdecl_by_identifier[identifier].dim_tokens)
+    vals = fproc.eval_dimensions_simple(
+      dim_tokens=fproc.fdecl_by_identifier[identifier].dim_tokens)
     assert vals == expected_vals
-  vals = unit.eval_dimensions_simple(
-    dim_tokens=unit.fdecl_by_identifier["nums3"].dim_tokens,
+  vals = fproc.eval_dimensions_simple(
+    dim_tokens=fproc.fdecl_by_identifier["nums3"].dim_tokens,
     allow_power=False)
   assert vals == [None]
-  unit = all_fprocs.all_in_input_order[1]
-  vals = unit.eval_dimensions_simple(
-    dim_tokens=unit.fdecl_by_identifier["nums"].dim_tokens)
+  fproc = all_fprocs.all_in_input_order[1]
+  vals = fproc.eval_dimensions_simple(
+    dim_tokens=fproc.fdecl_by_identifier["nums"].dim_tokens)
   assert vals == [None, None]
+  #
+  file_name = "const_expressions_2.f"
+  all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
+  assert len(all_fprocs.all_in_input_order) == 1
+  fproc = all_fprocs.all_in_input_order[0]
+  val = fproc.eval_const_expression_simple(identifier="n5f")
+  assert approx_equal(val, 297845.226131)
 
 def run(args):
   assert args in [[], ["--verbose"]]

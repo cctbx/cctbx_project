@@ -459,6 +459,7 @@ fable/test/valid/commonymous.f -text
 fable/test/valid/const_analysis_1.f -text
 fable/test/valid/const_analysis_2.f -text
 fable/test/valid/const_expressions.f -text
+fable/test/valid/const_expressions_2.f -text
 fable/test/valid/conv_recipe.f -text
 fable/test/valid/cycle_exit.f -text
 fable/test/valid/data_01.f -text
