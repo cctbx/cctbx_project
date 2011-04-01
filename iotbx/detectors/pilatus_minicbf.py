@@ -47,10 +47,13 @@ class PilatusImage(DetectorImageBase):
   def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
+
       # The tag _array_data.header_convention "SLS_1.0" could be with/without quotes "..."
-      pattern = re.compile(r'''_array_data.header_convention[ "]*SLS''')
-      match = pattern.findall(rawdata)
-      assert len(match)>=1
+      SLS_pattern = re.compile(r'''_array_data.header_convention[ "]*SLS''')
+      SLS_match = SLS_pattern.findall(rawdata)
+      PILATUS_pattern = re.compile(r'''_array_data.header_convention[ "]*PILATUS''')
+      PILATUS_match = PILATUS_pattern.findall(rawdata)
+      assert len(SLS_match) + len(PILATUS_match)>=1
 
       # read SLS header
       headeropen = rawdata.index("_array_data.header_contents")
