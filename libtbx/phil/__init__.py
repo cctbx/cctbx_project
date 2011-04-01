@@ -192,6 +192,15 @@ def numbers_from_words(words, path):
   all_values_string = str_from_words(words)
   if (all_values_string is None or all_values_string is Auto):
     return all_values_string
+  while True:
+    have_changes = False
+    for o,c in ["()", "[]"]:
+      while (    all_values_string.startswith(o)
+             and all_values_string.endswith(c)):
+        all_values_string = all_values_string[1:-1].strip()
+        have_changes = True
+    if (not have_changes):
+      break
   result = []
   for value_string in all_values_string \
                         .replace(",", " ") \
