@@ -888,8 +888,9 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
   a = miller.array(miller.set(xs, mi), data)
   ph = flex.double((10,20))
   b = a.phase_transfer(ph, deg=True)
-  assert approx_equal(tuple(b.amplitudes().data()), a.data())
-  assert approx_equal(tuple(b.phases(deg=True).data()), (10,0))
+  assert approx_equal(b.amplitudes().data(), a.data())
+  assert approx_equal(b.intensities().data(), flex.pow2(a.data()))
+  assert approx_equal(b.phases(deg=True).data(), (10,0))
   ph = ph * math.pi/180
   b = a.phase_transfer(ph, deg=False)
   assert approx_equal(tuple(b.amplitudes().data()), a.data())
