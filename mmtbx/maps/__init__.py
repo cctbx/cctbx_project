@@ -5,6 +5,7 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
 import os
+import sys
 from scitbx.array_family import flex
 
 map_coeff_params_str = """\
@@ -456,16 +457,20 @@ class compute_map_coefficients(object):
   def __init__(self,
                fmodel,
                params,
-               mtz_dataset = None):
+               mtz_dataset = None,
+               log=sys.stdout):
     self.mtz_dataset = mtz_dataset
     coeffs = None
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
         # XXX
-        if(fmodel.__class__.__name__ == "twin_model_manager" and
-            (mcp.map_type == "anomalous" or mcp.isotropize)):
-          continue
+        if(fmodel.__class__.__name__ == "twin_model_manager") :
+          if (mcp.map_type == "anomalous") :
+            #print >> log, "Anomalous maps not supported for twinned data."
+            continue
+          elif (mcp.isotropize) :
+            mcp.isotropize = False
         # XXX
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
         # Randy Read's map de-anisotropization
@@ -498,3 +503,5 @@ class compute_map_coefficients(object):
       mtz_object = self.mtz_dataset.mtz_object()
       mtz_object.add_history(mtz_history_buffer)
       mtz_object.write(file_name = file_name)
+      return True
+    return False
