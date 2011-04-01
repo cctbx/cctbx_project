@@ -20,12 +20,15 @@ class kick_map(object):
                      ):
     self.map_coeffs = None
     fmodel_tmp = fmodel.deep_copy()
+    isotropize_helper = fmodel.isotropize_helper()
     map_helper_obj = fmodel.map_calculation_helper()
     map_coeff_data = None
     f_obs_orig = fmodel.f_obs().deep_copy()
     counter = 0
     for kick_size in kick_sizes:
+      b_ext = None
       for kick in xrange(number_of_kicks):
+        print "kick", kick
         counter += 1
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
@@ -44,12 +47,14 @@ class kick_map(object):
         #  anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
         #    data = self.map_coeffs.data().set_selected(s, 0+0j))
         if(isotropize):
-          self.map_coeffs = mmtbx.maps.isotropizer(
-              fmodel     = fmodel_tmp,
-              map_coeffs = self.map_coeffs,
-              resharp    = resharp#,
-              #b_sharp_ext= 8.0*math.pi**2/3*(kick_size/2.)**2
-              )
+          self.map_coeffs = self.map_coeffs.array(
+            data = self.map_coeffs.data()*isotropize_helper.iso_scale)
+        if(resharp):
+          self.map_coeffs, b_ext = mmtbx.maps.isotropizer(
+            map_coeffs        = self.map_coeffs,
+            resharp           = resharp,
+            isotropize_helper = isotropize_helper,
+            b_ext             = b_ext)
         if(map_coeff_data is None):
           map_coeff_data = self.map_coeffs.data()
         else:
@@ -169,6 +174,7 @@ class electron_density_map(object):
       fo_scale *= map_name_manager.k
       fc_scale *= map_name_manager.n
     if(not map_name_manager.ml_map):
+       self.mch = self.fmodel.map_calculation_helper()
        return self._map_coeff(
          f_obs         = self.fmodel.f_obs(),
          f_model       = self.fmodel.f_model_scaled_with_k1(),

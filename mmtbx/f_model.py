@@ -614,6 +614,7 @@ class manager(manager_mixin):
     else: result = self._wilson_b
     return result
 
+
   def deep_copy(self):
     return self.select()
 
@@ -1807,6 +1808,12 @@ class manager(manager_mixin):
       def __init__(self, fmodel, free_reflections_per_bin, interpolation):
         self.f_obs = fmodel.f_obs()
         self.f_model = fmodel.f_model_scaled_with_k1()
+        b_cart = fmodel.b_cart()
+        trace = (b_cart[0]+b_cart[1]+b_cart[2])/3.
+        if(abs(trace)>20): # XXX BAD!!! fix asap by refining Biso applied to Fobs XXX
+          fb_cart = 1./fmodel.fb_cart()
+          self.f_obs = self.f_obs.array(data = self.f_obs.data()*fb_cart)
+          self.f_model = self.f_model.array(data = self.f_model.data()*fb_cart)
         self.alpha, self.beta = maxlik.alpha_beta_est_manager(
           f_obs                    = self.f_obs,
           f_calc                   = self.f_model,
@@ -1820,10 +1827,64 @@ class manager(manager_mixin):
           beta           = self.beta.data(),
           space_group    = fmodel.r_free_flags().space_group(),
           miller_indices = fmodel.r_free_flags().indices()).fom()
+        self.isotropize_helper = fmodel.isotropize_helper()
     return result(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       interpolation            = interpolation)
+
+  def isotropize_helper(self):
+    def subtract_min_eigenvalue(x):
+      from scitbx import linalg
+      import scitbx.linalg.eigensystem
+      es = linalg.eigensystem.real_symmetric(x)
+      from scitbx import matrix
+      vals = matrix.col((es.values()))
+      min_v = min(vals.elems)
+      vals = matrix.col([e-min_v for e in vals])
+      vecs = matrix.sqr((es.vectors()))
+      vecs_inv = vecs.inverse()
+      m = vecs_inv * matrix.sym(sym_mat3=vals.elems+(0,0,0)) * vecs_inv.transpose()
+      m = m.as_sym_mat3()
+      return m
+      tmp = [i for i in m.elems]
+      return flex.sym_mat3_double([tmp])[0]
+    b_cart = self.b_cart()
+    trace = (b_cart[0]+b_cart[1]+b_cart[2])/3.
+    b_cart_new = [b_cart[0]-trace,b_cart[1]-trace,b_cart[2]-trace,
+                      b_cart[3],      b_cart[4],      b_cart[5]]
+    ##
+    #print "b_cart_new", list(b_cart_new)
+    #b_cart_new = subtract_min_eigenvalue(b_cart_new)
+    #print "b_cart_new", list(b_cart_new)
+    ##
+    u_star = adptbx.u_cart_as_u_star(
+        self.f_obs().unit_cell(),adptbx.b_as_u(b_cart_new))
+    core_ = core(
+      f_calc      = self.f_calc(),
+      f_mask      = self.f_mask(),
+      shell_k_sols= [0.],
+      b_sol       = 0.,
+      f_part_base = self.f_part_base(),
+      k_part      = 0.,
+      b_part      = 0.,
+      u_star      = u_star,
+      fmodel      = None,
+      ss          = None)
+    fb = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
+      indices = self.f_obs().indices(),
+      anomalous_flag=False).array(data=core_.data.f_aniso)
+    fb = fb.average_bijvoet_mates()
+    ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
+    if(abs(trace)>20): # XXX BAD!!! fix asap by refining Biso applied to Fobs XXX
+      scale = fb.data()
+    else:
+      scale = 1./fb.data()
+    return group_args(
+      iso_scale = scale,
+      ss = ss,
+      sites_frac = self.xray_structure.sites_frac(),
+      b_isos = self.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.))
 
   def f_model_phases_as_hl_coefficients(self, map_calculation_helper):
     if(map_calculation_helper is not None):
@@ -1960,15 +2021,7 @@ class manager(manager_mixin):
       out = sys.stdout
     elif (hasattr(out, "name")):
       file_name = libtbx.path.canonical_path(file_name=out.name)
-    warning = [
-      "DO NOT USE THIS FILE AS INPUT FOR REFINEMENT!",
-      "Resolution and sigma cutoffs may have been applied to FOBS."]
-    width = max([len(line) for line in warning])
-    warning.insert(0, "*" * width)
-    warning.append(warning[0])
     if (format == "cns"):
-      for line in warning:
-        print >> out, "{ %s%s }" % (line, " "*(width-len(line)))
       print >> out, "{ %s }" % date_and_time()
       if (file_name is not None):
         print >> out, "{ file name: %s }" % os.path.basename(file_name)
@@ -2072,7 +2125,28 @@ class manager(manager_mixin):
         miller_array=alpha, column_root_label="ALPHA", column_types="W")
       mtz_dataset.add_miller_array(
         miller_array=beta, column_root_label="BETA", column_types="W")
-      mtz_history_buffer = flex.std_string(warning)
+      if(self.hl_coeffs() is not None):
+        mtz_dataset.add_miller_array(
+          miller_array=self.hl_coeffs(), column_root_label="HL")
+      hl_model = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
+        indices = self.f_obs().indices(),
+        anomalous_flag=False).array(
+          data=self.f_model_phases_as_hl_coefficients(
+            map_calculation_helper=None))
+      mtz_dataset.add_miller_array(
+        miller_array = hl_model,
+        column_root_label="HLmodel")
+      hl_comb = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
+        indices = self.f_obs().indices(),
+        anomalous_flag=False).array(
+          data=self.combined_hl_coefficients(map_calculation_helper=None))
+      mtz_dataset.add_miller_array(
+        miller_array = hl_model,
+        column_root_label="HLcomb")
+      mtz_dataset.add_miller_array(
+        miller_array = self.f_obs().d_spacings(),
+        column_root_label="RESOLUTION", column_types="R")
+      mtz_history_buffer = flex.std_string()
       ha = mtz_history_buffer.append
       ha(date_and_time())
       ha("file name: %s" % os.path.basename(file_name))
