@@ -906,6 +906,7 @@ libtbx/phil/tst_interface.py -text
 libtbx/pyplot.py svneol=native#text/x-python
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
 libtbx/queuing_system_utils/__init__.py svneol=native#text/x-python
+libtbx/queuing_system_utils/generic.py -text
 libtbx/queuing_system_utils/lsf.py -text
 libtbx/queuing_system_utils/pbs_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/sge/__init__.py svneol=native#text/x-python
