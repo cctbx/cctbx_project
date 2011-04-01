@@ -110,6 +110,7 @@ def sign0(x):
 class refinement(object):
 
   def __init__(O,
+        i_obs,
         f_obs,
         xray_structure,
         params,
@@ -117,8 +118,8 @@ class refinement(object):
         expected_n_refinable_parameters=None,
         plot_samples_id=None):
     O.params = params
+    O.i_obs = i_obs
     O.f_obs = f_obs
-    O.i_obs = f_obs.f_as_f_sq()
     O.xray_structure = xray_structure
     O.calc_weights_if_needed()
     O.reference_structure = reference_structure
@@ -771,7 +772,13 @@ class refinement(object):
        print s
        sys.stdout.flush()
 
-def run_refinement(structure_ideal, structure_shake, params, f_obs=None):
+def run_refinement(
+      structure_ideal,
+      structure_shake,
+      params,
+      i_obs=None,
+      f_obs=None):
+  assert (i_obs is None) == (f_obs is None)
   print "Ideal structure:"
   structure_ideal.show_summary().show_scatterers()
   print
@@ -787,12 +794,14 @@ def run_refinement(structure_ideal, structure_shake, params, f_obs=None):
     structure_shake.show_distances(distance_cutoff=sdt)
     print
   if (f_obs is None):
-    f_obs = structure_ideal.structure_factors(
+    i_obs = structure_ideal.structure_factors(
       anomalous_flag=False,
       d_min=1,
       algorithm="direct",
-      cos_sin_table=False).f_calc().amplitudes()
+      cos_sin_table=False).f_calc().intensities()
+    f_obs = i_obs.array(data=flex.sqrt(i_obs.data()))
   return refinement(
+    i_obs=i_obs,
     f_obs=f_obs,
     xray_structure=structure_shake,
     params=params,

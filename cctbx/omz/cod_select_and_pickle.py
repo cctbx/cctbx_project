@@ -3,12 +3,31 @@ import traceback
 import sys, os
 op = os.path
 
-def report_fraction_of_negative_observations(id_code, obs):
-  n_neg = (obs.data() < 0).count(True)
-  n_all = obs.data().size()
+def report_fraction_of_negative_observations_if_any(id_code, obs):
+  d = obs.data()
+  n_neg = (d < 0).count(True)
+  n_all = d.size()
   if (n_neg != 0 and n_all != 0):
+    print obs.info()
     print "fraction_of_negative_obs: %.6g (%d of %d)" % (
       n_neg / n_all, n_neg, n_all)
+    neg = d.select(d < 0)
+    pos = d.select(d >= 0)
+    from cctbx.array_family import flex
+    def hist(data):
+      from cStringIO import StringIO
+      sio = StringIO()
+      flex.histogram(data=data, n_slots=10) \
+        .show(f=sio, prefix="  ", format_cutoffs="%8.2f")
+      return sio.getvalue().splitlines()
+    lines_neg = hist(-neg)
+    lines_pos = hist(pos)
+    pair_fmt = "%-35s | %s"
+    print pair_fmt % (
+      "Histogram of negative observations:",
+        "positive observations:")
+    for pair in zip(lines_neg, lines_pos):
+      print pair_fmt % pair
 
 class cod_data(object):
 
@@ -42,21 +61,23 @@ class cod_data(object):
     for ma in miller_arrays:
       s = str(ma.info())
       if (s.find("_meas") >= 0):
-        if (ma.is_xray_amplitude_array()):
-          meas_a.append(ma)
-        elif (ma.is_xray_intensity_array()):
-          report_fraction_of_negative_observations(cod_id, ma)
+        if (ma.is_xray_intensity_array()):
           meas_i.append(ma)
-    if (len(meas_a) != 0):
-      O.f_obs = meas_a[0]
-    elif (len(meas_i) != 0):
-      O.f_obs = meas_i[0].f_sq_as_f()
+        elif (ma.is_xray_amplitude_array()):
+          meas_a.append(ma)
+        else:
+          continue
+        report_fraction_of_negative_observations_if_any(cod_id, ma)
+    if (len(meas_i) != 0):
+      O.c_obs = meas_i[0]
+    elif (len(meas_a) != 0):
+      O.c_obs = meas_a[0]
     else:
-      raise RuntimeError("Missing f_obs array.")
-    O.f_obs = O.f_obs.customized_copy(
+      raise RuntimeError("Missing diffraction data.")
+    O.c_obs = O.c_obs.customized_copy(
       crystal_symmetry=combined_cs)
     print "."*79
-    O.f_obs.show_comprehensive_summary()
+    O.c_obs.show_comprehensive_summary()
     print "."*79
     #
     O.xray_structure = cctbx.xray.structure.from_cif(file_path=model_file)
@@ -101,33 +122,40 @@ class cod_data(object):
     return False
 
   def have_sys_absent(O):
-    return (O.f_obs.sys_absent_flags().data().count(True) != 0)
+    return (O.c_obs.sys_absent_flags().data().count(True) != 0)
 
   def have_redundant_data(O):
-    return not O.f_obs.is_unique_set_under_symmetry()
+    return not O.c_obs.is_unique_set_under_symmetry()
 
   def have_bad_sigmas(O):
-    if (O.f_obs.sigmas() is None):
+    if (O.c_obs.sigmas() is None):
       print "Missing sigmas:", O.cod_id
       return True
-    sel = (O.f_obs.data() == 0) & (O.f_obs.sigmas() == 0)
-    result = not O.f_obs.select(~sel).sigmas().all_gt(0)
+    sel = (O.c_obs.data() == 0) & (O.c_obs.sigmas() == 0)
+    result = not O.c_obs.select(~sel).sigmas().all_gt(0)
     if (result):
       print "Zero or negative sigmas:", O.cod_id
     return result
 
   def f_obs_and_f_calc_agree_well(O, co):
-    if (O.f_obs.indices().size() == 0): return False
+    if (O.c_obs.indices().size() == 0): return False
     from cctbx.array_family import flex
-    f_calc = O.f_obs.structure_factors_from_scatterers(
+    f_obs = O.c_obs.as_amplitude_array(algorithm="xtal_3_7")
+    f_calc = f_obs.structure_factors_from_scatterers(
       xray_structure=O.xray_structure).f_calc().amplitudes()
-    fan_sel = O.f_obs.f_obs_f_calc_fan_outlier_selection(
+    fan_sel = f_obs.f_obs_f_calc_fan_outlier_selection(
       f_calc=f_calc,
       offset_low=co.fan_offset_low,
       offset_high=co.fan_offset_high,
       also_return_x_and_y=True)
     if (fan_sel is None):
       return False
+    if (co.i_obs_i_calc_plot and f_obs.indices().size() != 0):
+      from libtbx import pyplot
+      xs = O.c_obs.as_intensity_array(algorithm="simple").data()
+      ys = flex.pow2(f_calc.data())
+      pyplot.plot(xs.as_numpy_array(), ys.as_numpy_array(), "ro")
+      pyplot.show()
     fan_sel, x, y = fan_sel
     if (co.f_obs_f_calc_plot):
       from libtbx import pyplot
@@ -148,7 +176,7 @@ class cod_data(object):
       pyplot.plot_pairs([(0,0), (1,1)], "k--")
       pyplot.show()
     fan_outlier_fraction = fan_sel.count(True) / fan_sel.size()
-    lc = flex.linear_correlation(O.f_obs.data(), f_calc.data())
+    lc = flex.linear_correlation(f_obs.data(), f_calc.data())
     assert lc.is_well_defined()
     cc = lc.coefficient()
     print "f_obs_f_calc cc, fan: %.3f %.3f %s" % (
@@ -199,9 +227,9 @@ class cod_data(object):
   def quick_info(O):
     return (
       O.non_hydrogen_selection.size(),
-      O.f_obs.space_group().order_p(),
-      O.f_obs.indices().size(),
-      O.f_obs.d_min())
+      O.c_obs.space_group().order_p(),
+      O.c_obs.indices().size(),
+      O.c_obs.d_min())
 
 def build_hkl_cif(cod_ids):
   cod_svn = os.environ.get("COD_SVN_WORKING_COPY")
@@ -264,6 +292,9 @@ def run(args):
       type="float",
       default=0.5,
       metavar="FLOAT")
+    .option(None, "--i_obs_i_calc_plot",
+      action="store_true",
+      default=False)
     .option(None, "--f_obs_f_calc_plot",
       action="store_true",
       default=False)
@@ -286,6 +317,10 @@ def run(args):
     .option(None, "--at_least_one_special_position",
       action="store_true",
       default=False)
+    .option(None, "--pickle_dir",
+      type="str",
+      default="cod_ma_xs",
+      metavar="PATH")
   ).process(args=args)
   if (command_line.run_multiprocessing_chunks_if_applicable(
         command_call=command_call)):
@@ -295,7 +330,7 @@ def run(args):
   #
   hkl_cif = build_hkl_cif(cod_ids=command_line.args)
   #
-  pickle_dir = "cod_ma_xs"
+  pickle_dir = co.pickle_dir
   if (co.at_least_one_special_position):
     pickle_dir += "_special"
   if (not op.isdir(pickle_dir)):
@@ -321,7 +356,7 @@ def run(args):
       if (cd.is_useful(co)):
         easy_pickle.dump(
           file_name="%s/%s.pickle" % (pickle_dir, cod_id),
-          obj=(cd.f_obs, cd.xray_structure, cd.edge_list))
+          obj=(cd.c_obs, cd.xray_structure, cd.edge_list))
         print >> open("%s/qi_%s" % (pickle_dir, cod_id), "w"), \
           cd.quick_info()
       else:

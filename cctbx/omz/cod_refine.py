@@ -114,13 +114,13 @@ def show_cc_r1(
   cc = corr.coefficient()
   r1 = f_obs.r1_factor(
     other=fc_abs, scale_factor=scale_factor, assume_index_matching=True)
-  print "%-12s cc, r1: %.3f %.3f" % (label, cc, r1)
+  print "%-12s cc, r1: %.4f %.4f" % (label, cc, r1)
   sys.stdout.flush()
   return fc_abs, cc, r1
 
-def run_smtbx_ls(mode, cod_id, f_obs, xray_structure, params):
+def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
   import smtbx.refinement
-  fo_sq = f_obs.f_as_f_sq(algorithm="shelxl")
+  fo_sq = i_obs
   assert fo_sq.sigmas() is not None
   sel = (fo_sq.data() == 0) & (fo_sq.sigmas() == 0)
   fo_sq = fo_sq.select(~sel)
@@ -180,6 +180,7 @@ def remove_tmp_files(file_names):
 def run_shelxl(
       mode,
       cod_id,
+      i_obs,
       f_obs,
       xray_structure,
       params,
@@ -212,7 +213,7 @@ def run_shelxl(
     os.chdir(wdir)
     tmp_file_names = ["tmp.ins", "tmp.hkl", "tmp.res", "tmp.lst"]
     remove_tmp_files(tmp_file_names)
-    fo_sq = f_obs.f_as_f_sq(algorithm="shelxl")
+    fo_sq = i_obs
     if (params.shelxl_reset_sigmas):
       fo_sq = fo_sq.customized_copy(
         sigmas=flex.double(fo_sq.indices().size(), params.shelxl_reset_sigmas))
@@ -437,7 +438,7 @@ def run_shelx76(
         r_from_lst = float(flds[2])
     assert r_from_lst is not None
     if (r_from_lst != "nan"):
-      print "%-12s cc, r1: None %.3f" % ("shelx76", r_from_lst)
+      print "%-12s cc, r1: None %.4f" % ("shelx76", r_from_lst)
       if (not params.keep_tmp_files):
         remove_tmp_files(tmp_file_names)
         remove_wdir = wdir_is_new
@@ -450,9 +451,8 @@ def run_shelx76(
 def process(params, pickle_file_name):
   cod_id = op.basename(pickle_file_name).split(".",1)[0]
   print "cod_id:", cod_id
-  f_obs_from_pickle, structure_prep, edge_list = easy_pickle.load(
+  c_obs, structure_prep, edge_list = easy_pickle.load(
     file_name=pickle_file_name)
-  f_obs = f_obs_from_pickle
   changes = structure_prep.make_scatterer_labels_shelx_compatible_in_place()
   if (params.sites_mod_short):
     structure_prep = structure_prep.sites_mod_short()
@@ -474,6 +474,13 @@ def process(params, pickle_file_name):
   if (len(params.optimizers) == 0):
     return
   #
+  assert c_obs.is_xray_intensity_array() or c_obs.is_xray_amplitude_array()
+  if (c_obs.is_xray_intensity_array()):
+    i_obs = c_obs
+    f_obs = c_obs.f_sq_as_f(algorithm="xtal_3_7")
+  else:
+    f_obs = c_obs
+    i_obs = c_obs.f_as_f_sq(algorithm="shelxl")
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_prep,
     algorithm="direct",
@@ -485,33 +492,51 @@ def process(params, pickle_file_name):
     action = params.f_obs_f_calc_fan_outliers
     print "INFO: f_obs_f_calc_fan_outliers = %s: %d" % (action, n_outliers)
     if (action == "remove"):
+      i_obs = i_obs.select(~sel)
       f_obs = f_obs.select(~sel)
   if (f_obs.anomalous_flag()):
-    print "INFO: converting anomalous f_obs to non-anomalous."
+    print "INFO: converting anomalous i+f_obs to non-anomalous."
+    i_obs = i_obs.average_bijvoet_mates()
     f_obs = f_obs.average_bijvoet_mates()
-  sel = (f_obs.data() == 0) & (f_obs.sigmas() == 0)
-  n_zero_f_and_s = sel.count(True)
-  if (n_zero_f_and_s != 0):
-    print "INFO: removing reflections with f_obs=0 and sigma=0:", \
-      n_zero_f_and_s
+  sel = ((i_obs.data() == 0) & (i_obs.sigmas() == 0)) \
+      | ((f_obs.data() == 0) & (f_obs.sigmas() == 0))
+  n_zero_d_and_s = sel.count(True)
+  if (n_zero_d_and_s != 0):
+    print "INFO: removing reflections with i+f_obs=0 and sigma=0:", \
+      n_zero_d_and_s
+    i_obs = i_obs.select(~sel)
     f_obs = f_obs.select(~sel)
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_prep,
     algorithm="direct",
     cos_sin_table=False).f_calc()
   if (params.use_f_calc_as_f_obs):
-    print "INFO: using f_calc as f_obs"
+    print "INFO: using f_calc as i+f_obs"
+    i_obs = f_calc.intensities().customized_copy(
+      sigmas=flex.double(f_calc.indices().size(), 0.01))
     f_obs = f_calc.amplitudes().customized_copy(
-      sigmas=flex.double(f_calc.indices().size(), 1))
-  k = f_obs.scale_factor(f_calc=f_calc)
-  assert k != 0
-  s = 1/k
-  print "INFO: scaling f_obs to f_calc by multiplying f_obs with: %.6g" % s
+      sigmas=flex.double(f_calc.indices().size(), 0.01))
+  else:
     # scaling applied so that the data written in shelx hklf format
     # have sufficient significant digits, and FVAR is 1 (shelx76 seems
     # to be especially sensitive to FVAR >> 1)
-  f_obs = f_obs.customized_copy(data=f_obs.data()*s, sigmas=f_obs.sigmas()*s)
-  f_obs.show_comprehensive_summary()
+    k = f_obs.scale_factor(f_calc=f_calc)
+    assert k != 0
+    s = 1/k**2
+    print "INFO: scaling i_obs to f_calc by multiplying i_obs with: %.6g" % s
+    i_obs = i_obs.apply_scaling(factor=s)
+    s = 1/k
+    print "INFO: scaling f_obs to f_calc by multiplying f_obs with: %.6g" % s
+    f_obs = f_obs.apply_scaling(factor=s)
+  def show(obs):
+    obs.show_comprehensive_summary()
+    from cod_select_and_pickle import \
+      report_fraction_of_negative_observations_if_any as _
+    _(cod_id, obs)
+  if (c_obs.is_xray_intensity_array()):
+    show(i_obs)
+  else:
+    show(f_obs)
   print "."*79
   #
   structure_work = structure_prep.deep_copy_scatterers()
@@ -584,6 +609,7 @@ def process(params, pickle_file_name):
   else:
     structure_dev = structure_work.deep_copy_scatterers()
     omz.dev.refinement(
+      i_obs=i_obs,
       f_obs=f_obs,
       xray_structure=structure_dev,
       params=params,
@@ -599,12 +625,12 @@ def process(params, pickle_file_name):
     if (params.pickle_refined_dir is not None):
       easy_pickle.dump(
         file_name=op.join(params.pickle_refined_dir, cod_id+".pickle"),
-        obj=(f_obs_from_pickle, structure_dev, None))
+        obj=(c_obs, structure_dev, None))
       print >> open("%s/qi_%s" % (params.pickle_refined_dir, cod_id), "w"), (
         structure_dev.scatterers().size(),
-        f_obs_from_pickle.space_group().order_p(),
-        f_obs_from_pickle.indices().size(),
-        f_obs_from_pickle.d_min())
+        c_obs.space_group().order_p(),
+        c_obs.indices().size(),
+        c_obs.d_min())
   #
   def use_smtbx_ls(mode):
     if ("ls_"+mode not in params.optimizers):
@@ -613,6 +639,7 @@ def process(params, pickle_file_name):
     run_smtbx_ls(
       mode=mode,
       cod_id=cod_id,
+      i_obs=i_obs,
       f_obs=f_obs,
       xray_structure=result,
       params=params)
@@ -628,6 +655,7 @@ def process(params, pickle_file_name):
     run_shelxl(
       mode=mode,
       cod_id=cod_id,
+      i_obs=i_obs,
       f_obs=f_obs,
       xray_structure=result,
       params=params,

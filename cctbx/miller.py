@@ -1534,22 +1534,22 @@ class array(set):
       result.set_observation_type_xray_intensity()
     return result
 
-  def as_amplitude_array(self):
+  def as_amplitude_array(self, algorithm="xtal_3_7"):
     if (self.is_complex_array()):
       return array(
         miller_set=self, data=flex.abs(self.data()), sigmas=self.sigmas()) \
           .set_observation_type_xray_amplitude()
     assert self.is_real_array()
     if (self.is_xray_intensity_array()):
-      return self.f_sq_as_f()
+      return self.f_sq_as_f(algorithm=algorithm)
     return self
 
-  def as_intensity_array(self):
+  def as_intensity_array(self, algorithm="simple"):
     if (self.is_complex_array()):
-      return self.as_amplitude_array().f_as_f_sq()
+      return self.as_amplitude_array().f_as_f_sq(algorithm=algorithm)
     assert self.is_real_array()
     if (not self.is_xray_intensity_array()):
-      return self.f_as_f_sq()
+      return self.f_as_f_sq(algorithm=algorithm)
     return self
 
   def map_to_asu(self, deg=None):
@@ -1841,6 +1841,7 @@ phases are determined on the fly using the given step size.
       data = self.data()
     else:
       data = flex.abs(self.data())
+    assert self.space_group() is not None
     if (isinstance(phase_source, flex.complex_double)):
       return array(
         miller_set=self,
@@ -2319,12 +2320,9 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       factor = target_max / current_max
     d = self.data() * factor
     if (self.sigmas() is not None): s = self.sigmas() * factor
-    return (array(
-      miller_set = set.deep_copy(self),
-      data=d,
-      sigmas=s)
-      .set_info(self.info())
-      .set_observation_type(self))
+    return self.customized_copy(data=d, sigmas=s) \
+      .set_info(self.info()) \
+      .set_observation_type(self)
 
   def mean(self,
         use_binning=False,
@@ -2530,6 +2528,11 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert isinstance(self.data(), flex.complex_double)
     assert self.sigmas() is None
     return abs(self)
+
+  def intensities(self):
+    assert isinstance(self.data(), flex.complex_double)
+    assert self.sigmas() is None
+    return self.norm()
 
   def phases(self, deg=False):
     assert isinstance(self.data(), flex.complex_double)
