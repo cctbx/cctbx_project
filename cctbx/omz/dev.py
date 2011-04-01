@@ -171,7 +171,7 @@ class refinement(object):
     xs = O.xray_structure
     site_inp = xs.scatterers()[i_sc].site
     ys = []
-    xy = []
+    xyv = []
     x_inp = O.x[ix]
     try:
       if (x_type == "u"):
@@ -183,7 +183,7 @@ class refinement(object):
           ls = O.__get_tg()
           y = ls.target_work()
           ys.append(y)
-          xy.append((u,y))
+          xyv.append((u,y,O.x[ix]))
       else:
         assert p.x_radius > 0
         assert p.x_steps > 0
@@ -200,7 +200,7 @@ class refinement(object):
           ys.append(y)
           dist = xs.unit_cell().distance(xs.scatterers()[i_sc].site, site_inp)
           if (i_step < 0): dist *= -1
-          xy.append((dist,y))
+          xyv.append((dist,y,O.x[ix]))
     finally:
       O.x[ix] = x_inp
       O.__unpack_variables()
@@ -218,26 +218,26 @@ class refinement(object):
         x_type)
     info_str = build_info_str()
     base_name_plot_files = "%s_%03d_%s" % (p.file_prefix, ix, stage)
-    def write_xy():
+    def write_xyv():
       if (p.file_prefix is None): return
       f = open(base_name_plot_files+".xy", "w")
       print >> f, "# %s" % info_str
       print >> f, "# %s" % str(xs.unit_cell())
       print >> f, "# %s" % str(xs.space_group_info().symbol_and_number())
-      for x,y in xy:
-        print >> f, x, y
-    write_xy()
+      for x,y,v in xyv:
+        print >> f, x, y, v
+    write_xyv()
     from libtbx import pyplot
     fig = pyplot.figure()
     ax = fig.add_subplot(1, 1, 1)
-    x,y = zip(*xy)
+    x,y,v = zip(*xyv)
     ax.plot(x,y, "r-")
     ax.plot([x_inp, x_inp], [min(ys), max(ys)], "k--")
     if (O.x_reference is not None):
       x = O.x_reference[ix]
       ax.plot([x, x], [min(ys), max(ys)], "r--")
     ax.set_title(info_str, fontsize=12)
-    ax.axis([xy[0][0], xy[-1][0], None, None])
+    ax.axis([xyv[0][0], xyv[-1][0], None, None])
     def write_pdf():
       if (p.file_prefix is None): return
       fig.savefig(base_name_plot_files+".pdf", bbox_inches="tight")
@@ -862,9 +862,9 @@ def get_master_phil(
         .type = float
       x_steps = 100
         .type = int
-      u_min = 0
+      u_min = -0.05
         .type = float
-      u_max = 0.5
+      u_max = 0.45
         .type = float
       u_steps = 100
         .type = int
