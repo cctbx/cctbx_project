@@ -70,6 +70,7 @@ def exercise_set():
   mp = ms.patterson_symmetry()
   assert str(mp.space_group_info()) == "P m m m"
   assert mp.indices() == ms.indices()
+  assert mp.min_max_indices() == ((0, 0, 3), (1, 2, 4))
   mc = ms.complete_set()
   c = mc.completeness()
   assert c >= 1-1.e5
