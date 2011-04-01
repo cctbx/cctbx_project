@@ -304,7 +304,7 @@ class miller_array_builder(crystal_symmetry_builder):
         array = miller.array(
           miller.set(self.crystal_symmetry, indices).auto_anomalous(),
           data, sigmas)
-        if obs_type is not xray.intensity():
+        if obs_type is not xray.intensity() and array.space_group() is not None:
           if array_type == 'calc' and phase_calc is not None:
             array = array.phase_transfer(
               flex.double(flex.std_string(phase_calc)), deg=True)
