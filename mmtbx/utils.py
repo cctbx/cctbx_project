@@ -1494,12 +1494,14 @@ def fmodel_simple(f_obs,
                   twin_switch_tolerance    = 2.0,
                   outliers_rejection       = True,
                   bulk_solvent_correction  = True,
+                  apply_back_trace_of_b_cart = True,
                   anisotropic_scaling      = True,
                   log                      = None):
   if(bss_params is None):
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
+  bss_params.apply_back_trace_of_b_cart = apply_back_trace_of_b_cart
   def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),

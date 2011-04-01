@@ -183,6 +183,8 @@ maps {
   }
   bulk_solvent_correction = True
     .type = bool
+  apply_back_trace_of_b_cart = False
+    .type = bool
   anisotropic_scaling = True
     .type = bool
   skip_twin_detection = False
@@ -357,6 +359,18 @@ def map_coefficients_from_fmodel(fmodel, params):
       map_type           = params.map_type,
       acentrics_scale    = params.acentrics_scale,
       centrics_pre_scale = params.centrics_pre_scale)
+    if(coeffs is not None and coeffs.anomalous_flag() and not
+       mmtbx.map_names(params.map_type).anomalous):
+      coeffs = coeffs.average_bijvoet_mates()
+    if(params.isotropize and e_map_obj.mch is not None):
+      isotropize_helper = e_map_obj.mch.isotropize_helper
+      coeffs = coeffs.array(data = coeffs.data()*isotropize_helper.iso_scale)
+    if(params.resharp_after_isotropize and e_map_obj.mch is not None):
+      isotropize_helper = e_map_obj.mch.isotropize_helper
+      coeffs, b_sharp = isotropizer(
+        isotropize_helper = isotropize_helper,
+        map_coeffs        = coeffs,
+        resharp           = params.resharp_after_isotropize)
   else:
     if fmodel.__class__.__name__ == "twin_model_manager" :
       raise Sorry("Kicked maps are not supported when twinning is present.  "+
@@ -408,49 +422,49 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
       output_files.append(mp.file_name)
   return output_files
 
-def subtract_min_eigenvalue(x):
-  from scitbx import linalg
-  import scitbx.linalg.eigensystem
-  es = linalg.eigensystem.real_symmetric(x)
-  from scitbx import matrix
-  vals = matrix.col((es.values()))
-  min_v = min(vals.elems)
-  vals = matrix.col([e-min_v for e in vals])
-  vecs = matrix.sqr((es.vectors()))
-  vecs_inv = vecs.inverse()
-  m = vecs_inv * matrix.sym(sym_mat3=vals.elems+(0,0,0)) * vecs_inv.transpose()
-  m = m.as_sym_mat3()
-  return m
-  tmp = [i for i in m.elems]
-  return flex.sym_mat3_double([tmp])[0]
+def sharp_evaluation_target(sites_frac, b_isos, map_coeffs, resolution_factor = 0.25):
+  fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  target = 0
+  for site_frac, b_iso in zip(sites_frac, b_isos):
+    target += map_data.eight_point_interpolation(site_frac)
+  t_mean = target/sites_frac.size()
+  target = 0
+  for site_frac, b_iso in zip(sites_frac, b_isos):
+    t_ = map_data.eight_point_interpolation(site_frac)
+    if(t_ < t_mean): target += t_
+  return target/sites_frac.size()
 
-def isotropizer(fmodel, map_coeffs, resharp, b_sharp_ext=None):
+def isotropizer(isotropize_helper, map_coeffs, resharp, b_ext=None):
   from cctbx import miller
-  fb = miller.set(crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
-    indices = fmodel.f_obs().indices(),
-    anomalous_flag=False).array(data=fmodel.fb_cart())
-  fb = fb.average_bijvoet_mates()
-  sc2=1
   if(resharp):
-    ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
-    from scitbx import linalg
-    import scitbx.linalg.eigensystem
-    es = linalg.eigensystem.real_symmetric(fmodel.b_cart())
-    from scitbx import matrix
-    vals = matrix.col((es.values()))
-    b_sharp = min(vals.elems)
-    if(b_sharp_ext is not None):
-      assert b_sharp_ext >= 0
-      b_sharp -= b_sharp_ext
-    print "b_sharp", b_sharp
-    print list(fmodel.b_cart())
-    if(b_sharp < 0):
-      sc2 = flex.exp(-b_sharp*ss)
-  sc1 = 1./fb.data()
-  if(map_coeffs.data().size() == fb.data().size()):
-    map_coeffs = map_coeffs.array(data = map_coeffs.data()*sc1*sc2)
-  map_coeffs.indices().all_eq(fb.indices())
-  return map_coeffs
+    if(b_ext is None):
+      t=-1
+      map_coeffs_best = None
+      b_sharp_best = None
+      for b_sharp in range(-300,200,10):
+        map_coeffs_ = map_coeffs.deep_copy()
+        sc2 = flex.exp(b_sharp*isotropize_helper.ss)
+        map_coeffs_ = map_coeffs_.array(data = map_coeffs_.data()*sc2)
+        t_=sharp_evaluation_target(
+          sites_frac = isotropize_helper.sites_frac,
+          b_isos = isotropize_helper.b_isos,
+          map_coeffs = map_coeffs_)
+        if(t_>t):
+          t=t_
+          b_sharp_best = b_sharp
+          map_coeffs_best = map_coeffs_.deep_copy()
+      print "b_sharp:", b_sharp_best, t
+    else:
+      b_sharp_best = b_ext
+      sc2 = flex.exp(b_ext*isotropize_helper.ss)
+      map_coeffs_best = map_coeffs.array(data = map_coeffs.data()*sc2)
+      print "b_sharp:", b_ext
+  else:
+    map_coeffs_best = map_coeffs
+    b_sharp_best = None
+  return map_coeffs_best, b_sharp_best
 
 class compute_map_coefficients(object):
 
@@ -467,19 +481,11 @@ class compute_map_coefficients(object):
         # XXX
         if(fmodel.__class__.__name__ == "twin_model_manager") :
           if (mcp.map_type == "anomalous") :
-            #print >> log, "Anomalous maps not supported for twinned data."
             continue
           elif (mcp.isotropize) :
             mcp.isotropize = False
         # XXX
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
-        # Randy Read's map de-anisotropization
-        if(mcp.map_type != "anomalous" and mcp.isotropize and not mcp.kicked):
-          coeffs = isotropizer(
-            fmodel     = fmodel,
-            map_coeffs = coeffs,
-            resharp    = mcp.resharp_after_isotropize)
-        ####
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):

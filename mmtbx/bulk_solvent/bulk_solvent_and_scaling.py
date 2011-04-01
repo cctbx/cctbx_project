@@ -509,3 +509,85 @@ class bulk_solvent_and_scales(object):
 def kb_range(x_max, x_min, step):
   sc = 1000.
   return [i/sc for i in range(int(x_min*sc), int(x_max*sc)+1, int(step*sc))]
+
+class u_star_minimizer(object):
+  def __init__(self,
+               fmodel_core_data,
+               f_obs,
+               u_initial=[0,0,0,0,0,0],
+               refine_u=True,
+               min_iterations=500,
+               max_iterations=500,
+               symmetry_constraints_on_b_cart = True,
+               u_min_max = 500.,
+               u_min_min =-500.):
+    adopt_init_args(self, locals())
+    self.u_min = self.u_initial
+    self.u_factor = self.fmodel_core_data.uc.volume()**(2/3.)
+    if(self.symmetry_constraints_on_b_cart):
+      self.adp_constraints = self.f_obs.space_group().adp_constraints()
+      u_star = self.f_obs.space_group().average_u_star(u_star = self.u_initial)
+      self.dim_u = self.adp_constraints.n_independent_params()
+      assert self.dim_u <= 6
+      independent_params = self.adp_constraints.independent_params(u_star)
+      self.x = self.pack(
+        u=independent_params,
+        u_factor=self.u_factor)
+    else:
+      self.dim_u = len(self.u_initial)
+      assert self.dim_u == 6
+      self.x = self.pack(
+        u=flex.double(self.u_min),
+        u_factor=self.u_factor)
+    lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound = True,
+      ignore_line_search_failed_step_at_upper_bound = True,
+      ignore_line_search_failed_maxfev              = True)
+    self.minimizer = lbfgs.run(
+      target_evaluator = self,
+      core_params = lbfgs.core_parameters(),
+      termination_params = lbfgs.termination_parameters(
+        min_iterations            = min_iterations,
+        max_iterations            = max_iterations),
+        exception_handling_params = lbfgs_exception_handling_params)
+    self.compute_functional_and_gradients()
+    del self.x
+
+  def pack(self, u, u_factor):
+    v = []
+    if (self.refine_u): v += [ui*u_factor for ui in u]
+    return flex.double(v)
+
+  def unpack_x(self):
+    i = 0
+    if(self.refine_u):
+      if(self.symmetry_constraints_on_b_cart):
+        self.u_min = list(self.adp_constraints.all_params(
+          iter(self.x[i:self.dim_u]/self.u_factor)))
+      else:
+        self.u_min = list(iter(self.x[i:self.dim_u]/self.u_factor))
+      i = self.dim_u
+
+  def compute_functional_and_gradients(self):
+    self.unpack_x()
+    self.u_min = tuple([max(self.u_min_min, min(self.u_min_max, v))
+      for v in self.u_min])
+    self.fmodel_core_data.update(k_sol = 0, b_sol = 0, u_star = self.u_min)
+    tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+      fm                  = self.fmodel_core_data.data,
+      fo                  = self.f_obs.data(),
+      compute_k_sol_grad  = False,
+      compute_b_sol_grad  = False,
+      compute_u_star_grad = self.refine_u)
+    self.f = tg.target()
+    gu=[0,0,0,0,0,0]
+    if(self.refine_u): gu = list(tg.grad_u_star())
+    if(self.symmetry_constraints_on_b_cart and self.refine_u):
+      independent_params = flex.double(
+        self.adp_constraints.independent_gradients(all_gradients=gu))
+      self.g = self.pack(
+        u=independent_params,
+        u_factor=1/self.u_factor)
+    else:
+      self.g = self.pack(u=gu, u_factor=1/self.u_factor)
+    return self.f, self.g
