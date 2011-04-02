@@ -7,6 +7,7 @@ from libtbx.test_utils import approx_equal
 from libtbx import easy_run
 from libtbx import easy_pickle
 from libtbx.utils import date_and_time, user_plus_sys_time
+import libtbx.load_env
 from libtbx import Auto
 from cStringIO import StringIO
 import traceback
@@ -634,6 +635,9 @@ def process(params, pickle_file_name):
   #
   def use_smtbx_ls(mode):
     if ("ls_"+mode not in params.optimizers):
+      return None
+    if (not libtbx.env.has_module(name="smtbx")):
+      print "INFO: smtbx not available: refinement skipped."
       return None
     result = structure_work.deep_copy_scatterers()
     run_smtbx_ls(
