@@ -24,6 +24,7 @@ default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_boost_threads = False
 default_enable_openmp_if_possible = False
+default_opt_resources = False
 
 def is_64bit_architecture():
   return (platform.architecture()[0] == "64bit")
@@ -653,6 +654,7 @@ class environment:
         compiler=command_line.options.compiler,
         mode=command_line.options.build,
         warning_level=command_line.options.warning_level,
+        precompile_headers=command_line.options.precompile_headers,
         static_libraries=command_line.options.static_libraries,
         static_exe=command_line.options.static_exe,
         scan_boost=command_line.options.scan_boost,
@@ -664,7 +666,7 @@ class environment:
         enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
-        precompile_headers=command_line.options.precompile_headers,
+        opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag)
@@ -769,6 +771,43 @@ class environment:
       return self._dispatcher_include_at_start
     return self._dispatcher_include_before_command
 
+  def opt_resources_ld_preload(self):
+    if (self.build_options.compiler in ["icc", "icpc"]):
+      raise RuntimeError(
+        "--opt-resources not supported in combination with --compiler=icc")
+    def get_libs_dir():
+      if (sys.platform == "linux2"):
+        libs = ["libimf.so", "libirc.so"]
+        if (is_64bit_architecture()):
+          return "linux64", libs
+        return "linux32", libs
+      if (sys.platform == "darwin"):
+        libs = ["libimf.dylib", "libirc.dylib"]
+        if (is_64bit_architecture()):
+          return "darwin64", libs
+        if (    platform.mac_ver()[0].startswith("10.6")
+            and platform.machine() != "Power Macintosh"):
+          return None, None # some extensions hang
+        return "darwin32", libs
+      return None, None
+    libs_dir, libs = get_libs_dir()
+    if (libs_dir is None):
+      return None
+    d = self.find_in_repositories(
+      relative_path=op.join("opt_resources", libs_dir),
+      optional=False)
+    result = []
+    for l in libs:
+      p = op.join(d, l)
+      if (not op.isfile(p)):
+        raise RuntimeError(
+          "Missing file: %s" % show_string(p))
+      if (p.find(":") >= 0):
+        raise RuntimeError(
+          "File name with embedded colon not supported: %s" % show_string(p))
+      result.append(p)
+    return ":".join(result)
+
   def write_bin_sh_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
     f = open(target_file, "w")
@@ -864,6 +903,13 @@ class environment:
                     pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
+    if (self.build_options.opt_resources):
+      ldpl = self.opt_resources_ld_preload()
+      if (ldpl is not None):
+        print >> f, 'if [ "${LIBTBX_NO_LD_PRELOAD-UNSET}" == UNSET ]; then'
+        print >> f, '  LD_PRELOAD="%s"' % ldpl
+        print >> f, '  export LD_PRELOAD'
+        print >> f, 'fi'
     if (source_file is not None):
       start_python = False
       cmd = ""
@@ -1643,6 +1689,7 @@ class build_options:
         boost_python_bool_int_strict=True,
         enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
+        opt_resources=default_opt_resources,
         precompile_headers=False,
         use_environment_flags=False,
         force_32bit=False,
@@ -1696,6 +1743,7 @@ class build_options:
       self.boost_python_bool_int_strict
     print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
+    print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
@@ -1865,6 +1913,13 @@ class pre_process_args:
       help="use OpenMP if available and known to work (default: %s)"
         % bool_literal(default_enable_openmp_if_possible),
       metavar="True|False")
+    parser.option(None, "--opt_resources",
+      action="store",
+      type="bool",
+      default=default_opt_resources,
+      help="use opt_resources if available (default: %s)"
+        % bool_literal(default_opt_resources),
+      metavar="True|False")
     parser.option(None, "--precompile_headers",
       action="store_true",
       default=False,
@@ -1995,9 +2050,12 @@ def unpickle():
   # XXX backward compatibility 2009-10-13
   if (not hasattr(env.build_options, "msvc_arch_flag")) :
     env.build_options.msvc_arch_flag = default_msvc_arch_flag
-  # XXX backward compatibility 2010-5-28
-  if not hasattr(env.build_options, 'precompile_headers'):
+  # XXX backward compatibility 2010-05-28
+  if (not hasattr(env.build_options, "precompile_headers")):
     env.build_options.precompile_headers = False
+  # XXX backward compatibility 2011-04-01
+  if (not hasattr(env.build_options, "opt_resources")):
+    env.build_options.opt_resources = False
   return env
 
 def warm_start(args):

@@ -3,12 +3,11 @@ import sys
 def run(args):
   assert len(args) == 0
   print """
-LIBTBX_OPT_RESOURCES=False|True
-  If True, use fast math libraries from opt_resources directory if
-  available.
-
 LIBTBX_DISABLE_TRACEBACKLIMIT
   If set, Sorry and Usage exceptions are shown with the full traceback.
+
+LIBTBX_NO_LD_PRELOAD
+  If set, LD_PRELOAD is never set in the command-line launchers.
 
 LIBTBX_VALGRIND
   Run "libtbx.valgrind python" for more information.
