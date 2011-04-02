@@ -115,7 +115,7 @@ di::SpotFilterAgent::precompute_resolution(spot_list_t masterlist,
                                       spotptr->ctr_mass_y()*pixel_size,
                                       0.0);
        //insert here, transformed spot =
-       //   SXYC.select(rawspot,procedure_preferences.spot_convention)
+       //   SXYC.select(rawspot,labelit_commands.spot_convention)
           //Commentary:  if this is too time consuming, formula can be
           // abbreviated by rewriting the matrix multiplications in 2D,
           // omitting the direction parallel to the spindle.  But this

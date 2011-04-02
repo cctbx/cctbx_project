@@ -1,6 +1,6 @@
 from spotfinder.array_family import flex
 from spotfinder.applications.wrappers import DistlOrganizer
-from labelit.preferences import procedure_preferences
+from labelit.preferences import labelit_commands
 from labelit.command_line.screen import Empty
 
 def run_signal_strength(params):
@@ -10,25 +10,25 @@ def run_signal_strength(params):
   E.argv.append(params.distl.image)
 
   if params.distl.res.inner!=None:
-    procedure_preferences.distl_lowres_limit = params.distl.res.inner
+    labelit_commands.distl_lowres_limit = params.distl.res.inner
   if params.distl.res.outer!=None:
-    procedure_preferences.force_method2_resolution_limit = params.distl.res.outer
-    procedure_preferences.distl_highres_limit = params.distl.res.outer
+    labelit_commands.force_method2_resolution_limit = params.distl.res.outer
+    labelit_commands.distl_highres_limit = params.distl.res.outer
 
   #ad hoc; transfer spot area from one phil object to another.
   #  Later, figure out how to include rather than copy
-  procedure_preferences.phil.distl.minimum_spot_area = params.distl.minimum_spot_area
-  procedure_preferences.phil.distl.minimum_signal_height = params.distl.minimum_signal_height
-  procedure_preferences.phil.distl.minimum_spot_height = params.distl.minimum_spot_height
-  procedure_preferences.phil.distl.spot_area_maximum_factor = params.distl.spot_area_maximum_factor
-  procedure_preferences.phil.distl.scanbox_windows = params.distl.scanbox_windows
-  procedure_preferences.phil.distl.bins = params.distl.bins
-  procedure_preferences.phil.distl_force_binning = False
-  procedure_preferences.phil.distl_permit_binning = False
-  procedure_preferences.override_pickled_spotfinders = 0
-  procedure_preferences.difflimit_verbose = 0
-  procedure_preferences.wedgelimit = len(E.argv)
-  procedure_preferences.spotfinder_header_tests = False
+  labelit_commands.distl.minimum_spot_area = params.distl.minimum_spot_area
+  labelit_commands.distl.minimum_signal_height = params.distl.minimum_signal_height
+  labelit_commands.distl.minimum_spot_height = params.distl.minimum_spot_height
+  labelit_commands.distl.spot_area_maximum_factor = params.distl.spot_area_maximum_factor
+  labelit_commands.distl.scanbox_windows = params.distl.scanbox_windows
+  labelit_commands.distl.bins = params.distl.bins
+  labelit_commands.distl_force_binning = False
+  labelit_commands.distl_permit_binning = False
+  labelit_commands.override_pickled_spotfinders = 0
+  labelit_commands.difflimit_verbose = 0
+  labelit_commands.wedgelimit = len(E.argv)
+  labelit_commands.spotfinder_header_tests = False
   Org = DistlOrganizer(verbose = True, argument_module=E)
   Org.printSpots()
 
@@ -90,12 +90,12 @@ def run_signal_strength(params):
     from labelit.publications.sublattice.sublattice_pdf import PointTransform
     class genPDF(SublatticePDF):
       def make_image_plots_detail(self):
-         procedure_preferences.phil.sublattice_pdf_window_fraction=1.0
-         procedure_preferences.phil.sublattice_pdf_window_offset_x=0.0
-         procedure_preferences.phil.sublattice_pdf_window_offset_y=0.0
-         procedure_preferences.phil.sublattice_pdf_markup_inliers=True
-         couple=(procedure_preferences.phil.sublattice_pdf_window_offset_x,
-                 procedure_preferences.phil.sublattice_pdf_window_offset_y)
+         labelit_commands.sublattice_pdf_window_fraction=1.0
+         labelit_commands.sublattice_pdf_window_offset_x=0.0
+         labelit_commands.sublattice_pdf_window_offset_y=0.0
+         labelit_commands.sublattice_pdf_markup_inliers=True
+         couple=(labelit_commands.sublattice_pdf_window_offset_x,
+                 labelit_commands.sublattice_pdf_window_offset_y)
          #instead of self.R.setTransform, which requires pickled spotfinder:
          self.R.T = PointTransform()
          self.R.S = self.R.spotfinder
@@ -106,7 +106,7 @@ def run_signal_strength(params):
          self.R.image(pil_image)
          #except:
          #  print "failure, file %s"%self.filename
-         if procedure_preferences.phil.sublattice_pdf_markup_inliers:
+         if labelit_commands.sublattice_pdf_markup_inliers:
            self.R.show_ellipse(
            image_number=self.R.spotfinder.images.keys()[0],
            tags = ['goodspots','spots_non-ice','hi_pass_resolution_spots',

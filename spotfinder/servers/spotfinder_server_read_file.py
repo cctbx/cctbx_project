@@ -110,7 +110,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     from labelit.command_line.imagefiles import ImageFiles
     #from spotfinder.applications.overall_procedure import spotfinder_no_pickle
     from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
-    from labelit.preferences import procedure_preferences
+    from labelit.preferences import labelit_commands
 
     Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]))
 
@@ -151,17 +151,17 @@ class image_request_handler(BaseHTTPRequestHandler):
     pass
 
 def common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height):
-    from labelit.preferences import procedure_preferences
+    from labelit.preferences import labelit_commands
     if outer_resolution != None:
-      procedure_preferences.force_method2_resolution_limit = outer_resolution
-      procedure_preferences.distl_highres_limit = outer_resolution
-    procedure_preferences.phil.distl_force_binning = False
-    procedure_preferences.phil.distl_permit_binning = False
-    procedure_preferences.distl_keep_Zdata = False
+      labelit_commands.force_method2_resolution_limit = outer_resolution
+      labelit_commands.distl_highres_limit = outer_resolution
+    labelit_commands.distl_force_binning = False
+    labelit_commands.distl_permit_binning = False
+    labelit_commands.distl_keep_Zdata = False
     if minimum_spot_area != None:
-      procedure_preferences.phil.distl.minimum_spot_area = minimum_spot_area
+      labelit_commands.distl.minimum_spot_area = minimum_spot_area
     if minimum_signal_height != None:
-      procedure_preferences.phil.distl.minimum_signal_height = minimum_signal_height
+      labelit_commands.distl.minimum_signal_height = minimum_signal_height
 
 
 if __name__=="__main__":

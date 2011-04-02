@@ -1,6 +1,6 @@
 import os
 from labelit.command_line.imagefiles import ImageFiles
-from labelit.preferences import procedure_preferences
+from labelit.preferences import labelit_commands
 from labelit import tnear2
 from spotfinder.applications.stats_distl import pretty_image_stats,notes
 
@@ -39,7 +39,7 @@ def spotfinder_factory(absrundir,frames):
       assert Spotfinder.images.has_key(framenumber)
     except:
       Spotfinder.register_frames(framenumber,frames)
-      if procedure_preferences.spotfinder_verbose: Spotfinder.show()
+      if labelit_commands.spotfinder_verbose: Spotfinder.show()
 
   return Spotfinder
 
