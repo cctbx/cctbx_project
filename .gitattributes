@@ -1198,6 +1198,7 @@ scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
 scitbx/boost_python/sequence_as_array.h svneol=native#text/plain
 scitbx/command_line/apply_tapenade_hints.py svneol=native#text/x-python
 scitbx/command_line/generate_error_h.py -text
+scitbx/command_line/show_exp_times.py svneol=native#text/x-python
 scitbx/command_line/show_sizes.py svneol=native#text/x-python
 scitbx/command_line/unicode_examples.py svneol=native#text/x-python
 scitbx/cross_entropy.py -text
