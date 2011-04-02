@@ -139,42 +139,43 @@ class _advertise_subprocess(object):
     self.target = target
 
   def __call__(self, *args, **kwargs):
-    import libtbx.load_env
-    if (   libtbx.env.full_testing
-        or libtbx.env.is_development_environment()):
-      def is_exception():
-        from sys import _getframe
-        frames_back = 1
-        while True:
-          try: f = _getframe(frames_back)
-          except ValueError: break
-          else:
-            p = f.f_code.co_filename
-            while True:
-              d,b = os.path.split(p)
-              if (len(d) == 0 or len(b) == 0): break
-              b = b.lower()
-              if (   b.startswith("python")
-                  or b == "lib"):
-                if (not os.path.isdir(p)): # non-existing path names in .pyc
-                  return True              # simply give up to avoid noise
-                for n in ["os","StringIO","UserDict","UserList","UserString"]:
-                  if (not os.path.isfile(os.path.join(p, n+".py"))):
-                    break
-                else:
-                  return True
-              elif (b == "scons"):
-                if (os.path.isfile(os.path.join(p, "SConsign.py"))):
-                  return True
-              p = d
-            frames_back += 1
-        return False
-      if (not is_exception()):
-        from warnings import warn
-        warn(
-          message="%s is not safe: please use the subprocess module"
-                  " or libtbx.easy_run instead." % self.function_id,
-          stacklevel=2)
+    if (os.environ.has_key("LIBTBX_BUILD")):
+      import libtbx.load_env
+      if (   libtbx.env.full_testing
+          or libtbx.env.is_development_environment()):
+        def is_exception():
+          from sys import _getframe
+          frames_back = 1
+          while True:
+            try: f = _getframe(frames_back)
+            except ValueError: break
+            else:
+              p = f.f_code.co_filename
+              while True:
+                d,b = os.path.split(p)
+                if (len(d) == 0 or len(b) == 0): break
+                b = b.lower()
+                if (   b.startswith("python")
+                    or b == "lib"):
+                  if (not os.path.isdir(p)): # non-existing path names in .pyc
+                    return True              # simply give up to avoid noise
+                  for n in ["os","StringIO","UserDict","UserList","UserString"]:
+                    if (not os.path.isfile(os.path.join(p, n+".py"))):
+                      break
+                  else:
+                    return True
+                elif (b == "scons"):
+                  if (os.path.isfile(os.path.join(p, "SConsign.py"))):
+                    return True
+                p = d
+              frames_back += 1
+          return False
+        if (not is_exception()):
+          from warnings import warn
+          warn(
+            message="%s is not safe: please use the subprocess module"
+                    " or libtbx.easy_run instead." % self.function_id,
+            stacklevel=2)
     return self.target(*args, **kwargs)
 
 def _install_advertise_subprocess():

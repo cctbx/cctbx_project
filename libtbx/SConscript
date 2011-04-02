@@ -4,7 +4,6 @@ from libtbx import easy_run
 from libtbx.utils import getenv_bool
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
-import platform
 import sys, os
 op = os.path
 
@@ -82,11 +81,6 @@ int main()
   if (not flag): return None
   return int(output)
 
-def determine_opt_resources_flag():
-  if (ARGUMENTS.get("opt_resources") is not None):
-    return bool(int(ARGUMENTS.get("opt_resources", "0")))
-  return getenv_bool(variable_name="LIBTBX_OPT_RESOURCES")
-
 def determine_cpp0x_flag():
   result = getenv_bool(variable_name="LIBTBX_CPP0X", default=None)
   if (result is None):
@@ -104,11 +98,9 @@ if (env_etc.no_boost_python is not None):
 else:
   env_etc.no_boost_python = \
     not libtbx.env.build_options.build_boost_python_extensions
-env_etc.opt_resources = determine_opt_resources_flag()
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 env_etc.icc_version = None
-env_etc.using_opt_resources = False
 
 env_etc.include_registry = libtbx.env_config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -468,29 +460,6 @@ else:
     env_etc.shlibsuffix = ".so"
     env_etc.extension_module_suffix = ".so"
   env_etc.libm = []
-  if (    env_etc.opt_resources
-      and env_etc.compiler != "unix_icc"
-      and not platform.mac_ver()[0].startswith("10.6") # some extensions hang
-      and platform.machine() != "Power Macintosh"):
-    def opt_resources_libs_dir():
-      if (sys.platform == "linux2"):
-        if (is_64bit_architecture):
-          return "linux64"
-        return "linux32"
-      elif (sys.platform == "darwin"):
-        if (not is_64bit_architecture):
-          return "darwin32"
-      return None
-    d = opt_resources_libs_dir()
-    if (d is not None):
-      d = libtbx.env.find_in_repositories(
-        relative_path=op.join("opt_resources", d))
-    if (d is not None):
-      for a_name in ["libimf.a", "libirc.a"]:
-        p = op.join(d, a_name)
-        if (op.isfile(p)):
-          env_etc.libm.append(File(p))
-          env_etc.using_opt_resources = True
   env_etc.libm.append("m")
   if (env_etc.compiler in ["unix_gcc", "unix_gcc4"]):
     env_etc.static_libraries = 0
