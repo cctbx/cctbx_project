@@ -95,9 +95,6 @@ class file_names:
     self.arg_module = arg_module
     self.FN = []
     if arg_module==None: return #added for directory analysis
-    if '--index_only' in arg_module.argv:
-      procedure_preferences.index_only = 1
-      arg_module.argv.remove('--index_only')
     #file names come from either command line or current directory
     if len(self.arg_module.argv)==1:
       # Interface 1. Current directory
