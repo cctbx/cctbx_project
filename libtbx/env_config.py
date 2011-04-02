@@ -11,7 +11,7 @@ import sys, os
 op = os.path
 
 # XXX backward compatibility 2011-03-29
-qnew = 1
+qnew = 2
 if (qnew == 1 and sys.version_info[:2] < (2,7)): qnew = 0
 qnew = ["", " -Qwarn", " -Qnew"][qnew]
 
