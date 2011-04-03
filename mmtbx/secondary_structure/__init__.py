@@ -149,10 +149,6 @@ def hydrogen_bond_proxies_from_selections(
     restraint_type,
     use_hydrogens,
     hbond_params=None,
-    restrain_helices=True,
-    alpha_only=False,
-    restrain_sheets=True,
-    restrain_base_pairs=True,
     as_python_objects=False,
     remove_outliers=False,
     master_selection=None,
@@ -168,6 +164,9 @@ def hydrogen_bond_proxies_from_selections(
     master_selection = selection_cache.seletion(master_selection)
   if (hbond_params is None) :
     hbond_params = hbond.master_phil.fetch().extract()
+  restrain_helices = params.h_bond_restraints.restrain_helices
+  restrain_sheets = params.h_bond_restraints.restrain_sheets
+  restrain_base_pairs = params.h_bond_restraints.restrain_base_pairs
   weight = hbond_params.restraints_weight
   distance_ideal = distance_cut = None
   if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
