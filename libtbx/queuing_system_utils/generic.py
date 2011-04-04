@@ -1,3 +1,12 @@
+"""
+Generic module to provide parallel job execution on queuing systems
+
+Provides drop-in replacement classes to those defined in the multiprocessing
+module (Queue and Job), with certain restrictions placed by the pickle module
+"""
+
+
+
 import cPickle as pickle
 import subprocess
 import os
@@ -9,7 +18,10 @@ import libtbx.load_env
 
 class Queue(object):
   """
-  Queuing system queue, single use only
+  Queue object to receive data from jobs running on remote machines
+
+  Data transfer is achieved via files. It is safe to use any number of
+  Queue objects in the same directory, even with a matching identifier
   """
 
   def __init__(self, identifier, work_dir = "."):
@@ -80,7 +92,13 @@ class Queue(object):
 
 class Job(object):
   """
-  Generic-purpose queueing system Job
+  Job object to execute function calls on remote machines accessible via
+  queuing systems
+
+  Data transfer is achieved via files. It is safe to use any number of
+  Job objects in the same directory, even with a matching identifier
+
+  Restrictions: target has to be picklable
   """
 
   SCRIPT = \
