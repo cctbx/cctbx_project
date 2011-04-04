@@ -817,7 +817,8 @@ def write_pdb_file(
       write_cryst1_record = True,
       selection = None,
       atoms_reset_serial = True,
-      out = None):
+      out = None,
+      return_pdb_string = False):
   if (write_cryst1_record):
     crystal_symmetry = xray_structure.crystal_symmetry()
     print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
@@ -854,9 +855,14 @@ def write_pdb_file(
     atoms_reset_serial_first_value = 1
   else:
     atoms_reset_serial_first_value = None
-  out.write(pdb_hierarchy.as_pdb_string(
-    append_end=True,
-    atoms_reset_serial_first_value=atoms_reset_serial_first_value))
+  if not return_pdb_string:
+    out.write(pdb_hierarchy.as_pdb_string(
+      append_end=True,
+      atoms_reset_serial_first_value=atoms_reset_serial_first_value))
+  else:
+    return pdb_hierarchy.as_pdb_string(
+      append_end=True,
+      atoms_reset_serial_first_value=atoms_reset_serial_first_value)
 
 def print_programs_start_header(log, text):
   print >> log
