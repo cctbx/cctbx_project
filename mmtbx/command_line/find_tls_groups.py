@@ -425,7 +425,7 @@ def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,
 
 def chunks(size, n_groups):
   rp = list(xrange(size))
-  chunk_size = size/n_groups
+  chunk_size = size//n_groups
   nc = chunk_size
   counter = 0
   sum_size = 0
@@ -437,7 +437,7 @@ def chunks(size, n_groups):
     next = nc+chunk_size_
     if check >100 or nc>=next or next>=size:
       ###
-      chunk_size = size/n_groups
+      chunk_size = size//n_groups
       nc = chunk_size
       counter = 0
       sum_size = 0
@@ -620,7 +620,7 @@ def check_adp(u_iso, step=10):
       u_iso_i = u_iso[i:i+step]
     else:
       u_iso_i = u_iso[i:]
-    if(u_iso_i.size() >= step/2):
+    if(u_iso_i.size() >= step//2):
       min_adp = flex.min(u_iso)
       max_adp = flex.max(u_iso)
       if(abs(min_adp-max_adp)<0.1):
