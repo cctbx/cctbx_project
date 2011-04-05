@@ -64,6 +64,12 @@ def exercise(mt, n_refl, log):
     assert approx_equal(trg.f_calc_hessians, c_fin)
   check_f_calc_abs_derivs()
   check_f_calc_derivs()
+  #
+  f_calc[0] = 0j
+  f_calc_abs = flex.abs(f_calc)
+  trg = r1.target(f_obs=f_obs, f_calc=f_calc)
+  assert trg.gradients_work()[0] == 0j
+  assert trg.hessians_work()[0] == (0,0,0)
 
 def run(args):
   assert len(args) < 3
