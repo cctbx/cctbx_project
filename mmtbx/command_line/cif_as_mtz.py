@@ -471,7 +471,7 @@ class extract_data(object):
                 self.reset(message ="Cannot extract column data,#1.",line=line)
                 break
               assert result_hkld.count(None) == 0
-              if(result_hkld[:3].count(0) != 3 and result_hkld[3] != 0):
+              if(result_hkld[:3].count(0) != 3):
                 if(max(max(result_hkld[:3]), abs(min(result_hkld[:3]))) < 10000):
                   self.indices.append(result_hkld[:3])
                   self.data.append(result_hkld[3])
