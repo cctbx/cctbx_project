@@ -272,8 +272,8 @@ class twinning_builder(object):
     t = twin_law
     for f in fractions:
       self.twin_components.append(xray.twin_component(twin_law=t,
-                                                      twin_fraction=f,
-                                                      grad_twin_fraction=True))
+                                                      value=f,
+                                                      grad=True))
       t = t.multiply(twin_law)
 
   def make_non_merohedral_twinning_with_transformed_hkl(self, fractions):
