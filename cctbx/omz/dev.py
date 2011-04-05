@@ -454,6 +454,12 @@ class refinement(object):
         r_free_flags=None,
         f_calc=O.get_f_calc().data(),
         derivatives_depth=2)
+    elif (O.params.target_type == "r1"):
+      assert O.params.target_obs_type == "F"
+      from cctbx.xray.targets import r1
+      return r1.target(
+        f_obs=O.f_obs.data(),
+        f_calc=O.get_f_calc().data())
     raise RuntimeError("Unknown target_type.")
 
   def update_fgc(O, is_iterate=False):
@@ -722,8 +728,13 @@ class refinement(object):
         assert line_search.info_meaning \
             == "The step is at the upper bound stpmax."
         return None
+      elif (line_search.info_code == 6):
+        assert line_search.info_meaning.startswith(
+          "Rounding errors prevent further progress.")
+        return None
       else:
-        assert line_search.info_code == -1
+        assert line_search.info_code == -1, (
+          line_search.info_code, line_search.info_meaning)
       O.update_fgc()
     return line_search.stp
 
@@ -821,7 +832,7 @@ def get_master_phil(
       .type = float
     show_distances_threshold = %(show_distances_threshold)s
       .type = float
-    target_type = *ls cc
+    target_type = *ls cc r1
       .type = choice
     target_obs_type = *F I
       .type = choice

@@ -49,3 +49,12 @@ class target(object):
       hbb = O.c * bb + O.g * aa / f_calc_abs
       hab = (O.c - O.g / f_calc_abs) * a * b
       O.f_calc_hessians = flex.vec3_double(haa, hbb, hab) / f_calc_abs**2
+
+  def target_work(O):
+    return O.t
+
+  def gradients_work(O):
+    return O.f_calc_gradients
+
+  def hessians_work(O):
+    return O.f_calc_hessians
