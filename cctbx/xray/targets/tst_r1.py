@@ -8,7 +8,7 @@ def exercise(mt, n_refl, log):
     mt.random_double(size=f_obs.size()),
     mt.random_double(size=f_obs.size()))
   f_calc_abs = flex.abs(f_calc)
-  tg = r1.target(f_obs, f_calc_abs)
+  trg = r1.target(f_obs=f_obs, f_calc=f_calc)
   def check_f_calc_abs_derivs():
     eps = 1e-6
     g_fin = flex.double()
@@ -19,19 +19,51 @@ def exercise(mt, n_refl, log):
       c_orig = f_calc_abs[ih]
       for signed_eps in [eps, -eps]:
         f_calc_abs[ih] = c_orig + signed_eps
-        tg_eps = r1.target(f_obs, f_calc_abs)
-        fs.append(tg_eps.t)
-        gs.append(tg_eps.t_d[ih])
+        trg_eps = r1.target(f_obs=f_obs, f_calc_abs=f_calc_abs)
+        fs.append(trg_eps.t)
+        gs.append(trg_eps.g[ih])
       g_fin.append((fs[0]-fs[1])/(2*eps))
       c_fin.append((gs[0]-gs[1])/(2*eps))
       f_calc_abs[ih] = c_orig
     print >> log, "g fin:", numstr(g_fin)
-    print >> log, "  ana:", numstr(tg.t_d)
-    assert approx_equal(tg.t_d, g_fin)
+    print >> log, "  ana:", numstr(trg.g)
+    assert approx_equal(trg.g, g_fin)
     print >> log, "c fin:", numstr(c_fin)
-    print >> log, "  ana:", numstr(tg.t_d2)
-    assert approx_equal(tg.t_d2, c_fin)
+    print >> log, "  ana:", numstr(trg.c)
+    assert approx_equal(trg.c, c_fin)
+  def check_f_calc_derivs():
+    eps = 1e-6
+    g_fin = flex.complex_double()
+    c_fin = flex.vec3_double()
+    for ih in xrange(f_calc.size()):
+      c_orig = f_calc[ih]
+      g_fin_ab = []
+      c_fin_ab = []
+      for iab in [0,1]:
+        fs = []
+        gs = []
+        for signed_eps in [eps, -eps]:
+          if (iab == 0):
+            f_calc[ih] = complex(c_orig.real + signed_eps, c_orig.imag)
+          else:
+            f_calc[ih] = complex(c_orig.real, c_orig.imag + signed_eps)
+          trg_eps = r1.target(f_obs=f_obs, f_calc=f_calc)
+          fs.append(trg_eps.t)
+          gs.append(trg_eps.f_calc_gradients[ih])
+        g_fin_ab.append((fs[0]-fs[1])/(2*eps))
+        c_fin_ab.append((gs[0]-gs[1])/(2*eps))
+      g_fin.append(complex(*g_fin_ab))
+      assert approx_equal(c_fin_ab[0].imag, c_fin_ab[1].real)
+      c_fin.append((c_fin_ab[0].real, c_fin_ab[1].imag, c_fin_ab[0].imag))
+      f_calc[ih] = c_orig
+    for part in ["real", "imag"]:
+      def get(): return getattr(flex, part)
+      print >> log, "g fin %s:" % part, numstr(get()(g_fin))
+      print >> log, "  ana %s:" % part, numstr(get()(trg.f_calc_gradients))
+    assert approx_equal(trg.f_calc_gradients, g_fin)
+    assert approx_equal(trg.f_calc_hessians, c_fin)
   check_f_calc_abs_derivs()
+  check_f_calc_derivs()
 
 def run(args):
   assert len(args) < 3
