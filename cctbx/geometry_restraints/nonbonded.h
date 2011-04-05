@@ -54,7 +54,8 @@ namespace cctbx { namespace geometry_restraints {
               unique_types_j++) {
           double distance = get_nonbonded_distance(
             *unique_types_i,
-            *unique_types_j);
+            *unique_types_j,
+            /*donor_acceptor_adjust*/ false);
           if (distance < 0) distance = default_distance;
           if (result < distance) result = distance;
         }
@@ -68,10 +69,12 @@ namespace cctbx { namespace geometry_restraints {
     double
     get_nonbonded_distance(
       std::string const& type_i,
-      std::string const& type_j) const
+      std::string const& type_j,
+      bool donor_acceptor_adjust) const
     {
       nonbonded_distance_table::const_iterator
         distance_dict = distance_table.find(type_i);
+      double return_vdw;
       if (distance_dict != distance_table.end()) {
         nonbonded_distance_dict::const_iterator
           dict_entry = distance_dict->second.find(type_j);
@@ -93,7 +96,45 @@ namespace cctbx { namespace geometry_restraints {
         geometry_restraints::nonbonded_radius_table::const_iterator
           radius_j = radius_table.find(type_j);
         if (radius_j != radius_table.end()) {
-          return radius_i->second + radius_j->second;
+          //return radius_i->second + radius_j->second;
+          return_vdw = radius_i->second + radius_j->second;
+          // development code for adjusting nonbonded radii
+          // for H-bonding atoms - off pending further testing
+          /*if (donor_acceptor_adjust == true) {
+            geometry_restraints::nonbonded_radius_table::const_iterator
+              h_bond_state_i = donor_acceptor_table.find(type_i);
+            if (h_bond_state_i != donor_acceptor_table.end()) {
+              geometry_restraints::nonbonded_radius_table::const_iterator
+                h_bond_state_j = donor_acceptor_table.find(type_j);
+              if (h_bond_state_j != donor_acceptor_table.end()) {
+                if ( (h_bond_state_i->second == 1 &&
+                      h_bond_state_j->second == 2) || //donor & acceptor
+                     (h_bond_state_i->second == 2 &&
+                      h_bond_state_j->second == 1) || //acceptor & donor
+                     (h_bond_state_i->second == 1 &&
+                      h_bond_state_j->second == 3) || //donor & both
+                     (h_bond_state_i->second == 3 &&
+                      h_bond_state_j->second == 1) || //both & donor
+                     (h_bond_state_i->second == 2 &&
+                      h_bond_state_j->second == 3) || //acceptor & both
+                     (h_bond_state_i->second == 3 &&
+                      h_bond_state_j->second == 2) || //both & acceptor
+                     (h_bond_state_i->second == 3 &&
+                      h_bond_state_j->second == 3) || //both & both
+                     (h_bond_state_i->second == 2 &&
+                      h_bond_state_j->second == 4) || //acceptor & hydrogen
+                     (h_bond_state_i->second == 4 &&
+                      h_bond_state_j->second == 2) || //hydrogen & acceptor
+                     (h_bond_state_i->second == 3 &&
+                      h_bond_state_j->second == 4) || //both & hydrogen
+                     (h_bond_state_i->second == 4 &&
+                      h_bond_state_j->second == 3) ){ //hydrogen & both
+                   return_vdw -= 0.6; //subtract 0.6 for H-bond
+                 }
+              }
+            }
+          }*/
+          return return_vdw;
         }
       }
       return -1;
@@ -120,6 +161,8 @@ namespace cctbx { namespace geometry_restraints {
     nonbonded_distance_table distance_table;
     //! Table of VdW radii (given one energy type).
     nonbonded_radius_table radius_table;
+    //! Table of Donor/Acceptor status given one energy type
+    nonbonded_radius_table donor_acceptor_table; //re-use table type
     //! Multiplicative attenuation factor for 1-4 interactions.
     double factor_1_4_interactions;
     //! Constant reduction of VdW distances for 1-4 interactions.

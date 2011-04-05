@@ -1244,6 +1244,7 @@ class pair_proxies(object):
         model_indices=None,
         conformer_indices=None,
         sym_excl_indices=None,
+        donor_acceptor_excl_groups=None,
         nonbonded_params=None,
         nonbonded_types=None,
         nonbonded_distance_cutoff_plus_buffer=None,
@@ -1270,6 +1271,7 @@ class pair_proxies(object):
         model_indices=model_indices,
         conformer_indices=conformer_indices,
         sym_excl_indices=sym_excl_indices,
+        donor_acceptor_excl_groups=donor_acceptor_excl_groups,
         nonbonded_params=nonbonded_params,
         nonbonded_types=nonbonded_types,
         nonbonded_distance_cutoff_plus_buffer=\
