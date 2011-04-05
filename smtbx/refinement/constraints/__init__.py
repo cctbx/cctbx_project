@@ -83,10 +83,14 @@ class reparametrisation(ext.reparametrisation):
     C.f. module geometrical_hydrogens in this package for a typical example
     """
     super(reparametrisation, self).__init__(structure.unit_cell())
-    #association of scatterer_idx:parameter, bookkeeping
+    # association of scatterer_idx:parameter, bookkeeping
     self.shared_Us = {}
     self.shared_sites = {}
     self.shared_occupancies = {}
+
+    # bookkeeping of fixed angles and distances - mainly for CIF output
+    self.fixed_distances = {}
+    self.fixed_angles = {}
 
     self.structure = xs = structure
     self.connectivity_table = connectivity_table
@@ -124,7 +128,7 @@ class reparametrisation(ext.reparametrisation):
         self.independent_scalar_parameters.mapping_to_grad_fc()
     self.mapping_to_grad_fc_all = self.mapping_to_grad_fc.deep_copy()
     self.mapping_to_grad_fc_all.extend(self.mapping_to_grad_fc_independent_scalars)
-    #set the grad indices for independent parameters: BASF, EXTI
+    # set the grad indices for independent parameters: BASF, EXTI
     # count the number of refined independent params
     independent_grad_cnt = 0
     if self.twin_fractions is not None:
@@ -133,7 +137,7 @@ class reparametrisation(ext.reparametrisation):
           independent_grad_cnt += 1
     if self.extinction is not None and self.extinction.grad:
       independent_grad_cnt += 1
-    #update the grad indices
+    # update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
     if self.twin_fractions is not None:
       for fraction in self.twin_fractions:
