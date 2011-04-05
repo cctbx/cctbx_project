@@ -188,9 +188,11 @@ cctbx/xray/targets/common_results.h svneol=native#text/plain
 cctbx/xray/targets/correlation.h svneol=native#text/plain
 cctbx/xray/targets/kwt_b_patch -text
 cctbx/xray/targets/least_squares.h svneol=native#text/plain
+cctbx/xray/targets/r1.py svneol=native#text/x-python
 cctbx/xray/targets/shelxl_wght_ls.f -text
 cctbx/xray/targets/shelxl_wght_ls.hpp svneol=native#text/plain
 cctbx/xray/targets/shelxl_wght_ls_bpl.cpp svneol=native#text/plain
+cctbx/xray/targets/tst_r1.py svneol=native#text/x-python
 cctbx/xray/targets/tst_shelxl_wght_ls.py svneol=native#text/x-python
 cctbx/xray/weighting_scheme_differentiation.tex -text
 cctbx/xray/weighting_schemes.py -text
