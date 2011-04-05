@@ -1607,6 +1607,17 @@ class add_planarity_proxies(object):
           registry_process_result=registry_process_result,
           lines=["plane id: " + str(plane.plane_id)])
 
+#def add_nonbonded_iseq_residue_pairs(nonbonded_params, xray_structure):
+#  site_labels = xray_structure.scatterers().extract_labels()
+#  for i, label_i in enumerate(site_labels):
+#    for j, label_j in enumerate(site_labels):
+#      if label_i == label_j:
+#        nonbonded_params.residue_self_pair_table.setdefault(
+#          i)[j] = True
+#      else:
+#        nonbonded_params.residue_self_pair_table.setdefault(
+#          i)[j] = False
+
 # XXX TODO synonymes
 def ener_lib_as_nonbonded_params(
       ener_lib,
@@ -1649,6 +1660,17 @@ def ener_lib_as_nonbonded_params(
       r = getattr(energy_lib_atom, pref2)
     if (r is not None):
       params.radius_table[atom_type] = r
+    # N = 0, D = 1, A = 2, B = 3, H = 4
+    if getattr(energy_lib_atom, "hb_type") == 'N':
+      params.donor_acceptor_table[atom_type] = 0
+    elif getattr(energy_lib_atom, "hb_type") == 'D':
+      params.donor_acceptor_table[atom_type] = 1
+    elif getattr(energy_lib_atom, "hb_type") == 'A':
+      params.donor_acceptor_table[atom_type] = 2
+    elif getattr(energy_lib_atom, "hb_type") == 'B':
+      params.donor_acceptor_table[atom_type] = 3
+    elif getattr(energy_lib_atom, "hb_type") == 'H':
+      params.donor_acceptor_table[atom_type] = 4
   return params
 
 def is_same_model_as_before(model_type_indices, i_model, models):
@@ -2231,7 +2253,15 @@ class build_all_chain_proxies(object):
           self.sym_excl_indices.set_selected(
             rg_atoms.extract_i_seq(), len(sym_excl_residue_groups))
     set_sym_excl_indices()
-    #
+    def set_donor_acceptor_excl_groups():
+      self.donor_acceptor_excl_groups = flex.size_t(n_seq, 0)
+      counter = 0
+      for rg in self.pdb_hierarchy.residue_groups():
+        rg_atoms = rg.atoms()
+        self.donor_acceptor_excl_groups.set_selected(
+          rg_atoms.extract_i_seq(), counter)
+        counter += 1
+    set_donor_acceptor_excl_groups()
     if (    special_position_settings is None
         and crystal_symmetry is not None):
       special_position_settings = crystal_symmetry.special_position_settings(
@@ -2760,6 +2790,8 @@ class build_all_chain_proxies(object):
       self.cystein_sulphur_i_seqs)
     sym_excl_indices = self.sym_excl_indices.select(
       self.cystein_sulphur_i_seqs)
+    donor_acceptor_excl_groups = self.donor_acceptor_excl_groups.select(
+      self.cystein_sulphur_i_seqs)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=disulfide_distance_cutoff)
     sulphur_sites_cart = self.sites_cart.select(self.cystein_sulphur_i_seqs)
@@ -2772,6 +2804,7 @@ class build_all_chain_proxies(object):
       model_indices=model_indices,
       conformer_indices=conformer_indices,
       sym_excl_indices=sym_excl_indices,
+      donor_acceptor_excl_groups=donor_acceptor_excl_groups,
       nonbonded_params=geometry_restraints.nonbonded_params(
         default_distance=1),
       nonbonded_types=flex.std_string(conformer_indices.size()),
@@ -3457,11 +3490,17 @@ class build_all_chain_proxies(object):
       factor_1_4_interactions=self.params.vdw_1_4_factor,
       default_distance=self.params.default_vdw_distance,
       minimum_distance=self.params.min_vdw_distance)
+    #add_nonbonded_iseq_residue_pairs(
+    #       nonbonded_params=nonbonded_params,
+    #       xray_structure=self.extract_xray_structure())
+    #print tuple(nonbonded_params.residue_self_pair_table)
+    #STOP()
     result = geometry_restraints.manager.manager(
       crystal_symmetry=self.special_position_settings,
       model_indices=self.model_indices,
       conformer_indices=self.conformer_indices,
       sym_excl_indices=self.sym_excl_indices,
+      donor_acceptor_excl_groups=self.donor_acceptor_excl_groups,
       site_symmetry_table=self.site_symmetry_table(),
       bond_params_table=bond_params_table,
       shell_sym_tables=shell_sym_tables,
