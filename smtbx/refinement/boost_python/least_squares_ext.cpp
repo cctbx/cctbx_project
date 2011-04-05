@@ -5,7 +5,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
   void wrap_weighting_schemes();
   void wrap_least_squares();
-
   namespace {
     void init_module() {
       wrap_weighting_schemes();

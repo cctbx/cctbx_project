@@ -298,21 +298,21 @@ public:
 };
 
 /// Twin component parameter
-class twin_component_parameter : public independent_scalar_parameter
+class twin_fraction_parameter : public independent_scalar_parameter
 {
 public:
-  twin_component_parameter(cctbx::xray::twin_component<double> *twin_component)
+  twin_fraction_parameter(cctbx::xray::twin_fraction<double> *twin_fraction_)
   :
-  parameter(0), twin_component(twin_component),
+  parameter(0), twin_fraction(twin_fraction_),
   independent_scalar_parameter(
-    twin_component->twin_fraction, twin_component->grad_twin_fraction)
+    twin_fraction_->value, twin_fraction_->grad)
   {}
 
   virtual af::ref<double> components();
 
 protected:
   /// The twin_component this parameter belongs to
-  cctbx::xray::twin_component<double> *twin_component;
+  cctbx::xray::twin_fraction<double> *twin_fraction;
 };
 
 

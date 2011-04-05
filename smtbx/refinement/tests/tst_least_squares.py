@@ -5,6 +5,7 @@ from scitbx.lstbx import normal_eqns_solving
 from cctbx import sgtbx, crystal, xray, adptbx, uctbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
+from cctbx.xray import observations
 from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
 import smtbx.utils
@@ -64,8 +65,13 @@ class site_refinement_test(refinement_test):
       structure=self.xray_structure,
       constraints=[],
       connectivity_table=connectivity_table)
+    obs = observations.observations(
+      self.fo_sq.indices(),
+      self.fo_sq.data(),
+      self.fo_sq.sigmas(), ())
+    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      self.fo_sq,
+      obs,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
@@ -81,7 +87,7 @@ class site_refinement_test(refinement_test):
     unrestrained_eigenvec = ev.vectors()
 
     ls = least_squares.crystallographic_ls(
-      self.fo_sq,
+      obs,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
     )
@@ -165,7 +171,7 @@ class site_refinement_test(refinement_test):
     # Do the floating origin restraints prevent the structure from floating?
     xs = self.xray_structure.deep_copy_scatterers()
     ls = least_squares.crystallographic_ls(
-      self.fo_sq,
+      obs,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
     )
@@ -212,8 +218,13 @@ class site_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
+    obs = observations.observations(
+      self.fo_sq.indices(),
+      self.fo_sq.data(),
+      self.fo_sq.sigmas(), ())
+    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      self.fo_sq, reparametrisation,
+      obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(
@@ -269,8 +280,13 @@ class adp_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
+    obs = observations.observations(
+      self.fo_sq.indices(),
+      self.fo_sq.data(),
+      self.fo_sq.sigmas(), ())
+    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      self.fo_sq, reparametrisation,
+      obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(
@@ -466,22 +482,28 @@ class twin_test(object):
     else:
       twin_fractions = self.twin_fractions.deep_copy() - 0.1
     twin_components = tuple(
-      [xray.twin_component(law, fraction, grad_twin_fraction=True)
+      [xray.twin_component(law, fraction, grad=True)
        for law, fraction in zip(self.twin_laws, twin_fractions)])
     reparametrisation = constraints.reparametrisation(
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table,
-      twin_components=twin_components)
+      twin_fractions=twin_components)
+    obs = observations.observations(
+      self.fo_sq.indices(),
+      self.fo_sq.data(),
+      self.fo_sq.sigmas(),
+      twin_components)
+    obs.fo_sq = self.fo_sq
     normal_eqns = least_squares.crystallographic_ls(
-      self.fo_sq, reparametrisation,
+      obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns,
       n_max_iterations=10,
       track_all=True)
     assert approx_equal(
-      [twin.twin_fraction for twin in normal_eqns.twin_components],
+      [twin.value for twin in normal_eqns.twin_fractions],
       self.twin_fractions)
     assert approx_equal(normal_eqns.objective(), 0, eps=1e-14)
     assert normal_eqns.n_parameters == 64
@@ -489,22 +511,25 @@ class twin_test(object):
     xs.shake_sites_in_place(rms_difference=0.15)
     xs.shake_adp()
     twin_components = tuple(
-      [xray.twin_component(law, fraction, grad_twin_fraction=False)
+      [xray.twin_component(law, fraction, grad=False)
        for law, fraction in zip(self.twin_laws, twin_fractions)])
+    #change the twin_components of the observations...
+    obs = observations.observations(obs, (), twin_components)
+    obs.fo_sq = self.fo_sq
     reparametrisation = constraints.reparametrisation(
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table,
-      twin_components=twin_components)
+      twin_fractions=twin_components)
     normal_eqns = least_squares.crystallographic_ls(
-      self.fo_sq, reparametrisation,
+      obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns,
       n_max_iterations=10,
       track_all=True)
     assert approx_equal(
-      [twin.twin_fraction for twin in normal_eqns.twin_components],
+      [twin.value for twin in normal_eqns.twin_fractions],
       twin_fractions)
     assert normal_eqns.objective() != 0 # since the twin fraction is not refined
     assert normal_eqns.n_parameters == 63
@@ -626,8 +651,13 @@ class special_positions_test(object):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
+    obs = observations.observations(
+      self.fo_sq.indices(),
+      self.fo_sq.data(),
+      self.fo_sq.sigmas(), ())
+    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      self.fo_sq, reparametrisation,
+      obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(

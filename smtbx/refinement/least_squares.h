@@ -10,9 +10,8 @@
 
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/rot_mx.h>
-#include <cctbx/xray/twin_targets.h>
-#include <cctbx/xray/twin_component.h>
 #include <cctbx/xray/extinction.h>
+#include <cctbx/xray/observations.h>
 
 #include <smtbx/refinement/constraints/scatterer_parameters.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
@@ -233,36 +232,30 @@ namespace smtbx { namespace refinement { namespace least_squares {
               class OneMillerIndexFcalc>
     build_normal_equations(
       NormalEquations<FloatType> &normal_equations,
-      af::const_ref<miller::index<> > const &miller_indices,
-      af::const_ref<FloatType> const &data,
-      af::const_ref<FloatType> const &sigmas,
+      cctbx::xray::observations<FloatType> const &reflections,
       af::const_ref<std::complex<FloatType> > const &f_mask,
       WeightingScheme<FloatType> const &weighting_scheme,
       boost::optional<FloatType> scale_factor,
       OneMillerIndexFcalc &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
-      af::shared<cctbx::xray::twin_component<FloatType> *> twin_components,
       cctbx::xray::extinction_correction<FloatType> &exti,
       bool objective_only=false)
     :
-      f_calc_(miller_indices.size()),
-      observables_(miller_indices.size()),
-      weights_(miller_indices.size())
+      f_calc_(reflections.size()),
+      observables_(reflections.size()),
+      weights_(reflections.size())
     {
       // Accumulate equations Fo(h) ~ Fc(h)
-      SMTBX_ASSERT(miller_indices.size() == data.size())
-                  (miller_indices.size())(data.size());
-      SMTBX_ASSERT(data.size() == sigmas.size())(data.size())(sigmas.size());
-      SMTBX_ASSERT(!twin_components.size() || !f_mask.size());
-      SMTBX_ASSERT(!f_mask.size() || f_mask.size() == data.size())
-                  (f_mask.size())(data.size());
+      SMTBX_ASSERT(!(reflections.has_twin_components() && f_mask.size()));
+      SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()) ||
+                  (f_mask.size()==reflections.size()));
       SMTBX_ASSERT(scale_factor || weighting_scheme.f_calc_independent());
-      bool use_cache = twin_components.size() > 0;
+      const bool use_cache = false; //reflections.has_twin_components();
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>
         f_calc_func(f_calc_function, use_cache);
       bool compute_grad = !objective_only;
-
+      reflections.update_prime_fraction();
       /* Quite hackish but the assert above makes it safe providing
          the weighting scheme class plays ball.
        */
@@ -273,8 +266,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                          af::init_functor_null<FloatType>())
                       :
                         af::shared<FloatType>();
-      for (int i_h=0; i_h<miller_indices.size(); ++i_h) {
-        miller::index<> const &h = miller_indices[i_h];
+      for (int i_h=0; i_h<reflections.size(); ++i_h) {
+        miller::index<> const &h = reflections.index(i_h);
         if (f_mask.size()) {
           f_calc_func.compute(h, f_mask[i_h], compute_grad);
         }
@@ -287,7 +280,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
         // sort out twinning
         FloatType observable =
-          process_twinning(h, f_calc_func, twin_components,
+          process_twinning(reflections, i_h, f_calc_func,
             gradients, jacobian_transpose_matching_grad_fc, compute_grad);
         // extinction correction
         af::tiny<FloatType,2> exti_k = exti.compute(h, observable, compute_grad);
@@ -295,13 +288,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc_[i_h] = f_calc_func.f_calc*std::sqrt(exti_k[0]);
         observables_[i_h] = observable;
 
-        FloatType weight = weighting_scheme(data[i_h], sigmas[i_h],
-                                            observable, scale_factor_);
+        FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
+          reflections.sig(i_h), observable, scale_factor_);
         weights_[i_h] = weight;
         if (objective_only) {
           normal_equations.add_residual(observable,
-                                        data[i_h],
-                                        weight);
+            reflections.fo_sq(i_h), weight);
         }
         else {
           if (exti.grad_value()) {
@@ -310,9 +302,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             gradients[grad_index] += exti_k[1];
           }
           normal_equations.add_equation(observable,
-                                        gradients.ref(),
-                                        data[i_h],
-                                        weight);
+            gradients.ref(), reflections.fo_sq(i_h), weight);
         }
       }
       normal_equations.finalise(objective_only);
@@ -327,38 +317,37 @@ namespace smtbx { namespace refinement { namespace least_squares {
   protected:
     template <class OneMillerIndexFcalc>
     FloatType process_twinning(
-      const miller::index<>& h,
-      f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>& f_calc_func,
-      af::shared<cctbx::xray::twin_component<FloatType> *> twin_components,
+      cctbx::xray::observations<FloatType> const &reflections,
+      int h_i,
+      f_calc_function_with_cache<FloatType, OneMillerIndexFcalc> &f_calc_func,
       af::shared<FloatType> &gradients,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
       bool compute_grad)
     {
       FloatType obs = f_calc_func.observable;
-      if (twin_components.size()) {
+      if (reflections.has_twin_components()) {
+        cctbx::xray::observations<FloatType>::iterator_ itr =
+          reflections.iterator(h_i);
         const FloatType identity_part = obs;
-        FloatType one_minus_sum_twin_fractions =
-          1-cctbx::xray::sum_twin_fractions(twin_components);
-        obs *= one_minus_sum_twin_fractions;
+        obs *= reflections.scale(h_i);
         if (compute_grad) {
-          gradients *= one_minus_sum_twin_fractions;
+          gradients *= reflections.scale(h_i);
         }
-        for (std::size_t i_twin=0;i_twin<twin_components.size();i_twin++) {
-          FloatType twin_fraction = twin_components[i_twin]->twin_fraction;
-          sgtbx::rot_mx const &twin_law = twin_components[i_twin]->twin_law;
-          miller::index<> twin_h = cctbx::xray::twin_targets::twin_mate(
-            h, twin_law.as_floating_point(scitbx::type_holder<FloatType>()));
-          f_calc_func.compute(twin_h, compute_grad);
-          obs += twin_fraction*f_calc_func.observable;
+        while (itr.has_next()) {
+          cctbx::xray::observations<FloatType>::index_twin_component twc =
+            itr.next();
+          f_calc_func.compute(twc.h, compute_grad);
+          obs += twc.fraction->value*f_calc_func.observable;
           if (compute_grad) {
             af::shared<FloatType> tmp_gradients =
               jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
-            gradients += twin_fraction*tmp_gradients;
-            if (twin_components[i_twin]->grad_twin_fraction) {
-              int grad_index = twin_components[i_twin]->grad_index;
-              SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-              gradients[grad_index] += f_calc_func.observable - identity_part;
+            gradients += twc.fraction->value*tmp_gradients;
+            if (twc.fraction->grad) {
+              SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
+                twc.fraction->grad_index >= gradients.size()));
+              gradients[twc.fraction->grad_index] +=
+                f_calc_func.observable - identity_part;
             }
           }
         }
@@ -370,7 +359,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
-
   };
 
 }}}

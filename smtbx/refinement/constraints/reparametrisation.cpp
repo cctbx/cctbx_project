@@ -33,8 +33,8 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // twin_component_parameter
 
-  af::ref<double> twin_component_parameter::components() {
-    return af::ref<double>(&twin_component->twin_fraction, 1);
+  af::ref<double> twin_fraction_parameter::components() {
+    return af::ref<double>(&twin_fraction->value, 1);
   }
 
   // extinction_correction_parameter
