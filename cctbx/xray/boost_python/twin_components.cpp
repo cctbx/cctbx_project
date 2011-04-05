@@ -15,6 +15,27 @@
 namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
+
+  template <typename FloatType>
+  struct twin_fraction_wrapper {
+    static void wrap() {
+      typedef twin_fraction<FloatType> wt;
+      using namespace boost::python;
+      class_<wt>("twin_fraction", no_init)
+        .def(init<FloatType,
+                  optional<bool> >
+             ((arg("value"),
+               arg("grad"))))
+        .def(init<twin_fraction<FloatType> const&>
+             ((arg("source"))))
+        .def_readwrite("grad_index", &wt::grad_index)
+        .def_readwrite("grad", &wt::grad)
+        .def_readwrite("value", &wt::value)
+        .def("deep_copy", &wt::deep_copy)
+        ;
+    }
+  };
+
   template <typename FloatType>
   struct twin_component_wrappers : boost::python::pickle_suite
   {
@@ -22,32 +43,25 @@ namespace {
 
     static boost::python::tuple
     getinitargs(wt const &self) {
-      return boost::python::make_tuple(self.twin_law, self.twin_fraction,
-                                       self.grad_twin_fraction);
+      return boost::python::make_tuple(self.twin_law,
+        self.value, self.grad);
     }
 
     static void
     wrap()
     {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
-      class_<wt>("twin_component", no_init)
+      class_<wt, bases<twin_fraction<FloatType> > >("twin_component", no_init)
         .def(init<sgtbx::rot_mx const &,
-                  FloatType const &,
-                  optional<bool> >
+                  FloatType,
+                  bool>
                   ((arg("twin_law"),
-                    arg("twin_fraction"),
-                    arg("grad_twin_fraction"))))
+                    arg("value"),
+                    arg("grad"))))
+        .def("deep_copy", &wt::deep_copy)
         .def_pickle(twin_component_wrappers())
-        .def("set_grad_twin_fraction", &wt::set_grad_twin_fraction)
         .def_readonly("twin_law", &wt::twin_law)
-        .add_property("grad_twin_fraction",
-                      make_getter(&wt::grad_twin_fraction, rbv()),
-                      make_setter(&wt::grad_twin_fraction, dcp()))
-        .add_property("twin_fraction", make_getter(&wt::twin_fraction, rbv()),
-                                       make_setter(&wt::twin_fraction, dcp()))
-        .def_readwrite("grad_index", &wt::grad_index)
       ;
     }
   };
@@ -57,6 +71,7 @@ namespace {
   {
     using namespace boost::python;
 
+    twin_fraction_wrapper<double>::wrap();
     twin_component_wrappers<double>::wrap();
 
     def("set_grad_twin_fraction",
@@ -73,6 +88,7 @@ namespace {
 
     {
       using namespace scitbx::boost_python::container_conversions;
+      tuple_mapping_variable_capacity<af::shared<twin_fraction<double> *> >();
       tuple_mapping_variable_capacity<af::shared<twin_component<double> *> >();
     }
   }

@@ -1924,27 +1924,28 @@ def exercise_maximum_likelihood_targets():
 
 def exercise_twin_components():
   twin_a = xray.twin_component(sgtbx.rot_mx((0,1,0,1,0,0,0,0,-1)),
-                               twin_fraction=0.5,
-                               grad_twin_fraction=True)
-  assert twin_a.twin_fraction == 0.5
+                               value=0.5,
+                               grad=True)
+  assert twin_a.value == 0.5
   assert twin_a.twin_law == sgtbx.rot_mx((0,1,0,1,0,0,0,0,-1))
-  assert twin_a.grad_twin_fraction == True
-  twin_a.set_grad_twin_fraction(False)
-  assert twin_a.grad_twin_fraction == False
+  assert twin_a.grad == True
+  twin_a.grad = False
+  assert twin_a.grad == False
   import cPickle
   pickled_twin_a = cPickle.dumps(twin_a, cPickle.HIGHEST_PROTOCOL)
   unpickled_twin_a = cPickle.loads(pickled_twin_a)
-  assert twin_a.twin_fraction == unpickled_twin_a.twin_fraction
+  assert twin_a.value == unpickled_twin_a.value
   assert twin_a.twin_law == unpickled_twin_a.twin_law
-  assert twin_a.grad_twin_fraction == unpickled_twin_a.grad_twin_fraction
+  assert twin_a.grad == unpickled_twin_a.grad
 
   twin_b = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)),
-                               twin_fraction=0.2)
-  assert twin_b.grad_twin_fraction == False
+                               value=0.2,
+                               grad = False)
+  assert twin_b.grad == False
   twins = (twin_a, twin_b)
   xray.set_grad_twin_fraction(twins, True)
-  assert twin_a.grad_twin_fraction == True
-  assert twin_b.grad_twin_fraction == True
+  assert twin_a.grad == True
+  assert twin_b.grad == True
   assert xray.sum_twin_fractions(twins) == 0.7
 
 def exercise_extinction_correction():
