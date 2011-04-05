@@ -327,7 +327,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {
       FloatType obs = f_calc_func.observable;
       if (reflections.has_twin_components()) {
-        cctbx::xray::observations<FloatType>::iterator_ itr =
+        typename cctbx::xray::observations<FloatType>::iterator_ itr =
           reflections.iterator(h_i);
         const FloatType identity_part = obs;
         obs *= reflections.scale(h_i);
@@ -335,7 +335,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           gradients *= reflections.scale(h_i);
         }
         while (itr.has_next()) {
-          cctbx::xray::observations<FloatType>::index_twin_component twc =
+          typename cctbx::xray::observations<FloatType>::index_twin_component twc =
             itr.next();
           f_calc_func.compute(twc.h, compute_grad);
           obs += twc.fraction->value*f_calc_func.observable;
