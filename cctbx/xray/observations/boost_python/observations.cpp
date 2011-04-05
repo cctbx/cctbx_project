@@ -97,7 +97,7 @@ namespace {
         .add_property("fraction", &get_twin_fractions)
         ;
 
-      typedef observations<FloatType>::filter ft;
+      typedef typename obst::filter ft;
       class_<ft>("filter", no_init)
         .def(init<uctbx::unit_cell const& ,
                   sgtbx::space_group const&,

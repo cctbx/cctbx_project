@@ -25,7 +25,7 @@ namespace cctbx { namespace xray {
   public:
     // copy constructor
     twin_component(twin_component const& tc)
-      : twin_fraction(tc), twin_law(tc.twin_law)
+      : twin_fraction<FloatType>(tc), twin_law(tc.twin_law)
     {}
 
     twin_component(sgtbx::rot_mx const &twin_law_,
