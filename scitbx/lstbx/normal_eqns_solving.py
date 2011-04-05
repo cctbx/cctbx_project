@@ -171,15 +171,12 @@ class naive_iterations_with_damping(iterations):
       self.non_linear_ls.build_up()
       if self.has_gradient_converged_to_zero():
         do_last = True
-      if not do_last and self.n_iterations+1 < self.n_max_iterations:
-        self.do_damping(self.damping_value)
+      self.do_damping(self.damping_value)
       self.non_linear_ls.solve()
       step_too_small = self.had_too_small_a_step()
       self.non_linear_ls.step_forward()
       self.n_iterations += 1
-      if do_last: break
-      if step_too_small:
-        do_last = True
+      if do_last or step_too_small: break
 
   def __str__(self):
     return "pure Gauss-Newton with damping"
@@ -194,18 +191,15 @@ class naive_iterations_with_damping_and_shift_limit(iterations):
       self.non_linear_ls.build_up()
       if self.has_gradient_converged_to_zero():
         do_last = True
-      if not do_last and self.n_iterations+1 < self.n_max_iterations:
-        self.do_damping(self.damping_value)
+      self.do_damping(self.damping_value)
       self.non_linear_ls.solve()
       step_too_small = self.had_too_small_a_step()
-      if not do_last and not step_too_small:
+      if not step_too_small:
         step_too_small = self.do_scale_shifts(self.max_shift_over_esd)
       self.non_linear_ls.step_forward()
       self.n_iterations += 1
-      if do_last: break
-      if step_too_small:
-        do_last = True
-
+      if do_last or step_too_small: break
+      
   def __str__(self):
     return "pure Gauss-Newton with damping and shift scaling"
 
