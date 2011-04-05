@@ -10,12 +10,12 @@ namespace cctbx { namespace xray {
 
   /* This class is to provide access to non-twinned, merohedrally twinned and
   multi-dataset (HKLF 5) observations in a unified way. Some notes:
-    Merohedral components: always positive, for the case of racematic twinning
+    Merohedral components: always positive, for the case of racemic twinning
   both - normal and inversion components have to be provided. All merohedral
-  components have to be given explicetly - i.e. if there is only one matrix
+  components have to be given explicitly - i.e. if there is only one matrix
   which generates several components, all matrix products have to be given.
     The observations object keeps pointers to external twin_fraction and
-  twin_component objects and thereofore their life-time must be guarantied to
+  twin_component objects and therefore their life-time must be guaranteed to
   be at least as life-time of observation object it is being used. This can be
   easily done on the Python side by attaching the twin_fraction/component
   objects to an instance of the observations object.
