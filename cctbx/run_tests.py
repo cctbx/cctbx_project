@@ -108,6 +108,7 @@ def run():
    "$D/sgtbx/direct_space_asu/proto/tst_asu.py",
    "$D/masks/tests/tst_flood_fill.py",
    "$D/r_free_utils.py",
+   "$D/xray/observations/tst_observations.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")

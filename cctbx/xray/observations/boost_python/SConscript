@@ -1,0 +1,7 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Clone()
+env.Prepend(LIBS=["cctbx"])
+env.SharedLibrary(target="#lib/cctbx_xray_observations_ext", source=[
+  "observations.cpp",
+  "observations_ext.cpp",
+])
