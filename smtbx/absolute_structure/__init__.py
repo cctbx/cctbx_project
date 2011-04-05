@@ -18,6 +18,7 @@ from scitbx.lstbx import normal_eqns_solving
 import smtbx.utils
 from smtbx.refinement import constraints
 from smtbx.refinement import least_squares
+from cctbx.xray import observations
 
 
 class hooft_analysis(object):
@@ -296,9 +297,9 @@ class students_t_hooft_analysis(hooft_analysis):
 
 class flack_analysis(object):
 
-  def __init__(self, xray_structure, fo2, exti):
+  def __init__(self, xray_structure, obs_, exti):
     adopt_init_args(self, locals())
-    assert fo2.anomalous_flag()
+    assert obs_.fo_sq.anomalous_flag()
     xray_structure = xray_structure.deep_copy_scatterers()
     flags = xray_structure.scatterer_flags()
     for sc in xray_structure.scatterers():
@@ -307,23 +308,36 @@ class flack_analysis(object):
       f.set_use_u_iso(sc.flags.use_u_iso())
       f.set_use_fp_fdp(True)
       sc.flags = f
-    twin_components = (
-      xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True),)
+
+    twin_fractions = obs_.twin_fractions
+    twin_components = obs_.merohedral_components
+    for tw in twin_fractions: tw.grad = False
+    for tc in twin_components: tc.grad = False
+
+    it = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True)
+    twin_components += (it,)
+    obs = observations.observations(obs_,
+                       twin_fractions,
+                       twin_components)
+    obs.fo_sq = obs_.fo_sq
+    # reparameterisation needs all fractions
+    twin_fractions += twin_components
     reparametrisation = constraints.reparametrisation(
       xray_structure, [], smtbx.utils.connectivity_table(xray_structure),
-      twin_components=twin_components,
+      twin_fractions=twin_fractions,
       extinction=exti
     )
-    normal_eqns = least_squares.crystallographic_ls(
-      fo2, reparametrisation)
+    normal_eqns = least_squares.crystallographic_ls(obs,
+      reparametrisation)
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns, n_max_iterations=10,
       gradient_threshold=1e-7,
       step_threshold=1e-4)
-    self.flack_x = twin_components[0].twin_fraction
+    self.flack_x = it.value
     self.sigma_x = math.sqrt(normal_eqns.covariance_matrix(
       jacobian_transpose=reparametrisation.jacobian_transpose_matching(
         reparametrisation.mapping_to_grad_fc_independent_scalars))[0])
+
 
   def show(self, out=None):
     if out is None: out = sys.stdout

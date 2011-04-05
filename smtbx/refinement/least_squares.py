@@ -2,6 +2,7 @@ import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
 
+
 import smtbx.refinement.weighting_schemes # import dependency
 from cctbx import xray
 import libtbx
@@ -24,14 +25,14 @@ class crystallographic_ls(
   n_restraints = None
   initial_scale_factor = None
 
-  def __init__(self, fo_sq, reparametrisation, **kwds):
+  def __init__(self, observations, reparametrisation, **kwds):
     super(crystallographic_ls, self).__init__(
       reparametrisation.n_independent_params)
-    self.fo_sq = fo_sq
+    self.observations = observations
     self.reparametrisation = reparametrisation
     adopt_optional_init_args(self, kwds)
     if self.f_mask is not None:
-      assert self.f_mask.size() == self.fo_sq.size()
+      assert self.f_mask.size() == observations.fo_sq.size()
     self.one_h_linearisation = direct.f_calc_modulus_squared(
       self.xray_structure)
     if self.weighting_scheme == "default":
@@ -44,18 +45,15 @@ class crystallographic_ls(
     def fget(self):
       return self.reparametrisation.structure
 
-  class twin_components(libtbx.property):
+  class twin_fractions(libtbx.property):
     def fget(self):
-      return self.reparametrisation.twin_components
+      return self.reparametrisation.twin_fractions
 
   def build_up(self, objective_only=False):
     if self.f_mask is not None:
       f_mask = self.f_mask.data()
     else:
       f_mask = flex.complex_double()
-    twin_components = self.reparametrisation.twin_components
-    if twin_components is None:
-      twin_components = ()
 
     extinction_correction = self.reparametrisation.extinction
     if extinction_correction is None:
@@ -63,15 +61,12 @@ class crystallographic_ls(
 
     def args(scale_factor, weighting_scheme, objective_only):
       args = (self,
-              self.fo_sq.indices(),
-              self.fo_sq.data(),
-              self.fo_sq.sigmas(),
+              self.observations,
               f_mask,
               weighting_scheme,
               scale_factor,
               self.one_h_linearisation,
               self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-              twin_components,
               extinction_correction
               )
       if objective_only:
@@ -99,8 +94,10 @@ class crystallographic_ls(
     result = ext.build_normal_equations(*args(scale_factor,
                                               self.weighting_scheme,
                                               objective_only))
-    self.f_calc = self.fo_sq.array(data=result.f_calc(), sigmas=None)
-    self.fc_sq = self.fo_sq.array(data=result.observables(), sigmas=None)\
+    self.f_calc = self.observations.fo_sq.array(
+      data=result.f_calc(), sigmas=None)
+    self.fc_sq = self.observations.fo_sq.array(
+      data=result.observables(), sigmas=None)\
         .set_observation_type_xray_intensity()
     self.weights = result.weights()
     self.objective_data_only = self.objective()
@@ -157,16 +154,17 @@ class crystallographic_ls(
     return math.sqrt(2*self.objective_data_only)
 
   def r1_factor(self, cutoff_factor=None):
-    fo_sq = self.fo_sq
+    fo_sq = self.observations.fo_sq
     if cutoff_factor is not None:
-      strong = fo_sq.data() > cutoff_factor*fo_sq.sigmas()
+      strong = fo_sq.data() >= cutoff_factor*fo_sq.sigmas()
       fo_sq = fo_sq.select(strong)
       fc_sq = self.fc_sq.select(strong)
     else:
       fc_sq = self.fc_sq
     f_obs = fo_sq.f_sq_as_f()
     f_calc = fc_sq.f_sq_as_f()
-    R1 = f_obs.r1_factor(f_calc, scale_factor=math.sqrt(self.scale_factor()))
+    R1 = f_obs.r1_factor(f_calc,
+      scale_factor=math.sqrt(self.scale_factor()), assume_index_matching=True)
     return R1, f_obs.size()
 
   def covariance_matrix(self,

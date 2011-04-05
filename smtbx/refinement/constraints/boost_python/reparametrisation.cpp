@@ -144,17 +144,17 @@ namespace boost_python {
     }
   };
 
-  struct twin_component_parameter_wrapper
+  struct twin_fraction_parameter_wrapper
   {
-    typedef twin_component_parameter wt;
+    typedef twin_fraction_parameter wt;
 
     static void wrap() {
       using namespace boost::python;
       class_<wt,
              bases<independent_scalar_parameter>,
-             std::auto_ptr<wt> >("twin_component_parameter", no_init)
-        .def(init<cctbx::xray::twin_component<double> *>((
-          arg("twin_component"))));
+             std::auto_ptr<wt> >("twin_fraction_parameter", no_init)
+        .def(init<cctbx::xray::twin_fraction<double> *>((
+          arg("twin_fraction"))));
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
   };
@@ -463,7 +463,7 @@ namespace boost_python {
     scalar_parameter_wrapper::wrap();
     independent_scalar_parameter_wrapper::wrap();
 
-    twin_component_parameter_wrapper::wrap();
+    twin_fraction_parameter_wrapper::wrap();
 
     extinction_parameter_wrapper::wrap();
 

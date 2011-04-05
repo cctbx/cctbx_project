@@ -61,7 +61,7 @@ class reparametrisation(ext.reparametrisation):
   """ Enhance the C++ level reparametrisation class for ease of use """
 
   temperature = 20 # Celsius
-  twin_components = None
+  twin_fractions = None
   extinction = None
 
   def __init__(self,
@@ -107,10 +107,10 @@ class reparametrisation(ext.reparametrisation):
       self.add_new_site_parameter(i_sc)
       self.add_new_thermal_displacement_parameter(i_sc)
       self.add_new_occupancy_parameter(i_sc)
-    if self.twin_components is not None:
-      for component in self.twin_components:
-        if component.grad_twin_fraction:
-          self.add_new_twin_component_parameter(component)
+    if self.twin_fractions is not None:
+      for fraction in self.twin_fractions:
+        if fraction.grad:
+          self.add_new_twin_fraction_parameter(fraction)
     if self.extinction is not None and self.extinction.grad:
       p = self.add(extinction_parameter, self.extinction)
       self.independent_scalar_parameters.append(p)
@@ -127,18 +127,18 @@ class reparametrisation(ext.reparametrisation):
     #set the grad indices for independent parameters: BASF, EXTI
     # count the number of refined independent params
     independent_grad_cnt = 0
-    if self.twin_components is not None:
-      for component in self.twin_components:
-        if component.grad_twin_fraction:
+    if self.twin_fractions is not None:
+      for fraction in self.twin_fractions:
+        if fraction.grad:
           independent_grad_cnt += 1
     if self.extinction is not None and self.extinction.grad:
       independent_grad_cnt += 1
     #update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
-    if self.twin_components is not None:
-      for component in self.twin_components:
-        if component.grad_twin_fraction:
-          component.grad_index = independent_grad_i
+    if self.twin_fractions is not None:
+      for fraction in self.twin_fractions:
+        if fraction.grad:
+          fraction.grad_index = independent_grad_i
           independent_grad_i += 1
     if self.extinction is not None and self.extinction.grad:
       self.extinction.grad_index = independent_grad_i
@@ -223,8 +223,8 @@ class reparametrisation(ext.reparametrisation):
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
 
-  def add_new_twin_component_parameter(self, twin_component):
-    p = self.add(twin_component_parameter, twin_component)
+  def add_new_twin_fraction_parameter(self, twin_fraction):
+    p = self.add(twin_fraction_parameter, twin_fraction)
     self.independent_scalar_parameters.append(p)
     return p
 
@@ -235,9 +235,9 @@ class reparametrisation(ext.reparametrisation):
 
   def parameter_map(self):
     rv = xray.parameter_map(self.structure.scatterers())
-    if self.twin_components is not None:
-      for component in self.twin_components:
-        if component.grad_twin_fraction:
+    if self.twin_fractions is not None:
+      for fraction in self.twin_fractions:
+        if fraction.grad:
           rv.add_independent_scalar()
     if self.extinction is not None and self.extinction.grad:
       rv.add_independent_scalar()
