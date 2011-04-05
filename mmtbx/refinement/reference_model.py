@@ -52,7 +52,7 @@ reference_group_params = iotbx.phil.parse("""
  alignment_group
   .multiple=True
   .optional=True
-  .short_caption=Reference group
+  .short_caption=Sequence alignment group
   .style = noauto auto_align menu_item parent_submenu:reference_model
 {
   reference=None
