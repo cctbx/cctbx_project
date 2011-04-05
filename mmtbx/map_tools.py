@@ -3,7 +3,6 @@ from cctbx import miller
 from cctbx import maptbx
 import boost.python
 import mmtbx
-import math
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
