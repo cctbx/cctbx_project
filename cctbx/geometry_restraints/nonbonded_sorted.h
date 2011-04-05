@@ -39,6 +39,7 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<std::size_t> const& model_indices,
         af::const_ref<std::size_t> const& conformer_indices,
         af::const_ref<std::size_t> const& sym_excl_indices,
+        af::const_ref<std::size_t> const& donor_acceptor_excl_groups,
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
         double nonbonded_distance_cutoff_plus_buffer,
@@ -56,6 +57,9 @@ namespace cctbx { namespace geometry_restraints {
                   || conformer_indices.size() == nonbonded_types.size());
         CCTBX_ASSERT(sym_excl_indices.size() == 0
                   || sym_excl_indices.size() == nonbonded_types.size());
+        CCTBX_ASSERT(donor_acceptor_excl_groups.size() == 0
+                  || donor_acceptor_excl_groups.size() ==
+                     nonbonded_types.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
@@ -99,11 +103,17 @@ namespace cctbx { namespace geometry_restraints {
               == sym_excl_indices[pair.j_seq]) {
             sym_excl_flag = true;
           }
+          bool donor_acceptor_adjust = true;
+          if (   donor_acceptor_excl_groups.size() == 0
+              || donor_acceptor_excl_groups[pair.i_seq] ==
+                 donor_acceptor_excl_groups[pair.j_seq]) {
+            donor_acceptor_adjust = false;
+          }
           if (   shell_asu_tables_size > 2
               && shell_asu_tables[2].contains(pair)) {
             nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
               nonbonded_params, nonbonded_types, pair,
-              /*is_1_4_interaction*/ true);
+              /*is_1_4_interaction*/ true, donor_acceptor_adjust);
             if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
               min_vdw_distance = proxy.vdw_distance;
             }
@@ -116,7 +126,7 @@ namespace cctbx { namespace geometry_restraints {
           {
             nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
               nonbonded_params, nonbonded_types, pair,
-              /*is_1_4_interaction*/ false);
+              /*is_1_4_interaction*/ false, donor_acceptor_adjust);
             if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
               min_vdw_distance = proxy.vdw_distance;
             }
@@ -134,12 +144,13 @@ namespace cctbx { namespace geometry_restraints {
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
         direct_space_asu::asu_mapping_index_pair const& pair,
-        bool is_1_4_interaction)
+        bool is_1_4_interaction,
+        bool donor_acceptor_adjust)
       {
         std::string const& type_i = nonbonded_types[pair.i_seq];
         std::string const& type_j = nonbonded_types[pair.j_seq];
         double distance = nonbonded_params.get_nonbonded_distance(
-          type_i, type_j);
+          type_i, type_j, donor_acceptor_adjust);
         if (distance != -1) {
           return nonbonded_asu_proxy(
             pair,

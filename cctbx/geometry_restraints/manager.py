@@ -17,6 +17,7 @@ class manager(object):
         conformer_indices=None,
         sym_excl_indices=None,
         site_symmetry_table=None,
+        donor_acceptor_excl_groups=None,
         bond_params_table=None,
         shell_sym_tables=None,
         nonbonded_params=None,
@@ -190,11 +191,14 @@ class manager(object):
         model_indices=None,
         conformer_indices=None,
         sym_excl_indices=None,
+        donor_acceptor_excl_groups=None,
         site_symmetry_table=None,
         nonbonded_types=None):
     assert n_additional_sites >= 0
     assert (model_indices is None) == (self.model_indices is None)
     assert (conformer_indices is None) == (self.conformer_indices is None)
+    assert (donor_acceptor_excl_groups is None) == \
+           (self.donor_acceptor_excl_groups is None)
     assert (sym_excl_indices is None) == (self.sym_excl_indices is None)
     assert (site_symmetry_table is None) == (self.site_symmetry_table is None)
     assert (nonbonded_types is None) == (self.nonbonded_types is None)
@@ -206,6 +210,10 @@ class manager(object):
       assert conformer_indices.size() == n_additional_sites
       conformer_indices = self.conformer_indices.concatenate(
         conformer_indices)
+    if (self.donor_acceptor_excl_groups is not None):
+      assert donor_acceptor_excl_groups.size() == n_additional_sites
+      donor_acceptor_excl_groups = self.donor_acceptor_excl_groups.concatenate(
+        donor_acceptor_excl_groups)
     if (self.sym_excl_indices is not None):
       assert sym_excl_indices.size() == n_additional_sites
       sym_excl_indices = self.sym_excl_indices.concatenate(
@@ -240,6 +248,7 @@ class manager(object):
       model_indices=model_indices,
       conformer_indices=conformer_indices,
       sym_excl_indices=sym_excl_indices,
+      donor_acceptor_excl_groups=donor_acceptor_excl_groups,
       site_symmetry_table=site_symmetry_table,
       bond_params_table=bond_params_table,
       shell_sym_tables=shell_sym_tables,
@@ -276,6 +285,11 @@ class manager(object):
       selected_sym_excl_indices = self.sym_excl_indices.select(
         iselection)
       n_seqs[self.sym_excl_indices.size()] += 1
+    selected_donor_acceptor_excl_groups = None
+    if (self.donor_acceptor_excl_groups is not None):
+      selected_donor_acceptor_excl_groups = \
+        self.donor_acceptor_excl_groups.select(iselection)
+      n_seqs[self.donor_acceptor_excl_groups.size()] += 1
     selected_site_symmetry_table = None
     if (self.site_symmetry_table is not None):
       selected_site_symmetry_table = self.site_symmetry_table.select(
@@ -334,6 +348,7 @@ class manager(object):
       model_indices=selected_model_indices,
       conformer_indices=selected_conformer_indices,
       sym_excl_indices=selected_sym_excl_indices,
+      donor_acceptor_excl_groups=selected_donor_acceptor_excl_groups,
       site_symmetry_table=selected_site_symmetry_table,
       bond_params_table=selected_bond_params_table,
       shell_sym_tables=selected_shell_sym_tables,
@@ -535,6 +550,7 @@ class manager(object):
           model_indices=self.model_indices,
           conformer_indices=self.conformer_indices,
           sym_excl_indices=self.sym_excl_indices,
+          donor_acceptor_excl_groups=self.donor_acceptor_excl_groups,
           nonbonded_params=self.nonbonded_params,
           nonbonded_types=self.nonbonded_types,
           nonbonded_distance_cutoff_plus_buffer
