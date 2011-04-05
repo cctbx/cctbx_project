@@ -48,7 +48,7 @@ class rigid_pivoted_rotatable_group(object):
 
 class rigid_rotatable_expandable_group(object):
   """ a set of atoms rides on a pivot atom, rotates and uniformly
-  expands or shrinks
+  expands or contracts
   """
 
   def __init__(self, center, ind_sequence, sizeable, rotatable):

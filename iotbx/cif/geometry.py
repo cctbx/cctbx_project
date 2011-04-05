@@ -20,6 +20,7 @@ class distances_as_cif_loop(object):
                cell_covariance_matrix=None,
                parameter_map=None,
                include_bonds_to_hydrogen=False,
+               fixed_distances=None,
                eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.4f"
@@ -44,7 +45,10 @@ class distances_as_cif_loop(object):
           and (site_labels[d.i_seq].startswith('H') or
                site_labels[d.j_seq].startswith('H'))):
         continue
-      if d.variance is not None and d.variance > eps:
+      if (d.variance is not None and d.variance > eps
+          and not(fixed_distances is not None and
+                  ((d.i_seq, d.j_seq) in fixed_distances or
+                   (d.j_seq, d.i_seq) in fixed_distances))):
         distance = format_float_with_su(d.distance, math.sqrt(d.variance))
       else:
         distance = fmt % d.distance
@@ -69,6 +73,7 @@ class angles_as_cif_loop(object):
                cell_covariance_matrix=None,
                parameter_map=None,
                include_bonds_to_hydrogen=False,
+               fixed_angles=None,
                eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.1f"
@@ -100,7 +105,10 @@ class angles_as_cif_loop(object):
       sym_code_ki = space_group_info.cif_symmetry_code(a.rt_mx_ki)
       if sym_code_ji == "1": sym_code_ji = "."
       if sym_code_ki == "1": sym_code_ki = "."
-      if a.variance is not None and a.variance > eps:
+      if (a.variance is not None and a.variance > eps
+          and not(fixed_angles is not None and
+                  ((i_seq, j_seq, k_seq) in fixed_angles or
+                   (k_seq, j_seq, i_seq) in fixed_angles))):
         angle = format_float_with_su(a.angle, math.sqrt(a.variance))
       else:
         angle = fmt % a.angle
