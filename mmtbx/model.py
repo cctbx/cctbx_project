@@ -915,11 +915,16 @@ class manager(object):
         sym_excl_indices = None
       else:
         sym_excl_indices = flex.size_t(number_of_new_solvent, 0)
+      if (geometry.donor_acceptor_excl_groups is None):
+        donor_acceptor_excl_groups = None
+      else:
+        donor_acceptor_excl_groups = flex.size_t(number_of_new_solvent, 0)
       geometry = geometry.new_including_isolated_sites(
         n_additional_sites =number_of_new_solvent,
         model_indices=model_indices,
         conformer_indices=conformer_indices,
         sym_excl_indices=sym_excl_indices,
+        donor_acceptor_excl_groups=donor_acceptor_excl_groups,
         site_symmetry_table=solvent_xray_structure.site_symmetry_table(),
         nonbonded_types=flex.std_string(number_of_new_solvent, "OH2"))
       self.restraints_manager = mmtbx.restraints.manager(
