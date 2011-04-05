@@ -31,6 +31,21 @@ def calc_t(fo, fc, k, k_d, k_d2):
 
 class target(object):
 
-  def __init__(O, fo, fc):
-    O.k, O.k_d, O.k_d2 = calc_k(fo, fc)
-    O.t, O.t_d, O.t_d2 = calc_t(fo, fc, O.k, O.k_d, O.k_d2)
+  def __init__(O, f_obs, f_calc=None, f_calc_abs=None):
+    assert [f_calc, f_calc_abs].count(None) == 1
+    if (f_calc is not None):
+      from scitbx.array_family import flex
+      f_calc_abs = flex.abs(f_calc)
+    O.k, O.k_d, O.k_d2 = calc_k(f_obs, f_calc_abs)
+    O.t, O.g, O.c = calc_t(f_obs, f_calc_abs, O.k, O.k_d, O.k_d2)
+    O.f_calc_gradients = None
+    O.f_calc_hessians = None
+    if (f_calc is not None):
+      O.f_calc_gradients = O.g / f_calc_abs * f_calc # XXX division by zero
+      a = flex.real(f_calc)
+      b = flex.imag(f_calc)
+      aa, bb, ab = a*a, b*b, a*b
+      haa = O.c * aa + O.g * bb / f_calc_abs
+      hbb = O.c * bb + O.g * aa / f_calc_abs
+      hab = (O.c - O.g / f_calc_abs) * a * b
+      O.f_calc_hessians = flex.vec3_double(haa, hbb, hab) / f_calc_abs**2
