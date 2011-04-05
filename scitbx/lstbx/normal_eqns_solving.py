@@ -199,7 +199,7 @@ class naive_iterations_with_damping_and_shift_limit(iterations):
       self.non_linear_ls.step_forward()
       self.n_iterations += 1
       if do_last or step_too_small: break
-      
+
   def __str__(self):
     return "pure Gauss-Newton with damping and shift scaling"
 
