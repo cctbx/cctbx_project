@@ -1210,7 +1210,7 @@ def exercise_parameter_map():
            xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, False))
   m2 = xray.parameter_map(xs.scatterers())
   for t in twins:
-    if t.grad_twin_fraction:
+    if t.grad:
       m2.add_independent_scalar()
   assert m1.n_parameters == xs.n_parameters()
   assert m2.n_parameters == xs.n_parameters()+1
