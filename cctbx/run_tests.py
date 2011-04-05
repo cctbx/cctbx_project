@@ -13,6 +13,7 @@ def run():
   "$D/math/boost_python/tst_math.py",
   "$D/xray/boost_python/tst_xray.py",
   "$D/xray/boost_python/tst_targets_fd.py",
+  "$D/xray/targets/tst_r1.py",
   "$D/xray/targets/tst_shelxl_wght_ls.py",
   "$D/xray/boost_python/tst_f_model.py",
   "$D/array_family/boost_python/tst_flex.py",
