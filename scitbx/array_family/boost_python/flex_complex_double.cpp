@@ -29,6 +29,19 @@ namespace {
     return new result_type(result);
   }
 
+  boost::python::tuple
+  part_names()
+  {
+    return boost::python::make_tuple("real", "imag");
+  }
+
+  boost::python::tuple
+  parts(
+    versa<std::complex<double>, flex_grid<> > const& O)
+  {
+    return boost::python::make_tuple(real(O), imag(O));
+  }
+
   versa<std::complex<double>, flex_grid<> >
   mul_ac_ar(
     versa<std::complex<double>, flex_grid<> > const& a1,
@@ -108,6 +121,9 @@ namespace {
           arg("reals"), arg("imags"))))
       .def("__init__", make_constructor(
         flex_complex_double_from_numpy_array, default_call_policies()))
+      .def("part_names", part_names)
+      .staticmethod("part_names")
+      .def("parts", parts)
       .def("all_approx_equal",
         all_approx_equal_a_a, (
           arg("other"),

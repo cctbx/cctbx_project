@@ -73,6 +73,27 @@ namespace {
     return new flex<vec3<double> >::type(result, result.size());
   }
 
+  boost::python::tuple
+  part_names()
+  {
+    return boost::python::make_tuple("x", "y", "z");
+  }
+
+  boost::python::tuple
+  parts(
+    versa<vec3<double>, flex_grid<> > const& O)
+  {
+    tiny<versa<double, flex_grid<> >, 3> result;
+    std::size_t n = O.size();
+    for(std::size_t i=0;i<3;i++) {
+      result[i].resize(O.accessor());
+      for(std::size_t j=0;j<n;j++) {
+        result[i][j] = O[j][i];
+      }
+    }
+    return boost::python::make_tuple(result[0], result[1], result[2]);
+  }
+
   flex_double
   as_double(flex<vec3<double> >::type const& a)
   {
@@ -359,6 +380,9 @@ namespace boost_python {
         3*pickle_size_per_element<double>::value>())
       .def("__init__", make_constructor(join))
       .def("__init__", make_constructor(from_double))
+      .def("part_names", part_names)
+      .staticmethod("part_names")
+      .def("parts", parts)
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(
