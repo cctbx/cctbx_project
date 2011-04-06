@@ -65,14 +65,9 @@ class site_refinement_test(refinement_test):
       structure=self.xray_structure,
       constraints=[],
       connectivity_table=connectivity_table)
-    obs = observations.observations(
-      self.fo_sq.indices(),
-      self.fo_sq.data(),
-      self.fo_sq.sigmas(), ())
-    obs.fo_sq = self.fo_sq
+    obs = self.fo_sq.as_xray_observations()
     ls = least_squares.crystallographic_ls(
-      obs,
-      reparametrisation,
+      obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
       floating_origin_restraint_relative_weight=0)
     ls.build_up()
@@ -218,13 +213,8 @@ class site_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    obs = observations.observations(
-      self.fo_sq.indices(),
-      self.fo_sq.data(),
-      self.fo_sq.sigmas(), ())
-    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      obs, reparametrisation,
+      self.fo_sq.as_xray_observations(), reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(
@@ -280,13 +270,8 @@ class adp_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    obs = observations.observations(
-      self.fo_sq.indices(),
-      self.fo_sq.data(),
-      self.fo_sq.sigmas(), ())
-    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      obs, reparametrisation,
+      self.fo_sq.as_xray_observations(), reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(
@@ -489,12 +474,7 @@ class twin_test(object):
       constraints=[],
       connectivity_table=connectivity_table,
       twin_fractions=twin_components)
-    obs = observations.observations(
-      self.fo_sq.indices(),
-      self.fo_sq.data(),
-      self.fo_sq.sigmas(),
-      twin_components)
-    obs.fo_sq = self.fo_sq
+    obs = self.fo_sq.as_xray_observations(twin_components=twin_components)
     normal_eqns = least_squares.crystallographic_ls(
       obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
@@ -651,13 +631,8 @@ class special_positions_test(object):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    obs = observations.observations(
-      self.fo_sq.indices(),
-      self.fo_sq.data(),
-      self.fo_sq.sigmas(), ())
-    obs.fo_sq = self.fo_sq
     ls = least_squares.crystallographic_ls(
-      obs, reparametrisation,
+      self.fo_sq.as_xray_observations(), reparametrisation,
       weighting_scheme=least_squares.unit_weighting())
 
     cycles = normal_eqns_solving.naive_iterations(

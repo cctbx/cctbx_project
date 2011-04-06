@@ -10,7 +10,6 @@ import libtbx.utils
 from smtbx import masks
 from smtbx.refinement import constraints
 import smtbx.utils
-from cctbx.xray import observations
 import cStringIO
 
 def exercise_masks():
@@ -163,8 +162,7 @@ def exercise_least_squares(xray_structure, fo_sq, mask=None):
     structure=xs,
     constraints=[],
     connectivity_table=connectivity_table)
-  obs = observations.observations(fo_sq.indices(), fo_sq.data(), fo_sq.sigmas(), ())
-  obs.fo_sq = fo_sq
+  obs = fo_sq.as_xray_observations()
   ls = least_squares.crystallographic_ls(
     obs,
     reparametrisation,

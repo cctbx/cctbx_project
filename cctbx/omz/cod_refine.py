@@ -129,10 +129,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
   assert fo_sq.sigmas().all_gt(0)
   if (1): # work around bug currently in smtbx weighting scheme implementation
     fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.data().size(), 1))
-  from cctbx.xray import observations
-  xobs = observations.observations(
-    fo_sq.indices(), fo_sq.data(), fo_sq.sigmas(), ())
-  xobs.fo_sq = fo_sq
+  xobs = fo_sq.as_xray_observations()
   tm = user_plus_sys_time()
   rm = smtbx.refinement.model(
     fo_sq=xobs,

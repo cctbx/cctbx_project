@@ -9,7 +9,6 @@ from smtbx import development
 from scitbx.lstbx import normal_eqns_solving
 from scitbx import matrix
 import itertools
-from cctbx.xray import observations
 
 class test_case(object):
 
@@ -91,8 +90,7 @@ class test_case(object):
     self.reparametrisation = constraints.reparametrisation(
       xs, self.constraints, self.connectivity_table,
       temperature=self.t_celsius)
-    obs = observations.observations(fo_sq.indices(), fo_sq.data(), fo_sq.sigmas(), ())
-    obs.fo_sq = fo_sq
+    obs = fo_sq.as_xray_observations()
     ls = least_squares.crystallographic_ls(
       obs,
       self.reparametrisation,
