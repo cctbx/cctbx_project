@@ -303,7 +303,6 @@ class manager(manager_mixin):
          twin_law                     = None,
          twin_fraction                = 0,
          max_number_of_bins           = 30,
-         filled_f_obs_selection       = None,
          _target_memory               = None):
     if( k_sol is None ):
       k_sol = [0.]
@@ -330,9 +329,6 @@ class manager(manager_mixin):
       alpha_beta_params = alpha_beta_master_params.extract()
     self.twin = False
     assert f_obs is not None
-    self.filled_f_obs_selection = filled_f_obs_selection
-    if(self.filled_f_obs_selection is not None):
-      self.filled_f_obs_selection.size() == f_obs.data().size()
     assert f_obs.is_real_array()
     self.sfg_params = sf_and_grads_accuracy_params
     self.alpha_beta_params = alpha_beta_params
@@ -632,11 +628,6 @@ class manager(manager_mixin):
       new_mask_manager = self.mask_manager.select(selection = sel_passive) # XXX
     else:
       new_mask_manager = None
-    if(self.filled_f_obs_selection is None):
-      new_filled_f_obs_selection = self.filled_f_obs_selection
-    else:
-      new_filled_f_obs_selection = \
-        self.filled_f_obs_selection.select(sel_active)
     xrs = self.xray_structure
     if(xrs is not None): xrs = self.xray_structure.deep_copy_scatterers()
     fmsks=[]
@@ -663,7 +654,6 @@ class manager(manager_mixin):
       twin_law                     = self.twin_law,
       twin_fraction                = self.twin_fraction,
       max_number_of_bins           = self.max_number_of_bins,
-      filled_f_obs_selection       = new_filled_f_obs_selection,
       _target_memory               = self._target_memory)
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
@@ -846,18 +836,12 @@ class manager(manager_mixin):
         for r_shrink in r_shrinks:
           self.mask_params.solvent_radius = r_solv
           self.mask_params.shrink_truncation_radius = r_shrink
-          self.mask_params.grid_step_factor = gsf
-          self.mask_manager = masks.manager(
-            miller_array      = self.f_obs(),
-            miller_array_twin = self.twin_set,
-            xray_structure    = self.xray_structure,
-            mask_params       = self.mask_params)
+          self.mask_manager.mask_params = self.mask_params
           self.update_xray_structure(
             xray_structure      = self.xray_structure,
             update_f_calc       = False,
             update_f_mask       = True,
-            force_update_f_mask = True,
-            out                 = None)
+            force_update_f_mask = True)
           self.update_solvent_and_scale(params=params, out=None, verbose=-1,
             optimize_mask=False)
           rw = self.r_work()
@@ -877,16 +861,10 @@ class manager(manager_mixin):
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
     self.mask_params.grid_step_factor = gsf_
-    self.mask_manager = masks.manager(
-      miller_array      = self.f_obs(),
-      miller_array_twin = self.twin_set,
-      xray_structure    = self.xray_structure,
-      mask_params       = self.mask_params)
     self.update_xray_structure(xray_structure      = self.xray_structure,
                                update_f_calc       = False,
                                update_f_mask       = True,
-                               force_update_f_mask = True,
-                               out                 = None)
+                               force_update_f_mask = True)
     self.update_solvent_and_scale(params = params, out = out, verbose = -1)
     if(verbose > 0):
        self.show_mask_optimization_statistics(prefix="Mask optimization final",
@@ -1696,14 +1674,6 @@ class manager(manager_mixin):
     return mmtbx.missing_reflections_handler.fill_missing_f_obs(
       fmodel=self, fill_mode=fill_mode)
 
-  def remove_filled_f_obs(self):
-    if(self.filled_f_obs_selection is not None):
-      new_fmodel = self.select(selection = ~self.filled_f_obs_selection)
-      new_fmodel.filled_f_obs_selection = None
-      return new_fmodel
-    else:
-      return self
-
   def scale_ml_wrapper(self):
     if (self.alpha_beta_params is None): return 1.0
     if (self.alpha_beta_params.method != "calc"): return 1.0
@@ -1873,13 +1843,16 @@ class manager(manager_mixin):
       ss          = None)
     fb = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
       indices = self.f_obs().indices(),
-      anomalous_flag=False).array(data=core_.data.f_aniso)
+      anomalous_flag=False).array(data= core_.data.f_aniso)
     fb = fb.average_bijvoet_mates()
     ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
     if(abs(trace)>20): # XXX BAD!!! fix asap by refining Biso applied to Fobs XXX
       scale = fb.data()
     else:
       scale = 1./fb.data()
+    scale = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
+      indices = self.f_obs().deep_copy().average_bijvoet_mates().indices(),
+      anomalous_flag=False).array(data=scale)
     return group_args(
       iso_scale = scale,
       ss = ss,

@@ -502,6 +502,7 @@ class manager(object):
             if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs().d_min() > 3.0):
                   bss.anisotropic_scaling=False
+                  bss.apply_back_trace_of_b_cart=False
                fmodel_copy.update_solvent_and_scale(
                  params = bss, out = log, verbose = -1, optimize_mask=False)
                if(fmodel_copy.f_obs().d_min() > 3.0):

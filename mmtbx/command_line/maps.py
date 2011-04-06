@@ -2,7 +2,7 @@
 
 import mmtbx.maps
 from scitbx.array_family import flex
-import os, sys
+import os, sys, random
 import iotbx.pdb
 from libtbx.utils import Sorry
 from libtbx import runtime_utils
@@ -11,6 +11,10 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
+
+random.seed(0)
+flex.set_random_seed(0)
+
 
 legend = """
 phenix.maps: a command line tool to compute various maps and save them in most
@@ -170,8 +174,6 @@ def run(args, log = sys.stdout):
     raise Sorry(
       "PDB file is not given: maps.input.pdb_file_name=%s is not a file"%\
       str(params.maps.input.pdb_file_name))
-  print >> log, "-"*79
-  print >> log, "\nInput PDB file:", params.maps.input.pdb_file_name
   pdb_inp = iotbx.pdb.input(file_name = params.maps.input.pdb_file_name)
   # get all crystal symmetries
   cs_from_coordinate_files = [pdb_inp.crystal_symmetry_from_cryst1()]
@@ -193,9 +195,6 @@ def run(args, log = sys.stdout):
         "will only work with reflection file formats that contain both "+
         "unit cell and space group records, such as MTZ files.")
   #
-  xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = crystal_symmetry)
-  xray_structure.show_summary(f = log, prefix="  ")
-  print >> log, "-"*79
   reflection_files = []
   for rfn in [params.maps.input.reflection_data.file_name,
              params.maps.input.reflection_data.r_free_flags.file_name]:
@@ -230,6 +229,17 @@ def run(args, log = sys.stdout):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
   print >> log, "-"*79
+  print >> log, "\nInput PDB file:", params.maps.input.pdb_file_name
+  xray_structure = pdb_inp.xray_structure_simple(
+    crystal_symmetry = crystal_symmetry)
+  mmtbx.utils.setup_scattering_dictionaries(
+    scattering_table = params.maps.scattering_table,
+    xray_structure   = xray_structure,
+    d_min            = f_obs.d_min(),
+    log              = log)
+  xray_structure.show_summary(f = log, prefix="  ")
+  print >> log, "-"*79
+
   print >> log, "Bulk solvent correction and anisotropic scaling:"
   fmodel = mmtbx.utils.fmodel_simple(
     xray_structures         = [xray_structure],
