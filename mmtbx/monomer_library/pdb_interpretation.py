@@ -158,6 +158,12 @@ master_params_str = """\
   nonbonded_buffer = 1
     .type=float
     .optional=False
+    .help = **EXPERIMENTAL, developers only**
+  const_shrink_donor_acceptor = 0.0
+    .type=float
+    .optional=False
+    .expert_level=3
+    .help = **EXPERIMENTAL, developers only**
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
@@ -1625,12 +1631,14 @@ def ener_lib_as_nonbonded_params(
       factor_1_4_interactions,
       default_distance,
       minimum_distance,
+      const_shrink_donor_acceptor,
       use_lib_vdw=False):
   params = geometry_restraints.nonbonded_params(
     factor_1_4_interactions=factor_1_4_interactions,
     const_shrink_1_4_interactions=0,
     default_distance=default_distance,
-    minimum_distance=minimum_distance)
+    minimum_distance=minimum_distance,
+    const_shrink_donor_acceptor=const_shrink_donor_acceptor)
   if (use_lib_vdw):
     tables = {"": [], "h": []}
     for vdw in ener_lib.lib_vdw:
@@ -3489,7 +3497,8 @@ class build_all_chain_proxies(object):
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
       factor_1_4_interactions=self.params.vdw_1_4_factor,
       default_distance=self.params.default_vdw_distance,
-      minimum_distance=self.params.min_vdw_distance)
+      minimum_distance=self.params.min_vdw_distance,
+      const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor)
     #add_nonbonded_iseq_residue_pairs(
     #       nonbonded_params=nonbonded_params,
     #       xray_structure=self.extract_xray_structure())
