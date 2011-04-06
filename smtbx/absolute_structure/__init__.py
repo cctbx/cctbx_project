@@ -316,7 +316,7 @@ class flack_analysis(object):
 
     it = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True)
     twin_components += (it,)
-    obs = observations.custom_copy(obs_, twin_fractions, twin_components)
+    obs = observations.customized_copy(obs_, twin_fractions, twin_components)
     # reparameterisation needs all fractions
     twin_fractions += twin_components
     reparametrisation = constraints.reparametrisation(

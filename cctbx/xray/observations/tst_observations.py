@@ -44,9 +44,9 @@ def excersise():
   itr = obs.iterator(2)
   assert(itr.next().h==(1,-6,-8))
 
-  obs = observations.observations(obs,
-          (xray.twin_fraction(0.6,True),),
-          (xray.twin_component(
+  obs = observations.customized_copy(obs,
+          twin_fractions=(xray.twin_fraction(0.6,True),),
+          twin_components=(xray.twin_component(
               sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True),))
 
   itr = obs.iterator(0)

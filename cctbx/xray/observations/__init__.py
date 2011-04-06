@@ -1,6 +1,6 @@
 from cctbx_xray_observations_ext import *
 
-def custom_copy(obs, twin_fractions=None, twin_components=None):
+def customized_copy(obs, twin_fractions=None, twin_components=None):
   """ Creates a copy of the observation object and with new twin fractions
   and twin components
   """
