@@ -14,7 +14,6 @@ from libtbx.utils import wall_clock_time
 import libtbx
 
 from scitbx import matrix
-from cctbx.xray import observations
 
 geom = geometry_restraints
 adp = adp_restraints
@@ -274,10 +273,8 @@ def exercise_restrained_refinement(options):
       constraints=[],
       connectivity_table=smtbx.utils.connectivity_table(xs),
       temperature=20)
-    obs = observations.observations(fo_sq.indices(), fo_sq.data(), fo_sq.sigmas(), ())
-    obs.fo_sq = fo_sq
     return least_squares.crystallographic_ls(
-      obs,
+      fo_sq.as_xray_observations(),
       reparametrisation=reparametrisation,
       restraints_manager=restraints_manager)
 

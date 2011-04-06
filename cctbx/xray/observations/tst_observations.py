@@ -26,13 +26,9 @@ def excersise():
          .as_miller_arrays(crystal_symmetry=cs, merge_equivalents=False)
   fo_sq = ma[0]
   batch_numbers = ma[1]
-  obs = observations.observations(
-          fo_sq.indices(),
-          fo_sq.data(),
-          fo_sq.sigmas(),
-          batch_numbers.data(),
-          (xray.twin_fraction(0.4,True),),
-          ())
+  obs = fo_sq.as_xray_observations(
+          scale_indices=batch_numbers.data(),
+          twin_fractions=(xray.twin_fraction(0.4,True),))
   measured_cnt = 0
   measured_scale_indices = obs.measured_scale_indices
   for bn in batch_numbers.data():

@@ -2973,6 +2973,38 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     if (also_return_x_and_y):
       return result, x, y
     return result
+ 
+  def as_xray_observations(self, scale_indices=None, twin_fractions=None,
+                           twin_components=None):
+    assert self.observation_type() is None or (
+           self.is_xray_amplitude_array() or self.is_xray_intensity_array())
+    assert self.is_real_array()
+    assert self.sigmas() is not None
+    from cctbx.xray import observations
+    tw_cmps = ()
+    if twin_components is not None:
+      tw_cmps = twin_components
+    if scale_indices is not None: # HKLF 5
+      assert scale_indices.size() == self.indices().size()
+      assert not (twin_fractions is None or len(twin_fractions) == 0)
+      result = observations.observations(
+        self.indices(), self.data(), self.sigmas(),
+        scale_indices, twin_fractions, tw_cmps)
+      result.fo_sq = array(
+        miller_set=set(
+          crystal_symmetry=self,
+          indices=result.indices,
+          anomalous_flag=self.anomalous_flag()),
+        data=result.data,
+        sigmas=result.sigmas).set_observation_type(self)
+    else: #HKLF 4
+      result = observations.observations(
+        self.indices(), self.data(), self.sigmas(), tw_cmps)
+      result.fo_sq = self
+    # synchronise the life-time of the reference objects
+    result.ref_twin_fractions = twin_fractions
+    result.ref_twin_components = twin_components
+    return result    
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
