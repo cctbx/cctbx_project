@@ -28,12 +28,14 @@ namespace cctbx { namespace geometry_restraints {
       double factor_1_4_interactions_=2/3.,
       double const_shrink_1_4_interactions_=0,
       double default_distance_=0,
-      double minimum_distance_=0)
+      double minimum_distance_=0,
+      double const_shrink_donor_acceptor_=0)
     :
       factor_1_4_interactions(factor_1_4_interactions_),
       const_shrink_1_4_interactions(const_shrink_1_4_interactions_),
       default_distance(default_distance_),
-      minimum_distance(minimum_distance_)
+      minimum_distance(minimum_distance_),
+      const_shrink_donor_acceptor(const_shrink_donor_acceptor_)
     {}
 
     //! Find largest possible VdW distance given nonbonded_types.
@@ -100,7 +102,7 @@ namespace cctbx { namespace geometry_restraints {
           return_vdw = radius_i->second + radius_j->second;
           // development code for adjusting nonbonded radii
           // for H-bonding atoms - off pending further testing
-          /*if (donor_acceptor_adjust == true) {
+          if (donor_acceptor_adjust == true) {
             geometry_restraints::nonbonded_radius_table::const_iterator
               h_bond_state_i = donor_acceptor_table.find(type_i);
             if (h_bond_state_i != donor_acceptor_table.end()) {
@@ -129,11 +131,12 @@ namespace cctbx { namespace geometry_restraints {
                       h_bond_state_j->second == 4) || //both & hydrogen
                      (h_bond_state_i->second == 4 &&
                       h_bond_state_j->second == 3) ){ //hydrogen & both
-                   return_vdw -= 0.6; //subtract 0.6 for H-bond
+                    //subtract const_shrink_donor_acceptor for H-bond
+                   return_vdw -= const_shrink_donor_acceptor;
                  }
               }
             }
-          }*/
+          }
           return return_vdw;
         }
       }
@@ -174,6 +177,8 @@ namespace cctbx { namespace geometry_restraints {
     double default_distance;
     //! Global minimum VdW distance. May be zero.
     double minimum_distance;
+    // subtraction constant for H-bond vdW radii
+    double const_shrink_donor_acceptor;
   };
 
   //! Grouping of indices into array of sites (i_seqs) and vdw_distance.

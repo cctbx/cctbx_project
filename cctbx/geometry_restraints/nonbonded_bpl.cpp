@@ -21,11 +21,12 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("nonbonded_params", no_init)
-        .def(init<optional<double, double, double, double> >(
+        .def(init<optional<double, double, double, double, double> >(
             (arg("factor_1_4_interactions")=2/3.,
              arg("const_shrink_1_4_interactions")=0,
              arg("default_distance")=0,
-             arg("minimum_distance")=0)))
+             arg("minimum_distance")=0,
+             arg("const_shrink_donor_acceptor")=0)))
         .def("find_max_vdw_distance", &w_t::find_max_vdw_distance,
           (arg("nonbonded_types")))
         .def_readonly("distance_table", &w_t::distance_table)
@@ -37,6 +38,8 @@ namespace {
                   &w_t::const_shrink_1_4_interactions)
         .def_readwrite("default_distance", &w_t::default_distance)
         .def_readwrite("minimum_distance", &w_t::minimum_distance)
+        .def_readwrite("const_shrink_donor_acceptor",
+                  &w_t::const_shrink_donor_acceptor)
       ;
     }
   };
