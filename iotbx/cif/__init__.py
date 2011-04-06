@@ -89,7 +89,7 @@ class crystal_symmetry_as_cif_block(object):
     sg = sg_type.group()
     self.cif_block['_space_group_crystal_system'] = sg.crystal_system().lower()
     self.cif_block['_space_group_IT_number'] = sg_type.number()
-    self.cif_block['_space_group_name_H-M_alt'] = sg_type.universal_hermann_mauguin_symbol()
+    self.cif_block['_space_group_name_H-M_alt'] = sg_type.lookup_symbol()
     self.cif_block['_space_group_name_Hall'] = sg_type.hall_symbol()
     #
     uc = crystal_symmetry.unit_cell()
