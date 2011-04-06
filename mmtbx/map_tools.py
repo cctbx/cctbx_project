@@ -10,7 +10,7 @@ class kick_map(object):
 
   def __init__(self, fmodel,
                      map_type,
-                     kick_sizes         = [1.0],
+                     kick_sizes         = [0.5],
                      number_of_kicks    = 100,
                      acentrics_scale    = 2.0,
                      centrics_pre_scale = 1.0,
@@ -24,6 +24,7 @@ class kick_map(object):
     map_coeff_data = None
     f_obs_orig = fmodel.f_obs().deep_copy()
     counter = 0
+    b_sh_cntr = flex.double()
     for kick_size in kick_sizes:
       b_ext = None
       for kick in xrange(number_of_kicks):
@@ -31,7 +32,6 @@ class kick_map(object):
         counter += 1
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
-        #
         fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
                                          update_f_calc  = True,
                                          update_f_mask  = True,
@@ -47,13 +47,16 @@ class kick_map(object):
         #    data = self.map_coeffs.data().set_selected(s, 0+0j))
         if(isotropize):
           self.map_coeffs = self.map_coeffs.array(
-            data = self.map_coeffs.data()*isotropize_helper.iso_scale)
+            data = self.map_coeffs.data()*isotropize_helper.iso_scale.data())
         if(resharp):
           self.map_coeffs, b_ext = mmtbx.maps.isotropizer(
             map_coeffs        = self.map_coeffs,
             resharp           = resharp,
             isotropize_helper = isotropize_helper,
             b_ext             = b_ext)
+          b_sh_cntr.append(b_ext)
+          if(b_sh_cntr.size()<5): b_ext = None
+          else: b_ext = flex.mean(b_sh_cntr)
         if(map_coeff_data is None):
           map_coeff_data = self.map_coeffs.data()
         else:

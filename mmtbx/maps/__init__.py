@@ -181,6 +181,9 @@ maps {
       .type=choice
       .help=Write Fobs, Fmodel, various scales and more to MTZ or CNS file
   }
+  scattering_table = wk1995  it1992  *n_gaussian  neutron
+    .type = choice
+    .help = Choices of scattering table for structure factors calculations
   bulk_solvent_correction = True
     .type = bool
   apply_back_trace_of_b_cart = False
@@ -342,6 +345,7 @@ def compute_f_calc(fmodel, params):
 def map_coefficients_from_fmodel(fmodel, params):
   from mmtbx import map_tools
   import mmtbx
+  from cctbx import miller
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
@@ -363,10 +367,15 @@ def map_coefficients_from_fmodel(fmodel, params):
        mmtbx.map_names(params.map_type).anomalous):
       coeffs = coeffs.average_bijvoet_mates()
     if(params.isotropize and e_map_obj.mch is not None):
-      isotropize_helper = e_map_obj.mch.isotropize_helper
-      coeffs = coeffs.array(data = coeffs.data()*isotropize_helper.iso_scale)
+      mcf = abs(coeffs).data()
+      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper#mch.isotropize_helper
+      isc = isotropize_helper.iso_scale.data()
+      coeffs = miller.set(
+        crystal_symmetry=coeffs.crystal_symmetry(),
+        indices = coeffs.indices(),
+        anomalous_flag=False).array(data=coeffs.data()*isc)
     if(params.resharp_after_isotropize and e_map_obj.mch is not None):
-      isotropize_helper = e_map_obj.mch.isotropize_helper
+      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper#mch.isotropize_helper
       coeffs, b_sharp = isotropizer(
         isotropize_helper = isotropize_helper,
         map_coeffs        = coeffs,
@@ -427,14 +436,29 @@ def sharp_evaluation_target(sites_frac, b_isos, map_coeffs, resolution_factor = 
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
   target = 0
+  cntr = 0
   for site_frac, b_iso in zip(sites_frac, b_isos):
-    target += map_data.eight_point_interpolation(site_frac)
-  t_mean = target/sites_frac.size()
-  target = 0
-  for site_frac, b_iso in zip(sites_frac, b_isos):
-    t_ = map_data.eight_point_interpolation(site_frac)
-    if(t_ < t_mean): target += t_
-  return target/sites_frac.size()
+    mv = map_data.eight_point_interpolation(site_frac)
+    if(mv >0):
+      target += mv
+      cntr += 1
+  t_mean = target/cntr
+  return t_mean
+
+#def sharp_evaluation_target(sites_frac, b_isos, map_coeffs, resolution_factor = 0.25):
+#  fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
+#  fft_map.apply_sigma_scaling()
+#  map_data = fft_map.real_map_unpadded()
+#  target = 0
+#  cntr = 0
+#  for site_frac, b_iso in zip(sites_frac, b_isos):
+#    target += map_data.eight_point_interpolation(site_frac)
+#  t_mean = target/sites_frac.size()
+#  target = 0
+#  for site_frac, b_iso in zip(sites_frac, b_isos):
+#    t_ = map_data.eight_point_interpolation(site_frac)
+#    if(t_ < t_mean): target += t_
+#  return target/sites_frac.size()
 
 def isotropizer(isotropize_helper, map_coeffs, resharp, b_ext=None):
   from cctbx import miller
@@ -443,7 +467,7 @@ def isotropizer(isotropize_helper, map_coeffs, resharp, b_ext=None):
       t=-1
       map_coeffs_best = None
       b_sharp_best = None
-      for b_sharp in range(-300,200,10):
+      for b_sharp in range(-150,150,10):
         map_coeffs_ = map_coeffs.deep_copy()
         sc2 = flex.exp(b_sharp*isotropize_helper.ss)
         map_coeffs_ = map_coeffs_.array(data = map_coeffs_.data()*sc2)

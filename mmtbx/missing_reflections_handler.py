@@ -4,6 +4,8 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from libtbx import group_args
+from cctbx import miller
+from cctbx import maptbx
 
 def compute_new_f_obs(fmodel):
   from mmtbx.max_lik import maxlik
@@ -12,34 +14,105 @@ def compute_new_f_obs(fmodel):
   r_free_flags = fmodel.r_free_flags()
   f_model_scaled_with_k1 = csc.f_model.array(
     data = csc.f_model.data()*fmodel.scale_k1())
-  f_obs_lone = abs(f_model_scaled_with_k1.lone_set(other = f_obs))
+  f_model_scaled_with_k1_lone, f_obs_lone = f_model_scaled_with_k1.lone_sets(f_obs)
+  ###
+  #C = abs(f_model_scaled_with_k1.deep_copy())
+  #Cd, Ci = C.data(), C.indices()
+  #O = f_obs.deep_copy()
+  #for mi, d in zip(O.indices(), O.data()):
+  #  for i, mic in enumerate(Ci):
+  #    if(mi == mic):
+  #      Cd[i]=d
+  #      break
+  #new_f_obs = miller.set(
+  #  crystal_symmetry=C.crystal_symmetry(),
+  #  indices = C.indices(),
+  #  anomalous_flag=False).array(data=Cd)
+  ###
+  f_obs_lone = abs(f_model_scaled_with_k1_lone)
   new_f_obs = f_obs.concatenate(other = f_obs_lone)
   new_f_obs, f_model_scaled_with_k1 = new_f_obs.common_sets(f_model_scaled_with_k1)
-  r_free_flags, dummy = r_free_flags.common_sets(f_model_scaled_with_k1)
+  # XXX strangely, this doen't work
+  #f_model_scaled_with_k1, new_f_obs = f_model_scaled_with_k1.common_sets(new_f_obs)
+  r_free_flags, dummy = r_free_flags.common_sets(new_f_obs)
   new_r_free_flags = r_free_flags.data().concatenate(
     flex.bool(f_obs_lone.size(), False))
-  alpha, beta = maxlik.alpha_beta_est_manager(
-    f_obs                    = new_f_obs,
-    f_calc                   = f_model_scaled_with_k1,
-    free_reflections_per_bin = 100,
-    flags                    = new_r_free_flags,
-    interpolation            = True).alpha_beta()
+  #alpha, beta = maxlik.alpha_beta_est_manager(                  #C
+  #  f_obs                    = new_f_obs,                       #C
+  #  f_calc                   = f_model_scaled_with_k1,          #C
+  #  free_reflections_per_bin = 100,                             #C
+  #  flags                    = new_r_free_flags,                #C
+  #  interpolation            = True).alpha_beta()               #C
   apply_alpha_sel = flex.bool(f_obs.size(), False).concatenate(
     flex.bool(f_obs_lone.size(), True))
-  alpha = alpha.select(apply_alpha_sel)
-  f_obs_lone = f_obs_lone.array(data=f_obs_lone.data()*alpha.data())
-  new_f_obs = f_obs.concatenate(other = f_obs_lone)
+  #alpha = alpha.select(apply_alpha_sel)                                     #C
+  #f_obs_lone = f_obs_lone.array(data=f_obs_lone.data()*alpha.data())        #C
+  #new_f_obs = f_obs.concatenate(other = f_obs_lone)                         #C
+  #f_obs_lone = f_obs_lone.array(data=f_obs_lone.data()*85)        #C
+  #new_f_obs = f_obs.concatenate(other = f_obs_lone)                         #C
+  #
   new_abcd = None
   if(fmodel.hl_coeffs() is not None):
     new_abcd = fmodel.hl_coeffs().customized_copy(
       indices = new_f_obs.indices(),
       data = fmodel.hl_coeffs().data().concatenate(
         flex.hendrickson_lattman(f_obs_lone.size(), [0,0,0,0])))
+  nrff = miller.set(crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
+      indices = new_f_obs.indices(),
+      anomalous_flag=new_f_obs.anomalous_flag()).array(data=new_r_free_flags)
   return group_args(
     f_obs = new_f_obs,
-    r_free_flags = new_f_obs.array(data=new_r_free_flags),
+    r_free_flags = nrff,
     filled_f_obs_selection = apply_alpha_sel,
     hl_coeffs = new_abcd)
+
+def select_by_map_cc(fmodel):
+  residue_selections = flex.bool(
+    fmodel.xray_structure.scatterers().size(),True).iselection()
+  #
+  f_calc_1 = fmodel.f_model_scaled_with_k1()
+  fft_map_1 = f_calc_1.fft_map(resolution_factor=0.25)
+  fft_map_1.apply_volume_scaling()
+  map_1 = fft_map_1.real_map_unpadded()
+  #
+  coeffs = fmodel.electron_density_map(
+    fill_missing_f_obs = False).map_coefficients(map_type = "2mFo-DFc")
+  fft_map_2 = miller.fft_map(
+    crystal_gridding = fft_map_1,
+    fourier_coefficients = coeffs)
+  fft_map_2.apply_volume_scaling()
+  map_2 = fft_map_2.real_map_unpadded()
+  #
+  if(fmodel.f_obs().d_min()<=2.5): rad = 1.5
+  else: rad = 2.0
+  assert map_1.size() == map_2.size()
+  assert map_1.focus() == map_2.focus()
+  assert map_1.all() == map_2.all()
+  sites_cart = fmodel.xray_structure.sites_cart()
+  result = flex.double()
+  for rsel in residue_selections:
+    rsel = flex.size_t([rsel])
+    sel = maptbx.grid_indices_around_sites(
+      unit_cell  = fmodel.xray_structure.unit_cell(),
+      fft_n_real = map_1.focus(),
+      fft_m_real = map_1.all(),
+      sites_cart = sites_cart.select(rsel),
+      site_radii = flex.double(rsel.size(), rad))
+    m1 = map_1.select(sel)
+    m2 = map_2.select(sel)
+    assert m1.size() == m2.size()
+    corr = flex.linear_correlation(x = m1, y = m2).coefficient()
+    result.append(corr)
+  selection = result >= 0.9
+  #print "Atoms:", fmodel.xray_structure.scatterers().size()
+  #print "Atoms kept:", selection.count(True)
+  keep = 100.*selection.count(True)/selection.size()
+  if(keep>30.):
+    xrs = fmodel.xray_structure.select(selection = selection)
+    fmodel.update_xray_structure(xray_structure = xrs, update_f_calc = True,
+      update_f_mask = True)
+  return fmodel
+
 
 def fill_missing_f_obs(fmodel, fill_mode):
   assert fill_mode in ["fobs_mean_mixed_with_dfmodel",
@@ -52,8 +125,11 @@ def fill_missing_f_obs(fmodel, fill_mode):
   bss_params.b_sol_max = 150.0
   bss_params.number_of_macro_cycles = 1
 
-  new_f_obs_obj = compute_new_f_obs(fmodel)
+  new_f_obs_obj = compute_new_f_obs(
+    fmodel = select_by_map_cc(fmodel = fmodel.deep_copy()))
   new_f_obs = new_f_obs_obj.f_obs
+  new_r_free_flags = new_f_obs_obj.r_free_flags
+  filled_f_obs_selection = new_f_obs_obj.filled_f_obs_selection
   #
   if(fill_mode == "fobs_mean"):
     sel = new_f_obs.sort_permutation(by_value = "resolution")
@@ -171,17 +247,17 @@ def fill_missing_f_obs(fmodel, fill_mode):
         new_data.append(fo)
     new_f_obs._data = new_data
   #
+  assert new_f_obs.indices().all_eq(new_r_free_flags.indices())
   fmodel_result = mmtbx.f_model.manager(
     xray_structure         = fmodel.xray_structure,
-    r_free_flags           = new_f_obs_obj.r_free_flags,
+    r_free_flags           = new_r_free_flags,
     target_name            = fmodel.target_name,
     f_obs                  = new_f_obs,
     abcd                   = new_f_obs_obj.hl_coeffs,
     k_sol                  = fmodel.k_sol(),
     b_sol                  = fmodel.b_sol(),
     b_cart                 = fmodel.b_cart(),
-    mask_params            = fmodel.mask_params,
-    filled_f_obs_selection = new_f_obs_obj.filled_f_obs_selection)
+    mask_params            = fmodel.mask_params)
   fmodel_result.update_solvent_and_scale(params = bss_params,
     optimize_mask=False)
   if(use_f_part): fmodel_result.update_f_part()
