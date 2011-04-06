@@ -56,11 +56,15 @@ def exercise(mt, n_refl, log):
       assert approx_equal(c_fin_ab[0].imag, c_fin_ab[1].real)
       c_fin.append((c_fin_ab[0].real, c_fin_ab[1].imag, c_fin_ab[0].imag))
       f_calc[ih] = c_orig
-    for part in ["real", "imag"]:
-      def get(): return getattr(flex, part)
-      print >> log, "g fin %s:" % part, numstr(get()(g_fin))
-      print >> log, "  ana %s:" % part, numstr(get()(trg.f_calc_gradients))
+    for pn,f,a in zip(
+          g_fin.part_names(), g_fin.parts(), trg.f_calc_gradients.parts()):
+      print >> log, "g fin %s:" % pn, numstr(f)
+      print >> log, "  ana %s:" % pn, numstr(a)
     assert approx_equal(trg.f_calc_gradients, g_fin)
+    for pn,f,a in zip(
+          ["aa", "bb", "ab"], c_fin.parts(), trg.f_calc_hessians.parts()):
+      print >> log, "c fin %s:" % pn, numstr(f)
+      print >> log, "  ana %s:" % pn, numstr(a)
     assert approx_equal(trg.f_calc_hessians, c_fin)
   check_f_calc_abs_derivs()
   check_f_calc_derivs()

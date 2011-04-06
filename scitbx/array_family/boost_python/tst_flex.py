@@ -1057,6 +1057,9 @@ mean:   2.00
 """)
   #
   a = flex.complex_double([1+1j, 1-1j, 2+2j, 4+2j])
+  assert a.part_names() == ("real", "imag")
+  assert approx_equal(a.parts(), [(1,1,2,4), (1,-1,2,2)])
+  assert approx_equal(a.parts(), [flex.real(a), flex.imag(a)])
   assert flex.mean(a) == 2+1j
   assert approx_equal(flex.sum_sq(a), 32)
   assert approx_equal(flex.mean_sq(a), 8)
@@ -1258,6 +1261,8 @@ def exercise_random():
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
   a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
+  assert a.part_names() == ("x", "y", "z")
+  assert approx_equal(a.parts(), [(1,-2,3), (2,3,4), (5,4,3)])
   assert approx_equal(a.min(), (-2.0,2.0,3.0))
   assert approx_equal(a.max(), (3.0,4.0,5.0))
   assert approx_equal(a.sum(), (2.0,9.0,12.0))
