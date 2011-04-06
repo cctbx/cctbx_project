@@ -5,14 +5,13 @@ Provides drop-in replacement classes to those defined in the multiprocessing
 module (Queue and Job), with certain restrictions placed by the pickle module
 """
 
-
-
 import cPickle as pickle
 import subprocess
 import os
 import time
 import itertools
 import glob
+import re
 
 import libtbx.load_env
 
@@ -24,13 +23,9 @@ class Queue(object):
   Queue objects in the same directory, even with a matching identifier
   """
 
-  def __init__(self, identifier, work_dir = "."):
+  def __init__(self, identifier):
 
-    assert os.path.isdir( work_dir )
-    self.root = os.path.join(
-        work_dir,
-        "%s_%d_%d" % ( identifier, os.getpid(), id( self ) )
-        )
+    self.root = "%s_%d_%d" % ( identifier, os.getpid(), id( self ) )
     self.count = itertools.count()
 
 
@@ -98,13 +93,12 @@ class Job(object):
   Data transfer is achieved via files. It is safe to use any number of
   Job objects in the same directory, even with a matching identifier
 
-  Restrictions: target has to be picklable
+  Restrictions: target has to be pickleable
   """
 
   SCRIPT = \
 """\
 source %s
-cd %s
 libtbx.python << EOF
 import pickle
 ( target, args, kwargs ) = pickle.load( open( "%s.target" ) )
@@ -113,15 +107,13 @@ EOF
 """
   SETPATHS = libtbx.env.under_build("setpaths.sh")
 
-  def __init__(self, name, target, qinterface, args = (), kwargs = {}, work_dir = "."):
+  def __init__(self, name, target, qinterface, args = (), kwargs = {}):
 
-    assert os.path.isdir( work_dir )
     self.name = "%s_%d_%d" % ( name, os.getpid(), id( self ) )
     self.target = target
     self.args = args
     self.kwargs = kwargs
     self.qinterface = qinterface
-    self.work_dir = work_dir
     self.process = None
 
 
@@ -130,21 +122,20 @@ EOF
     if self.process is not None:
       raise RuntimeError, "start called second time"
 
-    ifile = open( os.path.join( self.work_dir, "%s.target" % self.name ), "wb" )
-    pickle.dump( ( self.target, self.args, self.kwargs ), ifile )
-    ifile.close()
+    self.write_input_data()
 
-    cmd = self.qinterface( name = self.name, work_dir = self.work_dir )
+    cmd = self.qinterface(
+      name = self.name,
+      out = self.out_file(),
+      err = self.err_file()
+      )
     self.process = subprocess.Popen(
-        cmd,
-        stdin = subprocess.PIPE,
-        stdout = subprocess.PIPE,
-        stderr = subprocess.STDOUT
-
-        )
-    self.process.stdin.write(
-        self.SCRIPT % ( self.SETPATHS, self.work_dir, self.name )
-        )
+      cmd,
+      stdin = subprocess.PIPE,
+      stdout = subprocess.PIPE,
+      stderr = subprocess.STDOUT
+      )
+    self.process.stdin.write( self.SCRIPT % ( self.SETPATHS, self.name ) )
     self.process.stdin.close()
 
 
@@ -161,30 +152,145 @@ EOF
     while self.is_alive():
       time.sleep( 0.1 )
 
-    root = os.path.join( self.work_dir, self.name )
-    cleanups = [ "%s.target" % root, "%s.out" % root, "%s.err" % root ]
-
-    if os.path.exists( cleanups[-1] ):
-      error = open( cleanups[-1] ).read()
+    if os.path.exists( self.err_file() ):
+      error = open( self.err_file() ).read()
 
       if error:
         raise RuntimeError, error
 
-    for fname in cleanups:
+    for fname in [ self.target_file(), self.out_file(), self.err_file() ]:
       if os.path.exists( fname ):
         os.remove( fname )
 
 
-def sge_interface(name, work_dir):
+  def write_input_data(self):
 
-  root = os.path.join( work_dir, name )
+    ifile = open( self.target_file(), "wb" )
+    pickle.dump( ( self.target, self.args, self.kwargs ), ifile )
+    ifile.close()
+
+
+  def target_file(self):
+
+    return "%s.target" % self.name
+
+
+  def out_file(self):
+
+    return "%s.out" % self.name
+
+
+  def err_file(self):
+
+    return "%s.err" % self.name
+
+
+class PBSJob(Job):
+  """
+  Job object to execute function calls on remote machines accessible via
+  Portable Batch System (PBS)
+
+  Data transfer is achieved via files. It is safe to use any number of
+  Job objects in the same directory, even with a matching identifier
+
+  If PBS support for 'wait for job to finish' is available, this class can be
+  merged into Job
+
+  Restrictions: target has to be picklable
+  """
+
+  REGEX = re.compile( r"job_state\s*=\s*(\w+)" )
+
+  def __init__(self, name, target, args = (), kwargs = {}):
+
+    self.name = "%s_%d_%d" % ( name, os.getpid(), id( self ) )
+    self.target = target
+    self.args = args
+    self.kwargs = kwargs
+    self.jobid = None
+
+
+  def start(self):
+
+    if self.jobid is not None:
+      raise RuntimeError, "start called second time"
+
+    self.write_input_data()
+
+    cmd = pbs_interface(
+      name = self.name,
+      out = self.out_file(),
+      err = self.err_file()
+      )
+    process = subprocess.Popen(
+      cmd,
+      stdin = subprocess.PIPE,
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate(
+      input = self.SCRIPT % ( self.SETPATHS, self.name )
+      )
+
+    if err:
+      raise RuntimeError, err
+
+    assert out is not None
+    self.jobid = out.strip()
+
+
+  def is_alive(self):
+
+    return self.job_status() != "C"
+
+
+  def job_status(self):
+
+    if self.jobid is None:
+      raise RuntimeError, "job has not been submitted yet"
+
+    process = subprocess.Popen(
+      ( "qstat", "-f", self.jobid ),
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
+
+    if err:
+      # may be better to indicate finish, in case job has already been deleted
+      raise RuntimeError, "Jobid: %s\nPBS error: %s" % ( self.jobid, err )
+
+    m = self.REGEX.search( out )
+
+    if not m:
+      raise RuntimeError, "Incorrect qstat output: %s" % out
+
+    return m.group( 1 )
+
+
+def sge_interface(name, out, err):
+  """
+  Interface to Sun Grid Engine (SGE)
+  """
+
   return ( "qsub", "-S", "/bin/sh", "-cwd", "-N", name, "-sync", "y",
-      "-o", "%s.out" % root, "-e", "%s.err" % root )
+      "-o", out, "-e", err )
 
 
-def lsf_interface(name, work_dir):
+def lsf_interface(name, out, err):
+  """
+  Interface to Load Sharing Facility (LSF)
+  """
 
-  root = os.path.join( work_dir, name )
   return ( "bsub", "-K", "-J", name,
-      "-o", "%s.out" % root, "-e", "%s.err" % root )
+      "-o", out, "-e", err )
+
+
+def pbs_interface(name, out, err):
+  """
+  Interface to Portable Batch System (PBS)
+  """
+
+  return ( "qsub", "-d", ".", "-N", name,
+      "-o", out, "-e", err )
 
