@@ -137,7 +137,7 @@ namespace cctbx { namespace geometry_restraints {
               }
             }
           }
-          return return_vdw;
+          return std::max(minimum_distance, return_vdw);
         }
       }
       return -1;
