@@ -1775,6 +1775,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         self.resolution_factor = resolution_factor
         self.symmetry_flags = symmetry_flags
         self.fmodel = fmodel
+        self.mch = None # XXX prevent crash in mmtbx.maps
       # XXX: added extra keywords passed by mmtbx.maps, which will simply be
       # ignored here. -nat
       def map_coefficients(self,
