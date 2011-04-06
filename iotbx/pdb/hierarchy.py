@@ -329,6 +329,9 @@ class __hash_eq_mixin(object):
       return (self.memory_id() == other.memory_id())
     return False
 
+  def __ne__(self, other):
+    return not ( self == other )
+
 class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def __getstate__(self):
