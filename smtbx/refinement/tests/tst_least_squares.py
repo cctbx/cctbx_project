@@ -494,8 +494,7 @@ class twin_test(object):
       [xray.twin_component(law, fraction, grad=False)
        for law, fraction in zip(self.twin_laws, twin_fractions)])
     #change the twin_components of the observations...
-    obs = observations.observations(obs, (), twin_components)
-    obs.fo_sq = self.fo_sq
+    obs = observations.custom_copy(obs, twin_components=twin_components)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
       constraints=[],
