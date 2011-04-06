@@ -16,7 +16,7 @@ namespace cctbx { namespace xray {
   which generates several components, all matrix products have to be given.
     The observations object keeps pointers to external twin_fraction and
   twin_component objects and therefore their life-time must be guaranteed to
-  be at least as life-time of observation object it is being used. This can be
+  be at least as life-time of observation object if is being used. This can be
   easily done on the Python side by attaching the twin_fraction/component
   objects to an instance of the observations object.
     update_prime_fraction function must be called before scales or iterator
@@ -73,7 +73,6 @@ namespace cctbx { namespace xray {
       int omitted_count, sys_abs_count;
       filter_result(int sz)
         : selection(sz), omitted_count(0), sys_abs_count(0) {}
-      scitbx::af::shared<bool> get_selection() const { return selection; }
     };
     // iterator for twin components
     struct iterator_ {

@@ -80,12 +80,11 @@ namespace {
         .def("next", &itrt::next)
         ;
 
-
       typedef typename obst::filter_result frt;
       class_<frt>("filter_result", no_init)
         .def_readonly("omitted_count", &frt::omitted_count)
         .def_readonly("sys_abs_count", &frt::sys_abs_count)
-        .add_property("selection", &frt::get_selection)
+        .add_property("selection", make_getter(&frt::selection, rbv()))
         ;
 
       class_<itct>("index_twin_component", no_init)
