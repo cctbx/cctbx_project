@@ -842,7 +842,8 @@ class calculate_angles(object):
                skip_j_seq_less_than_i_seq=True,
                covariance_matrix=None,
                cell_covariance_matrix=None,
-               parameter_map=None):
+               parameter_map=None,
+               conformer_indices=None):
     libtbx.adopt_init_args(self, locals())
     self.distances = flex.double()
     if self.covariance_matrix is not None:
@@ -894,6 +895,9 @@ class calculate_angles(object):
                 for i_k_sym,k_sym in enumerate(k_sym_group):
                   if j_seq == k_seq and i_j_sym <= i_k_sym: continue
                   if i_seq == k_seq and i_k_sym == 0: continue
+                  if (self.conformer_indices is not None and
+                      self.conformer_indices[j_seq] !=
+                      self.conformer_indices[k_seq]): continue
                   rt_mx_ki = rt_mx_i_inv.multiply(
                     asu_mappings.get_rt_mx(k_seq, k_sym))
                   site_frac_ki = rt_mx_ki * site_frac_k

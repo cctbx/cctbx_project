@@ -74,6 +74,7 @@ class angles_as_cif_loop(object):
                parameter_map=None,
                include_bonds_to_hydrogen=False,
                fixed_angles=None,
+               conformer_indices=None,
                eps=2e-16):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt = "%.1f"
@@ -94,7 +95,8 @@ class angles_as_cif_loop(object):
       pair_asu_table, sites_frac,
       covariance_matrix=covariance_matrix,
       cell_covariance_matrix=cell_covariance_matrix,
-      parameter_map=parameter_map)
+      parameter_map=parameter_map,
+      conformer_indices=conformer_indices)
     for a in angles:
       i_seq, j_seq, k_seq = a.i_seqs
       if (not include_bonds_to_hydrogen
