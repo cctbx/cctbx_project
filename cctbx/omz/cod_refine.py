@@ -14,13 +14,13 @@ import traceback
 import sys, os
 op = os.path
 
-def get_master_phil():
+def get_master_phil(max_atoms=99):
   return omz.dev.get_master_phil(
     iteration_limit=100,
     show_distances_threshold=0.5,
     grads_mean_sq_threshold=1e-6,
     additional_phil_string="""\
-      max_atoms = 99
+      max_atoms = %s
         .type = int
       f_obs_f_calc_fan_outliers = *remove keep
         .type = choice
@@ -80,7 +80,7 @@ def get_master_phil():
         qstep = 3
           .type = float
       }
-""")
+""" % str(max_atoms))
 
 def shelxl_weights_a_b(fo_sq, sigmas, fc_sq, osf_sq, a, b):
   assert sigmas.size() == fo_sq.size()
@@ -483,6 +483,13 @@ def process(params, pickle_file_name):
   else:
     f_obs = c_obs
     i_obs = c_obs.f_as_f_sq(algorithm="shelxl")
+  process_continue(
+    params=params,
+    cod_id=cod_id,
+    c_obs=c_obs, i_obs=i_obs, f_obs=f_obs,
+    structure_prep=structure_prep)
+
+def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_prep,
     algorithm="direct",
@@ -563,6 +570,7 @@ def process(params, pickle_file_name):
     print
     return
   #
+  from iotbx.shelx import fvar_encoding
   fvars, encoded_sites = fvar_encoding.dev_build_shelx76_fvars(structure_work)
   print "Number of FVARs for special position constraints:", len(fvars)-1
   print "."*79
