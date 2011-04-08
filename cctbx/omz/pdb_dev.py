@@ -71,7 +71,9 @@ def run(args):
   print
   #
   from cctbx.omz import cod_refine
-  master_phil = cod_refine.get_master_phil(max_atoms=None)
+  master_phil = cod_refine.get_master_phil(
+    max_atoms=None,
+    f_calc_options_algorithm="direct *fft")
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil)
   phil_objects = []

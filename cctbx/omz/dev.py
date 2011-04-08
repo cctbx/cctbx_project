@@ -390,10 +390,11 @@ class refinement(object):
     assert ix == O.x.size()
 
   def get_f_calc(O):
+    p = O.params.f_calc_options
     return O.f_obs.structure_factors_from_scatterers(
       xray_structure=O.xray_structure,
-      algorithm="direct",
-      cos_sin_table=False).f_calc()
+      algorithm=p.algorithm,
+      cos_sin_table=p.cos_sin_table).f_calc()
 
   def r1_factor(O):
     from libtbx import Auto
@@ -822,6 +823,7 @@ def get_master_phil(
       iteration_limit=50,
       show_distances_threshold=0,
       grads_mean_sq_threshold=1e-6,
+      f_calc_options_algorithm="*direct fft",
       additional_phil_string=""):
   return libtbx.phil.parse("""
     general_positions_only = True
@@ -864,6 +866,12 @@ def get_master_phil(
       .type = bool
     show_distances_to_reference_structure = False
       .type = bool
+    f_calc_options {
+      algorithm = %(f_calc_options_algorithm)s
+        .type = choice
+      cos_sin_table = False
+        .type = bool
+    }
     plot_samples {
       stages = initial final
         .type = choice(multi=True)
