@@ -31,8 +31,21 @@ def report_fraction_of_negative_observations_if_any(id_code, obs):
 
 class cod_data(object):
 
+  __slots__ = [
+    "cod_id",
+    "errors",
+    "c_obs",
+    "xray_structure",
+    "non_hydrogen_selection",
+    "edge_list"]
+
   def __init__(O, cod_id, hkl_cif_pair):
     O.cod_id = cod_id
+    O.errors = []
+    O.c_obs = None
+    O.xray_structure = None
+    O.non_hydrogen_selection = None
+    O.edge_list = None
     refl_file, model_file = hkl_cif_pair
     import iotbx.cif.builders
     print "refl_file:", refl_file
@@ -52,8 +65,12 @@ class cod_data(object):
     combined_cs = cctbx.crystal.select_crystal_symmetry(
       from_coordinate_files=from_coordinate_files,
       from_reflection_files=from_reflection_files)
-    assert combined_cs.unit_cell() is not None
-    assert combined_cs.space_group_info() is not None
+    if (combined_cs.unit_cell() is None):
+      O.errors.append("Missing unit cell.")
+    if (combined_cs.space_group_info() is None):
+      O.errors.append("Missing space group.")
+    if (len(O.errors) != 0):
+      return
     #
     miller_arrays = refl_cif.as_miller_arrays()
     meas_a = []
@@ -188,6 +205,10 @@ class cod_data(object):
     return True
 
   def is_useful(O, co):
+    if (len(O.errors) != 0):
+      for e in O.errors:
+        print "ERROR: %s: %s" % (O.cod_id, e)
+      return False
     if (O.non_hydrogen_selection.size() > co.max_atoms): return False
     if (O.have_zero_occupancies()): return False
     if (O.have_close_contacts(co.min_distance)): return False

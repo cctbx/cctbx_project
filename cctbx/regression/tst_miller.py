@@ -96,7 +96,7 @@ def exercise_set():
     min_fraction_bijvoet_pairs=4/5.+1.e-4).anomalous_flag() == False
   s = StringIO()
   mc.show_comprehensive_summary(f=s)
-  assert s.getvalue() == """\
+  assert not show_diff(s.getvalue(), """\
 Number of Miller indices: 36
 Anomalous flag: %s
 Unit cell: (3, 4, 5, 90, 90, 90)
@@ -106,7 +106,20 @@ Centric reflections: 27
 Resolution range: 5 1.1776
 Completeness in resolution range: 1
 Completeness with d_max=infinity: 1
-""" % str(False)
+""" % str(False))
+  s = StringIO()
+  mc.select(flex.size_t([0])).show_comprehensive_summary(f=s)
+  assert not show_diff(s.getvalue(), """\
+Number of Miller indices: 1
+Anomalous flag: %s
+Unit cell: (3, 4, 5, 90, 90, 90)
+Space group: P 2 2 2 (No. 16)
+Systematic absences: 0
+Centric reflections: 1
+Resolution range: 5 5
+Completeness with d_max=infinity: 1
+""" % str(False))
+  #
   c = mc.change_basis(cb_op="k,h,-l")
   assert c.unit_cell().is_similar_to(uctbx.unit_cell((4,3,5,90,90,90)))
   #
