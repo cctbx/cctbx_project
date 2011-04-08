@@ -168,45 +168,68 @@ class refinement(object):
       return
     ix = p.ix
     i_sc, x_type = O.x_info[ix]
-    xs = O.xray_structure
-    site_inp = xs.scatterers()[i_sc].site
+    def f_calc_without_moving_scatterer():
+      sc = O.xray_structure.scatterers()[i_sc]
+      occ = sc.occupancy
+      try:
+        sc.occupancy = 0
+        result = O.get_f_calc().data()
+      finally:
+        sc.occupancy = occ
+      return result
+    f_calc_fixed = f_calc_without_moving_scatterer()
+    xs = O.xray_structure.select(flex.size_t([i_sc]))
+    def f_calc_moving():
+      return O.f_obs.structure_factors_from_scatterers(
+        xray_structure=xs,
+        algorithm="direct",
+        cos_sin_table=False).f_calc().data()
+    sc = xs.scatterers()[0]
+    ss = xs.site_symmetry_table().get(0)
     ys = []
+    def ys_append():
+      tg = O.__get_tg(f_calc=f_calc_moving()+f_calc_fixed)
+      y = tg.target_work()
+      ys.append(y)
+      return y
     xyv = []
-    x_inp = O.x[ix]
-    try:
-      if (x_type == "u"):
-        assert p.u_min < p.u_max
-        assert p.u_steps > 0
-        for i_step in xrange(p.u_steps+1):
-          u = p.u_min + i_step / p.u_steps * (p.u_max - p.u_min)
-          O.x[ix] = u
-          ls = O.__get_tg()
-          y = ls.target_work()
-          ys.append(y)
-          xyv.append((u,y,O.x[ix]))
-      else:
-        assert p.x_radius > 0
-        assert p.x_steps > 0
-        O.x[ix] = x_inp + 1
-        O.__unpack_variables()
-        dist = xs.unit_cell().distance(xs.scatterers()[i_sc].site, site_inp)
-        assert dist != 0
-        x_scale = p.x_radius / dist
-        for i_step in xrange(-p.x_steps//2, p.x_steps//2+1):
-          x = i_step / p.x_steps * 2 * x_scale
-          O.x[ix] = x_inp + x
-          ls = O.__get_tg()
-          y = ls.target_work()
-          ys.append(y)
-          dist = xs.unit_cell().distance(xs.scatterers()[i_sc].site, site_inp)
-          if (i_step < 0): dist *= -1
-          xyv.append((dist,y,O.x[ix]))
-    finally:
-      O.x[ix] = x_inp
-      O.__unpack_variables()
+    if (x_type == "u"):
+      assert p.u_min < p.u_max
+      assert p.u_steps > 0
+      for i_step in xrange(p.u_steps+1):
+        u = p.u_min + i_step / p.u_steps * (p.u_max - p.u_min)
+        sc.u_iso = u
+        y = ys_append()
+        xyv.append((u,y,sc.u_iso))
+    else:
+      assert p.x_radius > 0
+      assert p.x_steps > 0
+      ss_constr = ss.site_constraints()
+      ss_np = ss_constr.n_independent_params()
+      ss_ip = "xyz".find(x_type)
+      assert ss_ip >= 0
+      ixx = ix - ss_ip
+      indep = list(O.x[ixx:ixx+ss_np])
+      i_inp = indep[ss_ip]
+      from libtbx.test_utils import approx_equal
+      assert approx_equal(
+        ss_constr.all_params(independent_params=indep), sc.site)
+      site_inp = sc.site
+      indep[ss_ip] = i_inp + 1
+      sc.site = ss_constr.all_params(independent_params=indep)
+      dist = xs.unit_cell().distance(sc.site, site_inp)
+      assert dist != 0
+      x_scale = p.x_radius / dist
+      for i_step in xrange(-p.x_steps//2, p.x_steps//2+1):
+        x = i_step / p.x_steps * 2 * x_scale
+        indep[ss_ip] = i_inp + x
+        sc.site = ss_constr.all_params(independent_params=indep)
+        y = ys_append()
+        dist = xs.unit_cell().distance(sc.site, site_inp)
+        if (i_step < 0): dist *= -1
+        xyv.append((dist,y,indep[ss_ip]))
+    #
     def build_info_str():
-      sc = xs.scatterers()[i_sc]
-      ss = xs.site_symmetry_table().get(i_sc)
       return "%s|%03d|%03d|%s|%s|occ=%.2f|%s|%s" % (
         O.plot_samples_id,
         ix,
@@ -232,7 +255,8 @@ class refinement(object):
     ax = fig.add_subplot(1, 1, 1)
     x,y,v = zip(*xyv)
     ax.plot(x,y, "r-")
-    ax.plot([x_inp, x_inp], [min(ys), max(ys)], "k--")
+    x = O.x[ix]
+    ax.plot([x, x], [min(ys), max(ys)], "k--")
     if (O.x_reference is not None):
       x = O.x_reference[ix]
       ax.plot([x, x], [min(ys), max(ys)], "r--")
@@ -418,8 +442,11 @@ class refinement(object):
         i_calc=i_calc,
         k=k)
 
-  def __get_tg(O):
+  def __unpack_variables_get_tg(O):
     O.__unpack_variables()
+    return O.__get_tg(f_calc=O.get_f_calc().data())
+
+  def __get_tg(O, f_calc):
     if (O.params.target_obs_type == "F"):
       obs = O.f_obs
     else:
@@ -432,7 +459,7 @@ class refinement(object):
           obs=obs.data(),
           weights=O.weights,
           r_free_flags=None,
-          f_calc=O.get_f_calc().data(),
+          f_calc=f_calc,
           derivatives_depth=2,
           scale_factor=O.params.f_calc_scale_factor)
       if (O.params.i_obs_weights != "shelxl_wght"):
@@ -443,7 +470,7 @@ class refinement(object):
         f_obs=O.f_obs.data(),
         i_obs=O.i_obs.data(),
         i_sig=O.i_obs.sigmas(),
-        f_calc=O.get_f_calc().data(),
+        f_calc=f_calc,
         i_calc=None,
         wa=0.1,
         wb=0)
@@ -453,14 +480,14 @@ class refinement(object):
         obs=obs.data(),
         weights=O.weights,
         r_free_flags=None,
-        f_calc=O.get_f_calc().data(),
+        f_calc=f_calc,
         derivatives_depth=2)
     elif (O.params.target_type == "r1"):
       assert O.params.target_obs_type == "F"
       from cctbx.xray.targets import r1
       return r1.target(
         f_obs=O.f_obs.data(),
-        f_calc=O.get_f_calc().data())
+        f_calc=f_calc)
     raise RuntimeError("Unknown target_type.")
 
   def update_fgc(O, is_iterate=False):
@@ -470,7 +497,7 @@ class refinement(object):
         if (not prev_xfgc.is_iterate):
           prev_xfgc.is_iterate = is_iterate
         return
-    tg = O.__get_tg()
+    tg = O.__unpack_variables_get_tg()
     assert tg.target_work() is not None
     gact = O.xray_structure.grads_and_curvs_target_simple(
       miller_indices=O.f_obs.indices(),
