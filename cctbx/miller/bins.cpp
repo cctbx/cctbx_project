@@ -3,6 +3,25 @@
 
 namespace cctbx { namespace miller {
 
+  namespace {
+    void
+    auto_d_max_d_min(
+      uctbx::unit_cell const& unit_cell,
+      af::const_ref<index<> > const& miller_indices,
+      double& d_max,
+      double& d_min)
+    {
+      if (d_max != 0 || d_min != 0) return;
+      af::double2 min_max_q = unit_cell.min_max_d_star_sq(miller_indices);
+      if (min_max_q[1] != 0) {
+        d_min = 1 / std::sqrt(min_max_q[1]);
+      }
+      if (min_max_q[0] != 0 && min_max_q[0] != min_max_q[1]) {
+        d_max = 1 / std::sqrt(min_max_q[0]);
+      }
+    }
+  }
+
   binning::binning(
     uctbx::unit_cell const& unit_cell,
     std::size_t n_bins,
@@ -13,11 +32,7 @@ namespace cctbx { namespace miller {
   :
     unit_cell_(unit_cell)
   {
-    if (!(d_max || d_min)) {
-      af::double2 min_max_q = unit_cell.min_max_d_star_sq(miller_indices);
-      if (!d_max && min_max_q[0]) d_max = 1 / std::sqrt(min_max_q[0]);
-      if (!d_min && min_max_q[1]) d_min = 1 / std::sqrt(min_max_q[1]);
-    }
+    auto_d_max_d_min(unit_cell, miller_indices, d_max, d_min);
     init_limits(n_bins, d_max, d_min, relative_tolerance);
   }
 
@@ -32,15 +47,9 @@ namespace cctbx { namespace miller {
   :
     unit_cell_(unit_cell)
   {
-    if ( !(d_max || d_min) ) {
-      af::double2 min_max_q = unit_cell.min_max_d_star_sq(miller_indices);
-      if (!d_max && min_max_q[0]) d_max = 1 / std::sqrt(min_max_q[0]);
-      if (!d_min && min_max_q[1]) d_min = 1 / std::sqrt(min_max_q[1]);
-    }
-    init_limits_d_star_sq_step(d_max, d_min,d_star_sq_step);
+    auto_d_max_d_min(unit_cell, miller_indices, d_max, d_min);
+    init_limits_d_star_sq_step(d_max, d_min, d_star_sq_step);
   }
-
-
 
   void
   binning::init_limits(

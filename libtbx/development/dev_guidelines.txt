@@ -3,13 +3,16 @@
 In general normal Python coding style guidlines apply. Additionally
 please be aware of this:
 
-1. no tabs, only use spaces for indentation and alignment
-2. indent with 2 space characters per level
-3. no trailing whitespace
-4. wrap lines at 80 characters
-5. only import functions you actually use
-6. use only absolute and fine-grained Python imports
-7. try to make the code self-documenting by using (long) meaningful
+1. Be very conscious about avoiding redundancy in the source code
+   (avoid cut-and-paste; if you copy more than one line it is
+   probably too much).
+2. no tabs, only use spaces for indentation and alignment
+3. indent with 2 space characters per level
+4. no trailing whitespace
+5. wrap lines at 80 characters
+6. only import functions you actually use
+7. use only absolute and fine-grained Python imports
+8. try to make the code self-documenting by using (long) meaningful
    names and by keeping functions small
 
 Capitalization:

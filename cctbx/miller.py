@@ -362,8 +362,8 @@ class set(crystal.symmetry):
       n_centric = no_sys_abs.centric_flags().data().count(True)
       print >> f, prefix + "Centric reflections:", n_centric
     if (self.unit_cell() is not None):
-      print >> f, prefix + "Resolution range: %.6g %.6g" % (
-        no_sys_abs.resolution_range())
+      d_max_min = no_sys_abs.resolution_range()
+      print >> f, prefix + "Resolution range: %.6g %.6g" % d_max_min
       if (self.space_group_info() is not None and self.indices().size() > 0):
         no_sys_abs.setup_binner(n_bins=1)
         completeness_d_max_d_min = no_sys_abs.completeness(use_binning=True)
@@ -372,7 +372,7 @@ class set(crystal.symmetry):
         assert binner.counts_given()[2] == 0
         n_obs = binner.counts_given()[1]
         n_complete = binner.counts_complete()[1]
-        if (n_complete != 0):
+        if (n_complete != 0 and d_max_min[0] != d_max_min[1]):
           print >> f, prefix + "Completeness in resolution range: %.6g" % (
             n_obs / n_complete)
         n_complete += binner.counts_complete()[0]
@@ -2973,7 +2973,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     if (also_return_x_and_y):
       return result, x, y
     return result
- 
+
   def as_xray_observations(self, scale_indices=None, twin_fractions=None,
                            twin_components=None):
     assert self.observation_type() is None or (
@@ -3004,7 +3004,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     # synchronise the life-time of the reference objects
     result.ref_twin_fractions = twin_fractions
     result.ref_twin_components = twin_components
-    return result    
+    return result
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
