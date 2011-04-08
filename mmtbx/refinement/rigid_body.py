@@ -802,10 +802,19 @@ class target_and_grads(object):
 def identify_rigid_groups (pdb_hierarchy) :
   assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
   model = pdb_hierarchy.models()[0]
+  atom_labels = list(pdb_hierarchy.atoms_with_labels())
+  segids = flex.std_string([ a.segid for a in atom_labels ])
+  use_segid = not segids.all_eq('    ')
   selections = []
   for chain in model.chains() :
     main_conf = chain.conformers()[0]
     if (main_conf.is_protein() or main_conf.is_na()) :
-      chain_sele = chain.atoms().extract_i_seq()
+      chain_sele = "(chain '%s'" % chain.id
+      if (use_segid) :
+        first_atom_labels = main_conf.atoms()[0].fetch_labels()
+        chain_sele += " and segid '%s'" % first_atom_labels.segid
+      resseq_first = main_conf.residues()[0].resseq.strip()
+      resseq_last = main_conf.residues()[-1].resseq.strip()
+      chain_sele += " and resseq %s:%s)" % (resseq_first, resseq_last)
       selections.append(chain_sele)
   return selections
