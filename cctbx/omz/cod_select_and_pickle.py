@@ -33,7 +33,6 @@ class cod_data(object):
 
   __slots__ = [
     "cod_id",
-    "errors",
     "c_obs",
     "xray_structure",
     "non_hydrogen_selection",
@@ -41,7 +40,6 @@ class cod_data(object):
 
   def __init__(O, cod_id, hkl_cif_pair):
     O.cod_id = cod_id
-    O.errors = []
     O.c_obs = None
     O.xray_structure = None
     O.non_hydrogen_selection = None
@@ -66,11 +64,9 @@ class cod_data(object):
       from_coordinate_files=from_coordinate_files,
       from_reflection_files=from_reflection_files)
     if (combined_cs.unit_cell() is None):
-      O.errors.append("Missing unit cell.")
+      raise RuntimeError("Missing unit cell.")
     if (combined_cs.space_group_info() is None):
-      O.errors.append("Missing space group.")
-    if (len(O.errors) != 0):
-      return
+      raise RuntimeError("Missing space group.")
     #
     miller_arrays = refl_cif.as_miller_arrays()
     meas_a = []
@@ -205,10 +201,6 @@ class cod_data(object):
     return True
 
   def is_useful(O, co):
-    if (len(O.errors) != 0):
-      for e in O.errors:
-        print "ERROR: %s: %s" % (O.cod_id, e)
-      return False
     if (O.non_hydrogen_selection.size() > co.max_atoms): return False
     if (O.have_zero_occupancies()): return False
     if (O.have_close_contacts(co.min_distance)): return False
@@ -304,14 +296,13 @@ def build_hkl_cif(cod_ids):
   print "Number of hkl+cif:", len(hkl_cif)
   return hkl_cif
 
-def run(args):
+def run(args, command_name):
   from iotbx.option_parser import option_parser as iotbx_option_parser
   from libtbx import easy_pickle
   import libtbx.utils
   show_times = libtbx.utils.show_times(time_start="now")
-  command_call = ["iotbx.python", __file__]
   command_line = (iotbx_option_parser(
-    usage=" ".join(command_call) + " [options] [cod_id...]")
+    usage=command_name+" [options] [cod_id...]")
     .enable_chunk(easy_all=True)
     .enable_multiprocessing()
     .option(None, "--max_atoms",
@@ -353,7 +344,7 @@ def run(args):
       metavar="PATH")
   ).process(args=args)
   if (command_line.run_multiprocessing_chunks_if_applicable(
-        command_call=command_call)):
+        command_call=[command_name])):
     show_times()
     return
   co = command_line.options
@@ -375,9 +366,10 @@ def run(args):
     except KeyboardInterrupt:
       print "CAUGHT EXCEPTION: KeyboardInterrupt"
       return
-    except Exception:
+    except Exception, e:
       sys.stdout.flush()
-      print >> sys.stderr, "CAUGHT EXCEPTION: cod.py: %s" % cod_id
+      print >> sys.stderr, \
+        "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e))
       traceback.print_exc()
       print >> sys.stderr
       sys.stderr.flush()
@@ -397,6 +389,3 @@ def run(args):
   print "Number of exceptions caught:", n_caught
   #
   show_times()
-
-if (__name__ == "__main__"):
-  run(args=sys.argv[1:])
