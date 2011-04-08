@@ -187,7 +187,7 @@ def get_simple_bonds (proxies) :
   elif (type(proxies).__name__ == "shared_h_bond_implicit_proxy") :
     return ext.implicit_hbonds_as_simple_bonds(proxies)
   elif isinstance(proxies, list) :
-    return get_simple_bond_equivalents(proxies)
+    return shared.stl_set_unsigned(get_simple_bond_equivalents(proxies))
   else :
     assert 0
 
