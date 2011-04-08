@@ -23,9 +23,8 @@ namespace {
      where the esd associated with the value is also given in brackets.
      For now the value in the brackets (if present) is ignored
      (although this is checked to be a valid integer).  E.g.
-       the string "1.3(2)" will be interpreted as the double 1.3
+     the string "1.3(2)" will be interpreted as the double 1.3
    */
-
   flex<double>::type*
   from_std_string(const_ref<std::string> const& strings)
   {
@@ -34,22 +33,55 @@ namespace {
       std::string s = strings[i];
       std::size_t open_bracket_i = s.find_first_of('(');
       std::size_t close_bracket_i = s.find_last_of(')');
-      double value;
+      std::string value_literal;
+      std::string esd_literal;
       if (open_bracket_i == std::string::npos) {
-        value = boost::lexical_cast<double>(s);
+        value_literal = s;
+        if (value_literal.size() == 0) {
+          throw std::invalid_argument(
+            "Empty string (floating-point value expected).");
+        }
       }
       else if (close_bracket_i == std::string::npos) {
-        throw std::runtime_error("Missing closing parenthesis: '" + s + "'");
+        throw std::invalid_argument(
+          "Missing closing parenthesis: \"" + s + "\"");
       }
       else {
         if (close_bracket_i != s.size()-1) {
-          throw std::runtime_error(
-            "Unexpected trailing characters after ')': '" + s + "'");
+          throw std::invalid_argument(
+            "Unexpected trailing characters after \")\": \"" + s + "\"");
         }
-        value = boost::lexical_cast<double>(s.substr(0, open_bracket_i));
-        // check that value between brackets is a valid integer
-        boost::lexical_cast<int>(
-          s.substr(open_bracket_i+1, close_bracket_i-open_bracket_i-1));
+        std::size_t esd_width = close_bracket_i - open_bracket_i - 1;
+        if (open_bracket_i == 0) {
+          throw std::invalid_argument(
+            "Empty value part: \"" + s + "\"");
+        }
+        if (esd_width == 0) {
+          throw std::invalid_argument(
+            "Empty esd part: \"" + s + "\"");
+        }
+        value_literal = s.substr(0, open_bracket_i);
+        esd_literal = s.substr(open_bracket_i+1, esd_width);
+      }
+      double value = 0;
+      try {
+        value = boost::lexical_cast<double>(value_literal);
+      }
+      catch (boost::bad_lexical_cast const&) {
+        std::string detail = (
+          esd_literal.size() == 0
+            ? "floating-point value"
+            : "value part");
+        throw std::invalid_argument("Invalid " + detail + ": \"" + s + "\"");
+      }
+      if (esd_literal.size() != 0) {
+        try {
+          boost::lexical_cast<int>(esd_literal);
+        }
+        catch (boost::bad_lexical_cast const&) {
+          throw std::invalid_argument(
+            "Invalid esd part: \"" + s + "\"");
+        }
       }
       result.push_back(value);
     }
