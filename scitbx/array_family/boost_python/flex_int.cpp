@@ -21,7 +21,19 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     shared<int> result(reserve(s.size()));
     for(std::size_t i=0;i<s.size();i++) {
-      result.push_back(boost::lexical_cast<int>(s[i]));
+      if (s[i].size() == 0) {
+        throw std::invalid_argument(
+          "Empty string (integer value expected).");
+      }
+      int value = 0;
+      try {
+        value = boost::lexical_cast<int>(s[i]);
+      }
+      catch (boost::bad_lexical_cast const&) {
+        throw std::invalid_argument(
+          "Invalid integer value: \"" + s[i] + "\"");
+      }
+      result.push_back(value);
     }
     return new flex<int>::type(result, result.size());
   }

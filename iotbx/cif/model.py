@@ -446,7 +446,7 @@ class loop(DictMixin):
           if not isinstance(v, flex_numeric_type):
             try:
               values[i] = flex_numeric_type(v)
-            except RuntimeError:
+            except ValueError:
               continue
             else:
               break

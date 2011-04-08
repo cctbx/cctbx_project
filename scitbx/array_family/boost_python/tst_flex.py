@@ -206,29 +206,6 @@ def exercise_flex_constructors():
   assert f.size() == 3
   assert tuple(f) == (10,11,12)
   assert flex.to_list(f) == [10,11,12]
-  f = flex.double(flex.std_string(['1.2','+2e-3','3']))
-  assert tuple(f) == (1.2,.002,3.0)
-  f = flex.double(flex.std_string(['1.2(3)','+2e-3(1)','3(16)']))
-  assert tuple(f) == (1.2,.002,3.0)
-  assert tuple(f.as_string()) == ('1.2', '0.002', '3')
-  try:
-    f = flex.double(flex.std_string(['1.2','+2e-3(x)']))
-  except RuntimeError, e:
-    pass
-  else:
-    raise Exception_expected
-  f = flex.double(flex.std_string(['0.7', '0.1']))
-  assert tuple(f.as_string()) == ('0.7', '0.1')
-  f = flex.double([0.1, -0.0000234])
-  try:
-    assert tuple(f.as_string("%+.3e")) == ('+1.000e-001', '-2.340e-005')
-  except AssertionError:
-    # Seem to get slightly different output on Windows vs Linux...
-    assert tuple(f.as_string("%+.3e")) == ('+1.000e-01', '-2.340e-05')
-  f = flex.int(flex.std_string(['1','+2','-3']))
-  assert tuple(f.as_string()) == ('1', '2', '-3')
-  assert tuple(f.as_string("%+3d")) == (' +1', ' +2', ' -3')
-  assert tuple(f) == (1,2,-3)
   #
   for row_type in [list, tuple]:
     for column_type in [list, tuple]:
@@ -285,6 +262,104 @@ def exercise_flex_constructors():
   except RuntimeError, e:
     assert str(e) == "range stop argument must not be negative."
   else: raise Exception_expected
+
+def exercise_numbers_from_string():
+  i = flex.int(flex.std_string(('1','+2','-3')))
+  assert tuple(i.as_string()) == ('1', '2', '-3')
+  assert tuple(i.as_string("%+3d")) == (' +1', ' +2', ' -3')
+  assert tuple(i) == (1,2,-3)
+  #
+  try:
+    flex.int(flex.std_string(['']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Empty string (integer value expected).')
+  else:
+    raise Exception_expected
+  try:
+    flex.int(flex.std_string(['+-0']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Invalid integer value: "+-0"')
+  else:
+    raise Exception_expected
+  s = str(2**1000).replace("L", "")
+  try:
+    flex.int(flex.std_string([s]))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Invalid integer value: "%s"' % s)
+  else:
+    raise Exception_expected
+  #
+  f = flex.double(flex.std_string(['1.2','+2e-3','3']))
+  assert approx_equal(f, (1.2,.002,3.0))
+  f = flex.double(flex.std_string(['1.2(3)','+2e-3(1)','3(16)']))
+  assert approx_equal(f, (1.2,.002,3.0))
+  assert tuple(f.as_string()) == ('1.2', '0.002', '3')
+  s = ('0.7', '0.1')
+  f = flex.double(flex.std_string(s))
+  assert tuple(f.as_string()) == s
+  f = flex.double([0.1, -0.0000234])
+  assert tuple(f.as_string("%+.3e")) in [
+    ('+1.000e-001', '-2.340e-005'),
+    ('+1.000e-01',  '-2.340e-05')]
+  #
+  try:
+    flex.double(flex.std_string(['']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Empty string (floating-point value expected).')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['1.2(']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Missing closing parenthesis: "1.2("')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['1.2(3)4']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Unexpected trailing characters after ")": "1.2(3)4"')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['(3)']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Empty value part: "(3)"')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['5()']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Empty esd part: "5()"')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['6x']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Invalid floating-point value: "6x"')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['7x(8)']))
+  except ValueError, e:
+    assert not show_diff(str(e),
+      'Invalid value part: "7x(8)"')
+  else:
+    raise Exception_expected
+  try:
+    flex.double(flex.std_string(['1.2','+2e-3(x)']))
+  except ValueError, e:
+    assert not show_diff(str(e), 'Invalid esd part: "+2e-3(x)"')
+  else:
+    raise Exception_expected
 
 def exercise_misc():
   assert flex.double.element_size() != 0
@@ -2836,6 +2911,7 @@ def run(iterations):
     exercise_first_index_etc()
     exercise_flex_grid()
     exercise_flex_constructors()
+    exercise_numbers_from_string()
     exercise_misc()
     exercise_1d_slicing()
     exercise_push_back_etc()

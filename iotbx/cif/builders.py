@@ -272,11 +272,20 @@ class miller_array_builder(crystal_symmetry_builder):
     self._arrays = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
-    hkl = [cif_block.get('_refln_index_%s' %i) for i in ('h','k','l')]
-    if hkl.count(None) > 0:
+    hkl_str = [cif_block.get('_refln_index_%s' %i) for i in ('h','k','l')]
+    if hkl_str.count(None) > 0:
       raise Sorry("Miller indices missing from current CIF block")
-    hkl = [flex.int(flex.std_string(h)) for h in hkl]
-    indices = flex.miller_index(*hkl)
+    hkl_int = []
+    for i,h_str in enumerate(hkl_str):
+      if (not isinstance(h_str, flex.std_string)):
+        h_str = flex.std_string(h_str)
+      try:
+        h_int = flex.int(h_str)
+      except ValueError, e:
+        raise Sorry(
+          "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
+      hkl_int.append(h_int)
+    indices = flex.miller_index(*hkl_int)
 
     phase_calc = cif_block.get('_refln_phase_calc')
     phase_meas = cif_block.get('_refln_phase_meas')
@@ -326,10 +335,10 @@ class miller_array_builder(crystal_symmetry_builder):
             and not key.endswith('meas')):
           try:
             data = flex.int(flex.std_string(value))
-          except RuntimeError:
+          except ValueError:
             try:
               data = flex.double(flex.std_string(value))
-            except RuntimeError:
+            except ValueError:
               data = value
           array = miller.array(
             miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
@@ -345,9 +354,8 @@ def flex_double_else_none(strings):
   if strings is None: return None
   try:
     return flex.double(flex.std_string(strings))
-  except RuntimeError, e:
-    if 'bad lexical cast' in str(e): return None
-    else: raise e
+  except ValueError:
+    return None
 
 def float_from_string(string):
   """a cif string may be quoted,
