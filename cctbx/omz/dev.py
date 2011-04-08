@@ -801,7 +801,7 @@ class refinement(object):
         s += " %5.3f" % r
     if (O.grads_mean_sq is not None):
       s += " f=%8.2e |g|=%8.2e" % (O.funcl, O.grads_mean_sq)
-    s += " r1=%.3f" % O.r1_factor()
+    s += " r1=%.4f" % O.r1_factor()
     return s
 
   def show_rms_info(O):
