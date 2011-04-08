@@ -368,14 +368,14 @@ def map_coefficients_from_fmodel(fmodel, params):
       coeffs = coeffs.average_bijvoet_mates()
     if(params.isotropize and e_map_obj.mch is not None):
       mcf = abs(coeffs).data()
-      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper#mch.isotropize_helper
+      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper
       isc = isotropize_helper.iso_scale.data()
       coeffs = miller.set(
         crystal_symmetry=coeffs.crystal_symmetry(),
         indices = coeffs.indices(),
         anomalous_flag=False).array(data=coeffs.data()*isc)
     if(params.resharp_after_isotropize and e_map_obj.mch is not None):
-      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper#mch.isotropize_helper
+      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper
       coeffs, b_sharp = isotropizer(
         isotropize_helper = isotropize_helper,
         map_coeffs        = coeffs,
@@ -399,7 +399,7 @@ def map_coefficients_from_fmodel(fmodel, params):
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()
   if(params.exclude_free_r_reflections):
-    coeffs = coeffs.select(~fmodel.r_free_flags().data())
+    coeffs = coeffs.select(~e_map_obj.fmodel.r_free_flags().data())
   if(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
     fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   return coeffs
