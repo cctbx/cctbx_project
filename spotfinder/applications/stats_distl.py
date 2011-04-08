@@ -51,7 +51,7 @@ def key_safe_items_webice(image):
   return [
       ("%7d","Initial spot picks (yellow/green)",key_adaptor(image,'N_spots_total')),
       ("%7d","Good Bragg candidates (green)",key_adaptor(image,'N_spots_inlier')),
-      ("%7.3f ","Average spot model eccentricity",image['eccen'][0]),
+      ("%7.3f ","Average spot model eccentricity",key_adaptor(image,'eccen',0)),
       ("%7d","Ice rings (orange)",key_adaptor(image,'ice-ring_impact')),
       ("%5.1f &#197","Resolution estimate before indexing",key_adaptor(image,'resolution')),
       ("%5.0f &#197","Maximum unit cell edge",key_adaptor(image,'maxcel')),
