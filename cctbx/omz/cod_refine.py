@@ -14,13 +14,14 @@ import traceback
 import sys, os
 op = os.path
 
-def get_master_phil(max_atoms=99):
+def get_master_phil(max_atoms=99, f_calc_options_algorithm="*direct fft"):
   return omz.dev.get_master_phil(
     iteration_limit=100,
     show_distances_threshold=0.5,
     grads_mean_sq_threshold=1e-6,
+    f_calc_options_algorithm=f_calc_options_algorithm,
     additional_phil_string="""\
-      max_atoms = %s
+      max_atoms = %(max_atoms)s
         .type = int
       f_obs_f_calc_fan_outliers = *remove keep
         .type = choice
@@ -80,7 +81,7 @@ def get_master_phil(max_atoms=99):
         qstep = 3
           .type = float
       }
-""" % str(max_atoms))
+""" % vars())
 
 def shelxl_weights_a_b(fo_sq, sigmas, fc_sq, osf_sq, a, b):
   assert sigmas.size() == fo_sq.size()
@@ -103,13 +104,19 @@ def shelxl_weights(fo_sq, sigmas, fc_sq, osf_sq, shelxl_wght):
   return shelxl_weights_a_b(fo_sq, sigmas, fc_sq, osf_sq, a, b)
 
 def show_cc_r1(
-      label, f_obs, xray_structure=None, fc_abs=None, scale_factor=Auto):
+      params,
+      label,
+      f_obs,
+      xray_structure=None,
+      fc_abs=None,
+      scale_factor=Auto):
   assert [xray_structure, fc_abs].count(None) == 1
   if (fc_abs is None):
+    p = params.f_calc_options
     fc_abs = f_obs.structure_factors_from_scatterers(
       xray_structure=xray_structure,
-      algorithm="direct",
-      cos_sin_table=False).f_calc().amplitudes()
+      algorithm=p.algorithm,
+      cos_sin_table=p.cos_sin_table).f_calc().amplitudes()
   corr = flex.linear_correlation(x=f_obs.data(), y=fc_abs.data())
   assert corr.is_well_defined()
   cc = corr.coefficient()
@@ -151,7 +158,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
       for sc in xray_structure.scatterers():
         if (sc.u_iso <= 0 or sc.u_iso > 1):
           sc.u_iso = 0.05
-      show_cc_r1("ls%02d" % (i_cycle+1), f_obs, xray_structure)
+      show_cc_r1(params, "ls%02d" % (i_cycle+1), f_obs, xray_structure)
     tm.show_elapsed(prefix="time smtbx_ls_simple_iterations: ")
   elif (mode == "lm"):
     from scitbx.lstbx import normal_eqns_solving
@@ -168,7 +175,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
         raise
       print 'Aborting run_smtbx_ls("lm"):' \
         ' debye_waller_factor_exp failure: %s' % cod_id
-    show_cc_r1("smtbx_lm", f_obs, xray_structure)
+    show_cc_r1(params, "smtbx_lm", f_obs, xray_structure)
     tm.show_elapsed(prefix="time levenberg_marquardt_iterations: ")
   else:
     raise RuntimeError('Unknown run_smtbx_ls(mode="%s")' % mode)
@@ -335,13 +342,14 @@ def run_shelxl(
           raise RuntimeError("Unknown mode: " + mode)
         assert res_n_parameters == expected_n_refinable_parameters + 1
         fc_abs, _, r1_fvar = show_cc_r1(
-          "fvar_"+mode, f_obs, xray_structure, scale_factor=res_osf)
+          params, "fvar_"+mode, f_obs, xray_structure, scale_factor=res_osf)
         r1_diff = r1_fvar - res_r1
         print "R1 recomputed - shelxl_%s.res: %.4f - %.4f = %.4f %s" % (
           mode, r1_fvar, res_r1, r1_diff, cod_id)
         if (abs(r1_diff) > 0.01):
           raise RuntimeError("R1 MISMATCH %s" % cod_id)
-        _, _, r1_auto = show_cc_r1("shelxl_"+mode, f_obs, fc_abs=fc_abs)
+        _, _, r1_auto = show_cc_r1(
+          params, "shelxl_"+mode, f_obs, fc_abs=fc_abs)
         print "R1 FVAR-Auto %s: %.4f" % (cod_id, r1_fvar - r1_auto)
         #
         lst_r1 = None
@@ -490,10 +498,11 @@ def process(params, pickle_file_name):
     structure_prep=structure_prep)
 
 def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
+  p = params.f_calc_options
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_prep,
-    algorithm="direct",
-    cos_sin_table=False).f_calc()
+    algorithm=p.algorithm,
+    cos_sin_table=p.cos_sin_table).f_calc()
   sel = f_obs.f_obs_f_calc_fan_outlier_selection(f_calc=f_calc)
   assert sel is not None
   n_outliers = sel.count(True)
@@ -515,10 +524,11 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
       n_zero_d_and_s
     i_obs = i_obs.select(~sel)
     f_obs = f_obs.select(~sel)
+  p = params.f_calc_options
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure=structure_prep,
-    algorithm="direct",
-    cos_sin_table=False).f_calc()
+    algorithm=p.algorithm,
+    cos_sin_table=p.cos_sin_table).f_calc()
   if (params.use_f_calc_as_f_obs):
     print "INFO: using f_calc as i+f_obs"
     i_obs = f_calc.intensities().customized_copy(
@@ -575,9 +585,9 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
   print "Number of FVARs for special position constraints:", len(fvars)-1
   print "."*79
   #
-  show_cc_r1("prep", f_obs, structure_prep)
+  show_cc_r1(params, "prep", f_obs, structure_prep)
   def cc_r1(label):
-    show_cc_r1(label, f_obs, structure_work)
+    show_cc_r1(params, label, f_obs, structure_work)
   cc_r1("no_h")
   structure_work.convert_to_isotropic()
   cc_r1("iso")
@@ -626,7 +636,7 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
       reference_structure=structure_iso,
       expected_n_refinable_parameters=n_refinable_parameters,
       plot_samples_id=cod_id)
-    show_cc_r1("dev", f_obs, structure_dev)
+    show_cc_r1(params, "dev", f_obs, structure_dev)
     if (params.export_refined):
       file_name = "dev_%s_%s_%s.pdb" % (
         params.target_type, params.target_obs_type.lower(), cod_id)
@@ -656,7 +666,7 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
       f_obs=f_obs,
       xray_structure=result,
       params=params)
-    show_cc_r1("ls_"+mode, f_obs, result)
+    show_cc_r1(params, "ls_"+mode, f_obs, result)
     return result
   structure_ls_simple = use_smtbx_ls("simple")
   structure_ls_lm = use_smtbx_ls("lm")
