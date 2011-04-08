@@ -50,6 +50,10 @@ class cod_data(object):
     print "model_file:", model_file
     refl_cif = iotbx.cif.reader(file_path=refl_file)
     model_cif = iotbx.cif.reader(file_path=model_file)
+    for cif_block in model_cif.model().values():
+      if (cif_block.get("_cod_error_flag") == "retracted"):
+        print "Retracted COD entry:", cod_id
+        return
     from_coordinate_files = []
     from_reflection_files = []
     def get_cs(cif, buffer):
@@ -201,6 +205,7 @@ class cod_data(object):
     return True
 
   def is_useful(O, co):
+    if (O.c_obs is None): return False
     if (O.non_hydrogen_selection.size() > co.max_atoms): return False
     if (O.have_zero_occupancies()): return False
     if (O.have_close_contacts(co.min_distance)): return False
