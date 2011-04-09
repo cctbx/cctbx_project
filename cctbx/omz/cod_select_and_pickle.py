@@ -160,12 +160,12 @@ class cod_data(object):
     f_obs = O.c_obs.as_amplitude_array(algorithm="xtal_3_7")
     f_calc = f_obs.structure_factors_from_scatterers(
       xray_structure=O.xray_structure).f_calc().amplitudes()
-    fan_sel = f_obs.f_obs_f_calc_fan_outlier_selection(
+    fan_out_sel = f_obs.f_obs_f_calc_fan_outlier_selection(
       f_calc=f_calc,
       offset_low=co.fan_offset_low,
       offset_high=co.fan_offset_high,
       also_return_x_and_y=True)
-    if (fan_sel is None):
+    if (fan_out_sel is None):
       return False
     if (co.i_obs_i_calc_plot and f_obs.indices().size() != 0):
       from libtbx import pyplot
@@ -173,17 +173,18 @@ class cod_data(object):
       ys = flex.pow2(f_calc.data())
       pyplot.plot(xs.as_numpy_array(), ys.as_numpy_array(), "ro")
       pyplot.show()
-    fan_sel, x, y = fan_sel
+    fan_out_sel, x, y = fan_out_sel
+    fan_in_sel = ~fan_out_sel
     if (co.f_obs_f_calc_plot):
       from libtbx import pyplot
-      xs = x.select(fan_sel)
-      ys = y.select(fan_sel)
+      xs = x.select(fan_out_sel)
+      ys = y.select(fan_out_sel)
       if (xs.size() == 0):
         pyplot.plot(x.as_numpy_array(), y.as_numpy_array(), "bo")
       else:
         pyplot.plot(xs.as_numpy_array(), ys.as_numpy_array(), "ro")
-        xs = x.select(~fan_sel)
-        ys = y.select(~fan_sel)
+        xs = x.select(fan_in_sel)
+        ys = y.select(fan_in_sel)
         if (xs.size() != 0):
           pyplot.plot(xs.as_numpy_array(), ys.as_numpy_array(), "bo")
       pyplot.plot_pairs(
@@ -192,15 +193,22 @@ class cod_data(object):
         [(0,co.fan_offset_low), (1-co.fan_offset_high,1)], "r-")
       pyplot.plot_pairs([(0,0), (1,1)], "k--")
       pyplot.show()
-    fan_outlier_fraction = fan_sel.count(True) / fan_sel.size()
-    lc = flex.linear_correlation(f_obs.data(), f_calc.data())
-    assert lc.is_well_defined()
-    cc = lc.coefficient()
-    print "f_obs_f_calc cc, fan: %.3f %.3f %s" % (
-      lc.coefficient(), fan_outlier_fraction, O.cod_id)
+    fan_outlier_fraction = fan_out_sel.count(True) / fan_out_sel.size()
+    def cc_r1(fo, fc):
+      lc = flex.linear_correlation(fo.data(), fc.data())
+      assert lc.is_well_defined()
+      cc = lc.coefficient()
+      from libtbx import Auto
+      r1 = f_obs.r1_factor(other=f_calc, scale_factor=Auto)
+      return cc, r1
+    cc_all, r1_all = cc_r1(f_obs, f_calc)
+    cc_in, r1_in = cc_r1(f_obs.select(fan_in_sel), f_calc.select(fan_in_sel))
+    print "f_obs_f_calc %s" % O.cod_id, \
+      "| cc_all %.4f | r1_all %.4f | out %.4f | cc_in %.4f | r1_in %.4f |" % (
+        cc_all, r1_all, fan_outlier_fraction, cc_in, r1_in)
     if (fan_outlier_fraction > co.max_fan_outlier_fraction):
       return False
-    if (cc < co.min_f_obs_f_calc_correlation):
+    if (cc_all < co.min_f_obs_f_calc_correlation):
       return False
     return True
 
