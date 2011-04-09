@@ -557,7 +557,8 @@ class manager(object):
           monitors_call_back_handler(
             monitor=None, model=None, fmodel=fmodel, method="rigid_body")
     if(bss is not None and params.bulk_solvent_and_scale):
-      fmodel.update_solvent_and_scale(out=log, verbose=-1, optimize_mask=False)
+      fmodel.update_solvent_and_scale(params = bss, out=log, verbose=-1,
+        optimize_mask=False)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
