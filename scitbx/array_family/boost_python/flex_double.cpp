@@ -13,6 +13,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <vector>
 #include <set>
+#include <ctype.h>
 #include "flex_helpers.h"
 
 namespace scitbx { namespace af {
@@ -71,7 +72,7 @@ namespace {
         std::size_t i_sign = std::max(i_pos, i_neg);
         if (i_sign != 0) {
           char c = value_literal[i_sign-1];
-          if (c == '.' || std::isdigit(c)) {
+          if (c == '.' || isdigit(c)) {
             value_literal
               = value_literal.substr(0, i_sign)
               + "E"
