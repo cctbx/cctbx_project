@@ -63,6 +63,22 @@ namespace {
         value_literal = s.substr(0, open_bracket_i);
         esd_literal = s.substr(open_bracket_i+1, esd_width);
       }
+      { // insert E if necessary (e.g. .34+05 -> .34E+05)
+        std::size_t i_pos = value_literal.find_last_of('+');
+        std::size_t i_neg = value_literal.find_last_of('-');
+        if (i_pos == std::string::npos) i_pos = 0;
+        if (i_neg == std::string::npos) i_neg = 0;
+        std::size_t i_sign = std::max(i_pos, i_neg);
+        if (i_sign != 0) {
+          char c = value_literal[i_sign-1];
+          if (c == '.' || std::isdigit(c)) {
+            value_literal
+              = value_literal.substr(0, i_sign)
+              + "E"
+              + value_literal.substr(i_sign, value_literal.size()-i_sign);
+          }
+        }
+      }
       double value = 0;
       try {
         value = boost::lexical_cast<double>(value_literal);
