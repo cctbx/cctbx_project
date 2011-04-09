@@ -304,6 +304,8 @@ def exercise_numbers_from_string():
   assert tuple(f.as_string("%+.3e")) in [
     ('+1.000e-001', '-2.340e-005'),
     ('+1.000e-01',  '-2.340e-05')]
+  f = flex.double(flex.std_string([".34+05", "+6-2", "-7+4(1)"]))
+  assert approx_equal(f, [34000.0, 0.06, -70000.0])
   #
   try:
     flex.double(flex.std_string(['']))
