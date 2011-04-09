@@ -68,9 +68,9 @@ class cod_data(object):
       from_coordinate_files=from_coordinate_files,
       from_reflection_files=from_reflection_files)
     if (combined_cs.unit_cell() is None):
-      raise RuntimeError("Missing unit cell.")
+      raise RuntimeError("Unit cell not found in both cif and hkl files.")
     if (combined_cs.space_group_info() is None):
-      raise RuntimeError("Missing space group.")
+      raise RuntimeError("Space group not found in both cif and hkl file.")
     #
     miller_arrays = refl_cif.as_miller_arrays()
     meas_a = []

@@ -231,7 +231,15 @@ class crystal_structure_builder(crystal_symmetry_builder):
                 for i in (11,22,33,12,13,23)]
         have_Bs = True
       assert adps.count(None) == 0
-      adps = [flex.double(flex.std_string(adp)) for adp in adps]
+      adps = [flex.std_string(adp) for adp in adps]
+      sel = None
+      for adp in adps:
+        f = (adp == "?")
+        if (sel is None): sel = f
+        else:             sel &= f
+      sel = ~sel
+      atom_site_aniso_label = atom_site_aniso_label.select(sel)
+      adps = [flex.double(adp.select(sel)) for adp in adps]
       adps = flex.sym_mat3_double(*adps)
     for i in range(len(atom_sites_frac)):
       kwds = {}
@@ -290,25 +298,22 @@ class miller_array_builder(crystal_symmetry_builder):
     phase_calc = cif_block.get('_refln_phase_calc')
     phase_meas = cif_block.get('_refln_phase_meas')
     for prefix in self.observation_types.keys():
-      sigmas = cif_block.get('%s_sigma' %prefix)
+      sigmas = as_double_or_none_if_all_question_marks(
+        cif_block.get('%s_sigma' %prefix))
       obs_type = self.observation_types[prefix]
-      if sigmas is not None:
-        sigmas = flex.double(flex.std_string(sigmas))
       for array_type in ('meas', 'calc'):
         label = '_'.join((prefix, array_type))
         if prefix == '_refln_A':
-          data = [cif_block.get(label),
-                  cif_block.get('_'.join((prefix.replace('A', 'B'), array_type)))]
-          if data.count(None) == 0:
-            data = flex.complex_double(
-              flex.double(flex.std_string(data[0])),
-              flex.double(flex.std_string(data[1])))
-          else: continue
+          data = [as_double_or_none_if_all_question_marks(_) for _ in [
+            cif_block.get(label),
+            cif_block.get('_'.join((prefix.replace('A', 'B'), array_type)))]]
+          if data.count(None) != 0:
+            continue
+          data = flex.complex_double(data[0], data[1])
         else:
-          data = cif_block.get(label)
-          if data is not None:
-            data = flex.double(flex.std_string(data))
-          else: continue
+          data = as_double_or_none_if_all_question_marks(cif_block.get(label))
+          if data is None:
+            continue
         if array_type == 'calc': sigmas = None
         array = miller.array(
           miller.set(self.crystal_symmetry, indices).auto_anomalous(),
@@ -350,12 +355,25 @@ class miller_array_builder(crystal_symmetry_builder):
   def arrays(self):
     return self._arrays
 
-def flex_double_else_none(strings):
-  if strings is None: return None
+def none_if_all_question_marks(cif_block_item):
+  if (cif_block_item is None): return None
+  result = flex.std_string(cif_block_item)
+  if (result.all_eq("?")): return None
+  return result
+
+def as_double_or_none_if_all_question_marks(cif_block_item):
+  strings = none_if_all_question_marks(cif_block_item)
+  if (strings is None): return None
+  return flex.double(strings)
+
+def flex_double_else_none(cif_block_item):
+  strings = none_if_all_question_marks(cif_block_item)
+  if (strings is None): return None
   try:
-    return flex.double(flex.std_string(strings))
+    return flex.double(strings)
   except ValueError:
-    return None
+    pass
+  return None
 
 def float_from_string(string):
   """a cif string may be quoted,
