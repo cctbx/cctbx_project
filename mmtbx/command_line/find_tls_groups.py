@@ -249,7 +249,9 @@ def split_groups(sels, fragment_size):
       new_sels.append(sel)
   return new_sels
 
-def show_groups(sels, out=sys.stdout):
+def show_groups(sels, out=None):
+  if (out is None) :
+    out = sys.stdout
   min_group_size = 1.e+6
   if 0: print >> out, "          Residues  Resseq  Sec.Structure"
   for i, s in enumerate(sels):
@@ -273,7 +275,9 @@ def sels_as_selection_arrays(sels):
 def get_model_partitioning(residues,
                            secondary_structure_selection,
                            max_sels=13,
-                           out=sys.stdout):
+                           out=None) :
+  if (out is None) :
+    out = sys.stdout
   fragment_size = 5
   print >> out, "  Grouping residues by secondary structure..."
   sels = group_residues(residues)
@@ -319,7 +323,9 @@ def get_model_partitioning(residues,
   return sels, perms
 
 def chains_and_atoms(pdb_hierarchy, secondary_structure_selection,
-    out=sys.stdout):
+    out=None) :
+  if (out is None) :
+    out = sys.stdout
   new_secondary_structure_selection = flex.bool()
   get_class = iotbx.pdb.common_residue_names_get_class
   chains_and_residue_selections = []
@@ -535,7 +541,9 @@ class analyze_permutations (object) :
     return target
 
 def run (args=(), params=None, pdb_hierarchy=None, xray_structure=None,
-    out=sys.stdout):
+    out=None) :
+  if (out is None) :
+    out = sys.stdout
   print_statistics.make_header("phenix.find_tls_groups", out=out)
   default_message="""\
 
@@ -592,7 +600,9 @@ def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
     target += tls_refinery(sites_cart=sites_cart, selection=sel, u_iso=u_iso).f
   return target
 
-def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=sys.stdout):
+def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=None) :
+  if (out is None) :
+    out = sys.stdout
   pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
   remark_3_records = pdb_inp.extract_remark_iii_records(3),
   pdb_hierarchy    = pdb_hierarchy)
@@ -614,7 +624,9 @@ def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=sys.stdout):
     print >> out
     print >> out, "Total target for groups from PDB file header: %10.1f"%total_target
 
-def check_adp(u_iso, step=10, out=sys.stdout):
+def check_adp(u_iso, step=10, out=None) :
+  if (out is None) :
+    out = sys.stdout
   min_adp = flex.min(u_iso)
   if(min_adp<=0):
     print >> out
@@ -683,7 +695,9 @@ def find_tls (params,
               pdb_hierarchy,
               xray_structure,
               return_as_list=False,
-              out=sys.stdout):
+              out=None) :
+  if (out is None) :
+    out = sys.stdout
   print_statistics.make_header("Analyzing inputs", out=out)
   if (params.random_seed is None) :
     params.random_seed = flex.get_random_seed()
