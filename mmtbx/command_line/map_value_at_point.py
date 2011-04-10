@@ -1,10 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_value_at_point
 
-import sys, os
+import sys
 import mmtbx.utils
-from iotbx import reflection_file_utils
-from cStringIO import StringIO
-import mmtbx.f_model
 from libtbx.utils import Sorry
 import iotbx.phil
 from iotbx import reflection_file_reader
