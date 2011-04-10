@@ -249,14 +249,14 @@ def split_groups(sels, fragment_size):
       new_sels.append(sel)
   return new_sels
 
-def show_groups(sels):
+def show_groups(sels, out=sys.stdout):
   min_group_size = 1.e+6
-  if 0: print "          Residues  Resseq  Sec.Structure"
+  if 0: print >> out, "          Residues  Resseq  Sec.Structure"
   for i, s in enumerate(sels):
     is_ss_cntr=0
     for s_ in s:
       if(s_[1]): is_ss_cntr += 1
-    if 0: print "      #%d: %8d  %s-%s %9d"%(i, len(s), s[0][2].strip(),
+    if 0: print >> out, "      #%d: %8d  %s-%s %9d"%(i, len(s), s[0][2].strip(),
       s[len(s)-1][2].strip(), is_ss_cntr)
     if(len(s)<min_group_size): min_group_size = len(s)
   return min_group_size
@@ -270,24 +270,27 @@ def sels_as_selection_arrays(sels):
     if(r_.size()>0): result.append(r_)
   return result
 
-def get_model_partitioning(residues, secondary_structure_selection, max_sels=13):
+def get_model_partitioning(residues,
+                           secondary_structure_selection,
+                           max_sels=13,
+                           out=sys.stdout):
   fragment_size = 5
-  print "  Grouping residues by secondary structure..."
+  print >> out, "  Grouping residues by secondary structure..."
   sels = group_residues(residues)
-  print "  Fragment size:", fragment_size
-  print "    Initial groups..."
+  print >> out, "  Fragment size:", fragment_size
+  print >> out, "    Initial groups..."
   min_group_size = show_groups(sels=sels)
-  print "      n_groups=", len(sels)
+  print >> out, "      n_groups=", len(sels)
   ###
-  print "    Splitting groups is necesary..."
-  print "      n_groups=", len(sels)
+  print >> out, "    Splitting groups is necesary..."
+  print >> out, "      n_groups=", len(sels)
   sels = split_groups(sels = sels, fragment_size = fragment_size)
   show_groups(sels=sels)
   ###
   if(len(sels) > max_sels or min_group_size < fragment_size and len(sels)>1):
-    print "  Re-grouping to achieve maximum possible nuber of groups..."
+    print >> out, "  Re-grouping to achieve maximum possible nuber of groups..."
     sels = regroup_groups(sels, residues, fragment_size, max_sels)
-    print "    n_groups=", len(sels)
+    print >> out, "    n_groups=", len(sels)
     show_groups(sels=sels)
   len_new_sels = len(sels)
   if(len_new_sels==10):
@@ -315,7 +318,8 @@ def get_model_partitioning(residues, secondary_structure_selection, max_sels=13)
   else: raise RuntimeError("Too many permutations.")
   return sels, perms
 
-def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
+def chains_and_atoms(pdb_hierarchy, secondary_structure_selection,
+    out=sys.stdout):
   new_secondary_structure_selection = flex.bool()
   get_class = iotbx.pdb.common_residue_names_get_class
   chains_and_residue_selections = []
@@ -326,7 +330,7 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
         result_ = flex.size_t()
         is_secondary_structure = False
         for ag in rg.atom_groups():
-          print ag.resname, get_class(name=ag.resname)
+          print >> out, ag.resname, get_class(name=ag.resname)
           if(get_class(name=ag.resname) == "common_amino_acid" or
              get_class(name=ag.resname) == "common_rna_dna"):
             for atom in ag.atoms():
@@ -341,9 +345,9 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection):
             [result_, is_secondary_structure, rg.resseq, rg.unique_resnames()])
       if(len(result)>0):
         chains_and_residue_selections.append([chain.id, result])
-  print "Considering these chains:"
+  print >> out, "Considering these chains:"
   for ch in chains_and_residue_selections:
-    print "  chain '%s' (number of residues selected: %d)" % (ch[0], len(ch[1]))
+    print >> out, "  chain '%s' (number of residues selected: %d)" % (ch[0], len(ch[1]))
   return chains_and_residue_selections, new_secondary_structure_selection
 
 def tls_group_selections(groups, perm):
@@ -530,8 +534,9 @@ class analyze_permutations (object) :
       target += mo.f
     return target
 
-def run (args=(), params=None, pdb_hierarchy=None, xray_structure=None):
-  print_statistics.make_header("phenix.find_tls_groups", out = sys.stdout)
+def run (args=(), params=None, pdb_hierarchy=None, xray_structure=None,
+    out=sys.stdout):
+  print_statistics.make_header("phenix.find_tls_groups", out=out)
   default_message="""\
 
 phenix.find_tls_groups: Tool for automated partitioning a model into TLS groups.
@@ -574,7 +579,8 @@ Usage:
     params         = params,
     pdb_inp        = pdb_inp,
     pdb_hierarchy  = pdb_hierarchy,
-    xray_structure = xray_structure)
+    xray_structure = xray_structure,
+    out            = out)
 
 def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
   assert sites_cart.size() == u_iso.size()
@@ -586,33 +592,33 @@ def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
     target += tls_refinery(sites_cart=sites_cart, selection=sel, u_iso=u_iso).f
   return target
 
-def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso):
+def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=sys.stdout):
   pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
   remark_3_records = pdb_inp.extract_remark_iii_records(3),
   pdb_hierarchy    = pdb_hierarchy)
   print_statistics.make_header("TLS groups from PDB file header",
-    out = sys.stdout)
+    out = out)
   selection_strings = []
   if(len(pdb_inp_tls.tls_params)>0):
     for tp in pdb_inp_tls.tls_params:
-      print "  ", tp.selection_string
+      print >> out, "  ", tp.selection_string
       selection_strings.append(tp.selection_string)
   else:
-    print "  ... none found."
+    print >> out, "  ... none found."
   if(len(selection_strings)>0):
     total_target = total_score(
       pdb_hierarchy     = pdb_hierarchy,
       sites_cart        = sites_cart,
       u_iso             = u_iso,
       selection_strings = selection_strings)
-    print
-    print "Total target for groups from PDB file header: %10.1f"%total_target
+    print >> out
+    print >> out, "Total target for groups from PDB file header: %10.1f"%total_target
 
-def check_adp(u_iso, step=10):
+def check_adp(u_iso, step=10, out=sys.stdout):
   min_adp = flex.min(u_iso)
   if(min_adp<=0):
-    print
-    print "Negative or zero ADP found in input file."
+    print >> out
+    print >> out, "Negative or zero ADP found in input file."
     return False
   i = 0
   while i < u_iso.size():
@@ -624,8 +630,8 @@ def check_adp(u_iso, step=10):
       min_adp = flex.min(u_iso)
       max_adp = flex.max(u_iso)
       if(abs(min_adp-max_adp)<0.1):
-        print
-        print "At least 10 bonded atoms have identical ADPs."
+        print >> out
+        print >> out, "At least 10 bonded atoms have identical ADPs."
         return False
     i+=step
   return True
@@ -672,8 +678,13 @@ def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
   #
   print
 
-def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
-  print_statistics.make_header("Analyzing inputs", out = sys.stdout)
+def find_tls (params,
+              pdb_inp,
+              pdb_hierarchy,
+              xray_structure,
+              return_as_list=False,
+              out=sys.stdout):
+  print_statistics.make_header("Analyzing inputs", out=out)
   if (params.random_seed is None) :
     params.random_seed = flex.get_random_seed()
   random.seed(params.random_seed)
@@ -682,7 +693,7 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
   sites_cart = xray_structure.sites_cart()
   u_cart = None
   u_iso  = xray_structure.extract_u_iso_or_u_equiv()#*adptbx.u_as_b(1.) # ?
-  if(not check_adp(u_iso = u_iso)): return
+  if(not check_adp(u_iso=u_iso, out=out)): return
   #
   ssm = mmtbx.secondary_structure.manager(
     pdb_hierarchy                = pdb_hierarchy,
@@ -691,7 +702,7 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
     params                       = None,
     assume_hydrogens_all_missing = None,
     tmp_dir                      = None)
-  ssm.find_automatically()
+  ssm.find_automatically(log=out)
   alpha_h_selection = ssm.alpha_selection()
   secondary_structure_selection = ssm.alpha_selection() | \
       ssm.beta_selection() | ssm.base_pair_selection()
@@ -699,10 +710,11 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
     assert secondary_structure_selection.size() == u_cart.size()
   else:
     assert secondary_structure_selection.size() == u_iso.size()
-  ssm.show_summary()
+  ssm.show_summary(out=out)
   chains_and_residue_selections, secondary_structure_selection = chains_and_atoms(
     pdb_hierarchy                 = pdb_hierarchy,
-    secondary_structure_selection = secondary_structure_selection)
+    secondary_structure_selection = secondary_structure_selection,
+    out                           = out)
   chains_and_permutations = []
   chains_and_atom_selection_strings = []
   mp_pool = None
@@ -710,16 +722,18 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
     try :
       import multiprocessing
     except ImportError :
-      print "multiprocessing not available, ignoring nproc=%d" % params.nproc
+      print >> out, "multiprocessing not available, ignoring nproc=%d" % params.nproc
       params.nproc = 1
     else :
       mp_pool = multiprocessing.Pool(processes=params.nproc)
-  print_statistics.make_header("Processing chains", out = sys.stdout)
+  print_statistics.make_header("Processing chains", out=out)
   for crs in chains_and_residue_selections:
-    print_statistics.make_sub_header("Processing chain '%s'"%crs[0], out = sys.stdout)
+    print_statistics.make_sub_header("Processing chain '%s'"%crs[0],
+      out=out)
     chain_selection = chain_selection_from_residues(crs[1])
     groups, perms = get_model_partitioning(residues = crs[1],
-      secondary_structure_selection = secondary_structure_selection)
+      secondary_structure_selection = secondary_structure_selection,
+      out = out)
     #
     #print
     #selection_arrays = sels_as_selection_arrays(sels = groups)
@@ -730,10 +744,10 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
     #assert 0
     #
     if(len(perms)==1):
-      print "  Whole chain is considered as one TLS group."
+      print >> out, "  Whole chain is considered as one TLS group."
       chains_and_atom_selection_strings.append([crs[0],[]])
     else:
-      print "  Fitting TLS matrices..."
+      print >> out, "  Fitting TLS matrices..."
       dic = {}
       target_best = 1.e+9
       if (params.nproc > 1) :
@@ -749,7 +763,7 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
       else :
         for i_perm, perm in enumerate(perms):
           if i_perm%500==0:
-            print "    ...perm %d of %d"%(i_perm, len(perms))
+            print >> out, "    ...perm %d of %d"%(i_perm, len(perms))
           selections = tls_group_selections(groups, perm)
           target = 0
           for selection in selections:
@@ -762,9 +776,9 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
           dic.setdefault(len(perm), []).append([target,perm])
         #print "    perm %d of %d: target=%8.3f (TLS groups: %s), permutation:"%(
         #  i_perm, len(perms),target,len(perm)),perm
-      print "    Best fits:"
-      print "      No. of         Targets"
-      print "      groups   best   rand.pick diff.  score permutation"
+      print >> out, "    Best fits:"
+      print >> out, "      No. of         Targets"
+      print >> out, "      groups   best   rand.pick diff.  score permutation"
       score_best = -1.e+9
       perm_choice = None
       for k, v in zip(dic.keys(),dic.values()):
@@ -786,7 +800,7 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
           sites_cart = sites_cart.select(chain_selection),
           n_groups   = k)
         score = (r-t_best)/(r+t_best)*100.
-        print "         %3d   %6.1f   %6.1f %6.1f %6.1f"%(
+        print >> out, "         %3d   %6.1f   %6.1f %6.1f %6.1f"%(
           k,t_best, r, r-t_best, score), perm_best
         if(score > score_best):
           score_best = score
@@ -801,13 +815,14 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
       pdb_inp       = pdb_inp,
       pdb_hierarchy = pdb_hierarchy,
       sites_cart    = sites_cart,
-      u_iso         = u_iso)
-  print_statistics.make_header("SUMMARY", out = sys.stdout)
+      u_iso         = u_iso,
+      out           = out)
+  print_statistics.make_header("SUMMARY", out=out)
   #print "Optimal TLS groups:"
   #for chain_and_permutation in chains_and_permutations:
   #  print chain_and_permutation
   #print
-  print "TLS atom selections for phenix.refine:"
+  print >> out, "TLS atom selections for phenix.refine:"
   groups_out = cStringIO.StringIO()
   selection_strings = []
   print >> groups_out, "refinement.refine.adp {"
@@ -820,13 +835,13 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
           if(len(r__)>0):
             group_selection = prefix+"(%s)"%r__
             print >> groups_out, "  tls = \"%s\"" % group_selection
-            selection_strings.append("\"%s\"" % group_selection)
+            selection_strings.append("%s" % group_selection)
     else:
       print >> groups_out, "  tls = \"%s\"" % prefix
-      selection_strings.append("\"%s\"" % prefix)
+      selection_strings.append("%s" % prefix)
   print >> groups_out, "}"
-  print groups_out.getvalue()
-  print
+  print >> out, groups_out.getvalue()
+  print >> out
   #XXX
   if 0:
     merge_groups_by_connectivity(
@@ -840,9 +855,12 @@ def find_tls(params, pdb_inp, pdb_hierarchy, xray_structure):
       sites_cart        = sites_cart,
       u_iso             = u_iso,
       selection_strings = selection_strings)
-    print "Overall best total target for automatically found groups: %10.1f"%total_target
-    print
-  return groups_out.getvalue()
+    print >> out, "Overall best total target for automatically found groups: %10.1f"%total_target
+    print >> out
+  if (return_as_list) :
+    return selection_strings
+  else :
+    return groups_out.getvalue()
 
 # XXX wrapper for running in Phenix GUI
 class _run_find_tls (object) :
