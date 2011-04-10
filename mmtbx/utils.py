@@ -37,6 +37,7 @@ from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel
 from cctbx import french_wilson
 import math
+import libtbx.callbacks # import dependency
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -385,6 +386,13 @@ class determine_data_and_flags(object):
               params.use_lattice_symmetry].count(None) == 0
       print >> self.log, "Generating a new array of R-free flags."
       print >> self.log
+      libtbx.call_back(message="warn",
+        data="PHENIX will generate a new array of R-free flags.  Please "+
+          "check to make sure that the input data do not already contain "+
+          "an R-free set; if one is present, you should cancel this job and "+
+          "disable generation of new flags.  If the program you are running "+
+          "outputs an MTZ file, you should be sure to use that file in all "+
+          "future refinements.")
       r_free_flags = data.generate_r_free_flags(
         fraction                   = params.fraction,
         max_free                   = params.max_free,
