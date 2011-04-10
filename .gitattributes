@@ -1116,10 +1116,6 @@ omptbx/omp_or_stubs.h svneol=native#text/plain
 omptbx/stubs.cpp svneol=native#text/plain
 omptbx/stubs.h svneol=native#text/plain
 omptbx/tst.py svneol=native#text/x-python
-rosetta_xray/__init__.py -text
-rosetta_xray/libtbx_config -text
-rosetta_xray/tst.py -text
-rosetta_xray/xray_target.py -text
 rpmbuild/SPECS/cctbx.spec -text
 rstbx/README -text
 rstbx/SConscript -text
