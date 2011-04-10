@@ -153,10 +153,10 @@ class refinement(object):
       elif (p.ix_auto is None):
         raise RuntimeError(
           "Either plot_samples.ix or plot_samples.ix_auto must be defined.")
-      if (not p.gui and p.file_prefix is None):
+      if (len(p.pyplot) == 0 and p.file_prefix is None):
         raise RuntimeError(
           "Incompatible parameter combination:"
-          " plot_samples.gui=False and plot_samples.file_prefix=None")
+          " plot_samples.pyplot=None and plot_samples.file_prefix=None")
     #
     O.xfgc_infos = []
     O.update_fgc(is_iterate=True)
@@ -292,24 +292,26 @@ class refinement(object):
       for x,y,v in xyv:
         print >> f, x, y, v
     write_xyv()
-    from libtbx import pyplot
-    fig = pyplot.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    x,y,v = zip(*xyv)
-    ax.plot(x,y, "r-")
-    x = O.x[ix]
-    ax.plot([x, x], [min(ys), max(ys)], "k--")
-    if (O.x_reference is not None):
-      x = O.x_reference[ix]
-      ax.plot([x, x], [min(ys), max(ys)], "r--")
-    ax.set_title(info_str, fontsize=12)
-    ax.axis([xyv[0][0], xyv[-1][0], None, None])
-    def write_pdf():
-      if (p.file_prefix is None): return
-      fig.savefig(base_name_plot_files+".pdf", bbox_inches="tight")
-    write_pdf()
-    if (p.gui):
-      pyplot.show()
+    if (len(p.pyplot) != 0):
+      from libtbx import pyplot
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1, 1, 1)
+      x,y,v = zip(*xyv)
+      ax.plot(x,y, "r-")
+      x = O.x[ix]
+      ax.plot([x, x], [min(ys), max(ys)], "k--")
+      if (O.x_reference is not None):
+        x = O.x_reference[ix]
+        ax.plot([x, x], [min(ys), max(ys)], "r--")
+      ax.set_title(info_str, fontsize=12)
+      ax.axis([xyv[0][0], xyv[-1][0], None, None])
+      def write_pdf():
+        if (p.file_prefix is None): return
+        fig.savefig(base_name_plot_files+".pdf", bbox_inches="tight")
+      if ("pdf" in p.pyplot):
+        write_pdf()
+      if ("gui" in p.pyplot):
+        pyplot.show()
 
   def classic_lbfgs(O):
     import scitbx.lbfgs
@@ -964,9 +966,9 @@ def get_master_phil(
         .type = float
       u_steps = 100
         .type = int
-      gui = True
-        .type = bool
       file_prefix = None
         .type = str
+      pyplot = *gui pdf
+        .type = choice(multi=True)
     }
 """ % vars() + additional_phil_string)
