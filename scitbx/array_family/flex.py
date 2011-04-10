@@ -197,6 +197,16 @@ def condense_as_ranges(integer_array):
   store_range()
   return result
 
+class _(boost.python.injector, mersenne_twister):
+
+  def random_selection(self, population_size, sample_size):
+    assert population_size >= 0
+    assert sample_size >= 0
+    assert sample_size <= population_size
+    perm = self.random_permutation(size=population_size)
+    perm.resize(sample_size)
+    return perm.select(sort_permutation(perm))
+
 random_generator = ext.mersenne_twister(scitbx.random.mt19937)
 
 def set_random_seed(value):

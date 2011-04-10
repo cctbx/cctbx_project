@@ -139,9 +139,24 @@ class refinement(object):
     #
     O.plot_samples_id = plot_samples_id
     if (len(O.params.plot_samples.stages) != 0):
-      ix = O.params.plot_samples.ix
-      if (ix is None or ix < 0 or ix >= O.x.size()):
-        raise RuntimeError("Out of range: plot_samples.ix = %s" % str(ix))
+      p = O.params.plot_samples
+      if (p.ix is not None):
+        if (p.ix < 0 or p.ix >= O.x.size()):
+          raise RuntimeError(
+            "Out of range: plot_samples.ix = %d (max is %d)" % (
+              p.ix, O.x.size()-1))
+        if (p.ix_auto is not None):
+          raise RuntimeError(
+            "Incompatible parameter combination:"
+              " plot_samples.ix=%d and plot_samples.ix_auto=%s" % (
+                p.ix, p.ix_auto))
+      elif (p.ix_auto is None):
+        raise RuntimeError(
+          "Either plot_samples.ix or plot_samples.ix_auto must be defined.")
+      if (not p.gui and p.file_prefix is None):
+        raise RuntimeError(
+          "Incompatible parameter combination:"
+          " plot_samples.gui=False and plot_samples.file_prefix=None")
     #
     O.xfgc_infos = []
     O.update_fgc(is_iterate=True)
@@ -166,7 +181,32 @@ class refinement(object):
     p = O.params.plot_samples
     if (stage not in p.stages):
       return
-    ix = p.ix
+    if (p.ix is not None):
+      O.plot_samples_ix(stage, p.ix)
+    elif (p.ix_auto == "all"):
+      for ix in xrange(O.x.size()):
+        O.plot_samples_ix(stage, ix)
+    elif (p.ix_auto == "random"):
+      assert p.ix_random.samples_each_scattering_type is not None
+      assert p.ix_random.samples_each_scattering_type > 0
+      assert p.ix_random.random_seed is not None
+      mt = flex.mersenne_twister(seed=p.ix_random.random_seed)
+      i_seqs_grouped = O.xray_structure.scatterers() \
+        .extract_scattering_types().i_seqs_by_value().values()
+      i_seqs_selected = flex.bool(O.x.size(), False)
+      for i_seqs in i_seqs_grouped:
+        ps = i_seqs.size()
+        ss = min(ps, p.ix_random.samples_each_scattering_type)
+        isel = mt.random_selection(population_size=ps, sample_size=ss)
+        i_seqs_selected.set_selected(i_seqs.select(isel), True)
+      for ix,(i_sc,_) in enumerate(O.x_info):
+        if (i_seqs_selected[i_sc]):
+          O.plot_samples_ix(stage, ix)
+    else:
+      raise RuntimeError("Unknown plot_samples.ix_auto = %s" % p.ix_auto)
+
+  def plot_samples_ix(O, stage, ix):
+    p = O.params.plot_samples
     i_sc, x_type = O.x_info[ix]
     def f_calc_without_moving_scatterer():
       sc = O.xray_structure.scatterers()[i_sc]
@@ -186,6 +226,19 @@ class refinement(object):
         cos_sin_table=False).f_calc().data()
     sc = xs.scatterers()[0]
     ss = xs.site_symmetry_table().get(0)
+    def build_info_str():
+      return "%s|%03d|%03d|%s|%s|occ=%.2f|%s|%s" % (
+        O.plot_samples_id,
+        ix,
+        i_sc,
+        sc.label,
+        sc.scattering_type,
+        sc.occupancy,
+        ss.special_op_simplified(),
+        x_type)
+    info_str = build_info_str()
+    print "plot_samples:", info_str
+    sys.stdout.flush()
     ys = []
     def ys_append():
       tg = O.__get_tg(f_calc=f_calc_moving()+f_calc_fixed)
@@ -229,17 +282,6 @@ class refinement(object):
         if (i_step < 0): dist *= -1
         xyv.append((dist,y,indep[ss_ip]))
     #
-    def build_info_str():
-      return "%s|%03d|%03d|%s|%s|occ=%.2f|%s|%s" % (
-        O.plot_samples_id,
-        ix,
-        i_sc,
-        sc.label,
-        sc.scattering_type,
-        sc.occupancy,
-        ss.special_op_simplified(),
-        x_type)
-    info_str = build_info_str()
     base_name_plot_files = "%s_%03d_%s" % (p.file_prefix, ix, stage)
     def write_xyv():
       if (p.file_prefix is None): return
@@ -904,6 +946,14 @@ def get_master_phil(
         .type = choice(multi=True)
       ix = None
         .type = int
+      ix_auto = all random
+        .type = choice
+      ix_random {
+        samples_each_scattering_type = 3
+          .type = int
+        random_seed = 0
+          .type = int
+      }
       x_radius = 5
         .type = float
       x_steps = 100

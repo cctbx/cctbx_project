@@ -363,6 +363,40 @@ def exercise_numbers_from_string():
   else:
     raise Exception_expected
 
+def exercise_std_string():
+  fss = flex.std_string
+  a = fss([" Abc", "dEF", "ghi ", "   JKL ", "1 23 "])
+  assert list(a.strip()) == ['Abc', 'dEF', 'ghi', 'JKL', '1 23']
+  assert list(a.strip().upper()) == ["ABC","DEF","GHI","JKL", "1 23"]
+  assert list(a.strip().lower()) == ["abc","def","ghi","jkl", "1 23"]
+  #
+  a = fss()
+  assert a.i_seqs_by_value().keys() == []
+  ibv = fss([""]).i_seqs_by_value()
+  assert ibv.keys() == [""]
+  assert list(ibv[""]) == [0]
+  ibv = fss(["", ""]).i_seqs_by_value()
+  assert ibv.keys() == [""]
+  assert list(ibv[""]) == [0,1]
+  ibv = fss(["", "a"]).i_seqs_by_value()
+  assert sorted(ibv.keys()) == ["", "a"]
+  assert list(ibv[""]) == [0]
+  assert list(ibv["a"]) == [1]
+  ibv = fss(["", "a", ""]).i_seqs_by_value()
+  assert sorted(ibv.keys()) == ["", "a"]
+  assert list(ibv[""]) == [0,2]
+  assert list(ibv["a"]) == [1]
+  ibv = fss(list("hello world")).i_seqs_by_value()
+  assert sorted(ibv.keys()) == [" ", "d", "e", "h", "l", "o", "r", "w"]
+  assert list(ibv[" "]) == [5]
+  assert list(ibv["d"]) == [10]
+  assert list(ibv["e"]) == [1]
+  assert list(ibv["h"]) == [0]
+  assert list(ibv["l"]) == [2,3,9]
+  assert list(ibv["o"]) == [4,7]
+  assert list(ibv["r"]) == [8]
+  assert list(ibv["w"]) == [6]
+
 def exercise_misc():
   assert flex.double.element_size() != 0
   f = flex.double((1,2,3))
@@ -805,6 +839,13 @@ def exercise_select():
   p = flex.mersenne_twister(seed=84).random_permutation(size=15)
   assert list(a.select(p, reverse=True)) \
       == [16, 14, 20, 13, 19, 21, 7, 10, 12, 11, 8, 9, 15, 18, 17]
+  #
+  mt = flex.mersenne_twister(seed=92)
+  s = mt.random_selection(population_size=15, sample_size=10)
+  assert list(s) == [0, 1, 2, 3, 5, 9, 10, 11, 12, 14]
+  for n in xrange(2):
+    s = mt.random_selection(population_size=n, sample_size=0)
+    assert s.size() == 0
 
 def exercise_from_stl_vector():
   from scitbx import stl
@@ -1036,10 +1077,6 @@ def exercise_functions():
   assert a.count("a") == 3
   assert a.count("b") == 4
   assert a.count("c") == 0
-  a = flex.std_string([" Abc", "dEF", "ghi ", "   JKL ", "1 23 "])
-  assert list(a.strip()) == ['Abc', 'dEF', 'ghi', 'JKL', '1 23']
-  assert list(a.strip().upper()) == ["ABC","DEF","GHI","JKL", "1 23"]
-  assert list(a.strip().lower()) == ["abc","def","ghi","jkl", "1 23"]
   list(flex.split_lines(multi_line_string="")) == []
   for multi_line_string in [
     "",
@@ -2914,6 +2951,7 @@ def run(iterations):
     exercise_flex_grid()
     exercise_flex_constructors()
     exercise_numbers_from_string()
+    exercise_std_string()
     exercise_misc()
     exercise_1d_slicing()
     exercise_push_back_etc()
