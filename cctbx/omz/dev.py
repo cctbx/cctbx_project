@@ -121,6 +121,7 @@ class refinement(object):
     O.i_obs = i_obs
     O.f_obs = f_obs
     O.xray_structure = xray_structure
+    O.setup_bulk_solvent_correction()
     O.calc_weights_if_needed()
     O.reference_structure = reference_structure
     O.grads = None
@@ -313,6 +314,28 @@ class refinement(object):
       if ("gui" in p.pyplot):
         pyplot.show()
 
+  def setup_bulk_solvent_correction(O):
+    if (not O.params.bulk_solvent_correction):
+      O.f_bulk = None
+      return
+    import mmtbx.f_model
+    fmm = mmtbx.f_model.manager(
+      xray_structure=O.xray_structure,
+      f_obs=O.f_obs)
+    fmm.update_solvent_and_scale(verbose=False, optimize_mask=True)
+    print "bulk-solvent correction:"
+    sc = fmm.scale_k1()
+    print "  scale_k1: %.6g" % sc
+    print "  k_sols:", numstr(fmm.shell_k_sols())
+    print "  b_sol: %.6g" % fmm.b_sol()
+    print "  b_cart:", numstr(fmm.b_cart(), zero_threshold=1e-6)
+    O.f_bulk = fmm.f_bulk()
+    assert O.f_bulk.indices().all_eq(O.f_obs.indices())
+    print "  mean of f_bulk.amplitudes():"
+    bulk_ampl = O.f_bulk.amplitudes()
+    bulk_ampl.setup_binner(n_bins=8)
+    bulk_ampl.mean(use_binning=True).show(prefix="    ")
+
   def classic_lbfgs(O):
     import scitbx.lbfgs
     O.i_step = 0
@@ -459,10 +482,13 @@ class refinement(object):
 
   def get_f_calc(O):
     p = O.params.f_calc_options
-    return O.f_obs.structure_factors_from_scatterers(
+    result = O.f_obs.structure_factors_from_scatterers(
       xray_structure=O.xray_structure,
       algorithm=p.algorithm,
       cos_sin_table=p.cos_sin_table).f_calc()
+    if (O.f_bulk is not None):
+      result = result.customized_copy(data=result.data()+O.f_bulk.data())
+    return result
 
   def r1_factor(O):
     from libtbx import Auto
@@ -893,6 +919,7 @@ def run_refinement(
 def get_master_phil(
       iteration_limit=50,
       show_distances_threshold=0,
+      bulk_solvent_correction=False,
       grads_mean_sq_threshold=1e-6,
       f_calc_options_algorithm="*direct fft",
       additional_phil_string=""):
@@ -905,6 +932,8 @@ def get_master_phil(
       .type = float
     show_distances_threshold = %(show_distances_threshold)s
       .type = float
+    bulk_solvent_correction = %(bulk_solvent_correction)s
+      .type = bool
     target_type = *ls cc r1
       .type = choice
     target_obs_type = *F I
