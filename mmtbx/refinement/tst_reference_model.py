@@ -90,82 +90,9 @@ def get_master_phil():
     input_string="""\
 reference_model
 {
-    file = None
-      .type = path
-      .short_caption = PDB file
-      .style = bold file_type:pdb
-    selection = None
-      .type = str
-      .short_caption = Atom selection
-      .input_size = 400
-    sigma = 1.0
-      .type = float
-    limit = 15.0
-      .type = float
-    slack = 0
-      .type = float
-    hydrogens = False
-      .type = bool
-    main_chain = True
-      .type = bool
-    side_chain = True
-      .type = bool
-    fix_outliers = True
-      .type = bool
-    auto_align = False
-      .type = bool
-    secondary_structure_only = False
-      .type = bool
-    reference_group
-      .multiple=True
-      .optional=True
-      .short_caption=Reference group
-      .style = noauto auto_align
-    {
-      reference= None
-        .type=str
-        .optional=True
-        .short_caption=Reference selection
-        .input_size=400
-        .style = selection bold
-      selection= None
-        .type=str
-        .short_caption=Restrained selection
-        .input_size=400
-        .style = selection bold
-    }
-    alignment
-      .help = Set of parameters for sequence alignment. Defaults are good for most \
-          of cases
-      .short_caption = Sequence alignment
-      .style = box auto_align
-    {
-      alignment_style =  local *global
-        .type = choice
-      gap_opening_penalty = 1
-        .type = float
-      gap_extension_penalty = 1
-        .type = float
-      similarity_matrix =  blosum50  dayhoff *identity
-        .type = choice
-    }
-    alignment_group
-     .multiple=True
-     .optional=True
-     .short_caption=Reference group
-     .style = noauto auto_align menu_item parent_submenu:reference_model
-    {
-       reference=None
-         .type=str
-         .short_caption=Reference selection
-         .style = selection
-       selection=None
-         .type=str
-         .short_caption=Restrained selection
-         .style = selection
-    }
+  include scope mmtbx.refinement.reference_model.reference_group_params
 }
-""")
+""", process_includes=True)
 
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
   rm = reference_model()
