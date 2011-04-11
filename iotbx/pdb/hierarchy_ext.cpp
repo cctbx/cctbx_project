@@ -86,7 +86,8 @@ namespace {
           make_function(get_resname), make_function(set_resname))
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<atom_group, residue_group>::wrapper)
+        .def("parent", get_parent<atom_group, residue_group>::wrapper, (
+          arg("optional")=true))
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom)
         .def("append_atom_with_other_parent",
           &w_t::append_atom_with_other_parent, (arg("atom")))
@@ -153,7 +154,8 @@ namespace {
           make_function(set_link_to_previous))
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<residue_group, chain>::wrapper)
+        .def("parent", get_parent<residue_group, chain>::wrapper, (
+          arg("optional")=true))
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom_group)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
@@ -197,7 +199,8 @@ namespace {
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<chain, model>::wrapper)
+        .def("parent", get_parent<chain, model>::wrapper, (
+          arg("optional")=true))
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(residue_group)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
@@ -237,7 +240,8 @@ namespace {
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<model, root>::wrapper)
+        .def("parent", get_parent<model, root>::wrapper, (
+          arg("optional")=true))
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(chain)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
@@ -503,7 +507,8 @@ namespace {
         .add_property("link_to_previous", make_function(get_link_to_previous))
         .add_property("is_pure_main_conf",make_function(get_is_pure_main_conf))
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<residue, conformer>::wrapper)
+        .def("parent", get_parent<residue, conformer>::wrapper, (
+          arg("optional")=true))
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", get_atoms)
         .def("resseq_as_int", &w_t::resseq_as_int)
@@ -532,7 +537,8 @@ namespace {
           arg("parent"), arg("altloc"))))
         .add_property("altloc", make_function(get_altloc))
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<conformer, chain>::wrapper)
+        .def("parent", get_parent<conformer, chain>::wrapper, (
+          arg("optional")=true))
         .def("residues_size", &w_t::residues_size)
         .def("residues", get_residues)
         .def("atoms_size", &w_t::atoms_size)

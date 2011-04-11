@@ -608,7 +608,7 @@ namespace hierarchy {
       parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<atom_group>
-      parent() const;
+      parent(bool optional=true) const;
 
       int
       serial_as_int() const;
@@ -860,7 +860,7 @@ namespace hierarchy {
       parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<residue_group>
-      parent() const;
+      parent(bool optional=true) const;
 
       unsigned
       atoms_size() const;
@@ -968,7 +968,7 @@ namespace hierarchy {
       parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<chain>
-      parent() const;
+      parent(bool optional=true) const;
 
       unsigned
       atom_groups_size() const;
@@ -1114,7 +1114,7 @@ namespace hierarchy {
       parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<model>
-      parent() const;
+      parent(bool optional=true) const;
 
       unsigned
       residue_groups_size() const;
@@ -1233,7 +1233,7 @@ namespace hierarchy {
       parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<root>
-      parent() const;
+      parent(bool optional=true) const;
 
       unsigned
       chains_size() const;
@@ -1517,7 +1517,7 @@ namespace hierarchy {
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
       boost::optional<conformer>
-      parent() const;
+      parent(bool optional=true) const;
 
       unsigned
       atoms_size() const
@@ -1589,7 +1589,7 @@ namespace hierarchy {
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
       boost::optional<chain>
-      parent() const;
+      parent(bool optional=true) const;
 
       unsigned
       residues_size() const

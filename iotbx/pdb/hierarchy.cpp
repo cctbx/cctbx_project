@@ -42,10 +42,13 @@ namespace {
 
 #define IOTBX_PDB_HIERARCHY_CPP_PARENT_GET(P, T) \
   boost::optional<P> \
-  T::parent() const \
+  T::parent(bool optional) const \
   { \
     shared_ptr<P##_data> parent = data->parent.lock(); \
-    if (parent.get() == 0) return boost::optional<P>(); \
+    if (parent.get() == 0) { \
+      if (optional) return boost::optional<P>(); \
+      throw std::runtime_error(#T " has no parent " #P); \
+    } \
     return boost::optional<P>(P(parent, true)); \
   }
 

@@ -467,9 +467,14 @@ def exercise_atom_group():
   rg2 = pdb.hierarchy.residue_group()
   assert rg1.memory_id() != rg2.memory_id()
   ag = pdb.hierarchy.atom_group(parent=rg1)
-  assert ag.parent().memory_id() == rg1.memory_id()
+  assert ag.parent(optional=False).memory_id() == rg1.memory_id()
   del rg1
   assert ag.parent() is None
+  try:
+    ag.parent(optional=False)
+  except RuntimeError, e:
+    assert not show_diff(str(e), "atom_group has no parent residue_group")
+  else: raise Exception_expected
   #
   rg1 = pdb.hierarchy.residue_group()
   ag = pdb.hierarchy.atom_group(altloc="a", resname="xyz")
@@ -495,7 +500,7 @@ def exercise_atom_group():
   assert ag.atoms_size() == 5
   assert ag.atoms().size() == 5
   for atom in ag.atoms():
-    assert atom.parent().memory_id() == ag.memory_id()
+    assert atom.parent(optional=False).memory_id() == ag.memory_id()
   assert [a.name for a in ag.atoms()] == ["ca", "n", "", "", ""]
   #
   ag.insert_atom(i=0, atom=pdb.hierarchy.atom().set_name(new_name="0"))
@@ -541,6 +546,11 @@ def exercise_atom_group():
   assert atom.parent().memory_id() == ag1.memory_id()
   del ag1
   assert atom.parent() is None
+  try:
+    atom.parent(optional=False)
+  except RuntimeError, e:
+    assert not show_diff(str(e), "atom has no parent atom_group")
+  else: raise Exception_expected
 
 def exercise_residue_group():
   rg = pdb.hierarchy.residue_group()
@@ -594,9 +604,14 @@ def exercise_residue_group():
   rg = pdb.hierarchy.residue_group()
   assert rg.parent() is None
   rg = pdb.hierarchy.residue_group(parent=c1)
-  assert rg.parent().memory_id() == c1.memory_id()
+  assert rg.parent(optional=False).memory_id() == c1.memory_id()
   del c1
   assert rg.parent() is None
+  try:
+    rg.parent(optional=False)
+  except RuntimeError, e:
+    assert not show_diff(str(e), "residue_group has no parent chain")
+  else: raise Exception_expected
   #
   c1 = pdb.hierarchy.chain(id="p")
   rg13l = pdb.hierarchy.residue_group(resseq="13", icode="l")
@@ -709,9 +724,14 @@ def exercise_chain():
   c = pdb.hierarchy.chain()
   assert c.parent() is None
   c = pdb.hierarchy.chain(parent=m1)
-  assert c.parent().memory_id() == m1.memory_id()
+  assert c.parent(optional=False).memory_id() == m1.memory_id()
   del m1
   assert c.parent() is None
+  try:
+    c.parent(optional=False)
+  except RuntimeError, e:
+    assert not show_diff(str(e), "chain has no parent model")
+  else: raise Exception_expected
   #
   c = pdb.hierarchy.chain()
   #
@@ -1044,10 +1064,15 @@ def exercise_root():
   assert m.parent().memory_id() == r.memory_id()
   assert m.id == ""
   m = pdb.hierarchy.model(parent=r, id="2")
-  assert m.parent().memory_id() == r.memory_id()
+  assert m.parent(optional=False).memory_id() == r.memory_id()
   assert m.id == "2"
   del r
   assert m.parent() is None
+  try:
+    m.parent(optional=False)
+  except RuntimeError, e:
+    assert not show_diff(str(e), "model has no parent root")
+  else: raise Exception_expected
   #
   r = pdb.hierarchy.root()
   assert r.info.size() == 0
@@ -3782,12 +3807,17 @@ def exercise_conformers():
     #
     for rg in chain.residue_groups():
       for cf in rg.conformers():
-        assert cf.parent().memory_id() == chain.memory_id()
+        assert cf.parent(optional=False).memory_id() == chain.memory_id()
         assert cf.residues_size() == 1
       rgc = rg.detached_copy()
       for cf in rgc.conformers():
         assert cf.parent() is None
         assert cf.residues_size() == 1
+        try:
+          cf.parent(optional=False)
+        except RuntimeError, e:
+          assert not show_diff(str(e), "conformer has no parent chain")
+        else: raise Exception_expected
       #
       if (chain.residue_groups_size() == 1):
         conformers = rg.conformers()
@@ -4267,6 +4297,11 @@ ATOM      2  CA  MET A   1
   assert residue.find_atom_by(name=" N  ").name == " N  "
   assert residue.find_atom_by(name="N   ") is None
   assert residue.find_atom_by(name=" CA ").name == " CA "
+  try:
+    residue.parent(optional=False)
+  except RuntimeError, e:
+    assert not show_diff(str(e), "residue has no parent conformer")
+  else: raise Exception_expected
 
 def exercise_is_identical_hierarchy():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -5080,9 +5115,14 @@ ENDMDL
     for fmt in ["format_atom_record_group", "format_atom_record_group"]:
       sio = StringIO()
       for awl in obj.atoms_with_labels():
-        assert awl.parent() is not None
+        assert awl.parent(optional=False) is not None
         awlc = awl.detached_copy()
         assert awlc.parent() is None
+        try:
+          awlc.parent(optional=False)
+        except RuntimeError, e:
+          assert not show_diff(str(e), "atom has no parent atom_group")
+        else: raise Exception_expected
         print >> sio, getattr(awl, fmt)(), \
           int(awl.is_first_in_chain), \
           int(awl.is_first_after_break), \
@@ -5734,6 +5774,29 @@ def exercise_equality_and_hashing():
   assert pa == atom
   assert pa in collection
 
+def exercise_atom_is_in_same_conformer_as():
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+MODEL        1
+ATOM      0  N   MET
+ATOM      1  CA AMET
+ATOM      2  CA BMET
+ENDMDL
+MODEL        2
+ATOM      3  N   MET
+ATOM      4  CA  MET
+ATOM      5  CA BMET
+ENDMDL
+END
+""").construct_hierarchy()
+  atoms = pdb_hierarchy.atoms()
+  for first in [0,3]:
+    for i in xrange(3):
+      assert atoms[first].is_in_same_conformer_as(atoms[first+i])
+    assert not atoms[first+1].is_in_same_conformer_as(atoms[first+2])
+  for i in xrange(3):
+    for j in xrange(3,6):
+      assert not atoms[i].is_in_same_conformer_as(atoms[j])
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -5793,6 +5856,7 @@ def exercise(args):
     exercise_hierarchy_input()
     exercise_other()
     exercise_equality_and_hashing()
+    exercise_atom_is_in_same_conformer_as()
     if (not forever): break
   print format_cpu_times()
 

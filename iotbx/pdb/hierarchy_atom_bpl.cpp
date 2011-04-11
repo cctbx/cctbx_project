@@ -283,7 +283,8 @@ namespace {
         .staticmethod("sizeof_data")
         .def("data_offsets", data_offsets)
         .staticmethod("data_offsets")
-        .def("parent", get_parent<atom, atom_group>::wrapper)
+        .def("parent", get_parent<atom, atom_group>::wrapper, (
+          arg("optional")=true))
         .def("uij_is_defined", &w_t::uij_is_defined)
         .def("uij_erase", &w_t::uij_erase)
         .def("has_siguij", &w_t::has_siguij)
