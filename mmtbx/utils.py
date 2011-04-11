@@ -198,7 +198,7 @@ data_and_flags_str = """\
       .expert_level=2
     generate = False
       .type=bool
-      .short_caption = Generate new test set if none present
+      .short_caption = Generate new test set
       .help = Generate R-free flags (if not available in input files)
       .expert_level=2
     %s
