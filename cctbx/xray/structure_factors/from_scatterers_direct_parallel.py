@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import copy,math
 from scitbx.array_family import flex
 from cctbx.xray import ext
@@ -268,8 +269,10 @@ class pprocess:
 
   def __init__(self,instance,algorithm,verbose=False):
     """
-    instance: an instance of class from_scatterers_direct(cctbx.xray.structure_factors.manager.managed_calculation_base)
-    algorithm: an instance of class direct_summation_cuda_platform(direct_summation_simple)
+    :param instance: an instance of class from_scatterers_direct(cctbx.xray.structure_factors.manager.managed_calculation_base)
+    :type instance: cctbx.xray.structure_factors.from_scatterers_direct
+    :param algorithm: an instance of class direct_summation_cuda_platform(direct_summation_simple) with algorithm set to "simple" or "pycuda"
+    :type algorithm: cctbx.xray.structure_factors.direct_summation_cuda_platform
     """
 
     self.scatterers = instance._xray_structure.scatterers()
