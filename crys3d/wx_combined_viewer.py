@@ -309,7 +309,8 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     scale = event.GetWheelRotation()
     if self.selected_map_id is not None and not event.AltDown() :
       self.increment_map_iso_levels(scale * 0.1)
-    elif event.ShiftDown() :
+    elif False : #event.ShiftDown() :
+      # FIXME what was this supposed to do?
       self.fog_end_offset -= scale
     else :
       self.slab_scale += 0.01 * scale

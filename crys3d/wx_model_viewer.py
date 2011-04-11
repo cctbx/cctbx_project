@@ -760,7 +760,8 @@ class model_viewer_mixin (wxGLWindow) :
 
   def OnMouseWheel (self, event) :
     scale = event.GetWheelRotation()
-    if event.ShiftDown() :
+    if False : #event.ShiftDown() :
+      # FIXME what was this supposed to do?
       self.fog_end_offset -= scale
     else :
       self.slab_scale += 0.01 * scale
