@@ -19,6 +19,44 @@ import sys, re
 TOP_OUT_FLAG = True
 
 reference_group_params = iotbx.phil.parse("""
+ file = None
+   .type = path
+   .short_caption = Reference model
+   .style = bold file_type:pdb hidden
+ sigma = 1.0
+   .type = float
+ limit = 15.0
+   .type = float
+ slack = 0
+   .type = float
+ hydrogens = False
+   .type = bool
+ main_chain = True
+   .type = bool
+ side_chain = True
+   .type = bool
+ fix_outliers = True
+   .type = bool
+ auto_align = False
+   .type = bool
+ secondary_structure_only = False
+   .type = bool
+ edits
+   .short_caption = Edit reference model restraints
+   .style = menu_item parent_submenu:reference_model auto_align noauto
+   .expert_level = 2
+ {
+   include scope \
+     mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
+ }
+ remove
+   .short_caption = Remove geometry restraints from reference model
+   .expert_level = 2
+   .style = menu_item parent_submenu:reference_model auto_align noauto
+ {
+   include scope \
+   mmtbx.monomer_library.pdb_interpretation.geometry_restraints_remove_str
+ }
  reference_group
   .multiple=True
   .optional=True
