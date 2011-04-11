@@ -924,7 +924,7 @@ class set(crystal.symmetry):
     return set.customized_copy(self,
       crystal_symmetry=crystal.symmetry.patterson_symmetry(self))
 
-  def crystal_gridding(self, resolution_factor=1/3,
+  def crystal_gridding(self, resolution_factor=1/3.,
                              d_min=None,
                              grid_step=None,
                              symmetry_flags=None,
