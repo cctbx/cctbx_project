@@ -68,9 +68,9 @@
   {
     static
     boost::python::object
-    wrapper(ChildType const& child)
+    wrapper(ChildType const& child, bool optional)
     {
-      boost::optional<ParentType> parent = child.parent();
+      boost::optional<ParentType> parent = child.parent(optional);
       if (!parent) return boost::python::object();
       return boost::python::object(*parent);
     }

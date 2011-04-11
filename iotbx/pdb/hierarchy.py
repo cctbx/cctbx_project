@@ -773,6 +773,23 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
 
 class _(boost.python.injector, ext.atom, __hash_eq_mixin):
 
+  def is_in_same_conformer_as(self, other):
+    ag_i = self.parent(optional=False)
+    ag_j = other.parent(optional=False)
+    altloc_i = ag_i.altloc
+    altloc_j = ag_j.altloc
+    if (    len(altloc_i) != 0
+        and len(altloc_j) != 0
+        and altloc_i != altloc_j):
+      return False
+    def p3(ag):
+      return ag.parent(optional=False) \
+               .parent(optional=False) \
+               .parent(optional=False)
+    model_i = p3(ag_i)
+    model_j = p3(ag_j)
+    return model_i.memory_id() == model_j.memory_id()
+
   def set_element_and_charge_from_scattering_type_if_necessary(self,
         scattering_type):
     from cctbx.eltbx.xray_scattering \
