@@ -14,10 +14,14 @@ import traceback
 import sys, os
 op = os.path
 
-def get_master_phil(max_atoms=99, f_calc_options_algorithm="*direct fft"):
+def get_master_phil(
+      max_atoms=99,
+      f_calc_options_algorithm="*direct fft",
+      bulk_solvent_correction=False):
   return omz.dev.get_master_phil(
     iteration_limit=100,
     show_distances_threshold=0.5,
+    bulk_solvent_correction=bulk_solvent_correction,
     grads_mean_sq_threshold=1e-6,
     f_calc_options_algorithm=f_calc_options_algorithm,
     additional_phil_string="""\
@@ -811,7 +815,10 @@ def run(args):
     try:
       process(params, pickle_file_name)
     except KeyboardInterrupt:
-      print "CAUGHT EXCEPTION: KeyboardInterrupt"
+      print >> sys.stderr, "CAUGHT EXCEPTION: KeyboardInterrupt"
+      traceback.print_exc()
+      print >> sys.stderr
+      sys.stderr.flush()
       return
     except Exception:
       sys.stdout.flush()

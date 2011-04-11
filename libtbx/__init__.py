@@ -10,12 +10,19 @@ def _STOP(exit_status=0):
   sys.exit(exit_status)
 __builtins__["STOP"] = _STOP
 
-def _numstr(values, fmt="%.6g", sep=", ", brackets=("[","]")):
+def _numstr(
+      values,
+      fmt="%.6g",
+      sep=", ",
+      brackets=("[","]"),
+      zero_threshold=None):
   flds = []
   for v in values:
     if (v is None):
       s = " "*(max(0,len(fmt % 0)-4)) + "None"
     else:
+      if (zero_threshold is not None and abs(v) <= zero_threshold):
+        v = 0
       s = fmt % v
       if (s.strip().replace("0", "") in ["-", "-."]):
         s = fmt % 0

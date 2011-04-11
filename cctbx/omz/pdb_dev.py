@@ -73,7 +73,8 @@ def run(args):
   from cctbx.omz import cod_refine
   master_phil = cod_refine.get_master_phil(
     max_atoms=None,
-    f_calc_options_algorithm="direct *fft")
+    f_calc_options_algorithm="direct *fft",
+    bulk_solvent_correction=True)
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_phil=master_phil)
   phil_objects = []
@@ -142,7 +143,10 @@ def run(args):
     try:
       process(params, mtz_pdb_pair)
     except KeyboardInterrupt:
-      print "CAUGHT EXCEPTION: KeyboardInterrupt"
+      print >> sys.stderr, "CAUGHT EXCEPTION: KeyboardInterrupt"
+      traceback.print_exc()
+      print >> sys.stderr
+      sys.stderr.flush()
       return
     except Exception:
       sys.stdout.flush()
