@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from cctbx.xray.structure_factors.manager import managed_calculation_base
 from cctbx.xray.structure_factors.manager import default_cos_sin_table
 from cctbx.xray.structure_factors import global_counters
@@ -12,6 +13,24 @@ class from_scatterers_direct(managed_calculation_base):
                      manager=None,
                      cos_sin_table=False,
                      algorithm="direct"):
+    """Evaluate structure factors via direct calculations
+
+    :type xray_structure: cctbx.xray.structure
+    :param xray_structure: the X-ray structure to evaluate the structure factors of
+    :type miller_set: cctbx.miller.set
+    :param miller_set: the set of miller indicies to evaluate the structure factors at
+    :type manager: cctbx.xray.structure_factors.manager
+    :param manager: ? (TODO: doc)
+    :type algorithm: string
+    :type cos_sin_table: boolean
+    :param cos_sin_table: If set to 'True' a precalculated cos_sin_table is used instead of actual trigonometric functions.
+    Using a manager overrides this setting with the one specified in the manager.
+    :param algorithm: the name of the evaluation method, either "direct", "use_alt_parallel"
+
+    :rtype: cctbx.xray.structure_factors.from_scatterers_direct
+    :retruns: an instance 'e' of `cctbx.xray.structure_factors.from_scatterers_direct`
+    providing the evaluated structure factors as 'e.f_calc()'
+    """
     time_all = user_plus_sys_time()
     managed_calculation_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="direct")
