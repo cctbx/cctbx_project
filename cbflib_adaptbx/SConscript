@@ -22,6 +22,11 @@ env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)
+
+cbflib_092_forward = []
+if os.path.isfile( os.path.join(env_etc.cbflib_dist,"src","cbf_ws.c") ):
+  cbflib_092_forward.append("src/cbf_ws.c")
+
 env.StaticLibrary(target='#lib/cbf',
   source = [prefix+"/"+s for s in [
     "examples/img.c",
@@ -48,7 +53,7 @@ env.StaticLibrary(target='#lib/cbf',
     "src/cbf_write.c",
     "src/cbf_write_binary.c",
     "src/md5c.c",
-  ]] + [
+  ] + cbflib_092_forward ] + [
     "detectors/mar_adaptor.cpp",
     "detectors/cbf_adaptor.cpp",
     "detectors/cbf_byte_offset_optimized.cpp",
