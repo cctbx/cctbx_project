@@ -14,7 +14,7 @@ class literal_description:
     if str(self.t_info.origin_shift()) == "0,0,0":
       origin_message = ""
     else:
-      origin_message = "origin shift: %s" % (str(self.t_info.origin_shift()))
+      origin_message = "origin shift: %11s" % (str(self.t_info.origin_shift()))
 
     if origin_message == "" and str(self.t_info.intrinsic_part()) == "0,0,0":
       intrinsic_message = ""
@@ -53,7 +53,7 @@ class literal_description:
           "("+self.symop.t().as_string()+")" )
 
   def labelit_check_pdb_symmetry_form(self):
-    return "%22s  %20s  %s"%(
+    return "%22s  %18s  %s"%(
           self.symop,
           self.symop.r().as_hkl(),
           self.long_form())
