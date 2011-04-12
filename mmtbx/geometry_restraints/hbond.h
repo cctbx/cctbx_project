@@ -318,15 +318,13 @@ namespace mmtbx { namespace geometry_restraints {
       double weight = proxy.weight * IMP_SCALE;
       angle<double> theta(sites);
       if (!theta.have_angle_model) continue;
-      double angle_ideal, delta_theta;
+      double delta_theta;
       double delta_high = theta.angle_model - proxy.theta_high;
       double delta_low = theta.angle_model - proxy.theta_low;
-      if ((proxy.theta_low < 0) || (fabs(delta_high) < fabs(delta_low))) {
+      if (proxy.theta_low < 0 || std::abs(delta_high) < std::abs(delta_low)) {
         delta_theta = delta_high;
-        angle_ideal = proxy.theta_high;
       } else {
         delta_theta = delta_low;
-        angle_ideal = proxy.theta_low;
       }
       residual_sum += residual_implicit(
         sites,
