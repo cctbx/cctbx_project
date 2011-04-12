@@ -4,12 +4,9 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
 def calc_k(f_obs, i_calc):
-  num = 0
-  den = 0
-  for fo,ic in zip(f_obs, i_calc):
-    fc = ic**0.5
-    num += fo*fc
-    den += fc*fc
+  fc = flex.sqrt(i_calc)
+  num = flex.sum(f_obs * fc)
+  den = flex.sum(fc * fc)
   assert den != 0
   k = num / den
   return k
@@ -17,25 +14,20 @@ def calc_k(f_obs, i_calc):
 def calc_w(wa, wb, i_obs, i_sig, i_calc, k):
   assert i_sig.size() == i_obs.size()
   assert i_calc.size() == i_obs.size()
-  weights = flex.double()
-  for io,so,ic in zip(i_obs, i_sig, i_calc):
-    ik = io / k**2
-    sk = so / k**2
-    if (ik < 0): ik = 0
-    p = (ik + 2 * ic) / 3
-    den = sk**2 + (wa*p)**2 + wb*p
-    assert den > 1e-8
-    w = 1 / den
-    weights.append(w)
+  ik = i_obs / k**2
+  sk = i_sig / k**2
+  ik.set_selected(ik < 0, 0)
+  p = (ik + 2 * i_calc) / 3
+  den = flex.pow2(sk) + flex.pow2(wa*p) + wb*p
+  assert den.all_gt(1e-8)
+  weights = 1 / den
   return weights
 
 def calc_t(i_obs, i_calc, k, weights):
-  t_num = 0
-  t_den = 0
-  for io,ic,w in zip(i_obs, i_calc, weights):
-    delta = io - k**2 * ic
-    t_num += w * delta**2
-    t_den += w * io**2
+  delta = i_obs - k**2 * i_calc
+  t_num = flex.sum(weights * flex.pow2(delta))
+  t_den = flex.sum(weights * flex.pow2(i_obs))
+  assert t_den != 0
   return t_num / t_den
 
 def kwt(f_obs, i_obs, i_sig, f_calc, i_calc, wa, wb):
