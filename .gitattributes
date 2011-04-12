@@ -153,6 +153,7 @@ cctbx/sgtbx/direct_space_asu/proto/shortcuts.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.cpp svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.py svneol=native#text/x-python
+cctbx/sgtbx/literal_description.py -text
 cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/reticular_pg_tools.py -text
 cctbx/sgtbx/reticular_twin_laws.py -text
