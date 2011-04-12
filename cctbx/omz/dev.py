@@ -317,6 +317,8 @@ class refinement(object):
   def setup_bulk_solvent_correction(O):
     if (not O.params.bulk_solvent_correction):
       O.f_bulk = None
+      O.fb_cart = None
+      O.alpha_beta = None
       return
     import mmtbx.f_model
     fmm = mmtbx.f_model.manager(
@@ -324,13 +326,15 @@ class refinement(object):
       f_obs=O.f_obs)
     fmm.update_solvent_and_scale(verbose=False, optimize_mask=True)
     print "bulk-solvent correction:"
-    sc = fmm.scale_k1()
-    print "  scale_k1: %.6g" % sc
     print "  k_sols:", numstr(fmm.shell_k_sols())
     print "  b_sol: %.6g" % fmm.b_sol()
     print "  b_cart:", numstr(fmm.b_cart(), zero_threshold=1e-6)
     O.f_bulk = fmm.f_bulk()
-    assert O.f_bulk.indices().all_eq(O.f_obs.indices())
+    O.fb_cart = O.f_obs.customized_copy(data=fmm.fb_cart())
+    O.alpha_beta = fmm.alpha_beta()
+    del fmm
+    for ma in (O.f_bulk,)+O.alpha_beta:
+      assert ma.indices().all_eq(O.f_obs.indices())
     print "  mean of f_bulk.amplitudes():"
     bulk_ampl = O.f_bulk.amplitudes()
     bulk_ampl.setup_binner(n_bins=8)
@@ -487,7 +491,8 @@ class refinement(object):
       algorithm=p.algorithm,
       cos_sin_table=p.cos_sin_table).f_calc()
     if (O.f_bulk is not None):
-      result = result.customized_copy(data=result.data()+O.f_bulk.data())
+      result = result.customized_copy(
+        data=O.fb_cart.data()*(result.data()+O.f_bulk.data()))
     return result
 
   def r1_factor(O):
