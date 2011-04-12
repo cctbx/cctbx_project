@@ -67,7 +67,8 @@ class left_decomposition(object):
       new_partitions.append( tmp )
     self.partitions = new_partitions
 
-  def show(self,out=None, cb_op=None):
+  def show(self,out=None, cb_op=None, format="cosets_form"):
+    from cctbx.sgtbx.literal_description import literal_description
     if out is None:
       out = sys.stdout
     count=0
@@ -103,12 +104,7 @@ class left_decomposition(object):
         else:
           tmp_item = cb_op.apply( item )
 
-        print >> out, "%20s  %20s   Rotation: %4s ; direction: %10s ; screw/glide: %10s"%(
-          tmp_item,
-          tmp_item.r().as_hkl(),
-          tmp_item.r().info().type() ,
-          tmp_item.r().info().ev(),
-          "("+item.t().as_string()+")" )
+        print >> out, literal_description(tmp_item).select(format)
 
 
 class left_decomposition_point_groups_only(object):
