@@ -970,6 +970,7 @@ mmtbx/command_line/reciprocal_space_arrays.py -text
 mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
+mmtbx/command_line/simulate_low_res_data.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/validation_summary.py -text
 mmtbx/command_line/xmanip.py -text
