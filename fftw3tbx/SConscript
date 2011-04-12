@@ -23,8 +23,9 @@ if (not env_etc.no_boost_python):
     env=env_bpl,
     paths=env_etc.fftw3tbx_common_includes)
   conf = env_bpl.Configure()
-  if (not conf.TryCompile(
-            "#include <%s>" % fftw3tbx.fftw3_h, extension=".cpp")):
+  flag = conf.TryCompile("#include <%s>" % fftw3tbx.fftw3_h, extension=".cpp")
+  conf.Finish()
+  if (not flag):
     print "fftw3tbx: %s not available." % fftw3tbx.fftw3_h
     print "fftw3tbx: Compilation skipped."
   else:
