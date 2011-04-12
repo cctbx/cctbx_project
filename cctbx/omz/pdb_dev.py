@@ -69,6 +69,9 @@ def run(args):
   #
   print "TIME BEGIN pdb_dev:", date_and_time()
   print
+  libtbx.utils.host_and_user().show()
+  print
+  sys.stdout.flush()
   #
   from cctbx.omz import cod_refine
   master_phil = cod_refine.get_master_phil(
@@ -166,6 +169,7 @@ def run(args):
   show_times()
   print
   print "TIME END pdb_dev:", date_and_time()
+  sys.stdout.flush()
 
 if (__name__ == "__main__"):
   import sys

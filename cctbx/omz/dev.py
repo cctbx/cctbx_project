@@ -5,6 +5,7 @@ import cctbx.xray.targets
 from cctbx.array_family import flex
 from scitbx import matrix
 import libtbx.phil
+from libtbx import Auto, group_args
 from itertools import count
 from math import pi, atan2
 import sys
@@ -122,7 +123,6 @@ class refinement(object):
     O.f_obs = f_obs
     O.xray_structure = xray_structure
     O.setup_bulk_solvent_correction()
-    O.calc_weights_if_needed()
     O.reference_structure = reference_structure
     O.grads = None
     O.curvs = None
@@ -139,6 +139,7 @@ class refinement(object):
       assert O.x.size() == expected_n_refinable_parameters
     #
     O.plot_samples_id = plot_samples_id
+    O.ps_target = None
     if (len(O.params.plot_samples.stages) != 0):
       p = O.params.plot_samples
       if (p.ix is not None):
@@ -158,6 +159,18 @@ class refinement(object):
         raise RuntimeError(
           "Incompatible parameter combination:"
           " plot_samples.pyplot=None and plot_samples.file_prefix=None")
+      def select(main, sub):
+        if (sub == "Auto"): return main # XXX phil bug?
+        return sub
+      O.ps_target = group_args(
+        type = select(
+          O.params.target.type, p.target.type),
+        obs_type = select(
+          O.params.target.obs_type, p.target.obs_type),
+        weighting_scheme = select(
+          O.params.target.weighting_scheme, p.target.weighting_scheme))
+    #
+    O.calc_weights_if_needed()
     #
     O.xfgc_infos = []
     O.update_fgc(is_iterate=True)
@@ -242,7 +255,12 @@ class refinement(object):
     sys.stdout.flush()
     ys = []
     def ys_append():
-      tg = O.__get_tg(f_calc=f_calc_moving()+f_calc_fixed)
+      tg = O.__get_tg(
+        f_cbs=O.get_f_cbs(
+          f_calc=O.f_obs.customized_copy(data=f_calc_moving()+f_calc_fixed)),
+        derivatives_depth=0,
+        target=O.ps_target,
+        weights=O.ps_weights)
       y = tg.target_work()
       ys.append(y)
       return y
@@ -486,84 +504,114 @@ class refinement(object):
 
   def get_f_calc(O):
     p = O.params.f_calc_options
-    result = O.f_obs.structure_factors_from_scatterers(
+    return O.f_obs.structure_factors_from_scatterers(
       xray_structure=O.xray_structure,
       algorithm=p.algorithm,
       cos_sin_table=p.cos_sin_table).f_calc()
-    if (O.f_bulk is not None):
-      result = result.customized_copy(
-        data=O.fb_cart.data()*(result.data()+O.f_bulk.data()))
-    return result
+
+  def get_f_cbs(O, f_calc=None):
+    if (f_calc is None):
+      f_calc = O.get_f_calc()
+    if (O.f_bulk is None):
+      return f_calc
+    return f_calc.customized_copy(
+      data=O.fb_cart.data()*(f_calc.data()+O.f_bulk.data()))
 
   def r1_factor(O):
-    from libtbx import Auto
     return O.f_obs.r1_factor(
-      other=O.get_f_calc(), scale_factor=Auto, assume_index_matching=True)
+      other=O.get_f_cbs(), scale_factor=Auto, assume_index_matching=True)
+
+  def calc_shelxl_wght_ls(O, f_cbs, need):
+    assert need in ["w", "t"]
+    i_calc = flex.norm(f_cbs)
+    from cctbx.xray.targets.tst_shelxl_wght_ls import calc_k, calc_w, calc_t
+    k = calc_k(f_obs=O.f_obs.data(), i_calc=i_calc)
+    assert O.i_obs.sigmas().all_ge(0.01)
+    w = calc_w(
+      wa=0.1,
+      wb=0,
+      i_obs=O.i_obs.data(),
+      i_sig=O.i_obs.sigmas(),
+      i_calc=i_calc,
+      k=k)
+    if (need == "w"):
+      return w
+    class wrapper(object):
+      def __init__(W):
+        W.t = calc_t(O.i_obs.data(), i_calc, k, w)
+      def target_work(W):
+        return W.t
+    return wrapper()
 
   def calc_weights_if_needed(O):
     O.weights = None
-    if (O.params.i_obs_weights == "shelxl_wght_once"):
-      assert O.params.target_obs_type == "I"
-      f_calc = O.get_f_calc()
-      i_calc = flex.norm(f_calc.data())
-      from cctbx.xray.targets.tst_shelxl_wght_ls import calc_k, calc_w
-      k = calc_k(f_obs=O.f_obs.data(), i_calc=i_calc)
-      assert O.i_obs.sigmas().all_ge(0.01)
-      O.weights = calc_w(
-        wa=0.1,
-        wb=0,
-        i_obs=O.i_obs.data(),
-        i_sig=O.i_obs.sigmas(),
-        i_calc=i_calc,
-        k=k)
+    O.ps_weights = None
+    main_need = (O.params.target.weighting_scheme == "shelxl_wght_once")
+    plot_need = (O.ps_target is not None
+                   and O.ps_target.weighting_scheme == "shelxl_wght_once")
+    if (main_need):
+      assert O.params.target.obs_type == "I"
+    if (plot_need):
+      assert O.ps_target.obs_type == "I"
+    if (main_need or plot_need):
+      weights = O.calc_shelxl_wght_ls(f_cbs=O.get_f_cbs().data(), need="w")
+      if (main_need):
+        O.weights = weights
+      if (plot_need):
+        O.ps_weights = weights
 
   def __unpack_variables_get_tg(O):
     O.__unpack_variables()
-    return O.__get_tg(f_calc=O.get_f_calc().data())
+    return O.__get_tg(f_cbs=O.get_f_cbs())
 
-  def __get_tg(O, f_calc):
-    if (O.params.target_obs_type == "F"):
+  def __get_tg(O, f_cbs, derivatives_depth=2, target=Auto, weights=Auto):
+    if (target is Auto): target = O.params.target
+    if (weights is Auto): weights = O.weights
+    if (target.obs_type == "F"):
       obs = O.f_obs
     else:
       obs = O.i_obs
-    if (O.params.target_type == "ls"):
-      if (O.params.i_obs_weights in ["unit", "shelxl_wght_once"]):
+    if (target.type == "ls"):
+      if (target.weighting_scheme in ["unit", "shelxl_wght_once"]):
         return xray.targets_least_squares(
           compute_scale_using_all_data=True,
-          obs_type=O.params.target_obs_type,
+          obs_type=target.obs_type,
           obs=obs.data(),
           weights=O.weights,
           r_free_flags=None,
-          f_calc=f_calc,
-          derivatives_depth=2,
-          scale_factor=O.params.f_calc_scale_factor)
-      if (O.params.i_obs_weights != "shelxl_wght"):
+          f_calc=f_cbs.data(),
+          derivatives_depth=derivatives_depth,
+          scale_factor=0)
+      if (target.weighting_scheme != "shelxl_wght"):
         raise RuntimeError(
-          "Unknown: i_obs_weights = %s" % O.params.i_obs_weights)
-      assert O.params.target_obs_type == "I"
+          "Unknown: target.weighting_scheme = %s" % target.weighting_scheme)
+      assert target.obs_type == "I"
+      if (derivatives_depth == 0):
+        return O.calc_shelxl_wght_ls(f_cbs=f_cbs.data(), need="t")
       return xray.targets.shelxl_wght_ls(
         f_obs=O.f_obs.data(),
         i_obs=O.i_obs.data(),
         i_sig=O.i_obs.sigmas(),
-        f_calc=f_calc,
+        f_calc=f_cbs.data(),
         i_calc=None,
         wa=0.1,
         wb=0)
-    elif (O.params.target_type == "cc"):
+    elif (target.type == "cc"):
       return xray.targets_correlation(
-        obs_type=O.params.target_obs_type,
+        obs_type=target.obs_type,
         obs=obs.data(),
         weights=O.weights,
         r_free_flags=None,
-        f_calc=f_calc,
-        derivatives_depth=2)
-    elif (O.params.target_type == "r1"):
-      assert O.params.target_obs_type == "F"
+        f_calc=f_cbs.data(),
+        derivatives_depth=derivatives_depth)
+    elif (target.type == "r1"):
+      assert target.obs_type == "F"
+      assert target.weighting_scheme == "unit"
       from cctbx.xray.targets import r1
       return r1.target(
         f_obs=O.f_obs.data(),
-        f_calc=f_calc)
-    raise RuntimeError("Unknown target_type.")
+        f_calc=f_cbs.data())
+    raise RuntimeError("Unknown target_type: %s" % target.type)
 
   def update_fgc(O, is_iterate=False):
     if (len(O.xfgc_infos) != 0):
@@ -928,6 +976,19 @@ def get_master_phil(
       grads_mean_sq_threshold=1e-6,
       f_calc_options_algorithm="*direct fft",
       additional_phil_string=""):
+  def build_target_scope(auto):
+    return """\
+      target {
+        type = *%(auto)sls cc r1
+          .type = choice
+        obs_type = *%(auto)sF I
+          .type = choice
+        weighting_scheme = *%(auto)sunit shelxl_wght shelxl_wght_once
+          .type = choice
+      }
+      """ % vars()
+  main_target_scope = build_target_scope("")
+  plot_samples_target_scope = build_target_scope("Auto ")
   return libtbx.phil.parse("""
     general_positions_only = True
       .type = bool
@@ -939,12 +1000,7 @@ def get_master_phil(
       .type = float
     bulk_solvent_correction = %(bulk_solvent_correction)s
       .type = bool
-    target_type = *ls cc r1
-      .type = choice
-    target_obs_type = *F I
-      .type = choice
-    i_obs_weights = *unit shelxl_wght shelxl_wght_once
-      .type = choice
+    %(main_target_scope)s
     iteration_limit = %(iteration_limit)s
       .type = int
     grads_mean_sq_threshold = %(grads_mean_sq_threshold)s
@@ -965,8 +1021,6 @@ def get_master_phil(
       .type = bool
     try_approx_curvs = False
       .type = bool
-    f_calc_scale_factor = 0
-      .type = float
     show_dests = False
       .type = bool
     show_distances_to_reference_structure = False
@@ -990,6 +1044,7 @@ def get_master_phil(
         random_seed = 0
           .type = int
       }
+      %(plot_samples_target_scope)s
       x_radius = 5
         .type = float
       x_steps = 100
