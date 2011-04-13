@@ -333,13 +333,13 @@ class refinement(object):
         pyplot.show()
 
   def setup_bulk_solvent_correction(O):
+    O.epsilons = None
+    O.centric_flags = None
+    O.r_free_flags = None
+    O.f_bulk = None
+    O.fb_cart = None
+    O.alpha_beta = None
     if (not O.params.bulk_solvent_correction):
-      O.epsilons = None
-      O.centric_flags = None
-      O.r_free_flags = None
-      O.f_bulk = None
-      O.fb_cart = None
-      O.alpha_beta = None
       return
     if (O.params.plot_samples.target.type == "ml"):
       O.epsilons = O.f_obs.epsilons()
