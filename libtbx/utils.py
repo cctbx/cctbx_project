@@ -1,6 +1,7 @@
 from __future__ import division
 from libtbx.queuing_system_utils import sge_utils, pbs_utils
 from libtbx.str_utils import show_string
+from libtbx import Auto
 try: import gzip
 except ImportError: gzip = None
 try: import bz2
@@ -477,6 +478,20 @@ def show_total_time(
     print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
   print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
 
+def show_wall_clock_time(seconds, out=None):
+  if (out is None): out = sys.stdout
+  print >> out, "wall clock time:",
+  if (seconds < 120):
+    print >> out, "%.2f seconds" % seconds
+  else:
+    m = int(seconds / 60 + 1.e-6)
+    s = seconds - m * 60
+    print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
+      m, s, seconds)
+  out_flush = getattr(out, "flush", None)
+  if (out_flush is not None):
+    out_flush()
+
 class show_times:
 
   def __init__(self, time_start=None, out=None):
@@ -502,18 +517,7 @@ class show_times:
       if (ticks != 0):
         s += ", micro-seconds/tick: %.3f" % (usr_plus_sys*1.e6/ticks)
     print >> out, s
-    wall_clock_time = time.time() - self.time_start
-    print >> out, "wall clock time:",
-    if (wall_clock_time < 120):
-      print >> out, "%.2f seconds" % wall_clock_time
-    else:
-      m = int(wall_clock_time / 60 + 1.e-6)
-      s = wall_clock_time - m * 60
-      print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
-        m, s, wall_clock_time)
-    out_flush = getattr(out, "flush", None)
-    if (out_flush is not None):
-      out_flush()
+    show_wall_clock_time(seconds=time.time()-self.time_start, out=out)
 
 def show_times_at_exit(time_start=None, out=None):
   atexit.register(show_times(time_start=time_start, out=out))
@@ -922,6 +926,33 @@ def random_hex_code(number_of_digits):
     i = random.randrange(16)
     digits.append("0123456789abcdef"[i])
   return "".join(digits)
+
+class easy_mp_func_wrapper(object):
+  def __init__(O, func):
+    O.func = func
+  def __call__(O, arg):
+    try:
+      O.func(arg)
+    except: # intentional
+      print "CAUGHT EXCEPTION:"
+      traceback.print_exc()
+
+def easy_mp(func, args, report_to=Auto):
+  if (report_to is Auto):
+    report_to = sys.stdout
+  import libtbx.introspection
+  pool_size = min(len(args), libtbx.introspection.number_of_processors())
+  if (report_to is not None):
+    print >> report_to, "multiprocessing pool size:", pool_size
+    flush = getattr(report_to, "flush", None)
+    if (flush is not None):
+      flush()
+    time_start = time.time()
+  import multiprocessing
+  mp_pool = multiprocessing.Pool(processes=pool_size)
+  mp_pool.map(func=easy_mp_func_wrapper(func), iterable=args, chunksize=1)
+  if (report_to is not None):
+    show_wall_clock_time(seconds=time.time()-time_start, out=report_to)
 
 def exercise():
   from libtbx.test_utils import approx_equal, Exception_expected
