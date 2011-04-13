@@ -334,29 +334,47 @@ class refinement(object):
 
   def setup_bulk_solvent_correction(O):
     if (not O.params.bulk_solvent_correction):
+      O.epsilons = None
+      O.centric_flags = None
+      O.r_free_flags = None
       O.f_bulk = None
       O.fb_cart = None
       O.alpha_beta = None
       return
+    if (O.params.plot_samples.target.type == "ml"):
+      O.epsilons = O.f_obs.epsilons()
+      O.centric_flags = O.f_obs.centric_flags()
+      print "INFO: generating R-free flags for plot_samples.target.type = ml"
+      O.r_free_flags = O.f_obs.generate_r_free_flags(
+        fraction=0.05,
+        max_free=None,
+        use_lattice_symmetry=True)
+    print "Computing bulk-solvent model and anisotropic scaling correction ...",
+    sys.stdout.flush()
     import mmtbx.f_model
     fmm = mmtbx.f_model.manager(
-      xray_structure=O.xray_structure,
-      f_obs=O.f_obs)
+      f_obs=O.f_obs,
+      r_free_flags=O.r_free_flags,
+      xray_structure=O.xray_structure)
     fmm.update_solvent_and_scale(verbose=False, optimize_mask=True)
+    print "done."
+    sys.stdout.flush()
     print "bulk-solvent correction:"
     print "  k_sols:", numstr(fmm.shell_k_sols())
     print "  b_sol: %.6g" % fmm.b_sol()
     print "  b_cart:", numstr(fmm.b_cart(), zero_threshold=1e-6)
     O.f_bulk = fmm.f_bulk()
     O.fb_cart = O.f_obs.customized_copy(data=fmm.fb_cart())
-    O.alpha_beta = fmm.alpha_beta()
-    del fmm
-    for ma in (O.f_bulk,)+O.alpha_beta:
-      assert ma.indices().all_eq(O.f_obs.indices())
     print "  mean of f_bulk.amplitudes():"
     bulk_ampl = O.f_bulk.amplitudes()
     bulk_ampl.setup_binner(n_bins=8)
     bulk_ampl.mean(use_binning=True).show(prefix="    ")
+    if (O.r_free_flags is not None):
+      print "Computing alpha-beta for ml target ...",
+      sys.stdout.flush()
+      O.alpha_beta = fmm.alpha_beta()
+      print "done."
+    sys.stdout.flush()
 
   def classic_lbfgs(O):
     import scitbx.lbfgs
@@ -611,6 +629,21 @@ class refinement(object):
       return r1.target(
         f_obs=O.f_obs.data(),
         f_calc=f_cbs.data())
+    elif (target.type == "ml"):
+      assert derivatives_depth in [0,1]
+      if (O.epsilons is None):
+        raise RuntimeError(
+          "target.type=ml can only be used if bulk_solvent_correction=True")
+      return xray.targets_maximum_likelihood_criterion(
+        f_obs=O.f_obs.data(),
+        r_free_flags=O.r_free_flags.data(),
+        f_calc=f_cbs.data(),
+        alpha=O.alpha_beta[0].data(),
+        beta=O.alpha_beta[1].data(),
+        scale_factor=1,
+        epsilons=O.epsilons.data(),
+        centric_flags=O.centric_flags.data(),
+        compute_gradients=bool(derivatives_depth))
     raise RuntimeError("Unknown target_type: %s" % target.type)
 
   def update_fgc(O, is_iterate=False):
@@ -976,10 +1009,10 @@ def get_master_phil(
       grads_mean_sq_threshold=1e-6,
       f_calc_options_algorithm="*direct fft",
       additional_phil_string=""):
-  def build_target_scope(auto):
+  def build_target_scope(auto="", ml=""):
     return """\
       target {
-        type = *%(auto)sls cc r1
+        type = *%(auto)sls cc r1%(ml)s
           .type = choice
         obs_type = *%(auto)sF I
           .type = choice
@@ -987,8 +1020,8 @@ def get_master_phil(
           .type = choice
       }
       """ % vars()
-  main_target_scope = build_target_scope("")
-  plot_samples_target_scope = build_target_scope("Auto ")
+  main_target_scope = build_target_scope()
+  plot_samples_target_scope = build_target_scope("Auto ", " ml")
   return libtbx.phil.parse("""
     general_positions_only = True
       .type = bool
