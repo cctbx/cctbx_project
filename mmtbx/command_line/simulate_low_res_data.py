@@ -2,8 +2,10 @@
 import iotbx.phil
 import libtbx.load_env
 import libtbx.phil.command_line
+from libtbx.str_utils import make_header
 from libtbx import easy_pickle
 import random
+import math
 import os
 import sys
 
@@ -13,6 +15,10 @@ simulate_data {
     .type = path
   hkl_file = None
     .type = path
+  data_label = None
+    .type = str
+  r_free_label = None
+    .type = str
   d_min = 3.0
     .type = float
   r_free_flags_fraction = 0.05
@@ -30,10 +36,14 @@ simulate_data {
       .type = bool
     set_mean_b_iso = None
       .type = float
+    set_wilson_b = False
+      .type = bool
   }
   truncate {
-    overall_b = None
+    add_b_iso = None
       .type = float
+    add_b_aniso = 0 0 0 0 0 0
+      .type = floats(size=6)
     add_random_error_percent = None
       .type = float
   }
@@ -76,39 +86,63 @@ def run (args) :
       else :
         user_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=user_phil)
-  working_phil.show()
+  make_header("Working parameters", out=sys.stdout)
+  working_phil.show(prefix="  ")
   params_ = working_phil.extract()
   params = params_.simulate_data
   if (params.pdb_file is None) and (params.hkl_file is None) :
     raise Sorry("No PDB file specified.")
-  elif (params.pdb_file is not None) and (params.hkl_file is not None) :
-    raise Sorry("Please use *either* a PDB or an MTZ file (not both).")
   if (pdb_in is None) and (params.pdb_file is not None) :
     f = file_reader.any_file(params.pdb_file, force_type="pdb")
     f.assert_file_type("pdb")
     pdb_in = f.file_object
-  elif (hkl_in is None) and (params.hkl_file is not None) :
+  if (hkl_in is None) and (params.hkl_file is not None) :
     f = file_reader.any_file(params.hkl_File, force_type="hkl")
     f.assert_file_type("hkl")
     hkl_in = f.file_object
-  if (pdb_in is not None) :
-    print "Generating fake data with phenix.fmodel..."
-    F, r_free = from_pdb(pdb_in, params_)
-  elif (hkl_in is not None) :
-    print "Using experimental data..."
+  if (hkl_in is not None) :
+    make_header("Extracting experimental data", out=sys.stdout)
     F, r_free = from_hkl(hkl_in, params)
-  print "Applying low-resolution filtering @ %.3f A..." % params.d_min
+  elif (pdb_in is not None) :
+    make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
+    F, r_free = from_pdb(pdb_in, params_)
+  make_header("Applying low-resolution filtering", out=sys.stdout)
+  print "  Final resolution: %.2f A" % params.d_min
+  n_residues, n_bases = None, None
+  if (pdb_in is not None) :
+    n_residues, n_bases = get_counts(pdb_in)
+  #if (params.auto_adjust) :
+  #  if (pdb_in is None) :
+  #    raise Sorry("You must supply a PDB file when auto_adjust=True.")
   F_out = truncate_data(F, params)
-  mtz_dataset = F_out.as_mtz_dataset(
-    column_root_label="F",
-    column_types="F")
-  mtz_dataset.add_miller_array(
-    miller_array=r_free,
-    column_root_label="FreeR_flag",
-    column_types="I")
+  if (pdb_in is not None) :
+    iso_scale, aniso_scale = wilson_scaling(F_out, n_residues, n_bases)
+    print ""
+    print "  Scaling statistics for output data:"
+    print "    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson
+    print "    overall anisotropic B-factor: %6.2f, %6.2f, %6.2f" % (
+      aniso_scale.b_cart[0], aniso_scale.b_cart[3], aniso_scale.b_cart[4])
+    print "                                  %14.2f, %6.2f" % (
+      aniso_scale.b_cart[1], aniso_scale.b_cart[5])
+    print "                                  %22.2f" % aniso_scale.b_cart[2]
+    print ""
+  if (F_out.sigmas() is not None) :
+    mtz_dataset = F_out.as_mtz_dataset(
+      column_root_label="F",
+      column_types="FQ")
+  else :
+    mtz_dataset = F_out.as_mtz_dataset(
+      column_root_label="F",
+      column_types="F")
+  if (r_free is not None) :
+    mtz_dataset.add_miller_array(
+      miller_array=r_free,
+      column_root_label="FreeR_flag",
+      column_types="I")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name=params.output_file)
-  print "Wrote %s" % params.output_file
+  make_header("Writing output file", out=sys.stdout)
+  print "  Wrote %s" % params.output_file
 
 def from_pdb (pdb_in, params_) :
   params = params_.simulate_data
@@ -139,18 +173,46 @@ def from_pdb (pdb_in, params_) :
     crystal_symmetry=apply_symm)
   if (params.modify_pdb.convert_to_isotropic) :
     xray_structure.convert_to_isotropic()
+  set_b = None
   if (params.modify_pdb.set_mean_b_iso is not None) :
+    assert (not params.modify_pdb.set_wilson_b)
+    print "  Scaling B-factors to have mean of %.2f" % \
+      params.modify_pdb.set_mean_b_iso
     assert (params.modify_pdb.set_mean_b_iso > 0)
+    set_b = params.modify_pdb.set_mean_b_iso
+  elif (params.modify_pdb.set_wilson_b) :
+    print "  Scaling B-factors to match mean Wilson B for this resolution"
+    set_b = get_mean_statistic_for_resolution(
+      d_min=params.d_min,
+      stat_type="wilson_b")
+    print ""
+  if (set_b is not None) :
     u_iso = xray_structure.extract_u_iso_or_u_equiv()
     u_mean = flex.mean(u_iso)
     b_mean = adptbx.u_as_b(u_mean)
-    scale = params.modify_pdb.set_mean_b_iso / b_mean
-    xray_structure.set_u_iso(u_iso * scale)
+    scale = set_b / b_mean
+    xray_structure.set_u_iso(values=u_iso * scale)
   import mmtbx.command_line.fmodel
   from mmtbx import utils
   fmodel_params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
   fmodel_params.high_resolution = params.d_min
   fmodel_params.fmodel = params_.fake_data.fmodel
+  if (fmodel_params.fmodel.b_sol == 0) :
+    print "  b_sol is zero - will use mean value for d_min +/- 0.2A"
+    print "   (this is not strongly correlated with resolution, but it's good "
+    print "    to use a real value instead of leaving it set to 0)"
+    fmodel_params.fmodel.b_sol = get_mean_statistic_for_resolution(
+      d_min=params.d_min,
+      stat_type="b_sol")
+    print ""
+  if (fmodel_params.fmodel.k_sol == 0) :
+    print "  k_sol is zero - will use mean value for d_min +/- 0.2A"
+    print "   (this is not strongly correlated with resolution, but it's good "
+    print "    to use a real value instead of leaving it set to 0)"
+    fmodel_params.fmodel.k_sol = get_mean_statistic_for_resolution(
+      d_min=params.d_min,
+      stat_type="k_sol")
+    print ""
   fmodel_params.structure_factors_accuracy = params_.fake_data.structure_factors_accuracy
   fmodel_params.mask = params_.fake_data.mask
   fmodel_params.r_free_flags_fraction = params.r_free_flags_fraction
@@ -163,6 +225,30 @@ def from_pdb (pdb_in, params_) :
   r_free_flags = fmodel_.r_free_flags
   return (f_model, r_free_flags)
 
+def get_counts (pdb_in) :
+  n_residues = 0
+  n_bases = 0
+  hierarchy = pdb_in.construct_hierarchy()
+  for chain in hierarchy.models()[0].chains() :
+    main_conf = chain.conformers()[0]
+    if (main_conf.is_protein()) :
+      n_residues += len(chain.residue_groups())
+    elif (main_conf.is_na()) :
+      n_bases += len(chain.residue_groups())
+  return n_residues, n_bases
+
+def wilson_scaling (F, n_residues, n_bases) :
+  from mmtbx.scaling import absolute_scaling
+  iso_scale = absolute_scaling.ml_iso_absolute_scaling(
+    miller_array=F,
+    n_residues=n_residues,
+    n_bases=n_bases)
+  aniso_scale = absolute_scaling.ml_aniso_absolute_scaling(
+    miller_array=F,
+    n_residues=n_residues,
+    n_bases=n_bases)
+  return iso_scale, aniso_scale
+
 def from_hkl (hkl_in, params) :
   miller_arrays = hkl_in.as_miller_arrays()
   f_obs = None
@@ -174,14 +260,18 @@ def from_hkl (hkl_in, params) :
     elif (array.is_xray_amplitude_array()) :
       f_obs = array.map_to_asu()
       params.data_label = array.info().label_string()
-      print "F-obs: %s" % params.data_label
+      print "  F-obs: %s" % params.data_label
     elif (array.is_xray_intensity_array()) :
       f_obs = array.f_sq_as_f().map_to_asu()
       params.data_label = array.info().label_string()
-      print "I-obs: %s" % params.data_label
+      print "  I-obs: %s" % params.data_label
     if (params.r_free_label is not None) :
       if (array.info().label_string() == params.r_free_label) :
         r_free = array.map_to_asu()
+        print "  R-free: %s" % array.info().label_string()
+    elif (array.info().label_string() in ["FreeR_flag", "FREE"]) :
+      r_free = array.map_to_asu()
+      print "  R-free: %s" % array.info().label_string()
   f_obs = f_obs.resolution_filter(d_min=params.d_min)
   if (r_free is not None) :
     r_free = r_free.common_set(f_obs)
@@ -189,12 +279,25 @@ def from_hkl (hkl_in, params) :
 
 def truncate_data (F, params) :
   from scitbx.array_family import flex
-  if (params.truncate.overall_b is not None) :
-    assert (params.truncate.overall_b > 0)
-    d_min_sq = flex.pow2(F.d_spacings().data()) / 4.0
-    scale = flex.exp(- params.truncate.overall_b / d_min_sq)
+  if (params.truncate.add_b_iso is not None) :
+    print "  Applying isotropic B-factor of %.2f A^2" % (
+      params.truncate.add_b_iso)
+    assert (params.truncate.add_b_iso > 0)
+    d_min_sq = flex.pow2(F.d_spacings().data())
+    scale = flex.exp(- params.truncate.add_b_iso / d_min_sq / 4.0)
+    F = F.customized_copy(data=F.data() * scale)
+  if (params.truncate.add_b_aniso != [0,0,0,0,0,0]) :
+    print "  Adding anisotropy..."
+    from cctbx import adptbx
+    b_cart = params.truncate.add_b_aniso
+    u_star = adptbx.u_cart_as_u_star(
+      F.unit_cell(), adptbx.b_as_u(b_cart))
+    scale = flex.double()
+    for i, hkl in enumerate(F.indices()) :
+      scale.append(f_aniso_one_h(hkl, u_star))
     F = F.customized_copy(data=F.data() * scale)
   if (params.truncate.add_random_error_percent) :
+    print "  Adding random error as percent of amplitude..."
     assert (100 > params.truncate.add_random_error_percent > 0)
     data = F.data()
     fr = F.data()*params.truncate.add_random_error_percent/100.
@@ -204,37 +307,57 @@ def truncate_data (F, params) :
       if(r == 0): r = -1
       ri.append(r)
     data = data + ri*fr
-    F = F.array(data=data)
+    F = F.customized_copy(data=data)
   return F
 
-def get_mean_wilson_b_for_resolution (d_min, range=0.2) :
+pi_sq = math.pi**2
+# see mmtbx/f_model/f_model.h
+def f_aniso_one_h (h, u_star) :
+  arg = -2.0 * pi_sq * (
+    u_star[0] * h[0] * h[0] +
+    u_star[1] * h[1] * h[1] +
+    u_star[2] * h[2] * h[2] +
+    u_star[3] * h[0] * h[1] * 2.0 +
+    u_star[4] * h[0] * h[2] * 2.0 +
+    u_star[5] * h[1] * h[2] * 2.0)
+  if (arg > 40.0) : arg = 40.0 # ???
+  return math.exp(arg)
+
+stat_names = {
+  'wilson_b' : 'Wilson B-factor',
+  'k_sol' : 'Bulk solvent scale factor (k_sol)',
+  'b_sol' : 'Bulk solvent B-factor (b_sol)',
+}
+
+def get_mean_statistic_for_resolution (d_min, stat_type, range=0.2) :
   from scitbx.array_family import flex
   pkl_file = libtbx.env.find_in_repositories(
     relative_path = "chem_data/polygon_data/all_mvd.pickle",
     test = os.path.isfile)
   db = easy_pickle.load(pkl_file)
   all_d_min = db['high_resolution']
-  wilson_b = db['wilson_b']
-  b_for_range = flex.double()
-  for (d_, w_) in zip(all_d_min, wilson_b) :
+  stat_values = db[stat_type]
+  values_for_range = flex.double()
+  for (d_, v_) in zip(all_d_min, stat_values) :
     try :
       d = float(d_)
-      w = float(w_)
+      v = float(v_)
     except ValueError : continue
     else :
       if (d > (d_min - range)) and (d < (d_min + range)) :
-        b_for_range.append(w)
-  h = flex.histogram(b_for_range, n_slots=10)
-  print "Wilson B-factor statistics for d_min = %.3f - %.3f A" % (d_min-range,
+        values_for_range.append(v)
+  h = flex.histogram(values_for_range, n_slots=10)
+  print "  %s for d_min = %.3f - %.3f A" % (stat_names[stat_type], d_min-range,
     d_min+range)
-  min = flex.min(b_for_range)
-  max = flex.max(b_for_range)
-  mean = flex.mean(b_for_range)
-  print "  count: %d" % b_for_range.size()
-  print "  min: %.2f" % min
-  print "  max: %.2f" % max
-  print "  mean: %.2f" % mean
-  h.show(prefix="    ")
+  min = flex.min(values_for_range)
+  max = flex.max(values_for_range)
+  mean = flex.mean(values_for_range)
+  print "    count: %d" % values_for_range.size()
+  print "    min: %.2f" % min
+  print "    max: %.2f" % max
+  print "    mean: %.2f" % mean
+  print "    histogram of values:"
+  h.show(prefix="      ")
   return mean
 
 if (__name__ == "__main__") :
