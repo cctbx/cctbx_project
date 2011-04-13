@@ -32,6 +32,8 @@ simulate_data {
       .type = unit_cell
   }
   modify_pdb {
+    remove_waters = True
+      .type = bool
     convert_to_isotropic = True
       .type = bool
     set_mean_b_iso = None
@@ -46,6 +48,10 @@ simulate_data {
       .type = floats(size=6)
     add_random_error_percent = None
       .type = float
+    remove_cone_around_axis = None
+      .type = float
+    axis_of_rotation = None
+      .type = floats(size=3)
   }
 }
 fake_data {
@@ -65,6 +71,7 @@ def run (args) :
     master_phil=master_phil,
     home_scope="simulate_data")
   pdb_in = None
+  pdb_hierarchy = None
   hkl_in = None
   user_phil = []
   for arg in args :
@@ -100,21 +107,24 @@ def run (args) :
     f = file_reader.any_file(params.hkl_File, force_type="hkl")
     f.assert_file_type("hkl")
     hkl_in = f.file_object
+  if (pdb_in is not None) :
+    pdb_hierarchy = pdb_in.construct_hierarchy()
   if (hkl_in is not None) :
     make_header("Extracting experimental data", out=sys.stdout)
     F, r_free = from_hkl(hkl_in, params)
   elif (pdb_in is not None) :
     make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
-    F, r_free = from_pdb(pdb_in, params_)
+    F, r_free = from_pdb(pdb_in, pdb_hierarchy, params_)
   make_header("Applying low-resolution filtering", out=sys.stdout)
   print "  Final resolution: %.2f A" % params.d_min
   n_residues, n_bases = None, None
   if (pdb_in is not None) :
-    n_residues, n_bases = get_counts(pdb_in)
+    n_residues, n_bases = get_counts(pdb_hierarchy)
   #if (params.auto_adjust) :
   #  if (pdb_in is None) :
   #    raise Sorry("You must supply a PDB file when auto_adjust=True.")
   F_out = truncate_data(F, params)
+  print "  Completeness after processing: %.2f%%" % (F.completeness() * 100.)
   if (pdb_in is not None) :
     iso_scale, aniso_scale = wilson_scaling(F_out, n_residues, n_bases)
     print ""
@@ -135,6 +145,7 @@ def run (args) :
       column_root_label="F",
       column_types="F")
   if (r_free is not None) :
+    r_free = r_free.common_set(F_out)
     mtz_dataset.add_miller_array(
       miller_array=r_free,
       column_root_label="FreeR_flag",
@@ -144,7 +155,7 @@ def run (args) :
   make_header("Writing output file", out=sys.stdout)
   print "  Wrote %s" % params.output_file
 
-def from_pdb (pdb_in, params_) :
+def from_pdb (pdb_in, pdb_hierarchy, params_) :
   params = params_.simulate_data
   pdb_sg, pdb_uc = None, None
   pdb_symm = pdb_in.crystal_symmetry()
@@ -169,8 +180,24 @@ def from_pdb (pdb_in, params_) :
   apply_symm = crystal.symmetry(
     unit_cell=apply_uc,
     space_group_info=apply_sg)
+  if (params.modify_pdb.remove_waters) :
+    print "  Removing solvent atoms..."
+    for model in pdb_hierarchy.models() :
+      for chain in model.chains() :
+        for residue_group in chain.residue_groups() :
+          for atom_group in residue_group.atom_groups() :
+            if (atom_group.resname in ["HOH", "WAT"]) :
+              residue_group.remove_atom_group(atom_group=atom_group)
+        if (len(chain.atoms()) == 0) :
+          model.remove_chain(chain=chain)
   xray_structure = pdb_in.xray_structure_simple(
     crystal_symmetry=apply_symm)
+  sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+  if (not (("H" in sctr_keys) or ("D" in sctr_keys))) :
+    print "  WARNING: this model does not contain hydrogen atoms!"
+    print "           strongly recommend running phenix.ready_set or "
+    print "           equivalent to ensure realistic simulated data."
+    print ""
   if (params.modify_pdb.convert_to_isotropic) :
     xray_structure.convert_to_isotropic()
   set_b = None
@@ -225,10 +252,9 @@ def from_pdb (pdb_in, params_) :
   r_free_flags = fmodel_.r_free_flags
   return (f_model, r_free_flags)
 
-def get_counts (pdb_in) :
+def get_counts (hierarchy) :
   n_residues = 0
   n_bases = 0
-  hierarchy = pdb_in.construct_hierarchy()
   for chain in hierarchy.models()[0].chains() :
     main_conf = chain.conformers()[0]
     if (main_conf.is_protein()) :
@@ -282,33 +308,40 @@ def truncate_data (F, params) :
   if (params.truncate.add_b_iso is not None) :
     print "  Applying isotropic B-factor of %.2f A^2" % (
       params.truncate.add_b_iso)
-    assert (params.truncate.add_b_iso > 0)
-    d_min_sq = flex.pow2(F.d_spacings().data())
-    scale = flex.exp(- params.truncate.add_b_iso / d_min_sq / 4.0)
-    F = F.customized_copy(data=F.data() * scale)
+    F = add_b_iso(f_obs=F, b_iso=params.truncate.add_b_iso)
   if (params.truncate.add_b_aniso != [0,0,0,0,0,0]) :
     print "  Adding anisotropy..."
-    from cctbx import adptbx
-    b_cart = params.truncate.add_b_aniso
-    u_star = adptbx.u_cart_as_u_star(
-      F.unit_cell(), adptbx.b_as_u(b_cart))
-    scale = flex.double()
-    for i, hkl in enumerate(F.indices()) :
-      scale.append(f_aniso_one_h(hkl, u_star))
-    F = F.customized_copy(data=F.data() * scale)
-  if (params.truncate.add_random_error_percent) :
+    F = add_b_aniso(f_obs=F, b_cart=params.truncate.add_b_aniso)
+  if (params.truncate.add_random_error_percent is not None) :
     print "  Adding random error as percent of amplitude..."
-    assert (100 > params.truncate.add_random_error_percent > 0)
-    data = F.data()
-    fr = F.data()*params.truncate.add_random_error_percent/100.
-    ri = flex.double()
-    for trial in xrange(data.size()):
-      r = random.randint(0,1)
-      if(r == 0): r = -1
-      ri.append(r)
-    data = data + ri*fr
-    F = F.customized_copy(data=data)
+    F = add_random_error(f_obs=F,
+      error_percent=params.truncate.add_random_error_percent)
+  if (params.truncate.remove_cone_around_axis is not None) :
+    print "  Removing cone of data around axis of rotation..."
+    print "    radius = %.1f degrees" % params.truncate.remove_cone_around_axis
+    assert (params.truncate.axis_of_rotation is not None)
+    remove_cone_around_axis(
+      f_obs=F,
+      axis=params.truncate.axis_of_rotation,
+      cone_radius=params.truncate.remove_cone_around_axis)
   return F
+
+def add_b_iso (f_obs, b_iso) :
+  from scitbx.array_family import flex
+  assert (b_iso > 0)
+  d_min_sq = flex.pow2(f_obs.d_spacings().data())
+  scale = flex.exp(- b_iso / d_min_sq / 4.0)
+  return f_obs.customized_copy(data=f_obs.data() * scale)
+
+def add_b_aniso (f_obs, b_cart) :
+  from cctbx import adptbx
+  from scitbx.array_family import flex
+  u_star = adptbx.u_cart_as_u_star(
+    f_obs.unit_cell(), adptbx.b_as_u(b_cart))
+  scale = flex.double()
+  for i, hkl in enumerate(f_obs.indices()) :
+    scale.append(f_aniso_one_h(hkl, u_star))
+  return f_obs.customized_copy(data=f_obs.data() * scale)
 
 pi_sq = math.pi**2
 # see mmtbx/f_model/f_model.h
@@ -322,6 +355,43 @@ def f_aniso_one_h (h, u_star) :
     u_star[5] * h[1] * h[2] * 2.0)
   if (arg > 40.0) : arg = 40.0 # ???
   return math.exp(arg)
+
+def add_random_error (f_obs, error_percent) :
+  from scitbx.array_family import flex
+  assert (100 > error_percent > 0)
+  data = f_obs.data()
+  fr = F.data() * error_percent / 100.
+  ri = flex.double()
+  for trial in xrange(data.size()):
+    r = random.randint(0,1)
+    if(r == 0): r = -1
+    ri.append(r)
+  data = data + ri*fr
+  return f_obs.customized_copy(data=data)
+
+def remove_cone_around_axis (f_obs, axis, cone_radius) :
+  assert (cone_radius < 90) and (cone_radius >= 0)
+  from scitbx.matrix import rec
+  indices = f_obs.indices()
+  n_hkl = indices.size()
+  data = f_obs.data()
+  sigmas = f_obs.sigmas()
+  v1 = rec(axis, (3,1))
+  angle_high = 180 - cone_radius
+  i = 0
+  while (i < len(indices)) :
+    hkl = indices[i]
+    v2 = rec(hkl, (3,1))
+    angle = math.degrees(v1.angle(v2))
+    if (angle <= cone_radius) or (angle >= angle_high) :
+      del indices[i]
+      del data[i]
+      if (sigmas is not None) :
+        del sigmas[i]
+    else :
+      i += 1
+  delta_n_hkl = n_hkl - indices.size()
+  print "    removed %d reflections (out of %d)" % (delta_n_hkl, n_hkl)
 
 stat_names = {
   'wilson_b' : 'Wilson B-factor',
