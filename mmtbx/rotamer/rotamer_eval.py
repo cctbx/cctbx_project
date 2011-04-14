@@ -74,9 +74,11 @@ def eval_sidechain_completeness(pdb_hierarchy,
           item = []
           residue = conformer.only_residue()
           if conformer.altloc == "":
-            key = chain.id+residue_group.resid()+" "+residue.resname
+            key = "%2s%5s %3s" % (chain.id, residue_group.resid(),
+              residue.resname)
           else:
-            key = chain.id+residue_group.resid()+conformer.altloc+residue.resname
+            key = "%2s%5s%1s%3s" % (chain.id, residue_group.resid(),
+              conformer.altloc, residue.resname)
           atom_list = []
           ca_xyz = []
           for atom in residue.atoms():
