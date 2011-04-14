@@ -11,15 +11,31 @@ from scitbx.array_family import flex
 
 msg="""\
 
-phenix.phenix.map_value_at_point:
-  tool to compute map value at a given point.
+phenix.map_value_at_point: tool to compute map value at a given point using
+eight-point interpolation.
 
-Usage:
-  phenix.map_value_at_point map_coefficients.mtz point="0.5 1.2 3" label="2mFo-DFc" [options]
+Inputs:
+  - MTZ file containing Fourier map coefficients;
+  - label selecting which map coefficients should be used (in case there are
+    multiple choices in input file, there is no need to provide label otherwise);
+  - the coordinates of points at which the map value will be computed can be
+    defined in two ways: either providing a triplet of xyz coordinates using
+    'point' keyword, or giving a PDB file in the command line in which case the
+    atomic coordinates will serve as points;
+  - optionally the 'resolution_factor' can be specified. It defines the map
+    calculation grid step as grid_step=resolution_factor*d_min
+  - optionally, type of map scaling can be defined: sigma or volume scaled
+    (sigma is the default).
+
+Usage examples:
+  1. phenix.map_value_at_point map_coeffs.mtz point="0.5 1.2 3" point="0.53 3.3 2.5" label="2mFo-DFc"
+  2. phenix.map_value_at_point map_coeffs.mtz model.pdb
+  3. phenix.map_value_at_point map_coeffs.mtz model.pdb point="1 2 3" resolution_factor=0.3
 
   IMPORTANT: point must be a triplet of Cartesian coordinates (not fractional)!
 
-Output: list of map values at given points.
+Output:
+  list of map values at specified points.
 """
 
 master_params_str="""\
@@ -28,27 +44,26 @@ label = None
 point = None
   .type = floats(3)
   .multiple = True
-grid_step = 0.25
+resolution_factor = 0.25
   .type = float
 scale = *sigma volume
   .type = choice(multi=False)
 """
 
-def defaults():
-  print "Default params:"
+def defaults(log):
+  print >> log, "Default params::\n"
   parsed = iotbx.phil.parse(master_params_str)
-  parsed.show(prefix="  ")
-  print
+  parsed.show(prefix="  ", out=log)
+  print >> log
   return parsed
 
-def run(args):
-  if(len(args)==0 or (len(args)==1 and args[0].lower() in
-     ["-h","--h","-help","--help","h","help"])):
-       print msg
-       defaults()
-       return
+def run(args, log = sys.stdout):
+  if(len(args)==0):
+    print >> log, msg
+    defaults(log=log)
+    return
   #
-  parsed = defaults()
+  parsed = defaults(log=log)
   processed_args = mmtbx.utils.process_command_line_args(args = args,
     log = sys.stdout, master_params = parsed)
   params = processed_args.params.extract()
@@ -95,7 +110,7 @@ def run(args):
   if(len(params.point)==0 and atoms_with_labels is None):
     raise Sorry("No points given to compute map value at.")
   else:
-    fft_map = ma.fft_map(resolution_factor=params.grid_step)
+    fft_map = ma.fft_map(resolution_factor=params.resolution_factor)
     if(params.scale == "sigma"):
       fft_map.apply_sigma_scaling()
       print "Using sigma scaled map.\n"
