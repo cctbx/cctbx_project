@@ -28,7 +28,7 @@
     `Newsletter of the IUCr Commission on Crystallographic Computing 2009, 10, 75-84 <http://www.iucr.org/resources/commissions/crystallographic-computing/newsletters/10>`_.
     (`Reprint <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_)
 
-- New `paper about fable <fable.pdf>`_ (in review)
+- Draft `paper about fable <fable.pdf>`_
 
 - fable and fem development was supported by supplemental funding from
   the American Recovery and Reinvestment Act (ARRA) to NIH/NIGMS grant
