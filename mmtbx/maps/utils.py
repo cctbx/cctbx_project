@@ -9,6 +9,7 @@ import libtbx.phil
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+import cStringIO
 import os
 import re
 import sys
@@ -21,12 +22,15 @@ class fast_maps_from_hkl_file (object) :
                 file_name,
                 xray_structure,
                 f_label=None,
+                r_free_label=None,
                 map_out=None,
                 log=sys.stdout,
                 auto_run=True,
                 quiet=False,
                 ) :
     adopt_init_args(self, locals())
+    from iotbx import file_reader
+    from scitbx.array_family import flex
     if f_label is None and not quiet:
       print >> log, "      no label for %s, will try default labels" % \
         os.path.basename(file_name)
@@ -34,16 +38,16 @@ class fast_maps_from_hkl_file (object) :
     fallback_f_obs = []
     default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)",
       "FOBS_X"]
+    default_rfree_labels = ["FreeR_flag", "FREE"]
     all_labels = []
-    from iotbx import file_reader
     data_file = file_reader.any_file(file_name, force_type="hkl")
     for miller_array in data_file.file_server.miller_arrays :
       labels = miller_array.info().label_string()
       all_labels.append(labels)
-      if labels == f_label :
+      if (labels == f_label) :
         f_obs = miller_array
         break
-      elif f_label is None and labels in default_labels :
+      elif (f_label is None) and (labels in default_labels) :
         f_obs = miller_array
         break
       elif miller_array.is_xray_amplitude_array() :
@@ -55,6 +59,19 @@ class fast_maps_from_hkl_file (object) :
         raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
           "column labels (possible choices: %s)") % (f_label, file_name,
             " ".join(all_labels)))
+    r_free = data_file.file_server.get_r_free_flags(
+      file_name=None,
+      label=r_free_label,
+      test_flag_value=None,
+      parameter_scope=None,
+      disable_suitability_test=False,
+      return_all_valid_arrays=True)
+    if (len(r_free) == 0) :
+      self.r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
+    else :
+      array, test_flag_value = r_free[0]
+      new_flags = array.customized_copy(data=array.data() == test_flag_value)
+      self.r_free_flags = new_flags.common_set(f_obs)
     self.f_obs = f_obs
     self.log = None
     if auto_run :
@@ -63,12 +80,22 @@ class fast_maps_from_hkl_file (object) :
   def get_maps_from_fmodel(self):
     import mmtbx.utils
     from scitbx.array_family import flex
-    f_obs = self.f_obs
-    r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
+    mmtbx.utils.setup_scattering_dictionaries(
+      scattering_table = "n_gaussian",
+      xray_structure   = self.xray_structure,
+      d_min            = self.f_obs.d_min(),
+      log              = sys.stdout) #cStringIO.StringIO())
     fmodel = mmtbx.utils.fmodel_simple(
       xray_structures=[self.xray_structure],
-      f_obs=f_obs,
-      r_free_flags=r_free_flags)
+      f_obs=self.f_obs,
+      r_free_flags=self.r_free_flags,
+      outliers_rejection=True,
+      skip_twin_detection=False,
+      bulk_solvent_correction=True,
+      apply_back_trace_of_b_cart=False,
+      anisotropic_scaling=True)
+    fmodel_info = fmodel.info()
+    fmodel_info.show_rfactors_targets_scales_overall(out = sys.stdout)
     (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=True)
     return f_map, df_map
 
