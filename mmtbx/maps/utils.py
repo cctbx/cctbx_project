@@ -84,7 +84,7 @@ class fast_maps_from_hkl_file (object) :
       scattering_table = "n_gaussian",
       xray_structure   = self.xray_structure,
       d_min            = self.f_obs.d_min(),
-      log              = sys.stdout) #cStringIO.StringIO())
+      log              = cStringIO.StringIO())
     fmodel = mmtbx.utils.fmodel_simple(
       xray_structures=[self.xray_structure],
       f_obs=self.f_obs,
@@ -94,8 +94,6 @@ class fast_maps_from_hkl_file (object) :
       bulk_solvent_correction=True,
       apply_back_trace_of_b_cart=False,
       anisotropic_scaling=True)
-    fmodel_info = fmodel.info()
-    fmodel_info.show_rfactors_targets_scales_overall(out = sys.stdout)
     (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=True)
     return f_map, df_map
 
