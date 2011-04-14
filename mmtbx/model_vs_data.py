@@ -2,7 +2,6 @@ import sys, os, random, re
 from cctbx.array_family import flex
 from iotbx import pdb
 from cctbx import adptbx, sgtbx
-from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
 from iotbx import reflection_file_utils
 from mmtbx import real_space_correlation
@@ -601,6 +600,61 @@ def maps(fmodel, mvd_obj, map_cutoff = 3.0, map_type = "mFo-DFc"):
       peaks_minus_9 = (peaks_minus < -9).count(True))
   return result
 
+msg="""\
+
+phenix.model_vs_data: compute model, data and model-to-data fit statistics.
+
+Reference:
+  phenix.model_vs_data: a high-level tool for the calculation of
+  crystallographic model and data statistics. P.V. Afonine, R.W.
+  Grosse-Kunstleve, V.B. Chen, J.J. Headd, N.W. Moriarty, J.S. Richardson,
+  D.C. Richardson, A. Urzhumtsev, P.H. Zwart, P.D. Adams
+  J. Appl. Cryst. 43, 677-685 (2010).
+
+Inputs:
+  - File with reflection data (Fobs or Iobs), and R-free flags (optionally);
+  - label(s) selecting which reflection data arrays should be used (in case
+    there are multiple choices in input file, there is no need to provide labels
+    otherwise);
+  - PDB file with input model;
+  - some other optional parameters.
+
+Usage examples:
+  1. phenix.model_vs_data model.pdb data.hkl
+  2. phenix.model_vs_data model.pdb data.hkl f_obs_label="F" r_free_flags_label="FREE"
+  3. phenix.model_vs_data model.pdb data.hkl scattering_table=neutron
+  4. phenix.model_vs_data model.pdb data.hkl map="2mFo-DFc"
+  5. phenix.model_vs_data model.pdb data.hkl map="3Fo-2Fc" map="mFo-DFc"
+
+  Note: Map type string: [p][m]Fo+[q][D]Fc[kick][filled]. Examples: 2mFo-DFc,
+  3.2Fo-2.3Fc, Fc, anom, fo-fc_kick, etc.
+"""
+
+master_params_str="""\
+f_obs_label = None
+  .type = str
+r_free_flags_label = None
+  .type = str
+scattering_table = wk1995  it1992  *n_gaussian  neutron
+  .type = choice
+map = None
+  .type = str
+  .multiple = True
+comprehensive = False
+  .type = bool
+dump_result_object_as_pickle = False
+  .type = bool
+ignore_giant_models_and_datasets = True
+  .type = bool
+"""
+
+def defaults(log, silent):
+  if(not silent): print >> log, "Default params::\n"
+  parsed = iotbx.phil.parse(master_params_str)
+  if(not silent): parsed.show(prefix="  ", out=log)
+  if(not silent): print >> log
+  return parsed
+
 def run(args,
         command_name             = "mmtbx.model_vs_data",
         show_geometry_statistics = True,
@@ -608,62 +662,20 @@ def run(args,
         data_size_max_reflections= 1000000,
         unit_cell_max_dimension  = 800.,
         return_fmodel_and_pdb    = False,
-        out                      = None):
-  if(len(args) == 0): args = ["--help"]
-  command_line = (iotbx_option_parser(
-    usage="%s reflection_file pdb_file [options]" % command_name,
-    description='Example: %s data.mtz model.pdb'%command_name)
-    .option(None, "--f_obs_label",
-      action="store",
-      default=None,
-      type="string",
-      help="Label for F-obs (or I-obs).")
-    .option(None, "--r_free_flags_label",
-      action="store",
-      default=None,
-      type="string",
-      help="Label for free R flags.")
-    .option(None, "--scattering_table",
-      action="store",
-      default="n_gaussian",
-      type="string",
-      help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
-    .option(None, "--comprehensive",
-      action="store",
-      default=False,
-      type="bool",
-      help="Show detailed statistics per residue (map CC, etc).")
-    .option(None, "--dump_result_object_as_pickle",
-      action="store",
-      default=False,
-      type="bool",
-      help="Save model_vs_data object as pickle object.")
-    .option(None, "--f_obs_vs_f_model",
-      action="store",
-      default=False,
-      type="bool",
-      help="Output R-factor for each reflection individually.")
-    .option(None, "--map",
-      action="store",
-      default="None",
-      type="string",
-      help="Map type string: [p][m]Fo+[q][D]Fc[kick][filled]. Examples: 2mFo-DFc, 3.2Fo-2.3Fc, Fc, anom, fo-fc_kick.")
-    .option("--ignore_giant_models_and_datasets",
-      action="store_true",
-      help="Ignore too big models and data files to avoid potential memory problems.")
-    ).process(args=args)
-  if(command_line.options.scattering_table not in ["n_gaussian","wk1995",
-     "it1992","neutron"]):
-    raise Sorry("Incorrect scattering_table.")
+        out                      = None,
+        log                      = sys.stdout):
+  if(len(args)==0):
+    print >> log, msg
+    defaults(log=log, silent=False)
+    return
+  parsed = defaults(log=log, silent=True)
   #
   mvd_obj = mvd()
   #
-  map_type_obj = None
-  if(command_line.options.map != str(None)):
-    map_type_obj = mmtbx.map_names(map_name_string = command_line.options.map)
-  #
   processed_args = utils.process_command_line_args(args = args,
-    log = sys.stdout)
+    log = sys.stdout, master_params = parsed)
+  params = processed_args.params.extract()
+  #
   reflection_files = processed_args.reflection_files
   if(len(reflection_files) == 0):
     raise Sorry("No reflection file found.")
@@ -678,10 +690,10 @@ def run(args,
     crystal_symmetry = crystal_symmetry,
     reflection_files = reflection_files)
   parameters = utils.data_and_flags_master_params().extract()
-  if(command_line.options.f_obs_label is not None):
-    parameters.labels = command_line.options.f_obs_label
-  if(command_line.options.r_free_flags_label is not None):
-    parameters.r_free_flags.label = command_line.options.r_free_flags_label
+  if(params.f_obs_label is not None):
+    parameters.labels = params.f_obs_label
+  if(params.r_free_flags_label is not None):
+    parameters.r_free_flags.label = params.r_free_flags_label
   determine_data_and_flags_result = utils.determine_data_and_flags(
     reflection_file_server  = rfs,
     parameters              = parameters,
@@ -692,12 +704,12 @@ def run(args,
     log                     = StringIO())
   f_obs = determine_data_and_flags_result.f_obs
   number_of_reflections = f_obs.indices().size()
-  if(command_line.options.ignore_giant_models_and_datasets and
+  if(params.ignore_giant_models_and_datasets and
      number_of_reflections > data_size_max_reflections):
     raise Sorry("Too many reflections: %d"%number_of_reflections)
   #
   max_unit_cell_dimension = max(f_obs.unit_cell().parameters()[:3])
-  if(command_line.options.ignore_giant_models_and_datasets and
+  if(params.ignore_giant_models_and_datasets and
      max_unit_cell_dimension > unit_cell_max_dimension):
     raise Sorry("Too large unit cell (max dimension): %s"%
       str(max_unit_cell_dimension))
@@ -733,7 +745,7 @@ def run(args,
   #
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
-    scattering_table   = command_line.options.scattering_table,
+    scattering_table   = params.scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
   if(0): #XXX normalize occupancies if all models have occ=1 so the total=1
@@ -780,7 +792,7 @@ def run(args,
   geometry_statistics = show_geometry(
     xray_structures          = xray_structures,
     processed_pdb_file       = processed_pdb_file,
-    scattering_table         = command_line.options.scattering_table,
+    scattering_table         = params.scattering_table,
     hierarchy                = hierarchy,
     model_selections         = model_selections,
     show_geometry_statistics = show_geometry_statistics,
@@ -857,23 +869,25 @@ def run(args,
   if return_fmodel_and_pdb :
     mvd_obj.pdb_file = processed_pdb_file
     mvd_obj.fmodel = fmodel
-  if(map_type_obj is not None):
-    map_params = mmtbx.maps.map_and_map_coeff_master_params().fetch(
-      mmtbx.maps.cast_map_coeff_params(map_type_obj)).extract()
-    maps_obj = mmtbx.maps.compute_map_coefficients(fmodel = fmodel_cut, params =
-      map_params.map_coefficients)
-    fn = os.path.basename(processed_args.reflection_file_names[0])
-    if(fn.count(".")):
-      prefix = fn[:fn.index(".")]
-    else: prefix= fn
-    file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
-    maps_obj.write_mtz_file(file_name = file_name)
+  if(len(params.map) > 0):
+    for map_name_string in params.map:
+      map_type_obj = mmtbx.map_names(map_name_string = map_name_string)
+      map_params = mmtbx.maps.map_and_map_coeff_master_params().fetch(
+        mmtbx.maps.cast_map_coeff_params(map_type_obj)).extract()
+      maps_obj = mmtbx.maps.compute_map_coefficients(fmodel = fmodel_cut, params =
+        map_params.map_coefficients)
+      fn = os.path.basename(processed_args.reflection_file_names[0])
+      if(fn.count(".")):
+        prefix = fn[:fn.index(".")]
+      else: prefix= fn
+      file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
+      maps_obj.write_mtz_file(file_name = file_name)
   # report map cc
-  if(command_line.options.comprehensive and not fmodel_cut.twin and
+  if(params.comprehensive and not fmodel_cut.twin and
      fmodel_cut.xray_structure is not None):
     show_hydrogens = False
     if(fmodel_cut.f_calc().d_min() <= 1.0 or
-       command_line.options.scattering_table == "neutron"): show_hydrogens=True
+       params.scattering_table == "neutron"): show_hydrogens=True
     real_space_correlation.simple(
       fmodel                = fmodel_cut,
       pdb_hierarchy         = hierarchy,
@@ -891,9 +905,7 @@ def run(args,
       poor_map_1_value_threshold                = 1.0,
       poor_map_2_value_threshold                = 1.0)
   #
-  if(command_line.options.f_obs_vs_f_model):
-    fmodel_cut.f_obs_vs_f_model()
-  if(command_line.options.dump_result_object_as_pickle):
+  if(params.dump_result_object_as_pickle):
     output_prefixes = []
     for op in processed_args.pdb_file_names+processed_args.reflection_file_names:
       op = os.path.basename(op)

@@ -11,12 +11,53 @@ import iotbx.phil
 msg="""\
 
 phenix.reciprocal_space_arrays:
-  tool to compute various arrays such as Fcalc, Fmask, Fmodel, Fbulk, and more.
+compute various arrays such as Fcalc, Fmask, Fmodel, Fbulk, and more.
 
-Usage:
-  phenix.reciprocal_space_arrays mode.pdb data.hkl [options]
+Inputs:
+  - File with reflection data (Fobs or Iobs), R-free flags, and optionally HL
+    coefficients. It can be in most of known formats and spread across
+    multiple files;
+  - label(s) selecting which reflection data arrays should be used (in case
+    there are multiple choices in input file, there is no need to provide labels
+    otherwise);
+  - PDB file with input model.
 
-Output: MTZ file with data arrays.
+Usage examples:
+  1. phenix.reciprocal_space_arrays model.pdb data.hkl f_obs_label="IOBS"
+  2. phenix.reciprocal_space_arrays model.pdb data.hkl r_free_flags_label="FREE"
+
+Output:
+  MTZ file with data arrays. Depending on the input data, the following arrays
+  may be present:
+
+  - FOBS         : data from input reflection file
+  - SIGFOBS      : corresponding sigmas
+  - R_FREE_FLAGS : R-free flags (0 - work, 1 - test)
+  - FMODEL       : total model structure factor. See phenix.fmodel for details
+  - PHIFMODEL    : corresponding phases
+  - FCALC        : Fcalc from atomic model
+  - PHIFCALC     : corresponding phases
+  - FMASK        : Fmask from bulk-solvent mask. See phenix.fmodel for details
+  - PHIFMASK     : corresponding phases
+  - FBULK        : bulk-solvent contribution. See phenix.fmodel for details
+  - PHIFBULK     : corresponding phases
+  - FB_CART      : overall anisotropic scale factor
+  - FOM          : figures of merit
+  - ALPHA        : ML parameter used in m&D calculation for 2mFo-DFc maps
+  - BETA         : ML parameter used in m&D calculation for 2mFo-DFc maps
+  - HLA          : HL coefficients from from input reflection file
+  - HLB          : HL coefficients from from input reflection file
+  - HLC          : HL coefficients from from input reflection file
+  - HLD          : HL coefficients from from input reflection file
+  - HLmodelA     : HL coefficients from the model (C=D=0)
+  - HLmodelB     : HL coefficients from the model (C=D=0)
+  - HLmodelC     : HL coefficients from the model (C=D=0)
+  - HLmodelD     : HL coefficients from the model (C=D=0)
+  - HLcombA      : combined HL: model + input
+  - HLcombB      : combined HL: model + input
+  - HLcombC      : combined HL: model + input
+  - HLcombD      : combined HL: model + input
+  - RESOLUTION   : resolution per reflection
 """
 
 master_params_str="""\
@@ -34,6 +75,12 @@ output_file_name = None
   .type = str
 """
 
+def defaults(log):
+  print >> log, "Default params::\n"
+  parsed = iotbx.phil.parse(master_params_str)
+  parsed.show(prefix="  ", out=log)
+  print >> log
+  return parsed
 
 def extract_experimental_phases(experimental_phases, f_obs):
   if(experimental_phases is not None):
@@ -46,15 +93,13 @@ def extract_experimental_phases(experimental_phases, f_obs):
       data_substitute=(0,0,0,0))
   else: return None
 
-def run(args):
-  if(len(args)==0 or (len(args)==1 and args[0].lower() in
-     ["-h","--h","-help","--help","h","help"])):
-       print msg
-       return
+def run(args, log = sys.stdout):
+  if(len(args)==0):
+    print >> log, msg
+    defaults(log=log)
+    return
   #
-  print "Default params:"
-  parsed = iotbx.phil.parse(master_params_str)
-  parsed.show(prefix="  ")
+  parsed = defaults(log=log)
   processed_args = mmtbx.utils.process_command_line_args(args = args,
     log = sys.stdout, master_params = parsed)
   params = processed_args.params.extract()
@@ -137,11 +182,11 @@ def run(args):
     try:
       hkl_file_prefix = hkl_file_bn[:hkl_file_bn.index(".")]
     except ValueError: hkl_file_prefix = hkl_file_bn
-    out_file_name = "%s_%s.mtz"%(pdb_file_prefix, hkl_file_prefix)
-  print "  file name:", out_file_name
-  print "  to see the contnt of %s:"%out_file_name
-  print "    phenix.mtz.dump %s"%out_file_name
-  out = open(out_file_name,"w")
+    output_file_name = "%s_%s.mtz"%(pdb_file_prefix, hkl_file_prefix)
+  print "  file name:", output_file_name
+  print "  to see the contnt of %s:"%output_file_name
+  print "    phenix.mtz.dump %s"%output_file_name
+  out = open(output_file_name,"w")
   fmodel.export(out = out)
   out.close()
   print "All done."
