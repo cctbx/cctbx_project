@@ -3,6 +3,7 @@ import iotbx.phil
 import libtbx.load_env
 import libtbx.phil.command_line
 from libtbx.str_utils import make_header
+from libtbx.math_utils import ifloor
 from libtbx import easy_pickle
 import random
 import math
@@ -13,58 +14,121 @@ master_phil = iotbx.phil.parse("""
 simulate_data {
   pdb_file = None
     .type = path
+    .help = Model file.  If no reflections file is given, data will be \
+      generated starting from F(model).  Otherwise it will only be used \
+      to report scaling statistics.
   hkl_file = None
     .type = path
+    .help = Data file.  If defined, the extracted amplitudes will be \
+      truncated.  Any R-free flags will be propagated to the output file.
   data_label = None
     .type = str
+    .help = Label for amplitudes or intensities in hkl_file (optional).
   r_free_label = None
     .type = str
+    .help = Label for R-free flags in hkl_file (optional).
   d_min = 3.0
     .type = float
+    .help = Resolution cutoff of output data.
   r_free_flags_fraction = 0.05
     .type = float
+    .help = Percent of reflections to flag for R-free (ignored if already \
+      available in hkl_file).
   output_file = low_res.mtz
     .type = path
   crystal_symmetry {
     space_group = None
       .type = space_group
+      .help = Space group of output data.  Ignored if reflections are used \
+        as input.
     unit_cell = None
       .type = unit_cell
+      .help = Unit cell of output data.  Ignored if reflections are used as \
+        input.
   }
   modify_pdb {
     remove_waters = True
       .type = bool
+      .help = Strip waters from input model.
     convert_to_isotropic = True
       .type = bool
+      .help = Convert all atoms to isotropic before calculating F(model).
     set_mean_b_iso = None
       .type = float
+      .help = Scale atomic B-factors to have this mean value.
     set_wilson_b = False
       .type = bool
+      .help = Scale atomic B-factors to have a mean equal to the mean \
+        Wilson B-factor for this resolution (+/- 0.2A)
   }
   truncate {
     add_b_iso = None
       .type = float
+      .help = Isotropic B-factor to be added to data.
     add_b_aniso = 0 0 0 0 0 0
       .type = floats(size=6)
+      .help = Anisotropic B-factor to be added to data.  Severely anisotropic \
+        data might have an anisotropic B of 80,80,200,0,0,0.
     add_random_error_percent = None
       .type = float
+      .help = Adds random noise as a percentage of amplitude, evenly across \
+        all resolutions.
     remove_cone_around_axis = None
       .type = float
+      .help = Radius in degrees of cone of missing data around the axis of \
+        rotation (data collection pathology).  If specified, axis_of_rotation \
+        must be defined.
     axis_of_rotation = None
       .type = floats(size=3)
+      .help = Axis of rotation of crystal during data collection.  Only used \
+        if remove_cone_around_axis is defined.  (Example value: 0,1,0)
   }
-}
-fake_data {
-  include scope mmtbx.command_line.fmodel.fmodel_from_xray_structure_params_str
+  add_noise {
+    noise_profile_file = None
+      .type = path
+    profile_data_label = None
+      .type = str
+    scale_noise = 1.0
+      .type = float
+    n_resolution_bins = 20
+      .type = int
+    n_intensity_bins = 10
+      .type = int
+  }
+  fake_data_from_fmodel
+    .help = Options for generating model-based reflections using phenix.fmodel.
+  {
+    include scope mmtbx.command_line.fmodel.fmodel_from_xray_structure_params
+  }
 }
 """, process_includes=True)
 
 def run (args) :
-  print "WARNING: this is an experimental program - definitely NOT bug-free."
-  print "         Use at your own risk!"
-  if (len(args) == 0) :
+  print ""
+  print "mmtbx.simulate_low_res_data"
+  print "  For generation of realistic data (model-based, or using real "
+  print "  high-resolution data) for methods development."
+  print ""
+  print "************************* WARNING: *************************"
+  print " this is an experimental program - definitely NOT bug-free."
+  print "                  Use at your own risk!"
+  print ""
+  print "  Usage:"
+  print "   mmtbx.simulate_low_res_data model.pdb [options...]"
+  print "     (generate data from a PDB file)"
+  print ""
+  print "   mmtbx.simulate_low_res_data highres.mtz [model.pdb] [options...]"
+  print "     (truncate high-resolution data)"
+  print ""
+  print "   mmtbx.simulate_low_res_data --help"
+  print "     (print full parameters with additional info)"
+  print ""
+  if (len(args) == 0) or ("--help" in args) :
     print "# full parameters:"
-    master_phil.show()
+    if ("--help" in args) :
+      master_phil.show(attributes_level=1)
+    else :
+      master_phil.show()
     return
   from iotbx import file_reader
   interpreter = libtbx.phil.command_line.argument_interpreter(
@@ -114,7 +178,7 @@ def run (args) :
     F, r_free = from_hkl(hkl_in, params)
   elif (pdb_in is not None) :
     make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
-    F, r_free = from_pdb(pdb_in, pdb_hierarchy, params_)
+    F, r_free = from_pdb(pdb_in, pdb_hierarchy, params)
   make_header("Applying low-resolution filtering", out=sys.stdout)
   print "  Final resolution: %.2f A" % params.d_min
   n_residues, n_bases = None, None
@@ -155,8 +219,7 @@ def run (args) :
   make_header("Writing output file", out=sys.stdout)
   print "  Wrote %s" % params.output_file
 
-def from_pdb (pdb_in, pdb_hierarchy, params_) :
-  params = params_.simulate_data
+def from_pdb (pdb_in, pdb_hierarchy, params) :
   pdb_sg, pdb_uc = None, None
   pdb_symm = pdb_in.crystal_symmetry()
   if (pdb_symm is not None) :
@@ -223,7 +286,8 @@ def from_pdb (pdb_in, pdb_hierarchy, params_) :
   from mmtbx import utils
   fmodel_params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
   fmodel_params.high_resolution = params.d_min
-  fmodel_params.fmodel = params_.fake_data.fmodel
+  fake_data = params.fake_data_from_fmodel
+  fmodel_params.fmodel = fake_data.fmodel
   if (fmodel_params.fmodel.b_sol == 0) :
     print "  b_sol is zero - will use mean value for d_min +/- 0.2A"
     print "   (this is not strongly correlated with resolution, but it's good "
@@ -240,8 +304,8 @@ def from_pdb (pdb_in, pdb_hierarchy, params_) :
       d_min=params.d_min,
       stat_type="k_sol")
     print ""
-  fmodel_params.structure_factors_accuracy = params_.fake_data.structure_factors_accuracy
-  fmodel_params.mask = params_.fake_data.mask
+  fmodel_params.structure_factors_accuracy = fake_data.structure_factors_accuracy
+  fmodel_params.mask = fake_data.mask
   fmodel_params.r_free_flags_fraction = params.r_free_flags_fraction
   fmodel_params.add_sigmas = False
   fmodel_params.output.type = "real"
@@ -429,6 +493,122 @@ def get_mean_statistic_for_resolution (d_min, stat_type, range=0.2) :
   print "    histogram of values:"
   h.show(prefix="      ")
   return mean
+
+def create_sigmas (f_obs, params, return_as_amplitudes=False) :
+  assert (f_obs.sigmas() is None)
+  from scitbx.array_family import flex
+  i_obs = f_obs.f_as_f_sq()
+  i_norm = i_obs.data() / flex.max(i_obs.data())
+  profiler = profile_sigma_generator(
+    file_name=params.noise_profile_file,
+    data_label=params.profile_data_label,
+    n_resolution_bins=params.n_resolution_bins,
+    n_intensity_bins=params.n_intensity_bins)
+  sigmas = flex.double(i_norm.size(), 0.0)
+  i_obs.setup_binner(n_bins=params.n_resolution_bins)
+  for j_bin in range(i_obs.binner().range_used()) :
+    bin_sel = i_obs.biner().selection(j_bin)
+    shell_profile = profiler.get_noise_profile_for_shell(j_bin)
+    for k in bin_sel.iselection() :
+      i_over_sigma = shell_profile.get_i_over_sigma(i_norm[k])
+      sigmas[k] = i_obs.data()[k] / i_over_sigma
+  i_new = i_obs.customized_copy(sigmas=sigmas)
+  if (return_as_amplitudes) :
+    return i_new.f_as_f_sq()
+  else :
+    return i_new
+
+class profile_sigma_generator (object) :
+  def __init__ (self,
+                file_name,
+                data_label=None,
+                n_resolution_bins=20,
+                n_intensity_bins=10) :
+    self._resolution_bins = []
+    from iotbx.file_reader import any_file
+    from scitbx.array_family import flex
+    f = any_file(args[0], force_type="hkl")
+    f.assert_file_type("hkl")
+    miller_arrays = f.file_server.miller_arrays
+    f_obs = None
+    i_obs = None
+    for array in miller_arrays :
+      if (array.info().label_string() == data_label) or (data_label is None) :
+        if (array.is_xray_amplitude_array()) and (f_obs is None) :
+          f_obs = array
+        elif (array.is_xray_intensity_array()) and (i_obs is None) :
+          i_obs = array
+    if (i_obs is None) :
+      assert (f_obs is not None) and (f_obs.sigmas() is not None)
+      i_obs = f_obs.f_as_f_sq()
+    assert (i_obs.sigmas() is not None)
+    i_max = flex.max(i_obs.data())
+    i_norm = i_obs.customized_copy(
+      data=i_obs.data() / i_max,
+      sigmas=i_obs.sigmas() / i_max)
+    i_norm.setup_binner(n_bins=20)
+    i_over_sigma = i_obs.data() / i_obs.sigmas()
+    for i_bin in i_norm.binner().range_used() :
+      sel = i_norm.binner().selection(i_bin)
+      i_shell = i_norm.select(sel)
+      sn_shell = i_over_sigma.select(sel)
+      noise_bins = shell_intensity_bins(
+        i_norm=i_shell,
+        i_over_sigma=sn_shell,
+        n_bins=n_intensity_bins)
+      self._resolution_bins.append(noise_bins)
+
+  def get_noise_profile_for_shell (self, i) :
+    return self._resolution_bins[i]
+
+class shell_intensity_bins (object) :
+  def __init__ (self, i_norm, i_over_sigma, n_bins=10) :
+    self._binner = bin_by_intensity(i_norm.data(), n_bins)
+    self._sn_bins = []
+    for n in range(n_bins) :
+      bin_sel = self._bins.get_bin_selection(n)
+      sn_bin = i_over_sigma.select(bin_sel)
+      self._sn_bins.append(sn_bin)
+
+  def get_i_over_sigma (self, I) :
+    assert (I <= 0)
+    k = self._binner.get_bin(I)
+    sn_profile = self._sn_bins[k]
+    idx = ifloor(random.random() * sn_profile.size())
+    ratio = sn_profile[idx]
+    return ratio
+
+class bin_by_intensity (object) :
+  def __init__ (self, data, n_bins=10) :
+    from scitbx.array_family import flex
+    self._bin_limits = []
+    self._bins = flex.int(data.size(), -1)
+    sorted_data = sorted(data)
+    bin_size = data.size() // n_bins
+    for n in range(n_bins) :
+      bin_limit = bin_size * (n+1)
+      if (bin_limit > data.size()) :
+        bin_limit = data.size() - 1
+      i_max = sorted_data[bin_limit]
+      self._bin_limits.append(i_max)
+    for k, I in enumerate(data) :
+      bin = self.get_bin(I)
+      self._bins[k] = bin
+
+  def get_bin (self, I) :
+    assert (I <= 0)
+    for k, limit in enumerate(self._bin_limits) :
+      if (I < limit) :
+        return k
+    return len(self._bin_limits) - 1
+
+  def get_bin_selection (self, bin) :
+    from scitbx.array_family import flex
+    sel = flex.bool(self._bins.size(), False)
+    for k, n in enumerate(self._bins) :
+      if (n == bin) :
+        sel[k] = True
+    return sel
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
