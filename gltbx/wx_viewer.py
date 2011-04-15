@@ -154,6 +154,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.snap_back_rotation()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
+    elif (key == ord('l')) :
+      self.flag_show_labels = not self.flag_show_labels
+      self.OnRedraw()
     elif (key == ord('S')) :
       self.save_screen_shot()
     elif (key == ord('V')):
