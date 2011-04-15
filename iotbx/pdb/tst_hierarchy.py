@@ -5517,17 +5517,34 @@ def exercise_other () :
   pdb_inp = pdb.input(source_info=None, lines="""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
+ANISOU    0  S   SO4     0     1000   2000   3000    400   -500    600
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-ATOM      2  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
+ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 20.00           O
+ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 30.00           O
+ATOM      2  O2 ASO4     0       3.098   7.095   9.140  0.80 40.00           O
+ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 50.00           O
 TER
 END
 """)
   hierarchy = pdb_inp.construct_hierarchy()
   xray_structure = hierarchy.extract_xray_structure()
   assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
+  xray_structure.scale_adps(2.0)
+  atoms = hierarchy.atoms()
+  atoms.set_adps_from_scatterers(xray_structure.scatterers(),
+    xray_structure.unit_cell())
+  assert approx_equal(atoms.extract_uij(),
+    [(0.2, 0.4, 0.6, 0.08, -0.1, 0.12),
+     (-1,-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1,-1),
+     (-1,-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1,-1)])
+  assert approx_equal(atoms.extract_b(),
+    [31.5827341, 20.0, 40.0, 60.0, 80.0, 100.0])
+  xray_structure.convert_to_isotropic()
+  atoms.set_adps_from_scatterers(xray_structure.scatterers(),
+    xray_structure.unit_cell())
+  assert approx_equal(atoms.extract_uij(), [(-1,-1,-1,-1,-1,-1)]*6)
+  assert approx_equal(atoms.extract_b(),
+    [31.5827341, 20.0, 40.0, 60.0, 80.0, 100.0])
   pdb_inp = pdb.input(source_info=None, lines="""\
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
