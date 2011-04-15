@@ -59,6 +59,7 @@ class fast_maps_from_hkl_file (object) :
         raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
           "column labels (possible choices: %s)") % (f_label, file_name,
             " ".join(all_labels)))
+    f_obs = f_obs.map_to_asu()
     r_free = data_file.file_server.get_r_free_flags(
       file_name=None,
       label=r_free_label,
@@ -70,7 +71,8 @@ class fast_maps_from_hkl_file (object) :
       self.r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
     else :
       array, test_flag_value = r_free[0]
-      new_flags = array.customized_copy(data=array.data() == test_flag_value)
+      new_flags = array.customized_copy(
+        data=array.data() == test_flag_value).map_to_asu()
       self.r_free_flags = new_flags.common_set(f_obs)
     self.f_obs = f_obs
     self.log = None
