@@ -24,18 +24,26 @@ simulate_data {
   data_label = None
     .type = str
     .help = Label for amplitudes or intensities in hkl_file (optional).
-  r_free_label = None
-    .type = str
-    .help = Label for R-free flags in hkl_file (optional).
   d_min = 3.0
     .type = float
     .help = Resolution cutoff of output data.
-  r_free_flags_fraction = 0.05
-    .type = float
-    .help = Percent of reflections to flag for R-free (ignored if already \
-      available in hkl_file).
-  output_file = low_res.mtz
+  random_seed = 90125714
+    .type = int
+  output_file = None
     .type = path
+  r_free_flags {
+    file_name = None
+      .type = path
+      .help = File containing R-free flags.  Can be left blank if hkl_file is \
+        defined and contains R-free flags.
+    label = None
+      .type = str
+      .help = Label for R-free flags in r_free_file (or hkl_file).
+    fraction = 0.05
+      .type = float
+      .help = Percent of reflections to flag for R-free (ignored if already \
+        available).
+  }
   crystal_symmetry {
     space_group = None
       .type = space_group
@@ -50,7 +58,10 @@ simulate_data {
     remove_waters = True
       .type = bool
       .help = Strip waters from input model.
-    convert_to_isotropic = True
+    remove_alt_confs = True
+      .type = bool
+      .help = Strip alternate sidechains (and reset occupancy to 1).
+    convert_to_isotropic = False
       .type = bool
       .help = Convert all atoms to isotropic before calculating F(model).
     set_mean_b_iso = None
@@ -61,7 +72,9 @@ simulate_data {
       .help = Scale atomic B-factors to have a mean equal to the mean \
         Wilson B-factor for this resolution (+/- 0.2A)
   }
-  truncate {
+  truncate
+    .help = Options for data truncation at lower resolution.
+  {
     add_b_iso = None
       .type = float
       .help = Isotropic B-factor to be added to data.
@@ -72,7 +85,8 @@ simulate_data {
     add_random_error_percent = None
       .type = float
       .help = Adds random noise as a percentage of amplitude, evenly across \
-        all resolutions.
+        all resolutions.  This is probably inferior to the sigma-based \
+        noise generation.
     remove_cone_around_axis = None
       .type = float
       .help = Radius in degrees of cone of missing data around the axis of \
@@ -83,8 +97,12 @@ simulate_data {
       .help = Axis of rotation of crystal during data collection.  Only used \
         if remove_cone_around_axis is defined.  (Example value: 0,1,0)
   }
-  add_noise {
+  generate_noise {
+    add_noise = False
+      .type = bool
     noise_profile_file = None
+      .type = path
+    profile_model_file = None
       .type = path
     profile_data_label = None
       .type = str
@@ -92,7 +110,7 @@ simulate_data {
       .type = float
     n_resolution_bins = 20
       .type = int
-    n_intensity_bins = 10
+    n_intensity_bins = 20
       .type = int
   }
   fake_data_from_fmodel
@@ -163,6 +181,10 @@ def run (args) :
   params = params_.simulate_data
   if (params.pdb_file is None) and (params.hkl_file is None) :
     raise Sorry("No PDB file specified.")
+  if (params.generate_noise.add_noise) and (params.hkl_file is None) :
+    if (params.generate_noise.noise_profile_file is None) :
+      raise Sorry("noise_profile_file required when add_noise=True and "
+        "hkl_file is undefined.")
   if (pdb_in is None) and (params.pdb_file is not None) :
     f = file_reader.any_file(params.pdb_file, force_type="pdb")
     f.assert_file_type("pdb")
@@ -179,6 +201,23 @@ def run (args) :
   elif (pdb_in is not None) :
     make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
     F, r_free = from_pdb(pdb_in, pdb_hierarchy, params)
+  if (params.r_free_flags.file_name is not None) :
+    rfree_in = file_reader.any_file(params.r_free_flags.file_name)
+    rfree_in.assert_file_type("hkl")
+    hkl_server = rfree_in.file_server
+    r_free_raw, flag_value = hkl_server.get_r_free_flags(
+      file_name=None,
+      label=params.r_free_flags.label,
+      test_flag_value=None,
+      parameter_scope="simulate_data.r_free_flags",
+      disable_suitability_test=False)
+    r_free = r_free_raw.customized_copy(data=r_free_raw.data() == flag_value)
+    r_free = r_free.common_set(F)
+    if (F.data().size() != r_free.data().size()) :
+      raise Sorry(("The specified R-free flags in %s are incomplete.  Please "+
+        "generate a complete set to the desired resolution limit if you "+
+        "want to use these flags with synthetic data.") %
+          params.r_free_flags.file_name)
   make_header("Applying low-resolution filtering", out=sys.stdout)
   print "  Final resolution: %.2f A" % params.d_min
   n_residues, n_bases = None, None
@@ -188,18 +227,27 @@ def run (args) :
   #  if (pdb_in is None) :
   #    raise Sorry("You must supply a PDB file when auto_adjust=True.")
   F_out = truncate_data(F, params)
+  if (params.generate_noise.add_noise) :
+    make_header("Adding noise using sigma profile", out=sys.stdout)
+    if (F_out.sigmas() is None) :
+      if (pdb_in is not None) :
+        iso_scale, aniso_scale = wilson_scaling(F_out, n_residues, n_bases)
+      i_obs = create_sigmas(
+        f_obs=F_out,
+        params=params.generate_noise,
+        wilson_b=iso_scale.b_wilson,
+        return_as_amplitudes=False)
+    apply_sigma_noise(i_obs)
+    F_out = i_obs.f_sq_as_f()
+  make_header("Done processing", out=sys.stdout)
   print "  Completeness after processing: %.2f%%" % (F.completeness() * 100.)
   if (pdb_in is not None) :
     iso_scale, aniso_scale = wilson_scaling(F_out, n_residues, n_bases)
     print ""
     print "  Scaling statistics for output data:"
-    print "    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson
-    print "    overall anisotropic B-factor: %6.2f, %6.2f, %6.2f" % (
-      aniso_scale.b_cart[0], aniso_scale.b_cart[3], aniso_scale.b_cart[4])
-    print "                                  %14.2f, %6.2f" % (
-      aniso_scale.b_cart[1], aniso_scale.b_cart[5])
-    print "                                  %22.2f" % aniso_scale.b_cart[2]
+    show_b_factor_info(iso_scale, aniso_scale)
     print ""
+    wilson_b = iso_scale.b_wilson
   if (F_out.sigmas() is not None) :
     mtz_dataset = F_out.as_mtz_dataset(
       column_root_label="F",
@@ -215,8 +263,13 @@ def run (args) :
       column_root_label="FreeR_flag",
       column_types="I")
   mtz_object = mtz_dataset.mtz_object()
+  if (params.output_file is None) :
+    if (params.hkl_file is not None) :
+      base_name = os.path.splitext(os.path.basename(params.hkl_file))[0]
+    else :
+      base_name = os.path.splitext(os.path.basename(params.pdb_file))[0]
+    params.output_file = base_name + "_low_res.mtz"
   mtz_object.write(file_name=params.output_file)
-  make_header("Writing output file", out=sys.stdout)
   print "  Wrote %s" % params.output_file
 
 def from_pdb (pdb_in, pdb_hierarchy, params) :
@@ -251,8 +304,24 @@ def from_pdb (pdb_in, pdb_hierarchy, params) :
           for atom_group in residue_group.atom_groups() :
             if (atom_group.resname in ["HOH", "WAT"]) :
               residue_group.remove_atom_group(atom_group=atom_group)
+          if (len(residue_group.atom_groups()) == 0) :
+            chain.remove_residue_group(residue_group=residue_group)
         if (len(chain.atoms()) == 0) :
           model.remove_chain(chain=chain)
+  if (params.modify_pdb.remove_alt_confs) :
+    print "  Removing all alternate conformations and resetting occupancies..."
+    for model in pdb_hierarchy.models() :
+      for chain in model.chains() :
+        for residue_group in chain.residue_groups() :
+          atom_groups = residue_group.atom_groups()
+          assert (len(atom_groups) > 0)
+          if (len(atom_groups) == 1) : continue
+          for atom_group in atom_groups[1:] :
+            residue_group.remove_atom_group(atom_group=atom_group)
+          atom_groups[0].altloc = ""
+    atoms = pdb_hierarchy.atoms()
+    new_occ = flex.double(atoms.size(), 0.0)
+    atoms.set_occ(new_occ)
   xray_structure = pdb_in.xray_structure_simple(
     crystal_symmetry=apply_symm)
   sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
@@ -306,7 +375,7 @@ def from_pdb (pdb_in, pdb_hierarchy, params) :
     print ""
   fmodel_params.structure_factors_accuracy = fake_data.structure_factors_accuracy
   fmodel_params.mask = fake_data.mask
-  fmodel_params.r_free_flags_fraction = params.r_free_flags_fraction
+  fmodel_params.r_free_flags_fraction = params.r_free_flags.fraction
   fmodel_params.add_sigmas = False
   fmodel_params.output.type = "real"
   fmodel_ = utils.fmodel_from_xray_structure(
@@ -355,8 +424,8 @@ def from_hkl (hkl_in, params) :
       f_obs = array.f_sq_as_f().map_to_asu()
       params.data_label = array.info().label_string()
       print "  I-obs: %s" % params.data_label
-    if (params.r_free_label is not None) :
-      if (array.info().label_string() == params.r_free_label) :
+    if (params.r_free_flags.label is not None) :
+      if (array.info().label_string() == params.r_free_flags.label) :
         r_free = array.map_to_asu()
         print "  R-free: %s" % array.info().label_string()
     elif (array.info().label_string() in ["FreeR_flag", "FREE"]) :
@@ -395,7 +464,12 @@ def add_b_iso (f_obs, b_iso) :
   assert (b_iso > 0)
   d_min_sq = flex.pow2(f_obs.d_spacings().data())
   scale = flex.exp(- b_iso / d_min_sq / 4.0)
-  return f_obs.customized_copy(data=f_obs.data() * scale)
+  if (f_obs.sigmas() is not None) :
+    return f_obs.customized_copy(
+      data=f_obs.data() * scale,
+      sigmas=f_obs.sigmas() * scale)
+  else :
+    return f_obs.customized_copy(data=f_obs.data() * scale)
 
 def add_b_aniso (f_obs, b_cart) :
   from cctbx import adptbx
@@ -405,7 +479,12 @@ def add_b_aniso (f_obs, b_cart) :
   scale = flex.double()
   for i, hkl in enumerate(f_obs.indices()) :
     scale.append(f_aniso_one_h(hkl, u_star))
-  return f_obs.customized_copy(data=f_obs.data() * scale)
+  if (f_obs.sigmas() is not None) :
+    return f_obs.customized_copy(
+      data=f_obs.data() * scale,
+      sigmas=f_obs.sigmas() * scale)
+  else :
+    return f_obs.customized_copy(data=f_obs.data() * scale)
 
 pi_sq = math.pi**2
 # see mmtbx/f_model/f_model.h
@@ -419,6 +498,14 @@ def f_aniso_one_h (h, u_star) :
     u_star[5] * h[1] * h[2] * 2.0)
   if (arg > 40.0) : arg = 40.0 # ???
   return math.exp(arg)
+
+def show_b_factor_info (iso_scale, aniso_scale) :
+  print "    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson
+  print "    overall anisotropic B-factor: %6.2f, %6.2f, %6.2f" % (
+    aniso_scale.b_cart[0], aniso_scale.b_cart[3], aniso_scale.b_cart[4])
+  print "                                  %14.2f, %6.2f" % (
+    aniso_scale.b_cart[1], aniso_scale.b_cart[5])
+  print "                                  %22.2f" % aniso_scale.b_cart[2]
 
 def add_random_error (f_obs, error_percent) :
   from scitbx.array_family import flex
@@ -494,20 +581,22 @@ def get_mean_statistic_for_resolution (d_min, stat_type, range=0.2) :
   h.show(prefix="      ")
   return mean
 
-def create_sigmas (f_obs, params, return_as_amplitudes=False) :
+def create_sigmas (f_obs, params, wilson_b=None, return_as_amplitudes=False) :
   assert (f_obs.sigmas() is None)
   from scitbx.array_family import flex
   i_obs = f_obs.f_as_f_sq()
   i_norm = i_obs.data() / flex.max(i_obs.data())
   profiler = profile_sigma_generator(
-    file_name=params.noise_profile_file,
+    mtz_file=params.noise_profile_file,
+    pdb_file=params.profile_model_file,
+    wilson_b=wilson_b,
     data_label=params.profile_data_label,
     n_resolution_bins=params.n_resolution_bins,
     n_intensity_bins=params.n_intensity_bins)
   sigmas = flex.double(i_norm.size(), 0.0)
   i_obs.setup_binner(n_bins=params.n_resolution_bins)
-  for j_bin in range(i_obs.binner().range_used()) :
-    bin_sel = i_obs.biner().selection(j_bin)
+  for j_bin in i_obs.binner().range_used() :
+    bin_sel = i_obs.binner().selection(j_bin)
     shell_profile = profiler.get_noise_profile_for_shell(j_bin)
     for k in bin_sel.iselection() :
       i_over_sigma = shell_profile.get_i_over_sigma(i_norm[k])
@@ -518,16 +607,31 @@ def create_sigmas (f_obs, params, return_as_amplitudes=False) :
   else :
     return i_new
 
+def apply_sigma_noise (i_obs) :
+  assert (i_obs.is_xray_intensity_array())
+  assert (i_obs.sigmas() is not None)
+  data = i_obs.data()
+  for i, sigma in enumerate(i_obs.sigmas()) :
+    data[i] = random.gauss(data[i], sigma)
+
 class profile_sigma_generator (object) :
   def __init__ (self,
-                file_name,
+                mtz_file,
+                pdb_file,
+                wilson_b=None,
                 data_label=None,
                 n_resolution_bins=20,
-                n_intensity_bins=10) :
+                n_intensity_bins=20) :
+    if (wilson_b is None) or (pdb_file is None) :
+      print "  WARNING: missing desired Wilson B-factor and/or PDB file"
+      print "           for noise profile data.  Without this information"
+      print "           the intensity falloff with resolution will probably"
+      print "           not be the same for your synthetic data and the"
+      print "           data used to generate sigmas."
     self._resolution_bins = []
     from iotbx.file_reader import any_file
     from scitbx.array_family import flex
-    f = any_file(args[0], force_type="hkl")
+    f = any_file(mtz_file, force_type="hkl")
     f.assert_file_type("hkl")
     miller_arrays = f.file_server.miller_arrays
     f_obs = None
@@ -542,6 +646,21 @@ class profile_sigma_generator (object) :
       assert (f_obs is not None) and (f_obs.sigmas() is not None)
       i_obs = f_obs.f_as_f_sq()
     assert (i_obs.sigmas() is not None)
+    if (wilson_b is not None) and (pdb_file is not None) :
+      print "  Correcting reference data intensity falloff..."
+      f_obs = i_obs.f_sq_as_f()
+      pdb_hierarchy = any_file(pdb_file).file_object.construct_hierarchy()
+      n_residues, n_bases = get_counts(pdb_hierarchy)
+      iso_scale, aniso_scale = wilson_scaling(
+        F=f_obs,
+        n_residues=n_residues,
+        n_bases=n_bases)
+      # TODO anisotropic?
+      print "  Scaling statistics for unmodified reference data:"
+      show_b_factor_info(iso_scale, aniso_scale)
+      delta_b = wilson_b - iso_scale.b_wilson
+      f_obs = add_b_iso(f_obs, delta_b)
+      i_obs = f_obs.f_as_f_sq()
     i_max = flex.max(i_obs.data())
     i_norm = i_obs.customized_copy(
       data=i_obs.data() / i_max,
@@ -558,28 +677,33 @@ class profile_sigma_generator (object) :
         n_bins=n_intensity_bins)
       self._resolution_bins.append(noise_bins)
 
-  def get_noise_profile_for_shell (self, i) :
-    return self._resolution_bins[i]
+  def get_noise_profile_for_shell (self, i_bin) :
+    return self._resolution_bins[i_bin-1]
 
 class shell_intensity_bins (object) :
-  def __init__ (self, i_norm, i_over_sigma, n_bins=10) :
+  def __init__ (self, i_norm, i_over_sigma, n_bins=20) :
     self._binner = bin_by_intensity(i_norm.data(), n_bins)
     self._sn_bins = []
+    self._i_bins = []
     for n in range(n_bins) :
-      bin_sel = self._bins.get_bin_selection(n)
+      bin_sel = self._binner.get_bin_selection(n)
       sn_bin = i_over_sigma.select(bin_sel)
       self._sn_bins.append(sn_bin)
+      i_bin = i_norm.select(bin_sel)
+      self._i_bins.append(i_bin)
 
   def get_i_over_sigma (self, I) :
-    assert (I <= 0)
+    assert (I <= 1)
+    if (I == 0) : return 1 # FIXME add French-Wilson before getting here
     k = self._binner.get_bin(I)
     sn_profile = self._sn_bins[k]
-    idx = ifloor(random.random() * sn_profile.size())
-    ratio = sn_profile[idx]
-    return ratio
+    for i_ref in self._i_bins[k] :
+      if (i_ref >= I) :
+        return sn_profile[k]
+    return sn_profile[-1]
 
 class bin_by_intensity (object) :
-  def __init__ (self, data, n_bins=10) :
+  def __init__ (self, data, n_bins=20) :
     from scitbx.array_family import flex
     self._bin_limits = []
     self._bins = flex.int(data.size(), -1)
@@ -587,7 +711,7 @@ class bin_by_intensity (object) :
     bin_size = data.size() // n_bins
     for n in range(n_bins) :
       bin_limit = bin_size * (n+1)
-      if (bin_limit > data.size()) :
+      if (bin_limit >= data.size()) :
         bin_limit = data.size() - 1
       i_max = sorted_data[bin_limit]
       self._bin_limits.append(i_max)
@@ -596,7 +720,7 @@ class bin_by_intensity (object) :
       self._bins[k] = bin
 
   def get_bin (self, I) :
-    assert (I <= 0)
+    assert (I >= 0)
     for k, limit in enumerate(self._bin_limits) :
       if (I < limit) :
         return k
