@@ -14,6 +14,7 @@ import libtbx.load_env
 from libtbx.utils import format_exception, Sorry
 from mmtbx import secondary_structure
 from iotbx.pdb import common_residue_names_get_class
+from libtbx.str_utils import make_sub_header
 import sys, re
 
 TOP_OUT_FLAG = True
@@ -122,7 +123,6 @@ class reference_model(object):
     self.params = params
     self.geometry = geometry
     self.pdb_hierarchy = pdb_hierarchy
-    self.xray_structure = xray_structure
     self.geometry_ref = geometry_ref
     self.sites_cart_ref = sites_cart_ref
     self.pdb_hierarchy_ref = pdb_hierarchy_ref
@@ -143,10 +143,6 @@ class reference_model(object):
     self.match_map = None
     self.proxy_map = None
     self.build_reference_dihedral_proxy_hash()
-    if self.params.fix_outliers:
-      self.set_rotamer_to_reference(
-        xray_structure=xray_structure,
-        log=self.log)
     self.get_reference_dihedral_proxies()
 
   def update_reference_dihedral_proxies(self,
@@ -853,7 +849,9 @@ class reference_model(object):
     pdb_hierarchy=self.pdb_hierarchy
     pdb_hierarchy_ref=self.pdb_hierarchy_ref
     if(log is None): log = sys.stdout
-    print >> log, "  --> pre-correcting rotamer outliers"
+    make_sub_header(
+      "Correcting rotamer outliers to match reference model",
+      out=log)
     r = rotalyze()
     sa = SidechainAngles(False)
     mon_lib_srv = mmtbx.monomer_library.server.server()
