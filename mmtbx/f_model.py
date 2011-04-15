@@ -330,6 +330,12 @@ class manager(manager_mixin):
     self.twin = False
     assert f_obs is not None
     assert f_obs.is_real_array()
+    assert f_obs.is_unique_set_under_symmetry()
+    assert r_free_flags.is_unique_set_under_symmetry()
+    if(twin_law is None):
+      # twin mate of mapped-to-asu does not have to obey this!
+      assert f_obs.is_in_asu()
+      assert r_free_flags.is_in_asu()
     self.sfg_params = sf_and_grads_accuracy_params
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
