@@ -505,6 +505,10 @@ class set(crystal.symmetry):
     if (sel.size() == self.indices().size()): return self
     return self.select(sel)
 
+  def is_in_asu(self):
+    #XXX could be made more efficient
+    return self.map_to_asu().indices().all_eq(self.indices())
+
   def map_to_asu(self):
     i = self.indices().deep_copy()
     anomalous_flag = self.anomalous_flag()

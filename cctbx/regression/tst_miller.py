@@ -1029,6 +1029,7 @@ unused:  3.0759 -         [ 0/0 ]
     crystal_symmetry_from_file=crystal.symmetry(
       unit_cell=(10,10,12,90,90,120),
       space_group="P6")))
+  assert ma.is_in_asu()
   s = ma.crystal_symmetry_is_compatible_with_symmetry_from_file()
   assert not s.unit_cell_is_compatible
   assert not s.space_group_is_compatible

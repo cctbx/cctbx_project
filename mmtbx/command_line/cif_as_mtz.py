@@ -731,6 +731,9 @@ def process_files (file_name,
         if(r_free_flags is not None):
           f_obs = f_obs.common_set(r_free_flags)
           r_free_flags = r_free_flags.common_set(f_obs)
+        f_obs = f_obs.merge_equivalents().array()
+        if(r_free_flags is not None):
+          r_free_flags = r_free_flags.merge_equivalents().array()
         mtz_object = mmtbx.utils.guess_observation_type(
           f_obs          = f_obs,
           label          = data_label,
