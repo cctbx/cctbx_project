@@ -178,6 +178,12 @@ def exercise_flex_xray_scatterer():
      (0.01, 0.02, 0.03, -0.006, 0.002, -0.003),
      (0.03, 0.01, 0.02, -0.002, 0.005, -0.001)])
   assert approx_equal(a.extract_u_iso(), [3,-1,-1])
+  a.scale_adps(2.0)
+  assert approx_equal(a.extract_u_star(),
+    [(-1,-1,-1,-1,-1,-1),
+     (0.02, 0.04, 0.06, -0.012, 0.004, -0.006),
+     (0.06, 0.02, 0.04, -0.004, 0.01,  -0.002)])
+  assert approx_equal(a.extract_u_iso(), [6,-1,-1])
   assert a.count_anisotropic() == 2
   assert a.count_anomalous() == 1
   a.convert_to_isotropic(unit_cell=unit_cell)
