@@ -1,4 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/xray/scatterer.h>
+#include <cctbx/adptbx.h>
+#include <cctbx/uctbx.h>
 
 #include <boost/python/class.hpp>
 #include <boost/python/dict.hpp>
@@ -49,6 +52,26 @@ namespace {
       }
     }
     return result;
+  }
+
+  void
+  set_adps_from_scatterers(
+    af::const_ref<atom> const& atoms,
+    af::const_ref<cctbx::xray::scatterer<> > const& scatterers,
+    cctbx::uctbx::unit_cell const& unit_cell)
+  {
+    namespace adptbx = cctbx::adptbx;
+    for (unsigned i = 0; i < atoms.size(); i++) {
+      if (scatterers[i].flags.use_u_iso()) {
+        atoms[i].data->b = adptbx::u_as_b(scatterers[i].u_iso);
+        atoms[i].uij_erase();
+      } else if (scatterers[i].flags.use_u_aniso()) {
+        atoms[i].data->uij = adptbx::u_star_as_u_cart(unit_cell,
+          scatterers[i].u_star);
+        atoms[i].data->b = adptbx::u_as_b(adptbx::u_cart_as_u_iso(
+          atoms[i].data->uij));
+      }
+    }
   }
 
 } // namespace <anonymous>
@@ -104,7 +127,10 @@ namespace {
         arg("strip_names")=false,
         arg("upper_names")=false,
         arg("convert_stars_to_primes")=false,
-        arg("throw_runtime_error_if_duplicate_keys")=true));
+        arg("throw_runtime_error_if_duplicate_keys")=true))
+      .def("set_adps_from_scatterers", set_adps_from_scatterers, (
+        arg("scatterers"),
+        arg("unit_cell")));
     ;
   }
 
