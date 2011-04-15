@@ -265,16 +265,18 @@ def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
   for i in xrange(i_l,i_r): selection[i] = True
   return select_dict(database_dict = database_dict, selection = selection)
 
-def polygon(params = master_params.extract(), d_min = None,
-            show_histograms = True, extract_gui_data=False):
-  if(params.polygon.database_file_name is None):
+def load_db (file_name=None) :
+  if(file_name is None):
     file_name = libtbx.env.find_in_repositories(
       relative_path = "chem_data/polygon_data/all_mvd.pickle",
       test = os.path.isfile)
-  else:
-    file_name = params.polygon.database_file_name
-    assert os.path.isfile(file_name)
+  assert os.path.isfile(file_name)
   database_dict = easy_pickle.load(file_name)
+  return database_dict
+
+def polygon(params = master_params.extract(), d_min = None,
+            show_histograms = True, extract_gui_data=False):
+  database_dict = load_db(file_name=params.polygon.database_file_name)
   result = leave_all_available_entries(
     database_dict = database_dict,
     keys          = params.polygon.keys_to_show)
