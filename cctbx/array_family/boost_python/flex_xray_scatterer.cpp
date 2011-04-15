@@ -241,6 +241,21 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  void
+  scale_adps(
+    af::ref<scatterer<> > const& self,
+    double scale_factor)
+  {
+    CCTBX_ASSERT(scale_factor > 0);
+    for (std::size_t i =0; i < self.size(); i++) {
+      if (self[i].flags.use_u_iso()) {
+        self[i].u_iso *= scale_factor;
+      } else if (self[i].flags.use_u_aniso()) {
+        self[i].u_star *= scale_factor;
+      }
+    }
+  }
+
   af::shared<scitbx::vec3<double> >
   u_cart_eigenvalues(
     af::const_ref<scatterer<> > const& self,
@@ -604,6 +619,8 @@ namespace scitbx { namespace af { namespace boost_python {
         (arg("unit_cell")))
       .def("extract_u_cart_plus_u_iso", cctbx::xray::extract_u_cart_plus_u_iso,
         (arg("unit_cell")))
+      .def("scale_adps", cctbx::xray::scale_adps,
+        (arg("scale_factor")))
       .def("u_cart_eigenvalues", cctbx::xray::u_cart_eigenvalues,
         (arg("unit_cell")))
       .def("anisotropy", cctbx::xray::anisotropy,
