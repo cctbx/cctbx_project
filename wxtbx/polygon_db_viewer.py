@@ -54,9 +54,47 @@ class ConfigFrame (wx.Frame) :
     plot_btn = wx.Button(p, -1, "Show plot")
     self.Bind(wx.EVT_BUTTON, self.OnPlotCorr, plot_btn)
     bszr.Add(plot_btn, 0, wx.ALIGN_RIGHT|wx.ALL, 5)
+    # histogram controls
+    box2 = wx.StaticBox(p, -1, "Plot histogram")
+    bszr2 = wx.StaticBoxSizer(box2, wx.VERTICAL)
+    szr2.Add(bszr2, 0, STD_FLAGS|wx.EXPAND, 5)
+    grid2 = wx.FlexGridSizer(cols=2)
+    bszr2.Add(grid2, 1, wx.EXPAND)
+    grid2.Add(wx.StaticText(p, -1, "Statistic:"), 0, STD_FLAGS, 5)
+    self.h_chooser = wx.Choice(p, -1, choices=all_captions)
+    grid2.Add(self.h_chooser, 0, STD_FLAGS|wx.EXPAND, 5)
+    grid2.Add(wx.StaticText(p, -1, "Limits:"), 0, STD_FLAGS, 5)
+    inner_szr4 = wx.BoxSizer(wx.HORIZONTAL)
+    grid2.Add(inner_szr4)
+    self.h_min = wx.TextCtrl(p, -1, "", size=(80,-1))
+    inner_szr4.Add(self.h_min, 0, STD_FLAGS, 5)
+    inner_szr4.Add(wx.StaticText(p, -1, "to"), 0, STD_FLAGS, 5)
+    self.h_max = wx.TextCtrl(p, -1, "", size=(80, -1))
+    inner_szr4.Add(self.h_max, 0, STD_FLAGS, 5)
+    grid2.Add(wx.StaticText(p, -1, "Resolution range:"), 0, STD_FLAGS, 5)
+    inner_szr2 = wx.BoxSizer(wx.HORIZONTAL)
+    grid2.Add(inner_szr2)
+    self.d_min = wx.TextCtrl(p, -1, "", size=(80,-1))
+    inner_szr2.Add(self.d_min, 0, STD_FLAGS, 5)
+    inner_szr2.Add(wx.StaticText(p, -1, "to"), 0, STD_FLAGS, 5)
+    self.d_max = wx.TextCtrl(p, -1, "", size=(80,-1))
+    inner_szr2.Add(self.d_max, 0, STD_FLAGS, 5)
+    grid2.Add(wx.StaticText(p, -1, "Number of bins:"), 0, STD_FLAGS, 5)
+    inner_szr3 = wx.BoxSizer(wx.HORIZONTAL)
+    grid2.Add(inner_szr3, 0, STD_FLAGS, 5)
+    self.n_bins = wx.TextCtrl(p, -1, "20", size=(80,-1))
+    inner_szr3.Add(self.n_bins, 0, STD_FLAGS, 5)
+    inner_szr3.Add(wx.StaticText(p, -1, "Reference value:"), 0, STD_FLAGS, 5)
+    self.ref_value = wx.TextCtrl(p, -1, "", size=(80,-1))
+    inner_szr3.Add(self.ref_value, 0, STD_FLAGS, 5)
+    hist_btn = wx.Button(p, -1, "Show histogram")
+    self.Bind(wx.EVT_BUTTON, self.OnPlotHist, hist_btn)
+    bszr2.Add(hist_btn, 0, wx.ALIGN_RIGHT|wx.ALL, 5)
     szr2.Layout()
     szr.Fit(p)
     self.Fit()
+    self.Bind(wx.EVT_CLOSE, self.OnClose, self)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
     self._db = None
 
   def get_db (self) :
@@ -106,10 +144,66 @@ class ConfigFrame (wx.Frame) :
     plt.Show()
 
   def OnPlotHist (self, evt) :
-    pass
+    h_key = all_keys[self.h_chooser.GetSelection()]
+    db = self.get_db()
+    h_values = db[h_key]
+    limits = group_args(d_min=None, d_max=None, h_min=None, h_max=None)
+    for lim in ["d_min", "d_max", "h_min", "h_max"] :
+      lim_txt = getattr(self, lim).GetValue()
+      if (lim_txt != "") :
+        try :
+          lim_val = float(lim_txt)
+        except ValueError :
+          raise Sorry("Invalid resolution '%s' - must be a decimal number." %
+            lim_txt)
+        else :
+          setattr(limits, lim, lim_val)
+    reference_value = None
+    reference_value_txt = self.ref_value.GetValue()
+    if (reference_value_txt != "") :
+      try :
+        reference_value = float(reference_value_txt)
+      except ValueError :
+        raise Sorry("Invalid reference value '%s' - must be a decimal number."%
+          reference_value_txt)
+    try :
+      n_bins = float(self.n_bins.GetValue())
+    except ValueError :
+      raise Sorry("Number of bins must be a decimal number.")
+    data = []
+    print limits.h_min, limits.h_max
+    for (d_, v_) in zip(db['high_resolution'], db[h_key]) :
+      try :
+        d_min = float(d_)
+        value = float(v_)
+      except ValueError : pass
+      else :
+        if   (limits.d_min is not None) and (d_min < limits.d_min) : continue
+        elif (limits.d_max is not None) and (d_min > limits.d_max) : continue
+        elif (limits.h_min is not None) and (value < limits.h_min) : continue
+        elif (limits.h_max is not None) and (value > limits.h_max) : continue
+        else :
+          data.append(value)
+    if (len(data) == 0) :
+      raise Sorry("No points within specified limits.")
+    plt = HistogramFrame(self)
+    plt.show_histogram(
+      data=data,
+      n_bins=n_bins,
+      reference_value=reference_value,
+      xlabel=self.h_chooser.GetStringSelection())
+    plt.Show()
 
   def OnShowTable (self, evt) :
     pass
+
+  def OnClose (self, evt) :
+    self.Destroy()
+
+  def OnDestroy (self, evt) :
+    parent = self.GetParent()
+    if (parent is not None) :
+      parent.plot_frame = None
 
 class CorrPlot (plots.plot_container) :
   def set_plot (self, x, y, x_label, y_label) :
@@ -122,7 +216,8 @@ class CorrPlot (plots.plot_container) :
     ax.grid(True, color="0.5")
     c = flex.linear_correlation(flex.double(x), flex.double(y))
     cc = c.coefficient()
-    ax.set_title("%s vs. %s (CC = %.3f)" % (x_label, y_label, cc))
+    ax.set_title("%s vs. %s (%d structures, CC = %.3f)" % (x_label, y_label,
+      len(x), cc))
     self.canvas.draw()
     #self.parent.statusbar.SetStatusText("Correlation coefficient (CC): %.3f" %
     #  cc)
@@ -136,6 +231,36 @@ class CorrPlotFrame (plots.plot_frame) :
 
   def set_plot (self, *args, **kwds) :
     self.plot_panel.set_plot(*args, **kwds)
+
+class HistogramPlot (plots.histogram) :
+  def show_histogram (self, data, n_bins, reference_value, xlabel) :
+    from scitbx.array_family import flex
+    mean = flex.mean(flex.double(data))
+    p = plots.histogram.show_histogram(self,
+      data=data,
+      n_bins=n_bins,
+      reference_value=reference_value,
+      draw_now=False)
+    p.axvline(mean, color='g', linewidth=2)
+    p.get_axes().set_ylabel("Number of structures")
+    p.get_axes().set_xlabel(xlabel)
+    if (reference_value is not None) :
+      labels = ["Reference value", "Mean (%.3f)" % mean]
+    else :
+      labels = ["Mean (%.3f)" % mean]
+    p.set_title("Distribution of %s (%d structures)" % (xlabel, len(data)))
+    self.figure.legend(p.lines, labels)
+    self.canvas.draw()
+    self.parent.Refresh()
+
+class HistogramFrame (plots.plot_frame) :
+  show_controls_default = False
+  def create_plot_panel (self) :
+    self.statusbar = self.CreateStatusBar()
+    return HistogramPlot(self, figure_size=(12,8))
+
+  def show_histogram (self, *args, **kwds) :
+    self.plot_panel.show_histogram(*args, **kwds)
 
 if (__name__ == "__main__") :
   app = wx.App(0)
