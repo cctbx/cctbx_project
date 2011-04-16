@@ -18,6 +18,12 @@ keys_to_show = ["r_work", "r_free",
   "rama_favored", "rama_allowed", "rama_outliers",
   "rotamer_outliers", "clashscore"]
 
+other_numerical_keys = ["high_resolution", "low_resolution",
+  'adp_min_backbone', 'adp_min_sidechain', 'adp_min_solvent',
+  'adp_max_backbone', 'adp_max_sidechain', 'adp_max_solvent',
+  'adp_mean_backbone', 'adp_mean_sidechain', 'adp_mean_solvent',
+  'unit_cell_volume']
+
 default_keys = ["r_work", "r_free", "adp_mean_all", "bond_rmsd", "angle_rmsd",
   "clashscore"]
 
@@ -31,6 +37,12 @@ key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
   "RMSD(chirality)", "Chirality max.",
   "Ramachandran favored", "Ramachandran allowed", "Ramachandran outliers",
   "Rotamer outliers", "Clashscore"]
+
+other_captions = ["High resolution", "Low resolution",
+  "Min. backbone ADP", "Min. sidechain ADP", "Min. solvent ADP",
+  "Max. backbone ADP", "Max. sidechain ADP", "Max. solvent ADP",
+  "Mean. backbone ADP", "Mean. sidechain ADP", "Mean. solvent ADP",
+  "Unit cell volume"]
 
 assert len(keys_to_show) == len(key_captions)
 _selected = []
