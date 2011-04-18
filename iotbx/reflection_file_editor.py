@@ -559,8 +559,9 @@ class process_arrays (object) :
           r_free_flags = new_array
         else :
           r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
-        fraction_free = (get_r_free_as_bool(r_free_flags, test_flag_value).data().count(True) /
-                         r_free_flags.data().size())
+        r_free_as_bool = get_r_free_as_bool(r_free_flags,test_flag_value).data()
+        assert isinstance(r_free_as_bool, flex.bool)
+        fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
         print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
         if complete_set is not None :
           missing_set = complete_set.lone_set(r_free_flags.map_to_asu())
@@ -732,10 +733,12 @@ def get_r_free_as_bool (miller_array, test_flag_value=0) :
   if miller_array.is_bool_array() :
     return miller_array
   else :
+    from scitbx.array_family import flex
+    assert isinstance(test_flag_value, int)
     assert miller_array.is_integer_array()
-    return miller_array.customized_copy(
-      data=miller_array.data() == test_flag_value,
-      sigmas=None)
+    new_data = miller_array.data() == test_flag_value
+    assert isinstance(new_data, flex.bool)
+    return miller_array.customized_copy(data=new_data, sigmas=None)
 
 def get_best_resolution (miller_arrays) :
   best_d_min = None
