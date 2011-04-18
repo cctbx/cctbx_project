@@ -610,6 +610,38 @@ $number of fixed hinges: None
 >number of loop edge bendings: 5
 >number of fixed hinges: None
 """)
+  #
+  sio = StringIO()
+  assert tt.cluster_manager.show_tree(out=sio) is tt.cluster_manager
+  assert not show_diff(sio.getvalue(), """\
+# clusters are in square brackets []
+# hinge edges are in parentheses ()
+# (0, 1) -> [2, 3] means that the cluster with vertices [2, 3]
+#   rotates around the axis through vertices (0, 1)
+# integers are vertex indices (counting from 0)
+[2, 3, 4, 11]
+  (3, 2) -> [1]
+    (2, 1) -> [0]
+      (1, 0) -> [10]
+  (3, 4) -> [5]
+    (4, 5) -> [6]
+      (5, 6) -> [7]
+        (6, 7) -> [8]
+          (7, 8) -> [9]
+""")
+  sio = StringIO()
+  assert tt.show_tree(out=sio, prefix="=-", header=False) is tt
+  assert not show_diff(sio.getvalue(), """\
+=-[2, 3, 4, 11]
+=-  (3, 2) -> [1]
+=-    (2, 1) -> [0]
+=-      (1, 0) -> [10]
+=-  (3, 4) -> [5]
+=-    (4, 5) -> [6]
+=-      (5, 6) -> [7]
+=-        (6, 7) -> [8]
+=-          (7, 8) -> [9]
+""")
 
 def exercise_external_clusters(n_trials=10):
   # copy of phenix_regression/tardy_action/gly_gly_box.pdb:

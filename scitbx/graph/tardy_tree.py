@@ -71,6 +71,21 @@ class cluster_manager(slots_getstate_setstate):
     print >> out, prefix+"number of fixed hinges:", xlen(O.fixed_hinges)
     return O
 
+  def show_tree(O, out=None, prefix="", header=True):
+    import sys
+    if (out is None): out = sys.stdout
+    if (header):
+      for line in [
+            "# clusters are in square brackets []",
+            "# hinge edges are in parentheses ()",
+            "# (0, 1) -> [2, 3] means that the cluster with vertices [2, 3]",
+            "#   rotates around the axis through vertices (0, 1)",
+            "# integers are vertex indices (counting from 0)"]:
+        print >> out, prefix + line
+    for line in O.hinge_edges_and_clusters_as_indented_strings():
+      print >> out, prefix + line
+    return O
+
   def fixed_vertices_given_cluster_index_dict(O):
     result = {}
     ci = O.cluster_indices
@@ -401,6 +416,32 @@ class cluster_manager(slots_getstate_setstate):
             ci[i] = ic
     O.fixed_hinges.sort()
 
+  def root_distances(O):
+    assert O.hinge_edges is not None
+    assert len(O.hinge_edges) == len(O.clusters)
+    result = [None] * len(O.clusters)
+    for ic,cl in enumerate(O.clusters):
+      hi,hj = O.hinge_edges[ic]
+      if (hi == -1):
+        result[ic] = 0
+      else:
+        jc = O.cluster_indices[hj]
+        assert result[jc] is not None
+        result[ic] = result[jc] + 1
+    return result
+
+  def hinge_edges_and_clusters_as_indented_strings(O):
+    result = []
+    root_dists = O.root_distances()
+    for ic,cl in enumerate(O.clusters):
+      he = O.hinge_edges[ic]
+      root_dist = root_dists[ic]
+      if (root_dist == 0):
+        result.append(str(cl))
+      else:
+        result.append("%s%s -> %s" % ("  "*root_dist, str(he), str(cl)))
+    return result
+
   def edge_classifier(O):
     return edge_classifier(cluster_manager=O)
 
@@ -540,6 +581,10 @@ class construct(slots_getstate_setstate):
       for i,j in cm.fixed_hinges:
         print >> out, prefix+"tardy fixed hinge:", vertex_labels[i]
         print >> out, prefix+"                  ", vertex_labels[j]
+    return O
+
+  def show_tree(O, out=None, prefix="", header=True):
+    O.cluster_manager.show_tree(out=out, prefix=prefix, header=header)
     return O
 
   def extract_edge_list(O):
