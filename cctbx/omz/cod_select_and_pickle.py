@@ -50,10 +50,27 @@ class cod_data(object):
     print "model_file:", model_file
     refl_cif = iotbx.cif.reader(file_path=refl_file)
     model_cif = iotbx.cif.reader(file_path=model_file)
-    for cif_block in model_cif.model().values():
-      if (cif_block.get("_cod_error_flag") == "retracted"):
-        print "Retracted COD entry:", cod_id
-        return
+    for cif_obj in [model_cif, refl_cif]:
+      for cif_block in cif_obj.model().values():
+        value = cif_block.get("_cod_error_flag")
+        if (value in ["errors", "retracted"]):
+          print "SKIPPING: _cod_error_flag %s: %s" % (value, cod_id)
+          return
+        keys = set(cif_block.keys())
+        if (len(set([
+              "_space_group_symop_ssg_operation_algebraic",
+              "_space_group_ssg_name"]).intersection(keys)) != 0):
+          print "SKIPPING: COD entry with super-space group:", cod_id
+          return
+        if (len(set([
+              "_refln_index_m",
+              "_refln_index_m_1"]).intersection(keys)) != 0):
+          print "SKIPPING: COD entry with _refln_index_m:", cod_id
+          return
+        for key in keys:
+          if (key.startswith("_pd_")):
+            print "SKIPPING: COD entry with powder data:", cod_id
+            return
     from_coordinate_files = []
     from_reflection_files = []
     def get_cs(cif, buffer):
