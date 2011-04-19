@@ -213,7 +213,9 @@ mmtbx.simulate_low_res_data
       parameter_scope="simulate_data.r_free_flags",
       disable_suitability_test=False)
     r_free = r_free_raw.customized_copy(data=r_free_raw.data() == flag_value)
-    r_free = r_free.common_set(F)
+    r_free = r_free.map_to_asu().common_set(F)
+    print >> out, "  Using R-free flags from %s:%s" % (rfree_in.file_name,
+      r_free_raw.info().label_string())
     if (F.data().size() != r_free.data().size()) :
       raise Sorry(("The specified R-free flags in %s are incomplete.  Please "+
         "generate a complete set to the desired resolution limit if you "+
@@ -237,8 +239,7 @@ mmtbx.simulate_low_res_data
         f_obs=F_out,
         params=params.generate_noise,
         wilson_b=iso_scale.b_wilson,
-        return_as_amplitudes=False,
-        out=out)
+        return_as_amplitudes=False)
     apply_sigma_noise(i_obs)
     F_out = i_obs.f_sq_as_f()
   make_header("Done processing", out=sys.stdout)
@@ -453,6 +454,7 @@ def from_hkl (hkl_in, params, out) :
 def truncate_data (F, params, out) :
   from scitbx.array_family import flex
   if (params.truncate.add_b_iso is not None) :
+    assert (params.truncate.add_b_iso > 0)
     print >> out, "  Applying isotropic B-factor of %.2f A^2" % (
       params.truncate.add_b_iso)
     F = add_b_iso(f_obs=F, b_iso=params.truncate.add_b_iso)
@@ -476,7 +478,6 @@ def truncate_data (F, params, out) :
 
 def add_b_iso (f_obs, b_iso) :
   from scitbx.array_family import flex
-  assert (b_iso > 0)
   d_min_sq = flex.pow2(f_obs.d_spacings().data())
   scale = flex.exp(- b_iso / d_min_sq / 4.0)
   if (f_obs.sigmas() is not None) :
@@ -603,7 +604,7 @@ def create_sigmas (f_obs, params, wilson_b=None, return_as_amplitudes=False) :
   assert (f_obs.sigmas() is None)
   from scitbx.array_family import flex
   i_obs = f_obs.f_as_f_sq()
-  i_norm = i_obs.data() / flex.max(i_obs.data())
+  i_norm = i_obs.data() / flex.mean(i_obs.data())
   profiler = profile_sigma_generator(
     mtz_file=params.noise_profile_file,
     pdb_file=params.profile_model_file,
@@ -680,14 +681,14 @@ class profile_sigma_generator (object) :
         n_bases=n_bases)
       # TODO anisotropic?
       print >> out, "  Scaling statistics for unmodified reference data:"
-      show_b_factor_info(iso_scale, aniso_scale)
+      show_b_factor_info(iso_scale, aniso_scale, out=out)
       delta_b = wilson_b - iso_scale.b_wilson
       f_obs = add_b_iso(f_obs, delta_b)
       i_obs = f_obs.f_as_f_sq()
-    i_max = flex.max(i_obs.data())
+    i_mean = flex.max(i_obs.data())
     i_norm = i_obs.customized_copy(
-      data=i_obs.data() / i_max,
-      sigmas=i_obs.sigmas() / i_max)
+      data=i_obs.data() / i_mean,
+      sigmas=i_obs.sigmas() / i_mean)
     i_norm.setup_binner(n_bins=20)
     i_over_sigma = i_obs.data() / i_obs.sigmas()
     for i_bin in i_norm.binner().range_used() :
@@ -711,8 +712,9 @@ class shell_intensity_bins (object) :
     for n in range(n_bins) :
       bin_sel = self._binner.get_bin_selection(n)
       sn_bin = i_over_sigma.select(bin_sel)
-      self._sn_bins.append(sn_bin)
       i_bin = i_norm.select(bin_sel)
+      assert (sn_bin.size() == i_bin.size())
+      self._sn_bins.append(sn_bin)
       self._i_bins.append(i_bin)
 
   def get_i_over_sigma (self, I) :
@@ -720,9 +722,9 @@ class shell_intensity_bins (object) :
     if (I == 0) : return 1 # FIXME add French-Wilson before getting here
     k = self._binner.get_bin(I)
     sn_profile = self._sn_bins[k]
-    for i_ref in self._i_bins[k] :
+    for j, i_ref in enumerate(self._i_bins[k]) :
       if (i_ref >= I) :
-        return sn_profile[k]
+        return sn_profile[j]
     return sn_profile[-1]
 
 class bin_by_intensity (object) :
