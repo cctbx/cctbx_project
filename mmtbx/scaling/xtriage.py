@@ -194,6 +194,9 @@ input {
             I/sigI greater than isigi_cut are more than
             completeness_cut complete'''
        }
+       apply_basic_filters_prior_to_twin_analysis=True
+         .type=bool
+         .help="Keep data cutoffs from the basic_analyses module (I/sigma,Wilson scaling,Anisotropy) when twin stats are computed."
 
      }
    }
@@ -427,9 +430,10 @@ class xtriage_analyses(object):
     # outliers are removed, make a new copy
     try:
       ma = self.basic_results.miller_array
-      self.miller_obs = self.basic_results.miller_array.deep_copy()
-      self.normalised_array = self.basic_results.normalised_miller.deep_copy()
-      self.params =  self.basic_results.phil_object
+      if self.params.scaling.input.parameters.misc_twin_parameters.apply_basic_filters_prior_to_twin_analysis:
+        self.miller_obs = self.basic_results.miller_array.deep_copy()
+        self.normalised_array = self.basic_results.normalised_miller.deep_copy()
+        self.params =  self.basic_results.phil_object
     except AttributeError, e:
       print >> self.text_out, "*** ERROR ***"
       print >> self.text_out, str(e)
@@ -466,7 +470,7 @@ class xtriage_analyses(object):
     self.twin_results = None
     if(self.miller_obs.select_acentric().as_intensity_array().indices().size()>0):
       self.twin_results = twin_analyses.twin_analyses(
-        self.miller_obs,
+        miller_array=self.miller_obs,
         d_star_sq_low_limit=d_star_sq_low_limit,
         d_star_sq_high_limit=d_star_sq_high_limit,
         normalise=True,
