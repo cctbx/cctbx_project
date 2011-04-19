@@ -3,6 +3,7 @@ import iotbx.phil
 import libtbx.load_env
 import libtbx.phil.command_line
 from libtbx.str_utils import make_header
+from libtbx.utils import Sorry
 from libtbx import easy_pickle
 import random
 import math
@@ -42,6 +43,9 @@ simulate_data {
       .type = float
       .help = Percent of reflections to flag for R-free (ignored if already \
         available).
+    missing_flags = *extend discard
+      .type = choice(multi=False)
+      .help = Handling of reflections for which R-free flags are not present.
   }
   crystal_symmetry {
     space_group = None
@@ -203,24 +207,7 @@ mmtbx.simulate_low_res_data
     make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
     F, r_free = from_pdb(pdb_in, pdb_hierarchy, params, out=out)
   if (params.r_free_flags.file_name is not None) :
-    rfree_in = file_reader.any_file(params.r_free_flags.file_name)
-    rfree_in.assert_file_type("hkl")
-    hkl_server = rfree_in.file_server
-    r_free_raw, flag_value = hkl_server.get_r_free_flags(
-      file_name=None,
-      label=params.r_free_flags.label,
-      test_flag_value=None,
-      parameter_scope="simulate_data.r_free_flags",
-      disable_suitability_test=False)
-    r_free = r_free_raw.customized_copy(data=r_free_raw.data() == flag_value)
-    r_free = r_free.map_to_asu().common_set(F)
-    print >> out, "  Using R-free flags from %s:%s" % (rfree_in.file_name,
-      r_free_raw.info().label_string())
-    if (F.data().size() != r_free.data().size()) :
-      raise Sorry(("The specified R-free flags in %s are incomplete.  Please "+
-        "generate a complete set to the desired resolution limit if you "+
-        "want to use these flags with synthetic data.") %
-          params.r_free_flags.file_name)
+    F, r_free = import_r_free_flags(F, params.r_free_flags, out)
   make_header("Applying low-resolution filtering", out=sys.stdout)
   print >> out, "  Final resolution: %.2f A" % params.d_min
   n_residues, n_bases = None, None
@@ -450,6 +437,40 @@ def from_hkl (hkl_in, params, out) :
   if (r_free is not None) :
     r_free = r_free.common_set(f_obs)
   return f_obs, r_free
+
+def import_r_free_flags (F, params, out) :
+  from iotbx import file_reader
+  rfree_in = file_reader.any_file(params.file_name)
+  rfree_in.assert_file_type("hkl")
+  hkl_server = rfree_in.file_server
+  r_free_raw, flag_value = hkl_server.get_r_free_flags(
+    file_name=None,
+    label=params.label,
+    test_flag_value=None,
+    parameter_scope="simulate_data.r_free_flags",
+    disable_suitability_test=False)
+  r_free = r_free_raw.customized_copy(data=r_free_raw.data() == flag_value)
+  r_free = r_free.map_to_asu().common_set(F)
+  print >> out, "  Using R-free flags from %s:%s" % (rfree_in.file_name,
+    r_free_raw.info().label_string())
+  if (F.data().size() != r_free.data().size()) :
+    n_missing = F.data().size() - r_free.data().size()
+    assert (n_missing > 0)
+    if (params.missing_flags == "discard") :
+      print >> out, "    discarding %d amplitudes without R-free flags" % \
+        n_missing
+      F = F.common_set(r_free)
+    else :
+      print >> out, "    generating missing R-free flags for %d reflections" %\
+        n_missing
+      missing_set = F.lone_set(r_free)
+      missing_flags = missing_set.generate_r_free_flags(
+        fraction=r_free.data().count(True) / r_free.data().size(),
+        max_free=None,
+        use_lattice_symmetry=True)
+      r_free = r_free.concatenate(other=missing_flags)
+  assert (F.data().size() == r_free.data().size())
+  return F, r_free
 
 def truncate_data (F, params, out) :
   from scitbx.array_family import flex
