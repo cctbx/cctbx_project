@@ -126,8 +126,14 @@ renumber_residues = None
   .style = noauto
 truncate_to_polyala = None
   .type = bool
-  .help = Truncate a model to poly-Ala.
+  .help = Truncate a model to poly-Ala.  If True, other options will be \
+    ignored.
   .style = noauto
+remove_alt_confs = False
+  .type = bool
+  .help = Deletes atoms whose altloc identifier is not blank or 'A', and \
+    resets the occupancies of the remaining atoms to 1.0.  If True, other \
+    options will be ignored.
 set_chemical_element_simple_if_necessary = None
   .type = bool
   .help = Make a simple guess about what the chemical element is (based on \
@@ -163,7 +169,6 @@ modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
 master_params = iotbx.phil.parse("""\
 modify
-  .caption = These options will only be processed if you selected "Modify atomic coordinates or properties" as the action.
   .short_caption = Modify starting model
   .style = menu_item scrolled auto_align
 {
@@ -210,6 +215,15 @@ pdb_interpretation
 {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
 }
+regularize_geometry = False
+  .type = bool
+  .short_caption = Perform geometry minimization
+  .style = bold
+simple_dynamics = False
+  .type = bool
+  .short_caption = Perform crude dynamics
+  .help = Shake atoms while maintaining proper geometry.  Not intended to be \
+    physically realistic, but useful for testing purposes.
 geometry_minimization
   .short_caption = Geometry minimization
   .caption = Note: these options will only be processed if you select \
@@ -218,10 +232,11 @@ geometry_minimization
 {
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
-regularize_geometry = False
-  .type = bool
-  .short_caption = Perform geometry minimization
-  .style = bold
+cartesian_dynamics
+  .short_caption = Cartesian dynamics
+{
+  include scope mmtbx.dynamics.cartesian_dynamics.master_params
+}
 include scope libtbx.phil.interface.tracking_params
 """%modify_params_str, process_includes=True)
 
@@ -536,6 +551,26 @@ def truncate_to_poly_ala(hierarchy):
               if (atom.name not in ala_atom_names):
                 ag.remove_atom(atom=atom)
 
+def remove_alt_confs (hierarchy) :
+  for model in hierarchy.models() :
+    for chain in model.chains() :
+      for residue_group in chain.residue_groups() :
+        atom_groups = residue_group.atom_groups()
+        assert (len(atom_groups) > 0)
+        #if (len(atom_groups) == 1) : continue
+        for atom_group in atom_groups :
+          if (not atom_group.altloc in ["", "A"]) :
+            residue_group.remove_atom_group(atom_group=atom_group)
+          else :
+            atom_group.altloc = ""
+        if (len(residue_group.atom_groups()) == 0) :
+          chain.remove_residue_group(residue_group=residue_group)
+      if (len(chain.residue_groups()) == 0) :
+        model.remove_chain(chain=chain)
+  atoms = hierarchy.atoms()
+  new_occ = flex.double(atoms.size(), 1.0)
+  atoms.set_occ(new_occ)
+
 def renumber_residues(pdb_hierarchy):
   for model in pdb_hierarchy.models():
     for chain in model.chains():
@@ -568,6 +603,16 @@ def run(args, command_name="phenix.pdbtools"):
     utils.print_header("Truncating to poly-Ala", out = log)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     truncate_to_poly_ala(hierarchy = pdb_hierarchy)
+    pdb_hierarchy.write_pdb_file(file_name = ofn,
+      crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
+    output_files.append(ofn)
+    return output_files
+### Remove alt. confs.
+  if (command_line_interpreter.params.modify.remove_alt_confs) :
+    utils.print_header("Removing alternate conformations", out = log)
+    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
+    remove_alt_confs(hierarchy = pdb_hierarchy)
+    print >> log, "All occupancies reset to 1.0."
     pdb_hierarchy.write_pdb_file(file_name = ofn,
       crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
     output_files.append(ofn)
@@ -628,7 +673,8 @@ def run(args, command_name="phenix.pdbtools"):
   master_params.format(command_line_interpreter.params).show(out = log)
 ### run geometry regularization
   if((command_line_interpreter.command_line.options.geometry_regularization) or
-     (command_line_interpreter.params.regularize_geometry)) :
+     (command_line_interpreter.params.regularize_geometry) or
+     (command_line_interpreter.params.simple_dynamics)) :
     utils.print_header("Geometry regularization", out = log)
     from mmtbx.command_line import geometry_minimization
     sites_cart = geometry_minimization.run(
@@ -636,6 +682,32 @@ def run(args, command_name="phenix.pdbtools"):
       processed_pdb_file = command_line_interpreter.processed_pdb_file,
       log = log)
     xray_structure = xray_structure.replace_sites_cart(new_sites = sites_cart)
+### simple cartesian dynamics
+  if (command_line_interpreter.params.simple_dynamics) :
+    utils.print_header("Simple cartesian dynamics", out=log)
+    command_line_interpreter.processed_pdb_file.log = None # to disable output
+    geometry = command_line_interpreter.processed_pdb_file.\
+      geometry_restraints_manager(show_energies = True)
+    restraints_manager = mmtbx.restraints.manager(
+      geometry = geometry,
+      normalization = True)
+    sites_cart_start = xray_structure.sites_cart().deep_copy()
+    from mmtbx.dynamics import cartesian_dynamics
+    dyna_params = command_line_interpreter.params.cartesian_dynamics
+    cartesian_dynamics.cartesian_dynamics(
+      structure=xray_structure,
+      restraints_manager=restraints_manager,
+      temperature=dyna_params.temperature,
+      n_steps=dyna_params.number_of_steps,
+      time_step=dyna_params.time_step,
+      initial_velocities_zero_fraction=dyna_params.initial_velocities_zero_fraction,
+      n_print=dyna_params.n_print,
+      log=log,
+      verbose=1)#dyna_params.verbose)
+    sites_cart_end = xray_structure.sites_cart()
+    rmsd = sites_cart_end.rms_difference(sites_cart_start)
+    print >> log, ""
+    print >> log, "RMSD from starting structure: %.3f" % rmsd
 ### set_chemical_element_simple_if_necessary
   if(command_line_interpreter.params.modify.set_chemical_element_simple_if_necessary):
     xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
