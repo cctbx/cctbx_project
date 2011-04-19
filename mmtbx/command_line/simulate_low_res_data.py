@@ -31,6 +31,8 @@ simulate_data {
     .type = int
   output_file = None
     .type = path
+  write_modified_pdb = True
+    .type = bool
   r_free_flags {
     file_name = None
       .type = path
@@ -85,6 +87,10 @@ simulate_data {
       .type = floats(size=6)
       .help = Anisotropic B-factor to be added to data.  Severely anisotropic \
         data might have an anisotropic B of 80,80,200,0,0,0.
+    apply_b_to_sigmas = True
+      .type = bool
+      .help = If True, the B-factor scaling will be done on experimental \
+        sigmas (if present) as well as amplitudes.
     add_random_error_percent = None
       .type = float
       .help = Adds random noise as a percentage of amplitude, evenly across \
@@ -261,7 +267,7 @@ mmtbx.simulate_low_res_data
     params.output_file = base_name + "_low_res.mtz"
   mtz_object.write(file_name=params.output_file)
   print >> out, "  Wrote %s" % params.output_file
-  if (pdb_hierarchy is not None) :
+  if (pdb_hierarchy is not None) and (params.write_modified_pdb) :
     pdb_out = os.path.splitext(params.output_file)[0] + ".pdb"
     f = open(pdb_out, "w")
     f.write("%s\n" % "\n".join(pdb_in.crystallographic_section()))
@@ -307,18 +313,8 @@ def from_pdb (pdb_in, pdb_hierarchy, params, out) :
           model.remove_chain(chain=chain)
   if (params.modify_pdb.remove_alt_confs) :
     print >> out, "  Removing all alternate conformations and resetting occupancies..."
-    for model in pdb_hierarchy.models() :
-      for chain in model.chains() :
-        for residue_group in chain.residue_groups() :
-          atom_groups = residue_group.atom_groups()
-          assert (len(atom_groups) > 0)
-          if (len(atom_groups) == 1) : continue
-          for atom_group in atom_groups[1:] :
-            residue_group.remove_atom_group(atom_group=atom_group)
-          atom_groups[0].altloc = ""
-    atoms = pdb_hierarchy.atoms()
-    new_occ = flex.double(atoms.size(), 1.0)
-    atoms.set_occ(new_occ)
+    from mmtbx import pdbtools
+    pdbtools.remove_alt_confs(hierarchy=pdb_hierarchy)
   xray_structure = pdb_in.xray_structure_simple(
     crystal_symmetry=apply_symm)
   sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
@@ -478,10 +474,12 @@ def truncate_data (F, params, out) :
     assert (params.truncate.add_b_iso > 0)
     print >> out, "  Applying isotropic B-factor of %.2f A^2" % (
       params.truncate.add_b_iso)
-    F = add_b_iso(f_obs=F, b_iso=params.truncate.add_b_iso)
+    F = add_b_iso(f_obs=F, b_iso=params.truncate.add_b_iso,
+      apply_to_sigmas=params.truncate.apply_b_to_sigmas)
   if (params.truncate.add_b_aniso != [0,0,0,0,0,0]) :
     print >> out, "  Adding anisotropy..."
-    F = add_b_aniso(f_obs=F, b_cart=params.truncate.add_b_aniso)
+    F = add_b_aniso(f_obs=F, b_cart=params.truncate.add_b_aniso,
+      apply_to_sigmas=params.truncate.apply_b_to_sigmas)
   if (params.truncate.add_random_error_percent is not None) :
     print >> out, "  Adding random error as percent of amplitude..."
     F = add_random_error(f_obs=F,
@@ -497,18 +495,18 @@ def truncate_data (F, params, out) :
     print >> out, "    removed %d reflections (out of %d)" %(delta_n_hkl,n_hkl)
   return F
 
-def add_b_iso (f_obs, b_iso) :
+def add_b_iso (f_obs, b_iso, apply_to_sigmas=True) :
   from scitbx.array_family import flex
   d_min_sq = flex.pow2(f_obs.d_spacings().data())
   scale = flex.exp(- b_iso / d_min_sq / 4.0)
-  if (f_obs.sigmas() is not None) :
+  if (f_obs.sigmas() is not None) and (apply_to_sigmas) :
     return f_obs.customized_copy(
       data=f_obs.data() * scale,
       sigmas=f_obs.sigmas() * scale)
   else :
     return f_obs.customized_copy(data=f_obs.data() * scale)
 
-def add_b_aniso (f_obs, b_cart) :
+def add_b_aniso (f_obs, b_cart, apply_to_sigmas=True) :
   from cctbx import adptbx
   from scitbx.array_family import flex
   u_star = adptbx.u_cart_as_u_star(
@@ -516,7 +514,7 @@ def add_b_aniso (f_obs, b_cart) :
   scale = flex.double()
   for i, hkl in enumerate(f_obs.indices()) :
     scale.append(f_aniso_one_h(hkl, u_star))
-  if (f_obs.sigmas() is not None) :
+  if (f_obs.sigmas() is not None) and (apply_to_sigmas) :
     return f_obs.customized_copy(
       data=f_obs.data() * scale,
       sigmas=f_obs.sigmas() * scale)
