@@ -249,8 +249,8 @@ class manager(object):
         "positive and non-zero.")
     assert self.mask_params.grid_step_factor > 0
     step = self.miller_array.d_min()/self.mask_params.grid_step_factor
-    if(step < 0.15): step = 0.15
-    step = min(0.8, step)
+    if(step < 0.15): step = 0.15 # XXX arbitrary, see also masks/atom_mask.cpp
+    step = min(0.8, step) # XXX arbitrary, can lead to very large maps
     return step
 
   def shell_f_masks(self, xray_structure = None, force_update=False):
