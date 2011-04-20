@@ -250,6 +250,14 @@ namespace {
           (sh_dbl_t(w_t::*)(cr_mix_t const&, double) const)
             &w_t::sin_two_theta, (
               arg("miller_indices"), arg("wavelength")))
+        .def("reciprocal_space_vector",
+          (scitbx::vec3<double>(w_t::*)(mix_t const&) const)
+            &w_t::reciprocal_space_vector, (
+              arg("miller_index")))
+        .def("reciprocal_space_vector",
+          (af::shared<scitbx::vec3<double> >(w_t::*)(cr_mix_t const&) const)
+            &w_t::reciprocal_space_vector, (
+              arg("miller_indices")))
         .def("bases_mean_square_difference",
           &w_t::bases_mean_square_difference,
             (arg("other")))
