@@ -336,6 +336,12 @@ def exercise_miller_index_methods():
     assert approx_equal(
       pow(sin(u.two_theta(miller_indices[i], wavelength)), 2),
       v)
+  u = uctbx.unit_cell((2,3,5))
+  rcv = u.reciprocal_space_vector((1,1,1))
+  assert approx_equal(rcv, (0.5, 1/3., 0.2))
+  rcvs = u.reciprocal_space_vector(miller_indices)
+  assert approx_equal(rcvs,
+    [(0.5, 2/3., 0.6), (-1.5, 4/3., -1.0), (1.0, -1.0, 0.8)])
 
 def exercise_compare():
   u1 = uctbx.unit_cell((3,2,5,90,100,90))

@@ -1017,6 +1017,30 @@ namespace cctbx {
         return result;
       }
 
+      template <typename NumType>
+      scitbx::vec3<double>
+      reciprocal_space_vector(
+        miller::index<NumType> const& miller_index) const
+      {
+        uc_mat3 const& frac_mat = fractionalization_matrix();
+        scitbx::vec3<double> rcv = frac_mat * miller_index;
+        return rcv;
+      }
+
+      template <typename NumType>
+      af::shared<scitbx::vec3<double> >
+      reciprocal_space_vector(
+        af::const_ref<miller::index<NumType> > const& miller_indices) const
+      {
+        af::shared<scitbx::vec3<double> > result(
+          miller_indices.size(),
+          af::init_functor_null<scitbx::vec3<double> >());
+        for (std::size_t i = 0; i < miller_indices.size(); i++) {
+          result[i] = reciprocal_space_vector(miller_indices[i]);
+        }
+        return result;
+      }
+
       //! Simple measure for the similarity of two unit cells.
       /*! The result is the mean of the squared differences between
           basis vectors. The basis vectors are defined by the columns
