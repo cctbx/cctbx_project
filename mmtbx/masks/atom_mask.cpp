@@ -589,9 +589,8 @@ namespace mmtbx { namespace masks {
   {
     MMTBX_ASSERT( factor > 0.0 );
     double step = resolution/factor;
-    if(step < 0.15)
-      step = 0.15;
-    step = std::min(0.8, step);
+    if(step < 0.15) step = 0.15; // XXX arbitrary, see also masks.py
+    step = std::min(0.8, step); // XXX arbitrary, can lead to very large maps
     const double d_min = 2.0*step, resolution_factor = 0.5;
     const cctbx::sgtbx::search_symmetry_flags use_all(
         true, // use_space_group_symmetry
