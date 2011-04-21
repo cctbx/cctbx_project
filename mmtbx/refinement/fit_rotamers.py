@@ -733,7 +733,7 @@ def validate_changes(fmodel, residue_rsr_monitor, validate_method, log):
   print >> log, fmt2
   get_class = iotbx.pdb.common_residue_names_get_class
   for rm in residue_rsr_monitor:
-    residue_name = rm.residue_id_str.strip().split()[0][1:]
+    residue_name = rm.residue_id_str[1:4]
     if(get_class(name=residue_name) == "common_amino_acid"):
       sites_cart_residue = sites_cart.select(rm.selection)
       t1 = target(sites_cart_residue, unit_cell, target_map_data)
