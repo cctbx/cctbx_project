@@ -8,6 +8,34 @@ from cStringIO import StringIO
 import copy
 import sys, os
 
+def exercise_string_quote_and_tokenize():
+  n_ok = [0]
+  for quote_token in ["'", '"', "'''", '"""']:
+    def check(string):
+      input_string = phil.tokenizer.quote_python_str(
+        quote_token=quote_token, string=string)
+      words = phil.tokenize_value_literal(
+        input_string=input_string, source_info="test_string")
+      assert len(words) == 1
+      word = words[0]
+      assert word.quote_token == quote_token
+      assert word.value == string
+      assert str(word) == input_string
+      n_ok[0] += 1
+    ch_set = ["", "'", '"', "\n", "x"]
+    for c0 in ch_set:
+      check(string=c0)
+      for c1 in ch_set:
+        c01 = c0 + c1
+        check(string=c01)
+        for c2 in ch_set:
+          c012 = c01 + c2
+          check(string=c012)
+          for c3 in ch_set:
+            c0123 = c012 + c3
+            check(string=c0123)
+  assert n_ok[0] == 3120
+
 class recycle(object):
 
   def __init__(self,
@@ -3528,6 +3556,43 @@ b=008.34 # just to be sure (eval works for this)
   extracted = parameters.extract()
   assert extracted.a == 8
   assert extracted.b == 8.34
+  #
+  master = phil.parse(input_string="""\
+a=None
+  .type=qstr
+b=Auto
+  .type=qstr
+c= 1  2
+  .type=qstr
+ds="1"'2'
+  .type=str
+dq="1"'2'
+  .type=qstr
+es="1\\""'2\\"\\''
+  .type=str
+eq="1\\""'2\\"\\''
+  .type=qstr
+""")
+  work = master
+  for i_cycle in xrange(2):
+    ex = work.extract()
+    assert ex.a is None
+    assert ex.b is Auto
+    assert ex.c == "1 2"
+    assert ex.ds == "1 2"
+    assert ex.dq == """ "1" '2' """[1:-1]
+    assert ex.es == """ 1" 2\\"' """[1:-1]
+    assert ex.eq == """ "1\\"" '2\\\\"\\'' """[1:-1]
+    work = master.format(ex)
+    assert not show_diff(work.as_str(), """\
+a = None
+b = Auto
+c = 1 2
+ds = "1 2"
+dq = "1" '2'
+es = "1\\" 2\\\\\\"'"
+eq = "1\\"" '2\\\\"\\''
+""")
 
 def exercise_format():
   parameters = phil.parse(input_string="""\
@@ -5346,6 +5411,7 @@ class scope_call_class_object(object):
     self.keyword_args = keyword_args
 
 def exercise():
+  exercise_string_quote_and_tokenize()
   exercise_parse_and_show()
   exercise_import_converters()
   exercise_syntax_errors()

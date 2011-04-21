@@ -1,5 +1,13 @@
 from libtbx import slots_getstate_setstate
 
+def escape_python_str(quote_char, string):
+  return string.replace("\\", "\\\\").replace(quote_char, "\\"+quote_char)
+
+def quote_python_str(quote_token, string):
+  return quote_token \
+       + escape_python_str(quote_char=quote_token[0], string=string) \
+       + quote_token
+
 class character_iterator(slots_getstate_setstate):
 
   __slots__ = [
@@ -118,11 +126,7 @@ class word(slots_getstate_setstate):
   def __str__(O):
     if (O.quote_token is None):
       return O.value
-    return O.quote_token \
-         + O.value \
-            .replace("\\", "\\\\") \
-            .replace(O.quote_token, "\\"+O.quote_token) \
-         + O.quote_token
+    return quote_python_str(quote_token=O.quote_token, string=O.value)
 
   def where(O):
     return where(O.source_info, O.line_number)
@@ -213,7 +217,7 @@ class word_iterator(slots_getstate_setstate):
           if (c is None or c == "\n"): break
       elif (c in ['"', "'"]):
         quote_char = c
-        word_value = ""
+        word_value = []
         word_line_number = char_iter.line_number
         if (char_iter.look_ahead(n=2) == quote_char+quote_char):
           char_iter.skip_ahead_1()
@@ -236,19 +240,19 @@ class word_iterator(slots_getstate_setstate):
               c = char_iter.next()
             elif (char_iter.look_ahead_1() == "\n"):
               char_iter.skip_ahead_1()
-              c = char_iter.next()
+              continue
           if (c is None):
             raise RuntimeError(
               "Syntax error: missing closing quote%s" % (
                 where_str(O.source_info, char_iter.line_number)))
-          word_value += c
+          word_value.append(c)
         return word(
-          value=word_value,
+          value="".join(word_value),
           quote_token=quote_token,
           line_number=word_line_number,
           source_info=O.source_info)
       else:
-        word_value = c
+        word_value = [c]
         word_line_number = char_iter.line_number
         if (c not in settings.unquoted_single_character_words
             and (settings.contiguous_word_characters == ""
@@ -263,10 +267,10 @@ class word_iterator(slots_getstate_setstate):
                 and (not settings.enable_unquoted_embedded_quotes
                      or c not in ['"', "'"])):
               break
-            word_value += c
+            word_value.append(c)
             char_iter.skip_ahead_1()
         return word(
-          value=word_value,
+          value="".join(word_value),
           line_number=word_line_number,
           source_info=O.source_info)
     raise StopIteration

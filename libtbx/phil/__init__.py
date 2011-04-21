@@ -47,6 +47,13 @@ def is_plain_auto(words):
           and words[0].quote_token is None
           and words[0].value.lower() == "auto")
 
+def tokenize_value_literal(input_string, source_info):
+  return list(tokenizer.word_iterator(
+    input_string=input_string,
+    source_info=source_info,
+    list_of_settings=[
+      tokenizer.settings(contiguous_word_characters="")]))
+
 class words_converters(object):
 
   phil_type = "words"
@@ -117,6 +124,26 @@ class str_converters(object):
     if (python_object is Auto):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=python_object, quote_token='"')]
+
+class qstr_converters(object):
+
+  phil_type = "qstr"
+
+  def __str__(self): return self.phil_type
+
+  def from_words(self, words, master):
+    if (is_plain_none(words=words)): return None
+    if (is_plain_auto(words=words)): return Auto
+    return " ".join([str(word) for word in words])
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
+    return tokenize_value_literal(
+      input_string=python_object,
+      source_info="python_object")
 
 class path_converters(str_converters):
 
@@ -639,6 +666,7 @@ default_converter_registry = extended_converter_registry(
     words_converters,
     strings_converters,
     str_converters,
+    qstr_converters,
     path_converters,
     key_converters,
     bool_converters,
@@ -1048,11 +1076,9 @@ class definition(slots_getstate_setstate):
 
   def try_tokenize(self, input_string, source_info=None):
     try:
-      words = list(tokenizer.word_iterator(
+      words = tokenize_value_literal(
         input_string=input_string,
-        source_info=source_info,
-        list_of_settings=[
-          tokenizer.settings(contiguous_word_characters="")]))
+        source_info=source_info)
     except RuntimeError, e:
       return try_tokenize_proxy(
         error_message=str(e),

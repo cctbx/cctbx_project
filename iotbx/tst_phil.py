@@ -70,6 +70,31 @@ s=p212121
 s = 18
 s = p212121
 """)
+  #
+  master = iotbx.phil.parse(input_string="""\
+sel = None
+  .type = atom_selection
+  .multiple = True
+""")
+  clai = master.command_line_argument_interpreter()
+  assert not show_diff(clai.process(
+    "sel=altloc  ' ' or  name C\\* ").as_str(), """\
+sel = altloc ' ' or name C\*
+""")
+  user = iotbx.phil.parse(input_string="""\
+sel = "altloc ' ' or name C\*"
+sel = altloc ' ' or name D\*
+""")
+  work = master.fetch(user)
+  assert not show_diff(work.as_str(), """\
+sel = "altloc ' ' or name C\\\\*"
+sel = altloc ' ' or name D\\*
+""")
+  ex = work.extract()
+  assert len(ex.sel) == 2
+  assert ex.sel[0] == "altloc ' ' or name C\*"
+  assert ex.sel[1] == "altloc ' ' or name D\*"
+  #
   print "OK"
 
 if (__name__ == "__main__"):
