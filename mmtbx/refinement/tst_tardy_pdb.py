@@ -8,7 +8,6 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
-import libtbx.phil.command_line
 from libtbx.utils import Sorry, format_cpu_times
 from libtbx import Auto, group_args
 import random
@@ -421,8 +420,7 @@ tardy_displacements_auto {
 
 def run(args, callback=None):
   master_phil = get_master_phil()
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  argument_interpreter = master_phil.command_line_argument_interpreter()
   master_phil_str_overrides = """\
 start_temperature_kelvin = 2500
 final_temperature_kelvin = 300

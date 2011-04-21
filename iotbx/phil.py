@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 from cctbx import uctbx
-import libtbx.phil.command_line
+import libtbx.phil
 from libtbx.utils import Sorry, import_python_object
 from libtbx.phil import tokenizer
 from libtbx import Auto
@@ -110,8 +110,7 @@ def parse_command_line_phil_args (args, master_phil, command_name, usage_opts,
     app_options, home_scope, log=sys.stdout) :
   sources = []
   unused_args = []
-  interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
+  interpreter = master_phil.command_line_argument_interpreter(
     home_scope=home_scope)
   for arg in args :
     if os.path.isfile(arg) :

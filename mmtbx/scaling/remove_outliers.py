@@ -10,7 +10,6 @@ from iotbx import pdb
 import mmtbx.scaling
 from mmtbx.scaling import outlier_rejection
 from mmtbx import f_model
-import libtbx.phil.command_line
 from libtbx.str_utils import StringIO
 import sys, os
 
@@ -177,8 +176,7 @@ def run(args, command_name="phenix.remove_outliers"):
     log.register(label="log_buffer", file_object=string_buffer)
 
     phil_objects = []
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params,
+    argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="outlier_detection")
 
     for arg in args:

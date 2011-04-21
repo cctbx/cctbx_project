@@ -5,7 +5,7 @@ from mmtbx.geometry_restraints import hbond
 import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
-import libtbx.phil.command_line
+import libtbx.phil
 import cStringIO
 import os
 import sys
@@ -31,8 +31,7 @@ refinement {
   }
 }""" % sec_str_master_phil_str
   master_phil = libtbx.phil.parse(master_phil_str, process_includes=True)
-  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
+  parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   for arg in args :
     if os.path.isfile(arg) :

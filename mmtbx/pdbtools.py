@@ -4,7 +4,7 @@ from mmtbx import utils
 from cctbx.array_family import flex
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.str_utils import show_string
-import libtbx.phil.command_line
+import libtbx.phil
 import os, sys
 from iotbx import pdb
 from cctbx import crystal
@@ -17,7 +17,6 @@ from mmtbx import model_statistics
 import random
 from libtbx import easy_run, easy_pickle
 from iotbx.pdb import combine_unique_pdb_files
-from mmtbx.command_line import lockit
 from libtbx import runtime_utils
 import scitbx.matrix
 
@@ -880,8 +879,7 @@ class interpreter:
       print >> self.log, "Command line arguments:", " ".join([show_string(arg)
         for arg in args])
     crystal_symmetries_from_coordinate_file = []
-    parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil = master_params,
+    parameter_interpreter = master_params.command_line_argument_interpreter(
       home_scope  = "pdbtools")
     parsed_params = []
     command_line_params = []

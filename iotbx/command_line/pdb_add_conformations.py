@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.add_conformations
 
-import libtbx.phil.command_line
+import libtbx.phil
 from libtbx import runtime_utils
 from libtbx.utils import Sorry, Usage
 import libtbx.load_env # import dependency
@@ -55,8 +55,7 @@ def run (args=(), params=None, out=sys.stdout) :
   pdb_in = None
   if (params is None) :
     user_phil = []
-    interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_phil,
+    interpreter = master_phil.command_line_argument_interpreter(
       home_scope="")
     for arg in args :
       if os.path.isfile(arg) :

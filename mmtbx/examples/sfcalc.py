@@ -6,7 +6,6 @@ import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 from iotbx import pdb
-import libtbx.phil.command_line
 from cStringIO import StringIO
 from mmtbx import f_model
 import sys, os
@@ -89,8 +88,7 @@ def sfcalc(args):
     log.register(label="log_buffer", file_object=string_buffer)
 
     phil_objects = []
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params,
+    argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="sfcalc")
 
     print >> log, "#phil __OFF__"

@@ -8,7 +8,6 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.math import matrix
 from libtbx.utils import Sorry, multi_out
-import libtbx.phil.command_line
 from cStringIO import StringIO
 import sys, os
 
@@ -98,8 +97,7 @@ def reindex_utils(args):
     log.register(label="log_buffer", file_object=string_buffer)
 
     phil_objects = []
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params,
+    argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="map_coefs")
 
     print >> log, "#phil __OFF__"

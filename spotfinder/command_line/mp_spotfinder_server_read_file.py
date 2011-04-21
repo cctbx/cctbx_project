@@ -1,6 +1,4 @@
 # LIBTBX_SET_DISPATCHER_NAME distl.mp_spotfinder_server_read_file
-import libtbx.phil
-import libtbx.phil.command_line
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import master_params
 
@@ -18,8 +16,8 @@ Allowed parameters:
   else:  print help_str
 
   phil_objects = []
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params, home_scope="distl")
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="distl")
   for arg in args:
       try: command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise

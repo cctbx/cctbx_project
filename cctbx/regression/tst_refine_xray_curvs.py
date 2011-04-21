@@ -7,7 +7,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.lbfgsb
 from scitbx import matrix
-import libtbx.phil.command_line
+import libtbx.phil
 from libtbx import easy_pickle
 import random
 import sys
@@ -518,8 +518,7 @@ def run(args):
     unpickle = None
       .type = path
 """)
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  argument_interpreter = mater_phil.command_line_argument_interpreter()
   phil_objects = []
   remaining_args = []
   for arg in args:

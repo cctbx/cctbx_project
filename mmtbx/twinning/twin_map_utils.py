@@ -12,7 +12,6 @@ from iotbx import pdb
 import mmtbx.scaling
 from mmtbx.scaling import twin_analyses
 from mmtbx import f_model
-import libtbx.phil.command_line
 from mmtbx.twinning import twin_f_model
 from cStringIO import StringIO
 import sys, os
@@ -119,8 +118,7 @@ def run(args, command_name="phenix.twin_map_utils"):
     log.register(label="log_buffer", file_object=string_buffer)
 
     phil_objects = []
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params,
+    argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="map_coefs")
 
     for arg in args:

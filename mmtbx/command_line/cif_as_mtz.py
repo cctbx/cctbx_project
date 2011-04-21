@@ -855,8 +855,7 @@ def run2 (args,
           check_params=True,
           params=None) :
   import iotbx.pdb.fetch
-  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
+  parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   pdb_file = None
   cif_file = None

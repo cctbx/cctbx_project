@@ -4,7 +4,6 @@ from __future__ import division
 # TODO: confirm old_test_flag_value if ambiguous
 
 import iotbx.phil
-from libtbx.phil.command_line import argument_interpreter
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 import sys, os, string, re, random
@@ -891,8 +890,8 @@ def run (args, out=sys.stdout) :
   all_arrays = []
   if len(args) == 0 :
     usage()
-  interpreter = argument_interpreter(master_phil=master_phil,
-                                     home_scope=None)
+  interpreter = master_phil.command_line_argument_interpreter(
+    home_scope=None)
   for arg in args :
     if arg in ["--help", "--options", "--details"] :
       usage(attributes_level=args.count("--details"))

@@ -7,7 +7,6 @@ from libtbx.utils import \
   Sorry, show_exception_info_if_full_testing, \
   date_and_time, host_and_user, multi_out
 import iotbx.phil
-import libtbx.phil.command_line
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
@@ -1626,9 +1625,8 @@ class process_command_line_args(object):
     crystal_symmetries = []
     if(master_params is not None):
       assert home_scope is None
-      parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-        master_phil = master_params,
-        home_scope  = home_scope)
+      parameter_interpreter = master_params.command_line_argument_interpreter(
+        home_scope = home_scope)
     parsed_params = []
     command_line_params = []
     for arg in args:

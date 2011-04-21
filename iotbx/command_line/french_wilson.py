@@ -1,6 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.french_wilson
 
-import libtbx.phil.command_line
+import libtbx.phil
 from libtbx import runtime_utils
 from libtbx.utils import Sorry, Usage
 import os
@@ -40,8 +40,7 @@ def run (args, out=sys.stdout) :
   from iotbx import file_reader
   hkl_file = None
   sources = []
-  interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  interpreter = master_phil.command_line_argument_interpreter()
   for arg in args :
     if os.path.isfile(arg) :
       input_file = file_reader.any_file(arg)

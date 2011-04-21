@@ -1,6 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME distl.signal_strength
 import libtbx.phil
-import libtbx.phil.command_line
 from libtbx.utils import Sorry
 import sys, os
 additional_spotfinder_phil_defs ="""
@@ -94,8 +93,8 @@ Full documentation: http://cci.lbl.gov/publications/download/ccn_jul2010_page18.
   print "%s: characterization of candidate Bragg spots"%command_name
 
   phil_objects = []
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params, home_scope="distl")
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="distl")
   image_file_name = None
   moving_pdb_file_name = None
   for arg in args:
