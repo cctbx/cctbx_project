@@ -45,8 +45,24 @@ class space_group_converters(object):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=str(python_object), quote_token='"')]
 
+class atom_selection_converters(libtbx.phil.qstr_converters):
+
+  phil_type = "atom_selection"
+
+  def __str__(self): return self.phil_type
+
+  def from_words(self, words, master):
+    if (len(words) == 1):
+      word = words[0]
+      if (word.quote_token is not None):
+        return word.value # mainly for backward compatibility
+    return libtbx.phil.qstr_converters.from_words(self, words, master)
+
 default_converter_registry = libtbx.phil.extended_converter_registry(
-  additional_converters=[unit_cell_converters, space_group_converters])
+  additional_converters=[
+    unit_cell_converters,
+    space_group_converters,
+    atom_selection_converters])
 
 def parse(
       input_string=None,
