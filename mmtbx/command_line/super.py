@@ -5,7 +5,6 @@ from cctbx.array_family import flex
 from scitbx.math import superpose
 from scitbx.math import matrix
 import libtbx.phil
-import libtbx.phil.command_line
 from libtbx.utils import Sorry
 import sys, os
 
@@ -65,8 +64,8 @@ def run(args, command_name="mmtbx.super"):
   print "#"
 
   phil_objects = []
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params, home_scope="super")
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="super")
   fixed_pdb_file_name = None
   moving_pdb_file_name = None
   for arg in args:

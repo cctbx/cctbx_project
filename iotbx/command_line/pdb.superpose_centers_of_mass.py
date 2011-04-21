@@ -3,7 +3,6 @@ import iotbx.phil
 from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching
 from cctbx import sgtbx
-import libtbx.phil.command_line
 from scitbx import matrix
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -54,8 +53,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   #
   # Loop over command-line arguments.
   #
-  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params)
+  parameter_interpreter = master_params.command_line_argument_interpreter()
   parsed_params = []
   pdb_file_names = []
   command_line_params = []

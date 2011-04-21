@@ -1,7 +1,6 @@
 
 import iotbx.phil
 import libtbx.load_env
-import libtbx.phil.command_line
 from libtbx.str_utils import make_header
 from libtbx.math_utils import ifloor
 from libtbx.utils import Sorry
@@ -173,8 +172,7 @@ mmtbx.simulate_low_res_data
       master_phil.show()
     return
   from iotbx import file_reader
-  interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
+  interpreter = master_phil.command_line_argument_interpreter(
     home_scope="simulate_data")
   pdb_in = None
   pdb_hierarchy = None

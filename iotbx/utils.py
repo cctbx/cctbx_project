@@ -65,9 +65,7 @@ def process_command_line_inputs(args, master_phil, input_types):
   if (master_phil is None):
     argument_interpreter = None
   else:
-    import libtbx.phil.command_line
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_phil)
+    argument_interpreter = master_phil.command_line_argument_interpreter()
     input_objects["phil"] = []
   from libtbx.utils import Sorry
   from libtbx.str_utils import show_string

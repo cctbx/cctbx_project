@@ -3,7 +3,6 @@ from mmtbx.refinement import tst_tardy_pdb
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import show_times_at_exit
-import libtbx.phil.command_line
 from libtbx.queuing_system_utils import chunk_manager
 from libtbx import Auto
 from cStringIO import StringIO
@@ -103,8 +102,7 @@ chunk = 1 0
 
 def run(args):
   local_master_phil = get_master_phil()
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=local_master_phil)
+  argument_interpreter = local_master_phil.command_line_argument_interpreter()
   phil_objects = []
   for arg in args:
     phil_objects.append(argument_interpreter.process(arg=arg))

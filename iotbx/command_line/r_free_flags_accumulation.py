@@ -7,7 +7,6 @@ Also shows free fraction in bins.
 from iotbx import reflection_file_utils
 from iotbx import reflection_file_reader
 import libtbx.phil
-import libtbx.phil.command_line
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Usage
 import sys, os
@@ -38,8 +37,8 @@ def run(args, command_name="iotbx.r_free_flags_accumulation"):
   if (len(args) == 0 or "--help" in args or "-h" in args):
     raise_usage()
   phil_objects = []
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params, home_scope="r_free_flags_accumulation")
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="r_free_flags_accumulation")
   reflection_files = []
   for arg in args:
     if (os.path.isfile(arg)):

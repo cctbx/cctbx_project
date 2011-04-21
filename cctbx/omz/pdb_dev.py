@@ -78,8 +78,7 @@ def run(args):
     max_atoms=None,
     f_calc_options_algorithm="direct *fft",
     bulk_solvent_correction=True)
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  argument_interpreter = master_phil.command_line_argument_interpreter()
   phil_objects = []
   remaining_args = []
   for arg in command_line.args:

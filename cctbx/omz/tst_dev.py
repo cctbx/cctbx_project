@@ -3,7 +3,6 @@ from cctbx.omz import dev
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-import libtbx.phil.command_line
 import random
 import sys
 
@@ -32,8 +31,7 @@ def run_call_back(flags, space_group_info, params):
 
 def run(args):
   master_phil = dev.get_master_phil()
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  argument_interpreter = master_phil.command_line_argument_interpreter()
   phil_objects = []
   remaining_args = []
   for arg in args:

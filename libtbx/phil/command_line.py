@@ -6,8 +6,10 @@ class argument_interpreter(object):
   def __init__(self,
         master_phil=None,
         home_scope=None,
-        argument_description="command line ",
+        argument_description=None,
         master_params=None):
+    if (argument_description is None):
+      argument_description = "command line "
     assert [master_params, master_phil].count(None) == 1
     if (master_phil is None):
       import warnings
@@ -75,4 +77,4 @@ class argument_interpreter(object):
         self.argument_description, arg)).capitalize())
     return libtbx.phil.parse(
       input_string=complete_definitions,
-      source_info="command line argument")
+      source_info=self.argument_description+"argument")

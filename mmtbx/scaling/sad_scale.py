@@ -6,7 +6,6 @@ from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 import mmtbx.scaling
 from mmtbx.scaling import pair_analyses
-import libtbx.phil.command_line
 from libtbx.str_utils import StringIO
 from mmtbx.scaling import pre_scale
 from mmtbx.scaling import make_param
@@ -49,8 +48,7 @@ def run(args):
     print >> log
 
     phil_objects = []
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params,
+    argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="scaling")
 
     reflection_file = None

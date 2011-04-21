@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx import omz
 import cctbx.omz.dev
 from cctbx.array_family import flex
-import libtbx.phil.command_line
 from libtbx.test_utils import approx_equal
 from libtbx import easy_run
 from libtbx import easy_pickle
@@ -733,8 +732,7 @@ def run(args):
   print
   #
   master_phil = get_master_phil()
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  argument_interpreter = master_phil.command_line_argument_interpreter()
   phil_objects = []
   remaining_args = []
   for arg in command_line.args:

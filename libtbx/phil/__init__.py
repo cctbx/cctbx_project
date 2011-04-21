@@ -1861,6 +1861,15 @@ class scope(slots_getstate_setstate):
         result.append(object.unique())
     return self.customized_copy(objects=result)
 
+  def command_line_argument_interpreter(self,
+        home_scope=None,
+        argument_description=None):
+    from libtbx.phil.command_line import argument_interpreter as _
+    return _(
+      master_phil=self,
+      home_scope=home_scope,
+      argument_description=argument_description)
+
 def process_include_scope(
       converter_registry,
       include_stack,

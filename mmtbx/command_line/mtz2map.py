@@ -100,8 +100,7 @@ def run (args, log=sys.stdout) :
     master_phil.show(out=log, prefix="  ")
     raise Usage("phenix.mtz2map [mtz_file] [pdb_file] [param_file] " +
       "[--show_maps]")
-  parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
+  parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   for arg in args :
     if os.path.isfile(arg) :

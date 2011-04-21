@@ -2,7 +2,6 @@
 
 from cctbx.eltbx import sasaki, henke
 import libtbx.phil
-import libtbx.phil.command_line
 from libtbx.utils import Sorry, Usage
 import sys
 
@@ -21,8 +20,8 @@ form_factor_query {
 
 def run(args, command_name="phenix.form_factor_query"):
   phil_objects=[]
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params, home_scope="form_factor_query")
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="form_factor_query")
   plain_element = None
   plain_wavelength = None
   for arg in args:

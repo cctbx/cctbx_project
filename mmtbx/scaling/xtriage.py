@@ -13,7 +13,7 @@ import mmtbx.scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import massage_twin_detwin_data
-import libtbx.phil.command_line
+import libtbx.phil
 from libtbx.str_utils import StringIO
 from libtbx.utils import null_out
 from libtbx import runtime_utils
@@ -532,8 +532,7 @@ def run(args, command_name="phenix.xtriage", return_result=False,
     print >> log
 
     phil_objects = []
-    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params)
+    argument_interpreter = master_params.command_line_argument_interpreter()
 
     reflection_file = None
 

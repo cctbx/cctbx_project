@@ -2,7 +2,6 @@ def run(args):
   import cctbx.omz.dev
   import iotbx.cif
   import cctbx.xray
-  import libtbx.phil.command_line
   #
   master_phil = cctbx.omz.dev.get_master_phil(
     iteration_limit=100,
@@ -14,8 +13,7 @@ f_obs_is_f_calc = True
 reset_u_iso = None
   .type = float
 """)
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil)
+  argument_interpreter = master_phil.command_line_argument_interpreter()
   phil_objects = []
   remaining_args = []
   for arg in args:
