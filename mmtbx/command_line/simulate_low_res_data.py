@@ -145,12 +145,12 @@ simulate_data {
 def run (args, out=None) :
   if (out is None) :
     out = sys.stdout
+  make_header("mmtbx.simulate_low_res_data", out=out)
   print >> out, """
-mmtbx.simulate_low_res_data
   For generation of realistic data (model-based, or using real
   high-resolution data) for methods development.
 
-************************* WARNING: *************************
+*********************************** WARNING: ***********************************
  this is an experimental program - definitely NOT bug-free.
                   Use at your own risk!
 
@@ -197,7 +197,7 @@ mmtbx.simulate_low_res_data
       else :
         user_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=user_phil)
-  make_header("Working parameters", out=sys.stdout)
+  make_header("Working parameters", out=out)
   working_phil.show(prefix="  ")
   params_ = working_phil.extract()
   params = params_.simulate_data
@@ -235,10 +235,10 @@ class prepare_data (object) :
       make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
       f_raw, r_free = self.from_pdb()
     if (params.r_free_flags.file_name is not None) :
-      f_raw, r_free = import_r_free_flags(f_raw, params.r_free_flags, out)
+      f_raw, r_free = self.import_r_free_flags(f_raw)
     self.r_free = r_free
     make_header("Applying low-resolution filtering", out=sys.stdout)
-    print >> out, "  Final resolution: %.2f A" % params.d_min
+    print >> out, "  Target resolution: %.2f A" % params.d_min
     self.n_residues, self.n_bases = None, None
     if (self.pdb_in is not None) :
       self.n_residues, self.n_bases = get_counts(self.pdb_hierarchy)
@@ -262,6 +262,7 @@ class prepare_data (object) :
     make_header("Done processing", out=sys.stdout)
     print >> out, "  Completeness after processing: %.2f%%" % (
       self.f_out.completeness() * 100.)
+    print >> out, "  Final resolution: %.2f A" % self.f_out.d_min()
     if (self.pdb_in is not None) :
       iso_scale, aniso_scale = wilson_scaling(self.f_out, self.n_residues,
         self.n_bases)
@@ -488,7 +489,6 @@ class prepare_data (object) :
     out = self.out
     from scitbx.array_family import flex
     if (params.truncate.add_b_iso is not None) :
-      assert (params.truncate.add_b_iso > 0)
       print >> out, "  Applying isotropic B-factor of %.2f A^2" % (
         params.truncate.add_b_iso)
       F = add_b_iso(f_obs=F, b_iso=params.truncate.add_b_iso,
