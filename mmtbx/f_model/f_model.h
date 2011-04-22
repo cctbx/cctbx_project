@@ -2,14 +2,11 @@
 #define MMTBX_F_MODEL_H
 
 #include <mmtbx/error.h>
-#include <cctbx/miller.h>
-#include <cctbx/uctbx.h>
+#include <cctbx/adptbx.h>
 #include <cctbx/xray/targets.h>
-#include <scitbx/array_family/shared.h>
-#include <scitbx/sym_mat3.h>
 
-using namespace std;
 namespace mmtbx { namespace f_model {
+using namespace std;
 namespace af=scitbx::af;
 using scitbx::mat3;
 using scitbx::sym_mat3;
@@ -20,23 +17,17 @@ template <typename FloatType>
 FloatType f_aniso_one_h(cctbx::miller::index<> const& h,
                         scitbx::sym_mat3<FloatType> u_star)
 {
-  FloatType arg = -2.0*scitbx::constants::pi*scitbx::constants::pi *
-       (u_star[0]*h[0]*h[0] +
-        u_star[1]*h[1]*h[1] +
-        u_star[2]*h[2]*h[2] +
-     2.*u_star[3]*h[0]*h[1] +
-     2.*u_star[4]*h[0]*h[2] +
-     2.*u_star[5]*h[1]*h[2]);
-  if(arg > 40.0) arg=40.0; // to avoid overflow problem
-  return std::exp(arg);
+  return cctbx::adptbx::debye_waller_factor_u_star(
+    h, u_star,
+    /*exp_arg_limit*/ 40., /*truncate_exp_arg*/ true);
 }
 
 template <typename FloatType>
 FloatType f_b_exp_one_h(FloatType const& ss, FloatType const& b)
 {
-  FloatType arg = -ss * b;
-  if(arg > 40.0) arg=40.0; // to avoid overflow problem
-  return std::exp(arg);
+  return cctbx::adptbx::debye_waller_factor_b_iso(
+    /*stol_sq*/ ss, /*b_iso*/ b,
+    /*exp_arg_limit*/ 40., /*truncate_exp_arg*/ true);
 }
 
 template <typename FloatType, typename ComplexType>
