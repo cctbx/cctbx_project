@@ -132,6 +132,40 @@ class _(boost.python.injector, ext.unit_cell):
     return tuple([s-b for s,b in zip(s_min, shifts_frac)]), \
            tuple([s+b for s,b in zip(s_max, shifts_frac)])
 
+  def debye_waller_factors(self,
+        miller_index=None,
+        miller_indices=None,
+        u_iso=None,
+        b_iso=None,
+        u_cart=None,
+        b_cart=None,
+        u_cif=None,
+        u_star=None,
+        exp_arg_limit=50,
+        truncate_exp_arg=False):
+    assert [miller_index, miller_indices].count(None) == 1
+    assert [u_iso, b_iso, u_cart, b_cart, u_cif, u_star].count(None) == 5
+    from cctbx import adptbx
+    h = miller_index
+    if (h is None): h = miller_indices
+    if (u_iso is not None):
+      b_iso = adptbx.u_as_b(u_iso)
+    if (b_iso is not None):
+      return adptbx.debye_waller_factor_b_iso(
+        self.stol_sq(h),
+        b_iso, exp_arg_limit, truncate_exp_arg)
+    if (b_cart is not None):
+      u_cart = adptbx.b_as_u(b_cart)
+    if (u_cart is not None):
+      u_star = adptbx.u_cart_as_u_star(self, u_cart)
+    if (u_cif is not None):
+      u_star = adptbx.u_cif_as_u_star(self, u_cif)
+    assert u_star is not None
+    return adptbx.debye_waller_factor_u_star(
+      h, u_star, exp_arg_limit, truncate_exp_arg)
+
+  debye_waller_factor = debye_waller_factors
+
 def non_crystallographic_buffer_layer(
       sites_cart_min,
       sites_cart_max,
