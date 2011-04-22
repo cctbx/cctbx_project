@@ -600,9 +600,8 @@ def elliptical_truncation (array,
     if (hkl[axis_index] > max_index_along_axis[axis_index]) :
       max_index_along_axis[axis_index] = hkl[axis_index]
   assert (max_index_along_axis != [0,0,0])
-  u_star = adptbx.u_cart_as_u_star(array.unit_cell(), adptbx.b_as_u(b_cart))
-  scale_cutoff = adptbx.debye_waller_factor_u_star(
-    h=max_index_along_axis, u_star=u_star) * scale_factor
+  scale_cutoff = array.unit_cell().debye_waller_factor(
+    miller_index=max_index_along_axis, b_cart=b_cart) * scale_factor
   scale = array.debye_waller_factors(b_cart=b_cart).data()
   if (target_completeness is not None) :
     assert (target_completeness > 0) and (target_completeness <= 100)

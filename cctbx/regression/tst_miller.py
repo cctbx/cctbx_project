@@ -1142,18 +1142,6 @@ def exercise_debye_waller():
   #
   ap(b_iso=-250, exp_arg_limit=60)
   ap(b_iso=-250, truncate_exp_arg=True)
-  try: ap(b_iso=-250)
-  except RuntimeError, e:
-    assert not show_diff(str(e),
-      "cctbx::adptbx::debye_waller_factor_exp:"
-      " arg_limit exceeded (isotropic): arg = 51.8763 arg_limit = 50")
-  else: raise Exception_expected
-  try: ap(b_cart=[-240,-240,-240,0,0,0], exp_arg_limit=40)
-  except RuntimeError, e:
-    assert not show_diff(str(e),
-      "cctbx::adptbx::debye_waller_factor_exp:"
-      " arg_limit exceeded (anisotropic): arg = 49.8013 arg_limit = 40")
-  else: raise Exception_expected
 
 def exercise_r1_factor():
   cs = crystal.symmetry((1,2,3), "P21/a")

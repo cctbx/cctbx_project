@@ -4,7 +4,7 @@ import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, not_approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 import random
 import sys
 
@@ -343,6 +343,44 @@ def exercise_miller_index_methods():
   assert approx_equal(rcvs,
     [(0.5, 2/3., 0.6), (-1.5, 4/3., -1.0), (1.0, -1.0, 0.8)])
 
+def exercise_debye_waller_factor():
+  u = uctbx.unit_cell((3,4,5,85,95,105))
+  dw = u.debye_waller_factor
+  h = (1,2,3)
+  assert approx_equal(dw(miller_index=h, u_iso=0.01), 0.848878180759)
+  assert approx_equal(dw(h, b_iso=1.01), 0.810924506935)
+  assert approx_equal(dw(h, u_cart=[0.06,0.04,0.05,0.01,0.02,0.03]),
+    0.239382185855)
+  assert approx_equal(dw(h, b_cart=[1.06,1.04,1.05,1.01,1.02,1.03]),
+    0.546010240906)
+  assert approx_equal(dw(h, u_cif=[0.04,0.06,0.05,0.01,0.02,0.03]),
+    0.251706371444)
+  assert approx_equal(dw(h, u_star=[0.0004,0.0006,0.0005,0.0001,0.0002,0.0003]),
+    0.781343730547)
+  #
+  dw(h, b_iso=-250, exp_arg_limit=60)
+  dw(h, b_iso=-250, truncate_exp_arg=True)
+  try: dw(h, b_iso=-250)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "cctbx::adptbx::debye_waller_factor_exp:"
+      " arg_limit exceeded (isotropic): arg = 51.8763 arg_limit = 50")
+  else: raise Exception_expected
+  try: dw(h, b_cart=[-240,-240,-240,0,0,0], exp_arg_limit=40)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "cctbx::adptbx::debye_waller_factor_exp:"
+      " arg_limit exceeded (anisotropic): arg = 49.8013 arg_limit = 40")
+  else: raise Exception_expected
+  #
+  mi = flex.miller_index(((1,2,3), (-2,1,-3)))
+  assert approx_equal(
+    dw(miller_indices=mi, u_iso=0.01),
+    [0.8488781807585344, 0.8378216424772783])
+  assert approx_equal(
+    dw(miller_indices=mi, u_cart=[0.06,0.04,0.05,0.01,0.02,0.03]),
+    [0.2393821858545768, 0.2899416042036387])
+
 def exercise_compare():
   u1 = uctbx.unit_cell((3,2,5,90,100,90))
   u2 = uctbx.unit_cell((2,3,5,90,80,90))
@@ -679,6 +717,7 @@ def run():
   exercise_distance_mod_1()
   exercise_change_basis()
   exercise_miller_index_methods()
+  exercise_debye_waller_factor()
   exercise_compare()
   exercise_is_conventional_basis()
   exercise_pickle()
