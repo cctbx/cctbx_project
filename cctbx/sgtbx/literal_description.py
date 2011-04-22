@@ -58,5 +58,10 @@ class literal_description:
           self.symop.r().as_hkl(),
           self.long_form())
 
+  def labelit_check_pdb_symmetry_short(self):
+    return "%18s  %s"%(
+          self.symop.r().as_hkl(),
+          self.long_form())
+
   def select(self,format):
     return apply(literal_description.__dict__[format],[self])
