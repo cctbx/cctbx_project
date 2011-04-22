@@ -3010,6 +3010,36 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     result.ref_twin_components = twin_components
     return result
 
+  def remove_cone(self, fraction_percent, vertex=(0,0,0), axis_point_1=(0,0,0),
+        axis_point_2=(1,1,1), negate=False):
+     # single cone equation:
+     # cos(half_opening_angle)*|R - VERTEX|*|AXIS| = (R-VERTEX,AXIS)
+     # where R is any point on cone surface
+     # double-cone requires AXIS*(-1)
+     axis = (flex.double(axis_point_2)-flex.double(axis_point_1))
+     axis_length = math.sqrt(axis.dot(axis))
+     vertex = flex.double(vertex)
+     opening_angles = flex.double()
+     for point in self.indices():
+       point_minus_vertex = (flex.double(point)-vertex)
+       point_minus_vertex_length = math.sqrt(
+         point_minus_vertex.dot(point_minus_vertex))
+       numerator = point_minus_vertex.dot(axis)
+       denominator = point_minus_vertex_length*axis_length
+       opening_angle_deg_for_point = 0
+       if(point_minus_vertex_length>0):
+         assert denominator != 0
+         ratio = numerator / denominator
+         if(abs(1.-abs(ratio))<1.e-3): ratio = 1.0
+         opening_angle_deg_for_point = 180/math.pi * math.acos(ratio)
+       opening_angles.append(opening_angle_deg_for_point)
+     # smaller than 1 step will make selection accuracy higher
+     for oa in range(1,180):
+       sel = opening_angles<=oa
+       if(100.*sel.count(True)/sel.size() > fraction_percent): break
+     if(negate): return self.select(selection = sel)
+     return self.select(selection = ~sel)
+
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
   def __init__(self, miller_array,

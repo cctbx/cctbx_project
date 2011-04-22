@@ -5,6 +5,7 @@ from mmtbx.refinement import fit_rotamers
 from scitbx.array_family import flex
 from scitbx import matrix
 from cctbx import adptbx
+import mmtbx.refinement.fit_rotamers
 
 def get_axes_and_atoms_i_seqs(pdb_hierarchy, mon_lib_srv):
   get_class = iotbx.pdb.common_residue_names_get_class
