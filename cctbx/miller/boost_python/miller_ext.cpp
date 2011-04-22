@@ -29,6 +29,7 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_local_neighbourhood();
   void wrap_local_area();
   void wrap_amplitude_normalisation();
+  void wrap_slices();
 
 namespace {
 
@@ -89,6 +90,7 @@ namespace {
     wrap_local_neighbourhood();
     wrap_local_area();
     wrap_amplitude_normalisation();
+    wrap_slices();
 
 
     def("statistical_mean",

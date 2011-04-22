@@ -1106,6 +1106,14 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
     assert sel.count(True) == 0
     sel = mb.f_obs_f_calc_fan_outlier_selection(f_calc=fc)
     assert sel.count(True) == 8 # depends on mt seed above
+  xs = crystal.symmetry((3,4,5,85,95,105), "P 1")
+  mi = flex.miller_index(((1,2,3), (3,0,3), (2,4,1),(0,1,2)))
+  ms = miller.set(xs, mi, False)
+  ma = miller.array(ms, data=flex.double([1,2,3,4]))
+  maa = ma.slice(axis="l", slice_index=3)
+  assert approx_equal(maa.data(), [1.0,2.0])
+  maa = ma.slice(axis="h", slice_start=1, slice_end=2)
+  assert approx_equal(maa.data(), [1.0,3.0])
 
 def exercise_debye_waller():
   xs = crystal.symmetry((3,4,5,85,95,105), "P 1")

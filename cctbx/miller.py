@@ -1189,6 +1189,30 @@ class set(crystal.symmetry):
       indices          = self._indices.concatenate(other.indices()),
       anomalous_flag   = self.anomalous_flag())
 
+  def slice (self,
+      axis=None,
+      axis_index=None,
+      slice_index=None,
+      slice_start=None,
+      slice_end=None) :
+    if (axis is not None) :
+      assert (axis_index is None)
+      axis_index = ["h","k","l"].index(axis)
+    if (slice_index is not None) :
+      assert (slice_start is None) and (slice_end is None)
+      selection = simple_slice(
+        indices=self.indices(),
+        slice_axis=axis_index,
+        slice_index=slice_index)
+    else :
+      assert (not None in [slice_start, slice_end])
+      selection = multi_slice(
+        indices=self.indices(),
+        slice_axis=axis_index,
+        slice_start=slice_start,
+        slice_end=slice_end)
+    return self.select(selection)
+
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
     crystal_symmetry,
