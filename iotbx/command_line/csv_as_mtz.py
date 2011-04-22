@@ -1,4 +1,4 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.csv2mtz
+# LIBTBX_SET_DISPATCHER_NAME phenix.csv_as_mtz
 
 import sys, os
 from cctbx import miller
