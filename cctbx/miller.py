@@ -3011,17 +3011,23 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return result
 
   def remove_cone(self, fraction_percent, vertex=(0,0,0), axis_point_1=(0,0,0),
-        axis_point_2=(1,1,1), negate=False):
+        axis_point_2=(0,0,1), negate=False):
      # single cone equation:
      # cos(half_opening_angle)*|R - VERTEX|*|AXIS| = (R-VERTEX,AXIS)
      # where R is any point on cone surface
      # double-cone requires AXIS*(-1)
-     axis = (flex.double(axis_point_2)-flex.double(axis_point_1))
+     import scitbx.matrix as m
+     fm = self.unit_cell().fractionalization_matrix()
+     fm = scitbx.matrix.sqr(fm)
+     fm = fm.transpose()
+     axis = flex.double(
+       fm * list(flex.double(axis_point_2)-flex.double(axis_point_1)))
      axis_length = math.sqrt(axis.dot(axis))
      vertex = flex.double(vertex)
      opening_angles = flex.double()
      for point in self.indices():
        point_minus_vertex = (flex.double(point)-vertex)
+       point_minus_vertex = flex.double(fm * list(point_minus_vertex))
        point_minus_vertex_length = math.sqrt(
          point_minus_vertex.dot(point_minus_vertex))
        numerator = point_minus_vertex.dot(axis)

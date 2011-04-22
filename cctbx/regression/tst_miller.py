@@ -615,7 +615,6 @@ def exercise_array():
   ms = miller.set(crystal.symmetry(), mi, anomalous_flag=True)
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
-  assert ma.remove_cone(fraction_percent=10).data().size() == 4
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
   for hp,hm in ((ma.hemisphere_acentrics("+"), ma.hemisphere_acentrics("-")),
                 ma.hemispheres_acentrics()):
@@ -925,6 +924,7 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
   ma = miller.array(
     miller_set=ms,
     data=flex.double(xrange(ms.indices().size())))
+  assert ma.remove_cone(fraction_percent=10).data().size() == 43
   ma.set_observation_type_xray_amplitude()
   assert ma.select_acentric().data().size() == 48
   assert ma.select_centric().data().size() == 3
