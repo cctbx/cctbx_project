@@ -1,4 +1,3 @@
-
 import iotbx.phil
 import libtbx.load_env
 from libtbx.str_utils import make_header
@@ -491,11 +490,13 @@ class prepare_data (object) :
     if (params.truncate.add_b_iso is not None) :
       print >> out, "  Applying isotropic B-factor of %.2f A^2" % (
         params.truncate.add_b_iso)
-      F = add_b_iso(f_obs=F, b_iso=params.truncate.add_b_iso,
+      F = F.apply_debye_waller_factors(
+        b_iso=params.truncate.add_b_iso,
         apply_to_sigmas=params.truncate.apply_b_to_sigmas)
     if (params.truncate.add_b_aniso != [0,0,0,0,0,0]) :
       print >> out, "  Adding anisotropy..."
-      F = add_b_aniso(f_obs=F, b_cart=params.truncate.add_b_aniso,
+      F = F.apply_debye_waller_factors(
+        b_cart=params.truncate.add_b_aniso,
         apply_to_sigmas=params.truncate.apply_b_to_sigmas)
     if (params.truncate.add_random_error_percent is not None) :
       print >> out, "  Adding random error as percent of amplitude..."
@@ -558,48 +559,6 @@ def wilson_scaling (F, n_residues, n_bases) :
     n_bases=n_bases)
   return iso_scale, aniso_scale
 
-def add_b_iso (f_obs, b_iso, apply_to_sigmas=True) :
-  from scitbx.array_family import flex
-  d_min_sq = flex.pow2(f_obs.d_spacings().data())
-  scale = flex.exp(- b_iso / d_min_sq / 4.0)
-  if (f_obs.sigmas() is not None) and (apply_to_sigmas) :
-    return f_obs.customized_copy(
-      data=f_obs.data() * scale,
-      sigmas=f_obs.sigmas() * scale)
-  else :
-    return f_obs.customized_copy(data=f_obs.data() * scale)
-
-def add_b_aniso (f_obs, b_cart, apply_to_sigmas=True) :
-  scale = get_aniso_scale_factors(b_cart, f_obs.unit_cell(), f_obs.indices())
-  if (f_obs.sigmas() is not None) and (apply_to_sigmas) :
-    return f_obs.customized_copy(
-      data=f_obs.data() * scale,
-      sigmas=f_obs.sigmas() * scale)
-  else :
-    return f_obs.customized_copy(data=f_obs.data() * scale)
-
-def get_aniso_scale_factors (b_cart, unit_cell, indices) :
-  from cctbx import adptbx
-  from scitbx.array_family import flex
-  u_star = adptbx.u_cart_as_u_star(unit_cell, adptbx.b_as_u(b_cart))
-  scale = flex.double()
-  for i, hkl in enumerate(indices) :
-    scale.append(f_aniso_one_h(hkl, u_star))
-  return scale
-
-pi_sq = math.pi**2
-# see mmtbx/f_model/f_model.h
-def f_aniso_one_h (h, u_star) :
-  arg = -2.0 * pi_sq * (
-    u_star[0] * h[0] * h[0] +
-    u_star[1] * h[1] * h[1] +
-    u_star[2] * h[2] * h[2] +
-    u_star[3] * h[0] * h[1] * 2.0 +
-    u_star[4] * h[0] * h[2] * 2.0 +
-    u_star[5] * h[1] * h[2] * 2.0)
-  if (arg > 40.0) : arg = 40.0 # ???
-  return math.exp(arg)
-
 def show_b_factor_info (iso_scale, aniso_scale, out) :
   b_cart = aniso_scale.b_cart
   print >> out, "    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson
@@ -642,8 +601,9 @@ def elliptical_truncation (array,
       max_index_along_axis[axis_index] = hkl[axis_index]
   assert (max_index_along_axis != [0,0,0])
   u_star = adptbx.u_cart_as_u_star(array.unit_cell(), adptbx.b_as_u(b_cart))
-  scale_cutoff = f_aniso_one_h(max_index_along_axis, u_star) * scale_factor
-  scale = get_aniso_scale_factors(b_cart, array.unit_cell(), array.indices())
+  scale_cutoff = adptbx.debye_waller_factor_u_star(
+    h=max_index_along_axis, u_star=u_star) * scale_factor
+  scale = array.debye_waller_factors(b_cart=b_cart).data()
   if (target_completeness is not None) :
     assert (target_completeness > 0) and (target_completeness <= 100)
     completeness_start = array.completeness() * 100.0
@@ -816,7 +776,7 @@ class profile_sigma_generator (object) :
       print >> out, "  Scaling statistics for unmodified reference data:"
       show_b_factor_info(iso_scale, aniso_scale, out=out)
       delta_b = wilson_b - iso_scale.b_wilson
-      f_obs = add_b_iso(f_obs, delta_b)
+      f_obs = f_obs.apply_debye_waller_factors(b_iso=delta_b)
       i_obs = f_obs.f_as_f_sq()
     i_mean = flex.max(i_obs.data())
     i_norm = i_obs.customized_copy(
