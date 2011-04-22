@@ -1112,15 +1112,23 @@ def exercise_debye_waller():
   mi = flex.miller_index(((1,2,3), (-2,1,-3)))
   ms = miller.set(xs, mi, False)
   dw = ms.debye_waller_factors
-  assert approx_equal(dw(u_iso=0.01), [0.8488782, 0.8378216])
-  assert approx_equal(dw(b_iso=1.01), [0.8109245, 0.7974382])
-  assert approx_equal(dw(u_cart=[0.06,0.04,0.05,0.01,0.02,0.03]),
+  assert approx_equal(
+    dw(u_iso=0.01).data(),
+    [0.8488782, 0.8378216])
+  assert approx_equal(
+    dw(b_iso=1.01).data(),
+    [0.8109245, 0.7974382])
+  assert approx_equal(
+    dw(u_cart=[0.06,0.04,0.05,0.01,0.02,0.03]).data(),
     [0.2393822, 0.2899416])
-  assert approx_equal(dw(b_cart=[1.06,1.04,1.05,1.01,1.02,1.03]),
+  assert approx_equal(
+    dw(b_cart=[1.06,1.04,1.05,1.01,1.02,1.03]).data(),
     [0.5460102, 0.6644463])
-  assert approx_equal(dw(u_cif=[0.04,0.06,0.05,0.01,0.02,0.03]),
+  assert approx_equal(
+    dw(u_cif=[0.04,0.06,0.05,0.01,0.02,0.03]).data(),
     [0.2517064, 0.4104245])
-  assert approx_equal(dw(u_star=[0.0004,0.0006,0.0005,0.0001,0.0002,0.0003]),
+  assert approx_equal(
+    dw(u_star=[0.0004,0.0006,0.0005,0.0001,0.0002,0.0003]).data(),
     [0.7813437, 0.8726676])
   #
   ma = ms.array(data=flex.double([2,3]), sigmas=flex.double([4,5]))
