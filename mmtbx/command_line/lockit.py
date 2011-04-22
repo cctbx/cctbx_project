@@ -229,6 +229,8 @@ def get_rotamer_iterator(mon_lib_srv, residue, atom_selection_bool):
     comp_id=residue.resname,
     atom_names=residue.atoms().extract_name(),
     sites_cart=residue.atoms().extract_xyz())
+  if (rotamer_iterator is None) :
+    return None
   if (rotamer_iterator.problem_message is not None):
     return None
   if (rotamer_iterator.rotamer_info is None):
