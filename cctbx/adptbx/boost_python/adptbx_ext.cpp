@@ -130,7 +130,23 @@ namespace {
     ;
 
     def("debye_waller_factor_b_iso",
-      (double(*)(double, double)) debye_waller_factor_b_iso);
+      (double(*)(
+        double,
+        double, double, bool))
+          debye_waller_factor_b_iso, (
+            arg("stol_sq"),
+            arg("b_iso"),
+            arg("exp_arg_limit")=50,
+            arg("truncate_exp_arg")=false));
+    def("debye_waller_factor_b_iso",
+      (af::shared<double>(*)(
+        af::const_ref<double> const&,
+        double const&, double const&, bool))
+          debye_waller_factor_b_iso, (
+            arg("stol_sq"),
+            arg("b_iso"),
+            arg("exp_arg_limit")=50,
+            arg("truncate_exp_arg")=false));
     def("debye_waller_factor_u_iso",
       (double(*)(double, double)) debye_waller_factor_u_iso);
     def("debye_waller_factor_b_iso",
@@ -140,8 +156,23 @@ namespace {
       (double(*)(uctbx::unit_cell const&, miller::index<> const&, double))
       debye_waller_factor_u_iso);
     def("debye_waller_factor_u_star",
-      (double(*)(miller::index<> const&, sym_mat3<double> const&))
-      debye_waller_factor_u_star);
+      (double(*)(
+        miller::index<> const&,
+        sym_mat3<double> const&, double const&, bool))
+          debye_waller_factor_u_star, (
+            arg("h"),
+            arg("u_star"),
+            arg("exp_arg_limit")=50,
+            arg("truncate_exp_arg")=false));
+    def("debye_waller_factor_u_star",
+      (af::shared<double>(*)(
+        af::const_ref<miller::index<> > const&,
+        sym_mat3<double> const&, double const&, bool))
+          debye_waller_factor_u_star, (
+            arg("miller_indices"),
+            arg("u_star"),
+            arg("exp_arg_limit")=50,
+            arg("truncate_exp_arg")=false));
     def("debye_waller_factor_u_star_gradient_coefficients",
       debye_waller_factor_u_star_gradient_coefficients_double, (
         arg("h")));

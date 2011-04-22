@@ -97,7 +97,7 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
         occupancy_penalty=occupancy_penalty,
         structure_factor_algorithm="direct")
     except RuntimeError, e:
-      if (str(e).find("debye_waller_factor_exp: max_arg exceeded") < 0):
+      if (str(e).find("debye_waller_factor_exp: arg_limit exceeded") < 0):
         raise
     else:
       break

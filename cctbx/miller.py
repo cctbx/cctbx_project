@@ -461,6 +461,33 @@ class set(crystal.symmetry):
   def resolution_range(self):
     return self.d_max_min()
 
+  def debye_waller_factors(self,
+        u_iso=None,
+        b_iso=None,
+        u_cart=None,
+        b_cart=None,
+        u_cif=None,
+        u_star=None,
+        exp_arg_limit=50,
+        truncate_exp_arg=False):
+    assert [u_iso, b_iso, u_cart, b_cart, u_cif, u_star].count(None) == 5
+    from cctbx import adptbx
+    if (u_iso is not None):
+      b_iso = adptbx.u_as_b(u_iso)
+    if (b_iso is not None):
+      return adptbx.debye_waller_factor_b_iso(
+        self.unit_cell().stol_sq(self.indices()),
+        b_iso, exp_arg_limit, truncate_exp_arg)
+    if (b_cart is not None):
+      u_cart = adptbx.b_as_u(b_cart)
+    if (u_cart is not None):
+      u_star = adptbx.u_cart_as_u_star(self.unit_cell(), u_cart)
+    if (u_cif is not None):
+      u_star = adptbx.u_cif_as_u_star(self.unit_cell(), u_cif)
+    assert u_star is not None
+    return adptbx.debye_waller_factor_u_star(
+      self.indices(), u_star, exp_arg_limit, truncate_exp_arg)
+
   def n_bijvoet_pairs(self):
     asu, matches = self.match_bijvoet_mates()
     return matches.pairs().size()
@@ -2334,6 +2361,27 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return self.customized_copy(data=d, sigmas=s) \
       .set_info(self.info()) \
       .set_observation_type(self)
+
+  def apply_debye_waller_factors(self,
+        u_iso=None,
+        b_iso=None,
+        u_cart=None,
+        b_cart=None,
+        u_cif=None,
+        u_star=None,
+        apply_to_sigmas=True,
+        exp_arg_limit=50,
+        truncate_exp_arg=False):
+    dws = self.debye_waller_factors(
+      u_iso=u_iso, b_iso=b_iso,
+      u_cart=u_cart, b_cart=b_cart,
+      u_cif=u_cif, u_star=u_star,
+      exp_arg_limit=exp_arg_limit, truncate_exp_arg=truncate_exp_arg)
+    d = self.data() * dws
+    s = self.sigmas()
+    if (s is not None and apply_to_sigmas):
+      s = s * dws
+    return self.customized_copy(data=d, sigmas=s)
 
   def mean(self,
         use_binning=False,

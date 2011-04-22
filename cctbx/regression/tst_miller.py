@@ -1107,6 +1107,46 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
     sel = mb.f_obs_f_calc_fan_outlier_selection(f_calc=fc)
     assert sel.count(True) == 8 # depends on mt seed above
 
+def exercise_debye_waller():
+  xs = crystal.symmetry((3,4,5,85,95,105), "P 1")
+  mi = flex.miller_index(((1,2,3), (-2,1,-3)))
+  ms = miller.set(xs, mi, False)
+  dw = ms.debye_waller_factors
+  assert approx_equal(dw(u_iso=0.01), [0.8488782, 0.8378216])
+  assert approx_equal(dw(b_iso=1.01), [0.8109245, 0.7974382])
+  assert approx_equal(dw(u_cart=[0.06,0.04,0.05,0.01,0.02,0.03]),
+    [0.2393822, 0.2899416])
+  assert approx_equal(dw(b_cart=[1.06,1.04,1.05,1.01,1.02,1.03]),
+    [0.5460102, 0.6644463])
+  assert approx_equal(dw(u_cif=[0.04,0.06,0.05,0.01,0.02,0.03]),
+    [0.2517064, 0.4104245])
+  assert approx_equal(dw(u_star=[0.0004,0.0006,0.0005,0.0001,0.0002,0.0003]),
+    [0.7813437, 0.8726676])
+  #
+  ma = ms.array(data=flex.double([2,3]), sigmas=flex.double([4,5]))
+  ap = ma.apply_debye_waller_factors
+  maa = ap(u_iso=0.01)
+  assert approx_equal(maa.data(), [1.697756, 2.513465])
+  assert approx_equal(maa.sigmas(), [3.395513, 4.189108])
+  maa = ap(u_cart=[0.06,0.04,0.05,0.01,0.02,0.03], apply_to_sigmas=False)
+  assert approx_equal(maa.data(), [0.4787644, 0.8698248])
+  assert approx_equal(maa.sigmas(), [4, 5])
+  #
+  ap(b_iso=-250, exp_arg_limit=60)
+  ap(b_iso=-250, truncate_exp_arg=True)
+  try: ap(b_iso=-250)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "cctbx::adptbx::debye_waller_factor_exp:"
+      " arg_limit exceeded (isotropic): arg = 51.8763 arg_limit = 50")
+  else: raise Exception_expected
+  try: ap(b_cart=[-240,-240,-240,0,0,0], exp_arg_limit=40)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "cctbx::adptbx::debye_waller_factor_exp:"
+      " arg_limit exceeded (anisotropic): arg = 49.8013 arg_limit = 40")
+  else: raise Exception_expected
+
 def exercise_r1_factor():
   cs = crystal.symmetry((1,2,3), "P21/a")
   mi = flex.miller_index([(1,-1,1), (2,0,-3), (4,1,-2)])
@@ -1758,6 +1798,7 @@ def run(args):
   exercise_enforce_positive_amplitudes()
   exercise_binner()
   exercise_array()
+  exercise_debye_waller()
   exercise_r1_factor()
   exercise_scale_factor()
   exercise_complete_array()
