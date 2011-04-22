@@ -747,7 +747,7 @@ iotbx/cif/tests/tst_restraints.py -text
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
 iotbx/command_line/cbf_read.py svneol=native#text/x-python
 iotbx/command_line/cif.as_miller_arrays.py svneol=native#text/x-python
-iotbx/command_line/csv2mtz.py -text
+iotbx/command_line/csv_as_mtz.py -text
 iotbx/command_line/fetch_pdb.py -text
 iotbx/command_line/french_wilson.py svneol=native#text/x-python
 iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
