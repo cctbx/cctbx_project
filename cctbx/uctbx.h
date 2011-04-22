@@ -1023,7 +1023,7 @@ namespace cctbx {
         miller::index<NumType> const& miller_index) const
       {
         uc_mat3 const& frac_mat = fractionalization_matrix();
-        scitbx::vec3<double> rcv = frac_mat * miller_index;
+        scitbx::vec3<double> rcv = miller_index * frac_mat;
         return rcv;
       }
 
