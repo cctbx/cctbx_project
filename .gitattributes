@@ -1506,3 +1506,4 @@ wxtbx/process_control.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
+wxtbx/utils.py -text
