@@ -174,7 +174,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
         tau=1e-7)
     except RuntimeError, e:
       if (not str(e).startswith(
-            "cctbx::adptbx::debye_waller_factor_exp: max_arg exceeded")):
+            "cctbx::adptbx::debye_waller_factor_exp: arg_limit exceeded")):
         raise
       print 'Aborting run_smtbx_ls("lm"):' \
         ' debye_waller_factor_exp failure: %s' % cod_id

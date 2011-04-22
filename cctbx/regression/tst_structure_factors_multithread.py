@@ -93,7 +93,7 @@ def exercise_openmp_resilience_to_adptbx_exception(space_group_info,
                          cos_sin_table=False)
   except RuntimeError, e:
     assert str(e).find('cctbx::adptbx::debye_waller_factor_exp:'
-                       ' max_arg exceeded') != -1
+                       ' arg_limit exceeded') != -1
   else:
     raise Exception_expected
 

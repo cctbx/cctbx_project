@@ -416,17 +416,21 @@ namespace cctbx {
 
   //! std::exp with upper limit for argument value.
   inline double
-  debye_waller_factor_exp(const char* u_type, double arg, double max_arg=50)
+  debye_waller_factor_exp(
+    const char* u_type, double arg, double arg_limit, bool truncate_exp_arg)
   {
-    if (arg > max_arg) {
-      char buf[256];
-      std::sprintf(buf,
-        "cctbx::adptbx::debye_waller_factor_exp:"
-        " max_arg exceeded (%s):"
-        " arg = %.6g"
-        " max_arg = %.6g",
-        u_type, arg, max_arg);
-      throw std::runtime_error(buf);
+    if (arg > arg_limit) {
+      if (!truncate_exp_arg) {
+        char buf[256];
+        std::sprintf(buf,
+          "cctbx::adptbx::debye_waller_factor_exp:"
+          " arg_limit exceeded (%s):"
+          " arg = %.6g"
+          " arg_limit = %.6g",
+          u_type, arg, arg_limit);
+        throw std::runtime_error(buf);
+      }
+      arg = arg_limit;
     }
     return std::exp(arg);
   }
@@ -435,9 +439,30 @@ namespace cctbx {
   inline double
   debye_waller_factor_b_iso(
     double stol_sq,
-    double b_iso)
+    double b_iso,
+    double exp_arg_limit=50,
+    bool truncate_exp_arg=false)
   {
-    return debye_waller_factor_exp("isotropic", -b_iso * stol_sq);
+    return debye_waller_factor_exp(
+      "isotropic", -b_iso * stol_sq, exp_arg_limit, truncate_exp_arg);
+  }
+
+  //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and b_iso.
+  template <typename FloatType>
+  af::shared<FloatType>
+  debye_waller_factor_b_iso(
+    af::const_ref<double> const& stol_sq,
+    FloatType const& b_iso,
+    FloatType const& exp_arg_limit=50,
+    bool truncate_exp_arg=false)
+  {
+    af::shared<FloatType> result((af::reserve(stol_sq.size())));
+    for(std::size_t i=0;i<stol_sq.size();i++) {
+      result.push_back(
+        debye_waller_factor_b_iso(
+          stol_sq[i], b_iso, exp_arg_limit, truncate_exp_arg));
+    }
+    return result;
   }
 
   //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and u_iso.
@@ -474,17 +499,37 @@ namespace cctbx {
   inline FloatType
   debye_waller_factor_u_star(
     miller::index<> const& h,
-    sym_mat3<FloatType> const& u_star)
+    sym_mat3<FloatType> const& u_star,
+    FloatType const& exp_arg_limit=50,
+    bool truncate_exp_arg=false)
   {
+    FloatType arg = -scitbx::constants::two_pi_sq * (
+        (h[0] * h[0]) * u_star[0]
+      + (h[1] * h[1]) * u_star[1]
+      + (h[2] * h[2]) * u_star[2]
+      + (2 * h[0] * h[1]) * u_star[3]
+      + (2 * h[0] * h[2]) * u_star[4]
+      + (2 * h[1] * h[2]) * u_star[5]);
     return debye_waller_factor_exp(
-      "anisotropic",
-      -scitbx::constants::two_pi_sq * (
-          (h[0] * h[0]) * u_star[0]
-        + (h[1] * h[1]) * u_star[1]
-        + (h[2] * h[2]) * u_star[2]
-        + (2 * h[0] * h[1]) * u_star[3]
-        + (2 * h[0] * h[2]) * u_star[4]
-        + (2 * h[1] * h[2]) * u_star[5]));
+      "anisotropic", arg, exp_arg_limit, truncate_exp_arg);
+  }
+
+  //! Anisotropic Debye-Waller factor given a Miller indices and u_star.
+  template <typename FloatType>
+  af::shared<FloatType>
+  debye_waller_factor_u_star(
+    af::const_ref<miller::index<> > const& miller_indices,
+    sym_mat3<FloatType> const& u_star,
+    FloatType const& exp_arg_limit=50,
+    bool truncate_exp_arg=false)
+  {
+    af::shared<FloatType> result((af::reserve(miller_indices.size())));
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      result.push_back(
+        debye_waller_factor_u_star(
+          miller_indices[i], u_star, exp_arg_limit, truncate_exp_arg));
+    }
+    return result;
   }
 
   //! Coefficients for gradients of Debye-Waller factor w.r.t. u_star.
