@@ -41,7 +41,7 @@ key_captions = ["R-work", "R-free", "R-work (PDB)", "R-free (PDB)",
 other_captions = ["High resolution", "Low resolution",
   "Min. backbone ADP", "Min. sidechain ADP", "Min. solvent ADP",
   "Max. backbone ADP", "Max. sidechain ADP", "Max. solvent ADP",
-  "Mean. backbone ADP", "Mean. sidechain ADP", "Mean. solvent ADP",
+  "Mean backbone ADP", "Mean sidechain ADP", "Mean solvent ADP",
   "Unit cell volume"]
 
 assert len(keys_to_show) == len(key_captions)

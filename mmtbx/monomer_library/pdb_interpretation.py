@@ -241,8 +241,10 @@ bond
     .type = choice
   atom_selection_1 = None
     .type = str
+    .input_size = 400
   atom_selection_2 = None
     .type = str
+    .input_size = 400
   symmetry_operation = None
     .help = "The bond is between atom_1 and symmetry_operation * atom_2,"
             " with atom_1 and atom_2 given in fractional coordinates."
@@ -265,10 +267,13 @@ angle
     .type = choice
   atom_selection_1 = None
     .type = str
+    .input_size = 400
   atom_selection_2 = None
     .type = str
+    .input_size = 400
   atom_selection_3 = None
     .type = str
+    .input_size = 400
   angle_ideal = None
     .type = float
   sigma = None
@@ -285,6 +290,7 @@ planarity
   atom_selection = None
     .type = str
     .multiple = True
+    .input_size = 400
   sigma = None
     .type = float
 }
