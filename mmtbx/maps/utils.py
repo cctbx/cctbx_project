@@ -7,9 +7,8 @@
 from __future__ import division
 import libtbx.phil
 from libtbx.math_utils import ifloor, iceil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
-import cStringIO
 import os
 import re
 import sys
@@ -86,7 +85,7 @@ class fast_maps_from_hkl_file (object) :
       scattering_table = "n_gaussian",
       xray_structure   = self.xray_structure,
       d_min            = self.f_obs.d_min(),
-      log              = cStringIO.StringIO())
+      log              = null_out())
     fmodel = mmtbx.utils.fmodel_simple(
       xray_structures=[self.xray_structure],
       f_obs=self.f_obs,
