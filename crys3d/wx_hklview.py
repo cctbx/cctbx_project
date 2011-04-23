@@ -1,4 +1,7 @@
 
+# TODO:
+#  - cached scenes
+
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.gl_managed
 import gltbx.util
@@ -12,6 +15,7 @@ from libtbx.utils import Sorry
 class scene (object) :
   def __init__ (self, miller_array, settings) :
     self.miller_array = miller_array
+    from cctbx import miller
     from gltbx import viewer_utils
     from scitbx.array_family import flex
     array = self.miller_array.map_to_asu()
@@ -22,6 +26,12 @@ class scene (object) :
     uc = array.unit_cell()
     if (settings.expand_data) :
       array = array.expand_to_p1().generate_bijvoet_mates()
+    slice_selection = None
+    if (settings.slice_mode) :
+      slice_selection = miller.simple_slice(
+        indices=array.indices(),
+        slice_axis=settings.slice_axis,
+        slice_index=settings.slice_index)
     index_span = array.index_span()
     self.hkl_range = index_span.abs_range()
     self.h_axis = uc.reciprocal_space_vector((self.hkl_range[0],0,0))
@@ -36,22 +46,35 @@ class scene (object) :
       data_for_colors = flex.sqrt(data)
     else :
       data_for_colors = data
-    self.colors = viewer_utils.color_by_property(
+    colors = viewer_utils.color_by_property(
       atom_properties=data_for_colors,
       atoms_visible=flex.bool(data.size(), True),
       color_invisible_atoms=False,
       use_rb_color_gradient=False)
+    if (slice_selection is not None) :
+      data = data.select(slice_selection)
+      indices = indices.select(slice_selection)
+      if (settings.keep_constant_scale) :
+        colors = colors.select(slice_selection)
+      else :
+        colors = viewer_utils.color_by_property(
+          atom_properties=data_for_colors.select(slice_selection),
+          atoms_visible=flex.bool(data.size(), True),
+          color_invisible_atoms=False,
+          use_rb_color_gradient=False)
+    self.colors = colors
     if (settings.sqrt_scale_radii) :
       data = flex.sqrt(data)
     self.points = uc.reciprocal_space_vector(indices) * 100.
     abc = uc.parameters()[0:3]
-    min_radius = 0.02 / max(abc)
-    max_radius = 40 / max(abc)
+    min_radius = 0.20 / max(abc)
+    max_radius = 50 / max(abc)
     scale = max_radius / flex.max(data)
     radii = data * scale
     too_small = radii < min_radius
     radii.set_selected(too_small, flex.double(radii.size(), min_radius))
     self.radii = radii
+    self.max_radius = flex.max(radii)
     if (settings.show_missing_reflections) :
       missing = array.complete_set().lone_set(array).indices()
       n_missing = missing.size()
@@ -102,7 +125,10 @@ class hklview (wxGLWindow) :
   #--- OpenGL methods
   def InitGL(self):
     gltbx.util.handle_error()
-    glClearColor(0.,0.,0.,0.)
+    if (self.settings.black_background) :
+      glClearColor(0.,0.,0.,0.)
+    else :
+      glClearColor(0.95,0.95,0.95,0.)
     self.minimum_covering_sphere_display_list = None
     glDepthFunc(GL_LESS)
     glEnable(GL_ALPHA_TEST)
@@ -154,9 +180,11 @@ class hklview (wxGLWindow) :
       self.spheres_display_list.compile()
       colors = self.scene.colors
       radii = self.scene.radii
+      max_radius = self.scene.max_radius
       assert (colors.size() == radii.size() == self.scene.points.size())
       for i, hkl in enumerate(self.scene.points) :
         col = list(colors[i]) + [1.0]
+        detail = max(4, int(self.settings.sphere_detail*radii[i]/max_radius))
         #glColor3f(*colors[i])
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, col)
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
@@ -164,8 +192,8 @@ class hklview (wxGLWindow) :
         glPushMatrix()
         glTranslated(*hkl)
         gltbx.util.SolidSphere(radius=radii[i],
-          slices=self.settings.sphere_detail,
-          stacks=self.settings.sphere_detail)
+          slices=detail,
+          stacks=detail)
         glPopMatrix()
       self.spheres_display_list.end()
     self.spheres_display_list.call()
@@ -202,8 +230,11 @@ class hklview (wxGLWindow) :
     l_axis = self.scene.l_axis
     gltbx.fonts.ucs_bitmap_8x13.setup_call_lists()
     glDisable(GL_LIGHTING)
-    glColor3f(1.0, 1.0, 1.0)
-    glLineWidth(2)
+    if (self.settings.black_background) :
+      glColor3f(1.0, 1.0, 1.0)
+    else :
+      glColor3f(0.,0.,0.)
+    glLineWidth(0.5)
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
     glVertex3f(h_axis[0]*100, h_axis[1]*100, h_axis[2]*100)
@@ -245,6 +276,10 @@ class hklview (wxGLWindow) :
 
   def update_settings (self) :
     self.construct_reciprocal_space()
+    if (self.settings.black_background) :
+      glClearColor(0.,0.,0.,0.)
+    else :
+      glClearColor(0.95,0.95,0.95,0.)
     self.Refresh()
 
   def edit_settings (self) :
@@ -255,17 +290,25 @@ class hklview (wxGLWindow) :
 
 class settings (object) :
   def __init__ (self) :
+    self.black_background = True
     self.show_axes = True
     self.sqrt_scale_radii = True
     self.sqrt_scale_colors = False
-    self.slice_mode = False
     self.expand_data = False
     self.display_as_spheres = True
     self.show_missing_reflections = False
     self.sphere_detail = 20
+    self.slice_mode = False
+    self.keep_constant_scale = True
+    self.slice_axis = 0
+    self.slice_index = 0
 
 class settings_window (wxtbx.utils.SettingsToolBase) :
   def add_controls (self) :
+    ctrls = self.create_controls(
+      setting="black_background",
+      label="Black background")
+    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="show_axes",
       label="Show h,k,l axes")
@@ -299,29 +342,36 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
     box.Add(ctrls[0], 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
     box.Add(ctrls[1], 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.panel_sizer.Add(box)
-    return
     ctrls = self.create_controls(
       setting="slice_mode",
       label="Show only a slice through reciprocal space")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    self.slice_ctrl = ctrls[0]
+    ctrls = self.create_controls(
+      setting="keep_constant_scale",
+      label="Keep scale constant across all slices")
+    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     box2 = wx.BoxSizer(wx.HORIZONTAL)
     box2.Add(wx.StaticText(self.panel, -1, "View slice:"), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    ctrls = self.create_controls
     self.hkl_choice = wx.Choice(self.panel, -1, choices=["h","k","l"])
+    self.hkl_choice.SetSelection(self.settings.slice_axis)
     box2.Add(self.hkl_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     box2.Add(wx.StaticText(self.panel, -1, "="), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.slice_index = wx.SpinCtrl(self.panel, -1)
-    self.slice_index.SetValue(0)
+    self.slice_index.SetValue(self.settings.slice_index)
     box2.Add(self.slice_index)
     self.panel_sizer.Add(box2)
     self.Bind(wx.EVT_CHOICE, self.OnSetSlice, self.hkl_choice)
     self.Bind(wx.EVT_SPINCTRL, self.OnSetSlice, self.slice_index)
 
   def OnSetSlice (self, event) :
-    axis = self.hkl_choice.GetSelection()
-    index = self.slice_index.GetValue()
-    self.parent.set_slice(axis, index)
+    self.settings.slice_axis = self.hkl_choice.GetSelection()
+    self.settings.slice_index = self.slice_index.GetValue()
+    if (self.slice_ctrl.GetValue()) :
+      self.parent.update_settings()
 
 class HKLViewFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
