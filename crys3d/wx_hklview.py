@@ -2,10 +2,64 @@
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.gl_managed
 import gltbx.util
+import gltbx.fonts
 from gltbx.glu import *
 from gltbx.gl import *
 import wxtbx.utils
 import wx
+from libtbx.utils import Sorry
+
+class scene (object) :
+  def __init__ (self, miller_array, settings) :
+    self.miller_array = miller_array
+    from gltbx import viewer_utils
+    from scitbx.array_family import flex
+    array = self.miller_array.map_to_asu()
+    if (array.is_xray_intensity_array()) :
+      data = array.data()
+      data.set_selected(data < 0, flex.double(data.size(), 0.))
+      array = array.customized_copy(data=data)
+    uc = array.unit_cell()
+    if (settings.expand_data) :
+      array = array.expand_to_p1().generate_bijvoet_mates()
+    index_span = array.index_span()
+    self.hkl_range = index_span.abs_range()
+    self.h_axis = uc.reciprocal_space_vector((self.hkl_range[0],0,0))
+    self.k_axis = uc.reciprocal_space_vector((0,self.hkl_range[1],0))
+    self.l_axis = uc.reciprocal_space_vector((0,0,self.hkl_range[2]))
+    indices = array.indices()
+    data = array.data()
+    assert isinstance(data, flex.double) or isinstance(data, flex.bool)
+    if isinstance(data, flex.bool) :
+      data = flex.double(data.size(), 1.0)
+    if (settings.sqrt_scale_colors) :
+      data_for_colors = flex.sqrt(data)
+    else :
+      data_for_colors = data
+    self.colors = viewer_utils.color_by_property(
+      atom_properties=data_for_colors,
+      atoms_visible=flex.bool(data.size(), True),
+      color_invisible_atoms=False,
+      use_rb_color_gradient=False)
+    if (settings.sqrt_scale_radii) :
+      data = flex.sqrt(data)
+    self.points = uc.reciprocal_space_vector(indices) * 100.
+    abc = uc.parameters()[0:3]
+    min_radius = 0.02 / max(abc)
+    max_radius = 40 / max(abc)
+    scale = max_radius / flex.max(data)
+    radii = data * scale
+    too_small = radii < min_radius
+    radii.set_selected(too_small, flex.double(radii.size(), min_radius))
+    self.radii = radii
+    if (settings.show_missing_reflections) :
+      missing = array.complete_set().lone_set(array).indices()
+      n_missing = missing.size()
+      if (n_missing > 0) :
+        points_missing = uc.reciprocal_space_vector(missing) * 100.
+        self.points.extend(points_missing)
+        self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
+        self.radii.extend(flex.double(n_missing, max_radius / 2))
 
 class hklview (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
@@ -26,12 +80,9 @@ class hklview (wxGLWindow) :
     self.points_display_list = None
     self.miller_array = None
     self.d_min = None
-    self._axis_lengths = [1,1,1]
-    self._slice_axis = None
-    self._slice_index = None
-    self._points = None
-    self._radii = None
-    self._colors = None
+    self.scene = None
+    self.slice_axis = None
+    self.slice_index = None
 
   def set_miller_array (self, miller_array) :
     self.miller_array = miller_array
@@ -39,49 +90,10 @@ class hklview (wxGLWindow) :
     self.construct_reciprocal_space()
 
   def construct_reciprocal_space (self) :
-    from gltbx import viewer_utils
-    from scitbx.array_family import flex
-    array = self.miller_array.map_to_asu()
-    uc = array.unit_cell()
-    if (self.settings.expand_data) :
-      array = array.expand_to_p1().generate_bijvoet_mates()
-    index_span = array.index_span()
-    self.hkl_range = index_span.abs_range()
-    axes = uc.reciprocal_space_vector(self.hkl_range)
-    self._axis_lengths = (axes[0]*100., axes[1]*100., axes[2]*100.)
-    indices = array.indices()
-    data = array.data()
-    assert isinstance(data, flex.double)
-    if (self.settings.sqrt_scale_colors) :
-      data_for_colors = flex.sqrt(data)
-    else :
-      data_for_colors = data
-    self._colors = viewer_utils.color_by_property(
-      atom_properties=data_for_colors,
-      atoms_visible=flex.bool(data.size(), True),
-      color_invisible_atoms=False,
-      use_rb_color_gradient=False)
-    if (self.settings.sqrt_scale_radii) :
-      data = flex.sqrt(data)
-    self._points = uc.reciprocal_space_vector(indices) * 100.
-    abc = uc.parameters()[0:3]
-    min_radius = 0.02 / max(abc)
-    max_radius = 40 / max(abc)
-    scale = max_radius / flex.max(data)
-    radii = data * scale
-    too_small = radii < min_radius
-    radii.set_selected(too_small, flex.double(radii.size(), min_radius))
-    self._radii = radii
-    if (self.settings.show_missing_reflections) :
-      missing = array.complete_set().lone_set(array).indices()
-      n_missing = missing.size()
-      if (n_missing > 0) :
-        points_missing = uc.reciprocal_space_vector(missing) * 100.
-        self._points.extend(points_missing)
-        self._colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
-        self._radii.extend(flex.double(n_missing, max_radius / 2))
+    self.scene = scene(miller_array=self.miller_array,
+      settings=self.settings)
     from scitbx.math import minimum_covering_sphere
-    mcs = minimum_covering_sphere(points=self._points,
+    mcs = minimum_covering_sphere(points=self.scene.points,
                                   epsilon=0.1)
     self.minimum_covering_sphere = mcs
     self.spheres_display_list = None
@@ -140,10 +152,10 @@ class hklview (wxGLWindow) :
     if (self.spheres_display_list is None) :
       self.spheres_display_list = gltbx.gl_managed.display_list()
       self.spheres_display_list.compile()
-      colors = self._colors
-      radii = self._radii
-      assert (colors.size() == radii.size() == self._points.size())
-      for i, hkl in enumerate(self._points) :
+      colors = self.scene.colors
+      radii = self.scene.radii
+      assert (colors.size() == radii.size() == self.scene.points.size())
+      for i, hkl in enumerate(self.scene.points) :
         col = list(colors[i]) + [1.0]
         #glColor3f(*colors[i])
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, col)
@@ -164,9 +176,10 @@ class hklview (wxGLWindow) :
     if (self.points_display_list is None) :
       self.points_display_list = gltbx.gl_managed.display_list()
       self.points_display_list.compile()
-      colors = self._colors
-      radii = self._radii
-      for i, hkl in enumerate(self._points) :
+      colors = self.scene.colors
+      radii = self.scene.radii
+      assert (colors.size() == radii.size() == self.scene.points.size())
+      for i, hkl in enumerate(self.scene.points) :
         glColor3f(*colors[i])
         glBegin(GL_LINES)
         glVertex3f(hkl[0] - radii[i], hkl[1], hkl[2])
@@ -184,34 +197,44 @@ class hklview (wxGLWindow) :
     self.points_display_list.call()
 
   def draw_axes (self) :
+    h_axis = self.scene.h_axis
+    k_axis = self.scene.k_axis
+    l_axis = self.scene.l_axis
+    gltbx.fonts.ucs_bitmap_8x13.setup_call_lists()
     glDisable(GL_LIGHTING)
     glColor3f(1.0, 1.0, 1.0)
     glLineWidth(2)
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(self._axis_lengths[0], 0., 0.)
+    glVertex3f(h_axis[0]*100, h_axis[1]*100, h_axis[2]*100)
     glEnd()
+    glRasterPos3f(0.5+h_axis[0]*100, 0.2+h_axis[1]*100, 0.2+h_axis[2]*100)
+    gltbx.fonts.ucs_bitmap_8x13.render_string("h")
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(0.,self._axis_lengths[0], 0.)
+    glVertex3f(k_axis[0]*100, k_axis[1]*100, k_axis[2]*100)
     glEnd()
+    glRasterPos3f(0.2+k_axis[0]*100, 0.5+k_axis[1]*100, 0.2+k_axis[2]*100)
+    gltbx.fonts.ucs_bitmap_8x13.render_string("k")
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(0., 0., self._axis_lengths[0])
+    glVertex3f(l_axis[0]*100, l_axis[1]*100, l_axis[2]*100)
     glEnd()
+    glRasterPos3f(0.2+l_axis[0]*100, 0.5+l_axis[1]*100, 0.2+l_axis[2]*100)
+    gltbx.fonts.ucs_bitmap_8x13.render_string("l")
     glEnable(GL_LINE_STIPPLE)
     glLineStipple(4, 0xAAAA)
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(-self._axis_lengths[0], 0., 0.)
+    glVertex3f(-h_axis[0]*100, -h_axis[1]*100, -h_axis[2]*100)
     glEnd()
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(0.,-self._axis_lengths[0], 0.)
+    glVertex3f(-k_axis[0]*100, -k_axis[1]*100, -k_axis[2]*100)
     glEnd()
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(0., 0., -self._axis_lengths[0])
+    glVertex3f(l_axis[0]*100, l_axis[1]*100, l_axis[2]*100)
     glEnd()
     glDisable(GL_LINE_STIPPLE)
 
@@ -310,11 +333,59 @@ class HKLViewFrame (wx.Frame) :
     self.sizer.Add(self.glwindow, 1, wx.EXPAND)
     self.SetSizer(self.sizer)
     self.sizer.SetSizeHints(self)
+    menubar = wx.MenuBar(-1)
+    file_menu = wx.Menu("File")
+    menubar.Append(file_menu, "File")
+    item = wx.MenuItem(file_menu, -1, "Load data...\tCtrl-O")
+    file_menu.AppendItem(item)
+    self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
+    self.SetMenuBar(menubar)
 
   def set_miller_array (self, array) :
-    labels = array.info().label_string()
+    if array.is_complex_array() or array.is_hendrickson_lattman_array() :
+      raise Sorry("Complex (map) data and HL coefficients not supported.")
+    info = array.info()
+    if isinstance(info, str) :
+      labels = "TEST DATA"
+    else :
+      labels = info.label_string()
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
     self.statusbar.SetStatusText("Data: %s  (Space group: %s  Unit Cell: %s)" %
       (labels, sg, uc))
     self.glwindow.set_miller_array(array)
+
+  def OnLoadFile (self, evt) :
+    file_name = wx.FileSelector("Reflections file",
+      wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
+      default_path="",
+      flags=wx.OPEN)
+    if (file_name != "") :
+      from iotbx import file_reader
+      from iotbx.gui_tools.reflections import get_array_description
+      f = file_reader.any_file(file_name, force_type="hkl")
+      f.assert_file_type("hkl")
+      arrays = f.file_server.miller_arrays
+      valid_arrays = []
+      array_info = []
+      for array in arrays :
+        if array.is_complex_array() or array.is_hendrickson_lattman_array() :
+          continue
+        labels = array.info().label_string()
+        desc = get_array_description(array)
+        array_info.append("%s (%s)" % (labels, desc))
+        valid_arrays.append(array)
+      if (len(valid_arrays) == 0) :
+        raise Sorry("No arrays of the supported types in this file.")
+      elif (len(valid_arrays) == 1) :
+        self.set_miller_array(valid_arrays[0])
+      else :
+        #dlg = SelectArrayDialog(self, -1, "Select data")
+        dlg = wx.SingleChoiceDialog(parent=self,
+          message="Please select the data you wish to view:",
+          caption="Select data",
+          choices=array_info)
+        if (dlg.ShowModal() == wx.ID_OK) :
+          sel = dlg.GetSelection()
+          self.set_miller_array(valid_arrays[sel])
+        wx.CallAfter(dlg.Destroy)
