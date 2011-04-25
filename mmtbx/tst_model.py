@@ -172,7 +172,7 @@ def exercise_3():
   assert out.getvalue().splitlines()[0] == \
   "X-H deviation from ideal before regularization (bond): mean= 0.154 max= 0.496"
   assert out.getvalue().splitlines()[1] == \
-  "X-H deviation from ideal after  regularization (bond): mean= 0.000 max= 0.002"
+  "X-H deviation from ideal after  regularization (bond): mean= 0.000 max= 0.000"
 
 def exercise_4():
   pdb_file = libtbx.env.find_in_repositories(
