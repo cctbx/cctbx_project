@@ -281,7 +281,7 @@ class map_viewer_mixin (wxGLWindow) :
     glDisable(GL_LIGHTING)
     glDisable(GL_BLEND)
     vendor = glGetString(GL_VENDOR)
-    if (sys.platform == "darwin") and vendor.startswith("NVIDIA") :
+    if (sys.platform == "darwin") : #and vendor.startswith("NVIDIA") :
       glDisable(GL_LINE_SMOOTH) # XXX what about Linux?
     line_width = 0.1
     w_range = [0.0,0.0]
@@ -324,11 +324,11 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     selection_editor_mixin.InitGL(self)
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
     vendor = glGetString(GL_VENDOR)
-    if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
-      print vendor
+    #if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
+    #  print vendor
     if (wx.VERSION[1] >= 9) and ("GL_MULTISAMPLE" in globals().keys()) :
-      print "glEnable(GL_MULTISAMPLE)"
-      glEnable(GL_MULTISAMPLE)
+      #print "glEnable(GL_MULTISAMPLE)"
+      glEnable(GL_MULTISAMPLE) # FIXME doesn't actually work???
     glEnable(GL_POLYGON_SMOOTH)
     n = [0]
     glGetIntegerv(GL_SAMPLE_BUFFERS, n)
