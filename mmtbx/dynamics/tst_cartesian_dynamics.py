@@ -10,6 +10,7 @@ from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import random
+#from mmtbx import utils
 import sys, os
 
 if (1): # fixed random seed to avoid rare failures
@@ -193,7 +194,7 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
       data=array_of_distances_between_each_atom,
       n_slots=12).show(
         format_cutoffs="%6.4f")
-  n_rms = 5.1
+  n_rms = 5.2
   selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
   outlier_sc = xray_structure.scatterers().select(selected_by_rms)
   if (outlier_sc.size() != 0):
