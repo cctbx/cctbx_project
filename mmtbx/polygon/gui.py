@@ -134,12 +134,17 @@ class canvas_layout (object) :
         self.draw_bin(out, start, end, colors[i][j])
       anchor = (histogram.text_anchor[0] * self.units,
                 histogram.text_anchor[1] * self.units)
+      stat_key = histogram.name
+      if (stat_key == "angles_rmsd") :
+        stat_key = "angle_rmsd"
+      elif (stat_key == "bonds_rmsd") :
+        stat_key = "bond_rmsd"
       self.draw_labels(
         out=out,
         label=histogram.label,
         min=self.format_value(histogram.min, histogram.name),
         max=self.format_value(histogram.max, histogram.name),
-        value=self.format_value(self.stats[histogram.name], histogram.name),
+        value=self.format_value(self.stats[stat_key], histogram.name),
         pos=anchor,
         angle=histogram.angle)
     for (start, end, dashed) in self._polygon.get_line_segments(self.units) :
