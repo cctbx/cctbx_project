@@ -15,10 +15,13 @@ from libtbx.utils import format_float_with_standard_uncertainty \
 from libtbx.utils import Sorry
 from scitbx import matrix
 
-import math, sys
+import math, os, sys
 
 distances_as_cif_loop = geometry.distances_as_cif_loop
 angles_as_cif_loop = geometry.angles_as_cif_loop
+
+class CifParserError(Sorry):
+  __module__ = Exception.__module__
 
 class reader(object):
 
@@ -34,12 +37,17 @@ class reader(object):
       if isinstance(file_path, unicode):
         file_object = open(file_path, 'rb')
       else:
+        if not os.path.exists(file_path):
+          raise Sorry("No such file exists: %s" %file_path)
         self.parser = ext.fast_reader(file_path, builder)
     if file_object is not None:
       input_string = file_object.read()
     if input_string is not None:
       self.parser = ext.fast_reader(input_string, builder)
-    self.show_errors(max_errors)
+    if len(self.parser.lexer_errors()):
+      raise CifParserError(self.parser.lexer_errors()[0])
+    if len(self.parser.parser_errors()):
+      raise CifParserError(self.parser.parser_errors()[0])
 
   def model(self):
     return self.builder.model()
