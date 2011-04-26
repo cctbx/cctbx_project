@@ -1,6 +1,7 @@
 from cctbx.array_family import flex
 from cctbx import miller
 from iotbx import cif
+from iotbx.cif import CifParserError
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff, Exception_expected
 from cStringIO import StringIO
@@ -50,14 +51,17 @@ def exercise_lex_parse_build():
   stdout = sys.stdout
   s = StringIO()
   sys.stdout = s
-  b = cif.reader(input_string=cif_invalid_missing_value).model()
-  assert b['global'].items() == [('_a', '1')]
-  c = cif.reader(input_string=cif_invalid_string).model()
+  try: cif.reader(input_string=cif_invalid_missing_value).model()
+  except CifParserError: pass
+  else: raise Exception_expected
+  try: cif.reader(input_string=cif_invalid_string).model()
+  except CifParserError: pass
+  else: raise Exception_expected
   a = cif.reader(input_string=cif_cod)
   assert a.error_count() == 0
-  c = cif.reader(input_string=cif_invalid_semicolon_text_field)
-  assert c.error_count() > 0
-  assert c.model()['1']['_a'] == ';'
+  try: cif.reader(input_string=cif_invalid_semicolon_text_field)
+  except CifParserError: pass
+  else: raise Exception_expected
   d = cif.reader(input_string=cif_valid_semicolon_text_field)
   assert d.error_count() == 0
   assert d.model()['1']['_a'] == ';\n1\n;'
