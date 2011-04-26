@@ -125,7 +125,8 @@ class manager (object) :
         return file_name
     if (file_name is None) :
       return None
-    assert os.path.isfile(file_name)
+    if (not os.path.isfile(file_name)) :
+      raise IOError(2001, "failed os.path.isfile", file_name)
     if (file_name in self._cached_input_files) :
       if self.file_is_modified(file_name) :
         input_file = self.open_file(file_name)
