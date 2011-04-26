@@ -125,7 +125,12 @@ def get_atom_selection_manager(pdb_inp):
 def analyze_input_params(params):
   # Analyze map_coefficients
   mcp = params.maps.map_coefficients
-  for mcp_ in mcp:
+  i = 0
+  while (i < len(mcp)) :
+    mcp_ = mcp[i]
+    if (mcp_.map_type is None) :
+      del mcp[i]
+      continue
     if(mmtbx.map_names(mcp_.map_type).anomalous):
       mcp_.kicked = False
       mcp_.fill_missing_f_obs = False
@@ -133,9 +138,15 @@ def analyze_input_params(params):
       mcp_.centrics_pre_scale = 1.0
       mcp_.sharpening = False
       mcp_.sharpening_b_factor = None
+    i += 1
   # Analyze maps
   mp = params.maps.map
-  for mp_ in mp:
+  i = 0
+  while (i < len(mp)) :
+    mp_ = mp[i]
+    if (mp_.map_type is None) :
+      del mp[i]
+      continue
     if(mmtbx.map_names(mp_.map_type).anomalous):
       mp_.kicked = False
       mp_.fill_missing_f_obs = False
@@ -143,6 +154,7 @@ def analyze_input_params(params):
       mp_.centrics_pre_scale = 1.0
       mp_.sharpening = False
       mp_.sharpening_b_factor = None
+    i += 1
 
 def run(args, log = sys.stdout):
   print >> log, legend
@@ -316,10 +328,10 @@ def validate_params (params, callback=None) :
       params.maps.output.directory)
   validate_map_params(params.maps)
   # TODO double-check this - can we get None by accident in GUI?
-  for map_coeffs in params.maps.map_coefficients :
-    if (map_coeffs.map_type is None) :
-      raise Sorry("One or more map coefficients is missing a map type "+
-        "definition.")
+  #for map_coeffs in params.maps.map_coefficients :
+  #  if (map_coeffs.map_type is None) :
+  #    raise Sorry("One or more map coefficients is missing a map type "+
+  #      "definition.")
   return True
 
 def validate_map_params (params) :
@@ -331,14 +343,14 @@ def validate_map_params (params) :
         decode_map = map_names(map_coeffs.map_type)
       except RuntimeError, e :
         raise Sorry(str(e))
-    f = map_coeffs.mtz_label_amplitudes
-    phi = map_coeffs.mtz_label_phases
-    if (f in labels) or (phi in labels) :
-      raise Sorry(("The map coefficients with MTZ labels %s,%s duplicates at "+
-        "least one previously defined label.  You may output multiple sets "+
-        "of coefficients with the same map type, but the column labels must "+
-        "be unique.") % (f, phi))
-    labels.extend([f,phi])
+      f = map_coeffs.mtz_label_amplitudes
+      phi = map_coeffs.mtz_label_phases
+      if (f in labels) or (phi in labels) :
+        raise Sorry(("The map coefficients with MTZ labels %s,%s duplicates at"+
+          " least one previously defined label.  You may output multiple sets "+
+          "of coefficients with the same map type, but the column labels must "+
+          "be unique.") % (f, phi))
+      labels.extend([f,phi])
   return True
 
 def finish_job (results) :

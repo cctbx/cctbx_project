@@ -324,7 +324,7 @@ def convert_map_coefficients (map_coefficients,
       if (miller_array.info().label_string() == array_label) :
         map_array = miller_array
         break
-    if (miller_array is None) :
+    if (map_array is None) :
       print "Can't find %s" % array_label
       continue
     if mtz_file.endswith("_map_coeffs.mtz") :
@@ -334,10 +334,10 @@ def convert_map_coefficients (map_coefficients,
     output_file = base_file + "_%s.ccp4" % map.map_type
     ccp4_map_from_coeffs(
       miller_array=map_array,
-      output_file=map_file,
+      output_file=output_file,
       xray_structure=xray_structure,
       grid_resolution_factor=grid_resolution_factor)
-    map_files.append((map_file, map.map_type))
+    map_files.append((output_file, map.map_type))
   return map_files
 
 def ccp4_map_from_coeffs (miller_array, output_file, pdb_file=None,
