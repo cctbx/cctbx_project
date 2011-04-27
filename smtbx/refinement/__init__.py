@@ -16,10 +16,17 @@ class model(object):
     yet
     """
     from iotbx.reflection_file_reader import any_reflection_file
-    xs = xray.structure.from_cif(file_path=model)
-    ma = any_reflection_file(reflections).as_miller_arrays()[0]
-    assert ma.is_xray_intensity_array()
-    return cls(fo_sq=ma, xray_structure=xs,
+    xs_dict = xray.structure.from_cif(file_path=model)
+    assert len(xs_dict) == 1, "CIF should contain only one xray structure"
+    xs = xs_dict.values()[0]
+    mas = any_reflection_file(reflections).as_miller_arrays(crystal_symmetry=xs)
+    fo_sq = None
+    for ma in mas:
+      if ma.is_xray_intensity_array() and ma.sigmas() is not None:
+        fo_sq = ma.as_xray_observations()
+        break
+    assert fo_sq is not None
+    return cls(fo_sq=fo_sq, xray_structure=xs,
                constraints=[],
                restraints_manager=restraints.manager(),
                weighting_scheme=least_squares.sigma_weighting())
