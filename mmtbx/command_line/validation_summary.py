@@ -5,7 +5,8 @@ import os
 import sys
 
 class summary (object) :
-  def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None) :
+  def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None,
+      keep_hydrogens=False) :
     if (pdb_hierarchy is None) :
       assert (pdb_file is not None)
       from iotbx import file_reader
@@ -28,7 +29,8 @@ class summary (object) :
     rota_count, rota_perc = rota.get_outliers_count_and_fraction()
     self.rota_out = rota_perc * 100.0
     cs = clashscore.clashscore()
-    clash_dict, clash_list = cs.analyze_clashes(hierarchy=pdb_hierarchy)
+    clash_dict, clash_list = cs.analyze_clashes(hierarchy=pdb_hierarchy,
+      keep_hydrogens=keep_hydrogens)
     self.clash_score = clash_dict['']
     cbeta = cbetadev.cbetadev()
     cbeta_txt, cbeta_summ, cbeta_list = cbeta.analyze_pdb(
@@ -36,12 +38,12 @@ class summary (object) :
       outliers_only=True)
     self.cbeta_out = len(cbeta_list)
 
-  def show (self, out=sys.stdout) :
-    print >> out, "  Ramachandran outliers = %6.2f %%" % self.rama_out
-    print >> out, "               favored  = %6.2f %%" % self.rama_fav
-    print >> out, "  Rotamer outliers      = %6.2f %%" % self.rota_out
-    print >> out, "  C-beta deviations     = %6d" % self.cbeta_out
-    print >> out, "  Clashscore            = %6.2f" % self.clash_score
+  def show (self, out=sys.stdout, prefix="  ") :
+    print >> out, "%sRamachandran outliers = %6.2f %%" % (prefix,self.rama_out)
+    print >> out, "%s             favored  = %6.2f %%" % (prefix,self.rama_fav)
+    print >> out, "%sRotamer outliers      = %6.2f %%" % (prefix,self.rota_out)
+    print >> out, "%sC-beta deviations     = %6d" % (prefix,self.cbeta_out)
+    print >> out, "%sClashscore            = %6.2f" % (prefix,self.clash_score)
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) :
