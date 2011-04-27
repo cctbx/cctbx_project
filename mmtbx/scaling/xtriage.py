@@ -57,7 +57,7 @@ input {
     obs_labels=None
       .type=strings
       .help="Labels for observed data"
-      .short_caption = Fobs labels
+      .short_caption = Data labels
       .input_size = 160
       .style = bold renderer:draw_xtriage_hkl_label_widget \
         OnChange:auto_update_label_choice parent:file_name:file_name \
@@ -1020,8 +1020,10 @@ class launcher (runtime_utils.simple_target) :
     return run(args=list(self.args), return_result=True)
 
 def validate_params (params, callback=None) :
-  if params.scaling.input.xray_data.file_name is None :
+  if (params.scaling.input.xray_data.file_name is None) :
     raise Sorry("You must supply a reflection file first!")
+  if (params.scaling.input.xray_data.obs_labels is None) :
+    raise Sorry("Please select labels for input data.")
   d_min = params.scaling.input.xray_data.high_resolution
   d_max = params.scaling.input.xray_data.low_resolution
   if (d_min is not None) and (d_max is not None) :
