@@ -114,7 +114,8 @@ class cod_data(object):
     O.c_obs.show_comprehensive_summary()
     print "."*79
     #
-    O.xray_structure = cctbx.xray.structure.from_cif(file_path=model_file)
+    O.xray_structure = cctbx.xray.structure.from_cif(
+      file_path=model_file, data_block_name=cod_id)
     O.xray_structure = O.xray_structure.customized_copy(
       crystal_symmetry=combined_cs)
     O.xray_structure.show_summary().show_scatterers()

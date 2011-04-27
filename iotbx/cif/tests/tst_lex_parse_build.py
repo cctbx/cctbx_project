@@ -37,6 +37,7 @@ def exercise_miller_arrays_as_cif_block():
               '_diffrn_refln_intensity_u'):
     assert key in mas_as_cif_block.cif_block.keys()
 
+
 def exercise_lex_parse_build():
   builders = [cif.builders.cif_model_builder]
   if libtbx.env.has_module('PyCifRW'):
@@ -76,29 +77,34 @@ _c                                2
 
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
-      '_refln_F_calc', '_refln_F_meas', '_refln_F_sigma')))
+      '_refln_F_calc', '_refln_F_meas', '_refln_F_sigma')),
+                                 data_block_name='global')
   assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_meas']
   assert arrays['_refln_F_calc'].sigmas() is None
   assert isinstance(arrays['_refln_F_meas'].sigmas(), flex.double)
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
-      '_refln_A_calc', '_refln_B_calc', '_refln_F_meas')))
+      '_refln_A_calc', '_refln_B_calc', '_refln_F_meas')),
+                                 data_block_name='global')
   assert sorted(arrays.keys()) == ['_refln_A_calc', '_refln_F_meas']
   assert arrays['_refln_A_calc'].is_complex_array()
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
-      '_refln_A_meas', '_refln_B_meas', '_refln_F_meas')))
+      '_refln_A_meas', '_refln_B_meas', '_refln_F_meas')),
+                                 data_block_name='global')
   assert sorted(arrays.keys()) == ['_refln_A_meas', '_refln_F_meas']
   assert arrays['_refln_A_meas'].is_complex_array()
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
       '_refln_intensity_calc', '_refln_intensity_meas',
-      '_refln_intensity_sigma')))
+      '_refln_intensity_sigma')),
+                                 data_block_name='global')
   assert sorted(arrays.keys()) == [
     '_refln_intensity_calc', '_refln_intensity_meas']
   arrays = miller.array.from_cif(file_object=StringIO(
     cif_miller_array_template %(
-      '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')))
+      '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')),
+                                 data_block_name='global')
   assert sorted(arrays.keys()) == ['_refln_F_calc']
   assert arrays['_refln_F_calc'].is_complex_array()
 
@@ -121,7 +127,7 @@ def exercise_parser(reader, builder):
   xs2 = cif.builders.crystal_structure_builder(xs_cif_block).structure
   sio = StringIO()
   xs1.as_cif_simple(out=sio)
-  xs3 = reader(input_string=sio.getvalue()).build_crystal_structure(
+  xs3 = reader(input_string=sio.getvalue()).build_crystal_structures(
     data_block_name='global')
   xs_iso = xs1.deep_copy_scatterers()
   xs_iso.convert_to_isotropic()

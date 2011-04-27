@@ -46,7 +46,7 @@ reset_u_iso = None
   f_obs.show_comprehensive_summary()
   print
   #
-  structure_ideal = cctbx.xray.structure.from_cif(file_path=model_cif)
+  structure_ideal = cctbx.xray.structure.from_cif(file_path=model_cif).values()[0]
   structure_ideal.show_summary()
   print
   #
