@@ -8,8 +8,13 @@ from itertools import count
 import math
 import sys, os
 
-class Sorry_No_array_of_the_required_type(Sorry): pass
-class Sorry_Not_a_suitable_array(Sorry): pass
+class Sorry_No_array_of_the_required_type(Sorry):
+  __orig_module__ = __module__
+  __module__ = "exceptions"
+
+class Sorry_Not_a_suitable_array(Sorry):
+  __orig_module__ = __module__
+  __module__ = "exceptions"
 
 def find_labels(search_labels, info_string):
   for search_label in search_labels:
