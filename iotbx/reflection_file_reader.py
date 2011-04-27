@@ -1,6 +1,7 @@
 from iotbx import mtz
 from iotbx.scalepack import merge as scalepack_merge
 from iotbx.scalepack import no_merge_original_index as scalepack_no_merge
+from iotbx.cif import reader as cif_reader
 from iotbx.cns import reflection_reader as cns_reflection_reader
 from iotbx.cns import index_fobs_sigma_reader as cns_index_fobs_sigma_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
@@ -62,6 +63,10 @@ def try_all_readers(file_name):
   except KeyboardInterrupt: raise
   except: pass
   else: return ("shelx_hklf", content)
+  try: content = cif_reader(file_path=file_name)
+  except KeyboardInterrupt: raise
+  except: pass
+  else: return ("cif", content)
   try: content = xds_ascii_reader(
     open(file_name))
   except KeyboardInterrupt: raise
@@ -72,6 +77,7 @@ def try_all_readers(file_name):
   except: pass
   else: return ("solve_fpfm", content)
   return (None, None)
+
 
 class any_reflection_file(object):
 

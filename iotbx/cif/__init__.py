@@ -75,23 +75,41 @@ class reader(object):
     else:
       return xray_structures
 
-  def build_miller_arrays(self, data_block_name=None):
+  def build_miller_arrays(self,
+                          data_block_name=None,
+                          base_array_info=None):
     arrays = cctbx_data_structures_from_cif(
       cif_model=self.model(),
       file_path=self.file_path,
       data_block_name=data_block_name,
-      data_structure_builder=builders.miller_array_builder).miller_arrays
+      data_structure_builder=builders.miller_array_builder,
+      base_array_info=base_array_info).miller_arrays
     if data_block_name is not None:
       return arrays[data_block_name]
     else:
       return arrays
 
-  def as_miller_arrays(self, data_block_name=None):
+  def as_miller_arrays(self, data_block_name=None,
+                       crystal_symmetry=None,
+                       force_symmetry=False,
+                       merge_equivalents=True,
+                       base_array_info=None):
     if data_block_name is not None:
-      return self.build_miller_arrays(data_block_name=data_block_name).values()
+      arrays = self.build_miller_arrays(
+        data_block_name=data_block_name,
+        base_array_info=base_array_info).values()
     else:
-      return flat_list([
-        arrays.values() for arrays in self.build_miller_arrays().values()])
+      arrays = flat_list([
+        arrays.values() for arrays in
+        self.build_miller_arrays(base_array_info=base_array_info).values()])
+    other_symmetry=crystal_symmetry
+    for i, array in enumerate(arrays):
+      if crystal_symmetry is not None:
+        crystal_symmetry = other_symmetry.join_symmetry(
+          other_symmetry=array.crystal_symmetry(),
+          force=force_symmetry)
+        arrays[i] = array.customized_copy(crystal_symmetry=crystal_symmetry)
+    return arrays
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
@@ -329,6 +347,7 @@ class cctbx_data_structures_from_cif(object):
                cif_model=None,
                data_structure_builder=None,
                data_block_name=None,
+               base_array_info=None,
                **kwds):
     assert file_object is None or cif_model is None
     if data_structure_builder is None:
@@ -361,5 +380,6 @@ class cctbx_data_structures_from_cif(object):
             self.xray_structures.setdefault(key, builder(block).structure)
         elif builder == builders.miller_array_builder:
           if '_refln_index_h' in block:
-            self.miller_arrays.setdefault(key, builder(block).arrays())
+            self.miller_arrays.setdefault(
+              key, builder(block, base_array_info=base_array_info).arrays())
 
