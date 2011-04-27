@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME smtbx.refine
+
 import os
 from scitbx import lstbx
 import scitbx.lstbx.normal_eqns_solving
