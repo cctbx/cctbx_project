@@ -7,7 +7,7 @@ op = os.path
 def run(args):
   for f in args:
     try:
-      xs = xray.structure.from_cif(file_path=f)
+      xray_structures = xray.structure.from_cif(file_path=f)
     except KeyboardInterrupt:
       raise
     except Exception, e:
@@ -15,10 +15,15 @@ def run(args):
         show_string(f))
       print " ", str(e)
       continue
-    xs.show_summary()
-    r, _ = op.splitext(op.basename(f))
-    easy_pickle.dump(file_name=r+'_xray_structure.pickle', obj=xs)
+    basename, _ = op.splitext(op.basename(f))
+    for key, xs in xray_structures.items():
+      xs.show_summary()
+      r = basename
+      if key != r:
+        r += '_'+key
+      easy_pickle.dump(file_name=r+'_xray_structure.pickle', obj=xs)
 
 if (__name__ == "__main__"):
   import sys
   run(args=sys.argv[1:])
+  print "OK"

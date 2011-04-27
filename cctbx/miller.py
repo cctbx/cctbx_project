@@ -2971,10 +2971,14 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
   def from_cif(cls, file_object=None, file_path=None, data_block_name=None):
     import iotbx.cif
     from iotbx.cif import builders
-    return iotbx.cif.cctbx_data_structure_from_cif(
+    arrays = iotbx.cif.cctbx_data_structures_from_cif(
       file_object=file_object, file_path=file_path,
       data_block_name=data_block_name,
-      data_structure_builder=builders.miller_array_builder).arrays()
+      data_structure_builder=builders.miller_array_builder).miller_arrays
+    if data_block_name is not None:
+      return arrays[data_block_name]
+    else:
+      return arrays
   from_cif = classmethod(from_cif)
 
   def shelxl_extinction_correction(self, x, wavelength):

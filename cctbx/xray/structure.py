@@ -1710,11 +1710,15 @@ class structure(crystal.special_position_settings):
   def from_cif(cls, file_object=None, file_path=None, data_block_name=None):
     import iotbx.cif
     from iotbx.cif import builders
-    result = iotbx.cif.cctbx_data_structure_from_cif(
+    result = iotbx.cif.cctbx_data_structures_from_cif(
       file_object=file_object, file_path=file_path,
       data_block_name=data_block_name,
       data_structure_builder=builders.crystal_structure_builder)
-    if result is not None: return result.structure
+    if len(result.xray_structures):
+      if data_block_name is not None:
+        return result.xray_structures[data_block_name]
+      else:
+        return result.xray_structures
     else:
       raise Sorry("Could not extract an xray.structure from the given input")
   from_cif = classmethod(from_cif)

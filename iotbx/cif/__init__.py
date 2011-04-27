@@ -13,6 +13,7 @@ from libtbx.containers import OrderedDict
 from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx.utils import Sorry
+from libtbx.utils import flat_list
 from scitbx import matrix
 
 import math, os, sys
@@ -63,22 +64,34 @@ class reader(object):
     for msg in self.parser.parser_errors()[:max_errors]:
       print >> out, msg
 
-  def build_crystal_structure(self, data_block_name=None):
-    return cctbx_data_structure_from_cif(
+  def build_crystal_structures(self, data_block_name=None):
+    xray_structures = cctbx_data_structures_from_cif(
       cif_model=self.model(),
       file_path=self.file_path,
       data_block_name=data_block_name,
-      data_structure_builder=builders.crystal_structure_builder).structure
+      data_structure_builder=builders.crystal_structure_builder).xray_structures
+    if data_block_name is not None:
+      return xray_structures[data_block_name]
+    else:
+      return xray_structures
 
   def build_miller_arrays(self, data_block_name=None):
-    return cctbx_data_structure_from_cif(
+    arrays = cctbx_data_structures_from_cif(
       cif_model=self.model(),
       file_path=self.file_path,
       data_block_name=data_block_name,
-      data_structure_builder=builders.miller_array_builder).arrays()
+      data_structure_builder=builders.miller_array_builder).miller_arrays
+    if data_block_name is not None:
+      return arrays[data_block_name]
+    else:
+      return arrays
 
   def as_miller_arrays(self, data_block_name=None):
-    return self.build_miller_arrays(data_block_name=data_block_name).values()
+    if data_block_name is not None:
+      return self.build_miller_arrays(data_block_name=data_block_name).values()
+    else:
+      return flat_list([
+        arrays.values() for arrays in self.build_miller_arrays().values()])
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
@@ -309,32 +322,44 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
     self.refln_loop.add_columns(columns)
 
 
-def cctbx_data_structure_from_cif(
-  file_object=None, file_path=None, cif_model=None, data_structure_builder=None,
-  data_block_name=None, **kwds):
-  assert file_object is None or cif_model is None
-  assert data_structure_builder is not None
-  if cif_model is None:
-    cif_model = reader(file_path=file_path, file_object=file_object).model()
-  if not len(cif_model):
-    raise Sorry("No data block found in CIF")
-  if data_block_name is not None:
-    block = cif_model.get(key=data_block_name)
-    if (block is None):
+class cctbx_data_structures_from_cif(object):
+  def __init__(self,
+               file_object=None,
+               file_path=None,
+               cif_model=None,
+               data_structure_builder=None,
+               data_block_name=None,
+               **kwds):
+    assert file_object is None or cif_model is None
+    if data_structure_builder is None:
+      data_structure_builders = (
+        builders.miller_array_builder, builders.crystal_structure_builder)
+    else:
+      assert data_structure_builder in (
+        builders.miller_array_builder, builders.crystal_structure_builder)
+      data_structure_builders = (data_structure_builder,)
+
+    self.xray_structures = {}
+    self.miller_arrays = {}
+    if cif_model is None:
+      cif_model = reader(file_path=file_path, file_object=file_object).model()
+    if not len(cif_model):
+      raise Sorry("No data block found in CIF")
+    if data_block_name is not None and not data_block_name in cif_model:
       if (file_path is None):
         msg = 'Unknown CIF data block name: "%s"' % data_block_name
       else:
         msg = 'Unknown CIF data block name "%s" in file: "%s"' % (
           data_block_name, file_path)
       raise RuntimeError(msg)
-    return data_structure_builder(block, **kwds)
-  else:
     errors = []
-    for block in cif_model.values():
-      try:
-        return data_structure_builder(block)
-      except Exception, e:
-        errors.append(e)
-        continue
-    if errors:
-      raise errors[-1]
+    for key, block in cif_model.items():
+      if data_block_name is not None and key != data_block_name: continue
+      for builder in data_structure_builders:
+        if builder == builders.crystal_structure_builder:
+          if '_atom_site_fract_x' in block or '_atom_site_Cartn_x' in block:
+            self.xray_structures.setdefault(key, builder(block).structure)
+        elif builder == builders.miller_array_builder:
+          if '_refln_index_h' in block:
+            self.miller_arrays.setdefault(key, builder(block).arrays())
+
