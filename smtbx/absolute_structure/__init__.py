@@ -297,7 +297,9 @@ class students_t_hooft_analysis(hooft_analysis):
 
 class flack_analysis(object):
 
-  def __init__(self, xray_structure, obs_, exti):
+  def __init__(self, xray_structure, obs_, exti=None):
+    if exti is None:
+      exti = xray.dummy_extinction_correction()
     adopt_init_args(self, locals())
     assert obs_.fo_sq.anomalous_flag()
     xray_structure = xray_structure.deep_copy_scatterers()

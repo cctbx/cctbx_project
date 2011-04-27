@@ -49,7 +49,10 @@ def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
     if os.path.exists(fcf_path):
       xs, fo2, fc, scale = structure_factors_from_fcf(fcf_path, xs)
     elif os.path.exists(hkl_path):
-      xs, fo2, fc, scale = structure_factors_from_hkl(hkl_path, xs)
+      try:
+        xs, fo2, fc, scale = structure_factors_from_hkl(hkl_path, xs)
+      except RuntimeError:
+        xs, fo2, fc, scale = structure_factors_from_fcf(hkl_path, xs)
     else: return
   else:
     if not os.path.exists(hkl_path): return
@@ -80,7 +83,7 @@ def structure_factors_from_fcf(file_path, xs=None):
     scale = fo2.scale_factor(fc)
   return xs, fo2, fc, scale
 
-def structure_factors_from_hkl(xs, hkl_path, weighting_scheme=None):
+def structure_factors_from_hkl(hkl_path, xs, weighting_scheme=None):
   fo2 = hklf.reader(file_name=hkl_path).as_miller_arrays(
     crystal_symmetry=xs)[0]
   fo2.set_observation_type_xray_intensity()
@@ -159,7 +162,7 @@ def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
   tPP.show(out=log)
   print >> log
   if xs is not None:
-    flack = absolute_structure.flack_analysis(xs, fo2)
+    flack = absolute_structure.flack_analysis(xs, fo2.as_xray_observations())
     flack.show(out=log)
 
 def run(args):
@@ -167,7 +170,8 @@ def run(args):
     usage="smtbx.absolute_structure directory|cif|fcf|hkl|ins/res [options]")
                   .enable_symmetry_comprehensive()
                   .option(None, "--ext",
-                          action="store")
+                          action="store",
+                          default="cif")
                   .option(None, "--nu",
                           action="store",
                           type="float")
