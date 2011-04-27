@@ -3,51 +3,19 @@ import traceback
 import sys, os
 op = os.path
 
-def report_fraction_of_negative_observations_if_any(id_code, obs):
-  d = obs.data()
-  n_neg = (d < 0).count(True)
-  n_all = d.size()
-  if (n_neg != 0 and n_all != 0):
-    print obs.info()
-    print "fraction_of_negative_obs: %.6g (%d of %d)" % (
-      n_neg / n_all, n_neg, n_all)
-    neg = d.select(d < 0)
-    pos = d.select(d >= 0)
-    from cctbx.array_family import flex
-    def hist(data):
-      from cStringIO import StringIO
-      sio = StringIO()
-      flex.histogram(data=data, n_slots=10) \
-        .show(f=sio, prefix="  ", format_cutoffs="%8.2f")
-      return sio.getvalue().splitlines()
-    lines_neg = hist(-neg)
-    lines_pos = hist(pos)
-    pair_fmt = "%-35s | %s"
-    print pair_fmt % (
-      "Histogram of negative observations:",
-        "positive observations:")
-    for pair in zip(lines_neg, lines_pos):
-      print pair_fmt % pair
+from cctbx.omz.cif_refine import extract_from_cif_files
 
-class cod_data(object):
+class cod_data(extract_from_cif_files):
 
   __slots__ = [
-    "cod_id",
-    "c_obs",
-    "xray_structure",
-    "non_hydrogen_selection",
-    "edge_list"]
+    "cod_id"] + extract_from_cif_files.__slots__
 
   def __init__(O, cod_id, hkl_cif_pair):
     O.cod_id = cod_id
-    O.c_obs = None
-    O.xray_structure = None
-    O.non_hydrogen_selection = None
-    O.edge_list = None
     refl_file, model_file = hkl_cif_pair
-    import iotbx.cif.builders
     print "refl_file:", refl_file
     print "model_file:", model_file
+    import iotbx.cif
     refl_cif = iotbx.cif.reader(file_path=refl_file)
     model_cif = iotbx.cif.reader(file_path=model_file)
     for cif_obj in [model_cif, refl_cif]:
@@ -71,61 +39,12 @@ class cod_data(object):
           if (key.startswith("_pd_")):
             print "SKIPPING: COD entry with powder data:", cod_id
             return
-    from_coordinate_files = []
-    from_reflection_files = []
-    def get_cs(cif, buffer):
-      for cif_block in cif.model().values():
-        cs = iotbx.cif.builders.crystal_symmetry_builder(
-          cif_block=cif_block).crystal_symmetry
-        buffer.append(cs)
-    get_cs(refl_cif, from_reflection_files)
-    get_cs(model_cif, from_coordinate_files)
-    import cctbx.crystal
-    combined_cs = cctbx.crystal.select_crystal_symmetry(
-      from_coordinate_files=from_coordinate_files,
-      from_reflection_files=from_reflection_files)
-    if (combined_cs.unit_cell() is None):
-      raise RuntimeError("Unit cell not found in both cif and hkl files.")
-    if (combined_cs.space_group_info() is None):
-      raise RuntimeError("Space group not found in both cif and hkl file.")
-    #
-    miller_arrays = refl_cif.as_miller_arrays()
-    meas_a = []
-    meas_i = []
-    for ma in miller_arrays:
-      s = str(ma.info())
-      if (s.find("_meas") >= 0):
-        if (ma.is_xray_intensity_array()):
-          meas_i.append(ma)
-        elif (ma.is_xray_amplitude_array()):
-          meas_a.append(ma)
-        else:
-          continue
-        report_fraction_of_negative_observations_if_any(cod_id, ma)
-    if (len(meas_i) != 0):
-      O.c_obs = meas_i[0]
-    elif (len(meas_a) != 0):
-      O.c_obs = meas_a[0]
-    else:
-      raise RuntimeError("Missing diffraction data.")
-    O.c_obs = O.c_obs.customized_copy(
-      crystal_symmetry=combined_cs)
-    print "."*79
-    O.c_obs.show_comprehensive_summary()
-    print "."*79
-    #
-    O.xray_structure = cctbx.xray.structure.from_cif(
-      file_path=model_file, data_block_name=cod_id)
-    O.xray_structure = O.xray_structure.customized_copy(
-      crystal_symmetry=combined_cs)
-    O.xray_structure.show_summary().show_scatterers()
-    print "."*79
-    #
-    O.non_hydrogen_selection = (~O.xray_structure.hd_selection()).iselection()
-    #
-    O.edge_list = O.process_geom_bond(model_cif)
-    if (O.edge_list is not None):
-      print "len(edge_list):", len(O.edge_list), cod_id
+    extract_from_cif_files.__init__(O,
+      report_id=cod_id,
+      refl_file=refl_file,
+      refl_cif=refl_cif,
+      model_file=model_file,
+      model_cif=model_cif)
 
   def have_zero_occupancies(O):
     return not O.xray_structure.scatterers().extract_occupancies().all_ne(0)
@@ -141,7 +60,7 @@ class cod_data(object):
   def have_close_contacts(O, min_distance):
     if (min_distance <= 0):
       return False
-    xs = O.xray_structure.select(selection=O.non_hydrogen_selection)
+    xs = O.xray_structure.select(selection=O.non_hydrogen_iselection)
     pat = xs.pair_asu_table(distance_cutoff=min_distance)
     pst = pat.extract_pair_sym_table()
     from cctbx import crystal
@@ -232,7 +151,7 @@ class cod_data(object):
 
   def is_useful(O, co):
     if (O.c_obs is None): return False
-    if (O.non_hydrogen_selection.size() > co.max_atoms): return False
+    if (O.non_hydrogen_iselection.size() > co.max_atoms): return False
     if (O.have_zero_occupancies()): return False
     if (O.have_close_contacts(co.min_distance)): return False
     if (not O.have_shelxl_compatible_scattering_types()): return False
@@ -245,32 +164,9 @@ class cod_data(object):
       return False
     return True
 
-  def process_geom_bond(O, model_cif):
-    xs = O.xray_structure
-    scs = xs.scatterers()
-    i_seq_by_lbl = dict(zip(scs.extract_labels(), range(scs.size())))
-    if (len(i_seq_by_lbl) != scs.size()):
-      return None
-    edge_set = set()
-    for cif_block in model_cif.model().values():
-      lbl_lists = [cif_block.get("_geom_bond_atom_site_label_"+s)
-        for s in "12"]
-      if (lbl_lists.count(None) != 0):
-        return None
-      if (len(lbl_lists[0]) != len(lbl_lists[1])):
-        return None
-      for lbl_pair in zip(*lbl_lists):
-        i_seqs = tuple(sorted([i_seq_by_lbl.get(lbl) for lbl in lbl_pair]))
-        if (i_seqs.count(None) != 0):
-          return None
-        if (i_seqs in edge_set):
-          return None
-        edge_set.add(i_seqs)
-    return sorted(edge_set)
-
   def quick_info(O):
     return (
-      O.non_hydrogen_selection.size(),
+      O.non_hydrogen_iselection.size(),
       O.c_obs.space_group().order_p(),
       O.c_obs.indices().size(),
       O.c_obs.d_min())

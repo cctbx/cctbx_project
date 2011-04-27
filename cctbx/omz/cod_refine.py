@@ -552,7 +552,7 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
     f_obs = f_obs.apply_scaling(factor=s)
   def show(obs):
     obs.show_comprehensive_summary()
-    from cod_select_and_pickle import \
+    from cif_refine import \
       report_fraction_of_negative_observations_if_any as _
     _(cod_id, obs)
   if (c_obs.is_xray_intensity_array()):
