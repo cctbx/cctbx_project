@@ -33,11 +33,15 @@ class extract_from_cif_files(object):
     "non_hydrogen_iselection",
     "edge_list"]
 
+  def init_slots_with_none(O):
+    for slot in O.__slots__:
+      setattr(O, slot, None)
+
   def __init__(O, report_id, refl_file, refl_cif, model_file, model_cif):
-    O.c_obs = None
-    O.xray_structure = None
-    O.non_hydrogen_selection = None
-    O.edge_list = None
+    O.init_slots_with_none()
+    O.process(report_id, refl_file, refl_cif, model_file, model_cif)
+
+  def process(O, report_id, refl_file, refl_cif, model_file, model_cif):
     from_coordinate_files = []
     from_reflection_files = []
     import iotbx.cif.builders
