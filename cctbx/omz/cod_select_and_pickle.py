@@ -11,6 +11,7 @@ class cod_data(extract_from_cif_files):
     "cod_id"] + extract_from_cif_files.__slots__
 
   def __init__(O, cod_id, hkl_cif_pair):
+    O.init_slots_with_none()
     O.cod_id = cod_id
     refl_file, model_file = hkl_cif_pair
     print "refl_file:", refl_file
@@ -39,7 +40,7 @@ class cod_data(extract_from_cif_files):
           if (key.startswith("_pd_")):
             print "SKIPPING: COD entry with powder data:", cod_id
             return
-    extract_from_cif_files.__init__(O,
+    O.process(
       report_id=cod_id,
       refl_file=refl_file,
       refl_cif=refl_cif,
