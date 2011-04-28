@@ -298,16 +298,20 @@ def ccp4_map_from_mtz (mtz_file,
       grid_resolution_factor=resolution_factor)
   return output_file
 
-def ccp4_map_from_resolve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
+def ccp4_map_from_resolve_mtz (mtz_file, force=False, resolution_factor=1/3.0,
+    pdb_file=None) :
   return ccp4_map_from_mtz(mtz_file=mtz_file,
+    pdb_file=pdb_file,
     f_label="FP,SIGFP",
     phi_label="PHIM",
     fom_label="FOMM",
     resolution_factor=resolution_factor,
     force=force)
 
-def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
+def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0,
+    pdb_file=None) :
   return ccp4_map_from_mtz(mtz_file=mtz_file,
+    pdb_file=pdb_file,
     f_label="FP,SIGFP",
     phi_label="PHIB",
     fom_label="FOM",
