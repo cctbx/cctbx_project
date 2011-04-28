@@ -46,6 +46,10 @@ class scene (object) :
       data_for_colors = flex.sqrt(data)
     else :
       data_for_colors = data
+    if (settings.sqrt_scale_radii) :
+      data_for_radii = flex.sqrt(data)
+    else :
+      data_for_radii = data
     colors = viewer_utils.color_by_property(
       atom_properties=data_for_colors,
       atoms_visible=flex.bool(data.size(), True),
@@ -53,6 +57,8 @@ class scene (object) :
       use_rb_color_gradient=False)
     if (slice_selection is not None) :
       data = data.select(slice_selection)
+      if (data.size() == 0) :
+        raise Sorry("No data selected!")
       indices = indices.select(slice_selection)
       if (settings.keep_constant_scale) :
         colors = colors.select(slice_selection)
@@ -63,13 +69,13 @@ class scene (object) :
           color_invisible_atoms=False,
           use_rb_color_gradient=False)
     self.colors = colors
-    if (settings.sqrt_scale_radii) :
-      data = flex.sqrt(data)
     self.points = uc.reciprocal_space_vector(indices) * 100.
     abc = uc.parameters()[0:3]
     min_radius = 0.20 / max(abc)
     max_radius = 50 / max(abc)
-    scale = max_radius / flex.max(data)
+    scale = max_radius / flex.max(data_for_radii)
+    if (settings.sqrt_scale_radii) :
+      data = flex.sqrt(data)
     radii = data * scale
     too_small = radii < min_radius
     radii.set_selected(too_small, flex.double(radii.size(), min_radius))
