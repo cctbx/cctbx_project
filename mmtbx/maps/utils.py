@@ -256,8 +256,11 @@ def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
 #-----------------------------------------------------------------------
 # CCP4 MAP OUTPUT
 
-def ccp4_maps_from_refine_mtz (mtz_file, file_base=None,
-    limit_arrays=None, resolution_factor=0.33) :
+def ccp4_maps_from_refine_mtz (mtz_file,
+                               pdb_file=None,
+                               file_base=None,
+                               limit_arrays=None,
+                               resolution_factor=0.33) :
   if file_base is None :
     file_base = os.path.join(os.path.dirname(mtz_file), "refine")
   output_arrays = extract_phenix_refine_map_coeffs(mtz_file)
@@ -266,25 +269,33 @@ def ccp4_maps_from_refine_mtz (mtz_file, file_base=None,
     file_name = "%s_%s.ccp4" % (file_base, map_name)
     if (not os.path.exists(file_name) or
         os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
-      fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
-      fft_map.apply_sigma_scaling()
-      fft_map.as_ccp4_map(file_name=file_name)
+      ccp4_map_from_coeffs(
+        miller_array=map_coeffs,
+        output_file=file_name,
+        pdb_file=pdb_file,
+        grid_resolution_factor=resolution_factor)
       output_files.append(file_name)
   return output_files
 
-def ccp4_map_from_mtz (mtz_file, output_file=None, f_label="FP",
-    phi_label="PHIM", fom_label="FOMM", resolution_factor=1/3.0,
-    force=True) :
+def ccp4_map_from_mtz (mtz_file,
+                       pdb_file=None,
+                       output_file=None,
+                       f_label="FP",
+                       phi_label="PHIM",
+                       fom_label="FOMM",
+                       resolution_factor=1/3.0,
+                       force=True) :
   if output_file is None :
     output_file = os.path.splitext(mtz_file)[0] + ".ccp4"
   if (force or not os.path.isfile(output_file) or
       os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
     map_coeffs = map_coeffs_from_mtz_file(mtz_file, f_label, phi_label,
       fom_label)
-    assert map_coeffs.is_complex_array()
-    fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
-    fft_map.apply_sigma_scaling()
-    fft_map.as_ccp4_map(file_name=output_file)
+    ccp4_map_from_coeffs(
+      miller_array=map_coeffs,
+      output_file=output_file,
+      pdb_file=pdb_file,
+      grid_resolution_factor=resolution_factor)
   return output_file
 
 def ccp4_map_from_resolve_mtz (mtz_file, force=False, resolution_factor=1/3.0) :
