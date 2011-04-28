@@ -35,15 +35,23 @@ def run():
     print "%s:" % scatterer.label, "%8.4f %8.4f %8.4f" % scatterer.site
     site_symmetry = quartz_structure.site_symmetry(scatterer.site)
     print "  point group type:", site_symmetry.point_group_type()
-    print "  special position operator:",  site_symmetry.special_op()
+    print "  special position operator:",  site_symmetry.special_op_simplified()
 
-  f_calc = quartz_structure.structure_factors(d_min=2).f_calc()
-  f_calc.show_summary().show_array()
+  for table in ["xray", "electron"]:
+    print "Scattering type table:", table
 
-  f_calc.d_spacings().show_array()
+    reg = quartz_structure.scattering_type_registry(table=table)
+    reg.show_summary()
 
-  low_resolution_only = f_calc.select(f_calc.d_spacings().data() > 2.5)
-  low_resolution_only.show_array()
+    f_calc = quartz_structure.structure_factors(d_min=2).f_calc()
+    f_calc.show_summary().show_array()
+
+    f_calc.d_spacings().show_array()
+
+    low_resolution_only = f_calc.select(f_calc.d_spacings().data() > 2.5)
+    low_resolution_only.show_array()
+
+    print
 
 if (__name__ == "__main__"):
   run()

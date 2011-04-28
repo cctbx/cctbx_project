@@ -1,5 +1,9 @@
+from cctbx.eltbx.xray_scattering import gaussian
+
 # http://it.iucr.org/Cb/ch4o3v0001/sec4o3o2/ 2011-04-25
-ito_vol_c_table_4_3_2_2 = """\
+# Elastic atomic scattering factors of electrons for neutral atoms
+#   and s up to 2.0 A^-1
+ito_vol_c_2011_table_4_3_2_2 = """\
 H 1 0.0349 0.1201 0.1970 0.0573 0.1195 0.5347 3.5867 12.3471 18.9525 38.6269
 He 2 0.0317 0.0838 0.1526 0.1334 0.0164 0.2507 1.4751 4.4938 12.6646 31.1653
 Li 3 0.0750 0.2249 0.5548 1.4954 0.9354 0.3864 2.9383 15.3829 53.5545 138.7337
@@ -99,3 +103,32 @@ Cm 96 1.2937 3.1100 5.0393 4.7546 3.5031 0.2638 2.0341 8.7101 35.2992 109.4972
 Bk 97 1.2915 3.1023 4.9309 4.6009 3.4661 0.2611 2.0023 8.4377 34.1559 105.8911
 Cf 98 1.2089 2.7391 4.3482 4.0047 4.6497 0.2421 1.7487 6.7262 23.2153 80.3108
 """.splitlines()
+
+__cache = None
+def __get_cache():
+  global __cache
+  if (__cache is None):
+    from cctbx.eltbx.xray_scattering import get_standard_label
+    from libtbx.containers import OrderedDict
+    __cache = OrderedDict()
+    assert len(ito_vol_c_2011_table_4_3_2_2) == 98
+    for line in ito_vol_c_2011_table_4_3_2_2:
+      flds = line.split()
+      assert len(flds) == 12
+      std_lbl = get_standard_label(flds[0], exact=True)
+      assert flds[0] == std_lbl
+      assert std_lbl not in __cache
+      assert flds[1] == str(len(__cache)+1)
+      def vals(i,j): return [float(s) for s in flds[i:j]]
+      array_of_a = vals(2,7)
+      array_of_b = vals(7,12)
+      __cache[std_lbl] = gaussian(array_of_a, array_of_b)
+  return __cache
+
+def ito_vol_c_2011_table_4_3_2_2_elements():
+  return __get_cache().keys()
+
+def ito_vol_c_2011_table_4_3_2_2_entry_as_gaussian(label, exact=False):
+  from cctbx.eltbx import xray_scattering
+  std_lbl = xray_scattering.get_standard_label(label=label, exact=exact)
+  return __get_cache().get(std_lbl)
