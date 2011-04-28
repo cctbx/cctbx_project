@@ -960,9 +960,10 @@ class structure(crystal.special_position_settings):
         d_min=None,
         table=None,
         types_without_a_scattering_contribution=None):
-    assert table in [None, "n_gaussian", "it1992", "wk1995"]
+    assert table in [None, "n_gaussian", "it1992", "wk1995", "xray", "electron"]
     if (table == "it1992"): assert d_min in [0,None] or d_min >= 1/4.
     if (table == "wk1995"): assert d_min in [0,None] or d_min >= 1/12.
+    if (table == "electron"): assert d_min in [0,None] or d_min >= 1/4.
     if (   self._scattering_type_registry_is_out_of_date
         or custom_dict is not None
         or d_min is not None
@@ -1002,6 +1003,10 @@ class structure(crystal.special_position_settings):
               val = eltbx.xray_scattering.it1992(std_lbl, True).fetch()
             elif (table == "wk1995"):
               val = eltbx.xray_scattering.wk1995(std_lbl, True).fetch()
+            elif (table == "electron"):
+              from cctbx.eltbx.e_scattering import \
+                ito_vol_c_2011_table_4_3_2_2_entry_as_gaussian as _
+              val = _(label=std_lbl, exact=True)
             else:
               val = eltbx.xray_scattering.n_gaussian_table_entry(
                 std_lbl, d_min, 0).gaussian()

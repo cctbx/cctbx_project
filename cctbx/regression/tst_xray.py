@@ -212,6 +212,17 @@ def exercise_structure():
   xs.replace_scatterers(xs.scatterers()[:1], None)
   assert xs.scatterers().size() == 1
   assert tuple(xs.special_position_indices()) == (0,)
+  reg = ys.scattering_type_registry(table="electron")
+  assert reg.gaussian("Si").n_terms() == 5
+  s = StringIO()
+  reg.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+Number of scattering types: 2
+  Type Number    sf(0)   Gaussians
+   Si      1      5.83       5
+   O       1      1.98       5
+  sf(0) = scattering factor at diffraction angle 0.
+""")
   reg = ys.scattering_type_registry(table="wk1995")
   assert reg.gaussian("Si").n_terms() == 5
   reg = ys.scattering_type_registry(table="it1992")
