@@ -4,9 +4,9 @@ import iotbx.cif
 from iotbx.option_parser import option_parser
 from cctbx.crystal import coordination_sequences
 from cctbx import crystal, xray
+from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import sys
-import os
 
 def display(
       distance_cutoff,
@@ -44,7 +44,7 @@ def run(args):
     .option(None, "--cif_data_block_name",
       action="store",
       type="string",
-      default="global",
+      default=None,
       help="data block name as it appears in the CIF file")
     .option(None, "--tag",
       action="store",
@@ -89,6 +89,14 @@ def run(args):
     if (max_shell is None): max_shell = 10
   else:
     coseq_dict = None
+  def call_display(xray_structure):
+    display(
+      distance_cutoff=co.distance_cutoff,
+      show_cartesian=co.show_cartesian,
+      max_shell=max_shell,
+      coseq_dict=coseq_dict,
+      xray_structure=xray_structure)
+  cif_data_block_name_use_counter = 0
   for file_name in command_line.args:
     xray_structure = None
     if (iotbx.pdb.is_pdb_file(file_name=file_name)):
@@ -99,47 +107,48 @@ def run(args):
             co.distance_cutoff+1),
           min_distance_sym_equiv=co.min_distance_sym_equiv,
           enable_scattering_type_unknown=True)
-    elif (file_name.lower().endswith(".cif")):
-      xray_structure = iotbx.cif.reader(
-        file_path=file_name).build_crystal_structure(
-          data_block_name=co.cif_data_block_name)
-    if (xray_structure is not None):
-      display(
-        distance_cutoff=co.distance_cutoff,
-        show_cartesian=co.show_cartesian,
-        max_shell=max_shell,
-        coseq_dict=coseq_dict,
-        xray_structure=xray_structure)
-    elif os.path.splitext(file_name)[1] in ('.ins', '.res'):
-      xray_structure = xray.structure.from_shelx(filename=file_name,
-                                                 strictly_shelxl=False)
-      display(
-        distance_cutoff=co.distance_cutoff,
-        show_cartesian=co.show_cartesian,
-        max_shell=max_shell,
-        coseq_dict=coseq_dict,
-        xray_structure=xray_structure)
-    else:
-      if (command_line.symmetry is not None
-          and (command_line.symmetry.unit_cell() is not None
-            or command_line.symmetry.space_group_info() is not None)):
-        raise Sorry(
-          "Command-line symmetry options not supported for strudat files.")
-      strudat_entries = strudat.read_all_entries(open(file_name))
-      for entry in strudat_entries.entries:
-        if (    co.tag is not None
-            and co.tag != entry.tag):
+      call_display(xray_structure)
+      continue
+    if (file_name.lower().endswith(".cif")):
+      xray_structures = iotbx.cif.reader(
+        file_path=file_name).build_crystal_structures()
+      if (co.cif_data_block_name is not None):
+        xray_structure = xray_structures.get(co.cif_data_block_name)
+        if (xray_structure is None):
           continue
-        print "strudat tag:", entry.tag
-        print
-        xray_structure = entry.as_xray_structure(
-          min_distance_sym_equiv=co.min_distance_sym_equiv)
-        display(
-          distance_cutoff=co.distance_cutoff,
-          show_cartesian=co.show_cartesian,
-          max_shell=max_shell,
-          coseq_dict=coseq_dict,
-          xray_structure=xray_structure)
+        cif_data_block_name_use_counter += 1
+        xray_structures = [xray_structure]
+      else:
+        xray_structures = xray_structures.values()
+      for xray_structure in xray_structures:
+        call_display(xray_structure)
+      continue
+    if (   file_name.endswith(".ins")
+        or file_name.endswith(".res")):
+      xray_structure = xray.structure.from_shelx(
+        filename=file_name, strictly_shelxl=False)
+      call_display(xray_structure)
+      continue
+    if (command_line.symmetry is not None
+        and (command_line.symmetry.unit_cell() is not None
+          or command_line.symmetry.space_group_info() is not None)):
+      raise Sorry(
+        "Command-line symmetry options not supported for strudat files.")
+    strudat_entries = strudat.read_all_entries(open(file_name))
+    for entry in strudat_entries.entries:
+      if (    co.tag is not None
+          and co.tag != entry.tag):
+        continue
+      print "strudat tag:", entry.tag
+      print
+      xray_structure = entry.as_xray_structure(
+        min_distance_sym_equiv=co.min_distance_sym_equiv)
+      call_display(xray_structure)
+  if (    co.cif_data_block_name is not None
+      and cif_data_block_name_use_counter == 0):
+    raise Sorry(
+      "cif_data_block_name %s not found in any input files"
+        % show_string(co.cif_data_block_name))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

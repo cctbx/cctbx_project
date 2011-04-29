@@ -26,4 +26,3 @@ def run(args):
 if (__name__ == "__main__"):
   import sys
   run(args=sys.argv[1:])
-  print "OK"
