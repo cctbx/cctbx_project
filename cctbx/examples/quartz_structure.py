@@ -35,7 +35,7 @@ def run():
     print "%s:" % scatterer.label, "%8.4f %8.4f %8.4f" % scatterer.site
     site_symmetry = quartz_structure.site_symmetry(scatterer.site)
     print "  point group type:", site_symmetry.point_group_type()
-    print "  special position operator:",  site_symmetry.special_op_simplified()
+    print "  special position operator:", site_symmetry.special_op_simplified()
 
   for table in ["xray", "electron"]:
     print "Scattering type table:", table

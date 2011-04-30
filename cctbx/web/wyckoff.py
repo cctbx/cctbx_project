@@ -63,7 +63,7 @@ def run(server_info, inp, status):
     print "<td align=center>", wyckoff_mapping.position().multiplicity()
     print "<td align=center>", wyckoff_mapping.position().letter()
     print "<td align=center>", site_symmetry.point_group_type()
-    print "<td><tt>" + str(site_symmetry.special_op()) + "</tt>"
+    print "<td><tt>" + str(site_symmetry.special_op_simplified()) + "</tt>"
     print "</tr>"
   print "</table><pre>"
   status.in_table = False
