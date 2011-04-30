@@ -653,6 +653,11 @@ class _(boost.python.injector, ext.site_symmetry_table):
         s = str(special_ops.special_op())
         print >> out, prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s
 
+class _(boost.python.injector, wyckoff_position):
+
+  def special_op_simplified(self):
+    return special_op_simplifier(special_op=self.special_op())
+
 class _(boost.python.injector, wyckoff_table):
 
   def random_site_symmetry(self,
