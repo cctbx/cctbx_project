@@ -251,7 +251,7 @@ def run(server_info, inp, status):
       position.letter(),
       position.multiplicity(),
       position.point_group_type(),
-      str(position.special_op()))
+      str(position.special_op_simplified()))
     print "</tr>"
   print "</table><pre>"
   status.in_table = False

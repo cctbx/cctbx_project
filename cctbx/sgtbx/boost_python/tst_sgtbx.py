@@ -1673,6 +1673,11 @@ def exercise_wyckoff():
   assert approx_equal(m.exact_site(), (-2.5,1.123,-5))
   assert approx_equal(m.distance_moved(), u.length((-0.02,0,-0.03)))
   assert str(m.special_op()) == "-5/2,y,-5"
+  #
+  sg_type = space_group_type("P 42/n c m")
+  w = wyckoff_table(sg_type)
+  assert str(w.position(3).special_op()) == "1/2*x-1/2*y,-1/2*x+1/2*y,1/2"
+  assert str(w.position(3).special_op_simplified()) == "x,-x,1/2"
 
 def exercise_sym_equiv_sites():
   sym_equiv_sites = sgtbx.sym_equiv_sites
