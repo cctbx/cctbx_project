@@ -1241,8 +1241,13 @@ class array_info(object):
         labels=None,
         merged=False,
         systematic_absences_eliminated=False,
-        crystal_symmetry_from_file=None):
+        crystal_symmetry_from_file=None,
+        type_hints_from_file=None):
     adopt_init_args(self, locals())
+
+  def __setstate__(self, state):
+    self.type_hints_from_file = None # backward compatibility
+    self.__dict__.update(state)
 
   def customized_copy(self,
         source=Keep,
@@ -1251,7 +1256,8 @@ class array_info(object):
         labels=Keep,
         merged=Keep,
         systematic_absences_eliminated=Keep,
-        crystal_symmetry_from_file=Keep):
+        crystal_symmetry_from_file=Keep,
+        type_hints_from_file=Keep):
     if (source is Keep): source = self.source
     if (source_type is Keep): source_type = self.source_type
     if (history is Keep): history = self.history
@@ -1261,6 +1267,8 @@ class array_info(object):
       systematic_absences_eliminated = self.systematic_absences_eliminated
     if (crystal_symmetry_from_file is Keep):
       crystal_symmetry_from_file = self.crystal_symmetry_from_file
+    if (type_hints_from_file is Keep):
+      type_hints_from_file = self.type_hints_from_file
     return array_info(
       source=source,
       source_type=source_type,
@@ -1268,7 +1276,8 @@ class array_info(object):
       labels=labels,
       merged=merged,
       systematic_absences_eliminated=systematic_absences_eliminated,
-      crystal_symmetry_from_file=crystal_symmetry_from_file)
+      crystal_symmetry_from_file=crystal_symmetry_from_file,
+      type_hints_from_file=type_hints_from_file)
 
   def as_string_part_2(self):
     part_2 = []

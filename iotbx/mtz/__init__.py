@@ -74,6 +74,29 @@ column_type_legend = {
   "R": "real",
 }
 
+column_type_as_miller_array_type_hints = {
+  "H": "miller_index",
+  "J": "intensity",
+  "F": "amplitude",
+  "D": "anomalous_difference",
+  "Q": "standard_deviation",
+  "G": "amplitude",
+  "L": "standard_deviation",
+  "K": "intensity",
+  "M": "standard_deviation",
+  "E": "normalized_amplitude",
+  "P": "phase_degrees",
+  "W": "weight",
+  "A": "hendrickson_lattman",
+  "B": "batch_number",
+  "Y": "m_isym",
+  "I": "integer",
+  "R": "real",
+}
+
+assert sorted(column_type_as_miller_array_type_hints.keys()) \
+    == sorted(column_type_legend.keys())
+
 def default_column_types(miller_array):
   result = None
   if (miller_array.is_complex_array() and miller_array.sigmas() is None):
@@ -621,13 +644,14 @@ def column_group(
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=group.indices).auto_anomalous(min_fraction_bijvoet_pairs=2/3.)
-  result = (miller.array(
-    miller_set=miller_set,
+  result = miller_set.array(
     data=group.data,
-    sigmas=sigmas)
-    .set_info(base_array_info.customized_copy(
-      labels=labels,
-      crystal_symmetry_from_file=crystal_symmetry_from_file)))
+    sigmas=sigmas).set_info(
+      base_array_info.customized_copy(
+        labels=labels,
+        crystal_symmetry_from_file=crystal_symmetry_from_file,
+        type_hints_from_file=column_type_as_miller_array_type_hints.get(
+          primary_column_type)))
   if (observation_type is not None):
     result.set_observation_type(observation_type)
   elif (not result.is_complex_array()):
