@@ -8,6 +8,7 @@ import gltbx.util
 import gltbx.fonts
 from gltbx.glu import *
 from gltbx.gl import *
+from wxtbx import icons
 import wxtbx.utils
 import wx
 from libtbx.utils import Sorry
@@ -23,9 +24,17 @@ class scene (object) :
       data = array.data()
       data.set_selected(data < 0, flex.double(data.size(), 0.))
       array = array.customized_copy(data=data)
+    if (settings.show_data_over_sigma) :
+      if (array.sigmas() is None) :
+        raise Sorry("sigmas not defined.")
+      sigmas = array.sigmas()
+      data = array.data()
+      array = array.select(sigmas != 0).customized_copy(data=data/sigmas)
     uc = array.unit_cell()
-    if (settings.expand_data) :
-      array = array.expand_to_p1().generate_bijvoet_mates()
+    if (settings.expand_to_p1) :
+      array = array.expand_to_p1()
+    if (settings.expand_anomalous) :
+      array = array.generate_bijvoet_mates()
     slice_selection = None
     if (settings.slice_mode) :
       slice_selection = miller.simple_slice(
@@ -82,7 +91,19 @@ class scene (object) :
     self.radii = radii
     self.max_radius = flex.max(radii)
     if (settings.show_missing_reflections) :
-      missing = array.complete_set().lone_set(array).indices()
+      if (settings.show_only_missing) :
+        self.colors = flex.vec3_double()
+        self.points = flex.vec3_double()
+        self.radii = flex.double()
+      complete_set = array.complete_set()
+      if (settings.slice_mode) :
+        slice_selection = miller.simple_slice(
+          indices=complete_set.indices(),
+          slice_axis=settings.slice_axis,
+          slice_index=settings.slice_index)
+        missing = complete_set.select(slice_selection).lone_set(array).indices()
+      else :
+        missing = complete_set.lone_set(array).indices()
       n_missing = missing.size()
       if (n_missing > 0) :
         points_missing = uc.reciprocal_space_vector(missing) * 100.
@@ -290,7 +311,8 @@ class hklview (wxGLWindow) :
 
   def edit_settings (self) :
     if (self.settings_window is None) :
-      self.settings_window = settings_window(self, -1, "Settings")
+      self.settings_window = settings_window(self, -1, "Settings",
+        style=wx.CLOSE_BOX|wx.CAPTION|wx.RAISED_BORDER)
       self.settings_window.Show()
     self.settings_window.Raise()
 
@@ -298,11 +320,14 @@ class settings (object) :
   def __init__ (self) :
     self.black_background = True
     self.show_axes = True
+    self.show_data_over_sigma = False
     self.sqrt_scale_radii = True
     self.sqrt_scale_colors = False
-    self.expand_data = False
+    self.expand_to_p1 = False
+    self.expand_anomalous = False
     self.display_as_spheres = True
     self.show_missing_reflections = False
+    self.show_only_missing = False
     self.sphere_detail = 20
     self.slice_mode = False
     self.keep_constant_scale = True
@@ -320,6 +345,10 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
       label="Show h,k,l axes")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
+      setting="show_data_over_sigma",
+      label="Use I or F over sigma")
+    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    ctrls = self.create_controls(
       setting="sqrt_scale_radii",
       label="Scale radii to sqrt(I)")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
@@ -328,9 +357,15 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
       label="Scale colors to sqrt(I)")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
-      setting="expand_data",
-      label="Expand data to Friedel pairs in P1")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+      setting="expand_to_p1",
+      label="Expand data to P1")
+    ctrls2 = self.create_controls(
+      setting="expand_anomalous",
+      label="show Friedel pairs")
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.panel_sizer.Add(box)
+    box.Add(ctrls[0], 0, wx.ALL, 5)
+    box.Add(ctrls2[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="display_as_spheres",
       label="Display reflections as spheres")
@@ -338,7 +373,13 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
     ctrls = self.create_controls(
       setting="show_missing_reflections",
       label="Show missing reflections")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    ctrls2 = self.create_controls(
+      setting="show_only_missing",
+      label="only")
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.panel_sizer.Add(box)
+    box.Add(ctrls[0], 0, wx.ALL, 5)
+    box.Add(ctrls2[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="sphere_detail",
       label="Sphere detail level",
@@ -383,10 +424,24 @@ class HKLViewFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()
-    self.toolbar = self.CreateToolBar()
+    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar.SetToolBitmapSize((32,32))
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.glwindow = hklview(self, size=(800,600))
     self.sizer.Add(self.glwindow, 1, wx.EXPAND)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Controls",
+      bitmap=icons.advancedsettings.GetBitmap(),
+      shortHelp="Controls",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, lambda evt: self.glwindow.edit_settings(), btn)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Save image",
+      bitmap=icons.save_all.GetBitmap(),
+      shortHelp="Save image",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnSave, btn)
+    self.toolbar.Realize()
     self.SetSizer(self.sizer)
     self.sizer.SetSizeHints(self)
     menubar = wx.MenuBar(-1)
@@ -445,3 +500,7 @@ class HKLViewFrame (wx.Frame) :
           sel = dlg.GetSelection()
           self.set_miller_array(valid_arrays[sel])
         wx.CallAfter(dlg.Destroy)
+
+  def OnSave (self, evt) :
+    self.glwindow.save_screen_shot(file_name="hklview",
+      extensions=["png"])
