@@ -125,12 +125,17 @@ class potential_object(object):
       xs.scatterers().flags_set_grads(state=False)
       xs.scatterers().flags_set_grad_site(
         iselection=flex.size_t_range(xs.scatterers().size()))
-      tg = O.fmodels.target_and_gradients(
-        weights=O.weights,
-        compute_gradients=True)
-      O.f = tg.target() * O.xray_weight_factor
-      O.g = tg.gradients() * O.xray_weight_factor
-      assert O.g.size() == len(sites_moved) * 3
+      expected_g_size = len(sites_moved) * 3
+      if (O.xray_weight_factor is not None):
+        tg = O.fmodels.target_and_gradients(
+          weights=O.weights,
+          compute_gradients=True)
+        O.f = tg.target() * O.xray_weight_factor
+        O.g = tg.gradients() * O.xray_weight_factor
+        assert O.g.size() == expected_g_size
+      else:
+        O.f = 0.
+        O.g = flex.double(expected_g_size, 0)
       if (O.reduced_geo_manager is None):
         reduced_geo_energies = None
       else:
