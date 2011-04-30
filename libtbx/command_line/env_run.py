@@ -1,4 +1,5 @@
 from libtbx import subprocess_with_fixes
+import libtbx.load_env # implicit import
 import sys, os
 
 def run():
