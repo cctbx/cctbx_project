@@ -90,7 +90,7 @@ def examples():
     min_distance_sym_equiv=0.5) # <<<<< here
   site_symmetry = special_position_settings.site_symmetry(
     site=(0,0.48,0))
-  print "special position operator:", site_symmetry.special_op()
+  print "special position operator:", site_symmetry.special_op_simplified()
   print "distance to original site:", site_symmetry.distance_moved()
   print "point group of the special position:"
   for s in site_symmetry.matrices():
