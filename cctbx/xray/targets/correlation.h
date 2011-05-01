@@ -114,11 +114,9 @@ namespace cctbx { namespace xray { namespace targets {
       }
       double cc_den = std::sqrt(cc_den_sq);
       TBXX_ASSERT(cc_den != 0);
-      if (    sum_wxy > cc_den
-          || -sum_wxy > cc_den) {
-        return;
-      }
       double cc = sum_wxy / cc_den;
+      if      (cc >  1) cc =  1; // compensate for rounding errors
+      else if (cc < -1) cc = -1;
       cc_ = cc;
       target_work_ = 1 - cc;
       if (derivatives_depth != 0) {

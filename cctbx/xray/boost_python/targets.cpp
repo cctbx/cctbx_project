@@ -143,29 +143,6 @@ namespace {
     }
   };
 
-  struct intensity_correlation_wrappers
-  {
-    typedef intensity_correlation<> w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      class_<w_t>("targets_intensity_correlation", no_init)
-        .def(init<af::const_ref<double> const&,
-                  af::const_ref<int> const&,
-                  af::const_ref<std::complex<double> > const&,
-                  optional<bool> >())
-        .def(init<af::const_ref<double> const&,
-                  af::const_ref<std::complex<double> > const&,
-                  optional<bool> >())
-        .def("correlation", &w_t::correlation)
-        .def("target", &w_t::target)
-        .def("derivatives", &w_t::derivatives)
-      ;
-    }
-  };
-
   struct maximum_likelihood_criterion_wrappers
   {
     typedef maximum_likelihood_criterion w_t;
@@ -251,7 +228,6 @@ namespace boost_python {
     targets::boost_python::least_squares_residual_wrappers<
       cctbx::xray::targets::f_calc_modulus_square>::wrap(
       "targets_least_squares_residual_for_intensity");
-    targets::boost_python::intensity_correlation_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();
   }

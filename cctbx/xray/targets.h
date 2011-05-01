@@ -7,7 +7,6 @@
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/utils.h>
 #include <boost/scoped_array.hpp>
-#include <cmath>
 
 namespace cctbx { namespace xray { namespace targets {
 
@@ -245,124 +244,6 @@ namespace cctbx { namespace xray { namespace targets {
       }
     }
     target_ /= sum_w_yobs2;
-  }
-
-
-  template <typename FobsValueType = double,
-            typename WeightValueType = int,
-            typename FcalcValueType = std::complex<FobsValueType>,
-            typename SumWeightsType = long>
-  class intensity_correlation
-  {
-    public:
-      intensity_correlation() {}
-
-      intensity_correlation(
-        af::const_ref<FobsValueType> const& fobs,
-        af::const_ref<WeightValueType> const& weights,
-        af::const_ref<FcalcValueType> const& fcalc,
-        bool compute_derivatives = false)
-      {
-        init(fobs, weights, fcalc, compute_derivatives);
-      }
-
-      intensity_correlation(
-        af::const_ref<FobsValueType> const& fobs,
-        af::const_ref<FcalcValueType> const& fcalc,
-        bool compute_derivatives = false)
-      {
-        init(fobs, af::const_ref<WeightValueType>(0,0),
-             fcalc, compute_derivatives);
-      }
-
-      FobsValueType
-      correlation() const { return correlation_; }
-
-      FobsValueType
-      target() const { return target_; }
-
-      af::shared<FcalcValueType>
-      derivatives() const { return derivatives_; }
-
-    protected:
-      FobsValueType correlation_;
-      FobsValueType target_;
-      af::shared<FcalcValueType> derivatives_;
-
-      void init(
-        af::const_ref<FobsValueType> const& fobs,
-        af::const_ref<WeightValueType> const& weights,
-        af::const_ref<FcalcValueType> const& fcalc,
-        bool compute_derivatives);
-  };
-
-  template <typename FobsValueType,
-            typename WeightValueType,
-            typename FcalcValueType,
-            typename SumWeightsType>
-  void
-  intensity_correlation<FobsValueType,
-                        WeightValueType,
-                        FcalcValueType,
-                        SumWeightsType>
-  ::init(
-    af::const_ref<FobsValueType> const& fobs,
-    af::const_ref<WeightValueType> const& weights,
-    af::const_ref<FcalcValueType> const& fcalc,
-    bool compute_derivatives)
-  {
-    CCTBX_ASSERT(fobs.size() == weights.size() || weights.size() == 0);
-    CCTBX_ASSERT(fobs.size() == fcalc.size());
-    SumWeightsType sum_weights(0);
-    FobsValueType sum_x(0);
-    FobsValueType sum_x2(0);
-    FobsValueType sum_y(0);
-    FobsValueType sum_y2(0);
-    FobsValueType sum_xy(0);
-    FobsValueType w(1);
-    for(std::size_t i=0;i<fobs.size();i++) {
-      if (weights.size()) {
-        w = weights[i];
-        sum_weights += weights[i];
-      }
-      FobsValueType x = fobs[i] * fobs[i];
-      FobsValueType y = std::norm(fcalc[i]);
-      sum_x += w * x;
-      sum_x2 += w * x * x;
-      sum_y += w * y;
-      sum_y2 += w * y * y;
-      sum_xy += w * x * y;
-    }
-    if (!weights.size()) sum_weights = fobs.size();
-    FobsValueType sum_w(sum_weights);
-    CCTBX_ASSERT(sum_w != 0);
-    FobsValueType x2xx = sum_x2 - sum_x * sum_x / sum_w;
-    FobsValueType y2yy = sum_y2 - sum_y * sum_y / sum_w;
-    FobsValueType xyxy = sum_xy - sum_x * sum_y / sum_w;
-    FobsValueType correlation_denom2 = x2xx * y2yy;
-    correlation_ = 1;
-    if (compute_derivatives) {
-      derivatives_ = af::shared<FcalcValueType>(fobs.size());
-    }
-    if (correlation_denom2 > 0) {
-      FobsValueType correlation_denom = std::sqrt(correlation_denom2);
-      correlation_ = xyxy / correlation_denom;
-      if (compute_derivatives) {
-        FobsValueType two_w(2);
-        for(std::size_t i=0;i<fobs.size();i++) {
-          if (weights.size()) {
-            two_w = 2 * weights[i];
-          }
-          FobsValueType x = fobs[i] * fobs[i];
-          FobsValueType y = std::norm(fcalc[i]);
-          FobsValueType factor_deriv =
-              (y - sum_y / sum_w) * correlation_ / y2yy
-            - (x - sum_x / sum_w) / correlation_denom;
-          derivatives_[i] = fcalc[i] * two_w * factor_deriv;
-        }
-      }
-    }
-    target_ = 1 - correlation_;
   }
 
   namespace detail {
