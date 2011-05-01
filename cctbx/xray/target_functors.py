@@ -1,6 +1,7 @@
 from cctbx.xray import ext
 from cctbx.xray import weighting_schemes
 from cctbx import miller
+from cctbx.array_family import flex
 from libtbx import adopt_init_args
 
 class least_squares(object):
@@ -217,10 +218,9 @@ class intensity_correlation(object):
   def __init__(self, f_obs, weights=None,
                use_multiplicities_as_weights=False):
     adopt_init_args(self, locals(), hide=True)
-    assert self._weights is None or self._use_multiplicities_as_weights==False
-    self._target_calculator = ext.targets_intensity_correlation
+    assert self._weights is None or not self._use_multiplicities_as_weights
     if (self._use_multiplicities_as_weights):
-      self._weights = self._f_obs.multiplicities().data()
+      self._weights = self._f_obs.multiplicities().data().as_double()
 
   def f_obs(self):
     return self._f_obs
@@ -232,18 +232,18 @@ class intensity_correlation(object):
     return self._use_multiplicities_as_weights
 
   def __call__(self, f_calc, compute_derivatives):
-    assert f_calc.unit_cell().is_similar_to(
-           self.f_obs().unit_cell())
-    assert f_calc.space_group() == self.f_obs().space_group()
-    if (self.weights() is not None):
-      return self._target_calculator(self.f_obs().data(),
-                                     self.weights(),
-                                     f_calc.data(),
-                                     compute_derivatives)
-    else:
-      return self._target_calculator(self.f_obs().data(),
-                                     f_calc.data(),
-                                     compute_derivatives)
+    assert f_calc.is_similar_symmetry(self.f_obs())
+    result = ext.targets_correlation(
+      obs_type="I",
+      obs=flex.pow2(self.f_obs().data()),
+      weights=self.weights(),
+      r_free_flags=None,
+      f_calc=f_calc.data(),
+      derivatives_depth=int(compute_derivatives))
+    result.correlation = result.cc # backward compatiblity
+    result.target = result.target_work
+    result.derivatives = result.gradients_work
+    return result
 
 def registry():
   return {
