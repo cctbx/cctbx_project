@@ -26,112 +26,6 @@ namespace gltbx { namespace viewer_utils {
 
   namespace af = scitbx::af;
 
-  // Hue, Saturation, Value --> Red, Green, Blue
-  scitbx::vec3<double>
-  hsv2rgb (double h, double s, double v)
-  {
-    if (s == 0) {
-      return scitbx::vec3<double>(v, v, v);
-    }
-    h /= 60.0;
-    v *= 255.0;
-    int i = std::floor(h);
-    double f = h - i;
-    double p = v * (1 - s);
-    double q = v * (1 - (s * f));
-    double t = v * (1 - (s * (1 - f)));
-    switch (i) {
-      case 0  : return scitbx::vec3<double>(v, t, p) / 255.0; break;
-      case 1  : return scitbx::vec3<double>(q, v, p) / 255.0; break;
-      case 2  : return scitbx::vec3<double>(p, v, t) / 255.0; break;
-      case 3  : return scitbx::vec3<double>(p, q, v) / 255.0; break;
-      case 4  : return scitbx::vec3<double>(t, p, v) / 255.0; break;
-      default : break;
-    }
-    return scitbx::vec3<double>(v, p, q) / 255.0;
-  }
-
-  // this function may be superfluous here, but could be useful elsewhere
-  af::shared< scitbx::vec3<double> >
-  make_rainbow_gradient (unsigned nbins)
-  {
-    af::shared< scitbx::vec3<double> > color_gradient(nbins);
-    double f_nbins(nbins);
-    for (unsigned i = 0; i < nbins; i++) {
-      double gradient_ratio = i / f_nbins;
-      color_gradient[i] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
-    }
-    return color_gradient;
-  }
-
-  // gradient generation is inlined for speed.
-  af::shared< scitbx::vec3<double> >
-  color_rainbow (
-    af::const_ref< bool > const& atoms_visible,
-    unsigned visible_atom_count,
-    bool color_invisible_atoms=false)
-  {
-    af::shared< scitbx::vec3<double> > atom_colors(atoms_visible.size());
-    unsigned j = 0;
-    double f_atom_count = (double) visible_atom_count;
-    for (unsigned i_seq = 0; i_seq < atoms_visible.size(); i_seq++) {
-      if ((atoms_visible[i_seq]) || (color_invisible_atoms)) {
-        double gradient_ratio = j / f_atom_count;
-        atom_colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
-        j++;
-      }
-    }
-    return atom_colors;
-  }
-
-  af::shared< scitbx::vec3<double> >
-  scale_selected_colors (
-    af::const_ref< scitbx::vec3<double> > const& input_colors,
-    af::const_ref< bool > const& selection,
-    double scale=0.5)
-  {
-    GLTBX_ASSERT(input_colors.size() == selection.size());
-    GLTBX_ASSERT(scale >= 0);
-    af::shared< scitbx::vec3<double> > atom_colors(input_colors.size());
-    for (unsigned i_seq = 0; i_seq < input_colors.size(); i_seq++) {
-      scitbx::vec3<double> c = input_colors[i_seq];
-      if (selection[i_seq]) {
-        c[0] *= scale;
-        c[1] *= scale;
-        c[2] *= scale;
-      }
-      atom_colors[i_seq] = c;
-    }
-    return atom_colors;
-  }
-
-  af::shared< scitbx::vec3<double> >
-  color_by_property (
-    af::const_ref< double > const& atom_properties,
-    af::const_ref< bool > const& atoms_visible,
-    bool color_invisible_atoms=false,
-    bool use_rb_color_gradient=false)
-  {
-    GLTBX_ASSERT(atom_properties.size() > 0);
-    af::shared <scitbx::vec3<double> > atom_colors(atom_properties.size());
-    double vmax = atom_properties[0];
-    double vmin = atom_properties[0];
-    for (unsigned i_seq = 0; i_seq < atom_properties.size(); i_seq++) {
-      if ((! color_invisible_atoms) && (! atoms_visible[i_seq])) continue;
-      if (atom_properties[i_seq] > vmax) vmax = atom_properties[i_seq];
-      if (atom_properties[i_seq] < vmin) vmin = atom_properties[i_seq];
-    }
-    for (unsigned i_seq = 0; i_seq < atom_properties.size(); i_seq++) {
-      double gradient_ratio = (atom_properties[i_seq]-vmin) / (vmax-vmin);
-      if (use_rb_color_gradient) {
-        atom_colors[i_seq] = hsv2rgb(360.0 - (120 * gradient_ratio), 1., 1.);
-      } else {
-        atom_colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
-      }
-    }
-    return atom_colors;
-  }
-
   void
   draw_points (
     af::const_ref< scitbx::vec3<double> > const& points,
@@ -367,21 +261,6 @@ namespace gltbx { namespace viewer_utils {
   init_module()
   {
     using namespace boost::python;
-    def("make_rainbow_gradient", make_rainbow_gradient, (
-      arg("nbins")));
-    def("color_rainbow", color_rainbow, (
-      arg("atoms_visible"),
-      arg("visible_atom_count"),
-      arg("color_invisible_atoms")=false));
-    def("color_by_property", color_by_property, (
-      arg("atom_properties"),
-      arg("atoms_visible"),
-      arg("color_invisible_atoms")=true,
-      arg("use_rb_color_gradient")=false));
-    def("scale_selected_colors", scale_selected_colors, (
-      arg("input_colors"),
-      arg("selection"),
-      arg("scale")=0.5));
     def("draw_points", draw_points, (
       arg("points"),
       arg("atom_colors"),
