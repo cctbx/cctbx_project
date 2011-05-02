@@ -17,6 +17,7 @@ from libtbx.str_utils import show_string, overwrite_at, contains_one_of
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import warnings
+import re
 import sys, os
 
 expected_cmtz_struct_sizes = (
@@ -184,6 +185,16 @@ class label_decorator(__builtins__["object"]):
     assert 0 <= i_coeff < 4
     return self.anomalous(
       root_label + self.hendrickson_lattman_suffix_list[i_coeff],
+      anomalous_sign)
+
+# XXX this will generate output labels recognizable by the Coot auto-open
+# command, but only for specific root label types.
+class ccp4_label_decorator (label_decorator) :
+  def phases (self, root_label, anomalous_sign=None) :
+    assert (root_label in ["FWT", "DELFWT"])
+    root_label = re.sub("F", "", root_label)
+    return self.anomalous(
+      "PH" + root_label + self.phases_suffix,
       anomalous_sign)
 
 def format_min_max(func, values):
