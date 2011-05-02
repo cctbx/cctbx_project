@@ -17,7 +17,7 @@ class scene (object) :
   def __init__ (self, miller_array, settings) :
     self.miller_array = miller_array
     from cctbx import miller
-    from gltbx import viewer_utils
+    from scitbx import graphics_utils
     from scitbx.array_family import flex
     array = self.miller_array.map_to_asu()
     if (array.is_xray_intensity_array()) :
@@ -59,10 +59,10 @@ class scene (object) :
       data_for_radii = flex.sqrt(data)
     else :
       data_for_radii = data
-    colors = viewer_utils.color_by_property(
-      atom_properties=data_for_colors,
-      atoms_visible=flex.bool(data.size(), True),
-      color_invisible_atoms=False,
+    colors = graphics_utils.color_by_property(
+      properties=data_for_colors,
+      selection=flex.bool(data.size(), True),
+      color_all=False,
       use_rb_color_gradient=False)
     if (slice_selection is not None) :
       data = data.select(slice_selection)
@@ -72,10 +72,10 @@ class scene (object) :
       if (settings.keep_constant_scale) :
         colors = colors.select(slice_selection)
       else :
-        colors = viewer_utils.color_by_property(
-          atom_properties=data_for_colors.select(slice_selection),
-          atoms_visible=flex.bool(data.size(), True),
-          color_invisible_atoms=False,
+        colors = graphics_utils.color_by_property(
+          properties=data_for_colors.select(slice_selection),
+          selection=flex.bool(data.size(), True),
+          color_all=False,
           use_rb_color_gradient=False)
     self.colors = colors
     self.points = uc.reciprocal_space_vector(indices) * 100.
@@ -428,6 +428,7 @@ class HKLViewFrame (wx.Frame) :
     self.toolbar.SetToolBitmapSize((32,32))
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.glwindow = hklview(self, size=(800,600))
+    self.settings = self.glwindow.settings
     self.sizer.Add(self.glwindow, 1, wx.EXPAND)
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Controls",
@@ -504,3 +505,17 @@ class HKLViewFrame (wx.Frame) :
   def OnSave (self, evt) :
     self.glwindow.save_screen_shot(file_name="hklview",
       extensions=["png"])
+
+class hklview_2d (wx.PyPanel) :
+  def __init__ (self, *args, **kwds) :
+    wx.PyPanel.__init__(self, *args, **kwds)
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
+    self.scene = None
+
+  def OnPaint (self, event) :
+    dc = wx.AutoBufferedPaintDCFactory(self)
+    gc = wx.GraphicsContext.Create(dc)
+    self.paint(gc)
+
+  def paint (self, gc) :
+    pass

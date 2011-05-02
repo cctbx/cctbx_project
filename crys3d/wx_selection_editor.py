@@ -9,6 +9,7 @@ import gltbx.gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
 from gltbx import viewer_utils
+from scitbx import graphics_utils
 import iotbx.phil
 import wx
 
@@ -91,7 +92,7 @@ class model_data_with_selection (model_data, mouse_selection_manager) :
         self._cached_colors = self.atom_colors
         #self.set_color_mode(self.color_mode)
         self.is_changed = True
-        self.atom_colors = viewer_utils.scale_selected_colors(
+        self.atom_colors = graphics_utils.scale_selected_colors(
           input_colors=self.atom_colors,
           selection=~atom_selection,
           scale=0.5)

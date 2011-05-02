@@ -256,11 +256,9 @@ class model_data (object) :
     if cached is not None :
       self.atom_colors = cached
     else :
-      from gltbx import viewer_utils
-      self.atom_colors = viewer_utils.color_rainbow(
-        atoms_visible = self.visibility.atoms_visible,
-        visible_atom_count = self.visible_atom_count
-      )
+      from scitbx import graphics_utils
+      self.atom_colors = graphics_utils.color_rainbow(
+        selection=self.visibility.atoms_visible)
       self._color_cache["rainbow"] = self.atom_colors
 
   def color_b (self) :
@@ -268,13 +266,12 @@ class model_data (object) :
     if cached is not None :
       self.atom_colors = cached
     else :
-      from gltbx import viewer_utils
-      self.atom_colors = viewer_utils.color_by_property(
-        atom_properties       = self.atoms.extract_b(),
-        atoms_visible         = self.visibility.atoms_visible,
-        color_invisible_atoms = False,
-        use_rb_color_gradient = False
-      )
+      from scitbx import graphics_utils
+      self.atom_colors = graphics_utils.color_by_property(
+        properties=self.atoms.extract_b(),
+        selection=self.visibility.atoms_visible,
+        color_all=False,
+        use_rb_color_gradient=False)
       self._color_cache["b"] = self.atom_colors
 
   def color_by_chain (self) :
@@ -283,11 +280,11 @@ class model_data (object) :
       self.atom_colors = cached
     else :
       from scitbx.array_family import flex
-      from gltbx import viewer_utils
+      from scitbx import graphics_utils
       c = 0
       for chain in self.pdb_hierarchy.chains() :
         c += 1
-      rainbow = viewer_utils.make_rainbow_gradient(c)
+      rainbow = graphics_utils.make_rainbow_gradient(c)
       j = 0
       chain_shades = {}
       for chain in self.pdb_hierarchy.chains() :
