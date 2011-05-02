@@ -1,0 +1,7 @@
+Import("env_scitbx_boost_python_ext", "env_etc")
+env = env_scitbx_boost_python_ext.Clone()
+env.SharedLibrary(
+  target="#lib/scitbx_graphics_utils_ext",
+  source=[
+    "ext.cpp",
+])
