@@ -1239,6 +1239,11 @@ scitbx/graph/tst_tardy_tree.py svneol=native#text/x-python
 scitbx/graph/tst_tardy_tree_find_paths.py svneol=native#text/x-python
 scitbx/graph/tst_utils.py svneol=native#text/x-python
 scitbx/graph/utils.py svneol=native#text/x-python
+scitbx/graphics_utils/SConscript -text
+scitbx/graphics_utils/__init__.py -text
+scitbx/graphics_utils/colors.h -text
+scitbx/graphics_utils/ext.cpp -text
+scitbx/graphics_utils/tst.py -text
 scitbx/iso_surface.h -text
 scitbx/iso_surface/SConscript -text
 scitbx/iso_surface/__init__.py -text
