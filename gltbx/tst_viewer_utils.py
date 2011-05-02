@@ -99,12 +99,5 @@ def exercise () :
   )
   assert (not True in list(visibility.selected_points_visible))
 
-  atom_colors = gltbx.viewer_utils.color_rainbow(
-    atoms_visible      = visibility.atoms_visible,
-    visible_atom_count = visibility.visible_atoms_count
-  )
-  # how do I test this???
-
-
 if (__name__ == "__main__"):
   exercise()
