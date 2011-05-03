@@ -41,7 +41,6 @@ def unique_paths(paths):
 
 def darwin_shlinkcom(env_etc, env, lo, dylib):
   if env_etc.compiler.startswith('darwin_'):
-    print env_etc.gcc_version
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o"
     else :
