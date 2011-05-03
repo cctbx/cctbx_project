@@ -7,6 +7,12 @@ from iotbx import file_reader
 from libtbx.utils import Sorry
 import os
 
+def find_file (file_name) :
+  full_path = libtbx.env.find_in_repositories(
+    relative_path=file_name,
+    test=os.path.isfile)
+  return full_path
+
 def exercise_reflections () :
   phil_names = ["refinement.input.xray_data.file_name",
                 "refinement.input.xray_data.r_free_flags.file_name",
@@ -236,6 +242,9 @@ def exercise_symmetry () :
     pass
   else :
     raise Exception_expected
+
+def exercise_maps () :
+  pass
 
 if (__name__ == "__main__") :
   exercise_symmetry() # this doesn't need files
