@@ -1,6 +1,12 @@
 
-from libtbx import group_args
 import os
+
+MAP_TYPE_F_OBS = 1
+MAP_TYPE_DIFF = 2
+MAP_TYPE_ANOMALOUS = 4
+MAP_TYPE_ISO_DIFF = 8
+MAP_TYPE_NEUTRON = 16
+MAP_TYPE_F_CALC = 32
 
 class server (object) :
   def __init__ (self, file_name=None, miller_arrays=()) :
@@ -241,19 +247,40 @@ class server (object) :
     return output_file
 
   def auto_open_maps (self, use_filled=True) :
-    f_map = diff_map = anom_map = None
+    maps = []
     if (self.is_ccp4_style_map()) :
       f_map, diff_map = self.get_ccp4_maps()
+      if (f_map is not None) :
+        maps.append(map_info(f_map, MAP_TYPE_F_OBS))
+      if (diff_map is not None) :
+        maps.append(map_info(diff_map, MAP_TYPE_DIFF))
     elif (self.is_solve_map()) :
       f_map = self.get_solve_map()
+      maps.append(map_info(f_map, MAP_TYPE_F_OBS))
     elif (self.is_resolve_map()) :
       f_map = self.get_resolve_map()
-    if (anom_map is None) and (self.is_anomalous_map()) :
+      maps.append(map_info(f_map, MAP_TYPE_F_OBS))
+    if (self.is_anomalous_map()) :
       anom_map = self.get_anomalous_map()
-    return group_args(
-      f_map=f_map,
-      diff_map=diff_map,
-      anom_map=anom_map)
+      maps.append(map_info(anom_map, MAP_TYPE_ANOMALOUS))
+    return maps
+
+class map_info (object) :
+  def __init__ (self, map_coeffs, map_type) :
+    self.map_coeffs = map_coeffs
+    self.map_type = map_type
+
+  def is_fobs_map (self) :
+    return (self.map_type & MAP_TYPE_F_OBS)
+
+  def is_difference_map (self) :
+    return (self.map_type & MAP_TYPE_DIFF)
+
+  def is_anomalous_map (self) :
+    return (self.map_type & MAP_TYPE_ANOMALOUS)
+
+  def is_neutron_map (self) :
+    return (self.map_type & MAP_TYPE_NEUTRON)
 
 def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
