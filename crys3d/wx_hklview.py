@@ -3,6 +3,7 @@
 #  - cached scenes
 
 from gltbx.wx_viewer import wxGLWindow
+import gltbx.viewer_utils
 import gltbx.gl_managed
 import gltbx.util
 import gltbx.fonts
@@ -18,7 +19,7 @@ class scene (object) :
     self.miller_array = miller_array
     from cctbx import miller
     from scitbx import graphics_utils
-    from scitbx.array_family import flex
+    from cctbx.array_family import flex
     array = self.miller_array.map_to_asu()
     if (array.is_xray_intensity_array()) :
       data = array.data()
@@ -79,6 +80,7 @@ class scene (object) :
           use_rb_color_gradient=False)
     self.colors = colors
     self.points = uc.reciprocal_space_vector(indices) * 100.
+    self.indices = indices
     abc = uc.parameters()[0:3]
     min_radius = 0.20 / max(abc)
     max_radius = 50 / max(abc)
@@ -97,6 +99,7 @@ class scene (object) :
         self.points = flex.vec3_double()
         self.radii = flex.double()
         self.missing = flex.bool()
+        self.indices = flex.miller_index()
       complete_set = array.complete_set()
       if (settings.slice_mode) :
         slice_selection = miller.simple_slice(
@@ -113,6 +116,15 @@ class scene (object) :
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
         self.radii.extend(flex.double(n_missing, max_radius / 2))
         self.missing.extend(flex.bool(n_missing, True))
+        self.indices.extend(missing)
+    # XXX hack for process_pick_points
+    self.visible_points = flex.bool(self.points.size(), True)
+    assert (self.colors.size() == self.points.size() == self.indices.size() ==
+            self.radii.size() == self.missing.size())
+    self.clear_labels()
+
+  def clear_labels (self) :
+    self.label_points = set([])
 
 class hklview (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
@@ -130,6 +142,7 @@ class hklview (wxGLWindow) :
     self.minimum_covering_sphere = None
     self.spheres_display_list = None
     self.points_display_list = None
+    self.labels_display_list = None
     self.miller_array = None
     self.d_min = None
     self.scene = None
@@ -150,6 +163,7 @@ class hklview (wxGLWindow) :
     self.minimum_covering_sphere = mcs
     self.spheres_display_list = None
     self.points_display_list = None
+    self.labels_display_list = None
 
   #--- OpenGL methods
   def InitGL(self):
@@ -195,6 +209,8 @@ class hklview (wxGLWindow) :
       self.draw_spheres()
     else :
       self.draw_points()
+    if (self.settings.show_labels) :
+      self.draw_labels()
 
   def draw_spheres (self) :
     glMatrixMode(GL_MODELVIEW)
@@ -298,6 +314,25 @@ class hklview (wxGLWindow) :
     glEnd()
     glDisable(GL_LINE_STIPPLE)
 
+  def draw_labels (self) :
+    glMatrixMode(GL_MODELVIEW)
+    glDisable(GL_LIGHTING)
+    gltbx.fonts.ucs_bitmap_8x13.setup_call_lists()
+    if (self.labels_display_list is None) :
+      self.labels_display_list = gltbx.gl_managed.display_list()
+      self.labels_display_list.compile()
+      colors = self.scene.colors
+      points = self.scene.points
+      indices = self.scene.indices
+      assert (colors.size() == indices.size() == points.size())
+      for i_seq in self.scene.label_points :
+        x, y, z = points[i_seq]
+        glColor3f(*colors[i_seq])
+        glRasterPos3f(x+0.5, y+0.5, z+0.5)
+        gltbx.fonts.ucs_bitmap_8x13.render_string("%d,%d,%d" % indices[i_seq])
+      self.labels_display_list.end()
+    self.labels_display_list.call()
+
   #--- user input and settings
   def update_settings (self) :
     self.construct_reciprocal_space()
@@ -308,7 +343,28 @@ class hklview (wxGLWindow) :
     self.Refresh()
 
   def process_pick_points (self) :
-    pass
+    self.closest_point_i_seq = None
+    if (self.pick_points is not None) and (self.scene is not None) :
+      closest_point_i_seq = gltbx.viewer_utils.closest_visible_point(
+        points=self.scene.points,
+        atoms_visible=self.scene.visible_points,
+        point0=self.pick_points[0],
+        point1=self.pick_points[1])
+      if (closest_point_i_seq is not None) :
+        self.closest_point_i_seq = closest_point_i_seq
+    if (self.closest_point_i_seq is not None) :
+      self.scene.label_points.add(self.closest_point_i_seq)
+      self.labels_display_list = None
+      self.GetParent().update_clicked(
+        hkl=self.scene.indices[self.closest_point_i_seq])
+    else :
+      self.GetParent().update_clicked(hkl=None)
+
+  def clear_labels (self) :
+    if (self.scene is not None) :
+      self.scene.clear_labels()
+      self.labels_display_list = None
+      self.Refresh()
 
 class hklview_2d (wx.PyPanel) :
   def __init__ (self, *args, **kwds) :
@@ -355,15 +411,17 @@ class hklview_2d (wx.PyPanel) :
     else :
       i_x, i_y = 0, 1
       axes = ("h", "k")
+    w, h = self.GetSize()
+    r = (min(w,h) // 2) - 20
+    center = r+20
     x_max = self.scene.axes[i_x][i_x] * 100.
     y_max = self.scene.axes[i_y][i_y] * 100.
-    r = 300
     if (self.settings.show_axes) :
       # FIXME dimensions not right?
-      x_end = self.scene.axes[i_x][i_x] * 300., self.scene.axes[i_x][i_y] * 300.
+      x_end = self.scene.axes[i_x][i_x] * r, self.scene.axes[i_x][i_y] * r
       x_axis = gc.CreatePath()
-      x_axis.MoveToPoint(320, 320)
-      x_axis.AddLineToPoint(320 + x_end[0], 320 - x_end[1])
+      x_axis.MoveToPoint(center, center)
+      x_axis.AddLineToPoint(center + x_end[0], center - x_end[1])
       x_axis.CloseSubpath()
       if (self.settings.black_background) :
         gc.SetPen(wx.Pen('white'))
@@ -372,10 +430,10 @@ class hklview_2d (wx.PyPanel) :
       gc.PushState()
       gc.StrokePath(x_axis)
       gc.PopState()
-      y_end = self.scene.axes[i_y][i_x] * 300., self.scene.axes[i_y][i_y] * 300.
+      y_end = self.scene.axes[i_y][i_x] * r, self.scene.axes[i_y][i_y] * r
       y_axis = gc.CreatePath()
-      y_axis.MoveToPoint(320, 320)
-      y_axis.AddLineToPoint(320 + y_end[0], 320 - y_end[1])
+      y_axis.MoveToPoint(center, center)
+      y_axis.AddLineToPoint(center + y_end[0], center - y_end[1])
       y_axis.CloseSubpath()
       gc.PushState()
       gc.StrokePath(y_axis)
@@ -397,11 +455,11 @@ class hklview_2d (wx.PyPanel) :
         missing_pen = wx.Pen('black')
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
-      x = 320 + 300 * x_ / x_max
-      y = 320 - 300 * y_ / y_max
-      r = self.scene.radii[k] * 300 / max(x_max, y_max)
+      x = center + r * x_ / x_max
+      y = center - r * y_ / y_max
+      r_point = self.scene.radii[k] * r / max(x_max, y_max)
       path = gc.CreatePath()
-      path.AddCircle(0, 0, r)
+      path.AddCircle(0, 0, r_point)
       path.CloseSubpath()
       gc.PushState()
       gc.Translate(x,y)
@@ -420,6 +478,9 @@ class hklview_2d (wx.PyPanel) :
       gc.PopState()
 
   def save_screen_shot (self, **kwds) :
+    pass
+
+  def process_pick_points (self, x, y) :
     pass
 
 ########################################################################
@@ -441,6 +502,7 @@ class settings (object) :
     self.slice_axis = 0
     self.slice_index = 0
     self.monochrome = False
+    self.show_labels = True
 
 class settings_window (wxtbx.utils.SettingsPanel) :
   is_3d_view = True
@@ -554,6 +616,7 @@ class HKLViewFrame (wx.Frame) :
       bitmap=icons.hkl_file.GetBitmap(),
       shortHelp="Load file",
       kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnLoadFile, btn)
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Save image",
       bitmap=icons.save_all.GetBitmap(),
@@ -564,6 +627,7 @@ class HKLViewFrame (wx.Frame) :
     self.file_menu = wx.Menu()
     menubar.Append(self.file_menu, "File")
     item = wx.MenuItem(self.file_menu, -1, "Load data...\tCtrl-O")
+    self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
     self.file_menu.AppendItem(item)
     self.add_view_specific_functions()
     self.SetMenuBar(menubar)
@@ -587,6 +651,19 @@ class HKLViewFrame (wx.Frame) :
       shortHelp="Show 2D view",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnShow2D, btn)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Clear labels",
+      bitmap=icons.clear_left.GetBitmap(),
+      shortHelp="Clear labels",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnClearLabels, btn)
+    self.statusbar.SetFieldsCount(2)
+
+  def update_clicked (self, hkl) :
+    if (hkl is not None) :
+      self.statusbar.SetStatusText("CLICKED: %d,%d,%d" % hkl, 1)
+    else :
+      self.statusbar.SetStatusText("", 1)
 
   def set_miller_array (self, array) :
     if array.is_complex_array() or array.is_hendrickson_lattman_array() :
@@ -653,12 +730,16 @@ class HKLViewFrame (wx.Frame) :
       self.view_2d.Show()
     self.view_2d.Raise()
 
+  def OnClearLabels (self, evt) :
+    self.viewer.clear_labels()
+
 class settings_window_2d (settings_window) :
   is_3d_view = False
 
 class HKLViewFrame2D (HKLViewFrame) :
   def create_viewer_panel (self) :
     self.viewer = hklview_2d(self, -1, size=(640,640))
+    self.viewer.SetMinSize((640,640))
 
   def create_settings_panel (self) :
     self.settings.expand_to_p1 = True
