@@ -175,11 +175,18 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     include_side_chain=True)
   assert len(dihedral_hash) == 9
   rm.get_reference_dihedral_proxies()
-  reference_dihedral_proxies = rm.reference_dihedral_proxies
+  rm.add_reference_dihedral_proxies(geometry=geometry)
+  reference_dihedral_proxies = rm.reference_dihedral_proxies.deep_copy()
   assert reference_dihedral_proxies is not None
   assert len(reference_dihedral_proxies) == len(dihedral_hash)
   for rdp in reference_dihedral_proxies:
     assert rdp.limit == work_params.reference_model.limit
+  rm.update_reference_dihedral_proxies(geometry=geometry,
+                                       sites_cart_ref=sites_cart_ref)
+  updated_reference_dihedral_proxies = \
+    rm.reference_dihedral_proxies.deep_copy()
+  assert len(updated_reference_dihedral_proxies) == \
+    len(reference_dihedral_proxies)
   master_phil_str_overrides = """
   reference_model.reference_group {
     reference= chain B and resseq 246:247
