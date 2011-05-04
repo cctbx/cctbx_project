@@ -3,23 +3,11 @@ import wx.lib.colourselect
 import wx
 import sys
 
-class SettingsToolBase (wx.MiniFrame) :
+class SettingsToolBase (object) :
   def __init__ (self, *args, **kwds) :
-    wx.MiniFrame.__init__(self, *args, **kwds)
     self.parent = self.GetParent()
     self.settings = self.parent.settings
     assert hasattr(self.parent, "update_settings")
-    self.sizer = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(self.sizer)
-    self.panel = wx.Panel(self, -1)
-    self.panel_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.panel.SetSizer(self.panel_sizer)
-    self.sizer.Add(self.panel, 1, wx.EXPAND)
-    self.add_controls()
-    self.sizer.Fit(self.panel)
-    self.Fit()
-    self.Bind(wx.EVT_CLOSE, self.OnClose, self)
-    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
 
   def add_controls (self) :
     raise NotImplementedError()
@@ -76,8 +64,34 @@ class SettingsToolBase (wx.MiniFrame) :
     setattr(self.settings, setting, value)
     self.parent.update_settings()
 
+class SettingsFrame (wx.MiniFrame, SettingsToolBase) :
+  def __init__ (self, *args, **kwds) :
+    wx.MiniFrame.__init__(self, *args, **kwds)
+    SettingsToolBase.__init__(self, *args, **kwds)
+    self.sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.sizer)
+    self.panel = wx.Panel(self, -1)
+    self.panel_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.panel.SetSizer(self.panel_sizer)
+    self.sizer.Add(self.panel, 1, wx.EXPAND)
+    self.add_controls()
+    self.sizer.Fit(self.panel)
+    self.Fit()
+    self.Bind(wx.EVT_CLOSE, self.OnClose, self)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
+
   def OnClose (self, event) :
     self.Destroy()
 
   def OnDestroy (self, event) :
     self.parent.settings_window = None
+
+class SettingsPanel (wx.Panel, SettingsToolBase) :
+  def __init__ (self, *args, **kwds) :
+    wx.Panel.__init__(self, *args, **kwds)
+    SettingsToolBase.__init__(self, *args, **kwds)
+    self.panel = self
+    self.panel_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.panel_sizer)
+    self.add_controls()
+    self.panel_sizer.Layout()
