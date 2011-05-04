@@ -500,8 +500,8 @@ class reference_model(object):
       Ckey = None
       Nkey = None
       CBkey = None
+      cbeta = True
       for i_seq in cp.i_seqs:
-        cbeta = True
         if self.i_seq_name_hash_ref[i_seq][0:4] not in \
           [' CA ', ' N  ', ' C  ', ' CB ']:
           cbeta = False
