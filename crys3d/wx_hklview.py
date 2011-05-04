@@ -43,9 +43,9 @@ class scene (object) :
         slice_index=settings.slice_index)
     index_span = array.index_span()
     self.hkl_range = index_span.abs_range()
-    self.h_axis = uc.reciprocal_space_vector((self.hkl_range[0],0,0))
-    self.k_axis = uc.reciprocal_space_vector((0,self.hkl_range[1],0))
-    self.l_axis = uc.reciprocal_space_vector((0,0,self.hkl_range[2]))
+    self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
+                  uc.reciprocal_space_vector((0,self.hkl_range[1],0)),
+                  uc.reciprocal_space_vector((0,0,self.hkl_range[2])) ]
     indices = array.indices()
     data = array.data()
     assert isinstance(data, flex.double) or isinstance(data, flex.bool)
@@ -90,11 +90,13 @@ class scene (object) :
     radii.set_selected(too_small, flex.double(radii.size(), min_radius))
     self.radii = radii
     self.max_radius = flex.max(radii)
+    self.missing = flex.bool(self.radii.size(), False)
     if (settings.show_missing_reflections) :
       if (settings.show_only_missing) :
         self.colors = flex.vec3_double()
         self.points = flex.vec3_double()
         self.radii = flex.double()
+        self.missing = flex.bool()
       complete_set = array.complete_set()
       if (settings.slice_mode) :
         slice_selection = miller.simple_slice(
@@ -110,6 +112,7 @@ class scene (object) :
         self.points.extend(points_missing)
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
         self.radii.extend(flex.double(n_missing, max_radius / 2))
+        self.missing.extend(flex.bool(n_missing, True))
 
 class hklview (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
@@ -117,8 +120,7 @@ class hklview (wxGLWindow) :
     # FIXME orthographic is definitely best for this application, but it isn't
     # working properly right now
     #self.orthographic = True
-    self.settings = settings()
-    self.settings_window = None
+    self.settings = self.GetParent().settings
     self.buffer_factor = 2.0
     self.min_slab = 4
     self.min_viewport_use_fraction = 0.1
@@ -252,16 +254,16 @@ class hklview (wxGLWindow) :
     self.points_display_list.call()
 
   def draw_axes (self) :
-    h_axis = self.scene.h_axis
-    k_axis = self.scene.k_axis
-    l_axis = self.scene.l_axis
+    h_axis = self.scene.axes[0]
+    k_axis = self.scene.axes[1]
+    l_axis = self.scene.axes[2]
     gltbx.fonts.ucs_bitmap_8x13.setup_call_lists()
     glDisable(GL_LIGHTING)
     if (self.settings.black_background) :
       glColor3f(1.0, 1.0, 1.0)
     else :
       glColor3f(0.,0.,0.)
-    glLineWidth(0.5)
+    glLineWidth(1.0)
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
     glVertex3f(h_axis[0]*100, h_axis[1]*100, h_axis[2]*100)
@@ -292,15 +294,11 @@ class hklview (wxGLWindow) :
     glEnd()
     glBegin(GL_LINES)
     glVertex3f(0.,0.,0.)
-    glVertex3f(l_axis[0]*100, l_axis[1]*100, l_axis[2]*100)
+    glVertex3f(-l_axis[0]*100, -l_axis[1]*100, -l_axis[2]*100)
     glEnd()
     glDisable(GL_LINE_STIPPLE)
 
   #--- user input and settings
-  def process_key_stroke (self, key) :
-    if (key == ord("`")) :
-      self.edit_settings()
-
   def update_settings (self) :
     self.construct_reciprocal_space()
     if (self.settings.black_background) :
@@ -309,13 +307,122 @@ class hklview (wxGLWindow) :
       glClearColor(0.95,0.95,0.95,0.)
     self.Refresh()
 
-  def edit_settings (self) :
-    if (self.settings_window is None) :
-      self.settings_window = settings_window(self, -1, "Settings",
-        style=wx.CLOSE_BOX|wx.CAPTION|wx.RAISED_BORDER)
-      self.settings_window.Show()
-    self.settings_window.Raise()
+  def process_pick_points (self) :
+    pass
 
+class hklview_2d (wx.PyPanel) :
+  def __init__ (self, *args, **kwds) :
+    wx.PyPanel.__init__(self, *args, **kwds)
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
+    self.scene = None
+    self.miller_array = None
+    self.parent = self.GetParent()
+    self.settings = self.parent.settings
+
+  def set_miller_array (self, array) :
+    self.miller_array = array
+    if (array is not None) :
+      self.construct_reciprocal_space()
+
+  def construct_reciprocal_space (self) :
+    self.scene = scene(miller_array=self.miller_array,
+      settings=self.settings)
+
+  def update_settings (self) :
+    self.construct_reciprocal_space()
+    self.Refresh()
+
+  def OnPaint (self, event) :
+    if (self.scene is None) :
+      return
+    if (self.settings.black_background) :
+      self.SetBackgroundColour((0,0,0))
+    else :
+      self.SetBackgroundColour((255,255,255))
+    dc = wx.AutoBufferedPaintDCFactory(self)
+    dc.Clear()
+    gc = wx.GraphicsContext.Create(dc)
+    self.paint(gc)
+
+  def paint (self, gc) :
+    assert (self.settings.slice_mode)
+    if (self.settings.slice_axis == 0) :
+      i_x, i_y = 1, 2
+      axes = ("k", "l")
+    elif (self.settings.slice_axis == 1) :
+      i_x, i_y = 0, 2
+      axes = ("h", "l")
+    else :
+      i_x, i_y = 0, 1
+      axes = ("h", "k")
+    x_max = self.scene.axes[i_x][i_x] * 100.
+    y_max = self.scene.axes[i_y][i_y] * 100.
+    r = 300
+    if (self.settings.show_axes) :
+      # FIXME dimensions not right?
+      x_end = self.scene.axes[i_x][i_x] * 300., self.scene.axes[i_x][i_y] * 300.
+      x_axis = gc.CreatePath()
+      x_axis.MoveToPoint(320, 320)
+      x_axis.AddLineToPoint(320 + x_end[0], 320 - x_end[1])
+      x_axis.CloseSubpath()
+      if (self.settings.black_background) :
+        gc.SetPen(wx.Pen('white'))
+      else :
+        gc.SetPen(wx.Pen('black'))
+      gc.PushState()
+      gc.StrokePath(x_axis)
+      gc.PopState()
+      y_end = self.scene.axes[i_y][i_x] * 300., self.scene.axes[i_y][i_y] * 300.
+      y_axis = gc.CreatePath()
+      y_axis.MoveToPoint(320, 320)
+      y_axis.AddLineToPoint(320 + y_end[0], 320 - y_end[1])
+      y_axis.CloseSubpath()
+      gc.PushState()
+      gc.StrokePath(y_axis)
+      gc.PopState()
+    gc.SetPen(wx.TRANSPARENT_PEN)
+    if (self.settings.black_background) :
+      main_pen = wx.Pen('white')
+      main_brush = wx.Brush('white')
+      if (self.settings.monochrome) :
+        missing_pen = wx.Pen('red')
+      else :
+        missing_pen = wx.Pen('white')
+    else :
+      main_pen = wx.Pen('black')
+      main_brush = wx.Brush('black')
+      if (self.settings.monochrome) :
+        missing_pen = wx.Pen('red')
+      else :
+        missing_pen = wx.Pen('black')
+    for k, hkl in enumerate(self.scene.points) :
+      x_, y_ = hkl[i_x], hkl[i_y]
+      x = 320 + 300 * x_ / x_max
+      y = 320 - 300 * y_ / y_max
+      r = self.scene.radii[k] * 300 / max(x_max, y_max)
+      path = gc.CreatePath()
+      path.AddCircle(0, 0, r)
+      path.CloseSubpath()
+      gc.PushState()
+      gc.Translate(x,y)
+      if (self.scene.missing[k]) :
+        gc.SetBrush(wx.TRANSPARENT_BRUSH)
+        gc.SetPen(missing_pen)
+        gc.StrokePath(path)
+      else :
+        if (self.settings.monochrome) :
+          gc.SetBrush(main_brush)
+          gc.SetPen(main_pen)
+        else :
+          c = self.scene.colors[k]
+          gc.SetBrush(wx.Brush((c[0]*255,c[1]*255,c[2]*255)))
+        gc.FillPath(path)
+      gc.PopState()
+
+  def save_screen_shot (self, **kwds) :
+    pass
+
+########################################################################
 class settings (object) :
   def __init__ (self) :
     self.black_background = True
@@ -333,8 +440,10 @@ class settings (object) :
     self.keep_constant_scale = True
     self.slice_axis = 0
     self.slice_index = 0
+    self.monochrome = False
 
-class settings_window (wxtbx.utils.SettingsToolBase) :
+class settings_window (wxtbx.utils.SettingsPanel) :
+  is_3d_view = True
   def add_controls (self) :
     ctrls = self.create_controls(
       setting="black_background",
@@ -356,20 +465,26 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
       setting="sqrt_scale_colors",
       label="Scale colors to sqrt(I)")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="expand_to_p1",
-      label="Expand data to P1")
-    ctrls2 = self.create_controls(
-      setting="expand_anomalous",
-      label="show Friedel pairs")
-    box = wx.BoxSizer(wx.HORIZONTAL)
-    self.panel_sizer.Add(box)
-    box.Add(ctrls[0], 0, wx.ALL, 5)
-    box.Add(ctrls2[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="display_as_spheres",
-      label="Display reflections as spheres")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    if (self.is_3d_view) :
+      ctrls = self.create_controls(
+        setting="expand_to_p1",
+        label="Expand data to P1")
+      ctrls2 = self.create_controls(
+        setting="expand_anomalous",
+        label="show Friedel pairs")
+      box = wx.BoxSizer(wx.HORIZONTAL)
+      self.panel_sizer.Add(box)
+      box.Add(ctrls[0], 0, wx.ALL, 5)
+      box.Add(ctrls2[0], 0, wx.ALL, 5)
+      ctrls = self.create_controls(
+        setting="display_as_spheres",
+        label="Display reflections as spheres")
+      self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    else :
+      ctrls = self.create_controls(
+        setting="monochrome",
+        label="Monochrome display")
+      self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="show_missing_reflections",
       label="Show missing reflections")
@@ -380,24 +495,25 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
     self.panel_sizer.Add(box)
     box.Add(ctrls[0], 0, wx.ALL, 5)
     box.Add(ctrls2[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="sphere_detail",
-      label="Sphere detail level",
-      min=4,
-      max=20)
-    box = wx.BoxSizer(wx.HORIZONTAL)
-    box.Add(ctrls[0], 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
-    box.Add(ctrls[1], 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.panel_sizer.Add(box)
-    ctrls = self.create_controls(
-      setting="slice_mode",
-      label="Show only a slice through reciprocal space")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    self.slice_ctrl = ctrls[0]
-    ctrls = self.create_controls(
-      setting="keep_constant_scale",
-      label="Keep scale constant across all slices")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    if (self.is_3d_view) :
+      ctrls = self.create_controls(
+        setting="sphere_detail",
+        label="Sphere detail level",
+        min=4,
+        max=20)
+      box = wx.BoxSizer(wx.HORIZONTAL)
+      box.Add(ctrls[0], 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+      box.Add(ctrls[1], 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      self.panel_sizer.Add(box)
+      ctrls = self.create_controls(
+        setting="slice_mode",
+        label="Show only a slice through reciprocal space")
+      self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+      self.slice_ctrl = ctrls[0]
+      ctrls = self.create_controls(
+        setting="keep_constant_scale",
+        label="Keep scale constant across all slices")
+      self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     box2 = wx.BoxSizer(wx.HORIZONTAL)
     box2.Add(wx.StaticText(self.panel, -1, "View slice:"), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -417,41 +533,60 @@ class settings_window (wxtbx.utils.SettingsToolBase) :
   def OnSetSlice (self, event) :
     self.settings.slice_axis = self.hkl_choice.GetSelection()
     self.settings.slice_index = self.slice_index.GetValue()
-    if (self.slice_ctrl.GetValue()) :
+    if (not self.is_3d_view) or (self.slice_ctrl.GetValue()) :
       self.parent.update_settings()
 
 class HKLViewFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
+    self.view_2d = None
     self.statusbar = self.CreateStatusBar()
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.toolbar.SetToolBitmapSize((32,32))
-    self.sizer = wx.BoxSizer(wx.VERTICAL)
-    self.glwindow = hklview(self, size=(800,600))
-    self.settings = self.glwindow.settings
-    self.sizer.Add(self.glwindow, 1, wx.EXPAND)
+    self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.settings = settings()
+    self.create_settings_panel()
+    self.sizer.Add(self.settings_panel, 0, wx.EXPAND)
+    self.create_viewer_panel()
+    self.sizer.Add(self.viewer, 1, wx.EXPAND)
     btn = self.toolbar.AddLabelTool(id=-1,
-      label="Controls",
-      bitmap=icons.advancedsettings.GetBitmap(),
-      shortHelp="Controls",
+      label="Load file",
+      bitmap=icons.hkl_file.GetBitmap(),
+      shortHelp="Load file",
       kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, lambda evt: self.glwindow.edit_settings(), btn)
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Save image",
       bitmap=icons.save_all.GetBitmap(),
       shortHelp="Save image",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnSave, btn)
+    menubar = wx.MenuBar(-1)
+    self.file_menu = wx.Menu()
+    menubar.Append(self.file_menu, "File")
+    item = wx.MenuItem(self.file_menu, -1, "Load data...\tCtrl-O")
+    self.file_menu.AppendItem(item)
+    self.add_view_specific_functions()
+    self.SetMenuBar(menubar)
     self.toolbar.Realize()
     self.SetSizer(self.sizer)
     self.sizer.SetSizeHints(self)
-    menubar = wx.MenuBar(-1)
-    file_menu = wx.Menu("File")
-    menubar.Append(file_menu, "File")
-    item = wx.MenuItem(file_menu, -1, "Load data...\tCtrl-O")
-    file_menu.AppendItem(item)
-    self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
-    self.SetMenuBar(menubar)
+
+  def create_viewer_panel (self) :
+    self.viewer = hklview(self, size=(800,600))
+
+  def create_settings_panel (self) :
+    self.settings_panel = settings_window(self, -1, style=wx.RAISED_BORDER)
+
+  def add_view_specific_functions (self) :
+    item = wx.MenuItem(self.file_menu, -1, "Show 2D view")
+    self.file_menu.AppendItem(item)
+    self.Bind(wx.EVT_MENU, self.OnShow2D, item)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Show 2D view",
+      bitmap=icons.hklview_2d.GetBitmap(),
+      shortHelp="Show 2D view",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnShow2D, btn)
 
   def set_miller_array (self, array) :
     if array.is_complex_array() or array.is_hendrickson_lattman_array() :
@@ -465,7 +600,12 @@ class HKLViewFrame (wx.Frame) :
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
     self.statusbar.SetStatusText("Data: %s  (Space group: %s  Unit Cell: %s)" %
       (labels, sg, uc))
-    self.glwindow.set_miller_array(array)
+    self.viewer.set_miller_array(array)
+    if (self.view_2d is not None) :
+      self.view_2d.set_miller_array(array)
+
+  def update_settings (self, *args, **kwds) :
+    self.viewer.update_settings(*args, **kwds)
 
   def OnLoadFile (self, evt) :
     file_name = wx.FileSelector("Reflections file",
@@ -503,19 +643,35 @@ class HKLViewFrame (wx.Frame) :
         wx.CallAfter(dlg.Destroy)
 
   def OnSave (self, evt) :
-    self.glwindow.save_screen_shot(file_name="hklview",
+    self.viewer.save_screen_shot(file_name="hklview",
       extensions=["png"])
 
-class hklview_2d (wx.PyPanel) :
-  def __init__ (self, *args, **kwds) :
-    wx.PyPanel.__init__(self, *args, **kwds)
-    self.Bind(wx.EVT_PAINT, self.OnPaint)
-    self.scene = None
+  def OnShow2D (self, evt) :
+    if (self.view_2d is None) :
+      self.view_2d = HKLViewFrame2D(self, -1, "2D HKLview")
+      self.view_2d.set_miller_array(self.viewer.miller_array)
+      self.view_2d.Show()
+    self.view_2d.Raise()
 
-  def OnPaint (self, event) :
-    dc = wx.AutoBufferedPaintDCFactory(self)
-    gc = wx.GraphicsContext.Create(dc)
-    self.paint(gc)
+class settings_window_2d (settings_window) :
+  is_3d_view = False
 
-  def paint (self, gc) :
+class HKLViewFrame2D (HKLViewFrame) :
+  def create_viewer_panel (self) :
+    self.viewer = hklview_2d(self, -1, size=(640,640))
+
+  def create_settings_panel (self) :
+    self.settings.expand_to_p1 = True
+    self.settings.expand_anomalous = True
+    self.settings.slice_mode = True
+    self.settings.black_background = False
+    self.settings_panel = settings_window_2d(self, -1, style=wx.RAISED_BORDER)
+
+  def add_view_specific_functions (self) :
     pass
+
+  def OnClose (self, evt) :
+    self.Destroy()
+
+  def OnDestroy (self, evt) :
+    self.parent.view_2d = None
