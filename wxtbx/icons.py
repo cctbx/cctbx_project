@@ -1,5 +1,9 @@
 from wx.lib.embeddedimage import PyEmbeddedImage
 
+# most of these are copied or derived from the Crystal Icons set
+#   http://www.everaldo.com/crystal/
+#   license: LGPL
+
 advancedsettings = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAALK0lEQVRYhX2Xe3RV1Z3HP7/z"
     "uDfJzb03z5tAQl4QQgDRSCrUJSoPLSgtBkatwQKlPhYFfMy0nela43QGqbXSzlS0oyNaYXUq"
@@ -142,3 +146,23 @@ hklview_2d = PyEmbeddedImage(
     "1Z0FwWCQTCZzrsPIOA2b9UBtEgBOpxOn09nyhap6/Onl8/nw+XznkmIhQO7m8nhvXufeD0l2"
     "9vOXcid4y9rL+7du8t3jJII73/9ypdt8e+ja1Uu9mGztPuPFQenRm7vha7f/APVHmKiUVF97"
     "AAAAAElFTkSuQmCC")
+
+clear_left = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsSAAALEgHS3X78AAAAB3RJTUUH1AMODhoSqw5f4wAAAy5JREFUeJztlz1L7EAU"
+    "ht+ZTPwqZBsFW1s7QdzehQhyBftVK3/D4t+wsPUPCBYXG1nsRbC3UMtsMhuTIETWNTkWcoZk"
+    "s9Hs5V72Fg6EzEdy3mfOzDmTCCLCNIucqvoPwP8AoCZ9QQjx628IE9HviQGEEAQAS0tLo/11"
+    "BE1da73L9doALH5/fw8hBCzLgmVZICLYtm1A0jSFUgpSfq5ulmWQUhqAw8NDXF1dGbu1AFj8"
+    "7u4OSZJASgmllJn5YDCAlNKIDodDWJZlABg0yzKkaVqw/S0Ai19fX+Pl5QW2bYOIIKXEzMwM"
+    "hBCQUhpBAJBSQgiBLMuMt4gIRIT39/f6ACx+fn6OOI6hlIJlWZBSwnEcdLtd01ZKmeUgIjSb"
+    "Tdze3hpbVR6oDEMWPz09Rb/fRxAE5u44DgCg1WohiiKEYYgwDBHHMcIwRLPZBABsbGzg+fnZ"
+    "9MdxjOFw+D0Aix8fH8PzPPi+j16vB6012u124dm9vT1oreF5HoIgwPb2dmHccRxorREEAbTW"
+    "GAwGXwOweLvdhu/7cF0XruvC8zz0ej10Op0S8NHREbTWODg4KI2dnJxAaw2tNXzfx9vbW1Ev"
+    "H58svrW1BcuyzJorpWDbtgk9pRTOzs7GOa9QOp0OlFLIsgxEhDRNcXFxgYeHh91SImLxtbU1"
+    "BEFgdjbfGYbrOzs7uLy8rBTf3983YSmlRJZlAFBaApUXX1lZQRRFBWGu50F4t29ubuLm5qYk"
+    "3mq1TChyEiIiCCHGAxCREEKQ67poNBpGkC82xHW+np6exs6+2+1ifX3dtNkTRFTaA2YJGCKK"
+    "IiwsLBgRNsBGGKbf71e6H/jMmqurq+Yd9sBoGBYSEUMkSQLbtgsQ+XuSJCXBRqOBKIoKfY+P"
+    "j1heXjZtPisqAfIQ+XyeNzA6AwCYm5uDEALz8/N4fX0tjPm+j8XFRdOudRYwRJqmhaOW83re"
+    "iFLKjAGAbdsFyNnZ2YINjoYvAfIQ+TzB68hhxfsiDwjAQDJcfnz0K/zLw4ghRvoKYlXG85t2"
+    "9N3aAFUQFc+V+sbNeCIPTApRB2q01P4qJqLvP/z+oIg6lP+yTP2/4Adg6gAfe1qwcw05VlEA"
+    "AAAASUVORK5CYII=")
