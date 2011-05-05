@@ -13,6 +13,7 @@ from wxtbx import icons
 import wxtbx.utils
 import wx
 from libtbx.utils import Sorry
+from math import sqrt
 
 class scene (object) :
   def __init__ (self, miller_array, settings) :
@@ -32,6 +33,7 @@ class scene (object) :
       data = array.data()
       array = array.select(sigmas != 0).customized_copy(data=data/sigmas)
     uc = array.unit_cell()
+    self.unit_cell = uc
     if (settings.expand_to_p1) :
       array = array.expand_to_p1()
     if (settings.expand_anomalous) :
@@ -68,7 +70,7 @@ class scene (object) :
     if (slice_selection is not None) :
       data = data.select(slice_selection)
       if (data.size() == 0) :
-        raise Sorry("No data selected!")
+        raise ValueError("No data selected!")
       indices = indices.select(slice_selection)
       if (settings.keep_constant_scale) :
         colors = colors.select(slice_selection)
@@ -125,6 +127,10 @@ class scene (object) :
 
   def clear_labels (self) :
     self.label_points = set([])
+
+  def get_resolution_at_point (self, k) :
+    hkl = self.indices[k]
+    return self.unit_cell.d(hkl)
 
 class hklview (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
@@ -355,8 +361,10 @@ class hklview (wxGLWindow) :
     if (self.closest_point_i_seq is not None) :
       self.scene.label_points.add(self.closest_point_i_seq)
       self.labels_display_list = None
+      resolution = self.scene.get_resolution_at_point(self.closest_point_i_seq)
       self.GetParent().update_clicked(
-        hkl=self.scene.indices[self.closest_point_i_seq])
+        hkl=self.scene.indices[self.closest_point_i_seq],
+        resolution=resolution)
     else :
       self.GetParent().update_clicked(hkl=None)
 
@@ -369,11 +377,21 @@ class hklview (wxGLWindow) :
 class hklview_2d (wx.PyPanel) :
   def __init__ (self, *args, **kwds) :
     wx.PyPanel.__init__(self, *args, **kwds)
+    font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
+    self.SetFont(font)
     self.Bind(wx.EVT_PAINT, self.OnPaint)
+    self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftClick, self)
+    self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp, self)
+    self.Bind(wx.EVT_MOTION, self.OnMouseMotion, self)
     self.scene = None
     self.miller_array = None
     self.parent = self.GetParent()
     self.settings = self.parent.settings
+    self.was_dragged = False
+    self.initLeft = None, None
+    self._points_2d = []
+    self._radii_2d = []
+    self._clicked = None
 
   def set_miller_array (self, array) :
     self.miller_array = array
@@ -383,6 +401,7 @@ class hklview_2d (wx.PyPanel) :
   def construct_reciprocal_space (self) :
     self.scene = scene(miller_array=self.miller_array,
       settings=self.settings)
+    self._clicked = None
 
   def update_settings (self) :
     self.construct_reciprocal_space()
@@ -400,7 +419,16 @@ class hklview_2d (wx.PyPanel) :
     gc = wx.GraphicsContext.Create(dc)
     self.paint(gc)
 
+  def get_center_and_radius (self) :
+    w, h = self.GetSize()
+    r = (min(w,h) // 2) - 20
+    center_x = max(w // 2, r + 20)
+    center_y = max(h // 2, r + 20)
+    return center_x, center_y, r
+
   def paint (self, gc) :
+    self._points_2d = []
+    self._radii_2d = []
     assert (self.settings.slice_mode)
     if (self.settings.slice_axis == 0) :
       i_x, i_y = 1, 2
@@ -411,18 +439,35 @@ class hklview_2d (wx.PyPanel) :
     else :
       i_x, i_y = 0, 1
       axes = ("h", "k")
-    w, h = self.GetSize()
-    r = (min(w,h) // 2) - 20
-    center = r+20
+    center_x, center_y, r = self.get_center_and_radius()
     x_max = self.scene.axes[i_x][i_x] * 100.
     y_max = self.scene.axes[i_y][i_y] * 100.
+    font = self.GetFont()
+    font.SetFamily(wx.FONTFAMILY_MODERN)
+    if (self.settings.black_background) :
+      gc.SetFont(gc.CreateFont(font, (255,255,255)))
+    else :
+      gc.SetFont(gc.CreateFont(font, (0,0,0)))
     if (self.settings.show_axes) :
       # FIXME dimensions not right?
-      x_end = self.scene.axes[i_x][i_x] * r, self.scene.axes[i_x][i_y] * r
+      x_end = self.scene.axes[i_x][i_x], self.scene.axes[i_x][i_y]
+      y_end = self.scene.axes[i_y][i_x], self.scene.axes[i_y][i_y]
+      x_len = sqrt(x_end[0]**2 + x_end[1]**2)
+      y_len = sqrt(y_end[0]**2 + y_end[1]**2)
+      x_scale = (r+10) / x_len
+      y_scale = (r+10) / y_len
+      x_end = (x_end[0] * x_scale, x_end[1] * x_scale)
+      y_end = (y_end[0] * y_scale, y_end[1] * y_scale)
       x_axis = gc.CreatePath()
-      x_axis.MoveToPoint(center, center)
-      x_axis.AddLineToPoint(center + x_end[0], center - x_end[1])
+      x_axis.MoveToPoint(center_x, center_y)
+      x_axis.AddLineToPoint(center_x + x_end[0], center_y - x_end[1])
       x_axis.CloseSubpath()
+      #x_axis.MoveToPoint(center_x + r + 15, center_y - 5)
+      #x_axis.AddLineToPoint(center_x + r + 20, center_y)
+      #x_axis.CloseSubpath()
+      #x_axis.MoveToPoint(center_x + r + 20, center_y)
+      #x_axis.AddLineToPoint(center_x + r + 15, center_y + 5)
+      #x_axis.CloseSubpath()
       if (self.settings.black_background) :
         gc.SetPen(wx.Pen('white'))
       else :
@@ -430,18 +475,26 @@ class hklview_2d (wx.PyPanel) :
       gc.PushState()
       gc.StrokePath(x_axis)
       gc.PopState()
-      y_end = self.scene.axes[i_y][i_x] * r, self.scene.axes[i_y][i_y] * r
       y_axis = gc.CreatePath()
-      y_axis.MoveToPoint(center, center)
-      y_axis.AddLineToPoint(center + y_end[0], center - y_end[1])
+      y_axis.MoveToPoint(center_x, center_y)
+      y_axis.AddLineToPoint(center_x + y_end[0], center_y - y_end[1])
       y_axis.CloseSubpath()
+      #y_axis.MoveToPoint(center_x - 5, center_y - r - 15)
+      #y_axis.AddLineToPoint(center_x, center_y - r - 20)
+      #y_axis.CloseSubpath()
+      #y_axis.MoveToPoint(center_x, center_y - r - 20)
+      #y_axis.AddLineToPoint(center_x + 5, center_y - r - 15)
+      #y_axis.CloseSubpath()
       gc.PushState()
       gc.StrokePath(y_axis)
       gc.PopState()
+      gc.DrawText(axes[0], center_x + x_end[0] - 6, center_y - x_end[1] - 20)
+      gc.DrawText(axes[1], center_x + y_end[0] + 6, center_y - y_end[1])
     gc.SetPen(wx.TRANSPARENT_PEN)
     if (self.settings.black_background) :
       main_pen = wx.Pen('white')
       main_brush = wx.Brush('white')
+      missing_brush = wx.Brush((1,1,1))
       if (self.settings.monochrome) :
         missing_pen = wx.Pen('red')
       else :
@@ -449,15 +502,20 @@ class hklview_2d (wx.PyPanel) :
     else :
       main_pen = wx.Pen('black')
       main_brush = wx.Brush('black')
+      missing_brush = wx.Brush((250,250,250))
       if (self.settings.monochrome) :
         missing_pen = wx.Pen('red')
       else :
         missing_pen = wx.Pen('black')
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
-      x = center + r * x_ / x_max
-      y = center - r * y_ / y_max
+      x = center_x + r * x_ / x_max
+      y = center_y - r * y_ / y_max
       r_point = self.scene.radii[k] * r / max(x_max, y_max)
+      if (self.settings.pad_radii) :
+        r_point = max(1, r_point)
+      self._points_2d.append((x,y))
+      self._radii_2d.append(r_point)
       path = gc.CreatePath()
       path.AddCircle(0, 0, r_point)
       path.CloseSubpath()
@@ -476,12 +534,68 @@ class hklview_2d (wx.PyPanel) :
           gc.SetBrush(wx.Brush((c[0]*255,c[1]*255,c[2]*255)))
         gc.FillPath(path)
       gc.PopState()
+    if (self._clicked is not None) :
+      gc.SetPen(main_pen)
+      gc.DrawText("Clicked: ", 10, 10)
+      w, h = gc.GetTextExtent("Clicked: ")
+      gc.DrawText("d = %g" % self.scene.get_resolution_at_point(self._clicked),
+        w+10, 30)
+      if (not self.settings.monochrome) :
+        c = self.scene.colors[self._clicked]
+        c = (c[0]*255, c[1]*255, c[2]*255)
+        gc.SetPen(wx.Pen(c))
+        gc.SetFont(gc.CreateFont(self.GetFont(),c))
+      gc.DrawText("%d,%d,%d" % self.scene.indices[self._clicked], w+10, 10)
 
   def save_screen_shot (self, **kwds) :
     pass
 
   def process_pick_points (self, x, y) :
-    pass
+    context = wx.ClientDC( self )
+    w, h = self.GetClientSize()
+    bitmap = wx.EmptyBitmap( w, h, -1 )
+    memory = wx.MemoryDC(bitmap)
+    memory.SelectObject(bitmap)
+    memory.Blit(0, 0, w, h, context, 0, 0)
+    memory.SelectObject(wx.NullBitmap)
+    if (wx.Platform == '__WXMAC__') :
+      pixelData = wx.AlphaPixelData(bitmap)
+      pixelAccessor = pixelData.GetPixels()
+      pixelAccessor.MoveTo(pixelData, x, y)
+      c = pixelAccessor.Get()
+    else :
+      c = memory.GetPixel(x, y)
+    bg = self.GetBackgroundColour()
+    self._clicked = None
+    if (c != bg) :
+      for k, (x2,y2) in enumerate(self._points_2d) :
+        dist = sqrt((x2-x)**2 + (y2-y)**2)
+        if (dist <= (self._radii_2d[k] + 2)) :
+          self._clicked = k
+          break
+    hkl = resolution = None
+    if (self._clicked is not None) :
+      hkl = self.scene.indices[self._clicked]
+      resolution = self.scene.get_resolution_at_point(self._clicked)
+    self.GetParent().update_clicked(hkl, resolution)
+    self.Refresh()
+
+  def OnLeftClick (self, evt) :
+    self.initLeft = evt.GetX(), evt.GetY()
+
+  def OnLeftUp (self, evt) :
+    x = evt.GetX()
+    y = evt.GetY()
+    if (not self.was_dragged) :
+      if (x == self.initLeft[0]) and (y == self.initLeft[1]) :
+        self.process_pick_points(x,y)
+    self.was_dragged = False
+
+  def OnMouseMotion (self, evt) :
+    if (not evt.Dragging()) :
+      return
+    elif (evt.LeftIsDown()) :
+      self.was_dragged = True
 
 ########################################################################
 class settings (object) :
@@ -497,6 +611,7 @@ class settings (object) :
     self.show_missing_reflections = False
     self.show_only_missing = False
     self.sphere_detail = 20
+    self.pad_radii = False
     self.slice_mode = False
     self.keep_constant_scale = True
     self.slice_axis = 0
@@ -596,11 +711,15 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.settings.slice_axis = self.hkl_choice.GetSelection()
     self.settings.slice_index = self.slice_index.GetValue()
     if (not self.is_3d_view) or (self.slice_ctrl.GetValue()) :
-      self.parent.update_settings()
+      try :
+        self.parent.update_settings()
+      except ValueError, e : # TODO set limits
+        raise Sorry(str(e))
 
 class HKLViewFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
+    self.parent = self.GetParent()
     self.view_2d = None
     self.statusbar = self.CreateStatusBar()
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
@@ -634,6 +753,8 @@ class HKLViewFrame (wx.Frame) :
     self.toolbar.Realize()
     self.SetSizer(self.sizer)
     self.sizer.SetSizeHints(self)
+    self.Bind(wx.EVT_CLOSE, self.OnClose, self)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
 
   def create_viewer_panel (self) :
     self.viewer = hklview(self, size=(800,600))
@@ -659,9 +780,10 @@ class HKLViewFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnClearLabels, btn)
     self.statusbar.SetFieldsCount(2)
 
-  def update_clicked (self, hkl) :
+  def update_clicked (self, hkl, resolution=None) :
     if (hkl is not None) :
-      self.statusbar.SetStatusText("CLICKED: %d,%d,%d" % hkl, 1)
+      self.statusbar.SetStatusText("CLICKED: %d,%d,%d (d = %g)" % (hkl[0],
+        hkl[1], hkl[2], resolution), 1)
     else :
       self.statusbar.SetStatusText("", 1)
 
@@ -678,6 +800,7 @@ class HKLViewFrame (wx.Frame) :
     self.statusbar.SetStatusText("Data: %s  (Space group: %s  Unit Cell: %s)" %
       (labels, sg, uc))
     self.viewer.set_miller_array(array)
+    self.viewer.Refresh()
     if (self.view_2d is not None) :
       self.view_2d.set_miller_array(array)
 
@@ -733,6 +856,12 @@ class HKLViewFrame (wx.Frame) :
   def OnClearLabels (self, evt) :
     self.viewer.clear_labels()
 
+  def OnClose (self, event) :
+    self.Destroy()
+
+  def OnDestroy (self, event) :
+    pass
+
 class settings_window_2d (settings_window) :
   is_3d_view = False
 
@@ -745,7 +874,7 @@ class HKLViewFrame2D (HKLViewFrame) :
     self.settings.expand_to_p1 = True
     self.settings.expand_anomalous = True
     self.settings.slice_mode = True
-    self.settings.black_background = False
+    #self.settings.black_background = False
     self.settings_panel = settings_window_2d(self, -1, style=wx.RAISED_BORDER)
 
   def add_view_specific_functions (self) :
