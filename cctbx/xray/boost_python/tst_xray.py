@@ -668,7 +668,32 @@ def exercise_xray_scatterer():
 =#occupancy: 0.8
 =#f-prime: 0
 =#f-double-prime: 4""")
-
+  #
+  pc = a[0].as_py_code(indent="%&")
+  assert not show_diff(pc, """\
+xray.scatterer(
+%&  label="si1",
+%&  site=(0.200000, 0.500000, 0.400000),
+%&  u=(3.345805, 4.571099, 4.472046,
+%&     3.900633, 3.859810, 4.513364),
+%&  occupancy=0.800000,
+%&  fp=3.000000,
+%&  fdp=0.000000)""")
+  pc = a[1].as_py_code(indent="Q")
+  assert not show_diff(pc, """\
+xray.scatterer(
+Q  label="si1",
+Q  site=(0.200000, 0.500000, 0.400000),
+Q  u=1.000000,
+Q  occupancy=0.800000,
+Q  fp=0.000000,
+Q  fdp=4.000000)""")
+  for xs in a:
+    xs2 = eval(xs.as_py_code())
+    assert approx_equal(xs2.site, xs.site)
+    assert approx_equal(xs2.fp, xs.fp)
+    assert approx_equal(xs2.fdp, xs.fdp)
+  #
   uc = uctbx.unit_cell((1,2,3, 89, 96, 107))
   results_u_cart_plus_u_iso = []
   for u_iso, u_aniso in [(0, 0), (0.04, 0), (0, 0.04), (0.04, 0.04)]:

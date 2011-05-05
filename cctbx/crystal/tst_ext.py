@@ -12,6 +12,19 @@ from itertools import count
 from cStringIO import StringIO
 import sys
 
+def exercise_symmetry():
+  cs = crystal.symmetry(
+    unit_cell="12.548 12.548 20.789 90.000 90.000 120.000",
+    space_group_symbol="P63/mmc")
+  cspc = cs.as_py_code(indent="*$")
+  assert not show_diff(cspc, """\
+crystal.symmetry(
+*$  unit_cell=(12.548, 12.548, 20.789, 90, 90, 120),
+*$  space_group_symbol="P 63/m m c")""")
+  cspc = cs.as_py_code()
+  cs2 = eval(cspc)
+  assert cs2.is_similar_symmetry(cs)
+
 def trial_structure():
   from cctbx import xray
   return xray.structure(
@@ -1156,7 +1169,7 @@ def exercise_coordination_sequences_shell_asu_tables():
     print "New hexdigest:", hashlib_md5(s).hexdigest()
     raise AssertionError("Unexpected show_distances() output.")
 
-def exercise_symmetry():
+def exercise_ext_symmetry():
   symmetry = crystal.ext.symmetry(
     unit_cell=uctbx.unit_cell([1,2,3,80,90,100]),
     space_group=sgtbx.space_group("P 2"))
@@ -1362,13 +1375,14 @@ Estimated memory allocation for cubicles exceeds max_number_of_bytes:
     sites_cart.pop_back()
 
 def run():
+  exercise_symmetry()
   exercise_direct_space_asu()
   exercise_pair_tables()
   exercise_fix_for_missed_interaction_inside_asu()
   exercise_all_bonds_from_inside_asu()
   exercise_coordination_sequences_simple()
   exercise_coordination_sequences_shell_asu_tables()
-  exercise_symmetry()
+  exercise_ext_symmetry()
   exercise_incremental_pairs_and_site_cluster_analysis()
   exercise_cubicles_max_memory()
   print "OK"
