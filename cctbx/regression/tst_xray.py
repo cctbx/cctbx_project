@@ -1252,7 +1252,7 @@ def exercise_parameter_map():
       assert indices.fdp == m[i].fdp
 
 
-def exercise_xray_structure_repr():
+def exercise_xray_structure_as_py_code():
   import itertools
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry((2, 2, 3, 90, 90, 80), "hall: P 2z"),
@@ -1263,8 +1263,29 @@ def exercise_xray_structure_repr():
       xray.scatterer('Fe', site=(-0.8, 0.2, 0), u=0.2,
                      scattering_type="Fe3+")
       )))
-  r = repr(xs)
-  xs1 = eval(r)
+  pc = xs.as_py_code(indent="V")
+  assert not show_diff(pc, """\
+Vxray.structure(
+V  crystal_symmetry=crystal.symmetry(
+V    unit_cell=(2, 2, 3, 90, 90, 80),
+V    space_group_symbol="P 1 1 2"),
+V  scatterers=flex.xray_scatterer([
+V    xray.scatterer( #0
+V      label="C1",
+V      site=(0.500000, 0.500000, 0.500000),
+V      u=0.100000),
+V    xray.scatterer( #1
+V      label="O1",
+V      site=(0.100000, 0.200000, 0.300000),
+V      u=(0.100000, 0.200000, 0.300000,
+V         0.400000, 0.500000, 0.600000)),
+V    xray.scatterer( #2
+V      label="Fe",
+V      scattering_type="Fe3+",
+V      site=(-0.800000, 0.200000, 0.000000),
+V      u=0.200000)]))""")
+  pc = xs.as_py_code()
+  xs1 = eval(pc)
   assert xs.crystal_symmetry().is_similar_symmetry(
     xs1.crystal_symmetry(),
     relative_length_tolerance=0,
@@ -1309,7 +1330,7 @@ def exercise_delta_sites_cart_measure():
 
 def run():
   exercise_delta_sites_cart_measure()
-  exercise_xray_structure_repr()
+  exercise_xray_structure_as_py_code()
   exercise_parameter_map()
   exercise_chemical_formula()
   exercise_select_on_name_or_chemical_element()

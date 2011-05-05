@@ -67,29 +67,6 @@ class _(boost.python.injector, ext.scatterer):
     if (fdp is not None): result.fdp = fdp
     return result
 
-  def __repr__(self):
-    """ The returned string does usually eval to self, except if the both of
-    self.flags.use_u_iso() and self.flags.use_u_aniso() are True.
-    """
-    r = []
-    r.append("  label='%s'" % self.label)
-    if (eltbx.xray_scattering.get_standard_label(label=self.label,
-                                                 exact=False)
-        != self.scattering_type):
-      r.append("  scattering_type='%s'" % self.scattering_type)
-    r.append("  site=(%.6f, %.6f, %.6f)"  % self.site)
-    if self.flags.use_u_iso():
-      r.append("  u=%.6f" % self.u_iso)
-    if self.flags.use_u_aniso():
-      r.append("  u=(%.6f, %.6f, %.6f,\n"
-               "     %.6f, %.6f, %.6f)" % self.u_star)
-    if self.occupancy != 1:
-      r.append("  occupancy=%.6f" % self.occupancy)
-    if self.fp != 0 or self.fdp != 0:
-      r.append("  fp=%.6f" % self.fp)
-      r.append("  fdp=%.6f" % self.fdp)
-    return "xray.scatterer(\n%s)" % ",\n".join(r)
-
   def element_and_charge_symbols(self, exact=False):
     return eltbx.xray_scattering.get_element_and_charge_symbols(
       scattering_type=self.scattering_type, exact=exact)
@@ -98,6 +75,32 @@ class _(boost.python.injector, ext.scatterer):
     e, c = self.element_and_charge_symbols(exact=exact)
     if (len(e) == 0): return None
     return e
+
+  def as_py_code(self, indent="", comment=""):
+    """ The returned string does usually eval to self, except if the both of
+    self.flags.use_u_iso() and self.flags.use_u_aniso() are True.
+    """
+    r = []
+    r.append('%s  label=%s' % (indent, show_string(self.label)))
+    if (eltbx.xray_scattering.get_standard_label(label=self.label,
+                                                 exact=False)
+        != self.scattering_type):
+      r.append("%s  scattering_type=%s"
+        % (indent, show_string(self.scattering_type)))
+    r.append("%s  site=(%.6f, %.6f, %.6f)"  % ((indent,)+self.site))
+    if self.flags.use_u_iso():
+      r.append("%s  u=%.6f" % (indent, self.u_iso))
+    if self.flags.use_u_aniso():
+      r.append("%s  u=(%.6f, %.6f, %.6f,\n"
+               "%s     %.6f, %.6f, %.6f)" % (
+        (indent,)+self.u_star[:3]+
+        (indent,)+self.u_star[3:]))
+    if self.occupancy != 1:
+      r.append("%s  occupancy=%.6f" % (indent, self.occupancy))
+    if self.fp != 0 or self.fdp != 0:
+      r.append("%s  fp=%.6f" % (indent, self.fp))
+      r.append("%s  fdp=%.6f" % (indent, self.fdp))
+    return "xray.scatterer(%s\n%s)" % (comment, ",\n".join(r))
 
   def show(self, f=None, unit_cell=None):
     if (f is None): f = sys.stdout
