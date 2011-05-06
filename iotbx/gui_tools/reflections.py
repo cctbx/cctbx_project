@@ -224,24 +224,26 @@ class reflections_handler (iotbx.gui_tools.manager) :
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
       return get_map_coeff_labels(hkl_file.file_server)
+    return []
 
   def get_map_coeff_labels_for_build (self, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
       return get_map_coeffs_for_build(hkl_file.file_server)
+    return []
 
   def get_map_coeff_labels_for_fft (self, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
+    labels_list = []
     if hkl_file is not None :
       all_labels = get_map_coeff_labels(hkl_file.file_server,
         keep_array_labels=True)
-      labels_list = []
       for labels in all_labels :
         if isinstance(labels, str) :
           labels_list.append(labels)
         else :
           labels_list.append(" ".join(labels))
-      return labels_list
+    return labels_list
 
   def d_max_min (self, file_name=None, file_param_name=None,
       array_name=None, array_names=None) :
