@@ -201,12 +201,13 @@ class PBSJob(Job):
 
   REGEX = re.compile( r"job_state\s*=\s*(\w+)" )
 
-  def __init__(self, name, target, args = (), kwargs = {}):
+  def __init__(self, name, target, qinteface, args = (), kwargs = {}):
 
     self.name = "%s_%d_%d" % ( name, os.getpid(), id( self ) )
     self.target = target
     self.args = args
     self.kwargs = kwargs
+    self.qinterface = qinterface
     self.jobid = None
 
 
@@ -217,7 +218,7 @@ class PBSJob(Job):
 
     self.write_input_data()
 
-    cmd = pbs_interface(
+    cmd = self.qinterface(
       name = self.name,
       out = self.out_file(),
       err = self.err_file()
@@ -268,29 +269,68 @@ class PBSJob(Job):
     return m.group( 1 )
 
 
-def sge_interface(name, out, err):
+class sge_interface(object):
   """
   Interface to Sun Grid Engine (SGE)
   """
 
-  return ( "qsub", "-S", "/bin/sh", "-cwd", "-N", name, "-sync", "y",
+  COMMAND = "qsub"
+
+  def __init__(self, command):
+
+    if command is None:
+      self.command = self.COMMAND
+
+    else:
+      self.command = command
+
+
+  def __call__(self, name, out, err):
+
+    return ( self.command, "-S", "/bin/sh", "-cwd", "-N", name, "-sync", "y",
       "-o", out, "-e", err )
 
 
-def lsf_interface(name, out, err):
+class lsf_interface(object):
   """
   Interface to Load Sharing Facility (LSF)
   """
 
-  return ( "bsub", "-K", "-J", name,
+  COMMAND = "bsub"
+
+  def __init__(self, command):
+
+    if command is None:
+      self.command = self.COMMAND
+
+    else:
+      self.command = command
+
+
+  def __call__(self, name, out, err):
+
+    return ( self.command, "-K", "-J", name,
       "-o", out, "-e", err )
 
 
-def pbs_interface(name, out, err):
+class pbs_interface(object):
   """
   Interface to Portable Batch System (PBS)
   """
 
-  return ( "qsub", "-d", ".", "-N", name,
+  COMMAND = "qsub"
+
+  def __init__(self, command):
+
+    if command is None:
+      self.command = self.COMMAND
+
+    else:
+      self.command = command
+
+
+  def __call__(self, name, out, err):
+
+    return ( self.command, "-d", ".", "-N", name,
       "-o", out, "-e", err )
 
