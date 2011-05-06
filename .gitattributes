@@ -986,6 +986,7 @@ mmtbx/command_line/validation_summary.py -text
 mmtbx/command_line/xmanip.py -text
 mmtbx/conformation_dependent_library/__init__.py -text
 mmtbx/conformation_dependent_library/cdl_database.py -text
+mmtbx/conformation_dependent_library/test_cdl.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/email_ralf_042910.txt -text
 mmtbx/f_model_info.py -text
