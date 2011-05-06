@@ -758,7 +758,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     reference_structure = None
     if params.scaling.input.xray_data.calc_labels is None:
-      if params.scaling.input.xray_data.reference.structure.file_name is not None:
+      if (params.scaling.input.xray_data.reference.structure.file_name is not None):
+        if (not os.path.isfile(params.scaling.input.xray_data.reference.structure.file_name)) :
+          raise Sorry("Can't open reference structure - not a valid file.")
         assert f_calc_miller is None
         reference_structure = iotbx.pdb.input( file_name=params.scaling.input.xray_data.reference.structure.file_name).xray_structure_simple(
           crystal_symmetry = miller_array.crystal_symmetry() )
