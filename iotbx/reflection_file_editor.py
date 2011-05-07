@@ -558,12 +558,22 @@ class process_arrays (object) :
           r_free_flags = new_array
         else :
           r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
+        r_free_flags = r_free_flags.map_to_asu()
+        if (r_free_flags.anomalous_flag()) :
+          if (len(output_labels) == 1) :
+            r_free_flags = r_free_flags.average_bijvoet_mates()
+            if (complete_set.anomalous_flag()) :
+              complete_set = complete_set.average_bijvoet_mates()
+          elif (not complete_set.anomalous_flag()) :
+            complete_set = complete_set.generate_bijvoet_mates()
+        elif (complete_set.anomalous_flag()) :
+          complete_set = complete_set.average_bijvoet_mates()
         r_free_as_bool = get_r_free_as_bool(r_free_flags,test_flag_value).data()
         assert isinstance(r_free_as_bool, flex.bool)
         fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
         print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
         if complete_set is not None :
-          missing_set = complete_set.lone_set(r_free_flags.map_to_asu())
+          missing_set = complete_set.lone_set(r_free_flags)
         else :
           missing_set = r_free_flags.complete_set(d_min=d_min,
             d_max=d_max).lone_set(r_free_flags.map_to_asu())
@@ -770,7 +780,7 @@ def make_joined_set (miller_arrays) :
     crystal_symmetry=miller_arrays[0].crystal_symmetry(),
     indices=master_indices,
     anomalous_flag=False)
-  return master_set.unique_under_symmetry()
+  return master_set.unique_under_symmetry().map_to_asu()
 
 def is_rfree_array (miller_array, array_info) :
   from iotbx import reflection_file_utils
