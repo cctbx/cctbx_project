@@ -3220,9 +3220,14 @@ class merge_equivalents(object):
     if (merge_type is not None):
       asu_array = miller_array.map_to_asu()
       perm = asu_array.sort_permutation(by_value="packed_indices")
-      merge_ext = merge_type(
-        asu_array.indices().select(perm),
-        asu_array.data().select(perm))
+      try :
+        merge_ext = merge_type(
+          asu_array.indices().select(perm),
+          asu_array.data().select(perm))
+      except RuntimeError, e :
+        if ("merge_equivalents_exact: incompatible" in str(e)) :
+          raise Sorry(str(e) + " (mismatch between Friedel mates)")
+        raise
       sigmas = None
       del asu_array
     elif (isinstance(miller_array.data(), flex.double)):
