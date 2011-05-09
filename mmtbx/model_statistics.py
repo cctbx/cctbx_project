@@ -13,7 +13,7 @@ class geometry(object):
                restraints_manager,
                hd_selection,
                ignore_hd = True,
-               side_chain_selection = None,
+               main_chain_selection = None,
                ignore_side_chain = False,
                n_histogram_slots = 10):
     zero = [0, 0, 0, 0, 0]
@@ -26,10 +26,10 @@ class geometry(object):
     self.dr_target, self.dr_number = 0, 0
     self.target = 0.0
     self.number_of_restraints = 0.0
-    if(ignore_side_chain and side_chain_selection.count(True) > 0):
+    if(ignore_side_chain and main_chain_selection.count(True) > 0):
       restraints_manager = restraints_manager.select(
-        selection = ~side_chain_selection)
-      sites_cart = sites_cart.select(~side_chain_selection)
+        selection = main_chain_selection)
+      sites_cart = sites_cart.select(main_chain_selection)
     elif(ignore_hd and hd_selection.count(True) > 0):
       restraints_manager = restraints_manager.select(selection = ~hd_selection)
       sites_cart = sites_cart.select(~hd_selection)
