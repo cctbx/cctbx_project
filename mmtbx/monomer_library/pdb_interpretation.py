@@ -82,7 +82,20 @@ clash_guard_params_str = """\
   }
 """
 
+test_cdl_params = """\
+  conformation_dependent_restraints_ideal = True
+    .type = bool
+  conformation_dependent_restraints_esd = True
+    .type = bool
+"""
+
 master_params_str = """\
+  conformation_dependent_restraints = False
+    .type = bool
+    .short_caption = Use Conformation Dependent Library
+    .caption = Use Conformation Dependent Library (CDL) \
+      for geometry minimization restraints
+    .style = bold
   apply_cif_modification
     .optional = True
     .multiple = True
@@ -607,7 +620,9 @@ class monomer_mapping(slots_getstate_setstate):
     "pdb_residue_id_str",
     "planarity_counters",
     "residue_name",
-    "unexpected_atoms"]
+    "unexpected_atoms",
+    "chainid",
+    ]
 
   def __init__(self,
         pdb_atoms,
@@ -621,7 +636,10 @@ class monomer_mapping(slots_getstate_setstate):
         is_first_conformer_in_chain,
         conf_altloc,
         pdb_residue,
-        next_pdb_residue):
+        next_pdb_residue,
+        chainid,
+               ):
+    self.chainid = chainid
     self.pdb_atoms = pdb_atoms
     self.mon_lib_srv = mon_lib_srv
     self.i_conformer = i_conformer
@@ -1785,7 +1803,9 @@ class build_chain_proxies(object):
         is_first_conformer_in_chain=is_first_conformer_in_chain,
         conf_altloc=conformer.altloc,
         pdb_residue=residue,
-        next_pdb_residue=_get_next_residue())
+        next_pdb_residue=_get_next_residue(),
+        chainid=residue.parent().parent().id,
+        )
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
@@ -2182,7 +2202,9 @@ class build_all_chain_proxies(object):
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None,
-        for_dihedral_reference=False):
+        for_dihedral_reference=False,
+        carbohydrate_callback=None,
+               ):
     assert special_position_settings is None or crystal_symmetry is None
     if (params is None): params = master_params.extract()
     self.params = params
@@ -2514,6 +2536,10 @@ class build_all_chain_proxies(object):
         raise RuntimeError(
           "Unused apply_cif_link: %s %s" % (
             apply.data_link, str(apply.pdbres_pair)))
+    #
+    if carbohydrate_callback:
+      carbohydrate_callback.pdb_interpretation_callback(self)
+    #
     self.geometry_proxy_registries.discard_tables()
     self.scattering_type_registry.discard_tables()
     self.nonbonded_energy_type_registry.discard_tables()
@@ -3633,7 +3659,9 @@ class process(object):
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None,
-        for_dihedral_reference=False):
+        for_dihedral_reference=False,
+        carbohydrate_callback=None,
+               ):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
     self.log = log
@@ -3655,7 +3683,9 @@ class process(object):
       keep_monomer_mappings=keep_monomer_mappings,
       max_atoms=max_atoms,
       log=log,
-      for_dihedral_reference=for_dihedral_reference)
+      for_dihedral_reference=for_dihedral_reference,
+      carbohydrate_callback=carbohydrate_callback,
+      )
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):
       print >> log, \

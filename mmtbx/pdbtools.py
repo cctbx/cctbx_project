@@ -675,6 +675,30 @@ def run(args, command_name="phenix.pdbtools"):
      (command_line_interpreter.params.regularize_geometry) or
      (command_line_interpreter.params.simple_dynamics)) :
     utils.print_header("Geometry regularization", out = log)
+    # Conformation Dependent Library
+    if command_line_interpreter.params.pdb_interpretation.conformation_dependent_restraints:
+      import time
+      from mmtbx import conformation_dependent_library as cdl
+      ppf = command_line_interpreter.processed_pdb_file
+      geometry = ppf.geometry_restraints_manager(
+          show_energies      = False,
+          plain_pairs_radius = 5.0)
+      restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                    normalization = False)
+
+      t0=time.time()
+      cdl_proxies = cdl.setup_restraints(ppf.all_chain_proxies.pdb_hierarchy,
+                                         restraints_manager=restraints_manager,
+                                         )
+      cdl.update_restraints(ppf.all_chain_proxies.pdb_hierarchy,
+                            restraints_manager=restraints_manager,
+                            cdl_proxies=cdl_proxies,
+                            )
+      print >> log, """
+  Conformation dependent library restraints added in %0.1fs
+""" % (
+        time.time()-t0,
+        )
     from mmtbx.command_line import geometry_minimization
     sites_cart = geometry_minimization.run(
       params = command_line_interpreter.params.geometry_minimization,

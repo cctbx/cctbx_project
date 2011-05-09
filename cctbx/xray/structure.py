@@ -799,14 +799,14 @@ class structure(crystal.special_position_settings):
       else: result.append(False)
     return result
 
-  def side_chain_selection(self):
+  def main_chain_selection(self):
     scattering_types = self._scatterers.extract_scattering_types()
     result = flex.bool()
     for sc in self.scatterers():
       if(sc.label.find("HOH")>-1):
         result.append(False)
         continue
-      for name in ["C","O","CA","N"]:
+      for name in ["C","O","CA","N", "CB"]: 
         if(sc.label[5:9].find(" %s " % name)>-1 and
            sc.scattering_type==name[0]
            ):
@@ -814,6 +814,10 @@ class structure(crystal.special_position_settings):
           break
       else: result.append(False)
     return result
+
+  def side_chain_selection(self):
+    result = self.main_chain_selection()
+    return ~result
 
   def element_selection(self, *elements):
     return flex.bool([ sc.element_symbol().strip() in elements
