@@ -176,20 +176,15 @@ class ThreeProteinResidues(list):
       backbone_i[1],
       backbone_i[0],
       ]
-    tmp = []
-    for atom in phi_atoms:
-      tmp.append(atom.xyz)
-    phi = get_dihedral(tmp)
+    from scitbx.math import dihedral_angle
+    phi = dihedral_angle(sites=[atom.xyz for atom in phi_atoms], deg=True)
     psi_atoms = [
       backbone_i[2],
       backbone_i[1],
       backbone_i[0],
       backbone_i_plus_1[2],
       ]
-    tmp = []
-    for atom in psi_atoms:
-      tmp.append(atom.xyz)
-    psi = get_dihedral(tmp)
+    psi = dihedral_angle(sites=[atom.xyz for atom in psi_atoms], deg=True)
     if verbose:
       print "psi, phi",psi,phi
     key = (round_to_ten(phi), round_to_ten(psi))
@@ -307,13 +302,6 @@ def get_c_ca_n(atom_group):
         print atom.format_atom_record()
       assert 0
   return tmp
-
-def get_dihedral(xyzs):
-  from elbow.chemistry.xyzClass import xyzClass
-  for i, xyz in enumerate(xyzs):
-    xyzs[i] = xyzClass(xyz)
-  d = xyzs[0].BondDihedral(*xyzs[1:])
-  return d
 
 def round_to_ten(d):
   t = int(round((float(d))/10))*10
