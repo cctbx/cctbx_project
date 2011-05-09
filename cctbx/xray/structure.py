@@ -800,6 +800,7 @@ class structure(crystal.special_position_settings):
     return result
 
   def main_chain_selection(self):
+    #XXX may need a better function
     scattering_types = self._scatterers.extract_scattering_types()
     result = flex.bool()
     for sc in self.scatterers():
@@ -814,10 +815,6 @@ class structure(crystal.special_position_settings):
           break
       else: result.append(False)
     return result
-
-  def side_chain_selection(self):
-    result = self.main_chain_selection()
-    return ~result
 
   def element_selection(self, *elements):
     return flex.bool([ sc.element_symbol().strip() in elements

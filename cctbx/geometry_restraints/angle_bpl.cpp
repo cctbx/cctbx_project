@@ -52,7 +52,8 @@ namespace {
         .def_readwrite("slack", &w_t::slack)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
           "shared_angle_proxy")
           .def("proxy_select",
             (af::shared<w_t>(*)(

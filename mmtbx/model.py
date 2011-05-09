@@ -956,9 +956,9 @@ class manager(object):
     if(self.restraints_manager is None): return None
     sites_cart = self.xray_structure.sites_cart()
     hd_selection = self.xray_structure.hd_selection()
-    side_chain_selection = None
+    main_chain_selection = None
     if ignore_side_chain:
-      side_chain_selection = self.xray_structure.side_chain_selection()
+      main_chain_selection = self.xray_structure.main_chain_selection()
     if(self.use_ias):
       sites_cart = sites_cart.select(~self.ias_selection)
       hd_selection = hd_selection.select(~self.ias_selection)
@@ -966,7 +966,7 @@ class manager(object):
       sites_cart         = sites_cart,
       hd_selection       = hd_selection,
       ignore_hd          = ignore_hd,
-      side_chain_selection = side_chain_selection,
+      main_chain_selection = main_chain_selection,
       ignore_side_chain    = ignore_side_chain,
       restraints_manager = self.restraints_manager)
 
