@@ -144,6 +144,7 @@ class lbfgs(object):
     self.target_result = self.target_functor(
       self.f_calc,
       compute_gradients)
+    assert self.target_result.target() is not None
 
   def compute_functional_and_gradients(self):
     u_iso_refinable_params = self.apply_shifts()
