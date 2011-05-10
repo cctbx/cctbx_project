@@ -905,6 +905,7 @@ class progress_bar(progress_displayed_as_fraction):
     self.i += 1
 
 def format_float_with_standard_uncertainty(value, standard_uncertainty):
+  if standard_uncertainty < 1e-16: return str(value)
   precision = -int(round(math.log10(standard_uncertainty)))
   if precision > -1:
     su = standard_uncertainty * math.pow(10, precision)
