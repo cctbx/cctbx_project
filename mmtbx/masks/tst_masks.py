@@ -192,7 +192,9 @@ def exercise_3():
   mm1 = masks.manager(miller_array   = f_calc,
                       xray_structure = xs)
   assert list(xs.scatterers().extract_occupancies()) == [1.0, 1.0]
-  assert flex.mean( flex.abs(mm1.f_mask().data()) ) > 4.0
+  fmasks1 = mm1.shell_f_masks()
+  assert len(fmasks1) == 1
+  assert flex.mean( flex.abs(fmasks1[0].data()) ) > 4.0
   #
   xs.set_occupancies(value = 0)
   mp.ignore_zero_occupancy_atoms = False
@@ -201,8 +203,12 @@ def exercise_3():
                       xray_structure = xs,
                       mask_params    = mp)
   assert list(xs.scatterers().extract_occupancies()) == [0.0, 0.0]
-  assert flex.mean( flex.abs(mm1.f_mask().data()) ) == \
-         flex.mean( flex.abs(mm2.f_mask().data()) )
+  fmasks1 = mm1.shell_f_masks()
+  assert len(fmasks1) == 1
+  fmasks2 = mm2.shell_f_masks()
+  assert len(fmasks2)==1
+  assert flex.mean( flex.abs(fmasks1[0].data()) ) == \
+         flex.mean( flex.abs(fmasks2[0].data()) )
   #
   mp.ignore_zero_occupancy_atoms = True
   mp.use_asu_masks = False
@@ -210,8 +216,10 @@ def exercise_3():
                       xray_structure = xs,
                       mask_params    = mp)
   assert list(xs.scatterers().extract_occupancies()) == [0.0, 0.0]
+  fmasks3 = mm3.shell_f_masks()
+  assert len(fmasks3)==1
   assert approx_equal(
-    flex.abs(mm3.f_mask().data()).min_max_mean().as_tuple(), (0.0, 0.0, 0.0))
+    flex.abs(fmasks3[0].data()).min_max_mean().as_tuple(), (0.0, 0.0, 0.0))
 
 def exercise_centrics(space_group_info, n_sites=10):
   structure = random_structure.xray_structure(

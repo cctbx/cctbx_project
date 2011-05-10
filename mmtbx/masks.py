@@ -271,23 +271,9 @@ class manager(object):
     # TODO: should return self._f_mask[:], to avoid modification in upper levels?
     return self._f_mask
 
-  def f_mask(self, xray_structure = None, force_update=False):
-    assert self.mask_params.n_radial_shells <= 1
-    fmsks = self.shell_f_masks(xray_structure, force_update)
-    if( fmsks is None ):
-      return None
-    assert len(fmsks) == 1
-    return fmsks[0]
-
+  # TODO: this seems to be unused
   def shell_f_masks_twin(self):
     return self._f_mask_twin
-
-  def f_mask_twin(self):
-    assert self.mask_params.n_radial_shells <= 1
-    if( self._f_mask_twin is None ):
-      return None
-    assert len(self._f_mask_twin) == 1
-    return self._f_mask_twin[0]
 
   def _need_update_mask(self, sites_cart_new):
     if(self.sites_cart is not None and
