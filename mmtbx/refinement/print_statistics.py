@@ -219,6 +219,7 @@ class refinement_monitor(object):
     self.scale_ml        = []
     self.n_solv          = []
     self.rigid_body_shift_accumulator             = None
+    self.n_shell_k_sols = 0
 
   def collect(self, model,
                     fmodel,
@@ -232,15 +233,17 @@ class refinement_monitor(object):
     if(self.model_ini is None): self.model_ini = model.deep_copy()
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)
+    ksols = tuple(fmodel.shell_k_sols())
     ###
     self.r_works         .append(fmodel.r_work()                  )
     self.r_frees         .append(fmodel.r_free()                  )
     t_r = fmodel.target_functor()(compute_gradients=False)
     self.targets_w       .append(t_r.target_work())
     self.targets_t       .append(t_r.target_test())
-    self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
-    self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
+    self.k_sols          .append(  ksols      )
+    self.b_sols          .append(fmodel.b_sol()          )
     self.b_anisos        .append(fmodel.b_cart()                  )
+    self.n_shell_k_sols = max(self.n_shell_k_sols,len(ksols))
     if(target_weights is not None):
        self.wxcs            .append(target_weights.wx_xyz()          )
        self.wxus            .append(target_weights.wx_adp()          )
@@ -453,11 +456,20 @@ class refinement_monitor(object):
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
-    print >> out, remark + \
-     " stage     k_sol   b_sol     b11     b22     b33     b12     b13     b23"
-    format = remark + "%9s  %5.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f"
+    if( self.n_shell_k_sols == 1 ):
+      print >> out, remark + \
+      " stage     k_sol   b_sol     b11     b22     b33     b12     b13     b23"
+    else:
+      print >> out, remark + \
+      " stage       k_sols"+((self.n_shell_k_sols-1)*6*" ") \
+      +"  b_sol     b11     b22     b33     b12     b13     b23"
     for a,b,c,d in zip(self.steps, self.k_sols, self.b_sols, self.b_anisos):
-        print >> out, format % (a,b,c,d[0],d[1],d[2],d[3],d[4],d[5])
+      if( len(b)==1 ):
+        format = remark + "%9s  %5.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f"
+      else:
+        format = remark + "%9s ("+(" %5.3f"*len(b))+") %7.3f %7.3f %7.3f %7.3f" \
+          + " %7.3f %7.3f %7.3f"
+      print >> out, format % ((a,)+b+(c,d[0],d[1],d[2],d[3],d[4],d[5]))
     print >> out, remark + separator
     #
     #

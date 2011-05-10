@@ -147,7 +147,8 @@ class core(object):
     typfm = type(self.f_mask)
     if( not((typfm is list) or (typfm is None)) ):
       self.f_mask = [self.f_mask]
-    assert len(self.shell_k_sols) == len(self.f_mask)
+    assert len(self.shell_k_sols) == len(self.f_mask), \
+        "VALS: %d %d"%(len(self.shell_k_sols),len(self.f_mask))
     self.ss = ss
     if(self.ss is None):
       self.ss = 1./flex.pow2(self.f_calc.d_spacings().data()) / 4.
@@ -1068,16 +1069,16 @@ class manager(manager_mixin):
     if(d_min is None): d_min = self.f_model().d_min()
     complete_set = self.f_model().complete_set(d_min = d_min, d_max = d_max)
     f_calc = self.compute_f_calc(miller_array = complete_set)
-    f_mask = masks.manager(
+    fmasks = masks.manager(
       miller_array   = f_calc,
       mask_params    = self.mask_params,
-      xray_structure = self.xray_structure).f_mask()
+      xray_structure = self.xray_structure).shell_f_masks()
     lone_set = f_calc.lone_set(other = self.f_model())
     f_part_base_lone = lone_set.array(data = lone_set.data()*0)
     f_part_base = self.f_part_base().concatenate(other = f_part_base_lone)
     return core(
       f_calc      = f_calc,
-      f_mask      = f_mask,
+      f_mask      = fmasks,
       shell_k_sols= self.shell_k_sols(),
       b_sol       = self.b_sol(),
       f_part_base = f_part_base,
@@ -1286,10 +1287,8 @@ class manager(manager_mixin):
   def shell_f_masks(self):
     return self.active_arrays.core.f_mask
 
-  def f_mask(self):
-    return self.shell_f_masks()
-
-  def f_mask_w(self):
+  # TODO: this seems to be unused
+  def shell_f_masks_w(self):
     if(self.r_free_flags().data().count(True) > 0):
       fmsks = []
       for fm in self.shell_f_masks():
@@ -1298,7 +1297,8 @@ class manager(manager_mixin):
     else:
       return self.shell_f_masks()
 
-  def f_mask_t(self):
+  # TODO: this seems to be unused
+  def shell_f_masks_t(self):
     if(self.r_free_flags().data().count(True) > 0):
       fmsks = []
       for fm in self.shell_f_masks():
@@ -1322,6 +1322,7 @@ class manager(manager_mixin):
     else:
       return self.f_calc()
 
+  # Deprecated. Use shell_k_sols instead.
   def k_sol(self):
     return self.active_arrays.core.data.k_sol()
 
@@ -1333,9 +1334,6 @@ class manager(manager_mixin):
 
   def b_sol(self):
     return self.active_arrays.core.data.b_sol
-
-  def k_sol_b_sol(self):
-    return self.k_sol(), self.b_sol()
 
   def f_obs_vs_f_model(self, log=None):
     if(log is None): log = sys.stdout
@@ -1693,7 +1691,7 @@ class manager(manager_mixin):
     scale_manager = bss.uaniso_ksol_bsol_scaling_minimizer(
                self.f_calc_w(),
                self.f_obs_work(),
-               self.f_mask_w(),
+               self.shell_f_masks_w(),
                k_initial = 0.,
                b_initial = 0.,
                u_initial = [0,0,0,0,0,0],
@@ -1836,10 +1834,11 @@ class manager(manager_mixin):
     ##
     u_star = adptbx.u_cart_as_u_star(
         self.f_obs().unit_cell(),adptbx.b_as_u(b_cart_new))
+    fmasks = self.shell_f_masks()
     core_ = core(
       f_calc      = self.f_calc(),
-      f_mask      = self.f_mask(),
-      shell_k_sols= [0.],
+      f_mask      = fmasks,
+      shell_k_sols= [0.]*len(fmasks),
       b_sol       = 0.,
       f_part_base = self.f_part_base(),
       k_part      = 0.,
