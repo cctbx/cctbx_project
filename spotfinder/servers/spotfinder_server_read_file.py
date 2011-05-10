@@ -119,13 +119,17 @@ class image_request_handler(BaseHTTPRequestHandler):
     print "beam_center_convention",Files.images[0].beam_center_convention
     print "beam_center_reference_frame",Files.images[0].beam_center_reference_frame
 
+    logfile = StringIO.StringIO()
+    if labelit_commands.distl.bins.verbose: sys.stdout = logfile
+
     #S = spotfinder_no_pickle(Files, s3_passthru = "-s3 4",spot_convention = 0)
     from labelit.procedure import spotfinder_and_pickle
     S = spotfinder_and_pickle(None, Files, spots_pickle = None)
+    print
+    sys.stdout = sys.__stdout__
 
     frames = Files.frames()
 
-    logfile = StringIO.StringIO()
     sys.stdout = logfile
 
     print "Image: %s"%parts["filename"][0]

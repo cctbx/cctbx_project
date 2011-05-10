@@ -57,6 +57,8 @@ Allowed parameters:
 
   NUMBER_OF_PROCESSES = params.distl.processors
 
+  from labelit.preferences import labelit_commands
+  labelit_commands.distl = params.distl
   srv.common_parameters(outer_resolution=params.distl.res.outer,
                     minimum_spot_area=params.distl.minimum_spot_area,
                     minimum_signal_height=params.distl.minimum_signal_height)
