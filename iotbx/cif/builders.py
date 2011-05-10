@@ -348,6 +348,7 @@ class miller_array_builder(crystal_symmetry_builder):
               data = value
           array = miller.array(
             miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
+          array.set_info(base_array_info.customized_copy(labels=[key]))
           self._arrays.setdefault(key, array)
 
     if len(self._arrays) == 0:
