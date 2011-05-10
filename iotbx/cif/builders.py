@@ -299,19 +299,20 @@ class miller_array_builder(crystal_symmetry_builder):
     phase_meas = cif_block.get('_refln_phase_meas')
     for prefix in self.observation_types.keys():
       sigmas = as_double_or_none_if_all_question_marks(
-        cif_block.get('%s_sigma' %prefix))
+        cif_block.get('%s_sigma' %prefix), column_name='%s_sigma' %prefix)
       obs_type = self.observation_types[prefix]
       for array_type in ('meas', 'calc'):
         label = '_'.join((prefix, array_type))
         if prefix == '_refln_A':
-          data = [as_double_or_none_if_all_question_marks(_) for _ in [
-            cif_block.get(label),
-            cif_block.get('_'.join((prefix.replace('A', 'B'), array_type)))]]
+          alt_label = '_'.join((prefix.replace('A', 'B'), array_type))
+          data = [as_double_or_none_if_all_question_marks(_, column_name=_)
+                  for _ in [cif_block.get(label), cif_block.get(alt_label)]]
           if data.count(None) != 0:
             continue
           data = flex.complex_double(data[0], data[1])
         else:
-          data = as_double_or_none_if_all_question_marks(cif_block.get(label))
+          data = as_double_or_none_if_all_question_marks(
+            cif_block.get(label), column_name=label)
           if data is None:
             continue
         if array_type == 'calc': sigmas = None
@@ -361,10 +362,21 @@ def none_if_all_question_marks(cif_block_item):
   if (result.all_eq("?")): return None
   return result
 
-def as_double_or_none_if_all_question_marks(cif_block_item):
+def as_double_or_none_if_all_question_marks(cif_block_item, column_name=None):
   strings = none_if_all_question_marks(cif_block_item)
   if (strings is None): return None
-  return flex.double(strings)
+  try:
+    return flex.double(strings)
+  except ValueError, e:
+    # better error message if column_name is given
+    e_str = str(e)
+    if column_name is not None and e_str.startswith(
+      "Invalid floating-point value: "):
+      i = e_str.find(":") + 2
+      raise ValueError('Invalid floating-point value for %s: %s'
+                       %(column_name, e_str[i:].strip()))
+    else:
+      raise e
 
 def flex_double_else_none(cif_block_item):
   strings = none_if_all_question_marks(cif_block_item)
