@@ -122,8 +122,10 @@ class crystallographic_ls(
         linearised_eqns.weights * self.restraints_normalisation_factor)
       self.n_restraints = linearised_eqns.n_restraints()
       self.chi_sq_data_and_restraints = self.chi_sq()
-    if not objective_only:
-      self.floating_origin_restraints.add_to(self.step_equations())
+    if not objective_only and\
+       len(self.floating_origin_restraints.singular_directions) != 0:
+      self.floating_origin_restraints.add_to(self.step_equations(),
+                                             self.reparametrisation.site_indices)
 
   def parameter_vector_norm(self):
     return self.reparametrisation.norm_of_independent_parameter_vector
