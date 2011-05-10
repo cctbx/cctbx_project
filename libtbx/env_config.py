@@ -15,6 +15,11 @@ qnew = 2
 if (qnew == 1 and sys.version_info[:2] < (2,7)): qnew = 0
 qnew = ["", " -Qwarn", " -Qnew"][qnew]
 
+if (os.name == "nt"):
+  exe_suffix = ".exe"
+else:
+  exe_suffix = ""
+
 def bool_literal(b):
   if (b): return "True"
   return "False"
@@ -1017,11 +1022,9 @@ class environment:
           + "    %s" % show_string(source_file))
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
-      ext = ".exe"
     else:
       action = self.write_bin_sh_dispatcher
-      ext = ""
-    target_file_ext = target_file + ext
+    target_file_ext = target_file + exe_suffix
     remove_or_rename(target_file_ext)
     try: action(source_file, target_file_ext, source_is_python_exe)
     except IOError, e: print "  Ignored:", e
@@ -1267,7 +1270,7 @@ selfx:
     for module in self.module_list:
       if (   len(module.command_line_directory_paths()) != 0
           or len(module.assemble_pythonpath()) != 0):
-        module_names.append(module.name)
+        module_names.append(module.name.lower())
     for module_name in module_names:
       self._write_dispatcher_in_bin(
         source_file=self.python_exe,
@@ -1552,16 +1555,20 @@ class module:
       read_size = 1000
     else:
       read_size = 0
+    check_for_hash_bang = False
     if (os.name == "nt"):
       if (ext not in windows_pathext): return
-    elif (ext != ".sh" and ext != ".py" and read_size == 0):
-      read_size = 2
+    elif (ext == ".bat"):
+      return
+    elif (ext not in set([".sh", ".py", ".launch"])):
+      read_size = max(2, read_size)
+      check_for_hash_bang = True
+    target_file = None
     if (read_size != 0):
       try: source_text = open(source_file).read(read_size)
       except IOError:
         raise RuntimeError('Cannot read file: "%s"' % source_file)
-    if (read_size == 2):
-      if (not source_text.startswith("#!")):
+      if (check_for_hash_bang and not source_text.startswith("#!")):
         if (ext != ".bat" and not suppress_warning):
           msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
             source_file)
@@ -1569,28 +1576,27 @@ class module:
           print msg
           print "*"*len(msg)
         return
-    target_file = None
-    pattern = "LIBTBX_SET_DISPATCHER_NAME"
-    if (read_size > len(pattern)):
       for line in source_text.splitlines():
-        i = line.find(pattern)
-        if (i >= 0):
-          i += len(pattern)
-          flds = line[i:].split(None, 1)
-          if (len(flds) != 0):
-            target_file = flds[0]
-            if (len(target_file) != 0):
-              self.env._write_dispatcher_in_bin(
-                source_file=source_file,
-                target_file=target_file)
+        flds = line.split()
+        if (target_file is None):
+          try:
+            i = flds.index("LIBTBX_SET_DISPATCHER_NAME")
+          except ValueError:
+            pass
+          else:
+            if (i+1 < len(flds)):
+              target_file = flds[i+1]
+        if (ext == ".launch" and "LIBTBX_LAUNCH_EXE" in flds):
+          source_file = self.env.under_build(
+            op.join(self.name, "exe", file_name[:-len(ext)])) + exe_suffix
     if (target_file is None):
-      target_file = self.name + target_file_name_infix
+      target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")
            or file_name_lower.count(".") != 1):
         target_file += "." + op.splitext(file_name)[0]
-      self.env._write_dispatcher_in_bin(
-        source_file=source_file,
-        target_file=target_file)
+    self.env._write_dispatcher_in_bin(
+      source_file=source_file,
+      target_file=target_file)
 
   def command_line_directory_paths(self):
     result = []
