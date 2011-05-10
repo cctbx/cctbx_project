@@ -1556,11 +1556,13 @@ class module:
     else:
       read_size = 0
     check_for_hash_bang = False
-    if (os.name == "nt"):
+    if (ext == ".launch"):
+      assert read_size != 0
+    elif (os.name == "nt"):
       if (ext not in windows_pathext): return
     elif (ext == ".bat"):
       return
-    elif (ext not in set([".sh", ".py", ".launch"])):
+    elif (ext not in [".sh", ".py"]):
       read_size = max(2, read_size)
       check_for_hash_bang = True
     target_file = None
@@ -1569,7 +1571,7 @@ class module:
       except IOError:
         raise RuntimeError('Cannot read file: "%s"' % source_file)
       if (check_for_hash_bang and not source_text.startswith("#!")):
-        if (ext != ".bat" and not suppress_warning):
+        if (not suppress_warning):
           msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
             source_file)
           print "*"*len(msg)
