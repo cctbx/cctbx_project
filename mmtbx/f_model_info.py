@@ -43,6 +43,53 @@ class resolution_bin(object):
                sigmaa        = None):
     adopt_init_args(self, locals())
 
+def r_work_and_completeness_in_resolution_bins(fmodel, reflections_per_bin=500,
+      out = None, prefix=""):
+  if(out is None): out = sys.stdout
+  from mmtbx import bulk_solvent
+  from cctbx.array_family import flex
+  fo_w = fmodel.f_obs_work()
+  fc_w = fmodel.f_model_scaled_with_k1_w()
+  fo_w.setup_binner(reflections_per_bin = reflections_per_bin)
+  fc_w.use_binning_of(fo_w)
+  result = []
+  for i_bin in fo_w.binner().range_used():
+    sel_w = fo_w.binner().selection(i_bin)
+    sel_all = fo_w.binner().selection(i_bin)
+    sel_fo_all = fo_w.select(sel_all)
+    sel_fo_w = fo_w.select(sel_w)
+    sel_fc_w = fc_w.select(sel_w)
+    d_max_,d_min_ = sel_fo_all.d_max_min()
+    completeness = sel_fo_all.completeness(d_max = d_max_)
+    d_range = fo_w.binner().bin_legend(
+      i_bin=i_bin, show_bin_number=False, show_counts=False)
+    s_fo_w_d = sel_fo_w.data()
+    s_fc_w_d = sel_fc_w.data()
+    assert s_fo_w_d.size() == s_fc_w_d.size()
+    s_fc_w_d_a = flex.abs(s_fc_w_d)
+    if(s_fo_w_d.size() > 0):
+      bin = resolution_bin(
+        i_bin        = i_bin,
+        d_range      = d_range,
+        completeness = completeness,
+        r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d, 1),
+        n_work       = sel_fo_w.data().size(),
+        scale_k1_work= _scale_helper(num=s_fo_w_d, den=s_fc_w_d_a),
+        mean_f_obs   = flex.mean_default(sel_fo_all.data(),None))
+      result.append(bin)
+  print >> out,\
+    prefix+" Bin  Resolution Range  Compl.    Nwork  Rwork   Scale     <Fobs>"
+  for bin in result:
+    fmt = " %s %s    %s %s %s  %s %s"
+    print >> out,prefix+fmt%(
+      format_value("%3d",   bin.i_bin),
+      format_value("%-17s", bin.d_range),
+      format_value("%4.2f", bin.completeness),
+      format_value("%8d",   bin.n_work),
+      format_value("%6.4f", bin.r_work),
+      format_value("%6.4f", bin.scale_k1_work),
+      format_value("%10.3f", bin.mean_f_obs))
+
 class info(object):
   def __init__(self,
                fmodel,
