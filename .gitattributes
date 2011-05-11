@@ -1099,6 +1099,10 @@ mmtbx/tls/perm12.py -text
 mmtbx/tls/perm13.py -text
 mmtbx/tls/perm14.py -text
 mmtbx/tls/perm15.py -text
+mmtbx/torsion_restraints/__init__.py svneol=native#text/x-python
+mmtbx/torsion_restraints/reference_model.py svneol=native#text/x-python
+mmtbx/torsion_restraints/torsion_ncs.py svneol=native#text/x-python
+mmtbx/torsion_restraints/tst_reference_model.py svneol=native#text/x-python
 mmtbx/tst_alignment.py -text
 mmtbx/tst_map_type_parser.py -text
 mmtbx/tst_pdbtools.py -text
