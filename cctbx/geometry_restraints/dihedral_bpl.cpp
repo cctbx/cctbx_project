@@ -28,20 +28,22 @@ namespace {
       class_<w_t>("dihedral_proxy", no_init)
         .def(init<
           af::tiny<unsigned, 4> const&, double, double,
-          int, alt_angle_ideals_type, double, bool>((
+          int, alt_angle_ideals_type, double, bool, double>((
             arg("i_seqs"), arg("angle_ideal"), arg("weight"),
             arg("periodicity")=0, arg("alt_angle_ideals")=none,
-            arg("limit")=-1.0, arg("top_out")=false)))
+            arg("limit")=-1.0, arg("top_out")=false,
+            arg("slack")=0.0)))
         .def(init<
           af::tiny<unsigned, 4> const&,
           optional_container<af::shared<sgtbx::rt_mx> > const&,
           double,
           double,
           int,
-          alt_angle_ideals_type,double,bool>((
+          alt_angle_ideals_type,double,bool,double>((
             arg("i_seqs"), arg("sym_ops"), arg("angle_ideal"), arg("weight"),
-            arg("periodicity")=0, arg("alt_angle_ideals")=none,
-            arg("limit")=-1.0, arg("top_out")=false)))
+            arg("periodicity")=0,
+            arg("alt_angle_ideals")=none,
+            arg("limit")=-1.0, arg("top_out")=false, arg("slack")=-1.0)))
         .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
           arg("i_seqs"), arg("proxy"))))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
@@ -52,6 +54,7 @@ namespace {
         .def_readwrite("periodicity", &w_t::periodicity)
         .def_readwrite("limit", &w_t::limit)
         .def_readwrite("top_out", &w_t::top_out)
+        .def_readwrite("slack", &w_t::slack)
         .add_property("alt_angle_ideals",
           make_getter(&w_t::alt_angle_ideals, rbv()),
           make_setter(&w_t::alt_angle_ideals, dcp()))
@@ -94,10 +97,10 @@ namespace {
       class_<w_t>("dihedral", no_init)
         .def(init<
           af::tiny<scitbx::vec3<double>, 4> const&, double, double,
-          int, alt_angle_ideals_type const&, double, bool>((
+          int, alt_angle_ideals_type const&, double, bool, double>((
             arg("sites"), arg("angle_ideal"), arg("weight"),
             arg("periodicity")=0, arg("alt_angle_ideals")=none,
-            arg("limit")=-1.0, arg("top_out")=false)))
+            arg("limit")=-1.0, arg("top_out")=false, arg("slack")=0.0)))
         .def(init<
           af::const_ref<scitbx::vec3<double> > const&,
           dihedral_proxy const&>((
@@ -112,6 +115,7 @@ namespace {
         .def_readonly("periodicity", &w_t::periodicity)
         .def_readonly("limit", &w_t::limit)
         .def_readonly("top_out", &w_t::top_out)
+        .def_readonly("slack", &w_t::slack)
         .add_property("alt_angle_ideals",
           make_getter(&w_t::alt_angle_ideals, rbv()),
           make_setter(&w_t::alt_angle_ideals, dcp()))

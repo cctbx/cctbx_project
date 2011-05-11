@@ -28,7 +28,8 @@ namespace cctbx { namespace geometry_restraints {
       int periodicity_=0,
       alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      double slack_=0.0)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
@@ -36,7 +37,8 @@ namespace cctbx { namespace geometry_restraints {
       periodicity(periodicity_),
       alt_angle_ideals(alt_angle_ideals_),
       limit(limit_),
-      top_out(top_out_)
+      top_out(top_out_),
+      slack(slack_)
     {}
 
     //! Constructor.
@@ -48,7 +50,8 @@ namespace cctbx { namespace geometry_restraints {
       int periodicity_=0,
       alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      double slack_=0.0)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
@@ -57,7 +60,8 @@ namespace cctbx { namespace geometry_restraints {
       periodicity(periodicity_),
       alt_angle_ideals(alt_angle_ideals_),
       limit(limit_),
-      top_out(top_out_)
+      top_out(top_out_),
+      slack(slack_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -76,7 +80,8 @@ namespace cctbx { namespace geometry_restraints {
       periodicity(proxy.periodicity),
       alt_angle_ideals(proxy.alt_angle_ideals),
       limit(proxy.limit),
-      top_out(proxy.top_out)
+      top_out(proxy.top_out),
+      slack(proxy.slack)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -89,7 +94,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       return dihedral_proxy(
         i_seqs, sym_ops, angle_ideal, weight*factor,
-        periodicity, alt_angle_ideals, limit, top_out);
+        periodicity, alt_angle_ideals, limit, top_out, slack);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
@@ -148,6 +153,8 @@ namespace cctbx { namespace geometry_restraints {
     double limit;
     //! Use top-out function or not for residual/gradient
     bool top_out;
+    //! Parameter.
+    double slack;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
@@ -178,7 +185,8 @@ namespace cctbx { namespace geometry_restraints {
         int periodicity_=0,
         alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
         double limit_=-1.0,
-        bool top_out_=false)
+        bool top_out_=false,
+        double slack_=0.0)
       :
         sites(sites_),
         angle_ideal(angle_ideal_),
@@ -186,7 +194,8 @@ namespace cctbx { namespace geometry_restraints {
         periodicity(periodicity_),
         alt_angle_ideals(alt_angle_ideals_),
         limit(limit_),
-        top_out(top_out_)
+        top_out(top_out_),
+        slack(slack_)
       {
         init_angle_model();
       }
@@ -203,7 +212,8 @@ namespace cctbx { namespace geometry_restraints {
         periodicity(proxy.periodicity),
         alt_angle_ideals(proxy.alt_angle_ideals),
         limit(proxy.limit),
-        top_out(proxy.top_out)
+        top_out(proxy.top_out),
+        slack(proxy.slack)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -227,7 +237,8 @@ namespace cctbx { namespace geometry_restraints {
         periodicity(proxy.periodicity),
         alt_angle_ideals(proxy.alt_angle_ideals),
         limit(proxy.limit),
-        top_out(proxy.top_out)
+        top_out(proxy.top_out),
+        slack(proxy.slack)
       {
         for(int i=0;i<4;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -270,14 +281,26 @@ namespace cctbx { namespace geometry_restraints {
       residual() const
       {
         using scitbx::constants::pi_180;
-        double term, delta_local;
+        double term;
+        double delta_local;
         double top;
-        delta_local = delta;
+        if (slack <= 0.0){
+          delta_local = delta;
+        }
+        else if (delta > slack){
+          delta_local = delta - slack;
+        }
+        else if (delta < (-1.0*slack)) {
+          delta_local = delta + slack;
+        }
+        else {
+          delta_local = 0.0;
+        }
         if (limit >= 0 && top_out == false){
-          if(delta > limit){
+          if(delta_local > limit){
             delta_local = limit;
           }
-          else if(delta < (-1.0*limit)){
+          else if(delta_local < (-1.0*limit)){
             delta_local = (-1.0*limit);
           }
         }
@@ -355,17 +378,31 @@ namespace cctbx { namespace geometry_restraints {
         using scitbx::constants::pi_180;
         double grad_factor;
         double top;
+        double delta_local;
+        if (slack <= 0.0) {
+          delta_local = delta;
+        }
+        else if (delta > slack) {
+          delta_local = delta - slack;
+        }
+        else if (delta < (-1.0*slack)) {
+          delta_local = delta + slack;
+        }
+        else {
+          delta_local = 0.0;
+        }
         if (periodicity > 0) {
             grad_factor = 9600. * weight / periodicity * pi_180
-                        * std::sin(periodicity * delta * pi_180);
+                        * std::sin(periodicity * delta_local * pi_180);
         }
         else if (top_out) {
             //(2*weight^2*x)*exp(-(weight*x**2)/top)
             top = weight*limit * limit;
-            grad_factor = (2.0*weight*delta)*std::exp(-(weight*delta*delta)/top);
+            grad_factor = (2.0*weight*delta_local)
+                          * std::exp(-(weight*delta_local*delta_local)/top);
         }
         else {
-            grad_factor = 2 * weight * delta;
+            grad_factor = 2 * weight * delta_local;
         }
         af::tiny<scitbx::vec3<double>, 4> result = grad_delta(epsilon);
         for (std::size_t i=0; i<4; i++) {
@@ -458,6 +495,8 @@ namespace cctbx { namespace geometry_restraints {
       double limit;
       //! Use top-out function or notabilities
       bool top_out;
+      //! Parameter (usually as passed to the constructor).
+      double slack;
       //! false in singular situations.
       bool have_angle_model;
     public:
