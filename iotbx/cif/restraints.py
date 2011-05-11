@@ -89,9 +89,9 @@ def angles_as_cif_loop(xray_structure, proxies):
     loop.add_row((site_labels[i_seqs[0]],
                   site_labels[i_seqs[1]],
                   site_labels[i_seqs[2]],
-                  space_group_info.cif_symmetry_code(sym_ops[i_seqs[0]]),
-                  space_group_info.cif_symmetry_code(sym_ops[i_seqs[1]]),
-                  space_group_info.cif_symmetry_code(sym_ops[i_seqs[2]]),
+                  space_group_info.cif_symmetry_code(sym_ops[0]),
+                  space_group_info.cif_symmetry_code(sym_ops[1]),
+                  space_group_info.cif_symmetry_code(sym_ops[2]),
                   fmt % restraint.angle_ideal,
                   fmt % math.sqrt(1/restraint.weight),
                   fmt % restraint.delta))
