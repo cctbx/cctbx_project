@@ -17,6 +17,7 @@ def run():
   sys.path[0] = os.path.dirname(sys.path[0])
   import libtbx.env_config
   libtbx.env_config.cold_start(sys.argv)
+  print "Done."
 
 if (__name__ == "__main__"):
   run()
