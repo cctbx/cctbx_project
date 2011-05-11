@@ -34,6 +34,7 @@ class manager(object):
   def energies_sites(self,
         sites_cart,
         geometry_flags=None,
+        external_energy_function=None,
         custom_nonbonded_function=None,
         compute_gradients=False,
         gradients=None,
@@ -50,6 +51,7 @@ class manager(object):
       result.geometry = self.geometry.energies_sites(
         sites_cart=sites_cart,
         flags=geometry_flags,
+        external_energy_function=external_energy_function,
         custom_nonbonded_function=custom_nonbonded_function,
         compute_gradients=compute_gradients,
         gradients=result.gradients,

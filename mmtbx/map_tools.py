@@ -11,20 +11,20 @@ class kick_map(object):
   def __init__(self, fmodel,
                      map_type,
                      kick_sizes         = [0.5],
-                     number_of_kicks    = 100,
+                     number_of_kicks    = 50,
                      acentrics_scale    = 2.0,
                      centrics_pre_scale = 1.0,
                      isotropize         = False,
-                     resharp            = False
-                     ):
+                     sharp              = False):
     self.map_coeffs = None
     fmodel_tmp = fmodel.deep_copy()
     isotropize_helper = fmodel.isotropize_helper()
     map_helper_obj = fmodel.map_calculation_helper()
     map_coeff_data = None
-    f_obs_orig = fmodel.f_obs().deep_copy()
     counter = 0
     b_sh_cntr = flex.double()
+    ss = 1./flex.pow2(fmodel_tmp.f_obs().d_spacings().data()) / 4.
+    sites_frac = fmodel.xray_structure.sites_frac()
     for kick_size in kick_sizes:
       b_ext = None
       for kick in xrange(number_of_kicks):
@@ -34,33 +34,42 @@ class kick_map(object):
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
         fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
                                          update_f_calc  = True,
-                                         update_f_mask  = True,
-                                         force_update_f_mask = True)
+                                         update_f_mask  = False)
         self.map_coeffs = fmodel_tmp.electron_density_map().map_coefficients(
-          map_type = map_type,
-          external_alpha_fom_source = map_helper_obj)
-        #s = flex.random_bool(fmodel.f_obs().data().size(), 0.1)
-        #self.map_coeffs = miller.set(
-        #  crystal_symmetry = self.map_coeffs.crystal_symmetry(),
-        #  indices          = self.map_coeffs.indices(),
-        #  anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
-        #    data = self.map_coeffs.data().set_selected(s, 0+0j))
+            map_type = map_type,
+            external_alpha_fom_source = map_helper_obj)
         if(isotropize):
           self.map_coeffs = self.map_coeffs.array(
             data = self.map_coeffs.data()*isotropize_helper.iso_scale.data())
-        if(resharp):
-          self.map_coeffs, b_ext = mmtbx.maps.isotropizer(
-            map_coeffs        = self.map_coeffs,
-            resharp           = resharp,
-            isotropize_helper = isotropize_helper,
-            b_ext             = b_ext)
+        ##############################################
+        if(0): #XXX experimental
+          fft_map = self.map_coeffs.fft_map(resolution_factor=1./3)
+          fft_map.apply_sigma_scaling()
+          map_data = fft_map.real_map_unpadded()
+          map_data = maptbx.denmod_simple(
+            map_data = map_data,
+            n_real   = fft_map.n_real())
+          self.map_coeffs = self.map_coeffs.structure_factors_from_map(map=map_data,
+            use_scale = True, anomalous_flag = False, use_sg = True)
+        ##############################################
+        if(sharp):
+          self.map_coeffs, b_ext = mmtbx.maps.sharp_map(
+            sites_frac = sites_frac,
+            map_coeffs = self.map_coeffs,
+            ss         = ss,
+            b_sharp    = b_ext)
           b_sh_cntr.append(b_ext)
-          if(b_sh_cntr.size()<5): b_ext = None
+          if(b_sh_cntr.size()<2): b_ext = None
           else: b_ext = flex.mean(b_sh_cntr)
         if(map_coeff_data is None):
           map_coeff_data = self.map_coeffs.data()
         else:
           map_coeff_data = map_coeff_data + self.map_coeffs.data()
+    if(sharp):
+      self.map_coeffs, b_ext = mmtbx.maps.sharp_map(
+        sites_frac = sites_frac,
+        map_coeffs = self.map_coeffs,
+        ss         = ss)
     if(self.map_coeffs is not None):
       self.map_coeffs = miller.set(
         crystal_symmetry = self.map_coeffs.crystal_symmetry(),
@@ -68,57 +77,13 @@ class kick_map(object):
         anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
           data = map_coeff_data/counter)
 
-def b_sharp_map(map_coefficients,
-                resolution_factor = 1/4.,
-                b_sharp_min  = 0,
-                b_sharp_max  = 260,
-                b_sharp_step = 25,
-                b_sharp      = None):
-  ss = 1./flex.pow2(map_coefficients.d_spacings().data()) / 4.
-  fft_map_start = map_coefficients.fft_map(resolution_factor=resolution_factor)
-  def sigma_scale(map_data):
-    statistics = maptbx.statistics(map_data)
-    average = statistics.mean()
-    standard_deviation = statistics.sigma()
-    map_data /= standard_deviation
-    return map_data
-  if(b_sharp is not None):
-    scale = flex.exp(b_sharp*ss)
-    return map_coefficients.customized_copy(data=map_coefficients.data()*scale)
-  else:
-    fft_map_start.apply_sigma_scaling()
-    map_data_start = fft_map_start.real_map_unpadded()
-    counter = 0
-    mcd = None
-    map_data = map_data_start.deep_copy()
-    for b_sharp in range(b_sharp_min, b_sharp_max, b_sharp_step):
-      counter += 1
-      scale = flex.exp(b_sharp*ss)
-      mc = map_coefficients.customized_copy(data=map_coefficients.data()*scale)
-      fft_map = miller.fft_map(crystal_gridding = fft_map_start,
-        fourier_coefficients = mc)
-      fft_map.apply_sigma_scaling()
-      map_data_ = fft_map.real_map_unpadded()
-      map_data = maptbx.combine_and_maximize_maps(
-        map_data_1 = map_data_,
-        map_data_2 = map_data,
-        n_real     = fft_map.n_real())
-      map_data = sigma_scale(map_data)
-    map_data = maptbx.combine_and_maximize_maps(
-      map_data_1 = map_data,
-      map_data_2 = map_data_start,
-      n_real     = fft_map.n_real())
-    result = map_coefficients.structure_factors_from_map(map = map_data,
-      use_scale = True)
-    return result
-
-
 class electron_density_map(object):
 
   def __init__(self,
                fmodel,
                fill_missing_f_obs = False,
                fill_mode = None,
+               update_scaling = True,
                map_calculation_helper = None):
     self.fmodel = fmodel.deep_copy()
     self.fill_missing_f_obs = fill_missing_f_obs
@@ -134,7 +99,8 @@ class electron_density_map(object):
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
     if(self.fill_missing_f_obs and self.fmodel.k_part() == 0): # do not fill if F_part is used!
-      self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode)
+      self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode,
+        update_scaling = update_scaling)
     #del self.fmodel # XXX
 
   def map_coefficients(self,

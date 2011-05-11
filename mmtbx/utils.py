@@ -2114,20 +2114,16 @@ class fmodel_from_xray_structure(object):
       if(params.low_resolution is not None):
         f_obs = f_obs.resolution_filter(d_max = lr)
     else:
-      hr = None
       try: hr = params.high_resolution
-      except AttributeError: pass
-      except: raise RuntimeError
-      lr = None
+      except: hr = None
       try: lr = params.low_resolution
-      except AttributeError: pass
-      except: raise RuntimeError
+      except: lr = None
       f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
       if(params.scattering_table == "neutron"):
         xray_structure.switch_to_neutron_scattering_dictionary()
       else:
         xray_structure.scattering_type_registry(
-          table = params.scattering_table, d_min = hr)
+          table = params.scattering_table, d_min = f_obs.d_min())
     r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
     fmodel = mmtbx.f_model.manager(
       xray_structure               = xray_structure,

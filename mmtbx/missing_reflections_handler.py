@@ -114,7 +114,7 @@ def select_by_map_cc(fmodel):
   return fmodel
 
 
-def fill_missing_f_obs(fmodel, fill_mode):
+def fill_missing_f_obs(fmodel, fill_mode, update_scaling=True):
   assert fill_mode in ["fobs_mean_mixed_with_dfmodel",
                        "random",
                        "fobs_mean",
@@ -124,7 +124,6 @@ def fill_missing_f_obs(fmodel, fill_mode):
   bss_params.k_sol_b_sol_grid_search = False
   bss_params.b_sol_max = 150.0
   bss_params.number_of_macro_cycles = 1
-
   new_f_obs_obj = compute_new_f_obs(
     fmodel = select_by_map_cc(fmodel = fmodel.deep_copy()))
   new_f_obs = new_f_obs_obj.f_obs
@@ -258,7 +257,8 @@ def fill_missing_f_obs(fmodel, fill_mode):
     b_sol                  = fmodel.b_sol(),
     b_cart                 = fmodel.b_cart(),
     mask_params            = fmodel.mask_params)
-  fmodel_result.update_solvent_and_scale(params = bss_params,
-    optimize_mask=False)
+  if(update_scaling):
+    fmodel_result.update_solvent_and_scale(params = bss_params,
+      optimize_mask=False)
   if(use_f_part): fmodel_result.update_f_part()
   return fmodel_result

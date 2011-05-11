@@ -19,6 +19,7 @@ from libtbx import group_args
 import mmtbx.restraints
 import mmtbx.find_peaks
 import mmtbx.maps
+import mmtbx.masks
 
 if (1):
   random.seed(0)
@@ -664,6 +665,7 @@ def run(args,
         return_fmodel_and_pdb    = False,
         out                      = None,
         log                      = sys.stdout):
+  import mmtbx.f_model_info
   if(len(args)==0):
     print >> log, msg
     defaults(log=log, silent=False)
@@ -799,7 +801,9 @@ def run(args,
     mvd_obj                  = mvd_obj,
     atom_selections          = atom_selections)
   ###########################
+  mp = mmtbx.masks.mask_master_params.extract()
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
+                               mask_params     = mp,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags)
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
@@ -882,6 +886,10 @@ def run(args,
       else: prefix= fn
       file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
       maps_obj.write_mtz_file(file_name = file_name)
+  # statistics in bins
+  if(not fmodel.twin):
+    mmtbx.f_model_info.r_work_and_completeness_in_resolution_bins(fmodel = fmodel,
+      out = log)
   # report map cc
   if(params.comprehensive and not fmodel_cut.twin and
      fmodel_cut.xray_structure is not None):

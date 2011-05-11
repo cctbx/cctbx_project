@@ -57,8 +57,6 @@ map_coeff_params_str = """\
       .help = Exclude free-R selected reflections from output map coefficients
     isotropize = True
       .type = bool
-    resharp_after_isotropize = False
-      .type = bool
     dev
       .expert_level=3
     {
@@ -131,8 +129,6 @@ map_params_str ="""\
       .type = bool
       .help = Exclude free-R selected reflections from map calculation
     isotropize = True
-      .type = bool
-    resharp_after_isotropize = False
       .type = bool
   }
 """
@@ -311,7 +307,6 @@ class write_xplor_map_file(object):
       raise Sorry('Empty atom selection: %s' % self.params.atom_selection)
     return result
 
-# Fmodel (and not Fcalc) maigh go here
 def compute_f_calc(fmodel, params):
   from cctbx import miller
   coeffs_partial_set = fmodel.f_obs().structure_factors_from_scatterers(
@@ -367,19 +362,17 @@ def map_coefficients_from_fmodel(fmodel, params):
        mmtbx.map_names(params.map_type).anomalous):
       coeffs = coeffs.average_bijvoet_mates()
     if(params.isotropize and e_map_obj.mch is not None):
-      mcf = abs(coeffs).data()
       isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper
       isc = isotropize_helper.iso_scale.data()
       coeffs = miller.set(
         crystal_symmetry=coeffs.crystal_symmetry(),
         indices = coeffs.indices(),
         anomalous_flag=False).array(data=coeffs.data()*isc)
-    if(params.resharp_after_isotropize and e_map_obj.mch is not None):
-      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper
-      coeffs, b_sharp = isotropizer(
-        isotropize_helper = isotropize_helper,
-        map_coeffs        = coeffs,
-        resharp           = params.resharp_after_isotropize)
+    if(coeffs is not None and params.sharpening):
+      coeffs, b_sharp = sharp_map(
+        sites_frac = fmodel.xray_structure.sites_frac(),
+        map_coeffs = coeffs,
+        b_sharp    = params.sharpening_b_factor)
   else:
     if fmodel.__class__.__name__ == "twin_model_manager" :
       raise Sorry("Kicked maps are not supported when twinning is present.  "+
@@ -391,10 +384,7 @@ def map_coefficients_from_fmodel(fmodel, params):
         fmodel     = e_map_obj.fmodel,
         map_type   = params.map_type,
         isotropize = params.isotropize,
-        resharp    = params.resharp_after_isotropize).map_coeffs
-  if(coeffs is not None and params.sharpening):
-    coeffs = map_tools.b_sharp_map(map_coefficients = coeffs, b_sharp =
-      params.sharpening_b_factor)
+        sharp      = params.sharpening).map_coeffs
   if(coeffs is not None and coeffs.anomalous_flag() and not
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()
@@ -431,13 +421,13 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
       output_files.append(mp.file_name)
   return output_files
 
-def sharp_evaluation_target(sites_frac, b_isos, map_coeffs, resolution_factor = 0.25):
+def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
   fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
   target = 0
   cntr = 0
-  for site_frac, b_iso in zip(sites_frac, b_isos):
+  for site_frac in sites_frac:
     mv = map_data.eight_point_interpolation(site_frac)
     if(mv >0):
       target += mv
@@ -460,34 +450,30 @@ def sharp_evaluation_target(sites_frac, b_isos, map_coeffs, resolution_factor = 
 #    if(t_ < t_mean): target += t_
 #  return target/sites_frac.size()
 
-def isotropizer(isotropize_helper, map_coeffs, resharp, b_ext=None):
+
+def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
+              b_max = 150, step = 10):
+  if(ss is None):
+    ss = 1./flex.pow2(map_coeffs.d_spacings().data()) / 4.
   from cctbx import miller
-  if(resharp):
-    if(b_ext is None):
-      t=-1
-      map_coeffs_best = None
-      b_sharp_best = None
-      for b_sharp in range(-150,150,10):
-        map_coeffs_ = map_coeffs.deep_copy()
-        sc2 = flex.exp(b_sharp*isotropize_helper.ss)
-        map_coeffs_ = map_coeffs_.array(data = map_coeffs_.data()*sc2)
-        t_=sharp_evaluation_target(
-          sites_frac = isotropize_helper.sites_frac,
-          b_isos = isotropize_helper.b_isos,
-          map_coeffs = map_coeffs_)
-        if(t_>t):
-          t=t_
-          b_sharp_best = b_sharp
-          map_coeffs_best = map_coeffs_.deep_copy()
-      print "b_sharp:", b_sharp_best, t
-    else:
-      b_sharp_best = b_ext
-      sc2 = flex.exp(b_ext*isotropize_helper.ss)
-      map_coeffs_best = map_coeffs.array(data = map_coeffs.data()*sc2)
-      print "b_sharp:", b_ext
-  else:
-    map_coeffs_best = map_coeffs
+  if(b_sharp is None):
+    t=-1
+    map_coeffs_best = None
     b_sharp_best = None
+    for b_sharp in range(b_min,b_max,step):
+      map_coeffs_ = map_coeffs.deep_copy()
+      sc2 = flex.exp(b_sharp*ss)
+      map_coeffs_ = map_coeffs_.array(data = map_coeffs_.data()*sc2)
+      t_=sharp_evaluation_target(sites_frac=sites_frac, map_coeffs=map_coeffs_)
+      if(t_>t):
+        t=t_
+        b_sharp_best = b_sharp
+        map_coeffs_best = map_coeffs_.deep_copy()
+    print "b_sharp:", b_sharp_best, t
+  else:
+    scale = flex.exp(b_sharp*ss)
+    map_coeffs_best = map_coeffs.customized_copy(data=map_coeffs.data()*scale)
+    b_sharp_best = b_sharp
   return map_coeffs_best, b_sharp_best
 
 class compute_map_coefficients(object):

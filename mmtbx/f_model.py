@@ -984,6 +984,87 @@ class manager(manager_mixin):
     if(log is None): log = sys.stdout
     return phenix_masks.nu(fmodel = self, params = params)
 
+  #def update_f_part(self, params=None, log=None):
+  #  def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
+  #    fmt = "%s %6.4f %6.4f %5.2f %6.2f %5.2f %6.2f"
+  #    print >> log, fmt % (prefix,r_work,r_free,k_part,b_part,k_sol,b_sol)
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="Start:", log=log)
+  #  self.update_core(k_part = 0, b_part = 0)
+  #  self.update_xray_structure(update_f_mask=True)
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="  ", log=log)
+  #  self.update_solvent_and_scale(optimize_mask=False)
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="  ", log=log)
+  #
+  #  hds = self.xray_structure.hd_selection()
+  #  xrsh = self.xray_structure.select(selection = hds)
+  #  #xrs = self.xray_structure.select(selection = ~hds)
+  #  #self.update_xray_structure(
+  #  #  xray_structure = xrs,
+  #  #  update_f_calc = True,
+  #  #  update_f_mask = True)
+  #
+  #  xrsh.set_occupancies(value=1)
+  #  #xrsh = xrsh.set_b_iso(value=50)
+  #  #fc = xrsh.structure_factors(d_min=1.0).f_calc()
+  #  #fft_map = fc.fft_map(resolution_factor=0.25)
+  #  #fft_map.apply_sigma_scaling()
+  #  #map_data = fft_map.real_map_unpadded()
+  #  ##sel = map_data > 3.0
+  #  ##map_data = map_data.set_selected(sel, 1.0)
+  #  ##map_data = map_data.set_selected(~sel, 0.0)
+  #  #map_data = map_data / flex.max(map_data)
+  #  #fh = self.passive_arrays.f_obs.structure_factors_from_map(map=map_data,
+  #  #  use_scale = True, anomalous_flag = False, use_sg = True)
+  #
+  #
+  #  fh = self.passive_arrays.f_obs.structure_factors_from_scatterers(
+  #    xray_structure = xrsh).f_calc()
+  #
+  #  self.passive_arrays.f_part_base = fh
+  #  # This is how it should be in theory, but in practice is not the case...
+  #  #self.update_core(f_mask      = nuo.f_mask_new.common_set(self.f_obs()),
+  #  #                 f_part_base = nuo.f_part.common_set(self.f_obs()))
+  #  self.update_core(f_part_base = fh.common_set(self.f_obs()))
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="  ", log=log)
+  #  #self.update_solvent_and_scale(optimize_mask=False)
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="  ", log=log)
+  #  rws = self.r_work()
+  #  kbest=self.k_part()
+  #  bbest=self.b_part()
+  #  b_part_range = range(-50,50,1)
+  #  for b_part in b_part_range:
+  #    kpr = [i/10. for i in xrange(11)]
+  #    for k_part in kpr:
+  #      self.update_core(k_part = k_part, b_part = b_part)
+  #      rw = self.r_work()
+  #      if(rw < rws):
+  #        rws = rw
+  #        kbest=k_part
+  #        bbest=b_part
+  #        show(r_work=rws, r_free=self.r_free(), k_part=kbest,
+  #             b_part=bbest, k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #             prefix="   ", log=log)
+  #  self.update_core(k_part = kbest, b_part = bbest)
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="Final:", log=log)
+  #  self.update_solvent_and_scale(optimize_mask=False)
+  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
+  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
+  #       prefix="Final:", log=log)
+  #  print >> log
+
+
   def update_f_part(self, params=None, log=None):
     def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
       fmt = "%s %6.4f %6.4f %5.2f %6.2f %5.2f %6.2f"
@@ -1672,11 +1753,11 @@ class manager(manager_mixin):
        r_work_h = 0.0
     return r_work, r_work_l, r_work_h, n_low, n_high
 
-  def fill_missing_f_obs(self, fill_mode):
+  def fill_missing_f_obs(self, fill_mode, update_scaling = True):
     if(self.k_part() != 0): return None # do not fill if Fpart is used.
     import mmtbx.missing_reflections_handler
     return mmtbx.missing_reflections_handler.fill_missing_f_obs(
-      fmodel=self, fill_mode=fill_mode)
+      fmodel=self, fill_mode=fill_mode, update_scaling=update_scaling)
 
   def scale_ml_wrapper(self):
     if (self.alpha_beta_params is None): return 1.0
@@ -1912,10 +1993,11 @@ class manager(manager_mixin):
   def electron_density_map(self,
                            fill_missing_f_obs = False,
                            fill_mode = None,
-                           reverse_scale = True):
+                           update_scaling = True):
     return map_tools.electron_density_map(
       fmodel                 = self,
       fill_missing_f_obs     = fill_missing_f_obs,
+      update_scaling         = update_scaling,
       fill_mode              = fill_mode)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
