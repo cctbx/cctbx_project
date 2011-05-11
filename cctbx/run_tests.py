@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/regression/tst_miller_ellipsoidal_truncation.py",
   "$D/omz/tst_bfgs.py",
   ["$D/omz/tst_dev.py", "P31"],
   "$D/geometry/tests/tst_geometry.py",

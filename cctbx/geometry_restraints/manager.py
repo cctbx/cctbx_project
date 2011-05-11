@@ -611,7 +611,12 @@ class manager(object):
         gradients=None,
         disable_asu_cache=False,
         normalization=False,
+        external_energy_function=None,
         extension_objects=[]):
+    if(external_energy_function is not None):
+      assert self.external_energy_function is None
+    else:
+      external_energy_function = self.external_energy_function
     if (flags is None):
       flags = geometry_restraints.flags.flags(default=True)
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
@@ -652,7 +657,7 @@ class manager(object):
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       generic_restraints_manager=generic_restraints,
-      external_energy_function=self.external_energy_function,
+      external_energy_function=external_energy_function,
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
