@@ -84,9 +84,9 @@ loop_
   _restr_angle_target
   _restr_angle_target_weight_param
   _restr_angle_diff
-   O Si O 1 2_554 1 103.0000 0.7071 1.6926
-   O Si O 1 3_664 1 110.0000 0.4472 -1.3127
-   Si O Si 3 1 3 150.0000 0.4472 3.0700
+   O Si O 2_554 1 4_554 103.0000 0.7071 1.6926
+   O Si O 3_664 1 4_554 110.0000 0.4472 -1.3127
+   Si O Si 3 1 5 150.0000 0.4472 3.0700
 
 loop_
   _restr_equal_distance_class_class_id
