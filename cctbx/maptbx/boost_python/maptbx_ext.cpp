@@ -198,6 +198,13 @@ namespace {
       arg("map_data_2"),
       arg("n_real")));
 
+    def("denmod_simple",
+      (af::versa<double, af::c_grid<3> >(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::tiny<int, 3> const& )) denmod_simple, (
+      arg("map_data"),
+      arg("n_real")));
+
     def("eight_point_interpolation",
       (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,

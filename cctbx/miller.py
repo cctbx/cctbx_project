@@ -347,6 +347,29 @@ class set(crystal.symmetry):
     crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
+  def miller_indices_as_pdb_file(self, file_name=None, expand_to_p1=False):
+    assert file_name is not None
+    uc = self.unit_cell()
+    if(expand_to_p1): indices = self.expand_to_p1().indices()
+    else: indices = self.indices()
+    h = flex.int()
+    k = flex.int()
+    l = flex.int()
+    for i_mi, mi in enumerate(indices):
+      h.append(mi[0])
+      k.append(mi[1])
+      l.append(mi[2])
+    scale = 100
+    sh,sk,sl = flex.max(flex.abs(h))*scale,flex.max(flex.abs(k))*scale,\
+      flex.max(flex.abs(l))*scale
+    rp = self.unit_cell().reciprocal_parameters()
+    c1fmt = "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P1        "
+    fmt = "HETATM%5d  O   HOH %5d    %8.3f%8.3f%8.3f  1.00  1.00           O  "
+    of = open(file_name, "w")
+    for i_mi, mi in enumerate(indices):
+      rsv = uc.reciprocal_space_vector(mi)
+      print >> of, fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale)
+
   def show_comprehensive_summary(self, f=None, prefix=""):
     "Comprehensive Miller set or array summary"
     if (f is None): f = sys.stdout
@@ -388,6 +411,21 @@ class set(crystal.symmetry):
         print >> f, prefix + "Anomalous signal: %.4f" % (
           no_sys_abs.anomalous_signal())
     return self
+
+  def show_completeness(self, reflections_per_bin = 500, out = None):
+    if(out is None): out = sys.stdout
+    self.setup_binner(reflections_per_bin = reflections_per_bin)
+    for i_bin in self.binner().range_used():
+      sel         = self.binner().selection(i_bin)
+      self_sel    = self.select(sel)
+      d_max,d_min = self_sel.d_max_min()
+      compl       = self_sel.completeness(d_max = d_max)
+      n_ref       = sel.count(True)
+      d_range     = self.binner().bin_legend(
+                 i_bin = i_bin, show_bin_number = False, show_counts = False)
+      fmt = "%3d: %-17s %4.2f %6d"
+      print >> out, fmt % (i_bin,d_range,compl,n_ref)
+      out.flush()
 
   def reflection_intensity_symmetry(self):
     assert self.anomalous_flag() is False or self.anomalous_flag() is True
@@ -454,6 +492,14 @@ class set(crystal.symmetry):
   def min_max_indices(self):
     span = self.index_span()
     return (span.min(), span.max())
+
+  def d_min_along_a_b_c_star(self):
+    min_mi, max_mi = self.min_max_indices()
+    max_h = max(abs(min_mi[0]), max_mi[0])
+    max_k = max(abs(min_mi[1]), max_mi[1])
+    max_l = max(abs(min_mi[2]), max_mi[2])
+    ast,bst,cst = self.unit_cell().reciprocal_parameters()[:3]
+    return (1./(max_h*ast), 1./(max_k*bst), 1./(max_l*cst))
 
   def minimum_wavelength_based_on_d_min(self, tolerance=1e-2):
     return 2 * self.d_min() * (1-tolerance)
@@ -3091,7 +3137,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
      # cos(half_opening_angle)*|R - VERTEX|*|AXIS| = (R-VERTEX,AXIS)
      # where R is any point on cone surface
      # double-cone requires AXIS*(-1)
-     import scitbx.matrix as m
+     import scitbx.matrix
      fm = self.unit_cell().fractionalization_matrix()
      fm = scitbx.matrix.sqr(fm)
      fm = fm.transpose()
@@ -3120,6 +3166,79 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
        if(100.*sel.count(True)/sel.size() > fraction_percent): break
      if(negate): return self.select(selection = sel)
      return self.select(selection = ~sel)
+
+  def ellipsoidal_resolutions_and_indices_by_sigma(self, sigma_cutoff=3):
+    if(self.sigmas() is None): return None
+    sorted = self.sort(reverse=True)
+    h_cut,k_cut,l_cut = None,None,None
+    for mi, f, s, d in zip(sorted.indices(), sorted.data(), sorted.sigmas(),
+                        sorted.d_spacings().data()):
+      rsv = self.unit_cell().reciprocal_space_vector(mi)
+      if(mi[1]==0 and mi[2]==0 and f/s>sigma_cutoff and h_cut is None):
+        h_cut = (d, mi[0])
+      if(mi[0]==0 and mi[2]==0 and f/s>sigma_cutoff and k_cut is None):
+        k_cut = (d, mi[1])
+      if(mi[0]==0 and mi[1]==0 and f/s>sigma_cutoff and l_cut is None):
+        l_cut = (d, mi[2])
+      if([h_cut,k_cut,l_cut].count(None)==0): break
+    if([h_cut,k_cut,l_cut].count(None)>0 or
+       [h_cut[1],k_cut[1],l_cut[1]].count(0)>0):
+      min_mi, max_mi = self.min_max_indices()
+      def helper(a,b):
+        if abs(a)>b: return a
+        if abs(a)<b: return b
+        if abs(a)==b: return b
+      hm = helper(min_mi[0], max_mi[0])
+      km = helper(min_mi[1], max_mi[1])
+      lm = helper(min_mi[2], max_mi[2])
+      dh,dk,dl = self.d_min_along_a_b_c_star()
+      if(h_cut is None or h_cut[1]==0): h_cut = (dh,hm)
+      if(k_cut is None or k_cut[1]==0): k_cut = (dk,km)
+      if(l_cut is None or l_cut[1]==0): l_cut = (dl,lm)
+    return (h_cut,k_cut,l_cut)
+
+  def show_mean_data_over_sigma_along_a_b_c_star(self):
+    if(self.sigmas() is None): return None
+    sorted = self.sort(reverse=True)
+    h,k,l = [],[],[]
+    for mi, f, s, d in zip(sorted.indices(), sorted.data(), sorted.sigmas(),
+                        sorted.d_spacings().data()):
+      data_over_sigma = f/s
+      if(mi[1]==0 and mi[2]==0): h.append((d, mi[0], data_over_sigma))
+      if(mi[0]==0 and mi[2]==0): k.append((d, mi[1], data_over_sigma))
+      if(mi[0]==0 and mi[1]==0): l.append((d, mi[2], data_over_sigma))
+    print "a*                      b*                    c*"
+    print "d         h   F/sigma   d        k  F/sigma   d        l  F/sigma"
+    for i in xrange( max(len(h),max(len(k),len(l))) ):
+      blanc = " "*21
+      try: ast = "%7.3f %4d %8.3f"%h[i]
+      except: ast = blanc
+      try: bst = "%7.3f %4d %8.3f"%k[i]
+      except:
+        if(len(ast.strip())==0): bst = blanc
+        else: bst = blanc
+      try: cst = "%7.3f %4d %8.3f"%l[i]
+      except: cst = ""
+      print ast,bst,cst
+
+  def ellipsoidal_truncation_by_sigma(self, sigma_cutoff=3):
+    h_cut,k_cut,l_cut = self.ellipsoidal_resolutions_and_indices_by_sigma(
+      sigma_cutoff = sigma_cutoff)
+    rp = self.unit_cell().reciprocal_parameters()
+    ehm = abs(h_cut[1]*rp[0])
+    ekm = abs(k_cut[1]*rp[1])
+    elm = abs(l_cut[1]*rp[2])
+    if([h_cut,k_cut,l_cut].count(None)>0): return self.deep_copy()
+    selection = flex.bool(self.indices().size(), False)
+    #selection = flex.bool(self.indices().size(), True)
+    data = self.data()
+    sigmas = self.sigmas()
+    for i_mi, mi in enumerate(self.indices()):
+      rsv = self.unit_cell().reciprocal_space_vector(mi)
+      r = math.sqrt((rsv[0]/ehm)**2 + (rsv[1]/ekm)**2 + (rsv[2]/elm)**2)
+      if(r<=1): selection[i_mi] = True
+      #if(r>1 and data[i_mi]/sigmas[i_mi]<sigma_cutoff): selection[i_mi] = False
+    return self.select(selection=selection)
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 

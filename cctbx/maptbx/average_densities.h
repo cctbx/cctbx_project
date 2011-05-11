@@ -17,6 +17,33 @@ nint(double x)
   return int(std::ceil(x+0.5)-(std::fmod(x*0.5+0.25,1.0)!=0));
 }
 
+af::versa<double, af::c_grid<3> > denmod_simple(
+  af::const_ref<double, af::c_grid<3> > const& map_data,
+  af::tiny<int, 3> const& n_real)
+{
+  int nx = n_real[0];
+  int ny = n_real[1];
+  int nz = n_real[2];
+  af::versa<double, af::c_grid<3> > result_map(af::c_grid<3>(nx,ny,nz),
+    af::init_functor_null<double>());
+  af::ref<double, af::c_grid<3> > result_map_ref = result_map.ref();
+  for (int i = 0; i < nx; i++) {
+    for (int j = 0; j < ny; j++) {
+      for (int k = 0; k < nz; k++) {
+        double m = map_data(i,j,k);
+        if(m<0) {
+          result_map_ref(i,j,k) = -std::sqrt(std::abs(m));
+        }
+        else if(m>1) {
+          result_map_ref(i,j,k) = std::sqrt(m);
+        }
+        else {
+          result_map_ref(i,j,k) = m;
+        }
+  }}}
+  return result_map;
+}
+
 af::versa<double, af::c_grid<3> > combine_and_maximize_maps(
                    af::const_ref<double, af::c_grid<3> > const& map_data_1,
                    af::const_ref<double, af::c_grid<3> > const& map_data_2,
