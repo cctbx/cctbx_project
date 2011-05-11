@@ -19,7 +19,7 @@ def run():
   ["$D/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/refinement/tst_rigid_body.py",
   "$D/refinement/tst_refinement_flags.py",
-  "$D/refinement/tst_reference_model.py",
+  "$D/torsion_restraints/tst_reference_model.py",
   "$D/tst_model.py",
   "$D/tst_fmodel.py",
   "$D/tst_utils.py",
