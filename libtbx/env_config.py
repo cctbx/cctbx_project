@@ -1545,8 +1545,8 @@ class module:
     if (file_name_lower.startswith("__init__.py")): return
     if (file_name_lower.endswith(".pyc")): return
     if (file_name_lower.endswith(".pyo")): return
-    if (file_name[0] == "."): return
-    if (file_name[-1] == "~"): return # ignore emacs backup files
+    if (file_name.startswith(".")): return
+    if (file_name.endswith("~")): return # ignore emacs backup files
     if (file_name == "ipython.py" and self.name == "libtbx"):
       try: import IPython
       except ImportError: return
@@ -1565,7 +1565,7 @@ class module:
     elif (ext not in [".sh", ".py"]):
       read_size = max(2, read_size)
       check_for_hash_bang = True
-    target_file = None
+    target_files = []
     if (read_size != 0):
       try: source_text = open(source_file).read(read_size)
       except IOError:
@@ -1580,25 +1580,26 @@ class module:
         return
       for line in source_text.splitlines():
         flds = line.split()
-        if (target_file is None):
-          try:
-            i = flds.index("LIBTBX_SET_DISPATCHER_NAME")
-          except ValueError:
-            pass
-          else:
-            if (i+1 < len(flds)):
-              target_file = flds[i+1]
+        try:
+          i = flds.index("LIBTBX_SET_DISPATCHER_NAME")
+        except ValueError:
+          pass
+        else:
+          if (i+1 < len(flds)):
+            target_files.append(flds[i+1])
         if (ext == ".launch" and "LIBTBX_LAUNCH_EXE" in flds):
           source_file = self.env.under_build(
             op.join(self.name, "exe", file_name[:-len(ext)])) + exe_suffix
-    if (target_file is None):
+    if (len(target_files) == 0):
       target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")
            or file_name_lower.count(".") != 1):
         target_file += "." + op.splitext(file_name)[0]
-    self.env._write_dispatcher_in_bin(
-      source_file=source_file,
-      target_file=target_file)
+      target_files.append(target_file)
+    for target_file in target_files:
+      self.env._write_dispatcher_in_bin(
+        source_file=source_file,
+        target_file=target_file)
 
   def command_line_directory_paths(self):
     result = []
