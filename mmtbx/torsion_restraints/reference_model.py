@@ -992,22 +992,27 @@ class reference_model(object):
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
-            try:
+            model_rot = model_hash.get(key)
+            reference_rot = reference_hash.get(key)
+            m_chis = model_chis.get(key)
+            r_chis = reference_chis.get(key)
+            if model_rot is not None and reference_rot is not None and \
+               m_chis is not None and r_chis is not None:
               if (model_hash[key] == 'OUTLIER' and \
                   reference_hash[key] != 'OUTLIER'): # or \
                   #atom_group.resname in ["LEU", "VAL", "THR"]:
-                axis_and_atoms_to_rotate=fit_rotamers.axes_and_atoms_aa_specific(
+                axis_and_atoms_to_rotate= \
+                  fit_rotamers.axes_and_atoms_aa_specific(
                       residue=atom_group,
                       mon_lib_srv=mon_lib_srv,
                       remove_clusters_with_all_h=False,
                       log=None)
-                m_chis = model_chis[key]
-                r_chis = reference_chis[key]
                 assert len(m_chis) == len(r_chis)
                 assert len(m_chis) == len(axis_and_atoms_to_rotate)
                 counter = 0
                 residue_iselection = atom_group.atoms().extract_i_seq()
-                sites_cart_residue = xray_structure.sites_cart().select(residue_iselection)
+                sites_cart_residue = \
+                  xray_structure.sites_cart().select(residue_iselection)
                 for aa in axis_and_atoms_to_rotate:
                   axis = aa[0]
                   atoms = aa[1]
@@ -1027,22 +1032,20 @@ class reference_model(object):
                         residue_iselection, sites_cart_residue)
                   counter += 1
                 xray_structure.set_sites_cart(sites_cart_start)
-            except:
-              pass
-            try:
-              if self.params.strict_rotamer_matching and \
-                (model_hash[key] != 'OUTLIER' and reference_hash[key] != 'OUTLIER'):
-                if model_hash[key] != reference_hash[key]:
-                  m_chis = model_chis[key]
-                  r_chis = reference_chis[key]
-                  axis_and_atoms_to_rotate=fit_rotamers.axes_and_atoms_aa_specific(
-                    residue=atom_group,
-                    mon_lib_srv=mon_lib_srv,
-                    remove_clusters_with_all_h=False,
-                    log=None)
+
+              elif self.params.strict_rotamer_matching and \
+                (model_rot != 'OUTLIER' and reference_rot != 'OUTLIER'):
+                if model_rot != reference_rot:
+                  axis_and_atoms_to_rotate= \
+                    fit_rotamers.axes_and_atoms_aa_specific(
+                      residue=atom_group,
+                      mon_lib_srv=mon_lib_srv,
+                      remove_clusters_with_all_h=False,
+                      log=None)
                   counter = 0
                   residue_iselection = atom_group.atoms().extract_i_seq()
-                  sites_cart_residue = xray_structure.sites_cart().select(residue_iselection)
+                  sites_cart_residue = \
+                    xray_structure.sites_cart().select(residue_iselection)
                   for aa in axis_and_atoms_to_rotate:
                     axis = aa[0]
                     atoms = aa[1]
@@ -1062,8 +1065,6 @@ class reference_model(object):
                           residue_iselection, sites_cart_residue)
                     counter += 1
                   xray_structure.set_sites_cart(sites_cart_start)
-            except:
-              pass
 
   def angle_distance(self, angle1, angle2):
     distance = math.fabs(angle1 - angle2)
