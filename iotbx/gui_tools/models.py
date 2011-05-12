@@ -118,6 +118,7 @@ class model_handler (iotbx.gui_tools.manager) :
     import iotbx.pdb
     pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
     hierarchy = pdb_in.construct_hierarchy()
+    hierarchy.atoms().reset_i_seq()
     xray_structure = pdb_in.xray_structure_simple()
     return (hierarchy, xray_structure)
 
@@ -152,6 +153,7 @@ class model_handler (iotbx.gui_tools.manager) :
     if (input_file is not None) :
       if (not file_name in self._cached_pdb_hierarchies) :
         pdb_hierarchy = input_file.file_object.construct_hierarchy()
+        pdb_hierarchy.atoms().reset_i_seq()
         self._cached_pdb_hierarchies[file_name] = pdb_hierarchy
       return self._cached_pdb_hierarchies.get(file_name)
     return None
