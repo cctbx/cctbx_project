@@ -53,11 +53,9 @@ namespace cctbx { namespace adp_restraints {
     :
       weight(proxy.weight)
     {
-      for (int i=0;i<2;i++) {
-        std::size_t i_seq = proxy.i_seq;
-        CCTBX_ASSERT(i_seq < u_cart_.size());
-        u_cart = u_cart_[i_seq];
-      }
+      std::size_t i_seq = proxy.i_seq;
+      CCTBX_ASSERT(i_seq < u_cart_.size());
+      u_cart = u_cart_[i_seq];
       init_deltas();
     }
 
