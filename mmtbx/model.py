@@ -990,6 +990,7 @@ class manager(object):
     main_chain_selection = None
     if ignore_side_chain:
       main_chain_selection = self.xray_structure.main_chain_selection()
+      ignore_hd=True
     if(self.use_ias):
       sites_cart = sites_cart.select(~self.ias_selection)
       hd_selection = hd_selection.select(~self.ias_selection)
@@ -1001,12 +1002,19 @@ class manager(object):
       ignore_side_chain    = ignore_side_chain,
       restraints_manager = self.restraints_manager)
 
-  def show_geometry_statistics(self, ignore_hd, message = "", out = None):
+  def show_geometry_statistics(self,
+                               ignore_hd,
+                               ignore_side_chain=False,
+                               message = "",
+                               out = None,
+                               ):
     if(self.restraints_manager is None): return None
     global time_model_show
     if(out is None): out = self.log
     timer = user_plus_sys_time()
-    result = self.geometry_statistics(ignore_hd = ignore_hd)
+    result = self.geometry_statistics(ignore_hd = ignore_hd,
+                                      ignore_side_chain = ignore_side_chain,
+                                      )
     result.show(message = message, out = out)
     time_model_show += timer.elapsed()
     return result
