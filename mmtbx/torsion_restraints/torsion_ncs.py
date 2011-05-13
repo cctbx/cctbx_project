@@ -16,11 +16,13 @@ TOP_OUT_FLAG = True
 torsion_ncs_params = iotbx.phil.parse("""
  sigma = 1.0
    .type = float
- limit = 7.5
+ limit = 15.0
    .type = float
- cutoff = 20.0
+ cutoff = 45.0
    .type = float
  slack = 0.0
+   .type = float
+ similarity = .80
    .type = float
  hydrogens = False
    .type = bool
@@ -103,16 +105,17 @@ class torsion_ncs(object):
     dp_hash = {}
     match_master = []
     used_chains = []
+    res_match_hash = {}
     i_seq_hash = self.build_i_seq_hash(pdb_hierarchy)
     chain_hash = self.build_chain_hash(pdb_hierarchy)
     chains = pdb_hierarchy.models()[0].chains()
     for i, chain_i in enumerate(chains):
-      seq_i = self.extract_sequence_from_chain(chain=chain_i)
+      seq_i, res_seq_i = self.extract_sequence_from_chain(chain=chain_i)
       if len(seq_i) == 0:
         continue
       chain_hash[chain_i.id] = chain_i
       for chain_j in chains[i+1:]:
-        seq_j = self.extract_sequence_from_chain(chain=chain_j)
+        seq_j, res_seq_j = self.extract_sequence_from_chain(chain=chain_j)
         if len(seq_j) == 0:
           continue
         align_obj = mmtbx.alignment.align(
@@ -122,7 +125,9 @@ class torsion_ncs(object):
           gap_extension_penalty = params.alignment.gap_extension_penalty,
           similarity_function   = params.alignment.similarity_matrix,
           style                 = params.alignment.alignment_style)
-        if (align_obj.score()/len(seq_i)) >= .80:
+        alignment = align_obj.extract_alignment()
+        matches = alignment.matches()
+        if (align_obj.score()/len(seq_i)) >= self.params.similarity:
           if used_chains is not None:
             if chain_i.id in used_chains:
               continue
@@ -164,9 +169,8 @@ class torsion_ncs(object):
     for dp in geometry.dihedral_proxies:
       temp = dict()
       for i_seq in dp.i_seqs:
-        try:
-          cur_matches = super_hash[i_seq]
-        except:
+        cur_matches = super_hash.get(i_seq)
+        if cur_matches is None:
           continue
         for key in cur_matches.keys():
           try:
@@ -177,12 +181,9 @@ class torsion_ncs(object):
       dp_match = []
       dp_match.append(dp)
       for key in temp.keys():
-        try:
-          if dp_hash[tuple(temp[key])] is not None:
-            dp_match.append(dp_hash[tuple(temp[key])])
-            dp_hash[tuple(temp[key])] = None
-        except:
-          continue
+        if dp_hash[tuple(temp[key])] is not None:
+          dp_match.append(dp_hash[tuple(temp[key])])
+          dp_hash[tuple(temp[key])] = None
       dp_hash[dp.i_seqs] = None
       if len(dp_match) > 1:
         self.dp_ncs.append(dp_match)
@@ -205,8 +206,6 @@ class torsion_ncs(object):
               res_match_master[i][atom_key[4:]] = []
               res_match_master[i][atom_key[4:]].append(chain)
     self.res_match_master = res_match_master
-    #print res_match_master
-    #STOP()
     #print >> log, "NCS summary: %d, %d" % (
     #  len(geometry.dihedral_proxies),
     #  len(self.ncs_dihedral_proxies))
@@ -232,7 +231,6 @@ class torsion_ncs(object):
     for dp_set in self.dp_ncs:
       if len(dp_set) < 2:
         continue
-      #dp_text = "NCS dihedral:\n"
       angles = []
       temp_match = {}
       for dp in dp_set:
@@ -240,12 +238,7 @@ class torsion_ncs(object):
         angle = di.angle_model
         angles.append(angle)
         temp_match[dp.i_seqs] = angle
-        #for i_seq in dp.i_seqs:
-        #  dp_text += self.name_hash[i_seq]
-        #dp_text += "\n"
-      #print >> log, dp_text
       target_angles = self.get_target_angles(angles=angles)
-      #print >> log, target_angles
       for dp in dp_set:
         target_angle = target_angles[temp_match[dp.i_seqs]]
         if target_angle is not None:
@@ -254,7 +247,8 @@ class torsion_ncs(object):
             angle_ideal=target_angle,
             weight=1/self.sigma**2,
             limit=self.limit,
-            top_out=TOP_OUT_FLAG)
+            top_out=TOP_OUT_FLAG,
+            slack=self.slack)
           self.ncs_dihedral_proxies.append(dp_add)
 
   def update_dihedral_ncs_restraints(self,
@@ -384,13 +378,15 @@ class torsion_ncs(object):
 
   def extract_sequence_from_chain(self, chain):
     seq = []
+    res_seq = []
     for rg in chain.residue_groups():
       if(len(rg.unique_resnames())==1):
         resname = rg.unique_resnames()[0]
         olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
         if(olc!="X"):
           seq.append(olc)
-    return "".join(seq)
+          res_seq.append(rg.resid())
+    return "".join(seq), res_seq
 
   def add_ncs_dihedral_proxies(self, geometry):
     geometry.reference_dihedral_proxies= \
@@ -420,30 +416,29 @@ class torsion_ncs(object):
     for group in self.res_match_master:
       for key in group.keys():
         for chain in group[key]:
-          try:
-            res_key = chain+key[-5:-1]+' '+key[0:4]
-            if model_hash[res_key] == "OUTLIER":
+          res_key = chain+key[-5:-1]+' '+key[0:4]
+          model_rot = model_hash.get(res_key)
+          if res_key is not None:
+            if model_rot == "OUTLIER":
               rotamer = None
               score = 0.0
               for chain_j in group[key]:
                 if chain_j == chain:
                   continue
                 j_key = chain_j+key[-5:-1]+' '+key[0:4]
-                try:
-                  if model_hash[j_key] != "OUTLIER":
+                j_rot = model_hash.get(j_key)
+                j_score = model_score.get(j_key)
+                if j_rot is not None and j_score is not None:
+                  if j_rot != "OUTLIER":
                     if rotamer == None:
                       rotamer = j_key
-                      score = model_score[j_key]
+                      score = j_score
                     else:
-                      if model_score[j_key] > score:
+                      if j_score > score:
                         rotamer = j_key
-                        score = model_score[j_key]
-                except:
-                  pass
+                        score = j_score
               if rotamer != None:
                 fix_list[res_key] = rotamer
-          except:
-            pass
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
@@ -472,20 +467,22 @@ class torsion_ncs(object):
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
-            try:
-              if key in fix_list.keys():
-                axis_and_atoms_to_rotate=fit_rotamers.axes_and_atoms_aa_specific(
+            if key in fix_list.keys():
+              m_chis = model_chis.get(key)
+              r_chis = model_chis.get(fix_list[key])
+              if m_chis is not None and r_chis is not None:
+                axis_and_atoms_to_rotate= \
+                  fit_rotamers.axes_and_atoms_aa_specific(
                       residue=atom_group,
                       mon_lib_srv=mon_lib_srv,
                       remove_clusters_with_all_h=False,
                       log=None)
-                m_chis = model_chis[key]
-                r_chis = model_chis[fix_list[key]]
                 assert len(m_chis) == len(r_chis)
                 assert len(m_chis) == len(axis_and_atoms_to_rotate)
                 counter = 0
                 residue_iselection = atom_group.atoms().extract_i_seq()
-                sites_cart_residue = xray_structure.sites_cart().select(residue_iselection)
+                sites_cart_residue = \
+                  xray_structure.sites_cart().select(residue_iselection)
                 for aa in axis_and_atoms_to_rotate:
                   axis = aa[0]
                   atoms = aa[1]
@@ -506,5 +503,3 @@ class torsion_ncs(object):
                   counter += 1
                 xray_structure.set_sites_cart(sites_cart_start)
                 print >> log, "Fixed %s rotamer" % key
-            except:
-              pass
