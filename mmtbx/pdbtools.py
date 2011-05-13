@@ -687,18 +687,20 @@ def run(args, command_name="phenix.pdbtools"):
                                                     normalization = False)
 
       t0=time.time()
-      cdl_proxies = cdl.setup_restraints(ppf.all_chain_proxies.pdb_hierarchy,
-                                         restraints_manager=restraints_manager,
-                                         )
+      cdl_proxies = cdl.setup_restraints(restraints_manager=restraints_manager)
       cdl.update_restraints(ppf.all_chain_proxies.pdb_hierarchy,
                             restraints_manager=restraints_manager,
                             cdl_proxies=cdl_proxies,
                             )
-      print >> log, """
-  Conformation dependent library restraints added in %0.1fs
-""" % (
-        time.time()-t0,
-        )
+      cdl_time = time.time()-t0
+      for greek in ["","milli", "micro", "nano"]:
+        if cdl_time>1:
+          print >> log, """
+  Conformation dependent library restraints added in %0.1f %sseconds
+""" % (cdl_time, greek)
+          break
+        cdl_time*=1000
+
     from mmtbx.command_line import geometry_minimization
     sites_cart = geometry_minimization.run(
       params = command_line_interpreter.params.geometry_minimization,
