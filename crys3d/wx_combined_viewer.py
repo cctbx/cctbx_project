@@ -332,7 +332,6 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     glEnable(GL_POLYGON_SMOOTH)
     n = [0]
     glGetIntegerv(GL_SAMPLE_BUFFERS, n)
-    print n
 
   def OnRedrawGL (self, event=None) :
     if self._debug_mode :
