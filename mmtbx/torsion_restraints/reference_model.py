@@ -989,6 +989,8 @@ class reference_model(object):
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           for atom_group in residue_group.atom_groups():
+            if atom_group.resname == "PRO":
+              continue
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
