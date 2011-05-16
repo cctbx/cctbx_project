@@ -70,7 +70,7 @@ namespace cctbx { namespace sgtbx {
           fVal -= iVal;
           fVal /= den;
       if (fVal < 0.) fVal = -fVal;
-      if (fVal > .0001) return -1;
+      if (fVal > .0005) return -1;
       return 0;
     }
 
