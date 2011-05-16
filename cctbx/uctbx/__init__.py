@@ -224,3 +224,82 @@ class non_crystallographic_unit_cell_with_the_sites_in_its_center(object):
     return crystal.symmetry(
       unit_cell=self.unit_cell,
       space_group=sgtbx.space_group())
+
+def infer_unit_cell_from_symmetry(params, space_group):
+  # XXX exercised by iotbx/kriber/tst_strudat.py
+  # XXX TODO: add to uctbx tests
+  from cctbx import sgtbx
+  error_msg = "Cannot interpret unit cell parameters."
+  #
+  laue_group = str(sgtbx.space_group_info(
+    group=space_group.build_derived_laue_group())).replace(" ", "")
+  #
+  if (len(params) == 6):
+    return unit_cell(params)
+  else:
+    crystal_system = space_group.crystal_system()
+    if (crystal_system == "Cubic"):
+      if len(params) == 1:
+        a = params[0]
+      elif len(params) == 3:
+        a,b,c = params
+        assert a==b==c
+      else:
+        raise RuntimeError(error_msg)
+      unit_cell_ = unit_cell((a,a,a,90,90,90))
+    elif (crystal_system in ("Hexagonal", "Trigonal")):
+      is_rhombohedral = False
+      if (crystal_system == "Trigonal"):
+        if (laue_group in ("R-3m:R", "R-3:R")):
+          is_rhombohedral = True
+      if (is_rhombohedral):
+        if len(params) != 2: raise RuntimeError(error_msg)
+        a = params[0]
+        angle = params[1]
+        unit_cell_ = unit_cell((a,a,a,angle,angle,angle))
+      else:
+        if len(params) == 2:
+          a = params[0]
+          c = params[1]
+        elif len(params) == 3:
+          a,b,c = params
+          assert a == b
+        elif len(params) == 4:
+          a,b,c,angle = params
+          assert a == b
+          assert angle == 120
+        else:
+          raise RuntimeError(error_msg)
+        unit_cell_ = unit_cell((a,a,c,90,90,120))
+    elif (crystal_system == "Tetragonal"):
+      if len(params) == 2:
+        a = params[0]
+        c = params[1]
+        unit_cell_ = unit_cell((a,a,c,90,90,90))
+      elif len(params) == 3:
+        a,b,c = params[:3]
+        assert a == b
+        unit_cell_ = unit_cell((a,a,c,90,90,90))
+      else:
+        raise RuntimeError(error_msg)
+    elif (crystal_system == "Orthorhombic"):
+      if len(params) != 3: raise RuntimeError(error_msg)
+      a = params[0]
+      b = params[1]
+      c = params[2]
+      unit_cell_ = unit_cell((a,b,c,90,90,90))
+    elif (crystal_system == "Monoclinic"):
+      if len(params) != 4: raise RuntimeError(error_msg)
+      a = params[0]
+      b = params[1]
+      c = params[2]
+      angle = params[3]
+      if (laue_group == "P12/m1"):
+        unit_cell_ = unit_cell((a,b,c,90,angle,90))
+      elif (laue_group == "P112/m"):
+        unit_cell_ = unit_cell((a,b,c,90,90,angle))
+      elif (laue_group == "P2/m11"):
+        unit_cell_ = unit_cell((a,b,c,angle,90,90))
+    elif (crystal_system == "Triclinic"):
+      raise RuntimeError(error_msg)
+    return unit_cell_
