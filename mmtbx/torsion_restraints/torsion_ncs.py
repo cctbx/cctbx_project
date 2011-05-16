@@ -10,6 +10,8 @@ import iotbx.phil
 from iotbx.pdb import common_residue_names_get_class
 from libtbx.str_utils import make_sub_header
 import sys, math
+from libtbx import Auto
+from libtbx import group_args
 
 TOP_OUT_FLAG = True
 
@@ -56,7 +58,7 @@ torsion_ncs_params = iotbx.phil.parse("""
     .short_caption = Sequence alignment
     .style = box auto_align
  {
-  alignment_style =  local *global
+  alignment_style =  *local global
     .type = choice
   gap_opening_penalty = 1
     .type = float
@@ -100,34 +102,43 @@ class torsion_ncs(object):
     self.name_hash = self.build_name_hash(pdb_hierarchy)
     self.params = params
     self.log = log
-    super_hash = {}
+    #super_hash = {}
     pair_hash = {}
     dp_hash = {}
-    match_master = []
+    #match_master = []
     used_chains = []
     res_match_hash = {}
     i_seq_hash = self.build_i_seq_hash(pdb_hierarchy)
     chain_hash = self.build_chain_hash(pdb_hierarchy)
+    name_hash = self.build_name_hash(pdb_hierarchy)
+    chain_id_hash = {}
     chains = pdb_hierarchy.models()[0].chains()
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    alignments = {}
     for i, chain_i in enumerate(chains):
-      seq_i, res_seq_i = self.extract_sequence_from_chain(chain=chain_i)
-      if len(seq_i) == 0:
-        continue
-      chain_hash[chain_i.id] = chain_i
+      chain_id_hash[chain_i.id] = chain_i
+      chain_i_str = "chain '%s'" % chain_i.id
+      chain_i_list = [chain_i_str]
+      sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
+                   cache=sel_cache,
+                   string_list=chain_i_list))
       for chain_j in chains[i+1:]:
-        seq_j, res_seq_j = self.extract_sequence_from_chain(chain=chain_j)
-        if len(seq_j) == 0:
-          continue
-        align_obj = mmtbx.alignment.align(
-          seq_a                 = seq_i,
-          seq_b                 = seq_j,
-          gap_opening_penalty   = params.alignment.gap_opening_penalty,
-          gap_extension_penalty = params.alignment.gap_extension_penalty,
-          similarity_function   = params.alignment.similarity_matrix,
-          style                 = params.alignment.alignment_style)
-        alignment = align_obj.extract_alignment()
-        matches = alignment.matches()
-        if (align_obj.score()/len(seq_i)) >= self.params.similarity:
+        chain_j_str = "chain '%s'" % chain_j.id
+        chain_j_list = [chain_j_str]
+        sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
+                         cache=sel_cache,
+                         string_list=chain_j_list))
+        selections = (sel_atoms_i, sel_atoms_j)
+        residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
+                              params=params,
+                              selections=selections,
+                              log=log)
+        if (len(residue_match_map) \
+            /min(chain_i.residue_groups_size(),
+                 chain_j.residue_groups_size())) \
+            > self.params.similarity:
+          key = (chain_i_str, chain_j_str)
+          alignments[key] = residue_match_map
           if used_chains is not None:
             if chain_i.id in used_chains:
               continue
@@ -137,35 +148,56 @@ class torsion_ncs(object):
             pair_hash[chain_i.id] = []
             pair_hash[chain_i.id].append(chain_j.id)
           used_chains.append(chain_j.id)
+
     for key in pair_hash.keys():
       ncs_set = []
       ncs_set.append(key)
       for add_chain in pair_hash[key]:
         ncs_set.append(add_chain)
       self.ncs_groups.append(ncs_set)
+
     for dp in geometry.dihedral_proxies:
       dp_hash[dp.i_seqs] = dp
+
+    super_hash = {}
+    res_match_master = {}
     for i, group in enumerate(self.ncs_groups):
-      match_master.append(dict())
-      for chain_id in group:
-        working_chain = chain_hash[chain_id]
+      for chain_i in group:
+        working_chain = chain_id_hash[chain_i]
         c_atoms = working_chain.atoms()
+        chain_i_str = "chain '%s'" % chain_i
         for atom in c_atoms:
-          key = self.name_hash[atom.i_seq][0:8]+self.name_hash[atom.i_seq][-5:]
-          try:
-            match_master[i][key].append(atom.i_seq)
-          except:
-            match_master[i][key] = []
-            match_master[i][key].append(atom.i_seq)
-    for group in match_master:
-      for key in group.keys():
-        for i in group[key]:
-          super_hash[i] = dict()
-          for j in group[key]:
-            if i == j:
+          for chain_j in group:
+            if chain_i == chain_j:
               continue
-            else:
-              super_hash[i][chain_hash[j]] = j
+            chain_j_str = "chain '%s'" % chain_j
+            res_key = self.name_hash[atom.i_seq][4:]
+            atom_key = self.name_hash[atom.i_seq][0:4]
+            j_match = None
+            key = (chain_i_str, chain_j_str)
+            cur_align = alignments.get(key)
+            if cur_align is not None:
+              j_match = cur_align.get(res_key)
+            if j_match is not None:
+              j_i_seq = i_seq_hash.get(atom_key+j_match)
+              if j_i_seq is None:
+                continue
+              if super_hash.get(atom.i_seq) is None:
+                super_hash[atom.i_seq] = dict()
+              if super_hash.get(j_i_seq) is None:
+                super_hash[j_i_seq] = dict()
+              super_hash[atom.i_seq][chain_j] = j_i_seq
+              super_hash[j_i_seq][chain_i] = atom.i_seq
+              if res_match_master.get(res_key) is None:
+                res_match_master[res_key] = []
+              if res_match_master.get(j_match) is None:
+                res_match_master[j_match] = []
+              if j_match not in res_match_master[res_key]:
+                res_match_master[res_key].append(j_match)
+              if res_key not in res_match_master[j_match]:
+                res_match_master[j_match].append(res_key)
+    self.res_match_master = res_match_master
+
     for dp in geometry.dihedral_proxies:
       temp = dict()
       for i_seq in dp.i_seqs:
@@ -181,8 +213,9 @@ class torsion_ncs(object):
       dp_match = []
       dp_match.append(dp)
       for key in temp.keys():
-        if dp_hash[tuple(temp[key])] is not None:
-          dp_match.append(dp_hash[tuple(temp[key])])
+        cur_dp_hash = dp_hash.get(tuple(temp[key]))
+        if cur_dp_hash is not None:
+          dp_match.append(cur_dp_hash)
           dp_hash[tuple(temp[key])] = None
       dp_hash[dp.i_seqs] = None
       if len(dp_match) > 1:
@@ -192,23 +225,128 @@ class torsion_ncs(object):
     print >> self.log, "Initializing torsion NCS restraints..."
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
-    res_match_master = []
-    for i, group in enumerate(match_master):
-      res_match_master.append(dict())
-      for atom_key in group.keys():
-        if atom_key[0:4] == " CA ":
-          for i_seq in group[atom_key]:
-            chain = chain_hash[i_seq]
-            try:
-              if chain not in res_match_master[i][atom_key[4:]]:
-                res_match_master[i][atom_key[4:]].append(chain)
-            except:
-              res_match_master[i][atom_key[4:]] = []
-              res_match_master[i][atom_key[4:]].append(chain)
-    self.res_match_master = res_match_master
-    #print >> log, "NCS summary: %d, %d" % (
-    #  len(geometry.dihedral_proxies),
-    #  len(self.ncs_dihedral_proxies))
+
+  def selection(self, string, cache):
+    return cache.selection(
+      string=string)
+
+  def iselection(self, string, cache=None):
+    return self.selection(string=string, cache=cache).iselection()
+
+  def phil_atom_selection_multiple(
+        self,
+        cache,
+        string_list,
+        allow_none=False,
+        allow_auto=False,
+        raise_if_empty_selection=True):
+    result = []
+    for string in string_list:
+      if (string is None):
+        if (allow_none): return None
+        raise Sorry('Atom selection cannot be None:\n  =None')
+      elif (string is Auto):
+        if (allow_auto): return Auto
+        raise Sorry('Atom selection cannot be Auto:\n  %s=Auto')
+      try:
+          result.append(self.selection(string=string, cache=cache).iselection())
+      except KeyboardInterrupt: raise
+      except Exception, e: # keep e alive to avoid traceback
+        fe = format_exception()
+        raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
+          'reference_group', string, fe))
+      if (raise_if_empty_selection and result.count(True) == 0):
+        raise Sorry('Empty atom selection:\n  %s=%s' % (
+          'reference_group', string))
+    return result
+
+  def phil_atom_selections_as_i_seqs_multiple(self,
+                                              cache,
+                                              string_list):
+    result = []
+    iselection = self.phil_atom_selection_multiple(
+          cache=cache,
+          string_list=string_list,
+          raise_if_empty_selection=False)
+    for i in iselection:
+      if (i.size() == 0):
+        raise Sorry("No atom selected")
+      for atom in i:
+        result.append(atom)
+    return result
+
+  def is_residue_in_selection(self, i_seqs, selection):
+    for i_seq in i_seqs:
+      if i_seq not in selection:
+        return False
+    return True
+
+  def get_i_seqs(self, atoms):
+    i_seqs = []
+    for atom in atoms:
+      i_seqs.append(atom.i_seq)
+    return i_seqs
+
+  def extract_sequence_and_sites(self, pdb_hierarchy, selection):
+    seq = []
+    result = []
+    counter = 0
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          if(len(rg.unique_resnames())==1):
+            resname = rg.unique_resnames()[0]
+            olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+            atoms = rg.atoms()
+            i_seqs = self.get_i_seqs(atoms)
+            if(olc!="X") and self.is_residue_in_selection(i_seqs, selection):
+              seq.append(olc)
+              result.append(group_args(i_seq = counter, rg = rg))
+              counter += 1
+    return "".join(seq), result
+
+  def _alignment(self, pdb_hierarchy,
+                    params,
+                    selections,
+                    log=None):
+    if(log is None): log = sys.stdout
+    res_match_hash = {}
+    model_mseq_res_hash = {}
+    model_seq, model_structures = self.extract_sequence_and_sites(
+      pdb_hierarchy=pdb_hierarchy,
+      selection=selections[0])
+    ref_mseq_res_hash = {}
+    ref_seq, ref_structures = self.extract_sequence_and_sites(
+      pdb_hierarchy = pdb_hierarchy,
+      selection=selections[1])
+    for struct in model_structures:
+      model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+    for struct in ref_structures:
+      ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+    align_obj = mmtbx.alignment.align(
+      seq_a                 = model_seq,
+      seq_b                 = ref_seq,
+      gap_opening_penalty   = params.alignment.gap_opening_penalty,
+      gap_extension_penalty = params.alignment.gap_extension_penalty,
+      similarity_function   = params.alignment.similarity_matrix,
+      style                 = params.alignment.alignment_style)
+    alignment = align_obj.extract_alignment()
+    matches = alignment.matches()
+    exact_match_selections = alignment.exact_match_selections()
+    exact_a = tuple(exact_match_selections[0])
+    exact_b = tuple(exact_match_selections[1])
+    for i, i_seq in enumerate(alignment.i_seqs_a):
+      if i_seq != None:
+        if alignment.i_seqs_b[i] != None and matches[i] in ['*','|']:
+          res_match_hash[model_mseq_res_hash[i_seq]] = \
+            ref_mseq_res_hash[alignment.i_seqs_b[i]]
+    #print >> log, "  --> aligning model sequence to reference sequence"
+    #alignment.pretty_print(block_size  = 50,
+    #                       n_block     = 1,
+    #                       top_name    = "model",
+    #                       bottom_name = "ref",
+    #                       out         = log)
+    return res_match_hash
 
   def show_ncs_summary(self, log=None):
     if(log is None): log = sys.stdout
@@ -250,6 +388,15 @@ class torsion_ncs(object):
             top_out=TOP_OUT_FLAG,
             slack=self.slack)
           self.ncs_dihedral_proxies.append(dp_add)
+    if len(self.ncs_dihedral_proxies) == 0:
+      print >> log, \
+        "** WARNING: No dihedral NCS restraints found!!" + \
+        "  Please check parameters. **"
+    else:
+      print >> log, \
+        "Number of dihedral NCS restraints: %d" \
+          % len(self.ncs_dihedral_proxies)
+
 
   def update_dihedral_ncs_restraints(self,
                                      geometry,
@@ -257,10 +404,10 @@ class torsion_ncs(object):
                                      log=None):
     if log is None:
       log = sys.stdout
+    print >> log, "Updating dihedral NCS restraints..."
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
-    print >> log, "Updating dihedral NCS restraints..."
 
   def get_target_angles(self, angles):
     clusters = {}
@@ -413,32 +560,27 @@ class torsion_ncs(object):
       res, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       model_hash[res]=name
       model_score[res]=rotamericity
-    for group in self.res_match_master:
-      for key in group.keys():
-        for chain in group[key]:
-          res_key = chain+key[-5:-1]+' '+key[0:4]
-          model_rot = model_hash.get(res_key)
-          if res_key is not None:
-            if model_rot == "OUTLIER":
-              rotamer = None
-              score = 0.0
-              for chain_j in group[key]:
-                if chain_j == chain:
-                  continue
-                j_key = chain_j+key[-5:-1]+' '+key[0:4]
-                j_rot = model_hash.get(j_key)
-                j_score = model_score.get(j_key)
-                if j_rot is not None and j_score is not None:
-                  if j_rot != "OUTLIER":
-                    if rotamer == None:
-                      rotamer = j_key
-                      score = j_score
-                    else:
-                      if j_score > score:
-                        rotamer = j_key
-                        score = j_score
-              if rotamer != None:
-                fix_list[res_key] = rotamer
+    for key in self.res_match_master.keys():
+      res_key = key[5:6]+key[-5:-1]+' '+key[0:4]
+      model_rot = model_hash.get(res_key)
+      if model_rot == "OUTLIER":
+        rotamer = None
+        score = 0.0
+        for match_res in self.res_match_master[key]:
+          j_key = match_res[5:6]+match_res[-5:-1]+' '+match_res[0:4]
+          j_rot = model_hash.get(j_key)
+          j_score = model_score.get(j_key)
+          if j_rot is not None and j_score is not None:
+            if j_rot != "OUTLIER":
+              if rotamer == None:
+                rotamer = j_key
+                score = j_score
+              else:
+                if j_score > score:
+                  rotamer = j_key
+                  score = j_score
+        if rotamer != None:
+          fix_list[res_key] = rotamer
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
@@ -464,6 +606,8 @@ class torsion_ncs(object):
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           for atom_group in residue_group.atom_groups():
+            if atom_group.resname == "PRO":
+              continue
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
