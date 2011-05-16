@@ -549,6 +549,7 @@ def exercise_rt_mx():
   assert rt_mx("-x,-y,-z", "", 2, 3).unit_mx() == rt_mx(2, 3)
   assert rt_mx().is_unit_mx()
   assert not rt_mx("-x,-y,-z").is_unit_mx()
+  assert rt_mx("0.667+x, 0.333+y, 0.333+z").as_xyz() == 'x+2/3,y+1/3,z+1/3'
   s = rt_mx("y,y-x,z+1/4", "", 3, 8)
   assert str(s) == "y,-x+y,z+1/4"
   assert s.as_xyz() == str(s)
