@@ -63,55 +63,8 @@ class read_entry(object):
       group=self.space_group().build_derived_laue_group())).replace(" ", "")
 
   def unit_cell(self):
-    if (self._unit_cell is None):
-      if (len(self.unit_cell_parameters) == 6):
-        self._unit_cell = uctbx.unit_cell(self.unit_cell_parameters)
-      else:
-        crystal_system = self.space_group().crystal_system()
-        unit_cell_parameters = self.unit_cell_parameters
-        if (crystal_system == "Cubic"):
-          assert len(unit_cell_parameters) == 1
-          a = unit_cell_parameters[0]
-          self._unit_cell = uctbx.unit_cell((a,a,a,90,90,90))
-        elif (crystal_system in ("Hexagonal", "Trigonal")):
-          assert len(unit_cell_parameters) == 2
-          is_rhombohedral = False
-          if (crystal_system == "Trigonal"):
-            laue_group = self._derived_laue_group_symbol()
-            if (laue_group in ("R-3m:R", "R-3:R")):
-              is_rhombohedral = True
-          if (is_rhombohedral):
-            a = unit_cell_parameters[0]
-            angle = unit_cell_parameters[1]
-            self._unit_cell = uctbx.unit_cell((a,a,a,angle,angle,angle))
-          else:
-            a = unit_cell_parameters[0]
-            c = unit_cell_parameters[1]
-            self._unit_cell = uctbx.unit_cell((a,a,c,90,90,120))
-        elif (crystal_system == "Tetragonal"):
-          assert len(unit_cell_parameters) == 2
-          a = unit_cell_parameters[0]
-          c = unit_cell_parameters[1]
-          self._unit_cell = uctbx.unit_cell((a,a,c,90,90,90))
-        elif (crystal_system == "Orthorhombic"):
-          assert len(unit_cell_parameters) == 3
-          a = unit_cell_parameters[0]
-          b = unit_cell_parameters[1]
-          c = unit_cell_parameters[2]
-          self._unit_cell = uctbx.unit_cell((a,b,c,90,90,90))
-        elif (crystal_system == "Monoclinic"):
-          assert len(unit_cell_parameters) == 4
-          a = unit_cell_parameters[0]
-          b = unit_cell_parameters[1]
-          c = unit_cell_parameters[2]
-          angle = unit_cell_parameters[3]
-          laue_group = self._derived_laue_group_symbol()
-          if (laue_group == "P12/m1"):
-            self._unit_cell = uctbx.unit_cell((a,b,c,90,angle,90))
-          elif (laue_group == "P112/m"):
-            self._unit_cell = uctbx.unit_cell((a,b,c,90,90,angle))
-          elif (laue_group == "P2/m11"):
-            self._unit_cell = uctbx.unit_cell((a,b,c,angle,90,90))
+    self._unit_cell = uctbx.infer_unit_cell_from_symmetry(
+      self.unit_cell_parameters, self.space_group())
     if (self._unit_cell is None):
       raise RuntimeError, "Cannot interpret unit cell parameters."
     return self._unit_cell
