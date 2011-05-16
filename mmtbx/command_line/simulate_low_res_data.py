@@ -229,7 +229,7 @@ class prepare_data (object) :
       self.pdb_hierarchy = self.pdb_in.construct_hierarchy()
     if (self.hkl_in is not None) :
       make_header("Extracting experimental data", out=sys.stdout)
-      f_raw, r_free = self.from_hkl(self.hkl_in)
+      f_raw, r_free = self.from_hkl()
     elif (self.pdb_in is not None) :
       make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
       f_raw, r_free = self.from_pdb()
