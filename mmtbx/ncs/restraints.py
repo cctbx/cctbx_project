@@ -216,7 +216,6 @@ class pair_lists_generator(object):
       self.selection_strings = [self.reference_selection_string] \
                              + list(self.selection_strings)
     n_ncs = len(self.selection_strings)
-    assert n_ncs > 0
     if (n_ncs < 2):
       raise Sorry("Only one NCS restraints selection: %s\n"
         "  At least two selections are required." %
