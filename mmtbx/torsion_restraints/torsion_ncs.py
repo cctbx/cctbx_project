@@ -34,6 +34,10 @@ torsion_ncs_params = iotbx.phil.parse("""
    .type = bool
  fix_outliers = True
    .type = bool
+ target_damping = False
+   .type = bool
+ damping_limit = 10.0
+   .type = float
  verbose = False
    .type = bool
  edits
@@ -440,8 +444,17 @@ class torsion_ncs(object):
         target_angles[key] = None
       else:
         target_angle = self.get_angle_average(cluster)
-        for c in cluster:
-          target_angles[c] = target_angle
+        if self.params.target_damping:
+          for c in cluster:
+            c_dist = self.angle_distance(c, target_angle)
+            if c_dist > self.params.damping_limit:
+              d_target = self.get_angle_average([c, target_angle])
+              target_angles[c] = d_target
+            else:
+              target_angles[c] = target_angle
+        else:
+          for c in cluster:
+            target_angles[c] = target_angle
     return target_angles
 
   def angle_distance(self, angle1, angle2):
