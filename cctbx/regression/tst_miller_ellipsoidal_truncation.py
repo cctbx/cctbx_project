@@ -4,8 +4,13 @@ from cctbx.sgtbx import space_group_info
 from cctbx.development import random_structure
 from libtbx.test_utils import approx_equal
 from cctbx.development import debug_utils
+import random
 import math
 import scitbx.matrix
+
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
 
 def exercise(space_group_info, n_sites=100, d_min=1.5):
   from cctbx import maptbx
