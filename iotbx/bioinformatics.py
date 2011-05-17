@@ -368,8 +368,8 @@ class alignment(object):
 
   def assign_as_target(self, index):
 
-    if self.multiplicity() <= index:
-      raise ValueError, "No such sequence: %d" % index
+    if index < 0 or self.multiplicity() <= index:
+      raise IndexError, "Sequence not found in alignment"
 
     self.names = ( [ self.names[ index ] ] + self.names[ : index ]
       + self.names[ index + 1 : ] )
