@@ -261,7 +261,10 @@ class crystal_structure_builder(crystal_symmetry_builder):
           else:             sel &= f
         sel = ~sel
         atom_site_aniso_label = atom_site_aniso_label.select(sel)
-        adps = [flex_double(adp.select(sel)) for adp in adps]
+        try:
+          adps = [flex.double(adp.select(sel)) for adp in adps]
+        except ValueError, e:
+          raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
     for i in range(len(atom_sites_frac)):
       kwds = {}
