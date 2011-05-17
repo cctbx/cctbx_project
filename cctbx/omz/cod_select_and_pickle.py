@@ -172,58 +172,6 @@ class cod_data(extract_from_cif_files):
       O.c_obs.indices().size(),
       O.c_obs.d_min())
 
-def build_hkl_cif(cod_ids):
-  envar = "COD_SVN_WORKING_COPY"
-  cod_svn = os.environ.get(envar)
-  if (cod_svn is None):
-    msg = [
-      "Environment variable %s not defined:" % envar,
-      "  Usage:",
-      "    mkdir /some/path",
-      "    cd /some/path",
-      "    svn checkout svn://www.crystallography.net/cod",
-      "    export %s=/some/path/cod" % envar]
-    raise RuntimeError("\n".join(msg))
-  cif_dir = op.join(cod_svn, "cif")
-  hkl_dir = op.join(cod_svn, "hkl")
-  hkl_cif = []
-  if (len(cod_ids) == 0):
-    hkl_only = []
-    for sub_dir in sorted(os.listdir(hkl_dir)):
-      if (sub_dir.startswith(".")): continue
-      hkl_sub_dir = op.join(hkl_dir, sub_dir)
-      for node in sorted(os.listdir(hkl_sub_dir)):
-        if (node.startswith(".")): continue
-        if (not node.endswith(".hkl")): continue
-        cod_id = node[:-4]
-        hkl_path = op.join(hkl_sub_dir, node)
-        cif_path = op.join(cif_dir, sub_dir, cod_id+".cif")
-        if (not op.isfile(cif_path)):
-          hkl_only.append(hkl_path)
-        else:
-          hkl_cif.append((hkl_path, cif_path))
-    print "Number of hkl without cif:", len(hkl_only)
-  else:
-    n_missing_all = 0
-    for cod_id in cod_ids:
-      hkl_path = op.join(hkl_dir, cod_id[0], cod_id+".hkl")
-      cif_path = op.join(cif_dir, cod_id[0], cod_id+".cif")
-      n_missing = 0
-      if (not op.isfile(cif_path)):
-        print "Missing COD cif file:", cif_path
-        n_missing += 1
-      if (not op.isfile(hkl_path)):
-        print "Missing COD hkl file:", hkl_path
-        n_missing += 1
-      if (n_missing == 0):
-        hkl_cif.append((hkl_path, cif_path))
-      else:
-        n_missing_all += n_missing
-    if (n_missing_all != 0):
-      raise RuntimeError("Number of missing COD files: %d" % n_missing_all)
-  print "Number of hkl+cif:", len(hkl_cif)
-  return hkl_cif
-
 def run(args, command_name):
   from iotbx.option_parser import option_parser as iotbx_option_parser
   from libtbx import easy_pickle
@@ -277,7 +225,9 @@ def run(args, command_name):
     return
   co = command_line.options
   #
-  hkl_cif = build_hkl_cif(cod_ids=command_line.args)
+  from iotbx.cif import cod_tools
+  hkl_cif = cod_tools.build_hkl_cif(cod_ids=command_line.args)
+  hkl_cif.show_summary()
   #
   pickle_dir = co.pickle_dir
   if (co.at_least_one_special_position):
@@ -286,7 +236,7 @@ def run(args, command_name):
     from libtbx.path import makedirs_race
     makedirs_race(path=pickle_dir)
   n_caught = 0
-  for i_pair,pair in enumerate(hkl_cif):
+  for i_pair,pair in enumerate(hkl_cif.hkl_cif_pairs.values()):
     cod_id = op.basename(pair[0])[:-4]
     if (i_pair % command_line.chunk.n != command_line.chunk.i): continue
     try:
