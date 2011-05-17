@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from iotbx import cif
 from iotbx.cif import CifParserError
+from iotbx.cif.builders import CifBuilderError
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff, Exception_expected
 from cStringIO import StringIO
@@ -373,7 +374,7 @@ def exercise_partial_crystal_symmetry():
   assert str(cs.space_group_info()) == "P 1 21/n 1"
   try:
     get_cs(get_inp(True, False))
-  except RuntimeError, e:
+  except CifBuilderError, e:
     assert str(e) == "Not all unit cell parameters are given in the cif file"
   else: raise Exception_expected
 

@@ -10,6 +10,9 @@ try:
 except ImportError:
   PyCifRW = None
 
+class CifBuilderError(Sorry):
+  __module__ = Exception.__module__
+
 class cif_model_builder:
 
   def __init__(self):
@@ -158,29 +161,44 @@ class crystal_symmetry_builder:
         try: space_group = sgtbx.space_group_info(number=sg_number).group()
         except Exception: pass
       if (space_group is None and strict):
-        raise RuntimeError(
+        raise CifBuilderError(
           "No symmetry instructions could be extracted from the cif block")
     items = [cif_block.get("_cell_length_"+s) for s in "abc"]
+    for i, item in enumerate(items):
+      if isinstance(item, flex.std_string):
+        raise CifBuilderError(
+          "Data item _cell_length_%s cannot be declared in a looped list"
+          %("abc"[i]))
     for s in ["alpha", "beta", "gamma"]:
       item = cif_block.get("_cell_angle_"+s)
+      if isinstance(item, flex.std_string):
+        raise CifBuilderError(
+          "Data item _cell_angle_%s cannot be declared in a looped list" %s)
       if (item == "?"):
         item = "90" # enumeration default for angles is 90 degrees
       items.append(item)
     ic = items.count(None)
     if (ic == 6):
       if (strict):
-        raise RuntimeError(
+        raise CifBuilderError(
           "Unit cell parameters not found in the cif file")
       unit_cell = None
     elif (ic == 0):
       try:
         vals = [float_from_string(s) for s in items]
       except ValueError:
-        raise RuntimeError("Invalid unit cell parameters are given")
+        raise CifBuilderError("Invalid unit cell parameters are given")
       unit_cell = uctbx.unit_cell(vals)
+    elif (space_group is not None):
+      unit_cell = uctbx.infer_unit_cell_from_symmetry(
+        [float_from_string(s) for s in items if s is not None], space_group)
     else:
-      raise RuntimeError(
+      raise CifBuilderError(
         "Not all unit cell parameters are given in the cif file")
+    if (unit_cell is not None and space_group is not None
+        and not space_group.is_compatible_unit_cell(unit_cell)):
+      raise CifBuilderError(
+        "Space group is incompatible with unit cell parameters")
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
 
@@ -188,26 +206,26 @@ class crystal_structure_builder(crystal_symmetry_builder):
 
   def __init__(self, cif_block):
     # XXX To do: interpret _atom_site_refinement_flags
-    crystal_symmetry_builder.__init__(self, cif_block)
-    atom_sites_frac = [cif_block.get('_atom_site_fract_%s' %axis)
-                       for axis in ('x','y','z')]
+    crystal_symmetry_builder.__init__(self, cif_block, strict=True)
+    atom_sites_frac = [as_double_or_none_if_all_question_marks(
+      _, column_name='_atom_site_fract_%s' %axis)
+                       for _ in [cif_block.get('_atom_site_fract_%s' %axis)
+                                 for axis in ('x','y','z')]]
     if atom_sites_frac.count(None) == 3:
-      atom_sites_cart = [cif_block.get('_atom_site_Cartn_%s' %axis)
-                         for axis in ('x','y','z')]
-      assert atom_sites_cart.count(None) == 0, "No atomic coordinates could be found"
-      atom_sites_cart = flex.vec3_double(
-        flex.double(atom_sites_cart[0]),
-        flex.double(atom_sites_cart[1]),
-        flex.double(atom_sites_cart[2]))
+      atom_sites_cart = [as_double_or_none_if_all_question_marks(
+        _, column_name='_atom_site_Cartn_%s' %axis)
+                         for _ in [cif_block.get('_atom_site_Cartn_%s' %axis)
+                                   for axis in ('x','y','z')]]
+      if atom_sites_cart.count(None) != 0:
+        raise CifBuilderError("No atomic coordinates could be found")
+      atom_sites_cart = flex.vec3_double(*atom_sites_cart)
       # XXX do we need to take account of _atom_sites_Cartn_tran_matrix_ ?
       atom_sites_frac = self.crystal_symmetry.unit_cell().fractionalize(
         atom_sites_cart)
     else:
-      assert atom_sites_frac.count(None) == 0, "No atomic coordinates could be found"
-      atom_sites_frac = flex.vec3_double(
-        flex.double(flex.std_string(atom_sites_frac[0])),
-        flex.double(flex.std_string(atom_sites_frac[1])),
-        flex.double(flex.std_string(atom_sites_frac[2])))
+      if atom_sites_frac.count(None) != 0:
+        raise CifBuilderError("No atomic coordinates could be found")
+      atom_sites_frac = flex.vec3_double(*atom_sites_frac)
     labels = cif_block.get('_atom_site_label')
     type_symbol = cif_block.get('_atom_site_type_symbol')
     U_iso_or_equiv = flex_double_else_none(
@@ -230,17 +248,21 @@ class crystal_structure_builder(crystal_symmetry_builder):
         adps = [cif_block.get('_atom_site_aniso_B_%i' %i)
                 for i in (11,22,33,12,13,23)]
         have_Bs = True
-      assert adps.count(None) == 0
-      adps = [flex.std_string(adp) for adp in adps]
-      sel = None
-      for adp in adps:
-        f = (adp == "?")
-        if (sel is None): sel = f
-        else:             sel &= f
-      sel = ~sel
-      atom_site_aniso_label = atom_site_aniso_label.select(sel)
-      adps = [flex.double(adp.select(sel)) for adp in adps]
-      adps = flex.sym_mat3_double(*adps)
+      if adps.count(None) == 6:
+        adps = None
+      elif adps.count(None) > 0:
+        CifBuilderError("Some ADP items are missing")
+      else:
+        adps = [flex.std_string(adp) for adp in adps]
+        sel = None
+        for adp in adps:
+          f = (adp == "?")
+          if (sel is None): sel = f
+          else:             sel &= f
+        sel = ~sel
+        atom_site_aniso_label = atom_site_aniso_label.select(sel)
+        adps = [flex_double(adp.select(sel)) for adp in adps]
+        adps = flex.sym_mat3_double(*adps)
     for i in range(len(atom_sites_frac)):
       kwds = {}
       if labels is not None:
@@ -248,6 +270,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
       if type_symbol is not None:
         kwds.setdefault('scattering_type', str(type_symbol[i]))
       if (atom_site_aniso_label is not None
+          and adps is not None
           and labels is not None
           and labels[i] in atom_site_aniso_label):
         adp = adps[flex.first_index(atom_site_aniso_label, labels[i])]
@@ -282,7 +305,7 @@ class miller_array_builder(crystal_symmetry_builder):
       base_array_info = miller.array_info(source_type="cif")
     hkl_str = [cif_block.get('_refln_index_%s' %i) for i in ('h','k','l')]
     if hkl_str.count(None) > 0:
-      raise Sorry("Miller indices missing from current CIF block")
+      raise CifBuilderError("Miller indices missing from current CIF block")
     hkl_int = []
     for i,h_str in enumerate(hkl_str):
       if (not isinstance(h_str, flex.std_string)):
@@ -290,7 +313,7 @@ class miller_array_builder(crystal_symmetry_builder):
       try:
         h_int = flex.int(h_str)
       except ValueError, e:
-        raise Sorry(
+        raise CifBuilderError(
           "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
       hkl_int.append(h_int)
     indices = flex.miller_index(*hkl_int)
@@ -305,7 +328,7 @@ class miller_array_builder(crystal_symmetry_builder):
         label = '_'.join((prefix, array_type))
         if prefix == '_refln_A':
           alt_label = '_'.join((prefix.replace('A', 'B'), array_type))
-          data = [as_double_or_none_if_all_question_marks(_, column_name=_)
+          data = [as_double_or_none_if_all_question_marks(_, column_name=label)
                   for _ in [cif_block.get(label), cif_block.get(alt_label)]]
           if data.count(None) != 0:
             continue
@@ -352,7 +375,7 @@ class miller_array_builder(crystal_symmetry_builder):
           self._arrays.setdefault(key, array)
 
     if len(self._arrays) == 0:
-      raise RuntimeError("No reflection data present in cif block")
+      raise CifBuilderError("No reflection data present in cif block")
 
   def arrays(self):
     return self._arrays
@@ -374,10 +397,16 @@ def as_double_or_none_if_all_question_marks(cif_block_item, column_name=None):
     if column_name is not None and e_str.startswith(
       "Invalid floating-point value: "):
       i = e_str.find(":") + 2
-      raise ValueError('Invalid floating-point value for %s: %s'
+      raise CifBuilderError("Invalid floating-point value for %s: %s"
                        %(column_name, e_str[i:].strip()))
     else:
-      raise e
+      raise CifBuilderError(e_str)
+
+def flex_double(flex_std_string):
+  try:
+    return flex.double(flex_std_string)
+  except ValueError, e:
+    raise CifBuilderError(str(e))
 
 def flex_double_else_none(cif_block_item):
   strings = none_if_all_question_marks(cif_block_item)
