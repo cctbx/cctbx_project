@@ -114,6 +114,7 @@ class model_data (object) :
     self.pdb_hierarchy = pdb_hierarchy
     self.atoms = pdb_hierarchy.atoms()
     self.atom_count = self.atoms.size()
+    assert (self.atom_count == len(atomic_bonds))
     if atomic_bonds is None :
       atomic_bonds = flex.stl_set_unsigned(self.atom_count)
     self.atomic_bonds = atomic_bonds

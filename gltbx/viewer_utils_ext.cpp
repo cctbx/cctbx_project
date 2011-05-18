@@ -80,6 +80,7 @@ namespace gltbx { namespace viewer_utils {
       {
         typedef std::set< unsigned >::const_iterator it;
         unsigned atom_count = bonds.size();
+        GLTBX_ASSERT(atom_count == atoms_drawable.size());
         visible_atoms_count = 0;
         visible_bonds_count = 0;
         visible_points_count = 0;
@@ -122,6 +123,8 @@ namespace gltbx { namespace viewer_utils {
         af::const_ref< std::set< unsigned > > const& bonds,
         af::const_ref< bool > const& atoms_selected)
       {
+        GLTBX_ASSERT(atoms_selected.size() == bonds_visible.size());
+        GLTBX_ASSERT(atoms_selected.size() == bonds.size());
         typedef std::set< unsigned >::const_iterator it;
         for (unsigned i_seq = 0; i_seq < atoms_selected.size(); i_seq++) {
           if (! atoms_selected[i_seq]) continue;
