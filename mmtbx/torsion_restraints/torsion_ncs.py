@@ -106,10 +106,9 @@ class torsion_ncs(object):
     self.name_hash = self.build_name_hash(pdb_hierarchy)
     self.params = params
     self.log = log
-    #super_hash = {}
+    print >> self.log, "Determining NCS matches..."
     pair_hash = {}
     dp_hash = {}
-    #match_master = []
     used_chains = []
     res_match_hash = {}
     i_seq_hash = self.build_i_seq_hash(pdb_hierarchy)
@@ -120,6 +119,8 @@ class torsion_ncs(object):
     sel_cache = pdb_hierarchy.atom_selection_cache()
     alignments = {}
     for i, chain_i in enumerate(chains):
+      if self.get_chain_type(chain_i) == "HETATM":
+        continue
       chain_id_hash[chain_i.id] = chain_i
       chain_i_str = "chain '%s'" % chain_i.id
       chain_i_list = [chain_i_str]
@@ -127,6 +128,8 @@ class torsion_ncs(object):
                    cache=sel_cache,
                    string_list=chain_i_list))
       for chain_j in chains[i+1:]:
+        if self.get_chain_type(chain_j) == "HETATM":
+          continue
         chain_j_str = "chain '%s'" % chain_j.id
         chain_j_list = [chain_j_str]
         sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
@@ -137,10 +140,13 @@ class torsion_ncs(object):
                               params=params,
                               selections=selections,
                               log=log)
-        if (len(residue_match_map) \
-            /min(chain_i.residue_groups_size(),
-                 chain_j.residue_groups_size())) \
-            > self.params.similarity:
+        if ( min(len(residue_match_map),
+                 chain_i.residue_groups_size(),
+                 chain_j.residue_groups_size()) \
+             / max(len(residue_match_map),
+                   chain_i.residue_groups_size(),
+                   chain_j.residue_groups_size()) \
+             > self.params.similarity ):
           key = (chain_i_str, chain_j_str)
           alignments[key] = residue_match_map
           if used_chains is not None:
@@ -229,6 +235,24 @@ class torsion_ncs(object):
     print >> self.log, "Initializing torsion NCS restraints..."
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
+
+  def get_chain_type(self, chain):
+    macro_count = 0
+    micro_count = 0
+    chain_length = chain.residue_groups_size()
+    for conformer in chain.conformers():
+      for residue in conformer.residues():
+        if (common_residue_names_get_class(residue.resname) == \
+            'other' or \
+            common_residue_names_get_class(residue.resname) == \
+            'common_small_molecule'):
+          micro_count += 1
+        else:
+          macro_count += 1
+    if micro_count / chain_length >= .50:
+      return "HETATM"
+    else:
+      return "ATOM"
 
   def selection(self, string, cache):
     return cache.selection(
