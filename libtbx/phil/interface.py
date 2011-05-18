@@ -31,6 +31,7 @@ class index (object) :
     self._hidden = [] # XXX: not implemented here (for phenix GUI)
     self._phil_has_changed = False
     self._log = str_utils.StringIO()
+    self._prefix = None
     if parse is None :
       self.parse = libtbx.phil.parse
     self.setup_phil(working_phil, fetch_new)
@@ -45,6 +46,18 @@ class index (object) :
       self.working_phil = working_phil
     self.build_index(collect_multiple=True)
     self.params = self.working_phil.extract()
+
+  def set_prefix (self, prefix) :
+    assert (prefix is None) or (isinstance(prefix, str))
+    self._prefix = prefix
+
+  def get_full_path (self, phil_path) :
+    if (self._prefix is None) :
+      return phil_path
+    elif (phil_path.startswith(".")) :
+      return self._prefix + phil_path
+    else :
+      return phil_path
 
   def clear_index (self, clear_multiple=True) :
     self._full_path_index = {}
@@ -207,6 +220,7 @@ class index (object) :
   # Retrieval methods
   # FIXME: not working properly for ncs restraint group phil
   def get_scope_by_name (self, scope_name, phil_parent=None) :
+    scope_name = self.get_full_path(scope_name)
     if scope_name in self._full_path_index :
       indexed_phil_objects = self._full_path_index[scope_name]
       if isinstance(indexed_phil_objects, list) and phil_parent is not None :
@@ -228,6 +242,7 @@ class index (object) :
     return paths
 
   def get_template_copy (self, phil_name) :
+    phil_name = self.get_full_path(phil_name)
     template = self._template_index.get(phil_name)
     new_copy = None
     if template is not None :
@@ -235,6 +250,7 @@ class index (object) :
     return new_copy
 
   def get_validated_param (self, def_name) :
+    phil_name = self.get_full_path(def_name)
     phil_objects = self.get_scope_by_name(def_name)
     if isinstance(phil_objects, list) :
       vals = []
@@ -309,6 +325,7 @@ class index (object) :
     return matching_defs
 
   def get_scope_phil (self, scope_name) :
+    scope_name = self.get_full_path(scope_name)
     _phil_string = str_utils.StringIO()
     scope_objects = self.get_scope_by_name(scope_name)
     if isinstance(scope_objects, list) :
@@ -319,6 +336,7 @@ class index (object) :
     return _phil_string.getvalue()
 
   def get_phil_help_string (self, phil_name) :
+    phil_name = self.get_full_path(phil_name)
     if phil_name in self._full_text_index :
       (label, caption, help, is_def) = self._full_text_index[phil_name]
       return str(help)
@@ -326,6 +344,7 @@ class index (object) :
       return None
 
   def get_expert_level (self, phil_name) :
+    phil_name = self.get_full_path(phil_name)
     return self._expert_levels.get(phil_name, 0)
 
   def get_input_files (self) :

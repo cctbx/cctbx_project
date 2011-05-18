@@ -388,6 +388,9 @@ phaser.search {
   i.merge_phil(phil_file="phaser2.eff")
   p = i.get_python_object().phaser
   assert (p.hklin == "/home/nat/projects/beta-blip/beta_blip_P3221.mtz")
+  i.set_prefix("phaser")
+  assert (i.get_full_path(".hklin") == "phaser.hklin")
+  assert (i.get_scope_by_name(".keywords") is not None)
 
 if __name__ == "__main__" :
   exercise()
