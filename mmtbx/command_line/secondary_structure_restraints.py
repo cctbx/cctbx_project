@@ -3,9 +3,9 @@
 from mmtbx.secondary_structure import *
 from mmtbx.geometry_restraints import hbond
 import iotbx.pdb
+import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
-import libtbx.phil
 import cStringIO
 import os
 import sys
@@ -30,7 +30,7 @@ refinement {
     %s
   }
 }""" % sec_str_master_phil_str
-  master_phil = libtbx.phil.parse(master_phil_str, process_includes=True)
+  master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
   parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   for arg in args :
@@ -39,7 +39,7 @@ refinement {
         pdb_files.append(os.path.abspath(arg))
       else :
         try :
-          user_phil = libtbx.phil.parse(file_name=arg)
+          user_phil = iotbx.phil.parse(file_name=arg)
         except RuntimeError :
           print "Unrecognizable file format for %s" % arg
         else :
