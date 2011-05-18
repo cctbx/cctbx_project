@@ -23,11 +23,11 @@ import scitbx.matrix
 
 modify_params_str = """\
 selection = None
-  .type = str
+  .type = atom_selection
   .help = Selection for atoms to be modified
   .short_caption = Modify atom selection
   .input_size=400
-  .style = bold selection
+  .style = bold
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
@@ -35,12 +35,12 @@ adp
   .style = auto_align menu_item parent_submenu:model_modifications noauto
 {
   atom_selection = None
-    .type = str
+    .type = atom_selection
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
     .short_caption = Modify ADPs for selection
     .input_size=400
-    .style  = bold selection
+    .style  = bold
   randomize = None
     .type = bool
     .help = Randomize ADP within a certain range
@@ -71,12 +71,12 @@ sites
   .style = auto_align noauto menu_item parent_submenu:model_modifications
 {
   atom_selection = None
-    .type = str
+    .type = atom_selection
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
     .input_size=400
     .short_caption = Modify sites for selection
-    .style = bold selection
+    .style = bold
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
@@ -172,17 +172,17 @@ modify
   .style = menu_item scrolled auto_align
 {
 remove = None
-  .type = str
+  .type = atom_selection
   .help = Selection for the atoms to be removed
   .short_caption=Remove atom selection
   .input_size=400
-  .style = bold selection
+  .style = bold
 keep = None
-  .type = str
+  .type = atom_selection
   .help = Select atoms to keep
   .short_caption=Keep only atom selection
   .input_size=400
-  .style = bold selection
+  .style = bold
 put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.

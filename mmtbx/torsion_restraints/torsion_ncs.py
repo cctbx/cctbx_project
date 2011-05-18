@@ -78,13 +78,11 @@ torsion_ncs_params = iotbx.phil.parse("""
   .style = noauto auto_align menu_item parent_submenu:reference_model
  {
   reference=None
-    .type=str
+    .type=atom_selection
     .short_caption=Reference selection
-    .style = selection
   selection=None
-    .type=str
+    .type=atom_selection
     .short_caption=Restrained selection
-    .style = selection
  }
 """)
 

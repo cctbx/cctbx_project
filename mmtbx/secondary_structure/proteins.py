@@ -1,7 +1,7 @@
 
 from __future__ import division
 import iotbx.pdb.secondary_structure
-import libtbx.phil
+import iotbx.phil
 import libtbx.object_oriented_patterns as oop
 from libtbx.utils import Sorry
 from libtbx import group_args
@@ -15,8 +15,8 @@ helix
   .style = noauto
 {
   selection = None
-    .type = str
-    .style = bold selection
+    .type = atom_selection
+    .style = bold
   helix_type = *alpha pi 3_10 unknown
     .type = choice
     .help = Type of helix, defaults to alpha.  Only alpha, pi, and 3_10 \
@@ -39,24 +39,24 @@ sheet
   .style = noauto
 {
   first_strand = None
-    .type = str
-    .style = bold selection
+    .type = atom_selection
+    .style = bold
   strand
     .multiple = True
     .optional = True
   {
     selection = None
-      .type = str
-      .style = bold selection
+      .type = atom_selection
+      .style = bold
     sense = parallel antiparallel *unknown
       .type = choice
       .style = bold
     bond_start_current = None
-      .type = str
-      .style = bold selection
+      .type = atom_selection
+      .style = bold
     bond_start_previous = None
-      .type = str
-      .style = bold selection
+      .type = atom_selection
+      .style = bold
   }
   restraint_sigma = None
     .type = float
@@ -710,8 +710,8 @@ class find_helices_simple (object) :
       helix_str = """helix {\n  selection = "%s"\n}""" % selection
       phil_strs.append(helix_str)
     if (len(phil_strs) > 0) :
-      master_phil = libtbx.phil.parse(helix_group_params_str)
-      helix_phil = libtbx.phil.parse("\n".join(phil_strs))
+      master_phil = iotbx.phil.parse(helix_group_params_str)
+      helix_phil = iotbx.phil.parse("\n".join(phil_strs))
       return master_phil.fetch(source=helix_phil)
     return None
 
