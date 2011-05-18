@@ -517,6 +517,9 @@ class index (object) :
       full_object_path = object.full_path()
       if object.style is not None and phil_scope.is_template != -1 :
         style = self.create_style(object.style)
+        if (style.selection) and (object.type.phil_type == "str") :
+          print "WARNING: deprecated 'str' type with 'selection' style"
+          print "   name: %s" % full_object_path
         self.style[full_object_path] = style
         if style.hidden :
           self._hidden.append(full_object_path)
