@@ -1,7 +1,7 @@
 
 from __future__ import division
 import libtbx.load_env
-import libtbx.phil
+import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
@@ -20,7 +20,7 @@ else :
     .short_caption = Ramachandran potential
     .caption = Oldfield Coot"""
 
-master_phil = libtbx.phil.parse("""
+master_phil = iotbx.phil.parse("""
   rama_weight = 1.0
     .type = float
     .short_caption = Ramachandran gradients weight
@@ -47,15 +47,14 @@ master_phil = libtbx.phil.parse("""
   }
 """ % potential_phil)
 
-refine_opt_params = libtbx.phil.parse("""
+refine_opt_params = iotbx.phil.parse("""
 #  min_allowed_d_min = 3.0
 #    .type = float
 #    .short_caption = Resolution cutoff for Ramachandran restraints
 #    .expert_level = 2
   rama_selection = None
-    .type = str
+    .type = atom_selection
     .short_caption = Atom selection for Ramachandran restraints
-    .style = selection
     .expert_level = 1
   exclude_secondary_structure = False
     .type = str

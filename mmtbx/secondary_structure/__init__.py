@@ -4,7 +4,7 @@ from mmtbx.secondary_structure import base_pairing, proteins
 import iotbx.pdb
 import iotbx.pdb.secondary_structure
 from scitbx.array_family import flex
-import libtbx.phil
+import iotbx.phil
 from libtbx import easy_run
 from libtbx import adopt_init_args, Auto
 import libtbx.load_env
@@ -102,11 +102,11 @@ nucleic_acids
        ss_restraint_params_str, ss_group_params_str,
        base_pairing.dna_rna_params_str)
 
-sec_str_master_phil = libtbx.phil.parse(sec_str_master_phil_str)
+sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
 
 def sec_str_from_phil (phil_str) :
-  ss_phil = libtbx.phil.parse(phil_str)
+  ss_phil = iotbx.phil.parse(phil_str)
   return sec_str_master_phil.fetch(source=ss_phil).extract()
 
 def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stderr) :
@@ -389,7 +389,7 @@ class manager (object) :
         else :
           base_pairs = self.find_base_pairs(log=log)
         if base_pairs is not None :
-          bp_phil = libtbx.phil.parse(base_pairs)
+          bp_phil = iotbx.phil.parse(base_pairs)
           bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
           self.params.nucleic_acids.base_pair = \
             bp_params.nucleic_acids.base_pair
@@ -451,7 +451,7 @@ class manager (object) :
     return "\n".join(annotations)
 
   def apply_phil_str (self, phil_string, log=sys.stderr, verbose=False) :
-    ss_phil = sec_str_master_phil.fetch(source=libtbx.phil.parse(phil_string))
+    ss_phil = sec_str_master_phil.fetch(source=iotbx.phil.parse(phil_string))
     if verbose :
       ss_phil.show(out=log, prefix="    ")
     new_ss_params = ss_phil.extract()
@@ -506,7 +506,7 @@ class manager (object) :
   def get_simple_bonds (self, selection_phil=None) :
     if (selection_phil is not None) :
       if isinstance(selection_phil, str) :
-        selection_phil = libtbx.phil.parse(selection_phil)
+        selection_phil = iotbx.phil.parse(selection_phil)
       params = sec_str_master_phil.fetch(source=selection_phil).extract()
     else :
       params = self.params

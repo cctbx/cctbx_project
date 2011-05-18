@@ -1,6 +1,6 @@
 import mmtbx.utils
 from libtbx.utils import Sorry, date_and_time
-import libtbx.phil
+import iotbx.phil
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
@@ -102,9 +102,8 @@ map_params_str ="""\
       .caption = Atom_selection Unit_cell
       .short_caption=Map region
     atom_selection = None
-      .type = str
+      .type = atom_selection
       .short_caption = Atom selection
-      .style = selection
     atom_selection_buffer = 3
       .type = float
     acentrics_scale = 2.0
@@ -139,7 +138,7 @@ map_and_map_coeff_params_str = """\
 """%(map_coeff_params_str, map_params_str)
 
 def map_and_map_coeff_master_params():
-  return libtbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
+  return iotbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
 
 maps_including_IO_params_str = """\
 maps {
@@ -202,7 +201,7 @@ maps {
 master_params = maps_including_IO_params_str
 
 def maps_including_IO_master_params():
-  return libtbx.phil.parse(maps_including_IO_params_str, process_includes=True)
+  return iotbx.phil.parse(maps_including_IO_params_str, process_includes=True)
 
 def cast_map_coeff_params(map_type_obj):
   map_coeff_params_str = """\
@@ -217,7 +216,7 @@ def cast_map_coeff_params(map_type_obj):
     }
 """%(map_type_obj.format(), map_type_obj.format(), map_type_obj.format(),
      map_type_obj.kicked, map_type_obj.f_obs_filled)
-  return libtbx.phil.parse(map_coeff_params_str, process_includes=False)
+  return iotbx.phil.parse(map_coeff_params_str, process_includes=False)
 
 class map_coeffs_mtz_label_manager:
 

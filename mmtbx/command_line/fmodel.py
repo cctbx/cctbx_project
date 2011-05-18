@@ -197,10 +197,9 @@ anomalous_scatterers
     .style = auto_align
   {
     selection = None
-      .type = str
+      .type = atom_selection
       .short_caption = Atom selection
       .input_size = 400
-      .style = selection
     f_prime = 0
       .type = float
       .short_caption = f'
