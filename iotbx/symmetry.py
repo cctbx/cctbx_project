@@ -1,6 +1,7 @@
 
 from libtbx import group_args
 from libtbx.utils import Sorry
+import os
 import sys
 
 class manager (object) :

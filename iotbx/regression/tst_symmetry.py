@@ -3,6 +3,7 @@ import iotbx.symmetry
 from cctbx import sgtbx, uctbx
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry
+from cStringIO import StringIO
 
 def exercise () :
   m = iotbx.symmetry.manager(prefer_pdb_space_group=True)
@@ -52,6 +53,15 @@ def exercise () :
     pass
   else :
     raise Exception_expected
+  out = StringIO()
+  m.show(out=out)
+  assert (out.getvalue() == """\
+model.pdb: (50, 60, 70, 90, 90, 90) P 21 21 21
+reference_model.pdb: (40, 40, 75, 90, 90, 120) P 63
+data.mtz: (50, 60, 70, 90, 90, 90) P 2 2 2
+data_neutron.mtz: (50.1, 60, 70.1, 90, 90, 90) P 2 2 2
+data_rfree.hkl: None None
+""")
 
 if (__name__ == "__main__") :
   exercise()
