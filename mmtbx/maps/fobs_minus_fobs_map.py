@@ -1,8 +1,10 @@
 from cctbx.array_family import flex
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
+import iotbx.symmetry
+import iotbx.file_reader
 from cStringIO import StringIO
 import sys, os
 import mmtbx.f_model
@@ -13,6 +15,7 @@ from iotbx.pdb import combine_unique_pdb_files
 import iotbx.pdb
 from libtbx import runtime_utils
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import libtbx.callbacks # import dependency
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -58,6 +61,9 @@ scattering_table = *xray neutron
 output_file = None
   .type = path
   .style = bold new_file file_type:mtz
+ignore_non_isomorphous_unit_cells = False
+  .type = bool
+  .short_caption = Ignore non-isomorphous unit cells
 include scope libtbx.phil.interface.tracking_params
 """
 def fo_minus_fo_master_params():
@@ -197,17 +203,55 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     print >> log, args
     print >> log
   #
-  processed_args = utils.process_command_line_args(args = command_line.args,
-    cmd_cs = command_line.symmetry, master_params = fo_minus_fo_master_params(),
-    log = log)
-  crystal_symmetry = processed_args.crystal_symmetry
-  params = processed_args.params
-  #
+  processed_args = utils.process_command_line_args(
+    args=command_line.args,
+    cmd_cs=command_line.symmetry,
+    master_params=fo_minus_fo_master_params(),
+    log=log,
+    suppress_symmetry_related_errors=True)
+  working_phil = processed_args.params
   if(not command_line.options.silent):
     print >> log, "*** Parameters:"
-    params.show(out = log)
+    working_phil.show(out = log)
     print >> log
-  params = params.extract()
+  params = working_phil.extract()
+  consensus_symmetry = None
+  if (params.ignore_non_isomorphous_unit_cells) :
+    if (None in [params.f_obs_1_file_name, params.f_obs_2_file_name,
+        params.phase_source]):
+      raise Sorry("The file parameters (f_obs_1_file_name, f_obs_2_file_name, "+
+        "phase_source) must be specified explicitly when "+
+        "ignore_non_isomorphous_unit_cells=True.")
+    symm_manager = iotbx.symmetry.manager()
+    pdb_in = iotbx.file_reader.any_file(params.phase_source, force_type="pdb")
+    symm_manager.process_pdb_file(pdb_in)
+    hkl_in_1 = iotbx.file_reader.any_file(params.f_obs_1_file_name,
+      force_type="hkl")
+    sg_err_1, uc_err_1 = symm_manager.process_reflections_file(hkl_in_1)
+    hkl_in_2 = iotbx.file_reader.any_file(params.f_obs_2_file_name,
+      force_type="hkl")
+    sg_err_2, uc_err_2 = symm_manager.process_reflections_file(hkl_in_2)
+    out = StringIO()
+    symm_manager.show(out=out)
+    if (sg_err_1) or (sg_err_2) :
+      raise Sorry(("Incompatible space groups in input files:\n%s\nAll files "+
+        "must have the same point group (and ideally the same space group). "+
+        "Please note that any symmetry information in the PDB file will be "+
+        "used first.") % out.getvalue())
+    elif (uc_err_1) or (uc_err_2) :
+      libtbx.call_back(message="warn",
+        data=("Crystal symmetry mismatch:\n%s\nCalculations will continue "+
+          "using the symmetry in the PDB file (or if not available, the "+
+          "first reflection file), but the maps should be treated with "+
+          "extreme suspicion.") % out.getvalue())
+    crystal_symmetry = symm_manager.as_symmetry_object()
+  else :
+    processed_args = utils.process_command_line_args(
+      args=command_line.args,
+      cmd_cs=command_line.symmetry,
+      master_params=fo_minus_fo_master_params(),
+      log=StringIO())
+    crystal_symmetry = processed_args.crystal_symmetry
   #
   pdb_file_names = processed_args.pdb_file_names
   if(len(processed_args.pdb_file_names) == 0):
@@ -223,11 +267,11 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
         crystal_symmetry = crystal_symmetry,
         force_symmetry   = True,
         reflection_files = [reflection_file],
-        err              = StringIO())
+        err              = null_out())
       determine_data_and_flags_result = utils.determine_data_and_flags(
         reflection_file_server  = reflection_file_server,
         keep_going              = True,
-        log                     = StringIO())
+        log                     = null_out())
       f_obss.append(determine_data_and_flags_result.f_obs)
   else:
     if([params.f_obs_1_file_name,params.f_obs_2_file_name].count(None)==2):
@@ -240,7 +284,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
         crystal_symmetry = crystal_symmetry,
         force_symmetry   = True,
         reflection_files = [reflection_file],
-        err              = StringIO())
+        err              = null_out())
       parameters = utils.data_and_flags_master_params().extract()
       if(label is not None):
         parameters.labels = [label]
@@ -248,7 +292,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
           reflection_file_server  = reflection_file_server,
           parameters              = parameters,
           keep_going              = True,
-          log                     = StringIO())
+          log                     = null_out())
       f_obss.append(determine_data_and_flags_result.f_obs)
   if(len(f_obss)!=2):
     raise Sorry(" ".join(errors))
