@@ -955,6 +955,39 @@ def easy_mp(func, args, report_to=Auto):
   if (report_to is not None):
     show_wall_clock_time(seconds=time.time()-time_start, out=report_to)
 
+def get_svn_revision(path=None):
+  # adapted from:
+  #   http://code.djangoproject.com/browser/django/trunk/django/utils/version.py
+  rev = None
+  if path is None:
+    import libtbx.load_env
+    path = os.path.dirname(libtbx.env.find_dist_path('libtbx'))
+  entries_path = '%s/.svn/entries' % path
+  try:
+    entries = open(entries_path, 'r').read()
+  except IOError:
+    pass
+  else:
+    # Versions >= 7 of the entries file are flat text.  The first line is
+    # the version number. The next set of digits after 'dir' is the revision.
+    if re.match('(\d+)', entries):
+      rev_match = re.search('\d+\s+dir\s+(\d+)', entries)
+      if rev_match:
+        rev = int(rev_match.groups()[0])
+  return rev
+
+def get_build_tag(path=None):
+  tag = None
+  if path is None:
+    import libtbx.load_env
+    path = os.path.dirname(libtbx.env.find_dist_path('libtbx'))
+  tag_file_path = "%s/TAG" %path
+  if os.path.exists(tag_file_path):
+    with open(tag_file_path,'r') as tag_file:
+      tag = tag_file.readline().strip()
+  return tag
+
+
 def exercise():
   from libtbx.test_utils import approx_equal, Exception_expected
   host_and_user().show(prefix="### ")
