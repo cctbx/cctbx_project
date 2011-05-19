@@ -54,10 +54,10 @@ def run(args, command_name):
     n_total += 1
     if (i % command_line.chunk.n != command_line.chunk.i): continue
     try:
+      cod_id = os.path.basename(path)
       cif_obj = iotbx.cif.reader(file_path=path)
       if parse_only: continue
       skip_file = False
-      cod_id = os.path.basename(path)
       for cif_block in cif_obj.model().values():
         value = cif_block.get("_cod_error_flag")
         keys = set(cif_block.keys())
