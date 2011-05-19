@@ -174,16 +174,10 @@ inapplicable
 
 unknown	:	'?' ;
 
-value 	:	inapplicable | unknown | '-' | char_string  | numeric| text_field
+value 	:	inapplicable | unknown | '-' | char_string  | NUMERIC | text_field
 	;
 	catch [RecognitionException re] {
 	}
-
-integer	: 	( '+' | '-' )? UNSIGNED_INTEGER;
-
-number	:	integer | FLOAT;
-
-numeric	:	number | ( number '(' (UNSIGNED_INTEGER)+ ')' ) ;
 
 char_string
 	:	CHAR_STRING ;
@@ -270,15 +264,22 @@ SAVE	:	SAVE_ ;
 
 fragment DIGIT	: '0'..'9' ;
 
-fragment EXPONENT: 	( ( 'e' | 'E') | ( 'e' | 'E')( '+' | '-' ) ) (DIGIT)+ ;
+fragment EXPONENT
+        : 	( ( 'e' | 'E') | ( 'e' | 'E')( '+' | '-' ) ) (DIGIT)+ ;
 
-fragment INTEGER	: 	( '+' | '-' )? (DIGIT)+ ;
+fragment INTEGER
+	: 	( '+' | '-' )? (DIGIT)+ ;
 
-FLOAT
+fragment FLOAT
 	: 	INTEGER EXPONENT | ( ( '+' | '-' )? ( (DIGIT)* '.' (DIGIT)+) | (DIGIT)+ '.' ) (EXPONENT)? ;
 
-UNSIGNED_INTEGER
+fragment UNSIGNED_INTEGER
 	:	(DIGIT)+ ;
+
+fragment NUMBER
+	:	INTEGER | FLOAT;
+
+NUMERIC	:	NUMBER | ( NUMBER '(' (UNSIGNED_INTEGER)+ ')' ) ;
 
 /*------------------------------------------------------------------
  * CHARACTER STRINGS AND FIELDS

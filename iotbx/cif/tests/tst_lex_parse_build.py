@@ -301,6 +301,7 @@ _c e43
 _d # comment
    # another comment
 '1 2'
+_e )
 """
 
 cif_quoted_string = """\
@@ -352,7 +353,6 @@ _a ;1
 _b ;
 _c 2
 """
-
 
 def exercise_partial_crystal_symmetry():
   def get_inp(u, s):
