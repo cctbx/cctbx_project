@@ -1,6 +1,8 @@
 from iotbx.cif import cod_tools
 import iotbx.cif
 from iotbx.cif.builders import CifBuilderError
+from iotbx.cif import CifParserError
+from libtbx import easy_pickle, group_args
 import os, traceback
 
 def run(args, command_name):
@@ -25,6 +27,7 @@ def run(args, command_name):
     show_times()
     return
   co = command_line.options
+  cod_ids = command_line.args
   assert [co.cif_only, co.hkl_only].count(True) <= 1
   if co.cif_only: ext = "cif"
   elif co.hkl_only: ext = "hkl"
@@ -32,37 +35,41 @@ def run(args, command_name):
   verbose = co.verbose
   parse_only = co.parse_only
   #
-  cod_hkl_cif = cod_tools.build_hkl_cif(cod_ids=None, ext=ext)
+  cod_hkl_cif = cod_tools.build_hkl_cif(cod_ids=cod_ids, ext=ext)
   cod_hkl_cif.show_summary()
   hkl_files = cod_hkl_cif.hkl
   cif_files = cod_hkl_cif.cif
   #
-  n_caught = 0
-  n_ignored = 0
-  n_success = 0
-  n_skipped = 0
+  n_total = 0
+  #
+  parsing_errors = {}
+  build_errors = {}
+  ignored_errors = {}
+  skipped = set()
+  #
   files_to_parse = []
   files_to_parse.extend(hkl_files.values())
   files_to_parse.extend(cif_files.values())
   for i, path in enumerate(files_to_parse):
+    n_total += 1
     if (i % command_line.chunk.n != command_line.chunk.i): continue
     try:
       cif_obj = iotbx.cif.reader(file_path=path)
       if parse_only: continue
       skip_file = False
+      cod_id = os.path.basename(path)
       for cif_block in cif_obj.model().values():
         value = cif_block.get("_cod_error_flag")
         keys = set(cif_block.keys())
         if (value in ["errors", "retracted"]):
           skip_file = True
-          cod_id = os.path.basename(path)
-          n_skipped += 1
+          skipped.add(cod_id)
           if verbose:
             print "SKIPPING: _cod_error_flag %s: %s" % (value, cod_id)
         elif (len(set([
           "_space_group_symop_ssg_operation_algebraic",
           "_space_group_ssg_name"]).intersection(keys)) != 0):
-          n_skipped += 1
+          skipped.add(cod_id)
           if verbose:
             print "SKIPPING: COD entry with super-space group:", cod_id
         elif (len(set([
@@ -70,7 +77,7 @@ def run(args, command_name):
               "_refln_index_m_1"]).intersection(keys)) != 0):
           if verbose:
             print "SKIPPING: COD entry with _refln_index_m:", cod_id
-          n_skipped += 1
+          skipped.add(cod_id)
       if skip_file: continue
       if path.endswith('.cif'):
         cif_obj.build_crystal_structures()
@@ -83,44 +90,60 @@ def run(args, command_name):
       return
     except CifBuilderError, e:
       e_str = str(e)
-      if not verbose and e_str.startswith(
-        "No atomic coordinates could be found"):
-        n_ignored += 1
-        continue
-      elif not verbose and e_str.startswith(
-        "No symmetry instructions could be extracted from the cif block"):
-        n_ignored += 1
+      if not verbose and (
+        e_str.startswith("No atomic coordinates could be found") or
+        e_str.startswith(
+          "No symmetry instructions could be extracted from the cif block")):
+        ignored_errors.setdefault(cod_id, e_str)
         continue
       sys.stdout.flush()
-      cod_id = os.path.basename(path)
       print >> sys.stderr, \
         "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e))
       if verbose:
         traceback.print_exc()
         print >> sys.stderr
+      build_errors.setdefault(cod_id, e_str)
       sys.stderr.flush()
-      n_caught += 1
+    except CifParserError, e:
+      sys.stdout.flush()
+      e_str = str(e)
+      parsing_errors.setdefault(cod_id, e_str)
+      print >> sys.stderr, \
+        "PARSING ERROR: %s: %s: %s" % (command_name, cod_id, e_str)
+      if verbose:
+        traceback.print_exc()
+        print >> sys.stderr
+      sys.stderr.flush()
     except Exception, e:
       sys.stdout.flush()
-      cod_id = os.path.basename(path)
+      e_str = str(e)
+      build_errors.setdefault(cod_id, e_str)
       print >> sys.stderr, \
-        "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, str(e))
+        "CAUGHT EXCEPTION: %s: %s: %s" % (command_name, cod_id, e_str)
       if verbose:
         traceback.print_exc()
         print >> sys.stderr
       sys.stderr.flush()
-      n_caught += 1
-    else:
-      n_success += 1
   print
-  print "Number successfully parsed: ", n_success
+
+  print "Number successfully parsed: %i/%i" \
+        % (n_total-len(parsing_errors),n_total)
   if not parse_only:
-    print "Number skipped:", n_skipped
-    print "Number of exceptions caught:", n_caught
-    print "Number of exceptions ignored:", n_ignored
+    print "Number skipped:", len(skipped)
+    print "Number of exceptions caught:", len(build_errors)
+    print "Number of exceptions ignored:", len(ignored_errors)
   print
   #
   show_times()
+  result = group_args(
+    n_hkl=len(hkl_files),
+    n_cif=len(cif_files),
+    n_hkl_cif_pairs=len(cod_hkl_cif.hkl_cif_pairs),
+    parsing_errors=parsing_errors,
+    build_errors=build_errors,
+    ignored_errors=ignored_errors,
+    skipped=skipped)
+  easy_pickle.dump("result_%03i.pickle" %command_line.chunk.i, result)
   print
 
 if __name__ == '__main__':
