@@ -28,8 +28,6 @@
     `Newsletter of the IUCr Commission on Crystallographic Computing 2009, 10, 75-84 <http://www.iucr.org/resources/commissions/crystallographic-computing/newsletters/10>`_.
     (`Reprint <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_)
 
-- Draft `paper about fable <fable.pdf>`_
-
 - fable and fem development was supported by supplemental funding from
   the American Recovery and Reinvestment Act (ARRA) to NIH/NIGMS grant
   number P01GM063210. The work was also supported in part by the US
@@ -249,6 +247,28 @@ the Fortran sources and different conversion options. Post conversion,
 the tests can be invaluable again during manual optimizations of the
 generated C++ code.
 
+Once tests are in place, the conversion workflow consists of cycles of:
+
+ - Running fable to generate C++ code.
+ - Analyzing conversion problems.
+ - Modifying the Fortran sources with the goal to obtain better C++ code
+   (e.g. by reworking COMMON blocks or eliminating EQUIVALENCE statements),
+   or to work around limitations of fable.
+ - Running the tests with a Fortran-compiled executable to validate the
+   Fortran changes.
+
+This sequence is repeated until the generated C++ code can be compiled
+and linked, so that testing with a C++-compiled executable can be
+inserted into the cycle. As soon as the C++ executable passes all
+tests, it is possible to leave the Fortran source behind and continue
+with development of the C++ code, but it may be very useful to continue
+changing the Fortran sources to improve the generated C++ code,
+and/or to experiment with the ``--common-equivalence-simple`` option.
+
+Conceivably there are situations in which it is best to modify the
+fable code generation rather than the Fortran sources. This was an
+important reason for releasing fable as open source (see also below).
+
 We found that Python's ``multiprocessing`` module (Python 2.6 or
 higher) is extremely helpful in parallelizing execution of tests. Given
 a modern multi-core machine it is realistic to expect completion of
@@ -276,9 +296,9 @@ during execution. A major component missing completely is the runtime
 support for direct-access files. Several unusual FORMAT edits are not
 supported. Some floating-point edits are emulated only approximately.
 
-A major reason for releasing fable and fem under an open source license
-is to enable a wider community to continually complete and improve
-the implementations, and maybe reuse fable as a framework for other
+A major reason for releasing fable and fem under an open source
+license is to enable users to continually complete and improve the
+implementations, and possibly reuse fable as a framework for other
 target languages. fable comes with a large set of unit tests so that
 any changes made can be quickly verified.
 
