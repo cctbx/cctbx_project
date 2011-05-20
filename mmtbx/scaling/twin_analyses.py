@@ -1672,7 +1672,7 @@ class twin_results_interpretation(object):
       "structure without pseudo translational symmetry is equal to the %5.4e."%(self.twin_results.patterson_p_value)
       if self.twin_results.i_ratio > 2:
         print >> self.patterson_verdict,\
-        "The detected tranlational NCS is most likely also responsible for the elevated intensity ratio."
+        "The detected translational NCS is most likely also responsible for the elevated intensity ratio."
       print >> self.patterson_verdict,\
         "See the relevant section of the logfile for more details."
 
