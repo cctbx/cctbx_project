@@ -72,12 +72,12 @@ class pprocess:
     else: #it's already a vec3 double array (e.g., single particle diffraction)
       flat_mix = self.miller_indices.as_double().as_numpy_array().astype(algorithm.numpy_t)
     if self.miller_indices.size()%FHKL_BLOCKSIZE > 0:
-      newsize = 3*FHKL_BLOCKSIZE* (1+(self.miller_indices.size()/FHKL_BLOCKSIZE))
+      newsize = 3*FHKL_BLOCKSIZE* (1+(self.miller_indices.size()//FHKL_BLOCKSIZE))
       if verbose: print "Miller indices: resetting %s array from size %d to %d"%(
                         flat_mix.dtype,flat_mix.shape[0],newsize)
       flat_mix.resize(( newsize,))
 
-    self.n_flat_hkl = flat_mix.shape[0]/3
+    self.n_flat_hkl = flat_mix.shape[0]//3
     self.flat_mix = flat_mix
 
   def prepare_scattering_sites_for_cuda(self,algorithm,verbose=False):
@@ -133,7 +133,7 @@ class pprocess:
       uniqueix_sort_order).as_numpy_array().astype(algorithm.numpy_t)
 
     if n_sites%FHKL_BLOCKSIZE > 0:
-      newsize = FHKL_BLOCKSIZE* (1+(n_sites/FHKL_BLOCKSIZE))
+      newsize = FHKL_BLOCKSIZE* (1+(n_sites//FHKL_BLOCKSIZE))
       if verbose:
         print "Scatterer xyzs: resetting %s array from size %d to %d"%(
               sorted_flat_sites.dtype,sorted_flat_sites.shape[0],3*newsize)
@@ -170,7 +170,7 @@ class pprocess:
       if self.n_terms_in_sum != 0:
         assert len(terms) == 2 * self.n_terms_in_sum
         assert len(terms) % 2 == 0
-      self.n_terms_in_sum = len(terms)/2
+      self.n_terms_in_sum = len(terms)//2
       for item in terms:
         gaussians.append(item)
 
@@ -245,10 +245,10 @@ class pprocess:
     # Assess limits based on global memory size of parallel unit
     n_atoms = len(self.scatterers)
     if n_atoms%FHKL_BLOCKSIZE > 0:
-       n_atoms = FHKL_BLOCKSIZE* (1+(n_atoms/FHKL_BLOCKSIZE))
+       n_atoms = FHKL_BLOCKSIZE* (1+(n_atoms//FHKL_BLOCKSIZE))
     n_hkl = len(self.miller_indices)
     if n_hkl%FHKL_BLOCKSIZE > 0:
-       n_hkl = FHKL_BLOCKSIZE* (1+(n_hkl/FHKL_BLOCKSIZE))
+       n_hkl = FHKL_BLOCKSIZE* (1+(n_hkl//FHKL_BLOCKSIZE))
     global_memory_atoms = 36 * n_atoms # refers to mod_fhkl_str CUDA code
     global_memory_hkl = 40 * n_hkl # refers to mod_fhkl_str CUDA code
 
@@ -344,7 +344,7 @@ class pprocess:
                  algorithm.numpy.uint32(self.scatterers.sorted_ranges[x][1]),
                  cuda.In(self.flat_mix),
                  block=(FHKL_BLOCKSIZE,1,1),
-                 grid=((self.n_flat_hkl/FHKL_BLOCKSIZE,1)))
+                 grid=((self.n_flat_hkl//FHKL_BLOCKSIZE,1)))
 
         intermediate_real += fhkl_real
         intermediate_imag += fhkl_imag
