@@ -1,7 +1,7 @@
 from libtbx import easy_pickle
-from libtbx.utils import get_svn_revision, get_build_tag
+from libtbx.utils import get_svn_revision, get_build_tag, plural_s
 from operator import itemgetter
-import glob, sys
+import glob, os, sys
 from cStringIO import StringIO
 
 class analyse(object):
@@ -33,17 +33,23 @@ class analyse(object):
     print >> out, "Number of hkl+cif pairs: ", self.n_hkl_cif_pairs
     print >> out
 
-    print >> out, "%i parsing errors" % len(self.parsing_errors)
-    print >> out, "%i exceptions" % len(self.build_errors)
-    print >> out, "%i ignored exceptions" % len(self.ignored_errors)
+    print >> out, "%i parsing error%s" % plural_s(len(self.parsing_errors))
+    print >> out, "%i exception%s" % plural_s(len(self.build_errors))
+    print >> out, "%i ignored exception%s" % plural_s(len(self.ignored_errors))
     print >> out, "%i skipping" % len(self.skipped)
     print >> out
     rev = get_svn_revision()
+    cod_path = os.environ.get("COD_SVN_WORKING_COPY")
+    cod_rev = None
+    if cod_path is not None:
+      cod_rev = get_svn_revision(path=cod_path)
     build_tag = get_build_tag()
+    if cod_rev is not None:
+      print >> out, "COD svn revision: %i" %cod_rev
     if rev is not None:
-      print >> out, "SVN revision: %i" %rev
+      print >> out, "cctbx svn revision: %i" %rev
     if build_tag is not None:
-      print >> out, "Build tag: ", build_tag
+      print >> out, "cctbx build tag: ", build_tag
 
   def show_all(self, out=None):
     if out is None: out = sys.stdout
