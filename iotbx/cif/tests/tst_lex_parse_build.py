@@ -116,7 +116,7 @@ _c                                2
         '_refln_F_meas',
         '_refln_F_sigma'))).as_miller_arrays(data_block_name="global")
     assert " ".join(sorted([str(ma.info()) for ma in miller_arrays])) \
-      == "cif:_refln_F_calc cif:_refln_F_meas,_refln_F_sigma"
+      == "cif:global,_refln_F_calc cif:global,_refln_F_meas,_refln_F_sigma"
 
 def exercise_parser(reader, builder):
   cif_model = reader(

@@ -353,7 +353,10 @@ class miller_array_builder(crystal_symmetry_builder):
             array = array.phase_transfer(
               flex.double(flex.std_string(phase_meas)), deg=True)
         array.set_observation_type(obs_type)
-        labels = [label]
+        if base_array_info.labels is not None:
+          labels = base_array_info.labels + [label]
+        else:
+          labels = [label]
         if sigmas is not None:
           labels.append('%s_sigma' %prefix)
         array.set_info(base_array_info.customized_copy(labels=labels))
@@ -374,7 +377,11 @@ class miller_array_builder(crystal_symmetry_builder):
               data = value
           array = miller.array(
             miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
-          array.set_info(base_array_info.customized_copy(labels=[key]))
+          if base_array_info.labels is not None:
+            labels = base_array_info.labels + [key]
+          else:
+            labels = [key]
+          array.set_info(base_array_info.customized_copy(labels=labels))
           self._arrays.setdefault(key, array)
 
     if len(self._arrays) == 0:
