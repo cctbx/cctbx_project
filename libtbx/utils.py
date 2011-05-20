@@ -961,7 +961,7 @@ def get_svn_revision(path=None):
   rev = None
   if path is None:
     import libtbx.load_env
-    path = os.path.dirname(libtbx.env.find_dist_path('libtbx'))
+    path = os.path.dirname(libtbx.env.dist_path(module_name="libtbx"))
   entries_path = '%s/.svn/entries' % path
   try:
     entries = open(entries_path, 'r').read()
@@ -980,13 +980,11 @@ def get_build_tag(path=None):
   tag = None
   if path is None:
     import libtbx.load_env
-    path = os.path.dirname(libtbx.env.find_dist_path('libtbx'))
+    path = os.path.dirname(libtbx.env.dist_path(module_name="libtbx"))
   tag_file_path = "%s/TAG" %path
   if os.path.exists(tag_file_path):
-    with open(tag_file_path,'r') as tag_file:
-      tag = tag_file.readline().strip()
+    tag = open(tag_file_path).readline().strip()
   return tag
-
 
 def exercise():
   from libtbx.test_utils import approx_equal, Exception_expected
@@ -1110,6 +1108,9 @@ def exercise():
   #
   for n in xrange(4):
     assert len(random_hex_code(number_of_digits=n)) == n
+  #
+  print "get_svn_revision():", get_svn_revision()
+  print "get_build_tag():", get_build_tag()
   #
   print "OK"
 
