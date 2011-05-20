@@ -17,8 +17,8 @@ def show_times_vs_complexity(times, header):
            "cpu-time",
            "simple-tm",
            "fft-time","R(%)",
-           "gpu-time",
-           "gpuf-tm","R(%)",
+           "gpu_d-tm",
+           "gpu_f-tm","R(%)",
            "d-min(angstrom)" ]
   table_data = [table_header]
   for i,t,d,g,gf,gfR,s,f,fR in times:
