@@ -94,6 +94,10 @@ class reader(object):
                        force_symmetry=False,
                        merge_equivalents=True,
                        base_array_info=None):
+    if base_array_info is None:
+      from cctbx import miller
+      base_array_info = miller.array_info(
+        source=self.file_path, source_type="cif")
     if data_block_name is not None:
       arrays = self.build_miller_arrays(
         data_block_name=data_block_name,
@@ -379,7 +383,8 @@ class cctbx_data_structures_from_cif(object):
           if '_atom_site_fract_x' in block or '_atom_site_Cartn_x' in block:
             self.xray_structures.setdefault(key, builder(block).structure)
         elif builder == builders.miller_array_builder:
+          if base_array_info is not None:
+            base_array_info = base_array_info.customized_copy(labels=[key])
           if '_refln_index_h' in block:
             self.miller_arrays.setdefault(
               key, builder(block, base_array_info=base_array_info).arrays())
-
