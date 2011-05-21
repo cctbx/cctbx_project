@@ -807,7 +807,7 @@ class structure(crystal.special_position_settings):
       if(sc.label.find("HOH")>-1):
         result.append(False)
         continue
-      for name in ["C","O","CA","N", "CB"]: 
+      for name in ["C","O","CA","N", "CB"]:
         if(sc.label[5:9].find(" %s " % name)>-1 and
            sc.scattering_type==name[0]
            ):
