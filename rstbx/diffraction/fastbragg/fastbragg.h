@@ -175,6 +175,27 @@ struct crystal {
   }
 };
 
+struct integer_miller_index_policy { // with IndexType == cctbx::miller::index<>
+
+  template <typename IndexType>
+  static void push_back_index(af::shared<IndexType>& container, vec3 const& hklvec){
+
+    /* round off to nearest whole index */
+    int h0 = static_cast<int>(std::ceil(hklvec[0]-0.5));
+    int k0 = static_cast<int>(std::ceil(hklvec[1]-0.5));
+    int l0 = static_cast<int>(std::ceil(hklvec[2]-0.5));
+    container.push_back(IndexType(h0,k0,l0));
+  }
+};
+
+struct vec3_double_miller_index_policy { // with IndexType == scitbx::vec3<double>
+
+  template <typename IndexType>
+  static void push_back_index(af::shared<IndexType>& container, vec3 const& hklvec){
+    container.push_back(hklvec);
+  }
+};
+
 //! Simulation of nanocrystallography "still".  Contributed by James Holton, LBNL.
 /*! Algorithm is described in Kirian, RA, Wang, X, Weierstall, U, Schmidt, KE,
       Spence, JCH, Hunter, M, Fromme, P, White, T, Chapman, HN & Holton, J (2010).
@@ -382,6 +403,99 @@ class fast_bragg_simulation {
       }
     }
 
+  }
+
+  template <typename IndexType, typename MillerConversionPolicy>
+  af::shared<IndexType>
+  sweep_over_detector_get_indices(bool const& verbose){
+    D.max_I = 0.0;
+    int j_image_ptr = 0;
+    int progress_pixel = 0;
+    af::shared<double> lambdas=C.get_wavelengths();
+    mat3 Amat = X.orientation.direct_matrix();
+    af::shared<IndexType> miller_set;
+
+    for(int ypixel=0;ypixel<D.ypixels;++ypixel){
+     for(int zpixel=0;zpixel<D.zpixels;++zpixel){
+
+      if(zpixel < D.roi_zmin || zpixel > D.roi_zmax ||
+         ypixel < D.roi_ymin || ypixel > D.roi_ymax) {
+           ++j_image_ptr; continue;
+      }
+
+      /* reset photon count */
+      double omega_pixel = 0;
+      double polar = 0;
+      SCITBX_ASSERT(D.oversample==1);
+      for(int suby=0;suby<D.oversample;++suby){
+       for(int subz=0;subz<D.oversample;++subz){
+
+        double Zdet = D.subpixel_sz*(zpixel*D.oversample + subz);
+        double Ydet = D.subpixel_sz*(ypixel*D.oversample + suby);
+//      Zdet = pixel*zpixel;
+//      Ydet = pixel*ypixel;
+
+        /* construct detector pixel position */
+        vec3 pixel_xyz( C.distance, Ydet-C.Ybeam, Zdet-C.Zbeam );
+
+        /* construct the unit vector to this pixel */
+        double air_path = pixel_xyz.length();
+             vec3 S_xyz = pixel_xyz/air_path;
+
+        if (omega_pixel==0.0){
+          /* solid angle subtended by a pixel: (pix/air_path)^2*cos(2theta) */
+          omega_pixel = D.pixel_sz*D.pixel_sz*C.distance/(air_path*air_path*air_path);
+
+
+          /* polarization factor for this pixel */
+          double costwotheta =
+              std::sqrt(pixel_xyz[1]*pixel_xyz[1]+pixel_xyz[2]*pixel_xyz[2])/air_path;
+          polar = 0.5*(1.0+costwotheta*costwotheta);
+        }
+
+        /* sweep over wavelengths */
+        SCITBX_ASSERT(lambdas.size()==1);
+        for(int i_lambda=0; i_lambda < lambdas.size(); ++i_lambda){
+
+            /* sweep over solid angle of beam divergence */
+            SCITBX_ASSERT(C.hdivrange==0);
+            SCITBX_ASSERT(C.vdivrange==0);
+            for(double hdiv=-C.hdivrange/2;hdiv<=C.hdivrange/2+1e-11;hdiv+=C.hdivstep){
+            for(double vdiv=-C.vdivrange/2;vdiv<=C.vdivrange/2+1e-11;vdiv+=C.vdivstep){
+
+                /* force an elliptical divergence */
+                if( C.hdivrange != 0 && C.vdivrange != 0) {
+                  if((hdiv*hdiv/C.hdivrange/C.hdivrange +
+                      vdiv*vdiv/C.vdivrange/C.vdivrange)*4 > 1.0)
+                    {continue;}
+                }
+
+                /* construct source position (flat, coherently-emitting plane) */
+                vec3 source_xyz( -C.source_distance,
+                                 std::atan(hdiv)*C.source_distance,
+                                 std::atan(vdiv)*C.source_distance);
+
+                /* construct the incident beam unit vector */
+                double source_path = source_xyz.length();
+                vec3 S0_xyz = -source_xyz/source_path;
+
+                /* construct the scattering vector for this pixel */
+                vec3 s_xyz = (S_xyz-S0_xyz)/lambdas[i_lambda];
+
+                /* construct fractional Miller indicies */
+                vec3 hklvec = (1.e-10 * Amat) * s_xyz; //Convert Amat to meters first
+
+                MillerConversionPolicy::push_back_index(miller_set,hklvec);
+            }
+            }
+          }
+         }
+        }
+        ++j_image_ptr;
+        ++progress_pixel;
+      }
+    }
+    return miller_set;
   }
 
   inline
