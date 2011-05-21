@@ -47,7 +47,8 @@ namespace boost_python { namespace {
       .def("intdata",&detector::intdata)
 
       .add_property("raw",
-                     make_getter(&detector::raw,rbv()))
+                     make_getter(&detector::raw,rbv()),
+                     make_setter(&detector::raw,dcp()))
       .add_property("pixel_sz",
                      make_getter(&detector::pixel_sz,rbv()))
     ;
@@ -119,6 +120,14 @@ namespace boost_python { namespace {
       .def("set_camera",&fast_bragg_simulation::set_camera)
       .def("set_crystal",&fast_bragg_simulation::set_crystal)
       .def("sweep_over_detector",&fast_bragg_simulation::sweep_over_detector,
+        (arg_("verbose")=false))
+      .def("sweep_over_detector_float_indices",&fast_bragg_simulation::sweep_over_detector_get_indices<
+            rstbx::diffraction::fastbragg::vec3,
+            rstbx::diffraction::fastbragg::vec3_double_miller_index_policy>,
+        (arg_("verbose")=false))
+      .def("sweep_over_detector_integer_indices",&fast_bragg_simulation::sweep_over_detector_get_indices<
+            rstbx::diffraction::fastbragg::miller_t,
+            rstbx::diffraction::fastbragg::integer_miller_index_policy>,
         (arg_("verbose")=false))
       .def("to_smv_format",&fast_bragg_simulation::to_smv_format,
         (arg_("fileout"),arg_("intfile_scale")=0,
