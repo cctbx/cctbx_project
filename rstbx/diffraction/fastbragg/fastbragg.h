@@ -425,7 +425,6 @@ class fast_bragg_simulation {
 
       /* reset photon count */
       double omega_pixel = 0;
-      double polar = 0;
       SCITBX_ASSERT(D.oversample==1);
       for(int suby=0;suby<D.oversample;++suby){
        for(int subz=0;subz<D.oversample;++subz){
@@ -445,12 +444,6 @@ class fast_bragg_simulation {
         if (omega_pixel==0.0){
           /* solid angle subtended by a pixel: (pix/air_path)^2*cos(2theta) */
           omega_pixel = D.pixel_sz*D.pixel_sz*C.distance/(air_path*air_path*air_path);
-
-
-          /* polarization factor for this pixel */
-          double costwotheta =
-              std::sqrt(pixel_xyz[1]*pixel_xyz[1]+pixel_xyz[2]*pixel_xyz[2])/air_path;
-          polar = 0.5*(1.0+costwotheta*costwotheta);
         }
 
         /* sweep over wavelengths */
