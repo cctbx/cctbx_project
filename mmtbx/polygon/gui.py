@@ -139,6 +139,12 @@ class canvas_layout (object) :
         stat_key = "angle_rmsd"
       elif (stat_key == "bonds_rmsd") :
         stat_key = "bond_rmsd"
+      elif (stat_key == "adp_mean") :
+        stat_key = "adp_mean_all"
+      elif (stat_key == "r_work_re_computed") :
+        stat_key = "r_work"
+      elif (stat_key == "r_free_re_computed") :
+        stat_key = "r_free"
       self.draw_labels(
         out=out,
         label=histogram.label,
