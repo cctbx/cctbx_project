@@ -8,6 +8,90 @@ from cctbx.array_family import flex
 from scitbx.math import approx_equal_relatively
 from libtbx.utils import xfrange
 
+
+class solvent_accessible_volume(object):
+  def __init__(self, xray_structure,
+               solvent_radius,
+               shrink_truncation_radius,
+               ignore_hydrogen_atoms=False,
+               crystal_gridding=None,
+               grid_step=None,
+               d_min=None,
+               resolution_factor=1/4,
+               atom_radii_table=None,
+               use_space_group_symmetry=False):
+    self.xray_structure = xray_structure
+    if crystal_gridding is None:
+      self.crystal_gridding = maptbx.crystal_gridding(
+        unit_cell=xray_structure.unit_cell(),
+        space_group_info=xray_structure.space_group_info(),
+        step=grid_step,
+        d_min=d_min,
+        resolution_factor=resolution_factor,
+        symmetry_flags=sgtbx.search_symmetry_flags(
+          use_space_group_symmetry=use_space_group_symmetry))
+    else:
+      self.crystal_gridding = crystal_gridding
+    if use_space_group_symmetry:
+      atom_radii = cctbx.masks.vdw_radii(
+        xray_structure, table=atom_radii_table).atom_radii
+      asu_mappings = xray_structure.asu_mappings(
+        buffer_thickness=flex.max(atom_radii)+solvent_radius)
+      scatterers_asu_plus_buffer = flex.xray_scatterer()
+      frac = xray_structure.unit_cell().fractionalize
+      for sc, mappings in zip(
+        xray_structure.scatterers(), asu_mappings.mappings()):
+        for mapping in mappings:
+          scatterers_asu_plus_buffer.append(
+            sc.customized_copy(site=frac(mapping.mapped_site())))
+      xs = xray.structure(crystal_symmetry=xray_structure,
+                          scatterers=scatterers_asu_plus_buffer)
+    else:
+      xs = xray_structure.expand_to_p1()
+    self.vdw_radii = cctbx.masks.vdw_radii(xs, table=atom_radii_table)
+    self.mask = cctbx.masks.around_atoms(
+      unit_cell=xs.unit_cell(),
+      space_group_order_z=xs.space_group().order_z(),
+      sites_frac=xs.sites_frac(),
+      atom_radii=self.vdw_radii.atom_radii,
+      gridding_n_real=self.crystal_gridding.n_real(),
+      solvent_radius=solvent_radius,
+      shrink_truncation_radius=shrink_truncation_radius)
+    if use_space_group_symmetry:
+      tags = self.crystal_gridding.tags()
+      tags.tags().apply_symmetry_to_mask(self.mask.data)
+    self.flood_fill = cctbx.masks.flood_fill(
+      self.mask.data, xray_structure.unit_cell())
+    self.exclude_void_flags = [False] * self.flood_fill.n_voids()
+    self.solvent_accessible_volume = self.n_solvent_grid_points() \
+        / self.mask.data.size() * xray_structure.unit_cell().volume()
+
+  def n_voids(self):
+    return self.flood_fill.n_voids()
+
+  def n_solvent_grid_points(self):
+    return sum([self.mask.data.count(i+2) for i in range(self.n_voids())
+                if not self.exclude_void_flags[i]])
+
+  def show_summary(self, log=None):
+    if log is None: log = sys.stdout
+    print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
+    print >> log, "shrink_truncation_radius: %.2f" %(
+      self.mask.shrink_truncation_radius)
+    print >> log, "van der Waals radii:"
+    self.vdw_radii.show(log=log)
+    print >> log
+    print >> log, "Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
+      self.solvent_accessible_volume,
+      100 * self.solvent_accessible_volume /
+      self.xray_structure.unit_cell().volume())
+    n_voids = self.n_voids()
+    print >> log
+    self.flood_fill.show_summary(log=log)
+
+
+
+
 class mask(object):
   def __init__(self, xray_structure, observations, use_set_completion=False):
     self.xray_structure = xray_structure
@@ -35,47 +119,21 @@ class mask(object):
               use_space_group_symmetry=False):
     if grid_step is not None: d_min = None
     else: d_min = self.fo2.d_min()
-    if crystal_gridding is None:
-      self.crystal_gridding = maptbx.crystal_gridding(
-        unit_cell=self.xray_structure.unit_cell(),
-        space_group_info=self.xray_structure.space_group_info(),
-        step=grid_step,
-        d_min=d_min,
-        resolution_factor=resolution_factor,
-        symmetry_flags=sgtbx.search_symmetry_flags(
-          use_space_group_symmetry=use_space_group_symmetry))
-    else:
-      self.crystal_gridding = crystal_gridding
-    if use_space_group_symmetry:
-      atom_radii = cctbx.masks.vdw_radii(
-        self.xray_structure, table=atom_radii_table).atom_radii
-      asu_mappings = self.xray_structure.asu_mappings(
-        buffer_thickness=flex.max(atom_radii)+solvent_radius)
-      scatterers_asu_plus_buffer = flex.xray_scatterer()
-      frac = self.xray_structure.unit_cell().fractionalize
-      for sc, mappings in zip(
-        self.xray_structure.scatterers(), asu_mappings.mappings()):
-        for mapping in mappings:
-          scatterers_asu_plus_buffer.append(
-            sc.customized_copy(site=frac(mapping.mapped_site())))
-      xs = xray.structure(crystal_symmetry=self.xray_structure,
-                          scatterers=scatterers_asu_plus_buffer)
-    else:
-      xs = self.xray_structure.expand_to_p1()
-    self.vdw_radii = cctbx.masks.vdw_radii(xs, table=atom_radii_table)
-    self.mask = cctbx.masks.around_atoms(
-      unit_cell=xs.unit_cell(),
-      space_group_order_z=xs.space_group().order_z(),
-      sites_frac=xs.sites_frac(),
-      atom_radii=self.vdw_radii.atom_radii,
-      gridding_n_real=self.crystal_gridding.n_real(),
-      solvent_radius=solvent_radius,
-      shrink_truncation_radius=shrink_truncation_radius)
-    if use_space_group_symmetry:
-      tags = self.crystal_gridding.tags()
-      tags.tags().apply_symmetry_to_mask(self.mask.data)
-    self.flood_fill = cctbx.masks.flood_fill(
-      self.mask.data, self.xray_structure.unit_cell())
+    result = solvent_accessible_volume(
+      self.xray_structure,
+      solvent_radius,
+      shrink_truncation_radius,
+      ignore_hydrogen_atoms=ignore_hydrogen_atoms,
+      crystal_gridding=crystal_gridding,
+      grid_step=grid_step,
+      d_min=d_min,
+      resolution_factor=resolution_factor,
+      atom_radii_table=atom_radii_table,
+      use_space_group_symmetry=use_space_group_symmetry)
+    self.crystal_gridding = result.crystal_gridding
+    self.vdw_radii = result.vdw_radii
+    self.mask = result.mask
+    self.flood_fill = result.flood_fill
     self.exclude_void_flags = [False] * self.flood_fill.n_voids()
     self.solvent_accessible_volume = self.n_solvent_grid_points() \
         / self.mask.data.size() * self.xray_structure.unit_cell().volume()
