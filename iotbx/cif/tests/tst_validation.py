@@ -2,6 +2,7 @@ from iotbx import cif
 from iotbx.cif import validation
 from iotbx.cif.validation import smart_load_dictionary
 import libtbx.load_env
+from libtbx.test_utils import Exception_expected
 
 from urllib2 import URLError
 from cStringIO import StringIO
@@ -23,10 +24,15 @@ def exercise(args):
     exercise_smart_load(show_timings=show_timings, exercise_url=exercise_url)
   except URLError:
     print "Skipping tst_validation.exercise_smart_load() because of URLError."
+  exercise_dictionary_merging()
   exercise_validation()
 
 def exercise_validation():
   cd = validation.smart_load_dictionary(name="cif_core.dic")
+  assert isinstance(cd.deepcopy(), validation.dictionary)
+  assert cd.deepcopy() == cd
+  assert isinstance(cd.copy(), validation.dictionary)
+  assert cd.copy() == cd
   #
   cm_invalid = cif.reader(input_string=cif_invalid).model()
   s = StringIO()
@@ -86,6 +92,73 @@ def exercise_smart_load(show_timings=False, exercise_url=False):
       print url_timer.report()
       print url_to_file_timer.report()
       print file_timer.report()
+
+def exercise_dictionary_merging():
+  def cif_dic_from_str(string):
+    on_this_dict = """
+    data_on_this_dictionary
+    _dictionary_name dummy
+    _dictionary_version 1.0
+    """
+    return validation.dictionary(
+      cif.reader(input_string=on_this_dict+string).model())
+  test_cif = cif.reader(input_string="""
+  data_test
+  _dummy 1234.5
+  """).model()
+  dict_official = cif_dic_from_str("""
+  data_dummy
+  _name '_dummy'
+  _type numb
+  _enumeration_range 0: # i.e. any positive number
+  """)
+  dict_a = cif_dic_from_str("""
+  data_dummy_modified
+  _name '_dummy'
+  _enumeration_range 0:1000
+  """)
+  dict_b = cif_dic_from_str("""
+  data_dummy
+  _name '_dummy'
+  _type_extended integer
+  """)
+  dict_c = cif_dic_from_str("""
+  data_dummy
+  _name '_dummy'
+  _type char
+  """)
+  test_cif.validate(dict_official)
+  try: dict_official.deepcopy().update(other=dict_a, mode="strict")
+  except AssertionError: pass
+  else: raise Exception_expected
+  dict_oa = dict_official.deepcopy()
+  dict_oa.update(other=dict_a, mode="overlay")
+  assert dict_oa["dummy"]["_type"] == "numb"
+  assert dict_oa["dummy"]["_enumeration_range"] == "0:1000"
+  assert test_cif.validate(dict_oa, out=StringIO()).error_count == 1
+  dict_ao = dict_a.deepcopy()
+  dict_ao.update(other=dict_official, mode="overlay")
+  assert dict_ao["dummy_modified"]["_type"] == "numb"
+  assert dict_ao["dummy_modified"]["_enumeration_range"] == "0:"
+  assert test_cif.validate(dict_ao).error_count == 0
+  dict_ob = dict_official.deepcopy()
+  dict_ob.update(other=dict_b, mode="overlay")
+  assert dict_ob["dummy"]["_type"] == "numb"
+  assert dict_ob["dummy"]["_type_extended"] == "integer"
+  assert test_cif.validate(dict_ob).error_count == 0
+  dict_ob = dict_official.deepcopy()
+  dict_ob.update(other=dict_b, mode="replace")
+  assert "_type" not in dict_ob["dummy"]
+  assert dict_ob["dummy"]["_type_extended"] == "integer"
+  assert test_cif.validate(dict_ob).error_count == 0
+  dict_oc = dict_official.deepcopy()
+  dict_oc.update(other=dict_c, mode="replace")
+  assert dict_oc["dummy"]["_type"] == "char"
+  assert test_cif.validate(dict_oc).error_count == 0
+  dict_oc = dict_official.deepcopy()
+  dict_oc.update(other=dict_c, mode="overlay")
+  errors = test_cif.validate(dict_oc)
+
 
 cif_invalid = """data_1
 _made_up_name a                            # warning 1001
