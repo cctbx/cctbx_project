@@ -18,8 +18,8 @@ def run(args, out=sys.stdout):
                           action="store",
                           default="cif")
                   .option(None, "--dic",
-                          action="store",
-                          default="cif_core.dic")
+                          action="append",
+                          dest="dictionaries")
                   .option(None, "--show_warnings",
                           action="store_true")
                   .option(None, "--show_timings",
@@ -35,8 +35,13 @@ def run(args, out=sys.stdout):
       abs_path = libtbx.env.find_in_repositories(
         relative_path=filepath, test=os.path.isfile)
     if abs_path is not None: filepath = abs_path
-  cif_dic = command_line.options.dic
-  cif_dic = validation.smart_load_dictionary(name=cif_dic)
+  cif_dics = command_line.options.dictionaries
+  if cif_dics is None:
+    cif_dics = ["cif_core.dic"]
+  cif_dic = validation.smart_load_dictionary(name=cif_dics[0])
+  if len(cif_dics) > 1:
+    [cif_dic.update(
+      validation.smart_load_dictionary(name=d)) for d in cif_dics[1:]]
   show_warnings = command_line.options.show_warnings == True
   show_timings = command_line.options.show_timings == True
   if os.path.isdir(filepath):

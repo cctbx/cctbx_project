@@ -1,6 +1,7 @@
 from iotbx.cif import builders, model, errors
 import libtbx.load_env
 from libtbx import smart_open
+import copy
 import os
 import shutil
 import re
@@ -387,6 +388,50 @@ class dictionary(model.cif):
         else:
           self.report_error(2504, child=key, parent=link_parent) # missing parent
 
+  def update(self, other=None, mode="strict", **kwargs):
+    assert mode in ("strict", "replace", "overlay")
+    # Make progressively weaker assumptions about "other"
+    if other is None:
+      pass
+    elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
+      for k, v in other.iteritems():
+        if k == "on_this_dictionary": continue
+        name = v.name
+        try:
+          block_name_self = self.find_definition(name)
+        except KeyError:
+          block_name_self = None
+        if mode == "strict":
+          assert block_name_self is None and k not in v
+          self[k] = v
+        elif mode == "replace":
+          if block_name_self is not None:
+            self[block_name_self] = v
+          else:
+            self[k] = v
+        elif mode == "overlay":
+          if block_name_self is not None:
+            self[block_name_self].update(v)
+          else:
+            self[k] = v
+
+    elif hasattr(other, 'keys'):
+      for k in other.keys():
+        self[k] = other[k]
+    else:
+      for k, v in other:
+        self[k] = v
+    if kwargs:
+      self.update(kwargs)
+
+  def __copy__(self):
+    return dictionary(model.cif.copy(self))
+
+  copy = __copy__
+
+  def __deepcopy__(self, memo):
+    return dictionary(model.cif.__deepcopy__(self, memo))
+
 class definition_base:
 
   def name(self):
@@ -444,12 +489,14 @@ class DDL1_definition(model.block, definition_base):
   'related_function': '_related_function',
   }
 
-  def __init__(self, other):
-    self._items = other._items
-    self.loops = other.loops
-    self.saves = other.saves
-    self._set = other._set
-    self.keys_lower = other.keys_lower
+  def __init__(self, other=None):
+    model.block.__init__(self)
+    if other is not None:
+      self._items = other._items
+      self.loops = other.loops
+      self.saves = other.saves
+      self._set = other._set
+      self.keys_lower = other.keys_lower
 
   def dependent(self):
     return None
@@ -480,11 +527,13 @@ class DDL2_definition(model.save, definition_base):
   'related_function': '_item_related.function_code',
   }
 
-  def __init__(self, other):
-    self._items = other._items
-    self.loops = other.loops
-    self._set = other._set
-    self.keys_lower = other.keys_lower
+  def __init__(self, other=None):
+    model.save.__init__(self)
+    if other is not None:
+      self._items = other._items
+      self.loops = other.loops
+      self._set = other._set
+      self.keys_lower = other.keys_lower
 
   def get_min_max(self):
     return (self.get('_item_range.minimum'), self.get('_item_range.maximum'))
