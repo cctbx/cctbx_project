@@ -111,6 +111,7 @@ namespace {
         .def("xyz", &w_t::xyz)
         .def("rotate", &w_t::rotate)
         .def("np",&w_t::np)
+        .def("weight_sum",&w_t::weight_sum)
         .def("occupied_sites", &w_t::occupied_sites)
         .def("status", &w_t::print_status)
         .def("border", &w_t::border)
