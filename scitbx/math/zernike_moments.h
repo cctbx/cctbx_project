@@ -41,7 +41,8 @@ namespace zernike {
              scitbx::af::const_ref< FloatType > density
            ):
            NP_(n_point), dx_(1.0/static_cast<FloatType>(NP_) ), uniform_(uniform),fixed_dx_(fixed_dx),
-           splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction), NP_MAX_(200), rg_(0.0), rel_rg_(0.0), external_rmax_(external_rmax)
+           splat_range_(splat_range), natom_(xyz.size()), center_(0,0,0), fract_(fraction), NP_MAX_(200),
+           rg_(0.0), rel_rg_(0.0), external_rmax_(external_rmax), weight_sum_(0.0)
       {
         FloatType tmp_r2;
         for(int i=0;i<natom_;i++) {
@@ -67,9 +68,9 @@ namespace zernike {
 
         if(fixed_dx_) {
           dx_=dx;
-          NP_ = int(rmax_/dx)+1;
+          NP_ = int(rmax_/dx+0.5);
           if(NP_ > NP_MAX_) NP_=NP_MAX_;
-          dx_ = 1.0/static_cast<FloatType>(NP_);
+          dx_ = 1.0/static_cast<FloatType>(NP_); //not fixed dx_ if NP_>NP_MAX_ for efficiency consideration
         }
 
         scale_ = 1.0/rmax_*fract_;
@@ -158,6 +159,7 @@ namespace zernike {
       }
 
       int np() { return NP_;}
+      FloatType weight_sum() {return weight_sum_; }
 
       scitbx::af::shared< scitbx::vec3< FloatType> > xyz() {return xyz_;}
 
@@ -283,17 +285,21 @@ namespace zernike {
 
       void find_nbr() {
         FloatType splat2=splat_range_*splat_range_;
-        FloatType d2=0;
+        FloatType d2(0.0), this_weight(0.0);
         for(int i=-splat_range_;i<=splat_range_;i++)
           for(int j=-splat_range_;j<=splat_range_;j++)
             for(int k=-splat_range_;k<=splat_range_;k++) {
-            //  d2 = (i*i+j*j+k*k);
+              d2 = (i*i+j*j+k*k);
             //  if(d2 <= splat2) {
                 neighbors_.push_back(scitbx::vec3<int>(i,j,k) );
-                weight_.push_back( std::exp(-d2/9.0) );
+                this_weight=std::exp(-d2/10.0);
+                weight_sum_ += this_weight;
+                weight_.push_back( this_weight );
              // }
             }
         n_nbr_=neighbors_.size();
+        for(int i=0;i<n_nbr_;i++)
+          weight_[i] /= weight_sum_;
         return;
       }
 
@@ -342,7 +348,7 @@ namespace zernike {
       scitbx::af::shared< scitbx::vec3<FloatType> > scaled_xyz_;
       int natom_, NP_, NP_MAX_;
       bool uniform_, fixed_dx_;
-      FloatType dx_, splat_range_, rmax_, scale_, fract_, rg_, rel_rg_, external_rmax_;
+      FloatType dx_, splat_range_, rmax_, scale_, fract_, rg_, rel_rg_, external_rmax_, weight_sum_;
       scitbx::vec3<FloatType> center_;
       af::shared< af::shared< af::shared<FloatType> > > value_;
   };
