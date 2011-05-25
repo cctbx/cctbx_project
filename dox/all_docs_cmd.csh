@@ -106,3 +106,14 @@ if (1) then
   scitbx.python rigid_body_refinement_core.py > rigid_body_refinement_core.out
   docutils.rst2html rigid_body_refinement_core.txt > rigid_body_refinement_core.html
 endif
+#
+if (1) then
+  cd "$root/htdocs"
+  rm -rf iotbx_cif
+  mkdir iotbx_cif
+  cd iotbx_cif
+  echo 'Options Indexes' > .htaccess
+  cp -r "$root/cctbx_project/dox/rst/default.css" .
+  cp -r $root/cctbx_project/iotbx/examples/iotbx_cif.txt .
+  docutils.rst2html -stg iotbx_cif.txt > index.html
+endif
