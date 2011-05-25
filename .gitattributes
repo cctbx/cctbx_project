@@ -783,6 +783,8 @@ iotbx/detectors/tst_py_cbf.py -text
 iotbx/detectors/url_support.py -text
 iotbx/error.h svneol=native#text/plain
 iotbx/examples/__init__.py svneol=native#text/x-python
+iotbx/examples/iotbx_cif.py -text
+iotbx/examples/iotbx_cif.txt -text
 iotbx/examples/mtz_convert_free_to_work.py svneol=native#text/x-python
 iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
 iotbx/examples/pdb_hierarchy.py svneol=native#text/x-python
