@@ -40,13 +40,7 @@ def exercise_miller_arrays_as_cif_block():
 
 
 def exercise_lex_parse_build():
-  builders = [cif.builders.cif_model_builder]
-  if libtbx.env.has_module('PyCifRW'):
-    builders.append(cif.builders.PyCifRW_model_builder)
-  else:
-    print "Skipping PyCifRW builder tests"
-  for builder in builders:
-    exercise_parser(cif.reader, builder)
+  exercise_parser(cif.reader, cif.builders.cif_model_builder)
   cm = cif.reader(input_string=cif_quoted_string).model()
   assert cm['global']['_a'] == 'a"b'
   assert cm['global']['_b'] == "a dog's life"

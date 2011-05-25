@@ -4,14 +4,10 @@ import iotbx.cif
 from iotbx.cif import model
 from libtbx.utils import Sorry
 
-try:
-  import PyCifRW
-  import PyCifRW.CifFile
-except ImportError:
-  PyCifRW = None
 
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__
+
 
 class cif_model_builder:
 
@@ -59,66 +55,6 @@ class cif_model_builder:
   def model(self):
     return self._model
 
-if PyCifRW is not None:
-  class PyCifRW_model_builder:
-
-    def __init__(self):
-      self._model = PyCifRW.CifFile.CifFile()
-      self._current_block = None
-
-    def add_data_block(self, data_block_heading):
-      if self._current_block is not None:
-        # add previous block to the model
-        # PyCifRW seems to copy the block object rather than pass by reference
-        self._model[self._current_block_name] = self._current_block
-      self._current_block = PyCifRW.CifFile.CifBlock()
-      self._current_block_name = data_block_heading[data_block_heading.find('_')+1:]
-
-    def add_loop(self, header, data):
-      loop = PyCifRW.CifFile.CifLoopBlock(dimension=1)
-      for key in header:
-        loop[key] = []
-      self._makeloop(loop, [data])
-      self._current_block.insert_loop(loop)
-
-    def _makeloop(self, loopstructure, itemlists):
-      # helper function borrowed from PyCifRW YappsStarParser_1_1.py
-      if itemlists[-1] == []: itemlists.pop(-1)
-      if loopstructure.dimension == 1 and loopstructure.loops == []:
-        storage_iter = loopstructure.fast_load_iter()
-      else:
-        storage_iter = loopstructure.load_iter()
-      nowloop = loopstructure
-      for datalist in itemlists:
-        for datavalue in datalist:
-          try:
-            nowloop,target = storage_iter.next()
-          except StopIteration:
-            print "StopIter at %s/%s" % (datavalue,datalist)
-            raise StopIteration
-          target.append(datavalue)
-        nowloop.popout = True
-        nowloop,blank = storage_iter.next()
-      return loopstructure
-
-    def add_data_item(self, key, value):
-      self._current_block[str(key)] = str(value)
-
-    def model(self):
-      if self._current_block is not None:
-        # add last block to the model
-        self._model[self._current_block_name] = self._current_block
-      return self._model
-
-  def start_save_frame(self, save_frame_heading):
-    pass
-
-  def end_save_frame(self):
-    pass
-
-
-
-# Build cctbx data structures from either iotbx cif model, or PyCifRW model
 
 class crystal_symmetry_builder:
 
