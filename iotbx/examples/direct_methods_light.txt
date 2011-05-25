@@ -12,10 +12,9 @@ web page as inputs:
 
   - optional: the corresponding refined structure: `vj1132sup1.cif`_
 
-The ``iotbx.acta_c`` module is used to convert the diffraction data to
-a ``cctbx.miller.array`` object; this is supported by James Hester's
-`PyCifRW`_ library. Normalized structure factors ("E-values") are
-computed, and the largest E-values are selected for phase recycling
+The ``iotbx.cif`` module is used to convert the diffraction data to
+a ``cctbx.miller.array`` object. Normalized structure factors ("E-values")
+are computed, and the largest E-values are selected for phase recycling
 with the Tangent Formula.
 
 The Miller indices of the largest E-values are used to construct index
@@ -64,22 +63,32 @@ the ``sys.argv`` list provided by Python's standard ``sys`` module
   reflection_file_name = sys.argv[1]
 
 The ``reflection_file_name`` is used in the call of the
-``cif_as_miller_array()`` function provided by the `iotbx.acta_c`_
-module::
+``reader()`` class provided by the `iotbx.cif`_ module::
 
-  from iotbx import acta_c
-  miller_array = acta_c.cif_as_miller_array(file_name=reflection_file_name)
-  miller_array.show_comprehensive_summary()
+  import iotbx.cif
+  miller_arrays = iotbx.cif.reader(
+    file_path=reflection_file_name).as_miller_arrays()
 
-The ``iotbx.acta_c`` module makes use of the `PyCifRW`_ library to read
-CIF files. ``PyCifRW`` returns the CIF data items as plain strings. The
-``cif_as_miller_array()`` function extracts the appropriate strings
-from the object tree returned by ``PyCifRW`` to construct an instance
-of the ``cctbx.miller.array`` class, which is one of the
-`central types in the cctbx source tree`_.
+The ``iotbx.cif`` module is used to read CIF files. The ``iotbx.cif.reader()``
+class returns a Python representation of the CIF file where all the data items
+are plain strings. The ``as_miller_arrays()`` method extracts the appropriate
+strings from the CIF Python object to construct instances of the
+``cctbx.miller.array`` class, which is one of the
+`central types in the cctbx source tree`_. Since this returns a list of all the
+miller arrays found in the CIF file, we examine each array in turn to find the
+measured intensities or amplitudes::
+
+  for miller_array in miller_arrays:
+    s = str(miller_array.info())
+    if '_meas' in s:
+      if miller_array.is_xray_intensity_array():
+        break
+      elif miller_array.is_xray_amplitude_array():
+        break
+
 The ``miller.array`` class has a very large number of
 methods (`libtbx.help cctbx.miller.array`_), e.g. the
-``show_comprehensive_summary()`` method used above to obtain this
+``show_comprehensive_summary()`` method which is used to obtain this
 output::
 
   Miller array info: vj1132Isup2.hkl:F_meas,F_sigma
@@ -100,7 +109,7 @@ We can see that the ``miller_array`` contains data and sigmas, both of
 type double. It also contains Miller indices, an anomalous flag, a unit
 cell and a space_group object. These are the primary data members. The
 observation type is an optional annotation which is typically added by
-the creator of the object, in this case the ``cif_as_miller_array()``
+the creator of the object, in this case the ``as_miller_arrays()``
 function. The information in the last five lines of the output is
 calculated on the fly based on the primary information and discarded
 after the ``show_comprehensive_summary()`` call is completed.
@@ -109,14 +118,14 @@ Two other ``cctbx.miller.array`` methods are used in the following
 statements in the script::
 
   if (miller_array.is_xray_intensity_array()):
-    miller_array = miller_array.f_sq_as_f()
+    miller_array = miller_array.as_amplitude_array()
 
 If the ``miller_array`` is an intensity array, it is converted
-to an amplitude array. The ``f_sq_as_f()`` method ("sq" is short
-for "square") returns a new ``cctbx.miller.array`` instance. At
-some point during the evaluation of the statement the old and
+to an amplitude array. The ``as_amplitude_array()`` method returns a new
+``cctbx.miller.array`` instance. At some point during the evaluation of the
+statement the old and
 the new instance are both present in memory. However, after the
-``miller_array = miller_array.f_sq_as_f()`` assignment is completed,
+``miller_array = miller_array.as_amplitude_array()`` assignment is completed,
 the old ``miller_array`` instance is deleted automatically by
 the Python interpreter since there is no longer a reference to it,
 and the corresponding memory is released immediately.
@@ -428,15 +437,14 @@ verification purposes. It is processed in very much the same way as
 the ``vj1132Isup2.hkl`` file before::
 
   coordinate_file_name = sys.argv[2]
-  xray_structure = acta_c.cif_as_xray_structure(
-    file_name=coordinate_file_name,
-    data_block_name="I")
+  xray_structure = iotbx.cif.reader(
+    file_path=coordinate_file_name).build_crystal_structures(
+      data_block_name="I")
 
-The ``cif_as_xray_structure()`` call requires the name of the CIF
+The ``build_crystal_structures()`` call requires the name of the CIF
 data block name in addition to the file name. This is because Acta C
-coordinate CIF files may contain multiple structures (and because the
-``iotbx.acta_c`` module is not sophisticated enough to simply "do the
-right thing" if the CIF file contains only one structure). The result
+coordinate CIF files may contain multiple structures each within a different
+data block. The result
 is an instance of another `central type in the cctbx source tree`_,
 ``cctbx.xray.structure``. The ``xray_structure`` object is best
 understood by asking it for a summary::
@@ -694,7 +702,7 @@ Compute the correlation between ``all_e_values`` and a
 ``cctbx.xray.structure`` constructed with the top 6 peaks, using
 ``"const"`` as the ``scattering_type``.
 
-Hint: Study ``iotbx/acta_c.py`` to see how the ``xray_structure``
+Hint: Study ``iotbx/cif/builders.py`` to see how the ``xray_structure``
 is constructed from the CIF file. However, use
 ``peak_structure = xray.structure(special_position_settings=xray_structure)``.
 Study ``cctbx.xray.structure.__init__()`` to see why this works.
@@ -734,17 +742,15 @@ the Emma reference model multiple times.
 
 .. _`Python`: http://www.python.org/
 
-.. _`PyCifRW`: http://www.ansto.gov.au/natfac/ANBF/CIF/
-
 .. _`CIF`: http://www.iucr.org/iucr-top/cif/
 
 .. _`Acta Crystallographica Section C`: http://journals.iucr.org/c/journalhomepage.html
 
 .. _`vj1132Isup2.hkl`: http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl
 
-.. _`vj1132sup1.cif`: http://scripts.iucr.org/cgi-bin/sendcif?vj1132sup1
+.. _`vj1132sup1.cif`: http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132sup1.cif
 
-.. _`iotbx.acta_c`: http://cci.lbl.gov/cctbx_sources/iotbx/acta_c.py
+.. _`iotbx.cif`: http://cci.lbl.gov/cctbx_sources/iotbx/cif/__init__.py
 
 .. _`cctbx::dmtbx::triplet_generator`: http://cctbx.sourceforge.net/current/c_plus_plus/classcctbx_1_1dmtbx_1_1triplet__generator.html
 

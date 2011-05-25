@@ -1,7 +1,7 @@
 #
 # Required input files:
 #   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl
-#   http://scripts.iucr.org/cgi-bin/sendcif?vj1132sup1
+#   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132sup1.cif
 #
 # Command to run this example:
 #   iotbx.python direct_methods_light.py vj1132Isup2.hkl vj1132sup1.cif
@@ -10,14 +10,27 @@
 def run():
   import sys
   reflection_file_name = sys.argv[1]
-  from iotbx import acta_c
-  miller_array = acta_c.cif_as_miller_array(file_name=reflection_file_name)
+  import iotbx.cif
+  miller_arrays = iotbx.cif.reader(
+    file_path=reflection_file_name).as_miller_arrays()
+  for miller_array in miller_arrays:
+    s = str(miller_array.info())
+    if '_meas' in s:
+      if miller_array.is_xray_intensity_array():
+        break
+      elif miller_array.is_xray_amplitude_array():
+        break
+  if not ('_meas' in str(miller_array.info())
+          and (miller_array.is_xray_amplitude_array()
+               or miller_array.is_xray_intensity_array())):
+    print "Sorry: CIF does not contain an appropriate miller array"
+    return
   miller_array.show_comprehensive_summary()
   print
 
   if (miller_array.is_xray_intensity_array()):
     print "Converting intensities to amplitudes."
-    miller_array = miller_array.f_sq_as_f()
+    miller_array = miller_array.as_amplitude_array()
     print
 
   miller_array.setup_binner(auto_binning=True)
@@ -71,9 +84,9 @@ def run():
 
   if (len(sys.argv) > 2):
     coordinate_file_name = sys.argv[2]
-    xray_structure = acta_c.cif_as_xray_structure(
-      file_name=coordinate_file_name,
-      data_block_name="I")
+    xray_structure = iotbx.cif.reader(
+      file_path=coordinate_file_name).build_crystal_structures(
+        data_block_name="I")
     xray_structure.show_summary().show_scatterers()
     print
 
