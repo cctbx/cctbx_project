@@ -323,6 +323,7 @@ def french_wilson_scale(miller_array, params=None, log=None):
       for I, sigma_I, index in zip(cen.data(),
                                    cen.sigmas(),
                                    cen.indices()):
+        mean_intensity = d_mean_intensities[index]
         if (sigma_I <= 0) :
           if I <= 0 or sigma_I < 0 :
             rejected.append( (index, I, sigma_I, mean_intensity) )
@@ -333,7 +334,6 @@ def french_wilson_scale(miller_array, params=None, log=None):
             F = math.sqrt(I)
             sigma_F = sigma_I
         else :
-          mean_intensity = d_mean_intensities[index]
           J, sigma_J, F, sigma_F = fw_centric(
                                      I=I,
                                      sigma_I=sigma_I,
