@@ -3,7 +3,6 @@ from cctbx import miller
 from iotbx import cif
 from iotbx.cif import CifParserError
 from iotbx.cif.builders import CifBuilderError
-import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff, Exception_expected
 from cStringIO import StringIO
 import sys
