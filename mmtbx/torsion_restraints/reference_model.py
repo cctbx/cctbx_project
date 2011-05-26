@@ -14,6 +14,7 @@ import libtbx.load_env
 from libtbx.utils import format_exception, Sorry
 from mmtbx import secondary_structure
 from iotbx.pdb import common_residue_names_get_class
+from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
 import sys, re, math
 
@@ -1020,11 +1021,11 @@ class reference_model(object):
                   if angle_deg < 0:
                     angle_deg += 360.0
                   for atom in atoms:
-                    new_xyz = fit_rotamers.rotate_point_around_axis(
+                    new_xyz = rotate_point_around_axis(
                                 axis_point_1=sites_cart_residue[axis[0]],
                                 axis_point_2=sites_cart_residue[axis[1]],
                                 point=sites_cart_residue[atom],
-                                angle_deg=angle_deg)
+                                angle=angle_deg, deg=True)
                     sites_cart_residue[atom] = new_xyz
                   sites_cart_start = sites_cart_start.set_selected(
                         residue_iselection, sites_cart_residue)
@@ -1053,11 +1054,11 @@ class reference_model(object):
                     if angle_deg < 0:
                       angle_deg += 360.0
                     for atom in atoms:
-                      new_xyz = fit_rotamers.rotate_point_around_axis(
+                      new_xyz = rotate_point_around_axis(
                                   axis_point_1=sites_cart_residue[axis[0]],
                                   axis_point_2=sites_cart_residue[axis[1]],
                                   point=sites_cart_residue[atom],
-                                  angle_deg=angle_deg)
+                                  angle=angle_deg, deg=True)
                       sites_cart_residue[atom] = new_xyz
                     sites_cart_start = sites_cart_start.set_selected(
                           residue_iselection, sites_cart_residue)
