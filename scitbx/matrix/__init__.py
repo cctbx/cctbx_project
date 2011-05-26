@@ -820,6 +820,58 @@ def dihedral_angle(sites, deg=False):
   from scitbx.math import dihedral_angle
   return dihedral_angle(sites=sites, deg=deg)
 
+def __rotate_point_around_axis(
+      axis_point_1,
+      axis_point_2,
+      point,
+      angle,
+      deg=False):
+  """About 6 times slower than the implementation below.
+     Interestingly, a C++ implementation is still 2 times slower than
+     the implementation below, due to the tuple-vec3 conversion overhead.
+  """
+  pivot = col(axis_point_1)
+  axis = col(axis_point_2) - pivot
+  r = axis.axis_and_angle_as_r3_rotation_matrix(angle=angle, deg=deg)
+  return (r * (col(point) - pivot) + pivot).elems
+
+def rotate_point_around_axis(
+      axis_point_1,
+      axis_point_2,
+      point,
+      angle,
+      deg=False):
+  if (deg): angle *= math.pi/180.
+  xa,ya,za = axis_point_1
+  xb,yb,zb = axis_point_2
+  x,y,z = point
+  xl,yl,zl = xb-xa,yb-ya,zb-za
+  xlsq = xl**2
+  ylsq = yl**2
+  zlsq = zl**2
+  dlsq = xlsq + ylsq + zlsq
+  dl = dlsq**0.5
+  ca = math.cos(angle)
+  dsa = math.sin(angle)/dl
+  oca = (1-ca)/dlsq
+  xlylo = xl*yl*oca
+  xlzlo = xl*zl*oca
+  ylzlo = yl*zl*oca
+  xma,yma,zma = x-xa,y-ya,z-za
+  m1 = xlsq*oca+ca
+  m2 = xlylo-zl*dsa
+  m3 = xlzlo+yl*dsa
+  m4 = xlylo+zl*dsa
+  m5 = ylsq*oca+ca
+  m6 = ylzlo-xl*dsa
+  m7 = xlzlo-yl*dsa
+  m8 = ylzlo+xl*dsa
+  m9 = zlsq*oca+ca
+  x_new = xma*m1 + yma*m2 + zma*m3 + xa
+  y_new = xma*m4 + yma*m5 + zma*m6 + ya
+  z_new = xma*m7 + yma*m8 + zma*m9 + za
+  return (x_new,y_new,z_new)
+
 class rt(object):
 
   def __init__(self, tuple_r_t):
@@ -1533,6 +1585,18 @@ def exercise():
   assert approx_equal(_dihedral_angle(sites=sites, deg=True), expected)
   assert approx_equal(dihedral_angle(sites=sites, deg=True), expected)
   # more dihedral tests in scitbx/math/boost_python/tst_math.py
+  #
+  from libtbx import group_args
+  for deg in [False, True]:
+    args = group_args(
+      axis_point_1=sites[0],
+      axis_point_2=sites[1],
+      point=sites[2],
+      angle=13,
+      deg=True).__dict__
+    assert approx_equal(
+      rotate_point_around_axis(**args),
+      __rotate_point_around_axis(**args))
   #
   print "OK"
 

@@ -85,15 +85,16 @@ def extract_peptide_atoms (residue1_isel, residue2_isel, atom_names) :
 
 def rotate_peptide (ca1, ca2, sites_cart, selected, angle_deg) :
   from scitbx.array_family import flex
+  from scitbx.matrix import rotate_point_around_axis
   axis_point_1 = sites_cart[ca1]
   axis_point_2 = sites_cart[ca2]
   new_sites = flex.vec3_double()
   for i_seq in selected :
-    xyz_new = fit_rotamers.rotate_point_around_axis(
+    xyz_new = rotate_point_around_axis(
       axis_point_1=sites_cart[ca1],
       axis_point_2=sites_cart[ca2],
       point=sites_cart[i_seq],
-      angle_deg=angle_deg)
+      angle=angle_deg, deg=True)
     new_sites.append(xyz_new)
   return new_sites
 

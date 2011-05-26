@@ -11,13 +11,14 @@ import mmtbx.model
 import mmtbx.refinement.real_space
 from mmtbx import map_tools
 from cctbx import maptbx
-import math, sys
+import sys
 import mmtbx.monomer_library.server
 import iotbx.pdb.atom_name_interpretation
 import scitbx.graph.tardy_tree
 import iotbx.phil
 import mmtbx.monomer_library
 import mmtbx.monomer_library.rotamer_utils
+from scitbx.matrix import rotate_point_around_axis
 
 torsion_search_params_str = """\
 torsion_search
@@ -416,38 +417,6 @@ def generate_range(start, stop, step):
     inc += step
   return result
 
-def rotate_point_around_axis(axis_point_1, axis_point_2, point, angle_deg):
-  angle_rad = angle_deg*math.pi/180.
-  xa,ya,za = axis_point_1
-  xb,yb,zb = axis_point_2
-  x,y,z = point
-  xL,yL,zL = xb-xa,yb-ya,zb-za
-  xLsq = xL**2
-  yLsq = yL**2
-  zLsq = zL**2
-  dLsq = xLsq + yLsq + zLsq
-  dL = math.sqrt(dLsq)
-  ca = math.cos(angle_rad)
-  dsa = math.sin(angle_rad)/dL
-  oca = (1-ca)/dLsq
-  xLyLo = xL*yL*oca
-  xLzLo = xL*zL*oca
-  yLzLo = yL*zL*oca
-  xma,yma,zma = x-xa,y-ya,z-za
-  m1 = xLsq*oca+ca
-  m2 = xLyLo-zL*dsa
-  m3 = xLzLo+yL*dsa
-  m4 = xLyLo+zL*dsa
-  m5 = yLsq*oca+ca
-  m6 = yLzLo-xL*dsa
-  m7 = xLzLo-yL*dsa
-  m8 = yLzLo+xL*dsa
-  m9 = zLsq*oca+ca
-  x_new = xma*m1 + yma*m2 + zma*m3 + xa
-  y_new = xma*m4 + yma*m5 + zma*m6 + ya
-  z_new = xma*m7 + yma*m8 + zma*m9 + za
-  return (x_new,y_new,z_new)
-
 def torsion_search(residue_evaluator,
                    cluster_evaluators,
                    axes_and_atoms_to_rotate,
@@ -477,7 +446,7 @@ def torsion_search(residue_evaluator,
           axis_point_1 = rotamer_sites_cart[axis[0]],
           axis_point_2 = rotamer_sites_cart[axis[1]],
           point  = rotamer_sites_cart[atoms[0]],
-          angle_deg = angle_deg)])
+          angle = angle_deg, deg=True)])
       else:
         new_xyz = flex.vec3_double()
         for atom in atoms:
@@ -485,7 +454,7 @@ def torsion_search(residue_evaluator,
             axis_point_1 = rotamer_sites_cart[axis[0]],
             axis_point_2 = rotamer_sites_cart[axis[1]],
             point  = rotamer_sites_cart[atom],
-            angle_deg = angle_deg))
+            angle = angle_deg, deg=True))
       if(cluster_evaluator.is_better(sites_cart = new_xyz)):
         if(angle_deg_best is not None and
            abs(abs(angle_deg_best)-abs(angle_deg))>
@@ -498,7 +467,7 @@ def torsion_search(residue_evaluator,
           axis_point_1 = rotamer_sites_cart[axis[0]],
           axis_point_2 = rotamer_sites_cart[axis[1]],
           point  = rotamer_sites_cart[atom],
-          angle_deg = angle_deg_best)
+          angle = angle_deg_best, deg=True)
         rotamer_sites_cart[atom] = new_xyz
     if(angle_deg_good is not None):
       for atom in atoms:
@@ -506,7 +475,7 @@ def torsion_search(residue_evaluator,
           axis_point_1 = rotamer_sites_cart_[axis[0]],
           axis_point_2 = rotamer_sites_cart_[axis[1]],
           point  = rotamer_sites_cart_[atom],
-          angle_deg = angle_deg_best)
+          angle = angle_deg_best, deg=True)
         rotamer_sites_cart_[atom] = new_xyz
   for rsc in [rotamer_sites_cart, rotamer_sites_cart_]:
     if(residue_evaluator.is_better(sites_cart = rsc)):
