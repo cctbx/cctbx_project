@@ -2,6 +2,7 @@
 from __future__ import division
 import libtbx.load_env
 import iotbx.phil
+from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
@@ -45,21 +46,14 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .expert_level = 2
   }
-""" % potential_phil)
-
-refine_opt_params = iotbx.phil.parse("""
-#  min_allowed_d_min = 3.0
-#    .type = float
-#    .short_caption = Resolution cutoff for Ramachandran restraints
-#    .expert_level = 2
   rama_selection = None
     .type = atom_selection
     .short_caption = Atom selection for Ramachandran restraints
     .expert_level = 1
-  exclude_secondary_structure = False
-    .type = str
+  rama_exclude_sec_str = False
+    .type = bool
     .expert_level = 1
-""")
+""" % potential_phil)
 
 def load_tables (params=None) :
   import boost.python
@@ -333,7 +327,9 @@ def process_refinement_settings (
     secondary_structure_manager,
     d_min=None,
     log=sys.stdout,
-    scope_name="refinement.ramachandran_restraints") :
+    scope_name="refinement.pdb_interpretation.peptide_link") :
+  make_header("Extracting atoms for Ramachandran restraints", out=log)
+  from scitbx.array_family import flex
   if (params.rama_selection is None) :
     atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
   else :
@@ -351,7 +347,8 @@ Selection string resulting in error:
 Current selection string:
   %s""" % (scope_name, params.rama_selection))
       atom_selection = sele
-  if params.exclude_secondary_structure :
+  if params.rama_exclude_sec_str :
+    secondary_structure_manager.initialize(log=log)
     alpha_sele = secondary_structure_manager.alpha_selection()
     beta_sele = secondary_structure_manager.beta_selection()
     ss_sele = alpha_sele | beta_sele

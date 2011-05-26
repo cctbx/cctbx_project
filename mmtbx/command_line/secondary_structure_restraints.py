@@ -92,6 +92,7 @@ refinement {
   if params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif params.format in ["pymol", "refmac", "kinemage"] :
+    m.show_summary(out=log)
     build_proxies = m.create_hbond_proxies(
       log=log,
       restraint_type=None,
