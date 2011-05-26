@@ -116,9 +116,9 @@ def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
               continue
             altloc = ca2.fetch_labels().altloc
             i_seqs = [c1.i_seq,n2.i_seq,ca2.i_seq,c2.i_seq,n3.i_seq]
-            for i_seq in i_seqs :
-              if (not atom_selection[i_seq]) :
-                continue
+            is_selected = [ atom_selection[i_seq] for i_seq in i_seqs ]
+            if (False in is_selected) :
+              continue
             pep1 = geometry_restraints.bond(
               sites=[c1.xyz,n2.xyz],
               distance_ideal=1,

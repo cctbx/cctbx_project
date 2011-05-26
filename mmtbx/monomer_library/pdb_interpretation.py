@@ -3702,7 +3702,8 @@ class process(object):
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
-        external_energy_function=None):
+        external_energy_function=None,
+        ramachandran_atom_selection=None):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -3718,6 +3719,7 @@ class process(object):
             custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
+            ramachandran_atom_selection=ramachandran_atom_selection,
             log=self.log)
       if (self.log is not None):
         print >> self.log, \
