@@ -46,10 +46,13 @@ def exercise_lex_parse_build():
   stdout = sys.stdout
   s = StringIO()
   sys.stdout = s
-  try: cif.reader(input_string=cif_invalid_missing_value).model()
+  try: cif.reader(input_string=cif_invalid_missing_value)
   except CifParserError: pass
   else: raise Exception_expected
-  try: cif.reader(input_string=cif_invalid_string).model()
+  r = cif.reader(
+    input_string=cif_invalid_missing_value, raise_if_errors=False)
+  assert r.error_count() == 1
+  try: cif.reader(input_string=cif_invalid_string)
   except CifParserError: pass
   else: raise Exception_expected
   a = cif.reader(input_string=cif_cod)
