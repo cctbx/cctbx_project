@@ -94,6 +94,9 @@ def exercise_smart_load(show_timings=False, exercise_url=False):
       print file_timer.report()
 
 def exercise_dictionary_merging():
+  #
+  # DDL1 merging
+  #
   def cif_dic_from_str(string):
     on_this_dict = """
     data_on_this_dictionary
@@ -158,6 +161,73 @@ def exercise_dictionary_merging():
   dict_oc = dict_official.deepcopy()
   dict_oc.update(other=dict_c, mode="overlay")
   errors = test_cif.validate(dict_oc)
+  #
+  # DDL2 merging
+  #
+  def cif_dic_from_str(string):
+    header = """\
+data_test.dic
+    _dictionary.title           test.dic
+    _dictionary.version         1
+
+    loop_
+    _item_type_list.code
+    _item_type_list.primitive_code
+    _item_type_list.construct
+    _item_type_list.detail
+               code      char
+               '[_,.;:"&<>()/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+;              code item types/single words ...
+;
+"""
+    return validation.dictionary(
+      cif.reader(input_string=header+string).model())
+  dic_a = cif_dic_from_str(
+    """
+save_fred
+    _category.description       'a description'
+    _category.id                  fred
+    _category.mandatory_code      no
+    _category_key.name          'fred.id'
+     save_
+    """)
+  dic_b = cif_dic_from_str(
+    """
+save_fred
+    _category.id                  fred
+    _category.mandatory_code      yes
+    _category_key.name          'fred.id'
+    loop_
+    _category_group.id           'inclusive_group'
+                                 'atom_group'
+     save_
+""")
+  dic_c = cif_dic_from_str(
+    """
+save_bob
+    _category.id                  bob
+    _category.mandatory_code      yes
+    _category_key.name          'bob.id'
+     save_
+""")
+  assert dic_a.deepcopy() == dic_a
+  assert dic_a.copy() == dic_a
+  try: dic_a.deepcopy().update(dic_b, mode="strict")
+  except AssertionError: pass
+  else: raise Exception_expected
+  dic_ab = dic_a.deepcopy()
+  dic_ab.update(dic_b, mode="replace")
+  assert dic_ab == dic_b
+  dic_ab = dic_a.deepcopy()
+  dic_ab.update(dic_b, mode="overlay")
+  assert dic_ab['test.dic']['fred']['_category.mandatory_code'] == 'yes'
+  assert '_category.description' in dic_ab['test.dic']['fred']
+  assert '_category_group.id' in dic_ab['test.dic']['fred']
+  for mode in ("strict", "replace", "overlay"):
+    dic_ac = dic_a.deepcopy()
+    dic_ac.update(dic_c, mode=mode)
+    assert 'fred' in dic_ac['test.dic']
+    assert 'bob' in dic_ac['test.dic']
 
 
 cif_invalid = """data_1
