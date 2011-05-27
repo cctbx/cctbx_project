@@ -1452,7 +1452,10 @@ scitbx/wigner/wigner3j.h -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
+smtbx/refinement/constraints/boost_python/direction.cpp -text
+smtbx/refinement/constraints/direction.h -text
 smtbx/refinement/constraints/parameter[!!-~]hierarchy.graffle -text svneol=unset#unset
+smtbx/refinement/constraints/tests/tst_direction.py -text
 smtbx/refinement/floating-origin-restraints-2.nb -text
 smtbx/refinement/floating-origin-restraints.nb -text
 smtbx/refinement/tests/tst_least_squares.py -text

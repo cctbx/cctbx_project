@@ -54,8 +54,20 @@ class _(boost.python.injector, ext.reparametrisation):
     return "digraph dependencies {\n%s\n}" % ';\n'.join(bits)
 
 
-# The order in which constraints are added MAKES a difference, shared site, U and/or
-# occupancy constraints must be added first for proper bookkeeping
+# The order in which constraints are added MAKES a difference, shared site, U
+#and/or occupancy constraints must be added first for proper bookkeeping
+#
+#Directions are defined as follows:
+# static id x y z
+# vector id [scatterer idices] - at least 2
+# normal id [scatterer idices] - at least 3
+#There are convinience functions for creating static directions:
+#  constraints.static_direction.calc_best_plane_normal
+#  constraints.static_direction.calc_best_line
+#  both functions taking either a set of coordinates or unit cell and a set of
+#sites
+#Directions are passed as a list of tuples:
+#  (name={one of: static,vector,normal}, id, params...)
 
 class reparametrisation(ext.reparametrisation):
   """ Enhance the C++ level reparametrisation class for ease of use """
@@ -63,6 +75,7 @@ class reparametrisation(ext.reparametrisation):
   temperature = 20 # Celsius
   twin_fractions = None
   extinction = None
+  directions = None
 
   def __init__(self,
                structure,
@@ -103,6 +116,21 @@ class reparametrisation(ext.reparametrisation):
     libtbx.adopt_optional_init_args(self, kwds)
     self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
     self.independent_scalar_parameters = shared_independent_shared_parameters()
+
+    #create referrable parameters
+    if self.directions is not None:
+      directions = {}
+      for d in self.directions:
+        print d
+        if d[0] == 'static':
+          directions[d[1]] = ext.static_direction(d[2])
+        elif d[0] == 'vector':
+          sites = [self.add_new_site_parameter(i[0]) for i in d[2:]]
+          directions[d[1]] = ext.vector_direction(sites)
+        elif d[0] == 'normal':
+          sites = [self.add_new_site_parameter(i[0]) for i in d[2:]]
+          directions[d[1]] = ext.normal_direction(sites)
+      self.directions = directions
 
     for constraint in constraints:
       constraint.add_to(self)
@@ -236,6 +264,14 @@ class reparametrisation(ext.reparametrisation):
     p = self.add(independent_scalar_parameter, value=value, variable=variable)
     self.independent_scalar_parameters.append(p)
     return p
+
+  def find_direction(self, id_):
+    res = None
+    if self.directions is not None:
+      res = self.directions.get(id_, None)
+    if res is None:
+      raise "Undefined direction: '" + id_ + "'"
+    return res
 
   def parameter_map(self):
     rv = xray.parameter_map(self.structure.scatterers())
