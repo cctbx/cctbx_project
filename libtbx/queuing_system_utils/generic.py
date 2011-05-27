@@ -201,7 +201,7 @@ class PBSJob(Job):
 
   REGEX = re.compile( r"job_state\s*=\s*(\w+)" )
 
-  def __init__(self, name, target, qinteface, args = (), kwargs = {}):
+  def __init__(self, name, target, qinterface, args = (), kwargs = {}):
 
     self.name = "%s_%d_%d" % ( name, os.getpid(), id( self ) )
     self.target = target
