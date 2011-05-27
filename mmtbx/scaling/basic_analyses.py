@@ -116,7 +116,7 @@ class basic_analyses(object):
     # XXX: for GUI
     self.overall_b_cart = getattr(aniso_scale_and_b, "overall_b_cart", None)
 
-    ## Correcting for anisotropicity
+    ## Correcting for anisotropy
     if verbose>0:
       print >> out,"Correcting for anisotropy in the data"
       print >> out

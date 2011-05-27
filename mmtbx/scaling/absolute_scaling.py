@@ -854,19 +854,19 @@ Z-scores are computed on the basis of a Bernoulli model assuming independence of
 
       print >> out
       print >> out
-      print >> out, "----------------    Anisotropicity analyses     ----------------"
+      print >> out, "----------------    Anisotropy analyses     ----------------"
       print >> out
       anirat = abs(self.eigen_values[0]-self.eigen_values[2])/self.eigen_values[0]
       self.anirat = anirat
       ani_rat_p = self.aniso_ratio_p_value(anirat)
       if ani_rat_p < 0:
         ani_rat_p = 0.0
-      print >> out, "Anisotropicity   ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e"%(anirat)
-      print >> out, "                             Anisotropic ratio p-value :  %7.3e"%(ani_rat_p)
+      print >> out, "Anisotropy    ( [MaxAnisoB-MinAnisoB]/[MaxAnisoB] ) :  %7.3e"%(anirat)
+      print >> out, "                          Anisotropic ratio p-value :  %7.3e"%(ani_rat_p)
       print >> out
-      print >> out, "     The p-value is a measure of of the severity of anisotropy as observed in the PDB."
-      print >> out, "     The p-value of %5.3e indicates that roughly %4.1f %% of dataset available in the PDB have"%(ani_rat_p,100.0*math.exp(-ani_rat_p))
-      print >> out, "     an anisotropy equal or worse as compared to this dataset."
+      print >> out, "     The p-value is a measure of the severity of anisotropy as observed in the PDB."
+      print >> out, "     The p-value of %5.3e indicates that roughly %4.1f %% of datasets available in the PDB have"%(ani_rat_p,100.0*math.exp(-ani_rat_p))
+      print >> out, "     an anisotropy equal to or worse than this dataset."
       print >> out
 
       print >> out, self.analyze_aniso_correction()
