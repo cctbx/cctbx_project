@@ -388,12 +388,10 @@ class dictionary(model.cif):
         else:
           self.report_error(2504, child=key, parent=link_parent) # missing parent
 
-  def update(self, other=None, mode="strict", **kwargs):
+  def update(self, other, mode="strict"):
     assert mode in ("strict", "replace", "overlay")
-    # Make progressively weaker assumptions about "other"
-    if other is None:
-      pass
-    elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
+    assert self.DDL_version == other.DDL_version
+    if self.DDL_version == 1:
       for k, v in other.iteritems():
         if k == "on_this_dictionary": continue
         name = v.name
@@ -414,16 +412,28 @@ class dictionary(model.cif):
             self[block_name_self].update(v)
           else:
             self[k] = v
-
-    elif hasattr(other, 'keys'):
-      for k in other.keys():
-        self[k] = other[k]
-    else:
-      for k, v in other:
-        self[k] = v
-    if kwargs:
-      self.update(kwargs)
-
+    elif self.DDL_version == 2:
+      master_block = self.values()[0]
+      for k, v in other.values()[0].saves.iteritems():
+        #name = v["_item.name"]
+        name = k
+        try:
+          save_name_self = self.find_definition(name)
+        except KeyError:
+          save_name_self = None
+        if mode == "strict":
+          assert save_name_self is None and k not in v
+          master_block[k] = v
+        elif mode == "replace":
+          if save_name_self is not None:
+            master_block[save_name_self] = v
+          else:
+            master_block[k] = v
+        elif mode == "overlay":
+          if save_name_self is not None:
+            master_block[save_name_self].update(v)
+          else:
+            master_block[k] = v
   def __copy__(self):
     return dictionary(model.cif.copy(self))
 
