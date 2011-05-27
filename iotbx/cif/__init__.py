@@ -31,7 +31,7 @@ class CifParserError(Sorry):
 class reader(object):
 
   def __init__(self, file_path=None, file_object=None, input_string=None,
-               builder=None, max_errors=50):
+               builder=None, raise_if_errors=True):
     assert [file_path, file_object, input_string].count(None) == 2
     assert has_antlr3
     self.file_path = file_path
@@ -49,9 +49,9 @@ class reader(object):
       input_string = file_object.read()
     if input_string is not None:
       self.parser = ext.fast_reader(input_string, builder)
-    if len(self.parser.lexer_errors()):
+    if raise_if_errors and len(self.parser.lexer_errors()):
       raise CifParserError(self.parser.lexer_errors()[0])
-    if len(self.parser.parser_errors()):
+    if raise_if_errors and len(self.parser.parser_errors()):
       raise CifParserError(self.parser.parser_errors()[0])
 
   def model(self):
