@@ -2,6 +2,9 @@
 # Command to run this example:
 #   iotbx.python iotbx_cif.py
 #
+# See also:
+#   http://cctbx.sourceforge.net/iotbx_cif
+#
 
 def run():
   quartz_as_cif = """\
