@@ -40,7 +40,7 @@ public:
 
   static static_direction best_line(af::shared<cart_t> const &points) {
     if (points.size() == 2)
-      return (points[1]-points[0]).normalize();
+      return static_direction((points[1]-points[0]).normalize());
     return static_direction(calc_plane_normal(points, 2));
   }
   static cart_t calc_best_line(uctbx::unit_cell const &unit_cell,

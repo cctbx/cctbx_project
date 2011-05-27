@@ -21,6 +21,8 @@ def run():
      '--normal_eqns_solving_method=naive'],
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=levenberg-marquardt'],
+    "$D/refinement/constraints/tests/tst_rigid.py",
+    "$D/refinement/constraints/tests/tst_direction.py",
     "$D/refinement/restraints/tests/tst_adp_restraints.py",
     "$D/refinement/restraints/tests/tst_manager.py",
     ["$D/refinement/restraints/tests/tst_restraints.py",
