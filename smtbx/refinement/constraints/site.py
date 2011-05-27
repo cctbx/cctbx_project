@@ -19,7 +19,7 @@ class shared_site(object):
     for i in xrange(1, len(self.indices)):
       param = reparametrisation.add(
         _.shared_site,
-        site=site,
+        reference=site,
         scatterer = reparametrisation.structure.scatterers()[
           self.indices[i]])
       reparametrisation.asu_scatterer_parameters[self.indices[i]].site = param
