@@ -332,6 +332,16 @@ class block(block_base):
       for s in self.saves.values():
         s.sort(recursive=recursive, key=key, reverse=reverse)
 
+  def __deepcopy__(self, memo):
+    new = block_base.__deepcopy__(self, memo)
+    new.saves = copy.deepcopy(self.saves, memo)
+    return new
+
+  def __copy__(self):
+    new = block_base.copy(self)
+    new.saves = self.saves.copy()
+    return new
+
 class loop(DictMixin):
   def __init__(self, header=None, data=None):
     self._columns = OrderedDict()
