@@ -1,3 +1,7 @@
+"""
+http://cctbx.sourceforge.net/iotbx_cif
+"""
+
 import libtbx.load_env
 has_antlr3 = libtbx.env.has_module('antlr3')
 
