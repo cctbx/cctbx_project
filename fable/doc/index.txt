@@ -19,7 +19,7 @@
   in the fable bundle for Windows.
 
 - The name "fable" is short for "Fortran ABLEitung". "Ableitung" is a
-  german word with can mean both "derivative" and "branching off".
+  german word which can mean both "derivative" and "branching off".
 
 - If you use fable in your work please cite:
 
