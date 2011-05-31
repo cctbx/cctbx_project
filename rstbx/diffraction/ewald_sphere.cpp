@@ -144,3 +144,59 @@ rstbx::rotation_angles::operator()(scitbx::vec3<double>const& H){
 
   return true;
 }
+
+rstbx::scattering_list::scattering_list(scitbx::af::shared<cctbx::miller::index<> > reflections,
+                           const cctbx::crystal_orientation& Ori,
+                           scitbx::vec3<double> beam_vector_B,
+                           scitbx::vec2<double> full_pass,
+                           const double& resolution,
+                           const double& detector_distance){
+
+    scitbx::vec3<double> XTD(0.,0.,detector_distance);//crystal to detector vector
+    scitbx::vec3<double> DX = XTD + scitbx::vec3<double>(1.,0.,0.); //detector x
+    scitbx::vec3<double> DY = XTD + scitbx::vec3<double>(0.,1.,0.); //detector y
+    double numerator = scitbx::mat3<double>(DX[0],DY[0],0.,
+                                            DX[1],DY[1],0.,
+                                            DX[2],DY[2],0.).determinant() -
+                       scitbx::mat3<double>(XTD[0],DY[0],0.,
+                                            XTD[1],DY[1],0.,
+                                            XTD[2],DY[2],0.).determinant() +
+                       scitbx::mat3<double>(XTD[0],DX[0],0.,
+                                            XTD[1],DX[1],0.,
+                                            XTD[2],DX[2],0.).determinant() -
+                       scitbx::mat3<double>(XTD[0],DX[0],DY[0],
+                                            XTD[1],DX[1],DY[1],
+                                            XTD[2],DX[2],DY[2]).determinant();
+
+    for (int x = 0; x < reflections.size(); ++x){
+      cctbx::miller::index<> hkl = reflections[x];
+      scitbx::vec3<double> hkld (hkl[0],hkl[1],hkl[2]);
+      scitbx::vec3<double> H = Ori.reciprocal_matrix()*hkld;
+      if (H.length()==0.0) { continue; }
+      if (1./H.length() < resolution) { continue; }//resolution cutoff
+
+      double t1 = 0.5 * (H*H) / (-beam_vector_B*H);
+      if (t1 <= 0) { continue; }
+
+      scitbx::vec3<double>C = t1 * -beam_vector_B;//actual vector to center Ewald Sphere
+
+      double Clen = C.length();
+      if (1./Clen < full_pass[1] || 1./Clen > full_pass[0]) { continue; }
+
+      scitbx::vec3<double> H1 =  H - C;
+
+      double denominator = scitbx::mat3<double>(DX[0],DY[0],H1[0],
+                                                DX[1],DY[1],H1[1],
+                                                DX[2],DY[2],H1[2]).determinant() -
+                           scitbx::mat3<double>(XTD[0],DY[0],H1[0],
+                                                XTD[1],DY[1],H1[1],
+                                                XTD[2],DY[2],H1[2]).determinant() +
+                           scitbx::mat3<double>(XTD[0],DX[0],H1[0],
+                                                XTD[1],DX[1],H1[1],
+                                                XTD[2],DX[2],H1[2]).determinant();
+
+      double t = numerator/denominator;
+      mm_coord_result.push_back( -t*H1 );
+      reflections_result.push_back( hkl );
+    }
+}
