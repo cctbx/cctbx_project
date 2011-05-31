@@ -100,9 +100,11 @@ def prime_factors_of(n):
     candidate += 1
   return result
 
-def normalize_angle(phi, deg=False):
+def normalize_angle(phi, deg=False, zero_centered=False):
   if (deg): period = 360
   else:     period = 2 * math.pi
   phi = math.fmod(phi, period)
-  if (phi < 0.): phi += period
+  if (phi < 0): phi += period
+  if (zero_centered and phi > period/2):
+    phi -= period
   return phi
