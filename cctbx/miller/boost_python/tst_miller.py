@@ -622,6 +622,23 @@ def exercise_slices () :
     slice_end=2)
   assert (list(s) == [True, False, True, False])
 
+def exercise_image_simple():
+  expected_images = [
+    "                                                ",
+    "               *********   *********   *********"]
+  for ewald_proximity,expected_image in zip([0.1, 0.5], expected_images):
+    image = miller.image_simple(
+      unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
+      miller_indices=flex.miller_index([(-1,2,3)]),
+      crystal_rotation_matrix=(1,0,0,0,1,0,0,0,1),
+      ewald_radius=0.5,
+      ewald_proximity=ewald_proximity,
+      detector_distance=5,
+      detector_size=(10,10),
+      detector_pixels=(4,4))
+    assert len(image) == 4*4*3
+    assert image.replace(chr(255), " ").replace(chr(0), "*") == expected_image
+
 def run():
   exercise_f_calc_map()
   exercise_sym_equiv()
@@ -637,6 +654,7 @@ def run():
   exercise_phase_transfer()
   exercise_union_of_indices()
   exercise_slices()
+  exercise_image_simple()
   print "OK"
 
 if (__name__ == "__main__"):

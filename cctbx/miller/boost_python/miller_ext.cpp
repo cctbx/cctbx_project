@@ -3,6 +3,7 @@
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/union_of_indices.h>
 #include <cctbx/miller/math.h>
+#include <cctbx/miller/image_simple.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -92,7 +93,6 @@ namespace {
     wrap_amplitude_normalisation();
     wrap_slices();
 
-
     def("statistical_mean",
       (double(*)(sgtbx::space_group const&,
                  bool,
@@ -105,6 +105,16 @@ namespace {
       arg("centric_flag"),
       arg("phase_integral"),
       arg("max_figure_of_merit")));
+
+    def("image_simple", image_simple, (
+      arg("unit_cell"),
+      arg("miller_indices"),
+      arg("crystal_rotation_matrix"),
+      arg("ewald_radius"),
+      arg("ewald_proximity"),
+      arg("detector_distance"),
+      arg("detector_size"),
+      arg("detector_pixels")));
   }
 
 } // namespace <anonymous>
