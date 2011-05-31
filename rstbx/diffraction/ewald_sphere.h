@@ -4,6 +4,8 @@
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
 #include <cctbx/miller.h>
+#include <scitbx/array_family/shared.h>
+#include <cctbx/crystal_orientation.h>
 
 namespace af = scitbx::af;
 namespace rstbx {
@@ -119,6 +121,27 @@ class rotation_angles: public ewald_sphere_base_model {
     //this->operator()(miller);
     return scitbx::vec2<Angle>(angle_(0), angle_(1));
   }
+};
+
+struct scattering_list {
+  scitbx::af::shared<scitbx::vec3<double> >mm_coord_result;
+  scitbx::af::shared<cctbx::miller::index<> >reflections_result;
+
+  scattering_list(scitbx::af::shared<cctbx::miller::index<> > refl,
+                           const cctbx::crystal_orientation& Ori,
+                           scitbx::vec3<double> beam_vector_B,
+                           scitbx::vec2<double> full_pass,
+                           const double& resolution,
+                           const double& detector_distance);
+
+  inline
+  scitbx::af::shared<scitbx::vec3<double> >
+  mm_coord()const {return mm_coord_result;}
+
+  inline
+  scitbx::af::shared<cctbx::miller::index<> >
+  reflections()const {return reflections_result;}
+
 };
 
 

@@ -180,6 +180,18 @@ namespace boost_python { namespace {
       .def("dangle_", &partial_spot_position_partial_H::dangle_)
     ;
 
+    class_<scattering_list >("scattering_list",
+      init<scitbx::af::shared<cctbx::miller::index<> >,
+                           const cctbx::crystal_orientation&,
+                           scitbx::vec3<double>,
+                           scitbx::vec2<double>,
+                           const double&,
+                           const double&>())
+      .def("mm_coord", &scattering_list::mm_coord)
+      .def("reflections", &scattering_list::reflections)
+    ;
+
+
   }
 
 }}} // namespace omptbx::boost_python::<anonymous>
