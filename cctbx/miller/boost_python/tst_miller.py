@@ -623,21 +623,54 @@ def exercise_slices () :
   assert (list(s) == [True, False, True, False])
 
 def exercise_image_simple():
-  expected_images = [
-    "                                                ",
-    "               *********   *********   *********"]
-  for ewald_proximity,expected_image in zip([0.1, 0.5], expected_images):
-    image = miller.image_simple(
-      unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
-      miller_indices=flex.miller_index([(-1,2,3)]),
-      crystal_rotation_matrix=(1,0,0,0,1,0,0,0,1),
-      ewald_radius=0.5,
-      ewald_proximity=ewald_proximity,
-      detector_distance=5,
-      detector_size=(10,10),
-      detector_pixels=(4,4))
-    assert len(image) == 4*4*3
-    assert image.replace(chr(255), " ").replace(chr(0), "*") == expected_image
+  from scitbx.math import euler_angles
+  from libtbx.test_utils import show_diff
+  crystal_rotation_matrix = euler_angles.xyz_matrix(80,20,30)
+  dpx, dpy = 4, 5
+  for ewald_proximity,star in [(0.1, " "), (0.5, "*")]:
+    image_lines = []
+    for point_spread in xrange(1,5+1):
+      image = miller.image_simple(
+        unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
+        miller_indices=flex.miller_index([(-1,2,1)]),
+        crystal_rotation_matrix=crystal_rotation_matrix,
+        ewald_radius=0.5,
+        ewald_proximity=ewald_proximity,
+        detector_distance=5,
+        detector_size=(10,12),
+        detector_pixels=(dpx,dpy),
+        point_spread=point_spread)
+      assert len(image) == dpx*dpy*3
+      s = image.replace(chr(255), " ").replace(chr(0), "*")
+      image_lines.extend(
+        ["|"+s[i*dpy*3:(i+1)*dpy*3:3]+"|" for i in xrange(dpx)])
+      image_lines.append("")
+    assert not show_diff("\n".join(image_lines), """\
+|     |
+|  *  |
+|     |
+|     |
+
+|     |
+| **  |
+| **  |
+|     |
+
+| *** |
+| *** |
+| *** |
+|     |
+
+|**** |
+|**** |
+|**** |
+|**** |
+
+|*****|
+|*****|
+|*****|
+|*****|
+""".replace("*", star))
 
 def run():
   exercise_f_calc_map()

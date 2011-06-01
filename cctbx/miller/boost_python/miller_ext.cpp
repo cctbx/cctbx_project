@@ -114,7 +114,8 @@ namespace {
       arg("ewald_proximity"),
       arg("detector_distance"),
       arg("detector_size"),
-      arg("detector_pixels")));
+      arg("detector_pixels"),
+      arg("point_spread")));
   }
 
 } // namespace <anonymous>
