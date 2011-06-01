@@ -139,6 +139,7 @@ class core(object):
       self.b_part      = fmodel.b_part()
       self.u_star      = fmodel.u_star()
     else: adopt_init_args(self, locals())
+    if (self.u_star is None): self.u_star = [0,0,0,0,0,0] # XXX
     if not ((type(self.shell_k_sols) is list) or (self.shell_k_sols is None)):
       assert (type(self.shell_k_sols) is float) or \
         (type(self.shell_k_sols) is int), type(self.shell_k_sols)
@@ -754,7 +755,7 @@ class manager(manager_mixin):
                         f_part_base = None,
                         k_part      = None,
                         b_part      = None):
-    if(b_cart is not None):# XXX
+    if(b_cart is not None and list(b_cart).count(None) != 6):# XXX
       u_star = adptbx.u_cart_as_u_star(
         self.f_obs().unit_cell(),adptbx.b_as_u(b_cart))
     if(self.twin_set is not None):
