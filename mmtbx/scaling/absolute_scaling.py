@@ -980,13 +980,13 @@ class kernel_normalisation(object):
       kernel_width = self.kernel_width
       )
 
-
-    #assert flex.min( self.mean_I_array ) > 0
-    sel_pos = self.mean_I_array > 0
+    sel_pos = (self.mean_I_array > 0).iselection()
+    assert sel_pos.size() > 0
+    assert sel_pos.size() >= self.mean_I_array.size() / 2
     self.mean_I_array = self.mean_I_array.select(sel_pos)
     self.d_star_sq_array = self.d_star_sq_array.select(sel_pos)
     self.var_I_array = flex.log( self.var_I_array.select( sel_pos ) )
-
+    self.weight_sum = self.weight_sum.select(sel_pos)
 
     self.mean_I_array = flex.log( self.mean_I_array )
     ## Fit a chebyshev polynome please
