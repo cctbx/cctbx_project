@@ -571,11 +571,7 @@ def correct_special_position(
       site_cart=None,
       site_label=None,
       tolerance=1,
-      error_message="Corrupt gradient calculations."):
-  """
-  During refinement it is essential to reset special positions
-  because otherwise rounding error accumulate over many cycles.
-  """
+      error_message="Excessive special position correction:"):
   assert (site_frac is None) != (site_cart is None)
   unit_cell = crystal_symmetry.unit_cell()
   if (site_frac is None):
@@ -584,20 +580,14 @@ def correct_special_position(
   distance_moved = unit_cell.distance(site_special_frac, site_frac)
   if (distance_moved > tolerance):
     error_message += "\n  unit_cell: %s" % str(unit_cell)
-    error_message += "\n  space_group_info: %s" % str(crystal_symmetry.space_group_info())
+    error_message += "\n  space_group_info: %s" % str(
+      crystal_symmetry.space_group_info())
     error_message += "\n  special_op: %s" % str(special_op)
     if (site_label is not None):
       error_message += "\n  site_label: %s" % site_label
     error_message += "\n  site_frac: %s" % str(site_frac)
     error_message += "\n  site_special_frac: %s" % str(site_special_frac)
     error_message += "\n  distance_moved: %g" % distance_moved
-    error_message += "\n  ****** This is a very critical error. ******"
-    error_message += "\n  PLEASE send this output to"
-    error_message += "\n"
-    error_message += "\n    cctbx@cci.lbl.gov"
-    error_message += "\n"
-    error_message += "\n  to help us resolve the problem."
-    error_message += "\n  Thank you in advance!"
     raise AssertionError(error_message)
   if (site_cart is None):
     return site_special_frac
