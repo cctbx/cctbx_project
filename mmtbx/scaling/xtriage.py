@@ -742,7 +742,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     ## Check if Fcalc label is available
     f_calc_miller = None
     f_calc_miller_complex = None
-    if params.scaling.input.xray_data.calc_labels is not None:
+    reference_structure = None
+    reference_params = params.scaling.input.xray_data.reference
+    if (params.scaling.input.xray_data.calc_labels is not None) :
       f_calc_miller = xray_data_server.get_xray_data(
         file_name = params.scaling.input.xray_data.file_name,
         labels = params.scaling.input.xray_data.calc_labels,
@@ -752,21 +754,28 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       )
       if not f_calc_miller.is_real_array():
         f_calc_miller = f_calc_miller.customized_copy(
-          data = flex.abs( f_calc_miller.data() ) ).set_observation_type(f_calc_miller  )
-
-      f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True, log=log)
-
-    reference_structure = None
-    if params.scaling.input.xray_data.calc_labels is None:
-      if (params.scaling.input.xray_data.reference.structure.file_name is not None):
-        if (not os.path.isfile(params.scaling.input.xray_data.reference.structure.file_name)) :
-          raise Sorry("Can't open reference structure - not a valid file.")
-        assert f_calc_miller is None
-        reference_structure = iotbx.pdb.input( file_name=params.scaling.input.xray_data.reference.structure.file_name).xray_structure_simple(
-          crystal_symmetry = miller_array.crystal_symmetry() )
-        tmp_obj = mmtbx.utils.fmodel_from_xray_structure( xray_structure = reference_structure, f_obs = miller_array)
-        f_calc_miller_complex = tmp_obj.f_model
-        f_calc_miller = abs( tmp_obj.f_model ).eliminate_sys_absent(integral_only=True, log=log).set_observation_type_xray_amplitude()
+          data = flex.abs( f_calc_miller.data() ) ).set_observation_type(
+            f_calc_miller)
+      if (f_calc_miller.is_xray_intensity_array()) :
+        print >> log, "Converting %s to amplitudes" % \
+          (params.scaling.input.xray_data.calc_labels)
+        f_calc_miller = f_calc_miller.f_sq_as_f()
+      f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True,
+        log=log)
+    elif (reference_params.structure.file_name is not None):
+      if (not os.path.isfile(reference_params.structure.file_name)) :
+        raise Sorry("Can't open reference structure - not a valid file.")
+      assert f_calc_miller is None
+      reference_structure = iotbx.pdb.input(
+        file_name=reference_params.structure.file_name).xray_structure_simple(
+        crystal_symmetry = miller_array.crystal_symmetry())
+      tmp_obj = mmtbx.utils.fmodel_from_xray_structure(
+        xray_structure = reference_structure,
+        f_obs = miller_array)
+      f_calc_miller_complex = tmp_obj.f_model
+      f_calc_miller = abs( tmp_obj.f_model ).eliminate_sys_absent(
+        integral_only=True,
+        log=log).set_observation_type_xray_amplitude()
     twin_results = None
 
 
