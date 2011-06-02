@@ -32,6 +32,8 @@ namespace cctbx { namespace miller {
     double dsy = detector_size[1];
     unsigned ps2 = point_spread / 2;
     bool point_spread_is_even_value = (point_spread % 2 == 0);
+    double circle_radius_sq = point_spread * std::max(dsx/dpx, dsy/dpy) / 2;
+    circle_radius_sq *= circle_radius_sq;
     typedef scitbx::vec3<double> v3d;
     for(std::size_t ih=0;ih<miller_indices.size();ih++) {
       v3d rv = unit_cell.reciprocal_space_vector(miller_indices[ih]);
@@ -64,6 +66,11 @@ namespace cctbx { namespace miller {
               for(int j=0;j<point_spread;j++) {
                 int pj = pyb + j;
                 if (pj < 0 || pj >= dpy) continue;
+                if (point_spread > 2) {
+                  double pcx = ((pi + 0.5) / dpx - 0.5) * dsx - dx;
+                  double pcy = ((pj + 0.5) / dpy - 0.5) * dsy - dy;
+                  if (pcx*pcx + pcy*pcy > circle_radius_sq) continue;
+                }
                 int pij = (pi*dpy+pj)*3;
                 for(int k=0;k<3;k++) {
                   result[pij+k] = static_cast<char>(0U);
