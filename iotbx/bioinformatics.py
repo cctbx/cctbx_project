@@ -1259,7 +1259,7 @@ class hhsearch_parser(hhpred_parser):
     Q \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
     Q \s+ [\w:\.|]* \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
     Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    \s+ ( [ \.\-+|=]+ ) \n
+    \s* ( [ \.\-+|=]* ) \n
     T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
     T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
     (?: T \s+ ss_dssp \s+ ( [\w-]+ ) \s* \n )?
