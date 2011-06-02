@@ -1,3 +1,5 @@
+from libtbx.utils import Abort
+import cStringIO
 import re
 import operator
 import os.path
@@ -848,18 +850,33 @@ def any_sequence_format (file_name, assign_name_if_not_defined=False) :
   return None, None
 
 def merge_sequence_files (file_names, output_file,
-    include_non_compliant=False) :
+    include_non_compliant=False, call_back_on_error=None) :
   assert (len(file_names) > 0)
-  seq_out = open(output_file, "w")
+  seq_out = cStringIO.StringIO()
   for seq_file in file_names :
     objects, non_compliant = any_sequence_format(seq_file)
+    if (objects is None) :
+      msg = ("The file '%s' could not be parsed as one of the "+
+          "standard formats.  This could either be a problem with the file, "+
+          "a non-standard format, or a bug in our code.  For further help, "+
+          "please email the developers at help@phenix-online.org.") % seq_file
+      if (hasattr(call_back_on_error, "__call__")) :
+        msg += "  (This is not a fatal error, but the combined sequence "+\
+                "file will be incomplete.)"
+        if (not call_back_on_error(msg)) :
+          raise Abort()
+        continue
+      else :
+        raise RuntimeError(msg)
     for seq_record in objects :
       name = str(seq_record.name)
       if (name == "") :
         name = "none"
       seq_out.write("> %s\n" % name)
       seq_out.write("%s\n" % seq_record.sequence)
-  seq_out.close()
+  f = open(output_file, "w")
+  f.write(seq_out.getvalue())
+  f.close()
 
 # Alignment file parsers
 class generic_alignment_parser(object):
