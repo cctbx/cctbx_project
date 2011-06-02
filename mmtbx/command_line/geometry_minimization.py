@@ -27,7 +27,8 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         sites_cart_selection=None,
         lbfgs_exception_handling_params=None,
         rmsd_bonds_termination_cutoff=0,
-        rmsd_angles_termination_cutoff=0):
+        rmsd_angles_termination_cutoff=0,
+        site_labels=None):
     self.rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff
     self.rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff
     geometry_restraints.lbfgs.lbfgs.__init__(self,
@@ -36,7 +37,8 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=lbfgs_termination_params,
       sites_cart_selection=sites_cart_selection,
-      lbfgs_exception_handling_params=lbfgs_exception_handling_params)
+      lbfgs_exception_handling_params=lbfgs_exception_handling_params,
+      site_labels=site_labels)
 
   def callback_after_step(self, minimizer):
     self.apply_shifts()

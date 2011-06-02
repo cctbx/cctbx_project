@@ -477,7 +477,8 @@ class manager(object):
         lbfgs_exception_handling_params = exception_handling_params,
         sites_cart_selection        = selection,
         rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff,
-        rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff)
+        rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
+        site_labels=self.xray_structure.scatterers().extract_labels())
       if(self.ias_selection is not None):
         for i_seq, ias_s in enumerate(self.ias_selection): # assumes that IAS appended to the back
           if(not ias_s):

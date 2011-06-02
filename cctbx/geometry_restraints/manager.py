@@ -394,16 +394,32 @@ class manager(object):
         sites_cart=None,
         flags=None,
         asu_is_inside_epsilon=None,
-        bonded_distance_cutoff_epsilon=None):
+        bonded_distance_cutoff_epsilon=None,
+        site_labels=None):
     if (bonded_distance_cutoff_epsilon is None):
       bonded_distance_cutoff_epsilon = 1.e-6
+    if (self.crystal_symmetry is None):
+      orthogonalization_matrix = None
+    else:
+      orthogonalization_matrix = self.crystal_symmetry.unit_cell() \
+        .orthogonalization_matrix()
     bonded_distance_cutoff = -1
-    def check_bonded_distance_cutoff():
-        if (    self.max_reasonable_bond_distance is not None
-            and bonded_distance_cutoff > self.max_reasonable_bond_distance):
-          raise RuntimeError(
-            "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
-              bonded_distance_cutoff, self.max_reasonable_bond_distance))
+    def check_bonded_distance_cutoff(sites_frac=None, sites_cart=None):
+      if (    self.max_reasonable_bond_distance is not None
+          and bonded_distance_cutoff > self.max_reasonable_bond_distance):
+        lines = format_distances_for_error_message(
+          pair_sym_table=self.shell_sym_tables[0],
+          larger_than=3,
+          orthogonalization_matrix=orthogonalization_matrix,
+          sites_frac=sites_frac,
+          sites_cart=sites_cart,
+          site_labels=site_labels)
+        msg = "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
+          bonded_distance_cutoff, self.max_reasonable_bond_distance)
+        if (len(lines) != 0):
+          msg += ":\n  "
+          msg += "\n  ".join(lines)
+        raise RuntimeError(msg)
     def flags_are_different():
       if (flags is None):
         if (not self._flags_bond_used_for_pair_proxies):
@@ -428,11 +444,10 @@ class manager(object):
             flex.max_default(
               values=crystal.get_distances(
                 pair_sym_table=shell_sym_table,
-                orthogonalization_matrix=
-                self.crystal_symmetry.unit_cell().orthogonalization_matrix(),
+                orthogonalization_matrix=orthogonalization_matrix,
                 sites_frac=sites_frac),
               default=0))
-        check_bonded_distance_cutoff()
+        check_bonded_distance_cutoff(sites_frac=sites_frac)
         bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
         asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
           buffer_thickness=bonded_distance_cutoff,
@@ -500,7 +515,7 @@ class manager(object):
                     pair_sym_table=shell_sym_table,
                     sites_cart=sites_cart),
                   default=0))
-            check_bonded_distance_cutoff()
+            check_bonded_distance_cutoff(sites_cart=sites_cart)
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
             asu_mappings = \
               crystal.direct_space_asu.non_crystallographic_asu_mappings(
@@ -520,11 +535,10 @@ class manager(object):
                 flex.max_default(
                   values=crystal.get_distances(
                     pair_sym_table=shell_sym_table,
-                    orthogonalization_matrix=
-                      unit_cell.orthogonalization_matrix(),
+                    orthogonalization_matrix=orthogonalization_matrix,
                     sites_frac=sites_frac),
                   default=0))
-            check_bonded_distance_cutoff()
+            check_bonded_distance_cutoff(sites_frac=sites_frac)
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
           if (asu_mappings is None
               or asu_mappings.buffer_thickness()
@@ -612,14 +626,16 @@ class manager(object):
         disable_asu_cache=False,
         normalization=False,
         external_energy_function=None,
-        extension_objects=[]):
+        extension_objects=[],
+        site_labels=None):
     if(external_energy_function is not None):
       assert self.external_energy_function is None
     else:
       external_energy_function = self.external_energy_function
     if (flags is None):
       flags = geometry_restraints.flags.flags(default=True)
-    pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
+    pair_proxies = self.pair_proxies(
+      flags=flags, sites_cart=sites_cart, site_labels=site_labels)
     (bond_proxies,
      nonbonded_proxies,
      nonbonded_function,
@@ -973,3 +989,46 @@ def construct_non_crystallographic_conserving_bonds_and_angles(
     nonbonded_types=nonbonded_types,
     nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
     max_reasonable_bond_distance=max_reasonable_bond_distance)
+
+def format_distances_for_error_message(
+      pair_sym_table,
+      larger_than,
+      orthogonalization_matrix,
+      sites_frac,
+      sites_cart,
+      site_labels):
+  assert [sites_frac, sites_cart].count(None) == 1
+  if (site_labels is not None):
+    if (sites_frac is not None):
+      assert len(site_labels) == len(sites_frac)
+    else:
+      assert len(site_labels) == len(sites_cart)
+  result = []
+  from scitbx.matrix import col, sqr
+  if (orthogonalization_matrix is not None):
+    orthogonalization_matrix = sqr(orthogonalization_matrix)
+  for i_seq,pair_sym_dict in enumerate(pair_sym_table):
+    for j_seq,sym_ops in pair_sym_dict.items():
+      for rt_mx_ji in sym_ops:
+        if (sites_cart is not None):
+          assert rt_mx_ji.is_unit_mx()
+          d_cart = col(sites_cart[i_seq]) - col(sites_cart[j_seq])
+        else:
+          d_frac = col(sites_frac[i_seq]) - col(rt_mx_ji * sites_frac[j_seq])
+          d_cart = orthogonalization_matrix * d_frac
+        dist = d_cart.length()
+        if (dist > larger_than):
+          if (rt_mx_ji.is_unit_mx()):
+            ss = ""
+          else:
+            ss = " " + str(rt_mx_ji)
+          if (site_labels is None):
+            si, sj = str(i_seq), str(j_seq)
+          else:
+            si, sj = site_labels[i_seq], site_labels[j_seq]
+          if (dist < 1000):
+            sd = "%7.3f" % dist
+          else:
+            sd = "%.6g" % dist
+          result.append("distance: %s - %s: %s%s" % (si, sj, sd, ss))
+  return result

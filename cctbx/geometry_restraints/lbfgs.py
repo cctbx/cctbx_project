@@ -14,10 +14,12 @@ class lbfgs(object):
       lbfgs_core_params=None,
       lbfgs_exception_handling_params=None,
       disable_asu_cache=False,
-      sites_cart_selection=None):
+      sites_cart_selection=None,
+      site_labels=None):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
+    self.site_labels = site_labels
     self.tmp = empty()
     self.rmsd_bonds, self.rmsd_angles = None, None
     if sites_cart_selection:
@@ -72,7 +74,8 @@ class lbfgs(object):
         sites_cart=self.tmp.sites_shifted,
         flags=self.tmp.geometry_restraints_flags,
         compute_gradients=compute_gradients,
-        disable_asu_cache=self.tmp.disable_asu_cache)
+        disable_asu_cache=self.tmp.disable_asu_cache,
+        site_labels=self.site_labels)
     bd = self.tmp.target_result.bond_deviations()
     if(bd is not None): self.rmsd_bonds = bd[2]
     ad = self.tmp.target_result.angle_deviations()

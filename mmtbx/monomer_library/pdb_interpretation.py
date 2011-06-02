@@ -3736,7 +3736,8 @@ class process(object):
         site_labels = [atom.id_str()
           for atom in self.all_chain_proxies.pdb_atoms]
         pair_proxies = self._geometry_restraints_manager.pair_proxies(
-          sites_cart=self.all_chain_proxies.sites_cart_exact())
+          sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          site_labels=site_labels)
         params = self.all_chain_proxies.params
         pair_proxies.bond_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
