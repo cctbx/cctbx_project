@@ -40,6 +40,15 @@ def do_main(filepath, host, port):
   absfile = os.path.abspath(filepath)
   get_spotfinder_url(absfile,host,port)
 
+def do_main_apache(filepath, host, port):
+  absfile = os.path.abspath(filepath)
+  import urllib2
+  Response = urllib2.urlopen(
+   "http://%s:%d/spotfinder/distl.signal_strength?filename=%s"%(
+   host,port,absfile))
+  print Response.read()
+  Response.close()
+
 
 if __name__=="__main__":
   "Client is intended to be used with [mp_]spotfinder_server_read_file.py"
