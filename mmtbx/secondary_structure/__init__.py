@@ -687,6 +687,7 @@ def run_ksdssp_direct(pdb_str) :
   return ( ksdssp_out.stdout_lines, ksdssp_out.stderr_lines )
 
 def manager_from_pdb_file (pdb_file) :
+  from iotbx import file_reader
   assert os.path.isfile(pdb_file)
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
   pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
