@@ -1004,7 +1004,7 @@ class reference_model(object):
                   fit_rotamers.axes_and_atoms_aa_specific(
                       residue=atom_group,
                       mon_lib_srv=mon_lib_srv,
-                      remove_clusters_with_all_h=False,
+                      remove_clusters_with_all_h=True,
                       log=None)
                 assert len(m_chis) == len(r_chis)
                 assert len(m_chis) == len(axis_and_atoms_to_rotate)
@@ -1039,7 +1039,7 @@ class reference_model(object):
                     fit_rotamers.axes_and_atoms_aa_specific(
                       residue=atom_group,
                       mon_lib_srv=mon_lib_srv,
-                      remove_clusters_with_all_h=False,
+                      remove_clusters_with_all_h=True,
                       log=None)
                   counter = 0
                   residue_iselection = atom_group.atoms().extract_i_seq()
