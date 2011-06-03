@@ -636,14 +636,19 @@ def exercise_image_simple():
         crystal_rotation_matrix=crystal_rotation_matrix,
         ewald_radius=0.5,
         ewald_proximity=ewald_proximity,
+        signal_max=100,
         detector_distance=5,
         detector_size=(10,12),
         detector_pixels=(dpx,dpy),
         point_spread=point_spread)
-      assert len(image) == dpx*dpy*3
-      s = image.replace(chr(255), " ").replace(chr(0), "*")
-      image_lines.extend(
-        ["|"+s[i*dpy*3:(i+1)*dpy*3:3]+"|" for i in xrange(dpx)])
+      assert image.all() == (dpx,dpy)
+      for i in xrange(dpx):
+        line = []
+        for j in xrange(dpy):
+          if (image[(i,j)]): c = star
+          else: c = " "
+          line.append(c)
+        image_lines.append("|"+"".join(line)+"|")
       image_lines.append("")
     assert not show_diff("\n".join(image_lines), """\
 |     |
