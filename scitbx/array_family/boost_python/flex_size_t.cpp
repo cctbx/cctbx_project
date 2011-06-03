@@ -23,6 +23,17 @@ namespace {
     return new flex<std::size_t>::type(result, result.size());
   }
 
+  af::shared<int>
+  as_int(
+    af::const_ref<std::size_t> const& O)
+  {
+    af::shared<int> result(O.size(), af::init_functor_null<int>());
+    for(std::size_t i=0;i<O.size();i++) {
+      result[i] = static_cast<int>(O[i]);
+    }
+    return result;
+  }
+
   bool
   next_permutation(af::ref<std::size_t> const& a)
   {
@@ -53,6 +64,7 @@ namespace {
         from_stl_vector_unsigned, default_call_policies()))
       .def("__init__", make_constructor(
         flex_size_t_from_numpy_array, default_call_policies()))
+      .def("as_int", as_int)
       .def("intersection",
         (af::shared<std::size_t>(*)(
           af::const_ref<std::size_t> const&,
