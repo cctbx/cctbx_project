@@ -691,6 +691,7 @@ def manager_from_pdb_file (pdb_file) :
   assert os.path.isfile(pdb_file)
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
   pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+  pdb_hierarchy.atoms().reset_i_seq()
   xray_structure = pdb_in.file_object.xray_structure_simple()
   ss_manager  = manager(pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure)
