@@ -79,8 +79,10 @@ molprobity_fascinating_clusters_things_gui(
 #}}}
 
 import sys, os
+from mmtbx.validation import utils
 import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
+from mmtbx.rotamer import graphics
 import libtbx.phil
 from libtbx.utils import Usage
 
@@ -107,6 +109,10 @@ def get_master_phil():
       verbose = True
       .type = bool
       .help = '''Verbose'''
+
+      plot = False
+        .type = bool
+        .help = Create graphics of plots (if Matplotlib is installed)
 }
 """)
 
@@ -143,6 +149,10 @@ class ramalyze(object):
   def run(self, args, out=sys.stdout, quiet=False):
     master_phil = get_master_phil()
     import iotbx.utils
+    args = list(args)
+    for i, arg in enumerate(args) :
+      if (arg == "--plot") :
+        args[i] = "ramalyze.plot=True"
     input_objects = iotbx.utils.process_command_line_inputs(
       args=args,
       master_phil=master_phil,
@@ -203,6 +213,22 @@ class ramalyze(object):
     todo_list = self.coot_todo(output_list)
     self.out_percent = out_percent * 100.0
     self.fav_percent = fav_percent * 100.0
+    if (self.params.ramalyze.plot) :
+      print >> out, ""
+      print >> out, "Creating images of plots..."
+      base_name = os.path.basename(filename)
+      file_base = os.path.splitext(base_name)[0]
+      for pos in ["general", "glycine", "proline", "prepro"] :
+        stats = utils.get_rotarama_data(
+          pos_type=pos,
+          convert_to_numpy_array=True)
+        plot_file_name = file_base + "_rama_%s.png" % pos
+        graphics.draw_ramachandran_plot(
+          ramalyze_data=output_list,
+          rotarama_data=stats,
+          position_type=pos,
+          file_name=plot_file_name)
+        print >> out, "  wrote %s" % plot_file_name
     return output_list, todo_list
   #}}}
 

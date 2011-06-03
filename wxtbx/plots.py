@@ -571,6 +571,7 @@ standard_colormaps = [ ("jet", "Rainbow"),
                        ("Blues", "Blue"),
                      ]
 colormap_names = [ cm_name for cm_id, cm_name in standard_colormaps ]
+colormap_id_dict = dict([ (name, id) for id, name in standard_colormaps ])
 
 def get_colormap (cm_name) :
   import matplotlib.cm
