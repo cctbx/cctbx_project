@@ -112,6 +112,7 @@ namespace {
       arg("crystal_rotation_matrix"),
       arg("ewald_radius"),
       arg("ewald_proximity"),
+      arg("signal_max"),
       arg("detector_distance"),
       arg("detector_size"),
       arg("detector_pixels"),
