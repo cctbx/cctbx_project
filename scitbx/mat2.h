@@ -184,6 +184,14 @@ namespace scitbx {
         return    fn::approx_equal(m[1], m[2], tolerance);
       }
 
+      bool
+      is_diagonal() const
+      {
+        mat2 const& m = *this;
+        return (              m[1]==0
+                && m[2]==0);
+      }
+
       //! Return the transposed of the co-factor matrix.
       /*! The inverse matrix is obtained by dividing the result
           by the determinant().
