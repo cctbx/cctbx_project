@@ -304,7 +304,8 @@ def exercise_all_twelve_neighbors():
     point_distance=2,
     buffer_thickness=-1,
     all_twelve_neighbors=True)
-  assert len(sites_cart) == 37
+  assert len(sites_cart) == 36 # depends an float_asu, which depends on cb_op,
+    # which depends on cmp_change_of_basis_mx in sgtbx/space_group_type.cpp
 
 def exercise_groel_sampling(verbose):
   crystal_symmetry = crystal.symmetry(
@@ -330,7 +331,7 @@ def exercise_groel_sampling(verbose):
         n_sites.append(sampling_generator.count_sites())
         if (verbose):
           print n_sites[-1], "%.2f" % (time.time() - t0)
-  assert n_sites == [46332, 50579, 304200, 315809,
+  assert n_sites == [41712, 45319, 304200, 315809, # depends an float_asu, ...
                      162240, 170797, 1195830, 1232774]
   print "time groel_sampling: %.2f seconds" % (time.time() - t00)
 

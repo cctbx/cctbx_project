@@ -519,6 +519,11 @@ namespace cctbx { namespace sgtbx {
           if ( ba && !bb) return true;
           if (!ba &&  bb) return false;
 
+          ba = ar.num().is_diagonal();
+          bb = br.num().is_diagonal();
+          if ( ba && !bb) return true;
+          if (!ba &&  bb) return false;
+
           ba = at.num().is_zero();
           bb = bt.num().is_zero();
           if ( ba && !bb) return true;
