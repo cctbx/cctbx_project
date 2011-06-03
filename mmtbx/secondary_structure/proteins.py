@@ -685,6 +685,8 @@ class find_helices_simple (object) :
                     prev_res=residue0,
                     residue=residue1,
                     next_res=residue2)
+                  if (phi_psi_i_seqs.count(None) > 0) :
+                    continue
                   (phi, psi) = mmtbx.rotamer.phi_psi_from_sites(
                     i_seqs=phi_psi_i_seqs,
                     sites_cart=sites_cart)
