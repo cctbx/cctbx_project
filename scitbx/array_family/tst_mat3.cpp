@@ -199,6 +199,15 @@ int main(int /*argc*/, char* /*argv*/[])
     check_false(__LINE__, t.is_symmetric(0.001));
   }
   {
+    mat3<int> a;
+    a.set_row(0, vec3<int>(1,0,0));
+    a.set_row(1, vec3<int>(0,5,0));
+    a.set_row(2, vec3<int>(0,0,9));
+    check_true(__LINE__, a.is_diagonal());
+    a[1] = 2;
+    check_false(__LINE__, a.is_diagonal());
+  }
+  {
     mat3<int> a(1,2,3,4,5,6,7,8,9);
     a.scale(vec3<int>(1,2,3));
     check_true(__LINE__, a == mat3<int>(1,4,9,4,10,18,7,16,27));
