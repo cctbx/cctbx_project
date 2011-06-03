@@ -516,7 +516,15 @@ def exercise_misc():
       f = flex_from_byte_str(byte_str=b)
       assert f.size() == a_slice.size()
       assert list(f) == list(a_slice)
-
+  #
+  for n in xrange(10):
+    a = flex.size_t(range(n)).as_int()
+    assert list(a) == range(n)
+    s = a.as_rgb_gray_scale_string(saturation=max(1,n))
+    assert len(s) == 3*n
+  s = flex.int([1,3,0,2,-1]).as_rgb_gray_scale_string(saturation=2)
+  assert [ord(c) for c in s] \
+      == [128, 128, 128, 0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]
 
 def exercise_1d_slicing_core(a):
   if (tuple(a[:]) != ()):

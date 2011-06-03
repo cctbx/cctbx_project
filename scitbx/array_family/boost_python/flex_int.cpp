@@ -65,13 +65,36 @@ namespace scitbx { namespace af { namespace boost_python {
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
   af::shared<std::string>
-  as_string(af::const_ref<int, af::flex_grid<> > const& O,
-            std::string format_string="%d")
+  as_string(
+    af::const_ref<int, af::flex_grid<> > const& O,
+    std::string format_string="%d")
   {
-    af::shared<std::string> result((reserve(O.size())));
     std::size_t n = O.accessor().size_1d();
+    af::shared<std::string> result((af::reserve(n)));
     for(std::size_t i=0;i<n;i++) {
-      result.push_back((boost::format(format_string) %O[i]).str());
+      result.push_back((boost::format(format_string) % O[i]).str());
+    }
+    return result;
+  }
+
+  std::string
+  as_rgb_gray_scale_string(
+    af::const_ref<int, af::flex_grid<> > const& O,
+    int saturation)
+  {
+    SCITBX_ASSERT(saturation != 0);
+    double scale = 1. / saturation;
+    std::size_t n = O.accessor().size_1d();
+    std::string result(n*3, '\0');
+    std::size_t j = 0;
+    for(std::size_t i=0;i<n;i++) {
+      double f = O[i] * scale;
+      if      (f < 0) f = 0;
+      else if (f > 1) f = 1;
+      char c = static_cast<char>(static_cast<int>((1 - f) * 255 + 0.5));
+      result[j++] = c;
+      result[j++] = c;
+      result[j++] = c;
     }
     return result;
   }
@@ -90,9 +113,9 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
       .def("as_bool", as_bool, (arg("strict")=true))
-      .def("as_string", as_string, (
-          arg("other"),
-          arg("format_string")="%d"))
+      .def("as_string", as_string, (arg("format_string")="%d"))
+      .def("as_rgb_gray_scale_string", as_rgb_gray_scale_string, (
+        arg("saturation")))
       .def("counts", counts<int, std::map<long, long> >::unlimited)
       .def("counts", counts<int, std::map<long, long> >::limited, (
         arg("max_keys")))
