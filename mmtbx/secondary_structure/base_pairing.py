@@ -56,9 +56,14 @@ class pair_database (object) :
       hydrogen_flag = fields[3]
       atom_pairs = [ (p.split(",")[0],
                       p.split(",")[1]) for p in fields[4:] ]
-      distances = [ (p.split(",")[2],
+      distances = [ [p.split(",")[2],
                      p.split(",")[3],
-                     p.split(",")[4]) for p in fields[4:] ]
+                     p.split(",")[4]] for p in fields[4:] ]
+      for i in range(len(distances)) :
+        for j in range(3) :
+          if (distances[i][j] == '_') :
+            distances[i][j] = None
+        distances[i] = tuple(distances[i])
       if hydrogen_flag == '+' :
         db = self._h_bond_pairs
       else :
@@ -115,7 +120,7 @@ class pair_database (object) :
     if base_pair in pair_rules :
       return pair_rules[base_pair][1]
     elif self.invert_bases(base_pair) in pair_rules :
-      return invert_pairs(pair_rules[self.invert_bases(base_pair)][1])
+      return pair_rules[self.invert_bases(base_pair)][1]
     else :
       raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
         (base_pair, pair_type, str(use_hydrogens)))
@@ -386,6 +391,7 @@ def create_hbond_proxies (
         saenger_class=base_pair.saenger_class,
         leontis_westhof_class=base_pair.leontis_westhof_class,
         use_hydrogens=use_hydrogens)
+      assert (len(atom_pairs) == len(distance_values))
       for i, (name1, name2) in enumerate(atom_pairs) :
         sele1 = """name %s and %s""" % (name1, base_pair.base1)
         sele2 = """name %s and %s""" % (name2, base_pair.base2)
@@ -404,15 +410,15 @@ def create_hbond_proxies (
         hbond_counts[j_seq] += 1
         if (use_db_values) :
           bp_distance_cut = -1
-          if distance_values[i][0] != '_':
+          if (distance_values[i][0] is not None) :
             bp_distance = float(distance_values[i][0])
           else:
             bp_distance = distance_ideal
-          if distance_values[i][1] != '_':
+          if (distance_values[i][1] is not None) :
             bp_sigma = float(distance_values[i][1])
           else:
             bp_sigma = sigma
-          if distance_values[i][2] != '_':
+          if (distance_values[i][2] is not None) :
             bp_slack = float(distance_values[i][2])
           else:
             bp_slack = slack
@@ -504,7 +510,7 @@ def _get_distance_score_for_class (atom_pairs,
   for k, (atm1, atm2) in enumerate(atom_pairs) :
     if (use_db_values) :
       pair_dist_ = distances[k][0]
-      if (pair_dist_ != '_') :
+      if (pair_dist_ is not None) :
         pair_dist = float(pair_dist_)
       else :
         pair_dist = distance_ideal
@@ -569,6 +575,31 @@ def exercise () :
       distance_ideal=3.0)
     classes = [ bp.saenger_class for bp in params.base_pair ]
     assert (classes == ["XIX", "XX", "V"])
+    # and now in reverse order...
+    params = bp_phil.fetch(source=libtbx.phil.parse("""
+      base_pair {
+        base1 = chain A and resseq 78
+        base2 = chain A and resseq 18
+        leontis_westhof_class = *Auto
+      }
+      base_pair {
+        base1 = chain A and resseq 75
+        base2 = chain A and resseq 21
+        leontis_westhof_class = *Auto
+      }
+      base_pair {
+        base1 = chain A and resseq 66
+        base2 = chain A and resseq 33
+        leontis_westhof_class = *Auto
+      }""")).extract()
+    identify_base_pairs(
+      pdb_hierarchy=hierarchy,
+      base_pairs=params.base_pair,
+      use_hydrogens=False,
+      distance_ideal=3.0)
+    classes = [ bp.saenger_class for bp in params.base_pair ]
+    assert (classes == ["XIX", "XX", "V"])
+    # TODO: test h-bond extraction in either order???
   print "OK"
 
 if __name__ == "__main__" :
