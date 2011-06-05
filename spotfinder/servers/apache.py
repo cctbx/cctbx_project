@@ -1,59 +1,73 @@
 from mod_python import apache
-import StringIO
+import StringIO,sys
 
 def handler(req):
   req.content_type = "text/plain"
   from mod_python.util import FieldStorage
   FS = FieldStorage(req)
-  filename = FS.get("filename",None)
-  bin = FS.get("bin","1")
-  assert bin=="1"
   logfile = StringIO.StringIO()
-  logfile.write(encapsulated_signal_strength(filename))
+  logfile.write(run(args=FS))
   log = logfile.getvalue()
   req.set_content_length(len(log))
   req.write(log)
   return apache.OK
 
-def encapsulated_signal_strength(filename,verbose=False):
-  import sys
-  from labelit.command_line.imagefiles import ImageFiles
-  from spotfinder.servers.spotfinder_server_read_file import module_image_stats
-  from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
-  from labelit.preferences import labelit_commands, labelit_phil
+class LoggingFramework:
+  def __init__(self):
+    self.k = StringIO.StringIO()
+    self.current_out = sys.stdout
+    self.current_err = sys.stderr
+    sys.stdout = self.k
+    sys.stderr = self.k
+
+  def __del__(self):
+    sys.stdout = self.current_out
+    sys.stderr = self.current_err
+    self.k.flush()
+    self.k.close()
+
+  def getvalue(self): return self.k.getvalue()
+
+def run(args, verbose=False):
+  from libtbx.utils import Sorry
+  import os
+  from labelit.preferences import labelit_phil
+  from spotfinder.command_line.signal_strength import master_params
 
   #For the Apache server version, do not allow site, user, or dataset preferences
   #all parameters are to be passed in through the http: query line
   labelit_phil.rollback_dataset_preferences()
 
-  Files = ImageFiles(Spotspickle_argument_module(filename))
+  logfile = LoggingFramework()
 
-  if verbose:
-    print "Final image object:"
-    Files.images[0].show_header()
-    print "beam_center_convention",Files.images[0].beam_center_convention
-    print "beam_center_reference_frame",Files.images[0].beam_center_reference_frame
+  phil_objects = []
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="distl")
 
-  logfile = StringIO.StringIO()
-  if labelit_commands.distl.bins.verbose: sys.stdout = logfile
+  for key in args.keys():
+      arg = "%s=%s"%(key,args.get(key,""))
+      try: command_line_params = argument_interpreter.process(arg=arg)
+      except: return str(Sorry("Unknown file or keyword: %s" % arg))
+      else: phil_objects.append(command_line_params)
 
-  from labelit.procedure import spotfinder_and_pickle
-  S = spotfinder_and_pickle(None, Files, spots_pickle = None)
-  if verbose: print
-  sys.stdout = sys.__stdout__
+  working_params = master_params.fetch(sources=phil_objects)
+  params = working_params.extract()
+  #working_params.show()
 
-  frames = Files.frames()
+  if not os.path.isfile(params.distl.image):
+    return str(Sorry("%s is not a readable file" % params.distl.image))
 
-  sys.stdout = logfile
+  print "Image: %s"%params.distl.image
 
-  print "Image: %s"%filename
-  from spotfinder.applications.stats_distl import pretty_image_stats,notes
-  for frame in frames:
-    #pretty_image_stats(S,frame)
-    #notes(S,frames[0])
-    module_image_stats(S,frame)
+  from spotfinder.applications import signal_strength
+  try:
+    signal_strength.run_signal_strength(params)
+  except:
+    import traceback
+    logger = StringIO.StringIO()
+    logger.write(
+    "Sorry, can't process %s.  Please contact authors.\n"% params.distl.image)
+    traceback.print_exc(file=logger)
+    return str(Sorry( logger.getvalue() ))
 
-  sys.stdout = sys.__stdout__
-  log = logfile.getvalue()
-  if verbose: print log
-  return log
+  return logfile.getvalue()
