@@ -131,6 +131,7 @@ class HKLViewFrame (wx.Frame) :
     wx.Frame.__init__(self, *args, **kwds)
     self.parent = self.GetParent()
     self.view_2d = None
+    self.view_3d = None # used by 2D subclass
     self.statusbar = self.CreateStatusBar()
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.toolbar.SetToolBitmapSize((32,32))
@@ -216,17 +217,14 @@ class HKLViewFrame (wx.Frame) :
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
     self.viewer.set_miller_array(array)
     self.viewer.Refresh()
+    self.viewer.fit_into_viewport()
     if (self.view_2d is not None) :
       self.view_2d.set_miller_array(array)
 
   def update_settings (self, *args, **kwds) :
     self.viewer.update_settings(*args, **kwds)
 
-  def OnLoadFile (self, evt) :
-    file_name = wx.FileSelector("Reflections file",
-      wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
-      default_path="",
-      flags=wx.OPEN)
+  def load_reflections_file (self, file_name) :
     if (file_name != "") :
       from iotbx import file_reader
       from iotbx.gui_tools.reflections import get_array_description
@@ -258,13 +256,25 @@ class HKLViewFrame (wx.Frame) :
           self.set_miller_array(valid_arrays[sel])
         wx.CallAfter(dlg.Destroy)
 
+  def OnLoadFile (self, evt) :
+    file_name = wx.FileSelector("Reflections file",
+      wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
+      default_path="",
+      flags=wx.OPEN)
+    self.load_reflections_file(file_name)
+
   def OnSave (self, evt) :
-    self.viewer.save_screen_shot(file_name="hklview",
-      extensions=["png"])
+    output_file = wx.FileSelector("Save image as:",
+      default_filename="hklview.png",
+      wildcard="PNG image (*.png)|*.png",
+      flags=wx.SAVE)
+    if (output_file != "") :
+      self.viewer.save_screen_shot(file_name=output_file,
+        extensions=["png"])
 
   def OnShow2D (self, evt) :
     if (self.view_2d is None) :
-      self.view_2d = HKLViewFrame2D(self, -1, "2D HKLview")
+      self.view_2d = HKLViewFrame2D(self, -1, "2D data viewer")
       self.view_2d.set_miller_array(self.viewer.miller_array)
       self.view_2d.Show()
     self.view_2d.Raise()
@@ -276,7 +286,8 @@ class HKLViewFrame (wx.Frame) :
     self.Destroy()
 
   def OnDestroy (self, event) :
-    pass
+    if (self.parent is not None) :
+      self.parent.view_3d = None
 
 class settings_window_2d (settings_window) :
   is_3d_view = False
@@ -294,10 +305,29 @@ class HKLViewFrame2D (HKLViewFrame) :
     self.settings_panel = settings_window_2d(self, -1, style=wx.RAISED_BORDER)
 
   def add_view_specific_functions (self) :
-    pass
+    item = wx.MenuItem(self.file_menu, -1, "Show 3D view")
+    self.file_menu.AppendItem(item)
+    self.Bind(wx.EVT_MENU, self.OnShow3D, item)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Show 3D view",
+      bitmap=icons.hklview_3d.GetBitmap(),
+      shortHelp="Show 3D view",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnShow3D, btn)
 
   def OnClose (self, evt) :
     self.Destroy()
 
   def OnDestroy (self, evt) :
-    self.parent.view_2d = None
+    if (self.parent is not None) :
+      self.parent.view_2d = None
+
+  def OnShow2D (self, evt) :
+    pass
+
+  def OnShow3D (self, evt) :
+    if (self.view_3d is None) :
+      self.view_3d = HKLViewFrame(self, -1, "3D data viewer")
+      self.view_3d.set_miller_array(self.viewer.miller_array)
+      self.view_3d.Show()
+    self.view_3d.Raise()
