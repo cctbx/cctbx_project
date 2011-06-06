@@ -37,8 +37,24 @@ def exercise_pseudo_normalized_abs_delta_i():
   mu1 = flex.mean( data )
   assert approx_equal(mu1,0.5,eps=0.02)
 
+def exercise_poisson():
+  a = rt.poisson_variate(100000,1).as_double()
+  m = flex.mean(a)
+  v = flex.mean(a*a)-m*m
+  assert approx_equal(m,1.0,eps=0.05)
+  assert approx_equal(v,1.0,eps=0.05)
+
+  a = rt.poisson_variate(100000,10).as_double()
+  m = flex.mean(a)
+  v = flex.mean(a*a)-m*m
+  assert approx_equal(m,10.0,eps=0.05)
+  assert approx_equal(v,10.0,eps=0.05)
+
+
+
 
 def run():
+  exercise_poisson()
   exercise_gauss()
   exercise_t_variate()
   exercise_wilson_amplitude_variate()
