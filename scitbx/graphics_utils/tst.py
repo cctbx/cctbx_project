@@ -32,6 +32,10 @@ def exercise () :
     selection=flex.bool(c.size(), True),
     scale=0.9)
   assert approx_equal(c2[2], (0.0,0.0,0.9))
+  c3 = graphics_utils.grayscale_by_property(
+    properties=b,
+    selection=flex.bool(b.size(), True))
+  assert approx_equal(c3[2], (0.95,0.95,0.95))
 
 if (__name__ == "__main__") :
   exercise()

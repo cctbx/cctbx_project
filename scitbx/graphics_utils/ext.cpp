@@ -22,6 +22,13 @@ namespace {
       arg("selection"),
       arg("color_all")=true,
       arg("use_rb_color_gradient")=false));
+    def("grayscale_by_property", grayscale_by_property, (
+      arg("properties"),
+      arg("selection"),
+      arg("shade_all")=false,
+      arg("invert")=false,
+      arg("max_value")=0.95,
+      arg("max_value_inverted")=0.1));
     def("scale_selected_colors", scale_selected_colors, (
       arg("input_colors"),
       arg("selection"),

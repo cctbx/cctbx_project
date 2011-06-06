@@ -129,6 +129,48 @@ namespace scitbx { namespace graphics_utils {
     return colors;
   }
 
+  af::shared< scitbx::vec3<double> >
+  grayscale_by_property (
+    af::const_ref< double > const& properties,
+    af::const_ref< bool > const& selection,
+    bool shade_all=false,
+    bool invert=false,
+    double max_value=0.95,
+    double max_value_inverted=0.1)
+  {
+    SCITBX_ASSERT(properties.size() > 0);
+    af::shared <scitbx::vec3<double> > colors(properties.size());
+    double vmax = properties[0];
+    double vmin = properties[0];
+    for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
+      if ((! shade_all) && (! selection[i_seq])) continue;
+      if (properties[i_seq] > vmax) vmax = properties[i_seq];
+      if (properties[i_seq] < vmin) vmin = properties[i_seq];
+    }
+    if (vmax == vmin) {
+      vmax = 1.0;
+      vmin = 0.0;
+    }
+    for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
+      double gradient_ratio = (properties[i_seq]-vmin) / (vmax-vmin);
+      if ((! shade_all) && (! selection[i_seq])) {
+        if (invert) {
+          colors[i_seq] = scitbx::vec3<double>(0.0,0.0,0.0);
+        } else {
+          colors[i_seq] = scitbx::vec3<double>(1.0,1.0,1.0);
+        }
+      } else if (invert) {
+        double value = max_value_inverted + (gradient_ratio *
+          (1.0-max_value_inverted));
+        colors[i_seq] = scitbx::vec3<double>(value, value, value);
+      } else {
+        double value = max_value - (max_value * gradient_ratio);
+        colors[i_seq] = scitbx::vec3<double>(value, value, value);
+      }
+    }
+    return colors;
+  }
+
 }} // namespace scitbx::graphics_utils
 
 #endif
