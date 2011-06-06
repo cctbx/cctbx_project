@@ -7,10 +7,14 @@ class SettingsToolBase (object) :
   def __init__ (self, *args, **kwds) :
     self.parent = self.GetParent()
     self.settings = self.parent.settings
+    self._controls = {}
     assert hasattr(self.parent, "update_settings")
 
   def add_controls (self) :
     raise NotImplementedError()
+
+  def get_control (self, name) :
+    return self._controls.get(name, None)
 
   def create_controls (self,
                        setting,
@@ -23,6 +27,7 @@ class SettingsToolBase (object) :
     ctrls = []
     if isinstance(value, bool) :
       box = wx.CheckBox(panel, -1, label)
+      self._controls[setting] = box
       box.SetValue(value)
       ctrls.append(box)
       self.Bind(wx.EVT_CHECKBOX,
@@ -34,6 +39,7 @@ class SettingsToolBase (object) :
       spinctrl = wx.SpinCtrl(panel, -1)
       spinctrl.SetValue(value)
       spinctrl.SetRange(min, max)
+      self._controls[setting] = spinctrl
       ctrls.append(spinctrl)
       self.Bind(wx.EVT_SPINCTRL,
         lambda evt: self.update_values(evt, setting),
@@ -43,10 +49,11 @@ class SettingsToolBase (object) :
       ctrls.append(txt)
       choice = wx.Choice(panel, -1, choices=captions)
       choice.SetSelection(value)
+      self._controls[setting] = choice
       ctrls.append(choice)
       self.Bind(wx.EVT_CHOICE,
         lambda evt: self.update_values(evt, setting),
-        spinctrl)
+        choice)
     else :
       assert 0
     return ctrls
