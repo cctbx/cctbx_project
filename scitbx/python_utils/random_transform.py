@@ -75,3 +75,23 @@ def pseudo_normalized_abs_delta_i(N=100):
   x = flex.random_double(size=N)
   x = -0.5*flex.log( 1.0-x )
   return(x)
+
+
+
+def poisson_variate(N=100, llambda=1):
+  import random
+  result = flex.int()
+  assert llambda >= 0
+  l = math.exp(-llambda)
+  for ii in range(N):
+    x = 0
+    p = 1.0
+    done =False
+    while not done:
+      x = x + 1
+      u = random.random()
+      p = p*u
+      if p <= l:
+        done = True
+    result.append( x-1 )
+  return result
