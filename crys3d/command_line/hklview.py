@@ -1,7 +1,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
-from crys3d.wx_hklview import *
+from crys3d.hklview.frames import *
 import sys
 
 def run (args) :

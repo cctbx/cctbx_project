@@ -222,6 +222,10 @@ crys3d/__init__.py -text
 crys3d/command_line/__init__.py -text
 crys3d/command_line/hklview.py -text
 crys3d/command_line/model_viewer.py -text
+crys3d/hklview/__init__.py -text
+crys3d/hklview/frames.py -text
+crys3d/hklview/view_2d.py -text
+crys3d/hklview/view_3d.py -text
 crys3d/images.py -text
 crys3d/libtbx_refresh.py -text
 crys3d/model.py -text
@@ -234,7 +238,6 @@ crys3d/reverse_selection.py -text
 crys3d/ribbon.py -text
 crys3d/wx_combined_viewer.py -text
 crys3d/wx_extra.py -text
-crys3d/wx_hklview.py -text
 crys3d/wx_model_viewer.py -text
 crys3d/wx_selection_editor.py -text
 crys3d/wx_tools.py -text
