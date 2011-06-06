@@ -32,6 +32,6 @@ if __name__=="__main__":
   HOST = "localhost"
   PORT = "8125"
   N_CLIENT_THREADS = 20
-  IMAGE_RANGE = xrange(
+  IMAGE_RANGE = xrange(1,721)
   DISTL_OPTIONS = ["distl.res.outer=4.9","distl.bins.verbose=True"]
   multi_thread()
