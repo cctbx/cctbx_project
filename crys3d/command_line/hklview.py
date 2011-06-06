@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.data_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
@@ -25,7 +26,7 @@ def run (args) :
         ma = array
         break
   a = wx.App(0)
-  f = HKLViewFrame(None, -1, "HKL viewer", size=(1024,768))
+  f = HKLViewFrame(None, -1, "Reflection data viewer", size=(1024,768))
   f.set_miller_array(ma)
   f.Show()
   a.MainLoop()

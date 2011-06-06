@@ -33,6 +33,12 @@ class hklview_3d (wxGLWindow) :
     self.scene = None
     self.slice_axis = None
     self.slice_index = None
+    # XXX prevent exception when no data are loaded
+    from scitbx.math import minimum_covering_sphere
+    from scitbx.array_family import flex
+    points = flex.vec3_double([(0.0,0.0,0.0),(1.0,1.0,1.0)])
+    mcs = minimum_covering_sphere(points=points, epsilon=0.1)
+    self.minimum_covering_sphere = mcs
 
   def set_miller_array (self, miller_array) :
     self.miller_array = miller_array

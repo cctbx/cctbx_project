@@ -39,18 +39,6 @@ class hklview_2d (wx.PyPanel) :
     self.construct_reciprocal_space()
     self.Refresh()
 
-  def OnPaint (self, event) :
-    if (self.scene is None) :
-      return
-    if (self.settings.black_background) :
-      self.SetBackgroundColour((0,0,0))
-    else :
-      self.SetBackgroundColour((255,255,255))
-    dc = wx.AutoBufferedPaintDCFactory(self)
-    dc.Clear()
-    gc = wx.GraphicsContext.Create(dc)
-    self.paint(gc)
-
   def get_center_and_radius (self) :
     w, h = self.GetSize()
     r = (min(w,h) // 2) - 20
@@ -139,7 +127,8 @@ class hklview_2d (wx.PyPanel) :
         missing_pen = wx.Pen('red')
       else :
         missing_pen = wx.Pen('black')
-    max_radius = 0.36 * r / max(x_max, y_max)
+    max_radius = 40 / max(self.scene.unit_cell.parameters()[0:3])
+    max_radius *= r / max(x_max, y_max)
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
       x = center_x + r * x_ / x_max
@@ -210,6 +199,33 @@ class hklview_2d (wx.PyPanel) :
       resolution = self.scene.get_resolution_at_point(self._clicked)
     self.GetParent().update_clicked(hkl, resolution)
     self.Refresh()
+
+  # placeholder - mimics gltbx.wx_viewer.wxGLWindow.fit_into_viewport
+  def fit_into_viewport (self) :
+    pass
+
+  # mimics gltbx.wx_viewer.wxGLWindow.save_screen_shot
+  def save_screen_shot (self, file_name, extensions=None) :
+    rect = self.GetRect()
+    bitmap = wx.EmptyBitmap(rect.width, rect.height)
+    memory_dc = wx.MemoryDC()
+    memory_dc.SelectObject(bitmap)
+    memory_dc.SetBackgroundMode(wx.TRANSPARENT)
+    gc = wx.GraphicsContext.Create(memory_dc)
+    self.paint(gc)
+    bitmap.SaveFile(file_name, wx.BITMAP_TYPE_PNG)
+
+  def OnPaint (self, event) :
+    if (self.scene is None) :
+      return
+    if (self.settings.black_background) :
+      self.SetBackgroundColour((0,0,0))
+    else :
+      self.SetBackgroundColour((255,255,255))
+    dc = wx.AutoBufferedPaintDCFactory(self)
+    dc.Clear()
+    gc = wx.GraphicsContext.Create(dc)
+    self.paint(gc)
 
   def OnLeftClick (self, evt) :
     self.initLeft = evt.GetX(), evt.GetY()
