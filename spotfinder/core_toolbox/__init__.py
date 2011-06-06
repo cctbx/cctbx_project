@@ -1,3 +1,5 @@
+import spotfinder.array_family.flex # implicit import
+
 import boost.python
 ext = boost.python.import_ext("spotfinder_distltbx_ext")
 from spotfinder_distltbx_ext import *
