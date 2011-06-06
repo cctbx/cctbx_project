@@ -143,11 +143,13 @@ def exercise_reflections () :
 
 def exercise_model () :
   model_handler = models.model_handler(
-    allowed_param_names=["refinement.input.pdb.file_name"],
+    allowed_param_names=["refinement.input.pdb.file_name",
+      "refinement.reference_model.file"],
     allowed_multiple_params=["refinement.input.pdb.file_name"],
     cif_param_names=["refinement.input.monomers.file_name"],
     multiple_cif_params=["refinement.input.monomers.file_name"],
     tmp_dir=os.getcwd())
+  model_handler.set_viewable_params(["refinement.input.pdb.file_name"])
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/ur0013.pdb",
     test=os.path.isfile)
@@ -179,6 +181,13 @@ def exercise_model () :
   model_handler.remove_file(pdb_file)
   assert (model_handler.get_param_files("refinement.input.pdb.file_name") ==
           [pdb_file2])
+  pdb_file3 = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf_h.pdb",
+    test=os.path.isfile)
+  model_handler.set_param_file(
+    file_name=pdb_file3,
+    file_param_name="refinement.reference_model.file")
+  assert (model_handler.get_files_for_viewing() == [pdb_file2])
   atomic_bonds = model_handler.get_connectivity(pdb_file2)
   assert (atomic_bonds.size() == 2127)
   symm = model_handler.get_pdb_file_symmetry(pdb_file2)

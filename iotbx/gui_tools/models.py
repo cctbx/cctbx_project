@@ -32,6 +32,7 @@ class model_handler (iotbx.gui_tools.manager) :
     self.construct_hierarchy = construct_hierarchy
     self.add_callback = lambda file_name : True
     self.remove_callback = lambda file_name : True
+    self._viewable_file_params = []
 
   def clear_format_specific_cache (self) :
     if hasattr(self, "cif_handler") :
@@ -82,6 +83,21 @@ class model_handler (iotbx.gui_tools.manager) :
       f.close()
       return file_name
     return None
+
+  # XXX crude hack for programs which have multiple input models, not all of
+  # which should be viewed together (e.g. phenix.refine and reference model)
+  def get_files_for_viewing (self, file_param_name=None) :
+    if (len(self._viewable_file_params) == 0) :
+      return self.get_current_file_names()
+    else :
+      file_names = []
+      for param_name in self._viewable_file_params :
+        file_names.extend(self.get_param_files(param_name))
+      return file_names
+
+  def set_viewable_params (self, params) :
+    assert isinstance(params, list) or isinstance(params, tuple)
+    self._viewable_file_params = params
 
   def combine_pdb_files (self, file_names) :
     symm = None
