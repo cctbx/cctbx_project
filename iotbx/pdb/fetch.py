@@ -16,6 +16,7 @@
 import sys, os, re
 import urllib2
 from libtbx.utils import Sorry, Usage
+from libtbx import easy_run
 
 def validate_pdb_id (id) :
   if (len(id) != 4) or (not re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)) :
@@ -79,25 +80,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb") :
         raise
   return data
 
-def run (args, log=sys.stdout) :
-  if len(args) < 1 :
-    raise Usage("phenix.fetch_pdb [-x|-f] [-q] ID")
-  quiet = False
-  data_type = "pdb"
-  if "-x" in args :
-    data_type = "xray"
-  elif "-f" in args :
-    data_type = "fasta"
-  if "-q" in args :
-    quiet = True
-  mirror = "rcsb"
-  for arg in args :
-    if (arg.startswith("--mirror=")) :
-      mirror = arg.split("=")[1]
-      if (not mirror in ["rcsb", "pdbe"]) :
-        raise Sorry("Unrecognized mirror site '%s' (choices: rcsb, pdbe)" %
-          mirror)
-  id = args[-1]
+def get_pdb (id, data_type, mirror, log, quiet=False) :
   try :
     data = fetch(id, data_type, mirror=mirror)
   except RuntimeError, e :
@@ -119,3 +102,37 @@ def run (args, log=sys.stdout) :
     if not quiet :
       print >> log, "Model saved to %s" % file_name
   return file_name
+
+def run (args, log=sys.stdout) :
+  if len(args) < 1 :
+    raise Usage("phenix.fetch_pdb [-x|-f] [-q] ID")
+  quiet = False
+  data_type = "pdb"
+  if ("--all" in args) :
+    data_type = "all"
+  elif "-x" in args :
+    data_type = "xray"
+  elif "-f" in args :
+    data_type = "fasta"
+  if "-q" in args :
+    quiet = True
+  mirror = "rcsb"
+  for arg in args :
+    if (arg.startswith("--mirror=")) :
+      mirror = arg.split("=")[1]
+      if (not mirror in ["rcsb", "pdbe"]) :
+        raise Sorry("Unrecognized mirror site '%s' (choices: rcsb, pdbe)" %
+          mirror)
+  id = args[-1]
+  if (data_type != "all") :
+    return get_pdb(id, data_type, mirror, log)
+  else :
+    files = []
+    for data_type_ in ["pdb", "xray", "fasta"] :
+      files.append(get_pdb(id, data_type_, mirror, log))
+    if ("--mtz" in args) : # mmtbx cross-dependency - sorry!
+      easy_run.call("phenix.cif_as_mtz %s-sf.cif --symmetry=%s.pdb" % (id,id))
+      if os.path.isfile("%s-sf.mtz" % id) :
+        os.rename("%s-sf.mtz" % id, "%s.mtz" % id)
+        os.remove("%s-sf.cif" % id)
+    return files
