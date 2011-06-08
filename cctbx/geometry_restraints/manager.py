@@ -28,6 +28,7 @@ class manager(object):
         angle_proxies=None,
         dihedral_proxies=None,
         reference_dihedral_proxies=None,
+        ncs_dihedral_proxies=None,
         chirality_proxies=None,
         planarity_proxies=None,
         generic_restraints_manager=None,
@@ -260,6 +261,7 @@ class manager(object):
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
+      ncs_dihedral_proxies=self.ncs_dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
@@ -333,6 +335,11 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_select(
         n_seq, iselection)
+    selected_ncs_dihedral_proxies = None
+    if (self.ncs_dihedral_proxies is not None):
+      if (n_seq is None): n_seq = get_n_seq()
+      selected_ncs_dihedral_proxies = self.ncs_dihedral_proxies.proxy_select(
+        n_seq, iselection)
     selected_chirality_proxies = None
     if (self.chirality_proxies is not None):
       if (n_seq is None): n_seq = get_n_seq()
@@ -360,6 +367,7 @@ class manager(object):
       angle_proxies=selected_angle_proxies,
       dihedral_proxies=selected_dihedral_proxies,
       reference_dihedral_proxies=selected_reference_dihedral_proxies,
+      ncs_dihedral_proxies=selected_ncs_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
@@ -374,6 +382,10 @@ class manager(object):
 
   def remove_reference_dihedrals_in_place(self, selection):
     self.reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_remove(
+      selection=selection)
+
+  def remove_ncs_dihedrals_in_place(self, selection):
+    self.ncs_dihedral_proxies = self.ncs_dihedral_proxies.proxy_remove(
       selection=selection)
 
   def remove_chiralities_in_place(self, selection):
@@ -642,9 +654,10 @@ class manager(object):
      angle_proxies,
      dihedral_proxies,
      reference_dihedral_proxies,
+     ncs_dihedral_proxies,
      chirality_proxies,
      planarity_proxies,
-     generic_restraints) = [None]*9
+     generic_restraints) = [None]*10
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -657,7 +670,9 @@ class manager(object):
         nonbonded_function = custom_nonbonded_function
     if (flags.angle):     angle_proxies = self.angle_proxies
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
-    if (flags.reference_dihedral):  reference_dihedral_proxies = self.reference_dihedral_proxies
+    if (flags.reference_dihedral):  \
+      reference_dihedral_proxies = self.reference_dihedral_proxies
+    if (flags.ncs_dihedral): ncs_dihedral_proxies = self.ncs_dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
     if (flags.generic_restraints) :
@@ -670,6 +685,7 @@ class manager(object):
       angle_proxies=angle_proxies,
       dihedral_proxies=dihedral_proxies,
       reference_dihedral_proxies=reference_dihedral_proxies,
+      ncs_dihedral_proxies=ncs_dihedral_proxies,
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       generic_restraints_manager=generic_restraints,
@@ -825,6 +841,19 @@ class manager(object):
           print >> f, "  angle_ideal: %.6g" % proxy.angle_ideal
           print >> f, "  weight: %.6g" % proxy.weight
           print >> f, "  limit: %.6g" % proxy.limit
+    if (self.ncs_dihedral_proxies is not None):
+      for proxy in self.ncs_dihedral_proxies:
+        if (i_seq is None or i_seq in proxy.i_seqs):
+          print >> f, "NCS dihedral:", proxy.i_seqs
+          if (site_labels is not None):
+            for i in proxy.i_seqs:
+              print >> f, " ", site_labels[i]
+          if (sites_cart is not None):
+            print >> f, "  angle_model: %.6g" % geometry_restraints.dihedral(
+              sites_cart=sites_cart, proxy=proxy).angle_model
+          print >> f, "  angle_ideal: %.6g" % proxy.angle_ideal
+          print >> f, "  weight: %.6g" % proxy.weight
+          print >> f, "  limit: %.6g" % proxy.limit
     if (self.chirality_proxies is not None):
       for proxy in self.chirality_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
@@ -919,6 +948,11 @@ class manager(object):
       print >> f
     if (self.reference_dihedral_proxies is not None):
       self.reference_dihedral_proxies.show_sorted(
+        by_value="residual",
+        sites_cart=sites_cart, site_labels=site_labels, f=f, is_reference=True)
+      print >> f
+    if (self.ncs_dihedral_proxies is not None):
+      self.ncs_dihedral_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_reference=True)
       print >> f

@@ -9,6 +9,7 @@ class flags(object):
         angle=None,
         dihedral=None,
         reference_dihedral=None,
+        ncs_dihedral=None,
         chirality=None,
         planarity=None,
         bond_similarity=None,
@@ -19,6 +20,7 @@ class flags(object):
     if (angle is None): angle = default
     if (dihedral is None): dihedral = default
     if (reference_dihedral is None): reference_dihedral = default
+    if (ncs_dihedral is None): ncs_dihedral = default
     if (chirality is None): chirality = default
     if (planarity is None): planarity = default
     if (bond_similarity is None): bond_similarity = default
