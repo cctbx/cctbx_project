@@ -15,6 +15,7 @@ class energies(scitbx.restraints.energies):
                      angle_proxies=None,
                      dihedral_proxies=None,
                      reference_dihedral_proxies=None,
+                     ncs_dihedral_proxies=None,
                      chirality_proxies=None,
                      planarity_proxies=None,
                      bond_similarity_proxies=None,
@@ -120,6 +121,25 @@ class energies(scitbx.restraints.energies):
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_reference_dihedral_proxies
       self.residual_sum += self.reference_dihedral_residual_sum
+
+    if (ncs_dihedral_proxies is None):
+      self.n_ncs_dihedral_proxies = None
+      self.ncs_dihedral_residual_sum = 0
+    else:
+      self.n_ncs_dihedral_proxies = len(ncs_dihedral_proxies)
+      if unit_cell is None: # ignore proxy.i_seqs
+        self.ncs_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
+          sites_cart=sites_cart,
+          proxies=ncs_dihedral_proxies,
+          gradient_array=self.gradients)
+      else:
+        self.ncs_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
+          unit_cell=unit_cell,
+          sites_cart=sites_cart,
+          proxies=ncs_dihedral_proxies,
+          gradient_array=self.gradients)
+      self.number_of_restraints += self.n_ncs_dihedral_proxies
+      self.residual_sum += self.ncs_dihedral_residual_sum
 
     if (chirality_proxies is None):
       self.n_chirality_proxies = None
@@ -252,6 +272,17 @@ class energies(scitbx.restraints.energies):
        d_min = math.sqrt(flex.min_default(d_sq, 0))
        return d_min, d_max, d_ave
 
+  def ncs_dihedral_deviations(self):
+    if(self.n_ncs_dihedral_proxies is not None):
+       ncs_dihedral_deltas = geometry_restraints.ncs_dihedral_deltas(
+                                            sites_cart = self.sites_cart,
+                                            proxies    = self.ncs_dihedral_proxies)
+       d_sq  = ncs_dihedral_deltas * ncs_dihedral_deltas
+       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
+       d_max = math.sqrt(flex.max_default(d_sq, 0))
+       d_min = math.sqrt(flex.min_default(d_sq, 0))
+       return d_min, d_max, d_ave
+
   def chirality_deviations(self):
     if(self.n_chirality_proxies is not None):
        chirality_deltas = geometry_restraints.chirality_deltas(
@@ -291,7 +322,10 @@ class energies(scitbx.restraints.energies):
         self.n_dihedral_proxies, self.dihedral_residual_sum)
     if (self.n_reference_dihedral_proxies is not None):
       print >> f, prefix+"  reference_dihedral_residual_sum (n=%d): %.6g" % (
-        self.n_dihedral_proxies, self.dihedral_residual_sum)
+        self.n_reference_dihedral_proxies, self.reference_dihedral_residual_sum)
+    if (self.n_ncs_dihedral_proxies is not None):
+      print >> f, prefix+"  ncs_dihedral_residual_sum (n=%d): %.6g" % (
+        self.n_ncs_dihedral_proxies, self.ncs_dihedral_residual_sum)
     if (self.n_chirality_proxies is not None):
       print >> f, prefix+"  chirality_residual_sum (n=%d): %.6g" % (
         self.n_chirality_proxies, self.chirality_residual_sum)
