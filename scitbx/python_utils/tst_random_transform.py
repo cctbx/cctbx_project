@@ -38,6 +38,8 @@ def exercise_pseudo_normalized_abs_delta_i():
   assert approx_equal(mu1,0.5,eps=0.02)
 
 def exercise_poisson():
+  import random
+  random.seed(0) # failure rate is fairly high without fixed seed
   a = rt.poisson_variate(100000,1).as_double()
   m = flex.mean(a)
   v = flex.mean(a*a)-m*m
@@ -50,9 +52,6 @@ def exercise_poisson():
   assert approx_equal(m,10.0,eps=0.05)
   assert approx_equal(v,10.0,eps=0.05)
 
-
-
-
 def run():
   exercise_poisson()
   exercise_gauss()
@@ -60,7 +59,6 @@ def run():
   exercise_wilson_amplitude_variate()
   exercise_wilson_intensity_variate()
   exercise_pseudo_normalized_abs_delta_i()
-
   print 'OK'
 
 if (__name__ == "__main__"):
