@@ -57,11 +57,14 @@ class geometry(object):
     self.n_target,self.n_number=esg.nonbonded_residual_sum,esg.n_bond_proxies
     self.rd_target, self.rd_number= \
       esg.reference_dihedral_residual_sum, esg.n_reference_dihedral_proxies
+    self.nd_target, self.nd_number= \
+      esg.ncs_dihedral_residual_sum, esg.n_ncs_dihedral_proxies
     self.ra_target, self.ra_number = \
       esg.generic_restraint_residual_sum, esg.n_generic_proxies
     self.target = esg.target # XXX normalization ?
     assert approx_equal(self.target, self.a_target+self.b_target+self.c_target+
-      self.d_target+self.p_target+self.n_target+self.rd_target+self.ra_target)
+      self.d_target+self.p_target+self.n_target+self.rd_target+
+      self.nd_target+self.ra_target)
     self.norm_of_gradients = esg.gradients.norm()
     self.number_of_restraints = esg.number_of_restraints # XXX normalization ?
     #
