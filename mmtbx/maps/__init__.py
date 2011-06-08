@@ -389,7 +389,10 @@ def map_coefficients_from_fmodel(fmodel, params):
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()
   if(params.exclude_free_r_reflections):
-    coeffs = coeffs.select(~e_map_obj.fmodel.r_free_flags().data())
+    r_free_flags = e_map_obj.fmodel.r_free_flags()
+    if (r_free_flags.anomalous_flag()) :
+      r_free_flags = r_free_flags.average_bijvoet_mates()
+    coeffs = coeffs.select(~r_free_flags.data())
   if(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
     fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   return coeffs
