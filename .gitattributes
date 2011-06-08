@@ -1487,6 +1487,7 @@ spotfinder/core_toolbox/boost_python/SConscript -text
 spotfinder/core_toolbox/boost_python/distltbx_ext.cpp -text
 spotfinder/core_toolbox/boost_python/hough_ext.cpp -text
 spotfinder/core_toolbox/boost_python/singlemask.h -text
+spotfinder/core_toolbox/boost_python/tst_small_image.py svneol=native#text/x-python
 spotfinder/core_toolbox/close_spots_detail.py -text
 spotfinder/core_toolbox/distl.cpp -text
 spotfinder/core_toolbox/distl.h -text
