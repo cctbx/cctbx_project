@@ -572,7 +572,7 @@ class torsion_ncs(object):
     return "".join(seq), res_seq
 
   def add_ncs_dihedral_proxies(self, geometry):
-    geometry.reference_dihedral_proxies= \
+    geometry.ncs_dihedral_proxies= \
       self.ncs_dihedral_proxies
 
   def fix_rotamer_outliers(self,
