@@ -27,8 +27,12 @@ class ListEditor (wx.Panel) :
     self.Bind(wx.EVT_BUTTON, self.OnAdd, add_btn)
     del_btn = self.AddControlButton(
       label="Delete",
-      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete", 16))
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "cancel", 16))
     self.Bind(wx.EVT_BUTTON, self.OnDelete, del_btn)
+    del_btn = self.AddControlButton(
+      label="Clear all",
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete", 16))
+    self.Bind(wx.EVT_BUTTON, self.OnDeleteAll, del_btn)
     update_btn = self.AddControlButton(
       label="Update item",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "recur", 16))
@@ -93,7 +97,8 @@ class ListEditor (wx.Panel) :
 
   def OnDelete (self, event) :
     i = self.list.GetFirstSelected()
-    self.list.DeleteItem(i)
+    if (i >= 0) :
+      self.list.DeleteItem(i)
     self.edit.SetValue("")
     self.call_back()
 
@@ -142,6 +147,14 @@ class ListEditor (wx.Panel) :
   def DeleteAllItems (self) :
     self.list.DeleteAllItems()
     self.call_back()
+
+  def OnDeleteAll (self, evt) :
+    if (self.list.GetItemCount() == 0) :
+      return False
+    confirm = wx.MessageBox(caption="Confirm delete",
+      message="Are you sure you want to delete all items in the list?")
+    if (confirm == wx.OK) :
+      self.DeleteAllItems()
 
   def SetSelectedValue (self, txt) :
     i = self.list.GetFirstSelected()
