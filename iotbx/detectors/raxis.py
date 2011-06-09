@@ -34,7 +34,7 @@ class RAXISImage(DetectorImageBase,Raxis):
     return self.head['record_length']
 
   def integerdepth(self):
-    return self.head['record_length']/self.head['nFast']
+    return self.head['record_length']//self.head['nFast']
 
   def getEndian(self):
     return 1

@@ -23,7 +23,7 @@ class NonSquareRAXISImage(RAXISImage):
       # assume that the extra pixels can be evenly divided by two
       assert (self.np-self.head['nSlow'])%2==0
 
-      self.extra = (self.np-self.head['nSlow'])/2
+      self.extra = (self.np-self.head['nSlow'])//2
 
       self.generic_param_from_vendor_head()
       self.generic_param_from_adapt_head()

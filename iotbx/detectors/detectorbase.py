@@ -24,8 +24,8 @@ class DetectorImageBase(object):
                         # the only bin values supported are 1 & 2
     if self.bin!=1 or bin!=2: return
     if self.size1%bin!=0: return
-    self.parameters['SIZE1']=self.parameters['SIZE1']/bin
-    self.parameters['SIZE2']=self.parameters['SIZE2']/bin
+    self.parameters['SIZE1']=self.parameters['SIZE1']//bin
+    self.parameters['SIZE2']=self.parameters['SIZE2']//bin
     if self.parameters.has_key('CCD_IMAGE_SATURATION'):
       self.parameters['CCD_IMAGE_SATURATION']=self.parameters['CCD_IMAGE_SATURATION']*bin*bin
     self.parameters['PIXEL_SIZE']=self.parameters['PIXEL_SIZE']*bin
