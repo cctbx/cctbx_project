@@ -1537,10 +1537,14 @@ wxtbx/layout.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
+wxtbx/phil_controls/__init__.py -text
+wxtbx/phil_controls/space_group.py -text
+wxtbx/phil_controls/unit_cell.py -text
 wxtbx/plots.py -text
 wxtbx/polygon_db_viewer.py -text
 wxtbx/process_control.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
+wxtbx/symmetry_dialog.py -text
 wxtbx/utils.py -text
