@@ -29,7 +29,7 @@ standard_file_extensions = {
   'phil' : ["params", "eff", "def", "phil"],
   'xml'  : ["xml"],
   'pkl'  : ["pickle", "pkl"],
-  'txt'  : ["txt", "log", "html"],
+  'txt'  : ["txt", "log", "html", "geo"],
   'mtz'  : ["mtz"],
   'aln'  : ["aln"],
 }
