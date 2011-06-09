@@ -17,7 +17,7 @@ def exercise_distributions():
 def exercise_variate_generators():
   from scitbx.random \
        import variate, normal_distribution, bernoulli_distribution, \
-              gamma_distribution
+              gamma_distribution, poisson_distribution
   for i in xrange(10):
     scitbx.random.set_random_seed(0)
     g = variate(normal_distribution())
@@ -60,6 +60,14 @@ def exercise_variate_generators():
   assert approx_equal(stat.mean,            6, eps=0.005)
   assert approx_equal(stat.skew,            2/math.sqrt(2), eps=0.05)
   assert approx_equal(stat.biased_variance, 18, eps=0.05)
+
+  mean = 10.0
+  pv = variate(poisson_distribution(mean))
+  draws = pv(1000000).as_double()
+  m = flex.mean(draws)
+  v = flex.mean(draws*draws) - m*m
+  assert approx_equal(m,mean,eps=0.05)
+  assert approx_equal(v,mean,eps=0.05)
 
 def run():
   libtbx.utils.show_times_at_exit()
