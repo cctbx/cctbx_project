@@ -42,17 +42,17 @@ torsion_ncs_params = iotbx.phil.parse("""
  verbose = False
    .type = bool
  edits
-   .short_caption = Edit reference model restraints
-   .style = menu_item parent_submenu:reference_model auto_align noauto
+   .short_caption = Edit torsion NCS restraints
+   .style = menu_item parent_submenu:advanced noauto
    .expert_level = 2
  {
    include scope \
      mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
  }
  remove
-   .short_caption = Remove geometry restraints from reference model
+   .short_caption = Remove torsion NCS restraints
    .expert_level = 2
-   .style = menu_item parent_submenu:reference_model auto_align noauto
+   .style = menu_item parent_submenu:advanced noauto
  {
    include scope \
    mmtbx.monomer_library.pdb_interpretation.geometry_restraints_remove_str
@@ -75,8 +75,8 @@ torsion_ncs_params = iotbx.phil.parse("""
  reference_group
   .multiple=True
   .optional=True
-  .short_caption=Reference group
-  .style = noauto auto_align menu_item parent_submenu:reference_model
+  .short_caption=Torsion NCS restraint group
+  .style = noauto auto_align menu_item parent_submenu:advanced
  {
   reference=None
     .type=atom_selection
