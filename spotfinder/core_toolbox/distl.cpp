@@ -251,6 +251,7 @@ di::w_Distl::setspotimg(const double& pixel_size,
                         const double& beamx,
                         const double& beamy,
                         af::flex_int const& intdata,
+                        const int& peripheral_margin,
                         const double& saturation )
 {
   finder.overloadvalue = saturation;
@@ -261,6 +262,7 @@ di::w_Distl::setspotimg(const double& pixel_size,
   int ncols = intdata.accessor().all()[0];
   int nrows = intdata.accessor().all()[1];
 
+  finder.imgmargin = peripheral_margin;
   finder.set_imagedata(intdata.begin(),ncols,nrows);
 }
 

@@ -247,6 +247,8 @@ enum detector_shape { UNKNOWN, SQUARE, CIRCLE, RECTANGULAR_PIXEL };
 
 inline detector_shape get_image_geometry( image_rawdata_t const& pixels){
 
+  if (pixels.nx < 100 || pixels.ny < 100) { return UNKNOWN; }
+
   // simple heuristic to guess the image geometry.  If a small square region in
   // the upper-left of the image has a constant pixel value, then the active
   // area is likely an inscribed circle.  Otherwise, image is assumed square.

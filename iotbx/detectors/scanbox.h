@@ -29,6 +29,7 @@ class scanbox_tiling {
   interval_list
   generate_normal_spacing(const int& first, const int& last,
                           const int& interv) const {
+     //printf("Detector range from %5d to %5d\n",first, last);
      interval_list result;
 
      //legacy formula.
@@ -40,7 +41,15 @@ class scanbox_tiling {
 
      //expansive formula -- cover the region given by intervals that
      // may not be the same size.
-     int n_intervals = (last-first)/interv;
+     int n_intervals = (last-first+1)/interv;
+     //SCITBX_EXAMINE(n_intervals);
+
+     if (n_intervals == 0){
+       // Avoid divide-by-zero;
+       // Require that scanbox size >= input box size parameter interv
+       return result;
+     }
+
      double window = (double)(1+last-first)/n_intervals;
      for (int x = 0; x < n_intervals; ++x) {
         result.push_back(interval(x*window, int((x+1)*window)-1));

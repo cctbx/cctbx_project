@@ -136,7 +136,11 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
 
    class_<w_Distl>("w_Distl", init<std::string,bool>())
      .def("set_resolution_outer",&w_Distl::set_resolution_outer)
-     .def("setspotimg",&w_Distl::setspotimg)
+     .def("setspotimg",&w_Distl::setspotimg, (
+          arg_("pixel_size"),arg_("distance"),
+          arg_("wavelength"),arg_("xbeam"),arg_("ybeam"),arg_("rawdata"),
+          arg_("peripheral_margin"),arg_("saturation")
+      ))
      .def("set_tiling",&w_Distl::set_tiling)
      .def("Z_data",&w_Distl::Z_data)
      .def("mod_data",&w_Distl::mod_data)

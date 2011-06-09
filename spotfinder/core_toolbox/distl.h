@@ -52,6 +52,7 @@ public:
   void set_resolution_outer(const double&);
   void setspotimg(const double&, const double&, const double&,
                   const double&, const double&, af::flex_int const&,
+                  const int&,
                   const double&);
   void set_tiling(const std::string&);
   af::flex_double Z_data();//DISTL's pixelwise Z-score array
