@@ -4,6 +4,7 @@
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/bernoulli_distribution.hpp>
 #include <boost/random/gamma_distribution.hpp>
+#include <boost/random/poisson_distribution.hpp>
 
 
 namespace scitbx { namespace random { namespace boost_python {
@@ -75,6 +76,21 @@ namespace {
     }
   };
 
+  struct poisson
+  {
+    typedef boost::poisson_distribution<int,double> wt;
+
+    static std::string name() { return "poisson"; }
+
+    static void wrap_specific(boost::python::class_<wt> &klass) {
+      using namespace boost::python;
+      klass
+        .def(init<double>((arg("mean")=1.0)))
+        .add_property("mean", &wt::mean)
+        ;
+    }
+  };
+
 
 } // namespace <anonymous>
 
@@ -84,6 +100,7 @@ namespace {
     wrap_distribution_and_variate<normal>();
     wrap_distribution_and_variate<bernoulli>();
     wrap_distribution_and_variate<gamma>();
+    wrap_distribution_and_variate<poisson>();
   }
 
 }}} // namespace scitbx::random::boost_python
