@@ -16,9 +16,13 @@ class Distl(w_Distl):
 
     try:    saturation = image.saturation
     except: saturation = 65535
-    self.setspotimg(image.pixel_size, image.distance, image.wavelength,
-                    float(pd['xbeam']),float(pd['ybeam']),image.rawdata,
-                    saturation)
+    try:    peripheral_margin = params.distl.peripheral_margin
+    except: peripheral_margin = 20
+    self.setspotimg(pixel_size = image.pixel_size, distance = image.distance,
+                    wavelength = image.wavelength, xbeam = float(pd['xbeam']),
+                    ybeam = float(pd['ybeam']), rawdata = image.rawdata,
+                    peripheral_margin = peripheral_margin,
+                    saturation = saturation)
     #Fixes a longstanding gremlin:  my corrected xy must be propagated
     # to zepu's code; or else ice rings are treated incorrectly.
 

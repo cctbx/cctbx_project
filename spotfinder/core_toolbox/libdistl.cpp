@@ -209,6 +209,10 @@ int diffimage::get_underload() const
 
         int ncols = pixelvalue.nx;
         int nrows = pixelvalue.ny;
+        if (ncols < 100 || nrows < 100) {
+          // No underload or offset determination for small test cases.
+          return 0;
+        }
         int crosswid = 40;
         int cornerfrac = 5;
         int cornerwidth = pixelvalue.ny / cornerfrac;

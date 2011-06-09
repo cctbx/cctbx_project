@@ -1509,6 +1509,7 @@ spotfinder/doc/labelit_svn_history -text
 spotfinder/exception.py -text
 spotfinder/libtbx_config -text
 spotfinder/math_support/__init__.py -text
+spotfinder/run_tests.py -text
 spotfinder/servers/README -text
 spotfinder/servers/__init__.py -text
 spotfinder/servers/adsc_client.py -text
