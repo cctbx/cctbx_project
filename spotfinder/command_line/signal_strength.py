@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME distl.signal_strength
+import spotfinder
 import libtbx.phil
 from libtbx.utils import Sorry
 import sys, os
@@ -16,13 +17,7 @@ distl {
   spot_area_maximum_factor = None
     .type = float
     .help = "Expert use only; max spot area expressed as a multiple of minimum_spot_area. Default=5.0"
-  scanbox_windows = 101 51 51
-    #.type = ints(size_min=1, size_max=3, value_min=10) #future: variable number of window passes
-    .type = ints(size=3, value_min=10)
-    .help = "Integer scanbox sizes for calculating background, for cycles 1,2, and 3, respectively. Program defaults are 101, 51, and 51 pixels"
-  peripheral_margin = 20
-    .type = int(value_min=0)
-    .help = "No spot detection inside margin; width in pixels"
+  %s
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"
@@ -33,7 +28,7 @@ distl {
     .type = int
     .help="For the multithreaded server version, number of server processes to be used"
 }
-"""
+""" % spotfinder.inner_phil_str
 
 master_params = libtbx.phil.parse("""\
 distl {
