@@ -10,7 +10,7 @@ class SpaceGroupControl (wx.ComboBox) :
   def SetSpaceGroup (self, sg) :
     from cctbx import sgtbx
     assert (isinstance(sg, sgtbx.space_group_info) or isinstance(sg, str) or
-            isinstance(sg, None))
+            (sg is None))
     items = self.GetItems()
     if (sg is not None) :
       sg = str(sg)
