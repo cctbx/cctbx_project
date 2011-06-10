@@ -559,7 +559,8 @@ def create_mtz_object(pre_miller_arrays,
                       crystal_symmetry,
                       file_name,
                       show_details_if_error,
-                      output_r_free_label):
+                      output_r_free_label,
+                      merge_non_unique_under_symmetry):
   r_free_flags = None
   if(pre_miller_arrays.flags is not None):
     if(pre_miller_arrays.flags.size() > 0):
@@ -590,12 +591,17 @@ def create_mtz_object(pre_miller_arrays,
   n_duplicate = sel_dup.count(True)
   n_uus = sel_unique.size()
   if(n_uus != n_all and n_duplicate > 1):
-    print "Miller indices not unique under symmetry:", file_name, \
-      "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
-    if (show_details_if_error):
-      miller_array.show_comprehensive_summary(prefix="  ")
-      miller_array.map_to_asu().sort().show_array(prefix="  ")
-    return None
+    if (merge_non_unique_under_symmetry) :
+      print "Warning: merging non-unique data"
+      miller_array = miller_array.unique_under_symmetry()
+    else :
+      print "Miller indices not unique under symmetry:", file_name, \
+        "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
+      print "Add --merge to command arguments to force merging data."
+      if (show_details_if_error):
+        miller_array.show_comprehensive_summary(prefix="  ")
+        miller_array.map_to_asu().sort().show_array(prefix="  ")
+      return None
   elif(n_duplicate == 1):
     miller_array = miller_array.select(sel_unique)
     if(r_free_flags is not None):
@@ -642,6 +648,9 @@ def run(args, command_name = "phenix.cif_as_mtz"):
         default="R-free-flags",
         type="string",
         help="MTZ column label to use for R-free flags (default: R-free-flags)")
+      .option(None, "--merge",
+        action="store_true",
+        help="Merge non-unique data where present.")
       .option("--show_details_if_error",
           action="store_true",
           help="Show data details for some errors.")
@@ -684,7 +693,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     wavelength_id=command_line.options.wavelength_id,
     crystal_id=command_line.options.crystal_id,
     show_details_if_error=command_line.options.show_details_if_error,
-    output_r_free_label=command_line.options.output_r_free_label)
+    output_r_free_label=command_line.options.output_r_free_label,
+    merge_non_unique_under_symmetry=command_line.options.merge)
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -693,7 +703,8 @@ def process_files (file_name,
                    wavelength_id,
                    crystal_id,
                    show_details_if_error,
-                   output_r_free_label) :
+                   output_r_free_label,
+                   merge_non_unique_under_symmetry=False) :
   file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
     file_name             = file_name,
@@ -702,7 +713,8 @@ def process_files (file_name,
     wavelength_id         = wavelength_id,
     crystal_id            = crystal_id,
     show_details_if_error = show_details_if_error,
-    output_r_free_label   = output_r_free_label)
+    output_r_free_label   = output_r_free_label,
+    merge_non_unique_under_symmetry = merge_non_unique_under_symmetry)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -754,7 +766,8 @@ def extract(file_name,
             wavelength_id,
             crystal_id,
             show_details_if_error,
-            output_r_free_label):
+            output_r_free_label,
+            merge_non_unique_under_symmetry):
   keys = extract_keys(file_name = file_name, file_lines = file_lines)
   if(len(keys) == 0): return None
   key_counter = count_keys(keys = keys, file_name = file_name)
@@ -779,7 +792,8 @@ def extract(file_name,
     crystal_symmetry  = crystal_symmetry,
     file_name         = file_name,
     show_details_if_error = show_details_if_error,
-    output_r_free_label=output_r_free_label)
+    output_r_free_label=output_r_free_label,
+    merge_non_unique_under_symmetry=merge_non_unique_under_symmetry)
   return mtz_object
 
 ########################################################################
@@ -838,6 +852,9 @@ options {
     .type = bool
     .short_caption = Use model to help guess data type
     .help = If false, the model will only be used to extract crystal symmetry.
+  merge = False
+    .type = bool
+    .short_caption = Merge non-unique data
   show_details_if_error = True
     .type = bool
     .short_caption = Show data details for some errors
