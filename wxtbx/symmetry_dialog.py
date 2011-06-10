@@ -42,6 +42,7 @@ class SymmetryDialog (wx.Dialog) :
     szr2.Add(szr4, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
     szr.Layout()
     self.Fit()
+    self.Centre(wx.BOTH)
 
   def SetUnitCell (self, uc) :
     self.unit_cell_ctrl.SetValue(uc)

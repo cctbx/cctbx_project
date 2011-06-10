@@ -1,4 +1,5 @@
 
+from libtbx import object_oriented_patterns as oop
 import wx.lib.colourselect
 import wx
 import sys
@@ -14,7 +15,7 @@ class SettingsToolBase (object) :
     raise NotImplementedError()
 
   def get_control (self, name) :
-    return self._controls.get(name, None)
+    return self._controls.get(name, oop.null())
 
   def create_controls (self,
                        setting,
