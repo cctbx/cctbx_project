@@ -11,7 +11,7 @@ class scene (object) :
     from cctbx import miller
     from scitbx import graphics_utils
     from cctbx.array_family import flex
-    array = self.miller_array
+    array = self.miller_array.deep_copy()
     if (array.is_unique_set_under_symmetry()) :
       array = array.map_to_asu()
     if (array.is_xray_intensity_array()) :

@@ -5,6 +5,7 @@
 from crys3d import hklview
 import wx
 from math import sqrt
+import sys
 
 class hklview_2d (wx.PyPanel) :
   def __init__ (self, *args, **kwds) :
@@ -187,12 +188,13 @@ class hklview_2d (wx.PyPanel) :
       c = memory.GetPixel(x, y)
     bg = self.GetBackgroundColour()
     self._clicked = None
-    if (c != bg) :
-      for k, (x2,y2) in enumerate(self._points_2d) :
-        dist = sqrt((x2-x)**2 + (y2-y)**2)
-        if (dist <= (self._radii_2d[k] + 2)) :
-          self._clicked = k
-          break
+    min_dist = sys.maxint
+    closest_hkl = None
+    for k, (x2,y2) in enumerate(self._points_2d) :
+      dist = sqrt((x2-x)**2 + (y2-y)**2)
+      if (dist <= (self._radii_2d[k] + 2)) :
+        self._clicked = k
+        break
     hkl = resolution = None
     if (self._clicked is not None) :
       hkl = self.scene.indices[self._clicked]

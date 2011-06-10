@@ -1,10 +1,12 @@
 
 # TODO:
+#  - prompt user for missing symmetry
 #  - cached scenes
 
 from crys3d.hklview import settings
 from crys3d.hklview import view_2d, view_3d
 from wxtbx import icons
+import wxtbx.symmetry_dialog
 import wxtbx.utils
 from wx.lib.agw import floatspin
 import wx
@@ -192,27 +194,52 @@ class HKLViewFrame (wx.Frame) :
     self.statusbar.SetFieldsCount(2)
 
   def update_clicked (self, hkl, resolution=None) :
-    if (hkl is not None) :
-      self.statusbar.SetStatusText("CLICKED: %d,%d,%d (d = %g)" % (hkl[0],
-        hkl[1], hkl[2], resolution), 1)
-    else :
-      self.statusbar.SetStatusText("", 1)
+    pass
+
+  def update_settings_for_unmerged (self) :
+    self.settings.expand_to_p1 = False
+    self.settings.expand_anomalous = False
+    self.settings_panel.get_control("expand_to_p1").SetValue(False)
+    self.settings_panel.get_control("expand_to_p1").Enable(False)
+    self.settings_panel.get_control("expand_anomalous").SetValue(False)
+    self.settings_panel.get_control("expand_anomalous").Enable(False)
+
+  def update_settings_for_merged (self) :
+    self.settings_panel.get_control("expand_to_p1").Enable(True)
+    self.settings_panel.get_control("expand_anomalous").Enable(True)
 
   def set_miller_array (self, array) :
-    if array.is_complex_array() or array.is_hendrickson_lattman_array() :
-      raise Sorry("Complex (map) data and HL coefficients not supported.")
+    if (array.is_hendrickson_lattman_array()) :
+      raise Sorry("Hendrickson-Lattman coefficients are not supported.")
     info = array.info()
     if isinstance(info, str) :
       labels = "TEST DATA"
     else :
       labels = info.label_string()
-    details = ""
+    if (array.unit_cell() is None) or (array.space_group() is None) :
+      dlg = wxtbx.symmetry_dialog.SymmetryDialog(self, -1, "Enter symmetry")
+      dlg.SetUnitCell(array.unit_cell())
+      dlg.SetSpaceGroup(array.space_group_info())
+      if (dlg.ShowModal() == wx.ID_OK) :
+        symm = dlg.GetSymmetry()
+        array = array.customized_copy(crystal_symmetry=symm).set_info(info)
+      wx.CallAfter(dlg.Destroy)
+    details = []
     if (not array.is_unique_set_under_symmetry()) :
-      details = "(unmerged data)"
+      details.append("unmerged data")
+      self.update_settings_for_unmerged()
+    else :
+      self.update_settings_for_merged()
+    if array.is_complex_array() :
+      array = array.amplitudes().set_info(info)
+      details.append("as amplitudes")
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
+    details_str = ""
+    if (len(details) > 0) :
+      details_str = "(%s)" % ", ".join(details)
     self.statusbar.SetStatusText("Data: %s %s (Space group: %s  Unit Cell: %s)"
-      % (labels, details, sg, uc))
+      % (labels, details_str, sg, uc))
     self.settings_panel.d_min_ctrl.SetValue(array.d_min())
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
     self.viewer.set_miller_array(array)
@@ -226,11 +253,13 @@ class HKLViewFrame (wx.Frame) :
 
   def load_reflections_file (self, file_name) :
     if (file_name != "") :
-      from iotbx import file_reader
+      from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
-      f = file_reader.any_file(file_name, force_type="hkl")
-      f.assert_file_type("hkl")
-      arrays = f.file_object.as_miller_arrays(merge_equivalents=False)
+      try :
+        hkl_file = any_reflection_file(file_name)
+      except Exception, e :
+        raise Sorry(str(e))
+      arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
       #arrays = f.file_server.miller_arrays
       valid_arrays = []
       array_info = []
@@ -314,6 +343,10 @@ class HKLViewFrame2D (HKLViewFrame) :
       shortHelp="Show 3D view",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnShow3D, btn)
+
+  def update_settings_for_merged (self) :
+    self.settings.expand_to_p1 = True
+    self.settings.expand_anomalous = True
 
   def OnClose (self, evt) :
     self.Destroy()
