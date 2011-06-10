@@ -215,8 +215,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
         return_all_valid_arrays = True,
         minimum_score           = self.minimum_data_score)
       for array in miller_arrays :
-        if (array.anomalous_flag() and not
-            array.is_xray_reconstructed_amplitude_array()) :
+        if (array.anomalous_flag()) :
           labels.append(array.info().label_string())
     return labels
 
