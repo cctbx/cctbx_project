@@ -3,11 +3,12 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
 from crys3d.hklview.frames import *
+import os
 import sys
 
 def run (args) :
-  from iotbx import file_reader
   ma = None
+  hkl_file = None
   if (len(args) == 0) :
     from cctbx import miller, crystal
     from cctbx.array_family import flex
@@ -20,15 +21,19 @@ def run (args) :
     s = miller.set(xs, mi, anomalous_flag=False)
     ma = s.array(data=d).set_info("test")
   else :
-    f = file_reader.any_file(args[-1])
-    for array in f.file_server.miller_arrays :
-      if array.is_xray_amplitude_array() or array.is_xray_intensity_array() :
-        ma = array
+    for arg in args :
+      if os.path.isfile(arg) :
+        hkl_file = arg
         break
   a = wx.App(0)
   f = HKLViewFrame(None, -1, "Reflection data viewer", size=(1024,768))
-  f.set_miller_array(ma)
   f.Show()
+  if (ma is not None) :
+    f.set_miller_array(ma)
+  elif (hkl_file is not None) :
+    f.load_reflections_file(hkl_file)
+  else :
+    f.OnLoadFile(None)
   a.MainLoop()
 
 if (__name__ == "__main__") :
