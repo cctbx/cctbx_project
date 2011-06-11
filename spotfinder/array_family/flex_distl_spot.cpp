@@ -172,13 +172,43 @@ namespace scitbx { namespace af { namespace boost_python {
     ;
   }
 
+  af::shared<double>
+  ctr_mass_distances_from_direct_beam(
+    af::const_ref<spotfinder::distltbx::w_spot> const& spots,
+    scitbx::vec2<double> detector_size,
+    scitbx::vec2<int> detector_pixels,
+    scitbx::vec2<double> xy_beam)
+  {
+    af::shared<double> result(
+      spots.size(),
+      af::init_functor_null<double>());
+    scitbx::vec2<double> sop;
+    for(std::size_t i=0;i<2;i++) {
+      sop[i] = detector_size[i] / detector_pixels[i];
+    }
+    double const* b = xy_beam.begin();
+    for(std::size_t i=0;i<spots.size();i++) {
+      spotfinder::distltbx::w_spot const& spot = spots[i];
+      double dx = spot.ctr_mass_x() * sop[0] - b[0];
+      double dy = spot.ctr_mass_y() * sop[1] - b[1];
+      result.push_back(std::sqrt(dx*dx + dy*dy));
+    }
+    return result;
+  }
+
   void wrap_flex_w_spot()
   {
+    using boost::python::arg;
     flex_wrapper<spotfinder::distltbx::w_spot,
                  boost::python::return_internal_reference<>
                  >::plain("distl_spot")
     .def_pickle(flex_pickle_double_buffered<
                  spotfinder::distltbx::w_spot, to_string, from_string>())
+    .def("ctr_mass_distances_from_direct_beam",
+      ctr_mass_distances_from_direct_beam, (
+        arg("detector_size"),
+        arg("detector_pixels"),
+        arg("xy_beam")))
     ;
   }
 
