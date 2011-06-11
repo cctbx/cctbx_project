@@ -37,7 +37,11 @@ def process(work_params, image):
   dobj.search_spots()
   dobj.search_overloadpatches()
   dobj.finish_analysis()
-  #assert dobj.spots.size() == 0
+  dists = dobj.spots.ctr_mass_distances_from_direct_beam(
+    detector_size=(dsx,dsy),
+    detector_pixels=(dpx,dpy),
+    xy_beam=(dsx/2,dsy/2)) # just a minimal test
+  assert dists.size() == dobj.spots.size()
 
 def run(args):
   import spotfinder
