@@ -1,0 +1,10 @@
+#/bin/sh
+if test "${LD_LIBRARY_PATH+set}"  == set ; then
+  LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:__python_so__"
+else
+  LD_LIBRARY_PATH="__python_so__"
+fi
+export LD_LIBRARY_PATH
+
+source __build_dir__/setpaths_debug.sh
+"$@"
