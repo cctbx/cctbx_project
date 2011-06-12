@@ -246,10 +246,9 @@ class hklview_3d (wxGLWindow) :
     if (self.closest_point_i_seq is not None) :
       self.scene.label_points.add(self.closest_point_i_seq)
       self.labels_display_list = None
-      resolution = self.scene.get_resolution_at_point(self.closest_point_i_seq)
-      self.GetParent().update_clicked(
-        hkl=self.scene.indices[self.closest_point_i_seq],
-        resolution=resolution)
+      hkl, d_min, value = self.scene.get_reflection_info(
+        self.closest_point_i_seq)
+      self.GetParent().update_clicked(hkl, d_min, value)
     else :
       self.GetParent().update_clicked(hkl=None)
 
