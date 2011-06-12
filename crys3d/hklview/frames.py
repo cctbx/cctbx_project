@@ -10,6 +10,7 @@ import wxtbx.symmetry_dialog
 import wxtbx.utils
 from wx.lib.agw import floatspin
 import wx
+from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 from math import sqrt
 
@@ -35,10 +36,11 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       setting="show_data_over_sigma",
       label="Use I or F over sigma")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="uniform_size",
-      label="Use same radius for all points")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    if (not self.is_3d_view) :
+      ctrls = self.create_controls(
+        setting="uniform_size",
+        label="Use same radius for all points")
+      self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="sqrt_scale_radii",
       label="Scale radii to sqrt(I)")
@@ -114,6 +116,40 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.panel_sizer.Add(box2)
     self.Bind(wx.EVT_CHOICE, self.OnSetSlice, self.hkl_choice)
     self.Bind(wx.EVT_SPINCTRL, self.OnSetSlice, self.slice_index)
+    # reflection info box
+    box = wx.StaticBox(self.panel, -1, "Reflection info")
+    box_szr = wx.StaticBoxSizer(box, wx.VERTICAL)
+    self.panel_sizer.Add((1,10))
+    self.panel_sizer.Add(box_szr, 0, wx.EXPAND|wx.ALL)
+    grid_szr = wx.FlexGridSizer(rows=3, cols=2)
+    box_szr.Add(grid_szr, 0, wx.EXPAND|wx.ALL)
+    grid_szr.Add(wx.StaticText(self.panel, -1, "Clicked:"), 0,
+      wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.hkl_info = wx.TextCtrl(self.panel, -1, size=(80,-1),
+      style=wx.TE_READONLY)
+    grid_szr.Add(self.hkl_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid_szr.Add(wx.StaticText(self.panel, -1, "Resolution:"), 0,
+      wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.d_min_info = wx.TextCtrl(self.panel, -1, size=(80,-1),
+      style=wx.TE_READONLY)
+    grid_szr.Add(self.d_min_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid_szr.Add(wx.StaticText(self.panel, -1, "Value:"), 0,
+      wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.value_info = wx.TextCtrl(self.panel, -1, size=(80,-1),
+      style=wx.TE_READONLY)
+    grid_szr.Add(self.value_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+
+  def update_reflection_info (self, hkl, d_min, value) :
+    if (hkl is None) :
+      self.hkl_info.SetValue("")
+      self.d_min_info.SetValue("")
+      self.value_info.SetValue("")
+    else :
+      self.hkl_info.SetValue("%d, %d, %d" % hkl)
+      d_min_str = format_value("%.3g", d_min)
+      self.d_min_info.SetValue(d_min_str)
+      value_str = format_value("%.3g", value, replace_none_with="---")
+      self.value_info.SetValue(value_str)
 
   def OnSetSlice (self, event) :
     self.settings.slice_axis = self.hkl_choice.GetSelection()
@@ -193,8 +229,8 @@ class HKLViewFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnClearLabels, btn)
     self.statusbar.SetFieldsCount(2)
 
-  def update_clicked (self, hkl, resolution=None) :
-    pass
+  def update_clicked (self, hkl, d_min=None, value=None) :
+    self.settings_panel.update_reflection_info(hkl, d_min, value)
 
   def update_settings_for_unmerged (self) :
     self.settings.expand_to_p1 = False

@@ -156,17 +156,18 @@ class hklview_2d (wx.PyPanel) :
         gc.FillPath(path)
       gc.PopState()
     if (self._clicked is not None) :
-      gc.SetPen(main_pen)
-      gc.DrawText("Clicked: ", 10, 10)
-      w, h = gc.GetTextExtent("Clicked: ")
-      gc.DrawText("d = %g" % self.scene.get_resolution_at_point(self._clicked),
-        w+10, 30)
-      if (self.settings.color_scheme == 0) :
-        c = self.scene.colors[self._clicked]
-        c = (c[0]*255, c[1]*255, c[2]*255)
-        gc.SetPen(wx.Pen(c))
-        gc.SetFont(gc.CreateFont(self.GetFont(),c))
-      gc.DrawText("%d,%d,%d" % self.scene.indices[self._clicked], w+10, 10)
+      pass
+      #gc.SetPen(main_pen)
+      #gc.DrawText("Clicked: ", 10, 10)
+      #w, h = gc.GetTextExtent("Clicked: ")
+      #gc.DrawText("d = %g" % self.scene.get_resolution_at_point(self._clicked),
+      #  w+10, 30)
+      #if (self.settings.color_scheme == 0) :
+      #  c = self.scene.colors[self._clicked]
+      #  c = (c[0]*255, c[1]*255, c[2]*255)
+      #  gc.SetPen(wx.Pen(c))
+      #  gc.SetFont(gc.CreateFont(self.GetFont(),c))
+      #gc.DrawText("%d,%d,%d" % self.scene.indices[self._clicked], w+10, 10)
 
   def save_screen_shot (self, **kwds) :
     pass
@@ -195,11 +196,10 @@ class hklview_2d (wx.PyPanel) :
       if (dist <= (self._radii_2d[k] + 2)) :
         self._clicked = k
         break
-    hkl = resolution = None
+    hkl = d_min = value = None
     if (self._clicked is not None) :
-      hkl = self.scene.indices[self._clicked]
-      resolution = self.scene.get_resolution_at_point(self._clicked)
-    self.GetParent().update_clicked(hkl, resolution)
+      hkl, d_min, value = self.scene.get_reflection_info(self._clicked)
+    self.GetParent().update_clicked(hkl, d_min, value)
     self.Refresh()
 
   # placeholder - mimics gltbx.wx_viewer.wxGLWindow.fit_into_viewport

@@ -14,6 +14,7 @@ class scene (object) :
     array = self.miller_array.deep_copy()
     if (array.is_unique_set_under_symmetry()) :
       array = array.map_to_asu()
+    self.data = array.data().deep_copy()
     if (array.is_xray_intensity_array()) :
       data = array.data()
       data.set_selected(data < 0, flex.double(data.size(), 0.))
@@ -47,7 +48,9 @@ class scene (object) :
     data = array.data()
     assert isinstance(data, flex.double) or isinstance(data, flex.bool)
     if isinstance(data, flex.bool) :
-      data = flex.double(data.size(), 1.0)
+      data_as_float = flex.double(data.size(), 0.0)
+      data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
+      data = data_as_float
     if (settings.sqrt_scale_colors) :
       data_for_colors = flex.sqrt(data)
     else :
@@ -76,6 +79,7 @@ class scene (object) :
       colors = flex.vec3_double(data.size(), base_color)
     if (slice_selection is not None) :
       data = data.select(slice_selection)
+      self.data = self.data.select(slice_selection)
       if (data.size() == 0) :
         raise ValueError("No data selected!")
       indices = indices.select(slice_selection)
@@ -118,6 +122,7 @@ class scene (object) :
         self.radii = flex.double()
         self.missing = flex.bool()
         self.indices = flex.miller_index()
+        self.data = flex.double()
       complete_set = array.complete_set()
       if (settings.slice_mode) :
         slice_selection = miller.simple_slice(
@@ -138,6 +143,7 @@ class scene (object) :
         self.radii.extend(flex.double(n_missing, max_radius / 2))
         self.missing.extend(flex.bool(n_missing, True))
         self.indices.extend(missing)
+        self.data.extend(flex.double(n_missing, -1.))
     # XXX hack for process_pick_points
     self.visible_points = flex.bool(self.points.size(), True)
     assert (self.colors.size() == self.points.size() == self.indices.size() ==
@@ -150,6 +156,15 @@ class scene (object) :
   def get_resolution_at_point (self, k) :
     hkl = self.indices[k]
     return self.unit_cell.d(hkl)
+
+  def get_reflection_info (self, k) :
+    hkl = self.indices[k]
+    d_min = self.unit_cell.d(hkl)
+    if (self.missing[k]) :
+      value = None
+    else :
+      value = self.data[k]
+    return (hkl, d_min, value)
 
 class settings (object) :
   def __init__ (self) :
