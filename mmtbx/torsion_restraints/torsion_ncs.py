@@ -13,6 +13,9 @@ from libtbx.str_utils import make_sub_header
 import sys, math
 from libtbx import Auto
 from libtbx import group_args
+#import boost.python
+#ext = boost.python.import_ext("mmtbx_alignment_ext")
+#from mmtbx_alignment_ext import *
 
 TOP_OUT_FLAG = True
 
@@ -244,7 +247,9 @@ class torsion_ncs(object):
         if (common_residue_names_get_class(residue.resname) == \
             'other' or \
             common_residue_names_get_class(residue.resname) == \
-            'common_small_molecule'):
+            'common_small_molecule' or \
+            common_residue_names_get_class(residue.resname) == \
+            'common_element'):
           micro_count += 1
         else:
           macro_count += 1
