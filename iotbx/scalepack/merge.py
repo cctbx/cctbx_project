@@ -116,6 +116,10 @@ class reader(object):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="scalepack_merge")
     crystal_symmetry_from_file = self.crystal_symmetry()
+    if (self.anomalous):
+      labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
+    else:
+      labels = ["I", "SIGI"]
     return (miller.array(
       miller_set=miller.set(
         crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
@@ -126,7 +130,7 @@ class reader(object):
       data=self.i_obs,
       sigmas=self.sigmas)
       .set_info(base_array_info.customized_copy(
-        labels=["i_obs", "sigma"],
+        labels=labels,
         crystal_symmetry_from_file=crystal_symmetry_from_file))
       .set_observation_type_xray_intensity())
 
