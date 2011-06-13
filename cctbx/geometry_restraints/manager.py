@@ -954,7 +954,7 @@ class manager(object):
     if (self.ncs_dihedral_proxies is not None):
       self.ncs_dihedral_proxies.show_sorted(
         by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f, is_reference=True)
+        sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
       print >> f
     if (self.chirality_proxies is not None):
       self.chirality_proxies.show_sorted(

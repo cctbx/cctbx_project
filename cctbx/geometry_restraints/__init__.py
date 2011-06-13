@@ -5,6 +5,7 @@ import cctbx.geometry # import dependency
 
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
+from libtbx.utils import Sorry
 
 import boost.python
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
@@ -795,9 +796,18 @@ class _(boost.python.injector, shared_dihedral_proxy):
         f=None,
         prefix="",
         max_items=None,
-        is_reference=False):
+        is_reference=False,
+        is_ncs=False):
     if is_reference:
-      proxy_label = "Reference dihedral angle"
+      if is_ncs:
+        raise Sorry("torsion restraint assignment conflict")
+      else:
+        proxy_label = "Reference dihedral angle"
+    elif is_ncs:
+      if is_reference:
+        raise Sorry("torsion restraint assignment conflict")
+      else:
+        proxy_label = "NCS dihedral angle"
     else:
       proxy_label = "Dihedral angle"
     _show_sorted_impl(O=self,
