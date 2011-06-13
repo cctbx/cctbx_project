@@ -191,7 +191,7 @@ namespace scitbx { namespace af { namespace boost_python {
       spotfinder::distltbx::w_spot const& spot = spots[i];
       double dx = spot.ctr_mass_x() * sop[0] - b[0];
       double dy = spot.ctr_mass_y() * sop[1] - b[1];
-      result.push_back(std::sqrt(dx*dx + dy*dy));
+      result[i] = std::sqrt(dx*dx + dy*dy);
     }
     return result;
   }
