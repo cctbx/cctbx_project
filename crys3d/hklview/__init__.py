@@ -14,25 +14,33 @@ class scene (object) :
     array = self.miller_array.deep_copy()
     if (array.is_unique_set_under_symmetry()) :
       array = array.map_to_asu()
+    if (settings.d_min is not None) :
+      array = array.resolution_filter(d_min=settings.d_min)
+    if (settings.expand_to_p1) :
+      array = array.expand_to_p1()
+    if (settings.expand_anomalous) :
+      array = array.generate_bijvoet_mates()
     self.data = array.data().deep_copy()
     if (array.is_xray_intensity_array()) :
       data = array.data()
       data.set_selected(data < 0, flex.double(data.size(), 0.))
       array = array.customized_copy(data=data)
+    data = array.data()
+    assert (isinstance(data, flex.double) or isinstance(data, flex.bool))
+    self.r_free_mode = False
+    if isinstance(data, flex.bool) :
+      self.r_free_mode = True
+      data_as_float = flex.double(data.size(), 0.0)
+      data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
+      data = data_as_float
+      self.data = data.deep_copy()
     if (settings.show_data_over_sigma) :
       if (array.sigmas() is None) :
         raise Sorry("sigmas not defined.")
       sigmas = array.sigmas()
-      data = array.data()
       array = array.select(sigmas != 0).customized_copy(data=data/sigmas)
-    if (settings.d_min is not None) :
-      array = array.resolution_filter(d_min=settings.d_min)
     uc = array.unit_cell()
     self.unit_cell = uc
-    if (settings.expand_to_p1) :
-      array = array.expand_to_p1()
-    if (settings.expand_anomalous) :
-      array = array.generate_bijvoet_mates()
     slice_selection = None
     if (settings.slice_mode) :
       slice_selection = miller.simple_slice(
@@ -45,17 +53,11 @@ class scene (object) :
                   uc.reciprocal_space_vector((0,self.hkl_range[1],0)),
                   uc.reciprocal_space_vector((0,0,self.hkl_range[2])) ]
     indices = array.indices()
-    data = array.data()
-    assert isinstance(data, flex.double) or isinstance(data, flex.bool)
-    if isinstance(data, flex.bool) :
-      data_as_float = flex.double(data.size(), 0.0)
-      data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
-      data = data_as_float
-    if (settings.sqrt_scale_colors) :
+    if (settings.sqrt_scale_colors) and (isinstance(data, flex.double)) :
       data_for_colors = flex.sqrt(data)
     else :
       data_for_colors = data
-    if (settings.sqrt_scale_radii) :
+    if (settings.sqrt_scale_radii) and (isinstance(data, flex.double)) :
       data_for_radii = flex.sqrt(data)
     else :
       data_for_radii = data
