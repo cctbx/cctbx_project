@@ -119,7 +119,7 @@ class reader(object):
       result = result.merge_equivalents().array()
     return (result
       .set_info(base_array_info.customized_copy(
-        labels=["i_obs", "sigma"],
+        labels=["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"],
         merged=merge_equivalents,
         crystal_symmetry_from_file=crystal_symmetry_from_file))
       .set_observation_type_xray_intensity())
