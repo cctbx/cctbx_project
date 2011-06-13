@@ -7,6 +7,39 @@ def compute_image(work_params):
     size=dpx*dpy,
     modulus=work_params.noise.max).as_int()
   image.reshape(flex.grid(dpx,dpy))
+  pixels_center = None
+  if (work_params.fill_beam_center):
+    assert (dpx % 2) == (dpy % 2)
+    if (dpx % 2 == 0):
+      pixels_center = """\
+ OOOO
+OOOOOO
+OOOOOO
+OOOOOO
+OOOOOO
+ OOOO
+"""
+    else:
+      pixels_center = """\
+   O
+ OOOOO
+ OOOOO
+OOOOOOO
+ OOOOO
+ OOOOO
+   O
+"""
+  if (pixels_center is not None):
+    lines = pixels_center.splitlines()
+    n = max([len(line) for line in lines])
+    oi,oj = dpx//2-n//2, dpy//2-n//2
+    for i,line in enumerate(lines):
+      line = line + " "*(n-len(line))
+      for j,c in enumerate(line):
+        if (c == "O"):
+          pixel = (oi+i, oj+j)
+          print "beam center pixel:", pixel
+          image[pixel] = work_params.signal_max
   return image
 
 def process(work_params, image):
@@ -42,6 +75,7 @@ def process(work_params, image):
     detector_pixels=(dpx,dpy),
     xy_beam=(dsx/2,dsy/2)) # just a minimal test
   assert dists.size() == dobj.spots.size()
+  return dobj
 
 def run(args):
   import spotfinder
@@ -67,6 +101,8 @@ detector {
     .type = ints(size=2)
     .help = "Number of pixels in each detector dimension (x,y)"
 }
+fill_beam_center = False
+  .type = bool
 """ + spotfinder.phil_str
   import libtbx.phil
   master_phil = libtbx.phil.parse(input_string=phil_str)
@@ -75,7 +111,7 @@ detector {
    [argument_interpreter.process(arg=arg) for arg in args])
   work_params = updated_params.extract()
   image = compute_image(work_params)
-  process(work_params, image)
+  return process(work_params, image)
 
 def run_scanbox_tests():
   # Large image, normal conditions
@@ -98,6 +134,16 @@ def run_scanbox_tests():
   #  Note the minimum scanbox_window size is implicity hardcoded in libdistl.cpp,
   #  most likely in the diffimage::search_maximas() procedure.
   run("""spotfinder.scanbox_windows=10,10,10 detector.pixels=25,25 peripheral_margin=0""".split(" "))
+
+  for dp in [100,101]:
+    print "detector pixels:", (dp,dp)
+    spots = run([
+      "detector.pixels=%d,%d" % (dp,dp),
+      "fill_beam_center=True"]).spots
+    assert spots.size() == 1
+    spot = spots[0]
+    print (spot.ctr_mass_x(), spot.ctr_mass_y())
+    print
 
   print "OK"
 
