@@ -137,8 +137,8 @@ class hklview_2d (wx.PyPanel) :
       r_point = self.scene.radii[k] * r / max(x_max, y_max)
       if (self.settings.uniform_size) :
         r_point = max_radius
-      elif (self.settings.pad_radii) :
-        r_point = min(1, r_point)
+      else :
+        r_point = max(0.5, r_point)
       self._points_2d.append((x,y))
       self._radii_2d.append(r_point)
       path = gc.CreatePath()

@@ -227,7 +227,6 @@ class HKLViewFrame (wx.Frame) :
       shortHelp="Clear labels",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnClearLabels, btn)
-    self.statusbar.SetFieldsCount(2)
 
   def update_clicked (self, hkl, d_min=None, value=None) :
     self.settings_panel.update_reflection_info(hkl, d_min, value)
@@ -269,6 +268,13 @@ class HKLViewFrame (wx.Frame) :
     if array.is_complex_array() :
       array = array.amplitudes().set_info(info)
       details.append("as amplitudes")
+    from iotbx.reflection_file_utils import looks_like_r_free_flags_info
+    if (array.is_integer_array()) and (looks_like_r_free_flags_info(info)) :
+      from iotbx.reflection_file_utils import get_r_free_flags_scores
+      score_array = get_r_free_flags_scores([array], None)
+      test_flag_value = score_array.test_flag_values[0]
+      array = array.customized_copy(data=(array.data() == test_flag_value))
+      array.set_info(info)
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
     details_str = ""
