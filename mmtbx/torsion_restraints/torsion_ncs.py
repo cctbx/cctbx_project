@@ -13,9 +13,6 @@ from libtbx.str_utils import make_sub_header
 import sys, math
 from libtbx import Auto
 from libtbx import group_args
-#import boost.python
-#ext = boost.python.import_ext("mmtbx_alignment_ext")
-#from mmtbx_alignment_ext import *
 
 TOP_OUT_FLAG = True
 
