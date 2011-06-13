@@ -228,7 +228,7 @@ class mvd(object):
       print >> log, "     resolution(A)  sigmaa"
       for resolution, sigmaa in zip(self.model_vs_data.sigmaa_plot.resolution,
                                      self.model_vs_data.sigmaa_plot.sigmaa):
-        print "        %10.3f%8.3f"%(float(resolution), float(sigmaa))
+        print >> log, "        %10.3f%8.3f"%(float(resolution), float(sigmaa))
 
 def get_program_name(file_lines):
   result = None
