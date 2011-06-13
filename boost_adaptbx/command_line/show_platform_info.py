@@ -34,6 +34,8 @@ def run (out=None, omit_unicode_experiment=False):
     e = u"\u00C5".encode("utf-8", "strict")
     print >> out, 'u"\u00C5" =', c(u"\u00C5"), 'as utf-8 =', c(e)
     print >> out, "LATIN CAPITAL LETTER A WITH RING ABOVE =", e
+  from libtbx.utils import format_cpu_times
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()
