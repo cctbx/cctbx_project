@@ -203,6 +203,10 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return len(self.get_data_labels(*args, **kwds)) > 0
 
   def get_anomalous_data_labels (self, *args, **kwds) :
+    kwds = dict(kwds) # XXX gross...
+    allow_dano = kwds.get("allow_reconstructed_amplitudes", True)
+    if ("allow_reconstructed_amplitudes" in kwds) :
+      del kwds["allow_reconstructed_amplitudes"]
     hkl_file = self.get_file(*args, **kwds)
     labels = []
     if hkl_file is not None :
@@ -216,6 +220,9 @@ class reflections_handler (iotbx.gui_tools.manager) :
         minimum_score           = self.minimum_data_score)
       for array in miller_arrays :
         if (array.anomalous_flag()) :
+          if ((array.is_xray_reconstructed_amplitude_array()) and
+              (not allow_dano)) :
+            continue
           labels.append(array.info().label_string())
     return labels
 

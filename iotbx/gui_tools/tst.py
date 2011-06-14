@@ -71,6 +71,20 @@ def exercise_reflections () :
   assert (hkl_handler.get_intensity_labels(file_name=sca_file) ==
           ['I(+),SIGI(+),I(-),SIGI(-)'])
 
+  # test handling of reconstructed (anomalous) amplitudes
+  dano_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/dano.mtz",
+    test=os.path.isfile)
+  hkl_handler = reflections.reflections_handler(
+    allowed_param_names=["labin"])
+  hkl_handler.set_param_file(file_name=dano_file,
+    file_param_name="labin")
+  labels = hkl_handler.get_anomalous_data_labels(file_param_name="labin")
+  assert (len(labels) == 3)
+  labels = hkl_handler.get_anomalous_data_labels(file_param_name="labin",
+    allow_reconstructed_amplitudes=False)
+  assert (len(labels) == 0)
+
   resolve_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/resolve_1_offset.mtz",
     test=os.path.isfile)
