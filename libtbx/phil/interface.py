@@ -429,7 +429,8 @@ class index (object) :
           delete_phil_objects(old_phil, redundant_paths, only_scope=only_scope)
       self.log2("Fetching new working phil")
       new_phil = None
-      if (only_scope is not None) :
+      if False : # XXX this was causing too many problems
+      # if (only_scope is not None) :
         new_scope = phil_object.get(only_scope)
         scope_master = self.master_phil.get(only_scope)
         fetched_scope = scope_master.fetch(source=new_scope)
