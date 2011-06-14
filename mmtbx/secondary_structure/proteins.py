@@ -201,6 +201,8 @@ def _create_hbond_proxy (
     remove_outliers,
     use_hydrogens,
     weight=1.0,
+    sigma=None,
+    slack=None,
     log=sys.stdout) :
   donor_labels = None
   acceptor_labels = None
@@ -245,12 +247,18 @@ def _create_hbond_proxy (
     if (restraint_type == "simple") :
       if (use_hydrogens) :
         donor = hydrogen
+      sigma_ = sigma
+      if (sigma is None) :
+        sigma_ = hbond_params.sigma
+      slack_ = slack
+      if (slack is None) :
+        slack_ = hbond_params.slack
       build_proxies.add_proxy(
         i_seqs=[donor.i_seq, acceptor.i_seq],
         distance_ideal=distance_ideal,
         distance_cut=distance_cut,
-        weight=weight/(hbond_params.sigma ** 2),
-        slack=hbond_params.slack)
+        weight=weight/(sigma_ ** 2),
+        slack=slack_)
       build_proxies.add_nonbonded_exclusion(donor.i_seq, acceptor.i_seq)
     elif (restraint_type == "lennard_jones") :
       if (use_hydrogens) :
@@ -284,9 +292,9 @@ def _create_hbond_proxy (
     return 0
 
 def create_helix_hydrogen_bond_proxies (
-    helix_selection,
-    helix_step,
+    params,
     pdb_hierarchy,
+    selection_cache,
     restraint_type,
     build_proxies,
     weight,
@@ -299,6 +307,21 @@ def create_helix_hydrogen_bond_proxies (
     master_selection,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
+  helix_class = params.helix_type
+  if helix_class == "alpha" :
+    helix_step = 4
+  elif helix_class == "pi" :
+    helix_step = 5
+  elif helix_class == "3_10" :
+    helix_step = 3
+  else :
+    print >> log, "  Don't know bonding for helix class %s." % helix_class
+    return 0
+  try :
+    helix_selection = selection_cache.selection(params.selection)
+  except Exception, e :
+    print >> log, str(e)
+    return 0
   assert (helix_step in [3, 4, 5])
   if (not master_selection.is_super_set(helix_selection)) :
     return 0
@@ -347,6 +370,8 @@ def create_helix_hydrogen_bond_proxies (
                   remove_outliers=remove_outliers,
                   use_hydrogens=use_hydrogens,
                   weight=weight,
+                  sigma=params.restraint_sigma,
+                  slack=params.restraint_slack,
                   log=log)
   return n_proxies
 
@@ -407,6 +432,8 @@ def create_sheet_hydrogen_bond_proxies (
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
+                sigma=sheet_params.restraint_sigma,
+                slack=sheet_params.restraint_slack,
                 log=log)
             if ((j + 2) >= len(curr_residues)) :
               break
@@ -423,6 +450,8 @@ def create_sheet_hydrogen_bond_proxies (
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
+                sigma=sheet_params.restraint_sigma,
+                slack=sheet_params.restraint_slack,
                 log=log)
             i += 2
             j += 2
@@ -441,6 +470,8 @@ def create_sheet_hydrogen_bond_proxies (
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
+                sigma=sheet_params.restraint_sigma,
+                slack=sheet_params.restraint_slack,
                 log=log)
             if (curr_residues[j].resname.strip() != "PRO") :
               n_proxies += _create_hbond_proxy(
@@ -455,6 +486,8 @@ def create_sheet_hydrogen_bond_proxies (
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
+                sigma=sheet_params.restraint_sigma,
+                slack=sheet_params.restraint_slack,
                 log=log)
             i += 2
             j -= 2
