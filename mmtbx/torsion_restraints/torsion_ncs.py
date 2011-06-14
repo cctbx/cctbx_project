@@ -39,7 +39,7 @@ torsion_ncs_params = iotbx.phil.parse("""
    .type = bool
  damping_limit = 10.0
    .type = float
- verbose = False
+ verbose = True
    .type = bool
  edits
    .short_caption = Edit torsion NCS restraints
@@ -246,7 +246,9 @@ class torsion_ncs(object):
             common_residue_names_get_class(residue.resname) == \
             'common_small_molecule' or \
             common_residue_names_get_class(residue.resname) == \
-            'common_element'):
+            'common_element' or \
+            common_residue_names_get_class(residue.resname) == \
+            'common_water'):
           micro_count += 1
         else:
           macro_count += 1
@@ -378,18 +380,45 @@ class torsion_ncs(object):
     return res_match_hash
 
   def show_ncs_summary(self, log=None):
+    ncs_match_hash = {}
     if(log is None): log = sys.stdout
+    for dp_set in self.dp_ncs:
+      key_set = []
+      for dp in dp_set:
+        if len(dp_set) < 2:
+          continue
+        cur_key = ""
+        for i_seq in dp.i_seqs:
+          cur_key += self.name_hash[i_seq]
+        if cur_key[5:14] == cur_key[20:29] and \
+           cur_key[5:14] == cur_key[35:44]:
+          key_set.append(cur_key[5:14])
+      if len(dp_set) == len(key_set):
+        key_set.sort()
+        master_key = None
+        skip = False
+        for i, key in enumerate(key_set):
+          if i == 0:
+            if ncs_match_hash.get(key) is None:
+              ncs_match_hash[key] = []
+            elif len(key_set) <= len(ncs_match_hash[key]):
+              skip = True
+            else:
+              ncs_match_hash[key] = []
+            master_key = key
+          elif not skip:
+            ncs_match_hash[master_key].append(key)
+    self.ncs_match_hash = ncs_match_hash
+    def get_key_chain_num(res):
+      return res[4:]
+    sorted_keys = sorted(self.ncs_match_hash, key=get_key_chain_num)
     print >> log, "--------------------------------------------------------"
     print >> log, "Torsion NCS Matching Summary:"
-    for dp_set in self.dp_ncs:
-      if len(dp_set) < 2:
-        continue
-      dp_text = "NCS dihedral:\n"
-      for dp in dp_set:
-        for i_seq in dp.i_seqs:
-          dp_text += self.name_hash[i_seq]
-        dp_text += "\n"
-      print >> log, dp_text
+    for key in sorted_keys:
+      print_line = key
+      for match in self.ncs_match_hash[key]:
+        print_line += "  <=====>  %s" % (match)
+      print >> log, print_line
     print >> log, "--------------------------------------------------------"
 
   def generate_dihedral_ncs_restraints(self, sites_cart, log):
