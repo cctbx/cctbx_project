@@ -22,12 +22,14 @@ namespace cctbx { namespace miller {
     double detector_distance,
     scitbx::vec2<double> detector_size,
     scitbx::vec2<int> detector_pixels,
-    unsigned point_spread)
+    unsigned point_spread,
+    double gaussian_falloff_scale)
   {
     TBXX_ASSERT(ewald_radius > 0);
     TBXX_ASSERT(detector_size.const_ref().all_gt(0));
     TBXX_ASSERT(detector_pixels.const_ref().all_gt(0));
     TBXX_ASSERT(point_spread > 0);
+    TBXX_ASSERT(gaussian_falloff_scale >= 0);
     int dpx = detector_pixels[0];
     int dpy = detector_pixels[1];
     af::versa<int, af::flex_grid<> > result(af::flex_grid<>(dpx, dpy), 0);
@@ -38,6 +40,7 @@ namespace cctbx { namespace miller {
     bool point_spread_is_even_value = (point_spread % 2 == 0);
     double circle_radius_sq = point_spread * std::max(dsx/dpx, dsy/dpy) / 2;
     circle_radius_sq *= circle_radius_sq;
+    TBXX_ASSERT(circle_radius_sq != 0);
     typedef scitbx::vec3<double> v3d;
     for(std::size_t ih=0;ih<miller_indices.size();ih++) {
       v3d rv = unit_cell.reciprocal_space_vector(miller_indices[ih]);
@@ -64,6 +67,8 @@ namespace cctbx { namespace miller {
               if (pxf - pxi > 0.5) pxb++;
               if (pyf - pyi > 0.5) pyb++;
             }
+            double gauss_arg_term = -gaussian_falloff_scale / circle_radius_sq;
+            int signal = signal_max;
             for(int i=0;i<=point_spread;i++) {
               int pi = pxb + i;
               if (pi < 0 || pi >= dpx) continue;
@@ -74,9 +79,15 @@ namespace cctbx { namespace miller {
                 if (point_spread > 2) {
                   double pcx = ((pi + 0.5) / dpx - 0.5) * dsx - dx;
                   double pcy = ((pj + 0.5) / dpy - 0.5) * dsy - dy;
-                  if (pcx*pcx + pcy*pcy > circle_radius_sq) continue;
+                  double pc_sq = pcx*pcx + pcy*pcy;
+                  if (pc_sq > circle_radius_sq) continue;
+                  if (gaussian_falloff_scale != 0) {
+                    double falloff_factor = std::exp(pc_sq * gauss_arg_term);
+                    signal = static_cast<int>(
+                      signal_max * falloff_factor + 0.5);
+                  }
                 }
-                result[pi0+pj] = signal_max;
+                result[pi0+pj] = signal;
               }
             }
           }

@@ -116,7 +116,8 @@ namespace {
       arg("detector_distance"),
       arg("detector_size"),
       arg("detector_pixels"),
-      arg("point_spread")));
+      arg("point_spread"),
+      arg("gaussian_falloff_scale")));
   }
 
 } // namespace <anonymous>
