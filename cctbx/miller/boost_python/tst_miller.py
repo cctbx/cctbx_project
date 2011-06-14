@@ -640,7 +640,8 @@ def exercise_image_simple():
         detector_distance=5,
         detector_size=(10,12),
         detector_pixels=(dpx,dpy),
-        point_spread=point_spread)
+        point_spread=point_spread,
+        gaussian_falloff_scale=4)
       assert image.all() == (dpx,dpy)
       for i in xrange(dpx):
         line = []
