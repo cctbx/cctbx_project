@@ -509,8 +509,8 @@ def get_map_coeff_labels (server, build_only=False, include_fom=True,
         hybrid_label = [data_label, phase_label]
         if len(fom_labels) > 0 and include_fom :
           for fom in fom_labels :
-            hybrid_label.append(fom)
-            all_labels.append(hybrid_label)
+            hybrid_label_ = hybrid_label + [ fom ]
+            all_labels.append(hybrid_label_)
         else :
           all_labels.append(hybrid_label)
   else :
