@@ -206,38 +206,24 @@ def hydrogen_bond_proxies_from_selections(
         print >> log, "  Skipping non-alpha helix (class %s):" % helix_class
         print >> log, "    %s" % helix.selection
         continue
-      if helix_class == "alpha" :
-        helix_step = 4
-      elif helix_class == "pi" :
-        helix_step = 5
-      elif helix_class == "3_10" :
-        helix_step = 3
-      else :
-        print >> log, "  Don't know bonding for helix class %s." % helix_class
+      n_proxies = proteins.create_helix_hydrogen_bond_proxies(
+        params=helix,
+        pdb_hierarchy=pdb_hierarchy,
+        selection_cache=selection_cache,
+        restraint_type=restraint_type,
+        build_proxies=build_proxies,
+        weight=hbond_params.restraints_weight,
+        hbond_params=geo_params,
+        hbond_counts=hbond_counts,
+        distance_ideal=distance_ideal,
+        distance_cut=distance_cut,
+        remove_outliers=remove_outliers,
+        use_hydrogens=use_hydrogens,
+        master_selection=master_selection,
+        log=log)
+      if (n_proxies == 0) :
+        print >> log, "  No H-bonds generated for '%s'" % helix.selection
         continue
-      try :
-        helix_selection = selection_cache.selection(helix.selection)
-      except Exception, e :
-        print e
-      else :
-        n_proxies = proteins.create_helix_hydrogen_bond_proxies(
-          helix_selection=helix_selection,
-          helix_step=helix_step,
-          pdb_hierarchy=pdb_hierarchy,
-          restraint_type=restraint_type,
-          build_proxies=build_proxies,
-          weight=hbond_params.restraints_weight,
-          hbond_params=geo_params,
-          hbond_counts=hbond_counts,
-          distance_ideal=distance_ideal,
-          distance_cut=distance_cut,
-          remove_outliers=remove_outliers,
-          use_hydrogens=use_hydrogens,
-          master_selection=master_selection,
-          log=log)
-        if (n_proxies == 0) :
-          print >> log, "  No H-bonds generated for '%s'" % helix.selection
-          continue
   if (restrain_sheets) :
     for k, sheet in enumerate(params.sheet) :
       n_proxies = proteins.create_sheet_hydrogen_bond_proxies(

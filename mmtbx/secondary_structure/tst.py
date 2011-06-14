@@ -36,7 +36,7 @@ def exercise_protein () :
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.find_automatically(log=log)
     m.params.h_bond_restraints.remove_outliers = False
-    build_proxies = m.create_hbond_proxies(restraint_type="simple", log=log)
+    build_proxies = m.create_hbond_proxies(restraint_type="simple")#, log=log)
     proxies = build_proxies.proxies
     assert (len(proxies) == len(build_proxies.exclude_nb_list) == 109)
     assert (type(proxies[0]).__name__ == "h_bond_simple_proxy")
