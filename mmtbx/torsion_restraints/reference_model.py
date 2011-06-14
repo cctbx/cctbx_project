@@ -763,10 +763,8 @@ class reference_model(object):
         reference_angle = self.reference_dihedral_hash[key]
         if key[5:14] == key[20:29] and \
            key[5:14] == key[35:44] and \
-           key[5:14] == key[50:59] and \
            key_work[5:14] == key_work[20:29] and \
-           key_work[5:14] == key_work[35:44] and \
-           key_work[5:14] == key_work[50:59]:
+           key_work[5:14] == key_work[35:44]:
           #print >> self.log, "match"
           residue_match_hash[key_work[5:14]] = key[5:14]
       except:
