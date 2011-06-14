@@ -34,7 +34,7 @@ namespace cctbx { namespace miller {
     int* result_beg = result.begin();
     double dsx = detector_size[0];
     double dsy = detector_size[1];
-    unsigned ps2 = point_spread / 2;
+    unsigned point_spread_half = point_spread / 2;
     bool point_spread_is_even_value = (point_spread % 2 == 0);
     double circle_radius_sq = point_spread * std::max(dsx/dpx, dsy/dpy) / 2;
     circle_radius_sq *= circle_radius_sq;
@@ -58,17 +58,17 @@ namespace cctbx { namespace miller {
             double pyf = (dy/dsy + 0.5) * dpy;
             int pxi = ifloor(pxf);
             int pyi = ifloor(pyf);
-            int pxb = pxi - ps2;
-            int pyb = pyi - ps2;
+            int pxb = pxi - point_spread_half;
+            int pyb = pyi - point_spread_half;
             if (point_spread_is_even_value) {
               if (pxf - pxi > 0.5) pxb++;
               if (pyf - pyi > 0.5) pyb++;
             }
-            for(int i=0;i<point_spread;i++) {
+            for(int i=0;i<=point_spread;i++) {
               int pi = pxb + i;
               if (pi < 0 || pi >= dpx) continue;
               int pi0 = pi * dpy;
-              for(int j=0;j<point_spread;j++) {
+              for(int j=0;j<=point_spread;j++) {
                 int pj = pyb + j;
                 if (pj < 0 || pj >= dpy) continue;
                 if (point_spread > 2) {

@@ -652,14 +652,14 @@ def exercise_image_simple():
       image_lines.append("")
     assert not show_diff("\n".join(image_lines), """\
 |     |
-|  *  |
-|     |
+|  ** |
+|  ** |
 |     |
 
 |     |
-| **  |
-| **  |
-|     |
+| *** |
+| *** |
+| *** |
 
 | **  |
 | *** |
