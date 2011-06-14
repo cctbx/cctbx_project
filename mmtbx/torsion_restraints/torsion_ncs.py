@@ -561,6 +561,14 @@ class torsion_ncs(object):
           return "  "+tmp_resname[0:1].upper()
     return resname
 
+  def modernize_rna_atom_name(self, atom):
+     new_atom = atom.replace('*',"'")
+     if new_atom == " O1P":
+       new_atom = " OP1"
+     elif new_atom == " O2P":
+       new_atom = " OP2"
+     return new_atom
+
   def extract_sequence_from_chain(self, chain):
     seq = []
     res_seq = []
