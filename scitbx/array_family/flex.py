@@ -1,6 +1,5 @@
 import boost.optional # import dependency
 import boost.std_pair # import dependency
-import scitbx.boost_python.slice # import dependency
 
 import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")

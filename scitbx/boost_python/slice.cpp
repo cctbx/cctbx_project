@@ -1,29 +1,32 @@
 #include <scitbx/boost_python/slice.h>
+#include <boost/python/extract.hpp>
 #include <scitbx/error.h>
 
 namespace scitbx { namespace boost_python {
 
-  adapted_slice::adapted_slice(slice const& sl, std::size_t sz)
+  adapted_slice::adapted_slice(boost::python::slice const& sl, std::size_t sz)
   :
     step(1),
     size(0)
   {
+    static const boost::python::slice_nil slice_nil = boost::python::slice_nil();
+
     long signed_sz = static_cast<long>(sz);
-    if (sl.step.is_valid) {
-      step = sl.step.value;
+    if (sl.step() != slice_nil) {
+      step = boost::python::extract<long>(sl.step());
     }
-    if (!sl.start.is_valid) {
+    if (sl.start() == slice_nil) {
       start = step < 0 ? signed_sz-1 : 0;
     }
     else {
-      start = sl.start.value;
+      start = boost::python::extract<long>(sl.start());
       if (start < 0) start += signed_sz;
     }
-    if (!sl.stop.is_valid) {
+    if (sl.stop() == slice_nil) {
       stop = step < 0 ? -1 : signed_sz;
     }
     else {
-      stop = sl.stop.value;
+      stop = boost::python::extract<long>(sl.stop());
       if (stop < 0) stop += signed_sz;
     }
     if (start > signed_sz-1) start = signed_sz;
@@ -43,5 +46,6 @@ namespace scitbx { namespace boost_python {
     size = static_cast<std::size_t>(signed_size);
     stop = start + step * size;
   }
+
 
 }} // namespace scitbx::boost_python

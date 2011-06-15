@@ -24,6 +24,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/slice.hpp>
 #include <vector>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -130,7 +131,7 @@ namespace {
   af::shared<std::size_t>
   slice_indices(
     std::size_t array_size,
-    scitbx::boost_python::slice const& python_slice)
+    boost::python::slice const& python_slice)
   {
     scitbx::boost_python::adapted_slice a_sl(python_slice, array_size);
     af::shared<std::size_t> result(af::reserve(a_sl.size));
