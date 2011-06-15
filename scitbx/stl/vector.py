@@ -1,4 +1,3 @@
-import scitbx.boost_python.slice # import dependency
 import scitbx.stl.set # import dependency
 
 import boost.python

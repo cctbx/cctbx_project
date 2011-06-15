@@ -6,6 +6,7 @@
 #include <boost/python/copy_non_const_reference.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/slice.hpp>
 #include <scitbx/boost_python/slice.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/array_family/shared.h>
@@ -60,7 +61,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static w_t
-    getitem_1d_slice(w_t const& self, scitbx::boost_python::slice const& slice)
+    getitem_1d_slice(w_t const& self, boost::python::slice const& slice)
     {
       scitbx::boost_python::adapted_slice a_sl(slice, self.size());
       w_t result((af::reserve(a_sl.size)));
@@ -71,7 +72,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
-    delitem_1d_slice(w_t& self, scitbx::boost_python::slice const& slice)
+    delitem_1d_slice(w_t& self, boost::python::slice const& slice)
     {
       scitbx::boost_python::adapted_slice a_sl(slice, self.size());
       SCITBX_ASSERT(a_sl.step == 1);

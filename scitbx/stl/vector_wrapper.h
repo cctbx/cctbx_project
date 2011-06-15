@@ -5,6 +5,7 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
+#include <boost/python/slice.hpp>
 #include <scitbx/boost_python/slice.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -55,7 +56,7 @@ namespace scitbx { namespace stl { namespace boost_python {
     }
 
     static w_t
-    getitem_1d_slice(w_t const& self, scitbx::boost_python::slice const& slice)
+    getitem_1d_slice(w_t const& self, boost::python::slice const& slice)
     {
       scitbx::boost_python::adapted_slice a_sl(slice, self.size());
       w_t result;
@@ -67,7 +68,7 @@ namespace scitbx { namespace stl { namespace boost_python {
     }
 
     static void
-    delitem_1d_slice(w_t& self, scitbx::boost_python::slice const& slice)
+    delitem_1d_slice(w_t& self, boost::python::slice const& slice)
     {
       scitbx::boost_python::adapted_slice a_sl(slice, self.size());
       SCITBX_ASSERT(a_sl.step == 1);

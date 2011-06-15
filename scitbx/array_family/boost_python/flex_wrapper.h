@@ -9,6 +9,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
+#include <boost/python/slice.hpp>
 #include <boost_adaptbx/type_id_eq.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/flex_types.h>
@@ -22,6 +23,7 @@
 #include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <scitbx/misc/positive_getitem_index.h>
+#include <scitbx/array_family/slice.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -143,7 +145,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static f_t
-    getitem_1d_slice(f_t const& a, scitbx::boost_python::slice const& slice)
+    getitem_1d_slice(f_t const& a, boost::python::slice const& slice)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       scitbx::boost_python::adapted_slice a_sl(slice, a.size());
@@ -194,7 +196,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
-    delitem_1d_slice(f_t& a, scitbx::boost_python::slice const& slice)
+    delitem_1d_slice(f_t& a, boost::python::slice const& slice)
     {
       base_array_type b = flex_as_base_array(a);
       scitbx::boost_python::adapted_slice a_sl(slice, b.size());

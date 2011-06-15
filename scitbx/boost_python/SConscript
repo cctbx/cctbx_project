@@ -21,9 +21,3 @@ else:                          builder = env.SharedLibrary
 builder(
   target="#lib/scitbx_boost_python",
   source=lib_scitbx_boost_python_sources)
-
-env_scitbx_boost_python_ext.SharedLibrary(
-  target="#lib/scitbx_boost_python_slice_ext",
-  source=[
-  "slice_ext.cpp",
-])
