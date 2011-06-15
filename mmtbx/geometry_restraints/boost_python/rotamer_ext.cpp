@@ -66,6 +66,11 @@ namespace {
       .def_readonly("n_angles", &w_t::n_angles)
       .def_readonly("residue_name", &w_t::residue_name)
       .def_readonly("residue_type", &w_t::residue_type)
+      .def("get_rotamer_rmsd", &w_t::get_rotamer_rmsd, (
+        arg("angles"),
+        arg("sites_cart")))
+      .def("find_dihedral_proxy", &w_t::find_dihedral_proxy, (
+        arg("dihedral_proxy")));
     //  .def_readonly("phi_psi", &w_t::phi_psi_i_seqs)
     ;
     {
