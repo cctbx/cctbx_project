@@ -75,6 +75,18 @@ class SidechainAngles:
           key = aa+"."+rotamer
           self.anglesForRot[key] = f.properties[key].split(" ")
 
+  def get_rotamers (self, residue_name) :
+    rotamers = {}
+    aa = residue_name.lower()
+    if (not aa in self.rotamersForAA) :
+      return None
+    rotamer_list = self.rotamersForAA.get(aa)
+    for rotamer in rotamer_list :
+      if (rotamer != "") :
+        key = aa + "." + rotamer
+        rotamers[rotamer] = [ float(x) for x in self.anglesForRot[key] ]
+    return rotamers
+
   def measureChiAngles(self, res, atom_dict = None):
     resName = res.resname.lower().strip()
     try:
