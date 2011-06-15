@@ -3,15 +3,10 @@
 
 #include <scitbx/array_family/shared.h>
 #include <mmtbx/error.h>
-#include <cctbx/geometry_restraints/dihedral.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/shared.h>
 
 #include <string>
 
 namespace mmtbx { namespace geometry_restraints {
-  using cctbx::geometry_restraints::dihedral;
-  using cctbx::geometry_restraints::dihedral_proxy;
   namespace af = scitbx::af;
 
   struct rotamer_proxy
@@ -98,56 +93,6 @@ namespace mmtbx { namespace geometry_restraints {
         chi_i_seqs[i+8] = chi3_i_seqs[i];
         chi_i_seqs[i+12] = chi4_i_seqs[i];
       }
-    }
-
-    double get_rotamer_rmsd (
-      af::tiny<double, 4> const& angles,
-      af::const_ref<scitbx::vec3<double> > const& sites_cart)
-    {
-      MMTBX_ASSERT(n_angles > 0);
-      using cctbx::geometry_restraints::dihedral;
-      double rmsd = 0.0;
-      for (unsigned j = 0; j < n_angles; j++) {
-        af::tiny<scitbx::vec3<double>, 4> chi_sites;
-        for (unsigned k = 0; k < 4; k++) {
-          chi_sites[k] = sites_cart[chi_i_seqs[(j*4)+k]];
-        }
-        dihedral chi(chi_sites, 0, 1.0);
-        double chi_deg = chi.angle_model;
-        rmsd += std::pow(angles[j] - chi_deg, 2);
-      }
-      return rmsd / n_angles;
-    }
-
-    int find_dihedral_proxy (
-      dihedral_proxy const& dihedral_proxy)
-    {
-      MMTBX_ASSERT(n_angles > 0);
-      for (unsigned j = 0; j < n_angles; j++) {
-        af::tiny<unsigned, 4> j_seqs;
-        af::tiny<unsigned, 4> i_seqs = dihedral_proxy.i_seqs;
-        for (unsigned k = 0; k < 4; k++) {
-          j_seqs[k] = chi_i_seqs[(j*4)+k];
-        }
-        if ((j_seqs[0] == i_seqs[0]) && (j_seqs[3] == i_seqs[3])) {
-          // order: 0 1 2 3
-          if ((j_seqs[1] == i_seqs[1]) && (j_seqs[2] == i_seqs[2])) {
-            return j + 1;
-          // order: 0 2 1 3
-          } else if ((j_seqs[1] == i_seqs[2]) && (j_seqs[2] == i_seqs[1])) {
-            return - (j + 1);
-          }
-        } else if ((j_seqs[0] == i_seqs[3]) && (j_seqs[3] == i_seqs[0])) {
-          // order: 3 1 2 0
-          if ((j_seqs[1] == i_seqs[1]) && (j_seqs[2] == i_seqs[2])) {
-            return j + 1;
-          // order: 3 2 1 0
-          } else if ((j_seqs[1] == i_seqs[2]) && (j_seqs[2] == i_seqs[1])) {
-            return - (j + 1);
-          }
-        }
-      }
-      return 0;
     }
 
   };
