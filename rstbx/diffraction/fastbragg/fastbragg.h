@@ -322,7 +322,7 @@ class fast_bragg_simulation {
                 /* construct the scattering vector for this pixel */
                 vec3 s_xyz = (S_xyz-S0_xyz)/lambdas[i_lambda];
 
-                /* construct fractional Miller indicies */
+                /* construct fractional Miller indices */
                 vec3 hklvec = (1.e-10 * Amat) * s_xyz; //Convert Amat to meters first
 
                 /* round off to nearest whole index */
@@ -475,7 +475,7 @@ class fast_bragg_simulation {
                 /* construct the scattering vector for this pixel */
                 vec3 s_xyz = (S_xyz-S0_xyz)/lambdas[i_lambda];
 
-                /* construct fractional Miller indicies */
+                /* construct fractional Miller indices */
                 vec3 hklvec = (1.e-10 * Amat) * s_xyz; //Convert Amat to meters first
 
                 MillerConversionPolicy::push_back_index(miller_set,hklvec);

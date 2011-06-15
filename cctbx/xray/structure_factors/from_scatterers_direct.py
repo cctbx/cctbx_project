@@ -18,7 +18,7 @@ class from_scatterers_direct(managed_calculation_base):
     :type xray_structure: cctbx.xray.structure
     :param xray_structure: the X-ray structure to evaluate the structure factors of
     :type miller_set: cctbx.miller.set
-    :param miller_set: the set of miller indicies to evaluate the structure factors at
+    :param miller_set: the set of miller indices to evaluate the structure factors at
     :type manager: cctbx.xray.structure_factors.manager
     :param manager: ? (TODO: doc)
     :type algorithm: string

@@ -23,7 +23,7 @@ class gradients(manager):
       u_iso_refinable_params
         TODO
       miller_set : `cctbx.miller.set`
-        the set of miller indicies to evaluate the structure factors at
+        the set of miller indices to evaluate the structure factors at
       d_target_d_f_calc : `scitbx.array_family.flex.complex_double`
         the derivative of the target wrt f_calc for each miller index
       n_parameters
