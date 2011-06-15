@@ -23,7 +23,6 @@
 #include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <scitbx/misc/positive_getitem_index.h>
-#include <scitbx/array_family/slice.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
