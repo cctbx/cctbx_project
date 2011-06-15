@@ -1,8 +1,8 @@
 #ifndef SCITBX_BOOST_PYTHON_SLICE_H
 #define SCITBX_BOOST_PYTHON_SLICE_H
 
-#include <cstddef>
 #include <boost/python/slice.hpp>
+#include <cstddef>
 
 namespace scitbx { namespace boost_python {
 
