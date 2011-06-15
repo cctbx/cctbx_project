@@ -3,6 +3,7 @@ op = os.path
 
 self.remove_obsolete_pyc_if_possible(pyc_file_names=[
   "matrix.pyc", # XXX backward compatibility 2011-03-06
+  "boost_python/slice.pyc", # XXX backward compatibility 2011-06-14
 ])
 
 if (self.env.is_ready_for_build()):
