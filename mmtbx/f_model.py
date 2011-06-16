@@ -6,7 +6,6 @@ from cctbx.array_family import flex
 import math, sys, os
 from cctbx import miller
 from cctbx import adptbx
-from scitbx import lbfgs
 from libtbx import adopt_init_args
 from mmtbx import bulk_solvent
 from mmtbx import masks
