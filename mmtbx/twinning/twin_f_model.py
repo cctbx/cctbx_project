@@ -758,8 +758,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.fmodel_ts1.apply_back_b_iso()
     else:
       self.fmodel_ts1.update_twin_fraction()
+    assert len(self.fmodel_ts1.k_sols()) == 1 # XXX not implemented
     self.update_core(
-      k_sol = self.fmodel_ts1.k_sol(),
+      k_sol = self.fmodel_ts1.k_sols()[0], # XXX not implemented (see above)
       b_sol = self.fmodel_ts1.b_sol(),
       twin_fraction = self.fmodel_ts1.twin_fraction,
       b_cart = self.fmodel_ts1.b_cart(),
@@ -1848,7 +1849,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def k_sol(self):
     return self.data_core.ksol()
 
-  def shell_k_sols(self):
+  def k_sols(self):
     # This is a dummy, making twin_f_model compatible with f_model
     # Radial shell mask model is not implemented for twin_f_model
     return [self.k_sol()]

@@ -201,7 +201,7 @@ class kbu_minimizer(object):
     self.k_min = [max(self.k_sol_min, min(self.k_sol_max, v))
       for v in self.k_min]
     if(self.twin_fraction is None):
-      self.fmodel_core_data.update(k_sol = self.k_min, b_sol = self.b_min,
+      self.fmodel_core_data.update(k_sols = self.k_min, b_sol = self.b_min,
         u_star = self.u_min)
       tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
         fm                  = self.fmodel_core_data.data,
@@ -210,9 +210,9 @@ class kbu_minimizer(object):
         compute_b_sol_grad  = self.refine_b,
         compute_u_star_grad = self.refine_u)
     else:
-      self.fmodel_core_data.update(k_sol = self.k_min, b_sol = self.b_min,
+      self.fmodel_core_data.update(k_sols = self.k_min, b_sol = self.b_min,
         u_star = self.u_min)
-      self.fmodel_core_data1.update(k_sol = self.k_min, b_sol = self.b_min,
+      self.fmodel_core_data1.update(k_sols = self.k_min, b_sol = self.b_min,
         u_star = self.u_min)
       tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
         fm1                 = self.fmodel_core_data.data,
@@ -227,7 +227,7 @@ class kbu_minimizer(object):
     gb=0
     gu=[0,0,0,0,0,0]
     if(self.refine_k or self.refine_b):
-      gk = list(tg.grad_shell_k_sols())
+      gk = list(tg.grad_k_sols())
       assert len(gk) == self.n_shells
       gb = tg.grad_b_sol()
     if(self.refine_u): gu = list(tg.grad_u_star())
@@ -254,7 +254,7 @@ def k_sol_b_sol_b_cart_minimizer(
   return kbu_minimizer(
     fmodel_core_data = fmodel_core_data_work,
     f_obs            = fmodel.f_obs_work(),
-    k_initial        = fmodel_core_data_work.shell_k_sols,
+    k_initial        = fmodel_core_data_work.k_sols,
     b_initial        = fmodel_core_data_work.b_sol,
     u_initial        = fmodel_core_data_work.u_star,
     refine_k         = refine_k_sol,
@@ -312,7 +312,7 @@ class bulk_solvent_and_scales(object):
          assert params.bulk_solvent
          assert not params.k_sol_b_sol_grid_search
          assert not params.minimization_k_sol_b_sol
-         fmodel.update(k_sol = params.fix_k_sol)
+         fmodel.update(k_sols = params.fix_k_sol)
        if(params.fix_b_sol is not None and mask_ok):
          assert params.bulk_solvent
          assert not params.k_sol_b_sol_grid_search
@@ -328,14 +328,14 @@ class bulk_solvent_and_scales(object):
          if(params.k_sol_b_sol_grid_search and mc == macro_cycles[0] and
             not self._is_within_grid_search(fmodel = fmodel)):
            ksol,bsol,b_cart,target = self._ksol_bsol_grid_search(fmodel=fmodel)
-           fmodel.update(k_sol = ksol, b_sol = bsol, b_cart = b_cart)
+           fmodel.update(k_sols = ksol, b_sol = bsol, b_cart = b_cart)
            self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
            if(not params.apply_back_trace_of_b_cart):
              self.ERROR_MESSAGE(status=_approx_le(target, start_target))
            self.show(fmodel = fmodel, message=m+str(mc)+": k & b: grid search")
          if(params.minimization_k_sol_b_sol):
            ksol, bsol, target = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
-           fmodel.update(k_sol = ksol, b_sol = bsol)
+           fmodel.update(k_sols = ksol, b_sol = bsol)
            self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
            if(not params.apply_back_trace_of_b_cart):
              self.ERROR_MESSAGE(status=_approx_le(target, start_target))
@@ -356,7 +356,7 @@ class bulk_solvent_and_scales(object):
          self.show(fmodel = fmodel,
            message = m+str(mc)+": apply back trace(b_cart)")
        fmodel.update(target_name = fmodel_target)
-       ksols = fmodel.shell_k_sols()[:]
+       ksols = fmodel.k_sols()[:]
        do_update = False
        for ik in range(len(ksols)):
          if(abs(ksols[ik]) < 0.01):
@@ -367,7 +367,7 @@ class bulk_solvent_and_scales(object):
            bsol = 0.
          else:
            bsol = fmodel.b_sol()
-         fmodel.update(k_sol = ksols, b_sol = bsol)
+         fmodel.update(k_sols = ksols, b_sol = bsol)
 
   def show(self, fmodel, message):
     if(self.params.verbose > 0):
@@ -376,7 +376,7 @@ class bulk_solvent_and_scales(object):
 
   def _ksol_bsol_grid_search(self, fmodel):
     start_r_work = fmodel.r_work()
-    final_ksol = fmodel.shell_k_sols()
+    final_ksol = fmodel.k_sols()
     final_bsol = fmodel.b_sol()
     final_b_cart = fmodel.b_cart()
     final_r_work = start_r_work
@@ -393,21 +393,21 @@ class bulk_solvent_and_scales(object):
             fmodel.update(b_cart = [0,0,0,0,0,0])
             break
         ksol_list = [ksol]*len(final_ksol)
-        fmodel.update(k_sol = ksol_list, b_sol = bsol)
+        fmodel.update(k_sols = ksol_list, b_sol = bsol)
         if(self.params.minimization_k_sol_b_sol):
           ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
-          fmodel.update(k_sol = ksol_, b_sol = bsol_)
+          fmodel.update(k_sols = ksol_, b_sol = bsol_)
         if(self.params.minimization_b_cart):
           b_cart, dummy = self._b_cart_minimizer(fmodel = fmodel)
           fmodel.update(b_cart = b_cart)
         r_work = fmodel.r_work()
         if(r_work < final_r_work):
           final_r_work = r_work
-          final_ksol = fmodel.shell_k_sols()
+          final_ksol = fmodel.k_sols()
           final_bsol = fmodel.b_sol()
           final_b_cart = fmodel.b_cart()
-          fmodel.update(k_sol=final_ksol,b_sol=final_bsol,b_cart=final_b_cart)
-    fmodel.update(k_sol  = final_ksol,
+          fmodel.update(k_sols=final_ksol,b_sol=final_bsol,b_cart=final_b_cart)
+    fmodel.update(k_sols = final_ksol,
                   b_sol  = final_bsol,
                   b_cart = final_b_cart)
     self.ERROR_MESSAGE(status=approx_equal(fmodel.r_work(), final_r_work))
@@ -416,11 +416,11 @@ class bulk_solvent_and_scales(object):
 
   def _ksol_bsol_cart_minimizer(self, fmodel):
     start_r_work = fmodel.r_work()
-    final_ksol = fmodel.shell_k_sols()
+    final_ksol = fmodel.k_sols()
     final_bsol = fmodel.b_sol()
     final_r_work = fmodel.r_work()
     ksol, bsol = self._k_sol_b_sol_minimization_helper(fmodel = fmodel)
-    fmodel.update(k_sol = ksol, b_sol = bsol)
+    fmodel.update(k_sols = ksol, b_sol = bsol)
     r_work = fmodel.r_work()
     if(r_work < final_r_work):
       final_ksol = ksol
@@ -458,7 +458,7 @@ class bulk_solvent_and_scales(object):
     else: return b_cart
 
   def _k_sol_b_sol_minimization_helper(self, fmodel):
-    ksol_orig = fmodel.shell_k_sols()
+    ksol_orig = fmodel.k_sols()
     bsol_orig = fmodel.b_sol()
     r_start = fmodel.r_work()
     minimizer_obj = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
@@ -470,16 +470,16 @@ class bulk_solvent_and_scales(object):
       for v in ksol]
     if(bsol < self.params.b_sol_min): bsol = self.params.b_sol_min
     if(bsol > self.params.b_sol_max): bsol = self.params.b_sol_max
-    fmodel.update(k_sol = ksol, b_sol = bsol)
+    fmodel.update(k_sols = ksol, b_sol = bsol)
     r_end = fmodel.r_work()
     if(r_end >= r_start):
-       fmodel.update(k_sol = ksol_orig, b_sol = bsol_orig)
+       fmodel.update(k_sols = ksol_orig, b_sol = bsol_orig)
        return ksol_orig, bsol_orig
     else: return ksol, bsol
 
   def _is_within_grid_search(self, fmodel):
     result = True
-    ksols = fmodel.shell_k_sols()
+    ksols = fmodel.k_sols()
     bsol = fmodel.b_sol()
     keps = 0.05
     beps = 5.0
@@ -572,7 +572,7 @@ class u_star_minimizer(object):
     self.unpack_x()
     self.u_min = tuple([max(self.u_min_min, min(self.u_min_max, v))
       for v in self.u_min])
-    self.fmodel_core_data.update(k_sol = 0, b_sol = 0, u_star = self.u_min)
+    self.fmodel_core_data.update(k_sols = [0], b_sol = 0, u_star = self.u_min)
     tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
       fm                  = self.fmodel_core_data.data,
       fo                  = self.f_obs.data(),

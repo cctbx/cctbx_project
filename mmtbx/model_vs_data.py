@@ -178,7 +178,7 @@ class mvd(object):
     result = [
       "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
       "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
-      "bulk_solvent_(k_sol,b_sol)         : %s %s"%(format_value("%-5.2f",self.model_vs_data.k_sol),
+      "bulk_solvent_(k_sol,b_sol)         : %s %s"%(" ".join(["%-5.2f"%i for i in self.model_vs_data.k_sol]).strip(),
                                                     format_value("%-7.2f",self.model_vs_data.b_sol)),
       "overall_anisotropic_scale_(b_cart) : %-s"%b_cart]
     sc = self.model_vs_data.solvent_content_via_mask
@@ -561,7 +561,7 @@ def show_model_vs_data(fmodel):
   return group_args(
     r_work                   = fmodel.r_work(),
     r_free                   = r_free,
-    k_sol                    = fmodel.k_sol(),
+    k_sol                    = fmodel.k_sols(),
     b_sol                    = fmodel.b_sol(),
     b_cart                   = fmodel.b_cart(),
     solvent_content_via_mask = sc,

@@ -120,7 +120,7 @@ class core(object):
   def __init__(self,
                f_calc      = None,
                f_mask      = None,
-               shell_k_sols= [0.],
+               k_sols= [0.],
                b_sol       = 0.,
                f_part_base = None,
                k_part      = 0.,
@@ -131,7 +131,7 @@ class core(object):
     if(fmodel is not None):
       self.f_calc      = fmodel.f_calc()
       self.f_mask      = fmodel.shell_f_masks()
-      self.shell_k_sols= fmodel.shell_k_sols()
+      self.k_sols= fmodel.k_sols()
       self.b_sol       = fmodel.b_sol()
       self.f_part_base = fmodel.f_part_base()
       self.k_part      = fmodel.k_part()
@@ -139,16 +139,16 @@ class core(object):
       self.u_star      = fmodel.u_star()
     else: adopt_init_args(self, locals())
     if (self.u_star is None): self.u_star = [0,0,0,0,0,0] # XXX
-    if not ((type(self.shell_k_sols) is list) or (self.shell_k_sols is None)):
-      assert (type(self.shell_k_sols) is float) or \
-        (type(self.shell_k_sols) is int), type(self.shell_k_sols)
-      self.shell_k_sols = [self.shell_k_sols]
-    assert len(self.shell_k_sols) >= 1
+    if not ((type(self.k_sols) is list) or (self.k_sols is None)):
+      assert (type(self.k_sols) is float) or \
+        (type(self.k_sols) is int), type(self.k_sols)
+      self.k_sols = [self.k_sols]
+    assert len(self.k_sols) >= 1
     typfm = type(self.f_mask)
     if( not((typfm is list) or (typfm is None)) ):
       self.f_mask = [self.f_mask]
-    assert len(self.shell_k_sols) == len(self.f_mask), \
-        "VALS: %d %d"%(len(self.shell_k_sols),len(self.f_mask))
+    assert len(self.k_sols) == len(self.f_mask), \
+        "VALS: %d %d"%(len(self.k_sols),len(self.f_mask))
     self.ss = ss
     if(self.ss is None):
       self.ss = 1./flex.pow2(self.f_calc.d_spacings().data()) / 4.
@@ -158,7 +158,7 @@ class core(object):
     self.data = ext.core(
       f_calc        = self.f_calc.data(),
       shell_f_masks = fmdata,
-      shell_k_sols  = self.shell_k_sols,
+      k_sols  = self.k_sols,
       b_sol         = self.b_sol,
       f_part_base   = self.f_part_base.data(),
       k_part        = self.k_part,
@@ -174,28 +174,28 @@ class core(object):
   def update(self,
              f_calc      = None,
              f_mask      = None,
-             k_sol       = None,
+             k_sols      = None,
              b_sol       = None,
              f_part_base = None,
              k_part      = None,
              b_part      = None,
              u_star      = None):
-    if not (type(k_sol) is list or k_sol is None):
-      assert (type(k_sol) is float) or (type(k_sol) is int), type(k_sol)
-      k_sol = [k_sol]
+    #if not (type(k_sol) is list or k_sol is None):
+    #  assert (type(k_sol) is float) or (type(k_sol) is int), type(k_sol)
+    #  k_sol = [k_sol]
     if(f_calc is not None): self.f_calc = f_calc
     if(f_mask is not None): self.f_mask = f_mask
-    if(k_sol  is not None): self.shell_k_sols  = k_sol
+    if(k_sols is not None): self.k_sols  = k_sols
     if(b_sol  is not None): self.b_sol  = b_sol
     if(f_part_base is not None): self.f_part_base = f_part_base
     if(k_part is not None): self.k_part = k_part
     if(b_part is not None): self.b_part = b_part
     if(u_star is not None): self.u_star = u_star
-    if([f_calc,f_mask,k_sol,b_sol,f_part_base,k_part,b_part,u_star].count(None)!=8):
+    if([f_calc,f_mask,k_sols,b_sol,f_part_base,k_part,b_part,u_star].count(None)!=8):
       self.__init__(
         f_calc      = self.f_calc,
         f_mask      = self.f_mask,
-        shell_k_sols= self.shell_k_sols,
+        k_sols      = self.k_sols,
         b_sol       = self.b_sol,
         f_part_base = self.f_part_base,
         k_part      = self.k_part,
@@ -208,7 +208,7 @@ class core(object):
     return {"args": (
       self.f_calc,
       self.f_mask,
-      self.shell_k_sols,
+      self.k_sols,
       self.b_sol,
       self.f_part_base,
       self.k_part,
@@ -388,7 +388,7 @@ class manager(manager_mixin):
       f_calc_twin = f_calc_twin,
       f_mask_twin = f_mask_twin,
       b_cart      = b_cart,
-      k_sol       = k_sol,
+      k_sols      = k_sol,
       b_sol       = b_sol,
       f_part_base = f_part_base.common_set(f_calc),
       k_part      = k_part,
@@ -459,10 +459,12 @@ class manager(manager_mixin):
     if(self.twin_set is None): return
     tfb = self.twin_fraction
     r_work = self.r_work()
-    ks_best = self.k_sol()
+    if(len(self.k_sols())>1):
+      raise RuntimeError("Not implemented")
+    ks_best = self.k_sols()[0] # XXX one shell assumed
     bs_best = self.b_sol()
     if(ks_best == 0.0):
-      for ks in [max(0,self.k_sol()),0.3,0.5]:
+      for ks in [max(0,self.k_sol(0)),0.3,0.5]: # one shell assumed
         for bs in [max(0,self.b_sol()),50.,80.]:
           twin_fraction = 0.0
           tf_best = tfb
@@ -476,7 +478,7 @@ class manager(manager_mixin):
               r_work = r_work_
               tf_best = twin_fraction
             twin_fraction += 0.01
-          self.update(twin_fraction = tf_best, k_sol=ks, b_sol=bs)
+          self.update(twin_fraction = tf_best, k_sols=[ks], b_sol=bs)
           r_work_= abs(bulk_solvent.r_factor(
             self.f_obs_work().data(),
             self.active_arrays.core.data.f_model.select(self.active_arrays.work_sel),
@@ -489,7 +491,7 @@ class manager(manager_mixin):
             tfb = tf_best
       if(ks_best == 0.0): bs_best = 0.0
       if(bs_best == 0.0): ks_best = 0.0
-      self.update(k_sol = ks_best, b_sol = bs_best, twin_fraction = tfb)
+      self.update(k_sols = [ks_best], b_sol = bs_best, twin_fraction = tfb) # XXX one shell assumed
     r_work = self.r_work()
     twin_fraction = 0.0
     tf_best = self.twin_fraction
@@ -537,7 +539,7 @@ class manager(manager_mixin):
         core_ = core(
           f_calc      = self.compute_f_calc(miller_array = f_masks[0]), #TODO why f_mask
           f_mask      = f_masks,
-          shell_k_sols= self.shell_k_sols(),
+          k_sols= self.k_sols(),
           b_sol       = self.b_sol(),
           f_part_base = f_part_base, #XXX
           k_part      = self.k_part(),
@@ -589,7 +591,7 @@ class manager(manager_mixin):
       core_ = core(
         f_calc      = self.compute_f_calc(miller_array = new_f_obs),
         f_mask      = f_masks,
-        shell_k_sols= self.shell_k_sols(),
+        k_sols= self.k_sols(),
         b_sol       = self.b_sol(),
         f_part_base = f_part_base, #XXX
         k_part      = self.k_part(),
@@ -644,7 +646,7 @@ class manager(manager_mixin):
       f_obs                        = self.passive_arrays.f_obs.select(selection=sel_passive),
       r_free_flags                 = self.passive_arrays.r_free_flags.select(selection=sel_passive),
       b_cart                       = tuple(self.b_cart()),
-      k_sol                        = self.shell_k_sols(),
+      k_sol                        = self.k_sols(),
       b_sol                        = self.b_sol(),
       k_part                       = self.k_part(),
       b_part                       = self.b_part(),
@@ -751,7 +753,7 @@ class manager(manager_mixin):
                         f_mask_twin = None,
                         b_cart      = None,
                         u_star      = None,
-                        k_sol       = None,
+                        k_sols      = None,
                         b_sol       = None,
                         f_part_base = None,
                         k_part      = None,
@@ -768,7 +770,7 @@ class manager(manager_mixin):
       core_ = core(
         f_calc      = f_calc,
         f_mask      = f_mask,
-        shell_k_sols= k_sol,
+        k_sols      = k_sols,
         b_sol       = b_sol,
         f_part_base = f_part_base,
         k_part      = k_part,
@@ -779,7 +781,7 @@ class manager(manager_mixin):
           f_calc      = self.compute_f_calc(miller_array = self.twin_set),
           f_mask      = self.mask_manager.shell_f_masks_twin(),
           u_star      = u_star,
-          shell_k_sols= k_sol,
+          k_sols      = k_sols,
           b_sol       = b_sol,
           f_part_base = f_part_base_twin, # XXX
           k_part      = k_part,
@@ -803,7 +805,7 @@ class manager(manager_mixin):
       core_ = self.active_arrays.core.update(
         f_calc      = f_calc,
         f_mask      = f_mask,
-        k_sol       = k_sol,
+        k_sols      = k_sols,
         b_sol       = b_sol,
         u_star      = u_star,
         f_part_base = f_part_base,
@@ -814,7 +816,7 @@ class manager(manager_mixin):
           f_calc      = f_calc_twin,
           f_mask      = f_mask_twin,
           u_star      = u_star,
-          k_sol       = k_sol,
+          k_sols      = k_sols,
           b_sol       = b_sol,
           f_part_base = f_part_base_twin, # XXX
           k_part      = k_part,
@@ -846,14 +848,14 @@ class manager(manager_mixin):
     print >> out
 
   def optimize_mask(self, params = None, thorough=False, out = None):
-    if( len(self.shell_k_sols()) != 1 ):
+    if( len(self.k_sols()) != 1 ):
       return False
-    if(self.k_sol() == 0): return False
+    if(self.k_sols().count(0)>0): return False
     rw_ = self.r_work()
     rf_ = self.r_free()
     r_solv_   = self.mask_params.solvent_radius
     r_shrink_ = self.mask_params.shrink_truncation_radius
-    k_sol     = self.k_sol()
+    k_sols    = self.k_sols()
     b_sol     = self.b_sol()
     b_cart    = self.b_cart()
     self.show_mask_optimization_statistics(prefix="Mask optimization: start",
@@ -935,7 +937,7 @@ class manager(manager_mixin):
          rf_       = rf
          r_solv_   = r_solv
          r_shrink_ = r_shrink
-      self.update(k_sol = k_sol, b_sol = b_sol, b_cart = b_cart)
+      self.update(k_sols = k_sols, b_sol = b_sol, b_cart = b_cart)
     if(out is not None): print >> out
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
@@ -952,7 +954,7 @@ class manager(manager_mixin):
   def check_f_mask_all_zero(self):
     # TODO: mrt is this the required logic?
     result = False
-    ksols = self.shell_k_sols()[:] # copy
+    ksols = self.k_sols()[:] # copy
     fmsks = self.shell_f_masks()
     results = [False]*len(ksols)
     for i in range(len(ksols)):
@@ -964,7 +966,7 @@ class manager(manager_mixin):
       if( results.count(False)==0 ):
         bsol = 0
         result = True
-      self.update(k_sol = ksols, b_sol = bsol)
+      self.update(k_sols = ksols, b_sol = bsol)
     return result
 
   def compute_f_part(self, params, log = None):
@@ -1103,7 +1105,7 @@ class manager(manager_mixin):
     return core(
       f_calc      = f_calc,
       f_mask      = fmasks,
-      shell_k_sols= self.shell_k_sols(),
+      k_sols= self.k_sols(),
       b_sol       = self.b_sol(),
       f_part_base = f_part_base,
       k_part      = self.k_part(),
@@ -1153,7 +1155,7 @@ class manager(manager_mixin):
                    r_free_flags                 = None,
                    f_part_base                  = None,
                    b_cart                       = None,
-                   k_sol                        = None,
+                   k_sols                       = None,
                    b_sol                        = None,
                    sf_and_grads_accuracy_params = None,
                    target_name                  = None,
@@ -1163,7 +1165,7 @@ class manager(manager_mixin):
                    xray_structure               = None,
                    mask_params                  = None):
     self.update_core(f_calc = f_calc, f_mask = f_mask, b_cart = b_cart,
-      k_sol = k_sol, b_sol = b_sol, f_part_base = f_part_base)
+      k_sols = k_sols, b_sol = b_sol, f_part_base = f_part_base)
     if(mask_params is not None):
        self.mask_params = mask_params
     if(f_obs is not None):
@@ -1326,15 +1328,11 @@ class manager(manager_mixin):
     else:
       return self.f_calc()
 
-  # Deprecated. Use shell_k_sols instead.
-  def k_sol(self):
-    return self.active_arrays.core.data.k_sol()
+  def k_sol(self, i):
+    return self.active_arrays.core.data.k_sol(i)
 
-  def shell_k_sol(self, i):
-    return self.active_arrays.core.data.shell_k_sol(i)
-
-  def shell_k_sols(self):
-    return list(self.active_arrays.core.data.shell_k_sols())
+  def k_sols(self):
+    return list(self.active_arrays.core.data.k_sols())
 
   def b_sol(self):
     return self.active_arrays.core.data.b_sol
@@ -1819,7 +1817,7 @@ class manager(manager_mixin):
     core_ = core(
       f_calc      = self.f_calc(),
       f_mask      = fmasks,
-      shell_k_sols= [0.]*len(fmasks),
+      k_sols= [0.]*len(fmasks),
       b_sol       = 0.,
       f_part_base = self.f_part_base(),
       k_part      = 0.,
@@ -1966,7 +1964,7 @@ class manager(manager_mixin):
           "scale_k1 = SUM(Fobs * Fmodel) / SUM(Fmodel**2)",
           "fb_cart  = exp(-h^t * A^-1 * B_cart * A^-t * h)",
           "A        = orthogonalization matrix",
-          "k_sol    = %.6g" % self.k_sol(),
+          "k_sol    = %s" % " ".join(["%5.2f"%i for i in self.k_sols()]).strip(),
           "b_sol    = %.6g" % zero_if_almost_zero(self.b_sol()),
           "scale_k1 = %.6g" % self.scale_k1(),
           "B_cart = (B11, B22, B33, B12, B13, B23)",
