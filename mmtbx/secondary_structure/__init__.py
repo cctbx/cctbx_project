@@ -300,7 +300,9 @@ class manager (object) :
                 verbose=-1) :
     adopt_init_args(self, locals())
     i_seqs = pdb_hierarchy.atoms().extract_i_seq()
-    assert (not i_seqs.all_eq(0))
+    if (i_seqs.all_eq(0)) :
+      pdb_hierarchy.atoms().reset_i_seq()
+      i_seqs = pdb_hierarchy.atoms().extract_i_seq()
     self._was_initialized = False
     if self.params is None :
       self.params = sec_str_master_phil.fetch().extract()
