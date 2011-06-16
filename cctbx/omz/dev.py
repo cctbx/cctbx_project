@@ -360,7 +360,7 @@ class refinement(object):
     print "done."
     sys.stdout.flush()
     print "bulk-solvent correction:"
-    print "  k_sols:", numstr(fmm.shell_k_sols())
+    print "  k_sols:", numstr(fmm.k_sols())
     print "  b_sol: %.6g" % fmm.b_sol()
     print "  b_cart:", numstr(fmm.b_cart(), zero_threshold=1e-6)
     O.f_bulk = fmm.f_bulk()
