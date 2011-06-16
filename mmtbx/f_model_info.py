@@ -113,6 +113,11 @@ class info(object):
     self.number_of_test_reflections = fmodel.f_calc_t().data().size()
     self.number_of_work_reflections = fmodel.f_calc_w().data().size()
     self.number_of_reflections = fmodel.f_obs().data().size()
+    self.number_of_reflections_merged = self.number_of_reflections
+    if(fmodel.f_obs().anomalous_flag() in (None, True)):
+      something, matches = fmodel.f_obs().match_bijvoet_mates()
+      self.number_of_reflections_merged = matches.pairs().size() + \
+        matches.n_singles()
     self.k_sol = fmodel.shell_k_sols()
     self.b_sol = fmodel.b_sol()
     self.b_cart = fmodel.b_cart()
@@ -281,6 +286,7 @@ class info(object):
     print >> out,pr+" COMPLETENESS FOR RANGE        (%s) : %-6.2f"%\
       ("%", self.completeness_in_range*100.0)
     print >> out,pr+" NUMBER OF REFLECTIONS             : %-10d"%self.number_of_reflections
+    print >> out,pr+" NUMBER OF REFLECTIONS (NON-ANOMALOUS) : %-10d"%self.number_of_reflections_merged
     print >> out,pr
     print >> out,pr+"FIT TO DATA USED IN REFINEMENT."
     print >> out,pr+" R VALUE     (WORKING + TEST SET) : %s"%format_value("%-6.4f",self.r_all)

@@ -157,17 +157,17 @@ class core(object):
     for fm in self.f_mask:
       fmdata.append(fm.data())
     self.data = ext.core(
-      f_calc      = self.f_calc.data(),
-      shell_f_masks      = fmdata,
-      shell_k_sols       = self.shell_k_sols,
-      b_sol       = self.b_sol,
-      f_part_base = self.f_part_base.data(),
-      k_part      = self.k_part,
-      b_part      = self.b_part,
-      u_star      = self.u_star,
-      hkl         = self.f_calc.indices(),
-      uc          = self.f_calc.unit_cell(),
-      ss          = self.ss)
+      f_calc        = self.f_calc.data(),
+      shell_f_masks = fmdata,
+      shell_k_sols  = self.shell_k_sols,
+      b_sol         = self.b_sol,
+      f_part_base   = self.f_part_base.data(),
+      k_part        = self.k_part,
+      b_part        = self.b_part,
+      u_star        = self.u_star,
+      hkl           = self.f_calc.indices(),
+      uc            = self.f_calc.unit_cell(),
+      ss            = self.ss)
     self.uc = self.data.uc
     self.hkl = self.data.hkl
     self.f_model = miller.array(miller_set=self.f_calc, data=self.data.f_model)
@@ -724,7 +724,7 @@ class manager(manager_mixin):
         xray_structure = self.xray_structure,
         force_update   = force_update_f_mask)
       curfmsks = self.shell_f_masks()
-      if( mngmsks is not None):
+      if(mngmsks is not None):
         f_masks = mngmsks[:] # copy
       if(mngmsks is not None and curfmsks is not None):
         assert len(curfmsks) == len(mngmsks)
@@ -735,8 +735,10 @@ class manager(manager_mixin):
     if([f_calc, f_masks, f_calc_twin, f_mask_twin].count(None) == 4):
       set_core_flag = False
     else: set_core_flag = True
-    if(f_calc is None and self.active_arrays.core is not None): f_calc = self.f_calc()
-    if(f_masks is None and self.active_arrays.core is not None): f_masks = self.shell_f_masks()
+    if(f_calc is None and self.active_arrays.core is not None):
+      f_calc = self.f_calc()
+    if(f_masks is None and self.active_arrays.core is not None):
+      f_masks = self.shell_f_masks()
     if(set_core_flag):
       self.update_core(
         f_calc      = f_calc,
@@ -821,63 +823,6 @@ class manager(manager_mixin):
       self.active_arrays.update_core(core = core_, core_twin = core_twin_,
         twin_fraction = self.twin_fraction)
 
-  def optimize_mask_and_update_solvent_and_scale(
-                                self, params = None, out = None, verbose=-1):
-    if(self.k_sol() == 0):
-      self.update_solvent_and_scale(params=params, out=None, verbose=-1)
-    rw_ = self.r_work()
-    rf_ = self.r_free()
-    r_solv_   = self.mask_params.solvent_radius
-    r_shrink_ = self.mask_params.shrink_truncation_radius
-    gsf_      = self.mask_params.grid_step_factor
-    k_sol     = self.k_sol()
-    b_sol     = self.b_sol()
-    b_cart    = self.b_cart()
-    if(verbose > 0):
-       self.show_mask_optimization_statistics(prefix="Mask optimization start",
-                                              out   = out)
-    r_solvs   = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
-    r_shrinks = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
-    gsfs      = [4.,]
-    for gsf in gsfs:
-      for r_solv in r_solvs:
-        for r_shrink in r_shrinks:
-          self.mask_params.solvent_radius = r_solv
-          self.mask_params.shrink_truncation_radius = r_shrink
-          self.mask_manager.mask_params = self.mask_params
-          self.update_xray_structure(
-            xray_structure      = self.xray_structure,
-            update_f_calc       = False,
-            update_f_mask       = True,
-            force_update_f_mask = True)
-          self.update_solvent_and_scale(params=params, out=None, verbose=-1,
-            optimize_mask=False)
-          rw = self.r_work()
-          rf = self.r_free()
-          if(out is not None):
-            print >> out, "r_solv=%6.2f r_shrink=%6.2f gsf=%6.2f r_work=%6.4f r_free=%6.4f"%(
-              r_solv, r_shrink, gsf, rw, rf)
-          if(rw < rw_):
-             rw_       = rw
-             rf_       = rf
-             r_solv_   = r_solv
-             r_shrink_ = r_shrink
-             gsf_      = gsf
-          self.update(k_sol = k_sol, b_sol = b_sol, b_cart = b_cart)
-    print "BEST: r_solv=%6.2f r_shrink=%6.2f gsf=%6.2f r_work=%6.4f r_free=%6.4f"%(
-      r_solv_, r_shrink_, gsf_, rw_, rf_)
-    self.mask_params.solvent_radius = r_solv_
-    self.mask_params.shrink_truncation_radius = r_shrink_
-    self.mask_params.grid_step_factor = gsf_
-    self.update_xray_structure(xray_structure      = self.xray_structure,
-                               update_f_calc       = False,
-                               update_f_mask       = True,
-                               force_update_f_mask = True)
-    self.update_solvent_and_scale(params = params, out = out, verbose = -1)
-    if(verbose > 0):
-       self.show_mask_optimization_statistics(prefix="Mask optimization final",
-                                              out   = out)
-
   def show_mask_optimization_statistics(self, prefix="", out=None):
     if(out is None): return
     line_len = len("|-"+"|"+prefix)
@@ -901,7 +846,7 @@ class manager(manager_mixin):
     print >> out, "|"+"-"*77+"|"
     print >> out
 
-  def optimize_mask(self, params = None, out = None):
+  def optimize_mask(self, params = None, thorough=False, out = None):
     if( len(self.shell_k_sols()) != 1 ):
       return False
     if(self.k_sol() == 0): return False
@@ -918,10 +863,57 @@ class manager(manager_mixin):
     if(self.xray_structure is not None):
       if(self.xray_structure.hd_selection().count(True) > 0):
         hydrogens_present = True
-    for r_solv in xrange(15):
-      r_solv /= 10.
-      if(hydrogens_present): r_shrink = max(1.2036*r_solv - 0.3151, 0)
-      else:                  r_shrink = max(1.1279*r_solv - 0.4082, 0)
+    def r_solv_shrink(a,b,x_range):
+      r_shrinks = x_range
+      r_solvs = []
+      for r_shrink in r_shrinks:
+        r_solvs.append(max(a*r_shrink - b, 0.45))
+      return r_shrinks, r_solvs
+    def r_solv_shrink2(a,b,c,x_range):
+      r_shrinks = x_range
+      r_solvs = []
+      for r_shrink in r_shrinks:
+        r_solvs.append(max(a*r_shrink**2 - b*r_shrink + c, 0.45))
+      return r_shrinks, r_solvs
+    if(thorough):
+      trial_range = [0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+      r_shrinks = []
+      r_solvs = []
+      for tr1 in trial_range:
+        for tr2 in trial_range:
+          r_shrinks.append(tr1)
+          r_solvs.append(tr2)
+      r_solv = trial_range[:]
+      r_shrink = trial_range[:]
+    else:
+      d_min = self.f_obs().d_min()
+      if(d_min < 1.25):
+        if(hydrogens_present):
+          r_shrinks, r_solvs = r_solv_shrink(a=0.9881, b=0.1815,
+            x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2])
+        else:
+          r_shrinks, r_solvs = r_solv_shrink(a=1.2792, b=0.5144,
+            x_range=[0.8,0.9,1.0,1.1,1.3])
+      elif(d_min >= 1.25 and d_min < 1.5):
+        if(hydrogens_present):
+          r_shrinks, r_solvs = r_solv_shrink(a=1.1158, b=0.3393,
+            x_range=[0.7,0.8,0.9,1.0,1.1,1.2,1.3])
+        else:
+          r_shrinks, r_solvs = r_solv_shrink(a=1.2422, b=0.4963,
+            x_range=[0.7,0.8,0.9,1.0,1.1,1.2,1.3])
+      elif(d_min >= 1.5 and d_min < 2.0):
+        r_shrinks, r_solvs = r_solv_shrink(a=1.2187, b=0.4602,
+          x_range=[0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
+      elif(d_min >= 2.0 and d_min < 2.5):
+        r_shrinks, r_solvs = r_solv_shrink(a=1.347, b=0.6311,
+          x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
+      elif(d_min >= 2.5 and d_min < 3.0):
+        r_shrinks, r_solvs = r_solv_shrink2(a=1.5772, b=2.2227, c=1.3614,
+          x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
+      elif(d_min >= 3.0):
+        r_shrinks, r_solvs = r_solv_shrink2(a=0.4941, b=0.1717, c=0.4348,
+          x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
+    for r_solv, r_shrink in zip(r_solvs, r_shrinks):
       self.mask_params.solvent_radius = r_solv
       self.mask_params.shrink_truncation_radius = r_shrink
       self.mask_manager.mask_params = self.mask_params
@@ -932,14 +924,13 @@ class manager(manager_mixin):
         force_update_f_mask = True)
       rw = self.r_work()
       rf = self.r_free()
-      rw_low = self.r_work_low().r_work
       if(out is not None):
         print >> out, "r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
           format_value("%6.2f", r_solv),
           format_value("%6.2f", r_shrink),
           format_value("%6.4f", rw),
           format_value("%6.4f", rf),
-          format_value("%6.4f", rw_low))
+          format_value("%6.4f", self.r_work_low().r_work))
       if(rw < rw_):
          rw_       = rw
          rf_       = rf
@@ -950,10 +941,11 @@ class manager(manager_mixin):
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
     self.mask_manager.mask_params = self.mask_params
-    self.update_xray_structure(xray_structure      = self.xray_structure,
-                               update_f_calc       = False,
-                               update_f_mask       = True,
-                               force_update_f_mask = True)
+    self.update_xray_structure(
+      xray_structure      = self.xray_structure,
+      update_f_calc       = False,
+      update_f_mask       = True,
+      force_update_f_mask = True)
     self.show_mask_optimization_statistics(prefix="Mask optimization: final",
       out = out)
     return True
@@ -985,86 +977,35 @@ class manager(manager_mixin):
     if(log is None): log = sys.stdout
     return phenix_masks.nu(fmodel = self, params = params)
 
-  #def update_f_part(self, params=None, log=None):
-  #  def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
-  #    fmt = "%s %6.4f %6.4f %5.2f %6.2f %5.2f %6.2f"
-  #    print >> log, fmt % (prefix,r_work,r_free,k_part,b_part,k_sol,b_sol)
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="Start:", log=log)
-  #  self.update_core(k_part = 0, b_part = 0)
-  #  self.update_xray_structure(update_f_mask=True)
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="  ", log=log)
-  #  self.update_solvent_and_scale(optimize_mask=False)
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="  ", log=log)
-  #
-  #  hds = self.xray_structure.hd_selection()
-  #  xrsh = self.xray_structure.select(selection = hds)
-  #  #xrs = self.xray_structure.select(selection = ~hds)
-  #  #self.update_xray_structure(
-  #  #  xray_structure = xrs,
-  #  #  update_f_calc = True,
-  #  #  update_f_mask = True)
-  #
-  #  xrsh.set_occupancies(value=1)
-  #  #xrsh = xrsh.set_b_iso(value=50)
-  #  #fc = xrsh.structure_factors(d_min=1.0).f_calc()
-  #  #fft_map = fc.fft_map(resolution_factor=0.25)
-  #  #fft_map.apply_sigma_scaling()
-  #  #map_data = fft_map.real_map_unpadded()
-  #  ##sel = map_data > 3.0
-  #  ##map_data = map_data.set_selected(sel, 1.0)
-  #  ##map_data = map_data.set_selected(~sel, 0.0)
-  #  #map_data = map_data / flex.max(map_data)
-  #  #fh = self.passive_arrays.f_obs.structure_factors_from_map(map=map_data,
-  #  #  use_scale = True, anomalous_flag = False, use_sg = True)
-  #
-  #
-  #  fh = self.passive_arrays.f_obs.structure_factors_from_scatterers(
-  #    xray_structure = xrsh).f_calc()
-  #
-  #  self.passive_arrays.f_part_base = fh
-  #  # This is how it should be in theory, but in practice is not the case...
-  #  #self.update_core(f_mask      = nuo.f_mask_new.common_set(self.f_obs()),
-  #  #                 f_part_base = nuo.f_part.common_set(self.f_obs()))
-  #  self.update_core(f_part_base = fh.common_set(self.f_obs()))
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="  ", log=log)
-  #  #self.update_solvent_and_scale(optimize_mask=False)
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="  ", log=log)
-  #  rws = self.r_work()
-  #  kbest=self.k_part()
-  #  bbest=self.b_part()
-  #  b_part_range = range(-50,50,1)
-  #  for b_part in b_part_range:
-  #    kpr = [i/10. for i in xrange(11)]
-  #    for k_part in kpr:
-  #      self.update_core(k_part = k_part, b_part = b_part)
-  #      rw = self.r_work()
-  #      if(rw < rws):
-  #        rws = rw
-  #        kbest=k_part
-  #        bbest=b_part
-  #        show(r_work=rws, r_free=self.r_free(), k_part=kbest,
-  #             b_part=bbest, k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #             prefix="   ", log=log)
-  #  self.update_core(k_part = kbest, b_part = bbest)
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="Final:", log=log)
-  #  self.update_solvent_and_scale(optimize_mask=False)
-  #  show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-  #       b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-  #       prefix="Final:", log=log)
-  #  print >> log
-
+  def update_f_h_and_bulk_solvent_and_scale(self, params=None, log=None):
+    def call_return(self):
+      return self.k_part(), self.b_part(), self.mask_params.solvent_radius, \
+        self.mask_params.shrink_truncation_radius
+    self.update_core(k_part = 0, b_part = 0)
+    self.update_xray_structure(update_f_mask=True)
+    self.update_solvent_and_scale(optimize_mask=True)
+    hds = self.xray_structure.hd_selection()
+    if(hds.count(True)==0): return call_return(self)
+    xrsh = self.xray_structure.select(selection = hds)
+    xrsh.set_occupancies(value=1)
+    fh = self.passive_arrays.f_obs.structure_factors_from_scatterers(
+      xray_structure = xrsh).f_calc()
+    self.passive_arrays.f_part_base = fh
+    self.update_core(f_part_base = fh.common_set(self.f_obs()))
+    rws = self.r_work()
+    kbest=self.k_part()
+    bbest=self.b_part()
+    for b_part in range(-50,50,1):
+      for k_part in [i/10. for i in xrange(11)]:
+        self.update_core(k_part = k_part, b_part = b_part)
+        rw = self.r_work()
+        if(rw < rws):
+          rws = rw
+          kbest=k_part
+          bbest=b_part
+    self.update_core(k_part = kbest, b_part = bbest)
+    self.update_solvent_and_scale(optimize_mask=True)
+    return call_return(self)
 
   def update_f_part(self, params=None, log=None):
     def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
@@ -1123,7 +1064,7 @@ class manager(manager_mixin):
     print >> log
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
-                                     optimize_mask = True):
+        optimize_mask = True, optimize_mask_thorough=False):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
     self.update_core()
@@ -1136,12 +1077,14 @@ class manager(manager_mixin):
     self.update_core()
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     if(optimize_mask):
-      is_mask_optimized = self.optimize_mask(params = params, out = out)
+      is_mask_optimized = self.optimize_mask(params = params, out = out,
+        thorough = optimize_mask_thorough)
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
     self.update_core()
     if(not is_mask_optimized and optimize_mask):
-      self.optimize_mask(params = params, out = out)
+      self.optimize_mask(params = params, out = out,
+        thorough = optimize_mask_thorough)
     self.update_core()
     if(self.check_f_mask_all_zero()):
       params.bulk_solvent = save_params_bulk_solvent
@@ -1368,26 +1311,6 @@ class manager(manager_mixin):
 
   def shell_f_masks(self):
     return self.active_arrays.core.f_mask
-
-  # TODO: this seems to be unused
-  def shell_f_masks_w(self):
-    if(self.r_free_flags().data().count(True) > 0):
-      fmsks = []
-      for fm in self.shell_f_masks():
-        fmsks.append(fm.select(~self.r_free_flags().data()))
-      return fmsks
-    else:
-      return self.shell_f_masks()
-
-  # TODO: this seems to be unused
-  def shell_f_masks_t(self):
-    if(self.r_free_flags().data().count(True) > 0):
-      fmsks = []
-      for fm in self.shell_f_masks():
-        fmsks.append(fm.select(self.r_free_flags().data()))
-      return fmsks
-    else:
-      return self.shell_f_masks()
 
   def f_calc(self):
     return self.active_arrays.core.f_calc
@@ -1715,8 +1638,8 @@ class manager(manager_mixin):
     if (result is None): return None
     return result**0.5
 
-  def r_work_low(self, size=500):
-    sel = self.f_obs_work().sort_permutation()
+  def r_work_low(self, size=500, reverse=False):
+    sel = self.f_obs_work().sort_permutation(reverse=reverse)
     fo = self.f_obs_work().select(sel)
     fm = self.f_model_scaled_with_k1_w().select(sel)
     ds = fo.d_spacings().data()[:size]
@@ -1766,29 +1689,6 @@ class manager(manager_mixin):
     if (self.alpha_beta_params.fix_scale_for_calc_option is None):
       return self.scale_ml()
     return self.alpha_beta_params.fix_scale_for_calc_option
-
-  def scale_ml(self):
-    alpha, beta = self.alpha_beta_w()
-    # TODO: I have not found definition of uaniso_ksol_bsol_scaling_minimizer
-    scale_manager = bss.uaniso_ksol_bsol_scaling_minimizer(
-               self.f_calc_w(),
-               self.f_obs_work(),
-               self.shell_f_masks_w(),
-               k_initial = 0.,
-               b_initial = 0.,
-               u_initial = [0,0,0,0,0,0],
-               scale_initial = self.scale_k3_w(),
-               refine_k = False,
-               refine_b = False,
-               refine_u = False,
-               refine_scale = True,
-               alpha = alpha.data(),
-               beta = beta.data(),
-               lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
-                         ignore_line_search_failed_step_at_lower_bound = True,
-                         ignore_line_search_failed_step_at_upper_bound = True,
-                         ignore_line_search_failed_maxfev              = True))
-    return scale_manager.scale_min
 
   def figures_of_merit(self):
     alpha, beta = self.alpha_beta()

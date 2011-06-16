@@ -108,28 +108,21 @@ class fmodels(object):
       print_statistics.make_sub_header("Neutron data", out = self.log)
       self.fmodel_neutron().info().show_all(header = message, out = self.log)
 
-  def update_bulk_solvent_and_scale(self, params = None, optimize_mask= False,
-                                    optimize_mask_thorough= False,
-                                    force_update_f_mask = False):
+  def update_bulk_solvent_and_scale(self, params = None, optimize_mask = False,
+        optimize_mask_thorough = False, force_update_f_mask = False):
     from mmtbx.refinement import print_statistics
     print_statistics.make_header("bulk solvent modeling and scaling",
       out = self.log)
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
       force_update_f_mask = force_update_f_mask)
     if(self.fmodel_x is not None):
-      if(optimize_mask_thorough):
-        self.fmodel_xray().optimize_mask_and_update_solvent_and_scale(
-          params = params, out = self.log, verbose =-1)
-      else:
-        self.fmodel_xray().update_solvent_and_scale(params = params,
-          out = self.log, verbose =-1, optimize_mask = optimize_mask)
+      self.fmodel_xray().update_solvent_and_scale(params = params,
+        out = self.log, verbose =-1, optimize_mask = optimize_mask,
+        optimize_mask_thorough = optimize_mask_thorough)
     if(self.fmodel_n is not None):
-      if(optimize_mask_thorough):
-        self.fmodel_neutron().optimize_mask_and_update_solvent_and_scale(
-          params = params, out = self.log, verbose =-1)
-      else:
-        self.fmodel_neutron().update_solvent_and_scale(params = params,
-          out = self.log, verbose =-1, optimize_mask = optimize_mask)
+      self.fmodel_neutron().update_solvent_and_scale(params = params,
+        out = self.log, verbose =-1, optimize_mask = optimize_mask,
+        optimize_mask_thorough = optimize_mask_thorough)
     self.show_short()
 
   def remove_outliers(self):

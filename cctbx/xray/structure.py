@@ -737,6 +737,9 @@ class structure(crystal.special_position_settings):
     b_mean = flex.mean(b_isos)
     return b_min, b_max, b_mean
 
+  def discard_scattering_type_registry(self):
+    self._scattering_type_registry_is_out_of_date = True
+
   def n_undefined_multiplicities(self):
     return ext.n_undefined_multiplicities(self._scatterers)
 
