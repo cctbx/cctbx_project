@@ -58,7 +58,7 @@ def run():
   f_model_manager.info().show_all()
 
   f_model_manager.update(
-    k_sol = 1.2,
+    k_sols = [1.2],
     b_sol = 30.0)
 
   f_model = f_model_manager.f_model()

@@ -50,7 +50,7 @@ def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure,
   fmodel.update_xray_structure(xray_structure = xray_structure,
                                update_f_calc  = True,
                                update_f_mask  = True)
-  fmodel.update(k_sol  = k_sol,
+  fmodel.update(k_sols = k_sol,
                 b_sol  = b_sol,
                 b_cart = b_cart)
   f_obs = abs(fmodel.f_model())
@@ -81,20 +81,20 @@ def exercise_01_general(d_mins = [1.6,],
           fmodel.update_solvent_and_scale(verbose = -1)
           r_work = fmodel.r_work()*100.
           assert approx_equal(r_work,             0.0)
-          assert approx_equal(fmodel.k_sol(),   kb[0])
+          assert approx_equal(fmodel.k_sol(0),   kb[0])
           assert approx_equal(fmodel.b_sol(),   kb[1])
           assert approx_equal(fmodel.b_cart(), b_cart)
           print
           print list(fmodel.b_cart())
           print b_cart
           print "bsol", fmodel.b_sol(),   kb[1]
-          print "ksol", fmodel.k_sol(),   kb[0]
+          print "ksol", fmodel.k_sol(0),   kb[0]
           print "r", r_work
           print
           if(abs(kb[0])<0.0001 and abs(kb[1])<0.0001 and
             abs(flex.sum(flex.double(b_cart))) < 0.001):
             assert approx_equal(r_work,             0.0, eps = 1.e-6)
-            assert approx_equal(fmodel.k_sol(),   kb[0], eps = 1.e-6)
+            assert approx_equal(fmodel.k_sol(0),   kb[0], eps = 1.e-6)
             assert approx_equal(fmodel.b_sol(),   kb[1], eps = 1.e-6)
             assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
@@ -176,7 +176,7 @@ def exercise_03_do_nothing(d_min = 2.0, target_name = "ls_wunit_k1"):
   r_work = fmodel.r_work()*100.
   assert r_work > 0.0
   assert approx_equal(r_work, r_work_start, eps = 1.e-6)
-  assert approx_equal(fmodel.k_sol(), 0, eps = 1.e-6)
+  assert approx_equal(fmodel.k_sol(0), 0, eps = 1.e-6)
   assert approx_equal(fmodel.b_sol(), 0, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), [0,0,0,0,0,0], eps = 1.e-6)
 
@@ -214,7 +214,7 @@ def exercise_04_fix_k_sol_b_sol_b_cart(d_min = 2.0, target_name = "ls_wunit_k1")
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,             0.0, eps = 1.e-6)
-  assert approx_equal(fmodel.k_sol(),   k_sol, eps = 1.e-6)
+  assert approx_equal(fmodel.k_sol(0),   k_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
@@ -243,7 +243,7 @@ def exercise_05_k_sol_b_sol_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,             0.0, eps = 1.e-6)
-  assert approx_equal(fmodel.k_sol(),   k_sol, eps = 1.e-6)
+  assert approx_equal(fmodel.k_sol(0),   k_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
@@ -273,7 +273,7 @@ def exercise_06_b_cart_only(d_min = 2.0, target_name = "ls_wunit_k1"):
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,             0.0, eps = 1.e-6)
-  assert approx_equal(fmodel.k_sol(),   k_sol, eps = 1.e-6)
+  assert approx_equal(fmodel.k_sol(0),   k_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)
 
@@ -326,12 +326,12 @@ def exercise_radial_shells(k_sol=0.33, d_min = 2.0, target_name = "ls_wunit_k1",
   assert r_work_start > 0.0
   assert approx_equal(r_work,             0.0, eps = 1.e-4)
   if( type(k_sol) is list ):
-    ksols = fmodel.shell_k_sols()
+    ksols = fmodel.k_sols()
     assert len(k_sol) == len(ksols)
     for ik in range(len(k_sol)):
       assert approx_equal(ksols[ik], k_sol[ik], eps=1.e-6)
   else:
-    for ksol in fmodel.shell_k_sols():
+    for ksol in fmodel.k_sols():
       assert approx_equal(ksol,   k_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_sol(),   b_sol, eps = 1.e-6)
   assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.e-6)

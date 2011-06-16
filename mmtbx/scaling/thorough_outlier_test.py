@@ -77,7 +77,7 @@ def exercise(d_min            = 3.5,
                                                b_cart            = b_cart)
                 for k_sol in [0.10, 0.30, 0.50]:
                   for b_sol in [60, 80]:
-                     fmodel.update(k_sol = k_sol, b_sol = b_sol)
+                     fmodel.update(k_sols = [k_sol], b_sol = b_sol)
                      a,b = fmodel.alpha_beta()
                      o_sel =  om.model_based_outliers(f_model = fmodel.f_model())
                      n_out = o_sel.data().count(False)

@@ -16,7 +16,7 @@ namespace {
   {
     return boost::python::make_tuple(self.f_calc,
                                      self.f_mask(),
-                                     self.k_sol(),
+                                     self.k_sols(),
                                      self.b_sol,
                                      self.f_part,
                                      self.k_part,
@@ -50,29 +50,6 @@ namespace {
     class_<core<> >("core")
       .def(init<
            af::shared<std::complex<double> >      const&,
-           af::shared<std::complex<double> >      const&,
-           double                                 const&,
-           double                                 const&,
-           af::shared<std::complex<double> >      const&,
-           double                                 const&,
-           double                                 const&,
-           scitbx::sym_mat3<double>               const&,
-           af::shared<cctbx::miller::index<> >    const&,
-           cctbx::uctbx::unit_cell                const&,
-           af::shared<double>                     const& >(
-                                                        (arg("f_calc"),
-                                                         arg("f_mask"),
-                                                         arg("k_sol"),
-                                                         arg("b_sol"),
-                                                         arg("f_part_base"),
-                                                         arg("k_part"),
-                                                         arg("b_part"),
-                                                         arg("u_star"),
-                                                         arg("hkl"),
-                                                         arg("uc"),
-                                                         arg("ss"))))
-      .def(init<
-           af::shared<std::complex<double> >      const&,
            af::small< af::shared<std::complex<double> >, max_n_shells > const&,
            af::small< double, max_n_shells>       const&,
            double                                 const&,
@@ -85,7 +62,7 @@ namespace {
            af::shared<double>                     const& >(
                                                         (arg("f_calc"),
                                                          arg("shell_f_masks"),
-                                                         arg("shell_k_sols"),
+                                                         arg("k_sols"),
                                                          arg("b_sol"),
                                                          arg("f_part_base"),
                                                          arg("k_part"),
@@ -109,8 +86,7 @@ namespace {
       .add_property("ss",            make_getter(&core<>::ss,           rbv()))
       .def("n_shells", &core<>::n_shells)
       .def("k_sol", &core<>::k_sol)
-      .def("shell_k_sol", &core<>::shell_k_sol)
-      .def("shell_k_sols", &core<>::shell_k_sols)
+      .def("k_sols", &core<>::k_sols)
       .def("f_mask", &core<>::f_mask)
       .def("shell_f_mask", &core<>::shell_f_mask)
       .def("shell_f_masks", &core<>::shell_f_masks)

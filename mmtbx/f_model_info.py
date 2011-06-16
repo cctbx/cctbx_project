@@ -118,7 +118,7 @@ class info(object):
       something, matches = fmodel.f_obs().match_bijvoet_mates()
       self.number_of_reflections_merged = matches.pairs().size() + \
         matches.n_singles()
-    self.k_sol = fmodel.shell_k_sols()
+    self.k_sol = fmodel.k_sols()
     self.b_sol = fmodel.b_sol()
     self.b_cart = fmodel.b_cart()
     self.b_iso = fmodel.b_iso()

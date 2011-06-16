@@ -219,7 +219,7 @@ class refinement_monitor(object):
     self.scale_ml        = []
     self.n_solv          = []
     self.rigid_body_shift_accumulator             = None
-    self.n_shell_k_sols = 0
+    self.n_k_sols = 0
 
   def collect(self, model,
                     fmodel,
@@ -233,7 +233,7 @@ class refinement_monitor(object):
     if(self.model_ini is None): self.model_ini = model.deep_copy()
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)
-    ksols = tuple(fmodel.shell_k_sols())
+    ksols = tuple(fmodel.k_sols())
     ###
     self.r_works         .append(fmodel.r_work()                  )
     self.r_frees         .append(fmodel.r_free()                  )
@@ -243,7 +243,7 @@ class refinement_monitor(object):
     self.k_sols          .append(  ksols      )
     self.b_sols          .append(fmodel.b_sol()          )
     self.b_anisos        .append(fmodel.b_cart()                  )
-    self.n_shell_k_sols = max(self.n_shell_k_sols,len(ksols))
+    self.n_k_sols = max(self.n_k_sols,len(ksols))
     if(target_weights is not None):
        self.wxcs            .append(target_weights.wx_xyz()          )
        self.wxus            .append(target_weights.wx_adp()          )
@@ -449,12 +449,12 @@ class refinement_monitor(object):
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
-    if( self.n_shell_k_sols == 1 ):
+    if( self.n_k_sols == 1 ):
       print >> out, remark + \
       " stage     k_sol   b_sol     b11     b22     b33     b12     b13     b23"
     else:
       print >> out, remark + \
-      " stage       k_sols"+((self.n_shell_k_sols-1)*6*" ") \
+      " stage       k_sols"+((self.n_k_sols-1)*6*" ") \
       +"  b_sol     b11     b22     b33     b12     b13     b23"
     for a,b,c,d in zip(self.steps, self.k_sols, self.b_sols, self.b_anisos):
       if( len(b)==1 ):
