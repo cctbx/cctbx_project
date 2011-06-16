@@ -34,8 +34,9 @@ public:
         FloatType coeff = theta * fm.f_aniso[i];
         grad_shell_k_sols[j] =  coeff * f_b;
       }
-      FloatType uvs_plus_usv_bsol = std::real(f_mdl*std::conj(k_f_mask)+k_f_mask*std::conj(f_mdl));
-      grad_b_sol = -uvs_plus_usv_bsol*fm.f_aniso[i] * f_b * fm.ss[i] / (f_model_abs*2);
+      FloatType uvs_plus_usv_bsol =
+        std::real(f_mdl*std::conj(k_f_mask)+k_f_mask*std::conj(f_mdl));
+      grad_b_sol =-uvs_plus_usv_bsol*fm.f_aniso[i]*f_b*fm.ss[i]/(f_model_abs*2);
     }
   }
   FloatType grad_b_sol;

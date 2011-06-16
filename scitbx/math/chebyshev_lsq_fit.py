@@ -69,7 +69,13 @@ class chebyshev_lsq_fit(object):
                                     self.w_obs,
                                     self.free_flags)
     self.lsq_object.replace(self.x)
-    self.minimizer = lbfgs.run(target_evaluator=self)
+    lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound = True,
+      ignore_line_search_failed_step_at_upper_bound = True,
+      ignore_line_search_failed_maxfev              = True)
+    self.minimizer = lbfgs.run(
+      target_evaluator=self,
+      exception_handling_params = lbfgs_exception_handling_params)
     self.coefs = self.lsq_object.coefs()
     self.f = self.lsq_object.residual()
     self.free_f = self.lsq_object.free_residual()

@@ -729,6 +729,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def update_solvent_and_scale(self,
                                optimize_mask=True,
+                               optimize_mask_thorough=False, # XXX ignored
                                params=None,
                                out=None,
                                verbose=-1,
@@ -752,7 +753,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
     if(not initialise):
       self.fmodel_ts1.update_solvent_and_scale(params = params, out=out,
-        verbose=verbose, optimize_mask=optimize_mask)
+        verbose=verbose, optimize_mask=optimize_mask,
+        optimize_mask_thorough = optimize_mask_thorough)
       self.fmodel_ts1.apply_back_b_iso()
     else:
       self.fmodel_ts1.update_twin_fraction()

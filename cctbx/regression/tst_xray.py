@@ -1328,7 +1328,30 @@ def exercise_delta_sites_cart_measure():
     mscd = xray.meaningful_site_cart_differences(xs1=xs1, xs2=xs0)
     assert approx_equal(mscd.max_absolute(), diff_ref, eps=rnd_delta)
 
+def exercise_discard_scattering_type_registry():
+  cs = crystal.symmetry((5,7,9, 90, 120, 90), 'P2')
+  xs_os = xray.structure(crystal.special_position_settings(cs),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer(scattering_type="O", site=(0.0,0.0,0.0)),)))
+  fc_os = xs_os.structure_factors(d_min=1, algorithm="direct").f_calc()
+  xs_ss = xray.structure(crystal.special_position_settings(cs),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer(scattering_type="S", site=(0.0,0.0,0.0)),)))
+  fc_ss = xs_ss.structure_factors(d_min=1, algorithm="direct").f_calc()
+  xs_os.scatterers()[0].scattering_type="S"
+  failed = False
+  try:
+    fc_oss = xs_os.structure_factors(d_min=1, algorithm="direct").f_calc()
+  except RuntimeError, e:
+    assert str(e) == """scattering_type "S" not in scattering_type_registry."""
+    failed = True
+  assert failed
+  xs_os.discard_scattering_type_registry()
+  fc_oss = xs_os.structure_factors(d_min=1, algorithm="direct").f_calc()
+  assert fc_ss.data().all_eq(fc_oss.data())
+
 def run():
+  exercise_discard_scattering_type_registry()
   exercise_delta_sites_cart_measure()
   exercise_xray_structure_as_py_code()
   exercise_parameter_map()

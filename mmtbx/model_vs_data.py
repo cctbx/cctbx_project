@@ -156,19 +156,20 @@ class mvd(object):
     #
     print >> log, "  Data:"
     result = " \n    ".join([
-      "data_label              : %s"%                    self.data.data_label,
-      "high_resolution         : "+format_value("%-5.2f",self.data.high_resolution),
-      "low_resolution          : "+format_value("%-6.2f",self.data.low_resolution),
-      "completeness_in_range   : "+format_value("%-6.2f",self.data.completeness_in_range),
-      "completeness(d_min-inf) : "+format_value("%-6.2f",self.data.completeness_d_min_inf),
-      "completeness(6A-inf)    : "+format_value("%-6.2f",self.data.completeness_6A_inf),
-      "wilson_b                : "+format_value("%-6.1f",self.data.wilson_b),
-      "number_of_reflections   : "+format_value("%-8d",  self.data.number_of_reflections),
-      "test_set_size           : "+format_value("%-8.4f",self.data.test_set_size),
-      "test_flag_value         : "+format_value("%-d",   self.data.test_flag_value),
-      "number_of_Fobs_outliers : "+format_value("%-8d",  self.data.number_of_Fobs_outliers),
-      "twinned                 : "+format_value("%-s",   self.data.twinned),
-      "anomalous_flag          : "+format_value("%-6s",  self.data.anomalous_flag)
+      "data_label                           : %s"%                    self.data.data_label,
+      "high_resolution                      : "+format_value("%-5.2f",self.data.high_resolution),
+      "low_resolution                       : "+format_value("%-6.2f",self.data.low_resolution),
+      "completeness_in_range                : "+format_value("%-6.2f",self.data.completeness_in_range),
+      "completeness(d_min-inf)              : "+format_value("%-6.2f",self.data.completeness_d_min_inf),
+      "completeness(6A-inf)                 : "+format_value("%-6.2f",self.data.completeness_6A_inf),
+      "wilson_b                             : "+format_value("%-6.1f",self.data.wilson_b),
+      "number_of_reflections                : "+format_value("%-8d",  self.data.number_of_reflections),
+      "number_of_reflections(non-anomalous) : "+format_value("%-8d",  self.data.number_of_reflections_merged),
+      "test_set_size                        : "+format_value("%-8.4f",self.data.test_set_size),
+      "test_flag_value                      : "+format_value("%-d",   self.data.test_flag_value),
+      "number_of_Fobs_outliers              : "+format_value("%-8d",  self.data.number_of_Fobs_outliers),
+      "twinned                              : "+format_value("%-s",   self.data.twinned),
+      "anomalous_flag                       : "+format_value("%-6s",  self.data.anomalous_flag)
       ])
     print >> log, "   ", result
     #
@@ -528,19 +529,21 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, fmodel_cut):
   twinned = str(fmodel_cut.twin)
   if(fmodel_cut.twin != fmodel.twin):
     twinned = "May be, %s or %s"%(str(fmodel_cut.twin), str(fmodel.twin))
-  return group_args(data_label              = f_obs_labels,
-                    high_resolution         = info.d_min,
-                    low_resolution          = info.d_max,
-                    completeness_in_range   = info.completeness_in_range,
-                    completeness_d_min_inf  = info.completeness_d_min_inf,
-                    completeness_6A_inf     = info.completeness_6_inf,
-                    wilson_b                = fmodel.wilson_b(),
-                    number_of_reflections   = info.number_of_reflections,
-                    test_set_size           = flags_pc,
-                    test_flag_value         = test_flag_value,
-                    number_of_Fobs_outliers = n_outl,
-                    twinned                 = twinned,
-                    anomalous_flag          = fmodel.f_obs().anomalous_flag())
+  return group_args(
+    data_label                   = f_obs_labels,
+    high_resolution              = info.d_min,
+    low_resolution               = info.d_max,
+    completeness_in_range        = info.completeness_in_range,
+    completeness_d_min_inf       = info.completeness_d_min_inf,
+    completeness_6A_inf          = info.completeness_6_inf,
+    wilson_b                     = fmodel.wilson_b(),
+    number_of_reflections        = info.number_of_reflections,
+    number_of_reflections_merged = info.number_of_reflections_merged,
+    test_set_size                = flags_pc,
+    test_flag_value              = test_flag_value,
+    number_of_Fobs_outliers      = n_outl,
+    twinned                      = twinned,
+    anomalous_flag               = fmodel.f_obs().anomalous_flag())
 
 def show_model_vs_data(fmodel):
   d_max, d_min = fmodel.f_obs().d_max_min()
