@@ -32,6 +32,10 @@ class SymmetryDialog (wx.Dialog) :
     szr3.Add(self.unit_cell_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr3.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr3.Add(self.space_group_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    szr3.Add((1,1), 0, wx.ALL, 5)
+    load_btn = wx.Button(self, -1, "Load symmetry from file...")
+    szr3.Add(load_btn, 0, wx.ALL, 5)
+    self.Bind(wx.EVT_BUTTON, self.OnLoadSymmetry, load_btn)
     szr2.Add(szr3, 0, wx.ALL, 0)
     cancel_btn = wx.Button(self, wx.ID_CANCEL)
     ok_btn = wx.Button(self, wx.ID_OK)
@@ -64,7 +68,25 @@ class SymmetryDialog (wx.Dialog) :
       space_group_info=sg)
     return symm
 
+  def OnLoadSymmetry (self, event) :
+    file_name = wx.FileSelector(
+      message="Select a reflection or PDB file containing symmetry",
+      flags=wx.OPEN)
+    if (file_name != "") :
+      from iotbx import crystal_symmetry_from_any
+      symm = crystal_symmetry_from_any.extract_from(file_name)
+      if (symm is not None) :
+        space_group = symm.space_group_info()
+        if (space_group is not None) :
+          self.space_group_ctrl.SetSpaceGroup(space_group)
+        unit_cell = symm.unit_cell()
+        if (unit_cell is not None) :
+          self.unit_cell_ctrl.SetUnitCell(unit_cell)
+      else :
+        raise Sorry("This file does not contain valid symmetry information.")
+
   def OnOkay (self, event) :
+    print 1
     if (not self.Validate()) :
       pass
     else :

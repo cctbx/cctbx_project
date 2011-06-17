@@ -17,8 +17,7 @@ class UnitCellControl (wx.TextCtrl) :
     self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
 
   def SetUnitCell (self, uc) :
-    from cctbx import uctbx
-    if isinstance(uc, uctbx.unit_cell) :
+    if (type(uc).__name__ == "unit_cell") :
       uc = format_unit_cell(uc)
     elif (uc is None) :
       uc = ""
