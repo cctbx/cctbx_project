@@ -127,7 +127,8 @@ class fmodels(object):
 
   def remove_outliers(self):
     from mmtbx.refinement import print_statistics
-    n_old = self.fmodel_x.f_obs().size()
+    nx_old = self.fmodel_x.f_obs().size()
+    nn_old = None
     print_statistics.make_sub_header("Outliers rejection", out = self.log)
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):
@@ -135,13 +136,15 @@ class fmodels(object):
       self.fmodel_x = self.fmodel_xray().remove_outliers(
         show = True, log = self.log)
     if(self.fmodel_n is not None):
+      nn_old = self.fmodel_n.f_obs().size()
       print_statistics.make_sub_header("neutron data", out = self.log)
       self.fmodel_n = self.fmodel_neutron().remove_outliers(
         show = True, log = self.log)
+      nn_new = self.fmodel_n.f_obs().size()
     print >> self.log
-    n_new = self.fmodel_x.f_obs().size()
-    if(n_old != n_new):
-      self.create_target_functors() # XXX Cover neutrons
+    nx_new = self.fmodel_x.f_obs().size()
+    if(nx_old != nx_new or (nn_old is not None and nn_old != nn_new)):
+      self.create_target_functors()
 
   def show_targets(self, log, text=""):
     prefix_x = ""

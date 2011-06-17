@@ -11,6 +11,7 @@ def compute_new_f_obs(fmodel):
   from mmtbx.max_lik import maxlik
   csc = fmodel.complete_set_core()
   f_obs = fmodel.f_obs()
+  abcd = fmodel.hl_coeffs()
   r_free_flags = fmodel.r_free_flags()
   f_model_scaled_with_k1 = csc.f_model.array(
     data = csc.f_model.data()*fmodel.scale_k1())
@@ -53,16 +54,18 @@ def compute_new_f_obs(fmodel):
   #
   new_abcd = None
   if(fmodel.hl_coeffs() is not None):
-    new_abcd = fmodel.hl_coeffs().customized_copy(
-      indices = new_f_obs.indices(),
-      data = fmodel.hl_coeffs().data().concatenate(
-        flex.hendrickson_lattman(f_obs_lone.size(), [0,0,0,0])))
-  nrff = miller.set(crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
-      indices = new_f_obs.indices(),
-      anomalous_flag=new_f_obs.anomalous_flag()).array(data=new_r_free_flags)
+    abcd_lone = f_obs_lone.customized_copy(
+      data = flex.hendrickson_lattman(f_obs_lone.size(), [0,0,0,0]))
+    new_abcd = abcd.concatenate(other = abcd_lone)
+    new_abcd, new_f_obs = new_abcd.common_sets(new_f_obs)
+  #####
+  rff_lone = f_obs_lone.customized_copy(data=flex.bool(f_obs_lone.size(),False))
+  new_rff = r_free_flags.concatenate(other = rff_lone)
+  new_rff, new_f_obs = new_rff.common_sets(new_f_obs)
+  #####
   return group_args(
     f_obs = new_f_obs,
-    r_free_flags = nrff,
+    r_free_flags = new_rff,
     filled_f_obs_selection = apply_alpha_sel,
     hl_coeffs = new_abcd)
 
@@ -252,7 +255,7 @@ def fill_missing_f_obs(fmodel, fill_mode, update_scaling=True):
     r_free_flags           = new_r_free_flags,
     target_name            = fmodel.target_name,
     f_obs                  = new_f_obs,
-    abcd                   = new_f_obs_obj.hl_coeffs,
+    abcd                   = new_f_obs_obj.hl_coeffs, # ??? This is the problem!
     k_sol                  = fmodel.k_sols(),
     b_sol                  = fmodel.b_sol(),
     b_cart                 = fmodel.b_cart(),
