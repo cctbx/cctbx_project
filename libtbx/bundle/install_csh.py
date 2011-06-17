@@ -55,7 +55,7 @@ endif
 
 set required_python_version=None
 if (-e "$build/lib/PYTHON_VERSION_MAJOR_MINOR") then
-  set required_python_version=`cat "$build/lib/PYTHON_VERSION_MAJOR_MINOR"`
+  set required_python_version=`grep -v '^#' "$build/lib/PYTHON_VERSION_MAJOR_MINOR"`
 endif
 
 set aborted="Installation aborted."
