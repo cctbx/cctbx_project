@@ -1374,12 +1374,13 @@ def setup_scattering_dictionaries(scattering_table,
   xray_scattering_dict, neutron_scattering_dict = [None,]*2
   if(log is not None):
     print_statistics.make_header("Scattering factors", out = log)
-  known_scattering_tables = ["n_gaussian","wk1995","it1992","neutron"]
+  known_scattering_tables = [
+    "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
   if(not (scattering_table in known_scattering_tables)):
     raise Sorry("Unknown scattering_table: %s\n%s"%
       (show_string(scattering_table),
       "Possible choices are: %s"%" ".join(known_scattering_tables)))
-  if(scattering_table in ["n_gaussian", "wk1995", "it1992"]):
+  if(scattering_table in ["n_gaussian", "wk1995", "it1992", "electron"]):
     xray_structure.scattering_type_registry(
       table = scattering_table,
       d_min = d_min,
