@@ -112,7 +112,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.slice_index = wx.SpinCtrl(self.panel, -1)
     self.slice_index.SetValue(self.settings.slice_index)
-    box2.Add(self.slice_index)
+    box2.Add(self.slice_index, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.panel_sizer.Add(box2)
     self.Bind(wx.EVT_CHOICE, self.OnSetSlice, self.hkl_choice)
     self.Bind(wx.EVT_SPINCTRL, self.OnSetSlice, self.slice_index)
