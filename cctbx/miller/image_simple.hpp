@@ -45,13 +45,13 @@ namespace cctbx { namespace miller {
     for(std::size_t ih=0;ih<miller_indices.size();ih++) {
       v3d rv = unit_cell.reciprocal_space_vector(miller_indices[ih]);
       v3d rvre = crystal_rotation_matrix * rv;
-      rvre[2] += ewald_radius; // direct beam parallel (0,0,1)
+      rvre[2] += ewald_radius; // direct beam anti-parallel (0,0,1)
       double rvre_len = rvre.length();
       double rvre_proximity = rvre_len / ewald_radius;
       if (std::abs(1-rvre_proximity) <= ewald_proximity) {
         // http://en.wikipedia.org/wiki/Line-plane_intersection
         if (rvre[2] > 0) {
-          double d = detector_distance / rvre[2];
+          double d = -detector_distance / rvre[2];
           double dx = rvre[0] * d;
           double dy = rvre[1] * d;
           if (   std::abs(dx) <= dsx/2
