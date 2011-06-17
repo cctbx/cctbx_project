@@ -225,6 +225,7 @@ class hklview_2d (wx.PyPanel) :
     else :
       self.SetBackgroundColour((255,255,255))
     dc = wx.AutoBufferedPaintDCFactory(self)
+    dc.SetBackground(wx.BLACK_BRUSH)
     dc.Clear()
     gc = wx.GraphicsContext.Create(dc)
     self.paint(gc)
