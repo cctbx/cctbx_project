@@ -93,6 +93,15 @@ def exercise_change_basis():
     CO.change_basis(cb_op).unit_cell().parameters(),
     (5,2,3,90,90,90))
 
+  import scitbx.math
+  from scitbx import matrix
+  fmx = matrix.sqr(
+    uctbx.unit_cell((10, 13, 17, 85, 95, 105)).fractionalization_matrix())
+  crm = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+    axis=(-3,5,-7), angle=37, deg=True))
+  co = crystal_orientation(crm * fmx.transpose(), True)
+  assert approx_equal(co.crystal_rotation_matrix(), crm)
+
 def exercise_compare():
   pass
 

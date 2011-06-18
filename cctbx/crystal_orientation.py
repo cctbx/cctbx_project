@@ -54,11 +54,18 @@ class _(boost.python.injector,ext.crystal_orientation):
     return (self.reciprocal_matrix(),basis_type.reciprocal)
 
   def __str__(self):
-    return "A-star:%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f\ncell:"%self.reciprocal_matrix()+\
+    return "A-star:%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f\n" \
+           "cell:"%self.reciprocal_matrix()+\
        str(self.unit_cell())+"%.0f"%self.unit_cell().volume()
 
   def __eq__(self,other):
     S = self.reciprocal_matrix()
     O = other.reciprocal_matrix()
-    return S[0]==O[0] and S[1]==O[1] and S[2]==O[2] and S[3]==O[3] and \
-           S[4]==O[4] and S[5]==O[5] and S[6]==O[6] and S[7]==O[7] and S[8]==O[8]
+    return S[0]==O[0] and S[1]==O[1] and S[2]==O[2] \
+       and S[3]==O[3] and S[4]==O[4] and S[5]==O[5] \
+       and S[6]==O[6] and S[7]==O[7] and S[8]==O[8]
+
+  def crystal_rotation_matrix(self):
+    from scitbx import matrix
+    return matrix.sqr(self.reciprocal_matrix()) \
+         * matrix.sqr(self.unit_cell().orthogonalization_matrix()).transpose()
