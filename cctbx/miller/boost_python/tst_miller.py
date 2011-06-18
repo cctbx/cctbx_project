@@ -630,23 +630,31 @@ def exercise_image_simple():
   for ewald_proximity,star in [(0.1, " "), (0.5, "*")]:
     image_lines = []
     for point_spread in xrange(1,5+1):
-      image = miller.image_simple(
-        unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
-        miller_indices=flex.miller_index([(-1,2,1)]),
-        crystal_rotation_matrix=crystal_rotation_matrix,
-        ewald_radius=0.5,
-        ewald_proximity=ewald_proximity,
-        signal_max=100,
-        detector_distance=5,
-        detector_size=(10,12),
-        detector_pixels=(dpx,dpy),
-        point_spread=point_spread,
-        gaussian_falloff_scale=4)
-      assert image.all() == (dpx,dpy)
+      for set_pixels in [False, True]:
+        image = miller.image_simple(
+          store_spots=(point_spread < 3 or not set_pixels),
+          set_pixels=set_pixels).compute(
+            unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
+            miller_indices=flex.miller_index([(-1,2,1)]),
+            crystal_rotation_matrix=crystal_rotation_matrix,
+            ewald_radius=0.5,
+            ewald_proximity=ewald_proximity,
+            signal_max=100,
+            detector_distance=5,
+            detector_size=(10,12),
+            detector_pixels=(dpx,dpy),
+            point_spread=point_spread,
+            gaussian_falloff_scale=4)
+        if (not set_pixels):
+          assert image.pixels.size() == 0
+        else:
+          assert image.pixels.size() == 20
+      assert image.spots.size() == int(star == "*" and point_spread < 3)
+      assert image.pixels.all() == (dpx,dpy)
       for i in xrange(dpx):
         line = []
         for j in xrange(dpy):
-          if (image[(i,j)]): c = star
+          if (image.pixels[(i,j)]): c = star
           else: c = " "
           line.append(c)
         image_lines.append("|"+"".join(line)+"|")

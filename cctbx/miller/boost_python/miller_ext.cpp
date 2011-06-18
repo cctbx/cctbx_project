@@ -4,10 +4,7 @@
 #include <cctbx/miller/union_of_indices.h>
 #include <cctbx/miller/math.h>
 #include <cctbx/miller/image_simple.hpp>
-#include <boost/python/module.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/args.hpp>
+#include <boost/python.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 
 namespace cctbx { namespace miller { namespace boost_python {
@@ -106,18 +103,30 @@ namespace {
       arg("phase_integral"),
       arg("max_figure_of_merit")));
 
-    def("image_simple", image_simple, (
-      arg("unit_cell"),
-      arg("miller_indices"),
-      arg("crystal_rotation_matrix"),
-      arg("ewald_radius"),
-      arg("ewald_proximity"),
-      arg("signal_max"),
-      arg("detector_distance"),
-      arg("detector_size"),
-      arg("detector_pixels"),
-      arg("point_spread"),
-      arg("gaussian_falloff_scale")));
+    {
+      typedef image_simple wt;
+      typedef return_value_policy<return_by_value> rbv;
+      typedef return_internal_reference<> rir;
+      class_<wt>("image_simple", no_init)
+        .def(init<bool, bool>((
+          arg("store_spots"),
+          arg("set_pixels"))))
+        .def("compute", &wt::compute, (
+          arg("unit_cell"),
+          arg("miller_indices"),
+          arg("crystal_rotation_matrix"),
+          arg("ewald_radius"),
+          arg("ewald_proximity"),
+          arg("signal_max"),
+          arg("detector_distance"),
+          arg("detector_size"),
+          arg("detector_pixels"),
+          arg("point_spread"),
+          arg("gaussian_falloff_scale")), rir())
+        .add_property("spots", make_getter(&wt::spots, rbv()))
+        .def_readonly("pixels", &wt::pixels)
+      ;
+    }
   }
 
 } // namespace <anonymous>
