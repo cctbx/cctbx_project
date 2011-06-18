@@ -48,9 +48,7 @@ miller.array.export_as_shelx_fcf = miller_export_as_shelx_fcf
 def list_6_as_miller_arrays(file_name):
   """ Read the file of given name and return a pair of miller arrays
   (F_obs^2, F_cal) """
-  # I roll out a hand written reader instead of using PyCifRW
-  # because the latter solution is dog slow and list 6 fcf files
-  # don't take all the liberties allowed by the CIF format.
+  # potentially iotbx.cif could be used here
   fcf = iter(open(file_name))
   space_group = sgtbx.space_group()
   unit_cell_params = {}
