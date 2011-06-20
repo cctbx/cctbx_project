@@ -13,7 +13,7 @@ if (libtbx.env.has_module("ccp4io")):
 else:
   mtz = None
 
-def exercise_others () :
+def exercise_cif () :
   #--- CIF
   cif_data = """
 data_comp_list
@@ -73,7 +73,7 @@ _chem_comp_angle.value_angle_esd
   cif.assert_file_type("cif")
   os.remove("tmp1.cif")
 
-  #--- PDB
+def exercise_pdb () :
   pdb_data = """
 HEADER    HYDROLASE(METALLOPROTEINASE)            17-NOV-93   1THL
 ATOM      1  N   ILE     1       9.581  51.813  -0.720  1.00 31.90      1THL 158
@@ -110,7 +110,7 @@ END
   pdb.check_file_type(multiple_formats=["hkl","pdb"])
   os.remove("tmp1.pdb")
 
-  #--- PHIL
+def exercise_phil () :
   phil_data = """\
 refinement {
   input {
@@ -144,17 +144,18 @@ refinement {
   assert params.refinement.input.xray_data.r_free_flags.test_flag_value == None
   os.remove("tmp1.phil")
 
-  #--- Pickle
+def exercise_pickle () :
   f = open("tmp1.pkl", "wb")
-  cPickle.dump(params, f)
+  e = OSError(2001, "Hello, world!", "tmp1.phil")
+  cPickle.dump(e, f)
   f.close()
   pkl = any_file("tmp1.pkl")
   assert pkl.file_type == "pkl"
-  params = pkl.file_object
-  assert params.refinement.main.number_of_macro_cycles == 3
+  exception = pkl.file_object
+  assert (exception.errno == 2001)
   os.remove("tmp1.pkl")
 
-  #--- sequence
+def exercise_sequence () :
   seqs = ["AAKDVKFGVNVLADAV",
           "AAKDVKFGNDARVKML",
           "AVKDVRYGNEARVKIL"]
@@ -199,6 +200,45 @@ refinement {
   for i, seq_object in enumerate(f.file_object) :
     assert (seq_object.sequence == seqs[i])
   os.remove("sequences.fa")
+
+def exercise_alignment () :
+  aln1 = """\
+>1mru_A
+-----------------GSHMTTPSHLSD-----RYELGEILGFGGMSEVHLARDLRLHR
+DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV
+DGVTLRDIVHTEGPMTPKRAIEVIADACQALNFSHQNGIIHRDVKPANIMISATNAVKVM
+DFGIARAIADSGNSVTQTAAVIGTAQYLSPEQARGDSVDARSDVYSLGCVLYEVLTGEPP
+FTGDSPVSVAYQHVREDPIPPSARHEGLSADLDAVVLKALAKNPENRYQTAAEMRADLVR
+VHNGEPPEAPKVLTDAERTSLLSSAAGNLSGPR
+>2h34_A
+MGSSHHHHHHSSGLVPRGSHMDGTAESREGTQFGPYRLRRLVGRGGMGDVYEAEDTVRER
+IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
+NGVDLAAMLRRQGPLAPPRAVAIVRQIGSALDAAHAAGATHRDVKPENILVSADDFAYLV
+DFGIASATTD--EKLTQLGNTVGTLYYMAPERFSESHATYRADIYALTCVLYECLTGSPP
+YQGDQ-LSVMGAHINQAIPRPSTVRPGIPVAFDAVIARGMAKNPEDRYVTCGDLSA----
+-----AAHAALATADQDRATDILR--------R"""
+  open("seqs.aln", "w").write(aln1)
+  f = any_file("seqs.aln")
+  f.assert_file_type("aln")
+  assert (f.file_object.names == ["1mru_A", "2h34_A"])
+  aln2 = """\
+MUSCLE (3.8) multiple sequence alignment
+
+
+1mru_A          -----------------GSHMTTPSHLSD-----RYELGEILGFGGMSEVHLARDLRLHR
+2h34_A          MGSSHHHHHHSSGLVPRGSHMDGTAESREGTQFGPYRLRRLVGRGGMGDVYEAEDTVRER
+                                 ****  .:   :      * *  ::* ***.:*: * *    *
+
+1mru_A          DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV
+2h34_A          IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
+                 **:*::   *: ** *  *:.***..*. *: * :*.::* ** :   * * *: *  :"""
+  open("seqs.aln", "w").write(aln2)
+  f = any_file("seqs.aln")
+  f.assert_file_type("aln")
+  assert (f.file_object.names == ["1mru_A", "2h34_A"])
+
+def exercise_hhr () :
+  pass
 
 def exercise_maps () :
   xplor_map = libtbx.env.find_in_repositories(
@@ -302,13 +342,20 @@ def exercise_groups () :
 def exercise () :
   exercise_groups()
   exercise_misc()
-  exercise_others()
+  exercise_cif()
+  exercise_pdb()
+  exercise_phil()
+  exercise_pickle()
+  exercise_sequence()
+  exercise_alignment()
+  exercise_hhr()
   exercise_maps()
   if mtz is None :
     print "Skipping mtz file tests"
   else :
     exercise_hkl()
   print "OK"
+
 if __name__ == "__main__" :
   exercise()
 #---end

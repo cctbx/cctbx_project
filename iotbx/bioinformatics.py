@@ -1094,6 +1094,31 @@ def known_alignment_formats():
 
   return _implemented_alignment_parsers.keys()
 
+def any_alignment_file (file_name) :
+  base, ext = os.path.splitext(file_name)
+  data = open(file_name).read()
+  parser1 = None
+  if (ext != ".hhr") and (ext in _implemented_alignment_parsers) :
+    parser1 = _implemented_alignment_parsers.get(ext)
+    try :
+      aln = parser1(data)[0]
+      assert (len(aln.names) != 0)
+    except KeyboardInterrupt : raise
+    except Exception, e : pass
+    else :
+      return aln
+  for parser in [pir_alignment_parse, clustal_alignment_parse,
+                 fasta_alignment_parse, ali_alignment_parse] :
+    if (parser is parser1) :
+      continue
+    try :
+      aln = parser(data)[0]
+      assert (len(aln.names) != 0)
+    except KeyboardInterrupt : raise
+    except Exception, e : pass
+    else :
+      return aln
+  raise RuntimeError("Not a recognizeable sequence alignment format!")
 
 class homology_search_hit(object):
   """
@@ -1582,3 +1607,15 @@ class hhalign_parser(hhpred_parser):
       alignments = [ self.query_alignments[0], self.hit_alignments[0] ],
       program = "HHPred"
       )
+
+def any_hh_file (file_name) :
+  data = open(file_name).read()
+  for parser in [hhpred_parser, hhalign_parser, hhsearch_parser] :
+    try :
+      p = parser(data)
+    except KeyboardError : raise
+    except Exception, e :
+      print e
+    else :
+      return p
+  raise RuntimeError("Not an HHpred/HHalign/HHsearch file!")

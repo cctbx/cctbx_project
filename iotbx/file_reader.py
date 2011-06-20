@@ -16,7 +16,7 @@ from libtbx.utils import Sorry
 import cPickle
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
-  "seq", "xml", "aln", "pkl", "txt",]
+  "hhr", "aln", "seq", "xml", "pkl", "txt",]
 
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
@@ -31,7 +31,8 @@ standard_file_extensions = {
   'pkl'  : ["pickle", "pkl"],
   'txt'  : ["txt", "log", "html", "geo"],
   'mtz'  : ["mtz"],
-  'aln'  : ["aln"],
+  'aln'  : ["aln", "ali", "clustal"],
+  'hhr'  : ["hhr"],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
 
@@ -48,9 +49,10 @@ standard_file_descriptions = {
   'txt'  : "Text",
   'mtz'  : "Reflections (MTZ)",
   'aln'  : "Sequence alignment",
+  'hhr'  : "HHpred analysis file",
 }
 
-supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "txt",
+supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "aln", "txt",
   "xplor_map", "ccp4_map"]
 
 class FormatError (Sorry) :
@@ -220,6 +222,8 @@ class any_file_input (object) :
       raise
     assert (objects is not None)
     assert (len(non_compliant) == 0)
+    for seq_obj in objects :
+      assert (not "-" in seq_obj.sequence)
     self.file_object = objects
 #    self.try_as_txt()
 #    assert len(self.file_object) != 0
@@ -232,6 +236,19 @@ class any_file_input (object) :
 #              ((line[-1] == '*') and line[:-1].isalpha()) or
 #              line.isalpha())
     self.file_type = "seq"
+
+  def try_as_hhr (self) :
+    from iotbx.bioinformatics import any_hh_file
+    hh_object = any_hh_file(self.file_name)
+    assert (not hh_object.query in ["", None])
+    self.file_object = hh_object
+    self.file_type = "hhr"
+
+  def try_as_aln (self) :
+    from iotbx.bioinformatics import any_alignment_file
+    aln_object = any_alignment_file(self.file_name)
+    self.file_object = aln_object
+    self.file_type = "aln"
 
   def try_as_xplor_map (self) :
     import iotbx.xplor.map
