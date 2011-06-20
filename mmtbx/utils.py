@@ -2315,6 +2315,7 @@ class cmdline_load_pdb_and_data (object) :
         f_obs=data_and_flags.f_obs,
         r_free_flags=data_and_flags.r_free_flags)
       self.fmodel = fmodel
+    self.miller_arrays = reflection_file_server.miller_arrays
     self.f_obs = data_and_flags.f_obs
     self.r_free_flags = data_and_flags.r_free_flags
     self.xray_structure = xray_structure
