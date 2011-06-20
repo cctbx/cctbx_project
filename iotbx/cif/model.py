@@ -475,8 +475,15 @@ class loop(DictMixin):
     return s.getvalue()
 
   def iterrows(self):
-    return iter([[self.values()[i][j] for i in range(len(self))]
-                 for j in range(self.size())])
+    keys = self.keys()
+    for j in range(self.size()):
+      yield dict(zip(keys, [self.values()[i][j] for i in range(len(self))]))
+    #keys = self.keys()
+    #return iter(
+      #[dict(zip(keys, [self.values()[i][j] for i in range(len(self))])
+            #for j in range(self.size()))])
+    #return iter([[self.values()[i][j] for i in range(len(self))]
+                 #for j in range(self.size())])
 
   def sort(self, key=None, reverse=False):
     self._columns = OrderedDict(
@@ -553,6 +560,8 @@ def format_value(value_string):
     elif re.match(semicolon_string_re, value_string) is not None:
       # a semicolon text field
       return "\n%s\n" %value_string.strip()
+    elif value_string.startswith('\n') and value_string.endswith('\n'):
+      return "\n;%s;\n" %value_string
     elif '\n' in value_string:
       return "\n;\n%s\n;\n" %value_string
     elif (value_string[0] in ('#','$','[',']','_')

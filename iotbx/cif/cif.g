@@ -80,6 +80,7 @@ std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
 	  { str = str.substr(1, str.size()-2); }
 	return str;
 }
+
 }
 /*------------------------------------------------------------------
  * PARSER RULES
@@ -310,6 +311,9 @@ SEMI_COLON_TEXT_FIELD
 	:	( { GETCHARPOSITIONINLINE() == 0 }?=> ';')
 		( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
 		( (TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL)* )
+		
+		{ $start += 1; EMIT(); } // strip semicolons
+		
 		';'
 	;
 
