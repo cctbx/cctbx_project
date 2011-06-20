@@ -62,7 +62,7 @@ def exercise_lex_parse_build():
   else: raise Exception_expected
   d = cif.reader(input_string=cif_valid_semicolon_text_field)
   assert d.error_count() == 0
-  assert d.model()['1']['_a'] == ';\n1\n;'
+  assert d.model()['1']['_a'] == '\n1\n'
   e = cif.reader(input_string=cif_unquoted_string_semicolon)
   assert not show_diff(str(e.model()), """\
 data_1
