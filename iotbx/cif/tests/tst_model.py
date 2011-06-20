@@ -28,7 +28,10 @@ def exercise_cif_model():
   assert loop2.keys() == ["_loop2_a", "_loop2_b"]
   assert loop2.values() == [flex.std_string(['1', '3', '5']),
                             flex.std_string(['2', '4', '6'])]
-  assert list(loop2.iterrows()) == [['1', '2'], ['3', '4'], ['5', '6']]
+  assert list(loop2.iterrows()) == [
+    {'_loop2_a': '1', '_loop2_b': '2'},
+    {'_loop2_a': '3', '_loop2_b': '4'},
+    {'_loop2_a': '5', '_loop2_b': '6'}]
   #
   block = model.block()
   block["_tag"] = 3

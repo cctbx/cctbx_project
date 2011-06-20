@@ -478,12 +478,6 @@ class loop(DictMixin):
     keys = self.keys()
     for j in range(self.size()):
       yield dict(zip(keys, [self.values()[i][j] for i in range(len(self))]))
-    #keys = self.keys()
-    #return iter(
-      #[dict(zip(keys, [self.values()[i][j] for i in range(len(self))])
-            #for j in range(self.size()))])
-    #return iter([[self.values()[i][j] for i in range(len(self))]
-                 #for j in range(self.size())])
 
   def sort(self, key=None, reverse=False):
     self._columns = OrderedDict(
