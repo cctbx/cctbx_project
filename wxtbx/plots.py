@@ -59,6 +59,7 @@ class plot_container (wx.BoxSizer) :
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt.SetFont(font)
       self.Add(panel, 1, wx.EXPAND|wx.ALL)
+      self.null_fmt = oop.null()
     else :
       self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
         facecolor=facecolor)
