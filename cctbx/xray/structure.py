@@ -1311,6 +1311,8 @@ class structure(crystal.special_position_settings):
   def expand_to_p1(self, append_number_to_labels=False):
     """Get the current structure expanded into spacegroup P1.
     This turns all symmetry induced scatterers into independent individual scatterers.
+    The expanded structure may have scatterers with negative coordinates. Use
+    sites_mod_positive or sites_mod_short on the result to get a more restricted structure.
 
     :param append_number_to_labels: If set to 'True' scatterers generated from symmetry will be labelled with a numerical suffix
     :type append_number_to_labels: boolean
@@ -1331,12 +1333,24 @@ class structure(crystal.special_position_settings):
       scattering_type_registry=self._scattering_type_registry)
 
   def sites_mod_positive(self):
+    """Get the current structure converted into a structure with x,y,z of all
+    scatterers in the interval [0,1[
+    
+    :returns: the same instance of the structure with only posive coordinates of its scatterers
+    :rtype: cctbx.xray.structure
+    """
     return structure(
       special_position_settings=self,
       scatterers=self.scatterers().sites_mod_positive(),
       scattering_type_registry=self._scattering_type_registry)
 
   def sites_mod_short(self):
+    """Get the current structure converted into a structure with short coordinates
+    vectors of all scatterers
+    
+    :returns: the same instance of the structure with only short coordinates vectors of its scatterers
+    :rtype: cctbx.xray.structure
+    """
     return structure(
       special_position_settings=self,
       scatterers=self.scatterers().sites_mod_short(),
