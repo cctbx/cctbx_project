@@ -59,14 +59,16 @@ namespace cctbx { namespace miller {
       double circle_radius_sq = point_spread * std::max(dsx/dpx, dsy/dpy) / 2;
       circle_radius_sq *= circle_radius_sq;
       TBXX_ASSERT(circle_radius_sq != 0);
+      bool apply_proximity_factor = (ewald_proximity > 0);
+      if (!apply_proximity_factor) ewald_proximity *= -1;
       typedef scitbx::vec3<double> v3d;
       for(std::size_t ih=0;ih<miller_indices.size();ih++) {
         v3d rv = unit_cell.reciprocal_space_vector(miller_indices[ih]);
         v3d rvre = crystal_rotation_matrix * rv;
         rvre[2] += ewald_radius; // direct beam anti-parallel (0,0,1)
         double rvre_len = rvre.length();
-        double rvre_proximity = rvre_len / ewald_radius;
-        if (std::abs(1-rvre_proximity) <= ewald_proximity) {
+        double rvre_proximity = std::abs(1 - rvre_len / ewald_radius);
+        if (rvre_proximity < ewald_proximity) {
           // http://en.wikipedia.org/wiki/Line-plane_intersection
           if (rvre[2] > 0) {
             double d = -detector_distance / rvre[2];
@@ -89,9 +91,16 @@ namespace cctbx { namespace miller {
                 if (pxf - pxi > 0.5) pxb++;
                 if (pyf - pyi > 0.5) pyb++;
               }
+              double proximity_factor = 1;
+              if (apply_proximity_factor) {
+                proximity_factor -= scitbx::fn::pow2(
+                  rvre_proximity / ewald_proximity);
+                if (proximity_factor <= 0) continue;
+              }
+              double signal_at_center = signal_max * proximity_factor;
+              int signal = static_cast<int>(signal_at_center + 0.5);
               double gauss_arg_term = -gaussian_falloff_scale
                                     / circle_radius_sq;
-              int signal = signal_max;
               for(int i=0;i<=point_spread;i++) {
                 int pi = pxb + i;
                 if (pi < 0 || pi >= dpx) continue;
@@ -107,7 +116,7 @@ namespace cctbx { namespace miller {
                     if (gaussian_falloff_scale != 0) {
                       double falloff_factor = std::exp(pc_sq * gauss_arg_term);
                       signal = static_cast<int>(
-                        signal_max * falloff_factor + 0.5);
+                        signal_at_center * falloff_factor + 0.5);
                     }
                   }
                   pixels[pi0+pj] = signal;
