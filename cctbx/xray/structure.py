@@ -1335,7 +1335,7 @@ class structure(crystal.special_position_settings):
   def sites_mod_positive(self):
     """Get the current structure converted into a structure with x,y,z of all
     scatterers in the interval [0,1[
-    
+
     :returns: the same instance of the structure with only posive coordinates of its scatterers
     :rtype: cctbx.xray.structure
     """
@@ -1347,7 +1347,7 @@ class structure(crystal.special_position_settings):
   def sites_mod_short(self):
     """Get the current structure converted into a structure with short coordinates
     vectors of all scatterers
-    
+
     :returns: the same instance of the structure with only short coordinates vectors of its scatterers
     :rtype: cctbx.xray.structure
     """
