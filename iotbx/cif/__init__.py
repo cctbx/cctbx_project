@@ -26,6 +26,7 @@ distances_as_cif_loop = geometry.distances_as_cif_loop
 angles_as_cif_loop = geometry.angles_as_cif_loop
 
 class CifParserError(Sorry):
+  __orig_module__ = __module__
   __module__ = Exception.__module__
 
 class reader(object):
