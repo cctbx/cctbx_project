@@ -129,8 +129,8 @@ class clashscore(object):
 
     trim = "phenix.reduce -quiet -trim -"
     build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
-    probe = 'phenix.probe -u -q -mc -het -once "alta ogt33 not water" "alta ogt33" -'
-    probe_atom = 'phenix.probe -q -mc -het -dumpatominfo "alta ogt33 not water" -'
+    probe = 'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
+    probe_atom = 'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
 
     for i,m in enumerate(hierarchy.models()):
       r = iotbx.pdb.hierarchy.root()
