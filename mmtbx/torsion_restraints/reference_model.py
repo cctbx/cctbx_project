@@ -983,70 +983,40 @@ class reference_model(object):
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          for atom_group in residue_group.atom_groups():
-            if atom_group.resname == "PRO":
-              continue
-            key = '%s%5s %s' % (
-                      chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
-            model_rot = model_hash.get(key)
-            reference_rot = reference_hash.get(key)
-            m_chis = model_chis.get(key)
-            r_chis = reference_chis.get(key)
-            if model_rot is not None and reference_rot is not None and \
-               m_chis is not None and r_chis is not None:
-              if (model_hash[key] == 'OUTLIER' and \
-                  reference_hash[key] != 'OUTLIER'): # or \
-                  #atom_group.resname in ["LEU", "VAL", "THR"]:
-                axis_and_atoms_to_rotate= \
-                  fit_rotamers.axes_and_atoms_aa_specific(
-                      residue=atom_group,
-                      mon_lib_srv=mon_lib_srv,
-                      remove_clusters_with_all_h=True,
-                      log=None)
-                assert len(m_chis) == len(r_chis)
-                assert len(m_chis) == len(axis_and_atoms_to_rotate)
-                counter = 0
-                residue_iselection = atom_group.atoms().extract_i_seq()
-                sites_cart_residue = \
-                  xray_structure.sites_cart().select(residue_iselection)
-                for aa in axis_and_atoms_to_rotate:
-                  axis = aa[0]
-                  atoms = aa[1]
-                  atom_group.atoms().set_xyz(new_xyz=sites_cart_residue)
-                  new_xyz = flex.vec3_double()
-                  angle_deg = r_chis[counter] - m_chis[counter]
-                  if angle_deg < 0:
-                    angle_deg += 360.0
-                  for atom in atoms:
-                    new_xyz = rotate_point_around_axis(
-                                axis_point_1=sites_cart_residue[axis[0]],
-                                axis_point_2=sites_cart_residue[axis[1]],
-                                point=sites_cart_residue[atom],
-                                angle=angle_deg, deg=True)
-                    sites_cart_residue[atom] = new_xyz
-                  sites_cart_start = sites_cart_start.set_selected(
-                        residue_iselection, sites_cart_residue)
-                  counter += 1
-                xray_structure.set_sites_cart(sites_cart_start)
-
-              elif self.params.strict_rotamer_matching and \
-                (model_rot != 'OUTLIER' and reference_rot != 'OUTLIER'):
-                if model_rot != reference_rot:
+          for conformer in residue_group.conformers():
+            for residue in conformer.residues():
+              if residue.resname == "PRO":
+                continue
+              #if conformer.altloc != " ":
+              #  continue
+              key = '%s%5s %s' % (
+                        chain.id, residue_group.resid(),
+                        conformer.altloc+residue.resname)
+              model_rot = model_hash.get(key)
+              reference_rot = reference_hash.get(key)
+              m_chis = model_chis.get(key)
+              r_chis = reference_chis.get(key)
+              if model_rot is not None and reference_rot is not None and \
+                 m_chis is not None and r_chis is not None:
+                if (model_hash[key] == 'OUTLIER' and \
+                    reference_hash[key] != 'OUTLIER'): # or \
+                    #atom_group.resname in ["LEU", "VAL", "THR"]:
                   axis_and_atoms_to_rotate= \
                     fit_rotamers.axes_and_atoms_aa_specific(
-                      residue=atom_group,
-                      mon_lib_srv=mon_lib_srv,
-                      remove_clusters_with_all_h=True,
-                      log=None)
+                        residue=residue,
+                        mon_lib_srv=mon_lib_srv,
+                        remove_clusters_with_all_h=True,
+                        log=None)
+                  assert len(m_chis) == len(r_chis)
+                  assert len(m_chis) == len(axis_and_atoms_to_rotate)
                   counter = 0
-                  residue_iselection = atom_group.atoms().extract_i_seq()
+                  residue_iselection = residue.atoms().extract_i_seq()
                   sites_cart_residue = \
                     xray_structure.sites_cart().select(residue_iselection)
                   for aa in axis_and_atoms_to_rotate:
                     axis = aa[0]
                     atoms = aa[1]
-                    atom_group.atoms().set_xyz(new_xyz=sites_cart_residue)
+                    residue.atoms().set_xyz(new_xyz=sites_cart_residue)
                     new_xyz = flex.vec3_double()
                     angle_deg = r_chis[counter] - m_chis[counter]
                     if angle_deg < 0:
@@ -1062,6 +1032,39 @@ class reference_model(object):
                           residue_iselection, sites_cart_residue)
                     counter += 1
                   xray_structure.set_sites_cart(sites_cart_start)
+
+                elif self.params.strict_rotamer_matching and \
+                  (model_rot != 'OUTLIER' and reference_rot != 'OUTLIER'):
+                  if model_rot != reference_rot:
+                    axis_and_atoms_to_rotate= \
+                      fit_rotamers.axes_and_atoms_aa_specific(
+                        residue=residue,
+                        mon_lib_srv=mon_lib_srv,
+                        remove_clusters_with_all_h=True,
+                        log=None)
+                    counter = 0
+                    residue_iselection = residue.atoms().extract_i_seq()
+                    sites_cart_residue = \
+                      xray_structure.sites_cart().select(residue_iselection)
+                    for aa in axis_and_atoms_to_rotate:
+                      axis = aa[0]
+                      atoms = aa[1]
+                      residue.atoms().set_xyz(new_xyz=sites_cart_residue)
+                      new_xyz = flex.vec3_double()
+                      angle_deg = r_chis[counter] - m_chis[counter]
+                      if angle_deg < 0:
+                        angle_deg += 360.0
+                      for atom in atoms:
+                        new_xyz = rotate_point_around_axis(
+                                    axis_point_1=sites_cart_residue[axis[0]],
+                                    axis_point_2=sites_cart_residue[axis[1]],
+                                    point=sites_cart_residue[atom],
+                                    angle=angle_deg, deg=True)
+                        sites_cart_residue[atom] = new_xyz
+                      sites_cart_start = sites_cart_start.set_selected(
+                        residue_iselection, sites_cart_residue)
+                      counter += 1
+                    xray_structure.set_sites_cart(sites_cart_start)
 
   def angle_distance(self, angle1, angle2):
     distance = math.fabs(angle1 - angle2)
