@@ -1860,6 +1860,14 @@ class manager(manager_mixin):
     hl_b_model = t * sin_f_model_phases
     return flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)
 
+  def f_model_phases_as_hl_coeffs_array (self) :
+    hl_coeffs = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
+        indices = self.f_obs().indices(),
+        anomalous_flag=False).array(
+          data=self.f_model_phases_as_hl_coefficients(
+            map_calculation_helper=None))
+    return hl_coeffs
+
   def combined_hl_coefficients(self, map_calculation_helper):
     result = None
     if(self.hl_coeffs() is not None):
