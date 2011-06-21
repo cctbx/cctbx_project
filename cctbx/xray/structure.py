@@ -1308,17 +1308,20 @@ class structure(crystal.special_position_settings):
     ch_op = self.space_group_info().type().change_of_hand_op()
     return self.change_basis(ch_op)
 
-  def expand_to_p1(self, append_number_to_labels=False, keep_xyz_in_unit_cell=False):
+  def expand_to_p1(self,
+        append_number_to_labels=False,
+        sites_mod_positive=False):
     """Get the current structure expanded into spacegroup P1.
-    This turns all symmetry induced scatterers into independent individual scatterers.
-    The expanded structure may have scatterers with negative or > 1.0 coordinates.
-    Use '.sites_mod_positive()' or '.sites_mod_short()' on the result to get a more
-    restricted structure or set keep_xyz_in_unit_cell to 'True'.
+    This turns all symmetry induced scatterers into independent
+    individual scatterers. The expanded structure may have sites
+    with negative or > 1.0 coordinates. Use '.sites_mod_positive()'
+    or '.sites_mod_short()' on the result, or alternatively
+    set sites_mod_positive to 'True'.
 
     :param append_number_to_labels: If set to 'True' scatterers generated from symmetry will be labelled with a numerical suffix
     :type append_number_to_labels: boolean
-    :param keep_xyz_in_unit_cell: If set to 'True' xyz coordinates of the scatterers will be kept inside [0,1[
-    :type keep_xyz_in_unit_cell: boolean
+    :param sites_mod_positive: If set to 'True' xyz coordinates of the scatterers will be kept inside [0,1[
+    :type sites_mod_positive: boolean
 
     :returns: a new instance of the structure expanded into P1
     :rtype: cctbx.xray.structure
@@ -1334,8 +1337,8 @@ class structure(crystal.special_position_settings):
         site_symmetry_table=self._site_symmetry_table,
         append_number_to_labels=append_number_to_labels),
       scattering_type_registry=self._scattering_type_registry)
-    if keep_xyz_in_unit_cell:
-      result = result.sites_mod_short().sites_mod_positive()
+    if (sites_mod_positive):
+      result = result.sites_mod_positive()
     return result
 
   def sites_mod_positive(self):

@@ -155,6 +155,15 @@ def exercise_structure():
   assert p1.scatterers().size() == 9
   for i in xrange(2):
     assert p1.scatterers()[i].weight() != xs.scatterers()[i].weight()
+  p1mp = xs.expand_to_p1(sites_mod_positive=True)
+  def count_outside_unit_cell(xs):
+    result = 0
+    for sc in xs.scatterers():
+      for v in sc.site:
+        if (v < 0 or v >= 1): result += 1
+    return result
+  assert count_outside_unit_cell(p1) != 0
+  assert count_outside_unit_cell(p1mp) == 0
   sh = p1.apply_shift((0.2,0.3,-1/6.))
   assert approx_equal(sh.scatterers()[0].site, (0.7,0.8,1/6.))
   assert approx_equal(sh.scatterers()[3].site, (0.3970,0.1030,2/3.))
