@@ -200,9 +200,8 @@ class any_file_input (object) :
     self.file_object = hkl_file
 
   def try_as_cif (self) :
-    from mmtbx.monomer_library import server
-    cif_object = server.read_cif(file_name=self.file_name)
-    assert len(cif_object) != 0
+    import iotbx.cif
+    cif_object = iotbx.cif.reader(file_path=self.file_name)
     self.file_type = "cif"
     self.file_object = cif_object
 
