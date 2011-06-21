@@ -13,7 +13,6 @@ env_etc.cbflib_common_includes = [
   env_etc.scitbx_include,
   env_etc.boost_adaptbx_include,
   env_etc.boost_include,
-  env_etc.python_include,
   env_etc.cbflib_dist,    # for the adaptor cpp files
   env_etc.cbflib_include[0], # for the cbflib c-files
   env_etc.cbflib_include[1], # for the cbflib c-files
@@ -62,14 +61,6 @@ env.StaticLibrary(target='#lib/cbf',
   ],
   CPPPATH=env_etc.cbflib_common_includes )
 
-env.SharedLibrary(target='#lib/pycbf',
-  source = [prefix+"/"+s for s in [
-    "src/cbf_simple.c",
-    "pycbf/pycbf_wrap.c"]],
-  LIBS = ['cbf'],
-  SHLIBPREFIX="_",
-  CPPPATH=env_etc.cbflib_common_includes )
-
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
 
@@ -78,6 +69,11 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.append(
     env=env_cbflib_boost_python_ext,
     paths=env_etc.cbflib_common_includes + [env_etc.python_include])
+
+  env_cbflib_boost_python_ext.SharedLibrary(
+    target='#lib/_pycbf',
+    source=[prefix+"/pycbf/pycbf_wrap.c"],
+    LIBS=["cbf"]+env_etc.libm)
 
   Export("env_cbflib_boost_python_ext")
 
