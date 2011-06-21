@@ -31,6 +31,7 @@ namespace cctbx { namespace miller {
     compute(
       uctbx::unit_cell const& unit_cell,
       af::const_ref<index<> > const& miller_indices,
+      af::const_ref<double> const& spot_intensity_factors,
       scitbx::mat3<double> const& crystal_rotation_matrix,
       double ewald_radius,
       double ewald_proximity,
@@ -41,6 +42,11 @@ namespace cctbx { namespace miller {
       unsigned point_spread,
       double gaussian_falloff_scale)
     {
+      if (spot_intensity_factors.size() != 0) {
+        TBXX_ASSERT(spot_intensity_factors.size() == miller_indices.size());
+        TBXX_ASSERT(spot_intensity_factors.all_ge(0));
+        TBXX_ASSERT(spot_intensity_factors.all_le(1));
+      }
       TBXX_ASSERT(ewald_radius > 0);
       TBXX_ASSERT(detector_size.const_ref().all_gt(0));
       TBXX_ASSERT(detector_pixels.const_ref().all_gt(0));
@@ -97,7 +103,11 @@ namespace cctbx { namespace miller {
                   rvre_proximity / ewald_proximity);
                 if (proximity_factor <= 0) continue;
               }
-              double signal_at_center = signal_max * proximity_factor;
+              double signal_at_center =
+                  signal_max
+                * (spot_intensity_factors.size() == 0 ? 1 :
+                   spot_intensity_factors[ih])
+                * proximity_factor;
               int signal = static_cast<int>(signal_at_center + 0.5);
               double gauss_arg_term = -gaussian_falloff_scale
                                     / circle_radius_sq;

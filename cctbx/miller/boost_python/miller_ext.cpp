@@ -114,6 +114,7 @@ namespace {
         .def("compute", &wt::compute, (
           arg("unit_cell"),
           arg("miller_indices"),
+          arg("spot_intensity_factors"),
           arg("crystal_rotation_matrix"),
           arg("ewald_radius"),
           arg("ewald_proximity"),
