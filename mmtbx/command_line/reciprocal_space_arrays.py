@@ -1,12 +1,14 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.reciprocal_space_arrays
 
-import sys, os
 import mmtbx.utils
-from iotbx import reflection_file_utils
-from cStringIO import StringIO
 import mmtbx.f_model
-from libtbx.utils import Sorry
+from iotbx import reflection_file_utils
+from iotbx import file_reader
 import iotbx.phil
+from libtbx import runtime_utils
+from libtbx.utils import Sorry
+from cStringIO import StringIO
+import sys, os
 
 msg="""\
 
@@ -61,23 +63,51 @@ Output:
 """
 
 master_params_str="""\
+hkl_file = None
+  .type = path
+  .short_caption = Experimental data
+  .style = bold file_type:hkl input_file process_hkl child:fobs:f_obs_label \
+    child:rfree:r_free_flags_label child:space_group:space_group \
+    child:unit_cell:unit_cell \
+    child:hl_coeffs:hendrickson_lattman_coefficients_label
+pdb_file = None
+  .type = path
+  .short_caption = PDB file
+  .style = bold file_type:pdb input_file
 f_obs_label = None
   .type = str
+  .short_caption = Data labels
+  .input_size = 160
+  .style = bold renderer:draw_fobs_label_widget
 r_free_flags_label = None
   .type = str
+  .short_caption = R-free flags
+  .input_size = 160
+  .style = bold renderer:draw_rfree_label_widget
 remove_f_obs_outliers = True
   .type = bool
+  .short_caption = Remove F-obs outliers
 bulk_solvent_and_scaling = True
   .type = bool
+  .short_caption = Bulk solvent correction and scaling
 hendrickson_lattman_coefficients_label = None
   .type = str
+  .short_caption = Hendrickson-Lattman coefficients
+  .input_size = 160
+  .style = renderer:draw_hl_label_widget
 output_file_name = None
-  .type = str
+  .type = path
+  .style = bold new_file
+space_group = None
+  .type = space_group
+unit_cell = None
+  .type = unit_cell
+include scope libtbx.phil.interface.tracking_params
 """
 
 def defaults(log):
   print >> log, "Default params::\n"
-  parsed = iotbx.phil.parse(master_params_str)
+  parsed = iotbx.phil.parse(master_params_str, process_includes=True)
   parsed.show(prefix="  ", out=log)
   print >> log
   return parsed
@@ -105,13 +135,28 @@ def run(args, log = sys.stdout):
   params = processed_args.params.extract()
   reflection_files = processed_args.reflection_files
   if(len(reflection_files) == 0):
-    raise Sorry("No reflection file found.")
+    if (params.hkl_file is None) :
+      raise Sorry("No reflection file found.")
+    else :
+      hkl_in = file_reader.any_file(params.hkl_file, force_type="hkl")
+      hkl_in.assert_file_type("hkl")
+      reflection_files = [ hkl_in.file_object ]
   crystal_symmetry = processed_args.crystal_symmetry
   if(crystal_symmetry is None):
-    raise Sorry("No crystal symmetry found.")
+    if (params.space_group is not None) and (params.unit_cell is not None) :
+      from cctbx import crystal
+      crystal_symmetry = crystal.symmetry(
+        space_group_info=params.space_group,
+        unit_cell=params.unit_cell)
+    else :
+      raise Sorry("No crystal symmetry found.")
   if(len(processed_args.pdb_file_names) == 0):
-    raise Sorry("No PDB file found.")
-  pdb_file_names = processed_args.pdb_file_names
+    if (params.pdb_file is None) :
+      raise Sorry("No PDB file found.")
+    else :
+      pdb_file_names = [ params.pdb_file ]
+  else :
+    pdb_file_names = processed_args.pdb_file_names
   #
   rfs = reflection_file_utils.reflection_file_server(
     crystal_symmetry = crystal_symmetry,
@@ -190,6 +235,30 @@ def run(args, log = sys.stdout):
   fmodel.export(out = out)
   out.close()
   print "All done."
+  return output_file_name
+
+def validate_params (params) :
+  if (params.hkl_file is None) :
+    raise Sorry("No reflections file provided.")
+  elif (params.pdb_file is None) :
+    raise Sorry("No PDB file provided.")
+  elif (params.output_file_name is None) :
+    raise Sorry("No output file name provided.")
+  elif (params.f_obs_label is None) :
+    raise Sorry("No data label selected.")
+  elif (params.space_group is None) or (params.unit_cell is None) :
+    raise Sorry("Missing or incomplete symmetry information.")
+  return True
+
+def finish_job (result) :
+  output_files, stats = [], []
+  if (result is not None) and (os.path.isfile(result)) :
+    output_files.append((result, "Data and phases"))
+  return output_files, stats
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(args=self.args, log=sys.stdout)
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])
