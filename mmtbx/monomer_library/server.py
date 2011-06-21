@@ -1,5 +1,5 @@
 from mmtbx.monomer_library import cif_types
-from mmtbx.monomer_library import mmCIF
+import iotbx.cif
 from iotbx.pdb import residue_name_plus_atom_names_interpreter
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
@@ -53,8 +53,7 @@ class mon_lib_cif_loader(object):
           "Cannot find CCP4 monomer library."
           " Please define one of these environment variables: "
           + ", ".join(mon_lib_env_vars))
-    self.cif = mmCIF.mmCIFFile()
-    self.cif.load_file(self.path, strict=strict)
+    self.cif = read_cif(file_name=self.path)
 
 def mon_lib_list_cif(path=None, strict=False):
   return mon_lib_cif_loader(
@@ -83,9 +82,7 @@ class trivial_html_tag_filter(object):
     return self
 
 def read_cif(file_name):
-  cif_object = mmCIF.mmCIFFile()
-  cif_object.load_file(fil=trivial_html_tag_filter(file_name), strict=False)
-  return cif_object
+  return iotbx.cif.reader(file_path=file_name, strict=False).model()
 
 def convert_list_block(
       source_info,
@@ -101,25 +98,25 @@ def convert_list_block(
   if (list_block is not None):
     list_item_block = list_block.get(list_item_name)
     if (list_item_block is not None):
-      for item in list_item_block:
-        obj_inner = cif_type_inner(**item)
+      for row in list_item_block.iterrows():
+        obj_inner = cif_type_inner(**row)
         tabulated_items[obj_inner.id] = obj_inner
-  for cif_data in cif_object:
-    if (cif_data.name.startswith(data_prefix)):
-      item_id = cif_data.name[len(data_prefix):]
+  for key, cif_data in cif_object.iteritems():
+    if (key.startswith(data_prefix)):
+      item_id = key[len(data_prefix):]
       if (data_prefix + item_id == list_name): continue
       obj_inner = tabulated_items.get(item_id)
       if (obj_inner is None):
         obj_inner = cif_type_inner(id=item_id)
       obj_outer = None
       for loop_block,lst_name in outer_mappings:
-        rows = cif_data.get(loop_block)
+        rows = cif_data.get('_'+loop_block)
         if (rows is None): continue
         if (obj_outer is None):
           obj_outer = cif_type_outer(source_info, obj_inner)
         lst = getattr(obj_outer, lst_name)
         typ = getattr(cif_types, loop_block)
-        for row in rows:
+        for row in rows.iterrows():
           lst.append(typ(**row))
       if (obj_outer is not None):
         yield obj_outer
@@ -129,7 +126,7 @@ def convert_comp_list(source_info, cif_object):
                         source_info=source_info,
                         cif_object=cif_object,
                         list_name="comp_list",
-                        list_item_name="chem_comp",
+                        list_item_name="_chem_comp",
                         data_prefix="comp_",
                         cif_type_inner=cif_types.chem_comp,
                         cif_type_outer=cif_types.comp_comp_id,
@@ -149,7 +146,7 @@ def convert_link_list(source_info, cif_object):
                         source_info=source_info,
                         cif_object=cif_object,
                         list_name="link_list",
-                        list_item_name="chem_link",
+                        list_item_name="_chem_link",
                         data_prefix="link_",
                         cif_type_inner=cif_types.chem_link,
                         cif_type_outer=cif_types.link_link_id,
@@ -166,7 +163,7 @@ def convert_mod_list(source_info, cif_object):
                       source_info=source_info,
                       cif_object=cif_object,
                       list_name="mod_list",
-                      list_item_name="chem_mod",
+                      list_item_name="_chem_mod",
                       data_prefix="mod_",
                       cif_type_inner=cif_types.chem_mod,
                       cif_type_outer=cif_types.mod_mod_id,
@@ -182,7 +179,9 @@ def convert_mod_list(source_info, cif_object):
 def get_rows(cif_object, data_name, table_name):
   cif_data = cif_object.get(data_name)
   if (cif_data is None): return []
-  return cif_data.get(table_name, [])
+  table = cif_data.get(table_name)
+  if table is not None: return table.iterrows()
+  else: return []
 
 class process_cif_mixin(object):
 
@@ -245,14 +244,15 @@ class server(process_cif_mixin):
 
   def convert_deriv_list_dict(self, cif_object):
     for row in get_rows(cif_object,
-                 "deriv_list", "chem_comp_deriv"):
+                 "deriv_list", "_chem_comp_deriv"):
       deriv = cif_types.chem_comp_deriv(**row)
       self.deriv_list_dict[deriv.comp_id] = deriv
 
   def convert_comp_synonym_list(self, cif_object):
     for row in get_rows(cif_object,
-                 "comp_synonym_list", "chem_comp_synonym"):
-      self.comp_synonym_list_dict[row["comp_alternative_id"]] = row["comp_id"]
+                 "comp_synonym_list", "_chem_comp_synonym"):
+      self.comp_synonym_list_dict[row["_chem_comp_synonym.comp_alternative_id"]] \
+          = row["_chem_comp_synonym.comp_id"]
 
   def convert_comp_synonym_atom_list(self, cif_object):
     for row in get_rows(cif_object,
@@ -422,16 +422,16 @@ class ener_lib(process_cif_mixin):
     self.convert_lib_vdw(cif_object=cif_object)
 
   def convert_lib_synonym(self, cif_object):
-    for row in get_rows(cif_object, "energy", "lib_synonym"):
+    for row in get_rows(cif_object, "energy", "_lib_synonym"):
       syn = cif_types.energy_lib_synonym(**row)
       self.lib_synonym[syn.atom_alternative_type] = syn.atom_type
 
   def convert_lib_atom(self, cif_object):
-    for row in get_rows(cif_object, "energy", "lib_atom"):
+    for row in get_rows(cif_object, "energy", "_lib_atom"):
       entry = cif_types.energy_lib_atom(**row)
       self.lib_atom[entry.type] = entry
 
   def convert_lib_vdw(self, cif_object):
-    for row in get_rows(cif_object, "energy", "lib_vdw"):
+    for row in get_rows(cif_object, "energy", "_lib_vdw"):
       vdw = cif_types.energy_lib_vdw(**row)
       self.lib_vdw.append(vdw)

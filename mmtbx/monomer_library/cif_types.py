@@ -26,7 +26,9 @@ class looped_data(object):
         typ = key_typ[1]
         if (typ not in ("int", "float")):
           raise RuntimeError("Corrupt looped id: %s" % looped_id)
-      val = keyword_arguments.get(key, None)
+      val = keyword_arguments.get(key, keyword_arguments.get(
+        looped_id.split(":")[0], None))
+      if (val == "."): val = ""
       if (typ is not None):
         if (val == ""): val = None
         if (val is not None):
