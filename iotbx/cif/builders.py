@@ -40,8 +40,10 @@ class cif_model_builder:
   def add_data_item(self, key, value):
     if self._current_save is not None:
       self._current_save[key] = value
-    else:
+    elif self._current_block is not None:
       self._current_block[key] = value
+    else: # support for global_ blocks in non-strict mode
+      pass
 
   def start_save_frame(self, save_frame_heading):
     assert self._current_save is None

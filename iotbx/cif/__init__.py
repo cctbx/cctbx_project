@@ -31,7 +31,7 @@ class CifParserError(Sorry):
 class reader(object):
 
   def __init__(self, file_path=None, file_object=None, input_string=None,
-               builder=None, raise_if_errors=True):
+               builder=None, raise_if_errors=True, strict=True):
     assert [file_path, file_object, input_string].count(None) == 2
     assert has_antlr3
     self.file_path = file_path
@@ -44,11 +44,11 @@ class reader(object):
       else:
         if not os.path.exists(file_path):
           raise Sorry("No such file exists: %s" %file_path)
-        self.parser = ext.fast_reader(file_path, builder)
+        self.parser = ext.fast_reader(file_path, builder, strict)
     if file_object is not None:
       input_string = file_object.read()
     if input_string is not None:
-      self.parser = ext.fast_reader(input_string, builder)
+      self.parser = ext.fast_reader(input_string, builder, strict)
     if raise_if_errors and len(self.parser.lexer_errors()):
       raise CifParserError(self.parser.lexer_errors()[0])
     if raise_if_errors and len(self.parser.parser_errors()):
