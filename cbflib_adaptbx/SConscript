@@ -13,6 +13,7 @@ env_etc.cbflib_common_includes = [
   env_etc.scitbx_include,
   env_etc.boost_adaptbx_include,
   env_etc.boost_include,
+  env_etc.python_include,
   env_etc.cbflib_dist,    # for the adaptor cpp files
   env_etc.cbflib_include[0], # for the cbflib c-files
   env_etc.cbflib_include[1], # for the cbflib c-files
@@ -59,6 +60,14 @@ env.StaticLibrary(target='#lib/cbf',
     "detectors/cbf_byte_offset_optimized.cpp",
     "detectors/buffer_based_service.cpp",
   ],
+  CPPPATH=env_etc.cbflib_common_includes )
+
+env.SharedLibrary(target='#lib/pycbf',
+  source = [prefix+"/"+s for s in [
+    "src/cbf_simple.c",
+    "pycbf/pycbf_wrap.c"]],
+  LIBS = ['cbf'],
+  SHLIBPREFIX="_",
   CPPPATH=env_etc.cbflib_common_includes )
 
 if (not env_etc.no_boost_python):
