@@ -39,8 +39,8 @@ namespace boost_python {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<wt, boost::noncopyable>(name, no_init)
-        .def(init<std::string, boost::python::object&>(
-          (arg("input"), arg("builder"))))
+        .def(init<std::string, boost::python::object&, bool>(
+          (arg("input"), arg("builder"), arg("strict")=true)))
         .def("parser_errors", &wt::parser_errors, rbv())
         .def("lexer_errors", &wt::lexer_errors, rbv())
         ;

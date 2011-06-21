@@ -87,9 +87,12 @@ std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
  *------------------------------------------------------------------*/
 
 // The start rule
-parse[boost::python::object & builder_]
-scope { boost::python::object *builder; }
-@init { $parse::builder = new boost::python::object(builder_); }
+parse[boost::python::object & builder_, bool strict_]
+scope { boost::python::object *builder;
+        bool strict; }
+@init {
+ $parse::builder = new boost::python::object(builder_);
+ $parse::strict = strict_; }
 @after { delete $parse::builder; }
 
 	: cif (EOF | '\u001a' /*Ctrl-Z*/) ;
@@ -155,10 +158,13 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 	;
 
 data_block
-	:	DATA_BLOCK_HEADING
+	:	( DATA_BLOCK_HEADING
 { ($parse::builder)->attr("add_data_block")(to_std_string($DATA_BLOCK_HEADING)); }
 	      ( WHITESPACE+ ( data_items | save_frame ) )*
+	      )  
+	      | ( {!$parse::strict}?=>GLOBAL_ ( WHITESPACE+ ( data_items | save_frame ) )* ) // global blocks are ignored
 	;
+	
 
 loop_header
 	:	LOOP_ ( WHITESPACE+ TAG

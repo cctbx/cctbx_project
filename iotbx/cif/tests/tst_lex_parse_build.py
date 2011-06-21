@@ -36,6 +36,16 @@ def exercise_miller_arrays_as_cif_block():
   for key in ('_diffrn_refln_intensity_net', '_diffrn_refln_intensity_sigma',
               '_diffrn_refln_intensity_u'):
     assert key in mas_as_cif_block.cif_block.keys()
+  #
+  try: reader(input_string=cif_global)
+  except CifParserError, e: pass
+  else: raise Exception_expected
+  cif_model = reader(input_string=cif_global, strict=False).model()
+  assert not show_diff(str(cif_model), """\
+data_1
+_c                                3
+_d                                4
+""")
 
 
 def exercise_lex_parse_build():
@@ -348,6 +358,16 @@ data_1
 _a ;1
 _b ;
 _c 2
+"""
+
+cif_global = """\
+global_
+_a 1
+_b 2
+
+data_1
+_c 3
+_d 4
 """
 
 def exercise_partial_crystal_symmetry():
