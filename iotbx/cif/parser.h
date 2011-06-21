@@ -20,7 +20,8 @@ class parser : private boost::noncopyable
 
     parser() {}
 
-    parser(std::string filename, boost::python::object& builder)
+    parser(std::string filename, boost::python::object& builder,
+           bool strict=true)
     {
       input = antlr3AsciiFileStreamNew(pANTLR3_UINT8(filename.c_str()));
       if (input == NULL)
@@ -36,7 +37,7 @@ class parser : private boost::noncopyable
       psr->errors = new scitbx::af::shared<std::string>();
       lxr->pLexer->rec->displayRecognitionError = lexer_displayRecognitionError;
       lxr->errors = new scitbx::af::shared<std::string>();
-      psr->parse(psr, builder);
+      psr->parse(psr, builder, strict);
       fflush(stderr);
     }
 
