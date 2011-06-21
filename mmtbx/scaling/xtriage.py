@@ -762,6 +762,12 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         f_calc_miller = f_calc_miller.f_sq_as_f()
       f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True,
         log=log)
+      if (miller_array.anomalous_flag()) :
+        if (not f_calc_miller.anomalous_flag()) :
+          f_calc_miller = f_calc_miller.generate_bijvoet_mates()
+      elif (f_calc_miller.anomalous_flag()) :
+        f_calc_miller = f_calc_miller.average_bijvoet_mates()
+      f_calc_miller.set_observation_type_xray_amplitude()
     elif (reference_params.structure.file_name is not None):
       if (not os.path.isfile(reference_params.structure.file_name)) :
         raise Sorry("Can't open reference structure - not a valid file.")
