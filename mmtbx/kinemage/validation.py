@@ -34,6 +34,9 @@ def get_master_phil():
          .type = path
          .optional = True
          .help = '''Enter a .kin output name'''
+        keep_hydrogens = False
+        .type = bool
+        .help = '''Keep hydrogens in input file'''
   }
     """)
 
@@ -208,7 +211,7 @@ def kin_vec(start_key, start_xyz, end_key, end_xyz, width=None):
            end_xyz[2])
 
 def make_probe_dots(hierarchy, keep_hydrogens=False):
-  probe = 'phenix.probe -4H -quiet -noticks -nogroup -dotmaster -mc -self "alta" -'
+  probe = 'phenix.probe -4H -quiet -noticks -nogroup -dotmaster -mc -self "ALL" -'
   trim = "phenix.reduce -quiet -trim -"
   build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
   probe_return = ""
@@ -742,7 +745,7 @@ def get_footer():
 """
   return footer
 
-def make_multikin(f, processed_pdb_file, pdbID=None):
+def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   if pdbID == None:
     pdbID = "PDB"
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -802,7 +805,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None):
       kin_out += pperp_outliers(hierarchy=hierarchy,
                                 chain=chain)
       counter += 1
-  kin_out += make_probe_dots(hierarchy=hierarchy)
+  kin_out += make_probe_dots(hierarchy=hierarchy, keep_hydrogens=keep_hydrogens)
   kin_out += get_footer()
 
   outfile = file(f, 'w')
@@ -862,5 +865,8 @@ def run(args):
     outfile = work_params.kinemage.out_file
   else :
     outfile = pdbID+'.kin'
-  outfile = make_multikin(f=outfile, processed_pdb_file=processed_pdb_file, pdbID=pdbID)
+  outfile = make_multikin(f=outfile,
+                          processed_pdb_file=processed_pdb_file,
+                          pdbID=pdbID,
+                          keep_hydrogens=work_params.kinemage.keep_hydrogens)
   return outfile
