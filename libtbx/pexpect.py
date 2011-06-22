@@ -59,8 +59,6 @@ SOFTWARE.
 
 Pexpect Copyright (c) 2008 Noah Spurrier
 http://pexpect.sourceforge.net/
-
-$Id: pexpect.py 507 2007-12-27 02:40:52Z noah $
 """
 
 try:
@@ -85,7 +83,7 @@ A critical module was not found. Probably this operating system does not
 support it. Pexpect is intended for UNIX-like operating systems.""")
 
 __version__ = '2.3'
-__revision__ = '$Revision: 399 $'
+__revision__ = 'cctbx_project'
 __all__ = ['ExceptionPexpect', 'EOF', 'TIMEOUT', 'spawn', 'run', 'which',
     'split_command_line', '__version__', '__revision__']
 
