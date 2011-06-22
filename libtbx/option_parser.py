@@ -28,7 +28,7 @@ def run_multi(cmd):
   print cmd
   try:
     easy_run.call(command=cmd)
-  except: # intentionally bare
+  except: # intentional
     sys.stdout.flush()
     print >> sys.stderr, "CAUGHT EXCEPTION: run_multi(%s)" % cmd
     traceback.print_exc()
