@@ -140,73 +140,63 @@ class rotalyze(object):
     self.numoutliers = 0
     self.numtotal = 0
     rot_id = rotamer_eval.RotamerID() # loads in the rotamer names
-    #print rot_id.names
     for model in hierarchy.models():
       for chain in model.chains():
-        #for i_conformer, conformer in enumerate(chain.conformers()):
-          #print str(conformer.residues()[-3].name)
-          #residues = conformer.residues()
-          #for i in range(len(residues)):
-        #residues = list(chain.residue_groups())
-        for residue_group in chain.residue_groups():
-          all_dict = self.construct_complete_sidechain(residue_group)
-          for atom_group in residue_group.atom_groups():
-            #residue = residues[i]
+        for rg in chain.residue_groups():
+          all_dict = self.construct_complete_sidechain(rg)
+          for conformer in rg.conformers():
+            resname = conformer.only_residue().resname
+            coords = self.get_center(conformer)
+            atom_dict = all_dict.get(conformer.altloc)
             try:
-              coords = self.get_center(residue_group)
-              atom_dict = all_dict.get(atom_group.altloc)
-              #print atom_dict
-              chis = sa.measureChiAngles(atom_group, atom_dict)
-              if (chis is not None):
-                if None in chis:
-                  continue
-                value = r.evaluate(atom_group.resname.lower().strip(), chis)
-                #print chain.id + str(residue.seq) + residue.name.strip() + str(value)
-                if value != None:
-                  self.numtotal += 1
-                  s = '%s%5s %s:%.1f' % \
-                    (chain.id,
-                     residue_group.resid(),
-                     atom_group.altloc+atom_group.resname.strip(),
-                     value*100)
-                  res_out_list = [chain.id,
-                                  residue_group.resid(),
-                                  atom_group.altloc+atom_group.resname,
-                                  value*100]
-                  #wrap_chis = []
-                  #for i in range(len(chis)):
-                  #  wrap_chis.append(chis[i] % 360)
-                  #  if wrap_chis[i] < 0: wrap_chis[i] += 360
-                  wrap_chis = rot_id.wrap_chis(atom_group.resname.strip(), chis, symmetry=False)
-                  for i in range(4):
-                    s += ':'
-                    if i < len(wrap_chis):
-                      s += '%.1f' % (wrap_chis[i])
-                      res_out_list.append(wrap_chis[i])
-                    else :
-                      res_out_list.append(None)
-                  s += ':'
-                  if value < 0.01:
-                    self.numoutliers += 1
-                    s += "OUTLIER\n"
-                    res_out_list.append("OUTLIER")
-                    res_out_list.append(coords)
-                    if outliers_only:
-                      analysis += s
-                      output_list.append(res_out_list)
-                  else:
-                    wrap_chis = rot_id.wrap_sym(atom_group.resname.strip(), wrap_chis)
-                    s += rot_id.identify(atom_group.resname, wrap_chis) + "\n"
-                    res_out_list.append(rot_id.identify(atom_group.resname, wrap_chis))
-                    res_out_list.append(coords)
-                  if not outliers_only:
-                    analysis += s
-                    output_list.append(res_out_list)
+              chis = sa.measureChiAngles(conformer.only_residue(),
+                                       atom_dict)#.get(conformer.altloc))
             except AttributeError:
               if show_errors:
                 print >> out, '%s%5s %s is missing some sidechain atoms' % (
-                    chain.id, residue_group.resid(),
-                    atom_group.altloc+atom_group.resname)
+                  chain.id, rg.resid(),
+                  conformer.altloc+resname)
+              continue
+            if (chis is not None):
+              if None in chis:
+                continue
+              value = r.evaluate(resname.lower().strip(), chis)
+              if value != None:
+                self.numtotal += 1
+                s = '%s%5s %s:%.1f' % \
+                  (chain.id,
+                   rg.resid(),
+                   conformer.altloc+resname.strip(),
+                   value*100)
+                res_out_list = [chain.id,
+                                rg.resid(),
+                                conformer.altloc+resname,
+                                value*100]
+                wrap_chis = rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
+                for i in range(4):
+                  s += ':'
+                  if i < len(wrap_chis):
+                    s += '%.1f' % (wrap_chis[i])
+                    res_out_list.append(wrap_chis[i])
+                  else :
+                    res_out_list.append(None)
+                s += ':'
+                if value < 0.01:
+                  self.numoutliers += 1
+                  s += "OUTLIER\n"
+                  res_out_list.append("OUTLIER")
+                  res_out_list.append(coords)
+                  if outliers_only:
+                    analysis += s
+                    output_list.append(res_out_list)
+                else:
+                  wrap_chis = rot_id.wrap_sym(resname.strip(), wrap_chis)
+                  s += rot_id.identify(resname, wrap_chis) + "\n"
+                  res_out_list.append(rot_id.identify(resname, wrap_chis))
+                  res_out_list.append(coords)
+                if not outliers_only:
+                  analysis += s
+                  output_list.append(res_out_list)
     return analysis.rstrip(), output_list
   #}}}
 
@@ -244,11 +234,10 @@ class rotalyze(object):
   def get_outliers_goal(self):
     return "< 1%"
 
-  def get_center(self, rg):
-    for ag in rg.atom_groups():
-      for atom in ag.atoms():
-        if atom.name == " CA ":
-          return atom.xyz
+  def get_center(self, residue):
+    for atom in residue.atoms():
+      if atom.name == " CA ":
+        return atom.xyz
     return None
   #}}}
 
@@ -260,6 +249,12 @@ class rotalyze(object):
       for ag in residue_group.atom_groups():
         for atom in ag.atoms():
           #if atom.name not in atom_dict:
+          #handle hydrogen/deuterium swaps
+          if atom_dict.get(atom.name) == None:
+            if atom_dict.get(atom.name.replace("H","D",1)) != None:
+              del(atom_dict[atom.name.replace("H","D",1)])
+            elif atom_dict.get(atom.name.replace("D","H",1)) != None:
+              del(atom_dict[atom.name.replace("D","H",1)])
           atom_dict[atom.name] = atom
         clone_dict = {}
         clone_dict.update(atom_dict)
