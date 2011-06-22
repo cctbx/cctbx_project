@@ -13,18 +13,22 @@ namespace cctbx { namespace miller {
   struct image_simple
   {
     bool store_spots;
+    bool store_signals;
     bool set_pixels;
     af::shared<scitbx::vec3<double> > spots;
+    af::shared<double> signals;
     af::versa<int, af::flex_grid<> > pixels;
 
     image_simple(
       bool store_spots_,
+      bool store_signals_,
       bool set_pixels_)
     :
       store_spots(store_spots_),
+      store_signals(store_signals_),
       set_pixels(set_pixels_)
     {
-      TBXX_ASSERT(store_spots || set_pixels);
+      TBXX_ASSERT(store_spots || store_signals || set_pixels);
     }
 
     image_simple&
@@ -87,15 +91,7 @@ namespace cctbx { namespace miller {
               double pyf = (dy/dsy + 0.5) * dpy;
               if (store_spots) {
                 spots.push_back(scitbx::vec3<double>(pxf, pyf, 0));
-              }
-              if (!set_pixels) continue;
-              int pxi = ifloor(pxf);
-              int pyi = ifloor(pyf);
-              int pxb = pxi - point_spread_half;
-              int pyb = pyi - point_spread_half;
-              if (point_spread_is_even_value) {
-                if (pxf - pxi > 0.5) pxb++;
-                if (pyf - pyi > 0.5) pyb++;
+                if (!store_signals && !set_pixels) continue;
               }
               double proximity_factor = 1;
               if (apply_proximity_factor) {
@@ -108,9 +104,21 @@ namespace cctbx { namespace miller {
                 * (spot_intensity_factors.size() == 0 ? 1 :
                    spot_intensity_factors[ih])
                 * proximity_factor;
+              if (store_signals) {
+                signals.push_back(signal_at_center);
+              }
               int signal = static_cast<int>(signal_at_center + 0.5);
               double gauss_arg_term = -gaussian_falloff_scale
                                     / circle_radius_sq;
+              if (!set_pixels) continue;
+              int pxi = ifloor(pxf);
+              int pyi = ifloor(pyf);
+              int pxb = pxi - point_spread_half;
+              int pyb = pyi - point_spread_half;
+              if (point_spread_is_even_value) {
+                if (pxf - pxi > 0.5) pxb++;
+                if (pyf - pyi > 0.5) pyb++;
+              }
               for(int i=0;i<=point_spread;i++) {
                 int pi = pxb + i;
                 if (pi < 0 || pi >= dpx) continue;
