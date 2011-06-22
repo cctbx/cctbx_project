@@ -23,11 +23,13 @@ class SymmetryDialog (wx.Dialog) :
     self.unit_cell_ctrl = unit_cell.UnitCellControl(
       parent=self,
       id=-1,
-      size=(300,-1))
+      size=(300,-1),
+      name="Unit cell")
     txt3 = wx.StaticText(self, -1, "Space group:")
     self.space_group_ctrl = space_group.SpaceGroupControl(
       parent=self,
-      id=-1)
+      id=-1,
+      name="Space group")
     szr3.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr3.Add(self.unit_cell_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr3.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
