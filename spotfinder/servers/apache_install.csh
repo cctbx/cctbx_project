@@ -1,5 +1,8 @@
 #/bin/csh -f
 echo Install the Apache-mod_python-spotfinder server.
+echo "Enter the number of processors to use for compile steps:"
+set n_processor = "$<"
+echo $n_processor "processors will be used"
 
 # Define the required directories
 setenv ROOT_DIR `pwd`
@@ -29,8 +32,8 @@ echo Configuring and compiling the Apache server...consult install_apache.log
 setenv APACHE_SRC ${SRC_DIR}/httpd-2.2.19
 cd ${APACHE_SRC}
 ./configure --prefix=${USE_APACHE} >& ${SRC_DIR}/install_apache.log
-make >>& ${SRC_DIR}/install_apache.log
-make install >>& ${SRC_DIR}/install_apache.log
+make -j $n_processor >>& ${SRC_DIR}/install_apache.log
+make -j $n_processor install >>& ${SRC_DIR}/install_apache.log
 cp ${USE_APACHE}/conf/httpd.conf ${USE_APACHE}/conf/httpd.conf.dist
 
 # Python installation--this section can be skipped if a pre-existing Python 2.7 or higher
@@ -38,8 +41,8 @@ cp ${USE_APACHE}/conf/httpd.conf ${USE_APACHE}/conf/httpd.conf.dist
 echo Configuring and compiling Python...consult install_python.log
 cd ${SRC_DIR}/Python-2.7.1
 ./configure --prefix=${USE_PYTHON} --enable-shared >& ${SRC_DIR}/install_python.log
-make >>& ${SRC_DIR}/install_python.log
-make install >>& ${SRC_DIR}/install_python.log
+make -j $n_processor >>& ${SRC_DIR}/install_python.log
+make -j $n_processor install >>& ${SRC_DIR}/install_python.log
 
 setenv PYTHON_SO ${USE_PYTHON}/lib
 
@@ -62,8 +65,8 @@ cd ${MODPY_SRC}
 ./configure --with-apxs=${USE_APACHE}/bin/apxs\
   --with-python=${USE_PYTHON}/bin/python\
   --with-max-locks=8 >& ${SRC_DIR}/install_mp.log
-make >>& ${SRC_DIR}/install_mp.log
-make install >>& ${SRC_DIR}/install_mp.log
+make -j $n_processor >>& ${SRC_DIR}/install_mp.log
+make -j $n_processor install >>& ${SRC_DIR}/install_mp.log
 
 # CCI Apps build
 echo Building CCI apps...consult install_cci.log
@@ -77,29 +80,38 @@ make >>& ${SRC_DIR}/install_cci.log
 cp ${ROOT_DIR}/favicon.ico ${USE_APACHE}/htdocs/
 autohttp:
 
-echo
-echo The following modifications are being made AUTOMATICALLY to
-echo the Apache configuration file, ${USE_APACHE}/conf/httpd.conf
-echo "(but the user can make further changes if desired)."
-echo
-echo 1. change the port number from 80 to 8125
-echo 2. include the httpd-mpm.conf multiprocessing directives
-echo 3. add mod_python and the spotfinder server to the configuration, by appending the following lines:
-echo "   "
-echo "  LoadModule python_module ${USE_APACHE}/modules/mod_python.so"
-echo "  Alias /spotfinder ${SRC_DIR}/cctbx_project/spotfinder/servers"
-echo "  <Directory ${SRC_DIR}/cctbx_project/spotfinder/servers>"
-echo "    Order allow,deny"
-echo "    Allow from all"
-echo "    AddHandler mod_python .signal_strength"
-echo "    PythonHandler apache"
-echo "  </Directory>"
-echo
-echo
-echo The Apache server WITH SPOTFINDER MODIFICATIONS can be started or stopped as follows:
-echo
-echo "/bin/sh ${BUILD_DIR}/env_run ${USE_APACHE}/bin/apachectl [start|stop]"
-echo
+cat << eof | tee ${ROOT_DIR}/README_customized
+
+The following modifications are being made AUTOMATICALLY to
+the Apache configuration file, ${USE_APACHE}/conf/httpd.conf
+(but the user can make further changes if desired).
+
+1. change the port number from 80 to 8125
+2. include the httpd-mpm.conf multiprocessing directives
+3. add mod_python and the spotfinder server to the configuration, by appending the following lines:
+
+   LoadModule python_module ${USE_APACHE}/modules/mod_python.so
+   Alias /spotfinder ${SRC_DIR}/cctbx_project/spotfinder/servers
+   <Directory ${SRC_DIR}/cctbx_project/spotfinder/servers>
+     Order allow,deny
+     Allow from all
+     AddHandler mod_python .signal_strength
+     PythonHandler apache
+   </Directory>
+
+
+The Apache server WITH SPOTFINDER MODIFICATIONS can be started or stopped as follows:
+
+/bin/sh ${BUILD_DIR}/env_run libtbx.sh ${USE_APACHE}/bin/apachectl [start|stop]
+
+An example client (single-process; multithreaded) is shown in the file
+  ${SRC_DIR}/cctbx_project/spotfinder/servers/apache_client_example.py
+
+After editing this script to point to your own dataset, run the client as follows:
+
+/bin/sh ${BUILD_DIR}/env_run libtbx.sh libtbx.python ${SRC_DIR}/cctbx_project/spotfinder/servers/apache_client_example.py
+
+eof
 
 # if using a pre-existing Apache, the httpd.conf file must be correctly chosen
 cat ${USE_APACHE}/conf/httpd.conf.dist | \
