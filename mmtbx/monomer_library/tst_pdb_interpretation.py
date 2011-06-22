@@ -448,9 +448,8 @@ _chem_comp_plane_atom.dist_esd
 2MG plan-2    CM2 0.020
 2MG plan-2    H21 0.020
 """
-  from mmtbx.monomer_library import mmCIF
-  cif_object = mmCIF.mmCIFFile()
-  cif_object.load_file(fil=StringIO(cif_records), strict=False)
+  import iotbx.cif
+  cif_object = iotbx.cif.reader(input_string=cif_records).model()
   mon_lib_srv.process_cif_object(cif_object=cif_object)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,

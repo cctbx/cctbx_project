@@ -39,12 +39,12 @@ def exercise():
   if (False or default_switch):
     monomers_with_commas = {}
     atom_id_counts = dicts.with_default_value(0)
-    for row in list_cif.cif["comp_list"]["chem_comp"]:
+    for row_id in list_cif.cif["comp_list"]["_chem_comp.id"]:
       if (quick and random.random() < 0.95): continue
-      if (verbose): print "id:", row["id"]
-      comp_comp_id = srv.get_comp_comp_id_direct(comp_id=row["id"])
+      if (verbose): print "id:", row_id
+      comp_comp_id = srv.get_comp_comp_id_direct(comp_id=row_id)
       if (comp_comp_id is None):
-        print "Error instantiating comp_comp_id(%s)" % row["id"]
+        print "Error instantiating comp_comp_id(%s)" % row_id
       else:
         has_primes = False
         has_commas = False
@@ -65,10 +65,10 @@ def exercise():
     for atom_id,count in zip(atom_ids, counts):
       print atom_id, count
   if (False or default_switch):
-    for row in list_cif.cif["comp_list"]["chem_comp"]:
+    for row in list_cif.cif["comp_list"]["_chem_comp"].iterrows():
       if (quick and random.random() < 0.95): continue
-      if (verbose): print "id:", row["id"]
-      comp_comp_id = srv.get_comp_comp_id_direct(comp_id=row["id"])
+      if (verbose): print "id:", row["_chem_comp.id"]
+      comp_comp_id = srv.get_comp_comp_id_direct(comp_id=row["_chem_comp.id"])
       check_chem_comp(cif_types.chem_comp(**row), comp_comp_id)
     if ("--pickle" in sys.argv[1:]):
       easy_pickle.dump("mon_lib.pickle", srv)
@@ -83,38 +83,38 @@ def exercise():
     mod = srv.mod_mod_id_dict["B2C"]
     comp.apply_mod(mod).show()
   if (False or default_switch):
-    for row in list_cif.cif["comp_list"]["chem_comp"]:
+    for row in list_cif.cif["comp_list"]["_chem_comp"].iterrows():
       if (quick and random.random() < 0.95): continue
-      comp_comp_id = srv.get_comp_comp_id_direct(row["id"])
+      comp_comp_id = srv.get_comp_comp_id_direct(row["_chem_comp.id"])
       if (comp_comp_id is not None):
         if (comp_comp_id.classification == "peptide"):
           print comp_comp_id.chem_comp.id, comp_comp_id.chem_comp.name,
-          print row["group"],
-          grp = row["group"].lower().strip()
+          print row["_chem_comp.group"],
+          grp = row["_chem_comp.group"].lower().strip()
           if (grp not in ("l-peptide", "d-peptide", "polymer")):
             print "LOOK",
-            if (not os.path.isdir("look")): os.makedirs("look")
-            open("look/%s.cif" % row["id"], "w").write(
-              open(comp_comp_id.file_name).read())
+            #if (not os.path.isdir("look")): os.makedirs("look")
+            #open("look/%s.cif" % row["_chem_comp.id"], "w").write(
+              #open(comp_comp_id.file_name).read())
           print
-        elif (row["group"].lower().find("peptide") >= 0
+        elif (row["_chem_comp.group"].lower().find("peptide") >= 0
               or comp_comp_id.chem_comp.group.lower().find("peptide") >= 0):
           print comp_comp_id.chem_comp.id, comp_comp_id.chem_comp.name,
-          print row["group"], "MISMATCH"
+          print row["_chem_comp.group"], "MISMATCH"
         if (comp_comp_id.classification in ("RNA", "DNA")):
           print comp_comp_id.chem_comp.id, comp_comp_id.chem_comp.name,
-          print row["group"],
-          if (comp_comp_id.classification != row["group"].strip()):
+          print row["_chem_comp.group"],
+          if (comp_comp_id.classification != row["_chem_comp.group"].strip()):
             print comp_comp_id.classification, "MISMATCH",
           print
-        elif (row["group"].lower().find("NA") >= 0
+        elif (row["_chem_comp.group"].lower().find("NA") >= 0
               or comp_comp_id.chem_comp.group.lower().find("NA") >= 0):
           print comp_comp_id.chem_comp.id, comp_comp_id.chem_comp.name,
-          print row["group"], "MISMATCH"
+          print row["_chem_comp.group"], "MISMATCH"
   if (False or default_switch):
-    for row in list_cif.cif["comp_list"]["chem_comp"]:
+    for row in list_cif.cif["comp_list"]["_chem_comp"].iterrows():
       if (quick and random.random() < 0.95): continue
-      comp_comp_id = srv.get_comp_comp_id_direct(row["id"])
+      comp_comp_id = srv.get_comp_comp_id_direct(row["_chem_comp.id"])
       if (comp_comp_id is not None):
         planes = comp_comp_id.get_planes()
         for plane in planes:
@@ -128,11 +128,11 @@ def exercise():
     standard_amino_acids = [
       "GLY", "VAL", "ALA", "LEU", "ILE", "PRO", "MET", "PHE", "TRP", "SER",
       "THR", "TYR", "CYS", "ASN", "GLN", "ASP", "GLU", "LYS", "ARG", "HIS"]
-    for row in list_cif.cif["comp_list"]["chem_comp"]:
-      is_standard_aa = row["id"] in standard_amino_acids
+    for row in list_cif.cif["comp_list"]["_chem_comp"].iterrows():
+      is_standard_aa = row["_chem_comp.id"] in standard_amino_acids
       if (1 and not is_standard_aa):
         continue
-      comp_comp_id = srv.get_comp_comp_id_direct(row["id"])
+      comp_comp_id = srv.get_comp_comp_id_direct(row["_chem_comp.id"])
       if (is_standard_aa):
         assert comp_comp_id is not None
         assert comp_comp_id.chem_comp.group.strip() == "L-peptide"
