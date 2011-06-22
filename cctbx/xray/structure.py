@@ -375,6 +375,18 @@ class structure(crystal.special_position_settings):
     return flex.mean( self.distances(other = other, selection = selection) )
 
   def scale_adp(self, factor, selection=None):
+    """Scale the atomic displacement parameters of the selected scatterers
+    of the structure with the specified factor.
+    If no selection is given, all scatterers will be handled as if selected.
+
+    :param factor: scale factor to apply to the adps of the selected scatterers
+    :type factor: float
+    :param selection: an array of bools to select the scatterers to have their \
+    adps scaled
+    :type selection: boolean[]
+
+    :returns: none
+    """
     if(selection is not None):
       assert selection.size() == self._scatterers.size()
     else:
@@ -749,6 +761,12 @@ class structure(crystal.special_position_settings):
         find_1()
 
   def b_iso_min_max_mean(self):
+    """Get the minimal, maximal and mean isotropic Debye-Waller/temperature/B \
+    factors of all scatterers in this structure.
+
+    :returns: minimal b_iso, maximal b_iso, mean b_iso
+    :rtype: float, float, float
+    """
     b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
     b_min  = flex.min(b_isos)
     b_max  = flex.max(b_isos)
@@ -1334,7 +1352,7 @@ class structure(crystal.special_position_settings):
     individual scatterers. The expanded structure may have sites
     with negative or > 1.0 coordinates. Use '.sites_mod_positive()'
     or '.sites_mod_short()' on the result, or alternatively
-    set sites_mod_positive to 'True'.
+    set sites_mod_positive to 'True' in case you want to change this behaviour.
 
     :param append_number_to_labels: If set to 'True' scatterers generated from \
     symmetry will be labelled with a numerical suffix
