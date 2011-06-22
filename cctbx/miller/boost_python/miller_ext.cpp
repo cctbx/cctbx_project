@@ -108,8 +108,9 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       typedef return_internal_reference<> rir;
       class_<wt>("image_simple", no_init)
-        .def(init<bool, bool>((
+        .def(init<bool, bool, bool>((
           arg("store_spots"),
+          arg("store_signals"),
           arg("set_pixels"))))
         .def("compute", &wt::compute, (
           arg("unit_cell"),
@@ -125,6 +126,7 @@ namespace {
           arg("point_spread"),
           arg("gaussian_falloff_scale")), rir())
         .add_property("spots", make_getter(&wt::spots, rbv()))
+        .add_property("signals", make_getter(&wt::signals, rbv()))
         .def_readonly("pixels", &wt::pixels)
       ;
     }

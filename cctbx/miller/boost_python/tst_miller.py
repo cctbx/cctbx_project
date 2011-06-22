@@ -645,6 +645,7 @@ def exercise_image_simple():
           for set_pixels in [False, True]:
             image = miller.image_simple(
               store_spots=(point_spread < 3 or not set_pixels),
+              store_signals=(point_spread > 2),
               set_pixels=set_pixels).compute(
                 unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
                 miller_indices=flex.miller_index([(-1,2,1)]),
@@ -667,6 +668,10 @@ def exercise_image_simple():
                 assert sum_image_pixels == expected_sum_image_pixels.next()
               else:
                 assert sum_image_pixels == 0
+            if (point_spread > 2 and star == "*"):
+              assert image.signals.size() == 1
+            else:
+              assert image.signals.size() == 0
       assert image.spots.size() == int(star == "*" and point_spread < 3)
       assert image.pixels.all() == (dpx,dpy)
       for i in xrange(dpx):
