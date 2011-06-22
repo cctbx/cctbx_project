@@ -233,38 +233,33 @@ def select_matching(key, choices, default=None):
 
 class Keep: pass
 
-disable_tracebacklimit = False
-
 class Sorry(Exception):
   __orig_module__ = __module__
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = Exception.__module__
 
-  def __init__(self, *args, **keyword_args):
-    self.need_cleanup = False
-    if (not disable_tracebacklimit):
-      self.previous_tracebacklimit = getattr(sys, "tracebacklimit", None)
-      sys.tracebacklimit = 0
-      self.need_cleanup = True
-    Exception.__init__(self, *args, **keyword_args)
-
-  def __del__(self):
-    self.reset_tracebacklimit()
-
   def reset_module (self) :
     self.__class__.__module__ = self.__class__.__orig_module__
 
-  def reset_tracebacklimit(self):
-    if (    self.need_cleanup
-        and not disable_tracebacklimit
-        and hasattr(sys, "tracebacklimit")):
-      self.need_cleanup = False
-      if (self.previous_tracebacklimit is None):
-        del sys.tracebacklimit
-      else:
-        sys.tracebacklimit = self.previous_tracebacklimit
-
 disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
+
+__prev_excepthook = sys.excepthook
+
+def sorry_excepthook(type, value, traceback):
+  tb_off = (not disable_tracebacklimit and isinstance(value, Sorry))
+  if (tb_off):
+    class __not_set(object): pass
+    prev_tracebacklimit = getattr(sys, "tracebacklimit", __not_set)
+    sys.tracebacklimit = 0
+  result = __prev_excepthook(type, value, traceback)
+  if (tb_off):
+    if (prev_tracebacklimit is __not_set):
+      del sys.tracebacklimit
+    else:
+      sys.tracebacklimit = prev_tracebacklimit
+  return result
+
+sys.excepthook = sorry_excepthook
 
 class Usage(Sorry):
   __module__ = Exception.__module__
