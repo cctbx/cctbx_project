@@ -933,14 +933,18 @@ class reference_model(object):
     model_chis = {}
     reference_hash = {}
     reference_chis = {}
+    model_outliers = 0
     for line in rot_list_model.splitlines():
       res, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       model_hash[res]=name
+      if name == "OUTLIER":
+        model_outliers += 1
 
     for line in rot_list_reference.splitlines():
       res, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       reference_hash[res]=name
 
+    print >> log, "** evaluating rotamers for working model **"
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -959,7 +963,13 @@ class reference_model(object):
                   '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
+    if model_outliers == 0:
+      print >> log, "No rotamer outliers detected in working model"
+      return
+    else:
+      print >> log, "Number of rotamer outliers: %d" % model_outliers
 
+    print >> log, "\n** evaluating rotamers for reference model **"
     for model in pdb_hierarchy_ref.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -979,16 +989,20 @@ class reference_model(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
 
+    print >> log, "\n** fixing outliers **"
     sites_cart_start = xray_structure.sites_cart()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
+          if len(residue_group.conformers()) > 1:
+            print >> log, "%s%5s %s has multiple conformations, **skipping**" % (
+              chain.id, residue_group.resid(),
+              " "+residue_group.atom_groups()[0].resname)
+            continue
           for conformer in residue_group.conformers():
             for residue in conformer.residues():
               if residue.resname == "PRO":
                 continue
-              #if conformer.altloc != " ":
-              #  continue
               key = '%s%5s %s' % (
                         chain.id, residue_group.resid(),
                         conformer.altloc+residue.resname)
