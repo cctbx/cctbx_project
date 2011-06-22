@@ -1,4 +1,6 @@
 
+from wxtbx.phil_controls import TextCtrlValidator
+from libtbx.utils import Abort
 import wx
 
 class SpaceGroupControl (wx.ComboBox) :
@@ -25,61 +27,38 @@ class SpaceGroupControl (wx.ComboBox) :
 
   def GetPhilValue (self) :
     self.Validate()
-    sg = self.GetValue()
+    sg = str(self.GetValue())
     if (sg == "") :
       return None
     from cctbx import sgtbx
     return sgtbx.space_group_info(symbol=sg)
 
+  def Validate (self) :
+    # XXX why doesn't self.Validate() work?
+    if self.GetValidator().Validate(self.GetParent()) :
+      return True
+    else :
+      raise Abort()
+
   if (wx.Platform == "__WXMAC__") and (wx.PlatformInfo[4] != 'wxOSX-cocoa') :
     def SetBackgroundColour (self, color) :
       self.GetChildren()[0].SetBackgroundColour(color)
 
-class SpaceGroupValidator (wx.PyValidator) :
-  def __init__ (self) :
-    wx.PyValidator.__init__(self)
-    self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
-
-  def OnEnter (self, event) :
-    self.Validate(None)
-
-  def Clone (self) :
-    return self.__class__()
-
-  def TransferToWindow (self) :
-    return True
-
-  def TransferFromWindow (self) :
-    return True
-
-  def Validate (self, win) :
-    from cctbx import sgtbx
-    ctrl = self.GetWindow()
-    value = ctrl.GetValue()
+class SpaceGroupValidator (TextCtrlValidator) :
+  def CheckFormat (self, value) :
     if len(value) == 0 :
-      return True
-    try :
-      sg = str(sgtbx.space_group_info(symbol=value))
-      ctrl.SetValue(sg)
-      # TODO: something else?
-      ctrl.SetBackgroundColour(
-        wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
-      ctrl.Refresh()
-      return True
-    except Exception, e :
-      wx.MessageBox(caption="Format error",
-        message=str(e))
-      ctrl.SetBackgroundColour("red")
-      ctrl.SetFocus()
-      ctrl.Refresh()
-      return False
+      return ""
+    from cctbx import sgtbx
+    sg = str(sgtbx.space_group_info(symbol=value))
+    return sg
 
 if (__name__ == "__main__") :
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Space group test")
   panel = wx.Panel(frame, -1, size=(600,400))
   txt1 = wx.StaticText(panel, -1, "Space group:", pos=(100,180))
-  sg_ctrl = SpaceGroupControl(panel, -1, pos=(200,180))
+  sg_ctrl = SpaceGroupControl(panel, -1, pos=(200,180),
+    name="Space group")
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay (evt) :
     sg = sg_ctrl.GetPhilValue()
