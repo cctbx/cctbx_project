@@ -12,6 +12,8 @@ class potential_url_request:
       self.parsed = urlparse(self.text)
     except:
       return False
+
+    if self.parsed.scheme in [None, ""]: return False
     self.file = self.parsed.path.split("?")[0]
 
     if "?" in self.parsed.path: #i.e., for file scheme, the query string is not
