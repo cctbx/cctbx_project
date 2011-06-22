@@ -156,11 +156,14 @@ class structure(crystal.special_position_settings):
   def set_u_iso(self, value = None, values = None, selection = None):
     """Set isotropic mean thermic displacements of scatterers
 
-    :param value: a single double value to set all u_iso of selected scatterers to
+    :param value: a single double value to set all u_iso of selected \
+    scatterers to
     :type value: double
-    :param values: an array of double values to set all u_iso of selected scatterers to
+    :param values: an array of double values to set all u_iso of selected \
+    scatterers to
     :type values: double[]
-    :param selection: an array of bools to select scatterers to be updated with new u_iso values
+    :param selection: an array of bools to select scatterers to be updated \
+    with new u_iso values
     :type selection: boolean[]
 
     :returns: the modified base object
@@ -178,13 +181,17 @@ class structure(crystal.special_position_settings):
     return self
 
   def set_b_iso(self, value = None, values = None, selection = None):
-    """Set isotropic Debye-Waller/temperature/B factors with automatic conversion to u_iso
+    """Set isotropic Debye-Waller/temperature/B factors with automatic conversion
+    to u_iso
 
-    :param value: a single double value to set all b_iso of selected scatterers to
+    :param value: a single double value to set all b_iso of selected \
+    scatterers to
     :type value: double
-    :param values: an array of double values to set all b_iso of selected scatterers to
+    :param values: an array of double values to set all b_iso of selected \
+    scatterers to
     :type values: double[]
-    :param selection: an array of bools to select scatterers to be updated with new b_iso values
+    :param selection: an array of bools to select scatterers to be updated with \
+    new b_iso values
     :type selection: boolean[]
 
     :returns: the modified base object
@@ -241,7 +248,8 @@ class structure(crystal.special_position_settings):
     self._scatterers.adjust_u_iso()
 
   def adjust_occupancy(self, occ_max, occ_min, selection = None):
-    """Adjust site occupancy factor for selected sites to be between occ_min and occ_max.
+    """Adjust site occupancy factor for selected sites to be between occ_min and
+    occ_max.
 
     :param occ_max: maximal site occupancy factor
     :type occ_max: float
@@ -300,12 +308,13 @@ class structure(crystal.special_position_settings):
     return cp
 
   def distances(self, other, selection = None):
-    """Calculates pairwise distances between the atoms of this structure and another
-    structure with the same number of scatterers.
+    """Calculates pairwise distances between the atoms of this structure and
+    another structure with the same number of scatterers.
 
     :param other: the other structure
     :type other: cctbx.xray.structure
-    :param selection: an array of bools to select scatterers to be taken into calculation
+    :param selection: an array of bools to select scatterers to be taken into \
+    calculation
     :type selection: boolean[]
 
     :returns: an array of distances for the selected scatterers
@@ -324,10 +333,12 @@ class structure(crystal.special_position_settings):
 
     :param other: the other structure
     :type other: cctbx.xray.structure
-    :param selection: an array of bools to select scatterers to be taken into calculation
+    :param selection: an array of bools to select scatterers to be taken into \
+    calculation
     :type selection: boolean[]
 
-    :returns: the maximum distance of two corresponding scatterers out of the selected scatterers
+    :returns: the maximum distance of two corresponding scatterers out of the \
+    selected scatterers
     :rtype: float
     """
     return flex.max( self.distances(other = other, selection = selection) )
@@ -338,10 +349,12 @@ class structure(crystal.special_position_settings):
 
     :param other: the other structure
     :type other: cctbx.xray.structure
-    :param selection: an array of bools to select scatterers to be taken into calculation
+    :param selection: an array of bools to select scatterers to be taken into \
+    calculation
     :type selection: boolean[]
 
-    :returns: the minimum distance of two corresponding scatterers out of the selected scatterers
+    :returns: the minimum distance of two corresponding scatterers out of the \
+    selected scatterers
     :rtype: float
     """
     return flex.min( self.distances(other = other, selection = selection) )
@@ -352,7 +365,8 @@ class structure(crystal.special_position_settings):
 
     :param other: the other structure
     :type other: cctbx.xray.structure
-    :param selection: an array of bools to select scatterers to be taken into calculation
+    :param selection: an array of bools to select scatterers to be taken into \
+    calculation
     :type selection: boolean[]
 
     :returns: the mean pairwise distance of the selected scatterers
@@ -488,8 +502,8 @@ class structure(crystal.special_position_settings):
     return result
 
   def crystal_density(self):
-    """Get the value of the diffraction-determined density for the crystal, suitable
-    for the CIF item _exptl_crystal_density_diffrn
+    """Get the value of the diffraction-determined density for the crystal,
+    suitable for the CIF item _exptl_crystal_density_diffrn
 
     Density values are calculated from the crystal cell and contents. The
     units are megagrams per cubic metre (=grams per cubic centimetre).
@@ -497,7 +511,7 @@ class structure(crystal.special_position_settings):
     Equivalent to:
       1.66042 * _chemical_formula_weight * _cell_formula_units_Z / _cell_volume
 
-    :returns: chemical density in megagrams per cubic metre (=grams per cubic centimetre)
+    :returns: chemical density in megagrams per cubic metre (=grams per cm^3)
     :rtype: float
     """
     from cctbx.eltbx import tiny_pse
@@ -514,7 +528,8 @@ class structure(crystal.special_position_settings):
     According to the CIF definition, this item **may** contain dispersion
     contributions.
 
-    :param include_inelastic_part: If 'True' contributions due to dispersion are included in F(000).
+    :param include_inelastic_part: If 'True' contributions due to dispersion \
+    are included in F(000).
     :type include_inelastic_part: boolean
 
     :returns: F(000)
@@ -549,13 +564,16 @@ class structure(crystal.special_position_settings):
         random_double=None):
     """Shake the coordinates of the selected scatterers in this structure.
 
-    :param rms_difference: radial mean square displacement (>=0) to apply to selected scatterers
+    :param rms_difference: radial mean square displacement (>=0) to apply to \
+    selected scatterers
     :type rms_difference: float
-    :param mean_distance: a mean distance shift (>=0) to apply to selected scatterers
+    :param mean_distance: a mean distance shift (>=0) to apply to selected \
+    scatterers
     :type mean_distance: float
     :param selection: an array of bools to select scatterers to be shaken
     :type selection: boolean[]
-    :param allow_all_fixed: if set to 'True' shaking a structure with all scatterers on fixed special positions will not cause an error
+    :param allow_all_fixed: if set to 'True' shaking a structure with all \
+    scatterers on fixed special positions will not cause an error
     :type allow_all_fixed: boolean
     :param random_double: "random" numbers to use for displacements
     :type random_double: float[]
@@ -1309,8 +1327,8 @@ class structure(crystal.special_position_settings):
     return self.change_basis(ch_op)
 
   def expand_to_p1(self,
-        append_number_to_labels=False,
-        sites_mod_positive=False):
+      append_number_to_labels=False,
+      sites_mod_positive=False):
     """Get the current structure expanded into spacegroup P1.
     This turns all symmetry induced scatterers into independent
     individual scatterers. The expanded structure may have sites
@@ -1318,9 +1336,11 @@ class structure(crystal.special_position_settings):
     or '.sites_mod_short()' on the result, or alternatively
     set sites_mod_positive to 'True'.
 
-    :param append_number_to_labels: If set to 'True' scatterers generated from symmetry will be labelled with a numerical suffix
+    :param append_number_to_labels: If set to 'True' scatterers generated from \
+    symmetry will be labelled with a numerical suffix
     :type append_number_to_labels: boolean
-    :param sites_mod_positive: If set to 'True' xyz coordinates of the scatterers will be kept inside [0,1[
+    :param sites_mod_positive: If set to 'True' xyz coordinates of the \
+    scatterers will be kept inside [0,1[
     :type sites_mod_positive: boolean
 
     :returns: a new instance of the structure expanded into P1
@@ -1345,7 +1365,8 @@ class structure(crystal.special_position_settings):
     """Get the current structure converted into a structure with x,y,z of all
     scatterers in the interval [0,1[
 
-    :returns: the same instance of the structure with only posive coordinates of its scatterers
+    :returns: the same instance of the structure with only posive coordinates \
+    of its scatterers
     :rtype: cctbx.xray.structure
     """
     return structure(
@@ -1354,10 +1375,11 @@ class structure(crystal.special_position_settings):
       scattering_type_registry=self._scattering_type_registry)
 
   def sites_mod_short(self):
-    """Get the current structure converted into a structure with short coordinates
-    vectors of all scatterers
+    """Get the current structure converted into a structure with short
+    coordinates vectors of all scatterers
 
-    :returns: the same instance of the structure with only short coordinates vectors of its scatterers
+    :returns: the same instance of the structure with only short coordinates \
+    vectors of its scatterers
     :rtype: cctbx.xray.structure
     """
     return structure(
