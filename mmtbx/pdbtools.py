@@ -950,9 +950,7 @@ class interpreter:
         except Sorry, e:
           if (not os.path.isfile(arg)):
             if ("=" in arg): raise
-            e.reset_tracebacklimit()
             raise Sorry("File not found: %s" % show_string(arg))
-          e.reset_tracebacklimit()
           raise Sorry("Unknown file format: %s" % arg)
         else:
           command_line_params.append(params)

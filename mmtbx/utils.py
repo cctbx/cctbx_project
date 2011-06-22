@@ -333,7 +333,6 @@ class determine_data_and_flags(object):
             disable_suitability_test = params.disable_suitability_test,
             parameter_scope          = self.flags_parameter_scope)
       except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
-        e.reset_tracebacklimit()
         if(self.parameters.r_free_flags.generate is not None):
           explain_how_to_generate_array_of_r_free_flags(log = self.log,
             flags_parameter_scope = self.flags_parameter_scope)
@@ -1679,9 +1678,7 @@ class process_command_line_args(object):
         except Sorry, e:
           if(not os.path.isfile(arg)):
             if("=" in arg): raise
-            e.reset_tracebacklimit()
             raise Sorry("File not found: %s" % show_string(arg))
-          e.reset_tracebacklimit()
           raise Sorry("Unknown file format: %s" % arg)
         else:
           command_line_params.append(params)
