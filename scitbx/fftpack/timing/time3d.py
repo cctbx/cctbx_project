@@ -9,13 +9,13 @@ def get_primes(n):
   if (n != 0):
     while (n % 2 == 0):
       try: primes[2] += 1
-      except: primes[2] = 1
+      except Exception: primes[2] = 1
       n /= 2
     d = 3
     while (n != 1):
       while (n % d == 0):
         try: primes[d] += 1
-        except: primes[d] = 1
+        except Exception: primes[d] = 1
         n /= d
       d += 2
   return primes

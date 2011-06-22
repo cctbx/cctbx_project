@@ -13,7 +13,7 @@ def make_paths_writable_if_possible(paths):
     try:
       mode = os_stat(path).st_mode
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       pass
     else:
       if (op.isdir(path)):
@@ -24,7 +24,7 @@ def make_paths_writable_if_possible(paths):
         try:
           os_chmod(path, new_mode)
         except KeyboardInterrupt: raise
-        except:
+        except Exception:
           pass
 
 def remove_directories_if_possible(paths):
@@ -34,7 +34,7 @@ def remove_directories_if_possible(paths):
       try:
         remove_tree(path)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         pass
     if (op.isdir(path)):
       remaining.append(path)
@@ -47,7 +47,7 @@ def remove_files_if_possible(paths):
       try:
         os.remove(path)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         pass
     if (op.exists(path)):
       remaining.append(path)
@@ -64,7 +64,7 @@ def rename_files_and_directories_if_possible(paths):
           try:
             os.rename(path, new_path)
           except KeyboardInterrupt: raise
-          except:
+          except Exception:
             pass
           break
     if (op.exists(path)):

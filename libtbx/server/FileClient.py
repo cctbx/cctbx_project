@@ -87,7 +87,7 @@ class FileClient:
     self.send.flush()
     try:
       result = pickle.load(self.recv)
-    except:
+    except Exception:
       result = None
     #if result.__class__.__name__ == "PropagateExceptionClass":
     #  cmd = "raise %s, \"%s\"" % (result.type, result.message)
@@ -110,7 +110,7 @@ class FileClient:
     try:
       outl += '\n\tsend '+str(self.send)
       outl += '\n\trecv '+str(self.recv)
-    except:
+    except Exception:
       pass
     return outl
 
@@ -124,7 +124,7 @@ class FileClient:
       self._remote_call('shutdown',(),{})
       self.sock=None
       self._remote_call('shutdown',(),{})
-    except:
+    except Exception:
       pass
     return None
 

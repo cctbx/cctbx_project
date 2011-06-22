@@ -82,13 +82,13 @@ def exercise():
   try:
     raise RuntimeError("Trial")
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     assert utils.format_exception() == "RuntimeError: Trial"
   else: raise Exception_expected
   try:
     assert 1 == 2
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     s = utils.format_exception()
     assert s.startswith("AssertionError: ")
     assert s.find("tst_utils.py line ") >= 0

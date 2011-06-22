@@ -29,7 +29,7 @@ def spotfinder_factory(absrundir,frames):
   pd['xbeam'] = '%f'%A.beamx
   try:
     pd['twotheta'] = '%f'%A.twotheta
-  except:
+  except Exception:
     pd['twotheta'] = '0.0'
 
   Spotfinder = tnear2.sf2(pd)
@@ -37,7 +37,7 @@ def spotfinder_factory(absrundir,frames):
   for framenumber in local_frames:
     try:
       assert Spotfinder.images.has_key(framenumber)
-    except:
+    except Exception:
       Spotfinder.register_frames(framenumber,frames)
       if labelit_commands.spotfinder_verbose: Spotfinder.show()
 

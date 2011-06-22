@@ -235,7 +235,7 @@ class chunk_callback(object):
     assert opt == "--chunk"
     try:
       self.n, self.i = [int(i) for i in value.split(",")]
-    except:
+    except Exception:
       raise OptionError(
         "Two comma-separated positive integers required.",
         opt)

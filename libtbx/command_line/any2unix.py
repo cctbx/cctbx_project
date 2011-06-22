@@ -8,7 +8,7 @@ def run(args):
     else:
       try:
         file_content = open(path, "rb").read()
-      except:
+      except Exception:
         problem = "no read access"
       else:
         if (not os.access(path, os.W_OK)):
@@ -37,7 +37,7 @@ def run(args):
           unix_content += "\n"
         try:
           open(path, "wb").write(unix_content)
-        except:
+        except Exception:
           print >> sys.stdout, "FATAL ERROR: Cannot write file:", path
           path_copy = path + "_copy"
           print >> sys.stdout, "Saving copy of old content as file:", path_copy

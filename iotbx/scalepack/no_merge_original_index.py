@@ -70,7 +70,7 @@ class reader(object):
       show_string(self.space_group_symbol)
     try: space_group_info = self.space_group_info()
     except KeyboardInterrupt: raise
-    except: pass
+    except Exception: pass
     else:
       space_group_info.show_summary(
         f=out, prefix=prefix+"Space group from operations: ")

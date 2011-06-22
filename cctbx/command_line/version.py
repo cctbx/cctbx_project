@@ -8,7 +8,7 @@ def run():
     if (os.path.isfile(tag_path)):
       try: version = open(tag_path).read().strip()
       except KeyboardInterrupt: raise
-      except: pass
+      except Exception: pass
       else: break
   if (version is None):
     version = libtbx.env.command_version_suffix

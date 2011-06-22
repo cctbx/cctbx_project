@@ -32,7 +32,7 @@ def is_pdb_file(file_name):
       try: pdb_inp = ext.input(
         source_info=None, lines=flex.std_string([pdb_str]))
       except KeyboardInterrupt: raise
-      except: continue
+      except Exception: continue
       if (pdb_inp.atoms().size() == 1):
         atom = pdb_inp.atoms()[0]
         if (atom.name != "    "):

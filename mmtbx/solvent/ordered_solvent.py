@@ -456,7 +456,7 @@ class manager(object):
     for rcc_res in rscc_and_map_result:
       try:
         i_seqs = [rcc_res.i_seq]
-      except:
+      except Exception:
         i_seqs = rcc_res.residue.selection
       for i_seq in i_seqs:
         assert selection[i_seq]

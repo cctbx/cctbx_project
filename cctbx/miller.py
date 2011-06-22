@@ -1357,7 +1357,7 @@ def raw_array_summary(array):
   if (array is None): return str(None)
   try:
     return array.__class__.__name__ + ", size=%d" % (len(array),)
-  except:
+  except Exception:
     return "Unknown"
 
 class array(set):
@@ -3212,13 +3212,13 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     for i in xrange( max(len(h),max(len(k),len(l))) ):
       blanc = " "*21
       try: ast = "%7.3f %4d %8.3f"%h[i]
-      except: ast = blanc
+      except Exception: ast = blanc
       try: bst = "%7.3f %4d %8.3f"%k[i]
-      except:
+      except Exception:
         if(len(ast.strip())==0): bst = blanc
         else: bst = blanc
       try: cst = "%7.3f %4d %8.3f"%l[i]
-      except: cst = ""
+      except Exception: cst = ""
       print ast,bst,cst
 
   def ellipsoidal_truncation_by_sigma(self, sigma_cutoff=3):

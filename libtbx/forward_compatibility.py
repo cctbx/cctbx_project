@@ -10,7 +10,7 @@ def stdlib_import(name):
   import imp
   if (imp.is_builtin(name)):
     try: return imp.init_builtin(name)
-    except: pass
+    except Exception: pass
   sys_path = sys.path[:]
   sys_path.reverse()
   for path in sys_path:

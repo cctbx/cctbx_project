@@ -153,7 +153,7 @@ class torsion_ncs(object):
               continue
           try:
             pair_hash[chain_i.id].append(chain_j.id)
-          except:
+          except Exception:
             pair_hash[chain_i.id] = []
             pair_hash[chain_i.id].append(chain_j.id)
           used_chains.append(chain_j.id)
@@ -216,7 +216,7 @@ class torsion_ncs(object):
         for key in cur_matches.keys():
           try:
             temp[key].append(cur_matches[key])
-          except:
+          except Exception:
             temp[key] = []
             temp[key].append(cur_matches[key])
       dp_match = []
@@ -670,7 +670,7 @@ class torsion_ncs(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
                   model_chis[key] = chis
-              except:
+              except Exception:
                 print >> log, \
                   '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
                       chain.id, residue_group.resid(),

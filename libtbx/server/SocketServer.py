@@ -212,7 +212,7 @@ class TCPServer:
         if self.verify_request(request, client_address):
             try:
                 self.process_request(request, client_address)
-            except:
+            except Exception:
                 self.handle_error(request, client_address)
 
     def get_request(self):
@@ -303,7 +303,7 @@ class ForkingMixIn:
             try:
                 self.finish_request(request, client_address)
                 os._exit(0)
-            except:
+            except Exception:
                 try:
                     self.handle_error(request,
                                       client_address)

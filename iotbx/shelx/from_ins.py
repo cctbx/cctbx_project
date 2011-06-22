@@ -157,15 +157,15 @@ class ins_record(object):
       self.rec_part = 1
       self.name         = atom_rec_items[0]
       try: self.name_id = int(atom_rec_items[1])
-      except: self.Error("ERROR: atom IDs must be integer (> 0) numbers.")
+      except Exception: self.Error("ERROR: atom IDs must be integer (> 0) numbers.")
       try: self.coordinates = [float(x) for x in (atom_rec_items[2],
                                                   atom_rec_items[3],
                                                   atom_rec_items[4])]
-      except: self.Error("ERROR: coordinates must be floating point numbers.")
+      except Exception: self.Error("ERROR: coordinates must be floating point numbers.")
       try: self.occupancy  = float(atom_rec_items[5])
-      except: self.Error("ERROR: occupancies must be floating point numbers.")
+      except Exception: self.Error("ERROR: occupancies must be floating point numbers.")
       try: self.tempFactor= [float(atom_rec_items[6])]
-      except: self.Error("ERROR: b-factors must be floating point numbers.")
+      except Exception: self.Error("ERROR: b-factors must be floating point numbers.")
     elif(self.atom_rec_ok5):
       self.rec_part = 2
       try: self.tempFactor = [float(x) for x in (atom_rec_items[0],
@@ -173,40 +173,40 @@ class ins_record(object):
                                                  atom_rec_items[4],
                                                  atom_rec_items[3],
                                                  atom_rec_items[2])]
-      except: self.Error("ERROR: b-factors must be floating point numbers.")
+      except Exception: self.Error("ERROR: b-factors must be floating point numbers.")
     if(self.atom_rec_ok9):
       self.rec_part = 1
       self.name           = atom_rec_items[0]
       try: self.name_id = int(atom_rec_items[1])
-      except: self.Error("ERROR: atom IDs must be integer (> 0) numbers.")
+      except Exception: self.Error("ERROR: atom IDs must be integer (> 0) numbers.")
       try: self.coordinates = [float(x) for x in (atom_rec_items[2],
                                                   atom_rec_items[3],
                                                   atom_rec_items[4])]
-      except: self.Error("ERROR: coordinates must be floating point numbers.")
+      except Exception: self.Error("ERROR: coordinates must be floating point numbers.")
       try: self.occupancy  = float(atom_rec_items[5])
-      except: self.Error("ERROR: occupancies must be floating point numbers.")
+      except Exception: self.Error("ERROR: occupancies must be floating point numbers.")
       try: self.tempFactor= [float(atom_rec_items[6]),float(atom_rec_items[7])]
-      except: self.Error("ERROR: b-factors must be floating point numbers.")
+      except Exception: self.Error("ERROR: b-factors must be floating point numbers.")
     elif(self.atom_rec_ok4):
       self.rec_part = 2
       try: self.tempFactor = [float(x) for x in (atom_rec_items[0],
                                                  atom_rec_items[3],
                                                  atom_rec_items[2],
                                                  atom_rec_items[1])]
-      except: self.Error("ERROR: b-factors must be floating point numbers.")
+      except Exception: self.Error("ERROR: b-factors must be floating point numbers.")
     elif(self.atom_rec_ok7):
       self.rec_part = 0
       self.name           = atom_rec_items[0]
       try: self.name_id = int(atom_rec_items[1])
-      except: self.Error("ERROR: atom IDs must be integer (> 0) numbers.")
+      except Exception: self.Error("ERROR: atom IDs must be integer (> 0) numbers.")
       try: self.coordinates = [float(x) for x in (atom_rec_items[2],
                                                   atom_rec_items[3],
                                                   atom_rec_items[4])]
-      except: self.Error("ERROR: coordinates must be floating point numbers.")
+      except Exception: self.Error("ERROR: coordinates must be floating point numbers.")
       try: self.occupancy  = float(atom_rec_items[5])
-      except: self.Error("ERROR: occupancies must be floating point numbers.")
+      except Exception: self.Error("ERROR: occupancies must be floating point numbers.")
       try: self.tempFactor = [float(atom_rec_items[6])]
-      except: self.Error("ERROR: b-factors must be floating point numbers.")
+      except Exception: self.Error("ERROR: b-factors must be floating point numbers.")
     self.if_10_added()
 
   def if_10_added(self):

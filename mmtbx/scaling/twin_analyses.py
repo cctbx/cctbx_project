@@ -172,7 +172,7 @@ class twin_laws(object):
         try:
           euclid_check.expand_smx( partition[0] )
         except KeyboardInterrupt: raise
-        except:
+        except Exception:
           is_pseudo_merohedral=True
           twin_type = str(" PM")
           self.pm+=1
@@ -263,7 +263,7 @@ PM: Pseudomerohedral twin law"""
       try:
         tmp = self.lattice_group.change_basis( self.change_of_basis_op_to_niggli_cell.inverse() )
         it_works = True
-      except: pass
+      except Exception: pass
 
       if it_works:
         print >> out
@@ -507,7 +507,7 @@ class detect_pseudo_translations(object):
     try:
       tmp_space_group = sgtbx.space_group_info( str(tmp_space_group), space_group_t_den=t_den)
     except KeyboardInterrupt: raise
-    except : pass
+    except Exception : pass
 
     for so in symops:
       sg_str = None
@@ -519,7 +519,7 @@ class detect_pseudo_translations(object):
         sg_str = str( sgtbx.space_group_info( group = new_tmp_sg,  space_group_t_den=t_den  ) )
         to_ref_set = sgtbx.space_group_info(
           group = new_tmp_sg,  space_group_t_den=t_den  ).change_of_basis_op_to_reference_setting()
-      except: pass
+      except Exception: pass
       if sg_str not in sgs:
         if sg_str is not None:
           sgs.append( sg_str )
@@ -1491,7 +1491,7 @@ class twin_law_dependend_twin_tests(object):
                                                   d_weight,
                                                   out)
         except KeyboardInterrupt: raise
-        except: pass
+        except Exception: pass
 
 
       if normalized_intensities.sigmas() is not None:

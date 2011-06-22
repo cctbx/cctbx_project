@@ -491,7 +491,7 @@ def exercise_fast_minimum_reduction():
     raise AssertionError, 'exception expected'
   try:
     u = uctbx.unit_cell((2,3,5,70,120,50))
-  except:
+  except Exception:
     pass
   else:
     try:
@@ -525,7 +525,7 @@ class exercise_is_degenerate(object):
           for gamma in xrange(10,180,10):
             try:
               u = uctbx.unit_cell((2,3,5,alpha,beta,gamma))
-            except:
+            except Exception:
               pass
             else:
               is_degenerate = u.is_degenerate(1.e-10, 1.e-5)

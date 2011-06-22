@@ -272,13 +272,13 @@ class make_list_of_target_xs_up_to_order(object):
     new_sg = None
     try:
       new_sg = sgtbx.space_group_info( group=self.basic_xs_n.space_group()).change_basis( cb_op )
-    except: pass
+    except Exception: pass
 
     if to_reference:
       tmp_xs = tmp_xs.change_basis( extra_cb_op )
       try:
         new_sg = new_sg.change_basis( extra_cb_op )
-      except: pass
+      except Exception: pass
 
     self.xs_list.append( tmp_xs )
     self.sg_list.append( new_sg )

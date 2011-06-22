@@ -315,7 +315,7 @@ def pperp_outliers(hierarchy, chain):
       if (not ra1.is_rna): continue
       try:
         key = residue.find_atom_by(name=" C1'").pdb_label_columns()[4:]
-      except:
+      except Exception:
         continue
       if key in outlier_key_list:
         if rv.pucker_perp_xyz[key][0] is not None:
@@ -393,7 +393,7 @@ def rama_outliers(chain, pdbID, ram_outliers):
           cur_xyz = CA_xyz_dict[residue_group.resseq_as_int()]
           mid1 = midpoint(p1=prev_xyz, p2=cur_xyz)
           mid2 = midpoint(p1=cur_xyz, p2=next_xyz)
-        except:
+        except Exception:
           continue
         ram_out += "{%s CA}P %.3f %.3f %.3f\n" % (
                      prev_key,
@@ -547,14 +547,14 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
               if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
                 try:
                   ca_trace += kin_vec(prev_CA_key, prev_CA_xyz, key, atom.xyz)
-                except:
+                except Exception:
                   pass
           if atom.name == ' N  ':
             if prev_C_key != None and prev_C_xyz != None:
               if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
                 try:
                   mc_veclist += kin_vec(prev_C_key, prev_C_xyz, key, atom.xyz)
-                except:
+                except Exception:
                   pass
         elif(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
           if atom.name == " O3'":
@@ -565,7 +565,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
               if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
                 try:
                   mc_veclist += kin_vec(prev_O3_key, prev_O3_xyz, key, atom.xyz)
-                except:
+                except Exception:
                   pass
             p_hash_key[residue_group.resseq_as_int()] = key
             p_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
@@ -591,21 +591,21 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                 c4_hash_xyz[residue_group.resseq_as_int()-1],
                                 p_hash_key[residue_group.resseq_as_int()],
                                 p_hash_xyz[residue_group.resseq_as_int()])
-        except:
+        except Exception:
           pass
         try:
           virtual_bb += kin_vec(p_hash_key[residue_group.resseq_as_int()],
                                 p_hash_xyz[residue_group.resseq_as_int()],
                                 c4_hash_key[residue_group.resseq_as_int()],
                                 c4_hash_xyz[residue_group.resseq_as_int()])
-        except:
+        except Exception:
           pass
         try:
           virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()],
                                 c4_hash_xyz[residue_group.resseq_as_int()],
                                 c1_hash_key[residue_group.resseq_as_int()],
                                 c1_hash_xyz[residue_group.resseq_as_int()])
-        except:
+        except Exception:
           pass
 
       prev_CA_xyz = cur_CA_xyz
@@ -623,7 +623,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
       for atom in atom_group.atoms():
         try:
           cur_bonds = bond_hash[atom.i_seq]
-        except:
+        except Exception:
           continue
         for bond in cur_bonds:
           atom_1 = i_seq_name_hash[atom.i_seq][0:4].strip()
@@ -637,7 +637,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                    het_hash[atom_1][1],
                                    het_hash[atom_2][0],
                                    het_hash[atom_2][1])
-                except:
+                except Exception:
                   pass
             else:
               try:
@@ -645,7 +645,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                 het_hash[atom_1][1],
                                 het_hash[atom_2][0],
                                 het_hash[atom_2][1])
-              except:
+              except Exception:
                 pass
           elif common_residue_names_get_class(atom_group.resname) == "common_amino_acid" or \
                common_residue_names_get_class(atom_group.resname) == "common_rna_dna":
@@ -660,7 +660,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                          xyz_hash[atom_1],
                                          key_hash[atom_2],
                                          xyz_hash[atom_2])
-              except:
+              except Exception:
                 pass
             elif atom_1.startswith('H') or atom_2.startswith('H'):
               if show_hydrogen:
@@ -670,7 +670,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                             xyz_hash[atom_1],
                                             key_hash[atom_2],
                                             xyz_hash[atom_2])
-                  except:
+                  except Exception:
                     pass
                 else:
                   try:
@@ -678,7 +678,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                             xyz_hash[atom_1],
                                             key_hash[atom_2],
                                             xyz_hash[atom_2])
-                  except:
+                  except Exception:
                     pass
             else:
               try:
@@ -686,7 +686,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                       xyz_hash[atom_1],
                                       key_hash[atom_2],
                                       xyz_hash[atom_2])
-              except:
+              except Exception:
                 pass
   #clean up empty lists:
   if len(mc_veclist.splitlines()) > 1:
@@ -761,7 +761,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   for bp in bond_proxies.simple:
     try:
       quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
-    except:
+    except Exception:
       quick_bond_hash[bp.i_seqs[0]] = []
       quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
   kin_out = get_default_header()
@@ -851,7 +851,7 @@ def run(args):
     for cif in cif_file:
       try:
         cif_object = monomer_library.server.read_cif(file_name=cif)
-      except:
+      except Exception:
         raise Sorry("Unknown file format: %s" % show_string(cif))
     if cif_object != None:
       for srv in [mon_lib_srv, ener_lib]:

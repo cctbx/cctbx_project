@@ -427,14 +427,14 @@ class histogram_data (object) :
 def _atof (fstring) :
   try :
     val = string.atof(fstring)
-  except :
+  except Exception :
     val = None
   return val
 
 def _atoi (istring) :
   try :
     val = string.atoi(istring)
-  except :
+  except Exception :
     val = None
   return val
 

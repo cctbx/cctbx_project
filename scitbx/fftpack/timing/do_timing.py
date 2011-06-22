@@ -7,7 +7,7 @@ def run():
   for arg in sys.argv[1:]:
     try:
       factor = int(arg)
-    except:
+    except Exception:
       cmd = arg
   for fft_type in ("cc", "rc"):
     for N, iter in (

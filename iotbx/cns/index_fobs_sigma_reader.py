@@ -13,11 +13,11 @@ class index_fobs_sigma_line(object):
     if (flds[6].lower() != "sigma"): return
     self.names = [flds[4], flds[6]]
     try: self.index = tuple([int(i) for i in flds[1:4]])
-    except: return
+    except Exception: return
     try: self.fobs = float(flds[5])
-    except: return
+    except Exception: return
     try: self.sigma = float(flds[7])
-    except: return
+    except Exception: return
     self.is_complete = True
 
 class reader(object):

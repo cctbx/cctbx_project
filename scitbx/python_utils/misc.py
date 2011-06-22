@@ -26,7 +26,7 @@ class sorted_store(object):
 
 def get_caller_name(n_back=2):
   try: raise Exception
-  except:
+  except Exception:
     t = sys.exc_info()[2]
     f = t.tb_frame
     for i in xrange(n_back):

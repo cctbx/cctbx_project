@@ -262,7 +262,7 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
         temp="Too few Bragg spots in image %d to construct resolution profile"%(int(frame))
         try:
           temp=temp.replace('spots','spots (%d)'%stats['resolution_detail'])
-        except:pass
+        except Exception:pass
         self.setError(temp)
       elif stats['N_spots_unimodal'] < self.NspotMin:
         self.setError(
@@ -673,7 +673,7 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
           if float(pd['pixel_size'])*sep_input_spots[idx].majoraxis() * \
              overlapping_spot_criterion > neighbors[idx]:
             overlapping_count+=1
-        except:
+        except Exception:
           pass
       percent_overlap = 100*overlapping_count/len(sep_input_spots)
       #print "overlap %2.0f%% vs. cutoff %2.0f%%"%(percent_overlap,procedure_preferences.percent_overlap_forcing_detail)
@@ -756,7 +756,7 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
 
             inlier_idx_raw.append(sep_input_indices[idx])
             inlier_neigh.append(neighbors[idx])
-          except:pass
+          except Exception:pass
 
         if VERBOSE:
           print len(compact_idx)-len(inlier_idx_raw),"close spots rejected"
@@ -773,7 +773,7 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
                overlapping_spot_criterion<=neighbors[idx]:
                inlier_idx_raw.append(sep_input_indices[idx])
                inlier_neigh.append(neighbors[idx])
-          except:
+          except Exception:
             #print "REJECT spot on exception"
             pass #sometimes throw an error when majoraxis is requested (edge spots)
 
@@ -788,7 +788,7 @@ distl_minimum_number_spots_for_indexing = %%d"""%(self.NspotMin)
                  #print "Very few Bragg spots; forced to accept spot with neighbor distance",neighbors[idx]/(float(pd['pixel_size'])*sep_input_spots[idx].majoraxis())
                  inlier_idx_raw.append(sep_input_indices[idx])
                  inlier_neigh.append(neighbors[idx])
-            except:
+            except Exception:
               print "REJECT spot on exception"
               pass #sometimes throw an error when majoraxis is requested (edge spots)
 

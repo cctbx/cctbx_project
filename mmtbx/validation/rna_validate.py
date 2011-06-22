@@ -186,7 +186,7 @@ class rna_validate(object):
         key = i_seq_name_hash[dp.i_seqs[1]][5:]
         try:
           bb_dihedrals[key][name]=restraint.angle_model
-        except:
+        except Exception:
           bb_dihedrals[key] = {}
           bb_dihedrals[key][name]=restraint.angle_model
     for key in bb_dihedrals.keys():
@@ -196,27 +196,27 @@ class rna_validate(object):
       i_code = key[9:]
       try:
         alpha = "%.3f" % bb_dihedrals[key]['alpha']
-      except:
+      except Exception:
         alpha = '__?__'
       try:
         beta = "%.3f" % bb_dihedrals[key]['beta']
-      except:
+      except Exception:
         beta = '__?__'
       try:
         gamma = "%.3f" % bb_dihedrals[key]['gamma']
-      except:
+      except Exception:
         gamma = '__?__'
       try:
         delta = "%.3f" % bb_dihedrals[key]['delta']
-      except:
+      except Exception:
         delta = '__?__'
       try:
         epsilon = "%.3f" % bb_dihedrals[key]['epsilon']
-      except:
+      except Exception:
         epsilon = '__?__'
       try:
         zeta = "%.3f" % bb_dihedrals[key]['zeta']
-      except:
+      except Exception:
         zeta = '__?__'
       eval = "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
              % (" ",
@@ -266,7 +266,7 @@ class rna_validate(object):
       if abs(num_sigmas) >= 4:
         try:
           bond_hash[residue].append((atom1,atom2,num_sigmas))
-        except:
+        except Exception:
           bond_hash[residue] = []
           bond_hash[residue].append((atom1,atom2,num_sigmas))
     for proxy in geometry.angle_proxies:
@@ -288,7 +288,7 @@ class rna_validate(object):
       if abs(num_sigmas) >= 4:
         try:
           angle_hash[residue].append((atom1,atom2,atom3,num_sigmas))
-        except:
+        except Exception:
           angle_hash[residue] = []
           angle_hash[residue].append((atom1,atom2,atom3,num_sigmas))
     for key in bond_hash.keys():
@@ -459,7 +459,7 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
       sigma = (1/bond.weight)**(.5)
       try:
         self.bond_dict[key].append((bond.distance_ideal, sigma))
-      except:
+      except Exception:
         self.bond_dict[key] = []
         self.bond_dict[key].append((bond.distance_ideal, sigma))
     for angle in self.geometry.angle_proxies:
@@ -474,7 +474,7 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
       sigma = (1/angle.weight)**(.5)
       try:
         self.angle_dict[key].append((angle.angle_ideal, sigma))
-      except:
+      except Exception:
         self.angle_dict[key] = []
         self.angle_dict[key].append((angle.angle_ideal, sigma))
 

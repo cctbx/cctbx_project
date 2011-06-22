@@ -1466,7 +1466,7 @@ class add_dihedral_proxies(object):
               alt_value_angle = None
             else:
               alt_value_angle = map(float,tor.alt_value_angle.split(","))
-          except:
+          except Exception:
             alt_value_angle = None
           proxy = geometry_restraints.dihedral_proxy(
             i_seqs=i_seqs,
@@ -3956,7 +3956,7 @@ def run(
       try:
         cif_object = server.read_cif(file_name=arg)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         raise Sorry("Unknown file format: %s" % show_string(arg))
       else:
         print >> log, "Processing CIF file: %s" % show_string(arg)

@@ -411,7 +411,7 @@ __all__ = ["Popen", "PIPE", "STDOUT", "call", "check_call", "CalledProcessError"
 
 try:
     MAXFD = os.sysconf("SC_OPEN_MAX")
-except:
+except Exception:
     MAXFD = 256
 
 # True/False does not exist on 2.2.0
@@ -978,7 +978,7 @@ class Popen(object):
                     continue
                 try:
                     os.close(i)
-                except:
+                except Exception:
                     pass
 
 
@@ -1013,7 +1013,7 @@ class Popen(object):
             gc.disable()
             try:
                 self.pid = os.fork()
-            except:
+            except Exception:
                 if gc_was_enabled:
                     gc.enable()
                 raise
@@ -1062,7 +1062,7 @@ class Popen(object):
                     else:
                         os.execvpe(executable, args, env)
 
-                except:
+                except Exception:
                     exc_type, exc_value, tb = sys.exc_info()
                     # Save the traceback and attach it to the exception object
                     exc_lines = traceback.format_exception(exc_type,

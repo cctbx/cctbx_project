@@ -155,7 +155,7 @@ def run(gaussian_fit_pickle_file_names):
   for wk in xray_scattering.wk1995_iterator():
     try:
       fit_group = fits.all[wk.label()]
-    except:
+    except Exception:
       missing.append(wk.label())
     else:
       present.append(wk.label())

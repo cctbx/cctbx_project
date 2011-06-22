@@ -64,7 +64,7 @@ def run(args):
         try:
           command_line_params = iotbx.phil.parse(file_name=arg)
         except KeyboardInterrupt: raise
-        except : pass
+        except Exception : pass
         if command_line_params is not None:
             phil_objects.append(command_line_params)
             arg_is_processed = True
@@ -83,7 +83,7 @@ def run(args):
             phil_objects.append(command_line_params)
             arg_is_processed = True
         except KeyboardInterrupt: raise
-        except : pass
+        except Exception : pass
 
       if not arg_is_processed:
         print >> log, "##----------------------------------------------##"

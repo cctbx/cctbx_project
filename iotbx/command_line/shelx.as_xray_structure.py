@@ -7,7 +7,7 @@ for f in sys.argv[1:]:
     xs = xray.structure.from_shelx(filename=f, strictly_shelxl=False)
   except KeyboardInterrupt:
     raise
-  except:
+  except Exception:
     print "%s is not a .ins or a .res file" % f
     continue
   r, _ = os.path.splitext(f)

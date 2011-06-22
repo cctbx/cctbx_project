@@ -71,7 +71,7 @@ if __name__=="__main__":
     force_binning = bool(force_binning)
     port = int(port)
     convention = int(convention)
-  except:
+  except Exception:
     print """
 Usage:
 libtbx.python pilatus_client.py <filepath> <force_binning> <convention> <host> <port>

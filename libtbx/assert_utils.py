@@ -3,13 +3,13 @@
 def is_numeric(x):
   try: x+1.
   except KeyboardInterrupt: raise
-  except: return False
+  except Exception: return False
   else: return True
 
 def is_string(s):
   try: s+""
   except KeyboardInterrupt: raise
-  except: return False
+  except Exception: return False
   else: return True
 
 class shall_raise(object):
@@ -21,7 +21,7 @@ class shall_raise(object):
   def __call__(self, *args, **kwds):
     try: self.func(*args, **kwds)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       import sys
       return sys.exc_info()[0] in self.exceptions
     else: return False

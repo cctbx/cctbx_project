@@ -18,7 +18,7 @@ class MARIPImage(DetectorImageBase):
     try:
       from cbflib_adaptbx import Mar345Adaptor # optional package
       self.adaptor = Mar345Adaptor(filename)
-    except:
+    except Exception:
       self.adaptor = NullAdaptor()
     self.vendortype = "MARIP"
 

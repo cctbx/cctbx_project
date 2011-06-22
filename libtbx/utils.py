@@ -85,10 +85,10 @@ def number_from_string(string):
       'Error interpreting "%s" as a numeric expression.' % string)
   try: return int(string)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   try: return eval(string, math.__dict__, {})
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     raise ValueError(
       'Error interpreting "%s" as a numeric expression: %s' % (
         string, format_exception()))
@@ -198,7 +198,7 @@ def tupleize(x):
   try:
     return tuple(x)
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     return (x,)
 
 def plural_s(n, suffix="s"):
@@ -764,9 +764,9 @@ class input_with_prompt(object):
 
   def __init__(self, prompt, tracebacklimit=0):
     try: import readline
-    except: pass
+    except Exception: pass
     try: self.previous_tracebacklimit = sys.tracebacklimit
-    except: self.previous_tracebacklimit = None
+    except Exception: self.previous_tracebacklimit = None
     if (tracebacklimit is not None):
       sys.tracebacklimit = tracebacklimit
     self.input = raw_input(prompt)

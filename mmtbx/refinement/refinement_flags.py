@@ -88,7 +88,7 @@ class manager(object):
     selections = self._deep_copy(selections)
     result = True
     try: lx = len(selections)
-    except: lx = selections.size()
+    except Exception: lx = selections.size()
     if(lx == 0): return result
     if(self.is_bool(selections)):
       if(selections.count(True) == 0): result = False
@@ -200,7 +200,7 @@ class manager(object):
 
   def _select(self, x, selection):
     try: lx = len(x)
-    except: lx = x.size()
+    except Exception: lx = x.size()
     if(lx == 0): return x
     if(self.is_bool(x)):
       x = x.select(selection)

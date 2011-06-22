@@ -356,7 +356,7 @@ class ncs:
     try:
       start=string.atoi(spl[1])
       end=string.atoi(spl[2])
-    except:
+    except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return [start,end]
 
@@ -367,7 +367,7 @@ class ncs:
     char=None
     try:
       char=spl[1]
-    except:
+    except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return char
 
@@ -378,7 +378,7 @@ class ncs:
     cc=None
     try:
       cc=string.atof(spl[1])
-    except:
+    except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return cc
 
@@ -390,7 +390,7 @@ class ncs:
     try:
       for item in spl[1:4]:
         set.append(string.atof(item))
-    except:
+    except Exception:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
     return set
 

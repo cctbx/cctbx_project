@@ -59,14 +59,14 @@ def get_smiles(code):
     try:
       if item.program.strip()=="CACTVS" and item.type.strip()=="SMILES_CANONICAL":
         return item.descriptor
-    except: pass
+    except Exception: pass
   for item in desc:
     try:
       if item.program=="CACTVS" and item.type=="SMILES":
         return item.descriptor
-    except: pass
+    except Exception: pass
   try: return item.descriptor
-  except: return ""
+  except Exception: return ""
 
 def get_type(code):
   cif = get_cif_dictionary(code)

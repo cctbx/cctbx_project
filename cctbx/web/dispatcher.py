@@ -44,7 +44,7 @@ def run():
   status.in_table = False
   try:
     target.run(server_info, inp, status)
-  except:
+  except Exception:
     if (status.in_table): print "</table><pre>"
     ei = sys.exc_info()
     print traceback.format_exception_only(ei[0], ei[1])[0]

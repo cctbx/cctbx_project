@@ -387,7 +387,7 @@ def prepocess_line(line):
       try:
         val = float(l_)
         new_elements.append(l_)
-      except:
+      except Exception:
         tmp = ""
         for i, c in enumerate(l_):
           if(i == 0): tmp+=c
@@ -462,12 +462,12 @@ class extract_data(object):
                   if(sigma_.count("*")>0 or sigma_.count("?")>0 or sigma_=="."):
                     sigma_ = 1.0
                   else: sigma_ = float(sigma_)
-              except:
+              except Exception:
                 sigma_ = 1.0
               try:
                 if(key_counter.i_flag is not None):
                   flag_ = line[key_counter.i_flag]
-              except:
+              except Exception:
                 self.reset(message ="Cannot extract column data,#1.",line=line)
                 break
               assert result_hkld.count(None) == 0
@@ -527,7 +527,7 @@ class extract_data(object):
         d = float(line[key_counter.i_fobs])
       else:
         d = float(line[key_counter.i_iobs])
-    except:
+    except Exception:
       return h, k, l, d
     return h, k, l, d
 
@@ -538,8 +538,8 @@ class extract_data(object):
       if(len(next_line) == 0):
         try:
           next_line = file_lines[i_line+2]
-        except: pass
-    except: pass
+        except Exception: pass
+    except Exception: pass
     if(next_line is not None):
       next_line = next_line.strip()
       next_line = next_line.split()

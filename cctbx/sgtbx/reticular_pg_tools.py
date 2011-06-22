@@ -293,7 +293,7 @@ def tst_groups():
     extended_group=None
     try:
       extended_group = sgtbx.space_group_info( "P 2 2 2 (%s)"%cb_op ).group()
-    except: pass
+    except Exception: pass
     rbg = construct_rational_point_group( base_group, rat_cb_op )
     reg = None
     if extended_group is not None:

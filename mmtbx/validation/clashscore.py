@@ -161,13 +161,13 @@ class clashscore(object):
             try:
               if (float(gap) < clash_hash[key]):
                 clash_hash[key] = float(gap)
-            except:
+            except Exception:
               clash_hash[key] = float(gap)
         elif (type == "hb"):
           try:
             if (float(gap) < hbond_hash[key]):
               hbond_hash[key] = float(gap)
-          except:
+          except Exception:
             hbond_hash[key] = float(gap)
       clashes = len(clash_hash)
 

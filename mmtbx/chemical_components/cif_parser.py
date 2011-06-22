@@ -225,7 +225,7 @@ def run(filename):
         sk = key.split(".")[1].strip()
         if item not in ["?", "."]:
           try: item = cif_keyword_dictionary[cif_key][sk](item)
-          except:
+          except Exception:
             print key
             print sk
             print cif_key

@@ -41,7 +41,7 @@ class PilatusImage(DetectorImageBase):
              ).uncompress_data(self.size1,self.size2)
       self.bin_safe_set_data( data )
 
-    except:
+    except Exception:
       raise ImageException("unable to read miniCBF data; contact authors")
 
   def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19

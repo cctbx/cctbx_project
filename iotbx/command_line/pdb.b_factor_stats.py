@@ -12,7 +12,7 @@ def run(args):
     try:
       pdb_inp = iotbx.pdb.input(file_name=file_name)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       libtbx.utils.format_exception()
     isotropic_b_factors = flex.double()
     all_eigenvalues = flex.double()

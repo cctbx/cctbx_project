@@ -31,7 +31,7 @@ def interpret_form_data(form):
 def interpret_generic_coordinate_line(line, skip_columns):
   flds = line.replace(",", " ").split()
   try: site = [float(x) for x in flds[skip_columns: skip_columns+3]]
-  except: raise RuntimeError, "FormatError: " + line
+  except Exception: raise RuntimeError, "FormatError: " + line
   if (len(site) != 3):
     raise RuntimeError, "FormatError: " + line
   return " ".join(flds[:skip_columns]), site
@@ -98,7 +98,7 @@ class web_to_models(object):
           import iotbx.pdb
           pdb_inp = iotbx.pdb.input(source_info=None, lines=coordinates)
         except KeyboardInterrupt: raise
-        except:
+        except Exception:
           pass
         else:
           self.pdb_model = pdb_file_to_emma_model(
@@ -110,7 +110,7 @@ class web_to_models(object):
           from iotbx.cns import sdb_reader
           self.sdb_files = sdb_reader.multi_sdb_parser(coordinates)
         except KeyboardInterrupt: raise
-        except:
+        except Exception:
           pass
         else:
           self.coordinate_format = "sdb"

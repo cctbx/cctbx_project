@@ -224,7 +224,7 @@ def run():
 if (__name__ == "__main__"):
   try:
     run()
-  except :
+  except Exception :
     log = cout.getvalue()
     if len(log) != 0:
       print "<<<<<<<< Start Log:"

@@ -1660,7 +1660,7 @@ class process_command_line_args(object):
           try:
             cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg_file)
           except KeyboardInterrupt: raise
-          except: pass
+          except Exception: pass
           else:
             if(len(cif_object) > 0):
               self.cif_objects.append((arg_file, cif_object))
@@ -2086,7 +2086,7 @@ class fmodel_from_xray_structure(object):
     if(f_obs is None):
       hr = None
       try: hr = params.high_resolution
-      except: self.Sorry_high_resolution_is_not_defined()
+      except Exception: self.Sorry_high_resolution_is_not_defined()
       if(params.scattering_table == "neutron"):
         xray_structure.switch_to_neutron_scattering_dictionary()
       else:
@@ -2108,14 +2108,14 @@ class fmodel_from_xray_structure(object):
          ).f_calc()
       lr = None
       try: lr = params.low_resolution
-      except: RuntimeError("Parameter scope does not have 'low_resolution'.")
+      except Exception: RuntimeError("Parameter scope does not have 'low_resolution'.")
       if(params.low_resolution is not None):
         f_obs = f_obs.resolution_filter(d_max = lr)
     else:
       try: hr = params.high_resolution
-      except: hr = None
+      except Exception: hr = None
       try: lr = params.low_resolution
-      except: lr = None
+      except Exception: lr = None
       f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
       if(params.scattering_table == "neutron"):
         xray_structure.switch_to_neutron_scattering_dictionary()
@@ -2151,7 +2151,7 @@ class fmodel_from_xray_structure(object):
             data = data + ri*fr
             f_model = f_model.array(data=data)
     except AttributeError: pass
-    except: raise RuntimeError
+    except Exception: raise RuntimeError
     self.f_model = f_model
     self.params = params
     self.fmodel = fmodel

@@ -28,7 +28,7 @@ class scatterer(object):
     try:
       self.u_iso = float(u)
       self.anisotropic_flag = False
-    except:
+    except Exception:
       assert len(u) == 6
       self.anisotropic_flag = True
       self.u_star = tuple([float(uij) for uij in u])

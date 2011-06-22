@@ -212,7 +212,7 @@ class pprocess:
       )"""
     try:
       assert len(self.miller_indices) > 0
-    except:
+    except Exception:
       raise Sorry("There must be at least one Miller index")
 
     self.use_debye_waller = (
@@ -220,26 +220,26 @@ class pprocess:
 
     try:
       assert self.scatterers.extract_use_u_aniso().count(True)==0
-    except:
+    except Exception:
       raise Sorry("As presently implemented parallel processor direct summation doesn't support anisotropic displacement factors")
 
     try:
       assert [S.fp for S in self.scatterers].count(0.0)==len(self.scatterers)
       assert [S.fdp for S in self.scatterers].count(0.0)==len(self.scatterers)
-    except:
+    except Exception:
       raise Sorry("As presently implemented parallel processor direct summation doesn't support anomalous scatterers")
 
     # Assess limits based on CUDA compute capability: require double precision
     try:
       cc = cuda.Device(0).compute_capability() ; assert cc >= (1,3)
-    except:
+    except Exception:
       raise Sorry("Implementation assumes CUDA compute capability >= 1.3; found %d.%d"%cc)
 
     # float precision failed on Tesla C1060 test with compute capability 1.3. Alignment problem copying from global to __shared__?
     try:
       if algorithm.float_t=="float":
         assert cc >= (2,0)
-    except:
+    except Exception:
       raise Sorry("Float32 kernel tests correctly only with CUDA compute capability >= 2.0; found %d.%d"%cc)
 
     # Assess limits based on global memory size of parallel unit
@@ -517,7 +517,7 @@ class direct_summation_cuda_platform(direct_summation_simple):
     try:
       import numpy
       self.numpy = numpy
-    except:
+    except Exception:
       raise Sorry("""Module numpy must be installed for parallel processor direct summation.""")
 
     assert self.float_t in ["double","float"]
@@ -525,5 +525,5 @@ class direct_summation_cuda_platform(direct_summation_simple):
 
     try:
       import pycuda.autoinit # import dependency
-    except:
+    except Exception:
       raise Sorry("""Module pycuda must be installed for parallel processor direct summation.""")

@@ -348,7 +348,7 @@ class refinement_monitor(object):
     try:
       self.bond_final  = self.bs_ave[len(self.bs_ave)-1]
       self.angle_final = self.as_ave[len(self.as_ave)-1]
-    except:
+    except Exception:
       if(len(self.bs_ave)>0):
         self.bond_final  = self.bs_ave[0]
         self.angle_final = self.as_ave[0]

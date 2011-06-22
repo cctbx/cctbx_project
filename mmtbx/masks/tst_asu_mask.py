@@ -105,7 +105,7 @@ def get_radii(structure):
     try:
       atom_radii.append(
            van_der_waals_radii.vdw.table[scatterer.element_symbol()])
-    except:
+    except Exception:
       unknown.append(scatterer.element_symbol())
   return atom_radii
 
@@ -408,7 +408,7 @@ def random_tests(groups, opts):
             general_positions_only = False, #True,
             elements = atoms
             )
-      except:
+      except Exception:
         print "Failed to generate random structure:  atom_volume= ", \
           opts.atom_volume, " group= ", group,  "\n   atoms= ", atoms
       if not struc is None:
@@ -637,7 +637,7 @@ if (__name__ == "__main__"):
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   try:
     run()
-  except :
+  except Exception :
     log = cout.getvalue()
     if len(log) != 0:
       print "<<<<<<<< Start Log:"

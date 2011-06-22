@@ -137,7 +137,7 @@ def convert_to_numeric(values):
     flag = True
     try:
       tmp = float(kv)
-    except: flag = False
+    except Exception: flag = False
     is_digit_selection.append(flag)
   if(is_digit_selection.count(False) > 0):
     raise RuntimeError("Non-numerical values.")

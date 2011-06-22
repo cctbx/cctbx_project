@@ -715,7 +715,7 @@ class manager(object):
       # XXX Tom
       try:
         new_refinement_flags = self.refinement_flags.select(selection)
-      except:
+      except Exception:
         new_refinement_flags = self.refinement_flags
 #      new_refinement_flags = self.refinement_flags.select(selection)
     new_restraints_manager = None
@@ -876,7 +876,7 @@ class manager(object):
         adp_individual_iso     = sadp_iso,
         adp_individual_aniso   = sadp_aniso,
         s_occupancies          = occupancy_flags)#torsion_angles
-    except:
+    except Exception:
       pass
 
 #    if(self.refinement_flags.torsion_angles):

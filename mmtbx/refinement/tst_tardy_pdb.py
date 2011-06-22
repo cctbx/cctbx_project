@@ -441,7 +441,7 @@ minimization_max_iterations = None
       else:
         try: phil_obj = iotbx.phil.parse(file_name=arg)
         except KeyboardInterrupt: raise
-        except:
+        except Exception:
           other_files.append(arg)
         else:
           phil_objects.append(phil_obj)
@@ -449,7 +449,7 @@ minimization_max_iterations = None
     if (arg is not None):
       try: command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise
-      except: raise Sorry("Command-line argument not recognized: %s" % arg)
+      except Exception: raise Sorry("Command-line argument not recognized: %s" % arg)
       else: phil_objects.append(command_line_params)
   params = master_phil.fetch(sources=phil_objects).extract()
   master_phil.format(params).show()

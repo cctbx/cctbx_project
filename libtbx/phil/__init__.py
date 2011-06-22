@@ -203,10 +203,10 @@ def number_from_value_string(value_string, words, path):
   if (value_string_lower_strip == "auto"): return Auto
   try: return int(value_string)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   try: return eval(value_string, math.__dict__, {})
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     raise RuntimeError(
       'Error interpreting %s="%s" as a numeric expression: %s%s' % (
         path, value_string, format_exception(), words[0].where_str()))
@@ -725,7 +725,7 @@ def definition_converters_from_words(
       converters_instance = eval(
         call_expression+parens, math.__dict__, {flds[0]: converters})
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       raise RuntimeError(
         'Error constructing definition type "%s": %s%s' % (
         call_expression, format_exception(), words[0].where_str()))
@@ -739,7 +739,7 @@ def definition_converters_from_words(
         args, keyword_args = eval(
           extractor, math.__dict__, {"__extract_args__": extract_args})
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         raise RuntimeError(
           'Error evaluating definition type "%s": %s%s' % (
           call_expression, format_exception(), words[0].where_str()))
@@ -760,7 +760,7 @@ def definition_converters_from_words(
     try:
       converters_instance = imported.object(**keyword_args)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       raise RuntimeError(
         'Error constructing definition type "%s": %s%s' % (
         call_expression, format_exception(), words[0].where_str()))
@@ -1184,7 +1184,7 @@ def scope_extract_call_proxy(full_path, words, cache):
         args, keyword_args = eval(
           extractor, math.__dict__, {"__extract_args__": extract_args})
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         raise RuntimeError('scope "%s" .call=%s: %s%s' % (
           full_path, call_expression, format_exception(), where_str))
     imported = import_python_object(
@@ -1319,7 +1319,7 @@ class scope_extract(object):
     try:
       return call_proxy.callable(self, **effective_keyword_args)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       raise RuntimeError('scope "%s" .call=%s execution: %s%s' % (
         self.__phil_path__(), call_proxy.expression, format_exception(),
         call_proxy.where_str))

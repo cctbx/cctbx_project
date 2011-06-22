@@ -23,7 +23,7 @@ def exercise_symmetry():
   assert xs.space_group() == xs.space_group_info().group()
   assert xs.is_compatible_unit_cell()
   try: xs = crystal.symmetry((3,4,5), "P 4 2 2")
-  except: pass
+  except Exception: pass
   else: raise Exception_expected
   xs = crystal.symmetry(
     (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=False,

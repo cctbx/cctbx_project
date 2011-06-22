@@ -142,7 +142,7 @@ def expand_shelx_latt(sg, n_fld):
   try:
     n = int(n_fld)
     z = n_dict[abs(n)]
-  except:
+  except Exception:
     raise RuntimeError, "Format Error: LATT " + str(n_fld)
   print "Addition of SHELX LATT " + str(n) + ":"
   if (n > 0):

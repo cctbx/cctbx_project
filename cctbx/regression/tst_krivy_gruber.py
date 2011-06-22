@@ -178,7 +178,7 @@ def do_reduce(inp):
 def reduce(inp):
   try:
     return do_reduce(inp)
-  except:
+  except Exception:
     print "Problem parameters:", inp.parameters()
     raise
 
@@ -286,7 +286,7 @@ def exercise_grid(quick=False, verbose=0):
                               a_c,b_c,c*c))
               det_g = g.determinant()
               try: unit_cell = uctbx.unit_cell((a,b,c,alpha,beta,gamma))
-              except:
+              except Exception:
                 assert det_g <= 1.e-5
                 continue
               assert abs(det_g-unit_cell.volume()**2) < 1.e-5

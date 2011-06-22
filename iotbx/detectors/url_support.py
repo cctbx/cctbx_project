@@ -5,12 +5,12 @@ class potential_url_request:
   def is_url_request(self):
     #backward compatibility with Python 2.5
     try: from urlparse import parse_qs
-    except: from cgi import parse_qs
+    except Exception: from cgi import parse_qs
 
     from urlparse import urlparse
     try:
       self.parsed = urlparse(self.text)
-    except:
+    except Exception:
       return False
 
     if self.parsed.scheme in [None, ""]: return False

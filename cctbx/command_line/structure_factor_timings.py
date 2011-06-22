@@ -85,21 +85,21 @@ def timings(structure, d_min, fft_only=False,
 def read_structure(file_name):
   try: return easy_pickle.load(file_name)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   try:
     if file_name.endswith('.res') or file_name.endswith('.ins'):
       return xray.structure.from_shelx(filename=file_name)
     else:
       return iotbx.pdb.input(file_name=file_name).xray_structure_simple()
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   raise RuntimeError("Unknown file format: %s" % file_name)
 
 def run(args):
   "usage: cctbx.structure_factor_timings" \
   + " [--fft_only] coordinate_file [d-spacing ...]"
   try: i = args.index("--fft_only")
-  except: fft_only = False
+  except Exception: fft_only = False
   else:
     fft_only = True
     args = args[:]
@@ -110,7 +110,7 @@ def run(args):
   file_name = args[0]
   try:
     d_spacings = [float(arg) for arg in args[1:]]
-  except:
+  except Exception:
     print >> sys.stderr, run.__doc__
     return
   if (d_spacings == []):

@@ -93,7 +93,7 @@ def prepocess_line(line):
       try:
         val = float(l_)
         new_elements.append(l_)
-      except:
+      except Exception:
         tmp = ""
         for i, c in enumerate(l_):
           if(i == 0): tmp+=c
@@ -270,13 +270,13 @@ class extract_tls_parameters(object):
          if(rec.startswith("REMARK   3      L11:")):
             assert [L11, L22, L33, L12, L13, L23].count(None) == 6
             try: L11 = float(rec.split()[3])
-            except:
+            except Exception:
               try: L11 = float(rec[20:30])
               except ValueError:
                 self.format_err(msg="Cannot extract L.", rec=rec)
                 return []
             try: L22 = float(rec.split()[5])
-            except:
+            except Exception:
               try: L22 = float(rec[34:44])
               except ValueError:
                 self.format_err(msg="Cannot extract L.", rec=rec)
@@ -284,13 +284,13 @@ class extract_tls_parameters(object):
          if(rec.startswith("REMARK   3      L33:")):
             assert [L11, L22, L33, L12, L13, L23].count(None) == 4
             try: L33 = float(rec.split()[3])
-            except:
+            except Exception:
               try: L33 = float(rec[20:30])
               except ValueError:
                 self.format_err(msg="Cannot extract L.", rec=rec)
                 return []
             try: L12 = float(rec.split()[5])
-            except:
+            except Exception:
               try: L12 = float(rec[34:44])
               except ValueError:
                 self.format_err(msg="Cannot extract L.", rec=rec)
@@ -298,13 +298,13 @@ class extract_tls_parameters(object):
          if(rec.startswith("REMARK   3      L13:")):
             assert [L11, L22, L33, L12, L13, L23].count(None) == 2
             try: L13 = float(rec.split()[3])
-            except:
+            except Exception:
               try: L13 = float(rec[20:30])
               except ValueError:
                 self.format_err(msg="Cannot extract L.", rec=rec)
                 return []
             try: L23 = float(rec.split()[5])
-            except:
+            except Exception:
               try: L23 = float(rec[34:44])
               except ValueError:
                 self.format_err(msg="Cannot extract L.", rec=rec)
@@ -349,7 +349,7 @@ class extract_tls_parameters(object):
               self.format_err(msg="Cannot extract S.", rec=rec)
               return []
             try: S33 = float(rec.split()[7])
-            except:
+            except Exception:
               try:
                 if(rec.split()[7].count("NULL")):
                    S33 = - (S11 + S22)
@@ -397,7 +397,7 @@ class extract_tls_parameters(object):
          new_c = ""
          for i,c in enumerate(sel_str):
            try: cl = sel_str[i-1]
-           except: cl = c
+           except Exception: cl = c
            if(c=="-" and cl.isdigit()): c = ":"
            new_c += c
          sel_str = new_c
@@ -539,7 +539,7 @@ def format_name(program_names):
       if(name != first):
          new +="/"+name
          first = name
-  except: return program_names
+  except Exception: return program_names
   return new
 
 
@@ -588,7 +588,7 @@ def extract_f_model_core_constants(remark_3_records):
       if(l.count("REMARK   3   GRID STEP FACTOR   :")): grid_step_factor = float(ls[6])
       if(l.count("REMARK   3   R VALUE            (WORKING SET) :")): r_work = float(ls[7])
       if(l.count("REMARK   3   FREE R VALUE                     :")): r_free = float(ls[6])
-    except: pass
+    except Exception: pass
   if([b11,b22,b33,b12,b13,b23].count(None)==0): b_cart=[b11,b22,b33,b12,b13,b23]
   return group_args(
     k_sol            = k_sol,

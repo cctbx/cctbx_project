@@ -46,7 +46,7 @@ The return value for chiral space groups with unusual symbols is -1.
   for symbol_group in symbol_groups:
     try: i = symbol_group.index(symbol)
     except KeyboardInterrupt: raise
-    except: continue
+    except Exception: continue
     if (len(symbol_group) == 1): return 2
     if (i < 2): return 0
     return 1

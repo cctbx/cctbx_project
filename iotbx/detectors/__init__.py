@@ -76,7 +76,7 @@ def ImageFactory(filename):
         if itype==BrukerImage:
           assert I.distance > 0.0 #needed to disambiguate from RAXIS
         return I
-      except:
+      except Exception:
         pass
   A = url_support.potential_url_request(filename)
   if A.is_url_request():
@@ -85,7 +85,7 @@ def ImageFactory(filename):
         I = utype(filename)
         I.readHeader()
         return I
-      except:
+      except Exception:
         pass
     raise ImageException(filename+" does not work as a functioning image URL")
   raise ImageException(filename+" not recognized as any known detector image type")

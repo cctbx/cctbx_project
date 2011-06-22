@@ -111,9 +111,9 @@ class ThreeProteinResidues(list):
     for i, residue in enumerate(self):
       if i==0: continue
       try: ccn1 = get_c_ca_n(residue)
-      except: break
+      except Exception: break
       try: ccn2 = get_c_ca_n(self[i-1])
-      except: break
+      except Exception: break
       n = ccn1[2]
       c = ccn2[0]
       bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)

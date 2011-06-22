@@ -178,7 +178,7 @@ class metric_subgroups(base_subgroups):
       self.reference_subgroups = pickle.load(f)
       f.close()
 
-    except:
+    except Exception:
       self.reference_subgroups = None
 
 class MetricSubgroup(dict):
