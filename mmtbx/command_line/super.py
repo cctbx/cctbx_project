@@ -76,7 +76,7 @@ def run(args, command_name="mmtbx.super"):
     else:
       try: command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise
-      except: raise Sorry("Unknown file or keyword: %s" % arg)
+      except Exception: raise Sorry("Unknown file or keyword: %s" % arg)
       else: phil_objects.append(command_line_params)
 
   working_params = master_params.fetch(sources=phil_objects)

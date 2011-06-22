@@ -105,7 +105,7 @@ def create_all_subgroups( sg1,show_all=True, reverse=False ):
         new_sg = tmp_sg.change_basis( cb_op )
         okai=True
         print new_sg ," is a minimal supergroup of ", tmp_sgsg.change_basis(cb_op)
-      except: pass
+      except Exception: pass
       if not okai:
         print "%s (%s) is a minimal supergroup of %s     [*]"%(tmp_sg,cb_op, tmp_sgsg.change_basis(cb_op))
     print

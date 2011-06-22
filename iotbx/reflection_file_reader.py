@@ -34,7 +34,7 @@ def try_all_readers(file_name):
   if (detect_binary_file.from_initial_block(file_name=file_name)):
     try: content = unpickle_miller_arrays(file_name=file_name)
     except KeyboardInterrupt: raise
-    except: pass
+    except Exception: pass
     else: return ("cctbx.miller.array", content)
     return (None, None)
   try: content = cns_reflection_reader.cns_reflection_file(
@@ -51,30 +51,30 @@ def try_all_readers(file_name):
   else: return ("scalepack_merge", content)
   try: content = scalepack_no_merge.reader(file_name)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   else: return ("scalepack_no_merge_original_index", content)
   try: content = dtrek_reflnlist_reader.reflnlist(
     open(file_name))
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   else: return ("dtrek_reflnlist", content)
   try: content = shelx_hklf.reader(
     file_name=file_name)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   else: return ("shelx_hklf", content)
   try: content = cif_reader(file_path=file_name)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   else: return ("cif", content)
   try: content = xds_ascii_reader(
     open(file_name))
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   else: return ("xds_ascii", content)
   try: content = solve_fpfm_reader(file_name=file_name)
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   else: return ("solve_fpfm", content)
   return (None, None)
 
@@ -114,7 +114,7 @@ class any_reflection_file(object):
       try: self._file_content = shelx_hklf.reader(
         file_name=file_name)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         raise Sorry("Not a SHELX reflection file: %s\n"
           "  =%s can only be used for SHELX reflection files."
           % (file_name, self._observation_type))

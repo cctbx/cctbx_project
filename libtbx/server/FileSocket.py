@@ -19,7 +19,7 @@ def GetSocket(HOST=""):
       portnumber = (s.getsockname()[1])
       unbind=0
       return s
-    except:
+    except Exception:
       s.close()
       del s
 
@@ -61,7 +61,7 @@ class SocketConnection:
 
     try:
       dir = self._deconPath(dir,[])
-    except:
+    except Exception:
       dir = ' '
     self.dir=dir
 
@@ -73,7 +73,7 @@ class SocketConnection:
       return '\n '+'-'*10+' '+self.host+' ('+self.IP+') '+ \
              '\n '+'-'*10+' '+apply(os.path.join,tuple(self.dir))+ \
              '\n '+'-'*10+' Port '+str(self.port)+' PID '+str(self.pid)
-    except:
+    except Exception:
       return 'socket connection '+str(self.__dict__)
 
   def _deconPath(self, path, plist):

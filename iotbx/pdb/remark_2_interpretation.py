@@ -8,7 +8,7 @@ def get_resolution(st):
        result = float(ch[3])
        assert result < 100.0 and result > 0.01
      except KeyboardInterrupt: raise
-     except:
+     except Exception:
        pass
   return result
 

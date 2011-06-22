@@ -34,7 +34,7 @@ def interpret_coordinate_line(line, skip_columns):
   coordinates = [0,0,0]
   for i in xrange(3):
     try: coordinates[i] = float(flds[skip_columns + i])
-    except: raise FormatError, line
+    except Exception: raise FormatError, line
   return " ".join(flds[:skip_columns]), coordinates
 
 def read_scatterer(flds, default_b_iso=3.0):
@@ -44,7 +44,7 @@ def read_scatterer(flds, default_b_iso=3.0):
     scatterer.label = flds[0]
     try:
       float(flds[1])
-    except:
+    except Exception:
       offs = 2
       scatterer.scattering_type = eltbx.xray_scattering.get_standard_label(
         label=flds[1], exact=True)
@@ -65,7 +65,7 @@ def read_scatterer(flds, default_b_iso=3.0):
         scatterer.u_iso = adptbx.b_as_u(float(flds[offs + 4]))
       else:
         assert (len(flds) < offs + 5)
-  except:
+  except Exception:
     raise cgi_utils.FormatError, flds
   return scatterer
 

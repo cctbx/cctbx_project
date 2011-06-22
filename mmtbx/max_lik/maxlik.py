@@ -233,7 +233,7 @@ class alpha_beta_est_manager(object):
       for i in range(0,len(x),1):
         if(x[i] < 0.01):
           try: x[i] = x[i-1]
-          except: x[i] = x[i+1]
+          except Exception: x[i] = x[i+1]
 
     return x
 

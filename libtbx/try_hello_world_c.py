@@ -23,27 +23,27 @@ main(
   return 0;
 }
 """
-  except: return 1
+  except Exception: return 1
   if (not os.path.exists("libtbx_hello_world.c")):
     return 2
   if (os.path.exists("a.out")):
     try: os.remove("a.out")
-    except: return 3
+    except Exception: return 3
   if (os.path.exists("a.out")):
     return 4
   if (sys.platform in ["linux2", "darwin"]):
     try: os.system("gcc libtbx_hello_world.c")
-    except: return 5
+    except Exception: return 5
   else:
     return 6
   if (not os.path.exists("a.out")):
     return 7
   try: os.remove("a.out")
-  except: return 8
+  except Exception: return 8
   if (os.path.exists("a.out")):
     return 9
   try: os.remove("libtbx_hello_world.c")
-  except: return 10
+  except Exception: return 10
   if (os.path.exists("libtbx_hello_world.c")):
     return 11
   return 0

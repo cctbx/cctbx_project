@@ -44,13 +44,13 @@ def show_literature_fits(label, n_terms, null_fit, n_points, e_other=None):
       try:
         lib_gaussian = xray_scattering.wk1995(label, True).fetch()
         lib_source = "WK1995"
-      except:
+      except Exception:
         lib_gaussian = None
     elif (lib == xray_scattering.it1992):
       try:
         lib_gaussian = xray_scattering.it1992(label, True).fetch()
         lib_source = "IT1992"
-      except:
+      except Exception:
         lib_gaussian = None
     elif (lib.table.has_key(label)):
       lib_gaussian = lib.table[label]

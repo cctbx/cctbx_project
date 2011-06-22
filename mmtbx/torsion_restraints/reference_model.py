@@ -305,7 +305,7 @@ class reference_model(object):
     if params.auto_align == True:
       try:
         assert len(params.reference_group) == 0
-      except:
+      except Exception:
         raise Sorry("""
   Cannot use reference_group selections with automatic alignment.
   Please use alignment_group selections.  See documentation for details."
@@ -332,7 +332,7 @@ class reference_model(object):
           try:
             match_key = atom+residue_match_map[res_key]
             match_map[i_seq] = ref_iseq_hash[match_key]
-          except:
+          except Exception:
             continue
 
       else:
@@ -356,7 +356,7 @@ class reference_model(object):
             try:
               match_key = atom+residue_match_map[res_key]
               match_map[i_seq] = ref_iseq_hash[match_key]
-            except:
+            except Exception:
               continue
     else:
       if len(params.reference_group) == 0:
@@ -369,7 +369,7 @@ class reference_model(object):
           key = model_name_hash[i_seq]
           try:
             match_map[i_seq] = ref_iseq_hash[key]
-          except:
+          except Exception:
             #print >> self.log, "CANNOT match %s" % key
             continue
       #specified reference groups
@@ -454,7 +454,7 @@ class reference_model(object):
           try:
             assert ref_iseq_hash[key] in sel_atoms_ref
             match_map[i_seq] = ref_iseq_hash[key]
-          except:
+          except Exception:
             continue
     return match_map
 
@@ -674,7 +674,7 @@ class reference_model(object):
               c_beta = False
               print >> self.log, "skipping C-beta restraint for %s" % \
                 i_seq_name_hash[i_seq][4:14]
-          except:
+          except Exception:
               c_beta = False
       if c_beta:
         assert CAxyz is not None
@@ -756,7 +756,7 @@ class reference_model(object):
         key_work = key_work + self.i_seq_name_hash[i_seq]
         try:
           key = key+self.i_seq_name_hash_ref[match_map[i_seq]]
-        except:
+        except Exception:
           continue
       #print >> self.log, key, key_work
       try:
@@ -767,7 +767,7 @@ class reference_model(object):
            key_work[5:14] == key_work[35:44]:
           #print >> self.log, "match"
           residue_match_hash[key_work[5:14]] = key[5:14]
-      except:
+      except Exception:
         continue
       if self.params.secondary_structure_only and ss_selection != None:
           if match_map[dp.i_seqs[0]] in ss_selection and \
@@ -809,7 +809,7 @@ class reference_model(object):
       for i_seq in cp.i_seqs:
         try:
           key_check = self.i_seq_name_hash_ref[match_map[i_seq]]
-        except:
+        except Exception:
           continue
         if self.i_seq_name_hash_ref[match_map[i_seq]][0:4] == ' CA ':
           CAsite = i_seq
@@ -858,12 +858,12 @@ class reference_model(object):
             limit=limit,
             top_out=TOP_OUT_FLAG)
           self.reference_dihedral_proxies.append(dp_add)
-      except:
+      except Exception:
         pass
       try:
         key = Nkey + Ckey + CAkey + CBkey
         reference_angle = self.reference_dihedral_hash[key]
-      except:
+      except Exception:
         continue
       i_seqs = [Nsite, Csite, CAsite, CBsite]
       if self.params.secondary_structure_only and ss_selection != None:
@@ -954,7 +954,7 @@ class reference_model(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
                   model_chis[key] = chis
-              except:
+              except Exception:
                 print >> log, \
                   '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
                       chain.id, residue_group.resid(),
@@ -973,7 +973,7 @@ class reference_model(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
                   reference_chis[key] = chis
-              except:
+              except Exception:
                 print >> log, \
                   '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
                       chain.id, residue_group.resid(),

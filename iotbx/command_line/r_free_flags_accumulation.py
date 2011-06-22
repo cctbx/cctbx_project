@@ -50,7 +50,7 @@ def run(args, command_name="iotbx.r_free_flags_accumulation"):
     if (arg is not None):
       try: command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise
-      except: raise Sorry("Unknown file or keyword: %s" % arg)
+      except Exception: raise Sorry("Unknown file or keyword: %s" % arg)
       else: phil_objects.append(command_line_params)
   params_scope = master_params.fetch(sources=phil_objects).extract()
   params = params_scope.r_free_flags_accumulation

@@ -220,7 +220,7 @@ def grid_asu(
           result += 1
           try: redundancies[s].append(v)
           except KeyboardInterrupt: raise
-          except: redundancies[s] = [v]
+          except Exception: redundancies[s] = [v]
     else:
       if (u_grid[eq_gpt[0]][eq_gpt[1]][eq_gpt[2]] != 0):
         marker = 1

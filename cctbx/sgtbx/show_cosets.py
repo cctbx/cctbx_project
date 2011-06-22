@@ -14,7 +14,7 @@ def run(g,h,out=None):
     cc = cosets.left_decomposition( h,g)
     cc.show(out=out)
     success = True
-  except: pass
+  except Exception: pass
 
   if not success:
     print >> out, "Coset decomposition not successfull."

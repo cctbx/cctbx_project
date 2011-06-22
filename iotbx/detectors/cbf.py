@@ -24,7 +24,7 @@ class CBFImage(MARIPImage):
       flags = self.adaptor.transform_flags()
       print flags.transpose, flags.reverse_slow, flags.reverse_fast
       '''
-    except:
+    except Exception:
       from iotbx.detectors.marIP import NullAdaptor
       self.adaptor = NullAdaptor()
     self.vendortype = "CBF"

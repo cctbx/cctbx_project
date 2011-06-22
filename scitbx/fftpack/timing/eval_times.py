@@ -16,7 +16,7 @@ def run():
       data.iter = int(flds[12])
       data.time = float(flds[13])
       try: idCodes[idCode].append(data)
-      except: idCodes[idCode] = [data]
+      except Exception: idCodes[idCode] = [data]
   for idCode, data_list in idCodes.items():
     assert len(data_list) == 4
     assert data_list[0].iter == 0

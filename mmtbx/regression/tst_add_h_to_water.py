@@ -289,7 +289,7 @@ def exercise_02():
       b = float(b)
       assert a < 0.05
       assert b < 0.05
-    except:
+    except Exception:
       assert not show_diff(a, b)
 
 def exercise():

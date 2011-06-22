@@ -59,7 +59,7 @@ def extract_tls_from_pdb(pdb_inp_tls, all_chain_proxies, xray_structure):
       return group_args(pdb_inp_tls           = pdb_inp_tls,
                         tls_selections        = selections,
                         tls_selection_strings = tls_selection_strings)
-    except:
+    except Exception:
       return group_args(pdb_inp_tls           = pdb_inp_tls,
                         tls_selections        = [],
                         tls_selection_strings = [])
@@ -751,7 +751,7 @@ class tls_refinement(object):
         tlsos = generate_tlsos(value          = start_tls_value,
                                selections     = selections,
                                xray_structure = xrs)
-      except:
+      except Exception:
         tlsos = start_tls_value
     else:
       tlsos = tls_from_u_cart(xray_structure = xrs,

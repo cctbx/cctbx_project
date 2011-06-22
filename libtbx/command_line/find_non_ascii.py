@@ -32,5 +32,5 @@ def run(dir):
 if (__name__ == "__main__"):
   try:
     run(sys.argv[1])
-  except:
+  except Exception:
     run(os.getcwd())

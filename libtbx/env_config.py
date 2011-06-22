@@ -98,10 +98,10 @@ def get_gcc_version(command_name="gcc"):
 def get_hostname():
   try: import socket
   except KeyboardInterrupt: raise
-  except: return None
+  except Exception: return None
   try: return socket.gethostname()
   except KeyboardInterrupt: raise
-  except: return None
+  except Exception: return None
 
 def get_ldd_output(target=None):
   if (target is None): target = sys.executable
@@ -701,7 +701,7 @@ class environment:
           and op.isfile("/etc/redhat-release")):
         try: red_hat_linux_release = open("/etc/redhat-release").readline()
         except KeyboardInterrupt: raise
-        except: pass
+        except Exception: pass
         else:
           if (    red_hat_linux_release.startswith("Red Hat Linux release")
               and red_hat_linux_release.split()[4] == "9"):
@@ -1456,7 +1456,7 @@ class module:
             'Cannot open configuration file: "%s"' % path)
           try: config = eval(" ".join(f.readlines()), {}, {})
           except KeyboardInterrupt: raise
-          except: raise RuntimeError('Corrupt configuration file: "%s"' % path)
+          except Exception: raise RuntimeError('Corrupt configuration file: "%s"' % path)
           f.close()
           redirection = config.get("redirection", None)
           if (redirection is None):

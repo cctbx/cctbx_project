@@ -544,7 +544,7 @@ def run(args, command_name="phenix.xtriage", return_result=False,
         try:
           command_line_params = iotbx.phil.parse(file_name=arg)
         except KeyboardInterrupt: raise
-        except : pass
+        except Exception : pass
         if command_line_params is not None:
             phil_objects.append(command_line_params)
             arg_is_processed = True

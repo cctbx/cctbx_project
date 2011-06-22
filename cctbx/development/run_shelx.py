@@ -191,7 +191,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
   sys.stderr.flush()
   try: os.unlink("tmp.lst")
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   shelxl_out = easy_run.fully_buffered(command="shelxl tmp") \
     .raise_if_errors() \
     .stdout_lines

@@ -284,7 +284,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
     try:
       s = hy36enc(width=5, value=value)
       d = hy36dec(width=5, s=s)
-    except:
+    except Exception:
       print "value:", value
       raise
     assert d == value

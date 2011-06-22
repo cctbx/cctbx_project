@@ -7,7 +7,7 @@ if __name__=="__main__":
   try:
     filepath, host, port = sys.argv[1:4]
     port = int(port)
-  except:
+  except Exception:
     print """
 Usage:
 distl.thin_client <filepath> <host> <port>

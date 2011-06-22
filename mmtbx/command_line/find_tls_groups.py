@@ -460,7 +460,7 @@ def chunks(size, n_groups):
     if(len(res)>n_groups-1): break
     r = random.randrange(nc,next)
     try: ev = size-1-r>1 and r-max(res)>1
-    except: ev = size-1-r>1 and not r in res
+    except Exception: ev = size-1-r>1 and not r in res
     if(ev):
       res.append(r)
       nc+=chunk_size_
@@ -563,11 +563,11 @@ Usage:
         cmdline_phil.append(pdb_phil)
       else:
         try: file_phil = libtbx.phil.parse(file_name=arg)
-        except: raise Sorry("Bad parameter file: %s"%arg)
+        except Exception: raise Sorry("Bad parameter file: %s"%arg)
         cmdline_phil.append(file_phil)
     else:
       try: arg_phil = libtbx.phil.parse(arg)
-      except: raise Sorry("Bad parameter: %s"%arg)
+      except Exception: raise Sorry("Bad parameter: %s"%arg)
       cmdline_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=cmdline_phil)
   params = working_phil.extract()

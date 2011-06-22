@@ -89,7 +89,7 @@ class symmetry_callback(object):
     if (opt == "--unit_cell"):
       unit_cell = None
       try: unit_cell = uctbx.unit_cell(value)
-      except: pass
+      except Exception: pass
       if (unit_cell is not None):
         self.unit_cell = unit_cell
       else:
@@ -102,7 +102,7 @@ class symmetry_callback(object):
       space_group_info = None
       space_group_info = sgtbx.space_group_info(symbol=value)
       try: space_group_info = sgtbx.space_group_info(symbol=value)
-      except: pass
+      except Exception: pass
       if (space_group_info is not None):
         self.space_group_info = space_group_info
       else:

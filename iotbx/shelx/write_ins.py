@@ -11,7 +11,7 @@ def LATT_SYMM(s, space_group, decimal=False):
   }
   try:
     LATT_N = Z_dict[Z]
-  except:
+  except Exception:
     raise RuntimeError, "Error: Lattice type not supported by SHELX."
   # N must be made negative if the structure is non-centrosymmetric.
   if (space_group.is_centric()):

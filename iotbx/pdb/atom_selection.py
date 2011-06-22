@@ -478,7 +478,7 @@ class cache(slots_getstate_setstate):
           contiguous_word_characters=contiguous_word_characters),
         callback=callback)
     except (AtomSelectionError, KeyboardInterrupt): raise
-    except:
+    except Exception:
       msg = format_exception().splitlines()
       msg.extend([
         "Atom selection string leading to error:",

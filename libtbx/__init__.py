@@ -143,7 +143,7 @@ if (sys.platform == "cygwin"):
   def open_realpath(name, mode="r", buffering=-1):
     try: return builtin_open(name, mode, buffering)
     except KeyboardInterrupt: raise
-    except: pass
+    except Exception: pass
     name = os.path.realpath(name)
     return builtin_open(name, mode, buffering)
   __builtins__["open"] = open_realpath

@@ -56,7 +56,7 @@ if __name__=="__main__":
   try:
     filepath, host, port = sys.argv[1:4]
     port = int(port)
-  except:
+  except Exception:
     print """
 Usage:
 libtbx.python thin_client.py <filepath> <host> <port>

@@ -1809,7 +1809,7 @@ def exercise_linear_interpolation():
     for x in [0,5]:
       try: flex.linear_interpolation(tab_x, tab_y, 0)
       except KeyboardInterrupt: raise
-      except: pass
+      except Exception: pass
       else: raise Exception_expected
     x = flex_type([1.3,2.4,3.6])
     assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x, 1.e-6),

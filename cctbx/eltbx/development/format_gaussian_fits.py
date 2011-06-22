@@ -58,7 +58,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
   for label in expected_labels(kissel_dir):
     try:
       fit_group = fits.all[label]
-    except:
+    except Exception:
       print "# Warning: Missing scattering_type:", label
     else:
       print "scattering_type:", label

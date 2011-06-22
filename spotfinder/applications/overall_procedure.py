@@ -25,7 +25,7 @@ def spotfinder_no_pickle(frames,s3_passthru,spot_convention):
     pd['xbeam'] = '%f'%A.beamx
     try:
       pd['twotheta'] = '%f'%A.twotheta
-    except:
+    except Exception:
       pd['twotheta'] = '0.0'
     pd['s3_passthru']=s3_passthru
     pd['spot_convention']=spot_convention
@@ -35,7 +35,7 @@ def spotfinder_no_pickle(frames,s3_passthru,spot_convention):
     for framenumber in local_frames:
       try:
         assert Spotfinder.images.has_key(framenumber)
-      except:
+      except Exception:
         Spotfinder.register_frames(framenumber,frames)
 
     return Spotfinder

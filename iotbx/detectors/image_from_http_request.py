@@ -18,7 +18,7 @@ def module_or_slice_from_http_request(request):
         tags[item] = float(tags[item])
         if tags[item]==round(tags[item],0):
           tags[item]= int(tags[item])
-      except: pass
+      except Exception: pass
       #print "posted data types",item, type(tags[item]), tags[item]
   # tags dictionary is now conditioned as to type
   tags_class = attributes_from_dict(tags)

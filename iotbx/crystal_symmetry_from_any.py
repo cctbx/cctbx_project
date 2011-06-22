@@ -40,12 +40,12 @@ def from_string(string):
     try:
       unit_cell = [float(number) for number in unit_cell]
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       return None
   try:
     return crystal.symmetry(unit_cell=unit_cell,space_group=space_group)
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     return None
 
 def extract_from(file_name):
@@ -72,7 +72,7 @@ def extract_from(file_name):
     if (fmt is None): continue
     try: return fmt.extract_from(file_name)
     except KeyboardInterrupt: raise
-    except: pass
+    except Exception: pass
   return from_string(file_name)
 
 def extract_and_append(file_names, target_list, extract_function=extract_from):
@@ -86,7 +86,7 @@ def extract_and_append(file_names, target_list, extract_function=extract_from):
     try:
       crystal_symmetry = extract_function(file_name=file_name)
     except KeyboardInterrupt: raise
-    except: pass
+    except Exception: pass
     else:
       if (crystal_symmetry is not None):
         target_list.append(crystal_symmetry)

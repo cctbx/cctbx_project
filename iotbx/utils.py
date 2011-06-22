@@ -22,7 +22,7 @@ class try_read_file(object):
       try:
         pdb_inp = iotbx.pdb.input(file_name=file_name)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         if (iotbx.pdb.is_pdb_file(file_name=file_name)):
           raise
         pdb_inp = None
@@ -35,7 +35,7 @@ class try_read_file(object):
       try:
         phil_obj = iotbx.phil.parse(file_name=file_name)
       except KeyboardInterrupt: raise
-      except: pass
+      except Exception: pass
       else:
         O_assign(file_type="phil", file_content=phil_obj)
         return
@@ -44,7 +44,7 @@ class try_read_file(object):
       try:
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
       except KeyboardInterrupt: raise
-      except: pass
+      except Exception: pass
       else:
         if (len(cif_obj) != 0):
           O_assign(file_type="cif", file_content=cif_obj)
@@ -84,7 +84,7 @@ def process_command_line_inputs(args, master_phil, input_types):
     def try_as_command_line_params():
       try: command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         if (op.isfile(arg)):
           raise Sorry(
             "Error processing file: %s" % show_string(arg))

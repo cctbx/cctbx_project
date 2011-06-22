@@ -96,7 +96,7 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   write_cns_input(crystal_symmetry, anomalous_flag, d_min)
   try: os.unlink("tmp.hkl")
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   easy_run.fully_buffered(command="cns < tmp.cns > tmp.out") \
     .raise_if_errors_or_output()
   f = open("tmp.hkl", "r")

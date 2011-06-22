@@ -626,7 +626,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       # preempt potential error in C++, for better reporting here
       open(file_name, "wb")
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       print "Error opening file for writing: %s" % \
         show_string(os.path.abspath(file_name))
       return 0

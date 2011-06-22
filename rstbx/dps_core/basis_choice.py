@@ -164,7 +164,7 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
       print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except:
+    except Exception:
       raise
 
     if solutions.halts():

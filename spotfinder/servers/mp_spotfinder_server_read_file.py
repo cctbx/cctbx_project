@@ -5,7 +5,7 @@ from multiprocessing import Process, current_process
 from urlparse import urlparse
 #backward compatibility with Python 2.5
 try: from urlparse import parse_qs
-except: from cgi import parse_qs
+except Exception: from cgi import parse_qs
 
 def note(format, *args):
     sys.stderr.write('[%s]\t%s\n' % (current_process().name, format%args))
@@ -52,7 +52,7 @@ if __name__=="__main__":
       minimum_spot_area = int(sys.argv[4])
     if len(sys.argv)>5:
       minimum_signal_height = float(sys.argv[5])
-  except:
+  except Exception:
     print """
 Usage:  libtbx.python mp_spotfinder_server_read_file.py <port number> <number of processes> [<outer resolution> [<minimum spot area> [<minimum signal height>]]]
 """

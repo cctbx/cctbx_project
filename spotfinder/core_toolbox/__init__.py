@@ -15,9 +15,9 @@ class Distl(w_Distl):
     adopt_init_args(self, locals())
 
     try:    saturation = image.saturation
-    except: saturation = 65535
+    except Exception: saturation = 65535
     try:    peripheral_margin = params.distl.peripheral_margin
-    except: peripheral_margin = 20
+    except Exception: peripheral_margin = 20
     self.setspotimg(pixel_size = image.pixel_size, distance = image.distance,
                     wavelength = image.wavelength, xbeam = float(pd['xbeam']),
                     ybeam = float(pd['ybeam']), rawdata = image.rawdata,

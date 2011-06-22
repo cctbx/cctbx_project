@@ -192,7 +192,7 @@ class process_cif_mixin(object):
       source_info = "file: "+file_name
     try: self.convert_all(source_info=source_info, cif_object=cif_object)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       if (file_name is None): file_name = "(file name not available)"
       raise Sorry(
         "Error processing CIF file:\n"
@@ -202,7 +202,7 @@ class process_cif_mixin(object):
   def process_cif(self, file_name):
     try: cif_object = read_cif(file_name=file_name)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       raise Sorry(
         "Error reading CIF file:\n"
         "  %s\n"

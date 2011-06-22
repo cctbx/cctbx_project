@@ -129,7 +129,7 @@ class minimize_lbfgsb(minimize_lbfgs_mixin):
       self.run()
     except LargeNegativeB:
       raise
-    except:
+    except Exception:
       easy_pickle.dump(
         "lbfgsb_exception_%.0f.pickle" % time.time(),
         gaussian_fit)

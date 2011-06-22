@@ -98,7 +98,7 @@ def get_emma_model(file_name, crystal_symmetry):
       file_name=file_name,
       crystal_symmetry=crystal_symmetry)
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     if (iotbx.pdb.is_pdb_file(file_name)): raise
   try:
     return get_emma_model_from_sdb(
@@ -107,26 +107,26 @@ def get_emma_model(file_name, crystal_symmetry):
   except MultipleEntriesError:
     raise
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     pass
   try:
     return get_emma_model_from_solve(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry)
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     pass
   try:
     return get_emma_model_from_ins(file_name=file_name)
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     pass
   try:
     return get_emma_model_from_strudat(file_name=file_name)
   except MultipleEntriesError:
     raise
   except KeyboardInterrupt: raise
-  except:
+  except Exception:
     pass
   raise RuntimeError("Coordinate file %s: unknown format." % file_name)
 

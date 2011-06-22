@@ -250,10 +250,10 @@ def get_solvent_content(file_lines):
        remark.count("REMARK 280")==1):
       try:
         mc.append(remark.split()[6])
-      except:
+      except Exception:
         try:
           mc.append(remark[remark.index(":")+1:])
-        except:
+        except Exception:
           mc.append(remark)
   result = None
   if(len(mc) == 1):
@@ -271,10 +271,10 @@ def get_matthews_coeff(file_lines):
        remark.count("REMARK 280")==1):
       try:
         mc.append(remark.split()[6])
-      except:
+      except Exception:
         try:
           mc.append(remark[remark.index(":")+1:])
-        except:
+        except Exception:
           mc.append(remark)
   result = None
   if(len(mc) == 1):
@@ -921,7 +921,7 @@ def run(args,
     for op in processed_args.pdb_file_names+processed_args.reflection_file_names:
       op = os.path.basename(op)
       try: op = op[:op.index(".")]
-      except: pass
+      except Exception: pass
       if(not op in output_prefixes): output_prefixes.append(op)
     output_prefix = "_".join(output_prefixes)
     easy_pickle.dump("%s.pickle"%output_prefix, mvd_obj)

@@ -218,7 +218,7 @@ class rotalyze(object):
       try:
         chis = sa.measureChiAngles(ag, atom_dict)
         value = r.evaluate(ag.resname.lower().strip(), chis)
-      except:
+      except Exception:
         #print ag.resname.lower()+residue_group.resseq+" is missing some sidechain atoms"
         value = None;
         is_outlier = None;

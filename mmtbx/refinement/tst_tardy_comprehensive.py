@@ -186,7 +186,7 @@ def run(args):
             callback=coll,
             log=tst_tardy_pdb_log)
         except KeyboardInterrupt: raise
-        except:
+        except Exception:
           print
           print "tst_tardy_pdb_params leading to exception:"
           print

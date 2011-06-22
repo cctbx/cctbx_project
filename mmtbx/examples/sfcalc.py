@@ -110,7 +110,7 @@ def sfcalc(args):
             phil_objects.append(command_line_params)
             arg_is_processed = True
         except KeyboardInterrupt: raise
-        except : pass
+        except Exception : pass
       else:
         try:
           command_line_params = argument_interpreter.process(arg=arg)
@@ -118,7 +118,7 @@ def sfcalc(args):
             phil_objects.append(command_line_params)
             arg_is_processed = True
         except KeyboardInterrupt: raise
-        except : pass
+        except Exception : pass
 
       if not arg_is_processed:
         print >> log, "##----------------------------------------------##"

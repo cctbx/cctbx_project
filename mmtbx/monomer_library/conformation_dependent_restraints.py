@@ -83,14 +83,14 @@ class conformation_dependent_restraints(object):
                     sites_cart=sites_cart,
                     dihedral_proxies=self.conformation_proxies,
                     i_proxy=self.i_phi_proxy)
-    except: # XXX BAD
+    except Exception: # XXX BAD
       phi = None
     try:
       psi = self._get_dihedral(
                     sites_cart=sites_cart,
                     dihedral_proxies=self.conformation_proxies,
                     i_proxy=self.i_psi_proxy)
-    except: # XXX BAD
+    except Exception: # XXX BAD
       psi = None
 
     # Shows real dihedral value

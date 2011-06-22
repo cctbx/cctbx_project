@@ -29,7 +29,7 @@ def run(args, command_name="phenix.form_factor_query"):
       try:
         command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         raise Sorry("Unknown keyword: %s" % arg)
       else:
         phil_objects.append(command_line_params)
@@ -37,7 +37,7 @@ def run(args, command_name="phenix.form_factor_query"):
       try:
         plain_wavelength = float(arg)
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         plain_element = arg
 
   working_params = master_params.fetch(sources=phil_objects)

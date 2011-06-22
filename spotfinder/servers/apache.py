@@ -47,7 +47,7 @@ def run(args, verbose=False):
   for key in args.keys():
       arg = "%s=%s"%(key,args.get(key,""))
       try: command_line_params = argument_interpreter.process(arg=arg)
-      except: return str(Sorry("Unknown file or keyword: %s" % arg))
+      except Exception: return str(Sorry("Unknown file or keyword: %s" % arg))
       else: phil_objects.append(command_line_params)
 
   working_params = master_params.fetch(sources=phil_objects)
@@ -62,7 +62,7 @@ def run(args, verbose=False):
   from spotfinder.applications import signal_strength
   try:
     signal_strength.run_signal_strength(params)
-  except:
+  except Exception:
     import traceback
     logger = StringIO.StringIO()
     logger.write(

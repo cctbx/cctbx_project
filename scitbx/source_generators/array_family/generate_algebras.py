@@ -33,7 +33,7 @@ def format_header(indent, str, max_line_length = 79):
     else:
       i = rest.index(",")
       try: i += rest[i+1:].index(",") + 1
-      except: pass
+      except Exception: pass
     result += indent + extra_indent + rest[:i+1] + '\n'
     extra_indent = "  "
     lei = 2

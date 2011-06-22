@@ -95,7 +95,7 @@ class shelx_weighting(object):
   def _propdef():
     def fget(self):
       try: return self._observed
-      except: return None
+      except Exception: return None
     def fset(self, obs):
       assert(obs.is_xray_intensity_array())
       self._observed = obs
@@ -106,7 +106,7 @@ class shelx_weighting(object):
   def _propdef():
     def fget(self):
       try: return self._calculated
-      except: return None
+      except Exception: return None
     def fset(self, f_calc):
       assert(f_calc.is_complex_array())
       self._calculated = f_calc

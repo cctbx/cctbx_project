@@ -255,10 +255,10 @@ class modify(object):
       flex.set_random_seed(self.params.random_seed)
     try: params_remove_selection = self.params.remove
     except KeyboardInterrupt: raise
-    except: params_remove_selection = None
+    except Exception: params_remove_selection = None
     try: params_keep_selection = self.params.keep
     except KeyboardInterrupt: raise
-    except: params_keep_selection = None
+    except Exception: params_keep_selection = None
     if(params_remove_selection is not None):
       self.remove_selection = flex.smart_selection(
         flags=~utils.get_atom_selections(
@@ -295,7 +295,7 @@ class modify(object):
     self._process_occupancies(selection = self.top_selection)
     try: self._put_in_box()
     except KeyboardInterrupt: raise
-    except: pass
+    except Exception: pass
 
   def _process_remove_first_n_atoms_fraction(self):
     if(self.params.remove_first_n_atoms_fraction is not None):
@@ -487,7 +487,7 @@ class modify(object):
       try:
         for a in raap.axis.split():
           axis.append(float(a))
-      except:
+      except Exception:
         sel = utils.get_atom_selections(
           iselection=False,
           all_chain_proxies=self.all_chain_proxies,
@@ -930,7 +930,7 @@ class interpreter:
             crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
               file_name=arg)
           except KeyboardInterrupt: raise
-          except: pass
+          except Exception: pass
           else:
             if (crystal_symmetry is not None):
               crystal_symmetries_from_coordinate_file.append(
@@ -938,7 +938,7 @@ class interpreter:
         else:
           try: cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg)
           except KeyboardInterrupt: raise
-          except: pass
+          except Exception: pass
           else:
             if(len(cif_object) > 0):
               self.cif_objects.append((arg,cif_object))

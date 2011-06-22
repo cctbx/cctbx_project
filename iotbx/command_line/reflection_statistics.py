@@ -423,7 +423,7 @@ def run(
           force_symmetry=not command_line.options.weak_symmetry,
           merge_equivalents=False)
       except Sorry, KeyboardInterrupt: raise
-      except: pass
+      except Exception: pass
     if (miller_arrays is None):
       print >> sys.stderr, "Warning: unknown file format:", file_name
       print >> sys.stderr

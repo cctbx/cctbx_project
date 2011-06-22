@@ -7,7 +7,7 @@ from spotfinder.applications.stats_distl import optionally_add_saturation_webice
 from urlparse import urlparse
 #backward compatibility with Python 2.5
 try: from urlparse import parse_qs
-except: from cgi import parse_qs
+except Exception: from cgi import parse_qs
 
 def module_safe_items(image):
   return [
@@ -135,7 +135,7 @@ if __name__=="__main__":
   import sys
   try:
     port = int(sys.argv[1])
-  except:
+  except Exception:
     print """
 Usage:  libtbx.python adsc_server.py <port number>
 """

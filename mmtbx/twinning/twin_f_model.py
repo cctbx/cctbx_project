@@ -881,7 +881,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.update_core(r_free_flags = r_free_flags)
     if(b_cart is not None):
       try: assert b_cart.size() == 6
-      except: assert len(b_cart) == 6
+      except Exception: assert len(b_cart) == 6
       self.update_core(b_cart = b_cart)
     if overall_scale is not None:
       self.scaling_parameters.k_overall = overall_scale
@@ -1988,7 +1988,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     #err    = n_as_s("%6.2f",self.model_error_ml())
     err=" None "
     try:    target_work = n_as_s("%.4g",self.target_w())
-    except: target_work = str(None)
+    except Exception: target_work = str(None)
 
     line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
            "   Bsol= "+b_sol+"   scale= "+scale

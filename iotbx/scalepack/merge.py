@@ -36,7 +36,7 @@ class reader(object):
     try:
       uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       raise FormatError, line_error
     self.unit_cell = uctbx.unit_cell(uc_params)
     self.space_group_symbol = line[61:].strip()
@@ -45,7 +45,7 @@ class reader(object):
     try:
       self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
     except KeyboardInterrupt: raise
-    except:
+    except Exception:
       self.space_group_info = None
     if (header_only): return
     self.miller_indices = flex.miller_index()
@@ -70,7 +70,7 @@ class reader(object):
       try:
         h = [int(flds[i]) for i in xrange(3)]
       except KeyboardInterrupt: raise
-      except:
+      except Exception:
         raise FormatError, line_error
       for i in (0,1):
         j = 3+2*i
@@ -78,7 +78,7 @@ class reader(object):
           try:
             i_obs, sigma = (float(flds[j]), float(flds[j+1]))
           except KeyboardInterrupt: raise
-          except:
+          except Exception:
             raise FormatError, line_error
           # XXX scalepack uses I=0, sigmaI=-1 to denote a missing Friedel
           # mate

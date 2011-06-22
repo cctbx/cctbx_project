@@ -71,7 +71,7 @@ class categorize(object):
     try:
       self.symbol = symbol.strip().replace(" ","").upper()
       self.category = _all[self.symbol]
-    except:
+    except Exception:
       self.category = None
 
   def get_category(self):

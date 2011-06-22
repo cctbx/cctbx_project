@@ -352,7 +352,7 @@ def anisotropic_correction(cache_0,
   try:
     work_array = cache_0.input.select( cache_0.input.data() > 0 )
   except KeyboardInterrupt: raise
-  except: pass
+  except Exception: pass
   if work_array is None:
     work_array = cache_0.select( cache_0.data() > 0 )
 
