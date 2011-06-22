@@ -10,13 +10,15 @@ class file_clutter(object):
     self.n_tabs_or_trailing_whitespace = []
     self.n_trailing_empty_lines = 0
     self.missing_eol = False
-    stream = open(path, "rb").read()
-    if (len(stream) > 0):
-      if (stream[-1] != "\n"):
+    self.n_bare_excepts = 0
+    self.unused_imports = None
+    bytes = open(path, "rb").read()
+    if (len(bytes) > 0):
+      if (bytes[-1] != "\n"):
         self.missing_eol = True
       else:
-        stream = stream[:-1]
-      text = stream.split("\n")
+        bytes = bytes[:-1]
+      text = bytes.split("\n")
       for i, line in enumerate(text):
         if (line.endswith("\r")):
           line = line[:-1]
@@ -25,10 +27,17 @@ class file_clutter(object):
         if (clean_line != line): self.n_tabs_or_trailing_whitespace.append(i+1)
         if (len(clean_line) == 0): self.n_trailing_empty_lines += 1
         else: self.n_trailing_empty_lines = 0
-    self.unused_imports = None
-    if (find_unused_imports and path.endswith(".py")):
-      self.unused_imports = find_unused_imports_crude.inspect(
-        py_lines=stream.splitlines())
+      if (path.endswith(".py")):
+        py_lines = bytes.splitlines()
+        for line in py_lines:
+          ls = line.strip()
+          if (    ls.startswith("except")
+              and ls[6:].strip().startswith(":")
+              and not ls.endswith(" # intentional")):
+            self.n_bare_excepts += 1
+        if (find_unused_imports and path.endswith(".py")):
+          self.unused_imports = find_unused_imports_crude.inspect(
+            py_lines=py_lines)
 
   def is_cluttered(self, flag_x):
     return ((self.is_executable and flag_x)
@@ -51,7 +60,8 @@ class file_clutter(object):
     if (flag_dos_format and self.dos_format):
       sapp("dos format")
     if (len(self.n_tabs_or_trailing_whitespace) > 0):
-      line = "tabs or trailing whitespace=%d" %len(self.n_tabs_or_trailing_whitespace)
+      line = "tabs or trailing whitespace=%d" % \
+        len(self.n_tabs_or_trailing_whitespace)
       for cnt, i in enumerate(self.n_tabs_or_trailing_whitespace):
         line += ", #" + str(i)
         if cnt >= 9:
@@ -61,14 +71,20 @@ class file_clutter(object):
       sapp("trailing empty lines=%d" % self.n_trailing_empty_lines)
     if (self.missing_eol):
       sapp("missing end-of-line")
+    if (self.n_bare_excepts > 0):
+      sapp("bare excepts=%d" % self.n_bare_excepts)
     if (self.has_unused_imports()):
       sapp("unused imports=%d" % len(self.unused_imports))
     return ", ".join(status)
 
-  def show(self, flag_x, flag_dos_format=True):
+  def show(self, flag_x, flag_dos_format=True, append=None):
     status = self.status(flag_x, flag_dos_format)
     if (len(status) != 0):
-      print "%s: %s" % (self.path, status)
+      msg = "%s: %s" % (self.path, status)
+      if (append is not None):
+        append(msg)
+      else:
+        print msg
 
 def is_text_file(file_name):
   name = file_name.lower()
