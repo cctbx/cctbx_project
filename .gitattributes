@@ -921,6 +921,7 @@ libtbx/cpp_function_name.py -text
 libtbx/development/__init__.py -text
 libtbx/development/cctbx_svn_getting_started.csh -text
 libtbx/development/dev_guidelines.txt svneol=native#text/plain
+libtbx/development/except_Exception.py svneol=native#text/x-python
 libtbx/development/move_obsolete_from_bundle.csh -text
 libtbx/development/timers.py -text
 libtbx/development/xcode_build_phase.sh -text
