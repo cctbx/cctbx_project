@@ -231,6 +231,7 @@ crys3d/hklview/view_3d.py -text
 crys3d/images.py -text
 crys3d/libtbx_refresh.py -text
 crys3d/model.py -text
+crys3d/probe_dots.py -text
 crys3d/qttbx/__init__.py -text
 crys3d/qttbx/map_viewer.py -text
 crys3d/qttbx/map_viewer_controls.ui -text
