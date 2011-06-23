@@ -5,9 +5,21 @@ import wx
 
 class SpaceGroupControl (wx.ComboBox) :
   def __init__ (self, *args, **kwds) :
+    kwds = dict(kwds)
+    saved_value = None
+    if (kwds.get('value', '') != "") :
+      saved_value = kwds['value']
+      kwds['value'] = ""
     super(SpaceGroupControl, self).__init__(*args, **kwds)
     self.SetValidator(SpaceGroupValidator())
+    # FIXME does not work on wxOSX-Cocoa
     self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
+    if (saved_value is not None) :
+      self.SetSpaceGroup(saved_value)
+    self.SetToolTip(wx.ToolTip("You may use any valid space group symbol, "+
+      "e.g. 'P212121', 'P 21 21 21', 'P2(1)2(1)2(1)', or '19'; these will be "+
+      "converted internally to a standard format.  You can trigger this "+
+      "conversion by entering a symbol and pressing 'Enter'."))
 
   def SetSpaceGroup (self, sg) :
     from cctbx import sgtbx
@@ -32,6 +44,9 @@ class SpaceGroupControl (wx.ComboBox) :
       return None
     from cctbx import sgtbx
     return sgtbx.space_group_info(symbol=sg)
+
+  def GetStringValue (self) :
+    return str(self.GetValue())
 
   def Validate (self) :
     # XXX why doesn't self.Validate() work?

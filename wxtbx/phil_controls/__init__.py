@@ -4,6 +4,11 @@ import wx
 
 class ValidatedTextCtrl (wx.TextCtrl) :
   def __init__ (self, *args, **kwds) :
+    kwds = dict(kwds)
+    saved_value = None
+    if (kwds.get('value', "") != "") :
+      saved_value = kwds['value']
+      kwds['value'] = ""
     super(ValidatedTextCtrl, self).__init__(*args, **kwds)
     style = self.GetWindowStyle()
     style = self.GetWindowStyle()
@@ -12,6 +17,8 @@ class ValidatedTextCtrl (wx.TextCtrl) :
       self.SetWindowStyle(style)
     self.SetValidator(self.CreateValidator())
     self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
+    if (saved_value is not None) :
+      self.SetValue(saved_value)
 
   def CreateValidator (self) :
     raise NotImplementedError()
@@ -22,6 +29,25 @@ class ValidatedTextCtrl (wx.TextCtrl) :
       return True
     else :
       raise Abort()
+
+  def FormatValue (self, value) :
+    raise NotImplementedError()
+
+  def GetPhilValue (self) :
+    raise NotImplementedError()
+
+  def GetStringValue (self) :
+    value = self.GetPhilValue()
+    if (value is not None) :
+      return self.FormatValue(value)
+    return None
+
+  def Enable (self, enable=True) :
+    wx.TextCtrl.Enable(self, enable)
+    if enable :
+      self.SetBackgroundColour((255,255,255))
+    else :
+      self.SetBackgroundColour((200,200,200))
 
 class TextCtrlValidator (wx.PyValidator) :
   def __init__ (self) :
@@ -43,6 +69,8 @@ class TextCtrlValidator (wx.PyValidator) :
   def Validate (self, win) :
     ctrl = self.GetWindow()
     value_str = str(ctrl.GetValue())
+    if (value_str == "") :
+      return True
     try :
       reformatted = self.CheckFormat(value_str)
       ctrl.SetValue(reformatted)
