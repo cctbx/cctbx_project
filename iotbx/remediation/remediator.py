@@ -31,7 +31,7 @@ import libtbx.load_env
 #{{{ get_summary
 def get_summary():
   summary = """
-  iotbx.remediator model.pdb [params.eff] [options ...]
+  iotbx.pdb_remediator model.pdb [params.eff] [options ...]
 
 Options:
 
@@ -44,12 +44,12 @@ Examples:
 
 Convert version 2.3 file to version 3.2 naming:
 
-  iotbx.remediator model.pdb > model_3.2.pdb
-  iotbx.remediator file_name=model.pdb output_file=model_3.2.pdb_file
+  iotbx.pdb_remediator model.pdb > model_3.2.pdb
+  iotbx.pdb_remediator file_name=model.pdb output_file=model_3.2.pdb_file
 
 Convert version 3.2 file to version 2.3 naming:
 
-  iotbx.remediator model.pdb version=2.3 > model_2.3.pdb_file
+  iotbx.pdb_remediator model.pdb version=2.3 > model_2.3.pdb_file
 """
   return summary
 #}}}
