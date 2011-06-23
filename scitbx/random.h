@@ -213,6 +213,19 @@ namespace random {
           axis, angle, /* deg */ false);
       }
 
+      //! Uniformly distributed random 3D rotation matrix using Arvo's method.
+      /*! See also: scitbx::math::r3_rotation::random_matrix_arvo_1992
+       */
+      scitbx::mat3<double>
+      random_double_r3_rotation_matrix_arvo_1992()
+      {
+        // See comment inside random_double_unit_quaternion.
+        double x0 = random_double();
+        double x1 = random_double();
+        double x2 = random_double();
+        return math::r3_rotation::random_matrix_arvo_1992(x0, x1, x2);
+      }
+
       //! Integer array with Gaussian distribution.
       /*! Algorithm copied from the Python source code.
        */
