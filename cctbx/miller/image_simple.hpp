@@ -12,24 +12,26 @@ namespace cctbx { namespace miller {
 
   struct image_simple
   {
+    bool store_miller_index_i_seqs;
     bool store_spots;
     bool store_signals;
     bool set_pixels;
+    af::shared<std::size_t> miller_index_i_seqs;
     af::shared<scitbx::vec3<double> > spots;
     af::shared<double> signals;
     af::versa<int, af::flex_grid<> > pixels;
 
     image_simple(
+      bool store_miller_index_i_seqs_,
       bool store_spots_,
       bool store_signals_,
       bool set_pixels_)
     :
+      store_miller_index_i_seqs(store_miller_index_i_seqs_),
       store_spots(store_spots_),
       store_signals(store_signals_),
       set_pixels(set_pixels_)
-    {
-      TBXX_ASSERT(store_spots || store_signals || set_pixels);
-    }
+    {}
 
     image_simple&
     compute(
@@ -89,6 +91,9 @@ namespace cctbx { namespace miller {
               using scitbx::math::ifloor;
               double pxf = (dx/dsx + 0.5) * dpx;
               double pyf = (dy/dsy + 0.5) * dpy;
+              if (store_miller_index_i_seqs) {
+                miller_index_i_seqs.push_back(ih);
+              }
               if (store_spots) {
                 spots.push_back(scitbx::vec3<double>(pxf, pyf, 0));
                 if (!store_signals && !set_pixels) continue;

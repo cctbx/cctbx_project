@@ -625,7 +625,7 @@ def exercise_slices () :
 def exercise_image_simple():
   from scitbx.math import euler_angles
   from libtbx.test_utils import show_diff
-  expected_sum_image_pixels = iter(
+  expected_sum_image_pixels_iter = iter(
       (200, 156) + (400, 308)*2
     + (450, 351) + (900, 693)*2
     + ( 91,  69) + (181, 139)*2
@@ -642,10 +642,17 @@ def exercise_image_simple():
         else:
           spot_intensity_factors = flex.double([spot_intensity_factor])
         for ewald_proximity_sign in [-1, 1]:
-          for set_pixels in [False, True]:
+          if (star == "*"):
+            expected_sum_image_pixels = expected_sum_image_pixels_iter.next()
+          for code in xrange(16):
+            store_miller_index_i_seqs = bool(code & 0x1)
+            store_spots = bool(code & 0x2)
+            store_signals = bool(code & 0x4)
+            set_pixels = bool(code & 0x8)
             image = miller.image_simple(
-              store_spots=(point_spread < 3 or not set_pixels),
-              store_signals=(point_spread > 2),
+              store_miller_index_i_seqs=store_miller_index_i_seqs,
+              store_spots=store_spots,
+              store_signals=store_signals,
               set_pixels=set_pixels).compute(
                 unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
                 miller_indices=flex.miller_index([(-1,2,1)]),
@@ -659,20 +666,27 @@ def exercise_image_simple():
                 detector_pixels=(dpx,dpy),
                 point_spread=point_spread,
                 gaussian_falloff_scale=4)
+            if (store_miller_index_i_seqs and star == "*"):
+              assert image.miller_index_i_seqs.size() == 1
+            else:
+              assert image.miller_index_i_seqs.size() == 0
+            if (store_spots and star == "*"):
+              assert image.spots.size() == 1
+            else:
+              assert image.spots.size() == 0
+            if (store_signals and star == "*"):
+              assert image.signals.size() == 1
+            else:
+              assert image.signals.size() == 0
             if (not set_pixels):
               assert image.pixels.size() == 0
             else:
               assert image.pixels.size() == 20
               sum_image_pixels = flex.sum(image.pixels)
               if (star == "*"):
-                assert sum_image_pixels == expected_sum_image_pixels.next()
+                assert sum_image_pixels == expected_sum_image_pixels
               else:
                 assert sum_image_pixels == 0
-            if (point_spread > 2 and star == "*"):
-              assert image.signals.size() == 1
-            else:
-              assert image.signals.size() == 0
-      assert image.spots.size() == int(star == "*" and point_spread < 3)
       assert image.pixels.all() == (dpx,dpy)
       for i in xrange(dpx):
         line = []
