@@ -504,6 +504,50 @@ namespace scitbx { namespace math {
     return af::tiny<FloatType, 4>(w, x, y, z);
   }
 
+  //! Uniformly distributed random 3D rotation matrix using Arvo's method.
+  /*! "Fast Random Rotation Matrices", by James Arvo.
+      In Graphics Gems III, 1992.
+      http://www.ics.uci.edu/~arvo/papers/RotationMat.ps
+      http://www.ics.uci.edu/~arvo/code/rotate.c (2011-06-22)
+   */
+  template <typename FloatType>
+  scitbx::mat3<FloatType>
+  random_matrix_arvo_1992(
+    FloatType const& x0,
+    FloatType const& x1,
+    FloatType const& x2)
+  {
+    typedef FloatType ft;
+    ft theta = x0 * constants::two_pi; // Rotation about the pole (Z).
+    ft phi   = x1 * constants::two_pi; // For direction of pole deflection.
+    ft z     = x2 * 2;                 // For magnitude of pole deflection.
+    //
+    /* Compute a vector V used for distributing points over the sphere  */
+    /* via the reflection I - V Transpose(V).  This formulation of V    */
+    /* will guarantee that if x[1] and x[2] are uniformly distributed,  */
+    /* the reflected points will be uniform on the sphere.  Note that V */
+    /* has length sqrt(2) to eliminate the 2 in the Householder matrix. */
+    ft r  = std::sqrt(z);
+    ft vx = std::sin(phi) * r;
+    ft vy = std::cos(phi) * r;
+    ft vz = std::sqrt(2 - z);
+    //
+    /* Compute the row vector S = Transpose(V) * R, where R is a simple */
+    /* rotation by theta about the z-axis.  No need to compute Sz since */
+    /* it's just Vz.                                                    */
+    ft st = std::sin(theta);
+    ft ct = std::cos(theta);
+    ft sx = vx * ct - vy * st;
+    ft sy = vx * st + vy * ct;
+    //
+    /* Construct the rotation matrix  ( V Transpose(V) - I ) R, which   */
+    /* is equivalent to V S - R.                                        */
+    return scitbx::mat3<ft>(
+      vx * sx - ct, vx * sy - st, vx * vz,
+      vy * sx + st, vy * sy - ct, vy * vz,
+      vz * sx,      vz * sy,      1 - z); // last element == Vz * Vz - 1
+  }
+
 }}} // namespace scitbx::math::r3_rotation
 
 #endif // SCITBX_MATH_R3_ROTATION_H
