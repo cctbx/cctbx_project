@@ -1555,6 +1555,7 @@ wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
 wxtbx/phil_controls/__init__.py -text
+wxtbx/phil_controls/choice_multi.py -text
 wxtbx/phil_controls/floats.py -text
 wxtbx/phil_controls/ints.py -text
 wxtbx/phil_controls/space_group.py -text
