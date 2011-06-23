@@ -41,22 +41,6 @@ torsion_ncs_params = iotbx.phil.parse("""
    .type = float
  verbose = True
    .type = bool
- edits
-   .short_caption = Edit torsion NCS restraints
-   .style = menu_item parent_submenu:advanced noauto
-   .expert_level = 2
- {
-   include scope \
-     mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
- }
- remove
-   .short_caption = Remove torsion NCS restraints
-   .expert_level = 2
-   .style = menu_item parent_submenu:advanced noauto
- {
-   include scope \
-   mmtbx.monomer_library.pdb_interpretation.geometry_restraints_remove_str
- }
  alignment
     .help = Set of parameters for sequence alignment. Defaults are good for most \
             of cases
