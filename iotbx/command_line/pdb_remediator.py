@@ -25,7 +25,7 @@ remediator {
 """, process_includes=True)
 
 def run(args):
-  from iotbx.remediation import remediator
+  from iotbx.pdb.remediation import remediator
   from iotbx import file_reader
   interpreter = master_phil.command_line_argument_interpreter()
   pdb_file = None
