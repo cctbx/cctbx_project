@@ -2,14 +2,14 @@
 from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
 import wx
 
-def format_unit_cell (uc) :
-  if (uc is None) :
-    return ""
-  return "%g %g %g %g %g %g" % uc.parameters()
-
 class UnitCellControl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
     super(UnitCellControl, self).__init__(*args, **kwds)
+    self.SetToolTip(wx.ToolTip(
+      "If all unit cell edges are perpendicular to each "+
+      "other, you only need to enter the edge lengths; the angles will be "+
+      "filled in as 90 degrees each.  You can trigger this conversion by "+
+      "typing in the cell lengths and pressing 'Enter'."))
 
   def CreateValidator (self) :
     return UnitCellValidator()
@@ -25,6 +25,11 @@ class UnitCellControl (ValidatedTextCtrl) :
   def SetValue (self, value) :
     self.SetUnitCell(value)
 
+  def FormatValue (self, value) :
+    if (value is None) :
+      return "None"
+    return "%g %g %g %g %g %g" % value.parameters()
+
   def GetPhilValue (self) :
     self.Validate()
     val_str = str(wx.TextCtrl.GetValue(self))
@@ -39,7 +44,7 @@ class UnitCellValidator (TextCtrlValidator) :
       return ""
     from cctbx import uctbx
     uc = uctbx.unit_cell(value)
-    return format_unit_cell(uc)
+    return self.GetWindow().FormatValue(uc)
 
 if (__name__ == "__main__") :
   app = wx.App(0)
