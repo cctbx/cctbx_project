@@ -94,7 +94,15 @@ use, for example::
 Note that ``libtbx.scons`` is just a thin wrapper around SCons_. The
 `SCons documentation`_ applies without modification.
 
-To run some regression tests after the compilation is finished enter::
+To run scripts with cctbx imports use the command::
+
+  libtbx.python your_script.py
+
+(You can also use scitbx.python, cctbx.python, iotbx.python, etc.;
+all these commands are equivalent.)
+
+For example, to run some regression tests after the compilation is
+finished enter::
 
   source setpaths_all.csh
   libtbx.python $SCITBX_DIST/run_tests.py
@@ -148,7 +156,15 @@ where N is the number of CPUs available.
 Note that ``libtbx.scons`` is just a thin wrapper around SCons_. The
 `SCons documentation`_ applies without modification.
 
-To run some regression tests after the compilation is finished enter::
+To run scripts with cctbx imports use the command::
+
+  libtbx.python your_script.py
+
+(You can also use scitbx.python, cctbx.python, iotbx.python, etc.;
+all these commands are equivalent.)
+
+For example, to run some regression tests after the compilation is
+finished enter::
 
   setpaths_all.bat
   libtbx.python %SCITBX_DIST%\run_tests.py
@@ -211,7 +227,7 @@ To configure a new build using the ``sources`` directory::
 
   mkdir build
   cd build
-  /your/choice/bin/python ../sources/libtbx/configure.py mmtbx
+  /your/choice/bin/python ../sources/cctbx_project/libtbx/configure.py mmtbx
   source setpaths.csh
   make
 
