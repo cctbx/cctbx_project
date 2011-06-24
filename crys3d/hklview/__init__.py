@@ -17,7 +17,7 @@ class scene (object) :
     if (settings.d_min is not None) :
       array = array.resolution_filter(d_min=settings.d_min)
     if (settings.expand_to_p1) :
-      array = array.expand_to_p1()
+      array = array.niggli_cell().expand_to_p1()
     if (settings.expand_anomalous) :
       array = array.generate_bijvoet_mates()
     self.data = array.data().deep_copy()
