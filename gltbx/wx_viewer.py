@@ -97,6 +97,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.min_dist = -100
     self.min_viewport_use_fraction = 0.01
     self.slab_scale = 1.0
+    self.scale_max = 0.1
+    self.z_min = 4.0
     self.fog_scale_factor = 0.5
     self.flag_show_fog = False # leave off by default
     self._settings_widget = None
@@ -417,6 +419,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRecordMouse(event)
 
   def OnScale(self, scale):
+    if (abs(scale) > self.scale_max) :
+      if (scale < 0) :
+        scale = -self.scale_max
+      else :
+        scale = self.scale_max
     s = self.minimum_covering_sphere
     r = (1+1.e-6)*s.radius()
     d = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
@@ -541,8 +548,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     r = self.buffer_factor*s.radius()
     #z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
     z = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
+    if (z < self.z_min) :
+      z = self.z_min
     self.near = max(self.min_near, z-r)
-    self.far = max(self.near*(1.e-6), z+r)
+    self.far = max(self.near+1, z+r)
 
   def OnRedrawGL(self, event=None):
     gltbx.util.handle_error()
