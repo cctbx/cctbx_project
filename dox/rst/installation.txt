@@ -173,39 +173,6 @@ finished enter::
 The output should show many OK. A Python Traceback is an indicator
 for problems.
 
----------------------------------------------------
-Optional support for Crystallographic Binary Format
----------------------------------------------------
-
-Optionally, the iotbx module can be linked against the CBF library
-(P. Ellis & H.  Bernstein) to support detector images written in CBF
-format. Download the CBF library, version 0.7.8.1 or above,
-`from this Web page <http://www.bernstein-plus-sons.com/software/CBF/>`_ .
-
-When compiling from sources, CBF support is contingent on the correct
-placement of the CBFlib source tree. Under Unix, run this command to
-unpack the CBFlib sources in ``cctbx_sources``::
-
-  libtbx.unpack_in_sources CBFlib_0.7.8.tar.gz
-
-Within the ``cctbx_sources`` directory, link the new source package
-as follows::
-
-  ln -s CBFlib_0.7.8 cbflib
-
-Under Windows, unpack the CBFlib source distribution manually
-followed by::
-
-  rename CBFlib_0.7.8 cbflib
-
-Now switch to the build directory, then reconfigure and recompile::
-
-  libtbx.configure mmtbx
-  libtbx.scons
-
-Objects for reading CBF-formatted files are defined in the
-iotbx.detectors package.
-
 ------------------------------
 Using the cctbx SVN repository
 ------------------------------
