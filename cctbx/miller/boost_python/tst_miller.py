@@ -631,6 +631,8 @@ def exercise_image_simple():
     + ( 91,  69) + (181, 139)*2
     + (160, 124) + (320, 248)*2
     + (246, 188) + (490, 377)*2)
+  unit_cell = uctbx.unit_cell((11,12,13,85,95,105))
+  miller_indices = flex.miller_index([(-1,2,1)])
   crystal_rotation_matrix = euler_angles.xyz_matrix(80,20,30)
   dpx, dpy = 4, 5
   for ewald_proximity,star in [(0.1, " "), (0.5, "*")]:
@@ -641,7 +643,7 @@ def exercise_image_simple():
           spot_intensity_factors = None
         else:
           spot_intensity_factors = flex.double([spot_intensity_factor])
-        for ewald_proximity_sign in [-1, 1]:
+        for apply_proximity_factor in [False, True]:
           if (star == "*"):
             expected_sum_image_pixels = expected_sum_image_pixels_iter.next()
           for code in xrange(16):
@@ -650,22 +652,44 @@ def exercise_image_simple():
             store_signals = bool(code & 0x4)
             set_pixels = bool(code & 0x8)
             image = miller.image_simple(
+              apply_proximity_factor=apply_proximity_factor,
               store_miller_index_i_seqs=store_miller_index_i_seqs,
               store_spots=store_spots,
               store_signals=store_signals,
               set_pixels=set_pixels).compute(
-                unit_cell=uctbx.unit_cell((11,12,13,85,95,105)),
-                miller_indices=flex.miller_index([(-1,2,1)]),
+                unit_cell=unit_cell,
+                miller_indices=miller_indices,
                 spot_intensity_factors=spot_intensity_factors,
                 crystal_rotation_matrix=crystal_rotation_matrix,
                 ewald_radius=0.5,
-                ewald_proximity=ewald_proximity_sign*ewald_proximity,
+                ewald_proximity=ewald_proximity,
                 signal_max=100,
                 detector_distance=5,
                 detector_size=(10,12),
                 detector_pixels=(dpx,dpy),
                 point_spread=point_spread,
                 gaussian_falloff_scale=4)
+            if (store_signals and image.signals.size() == 1):
+              partialities = miller.image_simple(
+                apply_proximity_filter=False,
+                apply_proximity_factor=apply_proximity_factor,
+                store_signals=True).compute(
+                  unit_cell=unit_cell,
+                  miller_indices=miller_indices,
+                  spot_intensity_factors=None,
+                  crystal_rotation_matrix=crystal_rotation_matrix,
+                  ewald_radius=0.5,
+                  ewald_proximity=ewald_proximity,
+                  signal_max=1,
+                  detector_distance=5,
+                  detector_size=(10,12),
+                  detector_pixels=(dpx,dpy),
+                  point_spread=point_spread,
+                  gaussian_falloff_scale=4).signals
+              f = 100
+              if (spot_intensity_factor is not None):
+                f *= spot_intensity_factor
+              assert approx_equal(partialities*f, image.signals)
             if (store_miller_index_i_seqs and star == "*"):
               assert image.miller_index_i_seqs.size() == 1
             else:

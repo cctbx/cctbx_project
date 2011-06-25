@@ -12,6 +12,8 @@ namespace cctbx { namespace miller {
 
   struct image_simple
   {
+    bool apply_proximity_filter;
+    bool apply_proximity_factor;
     bool store_miller_index_i_seqs;
     bool store_spots;
     bool store_signals;
@@ -22,11 +24,15 @@ namespace cctbx { namespace miller {
     af::versa<int, af::flex_grid<> > pixels;
 
     image_simple(
+      bool apply_proximity_filter_,
+      bool apply_proximity_factor_,
       bool store_miller_index_i_seqs_,
       bool store_spots_,
       bool store_signals_,
       bool set_pixels_)
     :
+      apply_proximity_filter(apply_proximity_filter_),
+      apply_proximity_factor(apply_proximity_factor_),
       store_miller_index_i_seqs(store_miller_index_i_seqs_),
       store_spots(store_spots_),
       store_signals(store_signals_),
@@ -53,6 +59,7 @@ namespace cctbx { namespace miller {
         TBXX_ASSERT(spot_intensity_factors.all_ge(0));
         TBXX_ASSERT(spot_intensity_factors.all_le(1));
       }
+      TBXX_ASSERT(ewald_proximity > 0);
       TBXX_ASSERT(ewald_radius > 0);
       TBXX_ASSERT(detector_size.const_ref().all_gt(0));
       TBXX_ASSERT(detector_pixels.const_ref().all_gt(0));
@@ -71,8 +78,6 @@ namespace cctbx { namespace miller {
       double circle_radius_sq = point_spread * std::max(dsx/dpx, dsy/dpy) / 2;
       circle_radius_sq *= circle_radius_sq;
       TBXX_ASSERT(circle_radius_sq != 0);
-      bool apply_proximity_factor = (ewald_proximity > 0);
-      if (!apply_proximity_factor) ewald_proximity *= -1;
       typedef scitbx::vec3<double> v3d;
       for(std::size_t ih=0;ih<miller_indices.size();ih++) {
         v3d rv = unit_cell.reciprocal_space_vector(miller_indices[ih]);
@@ -80,9 +85,12 @@ namespace cctbx { namespace miller {
         rvre[2] += ewald_radius; // direct beam anti-parallel (0,0,1)
         double rvre_len = rvre.length();
         double rvre_proximity = std::abs(1 - rvre_len / ewald_radius);
-        if (rvre_proximity < ewald_proximity) {
-          // http://en.wikipedia.org/wiki/Line-plane_intersection
-          if (rvre[2] > 0) {
+        if (!apply_proximity_filter || rvre_proximity < ewald_proximity) {
+          if (rvre[2] <= 0) {
+            TBXX_ASSERT(apply_proximity_filter);
+          }
+          else {
+            // http://en.wikipedia.org/wiki/Line-plane_intersection
             double d = -detector_distance / rvre[2];
             double dx = rvre[0] * d;
             double dy = rvre[1] * d;
@@ -102,7 +110,7 @@ namespace cctbx { namespace miller {
               if (apply_proximity_factor) {
                 proximity_factor -= scitbx::fn::pow2(
                   rvre_proximity / ewald_proximity);
-                if (proximity_factor <= 0) continue;
+                if (proximity_factor < 0) proximity_factor = 0;
               }
               double signal_at_center =
                   signal_max
@@ -112,10 +120,10 @@ namespace cctbx { namespace miller {
               if (store_signals) {
                 signals.push_back(signal_at_center);
               }
+              if (!set_pixels || proximity_factor == 0) continue;
               int signal = static_cast<int>(signal_at_center + 0.5);
               double gauss_arg_term = -gaussian_falloff_scale
                                     / circle_radius_sq;
-              if (!set_pixels) continue;
               int pxi = ifloor(pxf);
               int pyi = ifloor(pyf);
               int pxb = pxi - point_spread_half;
