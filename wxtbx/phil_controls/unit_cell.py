@@ -16,7 +16,7 @@ class UnitCellControl (ValidatedTextCtrl) :
 
   def SetUnitCell (self, uc) :
     if (type(uc).__name__ == "unit_cell") :
-      uc = format_unit_cell(uc)
+      uc = self.FormatValue(uc)
     elif (uc is None) :
       uc = ""
     assert isinstance(uc, str)
