@@ -39,7 +39,7 @@ does not include an installation script.
 Manually building from sources under Unix
 -----------------------------------------
 
-Please note: The following instructions are for developers! The
+Please note: **The following instructions are for developers!** The
 self-extracting (.selfx) source bundles perform all the steps
 automatically.
 
@@ -47,8 +47,8 @@ Building from sources requires Python 2.3 through 2.7 and a C++
 compiler. If you like to use the most recent Python, it can be
 installed in the following way::
 
-  gunzip -c Python-2.7.1.tar.gz | tar xf -
-  cd Python-2.7.1
+  gunzip -c Python-2.7.2.tar.gz | tar xf -
+  cd Python-2.7.2
   ./configure --prefix=/your/choice
   make
   make install
@@ -98,7 +98,7 @@ To run scripts with cctbx imports use the command::
 
   libtbx.python your_script.py
 
-(You can also use scitbx.python, cctbx.python, iotbx.python, etc.;
+(You can also use ``scitbx.python``, ``cctbx.python``, ``iotbx.python``, etc.;
 all these commands are equivalent.)
 
 For example, to run some regression tests after the compilation is
@@ -160,7 +160,7 @@ To run scripts with cctbx imports use the command::
 
   libtbx.python your_script.py
 
-(You can also use scitbx.python, cctbx.python, iotbx.python, etc.;
+(You can also use ``scitbx.python``, ``cctbx.python``, ``iotbx.python``, etc.;
 all these commands are equivalent.)
 
 For example, to run some regression tests after the compilation is
