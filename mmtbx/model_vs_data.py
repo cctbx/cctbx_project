@@ -283,12 +283,8 @@ def get_matthews_coeff(file_lines):
     except ValueError: pass
   return result
 
-def molprobity_stats(hierarchy, resname_classes):
+def molprobity_stats(model_statistics_geometry, resname_classes):
   result = None
-  from mmtbx.validation.ramalyze import ramalyze
-  from mmtbx.validation.rotalyze import rotalyze
-  from mmtbx.validation.cbetadev import cbetadev
-  from mmtbx.validation.clashscore import clashscore
   need_ramachandran = False
   ramalyze_obj = None
   rotalyze_obj = None
@@ -302,25 +298,14 @@ def molprobity_stats(hierarchy, resname_classes):
       n_residues = int(rc[k])
       break
   if(need_ramachandran):
-    ramalyze_obj = ramalyze()
-    output, output_list = ramalyze_obj.analyze_pdb(hierarchy = hierarchy,
-      outliers_only = False)
-    rotalyze_obj = rotalyze()
-    output_rotalyze, output_list_rotalyze = rotalyze_obj.analyze_pdb(
-      hierarchy = hierarchy, outliers_only = False)
-    cbetadev_obj = cbetadev()
-    output_cbetadev, sum_cbtadev, output_list_cbetadev = \
-      cbetadev_obj.analyze_pdb(hierarchy = hierarchy, outliers_only = False)
-    clashscore_obj = clashscore()
-    output_clashscore, bad_clashes = clashscore_obj.analyze_clashes(
-      hierarchy = hierarchy)
+    msg = model_statistics_geometry
     return group_args(
-      ramalyze_outliers = ramalyze_obj.get_outliers_count_and_fraction(),
-      ramalyze_allowed  = ramalyze_obj.get_allowed_count_and_fraction(),
-      ramalyze_favored  = ramalyze_obj.get_favored_count_and_fraction(),
-      rotalyze          = rotalyze_obj.get_outliers_count_and_fraction(),
-      cbetadev          = cbetadev_obj.get_outlier_count(),
-      clashscore        = clashscore_obj.get_clashscore())
+      ramalyze_outliers = msg.ramalyze_obj.get_outliers_count_and_fraction(),
+      ramalyze_allowed  = msg.ramalyze_obj.get_allowed_count_and_fraction(),
+      ramalyze_favored  = msg.ramalyze_obj.get_favored_count_and_fraction(),
+      rotalyze          = msg.rotalyze_obj.get_outliers_count_and_fraction(),
+      cbetadev          = msg.cbetadev_obj.get_outlier_count(),
+      clashscore        = msg.clashscore_obj.get_clashscore())
   else: return None
 
 def show_geometry(xray_structures, processed_pdb_file, scattering_table, hierarchy,
@@ -405,8 +390,8 @@ def show_geometry(xray_structures, processed_pdb_file, scattering_table, hierarc
       if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
         xray_structure = xray_structure.select(~hd_sel)
         model_selection = model_selection.select(~hd_sel)
-        geometry = restraints_manager_all.geometry.select(selection = ~hd_sel_all)
-        atom_selections_i_model = select_atom_selections(selection = ~hd_sel_all,
+        geometry = restraints_manager_all.geometry.select(selection=~hd_sel_all)
+        atom_selections_i_model = select_atom_selections(selection =~hd_sel_all,
            atom_selections = atom_selections_i_model)
       model_selection_as_bool = flex.bool(xray_structures.scatterers().size(),
         model_selection)
@@ -420,39 +405,48 @@ def show_geometry(xray_structures, processed_pdb_file, scattering_table, hierarc
       ###
       model_statistics_geometry_all = model_statistics.geometry(
         sites_cart         = xray_structure.sites_cart(),
+        pdb_hierarchy      = hierarchy,
         hd_selection       = hd_sel,
         ignore_hd          = False,
+        molprobity_scores  = True,
         restraints_manager = restraints_manager)
       #
       if(atom_selections.macromolecule.count(True)>0):
         mac_sel = atom_selections_i_model.macromolecule
         model_statistics_geometry_macromolecule = model_statistics.geometry(
           sites_cart         = xray_structure.sites_cart().select(mac_sel),
+          pdb_hierarchy      = hierarchy,
           hd_selection       = xray_structure.select(mac_sel).hd_selection(),
           ignore_hd          = False,
+          molprobity_scores  = True,
           restraints_manager = restraints_manager.select(mac_sel))
       #
       if(atom_selections.solvent.count(True)>0):
         sol_sel = atom_selections_i_model.solvent
         model_statistics_geometry_solvent = model_statistics.geometry(
           sites_cart         = xray_structure.sites_cart().select(sol_sel),
+          pdb_hierarchy      = hierarchy,
           hd_selection       = xray_structure.select(sol_sel).hd_selection(),
           ignore_hd          = False,
+          molprobity_scores  = True,
           restraints_manager = restraints_manager.select(sol_sel))
       #
       if(atom_selections.ligand.count(True)>0):
         lig_sel = atom_selections_i_model.ligand
         model_statistics_geometry_ligand = model_statistics.geometry(
           sites_cart         = xray_structure.sites_cart().select(lig_sel),
+          pdb_hierarchy      = hierarchy,
           hd_selection       = xray_structure.select(lig_sel).hd_selection(),
           ignore_hd          = False,
+          molprobity_scores  = True,
           restraints_manager = restraints_manager.select(lig_sel))
       ###
       rms_b_iso_or_b_equiv_bonded = utils.rms_b_iso_or_b_equiv_bonded(
         restraints_manager = restraints_manager,
         xray_structure     = xray_structure)
       #
-      molprobity_stats_i_seq = molprobity_stats(hierarchy = hierarchy_i_seq,
+      molprobity_stats_i_seq = molprobity_stats(
+        model_statistics_geometry = model_statistics_geometry_all,
         resname_classes = overall_counts_i_seq.resname_classes)
     geometry_statistics.append(group_args(
       n_residues_in_altlocs       = n_residues_in_altlocs,

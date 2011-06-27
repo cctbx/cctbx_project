@@ -643,8 +643,10 @@ def run(args, command_name="phenix.pdbtools"):
     restraints_manager = mmtbx.restraints.manager(
       geometry = geometry,
       normalization = True)
+    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     model_statistics.geometry(
       sites_cart         = xray_structure.sites_cart(),
+      pdb_hierarchy      = pdb_hierarchy,
       hd_selection       = xray_structure.hd_selection(),
       ignore_hd          = command_line_interpreter.command_line.options.ignore_hydrogens,
       restraints_manager = restraints_manager).show(out = log)

@@ -85,8 +85,8 @@ class manager(object):
     self.restraints_manager = restraints_manager
     self.xray_structure = xray_structure
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
-    self.pdb_hierarchy = pdb_hierarchy
-    self.pdb_atoms = pdb_hierarchy.atoms()
+    self._pdb_hierarchy = pdb_hierarchy
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.refinement_flags = refinement_flags
     self.wilson_b = wilson_b
@@ -103,7 +103,14 @@ class manager(object):
     self.exchangable_hd_groups = []
     if(self.xray_structure.hd_selection().count(True) > 0):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
-        hierarchy = self.pdb_hierarchy)
+        hierarchy = self._pdb_hierarchy)
+    self.original_xh_lengths = None
+
+  def pdb_hierarchy(self, sync_with_xray_structure=False):
+    if(sync_with_xray_structure):
+      self._pdb_hierarchy.adopt_xray_structure(
+        xray_structure = self.xray_structure)
+    return self._pdb_hierarchy
 
   def xh_connectivity_table(self):
     result = None
@@ -116,6 +123,40 @@ class manager(object):
           geometry       = self.restraints_manager,
           xray_structure = xray_structure).table
     return result
+
+  def extend_xh_bonds(self, value=1.1):
+    if(self.restraints_manager is None): return
+    if(self.xray_structure.hd_selection().count(True)==0): return
+    assert self.original_xh_lengths is None
+    h_i_seqs = []
+    xhct = self.xh_connectivity_table()
+    if(xhct is None): return
+    self.original_xh_lengths = flex.double()
+    for xhcti in xhct:
+      h_i_seqs.append(xhcti[1])
+    for bp in self.restraints_manager.geometry.bond_params_table:
+      for i, k in enumerate(bp.keys()):
+        if(k in h_i_seqs):
+          self.original_xh_lengths.append(bp.values()[i].distance_ideal)
+          bp.values()[i].distance_ideal = value
+
+  def restore_xh_bonds(self):
+    if(self.restraints_manager is None): return
+    if(self.xray_structure.hd_selection().count(True)==0): return
+    assert self.original_xh_lengths is not None
+    xhct = self.xh_connectivity_table()
+    if(xhct is None): return
+    h_i_seqs = []
+    for xhcti in xhct:
+      h_i_seqs.append(xhcti[1])
+    counter = 0
+    for bp in self.restraints_manager.geometry.bond_params_table:
+      for i, k in enumerate(bp.keys()):
+        if(k in h_i_seqs):
+          bp.values()[i].distance_ideal = self.original_xh_lengths[counter]
+          counter += 1
+    self.original_xh_lengths = None
+    self.idealize_h(show=False)
 
   def isolated_atoms_selection(self):
     if(self.restraints_manager is None):
@@ -139,6 +180,17 @@ class manager(object):
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*1.2
       self.xray_structure.set_b_iso(values = bfi, selection = hd_sel)
+
+  def reset_occupancies_for_hydrogens(self):
+    if(self.restraints_manager is None): return
+    hd_sel = self.xray_structure.hd_selection()
+    if(hd_sel.count(True) > 0):
+      xh_conn_table = self.xh_connectivity_table()
+      qi = self.xray_structure.scatterers().extract_occupancies()
+      for t in self.xh_connectivity_table():
+        i_x, i_h = t[0], t[1]
+        qi[i_h] = qi[i_x]
+      self.xray_structure.scatterers().set_occupancies(qi, hd_sel)
 
   def reset_coordinates_for_exchangable_hd(self):
     if(len(self.exchangable_hd_groups) > 0):
@@ -201,7 +253,7 @@ class manager(object):
     result = []
     solvent_sel = self.solvent_selection()
     get_class = iotbx.pdb.common_residue_names_get_class
-    for model in self.pdb_hierarchy.models():
+    for model in self._pdb_hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           first_water = None
@@ -353,7 +405,7 @@ class manager(object):
     # XXX very inefficient: re-process PDB from scratch and create restraints
     raw_records = [pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
-    raw_records.extend(self.pdb_hierarchy.as_pdb_string().splitlines())
+    raw_records.extend(self._pdb_hierarchy.as_pdb_string().splitlines())
     if(self.processed_pdb_files_srv.pdb_interpretation_params is not None):
       pip = self.processed_pdb_files_srv.pdb_interpretation_params
       pip.clash_guard.nonbonded_distance_threshold = -1.0
@@ -368,13 +420,13 @@ class manager(object):
       show_summary = False).deep_copy_scatterers()
     new_pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
     new_pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
-    old_pdb_atoms = self.pdb_hierarchy.atoms()
+    old_pdb_atoms = self._pdb_hierarchy.atoms()
     assert len(new_pdb_atoms) == len(old_pdb_atoms)
     for a1, a2 in zip(old_pdb_atoms, new_pdb_atoms):
       assert a1.name.strip() == a2.name.strip()
       assert a1.element.strip() == a2.element.strip()
       assert approx_equal(a1.xyz, a2.xyz, 0.001)
-    self.pdb_hierarchy = new_pdb_hierarchy
+    self._pdb_hierarchy = new_pdb_hierarchy
     self.pdb_atoms = new_pdb_atoms
     # XXX now we gonna loose old grm (with all NCS, edits, etc...)
     if(self.restraints_manager.ncs_groups is not None):
@@ -398,7 +450,7 @@ class manager(object):
     get_class = iotbx.pdb.common_residue_names_get_class
     backbone_names = set(["CA","CB","C","O","N"])
     result = flex.size_t()
-    for model in self.pdb_hierarchy.models():
+    for model in self._pdb_hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
@@ -412,7 +464,7 @@ class manager(object):
     return result
 
   def hd_group_selections(self):
-    return utils.combine_hd_exchangable(hierarchy = self.pdb_hierarchy)
+    return utils.combine_hd_exchangable(hierarchy = self._pdb_hierarchy)
 
   def reset_adp_of_hd_sites_to_be_equal(self):
     scatterers = self.xray_structure.scatterers()
@@ -572,7 +624,7 @@ class manager(object):
            self.refinement_flags.adp_individual_iso.set_selected(sel, False)
     # add to pdb_hierarchy:
     # XXX XXX CONSOLIDATE WITH add_solvent
-    pdb_model = self.pdb_hierarchy.only_model()
+    pdb_model = self._pdb_hierarchy.only_model()
     new_chain = pdb.hierarchy.chain(id=" ")
     orth = self.ias_xray_structure.unit_cell().orthogonalize
     n_seq = self.pdb_atoms.size()
@@ -599,7 +651,7 @@ class manager(object):
       new_chain.append_residue_group(residue_group=new_residue_group)
     if (new_chain.residue_groups_size() != 0):
       pdb_model.append_chain(chain=new_chain)
-    self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
 
   def remove_ias(self):
@@ -614,9 +666,9 @@ class manager(object):
        self.xray_structure.select_inplace(
          selection = ~self.ias_selection)
        self.xray_structure.scattering_type_registry().show()
-       self.pdb_hierarchy = self.pdb_hierarchy.select(
+       self._pdb_hierarchy = self._pdb_hierarchy.select(
          atom_selection = ~self.ias_selection)
-       self.pdb_atoms = self.pdb_hierarchy.atoms()
+       self.pdb_atoms = self._pdb_hierarchy.atoms()
        self.ias_selection = None
 
   def show_rigid_bond_test(self, out=None):
@@ -709,7 +761,7 @@ class manager(object):
 
   def select(self, selection):
     # XXX ignores IAS
-    new_pdb_hierarchy = self.pdb_hierarchy.select(selection, copy_atoms=True)
+    new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
     if(self.refinement_flags is not None):
       # XXX Tom
@@ -803,7 +855,8 @@ class manager(object):
     # XXX make this more complete and smart
     if(out is None): out = sys.stdout
     print >> out, "|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|"
-    occ = self.xray_structure.scatterers().extract_occupancies()
+    hd_sel = self.xray_structure.hd_selection()
+    occ = self.xray_structure.scatterers().extract_occupancies().select(~hd_sel)
     less_than_zero = occ < 0.0
     occ_min = flex.min(occ)
     occ_max = flex.max(occ)
@@ -829,7 +882,7 @@ class manager(object):
   def write_pdb_file(self, out = None, selection = None, xray_structure = None):
     return utils.write_pdb_file(
       xray_structure       = self.xray_structure,
-      pdb_hierarchy        = self.pdb_hierarchy,
+      pdb_hierarchy        = self._pdb_hierarchy,
       pdb_atoms            = self.pdb_atoms,
       selection            = selection,
       out                  = out)
@@ -899,11 +952,11 @@ class manager(object):
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
     #
-    i_seq = find_common_water_resseq_max(pdb_hierarchy=self.pdb_hierarchy)
+    i_seq = find_common_water_resseq_max(pdb_hierarchy=self._pdb_hierarchy)
     if (i_seq is None or i_seq < 0): i_seq = 0
     #
     # XXX XXX CONSOLIDATE WITH add_ias
-    pdb_model = self.pdb_hierarchy.only_model()
+    pdb_model = self._pdb_hierarchy.only_model()
     new_chain = pdb.hierarchy.chain(id=chain_id)
     orth = solvent_xray_structure.unit_cell().orthogonalize
     serial_offs = self.pdb_atoms.size() - i_seq
@@ -929,7 +982,7 @@ class manager(object):
       new_chain.append_residue_group(residue_group=new_residue_group)
     if (new_chain.residue_groups_size() != 0):
       pdb_model.append_chain(chain=new_chain)
-    self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     #
     if(self.restraints_manager is not None):
@@ -984,7 +1037,7 @@ class manager(object):
   def geometry_statistics(self,
                           ignore_hd,
                           ignore_side_chain=False,
-                          ):
+                          molprobity_scores = False):
     if(self.restraints_manager is None): return None
     sites_cart = self.xray_structure.sites_cart()
     hd_selection = self.xray_structure.hd_selection()
@@ -995,13 +1048,18 @@ class manager(object):
     if(self.use_ias):
       sites_cart = sites_cart.select(~self.ias_selection)
       hd_selection = hd_selection.select(~self.ias_selection)
+    sync_with_xray_structure=False
+    if(molprobity_scores): sync_with_xray_structure=True
     return model_statistics.geometry(
-      sites_cart         = sites_cart,
-      hd_selection       = hd_selection,
-      ignore_hd          = ignore_hd,
+      sites_cart           = sites_cart,
+      pdb_hierarchy        = self.pdb_hierarchy(
+        sync_with_xray_structure=sync_with_xray_structure),
+      hd_selection         = hd_selection,
+      ignore_hd            = ignore_hd,
       main_chain_selection = main_chain_selection,
       ignore_side_chain    = ignore_side_chain,
-      restraints_manager = self.restraints_manager)
+      restraints_manager   = self.restraints_manager,
+      molprobity_scores    = molprobity_scores)
 
   def show_geometry_statistics(self,
                                ignore_hd,
