@@ -15,6 +15,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/versa_reductions.h>
 #include <scitbx/array_family/versa_algebra.h>
+#include <scitbx/array_family/slice.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/boost_python/slice.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -27,6 +28,34 @@
 namespace scitbx { namespace af { namespace boost_python {
 
   using scitbx::positive_getitem_index;
+
+  template <typename array_t, typename element_t>
+  array_t
+  _getitem_tuple_helper(PyObject* obj_ptr) {
+    boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
+    array_t result;
+    std::size_t i=0;
+    for(;;i++) {
+      boost::python::handle<> py_elem_hdl(
+        boost::python::allow_null(PyIter_Next(obj_iter.get())));
+      if (PyErr_Occurred()) boost::python::throw_error_already_set();
+      if (!py_elem_hdl.get()) break; // end of iteration
+      boost::python::object py_elem_obj(py_elem_hdl);
+      boost::python::extract<element_t> elem_proxy(py_elem_obj);
+      bool success = elem_proxy.check();
+      if (success) {
+        result.push_back(elem_proxy());
+      }
+      else if (i == 0) {
+        break;
+      }
+      else {
+        PyErr_SetString(PyExc_TypeError, "All items must be of same type.");
+        boost::python::throw_error_already_set();
+      }
+    }
+    return result;
+  }
 
   template <typename ElementType>
   struct flex_default_element
@@ -155,14 +184,51 @@ namespace scitbx { namespace af { namespace boost_python {
       return f_t(result, flex_grid<>(result.size()));
     }
 
+    static versa<e_t, flex_grid<> >
+    getitem_nd_slice(
+      const_ref<e_t, flex_grid<> > const& self,
+      small<boost::python::slice, 10> const& slices)
+    {
+      small<long, 10> dim = self.accessor().all();
+      small<af::slice, 10> slices_simple;
+      for (unsigned i=0; i<slices.size(); i++) {
+        scitbx::boost_python::adapted_slice sl(slices[i], dim[i]);
+        SCITBX_ASSERT(sl.step == 1);
+        slices_simple.push_back(af::slice(sl.start, sl.stop));
+      }
+      return copy_slice<e_t>(self, slices_simple);
+    }
+
+    // Not intended to be called directly from Python
     static e_t&
-    getitem_flex_grid(f_t& a, flex_grid_default_index_type const& i)
+    getitem_fgdit(f_t& a, flex_grid_default_index_type const& i)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (!a.accessor().is_valid_index(i)) {
         scitbx::boost_python::raise_index_error();
       }
       return a(i);
+    }
+
+    static boost::python::object
+    getitem_tuple(boost::python::object& a_obj, boost::python::object obj) {
+      f_t a = boost::python::extract<f_t>(a_obj)();
+      PyObject* obj_ptr = obj.ptr();
+      flex_grid_default_index_type tuple = _getitem_tuple_helper<
+        flex_grid_default_index_type, flex_grid_default_index_type::value_type>(obj_ptr);
+      if (tuple.size()>0) {
+        return a_obj.attr("__getitem_fgdit__")(obj);
+//        return boost::python::object(getitem_fgdit(a, tuple));
+      }
+      af::small<boost::python::slice, 10> slices = _getitem_tuple_helper<af::small<boost::python::slice, 10>, boost::python::slice>(obj_ptr);
+      if (slices.size()>0) {
+        return boost::python::object(getitem_nd_slice(a.const_ref(), slices));
+      }
+      else {
+        PyErr_SetString(PyExc_TypeError, "Expecting int or slice.");
+        boost::python::throw_error_already_set();
+      }
+      return boost::python::object(); // it can never reach here
     }
 
     static void
@@ -692,9 +758,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("size", size)
         .def("__len__", size)
         .def("capacity", capacity)
-        .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())
+        .def("__getitem__", getitem_tuple) // must be before other __getitem__
         .def("__getitem__", getitem_1d_slice)
-        .def("__getitem__", getitem_flex_grid, GetitemReturnValuePolicy())
+        .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())
+        .def("__getitem_fgdit__", getitem_fgdit, GetitemReturnValuePolicy())
         .def("__setitem__", setitem_1d)
         .def("__setitem__", setitem_flex_grid)
         .def("__delitem__", delitem_1d)

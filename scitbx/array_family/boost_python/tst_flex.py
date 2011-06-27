@@ -574,17 +574,18 @@ def exercise_1d_slicing_core(a):
   assert tuple(a[-1:1:-2]) == (5,3)
   assert tuple(a[-1:2:-2]) == (5,)
   try: tuple(a[3:3:0]) == ()
-  except ValueError, e: assert str(e) == "slice step can not be zero"
+  except ValueError, e: assert str(e) == "slice step cannot be zero"
+
 
 def exercise_1d_slicing():
   exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
   try:
-    import Numeric
+    import numpy
   except ImportError:
     pass
   else:
-    print "Testing compatibility with Numeric slicing...",
-    exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)))
+    print "Testing compatibility with numpy slicing...",
+    exercise_1d_slicing_core(numpy.array((1,2,3,4,5)))
     print "OK"
   assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
   assert list(flex.slice_indices(5, slice(0))) == []
@@ -592,6 +593,82 @@ def exercise_1d_slicing():
   assert list(flex.slice_indices(5, slice(1,10,2))) == [1,3]
   assert list(flex.slice_indices(5, slice(1,3,2))) == [1]
   assert list(flex.slice_indices(5, slice(4,0,-2))) == [4,2]
+
+def exercise_nd_slicing():
+
+  for flex_t in (flex.int, flex.double):
+    for n in range(0,3):
+      for nd in range(1,11): # flex grid supports up to 10-d
+        a = flex_t(range(n**nd))
+        a.resize(flex.grid(tuple([n]*nd)))
+        slices = [slice(None) for i in range(nd)]
+        b = a[slices]
+        assert approx_equal(b, a)
+        assert a is not b
+
+    a = flex_t(range(60))
+    a.resize(flex.grid(3,4,5))
+    slices = [slice(1,3),slice(2,4),slice(3,5)]
+    assert approx_equal(a[slices], [33,34,38,39,53,54,58,59])
+    slices = [slice(1,3),slice(2,-1),slice(3,5)]
+    assert approx_equal
+    a = flex_t(range(5**3))
+    a.resize(flex.grid(5,5,5))
+    assert approx_equal(a, a[:,:,:])
+    assert a is not a[:,:,:]
+    assert a[:-5,:-5,:-5].size() == 0
+    assert a[:-4:1,:-4:1,:-4:1].size() == 1
+
+    assert approx_equal(a[:2,:2,:2], (0,1,5,6,25,26,30,31))
+    assert approx_equal(
+      a[1:4,0:3,0:2], (25,26,30,31,35,36,50,51,55,56,60,61,75,76,80,81,85,86))
+    try: a[::2,::2,::2]
+    except RuntimeError: pass
+    else: raise Exception_expected
+    slices = [slice(1,3),slice(1,-2,1),slice(-4,-2)]
+    assert approx_equal(a[slices], [31, 32, 36, 37, 56, 57, 61, 62])
+    slices = [slice(1,3),slice(1,4),slice(3,5)]
+    assert approx_equal(a[slices], [33,34,38,39,43,44,58,59,63,64,68,69])
+
+    a = flex_t(range(5**2))
+    a.resize(flex.grid(5,5))
+    assert approx_equal(a, a[:,:])
+    b = a[:2,:2]
+    assert b.all() == (2,2)
+    assert approx_equal(b, (0,1,5,6))
+    c = a[1:3,0:-2]
+    assert c.all() == (2,3)
+    assert approx_equal(c, (5,6,7,10,11,12))
+    c = a[1:3,1:2]
+    assert c.all() == (2,1)
+    assert approx_equal(c, (6,11))
+
+def exercise_numpy_slicing_compatibility():
+  try:
+    import numpy
+  except ImportError:
+    print "Skipping exercise_numpy_slicing_compatibility..."
+    return
+  for j in range(50):
+    for n_dim in (3,4,5,6):
+      from stdlib import random
+      dim = [random.randint(3,15) for i in range(n_dim)]
+      size = flex.product(flex.int(dim))
+      a = flex.random_double(size)
+      a.resize(flex.grid(dim))
+      a_numpy = a.as_numpy_array()
+      slices = []
+      for i in range(n_dim):
+        start = random.randint(0,dim[i]-1)
+        stop = random.randint(start+1,dim[i])
+        slices.append(slice(start,stop))
+      assert approx_equal(flex.double(a_numpy[slices].flatten()), a[slices])
+      slices = []
+      for i in range(n_dim):
+        start = random.randint(-dim[i],-2)
+        stop = random.randint(start+1,-1)
+        slices.append(slice(start,stop))
+      assert approx_equal(flex.double(a_numpy[slices].flatten()), a[slices])
 
 def exercise_push_back_etc():
   a = flex.double(3)
@@ -2955,6 +3032,8 @@ def exercise_python_functions():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_nd_slicing()
+    exercise_numpy_slicing_compatibility()
     exercise_matrix_packed_u_diagonal()
     exercise_versa_packed_u_to_flex()
     exercise_quadratic_form()
