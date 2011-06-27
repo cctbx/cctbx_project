@@ -1235,6 +1235,7 @@ scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-pyt
 scitbx/array_family/initialiser.h -text
 scitbx/array_family/owning_ref.h -text
 scitbx/array_family/ref_matrix.h -text
+scitbx/array_family/slice.h -text
 scitbx/array_family/tst_optional_copy.cpp svneol=native#text/plain
 scitbx/array_family/tst_ref_matrix_facet.cpp -text
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
