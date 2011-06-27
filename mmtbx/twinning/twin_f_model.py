@@ -547,6 +547,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def twin_test(self):
     return "yes"
 
+  def update_f_hydrogens(self, log): # XXX dummy function to conform with non-twin equivalent
+    return None # XXX dummy function to conform with non-twin equivalent
+
   def info(self, free_reflections_per_bin = 140, max_number_of_bins = 20):
     return mmtbx.f_model_info.info(
       fmodel                   = self,
@@ -726,6 +729,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     else:
       w,f = self.r_values(False)
       return f
+
+  def f_part1(self): # XXX to make compatiblw with other fmodel
+    return self.f_calc().customized_copy(data = self.f_calc().data()*0)
 
   def update_solvent_and_scale(self,
                                optimize_mask=True,
