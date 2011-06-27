@@ -18,9 +18,8 @@ namespace {
                                      self.f_mask(),
                                      self.k_sols(),
                                      self.b_sol,
-                                     self.f_part,
-                                     self.k_part,
-                                     self.b_part,
+                                     self.f_part1,
+                                     self.f_part2,
                                      self.u_star,
                                      self.hkl,
                                      self.uc,
@@ -35,7 +34,6 @@ namespace {
   {
     using namespace boost::python;
     using boost::python::arg;
-
 
     boost::python::to_python_converter<
       af::small< af::shared<std::complex<double> >, max_n_shells> ,
@@ -54,8 +52,7 @@ namespace {
            af::small< double, max_n_shells>       const&,
            double                                 const&,
            af::shared<std::complex<double> >      const&,
-           double                                 const&,
-           double                                 const&,
+           af::shared<std::complex<double> >      const&,
            scitbx::sym_mat3<double>               const&,
            af::shared<cctbx::miller::index<> >    const&,
            cctbx::uctbx::unit_cell                const&,
@@ -64,18 +61,16 @@ namespace {
                                                          arg("shell_f_masks"),
                                                          arg("k_sols"),
                                                          arg("b_sol"),
-                                                         arg("f_part_base"),
-                                                         arg("k_part"),
-                                                         arg("b_part"),
+                                                         arg("f_part1"),
+                                                         arg("f_part2"),
                                                          arg("u_star"),
                                                          arg("hkl"),
                                                          arg("uc"),
                                                          arg("ss"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
       .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
-      .add_property("f_part",        make_getter(&core<>::f_part,       rbv()))
-      .add_property("k_part",        make_getter(&core<>::k_part,       rbv()))
-      .add_property("b_part",        make_getter(&core<>::b_part,       rbv()))
+      .add_property("f_part1",       make_getter(&core<>::f_part1,      rbv()))
+      .add_property("f_part2",       make_getter(&core<>::f_part2,      rbv()))
       .add_property("u_star",        make_getter(&core<>::u_star,       rbv()))
       .add_property("hkl",           make_getter(&core<>::hkl,          rbv()))
       .add_property("uc",            make_getter(&core<>::uc,           rbv()))
@@ -88,8 +83,8 @@ namespace {
       .def("k_sol", &core<>::k_sol)
       .def("k_sols", &core<>::k_sols)
       .def("f_mask", &core<>::f_mask)
-      .def("shell_f_mask", &core<>::shell_f_mask)
-      .def("shell_f_masks", &core<>::shell_f_masks)
+      .def("shell_f_mask", &core<>::shell_f_mask)   // XXX re-name to f_mask
+      .def("shell_f_masks", &core<>::shell_f_masks) // XXX re-name to f_masks
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
