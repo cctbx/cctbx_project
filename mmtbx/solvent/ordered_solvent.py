@@ -155,11 +155,11 @@ class manager(object):
                      log = None):
     adopt_init_args(self, locals())
     #
-    save_k_part, save_b_part = None, None
-    if(self.fmodel.k_part()!=0):
-      save_k_part = self.fmodel.k_part()
-      save_b_part = self.fmodel.b_part()
-      self.fmodel.update_core(k_part=0, b_part=0)
+    #XXXsave_k_part, save_b_part = None, None
+    #XXXif(self.fmodel.k_part()!=0):
+    #XXX  save_k_part = self.fmodel.k_part()
+    #XXX  save_b_part = self.fmodel.b_part()
+    #XXX  self.fmodel.update_core(k_part=0, b_part=0)
     #
     assert self.fmodel.xray_structure is self.model.xray_structure
     if(self.params is None): self.params = master_params().extract()
@@ -232,9 +232,9 @@ class manager(object):
     self.convert_water_adp()
     assert self.fmodel.xray_structure is self.model.xray_structure
     #
-    if(save_k_part is not None):
-      self.fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
-      self.fmodel.update_f_part()
+    #XXXif(save_k_part is not None):
+    #XXX  self.fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
+    #XXX  self.fmodel.update_f_part()
     #
 
   def convert_water_adp(self):
@@ -432,14 +432,14 @@ class manager(object):
     print >> self.log, "Before RSCC filtering: ", \
       self.model.solvent_selection().count(True)
     assert self.fmodel.xray_structure is self.model.xray_structure
-    assert len(list(self.model.pdb_hierarchy.atoms_with_labels())) == \
+    assert len(list(self.model.pdb_hierarchy().atoms_with_labels())) == \
       self.model.xray_structure.scatterers().size()
     from mmtbx import real_space_correlation
     par = self.params.secondary_map_and_map_cc_filter
     selection = self.model.solvent_selection()
     rscc_and_map_result = real_space_correlation.simple(
       fmodel                = self.fmodel,
-      pdb_hierarchy         = self.model.pdb_hierarchy,
+      pdb_hierarchy         = self.model.pdb_hierarchy(),
       map_1_name            = par.cc_map_1_type,
       map_2_name            = par.cc_map_2_type,
       diff_map_name         = None,
