@@ -50,15 +50,15 @@ def exercise_1(pdb_file):
   opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 main.scattering_table=wk1995"
   opt2= "main.number_of_macro_cycles=3 main.ordered_solvent=True apply_back_trace_of_b_cart=True "
   opt3 = "--overwrite target_weights.wxc_scale=3.0 target_weights.wxu_scale=3.0 target_weights.shake_sites=false "
-  opt4 = " ordered_solvent.mode=every_macro_cycle main.nqh_flips=False --quiet optimize_mask=False"
+  opt4 = " ordered_solvent.mode=every_macro_cycle main.nqh_flips=False optimize_mask=False"
   cmd = " ".join(["phenix.refine", new_pdb, hkl, opt1, opt2, opt3, opt4])
   print cmd
   print
   sys.stdout.flush()
   easy_run.call(cmd)
   evaluate(pdb_file = output_file_prefix+"_001.pdb",
-           rw_tol   = 0.01,
-           rf_tol   = 0.01,
+           rw_tol   = 0.015,
+           rf_tol   = 0.015,
            n_water  = 186,
            n_water_tol = 0)
   opt5 = "ordered_solvent.use_kick_maps=True output.serial=2"
