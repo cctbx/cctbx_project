@@ -98,7 +98,8 @@ class electron_density_map(object):
       assert anom_diff_common.indices().size()==self.anom_diff.indices().size()
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-    if(self.fill_missing_f_obs and self.fmodel.k_part() == 0): # do not fill if F_part is used!
+    if(self.fill_missing_f_obs and
+       flex.max(abs(self.fmodel.f_part1()).data()) == 0): # do not fill if F_part is used!
       self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode,
         update_scaling = update_scaling)
     #del self.fmodel # XXX

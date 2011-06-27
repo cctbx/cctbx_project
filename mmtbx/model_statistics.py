@@ -10,12 +10,14 @@ from itertools import count
 class geometry(object):
   def __init__(self,
                sites_cart,
+               pdb_hierarchy,
                restraints_manager,
                hd_selection,
                ignore_hd = True,
                main_chain_selection = None,
                ignore_side_chain = False,
-               n_histogram_slots = 10):
+               n_histogram_slots = 10,
+               molprobity_scores=False):
     zero = [0, 0, 0, 0, 0]
     self.a_target, self.a_mean, self.a_max, self.a_min, self.a_number = zero
     self.b_target, self.b_mean, self.b_max, self.b_min, self.b_number = zero
@@ -91,6 +93,29 @@ class geometry(object):
       flex.histogram(data = flex.abs(angle_deltas), n_slots =n_histogram_slots)
     self.nonbonded_distances_histogram = flex.histogram(
       data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
+    # molprobity scores
+    if(molprobity_scores):
+      from mmtbx.validation.ramalyze import ramalyze
+      from mmtbx.validation.rotalyze import rotalyze
+      from mmtbx.validation.cbetadev import cbetadev
+      from mmtbx.validation.clashscore import clashscore
+      self.ramalyze_obj = ramalyze()
+      self.ramalyze_obj.analyze_pdb(hierarchy = pdb_hierarchy,
+        outliers_only = False)
+      self.rotalyze_obj = rotalyze()
+      self.rotalyze_obj.analyze_pdb(hierarchy = pdb_hierarchy,
+        outliers_only = False)[1]
+      self.cbetadev_obj = cbetadev()
+      self.cbetadev_obj.analyze_pdb(hierarchy = pdb_hierarchy,
+        outliers_only = False)
+      self.clashscore_obj = clashscore()
+      self.clashscore_obj.analyze_clashes(hierarchy = pdb_hierarchy)
+      self.clashscore = self.clashscore_obj.get_clashscore()
+      self.ramachandran_outliers = self.ramalyze_obj.get_outliers_count_and_fraction()[1]*100.
+      self.ramachandran_allowed  = self.ramalyze_obj.get_allowed_count_and_fraction()[1]*100.
+      self.ramachandran_favored  = self.ramalyze_obj.get_favored_count_and_fraction()[1]*100.
+      self.rotamer_outliers = self.rotalyze_obj.get_outliers_count_and_fraction()[1]*100.
+      self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
 
   def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
     if(out is None): out = sys.stdout
@@ -192,6 +217,16 @@ class geometry(object):
     print >> out, pr+" PLANARITY : "+fmt%(self.p_mean,self.p_max,self.p_number)
     print >> out, pr+" DIHEDRAL  : "+fmt%(self.d_mean,self.d_max,self.d_number)
     print >> out, pr+" MIN NONBONDED DISTANCE : %-6.3f"%self.n_min
+    print >> out, pr
+    print >> out, pr+"MOLPROBITY STATISTICS."
+    print >> out, pr+" ALL-ATOM CLASHSCORE : %-6.2f"%self.clashscore
+    print >> out, pr+" RAMACHANDRAN PLOT:"
+    print >> out, pr+"   OUTLIERS : %-5.2f %s"%(self.ramachandran_outliers,"%")
+    print >> out, pr+"   ALLOWED  : %-5.2f %s"%(self.ramachandran_allowed,"%")
+    print >> out, pr+"   FAVORED  : %-5.2f %s"%(self.ramachandran_favored,"%")
+    print >> out, pr+" ROTAMER OUTLIERS : %s %s"%(
+      str("%6.2f"%(self.rotamer_outliers)).strip(),"%")
+    print >> out, pr+" CBETA DEVIATIONS : %-d"%self.c_beta_dev
     out.flush()
 
   def _bond_angle_nonbonded_histogram(self, out, prefix, format):
@@ -405,17 +440,8 @@ class adp(object):
 
 class model(object):
   def __init__(self, model, ignore_hd):
-    sites_cart = model.xray_structure.sites_cart()
-    hd_selection = model.xray_structure.hd_selection()
-    if(model.use_ias):
-      sites_cart = sites_cart.select(~model.ias_selection)
-      hd_selection = hd_selection.select(~model.ias_selection)
-    self.geometry = None
-    if(model.restraints_manager is not None):
-      self.geometry = geometry(sites_cart         = sites_cart,
-                               ignore_hd          = ignore_hd,
-                               hd_selection       = hd_selection,
-                               restraints_manager = model.restraints_manager)
+    self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
+      molprobity_scores=True)
     self.content = model_content(model)
     self.adp = adp(model)
     self.tls_groups = model.tls_groups

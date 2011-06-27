@@ -122,7 +122,7 @@ def fill_missing_f_obs(fmodel, fill_mode, update_scaling=True):
                        "random",
                        "fobs_mean",
                        "dfmodel"]
-  use_f_part = fmodel.k_part() > 0
+  use_f_part = flex.max(abs(fmodel.f_part1()).data()) > 0
   bss_params = bss.master_params.extract()
   bss_params.k_sol_b_sol_grid_search = False
   bss_params.b_sol_max = 150.0
@@ -263,5 +263,5 @@ def fill_missing_f_obs(fmodel, fill_mode, update_scaling=True):
   if(update_scaling):
     fmodel_result.update_solvent_and_scale(params = bss_params,
       optimize_mask=False)
-  if(use_f_part): fmodel_result.update_f_part()
+  if(use_f_part): fmodel_result.update_f_part1()
   return fmodel_result
