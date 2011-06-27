@@ -120,33 +120,6 @@ namespace {
    ;
     def("fb_cart",fb_cart)
    ;
-   def("ksol_bsol_grid_search",
-      (vec3<double>(*)
-        (af::const_ref<double> const&,
-         af::const_ref<std::complex<double> > const&,
-         af::const_ref<std::complex<double> > const&,
-         sym_mat3<double> const&,
-         af::const_ref<double> const&,
-         af::const_ref<double> const&,
-         double const&,
-         af::const_ref<cctbx::miller::index<> > const&,
-         cctbx::uctbx::unit_cell const&)) ksol_bsol_grid_search);
-   ;
-   def("ksol_bsol_grid_search",
-      (vec3<double>(*)
-        (af::const_ref<double> const&,
-         af::const_ref<std::complex<double> > const&,
-         af::const_ref<std::complex<double> > const&,
-         af::const_ref<std::complex<double> > const&,
-         af::const_ref<std::complex<double> > const&,
-         sym_mat3<double> const&,
-         af::const_ref<double> const&,
-         af::const_ref<double> const&,
-         double const&,
-         af::const_ref<cctbx::miller::index<> > const&,
-         cctbx::uctbx::unit_cell const&,
-         double const&)) ksol_bsol_grid_search);
-   ;
    def("symmetrize_mask",
       (void(*)
         (af::ref<int, af::c_grid<3> > const&,
