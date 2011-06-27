@@ -5824,6 +5824,44 @@ def get_phenix_regression_pdb_file_names():
   assert len(result) != 0
   return result
 
+def exercise_adopt_xray_structure():
+  from cctbx import adptbx
+  pdb_inp = pdb.input(source_info=None, lines="""\
+CRYST1   12.000   13.000   14.000  80.00  90.00 100.00 P 1
+ATOM      0  O   WAT B   1      17.523   2.521  10.381  1.10 16.78           O
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ANISOU    2  CA  GLY A   1      788    626    677   -344    621   -232       C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+TER
+ATOM      5  O   HOH S   1      -7.523   2.521  10.381  0.10  6.78           O
+TER
+ATOM      6  O   HOH     1      10.523   2.521   5.381  1.00 16.78           O
+ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
+""")
+  hierarchy = pdb_inp.construct_hierarchy()
+  xrs = pdb_inp.xray_structure_simple()
+  xrs_new1 = xrs.deep_copy_scatterers()
+  xrs_new1.shake_adp()
+  xrs_new1.shake_occupancies()
+  xrs_new1.shake_sites_in_place(rms_difference=0.5)
+  hierarchy.adopt_xray_structure(xray_structure = xrs_new1)
+  xrs_new2 = hierarchy.extract_xray_structure(crystal_symmetry =
+    xrs.crystal_symmetry())
+  uc = xrs.unit_cell()
+  orth = uc.orthogonalize
+  for s1,s2 in zip(xrs_new1.scatterers(), xrs_new2.scatterers()):
+    assert approx_equal(orth(s1.site), orth(s2.site), 1.e-3)
+    assert approx_equal(adptbx.u_as_b(s1.u_iso), adptbx.u_as_b(s2.u_iso), 1.e-2)
+    assert approx_equal(s1.occupancy, s2.occupancy, 1.e-2)
+    assert approx_equal(s1.u_star, s2.u_star)
+    assert s1.scattering_type == s2.scattering_type
+  xrs_new3 = xrs.concatenate(other = xrs_new1)
+  try: hierarchy.adopt_xray_structure(xray_structure = xrs_new3)
+  except RuntimeError, e: pass
+  assert str(e) == "Incompatible size of hierarchy and scatterers array."
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -5838,6 +5876,7 @@ def exercise(args):
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
+    exercise_adopt_xray_structure()
     exercise_atom()
     exercise_atom_group()
     exercise_residue_group()

@@ -529,14 +529,46 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       return cstringio
     return cstringio.getvalue()
 
-  def extract_xray_structure (self,
-      crystal_symmetry=None) :
+  def extract_xray_structure(self, crystal_symmetry=None) :
     import iotbx.pdb
     pdb_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
     pdb_inp = iotbx.pdb.input(
       source_info="pdb_hierarchy",
       lines=flex.split_lines(pdb_str))
     return pdb_inp.xray_structure_simple()
+
+  def adopt_xray_structure(self, xray_structure):
+    from iotbx.pdb import common_residue_names_get_class as gc
+    from cctbx import adptbx
+    if(self.atoms().size() != xray_structure.scatterers().size()):
+      raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
+    awl = self.atoms_with_labels()
+    scatterers = xray_structure.scatterers()
+    uc = xray_structure.unit_cell()
+    orth = uc.orthogonalize
+    def set_attr(sc, a):
+      a.set_xyz(new_xyz=orth(sc.site))
+      a.set_occ(new_occ=sc.occupancy)
+      a.set_element(sc.scattering_type[:2])
+      a.set_charge(sc.scattering_type[1:3])
+      if(sc.u_iso != -1):
+        a.set_b(new_b=adptbx.u_as_b(sc.u_iso))
+      if(sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)):
+        a.set_uij(new_uij = adptbx.u_star_as_u_cart(uc,sc.u_star))
+    for sc, a in zip(scatterers, awl):
+      id_str = a.id_str()
+      resname_from_sc = id_str[10:13]
+      cl1 = gc(resname_from_sc)
+      cl2 = gc(a.resname)
+      if([cl1,cl2].count("common_water")==2 or
+         (id_str.strip()=="" and cl2=="common_water")):
+        assert sc.scattering_type.strip().lower() in ["o","h","d"]
+        set_attr(sc=sc, a=a)
+      else:
+        # XXX may be fix it when creating IS ? or make another special case?
+        if(sc.scattering_type[:2] != "IS"):
+          assert sc.label == a.id_str()
+        set_attr(sc=sc, a=a)
 
   def write_pdb_file(self,
         file_name,
