@@ -344,11 +344,11 @@ def map_coefficients_from_fmodel(fmodel, params):
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
-  save_k_part, save_b_part = None, None
-  if(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
-    save_k_part = fmodel.k_part()
-    save_b_part = fmodel.b_part()
-    fmodel.update_core(k_part=0, b_part=0)
+  #XXXsave_k_part, save_b_part = None, None
+  #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
+  #XXX  save_k_part = fmodel.k_part()
+  #XXX  save_b_part = fmodel.b_part()
+  #XXX  fmodel.update_core(k_part=0, b_part=0)
   e_map_obj = fmodel.electron_density_map(
     fill_missing_f_obs = params.fill_missing_f_obs,
     fill_mode          = "dfmodel")
@@ -393,8 +393,8 @@ def map_coefficients_from_fmodel(fmodel, params):
     if (r_free_flags.anomalous_flag()) :
       r_free_flags = r_free_flags.average_bijvoet_mates()
     coeffs = coeffs.select(~r_free_flags.data())
-  if(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
-    fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
+  #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
+  #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   return coeffs
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
