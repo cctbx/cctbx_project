@@ -31,6 +31,8 @@ class lbfgs(object):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
+    self.fmodels.create_target_functors()
+    self.fmodels.prepare_target_functors_for_minimization()
     if(self.refine_adp and fmodels.fmodel_neutron() is None):
       self.xray_structure.tidy_us()
     self.hd_selection = self.xray_structure.hd_selection()
@@ -54,21 +56,14 @@ class lbfgs(object):
                                               wxn      = 1)
     if(self.collect_monitor):
       self.monitor = monitor(
-                           weights        = self.weights,
-                           fmodels        = fmodels,
-                           model          = model,
-                           iso_restraints = iso_restraints,
-                           refine_xyz     = refine_xyz,
-                           refine_adp     = refine_adp,
-                           refine_occ     = False)
+        weights        = self.weights,
+        fmodels        = fmodels,
+        model          = model,
+        iso_restraints = iso_restraints,
+        refine_xyz     = refine_xyz,
+        refine_adp     = refine_adp,
+        refine_occ     = False)
     if(self.collect_monitor): self.monitor.collect()
-    self.fmodels.create_target_functors()
-    self.fmodels.prepare_target_functors_for_minimization()
-    #
-    if(self.exclude_scattering_of_hydrogens()):
-      occupancies_cache= self.xray_structure.scatterers().extract_occupancies()
-      self.xray_structure.set_occupancies(value=0, selection=self.hd_selection)
-    #
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
@@ -83,31 +78,12 @@ class lbfgs(object):
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     if(self.refine_adp and self.fmodels.fmodel_neutron() is None):
       self.xray_structure.tidy_us()
-    #
-    if(self.exclude_scattering_of_hydrogens()):
-      self.xray_structure.set_occupancies(occupancies_cache)
-      self.xray_structure.set_occupancies(value = occupancies_cache,
-        selection = self.hd_selection)
-    #
     self.regularize_h_and_update_xray_structure(xray_structure =
       self.xray_structure)
     if(self.collect_monitor):
       self.monitor.collect(iter = self.minimizer.iter(),
                            nfun = self.minimizer.nfun())
-
-  def exclude_scattering_of_hydrogens(self):
-    hrltisfh = False
-    if(self.h_params is not None):
-      hrltisfh = \
-        self.h_params.high_resolution_limit_to_include_scattering_from_h
-    return self.h_params is not None and \
-      self.fmodels.fmodel_xray().f_obs().d_min() > hrltisfh and \
-      (self.refine_xyz or self.refine_adp) and \
-      self.h_params.refine == "riding" and \
-      self.hd_flag and \
-      self.fmodels.fmodel_n is None and \
-      (self.is_neutron_scat_table is not None and
-       self.is_neutron_scat_table != "neutron")
+    self.fmodels.create_target_functors()
 
   def apply_shifts(self):
     # XXX inefficient
@@ -223,7 +199,7 @@ class lbfgs(object):
     if(self.h_params is not None and self.refine_xyz and self.hd_flag and
        self.h_params.refine != "individual" ):
       self.model.idealize_h(xh_bond_distance_deviation_limit =
-        self.h_params.xh_bond_distance_deviation_limit)
+        self.h_params.xh_bond_distance_deviation_limit, show=False)
       modified = True
     if(self.h_params is not None and self.refine_xyz and self.hd_flag and
        self.h_params.refine == "individual" and
@@ -233,7 +209,7 @@ class lbfgs(object):
         self.is_neutron_scat_table != "neutron")):
       modified = True
       self.model.idealize_h(xh_bond_distance_deviation_limit =
-        self.h_params.xh_bond_distance_deviation_limit) # do it anyway if distortion is too big
+        self.h_params.xh_bond_distance_deviation_limit, show=False) # do it anyway if distortion is too big
     if(self.h_params is not None and self.refine_xyz and self.hd_flag):
       self.model.reset_coordinates_for_exchangable_hd()
       modified = True
