@@ -464,89 +464,9 @@ r_factor(
   }
   return r_factor(fo,fc_abs.const_ref(),scale);
 };
+
 //------------------------------------------------------------------------------
-template <typename FloatType, typename ComplexType>
-vec3<FloatType>
-ksol_bsol_grid_search(
-  af::const_ref<FloatType> const& fo,
-  af::const_ref<ComplexType> const& fc,
-  af::const_ref<ComplexType> const& fm,
-  sym_mat3<FloatType> const& b_cart,
-  af::const_ref<FloatType> const& ksol_range,
-  af::const_ref<FloatType> const& bsol_range,
-  FloatType const& r_ref,
-  af::const_ref<cctbx::miller::index<> > const& hkl,
-  cctbx::uctbx::unit_cell const& uc)
-{
-  MMTBX_ASSERT(hkl.size() == fo.size());
-  MMTBX_ASSERT(fo.size() == fc.size() && fc.size() == fm.size());
-  af::shared<FloatType> s_mem = uc.stol_sq(hkl);
-  af::const_ref<FloatType> ss = s_mem.const_ref();
-  mat3<FloatType> a = uc.fractionalization_matrix();
-  sym_mat3<FloatType> u_star = sym_mat3<FloatType> (b_cart).tensor_transform(a);
-  FloatType k_best = 0.0;
-  FloatType b_best = 0.0;
-  FloatType r_best = r_ref;
-  for(std::size_t i=0; i < ksol_range.size(); i++) {
-    for(std::size_t j=0; j < bsol_range.size(); j++) {
-      af::shared<ComplexType> f_model = f_model::f_model(
-        fc, fm, u_star, ksol_range[i],bsol_range[j], ss, hkl);
-      FloatType r = r_factor(fo, f_model.const_ref());
-      if(r < r_best) {
-        k_best = ksol_range[i];
-        b_best = bsol_range[j];
-        r_best = r;
-      }
-    }
-  }
-  return vec3<FloatType> (k_best,b_best,r_best);
-};
 
-template <typename FloatType, typename ComplexType>
-vec3<FloatType>
-ksol_bsol_grid_search(
-  af::const_ref<FloatType> const& fo,
-  af::const_ref<ComplexType> const& fc1,
-  af::const_ref<ComplexType> const& fc2,
-  af::const_ref<ComplexType> const& fm1,
-  af::const_ref<ComplexType> const& fm2,
-  sym_mat3<FloatType> const& b_cart,
-  af::const_ref<FloatType> const& ksol_range,
-  af::const_ref<FloatType> const& bsol_range,
-  FloatType const& r_ref,
-  af::const_ref<cctbx::miller::index<> > const& hkl,
-  cctbx::uctbx::unit_cell const& uc,
-  FloatType const& twin_fraction)
-{
-  MMTBX_ASSERT(hkl.size() == fo.size());
-  MMTBX_ASSERT(fo.size() == fc1.size() && fc1.size() == fm1.size());
-  MMTBX_ASSERT(fo.size() == fc2.size() && fc2.size() == fm2.size());
-  af::shared<FloatType> s_mem = uc.stol_sq(hkl);
-  af::const_ref<FloatType> ss = s_mem.const_ref();
-  mat3<FloatType> a = uc.fractionalization_matrix();
-  sym_mat3<FloatType> u_star = sym_mat3<FloatType> (b_cart).tensor_transform(a);
-  FloatType k_best = 0.0;
-  FloatType b_best = 0.0;
-  FloatType r_best = r_ref;
-  for(std::size_t i=0; i < ksol_range.size(); i++) {
-    for(std::size_t j=0; j < bsol_range.size(); j++) {
-      af::shared<ComplexType> f_model1 = f_model::f_model(
-        fc1, fm1, u_star, ksol_range[i],bsol_range[j], ss, hkl);
-      af::shared<ComplexType> f_model2 = f_model::f_model(
-        fc2, fm2, u_star, ksol_range[i],bsol_range[j], ss, hkl);
-      FloatType r = r_factor(fo, f_model1.const_ref(), f_model2.const_ref(),
-        twin_fraction);
-      if(r < r_best) {
-        k_best = ksol_range[i];
-        b_best = bsol_range[j];
-        r_best = r;
-      }
-    }
-  }
-  return vec3<FloatType> (k_best,b_best,r_best);
-};
-
-////////////////////////////////////////////////////////////////////////////////
 template <typename DataType, typename TagType>
 void
   symmetrize_mask(
