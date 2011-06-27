@@ -226,7 +226,7 @@ def run(fmodel, model, log, params = None):
     log = log)
   waters_and_peaks = extract_hoh_peaks(
     peaks = peaks,
-    pdb_hierarchy = model.pdb_hierarchy,
+    pdb_hierarchy = model.pdb_hierarchy(),
     pdb_atoms = model.pdb_atoms,
     xray_structure = model.xray_structure)
   print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
@@ -268,7 +268,7 @@ def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
       self.oh = oh
       self.hh = hh
   result = []
-  for model in ref_model.pdb_hierarchy.models():
+  for model in ref_model.pdb_hierarchy().models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():
         cz, oh = [None,]*2
