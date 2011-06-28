@@ -728,6 +728,7 @@ class manager(object):
         compute_gradients=False,
         gradients=None,
         disable_asu_cache=False):
+    if(self.restraints_manager is None): return None
     sites_cart = self.xray_structure.sites_cart()
     if(self.use_ias and self.ias_selection is not None and
        self.ias_selection.count(True) > 0):
