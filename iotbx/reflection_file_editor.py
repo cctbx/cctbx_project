@@ -637,7 +637,7 @@ class process_arrays (object) :
         output_array = new_r_free_array
       self.mtz_dataset.add_miller_array(
         miller_array=output_array,
-        column_root_label=r_free_params.new_label)
+        column_root_label="ZZ") #r_free_params.new_label)
       labels.append(r_free_params.new_label)
       label_files.append("(new array)")
       self.created_r_free = True

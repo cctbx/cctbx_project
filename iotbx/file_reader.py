@@ -26,7 +26,7 @@ standard_file_extensions = {
   'xplor_map' : ["xplor", "map"],
   'ccp4_map'  : ["ccp4", "map"],
   'map'  : ["xplor", "map", "ccp4"],
-  'phil' : ["params", "eff", "def", "phil"],
+  'phil' : ["params", "eff", "def", "phil", "param"],
   'xml'  : ["xml"],
   'pkl'  : ["pickle", "pkl"],
   'txt'  : ["txt", "log", "html", "geo"],
