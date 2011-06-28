@@ -730,7 +730,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       w,f = self.r_values(False)
       return f
 
-  def f_part1(self): # XXX to make compatiblw with other fmodel
+  def f_part1(self): # XXX for compatiblity with other fmodel
     return self.f_calc().customized_copy(data = self.f_calc().data()*0)
 
   def update_solvent_and_scale(self,
