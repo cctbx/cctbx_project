@@ -1047,11 +1047,12 @@ def validate_params (params, callback=None) :
     if d_min > d_max :
       raise Sorry(("The specified high-resolution cutoff (%.3f) is greater "+
         "than the low-resolution cutoff (%.3f)!") % (d_min, d_max))
-  symm = crystal.symmetry(
-    space_group_info=params.scaling.input.xray_data.space_group,
-    unit_cell=params.scaling.input.xray_data.unit_cell,
-    assert_is_compatible_unit_cell=False)
-  if (not symm.is_compatible_unit_cell()):
+  if ((params.scaling.input.xray_data.space_group is None) or
+      (params.scaling.input.xray_data.unit_cell is None)) :
+    raise Sorry("Missing or incomplete symmetry information.")
+  space_group = params.scaling.input.xray_data.space_group.group()
+  unit_cell = params.scaling.input.xray_data.unit_cell
+  if (not space_group.is_compatible_unit_cell(unit_cell)) :
     raise Sorry("Unit cell parameters are not consistent with the "+
         "currently set space group.  Please make sure that the symmetry "+
         "information is entered correctly.")
