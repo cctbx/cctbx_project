@@ -186,7 +186,7 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static versa<e_t, flex_grid<> >
     getitem_nd_slice(
-      const_ref<e_t, flex_grid<> > const& self,
+      af::const_ref<e_t, flex_grid<> > const& self,
       small<boost::python::slice, 10> const& slices)
     {
       small<long, 10> dim = self.accessor().all();
