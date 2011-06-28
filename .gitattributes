@@ -890,6 +890,7 @@ libtbx/command_line/analyse_code_comments.py -text
 libtbx/command_line/assert_line_count.py svneol=native#text/x-python
 libtbx/command_line/assert_not_show_diff.py svneol=native#text/x-python
 libtbx/command_line/assert_stdin_contains_strings.py svneol=native#text/x-python
+libtbx/command_line/assert_stdin_ends_with.py svneol=native#text/x-python
 libtbx/command_line/bash.sh -text
 libtbx/command_line/bibtex.sh -text
 libtbx/command_line/chunk.py svneol=native#text/x-python
