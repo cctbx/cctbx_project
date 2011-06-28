@@ -814,7 +814,10 @@ def identify_rigid_groups (pdb_hierarchy) :
       chain_sele += " and segid '%s'" % first_atom_labels.segid
     resseq_first = main_conf.residues()[0].resseq.strip()
     resseq_last = main_conf.residues()[-1].resseq.strip()
-    chain_sele += " and resseq %s:%s" % (resseq_first, resseq_last)
+    if (resseq_first > resseq_last) :
+      chain_sele += " and resseq %s:%s" % (resseq_last, resseq_first)
+    else :
+      chain_sele += " and resseq %s:%s" % (resseq_first, resseq_last)
     chain_sele += ")"
     selections.append(chain_sele)
   return selections

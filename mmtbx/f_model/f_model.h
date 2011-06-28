@@ -98,7 +98,7 @@ class core
       f_bulk(hkl_.size(), af::init_functor_null<ComplexType>()),
       f_model(hkl_.size(), af::init_functor_null<ComplexType>()),
       f_b_sol(hkl_.size(), af::init_functor_null<FloatType>()),
-      a(uc_.fractionalization_matrix()), 
+      a(uc_.fractionalization_matrix()),
       f_part1(f_part1_), f_part2(f_part2_)
     {
       MMTBX_ASSERT(f_calc.size() == hkl.size());
