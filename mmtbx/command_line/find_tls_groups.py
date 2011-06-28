@@ -629,9 +629,9 @@ def check_adp(u_iso, step=10, out=None) :
     out = sys.stdout
   min_adp = flex.min(u_iso)
   if(min_adp<=0):
-    print >> out
-    print >> out, "Negative or zero ADP found in input file."
-    return False
+    raise Sorry("Negative or zero isotropic B-factors found in input file. "+
+      "Run 'phenix.pdbtools --show-adp-statistics model.pdb' to identify "+
+      "the problem atoms.")
   i = 0
   while i < u_iso.size():
     if(i+step < u_iso.size()):
@@ -642,9 +642,7 @@ def check_adp(u_iso, step=10, out=None) :
       min_adp = flex.min(u_iso)
       max_adp = flex.max(u_iso)
       if(abs(min_adp-max_adp)<0.1):
-        print >> out
-        print >> out, "At least 10 bonded atoms have identical ADPs."
-        return False
+        raise Sorry("At least 10 bonded atoms have identical ADPs.")
     i+=step
   return True
 
@@ -707,7 +705,7 @@ def find_tls (params,
   sites_cart = xray_structure.sites_cart()
   u_cart = None
   u_iso  = xray_structure.extract_u_iso_or_u_equiv()#*adptbx.u_as_b(1.) # ?
-  if(not check_adp(u_iso=u_iso, out=out)): return
+  if(not check_adp(u_iso=u_iso, out=out)): return None
   #
   ssm = mmtbx.secondary_structure.manager(
     pdb_hierarchy                = pdb_hierarchy,
