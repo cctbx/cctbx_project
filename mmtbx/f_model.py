@@ -960,20 +960,23 @@ class manager(manager_mixin):
 
   def update_f_hydrogens(self, log=None):
     def f_k_exp_scaled(k,b,ss,f):
-      return f.customized_copy(data = k*flex.exp(-b*ss/4)*f.data())
+      return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
     hds = self.xray_structure.hd_selection()
     if(hds.count(True)==0): return None
     xrsh = self.xray_structure.select(selection = hds)
+    xrsh.set_occupancies(value=1)
     fh = self.f_obs().structure_factors_from_scatterers(
       xray_structure = xrsh).f_calc()
     b_min = int(flex.min(xrsh.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1)))
-    rws = self.r_work()
     ss = self.active_arrays.core.ss
     kbest = 0
     bbest = 0
-    for b in range(-b_min,b_min+50,1):
-      for k in [i/10. for i in xrange(11)]:
-        fh_kb = f_k_exp_scaled(k = k, b = b, ss = ss, f = fh)
+    self.update_core(f_part2 =
+      fh.customized_copy(data=flex.complex_double(fh.data().size(),0)))
+    rws = self.r_work()
+    for b in [0]+range(-b_min,b_min+50,1):
+      for k in [0]+[i/10. for i in xrange(11)]:
+        fh_kb = f_k_exp_scaled(k = k, b = b, ss = ss, f = fh.deep_copy())
         self.update_core(f_part2 = fh_kb)
         rw = self.r_work()
         if(rw < rws):
