@@ -176,9 +176,10 @@ class crystal_structure_builder(crystal_symmetry_builder):
     adp_type = cif_block.get('_atom_site_adp_type')
     occupancy = flex_double_else_none(cif_block.get('_atom_site_occupancy'))
     scatterers = flex.xray_scatterer()
-    atom_site_aniso_label = cif_block.get('_atom_site_aniso_label')
+    atom_site_aniso_label = flex_std_string_else_none(
+      cif_block.get('_atom_site_aniso_label'))
     if atom_site_aniso_label is not None:
-      atom_site_aniso_label = flex.std_string(atom_site_aniso_label)
+      atom_site_aniso_label = atom_site_aniso_label
       adps = [cif_block.get('_atom_site_aniso_U_%i' %i)
               for i in (11,22,33,12,13,23)]
       have_Bs = False
@@ -191,7 +192,6 @@ class crystal_structure_builder(crystal_symmetry_builder):
       elif adps.count(None) > 0:
         CifBuilderError("Some ADP items are missing")
       else:
-        adps = [flex.std_string(adp) for adp in adps]
         sel = None
         for adp in adps:
           f = (adp == "?")
@@ -249,8 +249,6 @@ class miller_array_builder(crystal_symmetry_builder):
       raise CifBuilderError("Miller indices missing from current CIF block")
     hkl_int = []
     for i,h_str in enumerate(hkl_str):
-      if (not isinstance(h_str, flex.std_string)):
-        h_str = flex.std_string(h_str)
       try:
         h_int = flex.int(h_str)
       except ValueError, e:
@@ -285,11 +283,9 @@ class miller_array_builder(crystal_symmetry_builder):
           data, sigmas)
         if obs_type is not xray.intensity() and array.space_group() is not None:
           if array_type == 'calc' and phase_calc is not None:
-            array = array.phase_transfer(
-              flex.double(flex.std_string(phase_calc)), deg=True)
+            array = array.phase_transfer(flex.double(phase_calc), deg=True)
           elif array_type == 'meas' and phase_meas is not None:
-            array = array.phase_transfer(
-              flex.double(flex.std_string(phase_meas)), deg=True)
+            array = array.phase_transfer(flex.double(phase_meas), deg=True)
         array.set_observation_type(obs_type)
         if base_array_info.labels is not None:
           labels = base_array_info.labels + [label]
@@ -307,10 +303,10 @@ class miller_array_builder(crystal_symmetry_builder):
             and not key.endswith('calc')
             and not key.endswith('meas')):
           try:
-            data = flex.int(flex.std_string(value))
+            data = flex.int(value)
           except ValueError:
             try:
-              data = flex.double(flex.std_string(value))
+              data = flex.double(value)
             except ValueError:
               data = value
           array = miller.array(
@@ -330,7 +326,7 @@ class miller_array_builder(crystal_symmetry_builder):
 
 def none_if_all_question_marks(cif_block_item):
   if (cif_block_item is None): return None
-  result = flex.std_string(cif_block_item)
+  result = cif_block_item
   if (result.all_eq("?")): return None
   return result
 
@@ -364,6 +360,12 @@ def flex_double_else_none(cif_block_item):
   except ValueError:
     pass
   return None
+
+def flex_std_string_else_none(cif_block_item):
+  if isinstance(cif_block_item, flex.std_string):
+    return cif_block_item
+  else:
+    return None
 
 def float_from_string(string):
   """a cif string may be quoted,
