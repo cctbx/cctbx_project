@@ -1157,6 +1157,8 @@ def exercise_functions():
     b = a.round(n_digits=n_digits)
     for x,y in zip(a,b):
       assert approx_equal(round(x, n_digits), y)
+  assert list(b.iround()) == [-4, 0, -1, 0, 1, 8]
+  assert flex.double().iround().size() == 0
   #
   a = flex.std_string(["a"]*3 + ["b"]*4)
   assert a.count("a") == 3

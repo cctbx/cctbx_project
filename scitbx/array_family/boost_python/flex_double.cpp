@@ -380,14 +380,32 @@ namespace {
     return result;
   }
 
-  shared<double>
+  versa<double, flex_grid<> >
   round(
-    const_ref<double> const& self,
-    int n_digits=0)
+    versa<double, flex_grid<> > const& O,
+    int n_digits)
   {
-    shared<double> result(self.size(), init_functor_null<double>());
-    for(std::size_t i=0;i<self.size();i++) {
-      result[i] = math::round(self[i], n_digits);
+    versa<double, flex_grid<> >
+      result(O.accessor(), init_functor_null<double>());
+    double const* src = O.begin();
+    double const* src_end = O.end();
+    double* dest = result.begin();
+    while (src != src_end) {
+      *dest++ = math::round(*src++, n_digits);
+    }
+    return result;
+  }
+
+  versa<int, flex_grid<> >
+  iround(
+    versa<double, flex_grid<> > const& O)
+  {
+    versa<int, flex_grid<> > result(O.accessor(), init_functor_null<int>());
+    double const* src = O.begin();
+    double const* src_end = O.end();
+    int* dest = result.begin();
+    while (src != src_end) {
+      *dest++ = math::iround(*src++);
     }
     return result;
   }
@@ -506,6 +524,7 @@ namespace boost_python {
           arg("format_string")="%d"))
       .def("mathematica_form", mathematica_form)
       .def("round", round, (arg("n_digits")=0))
+      .def("iround", iround)
       .def("select", select_stl_iterable<std::vector<unsigned> >, (
         arg("selection")))
       .def("select", select_stl_iterable<std::set<unsigned> >, (
