@@ -124,7 +124,7 @@ class manager(object):
           xray_structure = xray_structure).table
     return result
 
-  def extend_xh_bonds(self, value=1.1):
+  def extend_xh_bonds(self, value=1.5):
     if(self.restraints_manager is None): return
     if(self.xray_structure.hd_selection().count(True)==0): return
     assert self.original_xh_lengths is None
