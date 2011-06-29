@@ -13,6 +13,8 @@ from libtbx.str_utils import make_sub_header
 import sys, math
 from libtbx import Auto
 from libtbx import group_args
+from mmtbx.ncs import restraints
+from libtbx.utils import Sorry
 
 TOP_OUT_FLAG = True
 
@@ -56,18 +58,16 @@ torsion_ncs_params = iotbx.phil.parse("""
   similarity_matrix =  blosum50  dayhoff *identity
     .type = choice
  }
- reference_group
+ restraint_group
   .multiple=True
   .optional=True
   .short_caption=Torsion NCS restraint group
-  .style = noauto auto_align menu_item parent_submenu:advanced
+  .style = box auto_align
  {
-  reference=None
-    .type=atom_selection
-    .short_caption=Reference selection
   selection=None
     .type=atom_selection
     .short_caption=Restrained selection
+    .multiple=True
  }
 """)
 
@@ -85,6 +85,7 @@ class torsion_ncs(object):
     self.pdb_hierarchy = pdb_hierarchy
     self.ncs_groups = []
     self.dp_ncs = []
+    self.padded_sequences = {}
     self.ncs_dihedral_proxies = None
     self.name_hash = self.build_name_hash(pdb_hierarchy)
     self.params = params
@@ -100,54 +101,93 @@ class torsion_ncs(object):
     chain_id_hash = {}
     chains = pdb_hierarchy.models()[0].chains()
     sel_cache = pdb_hierarchy.atom_selection_cache()
+    for chain in chains:
+      self.padded_sequences[chain.id] = \
+        self.extract_padded_sequence_from_chain(chain)
     alignments = {}
-    for i, chain_i in enumerate(chains):
-      if self.get_chain_type(chain_i) == "HETATM":
-        continue
-      chain_id_hash[chain_i.id] = chain_i
-      chain_i_str = "chain '%s'" % chain_i.id
-      chain_i_list = [chain_i_str]
-      sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
-                   cache=sel_cache,
-                   string_list=chain_i_list))
-      for chain_j in chains[i+1:]:
-        if self.get_chain_type(chain_j) == "HETATM":
+    n_ncs_groups = 0
+    for i_seq, group in enumerate(self.params.restraint_group):
+      n_selections = 0
+      for selection in group.selection:
+        if(selection is not None):
+          n_selections += 1
+      if n_selections == 1:
+        raise Sorry("Torsion NCS restraint_groups require at least 2 selections")
+      elif n_selections > 1:
+        n_ncs_groups += 1
+    if n_ncs_groups > 0:
+      for restraint_group in params.restraint_group:
+        ncs_set = []
+        for selection_i in restraint_group.selection:
+          sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
+                           cache=sel_cache,
+                           string_list=[selection_i]))
+          ncs_set.append(selection_i)
+          for selection_j in restraint_group.selection:
+            if selection_i == selection_j:
+              continue
+            sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
+                           cache=sel_cache,
+                           string_list=[selection_j]))
+            selections = (sel_atoms_i, sel_atoms_j)
+            residue_match_map = self._alignment(
+                                  pdb_hierarchy=pdb_hierarchy,
+                                  params=params,
+                                  selections=selections,
+                                  log=log)
+            key = (selection_i, selection_j)
+            alignments[key] = residue_match_map
+        self.ncs_groups.append(ncs_set)
+    else:
+      for i, chain_i in enumerate(chains):
+        if self.get_chain_type(chain_i) == "HETATM":
           continue
-        chain_j_str = "chain '%s'" % chain_j.id
-        chain_j_list = [chain_j_str]
-        sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
-                         cache=sel_cache,
-                         string_list=chain_j_list))
-        selections = (sel_atoms_i, sel_atoms_j)
-        residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
-                              params=params,
-                              selections=selections,
-                              log=log)
-        if ( min(len(residue_match_map),
-                 chain_i.residue_groups_size(),
-                 chain_j.residue_groups_size()) \
-             / max(len(residue_match_map),
+        chain_id_hash[chain_i.id] = chain_i
+        chain_i_str = "chain '%s'" % chain_i.id
+        chain_i_list = [chain_i_str]
+        sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
+                     cache=sel_cache,
+                     string_list=chain_i_list))
+        for chain_j in chains[i+1:]:
+          if self.get_chain_type(chain_j) == "HETATM":
+            continue
+          chain_j_str = "chain '%s'" % chain_j.id
+          chain_j_list = [chain_j_str]
+          sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
+                           cache=sel_cache,
+                           string_list=chain_j_list))
+          selections = (sel_atoms_i, sel_atoms_j)
+          residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
+                                params=params,
+                                selections=selections,
+                                log=log)
+          if ( min(len(residue_match_map),
                    chain_i.residue_groups_size(),
                    chain_j.residue_groups_size()) \
-             > self.params.similarity ):
-          key = (chain_i_str, chain_j_str)
-          alignments[key] = residue_match_map
-          if used_chains is not None:
-            if chain_i.id in used_chains:
-              continue
-          try:
-            pair_hash[chain_i.id].append(chain_j.id)
-          except Exception:
-            pair_hash[chain_i.id] = []
-            pair_hash[chain_i.id].append(chain_j.id)
-          used_chains.append(chain_j.id)
+               / max(len(residue_match_map),
+                     chain_i.residue_groups_size(),
+                     chain_j.residue_groups_size()) \
+               > self.params.similarity ):
+            key = (chain_i_str, chain_j_str)
+            alignments[key] = residue_match_map
+            if used_chains is not None:
+              if chain_i.id in used_chains:
+                continue
+            try:
+              pair_hash[chain_i.id].append(chain_j.id)
+            except Exception:
+              pair_hash[chain_i.id] = []
+              pair_hash[chain_i.id].append(chain_j.id)
+            used_chains.append(chain_j.id)
 
-    for key in pair_hash.keys():
-      ncs_set = []
-      ncs_set.append(key)
-      for add_chain in pair_hash[key]:
-        ncs_set.append(add_chain)
-      self.ncs_groups.append(ncs_set)
+      for key in pair_hash.keys():
+        ncs_set = []
+        chain_str = "chain '%s'" % key
+        ncs_set.append(chain_str)
+        for add_chain in pair_hash[key]:
+          chain_str = "chain '%s'" % add_chain
+          ncs_set.append(chain_str)
+        self.ncs_groups.append(ncs_set)
 
     for dp in geometry.dihedral_proxies:
       dp_hash[dp.i_seqs] = dp
@@ -156,18 +196,18 @@ class torsion_ncs(object):
     res_match_master = {}
     for i, group in enumerate(self.ncs_groups):
       for chain_i in group:
-        working_chain = chain_id_hash[chain_i]
-        c_atoms = working_chain.atoms()
-        chain_i_str = "chain '%s'" % chain_i
+        selection = self.selection(
+                     string=chain_i,
+                     cache=sel_cache)
+        c_atoms = self.pdb_hierarchy.select(selection).atoms()
         for atom in c_atoms:
           for chain_j in group:
             if chain_i == chain_j:
               continue
-            chain_j_str = "chain '%s'" % chain_j
             res_key = self.name_hash[atom.i_seq][4:]
             atom_key = self.name_hash[atom.i_seq][0:4]
             j_match = None
-            key = (chain_i_str, chain_j_str)
+            key = (chain_i, chain_j)
             cur_align = alignments.get(key)
             if cur_align is not None:
               j_match = cur_align.get(res_key)
@@ -218,6 +258,46 @@ class torsion_ncs(object):
     print >> self.log, "Initializing torsion NCS restraints..."
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
+
+  def generate_master_hashes(self,selections):
+    super_hash = {}
+    res_match_master = {}
+    for i, group in enumerate(self.ncs_groups):
+      for chain_i in group:
+        working_chain = chain_id_hash[chain_i]
+        c_atoms = working_chain.atoms()
+        chain_i_str = "chain '%s'" % chain_i
+        for atom in c_atoms:
+          for chain_j in group:
+            if chain_i == chain_j:
+              continue
+            chain_j_str = "chain '%s'" % chain_j
+            res_key = self.name_hash[atom.i_seq][4:]
+            atom_key = self.name_hash[atom.i_seq][0:4]
+            j_match = None
+            key = (chain_i_str, chain_j_str)
+            cur_align = alignments.get(key)
+            if cur_align is not None:
+              j_match = cur_align.get(res_key)
+            if j_match is not None:
+              j_i_seq = i_seq_hash.get(atom_key+j_match)
+              if j_i_seq is None:
+                continue
+              if super_hash.get(atom.i_seq) is None:
+                super_hash[atom.i_seq] = dict()
+              if super_hash.get(j_i_seq) is None:
+                super_hash[j_i_seq] = dict()
+              super_hash[atom.i_seq][chain_j] = j_i_seq
+              super_hash[j_i_seq][chain_i] = atom.i_seq
+              if res_match_master.get(res_key) is None:
+                res_match_master[res_key] = []
+              if res_match_master.get(j_match) is None:
+                res_match_master[j_match] = []
+              if j_match not in res_match_master[res_key]:
+                res_match_master[res_key].append(j_match)
+              if res_key not in res_match_master[j_match]:
+                res_match_master[j_match].append(res_key)
+    return res_match_master, super_hash
 
   def get_chain_type(self, chain):
     macro_count = 0
@@ -432,7 +512,7 @@ class torsion_ncs(object):
           self.ncs_dihedral_proxies.append(dp_add)
     if len(self.ncs_dihedral_proxies) == 0:
       print >> log, \
-        "** WARNING: No dihedral NCS restraints found!!" + \
+        "** WARNING: No dihedral NCS  found!!" + \
         "  Please check parameters. **"
     else:
       print >> log, \
@@ -593,6 +673,21 @@ class torsion_ncs(object):
           seq.append(olc)
           res_seq.append(rg.resid())
     return "".join(seq), res_seq
+
+  def extract_padded_sequence_from_chain(self, chain):
+    seq = []
+    padded_seq = []
+    last_resseq = 0
+    for rg in chain.residue_groups():
+      resseq = rg.resseq_as_int()
+      if (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          padded_seq.append('X')
+      last_resseq = resseq
+      resname = rg.unique_resnames()[0]
+      olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+      padded_seq.append(olc)
+    return "".join(padded_seq)
 
   def add_ncs_dihedral_proxies(self, geometry):
     geometry.ncs_dihedral_proxies= \
