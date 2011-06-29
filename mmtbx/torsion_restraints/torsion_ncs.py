@@ -21,26 +21,37 @@ TOP_OUT_FLAG = True
 torsion_ncs_params = iotbx.phil.parse("""
  sigma = 1.0
    .type = float
+   .short_caption = Restraint sigma (degrees)
  limit = 15.0
    .type = float
+   .short_caption = Restraint limit (degrees)
  cutoff = 45.0
    .type = float
+   .short_caption = Cutoff (degrees)
  slack = 0.0
    .type = float
+   .short_caption = Restraint slack (degrees)
  similarity = .80
    .type = float
+    .short_caption = Sequence similarity cutoff
  hydrogens = False
    .type = bool
+   .short_caption = Include hydrogens
  main_chain = True
    .type = bool
+   .short_caption = Include backbone atoms
  side_chain = True
    .type = bool
+   .short_caption = Include sidechain atoms
  fix_outliers = True
    .type = bool
+   .short_caption = Fix rotamer outliers first
  target_damping = False
    .type = bool
+   .expert_level = 1
  damping_limit = 10.0
    .type = float
+   .expert_level = 1
  verbose = True
    .type = bool
  alignment
@@ -62,12 +73,12 @@ torsion_ncs_params = iotbx.phil.parse("""
   .multiple=True
   .optional=True
   .short_caption=Torsion NCS restraint group
-  .style = box auto_align
  {
   selection=None
     .type=atom_selection
     .short_caption=Restrained selection
     .multiple=True
+    .style = use_list
  }
 """)
 
