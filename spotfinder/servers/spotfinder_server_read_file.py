@@ -68,8 +68,9 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     expect = self.headers.getheaders("Expect")
     if len(expect)>=1:
-      if True in [item.find("100")>=0 for item in expect]:
-        self.send_response(100) # untested; has no apparent affect on libcurl
+      if True in [item.find("200")>=0 for item in expect]:
+        self.send_response(200) # untested; has no apparent affect on libcurl
+        return
 
     # Get arguments by reading body of request.
     # We read this in chunks to avoid straining
