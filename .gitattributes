@@ -1533,6 +1533,7 @@ spotfinder/servers/apache_client_example.py -text
 spotfinder/servers/apache_env_run_template -text
 spotfinder/servers/apache_favicon.ico -text
 spotfinder/servers/apache_install.csh -text
+spotfinder/servers/mp_spotfinder_server_is_alive.py -text
 spotfinder/servers/mp_spotfinder_server_read_file.py -text
 spotfinder/servers/multipart_encoder.py -text
 spotfinder/servers/pilatus_client.py -text
