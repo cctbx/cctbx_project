@@ -18,6 +18,18 @@ else:
 
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
+class pickle_detector(object):
+  def __init__(O):
+    O.unpickled_counter = None
+    O.counter = 0
+  def __getstate__(O):
+    O.counter += 1
+    return {"counter": O.counter}
+  def __setstate__(O, state):
+    assert len(state) == 1
+    O.unpickled_counter = state["counter"]
+    O.counter = 0
+
 Exception_expected = RuntimeError("Exception expected.")
 Exception_not_expected = RuntimeError("Exception not expected.")
 
@@ -671,6 +683,29 @@ ERROR: is_above_limit(value=10, limit=15, eps=2)
 ERROR: is_above_limit(value=None, limit=-3, eps=1)
 ERROR: is_above_limit(value=None, limit=3, eps=1)
 """)
+  #
+  import pickle, cPickle
+  for p in [pickle, cPickle]:
+    d = pickle_detector()
+    assert d.unpickled_counter is None
+    assert d.counter == 0
+    s = p.dumps(d, 1)
+    assert d.unpickled_counter is None
+    assert d.counter == 1
+    l = p.loads(s)
+    assert l.unpickled_counter == 1
+    assert l.counter == 0
+    p.dumps(d, 1)
+    assert d.counter == 2
+    assert l.counter == 0
+    p.dumps(l, 1)
+    assert l.counter == 1
+    s = p.dumps(l, 1)
+    assert l.counter == 2
+    k = p.loads(s)
+    assert k.unpickled_counter == 2
+    assert k.counter == 0
+  #
   print "OK"
 
 if (__name__ == "__main__"):
