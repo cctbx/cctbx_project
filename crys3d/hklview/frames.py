@@ -284,6 +284,13 @@ class HKLViewFrame (wx.Frame) :
       % (labels, details_str, sg, uc))
     self.settings_panel.d_min_ctrl.SetValue(array.d_min())
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
+    if (type(self).__name__ == "HKLViewFrame") :
+      if (array.indices().size() > 100000) :
+        if (self.settings.display_as_spheres) :
+          wx.MessageBox(message="Warning: this is a lot of reflections; "+
+            "unless you have a very powerful graphics card, displaying "+
+            "spheres may be slow and/or unstable, especially if data are "+
+            "expanded to P1.", style=wx.OK)
     self.viewer.set_miller_array(array)
     self.viewer.Refresh()
     self.viewer.fit_into_viewport()
