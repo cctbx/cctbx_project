@@ -6,10 +6,9 @@
 #include <cctbx/geometry_restraints/dihedral.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/constants.h>
 
 #include <string>
-
-#define PI_OVER_180 0.017453292519943295
 
 namespace mmtbx { namespace geometry_restraints {
   using cctbx::geometry_restraints::dihedral;
@@ -119,8 +118,8 @@ namespace mmtbx { namespace geometry_restraints {
           chi_sites[k] = sites_cart[chi_i_seqs[(j*4)+k]];
         }
         dihedral chi(chi_sites, 0, 1.0);
-        double angle_rad = angles[j] * PI_OVER_180;
-        double chi_rad = chi.angle_model * PI_OVER_180;
+        double angle_rad = angles[j] * scitbx::constants::pi_180;
+        double chi_rad = chi.angle_model * scitbx::constants::pi_180;
         rmsd += std::pow(angle_rad - chi_rad, 2);
       }
       return rmsd / n_angles;
