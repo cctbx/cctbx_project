@@ -94,8 +94,17 @@ namespace cctbx { namespace miller {
             double d = -detector_distance / rvre[2];
             double dx = rvre[0] * d;
             double dy = rvre[1] * d;
-            if (   std::abs(dx) <= dsx/2
-                && std::abs(dy) <= dsy/2) {
+            if (   std::abs(dx) > dsx/2
+                || std::abs(dy) > dsy/2) {
+              if (!apply_proximity_filter) {
+                TBXX_ASSERT(!store_miller_index_i_seqs);
+                TBXX_ASSERT(!store_spots);
+                if (store_signals) {
+                  signals.push_back(0);
+                }
+              }
+            }
+            else {
               using scitbx::math::ifloor;
               double pxf = (dx/dsx + 0.5) * dpx;
               double pyf = (dy/dsy + 0.5) * dpy;
