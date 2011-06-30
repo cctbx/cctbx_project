@@ -55,6 +55,51 @@ namespace gltbx { namespace viewer_utils {
     handle_error();
   }
 
+  void draw_stars (
+    af::const_ref< scitbx::vec3<double> > const& points,
+    af::const_ref< scitbx::vec3<double> > const& colors,
+    af::const_ref< bool > const& points_visible,
+    af::const_ref< double > const& radii)
+  {
+    GLTBX_ASSERT(colors.size() == points.size());
+    GLTBX_ASSERT(points_visible.size() == points.size());
+    GLTBX_ASSERT(radii.size() == points.size());
+    for (unsigned i_seq = 0; i_seq < points.size(); i_seq++) {
+      if (! points_visible[i_seq]) continue;
+      double x = points[i_seq][0];
+      double y = points[i_seq][1];
+      double z = points[i_seq][2];
+      glBegin(GL_LINES);
+      scitbx::vec3<double> const& c = colors[i_seq];
+      double f = radii[i_seq];
+      double f_1 = f * 0.5;
+      double f_2 = f * 0.707107;
+      double x_1 = x + f_1;
+      double x_2 = x - f_1;
+      double y_1 = y + f_1;
+      double y_2 = y - f_1;
+      double z_1 = z + f_2;
+      double z_2 = z - f_2;
+      glColor3f(c[0], c[1], c[2]);
+      glVertex3f(x-f,y,z);
+      glVertex3f(x+f,y,z);
+      glVertex3f(x,y-f,z);
+      glVertex3f(x,y+f,z);
+      glVertex3f(x,y,z-f);
+      glVertex3f(x,y,z+f);
+      glVertex3f(x_1, y_1, z_1);
+      glVertex3f(x_2, y_2, z_2);
+      glVertex3f(x_1, y_1, z_2);
+      glVertex3f(x_2, y_2, z_1);
+      glVertex3f(x_1, y_2, z_2);
+      glVertex3f(x_2, y_1, z_1);
+      glVertex3f(x_1, y_2, z_1);
+      glVertex3f(x_2, y_1, z_2);
+      glEnd();
+    }
+    handle_error();
+  }
+
   class atom_visibility
   {
     public :
@@ -269,6 +314,11 @@ namespace gltbx { namespace viewer_utils {
       arg("atom_colors"),
       arg("points_visible"),
       arg("cross_radius")=0.25));
+    def("draw_stars", draw_stars, (
+      arg("points"),
+      arg("colors"),
+      arg("points_visible"),
+      arg("radii")));
     def("draw_bonds", draw_bonds, (
       arg("points"),
       arg("bonds"),
