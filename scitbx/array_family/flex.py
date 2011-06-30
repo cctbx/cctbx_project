@@ -263,12 +263,12 @@ class _(boost.python.injector, ext.linear_regression_core):
 
 class _(boost.python.injector, ext.linear_correlation):
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "is_well_defined:", self.is_well_defined()
-    print >> f, "mean_x:", self.mean_x()
-    print >> f, "mean_y:", self.mean_y()
-    print >> f, "coefficient:", self.coefficient()
+    print >> f, prefix+"is_well_defined:", self.is_well_defined()
+    print >> f, prefix+"mean_x:", self.mean_x()
+    print >> f, prefix+"mean_y:", self.mean_y()
+    print >> f, prefix+"coefficient:", self.coefficient()
 
 class histogram_slot_info(object):
 
