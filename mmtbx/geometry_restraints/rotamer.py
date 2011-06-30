@@ -6,7 +6,7 @@ import sys
 master_phil = libtbx.phil.parse("""
 max_rmsd = None
   .type = float
-sigma = 10
+sigma = 5.0
   .type = float
 slack = 0
   .type = float
@@ -85,14 +85,17 @@ class manager (object) :
           continue
         chi_id = proxy.find_dihedral_proxy(dihedral_proxy)
         if (chi_id != 0) :
-          chi_proxies[abs(chi_id)] = j_seq
+          chi_proxies[abs(chi_id)-1] = j_seq
           have_proxies.add(j_seq)
           if (chi_id < 0) :
-            invert[abs(chi_id)] = True
+            invert[abs(chi_id)-1] = True
           if (not None in chi_proxies) :
             break
-      if (chi_proxies.count(None) > (4 - proxy.n_angles)) :
-        print >> log, "  warning: can't find dihedral proxies"
+      n_missing = chi_proxies.count(None) - (4 - proxy.n_angles)
+      if (n_missing > 0) :
+        first_i_seq = proxy.first_i_seq()
+        print >> log, "    warning: can't find %d dihedral proxies for %s" % (
+          n_missing, atoms[first_i_seq].id_str()[9:-1])
       self._proxy_indices.append(chi_proxies)
       self._invert_signs.append(invert)
 
@@ -106,9 +109,12 @@ class manager (object) :
       log = sys.stdout
     params = self.params
     load_sidechain_properties()
+    pdb_atoms = self.pdb_hierarchy.atoms()
     if (self._proxy_indices is None) :
       self.cross_reference_proxies(dihedral_proxies)
     assert (len(self.rotamer_proxies) == len(self._proxy_indices))
+    print >> log, " Updating dihedral proxies from rotamer library"
+    weight = 1 / params.sigma**2
     for k, proxy in enumerate(self.rotamer_proxies) :
       if (proxy.n_angles == 0) or (self._proxy_indices[k].count(None) == 4) :
         continue
@@ -118,6 +124,7 @@ class manager (object) :
         continue
       best_rmsd = sys.maxint
       best_angles = None
+      best_rotamer = None
       for rotamer, angles in rotamers.iteritems() :
         angles_ = angles
         if (len(angles) < 4) :
@@ -128,19 +135,28 @@ class manager (object) :
         if (rmsd < best_rmsd) :
           best_rmsd = rmsd
           best_angles = angles
+          best_rotamer = rotamer
       if (best_angles is None) :
         print >> log, "  can't find angles for residue %s" % resname
       elif (params.max_rmsd is not None) and (best_rmsd > params.max_rmsd) :
         print >> log, "  lowest RMSD exceeds max"
       else :
+        print_rotamer = verbose
         for chi_id, j_seq in enumerate(self._proxy_indices[k]) :
           if (j_seq is None) :
             continue
-          dihedral_proxy = dihedral_proxies[k]
+          dihedral_proxy = dihedral_proxies[j_seq]
+          if (print_rotamer) :
+            first_i_seq = dihedral_proxy.i_seqs[0]
+            atom = pdb_atoms[first_i_seq]
+            print >> log, "  %s : %s (rmsd=%.3f)" % (atom.id_str()[9:-1],
+              best_rotamer, best_rmsd)
+            print_rotamer = False
           if (self._invert_signs[k][chi_id]) :
             dihedral_proxy.angle_ideal = - angles[chi_id]
           else :
             dihedral_proxy.angle_ideal = angles[chi_id]
-          dihedral_proxy.sigma = params.sigma
+          dihedral_proxy.weight = weight
           n_updates += 1
+    print >> log, " %d proxies modified." % n_updates
     return n_updates

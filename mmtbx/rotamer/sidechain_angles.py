@@ -158,7 +158,7 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
           for i in range(1, n_chi+1) :
             try :
               atoms = angle_lookup.extract_chi_atoms("chi%d" % i, residue)
-            except RuntimeError, e :
+            except AttributeError, e :
               pass
             else :
               i_seqs = [ atom.i_seq for atom in atoms ]

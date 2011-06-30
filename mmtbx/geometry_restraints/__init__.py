@@ -9,7 +9,8 @@ class manager (object) :
                 ramachandran_proxies=None,
                 ramachandran_lookup=None,
                 hydrogen_bond_proxies=None,
-                hydrogen_bond_params=None) :
+                hydrogen_bond_params=None,
+                rotamer_manager=None) :
     adopt_init_args(self, locals())
     assert (ramachandran_proxies is None) or (ramachandran_lookup is not None)
     if (self.hydrogen_bond_params is None) :
@@ -55,3 +56,6 @@ class manager (object) :
       from mmtbx.geometry_restraints import hbond
       return hbond.get_simple_bonds(self.hydrogen_bond_proxies)
     return []
+
+  def rotamers (self) :
+    return self.rotamer_manager
