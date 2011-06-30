@@ -142,21 +142,12 @@ class hklview_3d (wxGLWindow) :
       self.points_display_list.compile()
       colors = self.scene.colors
       radii = self.scene.radii
-      assert (colors.size() == radii.size() == self.scene.points.size())
-      for i, hkl in enumerate(self.scene.points) :
-        glColor3f(*colors[i])
-        glBegin(GL_LINES)
-        glVertex3f(hkl[0] - radii[i], hkl[1], hkl[2])
-        glVertex3f(hkl[0] + radii[i], hkl[1], hkl[2])
-        glEnd()
-        glBegin(GL_LINES)
-        glVertex3f(hkl[0], hkl[1] - radii[i], hkl[2])
-        glVertex3f(hkl[0], hkl[1] + radii[i], hkl[2])
-        glEnd()
-        glBegin(GL_LINES)
-        glVertex3f(hkl[0], hkl[1], hkl[2] - radii[i])
-        glVertex3f(hkl[0], hkl[1], hkl[2] + radii[i])
-        glEnd()
+      glLineWidth(2.0)
+      gltbx.viewer_utils.draw_stars(
+        points=self.scene.points,
+        colors=colors,
+        points_visible=self.scene.visible_points,
+        radii=radii)
       self.points_display_list.end()
     self.points_display_list.call()
 
