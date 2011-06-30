@@ -66,6 +66,7 @@ namespace {
       .def_readonly("n_angles", &w_t::n_angles)
       .def_readonly("residue_name", &w_t::residue_name)
       .def_readonly("residue_type", &w_t::residue_type)
+      .def("first_i_seq", &w_t::first_i_seq)
       .def("get_rotamer_rmsd", &w_t::get_rotamer_rmsd, (
         arg("angles"),
         arg("sites_cart")))

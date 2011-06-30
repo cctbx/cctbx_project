@@ -64,6 +64,7 @@ def run():
   "$D/secondary_structure/tst.py",
   "$D/geometry_restraints/tst_hbond.py",
   "$D/conformation_dependent_library/test_cdl.py",
+  "$D/geometry_restraints/tst_rotamer.py",
   )
 
   build_dir = libtbx.env.under_build("mmtbx")

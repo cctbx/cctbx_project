@@ -9,6 +9,8 @@
 
 #include <string>
 
+#define PI_OVER_180 0.017453292519943295
+
 namespace mmtbx { namespace geometry_restraints {
   using cctbx::geometry_restraints::dihedral;
   using cctbx::geometry_restraints::dihedral_proxy;
@@ -86,6 +88,10 @@ namespace mmtbx { namespace geometry_restraints {
       initialize_i_seqs(chi1_i_seqs, chi2_i_seqs, chi3_i_seqs, chi4_i_seqs);
     }
 
+    size_t first_i_seq () {
+      return chi_i_seqs[0];
+    }
+
     void initialize_i_seqs (
       af::tiny<unsigned, 4> const& chi1_i_seqs,
       af::tiny<unsigned, 4> const& chi2_i_seqs,
@@ -113,8 +119,9 @@ namespace mmtbx { namespace geometry_restraints {
           chi_sites[k] = sites_cart[chi_i_seqs[(j*4)+k]];
         }
         dihedral chi(chi_sites, 0, 1.0);
-        double chi_deg = chi.angle_model;
-        rmsd += std::pow(angles[j] - chi_deg, 2);
+        double angle_rad = angles[j] * PI_OVER_180;
+        double chi_rad = chi.angle_model * PI_OVER_180;
+        rmsd += std::pow(angle_rad - chi_rad, 2);
       }
       return rmsd / n_angles;
     }
