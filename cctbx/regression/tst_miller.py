@@ -1420,6 +1420,55 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
+def exercise_lsd_map():
+  symmetry = crystal.symmetry(
+    unit_cell=(10, 10, 10, 90, 90, 90),
+    space_group_symbol="P1")
+  d_min = 2
+  structure = xray.structure(crystal_symmetry=symmetry)
+  # first check with no atoms
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=False).f_calc()
+  lsd = f_calc.local_standard_deviation_map(radius=3.5)
+  assert flex.max(lsd.real_map_unpadded()) == 0
+  assert flex.min(lsd.real_map_unpadded()) == 0
+  # now let's add some atoms
+  atmrad = flex.double()
+  xyzf = flex.vec3_double()
+  from cctbx.eltbx import van_der_waals_radii
+  a,b,c,_,_,_ = symmetry.unit_cell().parameters()
+  for k in xrange(10):
+    scatterer = xray.scatterer(
+      site=(0, 0.1*math.sin(math.pi*4*k/b), k/b),
+      scattering_type="S",
+      u=0.02)
+    structure.add_scatterer(scatterer)
+    atmrad.append(van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+    xyzf.append(scatterer.site)
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=False).f_calc()
+  lsd = f_calc.local_standard_deviation_map(radius=1.5)
+  lsd_map = lsd.real_map_unpadded()
+  hist = flex.histogram(data=lsd_map.as_1d(), n_slots=lsd_map.size())
+  cutoff = hist.get_cutoff(int(lsd_map.size()*(1-0.85)))
+  mask = flex.size_t()
+  mask.resize(lsd_map.accessor(), 1)
+  mask.set_selected(lsd_map > cutoff, 0)
+  # compare to vdw radii-based mask
+  from cctbx.masks import around_atoms
+  m1 = around_atoms(
+    structure.unit_cell(),
+    structure.space_group().order_z(),
+    structure.sites_frac(),
+    atmrad,
+    lsd.n_real(),
+    solvent_radius=1,
+    shrink_truncation_radius=1)
+  corr = flex.linear_correlation(
+    mask.as_double().as_1d(), m1.data.as_double().as_1d())
+  assert corr.coefficient() > 0.90
+
+
 def exercise_phased_translation_coeff(d_min = 1.0,
                                       algorithm = "direct",
                                       shift = [0.7, 1.2, 1.4],
@@ -1787,6 +1836,7 @@ def exercise_shelxl_extinction_correction():
   assert approx_equal(corr, coef)
 
 def run(args):
+  exercise_lsd_map()
   exercise_shelxl_extinction_correction()
   exercise_symmetry_agreement_factor()
   exercise_multiscale()

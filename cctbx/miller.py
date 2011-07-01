@@ -2875,6 +2875,48 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       fourier_coefficients=self,
       f_000=f_000)
 
+  def local_standard_deviation_map(self, radius,
+                                         mean_solvent_density=0,
+                                         resolution_factor=1/3,
+                                         d_min=None,
+                                         grid_step=None,
+                                         symmetry_flags=None,
+                                         mandatory_factors=None,
+                                         max_prime=5,
+                                         assert_shannon_sampling=True,
+                                         f_000=None):
+    # J. P. Abrahams and A. G. W. Leslie, Acta Cryst. (1996). D52, 30-42
+    complete_set = self.complete_set()
+    stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
+    w = 4 * stol * math.pi * radius
+    sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+    fft = self.fft_map(
+      resolution_factor=resolution_factor,
+      d_min=d_min,
+      grid_step=grid_step,
+      symmetry_flags=symmetry_flags,
+      mandatory_factors=mandatory_factors,
+      max_prime=max_prime,
+      assert_shannon_sampling=assert_shannon_sampling,
+      f_000=f_000)
+    fft.apply_volume_scaling()
+    temp = complete_set.structure_factors_from_map(
+      flex.pow2(fft.real_map_unpadded()-mean_solvent_density))
+    temp = temp.customized_copy(data=0.6396191457333052*temp.data())
+    fourier_coeff = complete_set.array(data=temp.data()*sphere_reciprocal)
+    fft = fft_map(
+      crystal_gridding=self.crystal_gridding(
+        d_min=d_min,
+        resolution_factor=resolution_factor,
+        grid_step=grid_step,
+        symmetry_flags=symmetry_flags,
+        mandatory_factors=mandatory_factors,
+        max_prime=max_prime,
+        assert_shannon_sampling=assert_shannon_sampling),
+      fourier_coefficients=fourier_coeff).apply_volume_scaling()
+    return fft
+
+
   def patterson_map(self, resolution_factor=1/3,
                           d_min=None,
                           symmetry_flags=None,
@@ -2945,6 +2987,14 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     # array_type is 'meas' or 'calc'
     import iotbx.cif
     return iotbx.cif.miller_arrays_as_cif_block(self, array_type).cif_block
+
+  def as_cif_simple(self, array_type, out=None, data_name="global"):
+    # array_type is 'meas' or 'calc'
+    if out is None: out = sys.stdout
+    import iotbx.cif
+    cif = iotbx.cif.model.cif()
+    cif[data_name] = self.as_cif_block(array_type=array_type)
+    print >> out, cif
 
   def as_phases_phs(self,
         out,
