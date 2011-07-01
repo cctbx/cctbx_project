@@ -49,3 +49,4 @@ if (not env_etc.no_boost_python):
   Export("env_rstbx_boost_python_ext")
 
   SConscript("diffraction/fastbragg/SConscript")
+  SConscript("simulation/SConscript")
