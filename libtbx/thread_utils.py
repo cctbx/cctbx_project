@@ -5,7 +5,11 @@ from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_init_args
 import Queue
 import threading
-import sys, traceback, time, os
+import warnings
+import traceback
+import time
+import os
+import sys
 
 class thread_with_callback_and_wait(threading.Thread):
 
@@ -217,6 +221,8 @@ else:
       old_stdout = sys.stdout
       sys.stdout = self._stdout
       message = None
+      old_showwarning = warnings.showwarning
+      warnings.showwarning = libtbx.call_back.showwarning
       try :
         try :
           if self._target :
@@ -238,6 +244,7 @@ else:
         if message is not None :
           self._stdout._flush()
           self._c.send(message)
+        warnings.showwarning = old_showwarning
       sys.stdout = old_stdout
 
   #XXX: target functions must use this call signature!!!
@@ -563,6 +570,26 @@ def tst_07 () :
     pass
   assert ch._abort == True
 
+def _target_function08 (args, kwds, connection) :
+  import libtbx.callbacks # import dependency
+  import cStringIO
+  log = cStringIO.StringIO()
+  libtbx.call_back.set_warning_log(log)
+  time.sleep(1)
+  libtbx.warn("Hello, world!")
+  time.sleep(1)
+
+def tst_08 () :
+  ch = _callback_handler()
+  p = process_with_callbacks(
+    target=_target_function08,
+    callback_other=ch.cb_other)
+  p.start()
+  while p.isAlive() :
+    pass
+  assert (ch._other[0].message == "warn")
+  assert (ch._other[0].data == "Hello, world!")
+
 def exercise_process () :
   #--- run all tests
   try :
@@ -573,6 +600,7 @@ def exercise_process () :
     tst_05()
     tst_06()
     tst_07()
+    tst_08()
   except ImportError, e:
     print "Skipping thread_utils tests:", str(e)
 
