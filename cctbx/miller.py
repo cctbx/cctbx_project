@@ -2902,7 +2902,6 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     fft.apply_volume_scaling()
     temp = complete_set.structure_factors_from_map(
       flex.pow2(fft.real_map_unpadded()-mean_solvent_density))
-    temp = temp.customized_copy(data=0.6396191457333052*temp.data())
     fourier_coeff = complete_set.array(data=temp.data()*sphere_reciprocal)
     fft = fft_map(
       crystal_gridding=self.crystal_gridding(
