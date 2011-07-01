@@ -133,6 +133,7 @@ class any_file_input (object) :
     self.file_server = None
     self.file_description = None
     self._cached_file = None # XXX: used in phenix.file_reader
+    self._tried_types = []
     self._errors = {}
     self.file_size = os.path.getsize(file_name)
     self.get_processed_file = get_processed_file
@@ -140,7 +141,7 @@ class any_file_input (object) :
     (file_base, file_ext) = os.path.splitext(file_name)
     if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
       (base2, ext2) = os.path.splitext(file_base)
-      if ext2 != "" :
+      if (ext2 in [".pdb", ".ent"]) :
         file_ext = ext2
     if force_type is not None :
       read_method = getattr(self, "try_as_%s" % force_type, None)
@@ -153,6 +154,7 @@ class any_file_input (object) :
       for file_type in valid_types :
         if file_ext[1:] in self.__extensions__[file_type] :
           read_method = getattr(self, "try_as_%s" % file_type)
+          self._tried_types.append(file_type)
           try :
             read_method()
           except KeyboardInterrupt :
@@ -274,6 +276,7 @@ class any_file_input (object) :
 
   def try_all_types (self) :
     for filetype in self.valid_types :
+      if (filetype in self._tried_types) : continue
       read_method = getattr(self, "try_as_%s" % filetype)
       try :
         read_method()
