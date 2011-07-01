@@ -1209,6 +1209,14 @@ rstbx/indexing/tst_auto_monoscan.py -text
 rstbx/indexing/tst_dataset1.py -text
 rstbx/libtbx_config -text
 rstbx/run_tests.py -text
+rstbx/simulation/SConscript -text
+rstbx/simulation/__init__.py -text
+rstbx/simulation/constants.py -text
+rstbx/simulation/ext.cpp -text
+rstbx/simulation/sim_pdf.py -text
+rstbx/simulation/sim_utils.py -text
+rstbx/simulation/sim_xfel1.h -text
+rstbx/simulation/tst_xfel1_simple.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
