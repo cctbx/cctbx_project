@@ -1736,7 +1736,6 @@ class array(set):
     cs = self.complete_set(
       d_min_tolerance=d_min_tolerance, d_min=d_min, d_max=d_max)
     matches = match_indices(self.indices(), cs.indices())
-    assert matches.singles(0).size() == 0
     i = self.indices()
     d = self.data()
     if (d is not None): d = d.deep_copy()
