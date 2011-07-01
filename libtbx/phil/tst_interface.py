@@ -271,11 +271,11 @@ refinement.output.title = Test refinement run
   #
   # .style processing
   style = i.get_scope_style("refinement.refine.strategy")
-  assert (style.auto_launch_dialog == [
-    'refinement.refine.sites.individual', 'refinement.refine.sites.individual',
-    'refinement.refine.sites.rigid_body', 'refinement.refine.adp.individual',
-    'refinement.refine.adp.group', 'refinement.refine.adp.tls',
-    'refinement.refine.occupancies', 'refinement.refine.anomalous_scatterers'])
+  #assert (style.auto_launch_dialog == [
+  #  'refinement.refine.sites.individual', 'refinement.refine.sites.individual',
+  #  'refinement.refine.sites.rigid_body', 'refinement.refine.adp.individual',
+  #  'refinement.refine.adp.group', 'refinement.refine.adp.tls',
+  #  'refinement.refine.occupancies', 'refinement.refine.anomalous_scatterers'])
   assert (style.file_type is None)
   style = i.get_scope_style("refinement.input.xray_data.file_name")
   assert (style.get_list("file_type") == ["hkl"])
