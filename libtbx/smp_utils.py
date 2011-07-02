@@ -60,6 +60,9 @@ class Pool (object) :
 
   def join (self) :
     if (self._pool is not None) :
+      # multiprocessing documentation (Python 2.7.2):
+      #  One must call close() or terminate() before using join().
+      self._pool.close()
       self._pool.join()
 
   def show_summary (self, out=sys.stdout) :
