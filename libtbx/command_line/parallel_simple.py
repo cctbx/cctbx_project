@@ -128,11 +128,11 @@ def run(args):
   ).process(args=args)
   co = command_line.options
   #
+  from libtbx import easy_mp
   import libtbx.introspection
   import libtbx.utils
   from libtbx.utils import Sorry
   from libtbx.str_utils import show_string
-  import multiprocessing
   #
   files_listing_commands = []
   for arg in command_line.args:
@@ -204,8 +204,8 @@ def run(args):
         run_one_cmd(cmd_info=cmd_info)
         show_log(cmd_info=cmd_info)
     else:
-      mp_pool = multiprocessing.Pool(processes=n_proc)
-      mp_pool.map(run_one_cmd, cmd_infos, chunksize=1)
+      easy_mp.pool_map(
+        processes=n_proc, func=run_one_cmd, args=cmd_infos, chunksize=1)
       show_logs()
   else:
     old_dirs = []
@@ -230,8 +230,8 @@ def run(args):
           print >> sys.stderr, \
             "unable to remove or rename: %s" % show_string(d)
         raise Sorry("Failure removing existing directories.")
-    mp_pool = multiprocessing.Pool(processes=n_proc)
-    mp_pool.map(run_in_dir, cmd_infos, chunksize=1)
+    easy_mp.pool_map(
+      processes=n_proc, func=run_in_dir, args=cmd_infos, chunksize=1)
     show_logs()
   print
   show_times()
