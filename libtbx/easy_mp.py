@@ -80,8 +80,14 @@ def pool_map(
     initargs=initargs,
     maxtasksperchild=maxtasksperchild,
     fixed_func=fixed_func)
-  if (func is not None):
-    return pool.map(func=func, iterable=iterable, chunksize=chunksize)
-  return pool.map_fixed_func(iterable=iterable, chunksize=chunksize)
+  try:
+    if (func is not None):
+      result = pool.map(func=func, iterable=iterable, chunksize=chunksize)
+    else:
+      result = pool.map_fixed_func(iterable=iterable, chunksize=chunksize)
+  finally:
+    pool.close()
+    pool.join()
+  return result
 
 del _
