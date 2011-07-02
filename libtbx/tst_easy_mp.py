@@ -1,5 +1,9 @@
+from libtbx import easy_mp
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
+from libtbx import Auto
+from cStringIO import StringIO
+import os
 import sys
 
 class potentially_large(unpicklable):
@@ -10,18 +14,26 @@ class potentially_large(unpicklable):
   def __call__(self, i):
     return self.array[i]
 
-def eval_parallel(data, exercise_fail=False):
+def eval_parallel(
+      data,
+      func_wrapper=Auto,
+      log=None,
+      exercise_out_of_range=False,
+      exercise_fail=False):
   size = len(data.array)
   args = range(size)
-  from libtbx import easy_mp
+  if (exercise_out_of_range):
+    args.append(size)
   if (exercise_fail):
     mp_results = easy_mp.pool_map(func=data, args=args)
   else:
-    mp_results = easy_mp.pool_map(fixed_func=data, args=args)
-  assert mp_results == range(3, size+3)
+    mp_results = easy_mp.pool_map(
+      fixed_func=data, args=args, func_wrapper=func_wrapper, log=log)
+  assert mp_results[:size] == range(3, size+3)
+  if (exercise_out_of_range):
+    mp_results[size] is None
 
 def exercise(exercise_fail):
-  import os
   if (os.name == "nt"):
     print "Skipping tst_easy_mp.py: Windows is not a supported platform."
     return
@@ -31,10 +43,16 @@ def exercise(exercise_fail):
     return
   data = potentially_large(size=1000)
   eval_parallel(data)
-  from libtbx import easy_mp
+  assert len(easy_mp.fixed_func_registry) == 0
+  eval_parallel(data, func_wrapper=None)
   assert len(easy_mp.fixed_func_registry) == 1
-  eval_parallel(data)
+  eval_parallel(data, func_wrapper=None, log=sys.stdout)
   assert len(easy_mp.fixed_func_registry) == 2
+  sio = StringIO()
+  sys.stdout = sio
+  eval_parallel(data, exercise_out_of_range=True)
+  sys.stdout = sys.__stdout__
+  assert len(sio.getvalue()) == 0 # message goes to sio in child process
   if (exercise_fail):
     eval_parallel(data, exercise_fail=True)
     raise Exception_expected

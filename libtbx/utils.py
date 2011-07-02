@@ -1,7 +1,6 @@
 from __future__ import division
 from libtbx.queuing_system_utils import sge_utils, pbs_utils
 from libtbx.str_utils import show_string
-from libtbx import Auto
 try: import gzip
 except ImportError: gzip = None
 try: import bz2
@@ -922,33 +921,6 @@ def random_hex_code(number_of_digits):
     i = random.randrange(16)
     digits.append("0123456789abcdef"[i])
   return "".join(digits)
-
-class easy_mp_func_wrapper(object):
-  def __init__(O, func):
-    O.func = func
-  def __call__(O, arg):
-    try:
-      O.func(arg)
-    except: # intentional
-      print "CAUGHT EXCEPTION:"
-      traceback.print_exc()
-
-def easy_mp(func, args, report_to=Auto):
-  if (report_to is Auto):
-    report_to = sys.stdout
-  import libtbx.introspection
-  pool_size = min(len(args), libtbx.introspection.number_of_processors())
-  if (report_to is not None):
-    print >> report_to, "multiprocessing pool size:", pool_size
-    flush = getattr(report_to, "flush", None)
-    if (flush is not None):
-      flush()
-    time_start = time.time()
-  import multiprocessing
-  mp_pool = multiprocessing.Pool(processes=pool_size)
-  mp_pool.map(func=easy_mp_func_wrapper(func), iterable=args, chunksize=1)
-  if (report_to is not None):
-    show_wall_clock_time(seconds=time.time()-time_start, out=report_to)
 
 def get_svn_revision(path=None):
   # adapted from:
