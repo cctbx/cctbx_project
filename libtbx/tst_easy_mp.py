@@ -1,4 +1,3 @@
-from libtbx import easy_mp
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
@@ -24,6 +23,7 @@ def eval_parallel(
   args = range(size)
   if (exercise_out_of_range):
     args.append(size)
+  from libtbx import easy_mp
   if (exercise_fail):
     mp_results = easy_mp.pool_map(func=data, args=args)
   else:
@@ -42,6 +42,7 @@ def exercise(exercise_fail):
     print "Skipping tst_easy_mp.py: Python 2.6 or higher is required."
     return
   data = potentially_large(size=1000)
+  from libtbx import easy_mp
   eval_parallel(data)
   assert len(easy_mp.fixed_func_registry) == 0
   eval_parallel(data, func_wrapper=None)
