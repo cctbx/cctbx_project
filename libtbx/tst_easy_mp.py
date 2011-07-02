@@ -12,15 +12,12 @@ class potentially_large(unpicklable):
 
 def eval_parallel(data, exercise_fail=False):
   size = len(data.array)
-  import multiprocessing
-  n_proc = min(size, multiprocessing.cpu_count())
+  args = range(size)
+  from libtbx import easy_mp
   if (exercise_fail):
-    mp_pool = multiprocessing.Pool(processes=n_proc)
-    mp_results = mp_pool.map(data, range(size))
+    mp_results = easy_mp.pool_map(func=data, args=args)
   else:
-    from libtbx import easy_mp
-    mp_pool = easy_mp.Pool(processes=n_proc, fixed_func=data)
-    mp_results = mp_pool.map_fixed_func(range(size))
+    mp_results = easy_mp.pool_map(fixed_func=data, args=args)
   assert mp_results == range(3, size+3)
 
 def exercise(exercise_fail):

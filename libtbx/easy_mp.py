@@ -49,4 +49,33 @@ class Pool(_):
       iterable=iterable,
       chunksize=chunksize)
 
+def pool_map(
+      processes=None,
+      initializer=None,
+      initargs=(),
+      maxtasksperchild=None,
+      func=None,
+      fixed_func=None,
+      iterable=None,
+      args=None,
+      chunksize=None):
+  assert [func, fixed_func].count(None) == 1
+  assert [iterable, args].count(None) == 1
+  if (processes is None):
+    import multiprocessing
+    processes = multiprocessing.cpu_count()
+  if (args is not None):
+    iterable = args
+    if (processes is not None):
+      processes = min(processes, len(args))
+  pool = Pool(
+    processes=processes,
+    initializer=initializer,
+    initargs=initargs,
+    maxtasksperchild=maxtasksperchild,
+    fixed_func=fixed_func)
+  if (func is not None):
+    return pool.map(func=func, iterable=iterable, chunksize=chunksize)
+  return pool.map_fixed_func(iterable=iterable, chunksize=chunksize)
+
 del _
