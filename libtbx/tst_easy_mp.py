@@ -49,6 +49,13 @@ def exercise(exercise_fail):
   eval_parallel(data, func_wrapper=None, log=sys.stdout)
   assert len(easy_mp.fixed_func_registry) == 2
   sio = StringIO()
+  eval_parallel(data, func_wrapper=None, log=sio)
+  assert len(easy_mp.fixed_func_registry) == 3
+  lines = sio.getvalue().splitlines()
+  assert len(lines) == 2
+  assert lines[0].startswith("multiprocessing pool size: ")
+  assert lines[1].startswith("wall clock time: ")
+  sio = StringIO()
   sys.stdout = sio
   eval_parallel(data, exercise_out_of_range=True)
   sys.stdout = sys.__stdout__
