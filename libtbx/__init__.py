@@ -57,6 +57,16 @@ class slots_getstate_setstate(object):
   def __setstate__(self, state):
     for name,value in state.items(): setattr(self, name, value)
 
+class unpicklable(object):
+
+  def raise_error(O):
+    raise RuntimeError(
+      "pickling of %s objects is disabled." % O.__class__.__name__)
+
+  def __getinitargs__(O): O.raise_error()
+  def __getstate__(O): O.raise_error()
+  def __setstate__(O, state): O.raise_error()
+
 if (getattr(sys, "api_version", 0) >= 1013):
 
   class dict_with_default_0(dict):

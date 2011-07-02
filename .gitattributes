@@ -933,6 +933,7 @@ libtbx/development/move_obsolete_from_bundle.csh -text
 libtbx/development/timers.py -text
 libtbx/development/xcode_build_phase.sh -text
 libtbx/dtrace/profile.d -text
+libtbx/easy_mp.py svneol=native#text/x-python
 libtbx/easy_profile.py -text
 libtbx/find_reference_cycles.py -text
 libtbx/lzw.py -text
@@ -961,6 +962,7 @@ libtbx/topological_sort.py svneol=native#text/x-python
 libtbx/try_hello_world_c.py svneol=native#text/x-python
 libtbx/tst_binary_search.py svneol=native#text/x-python
 libtbx/tst_containers.py svneol=native#text/x-python
+libtbx/tst_easy_mp.py svneol=native#text/x-python
 libtbx/tst_easy_pickle.py svneol=native#text/x-python
 libtbx/tst_lzw.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
