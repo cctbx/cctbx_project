@@ -1,5 +1,6 @@
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
+import sys
 
 class potentially_large(unpicklable):
 
@@ -27,6 +28,10 @@ def exercise(exercise_fail):
   if (os.name == "nt"):
     print "Skipping tst_easy_mp.py: Windows is not a supported platform."
     return
+  vers_info = sys.version_info[:2]
+  if (vers_info < (2,6)):
+    print "Skipping tst_easy_mp.py: Python 2.6 or higher is required."
+    return
   data = potentially_large(size=1000)
   eval_parallel(data)
   from libtbx import easy_mp
@@ -46,5 +51,4 @@ def run(args):
   print "OK"
 
 if (__name__ == "__main__"):
-  import sys
   run(args=sys.argv[1:])

@@ -10,6 +10,7 @@ def run():
   "$D/queuing_system_utils/sge_utils.py",
   "$D/introspection.py",
   "$D/thread_utils.py",
+  "$D/tst_easy_mp.py",
   "$D/easy_pickle.py",
   "$D/easy_run.py",
   "$D/tst_utils.py",
