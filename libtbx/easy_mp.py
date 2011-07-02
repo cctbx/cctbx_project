@@ -1,3 +1,5 @@
+import traceback
+
 from weakref import WeakValueDictionary as _
 fixed_func_registry = _()
 
@@ -11,7 +13,11 @@ class fixed_func_proxy(object):
     key = self.key
     func = fixed_func_registry[key]
     assert func is not None
-    return func(arg)
+    try:
+      return func(arg)
+    except: # intentional
+      print "CAUGHT EXCEPTION:"
+      traceback.print_exc()
 
 from itertools import count as _
 fixed_func_registry_key_generator = _()
