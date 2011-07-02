@@ -35,11 +35,18 @@ class Pool(_):
       self.fixed_func_proxy = fixed_func_proxy(key, fixed_func)
     else:
       self.fixed_func_proxy = None
-    super(Pool, self).__init__(
-      processes=processes,
-      initializer=initializer,
-      initargs=initargs,
-      maxtasksperchild=maxtasksperchild)
+    init = super(Pool, self).__init__
+    if (maxtasksperchild is None):
+      init(
+        processes=processes,
+        initializer=initializer,
+        initargs=initargs)
+    else:
+      init(
+        processes=processes,
+        initializer=initializer,
+        initargs=initargs,
+        maxtasksperchild=maxtasksperchild) # New in Python 2.7
 
   def map_fixed_func(self, iterable, chunksize=None):
     '''
