@@ -68,8 +68,8 @@ def pool_map(
   assert [func, fixed_func].count(None) == 1
   assert [iterable, args].count(None) == 1
   if (processes is None):
-    import multiprocessing
-    processes = multiprocessing.cpu_count()
+    from libtbx import introspection
+    processes = introspection.number_of_processors()
   if (args is not None):
     iterable = args
     if (processes is not None):

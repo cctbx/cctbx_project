@@ -259,12 +259,20 @@ def number_of_processors(return_value_if_unknown=None):
   global _number_of_processors
   if (_number_of_processors is Auto):
     _number_of_processors = None
-    try: import boost.python
+    try: import multiprocessing
     except ImportError: pass
     else:
-      n = boost.python.ext.number_of_processors()
-      if (n != 0):
+      try: n = multiprocessing.cpu_count()
+      except NotImplementedError: pass
+      else:
         _number_of_processors = n
+    if (_number_of_processors is None):
+      try: import boost.python
+      except ImportError: pass
+      else:
+        n = boost.python.ext.number_of_processors()
+        if (n != 0):
+          _number_of_processors = n
     if (_number_of_processors is None):
       cpuinfo = "/proc/cpuinfo" # Linux
       if (op.isfile(cpuinfo)):
