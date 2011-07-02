@@ -43,7 +43,14 @@ def exercise(exercise_fail):
     return
   data = potentially_large(size=1000)
   from libtbx import easy_mp
-  eval_parallel(data)
+  sem_open_msg = "This platform lacks a functioning sem_open implementation"
+  try:
+    eval_parallel(data)
+  except ImportError, e:
+    if (not str(e).startswith(sem_open_msg)):
+      raise
+    print "Skipping tst_easy_mp.py: %s." % sem_open_msg
+    return
   assert len(easy_mp.fixed_func_registry) == 0
   eval_parallel(data, func_wrapper=None)
   assert len(easy_mp.fixed_func_registry) == 1
