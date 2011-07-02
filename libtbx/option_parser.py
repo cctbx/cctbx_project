@@ -61,9 +61,8 @@ class processed_options(object):
           cmd = " ".join(['"'+escape_sh_double_quoted(s=arg)+'"'
             for arg in cmd])
           cmds.append(cmd)
-        import multiprocessing
-        mp_pool = multiprocessing.Pool(processes=n)
-        mp_pool.map(run_multi, cmds, chunksize=1)
+        from libtbx import easy_mp
+        easy_mp.pool_map(processes=n, func=run_multi, args=cmds, chunksize=1)
         return True
       self.chunk.redirect_chunk_stdout_and_stderr(have_array=True)
     return False
