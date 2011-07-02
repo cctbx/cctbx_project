@@ -1,4 +1,4 @@
-def exercise(n=100000):
+def exercise(n):
   from libtbx import easy_pickle
   import time
   obj = []
@@ -21,8 +21,13 @@ def exercise(n=100000):
     print "  load direct: %.2f s" % (time.time()-t0)
 
 def run(args):
-  assert len(args) == 0
-  exercise()
+  assert len(args) in [0,1]
+  if (len(args) == 0):
+    n = 100
+  else:
+    n = int(args[0])
+    assert n >= 0
+  exercise(n)
   print "OK"
 
 if (__name__ == "__main__"):
