@@ -58,6 +58,19 @@ def exercise_flex_hendrickson_lattman():
   b = flex.double([-3,4,5])
   h = flex.hendrickson_lattman(a=a, b=b)
   assert approx_equal(h, [(1,-3,0,0), (2,4,0,0), (3,5,0,0)])
+  assert approx_equal(h == (1,-3,0,0), (True,False,False))
+  assert approx_equal(h != (1,-3,0,0), (False,True,True))
+  assert approx_equal(h != (0,0,0,0), (True,True,True))
+  assert approx_equal(h == h.deep_copy(), (True, True, True))
+  assert approx_equal(
+    h == flex.hendrickson_lattman(a=b, b=a), (False, False, False))
+  assert approx_equal(
+    h != flex.hendrickson_lattman(a=b, b=a), (True, True, True))
+  assert approx_equal(
+    h != flex.hendrickson_lattman(a=b, b=a), (True, True, True))
+  assert approx_equal(
+    h != h.deep_copy(), (False, False, False))
+
 
 def exercise_flex_xray_scatterer():
   from cctbx import uctbx, sgtbx, xray

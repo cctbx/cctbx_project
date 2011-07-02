@@ -132,6 +132,10 @@ namespace {
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_a)
       .def("all_eq", f_w::all_eq_a_s)
+      .def("__eq__", f_w::eq_a_a)
+      .def("__ne__", f_w::ne_a_a)
+      .def("__eq__", f_w::eq_a_s)
+      .def("__ne__", f_w::ne_a_s)
       .def("slice", slice, (arg("self"), arg("i_param")))
       .def("conj", conj)
     ;

@@ -172,6 +172,13 @@ namespace cctbx {
         return true;
       }
 
+      //! Test for inequality.
+      bool
+      operator!=(hendrickson_lattman const& rhs) const
+      {
+        return !(*this == rhs);
+      }
+
       struct phase_integration_cos_sin_table
       {
         unsigned n_steps;
