@@ -31,6 +31,10 @@ class Pool(_):
         initargs=(),
         maxtasksperchild=None,
         fixed_func=None):
+    if (processes is None):
+      from libtbx import introspection
+      processes = introspection.number_of_processors()
+    self.processes = processes
     if (fixed_func is not None):
       key = fixed_func_registry_key_generator.next()
       self.fixed_func_proxy = fixed_func_proxy(key, fixed_func)
