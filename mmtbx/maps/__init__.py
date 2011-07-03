@@ -19,7 +19,6 @@ map_coeff_params_str = """\
       .style = bold renderer:draw_map_type_widget
     format = *mtz phs
       .type = choice(multi=True)
-      .style = noauto
     mtz_label_amplitudes = None
       .type = str
       .short_caption = MTZ label for amplitudes
