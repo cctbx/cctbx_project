@@ -52,6 +52,20 @@ namespace {
     return result;
   }
 
+  std::size_t
+  increment_and_track_up_from_zero(
+    af::ref<std::size_t> const& O,
+    af::const_ref<std::size_t> const& iselection)
+  {
+    std::size_t result = 0;
+    for(std::size_t i=0;i<iselection.size();i++) {
+      std::size_t ii = iselection[i];
+      SCITBX_ASSERT(ii < O.size());
+      if (O[ii]++ == 0) result++;
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_size_t()
@@ -75,6 +89,8 @@ namespace {
         arg("max_keys")))
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
+      .def("increment_and_track_up_from_zero",
+        increment_and_track_up_from_zero, (arg("iselection")))
       .def("as_numpy_array", flex_size_t_as_numpy_array, (
         arg("optional")=false))
     ;
