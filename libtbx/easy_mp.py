@@ -1,4 +1,5 @@
 from libtbx import Auto
+from cStringIO import StringIO
 import traceback
 import sys
 
@@ -61,14 +62,23 @@ class Pool(_):
       chunksize=chunksize)
 
 class func_wrapper(object):
-  def __init__(O, func):
+
+  def __init__(O, func, buffer_stdout_stderr):
     O.func = func
+    O.buffer_stdout_stderr = buffer_stdout_stderr
+
   def __call__(O, arg):
+    if (O.buffer_stdout_stderr):
+      sys.stderr = sys.stdout = sio = StringIO()
     try:
-      return O.func(arg)
+      result = O.func(arg)
     except: # intentional
+      result = None
       print "CAUGHT EXCEPTION:"
       traceback.print_exc(file=sys.stdout)
+    if (O.buffer_stdout_stderr):
+      return (sio.getvalue(), result)
+    return result
 
 default_func_wrapper = func_wrapper
 
@@ -83,16 +93,17 @@ def pool_map(
       args=None,
       chunksize=None,
       func_wrapper=Auto,
-      log=None):
+      log=None,
+      buffer_stdout_stderr=False):
   assert [func, fixed_func].count(None) == 1
   assert [iterable, args].count(None) == 1
   if (func_wrapper is Auto):
     func_wrapper = default_func_wrapper
   if (func_wrapper is not None):
     if (func is not None):
-      func = func_wrapper(func)
+      func = func_wrapper(func, buffer_stdout_stderr)
     else:
-      fixed_func = func_wrapper(fixed_func)
+      fixed_func = func_wrapper(fixed_func, buffer_stdout_stderr)
   if (processes is None):
     from libtbx import introspection
     processes = introspection.number_of_processors()

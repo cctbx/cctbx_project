@@ -28,10 +28,15 @@ def eval_parallel(
     mp_results = easy_mp.pool_map(func=data, args=args)
   else:
     mp_results = easy_mp.pool_map(
-      fixed_func=data, args=args, func_wrapper=func_wrapper, log=log)
-  assert mp_results[:size] == range(3, size+3)
-  if (exercise_out_of_range):
-    mp_results[size] is None
+      fixed_func=data, args=args, func_wrapper=func_wrapper, log=log,
+      buffer_stdout_stderr=exercise_out_of_range)
+  if (not exercise_out_of_range):
+    assert mp_results == range(3, size+3)
+  else:
+    assert mp_results[:size] == zip([""]*size, range(3, size+3))
+    assert mp_results[size][0].startswith("CAUGHT EXCEPTION:")
+    assert mp_results[size][0].find("IndexError: ") > 0
+    assert mp_results[size][1] is None
 
 def exercise(exercise_fail):
   if (os.name == "nt"):
@@ -63,11 +68,7 @@ def exercise(exercise_fail):
   assert len(lines) == 2
   assert lines[0].startswith("multiprocessing pool size: ")
   assert lines[1].startswith("wall clock time: ")
-  sio = StringIO()
-  sys.stdout = sio
   eval_parallel(data, exercise_out_of_range=True)
-  sys.stdout = sys.__stdout__
-  assert len(sio.getvalue()) == 0 # message goes to sio in child process
   if (exercise_fail):
     eval_parallel(data, exercise_fail=True)
     raise Exception_expected
