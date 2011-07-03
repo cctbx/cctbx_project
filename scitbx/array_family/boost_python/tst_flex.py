@@ -1362,6 +1362,19 @@ def exercise_sort():
     xp = x.select(p)
     for i,j in zip(a,ap):
       assert x[i] == xp[j]
+  #
+  a = flex.size_t()
+  s = flex.size_t()
+  assert a.increment_and_track_up_from_zero(iselection=s) == 0
+  a = flex.size_t(3)
+  s = flex.size_t([1])
+  assert a.increment_and_track_up_from_zero(iselection=s) == 1
+  assert list(a) == [0,1,0]
+  assert a.increment_and_track_up_from_zero(iselection=s) == 0
+  assert list(a) == [0,2,0]
+  s = flex.size_t([0,2])
+  assert a.increment_and_track_up_from_zero(iselection=s) == 2
+  assert list(a) == [1,2,1]
 
 def exercise_random():
   mt = flex.mersenne_twister()
