@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from mmtbx import scaling
+from mmtbx.scaling import absolute_scaling
 from cctbx import adptbx
 from cctbx import crystal
 from cctbx import miller
@@ -57,7 +58,7 @@ class refinery:
     self.native, self.derivative = self.native.map_to_asu().common_sets(
        self.derivative.map_to_asu() )
 
-    ## Get the requiered information
+    ## Get the required information
     self.hkl = self.native.indices()
 
     self.i_or_f_nat =  self.native.data()
@@ -72,7 +73,7 @@ class refinery:
 
     self.unit_cell = self.native.unit_cell()
 
-    # Modifiy the weights oif requiered
+    # Modifiy the weights if required
     if not use_weights:
       self.sig_nat = self.sig_nat*0.0 + 1.0
       self.sig_der = self.sig_der*0.0
@@ -256,7 +257,7 @@ class ls_rel_scale_driver(object):
     if flex.sum( flex.abs(tmp_nat.data()+tmp_der.data()) ) > 0:
       self.r_val_before /=flex.sum( flex.abs(tmp_nat.data()+tmp_der.data()) )/2.0
 
-    self.derivative = scaling.absolute_scaling.anisotropic_correction(
+    self.derivative = absolute_scaling.anisotropic_correction(
       self.derivative,self.p_scale,self.u_star )
 
     self.scaled_original_derivative = self.derivative.deep_copy().set_observation_type(
