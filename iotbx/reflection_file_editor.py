@@ -281,10 +281,20 @@ class process_arrays (object) :
           "expand_to_p1 is True.")
     input_symm = crystal.symmetry(
       unit_cell=params.mtz_file.crystal_symmetry.unit_cell,
-      space_group=params.mtz_file.crystal_symmetry.space_group.group())
+      space_group_info=params.mtz_file.crystal_symmetry.space_group,
+      assert_is_compatible_unit_cell=False)
+    if (not input_symm.is_compatible_unit_cell()) :
+      raise Sorry(("Input unit cell %s is incompatible with the specified "+
+        "space group (%s).") % (str(params.mtz_file.crystal_symmetry.unit_cell),
+          str(params.mtz_file.crystal_symmetry.space_group)))
     derived_sg = input_symm.space_group().build_derived_point_group()
-    output_symm = crystal.symmetry(unit_cell=output_uc,
-                                   space_group=output_sg)
+    output_symm = crystal.symmetry(
+      unit_cell=output_uc,
+      space_group=output_sg,
+      assert_is_compatible_unit_cell=False)
+    if (not output_symm.is_compatible_unit_cell()) :
+      raise Sorry(("Output unit cell %s is incompatible with the specified "+
+        "space group (%s).") % (str(output_uc), str(output_sg)))
 
     #-------------------------------------------------------------------
     # MAIN LOOP
