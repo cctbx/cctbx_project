@@ -36,6 +36,7 @@ cbflib_adaptbx/SConscript -text
 cbflib_adaptbx/__init__.py -text
 cbflib_adaptbx/command_line/__init__.py svneol=native#text/x-python
 cbflib_adaptbx/command_line/dump.py svneol=native#text/x-python
+cbflib_adaptbx/copy_files.py svneol=native#text/x-python
 cbflib_adaptbx/detectors/basic.h -text
 cbflib_adaptbx/detectors/boost_python/SConscript -text
 cbflib_adaptbx/detectors/boost_python/cbf_binary_adaptor.h -text
