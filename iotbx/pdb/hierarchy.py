@@ -549,8 +549,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     def set_attr(sc, a):
       a.set_xyz(new_xyz=orth(sc.site))
       a.set_occ(new_occ=sc.occupancy)
-      a.set_element(sc.scattering_type[:2])
-      a.set_charge(sc.scattering_type[1:3])
       if(sc.u_iso != -1):
         a.set_b(new_b=adptbx.u_as_b(sc.u_iso))
       if(sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)):
