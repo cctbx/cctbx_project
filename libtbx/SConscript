@@ -848,6 +848,46 @@ int main() {
   env_etc.shlinkflags_bpl.extend(linker_options)
   env_base_sync_with_env_etc()
 
+def enable_cuda_if_possible():
+  env_etc.enable_cuda = False
+  if (libtbx.env.build_options.enable_cuda):
+
+    cuda_version = easy_run.fully_buffered(command='nvcc --version',
+                                           join_stdout_stderr=True).stdout_lines
+    if ('command not found' in cuda_version[0]):
+      raise RuntimeError('nvcc was not found')
+    cuda_version = float(cuda_version[-1].split(',')[1].split()[-1])
+    if (cuda_version < 4.0):
+      raise RuntimeError('CUDA Toolkit 4.0 and higher is required')
+
+    env_etc.enable_cuda = True
+
+    env_base['NVCC'] = 'nvcc'
+    linker_flags = ''
+    for flag in env_base['SHLINKFLAGS']:
+      linker_flags = linker_flags + flag + ' '
+    env_base['NVCCSHLINKFLAGS'] = ['-shared','--linker-options',linker_flags]
+    cc_flags = ''
+    for flag in env_base['CCFLAGS']:
+      cc_flags = cc_flags + flag + ' '
+    env_base['NVCCFLAGS'] = ['-arch=compute_20','-use_fast_math','--shared',
+                             '--compiler-options',cc_flags]
+
+    shared_object_builder =\
+      Builder\
+      (action = '$NVCC -c -o $TARGET $_CPPINCFLAGS $NVCCFLAGS $SOURCES',
+       suffix = '.o',
+       src_suffix = '.cu')
+    shared_library_builder =\
+      Builder\
+      (action ='$NVCC -o $TARGET $NVCCSHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS',
+       suffix = '$SHLIBSUFFIX',
+       src_suffix = '.o')
+
+    env_base['BUILDERS']['cudaSharedLibrary'] = shared_library_builder
+    env_base['BUILDERS']['cudaSharedLibrary'].add_src_builder(shared_object_builder)
+
 enable_openmp_if_possible()
+enable_cuda_if_possible()
 
 Export("env_base", "env_etc")
