@@ -92,8 +92,7 @@ class scene (object) :
           properties=data_for_colors.select(slice_selection),
           selection=flex.bool(data.size(), True),
           color_all=False,
-          use_rb_color_gradient=False,
-          grayscale=(settings.color_scheme == 1))
+          use_rb_color_gradient=False)
       elif (settings.color_scheme == 1) :
         colors = graphics_utils.grayscale_by_property(
           properties=data_for_colors.select(slice_selection),
