@@ -272,7 +272,7 @@ class refine_adp(object):
     trial_results = []
     nproc =  all_params.main.nproc
     parallel = False
-    if (nproc is Auto) or (nproc > 1) :
+    if (len(trial_weights) > 1) and ((nproc is Auto) or (nproc > 1)) :
       parallel = True
       trial_results = easy_mp.pool_map(
         processes=nproc,
