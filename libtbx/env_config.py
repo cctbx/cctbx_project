@@ -2072,6 +2072,9 @@ def unpickle():
   # XXX backward compatibility 2011-04-01
   if (not hasattr(env.build_options, "opt_resources")):
     env.build_options.opt_resources = False
+  # XXX backward compatibility 2011-07-05
+  if (not hasattr(env.build_options, "enable_cuda")):
+    env.build_options.enable_cuda = False
   return env
 
 def warm_start(args):
