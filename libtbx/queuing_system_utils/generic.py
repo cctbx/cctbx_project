@@ -12,8 +12,50 @@ import time
 import itertools
 import glob
 import re
+from Queue import Empty as QueueEmptyException
 
 import libtbx.load_env
+
+
+class InstantTimeout(object):
+  """
+  Timeout immediately
+  """
+  
+  def delay(self, waittime):
+      
+    raise QueueEmptyException, "No data found in queue"
+
+
+class TimedTimeout(object):
+  """
+  Timeout after given time
+  """
+  
+  def __init__(self, max_delay):
+      
+      self.max_delay = max_delay
+      
+  
+  def delay(self, waittime):
+      
+    if waittime <= self.max_delay:
+      self.max_delay -= waittime
+      time.sleep( waittime )
+      
+    else:
+      raise QueueEmptyException, "No data found in queue within timeout"
+  
+  
+class NoTimeout(object):
+  """
+  No timeout
+  """
+  
+  def delay(self, waittime):
+      
+    time.sleep( waittime )
+ 
 
 class Queue(object):
   """
@@ -22,11 +64,14 @@ class Queue(object):
   Data transfer is achieved via files. It is safe to use any number of
   Queue objects in the same directory, even with a matching identifier
   """
+  
+  WAITTIME = 0.1
 
   def __init__(self, identifier):
 
     self.root = "%s_%d_%d" % ( identifier, os.getpid(), id( self ) )
     self.count = itertools.count()
+    self.waiting = []
 
 
   def put(self, obj):
@@ -43,16 +88,27 @@ class Queue(object):
     os.rename( tmp_name, target_name )
 
 
-  def get(self):
+  def get(self, block = True, timeout = None):
 
+    if not block:
+      predicate = InstantTimeout()
+      
+    else:
+      if timeout is not None:
+        predicate = TimedTimeout( max_delay = timeout )
+        
+      else:
+        predicate = NoTimeout()
+        
     while True:
       fname = self.next()
 
       if fname is not None:
         break
 
-      time.sleep( 0.1 )
+      predicate.delay( waittime = self.WAITTIME )
 
+    assert fname is not None
     data = pickle.load( open( fname, "rb" ) )
     os.remove( fname )
     return data
@@ -60,8 +116,20 @@ class Queue(object):
 
   def next(self):
 
+    if not self.waiting:
+      self.read_waiting()
+        
+    try:
+      return self.waiting.pop( 0 )
+    
+    except IndexError:
+      return None
+  
+  
+  def read_waiting(self):
+      
     waiting = []
-
+    
     for fname in glob.glob( "%s.*" % self.root ):
       if fname[-4] == ".tmp":
         continue
@@ -77,12 +145,7 @@ class Queue(object):
       waiting.append( ( number, fname ) )
 
     waiting.sort( key = lambda p: p[0] )
-
-    if not waiting:
-      return None
-
-    else:
-      return waiting[0][1]
+    self.waiting = [ p[1] for p in waiting ]
 
 
 class Job(object):
