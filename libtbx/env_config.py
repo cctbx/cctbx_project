@@ -29,6 +29,7 @@ default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_boost_threads = False
 default_enable_openmp_if_possible = False
+default_enable_cuda = False
 default_opt_resources = False
 
 def is_64bit_architecture():
@@ -670,6 +671,7 @@ class environment:
         enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
+        enable_cuda=command_line.options.enable_cuda,
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
@@ -1697,6 +1699,7 @@ class build_options:
         boost_python_bool_int_strict=True,
         enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
+        enable_cuda=default_enable_cuda,
         opt_resources=default_opt_resources,
         precompile_headers=False,
         use_environment_flags=False,
@@ -1751,6 +1754,7 @@ class build_options:
       self.boost_python_bool_int_strict
     print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
+    print >> f, "Enable CUDA:", self.enable_cuda
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
     if( self.use_environment_flags ):
@@ -1921,6 +1925,10 @@ class pre_process_args:
       help="use OpenMP if available and known to work (default: %s)"
         % bool_literal(default_enable_openmp_if_possible),
       metavar="True|False")
+    parser.option(None, "--enable_cuda",
+      action="store_true",
+      default=default_enable_cuda,
+      help="Use optimized CUDA routines for certain calculations.  Requires at least one NVIDIA GPU with compute capability of 2.0 or higher, and CUDA Toolkit 4.0 or higher (default: don't)")
     parser.option(None, "--opt_resources",
       action="store",
       type="bool",
