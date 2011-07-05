@@ -654,7 +654,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def select(self, selection):
     self.update_f_mask()
     dc = self.deep_copy()
-    # XXX BUG assert self.f_mask.data().size() == self.f_obs.data().size()
+    # XXX BUG assert self.f_mask.data().size() == self.f_obs_.data().size()
     if(selection is None): return dc
     new_object = twin_model_manager(
       f_obs              = dc.f_obs.select(selection) ,
@@ -739,7 +739,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                params=None,
                                out=None,
                                verbose=-1,
-                               initialise=False):
+                               initialise=False,
+                               nproc=None): # XXX ignored
     self.fmodel_ts1 = mmtbx.f_model.manager(
       f_obs          = self.f_obs(),
       r_free_flags   = self.r_free_flags(),
@@ -873,10 +874,10 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if(mask_params is not None):
        self.mask_params = mask_params
     if(f_obs is not None):
-       assert f_obs.data().size() == self.f_obs.data().size()
-       self.f_obs = f_obs
-       self.f_obs_w = self.f_obs.select(~self.r_free_flags().data() )
-       self.f_obs_f = self.f_obs.select( self.r_free_flags().data() )
+       assert f_obs.data().size() == self.f_obs_.data().size()
+       self.f_obs_ = f_obs
+       self.f_obs_w = self.f_obs_.select(~self.r_free_flags().data() )
+       self.f_obs_f = self.f_obs_.select( self.r_free_flags().data() )
     if(f_mask is not None):
       assert f_mask.indices().all_eq( self.f_mask_array().indices() )
       assert f_mask.data().size() == self.f_mask_array().data().size()
@@ -1611,7 +1612,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                  f_model        = flex.abs(t_c.data()),
                                  alpha          = a.data(),
                                  beta           = b.data(),
-                                 space_group    = self.f_obs.space_group(),
+                                 space_group    = self.f_obs_.space_group(),
                                  miller_indices = t_o.indices())
     w_star_o = miller.array(miller_set = t_o,
                             data       = obj.w_star())
@@ -1621,9 +1622,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
   def set_pseudo_ml_weights(self):
     weights = self.w_star().data()
-    completion = xray.twin_completion( self.f_obs.indices(),
+    completion = xray.twin_completion( self.f_obs_.indices(),
                                        self.xs.space_group(),
-                                       self.f_obs.anomalous_flag(),
+                                       self.f_obs_.anomalous_flag(),
                                        self.twin_law.as_double_array()[0:9] )
     twinned_weights = completion.twin_sum(weights, self.twin_fraction_object.twin_fraction)
     self.target_evaluator.set_weights( twinned_weights )
@@ -2096,10 +2097,10 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       self.explain_members(out=out, prefix="{ ", suffix=" }")
       crystal_symmetry_as_cns_comments(
         crystal_symmetry=self.f_obs, out=out)
-      print >> out, "NREFlection=%d" % self.f_obs.indices().size()
+      print >> out, "NREFlection=%d" % self.f_obs_.indices().size()
       print >> out, "ANOMalous=%s" % {0: "FALSE"}.get(
-        int(self.f_obs.anomalous_flag()), "TRUE")
-      have_sigmas = self.f_obs.sigmas() is not None
+        int(self.f_obs_.anomalous_flag()), "TRUE")
+      have_sigmas = self.f_obs_.sigmas() is not None
       for n_t in [("FOBS", "REAL"),
                   ("SIGFOBS", "REAL"),
                   ("R_FREE_FLAGS", "INTEGER"),
@@ -2123,7 +2124,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       f_bulk_phases      = self.f_bulk().phases(deg=True).data()
       alpha, beta        = [item.data() for item in self.alpha_beta()]
       arrays = [
-        self.f_obs.indices(), self.f_obs.data(), self.f_obs.sigmas(),
+        self.f_obs_.indices(), self.f_obs_.data(), self.f_obs_.sigmas(),
         self.r_free_flags.data(),
         f_model_amplitudes, f_model_phases,
         f_calc_amplitudes, f_calc_phases,
@@ -2151,9 +2152,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     else:
       assert file_name is not None
-      mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="FOBS")
+      mtz_dataset = self.f_obs_.as_mtz_dataset(column_root_label="FOBS")
       mtz_dataset.add_miller_array(
-        miller_array=self.r_free_flags, column_root_label="R_FREE_FLAGS")
+        miller_array=self.r_free_flags(), column_root_label="R_FREE_FLAGS")
       mtz_dataset.add_miller_array(
         miller_array=self.f_model(), column_root_label="FMODEL")
       mtz_dataset.add_miller_array(
@@ -2221,13 +2222,13 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def _header_resolutions_nreflections(self, header, out):
     out.flush()
     if(header is None): header = ""
-    d_max, d_min = self.f_obs.d_max_min()
+    d_max, d_min = self.f_obs_.d_max_min()
     line1 = "(resolution: "
     line2 = n_as_s("%6.2f",d_min)
     line3 = n_as_s("%6.2f",d_max)
     line4 = " - "
     line5 = " A; n_refl. = "
-    line6 = n_as_s("%d",self.f_obs.data().size())
+    line6 = n_as_s("%d",self.f_obs_.data().size())
     tl = header+"-"+line1+line2+line4+line3+line5+line6
     line_len = len("|-"+"|"+tl)
     fill_len = 80-line_len-1

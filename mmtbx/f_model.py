@@ -37,6 +37,8 @@ from copy import deepcopy
 from libtbx import group_args
 import mmtbx.scaling.ta_alpha_beta_calc
 import mmtbx.refinement.targets
+from libtbx import Auto
+from libtbx import easy_mp
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -827,9 +829,11 @@ class manager(manager_mixin):
     print >> out, "|"+"-"*77+"|"
     print >> out
 
-  def optimize_mask(self, params = None, thorough=False, out = None):
+  def optimize_mask(self, params = None, thorough=False, out = None,
+      nproc=1):
     if( len(self.k_sols()) != 1 ):
       return False
+    if (nproc is None) : nproc = 1
     if(self.k_sols().count(0)>0): return False
     rw_ = self.r_work()
     rf_ = self.r_free()
@@ -894,30 +898,28 @@ class manager(manager_mixin):
       elif(d_min >= 3.0):
         r_shrinks, r_solvs = r_solv_shrink2(a=0.4941, b=0.1717, c=0.4348,
           x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
-    for r_solv, r_shrink in zip(r_solvs, r_shrinks):
-      self.mask_params.solvent_radius = r_solv
-      self.mask_params.shrink_truncation_radius = r_shrink
-      self.mask_manager.mask_params = self.mask_params
-      self.update_xray_structure(
-        xray_structure      = self.xray_structure,
-        update_f_calc       = False,
-        update_f_mask       = True,
-        force_update_f_mask = True)
-      rw = self.r_work()
-      rf = self.r_free()
-      if(out is not None):
-        print >> out, "r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
-          format_value("%6.2f", r_solv),
-          format_value("%6.2f", r_shrink),
-          format_value("%6.4f", rw),
-          format_value("%6.4f", rf),
-          format_value("%6.4f", self.r_work_low().r_work))
-      if(rw < rw_):
-         rw_       = rw
-         rf_       = rf
-         r_solv_   = r_solv
-         r_shrink_ = r_shrink
-      self.update(k_sols = k_sols, b_sol = b_sol, b_cart = b_cart)
+    trial_params = zip(r_solvs, r_shrinks)
+    parallel = False
+    mask_results = []
+    if (nproc is Auto) or (nproc > 1) :
+      parallel = True
+      mask_results = easy_mp.pool_map(
+        processes=nproc,
+        fixed_func=self.try_mask_params,
+        args=trial_params)
+    else :
+      for r_solv, r_shrink in trial_params :
+        result = self.try_mask_params((r_solv, r_shrink))
+        result.show(out=out)
+        mask_results.append(result)
+    for result in mask_results :
+      if (parallel) :
+        result.show(out=out)
+      if(result.r_work < rw_):
+        rw_       = result.r_work
+        rf_       = result.r_free
+        r_solv_   = result.r_solv
+        r_shrink_ = result.r_shrink
     if(out is not None): print >> out
     self.mask_params.solvent_radius = r_solv_
     self.mask_params.shrink_truncation_radius = r_shrink_
@@ -930,6 +932,28 @@ class manager(manager_mixin):
     self.show_mask_optimization_statistics(prefix="Mask optimization: final",
       out = out)
     return True
+
+  # XXX parallel routine
+  def try_mask_params (self, args) :
+    r_solv, r_shrink = args
+    self.mask_params.solvent_radius = r_solv
+    self.mask_params.shrink_truncation_radius = r_shrink
+    self.mask_manager.mask_params = self.mask_params
+    self.update_xray_structure(
+      xray_structure      = self.xray_structure,
+      update_f_calc       = False,
+      update_f_mask       = True,
+      force_update_f_mask = True)
+    k_sols    = self.k_sols()
+    b_sol     = self.b_sol()
+    b_cart    = self.b_cart()
+    self.update(k_sols = k_sols, b_sol = b_sol, b_cart = b_cart)
+    return mask_result(
+      r_solv=r_solv,
+      r_shrink=r_shrink,
+      r_work=self.r_work(),
+      r_free=self.r_free(),
+      r_work_low=self.r_work_low().r_work)
 
   def check_f_mask_all_zero(self):
     # TODO: mrt is this the required logic?
@@ -1045,7 +1069,7 @@ class manager(manager_mixin):
     #print >> log
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
-        optimize_mask = True, optimize_mask_thorough=False):
+        optimize_mask = True, optimize_mask_thorough=False, nproc=1):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
     self.update_core()
@@ -1059,13 +1083,13 @@ class manager(manager_mixin):
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     if(optimize_mask):
       is_mask_optimized = self.optimize_mask(params = params, out = out,
-        thorough = optimize_mask_thorough)
+        thorough = optimize_mask_thorough, nproc=nproc)
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
     self.update_core()
     if(not is_mask_optimized and optimize_mask):
       self.optimize_mask(params = params, out = out,
-        thorough = optimize_mask_thorough)
+        thorough = optimize_mask_thorough, nproc=nproc)
     self.update_core()
     if(self.check_f_mask_all_zero()):
       params.bulk_solvent = save_params_bulk_solvent
@@ -2135,6 +2159,19 @@ def show_histogram(data, n_slots, log):
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
+
+class mask_result (object) :
+  def __init__ (self, r_solv, r_shrink, r_work, r_free, r_work_low) :
+    adopt_init_args(self, locals())
+
+  def show (self, out) :
+    if (out is None) : return
+    print >> out, "r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
+          format_value("%6.2f", self.r_solv),
+          format_value("%6.2f", self.r_shrink),
+          format_value("%6.4f", self.r_work),
+          format_value("%6.4f", self.r_free),
+          format_value("%6.4f", self.r_work_low))
 
 # XXX backwards compatibility 2011-02-08
 class info (mmtbx.f_model_info.info) :
