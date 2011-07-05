@@ -1,20 +1,22 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_tls_groups
 
 from mmtbx.tls import tools
+from mmtbx.refinement import print_statistics
 import mmtbx.secondary_structure
 import iotbx.pdb
 from cctbx import adptbx
 from scitbx.array_family import flex
+import scitbx.linalg
 import libtbx.phil
+from libtbx.utils import Sorry
+from libtbx import easy_mp
+from libtbx import Auto
 from copy import deepcopy
 import cStringIO
 import random
 import os
 import time
 import sys
-import scitbx.linalg
-from mmtbx.refinement import print_statistics
-from libtbx.utils import Sorry
 
 
 master_phil = libtbx.phil.parse("""
@@ -729,16 +731,9 @@ def find_tls (params,
     out                           = out)
   chains_and_permutations = []
   chains_and_atom_selection_strings = []
-  mp_pool = None
-  if (params.nproc > 1) :
-    try :
-      import multiprocessing
-    except ImportError :
-      print >> out, "multiprocessing not available, ignoring nproc=%d" % params.nproc
-      params.nproc = 1
-    else :
-      mp_pool = multiprocessing.Pool(processes=params.nproc)
   print_statistics.make_header("Processing chains", out=out)
+  if (params.nproc is None) :
+    params.nproc = 1
   for crs in chains_and_residue_selections:
     print_statistics.make_sub_header("Processing chain '%s'"%crs[0],
       out=out)
@@ -762,14 +757,17 @@ def find_tls (params,
       print >> out, "  Fitting TLS matrices..."
       dic = {}
       target_best = 1.e+9
-      if (params.nproc > 1) :
-        assert (mp_pool is not None)
+      if (params.nproc is Auto) or (params.nproc > 1) :
         process_perms = analyze_permutations(
           groups=groups,
           sites_cart=sites_cart,
           u_cart=u_cart,
           u_iso=u_iso)
-        targets = mp_pool.map(process_perms, perms, chunksize=100)
+        targets = easy_mp.pool_map(
+          processes=params.nproc,
+          func=process_perms,
+          args=perms,
+          chunksize=100)
         for (perm, target) in zip(perms, targets) :
           dic.setdefault(len(perm), []).append([target,perm])
       else :
