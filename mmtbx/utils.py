@@ -637,7 +637,7 @@ will become meaningful only after many cycles of refinement.
         raise Sorry("Please resolve the R-free flags mismatch.")
 
 
-experimental_phases_params = iotbx.phil.parse("""\
+experimental_phases_params_str = """\
   file_name=None
     .type=path
     .short_caption=Experimental phase file
@@ -647,7 +647,10 @@ experimental_phases_params = iotbx.phil.parse("""\
     .input_size = 160
     .short_caption = Phase labels
     .style = renderer:draw_hl_label_widget bold
-""")
+"""
+
+experimental_phases_params = iotbx.phil.parse(
+  input_string=experimental_phases_params_str)
 
 def determine_experimental_phases(reflection_file_server,
                                   parameters,
