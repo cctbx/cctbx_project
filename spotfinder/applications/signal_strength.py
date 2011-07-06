@@ -1,7 +1,8 @@
 from spotfinder.array_family import flex
 from spotfinder.applications.wrappers import DistlOrganizer
 from labelit.preferences import labelit_commands
-from labelit.command_line.screen import Empty
+
+class Empty: pass
 
 def run_signal_strength(params):
   verbose = params.distl.verbose
