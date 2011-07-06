@@ -3,7 +3,7 @@ from boost.python import streambuf, ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import StringIO
 import cStringIO
-from libtbx.test_utils import open_tmp_file, Exception_expected
+from libtbx.test_utils import Exception_expected
 from libtbx.option_parser import option_parser
 import libtbx.object_oriented_patterns as oop
 import os
@@ -174,7 +174,7 @@ class mere_file_test_case(io_test_case):
     self.file_object.close()
 
   def create_file_object(self, mode):
-    f = open_tmp_file()
+    f = open("tmp_tst_python_streambuf", "w")
     if mode.find('r') > -1:
       f.write(self.phrase)
     f.close()
@@ -196,7 +196,7 @@ def time_it(path, buffer_size):
   input = open(path, 'r')
   inp_buf = streambuf(python_file_obj=input, buffer_size=buffer_size)
   ext.time_read(input.name, inp_buf)
-  output = open_tmp_file()
+  output = open("tmp_tst_python_streambuf", "w")
   out_buf = streambuf(python_file_obj=output, buffer_size=buffer_size)
   ext.time_write(output.name, out_buf)
 
