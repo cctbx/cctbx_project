@@ -47,6 +47,8 @@ density_modification {
         .type = choice
     }
   }
+  change_basis_to_primitive_setting = True
+    .type = bool
 %s
 }
 """ %(mmtbx.utils.data_and_flags_str,
@@ -112,11 +114,18 @@ def run(args, log = sys.stdout):
   hl_coeffs = hl_coeffs.eliminate_sys_absent().average_bijvoet_mates()
   fo, hl_coeffs = fo.common_sets(hl_coeffs)
 
+  if params.change_basis_to_primitive_setting:
+    change_of_basis_op = fo.change_of_basis_op_to_primitive_setting()
+    fo = fo.change_basis(change_of_basis_op)
+    hl_coeffs = hl_coeffs.change_basis(change_of_basis_op)
+
   model_map = None
   if len(processed_args.pdb_file_names):
     pdb_file = mmtbx.utils.pdb_file(
       pdb_file_names=processed_args.pdb_file_names)
     xs = pdb_file.pdb_inp.xray_structure_simple()
+    if params.change_basis_to_primitive_setting:
+      xs = xs.change_basis(change_of_basis_op)
     fmodel = mmtbx.f_model.manager(f_obs=fo,
                                    abcd=hl_coeffs,
                                    xray_structure=xs)
@@ -127,12 +136,15 @@ def run(args, log = sys.stdout):
 
   dm = density_modify(fo, hl_coeffs, params, model_map=model_map)
 
+  if params.change_basis_to_primitive_setting:
+    map_coeffs = dm.map_coeffs.change_basis(
+      change_of_basis_op.inverse())
+  else: map_coeffs = dm.map_coeffs
+
   # output map if requested
   map_params = params.output.map
   if map_params.file_name is not None:
-    fft_map = dm.map_coeffs.fft_map(
-      resolution_factor=params.grid_resolution_factor
-      )
+    fft_map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
     if map_params.scale == "sigma":
       fft_map.apply_sigma_scaling()
     else:

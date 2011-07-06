@@ -5,13 +5,13 @@ import os
 
 params = """\
 density_modification {
- input {
-   reflection_data.file_name = %s/data/scale.hkl
-   reflection_data.labels = f_nat,s_nat
-   experimental_phases.file_name = %s/phasing/ir_phase.hkl
-   unit_cell = 64.897,78.323,38.792,90,90,90
-   space_group = P212121
- }
+  input {
+    reflection_data.file_name = %s/data/scale.hkl
+    reflection_data.labels = f_nat,s_nat
+    experimental_phases.file_name = %s/phasing/ir_phase.hkl
+    unit_cell = 64.897,78.323,38.792,90,90,90
+    space_group = P212121
+  }
   protein_solvent_ratio = 1.31
   density_truncation {
     fraction_min = 0.35
