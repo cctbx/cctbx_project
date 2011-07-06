@@ -38,7 +38,7 @@ OOOOOOO
       for j,c in enumerate(line):
         if (c == "O"):
           pixel = (oi+i, oj+j)
-          print "beam center pixel:", pixel
+          #print "beam center pixel:", pixel
           image[pixel] = work_params.signal_max
   return image
 
@@ -136,14 +136,14 @@ def run_scanbox_tests():
   run("""spotfinder.scanbox_windows=10,10,10 detector.pixels=25,25 peripheral_margin=0""".split(" "))
 
   for dp in [100,101]:
-    print "detector pixels:", (dp,dp)
+    #print "detector pixels:", (dp,dp)
     spots = run([
       "detector.pixels=%d,%d" % (dp,dp),
       "fill_beam_center=True"]).spots
     assert spots.size() == 1
     spot = spots[0]
-    print (spot.ctr_mass_x(), spot.ctr_mass_y())
-    print
+    #print (spot.ctr_mass_x(), spot.ctr_mass_y())
+    #print
 
   print "OK"
 
