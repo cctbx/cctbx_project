@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/density_modification/tst_density_modification.py",
   "$D/geometry_restraints/tst_ramachandran.py",
   "$D/tst_map_type_parser.py",
   "$D/rsr/tst.py",
