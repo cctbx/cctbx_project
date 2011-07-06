@@ -111,9 +111,6 @@ def run(args, log = sys.stdout):
   fo = fo.eliminate_sys_absent().average_bijvoet_mates()
   hl_coeffs = hl_coeffs.eliminate_sys_absent().average_bijvoet_mates()
   fo, hl_coeffs = fo.common_sets(hl_coeffs)
-  from libtbx.test_utils import approx_equal
-  assert approx_equal(hl_coeffs.indices(), fo.indices())
-  assert hl_coeffs.indices().all_eq(fo.indices()) == 1
 
   model_map = None
   if len(processed_args.pdb_file_names):
