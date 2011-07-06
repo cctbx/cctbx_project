@@ -12,6 +12,9 @@ class scene (object) :
     from scitbx import graphics_utils
     from cctbx.array_family import flex
     array = self.miller_array.deep_copy()
+    data = array.data()
+    if (array.is_xray_intensity_array()) :
+      data.set_selected(data < 0, flex.double(data.size(), 0.))
     if (array.is_unique_set_under_symmetry()) :
       array = array.map_to_asu()
     if (settings.d_min is not None) :
@@ -20,11 +23,6 @@ class scene (object) :
       array = array.niggli_cell().expand_to_p1()
     if (settings.expand_anomalous) :
       array = array.generate_bijvoet_mates()
-    self.data = array.data().deep_copy()
-    if (array.is_xray_intensity_array()) :
-      data = array.data()
-      data.set_selected(data < 0, flex.double(data.size(), 0.))
-      array = array.customized_copy(data=data)
     data = array.data()
     assert (isinstance(data, flex.double) or isinstance(data, flex.bool))
     self.r_free_mode = False
@@ -34,6 +32,8 @@ class scene (object) :
       data_as_float.set_selected(data==True, flex.double(data.size(), 1.0))
       data = data_as_float
       self.data = data.deep_copy()
+    else :
+      self.data = array.data().deep_copy()
     if (settings.show_data_over_sigma) :
       if (array.sigmas() is None) :
         raise Sorry("sigmas not defined.")
@@ -56,11 +56,11 @@ class scene (object) :
     if (settings.sqrt_scale_colors) and (isinstance(data, flex.double)) :
       data_for_colors = flex.sqrt(data)
     else :
-      data_for_colors = data
+      data_for_colors = data.deep_copy()
     if (settings.sqrt_scale_radii) and (isinstance(data, flex.double)) :
       data_for_radii = flex.sqrt(data)
     else :
-      data_for_radii = data
+      data_for_radii = data.deep_copy()
     if (settings.color_scheme == 0) :
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,
@@ -101,13 +101,16 @@ class scene (object) :
           invert=settings.black_background)
       elif (settings.color_scheme == 2) :
         colors = flex.vec3_double(data.size(), (1.0,1.0,1.0))
+      if (not settings.keep_constant_scale) :
+        data_for_radii = data_for_radii.select(slice_selection)
     self.colors = colors
     self.points = uc.reciprocal_space_vector(indices) * 100.
     self.indices = indices
     abc = uc.parameters()[0:3]
     min_radius = 0.20 / max(abc)
-    max_radius = 50 / max(abc)
-    scale = max_radius / flex.max(data_for_radii)
+    max_radius = 40 / max(abc)
+    max_value = flex.max(data_for_radii)
+    scale = max_radius / max_value
     if (settings.sqrt_scale_radii) :
       data = flex.sqrt(data)
     radii = data * scale
