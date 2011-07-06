@@ -856,20 +856,35 @@ def enable_cuda_if_possible():
                                            join_stdout_stderr=True).stdout_lines
     if ('command not found' in cuda_version[0]):
       raise RuntimeError('nvcc was not found')
-    cuda_version = float(cuda_version[-1].split(',')[1].split()[-1])
-    if (cuda_version < 4.0):
-      raise RuntimeError('CUDA Toolkit 4.0 and higher is required')
-
+    for line in cuda_version:
+      if ('release' in line):
+        break
+    major = None
+    cuda_version = line.split(',')
+    if (len(cuda_version) >= 2):
+      flds = cuda_version[1].split()
+      if (len(flds) >= 2):
+        fld = flds[1].split('.')[0]
+        try: major = int(fld)
+        except ValueError: pass
+    if ( (major is None) or (major < 4) ):
+      raise RuntimeError('CUDA Toolkit 4.0 and higher is required. Current CUDA version: %s' % cuda_version[1])
     env_etc.enable_cuda = True
 
     env_base['NVCC'] = 'nvcc'
-    linker_flags = ''
-    for flag in env_base['SHLINKFLAGS']:
-      linker_flags = linker_flags + flag + ' '
+    
+    linker_flags = env_base['SHLINKFLAGS']
+    for flag in linker_flags:
+      if (flag.find(' ') >= 0):
+        raise RuntimeError('Not implemented: wrapping of linker flags with embedded spaces: %s' % flag)
+    linker_flags = ' '.join(linker_flags)  
     env_base['NVCCSHLINKFLAGS'] = ['-shared','--linker-options',linker_flags]
-    cc_flags = ''
-    for flag in env_base['CCFLAGS']:
-      cc_flags = cc_flags + flag + ' '
+
+    cc_flags = env_base['CCFLAGS']
+    for flag in cc_flags:
+      if (flag.find(' ') >= 0):
+        raise RuntimeError('Not implemented: wrapping of compiler flags with embedded spaces: %s' % flag)
+    cc_flags = ' '.join(cc_flags)
     env_base['NVCCFLAGS'] = ['-arch=compute_20','-use_fast_math','--shared',
                              '--compiler-options',cc_flags]
 
