@@ -84,7 +84,7 @@ class p_vm_calculator(object):
     tmp = self.vm_prop.pop() ## The last item has a negative solvent content
     tot_p -= tmp[3]
     if (int(n_copies)==1):
-      print >> self.out, "To many residues to fit in the ASU"
+      print >> self.out, "Too many residues to fit in the ASU"
       print >> self.out, "  resetting numer of residues in monomer to %5.0f" \
             %(self.n_residues/10.0)
       self.n_residues/=10.0
@@ -107,7 +107,7 @@ def matthews_rupp(miller_array,
                   n_residues=None,
                   n_bases=None,
                   out=None,verbose=0):
-  """Probabalistic estimation of number of copies in the asu"""
+  """Probabilistic estimation of number of copies in the asu"""
   if out is None:
     out = sys.stdout
 
