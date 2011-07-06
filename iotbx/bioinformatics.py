@@ -1401,8 +1401,9 @@ class hhsearch_parser(hhpred_parser):
     assert len( midlines ) == len( matches )
     midline = reduce( operator.add, midlines )
 
-    if data[1] != data[5] or data[3] != data[7] or data[4] != data[8]:
-      raise ValueError, "Inconsistent query numbering"
+    # Comment out consistency check
+    # if data[1] != data[5] or data[3] != data[7] or data[4] != data[8]:
+    #  raise ValueError, "Inconsistent query numbering"
 
     q_indices = self.merge_sequence_numbers(
       starts = [ int( d ) for d in data[1] ],
@@ -1410,8 +1411,9 @@ class hhsearch_parser(hhpred_parser):
       others = [ int( d ) for d in data[4] ]
       )
 
-    if data[10] != data[14] or data[12] != data[16] or data[13] != data[17]:
-      raise ValueError, "Inconsistent target numbering"
+    # Comment out consistency check
+    # if data[10] != data[14] or data[12] != data[16] or data[13] != data[17]:
+    #  raise ValueError, "Inconsistent target numbering"
 
     t_indices = self.merge_sequence_numbers(
       starts = [ int( d ) for d in data[10] ],
@@ -1562,8 +1564,9 @@ class hhalign_parser(hhpred_parser):
     assert len( midlines ) == len( matches )
     midline = reduce( operator.add, midlines )
 
-    if data[2] != data[6] or data[4] != data[8] or data[5] != data[9]:
-      raise ValueError, "Inconsistent query numbering"
+    # Comment out consistency check
+    # if data[2] != data[6] or data[4] != data[8] or data[5] != data[9]:
+    #  raise ValueError, "Inconsistent query numbering"
 
     q_indices = self.merge_sequence_numbers(
       starts = [ int( d ) for d in data[2] ],
@@ -1571,8 +1574,9 @@ class hhalign_parser(hhpred_parser):
       others = [ int( d ) for d in data[5] ]
       )
 
-    if data[11] != data[15] or data[13] != data[17] or data[14] != data[18]:
-      raise ValueError, "Inconsistent target numbering"
+    # Comment out consistency check
+    # if data[11] != data[15] or data[13] != data[17] or data[14] != data[18]:
+    #  raise ValueError, "Inconsistent target numbering"
 
     t_indices = self.merge_sequence_numbers(
       starts = [ int( d ) for d in data[11] ],
@@ -1610,7 +1614,7 @@ class hhalign_parser(hhpred_parser):
 
 def any_hh_file (file_name) :
   data = open(file_name).read()
-  for parser in [hhpred_parser, hhalign_parser, hhsearch_parser] :
+  for parser in [hhalign_parser, hhsearch_parser] :
     try :
       p = parser(data)
     except KeyboardError : raise
