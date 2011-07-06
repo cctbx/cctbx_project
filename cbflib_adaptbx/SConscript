@@ -20,6 +20,8 @@ env_etc.cbflib_common_includes = [
 
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
+if (os.name == "nt"):
+  env.Append(CCFLAGS=["/DCBF_NO_REGEX"])
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)
 
