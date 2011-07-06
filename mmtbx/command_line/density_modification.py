@@ -134,9 +134,6 @@ def run(args, log = sys.stdout):
       resolution_factor=params.grid_resolution_factor,
       map_type="2mFo-DFc").real_map_unpadded()
 
-  from mmtbx.scaling import absolute_scaling
-  aniso_scaling = absolute_scaling.ml_aniso_absolute_scaling(fo)
-
   dm = density_modify(fo, hl_coeffs, params, model_map=model_map)
 
   if params.change_basis_to_primitive_setting:
