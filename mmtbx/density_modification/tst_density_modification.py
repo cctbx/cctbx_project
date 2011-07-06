@@ -42,19 +42,17 @@ def exercise_density_modification():
     print "Skipping exercise_density_modification(): $CCI_STRUCTURE_LIB is not set"
     return
   rnase_s_path = os.path.join(cci_structure_lib, "rnase-s")
-  import tempfile
-  _, tmp_file_name = tempfile.mkstemp(suffix=".params")
-  tmp_file = open(tmp_file_name, "wb")
+  from libtbx.test_utils import open_tmp_file
+  tmp_file = open_tmp_file(suffix=".params")
   tmp_file.write(params % (rnase_s_path, rnase_s_path))
   tmp_file.close()
   #density_modification.run(
-    #args=[tmp_file_name, "%s/model/1RGE.pdb"%rnase_s_path])
+    #args=[tmp_file.name, "%s/model/1RGE.pdb"%rnase_s_path])
 
   cmd = "mmtbx.density_modification %s %s/model/1RGE.pdb" %(
-    tmp_file_name, rnase_s_path)
+    tmp_file.name, rnase_s_path)
   print cmd
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
-  os.remove(tmp_file_name)
   assert result.stdout_lines[-4] == 'Starting dm/model correlation: 0.631999'
   assert result.stdout_lines[-3] == 'Final dm/model correlation:    0.777594'
 

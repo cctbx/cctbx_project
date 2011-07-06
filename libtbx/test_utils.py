@@ -18,6 +18,28 @@ else:
 
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
+def compose_tmp_suffix(suffix, frames_back=0):
+  from libtbx.introspection import caller_location
+  caller = caller_location(frames_back=frames_back+1)
+  s = os.path.basename(caller.file_name)
+  if (s.lower().endswith(".py")): s = s[:-3]
+  s += "_" + str(caller.line_number)
+  return "_" + s + suffix
+
+def open_tmp_file(mode="w", suffix=""):
+  import tempfile
+  return tempfile.NamedTemporaryFile(
+    mode=mode,
+    dir=".",
+    suffix=compose_tmp_suffix(suffix, frames_back=1),
+    delete=False)
+
+def open_tmp_directory(suffix=""):
+  import tempfile
+  return tempfile.mkdtemp(
+    suffix=compose_tmp_suffix(suffix, frames_back=1),
+    dir=".")
+
 class pickle_detector(object):
   def __init__(O):
     O.unpickled_counter = None

@@ -3,10 +3,9 @@ from boost.python import streambuf, ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import StringIO
 import cStringIO
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import open_tmp_file, Exception_expected
 from libtbx.option_parser import option_parser
 import libtbx.object_oriented_patterns as oop
-import tempfile
 import os
 
 
@@ -175,11 +174,11 @@ class mere_file_test_case(io_test_case):
     self.file_object.close()
 
   def create_file_object(self, mode):
-    fd, name = tempfile.mkstemp(dir=".")
+    f = open_tmp_file()
     if mode.find('r') > -1:
-      os.write(fd, self.phrase)
-    os.close(fd)
-    self.file_object = open(name, mode)
+      f.write(self.phrase)
+    f.close()
+    self.file_object = open(f.name, mode)
 
   def file_content(self):
     i = self.file_object.tell()
@@ -190,7 +189,6 @@ class mere_file_test_case(io_test_case):
 
 
 def time_it(path, buffer_size):
-  import os, tempfile
   if (buffer_size is None):
     buffer_size = streambuf.default_buffer_size
   print "Buffer is %i bytes" % buffer_size
@@ -198,10 +196,9 @@ def time_it(path, buffer_size):
   input = open(path, 'r')
   inp_buf = streambuf(python_file_obj=input, buffer_size=buffer_size)
   ext.time_read(input.name, inp_buf)
-  fd, name = tempfile.mkstemp(dir=".")
-  output = open(name, 'w')
+  output = open_tmp_file()
   out_buf = streambuf(python_file_obj=output, buffer_size=buffer_size)
-  ext.time_write(name, out_buf)
+  ext.time_write(output.name, out_buf)
 
 def run(args):
   options = (option_parser()

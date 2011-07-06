@@ -56,9 +56,10 @@ def exercise_validation():
   assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
 
 def exercise_smart_load(show_timings=False, exercise_url=False):
+  from libtbx.test_utils import open_tmp_directory
   from libtbx.utils import time_log
   import libtbx
-  import os, shutil, tempfile
+  import os, shutil
   name = ["cif_core.dic", "cif_mm.dic"][0]
   url = [cif_core_dic_url, cif_mm_dic_url][0]
   # from gz
@@ -66,7 +67,7 @@ def exercise_smart_load(show_timings=False, exercise_url=False):
   cd = validation.smart_load_dictionary(name=name)
   gz_timer.stop()
   if exercise_url:
-    tempdir = tempfile.mkdtemp()
+    tempdir = open_tmp_directory()
     store_dir = libtbx.env.under_dist(
       module_name='iotbx', path='cif/dictionaries')
     file_path = os.path.join(store_dir, name) + '.gz'
@@ -84,7 +85,6 @@ def exercise_smart_load(show_timings=False, exercise_url=False):
     file_timer = time_log("from file").start()
     cd = validation.smart_load_dictionary(file_path=os.path.join(tempdir, name))
     file_timer.stop()
-    shutil.rmtree(tempdir)
   if show_timings:
     print time_log.legend
     print gz_timer.report()
