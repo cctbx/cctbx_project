@@ -38,7 +38,6 @@ from libtbx import group_args
 import mmtbx.scaling.ta_alpha_beta_calc
 import mmtbx.refinement.targets
 from libtbx import Auto
-from libtbx import easy_mp
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -903,6 +902,7 @@ class manager(manager_mixin):
     mask_results = []
     if (nproc is Auto) or (nproc > 1) :
       parallel = True
+      from libtbx import easy_mp
       mask_results = easy_mp.pool_map(
         processes=nproc,
         fixed_func=self.try_mask_params,

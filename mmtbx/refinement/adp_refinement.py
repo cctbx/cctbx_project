@@ -7,7 +7,6 @@ import iotbx.phil
 from cctbx import adptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
-from libtbx import easy_mp
 from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args, Auto
 from libtbx.utils import user_plus_sys_time
@@ -274,6 +273,7 @@ class refine_adp(object):
     parallel = False
     if (len(trial_weights) > 1) and ((nproc is Auto) or (nproc > 1)) :
       parallel = True
+      from libtbx import easy_mp
       trial_results = easy_mp.pool_map(
         processes=nproc,
         fixed_func=self.try_weight,

@@ -9,7 +9,6 @@ from scitbx.array_family import flex
 import scitbx.linalg
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx import easy_mp
 from libtbx import Auto
 from copy import deepcopy
 import cStringIO
@@ -763,6 +762,7 @@ def find_tls (params,
           sites_cart=sites_cart,
           u_cart=u_cart,
           u_iso=u_iso)
+        from libtbx import easy_mp
         targets = easy_mp.pool_map(
           processes=params.nproc,
           func=process_perms,
