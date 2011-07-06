@@ -203,6 +203,50 @@ class torsion_ncs(object):
     for dp in geometry.dihedral_proxies:
       dp_hash[dp.i_seqs] = dp
 
+    self.cbeta_proxies = []
+    for cp in geometry.chirality_proxies:
+      key = ""
+      CAsite = None
+      Csite = None
+      Nsite = None
+      CBsite = None
+      CAkey = None
+      Ckey = None
+      Nkey = None
+      CBkey = None
+      cbeta = True
+      for i_seq in cp.i_seqs:
+        if self.name_hash[i_seq][0:4] not in \
+          [' CA ', ' N  ', ' C  ', ' CB ']:
+          cbeta = False
+        if self.name_hash[i_seq][0:4] == ' CA ':
+          CAkey = self.name_hash[i_seq]
+          CAsite = i_seq
+        elif self.name_hash[i_seq][0:4] == ' CB ':
+          CBkey = self.name_hash[i_seq]
+          CBsite = i_seq
+        elif self.name_hash[i_seq][0:4] == ' C  ':
+          Ckey = self.name_hash[i_seq]
+          Csite = i_seq
+        elif self.name_hash[i_seq][0:4] == ' N  ':
+          Nkey = self.name_hash[i_seq]
+          Nsite = i_seq
+      if cbeta:
+        i_seqs = [Csite, Nsite, CAsite, CBsite]
+        dp = cctbx.geometry_restraints.dihedral_proxy(
+               i_seqs=i_seqs,
+               angle_ideal=0.0,
+               weight=1.0)
+        dp_hash[dp.i_seqs] = dp
+        self.cbeta_proxies.append(dp)
+        i_seqs = [Nsite, Csite, CAsite, CBsite]
+        dp = cctbx.geometry_restraints.dihedral_proxy(
+               i_seqs=i_seqs,
+               angle_ideal=0.0,
+               weight=1.0)
+        dp_hash[dp.i_seqs] = dp
+        self.cbeta_proxies.append(dp)
+
     super_hash = {}
     res_match_master = {}
     for i, group in enumerate(self.ncs_groups):
@@ -264,6 +308,30 @@ class torsion_ncs(object):
       dp_hash[dp.i_seqs] = None
       if len(dp_match) > 1:
         self.dp_ncs.append(dp_match)
+
+    for cb in self.cbeta_proxies:
+      temp = dict()
+      for i_seq in cb.i_seqs:
+        cur_matches = super_hash.get(i_seq)
+        if cur_matches is None:
+          continue
+        for key in cur_matches.keys():
+          try:
+            temp[key].append(cur_matches[key])
+          except Exception:
+            temp[key] = []
+            temp[key].append(cur_matches[key])
+      dp_match = []
+      dp_match.append(cb)
+      for key in temp.keys():
+        cur_dp_hash = dp_hash.get(tuple(temp[key]))
+        if cur_dp_hash is not None:
+          dp_match.append(cur_dp_hash)
+          dp_hash[tuple(temp[key])] = None
+      dp_hash[dp.i_seqs] = None
+      if len(dp_match) > 1:
+        self.dp_ncs.append(dp_match)
+
     if self.params.verbose:
       self.show_ncs_summary(log=log)
     print >> self.log, "Initializing torsion NCS restraints..."
