@@ -118,7 +118,6 @@ class density_modification(object):
     obs_rms = 1e4
     obs_high = rms(f_obs.select(ref_active).data()) * obs_rms
     obs_low = flex.min(f_obs.select(ref_active).data())
-    print obs_high, obs_low
     self.ref_flags_array = f_obs.array(data=(
       (f_obs.data() > sigma_cutoff*f_obs.sigmas())
       & (f_obs.data() >= obs_low)
@@ -342,7 +341,7 @@ class density_modification(object):
       fom * flex.abs(f_obs.data() - f_calc.as_amplitude_array().data())) \
         / flex.sum(fom * f_obs.data())
     #mean_fom = flex.mean(fom)
-    #print "Mean FOM: %.4f" %mean_fom
+    #print >> self.log, "Mean FOM: %.4f" %mean_fom
     self.mean_delta_phi = phase_error(
       flex.arg(self.phase_source), flex.arg(self.phase_source_previous))
     self.mean_delta_phi_initial = phase_error(
@@ -378,16 +377,15 @@ class density_modification(object):
     print >> self.log, "Standard deviation (local RMS): %.4f" %(
       self.standard_deviation_local_rms)
 
-    print "Mean delta phi: %.4f" %(flex.mean(self.mean_delta_phi)/pi_180)
-    print "Mean delta phi (initial): %.4f" %(
+    print >> self.log, "Mean delta phi: %.4f" %(flex.mean(self.mean_delta_phi)/pi_180)
+    print >> self.log, "Mean delta phi (initial): %.4f" %(
       flex.mean(self.mean_delta_phi_initial)/pi_180)
-    print "R1-factor:       %.2f" %self.r1_factor
-    print "R1-factor (fom): %.2f" %self.r1_factor_fom
+    print >> self.log, "R1-factor:       %.2f" %self.r1_factor
+    print >> self.log, "R1-factor (fom): %.2f" %self.r1_factor_fom
     self.more_statistics = maptbx.more_statistics(self.map)
     print >> self.log, "Skewness: %.4f" %self.more_statistics.skewness()
     print >> self.log, "#"*80
-
-    print
+    print >> self.log
 
   def ncs_averaging(self):
     if not self.params.ncs_averaging: return
