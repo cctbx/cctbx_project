@@ -1,4 +1,4 @@
-# svn co https://cbflib.svn.sourceforge.net/svnroot/cbflib/trunk/CBFlib sourceforge_cbflib
+# svn co https://cbflib.svn.sourceforge.net/svnroot/cbflib/trunk/CBFlib_bleeding_edge sourceforge_cbflib
 
 def run(args):
   assert len(args) == 1, "<path>/sourceforge_cbflib"
