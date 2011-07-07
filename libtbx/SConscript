@@ -868,7 +868,7 @@ def enable_cuda_if_possible():
         try: major = int(fld)
         except ValueError: pass
     if ( (major is None) or (major < 4) ):
-      raise RuntimeError('CUDA Toolkit 4.0 and higher is required. Current CUDA version: %s' % cuda_version[1])
+      raise RuntimeError('CUDA Toolkit 4.0 and higher is required. Current CUDA version: %s' % line)
     env_etc.enable_cuda = True
 
     env_base['NVCC'] = 'nvcc'
