@@ -868,22 +868,28 @@ def enable_cuda_if_possible():
         try: major = int(fld)
         except ValueError: pass
     if ( (major is None) or (major < 4) ):
-      raise RuntimeError('CUDA Toolkit 4.0 and higher is required. Current CUDA version: %s' % line)
+      raise RuntimeError(
+        'CUDA Toolkit 4.0 and higher is required.'
+        ' Current CUDA version: %s' % line)
     env_etc.enable_cuda = True
 
     env_base['NVCC'] = 'nvcc'
-    
+
     linker_flags = env_base['SHLINKFLAGS']
     for flag in linker_flags:
       if (flag.find(' ') >= 0):
-        raise RuntimeError('Not implemented: wrapping of linker flags with embedded spaces: %s' % flag)
-    linker_flags = ' '.join(linker_flags)  
+        raise RuntimeError(
+          'Not implemented: wrapping of linker flags with'
+          ' embedded spaces: %s' % flag)
+    linker_flags = ' '.join(linker_flags)
     env_base['NVCCSHLINKFLAGS'] = ['-shared','--linker-options',linker_flags]
 
     cc_flags = env_base['CCFLAGS']
     for flag in cc_flags:
       if (flag.find(' ') >= 0):
-        raise RuntimeError('Not implemented: wrapping of compiler flags with embedded spaces: %s' % flag)
+        raise RuntimeError(
+          'Not implemented: wrapping of compiler flags with'
+          ' embedded spaces: %s' % flag)
     cc_flags = ' '.join(cc_flags)
     env_base['NVCCFLAGS'] = ['-arch=compute_20','-use_fast_math','--shared',
                              '--compiler-options',cc_flags]
