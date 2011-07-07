@@ -783,6 +783,7 @@ iotbx/detectors/adsc_module.py -text
 iotbx/detectors/beam_center_convention.py -text
 iotbx/detectors/cbf.py -text
 iotbx/detectors/context/__init__.py -text
+iotbx/detectors/context/camera_convention.py -text
 iotbx/detectors/context/spot_xy_convention.h -text
 iotbx/detectors/context/spot_xy_convention.py -text
 iotbx/detectors/dtrek.py -text
