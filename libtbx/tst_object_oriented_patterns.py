@@ -1,5 +1,5 @@
 from libtbx import object_oriented_patterns as oop
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import approx_equal, Exception_expected
 import libtbx
 
 def exercise_injector():
@@ -153,7 +153,52 @@ def exercise_easy_property():
   del x.bar
   assert x.a == -1
 
+
+def exercise_journal():
+
+  class test(object):
+
+    def __init__(self):
+      for i in range(10):
+        self.x = i
+      for k in range(5):
+        self.z = k
+
+  # create a subclass of test that journals x and y attributes
+  class test1(oop.journal_mixin, test):
+    __journal__ = ["x", "y"]
+
+  class test2(oop.journal_mixin, test):
+    __journal__ = ["x", "z"]
+    __journal_suffix__ = "_journal"
+
+  a = test1()
+  assert a.x == 9
+  assert approx_equal(a.x_history, range(10))
+  try: a.y
+  except AttributeError: pass
+  else: raise Exception_expected
+  try: a.y_history
+  except AttributeError: pass
+  else: raise Exception_expected
+  assert a.z == 4
+  try: a.z_history
+  except AttributeError: pass
+  else: raise Exception_expected
+  b = test2()
+  assert approx_equal(b.x_journal, range(10))
+  assert approx_equal(b.z_journal, range(5))
+  del b.x
+  try: b.x
+  except AttributeError: pass
+  else: raise Exception_expected
+  try: b.x_journal
+  except AttributeError: pass
+  else: raise Exception_expected
+
+
 def run():
+  exercise_journal()
   exercise_injector()
   exercise_memoize()
   exercise_null()
