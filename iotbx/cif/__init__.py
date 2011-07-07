@@ -18,6 +18,7 @@ from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
+from libtbx import smart_open
 from scitbx import matrix
 
 import math, os, sys
@@ -31,13 +32,20 @@ class CifParserError(Sorry):
 
 class reader(object):
 
-  def __init__(self, file_path=None, file_object=None, input_string=None,
-               builder=None, raise_if_errors=True, strict=True):
+  def __init__(self,
+               file_path=None,
+               file_object=None,
+               input_string=None,
+               cif_object=None,
+               builder=None,
+               raise_if_errors=True,
+               strict=True):
     assert [file_path, file_object, input_string].count(None) == 2
     assert has_antlr3
     self.file_path = file_path
     if builder is None:
-      builder = builders.cif_model_builder()
+      builder = builders.cif_model_builder(cif_object)
+    else: assert cif_object is None
     self.builder = builder
     if file_path is not None:
       if isinstance(file_path, unicode):

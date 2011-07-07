@@ -80,6 +80,19 @@ _a                                ;1
 _b                                ;
 _c                                2
 """)
+  cif_str_1 = """\
+data_1
+_a 1
+"""
+  cif_str_2 = """\
+data_2
+_b 2
+"""
+  cm = cif.reader(input_string=cif_str_1).model()
+  assert cm.keys() == ['1']
+  cif.reader(input_string=cif_str_2, cif_object=cm).model()
+  assert cm.keys() == ['1', '2']
+
   sys.stdout = stdout
 
   arrays = miller.array.from_cif(file_object=StringIO(

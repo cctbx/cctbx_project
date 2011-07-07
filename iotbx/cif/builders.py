@@ -11,8 +11,10 @@ class CifBuilderError(Sorry):
 
 class cif_model_builder:
 
-  def __init__(self):
-    self._model = model.cif()
+  def __init__(self, cif_object=None):
+    self._model = cif_object
+    if self._model is None:
+      self._model = model.cif()
     self._current_block = None
     self._current_save = None
 
