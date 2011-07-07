@@ -17,6 +17,7 @@ def run(args):
         copyfile(src=op.join(dpath, fname), dst=op.join(dname, fname))
   for dname in ["include", "src"]:
     copy_from_directory(dname, h_c_only=True)
+  copy_from_directory("src", ["cbf.stx.y"])
   copy_from_directory("pycbf", ["pycbf_wrap.c", "pycbf.py"])
   copy_from_directory("examples", ["img.h", "img.c", "fit2d_data.cbf"])
   copy_from_directory("doc", ["lgpl.txt"])
