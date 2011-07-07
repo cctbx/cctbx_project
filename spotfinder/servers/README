@@ -27,7 +27,7 @@ foreach x (`python -c "for x in xrange(1,720): print '%03d'%x,"`)
   # sleep length must be optimized based on server speed & number of processors
    /bin/sleep 0.05
     echo $file
-     (labelit.python -c "from spotfinder.servers.thin_client import do_main; do_main( '${file}', 'server_host', 8125 )") &
+     (libtbx.python -c "from spotfinder.servers.thin_client import do_main; do_main( '${file}', 'server_host', 8125 )") &
 end
 
 In this script, it is absolutely essential to have a /bin/sleep command.  Real Web servers 

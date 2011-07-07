@@ -10,6 +10,6 @@ foreach x (`python -c "for x in xrange(1,101): print '%03d'%x,"`)
   /bin/sleep 1.60
 
   echo $file
-  (labelit.python -c "from spotfinder.servers.thin_client import do_main; do_main( '${file}', 'localhost', 8125 )" >> all_results.out) &
+  (libtbx.python -c "from spotfinder.servers.thin_client import do_main; do_main( '${file}', 'localhost', 8125 )" >> all_results.out) &
 
 end
