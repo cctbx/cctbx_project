@@ -1,16 +1,12 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <scitbx/boost_python/utils.h>
+#include <boost/python.hpp>
+
 #include <cbflib_adaptbx/detectors/basic.h>
 #include <cbflib_adaptbx/detectors/mar_adaptor.h>
 #include <cbflib_adaptbx/detectors/cbf_adaptor.h>
 #include <cbflib_adaptbx/detectors/boost_python/cbf_binary_adaptor.h>
 #include <cbflib_adaptbx/detectors/boost_python/general_cbf_write.h>
-
-struct dummy {}; // work around gcc-3.3-darwin bug
-
-#include <boost/python.hpp>
-#include <scitbx/boost_python/utils.h>
-using namespace boost::python;
-using namespace iotbx::detectors;
 
 namespace iotbx{
 namespace detectors{
@@ -42,7 +38,7 @@ boost::python::str compressed_string(cbf_binary_adaptor& ada){
 
 scitbx::af::flex_int uncompress(const boost::python::str& packed,const int& slow, const int& fast){
 
-    std::string strpacked = extract<std::string>(packed);
+    std::string strpacked = boost::python::extract<std::string>(packed);
     std::size_t sz_buffer = strpacked.size();
 
     //C++ weirdness
@@ -65,14 +61,10 @@ boost::python::str compress(const scitbx::af::flex_int z){
     return boost::python::str(&*packed.begin(),packed.size());
 }
 
-}}
-
-BOOST_PYTHON_MODULE(cbflib_ext)
+void
+cbflib_ext_wrap_all()
 {
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-   class_<dummy>("_dummy", no_init);
-#endif
+   using namespace boost::python;
    class_<Mar345Adaptor >("Mar345Adaptor",init<std::string>())
      .def("read_header",&Mar345Adaptor::read_header)
      .def("read_data",&Mar345Adaptor::read_data)
@@ -132,5 +124,11 @@ BOOST_PYTHON_MODULE(cbflib_ext)
      )
    );
    def("compress",&compress);
+}
 
+}}
+
+BOOST_PYTHON_MODULE(cbflib_ext)
+{
+  iotbx::detectors::cbflib_ext_wrap_all();
 }
