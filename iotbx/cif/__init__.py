@@ -18,7 +18,6 @@ from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
-from libtbx import smart_open
 from scitbx import matrix
 
 import math, os, sys
