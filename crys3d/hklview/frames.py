@@ -82,6 +82,10 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.panel_sizer.Add(box)
     box.Add(ctrls[0], 0, wx.ALL, 5)
     box.Add(ctrls2[0], 0, wx.ALL, 5)
+    ctrls = self.create_controls(
+      setting="show_systematic_absences",
+      label="Show systematic absences")
+    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     if (self.is_3d_view) :
       ctrls = self.create_controls(
         setting="sphere_detail",

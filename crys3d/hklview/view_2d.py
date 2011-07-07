@@ -128,8 +128,7 @@ class hklview_2d (wx.PyPanel) :
         missing_pen = wx.Pen('red')
       else :
         missing_pen = wx.Pen('black')
-    max_radius = 40 / max(self.scene.unit_cell.parameters()[0:3])
-    max_radius *= r / max(x_max, y_max)
+    max_radius = self.scene.max_radius * r / max(x_max, y_max)
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
       x = center_x + r * x_ / x_max
@@ -146,9 +145,14 @@ class hklview_2d (wx.PyPanel) :
       path.CloseSubpath()
       gc.PushState()
       gc.Translate(x,y)
-      if (self.scene.missing[k]) :
+      if (self.scene.missing_flags[k]) :
         gc.SetBrush(wx.TRANSPARENT_BRUSH)
         gc.SetPen(missing_pen)
+        gc.StrokePath(path)
+      elif (self.scene.sys_absent_flags[k]) :
+        gc.SetBrush(wx.TRANSPARENT_BRUSH)
+        c = self.scene.colors[k]
+        gc.SetPen(wx.Pen((c[0]*255,c[1]*255,c[2]*255)))
         gc.StrokePath(path)
       else :
         c = self.scene.colors[k]

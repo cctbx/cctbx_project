@@ -117,14 +117,15 @@ class hklview_3d (wxGLWindow) :
       colors = self.scene.colors
       radii = self.scene.radii
       max_radius = self.scene.max_radius
+      scale_factor = self.settings.sphere_detail / self.scene.max_radius
       assert (colors.size() == radii.size() == self.scene.points.size())
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
       for i, hkl in enumerate(self.scene.points) :
         col = list(colors[i]) + [1.0]
-        detail = max(4, int(self.settings.sphere_detail*radii[i]/max_radius))
+        detail = max(4, int(radii[i] * scale_factor))
         #glColor3f(*colors[i])
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, col)
-        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
         glPushMatrix()
         glTranslated(*hkl)
         gltbx.util.SolidSphere(radius=radii[i],
