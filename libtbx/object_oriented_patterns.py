@@ -116,3 +116,38 @@ class proxy(object):
 
   def __getattr__(self, attr):
     return getattr(self.subject, attr)
+
+
+class journal_mixin(object):
+  """ An easy way to store the history of an attribute as it changes
+      through the course of a routine.
+  """
+
+  __journal__ = []
+  __journal_suffix__ = "_history"
+
+  def __getattr__(self, name):
+    if name in self.__journal__:
+      key = name+self.__journal_suffix__
+    else:
+      key = name
+    if key in self.__dict__:
+      return self.__dict__[key][-1]
+    else: raise AttributeError(name)
+
+  def __setattr__(self, name, value):
+    if name in self.__journal__:
+      key = name+self.__journal_suffix__
+      if key not in self.__dict__:
+        self.__dict__[key] = [value]
+      else:
+        self.__dict__[key].append(value)
+    else:
+      self.__dict__[name] = value
+
+  def __delattr__(self, name):
+    if name in self.__journal__:
+      key = name+self.__journal_suffix__
+    else:
+      key = name
+    del self.__dict__[key]
