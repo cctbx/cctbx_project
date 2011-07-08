@@ -763,11 +763,13 @@ def find_tls (params,
           u_cart=u_cart,
           u_iso=u_iso)
         from libtbx import easy_mp
-        targets = easy_mp.pool_map(
+        stdout_and_targets = easy_mp.pool_map(
           processes=params.nproc,
-          func=process_perms,
+          fixed_func=process_perms,
           args=perms,
-          chunksize=100)
+          chunksize=100,
+          buffer_stdout_stderr=True)
+        targets = [ t for so, t in stdout_and_targets ]
         for (perm, target) in zip(perms, targets) :
           dic.setdefault(len(perm), []).append([target,perm])
       else :
