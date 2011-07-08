@@ -55,6 +55,8 @@ master_params_str = """
     .type = float
   verbose = True
     .type = bool
+  change_basis_to_niggli_cell = True
+    .type = bool
 """
 
 
@@ -95,6 +97,15 @@ class density_modification(object):
                log=None):
     if log is None: log = sys.stdout
     adopt_init_args(self, locals())
+    self.change_of_basis_op = None
+    if self.params.change_basis_to_niggli_cell:
+      self.change_of_basis_op = self.f_obs.change_of_basis_op_to_niggli_cell()
+      if self.change_of_basis_op.is_identity_op():
+        self.change_of_basis_op = None
+    if self.change_of_basis_op is not None:
+      self.f_obs = self.f_obs.change_basis(self.change_of_basis_op)
+      self.hl_coeffs_start = self.hl_coeffs_start.change_basis(
+        self.change_of_basis_op)
     self.mean_solvent_density = 0
     self.phase_source_initial = None
     self.phase_source = None
@@ -394,6 +405,12 @@ class density_modification(object):
   class f_obs_active(libtbx.property):
     def fget(self):
       return self.f_obs_complete.select(self.ref_flags)
+
+  class map_coeffs_in_original_setting(libtbx.property):
+    def fget(self):
+      if self.change_of_basis_op is not None:
+        return self.map_coeffs.change_basis(self.change_of_basis_op.inverse())
+      return self.map_coeffs
 
   class radius(libtbx.property):
     def fget(self):
