@@ -24,6 +24,14 @@ def polar(a):
 def cross_product(a,b):
   return a.cross(b)
 
+def radius_to_resol(radius,parameter_dictionary):
+  # assumes radius & distance in same units (e.g., mm)
+  # wavelength and resolution in same units (e.g., Angstroms)
+  distance = float(parameter_dictionary['distance'])
+  wavelength = float(parameter_dictionary['wavelength'])
+  theta = math.atan2(radius,distance)/2.0
+  return wavelength/(2.0*math.sin(theta))
+
 class Geom2d(geometry_2d_base):
   def __init__(self,pd):
     self.pd = pd
