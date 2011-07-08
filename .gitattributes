@@ -1536,6 +1536,7 @@ spotfinder/core_toolbox/spotfilter.cpp -text
 spotfinder/core_toolbox/spotfilter.h -text
 spotfinder/diffraction/__init__.py -text
 spotfinder/diffraction/geometry.cpp -text
+spotfinder/diffraction/geometry.py -text
 spotfinder/diffraction/imagefiles.py -text
 spotfinder/distl_license -text
 spotfinder/doc/distl_svn_history -text
