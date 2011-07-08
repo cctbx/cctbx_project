@@ -9,6 +9,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/math/utils.h>
 #include <iotbx/detectors/image_divider.h>
+#include <scitbx/vec3.h>
 
 namespace af = scitbx::af;
 
@@ -328,6 +329,13 @@ af::flex_int ReadDTrek(std::string const& raw_buffer, std::string const& type_co
   return z;
 }
 
+scitbx::vec3<double> rotate_vector_around(
+                       scitbx::vec3<double> const& vector,
+                       scitbx::vec3<double> const& unit_direction,
+                       double const& angle_rad) {
+    return vector.unit_rotate(unit_direction,angle_rad);
+  }
+
 } // namespace <anonymous>
 
 #include <boost/python.hpp>
@@ -367,4 +375,8 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
      .def("tile_slow_interval", &Distl::image_divider::tile_slow_interval)
      .def("tile_fast_interval", &Distl::image_divider::tile_fast_interval)
   ;
+  def("rotate_vector_around", rotate_vector_around,
+        (arg("vector"),arg("unit_direction"),arg("angle"))
+  );
+
 }
