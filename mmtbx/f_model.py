@@ -906,7 +906,8 @@ class manager(manager_mixin):
       mask_results = easy_mp.pool_map(
         processes=nproc,
         fixed_func=self.try_mask_params,
-        args=trial_params)
+        args=trial_params,
+        buffer_stdout_stderr=True)
     else :
       for r_solv, r_shrink in trial_params :
         result = self.try_mask_params((r_solv, r_shrink))

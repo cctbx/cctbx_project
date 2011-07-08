@@ -357,7 +357,8 @@ def map_coefficients_from_fmodel(fmodel, params):
       map_type           = params.map_type,
       acentrics_scale    = params.acentrics_scale,
       centrics_pre_scale = params.centrics_pre_scale)
-    if(coeffs is not None and coeffs.anomalous_flag() and not
+    if (coeffs is None) : return None
+    if(coeffs.anomalous_flag() and not
        mmtbx.map_names(params.map_type).anomalous):
       coeffs = coeffs.average_bijvoet_mates()
     if(params.isotropize and e_map_obj.mch is not None):
@@ -367,7 +368,7 @@ def map_coefficients_from_fmodel(fmodel, params):
         crystal_symmetry=coeffs.crystal_symmetry(),
         indices = coeffs.indices(),
         anomalous_flag=False).array(data=coeffs.data()*isc)
-    if(coeffs is not None and params.sharpening):
+    if(params.sharpening):
       coeffs, b_sharp = sharp_map(
         sites_frac = fmodel.xray_structure.sites_frac(),
         map_coeffs = coeffs,
@@ -384,7 +385,8 @@ def map_coefficients_from_fmodel(fmodel, params):
         map_type   = params.map_type,
         isotropize = params.isotropize,
         sharp      = params.sharpening).map_coeffs
-  if(coeffs is not None and coeffs.anomalous_flag() and not
+  # XXX is this redundant?
+  if(coeffs.anomalous_flag() and not
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()
   if(params.exclude_free_r_reflections):

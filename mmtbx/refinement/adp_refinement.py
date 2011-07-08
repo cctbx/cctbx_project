@@ -277,7 +277,8 @@ class refine_adp(object):
       trial_results = easy_mp.pool_map(
         processes=nproc,
         fixed_func=self.try_weight,
-        args=trial_weights)
+        args=trial_weights,
+        buffer_stdout_stderr=True)
     else :
       for weight in trial_weights:
         result = self.try_weight(weight, print_stats=True)
