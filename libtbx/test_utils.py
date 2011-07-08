@@ -26,13 +26,12 @@ def compose_tmp_suffix(suffix, frames_back=0):
   s += "_" + str(caller.line_number)
   return "_" + s + suffix
 
-def open_tmp_file(mode="w", suffix=""):
+def open_tmp_file(suffix="", text=True):
   import tempfile
-  return tempfile.NamedTemporaryFile(
-    mode=mode,
-    dir=".",
+  return tempfile.mkstemp(
     suffix=compose_tmp_suffix(suffix, frames_back=1),
-    delete=False)
+    dir=".",
+    text=text)
 
 def open_tmp_directory(suffix=""):
   import tempfile
