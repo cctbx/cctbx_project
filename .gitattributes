@@ -1502,6 +1502,10 @@ smtbx/refinement/tests/tst_least_squares.py -text
 spotfinder/SConscript -text
 spotfinder/__init__.py -text
 spotfinder/applications/__init__.py -text
+spotfinder/applications/heuristic_tbx/__init__.py -text
+spotfinder/applications/heuristic_tbx/ice2.py -text
+spotfinder/applications/heuristic_tbx/ice_nztt.py -text
+spotfinder/applications/heuristic_tbx/method2_resolution.py -text
 spotfinder/applications/overall_procedure.py -text
 spotfinder/applications/practical_heuristics.py -text
 spotfinder/applications/signal_strength.py -text
