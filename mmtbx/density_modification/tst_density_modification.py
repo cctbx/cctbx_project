@@ -2,6 +2,7 @@ from libtbx import easy_run
 from mmtbx.command_line import density_modification
 
 import os
+op = os.path
 
 params = """\
 density_modification {
@@ -49,8 +50,12 @@ def exercise_density_modification():
   #density_modification.run(
     #args=[tmp_file.name, "%s/model/1RGE.pdb"%rnase_s_path])
 
-  cmd = "mmtbx.density_modification %s %s/model/1RGE.pdb" %(
-    tmp_file.name, rnase_s_path)
+  args = (
+    tmp_file.name,
+    op.join(rnase_s_path, "model", "1RGE.pdb"))
+  for arg in args:
+    assert arg.find('"') < 0
+  cmd = 'mmtbx.density_modification "%s" "%s"' % args
   print cmd
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
   assert result.stdout_lines[-4] == 'Starting dm/model correlation: 0.631999'
