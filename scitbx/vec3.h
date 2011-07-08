@@ -212,6 +212,30 @@ namespace scitbx {
       af::tiny<NumType, 3>
       as_tiny() const { return af::tiny<NumType, 3>(*this); }
 
+      //! Rotate the vector.
+      /*! Use the rotation formula to rotate the vector around the direction
+          vector through an angle given in radians.  The direction vector is
+          normalized so need not be given as a vector of unit length.
+       */
+      vec3
+      rotate(vec3 const& direction, NumType const& angle) const {
+        vec3 unit = direction.normalize();
+        return unit_rotate(unit,angle);
+      }
+
+      //! Rotate the vector.
+      /*! Use the rotation formula to rotate the vector around the unit
+          direction through an angle given in radians.  The caller
+          guarantees that the direction vector is of unit length.
+       */
+      vec3
+      unit_rotate(vec3 const& unit, NumType const& angle) const {
+        NumType cosang = std::cos(angle);
+        return (*this)*cosang +
+               unit*(unit*(*this))*(1.0-cosang)+
+               ((*this).cross(unit))*std::sin(angle);
+      }
+
     private:
       static NumType abs_(NumType const& x)
       {
