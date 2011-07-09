@@ -274,11 +274,12 @@ class refine_adp(object):
     if (len(trial_weights) > 1) and ((nproc is Auto) or (nproc > 1)) :
       parallel = True
       from libtbx import easy_mp
-      trial_results = easy_mp.pool_map(
+      stdout_and_results = easy_mp.pool_map(
         processes=nproc,
         fixed_func=self.try_weight,
         args=trial_weights,
-        buffer_stdout_stderr=True)
+        buffer_stdout_stderr=True) # XXX safer for phenix GUI
+      trial_results = [ r for so, r in stdout_and_results ]
     else :
       for weight in trial_weights:
         result = self.try_weight(weight, print_stats=True)

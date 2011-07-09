@@ -903,11 +903,12 @@ class manager(manager_mixin):
     if (nproc is Auto) or (nproc > 1) :
       parallel = True
       from libtbx import easy_mp
-      mask_results = easy_mp.pool_map(
+      stdout_and_results = easy_mp.pool_map(
         processes=nproc,
         fixed_func=self.try_mask_params,
         args=trial_params,
-        buffer_stdout_stderr=True)
+        buffer_stdout_stderr=True) # XXX safer for phenix GUI
+      mask_results = [ r for so, r in stdout_and_results ]
     else :
       for r_solv, r_shrink in trial_params :
         result = self.try_mask_params((r_solv, r_shrink))
