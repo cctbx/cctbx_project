@@ -48,6 +48,9 @@ class _(boost.python.injector, ext.space_group):
     for i in xrange(self.n_ltr()):
       yield self(i,0,0).t()
 
+  def info(self):
+    return space_group_info(group=self)
+
   def adp_constraints(self):
     return tensor_rank_2_constraints(space_group=self, reciprocal_space=True)
 

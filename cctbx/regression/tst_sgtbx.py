@@ -128,7 +128,7 @@ def exercise_space_group_info():
       rt_mx = sgtbx.rt_mx(addl_smx)
       rt_mx = rt_mx.new_denominators(sgx.r_den(), sgx.t_den())
       sgx.expand_smx(rt_mx)
-      sgx_i = sgtbx.space_group_info(group=sgx)
+      sgx_i = sgx.info()
       assert str(sgx_i) == uhm
       t = sgx_i.type()
       c = t.cb_op().c()
