@@ -23,25 +23,32 @@ density_modification {
     unit_cell = None
       .type = unit_cell
       .optional = False
+      .style = bold noauto
     space_group = None
       .type = space_group
       .optional = False
+      .style = bold noauto
   }
   output {
     map {
       file_name = None
         .type = path
         .help = The file name for the final density-modified map
+        .short_caption = Output map file
+        .style = bold noauto
       format = xplor *ccp4
         .type = choice
+        .short_caption = Map format
       scale = *sigma volume
         .type = choice(multi=False)
+        .short_caption = Map scaling
         .expert_level=2
     }
     map_coefficients {
       file_name = none
         .type = path
         .help = The file name for the coefficients of the final density-modified map
+        .short_caption = Output map coefficients
       format = *mtz cns
         .optional=True
         .type = choice
