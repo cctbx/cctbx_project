@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/array_family/counts.h>
@@ -78,6 +79,8 @@ namespace {
         from_stl_vector_unsigned, default_call_policies()))
       .def("__init__", make_constructor(
         flex_size_t_from_numpy_array, default_call_policies()))
+      .def("copy_to_byte_str",
+        copy_to_byte_str<versa<std::size_t, flex_grid<> > >)
       .def("as_int", as_int)
       .def("intersection",
         (af::shared<std::size_t>(*)(
@@ -94,6 +97,10 @@ namespace {
       .def("as_numpy_array", flex_size_t_as_numpy_array, (
         arg("optional")=false))
     ;
+    def(
+      "size_t_from_byte_str",
+      shared_from_byte_str<std::size_t>,
+      (arg("byte_str")));
     range_wrappers<std::size_t, long, range_args::unsigned_check>::wrap(
       "size_t_range");
   }

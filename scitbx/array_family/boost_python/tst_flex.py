@@ -491,7 +491,10 @@ def exercise_misc():
   for l in [[], [12], [2,3], [4,6,7], range(-123,2345)]:
     for flex_type,flex_from_byte_str in [
           (flex.int, flex.int_from_byte_str),
+          (flex.size_t, flex.size_t_from_byte_str),
           (flex.double, flex.double_from_byte_str)]:
+      if (flex_type is flex.size_t and len(l) != 0 and l[0] < 0):
+        l = range(0, 2345)
       a = flex_type(l)
       b = a.copy_to_byte_str()
       if (len(l) == 0):
@@ -503,7 +506,8 @@ def exercise_misc():
       assert f.size() == len(l)
       assert list(f) == l
 
-      #Now look at direct slicing to byte string
+      if (not hasattr(a, "slice_to_byte_str")):
+        continue
       start_index = int( 0.25 * a.size() )
       stop_index = min(a.size(), int(0.50 * a.size()) + 1)
       a_slice = a[start_index:stop_index]
