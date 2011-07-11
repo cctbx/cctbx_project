@@ -113,7 +113,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
     from labelit.preferences import labelit_commands
 
-    Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]))
+    Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]),labelit_commands)
 
     print "Final image object:"
     Files.images[0].show_header()

@@ -1,10 +1,7 @@
 import os
-from labelit.command_line.imagefiles import ImageFiles
-from labelit.preferences import labelit_commands
-from labelit import tnear2
 from spotfinder.applications.stats_distl import pretty_image_stats,notes
 
-def spotfinder_factory(absrundir,frames):
+def spotfinder_factory(absrundir,frames,phil_params):
 
   local_frames=frames.frames()
 
@@ -32,14 +29,15 @@ def spotfinder_factory(absrundir,frames):
   except Exception:
     pd['twotheta'] = '0.0'
 
-  Spotfinder = tnear2.sf2(pd)
+  from labelit import tnear2
+  Spotfinder = tnear2.sf2(pd,phil_params)
 
   for framenumber in local_frames:
     try:
       assert Spotfinder.images.has_key(framenumber)
     except Exception:
       Spotfinder.register_frames(framenumber,frames)
-      if labelit_commands.spotfinder_verbose: Spotfinder.show()
+      if phil_params.spotfinder_verbose: Spotfinder.show()
 
   return Spotfinder
 
@@ -48,19 +46,20 @@ class DistlOrganizer:
   def __init__(self,verbose = 0,**kwargs):
     self.rundir = os.getcwd()
     self.verbose = verbose
+    self.phil_params = kwargs["phil_params"]
     if kwargs.has_key('argument_module'):
       # new interface
       self.setCommandInput(kwargs['argument_module'])
     #print '\n'.join(self.Files.filenames())
 
   def setCommandInput(self,argument_module):
-    # new way of doing things
-    self.Files = ImageFiles(argument_module)
+    from labelit.command_line.imagefiles import ImageFiles
+    self.Files = ImageFiles(argument_module,self.phil_params)
     self.frames = self.Files.frames()
 
   def printSpots(self):
     '''spotfinder and pickle implicitly assumes ADSC format'''
-    S = spotfinder_factory(self.rundir,self.Files)
+    S = spotfinder_factory(self.rundir,self.Files,self.phil_params)
     self.S = S
     for frame in self.frames:
      if self.verbose:
