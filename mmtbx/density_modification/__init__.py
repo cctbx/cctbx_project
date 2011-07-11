@@ -13,36 +13,9 @@ import math, sys
 pi_180 = math.atan(1)/ 45
 
 master_params_str = """
-  ncs_averaging = False
-    .type = bool
-    .help = This functionality is not yet implemented!
-    .expert_level = 3
-  protein_solvent_ratio = 1.31
-    .type = float
-  density_truncation {
-    fraction_min = None
-      .type = float
-    fraction_max = None
-      .type = float
-  }
-  solvent_modification {
-    method = flipping flattening
-      .type = choice
-    scale_flip = True
-      .type = bool
-  }
-  solvent_adjust = True
-    .type = bool
-  solvent_mask {
-    averaging_radius {
-      initial = None
-        .type = float
-      final = None
-        .type = float
-    }
-  }
   solvent_fraction = None
     .type = float
+    .style = bold
   initial_steps = 10
     .type = int
   shrink_steps = 20
@@ -53,10 +26,48 @@ master_params_str = """
     .type = float
   d_min = None
     .type = float
+    .short_caption = High resolution
   verbose = True
     .type = bool
   change_basis_to_niggli_cell = True
     .type = bool
+    .short_caption = Change basis to Niggli cell
+  ncs_averaging = False
+    .type = bool
+    .help = This functionality is not yet implemented!
+    .expert_level = 3
+    .style = hidden
+  protein_solvent_ratio = 1.31
+    .type = float
+    .short_caption = Protein/solvent ratio
+  density_truncation
+    .style = box
+  {
+    fraction_min = None
+      .type = float
+    fraction_max = None
+      .type = float
+  }
+  solvent_modification {
+    method = flipping flattening
+      .type = choice
+      .short_caption = Solvent modification method
+    scale_flip = True
+      .type = bool
+  }
+  solvent_adjust = True
+    .type = bool
+    .short_caption = Adjust solvent
+  solvent_mask {
+    averaging_radius {
+      initial = None
+        .type = float
+        .short_caption = Initial averaging radius
+      final = None
+        .type = float
+        .short_caption = Final averaging radius
+    }
+  }
 """
 
 
