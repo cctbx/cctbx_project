@@ -104,6 +104,16 @@ class _(boost.python.injector, ext.unit_cell):
     return self.niggli_reduction(
       relative_epsilon, iteration_limit).as_unit_cell()
 
+  def lattice_symmetry_group(self,
+        max_delta=3,
+        enforce_max_delta_for_generated_two_folds=True):
+    from cctbx import sgtbx
+    return sgtbx.lattice_symmetry_group(
+      reduced_cell=self,
+      max_delta=max_delta,
+      enforce_max_delta_for_generated_two_folds
+        =enforce_max_delta_for_generated_two_folds)
+
   def buffer_shifts_frac(self, buffer):
     from cctbx.crystal import direct_space_asu
     return direct_space_asu.float_asu(

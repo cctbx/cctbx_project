@@ -706,6 +706,10 @@ def exercise_d_metrical_matrix_d_params():
   fd_grads = finite_differences(uc)
   assert approx_equal(grads, fd_grads)
 
+def exercise_downstream_methods():
+  uc = uctbx.unit_cell((1,1,1,90,90,90))
+  assert str(uc.lattice_symmetry_group().info()) == "P 4 3 2"
+
 def run():
   exercise_d_metrical_matrix_d_params()
   exercise_tensor_rank_2_orth_and_frac_linear_maps()
@@ -726,6 +730,7 @@ def run():
   exercise_similarity_transformations()
   exercise_bases_rmsd()
   exercise_box_frac_around_sites()
+  exercise_downstream_methods()
   e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()
