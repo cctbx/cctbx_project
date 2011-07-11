@@ -30,7 +30,8 @@ def run_signal_strength(params):
   labelit_commands.difflimit_verbose = 0
   labelit_commands.wedgelimit = len(E.argv)
   labelit_commands.spotfinder_header_tests = False
-  Org = DistlOrganizer(verbose = True, argument_module=E)
+  Org = DistlOrganizer(verbose = True, argument_module=E,
+                       phil_params=labelit_commands)
   Org.printSpots()
 
   #Image analysis requested by NE-CAT (Point of contact: Craig Ogata)
