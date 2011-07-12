@@ -203,7 +203,8 @@ class any_file_input (object) :
 
   def try_as_cif (self) :
     import iotbx.cif
-    cif_object = iotbx.cif.reader(file_path=self.file_name)
+    cif_object = iotbx.cif.reader(file_path=self.file_name,
+      strict=False)
     self.file_type = "cif"
     self.file_object = cif_object
 
