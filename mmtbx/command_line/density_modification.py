@@ -1,14 +1,13 @@
+from mmtbx import density_modification
+import mmtbx.utils
 from cctbx.array_family import flex
 from cctbx import crystal
 from iotbx.option_parser import option_parser
 import iotbx.phil
 from iotbx.reflection_file_reader import any_reflection_file
-import mmtbx.utils
 from libtbx.utils import show_times_at_exit
-
-from mmtbx import density_modification
-import mmtbx.utils
-
+from libtbx import runtime_utils
+from libtbx import group_args
 import os, sys
 
 master_params_including_IO_str = """\
@@ -66,7 +65,7 @@ def defaults(log):
   print >> log
   return parsed
 
-def run(args, log = sys.stdout):
+def run(args, log = sys.stdout, as_gui_program=False):
   if(len(args)==0):
     parsed = defaults(log=log)
     parsed.show(prefix="  ", out=log)
@@ -147,7 +146,8 @@ def run(args, log = sys.stdout):
       resolution_factor=params.grid_resolution_factor,
       map_type="2mFo-DFc").real_map_unpadded()
 
-  dm = density_modify(fo, hl_coeffs, params, model_map=model_map)
+  dm = density_modify(fo, hl_coeffs, params, model_map=model_map,
+    as_gui_program=as_gui_program)
 
   map_coeffs = dm.map_coeffs_in_original_setting
 
@@ -182,17 +182,22 @@ def run(args, log = sys.stdout):
        column_root_label="FWT",
        label_decorator=iotbx.mtz.ccp4_label_decorator())
       mtz_dataset.mtz_object().write(map_coeff_params.file_name)
+  return group_args(
+    map_file=map_params.file_name,
+    map_coeff_file=map_coeff_params.file_name,
+    stats=dm.get_stats())
 
 
 # just for development purposes, compare the correlation of the
 # density-modified map with map calculated from the model at each cycle
 class density_modify(density_modification.density_modification):
 
-  def __init__(self, fo, hl_coeffs, params, model_map=None):
+  def __init__(self, fo, hl_coeffs, params, model_map=None,
+      as_gui_program=False):
     self.model_map = model_map
     self.correlation_coeffs = flex.double()
     density_modification.density_modification.__init__(
-      self, fo, hl_coeffs, params)
+      self, fo, hl_coeffs, params, as_gui_program=as_gui_program)
     if len(self.correlation_coeffs) > 1:
       fft_map = self.map_coeffs_start.fft_map(
         resolution_factor=self.params.grid_resolution_factor
@@ -211,6 +216,29 @@ class density_modify(density_modification.density_modification):
       print "dm/model correlation:"
       corr.show_summary()
       self.correlation_coeffs.append(corr.coefficient())
+
+def validate_params (params) :
+  params_ = params.density_modification
+  if (params_.input.reflection_data.file_name is None) :
+    raise Sorry("No reflection data provided.")
+  if (params_.input.reflection_data.labels is None) :
+    raise Sorry("Data labels not specified.")
+  if (params_.input.experimental_phases.file_name is None) :
+    raise Sorry("Experimental phases (Hendrickson-Lattman coefficients " +
+                "not specified.")
+  if (params_.input.experimental_phases.labels is None) :
+    raise Sorry("Experimental phase labels not specified.")
+  if ((params_.output.map.file_name is none) and
+      (params_.output.map_coefficients.file_name is None)) :
+    raise Sorry("No output requested!")
+  if (params_.solvent_fraction is None) :
+    raise Sorry("Please specify the solvent fraction!")
+
+class launcher (runtime_utils.simple_target) :
+  def __call__ (self) :
+    return run(args=list(self.args),
+               log=sys.stdout,
+               as_gui_program=True)
 
 if __name__ == '__main__':
   show_times_at_exit()
