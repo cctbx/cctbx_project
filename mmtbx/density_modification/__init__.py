@@ -43,13 +43,13 @@ master_params_str = """
   density_truncation
     .style = box
   {
-    fraction_min = None
+    fraction_min = 0.35
       .type = float
     fraction_max = None
       .type = float
   }
   solvent_modification {
-    method = flipping flattening
+    method = *flipping flattening
       .type = choice
       .short_caption = Solvent modification method
     scale_flip = True
@@ -108,15 +108,24 @@ class density_modification(object):
                log=None):
     if log is None: log = sys.stdout
     adopt_init_args(self, locals())
+    assert self.params.solvent_fraction is not None
+    if self.params.solvent_mask.averaging_radius.final is None:
+      if self.params.d_min is not None:
+        self.params.solvent_mask.averaging_radius.final = self.params.d_min
+      else:
+        self.params.solvent_mask.averaging_radius.final = self.f_obs.d_min()
+    if self.params.solvent_mask.averaging_radius.initial is None:
+      self.params.solvent_mask.averaging_radius.initial = \
+         self.params.solvent_mask.averaging_radius.final + 1
     self.change_of_basis_op = None
     if self.params.change_basis_to_niggli_cell:
       self.change_of_basis_op = self.f_obs.change_of_basis_op_to_niggli_cell()
       if self.change_of_basis_op.is_identity_op():
         self.change_of_basis_op = None
     if self.change_of_basis_op is not None:
-      self.f_obs = self.f_obs.change_basis(self.change_of_basis_op)
+      self.f_obs = self.f_obs.change_basis(self.change_of_basis_op).map_to_asu()
       self.hl_coeffs_start = self.hl_coeffs_start.change_basis(
-        self.change_of_basis_op)
+        self.change_of_basis_op).map_to_asu()
     self.mean_solvent_density = 0
     self.phase_source_initial = None
     self.phase_source = None
@@ -131,7 +140,7 @@ class density_modification(object):
                            - self.params.solvent_mask.averaging_radius.final) \
           / self.params.shrink_steps
 
-    self.complete_set = f_obs.complete_set()
+    self.complete_set = self.f_obs.complete_set()
 
     ref_active = (self.f_obs.sigmas() > 0) \
                & (self.f_obs.d_spacings().data() >= self.d_min)
