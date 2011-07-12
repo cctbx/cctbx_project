@@ -45,7 +45,7 @@ density_modification {
         .expert_level=2
     }
     map_coefficients {
-      file_name = none
+      file_name = None
         .type = path
         .help = The file name for the coefficients of the final density-modified map
         .short_caption = Output map coefficients
@@ -87,18 +87,24 @@ def run(args, log = sys.stdout):
     suppress_symmetry_related_errors=True)
   processed_args.params.show()
   params = processed_args.params.extract().density_modification
+
+  if params.solvent_fraction is None:
+    print "*** Solvent fraction not specified: using default of 0.5 ***"
+    params.solvent_fraction = 0.5
+
   crystal_symmetry = crystal.symmetry(
     unit_cell=params.input.unit_cell,
     space_group_info=params.input.space_group)
-  reflection_files = []
+  reflection_files = {}
   for rfn in (params.input.reflection_data.file_name,
               params.input.experimental_phases.file_name):
-    if os.path.isfile(str(rfn)):
-      reflection_files.append(iotbx.reflection_file_reader.any_reflection_file(
-        file_name=rfn, ensure_read_access=False))
+    if os.path.isfile(str(rfn)) and rfn not in reflection_files:
+      reflection_files.setdefault(
+        rfn, iotbx.reflection_file_reader.any_reflection_file(
+          file_name=rfn, ensure_read_access=False))
   server = iotbx.reflection_file_utils.reflection_file_server(
     crystal_symmetry=crystal_symmetry,
-    reflection_files=reflection_files)
+    reflection_files=reflection_files.values())
   fo = mmtbx.utils.determine_data_and_flags(
     server,
     parameters=params.input.reflection_data,
@@ -127,13 +133,60 @@ def run(args, log = sys.stdout):
     if params.change_basis_to_niggli_cell:
       change_of_basis_op = xs.change_of_basis_op_to_niggli_cell()
       xs = xs.change_basis(change_of_basis_op)
-    fmodel = mmtbx.f_model.manager(f_obs=fo.change_basis(change_of_basis_op),
-                                   abcd=hl_coeffs.change_basis(change_of_basis_op),
-                                   xray_structure=xs)
+      fmodel = mmtbx.f_model.manager(
+        f_obs=fo.change_basis(change_of_basis_op).map_to_asu(),
+        abcd=hl_coeffs.change_basis(change_of_basis_op).map_to_asu(),
+        xray_structure=xs)
+    else:
+      fmodel = mmtbx.f_model.manager(
+        f_obs=fo,
+        abcd=hl_coeffs,
+        xray_structure=xs)
     true_phases = fmodel.f_model().phases()
     model_map = fmodel.electron_density_map().fft_map(
       resolution_factor=params.grid_resolution_factor,
       map_type="2mFo-DFc").real_map_unpadded()
+
+  if 0:
+    from solve_resolve.resolve_python import density_modify_in_memory
+    from cctbx import miller
+    integrator = miller.phase_integrator(n_steps=360)
+    phase_source = integrator(
+      space_group=hl_coeffs.space_group(),
+      miller_indices=hl_coeffs.indices(),
+      hendrickson_lattman_coefficients=hl_coeffs.data())
+    fom = hl_coeffs.array(data=flex.abs(phase_source))
+    phases = fo.customized_copy(sigmas=None).phase_transfer(
+      phase_source=hl_coeffs).phases(deg=True)
+
+    map_coeffs = fo.customized_copy(
+      data=fo.data()*fom.data(),
+      sigmas=None).phase_transfer(phase_source=hl_coeffs)
+    resolve_dm = density_modify_in_memory.run(
+      fp_sigfp=fo,
+      fom=fom,
+      phib=phases,
+      #map_coeffs=map_coeffs,
+      hendrickson_lattman=hl_coeffs,
+      fom_start=fom,
+      phib_start=phases,
+      fp_sigfp_start=fo,
+      solvent_content=params.solvent_fraction,
+      mask_cycles=3,
+      minor_cycles=10,
+    )
+
+    resolve_map_coeffs = resolve_dm.map_coeffs_out_as_miller_array
+
+    fft_map = resolve_map_coeffs.fft_map(
+      resolution_factor=params.grid_resolution_factor
+      ).apply_sigma_scaling()
+    corr = flex.linear_correlation(
+      model_map.as_1d(), fft_map.real_map_unpadded().as_1d())
+    print "Starting dm/model correlation: %.6f" %corr.coefficient()
+    corr = flex.linear_correlation(
+      model_map.as_1d(), fft_map.real_map_unpadded().as_1d())
+    print "Final dm/model correlation:    %.6f" %corr.coefficient()
 
   dm = density_modify(fo, hl_coeffs, params, model_map=model_map)
 
@@ -165,8 +218,11 @@ def run(args, log = sys.stdout):
   # output map coefficients if requested
   map_coeff_params = params.output.map_coefficients
   if map_coeff_params.file_name is not None:
-    # XXX TO DO: write out map coeffs!
-    pass
+    if map_coeff_params.format == "mtz":
+      mtz_dataset = map_coeffs.as_mtz_dataset(
+       column_root_label="FWT",
+       label_decorator=iotbx.mtz.ccp4_label_decorator())
+      mtz_dataset.mtz_object().write(map_coeff_params.file_name)
 
 
 # just for development purposes, compare the correlation of the
