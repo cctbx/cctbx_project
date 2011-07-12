@@ -147,7 +147,8 @@ class manager (object) :
       run_callback=True) :
     if self.allowed_param_names is not None :
       if not file_param_name in self.allowed_param_names :
-        raise KeyError("Unrecognized input file parameter %s."%file_param_name)
+        raise KeyError("Unrecognized input file parameter %s (allowed: %s)."%
+          (file_param_name, ", ".join(self.allowed_param_names)))
     opened_file = False
     if (file_name is None) or (file_name == "") or (file_name == "None") :
       self._param_files.pop(file_param_name, None)
