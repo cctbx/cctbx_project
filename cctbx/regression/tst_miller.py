@@ -875,7 +875,8 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
   sg = miller.array(
     miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), False),
     flex.double((3,4)))
-  p1 = sg.expand_to_p1()
+  p1, isel = sg.expand_to_p1(return_iselection=True)
+  assert list(isel) == [0,1,1]
   assert p1.indices().size() == 3
   assert approx_equal(tuple(p1.data()), (3,4,4))
   assert p1.sigmas() is None
@@ -1314,12 +1315,21 @@ def exercise_map_to_asu(space_group_info):
     cmplx_exp = cmplx.expand_to_p1().customized_copy(
       crystal_symmetry=cmplx)
     for deg,f in [(False,1), (True,math.pi/180)]:
-      cmplx_exp_asu = cmplx_exp.map_to_asu()
       phases_exp = cmplx_exp.phases(deg=deg)
+      cmplx_exp_asu_phases = cmplx_exp.map_to_asu().phases(deg=deg)
+      phases_exp_asu = phases_exp.map_to_asu(deg=deg)
       for trig in [flex.cos, flex.sin]:
         assert approx_equal(
-          trig(cmplx_exp_asu.phases(deg=deg).data()*f),
-          trig(phases_exp.map_to_asu(deg=deg).data()*f))
+          trig(cmplx_exp_asu_phases.data()*f),
+          trig(phases_exp_asu.data()*f))
+      phases = cmplx.phases(deg=deg)
+      phases_exp = phases.expand_to_p1(phase_deg=deg).customized_copy(
+        crystal_symmetry=phases)
+      phases_exp_asu = phases_exp.map_to_asu(deg=deg)
+      for trig in [flex.cos, flex.sin]:
+        assert approx_equal(
+          trig(cmplx_exp_asu_phases.data()*f),
+          trig(phases_exp_asu.data()*f))
 
 def exercise_complete_array():
   crystal_symmetry = crystal.symmetry((2.1,3,4), "P 2 2 2")

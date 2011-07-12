@@ -22,10 +22,11 @@ def run(args):
       max_index=[4]*3).to_array()
         # 4 is the smallest value leading to correct results; any larger
         # value will work, too, but will make this procedure slower
-    p1_indices = miller.expand_to_p1_indices(
+    p1_indices = miller.expand_to_p1_iselection(
       space_group=psgi.group(),
       anomalous_flag=False,
-      indices=p_indices)
+      indices=p_indices,
+      build_iselection=False).indices
     from cctbx.array_family import flex
     sort_perm = flex.sort_permutation(
       data=miller.index_span(p1_indices).pack(p1_indices))

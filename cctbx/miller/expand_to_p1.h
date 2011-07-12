@@ -82,33 +82,39 @@ namespace cctbx { namespace miller {
     return result;
   }
 
-  /*! \brief Expands an array of Miller indices and associated
-      scalar data (e.g. bool, int, double) to P1 symmetry.
+  //! Expands an array of Miller indices to P1 symmetry.
+  /*! For details see: expand_to_p1_indices
+      <p>
+      If build_iselection == true, the iselection array keeps
+      track of integer indices into the original array.
    */
-  /*! See also: expand_to_p1_indices
-   */
-  template <typename ScalarType>
-  struct expand_to_p1_scalar
+  struct expand_to_p1_iselection
   {
-    expand_to_p1_scalar() {}
+    expand_to_p1_iselection() {}
 
-    expand_to_p1_scalar(
+    expand_to_p1_iselection(
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
       af::const_ref<index<> > const& indices_,
-      af::const_ref<ScalarType> const& data_)
+      bool build_iselection)
     {
-      CCTBX_ASSERT(data_.size() == indices_.size());
+      std::size_t n_reserve = indices_.size() * space_group.order_p();
+      indices.reserve(n_reserve);
+      if (build_iselection) {
+        iselection.reserve(n_reserve);
+      }
       detail::expand_to_p1_generator generator(
         space_group, anomalous_flag, indices_);
       while (generator.incr()) {
         indices.push_back(generator.p1_index->h());
-        data.push_back(data_[generator.i_index]);
+        if (build_iselection) {
+          iselection.push_back(generator.i_index);
+        }
       }
     }
 
     af::shared<index<> > indices;
-    af::shared<ScalarType> data;
+    af::shared<std::size_t> iselection;
   };
 
   /*! \brief Expands an array of Miller indices and associated
@@ -169,39 +175,6 @@ namespace cctbx { namespace miller {
 
     af::shared<index<> > indices;
     af::shared<hendrickson_lattman<FloatType> > data;
-  };
-
-  /*! \brief Expands an array of Miller indices and associated
-      observations (data, sigmas) to P1 symmetry.
-   */
-  /*! See also: expand_to_p1_indices
-   */
-  template <typename FloatType>
-  struct expand_to_p1_obs
-  {
-    expand_to_p1_obs() {}
-
-    expand_to_p1_obs(
-      sgtbx::space_group const& space_group,
-      bool anomalous_flag,
-      af::const_ref<index<> > const& indices_,
-      af::const_ref<FloatType> const& data_,
-      af::const_ref<FloatType> const& sigmas_)
-    {
-      CCTBX_ASSERT(data_.size() == indices_.size());
-      CCTBX_ASSERT(sigmas_.size() == indices_.size());
-      detail::expand_to_p1_generator generator(
-        space_group, anomalous_flag, indices_);
-      while (generator.incr()) {
-        indices.push_back(generator.p1_index->h());
-        data.push_back(data_[generator.i_index]);
-        sigmas.push_back(sigmas_[generator.i_index]);
-      }
-    }
-
-    af::shared<index<> > indices;
-    af::shared<FloatType> data;
-    af::shared<FloatType> sigmas;
   };
 
   /*! \brief Expands an array of Miller indices and associated

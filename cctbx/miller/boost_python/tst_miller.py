@@ -298,20 +298,21 @@ def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
   h = flex.miller_index(((3,1,-2), (1,-2,0)))
   assert tuple(sg.is_centric(h)) == (0, 1)
-  p1_indices = miller.expand_to_p1_indices(
-    space_group=sg, anomalous_flag=False, indices=h)
+  p1 = miller.expand_to_p1_iselection(
+    space_group=sg, anomalous_flag=False, indices=h, build_iselection=False)
   p1_i0 = ((-3,-1,2), (-1, 3,2),(3,1,2),(1,-3,2),(1,-2, 0),(2,1,0))
-  assert tuple(p1_indices) == p1_i0
-  p1_indices = miller.expand_to_p1_indices(
-    space_group=sg, anomalous_flag=True, indices=h)
-  assert tuple(p1_indices) \
+  assert tuple(p1.indices) == p1_i0
+  assert p1.iselection.size() == 0
+  p1 = miller.expand_to_p1_iselection(
+    space_group=sg, anomalous_flag=True, indices=h, build_iselection=False)
+  assert tuple(p1.indices) \
       == ((3,1,-2), (1,-3,-2), (-3,-1,-2), (-1,3,-2),
           (1,-2,0), (-2,-1,0), (-1,2,0), (2,1,0))
-  a = flex.double((1,2))
-  p1 = miller.expand_to_p1_double(
-    space_group=sg, anomalous_flag=False, indices=h, data=a)
+  p1 = miller.expand_to_p1_iselection(
+    space_group=sg, anomalous_flag=False, indices=h, build_iselection=True)
   assert tuple(p1.indices) == p1_i0
-  assert tuple(p1.data) == (1,1,1,1,2,2)
+  assert tuple(p1.iselection) == (0,0,0,0,1,1)
+  a = flex.double((1,2))
   p = flex.double((10,90))
   p1 = miller.expand_to_p1_phases(
     space_group=sg, anomalous_flag=False, indices=h, data=p, deg=True)
@@ -342,14 +343,14 @@ def exercise_expand():
     [-5,-6,7,8],
     [7.696152,-1.330127,3.428203,-10.06218]])
   b = flex.bool([True,False])
-  p1 = miller.expand_to_p1_bool(
-    space_group=sg, anomalous_flag=True, indices=h, data=b)
-  assert p1.data.all_eq(
+  p1 = miller.expand_to_p1_iselection(
+    space_group=sg, anomalous_flag=True, indices=h, build_iselection=True)
+  assert b.select(p1.iselection).all_eq(
     flex.bool([True, True, True, True, False, False, False, False]))
   i = flex.int([13,17])
-  p1 = miller.expand_to_p1_int(
-    space_group=sg, anomalous_flag=True, indices=h, data=i)
-  assert p1.data.all_eq(flex.int([13,13,13,13,17,17,17,17]))
+  p1 = miller.expand_to_p1_iselection(
+    space_group=sg, anomalous_flag=True, indices=h, build_iselection=True)
+  assert i.select(p1.iselection).all_eq(flex.int([13,13,13,13,17,17,17,17]))
   #
   assert approx_equal(miller.statistical_mean(sg, False, h, a), 4/3.)
   assert approx_equal(miller.statistical_mean(sg, True, h, a), 3/2.)
