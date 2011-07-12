@@ -1,13 +1,13 @@
-from cctbx.array_family import flex
-from cctbx import maptbx, miller
-from libtbx import adopt_init_args, Auto
-import libtbx
-from scitbx.math import phase_error
 from mmtbx.scaling.sigmaa_estimation \
      import sigmaa_estimator, sigmaa_estimator_params
 from mmtbx.scaling import relative_scaling
 from cctbx import adptbx
-
+from cctbx import maptbx, miller
+from cctbx.array_family import flex
+from scitbx.math import phase_error
+import libtbx.callbacks # import dependency
+from libtbx import adopt_init_args, Auto, group_args
+import libtbx
 import math, sys
 
 pi_180 = math.atan(1)/ 45
@@ -105,7 +105,8 @@ class density_modification(object):
                f_obs,
                hl_coeffs_start,
                params,
-               log=None):
+               log=None,
+               as_gui_program=False) :
     if log is None: log = sys.stdout
     adopt_init_args(self, locals())
     assert self.params.solvent_fraction is not None
@@ -181,18 +182,42 @@ class density_modification(object):
 
     n_phased = (fom > 0).count(True)
     if params.verbose:
-      print >> self.log, "n phased: ", n_phased
-      print >> self.log, "Mean solvent density: %.4f" %self.mean_solvent_density
-      print >> self.log, "Mean protein density: %.4f" %self.mean_protein_density
-      print >> self.log, "RMS solvent density: %.4f" %self.rms_solvent_density
-      print >> self.log, "RMS protein density: %.4f" %self.rms_protein_density
-      print >> self.log, "RMS solvent/protein density ratio: %.4f" %(
+      summary = "n phased: %d\n" % n_phased
+      summary += "Mean solvent density: %.4f\n" %self.mean_solvent_density
+      summary += "Mean protein density: %.4f\n" %self.mean_protein_density
+      summary += "RMS solvent density: %.4f\n" %self.rms_solvent_density
+      summary += "RMS protein density: %.4f\n" %self.rms_protein_density
+      summary += "RMS solvent/protein density ratio: %.4f\n" %(
         self.rms_solvent_density/self.rms_protein_density)
-      print >> self.log, "F000/V: %.4f" %self.f000_over_v
-      print >> self.log, "Mean FOM: %.4f" %flex.mean(fom.select(fom>0))
+      summary += "F000/V: %.4f\n" %self.f000_over_v
+      summary += "Mean FOM: %.4f\n" %flex.mean(fom.select(fom>0))
+      print >> self.log, summary
+      libtbx.call_back(message="summary", data=summary)
 
+    # XXX initialize printable statistics (which may or may not be used)
+    self.truncate_min = None
+    self.truncate_min_percent = None
+    self.truncate_max = None
+    self.truncate_max_percent = None
+    self.k_flip = None
+    self.solvent_add = None
+    self.truncate_density = \
+      (self.params.density_truncation.fraction_max is not None or
+       self.params.density_truncation.fraction_min is not None)
+    self._stats = dm_stats()
+
+    libtbx.call_back("start_progress_bar",
+        data=group_args(label="Running %d cycles..." % self.max_iterations,
+                        size=self.max_iterations))
     for self.i_cycle in range(self.max_iterations):
       self.next_cycle()
+      libtbx.call_back(message="increment_progress_bar",
+        data=group_args(chunk=1),
+        cached=False)
+    libtbx.call_back("end_progress_bar", data=None)
+
+  def get_stats (self) :
+    return self._stats
 
   def next_cycle(self):
     self.ncs_averaging()
@@ -377,46 +402,41 @@ class density_modification(object):
       flex.arg(self.phase_source), flex.arg(self.phase_source_previous))
     self.mean_delta_phi_initial = phase_error(
       flex.arg(self.phase_source), flex.arg(self.phase_source_initial))
+    self.mean_fom = flex.mean(fom)
 
   def show_cycle_summary(self, out=None):
     if not self.params.verbose: return
     if out is None: out = sys.stdout
-    print >> self.log, "#"*80
-    print >> self.log, "Cycle %i" %(self.i_cycle+1)
-    print >> self.log, "Mask averaging radius: %.2f" %self.radius
-    print >> self.log, "Solvent mask volume (%%): %.4f" %self.mask_percent
-    print >> self.log, "Mean solvent density: %.4f" %self.mean_solvent_density
-    print >> self.log, "Mean protein density: %.4f" %self.mean_protein_density
-    print >> self.log, "F000/V: %.4f" %self.f000_over_v
-    if (self.params.density_truncation.fraction_max is not None or
-        self.params.density_truncation.fraction_min is not None):
-      print >> self.log, "Protein density truncation:"
-      if self.params.density_truncation.fraction_min is not None:
-        print >> self.log, "  min = %7.4f (%.2f%%)" %(
-          self.truncate_min, self.truncate_min_percent)
-      if self.params.density_truncation.fraction_max is not None:
-        print >> self.log, "  max = %7.4f (%.2f%%)" %(
-          self.truncate_max, self.truncate_max_percent)
-    if self.params.solvent_modification.method == "flipping":
-      print >> self.log, "Solvent flipping factor: %.4f" %self.k_flip
-    if self.params.solvent_adjust:
-      print >> self.log, "Solvent level raised by: %.4f" %self.solvent_add
-    print >> self.log, "RMS solvent density: %.4f" %self.rms_solvent_density
-    print >> self.log, "RMS protein density: %.4f" %self.rms_protein_density
-    print >> self.log, "RMS solvent/protein density ratio: %.4f" %(
-      self.rms_solvent_density/self.rms_protein_density)
-    print >> self.log, "Standard deviation (local RMS): %.4f" %(
-      self.standard_deviation_local_rms)
-
-    print >> self.log, "Mean delta phi: %.4f" %(flex.mean(self.mean_delta_phi)/pi_180)
-    print >> self.log, "Mean delta phi (initial): %.4f" %(
-      flex.mean(self.mean_delta_phi_initial)/pi_180)
-    print >> self.log, "R1-factor:       %.2f" %self.r1_factor
-    print >> self.log, "R1-factor (fom): %.2f" %self.r1_factor_fom
     self.more_statistics = maptbx.more_statistics(self.map)
-    print >> self.log, "Skewness: %.4f" %self.more_statistics.skewness()
-    print >> self.log, "#"*80
-    print >> self.log
+    self._stats.add_cycle(
+      i_cycle=self.i_cycle,
+      radius=self.radius,
+      mask_percent=self.mask_percent,
+      mean_solvent_density=self.mean_solvent_density,
+      mean_protein_density=self.mean_protein_density,
+      f000_over_v=self.f000_over_v,
+      truncate_density=self.truncate_density,
+      truncate_min=self.truncate_min,
+      truncate_min_percent=self.truncate_min_percent,
+      truncate_max=self.truncate_max,
+      truncate_max_percent=self.truncate_max_percent,
+      k_flip=self.k_flip,
+      solvent_add=self.solvent_add,
+      rms_solvent_density=self.rms_solvent_density,
+      rms_protein_density=self.rms_protein_density,
+      standard_deviation_local_rms=self.standard_deviation_local_rms,
+      mean_delta_phi=flex.mean(self.mean_delta_phi)/pi_180,
+      mean_delta_phi_initial=flex.mean(self.mean_delta_phi_initial)/pi_180,
+      r1_factor=self.r1_factor,
+      r1_factor_fom=self.r1_factor_fom,
+      fom=self.mean_fom,
+      skewness=self.more_statistics.skewness())
+    summary = self._stats.format_summary()
+    print >> self.log, summary
+    if (not self.as_gui_program) :
+      libtbx.call_back(message="summary",
+        data=summary,
+        accumulate=True)
 
   def ncs_averaging(self):
     if not self.params.ncs_averaging: return
@@ -441,3 +461,54 @@ class density_modification(object):
                 (self.radius_delta * (self.i_cycle - self.params.initial_steps + 1)))
       else:
         return self.params.solvent_mask.averaging_radius.final
+
+class dm_stats (object) :
+  def __init__ (self) :
+    self._stats = []
+
+  def add_cycle (self, **kwds) :
+    cycle_stats = group_args(**kwds)
+    self._stats.append(cycle_stats)
+
+  def get_cycle_stats (self, i_cycle=-1) :
+    return self._stats[i_cycle]
+
+  def format_loggraph (self) :
+    pass
+
+  def format_summary (self, i_cycle=-1) :
+    stats = self._stats[i_cycle]
+    summary = "#"*80 + "\n"
+    summary += "Cycle %i\n" %(stats.i_cycle+1)
+    summary += "Mask averaging radius: %.2f\n" % stats.radius
+    summary += "Solvent mask volume (%%): %.4f\n" % stats.mask_percent
+    summary += "Mean solvent density: %.4f\n" % stats.mean_solvent_density
+    summary += "Mean protein density: %.4f\n" % stats.mean_protein_density
+    summary += "F000/V: %.4f\n" % stats.f000_over_v
+    if (stats.truncate_density) :
+      summary += "Protein density truncation:\n"
+      if (stats.truncate_min is not None) :
+        summary += "  min = %7.4f (%.2f%%)\n" %(
+          stats.truncate_min, stats.truncate_min_percent)
+      if (stats.truncate_max is not None) :
+        summary += "  max = %7.4f (%.2f%%)\n" %(
+          stats.truncate_max, stats.truncate_max_percent)
+    if (stats.k_flip is not None) :
+      summary += "Solvent flipping factor: %.4f\n" %stats.k_flip
+    if (stats.solvent_add is not None) :
+      summary += "Solvent level raised by: %.4f\n" % stats.solvent_add
+    summary += "RMS solvent density: %.4f\n" % stats.rms_solvent_density
+    summary += "RMS protein density: %.4f\n" % stats.rms_protein_density
+    summary += "RMS solvent/protein density ratio: %.4f\n" %(
+      stats.rms_solvent_density/stats.rms_protein_density)
+    summary += "Standard deviation (local RMS): %.4f\n" %(
+      stats.standard_deviation_local_rms)
+    summary += "Mean delta phi: %.4f\n" % stats.mean_delta_phi
+    summary += "Mean delta phi (initial): %.4f\n" %stats.mean_delta_phi_initial
+    summary += "R1-factor:       %.2f\n" % stats.r1_factor
+    summary += "R1-factor (fom): %.2f\n" % stats.r1_factor_fom
+    summary += "Mean figure of merit (FOM): %.3f\n" % stats.fom
+    summary += "Skewness: %.4f\n" % stats.skewness
+    summary += "#"*80 + "\n"
+    summary += "\n"
+    return summary
