@@ -727,7 +727,7 @@ class protein_space_group_choices(object):
                                      separate_rows=False,
                                      prefix='| ',
                                      postfix=' |')
-    self.table_data = legend + rows
+    self.table_data = legend + tmp_rows
     self.absence_info = """\
 Analyses of the absences table indicates a number of likely space group
 candidates, which are listed below. For each space group, the number of
