@@ -590,13 +590,18 @@ class set(crystal.symmetry):
         crystal_symmetry=self,
         anomalous_flag=self.anomalous_flag(),
         indices=flex.miller_index())
-    if (d_min is None): d_min = self.d_min()
+    d_min_was_none = (d_min is None)
+    if (d_min_was_none): d_min = self.d_min()
+    d_min_exact = d_min
     if (d_min_tolerance is not None): d_min *= (1-d_min_tolerance)
-    return build_set(
+    result = build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
       d_min=d_min,
       d_max=d_max)
+    if (d_min_was_none):
+      result = result.select(result.d_spacings().data() >= d_min_exact)
+    return result
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
                    return_fail=None, d_max = None):
@@ -1736,6 +1741,7 @@ class array(set):
     cs = self.complete_set(
       d_min_tolerance=d_min_tolerance, d_min=d_min, d_max=d_max)
     matches = match_indices(self.indices(), cs.indices())
+    assert matches.singles(0).size() == 0
     i = self.indices()
     d = self.data()
     if (d is not None): d = d.deep_copy()
