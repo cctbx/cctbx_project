@@ -14,11 +14,6 @@ from libtbx.utils import Sorry
 from itertools import count
 import sys
 
-def compare_cb_op_as_hkl(a, b):
-  if (len(a) < len(b)): return -1
-  if (len(a) > len(b)): return  1
-  return cmp(a, b)
-
 def show_average_of_binned_data(binned_data_list):
   l = len(binned_data_list[0].binner.bin_legend(0))
   print " "*(l-9), "average:",
@@ -91,27 +86,15 @@ class array_cache(object):
       cb_op=self.change_of_basis_op_to_minimum_cell.inverse())
 
   def possible_twin_laws(self):
-    result = []
-    cb_op = self.change_of_basis_op_to_minimum_cell.inverse()
-    for partition in sgtbx.cosets.left_decomposition_point_groups_only(
+    cosets = sgtbx.cosets.left_decomposition_point_groups_only(
       g=self.lattice_group,
       h=self.intensity_symmetry.space_group()
           .build_derived_acentric_group()
-          .make_tidy()).partitions[1:]:
-      best_choice = None
-      best_choice_as_hkl = None
-      for choice in partition:
-        if (choice.r().determinant() < 0): continue
-        possible_choice = cb_op.apply(choice)
-        possible_choice_as_hkl = possible_choice.r().as_hkl()
-        if (best_choice_as_hkl is None
-            or compare_cb_op_as_hkl(
-                 best_choice_as_hkl, possible_choice_as_hkl) > 0):
-          best_choice = possible_choice
-          best_choice_as_hkl = possible_choice_as_hkl
-      if (best_choice is not None):
-        result.append(best_choice)
-    return result
+          .make_tidy())
+    return cosets.best_partition_representatives(
+      cb_op=self.change_of_basis_op_to_minimum_cell.inverse(),
+      omit_first_partition=True,
+      omit_negative_determinants=True)
 
   def show_possible_twin_laws(self):
     print "Space group of the intensities:", \
@@ -280,7 +263,7 @@ class array_cache(object):
         possible_choice = sc.inverse() * s_symop * cb_op * o_symop * oc
         possible_choice_as_hkl = possible_choice.as_hkl()
         if (best_choice_as_hkl is None
-            or compare_cb_op_as_hkl(
+            or sgtbx.compare_cb_op_as_hkl(
                  best_choice_as_hkl, possible_choice_as_hkl) > 0):
           best_choice = possible_choice
           best_choice_as_hkl = possible_choice_as_hkl

@@ -144,6 +144,30 @@ class left_decomposition_point_groups_only(object):
     if (len(self.partitions) * len(h) != len(g)):
       raise RuntimeError("h is not a subgroup of g")
 
+  def best_partition_representatives(self,
+        cb_op=None,
+        omit_first_partition=False,
+        omit_negative_determinants=False):
+    result = []
+    for partition in self.partitions:
+      best_choice, best_choice_as_hkl = None, None
+      for choice in partition:
+        if (omit_first_partition and choice.is_unit_mx()):
+          assert best_choice is None
+          break
+        if (omit_negative_determinants and choice.r().determinant() < 0):
+          continue
+        if (cb_op is not None):
+          choice = cb_op.apply(choice)
+        choice_as_hkl = choice.r().as_hkl()
+        if (best_choice_as_hkl is None
+            or sgtbx.compare_cb_op_as_hkl(
+                 best_choice_as_hkl, choice_as_hkl) > 0):
+          best_choice, best_choice_as_hkl = choice, choice_as_hkl
+      if (best_choice is not None):
+        result.append(best_choice)
+    return result
+
 def double_unique(g, h1, h2):
   """g is the supergroup
      h1 and h2 are subgroups
@@ -166,11 +190,6 @@ def double_unique(g, h1, h2):
         done.add(str( b ))
   return result
 
-def compare_cb_op_as_hkl(a, b):
-  if (len(a) < len(b)): return -1
-  if (len(a) > len(b)): return  1
-  return cmp(a, b)
-
 def construct_nice_cb_op(coset,
                          sym_transform_1_to_2,
                          to_niggli_1,
@@ -183,9 +202,12 @@ def construct_nice_cb_op(coset,
   for coset_element in coset:
     tmp_coset_element = sgtbx.change_of_basis_op(coset_element)
     tmp_coset_element = tmp_coset_element.new_denominators( to_niggli_1 )
-    tmp_op = to_niggli_1.inverse() * (tmp_coset_element * sym_transform_1_to_2) * to_niggli_2
-    if ( (best_choice_as_hkl is None) or
-         (compare_cb_op_as_hkl( best_choice_as_hkl, tmp_op.as_hkl() ) >0 ) ):
+    tmp_op = to_niggli_1.inverse() \
+           * (tmp_coset_element * sym_transform_1_to_2) \
+           * to_niggli_2
+    if (best_choice_as_hkl is None
+        or sgtbx.compare_cb_op_as_hkl(
+             best_choice_as_hkl, tmp_op.as_hkl()) > 0):
       best_choice = tmp_op
       best_choice_as_hkl =  tmp_op.as_hkl()
   assert best_choice is not None

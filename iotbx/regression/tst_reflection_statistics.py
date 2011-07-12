@@ -13,13 +13,6 @@ from cctbx.development import debug_utils
 from cStringIO import StringIO
 import sys
 
-def exercise_compare_cb_op_as_hkl():
-  l = ["k,h,l", "h,k,l"]
-  l.sort(reflection_statistics.compare_cb_op_as_hkl)
-  assert l == ["h,k,l", "k,h,l"]
-  l.sort(reflection_statistics.compare_cb_op_as_hkl)
-  assert l == ["h,k,l", "k,h,l"]
-
 def generate_mtz_files(space_group_info, anomalous_flag):
   crystal_symmetry = crystal.symmetry(
     unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
@@ -108,7 +101,6 @@ def exercise():
       "Skipping iotbx/regression/tst_reflection_statistics.py:" \
       " ccp4io not available"
     return
-  exercise_compare_cb_op_as_hkl()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 def run():
