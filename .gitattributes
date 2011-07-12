@@ -984,6 +984,12 @@ libtbx/xmlrpc_utils.py -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
+mmtbx/cablam/__init__.py -text
+mmtbx/cablam/cablam_annote.py -text
+mmtbx/cablam/cablam_math.py -text
+mmtbx/cablam/cablam_res.py -text
+mmtbx/cablam/cablam_training.py -text
+mmtbx/cablam/cjw_vectormath.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
