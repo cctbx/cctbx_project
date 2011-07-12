@@ -976,20 +976,26 @@ class set(crystal.symmetry):
       crystal_symmetry=crystal.symmetry.change_basis(self, cb_op),
       indices=cb_op.apply(self.indices()))
 
+  def expand_to_p1_iselection(self, build_iselection=True):
+    assert self.space_group_info() is not None
+    assert self.indices() is not None
+    assert self.anomalous_flag() is not None
+    return expand_to_p1_iselection(
+      space_group=self.space_group(),
+      anomalous_flag=self.anomalous_flag(),
+      indices=self.indices(),
+      build_iselection=build_iselection)
+
   def expand_to_p1(self):
     """Get a transformation of the miller set to spacegroup P1
 
     :returns: a new set of parameters (symmetry, miller indices, anomalous_flag) in spacegroup P1
     :rtype: set(cctbx.crystal.symmetry, cctbx.miller.indices, boolean)
     """
-    assert self.space_group_info() is not None
-    assert self.indices() is not None
-    assert self.anomalous_flag() is not None
-    p1_indices = expand_to_p1_indices(
-      space_group=self.space_group(),
-      anomalous_flag=self.anomalous_flag(),
-      indices=self.indices())
-    return set(self.cell_equivalent_p1(), p1_indices, self.anomalous_flag())
+    return set(
+      crystal_symmetry=self.cell_equivalent_p1(),
+      indices=self.expand_to_p1_iselection(build_iselection=False).indices,
+      anomalous_flag=self.anomalous_flag())
 
   def patterson_symmetry(self):
     assert self.anomalous_flag() == False
@@ -1782,15 +1788,14 @@ class array(set):
       data,
       self.sigmas())
 
-  def expand_to_p1(self, phase_deg=None):
+  def expand_to_p1(self, phase_deg=None, return_iselection=False):
     assert self.space_group_info() is not None
     assert self.indices() is not None
     assert self.anomalous_flag() is not None
     assert self.data() is not None
     p1_sigmas = None
+    iselection = None
     expand_type = {
-      "bool": expand_to_p1_bool,
-      "int": expand_to_p1_int,
       "complex_double": expand_to_p1_complex,
       "hendrickson_lattman": expand_to_p1_hendrickson_lattman,
     }.get(self.data().__class__.__name__, None)
@@ -1802,41 +1807,35 @@ class array(set):
         anomalous_flag=self.anomalous_flag(),
         indices=self.indices(),
         data=self.data())
-    elif (isinstance(self.data(), flex.double)):
-      assert phase_deg in (None, False, True)
-      if (phase_deg is None):
-        if (self.sigmas() is None):
-          p1 = expand_to_p1_double(
-            space_group=self.space_group(),
-            anomalous_flag=self.anomalous_flag(),
-            indices=self.indices(),
-            data=self.data())
-        else:
-          p1 = expand_to_p1_obs(
-            space_group=self.space_group(),
-            anomalous_flag=self.anomalous_flag(),
-            indices=self.indices(),
-            data=self.data(),
-            sigmas=self.sigmas())
-          p1_sigmas = p1.sigmas
-      else:
-        p1 = expand_to_p1_phases(
-          space_group=self.space_group(),
-          anomalous_flag=self.anomalous_flag(),
-          indices=self.indices(),
-          data=self.data(),
-          deg=phase_deg)
+      p1_data = p1.data
+    elif (phase_deg is not None):
+      assert phase_deg in [False, True]
+      assert self.sigmas() is None
+      assert isinstance(self.data(), flex.double)
+      p1 = expand_to_p1_phases(
+        space_group=self.space_group(),
+        anomalous_flag=self.anomalous_flag(),
+        indices=self.indices(),
+        data=self.data(),
+        deg=phase_deg)
+      p1_data = p1.data
     else:
-      raise RuntimeError(
-        "cctbx.miller.expand_to_p1(): unsupported array type:\n"
-        "  data: %s\n"
-        "  sigmas: %s" % (
-          repr(self.data()), repr(self.sigmas())))
-    assert self.sigmas() is None or p1_sigmas is not None
-    return array(
-      set(self.cell_equivalent_p1(), p1.indices, self.anomalous_flag()),
-      data=p1.data,
-      sigmas=p1_sigmas).set_observation_type(self)
+      assert phase_deg is None
+      p1 = self.expand_to_p1_iselection()
+      p1_data = self.data().select(p1.iselection)
+      if (self.sigmas() is not None):
+        p1_sigmas = self.sigmas().select(p1.iselection)
+      iselection = p1.iselection
+    result = set(
+      crystal_symmetry=self.cell_equivalent_p1(),
+      indices=p1.indices,
+      anomalous_flag=self.anomalous_flag()).array(
+        data=p1_data,
+        sigmas=p1_sigmas).set_observation_type(self)
+    if (return_iselection):
+      assert iselection is not None # not implemented
+      return result, iselection
+    return result
 
   def change_basis(self, cb_op, deg=None):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
