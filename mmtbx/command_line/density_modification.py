@@ -147,47 +147,6 @@ def run(args, log = sys.stdout):
       resolution_factor=params.grid_resolution_factor,
       map_type="2mFo-DFc").real_map_unpadded()
 
-  if 0:
-    from solve_resolve.resolve_python import density_modify_in_memory
-    from cctbx import miller
-    integrator = miller.phase_integrator(n_steps=360)
-    phase_source = integrator(
-      space_group=hl_coeffs.space_group(),
-      miller_indices=hl_coeffs.indices(),
-      hendrickson_lattman_coefficients=hl_coeffs.data())
-    fom = hl_coeffs.array(data=flex.abs(phase_source))
-    phases = fo.customized_copy(sigmas=None).phase_transfer(
-      phase_source=hl_coeffs).phases(deg=True)
-
-    map_coeffs = fo.customized_copy(
-      data=fo.data()*fom.data(),
-      sigmas=None).phase_transfer(phase_source=hl_coeffs)
-    resolve_dm = density_modify_in_memory.run(
-      fp_sigfp=fo,
-      fom=fom,
-      phib=phases,
-      #map_coeffs=map_coeffs,
-      hendrickson_lattman=hl_coeffs,
-      fom_start=fom,
-      phib_start=phases,
-      fp_sigfp_start=fo,
-      solvent_content=params.solvent_fraction,
-      mask_cycles=3,
-      minor_cycles=10,
-    )
-
-    resolve_map_coeffs = resolve_dm.map_coeffs_out_as_miller_array
-
-    fft_map = resolve_map_coeffs.fft_map(
-      resolution_factor=params.grid_resolution_factor
-      ).apply_sigma_scaling()
-    corr = flex.linear_correlation(
-      model_map.as_1d(), fft_map.real_map_unpadded().as_1d())
-    print "Starting dm/model correlation: %.6f" %corr.coefficient()
-    corr = flex.linear_correlation(
-      model_map.as_1d(), fft_map.real_map_unpadded().as_1d())
-    print "Final dm/model correlation:    %.6f" %corr.coefficient()
-
   dm = density_modify(fo, hl_coeffs, params, model_map=model_map)
 
   map_coeffs = dm.map_coeffs_in_original_setting
