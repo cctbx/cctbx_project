@@ -691,3 +691,8 @@ class _(boost.python.injector, structure_seminvariants):
 
   def number_of_continuous_allowed_origin_shifts(self):
     return self.select(False).size()
+
+def compare_cb_op_as_hkl(a, b):
+  if (len(a) < len(b)): return -1
+  if (len(a) > len(b)): return  1
+  return cmp(a, b)

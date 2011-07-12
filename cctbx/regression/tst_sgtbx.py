@@ -527,6 +527,13 @@ def exercise_change_of_basis_between_arbitrary_space_groups():
     assert (h.as_reference_setting().group()
             == h1.as_reference_setting().group())
 
+def exercise_compare_cb_op_as_hkl():
+  l = ["k,h,l", "h,k,l"]
+  l.sort(sgtbx.compare_cb_op_as_hkl)
+  assert l == ["h,k,l", "k,h,l"]
+  l.sort(sgtbx.compare_cb_op_as_hkl)
+  assert l == ["h,k,l", "k,h,l"]
+
 def run(args):
   exercise_change_of_basis_between_arbitrary_space_groups()
   exercise_sys_abs_equiv()
@@ -540,6 +547,7 @@ def run(args):
   exercise_tensor_constraints()
   exercise_space_group_contains()
   exercise_inversion_centring()
+  exercise_compare_cb_op_as_hkl()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
