@@ -29,8 +29,8 @@ def spotfinder_factory(absrundir,frames,phil_params):
   except Exception:
     pd['twotheta'] = '0.0'
 
-  from labelit import tnear2
-  Spotfinder = tnear2.sf2(pd,phil_params)
+  from spotfinder.applications.practical_heuristics import heuristics_base
+  Spotfinder = heuristics_base(pd,phil_params)
 
   for framenumber in local_frames:
     try:
