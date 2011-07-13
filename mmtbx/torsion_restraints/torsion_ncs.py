@@ -461,9 +461,26 @@ class torsion_ncs(object):
       i_seqs.append(atom.i_seq)
     return i_seqs
 
+  def extract_padded_sequence_from_chain(self, chain):
+    seq = []
+    padded_seq = []
+    last_resseq = 0
+    for rg in chain.residue_groups():
+      resseq = rg.resseq_as_int()
+      if (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          padded_seq.append('X')
+      last_resseq = resseq
+      resname = rg.unique_resnames()[0]
+      olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+      padded_seq.append(olc)
+    return "".join(padded_seq)
+
   def extract_sequence_and_sites(self, pdb_hierarchy, selection):
     seq = []
     result = []
+    padded_seq = []
+    last_resseq = 0
     counter = 0
     for model in pdb_hierarchy.models():
       for chain in model.chains():
@@ -475,9 +492,15 @@ class torsion_ncs(object):
             i_seqs = self.get_i_seqs(atoms)
             if(olc!="X") and self.is_residue_in_selection(i_seqs, selection):
               seq.append(olc)
+              resseq = rg.resseq_as_int()
+              if (resseq > (last_resseq + 1)) :
+                for x in range(resseq - last_resseq - 1) :
+                  padded_seq.append('X')
+              last_resseq = resseq
               result.append(group_args(i_seq = counter, rg = rg))
+              padded_seq.append(olc)
               counter += 1
-    return "".join(seq), result
+    return "".join(seq), "".join(padded_seq), result
 
   def _alignment(self, pdb_hierarchy,
                     params,
@@ -486,44 +509,64 @@ class torsion_ncs(object):
     if(log is None): log = sys.stdout
     res_match_hash = {}
     model_mseq_res_hash = {}
-    model_seq, model_structures = self.extract_sequence_and_sites(
-      pdb_hierarchy=pdb_hierarchy,
-      selection=selections[0])
+    model_seq, model_seq_padded, model_structures = \
+      self.extract_sequence_and_sites(
+        pdb_hierarchy=pdb_hierarchy,
+        selection=selections[0])
     ref_mseq_res_hash = {}
-    ref_seq, ref_structures = self.extract_sequence_and_sites(
-      pdb_hierarchy = pdb_hierarchy,
-      selection=selections[1])
+    ref_seq, ref_seq_padded, ref_structures = \
+      self.extract_sequence_and_sites(
+        pdb_hierarchy = pdb_hierarchy,
+        selection=selections[1])
     for struct in model_structures:
       model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
     for struct in ref_structures:
       ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
-    align_obj = mmtbx.alignment.align(
-      seq_a                 = model_seq,
-      seq_b                 = ref_seq,
-      gap_opening_penalty   = params.alignment.gap_opening_penalty,
-      gap_extension_penalty = params.alignment.gap_extension_penalty,
-      similarity_function   = params.alignment.similarity_matrix,
-      style                 = params.alignment.alignment_style)
-    alignment = align_obj.extract_alignment()
-    matches = alignment.matches()
-    exact_match_selections = alignment.exact_match_selections()
-    exact_a = tuple(exact_match_selections[0])
-    exact_b = tuple(exact_match_selections[1])
-    for i, i_seq in enumerate(alignment.i_seqs_a):
-      if i_seq != None:
-        if alignment.i_seqs_b[i] != None and matches[i] in ['*','|']:
-          res_match_hash[model_mseq_res_hash[i_seq]] = \
-            ref_mseq_res_hash[alignment.i_seqs_b[i]]
-    #print >> log, "  --> aligning model sequence to reference sequence"
-    #alignment.pretty_print(block_size  = 50,
-    #                       n_block     = 1,
-    #                       top_name    = "model",
-    #                       bottom_name = "ref",
-    #                       out         = log)
+    pg = mmtbx.alignment.pairwise_global(model_seq_padded,ref_seq_padded)
+    offset_i = 0
+    offset_j = 0
+    i = 0
+    j = 0
+    seq_j = pg.result2[j]
+    for seq_i in pg.result1:
+      seq_j = pg.result2[j]
+      if seq_i == seq_j and seq_i != 'X' and seq_j != 'X':
+        res_match_hash[model_mseq_res_hash[i-offset_i]] = \
+          ref_mseq_res_hash[j-offset_j]
+        i += 1
+        j += 1
+      else:
+        if seq_i == 'X' and seq_j == 'X':
+          i += 1
+          j += 1
+          offset_i += 1
+          offset_j += 1
+        elif (seq_i == 'X' and seq_j == '-') or \
+             (seq_i == '-' and seq_j == 'X'):
+          i += 1
+          j += 1
+          offset_i += 1
+          offset_j += 1
+        elif seq_i == 'X':
+          i += 1
+          j += 1
+          offset_i += 1
+        elif seq_j == 'X':
+          i += 1
+          j += 1
+          offset_j += 1
+        elif seq_i == '-':
+          i += 1
+          j += 1
+          offset_i += 1
+        elif seq_j == '-':
+          i += 1
+          j += 1
     return res_match_hash
 
   def show_ncs_summary(self, log=None):
     ncs_match_hash = {}
+    matched = []
     if(log is None): log = sys.stdout
     for dp_set in self.dp_ncs:
       key_set = []
@@ -542,15 +585,18 @@ class torsion_ncs(object):
         skip = False
         for i, key in enumerate(key_set):
           if i == 0:
-            if ncs_match_hash.get(key) is None:
+            master_key = key
+            if master_key in matched:
+              skip = True
+            elif ncs_match_hash.get(key) is None:
               ncs_match_hash[key] = []
             elif len(key_set) <= len(ncs_match_hash[key]):
               skip = True
             else:
               ncs_match_hash[key] = []
-            master_key = key
           elif not skip:
             ncs_match_hash[master_key].append(key)
+            matched.append(key)
     self.ncs_match_hash = ncs_match_hash
     def get_key_chain_num(res):
       return res[4:]
@@ -752,21 +798,6 @@ class torsion_ncs(object):
           seq.append(olc)
           res_seq.append(rg.resid())
     return "".join(seq), res_seq
-
-  def extract_padded_sequence_from_chain(self, chain):
-    seq = []
-    padded_seq = []
-    last_resseq = 0
-    for rg in chain.residue_groups():
-      resseq = rg.resseq_as_int()
-      if (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
-          padded_seq.append('X')
-      last_resseq = resseq
-      resname = rg.unique_resnames()[0]
-      olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-      padded_seq.append(olc)
-    return "".join(padded_seq)
 
   def add_ncs_dihedral_proxies(self, geometry):
     geometry.ncs_dihedral_proxies= \
