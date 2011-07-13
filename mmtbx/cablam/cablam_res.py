@@ -3,7 +3,7 @@
 #  and access instances of it.
 
 import sys
-from cjw_vectormath import veclen, vectorize
+from mmtbx.cablam.cjw_vectormath import veclen, vectorize
 
 #{{{ linked_residue class
 #This class holds information on protein residues (as defined by residue_group
