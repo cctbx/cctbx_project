@@ -22,6 +22,25 @@ import libtbx.load_env
 import sys, os
 #from mmtbx.cablam import cablam_res, cablam_math
 
+#{{{ get_summary
+def get_summary():
+  summary = """
+  phenix.cablam_annote model.pdb [params.eff] [options ...]
+
+Options:
+
+  file_name     specify input pdb file
+  kin           request kinemage output (true or false)
+
+Examples:
+
+  phenix.cablam_annote 1ubq.pdb
+  phenix.cablam_annote file_name=1ubq.pdb
+  phenix.cablam_annote 1ubq.pdb kin=True
+"""
+  return summary
+#}}}
+
 def annote_dssp_3d(resdata, dsspcode):
   picklefile = libtbx.env.find_in_repositories(
     relative_path=("chem_data/cablam_data/general."+dsspcode+".calc3d.pickle"),
