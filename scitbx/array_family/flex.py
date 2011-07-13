@@ -29,6 +29,9 @@ class _(boost.python.injector, grid):
     print >> f, "all:", self.all()
     return self
 
+def sorted(data, reverse=False):
+  return data.select(sort_permutation(data=data, reverse=reverse))
+
 def show(a):
   assert a.nd() == 2
   assert a.is_0_based()
@@ -65,6 +68,7 @@ def lower_bidiagonal(d, f):
 
 def export_to(target_module_name):
   export_list = [
+    "sorted",
     "show",
     "rows",
     "to_list",
@@ -205,7 +209,7 @@ class _(boost.python.injector, mersenne_twister):
     assert sample_size <= population_size
     perm = self.random_permutation(size=population_size)
     perm.resize(sample_size)
-    return perm.select(sort_permutation(perm))
+    return sorted(perm)
 
 random_generator = ext.mersenne_twister(scitbx.random.mt19937)
 
