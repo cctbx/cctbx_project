@@ -5,9 +5,10 @@ from cctbx import crystal
 from iotbx.option_parser import option_parser
 import iotbx.phil
 from iotbx.reflection_file_reader import any_reflection_file
-from libtbx.utils import show_times_at_exit
+from libtbx.utils import show_times_at_exit, Sorry
 from libtbx import runtime_utils
-from libtbx import group_args
+from libtbx import easy_pickle
+from libtbx import adopt_init_args
 import os, sys
 
 master_params_including_IO_str = """\
@@ -34,7 +35,7 @@ density_modification {
         .type = path
         .help = The file name for the final density-modified map
         .short_caption = Output map file
-        .style = bold noauto
+        .style = bold noauto new_file file_type:mtz
       format = xplor *ccp4
         .type = choice
         .short_caption = Map format
@@ -48,6 +49,7 @@ density_modification {
         .type = path
         .help = The file name for the coefficients of the final density-modified map
         .short_caption = Output map coefficients
+        .style = bold noauto new_file
       format = *mtz cns
         .optional=True
         .type = choice
@@ -147,6 +149,7 @@ def run(args, log = sys.stdout, as_gui_program=False):
       map_type="2mFo-DFc").real_map_unpadded()
 
   dm = density_modify(fo, hl_coeffs, params, model_map=model_map,
+    log=log,
     as_gui_program=as_gui_program)
 
   map_coeffs = dm.map_coeffs_in_original_setting
@@ -182,9 +185,9 @@ def run(args, log = sys.stdout, as_gui_program=False):
        column_root_label="FWT",
        label_decorator=iotbx.mtz.ccp4_label_decorator())
       mtz_dataset.mtz_object().write(map_coeff_params.file_name)
-  return group_args(
+  return result(
     map_file=map_params.file_name,
-    map_coeff_file=map_coeff_params.file_name,
+    map_coeffs_file=map_coeff_params.file_name,
     stats=dm.get_stats())
 
 
@@ -193,6 +196,7 @@ def run(args, log = sys.stdout, as_gui_program=False):
 class density_modify(density_modification.density_modification):
 
   def __init__(self, fo, hl_coeffs, params, model_map=None,
+      log=None,
       as_gui_program=False):
     self.model_map = model_map
     self.correlation_coeffs = flex.double()
@@ -228,7 +232,7 @@ def validate_params (params) :
                 "not specified.")
   if (params_.input.experimental_phases.labels is None) :
     raise Sorry("Experimental phase labels not specified.")
-  if ((params_.output.map.file_name is none) and
+  if ((params_.output.map.file_name is None) and
       (params_.output.map_coefficients.file_name is None)) :
     raise Sorry("No output requested!")
   if (params_.solvent_fraction is None) :
@@ -236,9 +240,29 @@ def validate_params (params) :
 
 class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
-    return run(args=list(self.args),
-               log=sys.stdout,
-               as_gui_program=True)
+    result = run(args=list(self.args),
+                 log=sys.stdout,
+                 as_gui_program=True)
+    config_file = self.args[0]
+    pkl_file = config_file[:-4] + ".pkl"
+    easy_pickle.dump(pkl_file, result)
+    return result
+
+class result (object) :
+  def __init__ (self, map_file, map_coeffs_file, stats) :
+    adopt_init_args(self, locals())
+
+  def finish_job (self) :
+    output_files = []
+    if (self.map_coeffs_file is not None) :
+      output_files.append((self.map_file, "Map coefficients"))
+    if (self.map_file is not None) :
+      output_files.append((self.map_file, "Real-space map"))
+    stats = [
+      ("FOM", self.stats.get_cycle_stats(-1).fom),
+      ("Skewness", self.stats.get_cycle_stats(-1).skewness)
+    ]
+    return (output_files, stats)
 
 if __name__ == '__main__':
   show_times_at_exit()
