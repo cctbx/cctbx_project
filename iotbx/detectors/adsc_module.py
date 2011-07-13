@@ -76,7 +76,7 @@ class ADSCModule(ADSCImage):
   def set_beam_center_convention(self,beam_center_convention):
 
     #previously part of the module_parameters function
-    #from labelit.config_detector import beam_center_convention_from_image_object
+    #from iotbx.detectors.context.config_detector import beam_center_convention_from_image_object
     #beam_center_convention = beam_center_convention_from_image_object(object)
     print "CC",beam_center_convention
     assert self.object.beam_center_reference_frame == "instrument"

@@ -256,7 +256,7 @@ class heuristics_base(object):
     pimage.read()
     #print "Detector type",type(pimage)
     if not pd.has_key('endstation'):
-      from labelit.beamline import endstation
+      from iotbx.detectors.context import endstation
       pd['endstation']=endstation.EndStation_from_ImageObject(pimage,self.phil_params)
       for key in pd['endstation'].mosflm():
         pd[key]=pd['endstation'].mosflm()[key]
