@@ -17,6 +17,8 @@ from libtbx.utils import plural_s, hashlib_md5, date_and_time
 from libtbx import Auto
 from cStringIO import StringIO
 import sys
+import os
+op = os.path
 
 def is_pdb_file(file_name):
   pdb_raw_records = smart_open.for_reading(
@@ -38,6 +40,16 @@ def is_pdb_file(file_name):
         if (atom.name != "    "):
           return True
   return False
+
+def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
+  if (len(pdb_id) != 4):
+    raise RuntimeError("Invalid PDB ID: %s (must be four characters)" % pdb_id)
+  pdb_id = pdb_id.lower()
+  pdb_mirror = os.environ[environ_key]
+  result = op.join(pdb_mirror, pdb_id[1:3], "pdb%s.ent.gz" % pdb_id)
+  if (not op.isfile(result)):
+    raise RuntimeError("No file with PDB ID %s (%s)" % (pdb_id, result))
+  return result
 
 cns_dna_rna_residue_names = {
   "ADE": "A",
@@ -553,7 +565,11 @@ class Please_pass_string_or_None(object): pass
 def input(
     file_name=None,
     source_info=Please_pass_string_or_None,
-    lines=None):
+    lines=None,
+    pdb_id=None):
+  if (pdb_id is not None):
+    assert file_name is not None
+    file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     return ext.input(
       source_info="file " + file_name,
