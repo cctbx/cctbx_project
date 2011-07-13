@@ -262,6 +262,17 @@ class server (object) :
     kwds['simple_file_name'] = True
     return self._write_ccp4_map(**kwds)
 
+  def convert_ccp4_map (self, **kwds) :
+    map_coeffs_list = list(self.get_ccp4_maps())
+    files = []
+    kwds['simple_file_name'] = True
+    for map_coeffs in map_coeffs_list :
+      if (map_coeffs is None) : continue
+      kwds['map_coeffs'] = map_coeffs
+      output_file = self._write_ccp4_map(**kwds)
+      files.append(output_file)
+    return files
+
   def convert_phenix_maps (self, file_base, **kwds) :
     all_maps = self.get_phenix_maps()
     files = []
@@ -398,3 +409,7 @@ def convert_resolve_map (mtz_file, **kwds) :
 def convert_solve_map (mtz_file, **kwds) :
   server_ = server(file_name=mtz_file)
   return server_.convert_solve_map(**kwds)
+
+def convert_ccp4_map (mtz_file, **kwds) :
+  server_ = server(file_name=mtz_file)
+  return server_.convert_ccp4_map(**kwds)
