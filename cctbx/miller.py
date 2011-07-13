@@ -28,6 +28,8 @@ import types
 import sys
 from scitbx import matrix
 
+fp_eps_double = scitbx.math.floating_point_epsilon_double_get()
+
 generate_r_free_params_str = r_free_utils.generate_r_free_params_str
 
 def _slice_or_none(array, slice_object):
@@ -600,7 +602,8 @@ class set(crystal.symmetry):
       d_min=d_min,
       d_max=d_max)
     if (d_min_was_none):
-      result = result.select(result.d_spacings().data() >= d_min_exact)
+      result = result.select(
+        result.d_spacings().data() >= d_min_exact*(1-fp_eps_double))
     return result
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
