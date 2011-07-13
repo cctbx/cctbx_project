@@ -2,6 +2,7 @@
 
 from iotbx import pdb
 import libtbx.phil
+from libtbx.utils import Usage
 import sys, os
 
 master_phil = libtbx.phil.parse("""
@@ -37,7 +38,7 @@ def run(args):
   work_params = work_phil.extract()
   if len(work_params.cablam.file_name) == 0 :
     if len(pdb_files) == 0 :
-      summary = "insert help txt here"
+      summary = cablam_annote.get_summary()
       raise Usage(summary)
     else :
       for pdb_file in pdb_files:
