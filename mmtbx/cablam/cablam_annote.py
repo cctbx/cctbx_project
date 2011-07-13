@@ -18,11 +18,9 @@ from libtbx import easy_pickle
 #from libtbx.utils import Sorry
 import libtbx.load_env
 #import weakref
-import argparse
-from iotbx import pdb
 
 import sys, os
-from mmtbx.cablam import cablam_res, cablam_math
+#from mmtbx.cablam import cablam_res, cablam_math
 
 def annote_dssp_3d(resdata, dsspcode):
   picklefile = libtbx.env.find_in_repositories(
@@ -197,58 +195,4 @@ def output_to_kin_dssp(resdata, reskeys, dsspcode, probrange=(0.0,0.0),
       kinline = "{"+dsspcode+str(dssprob)+"} "+ " ".join(CAxyz[0],CAxyz[1],CAxyz[2]) +"\n"
       writeto.write(kinline)
       #print "{",dsspcode,dssprob,"}",CAxyz[0],CAxyz[1],CAxyz[2]
-#}}}
-
-def run():
-  parser = argparse.ArgumentParser()
-  parser.add_argument('file_or_dir',
-    help='the path to the file or directory to be operated on')
-  parser.add_argument('--kin', action='store_true',
-    help='flag to get kinemage output')
-
-  args = parser.parse_args()
-
-  if os.path.isdir(args.file_or_dir):
-    fileset = os.listdir(args.file_or_dir)
-    dirpath = args.file_or_dir
-  elif os.path.isfile(args.file_or_dir):
-    fileset = [args.file_or_dir]
-    dirpath = None
-  else:
-    sys.stderr.write("Could not identify valid target file or dir.\n")
-    ## print the help section
-    sys.exit()
-
-  for filename in fileset:
-    if dirpath: #must add the path if using the listed contents of a dir
-      filename = os.path.join(dirpath,filename)
-    else:
-      pass
-
-    pdb_io = pdb.input(filename)
-    pdbid = os.path.basename(filename)
-
-    sys.stderr.write(pdbid+'\n')
-    hierarchy = pdb_io.construct_hierarchy()
-    resdata = cablam_res.construct_linked_residues(
-      hierarchy, targetatoms=["CA","O","C","N"], pdbid=pdbid)
-
-    cablam_math.CApseudos(resdata, dodihedrals=True, doangles=True)
-
-    dsspcodes = ['H','G','I','E','B','S','T','X']
-    for dsspcode in dsspcodes:
-      annote_dssp_3d(resdata,dsspcode)
-
-    reskeys = resdata.keys()
-    reskeys.sort()
-
-    if resdata:
-      if args.kin:
-        print_annoted_kin(resdata)
-      else:
-        print_annoted_text_human(resdata)
-
-#{{{ __main__
-if __name__ == "__main__":
-  run()
 #}}}
