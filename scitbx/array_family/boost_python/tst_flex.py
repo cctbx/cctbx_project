@@ -890,26 +890,32 @@ def exercise_select():
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [4]
   #
-  def iselection_intersection(a, b):
-    return list(flex.size_t(a).intersection(other=flex.size_t(b)))
-  assert iselection_intersection([], []) == []
-  assert iselection_intersection([1,2,3,4], [1,2,3,4]) == [1,2,3,4]
-  assert iselection_intersection([], [1,2,3,4]) == []
-  assert iselection_intersection([1,2,3,4], []) == []
-  assert iselection_intersection([1], [1,2,3,4]) == [1]
-  assert iselection_intersection([1,2,3,4], [1]) == [1]
-  assert iselection_intersection([4], [1,2,3,4]) == [4]
-  assert iselection_intersection([1,2,3,4], [4]) == [4]
-  assert iselection_intersection([1,4], [1,2,3,4]) == [1,4]
-  assert iselection_intersection([1,2,3,4], [1,4]) == [1,4]
-  assert iselection_intersection([1,4,5], [1,2,3,4]) == [1,4]
-  assert iselection_intersection([1,2,3,4], [1,4,5]) == [1,4]
-  assert iselection_intersection([1,2,3,4], [2]) == [2]
-  assert iselection_intersection([2], [1,2,3,4]) == [2]
-  assert iselection_intersection([1,2,3,4], [2,3]) == [2,3]
-  assert iselection_intersection([2,3], [1,2,3,4]) == [2,3]
-  assert iselection_intersection([1,2,3,4], [2,4]) == [2,4]
-  assert iselection_intersection([2,4], [1,2,3,4]) == [2,4]
+  def check(a, b, expected):
+    a = flex.size_t(a)
+    b = flex.size_t(b)
+    result = a.intersection(other=b)
+    assert list(result) == expected
+    a_i_seqs, b_i_seqs = a.intersection_i_seqs(other=b)
+    assert list(a.select(a_i_seqs)) == expected
+    assert list(b.select(b_i_seqs)) == expected
+  check([], [], [])
+  check([1,2,3,4], [1,2,3,4], [1,2,3,4])
+  check([], [1,2,3,4], [])
+  check([1,2,3,4], [], [])
+  check([1], [1,2,3,4], [1])
+  check([1,2,3,4], [1], [1])
+  check([4], [1,2,3,4], [4])
+  check([1,2,3,4], [4], [4])
+  check([1,4], [1,2,3,4], [1,4])
+  check([1,2,3,4], [1,4], [1,4])
+  check([1,4,5], [1,2,3,4], [1,4])
+  check([1,2,3,4], [1,4,5], [1,4])
+  check([1,2,3,4], [2], [2])
+  check([2], [1,2,3,4], [2])
+  check([1,2,3,4], [2,3], [2,3])
+  check([2,3], [1,2,3,4], [2,3])
+  check([1,2,3,4], [2,4], [2,4])
+  check([2,4], [1,2,3,4], [2,4])
   #
   a = flex.double(range(3,12))
   for stl_iterable in [stl.vector.unsigned, stl.set.unsigned]:

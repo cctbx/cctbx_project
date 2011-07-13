@@ -52,40 +52,67 @@ namespace scitbx { namespace af {
   }
 
   template <typename IntType, typename IntTypeOther>
+  struct intersection_with_tracking
+  {
+    shared<IntType> matching_elements;
+    shared<std::size_t> self_i_seqs;
+    shared<std::size_t> other_i_seqs;
+
+    intersection_with_tracking() {}
+
+    intersection_with_tracking(
+      const_ref<IntType> const& self,
+      const_ref<IntTypeOther> const& other,
+      bool track_matching_elements,
+      bool track_i_seqs)
+    {
+      if (self.size() > 0 && other.size() > 0) {
+        IntType si = self[0];
+        std::size_t i = 1;
+        IntTypeOther oj = other[0];
+        std::size_t j = 1;
+        while (true) {
+          while (si < oj) {
+            if (i == self.size()) return;
+            SCITBX_ASSERT(si < self[i]);
+            si = self[i];
+            i++;
+          }
+          while (oj < si) {
+            if (j == other.size()) return;
+            SCITBX_ASSERT(oj < other[j]);
+            oj = other[j];
+            j++;
+          }
+          if (oj == si) {
+            if (track_matching_elements) {
+              matching_elements.push_back(si);
+            }
+            if (track_i_seqs) {
+              self_i_seqs.push_back(i-1);
+              other_i_seqs.push_back(j-1);
+            }
+            if (i == self.size()) break;
+            SCITBX_ASSERT(si < self[i]);
+            si = self[i];
+            i++;
+          }
+        }
+      }
+    }
+  };
+
+  template <typename IntType, typename IntTypeOther>
   shared<IntType>
   intersection(
     const_ref<IntType> const& self,
     const_ref<IntTypeOther> const& other)
   {
-    shared<IntType> result;
-    if (self.size() > 0 && other.size() > 0) {
-      IntType si = self[0];
-      std::size_t i = 1;
-      IntTypeOther oj = other[0];
-      std::size_t j = 1;
-      while (true) {
-        while (si < oj) {
-          if (i == self.size()) return result;
-          SCITBX_ASSERT(si < self[i]);
-          si = self[i];
-          i++;
-        }
-        while (oj < si) {
-          if (j == other.size()) return result;
-          SCITBX_ASSERT(oj < other[j]);
-          oj = other[j];
-          j++;
-        }
-        if (oj == si) {
-          result.push_back(si);
-          if (i == self.size()) break;
-          SCITBX_ASSERT(si < self[i]);
-          si = self[i];
-          i++;
-        }
-      }
-    }
-    return result;
+    return intersection_with_tracking<IntType, IntTypeOther>(
+      self,
+      other,
+      /*track_matching_elements*/ true,
+      /*track_i_seqs*/ false).matching_elements;
   }
 
   template <typename IntType>
