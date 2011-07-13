@@ -14,7 +14,7 @@ import argparse
 #Commandline parsing may be be changed to phil at some point
 from iotbx import pdb  #contains the very useful hierarchy
 from cctbx import geometry_restraints  #contains dihedral and angle calculators
-import cablam_res, cablam_math
+from mmtbx.cablam import cablam_res, cablam_math
 
 #{{{ prunerestype function
 #Deletes all members of a given residue type from a dictionary of residues

@@ -22,7 +22,7 @@ import argparse
 from iotbx import pdb
 
 import sys, os
-import cablam_res, cablam_math
+from mmtbx.cablam import cablam_res, cablam_math
 
 def annote_dssp_3d(resdata, dsspcode):
   picklefile = libtbx.env.find_in_repositories(

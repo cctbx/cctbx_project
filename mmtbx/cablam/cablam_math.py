@@ -11,7 +11,7 @@
 #  be caught.
 #Yes, the residue numbering is idiosyncratic
 
-import cjw_vectormath
+from mmtbx.cablam import cjw_vectormath
 from cctbx import geometry_restraints
 
 #{{{ CA pseudodihedral/angle calculator
