@@ -193,8 +193,7 @@ class density_modification(object):
       summary += "Mean FOM: %.4f\n" %flex.mean(fom.select(fom>0))
       print >> self.log, summary
       libtbx.call_back(message="summary", data=summary)
-
-    # XXX initialize printable statistics (which may or may not be used)
+    # XXX initialize printable statistics
     self.truncate_min = None
     self.truncate_min_percent = None
     self.truncate_max = None
@@ -205,6 +204,14 @@ class density_modification(object):
       (self.params.density_truncation.fraction_max is not None or
        self.params.density_truncation.fraction_min is not None)
     self._stats = dm_stats()
+    self._stats.add_cycle(
+      cycle=0,
+      mean_solvent_density=self.mean_solvent_density,
+      mean_protein_density=self.mean_protein_density,
+      f000_over_v=self.f000_over_v,
+      rms_solvent_density=self.rms_solvent_density,
+      rms_protein_density=self.rms_protein_density,
+      fom=flex.mean(fom.select(fom>0)))
 
     libtbx.call_back("start_progress_bar",
         data=group_args(label="Running %d cycles..." % self.max_iterations,
@@ -409,7 +416,7 @@ class density_modification(object):
     if out is None: out = sys.stdout
     self.more_statistics = maptbx.more_statistics(self.map)
     self._stats.add_cycle(
-      i_cycle=self.i_cycle,
+      cycle=self.i_cycle+1,
       radius=self.radius,
       mask_percent=self.mask_percent,
       mean_solvent_density=self.mean_solvent_density,
@@ -433,10 +440,14 @@ class density_modification(object):
       skewness=self.more_statistics.skewness())
     summary = self._stats.format_summary()
     print >> self.log, summary
+    self.log.flush()
     if (not self.as_gui_program) :
       libtbx.call_back(message="summary",
         data=summary,
         accumulate=True)
+    else :
+      libtbx.call_back(message="plot_current_stats",
+        data=self._stats.get_fom_for_plot())
 
   def ncs_averaging(self):
     if not self.params.ncs_averaging: return
@@ -479,7 +490,7 @@ class dm_stats (object) :
   def format_summary (self, i_cycle=-1) :
     stats = self._stats[i_cycle]
     summary = "#"*80 + "\n"
-    summary += "Cycle %i\n" %(stats.i_cycle+1)
+    summary += "Cycle %i\n" %(stats.cycle)
     summary += "Mask averaging radius: %.2f\n" % stats.radius
     summary += "Solvent mask volume (%%): %.4f\n" % stats.mask_percent
     summary += "Mean solvent density: %.4f\n" % stats.mean_solvent_density
@@ -512,3 +523,6 @@ class dm_stats (object) :
     summary += "#"*80 + "\n"
     summary += "\n"
     return summary
+
+  def get_fom_for_plot (self) :
+    return [ stats.fom for stats in self._stats ]
