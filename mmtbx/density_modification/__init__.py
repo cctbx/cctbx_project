@@ -1,6 +1,7 @@
 from mmtbx.scaling.sigmaa_estimation \
      import sigmaa_estimator, sigmaa_estimator_params
 from mmtbx.scaling import relative_scaling
+import iotbx.data_plots
 from cctbx import adptbx
 from cctbx import maptbx, miller
 from cctbx.array_family import flex
@@ -484,8 +485,25 @@ class dm_stats (object) :
   def get_cycle_stats (self, i_cycle=-1) :
     return self._stats[i_cycle]
 
-  def format_loggraph (self) :
-    pass
+  def extract_loggraph (self) :
+    table = iotbx.data_plots.table_data(
+      title="Density modification statistics by cycle",
+      column_names=["cycle","fom","mean_protein_density","mean_solvent_density",
+                    "rms_protein_density","rms_solvent_density"],
+      column_labels=["Cycle", "Figure of Merit", "Mean protein density",
+        "Mean solvent density", "RMS protein density", "RMS solvent density"],
+      graph_names=["FOM vs. cycle", "Mean density vs. cycle",
+        "RMS density vs. cycle"],
+      graph_columns=[[0,1],[0,2,3],[0,4,5]])
+    for stats in self._stats :
+      table.add_row([
+        stats.cycle,
+        stats.fom,
+        stats.mean_protein_density,
+        stats.mean_solvent_density,
+        stats.rms_protein_density,
+        stats.rms_solvent_density])
+    return table
 
   def format_summary (self, i_cycle=-1) :
     stats = self._stats[i_cycle]

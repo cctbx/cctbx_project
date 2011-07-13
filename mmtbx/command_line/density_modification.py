@@ -55,6 +55,7 @@ density_modification {
         .type = choice
     }
   }
+  include scope libtbx.phil.interface.tracking_params
 %s
 }
 """ %(mmtbx.utils.data_and_flags_str,
@@ -252,16 +253,23 @@ class result (object) :
   def __init__ (self, map_file, map_coeffs_file, stats) :
     adopt_init_args(self, locals())
 
+  def extract_loggraph (self) :
+    return self.stats.extract_loggraph()
+
+  def get_final_job_statistics (self) :
+    stats = [
+      ("FOM", self.stats.get_cycle_stats(-1).fom),
+      ("Skewness", self.stats.get_cycle_stats(-1).skewness)
+    ]
+    return stats
+
   def finish_job (self) :
     output_files = []
     if (self.map_coeffs_file is not None) :
       output_files.append((self.map_file, "Map coefficients"))
     if (self.map_file is not None) :
       output_files.append((self.map_file, "Real-space map"))
-    stats = [
-      ("FOM", self.stats.get_cycle_stats(-1).fom),
-      ("Skewness", self.stats.get_cycle_stats(-1).skewness)
-    ]
+    stats = self.get_final_job_statistics()
     return (output_files, stats)
 
 if __name__ == '__main__':
