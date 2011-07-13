@@ -568,7 +568,7 @@ def input(
     lines=None,
     pdb_id=None):
   if (pdb_id is not None):
-    assert file_name is not None
+    assert file_name is None
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     return ext.input(
