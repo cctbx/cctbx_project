@@ -207,6 +207,8 @@ input {
       .type=space_group
   }
 }
+model_statistics = None
+  .type = bool
 pdb_interpretation
   .short_caption = PDB Interpretation
   .style = menu_item
@@ -635,7 +637,7 @@ def run(args, command_name="phenix.pdbtools"):
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
 ### show_geometry_statistics and exit
-  if(command_line_interpreter.command_line.options.show_geometry_statistics):
+  if(command_line_interpreter.params.model_statistics):
     utils.print_header("Geometry statistics", out = log)
     command_line_interpreter.processed_pdb_file.log = None # to disable output
     geometry = command_line_interpreter.processed_pdb_file.\
@@ -644,21 +646,27 @@ def run(args, command_name="phenix.pdbtools"):
       geometry = geometry,
       normalization = True)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
-    model_statistics.geometry(
+    mso = model_statistics.geometry(
       sites_cart         = xray_structure.sites_cart(),
       pdb_hierarchy      = pdb_hierarchy,
       hd_selection       = xray_structure.hd_selection(),
       ignore_hd          = command_line_interpreter.command_line.options.ignore_hydrogens,
-      restraints_manager = restraints_manager).show(out = log)
-    return None
-### show_adp_statistics and exit
-  if(command_line_interpreter.command_line.options.show_adp_statistics):
+      molprobity_scores  = True,
+      restraints_manager = restraints_manager)
+    mso.show(out = log)
+    print >> log
+    mso.show_molprobity_scores(out = log, prefix="")
     utils.print_header("ADP statistics", out = log)
     model = mmtbx.model.manager(
-      xray_structure = xray_structure,
-      pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
-      log = log)
+      xray_structure     = xray_structure,
+      pdb_hierarchy      = all_chain_proxies.pdb_hierarchy,
+      restraints_manager = restraints_manager,
+      log                = log)
     model.show_adp_statistics(out = log, padded = True)
+    print >> log
+    print >> log, "Mean(|Bi-Bj|): %-6.2f"%model.rms_b_iso_or_b_equiv_bonded()
+    print >> log, "  Bi and Bj are B-factors of bonded atoms i and j"
+    print >> log
     return None
 ### add hydrogens and exit
   if(command_line_interpreter.command_line.options.add_h):
@@ -880,12 +888,6 @@ class interpreter:
       .option(None, "--quiet",
         action="store_true",
         help="Suppress output to screen")
-      .option("--show_adp_statistics",
-          action="store_true",
-          help="Show complete ADP (B-factors) statistics.")
-      .option("--show_geometry_statistics",
-          action="store_true",
-          help="Show complete ADP (B-factors) statistics.")
       .option("--add_h",
           action="store_true",
           help="Add H atoms to a model using Reduce program.")

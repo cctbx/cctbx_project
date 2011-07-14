@@ -23,7 +23,8 @@ class kick_map(object):
     map_coeff_data = None
     counter = 0
     b_sh_cntr = flex.double()
-    ss = 1./flex.pow2(fmodel_tmp.f_obs().d_spacings().data()) / 4.
+    ss = 1./flex.pow2(
+      fmodel_tmp.f_obs().average_bijvoet_mates().d_spacings().data()) / 4.
     sites_frac = fmodel.xray_structure.sites_frac()
     for kick_size in kick_sizes:
       b_ext = None
@@ -38,6 +39,12 @@ class kick_map(object):
         self.map_coeffs = fmodel_tmp.electron_density_map().map_coefficients(
             map_type = map_type,
             external_alpha_fom_source = map_helper_obj)
+        #
+        if(self.map_coeffs.anomalous_flag()):
+          self.map_coeffs = self.map_coeffs.average_bijvoet_mates()
+        assert isotropize_helper.iso_scale.indices().all_eq(
+          self.map_coeffs.indices())
+        #
         if(isotropize):
           self.map_coeffs = self.map_coeffs.array(
             data = self.map_coeffs.data()*isotropize_helper.iso_scale.data())

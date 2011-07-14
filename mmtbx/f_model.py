@@ -847,20 +847,13 @@ class manager(manager_mixin):
     if(self.xray_structure is not None):
       if(self.xray_structure.hd_selection().count(True) > 0):
         hydrogens_present = True
-    def r_solv_shrink(a,b,x_range):
-      r_shrinks = x_range
-      r_solvs = []
-      for r_shrink in r_shrinks:
-        r_solvs.append(max(a*r_shrink - b, 0.45))
-      return r_shrinks, r_solvs
-    def r_solv_shrink2(a,b,c,x_range):
-      r_shrinks = x_range
-      r_solvs = []
-      for r_shrink in r_shrinks:
-        r_solvs.append(max(a*r_shrink**2 - b*r_shrink + c, 0.45))
-      return r_shrinks, r_solvs
+    def r_solv_shrink(a,b,r_solv_range):
+      r_shrinks = []
+      for r_solv in r_solv_range:
+        r_shrinks.append(a*r_solv - b)
+      return r_shrinks, r_solv_range
     if(thorough):
-      trial_range = [0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+      trial_range = [0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
       r_shrinks = []
       r_solvs = []
       for tr1 in trial_range:
@@ -870,33 +863,8 @@ class manager(manager_mixin):
       r_solv = trial_range[:]
       r_shrink = trial_range[:]
     else:
-      d_min = self.f_obs().d_min()
-      if(d_min < 1.25):
-        if(hydrogens_present):
-          r_shrinks, r_solvs = r_solv_shrink(a=0.9881, b=0.1815,
-            x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2])
-        else:
-          r_shrinks, r_solvs = r_solv_shrink(a=1.2792, b=0.5144,
-            x_range=[0.8,0.9,1.0,1.1,1.3])
-      elif(d_min >= 1.25 and d_min < 1.5):
-        if(hydrogens_present):
-          r_shrinks, r_solvs = r_solv_shrink(a=1.1158, b=0.3393,
-            x_range=[0.7,0.8,0.9,1.0,1.1,1.2,1.3])
-        else:
-          r_shrinks, r_solvs = r_solv_shrink(a=1.2422, b=0.4963,
-            x_range=[0.7,0.8,0.9,1.0,1.1,1.2,1.3])
-      elif(d_min >= 1.5 and d_min < 2.0):
-        r_shrinks, r_solvs = r_solv_shrink(a=1.2187, b=0.4602,
-          x_range=[0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
-      elif(d_min >= 2.0 and d_min < 2.5):
-        r_shrinks, r_solvs = r_solv_shrink(a=1.347, b=0.6311,
-          x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
-      elif(d_min >= 2.5 and d_min < 3.0):
-        r_shrinks, r_solvs = r_solv_shrink2(a=1.5772, b=2.2227, c=1.3614,
-          x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
-      elif(d_min >= 3.0):
-        r_shrinks, r_solvs = r_solv_shrink2(a=0.4941, b=0.1717, c=0.4348,
-          x_range=[0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4])
+      r_shrinks, r_solvs = r_solv_shrink(a=1.2821, b=0.554,
+        r_solv_range=[0.8,0.9,1.0,1.1,1.2,1.3,1.4])
     trial_params = zip(r_solvs, r_shrinks)
     parallel = False
     mask_results = []

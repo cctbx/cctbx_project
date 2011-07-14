@@ -52,6 +52,9 @@ tls_master_params = iotbx.phil.parse("""\
     .type = bool
   eps                         = 1.e-6
     .type = float
+  min_tls_group_size = 5
+    .type = int
+    .help = min number of atoms allowed per TLS group
 """)
 
 individual_adp_master_params = iotbx.phil.parse("""\
@@ -256,9 +259,8 @@ class refine_adp(object):
       default_weight = self.target_weights.adp_weights_result.wx*\
           self.target_weights.adp_weights_result.wx_scale
       if(self.target_weights.twp.optimize_adp_weight):
-        wx_scale = [0.,0.0625,0.125,0.25,0.5,0.75,1.,1.125,1.25,1.5,1.75,2.,2.5,
-          3.,3.5,4.,4.5,5.]
-        trial_weights = list( flex.double(wx_scale)*self.target_weights.xyz_weights_result.wx )
+        wx_scale = [0.03,0.125,0.5,1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.]
+        trial_weights = list( flex.double(wx_scale)*self.target_weights.adp_weights_result.wx )
         self.wx_scale = 1
       else:
         trial_weights = [self.target_weights.adp_weights_result.wx]
@@ -295,28 +297,30 @@ class refine_adp(object):
         w      .append(result.weight)
     #
     if(len(trial_weights)>1):
-      # sort by r-free
-      sel = flex.sort_permutation(rf)
-      rw,rf,rfrw,deltab,w=self.select(
-        rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
-      # select equally good results
-      sel = (rf <= rf[0]+r_free_range_width)
-      rw,rf,rfrw,deltab,w= self.select(
-        rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
+#      # sort by r-free
+#      sel = flex.sort_permutation(rf)
+#      rw,rf,rfrw,deltab,w=self.select(
+#        rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
+#      # select equally good results
+#      sel = (rf <= rf[0]+r_free_range_width)
+#      rw,rf,rfrw,deltab,w= self.select(
+#        rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
       # filter by rfree-rwork
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=rfrw,score_target_value=r_free_r_work_gap,
         secondary_target=deltab)
       # filter by <Bi-Bj>
+      delta_b_target = max(10, flex.mean(self.fmodels.fmodel_xray().
+        xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))*0.1)
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
-        score_target=deltab,score_target_value=10)
+        score_target=deltab,score_target_value=delta_b_target)
       # select the result with lowest rfree
       sel = flex.sort_permutation(rf)
       rw,rf,rfrw,deltab,w= self.select(
         rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
       #
       w_best = w[0]
-      print >> self.log, "Best weight: %8.3f"%w_best
+      print >> self.log, "Best ADP weight: %8.3f"%w_best
       #
       self.target_weights.adp_weights_result.wx = w_best
       self.target_weights.adp_weights_result.wx_scale = 1
@@ -349,7 +353,6 @@ class refine_adp(object):
     wt = weight*self.wx_scale
     result = self.show(weight=wt, print_stats=print_stats)
     return result
-    #rw_,rf_,rfrw_,deltab_,w_ = self.show(weight=wt)
 
   def show(self, weight = None, prefix = "", show_neutron=True,
       print_stats=True):
@@ -360,7 +363,7 @@ class refine_adp(object):
       self.model.xray_structure.extract_u_iso_or_u_equiv())*adptbx.u_as_b(1)
     if(deltab is None):
       print >> self.log, "  r_work=%5.2f r_free=%5.2f"%(r_work, r_free)
-      return None #[None,]*5
+      return None
     neutron_r_work = neutron_r_free = None
     if (show_neutron) and (self.fmodels.fmodel_neutron() is not None) :
       neutron_r_work = self.fmodels.fmodel_neutron().r_work()*100.
