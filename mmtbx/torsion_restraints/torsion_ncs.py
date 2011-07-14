@@ -96,7 +96,9 @@ class torsion_ncs(object):
     self.pdb_hierarchy = pdb_hierarchy
     self.ncs_groups = []
     self.dp_ncs = []
+    self.sequences = {}
     self.padded_sequences = {}
+    self.structures = {}
     self.ncs_dihedral_proxies = None
     self.name_hash = self.build_name_hash(pdb_hierarchy)
     self.params = params
@@ -109,12 +111,8 @@ class torsion_ncs(object):
     i_seq_hash = self.build_i_seq_hash(pdb_hierarchy)
     chain_hash = self.build_chain_hash(pdb_hierarchy)
     name_hash = self.build_name_hash(pdb_hierarchy)
-    chain_id_hash = {}
     chains = pdb_hierarchy.models()[0].chains()
     sel_cache = pdb_hierarchy.atom_selection_cache()
-    for chain in chains:
-      self.padded_sequences[chain.id] = \
-        self.extract_padded_sequence_from_chain(chain)
     alignments = {}
     n_ncs_groups = 0
     for i_seq, group in enumerate(self.params.restraint_group):
@@ -128,19 +126,25 @@ class torsion_ncs(object):
         n_ncs_groups += 1
     if n_ncs_groups > 0:
       for restraint_group in params.restraint_group:
-        ncs_set = []
         for selection_i in restraint_group.selection:
           sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
                            cache=sel_cache,
                            string_list=[selection_i]))
+          sel_seq, sel_seq_padded, sel_structures = \
+            self.extract_sequence_and_sites(
+            pdb_hierarchy=pdb_hierarchy,
+            selection=sel_atoms_i)
+          self.sequences[selection_i] = sel_seq
+          self.padded_sequences[selection_i] = sel_seq_padded
+          self.structures[selection_i] = sel_structures
+      for restraint_group in params.restraint_group:
+        ncs_set = []
+        for selection_i in restraint_group.selection:
           ncs_set.append(selection_i)
           for selection_j in restraint_group.selection:
             if selection_i == selection_j:
               continue
-            sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
-                           cache=sel_cache,
-                           string_list=[selection_j]))
-            selections = (sel_atoms_i, sel_atoms_j)
+            selections = (selection_i, selection_j)
             residue_match_map = self._alignment(
                                   pdb_hierarchy=pdb_hierarchy,
                                   params=params,
@@ -153,21 +157,28 @@ class torsion_ncs(object):
       for i, chain_i in enumerate(chains):
         if self.get_chain_type(chain_i) == "HETATM":
           continue
-        chain_id_hash[chain_i.id] = chain_i
         chain_i_str = "chain '%s'" % chain_i.id
         chain_i_list = [chain_i_str]
         sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
                      cache=sel_cache,
                      string_list=chain_i_list))
+        chain_seq, chain_seq_padded, chain_structures = \
+          self.extract_sequence_and_sites(
+          pdb_hierarchy=pdb_hierarchy,
+          selection=sel_atoms_i)
+        self.sequences[chain_i_str] = chain_seq
+        self.padded_sequences[chain_i_str] = chain_seq_padded
+        self.structures[chain_i_str] = chain_structures
+
+      for i, chain_i in enumerate(chains):
+        if self.get_chain_type(chain_i) == "HETATM":
+          continue
+        chain_i_str = "chain '%s'" % chain_i.id
         for chain_j in chains[i+1:]:
           if self.get_chain_type(chain_j) == "HETATM":
             continue
           chain_j_str = "chain '%s'" % chain_j.id
-          chain_j_list = [chain_j_str]
-          sel_atoms_j = (self.phil_atom_selections_as_i_seqs_multiple(
-                           cache=sel_cache,
-                           string_list=chain_j_list))
-          selections = (sel_atoms_i, sel_atoms_j)
+          selections = (chain_i_str, chain_j_str)
           residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
                                 params=params,
                                 selections=selections,
@@ -338,46 +349,6 @@ class torsion_ncs(object):
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
 
-  def generate_master_hashes(self,selections):
-    super_hash = {}
-    res_match_master = {}
-    for i, group in enumerate(self.ncs_groups):
-      for chain_i in group:
-        working_chain = chain_id_hash[chain_i]
-        c_atoms = working_chain.atoms()
-        chain_i_str = "chain '%s'" % chain_i
-        for atom in c_atoms:
-          for chain_j in group:
-            if chain_i == chain_j:
-              continue
-            chain_j_str = "chain '%s'" % chain_j
-            res_key = self.name_hash[atom.i_seq][4:]
-            atom_key = self.name_hash[atom.i_seq][0:4]
-            j_match = None
-            key = (chain_i_str, chain_j_str)
-            cur_align = alignments.get(key)
-            if cur_align is not None:
-              j_match = cur_align.get(res_key)
-            if j_match is not None:
-              j_i_seq = i_seq_hash.get(atom_key+j_match)
-              if j_i_seq is None:
-                continue
-              if super_hash.get(atom.i_seq) is None:
-                super_hash[atom.i_seq] = dict()
-              if super_hash.get(j_i_seq) is None:
-                super_hash[j_i_seq] = dict()
-              super_hash[atom.i_seq][chain_j] = j_i_seq
-              super_hash[j_i_seq][chain_i] = atom.i_seq
-              if res_match_master.get(res_key) is None:
-                res_match_master[res_key] = []
-              if res_match_master.get(j_match) is None:
-                res_match_master[j_match] = []
-              if j_match not in res_match_master[res_key]:
-                res_match_master[res_key].append(j_match)
-              if res_key not in res_match_master[j_match]:
-                res_match_master[j_match].append(res_key)
-    return res_match_master, super_hash
-
   def get_chain_type(self, chain):
     macro_count = 0
     micro_count = 0
@@ -509,15 +480,13 @@ class torsion_ncs(object):
     if(log is None): log = sys.stdout
     res_match_hash = {}
     model_mseq_res_hash = {}
-    model_seq, model_seq_padded, model_structures = \
-      self.extract_sequence_and_sites(
-        pdb_hierarchy=pdb_hierarchy,
-        selection=selections[0])
     ref_mseq_res_hash = {}
-    ref_seq, ref_seq_padded, ref_structures = \
-      self.extract_sequence_and_sites(
-        pdb_hierarchy = pdb_hierarchy,
-        selection=selections[1])
+    model_seq = self.sequences[selections[0]]
+    model_seq_padded = self.padded_sequences[selections[0]]
+    model_structures = self.structures[selections[0]]
+    ref_seq = self.sequences[selections[1]]
+    ref_seq_padded = self.padded_sequences[selections[1]]
+    ref_structures = self.structures[selections[1]]
     for struct in model_structures:
       model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
     for struct in ref_structures:
