@@ -293,6 +293,8 @@ def french_wilson_scale(miller_array, params=None, log=None):
                 "crystal symmetry data.")
   if params == None:
     params = master_phil.extract()
+  if (params.max_bins is None) : # XXX reset in case of user error
+    params.max_bins = 60
   if log == None:
     log = sys.stdout
   rejected = []
