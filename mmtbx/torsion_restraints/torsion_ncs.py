@@ -155,8 +155,9 @@ class torsion_ncs(object):
         self.ncs_groups.append(ncs_set)
     else:
       for i, chain_i in enumerate(chains):
-        if self.get_chain_type(chain_i) == "HETATM":
-          continue
+        for conformer in chain_i.conformers():
+          if not conformer.is_protein() and not conformer.is_na():
+            continue
         chain_i_str = "chain '%s'" % chain_i.id
         chain_i_list = [chain_i_str]
         sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
@@ -171,12 +172,14 @@ class torsion_ncs(object):
         self.structures[chain_i_str] = chain_structures
 
       for i, chain_i in enumerate(chains):
-        if self.get_chain_type(chain_i) == "HETATM":
-          continue
+        for conformer in chain_i.conformers():
+          if not conformer.is_protein() and not conformer.is_na():
+            continue
         chain_i_str = "chain '%s'" % chain_i.id
         for chain_j in chains[i+1:]:
-          if self.get_chain_type(chain_j) == "HETATM":
-            continue
+          for conformer in chain_j.conformers():
+            if not conformer.is_protein() and not conformer.is_na():
+              continue
           chain_j_str = "chain '%s'" % chain_j.id
           selections = (chain_i_str, chain_j_str)
           residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
@@ -349,27 +352,27 @@ class torsion_ncs(object):
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
 
-  def get_chain_type(self, chain):
-    macro_count = 0
-    micro_count = 0
-    chain_length = chain.residue_groups_size()
-    for conformer in chain.conformers():
-      for residue in conformer.residues():
-        if (common_residue_names_get_class(residue.resname) == \
-            'other' or \
-            common_residue_names_get_class(residue.resname) == \
-            'common_small_molecule' or \
-            common_residue_names_get_class(residue.resname) == \
-            'common_element' or \
-            common_residue_names_get_class(residue.resname) == \
-            'common_water'):
-          micro_count += 1
-        else:
-          macro_count += 1
-    if micro_count / chain_length >= .50:
-      return "HETATM"
-    else:
-      return "ATOM"
+#  def get_chain_type(self, chain):
+#    macro_count = 0
+#    micro_count = 0
+#    chain_length = chain.residue_groups_size()
+#    for conformer in chain.conformers():
+#      for residue in conformer.residues():
+#        if (common_residue_names_get_class(residue.resname) == \
+#            'other' or \
+#            common_residue_names_get_class(residue.resname) == \
+#            'common_small_molecule' or \
+#            common_residue_names_get_class(residue.resname) == \
+#            'common_element' or \
+#            common_residue_names_get_class(residue.resname) == \
+#            'common_water'):
+#          micro_count += 1
+#        else:
+#          macro_count += 1
+#    if micro_count / chain_length >= .50:
+#      return "HETATM"
+#    else:
+#      return "ATOM"
 
   def extract_padded_sequence_from_chain(self, chain):
     seq = []
