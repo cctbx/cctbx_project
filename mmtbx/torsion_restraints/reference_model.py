@@ -3,20 +3,18 @@ from iotbx.pdb import amino_acid_codes
 from libtbx import group_args
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.refinement import fit_rotamers
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
 import iotbx.phil
-from libtbx import Auto
 import libtbx.load_env
-from libtbx.utils import format_exception, Sorry
+from libtbx.utils import Sorry
 from mmtbx import secondary_structure
-from iotbx.pdb import common_residue_names_get_class
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
-import sys, re, math
+from mmtbx.torsion_restraints import utils
+import sys, re
 
 TOP_OUT_FLAG = True
 
@@ -125,9 +123,9 @@ class reference_model(object):
     self.geometry_ref = geometry_ref
     self.sites_cart_ref = sites_cart_ref
     self.pdb_hierarchy_ref = pdb_hierarchy_ref
-    self.i_seq_name_hash = self.build_name_hash(
+    self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
-    self.i_seq_name_hash_ref = self.build_name_hash(
+    self.i_seq_name_hash_ref = utils.build_name_hash(
                                  pdb_hierarchy=self.pdb_hierarchy_ref)
     self.reference_dihedral_hash = self.build_dihedral_hash(
                            geometry=self.geometry_ref,
@@ -166,67 +164,6 @@ class reference_model(object):
   def top_out_curvature(self, x, weight, top):
     return (2*weight*(top - 2*weight*x**2))/top**2*exp(-(weight*x**2)/top)
 
-  def selection(self, string, cache):
-    return cache.selection(
-      string=string)
-
-  def iselection(self, string, cache=None):
-    return self.selection(string=string, cache=cache).iselection()
-
-  def phil_atom_selection_multiple(
-        self,
-        cache,
-        string_list,
-        allow_none=False,
-        allow_auto=False,
-        raise_if_empty_selection=True):
-    result = []
-    for string in string_list:
-      if (string is None):
-        if (allow_none): return None
-        raise Sorry('Atom selection cannot be None:\n  =None')
-      elif (string is Auto):
-        if (allow_auto): return Auto
-        raise Sorry('Atom selection cannot be Auto:\n  %s=Auto')
-      try:
-          result.append(self.selection(string=string, cache=cache).iselection())
-      except KeyboardInterrupt: raise
-      except Exception, e: # keep e alive to avoid traceback
-        fe = format_exception()
-        raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
-          'reference_group', string, fe))
-      if (raise_if_empty_selection and result.count(True) == 0):
-        raise Sorry('Empty atom selection:\n  %s=%s' % (
-          'reference_group', string))
-    return result
-
-  def phil_atom_selections_as_i_seqs_multiple(self,
-                                              cache,
-                                              string_list):
-    result = []
-    iselection = self.phil_atom_selection_multiple(
-          cache=cache,
-          string_list=string_list,
-          raise_if_empty_selection=False)
-    for i in iselection:
-      if (i.size() == 0):
-        raise Sorry("No atom selected")
-      for atom in i:
-        result.append(atom)
-    return result
-
-  def is_residue_in_selection(self, i_seqs, selection):
-    for i_seq in i_seqs:
-      if i_seq not in selection:
-        return False
-    return True
-
-  def get_i_seqs(self, atoms):
-    i_seqs = []
-    for atom in atoms:
-      i_seqs.append(atom.i_seq)
-    return i_seqs
-
   def extract_sequence_and_sites(self, pdb_hierarchy, selection):
     seq = []
     result = []
@@ -238,8 +175,8 @@ class reference_model(object):
             resname = rg.unique_resnames()[0]
             olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
             atoms = rg.atoms()
-            i_seqs = self.get_i_seqs(atoms)
-            if(olc!="X") and self.is_residue_in_selection(i_seqs, selection):
+            i_seqs = utils.get_i_seqs(atoms)
+            if(olc!="X") and utils.is_residue_in_selection(i_seqs, selection):
               seq.append(olc)
               result.append(group_args(i_seq = counter, rg = rg))
               counter += 1
@@ -295,9 +232,9 @@ class reference_model(object):
                                params,
                                log=None):
     if(log is None): log = sys.stdout
-    model_iseq_hash = self.build_iseq_hash(pdb_hierarchy=pdb_hierarchy)
-    model_name_hash = self.build_name_hash(pdb_hierarchy=pdb_hierarchy)
-    ref_iseq_hash = self.build_iseq_hash(pdb_hierarchy=pdb_hierarchy_ref)
+    model_iseq_hash = utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
+    model_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    ref_iseq_hash = utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy_ref)
     sel_cache = pdb_hierarchy.atom_selection_cache()
     sel_cache_ref = pdb_hierarchy_ref.atom_selection_cache()
     match_map = {}
@@ -313,10 +250,10 @@ class reference_model(object):
       if len(params.alignment_group) == 0:
         ref_list = ['ALL']
         selection_list = ['ALL']
-        sel_atoms = (self.phil_atom_selections_as_i_seqs_multiple(
+        sel_atoms = (utils.phil_atom_selections_as_i_seqs_multiple(
                      cache=sel_cache,
                      string_list=selection_list))
-        sel_atoms_ref = (self.phil_atom_selections_as_i_seqs_multiple(
+        sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
                          cache=sel_cache_ref,
                          string_list=ref_list))
         selections = (sel_atoms, sel_atoms_ref)
@@ -337,10 +274,10 @@ class reference_model(object):
 
       else:
         for ag in params.alignment_group:
-          sel_atoms = (self.phil_atom_selections_as_i_seqs_multiple(
+          sel_atoms = (utils.phil_atom_selections_as_i_seqs_multiple(
                        cache=sel_cache,
                        string_list=[ag.selection]))
-          sel_atoms_ref = (self.phil_atom_selections_as_i_seqs_multiple(
+          sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
                            cache=sel_cache_ref,
                            string_list=[ag.reference]))
           selections = (sel_atoms, sel_atoms_ref)
@@ -362,7 +299,7 @@ class reference_model(object):
       if len(params.reference_group) == 0:
         ref_list = ['ALL']
         selection_list = ['ALL']
-        sel_atoms = self.phil_atom_selections_as_i_seqs_multiple(
+        sel_atoms = utils.phil_atom_selections_as_i_seqs_multiple(
                         cache=sel_cache,
                         string_list=selection_list)
         for i_seq in sel_atoms:
@@ -380,10 +317,10 @@ class reference_model(object):
         model_res_max = None
         ref_res_min = None
         ref_res_max = None
-        sel_atoms = (self.phil_atom_selections_as_i_seqs_multiple(
+        sel_atoms = (utils.phil_atom_selections_as_i_seqs_multiple(
                       cache=sel_cache,
                       string_list=[rg.selection]))
-        sel_atoms_ref = (self.phil_atom_selections_as_i_seqs_multiple(
+        sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
                       cache=sel_cache_ref,
                       string_list=[rg.reference]))
         sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
@@ -458,31 +395,6 @@ class reference_model(object):
             continue
     return match_map
 
-  def modernize_rna_resname(self, resname):
-    if common_residue_names_get_class(resname,
-         consider_ccp4_mon_lib_rna_dna=True) == "common_rna_dna" or \
-       common_residue_names_get_class(resname,
-         consider_ccp4_mon_lib_rna_dna=True) == "ccp4_mon_lib_rna_dna":
-      tmp_resname = resname.strip()
-      if len(tmp_resname) == 1:
-        return "  "+tmp_resname
-      elif len(tmp_resname) == 2:
-        if tmp_resname[0:1].upper() == 'D':
-          return " "+tmp_resname.upper()
-        elif tmp_resname[1:].upper() == 'D':
-          return " D"+tmp_resname[0:1].upper()
-        elif tmp_resname[1:].upper() == 'R':
-          return "  "+tmp_resname[0:1].upper()
-    return resname
-
-  def modernize_rna_atom_name(self, atom):
-     new_atom = atom.replace('*',"'")
-     if new_atom == " O1P":
-       new_atom = " OP1"
-     elif new_atom == " O2P":
-       new_atom = " OP2"
-     return new_atom
-
   def build_reference_dihedral_proxy_hash(self):
     self.reference_dihedral_proxy_hash = {}
     for dp in self.dihedral_proxies_ref:
@@ -533,69 +445,6 @@ class reference_model(object):
                weight=1.0)
         self.reference_dihedral_proxy_hash[key] = dp
 
-  def build_name_hash(self, pdb_hierarchy):
-    i_seq_name_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      atom_name = atom.pdb_label_columns()[0:4]
-      resname = atom.pdb_label_columns()[5:8]
-      if resname.upper() == "MSE":
-        resname = "MET"
-        if atom_name == " SE ":
-          atom_name = " SD "
-      updated_resname = self.modernize_rna_resname(resname)
-      if common_residue_names_get_class(updated_resname) == "common_rna_dna":
-        updated_atom = self.modernize_rna_atom_name(atom=atom_name)
-      else:
-        updated_atom = atom_name
-      key = updated_atom+atom.pdb_label_columns()[4:5]+\
-            updated_resname+atom.pdb_label_columns()[8:]
-      i_seq_name_hash[atom.i_seq]=key
-    return i_seq_name_hash
-
-  def build_iseq_hash(self, pdb_hierarchy):
-    name_i_seq_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      atom_name = atom.pdb_label_columns()[0:4]
-      resname = atom.pdb_label_columns()[5:8]
-      if resname.upper() == "MSE":
-        resname = "MET"
-        if atom_name == " SE ":
-          atom_name == " SD "
-      updated_resname = self.modernize_rna_resname(resname)
-      if common_residue_names_get_class(updated_resname) == "common_rna_dna":
-        updated_atom = self.modernize_rna_atom_name(atom=atom_name)
-      else:
-        updated_atom = atom_name
-      key = updated_atom+atom.pdb_label_columns()[4:5]+\
-            updated_resname+atom.pdb_label_columns()[8:]
-      name_i_seq_hash[key]=atom.i_seq
-    return name_i_seq_hash
-
-  def build_xyz_hash(self, pdb_hierarchy):
-    name_xyz_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      name_xyz_hash[atom.pdb_label_columns()]=atom.xyz
-    return name_xyz_hash
-
-  def build_element_hash(self, pdb_hierarchy):
-    i_seq_element_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      i_seq_element_hash[atom.i_seq]=atom.element
-    return i_seq_element_hash
-
-  def build_cbetadev_hash(self, pdb_hierarchy):
-    cb = cbetadev()
-    cbetadev_hash = dict()
-    cbeta_out = cb.analyze_pdb(hierarchy=pdb_hierarchy)
-    for line in cbeta_out[0].splitlines():
-      temp = line.split(':')
-      dev = temp[5]
-      if dev == "dev":
-        continue
-      key = temp[1].upper()+temp[2].upper()+temp[3]+temp[4].rstrip()
-      cbetadev_hash[key] = dev
-    return cbetadev_hash
-
   def build_dihedral_hash(self,
                           geometry=None,
                           sites_cart=None,
@@ -604,8 +453,8 @@ class reference_model(object):
                           include_main_chain=True,
                           include_side_chain=True):
     if not include_hydrogens:
-      i_seq_element_hash = self.build_element_hash(pdb_hierarchy=pdb_hierarchy)
-    i_seq_name_hash = self.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+      i_seq_element_hash = utils.build_element_hash(pdb_hierarchy=pdb_hierarchy)
+    i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     dihedral_hash = dict()
 
     for dp in geometry.dihedral_proxies:
@@ -641,7 +490,7 @@ class reference_model(object):
         pass
 
     #add dihedral for CB
-    cbetadev_hash = self.build_cbetadev_hash(pdb_hierarchy=pdb_hierarchy)
+    cbetadev_hash = utils.build_cbetadev_hash(pdb_hierarchy=pdb_hierarchy)
     for cp in geometry.chirality_proxies:
       c_beta = True
       key = ""
@@ -654,7 +503,6 @@ class reference_model(object):
       Nkey = None
       CBkey = None
       for i_seq in cp.i_seqs:
-        #key = key+i_seq_name_hash[i_seq]
         if i_seq_name_hash[i_seq][0:4] not in [' CA ', ' N  ', ' C  ', ' CB ']:
           c_beta = False
         if i_seq_name_hash[i_seq][0:4] == ' CA ':
@@ -697,30 +545,13 @@ class reference_model(object):
         dihedral_hash[key] = d.angle_model
     return dihedral_hash
 
-  def get_reference_dihedral_proxies(self):#,
-                                     #work_params,
-                                     #geometry,
-                                     #pdb_hierarchy,
-                                     #geometry_ref,
-                                     #sites_cart_ref,
-                                     #pdb_hierarchy_ref,
-                                     #log=None):
-    #if(log is None): log = sys.stdout
+  def get_reference_dihedral_proxies(self):
     ss_selection = None
     residue_match_hash = {}
     self.reference_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
     sigma = self.params.sigma
     limit = self.params.limit
-    #i_seq_name_hash = self.build_name_hash(pdb_hierarchy=pdb_hierarchy)
-    #i_seq_name_hash_ref = self.build_name_hash(pdb_hierarchy=pdb_hierarchy_ref)
-    #reference_dihedral_hash = self.build_dihedral_hash(
-    #                       geometry=self.geometry_ref,
-    #                       sites_cart=sites_cart_ref,
-    #                       pdb_hierarchy=pdb_hierarchy_ref,
-    #                       include_hydrogens=work_params.hydrogens,
-    #                       include_main_chain=work_params.main_chain,
-    #                       include_side_chain=work_params.side_chain)
     match_map = self.process_reference_groups(
                                pdb_hierarchy=self.pdb_hierarchy,
                                pdb_hierarchy_ref=self.pdb_hierarchy_ref,
@@ -746,7 +577,7 @@ class reference_model(object):
         overall_sheet_selection = sec_str_from_pdb_file.overall_sheet_selection()
         overall_selection = overall_helix_selection +' or ' + overall_sheet_selection
         sel_cache_ref = self.pdb_hierarchy_ref.atom_selection_cache()
-        ss_selection = (self.phil_atom_selections_as_i_seqs_multiple(
+        ss_selection = (utils.phil_atom_selections_as_i_seqs_multiple(
                         cache=sel_cache_ref,
                         string_list=[overall_selection]))
     for dp in self.geometry.dihedral_proxies:
@@ -758,14 +589,12 @@ class reference_model(object):
           key = key+self.i_seq_name_hash_ref[match_map[i_seq]]
         except Exception:
           continue
-      #print >> self.log, key, key_work
       try:
         reference_angle = self.reference_dihedral_hash[key]
         if key[5:14] == key[20:29] and \
            key[5:14] == key[35:44] and \
            key_work[5:14] == key_work[20:29] and \
            key_work[5:14] == key_work[35:44]:
-          #print >> self.log, "match"
           residue_match_hash[key_work[5:14]] = key[5:14]
       except Exception:
         continue
@@ -1080,9 +909,3 @@ class reference_model(object):
                       counter += 1
                     xray_structure.set_sites_cart(sites_cart_start)
 
-  def angle_distance(self, angle1, angle2):
-    distance = math.fabs(angle1 - angle2)
-    #return distance
-    if distance > 180.0:
-      distance -= 360.0
-    return math.fabs(distance)

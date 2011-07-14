@@ -1,6 +1,7 @@
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 from mmtbx.torsion_restraints.reference_model import reference_model
+from mmtbx.torsion_restraints import utils
 from mmtbx.validation.rotalyze import rotalyze
 import iotbx.phil
 import iotbx.utils
@@ -152,7 +153,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     pdb_hierarchy_ref=pdb_hierarchy_ref,
     params=work_params.reference_model,
     log=sys.stdout)
-  i_seq_name_hash = rm.build_name_hash(
+  i_seq_name_hash = utils.build_name_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_name_hash == \
     {0: ' N   ASN C 236 ', 1: ' CA  ASN C 236 ', 2: ' C   ASN C 236 ',
@@ -161,7 +162,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
      9: ' CA  LEU C 237 ', 10: ' C   LEU C 237 ', 11: ' O   LEU C 237 ',
      12: ' CB  LEU C 237 ', 13: ' CG  LEU C 237 ', 14: ' CD1 LEU C 237 ',
      15: ' CD2 LEU C 237 '}
-  i_seq_element_hash = rm.build_element_hash(
+  i_seq_element_hash = utils.build_element_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_element_hash == \
     {0: ' N', 1: ' C', 2: ' C', 3: ' O', 4: ' C', 5: ' C', 6: ' O', 7: ' N',
@@ -233,7 +234,7 @@ C 237  LEU:52.8:179.1:57.3:::tp"""
 C 236  ASN:1.2:227.3:80.2:::t30
 C 237  LEU:52.8:179.1:57.3:::tp"""
 
-  cbetadev_hash = rm.build_cbetadev_hash(
+  cbetadev_hash = utils.build_cbetadev_hash(
                     pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
   assert cbetadev_hash == \
     {' ASN C 236': '  0.015', ' LEU C 237': '  0.038'}
