@@ -1356,6 +1356,12 @@ def exercise_complete_array():
       new_sigmas_sel = compl.sigmas() >= 0
       assert new_sigmas_sel.count(True) == sel.size()
       assert new_sigmas_sel.all_eq(new_data_sel)
+    sel = flex.random_permutation(size=ni)[:(ni*2)//3]
+    selected = array.select(sel)
+    compl_to_4_angstrom = selected.complete_array(d_min=4)
+    assert compl_to_4_angstrom.completeness() < 1
+    assert approx_equal(
+      compl_to_4_angstrom.resolution_filter(d_min=4).completeness(), 1)
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
