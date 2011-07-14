@@ -204,8 +204,11 @@ def run (args, log=sys.stdout) :
         fom_lab=map_labels[2])
       assert f.is_xray_amplitude_array()
       assert phi.is_real_array()
-      assert fom is None or fom.is_real_array()
-      if fom is not None :
+      assert (fom is None) or (fom.is_real_array())
+      f = f.common_set(phi)
+      phi = phi.common_set(f)
+      if (fom is not None) :
+        fom = fom.common_set(f)
         map_coeffs = (f * fom).phase_transfer(phi, deg=True)
       else :
         map_coeffs = f.phase_transfer(phi, deg=True)
