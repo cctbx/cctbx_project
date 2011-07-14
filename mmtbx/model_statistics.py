@@ -218,6 +218,11 @@ class geometry(object):
     print >> out, pr+" DIHEDRAL  : "+fmt%(self.d_mean,self.d_max,self.d_number)
     print >> out, pr+" MIN NONBONDED DISTANCE : %-6.3f"%self.n_min
     print >> out, pr
+    self.show_molprobity_scores(out = out, prefix = prefix)
+    out.flush()
+
+  def show_molprobity_scores(self, out = None, prefix = ""):
+    pr = prefix
     print >> out, pr+"MOLPROBITY STATISTICS."
     print >> out, pr+" ALL-ATOM CLASHSCORE : %-6.2f"%self.clashscore
     print >> out, pr+" RAMACHANDRAN PLOT:"
