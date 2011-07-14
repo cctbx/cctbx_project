@@ -10,11 +10,11 @@ import iotbx.phil
 from iotbx.pdb import common_residue_names_get_class
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
-import sys, math
-from libtbx import Auto
+import sys
 from libtbx import group_args
 from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
+from mmtbx.torsion_restraints import utils
 
 TOP_OUT_FLAG = True
 
@@ -100,7 +100,7 @@ class torsion_ncs(object):
     self.padded_sequences = {}
     self.structures = {}
     self.ncs_dihedral_proxies = None
-    self.name_hash = self.build_name_hash(pdb_hierarchy)
+    self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.params = params
     self.log = log
     print >> self.log, "Determining NCS matches..."
@@ -108,9 +108,9 @@ class torsion_ncs(object):
     dp_hash = {}
     used_chains = []
     res_match_hash = {}
-    i_seq_hash = self.build_i_seq_hash(pdb_hierarchy)
-    chain_hash = self.build_chain_hash(pdb_hierarchy)
-    name_hash = self.build_name_hash(pdb_hierarchy)
+    i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
+    chain_hash = utils.build_chain_hash(pdb_hierarchy)
+    name_hash = utils.build_name_hash(pdb_hierarchy)
     chains = pdb_hierarchy.models()[0].chains()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     alignments = {}
@@ -127,7 +127,7 @@ class torsion_ncs(object):
     if n_ncs_groups > 0:
       for restraint_group in params.restraint_group:
         for selection_i in restraint_group.selection:
-          sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
+          sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
                            cache=sel_cache,
                            string_list=[selection_i]))
           sel_seq, sel_seq_padded, sel_structures = \
@@ -159,7 +159,7 @@ class torsion_ncs(object):
           continue
         chain_i_str = "chain '%s'" % chain_i.id
         chain_i_list = [chain_i_str]
-        sel_atoms_i = (self.phil_atom_selections_as_i_seqs_multiple(
+        sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
                      cache=sel_cache,
                      string_list=chain_i_list))
         chain_seq, chain_seq_padded, chain_structures = \
@@ -262,7 +262,7 @@ class torsion_ncs(object):
     res_match_master = {}
     for i, group in enumerate(self.ncs_groups):
       for chain_i in group:
-        selection = self.selection(
+        selection = utils.selection(
                      string=chain_i,
                      cache=sel_cache)
         c_atoms = self.pdb_hierarchy.select(selection).atoms()
@@ -371,67 +371,6 @@ class torsion_ncs(object):
     else:
       return "ATOM"
 
-  def selection(self, string, cache):
-    return cache.selection(
-      string=string)
-
-  def iselection(self, string, cache=None):
-    return self.selection(string=string, cache=cache).iselection()
-
-  def phil_atom_selection_multiple(
-        self,
-        cache,
-        string_list,
-        allow_none=False,
-        allow_auto=False,
-        raise_if_empty_selection=True):
-    result = []
-    for string in string_list:
-      if (string is None):
-        if (allow_none): return None
-        raise Sorry('Atom selection cannot be None:\n  =None')
-      elif (string is Auto):
-        if (allow_auto): return Auto
-        raise Sorry('Atom selection cannot be Auto:\n  %s=Auto')
-      try:
-          result.append(self.selection(string=string, cache=cache).iselection())
-      except KeyboardInterrupt: raise
-      except Exception, e: # keep e alive to avoid traceback
-        fe = format_exception()
-        raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
-          'reference_group', string, fe))
-      if (raise_if_empty_selection and result.count(True) == 0):
-        raise Sorry('Empty atom selection:\n  %s=%s' % (
-          'reference_group', string))
-    return result
-
-  def phil_atom_selections_as_i_seqs_multiple(self,
-                                              cache,
-                                              string_list):
-    result = []
-    iselection = self.phil_atom_selection_multiple(
-          cache=cache,
-          string_list=string_list,
-          raise_if_empty_selection=False)
-    for i in iselection:
-      if (i.size() == 0):
-        raise Sorry("No atom selected")
-      for atom in i:
-        result.append(atom)
-    return result
-
-  def is_residue_in_selection(self, i_seqs, selection):
-    for i_seq in i_seqs:
-      if i_seq not in selection:
-        return False
-    return True
-
-  def get_i_seqs(self, atoms):
-    i_seqs = []
-    for atom in atoms:
-      i_seqs.append(atom.i_seq)
-    return i_seqs
-
   def extract_padded_sequence_from_chain(self, chain):
     seq = []
     padded_seq = []
@@ -460,8 +399,8 @@ class torsion_ncs(object):
             resname = rg.unique_resnames()[0]
             olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
             atoms = rg.atoms()
-            i_seqs = self.get_i_seqs(atoms)
-            if(olc!="X") and self.is_residue_in_selection(i_seqs, selection):
+            i_seqs = utils.get_i_seqs(atoms)
+            if(olc!="X") and utils.is_residue_in_selection(i_seqs, selection):
               seq.append(olc)
               resseq = rg.resseq_as_int()
               if (resseq > (last_resseq + 1)) :
@@ -638,7 +577,7 @@ class torsion_ncs(object):
         elif j in used:
           continue
         else:
-          if self.angle_distance(i, j) <= self.params.cutoff:
+          if utils.angle_distance(i, j) <= self.params.cutoff:
             if i not in used:
               clusters[i] = []
               clusters[i].append(i)
@@ -655,12 +594,12 @@ class torsion_ncs(object):
       if cluster is None:
         target_angles[key] = None
       else:
-        target_angle = self.get_angle_average(cluster)
+        target_angle = utils.get_angle_average(cluster)
         if self.params.target_damping:
           for c in cluster:
-            c_dist = self.angle_distance(c, target_angle)
+            c_dist = utils.angle_distance(c, target_angle)
             if c_dist > self.params.damping_limit:
-              d_target = self.get_angle_average([c, target_angle])
+              d_target = utils.get_angle_average([c, target_angle])
               target_angles[c] = d_target
             else:
               target_angles[c] = target_angle
@@ -668,105 +607,6 @@ class torsion_ncs(object):
           for c in cluster:
             target_angles[c] = target_angle
     return target_angles
-
-  def angle_distance(self, angle1, angle2):
-    distance = math.fabs(angle1 - angle2)
-    if distance > 180.0:
-      distance -= 360.0
-    return math.fabs(distance)
-
-  def get_angle_average(self, angles):
-    n_angles = len(angles)
-    sum = 0.0
-    a1 = angles[0]
-    if a1 > 180.0:
-      a1 -= 360.0
-    elif a1 < -180.0:
-      a1 += 360.0
-    sum += a1
-    for angle in angles[1:]:
-      a2 = angle
-      if (a1 - a2) > 180.0:
-        a2 += 360.0
-      elif (a1 - a2) < -180.0:
-        a2 -= 360.0
-      sum += a2
-    average = sum / n_angles
-    return average
-
-  def build_name_hash(self, pdb_hierarchy):
-    i_seq_name_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      atom_name = atom.pdb_label_columns()[0:4]
-      resname = atom.pdb_label_columns()[5:8]
-      updated_resname = self.modernize_rna_resname(resname)
-      if common_residue_names_get_class(updated_resname) == "common_rna_dna":
-        updated_atom = self.modernize_rna_atom_name(atom=atom_name)
-      else:
-        updated_atom = atom_name
-      key = updated_atom+atom.pdb_label_columns()[4:5]+\
-            updated_resname+atom.pdb_label_columns()[8:]
-      i_seq_name_hash[atom.i_seq]=key
-    return i_seq_name_hash
-
-  def build_i_seq_hash(self, pdb_hierarchy):
-    name_i_seq_hash = dict()
-    for atom in pdb_hierarchy.atoms():
-      atom_name = atom.pdb_label_columns()[0:4]
-      resname = atom.pdb_label_columns()[5:8]
-      updated_resname = self.modernize_rna_resname(resname)
-      if common_residue_names_get_class(updated_resname) == "common_rna_dna":
-        updated_atom = self.modernize_rna_atom_name(atom=atom_name)
-      else:
-        updated_atom = atom_name
-      key = updated_atom+atom.pdb_label_columns()[4:5]+\
-            updated_resname+atom.pdb_label_columns()[8:]
-      name_i_seq_hash[key]=atom.i_seq
-    return name_i_seq_hash
-
-  def build_chain_hash(self, pdb_hierarchy):
-    chain_hash = dict()
-    for chain in pdb_hierarchy.chains():
-      for atom in chain.atoms():
-        chain_hash[atom.i_seq] = chain.id
-    return chain_hash
-
-  def modernize_rna_resname(self, resname):
-    if common_residue_names_get_class(resname,
-         consider_ccp4_mon_lib_rna_dna=True) == "common_rna_dna" or \
-       common_residue_names_get_class(resname,
-         consider_ccp4_mon_lib_rna_dna=True) == "ccp4_mon_lib_rna_dna":
-      tmp_resname = resname.strip()
-      if len(tmp_resname) == 1:
-        return "  "+tmp_resname
-      elif len(tmp_resname) == 2:
-        if tmp_resname[0:1].upper() == 'D':
-          return " "+tmp_resname.upper()
-        elif tmp_resname[1:].upper() == 'D':
-          return " D"+tmp_resname[0:1].upper()
-        elif tmp_resname[1:].upper() == 'R':
-          return "  "+tmp_resname[0:1].upper()
-    return resname
-
-  def modernize_rna_atom_name(self, atom):
-     new_atom = atom.replace('*',"'")
-     if new_atom == " O1P":
-       new_atom = " OP1"
-     elif new_atom == " O2P":
-       new_atom = " OP2"
-     return new_atom
-
-  def extract_sequence_from_chain(self, chain):
-    seq = []
-    res_seq = []
-    for rg in chain.residue_groups():
-      if(len(rg.unique_resnames())==1):
-        resname = rg.unique_resnames()[0]
-        olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-        if(olc!="X"):
-          seq.append(olc)
-          res_seq.append(rg.resid())
-    return "".join(seq), res_seq
 
   def add_ncs_dihedral_proxies(self, geometry):
     geometry.ncs_dihedral_proxies= \
