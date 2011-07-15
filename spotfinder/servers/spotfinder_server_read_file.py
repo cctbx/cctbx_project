@@ -123,9 +123,8 @@ class image_request_handler(BaseHTTPRequestHandler):
     logfile = StringIO.StringIO()
     if labelit_commands.distl.bins.verbose: sys.stdout = logfile
 
-    #S = spotfinder_no_pickle(Files, s3_passthru = "-s3 4",spot_convention = 0)
-    from labelit.procedure import spotfinder_and_pickle
-    S = spotfinder_and_pickle(None, Files, spots_pickle = None)
+    from spotfinder.applications.wrappers import spotfinder_factory
+    S = spotfinder_factory(None, Files, labelit_commands)
     print
     sys.stdout = sys.__stdout__
 
