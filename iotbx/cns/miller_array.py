@@ -56,6 +56,23 @@ def export_as_cns_hkl(self,
                      flex.abs(self.data()),
                      flex.arg(self.data(), True)):
       print >> out, "INDEx %d %d %d" % h, "%s= %.6g %.6g" % (n,a,p)
+  elif (self.is_hendrickson_lattman_array()):
+    if (array_names is None): array_names = ["PA", "PB", "PC", "PD"]
+    else: assert len(array_names) == 4
+    assert r_free_flags is None
+    for i in range(4):
+      print >> out, "DECLare NAME=%s  DOMAin=RECIprocal TYPE=REAL END" %(
+        array_names[i])
+    print >> out, "GROUp  TYPE=HL"
+    for i in range(4):
+      print >> out, "     OBJEct=%s" %(array_names[i])
+    print >> out, "END"
+    for h,hl in zip(self.indices(), self.data()):
+      print >> out, "INDEx %d %d %d" % h,
+      print >> out, "%s= %.6g" % (array_names[0], hl[0]),
+      print >> out, "%s= %.6g" % (array_names[1], hl[1]),
+      print >> out, "%s= %.6g" % (array_names[2], hl[2]),
+      print >> out, "%s= %.6g" % (array_names[3], hl[3])
   else:
     if (array_names is None): array_names = ["DATA"]
     else: assert len(array_names) == 1
