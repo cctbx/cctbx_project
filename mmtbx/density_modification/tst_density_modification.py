@@ -59,7 +59,7 @@ def exercise_density_modification():
   print cmd
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
   assert result.stdout_lines[-4] == 'Starting dm/model correlation: 0.631999'
-  assert result.stdout_lines[-3] == 'Final dm/model correlation:    0.777594'
+  assert result.stdout_lines[-3] == 'Final dm/model correlation:    0.781056'
 
 def run():
   exercise_density_modification()

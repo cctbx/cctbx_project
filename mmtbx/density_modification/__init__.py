@@ -107,7 +107,7 @@ class density_modification(object):
                hl_coeffs_start,
                params,
                log=None,
-               as_gui_program=False) :
+               as_gui_program=False):
     if log is None: log = sys.stdout
     adopt_init_args(self, locals())
     assert self.params.solvent_fraction is not None
@@ -175,10 +175,10 @@ class density_modification(object):
       data=self.f_obs_active.data()*fom,
       sigmas=None).phase_transfer(phase_source=self.hl_coeffs)
     self.map_coeffs.data().set_selected(fom <= 0, 0)
-    self.map_coeffs_start = self.map_coeffs
     self.map = self.map_coeffs.select(fom > 0).fft_map(
       resolution_factor=self.params.grid_resolution_factor
       ).apply_volume_scaling().real_map_unpadded()
+    self.map_coeffs_start = self.map_coeffs
     self.calculate_solvent_mask()
 
     n_phased = (fom > 0).count(True)
@@ -238,7 +238,7 @@ class density_modification(object):
     self.compute_map()
     self.show_cycle_summary()
 
-  def compute_phase_source(self, hl_coeffs, n_steps=(72,360)[1]):
+  def compute_phase_source(self, hl_coeffs, n_steps=72):
     integrator = miller.phase_integrator(n_steps=n_steps)
     self.phase_source_previous = self.phase_source
     self.phase_source = integrator(
@@ -359,28 +359,50 @@ class density_modification(object):
                                     * math.exp(-minimized.p_scale)\
                                     * adptbx.debye_waller_factor_u_star(
                                       f_calc.indices(), minimized.u_star))
-    params = sigmaa_estimator_params.extract()
-    sigmaa = sigmaa_estimator(
-      miller_obs=f_obs,
-      miller_calc=f_calc,
-      r_free_flags=f_obs.array(
-        data=flex.bool(f_obs.size())),
-      kernel_on_chebyshev_nodes=params.kernel_on_chebyshev_nodes,
-      kernel_width_free_reflections=params.kernel_width_free_reflections,
-      n_chebyshev_terms=params.number_of_chebyshev_terms,
-      n_sampling_points=params.number_of_sampling_points,
-      use_sampling_sum_weights=params.use_sampling_sum_weights)
-    e_obs = sigmaa.normalized_obs
-    e_mod = sigmaa.normalized_calc
-    c = sigmaa.sigmaa()
-    dd = c.data() * math.sqrt(
-      flex.mean(flex.pow2(f_obs.data()))/
-      flex.mean(flex.pow2(f_calc.as_amplitude_array().data())))
-    xc = 2 * c.data() * e_obs.data() * e_mod.data() \
-       / (1-flex.pow2(sigmaa.sigmaa().data()))
-    hl_coeff = flex.hendrickson_lattman(
-      xc * flex.cos(f_calc.phases().data()),
-      xc * flex.sin(f_calc.phases().data()))
+    if 0:
+      # sigmaa_estimator method
+      params = sigmaa_estimator_params.extract()
+      sigmaa = sigmaa_estimator(
+        miller_obs=f_obs,
+        miller_calc=f_calc,
+        r_free_flags=f_obs.array(
+          data=flex.bool(f_obs.size())),
+        kernel_on_chebyshev_nodes=params.kernel_on_chebyshev_nodes,
+        kernel_width_free_reflections=params.kernel_width_free_reflections,
+        n_chebyshev_terms=params.number_of_chebyshev_terms,
+        n_sampling_points=params.number_of_sampling_points,
+        use_sampling_sum_weights=params.use_sampling_sum_weights)
+      e_obs = sigmaa.normalized_obs
+      e_mod = sigmaa.normalized_calc
+      c = sigmaa.sigmaa()
+      dd = c.data() * math.sqrt(
+        flex.mean(flex.pow2(f_obs.data()))/
+        flex.mean(flex.pow2(f_calc.as_amplitude_array().data())))
+      xc = 2 * c.data() * e_obs.data() * e_mod.data() \
+         / (1-flex.pow2(sigmaa.sigmaa().data()))
+      hl_coeff = flex.hendrickson_lattman(
+        xc * flex.cos(f_calc.phases().data()),
+        xc * flex.sin(f_calc.phases().data()))
+    else:
+      # alpha_beta_est method
+      from mmtbx.max_lik import maxlik
+      alpha_beta_est = maxlik.alpha_beta_est_manager(
+        f_obs=f_obs,
+        f_calc=f_calc,
+        free_reflections_per_bin=140,
+        flags=flex.bool(f_obs.size()),
+        interpolation=True)
+      alpha, beta = alpha_beta_est.alpha_beta()
+      t = maxlik.fo_fc_alpha_over_eps_beta(
+        f_obs=f_obs,
+        f_model=f_calc,
+        alpha=alpha,
+        beta=beta)
+      hl_coeff = flex.hendrickson_lattman(
+        t * flex.cos(f_calc.phases().data()),
+        t * flex.sin(f_calc.phases().data()))
+      dd = alpha.data()
+    #
     hl_array = f_calc.array(
       data=self.hl_coeffs_start.common_set(f_calc).data()+hl_coeff)
     self.compute_phase_source(hl_array)
