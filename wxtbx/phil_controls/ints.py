@@ -4,9 +4,9 @@ from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
 import wx
 import re
 
-class IntsControl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
+class IntsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
-    super(IntsControl, self).__init__(*args, **kwds)
+    super(IntsCtrl, self).__init__(*args, **kwds)
     self.elems = None
 
   def SetElems (self, elems) :
@@ -54,11 +54,11 @@ if (__name__ == "__main__") :
   frame = wx.Frame(None, -1, "Integer list test")
   panel = wx.Panel(frame, -1, size=(600,400))
   txt1 = wx.StaticText(panel, -1, "Run SA on cycle numbers:", pos=(100,180))
-  ints_ctrl = IntsControl(panel, -1, pos=(300,180), size=(200,-1),
+  ints_ctrl = IntsCtrl(panel, -1, pos=(300,180), size=(200,-1),
     value=[1,2,5,10],
     name="Run SA on cycle numbers")
   txt2 = wx.StaticText(panel, -1, "Window color:", pos=(100,240))
-  ints_ctrl2 = IntsControl(panel, -1, pos=(300,240), size=(200,-1),
+  ints_ctrl2 = IntsCtrl(panel, -1, pos=(300,240), size=(200,-1),
     name="Window color")
   ints_ctrl2.SetElems(3)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))

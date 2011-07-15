@@ -4,9 +4,9 @@ from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
 import wx
 import re
 
-class FloatsControl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
+class FloatsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
-    super(FloatsControl, self).__init__(*args, **kwds)
+    super(FloatsCtrl, self).__init__(*args, **kwds)
     self.elems = None
 
   def SetElems (self, elems) :
@@ -54,7 +54,7 @@ if (__name__ == "__main__") :
   frame = wx.Frame(None, -1, "Floating-point list test")
   panel = wx.Panel(frame, -1, size=(600,400))
   txt1 = wx.StaticText(panel, -1, "Search model RMSDs:", pos=(100,180))
-  floats_ctrl = FloatsControl(panel, -1, pos=(300,180), size=(200,-1),
+  floats_ctrl = FloatsCtrl(panel, -1, pos=(300,180), size=(200,-1),
     value=[1.0,2.0,3.5,4.7],
     name="Search model RMSDs")
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
