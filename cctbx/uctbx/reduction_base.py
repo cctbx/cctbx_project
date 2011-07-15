@@ -130,6 +130,11 @@ class reduction_base(gruber_parameterization):
   def r_inv(self):
     return self._r_inv
 
+  def change_of_basis_op(self):
+    from cctbx import sgtbx
+    return sgtbx.change_of_basis_op(
+      sgtbx.rt_mx(sgtbx.rot_mx(self._r_inv.elems, 1))).inverse()
+
   def n_iterations(self):
     return self._n_iterations
 

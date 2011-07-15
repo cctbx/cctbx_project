@@ -195,11 +195,7 @@ class symmetry(object):
     z2p_op = self.space_group().z2p_op()
     r_inv = z2p_op.c_inv().r()
     p_cell = self.unit_cell().change_basis(r_inv.num(), r_inv.den())
-    red = p_cell.niggli_reduction(
-      relative_epsilon=relative_epsilon,
-      iteration_limit=iteration_limit)
-    p2n_op = sgtbx.change_of_basis_op(
-      sgtbx.rt_mx(sgtbx.rot_mx(red.r_inv().elems, 1))).inverse()
+    p2n_op = p_cell.change_of_basis_op_to_niggli_cell()
     return p2n_op.new_denominators(z2p_op) * z2p_op
 
   def niggli_cell(self,
