@@ -108,7 +108,7 @@ class image_request_handler(BaseHTTPRequestHandler):
       self.shutdown()
       return
 
-    from labelit.command_line.imagefiles import ImageFiles
+    from spotfinder.diffraction.imagefiles import spotfinder_image_files as ImageFiles
     #from spotfinder.applications.overall_procedure import spotfinder_no_pickle
     from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
     from labelit.preferences import labelit_commands

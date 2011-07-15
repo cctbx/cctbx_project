@@ -1,5 +1,6 @@
 import os, re
 from iotbx.detectors import ImageFactory, url_support
+from iotbx.detectors.beam_center_convention import convert_beam_instrument_to_imageblock
 
 # Contain information about a single file name
   # Pattern1:  valid image file names conform to the regular expression
@@ -174,6 +175,102 @@ class image_files:
     for s in xrange(len(self.filenames.frames())):
       if self.filenames.frames()[s]==indexnumber:
         return self.filenames()[s]
+
+class spotfinder_image_files(image_files):
+  def __init__(self,arg_module,phil_params,verbose=True):
+    self.verbose = verbose
+    self.filenames = file_names(arg_module)
+    self.phil_params = phil_params
+    self.images = []
+    for indx,name in enumerate(self.filenames()):
+        A = ImageFactory(name)
+        self.site_modifications(A,self.filenames.FN[indx])
+        self.images.append(A)
+    self.acceptable_use_tests_basic()
+
+  def acceptable_use_tests_basic(self):
+    if self.images[0].parameters.has_key('TWOTHETA'):
+      if abs(self.images[0].twotheta) < 0.02:  #round off to zero and
+                                               #retain legacy behavior
+        for ik in xrange(len(self.images)):
+          self.images[ik].parameters['TWOTHETA']=0.0
+
+  def site_modifications(self,imageobject,filenameobject):
+
+    from iotbx.detectors.context.config_detector\
+      import beam_center_convention_from_image_object
+
+    beam_center_convention = beam_center_convention_from_image_object(imageobject,self.phil_params)
+
+    #we may elect to override the beam position globally for LABELIT.
+    #Case I.  The user has provided a tuple of floats, superceding all else
+    if self.phil_params.autoindex_override_beam != None:
+      imageobject.parameters['BEAM_CENTER_X'],\
+      imageobject.parameters['BEAM_CENTER_Y']=\
+      self.phil_params.autoindex_override_beam
+      imageobject.beam_center_reference_frame = "imageblock"
+
+    #Case II.  An XY convention has been defined.
+    elif beam_center_convention != 0:
+      convert_beam_instrument_to_imageblock(imageobject,beam_center_convention)
+
+    if self.phil_params.autoindex_override_distance != None:
+      imageobject.parameters['DISTANCE']=self.phil_params.autoindex_override_distance
+
+    if self.phil_params.autoindex_override_wavelength != None:
+      imageobject.parameters['WAVELENGTH']=self.phil_params.autoindex_override_wavelength
+
+    if self.phil_params.autoindex_override_deltaphi != None:
+        if self.verbose:
+          print "Overriding deltaphi not fully supported: contact authors"
+        imageobject.parameters['OSC_RANGE']=self.phil_params.autoindex_override_deltaphi
+
+    # override twotheta angle
+    if self.phil_params.autoindex_override_twotheta != None:
+      imageobject.parameters['TWOTHETA']=\
+        self.phil_params.autoindex_override_twotheta
+
+    if self.phil_params.image_specific_osc_start != None:
+        imageobject.parameters['OSC_START']= \
+          eval("(%s)(%d)"%(
+          self.phil_params.image_specific_osc_start,filenameobject.number))
+
+    #take care of unbinned Quantum 315
+    if (self.phil_params.distl_permit_binning and \
+      imageobject.size1 > 4000) or \
+      self.phil_params.distl_force_binning:
+      imageobject.setBin(2)
+      self.phil_params.distl.minimum_spot_area = min(
+        self.phil_params.distl.minimum_spot_area,
+        self.phil_params.distl_binned_image_spot_size)
+
+    if imageobject.vendortype=="MARCCD":
+      #This section corrects for the fact that ESRF writes the mar ccd header
+      #  with beam center in mm instead of pixels.
+      detector_center_in_mm = 0.5*imageobject.size1*imageobject.pixel_size
+      one_tenth_error = 0.1*detector_center_in_mm
+
+      #offset between given beam and detector center
+      import math
+      def distance(a,b):
+        return math.sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]))
+      offset1=distance( (detector_center_in_mm,detector_center_in_mm),
+                        (imageobject.beamx,imageobject.beamy) )
+      if offset1>one_tenth_error:
+        newx = imageobject.beamx/imageobject.pixel_size
+        newy = imageobject.beamy/imageobject.pixel_size
+        #offset between corrected beam and detector center
+        offset2=distance( (detector_center_in_mm,detector_center_in_mm),
+                        (newx,newy) )
+        if offset2<one_tenth_error:
+          imageobject.parameters['BEAM_CENTER_X'] = newx
+          imageobject.parameters['BEAM_CENTER_Y'] = newy
+          #Furthermore the x and y are transposed in the one example we've been given
+          convert_beam_instrument_to_imageblock(imageobject,
+            beam_center_convention,force=True)
+          if self.verbose:
+            print "Mar CCD image appears to have beam center %.2f %.2f in mm instead of pixels"%(
+            imageobject.beamx,imageobject.beamy)
 
 class Spotspickle_argument_module:  #almost verbatim copy from procedure.py
   def __init__(self,directory,framelist=[]):

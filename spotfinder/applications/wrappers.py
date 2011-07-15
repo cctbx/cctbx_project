@@ -53,7 +53,7 @@ class DistlOrganizer:
     #print '\n'.join(self.Files.filenames())
 
   def setCommandInput(self,argument_module):
-    from labelit.command_line.imagefiles import ImageFiles
+    from spotfinder.diffraction.imagefiles import spotfinder_image_files as ImageFiles
     self.Files = ImageFiles(argument_module,self.phil_params)
     self.frames = self.Files.frames()
 
