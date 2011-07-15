@@ -3,9 +3,9 @@ from wxtbx import phil_controls
 from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
 import wx
 
-class UnitCellControl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
+class UnitCellCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
-    super(UnitCellControl, self).__init__(*args, **kwds)
+    super(UnitCellCtrl, self).__init__(*args, **kwds)
     self.SetToolTip(wx.ToolTip(
       "If all unit cell edges are perpendicular to each "+
       "other, you only need to enter the edge lengths; the angles will be "+
@@ -52,7 +52,7 @@ if (__name__ == "__main__") :
   frame = wx.Frame(None, -1, "Unit cell test")
   panel = wx.Panel(frame, -1, size=(600,400))
   txt1 = wx.StaticText(panel, -1, "Unit cell:", pos=(100,180))
-  sg_ctrl = UnitCellControl(panel, -1, pos=(200,180), size=(300,-1),
+  sg_ctrl = UnitCellCtrl(panel, -1, pos=(200,180), size=(300,-1),
     name="Unit cell")
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay (evt) :

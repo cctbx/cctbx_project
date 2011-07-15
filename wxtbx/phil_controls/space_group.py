@@ -4,14 +4,14 @@ from wxtbx.phil_controls import TextCtrlValidator
 from libtbx.utils import Abort
 import wx
 
-class SpaceGroupControl (wx.ComboBox, phil_controls.PhilCtrl) :
+class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
     saved_value = None
     if (kwds.get('value', '') != "") :
       saved_value = kwds['value']
       kwds['value'] = ""
-    super(SpaceGroupControl, self).__init__(*args, **kwds)
+    super(SpaceGroupCtrl, self).__init__(*args, **kwds)
     self.SetValidator(SpaceGroupValidator())
     # FIXME does not work on wxOSX-Cocoa
     self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
@@ -75,7 +75,7 @@ if (__name__ == "__main__") :
   frame = wx.Frame(None, -1, "Space group test")
   panel = wx.Panel(frame, -1, size=(600,400))
   txt1 = wx.StaticText(panel, -1, "Space group:", pos=(100,180))
-  sg_ctrl = SpaceGroupControl(panel, -1, pos=(200,180),
+  sg_ctrl = SpaceGroupCtrl(panel, -1, pos=(200,180),
     name="Space group")
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay (evt) :
