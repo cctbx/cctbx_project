@@ -1,9 +1,10 @@
 
+from wxtbx import phil_controls
 from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
 import wx
 import re
 
-class FloatsControl (ValidatedTextCtrl) :
+class FloatsControl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     super(FloatsControl, self).__init__(*args, **kwds)
     self.elems = None

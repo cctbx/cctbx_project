@@ -1,8 +1,9 @@
 
+from wxtbx import phil_controls
 from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
 import wx
 
-class UnitCellControl (ValidatedTextCtrl) :
+class UnitCellControl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     super(UnitCellControl, self).__init__(*args, **kwds)
     self.SetToolTip(wx.ToolTip(
