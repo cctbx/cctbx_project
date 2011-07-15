@@ -1,7 +1,8 @@
 
+from wxtbx import phil_controls
 import wx
 
-class MultiChoiceCtrl (wx.Panel) :
+class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
   """
   Control for phil type 'choice(multi=True)'
 
@@ -31,7 +32,13 @@ class MultiChoiceCtrl (wx.Panel) :
   def SetCols (self, n_columns) :
     self._n_columns = n_columns
     self._sizer.SetCols(n_columns)
-    self.Realize()
+    if (len(self._option_controls) > 0) :
+      self.Realize()
+
+  def SetToolTip (self, tooltip) :
+    super(MultiChoiceCtrl, self).SetToolTip(tooltip)
+    for key, ctrl in self._option_controls.iteritems() :
+      ctrl.SetToolTip(tooltip)
 
   def Realize (self) :
     """Finalizes layout and fits the panel."""
@@ -123,12 +130,12 @@ class MultiChoiceCtrl (wx.Panel) :
 
   def OnCheck (self, event) :
     box = event.GetEventObject()
-    print self.GetPhilValue()
+    #print self.GetPhilValue()
     #print box.GetName(), box.GetValue()
 
   def OnRightClick (self, event) :
     box = event.GetEventObject()
-    print box.GetName()
+    #print box.GetName()
 
 # testing
 if (__name__ == "__main__") :

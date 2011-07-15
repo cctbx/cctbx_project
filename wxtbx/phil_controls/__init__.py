@@ -2,6 +2,19 @@
 from libtbx.utils import Abort
 import wx
 
+class PhilCtrl (object) :
+  def __init__ (self) :
+    self.phil_name = None
+
+  def SetPhilName (self, name) :
+    self.phil_name = name
+
+  def GetPhilName (self) :
+    return getattr(self, "phil_name", None)
+
+  def __str__ (self) :
+    return type(self).__name__ + (" (%s)" % self.phil_name)
+
 class ValidatedTextCtrl (wx.TextCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)

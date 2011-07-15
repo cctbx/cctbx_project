@@ -1,7 +1,8 @@
 
+from wxtbx import phil_controls
 import wx
 
-class ArrayLabelCtrl (wx.Choice) :
+class ArrayLabelCtrl (wx.Choice, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     super(ArrayLabelCtrl, self).__init__(*args, **kwds)
     if (wx.Platform == '__WXMAC__') and (wx.VERSION[1] > 8) :
@@ -39,6 +40,24 @@ class ArrayLabelCtrl (wx.Choice) :
   def OnChoose (self, event) :
     label = self.GetPhilValue()
     print label
+
+class ArrayLabelsCtrl (ArrayLabelCtrl) :
+  def SetLabel (self, label) :
+    if (isinstance(label, list)) :
+      assert (len(label) == 1)
+      ArrayLabelCtrl.SetLabel(self, label[0])
+    else :
+      ArrayLabelCtrl.SetLabel(self, label)
+
+  def GetPhilValue (self) :
+    value = self.GetStringSelection()
+    if (value == self._default_value) or (value == "") :
+      return None
+    else :
+      return [value]
+
+  def GetStringVAlue (self) :
+    return str(ArrayLabelCtrl.GetPhilValue(self))
 
 # testing
 if (__name__ == "__main__") :

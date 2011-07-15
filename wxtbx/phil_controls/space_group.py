@@ -1,9 +1,10 @@
 
+from wxtbx import phil_controls
 from wxtbx.phil_controls import TextCtrlValidator
 from libtbx.utils import Abort
 import wx
 
-class SpaceGroupControl (wx.ComboBox) :
+class SpaceGroupControl (wx.ComboBox, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
     saved_value = None
