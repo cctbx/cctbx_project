@@ -1,4 +1,5 @@
 from libtbx import easy_run
+from libtbx.test_utils import approx_equal
 from mmtbx.command_line import density_modification
 
 import os
@@ -58,8 +59,10 @@ def exercise_density_modification():
   cmd = 'mmtbx.density_modification "%s" "%s"' % args
   print cmd
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
-  assert result.stdout_lines[-4] == 'Starting dm/model correlation: 0.631999'
-  assert result.stdout_lines[-3] == 'Final dm/model correlation:    0.781056'
+  assert result.stdout_lines[-4].startswith('Starting dm/model correlation:')
+  assert result.stdout_lines[-3].startswith('Final dm/model correlation:')
+  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.631999)
+  assert approx_equal(float(result.stdout_lines[-3].split()[-1]), 0.781056, 1e-4)
 
 def run():
   exercise_density_modification()
