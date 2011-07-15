@@ -130,7 +130,8 @@ def exercise_miller_array_as_cns_hkl():
     for data in [flex.bool((False,True)),
                  flex.int((-3,4)),
                  flex.double((10,13)),
-                 flex.complex_double((10,13))]:
+                 flex.complex_double((10,13)),
+                 flex.hendrickson_lattman(((0,1,2,3),(4,5,6,7)))]:
       miller_array = miller_set.array(data=data)
       miller_array.export_as_cns_hkl(file_object=s)
       if (isinstance(data, flex.double)):
@@ -164,6 +165,20 @@ DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END
 INDEx 1 2 3 F= 10 0
 INDEx -3 5 -7 F= 13 0
 NREFlections=2
+ANOMalous=FALSe
+DECLare NAME=PA  DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=PB  DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=PC  DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=PD  DOMAin=RECIprocal TYPE=REAL END
+GROUp  TYPE=HL
+     OBJEct=PA
+     OBJEct=PB
+     OBJEct=PC
+     OBJEct=PD
+END
+INDEx 1 2 3 PA= 0 PB= 1 PC= 2 PD= 3
+INDEx -3 5 -7 PA= 4 PB= 5 PC= 6 PD= 7
+NREFlections=2
 ANOMalous=TRUE
 DECLare NAME=DATA  DOMAin=RECIprocal TYPE=INTEger END
 INDEx 1 2 3 DATA= 0
@@ -189,6 +204,20 @@ ANOMalous=TRUE
 DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END
 INDEx 1 2 3 F= 10 0
 INDEx -3 5 -7 F= 13 0
+NREFlections=2
+ANOMalous=TRUE
+DECLare NAME=PA  DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=PB  DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=PC  DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=PD  DOMAin=RECIprocal TYPE=REAL END
+GROUp  TYPE=HL
+     OBJEct=PA
+     OBJEct=PB
+     OBJEct=PC
+     OBJEct=PD
+END
+INDEx 1 2 3 PA= 0 PB= 1 PC= 2 PD= 3
+INDEx -3 5 -7 PA= 4 PB= 5 PC= 6 PD= 7
 """)
 
 def exercise_reflection_file_as_miller_array():
