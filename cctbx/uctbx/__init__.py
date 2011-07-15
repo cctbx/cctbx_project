@@ -100,9 +100,17 @@ class _(boost.python.injector, ext.unit_cell):
     from cctbx.uctbx import krivy_gruber_1976
     return krivy_gruber_1976.reduction(self, relative_epsilon, iteration_limit)
 
-  def niggli_cell(self, relative_epsilon=None, iteration_limit=None):
+  def niggli_cell(self,
+        relative_epsilon=None,
+        iteration_limit=None):
     return self.niggli_reduction(
       relative_epsilon, iteration_limit).as_unit_cell()
+
+  def change_of_basis_op_to_niggli_cell(self,
+        relative_epsilon=None,
+        iteration_limit=None):
+    return self.niggli_reduction(
+      relative_epsilon, iteration_limit).change_of_basis_op()
 
   def lattice_symmetry_group(self,
         max_delta=3,
@@ -113,6 +121,25 @@ class _(boost.python.injector, ext.unit_cell):
       max_delta=max_delta,
       enforce_max_delta_for_generated_two_folds
         =enforce_max_delta_for_generated_two_folds)
+
+  def complete_miller_set_with_lattice_symmetry(self,
+        anomalous_flag,
+        d_min,
+        lattice_symmetry_max_delta=3):
+    cb_op = self.change_of_basis_op_to_niggli_cell()
+    niggli_cell = self.change_basis(cb_op)
+    lattice_group = niggli_cell.lattice_symmetry_group(
+      max_delta=lattice_symmetry_max_delta)
+    from cctbx import crystal
+    niggli_lattice_symmetry = crystal.symmetry(
+      unit_cell=niggli_cell,
+      space_group_info=lattice_group.info())
+    from cctbx import miller
+    niggli_lattice_set = miller.build_set(
+      crystal_symmetry=niggli_lattice_symmetry,
+      anomalous_flag=anomalous_flag,
+      d_min=d_min)
+    return niggli_lattice_set.change_basis(cb_op.inverse())
 
   def buffer_shifts_frac(self, buffer):
     from cctbx.crystal import direct_space_asu

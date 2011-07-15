@@ -707,8 +707,16 @@ def exercise_d_metrical_matrix_d_params():
   assert approx_equal(grads, fd_grads)
 
 def exercise_downstream_methods():
-  uc = uctbx.unit_cell((1,1,1,90,90,90))
+  uc = uctbx.unit_cell((10,10,10,90,90,90))
   assert str(uc.lattice_symmetry_group().info()) == "P 4 3 2"
+  for anomalous_flag in [False, True]:
+    ms = uc.complete_miller_set_with_lattice_symmetry(
+      d_min=2, anomalous_flag=anomalous_flag)
+    assert str(ms.space_group_info()) == "P 4 3 2"
+    if (anomalous_flag):
+      assert ms.indices().size() == 27
+    else:
+      assert ms.indices().size() == 25
 
 def run():
   exercise_d_metrical_matrix_d_params()
