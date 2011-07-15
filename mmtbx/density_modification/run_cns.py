@@ -31,12 +31,6 @@ def do_dirty_work(params, fo, hl_coeffs):
   shutil.copyfile(
     "%s/inputs/xtal_phase/density_modify.inp" % cns_solve_dir, "tmp.inp")
 
-  inp_template_path = "%s/cns_input_header" %(
-    libtbx.env.find_in_repositories("mmtbx/density_modification"))
-  inp_template = open(inp_template_path, "rb").read()
-  inp_body_path = "%s/cns_density_modify.inp" %(
-    libtbx.env.find_in_repositories("mmtbx/density_modification"))
-  inp_body = open(inp_body_path, "rb").read()
   cns_params = {}
   cns_params.setdefault("space_group", cns_format(
     space_group_info=params.input.space_group))
