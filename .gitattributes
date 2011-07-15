@@ -1034,6 +1034,7 @@ mmtbx/conformation_dependent_library/bond_angle_registry.py -text
 mmtbx/conformation_dependent_library/cdl_database.py -text
 mmtbx/conformation_dependent_library/test_cdl.py -text
 mmtbx/density_modification/__init__.py -text
+mmtbx/density_modification/run_cns.py -text
 mmtbx/density_modification/tst_density_modification.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
 mmtbx/email_ralf_042910.txt -text
