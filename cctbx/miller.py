@@ -1778,6 +1778,8 @@ class array(set):
     elif (by_value == "abs"):
       result = flex.sort_permutation(
         data=flex.abs(self.data()), reverse=not reverse)
+    elif (isinstance(by_value, str)):
+      raise ValueError("Unknown: by_value=%s" % by_value)
     else:
       result = flex.sort_permutation(
         data=by_value, reverse=not reverse)
