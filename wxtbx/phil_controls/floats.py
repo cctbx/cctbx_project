@@ -1,10 +1,9 @@
 
-from wxtbx import phil_controls
-from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
+from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx
 import re
 
-class FloatsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
+class FloatsCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
     super(FloatsCtrl, self).__init__(*args, **kwds)
     self.elems = None
@@ -31,7 +30,7 @@ class FloatsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
     self.Validate()
     val_str = str(ValidatedTextCtrl.GetValue(self))
     if (val_str == "") :
-      return None
+      return self.ReturnNoneIfOptional()
     return [ float(field) for field in val_str.split() ]
 
   def FormatValue (self, value) :
@@ -45,9 +44,10 @@ class FloatsValidator (TextCtrlValidator) :
     floats_list = [ float(field) for field in value.split() ]
     if (self.GetWindow().elems is not None) :
       if (self.GetWindow().elems != len(floats_list)) :
-        raise RuntimeError(("Wrong number of items - %d values required, "+
+        raise ValueError(("Wrong number of items - %d values required, "+
           "but %d are entered.") % (self.GetWindow().elems, len(floats_list)))
-    return self.GetWindow().FormatValue(floats_list)
+    return floats_list
+#    return self.GetWindow().FormatValue(floats_list)
 
 if (__name__ == "__main__") :
   app = wx.App(0)

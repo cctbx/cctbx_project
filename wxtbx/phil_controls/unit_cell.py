@@ -1,9 +1,8 @@
 
-from wxtbx import phil_controls
-from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
+from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx
 
-class UnitCellCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
+class UnitCellCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
     super(UnitCellCtrl, self).__init__(*args, **kwds)
     self.SetToolTip(wx.ToolTip(
@@ -35,7 +34,7 @@ class UnitCellCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
     self.Validate()
     val_str = str(wx.TextCtrl.GetValue(self))
     if (val_str == "") :
-      return None
+      return self.ReturnNoneIfOptional()
     from cctbx import uctbx
     return uctbx.unit_cell(val_str)
 
@@ -45,7 +44,8 @@ class UnitCellValidator (TextCtrlValidator) :
       return ""
     from cctbx import uctbx
     uc = uctbx.unit_cell(value)
-    return self.GetWindow().FormatValue(uc)
+    return uc
+#    return self.GetWindow().FormatValue(uc)
 
 if (__name__ == "__main__") :
   app = wx.App(0)
