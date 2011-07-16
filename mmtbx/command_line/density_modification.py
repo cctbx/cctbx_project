@@ -94,10 +94,6 @@ def run(args, log = sys.stdout, as_gui_program=False):
   params = processed_args.params.extract().density_modification
   output_plots = command_line.options.output_plots
 
-  if params.solvent_fraction is None:
-    print "*** Solvent fraction not specified: using default of 0.5 ***"
-    params.solvent_fraction = 0.5
-
   crystal_symmetry = crystal.symmetry(
     unit_cell=params.input.unit_cell,
     space_group_info=params.input.space_group)
@@ -161,7 +157,9 @@ def run(args, log = sys.stdout, as_gui_program=False):
     plots_to_make = (
       "fom", "skewness",
       "r1_factor", "r1_factor_fom", "mean_solvent_density", "mean_protein_density",
-      "f000_over_v", "k_flip", "rms_solvent_density", "rms_protein_density")
+      "f000_over_v", "k_flip", "rms_solvent_density", "rms_protein_density",
+      "standard_deviation_local_rms", "mean_delta_phi", "mean_delta_phi_initial",
+      )
     from matplotlib.backends.backend_pdf import PdfPages
     from libtbx import pyplot
 
