@@ -79,6 +79,9 @@ def run(args, log = sys.stdout, as_gui_program=False):
                           action="store_true",
                           default=False,
                           help="suppress output")
+                  .option("--output_plots",
+                          action="store_true",
+                          default=False)
                   ).process(args=args)
   parsed = defaults(log=log)
   processed_args = mmtbx.utils.process_command_line_args(
@@ -89,6 +92,7 @@ def run(args, log = sys.stdout, as_gui_program=False):
     suppress_symmetry_related_errors=True)
   processed_args.params.show()
   params = processed_args.params.extract().density_modification
+  output_plots = command_line.options.output_plots
 
   if params.solvent_fraction is None:
     print "*** Solvent fraction not specified: using default of 0.5 ***"
@@ -152,6 +156,45 @@ def run(args, log = sys.stdout, as_gui_program=False):
   dm = density_modify(fo, hl_coeffs, params, model_map=model_map,
     log=log,
     as_gui_program=as_gui_program)
+
+  if output_plots:
+    plots_to_make = (
+      "fom", "skewness",
+      "r1_factor", "r1_factor_fom", "mean_solvent_density", "mean_protein_density",
+      "f000_over_v", "k_flip", "rms_solvent_density", "rms_protein_density")
+    from matplotlib.backends.backend_pdf import PdfPages
+    from libtbx import pyplot
+
+    stats = dm.get_stats()
+    pdf = PdfPages("density_modification.pdf")
+    fig = pyplot.figure()
+
+    if len(dm.correlation_coeffs) > 1:
+      data = dm.correlation_coeffs
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1,1,1)
+      ax.set_title("correlation coefficient")
+      ax.plot(range(1, dm.i_cycle+2), data)
+      pdf.savefig(fig)
+
+    for plot in plots_to_make:
+      data = [getattr(stats.get_cycle_stats(i), plot) for i in range(1, dm.i_cycle+2)]
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1,1,1)
+      ax.set_title(plot.replace("_", " "))
+      ax.plot(range(1, dm.i_cycle+2), data)
+      pdf.savefig(fig)
+
+    data = [stats.get_cycle_stats(i).rms_solvent_density/
+            stats.get_cycle_stats(i).rms_protein_density
+            for i in range(1, dm.i_cycle+2)]
+    fig = pyplot.figure()
+    ax = fig.add_subplot(1,1,1)
+    ax.set_title("RMS solvent/protein density ratio")
+    ax.plot(range(1, dm.i_cycle+2), data)
+    pdf.savefig(fig)
+
+    pdf.close()
 
   map_coeffs = dm.map_coeffs_in_original_setting
 

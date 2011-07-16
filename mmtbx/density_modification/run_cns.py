@@ -1,4 +1,3 @@
-import libtbx.load_env
 from libtbx import easy_run
 from iotbx.cns.space_group_symbols import cns_format
 import os, shutil, time
