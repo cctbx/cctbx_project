@@ -63,7 +63,7 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
       label=label,
       name=choice)
     self.Bind(wx.EVT_CHECKBOX, self.OnCheck, box)
-    self.Bind(wx.EVT_CONTEXT_MENU, self.OnRightClick, box)
+    #self.Bind(wx.EVT_CONTEXT_MENU, self.OnRightClick, box)
     self._sizer.Add(box) #, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._option_names.append(choice)
     self._option_controls[choice] = box
@@ -81,6 +81,11 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
   def SetChoice (self, choice, selected=True) :
     """Select or deselect the specified choice."""
     self._option_controls[choice].SetValue(selected)
+
+  def GetChoiceIndex (self, choice) :
+    if (choice in self._option_names) :
+      return self._option_names.index(choice)
+    return None
 
   def GetValue (self) :
     raise NotImplementedError()
@@ -130,12 +135,7 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
 
   def OnCheck (self, event) :
     box = event.GetEventObject()
-    #print self.GetPhilValue()
-    #print box.GetName(), box.GetValue()
-
-  def OnRightClick (self, event) :
-    box = event.GetEventObject()
-    #print box.GetName()
+    self.DoSendEvent(original_window=box)
 
 # testing
 if (__name__ == "__main__") :

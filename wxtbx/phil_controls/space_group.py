@@ -1,6 +1,6 @@
 
 from wxtbx import phil_controls
-from wxtbx.phil_controls import TextCtrlValidator
+from wxtbx.phil_controls.text_base import TextCtrlValidator
 from libtbx.utils import Abort
 import wx
 
@@ -44,12 +44,12 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
     self.Validate()
     sg = str(self.GetValue())
     if (sg == "") :
-      return None
+      return self.ReturnNoneIfOptional()
     from cctbx import sgtbx
     return sgtbx.space_group_info(symbol=sg)
 
   def GetStringValue (self) :
-    return str(self.GetValue())
+    return str(self.GetPhilValue())
 
   def Validate (self) :
     # XXX why doesn't self.Validate() work?

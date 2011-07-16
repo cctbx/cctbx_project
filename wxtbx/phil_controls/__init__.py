@@ -1,10 +1,24 @@
 
-from libtbx.utils import Abort
+from libtbx.utils import Sorry
 import wx
 
 class PhilCtrl (object) :
   def __init__ (self) :
     self.phil_name = None
+    self.optional = False
+
+  def ReturnNoneIfOptional (self) :
+    if (self.IsOptional()) :
+      return None
+    else :
+      raise Sorry("Value required for '%s'." % self.GetName())
+
+  def SetOptional (self, optional=True) :
+    if (optional is None) : optional = True
+    self.optional = optional
+
+  def IsOptional (self) :
+    return getattr(self, "optional", True)
 
   def SetPhilName (self, name) :
     self.phil_name = name
@@ -12,96 +26,39 @@ class PhilCtrl (object) :
   def GetPhilName (self) :
     return getattr(self, "phil_name", None)
 
+  def GetStringValue (self) :
+    raise NotImplementedError()
+
+  def GetPhil (self, full_path=True, indent=0) :
+    assert (self.phil_name is not None)
+    value = self.GetStringValue()
+    if (full_path) :
+      phil_name = self.phil_name
+    else :
+      phil_name = self.phil_name.split(".")[-1]
+    format = "%s%s = %s"
+    return format % (" "*indent, phil_name, value)
+
   def __str__ (self) :
     return type(self).__name__ + (" (%s)" % self.phil_name)
 
-class ValidatedTextCtrl (wx.TextCtrl) :
-  def __init__ (self, *args, **kwds) :
-    kwds = dict(kwds)
-    saved_value = None
-    if (kwds.get('value', "") != "") :
-      saved_value = kwds['value']
-      kwds['value'] = ""
-    super(ValidatedTextCtrl, self).__init__(*args, **kwds)
-    style = self.GetWindowStyle()
-    style = self.GetWindowStyle()
-    if (not style & wx.TE_PROCESS_ENTER) :
-      style |= wx.TE_PROCESS_ENTER
-      self.SetWindowStyle(style)
-    self.SetValidator(self.CreateValidator())
-    self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
-    if (saved_value is not None) :
-      self.SetValue(saved_value)
+  def DoSendEvent (self, original_window=None) :
+    event = PhilCtrlEvent(wxEVT_PHIL_CONTROL, self.GetId())
+    event.SetEventObject(self)
+    if (original_window is not None) :
+      event.SetOriginalWindow(original_window)
+    self.GetEventHandler().ProcessEvent(event)
 
-  def CreateValidator (self) :
-    raise NotImplementedError()
+wxEVT_PHIL_CONTROL = wx.NewEventType()
+EVT_PHIL_CONTROL = wx.PyEventBinder(wxEVT_PHIL_CONTROL, 1)
+class PhilCtrlEvent (wx.PyCommandEvent) :
+  def __init__ (self, eventType, eventId) :
+    wx.PyCommandEvent.__init__(self, eventType, eventId)
+    self._original_window = None
 
-  def Validate (self) :
-    # XXX why doesn't self.Validate() work?
-    if self.GetValidator().Validate(self.GetParent()) :
-      return True
-    else :
-      raise Abort()
+  def SetOriginalWindow (self, window) :
+    assert isinstance(window, wx.Window)
+    self._original_window = window
 
-  def FormatValue (self, value) :
-    raise NotImplementedError()
-
-  def GetPhilValue (self) :
-    raise NotImplementedError()
-
-  def GetStringValue (self) :
-    value = self.GetPhilValue()
-    if (value is not None) :
-      return self.FormatValue(value)
-    return None
-
-  def Enable (self, enable=True) :
-    wx.TextCtrl.Enable(self, enable)
-    if enable :
-      self.SetBackgroundColour((255,255,255))
-    else :
-      self.SetBackgroundColour((200,200,200))
-
-class TextCtrlValidator (wx.PyValidator) :
-  def __init__ (self) :
-    wx.PyValidator.__init__(self)
-    self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
-
-  def Clone (self) :
-    return self.__class__()
-
-  def TransferToWindow (self) :
-    return True
-
-  def TransferFromWindow (self) :
-    return True
-
-  def CheckFormat (self, value) :
-    raise NotImplementedError()
-
-  def Validate (self, win) :
-    ctrl = self.GetWindow()
-    value_str = str(ctrl.GetValue())
-    if (value_str == "") :
-      return True
-    try :
-      reformatted = self.CheckFormat(value_str)
-      ctrl.SetValue(reformatted)
-      ctrl.SetBackgroundColour(
-        wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
-      #ctrl.SetFocus()
-      ctrl.Refresh()
-      return True
-    except NotImplementedError :
-      raise
-    except Exception, e :
-      ctrl_name = ctrl.GetName()
-      wx.MessageBox(caption="Format error",
-        message="Inappropriate value given for \"%s\": %s" %(ctrl_name,str(e)))
-      ctrl.SetBackgroundColour("red")
-      ctrl.SetFocus()
-      ctrl.Refresh()
-      return False
-
-  def OnEnter (self, event) :
-    self.Validate(None)
+  def GetOriginalWindow (self) :
+    return self._original_window

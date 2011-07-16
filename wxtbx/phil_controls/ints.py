@@ -1,10 +1,9 @@
 
-from wxtbx import phil_controls
-from wxtbx.phil_controls import ValidatedTextCtrl, TextCtrlValidator
+from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx
 import re
 
-class IntsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
+class IntsCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
     super(IntsCtrl, self).__init__(*args, **kwds)
     self.elems = None
@@ -23,6 +22,8 @@ class IntsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
       ValidatedTextCtrl.SetValue(self, str(int(value)))
     elif (isinstance(value, list) or isinstance(value, tuple)) :
       ValidatedTextCtrl.SetValue(self, self.FormatValue(value))
+    else :
+      raise TypeError("Type '%s' not allowed!" % type(value).__name__)
 
   def SetValue (self, value) :
     self.SetInts(value)
@@ -31,7 +32,7 @@ class IntsCtrl (ValidatedTextCtrl, phil_controls.PhilCtrl) :
     self.Validate()
     val_str = str(ValidatedTextCtrl.GetValue(self))
     if (val_str == "") :
-      return None
+      return self.ReturnNoneIfOptional()
     return [ int(field) for field in val_str.split() ]
 
   def FormatValue (self, value) :
@@ -45,9 +46,10 @@ class IntsValidator (TextCtrlValidator) :
     ints_list = [ int(field) for field in value.split() ]
     if (self.GetWindow().elems is not None) :
       if (self.GetWindow().elems != len(ints_list)) :
-        raise RuntimeError(("Wrong number of items - %d integers required, "+
+        raise ValueError(("Wrong number of items - %d integers required, "+
           "but %d are entered.") % (self.GetWindow().elems, len(ints_list)))
-    return self.GetWindow().FormatValue(ints_list)
+    return ints_list
+#    return self.GetWindow().FormatValue(ints_list)
 
 if (__name__ == "__main__") :
   app = wx.App(0)
@@ -67,7 +69,11 @@ if (__name__ == "__main__") :
     ints2 = ints_ctrl2.GetPhilValue()
     print type(ints).__name__, str(ints)
     print type(ints2).__name__, str(ints2)
+  def OnChange (evt) :
+    print "OnChange"
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
+  import wxtbx.phil_controls
+  frame.Bind(wxtbx.phil_controls.EVT_PHIL_CONTROL, OnChange)
   frame.Fit()
   frame.Show()
   app.MainLoop()
