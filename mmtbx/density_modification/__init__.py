@@ -10,6 +10,7 @@ import libtbx.callbacks # import dependency
 from libtbx import adopt_init_args, Auto, group_args
 import libtbx
 import math, sys
+from cStringIO import StringIO
 
 pi_180 = math.atan(1)/ 45
 
@@ -69,6 +70,25 @@ master_params_str = """
         .short_caption = Final averaging radius
     }
   }
+  asu_contents
+    .help = "Defines the ASU contents"
+    .short_caption = ASU contents
+    .style = menu_item auto_align
+  {
+    n_residues=None
+      .type=float
+      .help="Number of residues in structural unit"
+      .short_caption = Number of residues in asymmetric unit
+    n_bases=None
+      .type=float
+      .help="Number of nucleotides in structural unit"
+      .short_caption = Number of nucleotides in asymmetric unit
+    n_copies_per_asu=None
+      .type=float
+      .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
+      .short_caption = Number of copies in asymmetric unit
+  }
+
 """
 
 
@@ -110,7 +130,6 @@ class density_modification(object):
                as_gui_program=False):
     if log is None: log = sys.stdout
     adopt_init_args(self, locals())
-    assert self.params.solvent_fraction is not None
     if self.params.solvent_mask.averaging_radius.final is None:
       if self.params.d_min is not None:
         self.params.solvent_mask.averaging_radius.final = self.params.d_min
@@ -119,6 +138,7 @@ class density_modification(object):
     if self.params.solvent_mask.averaging_radius.initial is None:
       self.params.solvent_mask.averaging_radius.initial = \
          self.params.solvent_mask.averaging_radius.final + 1
+    self.matthews_analysis()
     self.change_of_basis_op = None
     if self.params.change_basis_to_niggli_cell:
       self.change_of_basis_op = self.f_obs.change_of_basis_op_to_niggli_cell()
@@ -237,6 +257,20 @@ class density_modification(object):
     self.compute_map_coefficients()
     self.compute_map()
     self.show_cycle_summary()
+
+  def matthews_analysis(self):
+    from mmtbx.scaling import matthews
+    self.matthews_result = matthews.matthews_rupp(
+      miller_array=self.f_obs,
+      n_residues=self.params.asu_contents.n_residues,
+      n_bases=self.params.asu_contents.n_bases,
+      out=self.log, verbose=1)
+    self.params.asu_contents.n_residues = self.matthews_result[0]
+    self.params.asu_contents.n_bases = self.matthews_result[1]
+    if self.params.asu_contents.n_copies_per_asu is None:
+      self.params.asu_contents.n_copies_per_asu = self.matthews_result[2]
+    if self.params.solvent_fraction is None:
+      self.params.solvent_fraction = self.matthews_result[3]
 
   def compute_phase_source(self, hl_coeffs, n_steps=72):
     integrator = miller.phase_integrator(n_steps=n_steps)
@@ -433,6 +467,9 @@ class density_modification(object):
     self.mean_delta_phi_initial = phase_error(
       flex.arg(self.phase_source), flex.arg(self.phase_source_initial))
     self.mean_fom = flex.mean(fom)
+    fom = f_obs.array(data=fom)
+    fom.setup_binner(reflections_per_bin=1000)
+    self.mean_fom_binned = fom.mean(use_binning=True)
 
   def show_cycle_summary(self, out=None):
     if not self.params.verbose: return
@@ -460,6 +497,7 @@ class density_modification(object):
       r1_factor=self.r1_factor,
       r1_factor_fom=self.r1_factor_fom,
       fom=self.mean_fom,
+      fom_binned=self.mean_fom_binned,
       skewness=self.more_statistics.skewness())
     summary = self._stats.format_summary()
     print >> self.log, summary
@@ -558,8 +596,12 @@ class dm_stats (object) :
     summary += "Mean delta phi (initial): %.4f\n" %stats.mean_delta_phi_initial
     summary += "R1-factor:       %.2f\n" % stats.r1_factor
     summary += "R1-factor (fom): %.2f\n" % stats.r1_factor_fom
-    summary += "Mean figure of merit (FOM): %.3f\n" % stats.fom
     summary += "Skewness: %.4f\n" % stats.skewness
+    summary += "Mean figure of merit (FOM): %.3f\n" % stats.fom
+    s = StringIO()
+    summary += "Mean figure of merit (FOM) in resolution bins:\n"
+    stats.fom_binned.show(f=s, data_fmt="%.4f")
+    summary += s.getvalue()
     summary += "#"*80 + "\n"
     summary += "\n"
     return summary
