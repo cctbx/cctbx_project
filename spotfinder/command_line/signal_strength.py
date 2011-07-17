@@ -58,7 +58,9 @@ distl {
       .help="Extend the binning all the way to detector corner, otherwise to outermost spot on first image"
   }
 }
-"""+additional_spotfinder_phil_defs)
+
+%s
+"""%(spotfinder.labelit_related_commands)+additional_spotfinder_phil_defs)
 
 def run(args, command_name="distl.signal_strength"):
   help_str="""explanation:
@@ -124,7 +126,7 @@ Missing file name for %(what)s structure:
   print "#phil __ON__"
   print
   working_params = master_params.format(python_object=params)
-  working_params.show()
+  working_params.show(expert_level=1)
   print
   print "#phil __OFF__"
   print

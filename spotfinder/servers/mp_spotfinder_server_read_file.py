@@ -11,7 +11,7 @@ def note(format, *args):
     sys.stderr.write('[%s]\t%s\n' % (current_process().name, format%args))
 
 from spotfinder.servers.spotfinder_server_read_file import image_request_handler as irhbase
-from spotfinder.servers.spotfinder_server_read_file import common_parameters
+from spotfinder.servers.spotfinder_server_read_file import generate_common_parameters # import dependency
 
 class image_request_handler(irhbase):
 

@@ -1,7 +1,7 @@
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
-import StringIO, cgi, sys
+import StringIO, cgi, sys, copy
 from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
 
 from urlparse import urlparse
@@ -111,9 +111,9 @@ class image_request_handler(BaseHTTPRequestHandler):
     from spotfinder.diffraction.imagefiles import spotfinder_image_files as ImageFiles
     #from spotfinder.applications.overall_procedure import spotfinder_no_pickle
     from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
-    from labelit.preferences import labelit_commands
+    response_params = copy.deepcopy(common_parameters_singleton)
 
-    Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]),labelit_commands)
+    Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]),response_params)
 
     print "Final image object:"
     Files.images[0].show_header()
@@ -121,10 +121,10 @@ class image_request_handler(BaseHTTPRequestHandler):
     print "beam_center_reference_frame",Files.images[0].beam_center_reference_frame
 
     logfile = StringIO.StringIO()
-    if labelit_commands.distl.bins.verbose: sys.stdout = logfile
+    if response_params.distl.bins.verbose: sys.stdout = logfile
 
     from spotfinder.applications.wrappers import spotfinder_factory
-    S = spotfinder_factory(None, Files, labelit_commands)
+    S = spotfinder_factory(None, Files, response_params)
     print
     sys.stdout = sys.__stdout__
 
@@ -153,6 +153,12 @@ class image_request_handler(BaseHTTPRequestHandler):
 
   def opt_logging(self):
     pass
+
+common_parameters_singleton = None
+
+def generate_common_parameters(input_parameters):
+  global common_parameters_singleton
+  common_parameters_singleton = input_parameters
 
 def common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height):
     from labelit.preferences import labelit_commands
