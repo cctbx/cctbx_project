@@ -281,6 +281,9 @@ class histogram_slot_info(object):
     self.high_cutoff = high_cutoff
     self.n = n
 
+  def center(self):
+    return (self.high_cutoff + self.low_cutoff) / 2
+
 class _(boost.python.injector, ext.histogram):
 
   def __getinitargs__(self):

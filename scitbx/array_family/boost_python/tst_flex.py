@@ -1740,6 +1740,8 @@ def exercise_histogram():
 &8 - 10: 3
 """
   assert hy.n_out_of_slot_range() == 17
+  centers = [info.center() for info in hy.slot_infos()]
+  assert approx_equal(centers, [3,5,7,9])
   for pickler in [pickle, cPickle]:
     p = pickler.dumps(hy)
     l = pickler.loads(p)
