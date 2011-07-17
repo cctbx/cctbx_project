@@ -1520,7 +1520,6 @@ spotfinder/applications/heuristic_tbx/ice2.py -text
 spotfinder/applications/heuristic_tbx/ice_nztt.py -text
 spotfinder/applications/heuristic_tbx/method2_resolution.py -text
 spotfinder/applications/heuristic_tbx/spotreporter.py -text
-spotfinder/applications/overall_procedure.py -text
 spotfinder/applications/practical_heuristics.py -text
 spotfinder/applications/signal_strength.py -text
 spotfinder/applications/stats_distl.py -text
