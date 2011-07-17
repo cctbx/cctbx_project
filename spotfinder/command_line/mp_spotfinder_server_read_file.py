@@ -36,6 +36,7 @@ Allowed parameters:
     if fp in ["distl.image", "distl.verbose", "distl.pdf_output"]: continue
     name = "  %s=%s"%(D.object.full_path(),D.object.extract())
     help = D.object.help
+    if D.object.expert_level > 1: continue
     if len(name) + len(help) < screen and len(name) < 36:
         print "%-36s"%name,"[%s]"%help
     else:
@@ -56,12 +57,7 @@ Allowed parameters:
   from spotfinder.servers import mp_spotfinder_server_read_file as srv
 
   NUMBER_OF_PROCESSES = params.distl.processors
-
-  from labelit.preferences import labelit_commands
-  labelit_commands.distl = params.distl
-  srv.common_parameters(outer_resolution=params.distl.res.outer,
-                    minimum_spot_area=params.distl.minimum_spot_area,
-                    minimum_signal_height=params.distl.minimum_signal_height)
+  srv.generate_common_parameters(params)
 
   server_address = ('', params.distl.port)
 
