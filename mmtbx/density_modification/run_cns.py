@@ -41,8 +41,17 @@ def do_dirty_work(params, fo, hl_coeffs):
   cns_params["beta"] = uc_params[4]
   cns_params["gamma"] = uc_params[5]
 
-  if params.d_min is None: params.d_min = fo.d_min()
+  if params.d_min is None:
+    if params.phase_extension:
+      params.d_min = fo.d_min()
+    else:
+      params.d_min = hl_coeffs_start.d_min()
+  if params.initial_d_min is None:
+    params.initial_d_min = params.d_min
+  assert params.initial_d_min >= params.d_min
   cns_params["d_min"] = params.d_min
+  cns_params["initial_d_min"] = params.initial_d_min
+  cns_params["phase_extend"] = str(params.phase_extension).lower()
   cns_params["prot_to_solv"] = params.protein_solvent_ratio
   cns_params["trunc_min"] = params.density_truncation.fraction_min
   cns_params["trunc_max"] = params.density_truncation.fraction_max
@@ -139,8 +148,8 @@ cns_density_modify_inp_template = """\
 
 {========================= phase extension ===========================}
 
-{===>} phase_extend=false;
-{===>} initial_highres=2.8;
+{===>} phase_extend=%(phase_extend)s;
+{===>} initial_highres=%(initial_d_min)f;
 
 {===================== modification parameters =======================}
 
