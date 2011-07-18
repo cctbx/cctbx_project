@@ -20,6 +20,12 @@ density_modification {
     experimental_phases {
       %s
     }
+    map_coefficients
+      .optional=True
+      .help = Optional starting map coefficients
+    {
+      %s
+    }
     unit_cell = None
       .type = unit_cell
       .optional = False
@@ -60,6 +66,7 @@ density_modification {
 }
 """ %(mmtbx.utils.data_and_flags_str,
       mmtbx.utils.experimental_phases_params_str,
+      mmtbx.utils.map_coefficents_params_str,
       density_modification.master_params_str)
 
 def defaults(log):
@@ -119,6 +126,16 @@ def run(args, log = sys.stdout, as_gui_program=False):
     working_point_group=None,
     symmetry_safety_check=True,
     ignore_all_zeros=True)
+  if params.input.map_coefficients.file_name is not None:
+    map_coeffs = server.get_phases_deg(
+      file_name=params.input.map_coefficients.file_name,
+      labels=params.input.map_coefficients.labels,
+      convert_to_phases_if_necessary=False,
+      original_phase_units=None,
+      parameter_scope="",
+      parameter_name="labels").map_to_asu()
+  else:
+    map_coeffs = None
 
   fo = fo.map_to_asu()
   hl_coeffs = hl_coeffs.map_to_asu()
@@ -149,7 +166,17 @@ def run(args, log = sys.stdout, as_gui_program=False):
       resolution_factor=params.grid_resolution_factor,
       map_type="2mFo-DFc").real_map_unpadded()
 
-  dm = density_modify(fo, hl_coeffs, params, model_map=model_map,
+  # run cns
+  if 0:
+    from mmtbx.density_modification.run_cns import run_cns_density_modification
+    run_cns_density_modification(params, fo, hl_coeffs)
+
+  dm = density_modify(
+    params,
+    fo,
+    hl_coeffs,
+    map_coeffs=map_coeffs,
+    model_map=model_map,
     log=log,
     as_gui_program=as_gui_program)
 
@@ -237,13 +264,17 @@ def run(args, log = sys.stdout, as_gui_program=False):
 # density-modified map with map calculated from the model at each cycle
 class density_modify(density_modification.density_modification):
 
-  def __init__(self, fo, hl_coeffs, params, model_map=None,
-      log=None,
-      as_gui_program=False):
+  def __init__(self, params,
+                     fo,
+                     hl_coeffs,
+                     map_coeffs=None,
+                     model_map=None,
+                     log=None,
+                     as_gui_program=False):
     self.model_map = model_map
     self.correlation_coeffs = flex.double()
     density_modification.density_modification.__init__(
-      self, fo, hl_coeffs, params, as_gui_program=as_gui_program)
+      self, params, fo, hl_coeffs, map_coeffs=map_coeffs, as_gui_program=as_gui_program)
     if len(self.correlation_coeffs) > 1:
       fft_map = self.map_coeffs_start.fft_map(
         resolution_factor=self.params.grid_resolution_factor

@@ -636,6 +636,13 @@ will become meaningful only after many cycles of refinement.
       if (not ignore_pdb_hexdigest):
         raise Sorry("Please resolve the R-free flags mismatch.")
 
+map_coefficents_params_str = """\
+  file_name=None
+    .type=path
+    .short_caption=Map coefficients file
+  labels=None
+    .type=strings
+"""
 
 experimental_phases_params_str = """\
   file_name=None
