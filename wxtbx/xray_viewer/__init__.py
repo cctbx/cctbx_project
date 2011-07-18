@@ -20,7 +20,7 @@ class image (object) :
     except ImportError, e :
       raise Sorry("Labelit not installed or not configured.")
     zoom_level = self.settings.zoom_level + 1
-    if (zoom_level == 3) : zoom_level = 4
+#    if (zoom_level == 3) : zoom_level = 4
     fi = FlexImage(
       rawdata=self._raw.linearintdata,
       binning=zoom_level,
@@ -44,9 +44,8 @@ class image (object) :
   def convert_to_bitmap (self) :
     import wx
     wx_image = wx.EmptyImage(*(self._size))
-    #wx_image.SetData(self._img.convert("RGB").tostring())
     wx_image.SetData(self._img.export_string)
-    bmp = wx_image.ConvertToBitmap() # wx.BitmapFromImage(image)
+    bmp = wx_image.ConvertToBitmap()
     self._bmp = bmp
 
   def get_bitmap (self) :

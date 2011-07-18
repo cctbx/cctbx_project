@@ -11,7 +11,29 @@ class XrayView (wx.ScrolledWindow) :
     self.settings = self.GetParent().settings
     self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.Bind(wx.EVT_SIZE, self.OnSize)
-    self.Bind(wx.EVT_MOTION, self.OnMove)
+    self.Bind(wx.EVT_MOTION, self.OnMotion)
+    self.Bind(wx.EVT_MIDDLE_DOWN, self.OnMiddleClick)
+    self.Bind(wx.EVT_MIDDLE_UP, self.OnMiddleUp)
+    self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
+    self.Bind(wx.EVT_ENTER_WINDOW, self.OnEnter)
+    self.Bind(wx.EVT_LEAVE_WINDOW, self.OnLeave)
+    self.SetMinSize((640,640))
+    self.x_offset = None
+    self.y_offset = None
+    self.xmouse = None
+    self.ymouse = None
+
+  def load_image (self, file_name) :
+    wx.GetApp().Yield(True)
+    self._img = wxtbx.xray_viewer.image(file_name, self.settings)
+    self.OnSize(None)
+    self.Refresh()
+
+  def update_settings (self, layout=True) :
+    self._img.update_settings()
+    if (layout) :
+      self.OnSize(None)
+    self.Refresh()
 
   def DoGetBestSize (self) :
     if (self._img is None) :
@@ -20,6 +42,7 @@ class XrayView (wx.ScrolledWindow) :
       x, y = self._img.get_size()
       return (x+20, y+20)
 
+  # EVENTS
   def OnPaint (self, event) :
     dc = wx.AutoBufferedPaintDCFactory(self)
     x_offset, y_offset = self.GetViewStart()
@@ -37,30 +60,69 @@ class XrayView (wx.ScrolledWindow) :
     self.SetVirtualSize((w,h))
     self.SetScrollbars(1, 1, w, h)
 
-  def OnMove (self, event) :
-    x, y = event.GetPositionTuple()
-    x_offset, y_offset = self.GetViewStart()
-    img_x = x + x_offset - 10
-    img_y = y + y_offset - 10
-    img_w, img_h = self._img.get_size()
-    if (img_x < 0) or (img_x > img_w) or (img_y < 0) or (img_y > img_h) :
-      self.GetParent().display_resolution(None)
+  def OnRecordMouse (self, event) :
+    self.x_offset, self.y_offset = self.GetViewStart()
+    self.xmouse = event.GetX()
+    self.ymouse = event.GetY()
+
+  def OnMotion (self, event) :
+    if (event.Dragging()) :
+      if (event.LeftIsDown()) :
+        self.OnLeftDrag(event)
+      elif (event.MiddleIsDown()) :
+        self.OnMiddleDrag(event)
+      elif (event.RightIsDown()) :
+        self.OnRightDrag(event)
     else :
-      center_x, center_y = self._img.get_beam_center()
-      d_min = self._img.get_d_min_at_point(img_x, img_y)
-      self.GetParent().display_resolution(d_min)
+      x, y = event.GetPositionTuple()
+      x_offset, y_offset = self.GetViewStart()
+      img_x = x + x_offset - 10
+      img_y = y + y_offset - 10
+      img_w, img_h = self._img.get_size()
+      if (img_x < 0) or (img_x > img_w) or (img_y < 0) or (img_y > img_h) :
+        self.GetParent().display_resolution(None)
+      else :
+        center_x, center_y = self._img.get_beam_center()
+        d_min = self._img.get_d_min_at_point(img_x, img_y)
+        self.GetParent().display_resolution(d_min)
 
-  def load_image (self, file_name) :
-    wx.GetApp().Yield(True)
-    self._img = wxtbx.xray_viewer.image(file_name, self.settings)
-    self.OnSize(None)
-    self.Refresh()
+  def OnMiddleClick (self, event) :
+    self.OnRecordMouse(event)
+    wx.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
 
-  def update_settings (self) :
-    self._img.update_settings()
-    self.OnSize(None)
-    self.Refresh()
+  def OnMiddleUp (self, event) :
+    wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
 
+  def OnLeftDrag (self, event) :
+    pass
+
+  def OnMiddleDrag (self, event) :
+    self.OnTranslate(event)
+
+  def OnRightDrag (self, event) :
+    pass
+
+  def OnTranslate (self, event) :
+    x, y = event.GetX(), event.GetY()
+    delta_x = x - self.xmouse
+    delta_y = y - self.ymouse
+    self.Scroll(self.x_offset - delta_x, self.y_offset - delta_y)
+
+  def OnMouseWheel (self, event) :
+    d_brightness = 10 * event.GetWheelRotation()
+    self.GetParent().set_brightness(self.settings.brightness + d_brightness)
+
+  def OnEnter (self, event) :
+    self.CaptureMouse()
+    if (not event.MiddleIsDown()) and (not event.RightIsDown()) :
+      wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
+
+  def OnLeave (self, event) :
+    if (self.HasCapture()) :
+      self.ReleaseMouse()
+    wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
+
+########################################################################
 class XrayFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     super(XrayFrame, self).__init__(*args, **kwds)
@@ -87,6 +149,7 @@ class XrayFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnShowSettings, btn)
     self.toolbar.Realize()
     self.Fit()
+    self.SetMinSize(self.GetSize())
 
   def load_image (self, file_name) :
     file_name = os.path.abspath(file_name)
@@ -101,8 +164,15 @@ class XrayFrame (wx.Frame) :
     else :
       self.statusbar.SetStatusText("d_min = %.2f A" % d_min)
 
-  def update_settings (self) :
-    self._panel.update_settings()
+  def update_settings (self, layout=True) :
+    self._panel.update_settings(layout)
+
+  def set_brightness (self, brightness) :
+    if (brightness > 0) and (brightness <= 500) :
+      self.settings.brightness = brightness
+      if (self.settings_frame is not None) :
+        self.settings_frame.panel.brightness_ctrl.SetValue(brightness)
+      self._panel.update_settings(layout=False)
 
   def OnLoadFile (self, event) :
     file_name = wx.FileSelector("Reflections file",
@@ -135,6 +205,7 @@ class SettingsFrame (wx.MiniFrame) :
     self.SetSizer(szr)
     szr.Add(panel, 1, wx.EXPAND)
     szr.Fit(panel)
+    self.panel = panel
     self.Fit()
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
@@ -162,16 +233,22 @@ class SettingsPanel (wx.Panel) :
     s.Add(box)
     txt2 = wx.StaticText(self, -1, "Brightness")
     box.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.brightness_ctrl = wx.Slider(self, -1, size=(160,-1))
+    self.brightness_ctrl = wx.Slider(self, -1, size=(200,-1),
+      style=wx.SL_AUTOTICKS|wx.SL_LABELS)
     box.Add(self.brightness_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.brightness_ctrl.SetMin(0)
-    self.brightness_ctrl.SetMax(200)
+    self.brightness_ctrl.SetMin(10)
+    self.brightness_ctrl.SetMax(500)
     self.brightness_ctrl.SetValue(self.settings.brightness)
+    self.brightness_ctrl.SetTickFreq(25)
     self.Bind(wx.EVT_CHOICE, self.OnUpdate, self.zoom_ctrl)
-    self.Bind(wx.EVT_SLIDER, self.OnUpdate, self.brightness_ctrl)
+    self.Bind(wx.EVT_SLIDER, self.OnUpdate2, self.brightness_ctrl)
 
   def OnUpdate (self, event) :
-    zooms = ["100%", "50%"] #, None, "25%"]
+    zooms = ["100%", "50%", None, "25%"]
     self.settings.zoom_level = zooms.index(self.zoom_ctrl.GetStringSelection())
     self.settings.brightness = self.brightness_ctrl.GetValue()
-    self.GetParent().GetParent().update_settings()
+    self.GetParent().GetParent().update_settings(layout=True)
+
+  def OnUpdate2 (self, event) :
+    self.settings.brightness = self.brightness_ctrl.GetValue()
+    self.GetParent().GetParent().update_settings(layout=False)
