@@ -1792,11 +1792,11 @@ def exercise_linear_regression():
   r = flex.linear_regression(y, y)
   assert not r.is_well_defined()
   s = StringIO()
-  r.show_summary(f=s)
+  r.show_summary(f=s, prefix="/:")
   assert s.getvalue() == """\
-is_well_defined: %s
-y_intercept: 0.0
-slope: 0.0
+/:is_well_defined: %s
+/:y_intercept: 0.0
+/:slope: 0.0
 """ % str(False)
   y = flex.double((-1./2+1,-2./2+1,-3./2+1))
   for weight in [1,math.pi]:
