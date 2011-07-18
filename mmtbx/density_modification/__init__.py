@@ -123,9 +123,10 @@ class local_standard_deviation_map(object):
 class density_modification(object):
 
   def __init__(self,
+               params,
                f_obs,
                hl_coeffs_start,
-               params,
+               map_coeffs=None,
                log=None,
                as_gui_program=False):
     if log is None: log = sys.stdout
@@ -148,6 +149,9 @@ class density_modification(object):
       self.f_obs = self.f_obs.change_basis(self.change_of_basis_op).map_to_asu()
       self.hl_coeffs_start = self.hl_coeffs_start.change_basis(
         self.change_of_basis_op).map_to_asu()
+      if self.map_coeffs is not None:
+        self.map_coeffs = self.map_coeffs.change_basis(
+          self.change_of_basis_op).map_to_asu()
     self.mean_solvent_density = 0
     self.phase_source_initial = None
     self.phase_source = None
@@ -191,13 +195,19 @@ class density_modification(object):
     fom.set_selected(self.hl_coeffs.data() == (0,0,0,0), 0)
     self.fom = fom
 
-    self.map_coeffs = self.f_obs_active.customized_copy(
-      data=self.f_obs_active.data()*fom,
-      sigmas=None).phase_transfer(phase_source=self.hl_coeffs)
-    self.map_coeffs.data().set_selected(fom <= 0, 0)
-    self.map = self.map_coeffs.select(fom > 0).fft_map(
-      resolution_factor=self.params.grid_resolution_factor
-      ).apply_volume_scaling().real_map_unpadded()
+    if self.map_coeffs is None:
+      self.map_coeffs = self.f_obs_active.customized_copy(
+        data=self.f_obs_active.data()*fom,
+        sigmas=None).phase_transfer(phase_source=self.hl_coeffs)
+      self.map_coeffs.data().set_selected(fom <= 0, 0)
+      self.map = self.map_coeffs.select(fom > 0).fft_map(
+        resolution_factor=self.params.grid_resolution_factor
+        ).apply_volume_scaling().real_map_unpadded()
+    else:
+      assert self.map_coeffs.is_complex_array()
+      self.map = self.map_coeffs.fft_map(
+        resolution_factor=self.params.grid_resolution_factor
+        ).apply_volume_scaling().real_map_unpadded()
     self.map_coeffs_start = self.map_coeffs
     self.calculate_solvent_mask()
 
@@ -460,8 +470,6 @@ class density_modification(object):
     self.r1_factor_fom = flex.sum(
       fom * flex.abs(f_obs.data() - f_calc.as_amplitude_array().data())) \
         / flex.sum(fom * f_obs.data())
-    #mean_fom = flex.mean(fom)
-    #print >> self.log, "Mean FOM: %.4f" %mean_fom
     self.mean_delta_phi = phase_error(
       flex.arg(self.phase_source), flex.arg(self.phase_source_previous))
     self.mean_delta_phi_initial = phase_error(
