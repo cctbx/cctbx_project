@@ -1590,6 +1590,7 @@ wxtbx/browser.py -text
 wxtbx/checklistctrl.py -text
 wxtbx/command_line/b_plot.py -text
 wxtbx/command_line/loggraph.py -text
+wxtbx/command_line/xray_view.py -text
 wxtbx/icons.py -text
 wxtbx/layout.py -text
 wxtbx/listeditor.py -text
@@ -1613,3 +1614,5 @@ wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
 wxtbx/symmetry_dialog.py -text
 wxtbx/utils.py -text
+wxtbx/xray_viewer/__init__.py -text
+wxtbx/xray_viewer/display.py -text
