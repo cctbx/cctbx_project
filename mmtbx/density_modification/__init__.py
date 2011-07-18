@@ -1,5 +1,3 @@
-from mmtbx.scaling.sigmaa_estimation \
-     import sigmaa_estimator, sigmaa_estimator_params
 from mmtbx.scaling import relative_scaling
 import iotbx.data_plots
 from cctbx import adptbx
@@ -29,6 +27,13 @@ master_params_str = """
   d_min = None
     .type = float
     .short_caption = High resolution
+  initial_d_min = None
+    .type = float
+    .short_caption = Initial high resolution
+    .help = If this is specified, phase extension will be performed up to the\
+            from initial_d_min to d_min
+  phase_extension = False
+    .type = bool
   verbose = True
     .type = bool
   change_basis_to_niggli_cell = True
@@ -155,8 +160,14 @@ class density_modification(object):
     self.mean_solvent_density = 0
     self.phase_source_initial = None
     self.phase_source = None
-    self.d_min = self.params.d_min
-    if self.d_min is None: self.d_min = self.f_obs.d_min()
+    if self.params.d_min is None:
+      if self.params.phase_extension:
+        self.params.d_min = self.f_obs.d_min()
+      else:
+        self.params.d_min = self.hl_coeffs_start.d_min()
+    if self.params.initial_d_min is None:
+      self.params.initial_d_min = self.params.d_min
+    assert self.params.initial_d_min >= self.params.d_min
     self.max_iterations = sum((self.params.initial_steps,
                                self.params.shrink_steps,
                                self.params.final_steps))
@@ -165,33 +176,39 @@ class density_modification(object):
       self.radius_delta = (self.params.solvent_mask.averaging_radius.initial
                            - self.params.solvent_mask.averaging_radius.final) \
           / self.params.shrink_steps
-
+      if self.params.phase_extension:
+        self.phase_extend_step = (
+          self.params.initial_d_min - self.params.d_min)/self.params.shrink_steps
+      else:
+        self.phase_extend_step = 0
     self.complete_set = self.f_obs.complete_set()
 
     ref_active = (self.f_obs.sigmas() > 0) \
-               & (self.f_obs.d_spacings().data() >= self.d_min)
+               & (self.f_obs.d_spacings().data() >= self.params.d_min)
 
     sigma_cutoff = 0
     obs_rms = 1e4
-    obs_high = rms(f_obs.select(ref_active).data()) * obs_rms
-    obs_low = flex.min(f_obs.select(ref_active).data())
-    self.ref_flags_array = f_obs.array(data=(
-      (f_obs.data() > sigma_cutoff*f_obs.sigmas())
-      & (f_obs.data() >= obs_low)
-      & (f_obs.data() <= obs_high)
-      & (f_obs.d_spacings().data() > self.d_min)))
+    obs_high = rms(self.f_obs.select(ref_active).data()) * obs_rms
+    obs_low = flex.min(self.f_obs.select(ref_active).data())
+    self.ref_flags_array = self.f_obs.array(data=(
+      (self.f_obs.data() > sigma_cutoff*self.f_obs.sigmas())
+      & (self.f_obs.data() >= obs_low)
+      & (self.f_obs.data() <= obs_high)
+      & (self.f_obs.d_spacings().data() > self.params.d_min)))
     # now setup for complete arrays
     self.ref_flags_array = self.ref_flags_array.complete_array(
-      new_data_value=False, d_min=self.d_min)
+      new_data_value=False, d_min=self.params.d_min)
     self.ref_flags = self.ref_flags_array.data()
     self.f_obs_complete = self.f_obs.complete_array(
-      new_data_value=0, new_sigmas_value=0, d_min=self.d_min)
+      new_data_value=0, new_sigmas_value=0, d_min=self.params.d_min)
     self.hl_coeffs_start = self.hl_coeffs_start.complete_array(
-      new_data_value=(0,0,0,0), d_min=self.d_min)
+      new_data_value=(0,0,0,0), d_min=self.params.d_min)
     self.ncs_averaging()
-    self.hl_coeffs = self.hl_coeffs_start.select(self.ref_flags)
+
+    self.hl_coeffs = self.hl_coeffs_start.select_indices(self.active_indices)
+    #self.hl_coeffs = self.hl_coeffs_start.select(self.ref_flags)
     self.compute_phase_source(self.hl_coeffs)
-    fom = flex.abs(self.phase_source)
+    fom = flex.abs(self.phase_source.data())
     fom.set_selected(self.hl_coeffs.data() == (0,0,0,0), 0)
     self.fom = fom
 
@@ -285,10 +302,12 @@ class density_modification(object):
   def compute_phase_source(self, hl_coeffs, n_steps=72):
     integrator = miller.phase_integrator(n_steps=n_steps)
     self.phase_source_previous = self.phase_source
-    self.phase_source = integrator(
-      space_group=hl_coeffs.space_group(),
-      miller_indices=hl_coeffs.indices(),
-      hendrickson_lattman_coefficients=hl_coeffs.data())
+    self.phase_source = miller.array(
+      miller_set=hl_coeffs,
+      data=integrator(
+        space_group=hl_coeffs.space_group(),
+        miller_indices=hl_coeffs.indices(),
+        hendrickson_lattman_coefficients=hl_coeffs.data()))
     if self.phase_source_initial is None:
       self.phase_source_initial = self.phase_source
     return self.phase_source
@@ -391,11 +410,12 @@ class density_modification(object):
         * (self.mean_solvent_density+self.solvent_add-self.mean_protein_density)
 
   def compute_map_coefficients(self):
-    f_obs = self.f_obs_active
+    f_obs = self.f_obs_complete.select(self.f_obs_complete.d_spacings().data() >= self.d_min)
     f_calc = f_obs.structure_factors_from_map(self.map, use_sg=True)
+    f_obs_active = f_obs.select_indices(self.active_indices)
     minimized = relative_scaling.ls_rel_scale_driver(
-      f_obs.resolution_filter(d_min=self.d_min),
-      f_calc.as_amplitude_array().resolution_filter(d_min=self.d_min),
+      f_obs_active,
+      f_calc.as_amplitude_array().select_indices(self.active_indices),
       use_intensities=False,
       use_weights=False)
     #minimized.show()
@@ -403,54 +423,30 @@ class density_modification(object):
                                     * math.exp(-minimized.p_scale)\
                                     * adptbx.debye_waller_factor_u_star(
                                       f_calc.indices(), minimized.u_star))
-    if 0:
-      # sigmaa_estimator method
-      params = sigmaa_estimator_params.extract()
-      sigmaa = sigmaa_estimator(
-        miller_obs=f_obs,
-        miller_calc=f_calc,
-        r_free_flags=f_obs.array(
-          data=flex.bool(f_obs.size())),
-        kernel_on_chebyshev_nodes=params.kernel_on_chebyshev_nodes,
-        kernel_width_free_reflections=params.kernel_width_free_reflections,
-        n_chebyshev_terms=params.number_of_chebyshev_terms,
-        n_sampling_points=params.number_of_sampling_points,
-        use_sampling_sum_weights=params.use_sampling_sum_weights)
-      e_obs = sigmaa.normalized_obs
-      e_mod = sigmaa.normalized_calc
-      c = sigmaa.sigmaa()
-      dd = c.data() * math.sqrt(
-        flex.mean(flex.pow2(f_obs.data()))/
-        flex.mean(flex.pow2(f_calc.as_amplitude_array().data())))
-      xc = 2 * c.data() * e_obs.data() * e_mod.data() \
-         / (1-flex.pow2(sigmaa.sigmaa().data()))
-      hl_coeff = flex.hendrickson_lattman(
-        xc * flex.cos(f_calc.phases().data()),
-        xc * flex.sin(f_calc.phases().data()))
-    else:
-      # alpha_beta_est method
-      from mmtbx.max_lik import maxlik
-      alpha_beta_est = maxlik.alpha_beta_est_manager(
-        f_obs=f_obs,
-        f_calc=f_calc,
-        free_reflections_per_bin=140,
-        flags=flex.bool(f_obs.size()),
-        interpolation=True)
-      alpha, beta = alpha_beta_est.alpha_beta()
-      t = maxlik.fo_fc_alpha_over_eps_beta(
-        f_obs=f_obs,
-        f_model=f_calc,
-        alpha=alpha,
-        beta=beta)
-      hl_coeff = flex.hendrickson_lattman(
-        t * flex.cos(f_calc.phases().data()),
-        t * flex.sin(f_calc.phases().data()))
-      dd = alpha.data()
+    f_calc_active = f_calc.common_set(f_obs_active)
+    from mmtbx.max_lik import maxlik
+    alpha_beta_est = maxlik.alpha_beta_est_manager(
+      f_obs=f_obs_active,
+      f_calc=f_calc_active,
+      free_reflections_per_bin=140,
+      flags=flex.bool(f_obs_active.size()),
+      interpolation=True)
+    alpha, beta = alpha_beta_est.alpha_beta_for_each_reflection(
+      f_obs=self.f_obs_complete.select(self.f_obs_complete.d_spacings().data() >= self.d_min))
+    t = maxlik.fo_fc_alpha_over_eps_beta(
+      f_obs=f_obs,
+      f_model=f_calc,
+      alpha=alpha,
+      beta=beta)
+    hl_coeff = flex.hendrickson_lattman(
+      t * flex.cos(f_calc.phases().data()),
+      t * flex.sin(f_calc.phases().data()))
+    dd = alpha.data()
     #
     hl_array = f_calc.array(
       data=self.hl_coeffs_start.common_set(f_calc).data()+hl_coeff)
     self.compute_phase_source(hl_array)
-    fom = flex.abs(self.phase_source)
+    fom = flex.abs(self.phase_source.data())
     mFo = hl_array.array(
       data=fom*f_obs.data()).phase_transfer(phase_source=hl_array)
     DFc = hl_array.array(data=dd*f_calc.as_amplitude_array().phase_transfer(
@@ -466,16 +462,22 @@ class density_modification(object):
     self.map_coeffs = hl_array.array(
       data=mFo.data()*fo_scale - DFc.data()*fc_scale)
     # statistics
-    self.r1_factor = f_obs.r1_factor(f_calc)
+    self.r1_factor = f_obs_active.r1_factor(f_calc_active)
+    matched_indices = f_obs.match_indices(f_obs_active)
+    fom = fom.select(matched_indices.pair_selection(0))
     self.r1_factor_fom = flex.sum(
-      fom * flex.abs(f_obs.data() - f_calc.as_amplitude_array().data())) \
-        / flex.sum(fom * f_obs.data())
+      fom * flex.abs(f_obs_active.data() - f_calc_active.as_amplitude_array().data())) \
+        / flex.sum(fom * f_obs_active.data())
+    phase_source, phase_source_previous = self.phase_source.common_sets(
+      self.phase_source_previous)
     self.mean_delta_phi = phase_error(
-      flex.arg(self.phase_source), flex.arg(self.phase_source_previous))
+      flex.arg(phase_source.data()), flex.arg(phase_source_previous.data()))
+    phase_source, phase_source_initial = self.phase_source.common_sets(
+      self.phase_source_initial)
     self.mean_delta_phi_initial = phase_error(
-      flex.arg(self.phase_source), flex.arg(self.phase_source_initial))
+      flex.arg(phase_source.data()), flex.arg(phase_source_initial.data()))
     self.mean_fom = flex.mean(fom)
-    fom = f_obs.array(data=fom)
+    fom = f_obs_active.array(data=fom)
     fom.setup_binner(reflections_per_bin=1000)
     self.mean_fom_binned = fom.mean(use_binning=True)
 
@@ -486,6 +488,7 @@ class density_modification(object):
     self._stats.add_cycle(
       cycle=self.i_cycle+1,
       radius=self.radius,
+      d_min=self.d_min,
       mask_percent=self.mask_percent,
       mean_solvent_density=self.mean_solvent_density,
       mean_protein_density=self.mean_protein_density,
@@ -524,7 +527,20 @@ class density_modification(object):
 
   class f_obs_active(libtbx.property):
     def fget(self):
-      return self.f_obs_complete.select(self.ref_flags)
+      return self.f_obs_complete.select_indices(self.active_indices)
+
+  class active_indices(libtbx.property):
+    def fget(self):
+      if self.i_cycle == 0 and not hasattr(self, "_active_indices"):
+        self._active_indices = None
+      if (self.params.d_min < self.params.initial_d_min and
+          self.i_cycle > self.params.initial_steps and
+          self.i_cycle < (self.params.initial_steps + self.params.shrink_steps)):
+        self._active_indices = None
+      if self._active_indices is None:
+        sel = (self.ref_flags_array.d_spacings().data() >= self.d_min) & self.ref_flags
+        self._active_indices = self.ref_flags_array.select(sel).indices()
+      return self._active_indices
 
   class map_coeffs_in_original_setting(libtbx.property):
     def fget(self):
@@ -541,6 +557,16 @@ class density_modification(object):
                 (self.radius_delta * (self.i_cycle - self.params.initial_steps + 1)))
       else:
         return self.params.solvent_mask.averaging_radius.final
+
+  class d_min(libtbx.property):
+    def fget(self):
+      if self.i_cycle == 0 or self.i_cycle < self.params.initial_steps:
+        return self.params.initial_d_min
+      elif self.i_cycle < (self.params.initial_steps + self.params.shrink_steps):
+        return (self.params.initial_d_min -
+                (self.phase_extend_step * (self.i_cycle - self.params.initial_steps + 1)))
+      else:
+        return self.params.d_min
 
 class dm_stats (object) :
   def __init__ (self) :
@@ -577,6 +603,7 @@ class dm_stats (object) :
     stats = self._stats[i_cycle]
     summary = "#"*80 + "\n"
     summary += "Cycle %i\n" %(stats.cycle)
+    summary += "d min: %.2f\n" % stats.d_min
     summary += "Mask averaging radius: %.2f\n" % stats.radius
     summary += "Solvent mask volume (%%): %.4f\n" % stats.mask_percent
     summary += "Mean solvent density: %.4f\n" % stats.mean_solvent_density

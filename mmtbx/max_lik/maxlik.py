@@ -213,9 +213,7 @@ class alpha_beta_est_manager(object):
                                  indices     = self.indices_sets,
                                  space_group = self.f_obs_test.space_group())
     self.alpha_in_zones, self.beta_in_zones = obj.alpha(), obj.beta()
-    alpha, beta = self.alpha_beta_for_each_reflection()
-    self.alpha = miller.array(miller_set = self.f_obs, data = alpha)
-    self.beta  = miller.array(miller_set = self.f_obs, data = beta)
+    self.alpha, self.beta = self.alpha_beta_for_each_reflection()
 
   def alpha_beta(self):
     return self.alpha, self.beta
@@ -237,11 +235,12 @@ class alpha_beta_est_manager(object):
 
     return x
 
-  def alpha_beta_for_each_reflection(self):
-    alpha = flex.double(self.f_obs.size())
-    beta = flex.double(self.f_obs.size())
-    self.f_obs.setup_binner(n_bins= len(self.alpha_in_zones))
-    binner = self.f_obs.binner()
+  def alpha_beta_for_each_reflection(self, f_obs=None):
+    if f_obs is None: f_obs = self.f_obs
+    alpha = flex.double(f_obs.size())
+    beta = flex.double(f_obs.size())
+    f_obs.setup_binner(n_bins= len(self.alpha_in_zones))
+    binner = f_obs.binner()
     if(self.interpolation == True):
       az = flex.double(self.smooth(self.alpha_in_zones))
       bz = flex.double(self.smooth(self.beta_in_zones) )
@@ -253,6 +252,8 @@ class alpha_beta_est_manager(object):
         sel = binner.selection(i_bin)
         alpha.set_selected(sel, az)
         beta.set_selected(sel, bz)
+    alpha = miller.array(miller_set=f_obs, data=alpha)
+    beta = miller.array(miller_set=f_obs, data=beta)
     return alpha, beta
 
 

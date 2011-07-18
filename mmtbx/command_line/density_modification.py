@@ -9,6 +9,7 @@ from libtbx.utils import show_times_at_exit, Sorry
 from libtbx import runtime_utils
 from libtbx import easy_pickle
 from libtbx import adopt_init_args
+import mmtbx.maps
 import os, sys
 
 master_params_including_IO_str = """\
@@ -142,9 +143,9 @@ def run(args, log = sys.stdout, as_gui_program=False):
 
   fo = fo.eliminate_sys_absent().average_bijvoet_mates()
   hl_coeffs = hl_coeffs.eliminate_sys_absent().average_bijvoet_mates()
-  fo, hl_coeffs = fo.common_sets(hl_coeffs)
 
   model_map = None
+  model_map_coeffs = None
   if len(processed_args.pdb_file_names):
     pdb_file = mmtbx.utils.pdb_file(
       pdb_file_names=processed_args.pdb_file_names)
@@ -154,31 +155,44 @@ def run(args, log = sys.stdout, as_gui_program=False):
       xs = xs.change_basis(change_of_basis_op)
       fmodel = mmtbx.f_model.manager(
         f_obs=fo.change_basis(change_of_basis_op).map_to_asu(),
-        abcd=hl_coeffs.change_basis(change_of_basis_op).map_to_asu(),
+        #abcd=hl_coeffs.change_basis(change_of_basis_op).map_to_asu(),
         xray_structure=xs)
     else:
       fmodel = mmtbx.f_model.manager(
         f_obs=fo,
-        abcd=hl_coeffs,
+        #abcd=hl_coeffs,
         xray_structure=xs)
-    true_phases = fmodel.f_model().phases()
-    model_map = fmodel.electron_density_map().fft_map(
-      resolution_factor=params.grid_resolution_factor,
-      map_type="2mFo-DFc").real_map_unpadded()
+
+    master_phil = mmtbx.maps.map_and_map_coeff_master_params()
+    map_params = master_phil.fetch(iotbx.phil.parse("""\
+map_coefficients {
+  map_type = 2mFo-DFc
+  isotropize = True
+}
+""")).extract().map_coefficients[0]
+    model_map_coeffs = mmtbx.maps.map_coefficients_from_fmodel(
+      fmodel, map_params)
+    model_map = model_map_coeffs.fft_map(
+      resolution_factor=params.grid_resolution_factor).real_map_unpadded()
+
+  import time
 
   # run cns
   if 0:
     from mmtbx.density_modification.run_cns import run_cns_density_modification
     run_cns_density_modification(params, fo, hl_coeffs)
 
+  t0 = time.time()
   dm = density_modify(
     params,
     fo,
     hl_coeffs,
     map_coeffs=map_coeffs,
-    model_map=model_map,
+    model_map_coeffs=model_map_coeffs,
     log=log,
     as_gui_program=as_gui_program)
+  time_dm = time.time()-t0
+  #print >> log, "Density modification %.2fs" %time_dm
 
   if output_plots:
     plots_to_make = (
@@ -259,7 +273,6 @@ def run(args, log = sys.stdout, as_gui_program=False):
     map_coeffs_file=map_coeff_params.file_name,
     stats=dm.get_stats())
 
-
 # just for development purposes, compare the correlation of the
 # density-modified map with map calculated from the model at each cycle
 class density_modify(density_modification.density_modification):
@@ -268,28 +281,34 @@ class density_modify(density_modification.density_modification):
                      fo,
                      hl_coeffs,
                      map_coeffs=None,
-                     model_map=None,
+                     model_map_coeffs=None,
                      log=None,
                      as_gui_program=False):
-    self.model_map = model_map
+    self.model_map_coeffs = model_map_coeffs
     self.correlation_coeffs = flex.double()
     density_modification.density_modification.__init__(
       self, params, fo, hl_coeffs, map_coeffs=map_coeffs, as_gui_program=as_gui_program)
     if len(self.correlation_coeffs) > 1:
-      fft_map = self.map_coeffs_start.fft_map(
+      model_coeffs, start_coeffs = self.model_map_coeffs.common_sets(self.map_coeffs_start)
+      model_fft_map = model_coeffs.fft_map(
+        resolution_factor=self.params.grid_resolution_factor).apply_sigma_scaling()
+      fft_map = start_coeffs.fft_map(
         resolution_factor=self.params.grid_resolution_factor
       ).apply_sigma_scaling()
       corr = flex.linear_correlation(
-        self.model_map.as_1d(), fft_map.real_map_unpadded().as_1d())
+        model_fft_map.real_map_unpadded().as_1d(), fft_map.real_map_unpadded().as_1d())
       print "Starting dm/model correlation: %.6f" %corr.coefficient()
       print "Final dm/model correlation:    %.6f" %self.correlation_coeffs[-1]
       fft_map.as_ccp4_map(file_name="starting.map", labels=[])
 
   def compute_map(self):
     density_modification.density_modification.compute_map(self)
-    if self.model_map is not None:
+    if self.model_map_coeffs is not None:
+      model_coeffs, dm_coeffs = self.model_map_coeffs.common_sets(self.map_coeffs)
+      fft_map = model_coeffs.fft_map(
+        resolution_factor=self.params.grid_resolution_factor).apply_sigma_scaling()
       print
-      corr = flex.linear_correlation(self.model_map.as_1d(), self.map.as_1d())
+      corr = flex.linear_correlation(fft_map.real_map_unpadded().as_1d(), self.map.as_1d())
       print "dm/model correlation:"
       corr.show_summary()
       self.correlation_coeffs.append(corr.coefficient())
