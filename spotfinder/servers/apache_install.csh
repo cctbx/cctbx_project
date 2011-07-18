@@ -72,7 +72,7 @@ make -j $n_processor install >>& ${SRC_DIR}/install_mp.log
 echo Building CCI apps...consult install_cci.log
 cd ${BUILD_DIR}
 # LD_LIBRARY_PATH is required for this step:
-${USE_PYTHON}/bin/python ${SRC_DIR}/cctbx_project/libtbx/configure.py labelit >& ${SRC_DIR}/install_cci.log
+${USE_PYTHON}/bin/python ${SRC_DIR}/cctbx_project/libtbx/configure.py spotfinder >& ${SRC_DIR}/install_cci.log
 source setpaths.csh
 make >>& ${SRC_DIR}/install_cci.log
 
