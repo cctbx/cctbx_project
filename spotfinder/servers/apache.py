@@ -31,12 +31,11 @@ class LoggingFramework:
 def run(args, verbose=False):
   from libtbx.utils import Sorry
   import os
-  from labelit.preferences import labelit_phil
   from spotfinder.command_line.signal_strength import master_params
 
   #For the Apache server version, do not allow site, user, or dataset preferences
   #all parameters are to be passed in through the http: query line
-  labelit_phil.rollback_dataset_preferences()
+  #labelit_phil.rollback_dataset_preferences()
 
   logfile = LoggingFramework()
 
