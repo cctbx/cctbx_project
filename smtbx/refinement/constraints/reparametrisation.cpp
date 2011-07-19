@@ -1,5 +1,4 @@
 #include <smtbx/refinement/constraints/reparametrisation.h>
-#include <smtbx/refinement/constraints/special_position.h>
 #include <iostream>
 #include <scitbx/math/accumulators.h>
 #include <scitbx/array_family/ref_reductions.h>
@@ -225,7 +224,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     i_non_trivial_root = n_independents() + n_intermediates();
     BOOST_FOREACH(parameter *p, all) {
       std::size_t s = p->size();
-      if (!p->is_variable()) {
+      if      (!p->is_variable()) {
         p->set_index(i_intermediate);
         i_intermediate += s;
       }
@@ -318,28 +317,5 @@ namespace smtbx { namespace refinement { namespace constraints {
     BOOST_FOREACH(parameter *p, all) p->set_colour(white);
   }
 
-  af::shared<std::size_t> reparametrisation
-  ::site_indices() const {
-    af::shared<std::size_t> res;
-    res.reserve(n_independents());
-    special_position_site_parameter const *sp;
-    BOOST_FOREACH(parameter const *p_, all) {
-      if (p_->is_independent() && p_->is_variable()) {
-        if (!dynamic_cast<site_parameter const *>(p_))
-          continue;
-      }
-      else if ((sp=dynamic_cast<special_position_site_parameter const *>(p_))) {
-        independent_small_vector_parameter<3> const & ip =
-          sp->independent_params();
-        if (!ip.is_variable()) continue;
-        p_ = &ip;
-      }
-      else
-        continue;
-      for (std::size_t i=0; i<p_->size(); i++)
-        res.push_back(p_->index()+i);
-    }
-    return res;
-  }
 
 }}}
