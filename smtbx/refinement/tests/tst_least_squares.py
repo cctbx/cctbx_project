@@ -6,6 +6,7 @@ from cctbx import sgtbx, crystal, xray, adptbx, uctbx
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from cctbx.xray import observations
+from cctbx.development import random_structure
 from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
 import smtbx.utils
@@ -678,7 +679,28 @@ class special_positions_test(object):
       assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
       assert approx_equal(cov[i, i+3]/cov[i, i], 0.5, eps=1e-12)
 
-
+def exercise_floating_origin_dynamic_weighting():
+  xs0 = random_structure.xray_structure(elements=['C', 'C', 'C', 'O', 'N'],
+                                        use_u_aniso=True)
+  fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
+  fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
+  xs = xs0.deep_copy_scatterers()
+  xs.shake_adp()
+  xs.shake_sites_in_place(rms_difference=0.1)
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+  ls = least_squares.crystallographic_ls(
+    fo_sq,
+    constraints.reparametrisation(
+      structure=xs,
+      constraints=[],
+      connectivity_table=smtbx.utils.connectivity_table(xs)),
+    weighting_scheme=least_squares.unit_weighting())
+  ls.build_up()
+  lambdas = eigensystem.real_symmetric(
+    ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
+  # assert the restrained L.S. problem is not too ill-conditionned
+  assert lambdas[0]/lambdas[-1] < 5e5
 
 def run():
   libtbx.utils.show_times_at_exit()
@@ -698,6 +720,7 @@ def run():
   n_runs = command_line.options.runs
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
 
+  exercise_floating_origin_dynamic_weighting()
   twin_test().run()
   exercise_normal_equations()
   special_positions_test(n_runs).run()
