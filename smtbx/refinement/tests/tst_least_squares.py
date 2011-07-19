@@ -638,7 +638,8 @@ class special_positions_test(object):
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
-      n_max_iterations=10,
+      gradient_threshold=1e-6,
+      step_threshold=1e-6,
       track_all=True)
 
     ## Test whether refinement brought back the shaked structure to its
