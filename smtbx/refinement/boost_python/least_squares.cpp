@@ -40,13 +40,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
       class_<wt>(name, no_init)
         .def(init<sgtbx::space_group const &,
                   af::const_ref<constraints::scatterer_parameters> const &,
-                  scitbx::sparse::matrix<FloatType> const &,
                   scalar_t>
              ((arg("space_group"),
                arg("all_scatterer_parameters"),
-               arg("jacobian_transpose_matching_grad_fc"),
                arg("floating_origin_restraint_relative_weight"))))
-        .def("add_to", &wt::add_to, arg("normal_equations"))
+        .def("add_to", &wt::add_to,
+             (arg("normal_equations"),
+              arg("jacobian_transpose_matching_grad_fc")))
         .add_property("singular_directions", singular_directions)
         ;
     }

@@ -40,7 +40,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
    atoms on the wrong kind of special positions or not.
 
    The weight of the restraints is dynamically adjusted to the normal matrix
-   they are added to, as a relative weight times the smallest diagonal element.
+   they are added to, as a relative weight times the smallest
+   relevant diagonal element.
    */
   template <typename FloatType>
   class floating_origin_restraints
@@ -50,21 +51,22 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     scalar_t floating_origin_restraint_relative_weight;
 
+    /// Singular directions in the space of crystallographic parameters
     af::small<af::shared<scalar_t>, 3> singular_directions;
+
     af::small<scitbx::vec3<scalar_t>, 3> origin_shifts;
+
+    /// A mask pinpointing which parameters span the singular space
+    af::shared<bool> singular_space;
 
   public:
     /// Construct with the given relative weight
     /** It precomputes the singular vectors of the normal matrix
-        for the independent parameters after performing the reparametrisations
-        dictated by the constraints. The necessary information about the latter
-        is passed in the transpose of the Jacobian matrix.
+        for the crystallographic parameters.
      */
     floating_origin_restraints(
       sgtbx::space_group const &space_group,
       af::const_ref<constraints::scatterer_parameters> const &params,
-      scitbx::sparse::matrix<FloatType> const
-      &jacobian_transpose_matching_grad_fc,
       scalar_t floating_origin_restraint_relative_weight)
 
       : floating_origin_restraint_relative_weight(
@@ -94,13 +96,19 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
 
         // Save it
-        singular_directions.push_back(
-          jacobian_transpose_matching_grad_fc*singular_dir.ref());
+        singular_directions.push_back(singular_dir);
       }
     }
 
     /// Add floating origin restraints to the given normal equations
-    void add_to(lstbx::normal_equations::linear_ls<scalar_t> &normal_eqns) {
+    /** The Jacobian is that of the reparametrisation of crystallographic
+        parameters as function of the independent parameters that the
+        normal equations are built with
+     */
+    void add_to(lstbx::normal_equations::linear_ls<scalar_t> &normal_eqns,
+                scitbx::sparse::matrix<FloatType> const
+                &jacobian_transpose_matching_grad_fc)
+    {
       if (!floating_origin_restraint_relative_weight) return;
       af::ref<scalar_t, af::packed_u_accessor>
       a = normal_eqns.normal_matrix().ref();
@@ -108,7 +116,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       for (int i=1; i<a.n_rows(); ++i) acc(a(i,i));
       scalar_t w = floating_origin_restraint_relative_weight * acc.max();
       for (int i=0; i<singular_directions.size(); ++i) {
-        normal_eqns.add_equation(0, singular_directions[i].const_ref(), w);
+        af::shared<scalar_t> reparametrised_singular_dir =
+        jacobian_transpose_matching_grad_fc*singular_directions[i].const_ref();
+        normal_eqns.add_equation(0, reparametrised_singular_dir.const_ref(), w);
       }
     }
   };

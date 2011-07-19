@@ -92,10 +92,11 @@ class site_refinement_test(refinement_test):
     # Let's check that the computed singular directions span the same
     # space as the expected ones
     singular_test = flex.double()
+    jac = ls.reparametrisation.jacobian_transpose_matching_grad_fc()
     m = 0
     for s in ls.floating_origin_restraints.singular_directions:
       assert s.norm() != 0
-      singular_test.extend(s)
+      singular_test.extend(jac*s)
       m += 1
     for s in self.continuous_origin_shift_basis:
       singular_test.extend(flex.double(s))
