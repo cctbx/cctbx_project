@@ -694,7 +694,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   for sc in xs.scatterers():
     sc.flags.set_grad_site(True).set_grad_u_aniso(True)
   ls = least_squares.crystallographic_ls(
-    fo_sq,
+    fo_sq.as_xray_observations(),
     constraints.reparametrisation(
       structure=xs,
       constraints=[],
