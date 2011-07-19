@@ -1,6 +1,5 @@
 from cctbx import miller
 from cctbx import crystal
-from cctbx.development import debug_utils
 from cctbx.development import make_cns_input
 from iotbx.cns import reflection_reader
 from libtbx import easy_run
@@ -110,9 +109,6 @@ def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
-def run():
-  make_cns_input.check_cns_availability()
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-
 if (__name__ == "__main__"):
-  run()
+  make_cns_input.tst_run_requiring_cns(
+    args=sys.argv[1:], call_back=run_call_back)

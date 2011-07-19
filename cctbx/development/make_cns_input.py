@@ -4,12 +4,17 @@ from cctbx import eltbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from libtbx import adopt_init_args
-import sys, os
+import sys
 
-def check_cns_availability():
-  if (not os.environ.has_key("CNS_INST")):
-    print "CNS not available."
-    sys.exit(1)
+def tst_run_requiring_cns(args, call_back):
+  import libtbx.path
+  if (libtbx.path.full_command_path(command="cns") is None):
+    print "Skipping tests: cns not available."
+  else:
+    debug_utils.parse_options_loop_space_groups(
+      argv=args, call_back=call_back, show_cpu_times=False)
+  from libtbx.utils import format_cpu_times
+  print format_cpu_times()
 
 def write(file_name, cns_input):
   f = open(file_name, "w")
