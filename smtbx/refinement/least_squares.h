@@ -39,9 +39,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
    a continuous shift directions is found to be non-trivial, whether there are
    atoms on the wrong kind of special positions or not.
 
-   The weight of the restraints is dynamically adjusted to the normal matrix
-   they are added to, as a relative weight times the smallest
-   relevant diagonal element.
+   If \f$A\f$ is the original normal matrix, the restraint replace \f$A\f$
+   by \f$A + \mu I\f$. The weight \f$\mu\f$ of the restraints is dynamically
+   adjusted to \f$A\f$, so as to fullfill two requirements:
+
+   (a) \f$A + \mu I\f$ is non-singular enough that the L.S. problem can
+   be reliably solved; and
+
+   (b) \f$(A + \mu I)^{-1}\f$ is approximately the pseudo-inverse of \f$A\f$.
+
+   Requirement (b) is essential to obtaining faithful parameter esd's and
+   correlations.
    */
   template <typename FloatType>
   class floating_origin_restraints
