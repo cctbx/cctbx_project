@@ -13,6 +13,15 @@ class image (object) :
     self._raw = img
     print img.show_header()
     self._invert_beam_center = False
+    from spotfinder.command_line.signal_strength import master_params
+    from iotbx.detectors.context.config_detector import \
+      beam_center_convention_from_image_object
+    params = master_params.extract()
+    bc = beam_center_convention_from_image_object(img,params)
+    print "beam center convention: %d" % bc
+    # FIXME 5 is okay, what about 1-4 & 6-7?
+    if (bc == 0) :
+      self._invert_beam_center = True
     #self.update_image()
     #self.convert_to_bitmap()
 
@@ -43,7 +52,7 @@ class image (object) :
 
   def update_image (self, brightness=100, zoom_level=1, w=None, h=None,
       invert_beam_center=False) :
-    self._invert_beam_center = invert_beam_center
+    #self._invert_beam_center = invert_beam_center
     self._img = self.create_flex_image(brightness)
     x = self._img.ex_size2()
     y = self._img.ex_size1()
@@ -137,7 +146,6 @@ class image (object) :
       center_x = self._raw.parameters['BEAM_CENTER_X']
       center_y = self._raw.parameters['BEAM_CENTER_Y']
     x_, y_ = self.image_coords_as_detector_coords(center_x, center_y)
-    print "beam center:", x_, y_, center_x, center_y
     return self.detector_coords_as_image_coords(center_x, center_y)
 
   def get_point_info (self, x, y) :
@@ -168,10 +176,13 @@ class image (object) :
   def line_between_points (self, x1, y1, x2, y2, n_values=100) :
     x1_, y1_ = self.image_coords_as_array_coords(x1, y1)
     x2_, y2_ = self.image_coords_as_array_coords(x2, y2)
+    n_values = ifloor(math.sqrt((x2_-x1_)**2 + (y2_-y1_)**2))
     delta_x = (x2_ - x1_) / (n_values - 1)
     delta_y = (y2_ - y1_) / (n_values - 1)
     vals = []
     d = self._raw.linearintdata
+    # TODO remarkably, this is reasonably fast in Python, but it would
+    # probably be more at home in scitbx.math
     for n in range(n_values) :
       x = x1_ + (n * delta_x)
       y = y1_ + (n * delta_y)
