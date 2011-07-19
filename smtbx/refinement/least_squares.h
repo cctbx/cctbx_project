@@ -98,6 +98,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
         // Save it
         singular_directions.push_back(singular_dir);
       }
+
+      // Pinpoint coordinates participating in the singularity
+      if (singular_directions.size()) {
+        int n = singular_directions[0].size();
+        singular_space = af::shared<bool>(n, false);
+        for (int i=0; i<n; ++i) {
+          for (int j=0; j<singular_directions.size(); ++j) {
+            singular_space[i] = singular_space[i] || singular_directions[j][i];
+          }
+        }
+      }
     }
 
     /// Add floating origin restraints to the given normal equations
@@ -110,10 +121,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 &jacobian_transpose_matching_grad_fc)
     {
       if (!floating_origin_restraint_relative_weight) return;
+      if (!singular_space.size()) return;
       af::ref<scalar_t, af::packed_u_accessor>
       a = normal_eqns.normal_matrix().ref();
       scitbx::math::accumulator::min_max_accumulator<scalar_t> acc(a(0,0));
-      for (int i=1; i<a.n_rows(); ++i) acc(a(i,i));
+      for (int i=1; i<a.n_rows(); ++i) {
+        if (singular_space[i]) acc(a(i,i));
+      }
       scalar_t w = floating_origin_restraint_relative_weight * acc.max();
       for (int i=0; i<singular_directions.size(); ++i) {
         af::shared<scalar_t> reparametrised_singular_dir =
