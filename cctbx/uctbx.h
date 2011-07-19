@@ -748,6 +748,13 @@ namespace cctbx {
         return std::sqrt(min_mod_short_distance_sq(sites_frac_1, site_frac_2));
       }
 
+      //! Conversion of fractional-space rotation matrix to Cartesian space.
+      /*! orthogonalization_matrix() * rot_mx * fractionalization_matrix()
+       */
+      uc_mat3
+      matrix_cart(
+        sgtbx::rot_mx const& rot_mx) const;
+
       //! Transformation (change-of-basis) of unit cell parameters.
       /*! c_inv_r is the inverse of the 3x3 change-of-basis matrix
           that transforms coordinates in the old basis system to

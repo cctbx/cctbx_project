@@ -162,6 +162,10 @@ namespace {
              frac_t const&) const)
           &w_t::min_mod_short_distance, (
             arg("site_frac_1"), arg("site_frac_2")))
+        .def("matrix_cart",
+          (uc_mat3(w_t::*)(sgtbx::rot_mx const&) const)
+            &w_t::matrix_cart, (
+              arg("rot_mx")))
         .def("change_basis",
           (w_t(w_t::*)(uc_mat3 const&, double) const)
             &w_t::change_basis, (

@@ -231,6 +231,38 @@ def exercise_frac_orth():
     assert approx_equal(u.fractionalize(site_cart=ci), fi)
     assert approx_equal(om*matrix.col(fi), ci)
     assert approx_equal(fm*matrix.col(ci), fi)
+  #
+  from cctbx import sgtbx
+  s = sgtbx.rt_mx("-x,-x+y,-x+z", r_den=12)
+  assert approx_equal(u.matrix_cart(rot_mx=s.r()), [
+    -0.3622586, -0.1191822, -0.5137527,
+    -1.435689, 0.8743934, -0.5414459,
+    -1.357969, -0.1188069, 0.4878651])
+  from scitbx.math import r3_rotation_axis_and_angle_from_matrix as from_matrix
+  def check(u, sg):
+    for s in sg:
+      t = s.r().info().type()
+      c = matrix.sqr(u.matrix_cart(rot_mx=s.r()))
+      d = c.determinant()
+      assert approx_equal(abs(d), 1)
+      assert (t < 0) is (d < 0)
+      fm = from_matrix(r=c*d)
+      expected = {
+        1: [0],
+        2: [180, -180],
+        3: [120, -120],
+        4: [90, -90],
+        6: [60, -60]}[abs(t)]
+      observed = round(fm.angle(deg=True))
+      if (observed not in expected):
+        raise RuntimeError("%s not in %s (%s)" % (
+          str(observed), str(expected), s.r().as_xyz()))
+  check( # primitive settig of space group No. 230
+    u=uctbx.unit_cell([10.911236359717213]*3 + [109.47122063449069]*3),
+    sg=sgtbx.space_group("-I 4bd 2c 3 (y+z,x+z,x+y)"))
+  check( # P 6/m m m
+    u=uctbx.unit_cell((13,13,17,90,90,120)),
+    sg=sgtbx.space_group("-P 6 2"))
 
 def exercise_distance_mod_1():
   uc = uctbx.unit_cell((9,10,12,85,95,100))
