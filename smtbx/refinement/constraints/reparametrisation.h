@@ -840,13 +840,13 @@ public:
   }
 
   /// Number of independent parameter components
-  std::size_t n_independents() const { return n_independents_; }
+  std::size_t n_independents() { return n_independents_; }
 
   /// Number of components of parameters which are neither independents or roots
-  std::size_t n_intermediates() const { return n_intermediates_; }
+  std::size_t n_intermediates() { return n_intermediates_; }
 
   /// Number of components of roots which are not independent parameters
-  std::size_t n_non_trivial_roots() const { return n_non_trivial_roots_; }
+  std::size_t n_non_trivial_roots() { return n_non_trivial_roots_; }
 
   /// Call parameter::linearise() on each computational graph vertex.
   /** In the right order. */
@@ -873,9 +873,6 @@ public:
     BOOST_FOREACH(parameter *p, all) if (p->is_root()) v.visit(p);
     whiten();
   }
-
-  /// returns indices of the independent site parameters
-  af::shared<std::size_t> site_indices() const;
 
 private:
   void whiten();

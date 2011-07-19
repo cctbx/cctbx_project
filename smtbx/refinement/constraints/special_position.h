@@ -26,7 +26,7 @@ public:
       scatterer->flags.grad_site()));
   }
 
-  independent_small_vector_parameter<3> const &independent_params() const {
+  independent_small_vector_parameter<3> const &independent_params() {
     return *dynamic_cast<independent_small_vector_parameter<3> *>(argument(0));
   }
 
@@ -59,7 +59,7 @@ public:
       scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso()));
   }
 
-  independent_small_vector_parameter<6> const &independent_params() const {
+  independent_small_vector_parameter<6> const &independent_params() {
     return *dynamic_cast<independent_small_vector_parameter<6> *>(argument(0));
   }
 

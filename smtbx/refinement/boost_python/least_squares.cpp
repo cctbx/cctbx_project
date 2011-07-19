@@ -46,7 +46,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                arg("all_scatterer_parameters"),
                arg("jacobian_transpose_matching_grad_fc"),
                arg("floating_origin_restraint_relative_weight"))))
-        .def("add_to", &wt::add_to, arg("normal_equations"), arg("site_indices"))
+        .def("add_to", &wt::add_to, arg("normal_equations"))
         .add_property("singular_directions", singular_directions)
         ;
     }

@@ -100,17 +100,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
 
     /// Add floating origin restraints to the given normal equations
-    void add_to(lstbx::normal_equations::linear_ls<scalar_t> &normal_eqns,
-      af::shared<std::size_t> const &site_indices)
-    {
+    void add_to(lstbx::normal_equations::linear_ls<scalar_t> &normal_eqns) {
       if (!floating_origin_restraint_relative_weight) return;
       af::ref<scalar_t, af::packed_u_accessor>
       a = normal_eqns.normal_matrix().ref();
-      scitbx::math::accumulator::min_max_accumulator<scalar_t> acc(1e-3);
-      for (int i=0; i<site_indices.size(); ++i) {
-        SMTBX_ASSERT(site_indices[i]<a.n_rows());
-        acc(a(site_indices[i],site_indices[i]));
-      }
+      scitbx::math::accumulator::min_max_accumulator<scalar_t> acc(a(0,0));
+      for (int i=1; i<a.n_rows(); ++i) acc(a(i,i));
       scalar_t w = floating_origin_restraint_relative_weight * acc.max();
       for (int i=0; i<singular_directions.size(); ++i) {
         normal_eqns.add_equation(0, singular_directions[i].const_ref(), w);

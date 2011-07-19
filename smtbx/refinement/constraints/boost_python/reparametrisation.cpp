@@ -429,7 +429,6 @@ namespace boost_python {
         .def("apply_shifts", &wt::apply_shifts)
         .add_property("norm_of_independent_parameter_vector",
                       &wt::norm_of_independent_parameter_vector)
-        .add_property("site_indices", &wt::site_indices)
         ;
       docstring_options no_signature(true, false);
       klass
