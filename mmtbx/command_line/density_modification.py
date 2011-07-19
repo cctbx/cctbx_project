@@ -51,15 +51,15 @@ density_modification {
         .short_caption = Map scaling
         .expert_level=2
     }
-    map_coefficients {
+    mtz {
       file_name = None
         .type = path
         .help = The file name for the coefficients of the final density-modified map
         .short_caption = Output map coefficients
         .style = bold noauto new_file
-      format = *mtz cns
-        .optional=True
-        .type = choice
+      output_hendrickson_lattman_coefficients = False
+        .type = bool
+        .help = Output density modified phase probability distributions
     }
   }
   include scope libtbx.phil.interface.tracking_params
@@ -155,12 +155,12 @@ def run(args, log = sys.stdout, as_gui_program=False):
       xs = xs.change_basis(change_of_basis_op)
       fmodel = mmtbx.f_model.manager(
         f_obs=fo.change_basis(change_of_basis_op).map_to_asu(),
-        #abcd=hl_coeffs.change_basis(change_of_basis_op).map_to_asu(),
+        abcd=hl_coeffs.change_basis(change_of_basis_op).map_to_asu(),
         xray_structure=xs)
     else:
       fmodel = mmtbx.f_model.manager(
         f_obs=fo,
-        #abcd=hl_coeffs,
+        abcd=hl_coeffs,
         xray_structure=xs)
 
     master_phil = mmtbx.maps.map_and_map_coeff_master_params()
@@ -235,12 +235,13 @@ map_coefficients {
 
     pdf.close()
 
-  map_coeffs = dm.map_coeffs_in_original_setting
+  dm_map_coeffs = dm.map_coeffs_in_original_setting
+  dm_hl_coeffs = dm.hl_coeffs_in_original_setting
 
   # output map if requested
   map_params = params.output.map
   if map_params.file_name is not None:
-    fft_map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
+    fft_map = dm_map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
     if map_params.scale == "sigma":
       fft_map.apply_sigma_scaling()
     else:
@@ -261,16 +262,21 @@ map_coefficients {
         labels=title_lines)
 
   # output map coefficients if requested
-  map_coeff_params = params.output.map_coefficients
-  if map_coeff_params.file_name is not None:
-    if map_coeff_params.format == "mtz":
-      mtz_dataset = map_coeffs.as_mtz_dataset(
-       column_root_label="FWT",
-       label_decorator=iotbx.mtz.ccp4_label_decorator())
-      mtz_dataset.mtz_object().write(map_coeff_params.file_name)
+  mtz_params = params.output.mtz
+  if mtz_params.file_name is not None:
+    mtz_dataset = dm_map_coeffs.as_mtz_dataset(
+     column_root_label="FWT",
+     label_decorator=iotbx.mtz.ccp4_label_decorator())
+    if mtz_params.output_hendrickson_lattman_coefficients:
+      mtz_dataset.add_miller_array(
+        dm_hl_coeffs,
+        column_root_label="P",
+        label_decorator=iotbx.mtz.ccp4_label_decorator())
+    mtz_dataset.mtz_object().write(mtz_params.file_name)
+
   return result(
     map_file=map_params.file_name,
-    map_coeffs_file=map_coeff_params.file_name,
+    mtz_file=mtz_params.file_name,
     stats=dm.get_stats())
 
 # just for development purposes, compare the correlation of the
@@ -341,7 +347,7 @@ class launcher (runtime_utils.simple_target) :
     return result
 
 class result (object) :
-  def __init__ (self, map_file, map_coeffs_file, stats) :
+  def __init__ (self, map_file, mtz_file, stats) :
     adopt_init_args(self, locals())
 
   def extract_loggraph (self) :
@@ -356,8 +362,8 @@ class result (object) :
 
   def finish_job (self) :
     output_files = []
-    if (self.map_coeffs_file is not None) :
-      output_files.append((self.map_file, "Map coefficients"))
+    if (self.mtz_file is not None) :
+      output_files.append((self.mtz_file, "Map coefficients"))
     if (self.map_file is not None) :
       output_files.append((self.map_file, "Real-space map"))
     stats = self.get_final_job_statistics()
