@@ -548,6 +548,12 @@ class density_modification(object):
         return self.map_coeffs.change_basis(self.change_of_basis_op.inverse())
       return self.map_coeffs
 
+  class hl_coeffs_in_original_setting(libtbx.property):
+    def fget(self):
+      if self.change_of_basis_op is not None:
+        return self.hl_coeffs.change_basis(self.change_of_basis_op.inverse())
+      return self.hl_coeffs
+
   class radius(libtbx.property):
     def fget(self):
       if self.i_cycle == 0 or self.i_cycle < self.params.initial_steps:
