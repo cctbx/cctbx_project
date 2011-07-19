@@ -30,7 +30,6 @@ class XrayView (wx.ScrolledWindow) :
     self.line_start = None
     self.line_end = None
     self.was_dragged = False
-    self.was_double_clicked = False
 
   def set_image (self, image) :
     self._img = image
@@ -45,6 +44,8 @@ class XrayView (wx.ScrolledWindow) :
       w=self.GetSize()[0] - 20,
       h=self.GetSize()[1] - 20)
     if (layout) :
+      self.line_start = None
+      self.line_end = None
       self.OnSize(None)
     self.Refresh()
     if (self.GetParent().zoom_frame is not None) :
@@ -79,11 +80,10 @@ class XrayView (wx.ScrolledWindow) :
       center_x, center_y = self._img.get_beam_center()
       dc.SetPen(wx.Pen('red'))
       x0, y0 = self.image_coords_as_screen_coords(center_x, center_y)
-    #  print center_x, center_y, x0, y0
       dc.DrawLine(x0 - 10, y0, x0 + 10, y0)
       dc.DrawLine(x0, y0 - 10, x0, y0 + 10)
     if (self.line_start is not None) and (self.line_end is not None) :
-      dc.SetPen(wx.Pen('red'))
+      dc.SetPen(wx.Pen('red', 2, wx.DOT))
       x1, y1 = self.image_coords_as_screen_coords(*(self.line_start))
       x2, y2 = self.image_coords_as_screen_coords(*(self.line_end))
       dc.DrawLine(x1, y1, x2, y2)
@@ -108,9 +108,6 @@ class XrayView (wx.ScrolledWindow) :
         self.OnMiddleDrag(event)
       elif (event.RightIsDown()) :
         self.OnRightDrag(event)
-    elif (self.was_double_clicked) :
-      x, y = event.GetPositionTuple()
-      self.Refresh()
     else :
       x, y = self.screen_coords_as_image_coords(event=event)
       img_w, img_h = self._img.get_size()
@@ -122,7 +119,6 @@ class XrayView (wx.ScrolledWindow) :
 
   def OnMiddleDown (self, event) :
     self.was_dragged = False
-    self.was_double_clicked = False
     self.OnRecordMouse(event)
     wx.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
 
@@ -131,15 +127,12 @@ class XrayView (wx.ScrolledWindow) :
 
   def OnLeftDown (self, event) :
     self.was_dragged = False
-    self.was_double_clicked = False
     self.line_end = None
     self.line_start = self.screen_coords_as_image_coords(event=event)
     #self.OnRecordMouse(event)
 
   def OnDoubleClick (self, event) :
-    self.was_dragged = False
-    self.was_double_clicked = True
-    self.OnRecordMouse(event)
+    pass
 
   def OnLeftDrag (self, event) :
     x, y = event.GetPositionTuple()
@@ -161,17 +154,12 @@ class XrayView (wx.ScrolledWindow) :
       self.line = None
     self.Refresh()
     self.was_dragged = False
-    #elif (self.was_double_clicked) and (self.line is not None) :
-    #  x1, y1, x2, y2 = self.line
-    #  print self._img.line_between_points(x1, y1, x2, y2,
-    #    zoom=self.settings.zoom_level)
 
   def OnMiddleDrag (self, event) :
     self.OnTranslate(event)
 
   def OnRightDown (self, event) :
     self.was_dragged = False
-    self.was_double_clicked = False
     self.OnZoom(event)
 
   def OnRightDrag (self, event) :
@@ -201,7 +189,6 @@ class XrayView (wx.ScrolledWindow) :
 
   def OnLeave (self, event) :
     self.was_dragged = False
-    self.was_double_clicked = False
     wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
 
 ########################################################################
@@ -445,9 +432,14 @@ class PlotFrame (wx.MiniFrame) :
     self.SetSizer(szr)
     szr.Add(self.plot, 1, wx.EXPAND)
     self.Fit()
+    self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
   def __getattr__ (self, name) :
     return getattr(self.plot, name)
+
+  def OnDestroy (self, event) :
+    self.GetParent().plot_frame = None
 
 class LinePlot (wxtbx.plots.plot_container) :
   def show_plot (self, y_data) :
