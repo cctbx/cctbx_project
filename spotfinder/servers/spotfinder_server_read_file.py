@@ -1,4 +1,4 @@
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+from BaseHTTPServer import BaseHTTPRequestHandler
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
 import StringIO, cgi, sys, copy
@@ -109,9 +109,8 @@ class image_request_handler(BaseHTTPRequestHandler):
       return
 
     from spotfinder.diffraction.imagefiles import spotfinder_image_files as ImageFiles
-    #from spotfinder.applications.overall_procedure import spotfinder_no_pickle
     from spotfinder.diffraction.imagefiles import Spotspickle_argument_module
-    response_params = copy.deepcopy(common_parameters_singleton)
+    response_params = copy.deepcopy(common_parameters_singleton).extract()
 
     Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]),response_params)
 
@@ -154,50 +153,66 @@ class image_request_handler(BaseHTTPRequestHandler):
   def opt_logging(self):
     pass
 
+  def do_GET(self):
+    T = Timer("do_GET")
+    parsed = urlparse(self.path)
+    qs = parse_qs(parsed.query)
+
+    expect = self.headers.getheaders("Expect")
+    if len(expect)>=1:
+      if True in [item.find("200")>=0 for item in expect]:
+        self.send_response(200) # untested; has no apparent affect on libcurl
+        return
+
+    log = self.do_GET_run(qs)
+
+    ctype = 'text/plain'
+    self.send_response(200)
+    self.send_header("Content-type", ctype)
+    self.send_header("Content-length",len(log))
+    self.end_headers()
+    self.wfile.write(log)
+    self.opt_logging()
+
+  def do_GET_run(self,qs): #similar to the run() function in apache.py module
+    from libtbx.utils import Sorry
+    import os
+    from spotfinder.servers import LoggingFramework
+
+    base_params = copy.deepcopy(common_parameters_singleton)
+    argument_interpreter = base_params.command_line_argument_interpreter()
+    phil_objects = []
+
+    for key in qs.keys():
+      arg = "%s=%s"%(key,qs.get(key,"")[0])
+      try: command_line_params = argument_interpreter.process(arg=arg)
+      except Exception: return str(Sorry("Unknown file or keyword: %s" % arg))
+      else: phil_objects.append(command_line_params)
+
+    working_params = base_params.fetch(sources=phil_objects)
+    params = working_params.extract()
+    #working_params.show()
+    if not os.path.isfile(params.distl.image):
+      return  str(Sorry("%s is not a readable file" % params.distl.image))
+
+    print "Image: %s"%params.distl.image
+
+    logfile = LoggingFramework()
+    from spotfinder.applications import signal_strength
+    try:
+      signal_strength.run_signal_strength(params)
+    except Exception:
+      import traceback
+      logger = StringIO.StringIO()
+      logger.write(
+      "Sorry, can't process %s.  Please contact authors.\n"% params.distl.image)
+      traceback.print_exc(file=logger)
+      return str(Sorry( logger.getvalue() ))
+
+    return logfile.getvalue()
+
 common_parameters_singleton = None
 
 def generate_common_parameters(input_parameters):
   global common_parameters_singleton
   common_parameters_singleton = input_parameters
-
-def common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height):
-    from labelit.preferences import labelit_commands
-    if outer_resolution != None:
-      labelit_commands.force_method2_resolution_limit = outer_resolution
-      labelit_commands.distl_highres_limit = outer_resolution
-    labelit_commands.distl_force_binning = False
-    labelit_commands.distl_permit_binning = False
-    labelit_commands.distl_keep_Zdata = False
-    if minimum_spot_area != None:
-      labelit_commands.distl.minimum_spot_area = minimum_spot_area
-    if minimum_signal_height != None:
-      labelit_commands.distl.minimum_signal_height = minimum_signal_height
-
-
-if __name__=="__main__":
-  import sys
-  outer_resolution = None
-  minimum_spot_area = None
-  minimum_signal_height = None
-  try:
-    port = int(sys.argv[1])
-    if len(sys.argv)>2:
-      outer_resolution = float(sys.argv[2])
-    if len(sys.argv)>3:
-      minimum_spot_area = int(sys.argv[3])
-    if len(sys.argv)>4:
-      minimum_signal_height = float(sys.argv[4])
-  except Exception:
-    print """
-Usage:  libtbx.python spotfinder_server_read_file.py <port number> [<outer resolution> [<minimum spot area [<minimum signal height>]]]
-"""
-  common_parameters(outer_resolution,minimum_spot_area,minimum_signal_height)
-
-  server_address = ('', port)
-
-  image_request_handler.protocol_version = "HTTP/1.0"
-  httpd = HTTPServer(server_address, image_request_handler)
-
-  sa = httpd.socket.getsockname()
-  print "Serving HTTP on", sa[0], "port", sa[1], "..."
-  httpd.serve_forever()

@@ -1,5 +1,5 @@
 from mod_python import apache
-import StringIO,sys
+import StringIO
 
 def handler(req):
   req.content_type = "text/plain"
@@ -12,30 +12,14 @@ def handler(req):
   req.write(log)
   return apache.OK
 
-class LoggingFramework:
-  def __init__(self):
-    self.k = StringIO.StringIO()
-    self.current_out = sys.stdout
-    self.current_err = sys.stderr
-    sys.stdout = self.k
-    sys.stderr = self.k
-
-  def __del__(self):
-    sys.stdout = self.current_out
-    sys.stderr = self.current_err
-    self.k.flush()
-    self.k.close()
-
-  def getvalue(self): return self.k.getvalue()
-
 def run(args, verbose=False):
   from libtbx.utils import Sorry
   import os
   from spotfinder.command_line.signal_strength import master_params
+  from spotfinder.servers import LoggingFramework
 
   #For the Apache server version, do not allow site, user, or dataset preferences
   #all parameters are to be passed in through the http: query line
-  #labelit_phil.rollback_dataset_preferences()
 
   logfile = LoggingFramework()
 
