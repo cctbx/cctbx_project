@@ -13,15 +13,22 @@ class image (object) :
     self._raw = img
     print img.show_header()
     self._invert_beam_center = False
+    self._invert_x = False
+    self._invert_y = False
     from spotfinder.command_line.signal_strength import master_params
     from iotbx.detectors.context.config_detector import \
       beam_center_convention_from_image_object
     params = master_params.extract()
     bc = beam_center_convention_from_image_object(img,params)
     print "beam center convention: %d" % bc
-    # FIXME 5 is okay, what about 1-4 & 6-7?
+    # FIXME what about 2-4 & 6-7?
     if (bc == 0) :
       self._invert_beam_center = True
+      self._invert_y = True
+    elif (bc == 1) :
+      self._invert_y = False
+    elif (bc == 5) :
+      self._invert_y = True
     #self.update_image()
     #self.convert_to_bitmap()
 
@@ -32,12 +39,13 @@ class image (object) :
       from labelit.detectors import FlexImage
     except ImportError, e :
       raise Sorry("Labelit not installed or not configured.")
+    saturation = getattr(self._raw, "saturation", 65535)
     fi = FlexImage(
       rawdata=self._raw.linearintdata,
       binning=1,
       vendortype=self._raw.vendortype,
       brightness=brightness / 100.,
-      saturation=self._raw.saturation)
+      saturation=int(saturation))
     #from scitbx.array_family import flex
     #print flex.max(self._raw.linearintdata), flex.min(self._raw.linearintdata)
     fi.setWindow(0.0, 0.0, 1)
@@ -115,14 +123,20 @@ class image (object) :
     x_frac = x / w
     y_frac = y / h
     x_detector = x_frac * dw
-    y_detector = (1.0 - y_frac) * dh
+    if (self._invert_y) :
+      y_detector = (1.0 - y_frac) * dh
+    else :
+      y_detector = y_frac * dh
     return x_detector, y_detector
 
   def detector_coords_as_image_coords (self, x, y) :
     dw, dh = self.get_detector_dimensions()
     w, h = self.get_size()
     x_frac = x / dw
-    y_frac = - ((y / dh) - 1.0)
+    if (self._invert_y) :
+      y_frac = - ((y / dh) - 1.0)
+    else :
+      y_frac = y / dh
     x_point = x_frac * w
     y_point = y_frac * h
     return (x_point, y_point)
