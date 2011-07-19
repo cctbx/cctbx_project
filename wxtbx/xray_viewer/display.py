@@ -1,6 +1,7 @@
 
-from wxtbx import icons
 import wxtbx.xray_viewer
+import wxtbx.plots
+from wxtbx import icons
 import wx
 import os
 
@@ -26,7 +27,8 @@ class XrayView (wx.ScrolledWindow) :
     self.y_offset = None
     self.xmouse = None
     self.ymouse = None
-    self.line = None
+    self.line_start = None
+    self.line_end = None
     self.was_dragged = False
     self.was_double_clicked = False
 
@@ -39,6 +41,7 @@ class XrayView (wx.ScrolledWindow) :
     self._img.update_settings(
       brightness=self.settings.brightness,
       zoom_level=self.settings.zoom_level,
+      invert_beam_center=self.settings.invert_beam_center_axes,
       w=self.GetSize()[0] - 20,
       h=self.GetSize()[1] - 20)
     if (layout) :
@@ -46,6 +49,18 @@ class XrayView (wx.ScrolledWindow) :
     self.Refresh()
     if (self.GetParent().zoom_frame is not None) :
       self.GetParent().zoom_frame.Refresh()
+
+  def image_coords_as_screen_coords (self, x, y) :
+    x_offset, y_offset = self.GetViewStart()
+    return (x - x_offset + 10, y - y_offset + 10)
+
+  def screen_coords_as_image_coords (self, x=None, y=None, event=None) :
+    assert (event is not None) or (not None in [x,y])
+    if (event is not None) :
+      assert ([x,y] == [None, None])
+      x, y = event.GetPositionTuple()
+    x_offset, y_offset = self.GetViewStart()
+    return (x + x_offset - 10, y + y_offset - 10)
 
   def DoGetBestSize (self) :
     if (self._img is None) :
@@ -63,19 +78,21 @@ class XrayView (wx.ScrolledWindow) :
     if (self.settings.show_beam_center) :
       center_x, center_y = self._img.get_beam_center()
       dc.SetPen(wx.Pen('red'))
-      x0 = center_x - x_offset + 10
-      y0 = center_y - y_offset + 10
+      x0, y0 = self.image_coords_as_screen_coords(center_x, center_y)
+    #  print center_x, center_y, x0, y0
       dc.DrawLine(x0 - 10, y0, x0 + 10, y0)
       dc.DrawLine(x0, y0 - 10, x0, y0 + 10)
-    if (self.line is not None) :
+    if (self.line_start is not None) and (self.line_end is not None) :
       dc.SetPen(wx.Pen('red'))
-      x1, y1, x2, y2 = self.line
+      x1, y1 = self.image_coords_as_screen_coords(*(self.line_start))
+      x2, y2 = self.image_coords_as_screen_coords(*(self.line_end))
       dc.DrawLine(x1, y1, x2, y2)
 
   def OnSize (self, event) :
     w, h = self.DoGetBestSize()
     self.SetVirtualSize((w,h))
     self.SetScrollbars(1, 1, w, h)
+    mouse = wx.GetMouseState()
 
   def OnRecordMouse (self, event) :
     self.x_offset, self.y_offset = self.GetViewStart()
@@ -93,23 +110,19 @@ class XrayView (wx.ScrolledWindow) :
         self.OnRightDrag(event)
     elif (self.was_double_clicked) :
       x, y = event.GetPositionTuple()
-      self.line = (self.xmouse, self.ymouse, x, y)
       self.Refresh()
     else :
-      x, y = event.GetPositionTuple()
-      x_offset, y_offset = self.GetViewStart()
-      img_x = x + x_offset - 10
-      img_y = y + y_offset - 10
+      x, y = self.screen_coords_as_image_coords(event=event)
       img_w, img_h = self._img.get_size()
-      if (img_x < 0) or (img_x > img_w) or (img_y < 0) or (img_y > img_h) :
-        self.GetParent().display_resolution(None)
+      if (x < 0) or (x > img_w) or (y < 0) or (y > img_h) :
+        self.GetParent().update_statusbar()
       else :
-        center_x, center_y = self._img.get_beam_center()
-        d_min = self._img.get_d_min_at_point(img_x, img_y)
-        self.GetParent().display_resolution(d_min)
+        info = self._img.get_point_info(x, y)
+        self.GetParent().update_statusbar(info)
 
   def OnMiddleDown (self, event) :
     self.was_dragged = False
+    self.was_double_clicked = False
     self.OnRecordMouse(event)
     wx.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
 
@@ -118,30 +131,47 @@ class XrayView (wx.ScrolledWindow) :
 
   def OnLeftDown (self, event) :
     self.was_dragged = False
-    self.OnRecordMouse(event)
+    self.was_double_clicked = False
+    self.line_end = None
+    self.line_start = self.screen_coords_as_image_coords(event=event)
+    #self.OnRecordMouse(event)
 
   def OnDoubleClick (self, event) :
+    self.was_dragged = False
+    self.was_double_clicked = True
     self.OnRecordMouse(event)
 
   def OnLeftDrag (self, event) :
-    pass
+    x, y = event.GetPositionTuple()
+    self.line_end = self.screen_coords_as_image_coords(event=event)
+    self.Refresh()
 
   def OnLeftUp (self, event) :
-    return
-    if (self.was_dragged) :
-      x1, y1, x2, y2 = self.line
-      #print self._img.line_between_points(x1, y1, x2, y2,
-      #  zoom=self.settings.zoom_level)
-    elif (self.was_double_clicked) :
-      x1, y1, x2, y2 = self.line
-      print self._img.line_between_points(x1, y1, x2, y2,
-        zoom=self.settings.zoom_level)
+    if (self.was_dragged) and (self.line_start is not None) :
+      self.line_end = self.screen_coords_as_image_coords(event=event)
+      x1, y1 = self.line_start
+      x2, y2 = self.line_end
+      if (x1 <= x2) :
+        line = self._img.line_between_points(x1, y1, x2, y2)
+      else :
+        line = self._img.line_between_points(x2, y2, x1, y1)
+      self.GetParent().OnShowPlot(None)
+      self.GetParent().plot_frame.show_plot(line)
+    else :
+      self.line = None
+    self.Refresh()
+    self.was_dragged = False
+    #elif (self.was_double_clicked) and (self.line is not None) :
+    #  x1, y1, x2, y2 = self.line
+    #  print self._img.line_between_points(x1, y1, x2, y2,
+    #    zoom=self.settings.zoom_level)
 
   def OnMiddleDrag (self, event) :
     self.OnTranslate(event)
 
   def OnRightDown (self, event) :
     self.was_dragged = False
+    self.was_double_clicked = False
     self.OnZoom(event)
 
   def OnRightDrag (self, event) :
@@ -166,13 +196,12 @@ class XrayView (wx.ScrolledWindow) :
     self.GetParent().set_brightness(self.settings.brightness + d_brightness)
 
   def OnEnter (self, event) :
-    self.CaptureMouse()
     if (not event.MiddleIsDown()) and (not event.RightIsDown()) :
       wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
 
   def OnLeave (self, event) :
-    if (self.HasCapture()) :
-      self.ReleaseMouse()
+    self.was_dragged = False
+    self.was_double_clicked = False
     wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
 
 ########################################################################
@@ -187,6 +216,7 @@ class XrayFrame (wx.Frame) :
     self.statusbar = self.CreateStatusBar()
     self.settings_frame = None
     self.zoom_frame = None
+    self.plot_frame = None
     self._img = None
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -207,7 +237,7 @@ class XrayFrame (wx.Frame) :
       bitmap=icons.search.GetBitmap(),
       shortHelp="Zoom",
       kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnShowZoom, btn)
+    self.Bind(wx.EVT_MENU, self.OnZoom, btn)
     self.toolbar.Realize()
     self.Fit()
     self.SetMinSize(self.GetSize())
@@ -217,14 +247,15 @@ class XrayFrame (wx.Frame) :
     self._img = wxtbx.xray_viewer.image(file_name)
     self._panel.set_image(self._img)
     self.SetTitle(file_name)
-    self.display_resolution(None)
+    self.update_statusbar()
     self.Layout()
 
-  def display_resolution (self, d_min) :
-    if (d_min is None) :
-      self.statusbar.SetStatusText("Move mouse over image to show resolution")
+  def update_statusbar (self, info=None) :
+    if (info is None) :
+      self.statusbar.SetStatusText("Click and drag to plot intensity profile; "+
+        "middle-click to pan, right-click to zoom")
     else :
-      self.statusbar.SetStatusText("d_min = %.2f A" % d_min)
+      self.statusbar.SetStatusText(info.format())
 
   def update_settings (self, layout=True) :
     self._panel.update_settings(layout)
@@ -233,7 +264,7 @@ class XrayFrame (wx.Frame) :
     if (brightness > 0) and (brightness <= 500) :
       self.settings.brightness = brightness
       if (self.settings_frame is not None) :
-        self.settings_frame.panel.brightness_ctrl.SetValue(brightness)
+        self.settings_frame.update_controls()
       self._panel.update_settings(layout=False)
 
   def OnLoadFile (self, event) :
@@ -265,6 +296,21 @@ class XrayFrame (wx.Frame) :
       self.zoom_frame.set_image(self._img)
       self.zoom_frame.Show()
 
+  def OnShowPlot (self, event) :
+    if (self.plot_frame is None) :
+      self.plot_frame = PlotFrame(self, -1, "Intensity profile",
+        style=wx.CAPTION|wx.CLOSE_BOX)
+      self.plot_frame.Show()
+
+  def OnZoom (self, event) :
+    if (self.settings.zoom_level == 1) :
+      self.settings.zoom_level = 0
+    else :
+      self.settings.zoom_level = 1
+    self._panel.update_settings(layout=True)
+    if (self.settings_frame is not None) :
+      self.settings_frame.update_controls()
+
 class SettingsFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     super(SettingsFrame, self).__init__(*args, **kwds)
@@ -281,6 +327,10 @@ class SettingsFrame (wx.MiniFrame) :
 
   def OnDestroy (self, event) :
     self.GetParent().settings_frame = None
+
+  def update_controls (self) :
+    self.panel.zoom_ctrl.SetSelection(self.settings.zoom_level)
+    self.panel.brightness_ctrl.SetValue(self.settings.brightness)
 
 class SettingsPanel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
@@ -312,23 +362,32 @@ class SettingsPanel (wx.Panel) :
     self.center_ctrl = wx.CheckBox(self, -1, "Mark beam center")
     self.center_ctrl.SetValue(self.settings.show_beam_center)
     s.Add(self.center_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.invert_ctrl = wx.CheckBox(self, -1, "Invert beam center axes")
+    self.invert_ctrl.SetValue(self.settings.invert_beam_center_axes)
+    s.Add(self.invert_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_CHOICE, self.OnUpdate, self.zoom_ctrl)
     self.Bind(wx.EVT_SLIDER, self.OnUpdateBrightness, self.brightness_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.center_ctrl)
+    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.invert_ctrl)
 
-  def OnUpdate (self, event) :
+  def collect_values (self) :
     self.settings.zoom_level = self.zoom_ctrl.GetSelection()
     self.settings.brightness = self.brightness_ctrl.GetValue()
+    self.settings.show_beam_center = self.center_ctrl.GetValue()
+    self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
+
+  def OnUpdate (self, event) :
+    self.collect_values()
     self.GetParent().GetParent().update_settings(layout=True)
 
   def OnUpdateBrightness (self, event) :
     mouse = wx.GetMouseState()
     if (mouse.LeftDown()) : return
-    self.settings.brightness = self.brightness_ctrl.GetValue()
+    self.collect_values()
     self.GetParent().GetParent().update_settings(layout=False)
 
   def OnUpdate2 (self, event) :
-    self.settings.brightness = self.brightness_ctrl.GetValue()
+    self.collect_values()
     self.GetParent().GetParent().update_settings(layout=False)
 
 class ZoomPanel (wx.Panel) :
@@ -377,3 +436,24 @@ class ZoomFrame (wx.MiniFrame) :
 
   def OnDestroy (self, event) :
     self.GetParent().zoom_frame = None
+
+class PlotFrame (wx.MiniFrame) :
+  def __init__ (self, *args, **kwds) :
+    super(PlotFrame, self).__init__(*args, **kwds)
+    self.plot = LinePlot(self, figure_size=(8,3))
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(szr)
+    szr.Add(self.plot, 1, wx.EXPAND)
+    self.Fit()
+
+  def __getattr__ (self, name) :
+    return getattr(self.plot, name)
+
+class LinePlot (wxtbx.plots.plot_container) :
+  def show_plot (self, y_data) :
+    self.figure.clear()
+    ax = self.figure.add_subplot(111)
+    x_data = range(len(y_data))
+    ax.plot(x_data, y_data, 'b-', linewidth=1)
+    ax.set_ylabel("Intensity")
+    self.canvas.draw()
