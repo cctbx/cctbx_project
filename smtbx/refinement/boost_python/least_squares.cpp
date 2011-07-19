@@ -29,10 +29,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
         case 1:
           return make_tuple(self.singular_directions[0]);
         case 0:
+        default:
           return boost::python::tuple();
+
       }
-      // It can't get there: just to prevent compiler warnings.
-      return boost::python::tuple();
     }
 
     static void wrap(char const *name) {
