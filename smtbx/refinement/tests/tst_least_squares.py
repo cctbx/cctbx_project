@@ -13,7 +13,7 @@ import smtbx.utils
 from libtbx.test_utils import approx_equal
 import libtbx.utils
 from stdlib import math
-import sys
+import sys, os
 import random
 
 
@@ -679,7 +679,10 @@ class special_positions_test(object):
       assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
       assert approx_equal(cov[i, i+3]/cov[i, i], 0.5, eps=1e-12)
 
-def exercise_floating_origin_dynamic_weighting():
+def exercise_floating_origin_dynamic_weighting(verbose=False):
+  worst_condition_number_acceptable = 10
+
+  # light elements only
   xs0 = random_structure.xray_structure(elements=['C', 'C', 'C', 'O', 'N'],
                                         use_u_aniso=True)
   fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
@@ -700,7 +703,361 @@ def exercise_floating_origin_dynamic_weighting():
   lambdas = eigensystem.real_symmetric(
     ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
   # assert the restrained L.S. problem is not too ill-conditionned
-  assert lambdas[0]/lambdas[-1] < 5e5
+  cond = math.log10(lambdas[0]/lambdas[-1])
+  msg = "light elements: %.1f" % cond
+  if verbose: print msg
+  assert cond < worst_condition_number_acceptable, msg
+
+  # one heavy element
+  xs0 = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info('hall: P 2yb'),
+    elements=['Zn', 'C', 'C', 'C', 'O', 'N'],
+    use_u_aniso=True)
+  fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
+  fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
+  xs = xs0.deep_copy_scatterers()
+  xs.shake_adp()
+  xs.shake_sites_in_place(rms_difference=0.1)
+  for sc in xs.scatterers():
+    sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+  ls = least_squares.crystallographic_ls(
+    fo_sq.as_xray_observations(),
+    constraints.reparametrisation(
+      structure=xs,
+      constraints=[],
+      connectivity_table=smtbx.utils.connectivity_table(xs)),
+    weighting_scheme=least_squares.mainstream_shelx_weighting())
+  ls.build_up()
+  lambdas = eigensystem.real_symmetric(
+    ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
+  # assert the restrained L.S. problem is not too ill-conditionned
+  cond = math.log10(lambdas[0]/lambdas[-1])
+  msg = "one heavy element + light elements (synthetic data): %.1f" % cond
+  if verbose: print msg
+  assert cond < worst_condition_number_acceptable, msg
+
+
+  # especially troublesome structure with one heavy element
+  # (contributed by Jonathan Coome)
+  xs0 = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(8.4519, 8.4632, 18.7887, 90, 96.921, 90),
+      space_group_symbol="hall: P 2yb"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer( #0
+                      label="ZN1",
+                      site=(-0.736683, -0.313978, -0.246902),
+                      u=(0.000302, 0.000323, 0.000054,
+                         0.000011, 0.000015, -0.000004)),
+      xray.scatterer( #1
+                      label="N3B",
+                      site=(-0.721014, -0.313583, -0.134277),
+                      u=(0.000268, 0.000237, 0.000055,
+                         -0.000027, 0.000005, 0.000006)),
+      xray.scatterer( #2
+                      label="N3A",
+                      site=(-0.733619, -0.290423, -0.357921),
+                      u=(0.000229, 0.000313, 0.000053,
+                         0.000022, 0.000018, -0.000018)),
+      xray.scatterer( #3
+                      label="C9B",
+                      site=(-1.101537, -0.120157, -0.138063),
+                      u=(0.000315, 0.000345, 0.000103,
+                         0.000050, 0.000055, -0.000017)),
+    xray.scatterer( #4
+                    label="N5B",
+                    site=(-0.962032, -0.220345, -0.222045),
+                    u=(0.000274, 0.000392, 0.000060,
+                       -0.000011, -0.000001, -0.000002)),
+    xray.scatterer( #5
+                    label="N1B",
+                    site=(-0.498153, -0.402742, -0.208698),
+                    u=(0.000252, 0.000306, 0.000063,
+                       0.000000, 0.000007, 0.000018)),
+    xray.scatterer( #6
+                    label="C3B",
+                    site=(-0.322492, -0.472610, -0.114594),
+                    u=(0.000302, 0.000331, 0.000085,
+                       0.000016, -0.000013, 0.000037)),
+    xray.scatterer( #7
+                    label="C4B",
+                    site=(-0.591851, -0.368163, -0.094677),
+                    u=(0.000262, 0.000255, 0.000073,
+                       -0.000034, 0.000027, -0.000004)),
+    xray.scatterer( #8
+                    label="N4B",
+                    site=(-0.969383, -0.204624, -0.150014),
+                    u=(0.000279, 0.000259, 0.000070,
+                       -0.000009, 0.000039, 0.000000)),
+    xray.scatterer( #9
+                    label="N2B",
+                    site=(-0.470538, -0.414572, -0.135526),
+                    u=(0.000277, 0.000282, 0.000065,
+                       0.000003, 0.000021, -0.000006)),
+    xray.scatterer( #10
+                    label="C8A",
+                    site=(-0.679889, -0.158646, -0.385629),
+                    u=(0.000209, 0.000290, 0.000078,
+                       0.000060, 0.000006, 0.000016)),
+    xray.scatterer( #11
+                    label="N5A",
+                    site=(-0.649210, -0.075518, -0.263412),
+                    u=(0.000307, 0.000335, 0.000057,
+                       -0.000002, 0.000016, -0.000012)),
+    xray.scatterer( #12
+                    label="C6B",
+                    site=(-0.708620, -0.325965, 0.011657),
+                    u=(0.000503, 0.000318, 0.000053,
+                       -0.000058, 0.000032, -0.000019)),
+    xray.scatterer( #13
+                    label="C10B",
+                    site=(-1.179332, -0.083184, -0.202815),
+                    u=(0.000280, 0.000424, 0.000136,
+                       0.000094, 0.000006, 0.000013)),
+    xray.scatterer( #14
+                    label="N1A",
+                    site=(-0.838363, -0.532191, -0.293213),
+                    u=(0.000312, 0.000323, 0.000060,
+                       0.000018, 0.000011, -0.000008)),
+    xray.scatterer( #15
+                    label="C3A",
+                    site=(-0.915414, -0.671031, -0.393826),
+                    u=(0.000319, 0.000384, 0.000078,
+                       -0.000052, -0.000001, -0.000020)),
+    xray.scatterer( #16
+                    label="C1A",
+                    site=(-0.907466, -0.665419, -0.276011),
+                    u=(0.000371, 0.000315, 0.000079,
+                       0.000006, 0.000036, 0.000033)),
+    xray.scatterer( #17
+                    label="C1B",
+                    site=(-0.365085, -0.452753, -0.231927),
+                    u=(0.000321, 0.000253, 0.000087,
+                       -0.000024, 0.000047, -0.000034)),
+    xray.scatterer( #18
+                    label="C11A",
+                    site=(-0.598622, 0.053343, -0.227354),
+                    u=(0.000265, 0.000409, 0.000084,
+                       0.000088, -0.000018, -0.000030)),
+    xray.scatterer( #19
+                    label="C2A",
+                    site=(-0.958694, -0.755645, -0.337016),
+                    u=(0.000394, 0.000350, 0.000106,
+                       -0.000057, 0.000027, -0.000005)),
+    xray.scatterer( #20
+                    label="C4A",
+                    site=(-0.784860, -0.407601, -0.402050),
+                    u=(0.000238, 0.000296, 0.000064,
+                       0.000002, 0.000011, -0.000016)),
+    xray.scatterer( #21
+                    label="C5A",
+                    site=(-0.784185, -0.399716, -0.475491),
+                    u=(0.000310, 0.000364, 0.000062,
+                       0.000044, -0.000011, -0.000017)),
+    xray.scatterer( #22
+                    label="N4A",
+                    site=(-0.630284, -0.043981, -0.333143),
+                    u=(0.000290, 0.000275, 0.000074,
+                       0.000021, 0.000027, 0.000013)),
+    xray.scatterer( #23
+                    label="C10A",
+                    site=(-0.545465, 0.166922, -0.272829),
+                    u=(0.000369, 0.000253, 0.000117,
+                       0.000015, -0.000002, -0.000008)),
+    xray.scatterer( #24
+                    label="C9A",
+                    site=(-0.567548, 0.102272, -0.339923),
+                    u=(0.000346, 0.000335, 0.000103,
+                       -0.000016, 0.000037, 0.000023)),
+    xray.scatterer( #25
+                    label="C11B",
+                    site=(-1.089943, -0.146930, -0.253779),
+                    u=(0.000262, 0.000422, 0.000102,
+                       -0.000018, -0.000002, 0.000029)),
+    xray.scatterer( #26
+                    label="N2A",
+                    site=(-0.843385, -0.537780, -0.366515),
+                    u=(0.000273, 0.000309, 0.000055,
+                       -0.000012, -0.000005, -0.000018)),
+    xray.scatterer( #27
+                    label="C7A",
+                    site=(-0.674021, -0.136086, -0.457790),
+                    u=(0.000362, 0.000378, 0.000074,
+                       0.000043, 0.000034, 0.000016)),
+    xray.scatterer( #28
+                    label="C8B",
+                    site=(-0.843625, -0.264182, -0.102023),
+                    u=(0.000264, 0.000275, 0.000072,
+                       -0.000025, 0.000019, -0.000005)),
+    xray.scatterer( #29
+                    label="C6A",
+                    site=(-0.726731, -0.261702, -0.502366),
+                    u=(0.000339, 0.000472, 0.000064,
+                       0.000062, -0.000003, 0.000028)),
+    xray.scatterer( #30
+                    label="C5B",
+                    site=(-0.577197, -0.376753, -0.020800),
+                    u=(0.000349, 0.000353, 0.000066,
+                       -0.000082, -0.000022, 0.000014)),
+    xray.scatterer( #31
+                    label="C2B",
+                    site=(-0.252088, -0.497338, -0.175057),
+                    u=(0.000251, 0.000342, 0.000119,
+                       0.000020, 0.000034, -0.000018)),
+    xray.scatterer( #32
+                    label="C7B",
+                    site=(-0.843956, -0.268811, -0.028080),
+                    u=(0.000344, 0.000377, 0.000078,
+                       -0.000029, 0.000059, -0.000007)),
+    xray.scatterer( #33
+                    label="F4B",
+                    site=(-0.680814, -0.696808, -0.115056),
+                    u=(0.000670, 0.000408, 0.000109,
+                       -0.000099, 0.000139, -0.000031)),
+    xray.scatterer( #34
+                    label="F1B",
+                    site=(-0.780326, -0.921249, -0.073962),
+                    u=(0.000687, 0.000357, 0.000128,
+                       -0.000152, -0.000011, 0.000021)),
+    xray.scatterer( #35
+                    label="B1B",
+                    site=(-0.795220, -0.758128, -0.075955),
+                    u=(0.000413, 0.000418, 0.000075,
+                       0.000054, 0.000045, 0.000023)),
+    xray.scatterer( #36
+                    label="F2B",
+                    site=(-0.945140, -0.714626, -0.105820),
+                    u=(0.000584, 0.001371, 0.000108,
+                       0.000420, 0.000067, 0.000134)),
+    xray.scatterer( #37
+                    label="F3B",
+                    site=(-0.768914, -0.701660, -0.005161),
+                    u=(0.000678, 0.000544, 0.000079,
+                       -0.000000, 0.000090, -0.000021)),
+    xray.scatterer( #38
+                    label="F1A",
+                    site=(-0.109283, -0.252334, -0.429288),
+                    u=(0.000427, 0.001704, 0.000125,
+                       0.000407, 0.000041, 0.000035)),
+    xray.scatterer( #39
+                    label="F4A",
+                    site=(-0.341552, -0.262864, -0.502023),
+                    u=(0.000640, 0.000557, 0.000081,
+                       -0.000074, 0.000042, -0.000052)),
+    xray.scatterer( #40
+                    label="F3A",
+                    site=(-0.324533, -0.142292, -0.393215),
+                    u=(0.000471, 0.001203, 0.000134,
+                       0.000333, -0.000057, -0.000220)),
+    xray.scatterer( #41
+                    label="F2A",
+                    site=(-0.312838, -0.405405, -0.400231),
+                    u=(0.002822, 0.000831, 0.000092,
+                       -0.000648, 0.000115, 0.000027)),
+    xray.scatterer( #42
+                    label="B1A",
+                    site=(-0.271589, -0.268874, -0.430724),
+                    u=(0.000643, 0.000443, 0.000079,
+                       0.000040, 0.000052, -0.000034)),
+    xray.scatterer( #43
+                    label="H5B",
+                    site=(-0.475808, -0.413802, 0.004402),
+                    u=0.005270),
+    xray.scatterer( #44
+                    label="H6B",
+                    site=(-0.699519, -0.326233, 0.062781),
+                    u=0.019940),
+    xray.scatterer( #45
+                    label="H3B",
+                    site=(-0.283410, -0.484757, -0.063922),
+                    u=0.029990),
+    xray.scatterer( #46
+                    label="H1B",
+                    site=(-0.357103, -0.451819, -0.284911),
+                    u=0.031070),
+    xray.scatterer( #47
+                    label="H10A",
+                    site=(-0.495517, 0.268296, -0.256187),
+                    u=0.027610),
+    xray.scatterer( #48
+                    label="H2B",
+                    site=(-0.147129, -0.535141, -0.174699),
+                    u=0.017930),
+    xray.scatterer( #49
+                    label="H7A",
+                    site=(-0.643658, -0.031387, -0.475357),
+                    u=0.020200),
+    xray.scatterer( #50
+                    label="H1A",
+                    site=(-0.912757, -0.691043, -0.227554),
+                    u=0.033320),
+    xray.scatterer( #51
+                    label="H7B",
+                    site=(-0.933670, -0.241189, -0.010263),
+                    u=0.021310),
+    xray.scatterer( #52
+                    label="H11B",
+                    site=(-1.107736, -0.155470, -0.311996),
+                    u=0.041500),
+    xray.scatterer( #53
+                    label="H9A",
+                    site=(-0.539908, 0.139753, -0.382281),
+                    u=0.007130),
+    xray.scatterer( #54
+                    label="H10B",
+                    site=(-1.265944, -0.029610, -0.212398),
+                    u=0.030910),
+    xray.scatterer( #55
+                    label="H3A",
+                    site=(-0.934728, -0.691149, -0.450551),
+                    u=0.038950),
+    xray.scatterer( #56
+                    label="H5A",
+                    site=(-0.833654, -0.487479, -0.508239),
+                    u=0.031150),
+    xray.scatterer( #57
+                    label="H6A",
+                    site=(-0.742871, -0.242269, -0.558157),
+                    u=0.050490),
+    xray.scatterer( #58
+                    label="H9B",
+                    site=(-1.120150, -0.093752, -0.090706),
+                    u=0.039310),
+    xray.scatterer( #59
+                    label="H11A",
+                    site=(-0.593074, 0.054973, -0.180370),
+                    u=0.055810),
+    xray.scatterer( #60
+                    label="H2A",
+                    site=(-0.999576, -0.842158, -0.340837),
+                    u=0.057030)
+    ]))
+  fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
+  fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
+  for hydrogen_flag in (True, False):
+    xs = xs0.deep_copy_scatterers()
+    if not hydrogen_flag:
+      xs.select_inplace(~xs.element_selection('H'))
+    xs.shake_adp()
+    xs.shake_sites_in_place(rms_difference=0.1)
+    for sc in xs.scatterers():
+      sc.flags.set_grad_site(True).set_grad_u_aniso(False)
+    ls = least_squares.crystallographic_ls(
+      fo_sq.as_xray_observations(),
+      constraints.reparametrisation(
+        structure=xs,
+        constraints=[],
+        connectivity_table=smtbx.utils.connectivity_table(xs)),
+      weighting_scheme=least_squares.unit_weighting())
+    ls.build_up()
+    lambdas = eigensystem.real_symmetric(
+      ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
+    # assert the restrained L.S. problem is not too ill-conditionned
+    cond = math.log10(lambdas[0]/lambdas[-1])
+    msg = ("one heavy element + light elements (real data) %s Hydrogens: %.1f"
+           % (['without', 'with'][hydrogen_flag], cond))
+    if verbose: print msg
+    assert cond < worst_condition_number_acceptable, msg
 
 def run():
   libtbx.utils.show_times_at_exit()
@@ -713,6 +1070,9 @@ def run():
     .option(None, "--runs",
             type='int',
             default=1)
+    .option(None, "--verbose",
+            action="store_true",
+            default=False)
   ).process(args=sys.argv[1:])
   if command_line.options.fix_random_seeds:
     flex.set_random_seed(1)
@@ -720,7 +1080,7 @@ def run():
   n_runs = command_line.options.runs
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
 
-  exercise_floating_origin_dynamic_weighting()
+  exercise_floating_origin_dynamic_weighting(command_line.options.verbose)
   twin_test().run()
   exercise_normal_equations()
   special_positions_test(n_runs).run()
