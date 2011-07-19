@@ -987,6 +987,8 @@ def exercise():
   #
   s = "[0.143139, -0.125121, None, -0.308607]"
   assert numstr(values=eval(s)) == s
+  s = "[0.1431391, -0.1251212, None, -0.3086073]"
+  assert numstr7(values=eval(s)) == s
   #
   for s,i in {"2000000" : 2000000,
               "2k" : 2048,

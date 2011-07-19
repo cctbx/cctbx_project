@@ -30,6 +30,9 @@ def _numstr(
   return brackets[0] + sep.join(flds) + brackets[1]
 __builtins__["numstr"] = _numstr
 
+def _numstr7(values): return numstr(values=values, fmt="%.7g")
+__builtins__["numstr7"] = _numstr7
+
 def _real_imag(complex_number):
   return (complex_number.real, complex_number.imag)
 __builtins__["real_imag"] = _real_imag
