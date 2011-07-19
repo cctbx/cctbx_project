@@ -435,6 +435,15 @@ namespace cctbx { namespace uctbx {
     return result;
   }
 
+  uc_mat3
+  unit_cell::matrix_cart(
+    sgtbx::rot_mx const& rot_mx) const
+  {
+    return orthogonalization_matrix()
+         * rot_mx.as_double()
+         * fractionalization_matrix();
+  }
+
   unit_cell
   unit_cell::change_basis(uc_mat3 const& c_inv_r, double r_den) const
   {
