@@ -57,7 +57,7 @@ Allowed parameters:
   from spotfinder.servers import mp_spotfinder_server_read_file as srv
 
   NUMBER_OF_PROCESSES = params.distl.processors
-  srv.generate_common_parameters(params)
+  srv.generate_common_parameters(working_params)
 
   server_address = ('', params.distl.port)
 
