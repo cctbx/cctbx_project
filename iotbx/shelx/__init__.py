@@ -23,8 +23,7 @@ def cctbx_xray_structure_from(cls, file=None, filename=None,
 def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None):
   import os
   from iotbx.reflection_file_reader import any_reflection_file
-  from iotbx.builders \
-       import weighted_constrained_restrained_crystal_structure_builder
+  import iotbx.builders
 
   assert ins_or_res is not None or hkl is not None
 
@@ -42,7 +41,12 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None):
     hkl = "%.hkl" % root
     assert os.path.isfile(hkl)
 
-  builder = weighted_constrained_restrained_crystal_structure_builder()
+  builder = iotbx.builders.mixin_builder_class(
+    "smtbx_builder",
+    iotbx.builders.weighted_constrained_restrained_crystal_structure_builder,
+    iotbx.builders.reflection_data_source_builder,
+    iotbx.builders.twinning_builder)()
+
   stream = command_stream(filename=ins_or_res)
   stream = crystal_symmetry_parser(stream, builder)
   stream = afix_parser(stream.filtered_commands(), builder)
@@ -51,14 +55,12 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None):
   stream = instruction_parser(stream.filtered_commands(), builder)
   stream.parse()
 
-  hklf = stream.instructions['hklf']
-  assert hklf['n'] == 4
-  assert 'matrix' not in hklf
+  assert builder.reflection_file_format == 'hklf4'
   fo_sq = any_reflection_file("%s=hklf4" % hkl)\
          .as_miller_arrays(crystal_symmetry=builder.structure)[0]\
          .merge_equivalents().array()
 
-  return cls(fo_sq,
+  return cls(fo_sq.as_xray_observations(),
              builder.structure,
              builder.constraints,
              builder.restraints_manager,
