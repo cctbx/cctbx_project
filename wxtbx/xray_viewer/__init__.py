@@ -69,20 +69,20 @@ class image (object) :
     wx_image = wx.EmptyImage(*(self._size))
     wx_image.SetData(self._img.export_string)
     self._full_mag = wx_image
-    if (zoom_level == 0) and (not None in [w, h]) :
+    if (zoom_level == 0) and (not None in [w, h]) : # auto
       scale = min(w / x, h / y)
       wx_image = wx_image.Scale(int(x*scale), int(y*scale),
         wx.IMAGE_QUALITY_NORMAL)
-    elif (zoom_level == 1) :
+    elif (zoom_level == 1) : # 25%
+      wx_image = wx_image.Scale(x/4, y/4, wx.IMAGE_QUALITY_NORMAL)
+    elif (zoom_level == 2) : # 50%
+      wx_image = wx_image.Scale(x/2, y/2, wx.IMAGE_QUALITY_NORMAL)
+    elif (zoom_level == 3) : # 100%
       pass
-    elif (zoom_level == 2) :
-      x /= 2
-      y /= 2
-      wx_image = wx_image.Scale(x, y, wx.IMAGE_QUALITY_NORMAL)
-    elif (zoom_level == 3) :
-      x /= 4
-      y /= 4
-      wx_image = wx_image.Scale(x, y, wx.IMAGE_QUALITY_NORMAL)
+    elif (zoom_level == 4) : # 200%
+      wx_image = wx_image.Scale(x*2, y*2, wx.IMAGE_QUALITY_NORMAL)
+    elif (zoom_level == 5) : # 400%
+      wx_image = wx_image.Scale(x*4, y*4, wx.IMAGE_QUALITY_NORMAL)
     bmp = wx_image.ConvertToBitmap()
     self._bmp = bmp
     self._wx_img = wx_image
