@@ -12,20 +12,12 @@ class IntCtrl (ValidatedTextCtrl) :
     super(IntCtrl, self).__init__(*args, **kwds)
     self.min = -sys.maxint
     self.max = sys.maxint
-    self.spinner = None
 
   def AttachSpinner (self, spinner) :
     spinner.Bind(wx.EVT_SPIN_DOWN, self.OnSpinDown, spinner)
     spinner.Bind(wx.EVT_SPIN_UP, self.OnSpinUp, spinner)
-    if (self.max is not None) :
-      spinner.SetMax(self.max)
-    else :
-      spinner.SetMax(sys.maxint)
-    if (self.min is not None) :
-      spinner.SetMin(self.min)
-    else :
-      spinner.SetMin(-sys.maxint)
-    self.spinner = spinner
+    spinner.SetMax(sys.maxint)
+    spinner.SetMin(-sys.maxint)
     try :
       val = self.GetPhilValue()
     except Exception, e :
@@ -37,14 +29,10 @@ class IntCtrl (ValidatedTextCtrl) :
   def SetMin (self, min) :
     assert isinstance(min, int)
     self.min = min
-    if (self.spinner is not None) :
-      self.spinner.SetMin(min)
 
   def SetMax (self, max) :
     assert isinstance(max, int)
     self.max = max
-    if (self.spinner is not None) :
-      self.spinner.SetMax(max)
 
   def GetMin (self) :
     return self.min
@@ -85,10 +73,13 @@ class IntCtrl (ValidatedTextCtrl) :
     return str(value)
 
   def OnSpinUp (self, event) :
-    value = self.GetPhilValue()
+    try :
+      value = self.GetPhilValue()
+    except Exception:
+      value = None
     if (value is None) and ((self.max is None) or (self.max > 0)) :
       self.SetValue(1)
-    else :
+    elif (value is not None) :
       value += 1
       if (self.max is not None) and (value > self.max) :
         pass
@@ -96,10 +87,13 @@ class IntCtrl (ValidatedTextCtrl) :
         self.SetValue(value)
 
   def OnSpinDown (self, event) :
-    value = self.GetPhilValue()
+    try :
+      value = self.GetPhilValue()
+    except Exception:
+      value = None
     if (value is None) and ((self.min is None) or (self.min < 0)) :
       self.SetValue(-1)
-    else :
+    elif (value is not None) :
       value -= 1
       if (self.min is not None) and (value < self.min) :
         pass
