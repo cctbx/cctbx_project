@@ -79,6 +79,26 @@ def exercise_cif_model():
   block1.add_loop(bad_loop)
   assert "_a" in block1
   assert "_b" in block1
+  assert list(block.get_looped_item("_loop_a")) == ['6', '4', '2']
+  try: block.get_looped_item("_tag")
+  except ValueError: pass
+  else: raise Exception_expected
+  assert block.get_looped_item("_tag", value_error=None) is None
+  try: block.get_looped_item("_none_existent")
+  except KeyError: pass
+  else: raise Exception_expected
+  assert block.get_looped_item(
+    "_none_existent", key_error=None, default="my_default") == "my_default"
+  assert block.get_single_item("_tag") == "2"
+  try: block.get_single_item("_loop_a")
+  except ValueError: pass
+  else: raise Exception_expected
+  assert block.get_single_item(
+    "_loop_a", value_error=None, default="default") == "default"
+  try: block.get_single_item("_none_existent")
+  except KeyError: pass
+  else: raise Exception_expected
+  assert block.get_single_item("_none_existent", key_error=None) is None
   #
   cif_model = model.cif()
   cif_model["fred"] = block
