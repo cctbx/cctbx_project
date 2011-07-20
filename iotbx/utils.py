@@ -71,6 +71,8 @@ def process_command_line_inputs(args, master_phil, input_types):
   from libtbx.str_utils import show_string
   import os.path as op
   for arg in args:
+    if (arg in ["--help", "-help", "-h"]):
+      raise SystemExit(master_phil.as_str())
     if (len(arg) == 0): continue
     def try_as_file():
       if (not op.isfile(arg)): return False
