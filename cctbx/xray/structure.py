@@ -1333,6 +1333,8 @@ class structure(crystal.special_position_settings):
     return new_structure
 
   def change_basis(self, cb_op):
+    if (isinstance(cb_op, str)):
+      cb_op = sgtbx.change_of_basis_op(cb_op)
     return structure(
       special_position_settings
         =crystal.special_position_settings.change_basis(self, cb_op),

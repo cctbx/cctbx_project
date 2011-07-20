@@ -352,8 +352,7 @@ Number of scattering types: 2
     xs2 = xray.structure(xs1, xs1.scatterers())
     xs2 = xs2.expand_to_p1(append_number_to_labels=append_number_to_labels)
     assert xs2.scatterers().size() == 10
-  cb_op = sgtbx.change_of_basis_op("z,x,y")
-  xs2 = xs1.change_basis(cb_op)
+  xs2 = xs1.change_basis("z,x,y")
   for i,sc in enumerate(xs2.scatterers()):
     assert sc.multiplicity() > 0
     ss = xs2.site_symmetry_table().get(i)
