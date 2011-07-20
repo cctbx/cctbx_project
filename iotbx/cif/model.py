@@ -153,6 +153,42 @@ class block_base(DictMixin):
     else:
       raise KeyError
 
+  def get_looped_item(self,
+                      key,
+                      key_error=KeyError,
+                      value_error=ValueError,
+                      default=None):
+    if key not in self:
+      if key_error is None:
+        return default
+      else:
+        raise key_error(key)
+    value = self[key]
+    if isinstance(value, flex.std_string):
+      return value
+    elif value_error is not None:
+      raise value_error("%s is not a looped item" %key)
+    else:
+      return default
+
+  def get_single_item(self,
+                      key,
+                      key_error=KeyError,
+                      value_error=ValueError,
+                      default=None):
+    if key not in self:
+      if key_error is None:
+        return default
+      else:
+        raise key_error(key)
+    value = self[key]
+    if not isinstance(value, flex.std_string):
+      return value
+    elif value_error is not None:
+      raise value_error("%s appears as a looped item" %key)
+    else:
+      return default
+
   def keys(self):
     keys = []
     for key in self._set:
