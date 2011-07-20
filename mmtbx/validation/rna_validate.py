@@ -35,7 +35,24 @@ class rna_validate(object):
     self.rna_backbone_atoms = ["P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
                                "C3'", "O3'", "C2'", "O2'", "N1", "N9" ] #version 3.x naming
 
+  def usage(self):
+    return """
+phenix.rna_validate file.pdb [params.eff] [options ...]
+
+Options:
+
+  pdb=input_file        input PDB file
+  outliers_only=False   only print outliers
+
+Example:
+
+  phenix.rna_validate pdb=1u8d.pdb outliers_only=True
+
+"""
+
   def run(self, args):
+    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
+      raise Usage(self.usage())
     master_phil = get_master_phil()
     import iotbx.utils
     input_objects = iotbx.utils.process_command_line_inputs(

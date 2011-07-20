@@ -120,6 +120,22 @@ class ramalyze(object):
 
   #{{{ flag routines
   #flag routines-----------------------------------------------------------------------------------
+  def usage(self):
+    return """
+phenix.ramalyze file.pdb [params.eff] [options ...]
+
+Options:
+
+  pdb=input_file        input PDB file
+  outliers_only=False   only print outliers
+  verbose=False         verbose text output
+  plot=False            Create graphics of plots (if Matplotlib is installed)
+
+Example:
+
+  phenix.ramalyze pdb=1ubq.pdb outliers_only=True
+
+"""
   def changes(self):
     print """
     version 0.05 090605 - Added summary and description to text output.
@@ -147,6 +163,8 @@ class ramalyze(object):
 
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
+    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
+      raise Usage(self.usage())
     master_phil = get_master_phil()
     import iotbx.utils
     args = list(args)
