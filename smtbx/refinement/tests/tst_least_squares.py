@@ -681,6 +681,10 @@ class special_positions_test(object):
       assert approx_equal(cov[i, i+3]/cov[i, i], 0.5, eps=1e-12)
 
 def exercise_floating_origin_dynamic_weighting(verbose=False):
+  from cctbx import covariance
+  import itertools
+  from scitbx.math import median_statistics
+
   worst_condition_number_acceptable = 10
 
   # light elements only
@@ -736,7 +740,16 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   msg = "one heavy element + light elements (synthetic data): %.1f" % cond
   if verbose: print msg
   assert cond < worst_condition_number_acceptable, msg
-
+  cov = covariance.extract_covariance_matrix_for_sites(
+    flex.size_t_range(len(xs.scatterers())),
+    ls.covariance_matrix(),
+    xs.parameter_map())
+  site_esds = cov.matrix_packed_u_diagonal()
+  indicators = flex.double()
+  for i in xrange(0, len(site_esds), 3):
+    stats = median_statistics(site_esds[i:i+3])
+    indicators.append(stats.median_absolute_deviation/stats.median)
+  assert indicators.all_lt(1)
 
   # especially troublesome structure with one heavy element
   # (contributed by Jonathan Coome)
@@ -1059,6 +1072,17 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
            % (['without', 'with'][hydrogen_flag], cond))
     if verbose: print msg
     assert cond < worst_condition_number_acceptable, msg
+    cov = covariance.extract_covariance_matrix_for_sites(
+      flex.size_t_range(len(xs.scatterers())),
+      ls.covariance_matrix(),
+      xs.parameter_map())
+    site_esds = cov.matrix_packed_u_diagonal()
+    indicators = flex.double()
+    for i in xrange(0, len(site_esds), 3):
+      stats = median_statistics(site_esds[i:i+3])
+      indicators.append(stats.median_absolute_deviation/stats.median)
+    assert indicators.all_lt(1)
+
 
 def run():
   libtbx.utils.show_times_at_exit()
