@@ -14,7 +14,7 @@ from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from iotbx.pdb.rna_dna_detection import residue_analysis
 import iotbx.phil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Usage
 from libtbx.str_utils import show_string
 
 def get_master_phil():
@@ -85,7 +85,8 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
       continue
     atom1 = i_seq_name_hash[bp.i_seqs[0]][0:4].strip()
     atom2 = i_seq_name_hash[bp.i_seqs[1]][0:4].strip()
-    if atom1[0] == "H" or atom2[0] == "H":
+    if atom1[0] == "H" or atom2[0] == "H" or \
+       atom1[0] == "D" or atom2[0] == "D":
       continue
     sigma = ((1/restraint.weight)**(.5))
     num_sigmas = -(restraint.delta / sigma) #negative to match MolProbity direction
@@ -630,7 +631,8 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
           atom_2 = i_seq_name_hash[bond][0:4].strip()
           if (common_residue_names_get_class(atom_group.resname) == 'other' or \
               common_residue_names_get_class(atom_group.resname) == 'common_small_molecule'):
-            if atom_1.startswith('H') or atom_2.startswith('H'):
+            if atom_1.startswith('H') or atom_2.startswith('H') or \
+               atom_1.startswith('D') or atom_2.startswith('D'):
               if show_hydrogen:
                 try:
                   het_h += kin_vec(het_hash[atom_1][0],
@@ -662,7 +664,8 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
                                          xyz_hash[atom_2])
               except Exception:
                 pass
-            elif atom_1.startswith('H') or atom_2.startswith('H'):
+            elif atom_1.startswith('H') or atom_2.startswith('H') or \
+                 atom_1.startswith('D') or atom_2.startswith('D'):
               if show_hydrogen:
                 if (atom_1 in mc_atoms or atom_2 in mc_atoms):
                   try:
@@ -814,7 +817,24 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   outfile.close()
   return f
 
+def usage():
+  return """
+phenix.kinemage file.pdb [params.eff] [options ...]
+
+Options:
+
+  pdb=input_file        input PDB file
+  cif=cif_file          input custom definitions (ligands, etc.)
+  keep_hydrogens=False  keep input hydrogen files (otherwise regenerate)
+
+Example:
+
+  phenix.kinemage pdb=1ubq.pdb cif=ligands.cif
+"""
+
 def run(args):
+  if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
+      raise Usage(usage())
   pdbID = None
   master_phil = get_master_phil()
   import iotbx.utils
