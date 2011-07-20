@@ -331,7 +331,7 @@ class SettingsPanel (wx.Panel) :
     txt1 = wx.StaticText(self, -1, "Zoom level:")
     box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.zoom_ctrl = wx.Choice(self, -1,
-      choices=["Auto", "100%", "50%", "25%"])
+      choices=["Auto", "25%", "50%", "100%", "200%", "400%"])
     self.zoom_ctrl.SetSelection(self.settings.zoom_level)
     box.Add(self.zoom_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._sizer.Fit(self)
