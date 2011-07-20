@@ -41,7 +41,20 @@ def get_master_phil():
 class clashscore(object):
   #flag routines-----------------------------------------------------------------------------------
   def usage(self):
-    print "\nUSAGE:  python clashscore.py file.pdb\n"
+    return """
+phenix.clashscore file.pdb [params.eff] [options ...]
+
+Options:
+
+  pdb=input_file        input PDB file
+  keep_hydrogens=False  keep input hydrogen files (otherwise regenerate)
+  verbose=True          verbose text output
+
+Example:
+
+  phenix.clashscore pdb=1ubq.pdb keep_hydrogens=True
+
+"""
   def changes(self):
     print "\nversion 0.10 - Development Version\n"
   def version(self):
@@ -59,6 +72,8 @@ class clashscore(object):
 
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
+    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
+      raise Usage(self.usage())
     master_phil = get_master_phil()
     import iotbx.utils
     input_objects = iotbx.utils.process_command_line_inputs(

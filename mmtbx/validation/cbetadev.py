@@ -31,18 +31,22 @@ def get_master_phil():
     """)
 
 class cbetadev(object):
-  #{{{ local_help
   #flag routines-----------------------------------------------------------------------------------
-  def local_help(self):
-    version()
-    print """USAGE:  phenix.cbetadev file.pdb
+  def usage(self):
+    return """
+phenix.cbetadev file.pdb [params.eff] [options ...]
 
-  FLAGS:
-    -h    Print this help message
-    -v    Display version information
-    -c    Print a change log
-    -o    Only print outliers (deviation >= 0.25)
-  """
+Options:
+
+  pdb=input_file        input PDB file
+  outliers_only=False   only print outliers
+  verbose=True          verbose text output
+
+Example:
+
+  phenix.cbetadev pdb=1ubq.pdb outliers_only=True
+
+"""
   def changes(self):
     print "\nversion 0.10 080504 Initial version\nversion 0.12 090604 Added Summary line\n"
   def version(self):
@@ -57,10 +61,11 @@ class cbetadev(object):
     summary= "phenix.%s [options] mypdb.pdb" % command_name
     return summary,header
   #------------------------------------------------------------------------------------------------
-  #}}}
 
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
+    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
+      raise Usage(self.usage())
     master_phil = get_master_phil()
     import iotbx.utils
     input_objects = iotbx.utils.process_command_line_inputs(
