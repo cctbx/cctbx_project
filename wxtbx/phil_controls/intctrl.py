@@ -12,14 +12,39 @@ class IntCtrl (ValidatedTextCtrl) :
     super(IntCtrl, self).__init__(*args, **kwds)
     self.min = -sys.maxint
     self.max = sys.maxint
+    self.spinner = None
+
+  def AttachSpinner (self, spinner) :
+    spinner.Bind(wx.EVT_SPIN_DOWN, self.OnSpinDown, spinner)
+    spinner.Bind(wx.EVT_SPIN_UP, self.OnSpinUp, spinner)
+    if (self.max is not None) :
+      spinner.SetMax(self.max)
+    else :
+      spinner.SetMax(sys.maxint)
+    if (self.min is not None) :
+      spinner.SetMin(self.min)
+    else :
+      spinner.SetMin(-sys.maxint)
+    self.spinner = spinner
+    try :
+      val = self.GetPhilValue()
+    except Exception, e :
+      print e
+    else :
+      if (self.GetPhilValue() is not None) :
+        spinner.SetValue(self.GetPhilValue())
 
   def SetMin (self, min) :
     assert isinstance(min, int)
     self.min = min
+    if (self.spinner is not None) :
+      self.spinner.SetMin(min)
 
   def SetMax (self, max) :
     assert isinstance(max, int)
     self.max = max
+    if (self.spinner is not None) :
+      self.spinner.SetMax(max)
 
   def GetMin (self) :
     return self.min
@@ -59,6 +84,28 @@ class IntCtrl (ValidatedTextCtrl) :
   def FormatValue (self, value) :
     return str(value)
 
+  def OnSpinUp (self, event) :
+    value = self.GetPhilValue()
+    if (value is None) and ((self.max is None) or (self.max > 0)) :
+      self.SetValue(1)
+    else :
+      value += 1
+      if (self.max is not None) and (value > self.max) :
+        pass
+      else :
+        self.SetValue(value)
+
+  def OnSpinDown (self, event) :
+    value = self.GetPhilValue()
+    if (value is None) and ((self.min is None) or (self.min < 0)) :
+      self.SetValue(-1)
+    else :
+      value -= 1
+      if (self.min is not None) and (value < self.min) :
+        pass
+      else :
+        self.SetValue(value)
+
 class IntValidator (TextCtrlValidator) :
   def CheckFormat (self, value) :
     value = int(value)
@@ -84,6 +131,9 @@ if (__name__ == "__main__") :
   txt2 = wx.StaticText(panel, -1, "Number of processors", pos=(100,240))
   int_ctrl2 = IntCtrl(panel, -1, pos=(300,240), size=(80,-1),
     name="Number of processors")
+  spinbtn = wx.SpinButton(panel, -1, pos=(400,240))
+  int_ctrl2.AttachSpinner(spinbtn)
+  int_ctrl2.SetMin(1)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay (evt) :
     int1 = int_ctrl.GetPhilValue()
