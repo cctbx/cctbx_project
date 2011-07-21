@@ -2,7 +2,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
-from wxtbx.xray_viewer.display import XrayFrame
+from wxtbx.xray_viewer.frame import XrayFrame
 import wx
 import os
 import sys

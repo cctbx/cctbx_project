@@ -1616,3 +1616,5 @@ wxtbx/symmetry_dialog.py -text
 wxtbx/utils.py -text
 wxtbx/xray_viewer/__init__.py -text
 wxtbx/xray_viewer/display.py -text
+wxtbx/xray_viewer/frame.py -text
+wxtbx/xray_viewer/tst.py -text
