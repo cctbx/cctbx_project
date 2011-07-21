@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/sh
 if test "${LD_LIBRARY_PATH+set}"  == set ; then
   LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:__python_so__"
 else
