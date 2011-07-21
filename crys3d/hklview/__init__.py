@@ -122,6 +122,8 @@ class scene (object) :
     from scitbx import graphics_utils
     settings = self.settings
     data = self.data #self.work_array.data()
+    if (isinstance(data, flex.double) and data.all_eq(0)):
+      data = flex.double(data.size(), 1)
     if (settings.sqrt_scale_colors) and (isinstance(data, flex.double)) :
       data_for_colors = flex.sqrt(data)
     else :
