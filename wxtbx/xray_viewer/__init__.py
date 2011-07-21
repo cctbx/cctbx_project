@@ -4,8 +4,163 @@ from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
 import math
 
-class image (object) :
+class screen_params (object) :
+  def __init__ (self, img_w=None, img_h=None) :
+    self.img_w = img_w
+    self.img_h = img_h
+    self.screen_w = None
+    self.screen_h = None
+    self.thumb_w = None
+    self.thumb_h = None
+    self.img_x_offset = 0
+    self.img_y_offset = 0
+    self.screen_x_start = 0
+    self.screen_y_start = 0
+    self.detector_pixel_size = 0
+    self.zoom = 0
+    self._invert_x = False
+    self._invert_y = False
+
+  def set_zoom (self, zoom) :
+    assert (zoom >= 0)
+    self.zoom = zoom
+
+  def set_screen_size (self, w, h) :
+    self.screen_w = w
+    self.screen_h = h
+    scale = self.get_scale()
+    w_img_pixels = int(w / scale)
+    h_img_pixels = int(h / scale)
+    if (w_img_pixels > (self.img_w - self.img_x_offset)) :
+      self.img_x_offset = max(0, self.img_w - w_img_pixels)
+    if (h_img_pixels > (self.img_h - self.img_y_offset)) :
+      self.img_y_offset = max(0, self.img_h - w_img_pixels)
+
+  def set_image_size (self, w, h) :
+    self.img_w = w
+    self.img_h = h
+
+  def set_thumbnail_size (self, w, h) :
+    self.thumb_w = w
+    self.thumb_h = h
+
+  def get_image_size (self) :
+    assert (not None in [self.img_w, self.img_h])
+    return self.img_w, self.img_h
+
+  def get_thumbnail_size (self) :
+    assert (not None in [self.thumb_w, self.thumb_h])
+    return (self.thumb_w, self.thumb_h)
+
+  def set_detector_resolution (self, p) :
+    self.detector_pixel_size = p
+
+  def get_scale (self) :
+    assert (not None in [self.screen_w, self.screen_h, self.img_w, self.img_h])
+    if (self.zoom == 0) :
+      return min(self.screen_w / self.img_w, self.screen_h / self.img_h)
+    else :
+      return self.zoom
+
+  def get_detector_dimensions (self) :
+    assert (not None in [self.img_w, self.img_h, self.detector_pixel_size])
+    return (self.img_w * self.detector_pixel_size,
+            self.img_h * self.detector_pixel_size)
+
+  def adjust_screen_coordinates (self, x, y) :
+    xi, yi, w, h = self.get_bitmap_params()
+    scale = self.get_scale()
+    x_ = x + max(0, (self.screen_w - (w*scale)) / 2)
+    y_ = y + max(0, (self.screen_h - (h*scale)) / 2)
+    return (int(x_), int(y_))
+
+  def get_bitmap_params (self) :
+    scale = self.get_scale()
+    x0 = max(self.img_x_offset, 0)
+    y0 = max(self.img_y_offset, 0)
+    w_scaled = min(self.img_w, int(self.screen_w / scale)) #- x0
+    h_scaled = min(self.img_h, int(self.screen_h / scale))
+    return (x0, y0, w_scaled, h_scaled)
+
+  def get_thumbnail_box (self) :
+    x, y, w, h = self.get_bitmap_params()
+    return int(x / 8), int(y / 8), int(w / 8), int(h / 8)
+
+  def get_zoom_box (self, x, y, boxsize=400, mag=16) :
+    assert ((boxsize % mag) == 0)
+    n_pixels = boxsize / mag
+    x0 = min(self.img_w - n_pixels, x - (n_pixels / 2))
+    y0 = min(self.img_h - n_pixels, y - (n_pixels / 2))
+    return (x0, y0, n_pixels, n_pixels)
+
+  def translate_image (self, delta_x, delta_y) :
+    scale = self.get_scale()
+    x_new = max(0, ifloor(self.img_x_offset - (delta_x / scale)))
+    y_new = max(0, ifloor(self.img_y_offset - (delta_y / scale)))
+    max_x = ifloor(self.img_w - (self.screen_w / scale))
+    max_y = ifloor(self.img_h - (self.screen_h / scale))
+    self.img_x_offset = min(x_new, max_x)
+    self.img_y_offset = min(y_new, max_y)
+
+  def center_view_from_thumbnail (self, x, y) :
+    if (self.zoom == 0) : return
+    x0, y0, w, h = self.get_bitmap_params()
+    img_x = max(0, ifloor((x * 8) - (w / 2)))
+    img_y = max(0, ifloor((y * 8) - (h / 2)))
+    scale = self.get_scale()
+    max_x = ifloor(self.img_w - (self.screen_w / scale))
+    max_y = ifloor(self.img_h - (self.screen_h / scale))
+    self.img_x_offset = min(img_x, max_x)
+    self.img_y_offset = min(img_y, max_y)
+
+  def image_coords_as_screen_coords (self, x, y) :
+    scale = self.get_scale()
+    x1 = self.screen_x_start + (x - self.img_x_offset) * scale
+    y1 = self.screen_y_start + (y - self.img_y_offset) * scale
+    xi, yi, w, h = self.get_bitmap_params()
+    x2 = x1 + max(0, (self.screen_w - (w*scale)) / 2)
+    y2 = y1 + max(0, (self.screen_h - (h*scale)) / 2)
+    return (int(x2), int(y2))
+
+  def detector_coords_as_image_coords (self, x, y) :
+    dw = self.img_w * self.detector_pixel_size
+    dh = self.img_h * self.detector_pixel_size
+    x_frac = x / dw
+    if (self._invert_y) :
+      y_frac = - ((y / dh) - 1.0)
+    else :
+      y_frac = y / dh
+    x_point = x_frac * self.img_w
+    y_point = y_frac * self.img_h
+    return (int(x_point), int(y_point))
+
+  def image_coords_as_detector_coords (self, x, y) :
+    dw, dh = self.get_detector_dimensions()
+    w, h = self.get_image_size()
+    x_frac = x / w
+    y_frac = y / h
+    x_detector = x_frac * dw
+    if (self._invert_y) :
+      y_detector = (1.0 - y_frac) * dh
+    else :
+      y_detector = y_frac * dh
+    return x_detector, y_detector
+
+  def screen_coords_as_image_coords (self, x, y) :
+    scale = self.get_scale()
+    xi, yi, w, h = self.get_bitmap_params()
+    x1 = x - max(0, (self.screen_w - (w*scale)) / 2)
+    y1 = y - max(0, (self.screen_h - (h*scale)) / 2)
+    x2 = self.img_x_offset + (x1 / scale)
+    y2 = self.img_y_offset + (y1 / scale)
+    return (ifloor(x2) - 1, ifloor(y2) - 1)
+
+  def image_coords_as_array_coords (self, x, y) :
+    return y-1, x-1
+
+class image (screen_params) :
   def __init__ (self, file_name) :
+    screen_params.__init__(self)
     self.file_name = file_name
     from iotbx.detectors import ImageFactory
     img = ImageFactory(file_name)
@@ -13,8 +168,10 @@ class image (object) :
     self._raw = img
     print img.show_header()
     self._invert_beam_center = False
-    self._invert_x = False
-    self._invert_y = False
+    self.set_image_size(
+      w=self._raw.parameters['SIZE2'],
+      h=self._raw.parameters['SIZE1'])
+    self.set_detector_resolution(self._raw.parameters['PIXEL_SIZE'])
     from spotfinder.command_line.signal_strength import master_params
     from iotbx.detectors.context.config_detector import \
       beam_center_convention_from_image_object
@@ -33,7 +190,8 @@ class image (object) :
     #self.convert_to_bitmap()
 
   def create_flex_image (self,
-                         brightness=100) :
+                         brightness=100,
+                         binning=1) :
     # FIXME
     try :
       from labelit.detectors import FlexImage
@@ -42,7 +200,7 @@ class image (object) :
     saturation = getattr(self._raw, "saturation", 65535)
     fi = FlexImage(
       rawdata=self._raw.linearintdata,
-      binning=1,
+      binning=binning,
       vendortype=self._raw.vendortype,
       brightness=brightness / 100.,
       saturation=int(saturation))
@@ -54,102 +212,45 @@ class image (object) :
     return fi
 
   def update_settings (self, **kwds) :
-    self._bmp = None
     self._wx_img = None
     self.update_image(**kwds)
 
-  def update_image (self, brightness=100, zoom_level=1, w=None, h=None,
-      invert_beam_center=False) :
-    #self._invert_beam_center = invert_beam_center
-    self._img = self.create_flex_image(brightness)
-    x = self._img.ex_size2()
-    y = self._img.ex_size1()
-    self._size = (x, y)
+  def update_image (self, brightness=100) :
     import wx
-    wx_image = wx.EmptyImage(*(self._size))
+    self._img = self.create_flex_image(brightness)
+    w = self._img.ex_size2()
+    h = self._img.ex_size1()
+    self.set_image_size(w, h)
+    wx_image = wx.EmptyImage(w, h)
     wx_image.SetData(self._img.export_string)
-    self._full_mag = wx_image
-    if (zoom_level == 0) and (not None in [w, h]) : # auto
-      scale = min(w / x, h / y)
-      wx_image = wx_image.Scale(int(x*scale), int(y*scale),
-        wx.IMAGE_QUALITY_NORMAL)
-    elif (zoom_level == 1) : # 25%
-      wx_image = wx_image.Scale(x/4, y/4, wx.IMAGE_QUALITY_NORMAL)
-    elif (zoom_level == 2) : # 50%
-      wx_image = wx_image.Scale(x/2, y/2, wx.IMAGE_QUALITY_NORMAL)
-    elif (zoom_level == 3) : # 100%
-      pass
-    elif (zoom_level == 4) : # 200%
-      wx_image = wx_image.Scale(x*2, y*2, wx.IMAGE_QUALITY_NORMAL)
-    elif (zoom_level == 5) : # 400%
-      wx_image = wx_image.Scale(x*4, y*4, wx.IMAGE_QUALITY_NORMAL)
-    bmp = wx_image.ConvertToBitmap()
-    self._bmp = bmp
     self._wx_img = wx_image
+    fi_thumb = self.create_flex_image(brightness=brightness,
+      binning=8)
+    w = fi_thumb.ex_size2()
+    h = fi_thumb.ex_size1()
+    self.set_thumbnail_size(w, h)
+    wx_thumb = wx.EmptyImage(w, h)
+    wx_thumb.SetData(fi_thumb.export_string)
+    self._wx_thumb = wx_thumb
+    self._wx_thumb_bmp = wx_thumb.ConvertToBitmap()
 
   def get_bitmap (self) :
-    if (self._bmp is None) :
-      self.convert_to_bitmap()
-    return self._bmp
-
-  def get_zoomed_region (self, x, y, zoom=1, mag=10, n_pixels=40) :
     import wx
-    x, y = self.image_coords_as_pixel_coords(x, y)
-    x0 = x - (n_pixels / 2)
-    y0 = y - (n_pixels / 2)
-    img = self._full_mag.GetSubImage((x0, y0, n_pixels, n_pixels))
-    return img.Scale(n_pixels * mag, n_pixels * mag, wx.IMAGE_QUALITY_NORMAL)
+    x, y, w, h = self.get_bitmap_params()
+    scale = self.get_scale()
+    img = self._wx_img.GetSubImage((x, y, w, h))
+    img = img.Scale(w * scale, h * scale, wx.IMAGE_QUALITY_NORMAL)
+    return img.ConvertToBitmap()
 
-  def get_size (self) :
-    return self._bmp.GetSize()
+  def get_thumbnail_bitmap (self) :
+    return self._wx_thumb_bmp #.ConvertToBitmap()
 
-  def get_original_size (self) :
-    return self._size
-
-  def get_zoom_level (self) :
-    w, h = self.get_size()
-    w0,h0 = self.get_original_size()
-    return w / w0
-
-  def get_detector_dimensions (self) :
-    pixel_size = self._raw.parameters['PIXEL_SIZE']
-    w = pixel_size * self._raw.parameters['SIZE2']
-    h = pixel_size * self._raw.parameters['SIZE1']
-    return (w, h)
-
-  def image_coords_as_detector_coords (self, x, y) :
-    dw, dh = self.get_detector_dimensions()
-    w, h = self.get_size()
-    x_frac = x / w
-    y_frac = y / h
-    x_detector = x_frac * dw
-    if (self._invert_y) :
-      y_detector = (1.0 - y_frac) * dh
-    else :
-      y_detector = y_frac * dh
-    return x_detector, y_detector
-
-  def detector_coords_as_image_coords (self, x, y) :
-    dw, dh = self.get_detector_dimensions()
-    w, h = self.get_size()
-    x_frac = x / dw
-    if (self._invert_y) :
-      y_frac = - ((y / dh) - 1.0)
-    else :
-      y_frac = y / dh
-    x_point = x_frac * w
-    y_point = y_frac * h
-    return (x_point, y_point)
-
-  def image_coords_as_pixel_coords (self, x, y) :
-    zoom = self.get_zoom_level()
-    x_ = ifloor(x / zoom)
-    y_ = ifloor(y / zoom)
-    return x_, y_
-
-  def image_coords_as_array_coords (self, x, y) :
-    x_, y_ = self.image_coords_as_pixel_coords(x, y)
-    return y_, x_
+  def get_zoomed_bitmap (self, x, y, boxsize=400, mag=16) :
+    import wx
+    x0, y0, w, h = self.get_zoom_box(x, y, boxsize, mag)
+    assert (w == h)
+    img = self._wx_img.GetSubImage((x0, y0, w, h))
+    return img.Scale(boxsize, boxsize, wx.IMAGE_QUALITY_NORMAL)
 
   def get_beam_center (self) :
     # FIXME Pilatus and ADSC images appear to have different conventions???
@@ -159,7 +260,6 @@ class image (object) :
     else :
       center_x = self._raw.parameters['BEAM_CENTER_X']
       center_y = self._raw.parameters['BEAM_CENTER_Y']
-    x_, y_ = self.image_coords_as_detector_coords(center_x, center_y)
     return self.detector_coords_as_image_coords(center_x, center_y)
 
   def get_point_info (self, x, y) :
