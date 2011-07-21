@@ -17,6 +17,7 @@ from math import sqrt
 class settings_window (wxtbx.utils.SettingsPanel) :
   is_3d_view = True
   def add_controls (self) :
+    self._index_span = None
     self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box)
@@ -143,6 +144,9 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       style=wx.TE_READONLY)
     grid_szr.Add(self.value_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
+  def set_index_span (self, index_span) :
+    self._index_span = index_span
+
   def update_reflection_info (self, hkl, d_min, value) :
     if (hkl is None) :
       self.hkl_info.SetValue("")
@@ -157,7 +161,16 @@ class settings_window (wxtbx.utils.SettingsPanel) :
 
   def OnSetSlice (self, event) :
     self.settings.slice_axis = self.hkl_choice.GetSelection()
+    min_value = self._index_span.min()[self.settings.slice_axis]
+    max_value = self._index_span.max()[self.settings.slice_axis]
     self.settings.slice_index = self.slice_index.GetValue()
+    self.slice_index.SetRange(min_value, max_value)
+    if (self.settings.slice_index > max_value) :
+      self.settings.slice_index = max_value
+      self.slice_index.SetValue(max_value)
+    elif (self.settings.slice_index < min_value) :
+      self.settings.slice_index = min_value
+      self.slice_index.SetValue(min_value)
     if (not self.is_3d_view) or (self.slice_ctrl.GetValue()) :
       try :
         self.parent.update_settings()
@@ -288,6 +301,7 @@ class HKLViewFrame (wx.Frame) :
       % (labels, details_str, sg, uc))
     self.settings_panel.d_min_ctrl.SetValue(array.d_min())
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
+    self.settings_panel.set_index_span(array.index_span())
     if (type(self).__name__ == "HKLViewFrame") :
       if (array.indices().size() > 100000) :
         if (self.settings.display_as_spheres) :
