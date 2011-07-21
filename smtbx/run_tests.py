@@ -10,7 +10,7 @@ def run():
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
-    ["$D/refinement/tests/tst_least_squares.py", "--fix_random_seeds"],
+    #["$D/refinement/tests/tst_least_squares.py", "--fix_random_seeds"],
     ["$D/refinement/tests/tst_weighting_schemes.py",
      "--fix_random_seeds"],
     "$B/refinement/constraints/tests/tst_reparametrisation",
