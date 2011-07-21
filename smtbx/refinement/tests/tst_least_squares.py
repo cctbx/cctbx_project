@@ -683,7 +683,7 @@ class special_positions_test(object):
 def exercise_floating_origin_dynamic_weighting(verbose=False):
   from cctbx import covariance
   import itertools
-  from scitbx.math import median_statistics
+  import scitbx.math
 
   worst_condition_number_acceptable = 10
 
@@ -740,15 +740,21 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   msg = "one heavy element + light elements (synthetic data): %.1f" % cond
   if verbose: print msg
   assert cond < worst_condition_number_acceptable, msg
-  cov = covariance.extract_covariance_matrix_for_sites(
-    flex.size_t_range(len(xs.scatterers())),
+
+  # are esd's for x,y,z coordinates of the same order of magnitude?
+  var_cart = covariance.orthogonalize_covariance_matrix(
     ls.covariance_matrix(),
+    xs.unit_cell(),
     xs.parameter_map())
-  site_esds = cov.matrix_packed_u_diagonal()
+  var_site_cart = covariance.extract_covariance_matrix_for_sites(
+      flex.size_t_range(len(xs.scatterers())),
+      var_cart,
+      xs.parameter_map())
+  site_esds = var_site_cart.matrix_packed_u_diagonal()
   indicators = flex.double()
   for i in xrange(0, len(site_esds), 3):
-    stats = median_statistics(site_esds[i:i+3])
-    indicators.append(stats.median_absolute_deviation/stats.median)
+    stats = scitbx.math.basic_statistics(site_esds[i:i+3])
+    indicators.append(stats.bias_corrected_standard_deviation/stats.mean)
   assert indicators.all_lt(1)
 
   # especially troublesome structure with one heavy element
@@ -1063,6 +1069,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
         constraints=[],
         connectivity_table=smtbx.utils.connectivity_table(xs)),
       weighting_scheme=least_squares.unit_weighting())
+
     ls.build_up()
     lambdas = eigensystem.real_symmetric(
       ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
@@ -1072,15 +1079,22 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
            % (['without', 'with'][hydrogen_flag], cond))
     if verbose: print msg
     assert cond < worst_condition_number_acceptable, msg
-    cov = covariance.extract_covariance_matrix_for_sites(
-      flex.size_t_range(len(xs.scatterers())),
+
+
+    # are esd's for x,y,z coordinates of the same order of magnitude?
+    var_cart = covariance.orthogonalize_covariance_matrix(
       ls.covariance_matrix(),
+      xs.unit_cell(),
       xs.parameter_map())
-    site_esds = cov.matrix_packed_u_diagonal()
+    var_site_cart = covariance.extract_covariance_matrix_for_sites(
+        flex.size_t_range(len(xs.scatterers())),
+        var_cart,
+        xs.parameter_map())
+    site_esds = var_site_cart.matrix_packed_u_diagonal()
     indicators = flex.double()
     for i in xrange(0, len(site_esds), 3):
-      stats = median_statistics(site_esds[i:i+3])
-      indicators.append(stats.median_absolute_deviation/stats.median)
+      stats = scitbx.math.basic_statistics(site_esds[i:i+3])
+      indicators.append(stats.bias_corrected_standard_deviation/stats.mean)
     assert indicators.all_lt(1)
 
 
