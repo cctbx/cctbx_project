@@ -4,13 +4,11 @@
 
 from crys3d.hklview import master_phil
 from crys3d.hklview.frames import *
-import os
+import iotbx.phil
 import sys
 
 def run (args) :
   ma = None
-  hkl_file = None
-  user_phil = []
   if (len(args) == 0) :
     from cctbx import miller, crystal
     from cctbx.array_family import flex
@@ -22,27 +20,21 @@ def run (args) :
     d = flex.double([1.0, 2.0, 3.0, 5.0, 10.0, 15.0, 6.0, 9.0, 12.0])
     s = miller.set(xs, mi, anomalous_flag=False)
     ma = s.array(data=d).set_info("test")
+    settings = crys3d.hklview.settings()
   else :
-    for arg in args :
-      if os.path.isfile(arg) :
-        hkl_file = arg
-      else :
-        try :
-          arg_phil = libtbx.phil.parse(arg)
-        except RuntimeError :
-          print "unrecognizeable argument '%s'" % arg
-        else :
-          user_phil.append(arg_phil)
-  working_phil = master_phil.fetch(sources=user_phil)
-  settings = working_phil.extract()
+    pcl = iotbx.phil.process_command_line_with_files(
+      args=args,
+      master_phil=master_phil,
+      reflection_file_def="data")
+    settings = pcl.work.extract()
   a = wx.App(0)
   a.hklview_settings = settings
   f = HKLViewFrame(None, -1, "Reflection data viewer", size=(1024,768))
   f.Show()
   if (ma is not None) :
     f.set_miller_array(ma)
-  elif (hkl_file is not None) :
-    f.load_reflections_file(hkl_file)
+  elif (settings.data is not None) :
+    f.load_reflections_file(settings.data)
   else :
     f.OnLoadFile(None)
   a.MainLoop()
