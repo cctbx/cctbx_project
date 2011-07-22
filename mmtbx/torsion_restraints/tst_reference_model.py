@@ -331,7 +331,9 @@ C 237  LEU:52.8:179.1:57.3:::tp"""
         ss_weight += 1
     assert ss_weight == 980
 
-  pdb_file = "/net/chevy/raid1/jheadd/reference/rnase-s/rnase-s.pdb"
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/ncs/rnase-s.pdb",
+    test=os.path.isfile)
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
