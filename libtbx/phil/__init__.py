@@ -2079,3 +2079,8 @@ def read_default(
     file_name=params_file_name,
     converter_registry=converter_registry,
     process_includes=process_includes)
+
+def process_command_line(args, master_string, parse=None):
+  from libtbx.phil import command_line
+  return command_line.process(
+    args=args, master_string=master_string, parse=parse)

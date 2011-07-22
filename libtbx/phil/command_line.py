@@ -1,5 +1,7 @@
 import libtbx.phil
 from libtbx.utils import Sorry, format_exception
+import os
+op = os.path
 
 class argument_interpreter(object):
 
@@ -40,7 +42,7 @@ class argument_interpreter(object):
     if (target_path.endswith(source_path)): return 3
     return 1
 
-  def process(self, arg):
+  def process_arg(self, arg):
     try:
       params = libtbx.phil.parse(
         input_string=arg.replace(r"\n", "\n"),
@@ -78,3 +80,74 @@ class argument_interpreter(object):
     return libtbx.phil.parse(
       input_string=complete_definitions,
       source_info=self.argument_description+"argument")
+
+  def process_args(self, args, custom_processor=None):
+    user_phils = []
+    for arg in args:
+      if (len(arg.strip()) == 0):
+        continue
+      if (arg.startswith("--")):
+        arg_work = arg[2:]
+        if (arg_work.find("=") < 0): arg_work += " = True"
+        user_phils.append(self.process_arg(arg=arg_work))
+        continue
+      if (op.isfile(arg)):
+        try: user_phils.append(libtbx.phil.parse(file_name=arg))
+        except Exception: pass
+        else: continue
+      if (arg.find("=") >= 0):
+        try: user_phils.append(self.process_arg(arg=arg))
+        except Exception: pass
+        else: continue
+      if (custom_processor is not None and custom_processor(arg=arg)):
+        continue
+      if (op.isfile(arg)):
+        libtbx.phil.parse(file_name=arg) # exception expected
+        from libtbx.str_utils import show_string
+        raise RuntimeError(
+          'Programming error or highly unusual situation'
+          ' (while processing %sargument %s).' % (
+            self.argument_description, show_string(arg)))
+      from libtbx.str_utils import show_string
+      raise Sorry(
+        "Uninterpretable %sargument: %s" % (
+          self.argument_description, show_string(arg)))
+    return user_phils
+
+  def process(self, arg=None, args=None, custom_processor=None):
+    assert [arg, args].count(None) == 1
+    if (arg is not None):
+      assert custom_processor is None
+      return self.process_arg(arg=arg)
+    return self.process_args(args=args, custom_processor=custom_processor)
+
+  def process_and_fetch(self, args, custom_processor=None):
+    if (isinstance(custom_processor, str)):
+      assert custom_processor == "collect_remaining"
+      remaining_args = []
+      def custom_processor(arg):
+        remaining_args.append(arg)
+        return True
+    else:
+      remaining_args = None
+    result = self.master_phil.fetch(
+      sources=self.process(args=args, custom_processor=custom_processor))
+    if (remaining_args is None):
+      return result
+    return result, remaining_args
+
+class process(object):
+
+  def __init__(self, args, master_string, parse=None):
+    if (parse is None): parse = libtbx.phil.parse
+    self.parse = parse
+    self.master = self.parse(input_string=master_string, process_includes=True)
+    self.work, self.remaining_args = argument_interpreter(
+      master_phil=self.master) \
+        .process_and_fetch(
+          args=args,
+          custom_processor="collect_remaining")
+
+  def show(self, out=None):
+    self.work.show(out=out)
+    return self
