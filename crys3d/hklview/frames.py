@@ -62,19 +62,20 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       box.Add(ctrls[0], 0, wx.ALL, 5)
       box.Add(ctrls2[0], 0, wx.ALL, 5)
       ctrls = self.create_controls(
-        setting="display_as_spheres",
+        setting="spheres",
         label="Display reflections as spheres")
       self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="color_scheme",
-      label="Color scheme",
-      captions=["Rainbow","Grayscale","Monochrome"])
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box)
-    box.Add(ctrls[0], 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
-    box.Add(ctrls[1], 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txt = wx.StaticText(self.panel, -1, "Color scheme:")
+    box.Add(txt, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.color_ctrl = wx.Choice(self.panel, -1,
+      choices=["rainbow","grayscale","monochrome"])
+    self.color_ctrl.SetStringSelection(self.settings.color_scheme)
+    box.Add(self.color_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.Bind(wx.EVT_CHOICE, self.OnChangeColor, self.color_ctrl)
     ctrls = self.create_controls(
-      setting="show_missing_reflections",
+      setting="show_missing",
       label="Show missing reflections")
     ctrls2 = self.create_controls(
       setting="show_only_missing",
@@ -111,7 +112,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     ctrls = self.create_controls
     self.hkl_choice = wx.Choice(self.panel, -1, choices=["h","k","l"])
-    self.hkl_choice.SetSelection(self.settings.slice_axis)
+    self.hkl_choice.SetStringSelection(self.settings.slice_axis)
     box2.Add(self.hkl_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     box2.Add(wx.StaticText(self.panel, -1, "="), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -160,9 +161,10 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       self.value_info.SetValue(value_str)
 
   def OnSetSlice (self, event) :
-    self.settings.slice_axis = self.hkl_choice.GetSelection()
-    min_value = self._index_span.min()[self.settings.slice_axis]
-    max_value = self._index_span.max()[self.settings.slice_axis]
+    self.settings.slice_axis = self.hkl_choice.GetStringSelection()
+    axis_index = ["h","k","l"].index(self.settings.slice_axis)
+    min_value = self._index_span.min()[axis_index]
+    max_value = self._index_span.max()[axis_index]
     self.settings.slice_index = self.slice_index.GetValue()
     self.slice_index.SetRange(min_value, max_value)
     if (self.settings.slice_index > max_value) :
@@ -181,6 +183,10 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.settings.d_min = self.d_min_ctrl.GetValue()
     self.parent.update_settings()
 
+  def OnChangeColor (self, event) :
+    self.settings.color_scheme = self.color_ctrl.GetStringSelection()
+    self.parent.update_settings()
+
 class HKLViewFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
@@ -191,7 +197,11 @@ class HKLViewFrame (wx.Frame) :
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.toolbar.SetToolBitmapSize((32,32))
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.settings = settings()
+    app = wx.GetApp()
+    if (getattr(app, "hklview_settings", None) is not None) :
+      self.settings = app.hklview_settings
+    else :
+      self.settings = settings()
     self.create_settings_panel()
     self.sizer.Add(self.settings_panel, 0, wx.EXPAND)
     self.create_viewer_panel()
@@ -304,7 +314,7 @@ class HKLViewFrame (wx.Frame) :
     self.settings_panel.set_index_span(array.index_span())
     if (type(self).__name__ == "HKLViewFrame") :
       if (array.indices().size() > 100000) :
-        if (self.settings.display_as_spheres) :
+        if (self.settings.spheres) :
           wx.MessageBox(message="Warning: this is a lot of reflections; "+
             "unless you have a very powerful graphics card, displaying "+
             "spheres may be slow and/or unstable, especially if data are "+
