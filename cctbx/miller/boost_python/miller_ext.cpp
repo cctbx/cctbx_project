@@ -108,8 +108,9 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       typedef return_internal_reference<> rir;
       class_<wt>("image_simple", no_init)
-        .def(init<bool, bool, bool, bool, bool, bool>((
+        .def(init<bool, bool, bool, bool, bool, bool, bool>((
           arg("apply_proximity_filter")=true,
+          arg("apply_detector_clipping")=true,
           arg("apply_proximity_factor")=true,
           arg("store_miller_index_i_seqs")=false,
           arg("store_spots")=false,
