@@ -20,10 +20,12 @@ struct approx_equal
   template <template<class> class C>
   bool operator()(vector<T, C> const &a, vector<T, C> const &b) const
   {
+    typedef typename vector<T, C>::const_iterator const_iterator;
+
     if (a.size() != b.size()) return false;
     a.compact();
     b.compact();
-    typename vector<T, C>::const_iterator p = a.begin(), q = b.begin();
+    const_iterator p = a.begin(), q = b.begin();
     while (p != a.end() && q != b.end()) {
       if (p.index() < q.index()) {
         if (std::abs(*p) > tolerance) return false;
@@ -38,15 +40,9 @@ struct approx_equal
         ++p; ++q;
       }
     }
-    typename vector<T, C>::const_iterator r, r_end;
-    if (p == a.end()) {
-      r = q;
-      r_end = b.end();
-    }
-    else {
-      r = p;
-      r_end = a.end();
-    }
+
+    const_iterator r     = p == a.end() ? q       : p      ;
+    const_iterator r_end = p == a.end() ? b.end() : a.end();
     for(; r != r_end; ++r) {
       if (std::abs(*r) > tolerance) return false;
     }
