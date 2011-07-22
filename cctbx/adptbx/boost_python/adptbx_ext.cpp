@@ -10,6 +10,9 @@
 #include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace adptbx { namespace boost_python {
+
+  void wrap_hirshfeld();
+
 namespace {
 
   sym_mat3<double>
@@ -237,6 +240,8 @@ namespace {
     def("c_u_c_transpose",
       (sym_mat3<double>(*)(mat3<double> const&, sym_mat3<double> const&))
       c_u_c_transpose);
+
+    wrap_hirshfeld();
 }
 
 } // namespace <anonymous>

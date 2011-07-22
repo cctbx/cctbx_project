@@ -3,4 +3,4 @@ env = env_cctbx_boost_python_ext.Clone()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(
   target="#lib/cctbx_adptbx_ext",
-  source=["adptbx_ext.cpp"])
+  source=["adptbx_ext.cpp", "hirshfeld.cpp"])
