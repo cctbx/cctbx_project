@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
@@ -118,9 +119,8 @@ struct vector_wrapper
       .def(self - self)
       .def(self * self)
       .def(self == self)
-      .def("weighted_dot", wt::weighted_dot)
-      .staticmethod("weighted_dot")
       ;
+    def("weighted_dot", wt::weighted_dot);
   }
 };
 
