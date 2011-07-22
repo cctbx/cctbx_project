@@ -2,6 +2,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
+from crys3d.hklview import master_phil
 from crys3d.hklview.frames import *
 import os
 import sys
@@ -9,6 +10,7 @@ import sys
 def run (args) :
   ma = None
   hkl_file = None
+  user_phil = []
   if (len(args) == 0) :
     from cctbx import miller, crystal
     from cctbx.array_family import flex
@@ -24,8 +26,17 @@ def run (args) :
     for arg in args :
       if os.path.isfile(arg) :
         hkl_file = arg
-        break
+      else :
+        try :
+          arg_phil = libtbx.phil.parse(arg)
+        except RuntimeError :
+          print "unrecognizeable argument '%s'" % arg
+        else :
+          user_phil.append(arg_phil)
+  working_phil = master_phil.fetch(sources=user_phil)
+  settings = working_phil.extract()
   a = wx.App(0)
+  a.hklview_settings = settings
   f = HKLViewFrame(None, -1, "Reflection data viewer", size=(1024,768))
   f.Show()
   if (ma is not None) :

@@ -3,6 +3,7 @@
 #  - cached scenes
 
 from libtbx.utils import Sorry
+import libtbx.phil
 from libtbx import object_oriented_patterns as oop
 from math import sqrt
 
@@ -38,10 +39,12 @@ class scene (object) :
     uc = array.unit_cell()
     self.unit_cell = uc
     self.slice_selection = None
+    self.axis_index = None
     if (settings.slice_mode) :
+      self.axis_index = ["h","k","l"].index(self.settings.slice_axis)
       self.slice_selection = miller.simple_slice(
         indices=array.indices(),
-        slice_axis=settings.slice_axis,
+        slice_axis=self.axis_index,
         slice_index=settings.slice_index)
       if (self.slice_selection.count(True) == 0) :
         raise ValueError("No data selected!")
@@ -58,7 +61,7 @@ class scene (object) :
     self.points = uc.reciprocal_space_vector(self.indices) * 100.
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
-    if (settings.show_missing_reflections) :
+    if (settings.show_missing) :
       self.generate_missing_reflections()
     if (settings.show_systematic_absences) and (not settings.show_only_missing):
       self.generate_systematic_absences()
@@ -83,13 +86,13 @@ class scene (object) :
     if (array.is_unique_set_under_symmetry()) :
       array = array.map_to_asu()
     else :
-      print "not unique"
+      print "data are not unique under symmetry"
     if (settings.d_min is not None) :
       array = array.resolution_filter(d_min=settings.d_min)
     self.filtered_array = array.deep_copy()
     if (settings.expand_anomalous) :
       array = array.generate_bijvoet_mates()
-    if (self.settings.show_missing_reflections) :
+    if (self.settings.show_missing) :
       self.missing_set = array.complete_set().lone_set(array)
     if (settings.expand_to_p1) :
       original_symmetry = array.crystal_symmetry()
@@ -110,11 +113,13 @@ class scene (object) :
       self.data = data.deep_copy()
     else :
       self.data = array.data().deep_copy()
-    if (settings.show_data_over_sigma) :
-      if (array.sigmas() is None) :
-        raise Sorry("sigmas not defined.")
-      sigmas = array.sigmas()
-      array = array.select(sigmas != 0).customized_copy(data=data/sigmas)
+      if (settings.show_data_over_sigma) :
+        if (array.sigmas() is None) :
+          raise Sorry("sigmas not defined.")
+        sigmas = array.sigmas()
+        array = array.select(sigmas != 0)
+        array = array.customized_copy(data=array.data()/array.sigmas())
+        self.data = array.data()
     self.work_array = array
 
   def generate_view_data (self) :
@@ -137,13 +142,13 @@ class scene (object) :
       if (not settings.keep_constant_scale) :
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
-    if (settings.color_scheme == 0) :
+    if (settings.color_scheme == "rainbow") :
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,
         selection=flex.bool(data_for_colors.size(), True),
         color_all=False,
         use_rb_color_gradient=False)
-    elif (settings.color_scheme == 1) :
+    elif (settings.color_scheme == "grayscale") :
       colors = graphics_utils.grayscale_by_property(
         properties=data_for_colors,
         selection=flex.bool(data_for_colors.size(), True),
@@ -189,7 +194,7 @@ class scene (object) :
     if (settings.slice_mode) :
       slice_selection = miller.simple_slice(
         indices=self.missing_set.indices(),
-        slice_axis=settings.slice_axis,
+        slice_axis=self.axis_index,
         slice_index=settings.slice_index)
       missing = self.missing_set.select(slice_selection).indices()
     else :
@@ -198,7 +203,7 @@ class scene (object) :
     if (n_missing > 0) :
       points_missing = uc.reciprocal_space_vector(missing) * 100.
       self.points.extend(points_missing)
-      if (settings.color_scheme != 0) :
+      if (settings.color_scheme != "rainbow") :
         self.colors.extend(flex.vec3_double(n_missing, (1.,0,0)))
       else :
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
@@ -221,7 +226,7 @@ class scene (object) :
     if (settings.slice_mode) :
       slice_selection = miller.simple_slice(
         indices=absence_array.indices(),
-        slice_axis=settings.slice_axis,
+        slice_axis=self.axis_index,
         slice_index=settings.slice_index)
       absence_array = absence_array.select(slice_selection)
     absence_flags = absence_array.data()
@@ -265,26 +270,50 @@ class scene (object) :
       value = self.data[k]
     return (hkl, d_min, value)
 
-class settings (object) :
-  def __init__ (self) :
-    self.black_background = True
-    self.show_axes = True
-    self.show_data_over_sigma = False
-    self.sqrt_scale_radii = True
-    self.sqrt_scale_colors = False
-    self.expand_to_p1 = False
-    self.expand_anomalous = False
-    self.display_as_spheres = True
-    self.show_missing_reflections = False
-    self.show_only_missing = False
-    self.show_systematic_absences = False
-    self.sphere_detail = 20
-    self.pad_radii = False
-    self.slice_mode = False
-    self.keep_constant_scale = True
-    self.slice_axis = 0
-    self.slice_index = 0
-    self.color_scheme = 0
-    self.show_labels = True
-    self.uniform_size = False
-    self.d_min = None
+master_phil = libtbx.phil.parse("""
+  black_background = True
+    .type = bool
+  show_axes = True
+    .type = bool
+  show_data_over_sigma = False
+    .type = bool
+  sqrt_scale_radii = True
+    .type = bool
+  sqrt_scale_colors = False
+    .type = bool
+  expand_to_p1 = False
+    .type = bool
+  expand_anomalous = False
+    .type = bool
+  spheres = True
+    .type = bool
+  show_missing = False
+    .type = bool
+  show_only_missing = False
+    .type = bool
+  show_systematic_absences = False
+    .type = bool
+  sphere_detail = 20
+    .type = int
+  pad_radii = False
+    .type = bool
+  slice_mode = False
+    .type = bool
+  keep_constant_scale = True
+    .type = bool
+  slice_axis = *h k l
+    .type = choice
+  slice_index = 0
+    .type = int
+  color_scheme = *rainbow grayscale mono
+    .type = choice
+  show_labels = True
+    .type = bool
+  uniform_size = False
+    .type = bool
+  d_min = None
+    .type = float
+""")
+
+def settings () :
+  return master_phil.fetch().extract()

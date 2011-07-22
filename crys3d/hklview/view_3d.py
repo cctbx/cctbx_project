@@ -31,8 +31,7 @@ class hklview_3d (wxGLWindow) :
     self.miller_array = None
     self.d_min = None
     self.scene = None
-    self.slice_axis = None
-    self.slice_index = None
+    self.animation_time = 0
     # XXX prevent exception when no data are loaded
     from scitbx.math import minimum_covering_sphere
     from scitbx.array_family import flex
@@ -96,7 +95,7 @@ class hklview_3d (wxGLWindow) :
       return
     if (self.settings.show_axes) :
       self.draw_axes()
-    if (self.settings.display_as_spheres) :
+    if (self.settings.spheres) :
       self.draw_spheres()
     else :
       self.draw_points()

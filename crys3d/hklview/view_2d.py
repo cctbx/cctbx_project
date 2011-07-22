@@ -51,10 +51,10 @@ class hklview_2d (wx.PyPanel) :
     self._points_2d = []
     self._radii_2d = []
     assert (self.settings.slice_mode)
-    if (self.settings.slice_axis == 0) :
+    if (self.settings.slice_axis == "h") :
       i_x, i_y = 1, 2
       axes = ("k", "l")
-    elif (self.settings.slice_axis == 1) :
+    elif (self.settings.slice_axis == "k") :
       i_x, i_y = 0, 2
       axes = ("h", "l")
     else :
@@ -116,7 +116,7 @@ class hklview_2d (wx.PyPanel) :
       main_pen = wx.Pen('white')
       main_brush = wx.Brush('white')
       missing_brush = wx.Brush((1,1,1))
-      if (self.settings.color_scheme != 0) :
+      if (self.settings.color_scheme != "rainbow") :
         missing_pen = wx.Pen('red')
       else :
         missing_pen = wx.Pen('white')
@@ -124,7 +124,7 @@ class hklview_2d (wx.PyPanel) :
       main_pen = wx.Pen('black')
       main_brush = wx.Brush('black')
       missing_brush = wx.Brush((250,250,250))
-      if (self.settings.color_scheme != 0) :
+      if (self.settings.color_scheme != "rainbow") :
         missing_pen = wx.Pen('red')
       else :
         missing_pen = wx.Pen('black')
@@ -159,19 +159,6 @@ class hklview_2d (wx.PyPanel) :
         gc.SetBrush(wx.Brush((c[0]*255,c[1]*255,c[2]*255)))
         gc.FillPath(path)
       gc.PopState()
-    if (self._clicked is not None) :
-      pass
-      #gc.SetPen(main_pen)
-      #gc.DrawText("Clicked: ", 10, 10)
-      #w, h = gc.GetTextExtent("Clicked: ")
-      #gc.DrawText("d = %g" % self.scene.get_resolution_at_point(self._clicked),
-      #  w+10, 30)
-      #if (self.settings.color_scheme == 0) :
-      #  c = self.scene.colors[self._clicked]
-      #  c = (c[0]*255, c[1]*255, c[2]*255)
-      #  gc.SetPen(wx.Pen(c))
-      #  gc.SetFont(gc.CreateFont(self.GetFont(),c))
-      #gc.DrawText("%d,%d,%d" % self.scene.indices[self._clicked], w+10, 10)
 
   def save_screen_shot (self, **kwds) :
     pass
