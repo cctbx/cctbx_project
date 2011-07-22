@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from scitbx import sparse
 import libtbx
@@ -65,6 +66,12 @@ def exercise_vector():
   v = sparse.vector(10, {0:-1, 1:2, 7:-1, 8:2})
   assert u*v == -5
   assert sparse.weighted_dot(u, flex.double_range(10), v) == -47
+  a = flex.double()
+  for i in xrange(10):
+    for j in xrange(i,10):
+      a.append(1/(i+j+1))
+  assert approx_equal(sparse.quadratic_form(u, a, v), 4003/1980,
+                      eps=1e-15)
 
   sparse_approx_equal = sparse.approx_equal(tolerance=0.1)
 
