@@ -329,6 +329,101 @@ namespace scitbx {
            v[2],     0, -v[0],
           -v[1],  v[0],     0);
       }
+
+    /// Matrix associated with symmetric rank-2 tensor transform
+    /** The change of basis of such a tensor U reads
+        \f[ U' = R U R^T \f]
+        where \f$U, U'\f$ are represented as symmetric matrices.
+        If, on the other hand, \f$U\f$ is represented as a vector
+        \f[ u = (u_{11}, u_{22}, u_{33}, u_{12}, u_{13}, u_{23}) \f]
+        and similarly \f$U'\f$, then the change of basis may be written
+        as a linear transformation
+        \f[ u' = P u \]
+        where \f$P\f$ reads
+        \f[ P = \begin{bmatrix}
+         r_{11}^2 & r_{12}^2 & r_{13}^2 &
+          2 r_{11} r_{12} & 2 r_{11} r_{13} & 2 r_{12} r_{13} \\
+         r_{21}^2 & r_{22}^2 & r_{23}^2 &
+          2 r_{21} r_{22} & 2 r_{21} r_{23} & 2 r_{22} r_{23} \\
+         r_{31}^2 & r_{32}^2 & r_{33}^2 &
+          2 r_{31} r_{32} & 2 r_{31} r_{33} & 2 r_{32} r_{33} \\
+         r_{11} r_{21} & r_{12} r_{22} & r_{13} r_{23} &
+          r_{12} r_{21} + r_{11} r_{22} &
+          r_{13} r_{21} + r_{11} r_{23} &
+          r_{13} r_{22} + r_{12} r_{23} \\
+         r_{11} r_{31} & r_{12} r_{32} & r_{13} r_{33} &
+          r_{12} r_{31} + r_{11} r_{32} &
+          r_{13} r_{31} + r_{11} r_{33} &
+          r_{13} r_{32} + r_{12} r_{33} \\
+         r_{21} r_{31} & r_{22} r_{32} & r_{23} r_{33} &
+          r_{22} r_{31} + r_{21} r_{32} &
+          r_{23} r_{31} + r_{21} r_{33} &
+          r_{23} r_{32} + r_{22} r_{33}
+        \end{bmatrix}
+        C.f. scitbx/matrix/tensor_transform_as_linear_map.nb
+        for the Mathematica code used to obtain this result.
+
+        The result is a matrix stored by row.
+     */
+    af::tiny<NumType, 6*6> tensor_transform_matrix() const {
+      af::tiny<NumType, 6*6> result;
+      NumType *p = result.begin();
+
+      mat3 const &m = *this;
+      NumType r11 = m[0], r12 = m[1], r13 = m[2],
+              r21 = m[3], r22 = m[4], r23 = m[5],
+              r31 = m[6], r32 = m[7], r33 = m[8];
+
+      // 1st row
+      *p++ = r11*r11;
+      *p++ = r12*r12;
+      *p++ = r13*r13;
+      *p++ = 2*r11*r12;
+      *p++ = 2*r11*r13;
+      *p++ = 2*r12*r13;
+
+      // 2nd row
+      *p++ = r21*r21;
+      *p++ = r22*r22;
+      *p++ = r23*r23;
+      *p++ = 2*r21*r22;
+      *p++ = 2*r21*r23;
+      *p++ = 2*r22*r23;
+
+      // 3rd row
+      *p++ = r31*r31;
+      *p++ = r32*r32;
+      *p++ = r33*r33;
+      *p++ = 2*r31*r32;
+      *p++ = 2*r31*r33;
+      *p++ = 2*r32*r33;
+
+      // 4th row
+      *p++ = r11*r21;
+      *p++ = r12*r22;
+      *p++ = r13*r23;
+      *p++ = r12*r21 + r11*r22;
+      *p++ = r13*r21 + r11*r23;
+      *p++ = r13*r22 + r12*r23;
+
+      // 5th row
+      *p++ = r11*r31;
+      *p++ = r12*r32;
+      *p++ = r13*r33;
+      *p++ = r12*r31 + r11*r32;
+      *p++ = r13*r31 + r11*r33;
+      *p++ = r13*r32 + r12*r33;
+
+      // 6th row
+      *p++ = r21*r31;
+      *p++ = r22*r32;
+      *p++ = r23*r33;
+      *p++ = r22*r31 + r21*r32;
+      *p++ = r23*r31 + r21*r33;
+      *p++ = r23*r32 + r22*r33;
+
+      return result;
+    }
   };
 
   // non-inline member function
