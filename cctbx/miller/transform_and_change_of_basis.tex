@@ -55,7 +55,7 @@ F'(h) &= e^{i2\pi ht} F(hR)
 
 \subsection{Implementation}
 
-\Eqnref{change::of::basis::F} is the formula implemented in the \cctbx\ in \code{sym_equiv.h}, c.f. \code{sym_equiv_index::phase_eq} and its use in \code{change_basis.h}. It is particularly convenient since a \code{miller.array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $h'$ and the value $F'(h')$ for that new miller index. However it means that the ordering of the original and new data are related as follow
+\Eqnref{change::of::basis::F} is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \code{sym\_equiv\_index::phase\_eq} and its use in \code{change\_basis.h}. It is particularly convenient since a \code{miller.array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $h'$ and the value $F'(h')$ for that new miller index. However it means that the ordering of the original and new data are related as follow
 \begin{equation}
 \begin{CD}
 \ldots @. \ldots\\
