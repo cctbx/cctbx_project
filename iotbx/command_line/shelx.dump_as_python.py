@@ -5,7 +5,7 @@ def run(file_name, exclude_hydrogens=False):
                                  strictly_shelxl=False)
   if exclude_hydrogens:
     xs = xs.select(xs.hd_selection(), negate=True)
-  print repr(xs)
+  print xs.as_py_code()
 
 if __name__ == '__main__':
   import sys
