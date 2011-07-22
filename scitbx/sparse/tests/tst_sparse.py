@@ -72,6 +72,9 @@ def exercise_vector():
       a.append(1/(i+j+1))
   assert approx_equal(sparse.quadratic_form(u, a, v), 4003/1980,
                       eps=1e-15)
+  assert approx_equal(sparse.quadratic_form(a, u),
+                      sparse.quadratic_form(u, a, u),
+                      eps=1e-15)
 
   sparse_approx_equal = sparse.approx_equal(tolerance=0.1)
 

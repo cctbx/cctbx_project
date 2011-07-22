@@ -121,7 +121,14 @@ struct vector_wrapper
       .def(self == self)
       ;
     def("weighted_dot", wt::weighted_dot);
-    def("quadratic_form", wt::quadratic_form);
+    typedef af::const_ref<value_type, af::packed_u_accessor> symm_mat;
+    value_type (*quadratic_form_3)(wt const &,
+                                   symm_mat const &,
+                                   wt const &) = quadratic_form;
+    value_type (*quadratic_form_2)(symm_mat const &,
+                                   wt const &) = quadratic_form;
+    def("quadratic_form", quadratic_form_2);
+    def("quadratic_form", quadratic_form_3);
   }
 };
 

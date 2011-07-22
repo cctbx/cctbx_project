@@ -545,6 +545,28 @@ public:
     return result;
   }
 
+  /// vector^T * symmetric * same vector
+  static
+  value_type quadratic_form(af::const_ref<value_type,
+                                          af::packed_u_accessor> const &a,
+                            vector const &v)
+  {
+    SCITBX_ASSERT(v.size() == a.accessor().n);
+    v.compact();
+    value_type result = 0;
+    for (const_iterator p=v.begin(); p != v.end(); ++p) {
+      int i = p.index();
+      value_type v_i = *p;
+      result += a(i,i)*v_i*v_i;
+      for (const_iterator q=p+1; q != v.end(); ++q) {
+        int j = q.index();
+        value_type v_j = *q;
+        result += 2*a(i,j)*v_i*v_j;
+      }
+    }
+    return result;
+  }
+
   /// Linear algebra
   //@{
   friend value_type operator*(vector const &u, vector const &v) {
@@ -750,6 +772,17 @@ T quadratic_form(vector<T, ContainerType> const &u,
                  vector<T, ContainerType> const &v)
 {
   return vector<T, ContainerType>::quadratic_form(u, a, v);
+}
+
+
+/// vector^T * symmetric matrix * same vector
+template<typename T, template<class> class ContainerType>
+inline
+T quadratic_form(af::const_ref<T,
+                               af::packed_u_accessor> const &a,
+                 vector<T, ContainerType> const &v)
+{
+  return vector<T, ContainerType>::quadratic_form(a, v);
 }
 
 }}
