@@ -440,6 +440,18 @@ namespace cctbx { namespace sgtbx {
       scitbx::vec3<FloatType>
       operator*(af::tiny_plain<FloatType, 3> const& rhs) const;
 
+      /// Transform the given vector
+      template <typename T>
+      scitbx::vec3<T> operator()(scitbx::vec3<T> const &x) const {
+        return (*this)*x;
+      }
+
+      /// Transform the given symmetric tensor
+      template <typename T>
+      scitbx::sym_mat3<T> operator()(scitbx::sym_mat3<T> const &u) const {
+        return r_(u);
+      }
+
       /*! \brief Determines unit shifts u such that
           (r,t+u)*site_frac_2 is closest to site_frac_1.
        */

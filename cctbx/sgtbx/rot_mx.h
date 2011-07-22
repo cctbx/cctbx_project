@@ -1,6 +1,7 @@
 #ifndef CCTBX_SGTBX_ROT_MX_H
 #define CCTBX_SGTBX_ROT_MX_H
 
+#include <scitbx/sym_mat3.h>
 #include <cctbx/sgtbx/tr_vec.h>
 #include <scitbx/matrix/as_xyz.h>
 
@@ -336,6 +337,20 @@ namespace cctbx { namespace sgtbx {
         const char* separator=",") const
       {
         return transpose().as_xyz(decimal, letters_hkl, separator);
+      }
+
+      /// Transform the given vector
+      template <typename T>
+      scitbx::vec3<T> operator()(scitbx::vec3<T> const &x) const {
+        return (*this)*x;
+      }
+
+      /// Transform the given symmetric tensor
+      template <typename T>
+      scitbx::sym_mat3<T> operator()(scitbx::sym_mat3<T> const &u) const {
+        scitbx::sym_mat3<T> v = u.tensor_transform(num_);
+        v /= T(den_);
+        return v;
       }
 
     private:

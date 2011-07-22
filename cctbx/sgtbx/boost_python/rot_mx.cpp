@@ -86,6 +86,14 @@ namespace {
         .def("__mul__",
           (vec3_rat(*)(
             rot_mx const&, vec3_rat const&)) operator*)
+        .def("__call__",
+             (scitbx::vec3<double>
+              (w_t::*)(scitbx::vec3<double> const &) const)
+             &w_t::operator())
+        .def("__call__",
+             (scitbx::sym_mat3<double>
+              (w_t::*)(scitbx::sym_mat3<double> const &) const)
+             &w_t::operator())
       ;
 
       scitbx::stl::boost_python::vector_wrapper<rot_mx>::wrap(
