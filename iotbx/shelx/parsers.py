@@ -159,12 +159,17 @@ class crystal_symmetry_parser(parser):
         the wavelength too).
     """
     unit_cell = None
+    unit_cell_param_sigmas = None
     space_group = sgtbx.space_group()
     for command, line in self.command_stream:
       cmd, args = command[0], command[-1]
       if cmd == 'CELL':
         assert unit_cell is None
         unit_cell = uctbx.unit_cell(args[1:])
+        yield command, line
+      elif cmd == 'ZERR':
+        assert unit_cell_param_sigmas is None
+        unit_cell_param_sigmas = args[1:]
         yield command, line
       elif cmd == 'LATT':
         assert len(args) == 1
@@ -182,6 +187,7 @@ class crystal_symmetry_parser(parser):
           assert unit_cell is not None
           self.builder.make_crystal_symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
+          self.builder.set_unit_cell_parameter_sigmas(unit_cell_param_sigmas)
         yield command, line
 
   def parse(self):
