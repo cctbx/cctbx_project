@@ -160,8 +160,9 @@ namespace scitbx {
       }
 
       //! Tensor transform: c * (*this) * c.transpose()
+      template <typename OtherNumType>
       sym_mat3
-      tensor_transform(mat3<NumType> const& c) const;
+      tensor_transform(mat3<OtherNumType> const& c) const;
 
       //! Antisymmetric tensor transform: c * (*this) * c.transpose()
       /*! c is the antisymmetric matrix
@@ -273,9 +274,10 @@ namespace scitbx {
 
   // non-inline member function
   template <typename NumType>
+  template <typename OtherNumType>
   sym_mat3<NumType>
   sym_mat3<NumType>
-  ::tensor_transform(mat3<NumType> const& c) const
+  ::tensor_transform(mat3<OtherNumType> const& c) const
   {
     mat3<NumType> ct = c * (*this);
     // The result is guaranteed to be a symmetric matrix.
