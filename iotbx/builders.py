@@ -1,5 +1,6 @@
 from __future__ import division
 
+import libtbx
 import scitbx.math
 from cctbx.array_family import flex
 from cctbx import crystal
@@ -26,6 +27,10 @@ class crystal_symmetry_builder(object):
   def make_crystal_symmetry(self, unit_cell, space_group):
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
+    self.crystal_symmetry.unit_cell().parameter_sigmas = (0,)*6
+
+  def set_unit_cell_parameter_sigmas(self, s):
+    self.crystal_symmetry.unit_cell().parameter_sigmas = s
 
 
 class electron_density_peak(object):
