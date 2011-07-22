@@ -2,6 +2,7 @@ from cctbx import crystal, sgtbx
 import libtbx
 
 class connectivity_table(object):
+  """ Bond connectivity tabulated """
 
   covalent_bond_tolerance = 0.5 # Angstrom
   conformer_indices=None
@@ -32,6 +33,7 @@ class connectivity_table(object):
       sym_excl_indices=self.sym_excl_indices,
       tolerance=self.covalent_bond_tolerance)
     self.pair_sym_table = self.pair_asu_table.extract_pair_sym_table()
+
 
   class pair_asu_table(libtbx.property):
     def fget(self):
