@@ -271,6 +271,9 @@ class scene (object) :
     return (hkl, d_min, value)
 
 master_phil = libtbx.phil.parse("""
+  data = None
+    .type = path
+    .optional = False
   black_background = True
     .type = bool
   show_axes = True
