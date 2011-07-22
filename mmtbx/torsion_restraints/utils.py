@@ -2,6 +2,7 @@ from libtbx.utils import format_exception, Sorry
 from libtbx import Auto
 from iotbx.pdb import common_residue_names_get_class
 from mmtbx.validation.cbetadev import cbetadev
+import ccp4io_adaptbx
 import math
 
 def selection(string, cache):
@@ -182,3 +183,32 @@ def get_angle_average(angles):
     sum += a2
   average = sum / n_angles
   return average
+
+def _ssm_align(reference_chain,
+               moving_chain):
+  ssm = ccp4io_adaptbx.SecondaryStructureMatching(
+          reference=reference_chain,
+          moving=moving_chain)
+  ssm_alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
+  return ssm, ssm_alignment
+
+def chain_from_selection(chain, selection):
+  from iotbx.pdb.hierarchy import new_hierarchy_from_chain
+  new_hierarchy = new_hierarchy_from_chain(chain=chain).select(selection)
+  print dir(new_hierarchy)
+
+def hierarchy_from_selection(pdb_hierarchy, selection):
+  import iotbx.pdb.hierarchy
+  temp_hierarchy = pdb_hierarchy.select(selection)
+  hierarchy = iotbx.pdb.hierarchy.root()
+  model = iotbx.pdb.hierarchy.model()
+  for chain in temp_hierarchy.chains():
+    for conformer in chain.conformers():
+      if not conformer.is_protein() and not conformer.is_na():
+        continue
+      else:
+        model.append_chain(chain.detached_copy())
+  if len(model.chains()) != 1:
+    raise Sorry("more than one chain in selection")
+  hierarchy.append_model(model)
+  return hierarchy
