@@ -1415,6 +1415,7 @@ scitbx/matrix/row_echelon_full_pivoting_small.h svneol=native#text/plain
 scitbx/matrix/special_matrices.h -text
 scitbx/matrix/svd.h -text
 scitbx/matrix/svd2x2.nb -text
+scitbx/matrix/tensor_transform_as_linear_map.nb -text
 scitbx/matrix/tests.h -text
 scitbx/matrix/tests/SConscript -text
 scitbx/matrix/tests/tst_cholesky.cpp -text

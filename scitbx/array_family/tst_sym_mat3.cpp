@@ -1,5 +1,6 @@
 #include <cmath>
 #include <scitbx/sym_mat3.h>
+#include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/array_family/simple_io.h>
 
 using namespace scitbx;
@@ -147,12 +148,18 @@ int main(int /*argc*/, char* /*argv*/[])
     check_true(__LINE__, std::fabs(s.determinant() - t.determinant()) < 1.e-6);
   }
   {
+    using scitbx::matrix::matrix_vector;
     sym_mat3<int> a(3,4,9, 2,1,7);
     mat3<int> c(1,2,3, 3,-4,5, 4,5,6);
-    verify(__LINE__, a.tensor_transform(c),
-                     sym_mat3<int>(198,18,1020,116,447,269));
+    sym_mat3<int> a1 = a.tensor_transform(c),
+                  correct_a1(198,18,1020,116,447,269);
+    verify(__LINE__, a1, correct_a1);
     verify(__LINE__, a.tensor_transpose_transform(c),
                      sym_mat3<int>(371,9,967,148,597,238));
+    sym_mat3<int> a1_bis;
+    af::tiny<int, 6*6> m = c.tensor_transform_matrix();
+    matrix_vector(6, 6, m.begin(), a.begin(), a1_bis.begin());
+    verify(__LINE__, a1_bis, a1);
     vec3<int> v(3,-2,1);
     mat3<int> vc( 0, 3,-2,
                  -3, 0, 1,
