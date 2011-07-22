@@ -64,7 +64,7 @@ def exercise_vector():
   u = sparse.vector(10, {1:1, 3:3, 7:7})
   v = sparse.vector(10, {0:-1, 1:2, 7:-1, 8:2})
   assert u*v == -5
-  assert sparse.vector.weighted_dot(u, flex.double_range(10), v) == -47
+  assert sparse.weighted_dot(u, flex.double_range(10), v) == -47
 
   sparse_approx_equal = sparse.approx_equal(tolerance=0.1)
 

@@ -9,6 +9,7 @@
 #include <boost/operators.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 
 namespace scitbx { namespace sparse {
 
@@ -517,8 +518,8 @@ public:
   /// vector^T * diagonal matrix * vector
   static
   value_type weighted_dot(vector const &u,
-                                af::const_ref<value_type> const &w,
-                                vector const &v)
+                          af::const_ref<value_type> const &w,
+                          vector const &v)
   {
     return weighted_dot_op(u, w, v).result;
   }
@@ -709,6 +710,15 @@ permute(VectorType const &v, PermutationType const &p) {
   return permuted<VectorType, PermutationType>(v, p);
 }
 
+/// vector^T * diagonal matrix * vector
+template<typename T, template<class> class ContainerType>
+inline
+T weighted_dot(vector<T, ContainerType> const &u,
+               af::const_ref<T> const &w,
+               vector<T, ContainerType> const &v)
+{
+  return vector<T, ContainerType>::weighted_dot(u, w, v);
+}
 }}
 
 #endif
