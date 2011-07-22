@@ -95,6 +95,12 @@ sel = altloc ' ' or name D\\*
   assert ex.sel[0] == "altloc ' ' or name C\*"
   assert ex.sel[1] == "altloc ' ' or name D\*"
   #
+  pcl = iotbx.phil.process_command_line(args=["s = 230"], master_string="""\
+s=None
+  .type=space_group
+""")
+  assert not show_diff(str(pcl.work.extract().s), "I a -3 d")
+  #
   print "OK"
 
 if (__name__ == "__main__"):

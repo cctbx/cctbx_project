@@ -92,6 +92,13 @@ def read_default(
     converter_registry=converter_registry,
     process_includes=process_includes)
 
+def process_command_line(args, master_string, parse=None):
+  if (parse is None):
+    import iotbx.phil
+    parse = iotbx.phil.parse
+  return libtbx.phil.process_command_line(
+    args=args, master_string=master_string, parse=parse)
+
 # Utilities for Phenix GUI
 class setup_app_generic (object) :
   def __init__ (self, master_phil_path) :

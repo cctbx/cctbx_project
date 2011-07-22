@@ -2,7 +2,8 @@ from __future__ import division
 from libtbx import phil
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx.test_utils import Exception_expected, show_diff
+from libtbx.test_utils import \
+  Exception_expected, show_diff, anchored_block_show_diff
 from libtbx import Auto
 from cStringIO import StringIO
 import copy
@@ -5120,7 +5121,7 @@ a=None
   assert proxy2.extracted is None
 
 def exercise_command_line():
-  master_phil = phil.parse(input_string="""\
+  master_string = """\
 foo {
   min=0
   max=10
@@ -5132,8 +5133,10 @@ bar {
   sub {
     limit=8
   }
+  flag=None
 }
-""")
+"""
+  master_phil = phil.parse(input_string=master_string)
   itpr_bar = master_phil.command_line_argument_interpreter(
     home_scope="bar")
   itpr_neutral = master_phil.command_line_argument_interpreter()
@@ -5142,8 +5145,8 @@ bar {
 foo.limit = 4
 bar.max = 2
 """
-  assert itpr_bar.process(arg="max=5").as_str() == "bar.max = 5\n"
-  assert itpr_bar.process(arg="ax=5").as_str() == "bar.max = 5\n"
+  assert itpr_bar.process(arg="max=6").as_str() == "bar.max = 6\n"
+  assert itpr_bar.process(arg="ax=7").as_str() == "bar.max = 7\n"
   try: assert itpr_neutral.process(arg="max=5")
   except Sorry, e:
     assert not show_diff(str(e), """\
@@ -5178,6 +5181,76 @@ Error interpreting command line argument as parameter definition:
   except Sorry, e:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise Exception_expected
+  #
+  print >> open("tmp0d5f6e10.phil", "w"), "foo.limit=-3"
+  user_phils = itpr_bar.process(args=[
+    "",
+    "--flag",
+    "--flag=no",
+    "tmp0d5f6e10.phil",
+    "max=8",
+    "limit=9"])
+  assert len(user_phils) == 5
+  for i,expected in enumerate([
+        "bar.flag = True\n",
+        "bar.flag = no\n",
+        "foo.limit = -3\n",
+        "bar.max = 8\n",
+        "bar.sub.limit = 9\n"]):
+    assert not show_diff(user_phils[i].as_str(), expected)
+  os.remove("tmp0d5f6e10.phil")
+  assert not os.path.exists("tmp0d5f6e10.phil")
+  for arg in ["tmp0d5f6e10.phil", "lmit=3"]:
+    try: itpr_bar.process(args=[arg])
+    except Sorry, e:
+      assert not show_diff(str(e),
+        'Uninterpretable command line argument: "%s"' % arg)
+    else: raise Exception_expected
+  print >> open("tmp0d5f6e10.phil", "w"), "foo$limit=0"
+  try: itpr_bar.process(args=["tmp0d5f6e10.phil"])
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      'Syntax error: improper definition name "foo$limit"'
+      ' (file "tmp0d5f6e10.phil", line 1)')
+  else: raise Exception_expected
+  intercepted = []
+  def custom_processor(arg):
+    intercepted.append(arg)
+    return True
+  args = ["tmp0d5f6e10.phil", "lmit=3"]
+  user_phils = itpr_bar.process(args=args, custom_processor=custom_processor)
+  assert len(user_phils) == 0
+  assert intercepted == args
+  intercepted = []
+  def custom_processor(arg):
+    if (not os.path.isfile(arg)):
+      return False
+    intercepted.append(arg)
+    return True
+  try: itpr_bar.process(args=args, custom_processor=custom_processor)
+  except Sorry, e:
+    assert not show_diff(str(e),
+      'Uninterpretable command line argument: "lmit=3"')
+  else: raise Exception_expected
+  assert intercepted == args[:1]
+  user_phil = itpr_bar.process_and_fetch(args=["limit=12"])
+  assert not anchored_block_show_diff(user_phil.as_str(), 9, """\
+    limit = 12
+""")
+  #
+  pcl = phil.process_command_line(
+    args=["bar.max=4943"], master_string=master_string)
+  assert pcl.parse is phil.parse
+  assert not show_diff(pcl.master.as_str(), master_phil.as_str())
+  s = StringIO()
+  pcl.show(out=s)
+  assert not anchored_block_show_diff(s.getvalue(), 7, """\
+  max = 4943
+""")
+  assert pcl.remaining_args == []
+  pcl = phil.process_command_line(
+    args=["892c8632"], master_string=master_string)
+  assert pcl.remaining_args == ["892c8632"]
 
 def exercise_choice_multi_plus_support():
   master_phil = libtbx.phil.parse("""\
