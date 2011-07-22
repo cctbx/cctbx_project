@@ -121,6 +121,7 @@ struct vector_wrapper
       .def(self == self)
       ;
     def("weighted_dot", wt::weighted_dot);
+    def("quadratic_form", wt::quadratic_form);
   }
 };
 

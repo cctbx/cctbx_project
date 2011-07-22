@@ -20,7 +20,6 @@ struct vector_expression
   E const &operator()() const {return static_cast<E const &>(*this); }
 };
 
-
 /** A sparse vector represented as a sequence of records,
  each containing the value and the index of a non-zero element.
 
@@ -524,6 +523,28 @@ public:
     return weighted_dot_op(u, w, v).result;
   }
 
+  /// vector^T * symmetric * vector
+  static
+  value_type quadratic_form(vector const &u,
+                            af::const_ref<value_type,
+                                          af::packed_u_accessor> const &a,
+                            vector const &v)
+  {
+    SCITBX_ASSERT(u.size() == v.size());
+    SCITBX_ASSERT(u.size() == a.accessor().n);
+    u.compact();
+    v.compact();
+    value_type result = 0;
+    for (const_iterator p=u.begin(); p != u.end(); ++p)
+      for (const_iterator q=v.begin(); q != v.end(); ++q) {
+        int i = p.index(), j = q.index();
+        value_type u_i = *p, v_j = *q;
+        value_type a_ij = i <= j ? a(i,j) : a(j,i);
+        result += u_i * a_ij * v_j;
+      }
+    return result;
+  }
+
   /// Linear algebra
   //@{
   friend value_type operator*(vector const &u, vector const &v) {
@@ -719,6 +740,18 @@ T weighted_dot(vector<T, ContainerType> const &u,
 {
   return vector<T, ContainerType>::weighted_dot(u, w, v);
 }
+
+/// vector^T * symmetric matrix * vector
+template<typename T, template<class> class ContainerType>
+inline
+T quadratic_form(vector<T, ContainerType> const &u,
+                 af::const_ref<T,
+                               af::packed_u_accessor> const &a,
+                 vector<T, ContainerType> const &v)
+{
+  return vector<T, ContainerType>::quadratic_form(u, a, v);
+}
+
 }}
 
 #endif
