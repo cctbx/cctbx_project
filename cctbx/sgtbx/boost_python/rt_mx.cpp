@@ -116,6 +116,14 @@ namespace {
         .def("multiply", &w_t::multiply, (arg("rhs")))
         .def("__mul__", mul_double)
         .def("__mul__", mul_rat)
+        .def("__call__",
+             (scitbx::vec3<double>
+              (w_t::*)(scitbx::vec3<double> const &) const)
+             &w_t::operator())
+        .def("__call__",
+             (scitbx::sym_mat3<double>
+              (w_t::*)(scitbx::sym_mat3<double> const &) const)
+             &w_t::operator())
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
         .def("__add__", (rt_mx(w_t::*)(tr_vec const&) const)&w_t::operator+)
         .def("unit_shifts_minimum_distance", (
