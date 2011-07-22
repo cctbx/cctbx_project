@@ -53,6 +53,9 @@ def exercise_set():
     2.11968541434)
   p1 = ms.expand_to_p1()
   assert p1.indices().size() == 6
+  p1b, iselection = ms.expand_to_p1(return_iselection=True)
+  assert p1b.indices().all_eq(p1.indices())
+  assert list(iselection) == [0, 0, 0, 0, 1, 1]
   b = p1.setup_binner(auto_binning=True)
   b = p1.setup_binner(reflections_per_bin=1)
   b = p1.setup_binner(n_bins=8)
