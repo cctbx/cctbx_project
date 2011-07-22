@@ -989,16 +989,20 @@ class set(crystal.symmetry):
       indices=self.indices(),
       build_iselection=build_iselection)
 
-  def expand_to_p1(self):
+  def expand_to_p1(self, return_iselection=False):
     """Get a transformation of the miller set to spacegroup P1
 
     :returns: a new set of parameters (symmetry, miller indices, anomalous_flag) in spacegroup P1
     :rtype: set(cctbx.crystal.symmetry, cctbx.miller.indices, boolean)
     """
-    return set(
+    proxy = self.expand_to_p1_iselection(build_iselection=return_iselection)
+    result = set(
       crystal_symmetry=self.cell_equivalent_p1(),
-      indices=self.expand_to_p1_iselection(build_iselection=False).indices,
+      indices=proxy.indices,
       anomalous_flag=self.anomalous_flag())
+    if (return_iselection):
+      return result, proxy.iselection
+    return result
 
   def patterson_symmetry(self):
     assert self.anomalous_flag() == False
