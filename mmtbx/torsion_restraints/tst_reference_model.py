@@ -331,6 +331,24 @@ C 237  LEU:52.8:179.1:57.3:::tp"""
         ss_weight += 1
     assert ss_weight == 980
 
+  pdb_file = "/net/chevy/raid1/jheadd/reference/rnase-s/rnase-s.pdb"
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    pdb_inp = pdb_in,
+    for_dihedral_reference=True)
+  geometry = processed_pdb_file.geometry_restraints_manager()
+  sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
+  xray_structure=processed_pdb_file.xray_structure()
+  pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy
+
+  import ccp4io_adaptbx
+  ssm = ccp4io_adaptbx.SecondaryStructureMatching(reference=pdb_hierarchy.models()[0].chains()[0],
+                                                  moving=pdb_hierarchy.models()[0].chains()[1])
+  alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
+  assert ssm.GetQvalues()[0] > 0.98
+
 def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()

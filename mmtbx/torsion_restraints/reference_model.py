@@ -258,10 +258,10 @@ class reference_model(object):
                          string_list=ref_list))
         selections = (sel_atoms, sel_atoms_ref)
         residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
-                                              pdb_hierarchy_ref=pdb_hierarchy_ref,
-                                              params=params,
-                                              selections=selections,
-                                              log=log)
+                                            pdb_hierarchy_ref=pdb_hierarchy_ref,
+                                            params=params,
+                                            selections=selections,
+                                            log=log)
         for i_seq in sel_atoms:
           key = model_name_hash[i_seq]
           atom = key[0:4]
@@ -310,6 +310,7 @@ class reference_model(object):
             #print >> self.log, "CANNOT match %s" % key
             continue
       #specified reference groups
+      #test_match_map = {}
       for rg in params.reference_group:
         model_chain = None
         ref_chain = None
@@ -317,12 +318,7 @@ class reference_model(object):
         model_res_max = None
         ref_res_min = None
         ref_res_max = None
-        sel_atoms = (utils.phil_atom_selections_as_i_seqs_multiple(
-                      cache=sel_cache,
-                      string_list=[rg.selection]))
-        sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
-                      cache=sel_cache_ref,
-                      string_list=[rg.reference]))
+        #check for selection sanity
         sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
         sel_ref = re.split(r"AND|OR|NOT",rg.reference.upper())
         for sel in sel_model:
@@ -372,27 +368,80 @@ class reference_model(object):
                 and model_res_min is None and model_res_max is None) or \
                 (ref_res_min is not None and ref_res_max is not None \
                 and model_res_min is not None and model_res_max is not None)
-        #calculate residue offset
-        offset = 0
-        if (ref_res_min is not None and ref_res_max is not None \
-            and model_res_min is not None and model_res_max is not None):
-          offset = int(model_res_min) - int(ref_res_min)
-          assert offset == (int(model_res_max) - int(ref_res_max))
-        for i_seq in sel_atoms:
-          key = model_name_hash[i_seq]
-          if ref_chain is not None:
-            if len(ref_chain)==1:
-              ref_chain = ' '+ref_chain
-            key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
-          if offset != 0:
-            resnum = key[10:14]
-            new_num = "%4d" % (int(resnum) - offset)
-            key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
-          try:
-            assert ref_iseq_hash[key] in sel_atoms_ref
-            match_map[i_seq] = ref_iseq_hash[key]
-          except Exception:
-            continue
+        #prep for SSM alignment
+        sel_atoms = (utils.phil_atom_selections_as_i_seqs_multiple(
+                      cache=sel_cache,
+                      string_list=[rg.selection]))
+        sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
+                      cache=sel_cache_ref,
+                      string_list=[rg.reference]))
+        chains = pdb_hierarchy.models()[0].chains()
+        sel = utils.selection(rg.selection, sel_cache)
+        sel_ref = utils.selection(rg.reference, sel_cache_ref)
+        mod_h = utils.hierarchy_from_selection(
+                  pdb_hierarchy=pdb_hierarchy,
+                  selection = sel).models()[0].chains()[0]
+        ref_h = utils.hierarchy_from_selection(
+                  pdb_hierarchy=pdb_hierarchy_ref,
+                  selection = sel_ref).models()[0].chains()[0]
+        ssm = None
+        try: #do SSM alignment
+          ssm, ssm_align = utils._ssm_align(
+                      reference_chain = ref_h,
+                      moving_chain = mod_h)
+        except RuntimeError, e:
+          if str(e) != "can't make graph for first structure":
+            raise e
+          else:
+            print >> log, "SSM alignment failed...trying simple matching..."
+        if ssm != None:
+          print ssm.GetQvalues()
+          for pair in ssm_align.pairs:
+            model_res = pair[0]
+            ref_res = pair[1]
+            temp_model_atoms = {}
+            temp_ref_atoms = {}
+            key = "%s %s%s%s" % (model_res.unique_resnames()[0],
+                                 model_res.parent().id,
+                                 model_res.resseq,
+                                 model_res.icode)
+            key_ref = "%s %s%s%s" % (ref_res.unique_resnames()[0],
+                                     ref_res.parent().id,
+                                     ref_res.resseq,
+                                     ref_res.icode)
+            for atom in model_res.atoms():
+              atom_temp = atom.name+' '+key
+              temp_model_atoms[atom.name] = model_iseq_hash[atom_temp]
+            for atom in ref_res.atoms():
+              atom_temp = atom.name+' '+key_ref
+              temp_ref_atoms[atom.name] = ref_iseq_hash[atom_temp]
+            for key in temp_model_atoms.keys():
+              ref_atom = temp_ref_atoms.get(key)
+              if ref_atom != None:
+                match_map[temp_model_atoms[key]] = temp_ref_atoms[key]
+
+        else: #ssm failed
+          #calculate residue offset
+          offset = 0
+          if (ref_res_min is not None and ref_res_max is not None \
+              and model_res_min is not None and model_res_max is not None):
+            offset = int(model_res_min) - int(ref_res_min)
+            assert offset == (int(model_res_max) - int(ref_res_max))
+          for i_seq in sel_atoms:
+            key = model_name_hash[i_seq]
+            if ref_chain is not None:
+              if len(ref_chain)==1:
+                ref_chain = ' '+ref_chain
+              key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
+            if offset != 0:
+              resnum = key[10:14]
+              new_num = "%4d" % (int(resnum) - offset)
+              key = re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
+            try:
+              assert ref_iseq_hash[key] in sel_atoms_ref
+              match_map[i_seq] = ref_iseq_hash[key]
+            except Exception:
+              continue
     return match_map
 
   def build_reference_dihedral_proxy_hash(self):
