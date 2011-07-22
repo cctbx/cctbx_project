@@ -304,6 +304,13 @@ class symmetry(object):
       u_star_tolerance=u_star_tolerance,
       assert_min_distance_sym_equiv=assert_min_distance_sym_equiv)
 
+  def miller_set(self, indices, anomalous_flag):
+    from cctbx import miller
+    return miller.set(
+      crystal_symmetry=self,
+      indices=indices,
+      anomalous_flag=anomalous_flag)
+
   def build_miller_set(self, anomalous_flag, d_min, d_max=None):
     from cctbx import miller
     return miller.build_set(

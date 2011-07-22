@@ -152,6 +152,10 @@ Completeness with d_max=infinity: 1
   assert list(r(d_min=1.2)) == [False, True]
   assert list(r(d_max=1.2, d_min=1.1)) == [True, False]
   assert list(r(d_max=1.1, d_min=1.2)) == [False, False]
+  #
+  s = xs.miller_set(indices=flex.miller_index([(1,2,3)]), anomalous_flag=True)
+  assert s.indices().size() == 1
+  assert s.anomalous_flag()
 
 def exercise_union_of_sets():
   xs = crystal.symmetry(unit_cell=(10,10,10,90,90,90), space_group_symbol="P1")
