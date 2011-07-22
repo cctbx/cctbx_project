@@ -13,6 +13,7 @@ namespace cctbx { namespace miller {
   struct image_simple
   {
     bool apply_proximity_filter;
+    bool apply_detector_clipping;
     bool apply_proximity_factor;
     bool store_miller_index_i_seqs;
     bool store_spots;
@@ -25,6 +26,7 @@ namespace cctbx { namespace miller {
 
     image_simple(
       bool apply_proximity_filter_,
+      bool apply_detector_clipping_,
       bool apply_proximity_factor_,
       bool store_miller_index_i_seqs_,
       bool store_spots_,
@@ -32,6 +34,7 @@ namespace cctbx { namespace miller {
       bool set_pixels_)
     :
       apply_proximity_filter(apply_proximity_filter_),
+      apply_detector_clipping(apply_detector_clipping_),
       apply_proximity_factor(apply_proximity_factor_),
       store_miller_index_i_seqs(store_miller_index_i_seqs_),
       store_spots(store_spots_),
@@ -94,73 +97,67 @@ namespace cctbx { namespace miller {
             double d = -detector_distance / rvre[2];
             double dx = rvre[0] * d;
             double dy = rvre[1] * d;
-            if (   std::abs(dx) > dsx/2
-                || std::abs(dy) > dsy/2) {
-              if (!apply_proximity_filter) {
-                TBXX_ASSERT(!store_miller_index_i_seqs);
-                TBXX_ASSERT(!store_spots);
-                if (store_signals) {
-                  signals.push_back(0);
-                }
-              }
+            bool off_detector = (
+                 std::abs(dx) > dsx/2
+              || std::abs(dy) > dsy/2);
+            if (off_detector && apply_detector_clipping) {
+              continue;
             }
-            else {
-              using scitbx::math::ifloor;
-              double pxf = (dx/dsx + 0.5) * dpx;
-              double pyf = (dy/dsy + 0.5) * dpy;
-              if (store_miller_index_i_seqs) {
-                miller_index_i_seqs.push_back(ih);
-              }
-              if (store_spots) {
-                spots.push_back(scitbx::vec3<double>(pxf, pyf, 0));
-                if (!store_signals && !set_pixels) continue;
-              }
-              double proximity_factor = 1;
-              if (apply_proximity_factor) {
-                proximity_factor -= scitbx::fn::pow2(
-                  rvre_proximity / ewald_proximity);
-                if (proximity_factor < 0) proximity_factor = 0;
-              }
-              double signal_at_center =
-                  signal_max
-                * (spot_intensity_factors.size() == 0 ? 1 :
-                   spot_intensity_factors[ih])
-                * proximity_factor;
-              if (store_signals) {
-                signals.push_back(signal_at_center);
-              }
-              if (!set_pixels || proximity_factor == 0) continue;
-              int signal = static_cast<int>(signal_at_center + 0.5);
-              double gauss_arg_term = -gaussian_falloff_scale
-                                    / circle_radius_sq;
-              int pxi = ifloor(pxf);
-              int pyi = ifloor(pyf);
-              int pxb = pxi - point_spread_half;
-              int pyb = pyi - point_spread_half;
-              if (point_spread_is_even_value) {
-                if (pxf - pxi > 0.5) pxb++;
-                if (pyf - pyi > 0.5) pyb++;
-              }
-              for(int i=0;i<=point_spread;i++) {
-                int pi = pxb + i;
-                if (pi < 0 || pi >= dpx) continue;
-                int pi0 = pi * dpy;
-                for(int j=0;j<=point_spread;j++) {
-                  int pj = pyb + j;
-                  if (pj < 0 || pj >= dpy) continue;
-                  if (point_spread > 2) {
-                    double pcx = ((pi + 0.5) / dpx - 0.5) * dsx - dx;
-                    double pcy = ((pj + 0.5) / dpy - 0.5) * dsy - dy;
-                    double pc_sq = pcx*pcx + pcy*pcy;
-                    if (pc_sq > circle_radius_sq) continue;
-                    if (gaussian_falloff_scale != 0) {
-                      double falloff_factor = std::exp(pc_sq * gauss_arg_term);
-                      signal = static_cast<int>(
-                        signal_at_center * falloff_factor + 0.5);
-                    }
+            double pxf = (dx/dsx + 0.5) * dpx;
+            double pyf = (dy/dsy + 0.5) * dpy;
+            if (store_miller_index_i_seqs) {
+              miller_index_i_seqs.push_back(ih);
+            }
+            if (store_spots) {
+              spots.push_back(scitbx::vec3<double>(pxf, pyf, 0));
+              if (!store_signals && !set_pixels) continue;
+            }
+            double proximity_factor = 1;
+            if (apply_proximity_factor) {
+              proximity_factor -= scitbx::fn::pow2(
+                rvre_proximity / ewald_proximity);
+              if (proximity_factor < 0) proximity_factor = 0;
+            }
+            double signal_at_center =
+                signal_max
+              * (spot_intensity_factors.size() == 0 ? 1 :
+                 spot_intensity_factors[ih])
+              * proximity_factor;
+            if (store_signals) {
+              signals.push_back(signal_at_center);
+            }
+            if (off_detector || !set_pixels || proximity_factor == 0) continue;
+            int signal = static_cast<int>(signal_at_center + 0.5);
+            double gauss_arg_term = -gaussian_falloff_scale
+                                  / circle_radius_sq;
+            using scitbx::math::ifloor;
+            int pxi = ifloor(pxf);
+            int pyi = ifloor(pyf);
+            int pxb = pxi - point_spread_half;
+            int pyb = pyi - point_spread_half;
+            if (point_spread_is_even_value) {
+              if (pxf - pxi > 0.5) pxb++;
+              if (pyf - pyi > 0.5) pyb++;
+            }
+            for(int i=0;i<=point_spread;i++) {
+              int pi = pxb + i;
+              if (pi < 0 || pi >= dpx) continue;
+              int pi0 = pi * dpy;
+              for(int j=0;j<=point_spread;j++) {
+                int pj = pyb + j;
+                if (pj < 0 || pj >= dpy) continue;
+                if (point_spread > 2) {
+                  double pcx = ((pi + 0.5) / dpx - 0.5) * dsx - dx;
+                  double pcy = ((pj + 0.5) / dpy - 0.5) * dsy - dy;
+                  double pc_sq = pcx*pcx + pcy*pcy;
+                  if (pc_sq > circle_radius_sq) continue;
+                  if (gaussian_falloff_scale != 0) {
+                    double falloff_factor = std::exp(pc_sq * gauss_arg_term);
+                    signal = static_cast<int>(
+                      signal_at_center * falloff_factor + 0.5);
                   }
-                  pixels[pi0+pj] = signal;
                 }
+                pixels[pi0+pj] = signal;
               }
             }
           }
