@@ -42,6 +42,12 @@ class model(object):
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
 
+  def make_anisotropic(self):
+    self.xray_structure.convert_to_anisotropic()
+    for sc in self.xray_structure.scatterers():
+      sc.flags.set_grad_u_aniso(True)
+      sc.flags.set_grad_u_iso(False)
+
   def least_squares(self):
     reparametrisation = constraints.reparametrisation(
       self.xray_structure,
