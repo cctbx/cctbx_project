@@ -4,7 +4,8 @@ from cctbx import adp_restraints
 
 class adp_similarity_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
-               i_seqs=None, sigma=0.04, sigma_terminal=None, buffer_thickness=3.5):
+               i_seqs=None, sigma=0.04, sigma_terminal=None,
+               buffer_thickness=3.5):
     assert [xray_structure, pair_sym_table].count(None) == 1
     if i_seqs is not None and len(i_seqs) == 0: i_seqs = None
     if sigma_terminal is None: sigma_terminal = 2 * sigma
@@ -38,7 +39,8 @@ class adp_similarity_restraints(object):
 
 class rigid_bond_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
-               i_seqs=None, sigma_12=0.01, sigma_13=None, buffer_thickness=3.5):
+               i_seqs=None, sigma_12=0.01, sigma_13=None,
+               buffer_thickness=3.5):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
     """
