@@ -1,13 +1,13 @@
 #ifndef CCTBX_ADPTBX_HIRSHFELD_H
 #define CCTBX_ADPTBX_HIRSHFELD_H
 
-#include <cctbx/uctbx.h>
 #include <scitbx/vec3.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
-#include <boost/array.hpp>
+#include <cctbx/uctbx.h>
+#include <cctbx/sgtbx/rt_mx.h>
 
 namespace cctbx { namespace adptbx {
 
@@ -122,6 +122,137 @@ namespace cctbx { namespace adptbx {
     af::tiny<T,6> h_u, h_g, h_unit_cell_params;
     af::tiny<T,3> h_z;
   };
+
+  /// Relative difference of the mean square displacements of two scatterers
+  /** Given two scatterers at sites \f$x_1, x_2\f$ with ADP \f$u_1, u_2\f$,
+   the relative difference is defined as
+   \f[ h = 2 \frac{h_1 - h_2}{h_1 + h_2} \f]
+   where \f$h_1, h_2\f$ are the mean square displacement along \f$x_1 - x_2\f$
+   of respectively \f$u_1, u_2\f$.
+   */
+  template <typename T>
+  class relative_hirshfeld_difference {
+    T val;
+    af::tiny<T, 2*(3+6)> h_prime;
+    af::tiny<T,6> h_unit_cell_params;
+
+  public:
+    /// Construct for the given scatterer
+    /** The 2nd site and displacement tensor may be the image through \f$r_2\f$
+     of the given site and displacement \f$x_2, u_2\f$.
+     It is necessary to know about this for correct a computation of the gradient.
+     */
+    relative_hirshfeld_difference(uctbx::unit_cell const &uc,
+                                  scitbx::vec3<T> const &x1,
+                                  scitbx::sym_mat3<T> const &u1,
+                                  scitbx::vec3<T> const &x2,
+                                  scitbx::sym_mat3<T> const &u2,
+                                  sgtbx::rt_mx const &r_2)
+    {
+      using scitbx::matrix::matrix_transposed_vector;
+
+      // Compute mean square displacement linearisation for scatterer 1 and 2
+      scitbx::vec3<T> z = x1 - r_2(x2);
+      adptbx::mean_square_displacement<T> msd(uc, z);
+      msd(u1);
+      T h1 = msd.value();
+      af::tiny<T, 3> h1_z = msd.grad_z();
+      af::tiny<T, 6> h1_u = msd.grad_u();
+      af::tiny<T, 6> h1_uc = msd.grad_unit_cell_params();
+      msd(r_2(u2));
+      T h2 = msd.value();
+      af::tiny<T, 3> const &h2_z = msd.grad_z();
+      af::tiny<T, 6> const &h2_u = msd.grad_u();
+      af::tiny<T, 6> const &h2_uc = msd.grad_unit_cell_params();
+
+      // Compute linearisation of h
+      T d = 1./(h1 + h2), d_sq = d*d;
+      val = 2*(h1 - h2)*d;
+      T h_h1 = 4*h2*d_sq, h_h2 = -4*h1*d_sq;
+      T *p = h_prime.begin();
+      af::tiny<T, 3> h_z = h_h1*h1_z + h_h2*h2_z;
+
+      // h'_{x_1} =  h'_z
+      for (int i=0; i<3; i++) *p++ = h_z[i];
+
+      // h'_{x_2} = -h'_z r_2
+      if (r_2.is_unit_mx()) {
+        for (int i=0; i<3; i++) *p++ = -h_prime[i];
+      }
+      else {
+        af::tiny<T, 3> h_z__r_2 = h_z*r_2.r().as_double();
+        for (int i=0; i<3; i++) *p++ = -h_z__r_2[i];
+      }
+
+      // h'_{u_1} = h'_{h_1} h'_{1; u}
+      for (int i=0; i<6; i++) *p++ = h_h1*h1_u[i];
+
+      /* h'_{u_2} = h'_{h_2} h'_{2; u} R_2
+       where R_2 is the 6x6 matrix transforming u_2 into r_2 u_2 r_2^T
+       when those symmetric tensors are represented
+       as coefficients (11,22,33,12,13,23)
+       */
+      if (r_2.is_unit_mx()) {
+        for (int i=0; i<6; i++) *p++ = h_h2*h2_u[i];
+      }
+      else {
+        af::tiny<T, 6*6> rr_2 = r_2.r().tensor_transform_matrix<T>();
+        af::tiny<T, 6> h2_u__r_2;
+        matrix_transposed_vector(6,6,
+                                 rr_2.begin(), h2_u.begin(), h2_u__r_2.begin());
+
+        for (int i=0; i<6; i++) *p++ = h_h2*h2_u__r_2[i];
+      }
+
+      // h'_{a,b,c,alpha,beta,gamma} = h'_{h_1} h'_{1;...} + h'_{h_2} h'_{2;...}
+      for (int i=0; i<6; i++) {
+        h_unit_cell_params[i] = h_h1*h1_uc[i] + h_h2*h2_uc[i];
+      }
+
+    }
+
+    /// The value of h
+    T value() { return val; }
+
+    /// Differential of h wrt to \f$(x_1, x_2, u_1, u_2)\f$ in that order
+    af::tiny<T, 2*(3+6)> const &grad_sites_adps() { return h_prime; }
+
+    /// Differential of h wrt to unit cell parameters
+    af::tiny<T, 6> const &grad_unit_cell_params() { return h_unit_cell_params; }
+
+  };
+
+  /*template <typename T>
+   af::shared< af::tiny<T,2> >
+   relative_differences(uctbx::unit_cell const &unit_cell,
+   af::const_ref<scatterer<T> > const &scatterers,
+   parameter_map<scatterer<T> > const &map,
+   crystal::pair_sym_table const &pair_sym_table,
+   af::const_ref<T, af::packed_u_accessor> const &variance)
+   {
+   CCTBX_ASSERT(scatterers.size() == map.size())
+   (scatterers.size())(map.size());
+   CCTBX_ASSERT(scatterers.size() == pair_sym_table.size())
+   (scatterers.size())(pair_sym_table.size());
+   for (std::size_t i=0; i<pair_sym_table.size(); i++) {
+   scatterer<T> const &sc_i = scatterers[i];
+   BOOST_FOREACH (crystal::pair_sym_dict::value_type const &idx_op,
+   pair_sym_table[i])
+   {
+   std::size_t j = idx_op.first;
+   scatterer<T> const &sc_j = scatterers[j];
+   BOOST_FOREACH (crystal::pair_sym_ops::value_type const &r,
+   idx_op.second) {
+   adptbx::mean_square_displacement<T> msd(sc_i.site, r(sc_j.site));
+   msd(sc_i.u_star);
+
+   }
+   }
+
+   }
+   }
+   */
+
 
 }}
 
