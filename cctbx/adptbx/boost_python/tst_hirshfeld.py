@@ -1,9 +1,7 @@
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
 from scitbx import random, linalg, matrix
-from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import libtbx.utils
-import math
 
 site_coord = random.variate(random.uniform_distribution(0, 1))
 u_eigenval = random.variate(random.uniform_distribution(0.0005, 0.003))

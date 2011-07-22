@@ -13,7 +13,7 @@ import smtbx.utils
 from libtbx.test_utils import approx_equal
 import libtbx.utils
 from stdlib import math
-import sys, os
+import sys
 import random
 
 
@@ -682,7 +682,6 @@ class special_positions_test(object):
 
 def exercise_floating_origin_dynamic_weighting(verbose=False):
   from cctbx import covariance
-  import itertools
   import scitbx.math
 
   worst_condition_number_acceptable = 10
