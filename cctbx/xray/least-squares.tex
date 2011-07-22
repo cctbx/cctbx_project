@@ -3,11 +3,15 @@
 \usepackage{amscd}
 
 \title{Least-squares minimisation}
-\author{\lucjbourhis}
+\author{\lucjbourhisatdurham}
 \date{\today}
 
 \begin{document}
 \maketitle
+
+\section{Introduction}
+
+These notes aim at precisely documenting the math used in the implementation of L.S. minimisation in the \code{cctbx} \cite{cctbx}. As a result, they are fairly technical in nature and the reader is referred to \cite{compcommageconcern:2009} for a presentation with a broader view.
 
 \section{Notations}
 
@@ -16,26 +20,30 @@ Since the both of least-squares on $F$ and on $F^2$ are used in practice, we wil
 L = \sum_h w(h) (y_o(h) - K y_c(h))^2
 \label{eqn:L:def}
 \end{equation}
-where $K$ is an unknown scale factor. The parameters (atomic sites, ADP's, sof's, etc) that each $y_c(h)$ depends upon will be denoted as $x_1, \cdots, x_n$. Our problem is the minimisation of $L$ with respect to all of $K, x_1, \cdots, x_n$.
+where $K$ is an unknown scale factor. The parameters (atomic sites, ADP's, sof's, etc) that each $y_c(h)$ depends upon will be denoted as $x_1, \cdots, x_n$. Our problem is the minimisation of $L$ with respect to all of $K, x_1, \cdots, x_n$. We will often denotes that dependency as $L(x, K)$ to keep the notations more compact, where $x$ is therefore the vector of parameters $(x_1, \cdots, x_n)$.
 
 \section{Minimisation with respect to the scale factor}
+
+\subsection{Introduction}
 
 There are several methods to find the value of $K$ which minimises $L$ at each minimisation step:
 \begin{description}
 \item[1-step] $L$ is minimised as a function of $K$ and all $x_i$'s in a single step;
 \label{eqn:onestepmini}
-\item[2-step] $L$ is first be minimised with respect to $K$ only and that minimum is then function of the $x_i$'s and a second step minimisation is then be performed for those parameters;
+\item[2-step] $L$ is first be minimised with respect to $K$ only and that minimum is then function of the $x_i$'s and a second step minimisation is then be performed for those parameters \footnote{In the field of numerical optimisation, one would see this procedure as a trivial application of a much more general technique, known as separable L.S., see \cite{Nielsen:2000fr} for a good introduction with many references therein.};
 \item[1$+$1-step] $L$ is first be minimised with respect to $K$ only and the value of $K$ realising that minimum is then use as starting point for a second step minimisation over all parameters (i.e. it starts like the 2-step method but finishes like the 1-step one).
 \label{eqn:twostepmini}
 \end{description}
-The software Crystals~\cite{Crystals:v12} relies on the 1-step method whereas ShelXL~\cite{SHELX:man97} uses the 1$+$1-step.
+The software Crystals~\cite{Crystals:v12} relies on the 1-step method whereas ShelXL~\cite{SHELX:man97} uses the 1$+$1-step. As for the \code{cctbx}, it features two different L.S. minimisation paradigms: one based on the LBFGS algorithm \cite{Nocedal:1980} that is used by the \code{mmtbx} and eventually by \code{PHENIX} \cite{phenix} for macromolecular refinement and a full-matrix L.S. solver, a.k.a. the Gauss-Newton method in mathematical circles, implemented in the \code{smtbx}, that is made available to practising small molecule crystallographers in the \code{Olex 2} software. In the rest of this document, we will focus on those two \code{cctbx} algorithms which both rely on the 2-step method.
 
-Let us expound the math necessary for the first step of the 2-step and 1$+$1-step methods. We introduce the following notations,
+\subsection{Optimised scale factor}
+
+Let us expound the math for the minimisation of the L.S. target with respect to the scale factor. We introduce the notations,
 \begin{align}
 \|y\|^2 &= \sum_h w(h)y(h)^2,\\
 y \cdot y' &= \sum_h w(h) y(h) y'(h),
 \end{align}
-which come from the well-known geometrical interpretation of least-squares\footnote{mathematically minded people will have recognised scalar products and norms here}. Then $L$ can be rewritten as follow,
+which come from the well-known geometrical interpretation of least-squares\footnote{Mathematically minded people will have recognised scalar products and norms here.}. Then $L$ can be rewritten as follow,
 \begin{align}
 L &= \| K y_c - y_o \|^2
 \label{eqn:L:def:geom}\\
@@ -51,7 +59,10 @@ Thus, the value of $K$ which minimises $L$ is the value which zeroes the first p
 \begin{align}
 \tilde{K} &= \frac{y_c \cdot y_o}{\|y_c\|^2},
 \label{eqn:min:L:wrt:K}\\
-\intertext{whereas that minimum is}
+\intertext{whereas that minimum is the second parenthesis, which can be rewritten in several ways, first by introducing the correlation $C$ between $y_o$ and $y_c$,}
+C &= \left(\frac{y_c \cdot y_o}{\|y_c\| \|y_o\|}\right)^2 \\
+\left. L \right|_{K=\tilde{K}} &= \|y_o\|^2 ( 1 - C^2 ) \\
+\intertext{and then also as,}
 \left. L \right|_{K=\tilde{K}} &= \|y_o\|^2 - \tilde{K}^2 \|y_c\|^2
 \label{eqn:min:L:wrt:K:val}
 \\
@@ -60,13 +71,14 @@ Thus, the value of $K$ which minimises $L$ is the value which zeroes the first p
 \end{align}
 The last parenthesis is what gets assigned to the memory location \code{A(128)} in function \code{SX3I} in file \code{xl.f} in the block of code starting at line 9250. The accumulation of $\|y_c\|^2, \|y_o\|^2, y_c \cdot y_o$ is done in function \code{SXFC} in file \code{xlv.f} starting from line 687.
 
-\section{Minimisation with respect to all parameters}
+\subsection{Normal equations }
 
 We need the derivatives with respect to each $x_i$. But let us not forget that $y_c$ is either $|F_c|^2$ or $|F_c|$ and that it is more convenient to write the derivatives of $L$ with the derivatives of $F_c$ for the latter are only dependent on the model without the need to know whether they will be used in a refinement against $F$ or $F^2$, and of course without the knowledge that we minimise least-squares eventually. Writing everything with the derivatives of $F_c$ leads to more modular code and we should thrive for that.
 
 First let's introduce the residuals
 \begin{align}
-r(h) &= y_o(h) - K y_c(h),\\
+r(h) &= y_o(h) - K y_c(h),
+\label{eqn:def:residual}\\
 \intertext{which are such that}
 L &= \sum_h w(h) r(h)^2 = \|r\|^2 \cdot
 \label{eqn:L:vector}
@@ -76,12 +88,12 @@ with the geometrical notation we used before.
 \subsubsection{First-order derivatives}
 \label{lsq:mini:all:firstorder:derivatives}
 
-Mostly straightforward except for two subtleties. The first one is related to the 2-step minimisation procedure. In the 1-step method and the second step of the 1$+$1-step one, $L$ is a function of the independent variables $K, x_1, \cdots, x_n$. Thus one needs to compute the derivatives $\partialder{L}{x_i}$ keeping $K$ constant. But in the 2-step method, after $L$ has been minimised over $K$, one wishes to further minimise $L_{K=|\tilde{K}}$ which is a function of the $x_1, \cdots, x_n$ only whose derivatives with respect to each $x_i$ a priori require differentiating $\tilde{K}$ with respect to each $y_c(h)$ -- c.f. \eqnref{min:L:wrt:K:val}. It is actually not necessary to compute those. Indeed
+Mostly straightforward except for two subtleties. The first one is related to the 2-step minimisation procedure. Indeed after $L$ has been minimised over $K$, one wishes to further minimise $L_{K=|\tilde{K}}$ which is a function of the $x_1, \cdots, x_n$ only whose derivatives with respect to each $x_i$ a priori require differentiating $\tilde{K}$ with respect to each $y_c(h)$ -- c.f. \eqnref{min:L:wrt:K:val}. It is actually not necessary to compute those. Indeed
 \begin{equation}
 \partialder{\left. L \right|_{K=\tilde{K}}}{x_i} = \underbrace{ \left.\partialder{L}{K}\right|_{K=\tilde{K}} }_{\displaystyle = 0} \partialder{\tilde{K}}{x_i} + \left.\partialder{L}{x_i}\right|_{K=\tilde{K}}
 \label{eqn:twostep:firstorder:der}
 \end{equation}
-because $L$ reaches its minimum at $K=\tilde{K}$. Thus even for the 2-step method, we only need the derivatives with respect to $x_i$ keeping $K$ constant -- but with $K=\tilde{K}$ of course. Those $\left.\partialder{L}{x_i}\right|_{K=\tilde{K}}$ are also those needed for the second step of the 1$+$1-step method.
+because $L$ reaches its minimum at $K=\tilde{K}$. Thus we only need the derivatives with respect to $x_i$ keeping $K$ constant -- but with $K=\tilde{K}$ of course.
 
 The second subtlety comes from $F_c$ being a complex quantity, which shall be taken into account when applying the chain rule. The clearest method is to take $F_c$ and it's complex conjugate $F_c^*$ as independent variable and write
 \begin{equation}
@@ -120,8 +132,11 @@ which proves the result we announced and gives the useful formulae
 F_c(h)^* & \text{for $F^2$ refinement},\\
 \frac{F_c(h)^*}{2|F_c(h)|} & \text{for $F$ refinement.}
 \end{cases}
+\label{eqn:der:L:Fc}
 \end{equation}
-In the \code{cctbx}, all those computations are performed in namespace \code{cctbx::xray}. The computations related to minimisation targets are done in namespace \code{targets} in either class \code{ls\_with\_scale} or \code{least\_squares\_residual} as far as least-squares are concerned. Those uses a variation of the scheme described here: they actually compute $\partialder{L}{F_c(h)^*}$ which forces the classes in charge of the crystallographic models to compute $\partialder{F_c(h)^*}{x_i}$ instead of $\partialder{F_c(h)}{x_i}$. That trivial substitution results in changing a few signs. Those model derivative computations are done in namespace \code{structure\_factors} in classes \code{gradients\_direct} and \code{fast\_gradients}. The former does the sum over $h$ in \eqnref{der:L:wrt:xi} directly whereas the latter uses FFT.
+As for the LBFGS method implemented in the \code{cctbx}, all those computations are performed in namespace \code{cctbx::xray}. The computations related to minimisation targets are done in namespace \code{targets} in either class \code{ls\_with\_scale} or \code{least\_squares\_residual} as far as least-squares are concerned. Those uses a variation of the scheme described here: they actually compute $\partialder{L}{F_c(h)^*}$ which forces the classes in charge of the crystallographic models to compute $\partialder{F_c(h)^*}{x_i}$ instead of $\partialder{F_c(h)}{x_i}$. That trivial substitution results in changing a few signs. Those model derivative computations are done in namespace \code{structure\_factors} in classes \code{gradients\_direct} and \code{fast\_gradients}. The former does the sum over $h$ in \eqnref{der:L:wrt:xi} directly whereas the latter uses FFT.
+
+As for full-matrix L.S., structure factor computations are implemented in name space \code{smtbx::structure\_factors::direct} (the moniker direct means here that we directly perform the sum over the reflections in \eqnref{der:L:wrt:xi}). This is also where \eqnref{der:L:wrt:xi} is taken advantage of. Actually \eqnref{der:L:wrt:xi,der:L:Fc} are handled together by two C++ classes \code{modulus} and \code{modulus\_squared}. The computation of the optimised scale factor has been abstracted into a generic tool that can be reused for any L.S. problem, and it is implemented in a L.S. toolbox living in namespace \code{scitbx::lstbx}.
 
 It should be noted that all the formulae written so far in this section \ref{lsq:mini:all:firstorder:derivatives}, except \eqnref{twostep:firstorder:der}, are actually correct for any minimisation target, not just least-squares since we have not specialised $\partialder{L}{F_c(h)}$ or $\partialder{L}{y_c(h)}$. In the \code{cctbx}, it is therefore used for the log-likelihood target too. We will now write those derivatives for the least-squares only.
 
@@ -137,47 +152,108 @@ which are valid whether $L$ has been minimised over $K$ or not, as discussed in 
 
 Quasi-Newton methods such as LBFGS only need the first-order derivatives but Newton methods require the second-order ones too. In the case of least-squares, those can conveniently be expressed with the first-order derivatives only, in the limit of small residuals, leading to the well-known Gauss-Newton method.
 
-First we need to address the same issue about the 2-step methods that we discussed at the beginning of last section,
+The crux of the Gauss-Newton method is to remark that, starting from \eqnref{L:vector},
+\begin{align}
+\partialderxy{L}{x_i}{x_j} &= \partialder{r}{x_i} \cdot \partialder{r}{x_j} + \partialderxy{r}{x_i}{x_j} \cdot r, \nonumber \\
+\intertext{and then that for a well behaved fit, the residual $r$ and the curvature in the second term of the right hand side are small enough that they can safely be neglected, leading to}
+\partialderxy{L}{x_i}{x_j} &= \partialder{r}{x_i} \cdot \partialder{r}{x_j}. 
+\label{eqn:gaussnewtoncrux}
+\end{align}
+This formula is completely general and does not depend on whether there is a scale factor and therefore not on whether one has already optimised it. We will assume this approximation holds good in the remaining of this document and derive the extra amount of mathematics necessary to handle our optimised scale factor.
+
+From the definition of the residual $r$ in \eqnref{def:residual} and from the expression of the optimised scale factor \eqnref{min:L:wrt:K}, one easily gets the derivatives,
+\begin{align}
+\frac{\partial}{\partial x_i} r(x, \tilde{K}(x)) &= - \left( \tilde{K}\partialder{y_c}{x_i} + \partialder{\tilde{K}}{x_i} y_c \right), \\
+\partialder{\tilde{K}}{x_i} &= \frac{1}{\|y_c\|^2}\partialder{y_c}{x_i} \cdot \left( y_o - 2 \tilde{K} y_c \right).
+\end{align}
+
+We can now build the normal equations, which are just the Newton equations for the shifts $s$ of the parameter vector $x$,
 \begin{equation}
-\partialderxy{\left. L \right|_{K=\tilde{K}}}{x_i}{x_j} = \partialder{}{x_i} \left.\partialder{L}{x_j}\right|_{K=\tilde{K}} = \left.\partialderxy{L}{K}{x_j}\right|_{K=\tilde{K}}  \partialder{\tilde{K}}{x_i} +   \left.\partialderxy{L}{x_i}{x_j}\right|_{K=\tilde{K}}
-\label{eqn:der:xi:xj:twostep}
+B s = c
 \end{equation}
-by starting from \eqnref{twostep:firstorder:der}. This time, no such luck, the first term does not vanish. Thus we must compute the very same second-order derivatives that we need for the other two methods, plus the first-order derivatives of $\tilde{K}$.
+using the above approximation \eqnref{gaussnewtoncrux} for the Hessian $B$. The normal matrix $B$ reads
+\begin{equation}
+ \begin{split}
+B = \frac{\partial}{x_i} r(x, \tilde{K}(x)) \frac{\partial}{x_j} r(x, \tilde{K}(x))
+= & \tilde{K}^2 \partialder{y_c}{x_i} \cdot \partialder{y_c}{x_j} 
++ \tilde{K} \left(  \partialder{\tilde{K}}{x_j} y_c \cdot \partialder{y_c}{x_i} 
+                        + \partialder{\tilde{K}}{x_i} y_c \cdot \partialder{y_c}{x_j} \right) 
+\\ & + \partialder{\tilde{K}}{x_i} \partialder{\tilde{K}}{x_j} \|y_c\|^2
+\end{split}
+\end{equation}
 
-Let's start with the derivatives with respect to $x_i$. Going back to \eqnref{L:vector},
+whereas the right-hand side of the normal equations reads
+
+\begin{equation}
+c = -r(x, \tilde{K}(x)) \cdot \frac{\partial}{\partial x_i} r(x, \tilde{K}(x)) = (y_o - \tilde{K} y_c) 
+\cdot \left(\tilde{K} \partialder{y_c}{x_i} + \partialder{\tilde{K}}{x_i} y_c \right)
+\end{equation}
+
+The last two equations which are implemented in the L.S. generic toolbox living in namespace \code{scitbx::lstbx}.
+
+\section{Structure factors and their derivatives}
+
+As per \eqnref{der:L:wrt:xi,der:L:Fc}, the last component one needs is the computation of the complex structure factors $F_c$ and of their derivatives. This section is dedicated to present the necessary formulae.
+
+\newcommand{\Fuc}{F_{\text{uc}}}
+\newcommand{\Fasu}{F_{\text{asu}}}
+Since the structure factor of the unit cell content is the sum over the contribution of each scatterer, we focus on one such contribution only. Thus we consider a scatterer with occupancy $o$, $u_{\text{iso}}$ or ADP $U^*$, at position $x$ (the both of $U^*$ and $x$ are with respect to fractional coordinates). For a triplet of Miller indices $h$, we consider its contribution $\Fuc(h)$ to the entire unit cell and its contribution $\Fasu(h)$ to the asymmetric unit only. In the presence of non-trivial crystallographic symmetries, we have the relation
+\begin{equation}
+\Fuc(h) = \sum_{(R \mid t) \in \cal{O}} \Fasu^{(R \mid t)}(h),
+\end{equation}
+where $\cal{O}$ is the subset of symmetry operators $(R \mid t)$ of rotational part $R$ and translational part $t$ that generate the orbit of the position $x$ under the application of the entire set of symmetries in the space group of the structure.
+
+The standard crystallographic model is defined by
+\begin{equation}
+\Fasu(h) = o f(h^2) e^{-2\pi^2 h^2} u_{\text{iso}} \underbrace{e^{h U^* h^T} e^{i 2\pi h x}}_{G(h)}.
+\end{equation}
+In this formula and the following, we consider $h$ to be a row vector of Miller indices. We have also written the formula with both isotropic and anisotropic displacement factors: in practice one of them is zero but handling the both of those cases together simplifies the mathematical reasoning.
+
+Since only $G(h)$ is altered by symmetry, i.e. the coefficient in front of $G(h)$ is isotropic a function of $h$, we can factor it out of the sum over the symmetries,
 \begin{align}
-\partialder{L}{x_i} &= 2 r \cdot \partialder{r}{x_i} = -2K r \cdot \partialder{y_c}{x_i}\\
-\partialderxy{L}{x_i}{x_j} &= 2 \partialder{r}{x_i} \cdot \partialder{r}{x_j} + 2 r \cdot \partialderxy{r}{x_i}{x_j}
-\label{eqn:der:xi:xj}
-\\
-\intertext{In the limit of small residuals, the second term is negligible. This leads to the approximation at the heart of the Gauss-Newton method,}
-\partialderxy{L}{x_i}{x_j} &\approx 2 \partialder{r}{x_i} \cdot \partialder{r}{x_j} = 2K^2 \partialder{y_c}{x_i} \cdot \partialder{y_c}{x_j}
-\end{align}
-On the other hand,
-\begin{align}
-\partialderxy{L}{K}{x_i} &= 2 \partialder{r}{K} \cdot \partialder{r}{x_i} + 2 r \cdot \partialderxy{r}{K}{x_j} ,\\
-\intertext{which becomes in the same approximation}
-\partialderxy{L}{K}{x_i} &\approx 2 \partialder{r}{K} \cdot \partialder{r}{x_i} = 2K y_c \cdot \partialder{y_c}{x_i}
-\label{eqn:der:xi:K}
-\\
-\intertext{Finally, we can get the derivatives with respect to $K$ only from \eqnref{L:def:geom:expanded},}
-\partialder{L}{K} &= -2 r.y_c,\\
-\partialderxx{L}{K} &= 2\|y_c\|^2
+\Fuc(h) &= o f(h^2) e^{-2\pi^2 h^2} u_{\text{iso}} \sum_{(R \mid t) \in \cal{O}} G^{(R \mid t)}(h) \\
+\intertext{where}
+G^{(R \mid t)}(h) &= G(hR) e^{i 2\pi ht}.
 \end{align}
 
-Thus the Newton equations for the shifts $s_K$ and $s_{x_i}$,
+Let us consider the case of centred space group first. The sum can be broken as follow
 \begin{align}
-\partialderxx{L}{K}\ s_K + \sum_j \partialderxy{L}{K}{x_j}\ s_{x_j} &= -\partialder{L}{K}\\
-\partialderxy{L}{K}{x_i}\ s_K + \sum_j \partialderxy{L}{x_i}{x_j}\ s_{x_j} &= -\partialder{L}{x_i},\ i=0,1,\cdots\\
-\intertext{gives the normal equations}
-\| y_c \|^2\ \dfrac{s_K}{K}
-+ \sum_j y_c \cdot \partialder{y_c}{x_j}\ s_{x_j}
-&= \frac{1}{K} r \cdot  y_c\\
-y_c \cdot \partialder{y_c}{x_i}\ \dfrac{s_K}{K}
-+ \sum_j \partialder{y_c}{x_i} \cdot \partialder{y_c}{x_j}\ s_{x_j}
-&= \frac{1}{K} r \cdot \partialder{y_c}{x_i},\ i=0,1,\cdots
+ \sum_{(R \mid t) \in \cal{O}} G^{(R \mid t)}(h) &=  \sum_{(R \mid t) \in \cal{O'}} \sum_{\tau \in \cal{T}} G^{(R \mid t+\tau)}(h), \nonumber\\
+\intertext{where $\cal{T}$ is the set of all centring translations, including zero, whereas $\cal{O'}$ is the set of ``primitive'' symmetries. Then}
+G^{(R \mid t + \tau)} &= G(hR) e^{i2\pi ht} e^{i2\pi h\tau}, \nonumber \\
+\intertext{but $h\tau=0$ for any Miller indices $h$ by definition, and therefore}
+\sum_{(R \mid t) \in \cal{O}} G^{(R \mid t)}(h) &= n_{\text{ltr}} \sum_{(R \mid t) \in \cal{O'}}
 \end{align}
-which shows that it is most natural to solve for the relative shift $\frac{s_K}{K}$ of the scale factor.
+which shows that the centred case and the primitive case only differ by an overall multiplicative factor, the number of centring translations $n_{\text{ltr}}$.
+
+Thus we can now come back to the primitive case, for which three cases are to be considered.
+\begin{enumerate}
+\item The Miller index $h$ is non-centric. Then there is no further simplification.
+\item The Miller index $h$ is centric. Then the sum over the symmetries may be split in two,
+\begin{align}
+\sum_{(R \mid t) \in \cal{O}} G^{(R \mid t)} &= 
+\underbrace{\sum_{(R \mid t) \in \cal{O^+}} G^{(R \mid t)} }_{\Sigma} 
++ \sum_{(R \mid t) \in \cal{O}^+} G^{\left(\bar{1} \mid t_{\bar{1}}\right)(R \mid t)}, \nonumber \\
+\intertext{where $\cal{O}^+$ is the subset of $\cal{O}$ containing only the symmetries not involving the inversion. However}
+ G^{(\bar{1} \mid t_{\bar{1}})(R \mid t)}(h) &= G^{\left(-R \mid -t + t_{\bar{1}}\right)}(h) = G(-hR) e^{-2\pi hRx}
+ e^{-i2\pi ht} e^{i2pi h t_{\bar{1}}}, \nonumber \\
+ \intertext{but then from the very definition of $G(h)$,}
+ G(-hR) &= G(h)^*, \\
+ \intertext{and therefore}
+ \sum_{(R \mid t) \in \cal{O}} G^{(R \mid t)} &= \Sigma + \Sigma^* e^{i2\pi h t_{\bar{1}}}.
+\end{align}
+
+\item The Miller index $h$ is centric and the space group is centro-symmetric. In which case, $t_{\bar{1}}=0$ and therefore
+\begin{align}
+ \sum_{(R \mid t) \in \cal{O}} G^{(R \mid t)} &= 2 \Re{\Sigma} = 2 \sum_{(R \mid t) \in \cal{O}^+}  e^{h R U^* (hR)^T} \cos(hRx + t).
+\end{align}
+\end{enumerate}
+
+In the 3rd case, the structure factor contribution is therefore real, and its derivative will be so too, the former involving a cosine and the latter involving a sine for the derivatives with respect to $x$. It is thus important to handle this case separately for the sake of efficiency. This is the rationale for the two C++ classes \code{in\_generic\_space\_group} and \code{in\_origin\_centric\_space\_group} living in namespace \code{smtbx::structure\_factors::direct}. The former handles the first two cases whereas the latter handles the 3rd case.
+
+As for the computation of the subset of symmetries $\cal{O}$ or $\cal{O^+}$, it is devolved to a nifty little tool featured by the \code{cctbx}, the class \code{hr\_ht\_cache} that lives in namespace \code{cctbx::xray::structure\_factors}. As the name indicates, it computes and then caches all the $hR$ and $e^{i2\pi ht}$ for a given $h$, those quantities being then reused for each scatterer in the asu, as detailed above. In turn, \code{hr\_ht\_cache} relies on the class \code{sgtbx::space\_group} to iterate over the symmetry operations necessary to complete the sums expounded above. 
+
+Finally the derivatives of the structure factor contribution of one scatterer to the unit cell, $\Fuc$, whose computation we have just explained in great details, is straightforward since it involves only exponentials of the real and complex kind (or sines and cosines in the centrosymmetric case). The only difficulty here is in the efficient coding of the chain of operations: the source code itself is the best place to look into. The relevant C++ classes are all in the header file \code{standard\_xray.h}.
 
 \bibliography{cctbx_references}
 
