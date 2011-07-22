@@ -4,12 +4,22 @@
 #include <scitbx/vec3.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_algebra.h>
+#include <scitbx/array_family/accessors/packed_matrix.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/rt_mx.h>
 
+// Implementation
+#include <scitbx/sparse/vector.h>
+
 namespace cctbx { namespace adptbx {
+
+  namespace details {
+    template <typename T>
+    class sparse_grad_container : public af::small<T, 2*(3+6)>
+    {};
+  }
 
   /// Mean square displacement along a direction
   /** Given a vector z and a displacement tensor U,
@@ -133,8 +143,8 @@ namespace cctbx { namespace adptbx {
   template <typename T>
   class relative_hirshfeld_difference {
     T val;
-    af::tiny<T, 2*(3+6)> h_prime;
-    af::tiny<T,6> h_unit_cell_params;
+    af::tiny<T, 3> h_x_1, h_x_2;
+    af::tiny<T,6> h_u_1, h_u_2, h_unit_cell_params;
 
   public:
     /// Construct for the given scatterer
@@ -169,56 +179,80 @@ namespace cctbx { namespace adptbx {
       T d = 1./(h1 + h2), d_sq = d*d;
       val = 2*(h1 - h2)*d;
       T h_h1 = 4*h2*d_sq, h_h2 = -4*h1*d_sq;
-      T *p = h_prime.begin();
-      af::tiny<T, 3> h_z = h_h1*h1_z + h_h2*h2_z;
 
-      // h'_{x_1} =  h'_z
-      for (int i=0; i<3; i++) *p++ = h_z[i];
-
-      // h'_{x_2} = -h'_z r_2
-      if (r_2.is_unit_mx()) {
-        for (int i=0; i<3; i++) *p++ = -h_prime[i];
-      }
-      else {
-        af::tiny<T, 3> h_z__r_2 = h_z*r_2.r().as_double();
-        for (int i=0; i<3; i++) *p++ = -h_z__r_2[i];
+      // h'_{x_1} =  h'_z, h'_{x_2} = -h'_z r_2
+      h_x_1 = h_h1*h1_z + h_h2*h2_z;
+      h_x_2 = -h_x_1;
+      if (!r_2.is_unit_mx()) {
+        h_x_2 = h_x_2 * r_2.r().as_double();
       }
 
-      // h'_{u_1} = h'_{h_1} h'_{1; u}
-      for (int i=0; i<6; i++) *p++ = h_h1*h1_u[i];
-
-      /* h'_{u_2} = h'_{h_2} h'_{2; u} R_2
-       where R_2 is the 6x6 matrix transforming u_2 into r_2 u_2 r_2^T
-       when those symmetric tensors are represented
-       as coefficients (11,22,33,12,13,23)
+      /* h'_{u_1} = h'_{h_1} h'_{1; u}
+         h'_{u_2} = h'_{h_2} h'_{2; u} R_2
+         where R_2 is the 6x6 matrix transforming u_2 into r_2 u_2 r_2^T
+         when those symmetric tensors are represented
+         as coefficients (11,22,33,12,13,23)
        */
-      if (r_2.is_unit_mx()) {
-        for (int i=0; i<6; i++) *p++ = h_h2*h2_u[i];
-      }
-      else {
+      h_u_1 = h_h1*h1_u;
+      h_u_2 = h_h2*h2_u;
+      if (!r_2.is_unit_mx()) {
         af::tiny<T, 6*6> rr_2 = r_2.r().tensor_transform_matrix<T>();
-        af::tiny<T, 6> h2_u__r_2;
+        af::tiny<T, 6> rhs;
         matrix_transposed_vector(6,6,
-                                 rr_2.begin(), h2_u.begin(), h2_u__r_2.begin());
+                                 rr_2.begin(), h_u_2.begin(), rhs.begin());
 
-        for (int i=0; i<6; i++) *p++ = h_h2*h2_u__r_2[i];
+        h_u_2 = rhs;
       }
 
       // h'_{a,b,c,alpha,beta,gamma} = h'_{h_1} h'_{1;...} + h'_{h_2} h'_{2;...}
-      for (int i=0; i<6; i++) {
-        h_unit_cell_params[i] = h_h1*h1_uc[i] + h_h2*h2_uc[i];
-      }
-
+      h_unit_cell_params = h_h1*h1_uc + h_h2*h2_uc;
     }
 
     /// The value of h
     T value() { return val; }
 
-    /// Differential of h wrt to \f$(x_1, x_2, u_1, u_2)\f$ in that order
-    af::tiny<T, 2*(3+6)> const &grad_sites_adps() { return h_prime; }
+    /// Differential of h wrt to \f$x_1\f$
+    af::tiny<T, 3> const &grad_x1() const { return h_x_1; }
+
+    /// Differential of h wrt to \f$x_2\f$
+    af::tiny<T, 3> const &grad_x2() const { return h_x_2; }
+
+    /// Differential of h wrt to \f$u_1\f$
+    af::tiny<T, 6> const &grad_u1() const { return h_u_1; }
+
+    /// Differential of h wrt to \f$u_2\f$
+    af::tiny<T, 6> const &grad_u2() const { return h_u_2; }
 
     /// Differential of h wrt to unit cell parameters
-    af::tiny<T, 6> const &grad_unit_cell_params() { return h_unit_cell_params; }
+    af::tiny<T, 6> const &grad_unit_cell_params() const {
+      return h_unit_cell_params;
+    }
+
+    /// Estimated standard deviation of h
+    /** Given the variance matrix for crystallographic parameters and
+        the indices of relevant sites and ADP's therein
+     */
+    T esd(af::const_ref<T, af::packed_u_accessor> const &variance,
+          std::size_t i_x1, std::size_t i_u1,
+          std::size_t i_x2, std::size_t i_u2,
+          af::tiny<T, 6> const &unit_cell_param_sigmas)
+    {
+      // sites and ADP's uncertainties
+      scitbx::sparse::vector<T, details::sparse_grad_container>
+      h_prime(variance.n_rows());
+      for (int i=0; i<3; i++) h_prime[i_x1 + i] = h_x_1[i];
+      for (int i=0; i<3; i++) h_prime[i_x2 + i] = h_x_2[i];
+      for (int i=0; i<6; i++) h_prime[i_u1 + i] = h_u_1[i];
+      for (int i=0; i<6; i++) h_prime[i_u2 + i] = h_u_2[i];
+      T result = scitbx::sparse::quadratic_form(h_prime, variance, h_prime);
+
+      // unit cell parameter uncertainties
+      for (int i=0; i<6; i++) {
+        result += h_unit_cell_params[i]*unit_cell_param_sigmas[i];
+      }
+
+      return std::sqrt(result);
+    }
 
   };
 

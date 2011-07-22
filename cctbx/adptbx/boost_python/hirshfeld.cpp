@@ -58,10 +58,16 @@ namespace cctbx { namespace adptbx { namespace boost_python {
              arg("site_1"), arg("u_star_1"),
              arg("site_2"), arg("u_star_2"), arg("rt_mx_2"))))
       .add_property("value", &wt::value)
-      .add_property("grad_sites_adps",
-                    make_function(&wt::grad_sites_adps, rbv))
+      .add_property("grad_x1", make_function(&wt::grad_x1, rbv))
+      .add_property("grad_x2", make_function(&wt::grad_x2, rbv))
+      .add_property("grad_u1", make_function(&wt::grad_u1, rbv))
+      .add_property("grad_u2", make_function(&wt::grad_u2, rbv))
       .add_property("grad_unit_cell_params",
                     make_function(&wt::grad_unit_cell_params, rbv))
+      .def("esd", &wt::esd,
+           (arg("crystallographic_variance_matrix_packed_u"),
+            arg("index_x1"), arg("index_u1"), arg("index_x2"), arg("index_u2"),
+            arg("a_b_c_alpha_beta_gamma_sigmas")))
       ;
     }
   };

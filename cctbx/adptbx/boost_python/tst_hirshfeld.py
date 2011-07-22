@@ -1,10 +1,14 @@
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
 from scitbx import random, linalg, matrix
+from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import libtbx.utils
+import math
 
 site_coord = random.variate(random.uniform_distribution(0, 1))
 u_eigenval = random.variate(random.uniform_distribution(0.0005, 0.003))
 g_eigenval = random.variate(random.uniform_distribution(1,10))
+variance_eigenval = random.variate(random.uniform_distribution(0.1, 10))
 symm_mat = linalg.random_normal_matrix_generator(3,3)\
          .symmetric_matrix_with_eigenvalues
 def as_sym_mat3(packed_u):
@@ -98,18 +102,45 @@ def exercise_hirshfeld_relative_difference(n_trials):
                                                  x2-dx2, u2-du2, op).value
       duc_m_params = matrix.col(uc_m.parameters()) - matrix.col(uc.parameters())
       finite_diff = (r_p - r_m)/2
-      eta = tuple(dx1) + tuple(dx2) + tuple(du1) + tuple(du2)
-      taylor_diff = (
-        matrix.col(r.grad_sites_adps).dot(matrix.col(eta))
-        + matrix.col(r.grad_unit_cell_params).dot(
-          (duc_p_params - duc_m_params)/2))
+      taylor_diff = (  matrix.col(r.grad_x1).dot(dx1)
+                     + matrix.col(r.grad_x2).dot(dx2)
+                     + matrix.col(r.grad_u1).dot(du1)
+                     + matrix.col(r.grad_u2).dot(du2)
+                     + matrix.col(r.grad_unit_cell_params).dot(
+                       (duc_p_params - duc_m_params)/2))
       r = (taylor_diff - finite_diff)/finite_diff
       assert abs(r) < 0.001, r
 
+  # check esd computation
+  for op in operators:
+    for i in xrange(n_trials):
+      x1 = matrix.col(site_coord(3))
+      x2 = matrix.col(site_coord(3))
+      u1 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
+      u2 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
+      g  = matrix.col(as_sym_mat3(symm_mat(g_eigenval(3))))
+      r = adptbx.relative_hirshfeld_difference(uc, x1, u1, x2, u2, op)
+      n = 2*(3+6) + 5
+      v = linalg.random_normal_matrix_generator(n,n)\
+         .symmetric_matrix_with_eigenvalues(variance_eigenval(n))
+      sigma = r.esd(crystallographic_variance_matrix_packed_u=v,
+                    index_x1=1, index_u1=5,
+                    index_x2=13, index_u2=17,
+                    a_b_c_alpha_beta_gamma_sigmas=(0,0,0,0,0,0))
+      sigma_sq = sigma**2
+      g = matrix.col(  (0,)  + r.grad_x1
+                     + (0,)  + r.grad_u1
+                     + (0,0) + r.grad_x2
+                     + (0,)  + r.grad_u2)
+      vv = matrix.rec(v.matrix_packed_u_as_symmetric(), (n,n))
+      sigma_sq_0 = g.dot(vv*g)
+      assert approx_equal(sigma_sq, sigma_sq_0, eps=1e-12)
+
+
 def run():
+  libtbx.utils.show_times_at_exit()
   exercise_mean_square_displacement(n_trials=50)
   exercise_hirshfeld_relative_difference(n_trials=50)
-  print 'OK'
 
 if __name__ == '__main__':
   run()
