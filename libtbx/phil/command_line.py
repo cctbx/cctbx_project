@@ -99,8 +99,13 @@ class argument_interpreter(object):
         try: user_phils.append(self.process_arg(arg=arg))
         except Exception: pass
         else: continue
-      if (custom_processor is not None and custom_processor(arg=arg)):
-        continue
+      if (custom_processor is not None) :
+        result = custom_processor(arg=arg)
+        if (isinstance(result, libtbx.phil.scope)) :
+          user_phils.append(result)
+          continue
+        elif (result is not None) and (result != False) :
+          continue
       if (op.isfile(arg)):
         libtbx.phil.parse(file_name=arg) # exception expected
         from libtbx.str_utils import show_string

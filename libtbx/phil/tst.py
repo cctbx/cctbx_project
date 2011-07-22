@@ -5251,6 +5251,23 @@ Error interpreting command line argument as parameter definition:
   pcl = phil.process_command_line(
     args=["892c8632"], master_string=master_string)
   assert pcl.remaining_args == ["892c8632"]
+  master_phil = phil.parse("""
+sites = None
+  .type = int
+""")
+  def custom_processor (arg) :
+    try :
+      val = int(arg)
+    except ValueError :
+      return None
+    else :
+      return phil.parse("sites=%d" % val)
+  pcl = master_phil.command_line_argument_interpreter()
+  args = ["2"]
+  user_phil = pcl.process_args(args=["2"],
+    custom_processor=custom_processor)
+  params = master_phil.fetch(sources=user_phil).extract()
+  assert (params.sites == 2)
 
 def exercise_choice_multi_plus_support():
   master_phil = libtbx.phil.parse("""\
