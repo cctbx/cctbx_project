@@ -331,7 +331,7 @@ def validate_params (params) :
   if (params_.input.experimental_phases.labels is None) :
     raise Sorry("Experimental phase labels not specified.")
   if ((params_.output.map.file_name is None) and
-      (params_.output.map_coefficients.file_name is None)) :
+      (params_.output.mtz.file_name is None)) :
     raise Sorry("No output requested!")
   if (params_.solvent_fraction is None) :
     raise Sorry("Please specify the solvent fraction!")
