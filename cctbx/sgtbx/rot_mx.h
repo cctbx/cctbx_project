@@ -353,6 +353,14 @@ namespace cctbx { namespace sgtbx {
         return v;
       }
 
+      /// Matrix realising a symmetric tensor transform
+      template <typename T>
+      af::tiny<T,6*6> tensor_transform_matrix() const {
+        af::tiny<T,6*6> result = num_.tensor_transform_matrix();
+        result /= T(den_);
+        return result;
+      }
+
     private:
       sg_mat3 num_;
       int den_;
