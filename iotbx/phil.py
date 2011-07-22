@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 from cctbx import uctbx
-import libtbx.phil
+import libtbx.phil.command_line
 from libtbx.utils import Sorry, import_python_object
 from libtbx.phil import tokenizer
 from libtbx import Auto
@@ -99,6 +99,54 @@ def process_command_line(args, master_string, parse=None):
   return libtbx.phil.process_command_line(
     args=args, master_string=master_string, parse=parse)
 
+class process_command_line_with_files (object) :
+  def __init__ (self,
+                args,
+                master_phil=None,
+                master_phil_string=None,
+                pdb_file_def=None,
+                reflection_file_def=None,
+                cif_file_def=None,
+                seq_file_def=None) :
+    assert (master_phil is not None) or (master_phil_string is not None)
+    if (master_phil_string is not None) :
+      assert (master_phil is None)
+      import iotbx.phil
+      master_phil = iotbx.phil.parse(input_string=master_phil_string,
+        process_includes=True)
+    self.master = master_phil
+    self.pdb_file_def = pdb_file_def
+    self.reflection_file_def = reflection_file_def
+    self.cif_file_def = cif_file_def
+    self.seq_file_def = seq_file_def
+    cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
+    self.work = cai.process_and_fetch(
+       args=args,
+       custom_processor=self)
+
+  def __call__ (self, arg) :
+    if (os.path.isfile(arg)) :
+      from iotbx import file_reader
+      f = file_reader.any_file(os.path.abspath(arg))
+      file_def_name = None
+      if (f.file_type == "pdb") and (self.pdb_file_def is not None) :
+        file_def_name = self.pdb_file_def
+      elif (f.file_type == "hkl") and (self.reflection_file_def is not None) :
+        file_def_name = self.reflection_file_def
+      elif (f.file_type == "cif") and (self.cif_file_def is not None) :
+        file_def_name = self.cif_file_def
+      elif (f.file_type == "seq") and (self.seq_file_def is not None) :
+        file_def_name = self.seq_file_def
+      if (file_def_name is not None) :
+        return libtbx.phil.parse("%s=%s" % (file_def_name, f.file_name))
+      else :
+        return False
+    else :
+      return self.process_non_file(arg)
+
+  def process_non_file (self, arg) :
+    return False
+
 # Utilities for Phenix GUI
 class setup_app_generic (object) :
   def __init__ (self, master_phil_path) :
@@ -129,6 +177,7 @@ class setup_app_generic (object) :
       home_scope="")
     return (self.master_phil,working_phil,options, unused_args)
 
+# TODO probably redundant, replace with process_command_line or similar?
 def parse_command_line_phil_args (args, master_phil, command_name, usage_opts,
     app_options, home_scope, log=sys.stdout) :
   sources = []

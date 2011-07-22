@@ -1,6 +1,7 @@
 import iotbx.phil
 from libtbx.test_utils import show_diff
 from libtbx import Auto
+import os
 
 def exercise():
   master = iotbx.phil.parse(input_string="""\
@@ -101,6 +102,22 @@ s=None
 """)
   assert not show_diff(str(pcl.work.extract().s), "I a -3 d")
   #
+  master_phil_str = """
+model = None
+  .type = path
+use_geometry_restraints = False
+  .type = bool
+"""
+  open("model.pdb", "w").write("""\
+ATOM      1  O   HOH     1      53.448  18.599 -10.134  1.00 20.00
+""")
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=["model.pdb", "--use_geometry_restraints"],
+    master_phil_string=master_phil_str,
+    pdb_file_def="model")
+  params = pcl.work.extract()
+  assert (params.model == os.path.join(os.getcwd(), "model.pdb"))
+  assert (params.use_geometry_restraints)
   print "OK"
 
 if (__name__ == "__main__"):
