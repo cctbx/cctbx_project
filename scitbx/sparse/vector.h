@@ -4,7 +4,7 @@
 #include <memory>
 #include <algorithm>
 #include <functional>
-#include <boost/operators.hpp>
+# include <boost/iterator/iterator_facade.hpp>
 #include <boost/foreach.hpp>
 #include <boost/operators.hpp>
 #include <scitbx/error.h>
@@ -196,70 +196,49 @@ private:
     sorted = true;
   }
 
+  /// Base class for iterators over the records
+  template <class ElementIterator, typename ReferenceType>
+  class base_iterator
+    : public boost::iterator_facade<base_iterator<ElementIterator, ReferenceType>,
+                                    ElementIterator,
+                                    boost::random_access_traversal_tag,
+                                    ReferenceType>
+  {
+  public:
+    base_iterator(ElementIterator q)
+      : p(q)
+    {}
+
+    index_type index() const { return p->index(); }
+
+  private:
+    friend class boost::iterator_core_access;
+
+    ElementIterator p;
+
+    ReferenceType dereference() const { return p->value(); }
+
+    bool equal(base_iterator const& i) const { return p == i.p; }
+
+    void increment() { p++; }
+
+    void decrement() { p--; }
+
+    void advance(int n) { p += n; }
+
+    int distance_to(base_iterator const &i) const { return p - i.p; }
+  };
+
 public:
   /// Const iterator over the records
-  class const_iterator
-    : public boost::forward_iterator_helper<const_iterator, value_type const>
-  {
-    typename container_type::const_iterator p;
+  typedef base_iterator<typename container_type::const_iterator,
+                        value_type>
+          const_iterator;
 
-  public:
-    const_iterator()
-    {}
-
-    const_iterator(typename container_type::const_iterator q)
-      : p(q)
-    {}
-
-    value_type operator*() const {
-      return p->value();
-    }
-
-    bool operator==(const_iterator const& i) const {
-      return p == i.p;
-    }
-
-    const_iterator& operator++() {
-      p++;
-      return *this;
-    }
-
-    index_type index() const {
-      return p->index();
-    }
-  };
-
-  /// Iterator over the records
-  class iterator
-    : public boost::forward_iterator_helper<iterator, value_type>
-  {
-    typename container_type::iterator p;
-
-  public:
-    iterator()
-    {}
-
-    iterator(typename container_type::iterator q)
-      : p(q)
-    {}
-
-    value_type& operator*() const {
-      return p->value();
-    }
-
-    bool operator==(iterator const& i) const {
-      return p == i.p;
-    }
-
-    iterator& operator++() {
-      p++;
-      return *this;
-    }
-
-    index_type index() const {
-      return p->index();
-    }
-  };
+  /// Non-const iterator over the records
+  typedef base_iterator<typename container_type::iterator,
+                        value_type &>
+          iterator;
 
   /// A const reference to an element of given index
   /** This the type of object returned by v[i] for a const vector v
