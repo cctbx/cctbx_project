@@ -1,8 +1,8 @@
-from iotbx.shelx.from_ins import from_ins
-from cctbx import crystal, adp_restraints
+from cctbx import crystal, adp_restraints, xray
 
 def run(structure_file_path):
-  xs = from_ins(file_name=structure_file_path)
+  xs = xray.structure.from_shelx(filename=structure_file_path,
+                                 strictly_shelxl=False)
 
   asu_mappings = xs.asu_mappings(buffer_thickness=2)
   bond_table = crystal.pair_asu_table(asu_mappings)
@@ -15,11 +15,6 @@ def run(structure_file_path):
     i, j, op = sym_pair.i_seq, sym_pair.j_seq, sym_pair.rt_mx_ji
     if 'H' in [ scatterer[idx].scattering_type for idx in (i,j) ]: continue
     rigid_bonds.append(adp_restraints.rigid_bond_proxy((i,j), 1.))
-  #rigid_bonds.show_sorted(
-    #by_value="delta",
-    #sites_cart=xs.sites_cart(),
-    #site_labels=xs.scatterers().extract_labels(),
-    #u_cart=xs.scatterers().extract_u_cart(xs.unit_cell()))
   deltas = rigid_bonds.deltas(
     sites_cart=xs.sites_cart(),
     u_cart=xs.scatterers().extract_u_cart(xs.unit_cell()))
