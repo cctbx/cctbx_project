@@ -150,18 +150,20 @@ def run(args, log = sys.stdout, as_gui_program=False):
     pdb_file = mmtbx.utils.pdb_file(
       pdb_file_names=processed_args.pdb_file_names)
     xs = pdb_file.pdb_inp.xray_structure_simple()
+    fo_, hl_ = fo.common_sets(hl_coeffs)
     if params.change_basis_to_niggli_cell:
       change_of_basis_op = xs.change_of_basis_op_to_niggli_cell()
       xs = xs.change_basis(change_of_basis_op)
-      fmodel = mmtbx.f_model.manager(
-        f_obs=fo.change_basis(change_of_basis_op).map_to_asu(),
-        abcd=hl_coeffs.change_basis(change_of_basis_op).map_to_asu(),
-        xray_structure=xs)
-    else:
-      fmodel = mmtbx.f_model.manager(
-        f_obs=fo,
-        abcd=hl_coeffs,
-        xray_structure=xs)
+      fo_ = fo.change_basis(change_of_basis_op).map_to_asu()
+      hl_ = hl_coeffs.change_basis(change_of_basis_op).map_to_asu()
+      fo_, hl_ = fo_.common_sets(hl_)
+    fmodel = mmtbx.utils.fmodel_simple(
+      f_obs=fo_,
+      xray_structures=[xs],
+      bulk_solvent_correction=True,
+      anisotropic_scaling=True,
+      r_free_flags=fo_.array(data=flex.bool(fo_.size(), False)))
+    fmodel.update(abcd=hl_)
 
     master_phil = mmtbx.maps.map_and_map_coeff_master_params()
     map_params = master_phil.fetch(iotbx.phil.parse("""\
@@ -209,6 +211,32 @@ map_coefficients {
     fig = pyplot.figure()
 
     if len(dm.correlation_coeffs) > 1:
+      start_coeffs, model_coeffs = dm.map_coeffs_start.common_sets(model_map_coeffs)
+      corr = flex.linear_correlation(
+        start_coeffs.phases().data(), model_coeffs.phases().data())
+      corr.show_summary()
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1,1,1)
+      ax.set_title("phases start")
+      ax.set_xlabel("Experimental phases")
+      ax.set_ylabel("Phases from refined model")
+      ax.scatter(start_coeffs.phases().data(), model_coeffs.phases().data(),
+                 marker="x", s=10)
+      pdf.savefig(fig)
+      #
+      dm_coeffs, model_coeffs = dm.map_coeffs.common_sets(model_map_coeffs)
+      corr = flex.linear_correlation(
+        dm_coeffs.phases().data(), model_coeffs.phases().data())
+      corr.show_summary()
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1,1,1)
+      ax.set_title("phases dm")
+      ax.set_xlabel("Phases from density modification")
+      ax.set_ylabel("Phases from refined model")
+      ax.scatter(dm_coeffs.phases().data(), model_coeffs.phases().data(),
+                 marker="x", s=10)
+      pdf.savefig(fig)
+      #
       data = dm.correlation_coeffs
       fig = pyplot.figure()
       ax = fig.add_subplot(1,1,1)
@@ -264,14 +292,29 @@ map_coefficients {
   # output map coefficients if requested
   mtz_params = params.output.mtz
   if mtz_params.file_name is not None:
-    mtz_dataset = dm_map_coeffs.as_mtz_dataset(
-     column_root_label="FWT",
-     label_decorator=iotbx.mtz.ccp4_label_decorator())
+    label_decorator=iotbx.mtz.ccp4_label_decorator()
+    fo = dm.miller_array_in_original_setting(dm.f_obs_complete).common_set(dm_map_coeffs)
+    mtz_dataset = fo.as_mtz_dataset(
+      column_root_label="F",
+      label_decorator=label_decorator)
+    mtz_dataset.add_miller_array(
+      dm_map_coeffs,
+      column_root_label="FWT",
+      label_decorator=label_decorator)
+    phase_source = dm.miller_array_in_original_setting(dm.phase_source).common_set(dm_map_coeffs)
+    mtz_dataset.add_miller_array(
+      phase_source.array(data=flex.abs(phase_source.data())),
+      column_root_label="FOM",
+      label_decorator=label_decorator)
+    mtz_dataset.add_miller_array(
+      phase_source.array(data=phase_source.phases(deg=True).data()),
+      column_root_label="PHIB",
+      label_decorator=None)
     if mtz_params.output_hendrickson_lattman_coefficients:
       mtz_dataset.add_miller_array(
         dm_hl_coeffs,
         column_root_label="P",
-        label_decorator=iotbx.mtz.ccp4_label_decorator())
+        label_decorator=label_decorator)
     mtz_dataset.mtz_object().write(mtz_params.file_name)
 
   return result(

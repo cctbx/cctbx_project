@@ -35,6 +35,10 @@ density_modification {
   final_steps = 10
   d_min = 2.5
   grid_resolution_factor = 1/4
+  asu_contents {
+    n_residues = 96
+  }
+  anisotropic_correction = True
 }
 """
 
@@ -61,8 +65,8 @@ def exercise_density_modification():
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
   assert result.stdout_lines[-4].startswith('Starting dm/model correlation:')
   assert result.stdout_lines[-3].startswith('Final dm/model correlation:')
-  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.635176)
-  assert approx_equal(float(result.stdout_lines[-3].split()[-1]), 0.782148, 5e-4)
+  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.614388)
+  assert approx_equal(float(result.stdout_lines[-3].split()[-1]), 0.792405, 5e-4)
 
 def run():
   exercise_density_modification()
