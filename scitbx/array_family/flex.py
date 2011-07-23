@@ -89,10 +89,12 @@ def export_to(target_module_name):
     "random_double_r3_rotation_matrix",
     "random_double_r3_rotation_matrix_arvo_1992",
     "random_int_gaussian_distribution",
+    "median",
     "py_object",
     "linear_regression",
     "linear_correlation",
     "histogram",
+    "show_count_stats",
     "permutation_generator",
     "smart_selection",
     "compare_derivatives"]
@@ -306,6 +308,34 @@ class _(boost.python.injector, ext.histogram):
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
       print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
+
+def show_count_stats(
+      counts,
+      group_size=10,
+      label_0="None",
+      out=None,
+      prefix=""):
+  assert counts.size() != 0
+  if (out is None): out = sys.stdout
+  from __builtin__ import int, max
+  counts_sorted = sorted(counts, reverse=True)
+  threshold = max(1, int(counts_sorted[0] / group_size) * group_size)
+  n = counts_sorted.size()
+  wt = max(len(label_0), len(str(threshold)))
+  wc = len(str(n))
+  fmt_val  = prefix + ">= %%%dd:  %%%dd  %%7.5f" % (wt, wc)
+  fmt_zero = prefix + "   %s:  %%%dd  %%7.5f" % (("%%%ds" % wt) % label_0, wc)
+  for i,count in enumerate(counts_sorted):
+    if (count >= threshold): continue
+    assert count >= 0
+    if (i > 0):
+      print >> out, fmt_val % (threshold, i, i/n)
+    if (count == 0):
+      print >> out, fmt_zero % (n-i, 1-i/n)
+      break
+    threshold = max(1, threshold-group_size)
+  else:
+    print >> out, fmt_val % (threshold, n, 1)
 
 def permutation_generator(size):
   result = size_t(xrange(size))
