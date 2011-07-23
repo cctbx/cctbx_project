@@ -17,8 +17,6 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   master_phil_str = """
 show_all_params = False
   .type = bool
-show_histograms = False
-  .type = bool
 filter_outliers = True
   .type = bool
 format = *phenix phenix_bonds pymol refmac kinemage
@@ -30,29 +28,11 @@ refinement {
     %s
   }
 }""" % sec_str_master_phil_str
-  master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
-  parameter_interpreter = master_phil.command_line_argument_interpreter(
-    home_scope="")
-  for arg in args :
-    if os.path.isfile(arg) :
-      if iotbx.pdb.is_pdb_file(arg) :
-        pdb_files.append(os.path.abspath(arg))
-      else :
-        try :
-          user_phil = iotbx.phil.parse(file_name=arg)
-        except RuntimeError :
-          print "Unrecognizable file format for %s" % arg
-        else :
-          sources.append(user_phil)
-    else :
-      if arg.startswith("--") :
-        arg = arg[2:] + "=True"
-      try :
-        user_phil = parameter_interpreter.process(arg=arg)
-        sources.append(user_phil)
-      except RuntimeError :
-        print "Unrecognizable parameter %s" % arg
-  working_phil = master_phil.fetch(sources=sources)
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil_string=master_phil_str,
+    pdb_file_def="refinement.secondary_structure.input.file_name")
+  working_phil = pcl.work
   params = working_phil.extract()
   ss_params = params.refinement.secondary_structure
   if params.quiet :
@@ -76,19 +56,11 @@ refinement {
     params=ss_params)
   m.find_automatically(log=log)
   prefix_scope="refinement.secondary_structure"
-  if params.show_histograms or params.format != "phenix" :
+  if (params.format != "phenix") :
     prefix_scope = ""
   ss_phil = None
   working_phil = m.as_phil_str(master_phil=sec_str_master_phil)
   phil_diff = sec_str_master_phil.fetch_diff(source=working_phil)
-  #params = working_phil.extract()
-  #if params.show_histograms :
-  #  #working_phil.show()
-  #  phil_diff.show()
-  #  print >> out, ""
-  #  print >> out, "========== Analyzing hydrogen bonding distances =========="
-  #  print >> out, ""
-  #  bonds_table = m.get_bonds_table(log=log)
   if params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif params.format in ["pymol", "refmac", "kinemage"] :
