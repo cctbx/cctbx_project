@@ -196,7 +196,8 @@ namespace cctbx { namespace adptbx {
       h_u_1 = h_h1*h1_u;
       h_u_2 = h_h2*h2_u;
       if (!r_2.is_unit_mx()) {
-        af::tiny<T, 6*6> rr_2 = r_2.r().tensor_transform_matrix<T>();
+        af::tiny<T, 6*6> rr_2 = r_2.r().tensor_transform_matrix(
+          scitbx::type_holder<T>());
         af::tiny<T, 6> rhs;
         matrix_transposed_vector(6,6,
                                  rr_2.begin(), h_u_2.begin(), rhs.begin());
