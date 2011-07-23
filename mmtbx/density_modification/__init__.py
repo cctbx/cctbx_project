@@ -1,4 +1,4 @@
-from mmtbx.scaling import relative_scaling
+from mmtbx.scaling import absolute_scaling, relative_scaling
 import iotbx.data_plots
 from cctbx import adptbx
 from cctbx import maptbx, miller
@@ -75,6 +75,9 @@ master_params_str = """
         .short_caption = Final averaging radius
     }
   }
+  anisotropic_correction = True
+    .type = bool
+    .help = Correct the observations for anisotropy
   asu_contents
     .help = "Defines the ASU contents"
     .short_caption = ASU contents
@@ -145,6 +148,7 @@ class density_modification(object):
       self.params.solvent_mask.averaging_radius.initial = \
          self.params.solvent_mask.averaging_radius.final + 1
     self.matthews_analysis()
+    self.anisotropic_correction()
     self.change_of_basis_op = None
     if self.params.change_basis_to_niggli_cell:
       self.change_of_basis_op = self.f_obs.change_of_basis_op_to_niggli_cell()
@@ -298,6 +302,25 @@ class density_modification(object):
       self.params.asu_contents.n_copies_per_asu = self.matthews_result[2]
     if self.params.solvent_fraction is None:
       self.params.solvent_fraction = self.matthews_result[3]
+
+  def anisotropic_correction(self):
+    if not self.params.anisotropic_correction: return
+    self.aniso_scale_and_b = None
+    n_copies_solc = self.params.asu_contents.n_copies_per_asu
+    n_residues = self.params.asu_contents.n_residues
+    n_bases = self.params.asu_contents.n_bases
+    self.aniso_scale_and_b = absolute_scaling.ml_aniso_absolute_scaling(
+      miller_array=self.f_obs,
+      n_residues=n_residues*self.f_obs.space_group().order_z()*n_copies_solc,
+      n_bases=n_bases*self.f_obs.space_group().order_z()*n_copies_solc)
+    self.aniso_scale_and_b.show(out=self.log,verbose=1)
+    b_cart = self.aniso_scale_and_b.b_cart
+    trace = sum(b_cart[:3])/3
+    b_cart = [b_cart[0]-trace, b_cart[1]-trace, b_cart[2]-trace,
+              b_cart[3], b_cart[4], b_cart[5]]
+    u_star = adptbx.u_cart_as_u_star(self.f_obs.unit_cell(), adptbx.b_as_u(b_cart))
+    self.f_obs = absolute_scaling.anisotropic_correction(
+      self.f_obs, 0.0, u_star).set_observation_type(self.f_obs)
 
   def compute_phase_source(self, hl_coeffs, n_steps=72):
     integrator = miller.phase_integrator(n_steps=n_steps)
@@ -461,6 +484,8 @@ class density_modification(object):
     fc_scale.set_selected(centric_flags, 0)
     self.map_coeffs = hl_array.array(
       data=mFo.data()*fo_scale - DFc.data()*fc_scale)
+    self.fom = hl_array.array(data=fom)
+    self.hl_coeffs = hl_array
     # statistics
     self.r1_factor = f_obs_active.r1_factor(f_calc_active)
     matched_indices = f_obs.match_indices(f_obs_active)
@@ -542,17 +567,18 @@ class density_modification(object):
         self._active_indices = self.ref_flags_array.select(sel).indices()
       return self._active_indices
 
+  def miller_array_in_original_setting(self, miller_array):
+    if self.change_of_basis_op is not None:
+      return miller_array.change_basis(self.change_of_basis_op.inverse())
+    return miller_array
+
   class map_coeffs_in_original_setting(libtbx.property):
     def fget(self):
-      if self.change_of_basis_op is not None:
-        return self.map_coeffs.change_basis(self.change_of_basis_op.inverse())
-      return self.map_coeffs
+      return self.miller_array_in_original_setting(self.map_coeffs)
 
   class hl_coeffs_in_original_setting(libtbx.property):
     def fget(self):
-      if self.change_of_basis_op is not None:
-        return self.hl_coeffs.change_basis(self.change_of_basis_op.inverse())
-      return self.hl_coeffs
+      return self.miller_array_in_original_setting(self.hl_coeffs)
 
   class radius(libtbx.property):
     def fget(self):
