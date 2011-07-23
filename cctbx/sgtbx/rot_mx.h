@@ -356,6 +356,15 @@ namespace cctbx { namespace sgtbx {
       /// Matrix realising a symmetric tensor transform
       template <typename T>
       af::tiny<T,6*6> tensor_transform_matrix() const {
+        return tensor_transform_matrix(scitbx::type_holder<T>());
+      }
+
+      /// For compatibility with older compilers.
+      template <typename T>
+      af::tiny<T,6*6>
+      tensor_transform_matrix(
+        scitbx::type_holder<T> const&) const
+      {
         af::tiny<T,6*6> result = num_.tensor_transform_matrix();
         result /= T(den_);
         return result;
