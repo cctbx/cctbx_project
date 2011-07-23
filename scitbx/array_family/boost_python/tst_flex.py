@@ -1750,6 +1750,71 @@ def exercise_histogram():
     assert not show_diff(t.getvalue(), s.getvalue())
     assert l.n_out_of_slot_range() == 17
 
+def exercise_show_count_stats():
+  def check(counts, prefix="", group_size=10, expected=None):
+    sio = StringIO()
+    flex.show_count_stats(
+      counts=flex.size_t(counts),
+      group_size=group_size,
+      out=sio,
+      prefix=prefix)
+    assert not show_diff(sio.getvalue(), expected)
+  check([0], expected="""\
+   None:  1  1.00000
+""")
+  check([0,0], expected="""\
+   None:  2  1.00000
+""")
+  check([1], expected="""\
+>=    1:  1  1.00000
+""")
+  check([1,1], expected="""\
+>=    1:  2  1.00000
+""")
+  check([1,0], expected="""\
+>=    1:  1  0.50000
+   None:  1  0.50000
+""")
+  check([1,1,11,11], expected="""\
+>=   10:  2  0.50000
+>=    1:  4  1.00000
+""")
+  check([1,1,11,11,0], expected="""\
+>=   10:  2  0.40000
+>=    1:  4  0.80000
+   None:  1  0.20000
+""")
+  check([10,20], expected="""\
+>=   20:  1  0.50000
+>=   10:  2  1.00000
+""")
+  check([10,20,0], expected="""\
+>=   20:  1  0.33333
+>=   10:  2  0.66667
+   None:  1  0.33333
+""")
+  check(range(34), prefix=":|", expected="""\
+:|>=   30:   4  0.11765
+:|>=   20:  14  0.41176
+:|>=   10:  24  0.70588
+:|>=    1:  33  0.97059
+:|   None:   1  0.02941
+""")
+  check(range(23,74), group_size=12, expected="""\
+>=   72:   2  0.03922
+>=   60:  14  0.27451
+>=   48:  26  0.50980
+>=   36:  38  0.74510
+>=   24:  50  0.98039
+>=   12:  51  1.00000
+""")
+  check([0]*93+range(0,10001,100), group_size=5000, expected="""\
+>= 10000:    1  0.00515
+>=  5000:   51  0.26289
+>=     1:  100  0.51546
+    None:   94  0.48454
+""")
+
 def simple_linear_regression(x_obs, y_obs, w_obs):
   assert len(x_obs) == len(y_obs)
   assert len(x_obs) == len(w_obs)
@@ -3092,6 +3157,7 @@ def run(iterations):
     exercise_flex_sym_mat3_double()
     exercise_flex_tiny_size_t_2()
     exercise_histogram()
+    exercise_show_count_stats()
     exercise_linear_regression()
     exercise_linear_correlation()
     exercise_mean_and_variance()
