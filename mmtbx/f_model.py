@@ -1156,6 +1156,8 @@ class manager(manager_mixin):
       self.set_target_name(target_name=target_name)
     if(abcd is not None):
       self.abcd = abcd
+      self.active_arrays.hl_coeffs = abcd
+      self.passive_arrays.hl_coeffs = abcd
     if(twin_fraction is not None):
       self.twin_fraction = twin_fraction
       self.update_core()
