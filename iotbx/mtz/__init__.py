@@ -106,6 +106,10 @@ def default_column_types(miller_array):
       result = "GP"
     else:
       result = "FP"
+  elif ((   miller_array.is_bool_array()
+         or miller_array.is_integer_array())
+        and miller_array.sigmas() is None):
+    result = "I"
   elif (miller_array.is_xray_intensity_array()):
     if (miller_array.anomalous_flag()):
       result = "K"
@@ -126,10 +130,6 @@ def default_column_types(miller_array):
       result = "F"
       if (miller_array.sigmas() is not None):
         result += "Q"
-  elif ((   miller_array.is_bool_array()
-         or miller_array.is_integer_array())
-        and miller_array.sigmas() is None):
-    result = "I"
   elif (miller_array.is_real_array()):
     if (miller_array.anomalous_flag()):
       result = "G"
