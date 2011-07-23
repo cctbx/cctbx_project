@@ -103,7 +103,6 @@ class scene (object) :
       self.missing_set = self.missing_set.expand_to_p1().customized_copy(
         crystal_symmetry=original_symmetry)
     data = array.data()
-    assert (isinstance(data, flex.double) or isinstance(data, flex.bool))
     self.r_free_mode = False
     if isinstance(data, flex.bool) :
       self.r_free_mode = True
@@ -112,7 +111,14 @@ class scene (object) :
       data = data_as_float
       self.data = data.deep_copy()
     else :
-      self.data = array.data().deep_copy()
+      if isinstance(data, flex.double) :
+        self.data = data.deep_copy()
+      elif isinstance(data, flex.complex_double) :
+        self.data = flex.abs(data)
+      elif hasattr(array.data(), "as_double") :
+        self.data = array.data().as_double()
+      else:
+        raise RuntimeError("Unexpected data type: %r" % data)
       if (settings.show_data_over_sigma) :
         if (array.sigmas() is None) :
           raise Sorry("sigmas not defined.")
