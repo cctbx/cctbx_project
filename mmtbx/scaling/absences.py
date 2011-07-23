@@ -515,8 +515,10 @@ the number of violations in the non-absent class.
     for  item in [0]: # absence_class in self.abs_check.absence_classes[ self.sg.group().crystal_system() ]:
       table_rows = []
       for condition in self.abs_check.absence_classes[
-              str( sgtbx.space_group_info(group=self.sg.group().build_derived_reflection_intensity_group(False))
-                 ) ] : # crystal_system() ]:
+        str(sgtbx.space_group_info(
+          group=self.sg.group().build_derived_reflection_intensity_group(False))\
+            .as_reference_setting()
+            ) ] : # crystal_system() ]:
         n_abs   = 0
         n_n_abs = 0
         n_tot   = 0
