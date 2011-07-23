@@ -7,7 +7,6 @@ import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 import cStringIO
-import os
 import sys
 
 def run (args, out=sys.stdout, log=sys.stderr) :
