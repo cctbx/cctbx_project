@@ -10,7 +10,7 @@ namespace scitbx { namespace matrix {
   template <typename T>
   void matrix_vector(int m, int n,
                      T const *a, T const *x, T *y,
-                     T alpha=1., T beta=0.)
+                     T alpha=1, T beta=0)
   {
     scale_vector(m, y, beta);
     if (alpha == 0.) return;
@@ -29,7 +29,7 @@ namespace scitbx { namespace matrix {
   template <typename T>
   void matrix_transposed_vector(int m, int n,
                                 T const *a, T const *x, T *y,
-                                T alpha=1., T beta=0.)
+                                T alpha=1, T beta=0)
   {
     scale_vector(m, y, beta);
     if (alpha == 0.) return;
@@ -49,7 +49,7 @@ namespace scitbx { namespace matrix {
   template <typename T>
   void symmetric_packed_u_vector(int n,
                                  T const *a, T const *x, T *y,
-                                 T alpha=1., T beta=0.)
+                                 T alpha=1, T beta=0)
   {
     scale_vector(n, y, beta);
     if (alpha == 0.) return;
@@ -75,7 +75,7 @@ namespace scitbx { namespace matrix {
   template <typename T>
   void symmetric_packed_u_rank_1_update(int n,
                                         T *a, T const *x,
-                                        T alpha=1.)
+                                        T alpha=1)
   {
     for (int i=0; i<n; ++i) {
       T alpha_x_i = alpha * x[i];
