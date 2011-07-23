@@ -157,10 +157,6 @@ def make_pick_and_run_tests(working_dir, interrupted,
   return func
 
 def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
-  if (os.name == "nt"):
-    python_exe = sys.executable
-  else:
-    python_exe = "libtbx.python"
   for tst in tst_list:
     cmd_args = ""
     if (type(tst) == type([])):
@@ -181,7 +177,7 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     if (tst_path.endswith(".py")):
       if (co.valgrind):
         cmd = "libtbx.valgrind "
-      cmd += python_exe + " " + tst_path
+      cmd += "libtbx.python " + tst_path
     else:
       if (co.valgrind):
         cmd = os.environ.get(
