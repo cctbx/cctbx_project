@@ -12,6 +12,8 @@ from iotbx.regression.utils import random_f_calc
 from libtbx.test_utils import Exception_expected, approx_equal, eps_eq
 import math
 import sys
+import os
+op = os.path
 
 def to_mtz(miller_array, column_root_label, column_types=None):
   mtz_object = mtz.object()
@@ -254,6 +256,38 @@ def run_call_back(flags, space_group_info):
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
 
+def exercise_miller_array_data_types():
+  miller_set = crystal.symmetry(
+    unit_cell=(10,10,10,90,90,90),
+    space_group_symbol="P1").miller_set(
+      indices=flex.miller_index([(1,2,3),(4,5,6)]),
+      anomalous_flag=False)
+  for data in [
+        flex.bool([False,True]),
+        flex.int([0,1]),
+        flex.size_t([0,1]),
+        flex.double([0,1]),
+        flex.complex_double([0,1])]:
+    miller_array = miller_set.array(data=data)
+    if (op.isfile("tmp.mtz")): os.remove("tmp.mtz")
+    assert not op.isfile("tmp.mtz")
+    miller_array.as_mtz_dataset(column_root_label="DATA").mtz_object().write(
+      file_name="tmp.mtz")
+    assert op.isfile("tmp.mtz")
+    mtz_obj = mtz.object(file_name="tmp.mtz")
+    miller_arrays_read_back = mtz_obj.as_miller_arrays()
+    assert len(miller_arrays_read_back) == 1
+    miller_array_read_back = miller_arrays_read_back[0]
+    assert miller_array_read_back.indices().all_eq(miller_array.indices())
+    if (miller_array.is_integer_array() or miller_array.is_bool_array()):
+      assert miller_array_read_back.data().all_eq(flex.int([0, 1]))
+    elif (miller_array.is_real_array()):
+      assert miller_array_read_back.data().all_eq(flex.double([0, 1]))
+    elif (miller_array.is_complex_array()):
+      assert miller_array_read_back.data().all_eq(flex.complex_double([0, 1]))
+    else:
+      raise RuntimeError("Programming error.")
+
 def exercise_extract_delta_anomalous():
   miller_array_start = miller.set(
     crystal_symmetry=crystal.symmetry(
@@ -410,6 +444,7 @@ def exercise():
     return
   exercise_extract_delta_anomalous()
   exercise_repair_ccp4i_import_merged_data()
+  exercise_miller_array_data_types()
   for anomalous_flag in [False, True]:
     exercise_hl_ab_only(anomalous_flag=anomalous_flag)
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
