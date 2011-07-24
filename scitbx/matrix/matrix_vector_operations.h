@@ -13,7 +13,7 @@ namespace scitbx { namespace matrix {
                      T alpha=1, T beta=0)
   {
     scale_vector(m, y, beta);
-    if (alpha == 0.) return;
+    if (alpha == 0) return;
     for (int i=0; i<m; ++i) {
       T ax_i = 0;
       for (int j=0; j<n; ++j) {
@@ -32,7 +32,7 @@ namespace scitbx { namespace matrix {
                                 T alpha=1, T beta=0)
   {
     scale_vector(m, y, beta);
-    if (alpha == 0.) return;
+    if (alpha == 0) return;
     for (int i=0; i<m; ++i) {
       T alpha_x_i = alpha * x[i];
       for (int j=0; j<n; ++j) {
@@ -52,7 +52,7 @@ namespace scitbx { namespace matrix {
                                  T alpha=1, T beta=0)
   {
     scale_vector(n, y, beta);
-    if (alpha == 0.) return;
+    if (alpha == 0) return;
     for (unsigned i=0; i<n; ++i) {
       T alpha_x_i = alpha * x[i];
       T ax_i = 0;
@@ -91,11 +91,11 @@ namespace scitbx { namespace matrix {
    */
   template <typename T>
   T quadratic_form_packed_u(int n, T const *a, T const *x) {
-    T diag = 0., off_diag = 0.;
+    T diag = 0, off_diag = 0;
     for (int i=0; i<n; ++i) {
       T a_ii = *a++;
       diag += x[i] * a_ii * x[i];
-      T off_diag_i = 0.;
+      T off_diag_i = 0;
       for (int j=i+1; j<n; ++j) {
         T a_ij = *a++;
         off_diag_i += a_ij * x[j];
