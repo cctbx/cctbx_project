@@ -1447,7 +1447,8 @@ class array(set):
 
   def is_integer_array(self):
     return isinstance(self.data(), flex.int) \
-        or isinstance(self.data(), flex.long)
+        or isinstance(self.data(), flex.long) \
+        or isinstance(self.data(), flex.size_t)
 
   def is_real_array(self):
     return isinstance(self.data(), flex.float) \
