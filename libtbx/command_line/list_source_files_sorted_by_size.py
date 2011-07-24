@@ -12,22 +12,24 @@ def run(args):
     elif (op.isdir(arg)):
       file_names.extend(libtbx.path.walk_source_tree(top=arg))
   contents = []
-  sz_fn_ext = []
+  sz_ln_fn_ext = []
   for fn in file_names:
     i = fn.rfind(".")
     if (i < 0):
       continue
     ext = fn[i+1:]
-    if (ext in ["c", "h", "cpp", "hpp", "py", "java", "f", "sh", "csh"]):
+    if (ext in ["c", "h", "cpp", "hpp", "py", "java", "f", "sh", "csh", "bat"]):
       content = open(fn, "rb").read()
       contents.append(content)
-      sz_fn_ext.append((len(content), fn, ext))
-  sz_fn_ext.sort()
+      sz_ln_fn_ext.append((len(content), len(content.splitlines()), fn, ext))
+  sz_ln_fn_ext.sort()
   sz_sum = 0
+  ln_sum = 0
   ext_counts = libtbx.dict_with_default_0()
-  for sz,fn,ext in sz_fn_ext:
-    print "%10d %s" % (sz,fn)
+  for sz,ln,fn,ext in sz_ln_fn_ext:
+    print "%10d %6d %s" % (sz,ln,fn)
     sz_sum += sz
+    ln_sum += ln
     ext_counts[ext] += 1
   print
   print "Number of files by extension:"
@@ -35,11 +37,12 @@ def run(args):
     label_count_pairs=ext_counts.items(),
     prefix="  ")
   print
-  n = len(sz_fn_ext)
+  n = len(sz_ln_fn_ext)
   print "Number of files:", n
+  print "Number of lines:", ln_sum
   if (n != 0):
     print "Sum of sizes:", sz_sum, "(mean: %d, median: %d)" % (
-      iround(sz_sum/n), sz_fn_ext[n//2][0])
+      iround(sz_sum/n), sz_ln_fn_ext[n//2][0])
     import zlib
     print "Size of all files together zlib.compress'ed:", \
       len(zlib.compress("".join(contents)))
