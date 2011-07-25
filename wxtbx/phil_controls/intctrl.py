@@ -16,8 +16,9 @@ class IntCtrl (ValidatedTextCtrl) :
   def AttachSpinner (self, spinner) :
     spinner.Bind(wx.EVT_SPIN_DOWN, self.OnSpinDown, spinner)
     spinner.Bind(wx.EVT_SPIN_UP, self.OnSpinUp, spinner)
-    spinner.SetMax(sys.maxint)
-    spinner.SetMin(-sys.maxint)
+    # XXX sys.maxint breaks SetMax() on 64-bit Macs (wxPython 2.9)
+    spinner.SetMax(2147483647)
+    spinner.SetMin(-2147483647)
     try :
       val = self.GetPhilValue()
     except Exception, e :
