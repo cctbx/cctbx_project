@@ -1,6 +1,6 @@
 
 import wx
-
+user_callback = None
 class XrayView (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     self._img = None
@@ -68,6 +68,8 @@ class XrayView (wx.Panel) :
       x1, y1 = self._img.image_coords_as_screen_coords(*(self.line_start))
       x2, y2 = self._img.image_coords_as_screen_coords(*(self.line_end))
       dc.DrawLine(x1, y1, x2, y2)
+    if user_callback != None:
+      user_callback(dc,self,wx)
 
   def OnSize (self, event) :
     if (self._img is not None) :
