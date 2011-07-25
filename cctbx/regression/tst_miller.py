@@ -1339,7 +1339,7 @@ def exercise_map_to_asu(space_group_info):
           trig(phases_exp_asu.data()*f))
 
 def exercise_complete_array():
-  crystal_symmetry = crystal.symmetry((2.1,3,4), "P 2 2 2")
+  crystal_symmetry = crystal.symmetry((5.1,6,7), "P 2 2 2")
   set = miller.build_set(
     crystal_symmetry=crystal_symmetry,
     anomalous_flag=False,

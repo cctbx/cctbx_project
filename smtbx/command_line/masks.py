@@ -20,8 +20,10 @@ def exercise_masks(xs, fo_sq,
                    resolution_cutoff=None,
                    atom_radii_table=None,
                    use_space_group_symmetry=False,
+                   use_set_completion=True,
                    debug=False,
-                   verbose=False):
+                   verbose=False,
+                   twin_components=None):
   assert resolution_factor is None or grid_step is None
   xs_ref = xs.deep_copy_scatterers()
   time_total = time_log("masks total").start()
@@ -38,7 +40,9 @@ def exercise_masks(xs, fo_sq,
     print
     fo_sq_merged.show_comprehensive_summary()
     print
-  mask = masks.mask(xs, fo_sq_merged)
+  observations = fo_sq_merged.as_xray_observations(
+    twin_components=twin_components)
+  mask = masks.mask(xs, observations)
   time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
                shrink_truncation_radius=shrink_truncation_radius,
@@ -171,13 +175,38 @@ def run(args):
                           action="store_true")).process(args=args)
   structure_file = command_line.args[0]
   ext = os.path.splitext(structure_file)[-1].lower()
+  twin_components = []
   if ext in ('.res', '.ins'):
-    xs = xray.structure.from_shelx(filename=structure_file)
+    import iotbx.builders
+    import iotbx.shelx
+    builder = iotbx.builders.mixin_builder_class(
+      "builder",
+      iotbx.builders.twinning_builder,
+      iotbx.builders.reflection_data_source_builder,
+      iotbx.builders.weighted_constrained_restrained_crystal_structure_builder)()
+    stream = iotbx.shelx.command_stream(filename=structure_file)
+    stream = iotbx.shelx.instruction_parser(stream, builder)
+    stream = iotbx.shelx.crystal_symmetry_parser(stream.filtered_commands(),
+                                                 builder)
+    stream = iotbx.shelx.wavelength_parser(stream.filtered_commands(), builder)
+    stream = iotbx.shelx.afix_parser(stream.filtered_commands(), builder)
+    stream = iotbx.shelx.atom_parser(stream.filtered_commands(), builder,
+                                     strictly_shelxl=False)
+    stream = iotbx.shelx.restraint_parser(stream.filtered_commands(), builder)
+    stream.parse()
+    xs = builder.structure
+    twin_components = builder.twin_components
+    if twin_components and not xs.space_group().is_centric():
+      print file_path
+      print 'twin: ', twin_components[0].twin_law.as_hkl()
+    xs.set_inelastic_form_factors(
+      photon=builder.wavelength_in_angstrom, table="sasaki")
   elif ext == '.cif':
     xs = xray.structure.from_cif(filename=structure_file)
   else:
     print "%s: unsupported structure file format {shelx|cif}" %ext
     return
+  xs.scattering_type_registry(table="it1992")
   reflections_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = xs.crystal_symmetry(),
     reflection_files = [
@@ -185,6 +214,7 @@ def run(args):
     ]
   )
   fo_sq = reflections_server.get_miller_arrays(None)[0]
+  #twin_components = None
 
   if command_line.options.cb_op is not None:
     cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(command_line.options.cb_op))
@@ -207,6 +237,7 @@ def run(args):
     d_min = uctbx.two_theta_as_d(two_theta_max, wavelength=0.71073, deg=True)
   exercise_masks(
     xs, fo_sq,
+    twin_components=twin_components,
     solvent_radius=command_line.options.solvent_radius,
     shrink_truncation_radius=command_line.options.shrink_truncation_radius,
     resolution_factor=command_line.options.resolution_factor,

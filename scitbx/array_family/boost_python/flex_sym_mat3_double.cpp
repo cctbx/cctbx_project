@@ -104,6 +104,32 @@ namespace scitbx { namespace af { namespace boost_python {
       for(std::size_t i=0;i<a.size();i++) a[i] *= f;
     }
 
+    af::shared<sym_mat3<double> >
+    mul_a_scalar_a(
+      af::const_ref<sym_mat3<double> > const& a,
+      af::const_ref<double> const& f)
+    {
+      SCITBX_ASSERT(a.size() == f.size());
+      af::shared<sym_mat3<double> > result((af::reserve(a.size())));
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(a[i] * f[i]);
+      }
+      return result;
+    }
+
+    af::shared<sym_mat3<double> >
+    scalar_a_mul_a(
+      af::const_ref<double> const& f,
+      af::const_ref<sym_mat3<double> > const& a)
+    {
+      SCITBX_ASSERT(a.size() == f.size());
+      af::shared<sym_mat3<double> > result((af::reserve(a.size())));
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(a[i] * f[i]);
+      }
+      return result;
+    }
+
     flex_double
     norms(const_ref<sym_mat3<double> > const& a)
     {
@@ -112,6 +138,14 @@ namespace scitbx { namespace af { namespace boost_python {
       for(std::size_t i=0;i<a.size();i++) {
         *r++ = std::sqrt(a[i].dot(a[i]));
       }
+      return result;
+    }
+
+    sym_mat3<double>
+    sum(const_ref<sym_mat3<double> > const& a)
+    {
+      sym_mat3<double> result(0,0,0,0,0,0);
+      for(std::size_t i=0;i<a.size();i++) result += a[i];
       return result;
     }
 
@@ -128,9 +162,12 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("__init__", boost::python::make_constructor(from_double))
       .def("as_double", as_double)
       .def("norms", norms)
+      .def("sum", sum)
       .def("__add__", f_w::add_a_a)
       .def("__sub__", f_w::sub_a_a)
       .def("__imul__", imul_a_scalar, return_self<>())
+      .def("__mul__", mul_a_scalar_a)
+      .def("__mul__", scalar_a_mul_a)
     ;
   }
 

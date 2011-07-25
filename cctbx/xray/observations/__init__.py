@@ -1,4 +1,5 @@
 from cctbx_xray_observations_ext import *
+import boost.python
 
 def customized_copy(obs, twin_fractions=None, twin_components=None):
   """ Creates a copy of the observation object and with new twin fractions
@@ -15,3 +16,7 @@ def customized_copy(obs, twin_fractions=None, twin_components=None):
   result.ref_twin_fractions = twin_fractions
   result.ref_twin_components = twin_components
   return result
+
+#class _(boost.python.injector, observations):
+
+  #def __init__(self, indices
