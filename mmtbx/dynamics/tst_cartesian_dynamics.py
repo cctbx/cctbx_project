@@ -51,8 +51,11 @@ class get_inputs(object):
       return
     if (verbose): log = sys.stdout
     else:         log = StringIO()
+    params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+    params.nonbonded_weight = 16
     processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
+      params=params,
       ener_lib=ener_lib,
       file_name=pdb_file,
       log=log)
@@ -164,8 +167,11 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
     return
   if (verbose): log = sys.stdout
   else:         log = StringIO()
+  params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+  params.nonbonded_weight = 16
   processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv = mon_lib_srv,
+    params=params,
     ener_lib = ener_lib,
     file_name = pdb_file,
     log = log)

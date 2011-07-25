@@ -94,9 +94,12 @@ def exercise_2():
   ener_lib = monomer_library.server.ener_lib()
   pdb_file = libtbx.env.find_in_repositories(
                    relative_path="phenix_regression/pdb/adp_out_stat.pdb", test=os.path.isfile)
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.nonbonded_weight = 16
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
+                                       params                    = params,
                                        file_name                 = pdb_file,
                                        raw_records               = None,
                                        force_symmetry            = True)
@@ -151,7 +154,10 @@ def exercise_3():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/arg_h_hohh1_sh.pdb",
     test=os.path.isfile)
-  processed_pdb_files_srv = utils.process_pdb_file_srv()
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.nonbonded_weight = 16
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+    pdb_interpretation_params=params)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
