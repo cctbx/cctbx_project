@@ -136,8 +136,7 @@ class any_reflection_file(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None,
-        ignore_amplitude_intensity_ambiguity=False):
+        base_array_info=None):
     if (self._file_type is None):
       return []
     info_source = self._file_name
@@ -209,8 +208,6 @@ class any_reflection_file(object):
         result[0].set_info(result[0].info().customized_copy(
           labels=["Fobs", "SigFobs"]))
         result[0].set_observation_type_xray_amplitude()
-      elif ignore_amplitude_intensity_ambiguity:
-        pass
       else:
         raise Sorry("Unresolved amplitude/intensity ambiguity: %s\n"
           "  SHELX reflection files may contain amplitudes or intensities.\n"

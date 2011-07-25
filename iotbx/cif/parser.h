@@ -13,12 +13,6 @@
 
 namespace iotbx { namespace cif {
 
-//static const int ANTLR_VERSION_MAJOR = std::atoi(&PACKAGE_VERSION[0]);
-//static const int ANTLR_VERSION_MINOR = std::atoi(&PACKAGE_VERSION[2]);
-  
-static const int ANTLR_VERSION_MAJOR = 3;
-static const int ANTLR_VERSION_MINOR = 4;
-
 class parser : private boost::noncopyable
 {
 
@@ -29,22 +23,11 @@ class parser : private boost::noncopyable
     parser(std::string filename, boost::python::object& builder,
            bool strict=true)
     {
-      if (1 || ANTLR_VERSION_MAJOR == 3 && ANTLR_VERSION_MINOR == 4) {
-        input = antlr3FileStreamNew(pANTLR3_UINT8(filename.c_str()), ANTLR3_ENC_8BIT);
-      }
-      else {
-//        input = antlr3AsciiFileStreamNew(pANTLR3_UINT8(filename.c_str()));
-      }
+      input = antlr3AsciiFileStreamNew(pANTLR3_UINT8(filename.c_str()));
       if (input == NULL)
       {
-        if (1 || ANTLR_VERSION_MAJOR == 3 && ANTLR_VERSION_MINOR == 4) {
-          input = antlr3StringStreamNew(pANTLR3_UINT8(filename.c_str()), ANTLR3_ENC_8BIT,
-                                      filename.size(), pANTLR3_UINT8("memory"));
-        }
-        else {
-//          input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
-//            filename.c_str()), filename.size(), pANTLR3_UINT8("memory"));
-        }
+        input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
+          filename.c_str()), filename.size(), pANTLR3_UINT8("memory"));
       }
       lxr = cifLexerNew(input);
       tstream = antlr3CommonTokenStreamSourceNew(

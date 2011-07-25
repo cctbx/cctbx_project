@@ -3,7 +3,6 @@ import iotbx.cif
 from iotbx.cif.builders import CifBuilderError
 from iotbx.cif import CifParserError
 from libtbx import easy_pickle, group_args
-from libtbx.utils import time_log
 import os, traceback
 
 def run(args, command_name):
@@ -36,32 +35,25 @@ def run(args, command_name):
   verbose = co.verbose
   parse_only = co.parse_only
   #
-  build_times = libtbx.utils.show_times(time_start="now")
   cod_hkl_cif = cod_tools.build_hkl_cif(cod_ids=cod_ids, ext=ext)
-  build_times()
   cod_hkl_cif.show_summary()
   hkl_files = cod_hkl_cif.hkl
   cif_files = cod_hkl_cif.cif
   #
   n_total = 0
-  structure_counts = {}
   #
   parsing_errors = {}
   build_errors = {}
   ignored_errors = {}
   skipped = set()
-  max_delta = 0
-  max_delta_id = None
   #
   files_to_parse = []
   files_to_parse.extend(hkl_files.values())
   files_to_parse.extend(cif_files.values())
-  timer = time_log("cif")
   for i, path in enumerate(files_to_parse):
     n_total += 1
     if (i % command_line.chunk.n != command_line.chunk.i): continue
     try:
-      timer.start()
       cod_id = os.path.basename(path)
       cif_obj = iotbx.cif.reader(file_path=path)
       if parse_only: continue
@@ -88,12 +80,9 @@ def run(args, command_name):
           skipped.add(cod_id)
       if skip_file: continue
       if path.endswith('.cif'):
-        xray_structures = cif_obj.build_crystal_structures()
-        n_xs = len(xray_structures)
-        if n_xs in structure_counts: structure_counts[n_xs] += 1
-        else: structure_counts[n_xs] = 1
+        cif_obj.build_crystal_structures()
       elif path.endswith('.hkl'):
-        miller_arrays = cif_obj.build_miller_arrays()
+        cif_obj.build_miller_arrays()
       else:
         iotbx.cif.cctbx_data_structures_from_cif(cif_model=cif_obj.model())
     except KeyboardInterrupt:
@@ -135,11 +124,6 @@ def run(args, command_name):
         traceback.print_exc()
         print >> sys.stderr
       sys.stderr.flush()
-    finally:
-      timer.stop()
-      max_delta = max(max_delta, timer.delta)
-      if max_delta == timer.delta:
-        max_delta_id = cod_id
   print
 
   print "Number successfully parsed: %i/%i" \
@@ -149,23 +133,16 @@ def run(args, command_name):
     print "Number of exceptions caught:", len(build_errors)
     print "Number of exceptions ignored:", len(ignored_errors)
   print
-  print timer.legend
-  print timer.report()
-  print
   #
   show_times()
   result = group_args(
     n_hkl=len(hkl_files),
     n_cif=len(cif_files),
     n_hkl_cif_pairs=len(cod_hkl_cif.hkl_cif_pairs),
-    structure_counts=structure_counts,
     parsing_errors=parsing_errors,
     build_errors=build_errors,
     ignored_errors=ignored_errors,
-    skipped=skipped,
-    timer=timer,
-    max_delta=max_delta,
-    max_delta_id=max_delta_id)
+    skipped=skipped)
   easy_pickle.dump("result_%03i.pickle" %command_line.chunk.i, result)
   print
 

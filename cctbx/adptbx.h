@@ -565,21 +565,6 @@ namespace cctbx {
         (2 * h[1] * h[2]));
   }
 
-  //! Coefficients for gradients of Debye-Waller factor w.r.t. u_star.
-  template <typename FloatType>
-  af::shared<sym_mat3<FloatType> >
-  debye_waller_factor_u_star_gradient_coefficients(
-    af::const_ref<miller::index<> > const& miller_indices)
-  {
-    af::shared<sym_mat3<FloatType> > result((af::reserve(miller_indices.size())));
-    for(std::size_t i=0;i<miller_indices.size();i++) {
-      result.push_back(
-        debye_waller_factor_u_star_gradient_coefficients<FloatType>(
-          miller_indices[i]));
-    }
-    return result;
-  }
-
   //! Coefficients for curvatures of Debye-Waller factor w.r.t. u_star.
   /*! Formula for the curvatures:
         (-2*pi**2)**2 * debye_waller_factor_u_star(h, u_star) * result

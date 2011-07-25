@@ -195,9 +195,6 @@ def exercise_journal():
   try: b.x_journal
   except AttributeError: pass
   else: raise Exception_expected
-  try: del b.y
-  except AttributeError: pass
-  else: raise Exception_expected
 
 
 def run():

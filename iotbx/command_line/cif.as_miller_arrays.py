@@ -1,22 +1,13 @@
 import iotbx.cif
 from libtbx import easy_pickle
 from libtbx.str_utils import show_string
-import sys, os, urllib2
+import sys, os
 op = os.path
 
 def run(args):
   for f in args:
     try:
-      if os.path.isfile(f):
-        miller_arrays = iotbx.cif.reader(file_path=f).as_miller_arrays()
-      else:
-        try:
-          file_object = urllib2.urlopen(f)
-        except urllib2.URLError, e:
-          continue
-        else:
-          miller_arrays = iotbx.cif.reader(
-            file_object=file_object).as_miller_arrays()
+      miller_arrays = iotbx.cif.reader(file_path=f).as_miller_arrays()
     except KeyboardInterrupt:
       raise
     except Exception, e:

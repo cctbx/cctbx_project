@@ -24,7 +24,7 @@ def random_u_cart(u_scale=1, u_min=0):
     for i in xrange(3)] + [0,0,0])
 
 def debye_waller_factor_u_star_gradients(h, u_star):
-  return flex.double(debye_waller_factor_u_star_gradient_coefficients(h)) \
+  return flex.double(debye_waller_factor_u_star_gradient_coefficients(h=h)) \
        * (mtps * debye_waller_factor_u_star(h, u_star))
 
 def debye_waller_factor_u_star_curvatures(h, u_star):
