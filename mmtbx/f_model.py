@@ -316,6 +316,9 @@ class manager(manager_mixin):
     if(r_free_flags is None):
       r_free_flags = f_obs.array(
         data = flex.bool(f_obs.data().size(),False))
+    if abcd is not None and not abcd.indices().all_eq(f_obs.indices()):
+        abcd = abcd.complete_array(
+          new_data_value=(0,0,0,0), d_min=f_obs.d_min()).common_set(f_obs)
     self.passive_arrays = group_args(f_obs = f_obs, r_free_flags = r_free_flags,
       hl_coeffs = abcd, f_part1 = f_part1)
     if(sf_and_grads_accuracy_params is None):
@@ -386,8 +389,6 @@ class manager(manager_mixin):
       b_sol       = b_sol,
       f_part1     = f_part1.common_set(f_calc))
     assert len(b_cart) == 6
-    if(abcd is not None):
-      assert abcd.indices().all_eq(f_obs.indices()) == 1
     self.set_target_name(target_name=target_name)
     self._target_memory = _target_memory
     self._structure_factor_gradients_w = None
@@ -1154,10 +1155,14 @@ class manager(manager_mixin):
       self.update_xray_structure(update_f_calc  = True)
     if(target_name is not None):
       self.set_target_name(target_name=target_name)
-    if(abcd is not None):
+    if abcd is not None:
+      if not abcd.indices().all_eq(self.passive_arrays.f_obs.indices()):
+        abcd = abcd.complete_array(
+          new_data_value=(0,0,0,0), d_min=self.passive_arrays.f_obs.d_min())\
+             .common_set(self.passive_arrays.f_obs)
       self.abcd = abcd
-      self.active_arrays.hl_coeffs = abcd
       self.passive_arrays.hl_coeffs = abcd
+      self.active_arrays.hl_coeffs = abcd.common_set(self.f_obs())
     if(twin_fraction is not None):
       self.twin_fraction = twin_fraction
       self.update_core()
