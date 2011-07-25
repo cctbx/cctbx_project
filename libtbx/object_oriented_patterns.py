@@ -150,6 +150,4 @@ class journal_mixin(object):
       key = name+self.__journal_suffix__
     else:
       key = name
-    if key in self.__dict__:
-      del self.__dict__[key]
-    else: raise AttributeError(name)
+    del self.__dict__[key]

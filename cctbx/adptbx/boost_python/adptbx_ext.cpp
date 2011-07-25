@@ -177,13 +177,8 @@ namespace {
             arg("exp_arg_limit")=50,
             arg("truncate_exp_arg")=false));
     def("debye_waller_factor_u_star_gradient_coefficients",
-      (scitbx::sym_mat3<double>(*)(
-        miller::index<> const&))
-      debye_waller_factor_u_star_gradient_coefficients_double);
-    def("debye_waller_factor_u_star_gradient_coefficients",
-      (af::shared<scitbx::sym_mat3<double> >(*)(
-        af::const_ref<miller::index<> > const&))
-      debye_waller_factor_u_star_gradient_coefficients);
+      debye_waller_factor_u_star_gradient_coefficients_double, (
+        arg("h")));
     def("debye_waller_factor_u_star_curvature_coefficients",
       debye_waller_factor_u_star_curvature_coefficients_double, (
         arg("h")));

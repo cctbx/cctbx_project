@@ -5,7 +5,6 @@
 #include <cctbx/maptbx/standard_deviations_around_sites.hpp>
 #include <cctbx/maptbx/real_space_gradients_simple.h>
 #include <cctbx/maptbx/real_space_target_and_gradients.h>
-#include <cctbx/maptbx/local_standard_deviation.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -267,18 +266,6 @@ namespace {
         arg("density_map"),
         arg("sites_cart"),
         arg("site_radii")));
-
-    def("local_standard_deviation_map",
-      local_standard_deviation_map<double>, (
-        arg("unit_cell"),
-        arg("data"),
-        arg("radius")));
-
-    def("local_deviation_about_mean_map",
-      local_deviation_about_mean_map<double>, (
-        arg("unit_cell"),
-        arg("data"),
-        arg("radius")));
   }
 
 } // namespace <anonymous>

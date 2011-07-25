@@ -1,21 +1,13 @@
 from cctbx import xray
 from libtbx import easy_pickle
 from libtbx.str_utils import show_string
-import sys, os, urllib2
+import sys, os
 op = os.path
 
 def run(args):
   for f in args:
     try:
-      if os.path.isfile(f):
-        xray_structures = xray.structure.from_cif(file_path=f)
-      else:
-        try:
-          file_object = urllib2.urlopen(f)
-        except urllib2.URLError, e:
-          continue
-        else:
-          xray_structures = xray.structure.from_cif(file_object=file_object)
+      xray_structures = xray.structure.from_cif(file_path=f)
     except KeyboardInterrupt:
       raise
     except Exception, e:

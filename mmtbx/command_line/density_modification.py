@@ -12,7 +12,6 @@ from libtbx import adopt_init_args
 import mmtbx.maps
 import os, sys
 
-
 master_params_including_IO_str = """\
 density_modification {
   input {
@@ -28,6 +27,12 @@ density_modification {
     {
       %s
     }
+    pdb_file_name = None
+      .type = path
+      .optional = True
+      .short_caption = PDB file
+      .style = bold file_type:pdb input_file
+      .help = Optional PDB file containing partial model
     unit_cell = None
       .type = unit_cell
       .optional = False
@@ -151,13 +156,13 @@ def run(args, log = sys.stdout, as_gui_program=False):
     pdb_file = mmtbx.utils.pdb_file(
       pdb_file_names=processed_args.pdb_file_names)
     xs = pdb_file.pdb_inp.xray_structure_simple()
-    fo_, hl_ = fo, hl_coeffs
+    fo_, hl_ = fo.common_sets(hl_coeffs)
     if params.change_basis_to_niggli_cell:
       change_of_basis_op = xs.change_of_basis_op_to_niggli_cell()
       xs = xs.change_basis(change_of_basis_op)
-      fo_ = fo_.change_basis(change_of_basis_op).map_to_asu()
-      hl_ = hl_.change_basis(change_of_basis_op).map_to_asu()
-    #fo_, hl_ = fo_.common_sets(hl_)
+      fo_ = fo.change_basis(change_of_basis_op).map_to_asu()
+      hl_ = hl_coeffs.change_basis(change_of_basis_op).map_to_asu()
+      fo_, hl_ = fo_.common_sets(hl_)
     fmodel = mmtbx.utils.fmodel_simple(
       f_obs=fo_,
       xray_structures=[xs],

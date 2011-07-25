@@ -64,8 +64,8 @@ class build_hkl_cif(object):
           self.hkl_cif_pairs.setdefault(cod_id, (hkl_path, cif_path))
         else:
           n_missing_all += n_missing
-      #if (n_missing_all != 0):
-        #raise RuntimeError("Number of missing COD files: %d" % n_missing_all)
+      if (n_missing_all != 0):
+        raise RuntimeError("Number of missing COD files: %d" % n_missing_all)
 
   def show_summary(self, out=None):
     if out is None: out = sys.stdout
