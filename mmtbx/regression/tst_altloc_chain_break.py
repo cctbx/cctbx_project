@@ -55,6 +55,7 @@ def exercise(args):
     "phenix.pdbtools",
     "tmp.pdb",
     "--geometry_regularization",
+    "pdb_interpretation.nonbonded_weight=16",
     "geometry_minimization.macro_cycles=2"])
   gm_out = easy_run.fully_buffered(command=command) \
     .raise_if_errors() \
