@@ -306,8 +306,8 @@ in each bin to the average number per bin:""")
       message="Which statistic do you want to view as a histogram?",
       caption="Select a histogram to display",
       choices=keys)
-    if (dlg.run()) :
-      choice = dlg.get_choice_index()
+    if (dlg.ShowModal() == wx.ID_OK) :
+      choice = dlg.GetSelection()
     wx.CallAfter(dlg.Destroy)
     if (choice is not None) :
       frame = wxtbx.polygon_db_viewer.HistogramFrame(
