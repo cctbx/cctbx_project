@@ -12,6 +12,7 @@ class screen_params (object) :
     self.screen_h = None
     self.thumb_w = None
     self.thumb_h = None
+    self.thumb_ratio = None
     self.img_x_offset = 0
     self.img_y_offset = 0
     self.screen_x_start = 0
@@ -40,9 +41,10 @@ class screen_params (object) :
     self.img_w = w
     self.img_h = h
 
-  def set_thumbnail_size (self, w, h) :
+  def set_thumbnail_size (self, w, h, ratio) :
     self.thumb_w = w
     self.thumb_h = h
+    self.thumb_ratio = ratio
 
   def get_image_size (self) :
     assert (not None in [self.img_w, self.img_h])
@@ -84,7 +86,8 @@ class screen_params (object) :
 
   def get_thumbnail_box (self) :
     x, y, w, h = self.get_bitmap_params()
-    return int(x / 8), int(y / 8), int(w / 8), int(h / 8)
+    tr = self.thumb_ratio
+    return int(x / tr), int(y / tr), int(w / tr), int(h / tr)
 
   def get_zoom_box (self, x, y, boxsize=400, mag=16) :
     assert ((boxsize % mag) == 0)
@@ -105,8 +108,8 @@ class screen_params (object) :
   def center_view_from_thumbnail (self, x, y) :
     if (self.zoom == 0) : return
     x0, y0, w, h = self.get_bitmap_params()
-    img_x = max(0, ifloor((x * 8) - (w / 2)))
-    img_y = max(0, ifloor((y * 8) - (h / 2)))
+    img_x = max(0, ifloor((x * self.thumb_ratio) - (w / 2)))
+    img_y = max(0, ifloor((y * self.thumb_ratio) - (h / 2)))
     scale = self.get_scale()
     max_x = ifloor(self.img_w - (self.screen_w / scale))
     max_y = ifloor(self.img_h - (self.screen_h / scale))
@@ -228,9 +231,12 @@ class image (screen_params) :
       binning=8)
     w = fi_thumb.ex_size2()
     h = fi_thumb.ex_size1()
-    self.set_thumbnail_size(w, h)
     wx_thumb = wx.EmptyImage(w, h)
     wx_thumb.SetData(fi_thumb.export_string)
+    ratio = min(w / 256, h / 256)
+    wt, ht = ifloor(w/ratio), ifloor(h / ratio)
+    wx_thumb = wx_thumb.Rescale(wt, ht)
+    self.set_thumbnail_size(wt, ht, ratio * 8)
     self._wx_thumb = wx_thumb
     self._wx_thumb_bmp = wx_thumb.ConvertToBitmap()
 
