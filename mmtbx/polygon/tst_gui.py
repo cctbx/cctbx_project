@@ -1,8 +1,8 @@
 
-from mmtbx.polygon import gui as polygon_gui
+import mmtbx.polygon.output
 import cPickle
 
-class test_renderer (polygon_gui.renderer) :
+class test_renderer (mmtbx.polygon.output.renderer) :
   def draw_box (self, out, points, color) :
     pass
 
@@ -24,9 +24,9 @@ def exercise () :
     "angle_rmsd" : 1.8,
     "clashscore" : 20.0
   }
-  data = polygon_gui.get_basic_histogram_data(d_min=2.5)
+  data = mmtbx.polygon.output.get_basic_histogram_data(d_min=2.5)
   s = cPickle.dumps(data)
-  histograms = polygon_gui.convert_histogram_data(data)
+  histograms = mmtbx.polygon.output.convert_histogram_data(data)
   assert (len(histograms) == 6)
   for stat_key, histogram in histograms.iteritems() :
     bins = [ n for n in histogram.slots() ]
