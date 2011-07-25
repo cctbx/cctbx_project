@@ -80,8 +80,8 @@ class screen_params (object) :
     scale = self.get_scale()
     x0 = max(self.img_x_offset, 0)
     y0 = max(self.img_y_offset, 0)
-    w_scaled = min(self.img_w, int(self.screen_w / scale)) #- x0
-    h_scaled = min(self.img_h, int(self.screen_h / scale))
+    w_scaled = min(self.img_w, (self.screen_w / scale)) #- x0
+    h_scaled = min(self.img_h, (self.screen_h / scale))
     return (x0, y0, w_scaled, h_scaled)
 
   def get_thumbnail_box (self) :
@@ -118,12 +118,12 @@ class screen_params (object) :
 
   def image_coords_as_screen_coords (self, x, y) :
     scale = self.get_scale()
-    x1 = self.screen_x_start + (x - self.img_x_offset) * scale
-    y1 = self.screen_y_start + (y - self.img_y_offset) * scale
+    x1 = self.screen_x_start + ((x+0.5) - self.img_x_offset) * scale
+    y1 = self.screen_y_start + ((y+0.5) - self.img_y_offset) * scale
     xi, yi, w, h = self.get_bitmap_params()
     x2 = x1 + max(0, (self.screen_w - (w*scale)) / 2)
     y2 = y1 + max(0, (self.screen_h - (h*scale)) / 2)
-    return (int(x2), int(y2))
+    return ((x2), (y2))
 
   def detector_coords_as_image_coords (self, x, y) :
     dw = self.img_w * self.detector_pixel_size
