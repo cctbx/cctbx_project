@@ -2,6 +2,19 @@
 from mmtbx.polygon import gui as polygon_gui
 import cPickle
 
+class test_renderer (polygon_gui.renderer) :
+  def draw_box (self, out, points, color) :
+    pass
+
+  def draw_solid_line (self, out, start, end, color) :
+    pass
+
+  def draw_dashed_line (self, out, start, end, color) :
+    pass
+
+  def draw_labels (self, out, label, min, max, value, pos, angle) :
+    pass
+
 def exercise () :
   stats = {
     "r_work" : 0.25,
@@ -18,6 +31,10 @@ def exercise () :
   for stat_key, histogram in histograms.iteritems() :
     bins = [ n for n in histogram.slots() ]
     #print "%-16s : %s" % (stat_key, " ".join([ "%5d" % n for n in bins ]))
+  renderer = test_renderer(
+    histogram_data=data,
+    structure_stats=stats)
+  renderer.draw(out=None)
   print "OK"
 
 if __name__ == "__main__" :
