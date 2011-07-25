@@ -1,5 +1,5 @@
 from libtbx import easy_pickle
-from libtbx.utils import get_svn_revision, get_build_tag, plural_s
+from libtbx.utils import get_svn_revision, get_build_tag, plural_s, time_log
 from operator import itemgetter
 import glob, os, sys
 from cStringIO import StringIO
@@ -13,7 +13,11 @@ class analyse(object):
     self.parsing_errors = {}
     self.build_errors = {}
     self.ignored_errors = {}
+    self.structure_counts = {}
     self.skipped = set()
+    self.timer = time_log("cif")
+    self.max_delta = 0
+    self.max_delta_id = ""
     g = glob.glob("result_*.pickle")
     for f in g:
       r = easy_pickle.load(f)
@@ -24,6 +28,16 @@ class analyse(object):
       self.build_errors.update(r.build_errors)
       self.ignored_errors.update(r.ignored_errors)
       self.skipped.update(r.skipped)
+      self.timer.n += r.timer.n
+      self.timer.accumulation += r.timer.accumulation
+      self.max_delta = max(self.max_delta, r.max_delta)
+      if self.max_delta == r.max_delta:
+        self.max_delta_id = r.max_delta_id
+      for n, count in r.structure_counts.items():
+        if n in self.structure_counts:
+          self.structure_counts[n] += count
+        else:
+          self.structure_counts[n] = count
 
   def show_summary(self, out=None):
     if out is None: out = sys.stdout
@@ -50,6 +64,10 @@ class analyse(object):
       print >> out, "cctbx svn revision: %i" %rev
     if build_tag is not None:
       print >> out, "cctbx build tag: ", build_tag
+    print >> out
+    print >> out, self.timer.legend
+    print >> out, self.timer.report()
+    print >> out, "max delta: %.3g (%s)" %(self.max_delta, self.max_delta_id)
 
   def show_all(self, out=None):
     if out is None: out = sys.stdout
@@ -122,6 +140,7 @@ html = """\
 def run():
   a = analyse()
   a.as_html()
+  a.show_summary()
 
 
 if __name__ == '__main__':

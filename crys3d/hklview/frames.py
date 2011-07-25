@@ -336,7 +336,9 @@ class HKLViewFrame (wx.Frame) :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
         raise Sorry(str(e))
-      arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
+      arrays = hkl_file.as_miller_arrays(
+        merge_equivalents=False,
+        ignore_amplitude_intensity_ambiguity=True)
       #arrays = f.file_server.miller_arrays
       valid_arrays = []
       array_info = []

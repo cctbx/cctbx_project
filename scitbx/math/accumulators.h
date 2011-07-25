@@ -26,6 +26,7 @@ class null_accumulator
     null_accumulator(DataType x0) {}
     null_accumulator(DataType x0, DataType x1) {}
     void operator()(DataType x) {}
+    void reset() {}
 };
 
 
@@ -43,6 +44,8 @@ class enumerated_accumulator
     void operator()(DataType x) { n++; }
 
     std::size_t count() const { return n; }
+
+    void reset() { n=0; }
 
   private:
     std::size_t n;
@@ -69,6 +72,11 @@ class min_max_accumulator : public Previous
     FloatType max() const { return max_; }
     FloatType max_absolute() const { return -min_ > max_ ? -min_ : max_; }
 
+    void reset() {
+      Previous::reset();
+      min_ = max_ = max_absolute_ = 0;
+    }
+
   private:
     FloatType min_, max_, max_absolute_;
 };
@@ -78,6 +86,11 @@ template<typename FloatType, class Previous=null_accumulator<FloatType> >
 class mean_variance_accumulator : public Previous
 {
   public:
+    mean_variance_accumulator()
+      : Previous(),
+        mean_(0), m2(0)
+    {}
+
     mean_variance_accumulator(FloatType x0)
       : Previous(x0),
         mean_(x0), m2(0)
@@ -115,6 +128,11 @@ class mean_variance_accumulator : public Previous
       return std::sqrt(unbiased_variance());
     }
 
+    void reset() {
+      Previous::reset();
+      mean_ = m2 = 0;
+    }
+
   private:
     FloatType mean_, m2;
 };
@@ -136,6 +154,10 @@ class deviation_accumulator
     std::size_t count() const { return n; }
     FloatType about() const { return about_; }
     FloatType deviation() const { return delta; }
+
+    void reset() {
+      n = 0;
+    }
 
   private:
     FloatType about_, width_, delta;
@@ -234,8 +256,14 @@ class mean_absolute_deviation_accumulator : public Previous
       return mean_absolute_deviation_;
     }
 
+    void reset() {
+      Previous::reset();
+      mean_absolute_deviation_ = 0;
+    }
+
   private:
     FloatType mean_absolute_deviation_;
+
 };
 
 /// LAPACK-style norm of a vector: overflow- and underflow-resilient
