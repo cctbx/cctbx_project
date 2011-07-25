@@ -1093,7 +1093,7 @@ mmtbx/msa.py -text
 mmtbx/pdb_distances.py -text
 mmtbx/pdbtools.py -text
 mmtbx/polygon/__init__.py -text
-mmtbx/polygon/gui.py -text
+mmtbx/polygon/output.py -text
 mmtbx/polygon/tst.py -text
 mmtbx/polygon/tst_gui.py -text
 mmtbx/real_space_correlation.py -text
@@ -1608,6 +1608,7 @@ wxtbx/phil_controls/space_group.py -text
 wxtbx/phil_controls/text_base.py -text
 wxtbx/phil_controls/unit_cell.py -text
 wxtbx/plots.py -text
+wxtbx/polygon.py -text
 wxtbx/polygon_db_viewer.py -text
 wxtbx/process_control.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
