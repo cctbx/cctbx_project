@@ -193,15 +193,19 @@ class ThumbnailView (XrayView) :
     self._img = image
     self.SetSize(tuple(image.get_thumbnail_size()))
     self.GetParent().Layout()
+    #print self.GetSize()
 
   def OnPaint (self, event) :
+    if (self._img is None) : return
     dc = wx.AutoBufferedPaintDCFactory(self)
+    dc.SetBackground(wx.Brush((255,255,255)))
+    dc.Clear()
     bitmap = self._img.get_thumbnail_bitmap()
     dc.SetBrush(wx.TRANSPARENT_BRUSH)
     dc.DrawBitmap(bitmap, 0, 0)
     x, y, w, h = self._img.get_thumbnail_box()
     dc.SetPen(wx.Pen('red', 2))
-    dc.DrawRectangle(x, y, w-3, h-3)
+    dc.DrawRectangle(x, y, w-1, h-1)
 
   def OnLeftDown (self, event) :
     x, y = event.GetPositionTuple()

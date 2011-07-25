@@ -122,6 +122,7 @@ class SettingsFrame (wx.MiniFrame) :
     szr.Add(panel, 1, wx.EXPAND)
     szr.Fit(panel)
     self.panel = panel
+    self.sizer = szr
     self.Fit()
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
@@ -135,6 +136,10 @@ class SettingsFrame (wx.MiniFrame) :
 
   def set_image (self, image) :
     self.panel.thumb_panel.set_image(image)
+    self.panel.GetSizer().Layout()
+    self.sizer.Fit(self.panel)
+    self.Layout()
+    #self.Fit()
 
   def refresh_thumbnail (self) :
     self.panel.thumb_panel.Refresh()
@@ -181,7 +186,7 @@ class SettingsPanel (wx.Panel) :
       parent=self,
       size=(256,256),
       style=wx.SUNKEN_BORDER)
-    s.Add(self.thumb_panel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    s.Add(self.thumb_panel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
 #    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.invert_ctrl)
 
   def collect_values (self) :
