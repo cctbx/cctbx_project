@@ -1,7 +1,13 @@
 
+import wxtbx.polygon_db_viewer
+import wxtbx.bitmaps
+import wx.lib.colourselect
 import wx
 import mmtbx.polygon.output
+from mmtbx import polygon
+from libtbx import adopt_init_args
 from math import radians
+import sys
 
 class wx_renderer (mmtbx.polygon.output.renderer) :
   def draw_bin (self, out, start, end, angle, color) :
@@ -153,3 +159,184 @@ class PolygonPanel (wx.Panel) :
 
   def reset_layout (self) :
     pass
+
+class PolygonFrame (wx.Frame) :
+  def __init__ (self, parent, histogram_data, structure_stats) :
+    wx.Frame.__init__(self, parent, -1, "POLYGON", size=(1024,720))
+    adopt_init_args(self, locals())
+    self.renderer = wx_renderer(histogram_data, structure_stats,
+      center=(0.5, 0.475))
+    self.setup_toolbar()
+    main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.SetSizer(main_sizer)
+    self.main_sizer = main_sizer
+    self.info_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.main_sizer.Add(self.info_sizer, 0, wx.ALL|wx.EXPAND)
+    self.draw_top_panel()
+    self.label_panel = None
+    self.draw_color_key()
+    self.polygon_panel = PolygonPanel(self, self.renderer)
+    main_sizer.Add(self.polygon_panel, 1, wx.ALL|wx.EXPAND)
+    self.Bind(wx.EVT_CLOSE, self.OnClose)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+
+  def setup_toolbar (self) :
+    self.toolbar = None
+    save_icon = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
+    plot_icon = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
+    if (save_icon is not None) and (plot_icon is not None) :
+      self.toolbar = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+      if sys.platform == "darwin" :
+        save_btn = self.toolbar.AddLabelTool(-1, "Save", save_icon,
+          kind=wx.ITEM_NORMAL)
+      else :
+        save_btn = self.toolbar.AddSimpleTool(-1, save_icon, "Save")
+      self.Bind(wx.EVT_MENU, self.OnSave, save_btn)
+      hist_btn = self.toolbar.AddLabelTool(-1, "Show histograms", plot_icon,
+        kind=wx.ITEM_NORMAL)
+      self.Bind(wx.EVT_MENU, self.OnDisplayHistogram, hist_btn)
+      self.SetToolBar(self.toolbar)
+      self.toolbar.Realize()
+
+  def draw_top_panel (self) :
+    top_panel = wx.Panel(self, -1, style=wx.SIMPLE_BORDER)
+    top_sizer = wx.BoxSizer(wx.VERTICAL)
+    top_panel.SetSizer(top_sizer)
+    caption = wx.StaticText(top_panel, -1,
+"""This graph shows histograms of the distribution of selected statistics \
+across %d PDB entries of similar resolution, with the range specified by \
+numbers printed in red.  Statistics for the current structure are printed in \
+black; the connecting polygon (in black) shows where these values fall in the \
+distribution. A typical well-refined structure will have a small and roughly \
+equilateral polygon.""" %
+      self.renderer.n_pdb)
+    caption.Wrap(320)
+    top_sizer.Add(caption, 0, wx.ALL, 5)
+    mode_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    top_sizer.Add(mode_sizer)
+    caption1 = wx.StaticText(top_panel, -1, "Color scheme:")
+    mode_sizer.Add(caption1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    mode_choice = wx.Choice(top_panel, -1,
+      choices=["Original (relative scaling)",
+               "Rainbow (by bin size)",
+               "Rainbow (relative scaling)",
+               "Red to blue (by bin size)",
+               "Red to blue (relative scaling)",
+               "Red (by bin size)",
+               "Blue (by bin size)",
+               "Grayscale (by bin size)"])
+    mode_choice.SetSelection(1)
+    mode_sizer.Add(mode_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.Bind(wx.EVT_CHOICE, self.OnRecolor, mode_choice)
+    caption2 = wx.StaticText(top_panel, -1,
+      "Citation: Urzhumtseva et al. Acta Cryst. 2009, D65:297-300.")
+    caption2.Wrap(320)
+    top_sizer.Add(caption2, 0, wx.ALL, 5)
+    top_sizer.Fit(top_panel)
+    self.info_sizer.Add(top_panel, 1, wx.ALL|wx.EXPAND)
+
+  def draw_color_key (self) :
+    if self.label_panel is not None :
+      self.main_sizer.Detach(self.label_panel)
+      self.label_panel.Destroy()
+    lower_panel = wx.Panel(self, -1, style=wx.SIMPLE_BORDER)
+    lower_sizer = wx.BoxSizer(wx.VERTICAL)
+    lower_panel.SetSizer(lower_sizer)
+    if self.renderer.relative_scale_colors :
+      caption = wx.StaticText(lower_panel, -1,
+"""Histogram bins are colored based on the ratio of the number of structures \
+in each bin to the average number per bin:""")
+    else :
+      caption = wx.StaticText(lower_panel, -1,
+"""Histogram bins are colored by the number of structures in each bin.""")
+    caption.Wrap(320)
+    lower_sizer.Add(caption, 0, wx.ALL, 5)
+    key_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    key_sizer = wx.FlexGridSizer(rows=0, cols=6)
+    lower_sizer.Add(key_sizer)
+    colors, cutoffs = self.renderer.get_color_key()
+    for i, color in enumerate(colors) :
+      color_widget = ColorBox(lower_panel, -1, "", color, size=(24,24))
+      key_sizer.Add(color_widget, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      if i < len(cutoffs) :
+        if self.renderer.relative_scale_colors :
+          label = wx.StaticText(lower_panel, -1, "=< %s" % str(cutoffs[i]))
+        else :
+          label = wx.StaticText(lower_panel, -1, "= %s" % str(cutoffs[i]))
+        key_sizer.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    lower_sizer.Fit(lower_panel)
+    self.info_sizer.Add(lower_panel, 1, wx.ALL|wx.EXPAND)
+    self.info_sizer.Layout()
+    self.Layout()
+    self.label_panel = lower_panel
+
+  def OnRecolor (self, event) :
+    mode = event.GetEventObject().GetSelection()
+    mode_info = [ ("original", True),
+                  ("rainbow", False),
+                  ("rainbow", True),
+                  ("rmb", False),
+                  ("rmb", True),
+                  ("red", False),
+                  ("blue", False),
+                  ("gray", False) ]
+    (model_name, relative_scaling) = mode_info[mode]
+    self.renderer.set_color_model(model_name, relative_scaling)
+    self.draw_color_key()
+    self.Refresh()
+
+  def OnClose (self, event) :
+    wx.CallAfter(self.Destroy)
+
+  def OnDestroy (self, event) :
+    if self.parent is not None and hasattr(self.parent, "polygon_frame") :
+      self.parent.polygon_frame = None
+
+  def OnSave (self, event) :
+    self.polygon_panel.OnSave()
+
+  def OnResize (self, event) :
+    #self.panel.OnResize(event)
+    self.polygon_panel.Layout()
+
+  def OnDisplayHistogram (self, event) :
+    keys = [ key for key, data in self.histogram_data ]
+    dlg = wx.SingleChoiceDialog(
+      parent=self,
+      message="Which statistic do you want to view as a histogram?",
+      caption="Select a histogram to display",
+      choices=keys)
+    if (dlg.run()) :
+      choice = dlg.get_choice_index()
+    wx.CallAfter(dlg.Destroy)
+    if (choice is not None) :
+      frame = wxtbx.polygon_db_viewer.HistogramFrame(
+        parent=self)
+      frame.show_histogram(
+        data=self.histogram_data[choice][1],
+        n_bins=10,
+        reference_value=self.structure_stats[keys[choice]],
+        xlabel=mmtbx.polygon.output.stat_names[keys[choice]])
+      frame.Show()
+
+class ColorBox (wx.lib.colourselect.ColourSelect) :
+  def OnClick (self, event) :
+    pass
+
+if (__name__ == "__main__") :
+  app = wx.App(0)
+  stats = {
+    "r_work" : 0.25,
+    "r_free" : 0.28,
+    "adp_mean_all" : 20.0,
+    "bond_rmsd" : 0.02,
+    "angle_rmsd" : 1.8,
+    "clashscore" : 20.0
+  }
+  data = mmtbx.polygon.output.get_basic_histogram_data(d_min=2.5)
+  frame = PolygonFrame(
+    parent=None,
+    histogram_data=data,
+    structure_stats=stats)
+  frame.Show()
+  app.MainLoop()
