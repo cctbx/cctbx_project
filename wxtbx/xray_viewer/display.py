@@ -193,9 +193,9 @@ class ThumbnailView (XrayView) :
 
   def set_image (self, image) :
     self._img = image
-    self.SetSize(tuple(image.get_thumbnail_size()))
+    self.SetSize(image.get_thumbnail_size())
+    self.SetMinSize(image.get_thumbnail_size())
     self.GetParent().Layout()
-    #print self.GetSize()
 
   def OnPaint (self, event) :
     if (self._img is None) : return
