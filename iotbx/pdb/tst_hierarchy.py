@@ -5739,6 +5739,10 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
   assert (main_conf.as_padded_sequence() == "XXGNNQAGQNY")
   assert (main_conf.as_padded_sequence(skip_insertions=True) == "XXGNNQQNY")
+  resids = main_conf.get_residue_ids()
+  assert (len(resids) == 11)
+  assert (resids[0] == resids[1] == None)
+  assert (resids[-4].strip() == "6B")
 
 def exercise_equality_and_hashing():
 

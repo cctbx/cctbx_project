@@ -963,6 +963,24 @@ class _(boost.python.injector, ext.conformer):
       last_resseq = resseq
     return "".join(ss_seq)
 
+  def get_residue_ids (self, skip_insertions=False, pad=True) :
+    seq = self.as_sequence()
+    resids = []
+    padded_seq = []
+    last_resseq = 0
+    last_icode = " "
+    i = 0
+    for i, residue in enumerate(self.residues()) :
+      if (skip_insertions) and (residue.icode != " ") :
+        continue
+      resseq = residue.resseq_as_int()
+      if (pad) and (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          resids.append(None)
+      last_resseq = resseq
+      resids.append(residue.resid())
+    return resids
+
 class _(boost.python.injector, ext.residue):
 
   def __getinitargs__(self):
