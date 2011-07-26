@@ -1594,6 +1594,7 @@ wxtbx/command_line/b_plot.py -text
 wxtbx/command_line/loggraph.py -text
 wxtbx/command_line/xray_view.py -text
 wxtbx/icons.py -text
+wxtbx/info_panels.py -text
 wxtbx/layout.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
