@@ -221,19 +221,16 @@ class refine_adp(object):
   def __init__(self, model, fmodels, target_weights, individual_adp_params,
                adp_restraints_params, h_params, log, all_params):
     adopt_init_args(self, locals())
-    # define similarity width for r-free
     d_min = fmodels.fmodel_xray().f_obs().d_min()
-    if  (d_min<=1.5):               r_free_range_width = 0.
-    elif(d_min>1.5 and d_min<=2.0): r_free_range_width = 0.5
-    elif(d_min>2.0 and d_min<=2.5): r_free_range_width = 1.0
-    elif(d_min>2.5 and d_min<=3.0): r_free_range_width = 1.5
-    elif(d_min>3.0):                r_free_range_width = 2.0
-    # r-free-r-work gap value
-    if  (d_min<=1.5):               r_free_r_work_gap = 4.0
-    elif(d_min>1.5 and d_min<=2.0): r_free_r_work_gap = 5.0
-    elif(d_min>2.0 and d_min<=2.5): r_free_r_work_gap = 6.0
-    elif(d_min>2.5 and d_min<=3.0): r_free_r_work_gap = 6.0
-    elif(d_min>3.0):                r_free_r_work_gap = 7.0
+    #
+    if(target_weights is not None):
+      for w_s_c in target_weights.target_weights_params.weight_selection_criteria:
+        if(d_min >= w_s_c.d_min and d_min < w_s_c.d_max):
+          r_free_range_width = w_s_c.r_free_range_width
+          r_free_r_work_gap = w_s_c.r_free_minus_r_work
+          mean_diff_b_iso_bonded_fraction = w_s_c.mean_diff_b_iso_bonded_fraction
+          min_diff_b_iso_bonded = w_s_c.min_diff_b_iso_bonded
+          break
     #
     print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
     assert fmodels.fmodel_xray().xray_structure is model.xray_structure
@@ -297,21 +294,14 @@ class refine_adp(object):
         w      .append(result.weight)
     #
     if(len(trial_weights)>1):
-#      # sort by r-free
-#      sel = flex.sort_permutation(rf)
-#      rw,rf,rfrw,deltab,w=self.select(
-#        rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
-#      # select equally good results
-#      sel = (rf <= rf[0]+r_free_range_width)
-#      rw,rf,rfrw,deltab,w= self.select(
-#        rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,sel=sel)
       # filter by rfree-rwork
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=rfrw,score_target_value=r_free_r_work_gap,
         secondary_target=deltab)
       # filter by <Bi-Bj>
-      delta_b_target = max(10, flex.mean(self.fmodels.fmodel_xray().
-        xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))*0.1)
+      delta_b_target = max(min_diff_b_iso_bonded, flex.mean(self.fmodels.
+        fmodel_xray().xray_structure.extract_u_iso_or_u_equiv()*
+          adptbx.u_as_b(1))*min_diff_adp_bonded_fraction_of_average)
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=deltab,score_target_value=delta_b_target)
       # select the result with lowest rfree
