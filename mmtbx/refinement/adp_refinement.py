@@ -222,15 +222,27 @@ class refine_adp(object):
                adp_restraints_params, h_params, log, all_params):
     adopt_init_args(self, locals())
     d_min = fmodels.fmodel_xray().f_obs().d_min()
-    #
+    # initialize with defaults...
     if(target_weights is not None):
-      for w_s_c in target_weights.target_weights_params.weight_selection_criteria:
+      import mmtbx.refinement.weights_params
+      wcp = mmtbx.refinement.weights_params.tw_customizations_params.extract()
+      for w_s_c in wcp.weight_selection_criteria:
         if(d_min >= w_s_c.d_min and d_min < w_s_c.d_max):
           r_free_range_width = w_s_c.r_free_range_width
           r_free_r_work_gap = w_s_c.r_free_minus_r_work
           mean_diff_b_iso_bonded_fraction = w_s_c.mean_diff_b_iso_bonded_fraction
           min_diff_b_iso_bonded = w_s_c.min_diff_b_iso_bonded
           break
+      # ...then customize
+      wsc = all_params.target_weights.weight_selection_criteria
+      if(wsc.r_free_minus_r_work is not None):
+        r_free_r_work_gap = wsc.r_free_minus_r_work
+      if(wsc.r_free_range_width is not None):
+        r_free_range_width = wsc.r_free_range_width
+      if(wsc.mean_diff_b_iso_bonded_fraction is not None):
+        mean_diff_b_iso_bonded_fraction = wsc.mean_diff_b_iso_bonded_fraction
+      if(wsc.min_diff_b_iso_bonded is not None):
+        min_diff_b_iso_bonded = wsc.min_diff_b_iso_bonded
     #
     print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
     assert fmodels.fmodel_xray().xray_structure is model.xray_structure
@@ -301,7 +313,7 @@ class refine_adp(object):
       # filter by <Bi-Bj>
       delta_b_target = max(min_diff_b_iso_bonded, flex.mean(self.fmodels.
         fmodel_xray().xray_structure.extract_u_iso_or_u_equiv()*
-          adptbx.u_as_b(1))*min_diff_adp_bonded_fraction_of_average)
+          adptbx.u_as_b(1))*mean_diff_b_iso_bonded_fraction)
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=deltab,score_target_value=delta_b_target)
       # select the result with lowest rfree
