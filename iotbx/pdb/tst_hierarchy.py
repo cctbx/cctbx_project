@@ -5743,6 +5743,28 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert (len(resids) == 11)
   assert (resids[0] == resids[1] == None)
   assert (resids[-4].strip() == "6B")
+  out = StringIO()
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/2C30.pdb",
+    test=os.path.isfile)
+  if (pdb_file is None) :
+    return
+  pdb_in = pdb.input(file_name=pdb_file)
+  info = pdb.show_file_summary(pdb_in, out=out)
+  expected = """\
+Number of atoms:          2691
+Number of chains:         3
+Chain IDs:                A, Z
+Alternate conformations:  0
+Amino acid residues:      289
+Water molecules:          350
+Elemental ions:           1 ( CL)
+Other molecules:          2 (PO4, SEP)
+Mean isotropic B-factor:  22.10 (range: 10.58 - 55.34)
+Space group:              P 21 21 21
+Unit cell:                59.781 66.674 96.999 90 90 90
+"""
+  assert (out.getvalue() == expected), "\n"+out.getvalue()
 
 def exercise_equality_and_hashing():
 

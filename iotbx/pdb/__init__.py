@@ -1305,3 +1305,66 @@ def make_atom_with_labels(
   if (altloc is not None): result.altloc = altloc
   if (resname is not None): result.resname = resname
   return result
+
+def get_file_summary (pdb_in, hierarchy=None) :
+  if (hierarchy is None) :
+    hierarchy = pdb_in.construct_hierarchy()
+  counts = hierarchy.overall_counts()
+  info_list = [
+    ("Number of atoms", counts.n_atoms),
+    ("Number of chains", counts.n_chains),
+    ("Chain IDs", ", ".join(sorted(counts.chain_ids.keys()))),
+    ("Alternate conformations", counts.n_alt_conf_pure),
+  ]
+  if (counts.n_models > 1) :
+    info_list.insert(0, ("Number of models", counts.n_models))
+  cl = counts.resname_classes
+  if ("common_amino_acid" in cl) :
+    info_list.append(("Amino acid residues", cl['common_amino_acid']))
+  if ("common_nucleic_acid" in cl) or ("ccp4_mon_lib_rna_dna" in cl) :
+    n_atoms = cl.get("common_nucleic_acid", 0) + \
+              cl.get("ccp4_mon_lib_rna_dna", 0)
+    info_list.append(("Nucleic acid residues", n_atoms))
+  if ("common_water" in cl) :
+    info_list.append(("Water molecules", cl['common_water']))
+  if ("common_element" in cl) :
+    names = []
+    for name in counts.resnames :
+      if (iotbx.pdb.common_residue_names_get_class(name)=="common_element") :
+        names.append(name)
+    value = "%d (%s)" % (cl['common_element'], ", ".join(names))
+    info_list.append(("Elemental ions", value))
+  if ("common_small_molecule" in cl) or ("other" in cl) :
+    names = []
+    for name in counts.resnames :
+      res_class = iotbx.pdb.common_residue_names_get_class(name)
+      if (res_class in ["common_small_molecule", "other"]) :
+        names.append(name)
+    n_atoms = cl.get("common_small_molecule", 0) + cl.get("other", 0)
+    value = "%d (%s)" % (n_atoms, ", ".join(names))
+    info_list.append(("Other molecules", value))
+  b_factors = hierarchy.atoms().extract_b()
+  mean_b = flex.mean(b_factors)
+  min_b = flex.min(b_factors)
+  max_b = flex.max(b_factors)
+  info_list.append(("Mean isotropic B-factor", "%.2f (range: %.2f - %.2f)" %
+    (mean_b, min_b, max_b)))
+  symm = pdb_in.crystal_symmetry()
+  if (symm is not None) :
+    space_group = symm.space_group_info()
+    info_list.append(("Space group", str(space_group)))
+    unit_cell = symm.unit_cell()
+    if (unit_cell is not None) :
+      uc_str = " ".join([ "%g" % x for x in unit_cell.parameters() ])
+      info_list.append(("Unit cell", uc_str))
+  return info_list
+
+def show_file_summary (pdb_in, hierarchy=None, out=None) :
+  if (out is None) :
+    out = sys.stdout
+  info = get_file_summary(pdb_in, hierarchy)
+  label_width = max([ len(l) for l,v in info ]) + 2
+  format = "%%-%ds %%s" % label_width
+  for label, value in info :
+    print >> out, format % (label + ":", str(value))
+  return info
