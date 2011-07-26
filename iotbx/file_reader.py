@@ -33,6 +33,7 @@ standard_file_extensions = {
   'mtz'  : ["mtz"],
   'aln'  : ["aln", "ali", "clustal"],
   'hhr'  : ["hhr"],
+  'img'  : ["img", "osc", "mccd", "cbf"],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
 
@@ -50,10 +51,15 @@ standard_file_descriptions = {
   'mtz'  : "Reflections (MTZ)",
   'aln'  : "Sequence alignment",
   'hhr'  : "HHpred analysis file",
+  'img'  : "Detector image file",
 }
 
 supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "aln", "txt",
   "xplor_map", "ccp4_map"]
+
+binary_types = ["hkl","ccp4_map","img","pkl"]
+ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "aln", "seq", "xml",
+"txt"]
 
 class FormatError (Sorry) :
   pass
@@ -274,6 +280,13 @@ class any_file_input (object) :
     file_as_ascii = file_as_string.decode("ascii")
     self.file_type = "txt"
     self.file_object = file_as_string
+
+  def try_as_img (self) :
+    from iotbx.detectors import ImageFactory
+    img = ImageFactory(self.file_name)
+    img.read()
+    self.file_type = "img"
+    self.file_object = img
 
   def try_all_types (self) :
     for filetype in self.valid_types :
