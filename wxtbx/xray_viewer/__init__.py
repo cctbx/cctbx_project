@@ -227,16 +227,16 @@ class image (screen_params) :
     wx_image = wx.EmptyImage(w, h)
     wx_image.SetData(self._img.export_string)
     self._wx_img = wx_image
+    binning = 8
+    if (w > 2560) :
+      binning = 16
     fi_thumb = self.create_flex_image(brightness=brightness,
-      binning=8)
+      binning=binning)
     w = fi_thumb.ex_size2()
     h = fi_thumb.ex_size1()
     wx_thumb = wx.EmptyImage(w, h)
     wx_thumb.SetData(fi_thumb.export_string)
-    ratio = min(w / 256, h / 256)
-    wt, ht = ifloor(w/ratio), ifloor(h / ratio)
-    wx_thumb = wx_thumb.Rescale(wt, ht)
-    self.set_thumbnail_size(wt, ht, ratio * 8)
+    self.set_thumbnail_size(w, h, binning)
     self._wx_thumb = wx_thumb
     self._wx_thumb_bmp = wx_thumb.ConvertToBitmap()
 
