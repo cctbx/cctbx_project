@@ -105,7 +105,13 @@ class PolygonPanel (wx.Panel) :
     wx.Panel.__init__(self, parent, -1)
     self.renderer = renderer
     self.renderer.resize((640, 640))
+    self.SetMinSize((480,480))
     self.Bind(wx.EVT_PAINT, self.OnPaint)
+    self.Bind(wx.EVT_SIZE, self.OnSize)
+
+  def OnSize (self, event) :
+    self.renderer.resize(self.GetSize())
+    self.Refresh()
 
   def OnPaint (self, event) :
     self.renderer.resize(self.GetSize())
@@ -163,6 +169,7 @@ class PolygonPanel (wx.Panel) :
 class PolygonFrame (wx.Frame) :
   def __init__ (self, parent, histogram_data, structure_stats) :
     wx.Frame.__init__(self, parent, -1, "POLYGON", size=(1024,720))
+    self.SetMinSize((800,500))
     adopt_init_args(self, locals())
     self.renderer = wx_renderer(histogram_data, structure_stats,
       center=(0.5, 0.475))
