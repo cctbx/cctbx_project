@@ -1,5 +1,6 @@
 import copy
 from iotbx.detectors import ReadADSC
+import sys
 
 class DetectorImageBase(object):
   def __init__(self,filename):
@@ -133,14 +134,16 @@ CCD_IMAGE_SATURATION=65535;
     elif attr=='twotheta' : return self.parameters['TWOTHETA']
     elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
 
-  def show_header(self):
-    print "File:",self.filename
-    print "Number of pixels: slow=%d fast=%d"%(self.size1,self.size2)
-    print "Pixel size: %f mm"%self.pixel_size
-    print "Saturation: %.0f"%self.saturation
-    print "Detector distance: %.2f mm"%self.distance
-    print "Detector 2theta swing: %.2f deg."%self.twotheta
-    print "Rotation start: %.2f deg."%self.osc_start
-    print "Rotation width: %.2f deg."%self.deltaphi
-    print "Beam center x=%.2f mm  y=%.2f mm"%(self.beamx,self.beamy)
-    print "Wavelength: %f Ang."%self.wavelength
+  def show_header(self, out=None):
+    if (out is None) :
+      out = sys.stdout
+    print >> out, "File:",self.filename
+    print >> out, "Number of pixels: slow=%d fast=%d"%(self.size1,self.size2)
+    print >> out, "Pixel size: %f mm"%self.pixel_size
+    print >> out, "Saturation: %.0f"%self.saturation
+    print >> out, "Detector distance: %.2f mm"%self.distance
+    print >> out, "Detector 2theta swing: %.2f deg."%self.twotheta
+    print >> out, "Rotation start: %.2f deg."%self.osc_start
+    print >> out, "Rotation width: %.2f deg."%self.deltaphi
+    print >> out, "Beam center: x=%.2f mm  y=%.2f mm"%(self.beamx,self.beamy)
+    print >> out, "Wavelength: %f Ang."%self.wavelength
