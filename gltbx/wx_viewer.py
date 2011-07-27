@@ -129,12 +129,13 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
-    if (self.GetContext() and self.GetParent().IsShown()):
-      if (self.context is not None) :
-        self.SetCurrent(self.context)
-      else :
-        self.SetCurrent()
-      glViewport(0, 0, self.w, self.h)
+    if (self.GetParent().IsShown()) :
+      if (self.GetContext()) or (wx.VERSION[1] >= 9) :
+        if (self.context is not None) :
+          self.SetCurrent(self.context)
+        else :
+          self.SetCurrent()
+        glViewport(0, 0, self.w, self.h)
 
   def OnIdle(self,event):
     if (self.autospin):
