@@ -23,9 +23,9 @@ fetch_pdb
     .short_caption = PDB ID(s)
     .input_size = 400
     .style = bold
-  action = *pdb_only all_data
+  action = *pdb_only all_data all_plus_mtz
     .type = choice
-    .caption = Download_PDB_file(s) Download_all_data
+    .caption = Download_PDB_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
     .style = bold
   site = *rcsb pdbe
     .type = choice
@@ -41,16 +41,21 @@ def run (args=(), params=None, out=sys.stdout) :
   errors = []
   mirror = "--mirror=%s" % params.fetch_pdb.site
   for id in params.fetch_pdb.pdb_ids :
-    pdb_file = iotbx.pdb.fetch.run(args=[id])
-    output_files.append(pdb_file)
-    if (params.fetch_pdb.action == "all_data") :
-      for file_flag in ["-x", "-f"] :
-        try :
-          data_file = iotbx.pdb.fetch.run(args=[file_flag,id,mirror])
-          print data_file
-          output_files.append(data_file)
-        except Exception, e :
-          errors.append(str(e))
+    args = [mirror, id]
+    if (params.fetch_pdb.action in ["all_data","all_plus_mtz"]) :
+      args.insert(0, "--all")
+      if (params.fetch_pdb.action == "all_plus_mtz") :
+        args.insert(1, "--mtz")
+      try :
+        data_files = iotbx.pdb.fetch.run(args=args)
+        print "\n".join(data_files)
+        output_files.extend(data_files)
+      except Exception, e :
+        errors.append(str(e))
+    else :
+      pdb_file = iotbx.pdb.fetch.run(args=[mirror,id])
+      print pdb_file
+      output_files.append(pdb_file)
   return output_files, errors
 
 def validate_params (params) :
