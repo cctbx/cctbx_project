@@ -155,9 +155,14 @@ class torsion_ncs(object):
         self.ncs_groups.append(ncs_set)
     else:
       for i, chain_i in enumerate(chains):
+        found_conformer = False
         for conformer in chain_i.conformers():
           if not conformer.is_protein() and not conformer.is_na():
             continue
+          else:
+            found_conformer = True
+        if not found_conformer:
+          continue
         chain_i_str = "chain '%s'" % chain_i.id
         chain_i_list = [chain_i_str]
         sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
@@ -172,14 +177,24 @@ class torsion_ncs(object):
         self.structures[chain_i_str] = chain_structures
 
       for i, chain_i in enumerate(chains):
+        found_conformer = False
         for conformer in chain_i.conformers():
           if not conformer.is_protein() and not conformer.is_na():
             continue
+          else:
+            found_conformer = True
+        if not found_conformer:
+          continue
         chain_i_str = "chain '%s'" % chain_i.id
         for chain_j in chains[i+1:]:
+          found_conformer = False
           for conformer in chain_j.conformers():
             if not conformer.is_protein() and not conformer.is_na():
               continue
+            else:
+              found_conformer = True
+          if not found_conformer:
+            continue
           chain_j_str = "chain '%s'" % chain_j.id
           selections = (chain_i_str, chain_j_str)
           residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
