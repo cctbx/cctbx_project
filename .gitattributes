@@ -1117,6 +1117,7 @@ mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_kinemage.py svneol=native#text/x-python
+mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
 mmtbx/resolve_resources.py -text
 mmtbx/rotamer/graphics.py -text
