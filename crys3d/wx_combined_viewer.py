@@ -326,7 +326,7 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     vendor = glGetString(GL_VENDOR)
     #if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
     #  print vendor
-    if (wx.VERSION[1] >= 9) and ("GL_MULTISAMPLE" in globals().keys()) :
+    if (wx.VERSION >= (2,9)) and ("GL_MULTISAMPLE" in globals().keys()) :
       #print "glEnable(GL_MULTISAMPLE)"
       glEnable(GL_MULTISAMPLE) # FIXME doesn't actually work???
     glEnable(GL_POLYGON_SMOOTH)

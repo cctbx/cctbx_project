@@ -74,7 +74,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.GL_uninitialised = 1
     wx.glcanvas.GLCanvas.__init__(*((self, parent)+args), **kw)
     self.context = None
-    if (wx.VERSION[1] >= 9) : # wxPython 2.9.*
+    if (wx.VERSION >= (2,9)) : # wxPython 2.9.*
       self.context = wx.glcanvas.GLContext(self)
 
     self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
@@ -130,7 +130,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
     if (self.GetParent().IsShown()) :
-      if (self.GetContext()) or (wx.VERSION[1] >= 9) :
+      if (self.GetContext()) or (wx.VERSION >= (2,9)) :
         if (self.context is not None) :
           self.SetCurrent(self.context)
         else :
