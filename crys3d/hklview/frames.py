@@ -19,6 +19,8 @@ class settings_window (wxtbx.utils.SettingsPanel) :
   def add_controls (self) :
     self._index_span = None
     self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
+    if (wx.VERSION[1] >= 9) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
+      self.d_min_ctrl.SetBackgroundColour(self.GetBackgroundColour())
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box)
     label = wx.StaticText(self,-1,"High resolution:")
@@ -205,7 +207,7 @@ class HKLViewFrame (wx.Frame) :
     self.create_settings_panel()
     self.sizer.Add(self.settings_panel, 0, wx.EXPAND)
     self.create_viewer_panel()
-    self.sizer.Add(self.viewer, 1, wx.EXPAND)
+    self.sizer.Add(self.viewer, 1, wx.EXPAND|wx.ALL)
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Load file",
       bitmap=icons.hkl_file.GetBitmap(),
