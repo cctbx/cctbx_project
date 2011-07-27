@@ -1,12 +1,23 @@
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
-from scitbx import random, linalg, matrix
+from cctbx.array_family import flex
+import scitbx.random
+from scitbx import linalg, matrix
 from libtbx.test_utils import approx_equal
 import libtbx.utils
+import random
 
-site_coord = random.variate(random.uniform_distribution(0, 1))
-u_eigenval = random.variate(random.uniform_distribution(0.0005, 0.003))
-g_eigenval = random.variate(random.uniform_distribution(1,10))
-variance_eigenval = random.variate(random.uniform_distribution(0.1, 10))
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
+
+site_coord = scitbx.random.variate(
+  scitbx.random.uniform_distribution(0, 1))
+u_eigenval = scitbx.random.variate(
+  scitbx.random.uniform_distribution(0.0005, 0.003))
+g_eigenval = scitbx.random.variate(
+  scitbx.random.uniform_distribution(1,10))
+variance_eigenval = scitbx.random.variate(
+  scitbx.random.uniform_distribution(0.1, 10))
 symm_mat = linalg.random_normal_matrix_generator(3,3)\
          .symmetric_matrix_with_eigenvalues
 def as_sym_mat3(packed_u):
