@@ -5,7 +5,7 @@ import wx
 class ArrayLabelCtrl (wx.Choice, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     super(ArrayLabelCtrl, self).__init__(*args, **kwds)
-    if (wx.Platform == '__WXMAC__') and (wx.VERSION[1] > 8) :
+    if (wx.Platform == '__WXMAC__') and (wx.VERSION >= (2,9)) :
       self._default_value = "---"
     else :
       self._default_value = ""
