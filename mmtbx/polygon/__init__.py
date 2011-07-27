@@ -108,6 +108,7 @@ polygon_params_str = """\
             r_free_cutoffs adp_max_solvent number_of_Fobs_outliers \
             occupancy_max test_set_size adp_max_sidechain
       .type = choice(multi=False)
+      .optional = True
     value_min = None
       .type = float
       .short_caption = Minimum value
