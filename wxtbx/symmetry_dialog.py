@@ -18,15 +18,15 @@ class SymmetryDialog (wx.Dialog) :
       "group and unit cell.")
     txt.Wrap(480)
     szr2.Add(txt, 0, wx.ALL, 5)
-    szr3 = wx.FlexGridSizer(rows=2, cols=2)
+    szr3 = wx.FlexGridSizer(rows=3, cols=2)
     txt2 = wx.StaticText(self, -1, "Unit cell:")
-    self.unit_cell_ctrl = unit_cell.UnitCellControl(
+    self.unit_cell_ctrl = unit_cell.UnitCellCtrl(
       parent=self,
       id=-1,
       size=(300,-1),
       name="Unit cell")
     txt3 = wx.StaticText(self, -1, "Space group:")
-    self.space_group_ctrl = space_group.SpaceGroupControl(
+    self.space_group_ctrl = space_group.SpaceGroupCtrl(
       parent=self,
       id=-1,
       name="Space group")
