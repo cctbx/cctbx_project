@@ -86,15 +86,15 @@ holding down the shift key in combination with mouse selection."""
     return strings
 
   def InsertStringItem (self, *args, **kwds) :
+    kwds['imageIndex'] = 0
     i = wx.ListCtrl.InsertStringItem(self, *args, **kwds)
     self._checklist.append(False)
-    self.SetItemImage(i, 0)
     return i
 
   def InsertItem (self, *args, **kwds) :
+    kwds['imageIndex'] = 0
     i = wx.ListCtrl.InsertItem(self, *args, **kwds)
     self._checklist.append(False)
-    self.SetItemImage(i, 0)
     return i
 
   def CheckItem (self, item, check=True) :
