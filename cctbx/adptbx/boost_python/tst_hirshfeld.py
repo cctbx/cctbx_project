@@ -12,6 +12,8 @@ u_eigenval = scitbx.random.variate(
   scitbx.random.uniform_distribution(0.0005, 0.003))
 g_eigenval = scitbx.random.variate(
   scitbx.random.uniform_distribution(1,10))
+direction = scitbx.random.variate(
+  scitbx.random.uniform_distribution(0, 1))
 variance_eigenval = scitbx.random.variate(
   scitbx.random.uniform_distribution(0.1, 10))
 symm_mat = linalg.random_normal_matrix_generator(3,3)\
@@ -43,14 +45,21 @@ def exercise_mean_square_displacement(options, n_trials):
     assert approx_equal(abs(h1 - h2), rigid.delta_z(), eps=1e-12)
 
   # check gradients with finite difference
-  s = 1e-3
+  finite_difference_computation = scitbx.math.finite_difference_computation()
+  best_delta = finite_difference_computation.best_delta
   for i in xrange(n_trials):
-    z = matrix.col(site_coord(3))
-    dz = matrix.col(site_coord(3))*s
-    u = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
-    du = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))*s
-    g  = matrix.col(as_sym_mat3(symm_mat(g_eigenval(3))))
-    dg = matrix.col(as_sym_mat3(symm_mat(g_eigenval(3))))*s
+    z = site_coord(3)
+    dz = best_delta(z, site_coord(3))
+    z = matrix.col(z)
+    dz = matrix.col(dz)
+    u_eigen = u_eigenval(3)
+    du_eigen = best_delta(u_eigen, direction(3))
+    u = matrix.col(as_sym_mat3(symm_mat(u_eigen)))
+    du = matrix.col(as_sym_mat3(symm_mat(du_eigen)))
+    g_eigen = g_eigenval(3)
+    dg_eigen = best_delta(g_eigen, direction(3))
+    g  = matrix.col(as_sym_mat3(symm_mat(g_eigen)))
+    dg = matrix.col(as_sym_mat3(symm_mat(dg_eigen)))
     uc = uctbx.unit_cell(metrical_matrix=g)
     h = adptbx.mean_square_displacement(uc, z)(u)
     uc_p = uctbx.unit_cell(metrical_matrix=g+dg)
@@ -61,8 +70,9 @@ def exercise_mean_square_displacement(options, n_trials):
     taylor_diff = (  matrix.col(h.grad_u).dot(du)
                    + matrix.col(h.grad_z).dot(dz)
                    + matrix.col(h.grad_g).dot(dg) )
-    r = (taylor_diff - finite_diff)/finite_diff
-    assert abs(r) < 0.001, r
+    assert approx_equal(taylor_diff, finite_diff,
+                        eps=5*finite_difference_computation.precision),\
+           (taylor_diff, finite_diff)
 
 def exercise_hirshfeld_relative_difference(options, n_trials):
   if options.fix_random_seeds:
