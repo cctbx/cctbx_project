@@ -57,3 +57,27 @@ class assistant(libtbx.slots_getstate_setstate):
       return result
     O.i_j_multiplication_table = multiplication_table(j_inv=0)
     O.i_j_inv_multiplication_table = multiplication_table(j_inv=1)
+
+  def show_summary(O, out=None, prefix=""):
+    if (out is None):
+      import sys
+      out = sys.stdout
+    def _(s, sg): print >> out, prefix+s, sg.info().symbol_and_number()
+    _("Lattice symmetry:", O.lattice_group)
+    _("Intensity symmetry:", O.intensity_group)
+    print >> out, prefix.rstrip()
+    if (len(O.cb_ops) == 1):
+      s = "No indexing ambiguity."
+    elif (len(O.cb_ops) == 2):
+      s = "Indexing ambiguity:"
+    else:
+      s = "Indexing ambiguities:"
+    print >> out, prefix+s
+    for cb_op, perm in zip(O.cb_ops, O.perms):
+      r = cb_op.c().r()
+      if (not r.is_unit_mx()):
+        print >> out, prefix+"  %-12s  %d-fold    invariants: %4d" % (
+          r.as_hkl(),
+          r.info().type(),
+          (perm.select(perm) == perm).count(True))
+    return O
