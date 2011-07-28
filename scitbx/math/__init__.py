@@ -213,3 +213,30 @@ Returns None if a*x=b has no solution.
     if (x is not None):
       x = ct.matrix_multiply(x)
   return x
+
+
+class finite_difference_computation(object):
+  """ Computing the derivative of a scalar function f(x, ...) wrt x,
+  where x may be a vector, involve computing f(x+h, ...)
+  where h is suitably chosen delta. So as to keep numerical accuracy, it
+  is best to follow a well known recipe to properly choose h knowing its
+  direction. When using that value, a finite difference computation typically
+  reaches a precision of self.precision
+
+  Reference: chap 5.7 of Numerical Recipes in C
+  """
+
+  def __init__(self):
+    e = math.sqrt(scitbx.math.double_numeric_limits.epsilon)
+    self.precision = math.sqrt(e)
+
+  def best_delta(self, point, direction):
+    """ Compute the value h in the given direction that is most suitable
+    for use in finite difference computation around the given point x.
+    The vector 'direction' may not be a unit-vector.
+    """
+    x, s = point, self.precision
+    u = direction/abs(direction)
+    h = s*u
+    h = (x + h) - x
+    return h
