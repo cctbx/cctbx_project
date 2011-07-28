@@ -12,6 +12,8 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
       saved_value = kwds['value']
       kwds['value'] = ""
     super(SpaceGroupCtrl, self).__init__(*args, **kwds)
+    style = self.GetWindowStyle()
+    self.SetWindowStyle(style | wx.TE_PROCESS_ENTER)
     self.SetValidator(SpaceGroupValidator())
     # FIXME does not work on wxOSX-Cocoa
     self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
