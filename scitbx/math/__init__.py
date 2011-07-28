@@ -217,9 +217,9 @@ Returns None if a*x=b has no solution.
 
 class finite_difference_computation(object):
   """ Computing the derivative of a scalar function f(x, ...) wrt x,
-  where x may be a vector, involve computing f(x+h, ...)
-  where h is suitably chosen delta. So as to keep numerical accuracy, it
-  is best to follow a well known recipe to properly choose h knowing its
+  where x may be a vector, involves computing f(x + h, ...)
+  where h is suitably chosen a delta. So as to keep numerical accuracy, it
+  is best to follow a well known recipe to choose h knowing its
   direction. When using that value, a finite difference computation typically
   reaches a precision of self.precision
 
