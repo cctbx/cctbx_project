@@ -6,10 +6,6 @@ from libtbx.test_utils import approx_equal
 import libtbx.utils
 import random
 
-if (1): # fixed random seed to avoid rare failures
-  random.seed(0)
-  flex.set_random_seed(0)
-
 site_coord = scitbx.random.variate(
   scitbx.random.uniform_distribution(0, 1))
 u_eigenval = scitbx.random.variate(
@@ -24,7 +20,11 @@ def as_sym_mat3(packed_u):
   return matrix.sqr(packed_u.matrix_packed_u_as_symmetric()).as_sym_mat3()
 
 
-def exercise_mean_square_displacement(n_trials):
+def exercise_mean_square_displacement(options, n_trials):
+  if options.fix_random_seeds:
+    random.seed(0)
+    flex.set_random_seed(0)
+
   # check adptbx.mean_square_displacement_difference
   # against adp_restraints.rigid_bond_pair
   for i in xrange(n_trials):
@@ -64,7 +64,11 @@ def exercise_mean_square_displacement(n_trials):
     r = (taylor_diff - finite_diff)/finite_diff
     assert abs(r) < 0.001, r
 
-def exercise_hirshfeld_relative_difference(n_trials):
+def exercise_hirshfeld_relative_difference(options, n_trials):
+  if options.fix_random_seeds:
+    random.seed(0)
+    flex.set_random_seed(0)
+
   operators = [ sgtbx.rt_mx(),
                 sgtbx.rt_mx('-x, y, -z'),
                 sgtbx.rt_mx('y, z, x') ]
@@ -147,9 +151,19 @@ def exercise_hirshfeld_relative_difference(n_trials):
 
 
 def run():
+  import optparse
+  cmd_line = optparse.OptionParser()
+  cmd_line.add_option("--fix-random-seeds",
+                      action='store_true')
+  cmd_line.add_option("--n-trials",
+                      type='int',
+                      default=None)
+  opts, args = cmd_line.parse_args()
   libtbx.utils.show_times_at_exit()
-  exercise_mean_square_displacement(n_trials=50)
-  exercise_hirshfeld_relative_difference(n_trials=50)
+  exercise_mean_square_displacement(opts,
+                                    n_trials=opts.n_trials or 50)
+  exercise_hirshfeld_relative_difference(opts,
+                                         n_trials=opts.n_trials or 50)
 
 if __name__ == '__main__':
   run()
