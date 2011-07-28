@@ -13,52 +13,83 @@ import sys
 # on these, the option is given to substitute numerical sequence names
 # internally, while still allowing retrieval using the original names.
 class align_pdb_residues (object) :
+  """
+  Provides mapping between original residue numbers or IDs and a reference
+  numbering, via multiple sequence alignment.  Depending on whether or not
+  the insertion code was used in the original PDB files, it can use either
+  the resseq or the resid as the lookup key.
+  """
   def __init__ (self,
                 pdb_sequences,
                 pdb_names,
-                pdb_offsets,
+                pdb_offsets=None,
+                pdb_resids=None,
                 reference_sequence=None,
                 reference_sequence_name="sequence",
                 reference_sequence_offset=0,
+                reference_sequence_resids=None,
                 reference_index=None,
-                substitute_names=False) :
+                substitute_names=False,
+                out=None) :
     adopt_init_args(self, locals())
     n_models = len(pdb_sequences)
-    assert ((n_models >= 1) and (n_models==len(pdb_names)==len(pdb_offsets)))
-    use_pdb_sequence = False
+    assert (pdb_resids is not None) or (pdb_offsets is not None)
+    assert ((n_models >= 1) and (n_models==len(pdb_names)))
+    if (pdb_offsets is not None) :
+      assert (pdb_resids is None)
+      assert (len(pdb_names) == len(pdb_offsets))
+      assert (reference_sequence is None) or (reference_sequence_resids is None)
+    else :
+      assert (len(pdb_names) == len(pdb_resids))
+      assert ((reference_sequence is None) or
+              (reference_sequence_resids is not None))
     self.fasta_names = []
     self._name_lookup = None
+    self.run_alignment(out=out)
+    self.build_lookup_table()
+
+  def run_alignment (self, out=None) :
+    use_pdb_sequence = False
     # build index of sequence names given to MUSCLE
-    if substitute_names :
+    if self.substitute_names :
       self._name_lookup = {}
-      for i, name in enumerate(pdb_names) :
+      for i, name in enumerate(self.pdb_names) :
         self._name_lookup[name] = str(i)
         self.fasta_names.append(str(i))
     else :
-      self.fasta_names = pdb_names
+      self.fasta_names = self.pdb_names
     # determine sequence for reference numbering
-    if (reference_sequence is not None) :
-      assert (reference_index is None)
+    if (self.reference_sequence is not None) :
+      assert (self.reference_index is None)
+      assert ((self.reference_sequence_resids is not None) or
+              (self.reference_sequence_offset is not None))
     else :
+      i_ref = self.reference_index
       use_pdb_sequence = True
-      if (reference_index is None) :
-        reference_index = 0
-      reference_sequence = pdb_sequences[reference_index]
-      reference_sequence_offset = pdb_offsets[reference_index]
-      if substitute_names :
-        reference_sequence_name = self.fasta_names[reference_index]
+      if (i_ref is None) :
+        i_ref = self.reference_index = 0
+      self.reference_sequence = self.pdb_sequences[i_ref]
+      if (self.pdb_offsets is not None) :
+        self.reference_sequence_offset = self.pdb_offsets[i_ref]
       else :
-        reference_sequence_name = pdb_names[reference_index]
+        self.reference_sequence_resids = self.pdb_resids[i_ref]
+      if self.substitute_names :
+        self.reference_sequence_name = self.fasta_names[i_ref]
+      else :
+        self.reference_sequence_name = pdb_names[i_ref]
     fasta = "\n".join([ ">%s\n%s" % (n,s) for n,s in zip(self.fasta_names,
-                        pdb_sequences) ])
+                        self.pdb_sequences) ])
     if (not use_pdb_sequence) :
-      ref_seq_fasta = ">%s\n%s" % (reference_sequence_name, reference_sequence)
+      ref_seq_fasta = ">%s\n%s" % (self.reference_sequence_name,
+        self.reference_sequence)
       fasta = ref_seq_fasta + "\n" + fasta
-    self.muscle_aln = get_muscle_alignment(fasta)
+    self.muscle_aln = get_muscle_alignment(fasta, out=out)
     assert (self.muscle_aln is not None)
+
+  def build_lookup_table (self) :
     # find sequences and determine equivalent numbering
     self._lookup_table = {}
-    i_ref = self.muscle_aln.names.index(reference_sequence_name)
+    i_ref = self.muscle_aln.names.index(self.reference_sequence_name)
     self._reference_alignment = self.muscle_aln.alignments[i_ref]
     assert (i_ref is not None)
     for i, name in enumerate(self.muscle_aln.names) :
@@ -68,20 +99,43 @@ class align_pdb_residues (object) :
         i_pdb = self.fasta_names.index(name)
         aln = self.muscle_aln.alignments[i]
         j = k = 0
-        new_resseqs = []
-        for res1, res2 in zip(aln, self._reference_alignment) :
-          if (res2 != '-') :
-            k += 1
-          if (res1 == '-') :
-            continue
-          else :
-            if (res2 == '-') :
-              new_resseqs.append(None)
+        # case 1: index by resseq
+        if (self.pdb_offsets is not None) :
+          new_resseqs = []
+          for res1, res2 in zip(aln, self._reference_alignment) :
+            if (res2 != '-') :
+              k += 1
+            if (res1 == '-') :
+              continue
             else :
-              new_resseqs.append(k - reference_sequence_offset)
-            j += 1
-        assert (j == len(new_resseqs))
-        self._lookup_table[name] = new_resseqs
+              if (res2 == '-') :
+                new_resseqs.append(None)
+              else :
+                new_resseqs.append(k - self.reference_sequence_offset)
+              j += 1
+          assert (j == len(new_resseqs))
+          self._lookup_table[name] = new_resseqs
+        # case 2: index by resid
+        else :
+          new_resids = {}
+          for res1, res2 in zip(aln, self._reference_alignment) :
+            resid1 = resid2 = None
+            if (res2 != '-') :
+              resid2 = self.reference_sequence_resids[k]
+              if (resid2 is not None) :
+                resid2 = resid2.strip()
+              k += 1
+            if (res1 == '-') :
+              continue
+            else :
+              resid1 = self.pdb_resids[i_pdb][j]
+              if (resid1 is not None) :
+                resid1 = resid1.strip()
+                new_resids[resid1] = resid2
+              j += 1
+          assert (len(new_resids) == (len(self.pdb_resids[i_pdb]) -
+                                      self.pdb_resids[i_pdb].count(None)))
+          self._lookup_table[name] = new_resids
 
   def write_file (self, file_name) :
     f = open(file_name, "w")
@@ -95,7 +149,36 @@ class align_pdb_residues (object) :
       return pdb_name
       #return self.pdb_names.index(pdb_name)
 
+  def get_residue_position (self, pdb_name, resseq=None, resid=None) :
+    if (resseq is not None) :
+      assert (resid is None)
+      return self.convert_residue_number(pdb_name, resseq)
+    else :
+      assert (resid is not None)
+      return self.convert_resid(pdb_name, resid)
+
+  def convert_resid (self, pdb_name, resid) :
+    assert (self.pdb_resids is not None)
+    assert (isinstance(resid, str))
+    seq_name = self.get_name_index(pdb_name)
+    if (self._lookup_table[seq_name] is None) :
+      return resid
+    try :
+      return self._lookup_table[seq_name][resid.strip()]
+    except KeyError, e :
+      raise RuntimeError("""\
+Encountered IndexError attempting to convert residue ID!
+Values:
+  pdb_name = %s
+  resid = %s
+  seq_name = %s
+
+Dump of full alignment:
+  %s
+""" % (pdb_name, resseq, seq_name, self.muscle_aln))
+
   def convert_residue_number (self, pdb_name, resseq) :
+    assert (self.pdb_offsets is not None)
     seq_name = self.get_name_index(pdb_name)
     assert isinstance(resseq, int)
     if (self._lookup_table[seq_name] is None) :
@@ -118,6 +201,101 @@ Dump of full alignment:
   %s
 """ % (pdb_name, resseq, seq_name, i_res, self.muscle_aln))
 
+def align_pdb_hierarchies (hierarchies,
+                           hierarchy_names,
+                           reference_hierarchy=None,
+                           reference_name=None,
+                           assume_consecutive_numbering=None,
+                           substitute_names=True,
+                           log=None) :
+  """
+  Convenience function: takes a collection of *single-model, single-chain* PDB
+  hierarchies, plus optional reference hierarchy, extracts sequences and
+  resseq offsets or resids, and generates alignment object.  By default, if
+  any of the hierarchies contain atoms with insertion codes, the resid mapping
+  will be used automatically.
+  """
+  assert (reference_hierarchy is None) or (reference_name is not None)
+  if (log is None) :
+    log = sys.stdout
+  if (assume_consecutive_numbering is None) :
+    # determine whether insertion codes are used - if so, index by resid
+    # instead of resseq
+    for hierarchy in hierarchies :
+      for atom in hierarchy.atoms_with_labels() :
+        if (atom.icode != ' ') :
+          assume_consecutive_numbering = False
+          break
+  if (assume_consecutive_numbering) :
+    pdb_offsets = []
+    pdb_resids = None
+  else :
+    pdb_offsets = None
+    pdb_resids = []
+  i = 0
+  reference_index = None
+  pdb_sequences = []
+  for hierarchy, name in zip(hierarchies, hierarchy_names) :
+    assert (hierarchy.overall_counts().n_chains == 1)
+    main_conf = hierarchy.models()[0].chains()[0].conformers()[0]
+    chain_seq = main_conf.as_padded_sequence(
+      skip_insertions=assume_consecutive_numbering)
+    pdb_sequences.append(chain_seq)
+    if (assume_consecutive_numbering) :
+      first_residue = main_conf.residues()[0]
+      resseq_start = first_residue.resseq_as_int()
+      if (resseq_start < 1) :
+        offset = abs(resseq_start) + 1
+      else :
+        offset = 0
+      pdb_offsets.append(offset)
+    else :
+      resids = main_conf.get_residue_ids(skip_insertions=False)
+      pdb_resids.append(resids)
+    if (hierarchy is reference_hierarchy) :
+      reference_index = i
+      print >> log, "  Using %s for sequence numbering" % name
+    elif (reference_hierarchy is None) and (reference_index is None) :
+      reference_index = i
+      print >> log, "  Using %s for sequence numbering" % name
+  if (reference_index is not None) :
+    pdb_names = hierarchy_names
+    msa_manager = align_pdb_residues(
+      pdb_sequences=pdb_sequences,
+      pdb_names=pdb_names,
+      pdb_offsets=pdb_offsets,
+      pdb_resids=pdb_resids,
+      reference_index=reference_index,
+      substitute_names=substitute_names,
+      out=log)
+  else :
+    assert (reference_hierarchy.overall_counts().n_chains == 1)
+    main_conf = reference_hierarchy.models()[0].chains()[0].conformers()[0]
+    reference_sequence = main_conf.as_padded_sequence(
+      skip_insertions=assume_consecutive_numbering)
+    reference_sequence_offset = reference_sequence_resids = None
+    if (assume_consecutive_numbering) :
+      first_residue = main_conf.residues()[0]
+      resseq_start = first_residue.resseq_as_int()
+      if (resseq_start < 1) :
+        reference_sequence_offset = abs(resseq_start) + 1
+      else :
+        reference_sequence_offset = 0
+    else :
+      reference_sequence_resids = main_conf.get_residue_ids(
+        skip_insertions=False)
+    msa_manager = align_pdb_residues(
+      pdb_sequences=pdb_sequences,
+      pdb_names=pdb_names,
+      pdb_offsets=pdb_offsets,
+      pdb_resids=pdb_resids,
+      reference_sequence=reference_sequence,
+      reference_sequence_offset=reference_sequence_offset,
+      reference_sequence_resids=reference_sequence_resids,
+      substitute_names=substitute_names,
+      out=self.log)
+  return msa_manager
+
 def run_muscle (fasta_sequences, group_sequences=True) :
   assert group_sequences # XXX this isn't actually optional!
   if not libtbx.env.has_module(name="muscle") :
@@ -137,10 +315,12 @@ def run_muscle (fasta_sequences, group_sequences=True) :
     stdin_lines=fasta_sequences)
   return muscle_out.stdout_lines
 
-def get_muscle_alignment (fasta_sequences, group_sequences=True) :
+def get_muscle_alignment (fasta_sequences, group_sequences=True, out=None) :
   muscle_out = run_muscle(fasta_sequences, group_sequences)
   from iotbx.bioinformatics import clustal_alignment_parse
   alignment, null = clustal_alignment_parse("\n".join(muscle_out))
+  if (out is not None) :
+    print >> out, "\n".join(muscle_out)
   return alignment
 
 ########################################################################
