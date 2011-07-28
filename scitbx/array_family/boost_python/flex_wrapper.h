@@ -974,6 +974,7 @@ namespace scitbx { namespace af { namespace boost_python {
       return numeric_no_pow(python_name, flex_root_scope)
         .def("norm", norm_a)
         .def("__pow__", pow_a_s)
+        .def("__abs__", abs_a)
       ;
     }
 
