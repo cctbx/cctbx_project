@@ -951,7 +951,8 @@ class process_pdb_file_srv(object):
                      cif_objects               = None,
                      cif_parameters            = None,
                      mon_lib_srv               = None,
-                     ener_lib                  = None):
+                     ener_lib                  = None,
+                     for_dihedral_reference    = False):
     self.raw_records               = None
     self.crystal_symmetry          = crystal_symmetry
     self.pdb_parameters            = pdb_parameters
@@ -968,17 +969,20 @@ class process_pdb_file_srv(object):
     if(self.log == False): self.log = None
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
-                        stop_if_duplicate_labels = True):
+                        stop_if_duplicate_labels = True,
+                        for_dihedral_reference = False):
     assert [pdb_file_names, raw_records].count(None) == 1
     if(self.cif_objects is not None):
       self._process_monomer_cif_files()
     return self._process_pdb_file(
       pdb_file_names           = pdb_file_names,
       raw_records              = raw_records,
-      stop_if_duplicate_labels = stop_if_duplicate_labels)
+      stop_if_duplicate_labels = stop_if_duplicate_labels,
+      for_dihedral_reference   = for_dihedral_reference)
 
   def _process_pdb_file(self, pdb_file_names, raw_records,
-                        stop_if_duplicate_labels):
+                        stop_if_duplicate_labels,
+                        for_dihedral_reference=False):
     if(raw_records is None):
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
       pdb_combined.report_non_unique(out=self.log)
@@ -1008,7 +1012,8 @@ class process_pdb_file_srv(object):
       strict_conflict_handling = False,
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,
-      log                      = self.log)
+      log                      = self.log,
+      for_dihedral_reference   = for_dihedral_reference)
     processed_pdb_file.xray_structure(show_summary=True)
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message(
       ignore_unknown_scattering_types=False,
