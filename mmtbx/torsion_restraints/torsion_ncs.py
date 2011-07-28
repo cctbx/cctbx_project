@@ -448,7 +448,14 @@ class torsion_ncs(object):
       model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
     for struct in ref_structures:
       ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
-    pg = mmtbx.alignment.pairwise_global(model_seq_padded,ref_seq_padded)
+    if len(model_seq) == len(ref_seq):
+      pg = mmtbx.alignment.pairwise_global(
+             model_seq,
+             ref_seq)
+    else:
+      pg = mmtbx.alignment.pairwise_global(
+             model_seq_padded,
+             ref_seq_padded)
     offset_i = 0
     offset_j = 0
     i = 0
@@ -523,6 +530,14 @@ class torsion_ncs(object):
           elif not skip:
             ncs_match_hash[master_key].append(key)
             matched.append(key)
+    #clear out redundancies
+    for key in ncs_match_hash.keys():
+      for key2 in ncs_match_hash.keys():
+        if key == key2:
+          continue
+        if key in ncs_match_hash[key2]:
+          del ncs_match_hash[key]
+
     self.ncs_match_hash = ncs_match_hash
     def get_key_chain_num(res):
       return res[4:]
