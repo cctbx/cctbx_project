@@ -2065,7 +2065,7 @@ class array(set):
     """Get the anomalous signal according to this formula:
 
     .. math::
-       \sqrt{\dfrac{<||F(+)|-|F(-)||^2>}{1/2 (<|F(+)|>^2 + <|F(-)|>^2)}}
+       \\sqrt{\\dfrac{<||F(+)|-|F(-)||^2>}{\\frac{1}{2} (<|F(+)|>^2 + <|F(-)|>^2)}}
 
     :param use_binning: If 'True' the anomalous signal will be calculated for \
     each bin of the data set individually
@@ -2146,8 +2146,9 @@ class array(set):
 
   def measurability(self, use_binning=False, cutoff=3.0, return_fail=None):
     ## Peter Zwart 2005-Mar-04
-    """Fraction of reflections for which (:math:`|delta I|/sigma_{dI})` > cutoff
-                   and :math:`min(I_{plus}/sigma_{plus},I_{min}/sigma_{min})` > cutoff
+    """Fraction of reflections for which
+    (:math:`\\dfrac{|\\Delta I|}{\\sigma_{dI}}` > cutoff and
+    :math:`min(\\dfrac{I_{+}}{\\sigma_{+}},\\dfrac{I_{-}}{\\sigma_{-}})` > cutoff
     """
     assert not use_binning or self.binner() is not None
     assert self.sigmas() is not None

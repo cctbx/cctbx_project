@@ -20,11 +20,11 @@ class pprocess:
           - http://documen.tician.de/pycuda/tutorial.html
        * suggested install scheme for Linux (not necessarily exact)::
 
-          ../base/bin/python configure.py --cuda-root=/usr/common/usg/cuda/3.2 \
-          --cudadrv-lib-dir=/usr/common/usg/nvidia-driver-util/3.2/lib64 \
-          --boost-inc-dir=$HOME/boostbuild/include \
-          --boost-lib-dir=$HOME/boostbuild/lib \
-          --boost-python-libname=boost_python \
+          ../base/bin/python configure.py --cuda-root=/usr/common/usg/cuda/3.2 \\
+          --cudadrv-lib-dir=/usr/common/usg/nvidia-driver-util/3.2/lib64 \\
+          --boost-inc-dir=$HOME/boostbuild/include \\
+          --boost-lib-dir=$HOME/boostbuild/lib \\
+          --boost-python-libname=boost_python \\
           --boost-thread-libname=boost_thread
           make install
 
@@ -33,8 +33,8 @@ class pprocess:
        tests were performed with separately-installed boost::
 
           cd boost_1_45_0
-          ./bootstrap.sh --prefix=$HOME/boostbuild --libdir=$HOME/boostbuild/lib \
-          --with-python=$HOME/build/base/bin/python \
+          ./bootstrap.sh --prefix=$HOME/boostbuild --libdir=$HOME/boostbuild/lib \\
+          --with-python=$HOME/build/base/bin/python \\
           --with-libraries=signals,thread,python
           ./bjam variant=release link=shared install
 
