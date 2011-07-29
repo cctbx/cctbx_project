@@ -8,32 +8,42 @@ from libtbx.utils import Sorry
 # example usage is given in cctbx/regression/tst_direct_scaling
 
 class pprocess:
-  """
+  """Class to represent a worker process
+
   Software requirements for running direct summation using Cuda parallel processing units:
-  1. numpy package (http://numpy.scipy.org) version 1.5.1 OK
-  2. pycuda package, version 2011.1 OK
-        more information:  http://wiki.tiker.net/PyCuda/Installation/Linux
-                           http://documen.tician.de/pycuda/tutorial.html
-        suggested install scheme for Linux (not necessarily exact):
+
+    1. numpy package (http://numpy.scipy.org) version 1.5.1 OK
+    2. pycuda package, version 2011.1 OK
+
+       * more information
+          - http://wiki.tiker.net/PyCuda/Installation/Linux
+          - http://documen.tician.de/pycuda/tutorial.html
+       * suggested install scheme for Linux (not necessarily exact)::
+
           ../base/bin/python configure.py --cuda-root=/usr/common/usg/cuda/3.2 \
-            --cudadrv-lib-dir=/usr/common/usg/nvidia-driver-util/3.2/lib64 \
-            --boost-inc-dir=$HOME/boostbuild/include \
-            --boost-lib-dir=$HOME/boostbuild/lib \
-            --boost-python-libname=boost_python \
-            --boost-thread-libname=boost_thread
+          --cudadrv-lib-dir=/usr/common/usg/nvidia-driver-util/3.2/lib64 \
+          --boost-inc-dir=$HOME/boostbuild/include \
+          --boost-lib-dir=$HOME/boostbuild/lib \
+          --boost-python-libname=boost_python \
+          --boost-thread-libname=boost_thread
           make install
-  3.  gcc 4.4.2 or higher is required for Linux build of pycuda 2011.1
-  4.  boost.python is required for pycuda; cctbx-installed version is probably OK, not tested.
-        tests were performed with separately-installed boost:
+
+    3. gcc 4.4.2 or higher is required for Linux build of pycuda 2011.1
+    4. boost.python is required for pycuda; cctbx-installed version is probably OK, not tested.
+       tests were performed with separately-installed boost::
+
           cd boost_1_45_0
-          ./bootstrap.sh --prefix=$HOME/boostbuild --libdir=$HOME/boostbuild/lib --with-python=$HOME/build/base/bin/python --with-libraries=signals,thread,python
+          ./bootstrap.sh --prefix=$HOME/boostbuild --libdir=$HOME/boostbuild/lib \
+          --with-python=$HOME/build/base/bin/python \
+          --with-libraries=signals,thread,python
           ./bjam variant=release link=shared install
-  5.  cuda 3.2 separately installed is required for pycuda 2011.1
-        (http://developer.nvidia.com/object/cuda_3_2_downloads.html)
+
+    5. cuda 3.2 separately installed is required for pycuda 2011.1
+       (http://developer.nvidia.com/object/cuda_3_2_downloads.html)
 
   Suggested hardware as tested:
-    Nvidia Tesla C2050 (Fermi, compute capability 2.0): 225-fold performance improvement over CPU.
-    Nvidia Tesla C1060 (compute capability 1.3): 24-fold performance improvement.
+    * Nvidia Tesla C2050 (Fermi, compute capability 2.0): 225-fold performance improvement over CPU.
+    * Nvidia Tesla C1060 (compute capability 1.3): 24-fold performance improvement.
   """
 
   def print_diagnostics(self):
@@ -235,7 +245,8 @@ class pprocess:
     except Exception:
       raise Sorry("Implementation assumes CUDA compute capability >= 1.3; found %d.%d"%cc)
 
-    # float precision failed on Tesla C1060 test with compute capability 1.3. Alignment problem copying from global to __shared__?
+    # float precision failed on Tesla C1060 test with compute capability 1.3.
+    # Alignment problem copying from global to __shared__?
     try:
       if algorithm.float_t=="float":
         assert cc >= (2,0)
@@ -268,13 +279,15 @@ class pprocess:
          n_hkl,totalthreads))
 
   def __init__(self,instance,algorithm,verbose=False):
-    """
-    :param instance: an instance of class from_scatterers_direct(cctbx.xray.structure_factors.manager.managed_calculation_base)
+    """Initializes a direct parallel worker
+
+    :param instance: an instance of class from_scatterers_direct(\
+cctbx.xray.structure_factors.manager.managed_calculation_base)
     :type instance: cctbx.xray.structure_factors.from_scatterers_direct
-    :param algorithm: an instance of class direct_summation_cuda_platform(direct_summation_simple) with algorithm set to "simple" or "pycuda"
+    :param algorithm: an instance of class direct_summation_cuda_platform(\
+direct_summation_simple) with algorithm set to "simple" or "pycuda"
     :type algorithm: cctbx.xray.structure_factors.direct_summation_cuda_platform
     """
-
     self.scatterers = instance._xray_structure.scatterers()
     self.registry = instance._xray_structure.scattering_type_registry()
     self.miller_indices = instance._miller_set.indices()

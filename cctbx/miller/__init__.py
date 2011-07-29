@@ -1921,27 +1921,25 @@ class array(set):
 
   def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
-    """\
-Combines phases of phase_source with self's data if real (keeping
-the sign of self's data) or with self's amplitudes if complex.
+    """Combines phases of phase_source with self's data if real (keeping
+    the sign of self's data) or with self's amplitudes if complex.
 
-Centric reflections are forced to be compatible with the phase
-restrictions.
+    Centric reflections are forced to be compatible with the phase restrictions.
 
-phase_source can be a miller.array or a plain flex array.
+    phase_source can be a miller.array or a plain flex array.
 
-epsilon is only used when phase_source is a complex array. If both the
-real and the imaginary part of phase_source[i] < epsilon the phase is
-assumed to be 0.
+    epsilon is only used when phase_source is a complex array. If both the
+    real and the imaginary part of phase_source[i] < epsilon the phase is
+    assumed to be 0.
 
-deg is only used if phase_source is an array of doubles.
-deg=True indicates that the phases are given in degrees,
-deg=False indicates phases are given in radians.
+    deg is only used if phase_source is an array of doubles.
+    deg=True indicates that the phases are given in degrees,
+    deg=False indicates phases are given in radians.
 
-phase_integrator_n_steps is only used if phase_source is an
-array of Hendrickson-Lattman coefficients. The centroid
-phases are determined on the fly using the given step size.
-"""
+    phase_integrator_n_steps is only used if phase_source is an
+    array of Hendrickson-Lattman coefficients. The centroid
+    phases are determined on the fly using the given step size.
+    """
     assert self.data() is not None
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
@@ -2064,7 +2062,17 @@ phases are determined on the fly using the given step size.
        for i_column in (0,1)])
 
   def anomalous_signal(self, use_binning=False):
-    """sqrt((<||F(+)|-|F(-)||**2>)/(1/2(<|F(+)|>**2+<|F(-)|>**2)))"""
+    """Get the anomalous signal according to this formula:
+
+    .. math::
+       \sqrt{\dfrac{<||F(+)|-|F(-)||^2>}{1/2 (<|F(+)|>^2 + <|F(-)|>^2)}}
+
+    :param use_binning: If 'True' the anomalous signal will be calculated for \
+    each bin of the data set individually
+    :type use_binning: boolean
+    :returns: the anomalous signal
+    :rtype: float or cctbx.miller.binned_data
+    """
     assert not use_binning or self.binner() is not None
     if (not use_binning):
       obs = self.select(self.data() > 0)
@@ -2085,13 +2093,22 @@ phases are determined on the fly using the given step size.
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def phase_entropy(self,exponentiate=False, return_binned_data=False, return_mean=False):
-    """Phase entropy as measured in terms of an base-360 entropy (base-2 for centrics).\n
-An entropy of 0, indicates that the phase uncertainity is as low as possible.
-An entropy of 1 however, indicates that the uncertainty is maximal: all phases are equally likely!
-Options: return_binned_data -> Determines if you receive a binned object rather then a raw array
-         exponentiate       -> whether or not to exponentiate the entropy. This will return a phase uncertainty in degrees (or the 'alphabet size')
-   """
+  def phase_entropy(self, exponentiate=False, return_binned_data=False,
+                          return_mean=False):
+    """Get phase entropy as measured in terms of an base-360 entropy
+    (base-2 for centrics).
+
+    An entropy of 0, indicates that the phase uncertainity is as low as possible
+    An entropy of 1 however, indicates that the uncertainty is maximal:
+    all phases are equally likely!
+
+    :param return_binned_data: if 'True' you receive a binned object rather \
+    then a raw array
+    :type return_binned_data: boolean
+    :param exponentiate: whether or not to exponentiate the entropy. This will \
+    return a phase uncertainty in degrees (or the 'alphabet size')
+    :type exponentiate: boolean
+    """
     assert ([return_binned_data,return_mean]).count(True)!=2
 
     if self.is_hendrickson_lattman_array():
@@ -2129,9 +2146,9 @@ Options: return_binned_data -> Determines if you receive a binned object rather 
 
   def measurability(self, use_binning=False, cutoff=3.0, return_fail=None):
     ## Peter Zwart 2005-Mar-04
-    """\
-Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
-            and min(I_plus/sigma_plus,I_min/sigma_min) > cutoff"""
+    """Fraction of reflections for which (:math:`|delta I|/sigma_{dI})` > cutoff
+                   and :math:`min(I_{plus}/sigma_{plus},I_{min}/sigma_{min})` > cutoff
+    """
     assert not use_binning or self.binner() is not None
     assert self.sigmas() is not None
     cutoff = float(cutoff)
@@ -2351,7 +2368,11 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 
   def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
                 use_binning=False):
-    """ sum ||F| - k|F'|| / sum |F|
+    """Get the R1 factor according to this formula
+
+    .. math::
+       R1 = \dfrac{\sum{||F| - k|F'||}}{\sum{|F|}}
+
     where F is self.data() and F' is other.data() and
     k is the factor to put F' on the same scale as F"""
     assert not use_binning or self.binner() is not None
