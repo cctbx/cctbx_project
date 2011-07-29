@@ -165,6 +165,7 @@ def run (args, log=sys.stdout) :
     if params.show_maps : return False
   if pdb_file is None and params.pdb_file is not None :
     pdb_file = file_reader.any_file(params.pdb_file, force_type="pdb")
+    pdb_file.assert_file_type("pdb")
   miller_arrays = mtz_file.file_object.as_miller_arrays()
   #r_free_array = None
   #if params.r_free_flags.remove :
