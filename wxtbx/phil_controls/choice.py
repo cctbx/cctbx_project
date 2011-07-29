@@ -7,6 +7,7 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     super(ChoiceCtrl, self).__init__(*args, **kwds)
     self._options = None
+    self.Bind(wx.EVT_CHOICE, lambda evt: self.DoSendEvent(), self)
 
   def SetChoices (self, choices, captions=None) :
     selection = None
@@ -30,7 +31,7 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
     self.SetSelection(selection)
 
   def GetValue (self) :
-    return NotImplementedError()
+    raise NotImplementedError("Please use GetPhilValue()")
 
   def GetPhilValue (self) :
     """Returns a single string."""
