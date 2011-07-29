@@ -22,12 +22,16 @@ class from_scatterers_direct(managed_calculation_base):
     :type manager: cctbx.xray.structure_factors.manager
     :param manager: ? (TODO: doc)
     :type algorithm: string
-    :param algorithm: the name of the evaluation method, either "direct", "use_alt_parallel"
+    :param algorithm: the name of the evaluation method, either \
+    "direct", "use_alt_parallel"
     :type cos_sin_table: boolean
-    :param cos_sin_table: If set to 'True' a precalculated cos_sin_table is used instead of actual trigonometric functions. Using a manager overrides this setting with the one specified in the manager.
+    :param cos_sin_table: If set to 'True' a precalculated cos_sin_table is used \
+    instead of actual trigonometric functions. Using a manager overrides this \
+    setting with the one specified in the manager.
 
     :rtype: cctbx.xray.structure_factors.from_scatterers_direct
-    :retruns: an instance `e` of `cctbx.xray.structure_factors.from_scatterers_direct` providing the evaluated structure factors as `e.f_calc()`
+    :retruns: an instance `e` of `cctbx.xray.structure_factors.from_scatterers_direct` \
+    providing the evaluated structure factors as `e.f_calc()`
     """
     time_all = user_plus_sys_time()
     managed_calculation_base.__init__(self,
