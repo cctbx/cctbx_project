@@ -3,7 +3,9 @@ from cctbx import miller
 from iotbx import cif
 from iotbx.cif import CifParserError
 from iotbx.cif.builders import CifBuilderError
-from libtbx.test_utils import approx_equal, show_diff, Exception_expected
+from iotbx.reflection_file_reader import any_reflection_file
+from libtbx.test_utils import \
+     approx_equal, show_diff, Exception_expected, open_tmp_file
 from cStringIO import StringIO
 import sys
 
@@ -133,9 +135,17 @@ _b 2
       cif_miller_array_template %(
         '_refln_F_calc',
         '_refln_F_meas',
-        '_refln_F_sigma'))).as_miller_arrays(data_block_name="global")
+        '_refln_F_sigma'))).as_miller_arrays(data_block_name=data_block_name)
     assert " ".join(sorted([str(ma.info()) for ma in miller_arrays])) \
       == "cif:global,_refln_F_calc cif:global,_refln_F_meas,_refln_F_sigma"
+  f = open_tmp_file(suffix="cif")
+  f.write(cif_miller_array_template %(
+        '_refln_F_calc',
+        '_refln_F_meas',
+        '_refln_F_sigma'))
+  f.close()
+  miller_arrays = any_reflection_file(file_name=f.name).as_miller_arrays()
+  assert len(miller_arrays) == 2
 
 def exercise_parser(reader, builder):
   cif_model = reader(
