@@ -75,6 +75,9 @@ namespace alignment {
         for ( int i2 = 1; i2 < n2; i2++ ) {
           // calc bonus for a match at this position
           int s = ( s1[i1] == s2[i2] ) ? 1 : 0;
+          if (s1[i1] == 'X' && s2[i2] == 'X') {
+            s = 0;
+          }
           // calc best score obtainable for this position
           float sul = scores(i1-1,i2-1) + s;
           float su = scores(i1-1,i2) + s + insdel;
