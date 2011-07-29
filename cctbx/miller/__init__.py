@@ -3051,7 +3051,7 @@ class array(set):
     """ Overriden version of set.amplitude_normalisation which computes
     the Wilson parameters from the array data if wilson_plot is None. """
     if wilson_plot is None:
-      import statistics
+      from cctbx import statistics
       f_obs = self.as_amplitude_array()
       f_obs.setup_binner(n_bins=20)
       wilson_plot = statistics.wilson_plot(f_obs, asu_contents)
