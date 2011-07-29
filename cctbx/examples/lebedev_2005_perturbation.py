@@ -3,9 +3,11 @@ Andrey A. Lebedev, Alexei A. Vagin & Garib N. Murshudov
 Acta Cryst. (2006). D62, 83-95.
 http://journals.iucr.org/d/issues/2006/01/00/ba5089/index.html
 Appendix A1. Algorithms used in the determination of twinning operators
-  and their type of merohedry
+and their type of merohedry
+
 The formula for the perturbation mentioned in the appendix and the
 matrices_from_email below kindly provided by Andrey.
+
 This script reproduces the perturbations ("scores") given by Andrey.
 It also shows the Le Page (1982, J. Appl. Cryst. 15, 255-259) deltas
 in radians for comparison.

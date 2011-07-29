@@ -69,6 +69,7 @@ class structure_factor:
 
   def d2_g_alpha_d_params(self):
     """Mathematica:
+
          alpha = 2 Pi {h,k,l}.{x,y,z}
          g = w Exp[-2 Pi^2 u dss]
          D[alpha,x,x]; D[alpha,x,y]; D[alpha,x,z]; D[g,x,u]; D[g,x,w]"
@@ -76,8 +77,10 @@ class structure_factor:
          D[alpha,z,x]; D[alpha,z,y]; D[alpha,z,z]; D[g,z,u]; D[g,z,w]"
          D[alpha,u,x]; D[alpha,u,y]; D[alpha,u,z]; D[g,u,u]; D[g,u,w]"
          D[alpha,w,x]; D[alpha,w,y]; D[alpha,w,z]; D[g,w,u]; D[g,w,w]"
-       This curvature matrix is symmetric.
-       All D[alpha, x|y|z, x|y|z|u|w] are 0.
+
+    This curvature matrix is symmetric.
+    All D[alpha, x|y|z, x|y|z|u|w] are 0.
+
        D[g,u,u] = (4 dss^2 Pi^4) w Exp[-2 Pi^2 u dss]
        D[g,u,w] = (-2 dss Pi^2)    Exp[-2 Pi^2 u dss]
        D[g,w,w] = 0
@@ -105,11 +108,14 @@ class structure_factor:
   def d2_target_d_params(self, target):
     """Combined application of chain rule and product rule.
        d_target_d_.. matrix:
+
          aa ag a' a"
          ga gg g' g"
          'a 'g '' '"
          "a "g "' ""
+
        Block in resulting matrix:
+
          xx xy xz xu xw x' x"
          yx yy yz yu yw y' y"
          zx zy zz zu zw z' z"
