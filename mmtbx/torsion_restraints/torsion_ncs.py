@@ -448,7 +448,7 @@ class torsion_ncs(object):
       model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
     for struct in ref_structures:
       ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
-    if len(model_seq) == len(ref_seq):
+    if model_seq == ref_seq:
       pg = mmtbx.alignment.pairwise_global(
              model_seq,
              ref_seq)
@@ -495,6 +495,10 @@ class torsion_ncs(object):
         elif seq_j == '-':
           i += 1
           j += 1
+          offset_j += 1
+        else:
+          i += 1
+          j += 1
     return res_match_hash
 
   def show_ncs_summary(self, log=None):
@@ -530,15 +534,9 @@ class torsion_ncs(object):
           elif not skip:
             ncs_match_hash[master_key].append(key)
             matched.append(key)
-    #clear out redundancies
-    for key in ncs_match_hash.keys():
-      for key2 in ncs_match_hash.keys():
-        if key == key2:
-          continue
-        if key in ncs_match_hash[key2]:
-          del ncs_match_hash[key]
 
     self.ncs_match_hash = ncs_match_hash
+    self.reduce_redundancies()
     def get_key_chain_num(res):
       return res[4:]
     sorted_keys = sorted(self.ncs_match_hash, key=get_key_chain_num)
@@ -550,6 +548,15 @@ class torsion_ncs(object):
         print_line += "  <=====>  %s" % (match)
       print >> log, print_line
     print >> log, "--------------------------------------------------------"
+
+  def reduce_redundancies(self):
+    #clear out redundancies
+    for key in self.ncs_match_hash.keys():
+      for key2 in self.ncs_match_hash.keys():
+        if key == key2:
+          continue
+        if key in self.ncs_match_hash[key2]:
+          del self.ncs_match_hash[key]
 
   def generate_dihedral_ncs_restraints(self, sites_cart, log):
     self.ncs_dihedral_proxies = \
