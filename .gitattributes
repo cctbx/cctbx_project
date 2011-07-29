@@ -1604,6 +1604,7 @@ wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
 wxtbx/phil_controls/__init__.py -text
 wxtbx/phil_controls/array_label.py -text
+wxtbx/phil_controls/choice.py -text
 wxtbx/phil_controls/choice_multi.py -text
 wxtbx/phil_controls/floatctrl.py -text
 wxtbx/phil_controls/floats.py -text
