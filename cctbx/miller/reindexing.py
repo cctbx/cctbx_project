@@ -10,6 +10,7 @@ class assistant(libtbx.slots_getstate_setstate):
     "perms",
     "inv_perms",
     "i_j_multiplication_table",
+    "i_inv_j_multiplication_table",
     "i_j_inv_multiplication_table"]
 
   def __init__(O, lattice_group, intensity_group, miller_indices):
@@ -41,22 +42,21 @@ class assistant(libtbx.slots_getstate_setstate):
         assert s.t().is_zero()
         key = str(s.r().as_hkl())
         lookup_dict[key] = i_part
-    def multiplication_table(j_inv):
+    def multiplication_table(reps_i, reps_j):
       result = []
-      for rep_i in reps:
+      for rep_i in reps_i:
         row = []
-        for rep_j in reps:
-          def rep_j_or_inverse():
-            if (j_inv): return rep_j.inverse()
-            return rep_j
-          s = rep_i.multiply(rep_j_or_inverse())
+        for rep_j in reps_j:
+          s = rep_i.multiply(rep_j)
           assert s.t().is_zero()
           key = str(s.r().as_hkl())
           row.append(lookup_dict[key])
         result.append(row)
       return result
-    O.i_j_multiplication_table = multiplication_table(j_inv=0)
-    O.i_j_inv_multiplication_table = multiplication_table(j_inv=1)
+    reps_inv = [_.inverse() for _ in reps]
+    O.i_j_multiplication_table = multiplication_table(reps, reps)
+    O.i_inv_j_multiplication_table = multiplication_table(reps_inv, reps)
+    O.i_j_inv_multiplication_table = multiplication_table(reps, reps_inv)
 
   def show_summary(O, out=None, prefix=""):
     if (out is None):
@@ -74,7 +74,7 @@ class assistant(libtbx.slots_getstate_setstate):
       s = "Indexing ambiguities:"
     print >> out, prefix+s
     for cb_op, perm in zip(O.cb_ops, O.perms):
-      r = cb_op.c().r()
+      r = cb_op.c().r().new_denominator(1)
       if (not r.is_unit_mx()):
         print >> out, prefix+"  %-12s  %d-fold    invariants: %4d" % (
           r.as_hkl(),

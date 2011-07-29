@@ -19,8 +19,9 @@ def run(args):
     miis = flex.random_permutation(size=ra.miller_indices.size())[:2]
     k = cb_op.apply(ra.miller_indices.select(miis))
     matches = miller.match_indices(k, ra.miller_indices)
-    assert matches.pairs().column(0).all_eq(flex.size_t_range(k.size()))
-    miis_cb = matches.pairs().column(1)
+    pairs = matches.pairs()
+    assert pairs.column(0).all_eq(flex.size_t_range(k.size()))
+    miis_cb = pairs.column(1)
     assert perm.select(miis).all_eq(miis_cb)
   def check_ra():
     for cb_op, perm, inv_perm in zip(ra.cb_ops, ra.perms, ra.inv_perms):
@@ -31,6 +32,13 @@ def run(args):
     [0, 1, 2, 3, 4, 5],
     [1, 2, 0, 4, 5, 3],
     [2, 0, 1, 5, 3, 4],
+    [3, 5, 4, 0, 2, 1],
+    [4, 3, 5, 1, 0, 2],
+    [5, 4, 3, 2, 1, 0]]
+  assert ra.i_inv_j_multiplication_table == [
+    [0, 1, 2, 3, 4, 5],
+    [2, 0, 1, 5, 3, 4],
+    [1, 2, 0, 4, 5, 3],
     [3, 5, 4, 0, 2, 1],
     [4, 3, 5, 1, 0, 2],
     [5, 4, 3, 2, 1, 0]]
@@ -71,6 +79,7 @@ Intensity symmetry: R 3 2 :R (No. 155)
 No indexing ambiguity.
 """)
   assert ra.i_j_multiplication_table == [[0]]
+  assert ra.i_inv_j_multiplication_table == [[0]]
   assert ra.i_j_inv_multiplication_table == [[0]]
   #
   ra = miller.reindexing.assistant(
@@ -88,7 +97,54 @@ Indexing ambiguity:
   -h,-l,-k      2-fold    invariants:    4
 """)
   assert ra.i_j_multiplication_table == [[0, 1], [1, 0]]
+  assert ra.i_inv_j_multiplication_table == [[0, 1], [1, 0]]
   assert ra.i_j_inv_multiplication_table == [[0, 1], [1, 0]]
+  #
+  import math
+  ta = math.acos(-1/3) * 180 / math.pi
+  uc = uctbx.unit_cell((11,11,11,ta,ta,ta))
+  ms = uc.complete_miller_set_with_lattice_symmetry(
+    anomalous_flag=True,
+    d_min=3)
+  ra = miller.reindexing.assistant(
+    lattice_group=ms.space_group(),
+    intensity_group=sgtbx.space_group_info(symbol="I 4 (y+z,x+z,x+y)").group(),
+    miller_indices=ms.expand_to_p1().indices())
+  check_ra()
+  sio = StringIO()
+  assert ra.show_summary(out=sio) is ra
+  assert not show_diff(sio.getvalue(), """\
+Lattice symmetry: I 4 3 2 (y+z,x+z,x+y) (No. 211)
+Intensity symmetry: I 4 (y+z,x+z,x+y) (No. 79)
+
+Indexing ambiguities:
+  k,l,h         3-fold    invariants:    2
+  -l,-k,-h      2-fold    invariants:    4
+  -h,-l,-k      2-fold    invariants:    4
+  l,h,k         3-fold    invariants:    2
+  -k,-h,-l      2-fold    invariants:    4
+""")
+  assert ra.i_j_multiplication_table == [
+    [0, 1, 2, 3, 4, 5],
+    [1, 4, 3, 5, 0, 2],
+    [2, 5, 0, 4, 3, 1],
+    [3, 2, 1, 0, 5, 4],
+    [4, 0, 5, 2, 1, 3],
+    [5, 3, 4, 1, 2, 0]]
+  assert ra.i_inv_j_multiplication_table == [
+    [0, 1, 2, 3, 4, 5],
+    [4, 0, 5, 2, 1, 3],
+    [2, 5, 0, 4, 3, 1],
+    [3, 2, 1, 0, 5, 4],
+    [1, 4, 3, 5, 0, 2],
+    [5, 3, 4, 1, 2, 0]]
+  assert ra.i_j_inv_multiplication_table == [
+    [0, 4, 2, 3, 1, 5],
+    [1, 0, 3, 5, 4, 2],
+    [2, 3, 0, 4, 5, 1],
+    [3, 5, 1, 0, 2, 4],
+    [4, 1, 5, 2, 0, 3],
+    [5, 2, 4, 1, 3, 0]]
   #
   print "OK"
 
