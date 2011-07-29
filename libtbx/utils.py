@@ -312,6 +312,24 @@ def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
     done.append(out)
   return msg
 
+def base36_encode(integer, width=None):
+  digit_set = "0123456789abcdefghijklmnopqrstuvwxyz"
+  digits = []
+  while (integer != 0):
+    integer, i = divmod(integer, 36)
+    digits.append(digit_set[i])
+  if (width is not None):
+    while (len(digits) < width):
+      digits.append("0")
+  digits.reverse()
+  return "".join(digits)
+
+def base36_timestamp(seconds_since_epoch=None, multiplier=1000, width=10):
+  s = seconds_since_epoch
+  if (s is None):
+    s = time.time()
+  return base36_encode(integer=int(s * multiplier + 0.5), width=width)
+
 def date_and_time():
   seconds_since_epoch = time.time()
   localtime = time.localtime(seconds_since_epoch)
@@ -952,136 +970,3 @@ def get_build_tag(path=None):
   if os.path.exists(tag_file_path):
     tag = open(tag_file_path).readline().strip()
   return tag
-
-def exercise():
-  from libtbx.test_utils import approx_equal, Exception_expected
-  host_and_user().show(prefix="### ")
-  time_in_seconds = 1.1
-  for i_trial in xrange(55):
-    time_in_seconds = time_in_seconds**1.1
-    time_units, time_unit = human_readable_time(
-      time_in_seconds=time_in_seconds)
-    assert approx_equal(
-      human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
-  # XXX this only works in California!
-  #assert (format_timestamp_12_hour(1280007000) == 'Jul 24 2010 02:30 PM')
-  #assert (format_timestamp_24_hour(1280007000) == 'Jul 24 2010 14:30')
-  #assert (format_timestamp_12_hour(1280007000, True) == '24-07-10 02:30 PM')
-  #assert (format_timestamp_24_hour(1280007000, True) == '24-07-10 14:30')
-  #assert (format_timestamp(1280007000) == 'Jul 24 2010 02:30 PM')
-  #
-  for string in ["True", "False"]:
-    try: number_from_string(string=string)
-    except ValueError, e:
-      assert str(e) == 'Error interpreting "%s" as a numeric expression.' % (
-        string)
-    else: raise Exception_expected
-  assert number_from_string(string="-42") == -42
-  assert approx_equal(number_from_string(string="3.14"), 3.14)
-  assert approx_equal(number_from_string(string="cos(0)"), 1)
-  try: number_from_string(string="xxx(0)")
-  except ValueError, e:
-    assert str(e).startswith(
-      'Error interpreting "xxx(0)" as a numeric expression: ')
-  else: raise Exception_expected
-  #
-  s = "[0.143139, -0.125121, None, -0.308607]"
-  assert numstr(values=eval(s)) == s
-  s = "[0.1431391, -0.1251212, None, -0.3086073]"
-  assert numstr7(values=eval(s)) == s
-  #
-  for s,i in {"2000000" : 2000000,
-              "2k" : 2048,
-              "2Kb" : 2048,
-              "2 Kb" : 2048,
-              "5Mb" : 5*1024*1024,
-              "2.5Gb" : 2.5*1024*1024*1024,
-              "1T": 1024*1024*1024*1024,
-              10000 : 10000,
-              5.5 : 5.5,
-              #"ten mb" : 0,
-              #"ralf" : 0,
-              }.items():
-    assert get_memory_from_string(s) == i
-  #
-  assert tupleize(1) == (1,)
-  assert tupleize("abcde") == ('a', 'b', 'c', 'd', 'e')
-  assert tupleize([1,2,3]) == (1,2,3)
-  #
-  assert search_for(pattern="fox", mode="==", lines=["fox", "foxes"]) \
-      == ["fox"]
-  assert search_for(pattern="o", mode="find", lines=["fox", "bird", "mouse"]) \
-      == ["fox", "mouse"]
-  assert search_for(pattern="fox", mode="startswith", lines=["fox", "foxes"]) \
-      == ["fox", "foxes"]
-  assert search_for(pattern="xes", mode="endswith", lines=["fox", "foxes"]) \
-      == ["foxes"]
-  assert search_for(pattern="es$", mode="re.search", lines=["geese", "foxes"]) \
-      == ["foxes"]
-  assert search_for(pattern="ge", mode="re.match", lines=["geese", "angel"]) \
-      == ["geese"]
-  #
-  for size in xrange(1,5):
-    for i1d in xrange(size):
-      assert n_dim_index_from_one_dim(i1d=i1d, sizes=(size,)) == [i1d]
-  for sizes in [(1,1), (1,3), (3,1), (2,3)]:
-    ni, nj = sizes
-    for i in xrange(ni):
-      for j in xrange(nj):
-        i1d = i*nj+j
-        assert n_dim_index_from_one_dim(i1d=i1d, sizes=sizes) == [i,j]
-  for sizes in [(1,1,1), (1,3,1), (3,2,1), (4,3,2)]:
-    ni, nj, nk = sizes
-    for i in xrange(ni):
-      for j in xrange(nj):
-        for k in xrange(nk):
-          i1d = (i*nj+j)*nk+k
-          assert n_dim_index_from_one_dim(i1d=i1d, sizes=sizes) == [i,j,k]
-  #
-  from libtbx import easy_run
-  b = easy_run.fully_buffered(
-    command="libtbx.raise_exception_for_testing")
-  for lines in [b.stdout_lines, b.stderr_lines]:
-    assert lines[0].startswith("EXCEPTION_INFO: show_stack(0): ")
-    assert lines[-1] == "EXCEPTION_INFO: RuntimeError: Just for testing."
-  b = easy_run.fully_buffered(
-    command="libtbx.raise_exception_for_testing silent")
-  b.raise_if_errors_or_output()
-  #
-  assert approx_equal([i/10. for i in range(-2,2)], frange(-0.2,0.2,0.1))
-  assert approx_equal([i/10. for i in range(-2,2+1)], samples(-0.2,0.2,0.1))
-  assert approx_equal([i/10. for i in range(2,-2,-1)], frange(0.2,-0.2,-0.1))
-  assert approx_equal([i/10. for i in range(2,-2-1,-1)], samples(0.2,-0.2,-0.1))
-  assert approx_equal([i/4. for i in range(4,8)], frange(1, 2, 0.25))
-  assert approx_equal([i/4. for i in range(4,8+1)], samples(1, 2, 0.25))
-  assert approx_equal([0.2+i/3. for i in range(4)], frange(0.2, 1.3, 1./3))
-  assert approx_equal([0.2+i/3. for i in range(4)], samples(0.2, 1.3, 1./3))
-  assert approx_equal(range(5) , frange(5))
-  assert approx_equal(range(5+1) , samples(5))
-  assert approx_equal(range(-5), frange(-5))
-  assert approx_equal(range(-5-1), samples(-5))
-  assert approx_equal(range(1,3), frange(1, 3))
-  assert approx_equal(range(1,3+1), samples(1, 3))
-  assert approx_equal([i/10. for i in range(20,9,-2)], frange(2.0,0.9,-0.2))
-  assert approx_equal([i/10. for i in range(20,9,-2)], samples(2.0,0.9,-0.2))
-  #
-  assert format_float_with_standard_uncertainty(21.234567, 0.0013) \
-      == "21.2346(13)"
-  assert format_float_with_standard_uncertainty(21.234567, 0.0023) \
-      == "21.235(2)"
-  assert format_float_with_standard_uncertainty(12345, 45) == "12350(50)"
-  assert format_float_with_standard_uncertainty(12.3,1.2) == "12.3(12)"
-  assert format_float_with_standard_uncertainty(-0.2451, 0.8135) == "-0.2(8)"
-  assert format_float_with_standard_uncertainty(1.234, 0.196) == "1.2(2)"
-  assert format_float_with_standard_uncertainty(1.234, 0.193) == "1.23(19)"
-  #
-  for n in xrange(4):
-    assert len(random_hex_code(number_of_digits=n)) == n
-  #
-  print "get_svn_revision():", get_svn_revision()
-  print "get_build_tag():", get_build_tag()
-  #
-  print "OK"
-
-if (__name__ == "__main__"):
-  exercise()

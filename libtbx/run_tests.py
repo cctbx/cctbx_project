@@ -4,8 +4,8 @@ import libtbx.load_env
 def run():
   tst_list = (
   "$D/metric_prefixes.py",
+  "$D/tst_utils.py",
   "$D/test_utils.py",
-  "$D/utils.py",
   "$D/queuing_system_utils/pbs_utils.py",
   "$D/queuing_system_utils/sge_utils.py",
   "$D/introspection.py",
@@ -13,7 +13,6 @@ def run():
   "$D/tst_easy_mp.py",
   "$D/tst_easy_pickle.py",
   "$D/easy_run.py",
-  "$D/tst_utils.py",
   "$D/tst_containers.py",
   "$D/tst_path.py",
   "$D/tst_math_utils.py",
