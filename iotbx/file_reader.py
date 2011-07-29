@@ -50,8 +50,8 @@ standard_file_descriptions = {
   'txt'  : "Text",
   'mtz'  : "Reflections (MTZ)",
   'aln'  : "Sequence alignment",
-  'hhr'  : "HHpred analysis file",
-  'img'  : "Detector image file",
+  'hhr'  : "HHpred analysis",
+  'img'  : "Detector image",
 }
 
 supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "aln", "txt",
@@ -60,6 +60,20 @@ supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "aln", "txt",
 binary_types = ["hkl","ccp4_map","img","pkl"]
 ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "aln", "seq", "xml",
 "txt"]
+
+def get_wildcard_string (format) :
+  assert (format in standard_file_extensions)
+  wildcards = [ "*.%s" % ext for ext in standard_file_extensions[format] ]
+  wildcard_str = "%s file (%s)|%s" % (standard_file_descriptions[format],
+    ", ".join(wildcards), ";".join(wildcards))
+  return wildcard_str
+
+def get_wildcard_strings (formats, include_any=True) :
+  wildcards = [ get_wildcard_string(format) for format in formats ]
+  wildcards_str = "|".join(wildcards)
+  if (include_any) :
+    wildcards_str += "|All files (*.*)|*.*"
+  return wildcards_str
 
 class FormatError (Sorry) :
   pass

@@ -2,6 +2,7 @@ import os
 import libtbx.load_env
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected
+from iotbx import file_reader
 from iotbx.file_reader import any_file, sort_by_file_type, group_files
 from cctbx import miller
 from cctbx import crystal
@@ -278,6 +279,8 @@ def exercise_misc () :
   file_names = ["foo.pdb", "foo.mtz", "bar.pdb", "bar.mtz", "seq.dat"]
   file_names = sort_by_file_type(file_names, sort_order=["pdb","hkl","seq"])
   assert (file_names == ['foo.pdb','bar.pdb','foo.mtz','bar.mtz','seq.dat'])
+  wc = file_reader.get_wildcard_strings(["hkl","pdb","seq"])
+  assert (wc == """Reflections file (*.mtz, *.hkl, *.sca, *.cns, *.xplor, *.cv, *.ref, *.fobs)|*.mtz;*.hkl;*.sca;*.cns;*.xplor;*.cv;*.ref;*.fobs|Model file (*.pdb, *.ent)|*.pdb;*.ent|Sequence file (*.fa, *.faa, *.seq, *.pir, *.dat, *.fasta)|*.fa;*.faa;*.seq;*.pir;*.dat;*.fasta|All files (*.*)|*.*""")
 
 def exercise_groups () :
   files = [
