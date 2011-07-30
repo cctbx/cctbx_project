@@ -280,21 +280,26 @@ class ncs:
   def ncs_groups(self):
     return self._ncs_groups
 
-  def read_ncs(self,file_name,source_info="",log=None,quiet=False):
+  def read_ncs(self,file_name=None,lines=[],source_info="",log=None,quiet=False):
     if not log: log=sys.stdout
     if not quiet:
-      print >>log,"Reading NCS information from: ",file_name
+      if file_name:
+        print >>log,"Reading NCS information from: ",file_name
     if source_info:
        print >>log," based on ",source_info
        self.source_info=source_info
     else:
-       self.source_info=file_name
-    if not os.path.isfile(file_name):
-      raise Sorry("The file "+str(file_name)+" does not seem to exist?")
+       self.source_info=str(file_name)
+    if file_name:
+      if not os.path.isfile(file_name):
+        raise Sorry("The file "+str(file_name)+" does not seem to exist?")
+      else:
+        lines=open(file_name).readlines()
     self.init_ncs_group()
 
     read_something=False
-    for line in open(file_name).readlines():
+
+    for line in lines:
       if not line : continue
       spl=string.split(line)
       if len(spl)<1: continue
