@@ -180,8 +180,8 @@ master_params_str = """\
     .optional=False
     .help = **EXPERIMENTAL, developers only**
     .expert_level = 3
-  nonbonded_weight = 100
-    .type = int
+  nonbonded_weight = None
+    .type = float
     .short_caption = Nonbonded weight (without hydrogens)
     .help = Weighting of nonbonded restraints term when hydrogen atoms are \
       omitted.  When explicit hydrogens are present, the weight will be set \
@@ -3560,11 +3560,12 @@ class build_all_chain_proxies(object):
     #       xray_structure=self.extract_xray_structure())
     #print tuple(nonbonded_params.residue_self_pair_table)
     #STOP()
-    nonbonded_weight = 16 # c_rep in prolsq repulsion function
-    if (assume_hydrogens_all_missing) :
+    if(self.params.nonbonded_weight is None):
+      nonbonded_weight = 16 # c_rep in prolsq repulsion function
+      if(assume_hydrogens_all_missing) :
+        nonbonded_weight = 100
+    else:
       nonbonded_weight = self.params.nonbonded_weight
-      if (nonbonded_weight is None) or (nonbonded_weight <= 0) :
-        raise Sorry("scale_nonbonded_if_no_h <= 0 not allowed.")
     result = geometry_restraints.manager.manager(
       crystal_symmetry=self.special_position_settings,
       model_indices=self.model_indices,
