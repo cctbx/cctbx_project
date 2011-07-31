@@ -1,6 +1,7 @@
-#ifndef CCTBX_MILLER_IMAGE_SIMPLE_H
-#define CCTBX_MILLER_IMAGE_SIMPLE_H
+#ifndef RSTBX_SIMAGE_IMAGE_SIMPLE_HPP
+#define RSTBX_SIMAGE_IMAGE_SIMPLE_HPP
 
+#include <rstbx/import_scitbx_af.hpp>
 #include <cctbx/miller.h>
 #include <cctbx/uctbx.h>
 #include <scitbx/mat3.h>
@@ -8,7 +9,7 @@
 #include <scitbx/array_family/versa.h>
 #include <tbxx/error_utils.hpp>
 
-namespace cctbx { namespace miller {
+namespace rstbx { namespace simage {
 
   struct image_simple
   {
@@ -44,8 +45,8 @@ namespace cctbx { namespace miller {
 
     image_simple&
     compute(
-      uctbx::unit_cell const& unit_cell,
-      af::const_ref<index<> > const& miller_indices,
+      cctbx::uctbx::unit_cell const& unit_cell,
+      af::const_ref<cctbx::miller::index<> > const& miller_indices,
       af::const_ref<double> const& spot_intensity_factors,
       scitbx::mat3<double> const& crystal_rotation_matrix,
       double ewald_radius,
@@ -157,7 +158,7 @@ namespace cctbx { namespace miller {
                       signal_at_center * falloff_factor + 0.5);
                   }
                 }
-                pixels[pi0+pj] = signal;
+                pixels_beg[pi0+pj] = signal;
               }
             }
           }
@@ -167,6 +168,6 @@ namespace cctbx { namespace miller {
     }
   };
 
-}} // namespace cctbx::miller
+}} // namespace rstbx::simage
 
 #endif // GUARD

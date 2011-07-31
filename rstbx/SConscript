@@ -50,3 +50,4 @@ if (not env_etc.no_boost_python):
 
   SConscript("diffraction/fastbragg/SConscript")
   SConscript("simulation/SConscript")
+  SConscript("simage/SConscript")
