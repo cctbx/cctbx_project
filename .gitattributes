@@ -116,7 +116,6 @@ cctbx/miller/boost_python/f_calc_map.cpp -text
 cctbx/miller/boost_python/slices.cpp -text
 cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/f_calc_map.h -text
-cctbx/miller/image_simple.hpp svneol=native#text/plain
 cctbx/miller/reindexing.py svneol=native#text/x-python
 cctbx/miller/slices.h -text
 cctbx/miller/transform_and_change_of_basis.tex -text
@@ -1229,6 +1228,7 @@ rstbx/dps_core/sampling.py -text
 rstbx/dps_core/tst_iotbx_converter.py -text
 rstbx/dps_core/zuoreduction.py -text
 rstbx/ext.cpp -text
+rstbx/import_scitbx_af.hpp svneol=native#text/plain
 rstbx/indexing/__init__.py -text
 rstbx/indexing/do_index.py -text
 rstbx/indexing/results2.dat -text
@@ -1238,6 +1238,11 @@ rstbx/indexing/tst_auto_monoscan.py -text
 rstbx/indexing/tst_dataset1.py -text
 rstbx/libtbx_config -text
 rstbx/run_tests.py -text
+rstbx/simage/SConscript -text
+rstbx/simage/__init__.py svneol=native#text/x-python
+rstbx/simage/ext.cpp svneol=native#text/plain
+rstbx/simage/image_simple.hpp svneol=native#text/plain
+rstbx/simage/tst.py svneol=native#text/x-python
 rstbx/simulation/SConscript -text
 rstbx/simulation/__init__.py -text
 rstbx/simulation/constants.py -text
