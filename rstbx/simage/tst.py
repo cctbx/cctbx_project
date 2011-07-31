@@ -1,3 +1,6 @@
+import sys, os
+op = os.path
+
 def exercise_image_simple():
   expected_sum_image_pixels_iter = iter(
       (200, 156) + (400, 308)*2
@@ -126,11 +129,48 @@ def exercise_image_simple():
 |*****|
 """.replace("*", star))
 
+def exercise_create():
+  from rstbx.simage import create
+  from libtbx.test_utils import block_show_diff
+  from libtbx.str_utils import show_string
+  from cStringIO import StringIO
+  #
+  def check(args, expected_block):
+    sio = StringIO()
+    work_params = create.process_args(args=args, out=sio)
+    assert not block_show_diff(sio.getvalue(), expected_block)
+    pixels = create.compute_image(work_params)
+    assert pixels.all() == tuple(work_params.detector.pixels)
+  #
+  check(args=[], expected_block="""\
+detector {
+  distance = 180
+  size = 200 200
+  pixels = 1000 1000
+}
+""")
+  #
+  relative_path = "phenix_regression/pdb/start.pdb"
+  import libtbx.load_env
+  full_path = libtbx.env.find_in_repositories(
+    relative_path=relative_path, test=op.isfile)
+  if (full_path is None):
+    print "Skipping some tests due to missing file: %s" % relative_path
+  else:
+    check(
+      args=["pdb_file="+show_string(full_path)],
+      expected_block="""\
+change_of_basis_op_to_niggli_cell = "a,b,c"
+unit_cell = 32.9 32.9 96.1 90 90 120
+intensity_symmetry = "P 3 2 1"
+lattice_symmetry = "P 6 2 2"
+""")
+
 def run(args):
   assert len(args) == 0
   exercise_image_simple()
+  exercise_create()
   print "OK"
 
 if (__name__ == "__main__"):
-  import sys
   run(args=sys.argv[1:])
