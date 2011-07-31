@@ -166,10 +166,31 @@ intensity_symmetry = "P 3 2 1"
 lattice_symmetry = "P 6 2 2"
 """)
 
+def exercise_explore_completeness():
+  from libtbx import easy_run
+  def run(args):
+    cmd = " ".join(["rstbx.simage.explore_completeness"] + args)
+    print cmd
+    buf = easy_run.fully_buffered(
+      command=cmd, stdout_splitlines=False).raise_if_errors().stdout_buffer
+    for key in [
+          "Complete with ",
+          "Observations per reflection:",
+          "  Median: "]:
+      assert buf.find(key) >= 0
+    return buf
+  run(["d_min=10"])
+  args = ["d_min=10", "intensity_symmetry=P4", "use_symmetry=True"]
+  if (sys.version_info[:2] >= (2, 6)):
+    args.append("multiprocessing=True")
+  buf = run(args)
+  assert buf.find('lattice_symmetry = "P 4 2 2"') >= 0
+
 def run(args):
   assert len(args) == 0
   exercise_image_simple()
   exercise_create()
+  exercise_explore_completeness()
   print "OK"
 
 if (__name__ == "__main__"):

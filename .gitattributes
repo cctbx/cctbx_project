@@ -1198,6 +1198,7 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/command_line/__init__.py -text
+rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/diffraction/__init__.py -text
 rstbx/diffraction/ewald_sphere.cpp -text
 rstbx/diffraction/ewald_sphere.h -text
@@ -1241,6 +1242,7 @@ rstbx/run_tests.py -text
 rstbx/simage/SConscript -text
 rstbx/simage/__init__.py svneol=native#text/x-python
 rstbx/simage/create.py svneol=native#text/x-python
+rstbx/simage/explore_completeness.py svneol=native#text/x-python
 rstbx/simage/ext.cpp svneol=native#text/plain
 rstbx/simage/image_simple.hpp svneol=native#text/plain
 rstbx/simage/tst.py svneol=native#text/x-python
