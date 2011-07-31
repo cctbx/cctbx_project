@@ -180,6 +180,8 @@ def run():
   cmd_line.add_option("--n-trials",
                       type='int',
                       default=None)
+  cmd_line.add_option("--Verbose",
+                      action='store_true')
   opts, args = cmd_line.parse_args()
   libtbx.utils.show_times_at_exit()
   exercise_mean_square_displacement(opts,
