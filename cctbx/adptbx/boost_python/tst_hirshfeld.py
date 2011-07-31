@@ -99,19 +99,30 @@ def exercise_hirshfeld_relative_difference(options, n_trials):
       assert approx_equal(r, 2*(h1 - h2)/(h1 + h2), eps=1e-12)
 
   # check gradients with finite difference
-  s = 1e-4
+  finite_difference_computation = scitbx.math.finite_difference_computation()
+  best_delta = finite_difference_computation.best_delta
   for op in operators:
     for i in xrange(n_trials):
-      x1 = matrix.col(site_coord(3))
-      dx1 = matrix.col(site_coord(3))*s
-      x2 = matrix.col(site_coord(3))
-      dx2 = matrix.col(site_coord(3))*s
-      u1 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
-      du1 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))*s
-      u2 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))
-      du2 = matrix.col(as_sym_mat3(symm_mat(u_eigenval(3))))*s
-      g  = matrix.col(as_sym_mat3(symm_mat(g_eigenval(3))))
-      dg = matrix.col(as_sym_mat3(symm_mat(g_eigenval(3))))*s
+      x1 = site_coord(3)
+      dx1 = best_delta(x1, site_coord(3))
+      x1 = matrix.col(x1)
+      dx1 = matrix.col(dx1)
+      x2 = site_coord(3)
+      dx2 = best_delta(x2, site_coord(3))
+      x2 = matrix.col(x2)
+      dx2 = matrix.col(dx2)
+      u1_eigen = u_eigenval(3)
+      du1_eigen = best_delta(u1_eigen, direction(3))
+      u1 = matrix.col(as_sym_mat3(symm_mat(u1_eigen)))
+      du1 = matrix.col(as_sym_mat3(symm_mat(du1_eigen)))
+      u2_eigen = u_eigenval(3)
+      du2_eigen = best_delta(u2_eigen, direction(3))
+      u2 = matrix.col(as_sym_mat3(symm_mat(u2_eigen)))
+      du2 = matrix.col(as_sym_mat3(symm_mat(du2_eigen)))
+      g_eigen = g_eigenval(3)
+      dg_eigen = best_delta(g_eigen, direction(3))
+      g  = matrix.col(as_sym_mat3(symm_mat(g_eigen)))
+      dg = matrix.col(as_sym_mat3(symm_mat(dg_eigen)))
       uc = uctbx.unit_cell(metrical_matrix=g)
       r = adptbx.relative_hirshfeld_difference(uc, x1, u1, x2, u2, op)
       uc_p = uctbx.unit_cell(metrical_matrix=g+dg)
@@ -131,8 +142,9 @@ def exercise_hirshfeld_relative_difference(options, n_trials):
                      + matrix.col(r.grad_u2).dot(du2)
                      + matrix.col(r.grad_unit_cell_params).dot(
                        (duc_p_params - duc_m_params)/2))
-      r = (taylor_diff - finite_diff)/finite_diff
-      assert abs(r) < 0.001, r
+    assert approx_equal(taylor_diff, finite_diff,
+                        eps=5*finite_difference_computation.precision),\
+           (taylor_diff, finite_diff)
 
   # check esd computation
   for op in operators:
