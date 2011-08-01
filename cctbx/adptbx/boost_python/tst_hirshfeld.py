@@ -4,7 +4,6 @@ import scitbx.random
 from scitbx import linalg, matrix
 from libtbx.test_utils import approx_equal
 import libtbx.utils
-import random
 
 site_coord = scitbx.random.variate(
   scitbx.random.uniform_distribution(0, 1))
@@ -24,8 +23,7 @@ def as_sym_mat3(packed_u):
 
 def exercise_mean_square_displacement(options, n_trials):
   if options.fix_random_seeds:
-    random.seed(0)
-    flex.set_random_seed(0)
+    scitbx.random.set_random_seed(0)
 
   # check adptbx.mean_square_displacement_difference
   # against adp_restraints.rigid_bond_pair
@@ -76,8 +74,7 @@ def exercise_mean_square_displacement(options, n_trials):
 
 def exercise_hirshfeld_relative_difference(options, n_trials):
   if options.fix_random_seeds:
-    random.seed(0)
-    flex.set_random_seed(0)
+    scitbx.random.set_random_seed(0)
 
   operators = [ sgtbx.rt_mx(),
                 sgtbx.rt_mx('-x, y, -z'),
