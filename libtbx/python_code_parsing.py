@@ -129,6 +129,8 @@ class unused_imports(ast.NodeVisitor):
       elif isinstance(x, ast.Call):
         for arg in x.args:
           self.visit(arg)
+        for keyword in x.keywords:
+          self.visit(keyword)
         namespace = []
         x = x.func
       elif isinstance(x, ast.Subscript):

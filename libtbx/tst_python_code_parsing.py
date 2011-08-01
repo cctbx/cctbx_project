@@ -73,6 +73,8 @@ def exercise_unused_imports():
   assert not unused
   unused = unused_imports(unused_imports_test_case_24)
   assert not unused
+  unused = unused_imports(unused_imports_test_case_25)
+  assert not unused
 
 
 unused_imports_test_case_1_header = """\
@@ -283,6 +285,13 @@ import baz.buz
 def f():
   boz.x = 1
   baz.buz.y = 2
+"""
+
+unused_imports_test_case_25 = """\
+from foo.bar import boz
+
+def f():
+  return g(a=boz.h()).x
 """
 
 def run():
