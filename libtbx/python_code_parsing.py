@@ -1,7 +1,6 @@
 import sys
-assert sys.version_info[0:2] == (2, 6)
+assert sys.version_info[0:2] >= (2, 6)
 
-import parser
 import ast
 
 class imported_name(object):
