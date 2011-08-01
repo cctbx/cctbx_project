@@ -460,14 +460,8 @@ class refinery(object):
     print
     sys.stdout.flush()
 
-# import before fork
-from rstbx.simage import \
-  run_spotfinder, \
-  run_labelit_index, \
-  refine_uc_cr, \
-  integrate_crude
-
 def index_and_integrate_one(work_params, image_mdls_miller_indices, pixels):
+  from rstbx.simage import run_spotfinder
   spots = run_spotfinder.process(
     work_params=work_params, pixels=pixels, show_spots=False)
   if (spots.size() < work_params.min_number_of_spots_for_indexing):
@@ -475,8 +469,10 @@ def index_and_integrate_one(work_params, image_mdls_miller_indices, pixels):
     print
     sys.stdout.flush()
     return (spots.size(), None)
+  from rstbx.simage import run_labelit_index
   ai = run_labelit_index.process(work_params=work_params, spots=spots)
   good_i_seqs, miller_indices, co = run_labelit_index.report_uc_cr(ai)
+  from rstbx.simage import refine_uc_cr
   refined = refine_uc_cr.refine(
     work_params=work_params,
     spots=spots,
@@ -484,6 +480,7 @@ def index_and_integrate_one(work_params, image_mdls_miller_indices, pixels):
     miller_indices=miller_indices,
     unit_cell=co.unit_cell(),
     crystal_rotation=co.crystal_rotation_matrix())
+  from rstbx.simage import integrate_crude
   predicted_spot_positions, \
   predicted_spot_miller_index_i_seqs = integrate_crude.predict_spot_positions(
     work_params=work_params,
@@ -514,6 +511,12 @@ def index_and_integrate(work_params, image_mdls):
         work_params, image_mdls.miller_indices, im.pixels)
       im.reset_spot_model(other=updated_im)
   else:
+    # import all before fork
+    from rstbx.simage import \
+      run_spotfinder, \
+      run_labelit_index, \
+      refine_uc_cr, \
+      integrate_crude
     def mp_func(i_img):
       return index_and_integrate_one(
         work_params,
@@ -911,7 +914,8 @@ def check_image_cluster(
     im = image_mdls.array[i_img]
     im.i_perm = i_perm_and_scale.i_perm
     im.scale = i_perm_and_scale.scale
-  if (not work_params.index_and_integrate):
+  if (    not work_params.index_and_integrate
+      and not work_params.force_unit_spot_intensities):
     image_mdls.check_i_perm_vs_backup(reindexing_assistant)
   cluster_scales = image_mdls.extract_scales()
   print "input vs. cluster scales:"
@@ -938,7 +942,10 @@ def show_i_calc_reindexing_correlations(i_calc, reindexing_assistant):
 
 def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
   show_i_calc_reindexing_correlations(i_calc, reindexing_assistant)
-  input_im0_i_perm = image_mdls.array[0].backup.i_perm
+  if (work_params.index_and_integrate):
+    input_im0_i_perm = None
+  else:
+    input_im0_i_perm = image_mdls.array[0].backup.i_perm
   if (work_params.check_refine_uc_cr):
     check_refine_uc_cr(work_params, image_mdls)
   scales_input = image_mdls.extract_scales()
@@ -1030,19 +1037,29 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
   print "Estimated I-obs:"
   i_obs_est.show_comprehensive_summary(prefix="  ")
   print
-  print "input_im0_i_perm:", input_im0_i_perm
-  print
-  for i_perm,cb_op in enumerate(reindexing_assistant.cb_ops):
-    c, e = i_calc.change_basis(cb_op).common_sets(i_obs_est)
-    if (c.indices().size() > 2):
-      print "Correlation of input and estimated I-obs (i_perm=%d):" % i_perm
-      print "  Number of points:", c.data().size()
-      corr = flex.linear_correlation(c.data(), e.data())
-      corr.show_summary(prefix="  ")
-      if (not work_params.index_and_integrate and i_perm == input_im0_i_perm):
-        from libtbx.test_utils import approx_equal
-        assert approx_equal(corr.coefficient(), 1)
+  if (i_obs_est.indices().size() > 2):
+    if (input_im0_i_perm is not None):
+      print "input_im0_i_perm:", input_im0_i_perm
       print
+    print "Correlation of input and estimated I-obs:"
+    cc_im0_i_perm = None
+    best_cc = -2
+    for i_perm,cb_op in enumerate(reindexing_assistant.cb_ops):
+      c, e = i_calc.change_basis(cb_op).common_sets(i_obs_est)
+      assert c.indices().size() == i_obs_est.indices().size()
+      corr = flex.linear_correlation(c.data(), e.data())
+      assert corr.is_well_defined()
+      cc = corr.coefficient()
+      if (best_cc < cc): best_cc = cc
+      if (input_im0_i_perm is not None and i_perm == input_im0_i_perm):
+        cc_im0_i_perm = cc
+      print "  i_perm=%d: %8.5f" % (i_perm, cc)
+    if (input_im0_i_perm is not None):
+      assert cc_im0_i_perm is not None
+      from libtbx.test_utils import approx_equal
+      assert approx_equal(cc_im0_i_perm, 1)
+    print "  Best correlation: %8.5f" % best_cc
+    print
   return True
 
 def process(work_params, i_calc):
@@ -1098,7 +1115,7 @@ index_and_integrate = False
   .type = bool
 show_refine_uc_cr = False
   .type = bool
-apply_random_reindexing = False
+apply_random_reindexing = True
   .type = bool
 multiprocessing = False
   .type = bool
@@ -1121,9 +1138,11 @@ write_image_models_to_mtz_files = False
   if (work_params.sample_random_seeds is None):
     process(work_params, i_calc)
   else:
-    for work_params.noise.random_seed in xrange(
-          work_params.sample_random_seeds):
-      process(work_params, i_calc)
+    _ = work_params
+    base36_timestamp = _.base36_timestamp
+    for _.noise.random_seed in xrange(_.sample_random_seeds):
+      _.base36_timestamp = base36_timestamp + "_%04d" % _.noise.random_seed
+      process(_, i_calc)
   show_vm_info("Final:")
 
 def run(args):

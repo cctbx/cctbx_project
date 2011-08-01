@@ -215,8 +215,8 @@ def build_i_calc(work_params):
       .map_to_asu() \
       .complete_array(new_data_value=0)
     i_calc, iselection = i_calc.expand_to_p1(return_iselection=True)
-    if (work_params.force_unit_spot_intensities):
-      i_calc = i_calc.array(data=flex.double(i_calc.indices().size(), 1))
+  if (work_params.force_unit_spot_intensities):
+    i_calc = i_calc.array(data=flex.double(i_calc.indices().size(), 1))
   return i_calc, iselection
 
 def add_noise(work_params, pixels):
