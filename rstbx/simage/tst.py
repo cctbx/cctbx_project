@@ -167,6 +167,11 @@ lattice_symmetry = "P 6 2 2"
 """)
 
 def exercise_explore_completeness():
+  import libtbx.load_env
+  if (not libtbx.env.has_module("spotfinder")):
+    print "Skipping some tests due to missing module: spotfinder"
+    return
+  from libtbx.test_utils import contains_substring
   from libtbx import easy_run
   def run(args):
     cmd = " ".join(["rstbx.simage.explore_completeness"] + args)
@@ -177,20 +182,77 @@ def exercise_explore_completeness():
           "Complete with ",
           "Observations per reflection:",
           "  Median: "]:
-      assert buf.find(key) >= 0
+      assert contains_substring(buf, key)
     return buf
   run(["d_min=10"])
   args = ["d_min=10", "intensity_symmetry=P4", "use_symmetry=True"]
   if (sys.version_info[:2] >= (2, 6)):
     args.append("multiprocessing=True")
   buf = run(args)
-  assert buf.find('lattice_symmetry = "P 4 2 2"') >= 0
+  assert contains_substring(buf, 'lattice_symmetry = "P 4 2 2"')
+
+def exercise_solver():
+  import libtbx.load_env
+  if (not libtbx.env.has_module("spotfinder")):
+    print "Skipping some tests due to missing module: spotfinder"
+    return
+  from libtbx.test_utils import block_show_diff, contains_substring
+  from libtbx import easy_run
+  def run(args):
+    cmd = " ".join(["rstbx.simage.solver"] + args)
+    print cmd
+    buf = easy_run.fully_buffered(
+      command=cmd, stdout_splitlines=False).raise_if_errors().stdout_buffer
+    for key in [
+          "Final:"]:
+      assert contains_substring(buf, key)
+    return buf
+  buf = run(["d_min=5"])
+  assert not block_show_diff(buf, """\
+input_im0_i_perm: 0
+
+Correlation of input and estimated I-obs:
+  i_perm=0:  1.00000
+""")
+  buf = run(["d_min=5", "lattice_symmetry=R32:R", "intensity_symmetry=R3:R"])
+  assert not block_show_diff(buf, """\
+input_im0_i_perm: 1
+
+Correlation of input and estimated I-obs:
+  i_perm=0:  0.06799
+  i_perm=1:  1.00000
+""")
+  buf = run(["d_min=5", "lattice_symmetry=R32:R", "intensity_symmetry=P1"])
+  assert not block_show_diff(buf, """\
+input_im0_i_perm: 5
+
+Correlation of input and estimated I-obs:
+  i_perm=0:  0.07524
+  i_perm=1: -0.02385
+  i_perm=2: -0.04577
+  i_perm=3: -0.00099
+  i_perm=4:  0.00764
+  i_perm=5:  1.00000
+""")
+  if (not libtbx.env.has_module("labelit")):
+    print "Skipping some tests due to missing module: labelit"
+  elif (sys.version_info[:2] < (2,6)):
+    print "Skipping some tests due to missing multiprocessing support."
+  else:
+    buf = run(["d_min=5", "lattice_symmetry=P422", "intensity_symmetry=P4",
+               "index_and_integrate=True", "multiprocessing=True"])
+    assert contains_substring(buf, "Refined unit cell 9 (")
+    assert contains_substring(buf, "Correlation of input and estimated I-obs:")
+    assert contains_substring(buf, "  Best correlation:  0.999")
 
 def run(args):
   assert len(args) == 0
+  from libtbx.utils import show_times_at_exit
+  show_times_at_exit()
   exercise_image_simple()
   exercise_create()
   exercise_explore_completeness()
+  exercise_solver()
   print "OK"
 
 if (__name__ == "__main__"):

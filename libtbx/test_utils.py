@@ -434,17 +434,31 @@ def anchored_block_show_diff(lines, anchor_index, expected):
   expected = "\n".join(expected)+"\n"
   return show_diff(lines, expected)
 
-def contains_lines(lines, expected):
-  assert isinstance(lines, str)
+def contains_substring(
+      actual,
+      expected,
+      failure_prefix="contains_substring() "):
+  assert isinstance(actual, str)
   assert isinstance(expected, str)
-  if (lines.find(expected) < 0):
-    print "contains_lines() FAILURE:"
-    print "expected:"
-    print "v"*79
-    sys.stdout.write(expected)
-    print "^"*79
+  if (actual.find(expected) < 0):
+    print "%sFAILURE:" % failure_prefix
+    def show(s):
+      print "v"*79
+      if (s.endswith("\n") or s.endswith(os.linesep)):
+        sys.stdout.write(s)
+      else:
+        print s
+      print "^"*79
+    show(actual)
+    print "  ACTUAL ----^"
+    print "EXPECTED ----v"
+    show(expected)
     return False
   return True
+
+def contains_lines(lines, expected):
+  return contains_substring(
+    actual=lines, expected=expected, failure_prefix="contains_lines() ")
 
 class RunCommandError(RuntimeError): pass
 
