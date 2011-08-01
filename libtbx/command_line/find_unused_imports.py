@@ -16,7 +16,10 @@ def run(args):
   for filename in work:
     unused = python_code_parsing.unused_imports(
       python_source_filename=filename,
-      ignored_imports=('libtbx.load_env'),
+      ignored_imports=('libtbx.load_env',
+                       'libtbx.forward_compatibility',
+                       'import libtbx.start_print_trace',
+                       'import libtbx.callbacks'),
       ignored_imports_from=('__future__',),
       ignore_imports_flagged_by_comments=('# import dependency',
                                           '# implicit import'))
