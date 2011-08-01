@@ -28,13 +28,8 @@ class imported_name(object):
 class unused_imports(ast.NodeVisitor):
   """ Unused import's in a module.
   This finds more of them than the algorithm in
-  libtbx.find_unused_imports_crude but a few cases of false positive need
-  to be addressed. Known ones:
-
-  from mmtbx.rotamer import rotamer_eval
-  from mmtbx.rotamer.rotamer_eval import RotamerID
-  rot_id = rotamer_eval.RotamerID()
-
+  libtbx.find_unused_imports_crude
+  Work in progress: careful checking of the outcome mandatory
   """
 
   @classmethod
