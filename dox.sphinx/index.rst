@@ -12,9 +12,10 @@ Welcome to cctbx's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 6
+   :glob:
 
-   modules
+   */modules
 
 Indices and tables
 ==================
