@@ -1,7 +1,7 @@
-
 from wxtbx.phil_controls import text_base
 from wxtbx import phil_controls
 import wxtbx.icons
+from libtbx.utils import Sorry
 import wx
 import os
 
@@ -9,6 +9,7 @@ WXTBX_PHIL_PATH_SAVE = 1
 WXTBX_PHIL_PATH_DIRECTORY = 2
 WXTBX_PHIL_PATH_VIEW_BUTTON = 4
 WXTBX_PHIL_PATH_NARROW = 8
+WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS = 16
 
 class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
@@ -20,16 +21,18 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     self._formats = ()
     if (self._path_style & WXTBX_PHIL_PATH_NARROW) :
       szr = wx.BoxSizer(wx.VERTICAL)
-      path_size = (400,-1)
+      path_size = (300,-1)
       szr2_pad = wx.TOP
     else :
       szr = wx.BoxSizer(wx.HORIZONTAL)
-      path_size = (300, -1)
+      path_size = (400, -1)
       szr2_pad = wx.LEFT
     self.SetSizer(szr)
     self._path_text = wx.TextCtrl(self, -1, size=path_size,
       style=wx.TE_PROCESS_ENTER)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self._path_text)
+    if (self._path_style & WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS) :
+      self._path_text.Bind(wx.EVT_KILL_FOCUS, self.OnEnter)
     self.GetValidator().Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
     szr.Add(self._path_text, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT)
     browse_btn = wx.Button(self, -1, "Browse...")
@@ -41,9 +44,13 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       bitmap = wxtbx.icons.viewmag.GetBitmap()
       view_btn = wx.BitmapButton(self, -1, bitmap)
       self.Bind(wx.EVT_BUTTON, self.OnDisplayFile, view_btn)
-      self.Bind(wx.EVT_CONTEXT_MENU, self.OnDisplayFileMenu, view_btn)
+      view_btn.Bind(wx.EVT_CONTEXT_MENU, self.OnDisplayFileMenu)
+      #self.Bind(wx.EVT_RIGHT_DOWN, self.OnDisplayFileMenu, view_btn)
       szr2.Add(view_btn, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 5)
+    szr.Layout()
     szr.Fit(self)
+    drop_target = PathDropTarget(self)
+    self.SetDropTarget(drop_target)
 
   def SetWidth (self, width) :
     self._path_text.SetSize((width, -1))
@@ -64,7 +71,11 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     return self._path_text.GetValue()
 
   def SetValue (self, value) :
-    self._path_text.SetValue(value)
+    if (value is None) :
+      self._path_text.SetValue("")
+    else :
+      assert isinstance(value, str)
+      self._path_text.SetValue(value)
 
   def SetBackgroundColour (self, *args, **kwds) :
     self._path_text.SetBackgroundColour(*args, **kwds)
@@ -90,17 +101,20 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
   def OnBrowse (self, event) :
     flags = 0
     if (self._path_style & WXTBX_PHIL_PATH_SAVE) :
-      flags |= wx.SAVE|wx.OVERWRITE_PROMPT
+      flags |= wx.FD_SAVE|wx.OVERWRITE_PROMPT
+    else :
+      flags |= wx.FD_OPEN
     new_path = ""
     if (self._path_style & WXTBX_PHIL_PATH_DIRECTORY) :
       new_path = wx.DirSelector(
         message="Choose a directory: %s" % self.GetName(),
         defaultPath=self._path_text.GetValue(),
-        style=flags,
+        style=flags|wx.DD_NEW_DIR_BUTTON,
         parent=self)
     else :
       from iotbx import file_reader
       wildcard = file_reader.get_wildcard_strings(self._formats)
+      print wildcard
       current_path = self._path_text.GetValue()
       defaultDir = defaultFile = ""
       if (current_path != "") :
@@ -111,7 +125,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
         defaultDir=defaultDir,
         defaultFile=defaultFile,
         style=flags,
-        wildcard="All files (*.*)|*.*")#wildcard)
+        wildcard=wildcard)
       if (dlg.ShowModal() == wx.ID_OK) :
         new_path = dlg.GetPath()
       wx.CallAfter(dlg.Destroy)
@@ -120,10 +134,28 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       self.DoSendEvent()
 
   def OnDisplayFile (self, event) :
-    print "NotImplemented"
+    file_name = self._path_text.GetValue()
+    if (file_name == "") :
+      return
+    elif (not os.path.exists(file_name)) :
+      raise Sorry("Path does not exist.")
+    tlp = self.GetTopLevelParent()
+    if (hasattr(tlp, "display_file")) :
+      tlp.display_file(file_name)
+    else :
+      print "NotImplemented"
 
   def OnDisplayFileMenu (self, event) :
-    print "NotImplemented"
+    file_name = self._path_text.GetValue()
+    if (file_name == "") :
+      return
+    elif (not os.path.exists(file_name)) :
+      raise Sorry("Path does not exist.")
+    tlp = self.GetTopLevelParent()
+    if (hasattr(tlp, "display_file_menu")) :
+      tlp.display_file_menu(file_name)
+    else :
+      print "NotImplemented"
 
   def OnEnter (self, event) :
     self.Validate()
@@ -150,10 +182,20 @@ class PathValidator (text_base.TextCtrlValidator) :
       else :
         raise ValueError("path does not exist")
 
+class PathDropTarget (wx.FileDropTarget) :
+  def __init__ (self, window) :
+    wx.FileDropTarget.__init__(self)
+    self.window = window
+
+  def OnDropFiles (self, x, y, filenames) :
+    self.window.SetValue(filenames[-1])
+    self.window.Validate()
+    self.window.DoSendEvent()
+
 if (__name__ == "__main__") :
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Path test")
-  panel = wx.Panel(frame, -1, size=(720,480))
+  panel = wx.Panel(frame, -1, size=(800,480))
   txt1 = wx.StaticText(panel, -1, "Reflections file", pos=(20,100))
   txt2 = wx.StaticText(panel, -1, "Output PDB file", pos=(20,160))
   txt3 = wx.StaticText(panel, -1, "Output directory", pos=(20,220))
@@ -165,7 +207,8 @@ if (__name__ == "__main__") :
     style=WXTBX_PHIL_PATH_SAVE|WXTBX_PHIL_PATH_VIEW_BUTTON)
   path2.SetFormats("pdb")
   path3 = PathCtrl(panel, -1, pos=(200,220), name="Output directory",
-    style=WXTBX_PHIL_PATH_DIRECTORY|WXTBX_PHIL_PATH_VIEW_BUTTON)
+    style=WXTBX_PHIL_PATH_DIRECTORY|WXTBX_PHIL_PATH_VIEW_BUTTON|
+      WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS)
   path4 = PathCtrl(panel, -1, pos=(20,300), name="Default parameters",
     style=WXTBX_PHIL_PATH_NARROW|WXTBX_PHIL_PATH_VIEW_BUTTON)
   path3.SetFormats("phil")
