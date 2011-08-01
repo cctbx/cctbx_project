@@ -26,6 +26,7 @@ def run(args):
     if unused:
       print 'In file %s:' % filename
       print unused
+      print
 
 
 if __name__ == '__main__':
