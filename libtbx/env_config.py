@@ -463,6 +463,19 @@ class environment:
   def has_module(self, name):
     return self.module_dist_paths.has_key(name)
 
+  def require_module(self, name, error=RuntimeError):
+    if (not self.has_module(name)):
+      build_path = self.build_path
+      from libtbx import introspection
+      nproc = introspection.number_of_processors()
+      raise error("""\
+The %(name)s module is needed but not configured.
+Run:
+  cd %(build_path)s
+  libtbx.configure %(name)s
+  libtbx.scons -j %(nproc)d
+Wait for the command to finish, then try again.""" % vars())
+
   def dist_paths(self):
     for module in self.module_list:
       for dist_path in module.dist_paths_active():
