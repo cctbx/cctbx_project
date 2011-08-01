@@ -70,9 +70,9 @@ def get_wildcard_string (format) :
 
 def get_wildcard_strings (formats, include_any=True) :
   wildcards = [ get_wildcard_string(format) for format in formats ]
-  wildcards_str = "|".join(wildcards)
   if (include_any) :
-    wildcards_str += "|All files (*.*)|*.*"
+    wildcards.append("All files (*.*)|*.*")
+  wildcards_str = "|".join(wildcards)
   return wildcards_str
 
 class FormatError (Sorry) :
