@@ -134,6 +134,7 @@ class unused_imports(ast.NodeVisitor):
         namespace = []
         x = x.func
       elif isinstance(x, ast.Subscript):
+        self.visit(x.slice)
         namespace = []
         x = x.value
       else:
