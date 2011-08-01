@@ -120,7 +120,6 @@ class unused_imports(ast.NodeVisitor):
     self._process_namespace((name.id,), name.lineno)
 
   def visit_Attribute(self, attr):
-    if not isinstance(attr.ctx, ast.Load): return
     namespace = []
     x = attr.value
     while not isinstance(x, ast.Name):
