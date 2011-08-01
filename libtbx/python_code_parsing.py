@@ -46,7 +46,7 @@ class unused_imports(ast.NodeVisitor):
       python_source_code = file(python_source_filename).read()
     super(unused_imports, self).__init__()
     self.comment_flags = ignore_imports_flagged_by_comments
-    self.python_source_line = python_source_code.split()
+    self.python_source_line = python_source_code.splitlines()
     self.ignored_imports = ignored_imports
     self.ignored_imports_from = ignored_imports_from
     self.current_context = () # start at module level
@@ -76,7 +76,7 @@ class unused_imports(ast.NodeVisitor):
 
   def visit_Import(self, imp):
     for comment in self.comment_flags:
-      if self.python_source_line[imp.lineno].endswith(comment): return
+      if self.python_source_line[imp.lineno - 1].endswith(comment): return
     imported = self.imported_in_context.setdefault(self.current_context, set())
     imported.update(
       imported_name(name.name if name.asname is None else name.asname,
@@ -86,7 +86,7 @@ class unused_imports(ast.NodeVisitor):
 
   def visit_ImportFrom(self, imp):
     for comment in self.comment_flags:
-      if self.python_source_line[imp.lineno].endswith(comment): return
+      if self.python_source_line[imp.lineno - 1].endswith(comment): return
     imported = self.imported_in_context.setdefault(self.current_context, set())
     imported.update(
       imported_name(name.name if name.asname is None else name.asname,

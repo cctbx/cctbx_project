@@ -70,7 +70,7 @@ def exercise_unused_imports():
   unused = unused_imports(
     unused_imports_test_case_23,
     ignore_imports_flagged_by_comments=('# import dependency',))
-  assert unused
+  assert not unused
 
 
 unused_imports_test_case_1_header = """\
