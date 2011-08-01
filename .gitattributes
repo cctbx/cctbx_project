@@ -1194,6 +1194,9 @@ rpmbuild/SPECS/cctbx.spec -text
 rstbx/README -text
 rstbx/SConscript -text
 rstbx/__init__.py -text
+rstbx/apps/__init__.py -text
+rstbx/apps/stills/__init__.py -text
+rstbx/apps/stills/simple_integration.py -text
 rstbx/array_family/__init__.py -text
 rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
