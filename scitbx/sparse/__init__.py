@@ -1,6 +1,7 @@
 import boost.python
-import boost.optional # Boost.Python binding needs boost::optional
-                      # through scitbx/random/boost_python/random.h
+import boost.optional # import dependency
+# Indeed Boost.Python binding needs boost::optional
+# through scitbx/random/boost_python/random.h
 ext = boost.python.import_ext("scitbx_sparse_ext")
 from scitbx_sparse_ext import *
 from scitbx.array_family import flex
