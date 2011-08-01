@@ -69,12 +69,22 @@ def get_darwin_gcc_build_number(gcc='gcc'):
   gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
                          .raise_if_errors()
                          .stdout_lines[0].strip())
-  m = re.search(r"\(Apple Inc. build (\d+)\)", gcc_version)
+  m = re.search(r"Apple Inc. build (\d+)\)", gcc_version)
   if m is None: return None
   try:
     return int(m.group(1))
   except ValueError:
     return None
+
+def is_llvm_compiler(gcc='gcc') :
+  from libtbx import easy_run
+  try :
+    gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
+                           .raise_if_errors()
+                           .stdout_lines[0].strip())
+    return ("llvm" in gcc_version)
+  except Exception, e :
+    return False
 
 def get_gcc_version(command_name="gcc"):
   from libtbx import easy_run
