@@ -1014,7 +1014,7 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
   from libtbx import easy_pickle
   from libtbx import group_args
   easy_pickle.dump(
-    file_name="%s_refine_multi_results.pickle" % work_params.base36_timestamp,
+    file_name="%s_solver_results.pickle" % work_params.base36_timestamp,
     obj=group_args(
       work_params=work_params,
       i_calc=i_calc,

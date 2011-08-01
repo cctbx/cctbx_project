@@ -123,12 +123,18 @@ def process_args(args, extra_phil_str="", out=None):
     work_params.base36_timestamp = libtbx.utils.base36_timestamp()
   if (work_params.pdb_id is None and work_params.pdb_file is None):
     if (work_params.unit_cell is None):
-      if (work_params.intensity_symmetry is None):
+      for cell_sym in [
+            work_params.lattice_symmetry,
+            work_params.intensity_symmetry]:
+        if (cell_sym is None):
+          continue
+        work_params.unit_cell = cell_sym.primitive_setting() \
+          .any_compatible_unit_cell(volume=50**3)
+        work_params.lattice_symmetry = None
+        break
+      else:
         from cctbx import uctbx
         work_params.unit_cell = uctbx.unit_cell((48,58,50,85,95,105))
-      else:
-        work_params.unit_cell = work_params.intensity_symmetry \
-          .any_compatible_unit_cell(volume=50**3)
   else:
     import iotbx.pdb
     pdb_inp = iotbx.pdb.input(
@@ -170,8 +176,9 @@ def build_i_calc(work_params):
     if (intensity_symmetry is not None):
       miller_set = miller_set.customized_copy(
         space_group_info=intensity_symmetry).unique_under_symmetry()
+    mt = flex.mersenne_twister(seed=work_params.noise.random_seed)
     i_calc = miller_set.array(
-      data=flex.double(miller_set.indices().size(), 1))
+      data=mt.random_double(size=miller_set.indices().size()))
     iselection = None
     if (intensity_symmetry is not None):
       i_calc, iselection = i_calc.expand_to_p1(return_iselection=True)
