@@ -114,7 +114,6 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     else :
       from iotbx import file_reader
       wildcard = file_reader.get_wildcard_strings(self._formats)
-      print wildcard
       current_path = self._path_text.GetValue()
       defaultDir = defaultFile = ""
       if (current_path != "") :
