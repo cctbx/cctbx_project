@@ -17,10 +17,12 @@ french_wilson {
   intensity_labels = None
     .type = strings
     .style = bold renderer:draw_fobs_label_widget
+    .input_size = 160
   r_free_flags.label = None
     .type = str
     .short_caption = R-free label
     .style = bold renderer:draw_rfree_label_widget
+    .input_size = 160
   output_file = None
     .type = path
     .optional = True
