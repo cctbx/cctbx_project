@@ -49,6 +49,7 @@ class scene (object) :
       if (self.slice_selection.count(True) == 0) :
         raise ValueError("No data selected!")
     index_span = array.index_span()
+    self.d_min = array.d_min()
     self.hkl_range = index_span.abs_range()
     self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
                   uc.reciprocal_space_vector((0,self.hkl_range[1],0)),

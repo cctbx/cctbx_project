@@ -129,10 +129,11 @@ class hklview_2d (wx.PyPanel) :
       else :
         missing_pen = wx.Pen('black')
     max_radius = self.scene.max_radius * r / max(x_max, y_max)
+    r_scale = ( 1/ self.scene.d_min) * 100.
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
-      x = center_x + r * x_ / x_max
-      y = center_y - r * y_ / y_max
+      x = center_x + r * x_ / r_scale
+      y = center_y - r * y_ / r_scale
       r_point = self.scene.radii[k] * r / max(x_max, y_max)
       if (self.settings.uniform_size) :
         r_point = max_radius
