@@ -71,6 +71,8 @@ def exercise_unused_imports():
     unused_imports_test_case_23,
     ignore_imports_flagged_by_comments=('# import dependency',))
   assert not unused
+  unused = unused_imports(unused_imports_test_case_24)
+  assert not unused
 
 
 unused_imports_test_case_1_header = """\
@@ -273,6 +275,14 @@ def f():
 
 unused_imports_test_case_23 = """\
 from scitbx.array_family import flex # import dependency
+"""
+
+unused_imports_test_case_24 = """\
+from foo.bar import boz
+import baz.buz
+def f():
+  boz.x = 1
+  baz.buz.y = 2
 """
 
 def run():
