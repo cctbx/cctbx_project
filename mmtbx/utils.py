@@ -709,7 +709,7 @@ pdb_params = iotbx.phil.parse("""\
     .short_caption=Input model
     .multiple=True
     .input_size=400
-    .style = bold input_file file_type:pdb OnUpdate:extract_pdb_params \
+    .style = bold input_file file_type:pdb OnChange:extract_pdb_params \
       file_type_default
 """)
 

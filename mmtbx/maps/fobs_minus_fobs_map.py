@@ -54,7 +54,7 @@ phase_source = None
   .type = path
   .help = PDB file with a model or reflection file with the phases
   .short_caption = PDB file for phasing
-  .style = bold OnUpdate:validate_phase_source file_type:pdb
+  .style = bold OnChange:validate_phase_source file_type:pdb
 scattering_table = *xray neutron
   .type = choice(multi=False)
   .help = Choices of scattering table for structure factors calculations

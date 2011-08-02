@@ -149,7 +149,7 @@ reference_file = None
   .short_caption = Reference set
   .help = Reflections file containing Miller indices (h,k,l) to use in output \
     file.
-  .style = noauto input_file file_type:mtz OnUpdate:update_reference_column_labels
+  .style = noauto input_file file_type:mtz OnChange:update_reference_column_labels
 data_column_label = None
   .type = str
   .short_caption = Reference file label
