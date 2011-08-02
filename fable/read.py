@@ -1841,6 +1841,9 @@ class fproc(fproc_p_methods):
         ssl=None, i_code=None, value=O.fproc_type+"_unnamed")
       return
     j_code = i_code + len(O.fproc_type)
+    pat = 'recursive'
+    if O.top_ssl.code.startswith(pat, i_code):
+      j_code += len(pat)
     tz = tokenization.ssl_iterator(ssl=O.top_ssl, start=j_code)
     O.name = tz.get(optional=True)
     if (O.name is None):
@@ -2846,7 +2849,9 @@ class split_fprocs(object):
           top_ssl = first_body_line
         top_ssl.raise_error(msg="Missing END for %s" % (fproc_type.upper()))
       for fproc_type in ["program", "blockdata", "subroutine", "function"]:
-        if (curr_ssl.code.startswith(fproc_type)):
+        if (fproc_type == "subroutine" and \
+             curr_ssl.code.startswith('recursivesubroutine') ) \
+               or curr_ssl.code.startswith(fproc_type):
           getattr(O, fproc_type).append(collect_until_end(
             fproc_type=fproc_type,
             top_ssl=curr_ssl,
