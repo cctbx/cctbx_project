@@ -544,9 +544,10 @@ class index (object) :
         if style.hidden :
           self._hidden.append(full_object_path)
         if style.OnUpdate is not None :
+          print "OnUpdate is deprecated (%s)" % full_object_path
           self._update_handlers[full_object_path] = style.OnUpdate
         elif style.process_hkl :
-          self._update_handlers[full_object_path] = "auto_extract_hkl_params"
+          self._event_handlers[full_object_path] = "auto_extract_hkl_params"
         if style.OnChange is not None :
           self._event_handlers[full_object_path] = style.OnChange
         if style.renderer is not None :
