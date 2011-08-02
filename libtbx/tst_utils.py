@@ -141,6 +141,8 @@ def exercise_misc():
   for n in xrange(4):
     assert len(utils.random_hex_code(number_of_digits=n)) == n
   #
+  print "multiprocessing problem:", utils.detect_multiprocessing_problem()
+  #
   print "base36_timestamp():", utils.base36_timestamp(), "now"
   print "base36_timestamp():", utils.base36_timestamp(
     seconds_since_epoch=115855*365.2425*24*60*60), "year 115855 CE"

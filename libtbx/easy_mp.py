@@ -1,3 +1,10 @@
+def detect_problem():
+  import os
+  if (os.name == "nt"):
+    return "libtbx.easy_mp: Windows is not a supported platform."
+  import libtbx.utils
+  return libtbx.utils.detect_multiprocessing_problem()
+
 from libtbx import Auto
 from cStringIO import StringIO
 import traceback
