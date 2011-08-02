@@ -2,7 +2,6 @@ from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
 from cStringIO import StringIO
-import os
 import sys
 
 class potentially_large(unpicklable):
@@ -39,23 +38,13 @@ def eval_parallel(
     assert mp_results[size][1] is None
 
 def exercise(exercise_fail):
-  if (os.name == "nt"):
-    print "Skipping tst_easy_mp.py: Windows is not a supported platform."
-    return
-  vers_info = sys.version_info[:2]
-  if (vers_info < (2,6)):
-    print "Skipping tst_easy_mp.py: Python 2.6 or higher is required."
+  from libtbx import easy_mp
+  mp_problem = easy_mp.detect_problem()
+  if (mp_problem is not None):
+    print "Skipping tst_easy_mp.py: %s" % mp_problem
     return
   data = potentially_large(size=1000)
-  from libtbx import easy_mp
-  sem_open_msg = "This platform lacks a functioning sem_open implementation"
-  try:
-    eval_parallel(data)
-  except ImportError, e:
-    if (not str(e).startswith(sem_open_msg)):
-      raise
-    print "Skipping tst_easy_mp.py: %s." % sem_open_msg
-    return
+  eval_parallel(data)
   assert len(easy_mp.fixed_func_registry) == 0
   eval_parallel(data, func_wrapper=None)
   assert len(easy_mp.fixed_func_registry) == 1

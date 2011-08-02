@@ -269,6 +269,29 @@ class Abort(Sorry) :
 class Failure(Sorry) :
   __module__ = Exception.__module__
 
+def detect_multiprocessing_problem():
+  vers_info = sys.version_info[:2]
+  if (vers_info < (2,6)):
+    return "multiprocessing module not available:" \
+      " Python 2.6 or higher is required" \
+      " (version currently in use: %d.%d)" % vers_info
+  sem_open_msg = "This platform lacks a functioning sem_open implementation"
+  pool = None
+  try:
+    try:
+      import multiprocessing
+      pool = multiprocessing.Pool(processes=2)
+      pool.map(func=abs, iterable=range(2), chunksize=1)
+    except ImportError, e:
+      if (not str(e).startswith(sem_open_msg)):
+        raise
+      return "multiprocessing import error: " + sem_open_msg
+  finally:
+    if (pool is not None):
+      pool.close()
+      pool.join()
+  return None
+
 def if_none(value, default):
   if (value is None): return default
   return value

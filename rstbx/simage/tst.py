@@ -186,7 +186,8 @@ def exercise_explore_completeness():
     return buf
   run(["d_min=10"])
   args = ["d_min=10", "intensity_symmetry=P4", "use_symmetry=True"]
-  if (sys.version_info[:2] >= (2, 6)):
+  from libtbx import easy_mp
+  if (easy_mp.detect_problem() is None):
     args.append("multiprocessing=True")
   buf = run(args)
   assert contains_substring(buf, 'lattice_symmetry = "P 4 2 2"')
@@ -236,14 +237,19 @@ Correlation of input and estimated I-obs:
 """)
   if (not libtbx.env.has_module("labelit")):
     print "Skipping some tests due to missing module: labelit"
-  elif (sys.version_info[:2] < (2,6)):
-    print "Skipping some tests due to missing multiprocessing support."
   else:
-    buf = run(["d_min=5", "lattice_symmetry=P422", "intensity_symmetry=P4",
-               "index_and_integrate=True", "multiprocessing=True"])
-    assert contains_substring(buf, "Refined unit cell 9 (")
-    assert contains_substring(buf, "Correlation of input and estimated I-obs:")
-    assert contains_substring(buf, "  Best correlation:  0.999")
+    from libtbx import easy_mp
+    mp_problem = easy_mp.detect_problem()
+    if (mp_problem is not None):
+      print "Skipping some tests:", mp_problem
+    else:
+      buf = run([
+        "d_min=5", "lattice_symmetry=P422", "intensity_symmetry=P4",
+        "index_and_integrate=True", "multiprocessing=True"])
+      assert contains_substring(buf, "Refined unit cell 9 (")
+      assert contains_substring(
+        buf, "Correlation of input and estimated I-obs:")
+      assert contains_substring(buf, "  Best correlation:  0.999")
 
 def run(args):
   assert len(args) == 0
