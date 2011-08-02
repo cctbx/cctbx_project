@@ -111,6 +111,7 @@ class torsion_ncs(object):
     i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
     chain_hash = utils.build_chain_hash(pdb_hierarchy)
     name_hash = utils.build_name_hash(pdb_hierarchy)
+    element_hash = utils.build_element_hash(pdb_hierarchy)
     chains = pdb_hierarchy.models()[0].chains()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     alignments = {}
@@ -230,7 +231,12 @@ class torsion_ncs(object):
         self.ncs_groups.append(ncs_set)
 
     for dp in geometry.dihedral_proxies:
-      dp_hash[dp.i_seqs] = dp
+      h_atom = False
+      for i_seq in dp.i_seqs:
+        if element_hash[i_seq] == " H":
+          h_atom = True
+      if not h_atom:
+        dp_hash[dp.i_seqs] = dp
 
     self.cbeta_proxies = []
     for cp in geometry.chirality_proxies:
