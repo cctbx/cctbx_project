@@ -50,8 +50,8 @@ input {
       .type=path
       .help="File name with data"
       .short_caption = Reflections
-      .style = bold noauto file_type:hkl process_hkl update_d_max_min \
-        child:fobs:obs_labels child:fcalc:calc_labels \
+      .style = bold noauto file_type:hkl input_file process_hkl \
+        update_d_max_min child:fobs:obs_labels child:fcalc:calc_labels \
         child:space_group:space_group child:unit_cell:unit_cell \
         child:d_min:high_resolution child:d_max:low_resolution
     obs_labels=None
@@ -100,7 +100,7 @@ input {
           .type = path
           .help = "File name"
           .short_caption = Reference x-ray file
-          .style = bold file_type:hkl process_hkl update_d_max_min \
+          .style = bold file_type:hkl process_hkl input_file update_d_max_min \
                    child:fobs:labels child:space_group:space_group \
                    child:unit_cell:unit_cell
         labels=None
@@ -122,7 +122,7 @@ input {
          .type=path
          .help="Filename of reference PDB file"
          .short_caption = Reference PDB file
-         .style = file_type:pdb noauto
+         .style = file_type:pdb noauto input_file
        }
      }
    }
@@ -141,6 +141,7 @@ input {
        log=logfile.log
        .type=str
        .help="Logfile"
+      .style = hidden
        ccp4_style_graphs=True
        .type=bool
        .help="SHall we include ccp4 style graphs?"
@@ -1036,6 +1037,19 @@ class launcher (runtime_utils.simple_target) :
   def __call__ (self) :
     return run(args=list(self.args), return_result=True)
 
+def finish_job (result) :
+  output_files = []
+  stats = []
+  if (result is not None) :
+    if (result.log_file is not None) :
+      output_files.append((result.log_file, "Log file and graphs"))
+    if (result.low_d_cut is not None) :
+      stats.append(("Limit of useful anomalous signal",
+        "%.2f" % result.low_d_cut))
+    if (result.iso_b_wilson is not None) :
+      stats.append(("Wilson B", "%.2f" % result.iso_b_wilson))
+  return (output_files, stats)
+
 def validate_params (params, callback=None) :
   if (params.scaling.input.xray_data.file_name is None) :
     raise Sorry("You must supply a reflection file first!")
@@ -1056,6 +1070,10 @@ def validate_params (params, callback=None) :
     raise Sorry("Unit cell parameters are not consistent with the "+
         "currently set space group.  Please make sure that the symmetry "+
         "information is entered correctly.")
+  ref_structure = params.scaling.input.xray_data.reference.structure.file_name
+  if (ref_structure is not None) and (not os.path.isfile(ref_structure)) :
+    raise Sorry(("A path was defined for the reference PDB file (%s), but it "+
+      "could not be recognized as a file or does not exist.") % ref_structure)
   return True
 
 if (__name__ == "__main__") :
