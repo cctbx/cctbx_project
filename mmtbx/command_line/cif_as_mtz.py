@@ -818,11 +818,11 @@ input
   cif_file = None
     .type = path
     .short_caption = CIF data file
-    .style = bold noauto OnUpdate:extract_symm_for_cif
+    .style = bold noauto OnChange:extract_symm_for_cif
   pdb_file = None
     .type = path
     .short_caption = PDB file
-    .style = bold noauto file_type:pdb OnUpdate:extract_symm_for_cif
+    .style = bold noauto file_type:pdb OnChange:extract_symm_for_cif
   wavelength_id = None
     .type = str
     .short_caption = Wavelength ID
