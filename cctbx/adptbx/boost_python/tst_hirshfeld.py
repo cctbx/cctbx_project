@@ -1,5 +1,4 @@
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
-from cctbx.array_family import flex
 import scitbx.random
 from scitbx import linalg, matrix
 from libtbx.test_utils import approx_equal
