@@ -26,7 +26,7 @@ def run():
   "$D/crystal/tst_ext.py",
   "$D/crystal/tst_distance_based_connectivity.py",
   "$D/adptbx/boost_python/tst_adptbx.py",
-  ["$D/adptbx/boost_python/tst_hirshfeld.py", "--fix-random-seeds"],
+  #["$D/adptbx/boost_python/tst_hirshfeld.py", "--fix-random-seeds"],
   "$D/miller/boost_python/tst_miller.py",
   "$D/eltbx/tests/tst_chemical_elements.py",
   "$D/eltbx/tests/tst_xray_scattering.py",
