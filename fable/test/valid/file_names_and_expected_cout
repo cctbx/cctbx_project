@@ -1526,3 +1526,8 @@ intrinsics_iargc_getarg.f
 |A|
 |B|
 |C|
+recursive_subroutine.f
+|           3|
+|           2|
+|           1|
+|           0|

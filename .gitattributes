@@ -652,6 +652,7 @@ fable/test/valid/read_star_integer.f -text
 fable/test/valid/read_star_print_star.f -text
 fable/test/valid/read_unformatted_str_arr.f -text
 fable/test/valid/real_array_sum.f -text
+fable/test/valid/recursive_subroutine.f -text
 fable/test/valid/rewind.f -text
 fable/test/valid/save_0.f -text
 fable/test/valid/save_1.f -text
