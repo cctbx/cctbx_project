@@ -17,6 +17,8 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     self._path_style = kwds.get("style", WXTBX_PHIL_PATH_VIEW_BUTTON)
     kwds['style'] = wx.NO_BORDER
     self._formats = ()
+    if (kwds.get("size", None) == wx.DefaultSize) :
+      kwds.pop("size")
     if (self._path_style & WXTBX_PHIL_PATH_NARROW) :
       szr_type = wx.VERTICAL
       path_size = kwds.get("size", (300,-1))
