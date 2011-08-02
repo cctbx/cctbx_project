@@ -16,17 +16,20 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     kwds = dict(kwds)
     self._path_style = kwds.get("style", WXTBX_PHIL_PATH_VIEW_BUTTON)
     kwds['style'] = wx.NO_BORDER
+    self._formats = ()
+    if (self._path_style & WXTBX_PHIL_PATH_NARROW) :
+      szr_type = wx.VERTICAL
+      path_size = kwds.get("size", (300,-1))
+      szr2_pad = wx.TOP
+    else :
+      szr_type = wx.HORIZONTAL
+      path_size = kwds.get("size", (400, -1))
+      szr2_pad = wx.LEFT
+    kwds['size'] = wx.DefaultSize
     wx.PyPanel.__init__(self, *args, **kwds)
     self.SetValidator(PathValidator())
     self._formats = ()
-    if (self._path_style & WXTBX_PHIL_PATH_NARROW) :
-      szr = wx.BoxSizer(wx.VERTICAL)
-      path_size = (300,-1)
-      szr2_pad = wx.TOP
-    else :
-      szr = wx.BoxSizer(wx.HORIZONTAL)
-      path_size = (400, -1)
-      szr2_pad = wx.LEFT
+    szr = wx.BoxSizer(szr_type)
     self.SetSizer(szr)
     self._path_text = wx.TextCtrl(self, -1, size=path_size,
       style=wx.TE_PROCESS_ENTER)
@@ -51,11 +54,6 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     szr.Fit(self)
     drop_target = PathDropTarget(self)
     self.SetDropTarget(drop_target)
-
-  def SetWidth (self, width) :
-    self._path_text.SetSize((width, -1))
-    self.Layout()
-    self.GetSizer().Fit(self)
 
   def SetFormats (self, formats) :
     if (isinstance(formats, str)) :
@@ -206,6 +204,7 @@ if (__name__ == "__main__") :
     style=WXTBX_PHIL_PATH_SAVE|WXTBX_PHIL_PATH_VIEW_BUTTON)
   path2.SetFormats("pdb")
   path3 = PathCtrl(panel, -1, pos=(200,220), name="Output directory",
+    size=(300,-1),
     style=WXTBX_PHIL_PATH_DIRECTORY|WXTBX_PHIL_PATH_VIEW_BUTTON|
       WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS)
   path4 = PathCtrl(panel, -1, pos=(20,300), name="Default parameters",
