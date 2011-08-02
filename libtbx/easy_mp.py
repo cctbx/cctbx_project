@@ -1,14 +1,20 @@
-def detect_problem():
-  import os
-  if (os.name == "nt"):
-    return "libtbx.easy_mp: Windows is not a supported platform."
-  import libtbx.utils
-  return libtbx.utils.detect_multiprocessing_problem()
-
 from libtbx import Auto
 from cStringIO import StringIO
 import traceback
 import sys
+
+_problem_cache = Auto
+
+def detect_problem():
+  global _problem_cache
+  if (_problem_cache is Auto):
+    import os
+    if (os.name == "nt"):
+      _problem_cache = "libtbx.easy_mp: Windows is not a supported platform."
+    else:
+      import libtbx.utils
+      _problem_cache = libtbx.utils.detect_multiprocessing_problem()
+  return _problem_cache
 
 from weakref import WeakValueDictionary as _
 fixed_func_registry = _()
@@ -28,9 +34,12 @@ class fixed_func_proxy(object):
 from itertools import count as _
 fixed_func_registry_key_generator = _()
 
-from multiprocessing.pool import Pool as _
+try: # cannot use detect_problem() here (hangs in pool.map())
+  from multiprocessing.pool import Pool as multiprocessing_Pool
+except Exception:
+  multiprocessing_Pool = object
 
-class Pool(_):
+class Pool(multiprocessing_Pool):
 
   def __init__(self,
         processes=None,
@@ -38,6 +47,10 @@ class Pool(_):
         initargs=(),
         maxtasksperchild=None,
         fixed_func=None):
+    if (multiprocessing_Pool is object):
+      mp_problem = detect_problem()
+      assert mp_problem is not None
+      raise RuntimeError(mp_problem)
     if (processes is None):
       from libtbx import introspection
       processes = introspection.number_of_processors()
