@@ -45,6 +45,20 @@ class simple_target (object) :
   def __call__ (self) :
     return True
 
+class target_with_save_result (object) :
+  def __init__ (self, args, file_name, output_dir=None) :
+    adopt_init_args(self, locals())
+    if (output_dir is None) :
+      self.output_dir = os.getcwd()
+
+  def __call__ (self) :
+    result = self.run()
+    easy_pickle.dump(self.file_name, result)
+    return result
+
+  def run (self) :
+    raise NotImplementedError()
+
 class detached_process_driver (object) :
   def __init__ (self, target) :
     adopt_init_args(self, locals())

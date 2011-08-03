@@ -1004,3 +1004,13 @@ def getcwd_safe () :
     else :
       raise e
   return cwd
+
+def getcwd_or_default (default="/") :
+  try :
+    cwd = os.getcwd()
+  except OSError, e :
+    if (e.errno == 2) :
+      cwd = default
+    else :
+      raise e
+  return cwd
