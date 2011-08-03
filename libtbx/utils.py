@@ -993,3 +993,14 @@ def get_build_tag(path=None):
   if os.path.exists(tag_file_path):
     tag = open(tag_file_path).readline().strip()
   return tag
+
+def getcwd_safe () :
+  try :
+    cwd = os.getcwd()
+  except OSError, e :
+    if (e.errno == 2) :
+      raise Sorry("Could not determine the current working directory because "+
+        "it has been deleted or unmounted.")
+    else :
+      raise e
+  return cwd
