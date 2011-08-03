@@ -13,6 +13,7 @@ WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS = 16
 
 class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
+    wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
     kwds = dict(kwds)
     self._path_style = kwds.get("style", WXTBX_PHIL_PATH_VIEW_BUTTON)
     kwds['style'] = wx.NO_BORDER
