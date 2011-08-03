@@ -1,4 +1,5 @@
 from libtbx.utils import Abort
+from libtbx import group_args
 import cStringIO
 import re
 import operator
@@ -1623,3 +1624,35 @@ def any_hh_file (file_name) :
     else :
       return p
   raise RuntimeError("Not an HHpred/HHalign/HHsearch file!")
+
+def composition_from_sequence_file (file_name, log=None) :
+  if (log is None) :
+    log = sys.stdout
+  try :
+    seq_file, non_compliant = any_sequence_format(file_name)
+  except Exception, e :
+    print >> log, str(e)
+    return group_args(n_residues=None, n_bases=None)
+  else :
+    if (len(non_compliant) > 0) :
+      print >> log, "Warning: non-compliant entries in sequence file"
+      for nc in non_compliant :
+        print >> log, "  " + str(nc)
+    n_residues = n_bases = 0
+    for seq_entry in seq_file :
+      (n_res_seq, n_base_seq) = composition_from_sequence(seq_entry.sequence)
+      n_residues += n_res_seq
+      n_bases += n_base_seq
+    return group_args(n_residues=n_residues, n_bases=n_bases)
+
+def composition_from_sequence (sequence) :
+  seq = sequence.upper()
+  n_residues = n_bases = 0
+  n_valid = len(seq) - seq.count("X")
+  n_na = seq.count("A") + seq.count("U") + seq.count("T") + \
+    seq.count("G") + seq.count("C")
+  if (n_na >= int(n_valid * 0.9)) :
+    n_bases += len(seq)
+  else :
+    n_residues += len(seq)
+  return n_residues, n_bases
