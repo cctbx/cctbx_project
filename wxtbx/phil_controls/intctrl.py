@@ -12,8 +12,10 @@ class IntCtrl (ValidatedTextCtrl) :
     super(IntCtrl, self).__init__(*args, **kwds)
     self.min = -sys.maxint
     self.max = sys.maxint
+    self._spinner = None
 
   def AttachSpinner (self, spinner) :
+    self._spinner = spinner
     spinner.Bind(wx.EVT_SPIN_DOWN, self.OnSpinDown, spinner)
     spinner.Bind(wx.EVT_SPIN_UP, self.OnSpinUp, spinner)
     # XXX sys.maxint breaks SetMax() on 64-bit Macs (wxPython 2.9)
@@ -26,6 +28,11 @@ class IntCtrl (ValidatedTextCtrl) :
     else :
       if (self.GetPhilValue() is not None) :
         spinner.SetValue(self.GetPhilValue())
+
+  def Enable (self, enable=True) :
+    ValidatedTextCtrl.Enable(self, enable)
+    if (self._spinner is not None) :
+      self._spinner.Enable(enable)
 
   def SetMin (self, min) :
     assert isinstance(min, int)
