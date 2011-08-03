@@ -2373,6 +2373,18 @@ ifun(
   write(6, star), jfun(cmn);
 """)
   #
+  lines = get("function_no_arg_with_common_in_expression.f")
+  assert not absd(lines, tail_off(1), """\
+  write(6, star), jfun(cmn);
+  i = 2;
+  int j = jfun(cmn);
+  write(6, star), "j =", j;
+  i = 7;
+  if (jfun(cmn) == 137) {
+    write(6, star), "jfun() == 137";
+  }
+""")
+  #
   lines = get("if_arithmetic.f")
   assert not absd(lines, head_off(9), """\
   switch (fem::if_arithmetic(iarg - 2)) {
