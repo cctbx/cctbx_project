@@ -26,20 +26,19 @@ input {
   asu_contents
     .help = "Defines the ASU contents"
     .short_caption = ASU contents
-    .style = menu_item auto_align
   {
     n_residues=None
       .type=float
       .help="Number of residues in structural unit"
-      .short_caption = Number of residues in asymmetric unit
+      .short_caption = Number of residues
     n_bases=None
       .type=float
       .help="Number of nucleotides in structural unit"
-      .short_caption = Number of nucleotides in asymmetric unit
+      .short_caption = Number of nucleotides
     n_copies_per_asu=None
       .type=float
       .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
-      .short_caption = Number of copies in asymmetric unit
+      .short_caption = Number of copies in ASU
   }
 
   xray_data
@@ -1033,8 +1032,8 @@ class xtriage_summary (object) :
     else :
       return (None, None)
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
     return run(args=list(self.args), return_result=True)
 
 def finish_job (result) :
