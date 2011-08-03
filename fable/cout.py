@@ -572,7 +572,7 @@ def convert_tokens(conv_info, tokens, commas=False, had_str_concat=None):
           had_str_concat=had_str_concat))
     elif (tok.is_parentheses()):
       if (cmn_needs_to_be_inserted(conv_info=conv_info, prev_tok=prev_tok)):
-        if (len(tok.value) != 0):
+        if (len(tok.value) != 0) and (len(tok.value[0].value) != 0):
           op = "(cmn, "
         else:
           op = "(cmn"

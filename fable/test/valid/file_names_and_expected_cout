@@ -985,6 +985,10 @@ function_no_arg.f
 |          34|
 |          68|
 |          56|
+function_no_arg_with_common_in_expression.f
+|         131|
+| j =         132|
+| jfun() == 137|
 if_arithmetic.f
 | smaller than two|
 | equal to two|

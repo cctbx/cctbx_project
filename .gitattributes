@@ -578,6 +578,7 @@ fable/test/valid/formats.f -text
 fable/test/valid/function_calls_with_its_name_as_arg.f -text
 fable/test/valid/function_data_type_in_body.f -text
 fable/test/valid/function_no_arg.f -text
+fable/test/valid/function_no_arg_with_common_in_expression.f -text
 fable/test/valid/function_two_returns_1.f -text
 fable/test/valid/function_two_returns_2.f -text
 fable/test/valid/function_write.f -text
