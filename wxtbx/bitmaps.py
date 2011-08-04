@@ -16,15 +16,19 @@ icon_lib = libtbx.env.find_in_repositories(
 
 image_cache = {}
 
-def load_png_as_bitmap (icon_path) :
+def load_png_as_bitmap (icon_path, scale=None) :
   bmp = image_cache.get(icon_path, None)
   if bmp is None :
     img = wx.Image(icon_path, type=wx.BITMAP_TYPE_PNG, index=-1)
+    if (scale is not None) :
+      assert isinstance(scale, tuple)
+      w, h = scale
+      img = img.Scale(w, h, wx.IMAGE_QUALITY_NORMAL)
     bmp = img.ConvertToBitmap()
     image_cache[icon_path] = bmp
   return bmp
 
-def find_crystal_icon (icon_class, name, size=32) :
+def find_crystal_icon (icon_class, name, size=32, scale=None) :
   if icon_lib is not None :
     size_dir = "%dx%d" % (size, size)
     icon_path = os.path.join(icon_lib, "crystal_project", size_dir, icon_class,
@@ -37,9 +41,9 @@ def fetch_icon_bitmap (*args, **kwds) :
   icon_path = find_crystal_icon(*args, **kwds)
   if icon_path is None :
     return wx.NullBitmap
-  return load_png_as_bitmap(icon_path)
+  return load_png_as_bitmap(icon_path, scale=kwds.get("scale", None))
 
-def find_custom_icon (name, ext=".png") :
+def find_custom_icon (name, ext=".png", scale=None) :
   if icon_lib is not None :
     icon_path = os.path.join(icon_lib, "custom", name + ext)
     if os.path.isfile(icon_path) :
@@ -50,4 +54,4 @@ def fetch_custom_icon_bitmap (*args, **kwds) :
   icon_path = find_custom_icon(*args, **kwds)
   if icon_path is None :
     return wx.NullBitmap
-  return load_png_as_bitmap(icon_path)
+  return load_png_as_bitmap(icon_path, scale=kwds.get("scale", None))

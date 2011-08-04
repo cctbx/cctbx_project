@@ -5,7 +5,6 @@ from libtbx import Auto
 
 WXTBX_PHIL_BOOL_TRIBOOL = 1
 WXTBX_PHIL_BOOL_AUTO = 2
-#WXTBX_PHIL_BOOL
 
 class BoolCtrl (wx.CheckBox, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
