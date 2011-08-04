@@ -1,5 +1,5 @@
 
-from __future__ import absolute_import, division
+from __future__ import division
 from wxtbx import bitmaps
 import wx
 from libtbx import object_oriented_patterns as oop
