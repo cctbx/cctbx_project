@@ -2416,3 +2416,68 @@ def identify_rotatable_hydrogens(pdb_hierarchy, xray_structure, log = None):
                 sel[atoms[fr1[1]].i_seq]=True
                 sel[atoms[fr1[2]].i_seq]=True
   return sel
+
+def seg_id_to_chain_id(pdb_hierarchy):
+  import string
+  two_character_chain_ids = []
+  segid_list = []
+  seg_dict = {}
+  for atom in pdb_hierarchy.atoms():
+    if atom.segid not in segid_list:
+      segid_list.append(atom.segid)
+  lower_letters = string.lowercase
+  upper_letters = string.uppercase
+  two_character_chain_ids = []
+  for letter in upper_letters:
+    two_character_chain_ids.append(" "+letter)
+  for letter in lower_letters:
+    two_character_chain_ids.append(" "+letter)
+  for letter in upper_letters:
+    for letter2 in upper_letters:
+      two_character_chain_ids.append(letter+letter2)
+  for letter in lower_letters:
+    for letter2 in lower_letters:
+      two_character_chain_ids.append(letter+letter2)
+  for chain in pdb_hierarchy.chains():
+    temp_chain = chain.id
+    if len(temp_chain) == 1:
+      temp_chain = " " + temp_chain
+    if temp_chain in two_character_chain_ids:
+      two_character_chain_ids.remove(temp_chain)
+  for id in segid_list:
+    chainID = two_character_chain_ids[0]
+    seg_dict[id] = chainID
+    two_character_chain_ids.remove(chainID)
+  return seg_dict
+
+def find_bare_chains_with_segids(pdb_hierarchy):
+  bare_chains = False
+  for chain in pdb_hierarchy.chains():
+    if chain.id in ['', ' ', '  ']:
+      segid = None
+      for atom in chain.atoms():
+        if segid == None:
+          segid = atom.segid
+        elif segid != None and segid != atom.segid:
+          #require that each chain have a unique segid for this logic
+          return False
+      if segid != None and segid not in ['', ' ', '  ', '   ', '    ']:
+        bare_chains = True
+  return bare_chains
+
+def assign_chain_ids(pdb_hierarchy, seg_dict):
+  rename_txt = ""
+  for chain in pdb_hierarchy.chains():
+    if chain.id in ['', ' ', '  ']:
+      segid = None
+      for atom in chain.atoms():
+        if segid == None:
+          segid = atom.segid
+        elif segid != atom.segid:
+          print segid, atom.segid
+          raise Sorry("multiple segid values defined for chain")
+      new_id = seg_dict[segid]
+      chain.id = new_id
+      rename_txt = rename_txt + \
+      "segID %s renamed chain %s for Reduce N/Q/H analysis\n" % (segid, new_id)
+  return rename_txt
