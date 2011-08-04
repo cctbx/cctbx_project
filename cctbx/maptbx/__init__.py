@@ -23,6 +23,7 @@ def value_at_closest_grid_point(map, x_frac):
 flex.int.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
+flex.double.tricubic_interpolation = tricubic_interpolation
 
 class statistics(ext.statistics):
 
