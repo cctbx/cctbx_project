@@ -63,10 +63,10 @@ def exercise_density_modification():
   cmd = 'mmtbx.density_modification "%s" "%s"' % args
   print cmd
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
-  assert result.stdout_lines[-4].startswith('Starting dm/model correlation:')
-  assert result.stdout_lines[-3].startswith('Final dm/model correlation:')
-  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.614388)
-  assert approx_equal(float(result.stdout_lines[-3].split()[-1]), 0.792405, 5e-4)
+  assert result.stdout_lines[-5].startswith('Starting dm/model correlation:')
+  assert result.stdout_lines[-4].startswith('Final dm/model correlation:')
+  assert approx_equal(float(result.stdout_lines[-5].split()[-1]), 0.616207)
+  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.788861, 5e-4)
 
 def run():
   exercise_density_modification()

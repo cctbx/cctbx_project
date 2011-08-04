@@ -10,6 +10,7 @@ from libtbx import runtime_utils
 from libtbx import easy_pickle
 from libtbx import adopt_init_args
 import mmtbx.maps
+from scitbx.math import nearest_phase, phase_error
 import os, sys
 
 master_params_including_IO_str = """\
@@ -27,12 +28,6 @@ density_modification {
     {
       %s
     }
-    pdb_file_name = None
-      .type = path
-      .optional = True
-      .short_caption = PDB file
-      .style = bold file_type:pdb input_file
-      .help = Optional PDB file containing partial model
     unit_cell = None
       .type = unit_cell
       .optional = False
@@ -113,7 +108,8 @@ def run(args, log = sys.stdout, as_gui_program=False):
     space_group_info=params.input.space_group)
   reflection_files = {}
   for rfn in (params.input.reflection_data.file_name,
-              params.input.experimental_phases.file_name):
+              params.input.experimental_phases.file_name,
+              params.input.map_coefficients.file_name):
     if os.path.isfile(str(rfn)) and rfn not in reflection_files:
       reflection_files.setdefault(
         rfn, iotbx.reflection_file_reader.any_reflection_file(
@@ -163,13 +159,13 @@ def run(args, log = sys.stdout, as_gui_program=False):
       fo_ = fo_.change_basis(change_of_basis_op).map_to_asu()
       hl_ = hl_.change_basis(change_of_basis_op).map_to_asu()
     #fo_, hl_ = fo_.common_sets(hl_)
-    fmodel = mmtbx.utils.fmodel_simple(
+    fmodel_refined = mmtbx.utils.fmodel_simple(
       f_obs=fo_,
       xray_structures=[xs],
       bulk_solvent_correction=True,
       anisotropic_scaling=True,
       r_free_flags=fo_.array(data=flex.bool(fo_.size(), False)))
-    fmodel.update(abcd=hl_)
+    fmodel_refined.update(abcd=hl_)
 
     master_phil = mmtbx.maps.map_and_map_coeff_master_params()
     map_params = master_phil.fetch(iotbx.phil.parse("""\
@@ -179,16 +175,11 @@ map_coefficients {
 }
 """)).extract().map_coefficients[0]
     model_map_coeffs = mmtbx.maps.map_coefficients_from_fmodel(
-      fmodel, map_params)
+      fmodel_refined, map_params)
     model_map = model_map_coeffs.fft_map(
       resolution_factor=params.grid_resolution_factor).real_map_unpadded()
 
   import time
-
-  # run cns
-  if 0:
-    from mmtbx.density_modification.run_cns import run_cns_density_modification
-    run_cns_density_modification(params, fo, hl_coeffs)
 
   t0 = time.time()
   dm = density_modify(
@@ -200,7 +191,31 @@ map_coefficients {
     log=log,
     as_gui_program=as_gui_program)
   time_dm = time.time()-t0
-  #print >> log, "Density modification %.2fs" %time_dm
+  print >> log, "Time taken for density modification: %.2fs" %time_dm
+
+  # run cns
+  if 0:
+    from cctbx.development import cns_density_modification
+    cns_result = cns_density_modification.run(params, fo, hl_coeffs)
+    print cns_result.modified_map.all()
+    print dm.map.all()
+    dm_map_coeffs = dm.map_coeffs_in_original_setting
+    from cctbx import maptbx, miller
+    crystal_gridding = maptbx.crystal_gridding(
+      dm_map_coeffs.unit_cell(),
+      space_group_info=dm_map_coeffs.space_group().info(),
+      pre_determined_n_real=cns_result.modified_map.all())
+    dm_map = miller.fft_map(crystal_gridding, dm_map_coeffs).apply_sigma_scaling()
+    corr = flex.linear_correlation(cns_result.modified_map.as_1d(), dm_map.real_map_unpadded().as_1d())
+    print "CNS dm/mmtbx dm correlation:"
+    corr.show_summary()
+    if dm.model_map_coeffs is not None:
+      model_map = miller.fft_map(
+        crystal_gridding,
+        dm.miller_array_in_original_setting(dm.model_map_coeffs)).apply_sigma_scaling()
+      corr = flex.linear_correlation(cns_result.modified_map.as_1d(), model_map.real_map_unpadded().as_1d())
+      print "CNS dm/model correlation:"
+      corr.show_summary()
 
   if output_plots:
     plots_to_make = (
@@ -214,39 +229,52 @@ map_coefficients {
 
     stats = dm.get_stats()
     pdf = PdfPages("density_modification.pdf")
-    fig = pyplot.figure()
 
     if len(dm.correlation_coeffs) > 1:
-      start_coeffs, model_coeffs = dm.map_coeffs_start.common_sets(model_map_coeffs)
-      corr = flex.linear_correlation(
-        start_coeffs.phases().data(), model_coeffs.phases().data())
-      corr.show_summary()
-      fig = pyplot.figure()
-      ax = fig.add_subplot(1,1,1)
-      ax.set_title("phases start")
-      ax.set_xlabel("Experimental phases")
-      ax.set_ylabel("Phases from refined model")
-      ax.scatter(start_coeffs.phases().data(), model_coeffs.phases().data(),
-                 marker="x", s=10)
-      pdf.savefig(fig)
-      #
-      dm_coeffs, model_coeffs = dm.map_coeffs.common_sets(model_map_coeffs)
-      corr = flex.linear_correlation(
-        dm_coeffs.phases().data(), model_coeffs.phases().data())
-      corr.show_summary()
-      fig = pyplot.figure()
-      ax = fig.add_subplot(1,1,1)
-      ax.set_title("phases dm")
-      ax.set_xlabel("Phases from density modification")
-      ax.set_ylabel("Phases from refined model")
-      ax.scatter(dm_coeffs.phases().data(), model_coeffs.phases().data(),
-                 marker="x", s=10)
-      pdf.savefig(fig)
+      if 0:
+        start_coeffs, model_coeffs = dm.map_coeffs_start.common_sets(model_map_coeffs)
+        model_phases = model_coeffs.phases(deg=True).data()
+        exptl_phases = nearest_phase(
+          model_phases, start_coeffs.phases(deg=True).data(), deg=True)
+        corr = flex.linear_correlation(exptl_phases, model_phases)
+        corr.show_summary()
+        fig = pyplot.figure()
+        ax = fig.add_subplot(1,1,1)
+        ax.set_title("phases start")
+        ax.set_xlabel("Experimental phases")
+        ax.set_ylabel("Phases from refined model")
+        ax.scatter(exptl_phases,
+                   model_phases,
+                   marker="x", s=10)
+        pdf.savefig(fig)
+        #
+        dm_coeffs, model_coeffs = dm.map_coeffs.common_sets(model_map_coeffs)
+        model_phases = model_coeffs.phases(deg=True).data()
+        dm_phases = nearest_phase(
+          model_phases, dm_coeffs.phases(deg=True).data(), deg=True)
+        corr = flex.linear_correlation(dm_phases, model_phases)
+        corr.show_summary()
+        fig = pyplot.figure()
+        ax = fig.add_subplot(1,1,1)
+        ax.set_title("phases dm")
+        ax.set_xlabel("Phases from density modification")
+        ax.set_ylabel("Phases from refined model")
+        ax.scatter(dm_phases,
+                   model_phases,
+                   marker="x", s=10)
+        pdf.savefig(fig)
       #
       data = dm.correlation_coeffs
       fig = pyplot.figure()
       ax = fig.add_subplot(1,1,1)
       ax.set_title("correlation coefficient")
+      ax.plot(range(1, dm.i_cycle+2), data)
+      pdf.savefig(fig)
+      #
+      data = dm.mean_phase_errors
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1,1,1)
+      ax.set_title("Mean effective phase errors")
       ax.plot(range(1, dm.i_cycle+2), data)
       pdf.savefig(fig)
 
@@ -341,8 +369,10 @@ class density_modify(density_modification.density_modification):
                      as_gui_program=False):
     self.model_map_coeffs = model_map_coeffs
     self.correlation_coeffs = flex.double()
+    self.mean_phase_errors = flex.double()
     density_modification.density_modification.__init__(
-      self, params, fo, hl_coeffs, map_coeffs=map_coeffs, as_gui_program=as_gui_program)
+      self, params, fo, hl_coeffs,
+      map_coeffs=map_coeffs, as_gui_program=as_gui_program)
     if len(self.correlation_coeffs) > 1:
       model_coeffs, start_coeffs = self.model_map_coeffs.common_sets(self.map_coeffs_start)
       model_fft_map = model_coeffs.fft_map(
@@ -362,11 +392,17 @@ class density_modify(density_modification.density_modification):
       model_coeffs, dm_coeffs = self.model_map_coeffs.common_sets(self.map_coeffs)
       fft_map = model_coeffs.fft_map(
         resolution_factor=self.params.grid_resolution_factor).apply_sigma_scaling()
+      dm_map = dm_coeffs.fft_map(
+        resolution_factor=self.params.grid_resolution_factor).apply_sigma_scaling()
       print
-      corr = flex.linear_correlation(fft_map.real_map_unpadded().as_1d(), self.map.as_1d())
+      corr = flex.linear_correlation(
+        fft_map.real_map_unpadded().as_1d(), dm_map.real_map_unpadded().as_1d())
       print "dm/model correlation:"
       corr.show_summary()
       self.correlation_coeffs.append(corr.coefficient())
+      self.mean_phase_errors.append(flex.mean(phase_error(
+        flex.arg(model_coeffs.data()),
+        flex.arg(dm_coeffs.data())))/density_modification.pi_180)
 
 def validate_params (params) :
   params_ = params.density_modification
