@@ -11,6 +11,6 @@ MODULES="cctbx rstbx mmtbx iotbx scitbx chiltbx smtbx wxtbx crys3d gltbx spotfin
 mkdir $MODULES
 for MODULE in $MODULES
 do
-  ./generate_modules.py -s rst -d ./$MODULE ../../sources/cctbx_project/$MODULE
+  ./generate_modules.py --doc-header $MODULE -s rst -d ./$MODULE ../../sources/cctbx_project/$MODULE
 done
 make html
