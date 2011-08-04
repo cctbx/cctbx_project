@@ -30,7 +30,7 @@ master_params_str = """
   initial_d_min = None
     .type = float
     .short_caption = Initial high resolution
-    .help = If this is specified, phase extension will be performed up to the\
+    .help = If this is specified, phase extension will be performed \
             from initial_d_min to d_min
   phase_extension = False
     .type = bool
@@ -140,7 +140,9 @@ class density_modification(object):
     if log is None: log = sys.stdout
     adopt_init_args(self, locals())
     if self.params.solvent_mask.averaging_radius.final is None:
-      if self.params.d_min is not None:
+      if self.params.initial_d_min is not None:
+        self.params.solvent_mask.averaging_radius.final = self.params.initial_d_min
+      elif self.params.d_min is not None:
         self.params.solvent_mask.averaging_radius.final = self.params.d_min
       else:
         self.params.solvent_mask.averaging_radius.final = self.f_obs.d_min()
@@ -207,13 +209,12 @@ class density_modification(object):
       new_data_value=0, new_sigmas_value=0, d_min=self.params.d_min)
     self.hl_coeffs_start = self.hl_coeffs_start.complete_array(
       new_data_value=(0,0,0,0), d_min=self.params.d_min)
-    self.ncs_averaging()
 
     self.hl_coeffs = self.hl_coeffs_start.select_indices(self.active_indices)
-    #self.hl_coeffs = self.hl_coeffs_start.select(self.ref_flags)
-    self.compute_phase_source(self.hl_coeffs)
+    hl_coeffs = self.hl_coeffs
+    self.compute_phase_source(hl_coeffs)
     fom = flex.abs(self.phase_source.data())
-    fom.set_selected(self.hl_coeffs.data() == (0,0,0,0), 0)
+    fom.set_selected(hl_coeffs.data() == (0,0,0,0), 0)
     self.fom = fom
 
     if self.map_coeffs is None:
@@ -224,6 +225,7 @@ class density_modification(object):
       self.map = self.map_coeffs.select(fom > 0).fft_map(
         resolution_factor=self.params.grid_resolution_factor
         ).apply_volume_scaling().real_map_unpadded()
+      self.map_coeffs = self.map_coeffs.select(fom > 0)
     else:
       assert self.map_coeffs.is_complex_array()
       self.map = self.map_coeffs.fft_map(
@@ -447,6 +449,8 @@ class density_modification(object):
                                     * adptbx.debye_waller_factor_u_star(
                                       f_calc.indices(), minimized.u_star))
     f_calc_active = f_calc.common_set(f_obs_active)
+    matched_indices = f_obs.match_indices(self.f_obs_active)
+    lone_indices_selection = matched_indices.single_selection(0)
     from mmtbx.max_lik import maxlik
     alpha_beta_est = maxlik.alpha_beta_est_manager(
       f_obs=f_obs_active,
@@ -456,6 +460,8 @@ class density_modification(object):
       interpolation=True)
     alpha, beta = alpha_beta_est.alpha_beta_for_each_reflection(
       f_obs=self.f_obs_complete.select(self.f_obs_complete.d_spacings().data() >= self.d_min))
+    f_obs.data().copy_selected(
+      lone_indices_selection.iselection(), flex.abs(f_calc.data()))
     t = maxlik.fo_fc_alpha_over_eps_beta(
       f_obs=f_obs,
       f_model=f_calc,
@@ -470,8 +476,7 @@ class density_modification(object):
       data=self.hl_coeffs_start.common_set(f_calc).data()+hl_coeff)
     self.compute_phase_source(hl_array)
     fom = flex.abs(self.phase_source.data())
-    mFo = hl_array.array(
-      data=fom*f_obs.data()).phase_transfer(phase_source=hl_array)
+    mFo = hl_array.array(data=f_obs.data()*self.phase_source.data())
     DFc = hl_array.array(data=dd*f_calc.as_amplitude_array().phase_transfer(
         self.phase_source).data())
     centric_flags = f_obs.centric_flags().data()
@@ -482,13 +487,14 @@ class density_modification(object):
     fo_scale.set_selected(centric_flags, 1)
     fc_scale.set_selected(acentric_flags, 1)
     fc_scale.set_selected(centric_flags, 0)
+    fo_scale.set_selected(lone_indices_selection, 0)
+    fc_scale.set_selected(lone_indices_selection, -1)
     self.map_coeffs = hl_array.array(
       data=mFo.data()*fo_scale - DFc.data()*fc_scale)
     self.fom = hl_array.array(data=fom)
     self.hl_coeffs = hl_array
     # statistics
     self.r1_factor = f_obs_active.r1_factor(f_calc_active)
-    matched_indices = f_obs.match_indices(f_obs_active)
     fom = fom.select(matched_indices.pair_selection(0))
     self.r1_factor_fom = flex.sum(
       fom * flex.abs(f_obs_active.data() - f_calc_active.as_amplitude_array().data())) \

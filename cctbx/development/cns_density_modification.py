@@ -1,8 +1,8 @@
-from libtbx import easy_run
+from libtbx import easy_run, group_args
 from iotbx.cns.space_group_symbols import cns_format
 import os, shutil, time
 
-def run_cns_density_modification(params, fo, hl_coeffs):
+def run(params, fo, hl_coeffs):
   cur_dir = os.path.abspath(os.path.curdir)
   if os.path.exists("tmp_cns"):
     shutil.rmtree("tmp_cns")
@@ -13,7 +13,7 @@ def run_cns_density_modification(params, fo, hl_coeffs):
   finally:
     # make sure we always end up back here no matter what happens
     os.chdir(cur_dir)
-  result.show_stdout()
+  return result
 
 def do_dirty_work(params, fo, hl_coeffs):
   fo.export_as_cns_hkl(
@@ -68,6 +68,8 @@ def do_dirty_work(params, fo, hl_coeffs):
   cns_params["shrink_steps"] = params.shrink_steps
   cns_params["final_steps"] = params.final_steps
   cns_params["grid_resolution_factor"] = params.grid_resolution_factor
+  cns_params["averaging"] = "false"
+  cns_params["ncs_infile"] = "ncs.def"
 
   params_file = open("params.inp", "wb")
   params_file.write(cns_density_modify_inp_template % cns_params)
@@ -83,7 +85,13 @@ def do_dirty_work(params, fo, hl_coeffs):
   t0 = time.time()
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
   print "CNS time: %.2f" %(time.time()-t0)
-  return result
+
+  result.show_stdout()
+  import iotbx.xplor.map
+  modified_map = iotbx.xplor.map.reader(file_name="density_modify.map")
+  modified_map = modified_map.data[:-1,:-1,:-1]
+
+  return group_args(modified_map=modified_map)
 
 cns_density_modify_inp_template = """\
 {- begin block parameter definition -} define(
@@ -110,9 +118,9 @@ cns_density_modify_inp_template = """\
 
 {================== non-crystallographic symmetry ====================}
 
-{===>} averaging=false;
+{===>} averaging=%(averaging)s;
 {===>} ncs_mask_infile="";
-{===>} ncs_infile="";
+{===>} ncs_infile="%(ncs_infile)s";
 
 {======================= density truncation ==========================}
 
