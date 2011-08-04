@@ -1,6 +1,7 @@
 import libtbx.load_env
 import sys, os, string
 from libtbx.utils import Usage
+from mmtbx import utils
 
 try:
   from iotbx import pdb
@@ -151,14 +152,24 @@ Example:
       r = iotbx.pdb.hierarchy.root()
       mdc = m.detached_copy()
       r.append_model(mdc)
+      bare_chains = \
+        utils.find_bare_chains_with_segids(pdb_hierarchy=r)
+      if bare_chains:
+        tmp_r = r.deep_copy()
+        tmp_r.atoms().reset_i_seq()
+        seg_dict = utils.seg_id_to_chain_id(pdb_hierarchy=tmp_r)
+        rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_r,
+                                            seg_dict=seg_dict)
+      else:
+        tmp_r = r
       if keep_hydrogens is False:
         clean_out = easy_run.fully_buffered(trim,
-                                    stdin_lines=r.as_pdb_string())
+                                    stdin_lines=tmp_r.as_pdb_string())
         build_out = easy_run.fully_buffered(build,
                                     stdin_lines=clean_out.stdout_lines)
         input_str = string.join(build_out.stdout_lines, '\n')
       else:
-        input_str = r.as_pdb_string()
+        input_str = tmp_r.as_pdb_string()
       self.pdb_hierarchy = pdb.hierarchy.input(pdb_string=input_str).hierarchy
       clash_hash={}
       hbond_hash={}
