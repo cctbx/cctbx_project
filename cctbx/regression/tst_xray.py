@@ -925,6 +925,16 @@ def exercise_f_obs_minus_xray_structure_f_calc(
   except AssertionError:
     print "density_at_sites:", density_at_sites
     raise
+  sites_cart = structure.sites_cart()
+  sites_frac = structure.sites_frac()
+  density_at_sites_tricubic = [real_map.tricubic_interpolation(scatterer.site)
+                      for scatterer in structure.scatterers()]
+  try:
+    assert min(density_at_sites_tricubic[:-1]) > 6.9
+    assert density_at_sites_tricubic[-1] > 2.5
+  except AssertionError:
+    print "density_at_sites_tricubic:", density_at_sites_tricubic
+    raise
 
 def exercise_n_gaussian(space_group_info, verbose=0):
   structure_5g = random_structure.xray_structure(

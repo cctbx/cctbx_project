@@ -5,6 +5,7 @@
 #include <scitbx/math/modulo.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/math/interpolation.h>
 #include <scitbx/math/floating_point_epsilon.h>
 #include <cctbx/crystal/direct_space_asu.h>
 
@@ -139,6 +140,48 @@ namespace cctbx { namespace maptbx {
     return result;
   }
 
+  // derived from http://www.paulinternet.nl/?page=bicubic
+  // also see: http://en.wikipedia.org/wiki/Tricubic_interpolation
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  MapFloatType
+  tricubic_interpolation(
+    af::const_ref<MapFloatType, af::c_grid_padded<3> > const& map,
+    scitbx::vec3<SiteFloatType> const& x_frac)
+  {
+    using scitbx::math::interpolate_at_point;
+    using namespace std;
+    typedef af::c_grid_padded<3>::index_type index_t;
+    typedef typename index_t::value_type iv_t;
+    index_t const& grid_n = map.accessor().focus();
+    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
+    af::tiny<MapFloatType, 4> p(0.0);
+    af::tiny<SiteFloatType, 3> xn;
+    for (unsigned k = 0; k < 3; k++) {
+      if (x_frac[k] < 0) {
+        xn[k] = fmod((1.-x_frac[k])*static_cast<SiteFloatType>(grid_n[k]), 1.0);
+      } else {
+        xn[k] = fmod(x_frac[k]*static_cast<SiteFloatType>(grid_n[k]), 1.0);
+      }
+    }
+    for (int i = -1; i < 3; i++) {
+      iv_t u = (corner.i_grid[0] + i) % grid_n[0];
+      af::tiny<MapFloatType, 4> pp(0.0);
+      for (int j = -1; j < 3; j++) {
+        iv_t v = (corner.i_grid[1] + j) % grid_n[1];
+        af::tiny<MapFloatType, 4> ppp(0.0);
+        for (int k = -1; k < 3; k++) {
+          iv_t w = (corner.i_grid[2] + k) % grid_n[2];
+          ppp[k+1] = map(u,v,w);
+        }
+        pp[j+1] = interpolate_at_point(ppp, xn[2]);
+      }
+      p[i+1] = interpolate_at_point(pp, xn[1]);
+    }
+    MapFloatType result = interpolate_at_point(p, xn[0]);
+    return result;
+  }
 
   template <typename FloatType>
   typename af::c_grid_padded<3>::index_type
