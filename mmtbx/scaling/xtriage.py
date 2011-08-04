@@ -27,6 +27,12 @@ input {
     .help = "Defines the ASU contents"
     .short_caption = ASU contents
   {
+    sequence_file = None
+      .type = path
+      .help = File containing protein or nucleic acid sequences.  Values for \
+        n_residues and n_bases will be extracted automatically if this is \
+        provided.
+      .style = file_type:seq input_file
     n_residues=None
       .type=float
       .help="Number of residues in structural unit"
@@ -427,6 +433,7 @@ class xtriage_analyses(object):
        out_plot=self.plot_out,
        miller_calc = miller_calc,
        verbose=1)
+    self.text_out.flush()
     # outliers are removed, make a new copy
     try:
       ma = self.basic_results.miller_array
@@ -478,6 +485,7 @@ class xtriage_analyses(object):
         out_plots=self.plot_out,
         miller_calc=self.miller_calc,
         additional_parameters=self.params.scaling.input.parameters.misc_twin_parameters)
+      self.text_out.flush()
 
     if miller_ref is not None:
       self.reference_analyses = pair_analyses.reindexing(
@@ -1073,6 +1081,13 @@ def validate_params (params, callback=None) :
   if (ref_structure is not None) and (not os.path.isfile(ref_structure)) :
     raise Sorry(("A path was defined for the reference PDB file (%s), but it "+
       "could not be recognized as a file or does not exist.") % ref_structure)
+  if (params.scaling.input.asu_contents.sequence_file is not None) :
+    # XXX this won't actually crash (xtriage will just ignore the sequence
+    # file) but it might be better to avoid user confusion
+    if ((params.scaling.input.asu_contents.n_residues is not None) or
+        (params.scaling.input.asu_contents.n_bases is not None)) :
+      raise Sorry("Please leave the number of residues and bases blank when "+
+        "providing a sequence file.")
   return True
 
 if (__name__ == "__main__") :

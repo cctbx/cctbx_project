@@ -5,6 +5,7 @@ import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling, relative_wilson
 from mmtbx.scaling import matthews
 from mmtbx.scaling import data_statistics
+import iotbx.bioinformatics
 import sys
 
 
@@ -26,6 +27,17 @@ class basic_analyses(object):
     self.nres_known = False
     if (phil_object.scaling.input.asu_contents.n_residues is not None or
         phil_object.scaling.input.asu_contents.n_bases is not None) :
+      self.nres_known = True
+      if (phil_object.scaling.input.asu_contents.sequence_file is not None) :
+        print >> out, "  warning: ignoring sequence file"
+    elif (phil_object.scaling.input.asu_contents.sequence_file is not None) :
+      print >> out, "  determining composition from sequence file %s" % \
+        phil_object.scaling.input.asu_contents.sequence_file
+      seq_comp = iotbx.bioinformatics.composition_from_sequence_file(
+        file_name=phil_object.scaling.input.asu_contents.sequence_file,
+        log=out)
+      phil_object.scaling.input.asu_contents.n_residues = seq_comp.n_residues
+      phil_object.scaling.input.asu_contents.n_bases = seq_comp.n_bases
       self.nres_known = True
     matthews_results =matthews.matthews_rupp(
       miller_array = miller_array,
