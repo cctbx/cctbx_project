@@ -1673,7 +1673,9 @@ class process_command_line_args(object):
           arg_is_processed = True
         else:
           try:
-            cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg_file)
+            cif_object = []
+            if(arg_file.endswith(".cif") or arg_file.endswith(".cif.gz")):
+              cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg_file)
           except KeyboardInterrupt: raise
           except Exception: pass
           else:
