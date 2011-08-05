@@ -16,9 +16,17 @@ from math import sqrt
 
 class settings_window (wxtbx.utils.SettingsPanel) :
   is_3d_view = True
+  def __init__ (self, *args, **kwds) :
+    wxtbx.utils.SettingsPanel.__init__(self, *args, **kwds)
+    self.Bind(wx.EVT_CHAR, self.OnChar)
+
+  def OnChar (self, event) :
+    self.GetParent().viewer.OnChar(event)
+
   def add_controls (self) :
     self._index_span = None
     self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
+    self.d_min_ctrl.Bind(wx.EVT_SET_FOCUS, lambda evt: None)
     if (wx.VERSION >= (2,9)) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
       self.d_min_ctrl.SetBackgroundColour(self.GetBackgroundColour())
     box = wx.BoxSizer(wx.HORIZONTAL)
@@ -233,6 +241,7 @@ class HKLViewFrame (wx.Frame) :
     self.sizer.SetSizeHints(self)
     self.Bind(wx.EVT_CLOSE, self.OnClose, self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
+    self.viewer.SetFocus()
 
   def create_viewer_panel (self) :
     self.viewer = view_3d.hklview_3d(self, size=(800,600))

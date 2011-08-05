@@ -245,3 +245,6 @@ class hklview_2d (wx.PyPanel) :
       return
     elif (evt.LeftIsDown()) :
       self.was_dragged = True
+
+  def OnChar (self, evt) :
+    pass
