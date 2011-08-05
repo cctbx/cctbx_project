@@ -1343,12 +1343,20 @@ def get_file_summary (pdb_in, hierarchy=None) :
     n_atoms = cl.get("common_small_molecule", 0) + cl.get("other", 0)
     value = "%d (%s)" % (n_atoms, ", ".join(names))
     info_list.append(("Other molecules", value))
-  b_factors = hierarchy.atoms().extract_b()
+  atoms = hierarchy.atoms()
+  b_factors = atoms.extract_b()
   mean_b = flex.mean(b_factors)
   min_b = flex.min(b_factors)
   max_b = flex.max(b_factors)
   info_list.append(("Mean isotropic B-factor", "%.2f (range: %.2f - %.2f)" %
     (mean_b, min_b, max_b)))
+  if (min_b <= 0) :
+    n_bad_adp = (b_factors <= 0).count(True)
+    info_list.append(("Atoms with iso. B <= 0", "%d ***" % n_bad_adp))
+  occ = atoms.extract_occ()
+  if (flex.min(occ) <= 0) :
+    n_zero_occ = (occ <= 0).count(True)
+    info_list.append(("Atoms with zero ocupancy", "%d ***" % n_zero_occ))
   symm = pdb_in.crystal_symmetry()
   if (symm is not None) :
     space_group = symm.space_group_info()
