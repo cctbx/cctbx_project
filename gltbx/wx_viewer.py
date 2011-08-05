@@ -457,27 +457,37 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.yspin, self.xspin, 0, 0)
     self.OnRedraw()
 
-  def OnRotate(self, event):
-    xp = event.GetX()
-    yp = event.GetY()
+  def rotate_view (self, x1, y1, x2, y2, shift_down=False) :
     rc = self.rotation_center
-    if (not event.ShiftDown()):
+    if (not shift_down) :
       gltbx.util.rotate_object_about_eye_x_and_y(
         0.5, rc[0], rc[1], rc[2],
-        xp, yp, self.xmouse, self.ymouse)
+        x2, y2, x1, y1)
     else:
       sz = self.GetClientSizeTuple()
       sz = (sz[0]/2, sz[1]/2)
-      dy = (self.ymouse-yp)
-      dx = (self.xmouse-xp)
-      if (yp > sz[1]): dx *= -1
-      if (xp < sz[0]): dy *= -1
+      dy = (y1-y2)
+      dx = (x1-x2)
+      if (y2 > sz[1]): dx *= -1
+      if (x2 < sz[0]): dy *= -1
       angle = (dx + dy)/2
       gltbx.util.rotate_object_about_eye_vector(
         xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
         xvector=0, yvector=0, zvector=1,
         angle=angle)
     self.OnRedraw()
+
+  def adjust_slab (self, delta) :
+    self.slab_scale += delta
+    if self.slab_scale > 1.0 :
+      self.slab_scale = 1.0
+    elif self.slab_scale < 0.01 :
+      self.slab_scale = 0.01
+
+  def OnRotate(self, event):
+    xp = event.GetX()
+    yp = event.GetY()
+    self.rotate_view(self.xmouse, self.ymouse, xp, yp, event.ShiftDown())
     self.OnRecordMouse(event)
 
   def OnTranslate(self, event):

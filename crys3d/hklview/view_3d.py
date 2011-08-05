@@ -10,10 +10,12 @@ import gltbx.util
 import gltbx.fonts
 from gltbx.glu import *
 from gltbx.gl import *
+import wx
 
 class hklview_3d (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
     wxGLWindow.__init__(self, *args, **kwds)
+    self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     # FIXME orthographic is definitely best for this application, but it isn't
     # working properly right now
     #self.orthographic = True
@@ -54,6 +56,7 @@ class hklview_3d (wxGLWindow) :
     self.spheres_display_list = None
     self.points_display_list = None
     self.labels_display_list = None
+    self.rotation_center = (0,0,0)
 
   #--- OpenGL methods
   def InitGL(self):
@@ -74,7 +77,7 @@ class hklview_3d (wxGLWindow) :
     gltbx.util.handle_error()
 
   def OnRedrawGL (self, event=None) :
-    if self.minimum_covering_sphere is None :
+    if (self.minimum_covering_sphere is None) :
       gltbx.util.handle_error()
       glClear(GL_COLOR_BUFFER_BIT)
       glClear(GL_DEPTH_BUFFER_BIT)
@@ -85,7 +88,7 @@ class hklview_3d (wxGLWindow) :
       wxGLWindow.OnRedrawGL(self, event)
 
   def initialize_modelview (self) :
-    if self.minimum_covering_sphere is not None :
+    if (self.minimum_covering_sphere is not None) :
       wxGLWindow.initialize_modelview(self)
     else :
       self.setup_lighting()
@@ -248,3 +251,35 @@ class hklview_3d (wxGLWindow) :
       self.scene.clear_labels()
       self.labels_display_list = None
       self.Refresh()
+
+  def OnChar (self, event) :
+    key = event.GetKeyCode()
+    if (key == ord("m")) :
+      self.OnScale(0.02)
+    elif (key == ord("n")) :
+      self.OnScale(-0.02)
+    elif (key == ord("d")) :
+      self.adjust_slab(-0.04)
+    elif (key == ord("f")) :
+      self.adjust_slab(0.04)
+    elif (key == wx.WXK_UP) :
+      self.rotate_view(0, 0, 0, 5, event.ShiftDown())
+    elif (key == wx.WXK_DOWN) :
+      self.rotate_view(0, 0, 0, -5, event.ShiftDown())
+    elif (key == wx.WXK_LEFT) :
+      self.rotate_view(0, 0, -5, 0, event.ShiftDown())
+    elif (key == wx.WXK_RIGHT) :
+      self.rotate_view(0, 0, 5, 0, event.ShiftDown())
+    self.OnRedrawGL()
+
+  def OnDoubleClick (self, event) :
+    self.get_pick_points((event.GetX(), event.GetY()))
+    self.process_pick_points()
+    if self.closest_point_i_seq is not None :
+      self.rotation_center = self.scene.points[self.closest_point_i_seq]
+      self.move_to_center_of_viewport(self.rotation_center)
+
+  def OnMouseWheel (self, event) :
+    scale = event.GetWheelRotation()
+    self.adjust_slab(0.01 * scale)
+    self.OnRedrawGL()
