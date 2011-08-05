@@ -112,6 +112,23 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
       tolerance=d_min*2)
     rms.append(emma_matches.refined_matches[0].rms)
     assert len(emma_matches.refined_matches[0].pairs) == n_elements
+  # exercise interpolation vs. summation
+  map_coeffs = f_obs.expand_to_p1()
+  fft_map = f_obs.fft_map(
+    resolution_factor=grid_resolution_factor,
+    symmetry_flags=maptbx.use_space_group_symmetry)
+  fft_map.apply_volume_scaling()
+  real_map = fft_map.real_map_unpadded()
+  sum1 = sum2 = 0
+  for scatterer in structure.scatterers() :
+    v1 = real_map.eight_point_interpolation(scatterer.site)
+    v2 = real_map.tricubic_interpolation(scatterer.site)
+    v3 = map_coeffs.direct_summation_at_point(scatterer.site)
+    sum1 += abs(v1 - v3.real)
+    sum2 += abs(v2 - v3.real)
+  mean_delta_linear = sum1 / n_elements
+  mean_delta_cubic = sum2 / n_elements
+  assert (mean_delta_cubic < mean_delta_linear)
   if (0 or verbose):
     print "emma rms grid, interpolated: %.2f %.2f" % tuple(rms)
   assert rms[0] >= rms[1]
