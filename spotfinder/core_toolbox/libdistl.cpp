@@ -191,8 +191,10 @@ int diffimage::get_underload() const
 //printf("spotarealowcut(-s2) %3d, spotbasesize(-s3) %3d bgupperint[2] %4.2f difflowerint %4.2f spotareamaxfactor %4.2f\n",spotarealowcut, spotbasesize, bgupperint[2], difflowerint, spotareamaxfactor);
   scanbox_tiling_pilatus6M* possible_pilatus =
     dynamic_cast<scanbox_tiling_pilatus6M*>(&(*tiling));
+  scanbox_tiling_pilatus2M* possible_pilatus_2M =
+    dynamic_cast<scanbox_tiling_pilatus2M*>(&(*tiling));
 
-  if (possible_pilatus != NULL){
+  if (possible_pilatus != NULL || possible_pilatus_2M != NULL){
     //std::cout<<"THIS IS A PILATUS"<<std::endl;
     return -1;
   } else {
