@@ -212,8 +212,8 @@ class ProcessDialog (wx.Dialog) :
       raise event.data
     elif isinstance(self._error, tuple) :
       exception, traceback = self._error
-      #print exception
-      #print traceback
+      if (isinstance(exception, Sorry)) :
+        raise Sorry(str(exception))
       raise RuntimeError("""\
 Error in subprocess!
  Original error: %s
