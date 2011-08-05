@@ -4,6 +4,11 @@
 #include <cctbx/maptbx/structure_factors.h>
 #include <cctbx/maptbx/copy.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
+#include <cctbx/error.h>
+#include <scitbx/vec3.h>
+#include <scitbx/constants.h>
+
+#include <complex>
 
 namespace cctbx { namespace maptbx {
 
@@ -57,6 +62,25 @@ namespace cctbx { namespace maptbx {
     unpad_in_place(map.begin(), map.accessor().all(), map.accessor().focus());
     return af::versa<FloatType, af::c_grid<3> >(
       map, af::c_grid<3>(map.accessor().focus()));
+  }
+
+  template <typename FloatType>
+  std::complex<FloatType>
+  direct_summation_at_point(
+    af::const_ref<miller::index<> > const& miller_indices,
+    af::const_ref<std::complex<FloatType> > const& data,
+    scitbx::vec3<FloatType> site_frac)
+  {
+    CCTBX_ASSERT(data.size() == miller_indices.size());
+    std::complex<FloatType> sum(0.,0.);
+    using scitbx::constants::pi;
+    for (unsigned i = 0; i < data.size(); i++) {
+      miller::index<> hkl = miller_indices[i];
+      std::complex<FloatType> F_hkl = data[i];
+      std::complex<FloatType> exponent(0, -2 * pi * (hkl*site_frac));
+      sum += F_hkl * std::exp(exponent);
+    }
+    return sum;
   }
 
 }} // namespace cctbx::maptbx

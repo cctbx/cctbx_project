@@ -151,6 +151,16 @@ namespace {
             arg("miller_indices"),
             arg("data")));
 
+    def("direct_summation_at_point",
+      (std::complex<double>(*)(
+        af::const_ref<miller::index<> > const&,
+        af::const_ref<std::complex<double> > const&,
+        scitbx::vec3<double>))
+          maptbx::direct_summation_at_point, (
+            arg("miller_indices"),
+            arg("data"),
+            arg("site_frac")));
+
     def("box_map_averaging",box_map_averaging);
     def("average_densities",
       (af::shared<double>(*)

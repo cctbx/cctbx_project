@@ -2912,6 +2912,22 @@ class array(set):
       fourier_coefficients=self,
       f_000=f_000)
 
+  def direct_summation_at_point (self, site_frac, sigma=None) :
+    assert (self.is_complex_array())
+    map_coeffs = self
+    if (self.space_group_info().type().number() != 1) :
+      map_coeffs = map_coeffs.expand_to_p1()
+    if (not map_coeffs.anomalous_flag()) :
+      map_coeffs = map_coeffs.generate_bijvoet_mates()
+    sum = maptbx.direct_summation_at_point(
+      miller_indices=map_coeffs.indices(),
+      data=map_coeffs.data(),
+      site_frac=site_frac)
+    if (sigma is not None) :
+      return sum / sigma
+    else :
+      return sum / self.unit_cell().volume()
+
   def local_standard_deviation_map(self, radius,
                                          mean_solvent_density=0,
                                          resolution_factor=1/3,
