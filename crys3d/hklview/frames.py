@@ -8,6 +8,7 @@ from crys3d.hklview import view_2d, view_3d
 from wxtbx import icons
 import wxtbx.symmetry_dialog
 import wxtbx.utils
+import wx.glcanvas
 from wx.lib.agw import floatspin
 import wx
 from libtbx.str_utils import format_value
@@ -244,7 +245,8 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.SetFocus()
 
   def create_viewer_panel (self) :
-    self.viewer = view_3d.hklview_3d(self, size=(800,600))
+    self.viewer = view_3d.hklview_3d(self, size=(800,600),
+      style=wx.glcanvas.WX_GL_DOUBLEBUFFER)
 
   def create_settings_panel (self) :
     self.settings_panel = settings_window(self, -1, style=wx.RAISED_BORDER)
