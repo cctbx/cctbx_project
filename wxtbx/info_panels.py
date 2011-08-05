@@ -3,6 +3,7 @@
 
 import wxtbx.icons
 import wx
+import re
 import cStringIO
 import os
 
@@ -155,9 +156,18 @@ class PDBFileInfo (InfoPanelBase) :
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
       grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-      txt2 = wx.StaticText(self.info_panel, -1, str(value))
+      str_value = str(value)
+      alert = False
+      if (str_value.endswith("***")) :
+        str_value = re.sub("\s*\*\*\*", "", str_value)
+        alert = True
+      txt2 = wx.StaticText(self.info_panel, -1, str_value)
       font2 = txt2.GetFont()
       font2.SetFamily(wx.FONTFAMILY_MODERN)
+      if (alert) :
+        font2.SetWeight(wx.FONTWEIGHT_BOLD)
+        txt2.SetForegroundColour((200,0,0))
+        txt1.SetForegroundColour((200,0,0))
       txt2.SetFont(font2)
       grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr.Fit(self.info_panel)
