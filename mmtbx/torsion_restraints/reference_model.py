@@ -39,6 +39,8 @@ reference_model_params = iotbx.phil.parse("""
    .type = bool
  strict_rotamer_matching = False
    .type = bool
+ auto_shutoff_for_ncs = False
+   .type = bool
  auto_align = False
    .type = bool
  secondary_structure_only = False
@@ -958,3 +960,33 @@ class reference_model(object):
                       counter += 1
                     xray_structure.set_sites_cart(sites_cart_start)
 
+  def remove_restraints_with_ncs_matches(self,
+                                         ncs_dihedral_proxies,
+                                         ncs_match_hash):
+    proxy_list = []
+    remaining_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
+    remaining_match_hash = {}
+    for dp in ncs_dihedral_proxies:
+      proxy_list.append(dp.i_seqs)
+    print len(self.reference_dihedral_proxies)
+    for dp in self.reference_dihedral_proxies:
+      if dp.i_seqs not in proxy_list:
+        remaining_proxies.append(dp)
+    for key in self.residue_match_hash:
+      found_match = False
+      for key2 in ncs_match_hash:
+        if key == key2:
+          found_match = True
+        else:
+          for match in ncs_match_hash[key2]:
+            if key == match:
+              found_match = True
+      if not found_match:
+        remaining_match_hash[key] = self.residue_match_hash[key]
+    print len(remaining_proxies)
+    self.reference_dihedral_proxies = remaining_proxies
+    self.residue_match_hash = remaining_match_hash
+    print >> self.log, "\n**Removed reference restraints that overlap "+ \
+                       "with torsion NCS restraints**\n"
+    print >> self.log, "Updated Reference Model Restraints:"
+    self.show_reference_summary()

@@ -7,7 +7,6 @@ from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
 import iotbx.phil
-from iotbx.pdb import common_residue_names_get_class
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
 import sys
@@ -208,7 +207,7 @@ class torsion_ncs(object):
                / max(len(residue_match_map),
                      chain_i.residue_groups_size(),
                      chain_j.residue_groups_size()) \
-               > self.params.similarity ):
+               >= self.params.similarity ):
             key = (chain_i_str, chain_j_str)
             alignments[key] = residue_match_map
             if used_chains is not None:
@@ -372,28 +371,6 @@ class torsion_ncs(object):
     print >> self.log, "Initializing torsion NCS restraints..."
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
-
-#  def get_chain_type(self, chain):
-#    macro_count = 0
-#    micro_count = 0
-#    chain_length = chain.residue_groups_size()
-#    for conformer in chain.conformers():
-#      for residue in conformer.residues():
-#        if (common_residue_names_get_class(residue.resname) == \
-#            'other' or \
-#            common_residue_names_get_class(residue.resname) == \
-#            'common_small_molecule' or \
-#            common_residue_names_get_class(residue.resname) == \
-#            'common_element' or \
-#            common_residue_names_get_class(residue.resname) == \
-#            'common_water'):
-#          micro_count += 1
-#        else:
-#          macro_count += 1
-#    if micro_count / chain_length >= .50:
-#      return "HETATM"
-#    else:
-#      return "ATOM"
 
   def extract_padded_sequence_from_chain(self, chain):
     seq = []
