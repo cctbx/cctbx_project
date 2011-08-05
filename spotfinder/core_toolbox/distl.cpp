@@ -272,6 +272,9 @@ di::w_Distl::set_tiling(const string& vendortype)
   if (vendortype=="Pilatus-6M") {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_pilatus6M(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));
+  } else if (vendortype=="Pilatus-2M") {
+    finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_pilatus2M(
+      finder.firstx, finder.lastx, finder.firsty, finder.lasty));
   } else {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));
