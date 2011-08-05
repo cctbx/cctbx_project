@@ -133,7 +133,7 @@ Missing file name for %(what)s structure:
 
   #Now actually run the program logic
   from spotfinder.applications import signal_strength
-  signal_strength.run_signal_strength(working_params.extract())
+  return signal_strength.run_signal_strength(working_params.extract())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
