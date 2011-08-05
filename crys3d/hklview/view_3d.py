@@ -16,6 +16,7 @@ class hklview_3d (wxGLWindow) :
   def __init__ (self, *args, **kwds) :
     wxGLWindow.__init__(self, *args, **kwds)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
+    self.Bind(wx.EVT_ERASE_BACKGROUND, lambda evt: None)
     # FIXME orthographic is definitely best for this application, but it isn't
     # working properly right now
     #self.orthographic = True
