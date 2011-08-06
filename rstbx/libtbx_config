@@ -1,4 +1,5 @@
 {
   "modules_required_for_use": ["iotbx"],
+  "modules_required_for_build": ["annlib"],
   "optional_modules": ["annlib"]
 }

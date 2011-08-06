@@ -177,10 +177,12 @@ class resolution_bin(object):
 
 from labelit.dptbx.next_layer_support import mid_resolution_detector_coords
 from labelit.dptbx.profile_support import show_profile
-from labelit.dptbx.sublattice import SubLatticeMetaProcedure
-class IntegrationMetaProcedure(SubLatticeMetaProcedure):
-  def __init__(self,inputs): # inputs is an instance of class api
+from libtbx.development.timers import Timer
+from rstbx.apps import simple_integration
 
+class IntegrationMetaProcedure(simple_integration):
+  def __init__(self,inputs): # inputs is an instance of class api
+    simple_integration.__init__(self)
     self.inputai = inputs.solution_setting_ai #C++ autoindex engine
     self.indexing_ai = inputs.indexing_ai
 
@@ -207,10 +209,15 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
 
     #print "resolution: %.2f %.2f"%(resolution_est,resolution_str)
     self.pixel_size = inputs.pixel_size
+    self.set_pixel_size(inputs.pixel_size)
+    self.set_detector_size(int(self.inputpd["size1"]),int(self.inputpd["size2"]))
+
     self.pre2m = inputs.pre2m
     self.basic_algorithm()
     self.initialize_increments()
+    T = Timer("concept")
     self.integration_concept()
+    T = Timer("proper")
     self.integration_proper()
 
   def basic_algorithm(self):
@@ -325,6 +332,10 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
           I_S_mask[ ( round(predX + deltaX + correction[0]),
                       round(predY + deltaY + correction[1]) )]=True
       self.ISmasks.append(I_S_mask)
+      key_pairs = flex.int()
+      for key in I_S_mask.keys():
+        key_pairs.append(int(key[0])); key_pairs.append(int(key[1]))
+      self.append_ISmask(key_pairs)
       corrections.append(correction)
 
     # which spots are close enough to interfere with background?
@@ -336,6 +347,26 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
     print "The overlap cutoff is %d pixels"%nbr_cutoff
     nbr_cutoff_sq = nbr_cutoff * nbr_cutoff
 
+    print "Optimized C++ section...",
+    self.set_frame(FRAME)
+    self.set_nbr_cutoff_sq(nbr_cutoff_sq)
+    flex_sorted = flex.int()
+    for item in self.sorted:
+      flex_sorted.append(item[0]);flex_sorted.append(item[1]);
+    self.detector_xy_draft = self.safe_background( predicted=predicted,
+                          corrections=corrections,
+                          OS_adapt=OS_adapt,
+                          sorted=flex_sorted)
+    for i in xrange(len(predicted)): # loop over predicteds
+      B_S_mask = {}
+      keys = self.get_bsmask(i)
+      for k in xrange(0,len(keys),2):
+        B_S_mask[(keys[k],keys[k+1])]=True
+      self.BSmasks.append(B_S_mask)
+    print "Done"
+    return
+    
+    # Never get here...replaced with C++ code
     for i in xrange(len(predicted)): # loop over predicteds
       pred = predicted[i]
       predX = pred[0]/pxlsz
@@ -347,7 +378,8 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
       i_bs = 0
       spot_position = matrix.col(( round(predX + correction[0]),
                                   round(predY + correction[1]) ))
-
+      self.detector_xy_draft.append(( round(predX + correction[0]),
+                                  round(predY + correction[1]) ))
 
       #insert a test to make sure spot is within FRAME
       if spot_position[0] > FRAME and spot_position[1] > FRAME and \
@@ -385,6 +417,7 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
     self.integrated_data = flex.double()
     self.integrated_sigma= flex.double()
     self.integrated_miller=flex.miller_index()
+    self.detector_xy = flex.vec2_double()
     rawdata = self.imagefiles.images[0].linearintdata # assume image #1
     from rstbx.diffraction import corrected_backplane
     for i in xrange(len(self.predicted)):
@@ -425,11 +458,12 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
       sum_background = flex.sum(bkgrnd)
       # Use gain == 1
       # variance formula from Andrew Leslie, Int Tables article
-      variance = uncorrected_signal + sum_background*(mcount//ncount)**2
+      variance = uncorrected_signal + sum_background*(float(mcount)/ncount)**2
       sigma = math.sqrt(variance)
       self.integrated_data.append(summation_intensity)
       self.integrated_sigma.append(sigma)
       self.integrated_miller.append(self.hkllist[i])
+      self.detector_xy.append(self.detector_xy_draft[i])
 
   def get_obs(self,space_group_symbol):
     from cctbx.crystal import symmetry
@@ -508,5 +542,5 @@ class IntegrationMetaProcedure(SubLatticeMetaProcedure):
     order = flex.sort_permutation(Distsq)
     self.sorted = []
     for i in xrange(len(order)):
-      #print i,order[i],Distsq[order[i]]
+      #print i,order[i],Distsq[order[i]],Incr[order[i]]
       self.sorted.append(Incr[order[i]])

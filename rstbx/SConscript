@@ -12,6 +12,11 @@ env_etc.rstbx_common_includes = [
   env_etc.chiltbx_include,
   env_etc.omptbx_include,
   env_etc.boost_include,
+  env_etc.annlib_dist,
+  env_etc.annlib_include[0],
+  env_etc.annlib_include[1],
+  env_etc.annlib_adaptbx_include[0],
+  env_etc.annlib_adaptbx_include[1],
 ]
 
 env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
@@ -51,3 +56,4 @@ if (not env_etc.no_boost_python):
   SConscript("diffraction/fastbragg/SConscript")
   SConscript("simulation/SConscript")
   SConscript("simage/SConscript")
+  SConscript("apps/SConscript")
