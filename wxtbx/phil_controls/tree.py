@@ -7,8 +7,12 @@ import re
 class PhilTreeCtrl (customtreectrl.CustomTreeCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
-    kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS|wx.TR_TWIST_BUTTONS|wx.TR_HIDE_ROOT
+    kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS| \
+      wx.TR_TWIST_BUTTONS|wx.TR_HIDE_ROOT|wx.TR_SINGLE
     customtreectrl.CustomTreeCtrl.__init__(self, *args, **kwds)
+    self.Bind(wx.EVT_TREE_KEY_DOWN, self.OnChar)
+    self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRightClick)
+    self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.AddRoot("(parameters)")
     self._nodes_lookup_short = {}
     self._nodes_lookup_full = {}
@@ -81,6 +85,59 @@ class PhilTreeCtrl (customtreectrl.CustomTreeCtrl) :
     self.SelectItem(node)
     self.ScrollTo(node)
 
+  def OnPrevious (self, event) :
+    if (len(self._search_results) == 0) :
+      return
+    self._current_search_item -= 1
+    if (self._current_search_item < 0) :
+      self._current_search_item = len(self._search_results) - 1
+    node = self._search_results[self._current_search_item]
+    self.SelectItem(node)
+    self.ScrollTo(node)
+
+  def OnChar (self, event) :
+    key = event.GetKeyCode()
+    if (key == wx.WXK_DOWN) :
+      if (self._current_search_text is not None) :
+        self.OnPrevious(None)
+      else :
+        current_item = self.GetSelection()
+        if (current_item is None) :
+          current_item = self.GetFirstVisibleItem()
+        item = self.GetNextVisible(current_item)
+        if (item is not None) :
+          self.SelectItem(item)
+          self.ScrollTo(item)
+    elif (key == wx.WXK_UP) :
+      if (self._current_search_text is not None) :
+        self.OnNext(None)
+      else :
+        current_item = self.GetSelection()
+        if (current_item is None) :
+          item = self.GetFirstVisibleItem()
+        else :
+          item = self.GetPrevVisible(current_item)
+        if (item is not None) :
+          self.SelectItem(item)
+          self.ScrollTo(item)
+    elif (key == wx.WXK_RETURN) :
+      item = self.GetSelection()
+      self.EditNode(item)
+
+  def OnRightClick (self, event) :
+    item = event.GetItem()
+    self.EditNode(item)
+
+  def OnDoubleClick (self, event) :
+    item = self.GetSelection()
+    if (item is not None) :
+      self.EditNode(item)
+
+  def EditNode (self, item) :
+    if (item is not None) :
+      phil_object = item.GetData()
+      phil_object.show()
+
 valid_text = re.compile("^[a-zA-Z]{1,}[a-zA-z0-9_]*$")
 valid_text_partial = re.compile("^[a-zA-Z0-9_]*$")
 
@@ -90,7 +147,6 @@ class PhilTreeFrame (wx.Frame) :
     self.panel = wx.Panel(self)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.panel.SetSizer(szr)
-    #szr.Add(self.panel, 1, wx.EXPAND)
     self.tree = PhilTreeCtrl(self.panel, -1, size=(600,400),
       style=wx.SUNKEN_BORDER)
     txt1 = wx.StaticText(self.panel, -1, "Search:")
@@ -108,7 +164,6 @@ class PhilTreeFrame (wx.Frame) :
     self.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.OnSearch, search_box)
     self.Bind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.OnCancel, search_box)
     self.partial_box = wx.CheckBox(self.panel, -1, "Include partial matches")
-    #szr3 = wx.BoxSizer(wx.HORIZONTAL)
     szr3.Add(self.partial_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.search_result = wx.StaticText(self.panel, -1, "", size=(300,-1))
     szr2.Add((1,1))
@@ -116,6 +171,7 @@ class PhilTreeFrame (wx.Frame) :
     szr.Layout()
     szr.Fit(self.panel)
     self.Fit()
+    self.SetMinSize((480,320))
 
   def DrawPhilTree (self, phil_object) :
     self.tree.DrawPhilObject(phil_object)
@@ -137,6 +193,7 @@ class PhilTreeFrame (wx.Frame) :
     else :
       self.search_result.SetForegroundColour((0,0,0))
     self.search_result.SetLabel("%d items found" % n_items)
+    self.panel.Layout()
 
   def OnCancel (self, event) :
     event.GetEventObject().Clear()

@@ -5,6 +5,8 @@
 # annotation.  The outer window and PDB processing methods depend on CCTBX,
 # but the panels can be adapted to any other framework.
 
+# FIXME use numbering/resids in PDB file
+
 # TODO: show existing CCTBX atom selection?
 
 from __future__ import division
@@ -1056,10 +1058,6 @@ def exercise () :
 if __name__ == "__main__" :
 #  run_test()
   if "--test" in sys.argv :
-    import libtbx.load_env
-    pdb_file = libtbx.env.find_in_repositories(
-      relative_path="phenix_regression/pdb/1ywf.pdb",
-      test=os.path.isfile)
-    run([pdb_file])
-  else :
     exercise()
+  else :
+    run(sys.argv[1:])
