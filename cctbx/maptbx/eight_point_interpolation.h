@@ -160,7 +160,7 @@ namespace cctbx { namespace maptbx {
     af::tiny<SiteFloatType, 3> xn;
     for (unsigned k = 0; k < 3; k++) {
       if (x_frac[k] < 0) {
-        xn[k] = fmod((1.-x_frac[k])*static_cast<SiteFloatType>(grid_n[k]), 1.0);
+        xn[k] = fmod((1.+x_frac[k])*static_cast<SiteFloatType>(grid_n[k]), 1.0);
       } else {
         xn[k] = fmod(x_frac[k]*static_cast<SiteFloatType>(grid_n[k]), 1.0);
       }
