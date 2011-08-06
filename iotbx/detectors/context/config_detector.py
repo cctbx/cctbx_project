@@ -215,6 +215,10 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
       beam_center_convention = 2
       set_convention(2,phil_params)
 
+    elif imageobject.vendortype=="npy_raw":
+      beam_center_convention = 2
+      set_convention(2,phil_params)
+
     else: beam_center_convention = None
 
     if imageobject.vendortype == "CBF" and \
