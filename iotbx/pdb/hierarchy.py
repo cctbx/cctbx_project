@@ -943,8 +943,6 @@ class _(boost.python.injector, ext.conformer):
     last_resseq = 0
     for i, residue in enumerate(self.residues()) :
       resseq = residue.resseq_as_int()
-      if resseq < 1 :
-        continue
       if resseq > (last_resseq + 1) :
         for x in range(resseq - last_resseq - 1) :
           ss_seq.append(missing_char)
