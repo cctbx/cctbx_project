@@ -1547,6 +1547,7 @@ smtbx/refinement/tests/tst_least_squares.py -text
 spotfinder/SConscript -text
 spotfinder/__init__.py -text
 spotfinder/applications/__init__.py -text
+spotfinder/applications/find_active_area.h -text
 spotfinder/applications/heuristic_tbx/__init__.py -text
 spotfinder/applications/heuristic_tbx/ice2.py -text
 spotfinder/applications/heuristic_tbx/ice_nztt.py -text
@@ -1562,6 +1563,7 @@ spotfinder/array_family/flex.py -text
 spotfinder/array_family/flex_distl_spot.cpp -text
 spotfinder/array_family/flex_ext.cpp -text
 spotfinder/command_line/__init__.py -text
+spotfinder/command_line/find_active_area.py -text
 spotfinder/command_line/mp_spotfinder_server_read_file.py -text
 spotfinder/command_line/signal_strength.py -text
 spotfinder/command_line/thin_client.py -text

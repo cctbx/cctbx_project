@@ -3,6 +3,7 @@
 #include <spotfinder/core_toolbox/distl.h>
 #include <spotfinder/core_toolbox/spotfilter.h>
 #include <spotfinder/core_toolbox/boost_python/singlemask.h>
+#include <spotfinder/applications/find_active_area.h>
 #include <scitbx/array_family/flex_types.h>
 
 using namespace boost::python;
@@ -203,4 +204,6 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
       .def_readonly("x",&SingleMask::x)
       .def_readonly("y",&SingleMask::y)
    ;
+
+   def("find_active_area",find_active_area);
 }
