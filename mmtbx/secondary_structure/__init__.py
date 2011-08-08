@@ -365,7 +365,7 @@ class manager (object) :
         self.params.helix = restraint_groups.helix
     # Step 2: nucleic acids
     if ((find_nucleic_acids(self.pdb_hierarchy) or
-         params.input.force_nucleic_acids) and 
+         params.input.force_nucleic_acids) and
         (params.h_bond_restraints.restrain_base_pairs)) :
       find_automatically = params.input.find_automatically
       if (len(params.nucleic_acids.base_pair) == 0) :
