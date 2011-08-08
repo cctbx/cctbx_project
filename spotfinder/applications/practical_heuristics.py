@@ -585,7 +585,8 @@ class heuristics_base(object):
       fstats.most_recent_child(),
       'spots_unimodal',
       'modal_test',
-      arguments=[self.phil_params.distl_profile_bumpiness,5])
+      arguments=[self.phil_params.distl_profile_bumpiness,
+                 self.phil_params.distl.minimum_spot_area])
       # parameters are bumpiness(max number of local maxima in peak),minimum pixels
 
     if VERBOSE_COUNT: print "not bumpy & not punctate",fstats['N_spots_unimodal']
