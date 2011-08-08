@@ -25,7 +25,7 @@ class align_pdb_residues (object) :
                 pdb_offsets=None,
                 pdb_resids=None,
                 reference_sequence=None,
-                reference_sequence_name="sequence",
+                reference_sequence_name="reference_seq",
                 reference_sequence_offset=0,
                 reference_sequence_resids=None,
                 reference_index=None,
@@ -76,7 +76,7 @@ class align_pdb_residues (object) :
       if self.substitute_names :
         self.reference_sequence_name = self.fasta_names[i_ref]
       else :
-        self.reference_sequence_name = pdb_names[i_ref]
+        self.reference_sequence_name = self.pdb_names[i_ref]
     fasta = "\n".join([ ">%s\n%s" % (n,s) for n,s in zip(self.fasta_names,
                         self.pdb_sequences) ])
     if (not use_pdb_sequence) :
@@ -86,19 +86,37 @@ class align_pdb_residues (object) :
     self.muscle_aln = get_muscle_alignment(fasta, out=out)
     assert (self.muscle_aln is not None)
 
+  # I am not proud of this.
   def build_lookup_table (self) :
     # find sequences and determine equivalent numbering
     self._lookup_table = {}
+    self._indices = {}
+    self._resids_padded = {}
     i_ref = self.muscle_aln.names.index(self.reference_sequence_name)
     self._reference_alignment = self.muscle_aln.alignments[i_ref]
     assert (i_ref is not None)
     for i, name in enumerate(self.muscle_aln.names) :
       if (i == i_ref) :
         self._lookup_table[name] = None
+        if (self.pdb_offsets is None) :
+          indices = {}
+          resids_padded = [None] * self.get_alignment_size()
+          h = k = 0
+          for resi in self._reference_alignment :
+            if (resi != '-') :
+              resid = self.reference_sequence_resids[k]
+              if (resid is not None) :
+                resid = resid.strip()
+                indices[resid] = h
+                resids_padded[h] = resid
+              k += 1
+            h += 1
+          self._indices[name] = indices
+          self._resids_padded[name] = resids_padded
       else :
         i_pdb = self.fasta_names.index(name)
         aln = self.muscle_aln.alignments[i]
-        j = k = 0
+        h = j = k = 0
         # case 1: index by resseq
         if (self.pdb_offsets is not None) :
           new_resseqs = []
@@ -118,6 +136,8 @@ class align_pdb_residues (object) :
         # case 2: index by resid
         else :
           new_resids = {}
+          indices = {}
+          resids_padded = [None] * self.get_alignment_size()
           for res1, res2 in zip(aln, self._reference_alignment) :
             resid1 = resid2 = None
             if (res2 != '-') :
@@ -125,17 +145,23 @@ class align_pdb_residues (object) :
               if (resid2 is not None) :
                 resid2 = resid2.strip()
               k += 1
-            if (res1 == '-') :
-              continue
-            else :
+            if (res1 != '-') :
               resid1 = self.pdb_resids[i_pdb][j]
               if (resid1 is not None) :
                 resid1 = resid1.strip()
                 new_resids[resid1] = resid2
+                indices[resid1] = h
+                resids_padded[h] = resid1
               j += 1
+            h += 1
           assert (len(new_resids) == (len(self.pdb_resids[i_pdb]) -
                                       self.pdb_resids[i_pdb].count(None)))
           self._lookup_table[name] = new_resids
+          self._indices[name] = indices
+          self._resids_padded[name] = resids_padded
+
+  def get_alignment_size (self) :
+    return len(getattr(self, "_reference_alignment", []))
 
   def write_file (self, file_name) :
     f = open(file_name, "w")
@@ -156,6 +182,18 @@ class align_pdb_residues (object) :
     else :
       assert (resid is not None)
       return self.convert_resid(pdb_name, resid)
+
+  def get_resid_array_index (self, pdb_name, resid) :
+    assert (resid is not None)
+    seq_name = self.get_name_index(pdb_name)
+    indices = self._indices[seq_name]
+    return indices[resid]
+
+  def get_all_resids_at_index (self, index) :
+    resids = []
+    for name in self.fasta_names : #self._resids_padded.keys() :
+      resids.append(self._resids_padded[name][index])
+    return resids
 
   def convert_resid (self, pdb_name, resid) :
     assert (self.pdb_resids is not None)
@@ -204,7 +242,6 @@ Dump of full alignment:
 def align_pdb_hierarchies (hierarchies,
                            hierarchy_names,
                            reference_hierarchy=None,
-                           reference_name=None,
                            assume_consecutive_numbering=None,
                            substitute_names=True,
                            log=None) :
@@ -215,7 +252,7 @@ def align_pdb_hierarchies (hierarchies,
   any of the hierarchies contain atoms with insertion codes, the resid mapping
   will be used automatically.
   """
-  assert (reference_hierarchy is None) or (reference_name is not None)
+  assert (reference_hierarchy is None)
   if (log is None) :
     log = sys.stdout
   if (assume_consecutive_numbering is None) :
@@ -235,6 +272,10 @@ def align_pdb_hierarchies (hierarchies,
   i = 0
   reference_index = None
   pdb_sequences = []
+  def strip (string_or_none) :
+    if (string_or_none is None) :
+      return None
+    return string_or_none.strip()
   for hierarchy, name in zip(hierarchies, hierarchy_names) :
     assert (hierarchy.overall_counts().n_chains == 1)
     main_conf = hierarchy.models()[0].chains()[0].conformers()[0]
@@ -251,7 +292,7 @@ def align_pdb_hierarchies (hierarchies,
       pdb_offsets.append(offset)
     else :
       resids = main_conf.get_residue_ids(skip_insertions=False)
-      pdb_resids.append(resids)
+      pdb_resids.append([ strip(resid) for resid in resids ])
     if (hierarchy is reference_hierarchy) :
       reference_index = i
       print >> log, "  Using %s for sequence numbering" % name
@@ -282,8 +323,8 @@ def align_pdb_hierarchies (hierarchies,
       else :
         reference_sequence_offset = 0
     else :
-      reference_sequence_resids = main_conf.get_residue_ids(
-        skip_insertions=False)
+      resids = main_conf.get_residue_ids(skip_insertions=False)
+      reference_sequence_resids = [ strip(resid) for resid in resids ]
     msa_manager = align_pdb_residues(
       pdb_sequences=pdb_sequences,
       pdb_names=pdb_names,

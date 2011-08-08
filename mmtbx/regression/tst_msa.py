@@ -77,11 +77,18 @@ ATOM     48  CA  TYR A  10       9.159   2.144   7.299  1.00 15.18           C
     m = mmtbx.msa.align_pdb_hierarchies(
       hierarchies=hierarchies,
       hierarchy_names=["pdb1","pdb2"],
+      substitute_names=arg,
       log=StringIO())
     assert (m.get_residue_position("pdb1", resid="3") == "3")
     assert (m.get_residue_position("pdb2", resid="4") == "3")
     assert (m.get_residue_position("pdb2", resid="10") == "9")
     assert (m.get_residue_position("pdb1", resid="6A") == "6A")
+    assert (m.get_resid_array_index("pdb1", "3") == 3)
+    assert (m.get_alignment_size() == 12)
+    assert (m.get_resid_array_index("pdb1", "6A") == 7)
+    assert (m.get_resid_array_index("pdb2", "10") == 11)
+    assert (m.get_all_resids_at_index(0) == [None, None])
+    assert (m.get_all_resids_at_index(7) == ["6A", None])
   # test GUI applet runtime
   pdb_str = """\
 %s
