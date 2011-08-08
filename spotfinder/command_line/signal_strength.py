@@ -17,6 +17,10 @@ distl {
   spot_area_maximum_factor = None
     .type = float
     .help = "Expert use only; max spot area expressed as a multiple of minimum_spot_area. Default=5.0"
+  detector_tiling = None
+    .type = ints
+    .help = "Prior analysis of active area tiling on the detector; groups of 4 integers: UL_slow,UL_fast,LR_slow,LR_fast"
+    .help = "...where UL=upper left corner, LR=lower right corner; coordinates form a Python range"
   %s
   pdf_output = None
     .type = str

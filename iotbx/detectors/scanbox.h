@@ -20,6 +20,7 @@ class scanbox_tiling {
   interval_list persistent_x_tiles, persistent_y_tiles;
   int firstx, lastx, firsty, lasty;
  public:
+  scanbox_tiling(){}
   scanbox_tiling(const int& firstx, const int& lastx,
                  const int& firsty, const int& lasty):
                  firstx(firstx), lastx(lastx), firsty(firsty), lasty(lasty),
@@ -83,6 +84,7 @@ class scanbox_tiling {
   y_end() const {
     return persistent_y_tiles.end();
   }
+
   void reset(){
     persistent_x_tiles = interval_list();
     persistent_y_tiles = interval_list();
@@ -168,6 +170,79 @@ class scanbox_tiling_pilatus2M : public scanbox_tiling_pilatus6M {
       // y axis:  1475 total pixels
       persistent_y_tiles = generate_pilatus_spacing(487, 7, 3, scanbox_width, firsty, lasty);
     }
+    return persistent_y_tiles.begin();
+  }
+
+};
+
+#include <scitbx/array_family/flex_types.h>
+
+//For CXI CS Pad detector.  Explicitly define the rectangular active areas ahead of time.
+class scanbox_tiling_explicit : public scanbox_tiling {
+ size_t tile_count,peripheral_margin,internal_tile_state;
+ scitbx::af::flex_int tiles;
+ std::vector<int> tile_lookup;
+
+ public:
+  scanbox_tiling_explicit(scitbx::af::flex_int explicit_tiling,int const& peripheral_margin):
+    tile_count(explicit_tiling.size()/4),peripheral_margin(peripheral_margin),
+    tiles(explicit_tiling),internal_tile_state(0)
+  {}
+
+  interval_list
+  generate_defined_x_tiles(int const& width){
+     internal_tile_state= 0;
+     tile_lookup.clear();
+     interval_list result;
+     for (int tile = 0 ; tile < tile_count; ++tile){
+       int start = tiles[4*tile]+peripheral_margin;
+       int finish= tiles[4*tile+2]-peripheral_margin;
+       interval I = interval(start,finish);
+       int available_width = I.size();
+       int n_intervals = available_width/width;
+       int next = start;
+       for (int iival= 0; iival < n_intervals; ++iival){
+         int increment = (double(iival+1)/double(n_intervals))*(finish-start);
+         result.push_back( interval(next,start + increment) );
+         tile_lookup.push_back(tile);
+         next = start + increment + 1;
+       }
+     }
+     return result;
+  }
+
+  interval_list
+  generate_defined_y_tiles(int const& width){
+     interval_list result;
+     int tile = tile_lookup[internal_tile_state];
+     interval I = interval(tiles[4*tile+1]+peripheral_margin,
+                           tiles[4*tile+3]-peripheral_margin);
+     int available_width = I.size();
+     int n_intervals = available_width/width;
+     int start = tiles[4*tile+1]+peripheral_margin;
+     int finish= tiles[4*tile+3]-peripheral_margin;
+     int next = start;
+     for (int iival= 0; iival < n_intervals; ++iival){
+       int increment = (double(iival+1)/double(n_intervals))*(finish-start);
+       result.push_back( interval(next,start + increment) );
+       next = start + increment + 1;
+     }
+
+     internal_tile_state+=1;
+     return result;
+  }
+
+  virtual
+  interval_ptr
+  x_tiles(const int& scanbox_width) {
+    persistent_x_tiles = generate_defined_x_tiles(scanbox_width);
+    return persistent_x_tiles.begin();
+  }
+
+  virtual
+  interval_ptr
+  y_tiles(const int& scanbox_width) {
+    persistent_y_tiles = generate_defined_y_tiles(scanbox_width);
     return persistent_y_tiles.begin();
   }
 

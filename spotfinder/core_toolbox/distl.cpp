@@ -281,6 +281,13 @@ di::w_Distl::set_tiling(const string& vendortype)
   }
 }
 
+void
+di::w_Distl::set_tiling(af::flex_int const& explicit_tiling,int const& peripheral_margin)
+{
+  finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_explicit(
+      explicit_tiling, peripheral_margin));
+}
+
 af::flex_double
 di::w_Distl::Z_data()
 {

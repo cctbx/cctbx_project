@@ -142,7 +142,10 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
           arg_("wavelength"),arg_("xbeam"),arg_("ybeam"),arg_("rawdata"),
           arg_("peripheral_margin"),arg_("saturation")
       ))
-     .def("set_tiling",&w_Distl::set_tiling)
+     .def("set_tiling",(void(w_Distl::*)(const string&))&w_Distl::set_tiling)
+     .def("set_tiling",(void(w_Distl::*)(af::flex_int const&,int const&))&w_Distl::set_tiling,
+         (arg_("detector_tiling"),arg_("peripheral_margin"))
+      )
      .def("Z_data",&w_Distl::Z_data)
      .def("mod_data",&w_Distl::mod_data)
      .def("get_underload",&w_Distl::get_underload)

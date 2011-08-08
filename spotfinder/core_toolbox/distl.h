@@ -55,6 +55,7 @@ public:
                   const int&,
                   const double&);
   void set_tiling(const std::string&);
+  void set_tiling(af::flex_int const&,int const&);
   af::flex_double Z_data();//DISTL's pixelwise Z-score array
   af::flex_int mod_data();//user-defined modified dataset
 
