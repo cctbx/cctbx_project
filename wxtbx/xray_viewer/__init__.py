@@ -156,7 +156,7 @@ class screen_params (object) :
     y1 = y - max(0, (self.screen_h - (h*scale)) / 2)
     x2 = self.img_x_offset + (x1 / scale)
     y2 = self.img_y_offset + (y1 / scale)
-    return (ifloor(x2) - 1, ifloor(y2) - 1)
+    return (ifloor(x2) + 1, ifloor(y2) + 1)
 
   def image_coords_as_array_coords (self, x, y) :
     return y-1, x-1
