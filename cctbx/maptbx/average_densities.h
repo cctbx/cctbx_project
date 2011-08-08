@@ -93,7 +93,7 @@ af::versa<double, af::c_grid<3> > superpose_maps(
           translation_vector;
         cctbx::fractional<> point_frac_in_2 =
           unit_cell_1.fractionalize(point_cart_in_2);
-        result_map_ref(i,j,k) = eight_point_interpolation(map_data_1,
+        result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
           point_frac_in_2);
   }}}
   return result_map;
@@ -128,7 +128,7 @@ af::versa<double, af::c_grid<3> > rotate_translate_map(
               if(grid_node_frac_shifted[q] >= 1) grid_node_frac_shifted[q] -= 1;
             }
           }
-          new_data_ref(i,j,k) = eight_point_interpolation(map_data,
+          new_data_ref(i,j,k) = tricubic_interpolation(map_data,
             grid_node_frac_shifted);
     }}}
     return new_data;
