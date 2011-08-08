@@ -40,6 +40,14 @@ class Distl(w_Distl):
         if params.distl.spot_area_maximum_factor != None:
           self.set_spot_area_maximum_factor(params.distl.spot_area_maximum_factor)
         self.set_scanbox_windows(params.distl.scanbox_windows)
+        if params.distl.detector_tiling != None:
+          IT = params.distl.detector_tiling
+          assert len(IT)%4==0 # only meaningful for groups of 4
+          for itl in xrange(0,len(IT),4): # validate upper-left/ lower-right ordering
+            assert IT[itl] < IT[itl+2]; assert IT[itl+1] < IT[itl+3]
+          self.set_tiling(detector_tiling = spotfinder.array_family.flex.int(IT),
+                          peripheral_margin = peripheral_margin)
+
     self.parameter_guarantees()
 
     self.get_underload()

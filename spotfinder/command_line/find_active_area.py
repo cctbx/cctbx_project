@@ -3,7 +3,7 @@ import os, sys
 from iotbx.detectors.npy import NpyImage
 from spotfinder.core_toolbox import find_active_area
 
-#special import of pickled NumPy array: CXI/CSPad data file 
+#special import of pickled NumPy array: CXI/CSPad data file
 def ImageFactory(filename):
   if os.path.isfile(filename):
     I = NpyImage(filename)
@@ -23,7 +23,7 @@ class graph_tracker:
       try:
         graph[key].remove(self.item_sink)
       except ValueError: pass
-        
+
 def run_one(path, display):
   image = ImageFactory(path)
   image.read()
@@ -43,7 +43,7 @@ def run_one(path, display):
   for src in sources:
     item_sinks = [i for i in sinks if i[0]>src[0] and i[1]>src[1]]
     graph[src]=item_sinks
-    
+
   G = graph_tracker()
   while G.has_one(graph):
     print G.key, G.item_sink
@@ -52,7 +52,7 @@ def run_one(path, display):
     G.prune(graph)
 
   assert len(graph.keys())==0
-  
+
 if __name__ == "__main__":
   for arg in sys.argv[1:]:
     run_one(arg, display=True)

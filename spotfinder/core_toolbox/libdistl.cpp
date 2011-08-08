@@ -197,6 +197,9 @@ int diffimage::get_underload() const
   if (possible_pilatus != NULL || possible_pilatus_2M != NULL){
     //std::cout<<"THIS IS A PILATUS"<<std::endl;
     return -1;
+  } else if (dynamic_cast<scanbox_tiling_explicit*>(&(*tiling)) != NULL) {
+    //std::cout<<"THIS IS A CSPad or other tiled detector"<<std::endl;
+    return 0;
   } else {
     //std::cout<<"THIS IS NOT A PILATUS"<<std::endl;
   }
@@ -369,11 +372,11 @@ void diffimage::pxlclassify()
                   }
                 }
                 */
-
                 tiling->reset();
                 for (interval_ptr xs = tiling->x_tiles(x_box); xs != tiling->x_end(); ++xs){
                   //if (i==0) {printf("x = %4d to %4d inclusive\n",xs->first,xs->last);}
                   for (interval_ptr ys = tiling->y_tiles(y_box); ys != tiling->y_end(); ++ys) {
+                    //if (i==2){printf("FROM %4d %4d %4d %4d\n",xs->first,ys->first,xs->last,ys->last);}
                     pxlclassify_scanbox(xs->first, xs->last, ys->first, ys->last, bgupperint[i]);
                   }
                 }
