@@ -55,12 +55,6 @@ input
     .type = bool
     .short_caption = Use phi/psi angles to identify helices
     .expert_level = 2
-  preserve_protein_segid = False
-    .type = bool
-    .style = bold
-  preserve_nucleic_acid_segid = False
-    .type = bool
-    .style = bold
   force_nucleic_acids = False
     .type = bool
     .short_caption = Force base pair detection
@@ -329,6 +323,9 @@ class manager (object) :
   def find_automatically (self, log=sys.stderr) :
     params = self.params
     find_automatically = params.input.find_automatically
+    atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
+    segids = flex.std_string([ a.segid for a in atom_labels ])
+    use_segid = not segids.all_eq('    ')
     # XXX: check for presence of protein first?
     if len(params.helix) == 0 and len(params.sheet) == 0 :
       if(self.verbose>0):
@@ -338,7 +335,7 @@ class manager (object) :
           print >> log, "No HELIX or SHEET records found in PDB file."
         find_automatically = True
     if find_automatically :
-      if params.input.preserve_protein_segid :
+      if (use_segid) :
         self.sec_str_from_pdb_file = self.find_sec_str_with_segids(log=log)
       else :
         self.sec_str_from_pdb_file = self.find_sec_str(log=log)
@@ -372,7 +369,7 @@ class manager (object) :
         if (find_automatically != False) :
           find_automatically = True
       if find_automatically :
-        if params.input.preserve_nucleic_acid_segid :
+        if (use_segid) :
           base_pairs = self.find_base_pairs_with_segids(log=log,
             force=params.input.force_nucleic_acids)
         else :
