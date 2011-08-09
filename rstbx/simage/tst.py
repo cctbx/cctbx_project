@@ -213,27 +213,27 @@ def exercise_solver():
 input_im0_i_perm: 0
 
 Correlation of input and estimated I-obs:
-  i_perm=0:  1.00000
+  i_perm=0:  1.00000 (r1: 0.00000)
 """)
   buf = run(["d_min=5", "lattice_symmetry=R32:R", "intensity_symmetry=R3:R"])
   assert not block_show_diff(buf, """\
 input_im0_i_perm: 1
 
 Correlation of input and estimated I-obs:
-  i_perm=0:  0.06799
-  i_perm=1:  1.00000
+  i_perm=0:  0.06799 (r1: 0.37555)
+  i_perm=1:  1.00000 (r1: 0.00000)
 """)
   buf = run(["d_min=5", "lattice_symmetry=R32:R", "intensity_symmetry=P1"])
   assert not block_show_diff(buf, """\
 input_im0_i_perm: 5
 
 Correlation of input and estimated I-obs:
-  i_perm=0:  0.07524
-  i_perm=1: -0.02385
-  i_perm=2: -0.04577
-  i_perm=3: -0.00099
-  i_perm=4:  0.00764
-  i_perm=5:  1.00000
+  i_perm=0:  0.07524 (r1: 0.38937)
+  i_perm=1: -0.02385 (r1: 0.40114)
+  i_perm=2: -0.04577 (r1: 0.41742)
+  i_perm=3: -0.00099 (r1: 0.40390)
+  i_perm=4:  0.00764 (r1: 0.39213)
+  i_perm=5:  1.00000 (r1: 0.00000)
 """)
   if (not libtbx.env.has_module("labelit")):
     print "Skipping some tests due to missing module: labelit"
