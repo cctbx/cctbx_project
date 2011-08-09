@@ -365,7 +365,7 @@ class IntegrationMetaProcedure(simple_integration):
       self.BSmasks.append(B_S_mask)
     print "Done"
     return
-    
+
     # Never get here...replaced with C++ code
     for i in xrange(len(predicted)): # loop over predicteds
       pred = predicted[i]
