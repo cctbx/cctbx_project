@@ -907,7 +907,8 @@ def check_image_cluster(
     reconstr = expected.customized_copy(data=cluster.esti_perms[i_perm])
     print "i_perm:", i_perm
     flex.linear_correlation(x=expected.data(), y=reconstr.data()).show_summary()
-    r1 = expected.r1_factor(other=reconstr, scale_factor=libtbx.Auto)
+    r1 = expected.f_sq_as_f().r1_factor(
+      other=reconstr.f_sq_as_f(), scale_factor=libtbx.Auto)
     print "r1: %.5f" % r1
     print
   for i_img,i_perm_and_scale in cluster.i_perm_and_scale_by_i_img.items():
@@ -927,17 +928,19 @@ def show_i_calc_reindexing_correlations(i_calc, reindexing_assistant):
   assert i_calc.space_group_info().type().number() == 1
   assert i_calc.anomalous_flag()
   from scitbx.array_family import flex
-  data = i_calc.data()
   print "I-calc reindexing correlations:"
   for cb_op,inv_perm in zip(
         reindexing_assistant.cb_ops,
         reindexing_assistant.inv_perms):
     i_calc_cb = i_calc.change_basis(cb_op)
-    assert i_calc_cb.indices().select(inv_perm).all_eq(i_calc.indices())
-    data_perm = i_calc_cb.data().select(inv_perm)
-    print "  %-12s  %8.5f" % (
-      cb_op.c().r().as_hkl(),
-      flex.linear_correlation(data, data_perm).coefficient())
+    i_calc_perm = i_calc_cb.select(inv_perm)
+    assert i_calc_perm.indices().all_eq(i_calc.indices())
+    cc = flex.linear_correlation(
+      i_calc.data(),
+      i_calc_perm.data()).coefficient()
+    r1 = i_calc.f_sq_as_f().r1_factor(
+      other=i_calc_perm.f_sq_as_f(), scale_factor=libtbx.Auto)
+    print "  %-12s  %8.5f (r1: %.5f)" % (cb_op.c().r().as_hkl(), cc, r1)
   print
 
 def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
@@ -1053,7 +1056,9 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
       if (best_cc < cc): best_cc = cc
       if (input_im0_i_perm is not None and i_perm == input_im0_i_perm):
         cc_im0_i_perm = cc
-      print "  i_perm=%d: %8.5f" % (i_perm, cc)
+      r1 = c.f_sq_as_f().r1_factor(
+        other=e.f_sq_as_f(), scale_factor=libtbx.Auto)
+      print "  i_perm=%d: %8.5f (r1: %.5f)" % (i_perm, cc, r1)
     if (input_im0_i_perm is not None):
       assert cc_im0_i_perm is not None
       from libtbx.test_utils import approx_equal
