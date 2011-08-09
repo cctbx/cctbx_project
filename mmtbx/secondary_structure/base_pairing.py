@@ -3,6 +3,7 @@ from __future__ import division
 from libtbx import easy_run
 from libtbx.utils import Sorry
 from libtbx import Auto
+from mmtbx import utils
 import os, sys, re
 
 dna_rna_params_str = """
@@ -203,10 +204,37 @@ def get_distances(residues,
   return db.get_distances(base_pair, pair_type, use_hydrogens)
 
 def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
-  reduce_output = run_reduce(pdb_hierarchy, remove_hydrogens=False).stdout_lines
+  bare_chains = utils.find_bare_chains_with_segids(
+                  pdb_hierarchy=pdb_hierarchy)
+  if bare_chains:
+    tmp_pdb_hierarchy = pdb_hierarchy.deep_copy()
+    tmp_pdb_hierarchy.atoms().reset_i_seq()
+    seg_dict = \
+      utils.seg_id_to_chain_id(pdb_hierarchy=tmp_pdb_hierarchy)
+    rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_pdb_hierarchy,
+                                        seg_dict=seg_dict)
+  else:
+    tmp_pdb_hierarchy = pdb_hierarchy
+  reduce_output = run_reduce(tmp_pdb_hierarchy,
+                             remove_hydrogens=False).stdout_lines
+  if bare_chains:
+    reverted_reduce_output = ""
+    for line in reduce_output:
+      if line.startswith("ATOM"):
+        segid = line[72:76]
+        tmp_line = ""
+        if seg_dict.get(segid):
+          tmp_line = line[0:20] + "  " + line[22:]
+          reverted_reduce_output += tmp_line+'\n'
+        else:
+          reverted_reduce_output += line+'\n'
+      else:
+        reverted_reduce_output += line+'\n'
+  else:
+    reverted_reduce_output = reduce_output
   cmd = "phenix.probe " + flags + " -"
   probe_output = easy_run.fully_buffered(cmd,
-           stdin_lines=reduce_output)
+           stdin_lines=reverted_reduce_output)
   return probe_output
 
 def clean_base_names(pdb_line):
@@ -229,6 +257,7 @@ def clean_single_base_name(base):
 
 
 def run_reduce(hierarchy, remove_hydrogens=True):
+  #log = sys.stderr
   trim = "phenix.reduce -quiet -trim -"
   build = "phenix.reduce -quiet -build -allalt -"
   input_str = ""
