@@ -54,6 +54,9 @@ namespace fem {
     T const*
     begin() const { return elems_; }
 
+    T const*
+    end() const { return elems_ + size_1d(); }
+
 #if defined(_MSC_VER)
     // workaround, breaks const-correctness, but only on this platform
     operator
