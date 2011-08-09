@@ -102,22 +102,28 @@ def simulate(work_params, i_calc, asu_iselection):
   def get_miller_index_i_seqs(i_img, parallel=True):
     mt = flex.mersenne_twister(seed=work_params.noise.random_seed+i_img)
     crystal_rotation = mt.random_double_r3_rotation_matrix_arvo_1992()
-    img = image_simple(store_miller_index_i_seqs=True).compute(
+    img = image_simple(
+        store_miller_index_i_seqs=True,
+        store_signals=True).compute(
       unit_cell=i_calc.unit_cell(),
       miller_indices=i_calc.indices(),
-      spot_intensity_factors=i_calc.data(),
+      spot_intensity_factors=None,
       crystal_rotation_matrix=crystal_rotation,
       ewald_radius=1/work_params.wavelength,
       ewald_proximity=work_params.ewald_proximity,
-      signal_max=work_params.signal_max,
+      signal_max=1,
       detector_distance=work_params.detector.distance,
       detector_size=work_params.detector.size,
       detector_pixels=work_params.detector.pixels,
       point_spread=work_params.point_spread,
       gaussian_falloff_scale=work_params.gaussian_falloff_scale)
+    result = img.miller_index_i_seqs
+    if (work_params.usable_partiality_threshold is not None):
+      result = result.select(
+        img.signals > work_params.usable_partiality_threshold)
     if (parallel):
-      return img.miller_index_i_seqs.copy_to_byte_str()
-    return img.miller_index_i_seqs
+      return result.copy_to_byte_str()
+    return result
   i_img = 0
   stop = False
   if (not work_params.multiprocessing):
@@ -162,6 +168,8 @@ number_of_shots = None
   .type = int
 min_count_target = None
   .type = int
+usable_partiality_threshold = 0.1
+  .type = float
 multiprocessing = False
   .type = bool
 plot = False
