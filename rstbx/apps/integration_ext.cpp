@@ -17,7 +17,7 @@ namespace rstbx { namespace integration { namespace ext {
 
       class_<simple_integration>(
         "simple_integration", init<>())
-        //Could not figure out how to expose member data from the C++ class into 
+        //Could not figure out how to expose member data from the C++ class into
         // a derived class in Python
         .def("set_pixel_size",&simple_integration::set_pixel_size)
         .def("set_detector_size",&simple_integration::set_detector_size)

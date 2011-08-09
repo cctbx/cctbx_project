@@ -97,7 +97,7 @@ class structure(crystal.special_position_settings):
   def erase_scatterers(self):
     """Remove all scatterers from structure
 
-    :returns: None
+    :returns: none
     """
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
@@ -789,13 +789,34 @@ class structure(crystal.special_position_settings):
     return self._scatterers.extract_use_u_aniso()
 
   def set_sites_frac(self, sites_frac):
+    """Set the the fractional coordinates of all sites of the structure to \
+    'sites_frac'.
+
+    :param sites_frac: a list of the fractional coordinates for all scatterers
+    :type sites_frac: scitbx.array_family.flex.vec3_double
+
+    :returns: none
+    """
     assert sites_frac.size() == self._scatterers.size()
     self._scatterers.set_sites(sites_frac)
 
   def sites_cart(self):
+    """Get the the cartesian coordinates of all sites of the structure.
+
+    :returns: a list of the sites of the structure in cartesian coordinates
+    :rtype: scitbx.array_family.flex.vec3_double
+    """
     return self.unit_cell().orthogonalize(sites_frac=self.sites_frac())
 
   def set_sites_cart(self, sites_cart):
+    """Set the the cartesian coordinates of all sites of the structure to \
+    'sites_cart'.
+
+    :param sites_cart: a list of the cartesian coordinates for all scatterers
+    :type sites_cart: scitbx.array_family.flex.vec3_double
+
+    :returns: none
+    """
     self.set_sites_frac(self.unit_cell().fractionalize(sites_cart=sites_cart))
 
   def scattering_types(self):
