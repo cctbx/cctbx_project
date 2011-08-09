@@ -17,6 +17,8 @@ lattice_symmetry = None
   .type = space_group
 lattice_symmetry_max_delta = 1.4
   .type = float
+anomalous_flag = True
+  .type = bool
 euler_angles_xyz = 0 0 0
   .type = floats(size=3)
 crystal_rotation_matrix = None
@@ -172,16 +174,13 @@ def build_i_calc(work_params):
       .complete_miller_set_with_lattice_symmetry(
         d_min=d_min,
         anomalous_flag=True).expand_to_p1()
-    intensity_symmetry = work_params.intensity_symmetry
-    if (intensity_symmetry is not None):
+    if (work_params.intensity_symmetry is not None):
       miller_set = miller_set.customized_copy(
-        space_group_info=intensity_symmetry).unique_under_symmetry()
+        space_group_info=work_params.intensity_symmetry,
+        anomalous_flag=work_params.anomalous_flag).unique_under_symmetry()
     mt = flex.mersenne_twister(seed=work_params.noise.random_seed)
     i_calc = miller_set.array(
       data=mt.random_double(size=miller_set.indices().size()))
-    iselection = None
-    if (intensity_symmetry is not None):
-      i_calc, iselection = i_calc.expand_to_p1(return_iselection=True)
   else:
     import iotbx.pdb
     pdb_inp = iotbx.pdb.input(file_name=work_params.pdb_file)
@@ -198,11 +197,12 @@ def build_i_calc(work_params):
     miller_set = work_params.unit_cell \
       .complete_miller_set_with_lattice_symmetry(
         d_min=d_min,
-        anomalous_flag=True).expand_to_p1().customized_copy(
-          space_group_info=xs.space_group_info()) \
-            .unique_under_symmetry() \
-            .remove_systematic_absences() \
-            .map_to_asu()
+        anomalous_flag=work_params.anomalous_flag) \
+          .expand_to_p1().customized_copy(
+            space_group_info=xs.space_group_info()) \
+              .unique_under_symmetry() \
+              .remove_systematic_absences() \
+              .map_to_asu()
     i_calc = miller_set.structure_factors_from_scatterers(
       xray_structure=xs).f_calc().intensities()
     if (i_calc.data().size() != 0):
@@ -214,7 +214,17 @@ def build_i_calc(work_params):
         .build_derived_reflection_intensity_group(anomalous_flag=True).info()) \
       .map_to_asu() \
       .complete_array(new_data_value=0)
-    i_calc, iselection = i_calc.expand_to_p1(return_iselection=True)
+  assert not i_calc.space_group().is_centric()
+  assert i_calc.space_group().n_ltr() == 1
+  assert i_calc.space_group_info().type().is_symmorphic()
+  i_asu_array = i_calc.customized_copy(
+    data=flex.size_t_range(i_calc.indices().size()))
+  if (not i_asu_array.anomalous_flag()):
+    i_asu_array = i_asu_array.generate_bijvoet_mates()
+  i_asu_array = i_asu_array.expand_to_p1()
+  iselection = i_asu_array.data()
+  i_calc = i_asu_array.customized_copy(
+    data=i_calc.data().select(i_asu_array.data()))
   if (work_params.force_unit_spot_intensities):
     i_calc = i_calc.array(data=flex.double(i_calc.indices().size(), 1))
   return i_calc, iselection
