@@ -1,7 +1,10 @@
 #include <boost/python/class.hpp>
+#include <boost/python/wrapper.hpp>
+#include <boost/python/pure_virtual.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/make_function.hpp>
+#include <boost/python/tuple.hpp>
 
 #include <smtbx/refinement/restraints/origin_fixing.h>
 
