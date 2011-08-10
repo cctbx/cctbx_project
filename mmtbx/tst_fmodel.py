@@ -102,6 +102,8 @@ def test_1(xray_structure):
                       assert a.data().all_approx_equal(1.0, 1.e-9)
                       assert b.data().all_approx_equal(0.0, 1.e-9)
                       fmodel.model_error_ml()
+                      if (xrs is not None) :
+                        assert (fmodel.estimate_f000() > 0.0)
                       ###
                       ### instantiate fmodel only + update ksol & bsol
                       ###
