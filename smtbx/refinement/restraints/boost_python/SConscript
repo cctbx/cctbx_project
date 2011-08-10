@@ -1,5 +1,4 @@
 Import("env_smtbx_boost_python_ext")
 env = env_smtbx_boost_python_ext.Clone()
-env.SharedLibrary(target="#lib/smtbx_refinement_restraints_ext", source=[
-  "restraints_ext.cpp"
-])
+env.SharedLibrary(target="#lib/smtbx_refinement_restraints_ext",
+                  source=Glob("*.cpp"))
