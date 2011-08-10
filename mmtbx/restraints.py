@@ -3,15 +3,18 @@ import math
 from cctbx.array_family import flex
 import scitbx.restraints
 from cctbx import adptbx
+from libtbx.utils import Sorry
 
 class manager(object):
 
   def __init__(self,
         geometry=None,
         ncs_groups=None,
+        torsion_ncs_groups=None,
         normalization=False):
     self.geometry = geometry
     self.ncs_groups = ncs_groups
+    self.torsion_ncs_groups = torsion_ncs_groups
     self.normalization = normalization
 
   def select(self, selection):
@@ -26,9 +29,15 @@ class manager(object):
       ncs_groups = None
     else:
       ncs_groups = self.ncs_groups.select(iselection=selection.iselection())
+    if (self.torsion_ncs_groups is None):
+      torsion_ncs_groups = None
+    else:
+      torsion_ncs_groups = \
+        self.torsion_ncs_groups.select(iselection=selection.iselection())
     return manager(
       geometry=geometry,
       ncs_groups=ncs_groups,
+      torsion_ncs_groups=torsion_ncs_groups,
       normalization=self.normalization)
 
   def energies_sites(self,
@@ -99,6 +108,10 @@ class manager(object):
         compute_gradients=compute_gradients,
         gradients=result.gradients)
       result += result.geometry
+    if (self.ncs_groups is not None and \
+        self.torsion_ncs_groups is not None):
+      raise Sorry("Cannot have both Cartesian and torsion NCS restraints"+\
+                  " at the same time.")
     if (self.ncs_groups is None):
       result.ncs_groups = None
     else:
@@ -108,6 +121,15 @@ class manager(object):
         compute_gradients=compute_gradients,
         gradients=result.gradients)
       result += result.ncs_groups
+    if (self.torsion_ncs_groups is None):
+      result.torsion_ncs_groups = None
+    else:
+      result.torsion_ncs_groups = self.torsion_ncs_groups.energies_adp_iso(
+        u_isos=xray_structure.extract_u_iso_or_u_equiv(),
+        average_power=parameters.average_power,
+        compute_gradients=compute_gradients,
+        gradients=result.gradients)
+      result += result.torsion_ncs_groups
     result.finalize_target_and_gradients()
     if(compute_gradients):
        #XXX highly inefficient code: do something asap by adopting new scatters flags
