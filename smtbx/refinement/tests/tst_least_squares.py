@@ -1,4 +1,5 @@
 from __future__ import division
+from libtbx import object_oriented_patterns as oop
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
 from scitbx.lstbx import normal_eqns_solving
@@ -9,6 +10,7 @@ from cctbx.xray import observations
 from cctbx.development import random_structure
 from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
+from smtbx.refinement.restraints import origin_fixing_restraints
 import smtbx.utils
 from libtbx.test_utils import approx_equal
 import libtbx.utils
@@ -70,11 +72,8 @@ class site_refinement_test(refinement_test):
     ls = least_squares.crystallographic_ls(
       obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
-      floating_origin_restraint_relative_weight=0)
+      origin_fixing_restraints_type=oop.null())
     ls.build_up()
-    assert ls.opposite_of_gradient()\
-           .all_approx_equal(0, eps_zero_rhs),\
-           list(ls.gradient())
     unrestrained_normal_matrix = ls.normal_matrix_packed_u()
     assert len(unrestrained_normal_matrix) == n*(n+1)//2
     ev = eigensystem.real_symmetric(
@@ -86,8 +85,8 @@ class site_refinement_test(refinement_test):
       obs,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
-    )
-
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.homogeneous_weighting)
     ls.build_up()
 
     # Let's check that the computed singular directions span the same
@@ -95,7 +94,7 @@ class site_refinement_test(refinement_test):
     singular_test = flex.double()
     jac = ls.reparametrisation.jacobian_transpose_matching_grad_fc()
     m = 0
-    for s in ls.floating_origin_restraints.singular_directions:
+    for s in ls.origin_fixing_restraint.singular_directions:
       assert s.norm() != 0
       singular_test.extend(jac*s)
       m += 1
@@ -171,6 +170,8 @@ class site_refinement_test(refinement_test):
       obs,
       reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.atomic_number_weighting
     )
     barycentre_0 = xs.sites_frac().mean()
     while 1:
@@ -217,7 +218,9 @@ class site_refinement_test(refinement_test):
       connectivity_table=connectivity_table)
     ls = least_squares.crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
-      weighting_scheme=least_squares.unit_weighting())
+      weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.atomic_number_weighting)
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
@@ -274,7 +277,8 @@ class adp_refinement_test(refinement_test):
       connectivity_table=connectivity_table)
     ls = least_squares.crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
-      weighting_scheme=least_squares.unit_weighting())
+      weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=oop.null())
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
@@ -479,7 +483,9 @@ class twin_test(object):
     obs = self.fo_sq.as_xray_observations(twin_components=twin_components)
     normal_eqns = least_squares.crystallographic_ls(
       obs, reparametrisation,
-      weighting_scheme=least_squares.unit_weighting())
+      weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.atomic_number_weighting)
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns,
       n_max_iterations=10,
@@ -504,7 +510,9 @@ class twin_test(object):
       twin_fractions=twin_components)
     normal_eqns = least_squares.crystallographic_ls(
       obs, reparametrisation,
-      weighting_scheme=least_squares.unit_weighting())
+      weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.atomic_number_weighting)
     cycles = normal_eqns_solving.naive_iterations(
       normal_eqns,
       n_max_iterations=10,
@@ -634,7 +642,9 @@ class special_positions_test(object):
       connectivity_table=connectivity_table)
     ls = least_squares.crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
-      weighting_scheme=least_squares.unit_weighting())
+      weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.atomic_number_weighting)
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
@@ -702,7 +712,9 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
       structure=xs,
       constraints=[],
       connectivity_table=smtbx.utils.connectivity_table(xs)),
-    weighting_scheme=least_squares.unit_weighting())
+    weighting_scheme=least_squares.unit_weighting(),
+    origin_fixing_restraints_type=
+    origin_fixing_restraints.atomic_number_weighting)
   ls.build_up()
   lambdas = eigensystem.real_symmetric(
     ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
@@ -730,7 +742,9 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
       structure=xs,
       constraints=[],
       connectivity_table=smtbx.utils.connectivity_table(xs)),
-    weighting_scheme=least_squares.mainstream_shelx_weighting())
+    weighting_scheme=least_squares.mainstream_shelx_weighting(),
+    origin_fixing_restraints_type=
+    origin_fixing_restraints.atomic_number_weighting)
   ls.build_up()
   lambdas = eigensystem.real_symmetric(
     ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
@@ -1067,7 +1081,9 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
         structure=xs,
         constraints=[],
         connectivity_table=smtbx.utils.connectivity_table(xs)),
-      weighting_scheme=least_squares.unit_weighting())
+      weighting_scheme=least_squares.unit_weighting(),
+      origin_fixing_restraints_type=
+      origin_fixing_restraints.atomic_number_weighting)
 
     ls.build_up()
     lambdas = eigensystem.real_symmetric(
@@ -1118,10 +1134,10 @@ def run():
   n_runs = command_line.options.runs
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
 
-  exercise_floating_origin_dynamic_weighting(command_line.options.verbose)
-  twin_test().run()
   exercise_normal_equations()
+  exercise_floating_origin_dynamic_weighting(command_line.options.verbose)
   special_positions_test(n_runs).run()
+  twin_test().run()
 
 if __name__ == '__main__':
   run()

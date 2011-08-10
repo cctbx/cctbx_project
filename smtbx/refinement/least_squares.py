@@ -11,7 +11,7 @@ from scitbx import linalg
 from scitbx.lstbx import normal_eqns
 from scitbx.array_family import flex
 from smtbx.structure_factors import direct
-from smtbx.refinement import restraints
+from smtbx.refinement.restraints import origin_fixing_restraints
 
 from stdlib import math
 
@@ -20,13 +20,15 @@ class crystallographic_ls(
 
   default_weighting_scheme = mainstream_shelx_weighting
   weighting_scheme = "default"
-  origin_fixing_restraint_relative_weight = 1e3
+  origin_fixing_restraints_type = (
+    origin_fixing_restraints.atomic_number_weighting)
   f_mask = None
   restraints_manager=None
   n_restraints = None
   initial_scale_factor = None
 
-  def __init__(self, observations, reparametrisation, **kwds):
+  def __init__(self, observations, reparametrisation,
+               **kwds):
     super(crystallographic_ls, self).__init__(
       reparametrisation.n_independent_params)
     self.observations = observations
@@ -38,10 +40,8 @@ class crystallographic_ls(
       self.xray_structure)
     if self.weighting_scheme == "default":
       self.weighting_scheme = self.default_weighting_scheme()
-    self.origin_fixing_restraint = restraints.origin_fixing(
-      self.xray_structure.space_group(),
-      self.reparametrisation.asu_scatterer_parameters,
-      self.origin_fixing_restraint_relative_weight)
+    self.origin_fixing_restraint = self.origin_fixing_restraints_type(
+      self.xray_structure.space_group())
     self.taken_step = None
     self.restraints_normalisation_factor = None
 
@@ -124,7 +124,8 @@ class crystallographic_ls(
     if not objective_only:
       self.origin_fixing_restraint.add_to(
         self.step_equations(),
-        self.reparametrisation.jacobian_transpose_matching_grad_fc())
+        self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+        self.reparametrisation.asu_scatterer_parameters)
 
   def parameter_vector_norm(self):
     return self.reparametrisation.norm_of_independent_parameter_vector
