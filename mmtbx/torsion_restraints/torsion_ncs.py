@@ -14,6 +14,7 @@ from libtbx import group_args
 from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.torsion_restraints import utils
+from mmtbx import ncs
 
 TOP_OUT_FLAG = True
 
@@ -32,7 +33,11 @@ torsion_ncs_params = iotbx.phil.parse("""
    .short_caption = Restraint slack (degrees)
  similarity = .80
    .type = float
-    .short_caption = Sequence similarity cutoff
+   .short_caption = Sequence similarity cutoff
+ b_factor_weight = None
+   .type=float
+   .short_caption = B factor weight
+   .expert_level=1
  hydrogens = False
    .type = bool
    .short_caption = Include hydrogens
@@ -53,21 +58,6 @@ torsion_ncs_params = iotbx.phil.parse("""
    .expert_level = 1
  verbose = True
    .type = bool
- alignment
-    .help = Set of parameters for sequence alignment. Defaults are good for most \
-            of cases
-    .short_caption = Sequence alignment
-    .style = box auto_align
- {
-  alignment_style =  *local global
-    .type = choice
-  gap_opening_penalty = 1
-    .type = float
-  gap_extension_penalty = 1
-    .type = float
-  similarity_matrix =  blosum50  dayhoff *identity
-    .type = choice
- }
  restraint_group
   .multiple=True
   .optional=True
@@ -78,6 +68,9 @@ torsion_ncs_params = iotbx.phil.parse("""
     .short_caption=Restrained selection
     .multiple=True
     .style = use_list
+  b_factor_weight=10
+    .type=float
+    .short_caption = B factor weight
  }
 """)
 
@@ -101,6 +94,7 @@ class torsion_ncs(object):
     self.ncs_dihedral_proxies = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.params = params
+    self.found_ncs = None
     self.log = log
     print >> self.log, "Determining NCS matches..."
     pair_hash = {}
@@ -228,6 +222,17 @@ class torsion_ncs(object):
           chain_str = "chain '%s'" % add_chain
           ncs_set.append(chain_str)
         self.ncs_groups.append(ncs_set)
+      new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
+      for ncs_set in self.ncs_groups:
+        new_ncs_groups += "   restraint_group {\n"
+        for chain in ncs_set:
+          new_ncs_groups += "    selection = %s\n" % chain
+        if params.b_factor_weight is not None:
+          new_ncs_groups += \
+            "    b_factor_weight = %f\n" % params.b_factor_weight
+        new_ncs_groups += "   }\n"
+      new_ncs_groups += "  }\n }\n}"
+      self.found_ncs = new_ncs_groups
 
     for dp in geometry.dihedral_proxies:
       h_atom = False
@@ -568,11 +573,11 @@ class torsion_ncs(object):
           self.ncs_dihedral_proxies.append(dp_add)
     if len(self.ncs_dihedral_proxies) == 0:
       print >> log, \
-        "** WARNING: No dihedral NCS  found!!" + \
+        "** WARNING: No torsion NCS found!!" + \
         "  Please check parameters. **"
     else:
       print >> log, \
-        "Number of dihedral NCS restraints: %d" \
+        "Number of torsion NCS restraints: %d" \
           % len(self.ncs_dihedral_proxies)
 
 
@@ -582,7 +587,7 @@ class torsion_ncs(object):
                                      log=None):
     if log is None:
       log = sys.stdout
-    print >> log, "Updating dihedral NCS restraints..."
+    print >> log, "Updating torsion NCS restraints..."
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
@@ -743,3 +748,25 @@ class torsion_ncs(object):
                   counter += 1
                 xray_structure.set_sites_cart(sites_cart_start)
                 print >> log, "Fixed %s rotamer" % key
+
+  def process_ncs_restraint_groups(self, model, processed_pdb_file):
+    log = self.log
+    ncs_groups = ncs.restraints.groups()
+    sites_cart = None
+    for param_group in self.params.restraint_group:
+      group = ncs.restraints.group.from_atom_selections(
+        processed_pdb              = processed_pdb_file,
+        reference_selection_string = param_group.selection[0],
+        selection_strings          = param_group.selection[1:],
+        coordinate_sigma           = 0.05,
+        b_factor_weight            = param_group.b_factor_weight,
+        special_position_warnings_only
+          = False,
+        log = log)
+      ncs_groups.members.append(group)
+      print >> log
+    if (len(ncs_groups.members) == 0):
+      print >> log, "No NCS restraint groups specified."
+      print >> log
+    else:
+      model.restraints_manager.torsion_ncs_groups = ncs_groups
