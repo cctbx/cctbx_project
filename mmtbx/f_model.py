@@ -2113,6 +2113,41 @@ class manager(manager_mixin):
       b_cart[4],
       b_cart[5]])
 
+  def estimate_f000 (self, debug=False) :
+    assert (self.xray_structure is not None)
+    miller_set = miller.set(
+      crystal_symmetry=self.xray_structure,
+      indices=self.f_obs().indices().deep_copy(),
+      anomalous_flag=False)
+    indices = miller_set.indices()
+    indices.insert(0, (0,0,0))
+    f_calc = miller_set.structure_factors_from_scatterers(
+      xray_structure=self.xray_structure,
+      algorithm=self.sfg_params.algorithm).f_calc()
+    f_calc_000 = f_calc.data()[0].real
+    if (debug) :
+      print "Fcalc(0,0,0) = %.2f" % f_calc_000
+    f_obs = self.f_obs().deep_copy()
+    r_free_flags = self.r_free_flags().deep_copy()
+    f_obs.indices().insert(0, (0,0,0))
+    f_obs.data().insert(0, f_calc_000)
+    if (f_obs.sigmas() is not None) :
+      f_obs.sigmas().insert(0, 1.)
+    r_free_flags.indices().insert(0, (0,0,0))
+    r_free_flags.data().insert(0, False)
+    f_model_tmp = manager(
+      xray_structure=self.xray_structure,
+      f_obs=f_obs,
+      r_free_flags=r_free_flags,
+      k_sol=self.k_sols(),
+      b_sol=0, # XXX very important
+      b_cart=self.b_cart())
+    f000 = f_model_tmp.f_model().data()[0].real
+    del f_model_tmp
+    if (debug) :
+      print "Fmodel(0,0,0) = %.2f" % f000
+    return f000
+
 def kb_range(x_max, x_min, step):
   x_range = []
   x = x_min
