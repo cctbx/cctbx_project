@@ -44,12 +44,12 @@ namespace smtbx { namespace refinement { namespace restraints {
    correlations.
    */
   template <typename FloatType>
-  class floating_origin_restraints
+  class origin_fixing
   {
   public:
     typedef FloatType scalar_t;
 
-    scalar_t floating_origin_restraint_relative_weight;
+    scalar_t relative_weight;
 
     /// Singular directions in the space of crystallographic parameters
     af::small<af::shared<scalar_t>, 3> singular_directions;
@@ -64,13 +64,12 @@ namespace smtbx { namespace refinement { namespace restraints {
     /** It precomputes the singular vectors of the normal matrix
         for the crystallographic parameters.
      */
-    floating_origin_restraints(
+    origin_fixing(
       sgtbx::space_group const &space_group,
       af::const_ref<constraints::scatterer_parameters> const &params,
-      scalar_t floating_origin_restraint_relative_weight)
+      scalar_t relative_weight)
 
-      : floating_origin_restraint_relative_weight(
-          floating_origin_restraint_relative_weight)
+      : relative_weight(relative_weight)
     {
       // Floating origin restraints: pre-compute singular directions
       sgtbx::structure_seminvariants seminvariants(space_group);
@@ -120,7 +119,7 @@ namespace smtbx { namespace refinement { namespace restraints {
                 scitbx::sparse::matrix<FloatType> const
                 &jacobian_transpose_matching_grad_fc)
     {
-      if (!floating_origin_restraint_relative_weight) return;
+      if (!relative_weight) return;
       if (!singular_space.size()) return;
       af::ref<scalar_t, af::packed_u_accessor>
       a = normal_eqns.normal_matrix().ref();
@@ -128,7 +127,7 @@ namespace smtbx { namespace refinement { namespace restraints {
       for (int i=1; i<a.n_rows(); ++i) {
         if (singular_space[i]) acc(a(i,i));
       }
-      scalar_t w = floating_origin_restraint_relative_weight * acc.max();
+      scalar_t w = relative_weight * acc.max();
       for (int i=0; i<singular_directions.size(); ++i) {
         af::shared<scalar_t> reparametrised_singular_dir =
         jacobian_transpose_matching_grad_fc*singular_directions[i].const_ref();

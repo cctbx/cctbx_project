@@ -4,9 +4,9 @@ namespace smtbx { namespace refinement { namespace restraints {
   namespace boost_python {
 
   template <typename FloatType>
-  struct floating_origin_restraints_wrapper
+  struct origin_fixing_wrapper
   {
-    typedef floating_origin_restraints<FloatType> wt;
+    typedef origin_fixing<FloatType> wt;
     typedef typename wt::scalar_t scalar_t;
 
     static boost::python::tuple singular_directions(wt const &self) {
@@ -36,7 +36,7 @@ namespace smtbx { namespace refinement { namespace restraints {
                   scalar_t>
              ((arg("space_group"),
                arg("all_scatterer_parameters"),
-               arg("floating_origin_restraint_relative_weight"))))
+               arg("relative_weight"))))
         .def("add_to", &wt::add_to,
              (arg("normal_equations"),
               arg("jacobian_transpose_matching_grad_fc")))
@@ -46,8 +46,7 @@ namespace smtbx { namespace refinement { namespace restraints {
   };
 
   void wrap_origin_fixing_restraints() {
-    floating_origin_restraints_wrapper<
-      double>::wrap("floating_origin_restraints");
+    origin_fixing_wrapper<double>::wrap("origin_fixing");
 
   }
 
