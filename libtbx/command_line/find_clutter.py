@@ -53,6 +53,8 @@ def run(args):
     print
     print "\n".join(message_lines)
     print
+    return (1)
+  return (0)
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  sys.exit(run(sys.argv[1:]))
