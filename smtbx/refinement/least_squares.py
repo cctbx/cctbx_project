@@ -11,6 +11,7 @@ from scitbx import linalg
 from scitbx.lstbx import normal_eqns
 from scitbx.array_family import flex
 from smtbx.structure_factors import direct
+from smtbx.refinement import restraints
 
 from stdlib import math
 
@@ -37,7 +38,7 @@ class crystallographic_ls(
       self.xray_structure)
     if self.weighting_scheme == "default":
       self.weighting_scheme = self.default_weighting_scheme()
-    self.floating_origin_restraints = floating_origin_restraints(
+    self.floating_origin_restraints = restraints.floating_origin_restraints(
       self.xray_structure.space_group(),
       self.reparametrisation.asu_scatterer_parameters,
       self.floating_origin_restraint_relative_weight)

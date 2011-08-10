@@ -135,9 +135,12 @@ namespace boost_python {
          arg("restraints_matrix")));
   }
 
+  void wrap_origin_fixing_restraints();
+
   namespace {
     void init_module() {
       wrap_least_squares_restraints();
+      wrap_origin_fixing_restraints();
     }
   }
 
