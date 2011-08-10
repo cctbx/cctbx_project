@@ -20,7 +20,7 @@ class crystallographic_ls(
 
   default_weighting_scheme = mainstream_shelx_weighting
   weighting_scheme = "default"
-  floating_origin_restraint_relative_weight = 1e3
+  origin_fixing_restraint_relative_weight = 1e3
   f_mask = None
   restraints_manager=None
   n_restraints = None
@@ -38,10 +38,10 @@ class crystallographic_ls(
       self.xray_structure)
     if self.weighting_scheme == "default":
       self.weighting_scheme = self.default_weighting_scheme()
-    self.floating_origin_restraints = restraints.floating_origin_restraints(
+    self.origin_fixing_restraint = restraints.origin_fixing(
       self.xray_structure.space_group(),
       self.reparametrisation.asu_scatterer_parameters,
-      self.floating_origin_restraint_relative_weight)
+      self.origin_fixing_restraint_relative_weight)
     self.taken_step = None
     self.restraints_normalisation_factor = None
 
@@ -122,7 +122,7 @@ class crystallographic_ls(
       self.n_restraints = linearised_eqns.n_restraints()
       self.chi_sq_data_and_restraints = self.chi_sq()
     if not objective_only:
-      self.floating_origin_restraints.add_to(
+      self.origin_fixing_restraint.add_to(
         self.step_equations(),
         self.reparametrisation.jacobian_transpose_matching_grad_fc())
 
