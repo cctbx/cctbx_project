@@ -68,6 +68,21 @@ namespace scitbx { namespace math {
        c + w*woc);
   }
 
+  //! Quaternion product.
+  /*  Implement this as a standalone function as there is no quaternion class
+   */
+  template <typename FloatType>
+  af::tiny<FloatType, 4>
+  quaternion_product( af::tiny<FloatType, 4> const& a,
+                      af::tiny<FloatType, 4> const& b){
+    return af::tiny<FloatType, 4>(
+      a[0]*b[0] - a[1]*b[1] - a[2]*b[2] - a[3]*b[3],
+      a[0]*b[1] + a[1]*b[0] + a[2]*b[3] - a[3]*b[2],
+      a[0]*b[2] - a[1]*b[3] + a[2]*b[0] + a[3]*b[1],
+      a[0]*b[3] + a[1]*b[2] - a[2]*b[1] + a[3]*b[0]);
+  }
+
+
   //! Conversion without validation of inputs.
   template <typename FloatType>
   af::tiny<FloatType, 4>
