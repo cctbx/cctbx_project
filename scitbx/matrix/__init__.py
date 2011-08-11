@@ -344,6 +344,24 @@ class rec(object):
       q0*o2 - q1*o3 + q2*o0 + q3*o1,
       q0*o3 + q1*o2 - q2*o1 + q3*o0))
 
+  def quaternion_inverse(self):
+    assert self.n in [(1,4), (4,1)]
+    q0,q1,q2,q3 = self.elems
+    return col(( q0,-q1,-q2,-q3 ))
+
+  def unit_quaternion_as_axis_and_angle(self, deg=False):
+    assert self.n in [(1,4), (4,1)]
+    q0,q1,q2,q3 = self.elems
+    if q0 > 1. : q0 = 1.
+    if q0 < -1. : q0 = -1.
+    angle_alpha = 2. * math.acos(q0)
+    if deg:  angle_alpha *= 180./math.pi
+    axis = col((q1,q2,q3))
+    axis_length = axis.length()
+    if axis_length > 0:
+      axis = axis/axis_length #unit axis
+    return angle_alpha,axis
+
   def axis_and_angle_as_unit_quaternion(self, angle, deg=False):
     assert self.n in ((3,1), (1,3))
     if (deg): angle *= math.pi/180
