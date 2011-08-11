@@ -84,6 +84,7 @@ namespace rstbx { namespace simage {
       TBXX_ASSERT(circle_radius_sq != 0);
       typedef scitbx::vec3<double> v3d;
       for(std::size_t ih=0;ih<miller_indices.size();ih++) {
+        // compare with ewald_proximity() code in explore_completeness.py
         v3d rv = unit_cell.reciprocal_space_vector(miller_indices[ih]);
         v3d rvre = crystal_rotation_matrix * rv;
         rvre[2] += ewald_radius; // direct beam anti-parallel (0,0,1)

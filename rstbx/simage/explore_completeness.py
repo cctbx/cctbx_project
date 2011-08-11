@@ -115,7 +115,7 @@ def kirian_delta_vs_ewald_proximity(
         assert unit_cell.d(h) < d_min
       else:
         deltas[i].append(delta)
-  def ewald_proximity(h):
+  def ewald_proximity(h): # compare with code in image_simple.hpp
     rv = matrix.col(unit_cell.reciprocal_space_vector(h))
     rvr = cr * rv
     rvre = matrix.col((rvr[0], rvr[1], rvr[2]+ewald_radius))
