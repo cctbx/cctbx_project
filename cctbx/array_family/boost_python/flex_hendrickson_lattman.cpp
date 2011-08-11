@@ -57,6 +57,25 @@ namespace {
   }
 
   flex<cctbx::hendrickson_lattman<> >::type*
+  from_a_b_c_d(
+    af::const_ref<double> const& a,
+    af::const_ref<double> const& b,
+    af::const_ref<double> const& c,
+    af::const_ref<double> const& d)
+  {
+    CCTBX_ASSERT(a.size() == b.size());
+    CCTBX_ASSERT(a.size() == c.size());
+    CCTBX_ASSERT(c.size() == d.size());
+    af::shared<cctbx::hendrickson_lattman<> > result;
+    result.reserve(a.size());
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(cctbx::hendrickson_lattman<>(a[i], b[i], c[i], d[i]));
+    }
+    return new flex<cctbx::hendrickson_lattman<> >::type(
+      result, result.size());
+  }
+
+  flex<cctbx::hendrickson_lattman<> >::type*
   from_phase_integrals(
     af::const_ref<bool> const& centric_flags,
     af::const_ref<std::complex<double> > const& phase_integrals,
@@ -122,6 +141,13 @@ namespace {
         default_call_policies(),
         (arg("a"),
          arg("b"))))
+      .def("__init__", make_constructor(
+        from_a_b_c_d,
+        default_call_policies(),
+        (arg("a"),
+         arg("b"),
+         arg("c"),
+         arg("d"))))
       .def("__init__", make_constructor(
         from_phase_integrals,
         default_call_policies(),

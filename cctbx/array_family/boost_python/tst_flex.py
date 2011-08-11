@@ -70,6 +70,10 @@ def exercise_flex_hendrickson_lattman():
     h != flex.hendrickson_lattman(a=b, b=a), (True, True, True))
   assert approx_equal(
     h != h.deep_copy(), (False, False, False))
+  c = flex.double([4,5,6])
+  d = flex.double([-4,7,8])
+  h = flex.hendrickson_lattman(a=a, b=b, c=c, d=d)
+  assert approx_equal(h, [(1,-3,4,-4), (2,4,5,7), (3,5,6,8)])
 
 
 def exercise_flex_xray_scatterer():
