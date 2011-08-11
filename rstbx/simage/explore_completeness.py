@@ -76,6 +76,68 @@ class stats_manager(libtbx.slots_getstate_setstate):
       ax2.axis([0, nx, 0, max(1, flex.max(_))])
       pyplot.show()
 
+def kirian_delta_vs_ewald_proximity(
+      unit_cell,
+      miller_indices,
+      crystal_rotation_matrix,
+      ewald_radius,
+      d_min,
+      detector_distance,
+      detector_size,
+      detector_pixels):
+  from scitbx import matrix
+  from libtbx.math_utils import nearest_integer
+  cr = matrix.sqr(crystal_rotation_matrix)
+  a_matrix = cr * matrix.sqr(unit_cell.fractionalization_matrix()).transpose()
+  a_inv = a_matrix.inverse()
+  dsx, dsy = detector_size
+  dpx, dpy = detector_pixels
+  deltas = [[] for _ in xrange(len(miller_indices))]
+  h_lookup = {}
+  for i,h in enumerate(miller_indices):
+    h_lookup[h] = i
+  for pi in xrange(dpx):
+    for pj in xrange(dpy):
+      cx = ((pi + 0.5) / dpx - 0.5) * dsx
+      cy = ((pj + 0.5) / dpy - 0.5) * dsy
+      lo = matrix.col((cx, cy, -detector_distance))
+      ko = lo.normalize() * ewald_radius
+      ki = matrix.col((0,0,-ewald_radius))
+      dk = ki - ko
+      h_frac = a_inv * dk
+      h = matrix.col([nearest_integer(_) for _ in h_frac])
+      if (h.elems == (0,0,0)):
+        continue
+      g_hkl = a_matrix * h
+      delta = (dk - g_hkl).length()
+      i = h_lookup.get(h.elems)
+      if (i is None):
+        assert unit_cell.d(h) < d_min
+      else:
+        deltas[i].append(delta)
+  def ewald_proximity(h):
+    rv = matrix.col(unit_cell.reciprocal_space_vector(h))
+    rvr = cr * rv
+    rvre = matrix.col((rvr[0], rvr[1], rvr[2]+ewald_radius))
+    rvre_len = rvre.length()
+    return abs(1 - rvre_len / ewald_radius)
+  def write_xy():
+    fn_xy = "kirian_delta_vs_ewald_proximity.xy"
+    print "Writing file:", fn_xy
+    f = open(fn_xy, "w")
+    print >> f, """\
+@with g0
+@ s0 symbol 1
+@ s0 symbol size 0.1
+@ s0 line type 0"""
+    for h, ds in zip(miller_indices, deltas):
+      if (len(ds) != 0):
+        print >> f, min(ds), ewald_proximity(h)
+    print >> f, "&"
+    print
+  write_xy()
+  STOP()
+
 def simulate(work_params, i_calc, asu_iselection):
   from rstbx.simage import image_simple
   from cctbx.array_family import flex
@@ -102,6 +164,16 @@ def simulate(work_params, i_calc, asu_iselection):
   def get_miller_index_i_seqs(i_img, parallel=True):
     mt = flex.mersenne_twister(seed=work_params.noise.random_seed+i_img)
     crystal_rotation = mt.random_double_r3_rotation_matrix_arvo_1992()
+    if (work_params.kirian_delta_vs_ewald_proximity):
+      kirian_delta_vs_ewald_proximity(
+        unit_cell=i_calc.unit_cell(),
+        miller_indices=i_calc.indices(),
+        crystal_rotation_matrix=crystal_rotation,
+        ewald_radius=1/work_params.wavelength,
+        d_min=work_params.d_min,
+        detector_distance=work_params.detector.distance,
+        detector_size=work_params.detector.size,
+        detector_pixels=work_params.detector.pixels)
     img = image_simple(
         store_miller_index_i_seqs=True,
         store_signals=True).compute(
@@ -170,6 +242,8 @@ min_count_target = None
   .type = int
 usable_partiality_threshold = 0.1
   .type = float
+kirian_delta_vs_ewald_proximity = False
+  .type = bool
 multiprocessing = False
   .type = bool
 plot = False
