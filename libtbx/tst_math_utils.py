@@ -1,7 +1,7 @@
 from libtbx.test_utils import approx_equal
 
 def exercise_integer():
-  from libtbx.math_utils import iround, iceil, ifloor
+  from libtbx.math_utils import iround, iceil, ifloor, nearest_integer
   assert iround(0) == 0
   assert iround(1.4) == 1
   assert iround(-1.4) == -1
@@ -17,6 +17,9 @@ def exercise_integer():
   assert ifloor(-1.1) == -2
   assert ifloor(1.9) == 1
   assert ifloor(-1.9) == -2
+  for i in xrange(-3,3+1):
+    assert nearest_integer(i+0.3) == i
+    assert nearest_integer(i+0.7) == i+1
 
 def exercise_logical():
   from libtbx.math_utils import does_imply, are_equivalent

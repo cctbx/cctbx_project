@@ -10,6 +10,9 @@ def iceil(x):
 def ifloor(x):
   return iround(math.floor(x))
 
+def nearest_integer(x):
+  return ifloor(x+0.5)
+
 def does_imply(p,q):
   """ does p => q in the sense of logical implication? """
   return not p or q
