@@ -48,6 +48,8 @@ detector {
     .type = floats(size=2)
   pixels = 1000 1000
     .type = ints(size=2)
+  use_corners = False
+    .type = bool
 }
 force_unit_spot_intensities = False
   .type = bool
@@ -55,7 +57,7 @@ force_unit_spot_intensities = False
 
 def compute_detector_d_min(work_params):
   dsx, dsy = work_params.detector.size
-  half_diag = (dsx**2 + dsy**2)**0.5/2
+  half_diag = (dsx**2 + dsy**2)**0.5 / 2
   import math
   theta_rad = math.atan2(half_diag, work_params.detector.distance) / 2
   assert theta_rad != 0
@@ -72,8 +74,14 @@ def compute_detector_distance(work_params):
     raise RuntimeError(
       "two_theta = %.2f degrees (limit is 89 degrees)" % two_theta)
   tan_two_theta = math.tan(two_theta_rad)
-  half_detector = min(work_params.detector.size) / 2
-  return int(half_detector / tan_two_theta)
+  if (work_params.detector.use_corners):
+    dsx, dsy = work_params.detector.size
+    half_diag = (dsx**2 + dsy**2)**0.5 / 2
+    limit = half_diag
+  else:
+    half_detector = min(work_params.detector.size) / 2
+    limit = half_detector
+  return int(limit / tan_two_theta)
 
 def adjust_unit_cell_and_intensity_symmetry(work_params):
   assert work_params.change_of_basis_op_to_niggli_cell is None
