@@ -15,7 +15,7 @@ pi_180 = math.atan(1)/ 45
 master_params_str = """
   solvent_fraction = None
     .type = float
-    .style = bold
+    .style = bold noauto
   initial_steps = 10
     .type = int
   shrink_steps = 20
@@ -24,9 +24,11 @@ master_params_str = """
     .type = int
   grid_resolution_factor = 1/4
     .type = float
+    .style = noauto
   d_min = None
     .type = float
     .short_caption = High resolution
+    .style = noauto
   initial_d_min = None
     .type = float
     .short_caption = Initial high resolution
@@ -59,6 +61,7 @@ master_params_str = """
     method = *flipping flattening
       .type = choice
       .short_caption = Solvent modification method
+      .style = noauto
     scale_flip = True
       .type = bool
   }
@@ -81,7 +84,7 @@ master_params_str = """
   asu_contents
     .help = "Defines the ASU contents"
     .short_caption = ASU contents
-    .style = menu_item auto_align
+    .style = menu_item auto_align noauto
   {
     n_residues=None
       .type=float

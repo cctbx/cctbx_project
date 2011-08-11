@@ -15,7 +15,9 @@ import os, sys
 
 master_params_including_IO_str = """\
 density_modification {
-  input {
+  input
+    .style = noauto
+  {
     reflection_data {
       %s
     }
@@ -37,7 +39,9 @@ density_modification {
       .optional = False
       .style = bold noauto
   }
-  output {
+  output
+    .style = noauto
+  {
     map {
       file_name = None
         .type = path
@@ -63,7 +67,11 @@ density_modification {
         .help = Output density modified phase probability distributions
     }
   }
-  include scope libtbx.phil.interface.tracking_params
+  job_title = None
+    .type = str
+    .input_size = 400
+    .help = Job title in PHENIX GUI, not used on command line
+    .style = noauto
 %s
 }
 """ %(mmtbx.utils.data_and_flags_str,
