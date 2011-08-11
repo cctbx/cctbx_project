@@ -47,6 +47,8 @@ class stats_manager(libtbx.slots_getstate_setstate):
 
   def report(O, plot):
     from cctbx.array_family import flex
+    print "Number of shots:", O.completeness_history.size()-1
+    print
     print "Histogram of counts per reflection:"
     flex.histogram(O.counts.as_double(), n_slots=8).show(
       prefix="  ", format_cutoffs="%7.0f")
@@ -200,9 +202,16 @@ def simulate(work_params, i_calc, asu_iselection):
   stop = False
   if (not work_params.multiprocessing):
     while (not stop):
-      miller_index_i_seqs = get_miller_index_i_seqs(i_img, parallel=False)
-      i_img += 1
-      stop = update_stats(miller_index_i_seqs)
+      try:
+        miller_index_i_seqs = get_miller_index_i_seqs(i_img, parallel=False)
+      except KeyboardInterrupt:
+        print
+        print "KeyboardInterrupt"
+        print
+        stop = True
+      else:
+        i_img += 1
+        stop = update_stats(miller_index_i_seqs)
   else:
     from libtbx import easy_mp
     pool = easy_mp.Pool(fixed_func=get_miller_index_i_seqs)

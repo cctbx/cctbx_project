@@ -147,6 +147,7 @@ detector {
   distance = 180
   size = 200 200
   pixels = 1000 1000
+  use_corners = False
 }
 """)
   #
