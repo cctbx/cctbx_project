@@ -397,6 +397,6 @@ class cctbx_data_structures_from_cif(object):
         elif builder == builders.miller_array_builder:
           if base_array_info is not None:
             base_array_info = base_array_info.customized_copy(labels=[key])
-          if '_refln_index_h' in block:
+          if '_refln_index_h' in block or '_refln.index_h' in block:
             self.miller_arrays.setdefault(
               key, builder(block, base_array_info=base_array_info).arrays())

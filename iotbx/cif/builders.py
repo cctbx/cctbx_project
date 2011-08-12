@@ -9,7 +9,7 @@ class CifBuilderError(Sorry):
   __module__ = Exception.__module__
 
 
-class cif_model_builder:
+class cif_model_builder(object):
 
   def __init__(self, cif_object=None):
     self._model = cif_object
@@ -60,15 +60,54 @@ class cif_model_builder:
     return self._model
 
 
-class crystal_symmetry_builder:
+class builder_base(object):
+
+  __equivalents__ = {
+    '_space_group_symop_operation_xyz': ('_symmetry_equiv_pos_as_xyz',
+                                         '_space_group_symop.operation_xyz',
+                                         '_symmetry_equiv.pos_as_xyz'),
+    '_space_group_symop_id': ('_symmetry_equiv_pos_site_id',
+                              '_space_group_symop.id',
+                              '_symmetry_equiv.id'),
+    '_space_group_name_Hall': ('_symmetry_space_group_name_Hall',
+                               '_space_group.name_Hall',
+                               '_symmetry.space_group_name_Hall'),
+    '_space_group_name_H-M_alt': ('_symmetry_space_group_name_H-M',
+                                  '_space_group.name_H-M_alt',
+                                  '_symmetry.space_group_name_H-M'),
+    '_space_group_IT_number': ('_symmetry_Int_Tables_number',
+                                 '_symmetry.Int_Tables_number'
+                                 '_space_group.IT_number'),
+    '_cell_length_a': ('_cell.length_a',),
+    '_cell_length_b': ('_cell.length_b',),
+    '_cell_length_c': ('_cell.length_c',),
+    '_cell_angle_alpha': ('_cell.angle_alpha',),
+    '_cell_angle_beta': ('_cell.angle_beta',),
+    '_cell_angle_gamma': ('_cell.angle_gamma',),
+    '_cell_angle_gamma': ('_cell.angle_gamma',),
+    '_cell_volume': ('_cell.volume',),
+    '_refln_index_h': ('_refln.index_h',),
+    '_refln_index_k': ('_refln.index_k',),
+    '_refln_index_l': ('_refln.index_l',),
+  }
+
+  def get_cif_item(self, key, default=None):
+    value = self.cif_block.get(key)
+    if value is not None: return value
+    for equiv in self.__equivalents__.get(key, []):
+      value = self.cif_block.get(equiv)
+      if value is not None: return value
+    return default
+
+
+class crystal_symmetry_builder(builder_base):
 
   def __init__(self, cif_block, strict=False):
     # The order of priority for determining space group is:
     #   sym_ops, hall symbol, H-M symbol, space group number
-    sym_ops = cif_block.get('_space_group_symop_operation_xyz',
-              cif_block.get('_symmetry_equiv_pos_as_xyz'))
-    sym_op_ids = cif_block.get('_space_group_symop_id',
-                 cif_block.get('_symmetry_equiv_pos_site_id'))
+    self.cif_block = cif_block
+    sym_ops = self.get_cif_item('_space_group_symop_operation_xyz')
+    sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
     if sym_ops is not None:
       if sym_op_ids is not None:
@@ -85,12 +124,9 @@ class crystal_symmetry_builder:
         self.sym_ops[sym_op_id] = s
         space_group.expand_smx(s)
     else:
-      hall_symbol = cif_block.get('_space_group_name_Hall',
-                    cif_block.get('_symmetry_space_group_name_Hall'))
-      hm_symbol = cif_block.get('_space_group_name_H-M_alt',
-                  cif_block.get('_symmetry_space_group_name_H-M'))
-      sg_number = cif_block.get('_space_group_symop_sg_id',
-                  cif_block.get('_symmetry_Int_Tables_number'))
+      hall_symbol = self.get_cif_item('_space_group_name_Hall')
+      hm_symbol = self.get_cif_item('_space_group_name_H-M_alt')
+      sg_number = self.get_cif_item('_space_group_IT_number')
       if space_group is None and hall_symbol not in (None, '?'):
         try: space_group = sgtbx.space_group(hall_symbol)
         except Exception: pass
@@ -103,14 +139,14 @@ class crystal_symmetry_builder:
       if (space_group is None and strict):
         raise CifBuilderError(
           "No symmetry instructions could be extracted from the cif block")
-    items = [cif_block.get("_cell_length_"+s) for s in "abc"]
+    items = [self.get_cif_item("_cell_length_"+s) for s in "abc"]
     for i, item in enumerate(items):
       if isinstance(item, flex.std_string):
         raise CifBuilderError(
           "Data item _cell_length_%s cannot be declared in a looped list"
           %("abc"[i]))
     for s in ["alpha", "beta", "gamma"]:
-      item = cif_block.get("_cell_angle_"+s)
+      item = self.get_cif_item("_cell_angle_"+s)
       if isinstance(item, flex.std_string):
         raise CifBuilderError(
           "Data item _cell_angle_%s cannot be declared in a looped list" %s)
@@ -246,7 +282,7 @@ class miller_array_builder(crystal_symmetry_builder):
     self._arrays = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
-    hkl_str = [cif_block.get('_refln_index_%s' %i) for i in ('h','k','l')]
+    hkl_str = [self.get_cif_item('_refln_index_%s' %i) for i in ('h','k','l')]
     if hkl_str.count(None) > 0:
       raise CifBuilderError("Miller indices missing from current CIF block")
     hkl_int = []
@@ -257,7 +293,7 @@ class miller_array_builder(crystal_symmetry_builder):
         raise CifBuilderError(
           "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
       hkl_int.append(h_int)
-    indices = flex.miller_index(*hkl_int)
+    self.indices = flex.miller_index(*hkl_int)
 
     phase_calc = cif_block.get('_refln_phase_calc')
     phase_meas = cif_block.get('_refln_phase_meas')
@@ -281,7 +317,7 @@ class miller_array_builder(crystal_symmetry_builder):
             continue
         if array_type == 'calc': sigmas = None
         array = miller.array(
-          miller.set(self.crystal_symmetry, indices).auto_anomalous(),
+          miller.set(self.crystal_symmetry, self.indices).auto_anomalous(),
           data, sigmas)
         if obs_type is not xray.intensity() and array.space_group() is not None:
           if array_type == 'calc' and phase_calc is not None:
@@ -300,28 +336,87 @@ class miller_array_builder(crystal_symmetry_builder):
     refln_loop = cif_block.get('_refln')
     if refln_loop is not None:
       for key, value in refln_loop.iteritems():
-        if (key not in self._arrays and '_index_' not in key
-            and not key.endswith('sigma')
-            and not key.endswith('calc')
-            and not key.endswith('meas')):
-          try:
-            data = flex.int(value)
-          except ValueError:
-            try:
-              data = flex.double(value)
-            except ValueError:
-              data = value
-          array = miller.array(
-            miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
+        sigmas = None
+        if (key not in self._arrays and 'index_' not in key
+            #and not key.endswith('sigma')
+            and not key.endswith('_calc')
+            and not key.endswith('_meas')):
+          array = self.flex_std_string_as_miller_array(value)
+          if array is None: continue
+          labels = [key]
+          if '_sigma' in key:
+            sigmas_key = key
+            key = None
+            for suffix in ('', '_meas', '_calc'):
+              if sigmas_key.replace('_sigma', suffix) in self._arrays:
+                key = sigmas_key.replace('_sigma', suffix)
+                break
+            if key is None: continue
+            if self._arrays[key].sigmas() is None:
+              if array.size() != self._arrays[key].size():
+                raise CifBuilderError(
+                  "Miller arrays '%s' and '%s' are of different sizes" %(
+                    key, sigmas_key))
+              self._arrays[key].set_sigmas(array.data())
+              info = self._arrays[key].info()
+              self._arrays[key].set_info(
+                info.customized_copy(labels=info.labels+[sigmas_key]))
+              continue
+            elif key in refln_loop:
+              sigmas = array.data()
+              array = self.flex_std_string_as_miller_array(refln_loop[key])
+              array.set_sigmas(sigmas)
+              labels = [key, sigmas_key]
+          elif 'HL_' in key:
+            hl_letter = key[key.find('HL_')+3]
+            hl_key = 'HL_' + hl_letter
+            key = key.replace(hl_key, 'HL_A')
+            if key in self._arrays:
+              continue # this array is already dealt with
+            hl_keys = [key.replace(hl_key, 'HL_'+letter) for letter in 'ABCD']
+            hl_values = [cif_block.get(hl_key) for hl_key in hl_keys]
+            if hl_values.count(None) == 0:
+              selection = ~((hl_values[0] == '.') | (hl_values[0] == '?'))
+              hl_values = [flex.double(hl.select(selection)) for hl in hl_values]
+              array = miller.array(miller.set(
+                self.crystal_symmetry, self.indices.select(selection)
+                ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
+            labels = hl_keys
           if base_array_info.labels is not None:
-            labels = base_array_info.labels + [key]
-          else:
-            labels = [key]
+            labels = base_array_info.labels + labels
+          # determine observation type
+          stripped_key = key.rstrip('_au').rstrip('_meas').rstrip('_calc').rstrip('_plus').rstrip('_minus')
+          if (stripped_key.endswith('F_squared') or
+              stripped_key.endswith('intensity') or
+              stripped_key.endswith('.I') or
+              stripped_key.endswith('_I')):
+            array.set_observation_type_xray_intensity()
+          elif (stripped_key.endswith('F')):
+            array.set_observation_type_xray_amplitude()
           array.set_info(base_array_info.customized_copy(labels=labels))
           self._arrays.setdefault(key, array)
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
+
+  def flex_std_string_as_miller_array(self, value):
+    selection = ~((value == '.') | (value == '?'))
+    data = value.select(selection)
+    try:
+      data = flex.int(data)
+      indices = self.indices.select(selection)
+    except ValueError:
+      try:
+        data = flex.double(data)
+        indices = self.indices.select(selection)
+      except ValueError:
+        # if flex.std_string return all values including '.' and '?'
+        data = value
+        indices = self.indices
+    finally:
+      if data.size() == 0: return None
+      return miller.array(
+        miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
 
   def arrays(self):
     return self._arrays
@@ -344,7 +439,7 @@ def as_double_or_none_if_all_question_marks(cif_block_item, column_name=None):
       "Invalid floating-point value: "):
       i = e_str.find(":") + 2
       raise CifBuilderError("Invalid floating-point value for %s: %s"
-                       %(column_name, e_str[i:].strip()))
+                            %(column_name, e_str[i:].strip()))
     else:
       raise CifBuilderError(e_str)
 
