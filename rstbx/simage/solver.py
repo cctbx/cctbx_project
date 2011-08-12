@@ -1072,10 +1072,10 @@ def process(work_params, i_calc):
   reindexing_assistant = reindexing.assistant(
     lattice_group=work_params.lattice_symmetry.group(),
     intensity_group=work_params.intensity_symmetry.group(),
-    miller_indices=i_calc.indices())
+    miller_indices=i_calc.p1_anom.indices())
   reindexing_assistant.show_summary()
   print
-  image_mdls = build_images(work_params, i_calc, reindexing_assistant)
+  image_mdls = build_images(work_params, i_calc.p1_anom, reindexing_assistant)
   show_vm_info("After build_images():")
   if (work_params.pickle_image_models):
     file_name = "%s_image_mdls.pickle" % work_params.base36_timestamp
@@ -1084,7 +1084,7 @@ def process(work_params, i_calc):
       file_name=file_name,
       obj=(work_params, i_calc, reindexing_assistant, image_mdls))
     show_vm_info("After %s:" % file_name)
-  process_core(work_params, i_calc, reindexing_assistant, image_mdls)
+  process_core(work_params, i_calc.p1_anom, reindexing_assistant, image_mdls)
 
 def run_with_pickle(file_name):
   from libtbx import easy_pickle
@@ -1092,12 +1092,12 @@ def run_with_pickle(file_name):
     file_name)
   work_params.phil_master.format(work_params).show()
   print
-  i_calc.show_comprehensive_summary()
+  i_calc.p1_anom.show_comprehensive_summary()
   print
   reindexing_assistant.show_summary()
   print
   show_vm_info("After unpickling:")
-  process_core(work_params, i_calc, reindexing_assistant, image_mdls)
+  process_core(work_params, i_calc.p1_anom, reindexing_assistant, image_mdls)
 
 def run_fresh(args):
   import run_spotfinder
@@ -1136,8 +1136,8 @@ write_image_models_to_mtz_files = False
   .type = bool
 """)
   from create import build_i_calc
-  i_calc, _ = build_i_calc(work_params)
-  i_calc.show_comprehensive_summary()
+  i_calc = build_i_calc(work_params)
+  i_calc.p1_anom.show_comprehensive_summary()
   print
   show_vm_info("After build_i_calc:")
   if (work_params.sample_random_seeds is None):
