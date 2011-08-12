@@ -1420,6 +1420,11 @@ class array(set):
   def sigmas(self):
     return self._sigmas
 
+  def set_sigmas(self, sigmas):
+    if sigmas is not None:
+      assert sigmas.size() == self.indices().size()
+    self._sigmas = sigmas
+
   def __iter__(self):
     if self.sigmas() is not None:
       for item in izip(self.indices(), self.data(), self.sigmas()):
