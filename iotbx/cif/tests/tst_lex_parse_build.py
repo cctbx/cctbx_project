@@ -29,9 +29,19 @@ def exercise_miller_arrays_as_cif_block():
     assert key in mas_as_cif_block.cif_block.keys()
   #
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
+    ma1, array_type='meas', format="mmcif")
+  mas_as_cif_block.add_miller_array(
+    ma1.array(data=flex.complex_double([1-1j]*ma1.size())), array_type='calc')
+  for key in ('_refln.F_squared_meas', '_refln.F_squared_sigma',
+              '_refln.F_calc', '_refln.phase_calc',
+              '_space_group.symop_operation_xyz',
+              '_cell.length_a', '_refln.index_h'):
+    assert key in mas_as_cif_block.cif_block.keys()
+  #
+  mas_as_cif_block = cif.miller_arrays_as_cif_block(
     ma1, column_names=['_diffrn_refln_intensity_net',
                        '_diffrn_refln_intensity_sigma'],
-         miller_index_prefix='_diffrn_refln_')
+         miller_index_prefix='_diffrn_refln')
   mas_as_cif_block.add_miller_array(
     ma1.array(data=flex.std_string(ma1.size(), 'om')),
     column_name='_diffrn_refln_intensity_u')
