@@ -417,6 +417,109 @@ def exercise_partial_crystal_symmetry():
     assert str(e) == "Not all unit cell parameters are given in the cif file"
   else: raise Exception_expected
 
+def exercise_mmcif_structure_factors():
+  miller_arrays = cif.reader(input_string=r3adsrf).as_miller_arrays()
+  assert len(miller_arrays) == 11
+  hl_coeffs = find_miller_array_from_labels(
+    miller_arrays, ','.join(['_refln.pdbx_HL_A_iso',
+                             '_refln.pdbx_HL_B_iso',
+                             '_refln.pdbx_HL_C_iso',
+                             '_refln.pdbx_HL_D_iso']))
+  assert hl_coeffs.is_hendrickson_lattman_array()
+  assert hl_coeffs.size() == 10
+  f_meas_au = find_miller_array_from_labels(
+    miller_arrays, '_refln.F_meas_au,_refln.F_meas_sigma_au')
+  assert f_meas_au.is_xray_amplitude_array()
+  assert f_meas_au.size() == 10
+  assert f_meas_au.sigmas() is not None
+  assert f_meas_au.space_group_info().symbol_and_number() == 'C 1 2 1 (No. 5)'
+  assert approx_equal(f_meas_au.unit_cell().parameters(),
+                      (163.97, 45.23, 110.89, 90.0, 131.64, 90.0))
+  pdbx_I_plus = find_miller_array_from_labels(
+    miller_arrays, '_refln.pdbx_I_plus,_refln.pdbx_I_plus_sigma')
+  assert pdbx_I_plus.is_xray_intensity_array()
+  assert pdbx_I_plus.size() == 12
+  pdbx_I_minus = find_miller_array_from_labels(
+    miller_arrays, '_refln.pdbx_I_minus,_refln.pdbx_I_minus_sigma')
+  assert pdbx_I_minus.is_xray_intensity_array()
+  assert pdbx_I_minus.size() == 9
+  assert pdbx_I_minus.unit_cell() is None     # no symmetry information in
+  assert pdbx_I_minus.space_group() is None   # this CIF block
+
+def find_miller_array_from_labels(miller_arrays, labels):
+  for ma in miller_arrays:
+    if labels in str(ma.info()):
+      return ma
+  raise RuntimeError("Could not find miller array with labels %s" %labels)
+
+r3adsrf = """
+data_r3adrsf
+_cell.length_a  163.970
+_cell.length_b  45.230
+_cell.length_c  110.890
+_cell.angle_alpha  90.000
+_cell.angle_beta  131.640
+_cell.angle_gamma  90.000
+
+#
+_symmetry.entry_id    3adr
+_symmetry.space_group_name_H-M 'C 1 2 1'
+
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.scale_group_code
+_refln.status
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+_refln.pdbx_HL_A_iso
+_refln.pdbx_HL_B_iso
+_refln.pdbx_HL_C_iso
+_refln.pdbx_HL_D_iso
+1 1 1 o    0    2    2   484.70  11.74  -3.168  -3.662   3.247   3.261
+1 1 1 o    0    2    3   337.40   4.60   2.287  -3.629   0.053  -0.597
+1 1 1 o    0    2    4   735.40   8.43   0.476  -8.605  -4.861   0.921
+1 1 1 o    0    2    5   433.70   4.76   2.453  -1.663   0.000  -9.540
+1 1 1 o    0    2    6   435.20   4.96  -9.081   3.661   1.511  -2.736
+1 1 1 o    0    2    7   427.50   4.56   8.677  -0.013   2.307  -4.220
+1 1 1 o    0    2    8   661.00   7.26  -6.468   5.112  -5.411  -6.731
+1 1 1 o    0    2    9   211.90   2.64  -2.279   0.914   0.455  -6.038
+1 1 1 f    0    2   10   466.80   5.01  -0.005   6.330  -1.916  -0.598
+1 1 1 o    0    2   11   424.20   4.66  -0.938   7.011  -1.603   1.724
+#END
+data_r3adrAsf
+#
+#
+#
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.scale_group_code
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.pdbx_I_plus
+_refln.pdbx_I_plus_sigma
+_refln.pdbx_I_minus
+_refln.pdbx_I_minus_sigma
+1 3 1   87    5  -46       40.2     40.4        6.7     63.9
+1 3 1   87    5  -45       47.8     29.7       35.1     30.5
+1 3 1   87    5  -44       18.1     33.2        0.5     34.6
+1 3 1   87    5  -43        6.1     45.4       12.9     51.6
+1 3 1   87    5  -42       -6.6     45.6      -15.5     55.8
+1 3 1   87    7  -37        6.3     43.4          ?        ?
+1 3 1   87    7  -36      -67.2     55.4          ?        ?
+1 3 1   88    2  -44          0       -1       35.0     38.5
+1 3 1   88    2  -43          0       -1       57.4     41.5
+1 3 1   88    4  -45       -1.0     46.1       -9.1     45.6
+1 3 1   88    4  -44      -19.8     49.2        0.3     34.7
+1 3 1   88    6  -44       -1.8     34.8          ?        ?
+#END OF REFLECTIONS
+"""
+
 def exercise():
   if not cif.has_antlr3:
     print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
@@ -424,6 +527,7 @@ def exercise():
   exercise_miller_arrays_as_cif_block()
   exercise_lex_parse_build()
   exercise_partial_crystal_symmetry()
+  exercise_mmcif_structure_factors()
 
 if __name__ == '__main__':
   exercise()
