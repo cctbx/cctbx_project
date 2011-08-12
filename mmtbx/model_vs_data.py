@@ -166,7 +166,7 @@ class mvd(object):
       "number_of_reflections                : "+format_value("%-8d",  self.data.number_of_reflections),
       "number_of_reflections(non-anomalous) : "+format_value("%-8d",  self.data.number_of_reflections_merged),
       "test_set_size                        : "+format_value("%-8.4f",self.data.test_set_size),
-      "test_flag_value                      : "+format_value("%-d",   self.data.test_flag_value),
+      "test_flag_value                      : "+format_value("%-s",   self.data.test_flag_value),
       "number_of_Fobs_outliers              : "+format_value("%-8d",  self.data.number_of_Fobs_outliers),
       "twinned                              : "+format_value("%-s",   self.data.twinned),
       "anomalous_flag                       : "+format_value("%-6s",  self.data.anomalous_flag)

@@ -67,7 +67,7 @@ def try_all_readers(file_name):
     content = cif_reader(file_path=file_name)
     looks_like_a_reflection_file = False
     for block in content.model().values():
-      if '_refln_index_h' in block:
+      if '_refln_index_h' in block or '_refln.index_h' in block:
         looks_like_a_reflection_file = True
         break
     if not looks_like_a_reflection_file:

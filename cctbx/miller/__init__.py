@@ -1447,6 +1447,9 @@ class array(set):
       assert self.sigmas().size() == self.indices().size()
     return set.size(self)
 
+  def is_string_array(self):
+    return isinstance(self.data(), flex.std_string)
+
   def is_bool_array(self):
     return isinstance(self.data(), flex.bool)
 

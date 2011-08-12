@@ -203,9 +203,9 @@ def get_xray_data_scores(miller_arrays, ignore_all_zeros):
 
 def looks_like_r_free_flags_info(array_info):
   if (not isinstance(array_info, miller.array_info)): return False
-  if (len(array_info.labels) != 1): return False
-  label = array_info.labels[0].lower()
-  for word in ["free", "test", "cross"]:
+  if (len(array_info.labels) > 2): return False
+  label = array_info.labels[-1].lower()
+  for word in ["free", "test", "cross", "status"]:
     if (label.find(word) >= 0): return True
   return False
 
@@ -289,6 +289,19 @@ class get_r_free_flags_scores(object):
                     effective_test_flag_value = min(c_keys)
                   else:
                     effective_test_flag_value = test_flag_value
+      elif miller_array.is_string_array():
+        trial_test_flag_value = "f"
+        n_free = data.count(trial_test_flag_value)
+        scoring = get_r_free_flags_score(
+          test_flag_value=test_flag_value,
+          n=data.size(),
+          n_free=n_free,
+          miller_array_info=miller_array.info())
+        if (scoring.flag_score != 0):
+          flag_score = scoring.flag_score
+          if (scoring.reversed):
+            trial_test_flag_value = not trial_test_flag_value
+          effective_test_flag_value = trial_test_flag_value
       self.scores.append(flag_score)
       self.test_flag_values.append(effective_test_flag_value)
     assert len(self.scores) == len(miller_arrays)
