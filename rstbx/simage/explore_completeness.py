@@ -4,20 +4,23 @@ import sys
 class stats_manager(libtbx.slots_getstate_setstate):
 
   __slots__ = [
-    "n_indices",
-    "asu_iselection",
+    "i_calc",
     "use_symmetry",
+    "n_indices",
     "completeness_history",
     "min_count_history",
     "counts",
     "currently_zero",
     "new_0"]
 
-  def __init__(O, n_reserve, n_indices, asu_iselection, use_symmetry):
+  def __init__(O, n_reserve, i_calc, use_symmetry):
     from cctbx.array_family import flex
-    O.n_indices = n_indices
-    O.asu_iselection = asu_iselection
+    O.i_calc = i_calc
     O.use_symmetry = use_symmetry
+    if (use_symmetry):
+      O.n_indices = O.i_calc.asu.indices().size()
+    else:
+      O.n_indices = O.i_calc.p1_anom.indices().size()
     O.completeness_history = flex.double()
     O.completeness_history.reserve(n_reserve)
     O.completeness_history.append(0)
@@ -31,7 +34,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
   def update(O, miller_index_i_seqs):
     from cctbx.array_family import flex
     if (O.use_symmetry):
-      isel = O.asu_iselection.select(miller_index_i_seqs)
+      isel = O.i_calc.asu_iselection.select(miller_index_i_seqs)
     else:
       isel = miller_index_i_seqs
     previously_zero = O.counts.increment_and_track_up_from_zero(
@@ -64,7 +67,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
         print >> f, i, c
     dump_xy("completeness_history", O.completeness_history)
     dump_xy("min_count_history", O.min_count_history)
-    if (plot):
+    if (plot == "completeness"):
       from libtbx import pyplot
       fig = pyplot.figure()
       ax1 = fig.add_subplot(111)
@@ -77,6 +80,23 @@ class stats_manager(libtbx.slots_getstate_setstate):
       ax2.plot(range(_.size()), _, "b-")
       ax2.axis([0, nx, 0, max(1, flex.max(_))])
       pyplot.show()
+    elif (plot == "redundancy"):
+      if (O.use_symmetry): _ = O.i_calc.asu
+      else:                _ = O.i_calc.p1_anom
+      counts_by_resolution = _.customized_copy(
+        data=O.counts).sort(by_value="resolution")
+      from libtbx import pyplot
+      fig = pyplot.figure()
+      ax = fig.add_subplot(1, 1, 1)
+      _ = counts_by_resolution
+      _ = _.data().as_double() \
+        * _.space_group().order_p() \
+        / _.multiplicities().data().as_double()
+      ax.plot(range(len(_)), _, "r-")
+      ax.axis([-_.size()*0.05, _.size()*1.05, 0, None])
+      pyplot.show()
+    elif (plot is not None):
+      raise RuntimeError('Unknown plot type: "%s"' % plot)
 
 def kirian_delta_vs_ewald_proximity(
       unit_cell,
@@ -140,20 +160,15 @@ def kirian_delta_vs_ewald_proximity(
   write_xy()
   STOP()
 
-def simulate(work_params, i_calc, asu_iselection):
+def simulate(work_params, i_calc):
   from rstbx.simage import image_simple
   from cctbx.array_family import flex
-  if (not work_params.use_symmetry):
-    n_indices = i_calc.indices().size()
-  else:
-    n_indices = flex.max(asu_iselection)+1
   n_shots = work_params.number_of_shots
-  mc_target = work_params.min_count_target
   stats = stats_manager(
     n_reserve=max(n_shots, 1000000),
-    n_indices=n_indices,
-    asu_iselection=asu_iselection,
+    i_calc=i_calc,
     use_symmetry=work_params.use_symmetry)
+  mc_target = work_params.min_count_target
   def update_stats(miller_index_i_seqs):
     stats.update(miller_index_i_seqs)
     if (n_shots is not None and stats.min_count_history.size()-1 < n_shots):
@@ -168,8 +183,8 @@ def simulate(work_params, i_calc, asu_iselection):
     crystal_rotation = mt.random_double_r3_rotation_matrix_arvo_1992()
     if (work_params.kirian_delta_vs_ewald_proximity):
       kirian_delta_vs_ewald_proximity(
-        unit_cell=i_calc.unit_cell(),
-        miller_indices=i_calc.indices(),
+        unit_cell=i_calc.p1_anom.unit_cell(),
+        miller_indices=i_calc.p1_anom.indices(),
         crystal_rotation_matrix=crystal_rotation,
         ewald_radius=1/work_params.wavelength,
         d_min=work_params.d_min,
@@ -179,8 +194,8 @@ def simulate(work_params, i_calc, asu_iselection):
     img = image_simple(
         store_miller_index_i_seqs=True,
         store_signals=True).compute(
-      unit_cell=i_calc.unit_cell(),
-      miller_indices=i_calc.indices(),
+      unit_cell=i_calc.p1_anom.unit_cell(),
+      miller_indices=i_calc.p1_anom.indices(),
       spot_intensity_factors=None,
       crystal_rotation_matrix=crystal_rotation,
       ewald_radius=1/work_params.wavelength,
@@ -255,12 +270,12 @@ kirian_delta_vs_ewald_proximity = False
   .type = bool
 multiprocessing = False
   .type = bool
-plot = False
-  .type = bool
+plot = completeness redundancy
+  .type = choice
 """)
-  i_calc, asu_iselection = create.build_i_calc(work_params)
-  i_calc.show_comprehensive_summary()
+  i_calc = create.build_i_calc(work_params)
+  i_calc.p1_anom.show_comprehensive_summary()
   print
   sys.stdout.flush()
-  stats = simulate(work_params, i_calc, asu_iselection)
+  stats = simulate(work_params, i_calc)
   stats.report(plot=work_params.plot)
