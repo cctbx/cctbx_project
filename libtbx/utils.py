@@ -275,6 +275,11 @@ def detect_multiprocessing_problem():
     return "multiprocessing module not available:" \
       " Python 2.6 or higher is required" \
       " (version currently in use: %d.%d)" % vers_info
+  import libtbx.load_env
+  if (libtbx.env.has_module("omptbx")) :
+    import omptbx
+    if (omptbx.omp_version is not None) :
+      return "multiprocessing is not compatible with OpenMP"
   sem_open_msg = "This platform lacks a functioning sem_open implementation"
   pool = None
   try:
