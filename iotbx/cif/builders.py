@@ -282,20 +282,8 @@ class miller_array_builder(crystal_symmetry_builder):
     self._arrays = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
-    hkl_str = [self.get_cif_item('_refln_index_%s' %i) for i in ('h','k','l')]
-    if hkl_str.count(None) > 0:
-      raise CifBuilderError("Miller indices missing from current CIF block")
-    hkl_int = []
-    for i,h_str in enumerate(hkl_str):
-      try:
-        h_int = flex.int(h_str)
-      except ValueError, e:
-        raise CifBuilderError(
-          "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
-      hkl_int.append(h_int)
-    self.indices = flex.miller_index(*hkl_int)
-    refln_loop = cif_block.get('_refln')
-    if refln_loop is not None:
+    refln_containing_loops = self.get_miller_indices_containing_loops()
+    for self.indices, refln_loop in refln_containing_loops:
       for key, value in refln_loop.iteritems():
         sigmas = None
         if (key not in self._arrays and 'index_' not in key):
@@ -404,6 +392,27 @@ class miller_array_builder(crystal_symmetry_builder):
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
+
+  def get_miller_indices_containing_loops(self):
+    loops = []
+    for loop in self.cif_block.loops.values():
+      for key in loop.keys():
+        if 'index_h' not in key: continue
+        hkl_str = [loop[key.replace('index_h', 'index_%s' %i)] for i in ('h','k','l')]
+        if hkl_str.count(None) > 0:
+          raise CifBuilderError("Miller indices missing from current CIF block")
+        hkl_int = []
+        for i,h_str in enumerate(hkl_str):
+          try:
+            h_int = flex.int(h_str)
+          except ValueError, e:
+            raise CifBuilderError(
+              "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
+          hkl_int.append(h_int)
+        indices = flex.miller_index(*hkl_int)
+        loops.append((indices, loop))
+        break
+    return loops
 
   def flex_std_string_as_miller_array(self, value):
     selection = ~((value == '.') | (value == '?'))
