@@ -1095,6 +1095,10 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   assert approx_equal(maa.as_intensity_array().data(), [5, 13])
   assert approx_equal(maa.as_intensity_array().sigmas(), mai.sigmas())
   assert approx_equal(mai.as_amplitude_array().data(), [5**0.5, 13**0.5])
+  mai.set_sigmas(None)
+  assert mai.sigmas() is None
+  mai.set_sigmas(maa.as_intensity_array().sigmas())
+  assert approx_equal(maa.as_intensity_array().sigmas(), mai.sigmas())
   #
   ms = miller.build_set(
     crystal_symmetry=xs,
