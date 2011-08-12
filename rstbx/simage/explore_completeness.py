@@ -48,7 +48,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
       print
     O.currently_zero = O.new_0
 
-  def report(O, plot):
+  def report(O, plot=None, xy_prefix=None):
     from cctbx.array_family import flex
     print "Number of shots:", O.completeness_history.size()-1
     print
@@ -61,37 +61,39 @@ class stats_manager(libtbx.slots_getstate_setstate):
     print "  Median:", int(flex.median(O.counts.as_double())+0.5)
     print
     sys.stdout.flush()
+    if (xy_prefix is None):
+      xy_prefix = ""
+    elif (len(xy_prefix) != 0):
+      xy_prefix = xy_prefix + "_"
     def dump_xy(name, array):
-      f = open("%s.xy" % name, "w")
+      f = open(xy_prefix + "%s.xy" % name, "w")
       for i,c in enumerate(array):
         print >> f, i, c
     dump_xy("completeness_history", O.completeness_history)
     dump_xy("min_count_history", O.min_count_history)
+    if (O.use_symmetry): _ = O.i_calc.asu
+    else:                _ = O.i_calc.p1_anom
+    _ = _.customized_copy(data=O.counts).sort(by_value="resolution")
+    sym_factors = _.space_group().order_p()
+    if (not O.i_calc.asu.anomalous_flag()):
+      sym_factors *= 2
+    sym_factors /= _.multiplicities().data()
+    counts_sorted_by_resolution = _.data().as_int() * sym_factors
+    dump_xy("counts_sorted_by_resolution", counts_sorted_by_resolution)
     if (plot == "completeness"):
       from libtbx import pyplot
       fig = pyplot.figure()
-      ax1 = fig.add_subplot(111)
+      ax = fig.add_subplot(1, 1, 1)
       _ = O.completeness_history
       nx = _.size()
-      ax1.plot(range(nx), _, "r-")
-      ax1.axis([0, nx, 0, 1])
-      ax2 = ax1.twinx()
-      _ = O.min_count_history
-      ax2.plot(range(_.size()), _, "b-")
-      ax2.axis([0, nx, 0, max(1, flex.max(_))])
+      ax.plot(range(nx), _, "r-")
+      ax.axis([0, nx, 0, 1])
       pyplot.show()
     elif (plot == "redundancy"):
-      if (O.use_symmetry): _ = O.i_calc.asu
-      else:                _ = O.i_calc.p1_anom
-      counts_by_resolution = _.customized_copy(
-        data=O.counts).sort(by_value="resolution")
       from libtbx import pyplot
       fig = pyplot.figure()
       ax = fig.add_subplot(1, 1, 1)
-      _ = counts_by_resolution
-      _ = _.data().as_double() \
-        * _.space_group().order_p() \
-        / _.multiplicities().data().as_double()
+      _ = counts_sorted_by_resolution
       ax.plot(range(len(_)), _, "r-")
       ax.axis([-_.size()*0.05, _.size()*1.05, 0, None])
       pyplot.show()
@@ -270,6 +272,8 @@ kirian_delta_vs_ewald_proximity = False
   .type = bool
 multiprocessing = False
   .type = bool
+xy_prefix = None
+  .type = str
 plot = completeness redundancy
   .type = choice
 """)
@@ -278,4 +282,4 @@ plot = completeness redundancy
   print
   sys.stdout.flush()
   stats = simulate(work_params, i_calc)
-  stats.report(plot=work_params.plot)
+  stats.report(plot=work_params.plot, xy_prefix=work_params.xy_prefix)
