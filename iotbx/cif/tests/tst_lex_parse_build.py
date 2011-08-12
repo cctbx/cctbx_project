@@ -445,6 +445,9 @@ def exercise_mmcif_structure_factors():
   assert pdbx_I_minus.size() == 9
   assert pdbx_I_minus.unit_cell() is None     # no symmetry information in
   assert pdbx_I_minus.space_group() is None   # this CIF block
+  #
+  miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
+  assert len(miller_arrays) == 7
 
 def find_miller_array_from_labels(miller_arrays, labels):
   for ma in miller_arrays:
@@ -518,6 +521,54 @@ _refln.pdbx_I_minus_sigma
 1 3 1   88    4  -44      -19.8     49.2        0.3     34.7
 1 3 1   88    6  -44       -1.8     34.8          ?        ?
 #END OF REFLECTIONS
+"""
+
+r3ad7sf = """
+data_r3ad7sf
+_cell.length_a             198.9488
+_cell.length_b             198.9488
+_cell.length_c             196.7646
+_cell.angle_alpha           90.0000
+_cell.angle_beta            90.0000
+_cell.angle_gamma          120.0000
+
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 'X,  Y,  Z'
+2 'X-Y,  X,  Z+5/6'
+3 '-Y,  X-Y,  Z+2/3'
+4 '-X,  -Y,  Z+1/2'
+5 '-X+Y,  -X,  Z+1/3'
+6 'Y,  -X+Y,  Z+1/6'
+7 '-Y,  -X,  -Z+1/6'
+8 'X-Y,  -Y,  -Z'
+9 'X,  X-Y,  -Z+5/6'
+10 'Y,  X,  -Z+2/3'
+11 '-X+Y,  Y,  -Z+1/2'
+12 '-X,  -X+Y,  -Z+1/3'
+
+loop_
+_refln.wavelength_id
+_refln.crystal_id
+_refln.scale_group_code
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.status
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+_refln.F_calc
+_refln.phase_calc
+_refln.fom
+1 1 1       0    0    6 o     267.2   12.1    353.2   180.0  0.04
+1 1 1       0    0   12 o    4700.0  113.0   3962.4   360.0  1.00
+1 1 1       0    0   18 o   10214.0  222.9   8775.9   360.0  1.00
+1 1 1       0    0   24 o    8268.9  192.9  11557.1   180.0  1.00
+1 1 1       0    0   30 o    3274.6   77.5   2214.5     0.0  1.00
+1 1 1       0    0   36 o     317.8   30.4   1993.3     0.0  0.05
+1 1 1       0    0   42 o   12026.4  286.2   6514.5   180.0  1.00
+1 1 1       0    0   48 o    1972.6   51.4   1357.9   180.0  0.91
 """
 
 def exercise():

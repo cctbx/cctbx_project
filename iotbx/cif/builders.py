@@ -294,53 +294,11 @@ class miller_array_builder(crystal_symmetry_builder):
           "Invalid item for Miller index %s: %s" % ("HKL"[i], str(e)))
       hkl_int.append(h_int)
     self.indices = flex.miller_index(*hkl_int)
-
-    phase_calc = cif_block.get('_refln_phase_calc')
-    phase_meas = cif_block.get('_refln_phase_meas')
-    for prefix in self.observation_types.keys():
-      sigmas = as_double_or_none_if_all_question_marks(
-        cif_block.get('%s_sigma' %prefix), column_name='%s_sigma' %prefix)
-      obs_type = self.observation_types[prefix]
-      for array_type in ('meas', 'calc'):
-        label = '_'.join((prefix, array_type))
-        if prefix == '_refln_A':
-          alt_label = '_'.join((prefix.replace('A', 'B'), array_type))
-          data = [as_double_or_none_if_all_question_marks(_, column_name=label)
-                  for _ in [cif_block.get(label), cif_block.get(alt_label)]]
-          if data.count(None) != 0:
-            continue
-          data = flex.complex_double(data[0], data[1])
-        else:
-          data = as_double_or_none_if_all_question_marks(
-            cif_block.get(label), column_name=label)
-          if data is None:
-            continue
-        if array_type == 'calc': sigmas = None
-        array = miller.array(
-          miller.set(self.crystal_symmetry, self.indices).auto_anomalous(),
-          data, sigmas)
-        if obs_type is not xray.intensity() and array.space_group() is not None:
-          if array_type == 'calc' and phase_calc is not None:
-            array = array.phase_transfer(flex.double(phase_calc), deg=True)
-          elif array_type == 'meas' and phase_meas is not None:
-            array = array.phase_transfer(flex.double(phase_meas), deg=True)
-        array.set_observation_type(obs_type)
-        if base_array_info.labels is not None:
-          labels = base_array_info.labels + [label]
-        else:
-          labels = [label]
-        if sigmas is not None:
-          labels.append('%s_sigma' %prefix)
-        array.set_info(base_array_info.customized_copy(labels=labels))
-        self._arrays.setdefault(label, array)
     refln_loop = cif_block.get('_refln')
     if refln_loop is not None:
       for key, value in refln_loop.iteritems():
         sigmas = None
-        if (key not in self._arrays and 'index_' not in key
-            #and not key.endswith('sigma')
-            and not key.endswith('_calc')
-            and not key.endswith('_meas')):
+        if (key not in self._arrays and 'index_' not in key):
           array = self.flex_std_string_as_miller_array(value)
           if array is None: continue
           labels = [key]
@@ -348,11 +306,12 @@ class miller_array_builder(crystal_symmetry_builder):
             sigmas_key = key
             key = None
             for suffix in ('', '_meas', '_calc'):
-              if sigmas_key.replace('_sigma', suffix) in self._arrays:
+              if sigmas_key.replace('_sigma', suffix) in refln_loop:
                 key = sigmas_key.replace('_sigma', suffix)
                 break
-            if key is None: continue
-            if self._arrays[key].sigmas() is None:
+            if key is None:
+              key = sigmas_key
+            elif self._arrays[key].sigmas() is None:
               if array.size() != self._arrays[key].size():
                 raise CifBuilderError(
                   "Miller arrays '%s' and '%s' are of different sizes" %(
@@ -382,16 +341,63 @@ class miller_array_builder(crystal_symmetry_builder):
                 self.crystal_symmetry, self.indices.select(selection)
                 ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
             labels = hl_keys
+          elif '.B_' in key or '_B_' in key:
+            if '.B_' in key:
+              key, key_b = key.replace('.B_', '.A_'), key
+            elif '_B_' in key:
+              key, key_b = key.replace('_B', '_A'), key
+            if key in refln_loop and key_b in refln_loop:
+              b_part = array.data()
+              if key in self._arrays:
+                info = self._arrays[key].info()
+                a_part = self._arrays[key].data()
+                self._arrays[key] = self._arrays[key].array(
+                  data=flex.complex_double(a_part, b_part))
+                self._arrays[key].set_info(
+                  info.customized_copy(labels=info.labels+[key_b]))
+                continue
+              else:
+                a_part = self.flex_std_string_as_miller_array(
+                  refln_loop[key]).data()
+                array = array.array(data=flex.complex_double(a_part, b_part))
+                labels = [key, key_B]
+          elif 'phase_' in key and self.crystal_symmetry.space_group() is not None:
+            alt_key1 = key.replace('phase_', 'F_')
+            alt_key2 = alt_key1 + '_au'
+            if alt_key1 in refln_loop:
+              phase_key = key
+              key = alt_key1
+            elif alt_key2 in refln_loop:
+              phase_key = key
+              key = alt_key2
+            else: phase_key = None
+            if phase_key is not None:
+              phases = array.data()
+              if key in self._arrays:
+                array = self._arrays[key]
+                if array.size() != self._arrays[key].size():
+                  raise CifBuilderError(
+                    "Miller arrays '%s' and '%s' are of different sizes" %(
+                      key, phase_key))
+                info = self._arrays[key].info()
+                self._arrays[key] = array.phase_transfer(phases, deg=True)
+                self._arrays[key].set_info(
+                  info.customized_copy(labels=info.labels+[phase_key]))
+              else:
+                array = self.flex_std_string_as_miller_array(refln_loop[key])
+                array.phase_transfer(phases, deg=True)
+                labels = [key, phase_key]
           if base_array_info.labels is not None:
             labels = base_array_info.labels + labels
           # determine observation type
-          stripped_key = key.rstrip('_au').rstrip('_meas').rstrip('_calc').rstrip('_plus').rstrip('_minus')
+          stripped_key = key.rstrip('_au').rstrip('_meas').rstrip('_calc')\
+                       .rstrip('_plus').rstrip('_minus')
           if (stripped_key.endswith('F_squared') or
               stripped_key.endswith('intensity') or
               stripped_key.endswith('.I') or
-              stripped_key.endswith('_I')):
+              stripped_key.endswith('_I')) and array.is_real_array():
             array.set_observation_type_xray_intensity()
-          elif (stripped_key.endswith('F')):
+          elif (stripped_key.endswith('F') and array.is_real_array()):
             array.set_observation_type_xray_amplitude()
           array.set_info(base_array_info.customized_copy(labels=labels))
           self._arrays.setdefault(key, array)
