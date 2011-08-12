@@ -16,6 +16,32 @@ def detect_problem():
       _problem_cache = libtbx.utils.detect_multiprocessing_problem()
   return _problem_cache
 
+def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
+  if (nproc == 1) or (nproc == 0) :
+    return 1
+  if (log is None) :
+    from libtbx.utils import null_out
+    log = null_out()
+  problems = detect_problem()
+  if (problems is not None) and (problems is not Auto) :
+    if (nproc is Auto) or (nproc is None) :
+      return 1
+    else :
+      from libtbx.utils import Sorry
+      raise Sorry("%s.  Please use nproc=1 or nproc=Auto." % str(problems))
+  else :
+    print >> log, """
+ ******************************************************************
+ INFO: Some parts of this job will make use of multiple processors:
+ ******************************************************************
+
+   nproc = %s
+
+ Please ask your system administrator for advice about this, in particular if
+ you run this job through a queuing system.
+""" % str(nproc)
+    return nproc
+
 from weakref import WeakValueDictionary as _
 fixed_func_registry = _()
 
@@ -51,7 +77,7 @@ class Pool(multiprocessing_Pool):
       mp_problem = detect_problem()
       assert mp_problem is not None
       raise RuntimeError(mp_problem)
-    if (processes is None):
+    if (processes is None) or (processes is Auto):
       from libtbx import introspection
       processes = introspection.number_of_processors()
     self.processes = processes
