@@ -19,6 +19,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
 from iotbx.pdb import combine_unique_pdb_files
 from iotbx import mtz
+from iotbx import cif
 from libtbx import str_utils
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
@@ -1675,7 +1676,14 @@ class process_command_line_args(object):
           try:
             cif_object = []
             if(arg_file.endswith(".cif") or arg_file.endswith(".cif.gz")):
-              cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg_file)
+              reflection_file = reflection_file_reader.any_reflection_file(
+                file_name = arg, ensure_read_access = False)
+              if reflection_file.file_type() is not None:
+                self.reflection_files.append(reflection_file)
+                self.reflection_file_names.append(arg)
+                arg_is_processed = True
+              else:
+                cif_object = reflection_file.file_content().model()
           except KeyboardInterrupt: raise
           except Exception: pass
           else:
