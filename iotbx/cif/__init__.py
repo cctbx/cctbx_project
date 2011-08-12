@@ -125,6 +125,7 @@ class reader(object):
           other_symmetry=array.crystal_symmetry(),
           force=force_symmetry)
         arrays[i] = array.customized_copy(crystal_symmetry=crystal_symmetry)
+        arrays[i].set_info(array.info())
     return arrays
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
