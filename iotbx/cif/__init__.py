@@ -132,21 +132,29 @@ fast_reader = reader # XXX backward compatibility 2010-08-25
 
 class crystal_symmetry_as_cif_block(object):
 
-  def __init__(self, crystal_symmetry, cell_covariance_matrix=None):
+  def __init__(self, crystal_symmetry,
+               cell_covariance_matrix=None,
+               format="coreCIF"):
+    self.format = format.lower()
+    assert self.format in ("corecif", "mmcif")
+    if self.format == "mmcif": self.separator = '.'
+    else: self.separator = '_'
     self.cif_block = model.block()
+    sg_prefix = '_space_group%s' %self.separator
+    cell_prefix = '_cell%s' %self.separator
     sym_loop = model.loop(data=OrderedDict((
-      ('_space_group_symop_id',
+      (sg_prefix+'symop_id',
        range(1, len(crystal_symmetry.space_group())+1)),
-      ('_space_group_symop_operation_xyz',
+      (sg_prefix+'symop_operation_xyz',
        [s.as_xyz() for s in crystal_symmetry.space_group()]))))
     self.cif_block.add_loop(sym_loop)
     #
     sg_type = crystal_symmetry.space_group_info().type()
     sg = sg_type.group()
-    self.cif_block['_space_group_crystal_system'] = sg.crystal_system().lower()
-    self.cif_block['_space_group_IT_number'] = sg_type.number()
-    self.cif_block['_space_group_name_H-M_alt'] = sg_type.lookup_symbol()
-    self.cif_block['_space_group_name_Hall'] = sg_type.hall_symbol()
+    self.cif_block[sg_prefix+'crystal_system'] = sg.crystal_system().lower()
+    self.cif_block[sg_prefix+'IT_number'] = sg_type.number()
+    self.cif_block[sg_prefix+'name_H-M_alt'] = sg_type.lookup_symbol()
+    self.cif_block[sg_prefix+'name_Hall'] = sg_type.hall_symbol()
     #
     uc = crystal_symmetry.unit_cell()
     params = list(uc.parameters())
@@ -162,13 +170,13 @@ class crystal_symmetry_as_cif_block(object):
       var_v = (d_v_d_params * vcv).dot(d_v_d_params)
       volume = format_float_with_su(volume, math.sqrt(var_v))
     a,b,c,alpha,beta,gamma = params
-    self.cif_block['_cell_length_a'] = a
-    self.cif_block['_cell_length_b'] = b
-    self.cif_block['_cell_length_c'] = c
-    self.cif_block['_cell_angle_alpha'] = alpha
-    self.cif_block['_cell_angle_beta'] = beta
-    self.cif_block['_cell_angle_gamma'] = gamma
-    self.cif_block['_cell_volume'] = volume
+    self.cif_block[cell_prefix+'length_a'] = a
+    self.cif_block[cell_prefix+'length_b'] = b
+    self.cif_block[cell_prefix+'length_c'] = c
+    self.cif_block[cell_prefix+'angle_alpha'] = alpha
+    self.cif_block[cell_prefix+'angle_beta'] = beta
+    self.cif_block[cell_prefix+'angle_gamma'] = gamma
+    self.cif_block[cell_prefix+'volume'] = volume
 
 
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
@@ -295,7 +303,8 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
 
 class miller_indices_as_cif_loop(object):
 
-  def __init__(self, indices, prefix='_refln_'):
+  def __init__(self, indices, prefix='_refln', separator='_'):
+    prefix += separator
     self.refln_loop = model.loop(header=(
       '%sindex_h' %prefix, '%sindex_k' %prefix, '%sindex_l' %prefix))
     for hkl in indices:
@@ -307,10 +316,14 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
 
   def __init__(self, array, array_type=None,
                column_name=None, column_names=None,
-               miller_index_prefix='_refln_'):
-    crystal_symmetry_as_cif_block.__init__(self, array.crystal_symmetry())
+               miller_index_prefix='_refln',
+               format="coreCIF"):
+    crystal_symmetry_as_cif_block.__init__(
+      self, array.crystal_symmetry(), format=format)
     miller_indices_as_cif_loop.__init__(
-      self, array.indices(), prefix=miller_index_prefix)
+      self, array.indices(), prefix=miller_index_prefix,
+      separator=self.separator)
+    self.prefix = miller_index_prefix + self.separator
     self.indices = array.indices()
     self.add_miller_array(array, array_type, column_name, column_names)
     self.cif_block.add_loop(self.refln_loop)
@@ -329,9 +342,11 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
     assert array.size() == self.indices.size()
     if array.is_complex_array():
       if column_names is None:
-        column_names = ['_refln_F_%s' %array_type, '_refln_phase_%s' %array_type]
+        column_names = [self.prefix+'F_'+array_type,
+                        self.prefix+'phase_'+array_type]
       else: assert len(column_names) == 2
-      if '_A_' in column_names[0] and '_B_' in column_names[1]:
+      if (('_A_' in column_names[0] and '_B_' in column_names[1]) or
+          ('.A_' in column_names[0] and '.B_' in column_names[1])):
         data = [flex.real(array.data()).as_string(),
                  flex.imag(array.data()).as_string()]
       else:
@@ -342,9 +357,9 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
         if array.is_xray_intensity_array():
           obs_ext = 'squared_'
         else: obs_ext = ''
-        column_names = ['_refln_F_%s%s' %(obs_ext, array_type)]
+        column_names = [self.prefix+'F_'+obs_ext+array_type]
         if array.sigmas() is not None:
-          column_names.append('_refln_F_%ssigma' %obs_ext)
+          column_names.append(self.prefix+'F_'+obs_ext+'sigma')
       if isinstance(array.data(), flex.std_string):
         data = [array.data()]
       else:
