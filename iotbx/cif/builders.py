@@ -299,7 +299,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 break
             if key is None:
               key = sigmas_key
-            elif self._arrays[key].sigmas() is None:
+            elif key in self._arrays and self._arrays[key].sigmas() is None:
               if array.size() != self._arrays[key].size():
                 raise CifBuilderError(
                   "Miller arrays '%s' and '%s' are of different sizes" %(
