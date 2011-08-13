@@ -428,10 +428,9 @@ class miller_array_builder(crystal_symmetry_builder):
         # if flex.std_string return all values including '.' and '?'
         data = value
         indices = self.indices
-    finally:
-      if data.size() == 0: return None
-      return miller.array(
-        miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
+    if data.size() == 0: return None
+    return miller.array(
+      miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
 
   def arrays(self):
     return self._arrays
