@@ -300,18 +300,18 @@ class miller_array_builder(crystal_symmetry_builder):
             if key is None:
               key = sigmas_key
             elif key in self._arrays and self._arrays[key].sigmas() is None:
-              if array.size() != self._arrays[key].size():
-                raise CifBuilderError(
-                  "Miller arrays '%s' and '%s' are of different sizes" %(
-                    key, sigmas_key))
-              self._arrays[key].set_sigmas(array.data())
-              info = self._arrays[key].info()
-              self._arrays[key].set_info(
+              sigmas = array
+              array = self._arrays[key]
+              check_array_sizes(array, sigmas, key, sigmas_key)
+              array.set_sigmas(sigmas.data())
+              info = array.info()
+              array.set_info(
                 info.customized_copy(labels=info.labels+[sigmas_key]))
               continue
             elif key in refln_loop:
               sigmas = array.data()
               array = self.flex_std_string_as_miller_array(refln_loop[key])
+              check_array_sizes(array, sigmas, key, sigmas_key)
               array.set_sigmas(sigmas)
               labels = [key, sigmas_key]
           elif 'HL_' in key:
@@ -363,16 +363,14 @@ class miller_array_builder(crystal_symmetry_builder):
               phases = array.data()
               if key in self._arrays:
                 array = self._arrays[key]
-                if array.size() != self._arrays[key].size():
-                  raise CifBuilderError(
-                    "Miller arrays '%s' and '%s' are of different sizes" %(
-                      key, phase_key))
+                check_array_sizes(array, phases, key, phase_key)
                 info = self._arrays[key].info()
                 self._arrays[key] = array.phase_transfer(phases, deg=True)
                 self._arrays[key].set_info(
                   info.customized_copy(labels=info.labels+[phase_key]))
               else:
                 array = self.flex_std_string_as_miller_array(refln_loop[key])
+                check_array_sizes(array, phases, key, phase_key)
                 array.phase_transfer(phases, deg=True)
                 labels = [key, phase_key]
           if base_array_info.labels is not None:
@@ -434,6 +432,12 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def arrays(self):
     return self._arrays
+
+def check_array_sizes(array1, array2, key1, key2):
+  if array1.size() != array2.size():
+    raise CifBuilderError(
+      "Miller arrays '%s' and '%s' are of different sizes" %(
+        key1, key2))
 
 def none_if_all_question_marks(cif_block_item):
   if (cif_block_item is None): return None
