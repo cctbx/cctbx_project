@@ -169,6 +169,7 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
      .def("background_resolutions",&w_Distl::background_resolutions)
      .def("background_means",&w_Distl::background_means)
      .def("background_wndw_sz",&w_Distl::background_wndw_sz)
+     .def("spotbasesize",&w_Distl::get_minimum_spot_area)
    ;
 
    def("linear_char_scratchpad",&spotfinder::distltbx::linear_char_scratchpad);
