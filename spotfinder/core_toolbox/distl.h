@@ -68,6 +68,9 @@ public:
     finder.spotarealowcut = A;
     finder.spotbasesize = A;}
 
+  inline int get_minimum_spot_area() const {
+    return finder.spotbasesize;}
+
   inline void set_minimum_signal_height(const double& A){
     finder.bgupperint[0] = A;
     finder.bgupperint[1] = A;

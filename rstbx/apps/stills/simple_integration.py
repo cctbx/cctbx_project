@@ -220,24 +220,25 @@ class IntegrationMetaProcedure(simple_integration):
     T = Timer("proper")
     self.integration_proper()
 
-  def basic_algorithm(self):
+  def basic_algorithm(self,verbose=False):
     self.mid_res_focus = mid_resolution_detector_coords(self)
     print "masks",self.inputpd['masks']
 
     Amat = matrix.sqr(self.inputai.getOrientation().direct_matrix())
     self.frames = self.inputpd['osc_start'].keys()
-
+    self.incr_focus = []
     for frame in self.frames:
       focus = self.inputpd['masks'][frame][0:2]
       average_profile = self.inputpd['masks'][frame][2]
       box = self.inputpd['masks'][frame][3]
-      print average_profile.focus()
-      print box.focus()
-      print "Average Profile:"
-      show_profile( average_profile )
-      print "Box:"
-      show_profile( box )
-      self.incr_focus = average_profile.focus()
+      if verbose:
+        print average_profile.focus()
+        print box.focus()
+        print "Average Profile:"
+        show_profile( average_profile )
+        print "Box:"
+        show_profile( box )
+      self.incr_focus.append( average_profile.focus() )
 
   """Integration concept.  Focus on each predicted spot position S.
      I(S): the integration mask for S is constructed by superimposing the
@@ -254,12 +255,13 @@ class IntegrationMetaProcedure(simple_integration):
            in calculating where B(S) can be sampled.
   """
 
-  def integration_concept(self):
+  def integration_concept(self,image_number=0,verbose=False):
+    self.image_number = image_number
     NEAR = 10
     pxlsz = self.pixel_size
     from annlib_ext import AnnAdaptor
     predicted = self.inputai.predict_all(
-                self.image_centers[0],self.limiting_resolution)
+                self.image_centers[self.image_number],self.limiting_resolution)
     self.predicted = predicted #only good for integrating one frame...
     self.hkllist = self.inputai.hklpredict()
     self.cell = self.inputai.getOrientation().unit_cell()
@@ -269,7 +271,7 @@ class IntegrationMetaProcedure(simple_integration):
       query.append(pred[1]/pxlsz)
 
     reference = flex.double()
-    spots = self.spotfinder.images[self.frames[0]]["inlier_spots"]
+    spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
     assert len(spots)>NEAR# Can't do spot/pred matching with too few spots
     for spot in spots:
       reference.append(spot.ctr_mass_x())
@@ -280,8 +282,9 @@ class IntegrationMetaProcedure(simple_integration):
 
     indexed_pairs = []
     correction_vectors = []
-    idx_cutoff = float(min(self.inputpd['masks'][self.frames[0]][0:2]))
-    print "idx_cutoff distance in pixels",idx_cutoff
+    idx_cutoff = float(min(self.inputpd['masks'][self.frames[self.image_number]][0:2]))
+    if verbose:
+      print "idx_cutoff distance in pixels",idx_cutoff
     for i in xrange(len(predicted)): # loop over predicteds
       for n in xrange(NEAR): # loop over near spotfinder spots
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
@@ -292,6 +295,13 @@ class IntegrationMetaProcedure(simple_integration):
     [spots[Match["spot"]].ctr_mass_x() - predicted[Match["pred"]][0]/pxlsz,
      spots[Match["spot"]].ctr_mass_y() - predicted[Match["pred"]][1]/pxlsz])
           correction_vectors.append(vector)
+
+    correction_lengths=flex.double([v.length() for v in correction_vectors])
+    if verbose:
+      print "average correction %5.2f over %d vectors"%(flex.mean(correction_lengths),
+      len(correction_lengths)),
+      print "or %5.2f mm."%(pxlsz*flex.mean(correction_lengths))
+    self.r_residual = pxlsz*flex.mean(correction_lengths)
 
     assert len(indexed_pairs)>NEAR # must have enough indexed spots
     reference = flex.double()
@@ -342,7 +352,7 @@ class IntegrationMetaProcedure(simple_integration):
     MAXOVER=6
     OS_adapt = AnnAdaptor(data=query,dim=2,k=MAXOVER) #six near nbrs
     OS_adapt.query(query)
-    nbr_cutoff = 2.0* max(self.incr_focus)
+    nbr_cutoff = 2.0* max(self.incr_focus[self.image_number])
     FRAME = int(nbr_cutoff/2)
     print "The overlap cutoff is %d pixels"%nbr_cutoff
     nbr_cutoff_sq = nbr_cutoff * nbr_cutoff
@@ -418,7 +428,7 @@ class IntegrationMetaProcedure(simple_integration):
     self.integrated_sigma= flex.double()
     self.integrated_miller=flex.miller_index()
     self.detector_xy = flex.vec2_double()
-    rawdata = self.imagefiles.images[0].linearintdata # assume image #1
+    rawdata = self.imagefiles.images[self.image_number].linearintdata # assume image #1
     from rstbx.diffraction import corrected_backplane
     for i in xrange(len(self.predicted)):
       signal = flex.double()
@@ -483,7 +493,7 @@ class IntegrationMetaProcedure(simple_integration):
   def user_callback(self,dc,wxpanel,wx):
     # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
     for ix,pred in enumerate(self.inputai.predict_all(
-               self.image_centers[0],self.limiting_resolution)):
+               self.image_centers[self.image_number],self.limiting_resolution)):
         if self.BSmasks[ix].keys()==[]:continue
         x,y = wxpanel._img.image_coords_as_screen_coords(
           pred[1]/self.pixel_size,
@@ -528,15 +538,15 @@ class IntegrationMetaProcedure(simple_integration):
     dc.SetBrush(wx.GREEN_BRUSH)
     dc.DrawCircle(x,y,10)
 
-  def initialize_increments(self):
+  def initialize_increments(self,image_number=0):
     #initialize a data structure that contains possible vectors
     # background_pixel - spot_center
     # consider a large box 4x as large as the presumptive mask.
     from scitbx.array_family import flex
     Incr = []
     Distsq = flex.double()
-    for i in xrange(-self.incr_focus[0],1+self.incr_focus[0]):
-      for j in xrange(-self.incr_focus[1],1+self.incr_focus[1]):
+    for i in xrange(-self.incr_focus[image_number][0],1+self.incr_focus[image_number][0]):
+      for j in xrange(-self.incr_focus[image_number][1],1+self.incr_focus[image_number][1]):
         Incr.append(matrix.col((i,j)))
         Distsq.append(i*i+j*j)
     order = flex.sort_permutation(Distsq)
