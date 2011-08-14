@@ -1,6 +1,7 @@
 
 import wxtbx.xray_viewer.display
 import wxtbx.plots
+from wxtbx import bitmaps
 from wxtbx import icons
 import wx
 import os
@@ -19,6 +20,7 @@ class XrayFrame (wx.Frame) :
     self.zoom_frame = None
     self.plot_frame = None
     self._img = None
+    self._distl = None
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
     btn = self.toolbar.AddLabelTool(id=-1,
@@ -39,6 +41,23 @@ class XrayFrame (wx.Frame) :
       shortHelp="Zoom",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnZoom, btn)
+    txt = wx.StaticText(self.toolbar, -1, "Image:")
+    self.toolbar.AddControl(txt)
+    self.image_chooser = wx.Choice(self.toolbar, -1, size=(300,-1))
+    self.toolbar.AddControl(self.image_chooser)
+    self.Bind(wx.EVT_CHOICE, self.OnChooseImage, self.image_chooser)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Previous",
+      bitmap=bitmaps.fetch_icon_bitmap("actions","1leftarrow"),
+      shortHelp="Previous",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnPrevious, btn)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Next",
+      bitmap=bitmaps.fetch_icon_bitmap("actions","1rightarrow"),
+      shortHelp="Next",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnNext, btn)
     self.toolbar.Realize()
     self.Fit()
     self.SetMinSize(self.GetSize())
@@ -50,8 +69,37 @@ class XrayFrame (wx.Frame) :
     self.viewer.set_image(self._img)
     self.settings_frame.set_image(self._img)
     self.SetTitle(file_name)
+    items = self.image_chooser.GetItems()
+    if (not file_name in items) :
+      items.append(file_name)
+    self.image_chooser.SetItems(items)
+    self.image_chooser.SetStringSelection(file_name)
     self.update_statusbar()
     self.Layout()
+
+  def load_distl_output (self, file_name) :
+    from libtbx.easy_pickle import load
+    distl = load(file_name)
+    self._distl = distl
+    img_files = []
+    for img_id in sorted(distl.images.keys()) :
+      img = distl.images[img_id]
+      img_files.append(img['relpath'])
+    if (len(img_files) == 0) :
+      raise Sorry("No images in this result!")
+    self.image_chooser.SetItems([ os.path.basename(f) for f in img_files ])
+    self.image_chooser.SetSelection(0)
+    self.load_image(img_files[0])
+    self.annotate_image(img_files[0])
+
+  def annotate_image (self, file_name) :
+    assert (self._distl is not None)
+    for img_id in sorted(self._distl.images.keys()) :
+      img = self._distl.images[img_id]
+      if (img['relpath'] == file_name) :
+        spots = img['spotoutput']['inlier_spots']
+        self._img.set_spots(spots)
+        break
 
   def update_statusbar (self, info=None) :
     if (info is None) :
@@ -78,6 +126,13 @@ class XrayFrame (wx.Frame) :
     if (file_name != "") :
       self.load_image(file_name)
 
+  def OnLoadLabelitResult (self, event) :
+    file_name = wx.FileSelector("Labelit result",
+      default_path="",
+      flags=wx.OPEN)
+    if (file_name != "") :
+      self.load_image(file_name)
+
   def OnShowSettings (self, event) :
     if (self.settings_frame is None) :
       frame_rect = self.GetRect()
@@ -87,7 +142,7 @@ class XrayFrame (wx.Frame) :
         x_start = display_rect[2] - 400
       y_start = frame_rect[1]
       self.settings_frame = SettingsFrame(self, -1, "Settings",
-        style=wx.CAPTION, pos=(x_start, y_start))
+        style=wx.CAPTION|wx.MINIMIZE_BOX, pos=(x_start, y_start))
     self.settings_frame.Show()
 
   def OnShowZoom (self, event) :
@@ -111,6 +166,15 @@ class XrayFrame (wx.Frame) :
     self.viewer.update_settings(layout=True)
     if (self.settings_frame is not None) :
       self.settings_frame.update_controls()
+
+  def OnChooseImage (self, event) :
+    print "Not implemented"
+
+  def OnPrevious (self, event) :
+    print "Not implemented"
+
+  def OnNext (self, event) :
+    print "Not implemented"
 
 class SettingsFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
@@ -174,12 +238,16 @@ class SettingsPanel (wx.Panel) :
     self.center_ctrl = wx.CheckBox(self, -1, "Mark beam center")
     self.center_ctrl.SetValue(self.settings.show_beam_center)
     s.Add(self.center_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.spots_ctrl = wx.CheckBox(self, -1, "Show predictions")
+    self.spots_ctrl.SetValue(self.settings.show_predictions)
+    s.Add(self.spots_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 #    self.invert_ctrl = wx.CheckBox(self, -1, "Invert beam center axes")
 #    self.invert_ctrl.SetValue(self.settings.invert_beam_center_axes)
 #    s.Add(self.invert_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_CHOICE, self.OnUpdate, self.zoom_ctrl)
     self.Bind(wx.EVT_SLIDER, self.OnUpdateBrightness, self.brightness_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.center_ctrl)
+    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.spots_ctrl)
     txt3 = wx.StaticText(self, -1, "Thumbnail view:")
     s.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.thumb_panel = wxtbx.xray_viewer.display.ThumbnailView(
@@ -193,6 +261,7 @@ class SettingsPanel (wx.Panel) :
     self.settings.zoom_level = self.zoom_ctrl.GetSelection()
     self.settings.brightness = self.brightness_ctrl.GetValue()
     self.settings.show_beam_center = self.center_ctrl.GetValue()
+    self.settings.show_predictions = self.spots_ctrl.GetValue()
 #    self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
 
   def OnUpdate (self, event) :
