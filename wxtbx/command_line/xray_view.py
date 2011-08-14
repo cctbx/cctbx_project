@@ -12,7 +12,10 @@ def run (args) :
   assert os.path.isfile(file_name)
   app = wx.App(0)
   frame = XrayFrame(None, -1, "X-ray image display", size=(800,720))
-  frame.load_image(file_name)
+  if (os.path.basename(file_name) == "DISTL_pickle") :
+    frame.load_distl_output(file_name)
+  else :
+    frame.load_image(file_name)
   frame.Show()
   app.MainLoop()
 

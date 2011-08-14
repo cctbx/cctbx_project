@@ -60,7 +60,7 @@ class XrayView (wx.Panel) :
       center_x, center_y = self._img.get_beam_center()
       xc, yc = self._img.image_coords_as_screen_coords(center_x, center_y)
       if (xc < w) and (yc < h) :
-        dc.SetPen(wx.Pen('red'))
+        dc.SetPen(wx.Pen('blue'))
         dc.DrawLine(xc - 10, yc, xc + 10, yc)
         dc.DrawLine(xc, yc - 10, xc, yc + 10)
     if (self.line_start is not None) and (self.line_end is not None) :
@@ -68,6 +68,13 @@ class XrayView (wx.Panel) :
       x1, y1 = self._img.image_coords_as_screen_coords(*(self.line_start))
       x2, y2 = self._img.image_coords_as_screen_coords(*(self.line_end))
       dc.DrawLine(x1, y1, x2, y2)
+    if (self.settings.show_predictions) :
+      spots = self._img.get_drawable_spots()
+      spot_scale = self._img.get_scale() * 5
+      dc.SetPen(wx.Pen('red'))
+      for x,y in spots :
+        dc.DrawLine(x-spot_scale, y, x+spot_scale, y)
+        dc.DrawLine(x, y-spot_scale, x, y+spot_scale)
     if user_callback != None:
       user_callback(dc,self,wx)
 
@@ -84,7 +91,10 @@ class XrayView (wx.Panel) :
     if (event.Dragging()) :
       self.was_dragged = True
       if (event.LeftIsDown()) :
-        self.OnLeftDrag(event)
+        if (event.ShiftDown()) :
+          self.OnMiddleDrag(event)
+        else :
+          self.OnLeftDrag(event)
       elif (event.MiddleIsDown()) :
         self.OnMiddleDrag(event)
       elif (event.RightIsDown()) :
@@ -108,10 +118,13 @@ class XrayView (wx.Panel) :
 
   def OnLeftDown (self, event) :
     self.was_dragged = False
-    self.line_end = None
-    x, y = event.GetPositionTuple()
-    self.line_start = self._img.screen_coords_as_image_coords(x, y)
-    #self.OnRecordMouse(event)
+    if (event.ShiftDown()) :
+      self.OnMiddleDown(event)
+    else :
+      self.line_end = None
+      x, y = event.GetPositionTuple()
+      self.line_start = self._img.screen_coords_as_image_coords(x, y)
+      #self.OnRecordMouse(event)
 
   def OnDoubleClick (self, event) :
     pass

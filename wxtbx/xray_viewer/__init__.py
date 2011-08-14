@@ -189,8 +189,16 @@ class image (screen_params) :
       self._invert_y = False
     elif (bc == 5) :
       self._invert_y = True
+    self._predictions = None
+    self._spots = None
     #self.update_image()
     #self.convert_to_bitmap()
+
+  def set_predictions (self, predictions) :
+    self._predictions = predictions
+
+  def set_spots (self, spots) :
+    self._spots = spots
 
   def create_flex_image (self,
                          brightness=100,
@@ -257,6 +265,17 @@ class image (screen_params) :
     assert (w == h)
     img = self._wx_img.GetSubImage((x0, y0, w, h))
     return img.Scale(boxsize, boxsize, wx.IMAGE_QUALITY_NORMAL)
+
+  def get_drawable_spots (self) :
+    if (self._spots is None) : return []
+    x, y, w, h = self.get_bitmap_params()
+    spots_out = []
+    for spot in self._spots :
+      ys, xs = spot.max_pxl_x(), spot.max_pxl_y()
+      if ((x+w) >= xs >= x) and ((y+h) >= ys >= y) :
+        xs_, ys_ = self.image_coords_as_screen_coords(xs,ys)
+        spots_out.append((xs_,ys_))
+    return spots_out
 
   def get_beam_center (self) :
     # FIXME Pilatus and ADSC images appear to have different conventions???
@@ -341,9 +360,11 @@ class point_info (object) :
     return "resolution = %s  intensity = %.2f  slow=%d  fast=%d" % (
       format_value("%.2f A", self.d_min), self.intensity, self.slow, self.fast)
 
+# TODO replace this with libtbx.phil
 class settings (object) :
   def __init__ (self) :
     self.zoom_level = 0
     self.brightness = 100
     self.show_beam_center = True
     self.invert_beam_center_axes = False
+    self.show_predictions = True
