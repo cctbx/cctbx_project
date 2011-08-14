@@ -1,14 +1,11 @@
 
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry
+from cStringIO import StringIO
 import os
 import sys
 
 morph_params_str = """
 morph {
-  frames = 30
-    .type = ints
-    .help = Number of frames for each transition (list of integers, or just \
-            a single integer that applies to each transition)
   pdb_file = None
     .type = path
     .multiple = True
@@ -21,26 +18,29 @@ morph {
     .help = Output directory (defaults to current working directory)
   output_prefix = morph
     .type = str
-  serial_format = %3d
+  serial_format = %03d
     .type = str
+  frames = 30
+    .type = ints
+    .help = Number of frames for each transition (list of integers, or just \
+            a single integer that applies to each transition)
   pause = 0
     .type = int
     .help = Number of frames to pause at each starting structure
-  nproc = 1
-    .type = int
-    .help = Number of processors to use for morphing
   delete_waters = True
     .type = bool
-  align {
+  verbose = False
+    .type = bool
+  fitting {
     align_atoms = name CA
       .type = str
       .help = Selection of atoms to use in alignment ("None" to disable)
     reference_structure = 0
       .type = int
       .help = Index (C array notation) of model to use as reference in alignment
-    sieve_fit = False
+    sieve_fit = True
       .type = bool
-      .help = Perform sieve-fitting of structures (not yet implemented)
+      .help = Perform sieve-fitting of structures
   }
   minimization {
     minimize = True
@@ -49,6 +49,10 @@ morph {
       .type = int
     exclude_dihedrals = False
       .type = bool
+    interpolate_dihedrals = False
+      .type = bool
+    dihedral_weight = 0.1
+      .type = float
   }
 }
 pdb_interpretation {
@@ -78,6 +82,8 @@ def morph_models (params, out=None) :
     cif_object = server.read_cif(file_name=cif_file)
     mon_lib_serv.process_cif_object(cif_object=cif_object, file_name=cif_file)
     ener_lib.process_cif_object(cif_object=cif_object, file_name=cif_file)
+  if (params.morph.minimization.interpolate_dihedrals) :
+    params.pdb_interpretation.peptide_link.discard_psi_phi = False
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
@@ -89,28 +95,30 @@ def morph_models (params, out=None) :
   for pdb_inp in new_pdb[1:] :
     sites = pdb_inp.atoms().extract_xyz()
     static_coords.append(sites)
-  if (params.morph.align.align_atoms is not None) :
+  if (params.morph.fitting.align_atoms is not None) :
     print >> out, "Superposing on initial structure..."
-    i = 1
     selection_cache = all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    selection = selection_cache.selection(params.morph.align.align_atoms)
+    selection = selection_cache.selection(params.morph.fitting.align_atoms)
     if (selection.count(True) == 0) :
       raise Sorry("No atoms in alignment selection!")
-    while (i < len(static_coords)) :
-      sites_moving = static_coords[i]
-      sites_fixed = static_coords[0]
-      if (params.morph.align.sieve_fit) :
-        sites_moving_new = sieve_fit(
-          sites_fixed=static_coords[0],
-          sites_moving=static_coords[i],
-          selection=selection)
-      else :
-        sites_moving_new = fit_sites(
-          sites_fixed=static_coords[0],
-          sites_moving=static_coords[i],
-          selection=selection)
-      static_coords[i] = sites_moving_new
-      i += 1
+    i_ref = params.morph.fitting.reference_structure
+    sites_fixed = static_coords[i_ref]
+    j = 0
+    while (j < len(static_coords)) :
+      if (j != i_ref) :
+        sites_moving = static_coords[j]
+        if (params.morph.fitting.sieve_fit) :
+          sites_moving_new = sieve_fit(
+            sites_fixed=sites_fixed,
+            sites_moving=sites_moving,
+            selection=selection)
+        else :
+          sites_moving_new = fit_sites(
+            sites_fixed=sites_fixed,
+            sites_moving=sites_moving,
+            selection=selection)
+        static_coords[j] = sites_moving_new
+      j += 1
   print "Ready to morph"
   morphs = []
   restraints_manager = processed_pdb_file.geometry_restraints_manager()
@@ -133,6 +141,7 @@ def morph_models (params, out=None) :
     serial = morph.write_pdb_files(
       output_base=output_base,
       serial=serial,
+      serial_format=params.morph.serial_format,
       pause=params.morph.pause,
       pause_at_end=(i == (len(morphs) - 1)))
   f = open("%s.pml" % output_base, "w")
@@ -291,6 +300,7 @@ def adiabatic_mapping (pdb_hierarchy,
                        end_coords,
                        params,
                        nsteps=10,
+                       verbose=False,
                        out=None) :
   """
   Linear interpolation with energy minimization.  The number of minimizer
@@ -308,31 +318,53 @@ def adiabatic_mapping (pdb_hierarchy,
     dihedral=(not params.exclude_dihedrals))
   term_params = scitbx.lbfgs.termination_parameters(
     max_iterations=params.n_min_steps)
+  dihedral_steps = []
+  n = nsteps - 1
+  if (params.interpolate_dihedrals) :
+    for proxy in grm.dihedral_proxies :
+      sites1 = []
+      sites2 = []
+      for k in range(4) :
+        sites1.append(start_coords[proxy.i_seqs[k]])
+        sites2.append(end_coords[proxy.i_seqs[k]])
+      dihe_start = geometry_restraints.dihedral(
+        sites=sites1,
+        angle_ideal=0,
+        weight=1).angle_model
+      dihe_end = geometry_restraints.dihedral(
+        sites=sites2,
+        angle_ideal=0,
+        weight=1).angle_model
+      delta = (dihe_end - dihe_start) / n
+      dihedral_steps.append(delta)
+      proxy.weight = 0.1
   m = morph(pdb_hierarchy)
   m.add_frame(start_coords)
   current_xyz = start_coords
   final_xyz = end_coords
-  n = nsteps - 1
   while n > 0 :
     print >> out, "Interpolation step %d" % (nsteps - n)
-    print >> out, ""
+    if (verbose) :
+      print >> out, ""
     new_xyz = current_xyz.deep_copy()
     dxyz = (final_xyz - new_xyz) * (1. / n)
     new_xyz += dxyz
     if (params.minimize) :
+      if (params.interpolate_dihedrals) :
+        for k, proxy in enumerate(grm.dihedral_proxies) :
+          proxy.angle_ideal += dihedral_steps[k]
       minimized = geometry_minimization.lbfgs(
         sites_cart=new_xyz,
         geometry_restraints_manager=grm,
         geometry_restraints_flags=grm_flags,
         lbfgs_termination_params=term_params)
-      #print >> out, "Energies at start of minimization:"
-      #minimized.first_target_result.show(f=out)
-      n_iter = minimized.minimizer.iter()
-      print >> out, ""
-      print >> out, "Number of minimization iterations:", n_iter
-      print >> out, ""
-      print >> out, "Energies at end of minimization:"
-      minimized.final_target_result.show(f=out)
+      if (verbose) :
+        n_iter = minimized.minimizer.iter()
+        print >> out, ""
+        print >> out, "Number of minimization iterations:", n_iter
+        print >> out, ""
+        print >> out, "Energies at end of minimization:"
+        minimized.final_target_result.show(f=out)
     print >> out, "RMS coordinate change: %.3f" % current_xyz.rms_difference(new_xyz)
     m.add_frame(new_xyz)
     n -= 1
@@ -341,20 +373,30 @@ def adiabatic_mapping (pdb_hierarchy,
   return m
 
 def run (args, out=None) :
+  import iotbx.phil
   if (out is None) : out = sys.stdout
   usage_str = "mmtbx.interpolate model1.pdb model2.pdb [...modelX.pdb] [options]"
-  if (len(args) == 0) :
-    raise Usage(usage_str)
-  elif ("--help" in args) :
+  if (len(args) == 0) or ("--help" in args) :
+    params_out = StringIO()
+    master_phil = iotbx.phil.parse(morph_params_str)
+    master_phil.show(out=params_out)
     print >> out, """
 mmtbx.interpolate - simple morphing with energy minimization
+
+Limitations:
+  1. Any atoms not present in all structures will be deleted.
+  2. Equivalent atoms must have identical chain IDs and residue numbers;
+     however, residue names do not have to be the same.
+  3. This method usually doesn't work very well on conformational changes that
+     involve major rearrangements and/or refolding.
+
 Usage:
   %s
+
 Full parameter list:
   %s
-""" % (usage_str, "")
+""" % (usage_str, params_out.getvalue())
     return None
-  import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=morph_params_str,
@@ -366,7 +408,7 @@ Full parameter list:
   print >> out, "Writing effective parameters to %s.eff" % \
     params.morph.output_prefix
   working_phil.show(out=eff_out)
-  working_phil.show(out=sys.stdout)
+  #working_phil.show(out=sys.stdout)
   eff_out.close()
   morph_models(params, out=out)
 
