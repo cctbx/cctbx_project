@@ -17,16 +17,19 @@ typedef interval_list::const_iterator interval_ptr;
 
 class scanbox_tiling {
  public:
-  interval_list persistent_x_tiles, persistent_y_tiles;
   int firstx, lastx, firsty, lasty;
+  interval_list persistent_x_tiles, persistent_y_tiles;
  public:
+  inline
   scanbox_tiling(){}
+  inline
   scanbox_tiling(const int& firstx, const int& lastx,
                  const int& firsty, const int& lasty):
                  firstx(firstx), lastx(lastx), firsty(firsty), lasty(lasty),
                  persistent_x_tiles(interval_list()),
                  persistent_y_tiles(interval_list()){}
 
+  inline
   interval_list
   generate_normal_spacing(const int& first, const int& last,
                           const int& interv) const {
@@ -53,12 +56,13 @@ class scanbox_tiling {
 
      double window = (double)(1+last-first)/n_intervals;
      for (int x = 0; x < n_intervals; ++x) {
-        result.push_back(interval(x*window, int((x+1)*window)-1));
+        result.push_back(interval(int(x*window), int((x+1)*window)-1));
      }
 
      return result;
   }
 
+  inline
   virtual
   interval_ptr
   x_tiles(const int& interval) {
@@ -68,6 +72,7 @@ class scanbox_tiling {
     return persistent_x_tiles.begin();
   }
 
+  inline
   virtual
   interval_ptr
   y_tiles(const int& interval) {
@@ -76,21 +81,26 @@ class scanbox_tiling {
     }
     return persistent_y_tiles.begin();
   }
+
+  inline
   interval_ptr
   x_end() const {
     return persistent_x_tiles.end();
   }
+
+  inline
   interval_ptr
   y_end() const {
     return persistent_y_tiles.end();
   }
 
+  inline
   void reset(){
     persistent_x_tiles = interval_list();
     persistent_y_tiles = interval_list();
   }
 
-
+  inline virtual ~scanbox_tiling(){}
 };
 
 typedef boost::shared_ptr<scanbox_tiling> ptr_tiling;
@@ -186,7 +196,7 @@ class scanbox_tiling_explicit : public scanbox_tiling {
  public:
   scanbox_tiling_explicit(scitbx::af::flex_int explicit_tiling,int const& peripheral_margin):
     tile_count(explicit_tiling.size()/4),peripheral_margin(peripheral_margin),
-    tiles(explicit_tiling),internal_tile_state(0)
+    internal_tile_state(0),tiles(explicit_tiling)
   {}
 
   interval_list
@@ -202,7 +212,7 @@ class scanbox_tiling_explicit : public scanbox_tiling {
        int n_intervals = available_width/width;
        int next = start;
        for (int iival= 0; iival < n_intervals; ++iival){
-         int increment = (double(iival+1)/double(n_intervals))*(finish-start);
+         int increment = int((double(iival+1)/double(n_intervals))*(finish-start));
          result.push_back( interval(next,start + increment) );
          tile_lookup.push_back(tile);
          next = start + increment + 1;
@@ -223,7 +233,7 @@ class scanbox_tiling_explicit : public scanbox_tiling {
      int finish= tiles[4*tile+3]-peripheral_margin;
      int next = start;
      for (int iival= 0; iival < n_intervals; ++iival){
-       int increment = (double(iival+1)/double(n_intervals))*(finish-start);
+       int increment = int((double(iival+1)/double(n_intervals))*(finish-start));
        result.push_back( interval(next,start + increment) );
        next = start + increment + 1;
      }
