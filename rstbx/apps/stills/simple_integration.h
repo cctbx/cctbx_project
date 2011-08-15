@@ -5,6 +5,7 @@
 #include <scitbx/vec2.h>
 #include <map>
 #include <annlib_adaptbx/ann_adaptor.h>
+#include <spotfinder/core_toolbox/distl.h>
 
 #define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 
@@ -27,6 +28,7 @@ namespace rstbx { namespace integration {
   };
 
   struct simple_integration {
+    /* member data */
     double pixel_size;
     scitbx::vec2<int> detector_size;
     typedef std::map<scitbx::vec2<int>, bool,fast_less_than<> > mask_t;
@@ -36,9 +38,12 @@ namespace rstbx { namespace integration {
     int FRAME;
     const int MAXOVER; //number of nearest neighbors
     double nbr_cutoff_sq;
+    int NEAR;
+    scitbx::af::shared<scitbx::vec2<double> > corrections;
 
-    simple_integration(): MAXOVER(6){}
+    simple_integration(): MAXOVER(6),NEAR(10){}
 
+    /* accessors and mutators */
     void set_pixel_size(double const& pxsz) {pixel_size=pxsz;}
 
     void set_detector_size(int const& x, int const& y)
@@ -66,10 +71,59 @@ namespace rstbx { namespace integration {
       return return_value;
     }
 
+    scitbx::af::shared<int>
+    get_ISmask(int const& i){
+      scitbx::af::shared<int> return_value;
+      for (mask_t::const_iterator k=ISmasks[i].begin();
+                               k != ISmasks[i].end(); ++k){
+        return_value.push_back(k->first[0]);
+        return_value.push_back(k->first[1]);
+      }
+      return return_value;
+    }
+
+    /* algorithms */
+    void
+    positional_correction_mapping(
+      scitbx::af::shared<scitbx::vec3<double> > predicted,
+      scitbx::af::shared<scitbx::vec2<double> > correction_vectors,
+      annlib_adaptbx::AnnAdaptor const& PS_adapt,
+      annlib_adaptbx::AnnAdaptor const& IS_adapt,
+      scitbx::af::shared<spotfinder::distltbx::w_spot> spots
+      ){
+      ISmasks.clear();
+      corrections.clear();
+      for (int i=0; i<predicted.size(); ++i){
+        // calculate the positional correction for this prediction
+        // ....average over the 10 nearest positional corrections
+        scitbx::vec2<double>correction(0.0,0.0);
+        for (int n=0; n<NEAR; ++n){ // loop over near indexed pairs
+          correction += correction_vectors[PS_adapt.nn[i*NEAR+n]];
+        }
+        correction/=(double)NEAR;
+        mask_t I_S_mask;
+
+        scitbx::vec3<double> pred = predicted[i]/pixel_size;
+        for (int n=0; n<NEAR; ++n){ // loop over near spotfinder spots
+          int spot_match = IS_adapt.nn[i*NEAR+n];
+          spotfinder::distltbx::w_spot spot = spots[spot_match];
+          for (int p=0; p<spot.bodypixels.size(); ++p){
+            double deltaX = spot.bodypixels[p].x - spot.ctr_mass_x();
+            double deltaY = spot.bodypixels[p].y - spot.ctr_mass_y();
+            I_S_mask[scitbx::vec2<int>(
+                round(pred[0] + deltaX + correction[0]),
+                round(pred[1] + deltaY + correction[1])
+              )] = true;
+          }
+        }
+        ISmasks.push_back(I_S_mask);
+        corrections.push_back(correction);
+      }
+    }
+
     scitbx::af::shared<scitbx::vec2<double> >
     safe_background(
       scitbx::af::shared<scitbx::vec3<double> > predicted,
-      scitbx::af::shared<scitbx::vec2<double> > corrections,
       annlib_adaptbx::AnnAdaptor const& OS_adapt,
       scitbx::af::shared<int > flex_sorted
       ){

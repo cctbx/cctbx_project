@@ -25,9 +25,18 @@ namespace rstbx { namespace integration { namespace ext {
         .def("set_frame",&simple_integration::set_frame)
         .def("set_nbr_cutoff_sq",&simple_integration::set_nbr_cutoff_sq)
         .def("get_bsmask",&simple_integration::get_bsmask)
+        .def("get_ISmask",&simple_integration::get_ISmask)
+        .def("positional_correction_mapping",
+             &simple_integration::positional_correction_mapping,(
+           arg_("predicted"),
+           arg_("correction_vectors"),
+           arg_("PS_adapt"),
+           arg_("IS_adapt"),
+           arg_("spots")
+            ))
+
         .def("safe_background",&simple_integration::safe_background,(
            arg_("predicted"),
-           arg_("corrections"),
            arg_("OS_adapt"),
            arg_("sorted")
             ))
