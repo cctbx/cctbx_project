@@ -6,6 +6,9 @@
 #include <map>
 #include <annlib_adaptbx/ann_adaptor.h>
 #include <spotfinder/core_toolbox/distl.h>
+#include <cctbx/miller.h>
+#include <scitbx/array_family/flex_types.h>
+#include <rstbx/backplane.h>
 
 #define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 
@@ -40,6 +43,10 @@ namespace rstbx { namespace integration {
     double nbr_cutoff_sq;
     int NEAR;
     scitbx::af::shared<scitbx::vec2<double> > corrections;
+    scitbx::af::shared<double> integrated_data;
+    scitbx::af::shared<double> integrated_sigma;
+    scitbx::af::shared<cctbx::miller::index<> > integrated_miller;
+    scitbx::af::shared<scitbx::vec2<double> > detector_xy;
 
     simple_integration(): MAXOVER(6),NEAR(10){}
 
@@ -81,6 +88,12 @@ namespace rstbx { namespace integration {
       }
       return return_value;
     }
+    scitbx::af::shared<double> get_integrated_data(){return integrated_data;}
+    scitbx::af::shared<double> get_integrated_sigma(){return integrated_sigma;}
+    scitbx::af::shared<cctbx::miller::index<> > get_integrated_miller(){
+      return integrated_miller;}
+    scitbx::af::shared<scitbx::vec2<double> > get_detector_xy(){
+      return detector_xy;}
 
     /* algorithms */
     void
@@ -163,7 +176,8 @@ namespace rstbx { namespace integration {
           }
 
           for (int isort=0; isort<flex_sorted.size(); isort+=2){
-            scitbx::vec2<int> increment(flex_sorted[isort],flex_sorted[isort+1]);
+            scitbx::vec2<int> increment(flex_sorted[isort],
+                                        flex_sorted[isort+1]);
             scitbx::vec2<int> candidate_bkgd = spot_position + increment;
             if (spot_keys.find(candidate_bkgd)==spot_keys.end()){
              //eliminate if in guard region
@@ -195,6 +209,76 @@ namespace rstbx { namespace integration {
       return return_detector_xy_draft;
     }
 
+    void
+    integration_proper_fast(scitbx::af::flex_int const& rawdata,
+      scitbx::af::shared<scitbx::vec3<double> > predicted,
+      scitbx::af::shared<cctbx::miller::index<> > hkllist,
+      scitbx::af::shared<scitbx::vec2<double> > detector_xy_draft
+      ){
+
+      integrated_data.clear();
+      integrated_sigma.clear();
+      integrated_miller.clear();
+      detector_xy.clear();
+
+      for (int i=0; i<predicted.size(); ++i){
+        af::shared<double> signal;
+        af::shared<double> bkgrnd;
+
+        if (BSmasks[i].size()==0){continue;} // out-of-boundary spots
+
+        for (mask_t::const_iterator k=ISmasks[i].begin();
+                                    k != ISmasks[i].end(); ++k){
+          signal.push_back(double(rawdata(k->first[0],k->first[1])));
+        }
+        rstbx::corrected_backplane BP(0,0);
+        for (mask_t::const_iterator k=BSmasks[i].begin();
+                                    k != BSmasks[i].end(); ++k){
+          bkgrnd.push_back(double(rawdata(k->first[0],k->first[1])));
+          BP.accumulate(k->first[0],k->first[1],
+                        rawdata(k->first[0],k->first[1]));
+        }
+        BP.finish();
+
+        af::shared<double> corr_signal;
+        af::shared<double> corr_bkgrnd;
+
+        for (mask_t::const_iterator k=ISmasks[i].begin();
+                                    k != ISmasks[i].end(); ++k){
+          corr_signal.push_back(double(rawdata(k->first[0],k->first[1])) -
+                           BP.localmean(k->first[0],k->first[1]));
+        }
+        for (mask_t::const_iterator k=BSmasks[i].begin();
+                                    k != BSmasks[i].end(); ++k){
+          corr_bkgrnd.push_back(double(rawdata(k->first[0],k->first[1])) -
+                           BP.localmean(k->first[0],k->first[1]));
+        }
+
+        double summation_intensity=0.0;
+        double uncorrected_signal=0.0;
+        for (int k=0; k<corr_signal.size(); ++k){
+          summation_intensity += corr_signal[k];
+          uncorrected_signal += signal[k];
+        }
+        int mcount = signal.size();
+        int ncount = bkgrnd.size();
+        double sum_background = 0.0;
+        for (int k=0; k<bkgrnd.size(); ++k){
+          sum_background += bkgrnd[k];
+        }
+
+        // Use gain == 1
+        // variance formula from Andrew Leslie, Int Tables article
+        double variance = uncorrected_signal +
+          sum_background*mcount*mcount/double(ncount*ncount);
+        double sigma = std::sqrt(variance);
+
+        integrated_data.push_back(summation_intensity);
+        integrated_sigma.push_back(sigma);
+        integrated_miller.push_back(hkllist[i]);
+        detector_xy.push_back(detector_xy_draft[i]);
+      }
+    }
   };
 
 }} // namespace rstbx::simage

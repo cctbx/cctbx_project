@@ -1208,6 +1208,7 @@ rstbx/array_family/__init__.py -text
 rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
+rstbx/backplane.h -text
 rstbx/command_line/__init__.py -text
 rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/command_line/simage.solver.py svneol=native#text/x-python

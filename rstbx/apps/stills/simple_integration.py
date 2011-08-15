@@ -354,7 +354,7 @@ class IntegrationMetaProcedure(simple_integration):
       self.append_ISmask(key_pairs)
       corrections.append(correction)
     """
-    
+
     # which spots are close enough to interfere with background?
     MAXOVER=6
     OS_adapt = AnnAdaptor(data=query,dim=2,k=MAXOVER) #six near nbrs
@@ -372,7 +372,7 @@ class IntegrationMetaProcedure(simple_integration):
       flex_sorted.append(item[0]);flex_sorted.append(item[1]);
     self.detector_xy_draft = self.safe_background( predicted=predicted,
                           OS_adapt=OS_adapt,
-                          sorted=flex_sorted)
+                          sorted=flex_sorted);
     for i in xrange(len(predicted)): # loop over predicteds
       B_S_mask = {}
       keys = self.get_bsmask(i)
@@ -430,11 +430,18 @@ class IntegrationMetaProcedure(simple_integration):
       # was out of boundary and it is not possible to integrate
 
   def integration_proper(self):
+    rawdata = self.imagefiles.images[self.image_number].linearintdata # assume image #1
+    self.integration_proper_fast(rawdata,self.predicted,self.hkllist,self.detector_xy_draft)
+    self.integrated_data = self.get_integrated_data()
+    self.integrated_sigma= self.get_integrated_sigma()
+    self.integrated_miller=self.get_integrated_miller()
+    self.detector_xy = self.get_detector_xy()
+    return # function has been recoded in C++
+
     self.integrated_data = flex.double()
     self.integrated_sigma= flex.double()
     self.integrated_miller=flex.miller_index()
     self.detector_xy = flex.vec2_double()
-    rawdata = self.imagefiles.images[self.image_number].linearintdata # assume image #1
     from rstbx.diffraction import corrected_backplane
     for i in xrange(len(self.predicted)):
       signal = flex.double()

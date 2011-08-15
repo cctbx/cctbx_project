@@ -34,13 +34,23 @@ namespace rstbx { namespace integration { namespace ext {
            arg_("IS_adapt"),
            arg_("spots")
             ))
-
         .def("safe_background",&simple_integration::safe_background,(
            arg_("predicted"),
            arg_("OS_adapt"),
            arg_("sorted")
             ))
         .def("append_ISmask",&simple_integration::append_ISmask)
+        .def("integration_proper_fast",
+             &simple_integration::integration_proper_fast,(
+           arg_("rawdata"),
+           arg_("predicted"),
+           arg_("hkllist"),
+           arg_("detector_xy_draft")
+            ))
+        .def("get_integrated_data",&simple_integration::get_integrated_data)
+        .def("get_integrated_sigma",&simple_integration::get_integrated_sigma)
+        .def("get_integrated_miller",&simple_integration::get_integrated_miller)
+        .def("get_detector_xy",&simple_integration::get_detector_xy)
       ;
     }
   };
