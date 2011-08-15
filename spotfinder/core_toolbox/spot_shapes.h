@@ -34,6 +34,7 @@ struct w_I_type: public I_type_2d {
       eigenvalue(const int& i){
         return eigensystem().values()[i];
       }
+      inline virtual ~w_I_type(){}
 };
 
 //contain unpickled inertia data

@@ -176,6 +176,8 @@ struct spot_base {
   virtual
   void find_weighted_center(image_rawdata_t const&, flag_array_t const&,
                             float_array_t const&);
+  virtual
+  ~spot_base(){}
 };
 
 struct spot: public spot_base, public spot_shapes {
@@ -225,6 +227,8 @@ public:
     int difflength_trunc(static_cast<int>(diffvec.length()));
     return difflength_trunc / a();
   }
+  virtual
+  ~spot(){}
 };
 
 
