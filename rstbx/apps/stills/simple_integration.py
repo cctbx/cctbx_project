@@ -312,8 +312,14 @@ class IntegrationMetaProcedure(simple_integration):
     PS_adapt = AnnAdaptor(data=reference,dim=2,k=NEAR)
     PS_adapt.query(query)
 
-    self.ISmasks = []
     self.BSmasks = []
+    self.positional_correction_mapping( predicted=predicted,
+                                        correction_vectors = correction_vectors,
+                                        PS_adapt = PS_adapt,
+                                        IS_adapt = IS_adapt,
+                                        spots = spots)
+    """this section is now pushed down to C++
+    self.ISmasks = []
     corrections = []
     for i in xrange(len(predicted)): # loop over predicteds
       # calculate the positional correction for this prediction
@@ -347,7 +353,8 @@ class IntegrationMetaProcedure(simple_integration):
         key_pairs.append(int(key[0])); key_pairs.append(int(key[1]))
       self.append_ISmask(key_pairs)
       corrections.append(correction)
-
+    """
+    
     # which spots are close enough to interfere with background?
     MAXOVER=6
     OS_adapt = AnnAdaptor(data=query,dim=2,k=MAXOVER) #six near nbrs
@@ -364,7 +371,6 @@ class IntegrationMetaProcedure(simple_integration):
     for item in self.sorted:
       flex_sorted.append(item[0]);flex_sorted.append(item[1]);
     self.detector_xy_draft = self.safe_background( predicted=predicted,
-                          corrections=corrections,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted)
     for i in xrange(len(predicted)): # loop over predicteds
@@ -435,7 +441,10 @@ class IntegrationMetaProcedure(simple_integration):
       bkgrnd = flex.double()
       if self.BSmasks[i].keys()==[]:continue # out-of-boundary spots
       #print "Integrating ",self.hkllist[i],
-      smask = self.ISmasks[i]
+      keys = self.get_ISmask(i)
+      smask = []
+      for ks in xrange(0,len(keys),2):
+        smask.append((keys[ks],keys[ks+1]))
       bmask = self.BSmasks[i]
       for spixel in smask:
         ispixel = int(spixel[0]),int(spixel[1])
