@@ -2,6 +2,7 @@ import math
 from labelit.dptbx.status import cellstr
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
+from libtbx.utils import Sorry
 
 class integrate_one_frame(IntegrationMetaProcedure):
   def __init__(self):
@@ -38,7 +39,9 @@ class IntegrateCharacters:
       fres.current_limit = A.target_resol()
 
       trial = integrate_one_character(
-                                self.process_dictionary,self.triclinic,fres.current_limit, open_wx_viewer=open_wx_viewer)
+        setting = self.triclinic,
+        integration_limit = fres.current_limit,
+        open_wx_viewer=open_wx_viewer)
 
       A.stats_mtz(trial,file = trial['mtzsubfile']+".mtz")
       #print A
@@ -144,11 +147,14 @@ class IntegrateCharacters:
     for index in self.M.best()[0:len(self.M.best())-1]:
       if index.has_key('status') and index['status'] in [
         'unlikely','very_unlikely']:continue
+      if float(self.triclinic['integration']['resolution'])==0.0:
+        raise Sorry("No signal detected in triclinic integration trial")
 
       index['integration'] = self.integrate_one_character(
         setting=index,
         integration_limit=float(self.triclinic['integration']['resolution']),
         open_wx_viewer=self.open_wx_viewer)
+
       A = ResolutionAnalysisMetaClass(index['integration'])
       print A
       if (self.horizons_phil.known_cell!=None or

@@ -8,6 +8,7 @@ def run_new_horizons(args, open_wx_viewer=True):
   new_horizons_phil = preferences.RunTimePreferences()
   # new_horizons_phil is an instance of a class that has a libtbx.phil.scope
   # print new_horizons_phil.phil_scope
+  special_defaults_for_new_horizons( new_horizons_phil )
 
   args_copy = copy.copy(args)
   for item in args:
@@ -24,6 +25,10 @@ def run_new_horizons(args, open_wx_viewer=True):
   # that behaves like a libtbx.phil.scope_extract but keeps a weak link
   # back to the parent RunTimePreferences instance
   # print new_horizons_phil.command_extractor.persist
+
+def special_defaults_for_new_horizons(phil_scope):
+  # for integration, do not want 2x2 binning
+  phil_scope.merge_command_line(["distl_permit_binning=False"])
 
 if __name__=='__main__':
   import sys
