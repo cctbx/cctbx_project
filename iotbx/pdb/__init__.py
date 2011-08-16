@@ -1310,10 +1310,16 @@ def get_file_summary (pdb_in, hierarchy=None) :
   if (hierarchy is None) :
     hierarchy = pdb_in.construct_hierarchy()
   counts = hierarchy.overall_counts()
+  chain_ids = []
+  for id in sorted(counts.chain_ids.keys()) :
+    if (id == " ") :
+      chain_ids.append("' '")
+    else :
+      chain_ids.append(id)
   info_list = [
     ("Number of atoms", counts.n_atoms),
     ("Number of chains", counts.n_chains),
-    ("Chain IDs", ", ".join(sorted(counts.chain_ids.keys()))),
+    ("Chain IDs", ", ".join(chain_ids)),
     ("Alternate conformations", counts.n_alt_conf_pure),
   ]
   if (counts.n_models > 1) :
