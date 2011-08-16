@@ -1,5 +1,5 @@
 
-import wxtbx.xray_viewer.display
+import rstbx.viewer.display
 import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
@@ -9,8 +9,8 @@ import os
 class XrayFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     super(XrayFrame, self).__init__(*args, **kwds)
-    self.settings = wxtbx.xray_viewer.settings()
-    self.viewer = wxtbx.xray_viewer.display.XrayView(self, -1, size=(1024,640))
+    self.settings = rstbx.viewer.settings()
+    self.viewer = rstbx.viewer.display.XrayView(self, -1, size=(1024,640))
     self.viewer.SetMinSize((640,640))
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
@@ -65,7 +65,7 @@ class XrayFrame (wx.Frame) :
 
   def load_image (self, file_name) :
     file_name = os.path.abspath(file_name)
-    self._img = wxtbx.xray_viewer.image(file_name)
+    self._img = rstbx.viewer.image(file_name)
     self.viewer.set_image(self._img)
     self.settings_frame.set_image(self._img)
     self.SetTitle(file_name)
@@ -250,7 +250,7 @@ class SettingsPanel (wx.Panel) :
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.spots_ctrl)
     txt3 = wx.StaticText(self, -1, "Thumbnail view:")
     s.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.thumb_panel = wxtbx.xray_viewer.display.ThumbnailView(
+    self.thumb_panel = rstbx.viewer.display.ThumbnailView(
       parent=self,
       size=(256,256),
       style=wx.SUNKEN_BORDER)

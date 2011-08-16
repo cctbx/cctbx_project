@@ -1,6 +1,6 @@
 
 def exercise_1 () :
-  from wxtbx.xray_viewer import screen_params
+  from rstbx.viewer import screen_params
   p = screen_params()
   p.set_image_size(2048,2048)
   p.set_screen_size(1024,768)
