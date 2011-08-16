@@ -294,6 +294,10 @@ class IntegrationMetaProcedure(simple_integration):
      spots[Match["spot"]].ctr_mass_y() - predicted[Match["pred"]][1]/pxlsz])
           correction_vectors.append(vector)
 
+    #insert code here to remove correction length outliers...
+    # they are causing terrible
+    # problems for finding legitimate correction vectors (print out the list)
+
     correction_lengths=flex.double([v.length() for v in correction_vectors])
     if verbose:
       print "average correction %5.2f over %d vectors"%(flex.mean(correction_lengths),
@@ -506,6 +510,7 @@ class IntegrationMetaProcedure(simple_integration):
 
   def user_callback(self,dc,wxpanel,wx):
     # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
+    # BLUE: predictions
     for ix,pred in enumerate(self.inputai.predict_all(
                self.image_centers[self.image_number],self.limiting_resolution)):
         if self.BSmasks[ix].keys()==[]:continue
@@ -516,14 +521,20 @@ class IntegrationMetaProcedure(simple_integration):
         dc.SetBrush(wx.BLUE_BRUSH)
         dc.DrawCircle(x,y,1)
 
-    for smask,bmask in zip(self.ISmasks,self.BSmasks):
+    for imsk in xrange(len(self.BSmasks)):
+      smask_keys = self.get_ISmask(imsk)
+      bmask = self.BSmasks[imsk]
       if len(bmask.keys())==0: continue
-      for key in smask.keys():
-        x,y = wxpanel._img.image_coords_as_screen_coords(key[1],key[0])
+
+      # CYAN: integration mask
+      for ks in xrange(0,len(smask_keys),2):
+        x,y = wxpanel._img.image_coords_as_screen_coords(smask_keys[ks+1],
+                                                         smask_keys[0])
         dc.SetPen(wx.Pen('cyan'))
         dc.SetBrush(wx.CYAN_BRUSH)
         dc.DrawCircle(x,y,1)
 
+      # YELLOW: background mask
       for key in bmask.keys():
         x,y = wxpanel._img.image_coords_as_screen_coords(key[1],key[0])
         dc.SetPen(wx.Pen('yellow'))
@@ -531,6 +542,7 @@ class IntegrationMetaProcedure(simple_integration):
         dc.DrawCircle(x,y,1)
 
     for spot in self.spotfinder.images[self.frames[0]]["inlier_spots"]:
+      # RED: spotfinder spot pixels
       for pxl in spot.bodypixels:
         x,y = wxpanel._img.image_coords_as_screen_coords(
           pxl.y,
@@ -539,6 +551,7 @@ class IntegrationMetaProcedure(simple_integration):
         dc.SetBrush(wx.RED_BRUSH)
         dc.DrawCircle(x,y,1)
 
+      # GREEN: spotfinder centers of mass
       x,y = wxpanel._img.image_coords_as_screen_coords(
         spot.ctr_mass_y(),
         spot.ctr_mass_x())
