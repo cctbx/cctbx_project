@@ -644,9 +644,20 @@ class reflection_file_server(object):
       raise Sorry_Not_a_suitable_array(
         str(e) + "\nTo override the suitability test define:"
                + " %s.disable_suitability_test=True" % parameter_scope)
-    if (data_scores is None):
-      return miller_arrays[i], test_flag_value
-    return miller_arrays[i], flag_scores.test_flag_values[i]
+    miller_array = miller_arrays[i]
+    if data_scores is not None:
+      test_flag_value = flag_scores.test_flag_values[i]
+    if miller_array.is_string_array():
+      rejection_sel = ~(
+        (miller_array.data() == 'o') & (miller_array.data() == 'f'))
+      info = miller_array.info()
+      miller_array = miller_array.select(rejection_sel)
+      data = flex.int(miller_array.size(), 1)
+      data.set_selected(miller_array.data() == 'f', 0)
+      miller_array = miller_array.array(data=data)
+      miller_array.set_info(info)
+      test_flag_value = 0
+    return miller_array, test_flag_value
 
   def get_experimental_phases(self,
         file_name,
