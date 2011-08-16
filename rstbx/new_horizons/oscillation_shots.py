@@ -3,6 +3,7 @@ from labelit.dptbx.status import cellstr
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
 from libtbx.utils import Sorry
+from libtbx.test_utils import approx_equal
 
 class integrate_one_frame(IntegrationMetaProcedure):
   def __init__(self):
@@ -38,12 +39,14 @@ class IntegrateCharacters:
         break
       fres.current_limit = A.target_resol()
 
-      trial = integrate_one_character(
+      trial = self.integrate_one_character(
         setting = self.triclinic,
         integration_limit = fres.current_limit,
         open_wx_viewer=open_wx_viewer)
 
-      A.stats_mtz(trial,file = trial['mtzsubfile']+".mtz")
+      results = trial["results"]
+      obs = [item.get_obs(trial["spacegroup"]) for item in results]
+      A.stats_mtz(trial,obs)
       #print A
     if 'trial' in vars().keys(): self.triclinic['integration'] = trial
 
@@ -106,7 +109,7 @@ class IntegrateCharacters:
       integrate_worker.limiting_resolution = integration_limit
 
       integrate_worker.pixel_size = self.pixel_size
-      integrate_worker.set_pixel_size(0.1024)
+      integrate_worker.set_pixel_size(self.pixel_size)
       integrate_worker.set_detector_size(int(local["size1"]),int(local["size2"]))
 
       integrate_worker.basic_algorithm()
