@@ -223,10 +223,24 @@ class any_file_input (object) :
 
   def try_as_cif (self) :
     import iotbx.cif
-    cif_object = iotbx.cif.reader(file_path=self.file_name,
-      strict=False)
-    self.file_type = "cif"
-    self.file_object = cif_object
+    from iotbx.reflection_file_reader import any_reflection_file
+    from iotbx.reflection_file_utils import reflection_file_server
+    try :
+      cif_file = any_reflection_file(self.file_name)
+    except Exception, e :
+      print e
+      raise
+    if cif_file.file_type() is not None:
+      self.file_type = "hkl"
+      self.file_server = reflection_file_server(
+        crystal_symmetry=None,
+        force_symmetry=True,
+        reflection_files=[cif_file],
+        err=sys.stderr)
+      self.file_object = cif_file
+    else:
+      self.file_type = "cif"
+      self.file_object = iotbx.cif.reader(file_path=self.file_name)
 
   def try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
