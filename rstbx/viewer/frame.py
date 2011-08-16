@@ -151,6 +151,7 @@ class XrayFrame (wx.Frame) :
         style=wx.CAPTION|wx.CLOSE_BOX)
       self.zoom_frame.set_image(self._img)
       self.zoom_frame.Show()
+    self.zoom_frame.Raise()
 
   def OnShowPlot (self, event) :
     if (self.plot_frame is None) :
@@ -285,6 +286,7 @@ class ZoomPanel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     super(ZoomPanel, self).__init__(*args, **kwds)
     self.SetSize((400,400))
+    self.SetMinSize((400,400))
     self._img = None
     self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.x_center = None

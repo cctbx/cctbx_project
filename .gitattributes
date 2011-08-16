@@ -1285,6 +1285,7 @@ rstbx/symmetry/subgroup.py -text
 rstbx/viewer/__init__.py -text
 rstbx/viewer/display.py -text
 rstbx/viewer/frame.py -text
+rstbx/viewer/lattice_list.py -text
 rstbx/viewer/tst.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
