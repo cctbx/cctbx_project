@@ -93,3 +93,67 @@ def ImageFactory(filename):
 def TrySingleImageType(filename,image_type):
   I = names_and_types[ image_type ](filename)
   return I
+
+def identify_dataset (path_name) :
+  from libtbx import group_args
+  def get_file_name_components (file_name_) :
+    base, ext = os.path.splitext(os.path.basename(file_name_))
+    fields = base.split("_")
+    suffix = fields[-1]
+    common_base = "_".join(fields[:-1])
+    return (common_base, suffix, ext)
+  suffix = common_base = common_ext = None
+  file_name = dir_name = None
+  if (os.path.isfile(path_name)) :
+    file_name = os.path.abspath(path_name)
+  elif (os.path.isdir(path_name)) :
+    dir_name = os.path.abspath(path_name)
+  else :
+    assert 0
+  if (file_name is not None) :
+    dir_name = os.path.dirname(file_name)
+    (common_base, suffix, common_ext) = get_file_name_components(file_name)
+  all_files = os.listdir(dir_name)
+  stacks = {}
+  suffixes = {}
+  extensions = {}
+  for fn in all_files :
+    if (common_base is not None) :
+      if (fn.startswith(common_base)) and (fn.endswith(common_ext)) :
+        (base2, suffix2, ext2) = get_file_name_components(fn)
+        if (common_base in stacks) :
+          stacks[common_base].append(int(suffix2))
+        else :
+          suffixes[common_base] = "#" * len(suffix)
+          stacks[common_base] = [ int(suffix2) ]
+          extensions[common_base] = ext2
+    else :
+      (base2, suffix2, ext2) = get_file_name_components(fn)
+      # FIXME probably not a comprehensive list...
+      if (ext2 in [".img",".osc",".ccd",".mccd",".cbf"]) :
+        if (base2 in stacks) :
+          stacks[base2].append(int(suffix2))
+        else :
+          stacks[base2] = [ int(suffix2) ]
+          suffixes[base2] = "#" * len(suffix2)
+          extensions[base2] = ext2
+  results = []
+  for base in sorted(stacks.keys()) :
+    ranges = []
+    img_start = img_last = None
+    for x in sorted(stacks[base]) :
+      if (img_start is None) :
+        img_start = x
+      elif (img_last is not None) and (x > (img_last + 1)) :
+        ranges.append((img_start, img_last))
+        img_start = x
+      img_last = x
+    ranges.append((img_start, img_last))
+    file_base = "%s_%s%s" % (base, suffixes[base], extensions[base])
+    print "%s %s" % (file_base,
+      ", ".join([ "%d-%d" % (a,b) for (a, b) in ranges ]))
+    dataset = group_args(
+      base_name=os.path.join(dir_name, file_base),
+      ranges=ranges)
+    results.append(dataset)
+  return results
