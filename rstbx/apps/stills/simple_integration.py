@@ -298,6 +298,10 @@ class IntegrationMetaProcedure(simple_integration):
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
 
+    #Other checks to be implemented:
+    # spot is within active area of detector; tiled or circular detector
+    # integration masks do not overlap; or deconvolute
+
     correction_lengths=flex.double([v.length() for v in correction_vectors])
     if verbose:
       print "average correction %5.2f over %d vectors"%(flex.mean(correction_lengths),
@@ -529,7 +533,7 @@ class IntegrationMetaProcedure(simple_integration):
       # CYAN: integration mask
       for ks in xrange(0,len(smask_keys),2):
         x,y = wxpanel._img.image_coords_as_screen_coords(smask_keys[ks+1],
-                                                         smask_keys[0])
+                                                         smask_keys[ks])
         dc.SetPen(wx.Pen('cyan'))
         dc.SetBrush(wx.CYAN_BRUSH)
         dc.DrawCircle(x,y,1)
