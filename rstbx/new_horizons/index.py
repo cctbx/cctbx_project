@@ -4,7 +4,8 @@ from labelit.command_line.default_param import establish_dict_for_refinement
 from labelit.dptbx.autoindex import index_and_refine
 
 class new_horizons_state:
-  def __init__(self,horizons_phil,args):
+  def __init__(self,horizons_phil,args, open_wx_viewer=True):
+    self.open_wx_viewer = open_wx_viewer
     self.horizons_phil = horizons_phil
     self.organizer = AutoIndexOrganizer(
       verbose = self.horizons_phil.distl.bins.verbose,
@@ -43,7 +44,7 @@ class new_horizons_state:
      if 1:
       from rstbx.new_horizons.oscillation_shots import IntegrateCharacters
       IC = IntegrateCharacters(M,self.pd,self.horizons_phil,files,
-        spotfinder_results )
+        spotfinder_results, open_wx_viewer=self.open_wx_viewer)
       IC.find_best()
       IC.show()
     return self.pd
@@ -62,7 +63,8 @@ def pack_names(horizons_phil):
     E.argv.append(x)
   return E
 
-def run_index(horizons_phil):
+def run_index(horizons_phil, open_wx_viewer=True):
   pre_indexing_validation(horizons_phil)
   imagefile_arguments = pack_names(horizons_phil)
-  S = new_horizons_state(horizons_phil,imagefile_arguments)
+  S = new_horizons_state(horizons_phil,imagefile_arguments,
+    open_wx_viewer=open_wx_viewer)
