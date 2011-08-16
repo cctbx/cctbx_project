@@ -175,7 +175,6 @@ class resolution_bin(object):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
 
-from labelit.dptbx.next_layer_support import mid_resolution_detector_coords
 from labelit.dptbx.profile_support import show_profile
 from libtbx.development.timers import Timer
 from rstbx.apps import simple_integration
@@ -221,7 +220,6 @@ class IntegrationMetaProcedure(simple_integration):
     self.integration_proper()
 
   def basic_algorithm(self,verbose=False):
-    self.mid_res_focus = mid_resolution_detector_coords(self)
     print "masks",self.inputpd['masks']
 
     Amat = matrix.sqr(self.inputai.getOrientation().direct_matrix())
