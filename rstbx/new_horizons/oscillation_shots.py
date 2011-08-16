@@ -121,9 +121,9 @@ class IntegrateCharacters:
 
       if (open_wx_viewer) :
         try:
-          from wxtbx.xray_viewer.frame import XrayFrame
+          from rstbx.viewer.frame import XrayFrame
           import wx
-          from wxtbx.xray_viewer import display
+          from rstbx.viewer import display
           display.user_callback = integrate_worker.user_callback
 
           app = wx.App(0)

@@ -1214,6 +1214,7 @@ rstbx/command_line/index.py -text
 rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/command_line/simage.solver.py svneol=native#text/x-python
 rstbx/command_line/simage.wx_display.py svneol=native#text/x-python
+rstbx/command_line/viewer.py -text
 rstbx/diffraction/__init__.py -text
 rstbx/diffraction/ewald_sphere.cpp -text
 rstbx/diffraction/ewald_sphere.h -text
@@ -1281,6 +1282,10 @@ rstbx/simulation/tst_xfel1_simple.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
+rstbx/viewer/__init__.py -text
+rstbx/viewer/display.py -text
+rstbx/viewer/frame.py -text
+rstbx/viewer/tst.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
 scitbx/array_family/accessors/c_interval_grid.h svneol=native#text/plain
@@ -1629,7 +1634,6 @@ wxtbx/browser.py -text
 wxtbx/checklistctrl.py -text
 wxtbx/command_line/b_plot.py -text
 wxtbx/command_line/loggraph.py -text
-wxtbx/command_line/xray_view.py -text
 wxtbx/icons.py -text
 wxtbx/info_panels.py -text
 wxtbx/layout.py -text
@@ -1660,7 +1664,3 @@ wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
 wxtbx/symmetry_dialog.py -text
 wxtbx/utils.py -text
-wxtbx/xray_viewer/__init__.py -text
-wxtbx/xray_viewer/display.py -text
-wxtbx/xray_viewer/frame.py -text
-wxtbx/xray_viewer/tst.py -text
