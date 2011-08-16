@@ -619,6 +619,9 @@ class reflection_file_server(object):
       valid_arrays_and_flags = []
       for (array, flag_value, score) in scored_arrays :
         if score >= minimum_score :
+          if array.is_string_array():
+            array, flag_value = cif_status_flags_as_int_r_free_flags(
+              array, flag_value)
           valid_arrays_and_flags.append((array, flag_value))
       return valid_arrays_and_flags
     if (label is None): labels = None
@@ -648,15 +651,8 @@ class reflection_file_server(object):
     if data_scores is not None:
       test_flag_value = flag_scores.test_flag_values[i]
     if miller_array.is_string_array():
-      rejection_sel = ~(
-        (miller_array.data() == 'o') & (miller_array.data() == 'f'))
-      info = miller_array.info()
-      miller_array = miller_array.select(rejection_sel)
-      data = flex.int(miller_array.size(), 1)
-      data.set_selected(miller_array.data() == 'f', 0)
-      miller_array = miller_array.array(data=data)
-      miller_array.set_info(info)
-      test_flag_value = 0
+      miller_array, test_flag_value = cif_status_flags_as_int_r_free_flags(
+        miller_array, test_flag_value)
     return miller_array, test_flag_value
 
   def get_experimental_phases(self,
@@ -686,6 +682,21 @@ class reflection_file_server(object):
       error_message_multiple_equally_suitable
         ="Multiple equally suitable arrays of experimental phases found.")
     return miller_arrays[i]
+
+def cif_status_flags_as_int_r_free_flags(miller_array, test_flag_value):
+  assert test_flag_value == 'f'
+  if miller_array.is_string_array():
+    selection = (miller_array.data() == 'o') | (miller_array.data() == 'f')
+    info = miller_array.info()
+    print "miller array size: %i" %miller_array.size()
+    miller_array = miller_array.select(selection)
+    print "miller array size: %i" %miller_array.size()
+    data = flex.int(miller_array.size(), 1)
+    data.set_selected(miller_array.data() == 'f', 0)
+    miller_array = miller_array.array(data=data)
+    miller_array.set_info(info)
+    test_flag_value = 0
+  return miller_array, test_flag_value
 
 def construct_output_file_name(input_file_names,
                                user_file_name,
