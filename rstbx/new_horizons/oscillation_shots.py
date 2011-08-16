@@ -43,6 +43,8 @@ class IntegrateCharacters:
     if 'trial' in vars().keys(): self.triclinic['integration'] = trial
 
   def integrate_one_character(self,setting,integration_limit):
+    #from libtbx.development.timers import Profiler
+    #P = Profiler("Preliminary")
     import copy
     local = copy.deepcopy(self.process_dictionary)
     local['cell']=cellstr(setting)
@@ -85,7 +87,8 @@ class IntegrateCharacters:
     print "Limiting resolution",integration_limit
     local["results"] = []
     for i in xrange(len(keys)):
-      print "Integrate one frame",keys[i]
+      print "Integrate one frame",keys[i],self.files.filenames()[i]
+      #P = Profiler("worker")
       integrate_worker = integrate_one_frame()
       integrate_worker.inputai = ai
 
@@ -102,7 +105,9 @@ class IntegrateCharacters:
 
       integrate_worker.basic_algorithm()
       integrate_worker.initialize_increments(i)
+      #P = Profiler("concept")
       integrate_worker.integration_concept(i)
+      #P = Profiler("proper")
       integrate_worker.integration_proper()
       local["results"].append(integrate_worker)
       local["r_xbeam"]=setting["refined x beam"]
@@ -110,6 +115,23 @@ class IntegrateCharacters:
       local["r_distance"]=setting["refined distance"]
       local["r_residual"]=integrate_worker.r_residual
       local["r_mosaicity"]=setting["mosaicity"]
+
+      try:
+        from wxtbx.xray_viewer.frame import XrayFrame
+        import wx
+        from wxtbx.xray_viewer import display
+        display.user_callback = integrate_worker.user_callback
+
+        app = wx.App(0)
+        frame = XrayFrame(None, -1, "X-ray image display", size=(1200,1080))
+        frame.SetSize((1024,780))
+        frame.load_image(self.files.filenames()[i])
+        frame.Show()
+        app.MainLoop()
+        del app
+      except Exception:
+        pass # must use phenix.wxpython for wx display
+
     return local
 
   def find_best(self):
