@@ -231,16 +231,16 @@ class any_file_input (object) :
       print e
       raise
     if cif_file.file_type() is not None:
-      self.file_type = "hkl"
       self.file_server = reflection_file_server(
         crystal_symmetry=None,
         force_symmetry=True,
         reflection_files=[cif_file],
         err=sys.stderr)
       self.file_object = cif_file
+      self.file_type = "hkl"
     else:
-      self.file_type = "cif"
       self.file_object = iotbx.cif.reader(file_path=self.file_name)
+      self.file_type = "cif"
 
   def try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
