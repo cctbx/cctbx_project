@@ -1,9 +1,10 @@
-import math
+import math,sys,cPickle as pickle,cStringIO as StringIO
 from labelit.dptbx.status import cellstr
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
+from rstbx.apps.stills.simple_integration import show_observations
 
 class integrate_one_frame(IntegrationMetaProcedure):
   def __init__(self):
@@ -141,6 +142,30 @@ class IntegrateCharacters:
           del app
         except Exception:
           pass # must use phenix.wxpython for wx display
+
+      filename = self.horizons_phil.indexing.indexing_pickle
+      if filename != None:
+        filename = "%s_%d_%d"%(filename,setting["counter"],keys[i])
+
+        SIO = StringIO.StringIO()
+        show_observations(integrate_worker.get_obs(local["spacegroup"]),out=SIO)
+        info = dict(table = SIO.getvalue(),
+          xbeam = setting["refined x beam"],
+          ybeam = setting["refined y beam"],
+          distance = setting["refined distance"],
+          residual = integrate_worker.r_residual,
+          mosaicity = setting["mosaicity"],
+          pointgroup = local["spacegroup"],
+          hkllist = integrate_worker.hkllist,
+          predictions = (1./integrate_worker.pixel_size)*integrate_worker.predicted,
+          mapped_predictions = integrate_worker.detector_xy,
+          integration_masks_xy = integrate_worker.integration_masks_as_xy_tuples(),
+          background_masks_xy = integrate_worker.background_masks_as_xy_tuples()
+        )
+        assert info["predictions"].size() == info["mapped_predictions"].size()
+        assert info["predictions"].size() == info["hkllist"].size()
+        G = open(filename,"wb")
+        pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
 
     return local
 
@@ -332,7 +357,6 @@ class ResolutionAnalysisMetaClass(get_limits):
     obs = [item.get_obs(self.integration_dict["spacegroup"]) for item in results]
     if verbose:
       for item in results:
-        from rstbx.apps.stills.simple_integration import show_observations
         show_observations(item.get_obs(self.integration_dict["spacegroup"]))
     self.stats_mtz(self.integration_dict,obs)
     self.integration_dict["resolution"] = self.value
