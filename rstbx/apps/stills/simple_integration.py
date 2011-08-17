@@ -121,7 +121,9 @@ class api:
               )
     return P
 
-def show_observations(obs):
+def show_observations(obs,out=None):
+  if out==None:
+    import sys;out = sys.stdout
   from libtbx.str_utils import format_value
 
   obs.setup_binner(n_bins = 12)
@@ -144,10 +146,10 @@ def show_observations(obs):
         mean_I_sigI  = flex.mean(sel_data/sel_sig),
         )
       result.append(bin)
-  print "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)>"
+  print >>out, "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)>"
   for bin in result:
     fmt = " %s %s    %s  %s"
-    print fmt%(
+    print >>out,fmt%(
       format_value("%3d",   bin.i_bin),
       format_value("%-17s", bin.d_range),
       format_value("%8.1f", bin.mean_I),
@@ -511,6 +513,22 @@ class IntegrationMetaProcedure(simple_integration):
     miller_array.set_observation_type_xray_intensity()
     miller_array.set_info("Raw partials from rstbx, not in ASU, no polarization correction")
     return miller_array
+
+  def integration_masks_as_xy_tuples(self):
+    values = []
+    for imsk in xrange(len(self.BSmasks)):
+      smask_keys = self.get_ISmask(imsk)
+      for ks in xrange(0,len(smask_keys),2):
+        values.append((smask_keys[ks],smask_keys[ks+1]))
+    return values
+
+  def background_masks_as_xy_tuples(self):
+    values = []
+    for imsk in xrange(len(self.BSmasks)):
+      bmask = self.BSmasks[imsk]
+      for key in bmask.keys():
+        values.append((key[0],key[1]))
+    return values
 
   def user_callback(self,dc,wxpanel,wx):
     # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
