@@ -3,6 +3,7 @@ import rstbx.viewer.display
 import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
+from libtbx import easy_pickle
 import wx
 import os
 
@@ -59,6 +60,14 @@ class XrayFrame (wx.Frame) :
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnNext, btn)
     self.toolbar.Realize()
+    mb = wx.MenuBar()
+    self.SetMenuBar(mb)
+    file_menu = wx.Menu()
+    mb.Append(file_menu, "File")
+    item = file_menu.Append(-1, "Open integration results...")
+    self.Bind(wx.EVT_MENU, self.OnLoadIntegration, item)
+    item = file_menu.Append(-1, "Open image...")
+    self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
     self.Fit()
     self.SetMinSize(self.GetSize())
     self.OnShowSettings(None)
@@ -78,8 +87,7 @@ class XrayFrame (wx.Frame) :
     self.Layout()
 
   def load_distl_output (self, file_name) :
-    from libtbx.easy_pickle import load
-    distl = load(file_name)
+    distl = easy_pickle.load(file_name)
     self._distl = distl
     img_files = []
     for img_id in sorted(distl.images.keys()) :
@@ -100,6 +108,13 @@ class XrayFrame (wx.Frame) :
         spots = img['spotoutput']['inlier_spots']
         self._img.set_spots(spots)
         break
+
+  def load_integration (self, file_name) :
+    assert (self._img is not None)
+    result = easy_pickle.load(file_name)
+    assert isinstance(result, dict)
+    self._img.set_integration_results(result)
+    self.viewer.Refresh()
 
   def update_statusbar (self, info=None) :
     if (info is None) :
@@ -132,6 +147,13 @@ class XrayFrame (wx.Frame) :
       flags=wx.OPEN)
     if (file_name != "") :
       self.load_image(file_name)
+
+  def OnLoadIntegration (self, event) :
+    file_name = wx.FileSelector("Integration result",
+      default_path="",
+      flags=wx.OPEN)
+    if (file_name != "") :
+      self.load_integration(file_name)
 
   def OnShowSettings (self, event) :
     if (self.settings_frame is None) :
@@ -239,9 +261,12 @@ class SettingsPanel (wx.Panel) :
     self.center_ctrl = wx.CheckBox(self, -1, "Mark beam center")
     self.center_ctrl.SetValue(self.settings.show_beam_center)
     s.Add(self.center_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.spots_ctrl = wx.CheckBox(self, -1, "Show predictions")
-    self.spots_ctrl.SetValue(self.settings.show_predictions)
+    self.spots_ctrl = wx.CheckBox(self, -1, "Show spotfinder results")
+    self.spots_ctrl.SetValue(self.settings.show_spotfinder_spots)
     s.Add(self.spots_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.integ_ctrl = wx.CheckBox(self, -1, "Show integration results")
+    self.integ_ctrl.SetValue(self.settings.show_integration)
+    s.Add(self.integ_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 #    self.invert_ctrl = wx.CheckBox(self, -1, "Invert beam center axes")
 #    self.invert_ctrl.SetValue(self.settings.invert_beam_center_axes)
 #    s.Add(self.invert_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -263,6 +288,7 @@ class SettingsPanel (wx.Panel) :
     self.settings.brightness = self.brightness_ctrl.GetValue()
     self.settings.show_beam_center = self.center_ctrl.GetValue()
     self.settings.show_predictions = self.spots_ctrl.GetValue()
+    self.settings.show_integration = self.integ_ctrl.GetValue()
 #    self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
 
   def OnUpdate (self, event) :
@@ -282,39 +308,11 @@ class SettingsPanel (wx.Panel) :
   def refresh_main (self) :
     self.GetParent().GetParent().viewer.Refresh()
 
-class ZoomPanel (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
-    super(ZoomPanel, self).__init__(*args, **kwds)
-    self.SetSize((400,400))
-    self.SetMinSize((400,400))
-    self._img = None
-    self.Bind(wx.EVT_PAINT, self.OnPaint)
-    self.x_center = None
-    self.y_center = None
-
-  def set_image (self, image) :
-    self._img = image
-
-  def set_zoom (self, x, y) :
-    self.x_center = x
-    self.y_center = y
-    self.Refresh()
-
-  def OnPaint (self, event) :
-    dc = wx.AutoBufferedPaintDCFactory(self)
-    if (not None in [self._img, self.x_center, self.y_center]) :
-      wx_image = self._img.get_zoomed_bitmap(self.x_center, self.y_center)
-      bitmap = wx_image.ConvertToBitmap()
-      dc.DrawBitmap(bitmap, 0, 0)
-    else :
-      dc.SetPen(wx.Pen('red'))
-      dc.DrawText("Right-click in the main image field to zoom.", 10, 10)
-
 class ZoomFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     super(ZoomFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
-    self.panel = ZoomPanel(self, -1)
+    self.panel = rstbx.viewer.display.ZoomView(self, -1)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     szr.Add(self.panel, 1, wx.EXPAND)

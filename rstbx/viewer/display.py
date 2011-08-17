@@ -1,6 +1,8 @@
 
+from rstbx.viewer import screen_params
 import wx
 user_callback = None
+
 class XrayView (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     self._img = None
@@ -13,7 +15,12 @@ class XrayView (wx.Panel) :
     self.line_start = None
     self.line_end = None
     self.was_dragged = False
+    self.shift_was_down = False
     self._last_zoom = 0
+    self.zoom_level = None
+    # miscellaneous non-user flags
+    self.flag_always_show_predictions = False
+    self.flag_spots_as_points = False
 
   def SetupEventHandlers (self) :
     self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -32,6 +39,12 @@ class XrayView (wx.Panel) :
     self._img = image
     self._img.set_screen_size(*(self.GetSize()))
     self.update_settings()
+
+  def get_scale (self) :
+    if (self.zoom_level is not None) :
+      return self.zoom_level
+    else :
+      return self._img.get_scale()
 
   def update_settings (self, layout=True) :
     self.line = None
@@ -68,15 +81,41 @@ class XrayView (wx.Panel) :
       x1, y1 = self._img.image_coords_as_screen_coords(*(self.line_start))
       x2, y2 = self._img.image_coords_as_screen_coords(*(self.line_end))
       dc.DrawLine(x1, y1, x2, y2)
-    if (self.settings.show_predictions) :
-      spots = self._img.get_drawable_spots()
+    if (self.settings.show_spotfinder_spots) :
+      self.draw_spotfinder_spots(dc)
+    if (self.settings.show_integration) :
+      self.draw_integration_results(dc)
+    if user_callback != None:
+      user_callback(dc,self,wx)
+
+  def draw_spotfinder_spots (self, dc) :
+    spots = self._img.get_drawable_spots()
+    dc.SetPen(wx.Pen('red'))
+    if (self.flag_spots_as_points) :
+      dc.DrawPoint(x, y)
+    else :
       spot_scale = self._img.get_scale() * 5
-      dc.SetPen(wx.Pen('red'))
       for x,y in spots :
         dc.DrawLine(x-spot_scale, y, x+spot_scale, y)
         dc.DrawLine(x, y-spot_scale, x, y+spot_scale)
-    if user_callback != None:
-      user_callback(dc,self,wx)
+
+  def draw_integration_results (self, dc) :
+    scale = self.get_scale()
+    if (scale >= 4) :
+      bg_masks = self._img.get_drawable_background_mask()
+      dc.SetPen(wx.YELLOW_PEN)
+      for (x, y) in bg_masks :
+        dc.DrawCircle(x,y,1)
+      int_masks = self._img.get_drawable_integration_mask()
+      dc.SetPen(wx.CYAN_PEN)
+      for (x, y) in int_masks :
+        dc.DrawCircle(x,y,1)
+    else :
+      predictions = self._img.get_drawable_predictions()
+      dc.SetPen(wx.YELLOW_PEN)
+      dc.SetBrush(wx.TRANSPARENT_BRUSH)
+      for (x, y) in predictions :
+        dc.DrawCircle(x, y, 5*scale)
 
   def OnSize (self, event) :
     if (self._img is not None) :
@@ -119,6 +158,7 @@ class XrayView (wx.Panel) :
   def OnLeftDown (self, event) :
     self.was_dragged = False
     if (event.ShiftDown()) :
+      self.shift_was_down = True
       self.OnMiddleDown(event)
     else :
       self.line_end = None
@@ -135,7 +175,9 @@ class XrayView (wx.Panel) :
     self.Refresh()
 
   def OnLeftUp (self, event) :
-    if (self.was_dragged) and (self.line_start is not None) :
+    if (self.shift_was_down) :
+      pass
+    elif (self.was_dragged) and (self.line_start is not None) :
       x, y = event.GetPositionTuple()
       self.line_end = self._img.screen_coords_as_image_coords(x, y)
       x1, y1 = self.line_start
@@ -149,6 +191,7 @@ class XrayView (wx.Panel) :
     else :
       self.line = None
     self.Refresh()
+    self.shift_was_down = False
     self.was_dragged = False
 
   def OnMiddleDrag (self, event) :
@@ -200,6 +243,7 @@ class XrayView (wx.Panel) :
 class ThumbnailView (XrayView) :
   def __init__ (self, *args, **kwds) :
     XrayView.__init__(self, *args, **kwds)
+    self.flag_always_show_predictions = True
 
   def SetupEventHandlers (self) :
     self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
@@ -227,3 +271,38 @@ class ThumbnailView (XrayView) :
     self._img.center_view_from_thumbnail(x, y)
     self.Refresh()
     self.GetParent().refresh_main()
+
+#class ZoomView (wx.Panel) :
+class ZoomView (XrayView) :
+  def __init__ (self, *args, **kwds) :
+    super(ZoomView, self).__init__(*args, **kwds)
+    self.SetSize((400,400))
+    self.SetMinSize((400,400))
+    self._img = None
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
+    self.x_center = None
+    self.y_center = None
+    self.zoom_level = 16
+    self.screen = screen_params()
+    self.screen.set_zoom(16)
+
+  def SetupEventHandlers (self) :
+    pass
+
+  def set_zoom (self, x, y) :
+    self.x_center = x
+    self.y_center = y
+    self.Refresh()
+
+  def update_settings (self) :
+    pass
+
+  def OnPaint (self, event) :
+    dc = wx.AutoBufferedPaintDCFactory(self)
+    if (not None in [self._img, self.x_center, self.y_center]) :
+      wx_image = self._img.get_zoomed_bitmap(self.x_center, self.y_center)
+      bitmap = wx_image.ConvertToBitmap()
+      dc.DrawBitmap(bitmap, 0, 0)
+    else :
+      dc.SetPen(wx.Pen('red'))
+      dc.DrawText("Right-click in the main image field to zoom.", 10, 10)

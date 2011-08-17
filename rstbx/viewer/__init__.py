@@ -189,16 +189,20 @@ class image (screen_params) :
       self._invert_y = False
     elif (bc == 5) :
       self._invert_y = True
-    self._predictions = None
+    self._beam_center = None
+    self._integration = None
     self._spots = None
     #self.update_image()
     #self.convert_to_bitmap()
 
-  def set_predictions (self, predictions) :
-    self._predictions = predictions
+  def set_integration_results (self, integration) :
+    self._integration = integration
 
   def set_spots (self, spots) :
     self._spots = spots
+
+  def set_beam_center (self, xbeam, ybeam) :
+    self._beam_center = (xbeam, ybeam)
 
   def create_flex_image (self,
                          brightness=100,
@@ -269,17 +273,44 @@ class image (screen_params) :
   def get_drawable_spots (self) :
     if (self._spots is None) : return []
     x, y, w, h = self.get_bitmap_params()
-    spots_out = []
+    all_spots = []
     for spot in self._spots :
-      ys, xs = spot.max_pxl_x(), spot.max_pxl_y()
-      if ((x+w) >= xs >= x) and ((y+h) >= ys >= y) :
-        xs_, ys_ = self.image_coords_as_screen_coords(xs,ys)
-        spots_out.append((xs_,ys_))
+      all_spots.append(( spot.ctr_mass_x(), spot.ctr_mass_y() ))
+    spots_out = self._get_drawable_points(all_spots)
     return spots_out
 
+  def _get_drawable_points (self, points) :
+    points_out = []
+    x, y, w, h = self.get_bitmap_params()
+    for ym,xm in points :
+      if ((x+w) >= xm >= x) and ((y+h) >= ym >= y) :
+        xm_, ym_ = self.image_coords_as_screen_coords(xm, ym)
+        points_out.append((xm_, ym_))
+    return points_out
+
+  def get_drawable_background_mask (self) :
+    if (self._integration is None) : return []
+    points_out = self._get_drawable_points(
+      self._integration['background_masks_xy'])
+    return points_out
+
+  def get_drawable_predictions (self) :
+    if (self._integration is None) : return []
+    points_out = self._get_drawable_points(
+      self._integration['mapped_predictions'])
+    return points_out
+
+  def get_drawable_integration_mask (self) :
+    if (self._integration is None) : return []
+    points_out = self._get_drawable_points(
+      self._integration['integration_masks_xy'])
+    return points_out
+
   def get_beam_center (self) :
+    if (self._beam_center is not None) :
+      center_x, center_y = self._beam_center
     # FIXME Pilatus and ADSC images appear to have different conventions???
-    if (self._invert_beam_center) :
+    elif (self._invert_beam_center) :
       center_x = self._raw.parameters['BEAM_CENTER_Y']
       center_y = self._raw.parameters['BEAM_CENTER_X']
     else :
@@ -367,4 +398,5 @@ class settings (object) :
     self.brightness = 100
     self.show_beam_center = True
     self.invert_beam_center_axes = False
-    self.show_predictions = True
+    self.show_spotfinder_spots = True
+    self.show_integration = True
