@@ -381,6 +381,10 @@ class torsion_ncs(object):
     seq = []
     padded_seq = []
     last_resseq = 0
+    is_na = False
+    for conformer in chain.conformers():
+      if conformer.is_na():
+        is_na = True
     for rg in chain.residue_groups():
       resseq = rg.resseq_as_int()
       if (resseq > (last_resseq + 1)) :
@@ -388,7 +392,11 @@ class torsion_ncs(object):
           padded_seq.append('X')
       last_resseq = resseq
       resname = rg.unique_resnames()[0]
-      olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+      if is_na:
+        olc = self.get_nucleic_acid_one_letter_code(resname)
+      else:
+        olc=\
+        amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
       padded_seq.append(olc)
     return "".join(padded_seq)
 
@@ -400,10 +408,18 @@ class torsion_ncs(object):
     counter = 0
     for model in pdb_hierarchy.models():
       for chain in model.chains():
+        is_na = False
+        for conformer in chain.conformers():
+          if conformer.is_na():
+            is_na = True
         for rg in chain.residue_groups():
           if(len(rg.unique_resnames())==1):
             resname = rg.unique_resnames()[0]
-            olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+            if is_na:
+              olc = self.get_nucleic_acid_one_letter_code(resname)
+            else:
+              olc= \
+              amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
             atoms = rg.atoms()
             i_seqs = utils.get_i_seqs(atoms)
             if(olc!="X") and utils.is_residue_in_selection(i_seqs, selection):
@@ -417,6 +433,17 @@ class torsion_ncs(object):
               padded_seq.append(olc)
               counter += 1
     return "".join(seq), "".join(padded_seq), result
+
+  def get_nucleic_acid_one_letter_code(self, resname):
+    olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
+    if olc != "X":
+      return "X"
+    if resname[0:2] == "  ":
+      return resname[2]
+    elif resname[0] == " " and (resname[1] == "D" or resname[1] == "d"):
+      return resname[2]
+    else:
+      return resname[0]
 
   def _alignment(self, pdb_hierarchy,
                     params,
