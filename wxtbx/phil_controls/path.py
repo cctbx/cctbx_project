@@ -2,6 +2,7 @@ from wxtbx.phil_controls import text_base
 from wxtbx import phil_controls
 import wxtbx.icons
 from libtbx.utils import Sorry
+from libtbx import Auto
 import wx
 import os
 
@@ -72,7 +73,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     return self._path_text.GetValue()
 
   def SetValue (self, value) :
-    if (value is None) :
+    if (value is None) or (value is Auto) :
       self._path_text.SetValue("")
     else :
       assert isinstance(value, str)
