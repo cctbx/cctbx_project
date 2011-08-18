@@ -15,7 +15,8 @@ class kick_map(object):
                      acentrics_scale    = 2.0,
                      centrics_pre_scale = 1.0,
                      isotropize         = False,
-                     sharp              = False):
+                     sharp              = False,
+                     exclude_free_r_reflections = False):
     self.map_coeffs = None
     fmodel_tmp = fmodel.deep_copy()
     isotropize_helper = fmodel.isotropize_helper()
@@ -83,6 +84,8 @@ class kick_map(object):
         indices          = self.map_coeffs.indices(),
         anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
           data = map_coeff_data/counter)
+      if (exclude_free_r_reflections) :
+        self.map_coeffs = self.map_coeffs.select(fmodel.active_arrays.work_sel)
 
 class electron_density_map(object):
 

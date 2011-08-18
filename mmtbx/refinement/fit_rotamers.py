@@ -57,6 +57,8 @@ local_fix_params_str = """\
     .type = str
   model_map = Fc
     .type = str
+  exclude_free_r_reflections = False
+    .type = bool
 """
 
 master_params_str = """\
@@ -655,7 +657,8 @@ def residue_iteration(pdb_hierarchy,
   xray_structure.set_sites_cart(sites_cart_start)
   return result
 
-def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False):
+def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False,
+    exclude_free_r_reflections=False):
   if(kick):
     km = map_tools.kick_map(
       fmodel            = fmodel,
@@ -666,26 +669,30 @@ def get_map_data(fmodel, map_type, resolution_factor=1./4, kick=False):
       real_map_unpadded = True,
       update_bulk_solvent_and_scale = False,
       symmetry_flags    = maptbx.use_space_group_symmetry,
-      average_maps      = False)
+      average_maps      = False,
+      exclude_free_r_reflections = exclude_free_r_reflections)
     map_data = km.map_data
     fft_map = km.fft_map
   else:
     map_obj = fmodel.electron_density_map()
     fft_map = map_obj.fft_map(resolution_factor = resolution_factor,
-      map_type = map_type)
+      map_type = map_type, use_all_data=(not exclude_free_r_reflections))
     fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
   return map_data,fft_map
 
-def validate_changes(fmodel, residue_rsr_monitor, validate_method, log):
+def validate_changes(fmodel, residue_rsr_monitor, validate_method, log,
+    exclude_free_r_reflections=False):
   assert (validate_method is None) or (hasattr(validate_method, "__call__"))
   xray_structure = fmodel.xray_structure
   target_map_data,fft_map_1 = get_map_data(
-    fmodel = fmodel, map_type = "2mFo-DFc", kick=False)
+    fmodel = fmodel, map_type = "2mFo-DFc", kick=False,
+    exclude_free_r_reflections = exclude_free_r_reflections)
   model_map_data,fft_map_2 = get_map_data(
     fmodel = fmodel, map_type = "Fc")
   residual_map_data,fft_map_3 = get_map_data(
-    fmodel = fmodel, map_type = "mFo-DFc", kick=False)
+    fmodel = fmodel, map_type = "mFo-DFc", kick=False,
+    exclude_free_r_reflections = exclude_free_r_reflections)
   map_selector = select_map(
     unit_cell  = xray_structure.unit_cell(),
     target_map_data = target_map_data,
@@ -796,11 +803,13 @@ def run(fmodel,
   print >> log, fmt%(0, fmodel.r_work(), fmodel.r_free())
   for macro_cycle in range(1,params.number_of_macro_cycles+1):
     target_map_data, fft_map_1 = get_map_data(fmodel = fmodel,
-      map_type = params.target_map, kick=False)
+      map_type = params.target_map, kick=False,
+      exclude_free_r_reflections = params.exclude_free_r_reflections)
     model_map_data,fft_map_2 = get_map_data(fmodel = fmodel,
       map_type = params.model_map)
     residual_map_data,fft_map_3 = get_map_data(fmodel = fmodel,
-      map_type = params.residual_map, kick=False)
+      map_type = params.residual_map, kick=False,
+      exclude_free_r_reflections = params.exclude_free_r_reflections)
     if(params.filter_residual_map_value is not None): #XXX use filtering....
       map_sel = flex.abs(residual_map_data) < params.filter_residual_map_value
       residual_map_data = residual_map_data.set_selected(map_sel, 0)
