@@ -264,11 +264,17 @@ else:
         callback_err=null_callback,
         callback_abort=null_callback,
         callback_other=null_callback,
-        buffer_stdout=True) :
+        buffer_stdout=True,
+        sleep_after_start=None) :
       threading.Thread.__init__(self)
       self._target = target
       self._args = args
       self._kwargs = dict(kwargs)
+      assert (hasattr(callback_stdout, "__call__") and
+              hasattr(callback_final, "__call__") and
+              hasattr(callback_err, "__call__") and
+              hasattr(callback_abort, "__call__") and
+              hasattr(callback_other, "__call__"))
       self._cb_stdout = callback_stdout
       self._cb_final  = callback_final
       self._cb_err    = callback_err
@@ -278,11 +284,17 @@ else:
       self._abort = False
       self._completed = False
       self._error = False
+      assert ((sleep_after_start is None) or
+              isinstance(sleep_after_start, int) or
+              isinstance(sleep_after_start, float))
+      self._sleep_after_start = sleep_after_start
 
     def abort (self) :
       self._abort = True
 
     def run (self) :
+      if (self._sleep_after_start is not None) :
+        time.sleep(self._sleep_after_start)
       child_process = None
       parent_conn, child_conn = multiprocessing.Pipe()
       try :
