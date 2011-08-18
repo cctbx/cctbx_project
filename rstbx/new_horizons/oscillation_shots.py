@@ -11,20 +11,18 @@ class integrate_one_frame(IntegrationMetaProcedure):
     simple_integration.__init__(self)
 
 class IntegrateCharacters:
-  def __init__(self,Characters,process_dictionary,horizons_phil,files,spotfinder_results, open_wx_viewer=True):
+  def __init__(self,Characters,process_dictionary,horizons_phil,files,spotfinder_results):
     self.M = Characters
     self.process_dictionary = process_dictionary
     self.horizons_phil = horizons_phil
     self.files = files
     self.spotfinder_results = spotfinder_results
-    self.open_wx_viewer = open_wx_viewer
     self.triclinic = self.M.best()[-1]
     fres = ResLimitControl(self.process_dictionary,self.horizons_phil)
 
     self.triclinic['integration'] = self.integrate_one_character(
       setting=self.triclinic,
-      integration_limit=fres.current_limit,
-      open_wx_viewer=open_wx_viewer)
+      integration_limit=fres.current_limit)
     #return # Enforces legacy behavior--no recycling to expand the integration limit
             # Comment this "return" in for testing without the macrocycle
     #With appropriate safeguards, macrocycle gives better resolution estimate:
@@ -42,8 +40,7 @@ class IntegrateCharacters:
 
       trial = self.integrate_one_character(
         setting = self.triclinic,
-        integration_limit = fres.current_limit,
-        open_wx_viewer=open_wx_viewer)
+        integration_limit = fres.current_limit)
 
       results = trial["results"]
       obs = [item.get_obs(trial["spacegroup"]) for item in results]
@@ -51,8 +48,7 @@ class IntegrateCharacters:
       #print A
     if 'trial' in vars().keys(): self.triclinic['integration'] = trial
 
-  def integrate_one_character(self,setting,integration_limit,
-      open_wx_viewer=True):
+  def integrate_one_character(self,setting,integration_limit):
     #from libtbx.development.timers import Profiler
     #P = Profiler("Preliminary")
     import copy
@@ -127,7 +123,7 @@ class IntegrateCharacters:
       local["r_residual"]=integrate_worker.r_residual
       local["r_mosaicity"]=setting["mosaicity"]
 
-      if (open_wx_viewer) :
+      if (self.horizons_phil.indexing.open_wx_viewer) :
         try:
           from rstbx.viewer.frame import XrayFrame
           import wx
@@ -184,8 +180,7 @@ class IntegrateCharacters:
 
       index['integration'] = self.integrate_one_character(
         setting=index,
-        integration_limit=float(self.triclinic['integration']['resolution']),
-        open_wx_viewer=self.open_wx_viewer)
+        integration_limit=float(self.triclinic['integration']['resolution']))
 
       A = ResolutionAnalysisMetaClass(index['integration'])
       print A

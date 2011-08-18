@@ -3,7 +3,7 @@
 
 from labelit import preferences
 
-def run_new_horizons(args, open_wx_viewer=True):
+def run_new_horizons(args):
   import os,copy
   new_horizons_phil = preferences.RunTimePreferences()
   # new_horizons_phil is an instance of a class that has a libtbx.phil.scope
@@ -20,7 +20,7 @@ def run_new_horizons(args, open_wx_viewer=True):
   new_horizons_phil.merge_command_line(args_copy)
   #new_horizons_phil.show()
   from rstbx.new_horizons.index import run_index
-  run_index(new_horizons_phil.command_extractor, open_wx_viewer=open_wx_viewer)
+  run_index(new_horizons_phil.command_extractor)
   # new_horizons_phil.command_extractor is an instance of a class
   # that behaves like a libtbx.phil.scope_extract but keeps a weak link
   # back to the parent RunTimePreferences instance
