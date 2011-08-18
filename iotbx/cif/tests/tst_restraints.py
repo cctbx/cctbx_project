@@ -24,6 +24,24 @@ def exercise_geometry_restraints_as_cif():
       distance_ideal=1.7,
       weight=1.8),
   ))
+  dihedral_proxies = geometry_restraints.shared_dihedral_proxy((
+    geometry_restraints.dihedral_proxy(
+      i_seqs = [1,0,1,0],
+      sym_ops = (sgtbx.rt_mx("1+y,1-x+y, z-1/3"),
+                 sgtbx.rt_mx(),
+                 sgtbx.rt_mx("x-y,x,z-2/3"),
+                 sgtbx.rt_mx("1-x,y-x,1/3-z")),
+      angle_ideal=-30,
+      weight=2),
+    geometry_restraints.dihedral_proxy(
+      i_seqs = [1,0,1,0],
+      sym_ops = (sgtbx.rt_mx("1+y,1-x+y, z-1/3"),
+                 sgtbx.rt_mx(),
+                 sgtbx.rt_mx("-y,x-y,z-1/3"),
+                 sgtbx.rt_mx("x-y,x,1/3+z")),
+      angle_ideal=90,
+      weight=3),
+  ))
   angle_proxies = geometry_restraints.shared_angle_proxy((
     geometry_restraints.angle_proxy(
       i_seqs = [1,0,1],
@@ -60,6 +78,7 @@ def exercise_geometry_restraints_as_cif():
     cif_block, quartz,
     bond_proxies=bond_proxies,
     angle_proxies=angle_proxies,
+    dihedral_proxies=dihedral_proxies,
     bond_similarity_proxies=bond_similarity_proxies)
   s = StringIO()
   cif_block.show(out=s)
@@ -87,6 +106,21 @@ loop_
    O Si O 2_554 1 4_554 103.0000 0.7071 1.6926
    O Si O 3_664 1 4_554 110.0000 0.4472 -1.3127
    Si O Si 3 1 5 150.0000 0.4472 3.0700
+
+loop_
+  _restr_torsion_atom_site_label_1
+  _restr_torsion_atom_site_label_2
+  _restr_torsion_atom_site_label_3
+  _restr_torsion_atom_site_label_4
+  _restr_torsion_site_symmetry_1
+  _restr_torsion_site_symmetry_2
+  _restr_torsion_site_symmetry_3
+  _restr_torsion_site_symmetry_4
+  _restr_torsion_angle_target
+  _restr_torsion_weight_param
+  _restr_torsion_diff
+   O Si O Si 3_664 1 2_554 7_655 -30.0000 0.7071 6.9078
+   O Si O Si 3_664 1 4_554 2 90.0000 0.5774 11.7036
 
 loop_
   _restr_equal_distance_class_class_id
