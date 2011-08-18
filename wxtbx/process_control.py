@@ -137,7 +137,7 @@ class simple_gui_process (process_with_gui_callbacks) :
 class ThreadProgressDialog (pyprogress.PyProgress) :
   def __init__ (self, parent, title, message) :
     pyprogress.PyProgress.__init__(self, parent, -1, title, message,
-      style=wx.PD_ELAPSED_TIME|wx.PD_APP_MODAL)
+      agwStyle=wx.PD_ELAPSED_TIME|wx.PD_APP_MODAL)
     self.SetGaugeProportion(0.15)
     self.SetGaugeSteps(50)
     self.SetGaugeBackground(wx.Colour(235, 235, 235))

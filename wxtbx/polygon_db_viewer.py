@@ -131,7 +131,7 @@ class ConfigFrame (wx.Frame) :
         if   (limits.x_min is not None) and (x < limits.x_min) : continue
         elif (limits.x_max is not None) and (x > limits.x_max) : continue
         elif (limits.y_min is not None) and (y < limits.y_min) : continue
-        elif (limits.y_max is not None) and (x > limits.y_max) : continue
+        elif (limits.y_max is not None) and (y > limits.y_max) : continue
         else :
           x_values.append(x)
           y_values.append(y)
