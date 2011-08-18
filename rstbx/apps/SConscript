@@ -2,7 +2,7 @@ Import("env_rstbx_boost_python_ext", "env_etc")
 
 env = env_rstbx_boost_python_ext.Clone()
 env_etc.enable_more_warnings(env=env)
-env.Prepend(LIBS=["ann"])
+env.Prepend(LIBS=["ann","spotfinder"])
 env.SharedLibrary(
   target="#lib/rstbx_integration_ext",
   source=["integration_ext.cpp"])
