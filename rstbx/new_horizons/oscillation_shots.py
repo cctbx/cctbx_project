@@ -1,4 +1,4 @@
-import math,sys,cPickle as pickle,cStringIO as StringIO
+import math,cPickle as pickle,cStringIO as StringIO
 from labelit.dptbx.status import cellstr
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
@@ -116,7 +116,8 @@ class IntegrateCharacters:
       integrate_worker.basic_algorithm()
       integrate_worker.initialize_increments(i)
       #P = Profiler("concept")
-      integrate_worker.integration_concept(i)
+      integrate_worker.integration_concept(image_number = i,
+        cb_op_to_primitive = setting["cb_op_inp_best"].inverse())
       #P = Profiler("proper")
       integrate_worker.integration_proper()
       local["results"].append(integrate_worker)
@@ -135,6 +136,9 @@ class IntegrateCharacters:
 
           app = wx.App(0)
           frame = XrayFrame(None, -1, "X-ray image display", size=(1200,1080))
+          frame.settings.show_spotfinder_spots = False
+          frame.settings.show_integration = False
+          frame.settings.enable_collect_values = False
           frame.SetSize((1024,780))
           frame.load_image(self.files.filenames()[i])
           frame.Show()

@@ -123,7 +123,8 @@ class api:
 
 def show_observations(obs,out=None):
   if out==None:
-    import sys;out = sys.stdout
+    import sys
+    out = sys.stdout
   from libtbx.str_utils import format_value
 
   obs.setup_binner(n_bins = 12)
@@ -255,18 +256,36 @@ class IntegrationMetaProcedure(simple_integration):
            in calculating where B(S) can be sampled.
   """
 
-  def integration_concept(self,image_number=0,verbose=False):
+  def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
+    if cb_op_to_primitive==None:
+
+      predicted = self.inputai.predict_all(
+                  self.image_centers[self.image_number],self.limiting_resolution)
+      self.predicted = predicted #only good for integrating one frame...
+      self.hkllist = self.inputai.hklpredict()
+
+    else:
+      rot_mat = matrix.sqr(cb_op_to_primitive.c().r().as_double()).transpose()
+      centered_orientation = self.inputai.getOrientation()
+      primitive_orientation = centered_orientation.change_basis(rot_mat)
+      self.inputai.setOrientation(primitive_orientation)
+      predicted = self.inputai.predict_all(
+                  self.image_centers[self.image_number],self.limiting_resolution)
+      self.predicted = predicted #only good for integrating one frame...
+      primitive_hkllist = self.inputai.hklpredict()
+      #not sure if matrix needs to be transposed first for outputting HKL's???:
+      self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
+      self.inputai.setOrientation(centered_orientation)
+
+  def integration_concept(self,image_number=0,cb_op_to_primitive=None,verbose=False):
     self.image_number = image_number
     NEAR = 10
     pxlsz = self.pixel_size
+    self.get_predictions_accounting_for_centering(cb_op_to_primitive)
     from annlib_ext import AnnAdaptor
-    predicted = self.inputai.predict_all(
-                self.image_centers[self.image_number],self.limiting_resolution)
-    self.predicted = predicted #only good for integrating one frame...
-    self.hkllist = self.inputai.hklpredict()
     self.cell = self.inputai.getOrientation().unit_cell()
     query = flex.double()
-    for pred in predicted: # predicted spot coord in pixels
+    for pred in self.predicted: # predicted spot coord in pixels
       query.append(pred[0]/pxlsz)
       query.append(pred[1]/pxlsz)
 
@@ -285,20 +304,32 @@ class IntegrationMetaProcedure(simple_integration):
     idx_cutoff = float(min(self.inputpd['masks'][self.frames[self.image_number]][0:2]))
     if verbose:
       print "idx_cutoff distance in pixels",idx_cutoff
-    for i in xrange(len(predicted)): # loop over predicteds
+    for i in xrange(len(self.predicted)): # loop over predicteds
       for n in xrange(NEAR): # loop over near spotfinder spots
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
         if n==0 and math.sqrt(IS_adapt.distances[i*NEAR+n]) < idx_cutoff:
           indexed_pairs.append(Match)
 
           vector = matrix.col(
-    [spots[Match["spot"]].ctr_mass_x() - predicted[Match["pred"]][0]/pxlsz,
-     spots[Match["spot"]].ctr_mass_y() - predicted[Match["pred"]][1]/pxlsz])
+    [spots[Match["spot"]].ctr_mass_x() - self.predicted[Match["pred"]][0]/pxlsz,
+     spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
           correction_vectors.append(vector)
+
+    if False:
+      correction_lengths = flex.double([v.length() for v in correction_vectors])
+      clorder = flex.sort_permutation(correction_lengths)
+      sorted_cl = correction_lengths.select(clorder)
+      print "SORTED LIST OF ",len(sorted_cl)
+      #print list(sorted_cl)
+      yaxis = xrange(len(sorted_cl))
+      from matplotlib import pyplot as plt
+      plt.plot(sorted_cl,yaxis,"r+")
+      plt.show()
 
     #insert code here to remove correction length outliers...
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
+    # also remove outliers for the purpose of reporting RMS
 
     #Other checks to be implemented:
     # spot is within active area of detector; tiled or circular detector
@@ -321,7 +352,7 @@ class IntegrationMetaProcedure(simple_integration):
     PS_adapt.query(query)
 
     self.BSmasks = []
-    self.positional_correction_mapping( predicted=predicted,
+    self.positional_correction_mapping( predicted=self.predicted,
                                         correction_vectors = correction_vectors,
                                         PS_adapt = PS_adapt,
                                         IS_adapt = IS_adapt,
@@ -378,10 +409,10 @@ class IntegrationMetaProcedure(simple_integration):
     flex_sorted = flex.int()
     for item in self.sorted:
       flex_sorted.append(item[0]);flex_sorted.append(item[1]);
-    self.detector_xy_draft = self.safe_background( predicted=predicted,
+    self.detector_xy_draft = self.safe_background( predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted);
-    for i in xrange(len(predicted)): # loop over predicteds
+    for i in xrange(len(self.predicted)): # loop over predicteds
       B_S_mask = {}
       keys = self.get_bsmask(i)
       for k in xrange(0,len(keys),2):
@@ -533,8 +564,7 @@ class IntegrationMetaProcedure(simple_integration):
   def user_callback(self,dc,wxpanel,wx):
     # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
     # BLUE: predictions
-    for ix,pred in enumerate(self.inputai.predict_all(
-               self.image_centers[self.image_number],self.limiting_resolution)):
+    for ix,pred in enumerate(self.predicted):
         if self.BSmasks[ix].keys()==[]:continue
         x,y = wxpanel._img.image_coords_as_screen_coords(
           pred[1]/self.pixel_size,
@@ -563,7 +593,7 @@ class IntegrationMetaProcedure(simple_integration):
         dc.SetBrush(wx.CYAN_BRUSH)
         dc.DrawCircle(x,y,1)
 
-    for spot in self.spotfinder.images[self.frames[0]]["inlier_spots"]:
+    for spot in self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]:
       # RED: spotfinder spot pixels
       for pxl in spot.bodypixels:
         x,y = wxpanel._img.image_coords_as_screen_coords(

@@ -284,6 +284,7 @@ class SettingsPanel (wx.Panel) :
 #    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.invert_ctrl)
 
   def collect_values (self) :
+   if self.settings.enable_collect_values:
     self.settings.zoom_level = self.zoom_ctrl.GetSelection()
     self.settings.brightness = self.brightness_ctrl.GetValue()
     self.settings.show_beam_center = self.center_ctrl.GetValue()
