@@ -135,7 +135,7 @@ def compute_grid_step_from_atom_radius_and_number_of_grid_points(
   return result
 
 class model_to_map(object):
-  def __init__(self, xray_structure, f_obs, map_type,
+  def __init__(self, xray_structure, f_obs, scattering_table, map_type,
                      resolution_factor, high_resolution, low_resolution,
                      use_kick_map,
                      other_fft_map = None):
@@ -180,6 +180,7 @@ class model_to_map(object):
       #
       self.fmodel = mmtbx.utils.fmodel_simple(
         xray_structures = [xray_structure],
+        scattering_table=scattering_table,
         f_obs           = f_obs,
         r_free_flags    = r_free_flags,
         skip_twin_detection = True, # XXX remove once Peter supports map type strings
@@ -432,6 +433,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     model_to_map_obj_1 = model_to_map(
       xray_structure    = xrs,
       f_obs             = data_and_flags.f_obs,
+      scattering_table = params.scattering_table,
       map_type          = params.map_1.map_type,
       resolution_factor = grid_step/data_and_flags.f_obs.d_min(),
       use_kick_map      = params.map_1.use_kick_map,
@@ -465,6 +467,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     model_to_map_obj_2 = model_to_map(
       xray_structure    = xrs,
       f_obs             = data_and_flags.f_obs,
+      scattering_table = params.scattering_table,
       map_type          = params.map_2.map_type,
       resolution_factor = grid_step/data_and_flags.f_obs.d_min(),
       other_fft_map     = fft_map_1,

@@ -255,6 +255,7 @@ def run(args, log = sys.stdout):
   print >> log, "Bulk solvent correction and anisotropic scaling:"
   fmodel = mmtbx.utils.fmodel_simple(
     xray_structures         = [xray_structure],
+    scattering_table        = params.maps.scattering_table,
     f_obs                   = f_obs,
     r_free_flags            = r_free_flags,
     outliers_rejection      = params.maps.input.reflection_data.outliers_rejection,

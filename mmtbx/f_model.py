@@ -954,6 +954,7 @@ class manager(manager_mixin):
     return phenix_masks.nu(fmodel = self, params = params)
 
   def update_f_hydrogens(self, log=None):
+    if(self.xray_structure is None): return None
     def f_k_exp_scaled(k,b,ss,f):
       return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
     hds = self.xray_structure.hd_selection()
@@ -969,8 +970,10 @@ class manager(manager_mixin):
     self.update_core(f_part2 =
       fh.customized_copy(data=flex.complex_double(fh.data().size(),0)))
     rws = self.r_work()
-    for b in [0]+range(-b_min,b_min+50,1):
-      for k in [0]+[i/10. for i in xrange(11)]:
+    b_range = [0]+range(-b_min,b_min+50,1)
+    k_range = [i/10. for i in xrange(11)]
+    for b in b_range:
+      for k in k_range:
         fh_kb = f_k_exp_scaled(k = k, b = b, ss = ss, f = fh.deep_copy())
         self.update_core(f_part2 = fh_kb)
         rw = self.r_work()
