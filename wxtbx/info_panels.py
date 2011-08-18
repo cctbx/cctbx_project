@@ -93,7 +93,9 @@ class ReflectionFileInfo (InfoPanelBase) :
     grid = wx.FlexGridSizer(cols=2)
     box_szr.Add(grid, 1, wx.EXPAND)
     for line in info_list[1:] :
-      label, value = line.split(":")
+      fields = line.split(":")
+      label = fields[0]
+      value = ":".join(fields[1:])
       txt1 = wx.StaticText(self.info_panel, -1, label + ":")
       font = txt1.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
