@@ -115,7 +115,7 @@ class qsub_list_view (wx.ListCtrl) :
   def RefreshAllItems (self) :
     n_items = self.dataSource.GetItemCount()
     self.SetItemCount(n_items)
-    self.RefreshItems(0, n_items)
+    self.RefreshItems(0, n_items - 1)
 
   def GetSelectedJobIDs (self) :
     jobs = []

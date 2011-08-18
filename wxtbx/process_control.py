@@ -255,7 +255,8 @@ def run_function_as_process_in_dialog (
     target=thread_function,
     callback_final=cb.callback_final,
     callback_err=cb.callback_error,
-    buffer_stdout=True)
+    buffer_stdout=True,
+    sleep_after_start=1)
   result = None
   if (dlg.run(p) == wx.ID_OK) :
     result = dlg.get_result()
@@ -295,12 +296,12 @@ if (__name__ == "__main__") :
     callback=None)
   if (result is not None) :
     assert approx_equal(result, 2635152.11891, eps=0.0001)
-  result2 = run_function_as_thread_in_dialog(
-    parent=None,
-    thread_function=test_function_2,
-    title="Test subprocess",
-    message="Running test function in Python thread...")
-  assert approx_equal(result2, 21081692.7462, eps=0.0001)
+  #result2 = run_function_as_thread_in_dialog(
+  #  parent=None,
+  #  thread_function=test_function_2,
+  #  title="Test subprocess",
+  #  message="Running test function in Python thread...")
+  #assert approx_equal(result2, 21081692.7462, eps=0.0001)
   try :
     result = run_function_as_process_in_dialog(
       parent=None,
