@@ -60,8 +60,8 @@ namespace mmtbx { namespace geometry_restraints {
           } else {
             plot[i] = values[i];
           }
-          if (values[i] > values_max) {
-            values_max = values[i];
+          if (plot[i] > values_max) {
+            values_max = plot[i];
           }
         }
       }
