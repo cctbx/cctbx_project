@@ -101,14 +101,13 @@ scope { boost::python::object *builder;
  *------------------------------------------------------------------*/
 
 cif
-	:	(COMMENTS)? (WHITESPACE)* ( data_block ( WHITESPACE* data_block )* (WHITESPACE)* )?
+	:	(COMMENTS)? ( data_block ( data_block )* )?
 	;
 
 loop_body
 	:	v1=value
 { ($data_items::curr_loop_values)->push_back(to_std_string($v1.start)); }
-	      ( WHITESPACE+
-	        v2=value
+	      ( v2=value
 { ($data_items::curr_loop_values)->push_back(to_std_string($v2.start)); }
 	       )*
 	;
@@ -116,7 +115,7 @@ loop_body
 save_frame
 	:	SAVE_FRAME_HEADING
 { ($parse::builder)->attr("start_save_frame")(to_std_string($SAVE_FRAME_HEADING)); }
-	      ( WHITESPACE+ data_items )+ WHITESPACE+ SAVE
+	      ( data_items )+ SAVE
 { ($parse::builder)->attr("end_save_frame")(); }
 	;
 
@@ -130,13 +129,13 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 @after { delete $data_items::curr_loop_values;
  	 delete $data_items::curr_loop_headers;
 }
-	:	TAG WHITESPACE* value
+	:	TAG value
 {
   ($parse::builder)->attr("add_data_item")(
   to_std_string($TAG),
   to_std_string($value.start));
 }
-	      | loop_header WHITESPACE* loop_body
+	      | loop_header loop_body
 {
   scitbx::af::shared<std::string> &values = *($data_items::curr_loop_values);
   int n_cols = $data_items::curr_loop_headers->size();
@@ -160,16 +159,16 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 data_block
 	:	( DATA_BLOCK_HEADING
 { ($parse::builder)->attr("add_data_block")(to_std_string($DATA_BLOCK_HEADING)); }
-	      ( WHITESPACE+ ( data_items | save_frame ) )*
+	      ( ( data_items | save_frame ) )*
 	      )  
-	      | ( {!$parse::strict}?=>GLOBAL_ ( WHITESPACE+ ( data_items | save_frame ) )* ) // global blocks are ignored
+	      | ( {!$parse::strict}?=>GLOBAL_ ( ( data_items | save_frame ) )* ) // global blocks are ignored
 	;
 	
 
 loop_header
-	:	LOOP_ ( WHITESPACE+ TAG
+	:	LOOP_ ( TAG
 { ($data_items::curr_loop_headers)->push_back(to_std_string($TAG)); }
-		 )+ WHITESPACE
+		 )+
 	;
 
 /*------------------------------------------------------------------
@@ -347,4 +346,5 @@ NON_BLANK_CHAR
 WHITESPACE
 	: 	( '\t' | ' ' | EOL | '\u000C' )+
 		//{ $channel = HIDDEN; }
+		{ SKIP(); }
 	;
