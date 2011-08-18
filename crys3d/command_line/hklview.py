@@ -4,7 +4,9 @@
 
 from crys3d.hklview import master_phil
 from crys3d.hklview.frames import *
+from wxtbx import icons
 import iotbx.phil
+import wx
 import sys
 
 def run (args) :
@@ -28,6 +30,13 @@ def run (args) :
       reflection_file_def="data")
     settings = pcl.work.extract()
   a = wx.App(0)
+  app_icon = wx.EmptyIcon()
+  app_icon.CopyFromBitmap(icons.hklview_3d.GetBitmap())
+  if (wx.VERSION >= (2,9)) :
+    tb_icon = wx.TaskBarIcon(wx.TBI_DOCK)
+  else :
+    tb_icon = wx.TaskBarIcon()
+  tb_icon.SetIcon(app_icon, "PHENIX data viewer")
   a.hklview_settings = settings
   f = HKLViewFrame(None, -1, "Reflection data viewer", size=(1024,768))
   f.Show()
