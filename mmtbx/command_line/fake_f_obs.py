@@ -33,7 +33,7 @@ f_obs {
     atomic_model {
       ensemble_size = 20
         .type = int
-      add_hydrogens = True
+      add_hydrogens = False
         .type = bool
       tls {
         max_tl = 2

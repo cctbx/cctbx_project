@@ -20,6 +20,7 @@ class fast_maps_from_hkl_file (object) :
   def __init__ (self,
                 file_name,
                 xray_structure,
+                scattering_table="wk1995",
                 f_label=None,
                 r_free_label=None,
                 map_out=None,
@@ -88,6 +89,7 @@ class fast_maps_from_hkl_file (object) :
       log              = null_out())
     fmodel = mmtbx.utils.fmodel_simple(
       xray_structures=[self.xray_structure],
+      scattering_table = self.scattering_table,
       f_obs=self.f_obs,
       r_free_flags=self.r_free_flags,
       outliers_rejection=True,

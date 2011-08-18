@@ -1512,8 +1512,9 @@ def xtriage(f_obs):
   return twin_laws
 
 def fmodel_simple(f_obs,
-                  xray_structures          = None,
-                  r_free_flags             = None,
+                  xray_structures,
+                  scattering_table,
+                  r_free_flags,
                   target_name              = "ml",
                   bulk_solvent_and_scaling = True,
                   bss_params               = None,
@@ -1531,6 +1532,12 @@ def fmodel_simple(f_obs,
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
   bss_params.apply_back_trace_of_b_cart = apply_back_trace_of_b_cart
+  #
+  if(scattering_table != "neutron" and f_obs.d_min()>1.01):
+    for xrs in xray_structures:
+      hd_sel = xrs.hd_selection()
+      xrs.set_occupancies(value = 0, selection = hd_sel)
+  #
   def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),
@@ -1623,6 +1630,8 @@ def fmodel_simple(f_obs,
       if(sel is not None and sel.count(False) > 0):
         fmodel_result.update_solvent_and_scale(params = bss_params, verbose = -1)
     fmodel = fmodel_result
+  if(scattering_table != "neutron" and f_obs.d_min()>1.01):
+    fmodel.update_f_hydrogens(log=log)
   return fmodel
 
 class process_command_line_args(object):
@@ -1963,9 +1972,12 @@ class guess_observation_type(object):
         elif(ftype=="IFORCE"):
           f = f_obs.f_as_f_sq()
         f.set_observation_type_xray_amplitude()
+        scattering_table = "wk1995"
+        if(dtype=="N"): scattering_table="neutron"
         fmodel = self.get_r_factor(
           f_obs               = f.deep_copy(),
           f_calc              = f_calc.deep_copy(),
+          scattering_table    = scattering_table,
           xray_structure      = xrs.deep_copy_scatterers(),
           twin_switch_tolerance = 5.,
           skip_twin_detection = True)
@@ -2042,8 +2054,8 @@ class guess_observation_type(object):
         column_root_label = "R-free-flags")
     return mtz_dataset.mtz_object()
 
-  def get_r_factor(self, f_obs, f_calc, xray_structure, twin_switch_tolerance,
-                   skip_twin_detection):
+  def get_r_factor(self, f_obs, f_calc, scattering_table, xray_structure,
+        twin_switch_tolerance, skip_twin_detection):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
     for trial in xrange(3):
       result = outlier_rejection.outlier_manager(
@@ -2082,6 +2094,7 @@ class guess_observation_type(object):
     params.target = "ls_wunit_k1"
     fmodel = fmodel_simple(
       f_obs                    = f_obs,
+      scattering_table         = scattering_table,
       xray_structures          = [xray_structure],
       r_free_flags             = r_free_flags,
       target_name              = "ls_wunit_k1",
@@ -2280,7 +2293,7 @@ input {
 
 class cmdline_load_pdb_and_data (object) :
   def __init__ (self, args, master_phil, out=sys.stdout,
-      process_pdb_file=True, create_fmodel=True) :
+      process_pdb_file=True, create_fmodel=True, scattering_table="wk1995") :
     self.args = args
     self.master_phil = master_phil
     cmdline = process_command_line_args(
@@ -2334,6 +2347,7 @@ class cmdline_load_pdb_and_data (object) :
     if create_fmodel :
       fmodel = fmodel_simple(
         xray_structures=[xray_structure],
+        scattering_table=scattering_table,
         f_obs=data_and_flags.f_obs,
         r_free_flags=data_and_flags.r_free_flags)
       self.fmodel = fmodel
@@ -2491,3 +2505,69 @@ def assign_chain_ids(pdb_hierarchy, seg_dict):
       rename_txt = rename_txt + \
       "segID %s renamed chain %s for Reduce N/Q/H analysis\n" % (segid, new_id)
   return rename_txt
+
+def equivalent_sigma_from_cumulative_histogram_match(
+      map_1, map_2, sigma_1, tail_cutoff=3, step=1, verbose=True):
+  size_1 = map_1.size()
+  size_2 = map_2.size()
+  #
+  assert size_1 == size_2
+  #
+  fmt = "%5.2f %6.2f %6.2f"
+  if(verbose): print flex.min(map_1), flex.min(map_2)
+  start = max(-tail_cutoff*100,int(min(flex.min(map_1), flex.min(map_2)))*100)
+  end   = min(tail_cutoff*100+step,int(max(flex.max(map_1), flex.max(map_2)))*100)
+  sigmas = flex.double()
+  c_1 = flex.double()
+  c_2 = flex.double()
+  for sig in [i/100. for i in range(start,end,step)]:
+    s_a = (map_1>=sig).count(True)*100./size_1
+    s_o = (map_2>=sig).count(True)*100./size_2
+    if(verbose): print fmt % (sig, s_o, s_a)
+    sigmas.append(sig)
+    c_1.append(s_a)
+    c_2.append(s_o)
+  #
+  if(verbose): print
+  #
+  s = flex.sort_permutation(flex.abs(sigmas-sigma_1))
+  tmp1 = c_1.select(s)[0]
+  s = flex.sort_permutation(flex.abs(c_2-tmp1))
+  tmp1 = c_2.select(s)[0]
+  tmp2 = sigmas.select(s)[0]
+  #
+  if(verbose): print tmp1, tmp2
+  #
+  return tmp2
+
+def optimize_h(fmodel, pdb_hierarchy=None, model=None, log=None, verbose=True):
+  assert [pdb_hierarchy, model].count(None)==1
+  if(log is None): log = sys.stdout
+  if(fmodel.xray_structure.hd_selection().count(True)==0): return
+  if(verbose):
+    print >> log
+    print >> log, "Optimizing scattering from H..."
+    print >> log, "  before optimization: r_work=%6.4f r_free=%6.4f"%(
+    fmodel.r_work(), fmodel.r_free())
+  if(model is not None):
+    assert_xray_structures_equal(
+      x1 = fmodel.xray_structure,
+      x2 = model.xray_structure)
+    model.reset_occupancies_for_hydrogens()
+  if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
+  rmh_sel = mmtbx.utils.identify_rotatable_hydrogens(
+    pdb_hierarchy  = pdb_hierarchy,
+    xray_structure = fmodel.xray_structure,
+    log            = log)
+  fmodel.xray_structure.set_occupancies(value = 0, selection = rmh_sel)
+  fmodel.update_f_hydrogens(log=log)
+  if(model is not None):
+    model.xray_structure = fmodel.xray_structure
+  fmodel.xray_structure.set_occupancies(value = 0,
+    selection = fmodel.xray_structure.hd_selection())
+  if(model is not None):
+    model.xray_structure = fmodel.xray_structure
+  if(verbose):
+    print >> log, "  after optimization:  r_work=%6.4f r_free=%6.4f"%(
+      fmodel.r_work(), fmodel.r_free())
+  #

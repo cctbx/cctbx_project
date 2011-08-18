@@ -12,7 +12,7 @@ import os, math
 from libtbx import group_args
 from iotbx import pdb
 from cctbx import xray
-import mmtbx.refinement
+import mmtbx.refinement.minimization
 import scitbx.lbfgs
 from mmtbx import maps
 import mmtbx.masks
@@ -293,7 +293,7 @@ def refinery(fmodels, number_of_iterations, iselection, parameter):
       lbfgs_termination_params = lbfgs_termination_params,
       collect_monitor          = False)
   except Exception, e:
-    print "Refinement failed... "
+    print "ERROR: Refinement failed... "
     print str(e)
     print "... carry on"
     return
