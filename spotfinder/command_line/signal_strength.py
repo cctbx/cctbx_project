@@ -21,6 +21,16 @@ distl {
     .type = ints
     .help = "Prior analysis of active area tiling on the detector; groups of 4 integers: UL_slow,UL_fast,LR_slow,LR_fast"
     .help = "...where UL=upper left corner, LR=lower right corner; coordinates form a Python range"
+    .expert_level = 2
+  tile_translations = None
+    .type = ints
+    .help = "For each identified tile, a group of 2 integers for slow & fast translations to correct position,"
+    .help = "given in pixels"
+    .expert_level = 2
+  tile_flags = None
+    .type = ints (value_min=0,value_max=1)
+    .help = "For each identified tile, an integer [0,1] acting as a bool to define whether to ignore its data."
+    .expert_level = 2
   %s
   pdf_output = None
     .type = str
