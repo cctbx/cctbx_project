@@ -215,6 +215,7 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
       beam_center_convention = 2
       set_convention(2,phil_params)
 
+    # XXX This is completely fictional!
     elif imageobject.vendortype=="npy_raw":
       beam_center_convention = 2
       set_convention(2,phil_params)
