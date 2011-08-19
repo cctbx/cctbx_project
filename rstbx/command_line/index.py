@@ -20,7 +20,7 @@ def run_new_horizons(args):
   new_horizons_phil.merge_command_line(args_copy)
   #new_horizons_phil.show()
   from rstbx.new_horizons.index import run_index
-  run_index(new_horizons_phil.command_extractor)
+  return run_index(new_horizons_phil.command_extractor)
   # new_horizons_phil.command_extractor is an instance of a class
   # that behaves like a libtbx.phil.scope_extract but keeps a weak link
   # back to the parent RunTimePreferences instance

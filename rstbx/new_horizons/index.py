@@ -11,16 +11,20 @@ class new_horizons_state:
       argument_module = args,
       horizons_phil = horizons_phil,
       delegate = self.index_and_integrate)
+  def process(self):
     self.organizer.process()
 
   def index_and_integrate(self,frames,files,spotfinder_results):
     self.pd = establish_dict_for_refinement(frames,spotfinder_results)
+    self.spotfinder_results = spotfinder_results
+    self.frames = frames
     #------------------------------------------------------------
     ai,P = index_and_refine(pd = self.pd,
                             rawframes = files,
                             spotfinder_results = spotfinder_results,
                             verbose = False,
                             horizon_phil = self.horizons_phil)
+    self.indexing_ai = ai
     #------------------------------------------------------------
     if self.horizons_phil.compatibility_allow==False:
       M = best_character_to_IndexPrinter(ai,P,self.pd,True,self.horizons_phil)
@@ -66,3 +70,5 @@ def run_index(horizons_phil):
   pre_indexing_validation(horizons_phil)
   imagefile_arguments = pack_names(horizons_phil)
   S = new_horizons_state(horizons_phil,imagefile_arguments)
+  S.process()
+  return S
