@@ -26,6 +26,7 @@ class build_hkl_cif(object):
         for sub_dir in sorted(os.listdir(hkl_dir)):
           if (sub_dir.startswith(".")): continue
           hkl_sub_dir = op.join(hkl_dir, sub_dir)
+          if (os.path.isfile(hkl_sub_dir)): continue
           for node in sorted(os.listdir(hkl_sub_dir)):
             if (node.startswith(".")): continue
             if (not node.endswith(".hkl")): continue
