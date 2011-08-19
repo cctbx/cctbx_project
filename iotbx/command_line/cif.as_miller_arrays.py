@@ -1,5 +1,5 @@
 import iotbx.cif
-from libtbx import easy_pickle
+from libtbx import easy_pickle, smart_open
 from libtbx.str_utils import show_string
 import sys, os
 op = os.path
@@ -7,7 +7,8 @@ op = os.path
 def run(args):
   for f in args:
     try:
-      miller_arrays = iotbx.cif.reader(file_path=f).as_miller_arrays()
+      file_object = smart_open.for_reading(file_name=f)
+      miller_arrays = iotbx.cif.reader(file_object=file_object).as_miller_arrays()
     except KeyboardInterrupt:
       raise
     except Exception, e:
