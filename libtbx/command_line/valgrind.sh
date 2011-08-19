@@ -1,5 +1,10 @@
 #! /bin/sh
 verbose="yes"
+if [ -n "$LIBTBX_VALGRIND_TOOL" ]; then
+  tool="$LIBTBX_VALGRIND_TOOL"
+else
+  tool="memcheck"
+fi
 if [ -n "$VALGRIND_OPTS" ]; then
   for opt in $VALGRIND_OPTS; do
     if [ "$opt" == "-q" ]; then
@@ -24,7 +29,7 @@ if [ ! -n "$LIBTBX_VALGRIND" ]; then
   if [ "`uname`" = Darwin ]; then
     opt=" $opt --trace-children=yes"
   fi
-  LIBTBX_VALGRIND="valgrind --tool=memcheck$opt --suppressions=`libtbx.show_dist_paths libtbx`/valgrind-python24.supp"
+  LIBTBX_VALGRIND="valgrind --tool=$tool$opt --suppressions=`libtbx.show_dist_paths libtbx`/valgrind-python24.supp"
   if [ $? -ne 0 ]; then exit 1; fi
   export LIBTBX_VALGRIND
 fi
