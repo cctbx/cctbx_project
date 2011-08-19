@@ -302,17 +302,13 @@ class miller_array_builder(crystal_symmetry_builder):
             miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
           if key.endswith('wavelength_id'):
             self.wavelength_id_array = array
-            #if len(counts) > 1:
             wavelength_ids = counts.keys()
           elif key.endswith('crystal_id'):
             self.crystal_id_array = array
-            #if len(counts) > 1:
             crystal_ids = counts.keys()
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
-            #if len(counts) > 1:
             scale_groups = counts.keys()
-          #self._arrays.setdefault(key, array)
       for label, value in refln_loop.iteritems():
         for w_id in wavelength_ids:
           for crys_id in crystal_ids:
@@ -379,7 +375,6 @@ class miller_array_builder(crystal_symmetry_builder):
                 hl_keys = [key.replace(hl_key, 'HL_'+letter) for letter in 'ABCD']
                 hl_values = [cif_block.get(hl_key) for hl_key in hl_labels]
                 if hl_values.count(None) == 0:
-                  #selection = ~((hl_values[0] == '.') | (hl_values[0] == '?'))
                   selection = self.get_selection(
                     hl_values[0], wavelength_id=w_id,
                     crystal_id=crys_id, scale_group_code=scale_group)
