@@ -1,6 +1,9 @@
+# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8; -*-
+
 #import re
 #from iotbx.detectors.adsc         import ADSCImage
 from iotbx.detectors.detectorbase import DetectorImageBase
+from scitbx.array_family          import flex
 import cPickle as pickle
 
 #INT   = (int,)
@@ -20,22 +23,15 @@ class NpyImage(DetectorImageBase):
 
   def readHeader(self):
     import numpy
-    from scitbx.array_family import flex
-
-    print "XXX in npy readHeader() from \n", self.filename
 
     stream      = open(self.filename, "rb")
     cspad_data  = pickle.load(stream)
     stream.close()
 
-    print type(cspad_data['beamEnrg'])
-    print type(cspad_data['image'])
-    print cspad_data['image'].dtype
-
     # XXX assert that cspad_data['image'].ndim is 2?
 
     # From Philipp et al. (2007): pixel size 110 um by 110 um, 14-bit
-    # counters
+    # counters.  XXX The beamEnrg thing is still horribly wrong!
     self.parameters                         = {}
     self.parameters['SIZE1']                = cspad_data['image'].shape[0] # XXX order?
     self.parameters['SIZE2']                = cspad_data['image'].shape[1] # XXX order?
@@ -53,17 +49,21 @@ class NpyImage(DetectorImageBase):
     SI = cspad_data['image'].astype(numpy.int32)
     print SI.dtype
 
+#    x        = 626
+#    y        = 458
+#    x_size   = 185
+#    y_size   = 392
+#    x_off    = 2
+#    y_off    = 3
+#
+#    section1                           = SI[y:(y + y_size), x:(x + x_size)].cop#y()
+#    SI[y:(y + y_size), x:(x + x_size)] = numpy.ones((y_size, x_size), dtype="in#t32")
+#    SI[(y + y_off):(y + y_off + y_size),
+#       (x + x_off):(x + x_off + x_size)] = section1
 
     SI = flex.int(SI)
 
-    print "SI.focus() ", SI.focus()
-    print "max / min ", flex.max(SI), flex.min(SI)
-
     self.bin_safe_set_data(SI)
-
-    print "XXX ", type(self.bin_safe_set_data)
-
-    print "XXX leaving readHeader()"
 
 #    if not self.parameters:
 #      rawdata = open(self.filename,"rb").read(maxlength)
@@ -129,8 +129,10 @@ class NpyImage(DetectorImageBase):
 #      assert self.parameters['CCD_GONIO_NAMES'][1]=='2Theta'
 #      self.parameters['TWOTHETA'] = self.parameters['CCD_GONIO_VALUES'][2]
 
+  # This is nop, because all the data has been read by readHeader().
+  # The header information and the data are all contained in the same
+  # pickled object.
   def read(self):
-    print "XXX in npy read()"
     pass
 #    from iotbx.detectors import ReadRAXIS
 #    F = open(self.filename,'rb')
@@ -140,6 +142,39 @@ class NpyImage(DetectorImageBase):
 #         self.size1*self.bin,self.size2*self.bin,
 #         self.endian_swap_required())
 #    )
+
+
+
+  def translate_tiles(self, phil):
+
+    # XXX assert that 2 * len(phil.distl.tile_translations) ==
+    # len(phil.distl.detector_tiling)
+
+    SI_old = self.__getattr__('rawdata') # XXX Why are these called SI?
+    SI_new = flex.int(flex.grid(SI_old.focus()))
+
+    # XXX The // operator for integer division was introduced when?
+    for i in xrange(len(phil.distl.tile_translations) // 2):
+      shift_slow = phil.distl.tile_translations[2 * i + 0]
+      shift_fast = phil.distl.tile_translations[2 * i + 1]
+
+      ur_slow = phil.distl.detector_tiling[4 * i + 0]
+      ur_fast = phil.distl.detector_tiling[4 * i + 1]
+      ll_slow = phil.distl.detector_tiling[4 * i + 2]
+      ll_fast = phil.distl.detector_tiling[4 * i + 3]
+
+      print "Shifting tile at (%d, %d) by (%d, %d)" % (ur_slow, ur_fast, shift_slow, shift_fast)
+
+      #SI_new[(ur_slow + shift_slow):(ll_slow + shift_slow),
+      #       (ur_fast + shift_fast):(ll_fast + shift_fast)] =
+      #SI_old[ur_slow:ll_slow, ur_fast:ll_fast]
+
+      for s in xrange(ur_slow, ll_slow):
+        for f in xrange(ur_fast, ll_fast):
+          SI_new[s + shift_slow, f + shift_fast] = SI_old[s, f]
+
+    self.bin_safe_set_data(SI_new)
+
 
 #if __name__=='__main__':
 #  import sys
