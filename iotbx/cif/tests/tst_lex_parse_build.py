@@ -429,18 +429,20 @@ def exercise_partial_crystal_symmetry():
 
 def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adsrf).as_miller_arrays()
-  assert len(miller_arrays) == 11
+  assert len(miller_arrays) == 17
   hl_coeffs = find_miller_array_from_labels(
-    miller_arrays, ','.join(['_refln.pdbx_HL_A_iso',
-                             '_refln.pdbx_HL_B_iso',
-                             '_refln.pdbx_HL_C_iso',
-                             '_refln.pdbx_HL_D_iso']))
+    miller_arrays, ','.join([
+      'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3',
+      '_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
+      '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso']))
   assert hl_coeffs.is_hendrickson_lattman_array()
-  assert hl_coeffs.size() == 10
+  assert hl_coeffs.size() == 2
   f_meas_au = find_miller_array_from_labels(
-    miller_arrays, '_refln.F_meas_au,_refln.F_meas_sigma_au')
+    miller_arrays, ','.join([
+      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1',
+      '_refln.F_meas_au', '_refln.F_meas_sigma_au']))
   assert f_meas_au.is_xray_amplitude_array()
-  assert f_meas_au.size() == 10
+  assert f_meas_au.size() == 5
   assert f_meas_au.sigmas() is not None
   assert f_meas_au.space_group_info().symbol_and_number() == 'C 1 2 1 (No. 5)'
   assert approx_equal(f_meas_au.unit_cell().parameters(),
@@ -458,6 +460,11 @@ def exercise_mmcif_structure_factors():
   #
   miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
   assert len(miller_arrays) == 7
+  f_calc = find_miller_array_from_labels(
+    miller_arrays, ','.join([
+      'crystal_id=2', '_refln.F_calc', '_refln.phase_calc']))
+  assert f_calc.is_complex_array()
+  assert f_calc.size() == 4
 
 def find_miller_array_from_labels(miller_arrays, labels):
   for ma in miller_arrays:
@@ -497,11 +504,11 @@ _refln.pdbx_HL_D_iso
 1 1 1 o    0    2    4   735.40   8.43   0.476  -8.605  -4.861   0.921
 1 1 1 o    0    2    5   433.70   4.76   2.453  -1.663   0.000  -9.540
 1 1 1 o    0    2    6   435.20   4.96  -9.081   3.661   1.511  -2.736
-1 1 1 o    0    2    7   427.50   4.56   8.677  -0.013   2.307  -4.220
-1 1 1 o    0    2    8   661.00   7.26  -6.468   5.112  -5.411  -6.731
-1 1 1 o    0    2    9   211.90   2.64  -2.279   0.914   0.455  -6.038
-1 1 1 f    0    2   10   466.80   5.01  -0.005   6.330  -1.916  -0.598
-1 1 1 o    0    2   11   424.20   4.66  -0.938   7.011  -1.603   1.724
+2 3 1 o    0    2    7   427.50   4.56   8.677  -0.013   2.307  -4.220
+2 3 1 o    0    2    8   661.00   7.26  -6.468   5.112  -5.411  -6.731
+2 3 4 o    0    2    9   211.90   2.64  -2.279   0.914   0.455  -6.038
+2 3 4 f    0    2   10   466.80   5.01  -0.005   6.330  -1.916  -0.598
+2 3 4 o    0    2   11   424.20   4.66  -0.938   7.011  -1.603   1.724
 #END
 data_r3adrAsf
 #
@@ -575,10 +582,10 @@ _refln.fom
 1 1 1       0    0   12 o    4700.0  113.0   3962.4   360.0  1.00
 1 1 1       0    0   18 o   10214.0  222.9   8775.9   360.0  1.00
 1 1 1       0    0   24 o    8268.9  192.9  11557.1   180.0  1.00
-1 1 1       0    0   30 o    3274.6   77.5   2214.5     0.0  1.00
-1 1 1       0    0   36 o     317.8   30.4   1993.3     0.0  0.05
-1 1 1       0    0   42 o   12026.4  286.2   6514.5   180.0  1.00
-1 1 1       0    0   48 o    1972.6   51.4   1357.9   180.0  0.91
+1 2 1       0    0   30 o    3274.6   77.5   2214.5     0.0  1.00
+1 2 1       0    0   36 o     317.8   30.4   1993.3     0.0  0.05
+1 2 1       0    0   42 o   12026.4  286.2   6514.5   180.0  1.00
+1 2 1       0    0   48 o    1972.6   51.4   1357.9   180.0  0.91
 """
 
 def exercise():
