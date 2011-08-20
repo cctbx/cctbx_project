@@ -1569,6 +1569,8 @@ spotfinder/applications/practical_heuristics.py -text
 spotfinder/applications/signal_strength.py -text
 spotfinder/applications/stats_distl.py -text
 spotfinder/applications/wrappers.py -text
+spotfinder/applications/xfel/__init__.py -text
+spotfinder/applications/xfel/cxi_run5.py -text
 spotfinder/array_family/SConscript -text
 spotfinder/array_family/__init__.py -text
 spotfinder/array_family/flex.py -text
