@@ -12,6 +12,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/math/interpolation.h>
 
 #include <cmath>
 #include <iostream>
@@ -68,8 +69,10 @@ namespace mmtbx { namespace geometry_restraints {
 
       double get_score (
         double phi,
-        double psi)
+        double psi,
+        bool use_splines=false)
       {
+        using scitbx::math::interpolate_at_point;
         phi = convert_angle(phi);
         psi = convert_angle(psi);
         //std::cout << phi << " " << psi << "\n";
@@ -94,7 +97,21 @@ namespace mmtbx { namespace geometry_restraints {
           psi_2 += 1;
         }
         double r_phi_psi = 0;
-        if (phi_2 == phi_1) {
+        if (use_splines) {
+          double x_phi = (phi - (double) phi_1) / 2.0;
+          double x_psi = (psi - (double) psi_1) / 2.0;
+          af::tiny<double, 4> phi_n(0.0);
+          for (int i = -1; i < 3; i++) {
+            int phi_i = phi_1 + (i * 2);
+            af::tiny<double, 4> psi_n(0.0);
+            for (int j = -1; j < 3; j++) {
+              int psi_j = psi_1 + (j * 2);
+              psi_n[j+1] = get_point(phi_i, psi_j);
+            }
+            phi_n[i+1] = interpolate_at_point(psi_n, x_psi);
+          }
+          r_phi_psi = interpolate_at_point(phi_n, x_phi);
+        } else if (phi_2 == phi_1) {
           if (psi_2 == psi_1) {
             r_phi_psi = get_point(phi_1, psi_1);
           } else {
