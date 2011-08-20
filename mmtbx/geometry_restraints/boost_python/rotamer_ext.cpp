@@ -94,7 +94,8 @@ namespace {
         arg("scale_allowed")=1.0)))
       .def("get_score", &lookup_table::get_score, (
         arg("phi"),
-        arg("psi")))
+        arg("psi"),
+        arg("use_splines")=false))
       .def("get_energy", &lookup_table::get_energy, (
         arg("phi"),
         arg("psi")))
