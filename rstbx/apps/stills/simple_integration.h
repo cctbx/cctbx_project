@@ -30,6 +30,18 @@ namespace rstbx { namespace integration {
       }
   };
 
+  template <typename ArrType>
+  void
+  show_array( ArrType const& A ){
+    af::flex_grid<> kg = A.accessor();
+    for (int ii=kg.origin()[0];ii<kg.last()[0];++ii){
+      for (int jj=kg.origin()[1];jj<=kg.last()[1];++jj){
+        int val = A[ kg(af::adapt(af::tiny<int, 2>(ii,jj))) ]?1:7;
+            std::cout<<val;
+      } std::cout<<std::endl;
+    }
+  }
+
   struct simple_integration {
     /* member data */
     double pixel_size;
@@ -140,7 +152,39 @@ namespace rstbx { namespace integration {
       annlib_adaptbx::AnnAdaptor const& OS_adapt,
       scitbx::af::shared<int > flex_sorted
       ){
-      int guard_width_sq =10;
+      int guard_width_sq = 11;
+
+      /* Set up some needed data structures based on flex_sorted,
+         which is a generic sorted list of points (XY) close in distance
+         to a central point */
+      scitbx::af::shared<scitbx::vec2<int> >increments_xy;
+      scitbx::af::shared<int >increments_d_sq;
+      int min_x=0, min_y=0, max_x=0, max_y=0;
+      for (int isort=0; isort<flex_sorted.size(); isort+=2){
+        scitbx::vec2<int> increment(flex_sorted[isort],
+                                    flex_sorted[isort+1]);
+        if (flex_sorted[isort]<min_x) min_x = flex_sorted[isort];
+        if (flex_sorted[isort+1]<min_y) min_y = flex_sorted[isort+1];
+        if (flex_sorted[isort]>max_x) max_x = flex_sorted[isort];
+        if (flex_sorted[isort+1]>max_y) max_y = flex_sorted[isort+1];
+        increments_xy.push_back(increment);
+        increments_d_sq.push_back( increment[0]*increment[0] +
+                                   increment[1]*increment[1] );
+      }
+      int i_guard_width_limit = 0;
+      for (int isort=0; isort<increments_xy.size(); ++isort){
+        if (increments_xy[isort].length_sq() >= guard_width_sq){
+          i_guard_width_limit = isort;
+          break;
+        }
+      }
+
+      //set up a mask array to show the spot along with potential neighbors
+      af::flex_grid<>::index_type origin(af::adapt(af::tiny<int, 2>(min_x,min_y)));
+      af::flex_grid<>::index_type last(af::adapt(af::tiny<int, 2>(max_x,max_y)));
+      af::flex_grid<> g(origin, last, false);
+      af::flex_bool spot_grid(g);
+
       for (int i=0; i<predicted.size(); ++i){
         scitbx::vec3<double> pred = predicted[i];
         double predX = pred[0]/pixel_size;
@@ -148,8 +192,7 @@ namespace rstbx { namespace integration {
         scitbx::vec2<double>correction = corrections[i];
         mask_t const& I_S_mask = ISmasks[i];
         // now consider the background
-        mask_t B_S_mask;
-        int i_bs = 0;
+        mask_t altB_S_mask;
         scitbx::vec2<int> spot_position(
           round(predX + correction[0]),
           round(predY + correction[1]) );
@@ -175,30 +218,74 @@ namespace rstbx { namespace integration {
             }
           }
 
-          for (int isort=0; isort<flex_sorted.size(); isort+=2){
-            scitbx::vec2<int> increment(flex_sorted[isort],
-                                        flex_sorted[isort+1]);
-            scitbx::vec2<int> candidate_bkgd = spot_position + increment;
-            if (spot_keys.find(candidate_bkgd)==spot_keys.end()){
-             //eliminate if in guard region
-             bool guard = false;
-             for (mask_t::const_iterator key=spot_keys.begin();
-               key != spot_keys.end(); ++key){
-               int dx = candidate_bkgd[0]-(key->first)[0];
-               int dy = candidate_bkgd[1]-(key->first)[1];
-               if (dx*dx + dy*dy < guard_width_sq){
-                 guard = true;
-                 break;
-               }
-             }
-             if (guard){ continue; }
-             i_bs += 1;
-             B_S_mask[candidate_bkgd] = true;
-            }
-            if (i_bs == base_spot_size){break;}
+          int kmin_x=0, kmin_y=0, kmax_x=0, kmax_y=0;
+          //insert here to actually make the compound mask
+          for (mask_t::const_iterator mt = spot_keys.begin(); mt!=spot_keys.end(); ++mt){
+                  int thisx = (mt->first - spot_position)[0];
+                  int thisy = (mt->first - spot_position)[1];
+
+                  if (thisx<kmin_x) kmin_x = thisx;
+                  if (thisy<kmin_y) kmin_y = thisy;
+                  if (thisx>kmax_x) kmax_x = thisx;
+                  if (thisy>kmax_y) kmax_y = thisy;
           }
+
+          af::flex_grid<>::index_type korigin(
+                  af::adapt(af::tiny<int, 2>(kmin_x,kmin_y)));
+          af::flex_grid<>::index_type klast(af::adapt(af::tiny<int, 2>(kmax_x,kmax_y)));
+          af::flex_grid<> kg(korigin, klast, false);
+          af::flex_bool kspot_grid(kg);
+
+          for (mask_t::const_iterator mt = spot_keys.begin(); mt!=spot_keys.end(); ++mt){
+            kspot_grid[
+              kg(af::adapt(mt->first - spot_position)) ]=true;
+          }
+
+          //show_array<af::flex_bool>(kspot_grid);
+          //kspot_grid is a mask with the focus spot + all local, potentially overlapping spots
+
+          //Now construct the guard mask
+          af::flex_bool guard_mask = spot_grid.deep_copy();
+          //show_array<af::flex_bool>(guard_mask);
+          for (int ii=std::max(kg.origin()[0],g.origin()[0]);
+                   ii<std::min(kg.last()[0],g.last()[0]);++ii){
+            for (int jj=std::max(kg.origin()[1],g.origin()[1]);
+                     jj<std::min(kg.last()[1],g.last()[1]);++jj){
+              guard_mask[ g(af::adapt(af::tiny<int, 2>(ii,jj))) ]|=
+              kspot_grid[kg(af::adapt(af::tiny<int, 2>(ii,jj))) ];
+            }
+          }
+          //show_array<af::flex_bool>(guard_mask);
+
+          //Now iterate over increments to find background pixels.
+          int alt_bs = 0;
+          for (int isort=0; isort<increments_xy.size(); ++isort){
+            if (guard_mask[g(af::adapt(increments_xy[isort]))]==true){continue;}
+            // pixels in the spot mask have been eliminated, now eliminate guard pixels
+            bool in_guard_zone=false;
+            for (int iguard=1; iguard<i_guard_width_limit; ++iguard){
+              if (guard_mask[g(
+                  af::adapt(increments_xy[isort] + increments_xy[iguard]))]==true){
+                   in_guard_zone=true;}
+            }
+            if (in_guard_zone){continue;}
+            scitbx::vec2<int>candidate_bkgd=spot_position+increments_xy[isort];
+            altB_S_mask[candidate_bkgd] = true;
+            alt_bs+=1;
+            if (alt_bs == base_spot_size){break;}
+          }
+          /* Diagnostics only
+          af::flex_bool b_mask = spot_grid.deep_copy();
+          for (mask_t::const_iterator key=altB_S_mask.begin();
+               key != altB_S_mask.end(); ++key){
+              b_mask[ g(af::adapt(key->first - spot_position)) ]=true;
+          }
+          printf("Background:\n");
+          show_array<af::flex_bool>(b_mask);
+          */
         }
-        BSmasks.push_back(B_S_mask);
+
+        BSmasks.push_back(altB_S_mask);
       }
       scitbx::af::shared<scitbx::vec2<double> > return_detector_xy_draft;
       for (int i=0; i<detector_xy_draft.size(); ++i){
