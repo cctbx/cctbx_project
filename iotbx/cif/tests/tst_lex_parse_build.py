@@ -459,7 +459,7 @@ def exercise_mmcif_structure_factors():
   assert pdbx_I_minus.space_group() is None   # this CIF block
   #
   miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
-  assert len(miller_arrays) == 7
+  assert len(miller_arrays) == 11
   f_calc = find_miller_array_from_labels(
     miller_arrays, ','.join([
       'crystal_id=2', '_refln.F_calc', '_refln.phase_calc']))
