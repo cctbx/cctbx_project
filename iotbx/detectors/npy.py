@@ -134,21 +134,11 @@ class NpyImage(DetectorImageBase):
   # pickled object.
   def read(self):
     pass
-#    from iotbx.detectors import ReadRAXIS
-#    F = open(self.filename,'rb')
-#    F.seek(self.dataoffset())
-#    chardata = F.read(self.size1 * self.size2 * self.integerdepth() )
-#    self.bin_safe_set_data( ReadRAXIS(chardata,self.dataoffset(),
-#         self.size1*self.bin,self.size2*self.bin,
-#         self.endian_swap_required())
-#    )
-
 
 
   def translate_tiles(self, phil):
 
-    # XXX assert that 2 * len(phil.distl.tile_translations) ==
-    # len(phil.distl.detector_tiling)
+    assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
 
     SI_old = self.__getattr__('rawdata') # XXX Why are these called SI?
     SI_new = flex.int(flex.grid(SI_old.focus()))
@@ -163,18 +153,17 @@ class NpyImage(DetectorImageBase):
       ll_slow = phil.distl.detector_tiling[4 * i + 2]
       ll_fast = phil.distl.detector_tiling[4 * i + 3]
 
-      print "Shifting tile at (%d, %d) by (%d, %d)" % (ur_slow, ur_fast, shift_slow, shift_fast)
+      #print "Shifting tile at (%d, %d) by (%d, %d)" % (ur_slow, ur_fast, shift_slow, shift_fast)
 
-      #SI_new[(ur_slow + shift_slow):(ll_slow + shift_slow),
-      #       (ur_fast + shift_fast):(ll_fast + shift_fast)] =
-      #SI_old[ur_slow:ll_slow, ur_fast:ll_fast]
-
-      for s in xrange(ur_slow, ll_slow):
-        for f in xrange(ur_fast, ll_fast):
-          SI_new[s + shift_slow, f + shift_fast] = SI_old[s, f]
+      SI_new.matrix_paste_block_in_place(
+        block = SI_old.matrix_copy_block(
+          i_row=ur_slow,i_column=ur_fast,
+          n_rows=ll_slow-ur_slow, n_columns=ll_fast-ur_fast),
+        i_row = ur_slow + shift_slow,
+        i_column = ur_fast + shift_fast
+      )
 
     self.bin_safe_set_data(SI_new)
-
 
 #if __name__=='__main__':
 #  import sys
