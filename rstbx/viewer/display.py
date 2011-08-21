@@ -103,7 +103,7 @@ class XrayView (wx.Panel) :
     scale = self.get_scale()
     if (scale >= 4) :
       bg_masks = self._img.get_drawable_background_mask()
-      dc.SetPen(wx.YELLOW_PEN)
+      #dc.SetPen(wx.YELLOW_PEN)
       for (x, y) in bg_masks :
         dc.DrawCircle(x,y,1)
       int_masks = self._img.get_drawable_integration_mask()
@@ -112,7 +112,7 @@ class XrayView (wx.Panel) :
         dc.DrawCircle(x,y,1)
     else :
       predictions = self._img.get_drawable_predictions()
-      dc.SetPen(wx.YELLOW_PEN)
+      #dc.SetPen(wx.YELLOW_PEN)
       dc.SetBrush(wx.TRANSPARENT_BRUSH)
       for (x, y) in predictions :
         dc.DrawCircle(x, y, 5*scale)
