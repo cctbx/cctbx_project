@@ -8,7 +8,6 @@
 #include <iotbx/cif/cifParser.h>
 #include <iotbx/cif/utils.h>
 
-#include <boost/python/object.hpp>
 #include <boost/noncopyable.hpp>
 
 namespace iotbx { namespace cif {
@@ -20,7 +19,7 @@ class parser : private boost::noncopyable
 
     parser() {}
 
-    parser(std::string filename, boost::python::object& builder,
+    parser(std::string filename, builder_base* builder,
            bool strict=true)
     {
       input = antlr3AsciiFileStreamNew(pANTLR3_UINT8(filename.c_str()));
