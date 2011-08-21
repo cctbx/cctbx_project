@@ -43,12 +43,12 @@ options {
   #undef max
 #endif
 #include <scitbx/array_family/shared.h>
+#include <iotbx/cif/builder.h>
 #ifdef min_redefined
   #define max max_redefined
   #define min min_redefined
 #endif
 
-#include <boost/python/object.hpp>
 }
 
 @parser::context
@@ -87,13 +87,12 @@ std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
  *------------------------------------------------------------------*/
 
 // The start rule
-parse[boost::python::object & builder_, bool strict_]
-scope { boost::python::object *builder;
+parse[iotbx::cif::builder_base* builder_, bool strict_]
+scope { iotbx::cif::builder_base* builder;
         bool strict; }
 @init {
- $parse::builder = new boost::python::object(builder_);
+ $parse::builder = builder_;
  $parse::strict = strict_; }
-@after { delete $parse::builder; }
 
 	: cif (EOF | '\u001a' /*Ctrl-Z*/) ;
 /*------------------------------------------------------------------
@@ -114,14 +113,14 @@ loop_body
 
 save_frame
 	:	SAVE_FRAME_HEADING
-{ ($parse::builder)->attr("start_save_frame")(to_std_string($SAVE_FRAME_HEADING)); }
+{ ($parse::builder)->start_save_frame(to_std_string($SAVE_FRAME_HEADING)); }
 	      ( data_items )+ SAVE
-{ ($parse::builder)->attr("end_save_frame")(); }
+{ ($parse::builder)->end_save_frame(); }
 	;
 
 data_items
-scope { scitbx::af::shared<std::string> *curr_loop_values;
-        scitbx::af::shared<std::string> *curr_loop_headers;
+scope { scitbx::af::shared<std::string>* curr_loop_values;
+        scitbx::af::shared<std::string>* curr_loop_headers;
 }
 @init { $data_items::curr_loop_values = new scitbx::af::shared<std::string>();
 	$data_items::curr_loop_headers = new scitbx::af::shared<std::string>();
@@ -131,9 +130,9 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
 }
 	:	TAG value
 {
-  ($parse::builder)->attr("add_data_item")(
-  to_std_string($TAG),
-  to_std_string($value.start));
+  ($parse::builder)->add_data_item(
+    to_std_string($TAG),
+    to_std_string($value.start));
 }
 	      | loop_header loop_body
 {
@@ -145,20 +144,14 @@ scope { scitbx::af::shared<std::string> *curr_loop_values;
     CTX->errors->push_back(msg);
   }
   else {
-    try {
-      ($parse::builder)->attr("add_loop")($data_items::curr_loop_headers, values);
-    }
-    catch (boost::python::error_already_set&) {
-      PyErr_Print();
-      PyErr_Clear();
-    }
+    ($parse::builder)->add_loop(*$data_items::curr_loop_headers, values);
   }
 }
 	;
 
 data_block
 	:	( DATA_BLOCK_HEADING
-{ ($parse::builder)->attr("add_data_block")(to_std_string($DATA_BLOCK_HEADING)); }
+{ ($parse::builder)->add_data_block(to_std_string($DATA_BLOCK_HEADING)); }
 	      ( ( data_items | save_frame ) )*
 	      )  
 	      | ( {!$parse::strict}?=>GLOBAL_ ( ( data_items | save_frame ) )* ) // global blocks are ignored
