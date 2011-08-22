@@ -111,10 +111,10 @@ def lysozyme_calibration():
   ])
   quad_2_UR = quadrant([
     powder_arc("""
-    800 853
+    798 856
     800 875
-    803 885
-    812 898
+    805 886
+    815 898
     """),
     powder_arc("""
     775 864
