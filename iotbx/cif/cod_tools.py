@@ -23,25 +23,22 @@ class build_hkl_cif(object):
     self.cif = {}
     if (cod_ids is None or len(cod_ids)==0):
       if ext is None or ext == "hkl":
-        for sub_dir in sorted(os.listdir(hkl_dir)):
-          if (sub_dir.startswith(".")): continue
-          hkl_sub_dir = op.join(hkl_dir, sub_dir)
-          if (os.path.isfile(hkl_sub_dir)): continue
-          for node in sorted(os.listdir(hkl_sub_dir)):
-            if (node.startswith(".")): continue
-            if (not node.endswith(".hkl")): continue
-            cod_id = node[:-4]
-            hkl_path = op.join(hkl_sub_dir, node)
+        for root, dirs, files in os.walk(hkl_dir):
+          if '.svn' in dirs: dirs.remove('.svn')
+          for file_name in sorted(files):
+            if (file_name.startswith(".")): continue
+            if (not file_name.endswith(".hkl")): continue
+            cod_id = file_name[:-4]
+            hkl_path = op.join(root, file_name)
             self.hkl.setdefault(cod_id, hkl_path)
       if ext is None or ext == "cif":
-        for sub_dir in sorted(os.listdir(cif_dir)):
-          if (sub_dir.startswith(".")): continue
-          cif_sub_dir = op.join(cif_dir, sub_dir)
-          for node in sorted(os.listdir(cif_sub_dir)):
-            if (node.startswith(".")): continue
-            if (not node.endswith(".cif")): continue
-            cod_id = node[:-4]
-            cif_path = op.join(cif_dir, sub_dir, cod_id+".cif")
+        for root, dirs, files in os.walk(cif_dir):
+          if '.svn' in dirs: dirs.remove('.svn')
+          for file_name in sorted(files):
+            if (file_name.startswith(".")): continue
+            if (not file_name.endswith(".cif")): continue
+            cod_id = file_name[:-4]
+            cif_path = op.join(root, file_name)
             self.cif.setdefault(cod_id, cif_path)
             if (cod_id in self.hkl):
               self.hkl_cif_pairs.setdefault(cod_id, (self.hkl[cod_id], cif_path))
