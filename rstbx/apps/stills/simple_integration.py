@@ -277,6 +277,10 @@ class IntegrationMetaProcedure(simple_integration):
       self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
       self.inputai.setOrientation(centered_orientation)
 
+  def get_observations_with_outlier_removal(self):
+    spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
+    return spots
+
   def integration_concept(self,image_number=0,cb_op_to_primitive=None,verbose=False):
     self.image_number = image_number
     NEAR = 10
@@ -290,7 +294,8 @@ class IntegrationMetaProcedure(simple_integration):
       query.append(pred[1]/pxlsz)
 
     reference = flex.double()
-    spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
+    spots = self.get_observations_with_outlier_removal()
+
     assert len(spots)>NEAR# Can't do spot/pred matching with too few spots
     for spot in spots:
       reference.append(spot.ctr_mass_x())
@@ -629,7 +634,7 @@ class IntegrationMetaProcedure(simple_integration):
         Incr.append(matrix.col((i,j)))
         Distsq.append(i*i+j*j)
     order = flex.sort_permutation(Distsq)
-    self.sorted = []
+    self.sorted = [] # a generic list of points close in distance to a central point
     for i in xrange(len(order)):
       #print i,order[i],Distsq[order[i]],Incr[order[i]]
       self.sorted.append(Incr[order[i]])
