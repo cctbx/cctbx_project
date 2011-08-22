@@ -1572,6 +1572,32 @@ class array(set):
     set.show_summary(self, f=f, prefix=prefix)
     return self
 
+  def show_disagreeable_reflections(self, f_calc_sq, n_reflections=20, out=None):
+    if out is None: out = sys.stdout
+    assert f_calc_sq.is_xray_intensity_array()
+    assert self.is_xray_intensity_array()
+    assert self.sigmas() is not None
+    assert self.size() == f_calc_sq.size()
+    n_reflections = min(n_reflections, self.size())
+    fo2 = self
+    fc2 = f_calc_sq
+    fc = f_calc_sq.as_amplitude_array()
+    delta_f_sq = flex.abs(fo2.data() - fc2.data())/fo2.sigmas()
+    fc_over_fc_max = fc.data()/flex.max(fc.data())
+    perm = flex.sort_permutation(delta_f_sq, reverse=True)[:n_reflections]
+    fo2 = fo2.select(perm)
+    fc2 = fc2.select(perm)
+    delta_f_sq_over_sigma = delta_f_sq.select(perm)
+    fc_over_fc_max = fc_over_fc_max.select(perm)
+    indices = fo2.indices()
+    d_spacings = fo2.d_spacings().data()
+    print >> out, "  h   k   l       Fo^2      Fc^2   |Fo^2-Fc^2|/sig(F^2)   Fc/max(Fc)  d spacing(A)"
+    for i in range(fo2.size()):
+      print >> out, "%3i %3i %3i" %indices[i],
+      print >> out, " %9.2f %9.2f        %9.2f         %9.2f     %9.2f" %(
+        fo2.data()[i], fc2.data()[i], delta_f_sq_over_sigma[i],
+        fc_over_fc_max[i], d_spacings[i])
+
   def crystal_symmetry_is_compatible_with_symmetry_from_file(self,
         unit_cell_relative_length_tolerance=0.02,
         unit_cell_absolute_angle_tolerance=3.,
