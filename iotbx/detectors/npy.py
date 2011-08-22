@@ -151,7 +151,7 @@ class NpyImage(DetectorImageBase):
 
 
   def translate_tiles(self, phil):
-
+    if phil.distl.tile_translations==None: return
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
 
     SI_old = self.__getattr__('rawdata') # XXX Why are these called SI?
