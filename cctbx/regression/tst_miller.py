@@ -1126,6 +1126,48 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   assert approx_equal(maa.data(), [1.0,2.0])
   maa = ma.slice(axis="h", slice_start=1, slice_end=2)
   assert approx_equal(maa.data(), [1.0,3.0])
+  #
+  ms = miller.set(crystal_symmetry=crystal.symmetry(
+    unit_cell=(7.783,8.7364,10.9002,90,102.984,90),
+    space_group_symbol='P 1 21 1'),
+                  indices=flex.miller_index((
+                    (1,0,7),
+                    (1,0,8),
+                    (1,0,9),
+                    (1,0,10),
+                    (1,0,11),
+                    (1,0,12),
+                    (1,1,0),
+                    (1,1,1),
+                    (1,1,2),
+                    (1,1,3),
+                    (1,1,4),
+                    (1,1,5))))
+  fo2 = ms.array(data=flex.double((45.53,-3.10,168.10,-1.51,18.92,-6.10,856.51,2795.86,
+                                   6685.00,959.27,1125.99,765.78)),
+                 sigmas=flex.double((3.06,3.10,4.50,3.42,4.12,6.72,22.33,662.76,
+                                     177.27,16.72,16.36,17.00)))\
+      .set_observation_type_xray_intensity()
+  fc2 = ms.array(data=flex.double((45.88,0.98,159.37,2.39,22.74,0.03,907.43,
+                                   4412.96,7872.73,886.38,1144.82,783.14)))\
+      .set_observation_type_xray_intensity()
+  s = StringIO()
+  fo2.show_disagreeable_reflections(fc2, out=s)
+  assert not show_diff(s.getvalue(), """\
+  h   k   l       Fo^2      Fc^2   |Fo^2-Fc^2|/sig(F^2)   Fc/max(Fc)  d spacing(A)
+  1   1   2    6685.00   7872.73             6.70              1.00          3.60
+  1   1   3     959.27    886.38             4.36              0.34          2.81
+  1   1   1    2795.86   4412.96             2.44              0.75          4.72
+  1   1   0     856.51    907.43             2.28              0.34          5.73
+  1   0   9     168.10    159.37             1.94              0.14          1.13
+  1   0   8      -3.10      0.98             1.32              0.01          1.26
+  1   1   4    1125.99   1144.82             1.15              0.38          2.27
+  1   0  10      -1.51      2.39             1.14              0.02          1.02
+  1   1   5     765.78    783.14             1.02              0.32          1.89
+  1   0  11      18.92     22.74             0.93              0.05          0.93
+  1   0  12      -6.10      0.03             0.91              0.00          0.86
+  1   0   7      45.53     45.88             0.11              0.08          1.43
+""")
 
 def exercise_debye_waller():
   xs = crystal.symmetry((3,4,5,85,95,105), "P 1")
