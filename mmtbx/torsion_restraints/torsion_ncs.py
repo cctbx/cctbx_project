@@ -91,11 +91,17 @@ class torsion_ncs(object):
     self.sequences = {}
     self.padded_sequences = {}
     self.structures = {}
+    self.residue_start = {}
+    self.residue_finish = {}
+    self.offset_dict = {}
     self.ncs_dihedral_proxies = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.params = params
     self.found_ncs = None
     self.log = log
+    self.njump = 1
+    self.min_length = 10
+    self.min_percent= 95.0
     print >> self.log, "Determining NCS matches..."
     pair_hash = {}
     dp_hash = {}
@@ -150,14 +156,20 @@ class torsion_ncs(object):
     else:
       for i, chain_i in enumerate(chains):
         found_conformer = False
+        start = 0
+        finish = 0
         for conformer in chain_i.conformers():
           if not conformer.is_protein() and not conformer.is_na():
             continue
           else:
             found_conformer = True
+            start = conformer.residues()[0].resseq_as_int()
+            finish = \
+              conformer.residues()[len(conformer.residues())-1].resseq_as_int()
         if not found_conformer:
           continue
         chain_i_str = "chain '%s'" % chain_i.id
+        
         chain_i_list = [chain_i_str]
         sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
                      cache=sel_cache,
@@ -169,6 +181,8 @@ class torsion_ncs(object):
         self.sequences[chain_i_str] = chain_seq
         self.padded_sequences[chain_i_str] = chain_seq_padded
         self.structures[chain_i_str] = chain_structures
+        self.residue_start[chain_i_str] = start
+        self.residue_finish[chain_i_str] = finish
 
       for i, chain_i in enumerate(chains):
         found_conformer = False
@@ -222,6 +236,23 @@ class torsion_ncs(object):
           chain_str = "chain '%s'" % add_chain
           ncs_set.append(chain_str)
         self.ncs_groups.append(ncs_set)
+
+      #calculate sequence offsets
+      for ncs_set in self.ncs_groups:
+        chain1 = ncs_set[0]
+        seq1 = self.sequences[chain1]
+        start1 = self.residue_start[chain1]
+        for chain2 in ncs_set[1:]:
+          seq2 = self.sequences[chain2]
+          start2 = self.residue_start[chain2]
+          offset = self.find_offset(
+                     seq2,
+                     start2,
+                     seq1,
+                     start1)
+          self.offset_dict[chain1+chain2] = offset
+      #print self.offset_dict
+      #STOP()
       new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
       for ncs_set in self.ncs_groups:
         new_ncs_groups += "   restraint_group {\n"
@@ -780,11 +811,32 @@ class torsion_ncs(object):
     log = self.log
     ncs_groups = ncs.restraints.groups()
     sites_cart = None
+    
     for param_group in self.params.restraint_group:
+      master = param_group.selection[0]
+      selection_strings = []
+      found_offset = False
+      for selection in param_group.selection[1:]:
+        offset = self.offset_dict.get(master+selection)
+        if offset is None or offset == 0:
+          selection_strings.append(selection)
+        else:
+          start = self.residue_start[selection]
+          finish = self.residue_finish[selection]
+          temp_selection = selection + " and (resseq %d:%d)" \
+                             % (start, finish)
+          selection_strings.append(temp_selection)
+          found_offset = True
+      if found_offset:
+        start = self.residue_start[master]
+        finish = self.residue_finish[master]
+        master = master + " and (resseq %d:%d)" \
+                   % (start, finish)
+      
       group = ncs.restraints.group.from_atom_selections(
         processed_pdb              = processed_pdb_file,
-        reference_selection_string = param_group.selection[0],
-        selection_strings          = param_group.selection[1:],
+        reference_selection_string = master,
+        selection_strings          = selection_strings,
         coordinate_sigma           = 0.05,
         b_factor_weight            = param_group.b_factor_weight,
         special_position_warnings_only
@@ -797,3 +849,43 @@ class torsion_ncs(object):
       print >> log
     else:
       model.restraints_manager.torsion_ncs_groups = ncs_groups
+
+  def find_offset(self,chain1,start1,chain2,start2):
+    best_overlap=0
+    best_offset=None
+    for offset_a in xrange(-len(chain2)+1,len(chain1)+1):
+     offset=start1-start2+offset_a*self.njump
+     overlap=self.get_overlap(chain1,start1,chain2,start2,offset)
+     if overlap and overlap>best_overlap:
+       best_overlap=overlap
+       best_offset=offset
+    return best_offset
+
+  def get_overlap(self,chain1,start1,chain2,start2,offset):
+    offset1=0
+    offset2=offset
+    n_match=0
+    mismatches=0
+    for i in xrange(len(chain1)):
+      resno=i*self.njump+start1+offset1
+      res1=chain1[i]
+      j=(resno-start2-offset2)//self.njump
+      if j>=0 and j<len(chain2):
+        res2=chain2[j]
+      else:
+        res2=None
+      if res1!=None and res2!=None:
+        if res1==res2:
+          n_match+=1
+        else:
+          mismatches+=1
+    if 100.*float(n_match)/float(self.max(1,n_match+mismatches)) < self.min_percent:
+      return None
+    if n_match >= self.min_length//self.njump:
+      return n_match
+    else:
+      return None
+
+  def max(self,x,y):
+    if x>=y: return x
+    return y
