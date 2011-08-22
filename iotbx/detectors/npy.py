@@ -1,4 +1,6 @@
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8; -*-
+#
+# $Id$
 
 #import re
 #from iotbx.detectors.adsc         import ADSCImage
@@ -31,7 +33,7 @@ class NpyImage(DetectorImageBase):
     # XXX assert that cspad_data['image'].ndim is 2?
 
     # From Philipp et al. (2007): pixel size 110 um by 110 um, 14-bit
-    # counters.  XXX The beamEnrg thing is still horribly wrong!
+    # counters.
     self.parameters                         = {}
     self.parameters['SIZE1']                = cspad_data['image'].shape[0] # XXX order?
     self.parameters['SIZE2']                = cspad_data['image'].shape[1] # XXX order?
@@ -44,7 +46,19 @@ class NpyImage(DetectorImageBase):
     self.parameters['OSC_RANGE']            = 0    # XXX fiction
     self.parameters['BEAM_CENTER_X']        = 0.5 * self.parameters['SIZE1'] * self.parameters['PIXEL_SIZE']  # XXX order?
     self.parameters['BEAM_CENTER_Y']        = 0.5 * self.parameters['SIZE2'] * self.parameters['PIXEL_SIZE']  # XXX order?
-    self.parameters['WAVELENGTH']           = 12398.0 / cspad_data['beamEnrg'] # XXX correct?
+
+    # From Margaritondo & Rebernik Ribic (2011): the dimensionless
+    # relativistic gamma-factor is derived from beam energy in MeV and
+    # the electron rest mass, K is a dimensionless "undulator
+    # parameter", and L is the macroscopic undulator period in
+    # Aangstroem (XXX).  See also
+    # http://ast.coe.berkeley.edu/srms/2007/Lec10.pdf.  XXX This
+    # should really move into the pyana code, since the parameters are
+    # SLAC-specific.
+    gamma                         = cspad_data['beamEnrg'] / 0.510998910
+    K                             = 3.5
+    L                             = 3.0e8
+    self.parameters['WAVELENGTH'] = L / (2 * gamma**2) * (1 + K**2 / 2)
 
     SI = cspad_data['image'].astype(numpy.int32)
     print SI.dtype
