@@ -87,7 +87,42 @@ class powder_arc:
     print list(self.points)
 
 def lysozyme_calibration():
-  quad_1_UL = quadrant([
+  quad_1_UL= quadrant([
+    powder_arc("""
+    844 729
+    815 731
+    788 740
+    759 764
+    738 796
+    """),
+    powder_arc("""
+    752 799
+    761 784
+    779 764
+    802 751
+    837 742
+    """),
+    powder_arc("""
+    839 754
+    816 758
+    792 769
+    775 783
+    763 800
+    """),
+    powder_arc("""
+    804 808
+    813 801
+    828 794
+    841 793
+    """),
+    powder_arc("""
+    816 809
+    823 805
+    833 801
+    845 802
+    """),
+  ])
+  quad_1_UL_first_attempt = quadrant([
     powder_arc("""
     846 728
     814 731
