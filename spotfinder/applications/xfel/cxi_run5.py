@@ -196,7 +196,7 @@ def lysozyme_calibration():
   for quad in quadrants:
     quad.refine_center_from_arcs()
     quad.show_summary()
-  derive_tile_translations(quadrants)
+  return derive_tile_translations(quadrants)
 
 def derive_tile_translations(quads):
   params = get_initial_cxi_scope()
@@ -232,9 +232,11 @@ def derive_tile_translations(quads):
        corner_UL[1]<first_point[1] and first_point[1]<corner_LR[1]:
          tile_flags.append(1)
     else: tile_flags.append(0)
-  print "distl.tile_translations=%s"%(",".join([str(t) for t in tile_translations]))
-  print "distl.tile_flags=%s"%(",".join([str(t) for t in tile_flags]))
-  print "OK"
+  TT = "distl.tile_translations=%s"%(",".join([str(t) for t in tile_translations]))
+  TF = "distl.tile_flags=%s"%(",".join([str(t) for t in tile_flags]))
+  print TT
+  print TF
+  return [TT,TF]
 
 def get_initial_cxi_scope():
   limits="""(1479, 1515) (1672, 1699)
@@ -323,3 +325,4 @@ def get_initial_cxi_scope():
 
 if __name__=="__main__":
   lysozyme_calibration()
+  print "OK"
