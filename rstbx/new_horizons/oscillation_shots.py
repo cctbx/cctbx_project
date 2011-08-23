@@ -87,6 +87,7 @@ class IntegrateCharacters:
     ai.setDeltaphi(float(local['deltaphi'])*math.pi/180.)
     ai.setMosaicity(setting["mosaicity"])
     ai.setOrientation(setting["orient"])
+    ai.set_active_areas(self.horizons_phil)
 
     image_centers = [(math.pi/180.)*float(x) for x in local["osc_start"].values()]
 
@@ -134,7 +135,7 @@ class IntegrateCharacters:
           frame = XrayFrame(None, -1, "X-ray image display", size=(1200,1080))
           frame.settings.show_spotfinder_spots = False
           frame.settings.show_integration = False
-          frame.settings.enable_collect_values = False
+          #frame.settings.enable_collect_values = False
           frame.SetSize((1024,780))
           frame.load_image(self.files.filenames()[i])
           frame.Show()

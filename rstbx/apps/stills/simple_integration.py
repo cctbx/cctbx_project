@@ -276,6 +276,9 @@ class IntegrationMetaProcedure(simple_integration):
       #not sure if matrix needs to be transposed first for outputting HKL's???:
       self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
       self.inputai.setOrientation(centered_orientation)
+    if self.inputai.active_areas != None:
+      self.predicted,self.hkllist = self.inputai.active_areas(
+                                    self.predicted,self.hkllist,self.pixel_size)
 
   def get_observations_with_outlier_removal(self):
     spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
