@@ -192,6 +192,10 @@ class process_arrays (object) :
         params.mtz_file.r_free_flags.preserve_input_values) :
       raise Sorry("r_free_flags.preserve_input_values and r_free_flags.extend"+
         " may not be used together.")
+    if (params.mtz_file.r_free_flags.export_for_ccp4 and
+        params.mtz_file.r_free_flags.preserve_input_values) :
+      raise Sorry("r_free_flags.preserve_input_values and "+
+        "r_free_flags.export_for_ccp4 may not be used together.")
     from iotbx import file_reader
     import cctbx.miller
     from cctbx import crystal
