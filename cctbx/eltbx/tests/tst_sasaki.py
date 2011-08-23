@@ -14,7 +14,7 @@ def exercise():
   assert f.is_valid_fp()
   assert f.is_valid_fdp()
   assert f.is_valid()
-  factor_kev_angstrom = 6.6260755 * 2.99792458 / 1.60217733
+  from cctbx import factor_kev_angstrom
   assert approx_equal(f.fp(), t.at_kev(factor_kev_angstrom / 2).fp())
   assert approx_equal(f.fdp(), t.at_kev(factor_kev_angstrom / 2).fdp())
   assert approx_equal(f.fp(), t.at_ev(1000 * factor_kev_angstrom / 2).fp())
