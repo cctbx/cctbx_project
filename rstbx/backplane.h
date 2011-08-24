@@ -94,7 +94,7 @@ struct corrected_backplane: public backplane {
     scitbx::mat3<double> rossmann(Sum_p2,Sum_pq,Sum_p,
                           Sum_pq,Sum_q2,Sum_q,
                           Sum_p,Sum_q,boxnbg);
-    scitbx::vec3<double> obs(Sum_xp,Sum_xq,Sum_x);
+    //scitbx::vec3<double> obs(Sum_xp,Sum_xq,Sum_x);
     scitbx::mat3<double> rinv = rossmann.inverse();
     //scitbx::vec3<double> abc = rossmann.inverse()*obs;
     //a=abc[0]; b= abc[1]; c=abc[2];
