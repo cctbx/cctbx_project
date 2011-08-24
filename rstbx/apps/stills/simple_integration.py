@@ -223,8 +223,6 @@ class IntegrationMetaProcedure(simple_integration):
     self.integration_proper()
 
   def basic_algorithm(self,verbose=False):
-    print "masks",self.inputpd['masks']
-
     Amat = matrix.sqr(self.inputai.getOrientation().direct_matrix())
     self.frames = self.inputpd['osc_start'].keys()
     self.incr_focus = []
@@ -284,7 +282,7 @@ class IntegrationMetaProcedure(simple_integration):
     spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
     return spots
 
-  def integration_concept(self,image_number=0,cb_op_to_primitive=None,verbose=False):
+  def integration_concept(self,image_number=0,cb_op_to_primitive=None,verbose=False,**kwargs):
     self.image_number = image_number
     NEAR = 10
     pxlsz = self.pixel_size
@@ -322,6 +320,14 @@ class IntegrationMetaProcedure(simple_integration):
     [spots[Match["spot"]].ctr_mass_x() - self.predicted[Match["pred"]][0]/pxlsz,
      spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
           correction_vectors.append(vector)
+
+          if kwargs.get("verbose_cv")==True:
+            print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
+              float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
+              self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz),
+            print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
+              spots[Match["spot"]].ctr_mass_x(), spots[Match["spot"]].ctr_mass_y(),
+              self.predicted[Match["pred"]][0]/pxlsz,self.predicted[Match["pred"]][1]/pxlsz)
 
     if False:
       correction_lengths = flex.double([v.length() for v in correction_vectors])
@@ -408,10 +414,10 @@ class IntegrationMetaProcedure(simple_integration):
     OS_adapt.query(query)
     nbr_cutoff = 2.0* max(self.incr_focus[self.image_number])
     FRAME = int(nbr_cutoff/2)
-    print "The overlap cutoff is %d pixels"%nbr_cutoff
+    #print "The overlap cutoff is %d pixels"%nbr_cutoff
     nbr_cutoff_sq = nbr_cutoff * nbr_cutoff
 
-    print "Optimized C++ section...",
+    #print "Optimized C++ section...",
     self.set_frame(FRAME)
     self.set_nbr_cutoff_sq(nbr_cutoff_sq)
     flex_sorted = flex.int()
@@ -426,7 +432,7 @@ class IntegrationMetaProcedure(simple_integration):
       for k in xrange(0,len(keys),2):
         B_S_mask[(keys[k],keys[k+1])]=True
       self.BSmasks.append(B_S_mask)
-    print "Done"
+    #print "Done"
     return
 
     # Never get here...replaced with C++ code
