@@ -114,7 +114,8 @@ class IntegrateCharacters:
       integrate_worker.initialize_increments(i)
       #P = Profiler("concept")
       integrate_worker.integration_concept(image_number = i,
-        cb_op_to_primitive = setting["cb_op_inp_best"].inverse())
+        cb_op_to_primitive = setting["cb_op_inp_best"].inverse(),
+        verbose_cv = self.horizons_phil.indexing.verbose_cv)
       #P = Profiler("proper")
       integrate_worker.integration_proper()
       local["results"].append(integrate_worker)
