@@ -155,7 +155,11 @@ struct spot_shapes
       return std::sqrt(4.0*model_m->eigenvalue(0)/total_mass);
     }
     inline double b() const {
-      return std::sqrt(4.0*model_m->eigenvalue(1)/total_mass);
+      //Problem:  when the points of a spot form a straight line segment,
+      // the second eigenvalue is zero or a slightly negative number,
+      // thus creating a floating point error.  What is reasonable in that
+      // instance?  To set the eigenvalue to 1?
+      return std::sqrt(4.0*std::max(1.,model_m->eigenvalue(1))/total_mass);
     }
 };
 
