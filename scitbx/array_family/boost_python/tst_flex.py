@@ -936,11 +936,13 @@ def exercise_select():
       == [16, 14, 20, 13, 19, 21, 7, 10, 12, 11, 8, 9, 15, 18, 17]
   #
   mt = flex.mersenne_twister(seed=92)
-  s = mt.random_selection(population_size=15, sample_size=10)
-  assert list(s) == [0, 1, 2, 3, 5, 9, 10, 11, 12, 14]
-  for n in xrange(2):
-    s = mt.random_selection(population_size=n, sample_size=0)
-    assert s.size() == 0
+  flex.set_random_seed(92)
+  for f in (mt.random_selection, flex.random_selection):
+    s = f(population_size=15, sample_size=10)
+    assert list(s) == [0, 1, 2, 3, 5, 9, 10, 11, 12, 14]
+    for n in xrange(2):
+      s = f(population_size=n, sample_size=0)
+      assert s.size() == 0
 
 def exercise_from_stl_vector():
   from scitbx import stl
