@@ -305,8 +305,8 @@ class IntegrationMetaProcedure(simple_integration):
     IS_adapt = AnnAdaptor(data=reference,dim=2,k=NEAR)
     IS_adapt.query(query)
 
-    indexed_pairs = []
-    correction_vectors = []
+    indexed_pairs_provisional = []
+    correction_vectors_provisional = []
     idx_cutoff = float(min(self.inputpd['masks'][self.frames[self.image_number]][0:2]))
     if verbose:
       print "idx_cutoff distance in pixels",idx_cutoff
@@ -314,39 +314,71 @@ class IntegrationMetaProcedure(simple_integration):
       for n in xrange(NEAR): # loop over near spotfinder spots
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
         if n==0 and math.sqrt(IS_adapt.distances[i*NEAR+n]) < idx_cutoff:
-          indexed_pairs.append(Match)
+          indexed_pairs_provisional.append(Match)
 
           vector = matrix.col(
-    [spots[Match["spot"]].ctr_mass_x() - self.predicted[Match["pred"]][0]/pxlsz,
-     spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
-          correction_vectors.append(vector)
-
-          if kwargs.get("verbose_cv")==True:
-            print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
-              float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
-              self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz),
-            print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
-              spots[Match["spot"]].ctr_mass_x(), spots[Match["spot"]].ctr_mass_y(),
-              self.predicted[Match["pred"]][0]/pxlsz,self.predicted[Match["pred"]][1]/pxlsz)
-
-    if False:
-      correction_lengths = flex.double([v.length() for v in correction_vectors])
-      clorder = flex.sort_permutation(correction_lengths)
-      sorted_cl = correction_lengths.select(clorder)
-      print "SORTED LIST OF ",len(sorted_cl)
-      #print list(sorted_cl)
-      yaxis = xrange(len(sorted_cl))
-      from matplotlib import pyplot as plt
-      plt.plot(sorted_cl,yaxis,"r+")
-      plt.show()
+            [spots[Match["spot"]].ctr_mass_x() - self.predicted[Match["pred"]][0]/pxlsz,
+             spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
+          correction_vectors_provisional.append(vector)
 
     #insert code here to remove correction length outliers...
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
     # also remove outliers for the purpose of reporting RMS
+    outlier_rejection = True
+    if outlier_rejection:
+      correction_lengths = flex.double([v.length() for v in correction_vectors_provisional])
+      clorder = flex.sort_permutation(correction_lengths)
+      sorted_cl = correction_lengths.select(clorder)
 
-    #Other checks to be implemented:
-    # spot is within active area of detector; tiled or circular detector
+      limit = int(0.33 * len(sorted_cl)) # best 1/3 of data are assumed to be correctly modeled.
+      y_data = flex.double(len(sorted_cl))
+      for i in xrange(len(y_data)):
+        y_data[i] = float(i)/float(len(y_data))
+
+      # ideas are explained in Sauter & Poon (2010) J Appl Cryst 43, 611-616.
+      from labelit.outlier_spots.fit_distribution import fit_cdf,rayleigh
+      fitted_rayleigh = fit_cdf(x_data = sorted_cl[0:limit],
+                                y_data = y_data[0:limit],
+                                distribution=rayleigh)
+
+      inv_cdf = [fitted_rayleigh.distribution.inv_cdf(cdf) for cdf in y_data]
+
+      #print "SORTED LIST OF ",len(sorted_cl), "with sigma",fitted_rayleigh.distribution.sigma
+      indexed_pairs = []
+      correction_vectors = []
+      for icand in xrange(len(sorted_cl)):
+        # somewhat arbitrary sigma = 1.0 cutoff for outliers
+        if (sorted_cl[icand]-inv_cdf[icand])/fitted_rayleigh.distribution.sigma > 1.0:
+          break
+        indexed_pairs.append(indexed_pairs_provisional[clorder[icand]])
+        correction_vectors.append(correction_vectors_provisional[clorder[icand]])
+
+        if kwargs.get("verbose_cv")==True:
+            print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
+              float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
+              self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz),
+            print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
+              spots[indexed_pairs[-1]["spot"]].ctr_mass_x(),
+              spots[indexed_pairs[-1]["spot"]].ctr_mass_y(),
+              self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz,
+              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz)
+      #print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
+      if False:
+        rayleigh_cdf = [
+          fitted_rayleigh.distribution.cdf(x=sorted_cl[c]) for c in xrange(len(sorted_cl))]
+        from matplotlib import pyplot as plt
+        plt.plot(sorted_cl,y_data,"r+")
+        #plt.plot(sorted_cl,rayleigh_cdf,"g.")
+        plt.plot(inv_cdf,y_data,"b.")
+        plt.show()
+    else:
+      indexed_pairs = indexed_pairs_provisional
+      correction_vectors = correction_vectors_provisional
+    ########### finished with outlier rejection
+
+    #Other checks to be implemented (future):
+    # spot is within active area of detector on a circular detector such as the Mar IP
     # integration masks do not overlap; or deconvolute
 
     correction_lengths=flex.double([v.length() for v in correction_vectors])
