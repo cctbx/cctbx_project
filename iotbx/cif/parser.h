@@ -33,9 +33,9 @@ class parser : private boost::noncopyable
         ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
       psr = cifParserNew(tstream);
       psr->pParser->rec->displayRecognitionError = parser_displayRecognitionError;
-      psr->errors = new scitbx::af::shared<std::string>();
+      psr->errors = builder->new_array();
       lxr->pLexer->rec->displayRecognitionError = lexer_displayRecognitionError;
-      lxr->errors = new scitbx::af::shared<std::string>();
+      lxr->errors = builder->new_array();
       psr->parse(psr, builder, strict);
       fflush(stderr);
     }
@@ -51,19 +51,12 @@ class parser : private boost::noncopyable
       input->close(input);
     }
 
-    scitbx::af::shared<std::string>& parser_errors() {
-      return *psr->errors;
-    }
-
-    scitbx::af::shared<std::string>& lexer_errors() {
-      return *lxr->errors;
-    }
+    pcifLexer lxr;
+    pcifParser psr;
 
   private:
-      pANTLR3_COMMON_TOKEN_STREAM       tstream;
-      pANTLR3_INPUT_STREAM input;
-      pcifLexer lxr;
-      pcifParser psr;
+    pANTLR3_COMMON_TOKEN_STREAM       tstream;
+    pANTLR3_INPUT_STREAM input;
 
 };
 
