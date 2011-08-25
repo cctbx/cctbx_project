@@ -13,6 +13,32 @@
 
 namespace iotbx { namespace cif {
 
+  struct shared_array_wrapper : array_wrapper_base
+  {
+    scitbx::af::shared<std::string> array;
+
+    shared_array_wrapper()
+    :
+    array()
+    {}
+
+    virtual void push_back(std::string const& value)
+    {
+      array.push_back(value);
+    }
+
+    virtual std::string operator[](unsigned const& i)
+    {
+      return array[i];
+    }
+
+    virtual unsigned size()
+    {
+      return array.size();
+    }
+
+  };
+
   struct py_builder : builder_base
   {
     boost::python::object builder;
@@ -36,10 +62,13 @@ namespace iotbx { namespace cif {
       builder.attr("add_data_item")(tag, value);
     }
 
-    virtual void add_loop(scitbx::af::shared<std::string> const& loop_headers,
-                     scitbx::af::shared<std::string> const& values)
+    virtual void add_loop(array_wrapper_base const& loop_headers,
+                          array_wrapper_base const& values)
     {
-      builder.attr("add_loop")(loop_headers, values);
+      builder.attr("add_loop")(
+        dynamic_cast<shared_array_wrapper const&>(loop_headers).array,
+        dynamic_cast<shared_array_wrapper const&>(values).array
+      );
     }
 
     virtual void add_data_block(std::string const& data_block_heading)
@@ -47,7 +76,35 @@ namespace iotbx { namespace cif {
       builder.attr("add_data_block")(data_block_heading);
     }
 
+    virtual array_wrapper_base* new_array()
+    {
+      return new shared_array_wrapper();
+    }
+
   };
+
+  struct parser_wrapper : parser
+  {
+    parser_wrapper(std::string filename, builder_base* builder,
+                   bool strict=true)
+    : parser(filename, builder, strict) {}
+
+    scitbx::af::shared<std::string>& parser_errors() {
+      return dynamic_cast<shared_array_wrapper*>(psr->errors)->array;
+    }
+
+    scitbx::af::shared<std::string>& lexer_errors() {
+      return dynamic_cast<shared_array_wrapper*>(lxr->errors)->array;
+    }
+
+  };
+
+  static iotbx::cif::parser_wrapper* run_cif_parser(
+    std::string filename, boost::python::object& builder_, bool strict)
+  {
+    iotbx::cif::py_builder builder(builder_);
+    return new iotbx::cif::parser_wrapper(filename, &builder, strict);
+  }
 
   // Convenience function for sorting a single array of
   // looped data into a given number of columns
@@ -67,18 +124,11 @@ namespace iotbx { namespace cif {
     return result;
   }
 
-  static iotbx::cif::parser* run_cif_parser(
-    std::string filename, boost::python::object& builder_, bool strict)
-  {
-    iotbx::cif::py_builder builder(builder_);
-    return new iotbx::cif::parser(filename, &builder, strict);
-  }
-
 namespace boost_python {
 
   struct cif_wrapper
   {
-    typedef iotbx::cif::parser wt;
+    typedef iotbx::cif::parser_wrapper wt;
 
     static void wrap(char const *name) {
       using namespace boost::python;
