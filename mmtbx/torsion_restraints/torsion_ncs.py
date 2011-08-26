@@ -169,7 +169,7 @@ class torsion_ncs(object):
         if not found_conformer:
           continue
         chain_i_str = "chain '%s'" % chain_i.id
-        
+
         chain_i_list = [chain_i_str]
         sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
                      cache=sel_cache,
@@ -811,7 +811,7 @@ class torsion_ncs(object):
     log = self.log
     ncs_groups = ncs.restraints.groups()
     sites_cart = None
-    
+
     for param_group in self.params.restraint_group:
       master = param_group.selection[0]
       selection_strings = []
@@ -832,7 +832,7 @@ class torsion_ncs(object):
         finish = self.residue_finish[master]
         master = master + " and (resseq %d:%d)" \
                    % (start, finish)
-      
+
       group = ncs.restraints.group.from_atom_selections(
         processed_pdb              = processed_pdb_file,
         reference_selection_string = master,
