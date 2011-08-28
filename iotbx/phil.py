@@ -150,12 +150,7 @@ class process_command_line_with_files (object) :
 # Utilities for Phenix GUI
 class setup_app_generic (object) :
   def __init__ (self, master_phil_path) :
-    container = import_python_object(
-      import_path=master_phil_path,
-      error_prefix="",
-      target_must_be="",
-      where_str="")
-    master_phil = container.object
+    master_phil = load_from_cache_if_possible(master_phil_path)
     if master_phil is None :
       raise Sorry("Couldn't start program using specified phil object (%s)!" %
         master_phil_path)
@@ -227,4 +222,4 @@ def load_from_cache_if_possible (phil_path) :
       import_path=phil_path,
       error_prefix="",
       target_must_be="",
-      where_str="")
+      where_str="").object
