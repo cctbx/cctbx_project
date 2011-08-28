@@ -17,7 +17,6 @@ def run (args) :
   elif (hasattr(phil_inp, "__call__")) :
     phil_object = phil_inp()
   else :
-    print type(phil_inp)
     assert isinstance(phil_inp, phil.scope)
     phil_object = phil_inp
   cache_dir = os.path.join(libtbx.env.build_path, "phil_cache")
