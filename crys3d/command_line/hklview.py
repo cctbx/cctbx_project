@@ -2,8 +2,8 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
-from crys3d.hklview import master_phil
 from crys3d.hklview.frames import *
+from cctbx.miller.display import master_phil
 from wxtbx import icons
 import iotbx.phil
 import wx
@@ -46,6 +46,8 @@ def run (args) :
     f.load_reflections_file(settings.data)
   else :
     f.OnLoadFile(None)
+  a.SetTopWindow(f)
+  a.Bind(wx.EVT_WINDOW_DESTROY, lambda evt: tb_icon.Destroy(), f)
   a.MainLoop()
 
 if (__name__ == "__main__") :

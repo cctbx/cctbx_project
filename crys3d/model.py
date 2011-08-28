@@ -272,7 +272,7 @@ class model_data (object) :
         properties=self.atoms.extract_b(),
         selection=self.visibility.atoms_visible,
         color_all=False,
-        use_rb_color_gradient=False)
+        gradient_type="rainbow")
       self._color_cache["b"] = self.atom_colors
 
   def color_by_chain (self) :
