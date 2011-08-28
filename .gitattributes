@@ -116,6 +116,7 @@ cctbx/miller/amplitude_normalisation.h -text
 cctbx/miller/boost_python/amplitude_normalisation.cpp -text
 cctbx/miller/boost_python/f_calc_map.cpp -text
 cctbx/miller/boost_python/slices.cpp -text
+cctbx/miller/display.py -text
 cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/f_calc_map.h -text
 cctbx/miller/reindexing.py svneol=native#text/x-python
