@@ -3,8 +3,8 @@
 #  - prompt user for missing symmetry
 #  - cached scenes
 
-from crys3d.hklview import settings
 from crys3d.hklview import view_2d, view_3d
+from cctbx.miller.display import settings
 from wxtbx import icons
 import wxtbx.symmetry_dialog
 import wxtbx.utils
@@ -81,7 +81,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     txt = wx.StaticText(self.panel, -1, "Color scheme:")
     box.Add(txt, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
     self.color_ctrl = wx.Choice(self.panel, -1,
-      choices=["rainbow","grayscale","monochrome"])
+      choices=["rainbow","heatmap","redblue","grayscale","monochrome"])
     self.color_ctrl.SetStringSelection(self.settings.color_scheme)
     box.Add(self.color_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_CHOICE, self.OnChangeColor, self.color_ctrl)
@@ -160,6 +160,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self._index_span = index_span
 
   def update_reflection_info (self, hkl, d_min, value) :
+    print hkl, value
     if (hkl is None) :
       self.hkl_info.SetValue("")
       self.d_min_info.SetValue("")
@@ -403,10 +404,12 @@ class HKLViewFrame (wx.Frame) :
 
   def OnClose (self, event) :
     self.Destroy()
+    event.Skip()
 
   def OnDestroy (self, event) :
     if (self.parent is not None) :
       self.parent.view_3d = None
+    event.Skip()
 
 class settings_window_2d (settings_window) :
   is_3d_view = False
@@ -440,10 +443,12 @@ class HKLViewFrame2D (HKLViewFrame) :
 
   def OnClose (self, evt) :
     self.Destroy()
+    evt.Skip()
 
-  def OnDestroy (self, evt) :
+  def OnDestroy (self, event) :
     if (self.parent is not None) :
       self.parent.view_2d = None
+    event.Skip()
 
   def OnShow2D (self, evt) :
     pass
