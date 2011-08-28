@@ -105,7 +105,8 @@ namespace scitbx { namespace graphics_utils {
     af::const_ref< double > const& properties,
     af::const_ref< bool > const& selection,
     bool color_all=false,
-    bool use_rb_color_gradient=false)
+    int gradient_type=0,
+    double min_value=0.1)
   {
     SCITBX_ASSERT(properties.size() > 0);
     af::shared <scitbx::vec3<double> > colors(properties.size());
@@ -118,11 +119,25 @@ namespace scitbx { namespace graphics_utils {
     }
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
       double gradient_ratio = (properties[i_seq]-vmin) / (vmax-vmin);
-      if ((! color_all) && (! selection[i_seq])) {
+      if ((! color_all) && (! selection[i_seq])) { // black
         colors[i_seq] = scitbx::vec3<double>(0.0,0.0,0.0);
-      } else if (use_rb_color_gradient) {
-        colors[i_seq] = hsv2rgb(360.0 - (120 * gradient_ratio), 1., 1.);
-      } else {
+      } else if (gradient_type == 1) { // red-blue
+        colors[i_seq] = hsv2rgb(240.0 + (120 * gradient_ratio), 1., 1.);
+      } else if (gradient_type == 2) { // heatmap
+        double h = 0.;
+        double s = 1.;
+        double v = 1.;
+        if (gradient_ratio < 0.25) {
+          double ratio_norm = gradient_ratio / 0.25;
+          v = min_value + (1. - min_value) * (ratio_norm * ratio_norm);
+        } else if (gradient_ratio < 0.75) {
+          h = 60. - (60 * (0.75 - gradient_ratio) / 0.5);
+        } else {
+          h = 60.;
+          s = 1. - (gradient_ratio - 0.75) / 0.25;
+        }
+        colors[i_seq] = hsv2rgb(h, s, v);
+      } else { // rainbow
         colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
       }
     }

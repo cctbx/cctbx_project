@@ -17,11 +17,12 @@ namespace {
     def("color_rainbow", color_rainbow, (
       arg("selection"),
       arg("color_all")=false));
-    def("color_by_property", color_by_property, (
+    def("color_by_property_", color_by_property, (
       arg("properties"),
       arg("selection"),
       arg("color_all")=true,
-      arg("use_rb_color_gradient")=false));
+      arg("gradient_type")=0,
+      arg("min_value")=0.1));
     def("grayscale_by_property", grayscale_by_property, (
       arg("properties"),
       arg("selection"),
