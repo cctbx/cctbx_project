@@ -62,8 +62,18 @@ def pack_names(horizons_phil):
   class Empty:pass
   E = Empty()
   E.argv=['Empty']
+  if not type(horizons_phil.indexing.data) == type([]):
+    return pack_dictionary(horizons_phil)
   for x in horizons_phil.indexing.data:
     E.argv.append(x)
+  return E
+
+def pack_dictionary(info):
+  #print "special interface; CXI data passed in as dictionary"
+  class Empty:pass
+  E = Empty()
+  E.argv=['Empty','data_in_object']
+  E.data = info.indexing.data
   return E
 
 def run_index(horizons_phil):

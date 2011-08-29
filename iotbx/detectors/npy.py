@@ -13,9 +13,10 @@ import cPickle as pickle
 #STR   = (str,)
 
 class NpyImage(DetectorImageBase):
-  def __init__(self, filename):
+  def __init__(self, filename, source_data = None):
     DetectorImageBase.__init__(self, filename)
     self.vendortype = "npy_raw"
+    self.source_data = source_data
 
 #  def getTupleofType(self,inputstr,typefunc):
 #    parsed = inputstr.split(' ')
@@ -26,9 +27,12 @@ class NpyImage(DetectorImageBase):
   def readHeader(self):
     import numpy
 
-    stream      = open(self.filename, "rb")
-    cspad_data  = pickle.load(stream)
-    stream.close()
+    if self.source_data == None:
+      stream      = open(self.filename, "rb")
+      cspad_data  = pickle.load(stream)
+      stream.close()
+    else:
+      cspad_data  = self.source_data
 
     # XXX assert that cspad_data['image'].ndim is 2?
 
