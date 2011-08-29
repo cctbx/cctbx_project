@@ -105,10 +105,11 @@ namespace scitbx { namespace graphics_utils {
     af::const_ref< double > const& properties,
     af::const_ref< bool > const& selection,
     bool color_all=false,
-    int gradient_type=0,
+    unsigned gradient_type=0,
     double min_value=0.1)
   {
     SCITBX_ASSERT(properties.size() > 0);
+    SCITBX_ASSERT(gradient_type <= 2);
     af::shared <scitbx::vec3<double> > colors(properties.size());
     double vmax = properties[0];
     double vmin = properties[0];
@@ -127,11 +128,12 @@ namespace scitbx { namespace graphics_utils {
         double h = 0.;
         double s = 1.;
         double v = 1.;
-        if (gradient_ratio < 0.25) {
-          double ratio_norm = gradient_ratio / 0.25;
+        if (gradient_ratio < 0.35) {
+          double ratio_norm = gradient_ratio / 0.35;
           v = min_value + (1. - min_value) * (ratio_norm * ratio_norm);
+          s = gradient_ratio / 0.35;
         } else if (gradient_ratio < 0.75) {
-          h = 60. - (60 * (0.75 - gradient_ratio) / 0.5);
+          h = 60. - (60 * (0.75 - gradient_ratio) / 0.4);
         } else {
           h = 60.;
           s = 1. - (gradient_ratio - 0.75) / 0.25;
