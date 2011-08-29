@@ -116,7 +116,9 @@ class hklview_2d (wx.PyPanel) :
       main_pen = wx.Pen('white')
       main_brush = wx.Brush('white')
       missing_brush = wx.Brush((1,1,1))
-      if (self.settings.color_scheme != "rainbow") :
+      if (self.settings.color_scheme == "heatmap") :
+        missing_pen = wx.Pen('green')
+      elif (not self.settings.color_scheme in ["rainbow", "redblue"]) :
         missing_pen = wx.Pen('red')
       else :
         missing_pen = wx.Pen('white')
