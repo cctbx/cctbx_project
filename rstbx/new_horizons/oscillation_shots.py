@@ -94,7 +94,7 @@ class IntegrateCharacters:
     print "Limiting resolution",integration_limit
     local["results"] = []
     for i in xrange(len(keys)):
-      print "Integrate one frame",keys[i],self.files.filenames()[i]
+      print "---------BEGIN Integrate one frame",keys[i],self.files.filenames()[i]
       #P = Profiler("worker")
       integrate_worker = integrate_one_frame()
       integrate_worker.inputai = ai
@@ -145,6 +145,7 @@ class IntegrateCharacters:
         except Exception:
           pass # must use phenix.wxpython for wx display
 
+      # for the wx image viewer
       filename = self.horizons_phil.indexing.indexing_pickle
       if filename != None:
         filename = "%s_%d_%d"%(filename,setting["counter"],keys[i])
@@ -168,6 +169,7 @@ class IntegrateCharacters:
         assert info["predictions"].size() == info["hkllist"].size()
         G = open(filename,"wb")
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
+      print "---------END Integrate one frame",keys[i]
 
     return local
 
@@ -196,6 +198,27 @@ class IntegrateCharacters:
            float(self.triclinic['integration']['r_residual']) ):
         self.best_counter = index['counter']
         break
+
+  def save_best(self):
+    file = self.horizons_phil.indexing.completeness_pickle
+    if file==None: return
+    for index in self.M.best():
+      if index.has_key('integration'):
+        if index['counter']==self.best_counter:
+          local = index["integration"]
+          info = dict(
+            xbeam = local["r_xbeam"],
+            ybeam = local["r_ybeam"],
+            distance = local["r_distance"],
+            residual = local["r_residual"],
+            mosaicity = local["r_mosaicity"],
+            pointgroup = local["spacegroup"],
+            observations = [a.get_obs(local["spacegroup"]) for a in local["results"]],
+            mapped_predictions = [a.detector_xy for a in local["results"]],
+          )
+          G = open(file,"wb")
+          pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
+          return
 
   def show(self):
     print
