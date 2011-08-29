@@ -273,7 +273,9 @@ def derive_tile_translations(quads):
   print TF
   return [TT,TF]
 
-def get_initial_cxi_scope():
+class run3_cxi_limits:
+  # Tile limits (ULx,ULy) (LRx,LRy) determined from a Feb 2011 Lysozyme test
+  # set, using the program distl.find_active_area
   limits="""(1479, 1515) (1672, 1699)
 (1281, 1515) (1474, 1699)
 (1092, 1506) (1249, 1699)
@@ -334,16 +336,24 @@ def get_initial_cxi_scope():
 (50, 418) (234, 611)
 (231, 213) (424, 397)
 (33, 213) (226, 397)"""
-  ilimits = []
-  for line in limits.split("\n"):
-    for ituple in line.split(") ("):
-      for dint in ituple.split(" "):
-        ilimits.append(dint.replace(")","").replace("(","").replace(",",""))
+  def __init__(self):
+    self.ilimits = flex.int()
+    for line in self.limits.split("\n"):
+      for ituple in line.split(") ("):
+        for dint in ituple.split(" "):
+          self.ilimits.append(
+            int(dint.replace(")","").replace("(","").replace(",","")))
+  def as_string(self):
+    return str(",".join( [str(a) for a in self.ilimits]))
+  def as_ints(self):
+    return self.ilimits
+
+def get_initial_cxi_scope():
 
   args = [
           "distl.bins.verbose=True",
           "distl.minimum_spot_area=3",
-          "distl.detector_tiling=%s"%str(",".join(ilimits)),
+          "distl.detector_tiling=%s"%run3_cxi_limits().as_string(),
           "distl.peripheral_margin=1",
           "force_method2_resolution_limit=2.1",
           "distl_highres_limit=2.1",
