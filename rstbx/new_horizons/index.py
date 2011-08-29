@@ -49,6 +49,7 @@ class new_horizons_state:
       IC = IntegrateCharacters(M,self.pd,self.horizons_phil,files,
         spotfinder_results)
       IC.find_best()
+      IC.save_best()
       IC.show()
     return self.pd
 
