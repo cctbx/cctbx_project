@@ -26,7 +26,7 @@ class IntegrateCharacters:
     #return # Enforces legacy behavior--no recycling to expand the integration limit
             # Comment this "return" in for testing without the macrocycle
     #With appropriate safeguards, macrocycle gives better resolution estimate:
-    A = ResolutionAnalysisMetaClass(self.triclinic['integration'])
+    A = ResolutionAnalysisMetaClass(self.triclinic['integration'], self.horizons_phil)
     print A
     safety_counter = 2
     while A.retest_required() and safety_counter > 0 and \
@@ -186,7 +186,7 @@ class IntegrateCharacters:
         setting=index,
         integration_limit=float(self.triclinic['integration']['resolution']))
 
-      A = ResolutionAnalysisMetaClass(index['integration'])
+      A = ResolutionAnalysisMetaClass(index['integration'],self.horizons_phil)
       print A
       if (self.horizons_phil.known_cell!=None or
          self.horizons_phil.known_symmetry!=None):
@@ -226,7 +226,7 @@ class IntegrateCharacters:
     print "Solution  SpaceGroup Beam x   y  distance  Resolution Mosaicity RMS"
     for index in self.M.best():
       if index.has_key('integration'):
-        limitobject = ResolutionAnalysisMetaClass( index['integration'])
+        limitobject = ResolutionAnalysisMetaClass( index['integration'], self.horizons_phil )
         if index['counter']==self.best_counter:
           print ":)",
           self.process_dictionary['best_integration']=index
@@ -259,7 +259,8 @@ class IntegrateCharacters:
                    file = obs,
                    verbose = False,
                    sublattice_flag = True,
-                   override_maximum_bins = 12)
+                   override_maximum_bins = 12,
+                   horizons_phil = self.horizons_phil)
 
 class limits_fix_engine:
   def __init__(self):
@@ -375,8 +376,9 @@ class ResLimitControl:
 
 from labelit.diffraction.stats_mtz import get_limits
 class ResolutionAnalysisMetaClass(get_limits):
-  def __init__(self,integration_dict,verbose=False):
+  def __init__(self,integration_dict,horizons_phil,verbose=False):
     self.integration_dict = integration_dict
+    self.horizons_phil = horizons_phil
     results = self.integration_dict["results"]
     obs = [item.get_obs(self.integration_dict["spacegroup"]) for item in results]
     if verbose:
@@ -386,7 +388,7 @@ class ResolutionAnalysisMetaClass(get_limits):
     self.integration_dict["resolution"] = self.value
 
   def stats_mtz(self,integration_dict,file):
-    get_limits.__init__(self,integration_dict,file)
+    get_limits.__init__(self,params=integration_dict,file=file,horizons_phil=self.horizons_phil)
 
   def retest_required(self):
     return self.status.require_expanded_limit != None
