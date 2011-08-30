@@ -1,0 +1,38 @@
+<html>
+<head>
+<title>cctbx - Apply change-of-basis</title>
+</head>
+<body bgcolor=#ffffff>
+
+[<a href="index.html">Index of services</a>]
+<hr>
+<h1>cctbx - Apply change-of-basis</h1>
+<hr>
+
+<FORM METHOD=POST ACTION="cctbx_web.cgi">
+<input type="HIDDEN" name="target_module" value="change_basis">
+
+<input type=radio name="p_or_q" value="P" checked>P
+<input type=radio name="p_or_q" value="Q">Q
+<input type=checkbox name="p_transpose" value="on">transpose
+<br>
+<textarea name="cb_expr" rows=16 cols=60></textarea>
+<p>
+<input type=radio name="obj_type" value="xyz" checked>xyz
+<input type=radio name="obj_type" value="hkl">hkl
+<input type=radio name="obj_type" value="unit_cell">abc&alpha;&beta;&gamma;
+<input type=radio name="obj_type" value="Ww">W,w
+<br>
+<textarea name="obj_expr" rows=16 cols=60></textarea>
+<p>
+
+<p>
+<input type="submit" value="Transform">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+[<a href="index.html">Index of services</a>]
+<hr>
+</body>
+</html>

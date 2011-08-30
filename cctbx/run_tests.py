@@ -109,6 +109,7 @@ def run():
    "$D/regression/tst_find_best_cell.py",
    "$D/regression/tst_amplitude_normalisation.py",
    "$D/regression/tst_statistics_graphs.py",
+   "$D/regression/tst_web_change_basis.py",
    "$D/sgtbx/direct_space_asu/proto/tst_asu.py",
    "$D/masks/tests/tst_flood_fill.py",
    "$D/r_free_utils.py",
