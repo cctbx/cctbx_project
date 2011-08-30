@@ -53,7 +53,7 @@ class PilatusImage(DetectorImageBase):
       SLS_match = SLS_pattern.findall(rawdata)
       PILATUS_pattern = re.compile(r'''_array_data.header_convention[ "]*PILATUS''')
       PILATUS_match = PILATUS_pattern.findall(rawdata)
-      assert len(SLS_match) + len(PILATUS_match)>=1
+      #assert len(SLS_match) + len(PILATUS_match)>=1
 
       # read SLS header
       headeropen = rawdata.index("_array_data.header_contents")
