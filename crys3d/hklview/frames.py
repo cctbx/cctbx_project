@@ -11,6 +11,7 @@ import wxtbx.utils
 import wx.glcanvas
 from wx.lib.agw import floatspin
 import wx
+from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 from math import sqrt
@@ -76,6 +77,9 @@ class settings_window (wxtbx.utils.SettingsPanel) :
         setting="spheres",
         label="Display reflections as spheres")
       self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+      self.spheres_ctrl = ctrls[0]
+    else :
+      self.spheres_ctrl = oop.null()
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box)
     txt = wx.StaticText(self.panel, -1, "Color scheme:")
@@ -329,10 +333,14 @@ class HKLViewFrame (wx.Frame) :
     if (type(self).__name__ == "HKLViewFrame") :
       if (array.indices().size() > 100000) :
         if (self.settings.spheres) :
-          wx.MessageBox(message="Warning: this is a lot of reflections; "+
+          cnf = wx.MessageBox(message="Warning: this is a lot of reflections; "+
             "unless you have a very powerful graphics card, displaying "+
             "spheres may be slow and/or unstable, especially if data are "+
-            "expanded to P1.", style=wx.OK)
+            "expanded to P1.  Do you want to switch to a faster rendering "+
+            "style?", style=wx.YES|wx.NO)
+          if (cnf == wx.YES) :
+            self.settings.spheres = False
+            self.settings_panel.spheres_ctrl.SetValue(False)
     self.viewer.set_miller_array(array)
     self.viewer.Refresh()
     self.viewer.fit_into_viewport()
