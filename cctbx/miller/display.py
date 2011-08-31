@@ -219,7 +219,9 @@ class scene (object) :
     if (n_missing > 0) :
       points_missing = uc.reciprocal_space_vector(missing) * 100.
       self.points.extend(points_missing)
-      if (settings.color_scheme != "rainbow") :
+      if (settings.color_scheme == "heatmap") :
+        self.colors.extend(flex.vec3_double(n_missing, (0.,1.,0.)))
+      elif (not settings.color_scheme in ["rainbow","redblue"]) :
         self.colors.extend(flex.vec3_double(n_missing, (1.,0,0)))
       else :
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
@@ -264,11 +266,16 @@ class scene (object) :
         uc = self.work_array.unit_cell()
         points = uc.reciprocal_space_vector(new_indices) * 100
         self.points.extend(points)
+        n_sys_absent = new_indices.size()
         self.radii.extend(flex.double(new_indices.size(), self.max_radius))
         self.indices.extend(new_indices)
-        self.colors.extend(flex.vec3_double(new_indices.size(), (1.,0.5,1.)))
         self.missing_flags.extend(flex.bool(new_indices.size(), False))
         self.sys_absent_flags.extend(flex.bool(new_indices.size(), True))
+        self.data.extend(flex.double(n_sys_absent, -1.))
+        if (settings.color_scheme == "redblue") :
+          self.colors.extend(flex.vec3_double(new_indices.size(), (1.,1.0,0.)))
+        else :
+          self.colors.extend(flex.vec3_double(new_indices.size(), (1.,0.5,1.)))
 
   def clear_labels (self) :
     self.label_points = set([])
