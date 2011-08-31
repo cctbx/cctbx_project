@@ -206,11 +206,12 @@ class hklview_2d (wx.PyPanel) :
     bitmap = wx.EmptyBitmap(rect.width, rect.height)
     memory_dc = wx.MemoryDC()
     memory_dc.SelectObject(bitmap)
-    memory_dc.SetBackgroundMode(wx.TRANSPARENT)
+    #memory_dc.SetBackgroundMode(wx.TRANSPARENT)
     if (self.settings.black_background) :
       memory_dc.SetBackground(wx.BLACK_BRUSH)
     else :
       memory_dc.SetBackground(wx.WHITE_BRUSH)
+    memory_dc.Clear()
     gc = wx.GraphicsContext.Create(memory_dc)
     self.paint(gc)
     bitmap.SaveFile(file_name, wx.BITMAP_TYPE_PNG)
