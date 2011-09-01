@@ -17,6 +17,8 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
     choices = [ re.sub("\*", "", choice) for choice in choices ]
     if (captions is None) :
       captions = list(choices) # XXX force copy
+    else :
+      assert (len(captions) == len(choices))
     if (selection is None) :
       captions.insert(0, "---")
       choices.insert(0, None)
