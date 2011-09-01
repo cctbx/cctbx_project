@@ -47,7 +47,7 @@ def run(args=(), params=None, out=sys.stdout):
               seq_lines[-1] += seq[k]
               k += 1
             seq = "\n".join(seq_lines)
-            fasta_seqs.append("%schain '%2s'\n%s" % (name_base,chain.id, seq))
+            fasta_seqs.append(">%schain '%2s'\n%s" % (name_base,chain.id, seq))
     f = open(params.output_file, "w")
     f.write("\n".join(fasta_seqs))
     f.close()
