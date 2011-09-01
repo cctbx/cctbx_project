@@ -936,6 +936,10 @@ def summarize_results (mvd_obj) :
   molprobity_stats = getattr(model_stats, "molprobity", None)
   xs_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
                      "all", None)
+  mm_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
+      "macromolecule", None)
+  bb_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
+    "backbone", None)
   if (molprobity_stats is not None) :
     c_beta_deviations = molprobity_stats.cbetadev
     clashscore = molprobity_stats.clashscore
@@ -970,6 +974,12 @@ def summarize_results (mvd_obj) :
     adp_max_all=convert_float(getattr(xs_stats, "b_max",None)),
     adp_mean_all=convert_float(getattr(xs_stats, "b_mean",None)),
     adp_min_all=convert_float(getattr(xs_stats, "b_min", None)),
+    adp_max_mm=convert_float(getattr(mm_stats, "b_max",None)),
+    adp_mean_mm=convert_float(getattr(mm_stats, "b_mean",None)),
+    adp_min_mm=convert_float(getattr(mm_stats, "b_min", None)),
+    adp_max_bb=convert_float(getattr(bb_stats, "b_max",None)),
+    adp_mean_bb=convert_float(getattr(bb_stats, "b_mean",None)),
+    adp_min_bb=convert_float(getattr(bb_stats, "b_min", None)),
     wilson_b=mvd_obj.data.wilson_b,
     b_sol=mvd_obj.model_vs_data.b_sol,
     k_sol=mvd_obj.model_vs_data.k_sol,

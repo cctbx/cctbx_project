@@ -380,8 +380,8 @@ muscle
   seq_file = None
     .type = path
     .multiple = True
-    .short_caption = Sequence file
-    .style = file_type:seq,pdb use_list
+    .short_caption = Sequence or PDB file
+    .style = file_type:seq,pdb use_list input_file
   output_file = None
     .type = path
     .style = bold file_type:aln new_file
