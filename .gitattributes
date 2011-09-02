@@ -154,6 +154,7 @@ cctbx/regression/tst_web_change_basis.py svneol=native#text/x-python
 cctbx/regression/tst_weighting_schemes.py -text
 cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/sgtbx/boost_python/select_generators.cpp -text
+cctbx/sgtbx/direct_space_asu/plane_group_reference_table.py svneol=native#text/x-python
 cctbx/sgtbx/direct_space_asu/proto/SConscript -text
 cctbx/sgtbx/direct_space_asu/proto/__init__.py svneol=native#text/x-python
 cctbx/sgtbx/direct_space_asu/proto/asu_ext.cpp svneol=native#text/plain
@@ -171,6 +172,7 @@ cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.cpp svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.py svneol=native#text/x-python
 cctbx/sgtbx/literal_description.py -text
+cctbx/sgtbx/plane_groups.py svneol=native#text/x-python
 cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/reticular_pg_tools.py -text
 cctbx/sgtbx/reticular_twin_laws.py -text

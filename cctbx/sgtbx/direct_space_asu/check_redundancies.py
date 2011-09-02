@@ -76,10 +76,11 @@ def check_compatibility_with_sampling_grid(asu):
     print "  %s%s" % (str(vertex), s)
   assert n_outside_sampling_grid == 0
 
-def check_asu(space_group_number, asu, n, is_stripped_asu, soft_mode):
-  sg_info = sgtbx.space_group_info("Hall: " + asu.hall_symbol)
+def check_asu(group_type_number, asu, n, is_stripped_asu, soft_mode):
+  sg_info = sgtbx.space_group(asu.hall_symbol).info()
   sg_info.show_summary()
-  assert sg_info.type().number() == space_group_number
+  if (group_type_number > 0):
+    assert sg_info.type().number() == group_type_number
   print "Gridding:", n
   ops = sg_info.group()
   check_compatibility_with_sampling_grid(asu=asu)
@@ -104,7 +105,7 @@ def check_asu(space_group_number, asu, n, is_stripped_asu, soft_mode):
   recolor_grid_points(
     n, colored_grid_points, redundancies, not is_stripped_asu)
   jv_asu.asu_as_jvx(
-    space_group_number, asu, colored_grid_points=colored_grid_points)
+    group_type_number, asu, colored_grid_points=colored_grid_points)
   if (not is_stripped_asu):
     analyze_redundancies(asu, n, redundancies)
     if (not soft_mode):
@@ -364,6 +365,7 @@ if (__name__=="__main__"):
     "enantiomorphic",
     "soft",
     "multiplicities",
+    "plane_group",
   ])
   assert len(flags.regular_args) > 0
   gridding = flags.regular_args[0].split(",")
@@ -386,21 +388,28 @@ if (__name__=="__main__"):
       numbers = [int(n) for n in arg.split('-')]
       assert len(numbers) in (1,2)
       if (len(numbers) == 1): numbers *= 2
-      for space_group_number in xrange(numbers[0], numbers[1]+1):
-        asu_original = reference_table.get_asu(space_group_number)
-        assert sgtbx.space_group(asu_original.hall_symbol) \
-            == sgtbx.space_group_info(number=space_group_number).group()
+      for group_type_number in xrange(numbers[0], numbers[1]+1):
+        if (not flags.plane_group):
+          asu_original = reference_table.get_asu(group_type_number)
+          assert sgtbx.space_group(asu_original.hall_symbol) \
+              == sgtbx.space_group_info(number=group_type_number).group()
+        else:
+          from cctbx.sgtbx.direct_space_asu import plane_group_reference_table
+          asu_original = plane_group_reference_table.get_asu(
+            point_group_number=group_type_number)
+          print "Plane group number:", group_type_number
+          group_type_number *= -1
         asu = asu_original
         if (flags.strip or flags.strip_polygons):
           asu = asu_original.shape_only()
         print "Writing asu_gallery files"
-        jv_asu.asu_as_jvx(space_group_number, asu)
+        jv_asu.asu_as_jvx(group_type_number, asu)
         if (flags.strip_grid):
           asu = asu_original.shape_only()
         if (flags.show_asu):
           asu.show_comprehensive_summary()
         check_asu(
-          space_group_number=int(space_group_number),
+          group_type_number=group_type_number,
           asu=asu,
           n=gridding,
           is_stripped_asu=(flags.strip or flags.strip_grid),
