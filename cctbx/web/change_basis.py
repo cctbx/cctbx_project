@@ -120,14 +120,14 @@ def run(server_info, inp, status):
         print "  xyz:", triple
         print
         print "  xyz':", (
-          q.r.as_float() * matrix.col(triple) + q.t.as_float()).elems
+          q.r.as_float() * matrix.col(triple).as_float() + q.t.as_float()).elems
         print
       else:
         print "Transformation law: hkl P"
         print
         print "  hkl:", triple
         print
-        print "  hkl':", (matrix.row(triple) * p.r.as_float()).elems
+        print "  hkl':", (matrix.row(triple).as_float() * p.r.as_float()).elems
         print
     elif (inp.obj_type == "unit_cell"):
       from cctbx import uctbx
