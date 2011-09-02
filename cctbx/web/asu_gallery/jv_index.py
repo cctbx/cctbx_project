@@ -3,33 +3,59 @@ from cctbx.web.asu_gallery import html_head_title
 from cctbx import sgtbx
 import sys
 
+def table_format_html(table, f, n_columns, serial_fmt="%03d"):
+  print >> f, "<table border=2 cellpadding=2>"
+  n_symbols = len(table)
+  n_rows = n_symbols // n_columns
+  if (n_rows * n_columns < n_symbols): n_rows += 1
+  for i_row in xrange(n_rows):
+    print >> f, "<tr>"
+    for i_column in xrange(n_columns):
+      i = i_column * n_rows + i_row
+      if (i < len(table)):
+        symbols = table[i]
+        print >> f, (
+          '<td><a href="asu_'+serial_fmt+'.html">%s (%d)</a></td>') % (
+            symbols.number(),
+            symbols.hermann_mauguin().replace(" ", ""),
+            symbols.number())
+    print >> f, "</tr>"
+  print >> f, "</table>"
+  print >> f, "<p>"
+
+class point_group_symbols(object):
+
+  def __init__(O, number, hermann_mauguin):
+    O._number = number
+    O._hermann_mauguin = hermann_mauguin
+
+  def number(O): return O._number
+
+  def hermann_mauguin(O): return O._hermann_mauguin
+
+class plane_group_table(object):
+
+  def __init__(O):
+    O.table = []
+    from cctbx.sgtbx import plane_groups
+    for i,(hm,_) in enumerate(plane_groups.hermann_mauguin_hall_table):
+      O.table.append(point_group_symbols(i+1, hm.replace("_"," ")))
+
+  def format_html(O, f, n_columns):
+    print >> f, "<h3>Plane groups</h3>"
+    table_format_html(O.table, f, n_columns, serial_fmt="%02d")
+
 class symbol_table(object):
 
   def __init__(self, point_group_type):
     self.point_group_type = point_group_type
     self.table = []
 
-  def add(self, space_group_symbols):
-    self.table.append(space_group_symbols)
+  def add(self, group_symbols):
+    self.table.append(group_symbols)
 
   def format_html(self, f, n_columns):
-    print >> f, "<table border=2 cellpadding=2>"
-    n_symbols = len(self.table)
-    n_rows = n_symbols // n_columns
-    if (n_rows * n_columns < n_symbols): n_rows += 1
-    for i_row in xrange(n_rows):
-      print >> f, "<tr>"
-      for i_column in xrange(n_columns):
-        i = i_column * n_rows + i_row
-        if (i < len(self.table)):
-          symbols = self.table[i]
-          print >> f, '<td><a href="asu_%03d.html">%s (%d)</a></td>' % (
-            symbols.number(),
-            symbols.hermann_mauguin().replace(" ", ""),
-            symbols.number())
-      print >> f, "</tr>"
-    print >> f, "</table>"
-    print >> f, "<p>"
+    table_format_html(self.table, f, n_columns)
 
 class point_group_table(object):
 
@@ -79,10 +105,16 @@ class crystal_system_table(object):
 <hr>
 <h2>%(title)s</h2>
 <hr>
-Reference:
-<a href="%(iucrcompcomm_jul2003)s"
->IUCr Computing Commission Newsletter No. 2, July 2003</a>
+References:
+<ul>
+<li><a href="http://scripts.iucr.org/cgi-bin/paper?pz5088" target="external"
+    >Acta Cryst. (2011). A67, 269-275</a>
+<p>
+<li><a href="%(iucrcompcomm_jul2003)s" target="external"
+    >IUCr Computing Commission Newsletter No. 2, July 2003</a>
+</ul>
 <hr>""" % vars()
+    plane_group_table().format_html(f,n_columns)
     for point_group in self.point_group_tables:
       point_group.format_html(f, n_columns)
     print >> f, """\
