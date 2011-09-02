@@ -229,8 +229,12 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
     last_group_type_number = 230
   if (abs(group_type_number) > 1):
     prev_html = fmt % (abs(group_type_number)-1, grid_label)
+  else:
+    prev_html = fmt % (last_group_type_number, grid_label)
   if (abs(group_type_number) < last_group_type_number):
     next_html = fmt % (abs(group_type_number)+1, grid_label)
+  else:
+    next_html = fmt % (1, grid_label)
   alternative_html = fmt % (abs(group_type_number), alternative_html_infix)
   if (colored_grid_points is None or len(colored_grid_points) > 0):
     f = open(jvx_file_name, "w")
@@ -328,6 +332,8 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
     type="string",
     help="network name of http server",
     metavar="NAME")
+  parser.add_option("-p", "--plane_group",
+    action="store_true")
   options, args = parser.parse_args()
   if (options.server is not None):
     http_server_name = options.server
@@ -337,25 +343,30 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
   guide_to_notation.write_html(
     open("%s/guide_to_notation.html" % html_subdir, "w"))
   if (len(args) == 0):
-    args = ["1-230"]
+    if (options.plane_group):
+      args = ["1-17"]
+    else:
+      args = ["1-230"]
   for arg in args:
     numbers = [int(n) for n in arg.split('-')]
     assert len(numbers) in (1,2)
     if (len(numbers) == 1): numbers *= 2
     for group_type_number in xrange(numbers[0], numbers[1]+1):
-      print "Space group number:", group_type_number
-      asu = reference_table.get_asu(group_type_number)
-      asu_as_jvx(
-        group_type_number=group_type_number,
-        asu=asu,
-        http_server_name=http_server_name,
-        html_subdir=html_subdir)
-      asu_as_jvx(
-        group_type_number=group_type_number,
-        asu=asu,
-        colored_grid_points=[],
-        http_server_name=http_server_name,
-        html_subdir=html_subdir)
+      if (options.plane_group):
+        print "Plane group number:", group_type_number
+        from cctbx.sgtbx.direct_space_asu import plane_group_reference_table
+        asu = plane_group_reference_table.get_asu(group_type_number)
+        group_type_number *= -1
+      else:
+        print "Space group number:", group_type_number
+        asu = reference_table.get_asu(group_type_number)
+      for colored_grid_points in [None, []]:
+        asu_as_jvx(
+          group_type_number=group_type_number,
+          asu=asu,
+          colored_grid_points=colored_grid_points,
+          http_server_name=http_server_name,
+          html_subdir=html_subdir)
 
 if (__name__ == "__main__"):
   run()
