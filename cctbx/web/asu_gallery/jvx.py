@@ -160,6 +160,7 @@ def bracketed_link(text, html, f=None):
 def html_loader(jvx_file_name,
                 title="JavaView",
                 header=None,
+                sub_header=None,
                 index_html=None,
                 prev_html=None,
                 next_html=None,
@@ -176,6 +177,9 @@ def html_loader(jvx_file_name,
 '''
   if (header is not None):
     print >> f, '<h2>%s</h2>' % header
+  if (sub_header is not None):
+    print >> f, '%s' % sub_header
+    print >> f, '<p>'
   print >> f, '''\
 <APPLET alt="JavaView applet"
         archive="%(jars_url)s/javaview.jar,%(jars_url)s/jvx.jar"

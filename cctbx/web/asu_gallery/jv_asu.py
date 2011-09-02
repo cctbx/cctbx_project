@@ -143,7 +143,7 @@ def vertex_geometry(ortho, all_vertices):
       ortho(vertex), color=select_color(inclusive_flag)))
   return g
 
-def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
+def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
                http_server_name=None,
                html_subdir="asu_gallery",
                jars_url="http://%s/jv395/jars",
@@ -152,8 +152,9 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
                 +"?target_module=explore_symmetry&amp;sgsymbol="):
   if (http_server_name is None):
     http_server_name = web_links.default_http_server_name
-  space_group_info = sgtbx.space_group_info("Hall: "+asu.hall_symbol)
-  assert space_group_info.type().number() == space_group_number
+  space_group_info = sgtbx.space_group(asu.hall_symbol).info()
+  if (group_type_number > 0):
+    assert space_group_info.type().number() == group_type_number
   list_of_polygons = facet_analysis.asu_polygons(asu)
   all_edge_segments = facet_analysis.get_all_edge_segments(
     asu, list_of_polygons)
@@ -197,18 +198,25 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
     grid_label = "_grid"
     alternative_html_infix = ""
     alternative_label = "Polygon view"
-  base_file_name = "asu_%03d%s" % (space_group_number, grid_label)
+  if (group_type_number > 0): fmt = "asu_%03d%s"
+  else:                       fmt = "asu_%02d%s"
+  base_file_name = fmt % (abs(group_type_number), grid_label)
   jvx_file_name = os.path.join(html_subdir, base_file_name+".jvx")
   jvx_in_html = base_file_name+".jvx"
   html_file_name = os.path.join(html_subdir, base_file_name+".html")
   prev_html = None
   next_html = None
-  if (space_group_number > 1):
-    prev_html = "asu_%03d%s.html" % (space_group_number-1, grid_label)
-  if (space_group_number < 230):
-    next_html = "asu_%03d%s.html" % (space_group_number+1, grid_label)
-  alternative_html = "asu_%03d%s.html" % (
-    space_group_number, alternative_html_infix)
+  if (group_type_number > 0):
+    fmt = "asu_%03d%s.html"
+    last_group_type_number = 230
+  else:
+    fmt = "asu_%02d%s.html"
+    last_group_type_number = 17
+  if (abs(group_type_number) > 1):
+    prev_html = fmt % (abs(group_type_number)-1, grid_label)
+  if (abs(group_type_number) < last_group_type_number):
+    next_html = fmt % (abs(group_type_number)+1, grid_label)
+  alternative_html = fmt % (abs(group_type_number), alternative_html_infix)
   if (colored_grid_points is None or len(colored_grid_points) > 0):
     f = open(jvx_file_name, "w")
     jvx.head(f)
@@ -228,21 +236,34 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   l("<table border=2 cellpadding=8>")
   l("<tr valign=top>")
   l("<td>")
-  l("<pre>Number of vertices: %d" % len(shape_vertices))
+  remaining = []
   for vertex in shape_vertices:
-    l("  "+str(vertex)[1:-1])
+    if (group_type_number < 0 and vertex[2] != 0): continue
+    remaining.append(vertex)
+  remaining.sort()
+  l("<pre>Number of vertices: %d" % len(remaining))
+  if (group_type_number < 0):
+    j = -4
+  else:
+    j = -1
+  for vertex in remaining:
+    l("  "+str(vertex)[1:j])
   l("</pre>")
   l("</td>")
   l("<td>")
-  l("<pre>Number of faces: %d" % len(asu.cuts))
+  remaining = []
   for cut in asu.cuts:
+    if (group_type_number < 0 and cut.as_xyz() in ["z>=0", "z<1"]): continue
+    remaining.append(cut)
+  l("<pre>Number of faces: %d" % len(remaining))
+  for cut in remaining:
     l("  "+cut.as_xyz())
   l("</pre>")
   l('<a href="guide_to_notation.html">[Guide to notation]</a>')
   l("</td>")
   l("<td>")
   l("<pre>Geometric notation:")
-  for cut in asu.cuts:
+  for cut in remaining:
     l("  "+str(cut))
   l("</pre>")
   l('<a href="http://scripts.iucr.org/cgi-bin/paper?pz5088" target="external">'
@@ -250,15 +271,31 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
   l("</td>")
   l("</tr>")
   l("</table>")
+  if (group_type_number > 0):
+    title = "ASU " + str(space_group_info)
+    header = 'Space group: <a href="%s">%s</a> (No. %d)' % (
+      explore_symmetry_url % http_server_name
+        + urllib.quote_plus(str(space_group_info)),
+      str(space_group_info),
+      group_type_number)
+    sub_header = None
+  else:
+    from cctbx.sgtbx import plane_groups
+    pg_symbol = plane_groups.hermann_mauguin_hall_table[
+      -group_type_number-1][0].replace("_", " ")
+    title = "ASU " + pg_symbol
+    header = 'Plane group: %s (No. %d)' % (pg_symbol, -group_type_number)
+    sub_header = 'Corresponding space group: <a href="%s">%s</a> (No. %d)' % (
+      explore_symmetry_url % http_server_name
+        + urllib.quote_plus(str(space_group_info)),
+      str(space_group_info),
+      space_group_info.type().number())
   f = open(html_file_name, "w")
   jvx.html_loader(
     jvx_in_html,
-    title="ASU "+str(space_group_info),
-    header='Space group: <a href="%s">%s</a> (No. %d)' % (
-      explore_symmetry_url%http_server_name
-        +urllib.quote_plus(str(space_group_info)),
-      str(space_group_info),
-      space_group_number),
+    title=title,
+    header=header,
+    sub_header=sub_header,
     index_html="index.html",
     prev_html=prev_html,
     next_html=next_html,
@@ -290,16 +327,16 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
     numbers = [int(n) for n in arg.split('-')]
     assert len(numbers) in (1,2)
     if (len(numbers) == 1): numbers *= 2
-    for space_group_number in xrange(numbers[0], numbers[1]+1):
-      print "Space group number:", space_group_number
-      asu = reference_table.get_asu(space_group_number)
+    for group_type_number in xrange(numbers[0], numbers[1]+1):
+      print "Space group number:", group_type_number
+      asu = reference_table.get_asu(group_type_number)
       asu_as_jvx(
-        space_group_number=space_group_number,
+        group_type_number=group_type_number,
         asu=asu,
         http_server_name=http_server_name,
         html_subdir=html_subdir)
       asu_as_jvx(
-        space_group_number=space_group_number,
+        group_type_number=group_type_number,
         asu=asu,
         colored_grid_points=[],
         http_server_name=http_server_name,
