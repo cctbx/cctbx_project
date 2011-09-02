@@ -230,10 +230,13 @@ class iotbx_data_plot_base (plot_container) :
     self.p = self.figure.add_subplot(111)
     self.plot_type = None
 
-  def set_plot (self, graph_name=None, table_name=None) :
+  def set_tables (self, tables) :
+    self.tables = tables
+
+  def set_plot (self, graph_name=None, table_name=None, table_index=0) :
     table = None
     if table_name is None :
-      table = self.tables[0]
+      table = self.tables[table_index]
     else :
       for t in self.tables :
         if t.title == table_name :
