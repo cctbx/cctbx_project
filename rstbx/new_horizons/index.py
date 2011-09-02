@@ -63,7 +63,7 @@ def pack_names(horizons_phil):
   class Empty:pass
   E = Empty()
   E.argv=['Empty']
-  if not type(horizons_phil.indexing.data) == type([]):
+  if not isinstance(horizons_phil.indexing.data, list):
     return pack_dictionary(horizons_phil)
   for x in horizons_phil.indexing.data:
     E.argv.append(x)
