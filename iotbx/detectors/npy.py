@@ -36,52 +36,21 @@ class NpyImage(DetectorImageBase):
 
     # XXX assert that cspad_data['image'].ndim is 2?
 
-    # From Philipp et al. (2007): pixel size 110 um by 110 um, 14-bit
-    # counters.
     self.parameters                         = {}
-    self.parameters['SIZE1']                = cspad_data['image'].shape[0] # XXX order?
-    self.parameters['SIZE2']                = cspad_data['image'].shape[1] # XXX order?
-    self.parameters['PIXEL_SIZE']           = 110e-3 # XXX fiction
-    self.parameters['CCD_IMAGE_SATURATION'] = 2**14 - 1
-    self.parameters['SATURATED_VALUE']      = 2**14 - 1
-    self.parameters['DISTANCE']             = 93   # XXX fiction
-    self.parameters['TWOTHETA']             = 0    # XXX fiction
-    self.parameters['OSC_START']            = 0    # XXX fiction
-    self.parameters['OSC_RANGE']            = 0    # XXX fiction
-    self.parameters['BEAM_CENTER_X']        = 0.5 * self.parameters['SIZE1'] * self.parameters['PIXEL_SIZE']  # XXX order?
-    self.parameters['BEAM_CENTER_Y']        = 0.5 * self.parameters['SIZE2'] * self.parameters['PIXEL_SIZE']  # XXX order?
+    self.parameters['BEAM_CENTER_X']        = cspad_data['BEAM_CENTER_X']
+    self.parameters['BEAM_CENTER_Y']        = cspad_data['BEAM_CENTER_Y']
+    self.parameters['CCD_IMAGE_SATURATION'] = cspad_data['CCD_IMAGE_SATURATION']
+    self.parameters['DISTANCE']             = cspad_data['DISTANCE']
+    self.parameters['OSC_RANGE']            = 0 # XXX fiction
+    self.parameters['OSC_START']            = 0 # XXX fiction
+    self.parameters['PIXEL_SIZE']           = cspad_data['PIXEL_SIZE']
+    self.parameters['SATURATED_VALUE']      = cspad_data['SATURATED_VALUE']
+    self.parameters['SIZE1']                = cspad_data['SIZE1']
+    self.parameters['SIZE2']                = cspad_data['SIZE2']
+    self.parameters['TWOTHETA']             = 0 # XXX fiction
+    self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']
 
-    # From Margaritondo & Rebernik Ribic (2011): the dimensionless
-    # relativistic gamma-factor is derived from beam energy in MeV and
-    # the electron rest mass, K is a dimensionless "undulator
-    # parameter", and L is the macroscopic undulator period in
-    # Aangstroem (XXX).  See also
-    # http://ast.coe.berkeley.edu/srms/2007/Lec10.pdf.  XXX This
-    # should really move into the pyana code, since the parameters are
-    # SLAC-specific.
-    gamma                         = cspad_data['beamEnrg'] / 0.510998910
-    K                             = 3.5
-    L                             = 3.0e8
-    self.parameters['WAVELENGTH'] = L / (2 * gamma**2) * (1 + K**2 / 2)
-
-    SI = cspad_data['image'].astype(numpy.int32)
-    print SI.dtype
-
-#    x        = 626
-#    y        = 458
-#    x_size   = 185
-#    y_size   = 392
-#    x_off    = 2
-#    y_off    = 3
-#
-#    section1                           = SI[y:(y + y_size), x:(x + x_size)].cop#y()
-#    SI[y:(y + y_size), x:(x + x_size)] = numpy.ones((y_size, x_size), dtype="in#t32")
-#    SI[(y + y_off):(y + y_off + y_size),
-#       (x + x_off):(x + x_off + x_size)] = section1
-
-    SI = flex.int(SI)
-
-    self.bin_safe_set_data(SI)
+    self.bin_safe_set_data(cspad_data['DATA'])
 
 #    if not self.parameters:
 #      rawdata = open(self.filename,"rb").read(maxlength)
@@ -161,7 +130,6 @@ class NpyImage(DetectorImageBase):
     SI_old = self.__getattr__('rawdata') # XXX Why are these called SI?
     SI_new = flex.int(flex.grid(SI_old.focus()))
 
-    # XXX The // operator for integer division was introduced when?
     for i in xrange(len(phil.distl.tile_translations) // 2):
       shift_slow = phil.distl.tile_translations[2 * i + 0]
       shift_fast = phil.distl.tile_translations[2 * i + 1]
