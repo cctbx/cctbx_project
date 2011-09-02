@@ -23,7 +23,7 @@ class orthogonalizer(object):
   def __call__(self, vertex):
     return self.unit_cell.orthogonalize([float(x) for x in vertex])
 
-def unit_cell_geometry(ortho):
+def unit_cell_geometry(ortho, xy_plane_only=False):
   g = jvx.geometry("unit_cell")
   points_int = jvx.pointSet()
   points_cart = g.points
@@ -31,12 +31,13 @@ def unit_cell_geometry(ortho):
   for i in (0,1):
     for j in (0,1):
       for k in (0,1):
+        if (xy_plane_only and k != 0): continue
         v = (i,j,k)
         points_int.append(v)
         points_cart.append(ortho(v))
   lines = g.lines
-  for i in xrange(0,7):
-    for j in xrange(i+1,8):
+  for i in xrange(0,len(points_int.points)-1):
+    for j in xrange(i+1,len(points_int.points)):
       v1 = points_int.points[i].vertex
       v2 = points_int.points[j].vertex
       n = 0
@@ -121,24 +122,27 @@ def shrink_edge(cart_a, cart_b, shrink_length):
   d = (b-a) * (shrink_length / abs(b-a))
   return ((a+d).elems, (b-d).elems)
 
-def edge_geometry(ortho, all_edge_segments, shrink_length):
+def edge_geometry(ortho, all_edge_segments, shrink_length, xy_plane_only=False):
   g = jvx.geometry("edges")
   g.points.hide_points()
   g.lines = jvx.lineSet(thickness=3)
   for edge_segments in all_edge_segments:
     for i_segment in xrange(len(edge_segments)-1):
+      v1, v2 = [edge_segments[i_segment+_].vertex for _ in [0,1]]
+      if (xy_plane_only and (v1[2] != 0 or v2[2] != 0)):
+        continue
       i = g.points.size()
-      g.points.extend(shrink_edge(
-        ortho(edge_segments[i_segment].vertex),
-        ortho(edge_segments[i_segment+1].vertex), shrink_length))
+      g.points.extend(shrink_edge(ortho(v1), ortho(v2), shrink_length))
       g.lines.append(jvx.line(
         (i,i+1),
         color=select_color(edge_segments[i_segment].edge_inclusive_flag)))
   return g
 
-def vertex_geometry(ortho, all_vertices):
+def vertex_geometry(ortho, all_vertices, xy_plane_only=False):
   g = jvx.geometry("vertices")
   for vertex,inclusive_flag in all_vertices.items():
+    if (xy_plane_only and vertex[2] != 0):
+      continue
     g.points.append(jvx.point(
       ortho(vertex), color=select_color(inclusive_flag)))
   return g
@@ -152,8 +156,9 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
                 +"?target_module=explore_symmetry&amp;sgsymbol="):
   if (http_server_name is None):
     http_server_name = web_links.default_http_server_name
+  xy_plane_only = (group_type_number < 0)
   space_group_info = sgtbx.space_group(asu.hall_symbol).info()
-  if (group_type_number > 0):
+  if (not xy_plane_only):
     assert space_group_info.type().number() == group_type_number
   list_of_polygons = facet_analysis.asu_polygons(asu)
   all_edge_segments = facet_analysis.get_all_edge_segments(
@@ -166,10 +171,17 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
   if (colored_grid_points is None):
     for polygons in list_of_polygons:
       for polygon,inclusive_flag in polygons:
+        def exclude():
+          for vertex in polygon:
+            if (vertex[0][2] != 0):
+              return True
+          return False
+        if (xy_plane_only and exclude()):
+          continue
         vertices_cart = cartesian_polygon(ortho, polygon)
         vertices_inside_cart = shrink_polygon(vertices_cart, shrink_length)
         points_int = jvx.pointSet()
-        g = jvx.geometry("facet")
+        g = jvx.geometry("facet", backface=["hide", "show"][int(xy_plane_only)])
         points_cart = g.points
         points_cart.hide_points()
         i = -1
@@ -183,11 +195,14 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
           point_indices.append(points_int.index(vertex[0]))
         faces.append(jvx.face(point_indices, select_color(inclusive_flag)))
         geometries.append(g)
-    geometries.append(edge_geometry(ortho, all_edge_segments, shrink_length))
-    geometries.append(vertex_geometry(ortho, all_vertices))
+    geometries.append(edge_geometry(
+      ortho, all_edge_segments, shrink_length, xy_plane_only=xy_plane_only))
+    geometries.append(vertex_geometry(
+      ortho, all_vertices, xy_plane_only=xy_plane_only))
   else:
     g = jvx.geometry("grid")
     for frac in colored_grid_points:
+      if (xy_plane_only and frac.site[2] != 0): continue
       g.points.append(jvx.point(ortho(frac.site), color=frac.color))
     geometries.append(g)
   if (colored_grid_points is None):
@@ -198,20 +213,20 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
     grid_label = "_grid"
     alternative_html_infix = ""
     alternative_label = "Polygon view"
-  if (group_type_number > 0): fmt = "asu_%03d%s"
-  else:                       fmt = "asu_%02d%s"
+  if (xy_plane_only): fmt = "asu_%02d%s"
+  else:               fmt = "asu_%03d%s"
   base_file_name = fmt % (abs(group_type_number), grid_label)
   jvx_file_name = os.path.join(html_subdir, base_file_name+".jvx")
   jvx_in_html = base_file_name+".jvx"
   html_file_name = os.path.join(html_subdir, base_file_name+".html")
   prev_html = None
   next_html = None
-  if (group_type_number > 0):
-    fmt = "asu_%03d%s.html"
-    last_group_type_number = 230
-  else:
+  if (xy_plane_only):
     fmt = "asu_%02d%s.html"
     last_group_type_number = 17
+  else:
+    fmt = "asu_%03d%s.html"
+    last_group_type_number = 230
   if (abs(group_type_number) > 1):
     prev_html = fmt % (abs(group_type_number)-1, grid_label)
   if (abs(group_type_number) < last_group_type_number):
@@ -220,7 +235,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
   if (colored_grid_points is None or len(colored_grid_points) > 0):
     f = open(jvx_file_name, "w")
     jvx.head(f)
-    unit_cell_geometry(ortho).jvx(f)
+    unit_cell_geometry(ortho, xy_plane_only=xy_plane_only).jvx(f)
     basis_vector_geometry(ortho, get_min_fractional(all_vertices)).jvx(f)
     for g in geometries:
       g.jvx(f)
@@ -238,11 +253,11 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
   l("<td>")
   remaining = []
   for vertex in shape_vertices:
-    if (group_type_number < 0 and vertex[2] != 0): continue
+    if (xy_plane_only and vertex[2] != 0): continue
     remaining.append(vertex)
   remaining.sort()
   l("<pre>Number of vertices: %d" % len(remaining))
-  if (group_type_number < 0):
+  if (xy_plane_only):
     j = -4
   else:
     j = -1
@@ -253,7 +268,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
   l("<td>")
   remaining = []
   for cut in asu.cuts:
-    if (group_type_number < 0 and cut.as_xyz() in ["z>=0", "z<1"]): continue
+    if (xy_plane_only and cut.as_xyz() in ["z>=0", "z<1"]): continue
     remaining.append(cut)
   l("<pre>Number of faces: %d" % len(remaining))
   for cut in remaining:
@@ -271,7 +286,7 @@ def asu_as_jvx(group_type_number, asu, colored_grid_points=None,
   l("</td>")
   l("</tr>")
   l("</table>")
-  if (group_type_number > 0):
+  if (not xy_plane_only):
     title = "ASU " + str(space_group_info)
     header = 'Space group: <a href="%s">%s</a> (No. %d)' % (
       explore_symmetry_url % http_server_name
