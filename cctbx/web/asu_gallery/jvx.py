@@ -111,7 +111,8 @@ class face(object):
 
 class faceSet(object):
 
-  def __init__(self):
+  def __init__(self, backface="hide"):
+    self.backface = backface
     self.faces = []
 
   def size(self):
@@ -122,7 +123,9 @@ class faceSet(object):
 
   def jvx(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f,'<faceSet face="show" edge="hide" backface="hide" color="show">'
+    print >> f, \
+      '<faceSet face="show" edge="hide" backface="%s" color="show">' % \
+        self.backface
     print >> f, '  <faces>'
     for face in self.faces:
       print >> f, '    <f>',
@@ -134,11 +137,11 @@ class faceSet(object):
 
 class geometry(object):
 
-  def __init__(self, name):
+  def __init__(self, name, backface="hide"):
     self.name = name
     self.points = pointSet()
     self.lines = lineSet()
-    self.faces = faceSet()
+    self.faces = faceSet(backface=backface)
 
   def jvx(self, f=None):
     if (f is None): f = sys.stdout
