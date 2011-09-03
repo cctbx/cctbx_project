@@ -271,8 +271,18 @@ def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
   print "  found data points dmin->lower  =", abs(i_r-i_min)
   imm = min(abs(i_l-i_min), abs(i_r-i_min))
   i_l, i_r = i_min-imm, i_min+imm
-  print "  used data points dmin->higher =", imm
-  print "  used data points dmin->lower  =", imm
+  if (imm == 0) :
+    if (i_l == 0) :
+      i_r = 100
+      print "  used data points dmin->higher =", 0
+      print "  used data points dmin->lower  =", i_r
+    elif (i_l == i_r == len(values) - 1) :
+      i_l -= 100
+      print "  used data points dmin->higher =", i_l
+      print "  used data points dmin->lower  =", 0
+  else :
+    print "  used data points dmin->higher =", imm
+    print "  used data points dmin->lower  =", imm
   #
   selection = flex.bool(values.size(), False)
   for i in xrange(i_l,i_r): selection[i] = True
