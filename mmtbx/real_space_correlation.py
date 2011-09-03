@@ -581,7 +581,12 @@ class map_cc_funct(object):
     scatterers = self.xray_structure.scatterers()
     if(self.selection is None):
       self.selection = flex.bool(scatterers.size(), True)
-    real_map_unpadded = fft_map.real_map_unpadded()
+    # XXX in most cases map_1 has been obtained previously by calling
+    # fft_map.real_map_unpadded(), so there is no need to do it here
+    if (fft_map is None) :
+      real_map_unpadded = map_1
+    else :
+      real_map_unpadded = fft_map.real_map_unpadded()
     sites_cart = self.xray_structure.sites_cart()
     if(self.atom_detail):
       self.gifes = [None,]*scatterers.size()
@@ -818,23 +823,34 @@ def simple(fmodel,
         d_max=None)
       f_calc = complete_set.structure_factors_from_scatterers(
         xray_structure = fmodel.xray_structure).f_calc()
+      if (f_calc.anomalous_flag()) :
+        f_calc = f_calc.merge_bijvoet_mates()
       fft_map_1 = f_calc.fft_map(
         resolution_factor = min(0.5,resolution_factor),
-        symmetry_flags    = maptbx.use_space_group_symmetry)
+        symmetry_flags    = maptbx.use_space_group_symmetry,
+        force_anomalous_flag_false = True)
     else:
       fft_map_1 = fmodel.electron_density_map().fft_map(
         resolution_factor = min(0.5,resolution_factor),
         map_type          = map_1_name,
-        symmetry_flags    = maptbx.use_space_group_symmetry)
+        symmetry_flags    = maptbx.use_space_group_symmetry,
+        force_anomalous_flag_false = True)
     fft_map_1.apply_sigma_scaling()
     map_1 = fft_map_1.real_map_unpadded()
+    # XXX memory-saving hack
+    class _gridding (maptbx.crystal_gridding) :
+      def __init__ (self, fft_map) :
+        maptbx.crystal_gridding._copy_constructor(self, fft_map)
+    other_fft_map = _gridding(fft_map_1)
+    del fft_map_1._real_map
+    del fft_map_1
     assert fmodel.xray_structure is not None
     map_cc_obj = map_cc_funct(
       map_1          = map_1,
       map_1_name     = map_1_name,
       xray_structure = fmodel.xray_structure,
       selection      = selection,
-      fft_map        = fft_map_1,
+      fft_map        = None, #fft_map_1,
       pdb_hierarchy  = pdb_hierarchy,
       atom_detail    = atom_detail,
       atom_radius    = atom_radius,
@@ -842,11 +858,14 @@ def simple(fmodel,
       residue_detail = residue_detail)
     del map_1
     fft_map_2 = fmodel.electron_density_map().fft_map(
-      other_fft_map  = fft_map_1,
+      other_fft_map  = other_fft_map,
       map_type       = map_2_name,
-      symmetry_flags = maptbx.use_space_group_symmetry)
+      symmetry_flags = maptbx.use_space_group_symmetry,
+      force_anomalous_flag_false = True)
     fft_map_2.apply_sigma_scaling()
     map_2 = fft_map_2.real_map_unpadded()
+    del fft_map_2._real_map
+    del fft_map_2
     result = map_cc_obj.map_cc(
       map_2                                     = map_2,
       map_2_name                                = map_2_name,
@@ -857,11 +876,13 @@ def simple(fmodel,
     del map_2
     if(atom_detail and diff_map_name is not None):
       fft_map_3 = fmodel.electron_density_map().fft_map(
-        other_fft_map  = fft_map_1,
+        other_fft_map  = other_fft_map,
         map_type       = diff_map_name,
-        symmetry_flags = maptbx.use_space_group_symmetry)
+        symmetry_flags = maptbx.use_space_group_symmetry,
+        force_anomalous_flag_false = True)
       fft_map_3.apply_sigma_scaling()
       map_3 = fft_map_3.real_map_unpadded()
+      del fft_map_3._real_map
       for i_seq, r in enumerate(result):
         ed3 = map_3.eight_point_interpolation(r.scatterer.site)
         r.residual_map_val = ed3
