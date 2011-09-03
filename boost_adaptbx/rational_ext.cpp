@@ -99,6 +99,39 @@ namespace {
     static w_t mod_ri(w_t const& lhs, int rhs) { return mod_rr(lhs, rhs); }
     static w_t rmod_ir(w_t const& rhs, int lhs) { return mod_rr(lhs, rhs); }
 
+    static double add_rd(w_t const& lhs, double rhs)
+    {
+      return as_double(lhs) + rhs;
+    }
+    static double sub_rd(w_t const& lhs, double rhs)
+    {
+      return as_double(lhs) - rhs;
+    }
+    static double sub_dr(w_t const& rhs, double lhs)
+    {
+      return lhs - as_double(rhs);
+    }
+    static double mul_rd(w_t const& lhs, double rhs)
+    {
+      return as_double(lhs) * rhs;
+    }
+    static double div_dd(double lhs, double rhs)
+    {
+      if (rhs == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "float division by zero");
+        boost::python::throw_error_already_set();
+      }
+      return lhs / rhs;
+    }
+    static double div_rd(w_t const& lhs, double rhs)
+    {
+      return div_dd(as_double(lhs), rhs);
+    }
+    static double div_dr(w_t const& rhs, double lhs)
+    {
+      return div_dd(lhs, as_double(rhs));
+    }
+
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
     static bool ne_rr(w_t const& lhs, w_t const& rhs) { return lhs != rhs; }
     static bool lt_rr(w_t const& lhs, w_t const& rhs) { return lhs < rhs; }
@@ -129,6 +162,18 @@ namespace {
         .def("__repr__", as_str)
         .def("__hash__", hash)
         .def("__abs__", abs)
+        //
+        .def("__add__", add_rd)
+        .def("__radd__", add_rd)
+        .def("__sub__", sub_rd)
+        .def("__rsub__", sub_dr)
+        .def("__mul__", mul_rd)
+        .def("__rmul__", mul_rd)
+        .def("__div__", div_rd)
+        .def("__rdiv__", div_dr)
+        .def("__truediv__", div_rd)
+        .def("__rtruediv__", div_dr)
+        //
         .def(-self)
         .def(self + self)
         .def(self - self)

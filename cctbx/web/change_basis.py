@@ -120,14 +120,14 @@ def run(server_info, inp, status):
         print "  xyz:", triple
         print
         print "  xyz':", (
-          q.r.as_float() * matrix.col(triple).as_float() + q.t.as_float()).elems
+          q.r * matrix.col(triple) + q.t).elems
         print
       else:
         print "Transformation law: hkl P"
         print
         print "  hkl:", triple
         print
-        print "  hkl':", (matrix.row(triple).as_float() * p.r.as_float()).elems
+        print "  hkl':", (matrix.row(triple) * p.r).elems
         print
     elif (inp.obj_type == "unit_cell"):
       from cctbx import uctbx
@@ -140,7 +140,7 @@ def run(server_info, inp, status):
       print "metrical matrix:"
       display_r(g)
       print
-      gp = p.r.transpose().as_float() * g * p.r.as_float()
+      gp = p.r.transpose() * g * p.r
       print "metrical matrix':"
       print
       display_r(gp)
@@ -155,7 +155,7 @@ def run(server_info, inp, status):
       print "(W, w):"
       display_rt(w)
       print
-      wp = q.as_float() * w.as_float() * p.as_float()
+      wp = q * w * p
       print "(W, w)':"
       display_rt(wp)
       print
