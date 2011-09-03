@@ -9,12 +9,24 @@
 <h1>cctbx - Apply change-of-basis</h1>
 <hr>
 
+Conventions according to
+<a href="http://it.iucr.org/A/" target="external"
+>International Tables for Crystallography Volume A</a>,
+Chapter 5:
+<br>
+The matrix <i><b>P</b></i> transforms the basis vectors;
+<i><b>Q</b></i> is the inverse of <i><b>P</b></i>.
+<p>
+
 <FORM METHOD=POST ACTION="cctbx_web.cgi">
 <input type="HIDDEN" name="target_module" value="change_basis">
 
-<input type=radio name="p_or_q" value="P" checked>P
-<input type=radio name="p_or_q" value="Q">Q
+<input type=radio name="p_or_q" value="P" checked><i><b>P</b></i>
+<input type=radio name="p_or_q" value="Q"><i><b>Q</b></i>
 <input type=checkbox name="p_transpose" value="on">transpose
+<br>
+<small>Enter matrix elements (9 or 12) or symbolic expression.<br>
+Example: <tt>c,a,b</tt></small>
 <br>
 <textarea name="cb_expr" rows=16 cols=60></textarea>
 <p>
@@ -22,6 +34,7 @@
 <input type=radio name="obj_type" value="hkl">hkl
 <input type=radio name="obj_type" value="unit_cell">abc&alpha;&beta;&gamma;
 <input type=radio name="obj_type" value="Ww">W,w
+  <small>(symmetry operation)</small>
 <br>
 <textarea name="obj_expr" rows=16 cols=60></textarea>
 <p>
