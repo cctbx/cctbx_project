@@ -130,6 +130,69 @@ def exercise_int():
     for rn in xrange(-9,9+1):
       if (rn == 0): continue
       check((ln,3), (rn,4))
+  #
+  ri = rational.int
+  def check(r, e):
+    assert isinstance(r, ri)
+    assert r == e
+  check(ri(3,2) + ri(4,5), ri(23,10))
+  check(ri(3,2) + 4, ri(11,2))
+  check(2 + ri(4,5), ri(14,5))
+  check(ri(3,2) - ri(4,5), ri(7,10))
+  check(ri(3,2) - 4, ri(-5,2))
+  check(2 - ri(4,5), ri(6,5))
+  check(ri(3,2) * ri(4,5), ri(6,5))
+  check(ri(3,2) * 4, ri(6,1))
+  check(2 * ri(4,5), ri(8,5))
+  check(ri(3,2) / ri(4,5), ri(15,8))
+  check(ri(3,2) / 4, ri(3,8))
+  check(2 / ri(4,5), ri(5,2))
+  #
+  def check(r, e):
+    assert isinstance(r, int)
+    assert r == e
+  check(ri(3,2) // ri(4,5), 1)
+  check(ri(3,2) // 4, 0)
+  check(2 // ri(4,5), 2)
+  #
+  def check(r, e):
+    assert isinstance(r, float)
+    assert approx_equal(r, e)
+  check(ri(3,2) + 4., 5.5)
+  check(2. + ri(4,5), 2.8)
+  check(ri(3,2) - 4., -2.5)
+  check(2. - ri(4,5), 1.2)
+  check(ri(3,2) * 4., 6.0)
+  check(2. * ri(4,5), 1.6)
+  check(ri(3,2) / 4., 0.375)
+  check(2. / ri(4,5), 2.5)
+  #
+  try: ri(3,2) // 4.
+  except TypeError, e:
+    assert str(e).startswith("unsupported operand type(s)")
+  else: raise Exception_expected
+  try: 2. // ri(4,5)
+  except TypeError, e:
+    assert str(e).startswith("unsupported operand type(s)")
+  else: raise Exception_expected
+  #
+  try: ri(3,2) % 4.
+  except TypeError, e:
+    assert str(e).startswith("unsupported operand type(s)")
+  else: raise Exception_expected
+  try: 2. % ri(4,5)
+  except TypeError, e:
+    assert str(e).startswith("unsupported operand type(s)")
+  else: raise Exception_expected
+  #
+  try: ri(1) / 0.
+  except ZeroDivisionError, e:
+    assert not show_diff(str(e), "float division by zero")
+  else: raise Exception_expected
+  try: 1. / ri(0)
+  except ZeroDivisionError, e:
+    assert not show_diff(str(e), "float division by zero")
+  else: raise Exception_expected
 
 def exercise_functions():
   assert rational.gcd(8,6) == 2
