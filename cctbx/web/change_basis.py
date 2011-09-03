@@ -75,14 +75,21 @@ def xyz_from_string(string):
     raise_uninterpretable("coordinates", string)
   return tuple(nums)
 
+def fmt_nums(nums):
+  result = []
+  for num in nums:
+    if (num < 1e-10): num = 0
+    result.append("%.6g" % num)
+  return tuple(result)
+
 def display_r(r):
   for ir in xrange(3):
-    print "  (%8s %8s %8s)" % (r(ir,0), r(ir,1), r(ir,2))
+    print "  (%9s %9s %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2)))
 
 def display_rt(rt):
   r, t = rt.r, rt.t.elems
   for ir in xrange(3):
-    print "  (%8s %8s %8s | %8s)" % (r(ir,0), r(ir,1), r(ir,2), t[ir])
+    print "  (%9s %9s %9s | %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2), t[ir]))
 
 def interpret_form_data(form):
   from cctbx.web import cgi_utils
@@ -142,7 +149,6 @@ def run(server_info, inp, status):
       print
       gp = p.r.transpose() * g * p.r
       print "metrical matrix':"
-      print
       display_r(gp)
       print
       ucp = uctbx.unit_cell(metrical_matrix=gp.as_sym_mat3())
