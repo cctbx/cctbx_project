@@ -31,6 +31,10 @@ distl {
     .type = ints (value_min=0,value_max=1)
     .help = "For each identified tile, an integer [0,1] acting as a bool to define whether to ignore its data."
     .expert_level = 2
+  detector_format_version = None
+    .type = str
+    .help = "Whatever additional text information is necessary to get an accurate file read"
+    .expert_level = 2
   %s
   pdf_output = None
     .type = str
