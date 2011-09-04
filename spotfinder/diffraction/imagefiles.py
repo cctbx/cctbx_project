@@ -137,15 +137,15 @@ class file_names:
         self.interface3_FN_factory(os.path.abspath(file),error_message="File name not accepted")
       else:
         A = url_support.potential_url_request(file)
-        if A.is_url_request():
-          VF = self.interface3_FN_factory(A.file,error_message="URL %s not accepted"%file)
-          VF.full_url = A.text
-        elif file=="data_in_object":
+        if file=="data_in_object":
           VF = FileName("cxi_data","present_image_0000001")
           VF.number = 1
           VF.template = "present_image_#######"
           VF.fileroot = "present_image"
           self.FN.append(VF)
+        elif A.is_url_request():
+          VF = self.interface3_FN_factory(A.file,error_message="URL %s not accepted"%file)
+          VF.full_url = A.text
         else:
           raise Exception("File not found: %s"%file)
 
