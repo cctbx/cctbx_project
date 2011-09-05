@@ -34,10 +34,31 @@ namespace rstbx { namespace integration { namespace ext {
            arg_("IS_adapt"),
            arg_("spots")
             ))
-        .def("safe_background",&simple_integration::safe_background,(
+        .def("safe_background",
+           (scitbx::af::shared<scitbx::vec2<double> >(simple_integration::*)
+           (scitbx::af::shared<scitbx::vec3<double> >,
+            annlib_adaptbx::AnnAdaptor const&,
+            scitbx::af::shared<int >)
+           )
+           &simple_integration::safe_background,(
            arg_("predicted"),
            arg_("OS_adapt"),
            arg_("sorted")
+            ))
+        .def("safe_background",
+           (scitbx::af::shared<scitbx::vec2<double> >(simple_integration::*)
+           (scitbx::af::shared<scitbx::vec3<double> >,
+            annlib_adaptbx::AnnAdaptor const&,
+            scitbx::af::shared<int >,
+            scitbx::af::shared<int >,
+            scitbx::af::shared<int >)
+           )
+           &simple_integration::safe_background,(
+           arg_("predicted"),
+           arg_("OS_adapt"),
+           arg_("sorted"),
+           arg_("tiles"),
+           arg_("tile_id")
             ))
         .def("append_ISmask",&simple_integration::append_ISmask)
         .def("integration_proper_fast",
