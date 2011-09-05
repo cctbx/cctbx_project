@@ -60,7 +60,7 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<cctbx::miller::index<> > integrated_miller;
     scitbx::af::shared<scitbx::vec2<double> > detector_xy;
 
-    simple_integration(): MAXOVER(6),NEAR(10){}
+    simple_integration(): MAXOVER(6),NEAR(10),check_tiles(false){}
 
     /* accessors and mutators */
     void set_pixel_size(double const& pxsz) {pixel_size=pxsz;}
@@ -146,6 +146,23 @@ namespace rstbx { namespace integration {
       }
     }
 
+    scitbx::af::shared<int > tiling_boundaries_m, tile_locations_m;
+    bool check_tiles;
+
+    scitbx::af::shared<scitbx::vec2<double> >
+    safe_background(
+      scitbx::af::shared<scitbx::vec3<double> > predicted,
+      annlib_adaptbx::AnnAdaptor const& OS_adapt,
+      scitbx::af::shared<int > flex_sorted,
+      scitbx::af::shared<int > tiling_boundaries,
+      scitbx::af::shared<int > tile_locations
+      ){
+        tiling_boundaries_m = tiling_boundaries;
+        tile_locations_m = tile_locations;
+        check_tiles = true;
+        return safe_background(predicted,OS_adapt,flex_sorted);
+    }
+
     scitbx::af::shared<scitbx::vec2<double> >
     safe_background(
       scitbx::af::shared<scitbx::vec3<double> > predicted,
@@ -205,6 +222,23 @@ namespace rstbx { namespace integration {
 
           mask_t spot_keys = I_S_mask;
           int base_spot_size = spot_keys.size();
+
+          //Guard against spot mask pixels off the active area
+          if (check_tiles){
+               int itile = tile_locations_m[i];
+               bool pixels_are_active = true;
+               for (mask_t::const_iterator k=spot_keys.begin();
+                    k != spot_keys.end(); ++k){
+                 if ( (k->first)[0] < tiling_boundaries_m[4*itile] ||
+                      (k->first)[0] >= tiling_boundaries_m[4*itile+2] ||
+                      (k->first)[1] < tiling_boundaries_m[4*itile+1] ||
+                      (k->first)[1] >= tiling_boundaries_m[4*itile+3]) {
+                   pixels_are_active = false;
+                   break;
+                 }
+               }
+               if (!pixels_are_active) {BSmasks.push_back(altB_S_mask);continue;}
+          }
 
           //Look for potential overlaps
           for (int n=0; n<MAXOVER; ++n){
@@ -270,6 +304,16 @@ namespace rstbx { namespace integration {
             }
             if (in_guard_zone){continue;}
             scitbx::vec2<int>candidate_bkgd=spot_position+increments_xy[isort];
+
+            //Guard against background pixels off the active area
+            if (check_tiles) {
+               int itile = tile_locations_m[i];
+               if ( candidate_bkgd[0] < tiling_boundaries_m[4*itile] ||
+                    candidate_bkgd[0] >= tiling_boundaries_m[4*itile+2] ||
+                    candidate_bkgd[1] < tiling_boundaries_m[4*itile+1] ||
+                    candidate_bkgd[1] >= tiling_boundaries_m[4*itile+3])
+                  {continue;}
+            }
             altB_S_mask[candidate_bkgd] = true;
             alt_bs+=1;
             if (alt_bs == base_spot_size){break;}

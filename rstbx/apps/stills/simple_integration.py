@@ -455,7 +455,15 @@ class IntegrationMetaProcedure(simple_integration):
     flex_sorted = flex.int()
     for item in self.sorted:
       flex_sorted.append(item[0]);flex_sorted.append(item[1]);
-    self.detector_xy_draft = self.safe_background( predicted=self.predicted,
+
+    if self.inputai.active_areas != None:
+      self.detector_xy_draft = self.safe_background( predicted=self.predicted,
+                          OS_adapt=OS_adapt,
+                          sorted=flex_sorted,
+                          tiles=self.inputai.active_areas.IT,
+                          tile_id=self.inputai.active_areas.tile_id);
+    else:
+      self.detector_xy_draft = self.safe_background( predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted);
     for i in xrange(len(self.predicted)): # loop over predicteds
