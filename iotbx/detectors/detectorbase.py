@@ -131,7 +131,7 @@ CCD_IMAGE_SATURATION=65535;
     elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
     elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
     elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
-    elif attr=='twotheta' : return self.parameters['TWOTHETA']
+    elif attr=='twotheta' : return self.parameters.get('TWOTHETA',0.0)
     elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
 
   def show_header(self, out=None):
