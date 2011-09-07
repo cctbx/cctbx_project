@@ -7,6 +7,8 @@
 
 #include <iotbx/cif/cifParser.h>
 
+// Workaround conflict with min/max macros defined by Windef.h
+// http://support.microsoft.com/kb/143208
 #if defined(min) && defined(max)
   #define min_redefined min
   #define max_redefined max
