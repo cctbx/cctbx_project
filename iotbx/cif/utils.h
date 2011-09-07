@@ -7,7 +7,17 @@
 
 #include <iotbx/cif/cifParser.h>
 
+#if defined(min) && defined(max)
+  #define min_redefined min
+  #define max_redefined max
+  #undef min
+  #undef max
+#endif
 #include <scitbx/array_family/shared.h>
+#ifdef min_redefined
+  #define max max_redefined
+  #define min min_redefined
+#endif
 
 namespace iotbx { namespace cif {
 
