@@ -22,8 +22,10 @@ class NpyImage(DetectorImageBase):
 #      parsed.remove('')
 #    return [typefunc(I) for I in parsed]
 
-  def readHeader(self, version_control = "CXI 3.2"):
+  def readHeader(self, horizons_phil):
     import numpy
+
+    version_control = horizons_phil.distl.detector_format_version
 
     if self.source_data == None:
       stream      = open(self.filename, "rb")
@@ -64,6 +66,7 @@ class NpyImage(DetectorImageBase):
       SI = flex.int(SI)
       self.bin_safe_set_data(SI)
     elif version_control == "CXI 3.2":
+      self.parameters['ACTIVE_AREAS']         = cspad_data.get('ACTIVE_AREAS', None)
       self.parameters['BEAM_CENTER_X']        = cspad_data['BEAM_CENTER_X']
       self.parameters['BEAM_CENTER_Y']        = cspad_data['BEAM_CENTER_Y']
       self.parameters['CCD_IMAGE_SATURATION'] = cspad_data['CCD_IMAGE_SATURATION']
@@ -77,6 +80,8 @@ class NpyImage(DetectorImageBase):
       self.parameters['TWOTHETA']             = 0 # XXX fiction
       self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']
       self.bin_safe_set_data(cspad_data['DATA'])
+
+      horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
   # This is nop, because all the data has been read by readHeader().
   # The header information and the data are all contained in the same
