@@ -81,7 +81,8 @@ class NpyImage(DetectorImageBase):
       self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']
       self.bin_safe_set_data(cspad_data['DATA'])
 
-      horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
+      if (self.parameters['ACTIVE_AREAS'] != None):
+        horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
   # This is nop, because all the data has been read by readHeader().
   # The header information and the data are all contained in the same
