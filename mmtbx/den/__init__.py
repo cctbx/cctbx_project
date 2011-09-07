@@ -2,7 +2,6 @@ import sys
 import iotbx.phil
 from mmtbx.torsion_restraints import utils
 from cctbx.array_family import flex
-from cctbx import geometry_restraints
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_den_restraints_ext")
@@ -326,4 +325,3 @@ def distance_squared(a, b):
 #     for sym_op in sym_ops:
 #       if sym_op.is_unit_mx() :
 #         distance = unit_cell.distance(site_i, site_j)
-         
