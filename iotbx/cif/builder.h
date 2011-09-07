@@ -2,7 +2,6 @@
 #define IOTBX_CIF_BUILDER_H
 
 #include <string>
-#include <scitbx/array_family/shared.h>
 
 namespace iotbx { namespace cif {
 
