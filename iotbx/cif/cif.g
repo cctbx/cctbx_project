@@ -14,51 +14,35 @@ April 2010
 grammar cif;
 
 options {
-    language=C;
+  language=C;
+  output=AST;
+  ASTLabelType=pANTLR3_BASE_TREE;
+}
+
+tokens {
+  TAG_VALUE_PAIR;
+  CIF;
+  LOOP;
+  SAVE;
+  DATA_BLOCK;
 }
 
 @lexer::includes{
-#if defined(min) && defined(max)
-  #define min_redefined min
-  #define max_redefined max
-  #undef min
-  #undef max
-#endif
-#include <scitbx/array_family/shared.h>
-#ifdef min_redefined
-  #define max max_redefined
-  #define min min_redefined
-#endif
-
+#include <iotbx/cif/builder.h>
 }
 
 @includes{
-#include <string>
-#include <vector>
-
-#if defined(min) && defined(max)
-  #define min_redefined min
-  #define max_redefined max
-  #undef min
-  #undef max
-#endif
-#include <scitbx/array_family/shared.h>
 #include <iotbx/cif/builder.h>
-#ifdef min_redefined
-  #define max max_redefined
-  #define min min_redefined
-#endif
-
 }
 
 @parser::context
 {
-    scitbx::af::shared<std::string> *errors;
+  iotbx::cif::array_wrapper_base* errors;
 }
 
 @lexer::context
 {
-    scitbx::af::shared<std::string> *errors;
+  iotbx::cif::array_wrapper_base* errors;
 }
 
 @parser::apifuncs
@@ -70,166 +54,110 @@ options {
 {
   LEXER->super = (void *)ctx;
 }
-@members {
-std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
-	ANTLR3_MARKER start = token->getStartIndex(token);
-	ANTLR3_MARKER stop = token->getStopIndex(token);
-	std::string str((const char*)start, stop-start+1);
-	if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
-	    (str[0] == '"' && str[str.size()-1] == '"'))
-	  { str = str.substr(1, str.size()-2); }
-	return str;
-}
 
-}
 /*------------------------------------------------------------------
- * PARSER RULES
- *------------------------------------------------------------------*/
+  * PARSER RULES
+  *------------------------------------------------------------------*/
 
 // The start rule
-parse[iotbx::cif::builder_base* builder_, bool strict_]
-scope { iotbx::cif::builder_base* builder;
-        bool strict; }
-@init {
- $parse::builder = builder_;
- $parse::strict = strict_; }
+parse[bool strict_]
+scope { bool strict; }
+@init { $parse::strict = strict_; }
 
-	: cif (EOF | '\u001a' /*Ctrl-Z*/) ;
+  : cif (EOF | '\u001a' /*Ctrl-Z*/) -> cif ;
 /*------------------------------------------------------------------
- * BASIC STRUCTURE OF A CIF
- *------------------------------------------------------------------*/
+  * BASIC STRUCTURE OF A CIF
+  *------------------------------------------------------------------*/
 
 cif
-	:	(COMMENTS)? ( data_block ( data_block )* )?
-	;
+  :	COMMENTS? data_block* -> data_block*
+  ;
 
 loop_body
-	:	v1=value
-{ ($data_items::curr_loop_values)->push_back(to_std_string($v1.start)); }
-	      ( v2=value
-{ ($data_items::curr_loop_values)->push_back(to_std_string($v2.start)); }
-	       )*
-	;
+  :	value+
+  ;
 
 save_frame
-	:	SAVE_FRAME_HEADING
-{ ($parse::builder)->start_save_frame(to_std_string($SAVE_FRAME_HEADING)); }
-	      ( data_items )+ SAVE
-{ ($parse::builder)->end_save_frame(); }
-	;
+  :	SAVE_FRAME_HEADING data_items+ SAVE -> ^(SAVE SAVE_FRAME_HEADING data_items+)
+  ;
 
 data_items
-scope { scitbx::af::shared<std::string>* curr_loop_values;
-        scitbx::af::shared<std::string>* curr_loop_headers;
-}
-@init { $data_items::curr_loop_values = new scitbx::af::shared<std::string>();
-	$data_items::curr_loop_headers = new scitbx::af::shared<std::string>();
-}
-@after { delete $data_items::curr_loop_values;
- 	 delete $data_items::curr_loop_headers;
-}
-	:	TAG value
-{
-  ($parse::builder)->add_data_item(
-    to_std_string($TAG),
-    to_std_string($value.start));
-}
-	      | loop_header loop_body
-{
-  scitbx::af::shared<std::string> &values = *($data_items::curr_loop_values);
-  int n_cols = $data_items::curr_loop_headers->size();
-  if (values.size() \% n_cols != 0) {
-    std::string msg = "Wrong number of data items for loop containing ";
-    msg += (*$data_items::curr_loop_headers)[0];
-    CTX->errors->push_back(msg);
-  }
-  else {
-    ($parse::builder)->add_loop(*$data_items::curr_loop_headers, values);
-  }
-}
-	;
+  :	 TAG value -> ^(TAG_VALUE_PAIR TAG value)
+    | loop_header loop_body -> ^(LOOP loop_header loop_body)
+  ;
+
+data_block_heading
+  : DATA_BLOCK_HEADING | {!$parse::strict}?=>GLOBAL_
+  ;
 
 data_block
-	:	( DATA_BLOCK_HEADING
-{ ($parse::builder)->add_data_block(to_std_string($DATA_BLOCK_HEADING)); }
-	      ( ( data_items | save_frame ) )*
-	      )  
-	      | ( {!$parse::strict}?=>GLOBAL_ ( ( data_items | save_frame ) )* ) // global blocks are ignored
-	;
-	
+  :	( data_block_heading ( data_items | save_frame )* )
+    -> ^(DATA_BLOCK data_block_heading data_items* save_frame* )
+  ;
 
 loop_header
-	:	LOOP_ ( TAG
-{ ($data_items::curr_loop_headers)->push_back(to_std_string($TAG)); }
-		 )+
-	;
+  :	LOOP_ TAG+ -> ^(LOOP_ TAG+)
+  ;
 
 /*------------------------------------------------------------------
- * TAGS AND VALUES
- *------------------------------------------------------------------*/
+  * TAGS AND VALUES
+  *------------------------------------------------------------------*/
 
-inapplicable
-	:	'.' ;
-
-unknown	:	'?' ;
-
-value 	:	inapplicable | unknown | '-' | char_string  | NUMERIC | text_field
-	;
-	catch [RecognitionException re] {
-	}
+value
+  :	INAPPLICABLE | UNKNOWN | NUMERIC | char_string | text_field
+  ;
+  catch [RecognitionException re] {
+  }
 
 char_string
-	:	CHAR_STRING ;
+  :	CHAR_STRING ;
 
 text_field
-	:	SEMI_COLON_TEXT_FIELD ;
-
-
-
+  :	SEMI_COLON_TEXT_FIELD ;
 
 /*------------------------------------------------------------------
- * LEXER RULES
- *------------------------------------------------------------------*/
+  * LEXER RULES
+  *------------------------------------------------------------------*/
 
 /*------------------------------------------------------------------
- * CHARACTER SETS
- *------------------------------------------------------------------*/
+  * CHARACTER SETS
+  *------------------------------------------------------------------*/
 
 fragment EOL
-	:	( '\n' | '\r' | '\r\n' ) ;
+  :	( '\n' | '\r' | '\r\n' ) ;
 
 fragment DOUBLE_QUOTE
-	:	'"' ;
+  :	'"' ;
 
 fragment SINGLE_QUOTE
-	:	'\'' ;
+  :	'\'' ;
 
 fragment ORDINARY_CHAR
-	: 	'!' | '%' | '&' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' |
-	( '0'.. '9' ) | ':' | '<' | '=' | '>' | '?' | '@' | ('A'..'Z') | ('a'..'z') |
-	'\\' | '^' | '`' | '{' | '|' | '}' | '~'
-	
-	;
+  : 	'!' | '%' | '&' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' |
+  ( '0'.. '9' ) | ':' | '<' | '=' | '>' | '?' | '@' | ('A'..'Z') | ('a'..'z') |
+  '\\' | '^' | '`' | '{' | '|' | '}' | '~'
+
+  ;
 
 fragment NON_BLANK_CHAR_
-	:	ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ';' ;
+  :	ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ';' ;
 
 fragment TEXT_LEAD_CHAR
-	:	ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ' ' | '\t' ;
+  :	ORDINARY_CHAR | DOUBLE_QUOTE | SINGLE_QUOTE | '#' | '$' | '_' | '[' | ']' | ' ' | '\t' ;
 
 fragment ANY_PRINT_CHAR
-	:	ORDINARY_CHAR | '#' | '$' | '_' | '[' | ']' | ' ' | '\t' | ';'
+  :	ORDINARY_CHAR | '#' | '$' | '_' | '[' | ']' | ' ' | '\t' | ';'
 // temporarily disable quotes from any print char until
 // I figure out how to do it properly...
 //	      | DOUBLE_QUOTE | SINGLE_QUOTE
-	;
+  ;
 
 TAG	:	'_' (NON_BLANK_CHAR_)+ ;
 
 
 /*------------------------------------------------------------------
- * RESERVED WORDS - define these after semicolon text field
- *------------------------------------------------------------------*/
+  * RESERVED WORDS - define these after semicolon text field
+  *------------------------------------------------------------------*/
 
 fragment
 DATA_	:	( 'D' | 'd' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'A' | 'a' ) '_' ;
@@ -244,86 +172,91 @@ GLOBAL_ :	( 'G' | 'g' ) ( 'L' | 'l' ) ( 'O' | 'o' ) ( 'B' | 'b' ) ( 'A' | 'a' ) 
 STOP_	:	( 'S' | 's' ) ( 'T' | 't' ) ( 'O' | 'o' ) ( 'P' | 'p' ) '_' ;
 
 /*------------------------------------------------------------------
- * SPECIAL KEY WORDS
- *------------------------------------------------------------------*/
+  * SPECIAL KEY WORDS
+  *------------------------------------------------------------------*/
 
 //VERSION	:	'#\\#CIF_' (DIGIT)+ '.' (DIGIT)+ ;
 
 DATA_BLOCK_HEADING
-	:	DATA_ (NON_BLANK_CHAR)+ ;
+  :	DATA_ (NON_BLANK_CHAR)+ ;
 
 SAVE_FRAME_HEADING
-	:	SAVE_ (NON_BLANK_CHAR)+ ;
+  :	SAVE_ (NON_BLANK_CHAR)+ ;
 
 SAVE	:	SAVE_ ;
 
 /*------------------------------------------------------------------
- * NUMERICS
- *------------------------------------------------------------------*/
+  * NUMERICS
+  *------------------------------------------------------------------*/
 
 fragment DIGIT	: '0'..'9' ;
 
 fragment EXPONENT
-        : 	( ( 'e' | 'E') | ( 'e' | 'E')( '+' | '-' ) ) (DIGIT)+ ;
+  : 	( ( 'e' | 'E') | ( 'e' | 'E')( '+' | '-' ) ) (DIGIT)+ ;
 
 fragment INTEGER
-	: 	( '+' | '-' )? (DIGIT)+ ;
+  : 	( '+' | '-' )? (DIGIT)+ ;
 
 fragment FLOAT
-	: 	INTEGER EXPONENT | ( ( '+' | '-' )? ( (DIGIT)* '.' (DIGIT)+) | (DIGIT)+ '.' ) (EXPONENT)? ;
+  : 	INTEGER EXPONENT | ( ( '+' | '-' )? ( (DIGIT)* '.' (DIGIT)+) | (DIGIT)+ '.' ) (EXPONENT)? ;
 
 fragment UNSIGNED_INTEGER
-	:	(DIGIT)+ ;
+  :	(DIGIT)+ ;
 
 fragment NUMBER
-	:	INTEGER | FLOAT;
+  :	INTEGER | FLOAT;
 
 NUMERIC	:	NUMBER | ( NUMBER '(' (UNSIGNED_INTEGER)+ ')' ) ;
 
 /*------------------------------------------------------------------
- * CHARACTER STRINGS AND FIELDS
- *------------------------------------------------------------------*/
+  * CHARACTER STRINGS AND FIELDS
+  *------------------------------------------------------------------*/
+
+INAPPLICABLE
+  : '.' ;
+
+UNKNOWN : '?' ;
 
 fragment UNQUOTED_STRING
 
-	:	(({ GETCHARPOSITIONINLINE() > 0 }?=> ';')
-		  | ORDINARY_CHAR ) (NON_BLANK_CHAR_)* ;
+  :	(({ GETCHARPOSITIONINLINE() > 0 }?=> ';')
+    | ORDINARY_CHAR ) (NON_BLANK_CHAR_)* ;
 
 // apparently a single quoted string such as 'a dog's life' is legal...
 fragment SINGLE_QUOTED_STRING
-	:	SINGLE_QUOTE
-		( ( (SINGLE_QUOTE NON_BLANK_CHAR_)=>SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
-		SINGLE_QUOTE
-	;
+  :	SINGLE_QUOTE
+    ( ( (SINGLE_QUOTE NON_BLANK_CHAR_)=>SINGLE_QUOTE ) | ANY_PRINT_CHAR | DOUBLE_QUOTE )*
+    SINGLE_QUOTE
+  ;
 
 fragment DOUBLE_QUOTED_STRING
-	:	DOUBLE_QUOTE
-		( ( (DOUBLE_QUOTE NON_BLANK_CHAR_)=>DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
-	        DOUBLE_QUOTE
-	;
+  :	DOUBLE_QUOTE
+    ( ( (DOUBLE_QUOTE NON_BLANK_CHAR_)=>DOUBLE_QUOTE ) | ANY_PRINT_CHAR | SINGLE_QUOTE )*
+      DOUBLE_QUOTE
+  ;
 
 CHAR_STRING
-	:	UNQUOTED_STRING | SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING;
+  :	UNQUOTED_STRING | SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING;
 
 SEMI_COLON_TEXT_FIELD
-	:	( { GETCHARPOSITIONINLINE() == 0 }?=> ';')
-		( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
-		( (TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL)* )
-		
-		{ $start += 1; EMIT(); } // strip semicolons
-		
-		';'
-	;
+  :	( { GETCHARPOSITIONINLINE() == 0 }?=> ';')
+    ( ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* EOL
+    ( (TEXT_LEAD_CHAR ( ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )* )? EOL)* )
+
+  { $start += 1; EMIT(); } // strip semicolons
+
+  ';'
+;
 
 /*------------------------------------------------------------------
- * WHITE SPACE AND COMMENTS
- *------------------------------------------------------------------*/
+  * WHITE SPACE AND COMMENTS
+  *------------------------------------------------------------------*/
 
 COMMENTS
-	:	( ( '#' (ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
-  		  ( EOL | { LA(1) == EOF }? ) )+ )
-	        { $channel = HIDDEN; }
-	;
+  :	( ( '#' (ANY_PRINT_CHAR | SINGLE_QUOTE | DOUBLE_QUOTE )*
+    ( EOL | { LA(1) == EOF }? ) )+ )
+      { $channel = HIDDEN; }
+  ;
 
 
 
@@ -334,10 +267,10 @@ COMMENTS
 
 // Redefine this as non-fragment so can be seen by the parser
 NON_BLANK_CHAR
-	:	NON_BLANK_CHAR_ ;
+  :	NON_BLANK_CHAR_ ;
 
 WHITESPACE
-	: 	( '\t' | ' ' | EOL | '\u000C' )+
-		//{ $channel = HIDDEN; }
-		{ SKIP(); }
-	;
+  : 	( '\t' | ' ' | EOL | '\u000C' )+
+    //{ $channel = HIDDEN; }
+    { SKIP(); }
+  ;

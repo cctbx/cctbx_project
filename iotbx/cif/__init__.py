@@ -61,19 +61,24 @@ class reader(object):
       raise CifParserError(self.parser.lexer_errors()[0])
     if raise_if_errors and len(self.parser.parser_errors()):
       raise CifParserError(self.parser.parser_errors()[0])
+    if raise_if_errors and len(self.parser.tree_walker_errors()):
+      raise CifParserError(self.parser.tree_walker_errors())
 
   def model(self):
     return self.builder.model()
 
   def error_count(self):
     return self.parser.lexer_errors().size()\
-           + self.parser.parser_errors().size()
+           + self.parser.parser_errors().size()\
+           + self.parser.tree_walker_errors().size()
 
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
     for msg in self.parser.lexer_errors()[:max_errors]:
       print >> out, msg
     for msg in self.parser.parser_errors()[:max_errors]:
+      print >> out, msg
+    for msg in self.parser.tree_walker_errors()[:max_errors]:
       print >> out, msg
 
   def build_crystal_structures(self, data_block_name=None):

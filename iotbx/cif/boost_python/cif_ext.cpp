@@ -89,6 +89,15 @@ namespace iotbx { namespace cif {
                    bool strict=true)
     : parser(filename, builder, strict) {}
 
+    scitbx::af::shared<std::string>& tree_walker_errors() {
+      if (tree_psr != NULL) {
+        return dynamic_cast<shared_array_wrapper*>(tree_psr->errors)->array;
+      }
+      else {
+        return *(new scitbx::af::shared<std::string>);
+      }
+    }
+
     scitbx::af::shared<std::string>& parser_errors() {
       return dynamic_cast<shared_array_wrapper*>(psr->errors)->array;
     }
@@ -137,6 +146,7 @@ namespace boost_python {
         .def("__init__", make_constructor(run_cif_parser,
           default_call_policies(),
           (arg("input"), arg("builder"), arg("strict")=true)))
+        .def("tree_walker_errors", &wt::tree_walker_errors, rbv())
         .def("parser_errors", &wt::parser_errors, rbv())
         .def("lexer_errors", &wt::lexer_errors, rbv())
         ;

@@ -5,4 +5,5 @@ env.SharedLibrary(target="#lib/iotbx_cif_ext", source=[
   "cif_ext.cpp",
   "../cifParser.cpp",
   "../cifLexer.cpp",
+  "../cifWalker.cpp",
 ])

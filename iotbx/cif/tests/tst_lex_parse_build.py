@@ -54,6 +54,9 @@ def exercise_miller_arrays_as_cif_block():
   else: raise Exception_expected
   cif_model = reader(input_string=cif_global, strict=False).model()
   assert not show_diff(str(cif_model), """\
+data_global_
+_a                                1
+_b                                2
 data_1
 _c                                3
 _d                                4
@@ -104,6 +107,12 @@ _b 2
   assert cm.keys() == ['1']
   cif.reader(input_string=cif_str_2, cif_object=cm).model()
   assert cm.keys() == ['1', '2']
+  try: cm = cif.reader(input_string=cif_invalid_loop).model()
+  except CifParserError: pass
+  else: raise Exception_expected
+  try: cm = cif.reader(input_string=cif_invalid_loop_2).model()
+  except CifParserError: pass
+  else: raise Exception_expected
 
   sys.stdout = stdout
 
@@ -356,6 +365,13 @@ loop_
   _a
   _b
 _c 1
+"""
+
+cif_invalid_loop_2 = """\
+data_1
+loop_
+_a _b _c
+1 2 3 4 5
 """
 
 cif_invalid_missing_value = """\

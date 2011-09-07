@@ -20,7 +20,10 @@ class cif_model_builder(object):
 
   def add_data_block(self, data_block_heading):
     self._current_block = model.block()
-    block_name = data_block_heading[data_block_heading.find('_')+1:]
+    if data_block_heading.lower() == 'global_':
+      block_name = data_block_heading
+    else:
+      block_name = data_block_heading[data_block_heading.find('_')+1:]
     self._model[block_name] = self._current_block
 
   def add_loop(self, header, data):
