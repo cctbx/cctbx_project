@@ -35,7 +35,7 @@ namespace mmtbx { namespace den {
     double eq_distance_start;
     double weight;
   };
-  
+
   inline
   double
   den_simple_residual_sum(
@@ -82,8 +82,8 @@ namespace mmtbx { namespace den {
       sites[1] = sites_cart[ i_seqs[1] ];
       bond restraint(sites, proxy.eq_distance, proxy.weight, slack);
       double distance_model = restraint.distance_model;
-      double new_eq_dist = ((1.0-kappa)*proxy.eq_distance) + 
-                           ( kappa * 
+      double new_eq_dist = ((1.0-kappa)*proxy.eq_distance) +
+                           ( kappa *
                              ( (gamma*distance_model) +
                                (1.0-gamma)*proxy.eq_distance_start ));
       proxies[i].eq_distance = new_eq_dist;
