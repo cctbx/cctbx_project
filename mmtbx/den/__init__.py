@@ -26,10 +26,16 @@ den_params = iotbx.phil.parse("""
    .type = float
  weight = 1.0
    .type = float
+ optimize = True
+   .type = bool
+ opt_gamma_values = 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
+   .type = floats
+ opt_weight_values = 1.0, 3.0, 10.0, 30.0, 100.0, 300.0
+   .type = floats
  strategy = *torsion_simulated_annealing \
             cartesian_similuated_annealing
-   .type = choice(multi=True)
-   .help = select strategies to apply DEN restraints
+   .type = choice(multi=False)
+   .help = select strategy to apply DEN restraints
  output_kinemage = False
 """)
 
@@ -253,6 +259,20 @@ class den_restraints(object):
                             self.den_proxies,
                             self.gamma,
                             self.kappa)
+
+  def get_optimization_grid(self):
+    # defaults adapted from DEN Nature paper Fig. 1
+    gamma_array = self.params.opt_gamma_values
+    weight_array = self.params.opt_weight_values
+    #if gamma_array is None:
+    #  gamma_array = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    #if weight_array is None:
+    #  weight_array = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0]
+    grid = []
+    for g in gamma_array:
+      for w in weight_array:
+        grid.append( (g, w) )
+    return grid
 
   def show_den_summary(self, sites_cart):
     print "DEN restraints summary:"
