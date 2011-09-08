@@ -65,7 +65,7 @@ class NpyImage(DetectorImageBase):
       SI = cspad_data['image'].astype(numpy.int32)
       SI = flex.int(SI)
       self.bin_safe_set_data(SI)
-    elif version_control == "CXI 3.2":
+    elif version_control in ["CXI 3.2","CXI 4.1"]:
       self.parameters['ACTIVE_AREAS']         = cspad_data.get('ACTIVE_AREAS', None)
       self.parameters['BEAM_CENTER_X']        = cspad_data['BEAM_CENTER_X']
       self.parameters['BEAM_CENTER_Y']        = cspad_data['BEAM_CENTER_Y']
