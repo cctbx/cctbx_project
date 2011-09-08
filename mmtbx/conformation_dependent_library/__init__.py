@@ -142,28 +142,24 @@ class ThreeProteinResidues(list):
         if atom.name.strip()==name:
           atoms["%s_minus_1" % name] = atom
           break
-      else:
-        assert 0
     # i
     for name in ["N", "CA", "CB", "C", "O"]:
       for atom in self[1].atoms():
         if atom.name.strip()==name:
           atoms["%s_i" % name] = atom
           break
-      else:
-        if name not in ["CB", "O"]:
-          print self
-          for atom in self[1].atoms():
-            print atom.name, atom.xyz
-          assert 0
+      #else:
+      #  if name not in ["CB", "O"]:
+      #    print self
+      #    for atom in self[1].atoms():
+      #      print atom.name, atom.xyz
+      #    assert 0
     # i+1
     for name in ["N"]:
       for atom in self[2].atoms():
         if atom.name.strip()==name:
           atoms["%s_plus_1" % name] = atom
           break
-      else:
-        assert 0
     return atoms
 
   def get_cdl_key(self, verbose=False):
@@ -377,8 +373,6 @@ def update_restraints(hierarchy,
       threes[2].resname,
       )
     if res_type_group is None:
-      #print "Non standard amino-acid skipped"
-      #print threes
       continue
 
     key = threes.get_cdl_key(verbose=verbose)

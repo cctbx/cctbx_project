@@ -859,22 +859,95 @@ class structure(crystal.special_position_settings):
       else: result.append(False)
     return result
 
-  def main_chain_selection(self):
+  def heavy_selection(self,
+    ignore_atoms_with_alternative_conformations=False,
+    include_only_atoms_with_alternative_conformations=False,
+                   ):
+    if ( ignore_atoms_with_alternative_conformations and
+         include_only_atoms_with_alternative_conformations
+         ):
+      raise Sorry("Mutually exclusive alternative location options")
+    scattering_types = self._scatterers.extract_scattering_types()
+    scatterers = self.scatterers()
+    result = flex.bool()
+    for i, sct in enumerate(scattering_types):
+      if ignore_atoms_with_alternative_conformations:
+        if scatterers[i].label[9:10]!=" ": 
+          result.append(False)
+          continue
+      if include_only_atoms_with_alternative_conformations:
+        if scatterers[i].label[9:10]==" ": 
+          result.append(False)
+          continue
+      if(sct.strip() in ['H','D']): result.append(False)
+      else: result.append(True)
+    return result
+
+  def atom_names_selection(self,
+    atom_names=["C","O","CA","N"],
+    ignore_atoms_with_alternative_conformations=False,
+    include_only_atoms_with_alternative_conformations=False,
+    ):
     #XXX may need a better function
+    if ( ignore_atoms_with_alternative_conformations and
+         include_only_atoms_with_alternative_conformations
+         ):
+      raise Sorry("Mutually exclusive alternative location options")
     scattering_types = self._scatterers.extract_scattering_types()
     result = flex.bool()
     for sc in self.scatterers():
       if(sc.label.find("HOH")>-1):
         result.append(False)
         continue
-      for name in ["C","O","CA","N", "CB"]:
-        if(sc.label[5:9].find(" %s " % name)>-1 and
+      if ignore_atoms_with_alternative_conformations:
+        if sc.label[9:10]!=" ": 
+          result.append(False)
+          continue
+      if include_only_atoms_with_alternative_conformations:
+        if sc.label[9:10]==" ": 
+          result.append(False)
+          continue
+      for name in atom_names: 
+        if(sc.label[5:9].find("%s " % name)>-1 and
            sc.scattering_type==name[0]
            ):
           result.append(True)
           break
       else: result.append(False)
     return result
+
+  def backbone_selection(self,
+    atom_names=["C","O","CA","N"],
+    ignore_atoms_with_alternative_conformations=False,
+    include_only_atoms_with_alternative_conformations=False,
+                         ):
+    return self.atom_names_selection(
+      atom_names=atom_names,
+      ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
+      include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
+      )
+
+  def main_chain_selection(self,
+    atom_names=["C","O","CA","N","CB"],
+    ignore_atoms_with_alternative_conformations=False,
+    include_only_atoms_with_alternative_conformations=False,
+                           ):
+    return self.atom_names_selection(
+      atom_names=atom_names,
+      ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
+      include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
+      )
+
+  def peptide_dihedral_selection(self,
+    atom_names=["C","CA","N"],
+    ignore_atoms_with_alternative_conformations=False,
+    include_only_atoms_with_alternative_conformations=False,
+                                 ):
+    return self.atom_names_selection(
+      atom_names=atom_names,
+      ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
+      include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
+      )
 
   def element_selection(self, *elements):
     return flex.bool([ sc.element_symbol().strip() in elements

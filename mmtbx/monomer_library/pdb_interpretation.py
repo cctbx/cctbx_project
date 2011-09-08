@@ -90,9 +90,9 @@ test_cdl_params = """\
 """
 
 master_params_str = """\
-  conformation_dependent_restraints = False
+  cdl = False
     .type = bool
-    .short_caption = Use Conformation Dependent Library
+    .short_caption = Use Conformationally Dependent Library
     .caption = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
@@ -2551,7 +2551,11 @@ class build_all_chain_proxies(object):
             apply.data_link, str(apply.pdbres_pair)))
     #
     if carbohydrate_callback:
-      carbohydrate_callback.pdb_interpretation_callback(self)
+      print '\n  Calling carbohydrate callback'
+      if not hasattr(carbohydrate_callback, "pdb_interpretation_callback"):
+        print '    No PDB interpretation callback found, skipped'
+      else:
+        carbohydrate_callback.pdb_interpretation_callback(self)
     #
     self.geometry_proxy_registries.discard_tables()
     self.scattering_type_registry.discard_tables()
