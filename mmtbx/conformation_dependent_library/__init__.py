@@ -151,7 +151,10 @@ class ThreeProteinResidues(list):
           atoms["%s_i" % name] = atom
           break
       else:
-        if name!="CB":
+        if name not in ["CB", "O"]:
+          print self
+          for atom in self[1].atoms():
+            print atom.name, atom.xyz
           assert 0
     # i+1
     for name in ["N"]:
@@ -215,7 +218,10 @@ class ThreeProteinResidues(list):
       elif code=="AB":  names = ["CA_i", "CB_i" ]
       elif code=="AC":  names = ["CA_i", "C_i" ]
       elif code=="CO":  names = ["C_i",  "O_i" ]
+      # not all amino acids have a CB
       if "CB_i" in names and not "CB_i" in atoms: continue
+      # sometimes the O is not in the model
+      if "O_i" in names and not "O_i" in atoms: continue
       for j in range(len(names)):
         names[j] = atoms[names[j]].i_seq
       if len(names)==3:
@@ -370,7 +376,11 @@ def update_restraints(hierarchy,
       threes[1].resname,
       threes[2].resname,
       )
-    assert res_type_group
+    if res_type_group is None:
+      #print "Non standard amino-acid skipped"
+      #print threes
+      continue
+
     key = threes.get_cdl_key(verbose=verbose)
     if verbose: print 'key',key
 
