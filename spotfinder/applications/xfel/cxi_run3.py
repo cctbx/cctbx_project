@@ -351,19 +351,14 @@ class run3_cxi_limits:
 def get_initial_cxi_scope():
 
   args = [
-          "distl.bins.verbose=True",
-          "distl.minimum_spot_area=3",
           "distl.detector_tiling=%s"%run3_cxi_limits().as_string(),
-          "distl.peripheral_margin=1",
           "force_method2_resolution_limit=2.1",
           "distl_highres_limit=2.1",
           "distl.res.outer=2.1",
           ]
 
-  from labelit import preferences
-  from rstbx.command_line.index import special_defaults_for_new_horizons
-  new_horizons_phil = preferences.RunTimePreferences()
-  special_defaults_for_new_horizons( new_horizons_phil )
+  from spotfinder.applications.xfel import cxi_phil
+  new_horizons_phil = cxi_phil.cxi_basic_start()
   new_horizons_phil.merge_command_line(args)
   horizons_phil=new_horizons_phil.command_extractor
   return horizons_phil
