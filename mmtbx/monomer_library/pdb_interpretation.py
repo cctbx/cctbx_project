@@ -92,10 +92,10 @@ test_cdl_params = """\
 master_params_str = """\
   cdl = False
     .type = bool
-    .short_caption = Use Conformationally Dependent Library
-    .caption = Use Conformation Dependent Library (CDL) \
+    .short_caption = Use Conformation-Dependent Library
+    .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
-    .style = bold
+    .style = bold noauto
   apply_cif_modification
     .optional = True
     .multiple = True
