@@ -28,7 +28,7 @@ class geometry(object):
     self.dr_target, self.dr_number = 0, 0
     self.target = 0.0
     self.number_of_restraints = 0.0
-    if(ignore_side_chain and main_chain_selection.count(True) > 0):
+    if(ignore_side_chain): # and main_chain_selection.count(True) > 0):
       restraints_manager = restraints_manager.select(
         selection = main_chain_selection)
       sites_cart = sites_cart.select(main_chain_selection)

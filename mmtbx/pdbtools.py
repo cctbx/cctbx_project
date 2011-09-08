@@ -686,7 +686,7 @@ def run(args, command_name="phenix.pdbtools"):
      (command_line_interpreter.params.simple_dynamics)) :
     utils.print_header("Geometry regularization", out = log)
     # Conformation Dependent Library
-    if command_line_interpreter.params.pdb_interpretation.conformation_dependent_restraints:
+    if command_line_interpreter.params.pdb_interpretation.cdl:
       import time
       from mmtbx import conformation_dependent_library as cdl
       ppf = command_line_interpreter.processed_pdb_file
