@@ -138,6 +138,12 @@ namespace {
             arg("weight"),
             arg("slack")=0)))
         .def(init<
+          af::tiny<unsigned, 2> const&, double, double, double >((
+            arg("i_seqs"),
+            arg("initial_eq_distance"),
+            arg("eq_distance"),
+            arg("weight"))))
+        .def(init<
           af::tiny<unsigned, 2> const&,
           sgtbx::rt_mx const&,
           double,
