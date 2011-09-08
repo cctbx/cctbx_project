@@ -239,7 +239,8 @@ class any_file_input (object) :
       self.file_object = cif_file
       self.file_type = "hkl"
     else:
-      self.file_object = iotbx.cif.reader(file_path=self.file_name)
+      self.file_object = iotbx.cif.reader(file_path=self.file_name,
+        strict=False)
       self.file_type = "cif"
 
   def try_as_phil (self) :
