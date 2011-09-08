@@ -133,6 +133,20 @@ def build_xyz_hash(pdb_hierarchy):
     name_xyz_hash[atom.pdb_label_columns()]=atom.xyz
   return name_xyz_hash
 
+def build_resid_hash(pdb_hierarchy):
+  resid_hash = dict()
+  for rg in pdb_hierarchy.residue_groups():
+    resid = rg.resseq_as_int()
+    for atom in rg.atoms():
+      resid_hash[atom.i_seq]=resid
+  return resid_hash
+
+def build_i_seq_xyz_hash(pdb_hierarchy):
+  i_seq_xyz_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    i_seq_xyz_hash[atom.i_seq] = atom.xyz
+  return i_seq_xyz_hash
+
 def build_element_hash(pdb_hierarchy):
   i_seq_element_hash = dict()
   for atom in pdb_hierarchy.atoms():
@@ -197,17 +211,24 @@ def chain_from_selection(chain, selection):
   new_hierarchy = new_hierarchy_from_chain(chain=chain).select(selection)
   print dir(new_hierarchy)
 
-def hierarchy_from_selection(pdb_hierarchy, selection):
+def hierarchy_from_selection(pdb_hierarchy, selection, log):
   import iotbx.pdb.hierarchy
   temp_hierarchy = pdb_hierarchy.select(selection)
+  altloc = None
   hierarchy = iotbx.pdb.hierarchy.root()
   model = iotbx.pdb.hierarchy.model()
   for chain in temp_hierarchy.chains():
     for conformer in chain.conformers():
       if not conformer.is_protein() and not conformer.is_na():
         continue
-      else:
+      elif altloc is None or conformer.altloc == altloc:
         model.append_chain(chain.detached_copy())
+        altloc = conformer.altloc
+      else:
+        print >> log, \
+        "* Multiple alternate conformations found, using altid %s *" \
+        % altloc
+        continue
   if len(model.chains()) != 1:
     raise Sorry("more than one chain in selection")
   hierarchy.append_model(model)

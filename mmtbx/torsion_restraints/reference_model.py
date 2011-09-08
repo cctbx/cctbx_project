@@ -382,10 +382,12 @@ class reference_model(object):
         sel_ref = utils.selection(rg.reference, sel_cache_ref)
         mod_h = utils.hierarchy_from_selection(
                   pdb_hierarchy=pdb_hierarchy,
-                  selection = sel).models()[0].chains()[0]
+                  selection = sel,
+                  log=log).models()[0].chains()[0]
         ref_h = utils.hierarchy_from_selection(
                   pdb_hierarchy=pdb_hierarchy_ref,
-                  selection = sel_ref).models()[0].chains()[0]
+                  selection = sel_ref,
+                  log=log).models()[0].chains()[0]
         ssm = None
         try: #do SSM alignment
           ssm, ssm_align = utils._ssm_align(
@@ -397,7 +399,6 @@ class reference_model(object):
           else:
             print >> log, "SSM alignment failed...trying simple matching..."
         if ssm != None:
-          print ssm.GetQvalues()
           for pair in ssm_align.pairs:
             model_res = pair[0]
             ref_res = pair[1]
