@@ -351,16 +351,14 @@ class run3_cxi_limits:
 def get_initial_cxi_scope():
 
   args = [
-          "distl.detector_tiling=%s"%run3_cxi_limits().as_string(),
+          "distl.detector_format_version=CXI 3.2",
           "force_method2_resolution_limit=2.1",
           "distl_highres_limit=2.1",
           "distl.res.outer=2.1",
           ]
 
   from spotfinder.applications.xfel import cxi_phil
-  new_horizons_phil = cxi_phil.cxi_basic_start()
-  new_horizons_phil.merge_command_line(args)
-  horizons_phil=new_horizons_phil.command_extractor
+  horizons_phil = cxi_phil.cxi_versioned_extract(args)
   return horizons_phil
 
 if __name__=="__main__":
