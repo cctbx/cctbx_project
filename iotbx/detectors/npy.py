@@ -92,6 +92,7 @@ class NpyImage(DetectorImageBase):
 
 
   def translate_tiles(self, phil):
+    if phil.distl.detector_tiling==None: return
     if phil.distl.tile_translations==None: return
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
 
