@@ -42,8 +42,8 @@ class parser : private boost::noncopyable
       lxr->errors = builder->new_array();
       cif_AST = psr->parse(psr, strict);
       if (lxr->errors->size() == 0 && psr->errors->size() == 0 && cif_AST.tree != NULL) {
-        nodes	= antlr3CommonTreeNodeStreamNewTree(cif_AST.tree, ANTLR3_SIZE_HINT);
-        tree_psr	= cifWalkerNew(nodes);
+        nodes   = antlr3CommonTreeNodeStreamNewTree(cif_AST.tree, ANTLR3_SIZE_HINT);
+        tree_psr        = cifWalkerNew(nodes);
         tree_psr->errors = builder->new_array();
         tree_psr->parse(tree_psr, builder);
       }
@@ -78,7 +78,7 @@ class parser : private boost::noncopyable
   private:
     pANTLR3_COMMON_TOKEN_STREAM tstream;
     pANTLR3_INPUT_STREAM input;
-    pANTLR3_COMMON_TREE_NODE_STREAM	nodes;
+    pANTLR3_COMMON_TREE_NODE_STREAM     nodes;
     cifParser_parse_return cif_AST;
 
 };
