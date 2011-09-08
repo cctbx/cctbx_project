@@ -273,6 +273,8 @@ class torsion_ncs(object):
       if not h_atom:
         dp_hash[dp.i_seqs] = dp
 
+    cbetadev_hash = utils.build_cbetadev_hash(
+                      pdb_hierarchy=self.pdb_hierarchy)
     self.cbeta_proxies = []
     for cp in geometry.chirality_proxies:
       key = ""
@@ -295,6 +297,13 @@ class torsion_ncs(object):
         elif self.name_hash[i_seq][0:4] == ' CB ':
           CBkey = self.name_hash[i_seq]
           CBsite = i_seq
+          try:
+            if float(cbetadev_hash[name_hash[i_seq][4:14]]) >= 0.25:
+              c_beta = False
+              print >> self.log, "skipping C-beta restraint for %s" % \
+                name_hash[i_seq][4:14]
+          except Exception:
+              c_beta = False
         elif self.name_hash[i_seq][0:4] == ' C  ':
           Ckey = self.name_hash[i_seq]
           Csite = i_seq
@@ -355,6 +364,8 @@ class torsion_ncs(object):
               if res_key not in res_match_master[j_match]:
                 res_match_master[j_match].append(res_key)
     self.res_match_master = res_match_master
+
+    #symmetric residues - Val, Phe, Leu, Tyr, Asp, Glu
 
     for dp in geometry.dihedral_proxies:
       temp = dict()
