@@ -87,7 +87,10 @@ class IntegrateCharacters:
     ai.setDeltaphi(float(local['deltaphi'])*math.pi/180.)
     ai.setMosaicity(setting["mosaicity"])
     ai.setOrientation(setting["orient"])
-    ai.set_active_areas(self.horizons_phil)
+    refimage = self.files.images[0]
+    ai.set_active_areas(self.horizons_phil,
+                        beam=(int(refimage.beamx/refimage.pixel_size),
+                              int(refimage.beamy/refimage.pixel_size)))
 
     image_centers = [(math.pi/180.)*float(x) for x in local["osc_start"].values()]
 
