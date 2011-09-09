@@ -21,6 +21,8 @@ class screen_params (object) :
     self.zoom = 0
     self._invert_x = False
     self._invert_y = False
+    self.last_thumb_x = 0 # NKS: hooks for keeping pan position while
+    self.last_thumb_y = 0 #  rendering the Prev or Next image
 
   def set_zoom (self, zoom) :
     assert (zoom >= 0)
@@ -107,6 +109,8 @@ class screen_params (object) :
 
   def center_view_from_thumbnail (self, x, y) :
     if (self.zoom == 0) : return
+    self.last_thumb_x = x
+    self.last_thumb_y = y
     x0, y0, w, h = self.get_bitmap_params()
     img_x = max(0, ifloor((x * self.thumb_ratio) - (w / 2)))
     img_y = max(0, ifloor((y * self.thumb_ratio) - (h / 2)))
