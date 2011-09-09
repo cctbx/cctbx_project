@@ -349,17 +349,14 @@ class run3_cxi_limits:
     return self.ilimits
 
 def get_initial_cxi_scope():
+  from spotfinder.command_line.signal_strength import master_params
 
-  args = [
-          "distl.detector_format_version=CXI 3.2",
-          "force_method2_resolution_limit=2.1",
-          "distl_highres_limit=2.1",
-          "distl.res.outer=2.1",
-          ]
-
-  from spotfinder.applications.xfel import cxi_phil
-  horizons_phil = cxi_phil.cxi_versioned_extract(args)
-  return horizons_phil
+  argument_interpreter = master_params.command_line_argument_interpreter(
+    home_scope="distl")
+  object1 = argument_interpreter.process(arg=
+    "distl.detector_tiling=%s"%run3_cxi_limits().as_string())
+  working_params = master_params.fetch(sources=[object1])
+  return working_params.extract()
 
 if __name__=="__main__":
   lysozyme_calibration()

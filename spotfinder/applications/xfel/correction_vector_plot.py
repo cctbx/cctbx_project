@@ -30,6 +30,7 @@ def vectors(handle,all):
 
   print len(x),len(y)
   from spotfinder.applications.xfel.cxi_run3 import get_initial_cxi_scope
+  print "ONLY FOR RUN 3!!!"
   params = get_initial_cxi_scope()
   tiling = params.distl.detector_tiling
   for itile in xrange(len(tiling)//4):
