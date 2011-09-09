@@ -101,12 +101,14 @@ class NpyImage(DetectorImageBase):
     if phil.distl.tile_translations==None: return
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
 
-    SI_old = self.__getattr__('rawdata') # XXX Why are these called SI?
-    SI_new = flex.int(flex.grid(SI_old.focus()))
+    shifted_int_data_old = self.__getattr__('rawdata')
+    shifted_int_data_new = flex.int(flex.grid(shifted_int_data_old.focus()))
 
-    for i in xrange(len(phil.distl.tile_translations) // 2):
-      shift_slow = phil.distl.tile_translations[2 * i + 0]
-      shift_fast = phil.distl.tile_translations[2 * i + 1]
+    manager = self.get_tile_manager(phil)
+
+    for i,shift in enumerate(manager.effective_translations()):
+      shift_slow = shift[0]
+      shift_fast = shift[1]
 
       ur_slow = phil.distl.detector_tiling[4 * i + 0]
       ur_fast = phil.distl.detector_tiling[4 * i + 1]
@@ -115,22 +117,47 @@ class NpyImage(DetectorImageBase):
 
       #print "Shifting tile at (%d, %d) by (%d, %d)" % (ur_slow, ur_fast, shift_slow, shift_fast)
 
-      SI_new.matrix_paste_block_in_place(
-        block = SI_old.matrix_copy_block(
+      shifted_int_data_new.matrix_paste_block_in_place(
+        block = shifted_int_data_old.matrix_copy_block(
           i_row=ur_slow,i_column=ur_fast,
           n_rows=ll_slow-ur_slow, n_columns=ll_fast-ur_fast),
         i_row = ur_slow + shift_slow,
         i_column = ur_fast + shift_fast
       )
 
-    self.bin_safe_set_data(SI_new)
+    self.bin_safe_set_data(shifted_int_data_new)
 
   def get_tile_manager(self, phil):
-    return tile_manager(phil)
+    return tile_manager(phil,beam=(int(self.beamx/self.pixel_size),
+                                   int(self.beamy/self.pixel_size)))
 
 class tile_manager:
-  def __init__(self,working_params):
+  def __init__(self,working_params,beam=None):
     self.working_params = working_params
+    self.beam = beam # direct beam position supplied as slow,fast pixels
+
+  def effective_translations(self):
+
+    # if there are quadrant translations, do some extra work to apply them
+    if self.working_params.distl.quad_translations != None:
+      from scitbx.matrix import col
+      beam = col(self.beam)
+      for itile in xrange(len(self.working_params.distl.detector_tiling) // 4):
+        tile_center = (
+          col(self.working_params.distl.detector_tiling[4*itile:4*itile+2]) +
+          col(self.working_params.distl.detector_tiling[4*itile+2:4*itile+4]))/2
+        delta = tile_center-beam
+        iquad = [(True,True),(True,False),(False,True),(False,False)
+                ].index((delta[0]<0, delta[1]<0)) # UL,UR,LL,LR
+        yield (self.working_params.distl.tile_translations[2 * itile + 0] +
+               self.working_params.distl.quad_translations[2 * iquad + 0],
+               self.working_params.distl.tile_translations[2 * itile + 1] +
+               self.working_params.distl.quad_translations[2 * iquad + 1])
+      return
+
+    for i in xrange(len(self.working_params.distl.tile_translations) // 2):
+       yield (self.working_params.distl.tile_translations[2 * i + 0],
+              self.working_params.distl.tile_translations[2 * i + 1])
 
   def effective_tiling_as_flex_int(self,reapply_peripheral_margin=False,**kwargs):
     import copy
@@ -144,9 +171,13 @@ class tile_manager:
       2*len(self.working_params.distl.tile_translations) == len(IT):
       #assume that the tile translations have already been applied at the time
       #the file is read; now they need to be applied to the spotfinder tile boundaries
-      for i in xrange(len(self.working_params.distl.tile_translations) // 2):
-        shift_slow = self.working_params.distl.tile_translations[2 * i + 0]
-        shift_fast = self.working_params.distl.tile_translations[2 * i + 1]
+
+      #check if beam position has been supplied
+      self.beam = kwargs.get("beam",self.beam)
+
+      for i,shift in enumerate(self.effective_translations()):
+        shift_slow = shift[0]
+        shift_fast = shift[1]
         IT[4 * i + 0] += shift_slow
         IT[4 * i + 1] += shift_fast
         IT[4 * i + 2] += shift_slow

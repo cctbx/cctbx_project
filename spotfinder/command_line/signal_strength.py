@@ -31,6 +31,11 @@ distl {
     .type = ints (value_min=0,value_max=1)
     .help = "For each identified tile, an integer [0,1] acting as a bool to define whether to ignore its data."
     .expert_level = 2
+  quad_translations = None
+    .type = ints
+    .help = "For quadrants UL,UR,LL,LR groups of 2 integers for slow & fast translations to correct position,"
+    .help = "given in pixels"
+    .expert_level = 2
   detector_format_version = None
     .type = str
     .help = "Whatever additional text information is necessary to get an accurate file read"
