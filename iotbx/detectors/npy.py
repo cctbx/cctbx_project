@@ -84,12 +84,17 @@ class NpyImage(DetectorImageBase):
       if (self.parameters['ACTIVE_AREAS'] != None):
         horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
+    if version_control == "CXI 4.1":
+      if horizons_phil.distl.tile_translations==None and \
+         horizons_phil.distl.detector_tiling is not None:
+          horizons_phil.distl.tile_translations = [0]*(len(horizons_phil.distl.detector_tiling)/2)
+
+
   # This is nop, because all the data has been read by readHeader().
   # The header information and the data are all contained in the same
   # pickled object.
   def read(self):
     pass
-
 
   def translate_tiles(self, phil):
     if phil.distl.detector_tiling==None: return
@@ -119,6 +124,44 @@ class NpyImage(DetectorImageBase):
       )
 
     self.bin_safe_set_data(SI_new)
+
+  def get_tile_manager(self, phil):
+    return tile_manager(phil)
+
+class tile_manager:
+  def __init__(self,working_params):
+    self.working_params = working_params
+
+  def effective_tiling_as_flex_int(self,reapply_peripheral_margin=False,**kwargs):
+    import copy
+    IT = flex.int(copy.copy(self.working_params.distl.detector_tiling))
+
+    assert len(IT)%4==0 # only meaningful for groups of 4
+    for itl in xrange(0,len(IT),4): # validate upper-left/ lower-right ordering
+      assert IT[itl] < IT[itl+2]; assert IT[itl+1] < IT[itl+3]
+
+    if self.working_params.distl.tile_translations!=None and \
+      2*len(self.working_params.distl.tile_translations) == len(IT):
+      #assume that the tile translations have already been applied at the time
+      #the file is read; now they need to be applied to the spotfinder tile boundaries
+      for i in xrange(len(self.working_params.distl.tile_translations) // 2):
+        shift_slow = self.working_params.distl.tile_translations[2 * i + 0]
+        shift_fast = self.working_params.distl.tile_translations[2 * i + 1]
+        IT[4 * i + 0] += shift_slow
+        IT[4 * i + 1] += shift_fast
+        IT[4 * i + 2] += shift_slow
+        IT[4 * i + 3] += shift_fast
+
+    if reapply_peripheral_margin:
+      try:    peripheral_margin = self.working_params.distl.peripheral_margin
+      except Exception: peripheral_margin = 0
+      for i in xrange(len(self.working_params.distl.detector_tiling) // 4):
+          IT[4 * i + 0] += peripheral_margin
+          IT[4 * i + 1] += peripheral_margin
+          IT[4 * i + 2] -= peripheral_margin
+          IT[4 * i + 3] -= peripheral_margin
+
+    return IT
 
 #if __name__=='__main__':
 #  import sys
