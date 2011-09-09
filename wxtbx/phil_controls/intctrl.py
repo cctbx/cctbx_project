@@ -87,12 +87,14 @@ class IntCtrl (ValidatedTextCtrl) :
       value = None
     if (value is None) and ((self.max is None) or (self.max > 0)) :
       self.SetValue(1)
+      self.DoSendEvent()
     elif (value is not None) :
       value += 1
       if (self.max is not None) and (value > self.max) :
         pass
       else :
         self.SetValue(value)
+        self.DoSendEvent()
 
   def OnSpinDown (self, event) :
     try :
@@ -101,12 +103,14 @@ class IntCtrl (ValidatedTextCtrl) :
       value = None
     if (value is None) and ((self.min is None) or (self.min < 0)) :
       self.SetValue(-1)
+      self.DoSendEvent()
     elif (value is not None) :
       value -= 1
       if (self.min is not None) and (value < self.min) :
         pass
       else :
         self.SetValue(value)
+        self.DoSendEvent()
 
 class IntValidator (TextCtrlValidator) :
   def CheckFormat (self, value) :
@@ -143,6 +147,10 @@ if (__name__ == "__main__") :
     print type(int1).__name__, str(int1)
     print type(int2).__name__, str(int2)
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
+  def OnChange (evt) :
+    print evt.GetEventObject().GetPhilValue()
+  from wxtbx.phil_controls import EVT_PHIL_CONTROL
+  frame.Bind(EVT_PHIL_CONTROL, OnChange)
   frame.Fit()
   frame.Show()
   app.MainLoop()
