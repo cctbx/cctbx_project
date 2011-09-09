@@ -1,6 +1,5 @@
 import spotfinder.array_family.flex # implicit import
 
-import copy
 import boost.python
 ext = boost.python.import_ext("spotfinder_distltbx_ext")
 from spotfinder_distltbx_ext import *
@@ -42,24 +41,10 @@ class Distl(w_Distl):
           self.set_spot_area_maximum_factor(params.distl.spot_area_maximum_factor)
         self.set_scanbox_windows(params.distl.scanbox_windows)
         if params.distl.detector_tiling != None:
-          IT = copy.copy(params.distl.detector_tiling)
-          assert len(IT)%4==0 # only meaningful for groups of 4
-          for itl in xrange(0,len(IT),4): # validate upper-left/ lower-right ordering
-            assert IT[itl] < IT[itl+2]; assert IT[itl+1] < IT[itl+3]
+          IT = image.get_tile_manager(params
+               ).effective_tiling_as_flex_int()
 
-          if params.distl.tile_translations!=None and \
-            2*len(params.distl.tile_translations) == len(IT):
-            #assume that the tile translations have already been applied at the time
-            #the file is read; now they need to be applied to the spotfinder tile boundaries
-            for i in xrange(len(params.distl.tile_translations) // 2):
-              shift_slow = params.distl.tile_translations[2 * i + 0]
-              shift_fast = params.distl.tile_translations[2 * i + 1]
-              IT[4 * i + 0] += shift_slow
-              IT[4 * i + 1] += shift_fast
-              IT[4 * i + 2] += shift_slow
-              IT[4 * i + 3] += shift_fast
-
-          self.set_tiling(detector_tiling = spotfinder.array_family.flex.int(IT),
+          self.set_tiling(detector_tiling = IT,
                           peripheral_margin = peripheral_margin)
 
     self.parameter_guarantees()
