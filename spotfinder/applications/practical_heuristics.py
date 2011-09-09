@@ -295,7 +295,7 @@ class heuristics_base(object):
     except Sorry, e:
       raise e
     except Exception, e:
-      raise SpotfinderError("Spotfinder cannot analyze image %s"%frame,pd)
+      raise SpotfinderError("Spotfinder cannot analyze image %s"%pimage.filename)
 
     #To support sublattice detection, make pixel-wise Z-scores persistent
     if self.phil_params.distl_keep_Zdata:
