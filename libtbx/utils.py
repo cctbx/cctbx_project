@@ -16,8 +16,9 @@ import glob
 import time
 import atexit
 import traceback
-import sys, os
 import re
+import sys, os
+op = os.path
 
 windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
@@ -177,9 +178,9 @@ def file_size(file_name):
   return os.stat(file_name).st_size
 
 def copy_file(source, target, compress=None):
-  assert os.path.isfile(source)
-  if (os.path.isdir(target)):
-    target = os.path.join(target, os.path.basename(source))
+  assert op.isfile(source)
+  if (op.isdir(target)):
+    target = op.join(target, op.basename(source))
   if (compress is None):
     t = open(target, "wb")
   else:
@@ -188,10 +189,19 @@ def copy_file(source, target, compress=None):
   t.write(open(source, "rb").read())
   del t
 
-def remove_files(pattern):
-  for path in glob.glob(pattern):
-    if (os.path.isfile(path)):
-      os.remove(path)
+def remove_files(pattern=None, paths=None, ensure_success=True):
+  assert [pattern, paths].count(None) == 1
+  if (paths is None):
+    paths = glob.glob(pattern)
+  for path in paths:
+    if (ensure_success):
+      if (op.exists(path)):
+        os.remove(path)
+        if (op.exists(path)):
+          raise RuntimeError("Cannot remove file: %s" % show_string(path))
+    else:
+      if (op.isfile(path)):
+        os.remove(path)
 
 def tupleize(x):
   try:
@@ -974,7 +984,7 @@ def get_svn_revision(path=None):
   rev = None
   if path is None:
     import libtbx.load_env
-    path = os.path.dirname(libtbx.env.dist_path(module_name="libtbx"))
+    path = op.dirname(libtbx.env.dist_path(module_name="libtbx"))
   entries_path = '%s/.svn/entries' % path
   try:
     entries = open(entries_path, 'r').read()
@@ -993,9 +1003,9 @@ def get_build_tag(path=None):
   tag = None
   if path is None:
     import libtbx.load_env
-    path = os.path.dirname(libtbx.env.dist_path(module_name="libtbx"))
+    path = op.dirname(libtbx.env.dist_path(module_name="libtbx"))
   tag_file_path = "%s/TAG" %path
-  if os.path.exists(tag_file_path):
+  if op.exists(tag_file_path):
     tag = open(tag_file_path).readline().strip()
   return tag
 
