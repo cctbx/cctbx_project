@@ -1301,6 +1301,8 @@ rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
 rstbx/viewer/__init__.py -text
+rstbx/viewer/calibration.py -text
+rstbx/viewer/calibration_frame.py -text
 rstbx/viewer/display.py -text
 rstbx/viewer/frame.py -text
 rstbx/viewer/lattice_list.py -text
