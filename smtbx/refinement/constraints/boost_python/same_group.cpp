@@ -18,12 +18,10 @@ namespace smtbx { namespace refinement { namespace constraints {
           .def(init<af::shared<wt::scatterer_type *> const &,
                     af::shared<site_parameter *> const &,
                     scitbx::mat3<double> const &,
-                    bool,
                     independent_small_vector_parameter<6> *>
                ((arg("scatterers"),
                  arg("sites"),
                  arg("alignment_matrix"),
-                 arg("invert"),
                  arg("shifts_and_angles")
                  )))
           ;

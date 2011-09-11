@@ -272,7 +272,6 @@ class same_group(object):
             2*matrix.col(lsf.other_shift)-matrix.col(src_crds[i]))
       rm = lsf.r
       t = matrix.col(lsf.reference_shift)-matrix.col(lsf.other_shift)
-      invert = False
       new_crd = lsf.other_sites_best_fit()
       d = 0
       for i, c in enumerate(new_crd):
@@ -285,7 +284,6 @@ class same_group(object):
         d_inv += matrix.col(matrix.col(c)-matrix.col(crds[i])).length_sq()
       if d_inv < d:
         rm = -lsf.r
-        invert = True
       rm = rm.transpose()
       shifts_and_angles =\
         reparametrisation.add(_.independent_small_6_vector_parameter,
@@ -295,7 +293,6 @@ class same_group(object):
         scatterers=g_scatterers,
         sites=ref_sites,
         alignment_matrix=rm,
-        invert=invert,
         shifts_and_angles=shifts_and_angles
       )
       if len(ref_u_isos) > 0:
