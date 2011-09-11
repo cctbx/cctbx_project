@@ -17,6 +17,7 @@ namespace boost_python {
   void wrap_occupancy();
   void wrap_rigid();
   void wrap_direction();
+  void wrap_same_group();
 
   namespace {
     void init_module() {
@@ -31,7 +32,8 @@ namespace boost_python {
       wrap_shared();
       wrap_occupancy();
       wrap_rigid();
-     wrap_direction();
+      wrap_direction();
+      wrap_same_group();
     }
   }
 

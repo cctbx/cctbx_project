@@ -3,6 +3,7 @@ import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 import math
 from scitbx.math import superpose
+from scitbx import matrix
 from scitbx.array_family import flex
 
 class rigid_pivoted_rotatable_group(object):
@@ -205,3 +206,117 @@ class idealised_fragment(object):
       flex.vec3_double(reference_sites), flex.vec3_double(to_fit))
     to_fit = flex.vec3_double([(i.x, i.y, 0) for i in fragment])
     return lsf.r.elems * to_fit + lsf.t.elems
+
+
+class same_group(object):
+  """ non-crystallographic symmetry constraint
+  """
+
+  def __init__(self, groups):
+    if len(groups) < 2:
+      raise InvalidConstraint("at least two atom sets are expected")
+    l = len(groups[0])
+    for g in groups[1:]:
+      if len(g) != l:
+        raise InvalidConstraint("atoms sets differ in size")
+    self.groups = groups
+
+  def __eq__(self, other):
+    #if self.indices != other.indices:  return False
+    return False
+
+  def add_to(self, reparametrisation):
+    scatterers = reparametrisation.structure.scatterers()
+    ref_sites = []
+    ref_u_isos = []
+    ref_u_stars = []
+    ref_adps = []
+    src_crds = []
+    inv_src_crds = []
+    uc = reparametrisation.structure.unit_cell()
+    for i in self.groups[0]:
+      src_crds.append(uc.orthogonalize(scatterers[i].site))
+      ref_sites.append(reparametrisation.add_new_site_parameter(i))
+      if scatterers[i].flags.use_u_iso():
+        ref_u_isos.append(
+          reparametrisation.add_new_thermal_displacement_parameter(i))
+      else:
+        ref_u_stars.append(
+          reparametrisation.add_new_thermal_displacement_parameter(i))
+      #ref_adps.append(
+      #  reparametrisation.add_new_thermal_displacement_parameter(i))
+    for g in self.groups[1:]:
+      if len(g) != len(self.groups[0]):
+        raise InvalidConstraint("Group size mismatch")
+      g_scatterers = []
+      g_u_iso_scatterers  =[]
+      g_u_star_scatterers = []
+      crds = []
+      for idx, i in enumerate(g):
+        if scatterers[i].flags.use_u_iso() !=\
+           scatterers[self.groups[0][idx]].flags.use_u_iso():
+          raise InvalidConstraint("Mixing isotropic and anisotropic parameters")
+        g_scatterers.append(scatterers[i])
+        crds.append(uc.orthogonalize(scatterers[i].site))
+        if scatterers[i].flags.use_u_iso():
+          g_u_iso_scatterers.append(scatterers[i])
+        else:
+          g_u_star_scatterers.append(scatterers[i])
+      #need to map reference to target
+      lsf = superpose.least_squares_fit(
+        flex.vec3_double(crds), flex.vec3_double(src_crds))
+      #create a list of inverted coordinates if needed
+      if len(inv_src_crds) == 0:
+        for i in xrange(0, len(g)):
+          inv_src_crds.append(
+            2*matrix.col(lsf.other_shift)-matrix.col(src_crds[i]))
+      rm = lsf.r
+      t = matrix.col(lsf.reference_shift)-matrix.col(lsf.other_shift)
+      invert = False
+      new_crd = lsf.other_sites_best_fit()
+      d = 0
+      for i, c in enumerate(new_crd):
+        d += matrix.col(matrix.col(c)-matrix.col(crds[i])).length_sq()
+      lsf = superpose.least_squares_fit(
+        flex.vec3_double(crds), flex.vec3_double(inv_src_crds))
+      new_crd = lsf.other_sites_best_fit()
+      d_inv = 0
+      for i, c in enumerate(new_crd):
+        d_inv += matrix.col(matrix.col(c)-matrix.col(crds[i])).length_sq()
+      if d_inv < d:
+        rm = -lsf.r
+        invert = True
+      rm = rm.transpose()
+      shifts_and_angles =\
+        reparametrisation.add(_.independent_small_6_vector_parameter,
+                              value=(t[0],t[1],t[2],0,0,0), variable=True)
+      site_param = reparametrisation.add(
+        _.same_group_xyz,
+        scatterers=g_scatterers,
+        sites=ref_sites,
+        alignment_matrix=rm,
+        invert=invert,
+        shifts_and_angles=shifts_and_angles
+      )
+      if len(ref_u_isos) > 0:
+        u_iso_param = reparametrisation.add(
+          _.same_group_u_iso,
+          scatterers=g_u_iso_scatterers,
+          u_isos=ref_u_isos,
+          shifts_and_angles=shifts_and_angles
+        )
+      if len(ref_u_stars) > 0:
+        u_star_param = reparametrisation.add(
+          _.same_group_u_star,
+          scatterers=g_u_star_scatterers,
+          u_stars=ref_u_stars,
+          alignment_matrix=rm,
+          shifts_and_angles=shifts_and_angles
+        )
+
+      for i in g:
+        reparametrisation.asu_scatterer_parameters[i].site = site_param
+        if scatterers[i].flags.use_u_iso():
+          reparametrisation.asu_scatterer_parameters[i].u = u_iso_param
+        else:
+          reparametrisation.asu_scatterer_parameters[i].u = u_star_param
