@@ -121,7 +121,6 @@ class reparametrisation(ext.reparametrisation):
     if self.directions is not None:
       directions = {}
       for d in self.directions:
-        print d
         if d[0] == 'static':
           directions[d[1]] = ext.static_direction(d[2])
         elif d[0] == 'vector':
