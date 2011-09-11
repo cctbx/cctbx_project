@@ -14,13 +14,11 @@ public:
     af::shared<scatterer_type *> const &scatterers,
     af::shared<site_parameter *> const &sites,
     scitbx::mat3<double> const &alignment_matrix_,
-    bool invert,
     independent_small_vector_parameter<6> *shifts_and_angles)
   : parameter(scatterers.size()+1),
     fx_s(scatterers.size()),
     scatterers_(scatterers),
-    alignment_matrix(alignment_matrix_),
-    invert(invert)
+    alignment_matrix(alignment_matrix_)
   {
     SMTBX_ASSERT(sites.size()==scatterers.size());
     set_argument(0, shifts_and_angles);
@@ -54,7 +52,6 @@ protected:
   af::shared<fractional<double> > fx_s;
   af::shared<scatterer_type *> scatterers_;
   scitbx::mat3<double> alignment_matrix;
-  bool invert;
 };
 
 // manages u_isos
