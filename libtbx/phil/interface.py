@@ -453,7 +453,7 @@ class index (object) :
       self.params = None
 
   def erase_scope (self, phil_scope) :
-    delete_phil_objects(self.working_phil, phil_scope)
+    delete_phil_objects(self.working_phil, [phil_scope])
 
   # Safe wrapper of merge_phil for loading parameter files from GUI
   def merge_param_file (self, file_name) :
@@ -619,6 +619,7 @@ class index (object) :
 ########################################################################
 #--- STANDALONE FUNCTIONS
 def delete_phil_objects (current_phil, phil_path_list, only_scope=None) :
+  assert isinstance(phil_path_list, list)
   i = 0
   while i < len(current_phil.objects) :
     full_path = current_phil.objects[i].full_path()
