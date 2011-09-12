@@ -1567,6 +1567,7 @@ scitbx/wigner/__init__.py -text
 scitbx/wigner/ext.cpp -text
 scitbx/wigner/tst_wigner3j.py -text
 scitbx/wigner/wigner3j.h -text
+setup/unix_integrate_cctbx.sh -text
 smtbx/refinement/constraints/__init__.py -text
 smtbx/refinement/constraints/boost_python/SConscript -text
 smtbx/refinement/constraints/boost_python/constraints_ext.cpp -text
