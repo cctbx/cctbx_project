@@ -212,7 +212,11 @@ class same_group(object):
   """ non-crystallographic symmetry constraint
   """
 
-  def __init__(self, groups):
+  def __init__(self, groups, angles=(0,0,0), fix_xyz=True, fix_u=True):
+    """ fix_xyz and fix_u are to be used for debugging purposes only:
+    if the coordinates are not fixed, then the refined angles should
+    be stored externally and passed to this object
+    """
     if len(groups) < 2:
       raise InvalidConstraint("at least two atom sets are expected")
     l = len(groups[0])
@@ -220,12 +224,22 @@ class same_group(object):
       if len(g) != l:
         raise InvalidConstraint("atoms sets differ in size")
     self.groups = groups
+    self.fix_xyz = fix_xyz
+    self.fix_u = fix_u
+    self.angles = angles
 
   def __eq__(self, other):
+    if len(self.groups[0]) != len(other.groups[0]):
+      return False
+    for i, v in enumerate(self.groups[0]):
+      if v != other.groups[0][i]:
+        return False
     #if self.indices != other.indices:  return False
     return False
 
   def add_to(self, reparametrisation):
+    if not self.fix_u and not self.fix_xyz:
+      return
     scatterers = reparametrisation.structure.scatterers()
     ref_sites = []
     ref_u_isos = []
@@ -236,15 +250,15 @@ class same_group(object):
     uc = reparametrisation.structure.unit_cell()
     for i in self.groups[0]:
       src_crds.append(uc.orthogonalize(scatterers[i].site))
-      ref_sites.append(reparametrisation.add_new_site_parameter(i))
-      if scatterers[i].flags.use_u_iso():
-        ref_u_isos.append(
-          reparametrisation.add_new_thermal_displacement_parameter(i))
-      else:
-        ref_u_stars.append(
-          reparametrisation.add_new_thermal_displacement_parameter(i))
-      #ref_adps.append(
-      #  reparametrisation.add_new_thermal_displacement_parameter(i))
+      if self.fix_xyz:
+        ref_sites.append(reparametrisation.add_new_site_parameter(i))
+      if self.fix_u:
+        if scatterers[i].flags.use_u_iso():
+          ref_u_isos.append(
+            reparametrisation.add_new_thermal_displacement_parameter(i))
+        else:
+          ref_u_stars.append(
+            reparametrisation.add_new_thermal_displacement_parameter(i))
     for g in self.groups[1:]:
       if len(g) != len(self.groups[0]):
         raise InvalidConstraint("Group size mismatch")
@@ -285,35 +299,66 @@ class same_group(object):
       if d_inv < d:
         rm = -lsf.r
       rm = rm.transpose()
-      shifts_and_angles =\
-        reparametrisation.add(_.independent_small_6_vector_parameter,
-                              value=(t[0],t[1],t[2],0,0,0), variable=True)
-      site_param = reparametrisation.add(
-        _.same_group_xyz,
-        scatterers=g_scatterers,
-        sites=ref_sites,
-        alignment_matrix=rm,
-        shifts_and_angles=shifts_and_angles
-      )
-      if len(ref_u_isos) > 0:
-        u_iso_param = reparametrisation.add(
-          _.same_group_u_iso,
-          scatterers=g_u_iso_scatterers,
-          u_isos=ref_u_isos,
-          shifts_and_angles=shifts_and_angles
-        )
-      if len(ref_u_stars) > 0:
+      if self.fix_xyz:
+        shifts_and_angles =\
+          reparametrisation.add(_.independent_small_6_vector_parameter,
+                                value=(t[0],t[1],t[2],0,0,0), variable=True)
+        if len(ref_u_stars) > 0:
+          u_star_param = reparametrisation.add(
+            _.same_group_u_star,
+            scatterers=g_u_star_scatterers,
+            u_stars=ref_u_stars,
+            alignment_matrix=rm,
+            shifts_and_angles=shifts_and_angles
+          )
+      elif len(ref_u_stars) > 0:
+        angles =\
+          reparametrisation.add(_.independent_small_3_vector_parameter,
+                                value=self.angles, variable=True)
         u_star_param = reparametrisation.add(
           _.same_group_u_star,
           scatterers=g_u_star_scatterers,
           u_stars=ref_u_stars,
           alignment_matrix=rm,
+          angles=angles
+        )
+      if self.fix_xyz:
+        site_param = reparametrisation.add(
+          _.same_group_xyz,
+          scatterers=g_scatterers,
+          sites=ref_sites,
+          alignment_matrix=rm,
           shifts_and_angles=shifts_and_angles
         )
-
+      if len(ref_u_isos) > 0:
+        u_iso_param = reparametrisation.add(
+          _.same_group_u_iso,
+          scatterers=g_u_iso_scatterers,
+          u_isos=ref_u_isos
+        )
+      site_proxy_index = 0
+      u_star_proxy_index = 0
+      u_iso_proxy_index = 0
       for i in g:
-        reparametrisation.asu_scatterer_parameters[i].site = site_param
-        if scatterers[i].flags.use_u_iso():
-          reparametrisation.asu_scatterer_parameters[i].u = u_iso_param
-        else:
-          reparametrisation.asu_scatterer_parameters[i].u = u_star_param
+        if self.fix_xyz:
+          reparametrisation.asu_scatterer_parameters[i].site = site_param
+          reparametrisation.add_new_same_group_site_proxy_parameter(
+            site_param, site_proxy_index, i)
+          site_proxy_index += 1
+        if self.fix_u:
+          if scatterers[i].flags.use_u_iso():
+            reparametrisation.asu_scatterer_parameters[i].u = u_iso_param
+            reparametrisation.shared_Us[i] = reparametrisation.add(
+              _.same_group_u_iso_proxy,
+              parent=u_iso_param,
+              index=u_iso_proxy_index
+              )
+            u_iso_proxy_index += 1
+          else:
+            reparametrisation.asu_scatterer_parameters[i].u = u_star_param
+            reparametrisation.shared_Us[i] = reparametrisation.add(
+              _.same_group_u_star_proxy,
+              parent=u_star_param,
+              index=u_star_proxy_index
+              )
+            u_star_proxy_index += 1

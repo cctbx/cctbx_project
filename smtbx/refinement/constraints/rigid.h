@@ -51,30 +51,6 @@ protected:
   bool crd_initialised;
 };
 
-class rigid_site_proxy : public site_parameter {
-  int index_in_parent;
-public:
-  rigid_site_proxy(rigid_group_base* parent, int index_in_parent)
-  : parameter(1),
-    index_in_parent(index_in_parent)
-  {
-    set_arguments(parent);
-    value = parent->site(index_in_parent);
-  }
-
-  virtual void linearise(uctbx::unit_cell const &unit_cell,
-                         sparse_matrix_type *jacobian_transpose)
-  {
-    rigid_group_base* parent = dynamic_cast<rigid_group_base *> (argument(0));
-    value = parent->site(index_in_parent);
-    if (!jacobian_transpose) return;
-    sparse_matrix_type &jt = *jacobian_transpose;
-    for (int j=0; j<3; ++j) {
-      jt.col(index() + j) = jt.col(parent->index() + 3*index_in_parent + j);
-    }
-  }
-};
-
 /** a set of atoms rides on pivot and rotates around the direction given
   by pivot and pivot_neighbour (AFIX n=7/8 in shelxl)
  */

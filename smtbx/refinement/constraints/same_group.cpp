@@ -175,10 +175,10 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {
     for (int i=0; i < scatterers_.size(); i++) {
-      u_isos[i] = dynamic_cast<scalar_parameter*>(argument(i+1))->value;
+      u_isos[i] = dynamic_cast<scalar_parameter*>(argument(i))->value;
       if (jacobian_transpose != NULL) {
         sparse_matrix_type &jt = *jacobian_transpose;
-        jt.col(index()) = jt.col(argument(i+1)->index());
+        jt.col(index()) = jt.col(argument(i)->index());
       }
     }
   }
@@ -188,12 +188,25 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {
-    independent_small_vector_parameter<6> *values =
-      dynamic_cast<independent_small_vector_parameter<6> *>(argument(0));
+    double a_v, b_v, g_v;
+    if (offset == 0) {
+      independent_small_vector_parameter<3> *values =
+        dynamic_cast<independent_small_vector_parameter<3> *>(argument(0));
+      a_v = values->value[0];
+      b_v = values->value[1];
+      g_v = values->value[2];
+    }
+    else {
+      independent_small_vector_parameter<6> *values =
+        dynamic_cast<independent_small_vector_parameter<6> *>(argument(0));
+      a_v = values->value[3];
+      b_v = values->value[4];
+      g_v = values->value[5];
+    }
     const double
-      a_v = values->value[3], c_a = cos(a_v), s_a = sin(a_v),
-      b_v = values->value[4], c_b = cos(b_v), s_b = sin(b_v),
-      g_v = values->value[5], c_g = cos(g_v), s_g = sin(g_v);
+      c_a = cos(a_v), s_a = sin(a_v),
+      c_b = cos(b_v), s_b = sin(b_v),
+      c_g = cos(g_v), s_g = sin(g_v);
 
     scitbx::mat3<double> rm = alignment_matrix * scitbx::mat3<double>(
         c_b*c_g, -c_b*s_g,  s_b,
@@ -201,6 +214,24 @@ namespace smtbx { namespace refinement { namespace constraints {
         -c_a*s_b*c_g + s_a*s_g, c_a*s_b*s_g + s_a*c_g, c_a*c_b
         );
     const scitbx::mat3<double> rm_t = rm.transpose();
+    // derivative of the rotation matrix by angle
+    const scitbx::mat3<double> rmd[3] = {
+      alignment_matrix*scitbx::mat3<double>(
+        0,                      0,                      0,
+        c_a*s_b*c_g - s_a*s_g, -c_a*s_b*s_g - s_a*c_g, -c_a*c_b,
+        s_a*s_b*c_g + c_a*s_g, -s_a*s_b*s_g + c_a*c_g, -s_a*c_b
+      ),
+      alignment_matrix*scitbx::mat3<double>(
+        -c_g*s_b,     s_g*s_b,      c_b,
+        s_a*c_g*c_b, -s_a*s_g*c_b,  s_a*s_b,
+        -c_a*c_g*c_b, c_a*s_g*c_b, -c_a*s_b
+      ),
+      alignment_matrix*scitbx::mat3<double>(
+        -c_b*s_g,               -c_b*c_g,               0,
+        -s_a*s_b*s_g + c_a*c_g, -s_a*s_b*c_g - c_a*s_g, 0,
+         c_a*s_b*s_g + s_a*c_g,  c_a*s_b*c_g - s_a*s_g, 0
+      )
+    };
     static const int sym_acs[] = {0,4,8,1,2,5};
     // transforms for the jacobian values
     scitbx::mat3<double> jtm = unit_cell.fractionalization_matrix()*
@@ -221,20 +252,20 @@ namespace smtbx { namespace refinement { namespace constraints {
       // update jacobian for the rotation of ADP
       for (int j=0; j<jt.n_rows(); j++)  {
         tensor_rank_2_t t;
-        bool zero = true;
-        for (int k=0; k < 6; k++) {
-          if ((t[k] = jt(j, argument(i+1)->index()+k)) != 0 )
-            zero = false;
-        }
-        if (zero) {
-          for (int k=0; k < 6; k++)
-            jt(j, j_u+k) = 0;
-        }
-        else {
-          scitbx::mat3<double> x = jtm*t*jtm_t;
-          for (int k=0; k < 6; k++)
-            jt(j, j_u+k) = x[sym_acs[k]];
-        }
+        for (int k=0; k < 6; k++)
+          t[k] = jt(j, argument(i+1)->index()+k);
+        scitbx::mat3<double> x = jtm*t*jtm_t;
+        for (int k=0; k < 6; k++)
+          jt(j, j_u+k) = x[sym_acs[k]];
+      }
+      // derivatives
+      for (int j=0; j < 3; j++) {
+        scitbx::mat3<double> dm = rm*u_c*rmd[j].transpose() +
+          rmd[j]*u_c*rm.transpose();
+        dm = unit_cell.fractionalization_matrix()*dm*
+          unit_cell.fractionalization_matrix().transpose();
+        for (int k=0; k<6; k++)
+          jt(argument(0)->index()+j+offset, j_u+k) = dm[sym_acs[k]];
       }
     }
   }
