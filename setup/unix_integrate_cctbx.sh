@@ -1,9 +1,9 @@
 #!/bin/sh -e
 
-# $Id: unix_integrate_cctbx.sh 3 2011-09-10 04:10:01Z juhas $
-
 MYBASENAME="$(basename "$0")"
-DOC="usage: ${MYBASENAME} [options] actions
+MYVERSION='$Id$'
+
+MYDOC="usage: ${MYBASENAME} [options] actions
 
 supported actions are:  all pylibs libs includes scripts
 
@@ -18,12 +18,13 @@ Options:
   --pythondir       installation directory for Python .pth files
                     [prefix/lib/pythonX.Y/site-packages]
   -y, --yes         install without verifying the target paths
-  -h, --help        display this message and exit"
+  -h, --help        display this message and exit
+  -V, --version     display the script version and exit"
 
 # Parse command line arguments -----------------------------------------------
 
-PARSEDARGS="$(getopt -o yh \
-    --long prefix:,libdir:,skip-bp,includedir:,bindir:,pythondir:,yes,help \
+PARSEDARGS="$(getopt -o yhV \
+    --long prefix:,libdir:,skip-bp,includedir:,bindir:,pythondir:,yes,help,version \
     -n "${MYBASENAME}" -- "$@")" || exit 2
 eval set -- "${PARSEDARGS}"
 
@@ -45,7 +46,9 @@ while true; do
         -y|--yes)
             opt_yes=1; shift;;
         -h|--help)
-            echo "${DOC}"; exit;;
+            echo "${MYDOC}"; exit;;
+        -V|--version)
+            echo "${MYVERSION}"; exit;;
         --)
             shift; break;;
         *)
@@ -56,7 +59,7 @@ done
 # other arguments which specify actions
 if [ $# = 0 ]; then
     echo "No action specified."
-    echo "${DOC}"
+    echo "${MYDOC}"
     exit
 elif [ $# = 1 ] && [ "x$1" = xall ]; then
     set -- pylibs libs includes scripts
