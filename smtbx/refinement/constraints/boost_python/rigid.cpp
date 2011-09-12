@@ -3,6 +3,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 
 #include <smtbx/refinement/constraints/rigid.h>
+#include <smtbx/refinement/constraints/proxy.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
   namespace boost_python {
@@ -77,11 +78,10 @@ namespace smtbx { namespace refinement { namespace constraints {
     };
 
     struct rigid_site_proxy_wrapper {
-      typedef rigid_site_proxy wt;
+      typedef site_proxy<rigid_group_base> wt;
 
       static void wrap() {
         using namespace boost::python;
-        return_internal_reference<> rir;
         class_<wt,
                bases<site_parameter>,
                std::auto_ptr<wt> >("rigid_site_proxy", no_init)
