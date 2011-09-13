@@ -20,18 +20,10 @@ class parser : private boost::noncopyable
 
     parser() {}
 
-    parser(std::string filename, builder_base* builder, bool strict=true)
+    parser(std::string input_string, builder_base* builder, bool strict=true)
     {
-      /*input = antlr3FileStreamNew(pANTLR3_UINT8(filename.c_str()),*/
-        /*ANTLR3_ENC_8BIT);*/
-      input = antlr3AsciiFileStreamNew(pANTLR3_UINT8(filename.c_str()));
-      if (input == NULL)
-      {
-        /*input = antlr3StringStreamNew(pANTLR3_UINT8(filename.c_str()), ANTLR3_ENC_8BIT,*/
-          /*filename.size(), pANTLR3_UINT8("memory"));*/
-        input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
-          filename.c_str()), filename.size(), pANTLR3_UINT8("memory"));
-      }
+      input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
+        input_string.c_str()), input_string.size(), pANTLR3_UINT8("memory"));
       lxr = cifLexerNew(input);
       tstream = antlr3CommonTokenStreamSourceNew(
         ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));

@@ -109,10 +109,10 @@ namespace iotbx { namespace cif {
   };
 
   static iotbx::cif::parser_wrapper* run_cif_parser(
-    std::string filename, boost::python::object& builder_, bool strict)
+    std::string input_string, boost::python::object& builder_, bool strict)
   {
     iotbx::cif::py_builder builder(builder_);
-    return new iotbx::cif::parser_wrapper(filename, &builder, strict);
+    return new iotbx::cif::parser_wrapper(input_string, &builder, strict);
   }
 
   // Convenience function for sorting a single array of
@@ -145,7 +145,7 @@ namespace boost_python {
       class_<wt, boost::noncopyable>(name, no_init)
         .def("__init__", make_constructor(run_cif_parser,
           default_call_policies(),
-          (arg("input"), arg("builder"), arg("strict")=true)))
+          (arg("input_string"), arg("builder"), arg("strict")=true)))
         .def("tree_walker_errors", &wt::tree_walker_errors, rbv())
         .def("parser_errors", &wt::parser_errors, rbv())
         .def("lexer_errors", &wt::lexer_errors, rbv())
