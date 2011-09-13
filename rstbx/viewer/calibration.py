@@ -19,7 +19,7 @@ class sb_wrapper:
 
     app   = wx.App(0)
     frame = SBFrame(None, -1, "X-ray image display", size=(1200,1080),
-      horizons_phil=self.working_phil)
+      pos=(100,100), horizons_phil=self.working_phil)
     frame.SetSize((1024,780))
     frame.load_image(path)
     frame.path = path
@@ -34,7 +34,7 @@ class sb_wrapper:
     #dc.SetBrush(wx.TRANSPARENT_BRUSH)
 
     wavelength = panel._img._raw.wavelength #should be this
-    wavelength_from_avg_file = True
+    wavelength_from_avg_file = False
     if wavelength_from_avg_file:
       # go through hoops to get the proper wavelength corresponding to this run
       avepath = self.path.replace("stddev","avg")
