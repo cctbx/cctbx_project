@@ -1,0 +1,20 @@
+import libtbx.load_env
+import os
+Import("env_etc")
+
+env_etc.cudatbx_dist = libtbx.env.dist_path("cudatbx")
+env_etc.cudatbx_include = os.path.dirname(env_etc.cudatbx_dist)
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env_bpl = env_boost_python_ext.Copy()
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=[env_etc.cudatbx_include])
+
+if (env_etc.enable_cuda):
+  env_bpl.cudaSharedLibrary(
+    target = "#lib/cudatbx_ext",
+    source = ['cuda_base.cu',
+              'cudatbx_ext.cu',
+              ])
