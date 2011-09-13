@@ -60,7 +60,7 @@ real_space_refinement
         .type = float
       low_resolution_cutoff = 3.5
         .type = float
-      min_r_work = 0.2
+      min_r_work = 0.25
         .type = float
       r_free_r_work_diff = 5
         .type = float
