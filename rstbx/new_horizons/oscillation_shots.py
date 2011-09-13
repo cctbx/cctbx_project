@@ -156,12 +156,14 @@ class IntegrateCharacters:
         SIO = StringIO.StringIO()
         table_raw = show_observations(integrate_worker.get_obs(
           local["spacegroup"]),out=SIO)
+        limitobject = ResolutionAnalysisMetaClass(local, self.horizons_phil)
         info = dict(table = SIO.getvalue(),
           table_raw = table_raw,
           xbeam = setting["refined x beam"],
           ybeam = setting["refined y beam"],
           distance = setting["refined distance"],
           residual = integrate_worker.r_residual,
+          resolution = limitobject.value, # FIXME not reliable?
           mosaicity = setting["mosaicity"],
           pointgroup = local["spacegroup"],
           hkllist = integrate_worker.hkllist,

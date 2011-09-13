@@ -1305,8 +1305,9 @@ rstbx/viewer/calibration.py -text
 rstbx/viewer/calibration_frame.py -text
 rstbx/viewer/display.py -text
 rstbx/viewer/frame.py -text
+rstbx/viewer/integration.py -text
 rstbx/viewer/lattice_list.py -text
-rstbx/viewer/tables.py -text
+rstbx/viewer/results_base.py -text
 rstbx/viewer/tst.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
