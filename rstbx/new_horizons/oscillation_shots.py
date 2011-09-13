@@ -154,8 +154,10 @@ class IntegrateCharacters:
         filename = "%s_%d_%d"%(filename,setting["counter"],keys[i])
 
         SIO = StringIO.StringIO()
-        show_observations(integrate_worker.get_obs(local["spacegroup"]),out=SIO)
+        table_raw = show_observations(integrate_worker.get_obs(
+          local["spacegroup"]),out=SIO)
         info = dict(table = SIO.getvalue(),
+          table_raw = table_raw,
           xbeam = setting["refined x beam"],
           ybeam = setting["refined y beam"],
           distance = setting["refined distance"],
