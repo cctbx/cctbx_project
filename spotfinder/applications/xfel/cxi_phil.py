@@ -68,7 +68,8 @@ def cxi_versioned_extract(*args):
 
     TT = list(total_tile_translations)
     working_extract.distl.tile_translations = TT
-    working_extract.distl.quad_translations = [0,0,0,0,0,0,0,0]
+    #working_extract.distl.quad_translations = [0,0,0,0,0,0,0,0]
+    working_extract.distl.quad_translations = [5,-5,6,-9,-5,-2,0,-8]
     return working_extract
 
   else:
