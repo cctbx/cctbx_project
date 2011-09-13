@@ -257,6 +257,10 @@ crys3d/wx_extra.py -text
 crys3d/wx_model_viewer.py -text
 crys3d/wx_selection_editor.py -text
 crys3d/wx_tools.py -text
+cudatbx/SConscript -text
+cudatbx/__init__.py -text
+cudatbx/cuda_base.cu -text
+cudatbx/cuda_base.h -text
 dox.sphinx/Makefile -text
 dox.sphinx/build_docs.sh -text
 dox.sphinx/conf.py -text
