@@ -11,7 +11,7 @@ Options:
 
   --prefix          installation prefix directory [/usr/local]
   --libdir          directory for dynamic load libraries [prefix/lib]
-  --skip-bp         do not install the cctbx boost_python dynamic library,
+  --with-bp         install the cctbx boost_python dynamic library.
                     rely on the system library instead.
   --includedir      directory for C and C++ header files [prefix/include]
   --bindir          directory for executable files [prefix/bin]
@@ -24,7 +24,7 @@ Options:
 # Parse command line arguments -----------------------------------------------
 
 PARSEDARGS="$(getopt -o yhV \
-    --long prefix:,libdir:,skip-bp,includedir:,bindir:,pythondir:,yes,help,version \
+    --long prefix:,libdir:,with-bp,includedir:,bindir:,pythondir:,yes,help,version \
     -n "${MYBASENAME}" -- "$@")" || exit 2
 eval set -- "${PARSEDARGS}"
 
@@ -35,8 +35,8 @@ while true; do
             opt_prefix="$2"; shift 2;;
         --libdir)
             opt_libdir="$2"; shift 2;;
-        --skip-bp)
-            opt_skip_bp=1; shift;;
+        --with-bp)
+            opt_with_bp=1; shift;;
         --includedir)
             opt_includedir="$2"; shift 2;;
         --bindir)
@@ -117,12 +117,12 @@ prompt_proceed() {
     return 1
 }
 
-# do4930_ is a standard prefix for action functions, which should not
+# action_ is a standard prefix for action functions, which should not
 # cause any name conflicts.
 
 # pylibs -- install the cctbx.pth file ---------------------------------------
 
-do4930_pylibs() {
+action_pylibs() {
     echo "Installing cctbx.pth to ${act_pythondir}"
     prompt_proceed || return 0
     ( echo "import os; os.environ.setdefault('LIBTBX_BUILD', '${my_libtbx_build}')"
@@ -133,15 +133,15 @@ do4930_pylibs() {
 
 # libs -- install dynamic load libraries -------------------------------------
 
-do4930_libs() {
+action_libs() {
     echo "Installing dynamic load libraries to ${act_libdir}"
     prompt_proceed || return 0
     local bprule
-    if [ "x${opt_skip_bp}" = x1 ]; then
+    if [ "x${opt_with_bp}" = x ]; then
         bprule="-not -name libboost_python\\*.so"
     fi
     find "${my_libtbx_libpath}" -maxdepth 1 -type f -name 'lib*.so' ${bprule} \
-        -exec ln -sf {} "${act_libdir}/" \;
+        -exec cp -f {} "${act_libdir}/" \;
 }
 
 # includes -- install symlinks to the header files ---------------------------
@@ -152,7 +152,7 @@ rsync_headers() {
         "$@"
 }
 
-do4930_includes() {
+action_includes() {
     echo "Installing C and C++ header files to ${act_includedir}"
     prompt_proceed || return 0
     test -d "${act_includedir}" || mkdir -v "${act_includedir}"
@@ -180,7 +180,7 @@ do4930_includes() {
 
 # scripts -- install symbolic links to the cctbx scripts ---------------------
 
-do4930_scripts() {
+action_scripts() {
     echo "Installing cctbx scripts to ${act_bindir}"
     prompt_proceed || return 0
     for f in "${my_libtbx_binpath}"/*; do
@@ -192,5 +192,5 @@ do4930_scripts() {
 
 # execute all the specified actions here:
 for a; do
-    do4930_${a}
+    action_${a}
 done
