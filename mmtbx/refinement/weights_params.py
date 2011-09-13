@@ -34,7 +34,7 @@ weight_selection_criteria
     .type=float
   r_free_minus_r_work = 5
     .type=float
-  r_free_range_width = 1
+  r_free_range_width = 0
     .type=float
   mean_diff_b_iso_bonded_fraction = 0.1
     .type=float
@@ -66,7 +66,7 @@ weight_selection_criteria
 {
   d_min = 2.5
     .type=float
-  d_max = 3.0
+  d_max = 3.5
     .type=float
   bonds_rmsd = 0.015
     .type=float
@@ -84,7 +84,7 @@ weight_selection_criteria
 weight_selection_criteria
   .multiple=True
 {
-  d_min = 3.0
+  d_min = 3.5
     .type=float
   d_max = 1.e+6
     .type=float
@@ -94,7 +94,7 @@ weight_selection_criteria
     .type=float
   r_free_minus_r_work = 7
     .type=float
-  r_free_range_width = 2
+  r_free_range_width = 1.5
     .type=float
   mean_diff_b_iso_bonded_fraction = 0.1
     .type=float
