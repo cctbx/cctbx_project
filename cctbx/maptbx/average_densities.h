@@ -19,7 +19,9 @@ nint(double x)
 
 af::versa<double, af::c_grid<3> > denmod_simple(
   af::const_ref<double, af::c_grid<3> > const& map_data,
-  af::tiny<int, 3> const& n_real)
+  af::tiny<int, 3> const& n_real,
+  double cutoffp,
+  double cutoffm)
 {
   int nx = n_real[0];
   int ny = n_real[1];
@@ -31,15 +33,16 @@ af::versa<double, af::c_grid<3> > denmod_simple(
     for (int j = 0; j < ny; j++) {
       for (int k = 0; k < nz; k++) {
         double m = map_data(i,j,k);
-        if(m<0) {
-          result_map_ref(i,j,k) = -std::sqrt(std::abs(m));
+        if(m > cutoffp) {
+          result_map_ref(i,j,k) = m-cutoffp;
         }
-        else if(m>1) {
-          result_map_ref(i,j,k) = std::sqrt(m);
+        else if(m < cutoffm) {
+          result_map_ref(i,j,k) = -m+cutoffm;
         }
         else {
-          result_map_ref(i,j,k) = m;
+          result_map_ref(i,j,k) = 0;
         }
+        CCTBX_ASSERT(result_map_ref(i,j,k) >= 0);
   }}}
   return result_map;
 }
@@ -175,6 +178,210 @@ af::versa<double, af::c_grid<3> > box_map_averaging(
     return new_data;
 }
 
+class cumulative_histogramm {
+public:
+  af::shared<double> sigs;
+  af::shared<double> h1;
+  af::shared<double> h2;
+  af::shared<double> h12;
+  cumulative_histogramm(
+    af::const_ref<double, af::c_grid<3> > const& map_1,
+    af::const_ref<double, af::c_grid<3> > const& map_2)
+  {
+    int nx1 = map_1.accessor()[0];
+    int ny1 = map_1.accessor()[1];
+    int nz1 = map_1.accessor()[2];
+    int nx2 = map_2.accessor()[0];
+    int ny2 = map_2.accessor()[1];
+    int nz2 = map_2.accessor()[2];
+    CCTBX_ASSERT(nx1==nx2 && ny1==ny2 && nz1==nz2);
+    double max1 = af::max(map_1);
+    double min1 = af::min(map_1);
+    double max2 = af::max(map_2);
+    double min2 = af::min(map_2);
+    double start = std::min(min1,min2);
+    double end   = std::max(max1,max2);
+    double hsize = 100./map_1.size();
+    double inc = (end-start)/100.;
+    double sigp = 0;
+    double sigm = 0;
+    for (double sig=start; sig<=end; sig += inc) {
+      af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
+      double h1_ = r[0]*hsize;
+      double h2_ = r[1]*hsize;
+      if(h1_<1  && h2_<1 && sigp==0)  sigp = sig;
+      if(h1_>99.0 && h2_>99.0) sigm = sig;
+    }
+    inc = (sigm-start)/10;
+    for (double sig=start; sig<sigm; sig += inc) {
+      af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
+      sigs.push_back(sig);
+      double h1_ = r[0]*hsize;
+      double h2_ = r[1]*hsize;
+      h1.push_back(h1_);
+      h2.push_back(h2_);
+      h12.push_back((h1_+h2_)/2);
+    }
+    inc = (sigp-sigm)/100.;
+    for (double sig=sigm; sig<sigp; sig += inc) {
+      af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
+      sigs.push_back(sig);
+      double h1_ = r[0]*hsize;
+      double h2_ = r[1]*hsize;
+      h1.push_back(h1_);
+      h2.push_back(h2_);
+      h12.push_back((h1_+h2_)/2);
+    }
+    inc = (end-sigp)/10.;
+    for (double sig=sigp; sig<=end+1.e-6*end; sig += inc) {
+      af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
+      sigs.push_back(sig);
+      double h1_ = r[0]*hsize;
+      double h2_ = r[1]*hsize;
+      h1.push_back(h1_);
+      h2.push_back(h2_);
+      h12.push_back((h1_+h2_)/2);
+    }
+  }
+
+  af::shared<double> histogram_1() {return h1;}
+  af::shared<double> histogram_2() {return h2;}
+  af::shared<double> histogram_average() {return h12;}
+  af::shared<double> values() {return sigs;}
+
+protected:
+  af::tiny<int, 2> map_loop(
+    af::const_ref<double, af::c_grid<3> > m1,
+    af::const_ref<double, af::c_grid<3> > m2,
+    double sig)
+  {
+    int nx = m1.accessor()[0];
+    int ny = m1.accessor()[1];
+    int nz = m1.accessor()[2];
+    int p1=0, p2=0;
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          if(m1(i,j,k) > sig) p1 += 1;
+          if(m2(i,j,k) > sig) p2 += 1;
+        }
+      }
+    }
+    return af::tiny<int, 2> (p1,p2);
+  }
+};
+
+class non_linear_map_modification_to_match_average_cumulative_histogram {
+public:
+  af::versa<double, af::c_grid<3> > map_1_new;
+  af::versa<double, af::c_grid<3> > map_2_new;
+  af::shared<double> sigs;
+  af::shared<double> h1;
+  af::shared<double> h2;
+  af::shared<double> h12;
+
+  non_linear_map_modification_to_match_average_cumulative_histogram(
+    af::const_ref<double, af::c_grid<3> > const& map_1,
+    af::const_ref<double, af::c_grid<3> > const& map_2)
+  {
+    int nx1 = map_1.accessor()[0];
+    int ny1 = map_1.accessor()[1];
+    int nz1 = map_1.accessor()[2];
+    int nx2 = map_2.accessor()[0];
+    int ny2 = map_2.accessor()[1];
+    int nz2 = map_2.accessor()[2];
+    CCTBX_ASSERT(nx1==nx2 && ny1==ny2 && nz1==nz2);
+    map_1_new.resize(af::c_grid<3>(nx1,ny1,nz1), 0);
+    map_2_new.resize(af::c_grid<3>(nx1,ny1,nz1), 0);
+    double max1 = af::max(map_1);
+    double min1 = af::min(map_1);
+    double max2 = af::max(map_2);
+    double min2 = af::min(map_2);
+    double mean1 = 0;
+    double mean2 = 0;
+    for (int i = 0; i < nx1; i++) {
+      for (int j = 0; j < ny1; j++) {
+        for (int k = 0; k < nz1; k++) {
+          //map_2_new(i,j,k)=map_2(i,j,k);
+          //map_2_new(i,j,k)=(map_2(i,j,k)-min2)*(max1-min1)/(max2-min2)+min1;
+          //map_1_new(i,j,k)=map_1(i,j,k);
+          double m2 = (map_2(i,j,k)-min2)*(2)/(max2-min2)-1;
+          double m1 = (map_1(i,j,k)-min1)*(2)/(max1-min1)-1;
+          map_2_new(i,j,k)=m2;
+          map_1_new(i,j,k)=m1;
+          mean1 = mean1 + m1;
+          mean2 = mean2 + m2;
+        }
+      }
+    }
+    CCTBX_ASSERT(std::abs(af::max(map_1_new.ref())-af::max(map_2_new.ref()))<1e-6);
+    CCTBX_ASSERT(std::abs(af::min(map_1_new.ref())-af::min(map_2_new.ref()))<1e-6);
+    mean1 = mean1/map_1.size();
+    mean2 = mean2/map_1.size();
+    for (int i = 0; i < nx1; i++) {
+      for (int j = 0; j < ny1; j++) {
+        for (int k = 0; k < nz1; k++) {
+          map_2_new(i,j,k)=map_2_new(i,j,k) - mean2;
+          map_1_new(i,j,k)=map_1_new(i,j,k) - mean1;
+        }
+      }
+    }
+    cumulative_histogramm ch = cumulative_histogramm(map_1_new.ref(),map_2_new.ref());
+    h1 = ch.histogram_1();
+    h2 = ch.histogram_2();
+    h12 = ch.histogram_average();
+    sigs = ch.values();
+    //
+    map_mod(map_1_new.ref(), h1.ref(), sigs.ref(), h12.ref());
+    map_mod(map_2_new.ref(), h2.ref(), sigs.ref(), h12.ref());
+  }
+
+  af::versa<double, af::c_grid<3> > map_1() {return map_1_new;}
+  af::versa<double, af::c_grid<3> > map_2() {return map_2_new;}
+
+protected:
+  void map_mod(
+    af::ref<double, af::c_grid<3> > m,
+    af::const_ref<double> h,
+    af::const_ref<double> sigs,
+    af::const_ref<double> h_ave) {
+    int nx = m.accessor()[0];
+    int ny = m.accessor()[1];
+    int nz = m.accessor()[2];
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          //
+          double m2n = m(i,j,k);
+          double sig2_best = sigs[0];
+          double r = 1e+9;
+          double h2_best = 0;
+          for (int n=0; n<sigs.size(); n++) {
+            double r_ = std::abs(m2n-sigs[n]);
+            if(r_<r) {
+              r = r_;
+              sig2_best = sigs[n];
+              h2_best = h[n];
+            }
+          }
+          //
+          double sig1_best = sigs[0];
+          double h1_best = 0;
+          r = 1e+9;
+          for (int n=0; n<h1.size(); n++) {
+            double r_ = std::abs(h2_best-h_ave[n]);
+            if(r_<r) {
+              r = r_;
+              sig1_best = sigs[n];
+              h1_best = h_ave[n];
+            }
+          }
+          m(i,j,k)=sig1_best;
+        }
+      }
+    }
+  }
+};
 
 class grid_points_in_sphere_around_atom_and_distances {
 public:
