@@ -129,6 +129,8 @@ def show_observations(obs,out=None):
 
   obs.setup_binner(n_bins = 12)
   result = []
+  counts_given = obs.binner().counts_given()
+  counts_complete = obs.binner().counts_complete()
   for i_bin in obs.binner().range_used():
     sel_w = obs.binner().selection(i_bin)
     sel_fo_all = obs.select(sel_w)
@@ -145,7 +147,8 @@ def show_observations(obs,out=None):
         mean_I       = flex.mean(sel_data),
         n_work       = sel_data.size(),
         mean_I_sigI  = flex.mean(sel_data/sel_sig),
-        )
+        d_max_min    = (d_max_, d_min_),
+        completeness = (counts_given[i_bin], counts_complete[i_bin]))
       result.append(bin)
   print >>out, "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)>"
   for bin in result:
@@ -156,6 +159,8 @@ def show_observations(obs,out=None):
       format_value("%8.1f", bin.mean_I),
       format_value("%8.1f", bin.mean_I_sigI),
       )
+  return result
+
 class resolution_bin(object):
   def __init__(self,
                i_bin         = None,
@@ -174,7 +179,8 @@ class resolution_bin(object):
                scale_k1_work = None,
                pher_work     = None,
                pher_free     = None,
-               sigmaa        = None):
+               sigmaa        = None,
+               d_max_min     = None):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
 
