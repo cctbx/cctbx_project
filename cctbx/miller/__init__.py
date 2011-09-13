@@ -737,6 +737,40 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
+  def complete_with(self, other, d_min=None, d_max=None):
+    s = self.resolution_filter(d_min=d_min, d_max=d_max)
+    o = other.resolution_filter(d_min=d_min, d_max=d_max)
+    ol = o.lone_set(s)
+    d_new = self.data().concatenate(ol.data())
+    i_new = self.indices().concatenate(ol.indices())
+    return self.customized_copy(data = d_new, indices = i_new)
+
+  def complete_with_bin_average(self, reflections_per_bin=100):
+    assert isinstance(self.data(), flex.double)
+    cs = self.complete_set()
+    ls = cs.lone_set(self)
+    self.setup_binner(reflections_per_bin = reflections_per_bin)
+    result = []
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      d_range = self.binner().bin_legend(
+        i_bin=i_bin, show_bin_number=False, show_counts=False)
+      ssel = self.select(selection=sel)
+      d_max, d_min = ssel.d_max_min()
+      data_mean = flex.mean(ssel.data())
+      result.append([d_max, d_min, data_mean])
+    data_lone = flex.double()
+    indices = flex.miller_index()
+    for d, mi in zip(ls.d_spacings().data(), ls.indices()):
+      for r in result:
+        if(d>=r[1] and d<=r[0]):
+          data_lone.append(r[2])
+          indices.append(mi)
+          break
+    lms = set(self, indices, anomalous_flag=False)
+    la = array(lms, data_lone)
+    return self.complete_with(other=la)
+
   def generate_r_free_flags (self,
                              fraction=0.1,
                              max_free=2000,
@@ -1975,6 +2009,7 @@ class array(set):
     phases are determined on the fly using the given step size.
     """
     assert self.data() is not None
+    # XXX good to enable: assert self.indices().all_eq(phase_source.indices())
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
     assert (   isinstance(self.data(), flex.complex_double)

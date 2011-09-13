@@ -1904,7 +1904,111 @@ def exercise_shelxl_extinction_correction():
           math.sqrt(ec.compute(mi[1],fc_sq[1],False)[0])]
   assert approx_equal(corr, coef)
 
+def exercise_complete_with1():
+  xs = crystal.symmetry((3,15,20), "P1")
+  mi = flex.miller_index(((0,0,1), ))
+  ms = miller.set(xs, mi, anomalous_flag=False)
+  cms = ms.complete_set(d_min=2, d_max=20)
+  cms_size = cms.indices().size()
+  #
+  data1 = flex.double(cms_size, 1)
+  ma1 = miller.array(cms, data1)
+  data2 = flex.double(cms_size, -1)
+  ma2 = miller.array(cms, data2)
+  #
+  sel = flex.random_bool(cms_size, 0.5)
+  ma1i = ma1.select(sel)
+  ma1del = ma1.select(~sel)
+  #
+  ma1c = ma1i.complete_with(ma2)
+  assert ma1c.data().size() == ma1.data().size()
+  x = ma1.sort(by_value="packed_indices")
+  y = ma1c.sort(by_value="packed_indices")
+  assert x.indices().all_eq(y.indices())
+  assert ma1c.common_set(ma1del).data().all_eq(-1)
+  assert ma1c.lone_set(ma1del).data().all_eq(1)
+  sel = ma1c.data() == -1
+  assert ma1c.select(sel).sort(by_value="packed_indices").indices().all_eq(
+    ma1del.sort(by_value="packed_indices").indices()  )
+
+def exercise_complete_with2():
+  xs = crystal.symmetry((3,15,20), "P1")
+  mi1 = flex.miller_index(((0,0,1), (0,0,2)))
+  ms1 = miller.set(xs, mi1, anomalous_flag=False)
+  d1 = flex.double([1,2])
+  ma1 = miller.array(ms1, d1)
+  #
+  mi2 = flex.miller_index(((0,0,0),(0,0,1), (0,0,3)))
+  ms2 = miller.set(xs, mi2, anomalous_flag=False)
+  d2 = flex.double([0,-1,-2])
+  ma2 = miller.array(ms2, d2)
+  #
+  ma1c = ma1.complete_with(other=ma2)
+  assert list(ma1c.indices()) == [(0, 0, 1), (0, 0, 2), (0, 0, 0), (0, 0, 3)]
+  assert list(ma1c.data()) == [1.0, 2.0, 0.0, -2.0]
+  #
+  ma2c = ma2.complete_with(other=ma1)
+  assert list(ma2c.indices()) == [(0, 0, 0), (0, 0, 1), (0, 0, 3), (0, 0, 2)]
+  assert list(ma2c.data()) == [0.0, -1.0, -2.0, 2.0]
+
+def exercise_complete_with3():
+  xs = crystal.symmetry((3,15,20), "P1")
+  mi1 = flex.miller_index(((0,0,1),(0,0,2),(0,0,3), (0,0,4), (0,0,5), (0,0,6),
+   (0,0,7),(0,0,8),(0,0,9),(0,0,10),(0,0,11),(0,0,12),(0,0,13),(0,0,14)))
+  ms1 = miller.set(xs, mi1, anomalous_flag=False)
+  d1 = flex.double(14,1)
+  ma1 = miller.array(ms1, d1)
+  mi2 = flex.miller_index(((0,0,3), (0,0,4), (0,0,5), (0,0,8), (0,0,9),
+    (0,0,10),(0,0,11),(0,0,12)))
+  ms2 = miller.set(xs, mi2, anomalous_flag=False)
+  d2 = flex.double(8,2)
+  ma2 = miller.array(ms2, d2)
+  # Complete all
+  mi2a = ma2.complete_with(ma1)
+  mi2a = mi2a.sort()
+  assert mi2a.indices().all_eq(ma1.indices())
+  assert list(mi2a.data()) == [1,1,2,2,2,1,1,2,2,2,2,2,1,1]
+  # Low resolution only
+  mi2a = ma2.complete_with(ma1,d_min=6)
+  mi2a = mi2a.sort()
+  assert approx_equal(list(mi2a.indices()), ((0,0,1), (0,0,2), (0,0,3), (0,0,4),
+    (0,0,5), (0,0,8), (0,0,9), (0,0,10),(0,0,11),(0,0,12)))
+  assert list(mi2a.data()) == [1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+  # High resolution only
+  mi2a = ma2.complete_with(ma1,d_max=2)
+  mi2a = mi2a.sort()
+  assert approx_equal(list(mi2a.indices()), ((0,0,3), (0,0,4), (0,0,5),
+   (0,0,8), (0,0,9), (0,0,10),(0,0,11),(0,0,12),(0,0,13),(0,0,14)))
+  assert list(mi2a.data()) == [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0]
+  # Medium resolution only
+  mi2a = ma2.complete_with(ma1,d_max=4, d_min=2.5)
+  mi2a = mi2a.sort()
+  assert approx_equal(list(mi2a.indices()), ((0,0,3), (0,0,4), (0,0,5), (0,0,6),
+   (0,0,7), (0,0,8), (0,0,9), (0,0,10),(0,0,11),(0,0,12)))
+  assert list(mi2a.data()) == [2.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+  # Complete all - reverse
+  ma1a = ma1.complete_with(ma2)
+  ma1a = ma1a.sort()
+  assert ma1a.indices().all_eq(ma1.indices())
+  assert approx_equal(ma1a.data(), ma1.data())
+
+def exercise_complete_with_complete_with_bin_average():
+  xs = crystal.symmetry((30,15,20), "P1")
+  mi = flex.miller_index(((0,0,1),(0,0,2),(0,0,3), (0,0,4), (0,0,5), (0,0,6),
+   (0,0,7),(0,0,8),(0,0,9),(0,0,10),(0,0,11),(0,0,12),(0,0,13),(0,0,14)))
+  ms = miller.set(xs, mi, anomalous_flag=False)
+  ms = ms.complete_set()
+  ms = ms.select(selection=flex.random_bool(ms.indices().size(), 0.3))
+  d = flex.double(ms.indices().size(),1)
+  ma = miller.array(ms, d)
+  ma.complete_with_bin_average()
+
+
 def run(args):
+  exercise_complete_with_complete_with_bin_average()
+  exercise_complete_with1()
+  exercise_complete_with2()
+  exercise_complete_with3()
   exercise_lsd_map()
   exercise_shelxl_extinction_correction()
   exercise_symmetry_agreement_factor()

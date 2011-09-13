@@ -81,6 +81,35 @@ namespace {
         .def("distances", &w_t::distances)
       ;
     }
+    //
+    {
+      typedef non_linear_map_modification_to_match_average_cumulative_histogram w_t;
+
+      class_<w_t>("non_linear_map_modification_to_match_average_cumulative_histogram", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  af::const_ref<double, af::c_grid<3> > const& >(
+                    (arg("map_1"),
+                     arg("map_2"))))
+        .def("map_1", &w_t::map_1)
+        .def("map_2", &w_t::map_2)
+      ;
+    }
+    //
+    {
+      typedef cumulative_histogramm w_t;
+
+      class_<w_t>("cumulative_histogramm", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  af::const_ref<double, af::c_grid<3> > const& >(
+                    (arg("map_1"),
+                     arg("map_2"))))
+        .def("histogram_1", &w_t::histogram_1)
+        .def("histogram_2", &w_t::histogram_2)
+        .def("histogram_average", &w_t::histogram_average)
+        .def("values", &w_t::values)
+      ;
+    }
+    //
     {
       typedef one_gaussian_peak_approximation w_t;
 
@@ -211,9 +240,12 @@ namespace {
     def("denmod_simple",
       (af::versa<double, af::c_grid<3> >(*)
         (af::const_ref<double, af::c_grid<3> > const&,
-         af::tiny<int, 3> const& )) denmod_simple, (
+         af::tiny<int, 3> const&,
+         double,double)) denmod_simple, (
       arg("map_data"),
-      arg("n_real")));
+      arg("n_real"),
+      arg("cutoffp"),
+      arg("cutoffm")));
 
     def("eight_point_interpolation",
       (double(*)
