@@ -2385,25 +2385,39 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
               mon_lib_srv         = mon_lib_srv,
               residue             = residue,
               atom_selection_bool = None)
-            dist_start = -1.
-            if(min_dist_flag): dist_start = 1.e+6
             if(rotamer_iterator is not None):
+              sites_cart_start_ = sites_cart_start.select(residue_iselection)
+              distances = flex.double()
+              sites = []
               for rotamer, rotamer_sites_cart in rotamer_iterator:
-                sites_cart_start_ = sites_cart_start.deep_copy()
-                xray_structure_ = xray_structure.deep_copy_scatterers()
-                sites_cart_start_ = sites_cart_start_.set_selected(
-                  residue_iselection, rotamer_sites_cart)
-                xray_structure_.set_sites_cart(sites_cart_start_)
-                dist = flex.sum(xray_structure_.distances(xrs))
-                flag = None
+                dist = flex.max(flex.sqrt((sites_cart_start_ - rotamer_sites_cart).dot()))
+                distances.append(dist)
+                sites.append(rotamer_sites_cart.deep_copy())
+              ###
+              dist_start = -1.
+              if(min_dist_flag): dist_start = 1.e+6
+              res = None
+              for d, s in zip(distances, sites):
                 if(min_dist_flag):
-                  flag = dist < dist_start and abs(dist-dist_start) > 0.3
+                  if(d<dist_start and d>0.5):
+                    dist_start = d
+                    res = s.deep_copy()
                 else:
-                  flag = dist > dist_start
-                if(flag):
-                  dist_start = dist
-                  sites_cart_result = sites_cart_result.set_selected(
-                    residue_iselection, rotamer_sites_cart)
+                  if(d>dist_start):
+                    res = s.deep_copy()
+                    dist_start = d
+              if(res is None):
+                dist_start = -1.
+                if(min_dist_flag): dist_start = 1.e+6
+                for d, s in zip(distances, sites):
+                  if(min_dist_flag):
+                    if(d<dist_start):
+                      dist_start = d
+                      res = s.deep_copy()
+              ###
+              if 1:#(res is not None):
+                sites_cart_result = sites_cart_result.set_selected(
+                  residue_iselection, res)
   xray_structure.set_sites_cart(sites_cart_result)
   return xray_structure
 
