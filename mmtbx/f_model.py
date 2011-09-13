@@ -854,7 +854,7 @@ class manager(manager_mixin):
         r_shrinks.append(a*r_solv - b)
       return r_shrinks, r_solv_range
     if(thorough):
-      trial_range = [0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+      trial_range = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
       r_shrinks = []
       r_solvs = []
       for tr1 in trial_range:
