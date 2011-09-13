@@ -18,6 +18,7 @@ from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
+from libtbx import smart_open
 from scitbx import matrix
 
 import math, os, sys
@@ -47,16 +48,10 @@ class reader(object):
     else: assert cif_object is None
     self.builder = builder
     if file_path is not None:
-      if isinstance(file_path, unicode):
-        file_object = open(file_path, 'rb')
-      else:
-        if not os.path.exists(file_path):
-          raise Sorry("No such file exists: %s" %file_path)
-        self.parser = ext.fast_reader(file_path, builder, strict)
+      file_object = smart_open.for_reading(file_path)
     if file_object is not None:
       input_string = file_object.read()
-    if input_string is not None:
-      self.parser = ext.fast_reader(input_string, builder, strict)
+    self.parser = ext.fast_reader(input_string, builder, strict)
     if raise_if_errors and len(self.parser.lexer_errors()):
       raise CifParserError(self.parser.lexer_errors()[0])
     if raise_if_errors and len(self.parser.parser_errors()):
