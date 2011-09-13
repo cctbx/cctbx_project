@@ -13,9 +13,11 @@ def find_integration_files (dir_name, base_name) :
 
 def load_integration_results (dir_name, base_name) :
   files = find_integration_files(dir_name, base_name)
+  results = []
   summaries = []
   for file_path in files :
     result = easy_pickle.load(file_path)
+    results.append(result)
     file_name = os.path.basename(file_path)
     x = int(re.sub("_.*", "", re.sub(base_name + "_", "", file_name)))
     summary = dict(
@@ -28,7 +30,9 @@ def load_integration_results (dir_name, base_name) :
       rms=result['residual'],
       bins=result['table_raw'])
     summaries.append(summary)
-  return sorted(summaries, lambda x,y: cmp(y['solution'], x['solution']))
+  r_s = list(zip(results, summaries))
+  r_s_sorted = sorted(r_s, lambda x,y: cmp(y[1]['solution'], x[1]['solution']))
+  return [ r for r,s in r_s_sorted ], [ s for r, s in r_s_sorted ]
 
 class TableData (object) :
   """Base class for wx.ListCtrl data source objects in this module."""

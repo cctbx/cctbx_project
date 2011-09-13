@@ -1,10 +1,8 @@
 
 from rstbx.viewer import results_base
 from rstbx.viewer.results_base import ResultData, BinData
-from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import wx
-import re
 import os
 import sys
 
@@ -76,9 +74,11 @@ class ResultsFrame (wx.Frame) :
     pszr.Add(txt1, 0, wx.ALL, 5)
     self.integration_list = IntegrationTable(p)
     pszr.Add(self.integration_list, 0, wx.ALL, 5)
-    btn = wx.Button(p, -1, "Show resolution bins")
-    self.Bind(wx.EVT_BUTTON, self.OnShowBins, btn)
-    pszr.Add(btn, 0, wx.ALL, 5)
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    pszr.Add(box)
+    btn = wx.Button(p, -1, "View results")
+    self.view_btn = btn
+    box.Add(btn, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     txt2 = wx.StaticText(p, -1, "Integration output by resolution:")
     txt2.SetFont(f1)
     pszr.Add(txt2, 0, wx.ALL, 5)
@@ -87,24 +87,44 @@ class ResultsFrame (wx.Frame) :
     szr.Fit(p)
     self.Fit()
     self._results = []
+    self._summaries = []
+    self.Bind(wx.EVT_BUTTON, self.OnView, btn)
+    self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.integration_list)
+    self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect,
+      self.integration_list)
 
-  def SetResults (self, results) :
+  def SetResults (self, results, summaries) :
+    assert (len(results) > 0)
     self._results = results
-    self.integration_list.SetResults(results)
+    self._summaries = summaries
+    self.integration_list.SetResults(summaries)
+    self.integration_list.Select(0)
+    #self.view_btn.Enable(True)
 
-  def OnShowBins (self, evt) :
+  def OnView (self, evt) :
+    sol = self.integration_list.GetFirstSelected()
+    print sol
+
+  def OnSelect (self, evt) :
     sol = self.integration_list.GetFirstSelected()
     if (sol >= 0) :
-      self.bin_list.SetBins(self._results[sol]['bins'])
+      self.view_btn.Enable(True)
+      self.bin_list.SetBins(self._summaries[sol]['bins'])
+
+  def OnDeSelect (self, evt) :
+    sol = self.integration_list.GetFirstSelected()
+    if (sol < 0) :
+      self.view_btn.Enable(False)
 
 def load_results () :
   file_base = sys.argv[1]
-  results = results_base.load_integration_results(os.getcwd(), file_base)
+  results, summaries = results_base.load_integration_results(os.getcwd(),
+    file_base)
   if (len(results) == 0) :
     raise Sorry("No files matching %s!" % file_base)
   app = wx.App(0)
   frame = ResultsFrame(None, -1, "Integration results")
-  frame.SetResults(results)
+  frame.SetResults(results, summaries)
   frame.Show()
   app.MainLoop()
 
