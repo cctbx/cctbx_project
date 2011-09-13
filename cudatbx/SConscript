@@ -18,3 +18,9 @@ if (env_etc.enable_cuda):
     source = ['cuda_base.cu',
               'cudatbx_ext.cu',
               ])
+
+  env_bpl.cudaSharedLibrary(
+    target = "#lib/cudatbx_special_functions_ext",
+    source = ['math/special_functions/spherical_bessel_jn.cu',
+              'math/special_functions/special_functions_ext.cu',
+              ])
