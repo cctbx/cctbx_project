@@ -261,6 +261,7 @@ cudatbx/SConscript -text
 cudatbx/__init__.py -text
 cudatbx/cuda_base.cu -text
 cudatbx/cuda_base.h -text
+cudatbx/cudatbx_ext.cu -text
 dox.sphinx/Makefile -text
 dox.sphinx/build_docs.sh -text
 dox.sphinx/conf.py -text
