@@ -8,6 +8,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_value_policy.hpp>
 
+#include <scitbx/array_family/shared.h>
 #include <iotbx/cif/parser.h>
 #include <iotbx/error.h>
 

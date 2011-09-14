@@ -1,25 +1,13 @@
 #ifndef IOTBX_CIF_UTILS_H
 #define IOTBX_CIF_UTILS_H
 
+#include <algorithm>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 #include <string>
 
-#include <boost/format.hpp>
-
 #include <iotbx/cif/cifParser.h>
-
-// Workaround conflict with min/max macros defined by Windef.h
-// http://support.microsoft.com/kb/143208
-#if defined(min) && defined(max)
-  #define min_redefined min
-  #define max_redefined max
-  #undef min
-  #undef max
-#endif
-#include <scitbx/array_family/shared.h>
-#ifdef min_redefined
-  #define max max_redefined
-  #define min min_redefined
-#endif
 
 namespace iotbx { namespace cif {
 
@@ -51,7 +39,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
   pANTLR3_BASE_TREE           theBaseTree;
   pANTLR3_COMMON_TREE         theCommonTree;
 
-  std::string message;
+  std::ostringstream message;
     // Retrieve some info for easy reading.
     //
     ex      = recognizer->state->exception;
@@ -63,26 +51,25 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
     {
       if (((pANTLR3_COMMON_TOKEN)(ex->token))->type == ANTLR3_TOKEN_EOF)
       {
-        message += "-end of input-(";
+        message << "-end of input-(";
       }
       else
       {
-        message += "-unknown source-(";
+        message << "-unknown source-(";
       }
     }
     else
     {
       ftext = ex->streamName->to8(ex->streamName);
-      message += str(boost::format("%s(") %ftext->chars);
+      message << ftext->chars << "(";
     }
 
     // Next comes the line number
     //
 
-    message += str(boost::format("line %d) ") %recognizer->state->exception->line);
-    message += str(boost::format(" : error %d : %s")
-      %recognizer->state->exception->type
-      %(pANTLR3_UINT8) (recognizer->state->exception->message));
+    message << "line " << recognizer->state->exception->line;
+    message << " : error " << recognizer->state->exception->type << " : "
+      << (pANTLR3_UINT8) (recognizer->state->exception->message);
 
 
     // How we determine the next piece is dependent on which thing raised the
@@ -101,18 +88,20 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       //ttext      = theToken->toString(theToken);
       ttext       =  theToken->getText(theToken);
 
-      message += str(boost::format(", at offset %d") %recognizer->state->exception->charPositionInLine);
+      message << ", at offset " << recognizer->state->exception->charPositionInLine;
       if  (theToken != NULL)
       {
         if (theToken->type == ANTLR3_TOKEN_EOF)
         {
-          message += ", at <EOF>";
+          message << ", at <EOF>";
         }
         else
         {
           // Guard against null text in a token
           //
-          message += str(boost::format("\n    near %s\n    ") %(ttext == NULL ? (pANTLR3_UINT8)"<no text for the token>" : ttext->chars));
+          message << "\n    near "
+            << (ttext == NULL ? (pANTLR3_UINT8)"<no text for the token>" : ttext->chars)
+            << "\n    ";
         }
       }
       break;
@@ -133,14 +122,14 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
         {
           theToken = (pANTLR3_COMMON_TOKEN) theBaseTree->getToken(theBaseTree);
         }
-        message += str(boost::format(", at offset %d") %theBaseTree->getCharPositionInLine(theBaseTree));
-        message += str(boost::format(", near %s") %ttext->chars);
+        message << ", at offset " << theBaseTree->getCharPositionInLine(theBaseTree);
+        message << ", near " << ttext->chars;
       }
       break;
 
     default:
 
-      message += "Base recognizer function displayRecognitionError called by unknown parser type - provide override for this function\n";
+      message << "Base recognizer function displayRecognitionError called by unknown parser type - provide override for this function\n";
       return;
       break;
     }
@@ -169,17 +158,17 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       //
       if (tokenNames == NULL)
       {
-        message += " : Extraneous input...";
+        message << " : Extraneous input...";
       }
       else
       {
         if (ex->expecting == ANTLR3_TOKEN_EOF)
         {
-          message += " : Extraneous input - expected <EOF>\n";
+          message << " : Extraneous input - expected <EOF>\n";
         }
         else
         {
-          message += str(boost::format(" : Extraneous input - expected %s ...\n") %tokenNames[ex->expecting]);
+          message << " : Extraneous input - expected " << tokenNames[ex->expecting] << " ...\n";
         }
       }
       break;
@@ -193,17 +182,17 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       //
       if (tokenNames == NULL)
       {
-        message += str(boost::format(" : Missing token (%d)...\n") %ex->expecting);
+        message << " : Missing token (" << ex->expecting << ")...\n";
       }
       else
       {
         if (ex->expecting == ANTLR3_TOKEN_EOF)
         {
-          message += " : Missing <EOF>\n";
+          message <<" : Missing <EOF>\n";
         }
         else
         {
-          message += str(boost::format(" : Missing %s \n") %tokenNames[ex->expecting]);
+          message << " : Missing " << tokenNames[ex->expecting] << " \n";
         }
       }
       break;
@@ -216,7 +205,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       // You may get this if there are not more tokens and more are needed
       // to complete a parse for instance.
       //
-      message += " : syntax error...\n";
+      message << " : syntax error...\n";
       break;
 
     case ANTLR3_MISMATCHED_TOKEN_EXCEPTION:
@@ -232,17 +221,17 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       //
       if (tokenNames == NULL)
       {
-        message += " : syntax error...\n";
+        message << " : syntax error...\n";
       }
       else
       {
         if (ex->expecting == ANTLR3_TOKEN_EOF)
         {
-          message += " : expected <EOF>\n";
+          message << " : expected <EOF>\n";
         }
         else
         {
-          message += str(boost::format(" : expected %s ...\n") %tokenNames[ex->expecting]);
+          message << " : expected " << tokenNames[ex->expecting] << " ...\n";
         }
       }
       break;
@@ -254,7 +243,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       // you should. It means that at the point where the current token occurred
       // that the DFA indicates nowhere to go from here.
       //
-      message += " : cannot match to any predicted input...\n";
+      message << " : cannot match to any predicted input...\n";
 
       break;
 
@@ -271,7 +260,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
         // possible tokens at this point, but we did not see any
         // member of that set.
         //
-        message += " : unexpected input...\n  expected one of : ";
+        message << " : unexpected input...\n  expected one of : ";
 
         // What tokens could we have accepted at this point in the
         // parse?
@@ -294,17 +283,16 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
             //
             if (tokenNames[bit])
             {
-              message += str(boost::format("%s%s") %(count > 0 ? ", " : "")
-                                                   %tokenNames[bit]);
+              message << (count > 0 ? ", " : "") << tokenNames[bit];
               count++;
             }
           }
-          message += "\n";
+          message << "\n";
         }
         else
         {
-          message += "Actually dude, we didn't seem to be expecting anything here, or at least\n";
-          message += "I could not work out what I was expecting, like so many of us these days!\n";
+          message << "Actually dude, we didn't seem to be expecting anything here, or at least\n";
+          message << "I could not work out what I was expecting, like so many of us these days!\n";
         }
       }
       break;
@@ -315,7 +303,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       // but found a token that ended that sequence earlier than
       // we should have done.
       //
-      message += " : missing elements...\n";
+      message << " : missing elements...\n";
       break;
 
     default:
@@ -325,7 +313,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       // then we are just going to report what we know about the
       // token.
       //
-      message += " : syntax not recognized...\n";
+      message << " : syntax not recognized...\n";
       break;
     }
 
@@ -353,11 +341,11 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       parser = (pANTLR3_PARSER) (recognizer->super);
       generated  = (pcifParser)(parser->super);
 
-      generated->errors->push_back(message);
+      generated->errors->push_back(message.str());
       break;
 
     default:
-      std::cerr << message;
+      std::cerr << message.str();
       break;
     }
 
@@ -377,25 +365,23 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
   ex = lexer->rec->state->exception;
 
 
-  std::string message;
+  std::ostringstream message;
 
   // See if there is a 'filename' we can use
   //
   if (ex->name == NULL)
   {
-    message += "-unknown source-(";
+    message << "-unknown source-(";
   }
   else
   {
     ftext = ex->streamName->to8(ex->streamName);
-    message += str(boost::format("%s(") %ftext->chars);
+    message << ftext->chars << "(";
   }
 
-  message += str(boost::format("line %d) ") %recognizer->state->exception->line);
-  message += str(boost::format(": lexer error %d :\n\t%s at offset %d, ")
-                                              %ex->type
-                                              %((pANTLR3_UINT8)(ex->message))
-                                              %(ex->charPositionInLine+1))
+  message << "line " << recognizer->state->exception->line << ") ";
+  message << ": lexer error " << ex->type << " :\n\t"
+    << (pANTLR3_UINT8)(ex->message) << " at offset " << (ex->charPositionInLine+1) << ", "
   ;
   {
     ANTLR3_INT32 width;
@@ -406,34 +392,35 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
     {
       if (isprint(ex->c))
       {
-        message += str(boost::format("near '%c' :\n") %ex->c);
+        message << "near '" << ex->c << "' :\n";
       }
       else
       {
-        message += str(boost::format("near char(%#02X) :\n") %(ANTLR3_UINT8)(ex->c));
+        message << "near char(" << std::hex << (ANTLR3_UINT8)(ex->c) << ") :\n";
       }
-      boost::format fmt(str(boost::format("\t%%.%is\n") % std::min(width, 20)));
-      message += str(fmt % (pANTLR3_UINT8)(ex->index));
+      message << "\t" << std::setprecision(20) << (pANTLR3_UINT8)(ex->index) << "\n";
+      message << "\t" << std::setprecision(std::min(width, 20)) << (pANTLR3_UINT8)(ex->index) << "\n";
     }
     else
     {
-      message += "(end of input).\n\t This indicates a poorly specified lexer RULE\n\t or unterminated input element such as: \"STRING[\"]\n";
-      message += str(boost::format("\t The lexer was matching from line %d, offset %d, which\n\t ")
-                                  %((ANTLR3_UINT32)(lexer->rec->state->tokenStartLine))
-                                  %((ANTLR3_UINT32)(lexer->rec->state->tokenStartCharPositionInLine))
-                                  );
+      message << "(end of input).\n\t This indicates a poorly specified lexer RULE\n\t or unterminated input element such as: \"STRING[\"]\n";
+      message << "\t The lexer was matching from line "
+              << (ANTLR3_UINT32)(lexer->rec->state->tokenStartLine)
+              << ", offset "
+              << (ANTLR3_UINT32)(lexer->rec->state->tokenStartCharPositionInLine)
+              << ", which\n\t ";
       width = ANTLR3_UINT32_CAST(((pANTLR3_UINT8)(lexer->input->data)+(lexer->input->size(lexer->input))) - (pANTLR3_UINT8)(lexer->rec->state->tokenStartCharIndex));
 
       if (width >= 1)
       {
-        boost::format fmt(str(boost::format("looks like this:\n\t\t%%.%is\n")
-                              % std::min(width, 20)));
-        message += str(
-          fmt % (pANTLR3_UINT8)(lexer->rec->state->tokenStartCharIndex));
+        message << "looks like this:\n\t\t"
+                << std::setprecision(std::min(width, 20))
+                << (pANTLR3_UINT8)(lexer->rec->state->tokenStartCharIndex)
+                << "\n";
       }
       else
       {
-        message += "is also the end of the line, so you must check your lexer rules\n";
+        message << "is also the end of the line, so you must check your lexer rules\n";
       }
     }
   }
@@ -442,7 +429,7 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
   lexer = (pANTLR3_LEXER) (recognizer->super);
   generated = (pcifLexer)(lexer->super);
 
-  generated->errors->push_back(message);
+  generated->errors->push_back(message.str());
 }
 
 

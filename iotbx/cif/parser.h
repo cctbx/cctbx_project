@@ -9,12 +9,13 @@
 #include <iotbx/cif/cifWalker.h>
 #include <iotbx/cif/utils.h>
 
-#include <boost/noncopyable.hpp>
-
 namespace iotbx { namespace cif {
 
-class parser : private boost::noncopyable
+class parser
 {
+  private:  // emphasize the following members are private
+    parser(const parser&);
+    const parser& operator=(const parser&);
 
   public:
 
