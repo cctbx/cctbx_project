@@ -22,11 +22,16 @@ namespace math {
     if (n < 2) {
       return 1.0;
     }
-    FloatType f = 1.0;
-    for (IntType i=n; i>2; i -= 2) {
-      f *= n;
+    else if (n == 2) {
+      return 2.0;
     }
-    return f;
+    else {
+      FloatType f = 1.0;
+      for (IntType i=n; i>1; i -= 2) {
+        f *= n;
+      }
+      return f;
+    }
   }
 
 }
