@@ -26,7 +26,21 @@ class screen_params (object) :
 
   def set_zoom (self, zoom) :
     assert (zoom >= 0)
+    # XXX adjust offsets to preserve current center
+    x0, y0, w0, h0 = self.get_bitmap_params()
+    increase_zoom = (zoom > self.zoom)
+    decrease_zoom = (zoom < self.zoom)
     self.zoom = zoom
+    center_x, center_y = int(x0 + w0/2), int(y0 + h0/2)
+    x, y, w, h = self.get_bitmap_params()
+    if (increase_zoom) :
+      if ((x + w) < self.img_w) :
+        self.img_x_offset = max(min(int(center_x - w/2), self.img_w - w), 0)
+      if ((y + h) < self.img_h) :
+        self.img_y_offset = max(min(int(center_y - h/2), self.img_h - h), 0)
+    elif (decrease_zoom) :
+      self.img_x_offset = max(int(center_x - w/2), 0)
+      self.img_y_offset = max(int(center_y - h/2), 0)
 
   def set_screen_size (self, w, h) :
     self.screen_w = w
