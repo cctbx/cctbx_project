@@ -1,4 +1,9 @@
 
+# TODO:
+#  - handle 2theta properly
+#  - resolution circles (2theta-dependent)
+#  - measure reciprocal-space distance between spots
+
 from rstbx.viewer import screen_params
 import wx
 user_callback = None
