@@ -2,6 +2,8 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
 from labelit import preferences
+from libtbx import adopt_init_args
+import os
 
 def run_new_horizons(args):
   import os,copy
@@ -29,6 +31,18 @@ def run_new_horizons(args):
 def special_defaults_for_new_horizons(phil_scope):
   # for integration, do not want 2x2 binning
   phil_scope.merge_command_line(["distl_permit_binning=False"])
+
+class index_files (object) :
+  def __init__ (self, image_list, dir_name) :
+    adopt_init_args(self, locals())
+
+  def __call__ (self, *args, **kwds) :
+    if (not os.path.isdir(self.dir_name)) :
+      os.mkdir(self.dir_name)
+    os.chdir(self.dir_name)
+    args = [ "indexing.data=%s" % img for img in self.image_list ]
+    args.append("indexing_pickle=integ")
+    return run_new_horizons(args=args)
 
 if __name__=='__main__':
   import sys
