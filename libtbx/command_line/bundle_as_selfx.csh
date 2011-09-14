@@ -14,5 +14,11 @@ if ($?LIBTBX_NATIVE_TAR) then
 else
   set tar_cmd=tar
 endif
-"$tar_cmd" cf - "${bundle}_sources" "${bundle}_build" "${bundle}_install_script.csh" $* | gzip > "${bundle}_${platform}.tar.gz"
+# check if tar_cmd supports the owner and group options
+if { ( "$tar_cmd" cf - --owner=0 --group=0 -- /dev/null >&/dev/null ) } then
+  set tar_options="--owner=0 --group=0"
+else
+  set tar_options=
+endif
+"$tar_cmd" cf - $tar_options -- "${bundle}_sources" "${bundle}_build" "${bundle}_install_script.csh" $* | gzip > "${bundle}_${platform}.tar.gz"
 libtbx.create_selfx "${bundle}_${platform}.tar.gz" "./${bundle}_install_script.csh"
