@@ -1,0 +1,37 @@
+
+import libtbx.load_env
+import re
+import os
+import sys
+
+Import("env_etc")
+env_etc.cufft_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.scitbx_include,
+  env_etc.boost_include,
+]
+
+if (not env_etc.no_boost_python) :
+  cuda_libdir = os.environ.get("CUDA_LIB", "/usr/local/cuda/lib")
+  if (sys.platform == "linux2") and (os.uname()[-1] == "x86_64") :
+    cuda_libdir = os.environ.get("CUDA_LIB64", cuda_libdir)
+  cuda_incdir = os.environ.get("CUDA_INCLUDE", "/usr/local/cuda/include")
+  # for NERSC GPU cluster
+  cuda_libdir = re.sub("-L", "", cuda_libdir)
+  cuda_incdir = re.sub("-I", "", cuda_incdir)
+  Import("env_scitbx_boost_python_ext")
+  env_bpl = env_scitbx_boost_python_ext.Clone()
+  env_bpl.Prepend(LIBS=["cufft"])
+  env_bpl.Append(LIBPATH=[cuda_libdir])
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=[cuda_incdir])
+  conf = env_bpl.Configure()
+  if (not conf.TryCompile(
+      "#include <cufft.h>\n#include <cuda.h>", extension=".cpp")) :
+    print "cufft: headers not available."
+    print "cufft: Compilation skipped."
+  else :
+    env_bpl.SharedLibrary(
+      target="#lib/cudatbx_cufft_ext",
+      source=["ext_float.cpp", "ext_double.cpp", "ext.cpp"])
