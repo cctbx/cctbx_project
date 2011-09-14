@@ -24,3 +24,11 @@ if (env_etc.enable_cuda):
     source = ['math/special_functions/spherical_bessel_jn.cu',
               'math/special_functions/special_functions_ext.cu',
               ])
+
+  env_bpl.Prepend(LIBS=["cufft"])
+  env_bpl.cudaSharedLibrary(
+    target = "#lib/cudatbx_cufft_ext",
+    source = ['cufft/ext.cu',
+	      'cufft/ext_double.cu',
+	      'cufft/ext_float.cu',
+	     ])

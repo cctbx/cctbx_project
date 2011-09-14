@@ -17,7 +17,7 @@ def exercise_real_to_complex_3d (benchmark=True) :
 def _exercise_real_to_complex_3d (sizes, benchmark=True) :
   from cctbx import maptbx
   from scitbx.array_family import flex
-  from gputbx import cufft
+  from cudatbx import cufft
   from scitbx import fftpack
   from libtbx.test_utils import approx_equal
   import time
@@ -86,7 +86,7 @@ def _exercise_real_to_complex_3d (sizes, benchmark=True) :
 
 def exercise_complex_to_complex_3d () :
   from scitbx.array_family import flex
-  from gputbx import cufft
+  from cudatbx import cufft
   from scitbx import fftpack
   import time
   import sys

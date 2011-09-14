@@ -25,7 +25,7 @@
 #include <ctime>
 #include <iostream>
 
-namespace gputbx { namespace cufft {
+namespace cudatbx { namespace cufft {
   namespace af = scitbx::af;
 
   af::versa<std::complex<RealType>, af::flex_grid<> >
@@ -142,6 +142,6 @@ namespace gputbx { namespace cufft {
     cudaFree(cuda_in);
   }
 
-}} // namespace gputbx::cufft
+}} // namespace cudatbx::cufft
 
 #endif
