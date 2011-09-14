@@ -20,7 +20,13 @@ mv fable_cout_common_report "$target_dir"
 #
 fable.cout "$fable_dist/test/valid/doc_data_type_star.f" --namespace=example > "$target_dir/doc_data_type_star.cpp"
 #
-(cd "$fable_dist/.."; tar cf "$target_dir/tmp.tar" libtbx tbxx fable)
+# check if tar supports the owner and group options
+if { ( tar cf - --owner=0 --group=0 -- /dev/null >&/dev/null ) } then
+  set tar_options="--owner=0 --group=0"
+else
+  set tar_options=
+endif
+(cd "$fable_dist/.."; tar cf "$target_dir/tmp.tar" $tar_options -- libtbx tbxx fable)
 (cd "$target_dir" && rm -rf sources; mkdir sources; cd sources; tar xf ../tmp.tar; rm ../tmp.tar; mv tbxx fable; cp -a "`libtbx.find_in_repositories lapack_fem`" .)
 (cd "$target_dir" && find . -depth -name .svn -exec rm -rf {} \; && find . -name \*.pyc -exec rm -rf {} \;)
 #
