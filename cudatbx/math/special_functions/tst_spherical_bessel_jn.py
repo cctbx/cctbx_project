@@ -65,11 +65,12 @@ def spherical_bessel_jn_test(write_output = False):
 
 # =============================================================================
 if (__name__ == '__main__'):
+  import libtbx.load_env
+  if (libtbx.env.build_options.enable_cuda):
+    t = spherical_bessel_jn_test()
 
-  t = spherical_bessel_jn_test()
-
-  n_gpus = number_of_gpus()
-  for i in xrange(n_gpus):
-    reset_gpu(i)
+    n_gpus = number_of_gpus()
+    for i in xrange(n_gpus):
+      reset_gpu(i)
 
   print 'Ok'
