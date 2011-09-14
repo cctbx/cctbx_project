@@ -262,6 +262,7 @@ cudatbx/__init__.py -text
 cudatbx/cuda_base.cu -text
 cudatbx/cuda_base.h -text
 cudatbx/cudatbx_ext.cu -text
+cudatbx/libtbx_config -text
 cudatbx/math/__init__.py -text
 cudatbx/math/factorials.h -text
 cudatbx/math/special_functions/__init__.py -text
