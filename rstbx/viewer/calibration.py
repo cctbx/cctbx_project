@@ -48,4 +48,4 @@ class sb_wrapper:
     L_mm = panel.settings.distance * flex.atan(twotheta)
     L_pixels = L_mm / panel._img._raw.pixel_size
 
-    [ dc.DrawCircle(xc, yc, panel._img.zoom * pxl) for pxl in L_pixels ]
+    [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
