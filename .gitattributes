@@ -262,12 +262,11 @@ cudatbx/__init__.py -text
 cudatbx/cuda_base.cu -text
 cudatbx/cuda_base.h -text
 cudatbx/cudatbx_ext.cu -text
-cudatbx/cufft/SConscript -text
 cudatbx/cufft/__init__.py -text
 cudatbx/cufft/cufft.hpp -text
-cudatbx/cufft/ext.cpp -text
-cudatbx/cufft/ext_double.cpp -text
-cudatbx/cufft/ext_float.cpp -text
+cudatbx/cufft/ext.cu -text
+cudatbx/cufft/ext_double.cu -text
+cudatbx/cufft/ext_float.cu -text
 cudatbx/cufft/tst_ext.py -text
 cudatbx/libtbx_config -text
 cudatbx/math/__init__.py -text

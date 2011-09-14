@@ -5,7 +5,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-namespace gputbx { namespace cufft {
+namespace cudatbx { namespace cufft {
   void clean_up () {
     cudaThreadExit();
   }
@@ -26,7 +26,7 @@ namespace {
 }
 }}
 
-BOOST_PYTHON_MODULE(gputbx_cufft_ext)
+BOOST_PYTHON_MODULE(cudatbx_cufft_ext)
 {
-  gputbx::cufft::init_module();
+  cudatbx::cufft::init_module();
 }

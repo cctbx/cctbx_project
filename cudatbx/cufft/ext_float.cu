@@ -2,7 +2,7 @@
 #ifdef CUFFT_DOUBLE_PRECISION
 #undef CUFFT_DOUBLE_PRECISION
 #endif
-#include <gputbx/cufft/cufft.hpp>
+#include <cudatbx/cufft/cufft.hpp>
 
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
@@ -10,7 +10,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
-namespace gputbx { namespace cufft {
+namespace cudatbx { namespace cufft {
 
   void wrap_cufft_single_precision ()
   {
@@ -25,4 +25,4 @@ namespace gputbx { namespace cufft {
       arg("n")));
   }
 
-}} // namespace gputbx::cufft
+}} // namespace cudatbx::cufft
