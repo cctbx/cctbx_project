@@ -24,6 +24,8 @@ class sb_wrapper:
     frame.load_image(path)
     frame.path = path
     self.path = path
+    frame.settings_frame.panel.distance_ctrl.SetFloat(frame._img._raw.distance)
+    frame.settings_frame.panel.distance_ctrl.DoSendEvent()
     frame.Show()
     app.MainLoop()
 
