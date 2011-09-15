@@ -57,7 +57,8 @@ class XrayView (wx.Panel) :
     zoom = scales[self.settings.zoom_level]
     self._img.set_zoom(zoom)
     self._img.update_settings(
-      brightness=self.settings.brightness)
+      brightness=self.settings.brightness,
+      color_scheme=self.settings.color_scheme)
     if (layout) :
       self.line_start = None
       self.line_end = None
