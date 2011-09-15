@@ -398,7 +398,7 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
       {
         message << "near char(" << std::hex << (ANTLR3_UINT8)(ex->c) << ") :\n";
       }
-      message << "\t" << std::string((const char*)(ex->index), std::min(width, 20)) << "\n";
+      message << "\t" << std::string(reinterpret_cast<const char*>(ex->index), std::min(width, 20)) << "\n";
     }
     else
     {
@@ -413,7 +413,7 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
       if (width >= 1)
       {
         message << "looks like this:\n\t\t"
-                << std::string((const char*)(lexer->rec->state->tokenStartCharIndex), std::min(width, 20))
+                << std::string(reinterpret_cast<const char*>(lexer->rec->state->tokenStartCharIndex), std::min(width, 20))
                 << "\n";
       }
       else

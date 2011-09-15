@@ -34,7 +34,7 @@ options {
     pANTLR3_COMMON_TOKEN token = ((pANTLR3_COMMON_TREE)(node->super))->token;
     ANTLR3_MARKER start = token->getStartIndex(token);
     ANTLR3_MARKER stop = token->getStopIndex(token);
-    std::string str((const char*)start, stop-start+1);
+    std::string str(reinterpret_cast<const char*>(start), stop-start+1);
     if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
       (str[0] == '"' && str[str.size()-1] == '"'))
     { str = str.substr(1, str.size()-2); }
