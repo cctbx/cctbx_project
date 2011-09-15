@@ -25,7 +25,6 @@ class SBFrame(XrayFrame) :
     #This method can probably be back-edited to rely more on the base class code...later
 
     file_name = os.path.abspath(self.path)
-    x,y = self.viewer._img.last_thumb_x, self.viewer._img.last_thumb_y
     self._img = rstbx.viewer.image(self.path)
     #self.viewer.set_image(self._img)
     self.viewer._img = self._img
@@ -36,7 +35,6 @@ class SBFrame(XrayFrame) :
     self.viewer._img.set_zoom(zoom)
     self.viewer._img.update_settings(
       brightness=self.viewer.settings.brightness)
-    self.viewer._img.center_view_from_thumbnail(x,y)
     self.viewer.Refresh()
     if (self.viewer.GetParent().zoom_frame is not None) :
       self.viewer.GetParent().zoom_frame.Refresh()
@@ -78,6 +76,9 @@ class SBSettingsPanel (SettingsPanel) :
     s.Add(box)
     txt1 = wx.StaticText(self, -1, "Zoom level:")
     box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+
+    # Zoom control
     self.zoom_ctrl = wx.Choice(self, -1,
       choices=["Auto", "25%", "50%", "100%", "200%", "400%", "800%"])
     self.zoom_ctrl.SetSelection(self.settings.zoom_level)
@@ -87,6 +88,8 @@ class SBSettingsPanel (SettingsPanel) :
     s.Add(box)
     txt2 = wx.StaticText(self, -1, "Brightness")
     box.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+
+    # Brightness control
     self.brightness_ctrl = wx.Slider(self, -1, size=(200,-1),
       style=wx.SL_AUTOTICKS|wx.SL_LABELS)
     box.Add(self.brightness_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -94,10 +97,14 @@ class SBSettingsPanel (SettingsPanel) :
     self.brightness_ctrl.SetMax(500)
     self.brightness_ctrl.SetValue(self.settings.brightness)
     self.brightness_ctrl.SetTickFreq(25)
+
+    # Center control
     self.center_ctrl = wx.CheckBox(self, -1, "Mark beam center")
     self.center_ctrl.SetValue(self.settings.show_beam_center)
     s.Add(self.center_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
+    # Distance control
+    print "DISTANCE",self.GetParent().GetParent().viewer._img
     box = wx.BoxSizer(wx.HORIZONTAL)
     from wxtbx.phil_controls.floatctrl import FloatCtrl
     from wxtbx.phil_controls import EVT_PHIL_CONTROL
@@ -112,11 +119,15 @@ class SBSettingsPanel (SettingsPanel) :
     box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     s.Add(box)
 
+    # Quad translation controls
+    QT = self.GetParent().GetParent().horizons_phil.distl.quad_translations
+    iqt = 0
     from wxtbx.phil_controls.intctrl import IntCtrl
     for s_quad in ["UL","UR","LL","LR"]:
 
       box = wx.BoxSizer(wx.HORIZONTAL)
-      setattr(self,s_quad+"x_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=0,name=s_quad+"x"))
+      setattr(self,s_quad+"x_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=QT[iqt],name=s_quad+"x"))
+      iqt+=1
       spinbtn = wx.SpinButton(self, -1)
       getattr(self,s_quad+"x_ctrl").AttachSpinner(spinbtn)
       box.Add(getattr(self,s_quad+"x_ctrl"), 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -124,7 +135,8 @@ class SBSettingsPanel (SettingsPanel) :
       txtd = wx.StaticText(self, -1,  s_quad+" x",)
       box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
-      setattr(self,s_quad+"y_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=0,name=s_quad+"y"))
+      setattr(self,s_quad+"y_ctrl",IntCtrl(self, -1, pos=(300,180), size=(80,-1),value=QT[iqt],name=s_quad+"y"))
+      iqt+=1
       spinbtn = wx.SpinButton(self, -1)
       getattr(self,s_quad+"y_ctrl").AttachSpinner(spinbtn)
       box.Add(getattr(self,s_quad+"y_ctrl"), 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -132,6 +144,8 @@ class SBSettingsPanel (SettingsPanel) :
       txtd = wx.StaticText(self, -1,  s_quad+" y",)
       box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
       s.Add(box)
+
+    self.collect_values()
 
     self.Bind(wx.EVT_CHOICE, self.OnUpdate, self.zoom_ctrl)
     self.Bind(wx.EVT_SLIDER, self.OnUpdateBrightness, self.brightness_ctrl)
@@ -165,6 +179,5 @@ class SBSettingsPanel (SettingsPanel) :
     #self.GetParent().GetParent().update_settings(layout=True)
 
   def OnUpdateDist (self, event) :
-    print "update dist"
     self.collect_values()
     self.GetParent().GetParent().update_settings(layout=False)
