@@ -1,9 +1,9 @@
-#ifndef IOTBX_CIF_BUILDER_H
-#define IOTBX_CIF_BUILDER_H
+#ifndef UCIF_BUILDER_H
+#define UCIF_BUILDER_H
 
 #include <string>
 
-namespace iotbx { namespace cif {
+namespace ucif {
 
 
 /*! The mininum functions required for an array interface.
@@ -39,6 +39,6 @@ struct builder_base
 
 };
 
-}} // namespace iotbx::cif
+} // namespace ucif
 
 #endif // GUARD

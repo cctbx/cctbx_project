@@ -3,7 +3,7 @@ env = env_antlr3_iotbx_boost_python_ext.Clone()
 
 env.SharedLibrary(target="#lib/iotbx_cif_ext", source=[
   "cif_ext.cpp",
-  "../cifParser.cpp",
-  "../cifLexer.cpp",
-  "../cifWalker.cpp",
+  "#ucif/cifParser.cpp",
+  "#ucif/cifLexer.cpp",
+  "#ucif/cifWalker.cpp",
 ])

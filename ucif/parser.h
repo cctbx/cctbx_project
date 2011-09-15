@@ -1,15 +1,15 @@
-#ifndef IOTBX_CIF_PARSER_H
-#define IOTBX_CIF_PARSER_H
+#ifndef UCIF_PARSER_H
+#define UCIF_PARSER_H
 
 #include <istream>
 #include <string>
 
-#include <iotbx/cif/cifLexer.h>
-#include <iotbx/cif/cifParser.h>
-#include <iotbx/cif/cifWalker.h>
-#include <iotbx/cif/utils.h>
+#include <ucif/cifLexer.h>
+#include <ucif/cifParser.h>
+#include <ucif/cifWalker.h>
+#include <ucif/utils.h>
 
-namespace iotbx { namespace cif {
+namespace ucif {
 
 class parser
 {
@@ -76,6 +76,6 @@ class parser
 
 };
 
-}} // namespace iotbx::cif
+} // namespace ucif
 
 #endif //GUARD

@@ -1,5 +1,5 @@
-#ifndef IOTBX_CIF_UTILS_H
-#define IOTBX_CIF_UTILS_H
+#ifndef UCIF_UTILS_H
+#define UCIF_UTILS_H
 
 #include <algorithm>
 #include <iomanip>
@@ -7,9 +7,9 @@
 #include <sstream>
 #include <string>
 
-#include <iotbx/cif/cifParser.h>
+#include <ucif/cifParser.h>
 
-namespace iotbx { namespace cif {
+namespace ucif {
 
 /// Error display method taken from antlr3baserecognizer.c
 /// Modified to print output to C++ iostream (to enable Python redirection).
@@ -433,6 +433,6 @@ lexer_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8
 }
 
 
-}} // namespace iotbx::cif
+} // namespace ucif
 
 #endif // GUARD
