@@ -1,7 +1,8 @@
 #ifndef SCITBX_GRAPHICS_UTILS_COLOR_H
 #define SCITBX_GRAPHICS_UTILS_COLOR_H
 
-#include <scitbx/array_family/boost_python/flex_fwd.h>
+//#include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
 #include <scitbx/error.h>
@@ -36,6 +37,28 @@ namespace scitbx { namespace graphics_utils {
       default : break;
     }
     return scitbx::vec3<double>(v, p, q) / 255.0;
+  }
+
+  inline
+  scitbx::vec3<double>
+  get_heatmap_color (
+    double gradient_ratio,
+    double min_value=0.1)
+  {
+    double h = 0.;
+    double s = 1.;
+    double v = 1.;
+    if (gradient_ratio < 0.35) {
+      double ratio_norm = gradient_ratio / 0.35;
+      v = min_value + (1. - min_value) * (ratio_norm * ratio_norm);
+      s = gradient_ratio / 0.35;
+    } else if (gradient_ratio < 0.75) {
+      h = 60. - (60 * (0.75 - gradient_ratio) / 0.4);
+    } else {
+      h = 60.;
+      s = 1. - (gradient_ratio - 0.75) / 0.25;
+    }
+    return hsv2rgb(h, s, v);
   }
 
   // this function may be superfluous here, but could be useful elsewhere
@@ -125,20 +148,7 @@ namespace scitbx { namespace graphics_utils {
       } else if (gradient_type == 1) { // red-blue
         colors[i_seq] = hsv2rgb(240.0 + (120 * gradient_ratio), 1., 1.);
       } else if (gradient_type == 2) { // heatmap
-        double h = 0.;
-        double s = 1.;
-        double v = 1.;
-        if (gradient_ratio < 0.35) {
-          double ratio_norm = gradient_ratio / 0.35;
-          v = min_value + (1. - min_value) * (ratio_norm * ratio_norm);
-          s = gradient_ratio / 0.35;
-        } else if (gradient_ratio < 0.75) {
-          h = 60. - (60 * (0.75 - gradient_ratio) / 0.4);
-        } else {
-          h = 60.;
-          s = 1. - (gradient_ratio - 0.75) / 0.25;
-        }
-        colors[i_seq] = hsv2rgb(h, s, v);
+        colors[i_seq] = get_heatmap_color(gradient_ratio, min_value);
       } else { // rainbow
         colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
       }
