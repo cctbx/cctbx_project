@@ -464,6 +464,6 @@ class HKLViewFrame2D (HKLViewFrame) :
   def OnShow3D (self, evt) :
     if (self.view_3d is None) :
       self.view_3d = HKLViewFrame(self, -1, "3D data viewer")
-      self.view_3d.set_miller_array(self.viewer.miller_array)
       self.view_3d.Show()
+      self.view_3d.set_miller_array(self.viewer.miller_array)
     self.view_3d.Raise()
