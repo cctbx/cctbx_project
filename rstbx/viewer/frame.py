@@ -238,14 +238,19 @@ class SettingsPanel (wx.Panel) :
     self._sizer = wx.BoxSizer(wx.VERTICAL)
     s = self._sizer
     self.SetSizer(self._sizer)
-    box = wx.BoxSizer(wx.HORIZONTAL)
-    s.Add(box)
+    grid = wx.FlexGridSizer(cols=2, rows=2)
+    s.Add(grid)
     txt1 = wx.StaticText(self, -1, "Zoom level:")
-    box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.zoom_ctrl = wx.Choice(self, -1,
       choices=["Auto", "25%", "50%", "100%", "200%", "400%", "800%"])
     self.zoom_ctrl.SetSelection(self.settings.zoom_level)
-    box.Add(self.zoom_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.zoom_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txt11 = wx.StaticText(self, -1, "Color scheme:")
+    grid.Add(txt11, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.color_ctrl = wx.Choice(self, -1,
+      choices=["grayscale","rainbow","heatmap"])
+    grid.Add(self.color_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._sizer.Fit(self)
     box = wx.BoxSizer(wx.HORIZONTAL)
     s.Add(box)
@@ -271,6 +276,7 @@ class SettingsPanel (wx.Panel) :
 #    self.invert_ctrl.SetValue(self.settings.invert_beam_center_axes)
 #    s.Add(self.invert_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_CHOICE, self.OnUpdate, self.zoom_ctrl)
+    self.Bind(wx.EVT_CHOICE, self.OnUpdate, self.color_ctrl)
     self.Bind(wx.EVT_SLIDER, self.OnUpdateBrightness, self.brightness_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.center_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.spots_ctrl)
@@ -284,13 +290,14 @@ class SettingsPanel (wx.Panel) :
 #    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.invert_ctrl)
 
   def collect_values (self) :
-   if self.settings.enable_collect_values:
-    self.settings.zoom_level = self.zoom_ctrl.GetSelection()
-    self.settings.brightness = self.brightness_ctrl.GetValue()
-    self.settings.show_beam_center = self.center_ctrl.GetValue()
-    self.settings.show_predictions = self.spots_ctrl.GetValue()
-    self.settings.show_integration = self.integ_ctrl.GetValue()
-#    self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
+    if self.settings.enable_collect_values:
+      self.settings.zoom_level = self.zoom_ctrl.GetSelection()
+      self.settings.brightness = self.brightness_ctrl.GetValue()
+      self.settings.show_beam_center = self.center_ctrl.GetValue()
+      self.settings.show_predictions = self.spots_ctrl.GetValue()
+      self.settings.show_integration = self.integ_ctrl.GetValue()
+      self.settings.color_scheme = self.color_ctrl.GetSelection()
+#     self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
 
   def OnUpdate (self, event) :
     self.collect_values()

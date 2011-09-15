@@ -26,6 +26,10 @@ class screen_params (object) :
 
   def set_zoom (self, zoom) :
     assert (zoom >= 0)
+    # XXX don't do anything fancy if image is uninitialized (for zoom view)
+    if (None in [self.screen_w, self.screen_h, self.img_w, self.img_h]) :
+      self.zoom = zoom
+      return
     # XXX adjust offsets to preserve current center
     x0, y0, w0, h0 = self.get_bitmap_params()
     increase_zoom = (zoom > self.zoom)
@@ -224,6 +228,7 @@ class image (screen_params) :
 
   def create_flex_image (self,
                          brightness=100,
+                         color_scheme=0,
                          binning=1) :
     # FIXME
     try :
@@ -240,7 +245,7 @@ class image (screen_params) :
     #from scitbx.array_family import flex
     #print flex.max(self._raw.linearintdata), flex.min(self._raw.linearintdata)
     fi.setWindow(0.0, 0.0, 1)
-    fi.adjust()
+    fi.adjust(color_scheme=color_scheme)
     fi.prep_string()
     return fi
 
@@ -248,9 +253,11 @@ class image (screen_params) :
     self._wx_img = None
     self.update_image(**kwds)
 
-  def update_image (self, brightness=100) :
+  def update_image (self, brightness=100, color_scheme=0) :
     import wx
-    self._img = self.create_flex_image(brightness)
+    self._img = self.create_flex_image(
+      brightness=brightness,
+      color_scheme=color_scheme)
     w = self._img.ex_size2()
     h = self._img.ex_size1()
     self.set_image_size(w, h)
@@ -261,6 +268,7 @@ class image (screen_params) :
     if (w > 2560) :
       binning = 16
     fi_thumb = self.create_flex_image(brightness=brightness,
+      color_scheme=color_scheme,
       binning=binning)
     w = fi_thumb.ex_size2()
     h = fi_thumb.ex_size1()
@@ -419,3 +427,4 @@ class settings (object) :
     self.show_spotfinder_spots = True
     self.show_integration = True
     self.enable_collect_values = True
+    self.color_scheme = 0
