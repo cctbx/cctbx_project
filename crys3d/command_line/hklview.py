@@ -2,6 +2,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
+import crys3d.hklview
 from crys3d.hklview.frames import *
 from cctbx.miller.display import master_phil
 from wxtbx import icons
