@@ -21,25 +21,25 @@ options {
 
 @includes{
 #include <string>
-#include <iotbx/cif/builder.h>
+#include <ucif/builder.h>
 }
 
 @context
 {
-  iotbx::cif::array_wrapper_base* errors;
+  ucif::array_wrapper_base* errors;
 }
 
 @members {
-	std::string to_std_string(pANTLR3_BASE_TREE node) {
-	  pANTLR3_COMMON_TOKEN token = ((pANTLR3_COMMON_TREE)(node->super))->token;
-	  ANTLR3_MARKER start = token->getStartIndex(token);
-	  ANTLR3_MARKER stop = token->getStopIndex(token);
-	  std::string str((const char*)start, stop-start+1);
-	  if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
-	    (str[0] == '"' && str[str.size()-1] == '"'))
-	  { str = str.substr(1, str.size()-2); }
-	  return str;
-	}
+  std::string to_std_string(pANTLR3_BASE_TREE node) {
+    pANTLR3_COMMON_TOKEN token = ((pANTLR3_COMMON_TREE)(node->super))->token;
+    ANTLR3_MARKER start = token->getStartIndex(token);
+    ANTLR3_MARKER stop = token->getStopIndex(token);
+    std::string str((const char*)start, stop-start+1);
+    if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
+      (str[0] == '"' && str[str.size()-1] == '"'))
+    { str = str.substr(1, str.size()-2); }
+    return str;
+  }
 }
 
 /*------------------------------------------------------------------
@@ -47,8 +47,8 @@ options {
   *------------------------------------------------------------------*/
 
 // The start rule
-parse[iotbx::cif::builder_base* builder_]
-scope { iotbx::cif::builder_base* builder; }
+parse[ucif::builder_base* builder_]
+scope { ucif::builder_base* builder; }
 @init { $parse::builder = builder_; }
 
   : cif ;
@@ -64,21 +64,21 @@ loop_body
   :
     ( value
 { ($data_items::curr_loop_values)->push_back(to_std_string($value.start)); }
-    )+
+  )+
 ;
 
 save_frame
   :	^(SAVE SAVE_FRAME_HEADING
 { ($parse::builder)->start_save_frame(to_std_string($SAVE_FRAME_HEADING)); }
-     ( data_items )+
+  ( data_items )+
 { ($parse::builder)->end_save_frame(); }
-     )
+  )
 ;
 
 data_items
 scope {
-  iotbx::cif::array_wrapper_base* curr_loop_values;
-  iotbx::cif::array_wrapper_base* curr_loop_headers;
+  ucif::array_wrapper_base* curr_loop_values;
+  ucif::array_wrapper_base* curr_loop_headers;
 }
 @init {
   $data_items::curr_loop_values = ($parse::builder)->new_array();
@@ -90,13 +90,13 @@ scope {
 }
   :	 ^(TAG_VALUE_PAIR TAG value)
 {
-   ($parse::builder)->add_data_item(
+  ($parse::builder)->add_data_item(
     to_std_string($TAG),
     to_std_string($value.start));
 }
-   | ^(LOOP loop_header loop_body)
+  | ^(LOOP loop_header loop_body)
 {
-  iotbx::cif::array_wrapper_base* values = $data_items::curr_loop_values;
+  ucif::array_wrapper_base* values = $data_items::curr_loop_values;
   int n_cols = $data_items::curr_loop_headers->size();
   if (values->size() \% n_cols != 0) {
     std::string msg = "Wrong number of data items for loop containing ";
@@ -116,14 +116,14 @@ data_block_heading
 data_block
   :	^(DATA_BLOCK data_block_heading
 { ($parse::builder)->add_data_block(to_std_string($data_block_heading.start)); }
-      data_items* save_frame*
-     )
+  data_items* save_frame*
+)
 ;
 
 loop_header
   :	^(LOOP_ ( TAG
 { ($data_items::curr_loop_headers)->push_back(to_std_string($TAG)); }
-    )+ )
+  )+ )
 ;
 
 /*------------------------------------------------------------------

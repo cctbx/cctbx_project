@@ -28,21 +28,21 @@ tokens {
 }
 
 @lexer::includes{
-#include <iotbx/cif/builder.h>
+#include <ucif/builder.h>
 }
 
 @includes{
-#include <iotbx/cif/builder.h>
+#include <ucif/builder.h>
 }
 
 @parser::context
 {
-  iotbx::cif::array_wrapper_base* errors;
+  ucif::array_wrapper_base* errors;
 }
 
 @lexer::context
 {
-  iotbx::cif::array_wrapper_base* errors;
+  ucif::array_wrapper_base* errors;
 }
 
 @parser::apifuncs

@@ -785,10 +785,6 @@ iotbx/ccp4_map/ext.cpp svneol=native#text/plain
 iotbx/ccp4_map/tst.py svneol=native#text/x-python
 iotbx/ccp4_map/tst_input.map -text
 iotbx/cif/__init__.py svneol=native#text/x-python
-iotbx/cif/builder.h -text
-iotbx/cif/cifWalker.cpp -text
-iotbx/cif/cifWalker.g -text
-iotbx/cif/cifWalker.h -text
 iotbx/cif/cod_tools.py -text
 iotbx/cif/dictionaries/NOTES -text
 iotbx/cif/dictionaries/cif_core.dic.gz -text
@@ -1676,6 +1672,11 @@ tbxx/error_utils.hpp svneol=native#text/plain
 tbxx/libc_backtrace.hpp svneol=native#text/plain
 tbxx/optional_copy.hpp svneol=native#text/plain
 tbxx/time_accu.hpp svneol=native#text/plain
+ucif/builder.h -text
+ucif/cifWalker.cpp -text
+ucif/cifWalker.g -text
+ucif/cifWalker.h -text
+ucif/examples/main.cpp -text
 wxtbx/__init__.py -text
 wxtbx/b_plot.py -text
 wxtbx/bitmaps.py svneol=native#text/x-python

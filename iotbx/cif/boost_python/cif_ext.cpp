@@ -9,12 +9,12 @@
 #include <boost/python/return_value_policy.hpp>
 
 #include <scitbx/array_family/shared.h>
-#include <iotbx/cif/parser.h>
+#include <ucif/parser.h>
 #include <iotbx/error.h>
 
 namespace iotbx { namespace cif {
 
-  struct shared_array_wrapper : array_wrapper_base
+  struct shared_array_wrapper : ucif::array_wrapper_base
   {
     scitbx::af::shared<std::string> array;
 
@@ -40,7 +40,7 @@ namespace iotbx { namespace cif {
 
   };
 
-  struct py_builder : builder_base
+  struct py_builder : ucif::builder_base
   {
     boost::python::object builder;
 
@@ -63,8 +63,8 @@ namespace iotbx { namespace cif {
       builder.attr("add_data_item")(tag, value);
     }
 
-    virtual void add_loop(array_wrapper_base const& loop_headers,
-                          array_wrapper_base const& values)
+    virtual void add_loop(ucif::array_wrapper_base const& loop_headers,
+                          ucif::array_wrapper_base const& values)
     {
       builder.attr("add_loop")(
         dynamic_cast<shared_array_wrapper const&>(loop_headers).array,
@@ -77,18 +77,18 @@ namespace iotbx { namespace cif {
       builder.attr("add_data_block")(data_block_heading);
     }
 
-    virtual array_wrapper_base* new_array()
+    virtual ucif::array_wrapper_base* new_array()
     {
       return new shared_array_wrapper();
     }
 
   };
 
-  struct parser_wrapper : parser
+  struct parser_wrapper : ucif::parser
   {
-    parser_wrapper(std::string filename, builder_base* builder,
+    parser_wrapper(std::string filename, ucif::builder_base* builder,
                    bool strict=true)
-    : parser(filename, builder, strict) {}
+    : ucif::parser(filename, builder, strict) {}
 
     scitbx::af::shared<std::string>& tree_walker_errors() {
       if (tree_psr != NULL) {
