@@ -66,7 +66,7 @@ def exercise_density_modification():
   assert result.stdout_lines[-5].startswith('Starting dm/model correlation:')
   assert result.stdout_lines[-4].startswith('Final dm/model correlation:')
   assert approx_equal(float(result.stdout_lines[-5].split()[-1]), 0.619448)
-  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.790428, 5e-4)
+  assert approx_equal(float(result.stdout_lines[-4].split()[-1]), 0.789672, 5e-4)
 
 def run():
   exercise_density_modification()
