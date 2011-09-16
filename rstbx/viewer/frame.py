@@ -24,7 +24,16 @@ class XrayFrame (wx.Frame) :
     self._img = None
     self._distl = None
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
-    self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.setup_toolbar()
+    self.toolbar.Realize()
+    self.mb = wx.MenuBar()
+    self.setup_menus()
+    self.SetMenuBar(self.mb)
+    self.Fit()
+    self.SetMinSize(self.GetSize())
+    self.OnShowSettings(None)
+
+  def setup_toolbar (self) :
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Load file",
       bitmap=icons.hkl_file.GetBitmap(),
@@ -60,20 +69,16 @@ class XrayFrame (wx.Frame) :
       shortHelp="Next",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnNext, btn)
-    self.toolbar.Realize()
-    mb = wx.MenuBar()
+
+  def setup_menus (self) :
     file_menu = wx.Menu()
-    mb.Append(file_menu, "File")
+    self.mb.Append(file_menu, "File")
     item = file_menu.Append(-1, "Open integration results...")
     self.Bind(wx.EVT_MENU, self.OnLoadIntegration, item)
     item = file_menu.Append(-1, "Open image...")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
     item = file_menu.Append(-1, "Save screenshot...")
     self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
-    self.SetMenuBar(mb)
-    self.Fit()
-    self.SetMinSize(self.GetSize())
-    self.OnShowSettings(None)
 
   def load_image (self, file_name) :
     file_name = os.path.abspath(file_name)
