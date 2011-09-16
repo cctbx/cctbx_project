@@ -1,4 +1,5 @@
 
+from rstbx.viewer import controls, results_base
 from libtbx import str_utils
 from libtbx import easy_pickle
 import wx
@@ -10,19 +11,10 @@ columns = ["Solution", "Metric fit", "RMSD", "#spots", "Crystal system",
 column_sizes = [60, 80, 80, 60, 120, 250, 80]
 column_alignments = [0, 1, 1, 1, 1, 0, 1]
 
-class LatticeData (object) :
-  def __init__ (self, labelit_possible=()) :
-    self.labelit_possible = labelit_possible
-
-  def GetItemCount (self) :
-    return len(self.labelit_possible)
-
-  def GetItemImage (self, item) :
-    return 0
-
+class LatticeData (results_base.TableData) :
   def GetItemText (self, item, col) :
     n_items = self.GetItemCount()
-    solution = self.labelit_possible[item]
+    solution = self.table[item]
     if (col == 0) :
       return solution['counter']
     elif (col == 1) :
@@ -41,11 +33,11 @@ class LatticeData (object) :
       unit_cell = solution['orient'].unit_cell()
       return str(int(unit_cell.volume()))
 
-class LatticeListCtrl (wx.ListCtrl) :
+class LatticeListCtrl (controls.ListBase) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
     kwds['style'] = wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL
-    wx.ListCtrl.__init__(self, *args, **kwds)
+    controls.ListBase.__init__(self, *args, **kwds)
     for i, label in enumerate(columns) :
       self.InsertColumn(i, label, column_alignments[i])
       self.SetColumnWidth(i, column_sizes[i])
@@ -53,23 +45,8 @@ class LatticeListCtrl (wx.ListCtrl) :
     self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick, self)
     self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick, self)
-    self.dataSource = LatticeData()
+    self.dataSource = results_base.EmptyData()
     self.RefreshAllItems()
-
-  def RefreshAllItems (self) :
-    n_items = self.dataSource.GetItemCount()
-    self.SetItemCount(n_items)
-    if (n_items > 0) :
-      self.RefreshItems(0, n_items - 1)
-
-  def OnGetItemImage (self, item) :
-    return self.dataSource.GetItemImage(item)
-
-  def OnGetItemAttr (self, item) :
-    pass
-
-  def OnGetItemText (self, item, col) :
-    return self.dataSource.GetItemText(item, col)
 
   def SetIndexingResults (self, labelit_possible) :
     assert isinstance(labelit_possible, list)
@@ -87,6 +64,22 @@ class LatticeListCtrl (wx.ListCtrl) :
 
   def OnRightClick (self, event) :
     pass
+
+class IndexingPanel (wx.Panel) :
+  def __init__ (self, *args, **kwds) :
+    wx.Panel.__init__(self, *args, **kwds)
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(szr)
+    self.lattice_list = LatticeListCtrl(self, -1, size=(760, 200))
+    txt1 = wx.StaticText(self, -1, "Indexing results:")
+    f1 = txt1.GetFont()
+    f1.SetWeight(wx.FONTWEIGHT_BOLD)
+    txt1.SetFont(f1)
+    szr.Add(txt1, 0, wx.ALL|wx.EXPAND, 5)
+    szr.Add(self.lattice_list, 0, wx.ALL|wx.EXPAND, 10)
+
+  def __getattr__ (self, name) :
+    return getattr(self.lattice_list, name)
 
 if (__name__ == "__main__") :
   labelit_file = sys.argv[1]

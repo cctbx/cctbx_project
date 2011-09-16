@@ -71,6 +71,9 @@ class XrayView (wx.Panel) :
   # EVENTS
   def OnPaint (self, event) :
     dc = wx.AutoBufferedPaintDCFactory(self)
+    self.paint(dc)
+
+  def paint (self, dc) :
     w, h = self.GetSize()
     bitmap = self._img.get_bitmap()
     x, y = self._img.adjust_screen_coordinates(0, 0)
@@ -122,6 +125,15 @@ class XrayView (wx.Panel) :
       dc.SetBrush(wx.TRANSPARENT_BRUSH)
       for (x, y) in predictions :
         dc.DrawCircle(x, y, 5*scale)
+
+  def save_image (self, file_name) :
+    rect = self.GetRect()
+    bitmap = wx.EmptyBitmap(rect.width, rect.height)
+    memory_dc = wx.MemoryDC()
+    memory_dc.SelectObject(bitmap)
+    memory_dc.SetBackgroundMode(wx.TRANSPARENT)
+    self.paint(memory_dc)
+    bitmap.SaveFile(file_name, wx.BITMAP_TYPE_PNG)
 
   def OnSize (self, event) :
     if (self._img is not None) :
