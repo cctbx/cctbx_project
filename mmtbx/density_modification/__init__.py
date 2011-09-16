@@ -7,8 +7,15 @@ from scitbx.math import phase_error
 import libtbx.callbacks # import dependency
 from libtbx import adopt_init_args, Auto, group_args
 import libtbx
+import libtbx.load_env
 import math, sys
 from cStringIO import StringIO
+
+if libtbx.env.has_module(name="solve_resolve"):
+  from solve_resolve.resolve_python.ncs_average import ncs_average \
+       as resolve_ncs_average
+else:
+  resolve_ncs_average = None
 
 pi_180 = math.atan(1)/ 45
 
@@ -43,9 +50,7 @@ master_params_str = """
     .short_caption = Change basis to Niggli cell
   ncs_averaging = False
     .type = bool
-    .help = This functionality is not yet implemented!
-    .expert_level = 3
-    .style = hidden
+    .help = NCS averaging of the protein density
   protein_solvent_ratio = 1.31
     .type = float
     .short_caption = Protein/solvent ratio
@@ -112,10 +117,13 @@ class local_standard_deviation_map(object):
   def __init__(self, map_coeffs, radius,
                mean_solvent_density=0,
                method=0,
+               symmetry_flags=None,
                resolution_factor=1/3):
     assert map_coeffs.is_complex_array()
     self.map = map_coeffs.local_standard_deviation_map(
-      radius, mean_solvent_density=mean_solvent_density,
+      radius,
+      symmetry_flags=symmetry_flags,
+      mean_solvent_density=mean_solvent_density,
       resolution_factor=resolution_factor)
     self.map = self.map.real_map_unpadded()
 
@@ -137,6 +145,7 @@ class density_modification(object):
                params,
                f_obs,
                hl_coeffs_start,
+               ncs_object=None,
                map_coeffs=None,
                log=None,
                as_gui_program=False):
@@ -226,12 +235,14 @@ class density_modification(object):
         sigmas=None).phase_transfer(phase_source=self.hl_coeffs)
       self.map_coeffs.data().set_selected(fom <= 0, 0)
       self.map = self.map_coeffs.select(fom > 0).fft_map(
+        symmetry_flags=maptbx.use_space_group_symmetry,
         resolution_factor=self.params.grid_resolution_factor
         ).apply_volume_scaling().real_map_unpadded()
       self.map_coeffs = self.map_coeffs.select(fom > 0)
     else:
       assert self.map_coeffs.is_complex_array()
       self.map = self.map_coeffs.fft_map(
+        symmetry_flags=maptbx.use_space_group_symmetry,
         resolution_factor=self.params.grid_resolution_factor
         ).apply_volume_scaling().real_map_unpadded()
     self.map_coeffs_start = self.map_coeffs
@@ -284,8 +295,8 @@ class density_modification(object):
     return self._stats
 
   def next_cycle(self):
-    self.ncs_averaging()
     self.calculate_solvent_mask()
+    self.ncs_averaging()
     self.density_truncation()
     self.solvent_flipping()
     self.solvent_flattening()
@@ -342,6 +353,7 @@ class density_modification(object):
 
   def compute_map(self):
     self.map = self.map_coeffs.fft_map(
+      symmetry_flags=maptbx.use_space_group_symmetry,
       resolution_factor=self.params.grid_resolution_factor
       ).apply_volume_scaling().real_map_unpadded()
 
@@ -351,6 +363,7 @@ class density_modification(object):
       self.map_coeffs,
       self.radius,
       mean_solvent_density=self.mean_solvent_density,
+      symmetry_flags=maptbx.use_space_group_symmetry,
       resolution_factor=self.params.grid_resolution_factor,
       method=2)
     self.rms_map = lsd.map
@@ -532,6 +545,7 @@ class density_modification(object):
       truncate_min_percent=self.truncate_min_percent,
       truncate_max=self.truncate_max,
       truncate_max_percent=self.truncate_max_percent,
+      ncs_cc=self.ncs_cc,
       k_flip=self.k_flip,
       solvent_add=self.solvent_add,
       rms_solvent_density=self.rms_solvent_density,
@@ -556,8 +570,29 @@ class density_modification(object):
         data=self._stats.get_fom_for_plot())
 
   def ncs_averaging(self):
-    if not self.params.ncs_averaging: return
-    else: raise NotImplementedError
+    if not self.params.ncs_averaging:
+      self.ncs_cc = None
+      return
+
+    if resolve_ncs_average is None:
+      raise RuntimeError(
+        "solve_resolve must be available for NCS averaging functionality")
+    assert self.ncs_object is not None
+    s = StringIO()
+    resolve_mask = flex.float(self.mask.accessor(), 0)
+    resolve_mask.set_selected(self.protein_selection, 1)
+    na=resolve_ncs_average(
+      map=self.map.as_float(),
+      mask=resolve_mask,
+      space_group=self.map_coeffs.space_group(),
+      unit_cell=self.map_coeffs.unit_cell(),
+      ncs_object=self.ncs_object,
+      resolution=self.d_min,
+      out=s)
+    average_map = na.average_map
+    self.ncs_cc = na.ncs_cc
+    n_ncs_oper=na.n_nc_oper
+    self.map = average_map.as_double()
 
   class f_obs_active(libtbx.property):
     def fget(self):
@@ -658,6 +693,8 @@ class dm_stats (object) :
       if (stats.truncate_max is not None) :
         summary += "  max = %7.4f (%.2f%%)\n" %(
           stats.truncate_max, stats.truncate_max_percent)
+    if (stats.ncs_cc is not None):
+      summary += "NCS correlation coefficient: %.4f\n" %stats.ncs_cc
     if (stats.k_flip is not None) :
       summary += "Solvent flipping factor: %.4f\n" %stats.k_flip
     if (stats.solvent_add is not None) :

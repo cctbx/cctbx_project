@@ -10,6 +10,7 @@ from libtbx import runtime_utils
 from libtbx import easy_pickle
 from libtbx import adopt_init_args
 import mmtbx.maps
+from mmtbx.ncs import ncs
 from scitbx.math import nearest_phase, phase_error
 import os, sys
 
@@ -30,6 +31,11 @@ density_modification {
     {
       %s
     }
+    ncs_file_name = None
+      .type = path
+      .optional = True
+      .short_caption = NCS file
+      .help = .ncs_spec file produced by phenix.find_ncs or phenix.find_ncs_from_density
     unit_cell = None
       .type = unit_cell
       .optional = False
@@ -147,6 +153,11 @@ def run(args, log = sys.stdout, as_gui_program=False):
       parameter_name="labels").map_to_asu()
   else:
     map_coeffs = None
+  ncs_object = None
+  if params.input.ncs_file_name is not None:
+    ncs_object = ncs.ncs()
+    ncs_object.read_ncs(params.input.ncs_file_name)
+    ncs_object.display_all(log=log)
 
   fo = fo.map_to_asu()
   hl_coeffs = hl_coeffs.map_to_asu()
@@ -195,6 +206,7 @@ map_coefficients {
     params,
     fo,
     hl_coeffs,
+    ncs_object=ncs_object,
     map_coeffs=map_coeffs,
     model_map_coeffs=model_map_coeffs,
     log=log,
@@ -372,6 +384,7 @@ class density_modify(density_modification.density_modification):
   def __init__(self, params,
                      fo,
                      hl_coeffs,
+                     ncs_object=None,
                      map_coeffs=None,
                      model_map_coeffs=None,
                      log=None,
@@ -381,7 +394,9 @@ class density_modify(density_modification.density_modification):
     self.mean_phase_errors = flex.double()
     density_modification.density_modification.__init__(
       self, params, fo, hl_coeffs,
-      map_coeffs=map_coeffs, as_gui_program=as_gui_program)
+      ncs_object=ncs_object,
+      map_coeffs=map_coeffs,
+      as_gui_program=as_gui_program)
     if len(self.correlation_coeffs) > 1:
       model_coeffs, start_coeffs = self.model_map_coeffs.common_sets(self.map_coeffs_start)
       model_fft_map = model_coeffs.fft_map(
