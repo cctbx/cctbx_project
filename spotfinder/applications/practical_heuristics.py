@@ -715,7 +715,8 @@ class heuristics_base(object):
               #calculate angle theta between major axis and neighbor vector
               dot = thisspot.eigenvector(1)[0]*vector[0] + thisspot.eigenvector(1)[1]*vector[1]
               costheta = dot / math.sqrt(sq_vectors[iv])
-              sintheta = math.sqrt(1 - costheta*costheta)
+              costhetasq = min(costheta*costheta,1.0)
+              sintheta = math.sqrt(1 - costhetasq)
               spota = thisspot.a()
               spotb = thisspot.b()
               a_sin_theta = spota * sintheta
