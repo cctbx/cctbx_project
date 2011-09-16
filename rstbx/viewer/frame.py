@@ -1,5 +1,6 @@
 
 import rstbx.viewer.display
+from rstbx.viewer import processing
 import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
@@ -30,12 +31,12 @@ class XrayFrame (wx.Frame) :
       shortHelp="Load file",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnLoadFile, btn)
-    #btn = self.toolbar.AddLabelTool(id=-1,
-    #  label="Settings",
-    #  bitmap=icons.advancedsettings.GetBitmap(),
-    #  shortHelp="Settings",
-    #  kind=wx.ITEM_NORMAL)
-    #self.Bind(wx.EVT_MENU, self.OnShowSettings, btn)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Settings",
+      bitmap=icons.advancedsettings.GetBitmap(),
+      shortHelp="Settings",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnShowSettings, btn)
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Zoom",
       bitmap=icons.search.GetBitmap(),
@@ -61,13 +62,15 @@ class XrayFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnNext, btn)
     self.toolbar.Realize()
     mb = wx.MenuBar()
-    self.SetMenuBar(mb)
     file_menu = wx.Menu()
     mb.Append(file_menu, "File")
     item = file_menu.Append(-1, "Open integration results...")
     self.Bind(wx.EVT_MENU, self.OnLoadIntegration, item)
     item = file_menu.Append(-1, "Open image...")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
+    item = file_menu.Append(-1, "Save screenshot...")
+    self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
+    self.SetMenuBar(mb)
     self.Fit()
     self.SetMinSize(self.GetSize())
     self.OnShowSettings(None)
@@ -109,9 +112,13 @@ class XrayFrame (wx.Frame) :
         self._img.set_spots(spots)
         break
 
-  def load_integration (self, file_name) :
-    assert (self._img is not None)
-    result = easy_pickle.load(file_name)
+  def load_integration (self, dir_name) :
+    assert os.path.isdir(dir_name)
+    self.proc_frame = processing.ProcessingFrame(self, -1, "LABELIT")
+    self.proc_frame.LoadResults(dir_name)
+    self.proc_frame.Show()
+
+  def display_integration_result (self, result) :
     assert isinstance(result, dict)
     self._img.set_integration_results(result)
     self.viewer.Refresh()
@@ -149,11 +156,10 @@ class XrayFrame (wx.Frame) :
       self.load_image(file_name)
 
   def OnLoadIntegration (self, event) :
-    file_name = wx.FileSelector("Integration result",
-      default_path="",
-      flags=wx.OPEN)
-    if (file_name != "") :
-      self.load_integration(file_name)
+    dir_name = wx.DirSelector("Integration result",
+      defaultPath="")
+    if (dir_name != "") :
+      self.load_integration(dir_name)
 
   def OnShowSettings (self, event) :
     if (self.settings_frame is None) :
@@ -164,7 +170,8 @@ class XrayFrame (wx.Frame) :
         x_start = display_rect[2] - 400
       y_start = frame_rect[1]
       self.settings_frame = SettingsFrame(self, -1, "Settings",
-        style=wx.CAPTION|wx.MINIMIZE_BOX, pos=(x_start, y_start))
+        style=wx.CAPTION|wx.MINIMIZE_BOX|wx.CLOSE_BOX,
+        pos=(x_start, y_start))
     self.settings_frame.Show()
 
   def OnShowZoom (self, event) :
@@ -198,6 +205,15 @@ class XrayFrame (wx.Frame) :
 
   def OnNext (self, event) :
     print "Not implemented"
+
+  def OnScreenShot (self, event) :
+    file_name = wx.FileSelector(
+      default_filename="xray.png",
+      default_path="",
+      wildcard="PNG image (*.png)|*.png",
+      flags=wx.SAVE)
+    if (file_name != "") :
+      self.viewer.save_image(file_name)
 
 class SettingsFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :

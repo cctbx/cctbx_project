@@ -10,7 +10,7 @@ class result (object) :
     self._distl = None
     self._labelit = None
     self._groups = None
-    distl_file = os.path.join(dir_name, "DISTL_pickle"))
+    distl_file = os.path.join(dir_name, "DISTL_pickle")
     labelit_file = os.path.join(dir_name, "LABELIT_pickle")
     groups_file = os.path.join(dir_name, "LABELIT_possible")
     if (os.path.exists(distl_file)) :
@@ -20,14 +20,25 @@ class result (object) :
     if (os.path.exists(groups_file)) :
       self._groups = easy_pickle.load(groups_file)
 
-  def get_integration_result (self, sol_id, image_id) :
-    file_name = os.path.join(self.dir_name, "integration_%d_%d" % (sol_id,
+  def get_indexing (self) :
+    return self._groups
+
+  def get_integration (self) :
+    return load_integration_results(self.dir_name, "integration")
+
+  def get_image_integration (self, sol_id, image_id) :
+    file_name = os.path.join(self.dir_name, "integration_%d_%d.pkl" % (sol_id,
       image_id))
     if (not os.path.exists(file_name)) :
       raise Sorry("Can't find the file %s!" % file_name)
     integ_result = easy_pickle.load(file_name)
     summary = get_integration_summary(integ_result, image_id)
     return integ_result, summary
+
+def get_image_id (file_name) :
+  base, ext = os.path.splitext(file_name)
+  fields = base.split("_")
+  return int(fields[-1])
 
 def find_integration_files (dir_name, base_name) :
   files = []
@@ -56,7 +67,7 @@ def load_integration_results (dir_name, base_name, image_id=1) :
     result = easy_pickle.load(file_path)
     results.append(result)
     file_name = os.path.basename(file_path)
-    suffix = re.sub(base_name + "_", "", file_name)
+    suffix = re.sub(base_name + "_", "", os.path.splitext(file_name)[0])
     sol_id_, img_id_ = suffix.split("_")
     if (int(img_id_) != image_id) :
       continue
@@ -69,7 +80,7 @@ def load_integration_results (dir_name, base_name, image_id=1) :
 class TableData (object) :
   """Base class for wx.ListCtrl data source objects in this module."""
   def __init__ (self, table) :
-    assert isinstance(table, list)
+    assert isinstance(table, list) or isinstance(table, dict)
     self.table = table
 
   def GetItemCount (self) :
@@ -77,6 +88,13 @@ class TableData (object) :
 
   def GetItemImage (self, item) :
     return 0
+
+class EmptyData (TableData) :
+  def __init__ (self, *args, **kwds) :
+    self.table = []
+
+  def GetItemText (self, item, col) :
+    return ""
 
 class ResultData (TableData) :
   def GetItemText (self, item, col) :

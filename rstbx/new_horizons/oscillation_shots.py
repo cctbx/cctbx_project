@@ -151,7 +151,7 @@ class IntegrateCharacters:
       # for the wx image viewer
       filename = self.horizons_phil.indexing.indexing_pickle
       if filename != None:
-        filename = "%s_%d_%d"%(filename,setting["counter"],keys[i])
+        filename = "%s_%d_%d.pkl"%(filename,setting["counter"],keys[i])
 
         SIO = StringIO.StringIO()
         table_raw = show_observations(integrate_worker.get_obs(
