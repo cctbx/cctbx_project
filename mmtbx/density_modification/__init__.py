@@ -199,6 +199,7 @@ class density_modification(object):
           self.params.initial_d_min - self.params.d_min)/self.params.shrink_steps
       else:
         self.phase_extend_step = 0
+        self.params.initial_d_min = self.params.d_min
     self.complete_set = self.f_obs.complete_set()
 
     ref_active = (self.f_obs.sigmas() > 0) \
@@ -602,7 +603,8 @@ class density_modification(object):
     def fget(self):
       if self.i_cycle == 0 and not hasattr(self, "_active_indices"):
         self._active_indices = None
-      if (self.params.d_min < self.params.initial_d_min and
+      if (self.params.phase_extension and
+          self.params.d_min < self.params.initial_d_min and
           self.i_cycle > self.params.initial_steps and
           self.i_cycle < (self.params.initial_steps + self.params.shrink_steps)):
         self._active_indices = None
