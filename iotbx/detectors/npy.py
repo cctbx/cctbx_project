@@ -99,6 +99,11 @@ class NpyImage(DetectorImageBase):
   def translate_tiles(self, phil):
     if phil.distl.detector_tiling==None: return
     if phil.distl.tile_translations==None: return
+
+    if len(phil.distl.detector_tiling) <= 16:
+      # assume this is the 2x2 CS Pad for spectroscopy; do not use tile translations
+      return
+
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
 
     shifted_int_data_old = self.__getattr__('rawdata')
