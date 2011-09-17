@@ -29,8 +29,7 @@ class crystallographic_ls(
 
   def __init__(self, observations, reparametrisation,
                **kwds):
-    super(crystallographic_ls, self).__init__(
-      reparametrisation.n_independent_params)
+    super(crystallographic_ls, self).__init__(reparametrisation.n_independents)
     self.observations = observations
     self.reparametrisation = reparametrisation
     adopt_optional_init_args(self, kwds)
