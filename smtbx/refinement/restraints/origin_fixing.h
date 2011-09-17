@@ -32,6 +32,8 @@ namespace smtbx { namespace refinement { namespace restraints {
   public:
     typedef FloatType scalar_t;
     typedef scitbx::vec3<scalar_t> vec3_t;
+    typedef constraints::scatterer_parameters::scatterer_type
+            scatterer_type;
 
   private:
     af::small<vec3_t, 3> deltas;
@@ -112,12 +114,21 @@ namespace smtbx { namespace refinement { namespace restraints {
         af::shared<scalar_t> whole_delta(af::reserve(5*params.size()));
         std::back_insert_iterator< af::shared<scalar_t> > g(whole_delta);
         for (std::size_t i=0; i<params.size(); ++i) {
+          scatterer_type const *sc = params[i].scatterer;
+          constraints::index_range
+          site_indices = params[i].site->component_indices_for(sc);
           BOOST_FOREACH (constraints::asu_parameter const *p,
                          params[i].ordered())
           {
             vec3_t v = scatterer_weights[i]*deltas[k];
-            if (p == params[i].site) std::copy(v.begin(), v.end(), g);
-            else std::fill_n(g, p->size(), scalar_t(0));
+            constraints::index_range
+            indices = p->component_indices_for(sc);
+            if (indices == site_indices) {
+              std::copy(v.begin(), v.end(), g);
+            }
+            else {
+              std::fill_n(g, indices.size(), scalar_t(0));
+            }
           }
         }
         whole_deltas.push_back(whole_delta);
