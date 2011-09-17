@@ -18,7 +18,7 @@ struct ordered_scatterer_parameters
 
   struct is_variable {
     bool operator()(asu_parameter const *p) const {
-      return p->is_variable();
+      return p && p->is_variable();
     }
   };
 
@@ -86,6 +86,7 @@ mapping_to_grad_fc(af::const_ref<scatterer_parameters> const &params) {
   af::shared<std::size_t> result((af::reserve(5*params.size()))); // heuristic
   for (std::size_t i=0; i<params.size(); ++i) {
     BOOST_FOREACH (asu_parameter const *p, params[i].ordered()) {
+      if (!p) continue;
       index_range r = p->component_indices_for(params[i].scatterer);
       SMTBX_ASSERT(r.is_valid())(params[i].scatterer->label);
       for (std::size_t j=r.first(); j<r.last(); ++j) result.push_back(j);
