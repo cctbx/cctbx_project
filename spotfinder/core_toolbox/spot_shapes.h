@@ -127,7 +127,9 @@ struct spot_shapes
     model_eccentricity() const {
       double b_squared = model_m->eigenvalue(1);
       double a_squared = model_m->eigenvalue(0);
-      return std::sqrt( 1.0 - ( b_squared / a_squared ) );
+      if (a_squared <= 0)
+        return 0;
+      return std::sqrt( 1.0 - std::min(1.0, b_squared / a_squared) );
     }
 
     inline bool
@@ -152,7 +154,8 @@ struct spot_shapes
     // inertia tensor of an ellipse is I11=0.25*a*a*M; I22=0.25*b*b*M
     //semi-major axis
     inline double a() const {
-      return std::sqrt(4.0*model_m->eigenvalue(0)/total_mass);
+      // Use same workaround as for b() below.
+      return std::sqrt(4.0*std::max(1.,model_m->eigenvalue(0))/total_mass);
     }
     inline double b() const {
       //Problem:  when the points of a spot form a straight line segment,
