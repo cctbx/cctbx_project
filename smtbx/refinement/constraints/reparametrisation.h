@@ -63,13 +63,17 @@ typedef scitbx::sym_mat3<double> tensor_rank_2_t;
     at all. An invalid instance is mapped to an empty tuple in Python,
     and to a tuple (first, size) otherwise.
  */
-class index_range
+class index_range : public boost::equality_comparable<index_range>
 {
 public:
   bool is_valid() const { return valid; }
   std::size_t first() const { return first_; }
   std::size_t last() const { return first_ + size_; }
   std::size_t size() const { return size_; }
+
+  friend bool operator==(index_range r1, index_range r2) {
+    return r1.first() == r2.first() && r1.size() == r2.size();
+  }
 
   index_range()
   : valid(false)
