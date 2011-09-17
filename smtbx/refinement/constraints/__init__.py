@@ -184,10 +184,6 @@ class reparametrisation(ext.reparametrisation):
         "_component_annotations",
         self.asu_scatterer_parameters.component_annotations().split(',')[:-1])
 
-  class n_independent_params(libtbx.property):
-    def fget(self):
-      return self.jacobian_transpose.n_rows
-
   def jacobian_transpose_matching_grad_fc(self):
     """ The columns of self.jacobian_transpose corresponding to crystallographic
     parameters for the scatterers, in the same order as the derivatives in
@@ -195,12 +191,6 @@ class reparametrisation(ext.reparametrisation):
     smtbx.structure_factors
     """
     return self.jacobian_transpose_matching(self.mapping_to_grad_fc)
-
-  def jacobian_transpose_matching(self, mapping):
-    """ The columns of self.jacobian_transpose corresponding to the given
-    crystallographic parameters.
-    """
-    return self.jacobian_transpose.select_columns(mapping)
 
   def add_new_occupancy_parameter(self, i_sc):
     if self.shared_occupancies.has_key(i_sc):

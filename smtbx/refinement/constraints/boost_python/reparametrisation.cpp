@@ -421,12 +421,16 @@ namespace boost_python {
       class_<wt> klass("reparametrisation", no_init);
       klass
         .def(init<uctbx::unit_cell const &>(arg("unit_cell")))
+        .add_property("n_independents", &wt::n_independents)
         .def("finalise", &wt::finalise)
         .def("linearise", &wt::linearise)
         .def("store", &wt::store)
         .def("parameters", &wt::parameters)
         .add_property("jacobian_transpose",
                       make_getter(&wt::jacobian_transpose))
+        .def("jacobian_transpose_matching",
+             &wt::jacobian_transpose_matching,
+             arg("mapping"))
         .def("apply_shifts", &wt::apply_shifts)
         .add_property("norm_of_independent_parameter_vector",
                       &wt::norm_of_independent_parameter_vector)
