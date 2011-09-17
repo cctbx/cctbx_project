@@ -139,7 +139,8 @@ namespace boost_python {
       class_<wt,
              bases<scalar_parameter>,
              std::auto_ptr<wt> >("independent_scalar_parameter", no_init)
-        .def(init<double, bool>((arg("value"), arg("variable"))));
+        .def(init<double, optional<bool> >
+             ((arg("value"), arg("variable")=true)));
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
   };
@@ -205,8 +206,8 @@ namespace boost_python {
       class_<wt,
              bases<small_vector_parameter<N> >,
              std::auto_ptr<wt> >(name.c_str(), no_init)
-        .def(init<af::small<double, N> const &, bool>
-             ((arg("value"), arg("variable"))));
+        .def(init<af::small<double, N> const &, optional<bool> >
+             ((arg("value"), arg("variable")=true)));
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
