@@ -898,7 +898,7 @@ public:
   /// selection of parameters by indices.
   sparse_matrix_type
   jacobian_transpose_matching(
-    af::const_ref<typename sparse_matrix_type::index_type> const &mapping)
+    af::const_ref<sparse_matrix_type::index_type> const &mapping)
   {
     return jacobian_transpose.select_columns(mapping);
   }
