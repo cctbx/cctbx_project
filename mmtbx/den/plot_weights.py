@@ -1,16 +1,16 @@
 
 def _plot_weights (figure, gamma, weight, z) :
   from matplotlib import cm
-  assert (len(z) == len(gamma)) and (len(z[0]) == len(weight))
+  assert (len(z[0]) == len(gamma)) and (len(z) == len(weight))
   p = figure.add_subplot(111)
   p.set_position([0.1,0.1,0.85,0.85])
   cset = p.contourf(z, 20, cmap=cm.YlGnBu, interpolation='bilinear')
   p.contour(z, 20, colors=[(0.5,0.5,0.5)], linewidth=1)
   figure.colorbar(cset, ax=p)
-  p.set_yticks(range(len(gamma)))
-  p.set_xticks(range(len(weight)))
-  p.set_yticklabels([ "%g" % x for x in gamma ])
-  p.set_xticklabels([ "%g" % x for x in weight ])
+  p.set_xticks(range(len(gamma)))
+  p.set_yticks(range(len(weight)))
+  p.set_xticklabels([ "%g" % x for x in gamma ])
+  p.set_yticklabels([ "%g" % x for x in weight ])
   p.set_xlabel("gamma")
   p.set_ylabel("weight")
   p.set_title("DEN optimization (R-free)")
@@ -81,12 +81,12 @@ def exercise () :
   ]
   gamma = sorted(list(set([ x[0] for x in grid_results ])))
   weight = sorted(list(set([ x[1] for x in grid_results ])))
-  values = [ [] for x in gamma ]
-  k = 0
-  for i in range(len(gamma)) :
-    for j in range(len(weight)) :
+  values = [ [] for x in weight ]
+  n = len(weight)
+  for i in range(len(weight)) :
+    for j in range(len(gamma)) :
+      k = i + j * n
       values[i].append(grid_results[k][2])
-      k += 1
   plot_weights_pyplot(gamma, weight, values)
 
 if (__name__ == "__main__") :
