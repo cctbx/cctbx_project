@@ -162,7 +162,8 @@ class manager (object) :
       if self.allow_multiple(file_param_name) :
         if (not file_param_name in self._param_files) :
           self._param_files[file_param_name] = []
-        self._param_files[file_param_name].append(file_name)
+        if (not file_name in self._param_files[file_param_name]) :
+          self._param_files[file_param_name].append(file_name)
       else :
         self._param_files[file_param_name] = file_name
     if run_callback :
