@@ -38,7 +38,7 @@ class fast_maps_from_hkl_file (object) :
     fallback_f_obs = []
     default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)",
       "FOBS_X"]
-    default_rfree_labels = ["FreeR_flag", "FREE"]
+    default_rfree_labels = ["FreeR_flag", "FREE", "R-free-flags"]
     all_labels = []
     data_file = file_reader.any_file(file_name, force_type="hkl")
     for miller_array in data_file.file_server.miller_arrays :
@@ -59,7 +59,8 @@ class fast_maps_from_hkl_file (object) :
         raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
           "column labels (possible choices: %s)") % (f_label, file_name,
             " ".join(all_labels)))
-    f_obs = f_obs.map_to_asu()
+    sys_abs_flags = f_obs.sys_absent_flags().data()
+    f_obs = f_obs.map_to_asu().select(selection=~sys_abs_flags)
     r_free = data_file.file_server.get_r_free_flags(
       file_name=None,
       label=r_free_label,
@@ -68,13 +69,14 @@ class fast_maps_from_hkl_file (object) :
       disable_suitability_test=False,
       return_all_valid_arrays=True)
     if (len(r_free) == 0) :
+      self.f_obs = f_obs
       self.r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
     else :
       array, test_flag_value = r_free[0]
       new_flags = array.customized_copy(
         data=array.data() == test_flag_value).map_to_asu()
       self.r_free_flags = new_flags.common_set(f_obs)
-    self.f_obs = f_obs
+      self.f_obs = f_obs.common_set(self.r_free_flags)
     self.log = None
     if auto_run :
       self.run()
