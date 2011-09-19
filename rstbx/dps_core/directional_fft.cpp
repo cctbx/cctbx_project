@@ -11,11 +11,12 @@ rstbx::Directional_FFT::Directional_FFT (
     has_kval(false),
     F0_specific_cutoff(F0_specific_cutoff){
 
-      shareddouble_t   projections(xy.size());
-      shareddouble_ref ps(projections.ref());//optimization
+      shareddouble_t   projections(xy.size(), af::init_functor_null<double>() );
+      double* ps = projections.begin();
 
-      for (sztype k=0; k<ps.size(); ++k) {
-        ps[k] = xy[k]*angle.dvec;
+      for (sztype k=0; k < projections.size(); ++k) {
+        // unroll the dot product; 1% increase in efficiency
+        ps[k] = xy[k][0]*angle.dvec[0]+xy[k][1]*angle.dvec[1]+xy[k][2]*angle.dvec[2];
       }
 
       typedef shareddouble_t::const_iterator For;
@@ -34,7 +35,7 @@ rstbx::Directional_FFT::Directional_FFT (
       flexdouble frequency_distribution( scitbx::af::flex_grid<>(FFT.m_real()));
       double* f_d_ptr = frequency_distribution.begin();
 
-      for (sztype k=0; k<ps.size(); ++k) {
+      for (sztype k=0; k < projections.size(); ++k) {
         f_d_ptr[  (int)(((ps[k]-pmin)/delta_p) + 0.5)  ]+=1.0;
       }
 
@@ -47,9 +48,11 @@ rstbx::Directional_FFT::Directional_FFT (
 rstbx::flexdouble
 rstbx::Directional_FFT::power_spectrum() {
       if (!has_power_spectrum) {
-        pspectrum = flexdouble(fft_n_complex);
+        pspectrum = flexdouble(fft_n_complex, af::init_functor_null<double>() );
+        double* psptr = pspectrum.begin();
+        std::complex<double>* resptr = fft_result.begin();
         for (sztype k=0; k<fft_n_complex; ++k) {
-          pspectrum[k]=std::abs(fft_result[k]);
+          psptr[k]=std::abs(resptr[k]);
         }
         has_power_spectrum = true;
       }
