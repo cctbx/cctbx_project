@@ -151,7 +151,7 @@ master_params_str = """\
         significantly improve the percent favored and percent outliers at \
         low resolution.  Probably not useful (and maybe even harmful) at \
         resolutions much higher than 3.0A.
-      .style = bold noauto
+      .style = bold
     cis_threshold = 45
       .type = float
       .optional = False
