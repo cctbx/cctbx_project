@@ -1149,6 +1149,7 @@ mmtbx/refinement/refinement_flags.py -text
 mmtbx/refinement/tardy.py svneol=native#text/x-python
 mmtbx/refinement/targets.py -text
 mmtbx/refinement/tst_fit_rotamers.py svneol=native#text/x-python
+mmtbx/refinement/tst_misc.py -text
 mmtbx/refinement/tst_refinement_flags.py -text
 mmtbx/refinement/tst_tardy_comprehensive.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_eval.py svneol=native#text/x-python
