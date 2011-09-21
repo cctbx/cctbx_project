@@ -743,3 +743,38 @@ class relative_errors(object):
                                   uc   = xrs_ref.unit_cell(),
                                   sg   = xrs_ref.space_group(),
                                   rad  = 3.0).doptimal()
+
+# we need something simpler for the Phenix GUI...
+class coordinate_shifts (object) :
+  def __init__ (self, hierarchy_start, hierarchy_end) :
+    from scitbx.array_family import flex
+    self.hierarchy_shifted = hierarchy_end.deep_copy()
+    atoms_shifted = self.hierarchy_shifted.atoms()
+    #self.shifts = flex.double(atoms_shifted.size(), 0.0)
+    coords_start = {}
+    for atom in hierarchy_start.atoms() :
+      id_str = atom.fetch_labels().id_str()
+      coords_start[id_str] = atom.xyz
+    def get_distance (xyz1, xyz2) :
+      x1,y1,z1 = xyz1
+      x2,y2,z2 = xyz2
+      return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+    for i_seq, atom in enumerate(atoms_shifted) :
+      id_str = atom.fetch_labels().id_str()
+      if (id_str in coords_start) :
+        atom.b = get_distance(coords_start[id_str], atom.xyz)
+      else :
+        atom.b = -1.0
+
+  def get_shifts (self) :
+    return self.hierarchy_shifted.atoms().extract_b()
+
+  def min_max_mean (self) :
+    shifts = self.hierarchy_shifted.atoms().extract_b()
+    shifts = shifts.select(shifts >= 0)
+    return shifts.min_max_mean()
+
+  def save_pdb_file (self, file_name) :
+    f = open(file_name, "w")
+    f.write(self.hierarchy_shifted.as_pdb_string())
+    f.close()
