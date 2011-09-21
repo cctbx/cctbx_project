@@ -342,7 +342,7 @@ class sge_interface(object):
   def __init__(self, command):
 
     if command is None:
-      self.command = self.COMMAND
+      self.command = ( self.COMMAND, )
 
     else:
       self.command = command
@@ -350,7 +350,7 @@ class sge_interface(object):
 
   def __call__(self, name, out, err):
 
-    return ( self.command, "-S", "/bin/sh", "-cwd", "-N", name, "-sync", "y",
+    return self.command + ( "-S", "/bin/sh", "-cwd", "-N", name, "-sync", "y",
       "-o", out, "-e", err )
 
 
@@ -364,7 +364,7 @@ class lsf_interface(object):
   def __init__(self, command):
 
     if command is None:
-      self.command = self.COMMAND
+      self.command = ( self.COMMAND, )
 
     else:
       self.command = command
@@ -372,7 +372,7 @@ class lsf_interface(object):
 
   def __call__(self, name, out, err):
 
-    return ( self.command, "-K", "-J", name,
+    return self.command + ( "-K", "-J", name,
       "-o", out, "-e", err )
 
 
@@ -386,7 +386,7 @@ class pbs_interface(object):
   def __init__(self, command):
 
     if command is None:
-      self.command = self.COMMAND
+      self.command = ( self.COMMAND, )
 
     else:
       self.command = command
@@ -394,6 +394,6 @@ class pbs_interface(object):
 
   def __call__(self, name, out, err):
 
-    return ( self.command, "-d", ".", "-N", name,
+    return self.command + ( "-d", ".", "-N", name,
       "-o", out, "-e", err )
 
