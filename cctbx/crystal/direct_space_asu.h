@@ -872,6 +872,86 @@ namespace direct_space_asu {
         return -1;
       }
 
+      void
+      replace(
+	unsigned seq,
+        fractional<FloatType> const& original_site,
+        FloatType const& min_distance_sym_equiv=0.5)
+      {
+        CCTBX_ASSERT(mappings_.begin()
+                  == mappings_const_ref_.begin());
+        sgtbx::site_symmetry_ops site_symmetry_ops=
+          sgtbx::site_symmetry(
+            asu_.unit_cell(),
+            space_group_,
+            original_site,
+            min_distance_sym_equiv,
+            /*assert_min_distance_sym_equiv*/ true);
+        mappings_const_ref_ = mappings_.const_ref();
+        array_of_mappings_for_one_site& site_mappings = mappings_[seq];
+	site_mappings.clear(); // delete old entries
+        site_symmetry_table_.replace(seq,site_symmetry_ops);
+        sgtbx::sym_equiv_sites<FloatType> equiv_sites(
+          asu_.unit_cell(),
+          space_group_,
+          original_site,
+          site_symmetry_ops);
+        af::const_ref<typename sgtbx::sym_equiv_sites<FloatType>::coor_t>
+          coordinates = equiv_sites.coordinates().const_ref();
+        af::const_ref<std::size_t>
+          sym_op_indices = equiv_sites.sym_op_indices().const_ref();
+        bool have_site_in_asu = false;
+        for(std::size_t i_sym_eq=0;i_sym_eq<coordinates.size();i_sym_eq++) {
+          scitbx::vec3<FloatType> const& site = coordinates[i_sym_eq];
+          scitbx::vec3<IntShiftType> unit_shifts_min;
+          scitbx::vec3<IntShiftType> unit_shifts_max;
+          for(std::size_t i=0;i<3;i++) {
+            unit_shifts_min[i] = scitbx::math::iceil(
+              asu_buffer_.box_min()[i] - site[i] - 2*asu_.is_inside_epsilon());
+            unit_shifts_max[i] = scitbx::math::ifloor(
+              asu_buffer_.box_max()[i] - site[i] + 2*asu_.is_inside_epsilon());
+          }
+          scitbx::vec3<IntShiftType> u;
+          fractional<FloatType> mapped_site;
+          for(u[0]=unit_shifts_min[0];u[0]<=unit_shifts_max[0];u[0]++) {
+            mapped_site[0] = site[0] + u[0];
+          for(u[1]=unit_shifts_min[1];u[1]<=unit_shifts_max[1];u[1]++) {
+            mapped_site[1] = site[1] + u[1];
+          for(u[2]=unit_shifts_min[2];u[2]<=unit_shifts_max[2];u[2]++) {
+            mapped_site[2] = site[2] + u[2];
+            if (   asu_buffer_.is_inside(mapped_site)
+                && buffer_covering_sphere_.is_inside(
+                     asu_.unit_cell().orthogonalize(mapped_site))) {
+              asu_mapping<FloatType, IntShiftType> mapping(
+                sym_op_indices[i_sym_eq],
+                u,
+                asu_.unit_cell().orthogonalize(mapped_site));
+              if (!have_site_in_asu && asu_.is_inside(mapped_site)) {
+                site_mappings.insert(site_mappings.begin(), mapping);
+                have_site_in_asu = true;
+              }
+              else {
+                site_mappings.push_back(mapping);
+              }
+              n_sites_in_asu_and_buffer_++;
+              if (   site_mappings.size() == 1
+                  && mappings_const_ref_.size() == 1) {
+                mapped_sites_min_ = mapping.mapped_site();
+                mapped_sites_max_ = mapping.mapped_site();
+              }
+              else {
+                for(std::size_t i=0;i<3;i++) {
+                  FloatType const& e = mapping.mapped_site()[i];
+                  scitbx::math::update_min(mapped_sites_min_[i], e);
+                  scitbx::math::update_max(mapped_sites_max_[i], e);
+                }
+              }
+            }
+          }}}
+        }
+        CCTBX_ASSERT(have_site_in_asu);
+      }
+
     protected:
       sgtbx::space_group space_group_;
       float_asu<FloatType> asu_;
