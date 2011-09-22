@@ -37,6 +37,31 @@ class summary (object) :
       hierarchy=pdb_hierarchy,
       outliers_only=True)
     self.cbeta_out = len(cbeta_list)
+    pdb_lines = open(pdb_file, "r").readlines()
+    self.r_work = None
+    self.r_free = None
+    self.rms_bonds = None
+    self.rms_angles = None
+    for line in pdb_lines :
+      if (line.startswith("REMARK   3")) :
+        if ("Final:" in line) :
+          fields = line.split()
+          for i, field in enumerate(fields) :
+            if (field == "r_work") :
+              self.r_work = float(fields[i+2])
+            elif (field == "r_free") :
+              self.r_free = float(fields[i+2])
+            elif (field == "bonds") :
+              self.rms_bonds = float(fields[i+2])
+            elif (field == "angles") :
+              self.rms_angles = float(fields[i+2])
+          break
+        elif ("3   R VALUE            (WORKING SET)" in line) :
+          self.r_work = float(line.split(":")[1].strip())
+        elif ("3   FREE R VALUE                    " in line) :
+          self.r_free = float(line.split(":")[1].strip())
+      elif (line.startswith("REMARK 200")) :
+        break
 
   def show (self, out=sys.stdout, prefix="  ") :
     print >> out, "%sRamachandran outliers = %6.2f %%" % (prefix,self.rama_out)
@@ -44,6 +69,15 @@ class summary (object) :
     print >> out, "%sRotamer outliers      = %6.2f %%" % (prefix,self.rota_out)
     print >> out, "%sC-beta deviations     = %6d" % (prefix,self.cbeta_out)
     print >> out, "%sClashscore            = %6.2f" % (prefix,self.clash_score)
+    if (self.r_work is not None) :
+      print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
+    if (self.r_free is not None) :
+      print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
+    if (self.rms_bonds is not None) :
+      print >> out, "%sRMS(bonds)            = %8.4f" % (prefix, self.rms_bonds)
+    if (self.rms_angles is not None) :
+      print >> out, "%sRMS(angles)           = %6.2f" % (prefix,
+        self.rms_angles)
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) :
@@ -60,42 +94,9 @@ run phenix.model_vs_data or the validation GUI.)
   if (not os.path.isfile(pdb_file)) :
     raise Sorry("Not a file: %s" % pdb_file)
   s = summary(pdb_file=pdb_file)
-  pdb_lines = open(pdb_file, "r").readlines()
-  r_work = None
-  r_free = None
-  rms_bonds = None
-  rms_angles = None
-  for line in pdb_lines :
-    if (line.startswith("REMARK   3")) :
-      if ("Final:" in line) :
-        fields = line.split()
-        for i, field in enumerate(fields) :
-          if (field == "r_work") :
-            r_work = float(fields[i+2])
-          elif (field == "r_free") :
-            r_free = float(fields[i+2])
-          elif (field == "bonds") :
-            rms_bonds = float(fields[i+2])
-          elif (field == "angles") :
-            rms_angles = float(fields[i+2])
-        break
-      elif ("3   R VALUE            (WORKING SET)" in line) :
-        r_work = float(line.split(":")[1].strip())
-      elif ("3   FREE R VALUE                    " in line) :
-        r_free = float(line.split(":")[1].strip())
-    elif (line.startswith("REMARK 200")) :
-      break
   print >> out, ""
   print >> out, "Validation summary for %s:" % pdb_file
   s.show(out=out)
-  if (r_work is not None) :
-    print >> out, "  R-work                = %8.4f" % r_work
-  if (r_free is not None) :
-    print >> out, "  R-free                = %8.4f" % r_free
-  if (rms_bonds is not None) :
-    print >> out, "  RMS(bonds)            = %8.4f" % rms_bonds
-  if (rms_angles is not None) :
-    print >> out, "  RMS(angles)           = %6.2f" % rms_angles
   print >> out, ""
 
 if (__name__ == "__main__") :
