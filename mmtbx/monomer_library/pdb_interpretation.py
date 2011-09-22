@@ -95,7 +95,7 @@ master_params_str = """\
     .short_caption = Use Conformation-Dependent Library
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
-    .style = bold noauto
+    .style = bold
   apply_cif_modification
     .optional = True
     .multiple = True

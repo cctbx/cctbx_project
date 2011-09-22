@@ -62,6 +62,7 @@ torsion_ncs_params = iotbx.phil.parse("""
   .multiple=True
   .optional=True
   .short_caption=Torsion NCS restraint group
+  .style = noauto
  {
   selection=None
     .type=atom_selection
