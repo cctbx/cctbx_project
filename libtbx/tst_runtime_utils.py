@@ -34,7 +34,15 @@ current is 66666.666667
   assert client.n_cb >= 5 # this is variable!
   assert ([ cb.message for cb in client._accumulated_callbacks ] ==
           ['run 0', 'run 1', 'run 2', 'run 3'])
-  print "OK"
+
+def exercise2 () :
+  f = runtime_utils.simple_func(666)
+  easy_pickle.dump("myfunc.pkl", f)
+  f_out = easy_run.fully_buffered(
+    "libtbx.run_pickled_function myfunc.pkl").stdout_lines
+  assert (f_out[0] == "666")
 
 if __name__ == "__main__" :
   exercise()
+  exercise2()
+  print "OK"

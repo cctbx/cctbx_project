@@ -438,3 +438,9 @@ class simple_run (object) :
       libtbx.call_back("current_total", pu, accumulate=False)
       print "current is %f" % pu
     return pu_total
+
+class simple_func (object) :
+  def __init__ (self, x) :
+    self.x = x
+  def __call__ (self) :
+    print self.x
