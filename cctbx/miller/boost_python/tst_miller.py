@@ -430,6 +430,10 @@ def exercise_match_bijvoet_mates():
   assert approx_equal(tuple(bm.additive_sigmas(d0)),
                       [math.sqrt(x*x+y*y) for x,y in ((1,2), (3,4))])
   assert approx_equal(tuple(bm.average(d0)), (3/2., 7/2.))
+  h0.append((1,2,3))
+  try: miller.match_bijvoet_mates(h0)
+  except Exception: pass
+  else: raise Exception_expected
 
 def exercise_match_indices():
   h0 = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))

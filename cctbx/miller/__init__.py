@@ -378,6 +378,7 @@ class set(crystal.symmetry):
     self.show_summary(f=f, prefix=prefix)
     no_sys_abs = self.copy()
     if (self.space_group_info() is not None):
+      is_unique_set_under_symmetry = no_sys_abs.is_unique_set_under_symmetry()
       sys_absent_flags = self.sys_absent_flags().data()
       n_sys_abs = sys_absent_flags.count(True)
       print >> f, prefix + "Systematic absences:", n_sys_abs
@@ -389,7 +390,9 @@ class set(crystal.symmetry):
     if (self.unit_cell() is not None):
       d_max_min = no_sys_abs.resolution_range()
       print >> f, prefix + "Resolution range: %.6g %.6g" % d_max_min
-      if (self.space_group_info() is not None and self.indices().size() > 0):
+      if (self.space_group_info() is not None
+          and self.indices().size() > 0
+          and is_unique_set_under_symmetry):
         no_sys_abs.setup_binner(n_bins=1)
         completeness_d_max_d_min = no_sys_abs.completeness(use_binning=True)
         binner = completeness_d_max_d_min.binner
@@ -404,7 +407,9 @@ class set(crystal.symmetry):
         if (n_complete != 0):
           print >> f, prefix + "Completeness with d_max=infinity: %.6g" % (
             n_obs / n_complete)
-    if (self.space_group_info() is not None and no_sys_abs.anomalous_flag()):
+    if (self.space_group_info() is not None
+        and no_sys_abs.anomalous_flag()
+        and is_unique_set_under_symmetry):
       asu, matches = no_sys_abs.match_bijvoet_mates()
       print >> f, prefix + "Bijvoet pairs:", matches.pairs().size()
       print >> f, prefix + "Lone Bijvoet mates:", \
@@ -527,7 +532,8 @@ class set(crystal.symmetry):
       truncate_exp_arg=truncate_exp_arg))
 
   def n_bijvoet_pairs(self):
-    asu, matches = self.match_bijvoet_mates()
+    asu, matches = self.match_bijvoet_mates(
+      assert_is_unique_set_under_symmetry=False)
     return matches.pairs().size()
 
   def as_non_anomalous_set(self):
@@ -711,16 +717,19 @@ class set(crystal.symmetry):
     return [self.select(matches.singles(1)),
             other.select(matches.singles(0))]
 
-  def match_bijvoet_mates(self):
+  def match_bijvoet_mates(self, assert_is_unique_set_under_symmetry=True):
     assert self.anomalous_flag() in (None, True)
     assert self.indices() is not None
     if (self.space_group_info() is not None):
       asu = self.map_to_asu()
       matches = match_bijvoet_mates(
-        asu.space_group_info().type(), asu.indices())
+        asu.space_group_info().type(), asu.indices(),
+        assert_is_unique_set_under_symmetry=assert_is_unique_set_under_symmetry)
     else:
       asu = self
-      matches = match_bijvoet_mates(asu.indices())
+      matches = match_bijvoet_mates(
+        asu.indices(),
+        assert_is_unique_set_under_symmetry=assert_is_unique_set_under_symmetry)
     return asu, matches
 
   def sort_permutation(self, by_value="resolution", reverse=False):

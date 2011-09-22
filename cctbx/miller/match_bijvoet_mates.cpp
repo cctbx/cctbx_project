@@ -5,11 +5,16 @@
 namespace cctbx { namespace miller {
 
   void
-  match_bijvoet_mates::match_(sgtbx::reciprocal_space::asu const& asu)
+  match_bijvoet_mates::match_(sgtbx::reciprocal_space::asu const& asu,
+                              bool assert_is_unique_set_under_symmetry)
   {
     typedef std::map<index<>, std::size_t, fast_less_than<> > lookup_map_type;
     lookup_map_type lookup_map;
     for(std::size_t i=0;i<miller_indices_.size();i++) {
+      lookup_map_type::const_iterator l = lookup_map.find(miller_indices_[i]);
+      if (assert_is_unique_set_under_symmetry && l != lookup_map.end()) {
+        throw CCTBX_ERROR("miller array is not a unique set under symmetry");
+      }
       lookup_map[miller_indices_[i]] = i;
     }
     std::vector<bool> paired_already(miller_indices_.size(), false);

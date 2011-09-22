@@ -20,10 +20,19 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("match_bijvoet_mates", no_init)
         .def(init<sgtbx::space_group_type const&,
-                  af::shared<index<> > const&>())
+                  af::shared<index<> > const&,
+                  bool>((
+                    arg("sg_type"), arg("indices"),
+                    arg("assert_is_unique_set_under_symmetry")=true)))
         .def(init<sgtbx::reciprocal_space::asu const&,
-                  af::shared<index<> > const&>())
-        .def(init<af::shared<index<> > const&>())
+                  af::shared<index<> > const&,
+                  bool>((
+                    arg("asu"), arg("indices"),
+                    arg("assert_is_unique_set_under_symmetry")=true)))
+        .def(init<af::shared<index<> > const&,
+                  bool>((
+                    arg("indices"),
+                    arg("assert_is_unique_set_under_symmetry")=true)))
         .def("pairs", &w_t::pairs)
         .def("singles", &w_t::singles)
         .def("n_singles", &w_t::n_singles)

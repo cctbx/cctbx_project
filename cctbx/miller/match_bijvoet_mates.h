@@ -13,29 +13,34 @@ namespace cctbx { namespace miller {
 
       match_bijvoet_mates(
         sgtbx::space_group_type const& sg_type,
-        af::shared<index<> > const& miller_indices)
+        af::shared<index<> > const& miller_indices,
+        bool assert_is_unique_set_under_symmetry=true)
       :
         miller_indices_(miller_indices)
       {
-        match_(sgtbx::reciprocal_space::asu(sg_type));
+        match_(sgtbx::reciprocal_space::asu(sg_type),
+               assert_is_unique_set_under_symmetry);
       }
 
       match_bijvoet_mates(
         sgtbx::reciprocal_space::asu const& asu,
-        af::shared<index<> > const& miller_indices)
+        af::shared<index<> > const& miller_indices,
+        bool assert_is_unique_set_under_symmetry=true)
       :
         miller_indices_(miller_indices)
       {
-        match_(asu);
+        match_(asu, assert_is_unique_set_under_symmetry);
       }
 
       explicit
       match_bijvoet_mates(
-        af::shared<index<> > const& miller_indices)
+        af::shared<index<> > const& miller_indices,
+        bool assert_is_unique_set_under_symmetry=true)
       :
         miller_indices_(miller_indices)
       {
-        match_(sgtbx::reciprocal_space::asu(sgtbx::space_group_type()));
+        match_(sgtbx::reciprocal_space::asu(sgtbx::space_group_type()),
+               assert_is_unique_set_under_symmetry);
       }
 
       af::shared<pair_type>
@@ -112,7 +117,8 @@ namespace cctbx { namespace miller {
 
     protected:
       void
-      match_(sgtbx::reciprocal_space::asu const& asu);
+      match_(sgtbx::reciprocal_space::asu const& asu,
+             bool assert_is_unique_set_under_symmetry=true);
 
       std::size_t
       plus_or_minus_index_(char plus_or_minus) const;
