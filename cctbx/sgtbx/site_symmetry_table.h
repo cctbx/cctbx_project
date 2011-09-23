@@ -236,12 +236,12 @@ namespace cctbx { namespace sgtbx {
     if (!old_is_pg_1)
       for(std::size_t itr=1;itr<indices_const_ref_.size();itr++) {
         if (indices_[itr] == old_i_tab) {
-	  old_sym_used=true;
+          old_sym_used=true;
           break;
         }
     }
 
-	// Make changes in table
+        // Make changes in table
     if (!new_is_pg_1) {
       for(i_tab=1;i_tab<table_const_ref_.size();i_tab++) {
         if (table_const_ref_[i_tab] == site_symmetry_ops_) {
@@ -249,33 +249,33 @@ namespace cctbx { namespace sgtbx {
         }
       }
       if (i_tab == table_const_ref_.size()) {
-	if (old_sym_used)
+        if (old_sym_used)
           table_.push_back(site_symmetry_ops_);
-	else
-	  table_[old_i_tab]=site_symmetry_ops_;
+        else
+          table_[old_i_tab]=site_symmetry_ops_;
         table_const_ref_ = table_.const_ref();
       }
     }
-    
-	// Make changes in indices and special_position_indices
+
+        // Make changes in indices and special_position_indices
     if (!new_is_pg_1 && old_sym_used){
-	indices_[replace_at_index]=i_tab;
+        indices_[replace_at_index]=i_tab;
     }
 
     if (new_is_pg_1){
-	if (!old_is_pg_1){
-	// Remove from table_ too ?
-		indices_[replace_at_index]=0;
-      		std::size_t n = special_position_indices_.size();
-      		std::size_t i = n-1;
-	        std::size_t* si = special_position_indices_.begin();
-	        while (i != 0) {
-        	  i--;
-	          if (si[i] < replace_at_index) break;
-       		  si[i] = si[i+1];
-      		}
-      		special_position_indices_.resize(n-1);
-	}
+        if (!old_is_pg_1){
+        // Remove from table_ too ?
+                indices_[replace_at_index]=0;
+                std::size_t n = special_position_indices_.size();
+                std::size_t i = n-1;
+                std::size_t* si = special_position_indices_.begin();
+                while (i != 0) {
+                  i--;
+                  if (si[i] < replace_at_index) break;
+                  si[i] = si[i+1];
+                }
+                special_position_indices_.resize(n-1);
+        }
     }
     else if (old_is_pg_1){
       std::size_t n = special_position_indices_.size();

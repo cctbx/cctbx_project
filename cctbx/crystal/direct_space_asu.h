@@ -874,7 +874,7 @@ namespace direct_space_asu {
 
       void
       replace(
-	unsigned seq,
+        unsigned seq,
         fractional<FloatType> const& original_site,
         FloatType const& min_distance_sym_equiv=0.5)
       {
@@ -889,7 +889,7 @@ namespace direct_space_asu {
             /*assert_min_distance_sym_equiv*/ true);
         mappings_const_ref_ = mappings_.const_ref();
         array_of_mappings_for_one_site& site_mappings = mappings_[seq];
-	site_mappings.clear(); // delete old entries
+        site_mappings.clear(); // delete old entries
         site_symmetry_table_.replace(seq,site_symmetry_ops);
         sgtbx::sym_equiv_sites<FloatType> equiv_sites(
           asu_.unit_cell(),
