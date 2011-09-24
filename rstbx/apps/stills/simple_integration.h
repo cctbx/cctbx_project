@@ -402,7 +402,7 @@ namespace rstbx { namespace integration {
         // variance formula from Andrew Leslie, Int Tables article
         double variance = uncorrected_signal +
           sum_background*mcount*mcount/double(ncount*ncount);
-        if (variance==0.) {continue;} // a spot measured on an inactive area
+        if (variance<=0.) {continue;} // a spot measured on an inactive area
         double sigma = std::sqrt(variance);
 
         integrated_data.push_back(summation_intensity);
