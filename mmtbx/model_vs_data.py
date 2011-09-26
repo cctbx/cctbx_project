@@ -964,6 +964,7 @@ def summarize_results (mvd_obj) :
     pdb_header_r_free=getattr(mvd_obj.pdb_header, "r_free", None),
     r_work_cutoffs=getattr(mvd_obj.misc, "r_work_cutoff", None),
     r_free_cutoffs=getattr(mvd_obj.misc, "r_free_cutoff", None),
+    program_name=getattr(mvd_obj.pdb_header, "program_name", None),
     d_max_pdb=getattr(mvd_obj.pdb_header, "low_resolution", None),
     d_min_pdb=getattr(mvd_obj.pdb_header, "high_resolution", None),
     d_min=mvd_obj.data.high_resolution,
@@ -980,6 +981,7 @@ def summarize_results (mvd_obj) :
     adp_max_bb=convert_float(getattr(bb_stats, "b_max",None)),
     adp_mean_bb=convert_float(getattr(bb_stats, "b_mean",None)),
     adp_min_bb=convert_float(getattr(bb_stats, "b_min", None)),
+    n_aniso=getattr(xs_stats, "n_aniso", None),
     wilson_b=mvd_obj.data.wilson_b,
     b_sol=mvd_obj.model_vs_data.b_sol,
     k_sol=mvd_obj.model_vs_data.k_sol,
@@ -1000,4 +1002,6 @@ def summarize_results (mvd_obj) :
     rotamer_outliers=rotamer_outliers,
     c_beta_deviations=c_beta_deviations,
     clashscore=clashscore,
-    twin_law=mvd_obj.data.twinned)
+    twin_law=mvd_obj.data.twinned,
+    tls=getattr(getattr(getattr(mvd_obj.pdb_header, "tls", None), "pdb_inp_tls",
+      None), "tls_present"))
