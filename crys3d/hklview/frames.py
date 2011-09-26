@@ -247,6 +247,7 @@ class HKLViewFrame (wx.Frame) :
     self.sizer.SetSizeHints(self)
     self.Bind(wx.EVT_CLOSE, self.OnClose, self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
+    self.Bind(wx.EVT_ACTIVATE, lambda evt: self.viewer.OnPaint(None))
     self.viewer.SetFocus()
 
   def create_viewer_panel (self) :
