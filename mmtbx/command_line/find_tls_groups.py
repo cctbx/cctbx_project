@@ -751,7 +751,8 @@ def find_tls (params,
     #
     if(len(perms)==1):
       print >> out, "  Whole chain is considered as one TLS group."
-      chains_and_atom_selection_strings.append([crs[0],[]])
+      chains_and_atom_selection_strings.append([crs[0],
+        permutations_as_atom_selection_string(groups, perms[0])])
     else:
       print >> out, "  Fitting TLS matrices..."
       dic = {}
