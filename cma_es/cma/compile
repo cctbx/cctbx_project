@@ -1,0 +1,8 @@
+
+ gcc -o evo1 -O2 -ansi -pedantic  -Wall -Wstrict-prototypes -Wmissing-prototypes -Wshadow  -Wconversion -lm example1.c cmaes.c
+ gcc -o evo2 -O2 -ansi -pedantic  -Wall -Wstrict-prototypes -Wmissing-prototypes -Wshadow  -Wconversion -lm example2.c cmaes.c
+ gcc -o evo3 -O2 -ansi -pedantic  -Wall -Wstrict-prototypes -Wmissing-prototypes -Wshadow  -Wconversion -lm example3.c cmaes.c
+
+# -pg : gnu profiler for gprof
+# -pedantic-errors
+# -c : compile only

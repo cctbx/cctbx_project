@@ -1,0 +1,77 @@
+#
+# Comment characters are '%' and '#' to end of line.
+# Uncomment one or more rows (and/or add an uncommented line)
+# and save this file to induce an action.
+#
+# Function cmaes_ReadSignals reads and interprets the syntax
+#   as given in this file
+#
+
+## --- modify termination condition, see also initials.par for more docu
+# stop now                # manual stop as soon as signals.par is parsed
+# stopMaxFunEvals  4.5e6  # stop after given number of function evaluations
+# stopMaxIter 3e3         # stop after given number of iterations (generations)
+# stopFitness 1e-6     # stop if function value is smaller than stopFitness
+# stopTolFun 1e-12     # stop if function value differences are small
+# stopTolFunHist 1e-12 # stop if f-value differences between best values are small
+# stopTolX 1e-1        # stop if step-sizes/steps in x-space are small
+# stopTolUpXFactor 1e3 # stop if std dev increases more than by TolUpXFactor
+
+# checkeigen  1        # number > 0 switches checking on, Check_Eigen() is O(n^3)!
+# maxTimeFractionForEigendecompostion 0.2
+
+# write resume allcmaes.dat  # write data for restart
+
+## --- print data to stdout
+##   syntax (in one row):
+##   print <keyword for cmaes_WriteToFilePtr()>[+<another keyword>]
+##         [<seconds>]
+##   After the first iteration ONLY the action with the smallest
+##     seconds value will take place.
+##   For more info see write data below.
+
+#  print gen+fitness    5
+## "few" prints Fevals Fval Sigma Max&MinCoorDev AxisRatio MinOfD
+  print fewinfo     200 # print every 200 seconds
+  print few+clock     2 # clock: used processor time since start
+#  print few          2
+#  print fitness+xmean 3
+#  print gen+few  20
+#  print gen+few+few(diag(D)) 0
+#  print few(diag(D))
+#  print all 100
+
+## --- write data to file (example2.c can also write into data file)
+##  syntax (in one row):
+##  write <keyword for cmaes_WriteToFilePtr()>[+<another keyword>]
+##        [<filename>] [<seconds>]
+##   After the first iteration ONLY the action with the smallest
+##     seconds value will take place.
+
+##  Default filename is tmpcmaes.dat. Default is seconds=1,
+##  and during the first second or so it is 0 with a smooth
+##  writing gap transition until up to one second. For
+##  seconds=0 writing takes place every generation. For seconds < 0
+##  writing is blocked after the first key where seconds < 0 was
+##  written. Blocking lasts until all values for seconds are >=0
+##  again. For keywords compare cmaes_interface.h and function
+##  cmaes_WriteToFilePtr in cmaes.c.
+
+##        KEYWORD(s)                                  FILE          SECONDS to wait until next writing
+# write with default format for plotting
+write iter+eval+sigma+axisratio+fbestever+fitness+fmedian+fworst+mindii+idxmaxSD+maxSD+idxminSD+minSD   outcmaesfit.dat
+write iter+eval+sigma+axisratio+stddevratio+diag(D)       outcmaesaxlen.dat
+write iter+eval+sigma+idxmaxSD+idxminSD+stddev            outcmaesstddev.dat
+write iter+eval+sigma+0+0+xmean                           outcmaesxmean.dat
+write iter+eval+sigma+0+fitness+xbest                     outcmaesxrecentbest.dat
+
+##        KEYWORD(s)        FILE       SECONDS to wait until next writing
+
+# write few+few(diag(D)) rescmaes.dat     0    # writes every generation
+# write few+diag(D)      tmp.dat          0    # writes every generation
+# write few+few(diag(D)) rescmaes.dat          # writes once per second
+# write few+few(diag(D)) rescmaes.dat    -1    # writes once, blocks further writing
+# write gen+xbest          xcmaes.dat     2
+# write B                allcmaes.dat   100    # writes every 100 seconds
+# write all              allcmaes.dat   100
+# write gen+arfitness    tmpcmaes.dat     0

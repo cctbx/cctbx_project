@@ -1,0 +1,103 @@
+function number 1 2 5 6 8 23  # the first number is read by example2.c, see there.
+restarts 0                    # read by example2.c, remark that restarts
+                              # with the same initialX might be sub-optimal
+#
+# Input parameter file for cmaes_t.
+# Comments start with '#' or '%' until end of line.
+# Actual recent parameter setting is written to file actparcmaes.par.
+#
+
+## --- OBLIGATORY SETTINGS
+# these settings, if read, overwrite the input values to cmaes_init
+
+ N 22        # Problem dimension, overwrites parameter in cmaes_init
+ initialX 1:   # Initial search point. Syntax: 1==read one number, see also end of file.
+   0.5e0       #    these are the read value(s)!
+ typicalX 1:   # Typical search point (useful for restarts, cave: boundaries), overwritten by initialX
+    0.0        #    these are the read value(s)
+ initialStandardDeviations  1:   #  1==read only one number for all coordinates
+   0.3                           #  numbers should not differ by orders of magnitude
+                                 #  should be roughly 1/4 of the search interval
+                                 #  this number essentially influences the global
+                                 #  search ability (ie. the horizon where to search
+                                 #  at all) on multimodal functions
+
+## --- OPTIONAL SETTINGS
+
+# stop-Parameters can be changed online via signals.par
+
+stopMaxFunEvals   1e299     # max number of f-evaluations, 900*(N+3)*(N+3) is default
+# fac*maxFunEvals   1e0     # multiplies stopMaxFunEvals by read number, default is 1
+stopMaxIter       1e299     # max number of iterations (generations), inf is default
+
+# stopFitness 1e-9   # stop if function value is smaller than stopFitness
+                     # commented == never stop on function value (default)
+stopTolFun 1e-12     # stop if function value differences are
+                     # smaller than stopTolFun, default=1e-12
+stopTolFunHist 1e-13 # stop if function value differences of best values are
+                     # smaller than stopTolFunHist, default was 0
+stopTolX 1e-11   # stop if step sizes/steps in x-space are
+                 # smaller than TolX, default=0
+stopTolUpXFactor 1e3 # stop if std dev increases more than by TolUpXFactor, default 1e3
+
+seed 0            # 0 == by time, also regard maxTimeFractionForEigendecomposition
+                  #   below, as for values smaller than one the outcome might not be
+                  #   exactly reproducible even with the same seed
+
+# diffMinChange 1 # Minimal coordinate wise standard deviation. Syntax see below.
+#        1e-299   # Interferes with stopTolX termination criterion! default=0
+
+
+## --- internal CPU-time related settings
+
+maxTimeFractionForEigendecompostion 1  # maximal CPU-time fraction for eigensystem
+                     # decomposition. Large values (up to one) are better
+                     # w.r.t. the number of function evaluations to reach a
+                     # certain function value. Only >=1 yields exactly
+                     # reproducible results.
+                     # 0.2==20% should often be faster than larger values
+                     # w.r.t. the CPU-time to reach a certain function value.
+
+# updatecov      1   # default is updating the eigensystem after
+                     # every 1/ccov/N/10-th generation.
+# fac*updatecov  3   # multiplier for updatecov
+
+# resume allcmaes.dat   # reads restart distribution from given file
+
+
+## --- Strategy internal parameter ---
+##     default values are set in readpara_SupplementDefaults()
+## -- Selection related parameters
+# lambda 100        # number of offspring == samplesize
+# mu
+# weights      log # possible values: log (==default),
+                   #   lin (==linearely decreasing), or equal
+
+## -- Adaptation (distribution estimation) related parameters
+# diagonalCovarianceMatrix -1   # number of iterations, 1<==>always, -1<==>2+100*N/sqrt(lambda)
+# fac*damp      1  # increase or decrease damping for step size control.
+# ccumcov       1  # default is 4/(N+4), 1 means no cumulation for p_c.
+# mucov         1  # 1 means only rank 1 update of C
+# fac*ccov      1  # multiplier for default learning rate for cov. matrix
+
+
+## --- Syntax for input vectors xstart, sigma, mincoorstddev
+#
+#    N 7              # dimension must be defined before
+#    xstart 3 :       # read 3 numbers from next lines, the colon is superfluous
+#      0.2 0.3
+#      0.4 0.5 0.6
+#      0.7
+#
+# reads the first three numbers starting from the
+# line following the keyword "xstart" and recycles
+# these numbers (or cut them) to length N, resulting in
+#   xstart=[0.2 0.3 0.4 0.2 0.3 0.4 0.2]
+# No comments are allowed between the numbers. I.e.
+#
+#    xstart 3      22 anything here is ok, 22 is disregarded  # still ok
+#      0.2 0.3     # this comment fails, if >2 numbers to be read
+#      0.4 0.5 0.6
+#
+# would fail due to the comment between second and third number to
+# be read.

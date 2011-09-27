@@ -1,0 +1,4 @@
+{
+  "modules_required_for_use": ["scitbx"],
+  "modules_required_for_build": ["scitbx"],
+}
