@@ -6,6 +6,8 @@ from labelit.command_line.stats_index import best_character_to_IndexPrinter
 from labelit.command_line.stats_index import AutoIndexOrganizer
 from cctbx.array_family import flex
 from scitbx import matrix
+from libtbx.utils import Sorry
+
 #234567890123456789212345678931234567894123456789512345678961234567897123456789812
 
 class Empty:pass
@@ -235,8 +237,8 @@ class IntegrationMetaProcedure(simple_integration):
     for frame in self.frames:
       focus = self.inputpd['masks'][frame][0:2]
       average_profile = self.inputpd['masks'][frame][2]
-      box = self.inputpd['masks'][frame][3]
       if verbose:
+        box = self.inputpd['masks'][frame][3]
         print average_profile.focus()
         print box.focus()
         print "Average Profile:"
@@ -337,7 +339,11 @@ class IntegrationMetaProcedure(simple_integration):
       clorder = flex.sort_permutation(correction_lengths)
       sorted_cl = correction_lengths.select(clorder)
 
+      ACCEPTABLE_LIMIT = 2
       limit = int(0.33 * len(sorted_cl)) # best 1/3 of data are assumed to be correctly modeled.
+      if (limit <= ACCEPTABLE_LIMIT):
+        raise Sorry("Not enough indexed spots to reject outliers; have %d need %d" % (limit, ACCEPTABLE_LIMIT))
+
       y_data = flex.double(len(sorted_cl))
       for i in xrange(len(y_data)):
         y_data[i] = float(i)/float(len(y_data))
@@ -394,7 +400,10 @@ class IntegrationMetaProcedure(simple_integration):
       print "or %5.2f mm."%(pxlsz*flex.mean(correction_lengths))
     self.r_residual = pxlsz*flex.mean(correction_lengths)
 
-    assert len(indexed_pairs)>NEAR # must have enough indexed spots
+    #assert len(indexed_pairs)>NEAR # must have enough indexed spots
+    if (len(indexed_pairs) <= NEAR):
+      raise Sorry("Not enough indexed spots, only found %d, need %d" % (len(indexed_pairs), NEAR))
+
     reference = flex.double()
     for item in indexed_pairs:
       reference.append(spots[item["spot"]].ctr_mass_x())
