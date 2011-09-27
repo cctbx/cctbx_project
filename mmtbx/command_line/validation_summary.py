@@ -37,31 +37,32 @@ class summary (object) :
       hierarchy=pdb_hierarchy,
       outliers_only=True)
     self.cbeta_out = len(cbeta_list)
-    pdb_lines = open(pdb_file, "r").readlines()
     self.r_work = None
     self.r_free = None
     self.rms_bonds = None
     self.rms_angles = None
-    for line in pdb_lines :
-      if (line.startswith("REMARK   3")) :
-        if ("Final:" in line) :
-          fields = line.split()
-          for i, field in enumerate(fields) :
-            if (field == "r_work") :
-              self.r_work = float(fields[i+2])
-            elif (field == "r_free") :
-              self.r_free = float(fields[i+2])
-            elif (field == "bonds") :
-              self.rms_bonds = float(fields[i+2])
-            elif (field == "angles") :
-              self.rms_angles = float(fields[i+2])
+    if (pdb_file is not None) :
+      pdb_lines = open(pdb_file, "r").readlines()
+      for line in pdb_lines :
+        if (line.startswith("REMARK ")) :
+          if ("Final:" in line) :
+            fields = line.strip().split()
+            for i, field in enumerate(fields) :
+              if (field == "r_work") :
+                self.r_work = float(fields[i+2])
+              elif (field == "r_free") :
+                self.r_free = float(fields[i+2])
+              elif (field == "bonds") :
+                self.rms_bonds = float(fields[i+2])
+              elif (field == "angles") :
+                self.rms_angles = float(fields[i+2])
+            break
+          elif ("3   R VALUE            (WORKING SET)" in line) :
+            self.r_work = float(line.split(":")[1].strip())
+          elif ("3   FREE R VALUE                    " in line) :
+            self.r_free = float(line.split(":")[1].strip())
+        elif (line.startswith("REMARK 200")) :
           break
-        elif ("3   R VALUE            (WORKING SET)" in line) :
-          self.r_work = float(line.split(":")[1].strip())
-        elif ("3   FREE R VALUE                    " in line) :
-          self.r_free = float(line.split(":")[1].strip())
-      elif (line.startswith("REMARK 200")) :
-        break
 
   def show (self, out=sys.stdout, prefix="  ") :
     print >> out, "%sRamachandran outliers = %6.2f %%" % (prefix,self.rama_out)
