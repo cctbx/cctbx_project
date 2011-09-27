@@ -79,6 +79,7 @@ ADSC 210 901  SSRL BL9-2 Beam5
 ADSC s/n 902  SSRL BL11-1 Beam5
 ADSC s/n 903  Web unknown location Beam5
 ADSC s/n 904  APS NE-CAT [24-ID-C or 24-BM-B] Beam0 (JCSG 2003Nov beam not really tested; close to center)
+ADSC s/n 906  BNL X29. convention not certain...no calibration dataset.
 ADSC s/n 908  SSRL BL9-1 Beam5
 ADSC s/n 910  APS BioCARS 14-BM-C installed before August 2007.
 ADSC s/n 911  APS [24-ID-C or 24-BM-B] (NE-CAT), Beam0
