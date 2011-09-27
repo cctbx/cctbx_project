@@ -402,6 +402,8 @@ class reference_model(object):
           for pair in ssm_align.pairs:
             model_res = pair[0]
             ref_res = pair[1]
+            if model_res is None or ref_res is None:
+              continue
             temp_model_atoms = {}
             temp_ref_atoms = {}
             key = "%s %s%s%s" % (model_res.unique_resnames()[0],
