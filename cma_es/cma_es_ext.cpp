@@ -17,8 +17,10 @@
 
    http://www.lri.fr/~hansen/cmaesintro.html
 
-   The only change is that cmaes.cpp is a copy of cmaes.c (for building the
-   shared library in scons).
+   The changes are that cmaes.cpp is a copy of cmaes.c (for building the shared
+   library in scons) and the license in cmaes.c was revised by the original
+   author to the Lesser GNU Public License (LGPL) instead of the GNU Public
+   License.
 
    This C++ class just keeps track of the cmaes_t struct and exposes the most
    basic functions for minimization to Python.  See example1.c, example2.c,
