@@ -31,7 +31,7 @@ class summary (object) :
     cs = clashscore.clashscore()
     clash_dict, clash_list = cs.analyze_clashes(hierarchy=pdb_hierarchy,
       keep_hydrogens=keep_hydrogens)
-    self.clash_score = clash_dict['']
+    self.clashscore = clash_dict['']
     cbeta = cbetadev.cbetadev()
     cbeta_txt, cbeta_summ, cbeta_list = cbeta.analyze_pdb(
       hierarchy=pdb_hierarchy,
@@ -68,7 +68,7 @@ class summary (object) :
     print >> out, "%s             favored  = %6.2f %%" % (prefix,self.rama_fav)
     print >> out, "%sRotamer outliers      = %6.2f %%" % (prefix,self.rota_out)
     print >> out, "%sC-beta deviations     = %6d" % (prefix,self.cbeta_out)
-    print >> out, "%sClashscore            = %6.2f" % (prefix,self.clash_score)
+    print >> out, "%sClashscore            = %6.2f" % (prefix,self.clashscore)
     if (self.r_work is not None) :
       print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
     if (self.r_free is not None) :
