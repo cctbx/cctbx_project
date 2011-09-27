@@ -358,7 +358,7 @@ class index (object) :
         for def_copy in phil_object :
           assert (def_copy.is_definition)
           file_name = def_copy.extract()
-          if (file_name is not None) :
+          if (file_name is not None) and (file_name is not Auto) :
             if isinstance(file_name, list) :
               for fn in file_name :
                 files.append((fn, label, def_name))
@@ -367,7 +367,7 @@ class index (object) :
       else :
         assert phil_object.is_definition
         file_name = phil_object.extract()
-        if (file_name is not None) :
+        if (file_name is not None) and (file_name is not Auto) :
           if isinstance(file_name, list) :
             for fn in file_name :
               files.append((fn, label, def_name))
