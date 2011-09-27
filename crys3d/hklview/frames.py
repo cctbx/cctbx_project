@@ -247,8 +247,12 @@ class HKLViewFrame (wx.Frame) :
     self.sizer.SetSizeHints(self)
     self.Bind(wx.EVT_CLOSE, self.OnClose, self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
-    self.Bind(wx.EVT_ACTIVATE, lambda evt: self.viewer.OnPaint(None))
+    self.Bind(wx.EVT_ACTIVATE, self.OnActive)
     self.viewer.SetFocus()
+
+  def OnActive (self, event) :
+    if (self.IsShown()) :
+      self.viewer.Refresh()
 
   def create_viewer_panel (self) :
     self.viewer = view_3d.hklview_3d(self, size=(800,600),
