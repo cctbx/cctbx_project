@@ -1,0 +1,94 @@
+For the general purpose of this software see doc.txt, for more
+documentation docfunctions.txt, for how to start see below.
+
+------------------------------------------------------------------
+DELIVERED FILES
+  readme : this file
+  doc.txt : describes general purpose and an application issue
+  docfunctions.txt : documentation of the library functions.
+  cmaes_interface.h : User interface header.
+  example1.c : Very short example source code. The purpose of
+               the example codes is to be edited/extended.
+  example2.c : implements additional restarts with increasing
+               population size (Auger & Hansen 2005).
+  example3.c : (future versions) implements an additional
+               uncertainty handling (Hansen et al 2009).
+  cmaes.h : Header, e.g. declaration of struct cmaes_t.
+  cmaes.c : Source code.
+  initials.par : Parameters to be read by the cmaes, e.g. problem
+      dimension, initial search point and initial standard deviation.
+      This file should be edited.
+  signals.par : File for controlling the running program. Printing
+      or writing to a file/console can be set on/off while the program
+      is running. Regular termination can be forced. On delivery
+      the writing is in accordance with the plotting using:
+  plotcmaesdat.sci : Plots default output files in Scilab, a free
+      and easy to install Matlab "clone".
+
+FILES YOU MAY NEED TO EDIT
+  example?.c:  Plug in the objective function (pointer) that should
+    be minimized.
+  initials.par: Parameter file for changing e.g. initial values and
+    stopping criteria without recompiling.
+  signals.par: File to control termination and output during
+    runtime.
+
+
+Output files written by cmaes_t:
+  actparcmaes.par : Parameters as actually used by the program. The
+                    actual parameter setting is appended to the file
+                    after each start of the cmaes.
+  errcmaes.err  : Error messages.
+
+
+------------------------------------------------------------------
+HOW TO START:
+
+  0) Unpack tar ball: under Linux, MSYS, etc... typing
+     "tar -xzf cmaes_c.tar.gz" unpacks all files into a folder cma.
+
+  A1) Take five minutes to look at file example1.c.
+
+  A2) You might have a glance at the documentation provided in file
+     docfunctions.txt.
+
+  A3) You might have a glance at initials.par, where input parameters
+     are defined.
+
+  B1) Compile and run the example program. Compilation e.g. with
+     the GNU c-compiler:
+        "gcc -Wall -lm -o evo cmaes.c example1.c "
+     and run with "evo" or "./evo". Take a look at the output.
+
+  B2a) (optional but highly recommended) Invoke Scilab (freely available
+     for Linux/Windows/Mac) or Matlab, change to the working directory
+     and type (Scilab)
+        getf('plotcmaesdat.sci'); plotcmaesdat;
+     or (Matlab)
+        plotcmaesdat;
+     You need to have the file plotcmaesdat.sci or .m and the
+     output data files in the working directory. You get a nice plot
+     of the executed run.
+
+  B2b) (optional) Change (increase) problem dimension and/or problem
+     number in file initials.par and re-run.
+
+  B2c) (optional) Change problem dimension in initials.par to 300 and
+     change output verbosity via file signals.par while the program
+     is running: change e.g. "print fewinfo 200" into "print fewinfo
+     -200" *and back*. Read comments.
+
+  B2d) Change back problem dimension.
+
+  5) Now you are ready to inspect and edit example2.c or example3.c
+    to plug in the function you want to optimize. Refer to doc.txt for
+    a practical issue on objective function design. Refer to
+    docfunctions.txt to find more documentation about the functions in
+    this package.
+
+  6) Check "obligatory settings" part in initials.par regarding your
+     function. Make sure that the scale of all objective parameter
+     components of the function is somewhat similar and sigma
+     corresponds to about 1/4 of the respective search intervals.
+
+  7) output files are overwritten with each program call.

@@ -1,0 +1,19 @@
+import libtbx.load_env
+import os
+Import("env_etc")
+
+env_etc.cma_es_dist = libtbx.env.dist_path("cma_es")
+env_etc.cma_es_include = os.path.dirname(env_etc.cma_es_dist)
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env_bpl = env_boost_python_ext.Copy()
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=[env_etc.cma_es_include])
+
+env_bpl.SharedLibrary(
+  target = "#lib/cma_es_ext",
+  source = ['cma_es_ext.cpp',
+            'cma/cmaes.cpp',
+            ])
