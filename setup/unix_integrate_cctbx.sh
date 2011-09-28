@@ -67,8 +67,17 @@ fi
 
 # Resolve option values ------------------------------------------------------
 
+act_uid="$(id -u)"
+
 if ! PYTHON_EXE="$(libtbx.show_python_sys_executable)"; then
-    echo "cctbx scripts are not in the PATH!" >&2 ; exit 2
+    echo "cctbx scripts are not in the PATH!" >&2
+    if [ "x${act_uid}" = x0 ]; then
+        echo "If run from sudo, you may need to execute this as"
+        echo ""
+        echo "    sudo /path/to/libtbx.sh $MYBASENAME"
+        echo ""
+    fi
+    exit 2
 fi
 PYTHON_VERSION="$("${PYTHON_EXE}" -c \
     'import sys; print ".".join(sys.version.split(".")[:2])')"
@@ -142,6 +151,11 @@ action_libs() {
     fi
     find "${my_libtbx_libpath}" -maxdepth 1 -type f -name 'lib*.so' ${bprule} \
         -exec cp -f {} "${act_libdir}/" \;
+    if [ "x${act_uid}" = x0 ] && type ldconfig >/dev/null; then
+        echo "---------------------------------------------------------------------"
+        echo "NOTE: You may need to run ldconfig to update dynamic libraries cache."
+        echo "---------------------------------------------------------------------"
+    fi
 }
 
 # includes -- install symlinks to the header files ---------------------------
