@@ -41,23 +41,23 @@ def test_cma_es():
   assert(approx_equal(x_final,center,eps=1e-6))
 
 def test_cma_es_rosebrock_n(M=10):
- 
+
   def funct(x,y):
     result = 0
     for xx,yy in zip(x,y):
       result+=100.0*((yy-xx*xx)**2.0) + (1-xx)**2.0
-    return result     
+    return result
 
   N=M*2
   x  = flex.double(N,10.0)
   sd = flex.double(N,3.0)
   m = cma_es(N,x,sd)
-  
+
   while ( not m.converged() ):
     # sample population
     p = m.sample_population()
     pop_size = p.accessor().all()[0]
-    
+
     # update objective function
     v = flex.double(pop_size)
     for ii in range(pop_size):
@@ -71,7 +71,7 @@ def test_cma_es_rosebrock_n(M=10):
     print
 
   x_final = m.get_result()
-  print list(x_final) 
+  print list(x_final)
 
 
 
@@ -101,5 +101,4 @@ def test_cma_es_file():
 if (__name__ == '__main__'):
   test_cma_es()
   test_cma_es_file()
-  test_cma_es_rosebrock_n(M=5)
   print 'Ok'
