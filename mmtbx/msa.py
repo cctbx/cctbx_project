@@ -47,6 +47,7 @@ class align_pdb_residues (object) :
     self._name_lookup = None
     self.run_alignment(out=out)
     self.build_lookup_table()
+    self.out = None # XXX required for pickling
 
   def run_alignment (self, out=None) :
     use_pdb_sequence = False
@@ -195,6 +196,13 @@ class align_pdb_residues (object) :
       resids.append(self._resids_padded[name][index])
     return resids
 
+  def get_reference_resid (self, index) :
+    if (self.pdb_offsets is None) :
+      resids = self._resids_padded[self.reference_sequence_name]
+      return resids[index]
+    else :
+      return index + 1
+
   def convert_resid (self, pdb_name, resid) :
     assert (self.pdb_resids is not None)
     assert (isinstance(resid, str))
@@ -242,7 +250,6 @@ Dump of full alignment:
 def align_pdb_hierarchies (hierarchies,
                            hierarchy_names,
                            reference_hierarchy=None,
-                           assume_consecutive_numbering=None,
                            substitute_names=True,
                            log=None) :
   """
@@ -255,20 +262,7 @@ def align_pdb_hierarchies (hierarchies,
   assert (reference_hierarchy is None)
   if (log is None) :
     log = sys.stdout
-  if (assume_consecutive_numbering is None) :
-    # determine whether insertion codes are used - if so, index by resid
-    # instead of resseq
-    for hierarchy in hierarchies :
-      for atom in hierarchy.atoms_with_labels() :
-        if (atom.icode != ' ') :
-          assume_consecutive_numbering = False
-          break
-  if (assume_consecutive_numbering) :
-    pdb_offsets = []
-    pdb_resids = None
-  else :
-    pdb_offsets = None
-    pdb_resids = []
+  pdb_resids = []
   i = 0
   reference_index = None
   pdb_sequences = []
@@ -279,20 +273,10 @@ def align_pdb_hierarchies (hierarchies,
   for hierarchy, name in zip(hierarchies, hierarchy_names) :
     assert (hierarchy.overall_counts().n_chains == 1)
     main_conf = hierarchy.models()[0].chains()[0].conformers()[0]
-    chain_seq = main_conf.as_padded_sequence(
-      skip_insertions=assume_consecutive_numbering)
+    chain_seq = main_conf.as_padded_sequence(skip_insertions=False)
     pdb_sequences.append(chain_seq)
-    if (assume_consecutive_numbering) :
-      first_residue = main_conf.residues()[0]
-      resseq_start = first_residue.resseq_as_int()
-      if (resseq_start < 1) :
-        offset = abs(resseq_start) + 1
-      else :
-        offset = 0
-      pdb_offsets.append(offset)
-    else :
-      resids = main_conf.get_residue_ids(skip_insertions=False)
-      pdb_resids.append([ strip(resid) for resid in resids ])
+    resids = main_conf.get_residue_ids(skip_insertions=False)
+    pdb_resids.append([ strip(resid) for resid in resids ])
     if (hierarchy is reference_hierarchy) :
       reference_index = i
       print >> log, "  Using %s for sequence numbering" % name
@@ -304,7 +288,6 @@ def align_pdb_hierarchies (hierarchies,
     msa_manager = align_pdb_residues(
       pdb_sequences=pdb_sequences,
       pdb_names=pdb_names,
-      pdb_offsets=pdb_offsets,
       pdb_resids=pdb_resids,
       reference_index=reference_index,
       substitute_names=substitute_names,
@@ -312,26 +295,15 @@ def align_pdb_hierarchies (hierarchies,
   else :
     assert (reference_hierarchy.overall_counts().n_chains == 1)
     main_conf = reference_hierarchy.models()[0].chains()[0].conformers()[0]
-    reference_sequence = main_conf.as_padded_sequence(
-      skip_insertions=assume_consecutive_numbering)
+    reference_sequence = main_conf.as_padded_sequence(skip_insertions=False)
     reference_sequence_offset = reference_sequence_resids = None
-    if (assume_consecutive_numbering) :
-      first_residue = main_conf.residues()[0]
-      resseq_start = first_residue.resseq_as_int()
-      if (resseq_start < 1) :
-        reference_sequence_offset = abs(resseq_start) + 1
-      else :
-        reference_sequence_offset = 0
-    else :
-      resids = main_conf.get_residue_ids(skip_insertions=False)
-      reference_sequence_resids = [ strip(resid) for resid in resids ]
+    resids = main_conf.get_residue_ids(skip_insertions=False)
+    reference_sequence_resids = [ strip(resid) for resid in resids ]
     msa_manager = align_pdb_residues(
       pdb_sequences=pdb_sequences,
       pdb_names=pdb_names,
-      pdb_offsets=pdb_offsets,
       pdb_resids=pdb_resids,
       reference_sequence=reference_sequence,
-      reference_sequence_offset=reference_sequence_offset,
       reference_sequence_resids=reference_sequence_resids,
       substitute_names=substitute_names,
       out=self.log)

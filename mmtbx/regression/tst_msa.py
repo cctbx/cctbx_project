@@ -89,6 +89,8 @@ ATOM     48  CA  TYR A  10       9.159   2.144   7.299  1.00 15.18           C
     assert (m.get_resid_array_index("pdb2", "10") == 11)
     assert (m.get_all_resids_at_index(0) == [None, None])
     assert (m.get_all_resids_at_index(7) == ["6A", None])
+    assert (m.get_reference_resid(7) == "6A")
+    assert (m.get_reference_resid(0) is None)
   # test GUI applet runtime
   pdb_str = """\
 %s
