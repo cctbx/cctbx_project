@@ -237,6 +237,7 @@ cma_es/cma/plotcmaesdat.sci -text
 cma_es/cma/readme -text
 cma_es/cma/signals.par -text
 cma_es/cma_es_ext.cpp -text
+cma_es/cma_es_interface.py -text
 cma_es/libtbx_config -text
 cma_es/run_tests.py -text
 cma_es/tst_cma_es.py -text
