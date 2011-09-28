@@ -84,7 +84,7 @@ int main (int argc, char *argv[])
     std::cout << tree_walker_errors[i] << "\n";
   }
   if (lexer_errors.size() + parser_errors.size() + tree_walker_errors.size() == 0) {
-    std::cout << "Congratulations! " << argv[1] << " is a valid CIF file!\n";
+    std::cout << "Congratulations! " << argv[1] << " is a syntactically correct CIF file!\n";
   }
 
   return 0;
