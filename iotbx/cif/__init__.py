@@ -49,15 +49,17 @@ class reader(object):
     self.builder = builder
     if file_path is not None:
       file_object = smart_open.for_reading(file_path)
+    else:
+      file_path = "memory"
     if file_object is not None:
       input_string = file_object.read()
-    self.parser = ext.fast_reader(input_string, builder, strict)
+    self.parser = ext.fast_reader(builder, input_string, file_path, strict)
     if raise_if_errors and len(self.parser.lexer_errors()):
       raise CifParserError(self.parser.lexer_errors()[0])
     if raise_if_errors and len(self.parser.parser_errors()):
       raise CifParserError(self.parser.parser_errors()[0])
     if raise_if_errors and len(self.parser.tree_walker_errors()):
-      raise CifParserError(self.parser.tree_walker_errors())
+      raise CifParserError(self.parser.tree_walker_errors()[0])
 
   def model(self):
     return self.builder.model()

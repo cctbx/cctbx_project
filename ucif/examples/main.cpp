@@ -66,7 +66,7 @@ int main (int argc, char *argv[])
 
   myfile.close();
   ucif::example::my_builder builder;
-  ucif::parser parsed(input_string, &builder, filename, /*strict=*/true);
+  ucif::parser parsed(&builder, input_string, filename, /*strict=*/true);
 
   // Were there any lexing/parsing/tree walking errors?
   std::vector<std::string> lexer_errors =
