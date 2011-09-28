@@ -48,6 +48,10 @@ struct my_builder : builder_base
 
 int main (int argc, char *argv[])
 {
+  if (argc < 2) {
+    std::cout << "Please provide a path to a CIF file.\n";
+    return 0;
+  }
   std::string filename(argv[1]);
   std::string input_string;
   std::ifstream myfile(argv[1], std::ifstream::in);
