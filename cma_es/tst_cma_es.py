@@ -40,6 +40,44 @@ def test_cma_es():
   x_final = m.get_result()
   assert(approx_equal(x_final,center,eps=1e-6))
 
+def test_cma_es_rosebrock_n(M=10):
+ 
+  def funct(x,y):
+    result = 0
+    for xx,yy in zip(x,y):
+      result+=100.0*((yy-xx*xx)**2.0) + (1-xx)**2.0
+    return result     
+
+  N=M*2
+  x  = flex.double(N,10.0)
+  sd = flex.double(N,3.0)
+  m = cma_es(N,x,sd)
+  
+  while ( not m.converged() ):
+    # sample population
+    p = m.sample_population()
+    pop_size = p.accessor().all()[0]
+    
+    # update objective function
+    v = flex.double(pop_size)
+    for ii in range(pop_size):
+      vector = p[(ii*N):(ii*N + N)]
+      x = vector[0:M]
+      y = vector[M:]
+      v[ii] = funct(x,y)
+    m.update_distribution(v)
+    print list(m.get_result())
+    print flex.min(v)
+    print
+
+  x_final = m.get_result()
+  print list(x_final) 
+
+
+
+
+
+
 def test_cma_es_file():
   import libtbx.load_env
   m = cma_es(libtbx.env.dist_path("cma_es") + "/cma/initials.par")
@@ -63,4 +101,5 @@ def test_cma_es_file():
 if (__name__ == '__main__'):
   test_cma_es()
   test_cma_es_file()
+  test_cma_es_rosebrock_n(M=5)
   print 'Ok'
