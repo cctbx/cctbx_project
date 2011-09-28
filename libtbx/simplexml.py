@@ -32,5 +32,5 @@ class SimpleNode:
     if len(self.children)>0:
       print >>channel,"%s</%s>"%(' '*indent,self.tag)
     else:
-      channel.seek(channel.tell()-1)
-      print >>channel,"\b/>"
+      channel.seek(channel.tell()-2)
+      print >>channel,"/>"
