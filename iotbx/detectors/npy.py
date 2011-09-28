@@ -102,6 +102,15 @@ class NpyImage(DetectorImageBase):
 
     if len(phil.distl.detector_tiling) <= 16:
       # assume this is the 2x2 CS Pad for spectroscopy; do not use tile translations
+      if phil.distl.detector_format_version in ["CXI 4.1"]:
+        # For the Run 4 CXI detector, the first sensor is inactive and pegged high(16K).
+	# For calculating display contrast it is better to eliminate the sensor.
+	if self.size1 == 370: #there are two sensors; we should eliminate the first
+	  self.parameters['SIZE1'] = 185
+	  self.linearintdata = self.linearintdata[int(len(self.linearintdata)/2):]
+	  self.linearintdata.reshape(flex.grid(self.size1,self.size2))
+	print "CXI 2x2 size",self.size1,self.size2, self.linearintdata.focus()
+      
       return
 
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
