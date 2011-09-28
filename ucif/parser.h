@@ -21,10 +21,14 @@ class parser
 
     parser() {}
 
-    parser(std::string input_string, builder_base* builder, bool strict=true)
+    parser(builder_base* builder,
+           std::string input_string,
+           std::string filename="memory", bool strict=true)
     {
-      input = antlr3NewAsciiStringInPlaceStream(pANTLR3_UINT8(
-        input_string.c_str()), input_string.size(), pANTLR3_UINT8("memory"));
+      input = antlr3NewAsciiStringInPlaceStream(
+        pANTLR3_UINT8(input_string.c_str()),
+        input_string.size(),
+        pANTLR3_UINT8(filename.c_str()));
       lxr = cifLexerNew(input);
       tstream = antlr3CommonTokenStreamSourceNew(
         ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));

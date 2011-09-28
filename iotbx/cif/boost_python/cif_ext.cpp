@@ -86,9 +86,11 @@ namespace iotbx { namespace cif {
 
   struct parser_wrapper : ucif::parser
   {
-    parser_wrapper(std::string filename, ucif::builder_base* builder,
+    parser_wrapper(ucif::builder_base* builder,
+                   std::string input_string,
+                   std::string filename="memory",
                    bool strict=true)
-    : ucif::parser(filename, builder, strict) {}
+    : ucif::parser(builder, input_string, filename, strict) {}
 
     scitbx::af::shared<std::string>& tree_walker_errors() {
       if (tree_psr != NULL) {
@@ -110,10 +112,13 @@ namespace iotbx { namespace cif {
   };
 
   static iotbx::cif::parser_wrapper* run_cif_parser(
-    std::string input_string, boost::python::object& builder_, bool strict)
+    boost::python::object& builder_,
+    std::string input_string,
+    std::string filename, bool strict)
   {
     iotbx::cif::py_builder builder(builder_);
-    return new iotbx::cif::parser_wrapper(input_string, &builder, strict);
+    return new iotbx::cif::parser_wrapper(
+      &builder, input_string, filename, strict);
   }
 
   // Convenience function for sorting a single array of
@@ -146,7 +151,8 @@ namespace boost_python {
       class_<wt, boost::noncopyable>(name, no_init)
         .def("__init__", make_constructor(run_cif_parser,
           default_call_policies(),
-          (arg("input_string"), arg("builder"), arg("strict")=true)))
+          (arg("builder"), arg("input_string"),
+           arg("filename"), arg("strict")=true)))
         .def("tree_walker_errors", &wt::tree_walker_errors, rbv())
         .def("parser_errors", &wt::parser_errors, rbv())
         .def("lexer_errors", &wt::lexer_errors, rbv())
