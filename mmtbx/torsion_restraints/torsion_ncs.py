@@ -901,3 +901,188 @@ class torsion_ncs(object):
   def max(self,x,y):
     if x>=y: return x
     return y
+
+#split out functions
+def determine_ncs_groups(pdb_hierarchy,
+                         params=None,
+                         log=None):
+  sel_cache = pdb_hierarchy.atom_selection_cache()
+  if params is None:
+    params = torsion_ncs_params.extract()
+  if log is None:
+    log = sys.stdout
+  ncs_groups = []
+  alignments = {}
+  used_chains = []
+  sequences = {}
+  padded_sequences = {}
+  structures = {}
+  residue_start = {}
+  residue_finish = {}
+  pair_hash = {}
+  chains = pdb_hierarchy.models()[0].chains()
+  for i, chain_i in enumerate(chains):
+    found_conformer = False
+    start = 0
+    finish = 0
+    for conformer in chain_i.conformers():
+      if not conformer.is_protein() and not conformer.is_na():
+        continue
+      else:
+        found_conformer = True
+        start = conformer.residues()[0].resseq_as_int()
+        finish = \
+          conformer.residues()[len(conformer.residues())-1].resseq_as_int()
+    if not found_conformer:
+      continue
+    chain_i_str = "chain '%s'" % chain_i.id
+
+    chain_i_list = [chain_i_str]
+    sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
+                 cache=sel_cache,
+                 string_list=chain_i_list))
+    chain_seq, chain_seq_padded, chain_structures = \
+      utils.extract_sequence_and_sites(
+        pdb_hierarchy=pdb_hierarchy,
+        selection=sel_atoms_i)
+    sequences[chain_i_str] = chain_seq
+    padded_sequences[chain_i_str] = chain_seq_padded
+    structures[chain_i_str] = chain_structures
+    residue_start[chain_i_str] = start
+    residue_finish[chain_i_str] = finish
+
+  for i, chain_i in enumerate(chains):
+    found_conformer = False
+    for conformer in chain_i.conformers():
+      if not conformer.is_protein() and not conformer.is_na():
+        continue
+      else:
+        found_conformer = True
+    if not found_conformer:
+      continue
+    chain_i_str = "chain '%s'" % chain_i.id
+    for chain_j in chains[i+1:]:
+      found_conformer = False
+      for conformer in chain_j.conformers():
+        if not conformer.is_protein() and not conformer.is_na():
+          continue
+        else:
+          found_conformer = True
+      if not found_conformer:
+        continue
+      chain_j_str = "chain '%s'" % chain_j.id
+      selections = (chain_i_str, chain_j_str)
+      seq_pair = (sequences[chain_i_str], sequences[chain_j_str])
+      seq_pair_padded = (padded_sequences[chain_i_str],
+                         padded_sequences[chain_j_str])
+      struct_pair = (structures[chain_i_str], structures[chain_j_str])
+      residue_match_map = _alignment(pdb_hierarchy=pdb_hierarchy,
+                            params=params,
+                            selections=selections,
+                            sequences=seq_pair,
+                            padded_sequences=seq_pair_padded,
+                            structures=struct_pair,
+                            log=log)
+      if ( min(len(residue_match_map),
+               chain_i.residue_groups_size(),
+               chain_j.residue_groups_size()) \
+           / max(len(residue_match_map),
+                 chain_i.residue_groups_size(),
+                 chain_j.residue_groups_size()) \
+           >= params.similarity ):
+        key = (chain_i_str, chain_j_str)
+        alignments[key] = residue_match_map
+        if used_chains is not None:
+          if chain_i.id in used_chains:
+            continue
+        try:
+          pair_hash[chain_i.id].append(chain_j.id)
+        except Exception:
+          pair_hash[chain_i.id] = []
+          pair_hash[chain_i.id].append(chain_j.id)
+        used_chains.append(chain_j.id)
+
+  for key in pair_hash.keys():
+    ncs_set = []
+    chain_str = "chain '%s'" % key
+    ncs_set.append(chain_str)
+    for add_chain in pair_hash[key]:
+      chain_str = "chain '%s'" % add_chain
+      ncs_set.append(chain_str)
+    ncs_groups.append(ncs_set)
+
+  return ncs_groups
+
+def _alignment(pdb_hierarchy,
+               params,
+               selections,
+               sequences,
+               padded_sequences,
+               structures,
+               log=None):
+  if(log is None): log = sys.stdout
+  res_match_hash = {}
+  model_mseq_res_hash = {}
+  ref_mseq_res_hash = {}
+  model_seq = sequences[0]
+  model_seq_padded = padded_sequences[0]
+  model_structures = structures[0]
+  ref_seq = sequences[1]
+  ref_seq_padded = padded_sequences[1]
+  ref_structures = structures[1]
+  for struct in model_structures:
+    model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+  for struct in ref_structures:
+    ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+  if model_seq == ref_seq:
+    pg = mmtbx.alignment.pairwise_global(
+           model_seq,
+           ref_seq)
+  else:
+    pg = mmtbx.alignment.pairwise_global(
+           model_seq_padded,
+           ref_seq_padded)
+  offset_i = 0
+  offset_j = 0
+  i = 0
+  j = 0
+  seq_j = pg.result2[j]
+  for seq_i in pg.result1:
+    seq_j = pg.result2[j]
+    if seq_i == seq_j and seq_i != 'X' and seq_j != 'X':
+      res_match_hash[model_mseq_res_hash[i-offset_i]] = \
+        ref_mseq_res_hash[j-offset_j]
+      i += 1
+      j += 1
+    else:
+      if seq_i == 'X' and seq_j == 'X':
+        i += 1
+        j += 1
+        offset_i += 1
+        offset_j += 1
+      elif (seq_i == 'X' and seq_j == '-') or \
+           (seq_i == '-' and seq_j == 'X'):
+        i += 1
+        j += 1
+        offset_i += 1
+        offset_j += 1
+      elif seq_i == 'X':
+        i += 1
+        j += 1
+        offset_i += 1
+      elif seq_j == 'X':
+        i += 1
+        j += 1
+        offset_j += 1
+      elif seq_i == '-':
+        i += 1
+        j += 1
+        offset_i += 1
+      elif seq_j == '-':
+        i += 1
+        j += 1
+        offset_j += 1
+      else:
+        i += 1
+        j += 1
+  return res_match_hash
