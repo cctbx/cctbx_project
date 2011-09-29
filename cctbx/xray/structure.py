@@ -872,11 +872,11 @@ class structure(crystal.special_position_settings):
     result = flex.bool()
     for i, sct in enumerate(scattering_types):
       if ignore_atoms_with_alternative_conformations:
-        if scatterers[i].label[9:10]!=" ": 
+        if scatterers[i].label[9:10]!=" ":
           result.append(False)
           continue
       if include_only_atoms_with_alternative_conformations:
-        if scatterers[i].label[9:10]==" ": 
+        if scatterers[i].label[9:10]==" ":
           result.append(False)
           continue
       if(sct.strip() in ['H','D']): result.append(False)
@@ -900,14 +900,14 @@ class structure(crystal.special_position_settings):
         result.append(False)
         continue
       if ignore_atoms_with_alternative_conformations:
-        if sc.label[9:10]!=" ": 
+        if sc.label[9:10]!=" ":
           result.append(False)
           continue
       if include_only_atoms_with_alternative_conformations:
-        if sc.label[9:10]==" ": 
+        if sc.label[9:10]==" ":
           result.append(False)
           continue
-      for name in atom_names: 
+      for name in atom_names:
         if(sc.label[5:9].find("%s " % name)>-1 and
            sc.scattering_type==name[0]
            ):
