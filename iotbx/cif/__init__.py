@@ -21,7 +21,7 @@ from libtbx.utils import flat_list
 from libtbx import smart_open
 from scitbx import matrix
 
-import math, os, sys
+import math, sys
 
 distances_as_cif_loop = geometry.distances_as_cif_loop
 angles_as_cif_loop = geometry.angles_as_cif_loop
