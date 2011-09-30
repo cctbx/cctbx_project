@@ -1,5 +1,11 @@
-LIBTBX_ANTLR3="../../../antlr3"
-gcc -c -I $LIBTBX_ANTLR3/include/ \
+if [ ! -n "$LIBTBX_ANTLR3" ]; then
+  LIBTBX_ANTLR3="../../../antlr3"
+fi
+if [ ! -n "$LIBTBX_UCIF" ]; then
+  LIBTBX_UCIF="../"
+fi
+echo $LIBTBX_UCIF
+gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
   "$LIBTBX_ANTLR3/src/antlr3baserecognizer.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetree.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetreeadaptor.c"\
@@ -26,7 +32,9 @@ gcc -c -I $LIBTBX_ANTLR3/include/ \
   "$LIBTBX_ANTLR3/src/antlr3treeparser.c"\
   "$LIBTBX_ANTLR3/src/antlr3ucs2inputstream.c"
 
-ar -r libantlr3.a            \
+g++ -o cif_parser -I $LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 -I$LIBTBX_UCIF/../ \
+$LIBTBX_UCIF/examples/main.cpp $LIBTBX_UCIF/cifLexer.cpp \
+$LIBTBX_UCIF/cifParser.cpp $LIBTBX_UCIF/cifWalker.cpp \
 antlr3baserecognizer.o       \
 antlr3commontree.o           \
 antlr3encodings.o            \
@@ -52,6 +60,3 @@ antlr3commontoken.o          \
 antlr3debughandlers.o        \
 antlr3lexer.o                \
 antlr3treeparser.o
-
-g++ -o cif_parser -I $LIBTBX_ANTLR3/include/ -I ../../ main.cpp \
-../cifLexer.cpp ../cifParser.cpp ../cifWalker.cpp libantlr3.a
