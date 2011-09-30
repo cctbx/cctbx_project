@@ -326,13 +326,37 @@ class refine_adp(object):
       #
       self.target_weights.adp_weights_result.wx = w_best
       self.target_weights.adp_weights_result.wx_scale = 1
-      self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
-        self.save_scatterers.deep_copy())
+      best_u_cart = None
+      best_u_iso = None
+      for result in trial_results :
+        if (result.weight == w_best) :
+          best_u_cart = result.u_cart
+          best_u_iso = result.u_iso
+          break
+      if (best_u_iso is None) : # XXX this probably shouldn't happen...
+        self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
+          self.save_scatterers.deep_copy())
+      else :
+        assert (best_u_cart is not None)
+        xrs = self.fmodels.fmodel_xray().xray_structure
+        selection_aniso = xrs.use_u_aniso()
+        selection_iso = xrs.use_u_iso()
+        xrs.set_u_cart(
+          u_cart=best_u_cart,
+          selection=selection_aniso.iselection())
+        xrs.set_u_iso(
+          values=best_u_iso,
+          selection=selection_iso)
       self.fmodels.update_xray_structure(
         xray_structure = self.fmodels.fmodel_xray().xray_structure,
         update_f_calc  = True)
       print >> self.log, "Accepted refinement result:"
-      minimized = self.minimize()
+      if (best_u_cart is None) :
+        minimized = self.minimize()
+      else :
+        # XXX reset alpha/beta parameters - if this is not done, the assertion
+        # below will fail
+        fmodels.create_target_functors()
       self.show(weight=w_best)
     #
     assert approx_equal(self.fmodels.fmodel_xray().target_w(),
@@ -370,6 +394,7 @@ class refine_adp(object):
     if (show_neutron) and (self.fmodels.fmodel_neutron() is not None) :
       neutron_r_work = self.fmodels.fmodel_neutron().r_work()*100.
       neutron_r_free = self.fmodels.fmodel_neutron().r_free()*100.
+    xrs = self.fmodels.fmodel_xray().xray_structure
     result = weight_result(
       r_work=r_work,
       r_free=r_free,
@@ -378,7 +403,9 @@ class refine_adp(object):
       weight=weight,
       xray_target=self.fmodels.fmodel_xray().target_w(),
       neutron_r_work=neutron_r_work,
-      neutron_r_free=neutron_r_free)
+      neutron_r_free=neutron_r_free,
+      u_cart=xrs.extract_u_cart_plus_u_iso(),
+      u_iso=xrs.extract_u_iso_or_u_equiv())
     if (print_stats) :
       result.show(out=self.log)
     return result
@@ -443,7 +470,7 @@ class refine_adp(object):
 
 class weight_result (object) :
   def __init__ (self, r_work, r_free, delta_b, mean_b, weight, xray_target,
-      neutron_r_work, neutron_r_free) :
+      neutron_r_work, neutron_r_free, u_cart, u_iso) :
     adopt_init_args(self, locals())
     self.r_gap = r_free - r_work
 
