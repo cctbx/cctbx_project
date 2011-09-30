@@ -61,13 +61,19 @@ torsion_ncs_params = iotbx.phil.parse("""
  restraint_group
   .multiple=True
   .optional=True
+  .caption = These atom selections define groups of residues whose dihedral \
+    angles will be restrained to be similar.  This is normally done \
+    automatically, and the restraints are designed to release dihedral angles \
+    which are genuinely different.  You do not have to enter groups now \
+    unless you wish to view and/or edit them prior to running phenix.refine.
   .short_caption=Torsion NCS restraint group
-  .style = noauto
+  .style = noauto box caption_img:icons/custom/ncs_tb.png
  {
   selection=None
     .type=atom_selection
     .short_caption=Restrained selection
     .multiple=True
+    .input_size = 540
     .style = use_list
   b_factor_weight=10
     .type=float
@@ -1086,3 +1092,14 @@ def _alignment(pdb_hierarchy,
         i += 1
         j += 1
   return res_match_hash
+
+# XXX wrapper for running in Phenix GUI
+class _run_determine_ncs_groups (object) :
+  def __init__ (self, params, pdb_hierarchy) :
+    self.params = params
+    self.pdb_hierarchy = pdb_hierarchy
+
+  def __call__ (self, *args, **kwds) :
+    return determine_ncs_groups(
+      params=self.params,
+      pdb_hierarchy=self.pdb_hierarchy)
