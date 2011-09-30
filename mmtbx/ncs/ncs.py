@@ -36,6 +36,70 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._exclude_d=exclude_d
 
 
+  def apply_rt_mx_to_matrix(self,rt_mx=None,matrix=None):
+    new_matrix=rt_mx.r*matrix
+    return new_matrix
+
+  def apply_rt_mx_to_vector(self,rt_mx=None,vector=None):
+    new_vector=rt_mx * vector
+    return new_vector
+
+  def copy_rot_trans(self,list_of_matrices,list_of_translations,rt_mx=None):
+    # if rt_mx is None, then just return copy of what we have
+    from copy import deepcopy
+    new_list_of_matrices=[]
+    new_list_of_translations=[]
+    for r,t in zip(list_of_matrices,list_of_translations):
+      if rt_mx is None:
+        new_list_of_matrices.append(deepcopy(r))
+        new_list_of_translations.append(deepcopy(t))
+      else:  # apply R' = A R A_inv   and T' = (I - A R A_inv )*b + A T
+        a=rt_mx.r
+        a_inv=a.inverse()
+        b=rt_mx.t
+        r_prime=a * r * a_inv
+        t_prime=b - r_prime*b + a*t
+        new_list_of_matrices.append(r_prime)
+        new_list_of_translations.append(t_prime)
+    return new_list_of_matrices,new_list_of_translations
+
+  def copy_vector_list(self,list_of_vectors,rt_mx=None):
+    from copy import deepcopy
+    new_vector_list=[]
+    for vector in list_of_vectors:
+      if rt_mx is None:
+        new_vector=deepcopy(vector)
+      else:
+        new_vector=self.apply_rt_mx_to_vector(rt_mx=rt_mx,vector=vector)
+      new_vector_list.append(new_vector)
+    return new_vector_list
+
+  def deep_copy(self,rt_mx=None):  # make full copy; 
+    # optionally apply rt_mx as change-of-basis operator
+   
+    from mmtbx.ncs.ncs import ncs
+    from copy import deepcopy
+    new=ncs_group()
+    new._chain_residue_id=self._chain_residue_id
+    new._rmsd_list=deepcopy(self._rmsd_list)
+    new._residues_in_common_list=deepcopy(self._residues_in_common_list)
+
+    # centers simply get affected by the change of basis operator if present
+    new._centers=self.copy_vector_list(self._centers,rt_mx=rt_mx)
+
+    # matrices and translations may need to be adjusted if rt_mx is not None
+    new._rota_matrices,new._translations_orth=self.copy_rot_trans(
+       self._rota_matrices,self._translations_orth,rt_mx=rt_mx)
+
+    new._n_ncs_oper=deepcopy(self._n_ncs_oper)
+    new._source_of_ncs_info=self._source_of_ncs_info
+    new._ncs_domain_pdb=deepcopy(self._ncs_domain_pdb)
+    new._cc=deepcopy(self._cc)
+    new._exclude_h=self._exclude_h
+    new._exclude_d=self._exclude_d
+    return new
+
+
   def display_summary(self):
     text=""
     text+="\nSummary of NCS group with "+str(self.n_ncs_oper())+" operators:"
@@ -273,6 +337,23 @@ class ncs:
     self._ncs_read=False
     self._exclude_h=exclude_h
     self._exclude_d=exclude_d
+
+  def deep_copy(self,rt_mx=None):  # make a copy
+    from mmtbx.ncs.ncs import ncs
+
+    # make new ncs object with same overall params as this one:
+    new=ncs(exclude_h=self._exclude_h,exclude_d=self._exclude_d)
+    new.source_info=self.source_info
+    new._ncs_read=self._ncs_read
+
+    # deep_copy over all the ncs groups:
+    for ncs_group in self._ncs_groups:
+      new._ncs_groups.append(ncs_group.deep_copy(rt_mx=rt_mx))
+    return new
+
+  def change_of_basis(self,change_of_basis_operator=None):
+    rt_mx=change_of_basis_operator.c_inv().as_rational() 
+    return self.deep_copy(rt_mx=rt_mx)
 
   def ncs_read(self):
     return self._ncs_read
