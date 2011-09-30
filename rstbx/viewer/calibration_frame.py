@@ -76,7 +76,6 @@ class SBSettingsPanel (SettingsPanel) :
     s.Add(box)
     txt1 = wx.StaticText(self, -1, "Zoom level:")
     box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
     # Zoom control
     self.zoom_ctrl = wx.Choice(self, -1,
