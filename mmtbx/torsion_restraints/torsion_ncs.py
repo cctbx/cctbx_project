@@ -912,6 +912,7 @@ class torsion_ncs(object):
 def determine_ncs_groups(pdb_hierarchy,
                          params=None,
                          log=None):
+  pdb_hierarchy.reset_i_seq_if_necessary()
   sel_cache = pdb_hierarchy.atom_selection_cache()
   if params is None:
     params = torsion_ncs_params.extract()

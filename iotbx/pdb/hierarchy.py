@@ -683,6 +683,12 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       fallback_expected_bond_length=fallback_expected_bond_length,
       fallback_search_max_distance=fallback_search_max_distance)
 
+  def reset_i_seq_if_necessary (self) :
+    atoms = self.atoms()
+    i_seqs = atoms.extract_i_seq()
+    if (i_seqs.all_eq(0)) :
+      atoms.reset_i_seq()
+
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
 
   def residue_groups(self):
