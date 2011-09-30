@@ -271,7 +271,7 @@ def extract_sequence_and_sites(pdb_hierarchy, selection):
             counter += 1
   return "".join(seq), "".join(padded_seq), result
 
-def get_nucleic_acid_one_letter_code(self, resname):
+def get_nucleic_acid_one_letter_code(resname):
   olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
   if olc != "X":
     return "X"
