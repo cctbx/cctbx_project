@@ -80,17 +80,19 @@ class XrayFrame (wx.Frame) :
     item = file_menu.Append(-1, "Save screenshot...")
     self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
 
-  def load_image (self, file_name) :
-    file_name = os.path.abspath(file_name)
-    self._img = rstbx.viewer.image(file_name)
+  def load_image (self, file_name_or_data) :
+    if type(file_name_or_data)==type(""):
+      file_name = os.path.abspath(file_name_or_data)
+    self._img = rstbx.viewer.image(file_name_or_data)
     self.viewer.set_image(self._img)
     self.settings_frame.set_image(self._img)
-    self.SetTitle(file_name)
-    items = self.image_chooser.GetItems()
-    if (not file_name in items) :
-      items.append(file_name)
-    self.image_chooser.SetItems(items)
-    self.image_chooser.SetStringSelection(file_name)
+    if type(file_name_or_data)==type(""):
+      self.SetTitle(file_name_or_data)
+      items = self.image_chooser.GetItems()
+      if (not file_name_or_data in items) :
+        items.append(file_name_or_data)
+      self.image_chooser.SetItems(items)
+      self.image_chooser.SetStringSelection(file_name_or_data)
     self.update_statusbar()
     self.Layout()
 
