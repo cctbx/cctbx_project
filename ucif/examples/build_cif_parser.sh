@@ -4,7 +4,6 @@ fi
 if [ ! -n "$LIBTBX_UCIF" ]; then
   LIBTBX_UCIF="../"
 fi
-echo $LIBTBX_UCIF
 gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
   "$LIBTBX_ANTLR3/src/antlr3baserecognizer.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetree.c"\
