@@ -42,11 +42,28 @@ namespace fem {
     return sign(value, sign_source);
   }
 
+  inline
+  int
+  isign(
+    int const& value,
+    int const& sign_source)
+  {
+    return sign(value, sign_source);
+  }
+
+
   template <typename T>
   inline
   float
   real(
     T const& value) { return static_cast<float>(value); }
+
+  template <typename T>
+  inline
+  float
+  sngl(
+    T const& value) { return static_cast<float>(value); }
+
 
   template <typename T>
   inline
@@ -752,6 +769,7 @@ namespace fem {
   lnblnk(
     str_cref c) { return len_trim(c); }
 
+
   inline
   int
   nint(
@@ -759,6 +777,15 @@ namespace fem {
   {
     return static_cast<int>(std::floor(value+0.5));
   }
+
+  inline
+  int
+  idnint(
+    float const& value)
+  {
+    return static_cast<int>(std::floor(value+0.5));
+  }
+
 
   inline
   int
@@ -791,6 +818,46 @@ namespace fem {
   cmplx(
     double const& re,
     double const& im) { return dcmplx(re, im); }
+
+  //! Assumes ASCII or similar.
+  inline
+  bool
+  llt(
+    str_cref a,
+    str_cref b)
+  {
+    return a < b;
+  }
+
+  //! Assumes ASCII or similar.
+  inline
+  bool
+  lle(
+    str_cref a,
+    str_cref b)
+  {
+    return a <= b;
+  }
+
+  //! Assumes ASCII or similar.
+  inline
+  bool
+  lgt(
+    str_cref a,
+    str_cref b)
+  {
+    return a > b;
+  }
+
+  //! Assumes ASCII or similar.
+  inline
+  bool
+  lge(
+    str_cref a,
+    str_cref b)
+  {
+    return a >= b;
+  }
 
 } // namespace fem
 

@@ -1535,3 +1535,15 @@ recursive_subroutine.f
 |           2|
 |           1|
 |           0|
+intrinsics_legacy.f
+|          -1           0          -1|
+|           1           0           1|
+|           1           0           1|
+|  7.297352569800000E-003  7.2973524E-03  7.297352422028780E-003|
+|          -1          -2|
+|           0           1           2|
+|           1           2|
+| F T T T T T F F T T T T F F F T T T F F F F T T F F F F F T F F F F F F|
+| T T T T T T F T T T T T F F T T T T F F F T T T F F F F T T F F F F F T|
+| F F F F F F T F F F F F T T F F F F T T T F F F T T T T F F T T T T T F|
+| T F F F F F T T F F F F T T T F F F T T T T F F T T T T T F T T T T T T|
