@@ -1,4 +1,4 @@
 {
   "modules_required_for_use": ["cctbx", "fable", "ucif"],
-  "optional_modules": ["ccp4io", "cbflib", "antlr3"],
+  "optional_modules": ["ccp4io", "cbflib"],
 }

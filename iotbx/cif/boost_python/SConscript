@@ -1,9 +1,51 @@
-Import("env_antlr3_iotbx_boost_python_ext", "env_etc")
-env = env_antlr3_iotbx_boost_python_ext.Clone()
+import libtbx.load_env
+import os
+Import("env_iotbx_boost_python_ext", "env_etc")
+env = env_iotbx_boost_python_ext.Clone()
+env.Append(CPPDEFINES=["ANTLR3_NODEBUGGER"]) # XXX not exactly sure why we need this
 
-env.SharedLibrary(target="#lib/iotbx_cif_ext", source=[
+antlr3_dist = libtbx.env.under_dist("ucif", "antlr3")
+antlr3_include = libtbx.env.under_dist("ucif", "antlr3/include")
+
+antlr3_src_files = [
+  "antlr3baserecognizer.c",
+  "antlr3basetree.c",
+  "antlr3basetreeadaptor.c",
+  "antlr3bitset.c",
+  "antlr3collections.c",
+  "antlr3commontoken.c",
+  "antlr3commontree.c",
+  "antlr3commontreeadaptor.c",
+  "antlr3commontreenodestream.c",
+  "antlr3convertutf.c",
+  "antlr3cyclicdfa.c",
+  "antlr3debughandlers.c",
+  "antlr3encodings.c",
+  "antlr3exception.c",
+  "antlr3filestream.c",
+  "antlr3inputstream.c",
+  "antlr3intstream.c",
+  "antlr3lexer.c",
+  "antlr3parser.c",
+  "antlr3rewritestreams.c",
+  "antlr3string.c",
+  "antlr3stringstream.c",
+  "antlr3tokenstream.c",
+  "antlr3treeparser.c",
+  "antlr3ucs2inputstream.c",
+]
+
+prefix = "#ucif/antlr3/src"
+source = [os.path.join(prefix, file_name) for file_name in antlr3_src_files]
+source.extend([
   "cif_ext.cpp",
   "#ucif/cifParser.cpp",
   "#ucif/cifLexer.cpp",
   "#ucif/cifWalker.cpp",
 ])
+
+env_etc.include_registry.append(
+  env=env,
+  paths=[antlr3_include, antlr3_dist])
+
+env.SharedLibrary(target="#lib/iotbx_cif_ext", source=source)
