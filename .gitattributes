@@ -570,6 +570,7 @@ fable/test/valid/data_30.f -text
 fable/test/valid/data_31.f -text
 fable/test/valid/data_32.f -text
 fable/test/valid/data_byte.f -text
+fable/test/valid/data_double_from_double_and_float.f -text
 fable/test/valid/data_str_arr.f -text
 fable/test/valid/data_type_star.f -text
 fable/test/valid/data_types.f -text

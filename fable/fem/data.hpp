@@ -274,6 +274,28 @@ namespace fem {
 
     data_values&
     operator,(
+      double& val)
+    {
+      datum const& tab_val = next_datum();
+      if (tab_val.content->type() == typeid(int)) {
+        val = static_cast<double>(
+          static_cast<datum::holder<int>*>(tab_val.content)->held);
+      }
+      else if (tab_val.content->type() == typeid(float)) {
+        val = static_cast<double>(
+          static_cast<datum::holder<float>*>(tab_val.content)->held);
+      }
+      else if (tab_val.content->type() == typeid(double)) {
+        val = static_cast<datum::holder<double>*>(tab_val.content)->held;
+      }
+      else {
+        tab_val.throw_type_mismatch("double");
+      }
+      return *this;
+    }
+
+    data_values&
+    operator,(
       str_ref val)
     {
       datum const& tab_val = next_datum();
