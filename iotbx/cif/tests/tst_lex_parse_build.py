@@ -605,9 +605,6 @@ _refln.fom
 """
 
 def exercise():
-  if not cif.has_antlr3:
-    print "Skipping tst_lex_parse_build.py (antlr3 is not available)"
-    return
   exercise_miller_arrays_as_cif_block()
   exercise_lex_parse_build()
   exercise_partial_crystal_symmetry()
