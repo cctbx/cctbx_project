@@ -33,15 +33,6 @@ if (not env_etc.no_boost_python):
     paths=env_etc.iotbx_common_includes + [env_etc.python_include])
   Export("env_iotbx_boost_python_ext")
   #
-  if (libtbx.env.has_module("antlr3") and hasattr(env_etc, "antlr3_include")):
-    env_antlr3_iotbx_boost_python_ext = env_iotbx_boost_python_ext.Clone()
-    env_etc.include_registry.append(
-      env=env_antlr3_iotbx_boost_python_ext,
-      paths=[os.path.join(libtbx.env.build_path, "antlr3"),
-	    env_etc.antlr3_include, env_etc.antlr3_dist])
-    env_antlr3_iotbx_boost_python_ext.Prepend(LIBS=env_etc.antlr3_lib)
-    Export("env_antlr3_iotbx_boost_python_ext")
-  #
   env = env_no_includes_boost_python_ext.Clone()
   env_etc.include_registry.append(
     env=env,
@@ -63,6 +54,4 @@ if (not env_etc.no_boost_python):
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
   SConscript("shelx/SConscript")
-
-  if (libtbx.env.has_module("antlr3") and hasattr(env_etc, "antlr3_include")):
-    SConscript("cif/boost_python/SConscript")
+  SConscript("cif/boost_python/SConscript")

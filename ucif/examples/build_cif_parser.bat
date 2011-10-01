@@ -1,5 +1,5 @@
-if not defined LIBTBX_ANTLR3 SET LIBTBX_ANTLR3=..\..\..\antlr3
 if not defined LIBTBX_UCIF SET LIBTBX_UCIF=..\
+if not defined LIBTBX_ANTLR3 SET LIBTBX_ANTLR3=%LIBTBX_UCIF%\antlr3
 cl /DNOMINMAX /EHsc /DANTLR3_NODEBUGGER /Fe./cif_parser ^
 /I%LIBTBX_UCIF%\..\ /I%LIBTBX_ANTLR3%\include\ /I%LIBTBX_ANTLR3%\ ^
 %LIBTBX_UCIF%\examples\main.cpp %LIBTBX_UCIF%\cifLexer.cpp ^

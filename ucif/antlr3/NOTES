@@ -1,0 +1,2 @@
+tar zxvf antlr_python_runtime-3.1.2.tar.gz antlr_python_runtime-3.1.2/antlr3 --strip-components 2
+tar zxvf libantlr3c-3.2.tar.gz libantlr3c-3.2 --strip-components 1

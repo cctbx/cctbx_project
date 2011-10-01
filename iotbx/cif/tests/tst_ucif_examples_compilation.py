@@ -14,7 +14,7 @@ def run(args):
 
 def exercise_compilation():
   ucif_dist = libtbx.env.dist_path(module_name="ucif")
-  antlr3_dist = libtbx.env.dist_path(module_name="antlr3")
+  antlr3_dist = libtbx.env.under_dist("ucif", "antlr3")
   os.environ["LIBTBX_UCIF"] = ucif_dist
   os.environ["LIBTBX_ANTLR3"] = antlr3_dist
   if sys.platform == "win32":
