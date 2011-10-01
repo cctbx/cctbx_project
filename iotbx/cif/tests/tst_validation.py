@@ -17,9 +17,6 @@ def exercise(args):
     socket.setdefaulttimeout(5)
   show_timings = "--show_timings" in args
   exercise_url = "--exercise_url" in args
-  if not cif.has_antlr3:
-    print "Skipping tst_validation.py (antlr3 is not available)"
-    return
   try:
     exercise_smart_load(show_timings=show_timings, exercise_url=exercise_url)
   except URLError:

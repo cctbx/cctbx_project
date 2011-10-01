@@ -2,12 +2,8 @@
 http://cctbx.sourceforge.net/iotbx_cif
 """
 
-import libtbx.load_env
-has_antlr3 = libtbx.env.has_module('antlr3')
-
-if has_antlr3:
-  import boost.python
-  ext = boost.python.import_ext("iotbx_cif_ext")
+import boost.python
+ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
 from cctbx import adptbx
@@ -41,7 +37,6 @@ class reader(object):
                raise_if_errors=True,
                strict=True):
     assert [file_path, file_object, input_string].count(None) == 2
-    assert has_antlr3
     self.file_path = file_path
     if builder is None:
       builder = builders.cif_model_builder(cif_object)
