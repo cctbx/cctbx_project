@@ -57,7 +57,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new_list_of_matrices=[]
     new_list_of_translations=[]
     if change_of_basis_operator is not None:
-     
+      assert change_of_basis_operator.c().t().is_zero() 
       a=  matrix.sqr(new_unit_cell.orthogonalization_matrix()) \
         * change_of_basis_operator.c().as_rational().r \
         * matrix.sqr(unit_cell.fractionalization_matrix())
