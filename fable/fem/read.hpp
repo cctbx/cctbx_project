@@ -624,12 +624,12 @@ namespace fem {
       {
         utils::string_to_double conv(*inp);
         throw_if_conv_error_message(conv);
+        first_inp_get = false;
         int c = inp_get();
         if (   utils::is_stream_end(c)
             || utils::is_whitespace(c)
             || c == ',') {
           if (utils::is_end_of_line(c)) inp->backup();
-          first_inp_get = false;
           return conv.result;
         }
         inp.reset();
