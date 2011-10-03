@@ -1000,11 +1000,11 @@ Wait for the command to finish, then try again.""" % vars())
             (pythonpath, os.pathsep.join(self.pythonpath)),
             (main_path, os.pathsep.join([self.bin_path, self.lib_path])),
             (target_options, target_options)]:
-       self.partially_customized_windows_dispatcher = patch_windows_dispatcher(
-         dispatcher_exe_file_name=dispatcher_exe_file_name,
-         binary_string=self.partially_customized_windows_dispatcher,
-         place_holder=place_holder,
-         actual_value=actual_value)
+        self.partially_customized_windows_dispatcher = patch_windows_dispatcher(
+          dispatcher_exe_file_name=dispatcher_exe_file_name,
+          binary_string=self.partially_customized_windows_dispatcher,
+          place_holder=place_holder,
+          actual_value=actual_value)
     if (source_is_python_exe):
       trg_opt = qnew[1:]
     else:
@@ -1013,11 +1013,11 @@ Wait for the command to finish, then try again.""" % vars())
     for place_holder,actual_value in [
           (target_options, trg_opt),
           (target_command, command_path)]:
-     result = patch_windows_dispatcher(
-       dispatcher_exe_file_name=dispatcher_exe_file_name,
-       binary_string=result,
-       place_holder=place_holder,
-       actual_value=actual_value)
+      result = patch_windows_dispatcher(
+        dispatcher_exe_file_name=dispatcher_exe_file_name,
+        binary_string=result,
+        place_holder=place_holder,
+        actual_value=actual_value)
     return result
 
   def write_win32_dispatcher(self,
