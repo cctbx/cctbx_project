@@ -35,11 +35,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._exclude_h=exclude_h
     self._exclude_d=exclude_d
 
-
-  def apply_rt_mx_to_matrix(self,rt_mx=None,matrix=None):
-    new_matrix=rt_mx.r*matrix
-    return new_matrix
-
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
          unit_cell=None,new_unit_cell=None):
@@ -57,24 +52,60 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new_list_of_matrices=[]
     new_list_of_translations=[]
     if change_of_basis_operator is not None:
-      assert change_of_basis_operator.c().t().is_zero() 
       a=  matrix.sqr(new_unit_cell.orthogonalization_matrix()) \
         * change_of_basis_operator.c().as_rational().r \
         * matrix.sqr(unit_cell.fractionalization_matrix())
       a_inv=a.inverse()
     else:
       a=None
-    for r,t in zip(list_of_matrices,list_of_translations):
+    for ncs_r,ncs_t in zip(list_of_matrices,list_of_translations):
       if change_of_basis_operator is None:
-        new_list_of_matrices.append(deepcopy(r))
-        new_list_of_translations.append(deepcopy(t))
-      else:  # translations get normal transformation, matrices get A R A_inv
-        t_prime=self.apply_cob_to_vector(vector=t,
-          change_of_basis_operator=change_of_basis_operator,
-           unit_cell=unit_cell,new_unit_cell=new_unit_cell)
+        new_list_of_matrices.append(deepcopy(ncs_r))
+        new_list_of_translations.append(deepcopy(ncs_t))
+      else:    
+        # tt 2011-10-02
+        # Formula for conversion of NCS rotation matrix and translation 
+        # relating two points in coordinate system to a second coordinate system
+        # The change-of-basis operator is new_x = a x + t 
+        # The NCS operator is y = R x + T (in original coordinate system)
+        # Then if NCS operator in new coordinate system is y' = R' x' + T':
+        # R' = a R a_inv
+        # T' = a T + t - a R a_inv t = transformed T minus R' * t 
+        # 
+        # Derivation:
+        # x' and y' (values in new coordinate system) can be written:
+        #   x'=a x + t
+        #   y'=a y + t
+        # Or rewriting:
+        #   x= a_inv (x' - t)
+        #   y= a_inv (y' - t)
+        # Then as y = R x + T  (in original coordinate system), we can say:
+        #   a_inv (y' - t) = R (a_inv (x' - t) ) + T
+        # Or...
+        #   y' = [a R a_inv] x' - [a R a_inv ] t + t + a t
+        # So that:
+        #   R' = a R a_inv
+        #   T' = a T + t - a R a_inv t = transformed T minus R' * t 
+
+        # matrices are a ncs_r a_inv
+        ncs_r_prime=a * ncs_r * a_inv
+        new_list_of_matrices.append(ncs_r_prime)
+
+        # translation vectors are partly a * ncs_t + t (the cob operator)
+        frac=unit_cell.fractionalize(ncs_t)
+        new_frac = change_of_basis_operator.c() * frac
+        new_ncs_t=new_unit_cell.orthogonalize(new_frac)
+        # translation vectors depend on the change of basis and the rotation
+        # as well as the change-of-basis operator
+        t=change_of_basis_operator.c().as_rational().t
+        t_as_col=matrix.col((float(t[0]),float(t[1]),float(t[2]),))
+        # the basis translation in orig coordinate system
+        cob_trans=unit_cell.orthogonalize(t_as_col) 
+        # correction for the basis translation in new coordinate system
+        delta = ncs_r_prime * cob_trans
+        t_prime=matrix.col(new_ncs_t) - matrix.col(delta)
         new_list_of_translations.append(t_prime)
-        r_prime=a * r * a_inv
-        new_list_of_matrices.append(r_prime)
+
     return new_list_of_matrices,new_list_of_translations
 
   def copy_vector_list(self,list_of_vectors,
