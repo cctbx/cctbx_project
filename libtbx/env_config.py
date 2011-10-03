@@ -356,6 +356,10 @@ class environment:
     self.scons_dist_path = None
     self.pythonpath = []
 
+  def root_path(self):
+    return os.path.dirname(self.build_path)
+  root_path = property(root_path)
+
   def raise_python_version_incompatible(self, prev_pvmm=None):
     if (prev_pvmm is None):
       prev_pvmm = "%d.%d" % self.python_version_major_minor
