@@ -277,6 +277,8 @@ class get_r_free_flags_scores(object):
                 effective_test_flag_value = c_keys[i_free]
             elif (counts.size() > 3):
               if (c_keys == range(min(c_keys), max(c_keys)+1)):
+                # XXX 0.55 may be too close a margin - the routine to export
+                # R-free flags for CCP4 seems to get this wrong frequently.
                 if (min(c_values) > max(c_values)*0.55):
                   if (looks_like_r_free_flags_info(miller_array.info())):
                     flag_score = 3

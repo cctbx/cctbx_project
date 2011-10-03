@@ -6,7 +6,11 @@ from __future__ import division
 import iotbx.phil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
-import sys, os, string, re, random
+import random
+import string
+import re
+import os
+import sys
 
 DEBUG = False
 
@@ -99,6 +103,13 @@ mtz_file
       .short_caption = Output diffraction data as
       .help = If the Miller array is amplitudes or intensities, this flag \
         determines the output data type.
+    force_type = *auto amplitudes intensities
+      .type = choice
+      .short_caption = Force observation type
+      .help = If the Miller array is amplitudes or intensites, this flag \
+        allows the observation type to be set without modifying the data. \
+        This is primarily used for structure factors downloaded from the PDB, \
+        which sometimes have the data type specified incorrectly.
     scale_max = None
       .type = float
       .short_caption = Scale to maximum value
@@ -111,6 +122,9 @@ mtz_file
       .short_caption = Remove negative intensities
     massage_intensities = False
       .type = bool
+    filter_by_signal_to_noise = None
+      .type = float
+      .short_caption = Filter by signal-to-noise ratio
     output_non_anomalous = False
       .type = bool
       .short_caption = Output non-anomalous data
@@ -180,6 +194,8 @@ mtz_file
 class process_arrays (object) :
   def __init__ (self, params, input_files=None, log=sys.stderr,
       accumulation_callback=None, symmetry_callback=None) :
+    if (input_files is None) :
+      input_files = {}
     adopt_init_args(self, locals())
     if len(params.mtz_file.miller_array) == 0 :
       raise Sorry("No Miller arrays have been selected for the output file.")
@@ -286,7 +302,8 @@ class process_arrays (object) :
     input_symm = crystal.symmetry(
       unit_cell=params.mtz_file.crystal_symmetry.unit_cell,
       space_group_info=params.mtz_file.crystal_symmetry.space_group,
-      assert_is_compatible_unit_cell=False)
+      assert_is_compatible_unit_cell=False,
+      force_compatible_unit_cell=False)
     if (not input_symm.is_compatible_unit_cell()) :
       raise Sorry(("Input unit cell %s is incompatible with the specified "+
         "space group (%s).") % (str(params.mtz_file.crystal_symmetry.unit_cell),
@@ -295,7 +312,8 @@ class process_arrays (object) :
     output_symm = crystal.symmetry(
       unit_cell=output_uc,
       space_group=output_sg,
-      assert_is_compatible_unit_cell=False)
+      assert_is_compatible_unit_cell=False,
+      force_compatible_unit_cell=False)
     if (not output_symm.is_compatible_unit_cell()) :
       raise Sorry(("Output unit cell %s is incompatible with the specified "+
         "space group (%s).") % (str(output_uc), str(output_sg)))
@@ -330,6 +348,10 @@ class process_arrays (object) :
         print >> log, "  Starting size:  %d" % miller_array.data().size()
         if miller_array.sigmas() is not None :
           print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
+
+      is_experimental_data = (miller_array.is_xray_amplitude_array() or
+        miller_array.is_xray_intensity_array() or
+        miller_array.is_xray_reconstructed_amplitude_array())
 
       #-----------------------------------------------------------------
       # OUTPUT LABELS SANITY CHECK
@@ -422,7 +444,7 @@ class process_arrays (object) :
         print >> log, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
           cb_op.inverse().as_xyz())
         d = cb_op.c().r().determinant()
-        print "  Determinant:", d
+        print >> log, "  Determinant:", d
         if (d < 0) and (c_o_b != "to_inverse_hand") :
           print >> log, ("WARNING: This change of basis operator changes the "+
                         "hand!")
@@ -472,24 +494,24 @@ class process_arrays (object) :
           new_array = new_array.average_bijvoet_mates()
           new_array = new_array.f_as_f_sq()
           new_array.set_observation_type_xray_intensity()
-      if array_params.scale_max is not None :
+      if (array_params.scale_max is not None) :
         print >> log, ("Scaling %s such that the maximum value is: %.6g" %
                        (array_name, array_params.scale_max))
         new_array = new_array.apply_scaling(target_max=array_params.scale_max)
-      elif array_params.scale_factor is not None :
+      elif (array_params.scale_factor is not None) :
         print >> log, ("Multiplying data in %s with the factor: %.6g" %
                        (array_name, array_params.scale_factor))
         new_array = new_array.apply_scaling(factor=array_params.scale_factor)
-      if array_params.remove_negatives :
-        if new_array.is_real_array() :
+      if (array_params.remove_negatives) :
+        if (new_array.is_real_array()) :
           print >> log, "Removing negatives from %s" % array_name
           new_array = new_array.select(new_array.data() > 0)
-          if new_array.sigmas() is not None :
+          if (new_array.sigmas() is not None) :
             new_array = new_array.select(new_array.sigmas() > 0)
         else :
           raise Sorry("remove_negatives not applicable to %s." % array_name)
-      elif array_params.massage_intensities :
-        if new_array.is_xray_intensity_array() :
+      elif (array_params.massage_intensities) :
+        if (new_array.is_xray_intensity_array()) :
           if array_params.output_as == "amplitudes" :
             new_array = new_array.enforce_positive_amplitudes()
           else :
@@ -498,12 +520,36 @@ class process_arrays (object) :
         else :
           raise Sorry("The parameter massage_intensities is only valid for "+
             "X-ray intensity arrays.")
+      if (array_params.filter_by_signal_to_noise is not None) :
+        if (not is_experimental_data) :
+          raise Sorry(("Filtering by signal-to-noise is only supported for "+
+            "amplitudes or intensities (failed on %s:%s).") %
+            (file_name, array_params.labels))
+        elif (array_params.filter_by_signal_to_noise <= 0) :
+          raise Sorry(("A value greater than zero is required for the "+
+            "cutoff for filtering by signal to noise ratio (failed array: "+
+            "%s:%s).") % (file_name, array_params.labels))
+        sigmas = new_array.sigmas()
+        if (sigmas is None) :
+          raise Sorry(("Sigma values must be defined to filter by signal "+
+            "to noise ratio (failed on %s:%s).") % (file_name,
+              array_params.labels))
+        elif (not sigmas.all_ne(0.0)) :
+          # XXX should it just remove these too?
+          raise Sorry(("The sigma values for the array %s:%s include one or "+
+            "more zeros - filtering by signal to noise not supported.") %
+            (file_name, array_params.labels))
+        data = new_array.data()
+        new_array = new_array.select(
+          (data / sigmas) > array_params.filter_by_signal_to_noise)
 
       #-----------------------------------------------------------------
       # MISCELLANEOUS
       if new_array.is_xray_intensity_array() :
         if array_params.output_as == "amplitudes" :
           output_array = new_array.f_sq_as_f()
+          output_array.set_observation_type_xray_amplitude()
+          array_types[i] = re.sub("J", "F", array_types[i])
           if output_labels[0].upper().startswith("I") :
             raise Sorry(("The output labels for the array %s:%s (%s) are not "+
               "suitable for amplitudes; please change them to something "+
@@ -512,17 +558,30 @@ class process_arrays (object) :
       elif new_array.is_xray_amplitude_array() :
         if array_params.output_as == "intensities" :
           output_array = new_array.f_as_f_sq()
+          output_array.set_observation_type_xray_intensity()
+          array_types[i] = re.sub("F", "J", array_types[i])
           if output_labels[0].upper().startswith("F") :
             raise Sorry(("The output labels for the array %s:%s (%s) are not "+
               "suitable for intensities; please change them to something "+
               "with an 'I', or leave this array as amplitudes.") %
               (file_name, array_params.labels, " ".join(output_labels)))
+      if (array_params.force_type != "auto") :
+        if (not is_experimental_data) :
+          raise Sorry(("You may only override the output observation type for "+
+            "amplitudes or intensities - the data in %s:%s are unsupported.") %
+            (file_name, array_params.labels))
+        if (array_params.force_type == "amplitudes") :
+          output_array = new_array.set_observation_type_xray_amplitude()
+          array_types[i] = re.sub("J", "F", array_types[i])
+        elif (array_params.force_type == "intensities") :
+          output_array = new_array.set_observation_type_xray_intensity()
+          array_types[i] = re.sub("F", "J", array_types[i])
       if output_array is None :
         output_array = new_array
 
       #-----------------------------------------------------------------
       # OUTPUT
-      assert isinstance(new_array, cctbx.miller.array)
+      assert isinstance(output_array, cctbx.miller.array)
       fake_label = 2 * string.uppercase[i]
       column_types = None
       if array_types[i] is not None :
@@ -565,13 +624,20 @@ class process_arrays (object) :
         complete_set = None
       i = 0
       for (new_array, info, output_labels, file_name) in r_free_arrays :
+        # XXX this is important for guessing the right flag when dealing
+        # with CCP4-style files, primarily when the flag values are not
+        # very evenly distributed
+        new_array.set_info(info)
         flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
            test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
         test_flag_value = flag_scores.test_flag_values[0]
+        assert (test_flag_value is not None)
         if params.mtz_file.r_free_flags.preserve_input_values :
           r_free_flags = new_array
         else :
-          r_free_flags = new_array.array(data=new_array.data()==test_flag_value)
+          new_data = (new_array.data()==test_flag_value)
+          assert isinstance(new_data, flex.bool)
+          r_free_flags = new_array.array(data=new_data)
         r_free_flags = r_free_flags.map_to_asu()
         if (r_free_flags.anomalous_flag()) :
           if (len(output_labels) == 1) :
