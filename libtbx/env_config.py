@@ -702,7 +702,8 @@ Wait for the command to finish, then try again.""" % vars())
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
-        msvc_arch_flag=command_line.options.msvc_arch_flag)
+        msvc_arch_flag=command_line.options.msvc_arch_flag,
+        relocatable=command_line.options.relocatable)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -874,8 +875,13 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LC_ALL=C'
     print >> f, 'export LC_ALL'
-    print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
+    if self.build_options.relocatable:
+      print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd)"'
+    else:
+      print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
+    if self.build_options.relocatable:
+      print >> f, 'LIBTBX_ROOT=$(dirname $LIBTBX_BUILD)'
     source_is_py = False
     if (source_file is not None):
       dispatcher_name = op.basename(target_file)
@@ -898,6 +904,8 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
+      if self.build_options.relocatable:
+        v = [ p.replace(self.root_path, '${LIBTBX_ROOT}') for p in v ]
       v = ":".join(v)
       if (sys.platform == "irix6" and n == "LD_LIBRARY_PATH"):
         n32 = "LD_LIBRARYN32_PATH"
@@ -957,9 +965,12 @@ Wait for the command to finish, then try again.""" % vars())
                   source_file=source_file)) > 3):
           start_python = True
       if (not start_python):
-        cmd += (" %s'"+source_file+"'") % [
-          '', '/usr/bin/arch -i386 '][self.build_options.force_32bit
-                                      and not source_is_py]
+        if self.build_options.relocatable:
+          source_file = source_file.replace(self.root_path, '${LIBTBX_ROOT}')
+        arch_i386 = ['',
+                     '/usr/bin/arch -i386 '
+                     ][self.build_options.force_32bit and not source_is_py]
+        cmd += ' %s "%s"' % (arch_i386, source_file)
       if (source_is_python_exe):
         cmd += qnew
       print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
@@ -1026,11 +1037,45 @@ Wait for the command to finish, then try again.""" % vars())
 
   def write_win32_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
-    open(target_file, "wb").write(
-      self.windows_dispatcher(
-        command_path=source_file,
-        dispatcher_name=op.splitext(op.basename(target_file))[0],
-        source_is_python_exe=source_is_python_exe))
+    if self.build_options.relocatable:
+      if not source_file.lower().endswith(".py"): return
+      f = open(target_file, 'w')
+      # By default, changes to environment variables are  permanent on Windows,
+      # i.e. it is as if export XXX was added after each set XXX=...
+      # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
+      # PYTHONPATH each time a dispatcher script is run.
+      # Thus setlocal ... endlocal is essential
+      print >>f, '@echo off'
+      print >>f, 'setlocal'
+      print >>f, 'set LIBTBX_BUILD=%~dp0'
+      print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
+      print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_BUILD=%%~dpF'
+      print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
+      print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_ROOT=%%~dpF'
+      print >>f, 'set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
+      print >>f, 'set LIBTBX_DISPATCHER_NAME=~nx0'
+      essentials = [("PYTHONPATH", self.pythonpath)]
+      essentials.append((ld_library_path_var_name(), [self.lib_path]))
+      essentials.append(("PATH", [self.bin_path]))
+      for n,v in essentials:
+        if (len(v) == 0): continue
+        if self.build_options.relocatable:
+          # Let's not put quotes around each path p here as it is not necessary
+          # and for PYTHONPATH, it would result in python not seeing we have
+          # absolute path and therefore prepending the current directory.
+          v = [ p.replace(self.root_path, '%LIBTBX_ROOT%') for p in v ]
+        v = ';'.join(v)
+        print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
+      source_file = source_file.replace(self.root_path, '%LIBTBX_ROOT%')
+      print >>f, '%s %s "%s" %%*' % (self.python_exe, qnew, source_file)
+      print >>f, 'endlocal'
+      f.close()
+    else:
+      open(target_file, "wb").write(
+        self.windows_dispatcher(
+          command_path=source_file,
+          dispatcher_name=op.splitext(op.basename(target_file))[0],
+          source_is_python_exe=source_is_python_exe))
 
   def write_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
@@ -1053,7 +1098,11 @@ Wait for the command to finish, then try again.""" % vars())
       action = self.write_win32_dispatcher
     else:
       action = self.write_bin_sh_dispatcher
-    target_file_ext = target_file + exe_suffix
+    if self.build_options.relocatable and os.name == 'nt':
+      exe_suffix_ = '.bat'
+    else:
+      exe_suffix_ = exe_suffix
+    target_file_ext = target_file + exe_suffix_
     remove_or_rename(target_file_ext)
     try: action(source_file, target_file_ext, source_is_python_exe)
     except IOError, e: print "  Ignored:", e
@@ -1731,7 +1780,8 @@ class build_options:
         precompile_headers=False,
         use_environment_flags=False,
         force_32bit=False,
-        msvc_arch_flag=default_msvc_arch_flag):
+        msvc_arch_flag=default_msvc_arch_flag,
+        relocatable=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1784,6 +1834,7 @@ class build_options:
     print >> f, "Enable CUDA:", self.enable_cuda
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
+    print >> f, "Relocatable:", self.relocatable
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
       print >>f, "  CFLAGS = ", self.env_cflags
@@ -1967,6 +2018,17 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="Precompile headers, especially Boost Python ones (default: don't)")
+    parser.option(None, '--relocatable',
+                  action='store_true',
+                  default=False,
+                  help="Whether to create dispatchers in cctbx_build/bin "
+                  "in such a manner that the parent directory of cctbx_build "
+                  " may be moved to a different path without requiring a "
+                  "reconfiguration in the new location (default: don't). "
+                  "Note: this does not work for libtbx.refresh and "
+                  "libtbx.configure. It is therefore a tool aimed at "
+                  "the deployment of the cctbx, rather than one aimed "
+                  "at its development.")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
         action="store_true",
@@ -2102,6 +2164,10 @@ def unpickle():
   # XXX backward compatibility 2011-07-05
   if (not hasattr(env.build_options, "enable_cuda")):
     env.build_options.enable_cuda = False
+  # XXX backward compatibility 2011-09
+  env.build_options.__dict__.setdefault('relocatable', False)
+  if env.build_options.relocatable:
+    env.build_path = build_path
   return env
 
 def warm_start(args):
