@@ -97,8 +97,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         new_ncs_t=new_unit_cell.orthogonalize(new_frac)
         # translation vectors depend on the change of basis and the rotation
         # as well as the change-of-basis operator
-        t=change_of_basis_operator.c().as_rational().t
-        t_as_col=matrix.col((float(t[0]),float(t[1]),float(t[2]),))
+        t_as_col=change_of_basis_operator.c().t().as_rational().as_float()
         # the basis translation in orig coordinate system
         cob_trans=unit_cell.orthogonalize(t_as_col) 
         # correction for the basis translation in new coordinate system
