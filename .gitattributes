@@ -689,6 +689,7 @@ fable/test/valid/print.f -text
 fable/test/valid/read_end.f -text
 fable/test/valid/read_end_empty.f -text
 fable/test/valid/read_end_err.f -text
+fable/test/valid/read_end_err_star_double.f -text
 fable/test/valid/read_err.f -text
 fable/test/valid/read_fmt_double.f -text
 fable/test/valid/read_fmt_past_end_of_line.f -text
