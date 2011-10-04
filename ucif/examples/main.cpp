@@ -49,7 +49,7 @@ struct my_builder : builder_base
 int main (int argc, char *argv[])
 {
   if (argc < 2) {
-    std::cout << "Please provide a path to a CIF file.\n";
+    std::cout << "Please provide a path to a CIF file." << std::endl;
     return 0;
   }
   std::string filename(argv[1]);
@@ -63,8 +63,8 @@ int main (int argc, char *argv[])
     input_string += tmp;
     input_string += "\n";
   }
-
   myfile.close();
+
   ucif::example::my_builder builder;
   ucif::parser parsed(&builder, input_string, filename, /*strict=*/true);
 
@@ -79,16 +79,17 @@ int main (int argc, char *argv[])
       dynamic_cast<ucif::example::my_array_wrapper*>(parsed.tree_psr->errors)->array;
   }
   for (int i=0;i<lexer_errors.size();i++) {
-    std::cout << lexer_errors[i] << "\n";
+    std::cout << lexer_errors[i] << std::endl;
   }
   for (int i=0;i<parser_errors.size();i++) {
-    std::cout << parser_errors[i] << "\n";
+    std::cout << parser_errors[i] << std::endl;
   }
   for (int i=0;i<tree_walker_errors.size();i++) {
-    std::cout << tree_walker_errors[i] << "\n";
+    std::cout << tree_walker_errors[i] << std::endl;
   }
   if (lexer_errors.size() + parser_errors.size() + tree_walker_errors.size() == 0) {
-    std::cout << "Congratulations! " << argv[1] << " is a syntactically correct CIF file!\n";
+    std::cout << "Congratulations! " << argv[1] <<
+    " is a syntactically correct CIF file!" << std::endl;
   }
 
   return 0;
