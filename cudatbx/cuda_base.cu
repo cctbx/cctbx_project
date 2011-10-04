@@ -9,14 +9,8 @@ namespace cudatbx {
   }
 
   void reset_gpu(const int& gpu_id) {
-    int device_count = number_of_gpus();
-    if (gpu_id < device_count) {
-      cudaSafeCall( cudaSetDevice(gpu_id) );
-      cudaSafeCall( cudaDeviceReset() );
-    }
-    else {
-      std::cerr << "WARNING: Device " << gpu_id << " does not exist.\n";
-    }
+    cudaSafeCall( cudaSetDevice(gpu_id) );
+    cudaSafeCall( cudaDeviceReset() );
   }
 
 }
