@@ -1613,3 +1613,5 @@ read_test_3.f
 | "2 "|
 | "12 "|
 |          12           0|
+write_format_with_colon.f
+|one 1|
