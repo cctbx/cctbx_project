@@ -1942,11 +1942,14 @@ def convert_executable(
           return convert_tokens(conv_info=conv_info, tokens=tl)
         cfmt = conv_fmt()
         cchain = []
+        has_iostat = False
         for slot in ["rec", "iostat"]:
           tokens = getattr(cilist, slot)
           if (tokens is not None):
             cchain.append("%s(%s)" % (
               slot, convert_tokens(conv_info=conv_info, tokens=tokens)))
+            if slot == "iostat":
+              has_iostat = True
         if (len(cchain) == 0):
           cchain = ""
         else:
@@ -1961,7 +1964,8 @@ def convert_executable(
         find_implied_dos(result=implied_dos, tokens=ei.iolist)
         if (len(implied_dos) == 0):
           if (    cilist.end is None
-              and cilist.err is None):
+              and cilist.err is None
+              and not has_iostat):
             io_scope = curr_scope
           else:
             io_scope = curr_scope.open_nested_scope(opening_text=["try {"])
@@ -1984,7 +1988,8 @@ def convert_executable(
                   and unit_fdecl.data_type.value == "character"):
                 is_internal_file = True
           if (   cilist.end is not None
-              or cilist.err is not None):
+              or cilist.err is not None
+              or has_iostat):
             opening_line = "try {"
           else:
             opening_line = "{"
@@ -2010,6 +2015,11 @@ def convert_executable(
             clabel = convert_tokens(conv_info=conversion_info(), tokens=tokens)
             catch_scope.append("goto statement_%s;" % clabel)
             catch_scope.close_nested_scope()
+          else:
+            if has_iostat:
+              catch_scope = curr_scope.open_nested_scope(
+                opening_text=["catch (fem::%s const&) {" % cexception])
+              catch_scope.close_nested_scope()
       elif (ei.key == "do"):
         if (ei.id_tok.value not in conv_info.vmap):
           declare_identifier(

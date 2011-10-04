@@ -2555,7 +2555,13 @@ blockdata_unnamed(
   #
   lines = get("read_rec_iostat.f")
   assert not absd(lines, tail_off(1), """\
-  read(11, fem::unformatted).rec(21).iostat(ios), num;
+  try {
+    read(11, fem::unformatted).rec(21).iostat(ios), num;
+  }
+  catch (fem::read_end const&) {
+  }
+  catch (fem::io_err const&) {
+  }
   try {
     read(12, fem::unformatted).iostat(ios), num;
   }
@@ -2565,12 +2571,16 @@ blockdata_unnamed(
   catch (fem::io_err const&) {
     goto statement_10;
   }
-  {
+  try {
     read_loop rloop(cmn, 13, fem::unformatted);
     rloop.rec(23).iostat(ios);
     FEM_DO(i, 1, 2) {
       rloop, nums(i);
     }
+  }
+  catch (fem::read_end const&) {
+  }
+  catch (fem::io_err const&) {
   }
   try {
     read_loop rloop(cmn, 14, fem::unformatted);
