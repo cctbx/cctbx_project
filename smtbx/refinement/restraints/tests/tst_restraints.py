@@ -5,7 +5,11 @@ from cctbx.array_family import flex
 from cctbx.xray import parameter_map
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints.adp_restraints import\
-     adp_similarity_restraints, isotropic_adp_restraints, rigid_bond_restraints
+     adp_similarity_restraints, isotropic_adp_restraints,\
+     rigid_bond_restraints, fixed_u_eq_adp_restraints,\
+     adp_u_eq_similarity_restraints, adp_volume_similarity_restraints
+
+from cctbx.adp_restraints import adp_restraint_params
 import smtbx.utils
 import smtbx.development
 from smtbx.refinement import constraints, least_squares
@@ -22,6 +26,9 @@ rows_per_restraint = {
   geom.bond_similarity_proxy: 6,
   adp.adp_similarity_proxy: 6,
   adp.isotropic_adp_proxy: 6,
+  adp.fixed_u_eq_adp_proxy: 6,
+  adp.adp_u_eq_similarity_proxy: 6,
+  adp.adp_volume_similarity_proxy: 6,
   }
 
 class restraints_test_case:
@@ -181,7 +188,26 @@ class isotropic_adp_test_case(adp_restraints_test_case):
     if u_cart is None:
       u_cart=self.xray_structure.scatterers().extract_u_cart(
         self.xray_structure.unit_cell())
-    return adp.isotropic_adp(u_cart, proxy)
+    return adp.isotropic_adp(
+      adp_restraint_params(u_cart=u_cart),
+      proxy)
+
+class fixed_u_eq_adp_test_case(adp_restraints_test_case):
+  proxies = fixed_u_eq_adp_restraints(
+    xray_structure=smtbx.development.sucrose(),
+    u_eq_ideal=0.025).proxies
+  # no need to test all of them every time
+  proxies = adp.shared_fixed_u_eq_adp_proxy(
+    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
+  manager = restraints.manager(fixed_u_eq_adp_proxies=proxies)
+
+  def restraint(self, proxy, u_iso=None, u_cart=None):
+    if u_cart is None:
+      u_cart=self.xray_structure.scatterers().extract_u_cart(
+        self.xray_structure.unit_cell())
+    return adp.fixed_u_eq_adp(
+      adp_restraint_params(u_cart=u_cart),
+      proxy)
 
 class adp_similarity_test_case(adp_restraints_test_case):
   proxies = adp_similarity_restraints(
@@ -198,7 +224,47 @@ class adp_similarity_test_case(adp_restraints_test_case):
     if u_iso is None:
       u_iso=self.xray_structure.scatterers().extract_u_iso()
     use_u_aniso=self.xray_structure.use_u_aniso()
-    return adp.adp_similarity(u_cart, u_iso, use_u_aniso, proxy)
+    return adp.adp_similarity(
+      adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso),
+      proxy)
+
+class adp_u_eq_similarity_test_case(adp_restraints_test_case):
+  proxies = adp_u_eq_similarity_restraints(
+    xray_structure=smtbx.development.sucrose()).proxies
+  # no need to test all of them every time
+  proxies = adp.shared_adp_u_eq_similarity_proxy(
+    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
+  manager = restraints.manager(adp_u_eq_similarity_proxies=proxies)
+
+  def restraint(self, proxy, u_iso=None, u_cart=None):
+    if u_cart is None:
+      u_cart=self.xray_structure.scatterers().extract_u_cart(
+        self.xray_structure.unit_cell())
+    if u_iso is None:
+      u_iso=self.xray_structure.scatterers().extract_u_iso()
+    use_u_aniso=self.xray_structure.use_u_aniso()
+    return adp.adp_u_eq_similarity(
+      adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso),
+      proxy)
+
+class adp_volume_similarity_test_case(adp_restraints_test_case):
+  proxies = adp_volume_similarity_restraints(
+    xray_structure=smtbx.development.sucrose()).proxies
+  # no need to test all of them every time
+  proxies = adp.shared_adp_volume_similarity_proxy(
+    flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
+  manager = restraints.manager(adp_volume_similarity_proxies=proxies)
+
+  def restraint(self, proxy, u_iso=None, u_cart=None):
+    if u_cart is None:
+      u_cart=self.xray_structure.scatterers().extract_u_cart(
+        self.xray_structure.unit_cell())
+    if u_iso is None:
+      u_iso=self.xray_structure.scatterers().extract_u_iso()
+    use_u_aniso=self.xray_structure.use_u_aniso()
+    return adp.adp_volume_similarity(
+      adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso),
+      proxy)
 
 class rigid_bond_test_case(adp_restraints_test_case):
   proxies = rigid_bond_restraints(
@@ -213,7 +279,9 @@ class rigid_bond_test_case(adp_restraints_test_case):
       u_cart = self.xray_structure.scatterers().extract_u_cart(
         self.xray_structure.unit_cell())
     sites_cart = self.xray_structure.sites_cart()
-    return adp.rigid_bond(sites_cart, u_cart, proxy)
+    return adp.rigid_bond(
+      adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
+      proxy)
 
 def exercise_restrained_refinement(options):
   import random
@@ -346,6 +414,9 @@ def exercise_ls_restraints(options):
   isotropic_adp_test_case().run()
   adp_similarity_test_case().run()
   rigid_bond_test_case().run()
+  fixed_u_eq_adp_test_case().run()
+  adp_u_eq_similarity_test_case().run()
+  adp_volume_similarity_test_case().run()
 
 def run():
   libtbx.utils.show_times_at_exit()

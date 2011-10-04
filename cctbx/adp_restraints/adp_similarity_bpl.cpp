@@ -3,10 +3,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/copy_const_reference.hpp>
-#include <boost/python/return_internal_reference.hpp>
-#include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/adp_restraints/adp_similarity.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -16,22 +12,16 @@ namespace cctbx { namespace adp_restraints {
 
 namespace {
 
-
-  struct adp_similarity_proxy_wrappers
-  {
+  struct adp_similarity_proxy_wrappers {
     typedef adp_similarity_proxy w_t;
 
-    static void
-    wrap()
-    {
+    static void wrap() {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("adp_similarity_proxy", no_init)
+      class_<w_t, bases<adp_restraint_proxy<2> > >
+        ("adp_similarity_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double>((
            arg("i_seqs"),
            arg("weight"))))
-        .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-        .add_property("weight", make_getter(&w_t::weight, rbv()))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
@@ -41,80 +31,181 @@ namespace {
     }
   };
 
-  struct adp_similarity_wrappers
-  {
+  struct adp_similarity_wrappers {
     typedef adp_similarity w_t;
 
-    static void
-    wrap()
-    {
+    static void wrap() {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("adp_similarity", no_init)
+      class_<w_t, bases<adp_restraint_base<2> > >
+        ("adp_similarity", no_init)
         .def(init<
            af::tiny<scitbx::sym_mat3<double>, 2> const&,
+           double>(
+          (arg("u_cart"),
+           arg("weight"))))
+        .def(init<
            af::tiny<double, 2> const&,
-           af::tiny<bool, 2> const&,
+           double>(
+          (arg("u_iso"),
+           arg("weight"))))
+        .def(init<
+           scitbx::sym_mat3<double> const&,
+           double,
            double>(
           (arg("u_cart"),
            arg("u_iso"),
-           arg("use_u_aniso"),
            arg("weight"))))
         .def(init<
-           af::const_ref<scitbx::sym_mat3<double> > const&,
-           af::const_ref<double> const&,
-           af::const_ref<bool> const&,
-           adp_similarity_proxy const&>(
-          (arg("u_cart"),
-           arg("u_iso"),
-           arg("use_u_aniso"),
+            double,
+            scitbx::sym_mat3<double> const&,
+           double>(
+          (arg("u_iso"),
+           arg("u_cart"),
+           arg("weight"))))
+        .def(init<
+            adp_restraint_params<double> const&,
+            adp_similarity_proxy const&>(
+          (arg("params"),
            arg("proxy"))))
-        .add_property("u_cart", make_getter(&w_t::u_cart, rbv()))
-        .add_property("u_iso", make_getter(&w_t::u_iso, rbv()))
-        .add_property("use_u_aniso", make_getter(&w_t::use_u_aniso, rbv()))
-        .add_property("weight", make_getter(&w_t::weight, rbv()))
-        .def("deltas", &w_t::deltas)
-        .def("rms_deltas", &w_t::rms_deltas)
-        .def("residual", &w_t::residual)
-        .def("gradients", &w_t::gradients)
+        .def("gradients2", &w_t::gradients2)
       ;
     }
   };
 
-  void
-  wrap_all()
-  {
-    using namespace scitbx::boost_python::container_conversions;
-    tuple_mapping_fixed_size<scitbx::af::tiny<scitbx::sym_mat3<double>, 2> >();
-    tuple_mapping_fixed_size<scitbx::af::tiny<bool, 2> >();
+  struct adp_u_eq_similarity_proxy_wrappers {
+    typedef adp_u_eq_similarity_proxy w_t;
 
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t, bases<adp_restraint_proxy<2> > >
+        ("adp_u_eq_similarity_proxy", no_init)
+        .def(init<af::tiny<unsigned, 2> const&, double>((
+           arg("i_seqs"),
+           arg("weight"))))
+      ;
+      {
+        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+          "shared_adp_u_eq_similarity_proxy")
+        ;
+      }
+    }
+  };
+
+  struct adp_u_eq_similarity_wrappers {
+    typedef adp_u_eq_similarity w_t;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t, bases<adp_restraint_base<2> > >
+        ("adp_u_eq_similarity", no_init)
+        .def(init<
+           af::tiny<scitbx::sym_mat3<double>, 2> const&,
+           double>(
+          (arg("u_cart"),
+           arg("weight"))))
+        .def(init<
+           af::tiny<double, 2> const&,
+           double>(
+          (arg("u_iso"),
+           arg("weight"))))
+        .def(init<
+           scitbx::sym_mat3<double> const&,
+           double,
+           double>(
+          (arg("u_cart"),
+           arg("u_iso"),
+           arg("weight"))))
+        .def(init<
+            double,
+            scitbx::sym_mat3<double> const&,
+           double>(
+          (arg("u_iso"),
+           arg("u_cart"),
+           arg("weight"))))
+        .def(init<
+            adp_restraint_params<double> const&,
+            adp_u_eq_similarity_proxy const&>(
+          (arg("params"),
+           arg("proxy"))))
+        .def("gradients2", &w_t::gradients2)
+      ;
+    }
+  };
+
+  struct adp_volume_similarity_proxy_wrappers {
+    typedef adp_volume_similarity_proxy w_t;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t, bases<adp_restraint_proxy<2> > >
+        ("adp_volume_similarity_proxy", no_init)
+        .def(init<af::tiny<unsigned, 2> const&, double>((
+           arg("i_seqs"),
+           arg("weight"))))
+      ;
+      {
+        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+          "shared_adp_volume_similarity_proxy")
+        ;
+      }
+    }
+  };
+
+  struct adp_volume_similarity_wrappers {
+    typedef adp_volume_similarity w_t;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t, bases<adp_restraint_base<2> > >
+        ("adp_volume_similarity", no_init)
+        .def(init<
+           af::tiny<scitbx::sym_mat3<double>, 2> const&,
+           double>(
+          (arg("u_cart"),
+           arg("weight"))))
+        .def(init<
+           af::tiny<double, 2> const&,
+           double>(
+          (arg("u_iso"),
+           arg("weight"))))
+        .def(init<
+           scitbx::sym_mat3<double> const&,
+           double,
+           double>(
+          (arg("u_cart"),
+           arg("u_iso"),
+           arg("weight"))))
+        .def(init<
+            double,
+            scitbx::sym_mat3<double> const&,
+           double>(
+          (arg("u_iso"),
+           arg("u_cart"),
+           arg("weight"))))
+        .def(init<
+            adp_restraint_params<double> const&,
+            adp_volume_similarity_proxy const&>(
+          (arg("params"),
+           arg("proxy"))))
+        .def("gradients2", &w_t::gradients2)
+      ;
+    }
+  };
+
+  void wrap_all() {
     using namespace boost::python;
     adp_similarity_wrappers::wrap();
     adp_similarity_proxy_wrappers::wrap();
-    def("adp_similarity_residual_sum", adp_similarity_residual_sum,
-      (arg("u_cart"),
-       arg("u_iso"),
-       arg("use_u_aniso"),
-       arg("proxies"),
-       arg("gradients_aniso_cart"),
-       arg("gradients_iso")));
-    def("adp_similarity_residuals", adp_similarity_residuals,
-      (arg("u_cart"),
-       arg("u_iso"),
-       arg("use_u_aniso"),
-       arg("proxies")));
-    def("adp_similarity_deltas_rms", adp_similarity_deltas_rms,
-      (arg("u_cart"),
-       arg("u_iso"),
-       arg("use_u_aniso"),
-       arg("proxies")));
+    adp_u_eq_similarity_wrappers::wrap();
+    adp_u_eq_similarity_proxy_wrappers::wrap();
+    adp_volume_similarity_wrappers::wrap();
+    adp_volume_similarity_proxy_wrappers::wrap();
   }
 
 }
 
 namespace boost_python {
 
-  void
-  wrap_adp_similarity() { wrap_all(); }
+  void wrap_adp_similarity() { wrap_all(); }
 
 }}}

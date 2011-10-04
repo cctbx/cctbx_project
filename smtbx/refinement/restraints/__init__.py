@@ -6,6 +6,7 @@ boost.python.import_ext("smtbx_refinement_restraints_ext")
 from smtbx_refinement_restraints_ext import *
 
 from cctbx.xray import parameter_map
+from cctbx.adp_restraints import adp_restraint_params
 
 from libtbx import adopt_optional_init_args
 
@@ -21,6 +22,10 @@ class manager(object):
   adp_similarity_proxies=None
   rigid_bond_proxies=None
   isotropic_adp_proxies=None
+  #new
+  fixed_u_eq_adp_proxies=None
+  adp_u_eq_similarity_proxies=None
+  adp_volume_similarity_proxies=None
 
   def __init__(self, **kwds):
     adopt_optional_init_args(self, kwds)
@@ -78,6 +83,18 @@ class manager(object):
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
       print >> f
+    if (self.adp_u_eq_similarity_proxies is not None):
+      self.adp_u_eq_similarity_proxies.show_sorted(
+        by_value="residual", site_labels=site_labels,
+        u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
+        f=f, prefix=prefix, max_items=max_items)
+      print >> f
+    if (self.adp_volume_similarity_proxies is not None):
+      self.adp_volume_similarity_proxies.show_sorted(
+        by_value="residual", site_labels=site_labels,
+        u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
+        f=f, prefix=prefix, max_items=max_items)
+      print >> f
     if (self.rigid_bond_proxies is not None):
       self.rigid_bond_proxies.show_sorted(
         by_value="residual",
@@ -86,8 +103,14 @@ class manager(object):
       print >> f
     if (self.isotropic_adp_proxies is not None):
       self.isotropic_adp_proxies.show_sorted(
-        by_value="residual",
-        site_labels=site_labels, u_cart=u_cart,
+        by_value="residual", site_labels=site_labels,
+        u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
+        f=f, prefix=prefix, max_items=max_items)
+      print >> f
+    if (self.fixed_u_eq_adp_proxies is not None):
+      self.fixed_u_eq_adp_proxies.show_sorted(
+        by_value="residual", site_labels=site_labels,
+        u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
       print >> f
 
@@ -119,9 +142,18 @@ class manager(object):
     if self.adp_similarity_proxies is not None:
       adp_proxies.append(self.adp_similarity_proxies)
       n_restraints += 6 * self.adp_similarity_proxies.size()
+    if self.adp_u_eq_similarity_proxies is not None:
+      adp_proxies.append(self.adp_u_eq_similarity_proxies)
+      n_restraints += 6 * self.adp_u_eq_similarity_proxies.size()
+    if self.adp_volume_similarity_proxies is not None:
+      adp_proxies.append(self.adp_volume_similarity_proxies)
+      n_restraints += 6 * self.adp_volume_similarity_proxies.size()
     if self.isotropic_adp_proxies is not None:
       adp_proxies.append(self.isotropic_adp_proxies)
       n_restraints += 6 * self.isotropic_adp_proxies.size()
+    if self.fixed_u_eq_adp_proxies is not None:
+      adp_proxies.append(self.fixed_u_eq_adp_proxies)
+      n_restraints += 6 * self.fixed_u_eq_adp_proxies.size()
     if self.rigid_bond_proxies is not None:
       adp_proxies.append(self.rigid_bond_proxies)
       n_restraints += self.rigid_bond_proxies.size()
@@ -134,18 +166,13 @@ class manager(object):
         parameter_map, proxies, linearised_eqns)
     u_cart = xray_structure.scatterers().extract_u_cart(
       xray_structure.unit_cell())
-    if self.adp_similarity_proxies is not None:
+    params = adp_restraint_params(
+      sites_cart=xray_structure.sites_cart(),
+      u_cart=u_cart,
+      u_iso=xray_structure.scatterers().extract_u_iso(),
+      use_u_aniso=xray_structure.use_u_aniso())
+    for proxies in adp_proxies:
       linearise_restraints(
-        xray_structure.unit_cell(), u_cart,
-        xray_structure.scatterers().extract_u_iso(),
-        xray_structure.use_u_aniso(),
-        parameter_map, self.adp_similarity_proxies, linearised_eqns)
-    if self.isotropic_adp_proxies is not None:
-      linearise_restraints(
-        xray_structure.unit_cell(), u_cart, parameter_map,
-        self.isotropic_adp_proxies, linearised_eqns)
-    if self.rigid_bond_proxies is not None:
-      linearise_restraints(
-        xray_structure.unit_cell(), xray_structure.sites_cart(), u_cart,
-        parameter_map, self.rigid_bond_proxies, linearised_eqns)
+        xray_structure.unit_cell(), params,
+        parameter_map, proxies, linearised_eqns)
     return linearised_eqns

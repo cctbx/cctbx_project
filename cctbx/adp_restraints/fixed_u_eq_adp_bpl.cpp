@@ -8,7 +8,7 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <cctbx/adp_restraints/isotropic_adp.h>
+#include <cctbx/adp_restraints/fixed_u_eq_adp.h>
 #include <scitbx/boost_python/container_conversions.h>
 
 
@@ -16,67 +16,72 @@ namespace cctbx { namespace adp_restraints {
 
 namespace {
 
+  struct fixed_u_eq_adp_proxy_wrappers  {
+    typedef fixed_u_eq_adp_proxy w_t;
 
-  struct isotropic_adp_proxy_wrappers
-  {
-    typedef isotropic_adp_proxy w_t;
-
-    static void
-    wrap()
-    {
+    static void wrap() {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<adp_restraint_proxy<1> > >
-        ("isotropic_adp_proxy", no_init)
+        ("fixed_u_eq_adp_proxy", no_init)
         .def(init<
-           af::tiny<unsigned, 1> const &,
-           double>(
+              af::tiny<unsigned, 1> const &,
+              double,
+              double>(
           (arg("i_seqs"),
-           arg("weight"))))
+           arg("weight"),
+           arg("u_eq_ideal"))))
+        .def_readonly("u_eq_ideal", &w_t::u_eq_ideal)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
-          "shared_isotropic_adp_proxy")
-        ;
+          "shared_fixed_u_eq_adp_proxy");
       }
     }
   };
 
-  struct isotropic_adp_wrappers
-  {
-    typedef isotropic_adp w_t;
+  struct fixed_u_eq_adp_wrappers  {
+    typedef fixed_u_eq_adp w_t;
 
-    static void
-    wrap() {
+    static void wrap() {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
+
       class_<w_t, bases<adp_restraint_base<1> > >
-            ("isotropic_adp", no_init)
+            ("fixed_u_eq_adp", no_init)
         .def(init<
             scitbx::sym_mat3<double> const &,
+            double,
             double>(
           (arg("u_cart"),
-           arg("weight"))))
+           arg("weight"),
+           arg("u_eq_ideal"))))
+        .def(init<
+            double,
+            double,
+            double>(
+          (arg("u_iso"),
+           arg("weight"),
+           arg("u_eq_ideal"))))
         .def(init<
             adp_restraint_params<double> const &,
-            isotropic_adp_proxy const &>(
+            fixed_u_eq_adp_proxy const &>(
           (arg("params"),
            arg("proxy"))))
+        .def_readonly("u_eq_ideal", &w_t::u_eq_ideal)
       ;
     }
   };
 
   void wrap_all() {
     using namespace boost::python;
-    isotropic_adp_wrappers::wrap();
-    isotropic_adp_proxy_wrappers::wrap();
+    fixed_u_eq_adp_wrappers::wrap();
+    fixed_u_eq_adp_proxy_wrappers::wrap();
   }
 
 }
 
 namespace boost_python {
 
-  void
-  wrap_isotropic_adp() { wrap_all(); }
+  void wrap_fixed_u_eq_adp() { wrap_all(); }
 
 }}}

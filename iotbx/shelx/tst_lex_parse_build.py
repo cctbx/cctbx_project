@@ -688,7 +688,7 @@ def exercise_restraint_parsing():
   expected_i_seqs = (0,1,2,3)
   expected_weights = (25,100,100,25)
   for i in range(4):
-    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert shared_isotropic_adp_proxy[i].i_seqs[0] == expected_i_seqs[i]
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
   # ISOR with s
@@ -698,7 +698,7 @@ def exercise_restraint_parsing():
   assert shared_isotropic_adp_proxy.size() == 4
   expected_weights = (6.25,25,25,6.25)
   for i in range(4):
-    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert shared_isotropic_adp_proxy[i].i_seqs[0] == expected_i_seqs[i]
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
   # ISOR with s and st
@@ -708,7 +708,7 @@ def exercise_restraint_parsing():
   assert shared_isotropic_adp_proxy.size() == 4
   expected_weights = (1/(0.3*0.3), 25, 25, 1/(0.3*0.3))
   for i in range(4):
-    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert shared_isotropic_adp_proxy[i].i_seqs[0] == expected_i_seqs[i]
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
   # ISOR with atoms
@@ -719,7 +719,7 @@ def exercise_restraint_parsing():
   expected_i_seqs = (0,1,2)
   expected_weights = (25,100,100)
   for i in range(3):
-    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert shared_isotropic_adp_proxy[i].i_seqs[0] == expected_i_seqs[i]
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
   # ISOR with s and atoms
@@ -730,7 +730,7 @@ def exercise_restraint_parsing():
   expected_i_seqs = (0,1,2)
   expected_weights = (6.25,25,25)
   for i in range(3):
-    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert shared_isotropic_adp_proxy[i].i_seqs[0] == expected_i_seqs[i]
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
   # ISOR with s, st and atoms
@@ -741,7 +741,7 @@ def exercise_restraint_parsing():
   expected_i_seqs = (0,1,2)
   expected_weights = (1/(0.3*0.3), 25, 25)
   for i in range(3):
-    assert shared_isotropic_adp_proxy[i].i_seq == expected_i_seqs[i]
+    assert shared_isotropic_adp_proxy[i].i_seqs[0] == expected_i_seqs[i]
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
 

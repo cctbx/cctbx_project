@@ -4,8 +4,11 @@ env_bpl.Prepend(LIBS=["cctbx"])
 env_bpl.SharedLibrary(
   target="#lib/cctbx_adp_restraints_ext",
   source=[
+    "adp_restraints_bpl.cpp",
     "adp_restraints_ext.cpp",
     "rigid_bond_bpl.cpp",
     "adp_similarity_bpl.cpp",
     "isotropic_adp_bpl.cpp",
-    "aniso_restraints_bpl.cpp"])
+    "aniso_restraints_bpl.cpp",
+    "fixed_u_eq_adp_bpl.cpp",
+    ])

@@ -116,7 +116,7 @@ def exercise_isotropic_adp():
     proxies = restraints.proxies
     assert proxies.size() == len(i_seqs)
     for i in range(proxies.size()):
-      assert approx_equal(proxies[i].i_seq, i_seqs[i])
+      assert approx_equal(proxies[i].i_seqs[0], i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
     # add more restraints to same shared proxy
     i_seqs = (3,5,42)
@@ -131,7 +131,7 @@ def exercise_isotropic_adp():
     proxies = restraints.proxies
     assert proxies.size() == len(expected_i_seqs)
     for i in range(proxies.size()):
-      assert approx_equal(proxies[i].i_seq, expected_i_seqs[i])
+      assert approx_equal(proxies[i].i_seqs[0], expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
 def run():

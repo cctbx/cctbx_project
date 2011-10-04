@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 from cctbx import adptbx
 from cctbx import uctbx
 from cctbx import adp_restraints
+from cctbx.adp_restraints import adp_restraint_params
 from scitbx import matrix
 import libtbx.load_env
 import math, os, sys
@@ -20,17 +21,16 @@ def finite_difference_gradients(restraint_type,
                u_cart=None, u_iso=None, use_u_aniso=None):
     if sites_cart is not None:
       return restraint_type(
-        sites_cart=sites_cart,
-        u_cart=u_cart,
+        adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
         proxy=proxy).residual()
     elif u_iso is None:
-      return restraint_type(u_cart=u_cart,proxy=proxy).residual()
+      return restraint_type(
+        adp_restraint_params(u_cart=u_cart),
+        proxy=proxy).residual()
     else:
       assert use_u_aniso is not None
       return restraint_type(
-        u_cart=u_cart,
-        u_iso=u_iso,
-        use_u_aniso=use_u_aniso,
+        adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso),
         proxy=proxy).residual()
   result_aniso = [(0,0,0,0,0,0)]*len(u_cart)
   result_iso = [0] * len(u_cart)
@@ -190,17 +190,13 @@ def exercise_rigid_bond():
   assert approx_equal(r.delta_z(), -6)
   assert approx_equal(r.residual(), 36)
   assert approx_equal(r.gradients(), expected_gradients)
-  assert approx_equal(r.sites, sites)
-  assert approx_equal(r.u_cart, u_cart)
   sites_cart = flex.vec3_double(((1,2,3),(2,5,4),(3,4,5)))
   u_cart = flex.sym_mat3_double(((1,2,3,4,5,6),
                                  (2,3,3,5,7,7),
                                  (3,4,5,3,7,8)))
-  r = adp_restraints.rigid_bond(sites_cart=sites_cart,
-                                u_cart=u_cart,
-                                proxy=p)
-  assert approx_equal(r.sites, sites_cart[1:3])
-  assert approx_equal(r.u_cart, u_cart[1:3])
+  r = adp_restraints.rigid_bond(
+    adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
+    proxy=p)
   assert approx_equal(r.weight, weight)
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
@@ -219,15 +215,13 @@ def exercise_rigid_bond():
   gradients_aniso_cart = flex.sym_mat3_double(sites_cart.size(), (0,0,0,0,0,0))
   gradients_iso = flex.double(sites_cart.size(), 0)
   proxies = adp_restraints.shared_rigid_bond_proxy([p,p])
-  residuals = adp_restraints.rigid_bond_residuals(
-    sites_cart=sites_cart, u_cart=u_cart, proxies=proxies)
+  params = adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart)
+  residuals = adp_restraints.rigid_bond_residuals(params, proxies=proxies)
   assert approx_equal(residuals, (r.residual(),r.residual()))
-  deltas = adp_restraints.rigid_bond_deltas(
-    sites_cart=sites_cart, u_cart=u_cart, proxies=proxies)
+  deltas = adp_restraints.rigid_bond_deltas(params, proxies=proxies)
   assert approx_equal(deltas, (r.delta_z(),r.delta_z()))
   residual_sum = adp_restraints.rigid_bond_residual_sum(
-    sites_cart=sites_cart,
-    u_cart=u_cart,
+    params=params,
     proxies=proxies,
     gradients_aniso_cart=gradients_aniso_cart)
   assert approx_equal(residual_sum, 2 * r.residual())
@@ -260,7 +254,9 @@ def exercise_rigid_bond():
     site_cart_1_rot = R * site_cart_1
     site_cart_2_rot = R * site_cart_2
     sites = (tuple(site_cart_1_rot),tuple(site_cart_2_rot))
-    a = adp_restraints.rigid_bond(sites=sites, u_cart=u_cart, weight=1)
+    a = adp_restraints.rigid_bond(
+      sites=sites, u_cart=u_cart,
+      weight=1)
     assert approx_equal(a.residual(), expected_residual)
 
 def exercise_adp_similarity():
@@ -269,13 +265,12 @@ def exercise_adp_similarity():
   use_u_aniso = (True, True)
   weight = 1
   a = adp_restraints.adp_similarity(
-    u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=weight)
-  assert approx_equal(a.u_cart, u_cart)
-  assert approx_equal(a.u_iso, u_iso)
+    u_cart=u_cart,
+    weight=weight)
   assert approx_equal(a.use_u_aniso, use_u_aniso)
   assert a.weight == weight
   assert approx_equal(a.residual(), 68)
-  assert approx_equal(a.gradients(),
+  assert approx_equal(a.gradients2(),
     ((-2.0, -2.0, 0.0, -8.0, -8.0, 20.0), (2.0, 2.0, -0.0, 8.0, 8.0, -20.0)))
   assert approx_equal(a.deltas(), (-1.0, -1.0, 0.0, -2.0, -2.0, 5.0))
   assert approx_equal(a.rms_deltas(), 2.7487370837451071)
@@ -284,13 +279,11 @@ def exercise_adp_similarity():
   u_iso = (-1,2)
   use_u_aniso = (True, False)
   a = adp_restraints.adp_similarity(
-    u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=weight)
-  assert approx_equal(a.u_cart, u_cart)
-  assert approx_equal(a.u_iso, u_iso)
+    u_cart[0], u_iso[1], weight=weight)
   assert approx_equal(a.use_u_aniso, use_u_aniso)
   assert a.weight == weight
   assert approx_equal(a.residual(), 124)
-  assert approx_equal(a.gradients(),
+  assert approx_equal(a.gradients2(),
     ((-2, 2, 0, 16, 12, 24), (2, -2, 0, -16, -12, -24)))
   assert approx_equal(a.deltas(), (-1, 1, 0, 4, 3, 6))
   assert approx_equal(a.rms_deltas(), 3.711842908553348)
@@ -312,27 +305,19 @@ def exercise_adp_similarity():
   u_iso = flex.double((1,-1,-1,2))
   use_u_aniso = flex.bool((False, True,True,False))
   for p in (p_aa,p_ai,p_ia,p_ii):
-    a = adp_restraints.adp_similarity(u_cart=u_cart,
-                                      u_iso=u_iso,
-                                      use_u_aniso=use_u_aniso,
-                                      proxy=p)
-    assert approx_equal(
-      a.u_cart, (u_cart[p.i_seqs[0]],u_cart[p.i_seqs[1]]))
+    params = adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+    a = adp_restraints.adp_similarity(params, proxy=p)
     assert approx_equal(a.weight, weight)
     #
     gradients_aniso_cart = flex.sym_mat3_double(u_cart.size(), (0,0,0,0,0,0))
     gradients_iso = flex.double(u_cart.size(), 0)
     proxies = adp_restraints.shared_adp_similarity_proxy([p,p])
-    residuals = adp_restraints.adp_similarity_residuals(
-      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, proxies=proxies)
+    residuals = adp_restraints.adp_similarity_residuals(params, proxies=proxies)
     assert approx_equal(residuals, (a.residual(),a.residual()))
-    deltas_rms = adp_restraints.adp_similarity_deltas_rms(
-      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, proxies=proxies)
+    deltas_rms = adp_restraints.adp_similarity_deltas_rms(params, proxies=proxies)
     assert approx_equal(deltas_rms, (a.rms_deltas(),a.rms_deltas()))
     residual_sum = adp_restraints.adp_similarity_residual_sum(
-      u_cart=u_cart,
-      u_iso=u_iso,
-      use_u_aniso=use_u_aniso,
+      params,
       proxies=proxies,
       gradients_aniso_cart=gradients_aniso_cart,
       gradients_iso=gradients_iso)
@@ -355,8 +340,7 @@ def exercise_adp_similarity():
   u_cart = (u_cart_1.as_sym_mat3(),u_cart_2.as_sym_mat3())
   u_iso = (-1, -1)
   use_u_aniso = (True, True)
-  a = adp_restraints.adp_similarity(
-    u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=1)
+  a = adp_restraints.adp_similarity(u_cart, weight=1)
   expected_residual = a.residual()
   gen = flex.mersenne_twister()
   for i in range(20):
@@ -364,61 +348,67 @@ def exercise_adp_similarity():
     u_cart_1_rot = R * u_cart_1 * R.transpose()
     u_cart_2_rot = R * u_cart_2 * R.transpose()
     u_cart = (u_cart_1_rot.as_sym_mat3(),u_cart_2_rot.as_sym_mat3())
-    a = adp_restraints.adp_similarity(
-      u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso, weight=1)
+    a = adp_restraints.adp_similarity(u_cart, weight=1)
     assert approx_equal(a.residual(), expected_residual)
 
 def exercise_isotropic_adp():
-  i_seq = 0
+  i_seqs = (0,)
   weight = 2
-  u_cart = (1,2,3,5,2,8)
+  u_cart = ((1,2,3,5,2,8),)
+  u_iso = (0,)
+  use_u_aniso = (True,)
   p = adp_restraints.isotropic_adp_proxy(
-    i_seq=i_seq,
+    i_seqs=i_seqs,
     weight=weight)
-  assert p.i_seq == i_seq
+  assert p.i_seqs == i_seqs
   assert approx_equal(p.weight, weight)
-  i = adp_restraints.isotropic_adp(
-    u_cart=u_cart,
-    weight=weight)
+  i = adp_restraints.isotropic_adp(u_cart=u_cart[0], weight=weight)
   expected_deltas = (-1, 0, 1, 5, 2, 8)
   expected_gradients = (-4, 0, 4, 40, 16, 64)
-  assert approx_equal(i.u_cart, u_cart)
   assert approx_equal(i.weight, weight)
   assert approx_equal(i.deltas(), expected_deltas)
   assert approx_equal(i.rms_deltas(), 4.5704364002673632)
   assert approx_equal(i.residual(), 376.0)
   assert approx_equal(i.gradients(), expected_gradients)
   gradients_aniso_cart = flex.sym_mat3_double(1, (0,0,0,0,0,0))
+  gradients_iso = flex.double(1,0)
   proxies = adp_restraints.shared_isotropic_adp_proxy([p,p])
-  u_cart = flex.sym_mat3_double((u_cart,))
-  residuals = adp_restraints.isotropic_adp_residuals(
-    u_cart=u_cart, proxies=proxies)
+  u_cart = flex.sym_mat3_double(u_cart)
+  u_iso = flex.double(u_iso)
+  use_u_aniso = flex.bool(use_u_aniso)
+  params = adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
+  residuals = adp_restraints.isotropic_adp_residuals(params, proxies=proxies)
   assert approx_equal(residuals, (i.residual(),i.residual()))
-  deltas_rms = adp_restraints.isotropic_adp_deltas_rms(
-    u_cart=u_cart, proxies=proxies)
+  deltas_rms = adp_restraints.isotropic_adp_deltas_rms(params, proxies=proxies)
   assert approx_equal(deltas_rms, (i.rms_deltas(),i.rms_deltas()))
   residual_sum = adp_restraints.isotropic_adp_residual_sum(
-    u_cart=u_cart,
+    params,
     proxies=proxies,
-    gradients_aniso_cart=gradients_aniso_cart)
+    gradients_aniso_cart=gradients_aniso_cart
+  )
   assert approx_equal(residual_sum, 752.0)
   fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
     restraint_type=adp_restraints.isotropic_adp,
     proxy=p,
-    u_cart=u_cart)
+    u_cart=u_cart,
+    u_iso=u_iso,
+    use_u_aniso=use_u_aniso
+  )
   for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
     assert approx_equal(g, matrix.col(e)*2)
   #
   # check frame invariance of residual
   #
   u_cart = matrix.sym(sym_mat3=(0.1,0.2,0.05,0.03,0.02,0.01))
-  a = adp_restraints.isotropic_adp(u_cart=u_cart.as_sym_mat3(), weight=1)
+  a = adp_restraints.isotropic_adp(
+    u_cart=u_cart.as_sym_mat3(), weight=1)
   expected_residual = a.residual()
   gen = flex.mersenne_twister()
   for i in range(20):
     R = matrix.rec(gen.random_double_r3_rotation_matrix(),(3,3))
     u_cart_rot = R * u_cart * R.transpose()
-    a = adp_restraints.isotropic_adp(u_cart=u_cart_rot.as_sym_mat3(), weight=1)
+    a = adp_restraints.isotropic_adp(
+      u_cart=u_cart_rot.as_sym_mat3(), weight=1)
     assert approx_equal(a.residual(), expected_residual)
 
 def exercise_proxy_show():
@@ -511,18 +501,22 @@ ADP similarity restraints: 0
   proxies.show_sorted(
     by_value="residual",
     u_cart=flex.sym_mat3_double(),
+    u_iso=u_iso,
+    use_u_aniso=use_u_aniso,
     f=sio)
   assert not show_diff(sio.getvalue(), """\
 Isotropic ADP restraints: 0
 """)
   proxies = adp_restraints.shared_isotropic_adp_proxy([
-    adp_restraints.isotropic_adp_proxy(i_seq=0,weight=25),
-    adp_restraints.isotropic_adp_proxy(i_seq=2,weight=0.3)])
+    adp_restraints.isotropic_adp_proxy(i_seqs=(0,),weight=25),
+    adp_restraints.isotropic_adp_proxy(i_seqs=(2,),weight=0.3)])
   sio = StringIO()
   proxies.show_sorted(
     by_value="residual",
     site_labels=site_labels,
     u_cart=u_cart,
+    u_iso=u_iso,
+    use_u_aniso=use_u_aniso,
     f=sio,
     prefix=" ")
   assert not show_diff(sio.getvalue(), """\
@@ -549,6 +543,8 @@ Isotropic ADP restraints: 0
   proxies.show_sorted(
     by_value="rms_deltas",
     u_cart=u_cart,
+    u_iso=u_iso,
+    use_u_aniso=use_u_aniso,
     f=sio,
     prefix="$")
   assert not show_diff(sio.getvalue(), """\

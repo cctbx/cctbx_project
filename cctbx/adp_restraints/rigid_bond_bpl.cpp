@@ -76,14 +76,10 @@ namespace {
            arg("u_cart"),
            arg("weight"))))
         .def(init<
-           af::const_ref<scitbx::vec3<double> > const&,
-           af::const_ref<scitbx::sym_mat3<double> > const&,
+          adp_restraint_params<double> const &,
            rigid_bond_proxy const&>(
-          (arg("sites_cart"),
-           arg("u_cart"),
+          (arg("params"),
            arg("proxy"))))
-        .add_property("sites", make_getter(&w_t::sites, rbv()))
-        .add_property("u_cart", make_getter(&w_t::u_cart, rbv()))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
         .def("z_12", &w_t::z_12)
         .def("z_21", &w_t::z_21)
@@ -94,33 +90,31 @@ namespace {
     }
   };
 
-  void
-  wrap_all()
-  {
+  void wrap_all() {
     using namespace boost::python;
     rigid_bond_pair_wrappers::wrap();
     rigid_bond_wrappers::wrap();
+
     rigid_bond_proxy_wrappers::wrap();
-    def("rigid_bond_residual_sum", rigid_bond_residual_sum,
-      (arg("sites_cart"),
-       arg("u_cart"),
-       arg("proxies"),
-       arg("gradients_aniso_cart")));
-    def("rigid_bond_residuals", rigid_bond_residuals,
-      (arg("sites_cart"),
-       arg("u_cart"),
-       arg("proxies")));
-    def("rigid_bond_deltas", rigid_bond_deltas,
-      (arg("sites_cart"),
-       arg("u_cart"),
-       arg("proxies")));
+      def("rigid_bond_residual_sum",
+        adp_restraint_residual_sum_aniso<rigid_bond_proxy,rigid_bond>,
+        (arg("params"),
+         arg("proxies"),
+         arg("gradients_aniso_cart")));
+      def("rigid_bond_residuals",
+        adp_restraint_residuals<rigid_bond_proxy,rigid_bond>,
+        (arg("params"),
+         arg("proxies")));
+      def("rigid_bond_deltas",
+        rigid_bond_deltas,
+        (arg("params"),
+         arg("proxies")));
   }
 
 }
 
 namespace boost_python {
 
-  void
-  wrap_rigid_bond() { wrap_all(); }
+  void wrap_rigid_bond() { wrap_all(); }
 
 }}}
