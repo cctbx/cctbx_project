@@ -132,7 +132,7 @@ namespace fem {
       {
         while (true) {
           if(terminated_by_colon) {
-                  static const std::string empty("");
+            static const std::string empty("");
             return empty;
           }
           utils::token const* t = fmt_loop.next_executable_token(final);
