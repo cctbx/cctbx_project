@@ -36,6 +36,7 @@ namespace fem {
       int internal_file_len;
       io_modes io_mode;
       format::token_loop fmt_loop;
+      bool terminated_by_colon;
 
     public:
 
@@ -46,7 +47,8 @@ namespace fem {
       :
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
-        io_mode(io_unformatted)
+        io_mode(io_unformatted),
+        terminated_by_colon(false)
       {}
 
       write_loop(
@@ -56,7 +58,8 @@ namespace fem {
       :
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
-        io_mode(io_list_directed)
+        io_mode(io_list_directed),
+        terminated_by_colon(false)
       {}
 
       write_loop(
@@ -67,7 +70,8 @@ namespace fem {
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
         io_mode(io_formatted),
-        fmt_loop(fmt)
+        fmt_loop(fmt),
+        terminated_by_colon(false)
       {}
 
       write_loop(
@@ -78,7 +82,8 @@ namespace fem {
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.elems(), internal_file.len()))),
         internal_file_len(internal_file.len()),
-        io_mode(io_list_directed)
+        io_mode(io_list_directed),
+        terminated_by_colon(false)
       {}
 
       write_loop(
@@ -90,7 +95,8 @@ namespace fem {
             internal_file.elems(), internal_file.len()))),
         internal_file_len(internal_file.len()),
         io_mode(io_formatted),
-        fmt_loop(fmt)
+        fmt_loop(fmt),
+        terminated_by_colon(false)
       {}
 
       template <size_t Ndims>
@@ -102,7 +108,8 @@ namespace fem {
           utils::simple_ostream_to_char_ptr_and_size(
             internal_file.begin(), internal_file.len()))),
         internal_file_len(internal_file.len()),
-        io_mode(io_list_directed)
+        io_mode(io_list_directed),
+        terminated_by_colon(false)
       {}
 
       template <size_t Ndims>
@@ -115,7 +122,8 @@ namespace fem {
             internal_file.begin(), internal_file.len()))),
         internal_file_len(internal_file.len()),
         io_mode(io_formatted),
-        fmt_loop(fmt)
+        fmt_loop(fmt),
+        terminated_by_colon(false)
       {}
 
       std::string const&
@@ -123,6 +131,10 @@ namespace fem {
         bool final=false)
       {
         while (true) {
+          if(terminated_by_colon) {
+                  static const std::string empty("");
+            return empty;
+          }
           utils::token const* t = fmt_loop.next_executable_token(final);
           if (t == 0) {
             static const std::string empty("");
@@ -134,7 +146,7 @@ namespace fem {
           }
           else if (t->type == "op") {
             if (tv[0] == ':') {
-              // ignored
+              if(final) terminated_by_colon = true;
             }
             else if (tv[0] == '/') {
               to_stream_fmt("\n", 1);

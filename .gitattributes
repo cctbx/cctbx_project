@@ -767,6 +767,7 @@ fable/test/valid/write_err.f -text
 fable/test/valid/write_extra_parentheses.f -text
 fable/test/valid/write_fmt_double.f -text
 fable/test/valid/write_format.f -text
+fable/test/valid/write_format_with_colon.f -text
 fable/test/valid/write_implied_do_1.f -text
 fable/test/valid/write_implied_do_2.f -text
 fable/test/valid/write_implied_do_3.f -text
