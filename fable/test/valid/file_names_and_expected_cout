@@ -1564,3 +1564,52 @@ read_end_err_star_double.f
 | value from txt =   0.000000000000000E+000|
 | value from buf =   7.000000000000000E-003|
 | OK|
+read_iostat_end_err_1.f
+| value from file =   0.000000000000000E+000 ios =           0|
+| value from file =   0.000000000000000E+000 ios =           0|
+| value from txt =   0.000000000000000E+000 ios =           0|
+| value from buf =   7.000000000000000E-003 ios =           0|
+| buf33 from buf = "7  " ios =           0|
+| OK|
+read_iostat_end_err_2.f
+| F T F "12 "|
+| T F F|
+| T F F|
+| T F F|
+| F F T|
+| OK|
+read_iostat_from_file.f
+| F T F "1"|
+| F T F "2"|
+| F T F "2 "|
+| F T F "12 "|
+| T F F|
+| F T F          12|
+| F T F          12           0|
+| T F F|
+| T F F|
+| F T F  1.200000000000000E-002|
+| F F T|
+read_iostat_from_string.f
+| F T F "1"|
+| F T F "2"|
+| F T F "2 "|
+| F T F "12 "|
+| T F F|
+| F T F          12|
+| F T F          12           0|
+| T F F|
+| T F F|
+| F T F  1.200000000000000E-002|
+| F F T|
+read_test_1.f
+| "2 "|
+read_test_1_iostat.f
+| buf33 from buf = "7  " ios =           0|
+read_test_2.f
+|          12           0|
+| OK|
+read_test_3.f
+| "2 "|
+| "12 "|
+|          12           0|

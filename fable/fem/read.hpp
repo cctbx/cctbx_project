@@ -8,6 +8,10 @@
 #include <fem/utils/misc.hpp>
 #include <fem/utils/string_to_double_fmt.hpp>
 
+#define IOSTAT_OK     0
+#define IOSTAT_ERROR  1
+#define IOSTAT_END   -1
+
 namespace fem {
 
   class read_loop // TODO copy-constructor potential performance problem
@@ -19,6 +23,7 @@ namespace fem {
       bool blanks_zero;
       int exp_scale;
       io_modes io_mode;
+      int *iostat_ptr;
 
     public:
 
@@ -31,7 +36,8 @@ namespace fem {
         first_inp_get(true),
         blanks_zero(false),
         exp_scale(0),
-        io_mode(io_unformatted)
+        io_mode(io_unformatted),
+        iostat_ptr(0)
       {}
 
       read_loop(
@@ -43,7 +49,8 @@ namespace fem {
         first_inp_get(true),
         blanks_zero(false),
         exp_scale(0),
-        io_mode(io_list_directed)
+        io_mode(io_list_directed),
+        iostat_ptr(0)
       {}
 
       read_loop(
@@ -56,7 +63,8 @@ namespace fem {
         fmt_loop(fmt),
         blanks_zero(false),
         exp_scale(0),
-        io_mode(io_formatted)
+        io_mode(io_formatted),
+        iostat_ptr(0)
       {}
 
       read_loop(
@@ -69,7 +77,8 @@ namespace fem {
         first_inp_get(true),
         blanks_zero(false),
         exp_scale(0),
-        io_mode(io_list_directed)
+        io_mode(io_list_directed),
+        iostat_ptr(0)
       {}
 
       read_loop(
@@ -83,7 +92,8 @@ namespace fem {
         fmt_loop(fmt),
         blanks_zero(false),
         exp_scale(0),
-        io_mode(io_formatted)
+        io_mode(io_formatted),
+        iostat_ptr(0)
       {}
 
       read_loop&
@@ -96,14 +106,11 @@ namespace fem {
 
       read_loop&
       iostat(
-        int&)
+        int& iostat)
       {
-#if defined(FEM_SHORTCUTS_FOR_SOLVE)
-        return *this;
-#else
-        inp.reset();
-        throw TBXX_NOT_IMPLEMENTED();
-#endif
+          this -> iostat_ptr = &iostat;
+          iostat = IOSTAT_OK;
+          return *this;
       }
 
       std::string const&
@@ -122,6 +129,13 @@ namespace fem {
             }
             else if (tv[0] == '/') {
               skip_to_end_of_line();
+              int c = inp_get();
+              if (utils::is_stream_end(c)) {
+                inp.reset();
+                if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
+                throw read_end("End of input while reading string");
+              }
+              inp -> backup();
             }
             else if (tv[0] == '$') {
               inp.reset();
@@ -183,12 +197,14 @@ namespace fem {
         int result = inp->get();
         if (utils::is_stream_err(result)) {
           inp.reset();
+          if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
           throw io_err("Error during read");
         }
         if (first_inp_get || io_mode == io_unformatted) {
           first_inp_get = false;
           if (utils::is_stream_end(result)) {
             inp.reset();
+            if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
             throw read_end("End of input during read");
           }
         }
@@ -424,26 +440,41 @@ namespace fem {
             std::string const& ed = next_edit_descriptor();
             if (ed[0] == 'a' && ed.size() > 1) {
               n = utils::unsigned_integer_value(ed.data(), 1, ed.size());
-              if (n > vl) n = vl;
             }
           }
-          int i=0;
-          for(;i<n;i++) {
+          for(int i=0;i<n-vl;i++) {
             int c = inp_get();
             if (utils::is_stream_end(c)) {
               if (i == 0) {
                 inp.reset();
+                if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
                 throw read_end("End of input while reading string");
               }
               break;
             }
             if (utils::is_end_of_line(c)) {
               inp->backup();
-              break;
             }
-            val[i] = c;
           }
-          for(;i<vl;i++) val[i] = ' ';
+          for(int i=0;i<vl;i++) {
+            int c = inp_get();
+            if (utils::is_stream_end(c)) {
+              if (i == 0) {
+                inp.reset();
+                if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
+                throw read_end("End of input while reading string");
+              }
+              val[i] = ' ';
+            }
+            else if (utils::is_end_of_line(c)) {
+              inp->backup();
+              val[i] = ' ';
+            }
+            else
+            {
+                val[i] = c;
+            }
+          }
         }
         return *this;
       }
@@ -508,11 +539,6 @@ namespace fem {
         for(unsigned i=0;i<n;i++) {
           int c = inp_get();
           if (utils::is_stream_end(c)) {
-            if (i == 0) {
-              inp.reset();
-              throw read_end(
-                "End of input while reading integer value");
-            }
             break;
           }
           if (c == ',') {
@@ -535,6 +561,7 @@ namespace fem {
             }
             if (!utils::is_digit(c)) {
               inp.reset();
+              if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
               throw io_err(
                 "Invalid character while reading integer value.");
             }
@@ -553,6 +580,7 @@ namespace fem {
           int c = inp_get();
           if (utils::is_stream_end(c)) {
             inp.reset();
+            if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
             throw read_end(
               "End of input while reading integer value");
           }
@@ -593,8 +621,10 @@ namespace fem {
         if (conv.error_message) {
           inp.reset();
           if (conv.stream_end) {
+                if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
             throw read_end(*conv.error_message);
           }
+          if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
           throw io_err(*conv.error_message);
         }
       }
@@ -633,6 +663,7 @@ namespace fem {
           return conv.result;
         }
         inp.reset();
+        if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
         throw io_err(
           "Invalid character while reading floating-point value: "
           + utils::format_char_for_display(c));
@@ -649,6 +680,7 @@ namespace fem {
           if (c == end_of_unformatted_record) {
             if (inp_get() != ic) {
               inp.reset();
+              if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
               throw read_end("End of record during unformatted read");
             }
           }
