@@ -86,56 +86,23 @@ namespace cctbx { namespace restraints {
     }
   }
 
-  template <typename FloatType, typename proxy_t, typename restraint_t>
+  template <
+    typename FloatType, typename param_t, typename proxy_t, typename restraint_t>
   void linearise_restraints(
     uctbx::unit_cell const &unit_cell,
-    af::const_ref<scitbx::sym_mat3<FloatType> > const &u_cart,
-    af::const_ref<FloatType> const &u_iso,
-    af::const_ref<bool> const &use_u_aniso,
+    param_t const &params,
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
     af::const_ref<proxy_t> const &proxies,
     linearised_eqns_of_restraint<FloatType> &linearised_eqns)
   {
     for(std::size_t i=0;i<proxies.size();i++) {
       proxy_t const& proxy = proxies[i];
-      restraint_t restraint(u_cart, u_iso, use_u_aniso, proxy);
+      restraint_t restraint(params, proxy);
       restraint.linearise(
         unit_cell, linearised_eqns, parameter_map, proxy.i_seqs);
     }
   }
 
-  template <typename FloatType, typename proxy_t, typename restraint_t>
-  void linearise_restraints(
-    uctbx::unit_cell const &unit_cell,
-    af::const_ref<scitbx::vec3<double> > const &sites_cart,
-    af::const_ref<scitbx::sym_mat3<FloatType> > const &u_cart,
-    cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
-    af::const_ref<proxy_t> const &proxies,
-    linearised_eqns_of_restraint<FloatType> &linearised_eqns)
-  {
-    for(std::size_t i=0;i<proxies.size();i++) {
-      proxy_t const& proxy = proxies[i];
-      restraint_t restraint(sites_cart, u_cart, proxy);
-      restraint.linearise(
-        unit_cell, linearised_eqns, parameter_map, proxy.i_seqs);
-    }
-  }
-
-  template <typename FloatType, typename proxy_t, typename restraint_t>
-  void linearise_restraints(
-    uctbx::unit_cell const &unit_cell,
-    af::const_ref<scitbx::sym_mat3<FloatType> > const &u_cart,
-    cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
-    af::const_ref<proxy_t> const &proxies,
-    linearised_eqns_of_restraint<FloatType> &linearised_eqns)
-  {
-    for(std::size_t i=0;i<proxies.size();i++) {
-      proxy_t const& proxy = proxies[i];
-      restraint_t restraint(u_cart, proxy);
-      restraint.linearise(
-        unit_cell, linearised_eqns, parameter_map, proxy.i_seq);
-    }
-  }
 
 }} // cctbx::restraints
 

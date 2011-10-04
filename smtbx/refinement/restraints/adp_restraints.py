@@ -124,5 +124,51 @@ class isotropic_adp_restraints(object):
       else:
         weight = 1/(sigma*sigma)
       proxies.append(adp_restraints.isotropic_adp_proxy(
-        i_seq=i_seq,weight=weight))
+        i_seqs=(i_seq,),weight=weight))
+    self.proxies = proxies
+
+class fixed_u_eq_adp_restraints(object):
+  def __init__(self, xray_structure, u_eq_ideal, proxies=None,
+               i_seqs=None, sigma=0.1):
+    if proxies is None:
+      proxies = adp_restraints.shared_fixed_u_eq_adp_proxy()
+    weight = 1/(sigma*sigma)
+    if i_seqs is None:
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
+                if s.scattering_type not in ('H', 'D')]
+    for i_seq in i_seqs:
+      proxies.append(adp_restraints.fixed_u_eq_adp_proxy(
+        i_seqs=(i_seq,),weight=weight, u_eq_ideal=u_eq_ideal))
+    self.proxies = proxies
+
+class adp_u_eq_similarity_restraints(object):
+  def __init__(self, xray_structure, proxies=None,
+               i_seqs=None, sigma=0.1):
+    if proxies is None:
+      proxies = adp_restraints.shared_adp_u_eq_similarity_proxy()
+    weight = 1/(sigma*sigma)
+    if i_seqs is None:
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
+                if s.scattering_type not in ('H', 'D')]
+    assert len(i_seqs) > 1
+    i_seq = i_seqs[0]
+    for j_seq in i_seqs[1:]:
+      proxies.append(adp_restraints.adp_u_eq_similarity_proxy(
+        i_seqs=(i_seq, j_seq),weight=weight))
+    self.proxies = proxies
+
+class adp_volume_similarity_restraints(object):
+  def __init__(self, xray_structure, proxies=None,
+               i_seqs=None, sigma=0.1):
+    if proxies is None:
+      proxies = adp_restraints.shared_adp_volume_similarity_proxy()
+    weight = 1/(sigma*sigma*sigma)
+    if i_seqs is None:
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
+                if s.scattering_type not in ('H', 'D')]
+    assert len(i_seqs) > 1
+    i_seq = i_seqs[0]
+    for j_seq in i_seqs[1:]:
+      proxies.append(adp_restraints.adp_volume_similarity_proxy(
+        i_seqs=(i_seq, j_seq),weight=weight))
     self.proxies = proxies

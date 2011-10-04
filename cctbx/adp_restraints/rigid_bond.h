@@ -4,7 +4,7 @@
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
 #include <cctbx/adptbx.h>
-#include <cctbx/restraints.h>
+#include <cctbx/adp_restraints/adp_restraints.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
 
 namespace cctbx { namespace adp_restraints {
@@ -61,41 +61,34 @@ using scitbx::sym_mat3;
     double weight;
   };
 
-  class rigid_bond
-  {
+  class rigid_bond {
   public:
-    //! Default constructor. Some data members are not initialized!
-    rigid_bond() {}
-
     //! Constructor.
     rigid_bond(
-      af::tiny<scitbx::vec3<double>, 2> const& sites_,
-      af::tiny<scitbx::sym_mat3<double>, 2> const& u_cart_,
+      af::tiny<scitbx::vec3<double>, 2> const& sites,
+      af::tiny<scitbx::sym_mat3<double>, 2> const& u_cart,
       double weight_)
     :
-      sites(sites_),
-      u_cart(u_cart_),
       weight(weight_)
     {
-      init_delta();
+      init_delta(sites, u_cart);
     }
 
     //! Constructor.
     rigid_bond(
-      af::const_ref<scitbx::vec3<double> > const& sites_cart,
-      af::const_ref<scitbx::sym_mat3<double> > const& u_cart_,
+      adp_restraint_params<double> const &params,
       rigid_bond_proxy const& proxy)
     :
       weight(proxy.weight)
     {
-      CCTBX_ASSERT(sites_cart.size() == u_cart_.size());
-      for (int i=0;i<2;i++) {
-        std::size_t i_seq = proxy.i_seqs[i];
-        CCTBX_ASSERT(i_seq < sites_cart.size());
-        sites[i] = sites_cart[i_seq];
-        u_cart[i] = u_cart_[i_seq];
-      }
-      init_delta();
+      CCTBX_ASSERT(params.sites_cart.size() == params.u_cart.size());
+      CCTBX_ASSERT(proxy.i_seqs[0] < params.sites_cart.size());
+      CCTBX_ASSERT(proxy.i_seqs[1] < params.sites_cart.size());
+      init_delta(
+        af::tiny<scitbx::vec3<double>, 2>(
+          params.sites_cart[proxy.i_seqs[0]], params.sites_cart[proxy.i_seqs[1]]),
+        af::tiny<scitbx::sym_mat3<double>, 2>(
+          params.u_cart[proxy.i_seqs[0]], params.u_cart[proxy.i_seqs[1]]));
     }
 
     //! weight * delta_z**2.
@@ -103,9 +96,7 @@ using scitbx::sym_mat3;
     residual() const { return weight * scitbx::fn::pow2(delta_z_); }
 
     //! Gradient of delta_z with respect to u_cart[0]
-    scitbx::sym_mat3<double>
-    grad_delta_0() const
-    {
+    scitbx::sym_mat3<double> grad_delta_0() const {
       scitbx::sym_mat3<double> result;
       for (int i=0;i<3;i++) {
         result[i] = scitbx::fn::pow2(l_12[i]);
@@ -180,14 +171,10 @@ using scitbx::sym_mat3;
     double z_21() { return z_21_; }
     double delta_z() { return delta_z_; }
 
-    //! Cartesian coordinates of bonded sites.
-    af::tiny<scitbx::vec3<double>, 2> sites;
-    //! Cartesian anisotropic displacement parameters.
-    af::tiny<scitbx::sym_mat3<double>, 2> u_cart;
-
     double weight;
   protected:
-    void init_delta()
+    void init_delta(af::tiny<scitbx::vec3<double>, 2> const &sites,
+      af::tiny<scitbx::sym_mat3<double>, 2> const &u_cart)
     {
       l_12 = sites[0] - sites[1];
       vec3<double> l_21 = -l_12;
@@ -203,68 +190,17 @@ using scitbx::sym_mat3;
     double bond_length_sq;
   };
 
-  /*! Fast computation of sum of rigid_bond::residual() and gradients
-      given an array of rigid_bond proxies.
-   */
-  /*! The rigid_bond::gradients() are added to the gradient_array if
-      gradient_array.size() == sites_cart.size().
-      gradient_array must be initialized before this function
-      is called.
-      No gradient calculations are performed if gradient_array.size() == 0.
-   */
-  double
-  rigid_bond_residual_sum(
-    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
-    af::const_ref<rigid_bond_proxy> const& proxies,
-    af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart)
-  {
-    CCTBX_ASSERT(   gradients_aniso_cart.size() == 0
-                 || gradients_aniso_cart.size() == sites_cart.size());
-    double result = 0;
-    for(std::size_t i=0;i<proxies.size();i++) {
-      rigid_bond_proxy const& proxy = proxies[i];
-      rigid_bond restraint(sites_cart, u_cart, proxy);
-      result += restraint.residual();
-      if (gradients_aniso_cart.size() != 0) {
-        restraint.add_gradients(gradients_aniso_cart, proxy.i_seqs);
-      }
-    }
-    return result;
-  }
-
-  /*! \brief Fast computation of rigid_bond::residual() given an array
-      of rigid_bond proxies.
-   */
-  af::shared<double>
-  rigid_bond_residuals(
-    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
-    af::const_ref<rigid_bond_proxy> const& proxies)
-  {
-    af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0;i<proxies.size();i++) {
-      rigid_bond_proxy const& proxy = proxies[i];
-      rigid_bond restraint(sites_cart, u_cart, proxy);
-      result.push_back(restraint.residual());
-    }
-    return result;
-  }
-
   /*! \brief Fast computation of rigid_bond::delta_z() given an array
       of rigid_bond proxies.
    */
   af::shared<double>
   rigid_bond_deltas(
-    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    adp_restraint_params<double> const &params,
     af::const_ref<rigid_bond_proxy> const& proxies)
   {
     af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0;i<proxies.size();i++) {
-      rigid_bond_proxy const& proxy = proxies[i];
-      rigid_bond restraint(sites_cart, u_cart, proxy);
-      result.push_back(restraint.delta_z());
+    for(std::size_t i=0; i<proxies.size(); i++) {
+      result.push_back(rigid_bond(params, proxies[i]).delta_z());
     }
     return result;
   }

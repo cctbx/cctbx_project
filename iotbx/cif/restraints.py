@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx import sgtbx
 from cctbx import adp_restraints, geometry_restraints
+from cctbx.adp_restraints import adp_restraint_params
 from cctbx.array_family import flex
 from iotbx.cif import model
 import math
@@ -201,8 +202,7 @@ def rigid_bond_as_cif_loop(xray_structure, proxies):
   ))
   for proxy in proxies:
     restraint = adp_restraints.rigid_bond(
-      sites_cart=sites_cart,
-      u_cart=u_cart,
+      adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
       proxy=proxy)
     loop.add_row((site_labels[proxy.i_seqs[0]],
                   site_labels[proxy.i_seqs[1]],
@@ -233,5 +233,5 @@ def isotropic_adp_as_cif_loop(xray_structure, proxies):
     "_restr_U_iso_weight_param",
   ))
   for proxy in proxies:
-    loop.add_row((site_labels[proxy.i_seq], fmt % math.sqrt(1/proxy.weight)))
+    loop.add_row((site_labels[proxy.i_seqs[0]], fmt % math.sqrt(1/proxy.weight)))
   return loop

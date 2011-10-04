@@ -12,6 +12,7 @@
 #include <cctbx/adp_restraints/adp_similarity.h>
 #include <cctbx/adp_restraints/rigid_bond.h>
 #include <cctbx/adp_restraints/isotropic_adp.h>
+#include <cctbx/adp_restraints/fixed_u_eq_adp.h>
 #include <cctbx/restraints.h>
 
 #include <smtbx/import_scitbx_af.h>
@@ -19,6 +20,28 @@
 namespace smtbx { namespace refinement { namespace restraints {
 
 namespace boost_python {
+
+  struct functions_wrapper {
+    template <typename ProxyType, typename RestraintType>
+    static void wrap() {
+      using namespace boost::python;
+      def("linearise_restraints",
+      (void(*) (
+        cctbx::uctbx::unit_cell const &,
+        cctbx::adp_restraints::adp_restraint_params<double> const &,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
+        af::const_ref<ProxyType> const &,
+        cctbx::restraints::linearised_eqns_of_restraint<double> &))
+        cctbx::restraints::linearise_restraints<
+          double, cctbx::adp_restraints::adp_restraint_params<double>,
+          ProxyType, RestraintType>,
+        (arg("unit_cell"),
+         arg("params"),
+         arg("parameter_map"),
+         arg("proxies"),
+         arg("linearised_eqns")));
+    }
+  };
 
   template <typename FloatType>
   struct linearised_eqns_of_restraint_wrapper
@@ -69,6 +92,7 @@ namespace boost_python {
 
   void wrap_least_squares_restraints() {
     using namespace boost::python;
+
     linearised_eqns_of_restraint_wrapper<
       double>::wrap("linearised_eqns_of_restraint");
 
@@ -82,57 +106,19 @@ namespace boost_python {
     //  double, double, geom_res::planarity_proxy, geom_res::planarity>::wrap();
     geom_res_linearise_restraints_wrapper<
       double, geom_res::bond_similarity_proxy, geom_res::bond_similarity>::wrap();
-    // adp similarity restraint
-    def("linearise_restraints",
-      (void(*) (
-        cctbx::uctbx::unit_cell const &,
-        af::const_ref<scitbx::sym_mat3<double> > const &,
-        af::const_ref<double> const &,
-        af::const_ref<bool> const &,
-        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
-        af::const_ref<adp_res::adp_similarity_proxy> const &,
-        cctbx::restraints::linearised_eqns_of_restraint<double> &))
-        cctbx::restraints::linearise_restraints<
-          double, adp_res::adp_similarity_proxy, adp_res::adp_similarity>,
-        (arg("unit_cell"),
-         arg("u_cart"),
-         arg("u_iso"),
-         arg("use_u_aniso"),
-         arg("parameter_map"),
-         arg("proxies"),
-         arg("linearised_eqns")));
-    // rigid bond restraint
-    def("linearise_restraints",
-      (void(*) (
-        cctbx::uctbx::unit_cell const &,
-        af::const_ref<scitbx::vec3<double> > const &,
-        af::const_ref<scitbx::sym_mat3<double> > const &,
-        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
-        af::const_ref<adp_res::rigid_bond_proxy> const &,
-        cctbx::restraints::linearised_eqns_of_restraint<double> &))
-        cctbx::restraints::linearise_restraints<
-          double, adp_res::rigid_bond_proxy, adp_res::rigid_bond>,
-        (arg("unit_cell"),
-         arg("sites_cart"),
-         arg("u_cart"),
-         arg("parameter_map"),
-         arg("proxies"),
-         arg("restraints_matrix")));
-    // isotropic adp restraint
-    def("linearise_restraints",
-      (void(*) (
-        cctbx::uctbx::unit_cell const &,
-        af::const_ref<scitbx::sym_mat3<double> > const &,
-        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
-        af::const_ref<adp_res::isotropic_adp_proxy> const &,
-        cctbx::restraints::linearised_eqns_of_restraint<double> &))
-        cctbx::restraints::linearise_restraints<
-          double, adp_res::isotropic_adp_proxy, adp_res::isotropic_adp>,
-        (arg("unit_cell"),
-         arg("u_cart"),
-         arg("parameter_map"),
-         arg("proxies"),
-         arg("restraints_matrix")));
+    // wrap linearisation functions
+    functions_wrapper::wrap<
+      adp_res::isotropic_adp_proxy, adp_res::isotropic_adp>();
+    functions_wrapper::wrap<
+      adp_res::fixed_u_eq_adp_proxy, adp_res::fixed_u_eq_adp>();
+    functions_wrapper::wrap<
+      adp_res::adp_similarity_proxy, adp_res::adp_similarity>();
+    functions_wrapper::wrap<
+      adp_res::adp_u_eq_similarity_proxy, adp_res::adp_u_eq_similarity>();
+    functions_wrapper::wrap<
+      adp_res::rigid_bond_proxy, adp_res::rigid_bond>();
+    functions_wrapper::wrap<
+      adp_res::adp_volume_similarity_proxy, adp_res::adp_volume_similarity>();
   }
 
   void wrap_origin_fixing_restraints();
