@@ -197,6 +197,7 @@ def extract(file_name,
   miller_arrays = iotbx.cif.reader(file_path=file_name).as_miller_arrays(
     crystal_symmetry=crystal_symmetry)
   assert len(miller_arrays) > 0
+  column_labels = set()
 
   def get_label(miller_array):
     label = None
@@ -273,6 +274,18 @@ def extract(file_name,
         if (show_details_if_error):
           ma.show_comprehensive_summary(prefix="  ")
           ma.map_to_asu().sort().show_array(prefix="  ")
+    def get_unique_column_label(miller_array, label, column_labels):
+      if label not in column_labels: return label
+      ma_labels = miller_array.info().labels
+      datablock_name = ma_labels[0]
+      label = "_".join((datablock_name, label))
+      if label not in column_labels: return label
+      i = 1
+      while "%s_%i" %(label, i) in column_labels:
+        i += 1
+      return "%s_%i" %(label, i)
+    label = get_unique_column_label(ma, label, column_labels)
+    column_labels.add(label)
     dataset.add_miller_array(ma, column_root_label=label)
   return mtz_object
 
