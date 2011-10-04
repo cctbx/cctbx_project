@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 from libtbx import Auto
 import wx
 import os
+import sys
 
 WXTBX_PHIL_PATH_SAVE = 1
 WXTBX_PHIL_PATH_DIRECTORY = 2
@@ -174,8 +175,13 @@ class PathValidator (text_base.TextCtrlValidator) :
       return os.path.abspath(value)
     elif (os.path.isdir(value)) :
       if (not style & WXTBX_PHIL_PATH_DIRECTORY) :
-        raise ValueError("directory specified, but this parameter requires "+
-          "a file.")
+        # XXX hack to allow app and package bundles on OS X
+        if ((sys.platform == "darwin") and (value.endswith(".app") or
+            (value.endswith(".pkg")))) :
+          pass
+        else :
+          raise ValueError("directory specified, but this parameter requires "+
+            "a file.")
       return os.path.abspath(value)
     else :
       if (style & WXTBX_PHIL_PATH_SAVE) :
