@@ -690,9 +690,7 @@ def cif_status_flags_as_int_r_free_flags(miller_array, test_flag_value):
   if miller_array.is_string_array():
     selection = (miller_array.data() == 'o') | (miller_array.data() == 'f')
     info = miller_array.info()
-    print "miller array size: %i" %miller_array.size()
     miller_array = miller_array.select(selection)
-    print "miller array size: %i" %miller_array.size()
     data = flex.int(miller_array.size(), 1)
     data.set_selected(miller_array.data() == 'f', 0)
     miller_array = miller_array.array(data=data)
