@@ -282,7 +282,7 @@ def extract(file_name,
           ma.show_comprehensive_summary(prefix="  ")
           ma.map_to_asu().sort().show_array(prefix="  ")
     if(map_to_asu):
-      ma = ma.map_to_asu()
+      ma = ma.map_to_asu().set_info(ma.info())
     def get_unique_column_label(miller_array, label, column_labels):
       if label not in column_labels: return label
       ma_labels = miller_array.info().labels
