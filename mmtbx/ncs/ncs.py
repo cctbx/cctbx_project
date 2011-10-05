@@ -62,16 +62,16 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       if change_of_basis_operator is None:
         new_list_of_matrices.append(deepcopy(ncs_r))
         new_list_of_translations.append(deepcopy(ncs_t))
-      else:    
+      else:
         # tt 2011-10-02
-        # Formula for conversion of NCS rotation matrix and translation 
+        # Formula for conversion of NCS rotation matrix and translation
         # relating two points in coordinate system to a second coordinate system
-        # The change-of-basis operator is new_x = a x + t 
+        # The change-of-basis operator is new_x = a x + t
         # The NCS operator is y = R x + T (in original coordinate system)
         # Then if NCS operator in new coordinate system is y' = R' x' + T':
         # R' = a R a_inv
-        # T' = a T + t - a R a_inv t = transformed T minus R' * t 
-        # 
+        # T' = a T + t - a R a_inv t = transformed T minus R' * t
+        #
         # Derivation:
         # x' and y' (values in new coordinate system) can be written:
         #   x'=a x + t
@@ -85,7 +85,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         #   y' = [a R a_inv] x' - [a R a_inv ] t + t + a t
         # So that:
         #   R' = a R a_inv
-        #   T' = a T + t - a R a_inv t = transformed T minus R' * t 
+        #   T' = a T + t - a R a_inv t = transformed T minus R' * t
 
         # matrices are a ncs_r a_inv
         ncs_r_prime=a * ncs_r * a_inv
@@ -99,7 +99,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         # as well as the change-of-basis operator
         t_as_col=change_of_basis_operator.c().t().as_rational().as_float()
         # the basis translation in orig coordinate system
-        cob_trans=unit_cell.orthogonalize(t_as_col) 
+        cob_trans=unit_cell.orthogonalize(t_as_col)
         # correction for the basis translation in new coordinate system
         delta = ncs_r_prime * cob_trans
         t_prime=matrix.col(new_ncs_t) - matrix.col(delta)
@@ -123,9 +123,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return new_vector_list
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
-      new_unit_cell=None):  # make full copy; 
+      new_unit_cell=None):  # make full copy;
     # optionally apply change-of-basis operator (requires old, new unit cells)
-   
+
     from mmtbx.ncs.ncs import ncs
     from copy import deepcopy
     new=ncs_group()
