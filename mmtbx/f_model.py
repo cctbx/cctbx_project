@@ -1059,7 +1059,8 @@ class manager(manager_mixin):
       is_mask_optimized = self.optimize_mask(params = params, out = out,
         thorough = optimize_mask_thorough, nproc=nproc)
     if(self.check_f_mask_all_zero()): params.bulk_solvent = False
-    bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
+    bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out,
+      nproc=nproc)
     self.update_core()
     if(not is_mask_optimized and optimize_mask):
       self.optimize_mask(params = params, out = out,

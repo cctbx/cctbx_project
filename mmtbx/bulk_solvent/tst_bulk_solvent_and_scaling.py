@@ -11,6 +11,7 @@ import cctbx.sgtbx.bravais_types
 from cctbx.development import random_structure
 import libtbx.load_env
 from cctbx import adptbx
+from libtbx import Auto
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -61,7 +62,8 @@ def exercise_01_general(d_mins = [1.6,],
                        (0.1,6.),(0.12,89.),(0.57,17.),(0.14,14.),(0.54,87.)],
              target_names = ["ml","ls_wunit_k1"],
              b_carts = [(4., 10., -14., 0, 5., 0.),
-                        (0., 0., 0., 0., 0., 0.)]):
+                        (0., 0., 0., 0., 0., 0.)],
+             nproc=None):
   xray_structure = get_xray_structure_from_file()
   for target_name in target_names:
     for d_min in d_mins:
@@ -78,9 +80,14 @@ def exercise_01_general(d_mins = [1.6,],
             f_obs          = f_obs,
             xray_structure = xray_structure,
             target_name    = target_name)
-          fmodel.update_solvent_and_scale(verbose = -1)
+          fmodel.update_solvent_and_scale(verbose = -1, nproc=nproc)
           r_work = fmodel.r_work()*100.
-          assert approx_equal(r_work,             0.0)
+          try :
+            assert approx_equal(r_work,             0.0)
+          except AssertionError :
+            print "parameters failing assertion:"
+            print target_name, d_min, kb, b_cart
+            assert 0
           assert approx_equal(fmodel.k_sol(0),   kb[0])
           assert approx_equal(fmodel.b_sol(),   kb[1])
           assert approx_equal(fmodel.b_cart(), b_cart)
@@ -342,6 +349,7 @@ def run():
   exercise_radial_shells(k_sol=[0.33,0.1,0.9],grid_search=True,shell_width=1.)
   exercise_radial_shells(k_sol=[0.33,0.1,0.9,0.25],grid_search=True,shell_width=1.)
   exercise_01_general()
+  #exercise_01_general(nproc=Auto)
   exercise_02_b_cart_sym_constr()
   exercise_03_do_nothing()
   exercise_04_fix_k_sol_b_sol_b_cart()

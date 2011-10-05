@@ -1,11 +1,13 @@
+from mmtbx import bulk_solvent
+import iotbx.phil
 from cctbx.array_family import flex
 from cctbx import adptbx
 from scitbx import lbfgs
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
-from mmtbx import bulk_solvent
-import iotbx.phil
 from libtbx.utils import Sorry
+from libtbx import easy_mp
+from libtbx import Auto
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -285,134 +287,169 @@ def _extract_fix_b_cart(fix_b_cart_scope):
 
 class bulk_solvent_and_scales(object):
 
-  def __init__(self, fmodel, params = None, log = None):
+  def __init__(self, fmodel, params = None, log = None, nproc=None):
     start_target = fmodel.r_work()
     self.params = params
     self.log = log
     if(params is None): params = master_params.extract()
     if([params.bulk_solvent, params.anisotropic_scaling].count(True) > 0):
-       if(not params.bulk_solvent):
-         params.k_sol_b_sol_grid_search = False
-         params.minimization_k_sol_b_sol = False
-       if(not params.anisotropic_scaling):
-         params.minimization_b_cart = False
-       params_target = params.target
-       fmodel_target = fmodel.target_name
-       if(fmodel.alpha_beta_params is not None):
-          save_interpolation_flag = fmodel.alpha_beta_params.interpolation
-          fmodel.alpha_beta_params.interpolation = False
-       m = "macro_cycle= "
-       if(params.bulk_solvent):
-         assert not fmodel.check_f_mask_all_zero()
-       macro_cycles = range(1, params.number_of_macro_cycles+1)
-       self.show(fmodel = fmodel, message = m+str(0)+" (start)")
-       mask_ok = not fmodel.check_f_mask_all_zero()
-       if(params.fix_k_sol is not None and mask_ok):
-         print params.bulk_solvent
-         assert params.bulk_solvent
-         assert not params.k_sol_b_sol_grid_search
-         assert not params.minimization_k_sol_b_sol
-         fmodel.update(k_sols = params.fix_k_sol)
-       if(params.fix_b_sol is not None and mask_ok):
-         assert params.bulk_solvent
-         assert not params.k_sol_b_sol_grid_search
-         assert not params.minimization_k_sol_b_sol
-         fmodel.update(b_sol = params.fix_b_sol)
-       fix_b_cart = _extract_fix_b_cart(fix_b_cart_scope = params.fix_b_cart)
-       if(fix_b_cart is not None):
-         assert params.anisotropic_scaling
-         assert not params.minimization_b_cart
-         fmodel.update(b_cart = fix_b_cart)
-       target = fmodel.r_work()
-       for mc in macro_cycles:
-         if(params.k_sol_b_sol_grid_search and mc == macro_cycles[0] and
-            not self._is_within_grid_search(fmodel = fmodel)):
-           ksol,bsol,b_cart,target = self._ksol_bsol_grid_search(fmodel=fmodel)
-           fmodel.update(k_sols = ksol, b_sol = bsol, b_cart = b_cart)
-           self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
-           if(not params.apply_back_trace_of_b_cart):
-             self.ERROR_MESSAGE(status=_approx_le(target, start_target))
-           self.show(fmodel = fmodel, message=m+str(mc)+": k & b: grid search")
-         if(params.minimization_k_sol_b_sol):
-           ksol, bsol, target = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
-           fmodel.update(k_sols = ksol, b_sol = bsol)
-           self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
-           if(not params.apply_back_trace_of_b_cart):
-             self.ERROR_MESSAGE(status=_approx_le(target, start_target))
-           self.show(fmodel = fmodel,message=m+str(mc)+": k & b: minimization")
-         if(params.minimization_b_cart):
-           b_cart,target = self._b_cart_minimizer(fmodel = fmodel)
-           fmodel.update(b_cart = b_cart)
-           if(not params.apply_back_trace_of_b_cart):
-             self.ERROR_MESSAGE(status=_approx_le(target, start_target))
-           self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
-           self.show(fmodel = fmodel, message =m+str(mc)+": anisotropic scale")
-         if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
-            fmodel.apply_back_b_iso()
-            self.show(fmodel = fmodel,
-              message = m+str(mc)+": apply back trace(b_cart)")
-       if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
-         fmodel.apply_back_b_iso()
-         self.show(fmodel = fmodel,
-           message = m+str(mc)+": apply back trace(b_cart)")
-       fmodel.update(target_name = fmodel_target)
-       ksols = fmodel.k_sols()[:]
-       do_update = False
-       for ik in range(len(ksols)):
-         if(abs(ksols[ik]) < 0.01):
-           ksols[ik] = 0.
-           do_update = True
-       if( do_update ):
-         if( ksols.count(0) == len(ksols) ):
-           bsol = 0.
-         else:
-           bsol = fmodel.b_sol()
-         fmodel.update(k_sols = ksols, b_sol = bsol)
+      if(not params.bulk_solvent):
+        params.k_sol_b_sol_grid_search = False
+        params.minimization_k_sol_b_sol = False
+      if(not params.anisotropic_scaling):
+        params.minimization_b_cart = False
+      params_target = params.target
+      fmodel_target = fmodel.target_name
+      if(fmodel.alpha_beta_params is not None):
+         save_interpolation_flag = fmodel.alpha_beta_params.interpolation
+         fmodel.alpha_beta_params.interpolation = False
+      m = "macro_cycle= "
+      if(params.bulk_solvent):
+        assert not fmodel.check_f_mask_all_zero()
+      macro_cycles = range(1, params.number_of_macro_cycles+1)
+      self.show(fmodel = fmodel, message = m+str(0)+" (start)")
+      mask_ok = not fmodel.check_f_mask_all_zero()
+      if(params.fix_k_sol is not None and mask_ok):
+        print params.bulk_solvent
+        assert params.bulk_solvent
+        assert not params.k_sol_b_sol_grid_search
+        assert not params.minimization_k_sol_b_sol
+        fmodel.update(k_sols = params.fix_k_sol)
+      if(params.fix_b_sol is not None and mask_ok):
+        assert params.bulk_solvent
+        assert not params.k_sol_b_sol_grid_search
+        assert not params.minimization_k_sol_b_sol
+        fmodel.update(b_sol = params.fix_b_sol)
+      fix_b_cart = _extract_fix_b_cart(fix_b_cart_scope = params.fix_b_cart)
+      if(fix_b_cart is not None):
+        assert params.anisotropic_scaling
+        assert not params.minimization_b_cart
+        fmodel.update(b_cart = fix_b_cart)
+      target = fmodel.r_work()
+      for mc in macro_cycles:
+        if(params.k_sol_b_sol_grid_search and mc == macro_cycles[0] and
+           not self._is_within_grid_search(fmodel = fmodel)):
+          ksol,bsol,b_cart,target = self._ksol_bsol_grid_search(fmodel=fmodel,
+            nproc=nproc)
+          fmodel.update(k_sols = ksol, b_sol = bsol, b_cart = b_cart)
+          self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
+          if(not params.apply_back_trace_of_b_cart):
+            self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+          self.show(fmodel = fmodel, message=m+str(mc)+": k & b: grid search")
+        if(params.minimization_k_sol_b_sol):
+          ksol, bsol, target = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
+          fmodel.update(k_sols = ksol, b_sol = bsol)
+          self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
+          if(not params.apply_back_trace_of_b_cart):
+            self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+          self.show(fmodel = fmodel,message=m+str(mc)+": k & b: minimization")
+        if(params.minimization_b_cart):
+          b_cart,target = self._b_cart_minimizer(fmodel = fmodel)
+          fmodel.update(b_cart = b_cart)
+          if(not params.apply_back_trace_of_b_cart):
+            self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+          self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
+          self.show(fmodel = fmodel, message =m+str(mc)+": anisotropic scale")
+        if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
+           fmodel.apply_back_b_iso()
+           self.show(fmodel = fmodel,
+             message = m+str(mc)+": apply back trace(b_cart)")
+      if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
+        fmodel.apply_back_b_iso()
+        self.show(fmodel = fmodel,
+          message = m+str(mc)+": apply back trace(b_cart)")
+      fmodel.update(target_name = fmodel_target)
+      ksols = fmodel.k_sols()[:]
+      do_update = False
+      for ik in range(len(ksols)):
+        if(abs(ksols[ik]) < 0.01):
+          ksols[ik] = 0.
+          do_update = True
+      if( do_update ):
+        if( ksols.count(0) == len(ksols) ):
+          bsol = 0.
+        else:
+          bsol = fmodel.b_sol()
+        fmodel.update(k_sols = ksols, b_sol = bsol)
 
   def show(self, fmodel, message):
     if(self.params.verbose > 0):
       fmodel.info().show_rfactors_targets_scales_overall(
         header = message, out = self.log)
 
-  def _ksol_bsol_grid_search(self, fmodel):
+  def _ksol_bsol_grid_search(self, fmodel, nproc=None):
+    self._fmodel = fmodel # XXX for parallelization
     start_r_work = fmodel.r_work()
     final_ksol = fmodel.k_sols()
     final_bsol = fmodel.b_sol()
     final_b_cart = fmodel.b_cart()
     final_r_work = start_r_work
+    self._ksol_len = len(final_ksol)
     k_sols = kb_range(self.params.k_sol_grid_search_max,
                       self.params.k_sol_grid_search_min,
                       self.params.k_sol_step)
     b_sols = kb_range(self.params.b_sol_grid_search_max,
                       self.params.b_sol_grid_search_min,
                       self.params.b_sol_step)
+    args = []
     for ksol in k_sols:
       for bsol in b_sols:
-        for bc in fmodel.b_cart():
-          if(abs(bc) > 300.):
-            fmodel.update(b_cart = [0,0,0,0,0,0])
-            break
-        ksol_list = [ksol]*len(final_ksol)
-        fmodel.update(k_sols = ksol_list, b_sol = bsol)
-        if(self.params.minimization_k_sol_b_sol):
-          ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
-          fmodel.update(k_sols = ksol_, b_sol = bsol_)
-        if(self.params.minimization_b_cart):
-          b_cart, dummy = self._b_cart_minimizer(fmodel = fmodel)
-          fmodel.update(b_cart = b_cart)
-        r_work = fmodel.r_work()
-        if(r_work < final_r_work):
-          final_r_work = r_work
-          final_ksol = fmodel.k_sols()
-          final_bsol = fmodel.b_sol()
-          final_b_cart = fmodel.b_cart()
-          fmodel.update(k_sols=final_ksol,b_sol=final_bsol,b_cart=final_b_cart)
+        args.append((ksol,bsol))
+    results = []
+    # serial grid search
+    # FIXME the easy_mp parallelization runs, and appears to yield consistent
+    # results for a protein structure, but it fails the regression test, so
+    # I'm disabling multiprocessing for now.
+    if True : #(nproc is None) or (nproc <= 1) :
+      for args_ in args :
+        results.append(self._try_ksol_bsol(args_))
+    # parallel grid search
+    else :
+      assert False # XXX just in case...
+      assert ((nproc is Auto) or (nproc > 1))
+      _results = easy_mp.pool_map(
+        processes=nproc,
+        fixed_func=self._try_ksol_bsol,
+        args=args,
+        buffer_stdout_stderr=True)
+      for sio_out, result in _results :
+        results.append(result)
+    for result in results :
+      if(result.r_work < final_r_work):
+        final_r_work = result.r_work
+        final_ksol = result.k_sol
+        final_bsol = result.b_sol
+        final_b_cart = result.b_cart
+        fmodel.update(k_sols=final_ksol,b_sol=final_bsol,b_cart=final_b_cart)
     fmodel.update(k_sols = final_ksol,
                   b_sol  = final_bsol,
                   b_cart = final_b_cart)
     self.ERROR_MESSAGE(status=approx_equal(fmodel.r_work(), final_r_work))
     self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_r_work))
+    self._fmodel = None
     return final_ksol, final_bsol, final_b_cart, final_r_work
+
+  # XXX called by multiprocessing pool
+  def _try_ksol_bsol (self, args) :
+    fmodel = self._fmodel
+    ksol, bsol = args
+    for bc in fmodel.b_cart():
+      if(abs(bc) > 300.):
+        fmodel.update(b_cart = [0,0,0,0,0,0])
+        break
+    ksol_list = [ksol]*self._ksol_len
+    fmodel.update(k_sols = ksol_list, b_sol = bsol)
+    if(self.params.minimization_k_sol_b_sol):
+      ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
+      fmodel.update(k_sols = ksol_, b_sol = bsol_)
+    if(self.params.minimization_b_cart):
+      b_cart, dummy = self._b_cart_minimizer(fmodel = fmodel)
+      fmodel.update(b_cart = b_cart)
+    return ksol_bsol_result(
+      r_work=fmodel.r_work(),
+      k_sol=fmodel.k_sols(),
+      b_sol=fmodel.b_sol(),
+      b_cart=fmodel.b_cart())
 
   def _ksol_bsol_cart_minimizer(self, fmodel):
     start_r_work = fmodel.r_work()
@@ -509,6 +546,13 @@ class bulk_solvent_and_scales(object):
 def kb_range(x_max, x_min, step):
   sc = 1000.
   return [i/sc for i in range(int(x_min*sc), int(x_max*sc)+1, int(step*sc))]
+
+class ksol_bsol_result (object) :
+  def __init__ (self, k_sol, b_sol, b_cart, r_work) :
+    self.k_sol = k_sol
+    self.b_sol = b_sol
+    self.b_cart = b_cart
+    self.r_work = r_work
 
 class u_star_minimizer(object):
   def __init__(self,
