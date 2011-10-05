@@ -265,13 +265,14 @@ the shadow of the beamstop.
     calc_norm = sigmaa_estimator.normalized_calc
 
     f_model_outlier_object = scaling.likelihood_ratio_outlier_test(
-      obs_norm.data(),
-      None,
-      calc_norm.data(),
-      calc_norm.data()*0+1.0, # the data is prenormalized, all epsies are unity
-      obs_norm.centric_flags().data(),
-      sigmaa.data(),
-      1.0-sigmaa.data()*sigmaa.data()
+      f_obs=obs_norm.data(),
+      sigma_obs=None,
+      f_calc=calc_norm.data(),
+      # the data is prenormalized, all epsies are unity
+      epsilon=flex.double(calc_norm.data().size(), 1.0),
+      centric=obs_norm.centric_flags().data(),
+      alpha=sigmaa.data(),
+      beta=1.0-sigmaa.data()*sigmaa.data()
       )
     modes = f_model_outlier_object.posterior_mode()
     lik = f_model_outlier_object.log_likelihood()
