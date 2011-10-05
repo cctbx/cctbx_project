@@ -56,6 +56,7 @@ int main (int argc, char *argv[])
   std::string input_string;
   std::ifstream myfile(argv[1], std::ifstream::in);
   if (!myfile.is_open()) {
+    std::cout << "Could not open file " << argv[1] << std::endl;
     return 0;
   }
   std::string tmp;
