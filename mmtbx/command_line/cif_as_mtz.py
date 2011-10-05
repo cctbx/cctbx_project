@@ -76,6 +76,9 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       .option(None, "--merge",
         action="store_true",
         help="Merge non-unique data where present.")
+      .option(None, "--map_to_asu",
+        action="store_true",
+        help="Map to asymmetric unit.")
       .option("--show_details_if_error",
           action="store_true",
           help="Show data details for some errors.")
@@ -119,7 +122,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     crystal_id=command_line.options.crystal_id,
     show_details_if_error=command_line.options.show_details_if_error,
     output_r_free_label=command_line.options.output_r_free_label,
-    merge_non_unique_under_symmetry=command_line.options.merge)
+    merge_non_unique_under_symmetry=command_line.options.merge,
+    map_to_asu=command_line.options.map_to_asu)
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -129,7 +133,8 @@ def process_files (file_name,
                    crystal_id,
                    show_details_if_error,
                    output_r_free_label,
-                   merge_non_unique_under_symmetry=False) :
+                   merge_non_unique_under_symmetry=False,
+                   map_to_asu=False) :
   file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
     file_name             = file_name,
@@ -139,7 +144,8 @@ def process_files (file_name,
     crystal_id            = crystal_id,
     show_details_if_error = show_details_if_error,
     output_r_free_label   = output_r_free_label,
-    merge_non_unique_under_symmetry = merge_non_unique_under_symmetry)
+    merge_non_unique_under_symmetry = merge_non_unique_under_symmetry,
+    map_to_asu = map_to_asu)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -192,7 +198,8 @@ def extract(file_name,
             crystal_id,
             show_details_if_error,
             output_r_free_label,
-            merge_non_unique_under_symmetry):
+            merge_non_unique_under_symmetry,
+            map_to_asu):
   import iotbx.cif
   miller_arrays = iotbx.cif.reader(file_path=file_name).as_miller_arrays(
     crystal_symmetry=crystal_symmetry)
@@ -274,6 +281,8 @@ def extract(file_name,
         if (show_details_if_error):
           ma.show_comprehensive_summary(prefix="  ")
           ma.map_to_asu().sort().show_array(prefix="  ")
+    if(map_to_asu):
+      ma = ma.map_to_asu()
     def get_unique_column_label(miller_array, label, column_labels):
       if label not in column_labels: return label
       ma_labels = miller_array.info().labels
