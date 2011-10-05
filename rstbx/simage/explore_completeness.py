@@ -80,6 +80,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
     sym_factors /= _.multiplicities().data()
     counts_sorted_by_resolution = _.data().as_int() * sym_factors
     dump_xy("counts_sorted_by_resolution", counts_sorted_by_resolution)
+    dump_xy("d_spacings_sorted_by_resolution", _.d_spacings().data())
     if (plot == "completeness"):
       from libtbx import pyplot
       fig = pyplot.figure()
