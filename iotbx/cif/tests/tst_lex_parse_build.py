@@ -443,6 +443,12 @@ def exercise_partial_crystal_symmetry():
     assert str(e) == "Not all unit cell parameters are given in the cif file"
   else: raise Exception_expected
 
+def exercise_crystal_symmetry():
+  cm = cif.reader(input_string=p1_sym_ops).model()
+  cs_builder = cif.builders.crystal_symmetry_builder(cm["r1e5xsf"])
+  assert cs_builder.crystal_symmetry.space_group_info().symbol_and_number() \
+         == 'P 1 (No. 1)'
+
 def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adsrf).as_miller_arrays()
   assert len(miller_arrays) == 17
@@ -604,7 +610,23 @@ _refln.fom
 1 2 1       0    0   48 o    1972.6   51.4   1357.9   180.0  0.91
 """
 
+p1_sym_ops = """\
+data_r1e5xsf
+_cell.entry_id          1E5X
+_cell.length_a          57.760
+_cell.length_b          62.140
+_cell.length_c          76.590
+_cell.angle_alpha       109.48
+_cell.angle_beta        97.61
+_cell.angle_gamma       112.74
+_cell.formula_units_Z   2
+
+_symmetry_equiv.id           1
+_symmetry_equiv.pos_as_xyz   X,Y,Z
+"""
+
 def exercise():
+  exercise_crystal_symmetry()
   exercise_miller_arrays_as_cif_block()
   exercise_lex_parse_build()
   exercise_partial_crystal_symmetry()
