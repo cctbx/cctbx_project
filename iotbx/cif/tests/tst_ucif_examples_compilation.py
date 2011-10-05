@@ -29,7 +29,7 @@ def exercise_compilation():
   f = open_tmp_file(suffix=".cif")
   f.write(cif_string)
   f.close()
-  cmd = "cif_parser %s" %f.name
+  cmd = 'cif_parser "%s"' %f.name
   if sys.platform != "win32":
     cmd = "./" + cmd
   r = easy_run.fully_buffered(cmd).raise_if_errors()
