@@ -1,3 +1,6 @@
+// FIXME this breaks in quite a few places on specific datasets - 1pcq in
+// particular will fail several assertions.
+
 #ifndef MMTBX_SCALING_OUTLIER_H
 #define MMTBX_SCALING_OUTLIER_H
 
@@ -11,6 +14,7 @@
 #include <scitbx/math/quadrature.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/line_search/more_thuente_1994.h>
+#include <mmtbx/error.h>
 
 
 namespace mmtbx { namespace scaling { namespace outlier{
@@ -203,6 +207,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
           if (fpp<=eps_step){
             step_length = eps_step;
           } else {
+            MMTBX_ASSERT(fpp != 0);
             step_length = 1.0/fpp;
           }
           if (!converged){
@@ -246,10 +251,12 @@ namespace mmtbx { namespace scaling { namespace outlier{
         FloatType tmp_rat = 2.0;
         if ( 1.0/std::sqrt(std::fabs(grad)) > tmp_rat*std_fo_[ii]){
           grad = std_fo_[ii];
+          MMTBX_ASSERT(grad != 0);
           grad = -1.0/(grad*grad);
         }
         if ( grad > 0 ){
           grad = std_fo_[ii];
+          MMTBX_ASSERT(grad != 0);
           grad = -1.0/(grad*grad);
         }
 
@@ -287,6 +294,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         if (fo<=1e-13){
           fo=1e-13;
         }
+        MMTBX_ASSERT((eb != 0) && (fo != 0));
         FloatType x = 2.0*alpha_[ii]*fo*f_calc_[ii]/(eb);
 
         FloatType m = scitbx::math::bessel::i1_over_i0(x);
@@ -301,6 +309,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       {
         FloatType result;
         FloatType eb=epsilon_[ii]*beta_[ii];
+        MMTBX_ASSERT(eb != 0);
         if (fo<=1e-13){
           fo=1e-13;
         }
@@ -320,6 +329,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       {
         FloatType result;
         FloatType eb=epsilon_[ii]*beta_[ii];
+        MMTBX_ASSERT(eb != 0);
         if (fo<=1e-13){
           fo=1e-13;
         }
@@ -328,6 +338,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         if (x<1e-13){
           x = 1e-13;
         }
+        MMTBX_ASSERT((fo != 0) && (x != 0));
         result = - (1.0/(fo*fo))
                  - (2.0/eb)
                  + (f_calc_[ii]*4.0*alpha_[ii]*alpha_[ii]/(eb*eb))*
@@ -339,6 +350,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       {
         FloatType result=0;
         FloatType eb=epsilon_[ii]*beta_[ii];
+        MMTBX_ASSERT(eb != 0);
         if (fo<=1e-13){
           fo=1e-13;
         }
@@ -367,6 +379,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         if (fo<=1e-13){
           fo=1e-13;
         }
+        MMTBX_ASSERT(eb != 0);
         FloatType x=2.0*alpha_[ii]*fo*f_calc_[ii]/eb;
         FloatType exparg; // = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]);
         //exparg = exparg/eb;
@@ -374,7 +387,10 @@ namespace mmtbx { namespace scaling { namespace outlier{
         //FloatType result2;
         exparg = fo -  alpha_[ii]*f_calc_[ii];
         exparg = exparg*exparg/eb;
-        result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg + std::log( scitbx::math::bessel::ei0(x));
+        FloatType ei0x = scitbx::math::bessel::ei0(x);
+        MMTBX_ASSERT((ei0x != 0) && (fo != 0));
+        result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg + \
+          std::log(ei0x);
         return (result);
       }
 
@@ -385,6 +401,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         if (fo<=1e-13){
           fo=1e-13;
         }
+        MMTBX_ASSERT(eb != 0);
         FloatType x=alpha_[ii]*fo*f_calc_[ii]/eb;
         FloatType exparg = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii])/(2.0*eb);
         FloatType tmp;
@@ -393,7 +410,6 @@ namespace mmtbx { namespace scaling { namespace outlier{
         } else {
            tmp = std::log( std::cosh(x) );
         }
-
         result = 0.5*std::log(2.0)-0.5*std::log(scitbx::constants::pi) - 0.5*std::log(eb)
           -exparg + tmp;
         return(result);
@@ -409,8 +425,9 @@ namespace mmtbx { namespace scaling { namespace outlier{
         }
         else {
           FloatType x;
-          x = alpha_[ii]*f_calc_[ii]*alpha_[ii]*f_calc_[ii]/(
-            2.0*epsilon_[ii]*beta_[ii]);
+          FloatType eb = epsilon_[ii]*beta_[ii];
+          MMTBX_ASSERT(eb != 0);
+          x = alpha_[ii]*f_calc_[ii]*alpha_[ii]*f_calc_[ii]/(2.0*eb);
 
           result = (epsilon_[ii]*beta_[ii] +
                     alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii])*
@@ -419,9 +436,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
           result+= alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]*
             scitbx::math::bessel::ei1(x);
 
-          result = result*0.5*std::sqrt(
-            scitbx::constants::pi/(epsilon_[ii]*beta_[ii]));
-
+          result = result*0.5*std::sqrt(scitbx::constants::pi/(eb));
         }
         return result;
 
@@ -429,12 +444,13 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
       inline FloatType compute_sigma_( int ii )
       {
-         // sigma^2 = epsilon_[ii] beta_[ii] + alpha_[ii]*f_calc_[ii] - mean_f_obs^2
-         FloatType result;
-         result = epsilon_[ii]*beta_[ii] + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii];
-         result = result - mean_fo_[ii]*mean_fo_[ii];
-         result = std::sqrt( result );
-         return(result);
+        // sigma^2 = epsilon_[ii] beta_[ii] + alpha_[ii]*f_calc_[ii] - mean_f_obs^2
+        FloatType result;
+        result = epsilon_[ii]*beta_[ii] + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii];
+        result = result - mean_fo_[ii]*mean_fo_[ii];
+        MMTBX_ASSERT(result >= 0);
+        result = std::sqrt( result );
+        return(result);
       }
 
       scitbx::af::shared<FloatType> f_obs_;
