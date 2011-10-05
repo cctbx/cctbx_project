@@ -283,6 +283,8 @@ def extract(file_name,
           ma.map_to_asu().sort().show_array(prefix="  ")
     if(map_to_asu):
       ma = ma.map_to_asu().set_info(ma.info())
+    ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
+      .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
     def get_unique_column_label(miller_array, label, column_labels):
       if label not in column_labels: return label
       ma_labels = miller_array.info().labels
