@@ -10,6 +10,7 @@ from mmtbx_den_restraints_ext import *
 den_params = iotbx.phil.parse("""
  reference_file = None
    .type = path
+   .optional = true
  lower_distance_cutoff = 3.0
    .type = float
  upper_distance_cutoff = 15.0
@@ -26,17 +27,25 @@ den_params = iotbx.phil.parse("""
    .type = float
  weight = 1.0
    .type = float
- optimize = True
+ optimize = False
    .type = bool
  opt_gamma_values = 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
    .type = floats
  opt_weight_values = 1.0, 3.0, 10.0, 30.0, 100.0, 300.0
    .type = floats
- strategy = *torsion_simulated_annealing \
-            cartesian_similuated_annealing
+ num_cycles = 8
+   .type = int
+ refine_adp = True
+   .type = bool
+ verbose = False
+   .type = bool
+ annealing_type = *torsion \
+                   cartesian
    .type = choice(multi=False)
    .help = select strategy to apply DEN restraints
  output_kinemage = False
+   .type = bool
+   .help = output kinemage representation of starting DEN restraints
 """)
 
 den_params_development = iotbx.phil.parse("""
@@ -60,8 +69,8 @@ class den_restraints(object):
 
   def __init__(self,
                pdb_hierarchy,
-               pdb_hierarchy_ref,
                params,
+               pdb_hierarchy_ref=None,
                xray_structure_ref=None,
                log=None):
     if(log is None): log = sys.stdout
@@ -69,15 +78,24 @@ class den_restraints(object):
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("More than one model in input model. DEN refinement "+
                   "is only available for a single model.")
-    elif len(pdb_hierarchy_ref.models()) > 1:
-      raise Sorry("More than one model in reference model. DEN refinement "+
-                  "is only available for a single model.")
+    if pdb_hierarchy_ref is not None:
+      if len(pdb_hierarchy_ref.models()) > 1:
+        raise Sorry("More than one model in reference model. "+
+                    "DEN refinement "+
+                    "is only available for a single model.")
     self.pdb_hierarchy = pdb_hierarchy
-    self.pdb_hierarchy_ref = pdb_hierarchy_ref
+    if pdb_hierarchy_ref is None:
+      print >> self.log, "No input DEN reference model...restraining model "+ \
+        "to starting structure"
+      self.pdb_hierarchy_ref = pdb_hierarchy
+    else:
+      self.pdb_hierarchy_ref = pdb_hierarchy_ref
     self.params = params
     self.kappa = params.kappa
     self.gamma = params.gamma
     self.weight = params.weight
+    self.num_cycles = params.num_cycles
+    self.annealing_type = params.annealing_type
     self.ndistance_ratio = params.ndistance_ratio
     self.lower_distance_cutoff = params.lower_distance_cutoff
     self.upper_distance_cutoff = params.upper_distance_cutoff
@@ -88,19 +106,19 @@ class den_restraints(object):
     self.atoms_per_chain = \
       self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
     self.atoms_per_chain_ref = \
-      self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy_ref)
+      self.count_atoms_per_chain(pdb_hierarchy=self.pdb_hierarchy_ref)
     self.resid_hash_ref = \
-      utils.build_resid_hash(pdb_hierarchy=pdb_hierarchy_ref)
+      utils.build_resid_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
     self.i_seq_hash = \
       utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
     self.i_seq_hash_ref = \
-      utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy_ref)
+      utils.build_i_seq_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
     self.name_hash = \
       utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     self.name_hash_ref = \
-      utils.build_name_hash(pdb_hierarchy=pdb_hierarchy_ref)
+      utils.build_name_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
     self.ref_atom_pairs, self.ref_distance_hash = \
-      self.find_atom_pairs(pdb_hierarchy=pdb_hierarchy_ref,
+      self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
                            resid_hash=self.resid_hash_ref,
                            xray_structure=xray_structure_ref)
     self.remove_non_matching_pairs()
@@ -221,6 +239,8 @@ class den_restraints(object):
       pair_list_size = len(self.ref_atom_pairs[chain])
       num_restraints = round(self.atoms_per_chain_ref[chain] *
                              self.ndistance_ratio)
+      if num_restraints > pair_list_size:
+        num_restraints = pair_list_size
       random_selection = \
         flex.random_selection(pair_list_size, int(num_restraints))
       for i in random_selection:
@@ -298,19 +318,38 @@ class den_restraints(object):
   def output_kinemage(self, sites_cart):
     from mmtbx.kinemage import validation
     f = file("den_restraints.kin", "w")
-    vec_header = "@vectorlist {DEN} color= magenta master= {DEN}\n"
+    vec_header = "@kinemage\n"
+    vec_header += "@vectorlist {DEN} color= magenta master= {DEN}\n"
     f.write(vec_header)
-    for chain in self.random_ref_atom_pairs.keys():
-      for pair in self.random_ref_atom_pairs[chain]:
-        start_xyz = sites_cart[pair[0]]
-        end_xyz = sites_cart[pair[1]]
-        vec = validation.kin_vec(start_key="A",
-                                 start_xyz=start_xyz,
-                                 end_key="B",
-                                 end_xyz=end_xyz,
-                                 width=None)
-        f.write(vec)
+    for dp in self.den_proxies:
+      i_seqs = dp.i_seqs
+      eq_distance = dp.eq_distance
+      site_a = sites_cart[i_seqs[0]]
+      site_b = sites_cart[i_seqs[1]]
+      sites = [site_a, site_b]
+      #distance_sq = distance_squared(site_a, site_b)
+      #distance = distance_sq**(0.5)
+      #diff = distance - eq_distance
+      #spring = validation.add_spring(sites, diff, "DEN")
+      vec = validation.kin_vec(start_key="A",
+                               start_xyz=site_a,
+                               end_key="B",
+                               end_xyz=site_b,
+                               width=None)
+      f.write(vec)
+      #STOP()
+    #for chain in self.random_ref_atom_pairs.keys():
+    #  for pair in self.random_ref_atom_pairs[chain]:
+    #    start_xyz = sites_cart[pair[0]]
+    #    end_xyz = sites_cart[pair[1]]
+    #    vec = validation.kin_vec(start_key="A",
+    #                             start_xyz=start_xyz,
+    #                             end_key="B",
+    #                             end_xyz=end_xyz,
+    #                             width=None)
+    #   f.write(vec)
     f.close()
+    STOP()
 
 def distance_squared(a, b):
   return ((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)
