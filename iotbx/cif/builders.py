@@ -388,7 +388,9 @@ class miller_array_builder(crystal_symmetry_builder):
                   selection = self.get_selection(
                     hl_values[0], wavelength_id=w_id,
                     crystal_id=crys_id, scale_group_code=scale_group)
-                  hl_values = [flex.double(hl.select(selection)) for hl in hl_values]
+                  hl_values = [as_double_or_none_if_all_question_marks(
+                    hl.select(selection), column_name=lab)
+                               for hl, lab in zip(hl_values, hl_labels)]
                   array = miller.array(miller.set(
                     self.crystal_symmetry, self.indices.select(selection)
                     ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
