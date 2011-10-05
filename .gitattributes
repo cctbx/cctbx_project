@@ -1115,6 +1115,7 @@ mmtbx/den/__init__.py svneol=native#text/x-python
 mmtbx/den/boost_python/den_ext.cpp svneol=native#text/plain
 mmtbx/den/den.h svneol=native#text/plain
 mmtbx/den/plot_weights.py -text
+mmtbx/den/refinement.py svneol=native#text/x-python
 mmtbx/density_modification/__init__.py -text
 mmtbx/density_modification/tst_density_modification.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
