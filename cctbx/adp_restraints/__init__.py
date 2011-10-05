@@ -186,26 +186,14 @@ class _(boost.python.injector, shared_adp_similarity_proxy):
 class _(boost.python.injector, adp_u_eq_similarity):
 
   def _show_sorted_item(self, f, prefix):
-    adp_labels = ("U11","U22","U33","U12","U13","U23")
-    deltas = self.deltas()
-    if self.use_u_aniso == (False, False):
-      adp_labels = ["Uiso"]
-      deltas = deltas[:1]
+    adp_label = "Ueq"
+    delta = self.deltas()[0]
     print >> f, \
       "%s          delta    sigma   weight" %(prefix),
-    if len(adp_labels) == 1:
-      print >> f, "residual"
-    else: print >> f, "rms_deltas residual"
-    rdr = None
-    for adp_label,delta in zip(adp_labels, deltas):
-      if (rdr is None):
-        if len(adp_labels) == 1:
-          rdr = " %6.2e" %self.residual()
-        else:
-          rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-      print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
-      rdr = ""
+    print >> f, "residual"
+    rdr = " %6.2e" %self.residual()
+    print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
+      prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
 
 class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 
@@ -236,26 +224,14 @@ class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 class _(boost.python.injector, adp_volume_similarity):
 
   def _show_sorted_item(self, f, prefix):
-    adp_labels = ("U11","U22","U33","U12","U13","U23")
-    deltas = self.deltas()
-    if self.use_u_aniso == (False, False):
-      adp_labels = ["Uiso"]
-      deltas = deltas[:1]
+    adp_label = "Volume"
+    delta = self.deltas()[0]
     print >> f, \
       "%s          delta    sigma   weight" %(prefix),
-    if len(adp_labels) == 1:
-      print >> f, "residual"
-    else: print >> f, "rms_deltas residual"
-    rdr = None
-    for adp_label,delta in zip(adp_labels, deltas):
-      if (rdr is None):
-        if len(adp_labels) == 1:
-          rdr = " %6.2e" %self.residual()
-        else:
-          rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-      print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
-      rdr = ""
+    print >> f, "residual"
+    rdr = " %6.2e" %self.residual()
+    print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
+      prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
 
 class _(boost.python.injector, shared_adp_volume_similarity_proxy):
 
@@ -327,16 +303,13 @@ class _(boost.python.injector, shared_isotropic_adp_proxy):
 class _(boost.python.injector, fixed_u_eq_adp):
 
   def _show_sorted_item(self, f, prefix):
-    adp_labels = ("U11","U22","U33","U12","U13","U23")
+    adp_label = "Ueq"
     print >> f, \
-      "%s         delta    sigma   weight rms_deltas residual" % (prefix)
-    rdr = None
-    for adp_label,delta in zip(adp_labels, self.deltas()):
-      if (rdr is None):
-        rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-      print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
-        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
-      rdr = ""
+      "%s          delta    sigma   weight" %(prefix),
+    print >> f, "residual"
+    rdr = " %6.2e" %self.residual()
+    print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
+      prefix, adp_label, self.deltas()[0], weight_as_sigma(weight=self.weight), self.weight, rdr)
 
 class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
 

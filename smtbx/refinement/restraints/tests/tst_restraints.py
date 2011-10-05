@@ -26,15 +26,13 @@ rows_per_restraint = {
   geom.bond_similarity_proxy: 6,
   adp.adp_similarity_proxy: 6,
   adp.isotropic_adp_proxy: 6,
-  adp.fixed_u_eq_adp_proxy: 6,
-  adp.adp_u_eq_similarity_proxy: 6,
-  adp.adp_volume_similarity_proxy: 6,
   }
 
 class restraints_test_case:
 
   def __init__(self):
     self.xray_structure = smtbx.development.sucrose()
+    self.tolerance = 1e-4
     for sc in self.xray_structure.scatterers():
       sc.flags.set_grad_site(True)
       if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
@@ -55,7 +53,7 @@ class restraints_test_case:
       grads = self.fd_grads(proxy)
       for i, grad in enumerate(grads):
         fd_design.extend(grad)
-    assert approx_equal(design_matrix, fd_design, 1e-4)
+    assert approx_equal(design_matrix, fd_design, self.tolerance)
     assert approx_equal(
       linearised_eqns.n_restraints(),
       rows_per_restraint.get(self.proxies[0].__class__, 1) * self.proxies.size())
@@ -254,7 +252,11 @@ class adp_volume_similarity_test_case(adp_restraints_test_case):
   proxies = adp.shared_adp_volume_similarity_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
   manager = restraints.manager(adp_volume_similarity_proxies=proxies)
-
+  def __init__(self):
+    adp_restraints_test_case.__init__(self)
+    # eigen values and eigen vectors are dependent after all...
+    # may need to make smaller
+    self.tolerance = 1e-4
   def restraint(self, proxy, u_iso=None, u_cart=None):
     if u_cart is None:
       u_cart=self.xray_structure.scatterers().extract_u_cart(

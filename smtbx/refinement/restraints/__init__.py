@@ -144,16 +144,16 @@ class manager(object):
       n_restraints += 6 * self.adp_similarity_proxies.size()
     if self.adp_u_eq_similarity_proxies is not None:
       adp_proxies.append(self.adp_u_eq_similarity_proxies)
-      n_restraints += 6 * self.adp_u_eq_similarity_proxies.size()
+      n_restraints += self.adp_u_eq_similarity_proxies.size()
     if self.adp_volume_similarity_proxies is not None:
       adp_proxies.append(self.adp_volume_similarity_proxies)
-      n_restraints += 6 * self.adp_volume_similarity_proxies.size()
+      n_restraints += self.adp_volume_similarity_proxies.size()
     if self.isotropic_adp_proxies is not None:
       adp_proxies.append(self.isotropic_adp_proxies)
       n_restraints += 6 * self.isotropic_adp_proxies.size()
     if self.fixed_u_eq_adp_proxies is not None:
       adp_proxies.append(self.fixed_u_eq_adp_proxies)
-      n_restraints += 6 * self.fixed_u_eq_adp_proxies.size()
+      n_restraints += self.fixed_u_eq_adp_proxies.size()
     if self.rigid_bond_proxies is not None:
       adp_proxies.append(self.rigid_bond_proxies)
       n_restraints += self.rigid_bond_proxies.size()

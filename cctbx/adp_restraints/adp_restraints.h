@@ -80,7 +80,7 @@ namespace cctbx { namespace adp_restraints {
     if (use_u_aniso) {
       // One restraint per parameter == six rows in the restraint matrix
       CCTBX_ASSERT(ids.u_aniso != -1);
-      for (int i=0; i<6; i++) {
+      for (int i=0; i < GradientSource::grad_row_count(); i++) {
         std::size_t row_i = linearised_eqns.next_row();
         scitbx::sym_mat3<double> grad_u_star;
         scitbx::matrix::matrix_transposed_vector(
@@ -133,7 +133,7 @@ namespace cctbx { namespace adp_restraints {
     }
     else if(use_u_aniso[0] && use_u_aniso[1]) {
       scitbx::sym_mat3<double> grad_u_star[2];
-      for (int i=0; i<6; i++) {
+      for (int i=0; i < grad_src.grad_row_count(); i++) {
         std::size_t row_i = linearised_eqns.next_row();
         scitbx::matrix::matrix_transposed_vector(
           6, 6, unit_cell.u_star_to_u_cart_linear_map().begin(),
@@ -161,7 +161,7 @@ namespace cctbx { namespace adp_restraints {
     else {
       scitbx::sym_mat3<double> grad_u_star;
       double grad_u_iso;
-      for (int i=0; i<6; i++) {
+      for (int i=0; i < grad_src.grad_row_count(); i++) {
         std::size_t row_i = linearised_eqns.next_row();
         if (use_u_aniso[0]) {
           scitbx::matrix::matrix_transposed_vector(
@@ -225,7 +225,7 @@ namespace cctbx { namespace adp_restraints {
     }
     else {
       scitbx::sym_mat3<double> grad_u_star;
-      for (int i=0; i<6; i++) {
+      for (int i=0; i < GradientSource::grad_row_count(); i++) {
         scitbx::matrix::matrix_transposed_vector(
           6, 6, unit_cell.u_star_to_u_cart_linear_map().begin(),
           scitbx::sym_mat3<double>(GradientSource::cart_grad_row(i)).begin(),
