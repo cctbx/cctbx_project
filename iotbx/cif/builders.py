@@ -113,7 +113,11 @@ class crystal_symmetry_builder(builder_base):
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
     if sym_ops is not None:
+      if isinstance(sym_ops, basestring):
+        sym_ops = flex.std_string([sym_ops])
       if sym_op_ids is not None:
+        if isinstance(sym_op_ids, basestring):
+          sym_op_ids = flex.std_string([sym_op_ids])
         assert len(sym_op_ids) == len(sym_ops)
       self.sym_ops = {}
       space_group = sgtbx.space_group()
