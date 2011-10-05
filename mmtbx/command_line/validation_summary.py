@@ -1,5 +1,6 @@
 
 from libtbx.utils import Sorry, Usage
+from libtbx import str_utils
 import cStringIO
 import os
 import sys
@@ -20,14 +21,21 @@ class summary (object) :
     log = cStringIO.StringIO()
     rama = ramalyze.ramalyze()
     rama.analyze_pdb(hierarchy=pdb_hierarchy)
-    rama_out_count, rama_out_percent = rama.get_outliers_count_and_fraction()
-    rama_fav_count, rama_fav_percent = rama.get_favored_count_and_fraction()
-    self.rama_fav = rama_fav_percent * 100.0
-    self.rama_out = rama_out_percent * 100.0
+    if (rama.numtotal > 0) :
+      rama_out_count, rama_out_percent = rama.get_outliers_count_and_fraction()
+      rama_fav_count, rama_fav_percent = rama.get_favored_count_and_fraction()
+      self.rama_fav = rama_fav_percent * 100.0
+      self.rama_out = rama_out_percent * 100.0
+    else :
+      self.rama_fav = None
+      self.rama_out = None
     rota = rotalyze.rotalyze()
     rota.analyze_pdb(hierarchy=pdb_hierarchy)
-    rota_count, rota_perc = rota.get_outliers_count_and_fraction()
-    self.rota_out = rota_perc * 100.0
+    if (rota.numtotal > 0) :
+      rota_count, rota_perc = rota.get_outliers_count_and_fraction()
+      self.rota_out = rota_perc * 100.0
+    else :
+      self.rota_out = None
     cs = clashscore.clashscore()
     clash_dict, clash_list = cs.analyze_clashes(hierarchy=pdb_hierarchy,
       keep_hydrogens=keep_hydrogens)
@@ -36,6 +44,7 @@ class summary (object) :
     cbeta_txt, cbeta_summ, cbeta_list = cbeta.analyze_pdb(
       hierarchy=pdb_hierarchy,
       outliers_only=True)
+    # TODO leave self.cbeta_out as None if not protein
     self.cbeta_out = len(cbeta_list)
     self.r_work = None
     self.r_free = None
@@ -65,10 +74,16 @@ class summary (object) :
           break
 
   def show (self, out=sys.stdout, prefix="  ") :
-    print >> out, "%sRamachandran outliers = %6.2f %%" % (prefix,self.rama_out)
-    print >> out, "%s             favored  = %6.2f %%" % (prefix,self.rama_fav)
-    print >> out, "%sRotamer outliers      = %6.2f %%" % (prefix,self.rota_out)
-    print >> out, "%sC-beta deviations     = %6d" % (prefix,self.cbeta_out)
+    def fs (format, value) :
+      return str_utils.format_value(format, value, replace_none_with=("(none)"))
+    print >> out, "%sRamachandran outliers = %s %%" % (prefix,
+      fs("%6.2f", self.rama_out))
+    print >> out, "%s             favored  = %s %%" % (prefix,
+      fs("%6.2f", self.rama_fav))
+    print >> out, "%sRotamer outliers      = %s %%" % (prefix,
+      fs("%6.2f", self.rota_out))
+    print >> out, "%sC-beta deviations     = %s" % (prefix,
+      fs("%6d", self.cbeta_out))
     print >> out, "%sClashscore            = %6.2f" % (prefix,self.clashscore)
     if (self.r_work is not None) :
       print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
