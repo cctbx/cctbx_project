@@ -360,6 +360,7 @@ class miller_array_builder(crystal_symmetry_builder):
                   sigmas = array
                   array = self._arrays[key]
                   check_array_sizes(array, sigmas, key, sigmas_label)
+                  check_is_flex_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas.data())
                   info = array.info()
                   array.set_info(
@@ -371,6 +372,7 @@ class miller_array_builder(crystal_symmetry_builder):
                     value, wavelength_id=w_id, crystal_id=crys_id,
                     scale_group_code=scale_group)
                   check_array_sizes(array, sigmas, key, sigmas_label)
+                  check_is_flex_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas)
                   labels = labels[:-1]+[key, sigmas_label]
               elif 'HL_' in key:
@@ -518,6 +520,21 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def arrays(self):
     return self._arrays
+
+def check_is_flex_double(array, key):
+  if isinstance(array.data(), flex.double):
+    return True
+  else:
+    try:
+      flex.double(array.data())
+    except ValueError, e:
+      e_str = str(e)
+      if e_str.startswith("Invalid floating-point value: "):
+        i = e_str.find(":") + 2
+        raise CifBuilderError("Invalid floating-point value for %s: %s"
+                              %(key, e_str[i:].strip()))
+      else:
+        raise CifBuilderError(e_str)
 
 def check_array_sizes(array1, array2, key1, key2):
   if array1.size() != array2.size():
