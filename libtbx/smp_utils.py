@@ -72,6 +72,8 @@ class Pool (object) :
       print >> out, "Multiprocessing is DISABLED"
 
   def map_async (self, func, iterable, chunksize=None, callback=None) :
+    if (chunksize is None) :
+      chunksize = 1
     if self.enable_multiprocessing :
       self._pool.map_async(_run_wrapper(func), iterable, chunksize, callback)
     else :
@@ -125,6 +127,8 @@ class Pool (object) :
       return results
 
   def map (self, func, iterable, chunksize=None) :
+    if (chunksize is None) :
+      chunksize = 1
     if self.enable_multiprocessing :
       return self._pool.map(func, iterable, chunksize)
     else :

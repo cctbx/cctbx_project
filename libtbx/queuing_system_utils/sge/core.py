@@ -321,6 +321,7 @@ class SGEPool:
   def _submit_jobs(self, func, iterable, mode, chunksize=1, dependencies=[]):
     if mode not in ['map', 'reduce']:
       raise ValueError('mode must be one of "map" or "reduce"')
+    assert (chunksize is not None)
     moreData = True
     allJobs = []
     iterable = iter(iterable)
