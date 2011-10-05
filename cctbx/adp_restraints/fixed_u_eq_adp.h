@@ -70,30 +70,24 @@ namespace cctbx { namespace adp_restraints {
 
     static double grad_u_iso(int i) { return 1; }
 
+    static int grad_row_count() { return 1; }
+
     static const double* cart_grad_row(int i) {
-      static const double grads_u_cart[6][6] = {
-        {1./3, 1./3, 1./3, 0, 0, 0},
-        {1./3, 1./3, 1./3, 0, 0, 0},
-        {1./3, 1./3, 1./3, 0, 0, 0},
-        {   0,    0,    0, 0, 0, 0},
-        {   0,    0,    0, 0, 0, 0},
-        {   0,    0,    0, 0, 0, 0}
-      };
-      return &grads_u_cart[i][0];
+      static const double grads_u_cart[] = {1./3, 1./3, 1./3, 0, 0, 0};
+      return &grads_u_cart[0];
     }
 
     double u_eq_ideal;
   protected:
 
     void init_deltas(scitbx::sym_mat3<double>const &u_cart) {
-      double u_eq_diff = (u_cart.trace()/3 - u_eq_ideal);
-      for (int i=0; i<6; i++)
-        deltas_[i] = (i < 3 ? u_eq_diff : 0);
+      deltas_[0] = (u_cart.trace()/3 - u_eq_ideal);
+      for (int i=1; i<6; i++)  deltas_[i] = 0;
     }
 
     void init_deltas(double u_iso) {
       deltas_[0] = u_iso-u_eq_ideal;
-      for (int i=1; i<6; i++) deltas_[i] = 0;
+      for (int i=1; i<6; i++)  deltas_[i] = 0;
     }
   };
 

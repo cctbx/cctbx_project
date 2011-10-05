@@ -5,6 +5,9 @@
 
 namespace cctbx { namespace adp_restraints {
 
+  using scitbx::vec3;
+  using scitbx::mat3;
+
   struct adp_similarity_proxy : public adp_restraint_proxy<2> {
     adp_similarity_proxy() {}
     adp_similarity_proxy(
@@ -134,9 +137,9 @@ namespace cctbx { namespace adp_restraints {
       }
     }
 
-    static double grad_u_iso(int) {
-      return 1;
-    }
+    static double grad_u_iso(int) {  return 1;  }
+
+    static double grad_row_count() {  return 6;  }
 
     static const double* cart_grad_row(int i) {
       static const double grads_u_cart[6][6] = {
@@ -307,16 +310,11 @@ class adp_u_eq_similarity : public adp_restraint_base<2> {
 
     static double grad_u_iso(int) { return 1; }
 
+    static double grad_row_count() {  return 1;  }
+
     static const double* cart_grad_row(int i) {
-      static const double grads_u_cart[6][6] = {
-        {1./3, 1./3, 1./3, 0, 0, 0},
-        {1./3, 1./3, 1./3, 0, 0, 0},
-        {1./3, 1./3, 1./3, 0, 0, 0},
-        {   0,    0,    0, 0, 0, 0},
-        {   0,    0,    0, 0, 0, 0},
-        {   0,    0,    0, 0, 0, 0}
-      };
-      return &grads_u_cart[i][0];
+      static const double grads_u_cart[] = {1./3, 1./3, 1./3, 0, 0, 0};
+      return &grads_u_cart[0];
     }
 
   protected:
@@ -324,9 +322,8 @@ class adp_u_eq_similarity : public adp_restraint_base<2> {
     void init_deltas(scitbx::sym_mat3<double> const &u_cart1,
       scitbx::sym_mat3<double> const &u_cart2)
     {
-      double u_eq_minus_u_eq  = (u_cart1.trace()-u_cart2.trace())/3;
-      for (int i=0; i<6; i++)
-        deltas_[i] = (i < 3 ? u_eq_minus_u_eq : 0);
+      deltas_[0] = (u_cart1.trace()-u_cart2.trace())/3;
+      for (int i=1; i<6; i++)  deltas_[i] = 0;
     }
 
     void init_deltas(double u_iso1, double u_iso2) {
@@ -335,15 +332,13 @@ class adp_u_eq_similarity : public adp_restraint_base<2> {
     }
 
     void init_deltas(scitbx::sym_mat3<double> const &u_cart, double u_iso) {
-      double u_eq_minus_u_iso = (u_cart.trace()/3-u_iso);
-      for (int i=0; i<6; i++)
-        deltas_[i] = (i < 3 ? u_eq_minus_u_iso : 0);
+      deltas_[0] = (u_cart.trace()/3-u_iso);
+      for (int i=1; i<6; i++) deltas_[i] = 0;
     }
 
     void init_deltas(double u_iso, scitbx::sym_mat3<double> const &u_cart) {
-      double u_iso_minus_u_eq = (u_iso-u_cart.trace()/3);
-      for (int i=0; i<6; i++)
-        deltas_[i] = (i < 3 ? u_iso_minus_u_eq : 0);
+      deltas_[0] = (u_iso-u_cart.trace()/3);
+      for (int i=1; i<6; i++) deltas_[i] = 0;
     }
 
   };
@@ -357,6 +352,8 @@ struct adp_volume_similarity_proxy : public adp_restraint_proxy<2> {
     {}
   };
 
+/* in this restraint the gradients are estimated considering that eigen
+values and eigen vectors are independent */
 class adp_volume_similarity : public adp_restraint_base<2> {
   public:
     //! Constructor.
@@ -365,7 +362,6 @@ class adp_volume_similarity : public adp_restraint_base<2> {
       double weight)
     : adp_restraint_base<2>(af::tiny<bool, 2>(true, true), weight)
     {
-      init();
       init_deltas(u_cart[0], u_cart[1]);
     }
 
@@ -383,7 +379,6 @@ class adp_volume_similarity : public adp_restraint_base<2> {
       double weight)
     : adp_restraint_base<2>(af::tiny<bool, 2>(true, false), weight)
     {
-      init();
       init_deltas(u_cart, u_iso);
     }
 
@@ -393,7 +388,6 @@ class adp_volume_similarity : public adp_restraint_base<2> {
       double weight)
     : adp_restraint_base<2>(af::tiny<bool, 2>(false, true), weight)
     {
-      init();
       init_deltas(u_iso, u_cart);
     }
 
@@ -403,7 +397,6 @@ class adp_volume_similarity : public adp_restraint_base<2> {
       adp_volume_similarity_proxy const& proxy)
     : adp_restraint_base<2>(params, proxy)
     {
-      init();
       if (use_u_aniso[0] && use_u_aniso[1]) {
         CCTBX_ASSERT(proxy.i_seqs[0] < params.u_cart.size());
         CCTBX_ASSERT(proxy.i_seqs[1] < params.u_cart.size());
@@ -479,98 +472,108 @@ class adp_volume_similarity : public adp_restraint_base<2> {
     }
 
     double grad_u_iso(int i) const {
-      if (!use_u_aniso[i]) {
-        return scitbx::constants::four_pi*scitbx::fn::pow2(
-          i==0 ? radii_[0] : radii_[3]);
-      }
+      if (!use_u_aniso[i])
+        return scitbx::constants::four_pi*scitbx::fn::pow2(radii_[i]);
       CCTBX_NOT_IMPLEMENTED();
       return 0;
     }
-    // i - which i_seq, j - which row
-    const double* cart_grad_row(int i_seq, int i) const {
-      static const double coeff = 4*scitbx::constants::pi/3;
-      if (use_u_aniso[i_seq]) {
-        if (i>2) {
-          for (int i=0; i < 3; i++)
-            grad_u_cart_row_[i] = 0;
-        }
-        else {
-          if (i_seq==0)  {
-            grad_u_cart_row_[0] = coeff*radii_[1]*radii_[2];
-            grad_u_cart_row_[1] = coeff*radii_[0]*radii_[2];
-            grad_u_cart_row_[2] = coeff*radii_[0]*radii_[1];
-          }
-          else {
-            grad_u_cart_row_[0] = coeff*radii_[4]*radii_[5];
-            grad_u_cart_row_[1] = coeff*radii_[3]*radii_[5];
-            grad_u_cart_row_[2] = coeff*radii_[3]*radii_[4];
-          }
-        }
-        return &grad_u_cart_row_[0];
+
+    static double grad_row_count() {  return 1;  }
+
+    // i - which adp; j - which row
+    const double* cart_grad_row(int i, int j) const {
+      if (use_u_aniso[i]) {
+        int index = (i== 0 ? 0 : (use_u_aniso[0] ? 1 : 0));
+        return grads[index].begin();
       }
       CCTBX_NOT_IMPLEMENTED();
       return 0;
     }
 
   protected:
-    // note that two rows cannot be accessed at the same time!
-    mutable double grad_u_cart_row_[6];
-    double radii_[6];
+    af::shared<af::tiny<double, 6> > grads;
+    double radii_[2];
 
     static double r3diff_to_vol(double r3diff) {
       return 4*scitbx::constants::pi*r3diff/3;
     }
 
+    static
+    af::tiny<double, 6> calc_grad(adptbx::eigensystem<double> const& es) {
+      static const double coeff = 4*scitbx::constants::pi/3;
+      const vec3<double> &v = es.values();
+      vec3<double> vp(v[1]*v[2], v[0]*v[2], v[0]*v[1]);
+      af::tiny<double, 6> grad;
+      grad[0] = coeff*(
+        vp[0]*es.vectors(0)[0]*es.vectors(0)[0] +
+        vp[1]*es.vectors(1)[0]*es.vectors(1)[0] +
+        vp[2]*es.vectors(2)[0]*es.vectors(2)[0]);
+      grad[1] = coeff*(
+        vp[0]*es.vectors(0)[1]*es.vectors(0)[1] +
+        vp[1]*es.vectors(1)[1]*es.vectors(1)[1] +
+        vp[2]*es.vectors(2)[1]*es.vectors(2)[1]);
+      grad[2] = coeff*(
+        vp[0]*es.vectors(0)[2]*es.vectors(0)[2] +
+        vp[1]*es.vectors(1)[2]*es.vectors(1)[2] +
+        vp[2]*es.vectors(2)[2]*es.vectors(2)[2]);
+      grad[3] = 2*coeff*(
+        vp[0]*es.vectors(0)[0]*es.vectors(0)[1] +
+        vp[1]*es.vectors(1)[1]*es.vectors(1)[0] +
+        vp[2]*es.vectors(2)[1]*es.vectors(2)[0]);
+      grad[4] = 2*coeff*(
+        vp[0]*es.vectors(0)[0]*es.vectors(0)[2] +
+        vp[1]*es.vectors(1)[2]*es.vectors(1)[0] +
+        vp[2]*es.vectors(2)[2]*es.vectors(2)[0]);
+      grad[5] = 2*coeff*(
+        vp[0]*es.vectors(0)[1]*es.vectors(0)[2] +
+        vp[1]*es.vectors(1)[1]*es.vectors(1)[2] +
+        vp[2]*es.vectors(2)[1]*es.vectors(2)[2]);
+      return grad;
+    }
+
     void init_deltas(scitbx::sym_mat3<double> const &u_cart1,
       scitbx::sym_mat3<double> const &u_cart2)
     {
-      double delta_vol = r3diff_to_vol(
-        u_cart1[0]*u_cart1[1]*u_cart1[2] -
-        u_cart2[0]*u_cart2[1]*u_cart2[2]);
-      for (int i=0; i<3; i++) {
-        deltas_[i] = delta_vol;
-        radii_[i] = u_cart1[i];
-        deltas_[i+3] = 0;
-        radii_[i+3] = u_cart2[i];
-      }
+      adptbx::eigensystem<double> es1(u_cart1),
+        es2(u_cart2);
+      const vec3<double> &v1 = es1.values(),
+        &v2 = es2.values();
+      grads.push_back(calc_grad(es1));
+      grads.push_back(calc_grad(es2));
+
+      deltas_[0] = r3diff_to_vol(
+        v1[0]*v1[1]*v1[2] - v2[0]*v2[1]*v2[2]);
+      for (int i=1; i<6; i++)  deltas_[i] = 0;
     }
 
     void init_deltas(double u_iso1, double u_iso2) {
       deltas_[0] = r3diff_to_vol(
-        scitbx::fn::pow3(u_iso1) -
-        scitbx::fn::pow3(u_iso2));
+        scitbx::fn::pow3(u_iso1) - scitbx::fn::pow3(u_iso2));
       radii_[0] = u_iso1;
-      radii_[3] = u_iso2;
+      radii_[1] = u_iso2;
       for (int i=1; i<6; i++) deltas_[i] = 0;
     }
 
     void init_deltas(scitbx::sym_mat3<double> const &u_cart, double u_iso) {
-      double delta_vol = r3diff_to_vol(
-        u_cart[0]*u_cart[1]*u_cart[2] -
-        scitbx::fn::pow3(u_iso));
-      radii_[3] = u_iso;
-      for (int i=0; i<3; i++) {
-        deltas_[i] = delta_vol;
-        deltas_[i+3] = 0;
-        radii_[i] = u_cart[i];
-      }
+      adptbx::eigensystem<double> es(u_cart);
+      const vec3<double> &v = es.values();
+      grads.push_back(calc_grad(es));
+
+      deltas_[0] = r3diff_to_vol(
+        v[0]*v[1]*v[2] - scitbx::fn::pow3(u_iso));
+      radii_[1] = u_iso;
+      for (int i=1; i<6; i++)  deltas_[i] = 0;
     }
 
     void init_deltas(double u_iso, scitbx::sym_mat3<double> const &u_cart) {
-      double delta_vol = r3diff_to_vol(
-        scitbx::fn::pow3(u_iso) -
-        u_cart[0]*u_cart[1]*u_cart[2]);
-      radii_[0] = u_iso;
-      for (int i=0; i<3; i++) {
-        deltas_[i] = delta_vol;
-        deltas_[i+3] = 0;
-        radii_[i+3] = u_cart[i];
-      }
-    }
+      adptbx::eigensystem<double> es(u_cart);
+      const vec3<double> &v = es.values();
+      grads.push_back(calc_grad(es));
 
-    void init() {
-      for (int i=0; i < 6; i++)
-        grad_u_cart_row_[i] = radii_[i] = 0;
+      deltas_[0] = r3diff_to_vol(
+        scitbx::fn::pow3(u_iso) - v[0]*v[1]*v[2]);
+      radii_[0] = u_iso;
+      for (int i=1; i<6; i++)  deltas_[i] = 0;
     }
 
   };

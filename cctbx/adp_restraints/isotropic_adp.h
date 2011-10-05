@@ -54,6 +54,8 @@ namespace cctbx { namespace adp_restraints {
       return 1;
     }
 
+    static double grad_row_count() {  return 6;  }
+
     static const double* cart_grad_row(int i) {
       static const double grads_u_cart[6][6] = {
         { 2./3, -1./3, -1./3, 0, 0, 0},
