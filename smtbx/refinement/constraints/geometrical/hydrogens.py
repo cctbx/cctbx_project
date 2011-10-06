@@ -178,16 +178,24 @@ class secondary_xh2_sites(hydrogens):
     uc = reparametrisation.structure.unit_cell()
     theta = col(uc.orthogonalize(x_h[0] - x_p)).angle(
       col(uc.orthogonalize(x_h[1] - x_p)))
-    flapping = reparametrisation.add(_.independent_scalar_parameter,
+    angle_param = None
+    if self.flapping:
+      angle_param = reparametrisation.add(_.independent_scalar_parameter,
                                      value=theta,
                                      variable=True)
+    else:
+      angle_param = reparametrisation.add(_.angle_parameter,
+                                          left=pivot_neighbour_site_params[0],
+                                          center=pivot_site_param,
+                                          right=pivot_neighbour_site_params[1],
+                                          value=theta)
     return reparametrisation.add(
       _.secondary_xh2_sites,
       pivot=pivot_site_param,
       pivot_neighbour_0=pivot_neighbour_site_params[0],
       pivot_neighbour_1=pivot_neighbour_site_params[1],
       length=bond_length,
-      h_c_h_angle=flapping,
+      h_c_h_angle=angle_param,
       hydrogen_0=hydrogens[0],
       hydrogen_1=hydrogens[1])
 

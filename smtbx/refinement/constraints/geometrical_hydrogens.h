@@ -121,6 +121,23 @@ private:
   cart_t e_zero_azimuth;
 };
 
+/* Angle helper object */
+class angle_parameter : public scalar_parameter {
+public:
+  angle_parameter(
+    site_parameter *left,
+    site_parameter *center,
+    site_parameter *right,
+    double value_)
+  : parameter(3)
+  {
+    set_arguments(left, center, right);
+    value = value_;
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+};
 
 /// Model of X-CH2-Y
 /**
@@ -128,6 +145,10 @@ private:
 
   All angles Hi-C-X and Hi-C-Y are equal.
   The angle H-C-H is refinable (flapping).
+  if the H-C-H angle is refinable - an instance of the
+  independent_scalar_parameter must be passed, otherwise an instance of the
+  angle_parameter should be provided. Note that no error will be given if the
+  instances are confused, but the Jacobian matrix will be slightly different.
 */
 class secondary_xh2_sites
   : public geometrical_hydrogen_sites<2>
@@ -137,7 +158,7 @@ public:
                       site_parameter *pivot_neighbour_0,
                       site_parameter *pivot_neighbour_1,
                       independent_scalar_parameter *length,
-                      independent_scalar_parameter *h_c_h,
+                      scalar_parameter *h_c_h,
                       scatterer_type *hydrogen_0,
                       scatterer_type *hydrogen_1)
   : parameter(5),
@@ -254,7 +275,7 @@ public:
 
 /// Model of polyhedral B/C(4,5)-H
 /**
-    ()-H is a negative sum of unit vectors from the pivot to the neghbours,
+    ()-H is a negative sum of unit vectors from the pivot to the neighbours,
     normalised to the given/refined length
 */
 class polyhedral_bh_site

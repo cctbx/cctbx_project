@@ -9,6 +9,7 @@ class any(object):
   bond_length = None
   rotating = False
   stretching = False
+  flapping = False
   constrained_site_indices = ()
   need_pivot_neighbour_substituent = False
 
