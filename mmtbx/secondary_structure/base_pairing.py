@@ -184,6 +184,7 @@ def get_h_bond_atoms(residues,
   if (saenger_class is not None) :
     pair_type = saenger_class.upper()
   elif (leontis_westhof_class is not None) :
+    assert (leontis_westhof_class != "Auto")
     pair_type = leontis_westhof_class.upper()
   else :
     raise Sorry("Base pair type not specified.")
@@ -518,6 +519,7 @@ def identify_base_pairs (base_pairs,
         use_db_values=use_db_values)
       class_dist_sq.append((class_name, dist_sq))
     if (len(class_dist_sq) == 0) :
+      base_pair.leontis_westhof_class = "wwt"
       continue
     class_dist_sq.sort(lambda x,y: cmp(x[1], y[1]))
     base_pair.saenger_class = class_dist_sq[0][0]
