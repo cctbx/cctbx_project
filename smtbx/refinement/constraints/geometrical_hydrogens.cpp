@@ -260,8 +260,10 @@ namespace smtbx { namespace refinement { namespace constraints {
         cos(theta/2)*theta_to_phi_const*cos(phi)
       */
       double sin_phi = std::sqrt(1-cos_phi*cos_phi),
-        k = l*theta_to_phi_const*sin_phi/2;
-      af::tiny<cart_t, 2> grad_c(k*(s*e0 + c*e1), k*(s*e0 - c*e1));
+        k = l*theta_to_phi_const/2;
+      af::tiny<cart_t, 2> grad_c(
+        k*(s*sin_phi*e0 + c*cos_phi*e1),
+        k*(s*sin_phi*e0 - c*cos_phi*e1));
       for (int i=0; i < 2; i++) {
         frac_t grad_f = unit_cell.fractionalize(grad_c[i]);
         for (int j=0; j < 3; j++)  {
