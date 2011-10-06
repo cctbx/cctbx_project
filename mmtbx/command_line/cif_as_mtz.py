@@ -445,11 +445,11 @@ def validate_params (params) :
   if (params.input.pdb_id is not None) :
     if (params.input.cif_file is not None) :
       raise Sorry("Please specify either a PDB ID or a CIF file, not both.")
-    if ((len(params.input.pdb_id) != 4) or
-        (not re.match("[1-9]{1}[a-zA-Z0-9]{3}", params.input.pdb_id))) :
-      raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
-        "alphanumeric characters, starting with a number from 1-9.") %
-        params.input.pdb_id)
+    import iotbx.pdb.fetch
+    try :
+      iotbx.pdb.fetch.validate_pdb_id(params.input.pdb_id)
+    except RuntimeError, e :
+      raise Sorry(str(e))
   else :
     if ((params.crystal_symmetry.space_group is None) or
         (params.crystal_symmetry.unit_cell is None)) :
