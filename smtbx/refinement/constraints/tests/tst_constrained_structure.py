@@ -203,6 +203,7 @@ class sucrose_test_case(test_case):
         constrained_site_indices=(20,)),
       _.secondary_xh2_sites(
         pivot=21,
+        flapping = True,
         constrained_site_indices=(26, 22)),
       _.tertiary_xh_site(
         pivot=23,
@@ -218,6 +219,7 @@ class sucrose_test_case(test_case):
         constrained_site_indices=(31,)),
       _.secondary_xh2_sites(
         pivot=33,
+        flapping = True,
         constrained_site_indices=(35, 34)),
       _.tertiary_xh_site(
         pivot=36,
@@ -230,6 +232,7 @@ class sucrose_test_case(test_case):
         constrained_site_indices=(41,)),
       _.secondary_xh2_sites(
         pivot=42,
+        flapping = True,
         constrained_site_indices=(43, 44)),
       ]
 

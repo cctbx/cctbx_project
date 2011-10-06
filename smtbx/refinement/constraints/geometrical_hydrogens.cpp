@@ -146,6 +146,45 @@ namespace smtbx { namespace refinement { namespace constraints {
   template class terminal_tetrahedral_xhn_sites<2, /*staggered=*/true>;
   template class terminal_tetrahedral_xhn_sites<3, /*staggered=*/true>;
 
+  // angle parameter
+
+  void angle_parameter::linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose)
+  {
+    site_parameter *sites[] = {
+      dynamic_cast<site_parameter *>(argument(0)),
+      dynamic_cast<site_parameter *>(argument(1)),
+      dynamic_cast<site_parameter *>(argument(2))
+    };
+    cart_t crds[] = {
+      unit_cell.orthogonalize(sites[0]->value),
+      unit_cell.orthogonalize(sites[1]->value),
+      unit_cell.orthogonalize(sites[2]->value)
+    };
+    value = (crds[0]-crds[1]).angle(crds[2]-crds[1]);
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    // http://salilab.org/modeller/8v0/manual/node248.html
+    cart_t ij = (crds[0] - crds[1]);
+    cart_t kj = (crds[2] - crds[1]);
+    const double ij_l = ij.length(), kj_l = kj.length();
+    ij = ij.normalize();
+    kj = kj.normalize();
+    const double ca = ij*kj;
+    //if( std::abs(ca) >= 1.0-1e-16 )
+    const double oos = 1./std::sqrt(1-ca*ca);
+    cart_t grad[3];
+    grad[0] = (ij*ca - kj)*oos/ij_l;  // d(angle)/d(left)
+    grad[2] = (kj*ca - ij)*oos/kj_l;  // d(angle)/d(right)
+    grad[1] = -(grad[0] + grad[2]);   // d(angle)/d(center)
+    for (int i=0; i < 3; i++)  {
+      frac_t grad_f = unit_cell.fractionalize(grad[i]);
+      for (int j=0; j < 3; j++) {
+        jt(sites[i]->index()+j, index()) = grad_f[j];
+      }
+    }
+  }
+
   // X-CH2-Y
 
   void secondary_xh2_sites::linearise(uctbx::unit_cell const &unit_cell,
@@ -159,6 +198,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     scalar_parameter *length = dynamic_cast<scalar_parameter *>(argument(3));
     scalar_parameter *h_c_h = dynamic_cast<scalar_parameter *>(argument(4));
 
+    bool is_angle_param = dynamic_cast<angle_parameter *>(argument(4)) != 0;
     // Local frame
     /* (C, e0, e1) is the bisecting plane of the angle X-C-Y
         with e0 bisecting X-C-Y
@@ -171,8 +211,15 @@ namespace smtbx { namespace refinement { namespace constraints {
     cart_t e0 = (u_pn_1 + u_pn_0).normalize();
     cart_t e2 = (u_pn_1 - u_pn_0).normalize();
     cart_t e1 = e2.cross(e0);
-    double l = length->value, theta = h_c_h->value;
-
+    double l = length->value,
+      theta = h_c_h->value,
+      cos_phi = 0;
+    const double theta_to_phi_const = 0.0698;
+    // calculate new theta/2 = 0.9678 + 0.0698 cos phi as in shelxl
+    if (is_angle_param) {
+      cos_phi = u_pn_0*u_pn_1;
+      theta = 2*(0.9678 + theta_to_phi_const*cos_phi);
+    }
     // Hydrogen sites
     double c = std::cos(theta/2), s = std::sin(theta/2);
     af::tiny<cart_t, 2> u_h(c*e0 + s*e1, c*e0 - s*e1);
@@ -184,8 +231,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     af::tiny<std::size_t, 2> j_h(index(), index() + 3);
 
     // Riding
-    for (int k=0; k<2; ++k) for (int i=0; i<3; ++i) {
-      jt.col(j_h[k] + i) = jt.col(pivot->index() + i);
+    for (int k=0; k<2; ++k) {
+      for (int i=0; i<3; ++i)
+        jt.col(j_h[k] + i) = jt.col(pivot->index() + i);
     }
 
     // Bond stretching
@@ -197,11 +245,28 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
 
     // H-C-H flapping
-    if (h_c_h->is_variable()) {
+    if (h_c_h->is_variable() && !is_angle_param) {
       af::tiny<cart_t, 2> grad_c(l/2*(-s*e0 + c*e1), l/2*(-s*e0 - c*e1));
       for (int k=0; k<2; ++k) {
         frac_t grad_f = unit_cell.fractionalize(grad_c[k]);
         for (int i=0; i<3; ++i) jt(h_c_h->index(), j_h[k] + i) = grad_f[i];
+      }
+    }
+    else {
+      /*
+      d(cos(theta/2))/d(phi) = d(cos(theta/2)/d(theta)*d(theta)/d(phi) =
+        sin(theta/2)*theta_to_phi_const*sin(phi)
+      d(sin(theta/2))/d(phi) = d(sin(theta/2)/d(theta)*d(theta)/d(phi) =
+        cos(theta/2)*theta_to_phi_const*cos(phi)
+      */
+      double sin_phi = std::sqrt(1-cos_phi*cos_phi),
+        k = l*theta_to_phi_const*sin_phi/2;
+      af::tiny<cart_t, 2> grad_c(k*(s*e0 + c*e1), k*(s*e0 - c*e1));
+      for (int i=0; i < 2; i++) {
+        frac_t grad_f = unit_cell.fractionalize(grad_c[i]);
+        for (int j=0; j < 3; j++)  {
+          jt(j_h[i]+j, h_c_h->index()) = grad_f[j];
+        }
       }
     }
   }
