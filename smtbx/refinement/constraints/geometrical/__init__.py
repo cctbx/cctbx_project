@@ -10,6 +10,7 @@ class any(object):
   rotating = False
   stretching = False
   flapping = False
+  angle = None
   constrained_site_indices = ()
   need_pivot_neighbour_substituent = False
 
