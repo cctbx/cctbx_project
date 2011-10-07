@@ -360,20 +360,20 @@ class miller_array_builder(crystal_symmetry_builder):
                   sigmas = array
                   array = self._arrays[key]
                   check_array_sizes(array, sigmas, key, sigmas_label)
-                  check_is_flex_double(sigmas, sigmas_label)
+                  check_is_flex_int_or_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas.data())
                   info = array.info()
                   array.set_info(
                     info.customized_copy(labels=info.labels+[sigmas_label]))
                   continue
                 elif key in refln_loop:
-                  sigmas = array.data()
+                  sigmas = array
                   array = self.flex_std_string_as_miller_array(
                     value, wavelength_id=w_id, crystal_id=crys_id,
                     scale_group_code=scale_group)
                   check_array_sizes(array, sigmas, key, sigmas_label)
-                  check_is_flex_double(sigmas, sigmas_label)
-                  array.set_sigmas(sigmas)
+                  check_is_flex_int_or_double(sigmas, sigmas_label)
+                  array.set_sigmas(sigmas.data())
                   labels = labels[:-1]+[key, sigmas_label]
               elif 'HL_' in key:
                 hl_letter = key[key.find('HL_')+3]
@@ -523,8 +523,8 @@ class miller_array_builder(crystal_symmetry_builder):
   def arrays(self):
     return self._arrays
 
-def check_is_flex_double(array, key):
-  if isinstance(array.data(), flex.double):
+def check_is_flex_int_or_double(array, key):
+  if isinstance(array.data(), flex.double) or isinstance(array.data(), flex.int):
     return True
   else:
     try:
