@@ -128,6 +128,11 @@ class adp_restraints_test_case(restraints_test_case):
     u_cart = xs.scatterers().extract_u_cart(uc).deep_copy()
     u_star = xs.scatterers().extract_u_star().deep_copy()
     u_iso = xs.scatterers().extract_u_iso().deep_copy()
+    single_delta_classes = (
+      adp.fixed_u_eq_adp,
+      adp.adp_u_eq_similarity,
+      adp.adp_volume_similarity,
+    )
     for n in xrange(n_restraints):
       for i in xrange(self.param_map.n_scatterers):
         use_u_aniso = self.param_map[i].u_aniso > -1
@@ -142,6 +147,8 @@ class adp_restraints_test_case(restraints_test_case):
               adptbx.u_star_as_u_cart(uc, u) for u in u_star]))
             if isinstance(r, adp.rigid_bond):
               d1 = r.delta_z()
+            elif isinstance(r, single_delta_classes):
+              d1 = r.delta()
             else:
               d1 = r.deltas()[n]
             u_star[i]=list((matrix.sym(sym_mat3=u_star[i]) - 2*h).as_sym_mat3())
@@ -149,6 +156,8 @@ class adp_restraints_test_case(restraints_test_case):
               adptbx.u_star_as_u_cart(uc, u) for u in u_star]))
             if isinstance(r, adp.rigid_bond):
               d2 = r.delta_z()
+            elif isinstance(r, single_delta_classes):
+              d2 = r.delta()
             else:
               d2 = r.deltas()[n]
           elif use_u_iso:
@@ -156,12 +165,16 @@ class adp_restraints_test_case(restraints_test_case):
             r = self.restraint(proxy, u_iso=u_iso)
             if isinstance(r, adp.rigid_bond):
               d1 = r.delta_z()
+            elif isinstance(r, single_delta_classes):
+              d1 = r.delta()
             else:
               d1 = r.deltas()[n]
             u_iso[i] -= 2*eps
             r = self.restraint(proxy, u_iso=u_iso)
             if isinstance(r, adp.rigid_bond):
               d2 = r.delta_z()
+            elif isinstance(r, single_delta_classes):
+              d2 = r.delta()
             else:
               d2 = r.deltas()[n]
           d_delta = (d1-d2)/(2*eps)

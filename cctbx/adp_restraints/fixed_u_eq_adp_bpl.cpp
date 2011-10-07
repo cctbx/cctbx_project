@@ -46,7 +46,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
 
-      class_<w_t, bases<adp_restraint_base<1> > >
+      class_<w_t, bases<adp_restraint_base_1<1> > >
             ("fixed_u_eq_adp", no_init)
         .def(init<
             scitbx::sym_mat3<double> const &,

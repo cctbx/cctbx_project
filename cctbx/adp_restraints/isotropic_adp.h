@@ -13,12 +13,12 @@ namespace cctbx { namespace adp_restraints {
     {}
   };
 
-  class isotropic_adp : public adp_restraint_base<1> {
+  class isotropic_adp : public adp_restraint_base_6<1> {
   public:
     isotropic_adp(
       scitbx::sym_mat3<double> const &u_cart,
       double weight)
-    : adp_restraint_base<1>(af::tiny<bool, 1>(true), weight)
+    : adp_restraint_base_6<1>(af::tiny<bool, 1>(true), weight)
     {
       init_deltas(u_cart);
     }
@@ -26,17 +26,10 @@ namespace cctbx { namespace adp_restraints {
     isotropic_adp(
       adp_restraint_params<double> const &params,
       isotropic_adp_proxy const &proxy)
-    : adp_restraint_base<1>(params, proxy)
+    : adp_restraint_base_6<1>(params, proxy)
     {
       CCTBX_ASSERT(proxy.i_seqs[0] < params.u_cart.size());
       init_deltas(params.u_cart[proxy.i_seqs[0]]);
-    }
-
-    void add_gradients(
-      af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart,
-      af::tiny<unsigned, 1> const& i_seqs) const
-    {
-      gradients_aniso_cart[i_seqs[0]] += gradients();
     }
 
     void linearise(
@@ -46,15 +39,14 @@ namespace cctbx { namespace adp_restraints {
       af::tiny<unsigned, 1> const &i_seqs)
     {
       linearise_1<isotropic_adp>(
-        unit_cell, linearised_eqns, parameter_map, i_seqs[0], true, weight, deltas_);
+        unit_cell, linearised_eqns, parameter_map, i_seqs[0], true, weight,
+        deltas_.begin());
     }
 
     static double grad_u_iso(int) {
       CCTBX_NOT_IMPLEMENTED();
       return 1;
     }
-
-    static double grad_row_count() {  return 6;  }
 
     static const double* cart_grad_row(int i) {
       static const double grads_u_cart[6][6] = {

@@ -36,7 +36,7 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_base<2> > >
+      class_<w_t, bases<adp_restraint_base_6<2> > >
         ("adp_similarity", no_init)
         .def(init<
            af::tiny<scitbx::sym_mat3<double>, 2> const&,
@@ -67,7 +67,6 @@ namespace {
             adp_similarity_proxy const&>(
           (arg("params"),
            arg("proxy"))))
-        .def("gradients2", &w_t::gradients2)
       ;
     }
   };
@@ -96,7 +95,7 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_base<2> > >
+      class_<w_t, bases<adp_restraint_base_1<2> > >
         ("adp_u_eq_similarity", no_init)
         .def(init<
            af::tiny<scitbx::sym_mat3<double>, 2> const&,
@@ -127,7 +126,6 @@ namespace {
             adp_u_eq_similarity_proxy const&>(
           (arg("params"),
            arg("proxy"))))
-        .def("gradients2", &w_t::gradients2)
       ;
     }
   };
@@ -156,7 +154,7 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_base<2> > >
+      class_<w_t, bases<adp_restraint_base_1<2> > >
         ("adp_volume_similarity", no_init)
         .def(init<
            af::tiny<scitbx::sym_mat3<double>, 2> const&,
@@ -187,7 +185,6 @@ namespace {
             adp_volume_similarity_proxy const&>(
           (arg("params"),
            arg("proxy"))))
-        .def("gradients2", &w_t::gradients2)
       ;
     }
   };
