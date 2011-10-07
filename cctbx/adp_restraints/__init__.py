@@ -187,13 +187,13 @@ class _(boost.python.injector, adp_u_eq_similarity):
 
   def _show_sorted_item(self, f, prefix):
     adp_label = "Ueq"
-    delta = self.deltas()[0]
     print >> f, \
       "%s          delta    sigma   weight" %(prefix),
     print >> f, "residual"
     rdr = " %6.2e" %self.residual()
     print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-      prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
+      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
+      self.weight, rdr)
 
 class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 
@@ -225,13 +225,13 @@ class _(boost.python.injector, adp_volume_similarity):
 
   def _show_sorted_item(self, f, prefix):
     adp_label = "Volume"
-    delta = self.deltas()[0]
     print >> f, \
       "%s          delta    sigma   weight" %(prefix),
     print >> f, "residual"
     rdr = " %6.2e" %self.residual()
     print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-      prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
+      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
+      self.weight, rdr)
 
 class _(boost.python.injector, shared_adp_volume_similarity_proxy):
 
@@ -309,7 +309,7 @@ class _(boost.python.injector, fixed_u_eq_adp):
     print >> f, "residual"
     rdr = " %6.2e" %self.residual()
     print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-      prefix, adp_label, self.deltas()[0], weight_as_sigma(weight=self.weight), self.weight, rdr)
+      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight), self.weight, rdr)
 
 class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
 
