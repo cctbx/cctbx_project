@@ -1677,8 +1677,6 @@ spotfinder/core_toolbox/distl.cpp -text
 spotfinder/core_toolbox/distl.h -text
 spotfinder/core_toolbox/hough.cpp -text
 spotfinder/core_toolbox/hough.h -text
-spotfinder/core_toolbox/libdistl.cpp -text
-spotfinder/core_toolbox/libdistl.h -text
 spotfinder/core_toolbox/spot.cpp -text
 spotfinder/core_toolbox/spot_shapes.h -text
 spotfinder/core_toolbox/spot_types.h -text
