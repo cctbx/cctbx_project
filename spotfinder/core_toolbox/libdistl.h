@@ -190,7 +190,6 @@ private:
 public:
   double peakintensity;
   double peakheight;
-  double angle;
   scitbx::af::shared<double> wts; // pixel-by-pixel ADC units above local background
   scitbx::af::shared<double> bkg; // pixel-by-pixel local background
   int nmaxima;         // number of local maximas

@@ -1,3 +1,5 @@
+/* -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*- */
+
 /************************************************************************
                         Copyright 2003
                               by
@@ -595,13 +597,13 @@ void diffimage::pxlclassify_scanbox(const int xstart, const int xend,
   bp->finish();
   //BP->evaluate_plane(xstart,xend,ystart,yend);
 
-  // Calculate pixel intensity.
-  //
-  // Intensity is calculated and assigned to the original box,
-  // instead of the expansion, if any, to the box.
 
-  //avoid a divide-by-zero if the signal is flat
-  double multfactor = bp->boxstd == 0. ? 0. : 1.0 / bp->boxstd;
+  /*
+   * Calculate the intensity for each pixel in the box.  The pixel
+   * intensity is the z-score of the pixel value, i.e. the number of
+   * standard deviations above the mean.
+   */
+  double multfactor = bp->boxstd <= 0. ? 0. : 1.0 / bp->boxstd;
 
   for (int x=xstart; x<=xend; x++) {
     for (int y=ystart; y<=yend; y++) {
@@ -843,6 +845,11 @@ void diffimage::search_spots()
 
         int nx = pixelvalue.nx;
         int ny = pixelvalue.ny;
+
+        /*
+         * Collect pixels around a maximum into a spot.  Discard the
+         * spot if any of its pixels lie on an ice ring.
+         */
         vector< vector<bool> > pixelvisited(nx, vector<bool>(ny, false));
 
         for (list<point>::iterator p=maximas.begin(); p!=maximas.end(); p++) {
@@ -865,6 +872,10 @@ void diffimage::search_spots()
 
         // Calculate several basic properties.
 
+        /*
+         * Find the peak of each spot.  The peak is the maximum with
+         * the highest pixel value.
+         */
         vector< vector<bool> > pixelismaxima(nx, vector<bool>(ny, false));
         for (list<point>::const_iterator p=maximas.begin(); p!=maximas.end(); p++)
                 pixelismaxima[p->x][p->y] = true;
@@ -890,33 +901,17 @@ void diffimage::search_spots()
         // Screen on spots based on size and peak intensity.
         screen_spots();
 
-        // Calculate more properties.
+        /*
+         * Calculate the weighted centre of each spot, as well as the
+         * peak's resolution and height above the mean.  The size of
+         * the spot is guaranteed to exceed 1.
+         */
         for (list<spot>::iterator p=spots.begin(); p!=spots.end(); p++) {
-                // Spot size is guaranteed to exceed 1.
-
                 p->find_weighted_center(pixelvalue,pixelismaxima,pixellocalmean);
 
                 p->peakresol = xy2resol(p->peak.x, p->peak.y);
 
                 p->peakheight = pixelvalue[p->peak.x][p->peak.y] - pixellocalmean[p->peak.x][p->peak.y];
-
-                double xoffset = p->peak.x - beam_x;
-                double yoffset = p->peak.y - beam_y;
-
-                if (yoffset==0) {
-                        if (xoffset < 0)
-                                p->angle = PI * 0.5;
-                        else if (xoffset > 0)
-                                p->angle = PI * 1.5;
-                        else
-                                p->angle = 0;
-                } else {
-                        p->angle = atan(static_cast<double>(-xoffset)/yoffset);
-                        if (yoffset<0)
-                                p->angle = p->angle + PI;
-                        if (p->angle < 0)
-                                p->angle = 2*PI + p->angle;
-                }
         }
 }
 
@@ -1028,12 +1023,12 @@ void diffimage::screen_spots()
 {
         // Eliminate bad spots according to chosen criteria.
 
+        /* Discard spots with less than spotarealowcut pixels. */
         for (list<spot>::iterator p=spots.begin(); p!=spots.end(); p++) {
                 if (p->bodypixels.size()<spotarealowcut) {
                         list<spot>::iterator q = p;
                         p--;
                         spots.erase(q);
-                        continue;
                 }
         }
 
@@ -1068,7 +1063,6 @@ void diffimage::screen_spots()
                         list<spot>::iterator q = p;
                         p--;
                         spots.erase(q);
-                        continue;
                 }
         }
 
@@ -1120,15 +1114,23 @@ void diffimage::imgresolution()
 
                 double dx = p->peak.x - beam_x;
                 double dy = p->peak.y - beam_y;
-                double r = sqrt(dx*dx + dy*dy);
+                double r  = sqrt(dx*dx + dy*dy); // XXX std::hypot() in C++11
                 if (r < commonr) {
                         spotcornerfactor.push_back(1);
 
-                        // spots in corners are ignored in directional assessment.
-                        int idx = static_cast<int>(p->angle/unitangle);
+                        /* Count the number of spots in each direction. */
+                        double angle = std::atan2(-dx, dy);
+                        if (angle < 0)
+                          angle += 2 * PI;
+
+                        int idx = static_cast<int>(angle/unitangle);
                         idx = max(min(ndirections-1, idx), 0);
                         nanglespot[idx] ++;
                 } else {
+                        /*
+                         * Spots in corners are ignored in the
+                         * directional assessment.
+                         */
                         double goodang = 2.0 * PI;
 
                         if (r > rupper)
