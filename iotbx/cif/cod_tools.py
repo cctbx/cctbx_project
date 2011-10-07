@@ -18,6 +18,8 @@ class build_hkl_cif(object):
       raise RuntimeError("\n".join(msg))
     cif_dir = op.join(cod_svn, "cif")
     hkl_dir = op.join(cod_svn, "hkl")
+    def cod_path(cod_dir, cod_id, ext):
+      return op.join(cod_dir, cod_id[0], cod_id[1:3], cod_id[3:5], cod_id+ext)
     self.hkl_cif_pairs = {}
     self.hkl = {}
     self.cif = {}
@@ -41,12 +43,13 @@ class build_hkl_cif(object):
             cif_path = op.join(root, file_name)
             self.cif.setdefault(cod_id, cif_path)
             if (cod_id in self.hkl):
-              self.hkl_cif_pairs.setdefault(cod_id, (self.hkl[cod_id], cif_path))
+              self.hkl_cif_pairs.setdefault(
+                cod_id, (self.hkl[cod_id], cif_path))
     else:
       n_missing_all = 0
       for cod_id in cod_ids:
-        hkl_path = op.join(hkl_dir, cod_id[0], cod_id+".hkl")
-        cif_path = op.join(cif_dir, cod_id[0], cod_id+".cif")
+        hkl_path = cod_path(hkl_dir, cod_id, ".hkl")
+        cif_path = cod_path(cif_dir, cod_id, ".cif")
         n_missing = 0
         if (op.isfile(cif_path)):
           self.cif.setdefault(cod_id, cif_path)
