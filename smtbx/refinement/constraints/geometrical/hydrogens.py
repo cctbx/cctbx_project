@@ -184,11 +184,16 @@ class secondary_xh2_sites(hydrogens):
                                      value=theta,
                                      variable=True)
     else:
-      angle_param = reparametrisation.add(_.angle_parameter,
-                                          left=pivot_neighbour_site_params[0],
-                                          center=pivot_site_param,
-                                          right=pivot_neighbour_site_params[1],
-                                          value=theta)
+      if self.angle is not None:
+        angle_param = reparametrisation.add(_.independent_scalar_parameter,
+                                            value=self.angle,
+                                            variable=False)
+      else:
+        angle_param = reparametrisation.add(_.angle_parameter,
+                                            left=pivot_neighbour_site_params[0],
+                                            center=pivot_site_param,
+                                            right=pivot_neighbour_site_params[1],
+                                            value=theta)
     return reparametrisation.add(
       _.secondary_xh2_sites,
       pivot=pivot_site_param,

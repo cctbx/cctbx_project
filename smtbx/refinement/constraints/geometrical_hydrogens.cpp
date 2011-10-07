@@ -252,7 +252,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         for (int i=0; i<3; ++i) jt(h_c_h->index(), j_h[k] + i) = grad_f[i];
       }
     }
-    else {
+    else if (is_angle_param) {
       /*
       d(cos(theta/2))/d(phi) = d(cos(theta/2)/d(theta)*d(theta)/d(phi) =
         sin(theta/2)*theta_to_phi_const*sin(phi)

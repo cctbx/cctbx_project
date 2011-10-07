@@ -145,10 +145,10 @@ public:
 
   All angles Hi-C-X and Hi-C-Y are equal.
   The angle H-C-H is refinable (flapping).
-  if the H-C-H angle is refinable - an instance of the
-  independent_scalar_parameter must be passed, otherwise an instance of the
-  angle_parameter should be provided. Note that no error will be given if the
-  instances are confused, but the Jacobian matrix will be slightly different.
+  if the H-C-H angle is refinable or fixed to a certain angle - an instance of
+  the independent_scalar_parameter must be passed, otherwise to make the H-C-H
+  angle to behave as in shelxl an instance of the angle_parameter should be
+  provided.
 */
 class secondary_xh2_sites
   : public geometrical_hydrogen_sites<2>
