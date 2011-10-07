@@ -273,6 +273,11 @@ namespace mmtbx { namespace geometry_restraints {
 
   // Fabiola et al. (2002) Protein Sci. 11:1415-23
   // http://www.ncbi.nlm.nih.gov/pubmed/12021440
+  // Potential in LaTeX form:
+  // E_{hb} = \varepsilon [ ({\sigma \over R_{D-A}})^6 -
+  //    ({\sigma \over R_{D-A}})^4]
+  //     cos^4 (\theta - \theta_0)SW(R_{D-A}) \\ \\
+  //     \indent \indent where \ \ \sigma = {R_{0} \sqrt {2/3} }
   inline
   double
   residual_implicit(
