@@ -1,6 +1,6 @@
 
-from __future__ import division
 import libtbx.phil
+from libtbx.utils import null_out
 from libtbx import adopt_init_args, group_args
 from math import sqrt
 import sys
@@ -27,6 +27,8 @@ master_phil = libtbx.phil.parse("""
     theta_high = 155
       .type = float
     theta_low = 115
+      .type = float
+    theta_cut = 90
       .type = float
   }
   explicit
@@ -277,3 +279,85 @@ def as_kinemage (proxies, pdb_hierarchy, filter=True, out=sys.stdout) :
         print >> out, "{drawn} %.4f %.4f %.4f" % vec
       else :
         print >> out, "{''} %.4f %.4f %.4f" % vec
+
+def find_implicit_hydrogen_bonds (pdb_hierarchy,
+                                  xray_structure,
+                                  params,
+                                  log=None) :
+  if (log is None) :
+    log = null_out()
+  # What about waters?  No acceptor base, but could distances alone be used?
+  donor_selection = "name N or (resname ASN and name ND2) or "+ \
+        "(resname GLN and name NE2) or (resname TRP and name NE1) or "+ \
+        "(resname HIS and name NE2) or (resname LYS and name NZ) or "+ \
+        "(resname ARG and name N*)"
+  acceptor_selection = "name O or (resname SER and name OG) or "+ \
+        "(resname THR and name OG1) or (resname TYR and name OH) or "+ \
+        "(resname ASN and name OD1) or (resname GLN and name OE1)"
+  acceptor_base_selection = "name C or (resname SER and name CB) or "+ \
+        "(resname THR and name CB) or (resname TYR and name CZ) or "+ \
+        "(resname ASN and name CG) or (resname GLN and name CD)"
+  selection_cache = pdb_hierarchy.atom_selection_cache()
+  donors = selection_cache.selection(donor_selection)
+  acceptors = selection_cache.selection(acceptor_selection)
+  acceptor_bases = selection_cache.selection(acceptor_base_selection)
+  build_proxies = build_implicit_hbond_proxies()
+  if (len(donors) == 0) or (len(acceptors) == 0) or (len(acceptor_bases)==0) :
+    return build_proxies # None
+  pair_asu_table = xray_structure.pair_asu_table(
+    distance_cutoff=params.distance_cut_n_o)
+  pair_sym_table = pair_asu_table.extract_pair_sym_table(
+    skip_j_seq_less_than_i_seq=False)
+  atoms = pdb_hierarchy.atoms()
+  unit_cell = xray_structure.unit_cell()
+  sites_frac = xray_structure.sites_frac()
+  sites_cart = xray_structure.sites_cart()
+  for j_seq, pair_sym_dict in enumerate(pair_sym_table) :
+    if (not acceptors[j_seq]) :
+      continue
+    site_j = sites_frac[j_seq]
+    atom_j = atoms[j_seq]
+    atom_labels_j = atom_j.fetch_labels()
+    resid_j = atom_labels_j.resid()
+    chain_j = atom_labels_j.chain_id
+    acceptor_i_seq = j_seq
+    donor_i_seq = acceptor_base_i_seq = None
+    for k_seq, sym_ops in pair_sym_dict.items() :
+      if (not donors[k_seq]) and (not acceptor_bases[k_seq]) :
+        continue
+      atom_k = atoms[k_seq]
+      site_k = sites_frac[k_seq]
+      atom_labels_k = atom_k.fetch_labels()
+      resid_k = atom_labels_k.resid()
+      chain_k = atom_labels_k.chain_id
+      # skip donor-acceptor pairs in the same residue - for proteins this is
+      # a safe assumption
+      if (donors[k_seq]) and (resid_j == resid_k) and (chain_j == chain_k) :
+        continue
+      # FIXME need to include H-bonds between symmetry mates
+      for sym_op in sym_ops :
+        if (sym_op.is_unit_mx()) :
+          if (acceptor_bases[k_seq]) :
+            distance = unit_cell.distance(site_j, site_k)
+            if (acceptor_base_i_seq is not None) :
+              print >> log, "    already have acceptor base for %s" % \
+                atom_j.id_str()
+              #break
+            elif (distance < 2.0) :
+              acceptor_base_i_seq = k_seq
+          else :
+            donor_i_seq = k_seq
+    if (not None in [donor_i_seq, acceptor_base_i_seq]) :
+      i_seqs = [donor_i_seq, acceptor_i_seq, acceptor_base_i_seq]
+      angle = unit_cell.angle(
+        sites_frac[i_seqs[0]], sites_frac[i_seqs[1]], sites_frac[i_seqs[2]])
+      if (angle >= params.implicit.theta_cut) :
+        build_proxies.add_proxy(
+          i_seqs=[donor_i_seq, acceptor_i_seq, acceptor_base_i_seq],
+          distance_ideal=params.distance_ideal_n_o,
+          distance_cut=params.distance_cut_n_o,
+          theta_low=params.implicit.theta_low,
+          theta_high=params.implicit.theta_high,
+          weight=params.restraints_weight)
+        build_proxies.add_nonbonded_exclusion(donor_i_seq, acceptor_i_seq)
+  return build_proxies

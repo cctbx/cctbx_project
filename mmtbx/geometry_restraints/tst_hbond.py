@@ -1,5 +1,7 @@
 
+import libtbx.load_env
 from libtbx.test_utils import approx_equal
+import os
 import sys
 
 def simple_pdb () :
@@ -158,17 +160,16 @@ def exercise_implicit () :
   hierarchy.atoms().reset_i_seq()
   sites_cart = hierarchy.atoms().extract_xyz()
   cache = hierarchy.atom_selection_cache()
-  i_seq_1 = cache.selection("resseq 5 and name N").iselection()[0]
-  i_seq_2 = cache.selection("resseq 1 and name O").iselection()[0]
-  i_seq_3 = cache.selection("resseq 1 and name C").iselection()[0]
-  build_proxies = hbond.build_implicit_hbond_proxies()
-  build_proxies.add_proxy(
-    i_seqs=[i_seq_1, i_seq_2, i_seq_3],
-    distance_ideal=2.9,
-    distance_cut=3.5,
-    theta_low=110.0,
-    theta_high=160.0,
-    weight=1.0)
+  xrs = pdb_in.xray_structure_simple(unit_cube_pseudo_crystal=True)
+  params = hbond.master_phil.extract()
+  params.implicit.theta_low = 110.0
+  params.implicit.theta_high = 160.0
+  build_proxies = hbond.find_implicit_hydrogen_bonds(
+    pdb_hierarchy=hierarchy,
+    xray_structure=xrs,
+    params=params,
+    log=None)
+  assert (len(build_proxies.proxies) == 1)
   grads_an = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   residual_an = hbond.target_and_gradients(
     proxies=build_proxies.proxies,
@@ -180,6 +181,7 @@ def exercise_implicit () :
   assert approx_equal(grads_an[2][0], 21.36455693, eps=0.00001)
   assert approx_equal(grads_an[2][2], 17.104985058, eps=0.00001)
   assert approx_equal(grads_an[3][1], -29.0568888, eps=0.00001)
+  # only three sites, modified directly
   build_proxies = hbond.build_implicit_hbond_proxies()
   build_proxies.add_proxy(
     i_seqs=[0,1,2],
@@ -210,6 +212,20 @@ def exercise_implicit () :
   simple_bonds = hbond.get_simple_bonds(build_proxies.proxies)
   assert (simple_bonds.size() == 1)
   assert (list(simple_bonds[0]) == [0,1])
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf.pdb",
+    test=os.path.isfile)
+  if (pdb_file is not None) :
+    from iotbx import file_reader
+    pdb_in = file_reader.any_file(pdb_file, force_type="pdb").file_object
+    hierarchy = pdb_in.construct_hierarchy()
+    xrs = pdb_in.xray_structure_simple()
+    build_proxies = hbond.find_implicit_hydrogen_bonds(
+      pdb_hierarchy=hierarchy,
+      xray_structure=xrs,
+      params=params,
+      log=None)
+    assert (len(build_proxies.proxies) == 164)
 
 def plot_potentials () :
   from mmtbx.geometry_restraints import hbond
