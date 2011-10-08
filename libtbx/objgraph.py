@@ -15,6 +15,9 @@ Copyright (c) 2008 Marius Gedminas <marius@pov.lt>
 
 Released under the MIT licence.
 
+See also:
+  http://www.lshift.net/blog/2008/11/14/tracing-python-memory-leaks
+
 
 Changes
 =======
@@ -353,7 +356,7 @@ def quote(s):
 def safe_repr(obj):
     try:
         return short_repr(obj)
-    except:
+    except Exception:
         return '(unrepresentable)'
 
 
