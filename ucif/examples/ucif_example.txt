@@ -105,9 +105,9 @@ The example parser can be compiled from scratch with just a few simple commands:
   ./cif_parser myfile.cif
 
 [`Complete example main.cpp`_]
-[`Build script for linux/max`_]
+[`Build script for Linux/Mac`_]
 [`Build script for Windows`_]
 
 .. _`Complete example main.cpp`: http://cci.lbl.gov/cctbx_sources/ucif/examples/main.cpp
-.. _`Build script for linux/max`: http://cci.lbl.gov/cctbx_sources/ucif/examples/build_cif_parser.sh
+.. _`Build script for Linux/Mac`: http://cci.lbl.gov/cctbx_sources/ucif/examples/build_cif_parser.sh
 .. _`Build script for Windows`: http://cci.lbl.gov/cctbx_sources/ucif/examples/build_cif_parser.bat
