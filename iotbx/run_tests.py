@@ -29,6 +29,7 @@ def run():
   "$D/pdb/tst_extract_rfactors_resolutions_sigma.py",
   "$D/pdb/tst_pdb.py",
   "$D/pdb/secondary_structure.py",
+  "$D/examples/iotbx_cif.py",
   "$D/examples/pdb_to_map_simple.py",
   "$D/examples/pdb_truncate_to_ala/tst.py",
   "$D/examples/pdb_tardy_conf_sampling_simple.py",
