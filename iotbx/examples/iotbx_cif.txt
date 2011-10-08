@@ -211,6 +211,16 @@ This will give the following output detailing the errors found::
   Invalid enumeration value for _diffrn_radiation_probe: 'xray' not in ('x-ray', 'neutron', 'electron', 'gamma')
   Warning: case-sensitive match failure for value 'Monoclinic' for '_space_group_crystal_system'
 
+
+====================================
+Creating a standalone C++ CIF parser
+====================================
+
+Using the ``ucif`` module it is possible to very easily integrate a CIF parser
+with minimal dependencies into any C++ software. For further details see the
+`ucif documentation`_.
+
+
 [`Complete example script`_]
 
 .. _`flex.std_string`: http://cctbx.sourceforge.net/current/tour.html#scitbx-array-family-flex
@@ -218,3 +228,5 @@ This will give the following output detailing the errors found::
 .. _`core CIF dictionary`: http://www.iucr.org/resources/cif/dictionaries/cif_core
 
 .. _`Complete example script`: http://cci.lbl.gov/cctbx_sources/iotbx/examples/iotbx_cif.py
+
+.. _`ucif documentation`: http://cctbx.sourceforge.net/ucif

@@ -1,0 +1,113 @@
+++++++++++++++++++++++
+ucif: a C++ CIF parser
+++++++++++++++++++++++
+
+.. contents:: Table of Contents
+
+=============================
+Creating a minimal cif parser
+=============================
+
+Using the interface provided by the ``ucif`` module we can very quickly create a
+CIF parser with minimal dependencies suitable to integration into any
+C++ software.
+
+In order to use the ucif parser, we must first define a minimal array wrapper
+that enables us to use whatever type of array is suitable for our purpose, and
+then a builder that defines our interface with the parser.
+
+The user-defined array wrapper must inherit from ``ucif::array_wrapper_base``::
+
+  struct my_array_wrapper : array_wrapper_base
+  {
+    std::vector<std::string> array;
+
+    my_array_wrapper()
+    : array()
+    {}
+
+    virtual void push_back(std::string const& value)
+    {
+      array.push_back(value);
+    }
+
+    virtual std::string operator[](unsigned const& i)
+    {
+      return array[i];
+    }
+
+    virtual unsigned size()
+    {
+      return array.size();
+    }
+  };
+
+Arrays are used for storing lists of data items (e.g. when parsing a CIF loop)
+and also for storing lists of any lexing/parsing errors that are encountered.
+
+The ``ucif::builder_base`` defines the API for callbacks that are called at particular
+points during parsing. This completely separates the parsing step (and therefore
+any need for a detailed knowledge of the file syntax) from the high-level
+organisation of the data in a CIF::
+
+  struct my_builder : builder_base
+  {
+    virtual void start_save_frame(std::string const& save_frame_heading) {}
+    virtual void end_save_frame() {}
+    virtual void add_data_item(std::string const& tag, std::string const& value) {}
+    virtual void add_loop(array_wrapper_base const& loop_headers,
+                          array_wrapper_base const& values) {}
+    virtual void add_data_block(std::string const& data_block_heading) {}
+    virtual array_wrapper_base* new_array()
+    {
+      return new my_array_wrapper();
+    }
+  };
+
+Now all that is left is to construct an instance of our builder and then call
+``ucif::parser``::
+
+  ucif::example::my_builder builder;
+  ucif::parser parsed(&builder, input_string, filename, /*strict=*/true);
+
+Once parsing of the ``input_string`` has completed, we can check whether there
+were any lexing or parsing errors::
+
+  // Were there any lexing/parsing/tree walking errors?
+  std::vector<std::string> lexer_errors =
+    dynamic_cast<ucif::example::my_array_wrapper*>(parsed.lxr->errors)->array;
+  std::vector<std::string> parser_errors =
+    dynamic_cast<ucif::example::my_array_wrapper*>(parsed.psr->errors)->array;
+  std::vector<std::string> tree_walker_errors;
+  if (parsed.tree_psr != NULL) {
+    tree_walker_errors =
+      dynamic_cast<ucif::example::my_array_wrapper*>(parsed.tree_psr->errors)->array;
+  }
+  for (int i=0;i<lexer_errors.size();i++) {
+    std::cout << lexer_errors[i] << std::endl;
+  }
+  for (int i=0;i<parser_errors.size();i++) {
+    std::cout << parser_errors[i] << std::endl;
+  }
+  for (int i=0;i<tree_walker_errors.size();i++) {
+    std::cout << tree_walker_errors[i] << std::endl;
+  }
+  if (lexer_errors.size() + parser_errors.size() + tree_walker_errors.size() == 0) {
+    std::cout << "Congratulations! " << argv[1] <<
+    " is a syntactically correct CIF file!" << std::endl;
+  }
+
+The example parser can be compiled from scratch with just a few simple commands::
+
+  svn co https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk/ucif ucif
+  cd ucif
+  sh build_cif_parser.sh
+  ./cif_parser myfile.cif
+
+[`Complete example main.cpp`_]
+[`Build script for linux/max`_]
+[`Build script for Windows`_]
+
+.. _`Complete example main.cpp`: http://cci.lbl.gov/cctbx_sources/ucif/examples/main.cpp
+.. _`Build script for linux/max`: http://cci.lbl.gov/cctbx_sources/ucif/examples/build_cif_parser.sh
+.. _`Build script for Windows`: http://cci.lbl.gov/cctbx_sources/ucif/examples/build_cif_parser.bat

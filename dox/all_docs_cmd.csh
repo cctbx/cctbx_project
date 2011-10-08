@@ -117,3 +117,14 @@ if (1) then
   cp -r $root/cctbx_project/iotbx/examples/iotbx_cif.txt .
   docutils.rst2html -stg iotbx_cif.txt > index.html
 endif
+#
+if (1) then
+  cd "$root/htdocs"
+  rm -rf ucif
+  mkdir ucif
+  cd ucif
+  echo 'Options Indexes' > .htaccess
+  cp -r "$root/cctbx_project/dox/rst/default.css" .
+  cp -r $root/cctbx_project/ucif/examples/ucif_example.txt .
+  docutils.rst2html -stg ucif_example.txt > index.html
+endif
