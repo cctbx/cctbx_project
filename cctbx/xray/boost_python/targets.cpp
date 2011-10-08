@@ -45,8 +45,10 @@ namespace {
             arg("hessians_work"))))
         .def("target_per_reflection", &w_t::target_per_reflection, ccr())
         .def("target_work", &w_t::target_work)
+        .def("target", &w_t::target_work) // backward compatibility
         .def("target_test", &w_t::target_test)
         .def("gradients_work", &w_t::gradients_work, ccr())
+        .def("derivatives", &w_t::gradients_work, ccr())//backward compatibility
         .def("hessians_work", &w_t::hessians_work, ccr())
       ;
     }
@@ -111,6 +113,7 @@ namespace {
             arg("derivatives_depth"))))
         .def("obs_type", &w_t::obs_type)
         .def("cc", &w_t::cc)
+        .def("correlation", &w_t::cc)
       ;
     }
   };
