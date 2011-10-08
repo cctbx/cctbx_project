@@ -15,10 +15,6 @@ import sys, os
 ss_restraint_params_str = """
   verbose = False
     .type = bool
-  restraint_type = *Auto simple lennard_jones implicit
-    .type = choice
-    .short_caption = Hydrogen bond restraint type
-    .caption = Automatic Simple_(H-O) Simple_(N-O) Angle-dependent_(N-O)
   restrain_helices = True
     .type = bool
   alpha_only = False
@@ -140,7 +136,6 @@ def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stderr) :
 def hydrogen_bond_proxies_from_selections(
     pdb_hierarchy,
     params,
-    restraint_type,
     use_hydrogens,
     hbond_params=None,
     as_python_objects=False,
@@ -158,6 +153,7 @@ def hydrogen_bond_proxies_from_selections(
     master_selection = selection_cache.seletion(master_selection)
   if (hbond_params is None) :
     hbond_params = hbond.master_phil.fetch().extract()
+  restraint_type = hbond_params.restraint_type
   restrain_helices = params.h_bond_restraints.restrain_helices
   restrain_sheets = params.h_bond_restraints.restrain_sheets
   restrain_base_pairs = params.h_bond_restraints.restrain_base_pairs
@@ -451,27 +447,23 @@ class manager (object) :
   def create_hbond_proxies (self,
                             log=sys.stdout,
                             hbond_params=None,
-                            restraint_type=None,
                             as_python_objects=False,
                             master_selection=None) :
     params = self.params
-    if (restraint_type is None) :
-      restraint_type = self.params.h_bond_restraints.restraint_type
-      if (restraint_type == "Auto") :
-        restraint_type = "simple"
-    else :
-      assert (restraint_type in ["simple", "lennard_jones",
-                                 "explicit", "implicit"])
+    if (hbond_params is None) :
+      from mmtbx.geometry_restraints import hbond
+      hbond_params = hbond.master_phil.extract()
+    if (hbond_params.restraint_type == "Auto") :
+      hbond_params.restraint_type = "simple"
     remove_outliers = self.params.h_bond_restraints.remove_outliers
     if (remove_outliers is None) :
-      if (restraint_type == "simple") :
+      if (hbond_params.restraint_type == "simple") :
         remove_outliers = True
       else :
         remove_outliers = False
     build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
-      restraint_type=restraint_type,
       use_hydrogens=(not self.assume_hydrogens_all_missing),
       hbond_params=hbond_params,
       as_python_objects=as_python_objects,

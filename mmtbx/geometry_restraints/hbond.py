@@ -6,6 +6,10 @@ from math import sqrt
 import sys
 
 master_phil = libtbx.phil.parse("""
+  restraint_type = *Auto simple lennard_jones implicit
+    .type = choice
+    .short_caption = Hydrogen bond restraint type
+    .caption = Automatic Simple_(H-O) Simple_(N-O) Angle-dependent_(N-O)
   restraints_weight = 1.0
     .type = float
   falloff_distance = 0.05
@@ -286,11 +290,13 @@ def find_implicit_hydrogen_bonds (pdb_hierarchy,
                                   log=None) :
   if (log is None) :
     log = null_out()
-  # What about waters?  No acceptor base, but could distances alone be used?
   donor_selection = "name N or (resname ASN and name ND2) or "+ \
         "(resname GLN and name NE2) or (resname TRP and name NE1) or "+ \
         "(resname HIS and name NE2) or (resname LYS and name NZ) or "+ \
-        "(resname ARG and name N*)"
+        "(resname ARG and name N*) or (resname TYR and name OH) or " +\
+        "(resname SER and name OG) or (resname THR and name OG1) or "+\
+        "(resname HOH and name O)"
+  # What about waters?  No acceptor base, but could distances alone be used?
   acceptor_selection = "name O or (resname SER and name OG) or "+ \
         "(resname THR and name OG1) or (resname TYR and name OH) or "+ \
         "(resname ASN and name OD1) or (resname GLN and name OE1)"
@@ -301,7 +307,12 @@ def find_implicit_hydrogen_bonds (pdb_hierarchy,
   donors = selection_cache.selection(donor_selection)
   acceptors = selection_cache.selection(acceptor_selection)
   acceptor_bases = selection_cache.selection(acceptor_base_selection)
-  build_proxies = build_implicit_hbond_proxies()
+  restraint_type = params.restraint_type
+  if (restraint_type == "simple") :
+    build_proxies = build_simple_hbond_proxies()
+  else :
+    assert (restraint_type in ["Auto", "implicit"])
+    build_proxies = build_implicit_hbond_proxies()
   if (len(donors) == 0) or (len(acceptors) == 0) or (len(acceptor_bases)==0) :
     return build_proxies # None
   pair_asu_table = xray_structure.pair_asu_table(
@@ -340,10 +351,13 @@ def find_implicit_hydrogen_bonds (pdb_hierarchy,
           if (acceptor_bases[k_seq]) :
             distance = unit_cell.distance(site_j, site_k)
             if (acceptor_base_i_seq is not None) :
-              print >> log, "    already have acceptor base for %s" % \
-                atom_j.id_str()
+              pass
+              #print >> log, "    already have acceptor base for %s" % \
+              #  atom_j.id_str()
               #break
             elif (distance < 2.0) :
+              #print >> log, "  bonded to %s:" % atom_labels_j.id_str()
+              #print >> log, "    %s" % atom_labels_k.id_str()
               acceptor_base_i_seq = k_seq
           else :
             donor_i_seq = k_seq
@@ -352,12 +366,22 @@ def find_implicit_hydrogen_bonds (pdb_hierarchy,
       angle = unit_cell.angle(
         sites_frac[i_seqs[0]], sites_frac[i_seqs[1]], sites_frac[i_seqs[2]])
       if (angle >= params.implicit.theta_cut) :
-        build_proxies.add_proxy(
-          i_seqs=[donor_i_seq, acceptor_i_seq, acceptor_base_i_seq],
-          distance_ideal=params.distance_ideal_n_o,
-          distance_cut=params.distance_cut_n_o,
-          theta_low=params.implicit.theta_low,
-          theta_high=params.implicit.theta_high,
-          weight=params.restraints_weight)
+        if (restraint_type == "simple") :
+          build_proxies.add_proxy(
+            i_seqs=[donor_i_seq, acceptor_i_seq],
+            distance_ideal=params.distance_ideal_n_o,
+            distance_cut=params.distance_cut_n_o,
+            weight=params.restraints_weight/(params.simple.sigma**2),
+            slack=params.simple.slack)
+        else :
+          build_proxies.add_proxy(
+            i_seqs=[donor_i_seq, acceptor_i_seq, acceptor_base_i_seq],
+            distance_ideal=params.distance_ideal_n_o,
+            distance_cut=params.distance_cut_n_o,
+            theta_low=params.implicit.theta_low,
+            theta_high=params.implicit.theta_high,
+            weight=params.restraints_weight)
         build_proxies.add_nonbonded_exclusion(donor_i_seq, acceptor_i_seq)
+  print >> log, "  %d hydrogen bond restraints generated." % \
+    len(build_proxies.proxies)
   return build_proxies

@@ -225,7 +225,7 @@ def exercise_implicit () :
       xray_structure=xrs,
       params=params,
       log=None)
-    assert (len(build_proxies.proxies) == 164)
+    assert (len(build_proxies.proxies) == 232)
 
 def plot_potentials () :
   from mmtbx.geometry_restraints import hbond

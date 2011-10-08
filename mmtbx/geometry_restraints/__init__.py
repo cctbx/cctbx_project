@@ -59,3 +59,14 @@ class manager (object) :
 
   def rotamers (self) :
     return self.rotamer_manager
+
+  def update_hydrogen_bonds (self,
+                             pdb_hierarchy,
+                             xray_structure,
+                             log=None) :
+    from mmtbx.geometry_restraints import hbond
+    self.hydrogen_bond_proxies = hbond.find_implicit_hydrogen_bonds(
+      pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure,
+      params=self.hydrogen_bond_params,
+      log=log).proxies
