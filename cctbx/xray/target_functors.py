@@ -233,17 +233,13 @@ class intensity_correlation(object):
 
   def __call__(self, f_calc, compute_derivatives):
     assert f_calc.is_similar_symmetry(self.f_obs())
-    result = ext.targets_correlation(
+    return ext.targets_correlation(
       obs_type="I",
       obs=flex.pow2(self.f_obs().data()),
       weights=self.weights(),
       r_free_flags=None,
       f_calc=f_calc.data(),
       derivatives_depth=int(compute_derivatives))
-    result.correlation = result.cc # backward compatiblity
-    result.target = result.target_work
-    result.derivatives = result.gradients_work
-    return result
 
 def registry():
   return {
