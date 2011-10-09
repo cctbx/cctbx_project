@@ -115,7 +115,7 @@ class isotropic_adp_restraints(object):
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
     connectivity = pair_sym_table.full_simple_connectivity()
 
-    for i_seq , neighbours in enumerate(connectivity):
+    for i_seq, neighbours in enumerate(connectivity):
       if i_seqs is not None and i_seq not in i_seqs: continue
       elif scattering_types[i_seq] in ('H','D'): continue
       elif not use_u_aniso[i_seq]: continue
@@ -151,10 +151,8 @@ class adp_u_eq_similarity_restraints(object):
       i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
                 if s.scattering_type not in ('H', 'D')]
     assert len(i_seqs) > 1
-    i_seq = i_seqs[0]
-    for j_seq in i_seqs[1:]:
-      proxies.append(adp_restraints.adp_u_eq_similarity_proxy(
-        i_seqs=(i_seq, j_seq),weight=weight))
+    proxies.append(adp_restraints.adp_u_eq_similarity_proxy(
+      i_seqs=i_seqs, weight=weight))
     self.proxies = proxies
 
 class adp_volume_similarity_restraints(object):
@@ -162,13 +160,11 @@ class adp_volume_similarity_restraints(object):
                i_seqs=None, sigma=0.1):
     if proxies is None:
       proxies = adp_restraints.shared_adp_volume_similarity_proxy()
-    weight = 1/(sigma*sigma*sigma)
+    weight = 1/(sigma*sigma)
     if i_seqs is None:
       i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
                 if s.scattering_type not in ('H', 'D')]
     assert len(i_seqs) > 1
-    i_seq = i_seqs[0]
-    for j_seq in i_seqs[1:]:
-      proxies.append(adp_restraints.adp_volume_similarity_proxy(
-        i_seqs=(i_seq, j_seq),weight=weight))
+    proxies.append(adp_restraints.adp_volume_similarity_proxy(
+      i_seqs=i_seqs, weight=weight))
     self.proxies = proxies

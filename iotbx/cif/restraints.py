@@ -15,7 +15,10 @@ def add_to_cif_block(cif_block, xray_structure,
                      bond_similarity_proxies=None,
                      rigid_bond_proxies=None,
                      adp_similarity_proxies=None,
-                     isotropic_adp_proxies=None):
+                     isotropic_adp_proxies=None,
+                     adp_u_eq_similarity_proxies=None,
+                     adp_volume_similarity_proxies=None,
+                     fixed_u_eq_adp_proxies=None):
   if bond_proxies is not None:
     cif_block.add_loop(distances_as_cif_loop(xray_structure, bond_proxies))
   if angle_proxies is not None:
@@ -33,6 +36,17 @@ def add_to_cif_block(cif_block, xray_structure,
   if isotropic_adp_proxies is not None:
     cif_block.add_loop(
       isotropic_adp_as_cif_loop(xray_structure, isotropic_adp_proxies))
+  if adp_u_eq_similarity_proxies is not None:
+    loops = adp_u_eq_similarity_as_cif_loops(xray_structure,
+                                       adp_u_eq_similarity_proxies)
+    for l in loops: cif_block.add_loop(l)
+  if adp_volume_similarity_proxies is not None:
+    loops = adp_volume_similarity_as_cif_loops(xray_structure,
+                                        adp_volume_similarity_proxies)
+    for l in loops: cif_block.add_loop(l)
+  if fixed_u_eq_adp_proxies is not None:
+    cif_block.add_loop(
+      fixed_u_eq_adp_as_cif_loop(xray_structure, fixed_u_eq_adp_proxies))
 
 def distances_as_cif_loop(xray_structure, proxies):
   space_group_info = sgtbx.space_group_info(group=xray_structure.space_group())
@@ -235,3 +249,106 @@ def isotropic_adp_as_cif_loop(xray_structure, proxies):
   for proxy in proxies:
     loop.add_row((site_labels[proxy.i_seqs[0]], fmt % math.sqrt(1/proxy.weight)))
   return loop
+
+def adp_u_eq_similarity_as_cif_loops(xray_structure, proxies):
+  site_labels = xray_structure.scatterers().extract_labels()
+  fmt = "%.4f"
+  loop = model.loop(header=(
+    "_restr_U_Ueq_similar_atom_site_label_1",
+    "_restr_U_Ueq_similar_diff",
+    "_restr_U_Ueq_similar_class_id",
+  ))
+  class_loop = model.loop(header=(
+    "_restr_U_Ueq_similar_class_class_id",
+    "_restr_U_Ueq_similar_class_target_weight_param",
+    "_restr_U_Ueq_similar_class_average",
+    "_restr_U_Ueq_similar_class_esd",
+    "_restr_U_Ueq_similar_class_diff_max",
+  ))
+  unit_cell = xray_structure.unit_cell()
+  params = adp_restraints.adp_restraint_params(
+    u_cart=xray_structure.scatterers().extract_u_cart(unit_cell),
+    u_iso=xray_structure.scatterers().extract_u_iso(),
+    use_u_aniso=xray_structure.use_u_aniso()
+    )
+  class_id = 0
+  for proxy in proxies:
+    restraint = adp_restraints.adp_u_eq_similarity(
+      params=params,
+      proxy=proxy)
+    class_id += 1
+    class_loop.add_row((class_id,
+                        fmt % math.sqrt(1/proxy.weight),
+                        fmt % restraint.mean_u_eq,
+                        fmt % restraint.rms_deltas(),
+                        fmt % flex.max_absolute(restraint.deltas())))
+    for i, i_seq in enumerate(proxy.i_seqs):
+      loop.add_row((site_labels[i_seq],
+                    fmt % restraint.deltas()[i],
+                    class_id))
+  return class_loop, loop
+
+def fixed_u_eq_adp_as_cif_loop(xray_structure, proxies):
+  site_labels = xray_structure.scatterers().extract_labels()
+  fmt = "%.4f"
+  loop = model.loop(header=(
+    "_restr_U_Ueq_atom_site_label_1",
+    "_restr_U_Ueq_weight_param",
+    "_restr_U_Ueq_target",
+    "_restr_U_Ueq_diff"
+  ))
+  unit_cell = xray_structure.unit_cell()
+  params = adp_restraints.adp_restraint_params(
+    u_cart=xray_structure.scatterers().extract_u_cart(unit_cell),
+    u_iso=xray_structure.scatterers().extract_u_iso(),
+    use_u_aniso=xray_structure.use_u_aniso()
+    )
+  for proxy in proxies:
+    restraint = adp_restraints.fixed_u_eq_adp(
+      params=params,
+      proxy=proxy)
+    for i, i_seq in enumerate(proxy.i_seqs):
+      loop.add_row((site_labels[i_seq],
+                    fmt % math.sqrt(1/proxy.weight),
+                    fmt % proxy.u_eq_ideal,
+                    fmt % restraint.delta()))
+  return loop
+
+def adp_volume_similarity_as_cif_loops(xray_structure, proxies):
+  site_labels = xray_structure.scatterers().extract_labels()
+  fmt = "%.4e"
+  loop = model.loop(header=(
+    "_restr_U_volume_similar_atom_site_label_1",
+    "_restr_U_volume_similar_diff",
+    "_restr_U_volume_similar_class_id",
+  ))
+  class_loop = model.loop(header=(
+    "_restr_U_volume_similar_class_class_id",
+    "_restr_U_volume_similar_class_target_weight_param",
+    "_restr_U_volume_similar_class_average",
+    "_restr_U_volume_similar_class_esd",
+    "_restr_U_volume_similar_class_diff_max",
+  ))
+  unit_cell = xray_structure.unit_cell()
+  params = adp_restraints.adp_restraint_params(
+    u_cart=xray_structure.scatterers().extract_u_cart(unit_cell),
+    u_iso=xray_structure.scatterers().extract_u_iso(),
+    use_u_aniso=xray_structure.use_u_aniso()
+    )
+  class_id = 0
+  for proxy in proxies:
+    restraint = adp_restraints.adp_volume_similarity(
+      params=params,
+      proxy=proxy)
+    class_id += 1
+    class_loop.add_row((class_id,
+                        fmt % math.sqrt(1/proxy.weight),
+                        fmt % restraint.mean_u_volume,
+                        fmt % restraint.rms_deltas(),
+                        fmt % flex.max_absolute(restraint.deltas())))
+    for i, i_seq in enumerate(proxy.i_seqs):
+      loop.add_row((site_labels[i_seq],
+                    fmt % restraint.deltas()[i],
+                    class_id))
+  return class_loop, loop
+

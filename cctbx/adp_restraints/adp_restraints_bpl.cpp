@@ -53,7 +53,6 @@ namespace {
 
   struct functions_wrapper {
     template <class ProxyType, class RestraintType>
-
     static void wrap_6(std::string name) {
       using namespace boost::python;
       def((name+"_residual_sum").c_str(),
@@ -76,6 +75,36 @@ namespace {
         (arg("params"),
          arg("proxies"),
          arg("gradients_aniso_cart")));
+      def((name+"_residuals").c_str(),
+        (af::shared<double> (*)(
+          adp_restraint_params<double> const &,
+          af::const_ref<ProxyType> const &))
+        &adp_restraint_residuals<ProxyType,RestraintType>,
+        (arg("params"),
+         arg("proxies")));
+      def((name+"_deltas_rms").c_str(),
+        (af::shared<double> (*)(
+          adp_restraint_params<double> const &,
+          af::const_ref<ProxyType> const &))
+        &adp_restraint_deltas_rms<ProxyType,RestraintType>,
+        (arg("params"),
+         arg("proxies")));
+    }
+
+    template <class ProxyType, class RestraintType>
+    static void wrap_n(std::string name) {
+      using namespace boost::python;
+      def((name+"_residual_sum").c_str(),
+        (double (*)(
+          adp_restraint_params<double> const &,
+          af::const_ref<ProxyType> const &,
+          af::ref<scitbx::sym_mat3<double> > const &,
+          af::ref<double> const &))
+        &adp_restraint_residual_sum<ProxyType,RestraintType>,
+        (arg("params"),
+         arg("proxies"),
+         arg("gradients_aniso_cart"),
+         arg("gradients_iso")));
       def((name+"_residuals").c_str(),
         (af::shared<double> (*)(
           adp_restraint_params<double> const &,
@@ -199,12 +228,36 @@ namespace {
         fixed_u_eq_adp_proxy, fixed_u_eq_adp>("fixed_u_eq_adp");
       functions_wrapper::wrap_6<
         adp_similarity_proxy, adp_similarity>("adp_similarity");
-      functions_wrapper::wrap_1<
-        adp_u_eq_similarity_proxy, adp_u_eq_similarity>("adp_u_eq_similarity");
-      functions_wrapper::wrap_1<
-        adp_volume_similarity_proxy, adp_volume_similarity>("adp_volume_similarity");
     }
   };
+  static void wrap_proxy_n() {
+    typedef adp_restraint_proxy_n w_t;
+    using namespace boost::python;
+    class_<w_t>
+          ("adp_restraint_proxy_n", no_init)
+      .def(init<
+         af::shared<unsigned> const &, double>(
+        (arg("i_seqs"),
+         arg("weight"))))
+      .add_property("i_seqs", &w_t::i_seqs)
+      .add_property("weight", &w_t::weight)
+    ;
+  }
+  static void wrap_restraint_base_n() {
+    typedef adp_restraint_base_n w_t;
+    using namespace boost::python;
+    typedef return_value_policy<return_by_value> rbv;
+    class_<w_t, boost::noncopyable>
+          ("adp_restraint_base_n", no_init)
+      .add_property("use_u_aniso", &w_t::use_u_aniso)
+      .add_property("weight", &w_t::weight)
+      .def("deltas", &w_t::deltas)
+      .def("rms_deltas", &w_t::rms_deltas)
+      .def("residual", &w_t::residual)
+      .def("gradients", &w_t::gradients)
+      .def("gradients2", &w_t::gradients2)
+    ;
+  }
 
 }
 
@@ -215,6 +268,14 @@ namespace boost_python {
 
     adp_restraint_base_wrapper<1>::wrap();
     adp_restraint_base_wrapper<2>::wrap();
+    wrap_proxy_n();
+    wrap_restraint_base_n();
+    functions_wrapper::wrap_n<
+      adp_u_eq_similarity_proxy,
+      adp_u_eq_similarity>("adp_u_eq_similarity");
+    functions_wrapper::wrap_n<
+      adp_volume_similarity_proxy,
+      adp_volume_similarity>("adp_volume_similarity");
 
     using namespace scitbx::boost_python::container_conversions;
     tuple_mapping_fixed_size<scitbx::af::tiny<bool, 1> >();
