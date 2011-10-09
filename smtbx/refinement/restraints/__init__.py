@@ -124,7 +124,11 @@ class manager(object):
       bond_similarity_proxies=self.bond_similarity_proxies,
       rigid_bond_proxies=self.rigid_bond_proxies,
       adp_similarity_proxies=self.adp_similarity_proxies,
-      isotropic_adp_proxies=self.isotropic_adp_proxies)
+      isotropic_adp_proxies=self.isotropic_adp_proxies,
+      adp_u_eq_similarity_proxies=self.adp_u_eq_similarity_proxies,
+      adp_volume_similarity_proxies=self.adp_volume_similarity_proxies,
+      fixed_u_eq_adp_proxies=self.fixed_u_eq_adp_proxies
+    )
 
   def build_linearised_eqns(self, xray_structure, parameter_map):
     n_restraints = 0
@@ -144,10 +148,12 @@ class manager(object):
       n_restraints += 6 * self.adp_similarity_proxies.size()
     if self.adp_u_eq_similarity_proxies is not None:
       adp_proxies.append(self.adp_u_eq_similarity_proxies)
-      n_restraints += self.adp_u_eq_similarity_proxies.size()
+      for p in self.adp_u_eq_similarity_proxies:
+        n_restraints += len(p.i_seqs)
     if self.adp_volume_similarity_proxies is not None:
       adp_proxies.append(self.adp_volume_similarity_proxies)
-      n_restraints += self.adp_volume_similarity_proxies.size()
+      for p in self.adp_volume_similarity_proxies:
+        n_restraints += len(p.i_seqs)
     if self.isotropic_adp_proxies is not None:
       adp_proxies.append(self.isotropic_adp_proxies)
       n_restraints += 6 * self.isotropic_adp_proxies.size()

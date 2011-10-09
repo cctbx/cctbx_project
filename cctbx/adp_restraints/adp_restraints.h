@@ -106,97 +106,6 @@ namespace cctbx { namespace adp_restraints {
     }
   }
 
-  template <typename GradientSource>
-  void
-    linearise_2(
-    GradientSource const &grad_src,
-    uctbx::unit_cell const &unit_cell,
-    cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
-    cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
-    af::tiny<unsigned, 2> const &i_seqs,
-    af::tiny<bool, 2> const &use_u_aniso,
-    double weight,
-    double const *deltas)
-  {
-    if (!use_u_aniso[0] && !use_u_aniso[1]) {
-      // Only one restraint, i.e. one row added to restraint matrix
-      std::size_t row_i = linearised_eqns.next_row();
-      for (int j=0; j<2; j++) {
-        cctbx::xray::parameter_indices const &ids_j =
-          parameter_map[i_seqs[j]];
-        if (ids_j.u_iso == -1) continue;
-        linearised_eqns.design_matrix(row_i, ids_j.u_iso) =
-          (j == 0 ? 1 : -1) * grad_src.grad_u_iso(j);
-      }
-      linearised_eqns.weights[row_i] = weight;
-      linearised_eqns.deltas[row_i] = deltas[0];
-    }
-    else if(use_u_aniso[0] && use_u_aniso[1]) {
-      scitbx::sym_mat3<double> grad_u_star[2];
-      for (int i=0; i < grad_src.grad_row_count(); i++) {
-        std::size_t row_i = linearised_eqns.next_row();
-        scitbx::matrix::matrix_transposed_vector(
-          6, 6, unit_cell.u_star_to_u_cart_linear_map().begin(),
-          scitbx::sym_mat3<double>(grad_src.cart_grad_row(0, i)).begin(),
-          grad_u_star[0].begin());
-        scitbx::matrix::matrix_transposed_vector(
-          6, 6, unit_cell.u_star_to_u_cart_linear_map().begin(),
-          scitbx::sym_mat3<double>(grad_src.cart_grad_row(1, i)).begin(),
-          grad_u_star[1].begin());
-        grad_u_star[1] = -grad_u_star[1];
-        for (int j=0; j<2; j++) {
-          cctbx::xray::parameter_indices const &ids_j
-            = parameter_map[i_seqs[j]];
-          if (use_u_aniso[j] && ids_j.u_aniso != -1) {
-            for (int k=0; k<6; k++) {
-              linearised_eqns.design_matrix(row_i, ids_j.u_aniso+k) =
-                grad_u_star[j][k] * (k > 2 ? 2 : 1);
-            }
-          }
-        }
-        linearised_eqns.weights[row_i] = weight;
-        linearised_eqns.deltas[row_i] = deltas[i];
-      }
-    }
-    else {
-      scitbx::sym_mat3<double> grad_u_star;
-      double grad_u_iso;
-      for (int i=0; i < grad_src.grad_row_count(); i++) {
-        std::size_t row_i = linearised_eqns.next_row();
-        if (use_u_aniso[0]) {
-          scitbx::matrix::matrix_transposed_vector(
-            6, 6, unit_cell.u_star_to_u_cart_linear_map().begin(),
-            scitbx::sym_mat3<double>(grad_src.cart_grad_row(0, i)).begin(),
-            grad_u_star.begin());
-          grad_u_iso = -grad_src.grad_u_iso(1);
-        }
-        else {
-          scitbx::matrix::matrix_transposed_vector(
-            6, 6, unit_cell.u_star_to_u_cart_linear_map().begin(),
-            scitbx::sym_mat3<double>(grad_src.cart_grad_row(1, i)).begin(),
-            grad_u_star.begin());
-          grad_u_star = -grad_u_star;
-          grad_u_iso = grad_src.grad_u_iso(0);
-        }
-        for (int j=0; j<2; j++) {
-          cctbx::xray::parameter_indices const &ids_j
-            = parameter_map[i_seqs[j]];
-          if (use_u_aniso[j] && ids_j.u_aniso != -1) {
-            for (int k=0; k<6; k++) {
-              linearised_eqns.design_matrix(row_i, ids_j.u_aniso+k) =
-                grad_u_star[k] * (k > 2 ? 2 : 1);
-            }
-          }
-          else if (i < 3 && !use_u_aniso[j] && ids_j.u_iso != -1) {
-            linearised_eqns.design_matrix(row_i, ids_j.u_iso) =
-              grad_u_iso;
-          }
-        }
-        linearised_eqns.weights[row_i] = weight;
-        linearised_eqns.deltas[row_i] = deltas[i];
-      }
-    }
-  }
 
   /* as above, but optimised for the static gradients */
   template <typename GradientSource>
@@ -269,12 +178,23 @@ namespace cctbx { namespace adp_restraints {
     double weight;
   };
 
+  struct adp_restraint_proxy_n {
+    adp_restraint_proxy_n() {}
+    adp_restraint_proxy_n(
+      af::shared<unsigned> const &i_seqs_,
+      double weight_)
+    : i_seqs(i_seqs_),
+      weight(weight_)
+    {}
+
+    //! Indices into array of sites.
+    af::shared<unsigned> i_seqs;
+    //! weight
+    double weight;
+  };
+
   template <int n_adp> class adp_restraint_base_6 {
   public:
-
-    adp_restraint_base_6() : weight(0)  {}
-
-    adp_restraint_base_6(double weight_) : weight(weight_) {}
 
     adp_restraint_base_6(
       af::tiny<bool, n_adp> const &use_u_aniso_,
@@ -331,33 +251,19 @@ namespace cctbx { namespace adp_restraints {
       af::ref<double> const& gradients_iso,
       af::tiny<unsigned, n_adp> const& i_seqs) const
     {
-      if (n_adp == 1) {
-        add_gradients(gradients_aniso_cart, i_seqs);
-      }
-      else {
-        //! () - ()
-        if (use_u_aniso[0] && use_u_aniso[1]) {
-          scitbx::sym_mat3<double> g0 = gradients();
-          gradients_aniso_cart[i_seqs[0]] += g0;
-          gradients_aniso_cart[i_seqs[1]] -= g0;
+      scitbx::sym_mat3<double> g0 = gradients();
+      for (int i=0; i < n_adp; i++) {
+        if (use_u_aniso[i]) {
+          if (i==0)
+            gradients_aniso_cart[i_seqs[i]] += g0;
+          else
+            gradients_aniso_cart[i_seqs[i]] -= g0;
         }
-        //! () - o
-        else if (use_u_aniso[0] && !use_u_aniso[1]) {
-          scitbx::sym_mat3<double> g0 = gradients()/weight;
-          gradients_aniso_cart[i_seqs[0]] += g0;
-          gradients_iso[i_seqs[1]] -= g0.trace();
-        }
-        //! o - ()
-        else if (!use_u_aniso[0] && use_u_aniso[1]) {
-          scitbx::sym_mat3<double> g0 = gradients();
-          gradients_iso[i_seqs[0]] += g0.trace();
-          gradients_aniso_cart[i_seqs[1]] -= g0;
-        }
-        //! o - o
-        else if (!use_u_aniso[0] && !use_u_aniso[1]) {
-          double g_iso = 2 * deltas_[0] * weight;
-          gradients_iso[i_seqs[0]] += g_iso;
-          gradients_iso[i_seqs[1]] -= g_iso;
+        else {
+          if (i==0)
+            gradients_iso[i_seqs[i]] += g0.trace();
+          else
+            gradients_iso[i_seqs[i]] -= g0.trace();
         }
       }
     }
@@ -380,10 +286,6 @@ namespace cctbx { namespace adp_restraints {
 
   template <int n_adp> class adp_restraint_base_1 {
   public:
-
-    adp_restraint_base_1() : weight(0)  {}
-
-    adp_restraint_base_1(double weight_) : weight(weight_) {}
 
     adp_restraint_base_1(
       af::tiny<bool, n_adp> const &use_u_aniso_,
@@ -430,32 +332,12 @@ namespace cctbx { namespace adp_restraints {
       af::tiny<unsigned, n_adp> const& i_seqs) const
     {
       double g0 = gradient();
-      if (n_adp == 1) {
-        if (use_u_aniso[0])
-          gradients_aniso_cart[i_seqs[0]][0] += g0;
+      for (int i=0; i < n_adp; i++) {
+        if (use_u_aniso[i])
+          gradients_aniso_cart[i_seqs[i]][0] += g0;
         else
-          gradients_iso[i_seqs[1]] += g0;
+          gradients_iso[i_seqs[i]] += g0;
       }
-      else if (n_adp == 2) {
-        if (use_u_aniso[0] && use_u_aniso[1]) {
-          gradients_aniso_cart[i_seqs[0]][0] += g0;
-          gradients_aniso_cart[i_seqs[1]][0] -= g0;
-        }
-        else if (use_u_aniso[0] && !use_u_aniso[1]) {
-          gradients_aniso_cart[i_seqs[0]][0] += g0;
-          gradients_iso[i_seqs[1]] -= g0;
-        }
-        else if (!use_u_aniso[0] && use_u_aniso[1]) {
-          gradients_iso[i_seqs[0]] += g0;
-          gradients_aniso_cart[i_seqs[1]][0] -= g0;
-        }
-        else if (!use_u_aniso[0] && !use_u_aniso[1]) {
-          gradients_iso[i_seqs[0]] += g0;
-          gradients_iso[i_seqs[1]] -= g0;
-        }
-      }
-      else
-        CCTBX_NOT_IMPLEMENTED();
     }
 
     //! Use U aniso.
@@ -464,6 +346,83 @@ namespace cctbx { namespace adp_restraints {
     double weight;
   protected:
     double delta_;
+  };
+
+  class adp_restraint_base_n {
+  public:
+
+    adp_restraint_base_n(
+      adp_restraint_params<double> const &params,
+      adp_restraint_proxy_n const &proxy)
+    : weight(proxy.weight),
+      deltas_(proxy.i_seqs.size()),
+      use_u_aniso(proxy.i_seqs.size())
+    {
+      for (int i=0; i < proxy.i_seqs.size(); i++) {
+        std::size_t i_seq = proxy.i_seqs[i];
+        CCTBX_ASSERT(i_seq < params.use_u_aniso.size());
+        use_u_aniso[i] = params.use_u_aniso[i_seq];
+      }
+    }
+
+    af::shared<double> deltas() const { return deltas_; }
+
+    //! sqrt(mean_sq(deltas))
+    double rms_deltas() const {
+      return std::sqrt(deltas_dot_prod()/deltas_.size());
+    }
+
+    //! weight * [sum_{j} (deltas[j])**2].
+    double residual() const { return weight * deltas_dot_prod(); }
+
+    //! The gradient of R = w(sum(delta))^2
+    af::shared<double> gradients() const {
+      af::shared<double> grads(deltas_.size());
+      for (int i=0; i < deltas_.size(); i++)
+        grads[i] = 2 * weight * deltas_[i];
+      return grads;
+    }
+
+    //! This returns gradients_u_cart and gradients_u_equiv combined
+    af::tiny<af::shared<double>, 2> gradients2() const {
+      af::tiny<af::shared<double>, 2> res(
+        af::shared<double>(deltas_.size()),
+        af::shared<double>(deltas_.size()));
+      for (int i=0; i < deltas_.size(); i++) {
+        res[0][i] = 2 * weight * deltas_[i];
+        res[1][i] = -res[0][i];
+      }
+      return res;
+    }
+
+    void add_gradients(
+      af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart,
+      af::ref<double> const& gradients_iso,
+      af::shared<unsigned> const& i_seqs) const
+    {
+      af::shared<double> grads = gradients();
+      for (int i=0; i < grads.size(); i++) {
+        if (use_u_aniso[i])
+          gradients_aniso_cart[i_seqs[i]][0] += grads[i];
+        else
+          gradients_iso[i_seqs[i]] += grads[i];
+      }
+    }
+
+    //! Use U aniso.
+    af::shared<bool> use_u_aniso;
+    // restraint weight
+    double weight;
+  protected:
+
+    double deltas_dot_prod() const {
+      double res = 0;
+      for (int i=0; i < deltas_.size(); i++)
+        res += scitbx::fn::pow2(deltas_[i]);
+      return res;
+    }
+
+    af::shared<double> deltas_;
   };
 
   /*! Fast computation of sum of fixed_u_eq_adp::residual() and gradients

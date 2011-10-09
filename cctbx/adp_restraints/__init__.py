@@ -186,14 +186,12 @@ class _(boost.python.injector, shared_adp_similarity_proxy):
 class _(boost.python.injector, adp_u_eq_similarity):
 
   def _show_sorted_item(self, f, prefix):
-    adp_label = "Ueq"
     print >> f, \
-      "%s          delta    sigma   weight" %(prefix),
-    print >> f, "residual"
-    rdr = " %6.2e" %self.residual()
-    print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
-      self.weight, rdr)
+      "%s Mean Ueq=%6.2e" %(prefix, self.mean_u_eq)
+    print >> f, \
+      "%s weight=%6.2e sigma=%6.2e rms_deltas=%6.2e residual=%6.2e"\
+      %(prefix, self.weight, weight_as_sigma(weight=self.weight),
+        self.rms_deltas(), self.residual())
 
 class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 
@@ -224,14 +222,12 @@ class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 class _(boost.python.injector, adp_volume_similarity):
 
   def _show_sorted_item(self, f, prefix):
-    adp_label = "Volume"
     print >> f, \
-      "%s          delta    sigma   weight" %(prefix),
-    print >> f, "residual"
-    rdr = " %6.2e" %self.residual()
-    print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
-      self.weight, rdr)
+      "%s Mean Volume=%6.2e" %(prefix, self.mean_u_volume)
+    print >> f, \
+      "%s weight=%6.2e sigma=%6.2e rms_deltas=%6.2e residual=%6.2e"\
+      %(prefix, self.weight, weight_as_sigma(weight=self.weight),
+        self.rms_deltas(), self.residual())
 
 class _(boost.python.injector, shared_adp_volume_similarity_proxy):
 
@@ -270,7 +266,8 @@ class _(boost.python.injector, isotropic_adp):
       if (rdr is None):
         rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
       print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
-        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
+        prefix, adp_label, delta, weight_as_sigma(weight=self.weight),
+        self.weight, rdr)
       rdr = ""
 
 class _(boost.python.injector, shared_isotropic_adp_proxy):
@@ -309,7 +306,8 @@ class _(boost.python.injector, fixed_u_eq_adp):
     print >> f, "residual"
     rdr = " %6.2e" %self.residual()
     print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight), self.weight, rdr)
+      prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
+      self.weight, rdr)
 
 class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
 
@@ -424,6 +422,10 @@ def _show_sorted_impl(self,
     i_proxies_sorted = i_proxies_sorted[:max_items]
   item_label_blank = " " * len(item_label)
   print >> f, "%sSorted by %s:" % (prefix, by_value)
+  dynamic_proxy_types = (
+    adp_u_eq_similarity,
+    adp_volume_similarity,
+    )
   for i_proxy in i_proxies_sorted:
     proxy = self[i_proxy]
     s = item_label
@@ -432,18 +434,29 @@ def _show_sorted_impl(self,
       else:                     l = site_labels[proxy.i_seqs[0]]
       print >> f, "%s%s %s" % (prefix, s, l)
       s = item_label_blank
+    elif proxy_type in dynamic_proxy_types:
+      restraint = proxy_type(params=params, proxy=proxy)
+      restraint._show_sorted_item(f=f, prefix=prefix)
+      print >> f, \
+        "%s         delta" % (prefix)
+      for n, i_seq in enumerate(proxy.i_seqs):
+        if (site_labels is None): l = str(i_seq)
+        else:                     l = site_labels[i_seq]
+        print >> f, "%s %s %9.2e" % (prefix, l, restraint.deltas()[n])
     else:
       for n, i_seq in enumerate(proxy.i_seqs):
         if (site_labels is None): l = str(i_seq)
         else:                     l = site_labels[i_seq]
         print >> f, "%s%s %s" % (prefix, s, l)
         s = item_label_blank
-    if proxy_type in (adp_similarity, adp_u_eq_similarity, adp_volume_similarity,\
-                      isotropic_adp, fixed_u_eq_adp, rigid_bond):
+    if proxy_type in (adp_similarity, isotropic_adp, fixed_u_eq_adp,\
+                      rigid_bond):
       restraint = proxy_type(params=params, proxy=proxy)
+      restraint._show_sorted_item(f=f, prefix=prefix)
+    elif proxy_type in dynamic_proxy_types:
+      pass
     else:
       raise AssertionError
-    restraint._show_sorted_item(f=f, prefix=prefix)
   n_not_shown = self.size() - i_proxies_sorted.size()
   if (n_not_shown != 0):
     print >> f, prefix + "... (remaining %d not shown)" % n_not_shown

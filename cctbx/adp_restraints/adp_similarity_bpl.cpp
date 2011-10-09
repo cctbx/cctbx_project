@@ -76,9 +76,9 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_proxy<2> > >
+      class_<w_t, bases<adp_restraint_proxy_n> >
         ("adp_u_eq_similarity_proxy", no_init)
-        .def(init<af::tiny<unsigned, 2> const&, double>((
+        .def(init<af::shared<unsigned> const&, double>((
            arg("i_seqs"),
            arg("weight"))))
       ;
@@ -95,37 +95,14 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_base_1<2> > >
+      class_<w_t, bases<adp_restraint_base_n> >
         ("adp_u_eq_similarity", no_init)
-        .def(init<
-           af::tiny<scitbx::sym_mat3<double>, 2> const&,
-           double>(
-          (arg("u_cart"),
-           arg("weight"))))
-        .def(init<
-           af::tiny<double, 2> const&,
-           double>(
-          (arg("u_iso"),
-           arg("weight"))))
-        .def(init<
-           scitbx::sym_mat3<double> const&,
-           double,
-           double>(
-          (arg("u_cart"),
-           arg("u_iso"),
-           arg("weight"))))
-        .def(init<
-            double,
-            scitbx::sym_mat3<double> const&,
-           double>(
-          (arg("u_iso"),
-           arg("u_cart"),
-           arg("weight"))))
         .def(init<
             adp_restraint_params<double> const&,
             adp_u_eq_similarity_proxy const&>(
           (arg("params"),
            arg("proxy"))))
+        .def_readonly("mean_u_eq", &w_t::mean_u_eq)
       ;
     }
   };
@@ -135,9 +112,9 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_proxy<2> > >
+      class_<w_t, bases<adp_restraint_proxy_n> >
         ("adp_volume_similarity_proxy", no_init)
-        .def(init<af::tiny<unsigned, 2> const&, double>((
+        .def(init<af::shared<unsigned> const&, double>((
            arg("i_seqs"),
            arg("weight"))))
       ;
@@ -154,37 +131,14 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      class_<w_t, bases<adp_restraint_base_1<2> > >
+      class_<w_t, bases<adp_restraint_base_n> >
         ("adp_volume_similarity", no_init)
-        .def(init<
-           af::tiny<scitbx::sym_mat3<double>, 2> const&,
-           double>(
-          (arg("u_cart"),
-           arg("weight"))))
-        .def(init<
-           af::tiny<double, 2> const&,
-           double>(
-          (arg("u_iso"),
-           arg("weight"))))
-        .def(init<
-           scitbx::sym_mat3<double> const&,
-           double,
-           double>(
-          (arg("u_cart"),
-           arg("u_iso"),
-           arg("weight"))))
-        .def(init<
-            double,
-            scitbx::sym_mat3<double> const&,
-           double>(
-          (arg("u_iso"),
-           arg("u_cart"),
-           arg("weight"))))
         .def(init<
             adp_restraint_params<double> const&,
             adp_volume_similarity_proxy const&>(
           (arg("params"),
            arg("proxy"))))
+        .def_readonly("mean_u_volume", &w_t::mean_u_volume)
       ;
     }
   };

@@ -70,34 +70,34 @@ namespace cctbx { namespace restraints {
 
   };
 
-  template <typename FloatType, typename proxy_t, typename restraint_t>
+  template <typename FloatType, typename ProxyType, typename RestraintType>
   void linearise_restraints(
     uctbx::unit_cell const &unit_cell,
     af::const_ref<scitbx::vec3<FloatType> > const &sites_cart,
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
-    af::const_ref<proxy_t> const &proxies,
+    af::const_ref<ProxyType> const &proxies,
     linearised_eqns_of_restraint<FloatType> &linearised_eqns)
   {
     for(std::size_t i=0;i<proxies.size();i++) {
-      proxy_t const& proxy = proxies[i];
-      restraint_t restraint(unit_cell, sites_cart, proxy);
+      ProxyType const& proxy = proxies[i];
+      RestraintType restraint(unit_cell, sites_cart, proxy);
       restraint.linearise(
         unit_cell, linearised_eqns, parameter_map, proxy);
     }
   }
 
   template <
-    typename FloatType, typename param_t, typename proxy_t, typename restraint_t>
+    typename FloatType, typename param_t, typename ProxyType, typename RestraintType>
   void linearise_restraints(
     uctbx::unit_cell const &unit_cell,
     param_t const &params,
     cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &parameter_map,
-    af::const_ref<proxy_t> const &proxies,
+    af::const_ref<ProxyType> const &proxies,
     linearised_eqns_of_restraint<FloatType> &linearised_eqns)
   {
     for(std::size_t i=0;i<proxies.size();i++) {
-      proxy_t const& proxy = proxies[i];
-      restraint_t restraint(params, proxy);
+      ProxyType const& proxy = proxies[i];
+      RestraintType restraint(params, proxy);
       restraint.linearise(
         unit_cell, linearised_eqns, parameter_map, proxy.i_seqs);
     }
