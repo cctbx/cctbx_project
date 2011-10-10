@@ -3429,6 +3429,7 @@ class build_all_chain_proxies(object):
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
         ramachandran_atom_selection=None,
+        den_manager=None,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -3570,7 +3571,8 @@ class build_all_chain_proxies(object):
       ramachandran_lookup=ramachandran_lookup,
       hydrogen_bond_proxies=hydrogen_bond_proxies,
       hydrogen_bond_params=hydrogen_bond_params,
-      rotamer_manager=rotamer_manager)
+      rotamer_manager=rotamer_manager,
+      den_manager=den_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -3761,7 +3763,8 @@ class process(object):
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
         external_energy_function=None,
-        ramachandran_atom_selection=None):
+        ramachandran_atom_selection=None,
+        den_manager=None):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -3778,6 +3781,7 @@ class process(object):
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
             ramachandran_atom_selection=ramachandran_atom_selection,
+            den_manager=den_manager,
             log=self.log)
       if (self.log is not None):
         print >> self.log, \
