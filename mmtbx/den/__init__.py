@@ -37,6 +37,8 @@ den_params = iotbx.phil.parse("""
    .type = int
  refine_adp = True
    .type = bool
+ final_refinement_cycle = False
+   .type = bool
  verbose = False
    .type = bool
  annealing_type = *torsion \
@@ -295,8 +297,8 @@ class den_restraints(object):
     return grid
 
   def show_den_summary(self, sites_cart):
-    print "DEN restraints summary:"
-    print "%s | %s | %s | %s | %s " % \
+    print >> self.log, "DEN restraints summary:"
+    print >> self.log, "%s | %s | %s | %s | %s " % \
       ("    atom 1     ",
        "    atom 2     ",
        "  model dist  ",
@@ -308,7 +310,8 @@ class den_restraints(object):
       b_xyz = sites_cart[i_seqs[1]]
       distance_sq = distance_squared(a_xyz, b_xyz)
       distance = distance_sq**(0.5)
-      print "%s | %s |     %6.3f     |     %6.3f     |     %6.3f    " % \
+      print >> self.log, \
+        "%s | %s |     %6.3f     |     %6.3f     |     %6.3f    " % \
         (self.name_hash[i_seqs[0]],
          self.name_hash[i_seqs[1]],
          distance,

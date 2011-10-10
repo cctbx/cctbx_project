@@ -111,6 +111,8 @@ class manager(object):
       local_log = sys.stdout
     else:
       local_log = self.log
+    print >> self.log, "  ...trying gamma %.1f, weight %.1f" % (
+      gamma_local, weight_local)
     while cycle < num_den_cycles:
       print >> local_log, "DEN cycle %s" % (cycle+1)
       r_free = self.fmodels.fmodel_xray().r_free()
@@ -160,6 +162,8 @@ class manager(object):
       local_log = sys.stdout
     else:
       local_log = self.log
+    print >> self.log, "  ...trying gamma %f, weight %f" % (
+      gamma_local, weight_local)
     while cycle < num_den_cycles:
       print >> local_log, "DEN cycle %s" % (cycle+1)
       r_free = self.fmodels.fmodel_xray().r_free()
