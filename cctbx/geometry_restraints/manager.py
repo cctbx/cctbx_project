@@ -123,7 +123,8 @@ class manager(object):
 
   def reduce_for_tardy(self,
         tardy_tree,
-        omit_bonds_with_slack_greater_than=0):
+        omit_bonds_with_slack_greater_than=0,
+        include_den_restraints=False):
     from cctbx import sgtbx
     from scitbx.graph.utils import construct_edge_sets
     #
@@ -176,13 +177,23 @@ class manager(object):
       return result
     reduced_dihedral_proxies = get()
     #
-    return manager(
-      crystal_symmetry=self.crystal_symmetry,
-      site_symmetry_table=self.site_symmetry_table,
-      bond_params_table=self.bond_params_table,
-      shell_sym_tables=reduced_shell_sym_tables,
-      angle_proxies=reduced_angle_proxies,
-      dihedral_proxies=reduced_dihedral_proxies)
+    if not include_den_restraints:
+      return manager(
+        crystal_symmetry=self.crystal_symmetry,
+        site_symmetry_table=self.site_symmetry_table,
+        bond_params_table=self.bond_params_table,
+        shell_sym_tables=reduced_shell_sym_tables,
+        angle_proxies=reduced_angle_proxies,
+        dihedral_proxies=reduced_dihedral_proxies)
+    else:
+      return manager(
+        crystal_symmetry=self.crystal_symmetry,
+        site_symmetry_table=self.site_symmetry_table,
+        bond_params_table=self.bond_params_table,
+        shell_sym_tables=reduced_shell_sym_tables,
+        angle_proxies=reduced_angle_proxies,
+        dihedral_proxies=reduced_dihedral_proxies,
+        generic_restraints_manager=self.generic_restraints_manager)
 
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
