@@ -74,17 +74,21 @@ def select_by_map_cc(fmodel):
     fmodel.xray_structure.scatterers().size(),True).iselection()
   #
   f_calc_1 = fmodel.f_model_scaled_with_k1()
+  if (f_calc_1.anomalous_flag()) :
+    f_calc_1 = f_calc_1.average_bijvoet_mates()
   fft_map_1 = f_calc_1.fft_map(resolution_factor=0.25)
   fft_map_1.apply_volume_scaling()
-  map_1 = fft_map_1.real_map_unpadded()
+  map_1 = fft_map_1.real_map()#_unpadded()
   #
   coeffs = fmodel.electron_density_map(
     fill_missing_f_obs = False).map_coefficients(map_type = "2mFo-DFc")
+  if (coeffs.anomalous_flag()) :
+    coeffs = coeffs.average_bijvoet_mates()
   fft_map_2 = miller.fft_map(
     crystal_gridding = fft_map_1,
     fourier_coefficients = coeffs)
   fft_map_2.apply_volume_scaling()
-  map_2 = fft_map_2.real_map_unpadded()
+  map_2 = fft_map_2.real_map()#_unpadded()
   #
   if(fmodel.f_obs().d_min()<=2.5): rad = 1.5
   else: rad = 2.0
