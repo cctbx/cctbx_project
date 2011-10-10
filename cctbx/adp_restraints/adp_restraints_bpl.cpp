@@ -233,13 +233,14 @@ namespace {
   static void wrap_proxy_n() {
     typedef adp_restraint_proxy_n w_t;
     using namespace boost::python;
+    typedef return_value_policy<return_by_value> rbv;
     class_<w_t>
           ("adp_restraint_proxy_n", no_init)
       .def(init<
          af::shared<unsigned> const &, double>(
         (arg("i_seqs"),
          arg("weight"))))
-      .add_property("i_seqs", &w_t::i_seqs)
+      .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       .add_property("weight", &w_t::weight)
     ;
   }
