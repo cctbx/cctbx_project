@@ -82,6 +82,8 @@ def modernize_rna_resname(resname):
         return " D"+tmp_resname[0:1].upper()
       elif tmp_resname[1:].upper() == 'R':
         return "  "+tmp_resname[0:1].upper()
+    elif tmp_resname in ["ADE", "CYT", "GUA", "URI"]:
+      return "  "+tmp_resname[0:1].upper()
   return resname
 
 def modernize_rna_atom_name(atom):
