@@ -132,6 +132,9 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   if (0 or verbose):
     print "emma rms grid, interpolated: %.2f %.2f" % tuple(rms)
   assert rms[0] >= rms[1]
+  map_1 = fft_map.real_map_unpadded(in_place=False)
+  map_2 = fft_map.real_map_unpadded(in_place=True)
+  assert (map_1.all_eq(map_2))
 
 def exercise_average_bijvoet_mates(
       space_group_info,
