@@ -69,3 +69,9 @@ class _(boost.python.injector,ext.crystal_orientation):
     from scitbx import matrix
     return matrix.sqr(self.reciprocal_matrix()) \
          * matrix.sqr(self.unit_cell().orthogonalization_matrix()).transpose()
+
+  def set_new_crystal_rotation_matrix(self,mat3):
+    from scitbx import matrix
+    return crystal_orientation( mat3 \
+         * matrix.sqr(self.unit_cell().fractionalization_matrix()).transpose(),\
+         basis_type.reciprocal)
