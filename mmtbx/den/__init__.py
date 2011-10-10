@@ -11,6 +11,8 @@ den_params = iotbx.phil.parse("""
  reference_file = None
    .type = path
    .optional = true
+   .short_caption = DEN reference model
+   .style = file_type:pdb input_file
  lower_distance_cutoff = 3.0
    .type = float
  upper_distance_cutoff = 15.0
@@ -29,14 +31,23 @@ den_params = iotbx.phil.parse("""
    .type = float
  optimize = False
    .type = bool
+   .short_caption = Optimize DEN parameters
+   .help = If selected, will run a grid search to determine optimal values \
+    of the weight and gamma parameters for DEN refinement.  This is very \
+    slow, but highly recommended, and can be parallelized across multiple \
+    CPU cores.
  opt_gamma_values = 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
    .type = floats
+   .short_caption = Gamma values for optimization
  opt_weight_values = 1.0, 3.0, 10.0, 30.0, 100.0, 300.0
    .type = floats
+   .short_caption = Weight values for optimization
  num_cycles = 8
    .type = int
+   .short_caption = Number of cycles
  refine_adp = True
    .type = bool
+   .short_caption = Refine B-factors
  final_refinement_cycle = False
    .type = bool
  verbose = False
