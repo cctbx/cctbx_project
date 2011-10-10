@@ -78,7 +78,7 @@ def select_by_map_cc(fmodel):
     f_calc_1 = f_calc_1.average_bijvoet_mates()
   fft_map_1 = f_calc_1.fft_map(resolution_factor=0.25)
   fft_map_1.apply_volume_scaling()
-  map_1 = fft_map_1.real_map()#_unpadded()
+  map_1 = fft_map_1.real_map_unpadded()
   #
   coeffs = fmodel.electron_density_map(
     fill_missing_f_obs = False).map_coefficients(map_type = "2mFo-DFc")
@@ -88,7 +88,7 @@ def select_by_map_cc(fmodel):
     crystal_gridding = fft_map_1,
     fourier_coefficients = coeffs)
   fft_map_2.apply_volume_scaling()
-  map_2 = fft_map_2.real_map()#_unpadded()
+  map_2 = fft_map_2.real_map_unpadded()
   #
   if(fmodel.f_obs().d_min()<=2.5): rad = 1.5
   else: rad = 2.0
