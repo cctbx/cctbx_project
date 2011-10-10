@@ -38,6 +38,10 @@ import mmtbx.command_line.fmodel
 from cctbx import french_wilson
 import math
 import libtbx.callbacks # import dependency
+from libtbx.math_utils import ifloor, iceil, iround
+from cctbx import maptbx
+from cctbx import uctbx
+from cctbx import xray
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -1527,6 +1531,10 @@ def fmodel_simple(f_obs,
                   apply_back_trace_of_b_cart = True,
                   anisotropic_scaling      = True,
                   log                      = None):
+  assert f_obs.is_in_asu()
+  assert r_free_flags.is_in_asu()
+  assert f_obs.indices().all_eq(r_free_flags.indices())
+  assert f_obs.sys_absent_flags().data().count(True)==0
   if(bss_params is None):
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
@@ -2585,3 +2593,166 @@ def optimize_h(fmodel, pdb_hierarchy=None, model=None, log=None, verbose=True):
     print >> log, "  after optimization:  r_work=%6.4f r_free=%6.4f"%(
       fmodel.r_work(), fmodel.r_free())
   #
+
+class set_map_to_value(object):
+  def __init__(self, map_data, xray_structure, atom_radius, value):
+    adopt_init_args(self, locals())
+    sites_cart = self.xray_structure.sites_cart()
+    selection = maptbx.grid_indices_around_sites(
+      unit_cell  = self.xray_structure.unit_cell(),
+      fft_n_real = self.map_data.focus(),
+      fft_m_real = self.map_data.all(),
+      sites_cart = sites_cart,
+      site_radii = flex.double(sites_cart.size(), self.atom_radius))
+    sel_ = flex.bool(size=self.map_data.size(), iselection=selection)
+    sel_.reshape(self.map_data.accessor())
+    self.map_data = self.map_data.set_selected(sel_, self.value)
+
+  def write_xplor_map(self, file_name):
+    unit_cell = self.xray_structure.unit_cell()
+    sites_frac = self.xray_structure.sites_frac()
+    frac_max = sites_frac.max()
+    frac_min = sites_frac.min()
+    frac_max = list(flex.double(frac_max))
+    frac_min = list(flex.double(frac_min))
+    n_real = self.map_data.all()
+    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
+    gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+    gridding = iotbx.xplor.map.gridding(n = self.map_data.focus(),
+      first = gridding_first, last = gridding_last)
+    iotbx.xplor.map.writer(
+      file_name          = file_name,
+      is_p1_cell         = True,
+      title_lines        = [' None',],
+      unit_cell          = unit_cell,
+      gridding           = gridding,
+      data               = self.map_data,
+      average            = -1,
+      standard_deviation = -1)
+
+def select_within_no_sym(xray_structure, selection_string, radius,
+      all_chain_proxies):
+  selection = atom_selection(
+    all_chain_proxies=all_chain_proxies,
+    string=selection_string)
+  sites_frac = xray_structure.sites_frac()
+  uc = xray_structure.unit_cell()
+  result = flex.bool(sites_frac.size(), False)
+  for si in selection.iselection():
+    sf1 = sites_frac[si]
+    for isite, sf2 in enumerate(sites_frac):
+      d = uc.distance(sf1,sf2)
+      if(d<radius):
+        result[isite]=True
+  return result
+
+class extract_box_around_model_and_map(object):
+  def __init__(self,
+               xray_structure,
+               pdb_hierarchy,
+               map_data,
+               selection_radius,
+               box_cushion,
+               selection_string=None,
+               selection=None):
+    adopt_init_args(self, locals())
+    assert [selection_string, selection].count(None) == 1
+    if(selection_string is not None):
+      selection = pdb_hierarchy.atom_selection_cache().selection(
+        string = selection_string)
+      self.selection_within = xray_structure.selection_within(
+        radius    = selection_radius,
+        selection = selection)
+    else:
+      self.selection_within = selection
+    #
+    xray_structure_selected = xray_structure.select(
+      selection=self.selection_within)
+    frac_max = xray_structure_selected.sites_frac().max()
+    frac_min = xray_structure_selected.sites_frac().min()
+    cushion = flex.double(xray_structure.unit_cell().fractionalize(
+      (box_cushion,)*3))
+    frac_max = list(flex.double(frac_max)+cushion)
+    frac_min = list(flex.double(frac_min)-cushion)
+    self.frac_min = frac_min
+    n_real = map_data.all()
+    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
+    gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+    self.map_box = maptbx.copy(map_data, gridding_first, gridding_last)
+    self.map_box.reshape(flex.grid(self.map_box.all()))
+    # shrink unit cell to match the box
+    p = xray_structure.unit_cell().parameters()
+    abc = []
+    for i in range(3):
+      abc.append( p[i] * self.map_box.all()[i]/n_real[i] )
+    new_unit_cell_box = uctbx.unit_cell(
+      parameters=(abc[0],abc[1],abc[2],p[3],p[4],p[5]))
+    # new xray_structure in the box, and corresponding PDB hierarchy
+    sites_frac_new = xray_structure_selected.sites_frac()-frac_min
+    xray_structure_box=xray_structure_selected.replace_sites_frac(sites_frac_new)
+    cs = crystal.symmetry(unit_cell=new_unit_cell_box, space_group="P1")
+    sites_cart = xray_structure_box.sites_cart()
+    sites_frac = new_unit_cell_box.fractionalize(sites_cart)
+    sp = crystal.special_position_settings(cs)
+    xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
+    self.xray_structure_box = xray.structure(sp,xray_structure_box.scatterers())
+    self.pdb_hierarchy_box = self.pdb_hierarchy.select(self.selection_within)
+    self.pdb_hierarchy_box.adopt_xray_structure(self.xray_structure_box)
+    # shift to map boxed sites back
+    sc1 = xray_structure_selected.sites_cart()
+    sc2 = self.xray_structure_box.sites_cart()
+    self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
+
+  def write_pdb_file(self, file_name):
+    self.pdb_hierarchy_box.write_pdb_file(file_name=file_name,
+      crystal_symmetry = self.xray_structure_box.crystal_symmetry())
+
+  def write_xplor_map(self, file_name):
+    unit_cell = self.xray_structure_box.unit_cell()
+    sites_frac = self.xray_structure_box.sites_frac()
+    frac_max = sites_frac.max()
+    frac_min = sites_frac.min()
+    cushion = flex.double(unit_cell.fractionalize((self.box_cushion,)*3))
+    frac_max = list(flex.double(frac_max)+cushion)
+    frac_min = list(flex.double(frac_min)-cushion)
+    n_real = self.map_box.all()
+    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
+    gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+    gridding = iotbx.xplor.map.gridding(n = self.map_box.focus(),
+      first = gridding_first, last = gridding_last)
+    iotbx.xplor.map.writer(
+      file_name          = file_name,
+      is_p1_cell         = True,
+      title_lines        = [' None',],
+      unit_cell          = unit_cell,
+      gridding           = gridding,
+      data               = self.map_box,
+      average            = -1,
+      standard_deviation = -1)
+
+  def map_coefficients(self, d_min, resolution_factor, file_name=None):
+    from scitbx import fftpack
+    fft = fftpack.real_to_complex_3d([i for i in self.map_box.all()])
+    map_box = maptbx.copy(
+      self.map_box, flex.grid(fft.m_real()).set_focus(self.map_box.focus()))
+    map_box.reshape(flex.grid(fft.m_real()).set_focus(fft.n_real()))
+    map_box = fft.forward(map_box)
+    cs = self.xray_structure_box.crystal_symmetry()
+    box_structure_factors = maptbx.structure_factors.from_map(
+      unit_cell=cs.unit_cell(),
+      space_group_type=cs.space_group().type(),
+      anomalous_flag=False,
+      d_min=d_min,
+      complex_map=map_box,
+      conjugate_flag=True,
+      discard_indices_affected_by_aliasing=True)
+    box_map_coeffs = miller.set(
+      crystal_symmetry=cs,
+      anomalous_flag=False,
+      indices=box_structure_factors.miller_indices(),
+      ).array(data=box_structure_factors.data())
+    if(file_name is not None):
+      mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.write(file_name = file_name)
+    return box_map_coeffs
