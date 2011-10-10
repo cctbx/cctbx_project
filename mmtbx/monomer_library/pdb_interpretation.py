@@ -7,6 +7,7 @@ from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import conformation_dependent_restraints
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
+import mmtbx.torsion_restraints.utils
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -728,6 +729,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.is_rna2p = None
     if (self.monomer.is_peptide()): return
     from iotbx.pdb.rna_dna_detection import residue_analysis
+    resname = self.pdb_residue.resname
     ra1 = residue_analysis(
       residue_atoms=self.pdb_residue.atoms(),
       distance_tolerance=params.bond_detection_distance_tolerance)
@@ -743,8 +745,22 @@ class monomer_mapping(slots_getstate_setstate):
       residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
       residue_2_p_atom=residue_2_p_atom)
     self.is_rna2p = ana.is_2p
-    if (self.is_rna2p): primary_mod_id = "rna2p"
-    else:               primary_mod_id = "rna3p"
+    mod_resname = mmtbx.torsion_restraints.utils.modernize_rna_resname(
+      resname=resname)
+    if (self.is_rna2p):
+      if mod_resname in ['  A', '  G']:
+        primary_mod_id = "rna2p_pur"
+      elif mod_resname in ['  C', '  U']:
+        primary_mod_id = "rna2p_pyr"
+      else:
+        primary_mod_id = "rna2p"
+    else:
+      if mod_resname in ['  A', '  G']:
+        primary_mod_id = "rna3p_pur"
+      elif mod_resname in ['  C', '  U']:
+        primary_mod_id = "rna3p_pyr"
+      else:
+        primary_mod_id = "rna3p"
     self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
       comp_comp_id=self.monomer,
       mod_ids=(primary_mod_id,))

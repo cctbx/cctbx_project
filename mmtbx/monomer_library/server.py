@@ -289,7 +289,11 @@ class server(process_cif_mixin):
           "chain_link_rna2p.cif",
           "chain_link_rna3p.cif",
           "mod_rna2p.cif",
-          "mod_rna3p.cif"]:
+          "mod_rna3p.cif",
+          "mod_rna2p_pur.cif",
+          "mod_rna3p_pur.cif",
+          "mod_rna2p_pyr.cif",
+          "mod_rna3p_pyr.cif"]:
       self.process_cif(
         file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
 

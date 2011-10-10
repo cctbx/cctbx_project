@@ -1193,6 +1193,7 @@ _chem_mod_tor.atom_id_2
 _chem_mod_tor.atom_id_3
 _chem_mod_tor.atom_id_4
 _chem_mod_tor.new_value_angle:float
+_chem_mod_tor.new_alt_value_angle
 _chem_mod_tor.new_value_angle_esd:float
 _chem_mod_tor.new_period:int
   """
@@ -1205,6 +1206,7 @@ _chem_mod_tor.new_period:int
       atom_id_3=self.atom_id_3,
       atom_id_4=self.atom_id_4,
       value_angle=self.new_value_angle,
+      alt_value_angle=self.new_alt_value_angle,
       value_angle_esd=self.new_value_angle_esd,
       period=self.new_period)
 
@@ -1217,6 +1219,8 @@ _chem_mod_tor.new_period:int
   def apply_change_in_place(self, tor):
     tor.value_angle = new_if_defined(
       tor.value_angle, self.new_value_angle)
+    tor.alt_value_angle = new_if_defined(
+      tor.alt_value_angle, self.new_alt_value_angle)
     tor.value_angle_esd = new_if_defined(
       tor.value_angle_esd, self.new_value_angle_esd)
     tor.period = new_if_defined(
