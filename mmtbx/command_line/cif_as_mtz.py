@@ -76,6 +76,9 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       .option(None, "--merge",
         action="store_true",
         help="Merge non-unique data where present.")
+      .option(None, "--remove_systematic_absences",
+        action="store_true",
+        help="Remove systematic absent reflections.")
       .option(None, "--map_to_asu",
         action="store_true",
         help="Map to asymmetric unit.")
@@ -123,7 +126,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     show_details_if_error=command_line.options.show_details_if_error,
     output_r_free_label=command_line.options.output_r_free_label,
     merge_non_unique_under_symmetry=command_line.options.merge,
-    map_to_asu=command_line.options.map_to_asu)
+    map_to_asu=command_line.options.map_to_asu,
+    remove_systematic_absences=command_line.options.remove_systematic_absences)
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -134,18 +138,20 @@ def process_files (file_name,
                    show_details_if_error,
                    output_r_free_label,
                    merge_non_unique_under_symmetry=False,
-                   map_to_asu=False) :
+                   map_to_asu=False,
+                   remove_systematic_absences=False) :
   file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
-    file_name             = file_name,
-    file_lines            = file_lines,
-    crystal_symmetry      = crystal_symmetry,
-    wavelength_id         = wavelength_id,
-    crystal_id            = crystal_id,
-    show_details_if_error = show_details_if_error,
-    output_r_free_label   = output_r_free_label,
+    file_name                       = file_name,
+    file_lines                      = file_lines,
+    crystal_symmetry                = crystal_symmetry,
+    wavelength_id                   = wavelength_id,
+    crystal_id                      = crystal_id,
+    show_details_if_error           = show_details_if_error,
+    output_r_free_label             = output_r_free_label,
     merge_non_unique_under_symmetry = merge_non_unique_under_symmetry,
-    map_to_asu = map_to_asu)
+    map_to_asu                      = map_to_asu,
+    remove_systematic_absences      = remove_systematic_absences)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -199,7 +205,8 @@ def extract(file_name,
             show_details_if_error,
             output_r_free_label,
             merge_non_unique_under_symmetry,
-            map_to_asu):
+            map_to_asu,
+            remove_systematic_absences):
   import iotbx.cif
   miller_arrays = iotbx.cif.reader(file_path=file_name).as_miller_arrays(
     crystal_symmetry=crystal_symmetry)
@@ -283,6 +290,8 @@ def extract(file_name,
           ma.map_to_asu().sort().show_array(prefix="  ")
     if(map_to_asu):
       ma = ma.map_to_asu().set_info(ma.info())
+    if(remove_systematic_absences):
+      ma = ma.remove_systematic_absences()
     ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
       .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
     def get_unique_column_label(miller_array, label, column_labels):
