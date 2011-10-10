@@ -1368,7 +1368,17 @@ def exercise_discard_scattering_type_registry():
   fc_oss = xs_os.structure_factors(d_min=1, algorithm="direct").f_calc()
   assert fc_ss.data().all_eq(fc_oss.data())
 
+def exercise_select_within():
+  xs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*100,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
+  sw = xs.selection_within(radius=3,
+    selection=flex.random_bool(xs.scatterers().size(), 0.3))
+  assert (sw.size(), sw.count(True)) == (100,67)
+
 def run():
+  exercise_select_within()
   exercise_discard_scattering_type_registry()
   exercise_delta_sites_cart_measure()
   exercise_xray_structure_as_py_code()
