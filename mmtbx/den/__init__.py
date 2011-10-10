@@ -1,11 +1,5 @@
-import sys
 import iotbx.phil
-from mmtbx.torsion_restraints import utils
-from cctbx.array_family import flex
-
-import boost.python
-ext = boost.python.import_ext("mmtbx_den_restraints_ext")
-from mmtbx_den_restraints_ext import *
+import sys
 
 den_params = iotbx.phil.parse("""
  reference_file = None
@@ -103,6 +97,9 @@ class den_restraints(object):
       self.pdb_hierarchy_ref = pdb_hierarchy
     else:
       self.pdb_hierarchy_ref = pdb_hierarchy_ref
+    from mmtbx.torsion_restraints import utils
+    import boost.python
+    self.ext = boost.python.import_ext("mmtbx_den_restraints_ext")
     self.params = params
     self.kappa = params.kappa
     self.gamma = params.gamma
@@ -245,6 +242,7 @@ class den_restraints(object):
     return atoms_per_chain
 
   def select_random_den_restraints(self):
+    from cctbx.array_family import flex
     print >> self.log, "selecting random DEN restraints..."
     random_pairs = {}
     for chain in self.ref_atom_pairs.keys():
@@ -262,14 +260,14 @@ class den_restraints(object):
 
   def build_den_restraints(self):
     print >> self.log, "building DEN restraints..."
-    den_proxies = shared_den_simple_proxy()
+    den_proxies = self.ext.shared_den_simple_proxy()
     for chain in self.random_ref_atom_pairs.keys():
       for pair in self.random_ref_atom_pairs[chain]:
         distance_ideal = self.ref_distance_hash[pair]
         i_seq_a = self.i_seq_hash[self.name_hash_ref[pair[0]]]
         i_seq_b = self.i_seq_hash[self.name_hash_ref[pair[1]]]
         i_seqs = [i_seq_a, i_seq_b]
-        proxy = den_simple_proxy(
+        proxy = self.ext.den_simple_proxy(
           i_seqs=i_seqs,
           eq_distance=distance_ideal,
           eq_distance_start=distance_ideal,
@@ -280,7 +278,7 @@ class den_restraints(object):
   def target_and_gradients(self,
                            sites_cart,
                            gradient_array):
-    return den_simple_residual_sum(
+    return self.ext.den_simple_residual_sum(
       sites_cart,
       self.den_proxies,
       gradient_array,
@@ -288,7 +286,7 @@ class den_restraints(object):
 
   def update_eq_distances(self,
                           sites_cart):
-    den_update_eq_distances(sites_cart,
+    self.ext.den_update_eq_distances(sites_cart,
                             self.den_proxies,
                             self.gamma,
                             self.kappa)
@@ -373,6 +371,7 @@ def distance_squared(a, b):
 #                         selection=None,
 #                         distance_min=0,
 #                         distance_max=5) :
+# from cctbx.array_family import flex
 # sites_frac = xray_structure.sites_frac()
 # unit_cell = xray_structure.unit_cell()
 # pair_asu_table = xray_structure.pair_asu_table(
