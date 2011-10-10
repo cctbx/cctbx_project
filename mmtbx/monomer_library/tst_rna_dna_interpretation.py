@@ -31,7 +31,11 @@ def run(args, residue_type, expected_results):
       residue_name = mm.residue_name
       if (mm.classification == "RNA"):
         for c in ["2", "3"]:
-          expected_mod = "%rna"+c+"p"
+          expected_mod = "%rna"+c+"p_pur"
+          if (mm.residue_name.find(expected_mod) > 0):
+            residue_name = mm.residue_name.replace(expected_mod, "")
+            break
+          expected_mod = "%rna"+c+"p_pyr"
           if (mm.residue_name.find(expected_mod) > 0):
             residue_name = mm.residue_name.replace(expected_mod, "")
             break

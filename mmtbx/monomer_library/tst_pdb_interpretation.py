@@ -892,7 +892,8 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
           Classifications: {'RNA': 20}
           Link IDs: {'rna3p': 19}
   Time building chain proxies: """,
-    expected_modifications_used=[{'p5*END': 1, 'rna3p': 20, '3*END': 1}])
+    expected_modifications_used=\
+      [{'rna3p_pyr': 9, 'p5*END': 1, 'rna3p_pur': 11, '3*END': 1}])
 
 def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -921,7 +922,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
       ... (18 atoms not shown)
       pdb=" C6    U A 858 " occ=0.30
   Time building chain proxies: """,
-    expected_modifications_used=[{'rna3p': 2, 'rna2p': 1}])
+    expected_modifications_used=[{'rna3p_pyr': 1, 'rna3p_pur': 1, 'rna2p_pyr': 1}])
   #
   exercise_rna(
     mon_lib_srv=mon_lib_srv,
@@ -942,7 +943,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
           Chain breaks: 1
 """,
     expected_block_last_startswith=False,
-    expected_modifications_used=[{'rna3p': 4}])
+    expected_modifications_used=[{'rna3p_pyr': 2, 'rna3p_pur': 2}])
 
 def exercise_rna_dna_hybrid(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -967,7 +968,7 @@ def exercise_rna_dna_hybrid(mon_lib_srv, ener_lib):
         Number of residues, atoms: 1, 33
           Classifications: {'RNA': 1}
   Time building chain proxies: """,
-    expected_modifications_used=[{'5*END': 1}, {'rna3p': 1}])
+    expected_modifications_used=[{'5*END': 1}, {'rna3p_pur': 1}])
 
 def exercise_hydrogen_deuterium_aliases():
   file_paths = []
