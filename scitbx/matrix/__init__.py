@@ -853,6 +853,13 @@ def __rotate_point_around_axis(
   r = axis.axis_and_angle_as_r3_rotation_matrix(angle=angle, deg=deg)
   return (r * (col(point) - pivot) + pivot).elems
 
+def plaine_equation(point_1, point_2, point_3):
+  # Plaine equation: a*x + b*y * c*z + d = 0
+  n = (point_2-point_1).cross(point_3-point_1)
+  a,b,c = n
+  d = -n.dot(point_1)
+  return a,b,c,d
+
 def rotate_point_around_axis(
       axis_point_1,
       axis_point_2,
@@ -1615,6 +1622,14 @@ def exercise():
     assert approx_equal(
       rotate_point_around_axis(**args),
       __rotate_point_around_axis(**args))
+  # exercise plaine_equation
+  point_1=col((1,2,3))
+  point_2=col((10,20,30))
+  point_3=col((7,53,18))
+  a,b,c,d = plaine_equation(point_1=point_1, point_2=point_2, point_3=point_3)
+  point_in_plaine = (point_3 - (point_2-point_1)/2)/2
+  assert approx_equal(
+    a*point_in_plaine[0]+b*point_in_plaine[1]+c*point_in_plaine[2]+d,0)
   #
   print "OK"
 
