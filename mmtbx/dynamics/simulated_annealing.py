@@ -74,10 +74,21 @@ def run_simulated_annealing(simulated_annealing_params,
                             monitor):
   xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
   sa_temp = simulated_annealing_params.start_temperature
+  verbose = simulated_annealing_params.verbose
   xray_gradient = None
   reset_velocities = True
   vxyz = None
   cd_manager = None
+  den_manager = \
+    model.restraints_manager.geometry. \
+      generic_restraints_manager.den_manager
+  cartesian_den_restraints = False
+  if den_manager is not None:
+    if "cartesian" in den_manager.params.annealing_type:
+      model.restraints_manager.geometry. \
+        generic_restraints_manager.flags.den = True
+      cartesian_den_restraints = True
+      verbose = False
   while simulated_annealing_params.final_temperature <= sa_temp:
     print >> out
     if(sa_temp==simulated_annealing_params.start_temperature):
@@ -104,7 +115,7 @@ def run_simulated_annealing(simulated_annealing_params,
       xray_gradient               = xray_gradient,
       reset_velocities            = reset_velocities,
       log=out,
-      verbose=simulated_annealing_params.verbose)
+      verbose=verbose)
     reset_velocities = False
     xray_structure_last_updated = \
                   cd_manager.xray_structure_last_updated.deep_copy_scatterers()
@@ -121,3 +132,11 @@ def run_simulated_annealing(simulated_annealing_params,
     if monitor is not None :
       monitor.call_back(model, fmodel, "simulated_annealing")
     sa_temp -= simulated_annealing_params.cool_rate
+    if cartesian_den_restraints:
+      print >> out, "update DEN eq distances at temp=%.1f" % \
+        sa_temp
+      den_manager.update_eq_distances(
+        sites_cart=xray_structure_last_updated.sites_cart())
+  if den_manager is not None:
+    model.restraints_manager.geometry.\
+      generic_restraints_manager.flags.den = False
