@@ -1256,6 +1256,16 @@ class structure(crystal.special_position_settings):
       types_without_a_scattering_contribution =
                                 strp2.types_without_a_scattering_contribution)
 
+  def selection_within(self, radius, selection):
+    assert radius > 0
+    assert self.special_position_settings() is not None
+    return crystal.neighbors_fast_pair_generator(
+      asu_mappings=self.special_position_settings().asu_mappings(
+        buffer_thickness=radius,
+        sites_cart=self.sites_cart()),
+      distance_cutoff=radius).neighbors_of(
+        primary_selection=selection)
+
   def replace_scatterers(self, scatterers, site_symmetry_table="existing"):
     if (site_symmetry_table == "existing"):
       site_symmetry_table = self._site_symmetry_table
