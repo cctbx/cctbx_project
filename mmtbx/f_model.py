@@ -1475,15 +1475,18 @@ class manager(manager_mixin):
         n_sampling_points=p.number_of_sampling_points,
         n_chebyshev_terms=p.number_of_chebyshev_terms,
         use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
-    omega = flex.double()
-    for ae,ssi in zip(alpha.data(),self.active_arrays.core.ss):
-      if(ae > 0.0):
-        coeff = -4./(math.pi**3*ssi)
-        tmp = math.log(ae) * coeff
-        if(tmp >= 0):
-          omega.append( math.sqrt( tmp ) )
-    omega_mean = flex.mean_default(omega, 0)
-    return omega_mean
+    sel = alpha.data() > 0
+    alpha_data = alpha.data().select(sel)
+    sj = self.active_arrays.core.ss.select(sel)
+    sel = alpha_data > 1.
+    alpha_data = alpha_data.set_selected(sel, 1.)
+    aj = -math.pi**3 * sj
+    bj = flex.log(alpha_data)
+    den = flex.sum(aj*aj)
+    if(den != 0):
+      omega = math.sqrt( flex.sum(aj*bj) / den )
+    else: omega = None
+    return omega
 
   def _r_factor(self,
                 type="work",
