@@ -10,8 +10,13 @@ class manager (object) :
                 ramachandran_lookup=None,
                 hydrogen_bond_proxies=None,
                 hydrogen_bond_params=None,
-                rotamer_manager=None) :
+                rotamer_manager=None,
+                den_manager=None,
+                flags=None) :
     adopt_init_args(self, locals())
+    if self.flags is None:
+      import mmtbx.geometry_restraints.flags
+      self.flags = mmtbx.geometry_restraints.flags.flags(default=True)
     assert (ramachandran_proxies is None) or (ramachandran_lookup is not None)
     if (self.hydrogen_bond_params is None) :
       from mmtbx.geometry_restraints import hbond
@@ -26,6 +31,8 @@ class manager (object) :
         n_proxies += len(self.hydrogen_bond_proxies)
       else :
         n_proxies += self.hydrogen_bond_proxies.size()
+    if (self.den_manager is not None) :
+      n_proxies += len(self.den_manager.den_proxies)
     return n_proxies
 
   def restraints_residual_sum (self,
@@ -35,12 +42,14 @@ class manager (object) :
       from scitbx.array_family import flex
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     target = 0
-    if (self.ramachandran_proxies is not None) :
+    if (self.ramachandran_proxies is not None and
+        self.flags.ramachandran) :
       target += self.ramachandran_lookup.restraints_residual_sum(
         sites_cart=sites_cart,
         proxies=self.ramachandran_proxies,
         gradient_array=gradient_array)
-    if (self.hydrogen_bond_proxies is not None) :
+    if (self.hydrogen_bond_proxies is not None and
+        self.flags.hydrogen_bond) :
       from mmtbx.geometry_restraints import hbond
       lj_potential = self.hydrogen_bond_params.lennard_jones.potential
       target += hbond.target_and_gradients(
@@ -49,6 +58,14 @@ class manager (object) :
         gradient_array=gradient_array,
         falloff_distance=self.hydrogen_bond_params.falloff_distance,
         lennard_jones_potential=lj_potential)
+    if (self.den_manager is not None and
+        self.flags.den) :
+      #print "DEN target is in geneneric manager"
+      den_target = self.den_manager.target_and_gradients(
+        sites_cart=sites_cart,
+        gradient_array=gradient_array)
+      #print "DEN target: %.1f" % den_target
+      target += den_target
     return target
 
   def hbonds_as_simple_bonds (self) :
