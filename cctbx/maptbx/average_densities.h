@@ -201,7 +201,8 @@ public:
     double min2 = af::min(map_2);
     double start = std::min(min1,min2);
     double end   = std::max(max1,max2);
-    double hsize = 100./map_1.size();
+    //double hsize = 100./map_1.size();
+    double hsize = 1./map_1.size();
     double inc = (end-start)/100.;
     double sigp = 0;
     double sigm = 0;
@@ -209,10 +210,10 @@ public:
       af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
       double h1_ = r[0]*hsize;
       double h2_ = r[1]*hsize;
-      if(h1_<1  && h2_<1 && sigp==0)  sigp = sig;
-      if(h1_>99.0 && h2_>99.0) sigm = sig;
+      if(h1_<0.01 && h2_<0.01 && sigp==0)  sigp = sig;
+      if(h1_>0.99 && h2_>0.99) sigm = sig;
     }
-    inc = (sigm-start)/10;
+    inc = (sigm-start)/100;
     for (double sig=start; sig<sigm; sig += inc) {
       af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
       sigs.push_back(sig);
@@ -232,7 +233,7 @@ public:
       h2.push_back(h2_);
       h12.push_back((h1_+h2_)/2);
     }
-    inc = (end-sigp)/10.;
+    inc = (end-sigp)/100.;
     for (double sig=sigp; sig<=end+1.e-6*end; sig += inc) {
       af::tiny<int, 2> r = map_loop(map_1, map_2, sig);
       sigs.push_back(sig);
