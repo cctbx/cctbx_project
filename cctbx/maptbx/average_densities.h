@@ -202,6 +202,7 @@ public:
     double start = std::min(min1,min2);
     double end   = std::max(max1,max2);
     //double hsize = 100./map_1.size();
+    CCTBX_ASSERT(map_1.size() > 0);
     double hsize = 1./map_1.size();
     double inc = (end-start)/100.;
     double sigp = 0;
