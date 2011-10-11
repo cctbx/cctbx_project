@@ -67,7 +67,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
     // Next comes the line number
     //
 
-    message << "line " << recognizer->state->exception->line;
+    message << "line " << recognizer->state->exception->line << ")";
     message << " : error " << recognizer->state->exception->type << " : "
       << (pANTLR3_UINT8) (recognizer->state->exception->message);
 
