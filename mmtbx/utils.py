@@ -38,7 +38,7 @@ import mmtbx.command_line.fmodel
 from cctbx import french_wilson
 import math
 import libtbx.callbacks # import dependency
-from libtbx.math_utils import ifloor, iceil, iround
+from libtbx.math_utils import ifloor, iceil
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import xray
