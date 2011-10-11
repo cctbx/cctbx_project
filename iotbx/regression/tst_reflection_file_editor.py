@@ -267,7 +267,72 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst5.mtz")
   assert ((miller_arrays[0].anomalous_flag()) and
           (not miller_arrays[1].anomalous_flag()))
+  # reconstructed amplitudes, yuck
+  mtz3 = array1.as_mtz_dataset(column_root_label="I-obs")
+  indices = array1.average_bijvoet_mates().indices()
+  # XXX why does this come out as an unmerged array?
+  mtz3.add_column(label="F", type="F").set_reals(
+    miller_indices=indices,
+    data=flex.double(indices.size(), 100.))
+  mtz3.add_column(label="SIGF", type="Q").set_reals(
+    miller_indices=indices,
+    data=flex.double(indices.size(), 5.))
+  mtz3.add_column(label="DANO", type="D").set_reals(
+    miller_indices=indices,
+    data=flex.double(indices.size(), 10.))
+  mtz3.add_column(label="SIGDANO", type="Q").set_reals(
+    miller_indices=indices,
+    data=flex.double(indices.size(), 4.))
+  mtz3.mtz_object().write("tst_data5.mtz")
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst6.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 6,7,8,90,90,90
+  miller_array {
+    file_name = tst_data5.mtz
+    labels = I-obs(+),SIGI-obs(+),I-obs(-),SIGI-obs(-)
+    output_labels = I-obs(+) SIGI-obs(+) I-obs(-) SIGI-obs(-)
+  }
+  miller_array {
+    file_name = tst_data5.mtz
+    labels = F,SIGF,DANO,SIGDANO,merged
+    output_labels = F SIGF DANO SIGDANO
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  try :
+    miller_arrays = run_and_reload(params, "tst6.mtz")
+  except Sorry, e :
+    assert ("use labels" in str(e))
+  else :
+    raise Exception_expected
+  params.mtz_file.miller_array[1].output_labels = ["F(+)","SIGF(+)",
+                                                   "F(-)","SIGF(-)"]
+  miller_arrays = run_and_reload(params, "tst6.mtz")
+  arrays = mtz3.mtz_object().as_miller_arrays()
+  assert (arrays[1].is_xray_reconstructed_amplitude_array())
+  labels = reflection_file_editor.guess_array_output_labels(arrays[1])
+  assert (labels == ["F(+)","SIGF(+)", "F(-)","SIGF(-)"])
+  # handle duplicate array labels
+  params.mtz_file.output_file = "tst7.mtz"
+  params.mtz_file.miller_array[1].file_name = "tst_data.mtz"
+  params.mtz_file.miller_array[1].labels = \
+    "I-obs(+),SIGI-obs(+),I-obs(-),SIGI-obs(-)"
+  params.mtz_file.miller_array[1].output_labels = \
+    "I-obs(+) SIGI-obs(+) I-obs(-) SIGI-obs(-)".split()
+  try :
+    miller_arrays = run_and_reload(params, "tst7.mtz")
+  except Sorry, e :
+    assert ("Duplicate column label 'I-obs(+)'" in str(e))
+  else :
+    raise Exception_expected
+  params.mtz_file.resolve_label_conflicts = True
+  miller_arrays = run_and_reload(params, "tst7.mtz")
+  assert (miller_arrays[1].info().label_string() ==
+          "I-obs_2(+),SIGI-obs_2(+),I-obs_2(-),SIGI-obs_2(-)")
 
+########################################################################
 # this requires data in phenix_regression
 # TODO replace this with equivalent using synthetic data
 def exercise_command_line () :
