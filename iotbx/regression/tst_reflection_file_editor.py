@@ -242,6 +242,31 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst4.mtz")
   new_selection = (miller_arrays[1].data() == 0)
   assert (free_selection.all_eq(new_selection))
+  # more R-free manipulations
+  mtz2 = array1.as_mtz_dataset(column_root_label="I-obs")
+  flags2 = flags.generate_bijvoet_mates()
+  mtz2.add_miller_array(flags2, column_root_label="R-free-flags")
+  mtz2.mtz_object().write("tst_data4.mtz")
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst5.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 6,7,8,90,90,90
+  miller_array {
+    file_name = tst_data4.mtz
+    labels = I-obs(+),SIGI-obs(+),I-obs(-),SIGI-obs(-)
+    output_labels = I-obs(+) SIGI-obs(+) I-obs(-) SIGI-obs(-)
+  }
+  miller_array {
+    file_name = tst_data4.mtz
+    labels = R-free-flags(+),R-free-flags(-)
+    output_labels = R-free-flags
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  miller_arrays = run_and_reload(params, "tst5.mtz")
+  assert ((miller_arrays[0].anomalous_flag()) and
+          (not miller_arrays[1].anomalous_flag()))
 
 # this requires data in phenix_regression
 # TODO replace this with equivalent using synthetic data

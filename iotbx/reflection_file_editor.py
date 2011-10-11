@@ -639,15 +639,15 @@ class process_arrays (object) :
           assert isinstance(new_data, flex.bool)
           r_free_flags = new_array.array(data=new_data)
         r_free_flags = r_free_flags.map_to_asu()
+        generate_bijvoet_mates = False
         if (r_free_flags.anomalous_flag()) :
           if (len(output_labels) == 1) :
             r_free_flags = r_free_flags.average_bijvoet_mates()
-            if (complete_set.anomalous_flag()) :
-              complete_set = complete_set.average_bijvoet_mates()
-          elif (not complete_set.anomalous_flag()) :
-            complete_set = complete_set.generate_bijvoet_mates()
-        elif (complete_set.anomalous_flag()) :
-          complete_set = complete_set.average_bijvoet_mates()
+          else :
+            assert (not complete_set.anomalous_flag())
+            # XXX can't do this operation on a miller set - will expand the
+            # r-free flags later
+            generate_bijvoet_mates = True
         r_free_as_bool = get_r_free_as_bool(r_free_flags,test_flag_value).data()
         assert isinstance(r_free_as_bool, flex.bool)
         fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
@@ -679,6 +679,8 @@ class process_arrays (object) :
             output_array = output_array.merge_equivalents().array()
         else :
           output_array = r_free_flags
+        if (generate_bijvoet_mates) :
+          output_array = output_array.generate_bijvoet_mates()
         if params.mtz_file.r_free_flags.export_for_ccp4 :
           print >> log, "%s: converting to CCP4 convention" % array_name
           output_array = export_r_free_flags(miller_array=output_array,
