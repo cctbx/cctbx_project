@@ -100,12 +100,19 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("merge_equivalents_obs", no_init)
-        .def(init<af::const_ref<index<> > const&,
-                  af::const_ref<double> const&,
-                  af::const_ref<double> const&>())
+        .def(init<
+          af::const_ref<index<> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double>((
+            arg("unmerged_indices"),
+            arg("unmerged_data"),
+            arg("unmerged_sigmas"),
+            arg("sigma_dynamic_range")=1e-6)))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
+        .def_readonly("sigma_dynamic_range", &w_t::sigma_dynamic_range)
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
         .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
         .add_property("r_square", make_getter(&w_t::r_square, rbv()))
