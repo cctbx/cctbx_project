@@ -379,12 +379,14 @@ def run (args) :
     else :
       try :
         arg_phil = libtbx.phil.parse(arg)
-      except RuntimeError :
-        pass
+      except RuntimeError, e :
+        print e
       else :
         user_phil.append(arg_phil)
-  params = process_master_phil.fetch(sources=user_phil).extract()
+  working_phil = process_master_phil.fetch(sources=user_phil)
+  params = working_phil.extract()
   if params.run_file is None :
+    working_phil.show()
     raise Sorry("Pickled target function run_file not defined.")
   server = detached_process_server(params)
   server.run()
