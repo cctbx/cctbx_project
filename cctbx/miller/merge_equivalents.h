@@ -207,8 +207,12 @@ namespace cctbx { namespace miller {
       merge_equivalents_obs(
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
-        af::const_ref<FloatType> const& unmerged_sigmas)
-      : r_int_num(0), r_int_den(0)
+        af::const_ref<FloatType> const& unmerged_sigmas,
+        FloatType sigma_dynamic_range_=1e-6)
+      :
+        sigma_dynamic_range(sigma_dynamic_range_),
+        r_int_num(0),
+        r_int_den(0)
       {
         CCTBX_ASSERT(unmerged_data.size() == unmerged_indices.size());
         CCTBX_ASSERT(unmerged_sigmas.size() == unmerged_indices.size());
@@ -218,6 +222,7 @@ namespace cctbx { namespace miller {
       af::shared<index<> > indices;
       af::shared<FloatType> data;
       af::shared<FloatType> sigmas;
+      FloatType sigma_dynamic_range;
       af::shared<int> redundancies;
       //! r_linear = sum(abs(data - mean(data))) / sum(abs(data))
       af::shared<FloatType> r_linear;
@@ -262,13 +267,14 @@ namespace cctbx { namespace miller {
       }
 
       void
-      process_group(std::size_t group_begin,
-                    std::size_t group_end,
-                    index<> const& current_index,
-                    af::const_ref<FloatType> const& unmerged_data,
-                    af::const_ref<FloatType> const& unmerged_sigmas,
-                    std::vector<FloatType>& values,
-                    std::vector<FloatType>& weights)
+      process_group(
+        std::size_t group_begin,
+        std::size_t group_end,
+        index<> const& current_index,
+        af::const_ref<FloatType> const& unmerged_data,
+        af::const_ref<FloatType> const& unmerged_sigmas,
+        std::vector<FloatType>& values,
+        std::vector<FloatType>& weights)
       {
         std::size_t n = group_end - group_begin;
         if (n == 0) return;
@@ -277,12 +283,21 @@ namespace cctbx { namespace miller {
         values.reserve(n);
         weights.clear();
         weights.reserve(n);
+        FloatType sigma_threshold = 0;
+        if (sigma_dynamic_range > 0) {
+          FloatType max_sigma = 0;
+          for(std::size_t i=0;i<n;i++) {
+            FloatType s = unmerged_sigmas[group_begin+i];
+            if (max_sigma < s) max_sigma = s;
+          }
+          sigma_threshold = max_sigma * sigma_dynamic_range;
+        }
         FloatType unmerged_sigma = 0;
         for(std::size_t i=0;i<n;i++) {
-          FloatType ss = scitbx::fn::pow2(unmerged_sigmas[group_begin+i]);
-          if (ss > 0) {
+          FloatType s = unmerged_sigmas[group_begin+i];
+          if (s > sigma_threshold) {
             values.push_back(unmerged_data[group_begin+i]);
-            weights.push_back(1 / ss);
+            weights.push_back(1 / scitbx::fn::pow2(s));
             unmerged_sigma = unmerged_sigmas[group_begin+i];
           }
         }

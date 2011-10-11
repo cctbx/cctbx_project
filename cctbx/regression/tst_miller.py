@@ -2003,6 +2003,16 @@ def exercise_complete_with_complete_with_bin_average():
   ma = miller.array(ms, d)
   ma.complete_with_bin_average()
 
+def exercise_merge_equivalents_special_cases():
+  xs = crystal.symmetry((10,10,10), "P1")
+  mi = flex.miller_index([(1,2,3), (1,2,3)])
+  ms = miller.set(xs, mi, anomalous_flag=False)
+  d = flex.double([0.0, 165.827774048])
+  s = flex.double([8.89633977597e-10, 144.83241272])
+  ma = miller.array(ms, data=d, sigmas=s)
+  me = ma.merge_equivalents().array()
+  assert approx_equal(me.data(), [165.827774048])
+  assert approx_equal(me.sigmas(), [144.83241272])
 
 def run(args):
   exercise_complete_with_complete_with_bin_average()
@@ -2032,6 +2042,7 @@ def run(args):
   exercise_crystal_gridding()
   exercise_fft_map()
   exercise_map_correlation()
+  exercise_merge_equivalents_special_cases()
   debug_utils.parse_options_loop_space_groups(args, run_call_back)
   print "OK"
 
