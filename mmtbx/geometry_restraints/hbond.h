@@ -9,6 +9,7 @@
 
 #include <mmtbx/error.h>
 #include <cctbx/geometry_restraints/bond.h>
+#include <cctbx/geometry_restraints/angle.h>
 #include <cctbx/geometry/geometry.h>
 
 #include <cmath>
@@ -273,71 +274,82 @@ namespace mmtbx { namespace geometry_restraints {
 
   // Fabiola et al. (2002) Protein Sci. 11:1415-23
   // http://www.ncbi.nlm.nih.gov/pubmed/12021440
-  inline
-  double
-  residual_implicit(
-    af::tiny<scitbx::vec3<double>, 3> sites,
-    double distance_ideal,
-    double distance_cut,
-    double weight,
-    double delta_theta,
-    double falloff_distance)
+  class h_bond_implicit
   {
-    double bond_dist = (sites[1] - sites[0]).length();
-    //std::cout << bond_dist << "\n";
-    double R_off = distance_cut + falloff_distance;
-    if (bond_dist > R_off) {
-      return 0.0;
-    }
-    double sigma_over_dist = distance_ideal * IMP_SIGMA_BASE / bond_dist;
-    double s_over_d_sq = sigma_over_dist * sigma_over_dist;
-    double residual = weight * ((s_over_d_sq * s_over_d_sq * s_over_d_sq) - \
+    private:
+      double distance_ideal;
+      double distance_cut;
+      double theta_high;
+      double theta_low;
+      double weight;
+      double delta_theta;
+      cctbx::geometry::distance<double> r_da;
+      cctbx::geometry_restraints::angle theta;
+
+    public :
+      h_bond_implicit(
+        af::tiny<scitbx::vec3<double>, 3> const& sites,
+        double distance_ideal_,
+        double distance_cut_,
+        double theta_high_,
+        double theta_low_,
+        double weight_)
+      :
+        distance_ideal(distance_ideal_),
+        distance_cut(distance_cut_),
+        theta_high(theta_high_),
+        theta_low(theta_low_),
+        weight(weight_ * IMP_SCALE),
+        theta(sites, 0., 1.)
+      {
+        init_hbond_geometry(sites);
+      }
+
+      h_bond_implicit(
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        h_bond_implicit_proxy const& proxy)
+      :
+        distance_ideal(proxy.distance_ideal),
+        distance_cut(proxy.distance_cut),
+        theta_high(proxy.theta_high),
+        theta_low(proxy.theta_low),
+        weight(proxy.weight * IMP_SCALE)
+      {
+        af::tiny<scitbx::vec3<double>, 3> sites;
+        for(int i=0;i<3;i++) {
+          std::size_t i_seq = proxy.i_seqs[i];
+          MMTBX_ASSERT(i_seq < sites_cart.size());
+          sites[i] = sites_cart[i_seq];
+        }
+        theta = cctbx::geometry_restraints::angle(sites, 0., 1.);
+        init_hbond_geometry(sites);
+      }
+
+      bool have_angle_model () {
+        return theta.have_angle_model;
+      }
+
+      double residual (
+        double falloff_distance=0.05)
+      {
+        double bond_dist = r_da.distance_model;
+        double R_off = distance_cut + falloff_distance;
+        if (bond_dist > R_off) {
+          return 0.0;
+        }
+        double sigma_over_dist = distance_ideal * IMP_SIGMA_BASE / bond_dist;
+        double s_over_d_sq = sigma_over_dist * sigma_over_dist;
+        double residual = weight * ((s_over_d_sq*s_over_d_sq*s_over_d_sq) - \
                                 (s_over_d_sq * s_over_d_sq)) * \
                       std::pow(std::cos(delta_theta * PI_180), 4);
-    residual *= switch_fn(bond_dist, distance_cut, R_off);
-    return residual;
-  }
+        residual *= switch_fn(bond_dist, distance_cut, R_off);
+        return residual;
+      }
 
-  inline
-  double
-  h_bond_implicit_residual_sum(
-    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<h_bond_implicit_proxy> const& proxies,
-    af::ref<scitbx::vec3<double> > const& gradient_array,
-    double falloff_distance=0.05)
-  {
-    using namespace cctbx::geometry;
-    double residual_sum = 0.0;
-    for (std::size_t i = 0; i < proxies.size(); i++) {
-      h_bond_implicit_proxy proxy = proxies[i];
-      af::tiny<scitbx::vec3<double>, 3> sites;
-      af::tiny<unsigned, 3> const& i_seqs = proxy.i_seqs;
-      for (unsigned j = 0; j < 3; j++) {
-        sites[j] = sites_cart[i_seqs[j]];
-      }
-      double weight = proxy.weight * IMP_SCALE;
-      angle<double> theta(sites);
-      if (!theta.have_angle_model) continue;
-      double delta_theta;
-      double delta_high = theta.angle_model - proxy.theta_high;
-      double delta_low = theta.angle_model - proxy.theta_low;
-      if (proxy.theta_low < 0 || std::abs(delta_high) < std::abs(delta_low)) {
-        delta_theta = delta_high;
-      } else {
-        delta_theta = delta_low;
-      }
-      residual_sum += residual_implicit(
-        sites,
-        proxy.distance_ideal,
-        proxy.distance_cut,
-        weight,
-        delta_theta,
-        falloff_distance);
-      if (gradient_array.size() != 0) {
-        af::tiny<scitbx::vec3<double>, 2> bond_sites;
-        bond_sites[0] = sites[0];
-        bond_sites[1] = sites[1];
-        distance<double> r_da(bond_sites);
+      af::tiny<scitbx::vec3<double>, 3>
+      gradients (double falloff_distance=0.05) const
+      {
+        af::tiny<scitbx::vec3<double>, 3> result;
         af::tiny<scitbx::vec3<double>, 2> d_R_d_xyz = \
           r_da.d_distance_d_sites();
         af::tiny<scitbx::vec3<double>, 3> d_theta_d_xyz = \
@@ -346,11 +358,11 @@ namespace mmtbx { namespace geometry_restraints {
         // g(theta) = angle term
         // h(R) = switching function
         double R = r_da.distance_model;
-        double R_on = proxy.distance_cut;
+        double R_on = distance_cut;
         double R_off = R_on + falloff_distance;
         double h_R = switch_fn(R, R_on, R_off);
         double d_h_d_R = d_switch_d_distance(R, R_on, R_off);
-        double sigma = proxy.distance_ideal * IMP_SIGMA_BASE;
+        double sigma = distance_ideal * IMP_SIGMA_BASE;
         double sigma_6 = std::pow(sigma, 6);
         double sigma_4 = std::pow(sigma, 4);
         double R_4 = std::pow(R, 4);
@@ -373,13 +385,56 @@ namespace mmtbx { namespace geometry_restraints {
             scitbx::vec3<double> d_f_d_xyz = d_f_d_R * d_R_d_xyz[j];
             grads -= weight * h_R * g_theta * d_f_d_xyz; // XXX why minus?
           }
-          gradient_array[i_seqs[j]] += grads;
+          result[j] = grads;
+        }
+        return result;
+      }
+
+    protected :
+      void init_hbond_geometry (
+        af::tiny<scitbx::vec3<double>, 3> const& sites)
+      {
+        af::tiny<scitbx::vec3<double>, 2> bond_sites;
+        bond_sites[0] = sites[0];
+        bond_sites[1] = sites[1];
+        r_da = cctbx::geometry::distance<double>(bond_sites);
+        if (have_angle_model()) {
+          double delta_high = theta.angle_model - theta_high;
+          double delta_low = theta.angle_model - theta_low;
+          if ((theta_low < 0) || (std::abs(delta_high) < std::abs(delta_low))){
+            delta_theta = delta_high;
+          } else {
+            delta_theta = delta_low;
+          }
+        } else {
+          delta_theta = 0;
+        }
+      }
+  };
+
+  double h_bond_implicit_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<h_bond_implicit_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    double falloff_distance=0.05)
+  {
+    double residual_sum = 0.0;
+    for (std::size_t i = 0; i < proxies.size(); i++) {
+      h_bond_implicit_proxy proxy = proxies[i];
+      h_bond_implicit hb(sites_cart, proxy);
+      residual_sum += hb.residual();
+      if (gradient_array.size() != 0) {
+        af::tiny<scitbx::vec3<double>, 3> grads = hb.gradients();
+        for (unsigned j = 0; j < 3; j++) {
+          gradient_array[proxy.i_seqs[j]] += grads[j];
         }
       }
     }
     return residual_sum;
   }
 
+  //--------------------------------------------------------------------
+  // UTILITY FUNCTIONS
   af::shared<std::set<unsigned> > simple_hbonds_as_simple_bonds (
     af::const_ref<h_bond_simple_proxy> const& proxies)
   {
