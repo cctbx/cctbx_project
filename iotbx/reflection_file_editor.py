@@ -379,6 +379,15 @@ class process_arrays (object) :
             "I(+),SIGI(+),I(-),SIGI(-), or F(+),SIGF(+),F(-),SIGF(-) "+
             "if you are converting the array to amplitudes).") %
             array_name)
+      if (miller_array.is_xray_reconstructed_amplitude_array()) :
+        # FIXME this needs to be handled better - but it should at least catch
+        # files from CCP4 data processing
+        if ("DANO" in output_labels) :
+          raise Sorry(("The array in %s with labels %s will be output as "+
+            "reconstructed Friedel mates, not merged amplitudes and "+
+            "anomalous differences.  You should use labels resembling "+
+            "F(+) SIGF(+) F(-) SIGF(-) for the output MTZ file.") %
+            (file_name, array_params.labels))
 
       #-----------------------------------------------------------------
       # APPLY SYMMETRY
@@ -892,11 +901,20 @@ def guess_array_output_labels (miller_array) :
   assert info is not None
   labels = info.labels
   output_labels = labels
-  if labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]] :
+  if (labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]]) :
     if miller_array.anomalous_flag() :
       output_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
     else :
       output_labels = ["I", "SIGI"]
+  elif (miller_array.is_xray_reconstructed_amplitude_array()) :
+    root_label = labels[0]
+    decorator = iotbx.mtz.label_decorator()
+    output_labels = [
+      decorator.anomalous(root_label, "+"),
+      decorator.sigmas(root_label, "+"),
+      decorator.anomalous(root_label, "-"),
+      decorator.sigmas(root_label, "-"),
+    ]
   return output_labels
 
 # XXX the requirement for defined crystal symmetry in phil input files is
