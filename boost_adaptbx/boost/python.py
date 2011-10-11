@@ -18,7 +18,7 @@ def import_ext(name, optional=False):
   if (len(components) > 1):
     __import__(".".join(components[:-1]))
   previous_dlopenflags = None
-  if (sys.platform == "linux2"):
+  if (sys.platform.startswith("linux")) :
     previous_dlopenflags = sys.getdlopenflags()
     sys.setdlopenflags(0x100|0x2)
   try: mod = __import__(name)
