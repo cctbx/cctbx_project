@@ -727,7 +727,7 @@ Wait for the command to finish, then try again.""" % vars())
     if (self._dispatcher_precall_commands is None):
       lines = []
       if (    self.python_version_major_minor == (2,2)
-          and sys.platform == "linux2"
+          and sys.platform.startswith("linux")
           and op.isfile("/etc/redhat-release")):
         try: red_hat_linux_release = open("/etc/redhat-release").readline()
         except KeyboardInterrupt: raise
@@ -810,7 +810,7 @@ Wait for the command to finish, then try again.""" % vars())
       raise RuntimeError(
         "--opt-resources not supported in combination with --compiler=icc")
     def get_libs_dir():
-      if (sys.platform == "linux2"):
+      if (sys.platform.startswith("linux")) :
         libs = ["libimf.so", "libirc.so"]
         if (is_64bit_architecture()):
           return "linux64", libs

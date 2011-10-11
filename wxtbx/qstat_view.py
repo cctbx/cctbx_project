@@ -10,7 +10,7 @@ except ImportError :
 
 import sys, os, time
 
-if sys.platform in ["linux", "linux2", "darwin"] :
+if sys.platform in ["linux", "linux2", "linux3", "darwin"] :
   user = os.environ['USER']
 else :
   user = None # is it even worth bothering with Windows here?
