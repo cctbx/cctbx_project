@@ -349,23 +349,29 @@ namespace mmtbx { namespace geometry_restraints {
         double R_on = proxy.distance_cut;
         double R_off = R_on + falloff_distance;
         double h_R = switch_fn(R, R_on, R_off);
-        double d_h_d_R = d_switch_d_distance(R, R_on, R_off) / weight;
+        double d_h_d_R = d_switch_d_distance(R, R_on, R_off);
         double sigma = proxy.distance_ideal * IMP_SIGMA_BASE;
-        double f_R = weight * (std::pow(sigma/R, 6) - std::pow(sigma/R, 4));
-        double d_f_d_R = (-6 * std::pow(sigma, 6) / std::pow(R, 7)) +
-                         (4 * std::pow(sigma, 4) / std::pow(R, 5));
+        double sigma_6 = std::pow(sigma, 6);
+        double sigma_4 = std::pow(sigma, 4);
+        double R_4 = std::pow(R, 4);
+        double R_5 = R_4 * R;
+        double R_6 = R_5 * R;
+        double R_7 = R_6 * R;
+        double f_R = (sigma_6/R_6 - sigma_4/R_4);
+        double d_f_d_R = (-6 * sigma_6 / R_7) +
+                         (4 * sigma_4 / R_5);
         double cos_delta_theta = std::cos(delta_theta * PI_180);
-        double g_theta = weight * std::pow(cos_delta_theta, 4);
+        double g_theta = std::pow(cos_delta_theta, 4);
         double d_g_d_theta = 4 * std::pow(cos_delta_theta, 3) *
                              std::sin(delta_theta * PI_180);
         for (unsigned j = 0; j < 3; j++) {
           scitbx::vec3<double> d_g_d_xyz = d_g_d_theta * d_theta_d_xyz[j];
-          scitbx::vec3<double> grads = f_R * h_R * d_g_d_xyz * PI_180;
+          scitbx::vec3<double> grads = weight * f_R * h_R * d_g_d_xyz * PI_180;
           if (j != 2) {
             scitbx::vec3<double> d_h_d_xyz = d_h_d_R * d_R_d_xyz[j];
-            grads -= f_R * g_theta * d_h_d_xyz;
+            grads -= weight * f_R * g_theta * d_h_d_xyz;
             scitbx::vec3<double> d_f_d_xyz = d_f_d_R * d_R_d_xyz[j];
-            grads -= h_R * g_theta * d_f_d_xyz; // XXX why minus?
+            grads -= weight * h_R * g_theta * d_f_d_xyz; // XXX why minus?
           }
           gradient_array[i_seqs[j]] += grads;
         }
