@@ -203,14 +203,12 @@ def run(args, log = sys.stdout):
   if(len(mmtbx_pdb_file.pdb_inp.xray_structures_simple())>1): #XXX support multi-models
     raise Sorry("Multiple model file not supported in this tool.")
   # XXX Twining not supported
-  xray_structure = mmtbx_pdb_file.pdb_inp.xray_structure_simple()
-  # FIXME this will fail if the PDB file has no symmetry information - need
-  # to override with symmetry from miller arrays in these cases
+  xray_structure = mmtbx_pdb_file.pdb_inp.xray_structure_simple(
+    crystal_symmetry=crystal_symmetry,
+    weak_symmetry=True)
   if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())) :
     raise Sorry("The unit cells in the PDB and reflections files are not "+
-      "isomorphous.  (Note: explicit symmetry information, ideally in the "+
-      "form of a CRYST1 record, must be present in the PDB file for this "+
-      "program to run.")
+      "isomorphous.")
   print "Input model:"
   print "  number of atoms:", xray_structure.scatterers().size()
   fmodel = mmtbx.f_model.manager(
