@@ -310,12 +310,7 @@ def compute_f_calc(fmodel, params):
   from cctbx import miller
   coeffs_partial_set = fmodel.f_obs().structure_factors_from_scatterers(
     xray_structure = fmodel.xray_structure).f_calc()
-  dev_exists = False
-  try:
-    params.dev
-    dev_exists=True
-  except: pass
-  if(dev_exists and params.dev.complete_set_up_to_d_min):
+  if(hasattr(params,"dev") and params.dev.complete_set_up_to_d_min):
     coeffs = fmodel.xray_structure.structure_factors(
       d_min = fmodel.f_obs().d_min()).f_calc()
     frac_inc = 1.*coeffs_partial_set.data().size()/coeffs.data().size()
