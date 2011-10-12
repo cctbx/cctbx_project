@@ -39,6 +39,8 @@ class Distl(w_Distl):
           self.set_minimum_spot_height(params.distl.minimum_spot_height)
         if params.distl.spot_area_maximum_factor != None:
           self.set_spot_area_maximum_factor(params.distl.spot_area_maximum_factor)
+        if params.distl.peak_intensity_maximum_factor != None:
+          self.set_peak_intensity_maximum_factor(params.distl.peak_intensity_maximum_factor)
         self.set_scanbox_windows(params.distl.scanbox_windows)
         if params.distl.detector_tiling != None:
           IT = image.get_tile_manager(params
@@ -97,11 +99,17 @@ class Distl(w_Distl):
         raise Sorry( (template%("minimum_spot_height (%.2f)","-d1",self.options)%(
         self.params.distl.minimum_spot_height,)) )
 
-    # apotareamaxfactor <==> -s7 <==> spot_area_maximum_factor
+    # spotareamaxfactor <==> -s7 <==> spot_area_maximum_factor
     if self.params.distl.spot_area_maximum_factor != None:
       if self.options.find("-s7") >= 0:
         raise Sorry( (template%("spot_area_maximum_factor (%.2f)","-s7",self.options)%(
         self.params.distl.spot_area_maximum_factor,)) )
+
+    # spotpeakintmaxfactor <==> -s8 <==> peak_intensity_maximum_factor
+    if self.params.distl.peak_intensity_maximum_factor != None:
+      if self.options.find("-s8") >= 0:
+        raise Sorry( (template%("peak_intensity_maximum_factor (%.2f)","-s8",self.options)%(
+        self.params.distl.peak_intensity_maximum_factor,)) )
 
     # scanbox_window <==> -bx0,1,2 <==> spot_area_maximum_factor
     if self.options.find("-bx0") >= 0 or self.options.find("-bx1") >= 0 or self.options.find("-bx2") >= 0:
