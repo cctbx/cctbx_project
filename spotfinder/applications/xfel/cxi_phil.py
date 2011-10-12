@@ -11,6 +11,7 @@ def cxi_basic_start():
           "distl.minimum_spot_area=3",
           "distl.peripheral_margin=1",
           "distl.peak_intensity_maximum_factor=10000.", #avoids intensity filter
+          "distl.compactness_filter=True",
   ]
 
   new_horizons_phil.merge_command_line(common_arguments)
