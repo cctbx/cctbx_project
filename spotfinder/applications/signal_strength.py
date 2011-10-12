@@ -4,11 +4,13 @@ from spotfinder.applications.wrappers import DistlOrganizer
 class Empty: pass
 
 def run_signal_strength(params):
-  verbose = params.distl.verbose
   E = Empty()
   E.argv=['Empty']
   E.argv.append(params.distl.image)
+  return run_signal_strength_core(params,E)
 
+def run_signal_strength_core(params,E):
+  verbose = params.distl.verbose
   if params.distl.res.inner!=None:
     params.distl_lowres_limit = params.distl.res.inner
   if params.distl.res.outer!=None:
