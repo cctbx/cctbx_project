@@ -80,8 +80,10 @@ def run_simulated_annealing(simulated_annealing_params,
   vxyz = None
   cd_manager = None
   den_manager = \
-    model.restraints_manager.geometry. \
-      generic_restraints_manager.den_manager
+    getattr(
+      model.restraints_manager.geometry.\
+      generic_restraints_manager,
+      "den_manager", None)
   cartesian_den_restraints = False
   if den_manager is not None:
     if "cartesian" in den_manager.params.annealing_type:
