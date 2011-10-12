@@ -82,6 +82,9 @@ public:
   inline void set_spot_area_maximum_factor(const double& A){
     finder.spotareamaxfactor = A;}
 
+  inline void set_peak_intensity_maximum_factor(const double& A){
+    finder.spotpeakintmaxfactor = A;}
+
   inline void set_scanbox_windows(af::shared<int> A){
     finder.scanboxsize[0] = A[0];
     finder.scanboxsize[1] = A[1];
