@@ -344,6 +344,10 @@ di::w_Distl::finish_analysis(){
 
     //It turns out that minimum spot area is an extremely important
     //  filter without which all sorts of junk are reported.
+    /* 12oct2011-->the following line has a bug; should be >=
+     * However, can't fix the bug without changing all previous results
+     * For now simply work around it by decrementing distl.minimum_spot_area by 1
+     */
     if ((*position).area() > finder.spotbasesize) {
       spots.push_back(*position);
     }
