@@ -63,6 +63,46 @@ class Distl(w_Distl):
     self.search_overloadpatches()
     self.finish_analysis()
 
+    if params!=None and params.distl.compactness_filter == True:
+      self.compactness_filter()
+
+  def compactness_filter(self):
+    from spotfinder.array_family import flex
+    keepspot = flex.bool()
+    for spot in self.spots:
+      x = [s.x for s in spot.bodypixels]
+      y = [s.y for s in spot.bodypixels]
+      xmin = min(x); ymin = min(y)
+      xmax = max(x); ymax = max(y)
+      graph = flex.bool(flex.grid(max(x)-xmin+1,max(y)-ymin+1),False)
+      for s in spot.bodypixels:
+        graph[(s.x-xmin,s.y-ymin)]=True
+      edge_count = 0
+      nx,ny = graph.focus()
+      # count the edges along x:
+      for xc in xrange(nx):
+        for yc in xrange(ny-1):
+          if graph[(xc,yc)] and graph[(xc,yc+1)]:  edge_count+=1
+      # count the edges along y:
+      for yc in xrange(ny):
+        for xc in xrange(nx-1):
+          if graph[(xc,yc)] and graph[(xc+1,yc)]:  edge_count+=1
+      # count forward diagonals:
+      for xc in xrange(nx-1):
+        for yc in xrange(ny-1):
+          if graph[(xc,yc)] and graph[(xc+1,yc+1)]:  edge_count+=1
+      # count backward diagonals:
+      for xc in xrange(nx-1):
+        for yc in xrange(1,ny):
+          if graph[(xc,yc)] and graph[(xc+1,yc-1)]:  edge_count+=1
+
+      vertex_count = spot.bodypixels.size()
+      if vertex_count >=9:
+        keepspot.append( edge_count/vertex_count > 2.0 )
+      else:
+        keepspot.append( edge_count > {8:12, 7:9, 6:7, 5:5, 4:4, 3:2, 2:0, 1:-1}[vertex_count] )
+    self.spots = self.spots.select(keepspot)
+
   def deprecation_warnings(self):
     """Eventually migrate away from dataset_preferences.py mechanism, toward
     100% use of phil for specifying parameters.  For now, simply guard against

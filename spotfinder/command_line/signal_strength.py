@@ -20,6 +20,9 @@ distl {
   peak_intensity_maximum_factor = None
     .type = float
     .help = "Expert use only; max peak intensity filter for use by libdistl. Default=10.0"
+  compactness_filter = False
+    .type = bool
+    .help = "For CXI data (and Pilatus data?), set this to True to eliminate small non-compact spots"
   detector_tiling = None
     .type = ints
     .help = "Prior analysis of active area tiling on the detector; groups of 4 integers: UL_slow,UL_fast,LR_slow,LR_fast"
