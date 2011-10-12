@@ -231,6 +231,7 @@ class xray_structure(xray.structure):
 
   def __init__(self,
                space_group_info=None,
+               space_group_symbol=None,
                unit_cell=None,
                elements=None,
                sites_frac=None,
@@ -252,6 +253,61 @@ class xray_structure(xray.structure):
                random_u_cart_scale=0.3,
                random_occupancy=False,
                random_occupancy_min=0.1):
+    """Initialise the random xray_structure class.
+
+    :param space_group_info: a space group descriptor
+    :type space_group_info: sgtbx.space_group_info
+    :param space_group_symbol: international space group symbol or number
+    :type space_group_symbol: string or integer
+    :param unit_cell: the cell parameters of the random structure
+    :type unit_cell: uctbx.unit_cell or tuple(a, b, c, alpha, beta, gamma)
+    :param elements: A list of elements to use. \
+    Example: "['Si', 'Si', 'O', 'Al']" \
+    If elements='const' then ???. \
+    If elements='random' then random scatterers will be used.
+    :type elements: list(strings)
+    :param sites_frac: a list of the fractional coordinates for all scatterers
+    :type sites_frac: scitbx.array_family.flex.vec3_double
+    :param n_scatterers: number of scatterers
+    :type n_scatterers: integer
+    :param volume_per_atom: the volume an atom should occupy in cubic angstroms
+    :type volume_per_atom: float
+    :param min_distance: minimal distance between atoms
+    :type min_distance: float
+    :param min_distance_sym_equiv: minimal distance between symmetrical \
+    equivalent atoms
+    :type min_distance_sym_equiv: float
+    :param general_positions_only: if 'True' atoms will be placed on general \
+    positions only
+    :type general_positions_only: boolean
+    :param random_f_prime_d_min: ???
+    :type random_f_prime_d_min: float
+    :param random_f_prime_scale: ???
+    :type random_f_prime_scale: float
+    :param random_f_double_prime: ???
+    :type random_f_double_prime: float
+    :param random_f_double_prime_scale: ???
+    :type random_f_double_prime_scale: float
+    :param random_u_iso: if 'True' the isotropic temperature factors of all \
+    atoms will be randomised
+    :type random_u_iso: boolean
+    :param random_u_iso_min: minimum value of u_iso for random u values
+    :type random_u_iso: float
+    :param random_u_iso_scale: ???
+    :type random_u_iso_scale: float
+    :param u_iso: a fixed value of u_iso to apply to all atoms
+    :type u_iso: float
+    :param use_u_iso: if 'True' the atoms will have isotropic temperature factors
+    :type use_u_iso: boolean
+    :param use_u_aniso: if 'True' the atoms will have anisotropic temperature factors
+    :type use_u_aniso: boolean
+    :param random_u_cart_scale: ???
+    :type random_u_cart_scale: float
+    :param random_occupancy: if 'True' the atom sites will have a random occupancy
+    :type random_occupancy: boolean
+    :param random_occupancy_min: minimal occupancy for a site
+    :type random_occupancy_min: float
+    """
     adopt_init_args(self, locals(),
       exclude=(
         "space_group_info",
@@ -260,7 +316,12 @@ class xray_structure(xray.structure):
         "sites_frac",
         "use_u_iso"))
     if (space_group_info is None):
-      space_group_info = sgtbx.space_group_info(symbol="P 1")
+      if (space_group_symbol is None):
+        space_group_info = sgtbx.space_group_info(symbol="P 1")
+      else:
+        space_group_info = sgtbx.space_group_info(symbol=space_group_symbol)
+    else:
+      assert space_group_symbol is None # only one of those should be set
     self.use_u_iso_ = use_u_iso
     if (sites_frac is not None):
       assert self.elements is not None
