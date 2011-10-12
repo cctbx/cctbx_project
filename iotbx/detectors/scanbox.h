@@ -206,7 +206,7 @@ class scanbox_tiling_explicit : public scanbox_tiling {
      interval_list result;
      for (int tile = 0 ; tile < tile_count; ++tile){
        int start = tiles[4*tile]+peripheral_margin;
-       int finish= tiles[4*tile+2]-peripheral_margin;
+       int finish= tiles[4*tile+2]-peripheral_margin-1;
        interval I = interval(start,finish);
        int available_width = I.size();
        int n_intervals = available_width/width;
@@ -225,12 +225,11 @@ class scanbox_tiling_explicit : public scanbox_tiling {
   generate_defined_y_tiles(int const& width){
      interval_list result;
      int tile = tile_lookup[internal_tile_state];
-     interval I = interval(tiles[4*tile+1]+peripheral_margin,
-                           tiles[4*tile+3]-peripheral_margin);
+     int start = tiles[4*tile+1]+peripheral_margin;
+     int finish= tiles[4*tile+3]-peripheral_margin-1;
+     interval I = interval(start,finish);
      int available_width = I.size();
      int n_intervals = available_width/width;
-     int start = tiles[4*tile+1]+peripheral_margin;
-     int finish= tiles[4*tile+3]-peripheral_margin;
      int next = start;
      for (int iival= 0; iival < n_intervals; ++iival){
        int increment = int((double(iival+1)/double(n_intervals))*(finish-start));
