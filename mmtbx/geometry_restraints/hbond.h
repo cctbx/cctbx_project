@@ -162,19 +162,23 @@ namespace mmtbx { namespace geometry_restraints {
     double R_on,
     double R_off)
   {
-    if ((R_on <= 0) || (R_off <= 0)) {
+    // aliasing makes this a little more legible (or at least more consistent
+    // with my Mathematica notes)
+    double a = R_off;
+    double b = R_on;
+    double r = R_ij;
+    if ((b <= 0) || (a <= 0)) {
       return 0.0;
-    } else if ((R_ij < R_on) || (R_ij > R_off)) {
+    } else if ((R_ij < b) || (R_ij > a)) {
       return 0.0;
     }
-    double R_off_sq = R_off * R_off;
-    double R_on_sq = R_on * R_on;
-    double R_ij_sq = R_ij * R_ij;
-    double R_off_sq_minus_R_on_sq_cub = std::pow((R_off_sq - R_on_sq), 3);
-    double d_sw_d_R = ((4*R_ij*(R_off_sq-R_ij_sq)*(R_off_sq-R_ij_sq)) /
-                        R_off_sq_minus_R_on_sq_cub) -
-         ((4*R_ij*(R_off_sq-R_ij_sq)*(R_off_sq-(3*R_on_sq)+(2*R_ij_sq))) /
-                        R_off_sq_minus_R_on_sq_cub);
+    MMTBX_ASSERT((R_off >= R_on) && (R_on > 0));
+    double a2 = a*a;
+    double b2 = b*b;
+    double r2 = r*r;
+    double a2b2_3 = (a2 - b2) * (a2 - b2) * (a2 - b2);
+    double d_sw_d_R = ((4 * r * (a2 - r2) * (a2 - r2)) / a2b2_3) -
+                      ((4 * r * (a2 - r2) * (a2 - 3*b2 + 2*r2)) / a2b2_3);
     return d_sw_d_R;
   }
 
