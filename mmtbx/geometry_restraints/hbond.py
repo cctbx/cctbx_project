@@ -1,6 +1,10 @@
 
+from libtbx import easy_mp
+from libtbx.str_utils import make_header
+from libtbx.str_utils import pad_string as ps
 import libtbx.phil
 from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args, group_args
 from math import sqrt
 import sys
@@ -10,6 +14,15 @@ master_phil = libtbx.phil.parse("""
     .type = choice
     .short_caption = Hydrogen bond restraint type
     .caption = Automatic Simple_(H-O) Simple_(N-O) Angle-dependent_(N-O)
+  include_side_chains = True
+    .type = bool
+  optimize_hbonds = False
+    .type = bool
+  optimize_hbonds_thorough = False
+    .type = bool
+  optimize_mode = *first last every_macro_cycle
+    .type = choice
+    .expert_level = 3
   restraints_weight = 1.0
     .type = float
   falloff_distance = 0.05
@@ -290,17 +303,23 @@ def find_implicit_hydrogen_bonds (pdb_hierarchy,
                                   log=None) :
   if (log is None) :
     log = null_out()
-  donor_selection = "name N or (resname ASN and name ND2) or "+ \
+  donor_selection = "name N or (resname HOH and name O)"
+  if (params.include_side_chains) :
+    donor_selection += " or (resname ASN and name ND2) or "+ \
         "(resname GLN and name NE2) or (resname TRP and name NE1) or "+ \
         "(resname HIS and name NE2) or (resname LYS and name NZ) or "+ \
         "(resname ARG and name N*) or (resname TYR and name OH) or " +\
         "(resname SER and name OG) or (resname THR and name OG1) or "+\
         "(resname HOH and name O)"
   # What about waters?  No acceptor base, but could distances alone be used?
-  acceptor_selection = "name O or (resname SER and name OG) or "+ \
+  acceptor_selection = "name O"
+  if (params.include_side_chains) :
+    acceptor_selection += " or (resname SER and name OG) or "+ \
         "(resname THR and name OG1) or (resname TYR and name OH) or "+ \
         "(resname ASN and name OD1) or (resname GLN and name OE1)"
-  acceptor_base_selection = "name C or (resname SER and name CB) or "+ \
+  acceptor_base_selection = "name C"
+  if (params.include_side_chains) :
+    acceptor_base_selection += " or (resname SER and name CB) or "+ \
         "(resname THR and name CB) or (resname TYR and name CZ) or "+ \
         "(resname ASN and name CG) or (resname GLN and name CD)"
   selection_cache = pdb_hierarchy.atom_selection_cache()
@@ -382,6 +401,186 @@ def find_implicit_hydrogen_bonds (pdb_hierarchy,
             theta_high=params.implicit.theta_high,
             weight=params.restraints_weight)
         build_proxies.add_nonbonded_exclusion(donor_i_seq, acceptor_i_seq)
+  print >> log, ""
   print >> log, "  %d hydrogen bond restraints generated." % \
     len(build_proxies.proxies)
   return build_proxies
+
+# See Fabiola et al. (2002) Protein Sci. 11:1415-23 for motivation
+class optimize_hbond_restraints (object) :
+  def __init__ (self, model, fmodels, monitors, target_weights, params, nproc,
+      log) :
+    adopt_init_args(self, locals())
+    assert (params.optimize_hbonds or params.optimize_hbonds_thorough)
+    grm = model.restraints_manager.geometry
+    assert ((grm is not None) and (grm.generic_restraints_manager is not None))
+    self.rm = grm.generic_restraints_manager
+    from mmtbx import utils
+    utils.assert_xray_structures_equal(
+      x1 = self.fmodels.fmodel_xray().xray_structure,
+      x2 = self.model.xray_structure)
+    self.save_scatterers = self.fmodels.fmodel_xray().xray_structure.\
+        deep_copy_scatterers().scatterers()
+    make_header("Optimizing H-bond refinement", out=self.log)
+    fmodels.create_target_functors()
+    assert approx_equal(self.fmodels.fmodel_xray().target_w(),
+      self.fmodels.target_functor_result_xray(
+        compute_gradients=False).target_work())
+    trial_settings = []
+    weights = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
+    distances = [2.8, 2.85, 2.9, 2.95, 3.0]
+    thetas_high = [150, 155, 160, 165, 170]
+    thetas_low = [95, 100, 105, 110, 115]
+    cutoffs = [3.4, 3.5, 3.6, 3.7]
+    # first grid search: distance_ideal_n_o vs. restraints_weight
+    # XXX the paper does this a little differently:
+    #  1. optimize weight (separately for MC and SC bonds)
+    #  2. optimize theta_high and theta_low
+    #  3. optimize ideal distance, cutoff, and angle cutoff (not used here)
+    #  4. optimize the weight a final time with parameters from (2) and (3)
+    for w in weights :
+      for rij in distances :
+        trial_settings.append(group_args(
+          distance_ideal_n_o=rij,
+          restraints_weight=w,
+          distance_cut_n_o=self.params.distance_cut_n_o,
+          theta_high=self.params.implicit.theta_high,
+          theta_low=self.params.implicit.theta_low))
+    stdout_and_results = easy_mp.pool_map(
+      fixed_func=self._trial_minimization,
+      args=trial_settings,
+      buffer_stdout_stderr=True)
+    results = [ r for (so, r) in stdout_and_results ]
+    print >> self.log, ps("-" * 70)
+    print >> self.log, ps(" Weight vs. N-O distance:")
+    self.process_results(results, (not params.optimize_hbonds_thorough))
+    if (params.optimize_hbonds_thorough) :
+      # second grid search: theta_high vs. theta_low
+      self.reset_sites()
+      print >> self.log, ps("")
+      trial_settings = []
+      for theta1 in thetas_high :
+        for theta2 in thetas_low :
+          for distance in cutoffs :
+            trial_settings.append(group_args(
+              distance_ideal_n_o=self.params.distance_ideal_n_o,
+              restraints_weight=self.params.restraints_weight,
+              distance_cut_n_o=distance,
+              theta_high=theta1,
+              theta_low=theta2))
+      stdout_and_results = easy_mp.pool_map(
+        fixed_func=self._trial_minimization,
+        args=trial_settings,
+        buffer_stdout_stderr=True)
+      results = [ r for (so, r) in stdout_and_results ]
+      print >> self.log, ps(" Theta high vs. theta low vs. N-O cutoff:")
+      self.process_results(results)
+    print >> self.log, ps("-" * 70)
+
+  def process_results (self, results, print_final_params=True) :
+    results_final = []
+    best_result = None
+    best_r_gap = sys.maxint
+    for result in results :
+      if (result is not None) :
+        results_final.append(result)
+        if (result.r_gap < best_r_gap) :
+          best_r_gap = result.r_gap
+          best_result = result
+    if (len(results_final) != 0) :
+      print >> self.log, ps("      wt  dist   cut theta1 theta2 r_work r_free r_gap")
+      print >> self.log, ps("   " + "-" * 53)
+      for result in results_final :
+        if (result is best_result) :
+          result.show(out=self.log, mark="<<<")
+        else :
+          result.show(out=self.log)
+      self.copy_settings(best_result.settings)
+      self.fmodels.fmodel_xray().xray_structure.set_sites_frac(
+        results[-1].sites_frac)
+      self.fmodels.update_xray_structure(
+        xray_structure = self.fmodels.fmodel_xray().xray_structure,
+        update_f_calc  = True,
+        update_f_mask  = True)
+      self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
+      print >> self.log, ps("   " + "-" * 53)
+      if (print_final_params) :
+        print >> self.log, ps("    Optimized H-bond parameters:")
+        print >> self.log, ps("            Weight (restraints_weight) = %4.2f"%
+          self.params.restraints_weight)
+        print >> self.log, ps("     N-O distance (distance_ideal_n_o) = %5.3f"%
+          self.params.distance_ideal_n_o)
+        print >> self.log, ps("             Cutoff (distance_cut_n_o) = %5.3f"%
+          self.params.distance_cut_n_o)
+        print >> self.log, ps("               High angle (theta_high) = %3.0d"%
+          self.params.implicit.theta_high)
+        print >> self.log, ps("                 Low angle (theta_low) = %3.0d"%
+          self.params.implicit.theta_low)
+    else :
+      print "  No hydrogen bonds found (works for proteins only at present)."
+
+  def copy_settings (self, settings) :
+    self.params.distance_ideal_n_o = settings.distance_ideal_n_o
+    self.params.restraints_weight = settings.restraints_weight
+    self.params.distance_cut_n_o = settings.distance_cut_n_o
+    self.params.implicit.theta_high = settings.theta_high
+    self.params.implicit.theta_low = settings.theta_low
+
+  def reset_sites (self) :
+    self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
+      self.save_scatterers.deep_copy())
+    self.fmodels.update_xray_structure(
+      xray_structure = self.fmodels.fmodel_xray().xray_structure,
+      update_f_calc  = True)
+
+  def _trial_minimization (self, settings) :
+    self.copy_settings(settings)
+    self.rm.update_hydrogen_bonds(
+      pdb_hierarchy=self.model.pdb_hierarchy(),
+      xray_structure=self.model.xray_structure,
+      params=self.params,
+      log=null_out())
+    n_hbonds = self.rm.get_n_hbonds()
+    if (n_hbonds == 0) :
+      return None
+    self.reset_sites()
+    new_sites = self.minimize()
+    return trial_result(
+      r_work=self.fmodels.fmodel_xray().r_work(),
+      r_free=self.fmodels.fmodel_xray().r_free(),
+      settings=settings,
+      sites_frac=new_sites)
+
+  def minimize(self):
+    import mmtbx.refinement.minimization
+    from mmtbx import utils
+    import scitbx.lbfgs
+    utils.assert_xray_structures_equal(
+      x1 = self.fmodels.fmodel_xray().xray_structure,
+      x2 = self.model.xray_structure)
+    self.model.set_refine_individual_sites()
+    minimized = mmtbx.refinement.minimization.lbfgs(
+      restraints_manager       = self.model.restraints_manager,
+      fmodels                  = self.fmodels,
+      model                    = self.model,
+      refine_xyz               = True,
+      target_weights           = self.target_weights)
+    self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
+    assert minimized.xray_structure is self.model.xray_structure
+    utils.assert_xray_structures_equal(
+      x1 = minimized.xray_structure,
+      x2 = self.model.xray_structure)
+    return minimized.xray_structure.sites_frac()
+
+class trial_result (object) :
+  def __init__ (self, r_work, r_free, settings, sites_frac) :
+    adopt_init_args(self, locals())
+    self.r_gap = r_free - r_work
+
+  def show (self, out=None, mark="") :
+    if (out is None) : out = null_out()
+    fs = "    %4.2f %4.3f %4.3f %6.1f %6.1f %6.4f %6.4f %6.4f %3s"
+    print >> out, ps(fs % (self.settings.restraints_weight,
+      self.settings.distance_ideal_n_o, self.settings.distance_cut_n_o,
+      self.settings.theta_high, self.settings.theta_low, self.r_work,
+      self.r_free, self.r_gap, mark))
