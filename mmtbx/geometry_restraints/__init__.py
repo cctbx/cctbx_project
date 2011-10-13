@@ -35,6 +35,11 @@ class manager (object) :
       n_proxies += len(self.den_manager.den_proxies)
     return n_proxies
 
+  def get_n_hbonds (self) :
+    if (self.hydrogen_bond_proxies is not None) :
+      return len(self.hydrogen_bond_proxies)
+    return 0
+
   def restraints_residual_sum (self,
                                sites_cart,
                                gradient_array=None) :
@@ -80,8 +85,11 @@ class manager (object) :
   def update_hydrogen_bonds (self,
                              pdb_hierarchy,
                              xray_structure,
+                             params=None,
                              log=None) :
     from mmtbx.geometry_restraints import hbond
+    if (params is None) :
+      params = self.hydrogen_bond_params
     self.hydrogen_bond_proxies = hbond.find_implicit_hydrogen_bonds(
       pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure,
