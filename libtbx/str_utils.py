@@ -13,6 +13,10 @@ def format_value(format, value, null_value=0, replace_none_with="None"):
       replace_with=replace_none_with)
   return format % value
 
+def pad_string (line, width=72, border="|") :
+  n_spaces = width - (len(border) * 2) - len(line)
+  return border + line + (" " * n_spaces) + border
+
 def split_keeping_spaces(s):
   result = []
   field = []
