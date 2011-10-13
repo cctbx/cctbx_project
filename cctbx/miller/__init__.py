@@ -3703,7 +3703,7 @@ class fft_map(maptbx.crystal_gridding):
     else:
       return flex.real(self._complex_map)
 
-  def real_map_unpadded(self, in_place=True):
+  def real_map_unpadded(self, in_place=False):
     result = self.real_map()
     if (not result.is_padded()): return result
     elif (in_place) :
