@@ -205,6 +205,14 @@ class tile_manager:
           IT[4 * i + 2] -= peripheral_margin
           IT[4 * i + 3] -= peripheral_margin
 
+    if self.working_params.distl.tile_flags is not None:
+      #ASICs whose flags are set to zero are not analyzed by spotfinder
+      expand_flags=[]
+      for flag in self.working_params.distl.tile_flags :
+        expand_flags=expand_flags + [flag]*4
+      bool_flags = flex.bool( flex.int(expand_flags)==1 )
+      return IT.select(bool_flags)
+
     return IT
 
 #if __name__=='__main__':
