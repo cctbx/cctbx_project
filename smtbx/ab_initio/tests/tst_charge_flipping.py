@@ -13,6 +13,7 @@ from cctbx import euclidean_model_matching as emma
 from libtbx import group_args
 
 import scitbx.matrix as mat
+from cStringIO import StringIO
 
 from smtbx.ab_initio import charge_flipping
 
@@ -23,7 +24,6 @@ def randomly_exercise(flipping_type,
                       verbose=False,
                       amplitude_type="F",
                       ):
-  assert amplitude_type in ('F', 'E', 'quasi-E')
 
   # Generate a random structure in real space, that we will try to recover
   target_structure = random_structure.xray_structure(
@@ -34,6 +34,23 @@ def randomly_exercise(flipping_type,
     random_u_iso_scale=0.04,
     use_u_aniso=False,
   )
+  exercise_one_structure(target_structure,
+                         flipping_type,
+                         anomalous_flag,
+                         d_min,
+                         grid_resolution_factor=grid_resolution_factor,
+                         verbose=verbose,
+                         amplitude_type=amplitude_type,
+                         )
+
+def exercise_one_structure(target_structure,
+                           flipping_type,
+                           anomalous_flag,
+                           d_min, grid_resolution_factor=1./2,
+                           verbose=False,
+                           amplitude_type="F",
+                           ):
+  assert amplitude_type in ('F', 'E', 'quasi-E')
 
   # Generate its structure factors
   f_target = miller.build_set(
@@ -64,7 +81,10 @@ def randomly_exercise(flipping_type,
     yield_solving_interval=1,
     **extra.__dict__
   )
-  charge_flipping.loop(solving, verbose=verbose)
+  s = StringIO()
+  charge_flipping.loop(solving, verbose="highly", out=s)
+  if verbose:
+    print s.getvalue()
 
   # check whether a phase transition has occured
   assert solving.had_phase_transition
@@ -74,6 +94,8 @@ def randomly_exercise(flipping_type,
 
   # Euclidean matching of the peaks from the obtained map
   # against those of the correct structure (in P1)
+  target_structure = target_structure.select(
+    target_structure.scattering_types() == "H", negate=True)
   target_structure_in_p1 = target_structure.expand_to_p1()
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
@@ -145,6 +167,23 @@ def randomly_exercise(flipping_type,
   if verbose:
     print "@@ Success @@"
 
+def exercise_sucrose(flipping_type,
+                     anomalous_flag,
+                     d_min,
+                     verbose=False,
+                     amplitude_type='quasi-E'):
+  from smtbx import development
+  target_structure = development.sucrose()
+
+  print "Sucrose"
+  exercise_one_structure(target_structure,
+                         flipping_type,
+                         anomalous_flag,
+                         d_min,
+                         grid_resolution_factor=1/2,
+                         verbose=verbose,
+                         amplitude_type=amplitude_type,
+                         )
 
 def exercise(flags, space_group_info):
   if not flags.repeats: flags.repeats = 1
@@ -183,6 +222,9 @@ def exercise(flags, space_group_info):
   if flags.Verbose: print
 
 def exercise_charge_flipping():
+  #exercise_sucrose(flipping_type=charge_flipping.weak_reflection_improved_iterator,
+                   #anomalous_flag=False,
+                   #d_min=0.7)
   import sys
   debug_utils.parse_options_loop_space_groups(
     sys.argv[1:],
