@@ -84,14 +84,14 @@ class _fft_extension(oop.injector, miller.fft_map):
   tested independently of the charge flipping iterators. """
 
   def flipped_fraction_as_delta(self, fraction):
-    rho = self.real_map_unpadded().as_1d()
+    rho = self.real_map_unpadded(in_place=False).as_1d()
     p = flex.sort_permutation(rho)
     sorted_rho = rho.select(p)
     return sorted_rho[int(fraction * sorted_rho.size())]
   flipped_fraction_as_delta = oop.memoize_method(flipped_fraction_as_delta)
 
   def c_flip(self, delta):
-    rho = self.real_map_unpadded().as_1d()
+    rho = self.real_map_unpadded(in_place=False).as_1d()
     return flex.sum(flex.abs(rho.select(rho < delta)))
   c_flip = oop.memoize_method(c_flip)
 
@@ -269,7 +269,7 @@ class low_density_elimination_iterator(density_modification_iterator):
 
   def shiono_woolfson_rho_c(self):
     """ The rho_c suggested in Ref [4] """
-    rho = self.rho_map.real_map_unpadded().as_1d()
+    rho = self.rho_map.real_map_unpadded(in_place=False).as_1d()
     return 0.2*flex.mean(rho.select(rho >0))
 
 
