@@ -227,6 +227,50 @@ def exercise_implicit () :
       log=None)
     assert (len(build_proxies.proxies) == 232)
 
+def exercise_switching_function () :
+  from mmtbx.geometry_restraints import hbond
+  from cctbx.array_family import flex
+  from cctbx.geometry import distance
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_hbond_restraints_ext")
+  sites = [[0.,0.,0.], [3.49, 0.,0.]]
+  x = []
+  y0 = []
+  y1 = []
+  y2 = []
+  y3 = []
+  for i in range(1000) :
+    sites[1][0] += 0.0001
+    d = distance(sites)
+    sw = ext.switch_fn(d.distance_model, 3.5, 3.55)
+    dsw_dr = ext.d_switch_d_distance(d.distance_model, 3.5, 3.55)
+    d2sw_dr2 = ext.d2_switch_d_distance2(d.distance_model, 3.5, 3.55)
+    x.append(d.distance_model)
+    y0.append(sw)
+    y1.append(dsw_dr)
+    y2.append(d2sw_dr2)
+    sites[1][0] -= 0.0000001
+    d = distance(sites)
+    dsw_dr_1 = ext.d_switch_d_distance(d.distance_model, 3.5, 3.55)
+    sites[1][0] += 0.0000002
+    d = distance(sites)
+    dsw_dr_2 = ext.d_switch_d_distance(d.distance_model, 3.5, 3.55)
+    d2sw_dr2_fd = (dsw_dr_2 - dsw_dr_1) / 0.0000002
+    sites[1][0] -= 0.0000001
+    y3.append(d2sw_dr2_fd)
+    # avoid corners!
+    if ((sites[1][0] < 3.5) or ((sites[1][0] > 3.500001) and
+        (sites[1][0] < 3.55)) or (sites[1][0] > 3.550001)) :
+      assert approx_equal(d2sw_dr2_fd, d2sw_dr2)
+  #from matplotlib import pyplot as plt
+  #fig = plt.figure()
+  #p = fig.add_subplot(111)
+  #p.plot(x, y0, color='r')
+  #p.plot(x, y1, color='g')
+  #p.plot(x, y2, color='b')
+  #p.plot(x, y3, color='k')
+  #plt.show()
+
 def plot_potentials () :
   from mmtbx.geometry_restraints import hbond
   from scitbx.array_family import flex
@@ -274,4 +318,5 @@ if (__name__ == "__main__") :
     exercise_simple()
     exercise_lennard_jones()
     exercise_implicit()
+    exercise_switching_function()
     print "OK"
