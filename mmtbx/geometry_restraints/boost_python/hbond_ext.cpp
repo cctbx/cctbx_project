@@ -145,6 +145,18 @@ namespace {
       arg("proxies")));
     def("implicit_hbonds_as_simple_bonds", implicit_hbonds_as_simple_bonds, (
       arg("proxies")));
+    def("switch_fn", switch_fn, (
+      arg("R_ij"),
+      arg("R_on"),
+      arg("R_off")));
+    def("d_switch_d_distance", d_switch_d_distance, (
+      arg("R_ij"),
+      arg("R_on"),
+      arg("R_off")));
+    def("d2_switch_d_distance2", d2_switch_d_distance2, (
+      arg("R_ij"),
+      arg("R_on"),
+      arg("R_off")));
   }
 
 } // namespace anonymous

@@ -182,6 +182,46 @@ namespace mmtbx { namespace geometry_restraints {
     return d_sw_d_R;
   }
 
+  // the formal second derivative of the switch requires a mix of first
+  // and second derivatives of the distance w.r.t. the sites, which would
+  // require making this a vector function - however, since the second
+  // derivative of the distance is zero, we can just calculate this w.r.t.
+  // the distance instead of the sites.
+  //af::tiny<scitbx::vec3<double>, 2>
+  inline
+  double
+  d2_switch_d_distance2 (
+    //cctbx::geometry::distance<double> const& r_da,
+    double R_ij,
+    double R_on,
+    double R_off)
+  {
+    double a = R_off;
+    double b = R_on;
+    double r = R_ij; //r_da.distance_model;
+    double result = 0;
+    if ((b <= 0) || (a <= 0)) {
+      return result;
+    } else if ((r < b) || (r > a)) {
+      return result;
+    }
+    MMTBX_ASSERT((R_off >= R_on) && (R_on > 0));
+    double a2 = a*a;
+    double b2 = b*b;
+    double r2 = r*r;
+    double a2r2 = a2 - r2;
+    double a2b2_3 = (a2 - b2) * (a2 - b2) * (a2 - b2);
+    double a23b22r2 = a2 - 3*b2 + 2*r2;
+    double _term_12 = a2r2 / a2b2_3;
+    double term1 = -32 * r2 * _term_12;
+    double term2 = 4 * a2r2 * _term_12;
+    double _term_34 = a23b22r2 / a2b2_3;
+    double term3 = 8 * r2 * _term_34;
+    double term4 = 4 * a2r2 * _term_34;
+    result = term1 + term2 + term3 - term4;
+    return result;
+  }
+
   inline
   double
   eval_lennard_jones_energy(
