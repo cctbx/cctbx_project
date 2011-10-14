@@ -1428,7 +1428,7 @@ def exercise_fft_map():
     assert approx_equal(fft_map.max_prime(), 5)
     assert fft_map.anomalous_flag() == anomalous_flag
     assert fft_map.real_map().size() > 0
-    assert not fft_map.real_map_unpadded().is_padded()
+    assert not fft_map.real_map_unpadded(in_place=False).is_padded()
     if (anomalous_flag):
       assert fft_map.complex_map().size() > 0
 
