@@ -77,6 +77,15 @@ def exercise_crystal_symmetry_utils():
     sio = StringIO(sio.getvalue())
     cs2 = iotbx.cns.crystal_symmetry_from_inp.extract_from(file=sio)
     assert cs1.is_similar_symmetry(cs2)
+  #
+  uc_sg = """\
+a= 82.901 b= 82.901 c= 364.175 alpha= 90 beta= 90 gamma= 120 sg= P6(5)22"""
+  m = re.match(iotbx.cns.crystal_symmetry_utils.re_uc_sg, uc_sg)
+  cs = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_from_re_match(
+    m=m, i_uc=1, i_sg=7)
+  assert cs is not None
+  assert str(cs.unit_cell()) == "(82.901, 82.901, 364.175, 90, 90, 120)"
+  assert str(cs.space_group().info()) == "P 65 2 2"
 
 def exercise_sdb(verbose=0):
   structure = random_structure.xray_structure(
@@ -111,13 +120,51 @@ def exercise_sdb(verbose=0):
   assert abs(regression.y_intercept()) < 1.e-3
 
 def exercise_reflection_reader():
+  crf = iotbx.cns.reflection_reader.cns_reflection_file
   try:
     # just to make sure a bug in handling {} doesn't get reintroduced
-    iotbx.cns.reflection_reader.cns_reflection_file(file_handle=StringIO("}{"))
+    crf(file_handle=StringIO("}{"))
   except iotbx.cns.reflection_reader.CNS_input_Error, e:
     assert str(e) == "premature end-of-file"
   else:
     raise Exception_expected
+  #
+  def check(expected):
+    c = crf(file_handle=si)
+    so = StringIO()
+    c.crystal_symmetry().show_summary(f=so)
+    assert not show_diff(so.getvalue(), expected)
+  si = StringIO("""\
+remark a= 40.000 b= 50.000 c=  60.000 alpha= 90 beta= 90 gamma= 90 sg= P2
+remark symop (X,Y,Z)
+remark symop (-X,-Y,Z)
+CRYST1   10.000   20.000   30.000  90.00  90.00  90.00 P 1 21 1
+DECLare NAME=FOBS                   DOMAin=RECIprocal   TYPE=REAL END
+INDE     1    2    3 FOBS=   380.500
+""")
+  check("""\
+Unit cell: (40, 50, 60, 90, 90, 90)
+Space group: P 1 1 2 (No. 3)
+""")
+  si = StringIO("""\
+remark a= 40.000 b= 50.000 c=  60.000 alpha= 90 beta= 90 gamma= 90 sg= P2
+CRYST1   10.000   20.000   30.000  90.00  90.00  90.00 P 1 21 1
+DECLare NAME=FOBS                   DOMAin=RECIprocal   TYPE=REAL END
+INDE     1    2    3 FOBS=   380.500
+""")
+  check("""\
+Unit cell: (40, 50, 60, 90, 90, 90)
+Space group: P 1 2 1 (No. 3)
+""")
+  si = StringIO("""\
+CRYST1   10.000   20.000   30.000  90.00  90.00  90.00 P 1 21 1
+DECLare NAME=FOBS                   DOMAin=RECIprocal   TYPE=REAL END
+INDE     1    2    3 FOBS=   380.500
+""")
+  check("""\
+Unit cell: (10, 20, 30, 90, 90, 90)
+Space group: P 1 21 1 (No. 4)
+""")
 
 def exercise_miller_array_as_cns_hkl():
   s = StringIO()
