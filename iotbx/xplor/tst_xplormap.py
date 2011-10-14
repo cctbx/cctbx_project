@@ -155,7 +155,7 @@ def exercise_fft_map_as_xplor_map(space_group_info, n_elements=10, d_min=3):
   assert read.gridding.n == fft_map.n_real()
   assert approx_equal(flex.linear_correlation(
     read.data.as_1d(),
-    fft_map.real_map_unpadded().as_1d()).coefficient(), 1)
+    fft_map.real_map_unpadded(in_place=False).as_1d()).coefficient(), 1)
   for first,last in [[(0,0,0),(3,5,6)],
                      [(-1,-3,4),(6,4,5)],
                      [(-2,3,0),(-2,3,0)],
