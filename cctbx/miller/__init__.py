@@ -3689,6 +3689,7 @@ class fft_map(maptbx.crystal_gridding):
     if (f_000 is not None):
       assert map.complex_map()[0] == 0j
       map.complex_map()[0] = complex(f_000)
+    self._real_map_accessed = False
     if (not self.anomalous_flag()):
       self._real_map = rfft.backward(map.complex_map())
     else:
@@ -3697,14 +3698,19 @@ class fft_map(maptbx.crystal_gridding):
   def anomalous_flag(self):
     return self._anomalous_flag
 
-  def real_map(self):
+  def real_map(self, direct_access=True):
     if (not self.anomalous_flag()):
+      assert ((self._real_map.is_padded()) or (not direct_access))
+      if (direct_access) :
+        self._real_map_accessed = True
       return self._real_map
     else:
       return flex.real(self._complex_map)
 
-  def real_map_unpadded(self, in_place=False):
-    result = self.real_map()
+  def real_map_unpadded(self, in_place=True):
+    if (in_place) :
+      assert (not self._real_map_accessed)
+    result = self.real_map(direct_access=False)
     if (not result.is_padded()): return result
     elif (in_place) :
       maptbx.unpad_in_place(map=result)
@@ -3717,7 +3723,7 @@ class fft_map(maptbx.crystal_gridding):
     return self._complex_map
 
   def statistics(self):
-    return maptbx.statistics(self.real_map())
+    return maptbx.statistics(self.real_map(direct_access=False))
 
   def apply_scaling(self, scale):
     if (not self.anomalous_flag()):
@@ -3744,7 +3750,7 @@ class fft_map(maptbx.crystal_gridding):
   def peak_search(self, parameters=None, verify_symmetry=True):
     return self.tags().peak_search(
       parameters=parameters,
-      map=self.real_map(),
+      map=self.real_map(direct_access=False),
       verify_symmetry=verify_symmetry)
 
   def as_ccp4_map (self,
@@ -3753,7 +3759,7 @@ class fft_map(maptbx.crystal_gridding):
                    gridding_last=None,
                    labels=["cctbx.miller.fft_map"]) :
     from iotbx import ccp4_map
-    map_data = self.real_map()
+    map_data = self.real_map(direct_access=False)
     if gridding_first is None :
       gridding_first = (0,0,0)
     if gridding_last is None :

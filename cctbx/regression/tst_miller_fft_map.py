@@ -63,7 +63,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
       n_real=fft_map.n_real(),
       miller_indices=f_obs.indices(),
       data=f_obs.data())
-    fft_map_unpadded = fft_map.real_map_unpadded()
+    fft_map_unpadded = fft_map.real_map_unpadded(in_place=False)
     assert approx_equal(
       flex.linear_correlation(
         fft_map_unpadded.as_1d(), maptbx_fft_map.as_1d()).coefficient(), 1)
