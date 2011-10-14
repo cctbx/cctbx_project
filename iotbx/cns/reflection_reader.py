@@ -1,7 +1,7 @@
 "Transfer of CNS reflection files to flex arrays."
 
 from iotbx.cns.crystal_symmetry_utils import \
-  re_sg_uc, crystal_symmetry_from_re_match
+  re_sg_uc, re_uc_sg, crystal_symmetry_from_re_match
 from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
@@ -39,12 +39,22 @@ class CNS_input(object):
     self._LastWord = ""
     self.level = 0
     self.comments = []
+    self.remarks = []
+    self.cryst1s = []
 
   def getNextWord(self, word_len = 0):
     while (len(self._buffer) == 0):
       line = self._readline()
       if (line == ""): raise EOFError
-      self._LineNo = self._LineNo + 1
+      self._LineNo += 1
+      if (line.upper().startswith("REMARK ")):
+        self.remarks.append(line)
+        continue
+      if (line.startswith("CRYST1")
+            and len(line) >= 57
+              and " +-.0123456789".find(line[6]) >= 0):
+        self.cryst1s.append(line)
+        continue
       # XXX take care of quotes
       i = line.find("!")
       if (i >= 0): line = line[:i]
@@ -60,8 +70,8 @@ class CNS_input(object):
             break
           next_line = self._readline()
           if (next_line == ""): raise EOFError
-          line = line + next_line
-        self.level = self.level - 1
+          line += next_line
+        self.level -= 1
       line = line.replace("=", " ")
       self._buffer = line.upper().split()
       self._buffer.reverse()
@@ -234,14 +244,14 @@ class CNS_xray_reflection_Reader(CNS_input):
     to_obj.reciprocal_space_objects = {}
     to_obj.groups = []
     current_hkl = None
-    reuse_word = 0
+    reuse_word = False
     n_words_processed = 0
     try:
-      while 1:
+      while True:
         if (not reuse_word):
           word = gNW(4)
           n_words_processed += 1
-        reuse_word = 0
+        reuse_word = False
         if (word == "INDE"):
           self.level = self.level + 1
           h = [None] * 3
@@ -263,9 +273,8 @@ class CNS_xray_reflection_Reader(CNS_input):
           self._read_group(to_obj.reciprocal_space_objects, to_obj.groups)
         else:
           word = gLW()
-          try:
-            rso = to_obj.reciprocal_space_objects[word]
-          except KeyError:
+          rso = to_obj.reciprocal_space_objects.get(word)
+          if (rso is None):
             self.raiseError("unrecognized keyword")
           type = rso.type
           self.level = self.level + 1
@@ -289,7 +298,7 @@ class CNS_xray_reflection_Reader(CNS_input):
                 try:
                   phase = float(word)
                 except ValueError:
-                  reuse_word = 1 # declared complex but only real part given
+                  reuse_word = True # declared complex but only real part given
                 else:
                   value = complex_math.polar((value, phase), deg=True)
                   if (phase != 0):
@@ -307,7 +316,52 @@ class cns_reflection_file(object):
     reader = CNS_xray_reflection_Reader(file_handle)
     reader.load(self)
     self.optimize()
+    self.remarks = reader.remarks
+    self.cryst1s = reader.cryst1s
     self.comments = reader.comments
+
+  def space_group_from_remark_symop(self):
+    from cctbx import sgtbx
+    result = None
+    for remark in self.remarks:
+      remark = remark[6:].strip().replace(" ", "").lower()
+      if (    remark.startswith("symop(")
+          and remark.endswith(")")):
+        s = remark[6:-1]
+        try:
+          s = sgtbx.rt_mx(s)
+        except RuntimeError:
+          pass
+        else:
+          if (result is None):
+            result = sgtbx.space_group()
+          result.expand_smx(s)
+    return result
+
+  def crystal_symmetry_from_remark_uc_sg(self):
+    sg = self.space_group_from_remark_symop()
+    for remark in self.remarks:
+      remark = remark[6:].strip()
+      m = re.match(re_uc_sg, remark)
+      if (m is None): continue
+      result = crystal_symmetry_from_re_match(m=m, i_uc=1, i_sg=7)
+      if (result is not None):
+        if (sg is not None):
+          result = crystal.symmetry(
+            unit_cell=result.unit_cell(),
+            space_group=sg)
+        return result
+    return None
+
+  def crystal_symmetry_from_cryst1(self):
+    for record in self.cryst1s:
+      from iotbx.pdb import cryst1_interpretation
+      result = cryst1_interpretation.crystal_symmetry(cryst1_record=record)
+      if (result is not None
+            and result.unit_cell() is not None
+            and result.space_group_info() is not None):
+        return result
+    return None
 
   def crystal_symmetry_from_comments(self):
     for comment in self.comments:
@@ -320,7 +374,11 @@ class cns_reflection_file(object):
   def crystal_symmetry(self,
         crystal_symmetry=None,
         force_symmetry=False):
-    self_symmetry = self.crystal_symmetry_from_comments()
+    self_symmetry = self.crystal_symmetry_from_remark_uc_sg()
+    if (self_symmetry is None):
+      self_symmetry = self.crystal_symmetry_from_cryst1()
+    if (self_symmetry is None):
+      self_symmetry = self.crystal_symmetry_from_comments()
     if (crystal_symmetry is None):
       return self_symmetry
     if (self_symmetry is None):
