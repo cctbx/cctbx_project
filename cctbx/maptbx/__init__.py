@@ -89,21 +89,19 @@ class crystal_gridding(object):
     else:
       assert d_min is None
       assert step is None
-      assert symmetry_flags is None
       assert mandatory_factors is None
     adopt_init_args(self, locals(), hide=True)
-    if (symmetry_flags is not None):
-      assert pre_determined_n_real is None
+    if (pre_determined_n_real is not None):
+      self._n_real = pre_determined_n_real
+    elif (symmetry_flags is not None):
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
         symmetry_flags, space_group_info.type(),
         mandatory_factors, max_prime, assert_shannon_sampling)
-    elif (pre_determined_n_real is None):
+    else:
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
         mandatory_factors, max_prime, assert_shannon_sampling)
-    else:
-      self._n_real = pre_determined_n_real
 
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell
