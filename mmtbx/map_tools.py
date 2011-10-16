@@ -37,12 +37,13 @@ class kick_map(object):
         fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
                                          update_f_calc  = True,
                                          update_f_mask  = False)
+        # XXX need to call average_bijvoet_mates() regardless of whether the
+        # data are anomalous - otherwise the assertion below will fail with
+        # some datasets.  there may be a quicker way to do this, but in the
+        # context of kicked map computation it does not appear to matter.
         self.map_coeffs = fmodel_tmp.electron_density_map().map_coefficients(
             map_type = map_type,
-            external_alpha_fom_source = map_helper_obj)
-        #
-        if(self.map_coeffs.anomalous_flag()):
-          self.map_coeffs = self.map_coeffs.average_bijvoet_mates()
+            external_alpha_fom_source = map_helper_obj).average_bijvoet_mates()
         assert isotropize_helper.iso_scale.indices().all_eq(
           self.map_coeffs.indices())
         #
