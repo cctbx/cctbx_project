@@ -13,7 +13,7 @@ import scitbx.array_family.shared # import dependency
 import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.str_utils import show_string
-from libtbx.utils import plural_s, hashlib_md5, date_and_time
+from libtbx.utils import plural_s, hashlib_md5, date_and_time, Sorry
 from libtbx import Auto
 from cStringIO import StringIO
 import sys
@@ -915,12 +915,15 @@ class _(boost.python.injector, ext.input):
       scale_t)
     special_position_settings = crystal_symmetry.special_position_settings(
       min_distance_sym_equiv=min_distance_sym_equiv)
-    while (loop.next()):
-      result.append(xray.structure(
-        special_position_settings=special_position_settings,
-        scatterers=loop.scatterers,
-        non_unit_occupancy_implies_min_distance_sym_equiv_zero=
-          non_unit_occupancy_implies_min_distance_sym_equiv_zero))
+    try :
+      while (loop.next()):
+        result.append(xray.structure(
+          special_position_settings=special_position_settings,
+          scatterers=loop.scatterers,
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+            non_unit_occupancy_implies_min_distance_sym_equiv_zero))
+    except ValueError, e :
+      raise Sorry(str(e))
     return result
 
 class rewrite_normalized(object):

@@ -123,7 +123,7 @@ namespace iotbx { namespace pdb {
                  scatterer.scattering_type = std::string("IS")+ias_type;
               }
               else {
-                throw std::runtime_error(
+                throw std::invalid_argument(
                   std::string("Unknown chemical element type:\n")
                   + "  " + atom->quote() + "\n");
               }
@@ -132,7 +132,7 @@ namespace iotbx { namespace pdb {
               boost::optional<std::string>
                 chemical_element = atom->determine_chemical_element_simple();
               if (!chemical_element && !enable_scattering_type_unknown_) {
-                throw std::runtime_error(
+                throw std::invalid_argument(
                   std::string("Unknown chemical element type:\n")
                   + "  " + atom->quote() + "\n"
                   + "  To resolve this problem, specify a"
@@ -144,7 +144,7 @@ namespace iotbx { namespace pdb {
                 charge_tidy = atom->charge_tidy();
               if (!charge_tidy) {
                 if (!enable_scattering_type_unknown_) {
-                  throw std::runtime_error(
+                  throw std::invalid_argument(
                     std::string("Unknown charge:\n")
                     + "  " + atom->quote() + "\n"
                     + "                                       ^^");
@@ -168,7 +168,7 @@ namespace iotbx { namespace pdb {
                 scatterer.scattering_type = "unknown";
               }
               else {
-                throw std::runtime_error(
+                throw std::invalid_argument(
                   std::string("Unknown scattering type:\n")
                   + "  " + atom->quote() + "\n"
                   + "               ^^^^                  ^^^^");
