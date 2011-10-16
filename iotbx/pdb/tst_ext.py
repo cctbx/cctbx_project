@@ -2,7 +2,7 @@ from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal
 from cctbx.array_family import flex
-from libtbx.utils import hashlib_md5, \
+from libtbx.utils import Sorry, hashlib_md5, \
   user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
@@ -829,7 +829,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
   assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
-  except RuntimeError, e:
+  except Sorry, e:
     assert not show_diff(str(e), """\
 Unknown chemical element type:
   "ATOM      1  N   GLN A   3 .*.STUV A  "
@@ -846,7 +846,7 @@ ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
   assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
-  except RuntimeError, e:
+  except Sorry, e:
     assert not show_diff(str(e), """\
 Unknown chemical element type:
   "ATOM      1 1A   GLN A   3 .*.        "
@@ -863,7 +863,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           Bx5
   assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
-  except RuntimeError, e:
+  except Sorry, e:
     assert not show_diff(str(e), '''\
 Unknown charge:
   "ATOM      1  N   GLN A   3 .*.     Bx5"
@@ -890,7 +890,7 @@ Number of scattering types: 1
 """)
   try:
     pdb_inp.xray_structure_simple(scattering_type_exact=True)
-  except RuntimeError, e:
+  except Sorry, e:
     assert not show_diff(str(e), '''\
 Unknown scattering type:
   "ATOM      1  N   GLN A   3 .*.    Cs3-"
