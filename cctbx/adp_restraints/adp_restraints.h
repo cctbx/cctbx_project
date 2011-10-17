@@ -425,89 +425,110 @@ namespace cctbx { namespace adp_restraints {
     af::shared<double> deltas_;
   };
 
-  /*! Fast computation of sum of fixed_u_eq_adp::residual() and gradients
-      given an array of isotropic_adp proxies.
-   */
-  /*! The fixed_u_eq_adp::gradients() are added to the gradient_array if
-      gradient_array.size() == sites_cart.size().
-      gradient_array must be initialized before this function
-      is called.
-      No gradient calculations are performed if gradient_array.size() == 0.
-   */
-  template <typename ProxyType, typename RestraintType>
-  double adp_restraint_residual_sum(
-    adp_restraint_params<double> const &params,
-    af::const_ref<ProxyType> const& proxies,
-    af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart,
-    af::ref<double> const& gradients_iso)
+  template <typename ProxyType, typename RestraintsType>
+  struct adp_restraint_residual_sum
   {
-    CCTBX_ASSERT(gradients_aniso_cart.size() == 0 ||
-      gradients_aniso_cart.size() == params.u_cart.size());
-    CCTBX_ASSERT(gradients_aniso_cart.size() == gradients_iso.size());
-    double result = 0;
-    for(std::size_t i=0; i<proxies.size(); i++) {
-      RestraintType restraint(params, proxies[i]);
-      result += restraint.residual();
-      if (gradients_aniso_cart.size() != 0) {
-        restraint.add_gradients(
-          gradients_aniso_cart, gradients_iso, proxies[i].i_seqs);
+    /*! Fast computation of sum of fixed_u_eq_adp::residual() and gradients
+        given an array of isotropic_adp proxies.
+     */
+    /*! The fixed_u_eq_adp::gradients() are added to the gradient_array if
+        gradient_array.size() == sites_cart.size().
+        gradient_array must be initialized before this function
+        is called.
+        No gradient calculations are performed if gradient_array.size() == 0.
+     */
+    static
+    double
+    impl(
+      adp_restraint_params<double> const &params,
+      af::const_ref<ProxyType> const& proxies,
+      af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart,
+      af::ref<double> const& gradients_iso)
+    {
+      CCTBX_ASSERT(gradients_aniso_cart.size() == 0 ||
+        gradients_aniso_cart.size() == params.u_cart.size());
+      CCTBX_ASSERT(gradients_aniso_cart.size() == gradients_iso.size());
+      double result = 0;
+      for(std::size_t i=0; i<proxies.size(); i++) {
+        RestraintsType restraint(params, proxies[i]);
+        result += restraint.residual();
+        if (gradients_aniso_cart.size() != 0) {
+          restraint.add_gradients(
+            gradients_aniso_cart, gradients_iso, proxies[i].i_seqs);
+        }
       }
+      return result;
     }
-    return result;
-  }
+  };
 
   /* similar to the function above - specialised for anisotropic gradients only
   */
-  template <typename ProxyType, typename RestraintType>
-  double adp_restraint_residual_sum_aniso(
-    adp_restraint_params<double> const &params,
-    af::const_ref<ProxyType> const& proxies,
-    af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart)
+  template <typename ProxyType, typename RestraintsType>
+  struct adp_restraint_residual_sum_aniso
   {
-    CCTBX_ASSERT(gradients_aniso_cart.size() == 0 ||
-      gradients_aniso_cart.size() == params.u_cart.size());
-    double result = 0;
-    for(std::size_t i=0; i<proxies.size(); i++) {
-      RestraintType restraint(params, proxies[i]);
-      result += restraint.residual();
-      if (gradients_aniso_cart.size() != 0) {
-        restraint.add_gradients(gradients_aniso_cart, proxies[i].i_seqs);
+    static
+    double
+    impl(
+      adp_restraint_params<double> const &params,
+      af::const_ref<ProxyType> const& proxies,
+      af::ref<scitbx::sym_mat3<double> > const& gradients_aniso_cart)
+    {
+      CCTBX_ASSERT(gradients_aniso_cart.size() == 0 ||
+        gradients_aniso_cart.size() == params.u_cart.size());
+      double result = 0;
+      for(std::size_t i=0; i<proxies.size(); i++) {
+        RestraintsType restraint(params, proxies[i]);
+        result += restraint.residual();
+        if (gradients_aniso_cart.size() != 0) {
+          restraint.add_gradients(gradients_aniso_cart, proxies[i].i_seqs);
+        }
       }
+      return result;
     }
-    return result;
-  }
+  };
 
-  /*! \brief Fast computation of isotropic_adp::residual() given an array
-      of the proxies.
-   */
   template <typename ProxyType, typename RestraintType>
-  af::shared<double> adp_restraint_residuals(
-    adp_restraint_params<double> const &params,
-    af::const_ref<ProxyType> const& proxies)
+  struct adp_restraint_residuals
   {
-    af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0; i<proxies.size(); i++) {
-      result.push_back(
-        RestraintType(params, proxies[i]).residual());
+    /*! \brief Fast computation of isotropic_adp::residual() given an array
+        of the proxies.
+     */
+    static
+    af::shared<double>
+    impl(
+      adp_restraint_params<double> const &params,
+      af::const_ref<ProxyType> const& proxies)
+    {
+      af::shared<double> result((af::reserve(proxies.size())));
+      for(std::size_t i=0; i<proxies.size(); i++) {
+        result.push_back(
+          RestraintType(params, proxies[i]).residual());
+      }
+      return result;
     }
-    return result;
-  }
+  };
 
   /*! \brief Fast computation of fixed_u_eq_adp::rms_deltas() given an array
       of the proxies.
    */
   template <typename ProxyType, typename RestraintType>
-  af::shared<double> adp_restraint_deltas_rms(
-    adp_restraint_params<double> const &params,
-    af::const_ref<ProxyType> const& proxies)
+  struct adp_restraint_deltas_rms
   {
-    af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0; i<proxies.size(); i++) {
-      result.push_back(
-        RestraintType(params, proxies[i]).rms_deltas());
+    static
+    af::shared<double>
+    impl(
+      adp_restraint_params<double> const &params,
+      af::const_ref<ProxyType> const& proxies)
+    {
+      af::shared<double> result((af::reserve(proxies.size())));
+      for(std::size_t i=0; i<proxies.size(); i++) {
+        result.push_back(
+          RestraintType(params, proxies[i]).rms_deltas());
+      }
+      return result;
     }
-    return result;
-  }
+  };
 
 }} // cctbx::adp_restraints
-#endif
+
+#endif // GUARD

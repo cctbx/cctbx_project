@@ -26,20 +26,16 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       def("linearise_restraints",
-      (void(*) (
-        cctbx::uctbx::unit_cell const &,
-        cctbx::adp_restraints::adp_restraint_params<double> const &,
-        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &,
-        af::const_ref<ProxyType> const &,
-        cctbx::restraints::linearised_eqns_of_restraint<double> &))
-        cctbx::restraints::linearise_restraints<
-          double, cctbx::adp_restraints::adp_restraint_params<double>,
-          ProxyType, RestraintType>,
-        (arg("unit_cell"),
-         arg("params"),
-         arg("parameter_map"),
-         arg("proxies"),
-         arg("linearised_eqns")));
+        cctbx::restraints::linearise_restraints_with_params<
+          double,
+          cctbx::adp_restraints::adp_restraint_params<double>,
+          ProxyType,
+          RestraintType>::impl, (
+            arg("unit_cell"),
+            arg("params"),
+            arg("parameter_map"),
+            arg("proxies"),
+            arg("linearised_eqns")));
     }
   };
 
@@ -71,19 +67,13 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       def("linearise_restraints",
-        (void(*) (
-          cctbx::uctbx::unit_cell const &,
-          af::const_ref<scitbx::vec3<FloatType> > const &,
-          cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const &,
-          af::const_ref<ProxyType> const &,
-          cctbx::restraints::linearised_eqns_of_restraint<FloatType> &))
-          cctbx::restraints::linearise_restraints<
-            FloatType, ProxyType, RestraintType>,
-          (arg("unit_cell"),
-           arg("sites_cart"),
-           arg("parameter_map"),
-           arg("proxies"),
-           arg("restraints_matrix")));
+        cctbx::restraints::linearise_restraints_with_parameter_map<
+          FloatType, ProxyType, RestraintType>::impl, (
+            arg("unit_cell"),
+            arg("sites_cart"),
+            arg("parameter_map"),
+            arg("proxies"),
+            arg("restraints_matrix")));
     }
   };
 
