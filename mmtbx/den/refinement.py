@@ -51,6 +51,7 @@ class manager(object):
     elif "cartesian" in params.den.annealing_type:
       print >> self.log, "Running Cartesian simulated annealing"
       stdout_and_results = easy_mp.pool_map(
+        processes=params.main.nproc,
         fixed_func=self.try_den_weight_cartesian,
         args=grid,
         buffer_stdout_stderr=True)
