@@ -154,7 +154,10 @@ def run (args, log=sys.stdout) :
 def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp") :
   assert (blast_type in ["blastp", "blastn"])
   assert (sequence.isalpha())
-  from Bio.Blast import NCBIWWW
+  try :
+    from Bio.Blast import NCBIWWW
+  except ImportError :
+    raise Sorry("You need to have BioPython installed to use this function.")
   blast = NCBIWWW.qblast(blast_type, "pdb", sequence)
   blast_out = blast.read()
   if (file_name is not None) :
