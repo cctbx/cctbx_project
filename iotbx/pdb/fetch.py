@@ -150,3 +150,15 @@ def run (args, log=sys.stdout) :
           os.remove("%s-sf.cif" % id)
         files[-1] = os.path.abspath("%s.mtz" % id)
     return files
+
+def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp") :
+  assert (blast_type in ["blastp", "blastn"])
+  assert (sequence.isalpha())
+  from Bio.Blast import NCBIWWW
+  blast = NCBIWWW.qblast(blast_type, "pdb", sequence)
+  blast_out = blast.read()
+  if (file_name is not None) :
+    f = open(file_name, "w")
+    f.write(blast_out)
+    f.close()
+  return blast_out
