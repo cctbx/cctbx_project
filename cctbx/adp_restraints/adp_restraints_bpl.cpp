@@ -53,95 +53,63 @@ namespace {
 
   struct functions_wrapper {
     template <class ProxyType, class RestraintType>
-    static void wrap_6(std::string name) {
+    static void
+    wrap_6(std::string name) {
       using namespace boost::python;
       def((name+"_residual_sum").c_str(),
-        (double (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &,
-          af::ref<scitbx::sym_mat3<double> > const &,
-          af::ref<double> const &))
-        &adp_restraint_residual_sum<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies"),
-         arg("gradients_aniso_cart"),
-         arg("gradients_iso")));
+        adp_restraint_residual_sum<ProxyType, RestraintType>::impl, (
+          arg("params"),
+          arg("proxies"),
+          arg("gradients_aniso_cart"),
+          arg("gradients_iso")));
       def((name+"_residual_sum").c_str(),
-        (double (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &,
-          af::ref<scitbx::sym_mat3<double> > const &))
-        &adp_restraint_residual_sum_aniso<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies"),
-         arg("gradients_aniso_cart")));
+        adp_restraint_residual_sum_aniso<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies"),
+          arg("gradients_aniso_cart")));
       def((name+"_residuals").c_str(),
-        (af::shared<double> (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &))
-        &adp_restraint_residuals<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies")));
+        adp_restraint_residuals<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies")));
       def((name+"_deltas_rms").c_str(),
-        (af::shared<double> (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &))
-        &adp_restraint_deltas_rms<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies")));
+        adp_restraint_deltas_rms<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies")));
     }
 
     template <class ProxyType, class RestraintType>
-    static void wrap_n(std::string name) {
+    static void
+    wrap_n(std::string name) {
       using namespace boost::python;
       def((name+"_residual_sum").c_str(),
-        (double (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &,
-          af::ref<scitbx::sym_mat3<double> > const &,
-          af::ref<double> const &))
-        &adp_restraint_residual_sum<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies"),
-         arg("gradients_aniso_cart"),
-         arg("gradients_iso")));
+        adp_restraint_residual_sum<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies"),
+          arg("gradients_aniso_cart"),
+          arg("gradients_iso")));
       def((name+"_residuals").c_str(),
-        (af::shared<double> (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &))
-        &adp_restraint_residuals<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies")));
+        adp_restraint_residuals<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies")));
       def((name+"_deltas_rms").c_str(),
-        (af::shared<double> (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &))
-        &adp_restraint_deltas_rms<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies")));
+        adp_restraint_deltas_rms<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies")));
     }
 
     template <typename ProxyType, typename RestraintType>
     static void wrap_1(std::string name) {
       using namespace boost::python;
       def((name+"_residual_sum").c_str(),
-        (double (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &,
-          af::ref<scitbx::sym_mat3<double> > const &,
-          af::ref<double> const &))
-        &adp_restraint_residual_sum<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies"),
-         arg("gradients_aniso_cart"),
-         arg("gradients_iso")));
+        adp_restraint_residual_sum<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies"),
+          arg("gradients_aniso_cart"),
+          arg("gradients_iso")));
       def((name+"_residuals").c_str(),
-        (af::shared<double> (*)(
-          adp_restraint_params<double> const &,
-          af::const_ref<ProxyType> const &))
-        &adp_restraint_residuals<ProxyType,RestraintType>,
-        (arg("params"),
-         arg("proxies")));
+        adp_restraint_residuals<ProxyType,RestraintType>::impl, (
+          arg("params"),
+          arg("proxies")));
     }
   };
 
@@ -223,11 +191,14 @@ namespace {
       wrap_restraint_base_6();
       wrap_restraint_base_1();
       functions_wrapper::wrap_6<
-        isotropic_adp_proxy, isotropic_adp>("isotropic_adp");
+        isotropic_adp_proxy,
+        isotropic_adp>("isotropic_adp");
       functions_wrapper::wrap_1<
-        fixed_u_eq_adp_proxy, fixed_u_eq_adp>("fixed_u_eq_adp");
+        fixed_u_eq_adp_proxy,
+        fixed_u_eq_adp>("fixed_u_eq_adp");
       functions_wrapper::wrap_6<
-        adp_similarity_proxy, adp_similarity>("adp_similarity");
+        adp_similarity_proxy,
+        adp_similarity>("adp_similarity");
     }
   };
   static void wrap_proxy_n() {

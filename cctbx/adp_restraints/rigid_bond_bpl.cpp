@@ -97,12 +97,12 @@ namespace {
 
     rigid_bond_proxy_wrappers::wrap();
       def("rigid_bond_residual_sum",
-        adp_restraint_residual_sum_aniso<rigid_bond_proxy,rigid_bond>,
+        adp_restraint_residual_sum_aniso<rigid_bond_proxy,rigid_bond>::impl,
         (arg("params"),
          arg("proxies"),
          arg("gradients_aniso_cart")));
       def("rigid_bond_residuals",
-        adp_restraint_residuals<rigid_bond_proxy,rigid_bond>,
+        adp_restraint_residuals<rigid_bond_proxy,rigid_bond>::impl,
         (arg("params"),
          arg("proxies")));
       def("rigid_bond_deltas",
