@@ -1,6 +1,7 @@
 
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from libtbx.utils import Sorry
+from libtbx import Auto
 import wx
 import sys
 
@@ -28,7 +29,7 @@ class FloatCtrl (ValidatedTextCtrl) :
     return FloatValidator()
 
   def SetFloat (self, value) :
-    if (value is None) :
+    if (value is None) or (value is Auto) :
       ValidatedTextCtrl.SetValue(self, "")
     elif (isinstance(value, float) or isinstance(value, int)) :
       ValidatedTextCtrl.SetValue(self, str(value))
