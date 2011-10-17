@@ -674,7 +674,8 @@ class heuristics_base(object):
             overlapping_count+=1
         except Exception:
           pass
-      percent_overlap = 100*overlapping_count/len(sep_input_spots)
+      if len(sep_input_spots)==0: percent_overlap = 0
+      else: percent_overlap = 100*overlapping_count/len(sep_input_spots)
       #print "overlap %2.0f%% vs. cutoff %2.0f%%"%(percent_overlap,self.phil_params.percent_overlap_forcing_detail)
 
       from spotfinder.core_toolbox.close_spots_detail import NearNeighborVectors
