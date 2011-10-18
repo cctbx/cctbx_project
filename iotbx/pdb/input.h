@@ -110,7 +110,7 @@ namespace iotbx { namespace pdb {
       check_and_throw_runtime_error() const
       {
         if (error_column_ == 0) return;
-        throw std::runtime_error(format_exception_message());
+        throw std::invalid_argument(format_exception_message());
       }
 
       bool

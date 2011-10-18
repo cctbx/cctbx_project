@@ -1172,7 +1172,7 @@ namespace detail {
     }
     chain_indices_ = chain_tracker.finish();
     if (model_record_oversight.expecting_endmdl_record()) {
-      throw std::runtime_error("ENDMDL record missing at end of input.");
+      throw std::invalid_argument("ENDMDL record missing at end of input.");
     }
     if (   model_indices_.size() == 0
         && input_atom_labels_list_.size() != 0) {

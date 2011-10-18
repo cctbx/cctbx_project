@@ -1229,7 +1229,7 @@ def exercise_atom_id_str():
   assert rd.id_str(suppress_segid=1) == 'model="12345678" pdbres="GLYCh1234J"'
   assert rd.id_str(suppress_segid=-1) == 'model="12345678" pdbres="GLYCh1234J"'
   try: rd.id_str()
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), '''\
 residue.id_str(suppress_segid=false): segid is not unique:
   model="12345678" pdbres="GLYCh1234J" segid="1234"''')
