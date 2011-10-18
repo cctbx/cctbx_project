@@ -1,9 +1,10 @@
 
 from __future__ import absolute_import
 from wx.lib.agw import pyprogress
+import wx
 from libtbx import thread_utils
 from libtbx.utils import Sorry
-import wx
+import threading
 
 JOB_START_ID = wx.NewId()
 LOG_UPDATE_ID = wx.NewId()
@@ -11,6 +12,7 @@ CALLBACK_ID = wx.NewId()
 JOB_EXCEPTION_ID = wx.NewId()
 JOB_KILLED_ID = wx.NewId()
 JOB_COMPLETE_ID = wx.NewId()
+DOWNLOAD_COMPLETE_ID = wx.NewId()
 
 class SubprocessEvent (wx.PyEvent) :
   event_id = None
@@ -38,6 +40,9 @@ class JobCompleteEvent (SubprocessEvent) :
 
 class CallbackEvent (SubprocessEvent) :
   event_id = CALLBACK_ID
+
+class DownloadCompleteEvent (SubprocessEvent) :
+  event_id = DOWNLOAD_COMPLETE_ID
 
 def setup_stdout_logging_event (window, OnPrint) :
   window.Connect(-1, -1, LOG_UPDATE_ID, OnPrint)
@@ -143,6 +148,35 @@ class ThreadProgressDialog (pyprogress.PyProgress) :
     self.SetGaugeBackground(wx.Colour(235, 235, 235))
     self.SetFirstGradientColour(wx.Colour(235,235,235))
     self.SetSecondGradientColour(wx.Colour(120, 200, 255))
+
+class download_file_basic (object) :
+  def __init__ (self, window, dl_func, args) :
+    assert isinstance(window, wx.EvtHandler)
+    assert hasattr(dl_func, "__call__")
+    assert (isinstance(args, list) or isinstance(args, tuple))
+    self.window = window
+    window.Connect(-1, -1, DOWNLOAD_COMPLETE_ID, self.OnComplete)
+    self.dl_func = dl_func
+    self.args = args
+    self.t = threading.Thread(target=self.run)
+    self.t.start()
+
+  def run (self) :
+    try :
+      result = self.dl_func(self.args)
+    except Exception, e :
+      result = (None, str(e))
+    finally :
+      wx.PostEvent(self.window, DownloadCompleteEvent(result))
+    return result
+
+  def OnComplete (self, event) :
+    if isinstance(event.data, str) :
+      wx.MessageBox(message="File downloaded to %s" % event.data)
+    else :
+      wx.MessageBox(message="Error downloading file: %s" % event.data[1],
+        caption="Download error", style=wx.ICON_ERROR)
+    self.t.join()
 
 def run_function_as_thread_in_dialog (parent, thread_function, title, message) :
   dlg = ThreadProgressDialog(None, title, message)
