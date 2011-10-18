@@ -2,6 +2,7 @@
 import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+import cStringIO
 import os
 import sys
 
@@ -23,6 +24,9 @@ blast_pdb
     .type = choice
     .caption = Protein_(blastp) Nucleotide_(blastn)
     .short_caption = Search type
+  expect = 0.01
+    .type = float
+    .short_caption = E-value cutoff
 }""")
 
 def run (args=(), params=None, out=None) :
@@ -51,7 +55,8 @@ def run (args=(), params=None, out=None) :
     params.output_file = "blast.xml"
   blast_out = get_ncbi_pdb_blast(sequence,
     file_name=params.output_file,
-    blast_type=params.blast_type)
+    blast_type=params.blast_type,
+    expect=params.expect)
   print >> out, "Wrote results to %s" % params.output_file
   if (len(args) != 0) : # command-line mode
     results = summarize_blast_output(blast_out)
@@ -74,6 +79,7 @@ class blast_hit (object) :
     print >> out, "%3s  %1s   %12g  %6d  %6.2f  %6.2f" % (self.pdb_id,
       self.chain_id, self.evalue, self.length, self.identity, self.positives)
 
+# XXX this should probably use Bio.Blast.NCBIXML
 def summarize_blast_output (blast_out=None, blast_file=None) :
   """
   Parse NCBI BLAST XML output and convert to a list of simple summary
@@ -81,34 +87,30 @@ def summarize_blast_output (blast_out=None, blast_file=None) :
   incomplete information (suitable for summarizing in a flat table).
   """
   assert ([blast_out, blast_file].count(None) == 1)
-  from xml.dom import minidom
-  if (blast_out is None) :
+  from Bio.Blast import NCBIXML
+  if (blast_out is not None) :
+    blast_in = cStringIO.StringIO(blast_out)
+  else :
     assert os.path.isfile(blast_file)
-    blast_out = open(blast_file).read()
-  def getText (node) :
-    return str(node.childNodes[0].data)
-  b = minidom.parseString(blast_out)
-  hits = b.getElementsByTagName("Hit")
+    blast_in = open(blast_file)
+  parsed = NCBIXML.parse(blast_in)
+  blast = parsed.next()
+  if (len(blast.alignments) == 0) :
+    raise Sorry("No matching sequences!")
   results = []
-  for hit in hits :
-    hit_num = int(getText(hit.getElementsByTagName("Hit_num")[0]))
-    pdb_chain_id = getText(hit.getElementsByTagName("Hit_accession")[0])
+  for i, hit in enumerate(blast.alignments) :
+    pdb_chain_id = str(hit.accession)
     pdb_id, chain_id = pdb_chain_id.split("_")
-    hsp = hit.getElementsByTagName("Hsp")[0]
-    evalue = float(getText(hsp.getElementsByTagName("Hsp_evalue")[0]))
-    assert (evalue >= 0)
-    aln_len = int(getText(hsp.getElementsByTagName("Hsp_align-len")[0]))
-    assert (aln_len > 0)
-    ident_ = int(getText(hsp.getElementsByTagName("Hsp_identity")[0]))
-    pos_ = int(getText(hsp.getElementsByTagName("Hsp_positive")[0]))
+    hsp = hit.hsps[0]
+    assert (hsp.align_length > 0)
     summary = blast_hit(
-      hit_num=hit_num,
+      hit_num=i+1,
       pdb_id=pdb_id,
       chain_id=chain_id,
-      evalue=evalue,
-      length=aln_len,
-      identity=100*ident_/aln_len,
-      positives=100*pos_/aln_len)
+      evalue=hsp.expect,
+      length=hsp.align_length,
+      identity=100*hsp.identities/hsp.align_length,
+      positives=100*hsp.positives/hsp.align_length)
     results.append(summary)
   return results
 
