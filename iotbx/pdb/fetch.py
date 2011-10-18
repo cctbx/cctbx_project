@@ -151,9 +151,11 @@ def run (args, log=sys.stdout) :
         files[-1] = os.path.abspath("%s.mtz" % id)
     return files
 
-def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp") :
+def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
+    expect=0.01) :
   assert (blast_type in ["blastp", "blastn"])
   assert (sequence.isalpha())
+  assert (expect >= 0)
   try :
     from Bio.Blast import NCBIWWW
   except ImportError :
