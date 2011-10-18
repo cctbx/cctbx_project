@@ -194,8 +194,23 @@ def run (args, log=sys.stdout) :
   file_info = []
   for i, map_labels in enumerate(params.labels) :
     map_coeffs = None
-    if len(map_labels) == 1 :
+    if (len(map_labels) == 1) :
       map_coeffs = find_array(miller_arrays, map_labels[0])
+      if (map_coeffs is None) :
+        all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
+          keep_array_labels=True)
+        labels_out = []
+        if len(all_labels) > 0 :
+          for labels in all_labels :
+            if isinstance(labels, str) :
+              labels = [labels]
+            labels_out.append("  " + " ".join(labels))
+          raise Sorry(("No map coefficients found with labels %s.  Possible "+
+            "choices are:\n%s") % (map_labels[0], "\n".join(labels_out)))
+        else :
+          raise Sorry(("No map coefficients found with labels %s; this file "+
+            "does not appear to contain any other map coefficients!") %
+            map_labels[0])
     else :
       if len(map_labels) == 2 :
         map_labels.append(None)
