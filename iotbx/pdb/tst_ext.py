@@ -140,7 +140,7 @@ def exercise_line_info_exceptions():
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 some.pdb, line 2:
   ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
@@ -155,7 +155,7 @@ HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 ANISOU    9 2H3  MPR B   5      84-    848    848      0      0      0
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 input line 3:
   ANISOU    9 2H3  MPR B   5      84-    848    848      0      0      0
@@ -169,7 +169,7 @@ input line 3:
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 ANISOU    9 2H3  MPR B   5    c        848    848      0      0      0
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 input line 2:
   ANISOU    9 2H3  MPR B   5    c        848    848      0      0      0
@@ -182,7 +182,7 @@ input line 2:
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84"]))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84
@@ -194,7 +194,7 @@ some.pdb, line 1:
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84"]))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84
@@ -206,7 +206,7 @@ some.pdb, line 1:
       source_info="some.pdb",
       lines=flex.std_string([
         "HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72"]))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72
@@ -218,7 +218,7 @@ some.pdb, line 1:
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84"]))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84
@@ -554,7 +554,7 @@ MODEL        1
 ENDMDL
 ATOM
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 input line 3:
   ATOM
@@ -568,7 +568,7 @@ input line 3:
 MODEL        1
 MODEL        2
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 input line 2:
   MODEL        2
@@ -582,7 +582,7 @@ input line 2:
 ATOM
 MODEL        1
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 input line 2:
   MODEL        1
@@ -596,7 +596,7 @@ input line 2:
 ATOM
 ENDMDL
 """))
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 input line 2:
   ENDMDL
@@ -607,7 +607,7 @@ input line 2:
   for record_name in ["SIGATM", "ANISOU", "SIGUIJ"]:
     try:
       pdb.input(source_info=None, lines=flex.std_string([record_name]))
-    except RuntimeError, e:
+    except ValueError, e:
       assert not show_diff(str(e), """\
 input line 1:
   %s

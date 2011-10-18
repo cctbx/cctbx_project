@@ -642,7 +642,7 @@ namespace {
     }
     label_formatter.format(result, *this);
     if (throw_segid_not_unique) {
-      throw std::runtime_error(
+      throw std::invalid_argument(
         "residue.id_str(suppress_segid=false): segid is not unique:\n"
         + ("  " + std::string(result)));
     }
