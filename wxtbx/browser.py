@@ -21,7 +21,7 @@ class webkit_frame (wx.Frame) :
     self.viewer = webkit.WebKitCtrl(self, -1)
     szr.Add(self.viewer, 1, wx.EXPAND)
     self.statusbar = self.CreateStatusBar()
-    self.SetInitialSize((800,640))
+    self.SetInitialSize((1024,640))
     #self.Bind(wx.EVT_WINDOW_CREATE, self.OnShow)
     self.Bind(webkit.EVT_WEBKIT_STATE_CHANGED, self.OnChangeState, self.viewer)
     self.Bind(webkit.EVT_WEBKIT_BEFORE_LOAD, self.OnBeforeLoad, self.viewer)
