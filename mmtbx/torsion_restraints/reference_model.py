@@ -406,19 +406,11 @@ class reference_model(object):
               continue
             temp_model_atoms = {}
             temp_ref_atoms = {}
-            key = "%s %s%s%s" % (model_res.unique_resnames()[0],
-                                 model_res.parent().id,
-                                 model_res.resseq,
-                                 model_res.icode)
-            key_ref = "%s %s%s%s" % (ref_res.unique_resnames()[0],
-                                     ref_res.parent().id,
-                                     ref_res.resseq,
-                                     ref_res.icode)
             for atom in model_res.atoms():
-              atom_temp = atom.name+' '+key
+              atom_temp = atom.pdb_label_columns()
               temp_model_atoms[atom.name] = model_iseq_hash[atom_temp]
             for atom in ref_res.atoms():
-              atom_temp = atom.name+' '+key_ref
+              atom_temp = atom.pdb_label_columns()
               temp_ref_atoms[atom.name] = ref_iseq_hash[atom_temp]
             for key in temp_model_atoms.keys():
               ref_atom = temp_ref_atoms.get(key)
