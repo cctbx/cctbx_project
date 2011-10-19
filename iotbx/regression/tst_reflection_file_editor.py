@@ -280,6 +280,11 @@ mtz_file {
     pass
   else :
     raise Exception_expected
+  # now force them through (no conversion to flex.bool)
+  params.mtz_file.r_free_flags.extend = False
+  params.mtz_file.r_free_flags.preserve_input_values = True
+  miller_arrays = run_and_reload(params, "tst5.mtz")
+  assert miller_arrays[1].data().all_eq(1)
   # reconstructed amplitudes, yuck
   mtz3 = array1.as_mtz_dataset(column_root_label="I-obs")
   indices = array1.average_bijvoet_mates().indices()

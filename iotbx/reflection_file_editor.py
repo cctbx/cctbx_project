@@ -206,8 +206,8 @@ class process_arrays (object) :
       raise Sorry("Missing or incomplete symmetry information.")
     if (params.mtz_file.r_free_flags.extend and
         params.mtz_file.r_free_flags.preserve_input_values) :
-      raise Sorry("r_free_flags.preserve_input_values and r_free_flags.extend"+
-        " may not be used together.")
+      raise Sorry("You may not extend R-free flags to higher resolution "+
+        "when preserving the original input values.")
     if (params.mtz_file.r_free_flags.export_for_ccp4 and
         params.mtz_file.r_free_flags.preserve_input_values) :
       raise Sorry("r_free_flags.preserve_input_values and "+
@@ -637,21 +637,30 @@ class process_arrays (object) :
         # with CCP4-style files, primarily when the flag values are not
         # very evenly distributed
         new_array.set_info(info)
-        flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
-           test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
-        test_flag_value = flag_scores.test_flag_values[0]
-        if (test_flag_value is None) :
-          raise Sorry(("The data in %s:%s appear to be R-free flags, but a "+
-            "suitable test flag value (usually 1 or 0) could not be "+
-            "automatically determined.  This may indicate that the flags are "+
-            "uniform, which is not suitable for refinement.  If this is not "+
-            "the case, you may specify the test flag value manually by "+
-            "clicking the button labeled \"R-free flags generation...\" and "+
-            "entering the value to use under \"Original test flag value\".") %
-            (file_name, info.label_string()))
-        if params.mtz_file.r_free_flags.preserve_input_values :
+        test_flag_value = None
+        if (params.mtz_file.r_free_flags.preserve_input_values) :
+          assert (not params.mtz_file.r_free_flags.extend)
           r_free_flags = new_array
         else :
+          flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
+            test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
+          test_flag_value = flag_scores.test_flag_values[0]
+          if (test_flag_value is None) :
+            if (params.mtz_file.r_free_flags.old_test_flag_value is not None) :
+              test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value
+            else :
+              raise Sorry(("The data in %s:%s appear to be R-free flags, but "+
+                "a suitable test flag value (usually 1 or 0) could not be "+
+                "automatically determined.  This may indicate that the flags "+
+                "are uniform, which is not suitable for refinement; it can "+
+                "als ohappen when there are exactly 3 different values used. "+
+                " If this is not the case, you may specify the test flag "+
+                "value manually by clicking the button labeled \"R-free flags "+
+                "generation...\" and entering the value to use under "+
+                "\"Original test flag value\".  Alternately, checking the box "+
+                "\"Preserve original flag values\" will skip this step, but "+
+                "you will not be able to extend the flags to higher "+
+                "resolution.") % (file_name, info.label_string()))
           new_data = (new_array.data()==test_flag_value)
           assert isinstance(new_data, flex.bool)
           r_free_flags = new_array.array(data=new_data)
@@ -665,35 +674,38 @@ class process_arrays (object) :
             # XXX can't do this operation on a miller set - will expand the
             # r-free flags later
             generate_bijvoet_mates = True
-        r_free_as_bool = get_r_free_as_bool(r_free_flags,test_flag_value).data()
-        assert isinstance(r_free_as_bool, flex.bool)
-        fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
-        print >>log, "%s: fraction_free=%.3f" % (info.labels[0], fraction_free)
-        if complete_set is not None :
-          missing_set = complete_set.lone_set(r_free_flags)
-        else :
-          missing_set = r_free_flags.complete_set(d_min=d_min,
-            d_max=d_max).lone_set(r_free_flags.map_to_asu())
-        n_missing = missing_set.indices().size()
-        print >>log, "%s: missing %d reflections" % (info.labels[0], n_missing)
-        if n_missing != 0 and params.mtz_file.r_free_flags.extend :
-          if n_missing <= 20 :
-            # FIXME: MASSIVE CHEAT necessary for tiny sets
-            missing_flags = missing_set.array(data=flex.bool(n_missing,False))
+        if (params.mtz_file.r_free_flags.extend) :
+          assert (test_flag_value is not None)
+          r_free_as_bool = get_r_free_as_bool(r_free_flags,
+            test_flag_value).data()
+          assert isinstance(r_free_as_bool, flex.bool)
+          fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
+          print >>log, "%s: fraction_free=%.3f" %(info.labels[0],fraction_free)
+          if complete_set is not None :
+            missing_set = complete_set.lone_set(r_free_flags)
           else :
-            if accumulation_callback is not None :
-              if not accumulation_callback(miller_array=new_array,
-                                           test_flag_value=test_flag_value,
-                                           n_missing=n_missing,
-                                           column_label=info.labels[0]) :
-                continue
-            missing_flags = missing_set.generate_r_free_flags(
-              fraction=fraction_free,
-              max_free=None,
-              use_lattice_symmetry=True)
-          output_array = r_free_flags.concatenate(other=missing_flags)
-          if not output_array.is_unique_set_under_symmetry() :
-            output_array = output_array.merge_equivalents().array()
+            missing_set = r_free_flags.complete_set(d_min=d_min,
+              d_max=d_max).lone_set(r_free_flags.map_to_asu())
+          n_missing = missing_set.indices().size()
+          print >>log, "%s: missing %d reflections" % (info.labels[0],n_missing)
+          if (n_missing != 0) :
+            if (n_missing <= 20) :
+              # FIXME: MASSIVE CHEAT necessary for tiny sets
+              missing_flags = missing_set.array(data=flex.bool(n_missing,False))
+            else :
+              if accumulation_callback is not None :
+                if not accumulation_callback(miller_array=new_array,
+                                             test_flag_value=test_flag_value,
+                                             n_missing=n_missing,
+                                             column_label=info.labels[0]) :
+                  continue
+              missing_flags = missing_set.generate_r_free_flags(
+                fraction=fraction_free,
+                max_free=None,
+                use_lattice_symmetry=True)
+            output_array = r_free_flags.concatenate(other=missing_flags)
+            if not output_array.is_unique_set_under_symmetry() :
+              output_array = output_array.merge_equivalents().array()
         else :
           output_array = r_free_flags
         if (generate_bijvoet_mates) :
