@@ -103,7 +103,10 @@ def run(processed_pdb_file, params=master_params.extract(), log=sys.stdout):
       geometry_restraints_manager=geometry_restraints_manager,
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=co.max_iterations))
+        max_iterations=co.max_iterations),
+      lbfgs_exception_handling_params=
+        scitbx.lbfgs.exception_handling_parameters(
+          ignore_line_search_failed_step_at_lower_bound=True))
     print >> log, "Energies at start of minimization:"
     minimized.first_target_result.show(f=log)
     print >> log
