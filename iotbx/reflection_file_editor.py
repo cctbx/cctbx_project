@@ -640,7 +640,15 @@ class process_arrays (object) :
         flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
            test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
         test_flag_value = flag_scores.test_flag_values[0]
-        assert (test_flag_value is not None)
+        if (test_flag_value is None) :
+          raise Sorry(("The data in %s:%s appear to be R-free flags, but a "+
+            "suitable test flag value (usually 1 or 0) could not be "+
+            "automatically determined.  This may indicate that the flags are "+
+            "uniform, which is not suitable for refinement.  If this is not "+
+            "the case, you may specify the test flag value manually by "+
+            "clicking the button labeled \"R-free flags generation...\" and "+
+            "entering the value to use under \"Original test flag value\".") %
+            (file_name, info.label_string()))
         if params.mtz_file.r_free_flags.preserve_input_values :
           r_free_flags = new_array
         else :

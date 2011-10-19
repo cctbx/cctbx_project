@@ -267,6 +267,19 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst5.mtz")
   assert ((miller_arrays[0].anomalous_flag()) and
           (not miller_arrays[1].anomalous_flag()))
+  # flags all the same value
+  mtz2 = array1.as_mtz_dataset(column_root_label="I-obs")
+  flags2 = flags.generate_bijvoet_mates()
+  flags2 = flags2.customized_copy(
+    data=flex.int(flags2.data().size(), 1))
+  mtz2.add_miller_array(flags2, column_root_label="R-free-flags")
+  mtz2.mtz_object().write("tst_data4.mtz")
+  try :
+    miller_arrays = run_and_reload(params, "tst5.mtz")
+  except Sorry, s :
+    pass
+  else :
+    raise Exception_expected
   # reconstructed amplitudes, yuck
   mtz3 = array1.as_mtz_dataset(column_root_label="I-obs")
   indices = array1.average_bijvoet_mates().indices()
