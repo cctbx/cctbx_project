@@ -423,6 +423,7 @@ fable/test/semantic_error/twice_in_sub_args.f -text
 fable/test/semantic_error/unknown_intrinsic.f -text
 fable/test/semantic_error/write_end.f -text
 fable/test/semantic_error/write_without_unit.f -text
+fable/test/sf_times.py svneol=native#text/x-python
 fable/test/syntax_error/bad_after_dot.f -text
 fable/test/syntax_error/bad_and.f -text
 fable/test/syntax_error/bad_complex_literal_1.f -text
