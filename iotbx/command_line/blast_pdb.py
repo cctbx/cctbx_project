@@ -10,9 +10,10 @@ master_phil = libtbx.phil.parse("""
 blast_pdb
   .caption = This program will run a BLAST search on the NCBI's web servers. \
     You may use any format sequence file, but only a single sequence may be \
-    searched at a time.
+    searched at a time.  (Please limit your use of this service, as it is a \
+    shared public resource!)
   .short_caption = NCBI BLAST search of PDB
-  .style = box auto_align
+  .style = box auto_align caption_img:icons/custom/pdb_import.png
 {
   file_name = None
     .type = path
@@ -58,8 +59,8 @@ def run (args=(), params=None, out=None) :
     blast_type=params.blast_type,
     expect=params.expect)
   print >> out, "Wrote results to %s" % params.output_file
+  results = summarize_blast_output(blast_out)
   if (len(args) != 0) : # command-line mode
-    results = summarize_blast_output(blast_out)
     print >> out, ""
     print >> out, "%d matching structures" % len(results)
     print >> out, ""
@@ -67,7 +68,10 @@ def run (args=(), params=None, out=None) :
     print >> out, "-" * 46
     for result in results :
       result.show(out)
-  return os.path.abspath(params.output_file)
+  if (len(results) > 0) :
+    return sequence, os.path.abspath(params.output_file)
+  else :
+    return sequence, None
 
 class blast_hit (object) :
   def __init__ (self, hit_num, pdb_id, chain_id, evalue, length, identity,
