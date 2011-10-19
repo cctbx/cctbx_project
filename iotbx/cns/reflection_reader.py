@@ -44,7 +44,7 @@ class CNS_input(object):
 
   def getNextWord(self, word_len = 0):
     while (len(self._buffer) == 0):
-      line = self._readline()
+      line = self._readline().lstrip()
       if (line == ""): raise EOFError
       self._LineNo += 1
       if (line.upper().startswith("REMARK ")):
