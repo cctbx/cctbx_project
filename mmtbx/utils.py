@@ -512,6 +512,11 @@ class determine_data_and_flags(object):
         r_free_flags,
         missing_show_max_lines=10):
     test_flag_value = self.parameters.r_free_flags.test_flag_value
+    if (test_flag_value is None) :
+      raise Sorry(("PHENIX could not determine an appropriate test flag "+
+        "for the data with label(s) '%s'.  This may happen if they are all "+
+        "a single value; please check the file to make sure the flags are "+
+        "suitable for use.") % self.parameters.r_free_flags.label)
     r_free_flags.show_comprehensive_summary(f = self.log)
     print >> self.log
     print >> self.log, "Test (R-free flags) flag value:", test_flag_value
