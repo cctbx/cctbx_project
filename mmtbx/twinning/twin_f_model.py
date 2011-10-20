@@ -1702,7 +1702,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     if map_type not in ["gradient","m_gradient"]:
       result = None
-      if map_type == "Fo-Fc":
+      if (map_type in ["Fo-Fc", "Fobs-Fmodel"]) :
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
         result = self._map_coeff( f_obs         = dt_f_obs,
