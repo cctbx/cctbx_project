@@ -44,10 +44,10 @@ class CNS_input(object):
 
   def getNextWord(self, word_len = 0):
     while (len(self._buffer) == 0):
-      line = self._readline().lstrip()
+      line = self._readline()
       if (line == ""): raise EOFError
       self._LineNo += 1
-      if (line.upper().startswith("REMARK ")):
+      if (line.lstrip().upper().startswith("REMARK ")):
         self.remarks.append(line)
         continue
       if (line.startswith("CRYST1")
@@ -324,7 +324,7 @@ class cns_reflection_file(object):
     from cctbx import sgtbx
     result = None
     for remark in self.remarks:
-      remark = remark[6:].strip().replace(" ", "").lower()
+      remark = remark.lstrip()[6:].strip().replace(" ", "").lower()
       if (    remark.startswith("symop(")
           and remark.endswith(")")):
         s = remark[6:-1]
@@ -341,7 +341,7 @@ class cns_reflection_file(object):
   def crystal_symmetry_from_remark_uc_sg(self):
     sg = self.space_group_from_remark_symop()
     for remark in self.remarks:
-      remark = remark[6:].strip()
+      remark = remark.lstrip()[6:].strip()
       m = re.match(re_uc_sg, remark)
       if (m is None): continue
       result = crystal_symmetry_from_re_match(m=m, i_uc=1, i_sg=7)

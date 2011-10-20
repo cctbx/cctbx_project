@@ -136,7 +136,7 @@ def exercise_reflection_reader():
     assert not show_diff(so.getvalue(), expected)
   si = StringIO("""\
 remark a= 40.000 b= 50.000 c=  60.000 alpha= 90 beta= 90 gamma= 90 sg= P2
-remark symop (X,Y,Z)
+ remark symop (X,Y,Z)
 remark symop (-X,-Y,Z)
 CRYST1   10.000   20.000   30.000  90.00  90.00  90.00 P 1 21 1
 DECLare NAME=FOBS                   DOMAin=RECIprocal   TYPE=REAL END
@@ -147,7 +147,7 @@ Unit cell: (40, 50, 60, 90, 90, 90)
 Space group: P 1 1 2 (No. 3)
 """)
   si = StringIO("""\
-remark a= 40.000 b= 50.000 c=  60.000 alpha= 90 beta= 90 gamma= 90 sg= P2
+ remark a= 40.000 b= 50.000 c=  60.000 alpha= 90 beta= 90 gamma= 90 sg= P2
 CRYST1   10.000   20.000   30.000  90.00  90.00  90.00 P 1 21 1
 DECLare NAME=FOBS                   DOMAin=RECIprocal   TYPE=REAL END
 INDE     1    2    3 FOBS=   380.500
