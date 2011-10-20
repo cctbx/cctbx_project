@@ -1650,6 +1650,7 @@ class array(set):
         result.fo_sq.data()[i], result.fc_sq.data()[i],
         result.delta_f_sq_over_sigma[i],
         result.fc_over_fc_max[i], result.d_spacings[i])
+    return result
 
   def crystal_symmetry_is_compatible_with_symmetry_from_file(self,
         unit_cell_relative_length_tolerance=0.02,

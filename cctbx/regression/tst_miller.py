@@ -1152,7 +1152,8 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
                                    4412.96,7872.73,886.38,1144.82,783.14)))\
       .set_observation_type_xray_intensity()
   s = StringIO()
-  fo2.show_disagreeable_reflections(fc2, out=s)
+  r = fo2.show_disagreeable_reflections(fc2, out=s)
+  assert r.delta_f_sq_over_sigma.size() == 12
   assert not show_diff(s.getvalue(), """\
   h   k   l       Fo^2      Fc^2   |Fo^2-Fc^2|/sig(F^2)   Fc/max(Fc)  d spacing(A)
   1   1   2    6685.00   7872.73             6.70              1.00          3.60
