@@ -1615,8 +1615,7 @@ class array(set):
     set.show_summary(self, f=f, prefix=prefix)
     return self
 
-  def show_disagreeable_reflections(self, f_calc_sq, n_reflections=20, out=None):
-    if out is None: out = sys.stdout
+  def disagreeable_reflections(self, f_calc_sq, n_reflections=20):
     assert f_calc_sq.is_xray_intensity_array()
     assert self.is_xray_intensity_array()
     assert self.sigmas() is not None
@@ -1634,12 +1633,23 @@ class array(set):
     fc_over_fc_max = fc_over_fc_max.select(perm)
     indices = fo2.indices()
     d_spacings = fo2.d_spacings().data()
+    return group_args(indices=indices,
+                      fo_sq=fo2,
+                      fc_sq=fc2,
+                      delta_f_sq_over_sigma=delta_f_sq_over_sigma,
+                      fc_over_fc_max=fc_over_fc_max,
+                      d_spacings=d_spacings)
+
+  def show_disagreeable_reflections(self, f_calc_sq, n_reflections=20, out=None):
+    if out is None: out = sys.stdout
+    result = self.disagreeable_reflections(f_calc_sq, n_reflections=n_reflections)
     print >> out, "  h   k   l       Fo^2      Fc^2   |Fo^2-Fc^2|/sig(F^2)   Fc/max(Fc)  d spacing(A)"
-    for i in range(fo2.size()):
-      print >> out, "%3i %3i %3i" %indices[i],
+    for i in range(result.fo_sq.size()):
+      print >> out, "%3i %3i %3i" %result.indices[i],
       print >> out, " %9.2f %9.2f        %9.2f         %9.2f     %9.2f" %(
-        fo2.data()[i], fc2.data()[i], delta_f_sq_over_sigma[i],
-        fc_over_fc_max[i], d_spacings[i])
+        result.fo_sq.data()[i], result.fc_sq.data()[i],
+        result.delta_f_sq_over_sigma[i],
+        result.fc_over_fc_max[i], result.d_spacings[i])
 
   def crystal_symmetry_is_compatible_with_symmetry_from_file(self,
         unit_cell_relative_length_tolerance=0.02,
