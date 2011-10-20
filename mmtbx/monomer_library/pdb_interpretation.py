@@ -151,8 +151,8 @@ master_params_str = """\
         Ramachandran plot.  Although it does not eliminate outliers, it can \
         significantly improve the percent favored and percent outliers at \
         low resolution.  Probably not useful (and maybe even harmful) at \
-        resolutions much higher than 3.0A.
-      .style = bold
+        resolutions much higher than 3.5A.
+      .expert_level = 2
     cis_threshold = 45
       .type = float
       .optional = False
