@@ -275,7 +275,7 @@ class get_r_free_flags_scores(object):
                 flag_score = scoring.flag_score
                 if (scoring.reversed): i_free = 1-i_free
                 effective_test_flag_value = c_keys[i_free]
-            elif (counts.size() > 3):
+            elif (counts.size() >= 3):
               if (c_keys == range(min(c_keys), max(c_keys)+1)):
                 # XXX 0.55 may be too close a margin - the routine to export
                 # R-free flags for CCP4 seems to get this wrong frequently.
@@ -288,7 +288,14 @@ class get_r_free_flags_scores(object):
                   flag_score = 1
                 if (flag_score != 0):
                   if (test_flag_value is None):
-                    effective_test_flag_value = min(c_keys)
+                    c_keys.sort()
+                    # XXX this appears to be a special case (from Axel); I'm
+                    # erring on the side of consistency with CNS here
+                    if ((c_keys == [-1, 0, 1]) and
+                        (counts[0] >= data.size()*0.55)) :
+                      effective_test_flag_value = 1
+                    else :
+                      effective_test_flag_value = min(c_keys)
                   else:
                     effective_test_flag_value = test_flag_value
       elif miller_array.is_string_array():
