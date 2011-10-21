@@ -545,6 +545,13 @@ namespace mtz {
 #endif
       }
 
+      //! Write access. Delete reflection iref. Reduces all column sizes by 1.
+      /*! Warning! This is an inefficient process, suitable for removing
+          one Miller index, but not a large batch.
+       */
+      void
+      delete_reflection(const int& iref){ CMtz::MtzDeleteRefl(ptr(),iref); }
+
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;
 

@@ -1305,6 +1305,12 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
       batch = dataset.add_batch()
       assert batch.nbsetid() == dataset.id()
       assert dataset.n_batches() == [5,7][dataset.id()]
+  # quick test for delete_reflection
+  assert mtz_object.n_reflections() > 3
+  mx = mtz_object.extract_miller_indices()[1]
+  assert mx in mtz_object.extract_miller_indices()
+  mtz_object.delete_reflection(1)
+  assert mx not in mtz_object.extract_miller_indices()
 
 def exercise():
   if (mtz is None):
