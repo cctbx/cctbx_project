@@ -210,6 +210,7 @@ namespace {
         .def("xml", &w_t::xml)
         .def("unknown_headers", &w_t::unknown_headers)
         .def("number_of_unknown_headers", &w_t::number_of_unknown_headers)
+        .def("delete_reflection", &w_t::delete_reflection, (arg("iref")))
       ;
     }
   };
