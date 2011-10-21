@@ -5,7 +5,6 @@ from cctbx.array_family import flex
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.str_utils import show_string
 import libtbx.phil
-import os, sys
 from iotbx import pdb
 from cctbx import crystal
 from libtbx.utils import Sorry
@@ -19,6 +18,8 @@ from libtbx import easy_run, easy_pickle
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import runtime_utils
 import scitbx.matrix
+import cStringIO
+import os, sys
 
 
 modify_params_str = """\
@@ -875,10 +876,13 @@ class interpreter:
     description_see_also \
         = 'See also: http://www.phenix-online.org/\n' +\
           'Questions / problems: phenixbb@phenix-online.org'
+    phil_out = cStringIO.StringIO()
+    master_params.show(out=phil_out, prefix="  ")
+    phil_help_str = phil_out.getvalue()
     self.command_line = (iotbx_option_parser(
       usage="%s [options] [pdb_file] [parameter_file]" % self.command_name,
-      description='Example: %s model.pdb parameters.txt\n\n'
-        % self.command_name + description_see_also)
+      description='Example: %s model.pdb parameters.txt\n\nFull parameters:\n%s'
+        % (self.command_name + description_see_also, phil_help_str))
       .enable_show_defaults()
       .enable_symmetry_comprehensive()
       .option(None, "--unused_ok",
