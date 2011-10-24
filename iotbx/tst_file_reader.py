@@ -239,7 +239,24 @@ MUSCLE (3.8) multiple sequence alignment
   assert (f.file_object.names == ["1mru_A", "2h34_A"])
 
 def exercise_hhr () :
-  pass
+  hhr_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/misc/hewl.hhr",
+    test=os.path.isfile)
+  if (hhr_file is not None) :
+    f = any_file(hhr_file, valid_types=["seq","aln","hhr","txt"])
+    assert (f.file_type == "hhr")
+    assert (type(f.file_object).__name__ == "hhsearch_parser")
+
+def exercise_xml () :
+  xml_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/misc/hewl.xml",
+    test=os.path.isfile)
+  if (xml_file is not None) :
+    f = any_file(xml_file, valid_types=["seq","aln","hhr","xml","txt"])
+    assert (f.file_type == "xml")
+    assert (f.file_object.nodeName == "#document")
+    assert (len(f.file_object.childNodes) == 2)
+    assert (f.file_object.childNodes[1].nodeName == "BlastOutput")
 
 def exercise_maps () :
   xplor_map = libtbx.env.find_in_repositories(
@@ -354,6 +371,7 @@ def exercise () :
   exercise_sequence()
   exercise_alignment()
   exercise_hhr()
+  exercise_xml()
   exercise_maps()
   if mtz is None :
     print "Skipping mtz file tests"
