@@ -265,12 +265,12 @@ class server (object) :
   def convert_ccp4_map (self, **kwds) :
     map_coeffs_list = list(self.get_ccp4_maps())
     files = []
-    kwds['simple_file_name'] = True
+    #kwds['simple_file_name'] = True
     for map_coeffs in map_coeffs_list :
       if (map_coeffs is None) : continue
       kwds['map_coeffs'] = map_coeffs
       output_file = self._write_ccp4_map(**kwds)
-      files.append(output_file)
+      files.append(os.path.abspath(output_file))
     return files
 
   def convert_phenix_maps (self, file_base, **kwds) :
@@ -280,7 +280,7 @@ class server (object) :
       file_name = "%s_%s.ccp4" % (file_base, map.map_name)
       kwds['output_file'] = file_name
       self._write_ccp4_map(map.map_coeffs, **kwds)
-      files.append(file_name)
+      files.append(os.path.abspath(file_name))
     return files
 
   def get_pdb_file (self, file_name) :
