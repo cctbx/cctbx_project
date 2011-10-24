@@ -12,7 +12,7 @@ __this_script__ = "cctbx_project/fable/test/sf_times.py"
 
 setup_dir = "/net/cci/setup/Linux"
 
-ifort_versions = ["intel111.sh"]
+ifort_versions = ["ifort91.sh", "intel111.sh"]
 
 icc_versions = [
   "icc91.sh",
