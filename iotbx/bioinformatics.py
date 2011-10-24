@@ -1618,9 +1618,9 @@ def any_hh_file (file_name) :
   for parser in [hhalign_parser, hhsearch_parser] :
     try :
       p = parser(data)
-    except KeyboardError : raise
+    except KeyboardInterrupt : raise
     except Exception, e :
-      print e
+      pass
     else :
       return p
   raise RuntimeError("Not an HHpred/HHalign/HHsearch file!")

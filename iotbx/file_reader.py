@@ -310,6 +310,12 @@ class any_file_input (object) :
     self.file_type = "txt"
     self.file_object = file_as_string
 
+  def try_as_xml (self) :
+    import xml.dom.minidom
+    xml_in = xml.dom.minidom.parse(self.file_name)
+    self.file_type = "xml"
+    self.file_object = xml_in
+
   def try_as_img (self) :
     from iotbx.detectors import ImageFactory
     img = ImageFactory(self.file_name)
