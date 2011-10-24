@@ -50,7 +50,7 @@ standard_file_descriptions = {
   'txt'  : "Text",
   'mtz'  : "Reflections (MTZ)",
   'aln'  : "Sequence alignment",
-  'hhr'  : "HHpred analysis",
+  'hhr'  : "HHpred alignment",
   'img'  : "Detector image",
 }
 
