@@ -387,8 +387,8 @@ class cctbx_data_structures_from_cif(object):
         builders.miller_array_builder, builders.crystal_structure_builder)
       data_structure_builders = (data_structure_builder,)
 
-    self.xray_structures = {}
-    self.miller_arrays = {}
+    self.xray_structures = OrderedDict()
+    self.miller_arrays = OrderedDict()
     if cif_model is None:
       cif_model = reader(file_path=file_path, file_object=file_object).model()
     if not len(cif_model):

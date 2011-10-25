@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 import iotbx.cif
 from iotbx.cif import model
 from libtbx.utils import Sorry
+from libtbx.containers import OrderedDict
 
 
 class CifBuilderError(Sorry):
@@ -286,7 +287,7 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def __init__(self, cif_block, base_array_info=None):
     crystal_symmetry_builder.__init__(self, cif_block)
-    self._arrays = {}
+    self._arrays = OrderedDict()
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
     refln_containing_loops = self.get_miller_indices_containing_loops()
