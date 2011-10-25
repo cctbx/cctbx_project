@@ -171,9 +171,12 @@ Example:
                                        atom_dict)#.get(conformer.altloc))
             except AttributeError:
               if show_errors:
-                print >> out, '%s%5s %s is missing some sidechain atoms' % (
-                  chain.id, rg.resid(),
+                res_info = "%s%5s %s" % (chain.id, rg.resid(),
                   conformer.altloc+resname)
+                print >> out, '%s is missing some sidechain atoms' % res_info
+                output_list.append([chain.id, rg.resid(),
+                  conformer.altloc+resname, -1, None, None, None, None,
+                  "INCOMPLETE", coords])
               continue
             if (chis is not None):
               if None in chis:
