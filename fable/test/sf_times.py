@@ -18,7 +18,8 @@ icc_versions = [
   "icc91.sh",
   "icc101.sh",
   "intel111.sh",
-  "icc121.sh"]
+  "icc121.sh"
+  ]
 
 gcc_versions = [
   "gcc-4.2.4_fc8.sh",
@@ -183,6 +184,7 @@ def build_run(
   if (op.isfile("a.out")):
     os.remove("a.out")
   assert not op.isfile("a.out")
+  print build_cmd
   buffers = easy_run.fully_buffered(command=build_cmd)
   msg = buffers.format_errors_if_any()
   if (msg is not None):
@@ -208,7 +210,9 @@ def build_run(
     raise RuntimeError(
       "Unexpected number of output lines"
       " (3 expected; acutal output see above).")
-  if (n_scatt <= 10 and n_refl <= 100):
+  if (n_scatt == 0):
+    pass
+  elif (n_scatt <= 10 and n_refl <= 100):
     assert len(buffers.stdout_lines) == n_scatt + n_refl
   else:
     assert len(buffers.stdout_lines) == 1
@@ -230,6 +234,12 @@ def build_run(
       raise RuntimeError, (max_a, max_b)
   utime = float(buffers.stderr_lines[1].split()[1])
   return utime
+
+def finalize_cpp_build_cmd(source_cpp):
+  from fable import simple_compilation
+  comp_env = simple_compilation.environment()
+  return comp_env.assemble_include_search_paths(no_quotes=False) \
+    + " " + source_cpp
 
 def write_build_run(
       setup_cmd, ld_preload_flag, n_scatt, n_refl, real, lang, build_cmd,
@@ -256,11 +266,7 @@ def write_build_run(
   if (lang.lower() == "f"):
     build_cmd += " tmp.f"
   elif (lang.lower() == "c"):
-    from fable import simple_compilation
-    comp_env = simple_compilation.environment()
-    build_cmd += " " \
-      + comp_env.assemble_include_search_paths(no_quotes=False) \
-      + " tmp.cpp"
+    build_cmd += finalize_cpp_build_cmd("tmp.cpp")
   else:
     raise RuntimeError('Unknown lang: "%s"' % lang)
   return build_run(
@@ -297,34 +303,61 @@ def run_combinations(
         build_cmd = " ".join([setup_cmd+compiler, build_opts])
         print build_cmd
         utimes = []
-        for real in real_list:
-          print "  %s" % real
-          for replace_cos in [False, True]:
-            print "    replace_cos", replace_cos
-            for replace_exp in [False, True]:
-              print "      replace_exp", replace_exp
-              sys.stdout.flush()
-              if (compiler_version != "n/a"):
-                utime = write_build_run(
-                  setup_cmd=setup_cmd,
-                  ld_preload_flag=ld_preload_flag,
-                  n_scatt=n_scatt,
-                  n_refl=n_refl,
-                  real=real,
-                  lang=lang,
-                  build_cmd=build_cmd,
-                  replace_cos=replace_cos,
-                  replace_exp=replace_exp)
-                if (utime is not None):
-                  print "        %4.2f" % utime
+        if (n_scatt != 0):
+          for real in real_list:
+            print "  %s" % real
+            for replace_cos in [False, True]:
+              print "    replace_cos", replace_cos
+              for replace_exp in [False, True]:
+                print "      replace_exp", replace_exp
+                sys.stdout.flush()
+                if (compiler_version != "n/a"):
+                  utime = write_build_run(
+                    setup_cmd=setup_cmd,
+                    ld_preload_flag=ld_preload_flag,
+                    n_scatt=n_scatt,
+                    n_refl=n_refl,
+                    real=real,
+                    lang=lang,
+                    build_cmd=build_cmd,
+                    replace_cos=replace_cos,
+                    replace_exp=replace_exp)
+                  if (utime is not None):
+                    print "        %4.2f" % utime
+                  else:
+                    utime = -1.0
+                    print "        err"
                 else:
                   utime = -1.0
-                  print "        err"
-              else:
-                utime = -1.0
-                print "        n/a"
-              utimes.append(utime)
-              sys.stdout.flush()
+                  print "        n/a"
+                utimes.append(utime)
+                sys.stdout.flush()
+        else:
+          if (lang.lower() == "f"):
+            f_source = libtbx.env.find_in_repositories(
+              relative_path="lapack_fem/dsyev_test.f",
+              test=op.isfile,
+              optional=False)
+            build_cmd_compl = build_cmd + " " + f_source
+          else:
+            cpp_source = libtbx.env.find_in_repositories(
+              relative_path="lapack_fem/dsyev_test.cpp",
+              test=op.isfile,
+              optional=False)
+            build_cmd_compl = build_cmd + finalize_cpp_build_cmd(cpp_source)
+          utime = build_run(
+            setup_cmd=setup_cmd,
+            ld_preload_flag=ld_preload_flag,
+            n_scatt=n_scatt,
+            n_refl=n_refl,
+            build_cmd=build_cmd_compl,
+            check_max_a_b=False)
+          if (utime is None):
+            print "err"
+            utime = -1.0
+          else:
+            print "utime: %.2f" % utime
+          utimes.append(utime)
         all_utimes.append((utimes, build_cmd + iml))
 
 def usage():
@@ -342,6 +375,10 @@ def run(args):
     n_scatt, n_refl = 100, 1000
   elif (args[0] == "production"):
     n_scatt, n_refl = 2000, 20000
+  elif (args[0] == "dsyev"):
+    n_scatt, n_refl = 0, 0
+    del icc_versions[0]
+    del icc_versions[-1]
   else:
     usage()
   gcc_sh = [None] + gcc_versions
@@ -362,8 +399,11 @@ def run(args):
       ("C", icc_sh, "icpc", "-O"),
       ("c", gcc_sh, "g++", "-O -ffast-math"),
       ("c", gcc_sh, "g++", "-O -ffast-math -march=native"),
-      ("c", [None], "clang++", "-O -U__GXX_WEAK__ -ffast-math"),
-      ("c", [None], "clang++", "-O -U__GXX_WEAK__ -ffast-math -march=native")],
+      ("c", [None], "clang++",
+        "-O -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"),
+      ("c", [None], "clang++",
+        "-O -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"
+        " -march=native")],
     real_list=["real*4", "real*8"])
   print
   print "current_platform:", platform.platform()
@@ -372,12 +412,15 @@ def run(args):
   print "build_node:", build_node
   for compiler_version in compiler_versions:
     print "compiler:", compiler_version
-  print "n_scatt * n_refl: %d * %d" % (n_scatt, n_refl)
-  print '''\
+  if (n_scatt != 0):
+    print "n_scatt * n_refl: %d * %d" % (n_scatt, n_refl)
+    print '''\
 "s" or "d": single-precision or double-precision floating-point variables
 "E" or "e": using the library exp(arg) function or "max(0.0, 1.0 - arg*arg)"
 "C" or "c": using the library cos(arg) function or "arg / (abs(arg)+1.0)"'''
-  print "  sEC    seC    sEc    sec    dEC    deC    dEc    dec"
+    print "  sEC    seC    sEc    sec    dEC    deC    dEc    dec"
+  else:
+    print "dsyev times:"
   useful_utimes = []
   for utimes,build_cmd in all_utimes:
     if (max(utimes) != -1.0):
