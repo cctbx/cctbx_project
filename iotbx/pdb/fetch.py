@@ -13,10 +13,14 @@
 # http://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
 # http://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 
-import sys, os, re
-import urllib2
 from libtbx.utils import Sorry, Usage
 from libtbx import easy_run
+import urllib2
+import urllib
+import time
+import re
+import os
+import sys
 
 def validate_pdb_id (id) :
   if (len(id) != 4) or (not re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)) :
@@ -167,3 +171,36 @@ def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
     f.write(blast_out)
     f.close()
   return blast_out
+
+def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
+    sequence_type="protein", exp="1e-3") :
+  assert (email is not None)
+  url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/run/"
+  params = urllib.urlencode({
+    'sequence': sequence,
+    'program' : program,
+    'email'   : email,
+    'exp'     : exp,
+    'database': 'pdb',
+    'stype'   : 'protein',
+  })
+  job_id = urllib.urlopen(url, params).read()
+  while (True) :
+    time.sleep(1)
+    url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/status/%s" % job_id
+    status = urllib.urlopen(url).read()
+    if (status == "RUNNING") :
+      continue
+    elif (status == "FINISHED") :
+      url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/result/%s/xml" %\
+        job_id
+      result = urllib.urlopen(url).read()
+      return result
+    elif (status == "ERROR") :
+      raise RuntimeError("The EBI server reported an error.")
+    elif (status == "FAILURE") :
+      raise Sorry("Search failed!")
+    elif (status == "NOT_FOUND") :
+      raise RuntimeError("The EBI server can't find the job!")
+    else :
+      raise RuntimeError("Unknown status %s" % status)
