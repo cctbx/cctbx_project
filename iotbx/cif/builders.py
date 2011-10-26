@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 import iotbx.cif
 from iotbx.cif import model
 from libtbx.utils import Sorry
-from libtbx.containers import OrderedDict
+from libtbx.containers import OrderedDict, OrderedSet
 
 
 class CifBuilderError(Sorry):
@@ -460,6 +460,27 @@ class miller_array_builder(crystal_symmetry_builder):
                 array.set_observation_type_xray_amplitude()
               array.set_info(base_array_info.customized_copy(labels=labels))
               self._arrays.setdefault(key, array)
+    for key, array in self._arrays.copy().iteritems():
+      if (   key.endswith('_minus') or '_minus_' in key
+          or key.endswith('_plus') or '_plus_' in key):
+        if '_minus' in key:
+          minus_key = key
+          plus_key = key.replace('_minus', '_plus')
+        elif '_plus' in key:
+          plus_key = key
+          minus_key = key.replace('_plus', '_minus')
+        if plus_key in self._arrays and minus_key in self._arrays:
+          plus_array = self._arrays.pop(plus_key)
+          minus_array = self._arrays.pop(minus_key)
+          minus_array = minus_array.customized_copy(
+            indices=-minus_array.indices()).set_info(minus_array.info())
+          array = plus_array.concatenate(
+            minus_array, assert_is_similar_symmetry=False)
+          array = array.customized_copy(anomalous_flag=True)
+          array.set_info(minus_array.info().customized_copy(
+            labels=OrderedSet(plus_array.info().labels+minus_array.info().labels)))
+          array.set_observation_type(plus_array.observation_type())
+          self._arrays.setdefault(key, array)
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
