@@ -922,6 +922,24 @@ class sequence_window (object) :
       self.reset_layout()
       self.seq_panel.Refresh()
 
+  def set_chain_sequence_data (self, data) :
+    assert isinstance(data, list)
+    assert ((len(data) == 0) or (type(data[0]).__name__ == "chain"))
+    self._seq_data = data
+    ids = [ chain.chain_id for chain in data ]
+    self.control_panel.chain_select.SetItems(ids)
+    if (len(ids) > 0) :
+      self.set_current_alignment(0)
+
+  def set_current_alignment (self, index) :
+    assert (index < len(self._seq_data))
+    chain = self._seq_data[index]
+    seqs = chain.get_alignment(include_sec_str=True)
+    self.set_sequences([seqs[0], seqs[1]], labels=["PDB", "sequence"])
+    self.set_structure(seqs[2])
+    self.reset_layout()
+    self.seq_panel.Refresh()
+
   def set_sequence (self, *args, **kwds) :
     self.seq_panel.set_sequence(*args, **kwds)
 
@@ -946,8 +964,11 @@ class sequence_window (object) :
     pass
 
   def OnSelectChain (self, evt) :
-    chain_id = evt.GetEventObject().GetStringSelection()
-    self.set_current_chain(chain_id)
+    if (getattr(self, "_seq_data", None) is not None) :
+      self.set_current_alignemnt(evt.GetEventObject().GetSelection())
+    else :
+      chain_id = evt.GetEventObject().GetStringSelection()
+      self.set_current_chain(chain_id)
 
   def OnClose (self, evt) :
     self.Destroy()
