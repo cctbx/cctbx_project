@@ -224,6 +224,8 @@ def extract(file_name,
       elif 'status' in l or '_free' in l:
         label = output_r_free_label
         break
+      elif miller_array.is_hendrickson_lattman_array():
+        label = "HL"
     return label
 
   mtz_object = iotbx.mtz.object() \
