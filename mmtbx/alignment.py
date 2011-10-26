@@ -276,6 +276,26 @@ class alignment(object):
       similarity_function=blosum50,
       is_similar_threshold=is_similar_threshold)
 
+  def calculate_sequence_identity (self, skip_chars=()) :
+    """
+    Returns fractional sequence identity, defined here as the number of matches
+    between the aligned sequences divided by the number of valid residues in
+    the first sequence.  The optional argument skip_chars may be used to
+    pass over null residues (e.g. 'X' for a gap in a PDB chain).
+    """
+    skip_chars = list(skip_chars)
+    skip_chars.append("-")
+    n_matches = n_total = 0
+    for a, b in zip(self.a, self.b) :
+      # XXX should gaps in 'b' be discounted?
+      if (not a in skip_chars) : # and (not b in skip_cars)
+        n_total += 1
+        if (a == b) :
+          n_matches += 1
+    if (n_total == 0) or (n_matches == 0) :
+      return 0.
+    return n_matches / n_total
+
   def pretty_print(self,
         matches=None,
         out=None,
@@ -283,7 +303,8 @@ class alignment(object):
         n_block=1,
         top_name="reference",
         bottom_name="query",
-        comment = None):
+        comment = None,
+        show_ruler=True):
     if (matches is None): matches = self.matches()
     if (out is None): out = sys.stdout
 
@@ -300,8 +321,9 @@ class alignment(object):
     print >> out
     if comment is not None:
       print >> out, comment
-    print >> out, "              "+ruler
-    print >> out
+    if (show_ruler) :
+      print >> out, "              "+ruler
+      print >> out
 
     done=False
     n=len(self.a)
@@ -490,6 +512,7 @@ def exercise_similarity_scores():
     assert flex.double(m).matrix_is_symmetric(relative_epsilon=1e-15)
 
 def exercise():
+  from libtbx.test_utils import approx_equal
   A = "AAAGGTT"
   B = "AAATT"
   obj = align(A,B)
@@ -515,6 +538,7 @@ def exercise():
   print alignment.a
   print alignment.dayhoff_matches()
   print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.330645)
 
 
   # 1rra vs. 1bli
@@ -530,6 +554,7 @@ def exercise():
   print alignment.a
   print alignment.dayhoff_matches()
   print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.341880)
 
 
 
@@ -546,6 +571,7 @@ def exercise():
   print alignment.a
   print alignment.matches()
   print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.362903)
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
@@ -560,6 +586,7 @@ def exercise():
   print alignment.a
   print alignment.matches(similarity_function=blosum50, is_similar_threshold=0)
   print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.368852)
   print
   alignment.pretty_print(
     matches = None,
@@ -606,14 +633,16 @@ class pairwise_global_wrapper(pairwise_global):
 
     return overall_ranges1,overall_ranges2
 
-  def calculate_sequence_identity (self) :
+  def calculate_sequence_identity (self, skip_chars=()) :
     a1 = self.result1
     a2 = self.result2
     assert len(a1) == len(a2)
     n_aligned_residues = 0
     n_matching = 0
+    skip_chars = list(skip_chars)
+    skip_chars.append("-")
     for i in range(len(a1)) :
-      if a1[i] != '-' and a2[i] != '-' :
+      if (not a1[i] in skip_chars) and (not a2[i] in skip_chars) :
         n_aligned_residues += 1
         if a1[i] == a2[i] :
           n_matching += 1
