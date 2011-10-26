@@ -451,7 +451,7 @@ def exercise_crystal_symmetry():
 
 def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adsrf).as_miller_arrays()
-  assert len(miller_arrays) == 17
+  assert len(miller_arrays) == 16
   hl_coeffs = find_miller_array_from_labels(
     miller_arrays, ','.join([
       'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3',
@@ -469,16 +469,15 @@ def exercise_mmcif_structure_factors():
   assert f_meas_au.space_group_info().symbol_and_number() == 'C 1 2 1 (No. 5)'
   assert approx_equal(f_meas_au.unit_cell().parameters(),
                       (163.97, 45.23, 110.89, 90.0, 131.64, 90.0))
-  pdbx_I_plus = find_miller_array_from_labels(
-    miller_arrays, '_refln.pdbx_I_plus,_refln.pdbx_I_plus_sigma')
-  assert pdbx_I_plus.is_xray_intensity_array()
-  assert pdbx_I_plus.size() == 12
-  pdbx_I_minus = find_miller_array_from_labels(
-    miller_arrays, '_refln.pdbx_I_minus,_refln.pdbx_I_minus_sigma')
-  assert pdbx_I_minus.is_xray_intensity_array()
-  assert pdbx_I_minus.size() == 9
-  assert pdbx_I_minus.unit_cell() is None     # no symmetry information in
-  assert pdbx_I_minus.space_group() is None   # this CIF block
+  pdbx_I_plus_minus = find_miller_array_from_labels(
+    miller_arrays, ','.join(
+      ['_refln.pdbx_I_plus', '_refln.pdbx_I_plus_sigma',
+       '_refln.pdbx_I_minus', '_refln.pdbx_I_minus_sigma']))
+  assert pdbx_I_plus_minus.is_xray_intensity_array()
+  assert pdbx_I_plus_minus.anomalous_flag()
+  assert pdbx_I_plus_minus.size() == 21
+  assert pdbx_I_plus_minus.unit_cell() is None     # no symmetry information in
+  assert pdbx_I_plus_minus.space_group() is None   # this CIF block
   #
   miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
   assert len(miller_arrays) == 11
