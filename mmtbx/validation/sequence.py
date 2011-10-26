@@ -1,5 +1,8 @@
 
+# TODO cache all coordinates, not just flagged residues
+
 from libtbx import easy_mp
+from libtbx import easy_pickle
 from libtbx import str_utils
 import libtbx.phil
 from libtbx.utils import Sorry, null_out
@@ -19,7 +22,7 @@ UNK_AA = "U"
 UNK_NA = "K"
 
 class chain (object) :
-  def __init__ (self, chain_id, sequence, resids, chain_type) :
+  def __init__ (self, chain_id, sequence, resids, chain_type, sec_str=None) :
     adopt_init_args(self, locals())
     assert (chain_type in [PROTEIN, NUCLEIC_ACID])
     assert (len(sequence) == len(resids))
@@ -33,16 +36,23 @@ class chain (object) :
     self.extra = []
     self.unknown = []
     self.mismatch = []
+    self._xyz = {}
+    self._table = None
 
   def set_alignment (self, alignment, sequence_name) :
     assert (len(alignment.a) == len(alignment.b)) and (len(alignment.a) > 0)
     self.alignment = alignment
     self.sequence_name = sequence_name
+    if (self.sec_str is not None) :
+      raw_sec_str = self.sec_str
+    else :
+      raw_sec_str = "-" * len(self.sequence)
+    self.sec_str = ""
     if (self.sequence_name in [None, ""]) :
       self.sequence_name = "(unnamed)"
     if (alignment is not None) :
       self.identity = alignment.calculate_sequence_identity(skip_chars=['X'])
-    i = j = 0
+    i = j = k = 0
     chain_started = False
     prev_char = None
     while (i < len(alignment.a)) :
@@ -51,7 +61,10 @@ class chain (object) :
       resid = None
       if (a != '-') :
         resid = self.resids[j]
+        self.sec_str += raw_sec_str[j]
         j += 1
+      else :
+        self.sec_str += "-"
       if (a == 'X') :
         if (not b in ["X","-"]) :
           self.n_missing += 1
@@ -75,6 +88,37 @@ class chain (object) :
     while (alignment.a[i] in ["X", "-"]) :
       self.n_missing_end += 1
       i -= 1
+    assert (len(self.sec_str) == len(alignment.a))
+
+  def extract_coordinates (self, pdb_chain) :
+    assert (self.chain_id == pdb_chain.id)
+    self._table = []
+    k = 0
+    for residue_group in pdb_chain.residue_groups() :
+      resid = residue_group.resid()
+      res_class = None
+      if (resid in self.extra) :
+        res_class = "not in sequence"
+      elif (resid in self.mismatch) :
+        res_class = "mismatch to sequence"
+      elif (resid in self.unknown) :
+        res_class = "special residue"
+      if (res_class is not None) :
+        xyz = None
+        for atom in residue_group.atoms() :
+          if (atom.name == " CA ") or (atom.name == " P  ") :
+            xyz = atom.xyz
+        self._table.append([self.chain_id, resid, res_class,
+          "chain '%s' and resid %s" % (self.chain_id, resid), xyz])
+
+  def get_coordinates_table (self) :
+    return self._table
+
+  def get_alignment (self, include_sec_str=False) :
+    if (include_sec_str) :
+      return [self.alignment.a, self.alignment.b, self.sec_str]
+    else :
+      return [self.alignment.a, self.alignment.b]
 
   def show_summary (self, out, verbose=True) :
     def print_resids (resids) :
@@ -113,7 +157,8 @@ class chain (object) :
 
 class validation (object) :
   def __init__ (self, pdb_hierarchy, sequences, params=None, log=None,
-      nproc=Auto) :
+      nproc=Auto, include_secondary_structure=False,
+      extract_coordinates=False) :
     assert (len(sequences) > 0)
     if (log is None) :
       log = sys.stdout
@@ -126,6 +171,18 @@ class validation (object) :
     self.sequences = sequences
     if (len(pdb_hierarchy.models()) > 1) :
       raise Sorry("Multi-model PDB files not supported.")
+    helix_selection = sheet_selection = None
+    if (include_secondary_structure) :
+      import mmtbx.secondary_structure
+      ssm = mmtbx.secondary_structure.manager(
+        pdb_hierarchy=pdb_hierarchy,
+        xray_structure=pdb_hierarchy.extract_xray_structure(),
+        sec_str_from_pdb_file=None,
+        assume_hydrogens_all_missing=None)
+      ssm.find_automatically(log=null_out())
+      helix_selection = ssm.alpha_selection()
+      sheet_selection = ssm.beta_selection()
+    pdb_chains = []
     for pdb_chain in pdb_hierarchy.models()[0].chains() :
       unk = UNK_AA
       chain_id = pdb_chain.id
@@ -142,22 +199,35 @@ class validation (object) :
       seq = main_conf.as_padded_sequence(substitute_unknown=unk)
       resids = main_conf.get_residue_ids()
       assert (len(seq) == len(resids))
+      sec_str = None
+      if (helix_selection is not None) and (main_conf.is_protein()) :
+        sec_str = main_conf.as_sec_str_sequence(helix_selection,
+          sheet_selection)
+        assert (len(sec_str) == len(seq))
       c = chain(chain_id=chain_id,
         sequence=seq,
         resids=resids,
-        chain_type=PROTEIN)
+        chain_type=PROTEIN,
+        sec_str=sec_str)
       self.chains.append(c)
+      pdb_chains.append(pdb_chain)
     alignments_and_names = easy_mp.pool_map(
       fixed_func=self.align_chain,
       args=range(len(self.chains)),
       processes=nproc)
-    assert (len(alignments_and_names) == len(self.chains))
-    for c, (alignment,seq_name) in zip(self.chains, alignments_and_names) :
+    assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
+    for i, c in enumerate(self.chains) :
+      alignment, seq_name = alignments_and_names[i]
+      pdb_chain = pdb_chains[i]
       try :
         c.set_alignment(alignment, seq_name)
       except Exception, e :
         print "Error processing chain %s" % c.chain_id
         print e
+      else :
+        if (extract_coordinates) :
+          c.extract_coordinates(pdb_chain)
+    self.sequences = None
 
   def align_chain (self, i) :
     import mmtbx.alignment
@@ -178,6 +248,12 @@ class validation (object) :
         best_sequence = seq_object.name
     return best_alignment, best_sequence
 
+  def get_table_data (self) :
+    table = []
+    for c in self.chains :
+      table.extend(c.get_coordinates_table())
+    return table
+
   def show (self, out=None) :
     if (out is None) :
       out = sys.stdout
@@ -189,8 +265,11 @@ class validation (object) :
 def exercise () :
   import iotbx.bioinformatics
   import iotbx.pdb
+  from iotbx import file_reader
+  import libtbx.load_env # import dependency
   from libtbx.test_utils import Exception_expected, contains_lines
   from cStringIO import StringIO
+  import os
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      2  CA  ARG A  10      -6.299  36.344   7.806  1.00 55.20           C
 ATOM     25  CA  TYR A  11      -3.391  33.962   7.211  1.00 40.56           C
@@ -270,10 +349,13 @@ END
   v = validation(
     pdb_hierarchy=pdb_in2.construct_hierarchy(),
     sequences=[seq2,seq3],
-    log=None,#null_out(),
-    nproc=1)
+    log=null_out(),
+    nproc=1,
+    extract_coordinates=True)
   out = StringIO()
   v.show(out=out)
+  assert (len(v.chains[0].get_coordinates_table()) == 3)
+  assert (len(v.get_table_data()) == 4)
   assert contains_lines(out.getvalue(), """\
   3 mismatches to sequence
     residue IDs:  12 13 15""")
@@ -283,6 +365,25 @@ END
   1 gap(s) in chain
   1 mismatches to sequence
     residue IDs:  5""")
+  s = easy_pickle.dumps(v)
+  # file-dependent tests
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/1ywf.pdb",
+    test=os.path.isfile)
+  if (pdb_file is not None) :
+    seq = iotbx.bioinformatics.sequence("MGSSHHHHHHSSGLVPRGSHMAVRELPGAWNFRDVADTATALRPGRLFRSSELSRLDDAGRATLRRLGITDVADLRSSREVARRGPGRVPDGIDVHLLPFPDLADDDADDSAPHETAFKRLLTNDGSNGESGESSQSINDAATRYMTDEYRQFPTRNGAQRALHRVVTLLAAGRPVLTHCFAGKDRTGFVVALVLEAVGLDRDVIVADYLRSNDSVPQLRARISEMIQQRFDTELAPEVVTFTKARLSDGVLGVRAEYLAAARQTIDETYGSLGGYLRDAGISQATVNRMRGVLLG")
+    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+    v = validation(
+      pdb_hierarchy=pdb_in.file_object.construct_hierarchy(),
+      sequences=[seq],
+      log=null_out(),
+      nproc=1,
+      include_secondary_structure=True,
+      extract_coordinates=True)
+    out = StringIO()
+    v.show(out=out)
+    aln1, aln2, ss = v.chains[0].get_alignment(include_sec_str=True)
+    assert ("HHH" in ss) and ("LLL" in ss) and ("---" in ss)
 
 if (__name__ == "__main__") :
   exercise()
