@@ -1288,8 +1288,9 @@ class set(crystal.symmetry):
   def clear_binner(self):
     self._binner = None
 
-  def concatenate(self, other):
-    assert self.is_similar_symmetry(other)
+  def concatenate(self, other, assert_is_similar_symmetry=True):
+    if (assert_is_similar_symmetry):
+      assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
     return set(
       crystal_symmetry = self,
@@ -1567,11 +1568,13 @@ class array(set):
     return array(miller_set=miller_set, data=data, sigmas=sigmas)\
            .set_observation_type(observation_type)
 
-  def concatenate(self, other):
+  def concatenate(self, other, assert_is_similar_symmetry=True):
     if([self.sigmas(), other.sigmas()].count(None) == 0):
-      return self.set().concatenate(other = other.set()).array(
-        data   = self.data().concatenate(other.data()),
-        sigmas = self.sigmas().concatenate(other.sigmas()))
+      return self.set().concatenate(
+        other = other.set(),
+        assert_is_similar_symmetry=assert_is_similar_symmetry).array(
+          data   = self.data().concatenate(other.data()),
+          sigmas = self.sigmas().concatenate(other.sigmas()))
     else:
       return self.set().concatenate(other = other.set()).array(
         data = self.data().concatenate(other.data()))
