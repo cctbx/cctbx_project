@@ -12,21 +12,20 @@ __this_script__ = "cctbx_project/fable/test/sf_times.py"
 
 setup_dir = "/net/cci/setup/Linux"
 
-ifort_versions = ["ifort91.sh", "intel111.sh"]
+ifort_versions = ["intel121.sh", "intel111.sh", "ifort91.sh"]
 
 icc_versions = [
-  "icc91.sh",
-  "icc101.sh",
+  "intel121.sh",
   "intel111.sh",
-  "icc121.sh"
-  ]
+  "icc101.sh",
+  "icc91.sh"]
 
 gcc_versions = [
-  "gcc-4.2.4_fc8.sh",
-  "gcc-4.3.6_fc8.sh",
-  "gcc-4.4.6_fc8.sh",
+  "gcc-4.6.1_fc8.sh",
   "gcc-4.5.3_fc8.sh",
-  "gcc-4.6.1_fc8.sh"]
+  "gcc-4.4.6_fc8.sh",
+  "gcc-4.3.6_fc8.sh",
+  "gcc-4.2.4_fc8.sh"]
 
 fortran_template = r"""C %(this_script)s
 
@@ -381,7 +380,7 @@ def run(args):
     del icc_versions[-1]
   else:
     usage()
-  gcc_sh = [None] + gcc_versions
+  gcc_sh = gcc_versions + [None]
   icc_sh = icc_versions
   if (args[0] == "quick"):
     gcc_sh = gcc_sh[:2]
