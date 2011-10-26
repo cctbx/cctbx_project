@@ -208,9 +208,8 @@ def extract(file_name,
             map_to_asu,
             remove_systematic_absences):
   import iotbx.cif
-  miller_arrays = iotbx.cif.reader(file_path=file_name).as_miller_arrays(
-    crystal_symmetry=crystal_symmetry)
-  assert len(miller_arrays) > 0
+  all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays()
+  assert len(all_miller_arrays) > 0
   column_labels = set()
 
   def get_label(miller_array):
@@ -227,7 +226,6 @@ def extract(file_name,
         break
     return label
 
-  crystal_symmetry = miller_arrays[0].crystal_symmetry()
   mtz_object = iotbx.mtz.object() \
     .set_title(title="phenix.cif_as_mtz") \
     .set_space_group_info(space_group_info=crystal_symmetry.space_group_info())
@@ -235,78 +233,76 @@ def extract(file_name,
   mtz_crystals = {}
   mtz_object.set_hkl_base(unit_cell=unit_cell)
   from iotbx.reflection_file_utils import cif_status_flags_as_int_r_free_flags
-  for ma in miller_arrays:
-    labels = ma.info().labels
-    label = get_label(ma)
-    if label is None: continue
-    elif label == output_r_free_label:
-      ma, _ = cif_status_flags_as_int_r_free_flags(
-        ma, test_flag_value="f")
-    crys_id = 0
-    for l in labels:
-      if 'crystal_id' in l:
-        crys_id = int(l.split('=')[-1])
-        break
-    if crystal_id is not None and crys_id > 0 and crys_id != crystal_id:
-      continue
-    if crys_id not in mtz_crystals:
-      mtz_crystals[crys_id] = (
-        mtz_object.add_crystal(
-          name="crystal_%i" %crys_id,
-          project_name="project",
-          unit_cell=unit_cell), {})
-    crystal, datasets = mtz_crystals[crys_id]
-    w_id = 0
-    for l in labels:
-      if 'wavelength_id' in l:
-        w_id = int(l.split('=')[-1])
-        break
-    if wavelength_id is not None and w_id > 0 and w_id != wavelength_id:
-      continue
-    if w_id > 0 and wavelength_id is None:
-      label += "%i" %w_id
-    if w_id not in datasets:
-      datasets[w_id] = crystal.add_dataset(
-        name="dataset",
-        wavelength=0)
-    dataset = datasets[w_id]
-    if not ma.is_unique_set_under_symmetry():
-      if merge_non_unique_under_symmetry:
-        print "Warning: merging non-unique data"
-        ma = ma.merge_equivalents().array().customized_copy(
-          crystal_symmetry=ma).set_info(ma.info())
-      else:
-        n_all = ma.indices().size()
-        sel_unique = ma.unique_under_symmetry_selection()
-        sel_dup = ~flex.bool(n_all, sel_unique)
-        n_duplicate = sel_dup.count(True)
-        n_uus = sel_unique.size()
-        print "Miller indices not unique under symmetry:", file_name, \
-              "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
-        print "Add --merge to command arguments to force merging data."
-        return None
-        if (show_details_if_error):
-          ma.show_comprehensive_summary(prefix="  ")
-          ma.map_to_asu().sort().show_array(prefix="  ")
-    if(map_to_asu):
-      ma = ma.map_to_asu().set_info(ma.info())
-    if(remove_systematic_absences):
-      ma = ma.remove_systematic_absences()
-    ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
-      .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
-    def get_unique_column_label(miller_array, label, column_labels):
-      if label not in column_labels: return label
-      ma_labels = miller_array.info().labels
-      datablock_name = ma_labels[0]
-      label = "_".join((datablock_name, label))
-      if label not in column_labels: return label
-      i = 1
-      while "%s_%i" %(label, i) in column_labels:
-        i += 1
-      return "%s_%i" %(label, i)
-    label = get_unique_column_label(ma, label, column_labels)
-    column_labels.add(label)
-    dataset.add_miller_array(ma, column_root_label=label)
+  for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
+    for ma in miller_arrays.values():
+      other_symmetry = crystal_symmetry
+      crystal_symmetry = other_symmetry.join_symmetry(
+        other_symmetry=ma.crystal_symmetry(),
+        force=True)
+      ma = ma.customized_copy(
+        crystal_symmetry=crystal_symmetry).set_info(ma.info())
+      labels = ma.info().labels
+      label = get_label(ma)
+      if label is None: continue
+      elif label == output_r_free_label:
+        ma, _ = cif_status_flags_as_int_r_free_flags(
+          ma, test_flag_value="f")
+      crys_id = 0
+      for l in labels:
+        if 'crystal_id' in l:
+          crys_id = int(l.split('=')[-1])
+          break
+      if crystal_id is not None and crys_id > 0 and crys_id != crystal_id:
+        continue
+      if crys_id not in mtz_crystals:
+        mtz_crystals[crys_id] = (
+          mtz_object.add_crystal(
+            name="crystal_%i" %crys_id,
+            project_name="project",
+            unit_cell=unit_cell), {})
+      crystal, datasets = mtz_crystals[crys_id]
+      w_id = 0
+      for l in labels:
+        if 'wavelength_id' in l:
+          w_id = int(l.split('=')[-1])
+          break
+      if wavelength_id is not None and w_id > 0 and w_id != wavelength_id:
+        continue
+      if w_id > 0 and wavelength_id is None:
+        label += "%i" %w_id
+      if w_id not in datasets:
+        datasets[w_id] = crystal.add_dataset(
+          name="dataset",
+          wavelength=0)
+      dataset = datasets[w_id]
+      if not ma.is_unique_set_under_symmetry():
+        if merge_non_unique_under_symmetry:
+          print "Warning: merging non-unique data"
+          ma = ma.merge_equivalents().array().customized_copy(
+            crystal_symmetry=ma).set_info(ma.info())
+        else:
+          n_all = ma.indices().size()
+          sel_unique = ma.unique_under_symmetry_selection()
+          sel_dup = ~flex.bool(n_all, sel_unique)
+          n_duplicate = sel_dup.count(True)
+          n_uus = sel_unique.size()
+          print "Miller indices not unique under symmetry:", file_name, \
+                "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
+          print "Add --merge to command arguments to force merging data."
+          return None
+          if (show_details_if_error):
+            ma.show_comprehensive_summary(prefix="  ")
+            ma.map_to_asu().sort().show_array(prefix="  ")
+      if(map_to_asu):
+        ma = ma.map_to_asu().set_info(ma.info())
+      if(remove_systematic_absences):
+        ma = ma.remove_systematic_absences()
+      ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
+        .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
+      if i > 0:
+        label += "-%i" %i
+      column_labels.add(label)
+      dataset.add_miller_array(ma, column_root_label=label)
   return mtz_object
 
 ########################################################################
