@@ -885,7 +885,9 @@ class _(boost.python.injector, ext.conformer):
       return True
     return False
 
-  def as_sequence (self) :
+  def as_sequence (self, substitute_unknown='X') :
+    assert ((isinstance(substitute_unknown, str)) and
+            (len(substitute_unknown) == 1))
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
@@ -894,7 +896,7 @@ class _(boost.python.injector, ext.conformer):
       from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
       aa_3_as_1 = one_letter_given_three_letter.get
       for rn in rn_seq:
-        seq.append(aa_3_as_1(rn, "X"))
+        seq.append(aa_3_as_1(rn, substitute_unknown))
     elif (n_na != 0):
       for rn in rn_seq:
         seq.append({
@@ -927,7 +929,7 @@ class _(boost.python.injector, ext.conformer):
     return result
 
   def as_padded_sequence (self, missing_char='X', skip_insertions=False,
-      pad=True) :
+      pad=True, substitute_unknown='X') :
     seq = self.as_sequence()
     padded_seq = []
     last_resseq = 0
