@@ -1,6 +1,4 @@
 
-# TODO cache all coordinates, not just flagged residues
-
 from libtbx import easy_mp
 from libtbx import easy_pickle
 from libtbx import str_utils
@@ -21,7 +19,24 @@ NUCLEIC_ACID = 1
 UNK_AA = "U"
 UNK_NA = "K"
 
+def get_mean_coordinate (sites) :
+  if (len(sites) == 0) :
+    return None
+  elif (len(sites) == 1) :
+    return sites[0]
+  else :
+    from scitbx.array_family import flex
+    v = flex.vec3_double(sites)
+    return v.mean()
+
 class chain (object) :
+  """
+  Stores information on a protein or nucleic acid chain, its alignment to
+  the target sequence, and the coordinates of each residue.  For command-line
+  use, much of this is irrelevant.  In the PHENIX GUI, much of this data is
+  fed to the sequence/alignment viewer (wxtbx.sequence_view), which controls
+  the graphics window(s).
+  """
   def __init__ (self, chain_id, sequence, resids, chain_type, sec_str=None) :
     adopt_init_args(self, locals())
     assert (chain_type in [PROTEIN, NUCLEIC_ACID])
@@ -36,8 +51,9 @@ class chain (object) :
     self.extra = []
     self.unknown = []
     self.mismatch = []
-    self._xyz = {}
+    self._xyz = []
     self._table = None
+    self._flag_indices = []
 
   def set_alignment (self, alignment, sequence_name) :
     assert (len(alignment.a) == len(alignment.b)) and (len(alignment.a) > 0)
@@ -76,12 +92,14 @@ class chain (object) :
         chain_started = True
         if (b == "-") :
           self.extra.append(resid)
+          self._flag_indices.append(i)
         elif (not b in ["X","-"]) and (b != a) :
           if (((a == UNK_AA) and (self.chain_type == PROTEIN)) or
               ((a == UNK_NA) and (self.chain_type == NUCLEIC_ACID))) :
             self.unknown.append(resid)
           else :
             self.mismatch.append(resid)
+          self._flag_indices.append(i)
       prev_char = a
       i += 1
     i = len(alignment.a) - 1
@@ -91,11 +109,18 @@ class chain (object) :
     assert (len(self.sec_str) == len(alignment.a))
 
   def extract_coordinates (self, pdb_chain) :
+    """
+    Collect the coordinate of the central atom (CA or P) in each residue,
+    padding the array with None so it matches the sequence and resid arrays.
+    """
     assert (self.chain_id == pdb_chain.id)
     self._table = []
     k = 0
     for residue_group in pdb_chain.residue_groups() :
       resid = residue_group.resid()
+      while (self.resids[k] != resid) :
+        self._xyz.append(None)
+        k += 1
       res_class = None
       if (resid in self.extra) :
         res_class = "not in sequence"
@@ -103,16 +128,58 @@ class chain (object) :
         res_class = "mismatch to sequence"
       elif (resid in self.unknown) :
         res_class = "special residue"
+      xyz = None
+      for atom in residue_group.atoms() :
+        if (atom.name == " CA ") or (atom.name == " P  ") :
+          xyz = atom.xyz
+          break
+      else :
+        print "WARNING: can't find center of residue %s" % resid
+        xyz = residue_group.atoms()[0].xyz
+      self._xyz.append(xyz)
       if (res_class is not None) :
-        xyz = None
-        for atom in residue_group.atoms() :
-          if (atom.name == " CA ") or (atom.name == " P  ") :
-            xyz = atom.xyz
         self._table.append([self.chain_id, resid, res_class,
           "chain '%s' and resid %s" % (self.chain_id, resid), xyz])
+      k += 1
+    while (k < len(self.resids)) :
+      self._xyz.append(None)
+      k += 1
+    assert (len(self.resids) == len(self._xyz))
 
-  def get_coordinates_table (self) :
+  def get_outliers_table (self) :
+    """Used in PHENIX validation GUI"""
     return self._table
+
+  def get_highlighted_residues (self) :
+    """Used for wxtbx.sequence_view to highlight mismatches, etc."""
+    return self._flag_indices
+
+  def get_coordinates_for_alignment_range (self, i1, i2) :
+    assert (len(self._xyz) > 0)
+    k = 0
+    sites = []
+    for j, a in enumerate(self.alignment.a) :
+      if (j > i2) :
+        break
+      elif (j >= i1) :
+        sites.append(self._xyz[k])
+      if (a != '-') :
+        k += 1
+    return sites
+
+  def get_mean_coordinate_for_alignment_range (self, *args, **kwds) :
+    sites = self.get_coordinates_for_alignment_range(*args, **kwds)
+    return get_mean_coordinate(sites)
+
+  def get_coordinates_for_alignment_ranges (self, ranges) :
+    sites = []
+    for i1, i2 in ranges :
+      sites.extend(self.get_coordinates_for_alignment_range(i1,i2))
+    return sites
+
+  def get_mean_coordinate_for_alignment_ranges (self, *args, **kwds) :
+    sites = self.get_coordinates_for_alignment_ranges(*args, **kwds)
+    return get_mean_coordinate(sites)
 
   def get_alignment (self, include_sec_str=False) :
     if (include_sec_str) :
@@ -251,7 +318,7 @@ class validation (object) :
   def get_table_data (self) :
     table = []
     for c in self.chains :
-      table.extend(c.get_coordinates_table())
+      table.extend(c.get_outliers_table())
     return table
 
   def show (self, out=None) :
@@ -267,7 +334,7 @@ def exercise () :
   import iotbx.pdb
   from iotbx import file_reader
   import libtbx.load_env # import dependency
-  from libtbx.test_utils import Exception_expected, contains_lines
+  from libtbx.test_utils import Exception_expected, contains_lines, approx_equal
   from cStringIO import StringIO
   import os
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
@@ -354,8 +421,15 @@ END
     extract_coordinates=True)
   out = StringIO()
   v.show(out=out)
-  assert (len(v.chains[0].get_coordinates_table()) == 3)
+  assert (len(v.chains[0].get_outliers_table()) == 3)
   assert (len(v.get_table_data()) == 4)
+  assert approx_equal(
+    v.chains[0].get_mean_coordinate_for_alignment_range(11,11),
+    (-0.693, 34.802, 4.693))
+  assert approx_equal(
+    v.chains[0].get_mean_coordinate_for_alignment_range(11,14),
+    (2.93675, 31.43475, 3.53175))
+  assert (v.chains[0].get_highlighted_residues() == [11,12,14])
   assert contains_lines(out.getvalue(), """\
   3 mismatches to sequence
     residue IDs:  12 13 15""")
@@ -366,7 +440,10 @@ END
   1 mismatches to sequence
     residue IDs:  5""")
   s = easy_pickle.dumps(v)
-  # file-dependent tests
+  # all tests below here have additional dependencies
+  if (not libtbx.env.has_module("ksdssp")) :
+    print "Skipping advanced tests (require ksdssp module)"
+    return
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
