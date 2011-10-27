@@ -361,7 +361,7 @@ class miller_array_builder(crystal_symmetry_builder):
                   sigmas = array
                   array = self._arrays[key]
                   check_array_sizes(array, sigmas, key, sigmas_label)
-                  check_is_flex_int_or_double(sigmas, sigmas_label)
+                  sigmas = as_flex_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas.data())
                   info = array.info()
                   array.set_info(
@@ -373,7 +373,7 @@ class miller_array_builder(crystal_symmetry_builder):
                     value, wavelength_id=w_id, crystal_id=crys_id,
                     scale_group_code=scale_group)
                   check_array_sizes(array, sigmas, key, sigmas_label)
-                  check_is_flex_int_or_double(sigmas, sigmas_label)
+                  sigmas = as_flex_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas.data())
                   labels = labels[:-1]+[key, sigmas_label]
               elif 'HL_' in key:
@@ -454,10 +454,18 @@ class miller_array_builder(crystal_symmetry_builder):
               if (stripped_key.endswith('F_squared') or
                   stripped_key.endswith('intensity') or
                   stripped_key.endswith('.I') or
-                  stripped_key.endswith('_I')) and array.is_real_array():
+                  stripped_key.endswith('_I')) and (
+                    array.is_real_array() or array.is_integer_array()):
                 array.set_observation_type_xray_intensity()
-              elif (stripped_key.endswith('F') and array.is_real_array()):
+              elif (stripped_key.endswith('F') and (
+                array.is_real_array() or array.is_integer_array())):
                 array.set_observation_type_xray_amplitude()
+              if (array.is_xray_amplitude_array() or
+                  array.is_xray_amplitude_array()):
+                # e.g. merge_equivalents treats integer arrays differently, so must
+                # convert integer observation arrays here to be safe
+                if isinstance(array.data(), flex.int):
+                  array = array.customized_copy(data=array.data().as_double())
               array.set_info(base_array_info.customized_copy(labels=labels))
               self._arrays.setdefault(key, array)
     for key, array in self._arrays.copy().iteritems():
@@ -545,9 +553,12 @@ class miller_array_builder(crystal_symmetry_builder):
   def arrays(self):
     return self._arrays
 
-def check_is_flex_int_or_double(array, key):
-  if isinstance(array.data(), flex.double) or isinstance(array.data(), flex.int):
-    return True
+def as_flex_double(array, key):
+  if isinstance(array.data(), flex.double):
+    return array
+  elif isinstance(array.data(), flex.int):
+    return array.customized_copy(
+      data=array.data().as_double()).set_info(array.info())
   else:
     try:
       flex.double(array.data())
