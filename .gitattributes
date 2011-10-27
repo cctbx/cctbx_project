@@ -1077,7 +1077,6 @@ mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cablam_annote.py -text
 mmtbx/command_line/cablam_training.py -text
 mmtbx/command_line/cbetadev.py -text
-mmtbx/command_line/check_sequence.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
 mmtbx/command_line/density_modification.py -text
@@ -1094,6 +1093,7 @@ mmtbx/command_line/map_to_model_histogram.py -text
 mmtbx/command_line/map_value_at_point.py -text
 mmtbx/command_line/maps.py -text
 mmtbx/command_line/model_vs_data.py -text
+mmtbx/command_line/model_vs_sequence.py -text
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
 mmtbx/command_line/mtz2map.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
