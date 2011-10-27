@@ -283,8 +283,13 @@ def extract(file_name,
       if not ma.is_unique_set_under_symmetry():
         if merge_non_unique_under_symmetry:
           print "Warning: merging non-unique data"
-          ma = ma.merge_equivalents().array().customized_copy(
-            crystal_symmetry=ma).set_info(ma.info())
+          try:
+            ma = ma.merge_equivalents().array().customized_copy(
+              crystal_symmetry=ma).set_info(ma.info())
+          except Sorry, e:
+            if ("merge_equivalents_exact: incompatible" in str(e)) :
+              raise Sorry(str(e) + " for %s" %ma.info().labels[-1])
+            raise e
         else:
           n_all = ma.indices().size()
           sel_unique = ma.unique_under_symmetry_selection()
