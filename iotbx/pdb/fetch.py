@@ -158,7 +158,11 @@ def run (args, log=sys.stdout) :
 def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
     expect=0.01) :
   assert (blast_type in ["blastp", "blastn"])
-  assert (sequence.isalpha())
+  if (sequence[-1] == '*') :
+    sequence = sequence[:-1]
+  if (not sequence.isalpha()) :
+    raise Sorry("The sequence contains non-alphabetical characters; in "+
+      "addition to A-Z, only an asterisk denoting a stop codon is permitted.")
   assert (expect >= 0)
   try :
     from Bio.Blast import NCBIWWW
