@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.model_vs_sequence
 
 import mmtbx.validation.sequence
 from libtbx.utils import Sorry, Usage
