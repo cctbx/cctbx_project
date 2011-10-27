@@ -312,6 +312,10 @@ multiple residues."
     self.highlights.append(i_seq)
     self.highlight_colors.append(color)
 
+  def set_highlights (self, indices, **kwds) :
+    for i_seq in indices :
+      self.highlight_char(i_seq, **kwds)
+
   def clear_selection (self) :
     self.selected_residues = [False] * self.sequence_length()
     self.update_frame()
