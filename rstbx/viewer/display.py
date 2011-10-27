@@ -74,6 +74,8 @@ class XrayView (wx.Panel) :
     self.paint(dc)
 
   def paint (self, dc) :
+    if (self._img is None) :
+      return
     w, h = self.GetSize()
     bitmap = self._img.get_bitmap()
     x, y = self._img.adjust_screen_coordinates(0, 0)
