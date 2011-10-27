@@ -124,7 +124,15 @@ class crystal_symmetry_builder(builder_base):
       space_group = sgtbx.space_group()
       if isinstance(sym_ops, basestring): sym_ops = [sym_ops]
       for i, op in enumerate(sym_ops):
-        s = sgtbx.rt_mx(op)
+        try:
+          s = sgtbx.rt_mx(op)
+        except RuntimeError, e:
+          str_e = str(e)
+          if "Parse error: " in str_e:
+            raise CifBuilderError("Error interpreting symmetry operator: %s" %(
+              str_e.split("Parse error: ")[-1]))
+          else:
+            raise e
         if sym_op_ids is None:
           sym_op_id = i+1
         else:
@@ -172,7 +180,13 @@ class crystal_symmetry_builder(builder_base):
         vals = [float_from_string(s) for s in items]
       except ValueError:
         raise CifBuilderError("Invalid unit cell parameters are given")
-      unit_cell = uctbx.unit_cell(vals)
+      try:
+        unit_cell = uctbx.unit_cell(vals)
+      except RuntimeError, e:
+        if "cctbx Error: Unit cell" in str(e):
+          raise CifBuilderError(e)
+        else:
+          raise RuntimeError, e
     elif (space_group is not None):
       unit_cell = uctbx.infer_unit_cell_from_symmetry(
         [float_from_string(s) for s in items if s is not None], space_group)
