@@ -215,14 +215,19 @@ def extract(file_name,
   def get_label(miller_array):
     label = None
     for l in miller_array.info().labels:
-      if '_meas' in l:
+      if ('_meas' in l) :
         if miller_array.is_xray_amplitude_array():
           label = "FOBS"
         elif miller_array.is_xray_intensity_array():
           label = "IOBS"
         break
       elif '_plus' in l or '_minus' in l:
-        label = "FOBS" # XXX is this the correct data name for anomalous arrays?
+        if ("_I_" in l) :
+          label = "IOBS"
+        else :
+          # XXX is this the correct data name for anomalous arrays?
+          # XXX I'd prefer just 'F' (or 'I'), but FOBS is okay. -nat
+          label = "FOBS"
         break
       elif 'status' in l or '_free' in l:
         label = output_r_free_label
