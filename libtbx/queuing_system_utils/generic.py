@@ -192,12 +192,21 @@ EOF
       out = self.out_file(),
       err = self.err_file()
       )
-    self.process = subprocess.Popen(
-      cmd,
-      stdin = subprocess.PIPE,
-      stdout = subprocess.PIPE,
-      stderr = subprocess.STDOUT
-      )
+
+    try:
+        self.process = subprocess.Popen(
+          cmd,
+          stdin = subprocess.PIPE,
+          stdout = subprocess.PIPE,
+          stderr = subprocess.STDOUT
+          )
+
+    except OSError, e:
+        raise RuntimeError, "Error while executing: '%s': %s" % (
+            " ".join( cmd ),
+            e,
+            )
+
     self.process.stdin.write( self.SCRIPT % ( self.SETPATHS, self.name ) )
     self.process.stdin.close()
 
@@ -286,12 +295,21 @@ class PBSJob(Job):
       out = self.out_file(),
       err = self.err_file()
       )
-    process = subprocess.Popen(
-      cmd,
-      stdin = subprocess.PIPE,
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
+
+    try:
+        process = subprocess.Popen(
+          cmd,
+          stdin = subprocess.PIPE,
+          stdout = subprocess.PIPE,
+          stderr = subprocess.PIPE
+          )
+
+    except OSError, e:
+        raise RuntimeError, "Error while executing: '%s': %s" % (
+            " ".join( cmd ),
+            e,
+            )
+
     ( out, err ) = process.communicate(
       input = self.SCRIPT % ( self.SETPATHS, self.name )
       )
