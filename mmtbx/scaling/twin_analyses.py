@@ -1012,13 +1012,21 @@ class h_test(object):
 
       acentric_data =  miller_array.select_acentric().set_observation_type(
         miller_array)
-      h_test_object  = scaling.h_test(acentric_data.indices(),
-                                      acentric_data.data(),
-                                      acentric_data.sigmas(),
-                                      acentric_data.space_group(),
-                                      acentric_data.anomalous_flag(),
-                                      twin_law,
-                                      fraction)
+      try :
+        h_test_object  = scaling.h_test(acentric_data.indices(),
+                                        acentric_data.data(),
+                                        acentric_data.sigmas(),
+                                        acentric_data.space_group(),
+                                        acentric_data.anomalous_flag(),
+                                        twin_law,
+                                        fraction)
+      except ValueError, e :
+        if (miller_array.completeness() < 0.05) :
+          raise Sorry("These data are severely incomplete, which breaks the "+
+            "H-test for twinning.  We recommend that you use a full data set "+
+            "in Xtriage, otherwise the statistical analyses may be invalid.")
+        else :
+          raise e
 
       self.mean_h = h_test_object.mean_h()
       self.mean_h2 = h_test_object.mean_h2()
