@@ -798,6 +798,9 @@ class torsion_ncs(object):
                       mon_lib_srv=mon_lib_srv,
                       remove_clusters_with_all_h=True,
                       log=None)
+                if (axis_and_atoms_to_rotate is None) :
+                  print >> log, "Skipped %s rotamer (TARDY error)" % key
+                  continue
                 assert len(m_chis) == len(r_chis)
                 assert len(m_chis) == len(axis_and_atoms_to_rotate)
                 counter = 0
