@@ -308,6 +308,7 @@ in each bin to the average number per bin:""")
 
   def OnDisplayHistogram (self, event) :
     keys = [ key for key, data in self.histogram_data ]
+    choice = None
     dlg = wx.SingleChoiceDialog(
       parent=self,
       message="Which statistic do you want to view as a histogram?",
