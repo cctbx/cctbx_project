@@ -595,9 +595,12 @@ def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
   assert sites_cart.size() == u_iso.size()
   target = 0
   for sel_str in selection_strings:
+    sel_str = "(%s) and (not resname HOH)" % sel_str
     sel = pdb_hierarchy.atom_selection_cache().selection(
       string = sel_str.replace('"',""))
     assert sel.size() == u_iso.size()
+    if (sel.count(True) == 0) :
+      continue
     target += tls_refinery(sites_cart=sites_cart, selection=sel, u_iso=u_iso).f
   return target
 
