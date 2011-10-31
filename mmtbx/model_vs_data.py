@@ -951,6 +951,7 @@ def summarize_results (mvd_obj) :
     c_beta_deviations = clashscore = rama_allowed = rama_favored = \
       rama_outliers = rotamer_outliers =None
   def convert_float (value) :
+    if (value is None) : return None
     try :
       return float(value)
     except ValueError :
