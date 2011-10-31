@@ -2084,7 +2084,7 @@ def unpickle():
   # XXX backward compatibility 2011-07-05
   if (not hasattr(env.build_options, "enable_cuda")):
     env.build_options.enable_cuda = False
-  # XXX backward compatibility 2011-09
+  # XXX backward incompatibility 2011-10
   if not hasattr(env, 'relocatable'):
     print ("Please re-configure from scracth your cctbx_build:"
            "cd cctbx_build; "
