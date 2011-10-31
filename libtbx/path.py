@@ -227,7 +227,7 @@ class relocatable_path(path_mixin):
     self._rooted = rooted
     root = rooted.root_path
     if os.path.isabs(relocatable):
-      if not relocatable.startswith(root):
+      if not os.path.normcase(relocatable).startswith(root):
         raise RuntimeError('relocatable (%s) is an absolute path '
                            'that does not hang from root (%s)' % (relocatable,
                                                                   root))
