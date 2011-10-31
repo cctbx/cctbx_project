@@ -1,4 +1,5 @@
 import libtbx.path
+from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, detect_binary_file
 from libtbx import adopt_init_args
@@ -9,6 +10,10 @@ from cStringIO import StringIO
 import re
 import sys, os
 op = os.path
+
+#### DEBUG ####
+if os.environ.get('LIBTBX_WINGIDE_DEBUG'): import wingdbstub
+#### /DEBUG ####
 
 # XXX backward compatibility 2011-03-29
 qnew = 2
@@ -39,7 +44,7 @@ def unique_paths(paths):
   hash = set()
   result = []
   for path in paths:
-    path_normcase = op.normcase(path)
+    path_normcase = path.normcase()
     if (path_normcase in hash): continue
     hash.add(path_normcase)
     result.append(path)
@@ -170,7 +175,7 @@ def highlight_dispatcher_include_lines(lines):
   lines.append(lines[0])
 
 def source_specific_dispatcher_include(pattern, source_file):
-  try: source_lines = open(source_file).read().splitlines()
+  try: source_lines = source_file.open().read().splitlines()
   except IOError: return []
   lines = ["# lines marked " + pattern]
   for line in source_lines:
@@ -223,8 +228,8 @@ def write_do_not_edit_please_re_run_libtbx_configure_py(f, win_bat=False):
     print >> f, 'rem Please re-run libtbx\configure.py to update all paths.'
 
 def open_info(path, mode="w", info="   "):
-  print info, op.basename(path)
-  try: return open(path, mode)
+  print info, path.basename()
+  try: return path.open(mode)
   except IOError, e:
     raise RuntimeError(str(e))
 
@@ -234,9 +239,11 @@ class common_setpaths(object):
     self.env = env
     self.shell = shell
     self.suffix = suffix
-    self.s = open_info(env.under_build("setpaths%s.%s" % (suffix, shell)))
+    self.s = open_info(env.under_build("setpaths%s.%s" % (suffix, shell),
+                                       return_relocatable_path=True))
     if (suffix == "_debug"):
-      self.u = open_info(env.under_build("unsetpaths.%s" % shell))
+      self.u = open_info(env.under_build("unsetpaths.%s" % shell,
+                                         return_relocatable_path=True))
     else:
       self.u = StringIO() # /dev/null equivalent
 
@@ -268,12 +275,12 @@ class unix_setpaths(common_setpaths):
       print >> self.u, '  unsetenv %s' % var_name
 
   def update_path(self, var_name, val):
-    val = os.pathsep.join(val)
+    val = os.pathsep.join([ abs(p) for p in val ])
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       print >> f, '''  %s"`'%s' '%s' %s %s '%s' < /dev/null`"''' % (
         self._setenv % var_name,
-        self.env.python_exe,
-        self.env.path_utility,
+        abs(self.env.python_exe),
+        abs(self.env.path_utility),
         action,
         var_name,
         val)
@@ -297,13 +304,13 @@ class windows_setpaths(common_setpaths):
     print >> self.u, '  set %s=' % var_name
 
   def update_path(self, var_name, val):
-    val = os.pathsep.join(val)
+    val = os.pathsep.join([ abs(p) for p in val ])
     fmt = '''\
   for /F "delims=" %%%%i in ('%s "%s" %s %s "%s"') do set %s=%%%%i'''
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       print >> f, fmt % (
-        self.env.python_exe,
-        self.env.path_utility,
+        abs(self.env.python_exe),
+        abs(self.env.path_utility),
         action,
         var_name,
         val,
@@ -322,8 +329,8 @@ if (os.name == "nt"):
   windows_pathext = _windows_pathext()
 
 def remove_or_rename(path):
-  if (op.isfile(path)):
-    try: os.remove(path)
+  if path.isfile():
+    try: path.remove()
     except OSError:
       try: os.remove(path+".old")
       except OSError: pass
@@ -332,22 +339,17 @@ def remove_or_rename(path):
 
 class environment:
 
-  def __init__(self, build_path=None):
+  def __init__(self, build_path):
     self.python_version_major_minor = sys.version_info[:2]
-    self.build_path = build_path
-    self._shortpath_bat = None
-    self.build_path = self.abs_path_clean(build_path)
+    self.set_build_path(build_path)
     self.manage_python_version_major_minor()
     self.reset_dispatcher_support()
     self.set_derived_paths()
-    assert op.isabs(sys.executable) # sanity check
-    assert op.isfile(sys.executable) # sanity check
-    assert os.access(sys.executable, os.X_OK) # sanity check
-    if (os.name == "nt"):
-      self.python_exe = self.abs_path_clean(sys.executable)
-      assert op.isfile(self.python_exe)
-    else:
-      self.python_exe = op.normpath(sys.executable)
+    # sanity checks
+    self.python_exe = absolute_path(sys.executable)
+    assert self.python_exe.isfile()
+    assert self.python_exe.access(os.X_OK)
+
     self.read_command_version_suffix()
     self.build_options = None
     self.repository_paths = []
@@ -355,10 +357,7 @@ class environment:
     self.reset_module_registry()
     self.scons_dist_path = None
     self.pythonpath = []
-
-  def root_path(self):
-    return os.path.dirname(self.build_path)
-  root_path = property(root_path)
+    self.relocatable = True
 
   def raise_python_version_incompatible(self, prev_pvmm=None):
     if (prev_pvmm is None):
@@ -369,13 +368,13 @@ class environment:
       + "  Python version in use now:     %d.%d" % sys.version_info[:2])
 
   def manage_python_version_major_minor(self):
-    path = op.join(self.build_path, "lib")
-    if (not op.isdir(path)):
-      os.makedirs(path)
-    path = op.join(path, "PYTHON_VERSION_MAJOR_MINOR")
+    path = self.build_path / "lib"
+    if not path.isdir():
+      path.makedirs()
+    path /= "PYTHON_VERSION_MAJOR_MINOR"
     pvmm = "%d.%d" % self.python_version_major_minor
-    if (not op.isfile(path)):
-      open(path, "w").write("""\
+    if not path.isfile():
+      path.open("w").write("""\
 # DO NOT EDIT THIS FILE UNDER ANY CIRCUMSTANCE!
 # The version number below is purely to insure against accidental use
 # of another Python version when re-configuring an existing build.
@@ -384,7 +383,7 @@ class environment:
 %s
 """ % pvmm)
     else:
-      prev_pvmm = open(path).read().splitlines()
+      prev_pvmm = path.open().read().splitlines()
       if (len(prev_pvmm) == 0):
         prev_pvmm = None
       else:
@@ -393,10 +392,7 @@ class environment:
         self.raise_python_version_incompatible(prev_pvmm=prev_pvmm)
 
   def reset_dispatcher_support(self):
-    self._shortpath_bat = None
     self._dispatcher_precall_commands = None
-    self.partially_customized_windows_dispatcher = None
-    self.windows_dispatcher_unique_pattern = None
 
   def reset_module_registry(self):
     self.module_list = []
@@ -409,60 +405,55 @@ class environment:
   def is_ready_for_build(self):
     return (len(self.missing_for_build) == 0)
 
-  def abs_path_short(self, abs_path):
-    if (os.name != "nt"): return abs_path
-    if (self._shortpath_bat is None):
-      self._shortpath_bat = self.under_build("shortpath.bat")
-      assert op.exists(self._shortpath_bat)
-    from libtbx import easy_run
-    return easy_run.fully_buffered(
-      command='call "%s" "%s"' % (self._shortpath_bat, abs_path)) \
-        .raise_if_errors() \
-        .stdout_lines[0].rstrip()
+  def as_relocatable_path(self, path):
+    if isinstance(path, libtbx.path.path_mixin): return path
+    return relocatable_path(self, path)
 
-  def abs_path_clean(self, path):
-    abs_path = op.normpath(op.abspath(path))
-    if (os.name != "nt" or abs_path.find(" ") < 0): return abs_path
-    short = self.abs_path_short(abs_path).split(os.sep)
-    orig = abs_path.split(os.sep)
-    clean = []
-    for o,s in zip(orig, short):
-      if (o.find(" ") < 0):
-        clean.append(o)
-      else:
-        clean.append(s)
-    return os.sep.join(clean)
+  def set_build_path(self, build_path):
+    build_path = op.normcase(op.normpath(build_path))
+    self.root_path = op.dirname(build_path)
+    self.build_path = relocatable_path(self, op.basename(build_path))
+
+
 
   def set_derived_paths(self):
-    if (self.build_path is None):
-      self.bin_path = None
-      self.exe_path = None
-      self.lib_path = None
-      self.include_path = None
+    self.bin_path     = self.build_path / 'bin'
+    self.exe_path     = self.build_path / 'exe'
+    self.lib_path     = self.build_path / 'lib'
+    self.include_path = self.build_path / 'include'
+
+  def under_build(self, path, return_relocatable_path=False):
+    result = self.build_path / path
+    if return_relocatable_path:
+      return result
     else:
-      self.bin_path = self.under_build("bin")
-      self.exe_path = self.under_build("exe")
-      self.lib_path = self.under_build("lib")
-      self.include_path = self.under_build("include")
+      return abs(result)
 
-  def under_build(self, path):
-    return libtbx.path.norm_join(self.build_path, path)
-
-  def under_dist(self, module_name, path, default=KeyError, test=None):
+  def under_dist(self, module_name, path, default=KeyError, test=None,
+                 return_relocatable_path=False):
     if (default is KeyError):
-      result = libtbx.path.norm_join(self.module_dist_paths[module_name], path)
+      result = self.module_dist_paths[module_name] / path
     else:
       mdp = self.module_dist_paths.get(module_name)
       if (mdp is None): return default
-      result = libtbx.path.norm_join(mdp, path)
-    if (test is None or test(result)):
-      return result
+      result = mdp / path
+    if (test is None or test(abs(result))):
+      if return_relocatable_path:
+        return result
+      else:
+        return abs(result)
     return None
 
-  def dist_path(self, module_name, default=KeyError):
+  def dist_path(self, module_name, default=KeyError,
+                return_relocatable_path=False):
     if (default is KeyError):
-      return self.module_dist_paths[module_name]
-    return self.module_dist_paths.get(module_name, default)
+      result = self.module_dist_paths[module_name]
+    else:
+      result = self.module_dist_paths.get(module_name, default)
+    if return_relocatable_path:
+      return result
+    else:
+      return abs(result)
 
   def has_module(self, name):
     return self.module_dist_paths.has_key(name)
@@ -480,10 +471,13 @@ Run:
   libtbx.scons -j %(nproc)d
 Wait for the command to finish, then try again.""" % vars())
 
-  def dist_paths(self):
+  def dist_paths(self, return_relocatable_path=False):
     for module in self.module_list:
       for dist_path in module.dist_paths_active():
-        yield dist_path
+        if return_relocatable_path:
+          yield dist_path
+        else:
+          yield abs(dist_path)
 
   def var_name_and_build_or_dist_path_pairs(self):
     yield ("LIBTBX_BUILD", self.build_path)
@@ -494,18 +488,18 @@ Wait for the command to finish, then try again.""" % vars())
   def set_os_environ_all_dist(self):
     for module in self.module_list:
       for name,path in module.name_and_dist_path_pairs():
-        os.environ[name.upper()+"_DIST"] = path
+        os.environ[name.upper()+"_DIST"] = abs(path)
 
   def clear_bin_directory(self):
-    if (not op.isdir(self.bin_path)): return
+    if not self.bin_path.isdir(): return
     buffer = []
     have_libtbx_command = False
-    for file_name in os.listdir(self.bin_path):
+    for file_name in self.bin_path.listdir():
       if (    not have_libtbx_command
           and file_name.lower().startswith("libtbx.")):
         have_libtbx_command = True
-      path = op.join(self.bin_path, file_name)
-      if (op.isfile(path)):
+      path = self.bin_path / file_name
+      if path.isfile():
         buffer.append(path)
     if (len(buffer) != 0):
       if (not have_libtbx_command):
@@ -531,12 +525,12 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, self.command_version_suffix
 
   def read_command_version_suffix(self):
-    path = self.under_build("command_version_suffix")
-    if (not op.isfile(path)):
+    path = self.build_path / "command_version_suffix"
+    if not path.isfile():
         self.command_version_suffix = None
     else:
       try:
-        self.command_version_suffix = open(path).read().strip()
+        self.command_version_suffix = path.open().read().strip()
       except IOError:
         raise RuntimeError(
           'Cannot read command_version_suffix file: "%s"' % path)
@@ -559,13 +553,13 @@ Wait for the command to finish, then try again.""" % vars())
     else: message = list(message)
     message.append("  Repository directories searched:")
     for path in self.repository_paths:
-      message.append("    %s" % show_string(path))
+      message.append("    %s" % show_string(abs(path)))
     raise RuntimeError("\n".join(message))
 
   def listdir_in_repositories(self, test=None):
     for path in self.repository_paths:
-      for name in os.listdir(path):
-        if (test is None or test(op.join(path, name))):
+      for name in path.listdir():
+        if (test is None or test(abs(path / name))):
           yield path, name
 
   def match_in_repositories(self,
@@ -600,31 +594,40 @@ Wait for the command to finish, then try again.""" % vars())
   def find_in_repositories(self,
         relative_path,
         test=op.isdir,
-        optional=True):
+        optional=True,
+        return_relocatable_path=False):
     assert len(relative_path) != 0
     for path in self.repository_paths:
-      result = self.abs_path_clean(
-        libtbx.path.norm_join(path, relative_path))
-      if (test is None or test(result)):
-        return result
+      result = path / relative_path
+      if test is None or test(abs(result)):
+        if return_relocatable_path:
+          return result
+        else:
+          return abs(result)
     if (not optional):
       self.raise_not_found_in_repositories(
         message="Cannot locate: %s" % show_string(relative_path))
     return None
 
-  def find_dist_path(self, module_name, optional=False):
+  def find_dist_path(self, module_name, optional=False,
+                     return_relocatable_path=False):
     dist_path = self.command_line_redirections.get(module_name, None)
-    if (dist_path is not None): return dist_path
-    dist_path = self.find_in_repositories(relative_path=module_name)
-    if (dist_path is not None): return dist_path
+    if (dist_path is not None):
+      return dist_path.self_or_abs_if(return_relocatable_path)
+    dist_path = self.find_in_repositories(relative_path=module_name,
+                                          return_relocatable_path=True)
+    if (dist_path is not None):
+      return dist_path.self_or_abs_if(return_relocatable_path)
     trial_module = module(env=self, name=module_name)
     mate_name = trial_module.names[1]
     if (mate_name != module_name):
-      if (self.find_in_repositories(relative_path=mate_name) is not None):
+      if (self.find_in_repositories(relative_path=mate_name,
+                                    return_relocatable_path=True) is not None):
         dist_path = self.match_in_repositories(
           relative_path_pattern="%s(?!_%s)" % (
             module_name, trial_module.mate_suffix))
-        if (dist_path is not None): return dist_path
+        if (dist_path is not None):
+          return dist_path.self_or_abs_if(return_relocatable_path)
     if (not optional):
       self.raise_not_found_in_repositories(
         message="Module not found: %s" % module_name)
@@ -644,12 +647,8 @@ Wait for the command to finish, then try again.""" % vars())
     return True
 
   def add_repository(self, path):
-    path = self.abs_path_clean(path)
-    path_normcase = op.normcase(path)
-    for repository_path in self.repository_paths:
-      if (op.normcase(repository_path) == path_normcase):
-        break
-    else:
+    path = relocatable_path(self, path)
+    if path not in self.repository_paths:
       self.repository_paths.append(path)
 
   def process_args(self, pre_processed_args):
@@ -667,8 +666,8 @@ Wait for the command to finish, then try again.""" % vars())
       elif (module_name.count("=") == 1
             and self.find_dist_path(module_name, optional=True) is None):
         module_name, redirection = module_name.split("=")
-        dist_path = self.abs_path_clean(op.expandvars(redirection))
-        if (not op.isdir(dist_path)):
+        dist_path = relocatable_path(self, op.expandvars(redirection))
+        if not dist_path.isdir():
           raise RuntimeError(
             'Invalid command line redirection:\n'
             '  module name = "%s"\n'
@@ -702,8 +701,7 @@ Wait for the command to finish, then try again.""" % vars())
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
-        msvc_arch_flag=command_line.options.msvc_arch_flag,
-        relocatable=command_line.options.relocatable)
+        msvc_arch_flag=command_line.options.msvc_arch_flag)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -720,8 +718,9 @@ Wait for the command to finish, then try again.""" % vars())
         dependent_module=None, module_name=module_name, optional=False)
     self.scons_dist_path = self.find_dist_path("scons", optional=True)
     self.path_utility = self.under_dist(
-      "libtbx", "command_line/path_utility.py")
-    assert op.isfile(self.path_utility)
+      "libtbx", "command_line/path_utility.py",
+      return_relocatable_path=True)
+    assert self.path_utility.isfile()
 
   def dispatcher_precall_commands(self):
     if (self._dispatcher_precall_commands is None):
@@ -746,7 +745,8 @@ Wait for the command to finish, then try again.""" % vars())
   def write_dispatcher_include_template(self):
     if (os.name == "nt"): return
     print "    dispatcher_include_template.sh"
-    f = open(self.under_build("dispatcher_include_template.sh"), "w")
+    f = self.under_build("dispatcher_include_template.sh",
+                         return_relocatable_path=True).open("w")
     print >> f, "# include at start"
     print >> f, "#   Commands to be executed at the start of the"
     print >> f, "#   auto-generated dispatchers in bin."
@@ -765,17 +765,17 @@ Wait for the command to finish, then try again.""" % vars())
     self._dispatcher_include_at_start = []
     self._dispatcher_include_before_command = []
     include_files = []
-    for file_name in os.listdir(self.build_path):
-      path = self.under_build(file_name)
-      if (not op.isfile(path)): continue
+    for file_name in self.build_path.listdir():
+      path = self.under_build(file_name, return_relocatable_path=True)
+      if not path.isfile(): continue
       if (    file_name.startswith("dispatcher_include")
           and file_name.endswith(".sh")
           and file_name != "dispatcher_include_template.sh"):
         include_files.append(path)
     include_files.sort()
     for path in include_files:
-      print "Processing: %s" % show_string(path)
-      lines = open(path).read().splitlines()
+      print "Processing: %s" % show_string(abs(path))
+      lines = path.open().read().splitlines()
       lines_at_start = []
       lines_before_command = []
       buffer = lines_before_command
@@ -832,19 +832,20 @@ Wait for the command to finish, then try again.""" % vars())
       optional=False)
     result = []
     for l in libs:
-      p = op.join(d, l)
-      if (not op.isfile(p)):
+      p = d / l
+      if not p.isfile():
         raise RuntimeError(
-          "Missing file: %s" % show_string(p))
+          "Missing file: %s" % show_string(abs(p)))
       if (p.find(":") >= 0):
         raise RuntimeError(
-          "File name with embedded colon not supported: %s" % show_string(p))
+          "File name with embedded colon not supported: %s"
+          % show_string(abs(p)))
       result.append(p)
     return ":".join(result)
 
   def write_bin_sh_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
-    f = open(target_file, "w")
+    f = target_file.open("w")
     if (source_file is not None):
       print >> f, '#! /bin/sh'
       print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
@@ -861,7 +862,7 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, '#'
     print >> f, '#   dispatcher_include*.sh'
     print >> f, '#'
-    print >> f, '# files in %s and run' % show_string(self.build_path)
+    print >> f, '# files in %s and run' % show_string(abs(self.build_path))
     print >> f, '#'
     print >> f, '#   libtbx.refresh'
     print >> f, '#'
@@ -875,27 +876,23 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LC_ALL=C'
     print >> f, 'export LC_ALL'
-    if self.build_options.relocatable:
-      print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd)"'
-    else:
-      print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
+    print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd)"'
     print >> f, 'export LIBTBX_BUILD'
-    if self.build_options.relocatable:
-      print >> f, 'LIBTBX_ROOT=$(dirname $LIBTBX_BUILD)'
+    print >> f, 'LIBTBX_ROOT=$(dirname $LIBTBX_BUILD)'
     source_is_py = False
     if (source_file is not None):
-      dispatcher_name = op.basename(target_file)
+      dispatcher_name = target_file.basename()
       if (dispatcher_name.find('"') >= 0):
         raise RuntimeError(
           "Dispatcher target file name contains double-quote: %s\n"
             % dispatcher_name
           + "  source file: %s" % source_file)
-      print >> f, 'LIBTBX_DISPATCHER_NAME="%s"' % op.basename(target_file)
+      print >> f, 'LIBTBX_DISPATCHER_NAME="%s"' % target_file.basename()
       print >> f, 'export LIBTBX_DISPATCHER_NAME'
-      if (source_file.lower().endswith(".py")):
+      if source_file.ext().lower() == ".py":
         source_is_py = True
-        pyexe_dirname, pyexe_basename = op.split(self.python_exe)
-        print >> f, 'LIBTBX_PYEXE_BASENAME=%s' % show_string(pyexe_basename)
+        print >> f, 'LIBTBX_PYEXE_BASENAME=%s' % show_string(
+          self.python_exe.basename())
         print >> f, 'export LIBTBX_PYEXE_BASENAME'
     for line in self.dispatcher_include(where="at_start"):
       print >> f, line
@@ -904,9 +901,7 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
-      if self.build_options.relocatable:
-        v = [ p.replace(self.root_path, '${LIBTBX_ROOT}') for p in v ]
-      v = ":".join(v)
+      v = ":".join([ op.join('${LIBTBX_ROOT}', p.relocatable) for p in v ])
       if (sys.platform == "irix6" and n == "LD_LIBRARY_PATH"):
         n32 = "LD_LIBRARYN32_PATH"
         print >> f, 'if [ -n "$%s" ]; then' % n32
@@ -927,11 +922,11 @@ Wait for the command to finish, then try again.""" % vars())
         print >> f, line
     if (source_is_py):
       scan_for_dispatcher_includes = True
-    elif (source_file is None or not op.isfile(source_file)):
+    elif source_file is None or not source_file.isfile():
       scan_for_dispatcher_includes = False
     else:
       scan_for_dispatcher_includes = not detect_binary_file.from_initial_block(
-        file_name=source_file)
+        file_name=abs(source_file))
     if (scan_for_dispatcher_includes):
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
@@ -957,16 +952,18 @@ Wait for the command to finish, then try again.""" % vars())
       if (source_is_py):
         cmd += ' %s"%s%s$LIBTBX_PYEXE_BASENAME"%s' % (
           ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit],
-          escape_sh_double_quoted(pyexe_dirname),
+          escape_sh_double_quoted(self.python_exe.dirname()),
           os.sep,
           qnew)
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
           start_python = True
+      if hasattr(source_file, 'relocatable'):
+        source_file = op.join('${LIBTBX_ROOT}', source_file.relocatable)
+      else:
+        source_file = abs(source_file)
       if (not start_python):
-        if self.build_options.relocatable:
-          source_file = source_file.replace(self.root_path, '${LIBTBX_ROOT}')
         arch_i386 = ['',
                      '/usr/bin/arch -i386 '
                      ][self.build_options.force_32bit and not source_is_py]
@@ -981,128 +978,66 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, "  exec"+cmd, '"$@"'
       print >> f, "fi"
     f.close()
-    os.chmod(target_file, 0755)
-
-  def windows_dispatcher(self, command_path, dispatcher_name,
-        source_is_python_exe=False,
-        unique_pattern="0W6I0N6D0O2W8S5_0D0I8S1P4A3T6C4H9E4R7",
-        libtbx_build="3L0I2B2T9B4X2_8B5U5I5L2D4",
-        libtbx_dispatcher_name="6L6I7B2T3B2X5_6D8I7S0P2A0T5C8H1E8R3_1N0A9M9E",
-        python_executable="5P2Y5T7H2O5N8_0E7X9E7C8U6T4A9B9L5E3",
-        python_options="5P6Y5T2H5O4N6_1O6P7T3I1O6N6S0",
-        pythonpath="2P0Y1T7H3O2N7P7A2T5H8",
-        main_path="1M5A1I0N4_8P7A0T9H9",
-        target_command="5T4A3R7G8E3T7_6C5O0M0M3A8N8D2",
-        target_options="9T0A6R9G5E7T6_6O5P3T0I6O6N4S5",
-        dispatcher_exe_file_name="windows_dispatcher.exe"):
-    assert os.name == "nt"
-    assert command_path is not None
-    if (self.partially_customized_windows_dispatcher is None):
-      try:
-        self.partially_customized_windows_dispatcher = open(self.under_dist(
-          "libtbx", dispatcher_exe_file_name), "rb").read()
-      except IOError, e:
-        raise RuntimeError(str(e))
-      if (self.partially_customized_windows_dispatcher.find(unique_pattern)<0):
-        raise RuntimeError('Unique pattern "%s" not found in file %s' % (
-          unique_pattern, dispatcher_exe_file_name))
-      self.windows_dispatcher_unique_pattern = unique_pattern
-      for place_holder,actual_value in [
-            (libtbx_build, self.build_path),
-            (libtbx_dispatcher_name, dispatcher_name),
-            (python_executable, self.python_exe),
-            (python_options, qnew[1:]),
-            (pythonpath, os.pathsep.join(self.pythonpath)),
-            (main_path, os.pathsep.join([self.bin_path, self.lib_path])),
-            (target_options, target_options)]:
-        self.partially_customized_windows_dispatcher = patch_windows_dispatcher(
-          dispatcher_exe_file_name=dispatcher_exe_file_name,
-          binary_string=self.partially_customized_windows_dispatcher,
-          place_holder=place_holder,
-          actual_value=actual_value)
-    if (source_is_python_exe):
-      trg_opt = qnew[1:]
-    else:
-      trg_opt = ""
-    result = self.partially_customized_windows_dispatcher
-    for place_holder,actual_value in [
-          (target_options, trg_opt),
-          (target_command, command_path)]:
-      result = patch_windows_dispatcher(
-        dispatcher_exe_file_name=dispatcher_exe_file_name,
-        binary_string=result,
-        place_holder=place_holder,
-        actual_value=actual_value)
-    return result
+    target_file.chmod(0755)
 
   def write_win32_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
-    if self.build_options.relocatable:
-      if not source_file.lower().endswith(".py"): return
-      f = open(target_file, 'w')
-      # By default, changes to environment variables are  permanent on Windows,
-      # i.e. it is as if export XXX was added after each set XXX=...
-      # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
-      # PYTHONPATH each time a dispatcher script is run.
-      # Thus setlocal ... endlocal is essential
-      print >>f, '@echo off'
-      print >>f, 'setlocal'
-      print >>f, 'set LIBTBX_BUILD=%~dp0'
-      print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-      print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_BUILD=%%~dpF'
-      print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-      print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_ROOT=%%~dpF'
-      print >>f, 'set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
-      print >>f, 'set LIBTBX_DISPATCHER_NAME=~nx0'
-      essentials = [("PYTHONPATH", self.pythonpath)]
-      essentials.append((ld_library_path_var_name(), [self.lib_path]))
-      essentials.append(("PATH", [self.bin_path]))
-      for n,v in essentials:
-        if (len(v) == 0): continue
-        if self.build_options.relocatable:
-          # Let's not put quotes around each path p here as it is not necessary
-          # and for PYTHONPATH, it would result in python not seeing we have
-          # absolute path and therefore prepending the current directory.
-          v = [ p.replace(self.root_path, '%LIBTBX_ROOT%') for p in v ]
-        v = ';'.join(v)
-        print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
-      source_file = source_file.replace(self.root_path, '%LIBTBX_ROOT%')
-      print >>f, '%s %s "%s" %%*' % (self.python_exe, qnew, source_file)
-      print >>f, 'endlocal'
-      f.close()
-    else:
-      open(target_file, "wb").write(
-        self.windows_dispatcher(
-          command_path=source_file,
-          dispatcher_name=op.splitext(op.basename(target_file))[0],
-          source_is_python_exe=source_is_python_exe))
+    if source_file.ext().lower() != '.py': return
+    f = target_file.open('w')
+    # By default, changes to environment variables are  permanent on Windows,
+    # i.e. it is as if export XXX was added after each set XXX=...
+    # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
+    # PYTHONPATH each time a dispatcher script is run.
+    # Thus setlocal ... endlocal is essential
+    print >>f, '@echo off'
+    print >>f, 'setlocal'
+    print >>f, 'set LIBTBX_BUILD=%~dp0'
+    print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
+    print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_BUILD=%%~dpF'
+    print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
+    print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_ROOT=%%~dpF'
+    print >>f, 'set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
+    print >>f, 'set LIBTBX_DISPATCHER_NAME=~nx0'
+    essentials = [("PYTHONPATH", self.pythonpath)]
+    essentials.append((ld_library_path_var_name(), [self.lib_path]))
+    essentials.append(("PATH", [self.bin_path]))
+    for n,v in essentials:
+      if (len(v) == 0): continue
+      # Let's not put quotes around each path p here as it is not necessary
+      # and for PYTHONPATH, it would result in python not seeing we have
+      # absolute path and therefore prepending the current directory.
+      v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
+      print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
+    source_file = op.join('%LIBTBX_ROOT%', source_file.relocatable)
+    print >>f, '%s %s "%s" %%*' % (abs(self.python_exe), qnew, source_file)
+    print >>f, 'endlocal'
+    f.close()
 
   def write_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
+    source_file = self.as_relocatable_path(source_file)
+    target_file = self.as_relocatable_path(target_file)
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
     if (reg != source_file):
-      if (not op.isfile(reg)):
+      if not reg.isfile():
         self._dispatcher_registry[target_file] = source_file
-      elif (op.isfile(source_file)
+      elif (source_file.isfile()
             and (   not hasattr(os.path, "samefile")
-                 or not op.samefile(reg, source_file))
-            and    op.normcase(self.abs_path_short(abs_path=reg))
-                != op.normcase(self.abs_path_short(abs_path=source_file))):
+                 or not reg.samefile(source_file))
+            and  reg != source_file):
         raise RuntimeError("Multiple sources for dispatcher:\n"
           + "  target file:\n"
-          + "    %s\n" % show_string(target_file)
+          + "    %s\n" % show_string(abs(target_file))
           + "  source files:\n"
-          + "    %s\n" % show_string(reg)
-          + "    %s" % show_string(source_file))
+          + "    %s\n" % show_string(abs(reg))
+          + "    %s" % show_string(abs(source_file)))
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
     else:
       action = self.write_bin_sh_dispatcher
-    if self.build_options.relocatable and os.name == 'nt':
-      exe_suffix_ = '.bat'
-    else:
-      exe_suffix_ = exe_suffix
-    target_file_ext = target_file + exe_suffix_
+    target_file_ext = target_file
+    if os.name == 'nt':
+      target_file_ext += '.bat'
     remove_or_rename(target_file_ext)
     try: action(source_file, target_file_ext, source_is_python_exe)
     except IOError, e: print "  Ignored:", e
@@ -1111,12 +1046,13 @@ Wait for the command to finish, then try again.""" % vars())
         source_file, target_file, source_is_python_exe=False):
     self.write_dispatcher(
       source_file=source_file,
-      target_file=self.under_build("bin/"+target_file),
+      target_file=self.under_build("bin/"+target_file,
+                                   return_relocatable_path=True),
       source_is_python_exe=source_is_python_exe)
 
   def write_dispatcher_in_bin(self, source_file, target_file):
     self._write_dispatcher_in_bin(
-      source_file=self.abs_path_clean(path=source_file),
+      source_file=source_file,
       target_file=target_file)
 
   def write_lib_dispatcher_head(self, target_file="dispatcher_head.sh"):
@@ -1124,7 +1060,7 @@ Wait for the command to finish, then try again.""" % vars())
     print "   ", target_file
     self.write_bin_sh_dispatcher(
       source_file=None,
-      target_file=self.under_build(target_file))
+      target_file=self.under_build(target_file, return_relocatable_path=True))
 
   def write_setpaths_sh(self, suffix):
     setpaths = unix_setpaths(self, "sh", suffix)
@@ -1133,17 +1069,17 @@ Wait for the command to finish, then try again.""" % vars())
       write_do_not_edit_please_re_run_libtbx_configure_py(f=f)
       print >> f, 'libtbx_pyhome_save="$PYTHONHOME"'
       print >> f, 'unset PYTHONHOME'
-      print >> f, '"%s" -V > /dev/null 2>&1' % self.python_exe
-      print >> f, 'if [ $? -ne 0 -o ! -f "%s" ]; then' % self.path_utility
+      print >> f, '"%s" -V > /dev/null 2>&1' % abs(self.python_exe)
+      print >> f, 'if [ $? -ne 0 -o ! -f "%s" ]; then' % abs(self.path_utility)
       write_incomplete_libtbx_environment(f)
       print >> f, 'else'
     setpaths.update_path("PATH", [self.bin_path])
     for command in ["setpaths_all", "unsetpaths"]:
       print >> s, """  alias libtbx.%s='. "%s/%s.sh"'""" % (
-       command, self.build_path, command)
+       command, abs(self.build_path), command)
     print >> u, '  unalias libtbx.unsetpaths > /dev/null 2>&1'
     if (self.is_development_environment()):
-      print >> s, """  alias cdlibtbxbuild='cd "%s"'""" % self.build_path
+      print >> s, """  alias cdlibtbxbuild='cd "%s"'""" % abs(self.build_path)
       print >> u, '  unalias cdlibtbxbuild > /dev/null 2>&1'
     setpaths.all_and_debug()
     for f in s, u:
@@ -1163,17 +1099,17 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, '  set libtbx_pyhome_save="$PYTHONHOME"'
       print >> f, '  unsetenv PYTHONHOME'
       print >> f, 'endif'
-      print >> f, '"%s" -V >& /dev/null' % self.python_exe
-      print >> f, 'if ($status != 0 || ! -f "%s") then' % self.path_utility
+      print >> f, '"%s" -V >& /dev/null' % abs(self.python_exe)
+      print >> f, 'if ($status != 0 || ! -f "%s") then' % abs(self.path_utility)
       write_incomplete_libtbx_environment(f)
       print >> f, 'else'
     setpaths.update_path("PATH", [self.bin_path])
     for command in ["setpaths_all", "unsetpaths"]:
       print >> s, """  alias libtbx.%s 'source "%s/%s.csh"'""" % (
-       command, self.build_path, command)
+       command, abs(self.build_path), command)
     print >> u, '  unalias libtbx.unsetpaths'
     if (self.is_development_environment()):
-      print >> s, """  alias cdlibtbxbuild 'cd "%s"'""" % self.build_path
+      print >> s, """  alias cdlibtbxbuild 'cd "%s"'""" % abs(self.build_path)
       print >> u, '  unalias cdlibtbxbuild'
     setpaths.all_and_debug()
     for f in s, u:
@@ -1189,8 +1125,8 @@ Wait for the command to finish, then try again.""" % vars())
     for f in s, u:
       print >> f, '@ECHO off'
       write_do_not_edit_please_re_run_libtbx_configure_py(f=f, win_bat=True)
-      print >> f, 'if not exist "%s" goto fatal_error' % self.python_exe
-      print >> f, 'if exist "%s" goto update_path' % self.path_utility
+      print >> f, 'if not exist "%s" goto fatal_error' % abs(self.python_exe)
+      print >> f, 'if exist "%s" goto update_path' % abs(self.path_utility)
       print >> f, ':fatal_error'
       write_incomplete_libtbx_environment(f)
       print >> f, '  goto end_of_script'
@@ -1199,7 +1135,7 @@ Wait for the command to finish, then try again.""" % vars())
     setpaths.update_path("PATH", [self.bin_path])
     for command in ["setpaths_all", "unsetpaths"]:
       print >> s, '  doskey libtbx.%s="%s\\%s.bat"' % (
-        command, self.build_path, command)
+        command, abs(self.build_path), command)
     print >> u, '  doskey libtbx.unsetpaths='
     if (self.is_development_environment()):
       print >> s, '  doskey cdlibtbxbuild=cd "%s"' % self.build_path
@@ -1211,15 +1147,16 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, ':end_of_script'
 
   def write_SConstruct(self):
-    f = open_info(self.under_build("SConstruct"))
+    f = open_info(self.under_build("SConstruct",
+                                   return_relocatable_path=True))
     write_do_not_edit_please_re_run_libtbx_configure_py(f=f)
     print >> f, 'SConsignFile()'
     for path in self.repository_paths:
-      print >> f, 'Repository(r"%s")' % path
+      print >> f, 'Repository(r"%s")' % abs(path)
     for module in self.module_list:
       name,path  = list(module.name_and_dist_path_pairs())[-1]
       for script_name in ["libtbx_SConscript", "SConscript"]:
-        if (op.isfile(op.join(path, script_name))):
+        if (path / script_name).isfile():
           print >> f, 'SConscript("%s/%s")' % (name, script_name)
           break
     f.close()
@@ -1228,7 +1165,8 @@ Wait for the command to finish, then try again.""" % vars())
     if (op.isfile("Makefile")):
       os.rename("Makefile", "Makefile.old")
         # make cja seems to get confused if the file is simply overwritten
-    f = open_info(self.under_build("Makefile"))
+    f = open_info(self.under_build("Makefile",
+                                   return_relocatable_path=True))
     lsj = './bin/libtbx.scons -j "`./bin/libtbx.show_number_of_processors`"'
     f.write("""\
 # DO NOT EDIT THIS FILE!
@@ -1274,7 +1212,7 @@ selfx:
   def write_run_tests_csh(self):
     test_scripts = self.collect_test_scripts()
     if (len(test_scripts) > 0):
-      path = self.under_build("run_tests.csh")
+      path = self.under_build("run_tests.csh", return_relocatable_path=True)
       f = open_info(path)
       print >> f, "#! /bin/csh -f"
       print >> f, "set noglob"
@@ -1282,14 +1220,15 @@ selfx:
       for file_name in test_scripts:
         print >> f, 'libtbx.python "%s" $*' % file_name
       f.close()
-      os.chmod(path, 0755)
+      path.chmod(0755)
 
   def pickle(self):
     self.reset_dispatcher_support()
-    file_name = libtbx.path.norm_join(self.build_path, "libtbx_env")
-    pickle.dump(self, open(file_name, "wb"), 0)
+    file_name = self.build_path / "libtbx_env"
+    pickle.dump(self, file_name.open("wb"), 0)
 
   def show_module_listing(self):
+    print "Rooted at: %s" % self.root_path
     print "Top-down list of all modules involved:"
     top_down_module_list = list(self.module_list)
     top_down_module_list.reverse()
@@ -1299,7 +1238,7 @@ selfx:
     fmt = "  %%-%ds  %%s" % max([len(label) for label in labels])
     for label,module in zip(labels,top_down_module_list):
       for dist_path in module.dist_paths_active():
-        print fmt % (label, dist_path)
+        print fmt % (label, dist_path.relocatable)
         label = ""
 
   def show_build_options_and_module_listing(self):
@@ -1329,19 +1268,19 @@ selfx:
         self.write_setpaths_bat(suffix)
 
   def process_exe(self):
-    for path in [self.exe_path, self.under_build("exe_dev")]:
-      if (op.isdir(path)):
-        print 'Processing: "%s"' % path
-        for file_name in os.listdir(path):
+    for path in [self.exe_path,
+                 self.under_build("exe_dev", return_relocatable_path=True)]:
+      if path.isdir():
+        print 'Processing: "%s"' % path.relocatable
+        for file_name in path.listdir():
           if (file_name.startswith(".")): continue
           target_file = file_name
           if (os.name == "nt"):
             fnl = file_name.lower()
             if (fnl.endswith(".exe.manifest")): continue
             if (fnl.endswith(".exe")): target_file = file_name[:-4]
-          self._write_dispatcher_in_bin(
-            source_file=libtbx.path.norm_join(path, file_name),
-            target_file=target_file)
+          self._write_dispatcher_in_bin(source_file=path / file_name,
+                                        target_file=target_file)
 
   def write_python_and_show_path_duplicates(self):
     module_names = []
@@ -1354,16 +1293,16 @@ selfx:
         source_file=self.python_exe,
         target_file=module_name+".python",
         source_is_python_exe=True)
-    d, b = op.split(self.python_exe)
-    pythonw_exe = op.join(d, b.replace("python", "pythonw"))
-    if (op.isfile(pythonw_exe)):
+    d, b = self.python_exe.split()
+    pythonw_exe = absolute_path(d) / b.replace("python", "pythonw")
+    if pythonw_exe.isfile():
       for module_name in module_names:
         self._write_dispatcher_in_bin(
           source_file=pythonw_exe,
           target_file=module_name+".pythonw",
           source_is_python_exe=True)
     def have_ipython():
-      for file_name in os.listdir(self.bin_path):
+      for file_name in self.bin_path.listdir():
         file_name_lower = file_name.lower()
         if (file_name_lower.startswith("libtbx.")):
           if (   file_name_lower == "libtbx.ipython"
@@ -1382,9 +1321,9 @@ selfx:
   def write_command_version_duplicates(self):
     if (self.command_version_suffix is None): return
     suffix = "_" + self.command_version_suffix
-    for file_name in os.listdir(self.bin_path):
+    for file_name in self.bin_path.listdir():
       if (file_name.startswith(".")): continue
-      source_file = op.join(self.bin_path, file_name)
+      source_file = abs(self.bin_path / file_name)
       if (os.name == "nt" and file_name.lower().endswith(".exe")):
         target_file = source_file[:-4] + suffix + source_file[-4:]
       else:
@@ -1401,8 +1340,9 @@ selfx:
     self.pythonpath = unique_paths(paths=pythonpath)
 
   def is_development_environment(self):
-    libtbx_cvs_root = self.under_dist("libtbx", "CVS/Root")
-    if (op.isfile(libtbx_cvs_root)):
+    libtbx_cvs_root = self.under_dist("libtbx", "CVS/Root",
+                                      return_relocatable_path=True)
+    if libtbx_cvs_root.isfile():
       try: libtbx_cvs_root = open(libtbx_cvs_root).read()
       except IOError: pass
       else:
@@ -1413,30 +1353,22 @@ selfx:
     return False
 
   def clear_scons_memory(self):
-    file_name = op.join(self.build_path, ".sconsign.dblite")
-    if (op.isfile(file_name)):
-      os.remove(file_name)
-    dir_name = op.join(self.build_path, ".sconf_temp")
-    if (op.isdir(dir_name)):
-      from distutils.dir_util import remove_tree
-      remove_tree(dir_name)
+    (self.build_path / ".sconsign.dblite").remove()
+    (self.build_path / ".sconf_temp").remove_tree()
 
   def refresh(self):
-    is_completed_file_name = op.join(
-      self.build_path, "libtbx_refresh_is_completed")
-    if (op.exists(is_completed_file_name)):
-      os.remove(is_completed_file_name)
-    assert not op.exists(is_completed_file_name)
+    completed_file_name = (self.build_path / "libtbx_refresh_is_completed")
+    completed_file_name.remove()
     self.assemble_pythonpath()
     self.show_build_options_and_module_listing()
     self.reset_dispatcher_bookkeeping()
-    print "Creating files in build directory:\n  %s" \
-      % show_string(self.build_path)
+    print "Creating files in build directory:  %s" \
+      % show_string(self.build_path.relocatable)
     self.write_dispatcher_include_template()
     self.write_lib_dispatcher_head()
     self.write_setpath_files()
     self.pickle()
-    os.environ["LIBTBX_BUILD"] = self.build_path # to support libtbx.load_env
+    os.environ["LIBTBX_BUILD"] = abs(self.build_path) # to support libtbx.load_env
     if (self.is_ready_for_build()):
       self.write_SConstruct()
       if (os.name != "nt"):
@@ -1444,8 +1376,8 @@ selfx:
     if (os.name != "nt"):
       self.write_run_tests_csh()
     self.clear_bin_directory()
-    if (not op.isdir(self.bin_path)):
-      os.makedirs(self.bin_path)
+    if not self.bin_path.isdir():
+      self.bin_path.makedirs()
     python_dispatchers = ["libtbx.python"]
     if (self.is_development_environment()):
       python_dispatchers.append("python")
@@ -1457,14 +1389,14 @@ selfx:
     for module in self.module_list:
       module.process_command_line_directories()
     for path in self.pythonpath:
-      sys.path.insert(0, path)
+      sys.path.insert(0, abs(path))
     for module in self.module_list:
       module.process_libtbx_refresh_py()
     self.write_python_and_show_path_duplicates()
     self.process_exe()
     self.write_command_version_duplicates()
     self.pickle()
-    print >> open(is_completed_file_name, "w"), "libtbx_refresh_is_completed"
+    print >> completed_file_name.open("w"), "libtbx_refresh_is_completed"
 
   def get_module(self, name, must_exist=True):
     result = self.module_dict.get(name, None)
@@ -1525,16 +1457,17 @@ class module:
     for dist_path in self.dist_paths:
       if (dist_path is not None):
         while True:
-          path = libtbx.path.norm_join(dist_path, "libtbx_config")
-          if (not op.isfile(path)):
+          path = dist_path / "libtbx_config"
+          if not path.isfile():
             config = None
             break
-          try: f = open(path)
+          try: f = path.open()
           except IOError: raise RuntimeError(
-            'Cannot open configuration file: "%s"' % path)
+            'Cannot open configuration file: "%s"' % abs(path))
           try: config = eval(" ".join(f.readlines()), {}, {})
           except KeyboardInterrupt: raise
-          except Exception: raise RuntimeError('Corrupt configuration file: "%s"' % path)
+          except Exception: raise RuntimeError(
+            'Corrupt configuration file: "%s"' % abs(path))
           f.close()
           redirection = config.get("redirection", None)
           if (redirection is None):
@@ -1547,7 +1480,6 @@ class module:
           new_dist_path = op.expandvars(redirection)
           if (not op.isabs(new_dist_path)):
             new_dist_path = libtbx.path.norm_join(dist_path, new_dist_path)
-          new_dist_path = self.env.abs_path_clean(new_dist_path)
           if (not op.isdir(new_dist_path)):
             raise RuntimeError(
               'Invalid redirection:\n'
@@ -1587,19 +1519,18 @@ class module:
   def assemble_pythonpath(self):
     result = []
     for dist_path in self.dist_paths_active():
-      path = op.normpath(dist_path + "/pythonpath")
-      if (op.isdir(path)):
+      path = dist_path / "pythonpath"
+      if path.isdir():
         result.append(path)
-      for sub_dir in ["", "/"+self.name]:
-        sub_file = sub_dir + "/__init__.py"
-        path = op.normpath(dist_path + sub_file)
-        if (op.isfile(path)):
-          result.append(op.dirname(op.dirname(path)))
+      for sub_dir in ["", self.name]:
+        path = dist_path / sub_dir / "__init__.py"
+        if path.isfile():
+          result.append(path.dirname().dirname())
     return result
 
   def has_top_level_directory(self, directory_name):
     for dist_path in self.dist_paths_active():
-      if (op.isdir(op.join(dist_path, directory_name))):
+      if (dist_path / directory_name).isdir():
         return True
     return False
 
@@ -1616,9 +1547,10 @@ class module:
         target_file_name_infix="",
         scan_for_libtbx_set_dispatcher_name=False):
     assert target_file_name_infix == "" or not scan_for_libtbx_set_dispatcher_name
+    source_dir = self.env.as_relocatable_path(source_dir)
     if (len(file_name) == 0): return
-    source_file = libtbx.path.norm_join(source_dir, file_name)
-    if (not op.isfile(source_file)): return
+    source_file = source_dir / file_name
+    if not source_file.isfile(): return
     file_name_lower = file_name.lower()
     if (file_name_lower.startswith("__init__.py")): return
     if (file_name_lower.endswith(".pyc")): return
@@ -1645,7 +1577,7 @@ class module:
       check_for_hash_bang = True
     target_files = []
     if (read_size != 0):
-      try: source_text = open(source_file).read(read_size)
+      try: source_text = source_file.open().read(read_size)
       except IOError:
         raise RuntimeError('Cannot read file: "%s"' % source_file)
       if (check_for_hash_bang and not source_text.startswith("#!")):
@@ -1667,7 +1599,9 @@ class module:
             target_files.append(flds[i+1])
         if (ext == ".launch" and "LIBTBX_LAUNCH_EXE" in flds):
           source_file = self.env.under_build(
-            op.join(self.name, "exe", file_name[:-len(ext)])) + exe_suffix
+            op.join(self.name, "exe", file_name[:-len(ext)]),
+            return_relocatable_path=True)
+          source_file.relocatable += exe_suffix
     if (len(target_files) == 0):
       target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")
@@ -1683,18 +1617,18 @@ class module:
     result = []
     for dist_path in self.dist_paths_active():
       for sub_dir in ["command_line", self.name+"/command_line"]:
-        path = libtbx.path.norm_join(dist_path, sub_dir)
-        if (op.isdir(path)):
+        path = dist_path / sub_dir
+        if path.isdir():
           result.append(path)
     return result
 
   def process_command_line_directories(self):
     for source_dir in self.command_line_directory_paths():
-      print 'Processing: "%s"' % source_dir
+      print 'Processing: "%s"' % source_dir.relocatable
       def is_py_sh(file_name):
         return file_name.endswith(".sh") \
             or file_name.endswith(".py")
-      nodes = os.listdir(source_dir)
+      nodes = source_dir.listdir()
       py_sh_dict = {}
       for file_name in nodes:
         if (is_py_sh(file_name)):
@@ -1717,8 +1651,9 @@ class module:
         print_prefix="  ",
         target_file_name_infix="",
         scan_for_libtbx_set_dispatcher_name=False):
-    print print_prefix+'Processing: %s' % show_string(source_dir)
-    for file_name in os.listdir(source_dir):
+    source_dir = self.env.as_relocatable_path(source_dir)
+    print print_prefix+'Processing: %s' % show_string(abs(source_dir))
+    for file_name in source_dir.listdir():
       if (not file_name.endswith(".py")): continue
       self.write_dispatcher(
         source_dir=source_dir,
@@ -1730,27 +1665,25 @@ class module:
 
   def process_libtbx_refresh_py(self):
     for dist_path in self.dist_paths_active():
-      custom_refresh = libtbx.path.norm_join(dist_path, "libtbx_refresh.py")
-      if (op.isfile(custom_refresh)):
-        print 'Processing: "%s"' % custom_refresh
-        execfile(custom_refresh, {}, {"self": self})
+      custom_refresh = dist_path / "libtbx_refresh.py"
+      if custom_refresh.isfile():
+        print 'Processing: "%s"' % custom_refresh.relocatable
+        execfile(abs(custom_refresh), {}, {"self": self})
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):
     result = []
     for dist_path in self.dist_paths_active():
       for file_name in file_names:
-        path = libtbx.path.norm_join(dist_path, file_name)
-        if (op.isfile(path)): result.append(path)
+        path = dist_path / file_name
+        if path.isfile(): result.append(path)
     return result
 
   def remove_obsolete_pyc_if_possible(self, pyc_file_names):
     for file_name in pyc_file_names:
       for dist_path in self.dist_paths_active():
-        path = libtbx.path.norm_join(dist_path, file_name)
-        if (op.isfile(path)):
-          try: os.remove(path)
-          except IOError: pass
+        path = dist_path / file_name
+        if path.isfile(): path.remove()
 
 class build_options:
 
@@ -1780,8 +1713,7 @@ class build_options:
         precompile_headers=False,
         use_environment_flags=False,
         force_32bit=False,
-        msvc_arch_flag=default_msvc_arch_flag,
-        relocatable=False):
+        msvc_arch_flag=default_msvc_arch_flag):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1834,7 +1766,6 @@ class build_options:
     print >> f, "Enable CUDA:", self.enable_cuda
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
-    print >> f, "Relocatable:", self.relocatable
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
       print >>f, "  CFLAGS = ", self.env_cflags
@@ -2018,17 +1949,6 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="Precompile headers, especially Boost Python ones (default: don't)")
-    parser.option(None, '--relocatable',
-                  action='store_true',
-                  default=False,
-                  help="Whether to create dispatchers in cctbx_build/bin "
-                  "in such a manner that the parent directory of cctbx_build "
-                  " may be moved to a different path without requiring a "
-                  "reconfiguration in the new location (default: don't). "
-                  "Note: this does not work for libtbx.refresh and "
-                  "libtbx.configure. It is therefore a tool aimed at "
-                  "the deployment of the cctbx, rather than one aimed "
-                  "at its development.")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
         action="store_true",
@@ -2165,9 +2085,12 @@ def unpickle():
   if (not hasattr(env.build_options, "enable_cuda")):
     env.build_options.enable_cuda = False
   # XXX backward compatibility 2011-09
-  env.build_options.__dict__.setdefault('relocatable', False)
-  if env.build_options.relocatable:
-    env.build_path = build_path
+  if not hasattr(env, 'relocatable'):
+    print ("Please re-configure from scracth your cctbx_build:"
+           "cd cctbx_build; "
+           "/your/path/to/python ../cctbx_project/libtbx/configure.py [options] [modules]")
+    sys.exit(1)
+  env.set_build_path(build_path)
   return env
 
 def warm_start(args):
