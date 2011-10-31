@@ -44,7 +44,8 @@ def unique_paths(paths):
   hash = set()
   result = []
   for path in paths:
-    path_normcase = path.normcase()
+    try: path_normcase = path.normcase()
+    except AttributeError: path_normcase = op.normcase(path)
     if (path_normcase in hash): continue
     hash.add(path_normcase)
     result.append(path)
