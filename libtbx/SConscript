@@ -766,7 +766,7 @@ env_etc.static_exe = libtbx.env.build_options.static_exe
 
 env_etc.libtbx_build = libtbx.env.build_path
 env_etc.libtbx_include = libtbx.env.under_build("include")
-env_etc.libtbx_lib = libtbx.env.lib_path
+env_etc.libtbx_lib = abs(libtbx.env.lib_path)
 
 def enable_openmp_if_possible():
   test_code = r"""%s
