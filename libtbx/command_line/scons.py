@@ -7,15 +7,15 @@ def find_scons_engine_path():
   join = os.path.join
   isdir = os.path.isdir
   if (libtbx.env.scons_dist_path is not None):
-    result = join(libtbx.env.scons_dist_path, "engine")
-    if (isdir(result)): return result
-    result = join(libtbx.env.scons_dist_path, "src", "engine")
-    if (isdir(result)): return result
+    result = libtbx.env.scons_dist_path / "engine"
+    if result.isdir(): return abs(result)
+    result = libtbx.env.scons_dist_path / "src" / "engine"
+    if result.isdir(): return abs(result)
   for path in libtbx.env.repository_paths:
-    result = join(path, "scons", "engine")
-    if (isdir(result)): return result
-    result = join(path, "scons", "src", "engine")
-    if (isdir(result)): return result
+    result = path / "scons" / "engine"
+    if result.isdir(): return abs(result)
+    result = path / "scons" / "src" /"engine"
+    if result.isdir(): return abs(result)
   return None
 
 def dummy_fetch_win32_parallel_msg():
