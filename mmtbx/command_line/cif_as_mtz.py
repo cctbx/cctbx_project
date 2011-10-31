@@ -294,7 +294,7 @@ def extract(file_name,
           except Sorry, e:
             if ("merge_equivalents_exact: incompatible" in str(e)) :
               raise Sorry(str(e) + " for %s" %ma.info().labels[-1])
-            raise e
+            raise
         else:
           n_all = ma.indices().size()
           sel_unique = ma.unique_under_symmetry_selection()

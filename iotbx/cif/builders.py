@@ -132,7 +132,7 @@ class crystal_symmetry_builder(builder_base):
             raise CifBuilderError("Error interpreting symmetry operator: %s" %(
               str_e.split("Parse error: ")[-1]))
           else:
-            raise e
+            raise
         if sym_op_ids is None:
           sym_op_id = i+1
         else:
@@ -186,7 +186,7 @@ class crystal_symmetry_builder(builder_base):
         if "cctbx Error: Unit cell" in str(e):
           raise CifBuilderError(e)
         else:
-          raise RuntimeError, e
+          raise
     elif (space_group is not None):
       unit_cell = uctbx.infer_unit_cell_from_symmetry(
         [float_from_string(s) for s in items if s is not None], space_group)
