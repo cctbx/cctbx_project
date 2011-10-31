@@ -138,3 +138,140 @@ def makedirs_race(
   if (not op.isdir(path)):
     raise RuntimeError("makedirs_race(%s) failure." % path)
   return path
+
+
+class path_mixin(object):
+
+  def __truediv__(self, path):
+    return self.__div__(path)
+
+  def isdir(self):
+    return os.path.isdir(abs(self))
+
+  def isfile(self):
+    return os.path.isfile(abs(self))
+
+  def exists(self):
+    return os.path.exists(abs(self))
+
+  def open(self, *args, **kwds):
+    return open(abs(self), *args, **kwds)
+
+  def makedirs(self):
+    os.makedirs(abs(self))
+
+  def remove(self):
+    if self.exists(): os.remove(abs(self))
+    assert not self.exists()
+
+  def remove_tree(self):
+    from distutils.dir_util import remove_tree
+    if self.isdir():
+      remove_tree(abs(self))
+    else:
+      self.remove()
+
+  def listdir(self):
+    return os.listdir(abs(self))
+
+  def chmod(self, *args, **kwds):
+    return os.chmod(abs(self), *args, **kwds)
+
+  def access(self, *args, **kwds):
+    return os.access(abs(self), *args, **kwds)
+
+  def basename(self):
+    return os.path.basename(abs(self))
+
+  def ext(self):
+    return os.path.splitext(self.basename())[1]
+
+  def split(self):
+    return (self.dirname(), self.basename())
+
+  def samefile(self, other):
+    if isinstance(other, str) or isinstance(other, unicode):
+      return os.path.samefile(abs(self), other)
+    else:
+      return os.path.samefile(abs(self), abs(other))
+
+
+class absolute_path(path_mixin):
+
+  def __init__(self, path, case_sensitive=False):
+    assert os.path.isabs(path)
+    if not case_sensitive:
+      path = os.path.normcase(path)
+    path = os.path.normpath(path)
+    self._path = path
+
+  def __div__(self, other):
+    return absolute_path(os.path.join(self._path, other))
+
+  def __abs__(self):
+    return self._path
+
+  def __add__(self, ext):
+    return absolute_path(self._path + ext)
+
+  def __repr__(self):
+    return 'absolute_path("%s")' % self._path
+
+  def dirname(self):
+    return os.path.dirname(self._path)
+
+
+class relocatable_path(path_mixin):
+
+  def __init__(self, rooted, relocatable):
+    self._rooted = rooted
+    root = rooted.root_path
+    if os.path.isabs(relocatable):
+      if not relocatable.startswith(root):
+        raise RuntimeError('relocatable (%s) is an absolute path '
+                           'that does not hang from root (%s)' % (relocatable,
+                                                                  root))
+      relocatable = relocatable[len(root):].lstrip(os.sep)
+    self.relocatable = relocatable
+
+  def root(self):
+    return self._rooted.root_path
+  root = property(root)
+
+  def __div__(self, path):
+    return relocatable_path(self._rooted,
+                            os.path.join(self.relocatable, path))
+
+  def __idiv__(self, path):
+    self.relocatable = os.path.join(self.relocatable, path)
+    return self
+
+  def __add__(self, ext):
+    return relocatable_path(self._rooted, self.relocatable + ext)
+
+  def self_or_abs_if(self, flag):
+    if flag:
+      return abs(self)
+    else:
+      return self
+
+  def __abs__(self):
+    return os.path.join(self.root, self.relocatable).rstrip(os.sep)
+
+  def __repr__(self):
+    return 'relocatable_path(root="%s", relocatable="%s")' % (self.root,
+                                                              self.relocatable)
+
+  def dirname(self):
+    assert self.relocatable
+    return relocatable_path(self._rooted, os.path.dirname(self.relocatable))
+
+  def basename(self):
+    return os.path.basename(self.relocatable)
+
+  def normcase(self):
+    return relocatable_path(self._rooted, os.path.normcase(self.relocatable))
+
+  def __eq__(self, other):
+    return (self._rooted == other._rooted
+            and self.relocatable == other.relocatable)
