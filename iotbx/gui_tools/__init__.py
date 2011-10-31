@@ -34,6 +34,9 @@ class manager (object) :
     self._param_files = {}
     self.clear_format_specific_cache()
 
+  def get_file_count (self) :
+    return len(self._param_files)
+
   def clear_format_specific_cache (self) :
     pass
 
