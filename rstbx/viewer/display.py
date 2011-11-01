@@ -55,10 +55,11 @@ class XrayView (wx.Panel) :
     self.line = None
     scales = [0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
     zoom = scales[self.settings.zoom_level]
-    self._img.set_zoom(zoom)
-    self._img.update_settings(
-      brightness=self.settings.brightness,
-      color_scheme=self.settings.color_scheme)
+    if (self._img is not None) :
+      self._img.set_zoom(zoom)
+      self._img.update_settings(
+        brightness=self.settings.brightness,
+        color_scheme=self.settings.color_scheme)
     if (layout) :
       self.line_start = None
       self.line_end = None
@@ -114,7 +115,7 @@ class XrayView (wx.Panel) :
     scale = self.get_scale()
     if (scale >= 4) :
       bg_masks = self._img.get_drawable_background_mask()
-      #dc.SetPen(wx.YELLOW_PEN)
+      dc.SetPen(wx.Pen((255,255,0), 1))
       for (x, y) in bg_masks :
         dc.DrawCircle(x,y,1)
       int_masks = self._img.get_drawable_integration_mask()
@@ -123,7 +124,7 @@ class XrayView (wx.Panel) :
         dc.DrawCircle(x,y,1)
     else :
       predictions = self._img.get_drawable_predictions()
-      #dc.SetPen(wx.YELLOW_PEN)
+      dc.SetPen(wx.Pen((255,255,0), 1))
       dc.SetBrush(wx.TRANSPARENT_BRUSH)
       for (x, y) in predictions :
         dc.DrawCircle(x, y, 5*scale)
@@ -158,7 +159,7 @@ class XrayView (wx.Panel) :
         self.OnMiddleDrag(event)
       elif (event.RightIsDown()) :
         self.OnRightDrag(event)
-    else :
+    elif (self._img is not None) :
       x, y = self._img.screen_coords_as_image_coords(event.GetX(),event.GetY())
       img_w, img_h = self._img.get_image_size()
       if (x < 0) or (x > img_w) or (y < 0) or (y > img_h) :
@@ -176,6 +177,7 @@ class XrayView (wx.Panel) :
     wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
 
   def OnLeftDown (self, event) :
+    if (self._img is None) : return
     self.was_dragged = False
     if (event.ShiftDown()) :
       self.shift_was_down = True
@@ -190,11 +192,13 @@ class XrayView (wx.Panel) :
     pass
 
   def OnLeftDrag (self, event) :
-    x, y = event.GetPositionTuple()
-    self.line_end = self._img.screen_coords_as_image_coords(x, y)
-    self.Refresh()
+    if (self._img is not None) :
+      x, y = event.GetPositionTuple()
+      self.line_end = self._img.screen_coords_as_image_coords(x, y)
+      self.Refresh()
 
   def OnLeftUp (self, event) :
+    if (self._img is None) : return
     if (self.shift_was_down) :
       pass
     elif (self.was_dragged) and (self.line_start is not None) :
@@ -225,12 +229,14 @@ class XrayView (wx.Panel) :
     self.OnZoom(event)
 
   def OnZoom (self, event) :
+    if (self._img is None) : return
     x, y = event.GetPositionTuple()
     img_x, img_y = self._img.screen_coords_as_image_coords(x, y)
     self.GetParent().OnShowZoom(None)
     self.GetParent().zoom_frame.set_zoom(img_x, img_y)
 
   def OnTranslate (self, event) :
+    if (self._img is None) : return
     x, y = event.GetX(), event.GetY()
     delta_x = x - self.xmouse
     delta_y = y - self.ymouse
@@ -238,6 +244,7 @@ class XrayView (wx.Panel) :
     self.TranslateImage(delta_x, delta_y)
 
   def TranslateImage (self, delta_x, delta_y) :
+    if (self._img is None) : return
     if (self.settings.zoom_level == 0) :
       return
     self._img.translate_image(delta_x, delta_y)
@@ -245,6 +252,7 @@ class XrayView (wx.Panel) :
     self.GetParent().settings_frame.refresh_thumbnail()
 
   def OnMouseWheel (self, event) :
+    if (self._img is None) : return
     d_x = d_y = 0
     if (event.ShiftDown()) :
       d_x = - 10 * event.GetWheelRotation()
