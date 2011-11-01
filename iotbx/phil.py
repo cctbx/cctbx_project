@@ -213,8 +213,8 @@ def parse_command_line_phil_args (args, master_phil, command_name, usage_opts,
 
 def load_from_cache_if_possible (phil_path) :
   import libtbx.load_env
-  full_path = os.path.join(libtbx.env.build_path, "phil_cache", "%s.phil" %
-    phil_path)
+  full_path = os.path.join(abs(libtbx.env.build_path), "phil_cache",
+    "%s.phil" % phil_path)
   if (os.path.exists(full_path)) :
     return parse(file_name=full_path)
   else :
