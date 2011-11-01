@@ -330,8 +330,11 @@ if (os.name == "nt"):
   windows_pathext = _windows_pathext()
 
 def remove_or_rename(path):
-  if path.isfile():
-    try: path.remove()
+  assert path is not None
+  if (not isinstance(path, str)):
+    path = abs(path)
+  if (op.isfile(path)):
+    try: os.remove(path)
     except OSError:
       try: os.remove(path+".old")
       except OSError: pass
