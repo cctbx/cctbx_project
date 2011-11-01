@@ -656,6 +656,8 @@ Wait for the command to finish, then try again.""" % vars())
   def process_args(self, pre_processed_args):
     command_line = pre_processed_args.command_line
     for path in pre_processed_args.repository_paths:
+      if not op.isabs(path):
+        path = abs(self.build_path / path)
       self.add_repository(path=path)
     module_names = []
     for module_name in command_line.args:
