@@ -222,12 +222,19 @@ class absolute_path(path_mixin):
   def dirname(self):
     return os.path.dirname(self._path)
 
+tmp_workaround = True
 
 class relocatable_path(path_mixin):
 
   def __init__(self, rooted, relocatable):
     self._rooted = rooted
     root = rooted.root_path
+    if (tmp_workaround):
+      if os.path.isabs(relocatable):
+        self.relocatable = relocatable
+      else:
+        self.relocatable = os.path.join(root, relocatable)
+      return
     if os.path.isabs(relocatable):
       if not os.path.normcase(relocatable).startswith(root):
         raise RuntimeError('relocatable (%s) is an absolute path '
@@ -237,6 +244,7 @@ class relocatable_path(path_mixin):
     self.relocatable = relocatable
 
   def root(self):
+    if (tmp_workaround): return "/"
     return self._rooted.root_path
   root = property(root)
 
