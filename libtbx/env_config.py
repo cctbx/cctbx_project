@@ -251,7 +251,7 @@ class common_setpaths(object):
   def all_and_debug(self):
     if (self.suffix != ""):
       for var_name,path in self.env.var_name_and_build_or_dist_path_pairs():
-        self.setenv(var_name=var_name, val=path)
+        self.setenv(var_name=var_name, val=abs(path))
     if (self.suffix == "_debug"):
       self.update_path("PYTHONPATH", self.env.pythonpath)
       self.update_path(ld_library_path_var_name(), [self.env.lib_path])
@@ -797,7 +797,7 @@ Wait for the command to finish, then try again.""" % vars())
                             (lines_before_command,
                              self._dispatcher_include_before_command)]:
         if (len(buffer) == 0): continue
-        buffer.insert(0, "# included from %s" % path)
+        buffer.insert(0, "# included from %s" % abs(path))
         highlight_dispatcher_include_lines(buffer)
         target.extend(buffer)
 
@@ -1221,7 +1221,7 @@ selfx:
       print >> f, "set noglob"
       print >> f, "set verbose"
       for file_name in test_scripts:
-        print >> f, 'libtbx.python "%s" $*' % file_name
+        print >> f, 'libtbx.python "%s" $*' % abs(file_name)
       f.close()
       path.chmod(0755)
 
@@ -1241,11 +1241,12 @@ selfx:
     fmt = "  %%-%ds  %%s" % max([len(label) for label in labels])
     for label,module in zip(labels,top_down_module_list):
       for dist_path in module.dist_paths_active():
-        print fmt % (label, dist_path.relocatable)
+        print fmt % (label, show_string(abs(dist_path)))
         label = ""
 
   def show_build_options_and_module_listing(self):
-    print 'Python: %s "%s"' % (sys.version.split()[0], sys.executable)
+    print "Python: %s %s" % (
+      sys.version.split()[0], show_string(sys.executable))
     if (self.is_ready_for_build()):
       self.build_options.report()
     print "command_version_suffix:", self.command_version_suffix
@@ -1274,7 +1275,7 @@ selfx:
     for path in [self.exe_path,
                  self.under_build("exe_dev", return_relocatable_path=True)]:
       if path.isdir():
-        print 'Processing: "%s"' % path.relocatable
+        print "Processing: %s" % show_string(abs(path))
         for file_name in path.listdir():
           if (file_name.startswith(".")): continue
           target_file = file_name
@@ -1365,8 +1366,8 @@ selfx:
     self.assemble_pythonpath()
     self.show_build_options_and_module_listing()
     self.reset_dispatcher_bookkeeping()
-    print "Creating files in build directory:  %s" \
-      % show_string(self.build_path.relocatable)
+    print "Creating files in build directory: %s" \
+      % show_string(abs(self.build_path))
     self.write_dispatcher_include_template()
     self.write_lib_dispatcher_head()
     self.write_setpath_files()
@@ -1627,7 +1628,7 @@ class module:
 
   def process_command_line_directories(self):
     for source_dir in self.command_line_directory_paths():
-      print 'Processing: "%s"' % source_dir.relocatable
+      print "Processing: %s" % show_string(abs(source_dir))
       def is_py_sh(file_name):
         return file_name.endswith(".sh") \
             or file_name.endswith(".py")
@@ -1655,7 +1656,7 @@ class module:
         target_file_name_infix="",
         scan_for_libtbx_set_dispatcher_name=False):
     source_dir = self.env.as_relocatable_path(source_dir)
-    print print_prefix+'Processing: %s' % show_string(abs(source_dir))
+    print print_prefix+"Processing: %s" % show_string(abs(source_dir))
     for file_name in source_dir.listdir():
       if (not file_name.endswith(".py")): continue
       self.write_dispatcher(
@@ -1670,7 +1671,7 @@ class module:
     for dist_path in self.dist_paths_active():
       custom_refresh = dist_path / "libtbx_refresh.py"
       if custom_refresh.isfile():
-        print 'Processing: "%s"' % custom_refresh.relocatable
+        print "Processing: %s" % show_string(abs(custom_refresh))
         execfile(abs(custom_refresh), {}, {"self": self})
 
   def collect_test_scripts(self,
