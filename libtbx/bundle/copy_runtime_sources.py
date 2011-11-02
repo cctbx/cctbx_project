@@ -46,7 +46,7 @@ def copy_dist_files((exclude_from_binary_bundle, dist_copy), dirname, names):
 
 def run(target_root):
   cwd = os.getcwd()
-  abs_target_root = libtbx.env.abs_path_clean(target_root)
+  abs_target_root = os.path.normpath(os.path.abspath(target_root))
   for module in libtbx.env.module_list:
     for name,dist_path in module.name_and_dist_path_pairs():
       if (name == "boost"): continue
