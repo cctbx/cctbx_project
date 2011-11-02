@@ -446,6 +446,30 @@ class environment:
         return abs(result)
     return None
 
+  def abs_path_short(self, abs_path):
+    if (os.name != "nt"): return abs_path
+    if (self._shortpath_bat is None):
+      self._shortpath_bat = abs(self.under_build("shortpath.bat"))
+      assert op.exists(self._shortpath_bat)
+    from libtbx import easy_run
+    return easy_run.fully_buffered(
+      command='call "%s" "%s"' % (self._shortpath_bat, abs_path)) \
+        .raise_if_errors() \
+        .stdout_lines[0].rstrip()
+
+  def abs_path_clean(self, path):
+    abs_path = op.normpath(op.abspath(path))
+    if (os.name != "nt" or abs_path.find(" ") < 0): return abs_path
+    short = self.abs_path_short(abs_path).split(os.sep)
+    orig = abs_path.split(os.sep)
+    clean = []
+    for o,s in zip(orig, short):
+      if (o.find(" ") < 0):
+        clean.append(o)
+      else:
+        clean.append(s)
+    return os.sep.join(clean)
+
   def dist_path(self, module_name, default=KeyError,
                 return_relocatable_path=False):
     if (default is KeyError):

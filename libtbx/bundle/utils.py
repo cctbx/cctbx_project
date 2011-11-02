@@ -8,7 +8,7 @@ def copy_tags(target_root):
   if (os.path.isdir(target_root)):
     flds = []
     for path in libtbx.env.repository_paths:
-      src = libtbx.path.norm_join(path, "TAG")
+      src = libtbx.path.norm_join(abs(path), "TAG")
       if (os.path.isfile(src)):
         flds.extend(open(src).read().split())
     if (len(flds) > 0):
