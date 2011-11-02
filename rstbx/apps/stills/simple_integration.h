@@ -328,14 +328,14 @@ namespace rstbx { namespace integration {
           show_array<af::flex_bool>(b_mask);
           */
         }
-	
-	/*  insist that the background mask pixel count meets/exceeds that of
-	    the spot mask, otherwise flag the spot to be skipped: */
-	if ( altB_S_mask.size() >= I_S_mask.size()) {
+
+        /*  insist that the background mask pixel count meets/exceeds that of
+            the spot mask, otherwise flag the spot to be skipped: */
+        if ( altB_S_mask.size() >= I_S_mask.size()) {
           BSmasks.push_back(altB_S_mask);
-	} else {
-	  BSmasks.push_back(mask_t());
-	}
+        } else {
+          BSmasks.push_back(mask_t());
+        }
 
       }
       scitbx::af::shared<scitbx::vec2<double> > return_detector_xy_draft;
