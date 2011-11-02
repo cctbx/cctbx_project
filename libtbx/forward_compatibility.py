@@ -37,28 +37,30 @@ if not hasattr(os.path, 'relpath'):
   # This is copy and pasted from Python 2.6 standard library itself,
   # including the trick to detect the platform
   if 'posix' in sys.builtin_module_names:
-    def relpath(path, start=curdir):
+    def relpath(path, start="."):
         """Return a relative version of a path"""
 
         if not path:
             raise ValueError("no path specified")
 
+        from os.path import abspath, commonprefix, join, sep
         start_list = abspath(start).split(sep)
         path_list = abspath(path).split(sep)
 
         # Work out how much of the filepath is shared by start and path.
         i = len(commonprefix([start_list, path_list]))
 
-        rel_list = [pardir] * (len(start_list)-i) + path_list[i:]
+        rel_list = [".."] * (len(start_list)-i) + path_list[i:]
         if not rel_list:
-            return curdir
+            return "."
         return join(*rel_list)
   elif 'nt' in sys.builtin_module_names:
-    def relpath(path, start=curdir):
+    def relpath(path, start="."):
         """Return a relative version of a path"""
 
         if not path:
             raise ValueError("no path specified")
+        from os.path import abspath, splitunc, join, sep
         start_list = abspath(start).split(sep)
         path_list = abspath(path).split(sep)
         if start_list[0].lower() != path_list[0].lower():
@@ -77,12 +79,12 @@ if not hasattr(os.path, 'relpath'):
         else:
             i += 1
 
-        rel_list = [pardir] * (len(start_list)-i) + path_list[i:]
+        rel_list = [".."] * (len(start_list)-i) + path_list[i:]
         if not rel_list:
-            return curdir
+            return "."
         return join(*rel_list)
   else:
-    def relpath(path, start=curdir):
+    def relpath(path, start="."):
       raise NotImplementedError("relpath() is not available on platform %s"
                                 % sys.platform)
   os.path.relpath = relpath
