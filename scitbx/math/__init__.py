@@ -27,6 +27,13 @@ class line_given_points(object):
     t = -(self.points[0] - point).dot(self.delta) / self.delta.norm_sq()
     return self.points[0]+(self.delta*t)
 
+def r3_rotation_cos_rotation_angle_from_matrix(r):
+
+  return max(
+    min( ( r[0] + r[4] + r[8] - 1.0 ) / 2.0, 1.0 ),
+    -1.0
+    )
+
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
     angles = [a*math.pi/180 for a in angles]
