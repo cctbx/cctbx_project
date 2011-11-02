@@ -452,10 +452,9 @@ class environment:
       result = self.module_dist_paths[module_name]
     else:
       result = self.module_dist_paths.get(module_name, default)
-    if return_relocatable_path:
-      return result
-    else:
-      return abs(result)
+    if (isinstance(result, relocatable_path) and not return_relocatable_path):
+      result = abs(result)
+    return result
 
   def has_module(self, name):
     return self.module_dist_paths.has_key(name)
