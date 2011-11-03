@@ -1141,7 +1141,7 @@ Wait for the command to finish, then try again.""" % vars())
         command, abs(self.build_path), command)
     print >> u, '  doskey libtbx.unsetpaths='
     if (self.is_development_environment()):
-      print >> s, '  doskey cdlibtbxbuild=cd "%s"' % self.build_path
+      print >> s, '  doskey cdlibtbxbuild=cd "%s"' % abs(self.build_path)
       print >> u, '  doskey cdlibtbxbuild='
     setpaths.all_and_debug()
     if (suffix == "_debug"):
