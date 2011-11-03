@@ -362,6 +362,8 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_planarity_proxies = self.planarity_proxies.proxy_select(
         n_seq, iselection)
+    if (self.generic_restraints_manager is not None) :
+      self.generic_restraints_manager.select(n_seq, iselection)
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,
