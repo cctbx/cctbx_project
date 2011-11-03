@@ -383,7 +383,7 @@ class determine_data_and_flags(object):
            del merged
         r_free_flags = processed.set_info(info)
     if(r_free_flags is None):
-      if ((params.fraction is None)
+      if ((params.fraction is None) or
           (params.lattice_symmetry_max_delta is None) or
           (params.use_lattice_symmetry is None)) :
         raise Sorry("No R-free flags are available, but one or more "+
