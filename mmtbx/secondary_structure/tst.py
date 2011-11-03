@@ -25,8 +25,7 @@ def exercise_protein () :
     print "Skipping KSDSSP tests: ksdssp module not available."
     run_ksdssp = False
   log = null_out()
-  potentials = ["implicit", "explicit"]
-  for file_name, potential_type in zip([pdb_file, pdb_file_h], potentials) :
+  for file_name in [pdb_file, pdb_file_h] :
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
@@ -38,24 +37,11 @@ def exercise_protein () :
     m.find_automatically(log=log)
     m.params.h_bond_restraints.remove_outliers = False
     hbond_params = hbond.master_phil.extract()
-    hbond_params.restraint_type = "simple"
     build_proxies = m.create_hbond_proxies(hbond_params=hbond_params,
       log=log)
     proxies = build_proxies.proxies
     assert (len(proxies) == len(build_proxies.exclude_nb_list) == 109)
     assert (type(proxies[0]).__name__ == "h_bond_simple_proxy")
-    m.params.h_bond_restraints.remove_outliers = None
-    hbond_params.restraint_type = potential_type
-    build_proxies = m.create_hbond_proxies(
-      hbond_params=hbond_params,
-      log=log)
-    proxies = build_proxies.proxies
-    if (potential_type == "implicit") :
-      assert (proxies.size() == len(build_proxies.exclude_nb_list) == 109)
-      assert (type(proxies[0]).__name__ == "h_bond_implicit_proxy")
-    else :
-      assert (len(proxies) == len(build_proxies.exclude_nb_list) == 109)
-      assert (type(proxies[0]).__name__ == "explicit_proxy")
     (frac_alpha, frac_beta) = m.calculate_structure_content()
     assert ("%.3f" % frac_alpha == "0.643")
     assert ("%.3f" % frac_beta == "0.075")
@@ -67,19 +53,6 @@ def exercise_protein () :
       m.params.h_bond_restraints.remove_outliers = False
       hbond_params.restraint_type = "simple"
       build_proxies = m.create_hbond_proxies(hbond_params=hbond_params, log=log)
-      assert (build_proxies.proxies.size() == 81)
-      m.params.h_bond_restraints.remove_outliers = True
-      hbond_params.restraint_type = potential_type
-      build_proxies = m.create_hbond_proxies(hbond_params=hbond_params, log=log)
-      if (potential_type == "implicit") :
-        assert (build_proxies.proxies.size() == 76)
-      else :
-        assert (len(build_proxies.proxies) == 74)
-      m.params.h_bond_restraints.remove_outliers = None
-      hbond_params.restraint_type = "lennard_jones"
-      build_proxies = m.create_hbond_proxies(
-        hbond_params=hbond_params,
-        log=log)
       assert (build_proxies.proxies.size() == 81)
 
 def exercise_nucleic_acids () :

@@ -6,7 +6,7 @@ import iotbx.pdb.secondary_structure
 from scitbx.array_family import flex
 import iotbx.phil
 from libtbx import easy_run
-from libtbx import adopt_init_args, Auto
+from libtbx import adopt_init_args
 import libtbx.load_env
 import cStringIO
 from math import sqrt
@@ -28,6 +28,22 @@ ss_restraint_params_str = """
     .type = bool
     .short_caption = Filter bond outliers
     .style = tribool
+  distance_ideal_n_o = 2.9
+    .type = float
+    .short_caption = Ideal N-O distance
+  distance_cut_n_o = 3.5
+    .type = float
+    .short_caption = N-O distance cutoff
+  distance_ideal_h_o = 1.975
+    .type = float
+    .short_caption = Ideal H-O distance
+  distance_cut_h_o = 2.5
+    .type = float
+    .short_caption = H-O distance cutoff
+  sigma = 0.05
+    .type = float
+  slack = 0.0
+    .type = float
 """
 
 ss_tardy_params_str = """\
@@ -137,7 +153,6 @@ def hydrogen_bond_proxies_from_selections(
     pdb_hierarchy,
     params,
     use_hydrogens,
-    hbond_params=None,
     as_python_objects=False,
     remove_outliers=False,
     master_selection=None,
@@ -151,40 +166,19 @@ def hydrogen_bond_proxies_from_selections(
     master_selection = flex.bool(atoms.size(), True)
   elif (isinstance(master_selection, str)) :
     master_selection = selection_cache.seletion(master_selection)
-  if (hbond_params is None) :
-    hbond_params = hbond.master_phil.fetch().extract()
-  restraint_type = hbond_params.restraint_type
+  hbond_params = params.h_bond_restraints
   restrain_helices = params.h_bond_restraints.restrain_helices
   restrain_sheets = params.h_bond_restraints.restrain_sheets
   restrain_base_pairs = params.h_bond_restraints.restrain_base_pairs
-  weight = hbond_params.restraints_weight
+  weight = 1.0
   distance_ideal = distance_cut = None
-  if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
-    if (not restraint_type.startswith("simple")) :
-      print >> log, "  Nucleic acids are being restrained (%d base pairs)"
-      print >> log, "  Only the simple H-bond potential is available; will "
-      print >> log, "  switch automatically to use this restraint type."
-      restraint_type = "simple"
   if (use_hydrogens) :
     distance_ideal = hbond_params.distance_ideal_h_o
     distance_cut = hbond_params.distance_cut_h_o
   else :
     distance_ideal = hbond_params.distance_ideal_n_o
     distance_cut = hbond_params.distance_cut_n_o
-  if (restraint_type == "simple") :
-    geo_params = hbond_params.simple
-    build_proxies = hbond.build_simple_hbond_proxies()
-  elif (restraint_type == "lennard_jones") :
-    geo_params = hbond_params.lennard_jones
-    build_proxies = hbond.build_lennard_jones_proxies()
-  elif (restraint_type == "explicit") :
-    geo_params = hbond_params.explicit
-    build_proxies = hbond.build_explicit_hbond_proxies()
-  elif (restraint_type == "implicit") :
-    geo_params = hbond_params.implicit
-    build_proxies = hbond.build_implicit_hbond_proxies()
-  else :
-    raise RuntimeError("Inappropriate restraint type '%s'." % restraint_type)
+  build_proxies = hbond.build_simple_hbond_proxies()
   if (as_python_objects) :
     build_proxies = hbond.build_distance_proxies()
   if (distance_cut is None) :
@@ -200,10 +194,9 @@ def hydrogen_bond_proxies_from_selections(
         params=helix,
         pdb_hierarchy=pdb_hierarchy,
         selection_cache=selection_cache,
-        restraint_type=restraint_type,
         build_proxies=build_proxies,
-        weight=hbond_params.restraints_weight,
-        hbond_params=geo_params,
+        weight=1.0,
+        hbond_params=hbond_params,
         hbond_counts=hbond_counts,
         distance_ideal=distance_ideal,
         distance_cut=distance_cut,
@@ -219,10 +212,9 @@ def hydrogen_bond_proxies_from_selections(
       n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
         sheet_params=sheet,
         pdb_hierarchy=pdb_hierarchy,
-        restraint_type=restraint_type,
         build_proxies=build_proxies,
-        weight=hbond_params.restraints_weight,
-        hbond_params=geo_params,
+        weight=1.0,
+        hbond_params=hbond_params,
         hbond_counts=hbond_counts,
         distance_ideal=distance_ideal,
         distance_cut=distance_cut,
@@ -236,10 +228,10 @@ def hydrogen_bond_proxies_from_selections(
   if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
     sigma = params.nucleic_acids.sigma
     if (sigma is None) :
-      sigma = geo_params.sigma
+      sigma = hbond_params.sigma
     slack = params.nucleic_acids.slack
     if (slack is None) :
-      slack = geo_params.slack
+      slack = hbond_params.slack
     base_pairing.identify_base_pairs(
       base_pairs=params.nucleic_acids.base_pair,
       pdb_hierarchy=pdb_hierarchy,
@@ -250,7 +242,6 @@ def hydrogen_bond_proxies_from_selections(
       build_proxies=build_proxies,
       base_pairs=params.nucleic_acids.base_pair,
       pdb_hierarchy=pdb_hierarchy,
-      restraint_type=restraint_type,
       hbond_counts=hbond_counts,
       distance_ideal=distance_ideal,
       distance_cut=distance_cut,
@@ -450,22 +441,13 @@ class manager (object) :
                             as_python_objects=False,
                             master_selection=None) :
     params = self.params
-    if (hbond_params is None) :
-      from mmtbx.geometry_restraints import hbond
-      hbond_params = hbond.master_phil.extract()
-    if (hbond_params.restraint_type == "Auto") :
-      hbond_params.restraint_type = "simple"
     remove_outliers = self.params.h_bond_restraints.remove_outliers
     if (remove_outliers is None) :
-      if (hbond_params.restraint_type == "simple") :
-        remove_outliers = True
-      else :
-        remove_outliers = False
+      remove_outliers = True
     build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
       use_hydrogens=(not self.assume_hydrogens_all_missing),
-      hbond_params=hbond_params,
       as_python_objects=as_python_objects,
       remove_outliers=remove_outliers,
       master_selection=master_selection,
@@ -492,7 +474,6 @@ class manager (object) :
     build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
-      restraint_type="simple",
       use_hydrogens=(not self.assume_hydrogens_all_missing),
       hbond_params=None,
       as_python_objects=True,

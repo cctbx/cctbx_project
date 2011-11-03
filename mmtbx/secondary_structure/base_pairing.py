@@ -380,7 +380,6 @@ def create_hbond_proxies (
     build_proxies,
     base_pairs,
     pdb_hierarchy,
-    restraint_type,
     hbond_counts,
     distance_ideal,
     distance_cut,
@@ -391,7 +390,6 @@ def create_hbond_proxies (
     use_db_values=True,
     raise_error_if_missing_selection=False,
     log=sys.stderr) :
-  assert (restraint_type in ["simple", "lennard_jones"])
   assert (slack >= 0) and (sigma >= 0)
   from mmtbx.secondary_structure import utils as ss_utils
   selection_cache = pdb_hierarchy.atom_selection_cache()
