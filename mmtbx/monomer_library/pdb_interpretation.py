@@ -131,16 +131,6 @@ master_params_str = """\
   chir_volume_esd = 0.2
     .type=float
     .optional=False
-#  rotamers
-#    .help = **EXPERIMENTAL, developers only**
-#    .expert_level = 3
-#  {
-#    use_richardson_library = False
-#      .type = bool
-#      .help = **EXPERIMENTAL, developers only**
-#      .expert_level = 3
-#    include scope mmtbx.geometry_restraints.rotamer.master_phil
-#  }
   peptide_link
     .short_caption = Peptide link settings
     .style = box auto_align noauto
@@ -3556,22 +3546,11 @@ class build_all_chain_proxies(object):
         log=log)
       ramachandran_lookup = ramachandran.lookup_manager(
         params=self.params.peptide_link)
-    rotamer_manager = None
-# XXX 062911 disabled until I can test this more thoroughly
-#    if (self.params.rotamers.use_richardson_library) :
-#      rotamer_manager = mmtbx.geometry_restraints.rotamer.manager(
-#        pdb_hierarchy=self.pdb_hierarchy,
-#        params=self.params.rotamers,
-#        log=log)
-#      rotamer_manager.cross_reference_proxies(
-#        dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
-#        log=log)
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
       ramachandran_proxies=ramachandran_proxies,
       ramachandran_lookup=ramachandran_lookup,
       hydrogen_bond_proxies=hydrogen_bond_proxies,
       hydrogen_bond_params=hydrogen_bond_params,
-      rotamer_manager=rotamer_manager,
       den_manager=den_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
