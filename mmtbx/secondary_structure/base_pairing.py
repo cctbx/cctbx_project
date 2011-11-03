@@ -154,7 +154,12 @@ class pair_database (object) :
            inverted_atom_pairs:
           if return_pair_type is None:
             return_pair_type = pair_type
+          elif (not is_saenger(return_pair_type)) and (is_saenger(pair_type)):
+            return_pair_type = pair_type
+          elif (is_saenger(return_pair_type)) and (not is_saenger(pair_type)):
+            pass
           else:
+            print return_pair_type, pair_type
             raise RuntimeError("Redundant entries found for base pair %s." % base_pair)
     return return_pair_type
 
