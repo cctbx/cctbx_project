@@ -383,10 +383,11 @@ class determine_data_and_flags(object):
            del merged
         r_free_flags = processed.set_info(info)
     if(r_free_flags is None):
-      assert [params.fraction,
-              params.max_free,
-              params.lattice_symmetry_max_delta,
-              params.use_lattice_symmetry].count(None) == 0
+      if ((params.fraction is None)
+          (params.lattice_symmetry_max_delta is None) or
+          (params.use_lattice_symmetry is None)) :
+        raise Sorry("No R-free flags are available, but one or more "+
+          "parameters required to generate new flags is undefined.")
       print >> self.log, "Generating a new array of R-free flags."
       print >> self.log
       libtbx.call_back(message="warn",
