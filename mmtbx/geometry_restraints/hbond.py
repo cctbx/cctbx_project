@@ -14,6 +14,7 @@ master_phil = libtbx.phil.parse("""
     .type = choice
     .short_caption = Hydrogen bond restraint type
     .caption = Automatic Simple_(H-O) Simple_(N-O) Angle-dependent_(N-O)
+    .style = hidden
   include_side_chains = True
     .type = bool
   optimize_hbonds = False
@@ -40,6 +41,7 @@ master_phil = libtbx.phil.parse("""
   implicit
     .short_caption = Implicit hydrogens
     .help = Based on H-bond potential for CNS by Chapman lab
+    .style = box auto_align
   {
     theta_high = 155
       .type = float
@@ -51,6 +53,7 @@ master_phil = libtbx.phil.parse("""
   explicit
     .short_caption = Explicit hydrogens
     .help = Similar to Rosetta H-bond energy (Kortemme & Baker)
+    .style = hidden noauto
   {
     theta_ideal = 180
       .type = float
@@ -63,13 +66,16 @@ master_phil = libtbx.phil.parse("""
     relative_weights = 1.0 1.0 1.0
       .type = floats(size=3)
   }
-  lennard_jones {
+  lennard_jones
+    .style = hidden noauto
+  {
     potential = *4_6 6_12
       .type = choice
   }
   simple
     .short_caption = Simple distance-based potentials
     .help = Pseudo-bond restraints
+    .style = hidden
   {
     sigma = 0.05
       .type = float

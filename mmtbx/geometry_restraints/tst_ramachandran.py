@@ -9,6 +9,8 @@ from iotbx import file_reader
 import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
+from scitbx.array_family import flex
+import boost.python
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from libtbx import group_args
@@ -28,6 +30,26 @@ def exercise_basic () :
   assert approx_equal(e1, e2, eps=0.000001)
   assert approx_equal(t.get_energy(-85.0, 86.0), 21.3345, eps=0.001)
   assert approx_equal(t.get_energy(-86.0, 85.0), 21.389, eps=0.001)
+  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+  proxies = ext.shared_phi_psi_proxy()
+  proxies.append(
+    ext.phi_psi_proxy(
+      i_seqs=[0,1,2,3,4],
+      residue_name="ALA",
+      residue_type="general"))
+  proxies.append(
+    ext.phi_psi_proxy(
+      i_seqs=[4,5,6,7,8],
+      residue_name="ALA",
+      residue_type="prepro"))
+  proxies.append(
+    ext.phi_psi_proxy(
+      i_seqs=[8,9,10,11,12],
+      residue_name="ALA",
+      residue_type="general"))
+  selected = proxies.proxy_select(n_seq=13,
+    iselection=flex.size_t(range(9)))
+  assert (selected.size() == 2)
 
 def exercise_lbfgs_simple (verbose=False) :
   # three peptides:

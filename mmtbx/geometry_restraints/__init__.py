@@ -10,7 +10,6 @@ class manager (object) :
                 ramachandran_lookup=None,
                 hydrogen_bond_proxies=None,
                 hydrogen_bond_params=None,
-                rotamer_manager=None,
                 den_manager=None,
                 flags=None) :
     adopt_init_args(self, locals())
@@ -80,7 +79,7 @@ class manager (object) :
     return []
 
   def rotamers (self) :
-    return self.rotamer_manager
+    return None #self.rotamer_manager
 
   def update_hydrogen_bonds (self,
                              pdb_hierarchy,
@@ -95,3 +94,14 @@ class manager (object) :
       xray_structure=xray_structure,
       params=self.hydrogen_bond_params,
       log=log).proxies
+
+  def select (self,
+              n_seq,
+              iselection) :
+    if (self.ramachandran_proxies is not None) :
+      self.ramachandran_proxies = self.ramachandran_proxies.proxy_select(
+        n_seq, iselection)
+    if (self.hydrogen_bond_proxies is not None) :
+      self.hydrogen_bond_proxies = self.hydrogen_bond_proxies.proxy_select(
+        n_seq, iselection)
+    # TODO DEN restraint selection

@@ -6,7 +6,6 @@
 //#include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
 
-#include <mmtbx/geometry_restraints/rotamer.h>
 #include <mmtbx/error.h>
 #include <cctbx/geometry_restraints/dihedral.h>
 #include <scitbx/array_family/versa.h>
@@ -18,9 +17,50 @@
 #include <iostream>
 
 namespace mmtbx { namespace geometry_restraints {
-
-  namespace af = scitbx::af;
   using cctbx::geometry_restraints::dihedral;
+  using cctbx::geometry_restraints::dihedral_proxy;
+  namespace af = scitbx::af;
+
+  struct phi_psi_proxy
+  {
+    typedef af::tiny<unsigned, 5> i_seqs_type;
+
+    i_seqs_type i_seqs;
+    std::string residue_name;
+    std::string residue_type;
+    size_t residue_index;
+
+    // default initializer
+    phi_psi_proxy () {}
+
+    phi_psi_proxy(
+      i_seqs_type i_seqs_,
+      std::string const& residue_name_,
+      std::string const& residue_type_,
+      size_t residue_index_=1)
+    :
+      i_seqs(i_seqs_),
+      residue_name(residue_name_),
+      residue_type(residue_type_),
+      residue_index(residue_index_)
+    {
+      MMTBX_ASSERT(residue_index > 0);
+    }
+
+    phi_psi_proxy(
+      i_seqs_type const& i_seqs_,
+      phi_psi_proxy const& proxy)
+    :
+      i_seqs(i_seqs_),
+      residue_name(proxy.residue_name),
+      residue_type(proxy.residue_type),
+      residue_index(proxy.residue_index)
+    {
+      MMTBX_ASSERT(residue_index > 0);
+    }
+
+  };
+
   namespace gr = cctbx::geometry_restraints;
 
   double convert_angle (double theta) {
@@ -151,18 +191,15 @@ namespace mmtbx { namespace geometry_restraints {
       compute_gradients (
         af::ref<scitbx::vec3<double> > const& gradient_array,
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        rotamer_proxy const& proxy,
+        phi_psi_proxy const& proxy,
         double weight=1.0,
         double epsilon=0.1)
       {
         MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
         MMTBX_ASSERT(epsilon > 0.0);
-        if (! proxy.have_phi_psi) {
-          return 0;
-        }
         af::tiny<scitbx::vec3<double>, 4> phi_sites;
         af::tiny<scitbx::vec3<double>, 4> psi_sites;
-        af::tiny<unsigned, 5> const i_seqs = proxy.phi_psi_i_seqs;
+        af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;
         for (unsigned i = 0; i < 4; i++) {
           phi_sites[i] = sites_cart[i_seqs[i]];
           psi_sites[i] = sites_cart[i_seqs[i+1]];
@@ -219,13 +256,13 @@ namespace mmtbx { namespace geometry_restraints {
         double const& weight,
         af::const_ref<scitbx::vec3<double> > const& rama_table,
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        rotamer_proxy const& proxy)
+        phi_psi_proxy const& proxy)
       {
         MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
         gradients_.resize(sites_cart.size(), scitbx::vec3<double>(0,0,0));
         af::tiny<scitbx::vec3<double>, 4> phi_sites;
         af::tiny<scitbx::vec3<double>, 4> psi_sites;
-        af::tiny<unsigned, 5> const i_seqs = proxy.phi_psi_i_seqs;
+        af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;
         for (unsigned i = 0; i < 4; i++) {
           phi_sites[i] = sites_cart[i_seqs[i]];
           psi_sites[i] = sites_cart[i_seqs[i+1]];
@@ -255,9 +292,9 @@ namespace mmtbx { namespace geometry_restraints {
   af::tiny<FloatType, 3>
     target_phi_psi(af::const_ref<scitbx::vec3<double> > const& rama_table,
                    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-                   rotamer_proxy const& proxy)
+                   phi_psi_proxy const& proxy)
   {
-    af::tiny<unsigned, 5> const i_seqs = proxy.phi_psi_i_seqs;
+    af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;
     af::tiny<scitbx::vec3<double>, 4> phi_sites;
     af::tiny<scitbx::vec3<double>, 4> psi_sites;
     for (unsigned i = 0; i < 4; i++) {

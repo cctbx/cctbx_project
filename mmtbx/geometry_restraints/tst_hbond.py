@@ -73,6 +73,29 @@ def exercise_simple () :
   simple_bonds = hbond.get_simple_bonds(build_proxies.proxies)
   assert (simple_bonds.size() == 1)
   assert (list(simple_bonds[0]) == [3,6])
+  # test proxy_select
+  build_proxies = hbond.build_simple_hbond_proxies()
+  build_proxies.add_proxy(
+    i_seqs=[0,1],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    weight=100)
+  build_proxies.add_proxy(
+    i_seqs=[4,5],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    weight=100)
+  build_proxies.add_proxy(
+    i_seqs=[8,9],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    weight=100)
+  proxies = build_proxies.proxies
+  isel = flex.size_t([0,1,2,3,7,8,9])
+  selection = proxies.proxy_select(n_seq=10, iselection=isel)
+  assert (selection.size() == 2)
+  proxy = selection[1]
+  #print proxy.i_seqs
 
 def compare_analytical_and_fd (proxies) :
   from mmtbx.geometry_restraints import hbond
@@ -226,6 +249,34 @@ def exercise_implicit () :
       params=params,
       log=None)
     assert (len(build_proxies.proxies) == 232)
+  # test proxy_select
+  build_proxies = hbond.build_implicit_hbond_proxies()
+  build_proxies.add_proxy(
+    i_seqs=[0,1,2],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    theta_low=110.0,
+    theta_high=150.0,
+    weight=1.0)
+  build_proxies.add_proxy(
+    i_seqs=[7,8,9],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    theta_low=110.0,
+    theta_high=150.0,
+    weight=1.0)
+  build_proxies.add_proxy(
+    i_seqs=[14,15,16],
+    distance_ideal=2.9,
+    distance_cut=3.5,
+    theta_low=110.0,
+    theta_high=150.0,
+    weight=1.0)
+  iselection = flex.size_t([0,1,2,3,4,5,12,13,14,15,16,17,18])
+  proxies = build_proxies.proxies
+  selected = proxies.proxy_select(n_seq=20, iselection=iselection)
+  assert (selected.size() == 2)
+  assert (selected[1].i_seqs == (8,9,10))
 
 def exercise_switching_function () :
   from mmtbx.geometry_restraints import hbond

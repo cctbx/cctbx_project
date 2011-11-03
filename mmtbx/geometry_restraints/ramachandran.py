@@ -62,8 +62,8 @@ def load_tables (params=None) :
   if (params.scale_allowed <= 0.0) :
     raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
       "a positive number (current value: %g)." % params.scale_allowed)
-  ext = boost.python.import_ext("mmtbx_rotamer_restraints_ext")
-  from mmtbx_rotamer_restraints_ext import lookup_table
+  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+  from mmtbx_ramachandran_restraints_ext import lookup_table
   from scitbx.array_family import flex
   tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
@@ -250,8 +250,9 @@ class lookup_manager (object) :
                                unit_cell=None) :
     from scitbx.array_family import flex
     import boost.python
-    ext = boost.python.import_ext("mmtbx_rotamer_restraints_ext")
-    from mmtbx_rotamer_restraints_ext import rama_target_and_gradients, target_phi_psi
+    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+    from mmtbx_ramachandran_restraints_ext import rama_target_and_gradients, \
+      target_phi_psi
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     target = 0
@@ -303,19 +304,19 @@ def extract_proxies (pdb_hierarchy,
                      log=sys.stdout) :
   import mmtbx.rotamer
   import boost.python
-  ext = boost.python.import_ext("mmtbx_rotamer_restraints_ext")
+  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
   angles = mmtbx.rotamer.extract_phi_psi(
     pdb_hierarchy=pdb_hierarchy,
     atom_selection=atom_selection)
-  proxies = ext.shared_rotamer_proxy()
+  proxies = ext.shared_phi_psi_proxy()
   for angle in angles :
     residue_name = angle.residue_name
     if (residue_name == "MSE") :
       residue_name = "MET"
-    proxy = ext.rotamer_proxy(
+    proxy = ext.phi_psi_proxy(
       residue_name=residue_name,
       residue_type=angle.residue_type,
-      phi_psi=angle.i_seqs)
+      i_seqs=angle.i_seqs)
     proxies.append(proxy)
   print >> log, ""
   print >> log, "  %d Ramachandran restraints generated." % proxies.size()
