@@ -427,53 +427,102 @@ class optimize_hbond_restraints (object) :
       self.fmodels.target_functor_result_xray(
         compute_gradients=False).target_work())
     trial_settings = []
-    weights = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
+    weights = []
+    for i in range(16) :
+      weights.append(0.25 * i)
     distances = [2.8, 2.85, 2.9, 2.95, 3.0]
     thetas_high = [150, 155, 160, 165, 170]
     thetas_low = [95, 100, 105, 110, 115]
-    cutoffs = [3.4, 3.5, 3.6, 3.7]
-    # first grid search: distance_ideal_n_o vs. restraints_weight
-    # XXX the paper does this a little differently:
+    distance_cutoffs = [3.4, 3.5, 3.6, 3.7]
+    theta_cutoffs = [90, 95, 100]
+    # grid search for ideal parameters as explained in Fabiola et al.:
     #  1. optimize weight (separately for MC and SC bonds)
     #  2. optimize theta_high and theta_low
+    # optionally:
     #  3. optimize ideal distance, cutoff, and angle cutoff (not used here)
     #  4. optimize the weight a final time with parameters from (2) and (3)
     for w in weights :
-      for rij in distances :
-        trial_settings.append(group_args(
-          distance_ideal_n_o=rij,
-          restraints_weight=w,
-          distance_cut_n_o=self.params.distance_cut_n_o,
-          theta_high=self.params.implicit.theta_high,
-          theta_low=self.params.implicit.theta_low))
+    #  for rij in distances :
+      trial_settings.append(group_args(
+        distance_ideal_n_o=self.params.distance_ideal_n_o,
+        restraints_weight=w,
+        distance_cut_n_o=self.params.distance_cut_n_o,
+        theta_high=self.params.implicit.theta_high,
+        theta_low=self.params.implicit.theta_low,
+        theta_cut=self.params.implicit.theta_cut))
     stdout_and_results = easy_mp.pool_map(
       fixed_func=self._trial_minimization,
       args=trial_settings,
       buffer_stdout_stderr=True)
     results = [ r for (so, r) in stdout_and_results ]
     print >> self.log, ps("-" * 70)
-    print >> self.log, ps(" Weight vs. N-O distance:")
+    print >> self.log, ps(" Weight:")
+    self.process_results(results, (not params.optimize_hbonds_thorough))
+    # second grid search: theta_high vs. theta_low
+    self.reset_sites(True)
+    fmodels.create_target_functors()
+    print >> self.log, ps("")
+    trial_settings = []
+    for theta1 in thetas_high :
+      for theta2 in thetas_low :
+        trial_settings.append(group_args(
+          distance_ideal_n_o=self.params.distance_ideal_n_o,
+          restraints_weight=self.params.restraints_weight,
+          distance_cut_n_o=self.params.distance_cut_n_o,
+          theta_high=theta1,
+          theta_low=theta2,
+          theta_cut=self.params.implicit.theta_cut))
+    stdout_and_results = easy_mp.pool_map(
+      fixed_func=self._trial_minimization,
+      args=trial_settings,
+      buffer_stdout_stderr=True)
+    results = [ r for (so, r) in stdout_and_results ]
+    print >> self.log, ps(" Theta high vs. theta low:")
     self.process_results(results, (not params.optimize_hbonds_thorough))
     if (params.optimize_hbonds_thorough) :
-      # second grid search: theta_high vs. theta_low
-      self.reset_sites()
+      # third grid search: distance vs. distance cutoff vs. theta cutoff
+      self.reset_sites(True)
       print >> self.log, ps("")
+      fmodels.create_target_functors()
       trial_settings = []
-      for theta1 in thetas_high :
-        for theta2 in thetas_low :
-          for distance in cutoffs :
+      for distance in distances :
+        for cutoff in distance_cutoffs :
+          for theta in theta_cutoffs :
             trial_settings.append(group_args(
-              distance_ideal_n_o=self.params.distance_ideal_n_o,
+              distance_ideal_n_o=distance,
               restraints_weight=self.params.restraints_weight,
-              distance_cut_n_o=distance,
-              theta_high=theta1,
-              theta_low=theta2))
+              distance_cut_n_o=cutoff,
+              theta_high=self.params.implicit.theta_high,
+              theta_low=self.params.implicit.theta_low,
+              theta_cut=theta))
       stdout_and_results = easy_mp.pool_map(
         fixed_func=self._trial_minimization,
         args=trial_settings,
         buffer_stdout_stderr=True)
       results = [ r for (so, r) in stdout_and_results ]
-      print >> self.log, ps(" Theta high vs. theta low vs. N-O cutoff:")
+      print >> self.log, ps(" N-O distance vs. distance cutoff vs. angle cutoff:")
+      self.process_results(results, False)
+      # final grid search: finer sampling of weight with optimized geometry
+      self.reset_sites(True)
+      print >> self.log, ps("")
+      fmodels.create_target_functors()
+      trial_settings = []
+      w = self.params.restraints_weight
+      weights = [ (w+x*0.05) for x in range(-10,11) ]
+      for w in weights :
+        trial_settings.append(group_args(
+          distance_ideal_n_o=self.params.distance_ideal_n_o,
+          restraints_weight=w,
+          distance_cut_n_o=self.params.distance_cut_n_o,
+          theta_high=self.params.implicit.theta_high,
+          theta_low=self.params.implicit.theta_low,
+          theta_cut=self.params.implicit.theta_cut))
+      stdout_and_results = easy_mp.pool_map(
+        fixed_func=self._trial_minimization,
+        args=trial_settings,
+        buffer_stdout_stderr=True)
+      results = [ r for (so, r) in stdout_and_results ]
+      print >> self.log, ps(" Weight:")
       self.process_results(results)
     print >> self.log, ps("-" * 70)
 
@@ -488,8 +537,8 @@ class optimize_hbond_restraints (object) :
           best_r_gap = result.r_gap
           best_result = result
     if (len(results_final) != 0) :
-      print >> self.log, ps("      wt  dist   cut theta1 theta2 r_work r_free r_gap")
-      print >> self.log, ps("   " + "-" * 53)
+      print >> self.log, ps("      wt  dist   cut theta1 theta2 cut2 r_work r_free  r_gap")
+      print >> self.log, ps("   " + "-" * 60)
       for result in results_final :
         if (result is best_result) :
           result.show(out=self.log, mark="<<<")
@@ -503,7 +552,7 @@ class optimize_hbond_restraints (object) :
         update_f_calc  = True,
         update_f_mask  = True)
       self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
-      print >> self.log, ps("   " + "-" * 53)
+      print >> self.log, ps("   " + "-" * 60)
       if (print_final_params) :
         print >> self.log, ps("    Optimized H-bond parameters:")
         print >> self.log, ps("            Weight (restraints_weight) = %4.2f"%
@@ -516,6 +565,8 @@ class optimize_hbond_restraints (object) :
           self.params.implicit.theta_high)
         print >> self.log, ps("                 Low angle (theta_low) = %3.0d"%
           self.params.implicit.theta_low)
+        print >> self.log, ps("              Angle cutoff (theta_cut) = %3.0d"%
+          self.params.implicit.theta_cut)
     else :
       print "  No hydrogen bonds found (works for proteins only at present)."
 
@@ -525,13 +576,16 @@ class optimize_hbond_restraints (object) :
     self.params.distance_cut_n_o = settings.distance_cut_n_o
     self.params.implicit.theta_high = settings.theta_high
     self.params.implicit.theta_low = settings.theta_low
+    self.params.implicit.theta_cut = settings.theta_cut
 
-  def reset_sites (self) :
+  def reset_sites (self, update_f_mask=False) :
     self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
       self.save_scatterers.deep_copy())
     self.fmodels.update_xray_structure(
       xray_structure = self.fmodels.fmodel_xray().xray_structure,
-      update_f_calc  = True)
+      update_f_calc  = True,
+      update_f_mask  = update_f_mask,
+      force_update_f_mask = update_f_mask)
 
   def _trial_minimization (self, settings) :
     self.copy_settings(settings)
@@ -579,8 +633,8 @@ class trial_result (object) :
 
   def show (self, out=None, mark="") :
     if (out is None) : out = null_out()
-    fs = "    %4.2f %4.3f %4.3f %6.1f %6.1f %6.4f %6.4f %6.4f %3s"
+    fs = "    %4.2f %4.3f %4.3f %6d %6d %4d %6.4f %6.4f %6.4f %3s"
     print >> out, ps(fs % (self.settings.restraints_weight,
       self.settings.distance_ideal_n_o, self.settings.distance_cut_n_o,
-      self.settings.theta_high, self.settings.theta_low, self.r_work,
-      self.r_free, self.r_gap, mark))
+      self.settings.theta_high, self.settings.theta_low,
+      self.settings.theta_cut, self.r_work, self.r_free, self.r_gap, mark))
