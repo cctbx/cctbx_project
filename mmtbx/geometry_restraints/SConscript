@@ -9,5 +9,5 @@ if (not env_etc.no_boost_python):
     target="#lib/mmtbx_hbond_restraints_ext",
     source=["boost_python/hbond_ext.cpp"])
   env.SharedLibrary(
-    target="#lib/mmtbx_rotamer_restraints_ext",
-    source=["boost_python/rotamer_ext.cpp"])
+    target="#lib/mmtbx_ramachandran_restraints_ext",
+    source=["boost_python/ramachandran_ext.cpp"])

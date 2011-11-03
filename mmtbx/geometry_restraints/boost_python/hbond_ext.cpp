@@ -8,9 +8,10 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
 
 #include <mmtbx/geometry_restraints/hbond.h>
+#include <cctbx/geometry_restraints/proxy_select.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
 
 namespace mmtbx { namespace geometry_restraints {
 namespace {
@@ -18,6 +19,7 @@ namespace {
   void wrap_simple_restraints()
   {
     using namespace boost::python;
+    typedef return_value_policy<return_by_value> rbv;
     typedef h_bond_simple_proxy w_t;
     class_<w_t>("h_bond_simple_proxy", no_init)
       .def(init<
@@ -27,7 +29,7 @@ namespace {
           arg("distance_cut"),
           arg("weight"),
           arg("slack")=0)))
-      //.def_readonly("i_seqs", &w_t::i_seqs)
+      .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       .def_readonly("distance_ideal", &w_t::distance_ideal)
       .def_readonly("distance_cut", &w_t::distance_cut)
       .def_readonly("weight", &w_t::weight)
@@ -36,7 +38,14 @@ namespace {
     {
       typedef return_internal_reference<> rir;
       scitbx::af::boost_python::shared_wrapper<h_bond_simple_proxy, rir>::wrap(
-        "shared_h_bond_simple_proxy");
+        "shared_h_bond_simple_proxy")
+        .def("proxy_select",
+          (af::shared<w_t>(*)(
+           af::const_ref<w_t> const&,
+           std::size_t,
+           af::const_ref<std::size_t> const&))
+           cctbx::geometry_restraints::shared_proxy_select, (
+         arg("n_seq"), arg("iselection")));
     }
 
     def("h_bond_simple_residual_sum",
@@ -57,19 +66,27 @@ namespace {
   void wrap_lennard_jones() {
     using namespace boost::python;
     typedef h_bond_lj_proxy w_t;
+    typedef return_value_policy<return_by_value> rbv;
     class_<w_t>("h_bond_lj_proxy", no_init)
       .def(init<
         af::tiny<unsigned, 2> const&, double, double >((
           arg("i_seqs"),
           arg("distance_ideal"),
           arg("distance_cut"))))
-      //.def_readonly("i_seqs", &w_t::i_seqs)
+      .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       .def_readonly("distance_ideal", &w_t::distance_ideal)
       .def_readonly("distance_cut", &w_t::distance_cut);
     {
       typedef return_internal_reference<> rir;
       scitbx::af::boost_python::shared_wrapper<h_bond_lj_proxy, rir>::wrap(
-        "shared_h_bond_lennard_jones_proxy");
+        "shared_h_bond_lennard_jones_proxy")
+        .def("proxy_select",
+          (af::shared<w_t>(*)(
+           af::const_ref<w_t> const&,
+           std::size_t,
+           af::const_ref<std::size_t> const&))
+           cctbx::geometry_restraints::shared_proxy_select, (
+         arg("n_seq"), arg("iselection")));
     }
 
     def("h_bond_lennard_jones_residual_sum",
@@ -99,6 +116,7 @@ namespace {
   {
     using namespace boost::python;
     typedef h_bond_implicit_proxy w_t;
+    typedef return_value_policy<return_by_value> rbv;
     class_<w_t>("h_bond_implicit_proxy", no_init)
       .def(init<
         af::tiny<unsigned,3> const&, double, double, double, double, double >((
@@ -108,6 +126,7 @@ namespace {
           arg("theta_high"),
           arg("theta_low"),
           arg("weight"))))
+      .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       .def_readonly("distance_ideal", &w_t::distance_ideal)
       .def_readonly("distance_cut", &w_t::distance_cut)
       .def_readonly("theta_high", &w_t::theta_high)
@@ -117,7 +136,14 @@ namespace {
     {
       typedef return_internal_reference<> rir;
       scitbx::af::boost_python::shared_wrapper<h_bond_implicit_proxy,rir>::wrap(
-        "shared_h_bond_implicit_proxy");
+        "shared_h_bond_implicit_proxy")
+        .def("proxy_select",
+          (af::shared<w_t>(*)(
+           af::const_ref<w_t> const&,
+           std::size_t,
+           af::const_ref<std::size_t> const&))
+           cctbx::geometry_restraints::shared_proxy_select, (
+         arg("n_seq"), arg("iselection")));
     }
 
     def("h_bond_implicit_residual_sum",

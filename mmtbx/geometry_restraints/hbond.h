@@ -11,6 +11,8 @@
 #include <cctbx/geometry_restraints/bond.h>
 #include <cctbx/geometry_restraints/angle.h>
 #include <cctbx/geometry/geometry.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/shared.h>
 
 #include <cmath>
 #include <set>
@@ -25,10 +27,12 @@ namespace mmtbx { namespace geometry_restraints {
   // H:O or N:O pseudo-bond (uses cctbx bond energy internally)
   struct h_bond_simple_proxy : bond_simple_proxy
   {
+    typedef af::tiny<unsigned, 2> i_seqs_type;
+
     h_bond_simple_proxy() {}
 
     h_bond_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double distance_ideal_,
       double distance_cut_,
       double weight_,
@@ -40,15 +44,30 @@ namespace mmtbx { namespace geometry_restraints {
       MMTBX_ASSERT((distance_cut <= 0) || (distance_cut > distance_ideal));
     }
 
+    //! Support for proxy_select (and similar operations).
+    h_bond_simple_proxy(
+      i_seqs_type const& i_seqs_,
+      h_bond_simple_proxy const& proxy)
+    :
+      bond_simple_proxy(i_seqs_, proxy.distance_ideal, proxy.weight,
+        proxy.slack),
+      distance_cut(proxy.distance_cut)
+    {
+      MMTBX_ASSERT((distance_cut <= 0) ||
+                   (distance_cut > proxy.distance_ideal));
+    }
+
     double distance_cut;
   };
 
   struct h_bond_lj_proxy
   {
+    typedef af::tiny<unsigned, 2> i_seqs_type;
+
     h_bond_lj_proxy() {}
 
     h_bond_lj_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double distance_ideal_,
       double distance_cut_)
     :
@@ -59,7 +78,19 @@ namespace mmtbx { namespace geometry_restraints {
       MMTBX_ASSERT((distance_cut <= 0) || (distance_cut > distance_ideal));
     }
 
-    af::tiny<unsigned, 2> i_seqs;
+    //! Support for proxy_select (and similar operations).
+    h_bond_lj_proxy(
+      i_seqs_type const& i_seqs_,
+      h_bond_lj_proxy const& proxy)
+    :
+      i_seqs(i_seqs_),
+      distance_ideal(proxy.distance_ideal),
+      distance_cut(proxy.distance_cut)
+    {
+      MMTBX_ASSERT((distance_cut <= 0) || (distance_cut > distance_ideal));
+    }
+
+    i_seqs_type i_seqs;
     double distance_ideal;
     double distance_cut;
   };
@@ -67,10 +98,13 @@ namespace mmtbx { namespace geometry_restraints {
   // N:O=C with both distance and angle terms (see below)
   struct h_bond_implicit_proxy
   {
+    //! Support for shared_proxy_select.
+    typedef af::tiny<unsigned, 3> i_seqs_type;
+
     h_bond_implicit_proxy() {}
 
     h_bond_implicit_proxy(
-      af::tiny<unsigned, 3> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double distance_ideal_,
       double distance_cut_,
       double theta_low_,
@@ -87,7 +121,22 @@ namespace mmtbx { namespace geometry_restraints {
       MMTBX_ASSERT((weight>=0) && (distance_ideal>=0) && (distance_cut>=0));
     }
 
-    af::tiny<unsigned, 3> i_seqs;
+    //! Support for proxy_select (and similar operations).
+    h_bond_implicit_proxy(
+      i_seqs_type const& i_seqs_,
+      h_bond_implicit_proxy const& proxy)
+    :
+      i_seqs(i_seqs_),
+      distance_ideal(proxy.distance_ideal),
+      distance_cut(proxy.distance_cut),
+      theta_low(proxy.theta_low),
+      theta_high(proxy.theta_high),
+      weight(proxy.weight)
+    {
+      MMTBX_ASSERT((weight>=0) && (distance_ideal>=0) && (distance_cut>=0));
+    }
+
+    i_seqs_type i_seqs;
     double distance_ideal;
     double distance_cut;
     double theta_low;
