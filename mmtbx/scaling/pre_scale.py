@@ -23,7 +23,7 @@ class pre_scaler(object):
     print >> out
     print >> out, "Inspired by: Kantardjieff and Rupp. Prot. Sci. 12(9): 1865-1871 (2003)."
     matthews_analyses = matthews.matthews_rupp(
-      miller_array = self.x1,
+      crystal_symmetry = self.x1,
       n_residues = self.basic_info.n_residues,
       n_bases = self.basic_info.n_bases,
       out=out, verbose=1)

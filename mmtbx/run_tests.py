@@ -34,6 +34,7 @@ def run():
   "$D/regression/tst_validate_utils.py",
   "$D/scaling/tst_scaling.py",
   "$D/scaling/tst_outlier.py",
+  "$D/scaling/matthews.py",
   "$D/scaling/absence_likelihood.py",
   ["$D/scaling/thorough_outlier_test.py", "P21"],
   "$D/twinning/probabalistic_detwinning.py",

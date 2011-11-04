@@ -40,7 +40,7 @@ class basic_analyses(object):
       phil_object.scaling.input.asu_contents.n_bases = seq_comp.n_bases
       self.nres_known = True
     matthews_results =matthews.matthews_rupp(
-      miller_array = miller_array,
+      crystal_symmetry = miller_array,
       n_residues = phil_object.scaling.input.asu_contents.n_residues,
       n_bases = phil_object.scaling.input.asu_contents.n_bases,
       out=out,verbose=1)
