@@ -10,16 +10,8 @@ class ListEditor (wx.Panel) :
     self._default_label = "---"
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
-    self.list = wx.ListCtrl(
-      parent=self,
-      id=-1,
-      style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
-    self.list.InsertColumn(0, "Items", width=460)
-    self.list.SetMinSize((480,160))
-    self.list.SetItemSpacing(5)
-    self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.list)
-    self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self.list)
-    szr.Add(self.list, 1, wx.EXPAND|wx.ALL, 5)
+    self.sizer = szr
+    self.CreateList()
     self.buttons = wx.BoxSizer(wx.HORIZONTAL)
     add_btn = self.AddControlButton(
       label="Add",
@@ -54,6 +46,18 @@ class ListEditor (wx.Panel) :
     self.sizer = szr
     self._label = None
     self._callback = None
+
+  def CreateList (self) :
+    self.list = wx.ListCtrl(
+      parent=self,
+      id=-1,
+      style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
+    self.list.InsertColumn(0, "Items", width=460)
+    self.list.SetMinSize((480,160))
+    self.list.SetItemSpacing(5)
+    self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.list)
+    self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self.list)
+    self.sizer.Add(self.list, 1, wx.EXPAND|wx.ALL, 5)
 
   def SetLabel (self, label, font_weight=wx.FONTWEIGHT_BOLD) :
     if (self._label is not None) :
