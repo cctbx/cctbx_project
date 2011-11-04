@@ -187,8 +187,9 @@ class sites_panel_mixin (object) :
                          sizer,
                          label="Heavy atom sites",
                          show_load_button=False) :
-    txt = wx.StaticText(self, -1, label + ":")
-    sizer.Add(txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    if (label is not None) :
+      txt = wx.StaticText(self, -1, label + ":")
+      sizer.Add(txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.sites_list = SitesList(self, -1,
       size=(540,200),
       style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
