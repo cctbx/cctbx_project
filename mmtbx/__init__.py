@@ -130,7 +130,7 @@ class fmodels(object):
     from mmtbx.refinement import print_statistics
     nx_old = self.fmodel_x.f_obs().size()
     nn_old = None
-    print_statistics.make_sub_header("Outliers rejection", out = self.log)
+    print_statistics.make_sub_header("Outlier rejection", out = self.log)
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):
         print_statistics.make_sub_header("x-ray data", out = self.log)
