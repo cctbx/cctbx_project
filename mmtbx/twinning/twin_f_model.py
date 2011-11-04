@@ -561,7 +561,16 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     return None
 
   def remove_outliers(self, show = False, log = None):
-    # XXX
+    if (show):
+      if (log is None): log = sys.stdout
+      print >> log, """\
+*****************************************************************
+NOT performing outlier rejection in twin refinement mode.
+If there are many outliers without twin refinement, the resulting
+reflection statistics may differ significantly (for example
+the percentage of R-free reflections).
+*****************************************************************
+"""
     return self
 
   def wilson_b(self, force_update = False):
