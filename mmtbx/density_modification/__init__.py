@@ -309,7 +309,7 @@ class density_modification(object):
   def matthews_analysis(self):
     from mmtbx.scaling import matthews
     self.matthews_result = matthews.matthews_rupp(
-      miller_array=self.f_obs,
+      crystal_symmetry=self.f_obs,
       n_residues=self.params.asu_contents.n_residues,
       n_bases=self.params.asu_contents.n_bases,
       out=self.log, verbose=1)
