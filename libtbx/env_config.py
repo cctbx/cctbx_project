@@ -985,7 +985,6 @@ Wait for the command to finish, then try again.""" % vars())
 
   def write_win32_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
-    if source_file.ext().lower() != '.py': return
     f = target_file.open('w')
     # By default, changes to environment variables are  permanent on Windows,
     # i.e. it is as if export XXX was added after each set XXX=...
@@ -1011,8 +1010,13 @@ Wait for the command to finish, then try again.""" % vars())
       # absolute path and therefore prepending the current directory.
       v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
       print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
-    source_file = op.join('%LIBTBX_ROOT%', source_file.relocatable)
-    print >>f, '%s %s "%s" %%*' % (abs(self.python_exe), qnew, source_file)
+    if source_file.ext().lower() == '.py':
+      source_file = op.join('%LIBTBX_ROOT%', source_file.relocatable)
+      print >>f, '"%s" %s "%s" %%*' % (abs(self.python_exe), qnew, source_file)
+    elif source_file.basename().lower() == 'python.exe':
+      print >>f, '"%s" %s %%*' % (abs(source_file), qnew)
+    else:
+      print >>f, '"%s" %%*' % abs(source_file)
     print >>f, 'endlocal'
     f.close()
 
