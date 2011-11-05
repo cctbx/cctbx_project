@@ -299,11 +299,9 @@ class windows_setpaths(common_setpaths):
 
   def __init__(self, env, suffix):
     common_setpaths.__init__(self, env, "bat", suffix)
-    p = env.under_build("path_util.bat", return_relocatable_path=True)
-    if not p.isfile():
-      f = p.open('w')
-      print >>f, '"%s" "%s" %%*' % (abs(env.python_exe), abs(env.path_utility))
-      f.close()
+    f = open(env.under_build("path_util.bat"), 'w')
+    print >>f, '"%s" "%s" %%*' % (abs(env.python_exe), abs(env.path_utility))
+    f.close()
 
   def setenv(self, var_name, val):
     print >> self.s, '  set %s=%s' % (var_name, val)
