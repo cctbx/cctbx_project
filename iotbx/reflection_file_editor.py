@@ -197,21 +197,7 @@ class process_arrays (object) :
     if (input_files is None) :
       input_files = {}
     adopt_init_args(self, locals())
-    if len(params.mtz_file.miller_array) == 0 :
-      raise Sorry("No Miller arrays have been selected for the output file.")
-    elif len(params.mtz_file.miller_array) > 25 :
-      raise Sorry("Only 25 or fewer arrays may be used.")
-    if None in [params.mtz_file.crystal_symmetry.space_group,
-                params.mtz_file.crystal_symmetry.unit_cell] :
-      raise Sorry("Missing or incomplete symmetry information.")
-    if (params.mtz_file.r_free_flags.extend and
-        params.mtz_file.r_free_flags.preserve_input_values) :
-      raise Sorry("You may not extend R-free flags to higher resolution "+
-        "when preserving the original input values.")
-    if (params.mtz_file.r_free_flags.export_for_ccp4 and
-        params.mtz_file.r_free_flags.preserve_input_values) :
-      raise Sorry("r_free_flags.preserve_input_values and "+
-        "r_free_flags.export_for_ccp4 may not be used together.")
+    validate_params(params)
     from iotbx import file_reader
     import cctbx.miller
     from cctbx import crystal
@@ -1008,6 +994,27 @@ def generate_params (file_name, miller_array, include_resolution=False) :
       pass
   param_str += "}"
   return param_str
+
+def validate_params (params) :
+  if (len(params.mtz_file.miller_array) == 0) :
+    raise Sorry("No Miller arrays have been selected for the output file.")
+  elif len(params.mtz_file.miller_array) > 25 :
+    raise Sorry("Only 25 or fewer arrays may be used.")
+  if None in [params.mtz_file.crystal_symmetry.space_group,
+              params.mtz_file.crystal_symmetry.unit_cell] :
+    raise Sorry("Missing or incomplete symmetry information.")
+  if (params.mtz_file.r_free_flags.extend and
+      params.mtz_file.r_free_flags.preserve_input_values) :
+    raise Sorry("You may not extend R-free flags to higher resolution "+
+      "when preserving the original input values.")
+  if (params.mtz_file.r_free_flags.export_for_ccp4 and
+      params.mtz_file.r_free_flags.preserve_input_values) :
+    raise Sorry("r_free_flags.preserve_input_values and "+
+      "r_free_flags.export_for_ccp4 may not be used together.")
+  output_base = os.path.dirname(params.mtz_file.output_file)
+  if (output_base != "") and (not os.path.isdir(output_base)) :
+    raise Sorry(("The directory specified for the output file (%s) does not "+
+      "exist, or is not a directory.") % output_base)
 
 #-----------------------------------------------------------------------
 def run (args, out=sys.stdout) :
