@@ -349,6 +349,24 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst7.mtz")
   assert (miller_arrays[1].info().label_string() ==
           "I-obs_2(+),SIGI-obs_2(+),I-obs_2(-),SIGI-obs_2(-)")
+  # bad output path
+  params.mtz_file.output_file = os.path.join("/foo", "bar", str(os.getpid()),
+    "data.mtz")
+  try :
+    miller_arrays = run_and_reload(params, "tst6.mtz")
+  except Sorry, e :
+    pass
+  else :
+    raise Exception_expected
+  # no input arrays
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.miller_array = []
+  try :
+    miller_arrays = run_and_reload(params, "tst6.mtz")
+  except Sorry, e :
+    pass
+  else :
+    raise Exception_expected
 
 ########################################################################
 # this requires data in phenix_regression
