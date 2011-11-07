@@ -51,7 +51,7 @@ def do_pointgroup_tricks(input_uc,
   print >> out, "as well as their minimal supergroups/maximal subgroups and symmetry"
   print >> out, "operators that generate them."
   print >> out, "For each pointgroup, a list of compatible spacegroups will be listed."
-  print >> out, "Care is taken that there are no sysmetatic absence violation with the "
+  print >> out, "Care is taken that there are no systematic absence violation with the "
   print >> out, "provided input spacegroup."
   print >> out
   out.flush()
