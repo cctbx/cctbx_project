@@ -17,13 +17,18 @@ def run(args):
     if (result != 0): return result
     return cmp(b[0], a[0])
   sum_counts.sort(cmp_sum_counts)
+  cpus=0
   for user,sc in sum_counts:
     counts = user_states[user]
     print "%-10s   %5d r   %5d qw" % (user, counts["r"], counts["qw"]),
+    cpus+=counts["r"]
     for state,c in counts.items():
       if (state in ["r", "qw"]): continue
       print "  %5d %s" % (c, state),
     print "  %5d total" % sc
+  print "-"*45
+  print "%-10s   %5d r" % ("total", cpus)
+  print "-"*45
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
