@@ -200,39 +200,46 @@ def build_run(
     run_cmd += 'env LD_PRELOAD='\
     '"/net/marbles/raid1/rwgk/dist/opt_resources/linux64/libimf.so:"'\
     '"/net/marbles/raid1/rwgk/dist/opt_resources/linux64/libirc.so" '
+  utimes = []
   run_cmd += '/usr/bin/time -p ./a.out'
-  buffers = easy_run.fully_buffered(command=run_cmd)
-  if (len(buffers.stderr_lines) != 3):
-    print "v"*79
-    print "\n".join(buffers.stderr_lines)
-    print "^"*79
-    raise RuntimeError(
-      "Unexpected number of output lines"
-      " (3 expected; acutal output see above).")
-  if (n_scatt == 0):
-    pass
-  elif (n_scatt <= 10 and n_refl <= 100):
-    assert len(buffers.stdout_lines) == n_scatt + n_refl
-  else:
-    assert len(buffers.stdout_lines) == 1
-    max_a, max_b = [float(s) for s in buffers.stdout_lines[0].split()]
-  if (check_max_a_b):
-    if (n_scatt == 2000 and n_refl == 20000):
-      assert approx_equal(max_a, 35.047157, eps=1e-4)
-      assert approx_equal(max_b, 25.212738, eps=1e-4)
-    elif (n_scatt == 100 and n_refl == 1000):
-      assert approx_equal(max_a,  4.493645, eps=1e-4)
-      assert approx_equal(max_b, 10.515532, eps=1e-4)
+  def run_once():
+    buffers = easy_run.fully_buffered(command=run_cmd)
+    if (len(buffers.stderr_lines) != 3):
+      print "v"*79
+      print "\n".join(buffers.stderr_lines)
+      print "^"*79
+      raise RuntimeError(
+        "Unexpected number of output lines"
+        " (3 expected; acutal output see above).")
+    if (n_scatt == 0):
+      pass
     elif (n_scatt <= 10 and n_refl <= 100):
-      if (libtbx.env.has_module(name="cctbx")):
-        compare_with_cctbx_structure_factors(
-          n_scatt=n_scatt,
-          n_refl=n_refl,
-          output_lines=buffers.stdout_lines)
+      assert len(buffers.stdout_lines) == n_scatt + n_refl
     else:
-      raise RuntimeError, (max_a, max_b)
-  utime = float(buffers.stderr_lines[1].split()[1])
-  return utime
+      assert len(buffers.stdout_lines) == 1
+      max_a, max_b = [float(s) for s in buffers.stdout_lines[0].split()]
+    if (check_max_a_b):
+      if (n_scatt == 2000 and n_refl == 20000):
+        assert approx_equal(max_a, 35.047157, eps=1e-4)
+        assert approx_equal(max_b, 25.212738, eps=1e-4)
+      elif (n_scatt == 100 and n_refl == 1000):
+        assert approx_equal(max_a,  4.493645, eps=1e-4)
+        assert approx_equal(max_b, 10.515532, eps=1e-4)
+      elif (n_scatt <= 10 and n_refl <= 100):
+        if (libtbx.env.has_module(name="cctbx")):
+          compare_with_cctbx_structure_factors(
+            n_scatt=n_scatt,
+            n_refl=n_refl,
+            output_lines=buffers.stdout_lines)
+      else:
+        raise RuntimeError, (max_a, max_b)
+    utime = float(buffers.stderr_lines[1].split()[1])
+    utimes.append(utime)
+    print "sample utime: %.2f" % utime
+    sys.stdout.flush()
+  for _ in xrange(8):
+    run_once()
+  return min(utimes)
 
 def finalize_cpp_build_cmd(source_cpp):
   from fable import simple_compilation
@@ -355,7 +362,8 @@ def run_combinations(
             print "err"
             utime = -1.0
           else:
-            print "utime: %.2f" % utime
+            print "min utime: %.2f" % utime
+          sys.stdout.flush()
           utimes.append(utime)
         all_utimes.append((utimes, build_cmd + iml))
 
@@ -376,8 +384,6 @@ def run(args):
     n_scatt, n_refl = 2000, 20000
   elif (args[0] == "dsyev"):
     n_scatt, n_refl = 0, 0
-    del icc_versions[0]
-    del icc_versions[-1]
   else:
     usage()
   gcc_sh = gcc_versions + [None]
@@ -393,15 +399,15 @@ def run(args):
     n_refl=n_refl,
     compiler_build_opts_list=[
       ("F", ifort_versions, "ifort", "-O"),
-      ("f", gcc_sh, "gfortran", "-O -ffast-math"),
-      ("f", gcc_sh, "gfortran", "-O -ffast-math -march=native"),
+      ("f", gcc_sh, "gfortran", "-O3 -ffast-math"),
+      ("f", gcc_sh, "gfortran", "-O3 -ffast-math -march=native"),
       ("C", icc_sh, "icpc", "-O"),
-      ("c", gcc_sh, "g++", "-O -ffast-math"),
-      ("c", gcc_sh, "g++", "-O -ffast-math -march=native"),
+      ("c", gcc_sh, "g++", "-O3 -ffast-math"),
+      ("c", gcc_sh, "g++", "-O3 -ffast-math -march=native"),
       ("c", [None], "clang++",
-        "-O -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"),
+        "-O3 -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"),
       ("c", [None], "clang++",
-        "-O -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"
+        "-O3 -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"
         " -march=native")],
     real_list=["real*4", "real*8"])
   print
