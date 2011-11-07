@@ -336,6 +336,32 @@ def get_muscle_alignment (fasta_sequences, group_sequences=True, out=None) :
     print >> out, "\n".join(muscle_out)
   return alignment
 
+def get_muscle_alignment_ordered(sequences):
+
+  from iotbx import bioinformatics
+
+  name_for = {}
+
+  for ( i, seq ) in enumerate( sequences, start = 1 ):
+    name = name_for.get( seq, "Chain_%d" % i )
+    name_for[ seq ] = name
+
+  alignment = get_muscle_alignment(
+    fasta_sequences = "\n".join(
+      str( bioinformatics.sequence( name = name, sequence = seq.sequence ) )
+      for ( seq, name ) in name_for.items()
+      )
+    )
+
+  lookup = dict( zip( alignment.names, alignment.alignments ) )
+  assert all( n in lookup for n in name_for.values() )
+
+  return bioinformatics.clustal_alignment(
+    names = [ seq.name for seq in sequences ],
+    alignments = [ lookup[ name_for[ seq ] ] for seq in sequences ],
+    program = alignment.program
+    )
+
 ########################################################################
 # PHENIX GUI ADAPTOR
 master_phil = libtbx.phil.parse("""
