@@ -37,7 +37,7 @@ def move_old_create_new_directory(path, serial_sep="_", serial_fmt="%03d"):
   os.makedirs(path)
 
 def canonical_path(file_name, effective_current_working_directory=None):
-  if not isinstance(file_name, str):
+  if not isinstance(file_name, (str, unicode)):
     file_name = abs(file_name)
   if (not op.isabs(file_name)):
     if (effective_current_working_directory is None):
