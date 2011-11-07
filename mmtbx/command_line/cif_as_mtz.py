@@ -244,9 +244,21 @@ def extract(file_name,
   for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
     for ma in miller_arrays.values():
       other_symmetry = crystal_symmetry
-      crystal_symmetry = other_symmetry.join_symmetry(
-        other_symmetry=ma.crystal_symmetry(),
-        force=True)
+      try:
+        crystal_symmetry = other_symmetry.join_symmetry(
+          other_symmetry=ma.crystal_symmetry(),
+          force=True)
+      except AssertionError, e:
+        str_e = str(e)
+        from cStringIO import StringIO
+        s = StringIO()
+        if "Space group is incompatible with unit cell parameters." in str_e:
+          other_symmetry.show_summary(f=s)
+          ma.crystal_symmetry().show_summary(f=s)
+          str_e += "\n%s" %(s.getvalue())
+          raise Sorry(str_e)
+        else:
+          raise
       ma = ma.customized_copy(
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
