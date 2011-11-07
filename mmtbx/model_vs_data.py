@@ -638,6 +638,8 @@ scattering_table = wk1995  it1992  *n_gaussian  neutron
 map = None
   .type = str
   .multiple = True
+high_resolution = None
+  .type = float
 comprehensive = False
   .type = bool
 dump_result_object_as_pickle = False
@@ -693,6 +695,8 @@ def run(args,
     parameters.labels = params.f_obs_label
   if(params.r_free_flags_label is not None):
     parameters.r_free_flags.label = params.r_free_flags_label
+  if (params.high_resolution is not None) :
+    parameters.high_resolution = params.high_resolution
   determine_data_and_flags_result = utils.determine_data_and_flags(
     reflection_file_server  = rfs,
     parameters              = parameters,
