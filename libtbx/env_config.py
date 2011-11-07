@@ -44,7 +44,7 @@ def unique_paths(paths):
   hash = set()
   result = []
   for path in paths:
-    try: path_normcase = path.normcase()
+    try: path_normcase = abs(path.normcase())
     except AttributeError: path_normcase = op.normcase(path)
     if (path_normcase in hash): continue
     hash.add(path_normcase)
@@ -2095,7 +2095,7 @@ def unpickle():
     env.build_options.enable_cuda = False
   # XXX backward incompatibility 2011-10
   if not hasattr(env, 'relocatable'):
-    print ("Please re-configure from scracth your cctbx_build:"
+    print ("Please re-configure from scratch your cctbx_build:"
            "cd cctbx_build; "
            "/your/path/to/python ../cctbx_project/libtbx/configure.py [options] [modules]")
     sys.exit(1)
