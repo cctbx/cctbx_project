@@ -1,6 +1,8 @@
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
+import time
+import os
 
 def exercise_forward_compatibility():
   import itertools
@@ -213,6 +215,23 @@ def exercise_approx_equal():
   assert approx_equal([ 2.5, 3.4+5.8j, 7.89],
                       [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
+def exercise_file_utils () :
+  dir_name = "tmp_files_%d" % os.getpid()
+  if (not os.path.exists(dir_name)) :
+    os.mkdir(dir_name)
+  sorted_files = []
+  for prefix in ["XYZ", "abc", "qwerty", "123"] :
+    file_name = os.path.join(dir_name, "%s.txt" % prefix)
+    open(file_name, "w").write(prefix)
+    sorted_files.append(file_name)
+    time.sleep(1) # XXX the mtime resolution is in seconds :(
+  f = open(os.path.join(dir_name, "hkl.log"), "w")
+  f.write("hkl")
+  f.close()
+  file_names = utils.find_files(dir_name, pattern=".txt$")
+  sorted_files_2 = utils.sort_files_by_mtime(file_names)
+  assert (sorted_files_2 == sorted_files)
+
 def run(args):
   assert len(args) == 0
   exercise_forward_compatibility()
@@ -238,6 +257,7 @@ def run(args):
   else: raise Exception_expected
   exercise_indented_display()
   exercise_approx_equal()
+  exercise_file_utils()
   print utils.format_cpu_times()
 
 if (__name__ == "__main__"):
