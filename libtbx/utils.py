@@ -203,6 +203,32 @@ def remove_files(pattern=None, paths=None, ensure_success=True):
       if (op.isfile(path)):
         os.remove(path)
 
+def find_files (dir_name, pattern="*", files_only=True) :
+  assert os.path.isdir(dir_name) and (pattern is not None)
+  regex = re.compile(pattern)
+  files = os.listdir(dir_name)
+  matching_files = []
+  for file_name in files :
+    full_path = os.path.join(dir_name, file_name)
+    if (files_only) and (not os.path.isfile(full_path)) :
+      continue
+    if (regex.search(file_name) is not None) :
+      matching_files.append(full_path)
+  return matching_files
+
+def sort_files_by_mtime (file_names=None, dir_name=None, reverse=False) :
+  assert ([file_names, dir_name].count(None) == 1)
+  if (dir_name is not None) :
+    assert os.path.isdir(dir_name)
+    file_names = [ os.path.join(dir_name, fn) for fn in os.listdir(dir_name) ]
+  files_and_mtimes = []
+  for file_name in file_names :
+    files_and_mtimes.append((file_name, os.path.getmtime(file_name)))
+  files_and_mtimes.sort(lambda x,y: cmp(x[1], y[1]))
+  if (reverse) :
+    files_and_mtimes.reverse()
+  return [ file_name for file_name, mtime in files_and_mtimes ]
+
 def tupleize(x):
   try:
     return tuple(x)
