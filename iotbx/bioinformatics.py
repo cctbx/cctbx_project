@@ -805,6 +805,33 @@ def known_sequence_formats():
 
   return _implemented_sequence_parsers.keys()
 
+
+def parse_sequence(data):
+
+  parsers = [
+    fasta_sequence_parse,
+    dbfetch_sequence_parse,
+    pir_sequence_parse,
+    tolerant_pir_sequence_parse,
+    seq_sequence_parse,
+    lineseparated_sequence_parse,
+    tf_sequence_parse,
+    ]
+
+  results = []
+
+  for p in parsers:
+    ( seqs, junk ) = p.parse( text = data )
+
+    if not junk:
+      return ( seqs, junk )
+
+    else:
+      results.append( ( seqs, junk ) )
+
+  return min( results, key = lambda p: len( p[1] ) )
+
+
 def any_sequence_format (file_name, assign_name_if_not_defined=False) :
   format_parser = sequence_parser_for(file_name)
   data = open(file_name, "r").read()
