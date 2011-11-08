@@ -1062,6 +1062,12 @@ def validate_params (params, callback=None) :
     raise Sorry("You must supply a reflection file first!")
   if (params.scaling.input.xray_data.obs_labels is None) :
     raise Sorry("Please select labels for input data.")
+  elif (params.scaling.input.xray_data.obs_labels ==
+        params.scaling.input.xray_data.calc_labels) :
+    raise Sorry("You may not select the same array labels for both the "+
+      "experimental data and F(calc).  (It is okay to run Xtriage without "+
+      "F(calc) data if it is not available - most analyses do not require "+
+      "this information.)")
   d_min = params.scaling.input.xray_data.high_resolution
   d_max = params.scaling.input.xray_data.low_resolution
   if (d_min is not None) and (d_max is not None) :

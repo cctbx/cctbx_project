@@ -55,7 +55,11 @@ class relative_wilson(object):
     self.x = flex.double([0,0])
 
     self.low_lim_for_scaling = 1.0/(4.0*4.0) #0.025
-    self.weight_array = flex.double(  list(flex.bool(self.calc_d_star_sq > self.low_lim_for_scaling)) )/(2.0*self.var_obs)
+    selection = (self.calc_d_star_sq > self.low_lim_for_scaling)
+    if (selection.count(True) == 0) :
+      raise RuntimeError("No reflections meeting selection criteria.")
+    self.weight_array = selection.as_double() / (2.0 * self.var_obs)
+    assert (not self.weight_array.all_eq(0.0))
 
     self.mean   = flex.double( [1.0/(flex.sum(self.mean_calc)/flex.sum(self.mean_obs)), 0.0 ] )
     self.sigmas = flex.double( [0.5, 0.5] )
