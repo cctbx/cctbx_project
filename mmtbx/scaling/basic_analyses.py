@@ -203,10 +203,14 @@ class basic_analyses(object):
 
     #relative wilson plot
     self.rel_wilson = None
-    if miller_calc is not None:
-      self.rel_wilson = relative_wilson.relative_wilson(miller_array, miller_calc)
-
-
+    if (miller_calc is not None) and (miller_calc.d_min() < 4.0) :
+      try :
+        self.rel_wilson = relative_wilson.relative_wilson(
+          miller_obs=miller_array,
+          miller_calc=miller_calc)
+      except RuntimeError, e :
+        print >> out, "*** Error calculating relative Wilson plot - skipping."
+        print >> out, ""
 
     if verbose>0:
       print >> out, "Basic analyses completed"
