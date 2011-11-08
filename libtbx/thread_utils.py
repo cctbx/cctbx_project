@@ -174,7 +174,7 @@ class stdout_pipe (object) :
   def close (self) :
     pass
 
-wait_before_flush = 1 # minimum time between send() calls
+wait_before_flush = 0.2 # minimum time between send() calls
 
 # this slows down the output so it won't stall a GUI
 class stdout_pipe_buffered (stdout_pipe) :
