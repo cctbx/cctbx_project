@@ -330,6 +330,10 @@ class validation (object) :
 ########################################################################
 # REGRESSION TESTING
 def exercise () :
+  import libtbx.utils
+  if (libtbx.utils.detect_multiprocessing_problem() is not None) :
+    print "multiprocessing not available, skipping this test"
+    return
   import iotbx.bioinformatics
   import iotbx.pdb
   from iotbx import file_reader
