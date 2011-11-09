@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 import os
 import mmtbx.model
 import libtbx.load_env
+from libtbx import easy_pickle
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -149,6 +150,20 @@ def exercise_2():
 |----------------------------------------------------------------------|
 """
   assert out.getvalue() == expected_result
+  # XXX phenix GUI support (see wxtbx.adp_statistics)
+  stats = mol.adp_statistics()
+  tables = stats.format_tables()
+  stats_pkl = easy_pickle.dumps(stats)
+  stats2 = easy_pickle.loads(stats_pkl)
+  tables2 = stats.format_tables()
+  assert (tables2 == tables)
+  t1,t2,t3 = tables2
+  assert (len(t1) == 5) and (len(t2) == 10) and (len(t3) == 10)
+  assert (t1[0][1:3] == ["14","7"]) and (t1[-1][1:3] == ["5","2"])
+  assert (t2[1][1] == "3.132 - 4.814")
+  p1, p2 = stats.format_plots()
+  y1, yrange1 = p1
+  assert (len(y1) == 10)
 
 def exercise_3():
   pdb_file = libtbx.env.find_in_repositories(

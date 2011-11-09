@@ -371,6 +371,61 @@ class adp(object):
     else:
       self.show_1(out = out, padded = padded, prefix = prefix)
 
+  # XXX for GUI - see wxtbx.adp_statistics
+  def format_tables (self) :
+    def fs (value) :
+      if (isinstance(value, int)) :
+        return format_value("%d", value, replace_none_with="---")
+      elif (isinstance(value, float)) :
+        return format_value("%.2f", value, replace_none_with="---")
+      else :
+        return "---"
+    table1 = []
+    row1 = ["all"]
+    for value in [self.n_iso_a,self.n_aniso_a,self.b_min_a,self.b_max_a,
+                  self.b_mean_a,self.a_min_a,self.a_max_a,self.a_mean_a] :
+      row1.append(fs(value))
+    row2 = ["all(noH)"]
+    for value in [self.n_iso_a_noH,self.n_aniso_a_noH,self.b_min_a_noH,
+                  self.b_max_a_noH,self.b_mean_a_noH,self.a_min_a_noH,
+                  self.a_max_a_noH,self.a_mean_a_noH] :
+      row2.append(fs(value))
+    row3 = ["solvent"]
+    for value in [self.n_iso_s_noH,self.n_aniso_s_noH,self.b_min_s_noH,
+                  self.b_max_s_noH,self.b_mean_s_noH,self.a_min_s_noH,
+                  self.a_max_s_noH,self.a_mean_s_noH] :
+      row3.append(fs(value))
+    row4 = ["macro."]
+    for value in [self.n_iso_m_noH,self.n_aniso_m_noH,self.b_min_m_noH,
+                  self.b_max_m_noH,self.b_mean_m_noH,self.a_min_m_noH,
+                  self.a_max_m_noH,self.a_mean_m_noH] :
+      row4.append(fs(value))
+    row5 = ["hydrogen"]
+    for value in [self.n_iso_h,self.n_aniso_h,self.b_min_h,self.b_max_h,
+                  self.b_mean_h,self.a_min_h,self.a_max_h,self.a_mean_h] :
+      row5.append(fs(value))
+    table1 = [row1,row2,row3,row4,row5]
+    def get_bins (histogram) :
+      result = []
+      low_cutoff_1 = histogram.data_min()
+      for (i_1,n_1) in enumerate(histogram.slots()):
+        high_cutoff_1 = histogram.data_min() + histogram.slot_width()*(i_1+1)
+        result.append([i_1, "%.3f - %.3f" % (low_cutoff_1,high_cutoff_1), n_1])
+        low_cutoff_1 = high_cutoff_1
+      return result
+    table2 = get_bins(self.b_a_noH_histogram)
+    table3 = get_bins(self.a_a_noH_histogram)
+    return (table1,table2,table3)
+
+  def format_plots (self) :
+    def get_values (histogram) :
+      y = histogram.slots()
+      y_range = histogram.data_min(), histogram.data_max()
+      return y, y_range
+    y1 = get_values(self.b_a_noH_histogram)
+    y2 = get_values(self.a_a_noH_histogram)
+    return y1, y2
+
   def show_1(self, out = None, padded = None, prefix = ""):
     if(out is None): out = sys.stdout
     pad_l, pad_r = "", ""
