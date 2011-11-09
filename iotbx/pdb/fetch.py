@@ -148,7 +148,8 @@ def run (args, log=sys.stdout) :
       for data_type_ in ["pdb", "fasta", "xray"] :
         files.append(get_pdb(id, data_type_, mirror, log))
       if (convert_to_mtz) :
-        easy_run.call("phenix.cif_as_mtz %s-sf.cif --symmetry=%s.pdb" % (id,id))
+        easy_run.call("phenix.cif_as_mtz %s-sf.cif --symmetry=%s.pdb --merge" %
+          (id,id))
         if os.path.isfile("%s-sf.mtz" % id) :
           os.rename("%s-sf.mtz" % id, "%s.mtz" % id)
           os.remove("%s-sf.cif" % id)
