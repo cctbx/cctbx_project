@@ -8,16 +8,22 @@ import sys
 master_phil = """
 adp_statistics
   .short_caption = ADP statistics
-  .style = box auto_align
+  .caption = This tool displays tables and plots of statistics for isotropic \
+    and anisotropic ADPs in a PDB file.  You can get the same information on \
+    the command line by running phenix.pdbtools model_statistics=True \
+    model.pdb.
+  .style = box auto_align caption_img:icons/custom/phenix.pdbtools.png
 {
   pdb_file = None
     .type = path
     .optional = False
+    .short_caption = PDB file
     .style = bold file_type:pdb input_file
   cif_file = None
     .type = path
     .multiple = True
     .optional = True
+    .short_caption = Restraints (CIF) file
     .style = file_type:cif input_file
 }
 """
