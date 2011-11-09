@@ -1787,6 +1787,7 @@ ucif/examples/build_cif_parser.sh -text
 ucif/examples/main.cpp -text
 ucif/examples/ucif_example.txt -text
 wxtbx/__init__.py -text
+wxtbx/adp_statistics.py -text
 wxtbx/b_plot.py -text
 wxtbx/bitmaps.py svneol=native#text/x-python
 wxtbx/blast_report.py -text
