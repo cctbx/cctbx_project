@@ -250,6 +250,11 @@ class server (object) :
     map_coeffs = f.phase_transfer(phi, deg=True) # XXX is deg always True?
     return map_coeffs
 
+  def convert_any_map (self, f_label, phi_label, fom_label, **kwds) :
+    map_coeffs = self._convert_amplitudes_and_phases(f_label, phi_label,
+      fom_label)
+    return self._write_ccp4_map(map_coeffs, **kwds)
+
   def convert_resolve_map (self, **kwds) :
     map_coeffs = self.get_resolve_map()
     kwds['map_coeffs'] = map_coeffs
