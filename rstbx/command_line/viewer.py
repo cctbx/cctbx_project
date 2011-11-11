@@ -8,14 +8,16 @@ import os
 import sys
 
 def run (args) :
-  file_name = args[0]
-  assert os.path.isfile(file_name)
   app = wx.App(0)
   frame = XrayFrame(None, -1, "X-ray image display", size=(800,720))
-  if (os.path.basename(file_name) == "DISTL_pickle") :
-    frame.load_distl_output(file_name)
+  if (len(args) == 1 and os.path.basename(args[0]) == "DISTL_pickle") :
+    assert os.path.isfile(args[0])
+    frame.load_distl_output(args[0])
   else :
-    frame.load_image(file_name)
+    for file_name in args:
+      assert os.path.isfile(file_name)
+      frame.add_file_name(file_name)
+    frame.load_image(args[0])
   frame.Show()
   app.MainLoop()
 
