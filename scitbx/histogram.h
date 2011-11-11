@@ -95,6 +95,20 @@ namespace scitbx {
       std::size_t
       n_out_of_slot_range() const { return n_out_of_slot_range_; }
 
+      af::shared<ValueType>
+      slot_centers() const
+      {
+        af::shared<ValueType> centers;
+        ValueType low_cutoff = data_min_;
+        ValueType high_cutoff;
+        for (std::size_t i=0; i< slots_.size(); i++) {
+          high_cutoff = low_cutoff + slot_width_;
+          centers.push_back((high_cutoff + low_cutoff)/2);
+          low_cutoff = high_cutoff;
+        }
+        return centers;
+      }
+
       //! Determination of the cutoff value given a maximum number of points.
       ValueType
       get_cutoff(CountType const& max_points,

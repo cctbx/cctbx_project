@@ -52,6 +52,7 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
         .def("data_min", &w_t::data_min)
         .def("data_max", &w_t::data_max)
         .def("slot_width", &w_t::slot_width)
+        .def("slot_centers", &w_t::slot_centers)
         .def("slots", &w_t::slots)
         .def("n_out_of_slot_range", &w_t::n_out_of_slot_range)
         .def("get_cutoff", &w_t::get_cutoff, (
