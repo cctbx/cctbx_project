@@ -102,7 +102,8 @@ class table_data (object) :
       graph_columns=None,
       data=None,
       comments=None,
-      x_is_inverse_d_min=False) :
+      x_is_inverse_d_min=False,
+      force_exact_x_labels=False) :
     adopt_init_args(self, locals())
     self._is_complete = False
     self._graphs = {}
@@ -380,6 +381,9 @@ class table_data (object) :
 
   def __str__ (self) :
     return self.format_simple()
+
+  def get_x_values (self) :
+    return self.data[0]
 
   def get_x_as_resolution (self) :
     assert self.x_is_inverse_d_min
