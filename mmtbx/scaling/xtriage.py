@@ -955,6 +955,8 @@ class xtriage_summary (object) :
       out = StringIO()
       low_res_completeness.show(f=out)
       self.low_res_info = out.getvalue()
+    self.low_res_table = getattr(basic_results.basic_data_stats,
+      "low_res_table", None)
     meas_anal = getattr(basic_results.basic_data_stats, "meas_anal", None)
     if meas_anal is not None :
       table = getattr(meas_anal, "meas_table", None)
