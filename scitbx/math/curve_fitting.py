@@ -18,6 +18,8 @@ class univariate_polynomial_fit(object):
     """
     self.x_obs = x_obs
     self.y_obs = y_obs
+    assert isinstance(degree, int)
+    assert degree >= 0
     self.degree = degree
     self.n_terms = degree + 1
     self.x = flex.double([1] * self.n_terms)
