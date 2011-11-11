@@ -1706,6 +1706,7 @@ def exercise_histogram():
   assert approx_equal(h.data_max(), 19)
   assert approx_equal(h.slot_width(), 19/5.)
   assert tuple(h.slots()) == (4,4,4,4,4)
+  assert approx_equal(h.slot_centers(), (1.9, 5.7, 9.5, 13.3, 17.1))
   assert h.n_out_of_slot_range() == 0
   assert approx_equal(h.get_cutoff(max_points=15), 7.60038)
   assert approx_equal(h.get_cutoff(15, relative_tolerance=0.1), 7.98)
