@@ -288,7 +288,11 @@ class iotbx_data_plot_base (plot_container) :
       xdata = self.tables[0].get_x_as_resolution()
       self.p.get_axes().set_xlabel("Resolution",
         fontproperties=self.get_font("axis_label"))
-      xticks = self.p.get_axes().get_xticks()
+      if (getattr(self.tables[0], "force_exact_x_labels", False)) :
+        xticks = self.tables[0].get_x_values()
+        self.p.get_axes().set_xticks(xticks)
+      else :
+        xticks = self.p.get_axes().get_xticks()
       xticklabels = []
       for x in xticks :
         if (x != 0) :
