@@ -288,18 +288,13 @@ class iotbx_data_plot_base (plot_container) :
       xdata = self.tables[0].get_x_as_resolution()
       self.p.get_axes().set_xlabel("Resolution",
         fontproperties=self.get_font("axis_label"))
-      marks = [5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.25, 1.1,
-                1, 0.9, 0.8, 0.7, 0.6, 0.5]
-      xticks = []
+      xticks = self.p.get_axes().get_xticks()
       xticklabels = []
-      start = 0
-      xticklabels.append("%.2f" % xdata[0])
-      xticks.append(1.0 / (xdata[0]**2))
-      for x in marks :
-        if x >= xdata[-1] :
-          xticklabels.append(str(x))
-          xticks.append(1.0 / (x**2))
-      self.p.get_axes().set_xticks(xticks)
+      for x in xticks :
+        if (x != 0) :
+          x = math.sqrt(1 / x)
+        xticklabels.append("%.2f" % x)
+      #self.p.get_axes().set_xticks(xticks)
       self.p.get_axes().set_xticklabels(xticklabels)
     else :
       if self.graph.x_axis_label is not None :
