@@ -8,6 +8,13 @@ class univariate_polynomial_fit(object):
   def __init__(self, x_obs, y_obs, degree):
     """Fit a polynomial of degree n to points (x_obs, y_obs)
          f(x) = a[0] + a[1] x**1 + ... * a[n] x**n.
+
+       :param x_obs: x-coordinates of the data
+       :type x_obs: flex.double
+       :param y_obs: y-coordinates of the data
+       :type y_obs: flex.double
+       :param degree: the degree of the polynomial - the largest power of x
+       :type degree: int
     """
     self.x_obs = x_obs
     self.y_obs = y_obs
@@ -37,6 +44,11 @@ class single_gaussian_fit(object):
   def __init__(self, x_obs, y_obs):
     """Fit a gaussian to points (x_obs, y_obs):
          f(x) = A exp(-(x - mu)**2 / (2 * sigma**2))
+
+       :param x_obs: x-coordinates of the data
+       :type x_obs: flex.double
+       :param y_obs: y-coordinates of the data
+       :type y_obs: flex.double
     """
     self.x_obs = x_obs
     self.y_obs = y_obs
