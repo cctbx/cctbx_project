@@ -81,18 +81,29 @@ class XrayFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
 
   def load_image (self, file_name_or_data) :
-    if type(file_name_or_data)==type(""):
-      file_name = os.path.abspath(file_name_or_data)
-    self._img = rstbx.viewer.image(file_name_or_data)
+    """The load_image() function displays the image stored in the file
+    named @p file_name_or_data.  If the file is not in the image
+    chooser, it is inserted at the appropriate place.  XXX This will
+    need to be rethought once large datasets are viewed, because it
+    may not be attractive to keep all the images in memory.
+    """
+    for i in xrange(self.image_chooser.GetCount()) :
+      if (file_name_or_data < self.image_chooser.GetString(i)) :
+        self._img = rstbx.viewer.image(os.path.abspath(file_name_or_data))
+        self.image_chooser.Insert(file_name_or_data, i, self._img)
+        self.image_chooser.SetSelection(i)
+        break
+      elif (file_name_or_data == self.image_chooser.GetString(i)) :
+        file_name = os.path.abspath(file_name_or_data)
+        self._img = self.image_chooser.GetClientData(i)
+        if (self._img is None) :
+          self._img = rstbx.viewer.image(file_name)
+          self.image_chooser.SetClientData(i, self._img)
+        self.image_chooser.SetSelection(i)
+        break
     self.viewer.set_image(self._img)
     self.settings_frame.set_image(self._img)
-    if type(file_name_or_data)==type(""):
-      self.SetTitle(file_name_or_data)
-      items = self.image_chooser.GetItems()
-      if (not file_name_or_data in items) :
-        items.append(file_name_or_data)
-      self.image_chooser.SetItems(items)
-      self.image_chooser.SetStringSelection(file_name_or_data)
+    self.SetTitle(file_name_or_data)
     self.update_statusbar()
     self.Layout()
 
@@ -109,6 +120,23 @@ class XrayFrame (wx.Frame) :
     self.image_chooser.SetSelection(0)
     self.load_image(img_files[0])
     self.annotate_image(img_files[0])
+
+  def add_file_name (self, file_name) :
+    """The add_file_name() function inserts @p file_name into the
+    image chooser, such that file names remain sorted in ascending
+    order.  XXX Maybe it would make sense to only store the basename
+    (or even just the index), and the directory name somewhere else?
+    XXX This is probably the place for heuristics to determine if the
+    viewer was given a pattern, or a plain list of files.
+    """
+    if os.path.isfile(file_name):
+      for i in xrange(self.image_chooser.GetCount()) :
+        if (file_name < self.image_chooser.GetString(i)) :
+          self.image_chooser.Insert(file_name, i)
+          return
+        if (file_name == self.image_chooser.GetString(i)) :
+          return
+      self.image_chooser.Insert(file_name, self.image_chooser.GetCount())
 
   def annotate_image (self, file_name) :
     assert (self._distl is not None)
@@ -205,13 +233,17 @@ class XrayFrame (wx.Frame) :
       self.settings_frame.update_controls()
 
   def OnChooseImage (self, event) :
-    print "Not implemented"
+    self.load_image(self.image_chooser.GetStringSelection())
 
   def OnPrevious (self, event) :
-    print "Not implemented"
+    n = self.image_chooser.GetSelection()
+    if (n != wx.NOT_FOUND and n - 1 >= 0) :
+      self.load_image(self.image_chooser.GetString(n - 1))
 
   def OnNext (self, event) :
-    print "Not implemented"
+    n = self.image_chooser.GetSelection()
+    if (n != wx.NOT_FOUND and n + 1 < self.image_chooser.GetCount()) :
+      self.load_image(self.image_chooser.GetString(n + 1))
 
   def OnScreenShot (self, event) :
     file_name = wx.FileSelector(
