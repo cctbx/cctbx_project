@@ -595,6 +595,9 @@ nonbonded asu: (7, 29)
   sel = geo.simple_edge_list(omit_slack_greater_than=0.2)
   assert sorted(set(sel0) - set(sel)) == [(28, 30)]
   #
+  d = geo.discard_symmetry(new_unit_cell=(10,10,10,90,90,90))
+  assert d.site_symmetry_table.special_position_indices().size()==0
+  #
   clusters = geo.rigid_clusters_due_to_dihedrals_and_planes(
     constrain_dihedrals_with_sigma_less_than=10)
   assert sorted([tuple(sorted(c)) for c in clusters]) == [
