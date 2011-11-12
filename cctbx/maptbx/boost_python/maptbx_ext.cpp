@@ -281,11 +281,13 @@ namespace {
       (double(*)
         (uctbx::unit_cell const&,
          af::const_ref<double, af::c_grid_padded<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&))
+         af::const_ref<scitbx::vec3<double> > const&,
+         af::const_ref<bool> const&))
            real_space_target_simple, (
              arg("unit_cell"),
              arg("density_map"),
-             arg("sites_cart")));
+             arg("sites_cart"),
+             arg("selection")));
     def("real_space_target_simple_per_site",
       (af::shared<double>(*)
         (uctbx::unit_cell const&,
@@ -300,11 +302,13 @@ namespace {
         (uctbx::unit_cell const&,
          af::const_ref<double, af::c_grid_padded<3> > const&,
          af::const_ref<scitbx::vec3<double> > const&,
-         double)) real_space_gradients_simple, (
+         double,
+         af::const_ref<bool> const&)) real_space_gradients_simple, (
            arg("unit_cell"),
            arg("density_map"),
            arg("sites_cart"),
-           arg("delta")));
+           arg("delta"),
+           arg("selection")));
 
     def("standard_deviations_around_sites",
       standard_deviations_around_sites, (
