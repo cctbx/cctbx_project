@@ -242,8 +242,15 @@ def run(args, log = sys.stdout):
     test_flag_value=None
   print >> log, "-"*79
   print >> log, "\nInput PDB file:", params.maps.input.pdb_file_name
+  atom_selection_manager = get_atom_selection_manager(pdb_inp = pdb_inp)
   xray_structure = pdb_inp.xray_structure_simple(
     crystal_symmetry = crystal_symmetry)
+  # apply omit selection
+  if(params.maps.omit.selection is not None):
+    omit_selection = atom_selection_manager.selection(
+      string = params.maps.omit.selection)
+    xray_structure = xray_structure.select(selection = ~omit_selection)
+  #
   mmtbx.utils.setup_scattering_dictionaries(
     scattering_table = params.maps.scattering_table,
     xray_structure   = xray_structure,
@@ -251,7 +258,6 @@ def run(args, log = sys.stdout):
     log              = log)
   xray_structure.show_summary(f = log, prefix="  ")
   print >> log, "-"*79
-
   print >> log, "Bulk solvent correction and anisotropic scaling:"
   fmodel = mmtbx.utils.fmodel_simple(
     xray_structures         = [xray_structure],
@@ -267,7 +273,6 @@ def run(args, log = sys.stdout):
   fmodel_info.show_rfactors_targets_scales_overall(out = log)
   print >> log, "-"*79
   print >> log, "Compute maps."
-  atom_selection_manager = get_atom_selection_manager(pdb_inp = pdb_inp)
   if params.maps.output.directory is not None :
     assert os.path.isdir(params.maps.output.directory)
     output_dir = params.maps.output.directory
