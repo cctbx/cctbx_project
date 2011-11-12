@@ -194,6 +194,8 @@ maps {
       .type = choice(multi=False)
     selection = None
       .type = str
+      .short_caption = Omit selection
+      .input_size = 400
   }
   %s
   %s
