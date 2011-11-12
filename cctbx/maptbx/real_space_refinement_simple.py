@@ -89,6 +89,7 @@ class lbfgs(object):
         weight_map=None,
         unit_cell=None,
         selection_variable=None,
+        selection_variable_real_space=None,
         geometry_restraints_manager=None,
         energies_sites_flags=None,
         real_space_target_weight=1,
@@ -101,6 +102,10 @@ class lbfgs(object):
     assert real_space_gradients_delta is not None
     if (unit_cell is None):
       unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
+    if(selection_variable_real_space is not None):
+      assert selection_variable_real_space.size() == sites_cart.size()
+    else:
+      selection_variable_real_space = flex.bool(sites_cart.size(), True)
     O.density_map = density_map
     O.weight_map = weight_map
     O.unit_cell = unit_cell
@@ -110,6 +115,7 @@ class lbfgs(object):
     O.real_space_target_weight = real_space_target_weight
     O.real_space_gradients_delta = real_space_gradients_delta
     O.local_standard_deviations_radius = local_standard_deviations_radius
+    O.selection_variable_real_space = selection_variable_real_space
     if (O.local_standard_deviations_radius is None):
       O.site_radii = None
     else:
@@ -147,12 +153,14 @@ class lbfgs(object):
         rs_f = maptbx.real_space_target_simple(
           unit_cell   = O.unit_cell,
           density_map = O.density_map,
-          sites_cart  = O.sites_cart_variable)
+          sites_cart  = O.sites_cart_variable,
+          selection   = O.selection_variable_real_space)
         rs_g = maptbx.real_space_gradients_simple(
           unit_cell   = O.unit_cell,
           density_map = O.density_map,
           sites_cart  = O.sites_cart_variable,
-          delta       = O.real_space_gradients_delta)
+          delta       = O.real_space_gradients_delta,
+          selection   = O.selection_variable_real_space)
       else:
         rs_f = local_standard_deviations_target(
           unit_cell=O.unit_cell,

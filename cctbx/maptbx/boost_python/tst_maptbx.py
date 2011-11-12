@@ -386,24 +386,28 @@ def exercise_real_space_gradients_simple(timing):
     site_frac = [i/n for i,n in zip(grid_point, map.focus())]
     sites_cart = flex.vec3_double([uc.orthogonalize(site_frac)])
     target = maptbx.real_space_target_simple(
-      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+      unit_cell=uc, density_map=map, sites_cart=sites_cart,
+      selection=flex.bool(sites_cart.size(), True))
     assert approx_equal(target, 0)
     terms = maptbx.real_space_target_simple_per_site(
       unit_cell=uc, density_map=map, sites_cart=sites_cart)
     assert approx_equal(terms, [0])
     grads = maptbx.real_space_gradients_simple(
-      unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
+      unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1,
+      selection=flex.bool(sites_cart.size(), True))
     assert approx_equal(grads, [(0,0,0)])
     grid_point_mod = [i%n for i,n in zip(grid_point, map.focus())]
     map[grid_point_mod] = 1
     target = maptbx.real_space_target_simple(
-      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+      unit_cell=uc, density_map=map, sites_cart=sites_cart,
+      selection=flex.bool(sites_cart.size(), True))
     assert approx_equal(target, 1)
     terms = maptbx.real_space_target_simple_per_site(
       unit_cell=uc, density_map=map, sites_cart=sites_cart)
     assert approx_equal(terms, [1])
     grads = maptbx.real_space_gradients_simple(
-      unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
+      unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1,
+      selection=flex.bool(sites_cart.size(), True))
     assert approx_equal(grads, [(0,0,0)])
     i,j,k = grid_point_mod
     u,v,w = map.focus()
@@ -411,11 +415,13 @@ def exercise_real_space_gradients_simple(timing):
     map[(i,(j+1)%v,k)] = 0.5
     map[(i,j,(k+1)%w)] = 0.7
     target = maptbx.real_space_target_simple(
-      unit_cell=uc, density_map=map, sites_cart=sites_cart)
+      unit_cell=uc, density_map=map, sites_cart=sites_cart,
+      selection=flex.bool(sites_cart.size(), True))
     assert approx_equal(target, 1)
     for delta in [0.1, 0.2]:
       grads = maptbx.real_space_gradients_simple(
-        unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=delta)
+        unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=delta,
+        selection=flex.bool(sites_cart.size(), True))
       assert approx_equal(grads, [(0.3,0.5,0.7)])
   for grid_point in [(0,0,0), (3,4,5), (-3,15,20)]:
     check()
@@ -427,11 +433,13 @@ def exercise_real_space_gradients_simple(timing):
   sites_cart = flex.vec3_double(flex.random_double(size=n*3)*40-20)
   map = flex.double(flex.grid(22,26,36).set_focus(22,26,34), 1)
   target = maptbx.real_space_target_simple(
-    unit_cell=uc, density_map=map, sites_cart=sites_cart)
+    unit_cell=uc, density_map=map, sites_cart=sites_cart,
+    selection=flex.bool(sites_cart.size(), True))
   assert approx_equal(target, n)
   t0 = time.time()
   maptbx.real_space_gradients_simple(
-    unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1)
+    unit_cell=uc, density_map=map, sites_cart=sites_cart, delta=0.1,
+    selection=flex.bool(sites_cart.size(), True))
   tm = time.time() - t0
   msg = "real_space_gradients_simple: %.2f s / %d sites" % (tm, n)
   if (tm >= 0.01): msg += ", %.0f sites / s" % (n / tm)
