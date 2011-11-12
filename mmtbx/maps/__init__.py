@@ -189,6 +189,12 @@ maps {
     .type = bool
     .short_caption = Skip automatic twinning detection
     .help = Skip automatic twinning detection
+  omit {
+    method = *simple
+      .type = choice(multi=False)
+    selection = None
+      .type = str
+  }
   %s
   %s
 }
@@ -363,7 +369,9 @@ def map_coefficients_from_fmodel(fmodel, params):
       coeffs = coeffs.average_bijvoet_mates()
     if(params.isotropize and e_map_obj.mch is not None):
       isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper
-      isc = isotropize_helper.iso_scale.data()
+      if(isotropize_helper is not None):
+        isc = isotropize_helper.iso_scale.data()
+      else: isc = 1
       coeffs = miller.set(
         crystal_symmetry=coeffs.crystal_symmetry(),
         indices = coeffs.indices(),
@@ -467,7 +475,7 @@ def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
     for b_sharp in range(b_min,b_max,step):
       map_coeffs_ = map_coeffs.deep_copy()
       sc2 = flex.exp(b_sharp*ss)
-      map_coeffs_ = map_coeffs_.array(data = map_coeffs_.data()*sc2)
+      map_coeffs_ = map_coeffs_.customized_copy(data = map_coeffs_.data()*sc2)
       t_=sharp_evaluation_target(sites_frac=sites_frac, map_coeffs=map_coeffs_)
       if(t_>t):
         t=t_

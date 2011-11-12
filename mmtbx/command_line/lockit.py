@@ -40,7 +40,8 @@ def real_space_rigid_body_gradients_simple(
       rs_f = maptbx.real_space_target_simple(
         unit_cell=unit_cell,
         density_map=density_map,
-        sites_cart=sites_cart_delta)
+        sites_cart=sites_cart_delta,
+        selection=flex.bool(sites_cart_delta.size(),True))
       fs.append(rs_f)
     result.append((fs[0]-fs[1])/(2*delta))
   for i in xrange(4): get(i=i, delta=unit_quaternion_delta)
@@ -109,7 +110,8 @@ class residue_refine_constrained(object):
     rs_f = maptbx.real_space_target_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,
-      sites_cart=O.sites_cart_residue)
+      sites_cart=O.sites_cart_residue,
+      selection=flex.bool(O.sites_cart_residue.size(),True))
     rs_g = real_space_rigid_body_gradients_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,
@@ -182,13 +184,15 @@ class residue_refine_restrained(object):
     rs_f = maptbx.real_space_target_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,
-      sites_cart=O.sites_cart_residue)
+      sites_cart=O.sites_cart_residue,
+      selection=flex.bool(O.sites_cart_residue.size(),True))
     O.real_space_target = rs_f
     rs_g = maptbx.real_space_gradients_simple(
       unit_cell=O.unit_cell,
       density_map=O.density_map,
       sites_cart=O.sites_cart_residue,
-      delta=O.real_space_gradients_delta)
+      delta=O.real_space_gradients_delta,
+      selection=flex.bool(O.sites_cart_residue.size(),True))
     O.rs_f = rs_f
     rs_f *= -O.real_space_target_weight
     rs_g *= -O.real_space_target_weight
@@ -216,7 +220,8 @@ def compute_functional_lite(pdb_hierarchy,
   rs_f = maptbx.real_space_target_simple(
     unit_cell=unit_cell,
     density_map=density_map,
-    sites_cart=sites_cart_residue)
+    sites_cart=sites_cart_residue,
+    selection=flex.bool(sites_cart_residue.size(),True))
   return rs_f
 
 def get_rotamer_iterator(mon_lib_srv, residue, atom_selection_bool):

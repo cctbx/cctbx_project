@@ -2636,22 +2636,6 @@ class set_map_to_value(object):
       average            = -1,
       standard_deviation = -1)
 
-def select_within_no_sym(xray_structure, selection_string, radius,
-      all_chain_proxies):
-  selection = atom_selection(
-    all_chain_proxies=all_chain_proxies,
-    string=selection_string)
-  sites_frac = xray_structure.sites_frac()
-  uc = xray_structure.unit_cell()
-  result = flex.bool(sites_frac.size(), False)
-  for si in selection.iselection():
-    sf1 = sites_frac[si]
-    for isite, sf2 in enumerate(sites_frac):
-      d = uc.distance(sf1,sf2)
-      if(d<radius):
-        result[isite]=True
-  return result
-
 class extract_box_around_model_and_map(object):
   def __init__(self,
                xray_structure,

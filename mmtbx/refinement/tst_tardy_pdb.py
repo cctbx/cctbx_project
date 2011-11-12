@@ -91,12 +91,14 @@ class potential_object(object):
         rs_f = maptbx.real_space_target_simple(
           unit_cell=O.geo_manager.crystal_symmetry.unit_cell(),
           density_map=O.density_map,
-          sites_cart=sites_cart)
+          sites_cart=sites_cart,
+          selection=flex.bool(sites_cart.size(),True))
         rs_g = maptbx.real_space_gradients_simple(
           unit_cell=O.geo_manager.crystal_symmetry.unit_cell(),
           density_map=O.density_map,
           sites_cart=sites_cart,
-          delta=O.real_space_gradients_delta)
+          delta=O.real_space_gradients_delta,
+          selection=flex.bool(sites_cart.size(),True))
         rs_f *= -O.real_space_target_weight
         rs_g *= -O.real_space_target_weight
         O.f += rs_f

@@ -1773,6 +1773,7 @@ class manager(manager_mixin):
       interpolation            = interpolation)
 
   def isotropize_helper(self):
+    if(self.xray_structure is None): return None
     def subtract_min_eigenvalue(x):
       from scitbx import linalg
       import scitbx.linalg.eigensystem

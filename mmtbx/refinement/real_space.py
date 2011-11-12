@@ -3,6 +3,8 @@ from mmtbx.refinement import print_statistics
 from cctbx.maptbx import real_space_target_and_gradients
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value
+import scitbx.lbfgs
+from cctbx import maptbx
 
 master_params_str = """\
 real_space_refinement
@@ -48,26 +50,6 @@ real_space_refinement
     verbose = 1
       .type = int
       .help = All output is supressed if it is negative
-
-    lockit_run_conditions
-      .expert_level=3
-    {
-      always = False
-        .type = bool
-      acceptable_r_factor_increase = 2
-        .type = float
-      high_resolution_cutoff = 1.5
-        .type = float
-      low_resolution_cutoff = 3.5
-        .type = float
-      min_r_work = 0.25
-        .type = float
-      r_free_r_work_diff = 5
-        .type = float
-      debug = False
-        .type = bool
-    }
-
     lockit_parameters
       .expert_level=3
     {
@@ -221,3 +203,70 @@ class run(object):
       print >> self.log, p2
       print >> self.log, "|"+"-"*77+"|"
     return geom
+
+class simple(object):
+  def __init__(self,
+               target_map,
+               sites_cart,
+               selection,
+               real_space_gradients_delta,
+               geometry_restraints_manager=None,
+               unit_cell=None,
+               max_iterations=150,
+               start_trial_weight_value = 50,
+               rms_bonds_limit = 0.03,
+               rms_angles_limit = 3.0):
+    assert [unit_cell, geometry_restraints_manager].count(None)==1
+    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+        max_iterations = max_iterations)
+    lbfgs_exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound = True,
+      ignore_line_search_failed_step_at_upper_bound = True,
+      ignore_line_search_failed_maxfev              = True)
+    self.rms_angles_start = None
+    self.rms_bonds_start = None
+    if(geometry_restraints_manager is not None):
+      es = geometry_restraints_manager.energies_sites(sites_cart = sites_cart)
+      self.rms_angles_start = es.angle_deviations()[2]
+      self.rms_bonds_start = es.bond_deviations()[2]
+    self.weight_start = start_trial_weight_value
+    cp=0
+    cm=0
+    pool = {}
+    weight = start_trial_weight_value
+    while True:
+      r = maptbx.real_space_refinement_simple.lbfgs(
+        selection_variable              = selection,
+        sites_cart                      = sites_cart,
+        density_map                     = target_map,
+        geometry_restraints_manager     = geometry_restraints_manager,
+        unit_cell                       = unit_cell,
+        real_space_target_weight        = weight,
+        real_space_gradients_delta      = real_space_gradients_delta,
+        lbfgs_termination_params        = lbfgs_termination_params,
+        lbfgs_exception_handling_params = lbfgs_exception_handling_params)
+      sites_cart_result = sites_cart.set_selected(selection, r.sites_cart_variable)
+      if(geometry_restraints_manager is not None):
+        es = geometry_restraints_manager.energies_sites(sites_cart = sites_cart_result)
+        ad = es.angle_deviations()[2]
+        bd = es.bond_deviations()[2]
+      pool.setdefault(weight, []).append(sites_cart_result.deep_copy())
+      if(geometry_restraints_manager is None): break
+      if(ad>rms_angles_limit or bd > rms_bonds_limit):
+        weight -= 10
+        cm+=1
+      else:
+        weight += 10
+        cp+=1
+      if(weight==10000): break
+      if(not cp*cm in [cp,cm]): break
+      if(weight<=0 or weight>=1000): break
+      if(weight in pool.keys()):
+        sites_cart_result = pool[weight][0]
+        break
+    if(geometry_restraints_manager is not None):
+      es = geometry_restraints_manager.energies_sites(sites_cart = sites_cart_result)
+      self.rms_angles_final = es.angle_deviations()[2]
+      self.rms_bonds_final = es.bond_deviations()[2]
+    self.weight_final = weight
+    self.sites_cart_result = sites_cart_result
