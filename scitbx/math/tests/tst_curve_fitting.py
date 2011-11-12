@@ -42,10 +42,11 @@ def run():
     mu = (-1)**random.randint(0,1) * random.random() * 1000
     do_gaussian_fit(scale, mu, sigma)
 
+  # if we take the log of a gaussian we can fit a parabola
   scale = 123
   mu = 3.2
   sigma = 0.1
-  # if we take the log of a gaussian we can fit a parabola
+  x = flex.double(frange(2, 4, 0.01))
   y = scale * flex.exp(-flex.pow2(x - mu)/(2 * sigma**2))
   # need to be careful to only use values of y > 0
   eps = 1e-15
