@@ -459,6 +459,11 @@ def exercise_pair_tables():
   assert len(t[1]) == 1
   assert len(t[1][10]) == 2
   #
+  td = t.discard_symmetry()
+  assert td.size() == 3
+  assert [len(d) for d in td] == [0,1,0]
+  assert str(td[1][10][0])=="x,y,z"
+  #
   t = crystal.pair_asu_table_table(3)
   for d in t:
     assert len(d) == 0

@@ -229,7 +229,9 @@ class structure(crystal.special_position_settings):
         l += 0.0001
     return selection
 
-  def replace_sites_frac(self, new_sites):
+  def replace_sites_frac(self, new_sites, selection=None):
+    if(selection is not None):
+      new_sites = self.sites_frac().set_selected(selection, new_sites)
     cp = structure(self,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
@@ -240,9 +242,10 @@ class structure(crystal.special_position_settings):
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     return cp
 
-  def replace_sites_cart(self, new_sites):
+  def replace_sites_cart(self, new_sites, selection=None):
     return self.replace_sites_frac(
-      new_sites=self.unit_cell().fractionalize(sites_cart=new_sites))
+      new_sites=self.unit_cell().fractionalize(sites_cart=new_sites),
+      selection=selection)
 
   def adjust_u_iso(self):
     self._scatterers.adjust_u_iso()

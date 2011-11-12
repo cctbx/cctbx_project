@@ -387,6 +387,34 @@ class manager(object):
       planarity_proxies=selected_planarity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
 
+  def discard_symmetry(self, new_unit_cell):
+    assert self.site_symmetry_table is not None #XXX lazy
+    assert self.shell_sym_tables is not None #XXX lazy
+    return manager(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=new_unit_cell,
+        space_group_symbol="P1"),
+      model_indices=self.model_indices,
+      conformer_indices=self.conformer_indices,
+      sym_excl_indices=None,
+      donor_acceptor_excl_groups=self.donor_acceptor_excl_groups,
+      site_symmetry_table=self.site_symmetry_table.discard_symmetry(),
+      bond_params_table=self.bond_params_table,
+      shell_sym_tables=[t.discard_symmetry() for t in self.shell_sym_tables],
+      nonbonded_params=self.nonbonded_params,
+      nonbonded_types=self.nonbonded_types,
+      nonbonded_function=self.nonbonded_function,
+      nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
+      nonbonded_buffer=self.nonbonded_buffer,
+      angle_proxies=self.angle_proxies,
+      dihedral_proxies=self.dihedral_proxies,
+      reference_dihedral_proxies=self.reference_dihedral_proxies,
+      generic_restraints_manager=self.generic_restraints_manager,
+      ncs_dihedral_proxies=self.ncs_dihedral_proxies,
+      chirality_proxies=self.chirality_proxies,
+      planarity_proxies=self.planarity_proxies,
+      plain_pairs_radius=self.plain_pairs_radius)
+
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
       selection=selection)

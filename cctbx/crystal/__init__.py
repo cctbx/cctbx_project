@@ -1062,6 +1062,16 @@ class _(boost.python.injector, pair_sym_table):
       if (i_seq in pair_sym_dict): return True
     return False
 
+  def discard_symmetry(self):
+    result = pair_sym_table()
+    sym_ops = sgtbx.space_group().all_ops()
+    for i_seq,self_pair_sym_dict in enumerate(self):
+      d = pair_sym_dict()
+      for j_seq in self_pair_sym_dict.keys():
+        d[j_seq] = sym_ops
+      result.append(d)
+    return result
+
 class _clustering_mix_in(object):
 
   def sites_cart(self):

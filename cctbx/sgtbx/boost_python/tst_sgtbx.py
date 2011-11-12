@@ -1485,6 +1485,13 @@ def exercise_site_symmetry():
     space_group=g,
     original_sites_frac=original_sites_frac)
   assert list(t.indices()) == [1,0,1,2]
+  #
+  d = t.discard_symmetry()
+  assert list(d.indices()) == [0,0,0,0]
+  assert len(d.table())==1
+  assert d.table()[0].is_point_group_1()
+  assert d.special_position_indices().size()==0
+  #
   t = sgtbx.site_symmetry_table()
   t.process(
     unit_cell=u,
