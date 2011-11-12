@@ -313,8 +313,8 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   return (map_coeff_file_name, xplor_maps)
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
     os.chdir(self.output_dir)
     return run(args=list(self.args), log=sys.stdout)
 
