@@ -1068,19 +1068,22 @@ class basic_intensity_statistics:
           x_is_inverse_d_min=True)
 
       if (self.low_resolution_completeness is not None) :
-        binner = self.low_resolution_completeness.binner
-        d_star_sq_ori = []
-        comp = []
-        for i_bin in binner.range_used() :
-          d_min = binner.bin_d_min(i_bin)
-          d_star_sq_ori.append(1/(d_min**2))
-          comp.append(self.low_resolution_completeness.data[i_bin]*100)
-        self.low_res_table = data_plots.table_data(
-          title="Low-resolution completeness",
-          column_labels=["Max. resolution", "Completeness"],
-          graph_names=["Low-resolution completeness"],
-          graph_labels=[("High resolution of shell", "% of total")],
-          graph_columns=[[0,1]],
-          data=[d_star_sq_ori, comp],
-          x_is_inverse_d_min=True,
-          force_exact_x_labels=True)
+        try :
+          binner = self.low_resolution_completeness.binner
+          d_star_sq_ori = []
+          comp = []
+          for i_bin in binner.range_used() :
+            d_min = binner.bin_d_min(i_bin)
+            d_star_sq_ori.append(1/(d_min**2))
+            comp.append(self.low_resolution_completeness.data[i_bin]*100)
+          self.low_res_table = data_plots.table_data(
+            title="Low-resolution completeness",
+            column_labels=["Max. resolution", "Completeness"],
+            graph_names=["Low-resolution completeness"],
+            graph_labels=[("High resolution of shell", "% of total")],
+            graph_columns=[[0,1]],
+            data=[d_star_sq_ori, comp],
+            x_is_inverse_d_min=True,
+            force_exact_x_labels=True)
+        except Exception, e :
+          pass
