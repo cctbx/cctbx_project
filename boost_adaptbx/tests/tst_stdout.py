@@ -6,7 +6,8 @@ except ImportError: import subprocess
 import sys
 
 def exercise():
-  proc = subprocess.Popen(args='libtbx.python %s --core' % __file__,
+  assert __file__.find('"') < 0
+  proc = subprocess.Popen(args='libtbx.python "%s" --core' % __file__,
                           shell=True,
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE)
