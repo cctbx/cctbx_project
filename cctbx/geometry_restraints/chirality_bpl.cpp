@@ -40,7 +40,7 @@ namespace {
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
         .def_readonly("both_signs", &w_t::both_signs)
-        .def_readonly("weight", &w_t::weight)
+        .def_readwrite("weight", &w_t::weight)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
