@@ -172,17 +172,18 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     else:
       tst_path = tst.replace("$D", dist_dir)
     assert tst_path.find("$") < 0
+    assert tst_path.find('"') < 0
     tst_path = os.path.normpath(tst_path)
     cmd = ""
     if (tst_path.endswith(".py")):
       if (co.valgrind):
         cmd = "libtbx.valgrind "
-      cmd += "libtbx.python " + tst_path
+      cmd += "libtbx.python "
     else:
       if (co.valgrind):
         cmd = os.environ.get(
           "LIBTBX_VALGRIND", "valgrind --tool=memcheck") + " "
-      cmd += tst_path
+    cmd += '"' + tst_path + '"'
     cmd += cmd_args
     yield cmd
 

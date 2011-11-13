@@ -10,8 +10,9 @@ def run(args):
     exe_suffix = ""
   command = libtbx.env.under_build("scitbx/error/tst_error"+exe_suffix)
   assert os.path.isfile(command)
+  assert command.find('"') < 0
   command_out = libtbx.easy_run.fully_buffered(
-    command=command).raise_if_errors().stdout_lines
+    command='"'+command+'"').raise_if_errors().stdout_lines
   assert command_out[0].startswith("scitbx InternalError: ")
   assert command_out[1:4] == ["  x = 1.1", "  n = 1", "  j = 2"]
   assert command_out[4].startswith(
