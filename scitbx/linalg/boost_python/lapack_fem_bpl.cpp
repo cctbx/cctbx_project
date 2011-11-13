@@ -72,7 +72,7 @@ extern "C" {
 namespace scitbx { namespace lapack { namespace boost_python {
 
 #if defined(SCITBX_LAPACK_FEM)
-  lapack_fem::common cmn;
+  lapack_fem::common cmn(0, 0);
 #endif
 
   boost::python::object
