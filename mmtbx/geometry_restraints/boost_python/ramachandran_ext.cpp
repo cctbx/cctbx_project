@@ -1,8 +1,3 @@
-
-#include <mmtbx/geometry_restraints/ramachandran.h>
-#include <cctbx/geometry_restraints/proxy_select.h>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
-
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -11,12 +6,16 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
 
+#include <mmtbx/geometry_restraints/ramachandran.h>
+#include <cctbx/geometry_restraints/proxy_select.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
+
 namespace mmtbx { namespace geometry_restraints {
-namespace {
-  using namespace boost::python;
+namespace boost_python {
 
   void wrap_ramachandran_proxies ()
   {
+    using namespace boost::python;
     typedef phi_psi_proxy w_t;
     class_<w_t>("phi_psi_proxy", no_init)
       .def(init<
@@ -48,6 +47,7 @@ namespace {
 
   void wrap_ramachandran_targets ()
   {
+    using namespace boost::python;
     // COOT-like restraints
     class_<lookup_table>("lookup_table", no_init)
       .def(init<af::const_ref< double >,
@@ -99,17 +99,13 @@ namespace {
                arg("proxy")));
   }
 
-} // namespace anonymous
-
-namespace boost_python {
   void init_module ()
   {
     wrap_ramachandran_proxies();
     wrap_ramachandran_targets();
   }
 
-} // namespace boost_python
-}} // namespace mmtbx::geometry_restraints
+}}} // namespace mmtbx::geometry_restraints::boost_python
 
 BOOST_PYTHON_MODULE(mmtbx_ramachandran_restraints_ext)
 {
