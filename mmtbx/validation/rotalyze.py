@@ -194,11 +194,13 @@ Example:
                                 conformer.altloc+resname,
                                 value*100]
                 wrap_chis = rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
+                sym_chis = wrap_chis[:]
+                sym_chis = rot_id.wrap_sym(resname.strip(), sym_chis)
                 for i in range(4):
                   s += ':'
                   if i < len(wrap_chis):
                     s += '%.1f' % (wrap_chis[i])
-                    res_out_list.append(wrap_chis[i])
+                    res_out_list.append(sym_chis[i])
                   else :
                     res_out_list.append(None)
                 s += ':'
@@ -211,7 +213,6 @@ Example:
                     analysis += s
                     output_list.append(res_out_list)
                 else:
-                  wrap_chis = rot_id.wrap_sym(resname.strip(), wrap_chis)
                   s += rot_id.identify(resname, wrap_chis) + "\n"
                   res_out_list.append(rot_id.identify(resname, wrap_chis))
                   res_out_list.append(coords)
