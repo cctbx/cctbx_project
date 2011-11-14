@@ -17,21 +17,20 @@ def exercise_compilation():
   antlr3_dist = libtbx.env.under_dist("ucif", "antlr3")
   os.environ["LIBTBX_UCIF"] = ucif_dist
   os.environ["LIBTBX_ANTLR3"] = antlr3_dist
+  assert ucif_dist.find('"') < 0
   if sys.platform == "win32":
-    cmd = "%s/examples/build_cif_parser.bat" %ucif_dist
+    cmd = '"%s/examples/build_cif_parser.bat"' %ucif_dist
     ext = ".exe"
   else:
-    cmd = "source %s/examples/build_cif_parser.sh" %ucif_dist
+    cmd = 'source "%s/examples/build_cif_parser.sh"' %ucif_dist
     ext = ""
-  r = easy_run.fully_buffered(cmd)#.raise_if_errors() ### XXX Why does VS print something to stderr?
-  r.show_stderr()
+  easy_run.fully_buffered(cmd).raise_if_errors()
   assert os.path.exists("cif_parser"+ext)
   f = open_tmp_file(suffix=".cif")
   f.write(cif_string)
   f.close()
   cmd = 'cif_parser "%s"' %f.name
-  if sys.platform != "win32":
-    cmd = "./" + cmd
+  cmd = os.path.join(".", cmd)
   r = easy_run.fully_buffered(cmd).raise_if_errors()
   assert r.stdout_lines[0].startswith("Congratulations!")
 
