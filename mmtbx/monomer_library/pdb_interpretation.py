@@ -311,7 +311,20 @@ planarity
   sigma = None
     .type = float
 }
-
+scale_restraints
+  .multiple = True
+  .optional = True
+  .help = Apply a scale factor to restraints for specific atom selections, \
+    to tighten geometry without changing the overall scale of the geometry \
+    target.
+{
+  atom_selection = None
+    .type = atom_selection
+  scale = 1.0
+    .type = float
+  apply_to = *bond *angle *dihedral *chirality
+    .type = choice(multi=True)
+}
 """
 
 geometry_restraints_remove_str = """\
@@ -3246,6 +3259,65 @@ class build_all_chain_proxies(object):
     print >> log, "    Total number of custom planarities:", len(result)
     return result
 
+  def process_geometry_restraints_scale (self, params, log) :
+    """
+    Scale the weights for selected basic geometry restraints for given
+    atom selections.  This allows geometry to be manually tightened or
+    loosened for problematic atoms, without making global changes to the
+    geometry target weight or editing CIF files.  Since this is still somewhat
+    dangerous, atom selections are checked for overlap, and each restraint
+    proxy will be modified no more than once.
+
+    Note that planarity proxies are currently left alone, since they have
+    an array of weights instead of a scalar value.
+    """
+    sel_cache = self.pdb_hierarchy.atom_selection_cache()
+    other_selections = []
+    other_selection_strs = []
+    if (len(params.scale_restraints) > 0) :
+      print >> log, "Scaling restraint weights for %d selections" % \
+        len(params.scale_restraints)
+    for scale_params in params.scale_restraints :
+      if (scale_params.scale < 0) :
+        raise Sorry("scale_restraints.scale must be at least zero.")
+      selection = self.phil_atom_selection(
+        cache=sel_cache,
+        scope_extract=scale_params,
+        attr="atom_selection",
+        raise_if_empty_selection=True)
+      for other, other_str in zip(other_selections, other_selection_strs) :
+        if (not (selection & other).all_eq(False)) :
+          raise Sorry(("Error scaling selected restraint weights: the atom "+
+            "selection \"%s\" overlaps with at least one other previously "+
+            "defined atom selection (\"%s\").") % (scale_params.atom_selection,
+              other_str))
+      other_selections.append(selection)
+      other_selection_strs.append(scale_params.atom_selection)
+      proxy_lists = [ self.geometry_proxy_registries.angle.proxies,
+                      self.geometry_proxy_registries.dihedral.proxies,
+                      self.geometry_proxy_registries.chirality.proxies,
+                      self.geometry_proxy_registries.bond_simple.proxies ]
+      proxy_types = ["angle", "dihedral", "chirality", "bond"]
+      modified_proxies = []
+      for k, proxies in enumerate(proxy_lists) :
+        if (not proxy_types[k] in scale_params.apply_to) :
+          continue
+        for j, proxy in enumerate(proxies) :
+          for i_seq in proxy.i_seqs :
+            if (selection[i_seq]) :
+              if ((k,j) in modified_proxies) :
+                print >> log, \
+                  "  skipping %s restraint proxy #%d - already modified" % (
+                    proxy_types[k], j)
+                print >> log, "  atoms involved:"
+                for i_seq_2 in proxy.i_seqs :
+                  print >> log, "    %s" % self.pdb_atoms[i_seq_2].id_str()
+                continue
+              proxy.weight *= scale_params.scale
+              modified_proxies.append((k,j))
+              break
+      # TODO: planarity?
+
   def process_geometry_restraints_edits(self, params, log):
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     result = self.process_geometry_restraints_edits_bond(
@@ -3423,6 +3495,8 @@ class build_all_chain_proxies(object):
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
+    if (params_edits is not None) :
+      self.process_geometry_restraints_scale(params_edits, log)
     bond_params_table = geometry_restraints.extract_bond_params(
       n_seq=self.sites_cart.size(),
       bond_simple_proxies=self.geometry_proxy_registries.bond_simple.proxies)
