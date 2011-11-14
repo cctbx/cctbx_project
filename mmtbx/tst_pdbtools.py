@@ -45,8 +45,9 @@ def exercise_basic(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "phe_e.pdb")
   output = "modified.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
+  assert file_name.find('"') < 0
   base = \
-      "phenix.pdbtools %s modify.output.file_name=%s "%(file_name, output)
+      'phenix.pdbtools "%s" modify.output.file_name=%s '%(file_name, output)
   for selection_str in [None, "chain A or chain C"]:
     selection = xrsp_init.selection(selection_strings = selection_str)
     if(selection_str is None):
@@ -122,7 +123,8 @@ def test_quiet(file_name, verbose):
   output_file_name = "shifted.pdb"
   remove_files("log")
   remove_files(output_file_name)
-  cmd= "phenix.pdbtools %s output.file_name=%s shake=0.1 --quiet > log"%(
+  assert file_name.find('"') < 0
+  cmd= 'phenix.pdbtools "%s" output.file_name=%s shake=0.1 --quiet > log'%(
     file_name, output_file_name)
   print cmd
   run_command(command=cmd, verbose=verbose)
@@ -380,7 +382,8 @@ sites {
 """
   open("params", "w").write(params)
   file_name = os.path.join(pdb_dir, "phe_e.pdb")
-  cmd = "phenix.pdbtools %s modify.output.file_name=modified.pdb params" % (
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" modify.output.file_name=modified.pdb params' % (
     file_name)
   result = run_command(command=cmd, verbose=verbose)
   lines = result.stdout_lines
@@ -400,7 +403,8 @@ Rigid body shift: selected atoms: 24 of 36""")
 def exercise_no_cryst1(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "t.pdb")
   output = "modified.pdb"
-  base = "phenix.pdbtools %s modify.output.file_name=%s "%(file_name, output)
+  assert file_name.find('"') < 0
+  base = 'phenix.pdbtools "%s" modify.output.file_name=%s '%(file_name, output)
   cmd = base+'sites.rotate="0 0 0" sites.translate="0 0 0"'
   run_command(command=cmd, verbose=verbose)
   lines1 = []
@@ -421,18 +425,21 @@ def exercise_no_cryst1(pdb_dir, verbose):
 
 def exercise_show_adp_statistics(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "t.pdb")
-  cmd = "phenix.pdbtools %s --show-adp-statistics"%file_name
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" --show-adp-statistics'%file_name
   run_command(command=cmd, verbose=verbose)
 
 def exercise_show_geometry_statistics(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "phe_e.pdb")
-  cmd = "phenix.pdbtools %s --show-geometry-statistics"%file_name
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" --show-geometry-statistics'%file_name
   run_command(command=cmd, verbose=verbose)
 
 def exercise_show_number_of_removed(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "phe_h.pdb")
   log = "exercise_show_number_of_removed.log"
-  cmd = 'phenix.pdbtools %s remove="element H" > %s' % (file_name, log)
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" remove="element H" > %s' % (file_name, log)
   remove_files(log)
   run_command(command=cmd, verbose=verbose)
   assert os.path.isfile(log)
@@ -446,13 +453,15 @@ def exercise_02(pdb_dir, verbose):
   from iotbx import file_reader
   file_name = os.path.join(pdb_dir, "polypro_Simon_noCRYST1.pdb")
   log = "exercise_02.log"
-  cmd = 'phenix.pdbtools %s --geometry-regularization > %s' % (file_name, log)
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" --geometry-regularization > %s' % (file_name, log)
   remove_files(log)
   run_command(command=cmd, verbose=verbose)
   pdb_1 = file_reader.any_file("polypro_Simon_noCRYST1.pdb_modified.pdb")
   assert os.path.isfile(log)
   log = "exercise_02b.log"
-  cmd = "phenix.pdbtools %s regularize_geometry=True > %s" % (file_name, log)
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" regularize_geometry=True > %s' % (file_name, log)
   remove_files(log)
   remove_files("polypro_Simon_noCRYST1.pdb_modified.pdb")
   run_command(command=cmd, verbose=verbose)
@@ -464,7 +473,8 @@ def exercise_02(pdb_dir, verbose):
 
 def exercise_truncate_to_polyala(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "enk_gbr.pdb")
-  cmd = "phenix.pdbtools %s truncate_to_polyala=true"%file_name
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" truncate_to_polyala=true'%file_name
   run_command(command=cmd, verbose=verbose)
   ala_atom_names = [" N  ", " CA ", " C  ", " O  ", " CB "]
   pdb_inp = iotbx.pdb.hierarchy.input(file_name="enk_gbr.pdb_modified.pdb")
@@ -511,7 +521,7 @@ TER
 """
   ifn = "exercise_renumber_residues.pdb"
   open(ifn,"w").write(input_pdb)
-  easy_run.call("phenix.pdbtools %s renumber_residues=true"%ifn)
+  easy_run.call('phenix.pdbtools "%s" renumber_residues=true'%ifn)
   for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
     line1 = line1.strip()
     line2 = line2.strip()
@@ -521,7 +531,8 @@ def exercise_remove_first_n_atoms_fraction(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "enk_gbr.pdb")
   n_atoms_start = iotbx.pdb.hierarchy.input(
     file_name=file_name).xray_structure_simple().scatterers().size()
-  cmd = "phenix.pdbtools %s remove_first_n_atoms_fraction=0.6"%file_name
+  assert file_name.find('"') < 0
+  cmd = 'phenix.pdbtools "%s" remove_first_n_atoms_fraction=0.6'%file_name
   run_command(command=cmd, verbose=verbose)
   pdb_inp = iotbx.pdb.hierarchy.input(file_name="enk_gbr.pdb_modified.pdb")
   n_atoms_final = iotbx.pdb.hierarchy.input(
