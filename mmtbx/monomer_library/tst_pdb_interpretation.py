@@ -2,9 +2,10 @@ from iotbx import pdb
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from libtbx.utils import Sorry, search_for, format_cpu_times
+from libtbx.utils import Sorry, search_for, format_cpu_times, null_out
 from libtbx.test_utils import Exception_expected, block_show_diff
 import libtbx.load_env
+import iotbx.phil
 from cStringIO import StringIO
 import os
 
@@ -1177,8 +1178,68 @@ chirality pdb=" CB  DTH A  18 "
     True       2.55   -2.55   -0.00 2.00e-01 2.50e+01 4.37e-06
 """)
 
+def exercise_scale_restraints () :
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  def run_pdb_interpretation (file_name) :
+    processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      params=None,
+      file_name=file_name,
+      strict_conflict_handling=True,
+      substitute_non_crystallographic_unit_cell_if_necessary=False,
+      max_atoms=None,
+      log=null_out())
+    return processed_pdb_file
+  edits_phil = iotbx.phil.parse(
+    mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str)
+  edits = libtbx.phil.parse("""
+scale_restraints {
+  atom_selection = chain A and resseq 1
+  scale = 2.0
+}
+scale_restraints {
+  atom_selection = chain A and resseq 4
+  scale = 0.5
+  apply_to = *bond *angle *chirality
+}
+""")
+  params_edits = edits_phil.fetch(source=edits).extract()
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/enk.pdb",
+    test=os.path.isfile)
+  if (not os.path.isfile(pdb_file)) :
+    return
+  processed_pdb_file_1 = run_pdb_interpretation(pdb_file)
+  grm_1 = processed_pdb_file_1.geometry_restraints_manager()
+  angle_proxies_1 = grm_1.angle_proxies
+  dihedral_proxies_1 = grm_1.dihedral_proxies
+  processed_pdb_file_2 = run_pdb_interpretation(pdb_file)
+  grm_2 = processed_pdb_file_2.geometry_restraints_manager(
+    params_edits=params_edits)
+  angle_proxies_2 = grm_2.angle_proxies
+  dihedral_proxies_2 = grm_2.dihedral_proxies
+  assert (len(angle_proxies_2) == len(angle_proxies_1))
+  assert (len(dihedral_proxies_2) == len(dihedral_proxies_1))
+  for j, proxy_1 in enumerate(angle_proxies_1) :
+    proxy_2 = angle_proxies_2[j]
+    if (0 <= j <= 17) : # this corresponds to resseq 1
+      assert (proxy_2.weight == 2*proxy_1.weight)
+    elif (25 <= j <= 43) : # resseq 4 (and adjoining atoms)
+      assert (proxy_2.weight == 0.5*proxy_1.weight)
+    else :
+      assert (proxy_2.weight == proxy_1.weight)
+  for j, proxy_1 in enumerate(dihedral_proxies_1) :
+    proxy_2 = dihedral_proxies_2[j]
+    if (0 <= j <= 3) :
+      assert (proxy_2.weight == 2*proxy_1.weight)
+    else :
+      assert (proxy_2.weight == proxy_1.weight)
+
 def run(args):
   assert len(args) == 0
+  exercise_scale_restraints()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   exercise_pdb_string(mon_lib_srv, ener_lib)
