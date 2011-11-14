@@ -244,10 +244,10 @@ namespace scitbx { namespace lapack { namespace boost_python {
     SCITBX_ASSERT(a.accessor().is_square());
     int n = a.accessor()[0];
     SCITBX_ASSERT(w.size() == n);
-    bool active = false;
     int info = 99;
 #if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
     int lwork = -1;
+    bool active = false;
     for(unsigned i_pass=0;i_pass<2;i_pass++) {
       boost::scoped_array<double> work(new double[std::max(1,lwork)]);
 #endif
@@ -284,8 +284,8 @@ namespace scitbx { namespace lapack { namespace boost_python {
         active = true;
 #endif
       }
-      if (!active) break;
 #if defined(SCITBX_LAPACK_FEM) || defined(SCITBX_LAPACK_FOR)
+      if (!active) break;
       if (i_pass == 0) {
         TBXX_ASSERT(info == 0);
         lwork = static_cast<int>(work[0]);
