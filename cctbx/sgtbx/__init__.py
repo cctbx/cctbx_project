@@ -658,11 +658,11 @@ class _(boost.python.injector, ext.site_symmetry_table):
 
   def discard_symmetry(self):
     assert len(self.table())>0
-    assert self.table()[0].is_point_group_1()
-    n = self.indices().size()
+    site_sym = self.table()[0]
+    assert site_sym.is_point_group_1()
     return site_symmetry_table(
-      indices=flex.size_t(n,0),
-      table=self.table()[:1],
+      indices=flex.size_t(self.indices().size(), 0),
+      table=[site_symmetry_ops(1, site_sym.special_op(), site_sym.matrices())],
       special_position_indices=flex.size_t())
 
 class _(boost.python.injector, wyckoff_position):
