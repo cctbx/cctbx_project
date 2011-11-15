@@ -1140,12 +1140,11 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, '  goto end_of_script'
       print >> f, ':update_path'
       print >> f, '  set PYTHONHOME='
-      print >> f, '  set $CURDIR=%CD%'
       print >> f, '  set $LIBTBX_BUILD=%~dp0'
-      print >> f, '  cd "%$LIBTBX_BUILD%"'
+      print >> f, '  pushd "%$LIBTBX_BUILD%"'
     setpaths.update_path("PATH", [self.bin_path])
     for f in s, u:
-      print >> f, '  cd "%$CURDIR%"'
+      print >> f, '  popd'
     for command in ["setpaths_all", "unsetpaths"]:
       print >> s, '  doskey libtbx.%s="%s\\%s.bat"' % (
         command, abs(self.build_path), command)
