@@ -94,10 +94,14 @@ class XrayFrame (wx.Frame) :
         self.image_chooser.SetSelection(i)
         break
       elif (file_name_or_data == self.image_chooser.GetString(i)) :
-        file_name = os.path.abspath(file_name_or_data)
         self._img = self.image_chooser.GetClientData(i)
         if (self._img is None) :
-          self._img = rstbx.viewer.image(file_name)
+          if (type(file_name_or_data) != type("")) :
+            self._img = rstbx.viewer.image(
+              os.path.abspath(file_name_or_data.encode("ascii")))
+          else :
+            self._img = rstbx.viewer.image(
+              os.path.abspath(file_name_or_data))
           self.image_chooser.SetClientData(i, self._img)
         self.image_chooser.SetSelection(i)
         break
@@ -132,11 +136,11 @@ class XrayFrame (wx.Frame) :
     if os.path.isfile(file_name):
       for i in xrange(self.image_chooser.GetCount()) :
         if (file_name < self.image_chooser.GetString(i)) :
-          self.image_chooser.Insert(file_name, i)
+          self.image_chooser.Insert(file_name, i, None)
           return
         if (file_name == self.image_chooser.GetString(i)) :
           return
-      self.image_chooser.Insert(file_name, self.image_chooser.GetCount())
+      self.image_chooser.Insert(file_name, self.image_chooser.GetCount(), None)
 
   def annotate_image (self, file_name) :
     assert (self._distl is not None)
