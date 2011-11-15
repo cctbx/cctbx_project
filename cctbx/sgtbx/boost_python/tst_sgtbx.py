@@ -1490,6 +1490,7 @@ def exercise_site_symmetry():
   assert list(d.indices()) == [0,0,0,0]
   assert len(d.table())==1
   assert d.table()[0].is_point_group_1()
+  assert d.table()[0].multiplicity() == 1
   assert d.special_position_indices().size()==0
   #
   t = sgtbx.site_symmetry_table()
