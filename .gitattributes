@@ -1166,11 +1166,13 @@ mmtbx/model_vs_data.py -text
 mmtbx/monomer_library/cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/conv_v2_v3.py svneol=native#text/x-python
+mmtbx/monomer_library/idealized_aa.py -text
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/monomer_library/rotamer_utils.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_cif_triage.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_geo_reduce_for_tardy.py svneol=native#text/x-python
+mmtbx/monomer_library/tst_idealized_aa.py -text
 mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python
