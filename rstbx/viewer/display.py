@@ -142,6 +142,7 @@ class XrayView (wx.Panel) :
     if (self._img is not None) :
       w, h = self.GetSize()
       self._img.set_screen_size(w, h)
+      self.Refresh()
 
   def OnRecordMouse (self, event) :
     self.xmouse = event.GetX()
