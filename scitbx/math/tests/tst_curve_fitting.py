@@ -5,6 +5,10 @@ from libtbx.utils import frange
 from scitbx.array_family import flex
 from scitbx.math import curve_fitting
 
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
+
 def run():
 
   def do_polynomial_fit(x, params):
