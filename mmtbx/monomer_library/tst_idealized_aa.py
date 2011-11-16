@@ -1,10 +1,10 @@
-import os,sys,time
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx.monomer_library import idealized_aa as iaa
 import iotbx.pdb.amino_acid_codes
 from scitbx.array_family import flex
+import time
 
 def exercise_00():
   d = iaa.residue_dict()
