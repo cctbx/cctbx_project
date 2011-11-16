@@ -352,6 +352,7 @@ class prepare_data (object) :
     xray_structure = self.pdb_in.xray_structure_simple(
       crystal_symmetry=apply_symm)
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    hd_selection = xray_structure.hd_selection()
     if (not (("H" in sctr_keys) or ("D" in sctr_keys))) :
       print >> out, "  WARNING: this model does not contain hydrogen atoms!"
       print >> out, "           strongly recommend running phenix.ready_set or"
@@ -374,6 +375,7 @@ class prepare_data (object) :
       print >> out, ""
     if (set_b is not None) :
       u_iso = xray_structure.extract_u_iso_or_u_equiv()
+      u_iso = u_iso.select(~hd_selection)
       u_mean = flex.mean(u_iso)
       b_mean = adptbx.u_as_b(u_mean)
       scale = set_b / b_mean
