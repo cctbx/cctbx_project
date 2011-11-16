@@ -731,7 +731,8 @@ def get_atom_selections(all_chain_proxies,
                         one_group_per_residue = False,
                         allow_empty_selection = False,
                         hydrogens_only        = False,
-                        one_selection_array   = False):
+                        one_selection_array   = False,
+                        parameter_name        = None):
   atoms = all_chain_proxies.pdb_atoms
   scatterers = xray_structure.scatterers()
   assert atoms.size() == scatterers.size()
@@ -784,33 +785,43 @@ def get_atom_selections(all_chain_proxies,
   else:
     raise Sorry('Ambiguous selection.')
   #
+  def selection_info (idx) :
+    sele_str = str(selection_strings[idx])
+    if (parameter_name is not None) :
+      return "for parameter %s (%s)" % (parameter_name, sele_str)
+    else :
+      return "(%s)" % sele_str
   if(len(selections)>1):
     if(not isinstance(selections[0], flex.bool)):
       if(selections[0].size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection.")
+        raise Sorry("Empty selection %s." % selection_info(0))
       tmp = flex.bool(xray_structure.scatterers().size(), selections[0]).as_int()
     else:
       if(selections[0].iselection().size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection.")
+        raise Sorry("Empty selection %s." % selection_info(0))
       tmp = selections[0].deep_copy().as_int()
-    for tmp_s in selections[1:]:
+    for k, tmp_s in enumerate(selections[1:], start=1):
       if(not isinstance(tmp_s, flex.bool)):
         if(tmp_s.size()==0 and not allow_empty_selection):
-          raise Sorry("Empty selection.")
+          raise Sorry("Empty selection %s." % selection_info(k))
         tmp = tmp + flex.bool(xray_structure.scatterers().size(),tmp_s).as_int()
       else:
         if(tmp_s.iselection().size()==0 and not allow_empty_selection):
-          raise Sorry("Empty selection.")
+          raise Sorry("Empty selection %s." % selection_info(k))
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
-      raise Sorry("Duplicate selections.")
+      if (parameter_name is not None) :
+        raise Sorry("One or more overlapping selections for %s." %
+          parameter_name)
+      else :
+        raise Sorry("One or more overlapping selections.")
   else:
     if(not isinstance(selections[0], flex.bool)):
       if(selections[0].size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection.")
+        raise Sorry("Empty selection %s." % selection_info(0))
     else:
       if(selections[0].iselection().size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection.")
+        raise Sorry("Empty selection %s." % selection_info(0))
   #
   if(iselection):
     for i_seq, selection in enumerate(selections):
