@@ -9,12 +9,10 @@
 #include <cctbx/crystal_orientation.h>
 
 #include <rstbx/dps_core/directional_fft.h>
+#include <rstbx/dps_core/spotclass.h>
 
 namespace af = scitbx::af;
 namespace rstbx {
-
-enum SpotClass { GOOD, OVERLAP, SPINDLE, ICE, OTHERIMAGE, FULL_ENTER,
-  FULL_EXIT, ENTER1, ENTER2, EXIT3, EXIT4, NONE, OUTLIER };
 
 typedef af::shared<scitbx::vec3<double> >    pointlistmm; //memory management
 typedef boost::shared_ptr<Directional_FFT>   fftptr;

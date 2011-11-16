@@ -1,0 +1,10 @@
+#ifndef RSTBX_SPOTCLASS_H
+#define RSTBX_SPOTCLASS_H
+
+namespace rstbx {
+
+enum SpotClass { GOOD, OVERLAP, SPINDLE, ICE, OTHERIMAGE, FULL_ENTER,
+  FULL_EXIT, ENTER1, ENTER2, EXIT3, EXIT4, NONE, OUTLIER };
+
+} //namespace
+#endif //RSTBX_SPOTCLASS_H
