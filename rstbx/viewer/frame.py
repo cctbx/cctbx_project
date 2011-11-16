@@ -87,8 +87,9 @@ class XrayFrame (wx.Frame) :
     need to be rethought once large datasets are viewed, because it
     may not be attractive to keep all the images in memory.
     """
-    for i in xrange(self.image_chooser.GetCount()) :
-      if (file_name_or_data < self.image_chooser.GetString(i)) :
+    for i in xrange(self.image_chooser.GetCount() + 1) :
+      if (i == self.image_chooser.GetCount() or
+          file_name_or_data < self.image_chooser.GetString(i)) :
         self._img = rstbx.viewer.image(os.path.abspath(file_name_or_data))
         self.image_chooser.Insert(file_name_or_data, i, self._img)
         self.image_chooser.SetSelection(i)
