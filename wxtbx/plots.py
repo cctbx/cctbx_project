@@ -297,7 +297,9 @@ class iotbx_data_plot_base (plot_container) :
       for x in xticks :
         if (x != 0) :
           x = math.sqrt(1 / x)
-        xticklabels.append("%.2f" % x)
+          xticklabels.append("%.2f" % x)
+        else : # FIXME?
+          xticklabels.append("")
       #self.p.get_axes().set_xticks(xticks)
       self.p.get_axes().set_xticklabels(xticklabels)
     else :
