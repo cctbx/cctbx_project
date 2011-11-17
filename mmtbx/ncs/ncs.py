@@ -422,6 +422,12 @@ class ncs:
   def ncs_groups(self):
     return self._ncs_groups
 
+  def ncs_oper_in_first_group(self): # copies in first (usually main) NCS group
+    if self._ncs_groups:
+      return self._ncs_groups[0].n_ncs_oper()
+    else:
+      return None
+
   def read_ncs(self,file_name=None,lines=[],source_info="",log=None,quiet=False):
     if not log: log=sys.stdout
     if not quiet:
