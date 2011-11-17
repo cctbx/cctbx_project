@@ -277,6 +277,12 @@ master_params = iotbx.phil.parse("""\
       .type = float
       .help = Used if target=auto, use optimal target for given working \
               resolution.
+    disable_final_r_factor_check = False
+      .type = bool
+      .expert_level = 2
+      .help = If True, the R-factor check after refinement will not revert to \
+        the previous model, even if the R-factors have increased.
+      .short_caption = Disable R-factor check
     refine_rotation = True
       .type = bool
       .help = Only rotation is refined (translation is fixed).
@@ -578,19 +584,25 @@ class manager(object):
     r_free = fmodel.r_free()
     if((r_work > save_r_work and abs(r_work-save_r_work) > 0.005) or
        (r_free > save_r_free and abs(r_free-save_r_free) > 0.005)):
-       print >> log
-       print >> log, "The model after this rigid-body refinement step is not accepted."
-       print >> log, "Reason: increase in R-factors after refinement."
-       print >> log, "Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work)
-       print >> log, "Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free)
-       print >> log, "Return back to the previous model."
-       print >> log
-       fmodel.update_xray_structure(xray_structure = save_xray_structure,
-                                    update_f_calc  = True,
-                                    update_f_mask  = True)
-       fmodel.info().show_rfactors_targets_scales_overall(
-         header = "rigid body after step back", out = log)
-       print >> log
+      print >> log
+      if (self.params.disable_final_r_factor_check) :
+        print >> log, "Warning: R-factors increased during refinement."
+      else :
+        print >> log, "The model after this rigid-body refinement step is not accepted."
+        print >> log, "Reason: increase in R-factors after refinement."
+      print >> log, "Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work)
+      print >> log, "Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free)
+      if (self.params.disable_final_r_factor_check) :
+        print >> log, "(Revert to previous model is disabled, so accepting result.)"
+      else :
+        print >> log, "Return back to the previous model."
+        print >> log
+        fmodel.update_xray_structure(xray_structure = save_xray_structure,
+                                     update_f_calc  = True,
+                                     update_f_mask  = True)
+        fmodel.info().show_rfactors_targets_scales_overall(
+          header = "rigid body after step back", out = log)
+      print >> log
 
   def rotation(self):
     return self.total_rotation
