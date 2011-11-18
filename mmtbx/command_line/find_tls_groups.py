@@ -223,6 +223,8 @@ def regroup_groups(sels, residues, fragment_size, max_sels):
           x.extend(y)
           sels[i_min]=x
           sels = sels[:i_min+1]+sels[i_min+2:]
+      else:
+        break # XXX Find why it may get here! Example 3zvn XXX
   chsum2 = 0
   for i_seq, s in enumerate(sels):
     chsum2 += len(s)
@@ -337,7 +339,7 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection,
         result_ = flex.size_t()
         is_secondary_structure = False
         for ag in rg.atom_groups():
-          print >> out, ag.resname, get_class(name=ag.resname)
+          #print >> out, ag.resname, get_class(name=ag.resname)
           if(get_class(name=ag.resname) == "common_amino_acid" or
              get_class(name=ag.resname) == "common_rna_dna"):
             for atom in ag.atoms():
