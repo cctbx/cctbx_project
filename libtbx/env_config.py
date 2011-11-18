@@ -350,8 +350,10 @@ class environment:
     self.manage_python_version_major_minor()
     self.reset_dispatcher_support()
     self.set_derived_paths()
+    self.python_exe = relocatable_path(self, sys.executable)
+    if self.python_exe.relocatable.startswith('..'):
+      self.python_exe = absolute_path(sys.executable)
     # sanity checks
-    self.python_exe = absolute_path(sys.executable)
     assert self.python_exe.isfile()
     assert self.python_exe.access(os.X_OK)
 
