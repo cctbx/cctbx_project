@@ -220,7 +220,7 @@ class absolute_path(path_mixin):
     return 'absolute_path("%s")' % self._path
 
   def dirname(self):
-    return os.path.dirname(self._path)
+    return absolute_path(os.path.dirname(self._path))
 
 
 class relocatable_path(path_mixin):
