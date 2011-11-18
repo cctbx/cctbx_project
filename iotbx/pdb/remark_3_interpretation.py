@@ -146,7 +146,16 @@ class extract_tls_parameters(object):
        assert record[0:10] == "REMARK   3"
        if(record.startswith("REMARK   3   TLS GROUP :")):
           group_number = None
-          try: group_number = int(record.split()[5])
+          try:
+            fields = record.split()
+            if (len(fields) >= 6) :
+              group_number = int(fields[5])
+            else :
+              fields = record.split(":")
+              if (len(fields) >= 2) :
+                group_number = int(fields[1].strip())
+              else :
+                raise ValueError()
           except ValueError:
             self.format_err(msg="Cannot extract TLS group number:", rec=record)
             return []
