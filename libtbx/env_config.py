@@ -956,7 +956,7 @@ Wait for the command to finish, then try again.""" % vars())
       if (source_is_py):
         cmd += ' %s"%s%s$LIBTBX_PYEXE_BASENAME"%s' % (
           ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit],
-          escape_sh_double_quoted(self.python_exe.dirname()),
+          escape_sh_double_quoted(abs(self.python_exe.dirname())),
           os.sep,
           qnew)
         if (len(source_specific_dispatcher_include(
@@ -1307,7 +1307,7 @@ selfx:
         target_file=module_name+".python",
         source_is_python_exe=True)
     d, b = self.python_exe.split()
-    pythonw_exe = absolute_path(d) / b.replace("python", "pythonw")
+    pythonw_exe = d / b.replace("python", "pythonw")
     if pythonw_exe.isfile():
       for module_name in module_names:
         self._write_dispatcher_in_bin(
