@@ -993,7 +993,7 @@ Wait for the command to finish, then try again.""" % vars())
     # i.e. it is as if export XXX was added after each set XXX=...
     # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
     # PYTHONPATH each time a dispatcher script is run.
-    # Thus setlocal ... endlocal is essential
+    # Thus setlocal essential (endlocal is implied)
     print >>f, '@echo off'
     print >>f, 'setlocal'
     print >>f, 'set LIBTBX_BUILD=%~dp0'
@@ -1013,14 +1013,14 @@ Wait for the command to finish, then try again.""" % vars())
       # absolute path and therefore prepending the current directory.
       v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
       print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
+    print >>f, 'set LIBTBX_PYTHON=%s' % abs(self.python_exe)
     if source_file.ext().lower() == '.py':
       source_file = op.join('%LIBTBX_ROOT%', source_file.relocatable)
-      print >>f, '"%s" %s "%s" %%*' % (abs(self.python_exe), qnew, source_file)
+      print >>f, '"%%LIBTBX_PYTHON%%"%s "%s" %%*' % (qnew, source_file)
     elif source_file.basename().lower() == 'python.exe':
-      print >>f, '"%s" %s %%*' % (abs(source_file), qnew)
+      print >>f, '"%%LIBTBX_PYTHON%%"%s %%*' % qnew
     else:
       print >>f, '"%s" %%*' % abs(source_file)
-    print >>f, 'endlocal'
     f.close()
 
   def write_dispatcher(self,
@@ -2115,3 +2115,10 @@ def warm_start(args):
   if (pre_processed_args.command_line.options.clear_scons_memory):
     env.clear_scons_memory()
   env.refresh()
+
+if (__name__ == "__main__"):
+  if (len(sys.argv) == 2 and sys.argv[1] == "__libtbx_refresh__"):
+    unpickle().refresh()
+  else:
+    warm_start(sys.argv)
+  print "Done."
