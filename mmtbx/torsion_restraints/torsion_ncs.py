@@ -103,6 +103,7 @@ class torsion_ncs(object):
     self.offset_dict = {}
     self.ncs_dihedral_proxies = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
+    self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
     self.params = params
     self.found_ncs = None
     self.log = log
@@ -175,7 +176,14 @@ class torsion_ncs(object):
               conformer.residues()[len(conformer.residues())-1].resseq_as_int()
         if not found_conformer:
           continue
-        chain_i_str = "chain '%s'" % chain_i.id
+        #test for unique segid
+        segid = utils.get_unique_segid(chain_i)
+        if segid == None:
+          print >> log, \
+            "chain %s has conflicting segid values - skipping" % chain_i.id
+          continue
+        chain_i_str = "chain '%s' and segid '%s'" % \
+          (chain_i.id, segid)
 
         chain_i_list = [chain_i_str]
         sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
@@ -200,7 +208,14 @@ class torsion_ncs(object):
             found_conformer = True
         if not found_conformer:
           continue
-        chain_i_str = "chain '%s'" % chain_i.id
+        #test for unique segid
+        segid_i = utils.get_unique_segid(chain_i)
+        if segid_i == None:
+          #print >> log, \
+          #  "chain %s has conflicting segid values - skipping" % chain_i.id
+          continue
+        chain_i_str = "chain '%s' and segid '%s'" % \
+          (chain_i.id, segid_i)
         for chain_j in chains[i+1:]:
           found_conformer = False
           for conformer in chain_j.conformers():
@@ -210,7 +225,12 @@ class torsion_ncs(object):
               found_conformer = True
           if not found_conformer:
             continue
-          chain_j_str = "chain '%s'" % chain_j.id
+          #test for unique segid
+          segid_j = utils.get_unique_segid(chain_j)
+          if segid_j == None:
+            continue
+          chain_j_str = "chain '%s' and segid '%s'" % \
+          (chain_j.id, segid_j)
           selections = (chain_i_str, chain_j_str)
           residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
                                 params=params,
@@ -228,21 +248,26 @@ class torsion_ncs(object):
             if used_chains is not None:
               if chain_i.id in used_chains:
                 continue
+            pair_key = (chain_i.id, segid_i)
+            match_key = (chain_j.id, segid_j)
             try:
-              pair_hash[chain_i.id].append(chain_j.id)
+              pair_hash[pair_key].append(match_key)
             except Exception:
-              pair_hash[chain_i.id] = []
-              pair_hash[chain_i.id].append(chain_j.id)
-            used_chains.append(chain_j.id)
+              pair_hash[pair_key] = []
+              pair_hash[pair_key].append(match_key)
+            used_chains.append(match_key)
 
       for key in pair_hash.keys():
         ncs_set = []
-        chain_str = "chain '%s'" % key
+        chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
         ncs_set.append(chain_str)
         for add_chain in pair_hash[key]:
-          chain_str = "chain '%s'" % add_chain
+          chain_str = "chain '%s' and segid '%s'" % \
+            (add_chain[0], add_chain[1])
           ncs_set.append(chain_str)
         self.ncs_groups.append(ncs_set)
+      #print self.ncs_groups
+      #STOP()
 
       #calculate sequence offsets
       for ncs_set in self.ncs_groups:
@@ -576,10 +601,10 @@ class torsion_ncs(object):
           continue
         cur_key = ""
         for i_seq in dp.i_seqs:
-          cur_key += self.name_hash[i_seq]
-        if cur_key[5:14] == cur_key[20:29] and \
-           cur_key[5:14] == cur_key[35:44]:
-          key_set.append(cur_key[5:14])
+          cur_key += (self.name_hash[i_seq] + self.segid_hash[i_seq])
+        if cur_key[5:19] == cur_key[24:38] and \
+           cur_key[5:19] == cur_key[43:57]:
+          key_set.append(cur_key[5:19])
       if len(dp_set) == len(key_set):
         key_set.sort()
         master_key = None
