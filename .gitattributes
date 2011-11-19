@@ -979,6 +979,7 @@ libtbx/command_line/bibtex.sh -text
 libtbx/command_line/chunk.py svneol=native#text/x-python
 libtbx/command_line/clear_paths.py svneol=native#text/x-python
 libtbx/command_line/configure.bat -text
+libtbx/command_line/configure.sh svneol=native#text/x-sh
 libtbx/command_line/create_install_script_bat.py svneol=native#text/x-python
 libtbx/command_line/csh.sh -text
 libtbx/command_line/dtrace.py -text
@@ -998,6 +999,7 @@ libtbx/command_line/pdflatex.sh -text
 libtbx/command_line/prime_factors_of.py svneol=native#text/x-python
 libtbx/command_line/raise_exception_for_testing.py svneol=native#text/x-python
 libtbx/command_line/refresh.bat -text
+libtbx/command_line/refresh.sh svneol=native#text/x-sh
 libtbx/command_line/run_pickled_function.py -text
 libtbx/command_line/sge_available_slots.py svneol=native#text/x-python
 libtbx/command_line/sge_qstat_counts.py svneol=native#text/x-python
