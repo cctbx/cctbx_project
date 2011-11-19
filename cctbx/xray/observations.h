@@ -33,9 +33,11 @@ namespace cctbx { namespace xray {
     struct index_twin_component {
       miller::index<> h;
       twin_fraction<FloatType> const* fraction;
+      FloatType scale_;
       index_twin_component(miller::index<> const& h_,
-        twin_fraction<FloatType> const* fraction_)
-        : h(h_), fraction(fraction_) {}
+        twin_fraction<FloatType> const* fraction_, FloatType scale_)
+        : h(h_), fraction(fraction_), scale_(scale_) {}
+      FloatType scale() const { return scale_*fraction->value; }
     };
     // HKLF 5 requires special filtering
     struct filter {
@@ -97,14 +99,19 @@ namespace cctbx { namespace xray {
                 current < 0 ? parent.indices_[h_index]
                   : parent.index_components_[h_index][current].h,
                 idx),
-              parent.merohedral_components_[idx]
+              parent.merohedral_components_[idx],
+              current < 0 ? parent.prime_fraction_
+                : parent.twin_fractions_[parent.index_components_[h_index]
+                  [current].fraction_index]->value
           );
         }
         current_merohedral = 0;  //reset the merohedral iterator
         local_twin_component const& ltw =
           parent.index_components_[h_index][++current];
         return index_twin_component(
-          ltw.h, parent.twin_fractions_[ltw.fraction_index]);
+          ltw.h,
+          parent.twin_fractions_[ltw.fraction_index],
+          parent.prime_twin_fraction_);
       }
     };
   protected:
@@ -123,13 +130,13 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<twin_component<FloatType>*> merohedral_components_;
     scitbx::af::shared<scitbx::mat3<FloatType> > merohedral_laws_;
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions_;
-    scitbx::af::shared<int> measured_scales_indices_;
-    mutable FloatType prime_fraction_;
+    scitbx::af::shared<int> measured_scale_indices_;
+    mutable FloatType prime_fraction_, prime_twin_fraction_;
     void validate_data() {
       CCTBX_ASSERT(indices_.size()==data_.size());
       CCTBX_ASSERT(indices_.size()==sigmas_.size());
       if (index_components_.size() != 0)
-        CCTBX_ASSERT(measured_scales_indices_.size()==indices_.size());
+        CCTBX_ASSERT(measured_scale_indices_.size()==indices_.size());
     }
     miller::index<> generate(miller::index<> const& h, int c_i) const {
       scitbx::mat3<FloatType> const& tl = merohedral_laws_[c_i];
@@ -151,7 +158,7 @@ namespace cctbx { namespace xray {
       indices_.reserve(index_components_.size());
       data_.reserve(index_components_.size());
       sigmas_.reserve(index_components_.size());
-      measured_scales_indices_.reserve(index_components_.size());
+      measured_scale_indices_.reserve(index_components_.size());
       if (indices.size() != 0)
         index_components_.push_back(scitbx::af::shared<local_twin_component>());
       int index = 0;
@@ -165,7 +172,7 @@ namespace cctbx { namespace xray {
         else {
           int s_ind = scale_indices[i];
           CCTBX_ASSERT(!(s_ind < 1 || s_ind > twin_fractions_.size()+1));
-          measured_scales_indices_.push_back(s_ind);
+          measured_scale_indices_.push_back(s_ind);
           indices_.push_back(indices[i]);
           data_.push_back(data[i]);
           sigmas_.push_back(sigmas[i]);
@@ -195,7 +202,8 @@ namespace cctbx { namespace xray {
       : indices_(indices),
         data_(data),
         sigmas_(sigmas),
-        prime_fraction_(-1)
+        prime_fraction_(1),
+        prime_twin_fraction_(1)
     {
       validate_data();
       process_merohedral_components(merohedral_components);
@@ -209,11 +217,11 @@ namespace cctbx { namespace xray {
         twin_fractions,
       scitbx::af::shared<twin_component<FloatType>*> const&
         merohedral_components)
-      : twin_fractions_(twin_fractions),
-        prime_fraction_(-1)
+      : twin_fractions_(twin_fractions)
     {
       build_indices_twin_components(indices, data, sigmas, scale_indices);
       process_merohedral_components(merohedral_components);
+      update_prime_fraction();
     }
     /* customised copy constructor - with possible external twin fractions
     and twin components, used for the Flack parameter refinement, when the
@@ -228,12 +236,12 @@ namespace cctbx { namespace xray {
         data_(obs.data_),
         sigmas_(obs.sigmas_),
         index_components_(obs.index_components_),
-        measured_scales_indices_(obs.measured_scales_indices_),
-        twin_fractions_(twin_fractions),
-        prime_fraction_(-1)
+        measured_scale_indices_(obs.measured_scale_indices_),
+        twin_fractions_(twin_fractions)
     {
       CCTBX_ASSERT(twin_fractions.size()==obs.twin_fractions_.size());
       process_merohedral_components(merohedral_components);
+      update_prime_fraction();
     }
     bool has_twin_components() const {
       return twin_fractions_.size() != 0 || merohedral_components_.size() != 0;
@@ -241,14 +249,15 @@ namespace cctbx { namespace xray {
     iterator_ iterator(int i) const {
       return iterator_(*this, i);
     }
-    // must be called before using scale(index) or iterator
-    FloatType update_prime_fraction() const {
-      FloatType sum=0;
+    /* must be called before using scale(index) or iterator */
+    void update_prime_fraction() const {
+      FloatType sum=0, mero_sum=0;
       for (int i=0; i<twin_fractions_.size(); i++)
         sum += twin_fractions_[i]->value;
+      prime_fraction_ = 1-sum;
       for (int i=0; i<merohedral_components_.size(); i++)
-        sum += merohedral_components_[i]->value;
-      return (prime_fraction_ = 1-sum);
+        mero_sum += merohedral_components_[i]->value;
+      prime_twin_fraction_ = 1-mero_sum;
     }
     // returns number of measured reflections
     int size() const { return indices_.size(); }
@@ -260,9 +269,10 @@ namespace cctbx { namespace xray {
     FloatType sig(int i) const { return sigmas_[i]; }
     // returns scale of a measured reflection
     FloatType scale(int i) const {
-      if (measured_scales_indices_.size() == 0) return prime_fraction_;
-      return measured_scales_indices_[i] < 2 ? prime_fraction_
-        : twin_fractions_[measured_scales_indices_[i]-2]->value;
+      FloatType rv = (measured_scale_indices_.size() == 0 ||
+                      measured_scale_indices_[i] < 2) ? prime_fraction_
+                      : twin_fractions_[measured_scale_indices_[i]-2]->value;
+      return rv*prime_twin_fraction_;
     }
 
     scitbx::af::tiny<scitbx::af::shared<FloatType>, 2> detwin(
@@ -295,7 +305,7 @@ namespace cctbx { namespace xray {
           long ti = twin_map.find_hkl(tw.h);
           if (ti == -1)
             CCTBX_ERROR("Incomplete Fc^2 set");
-          twin_contrib += tw.fraction->value*fc_sqs[ti];
+          twin_contrib += tw.scale()*fc_sqs[ti];
         }
         FloatType scale = fo_sq_prime/(fo_sq_prime*prime_scale + twin_contrib);
         i_dtw[i] = data_[i]*scale;
@@ -307,7 +317,7 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
     scitbx::af::shared<miller::index<> > indices() const { return indices_; }
     scitbx::af::shared<int> measured_scale_indices() const {
-      return measured_scales_indices_;
+      return measured_scale_indices_;
     }
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions() const {
       return twin_fractions_;

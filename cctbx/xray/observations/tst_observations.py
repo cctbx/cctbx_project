@@ -45,9 +45,9 @@ def excersise():
   assert(itr.next().h==(1,-6,-8))
 
   obs = observations.customized_copy(obs,
-          twin_fractions=(xray.twin_fraction(0.6,True),),
+          twin_fractions=(xray.twin_fraction(0.7,True),),
           twin_components=(xray.twin_component(
-              sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True),))
+              sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.25, True),))
 
   itr = obs.iterator(0)
   assert(itr.has_next())
@@ -58,6 +58,14 @@ def excersise():
   assert(itr.next().h==(-1,6,9))
   assert(itr.next().h==(1,-6,-9))
   assert(not itr.has_next())
+
+  ts = 1-obs.ref_twin_components[0].value
+  ps = 1-obs.ref_twin_fractions[0].value
+  itr = obs.iterator(0)
+  assert obs.scale(0) == ts*ps
+  nv = itr.next()
+  assert nv.scale == obs.ref_twin_components[0].value*ps
+
 
 def run():
   excersise()
