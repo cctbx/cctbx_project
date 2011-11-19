@@ -64,6 +64,7 @@ namespace {
              ((arg("observations"),
                arg("twin_fractions"),
                arg("merohedral_components"))))
+        .def("scale", &obst::scale)
         .add_property("indices", &obst::indices)
         .add_property("data", &obst::data)
         .add_property("sigmas", &obst::sigmas)
@@ -89,11 +90,14 @@ namespace {
 
       class_<itct>("index_twin_component", no_init)
         .def(init<cctbx::miller::index<> const&,
-                  cctbx::xray::twin_fraction<FloatType> const*>
+                  cctbx::xray::twin_fraction<FloatType> const*,
+                  double>
              ((arg("index"),
-               arg("fraction"))))
+               arg("fraction"),
+               arg("scale"))))
         .add_property("h", make_getter(&itct::h, rbv()))
         .add_property("fraction", &get_twin_fractions)
+        .add_property("scale", &itct::scale)
         ;
 
       typedef typename obst::filter ft;

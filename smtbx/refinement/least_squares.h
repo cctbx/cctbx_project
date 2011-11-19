@@ -245,11 +245,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
           typename cctbx::xray::observations<FloatType>::index_twin_component twc =
             itr.next();
           f_calc_func.compute(twc.h, compute_grad);
-          obs += twc.fraction->value*f_calc_func.observable;
+          obs += twc.scale()*f_calc_func.observable;
           if (compute_grad) {
             af::shared<FloatType> tmp_gradients =
               jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
-            gradients += twc.fraction->value*tmp_gradients;
+            gradients += twc.scale()*tmp_gradients;
             if (twc.fraction->grad) {
               SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
                 twc.fraction->grad_index >= gradients.size()));
