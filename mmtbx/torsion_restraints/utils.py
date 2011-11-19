@@ -178,6 +178,12 @@ def build_chain_hash(pdb_hierarchy):
       chain_hash[atom.i_seq] = chain.id
   return chain_hash
 
+def build_segid_hash(pdb_hierarchy):
+  segid_hash = dict()
+  for atom in pdb_hierarchy.atoms():
+    segid_hash[atom.i_seq] = atom.segid
+  return segid_hash
+
 def angle_distance(angle1, angle2):
   distance = math.fabs(angle1 - angle2)
   if distance > 180.0:
@@ -283,3 +289,12 @@ def get_nucleic_acid_one_letter_code(resname):
     return resname[2]
   else:
     return resname[0]
+
+def get_unique_segid(chain):
+  segid = None
+  for atom in chain.atoms():
+    if segid is None:
+      segid = atom.segid
+    elif segid != atom.segid:
+      return None
+  return segid
