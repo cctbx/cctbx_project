@@ -77,7 +77,7 @@ class single_gaussian_fit(object):
 
 class gaussian_fit(object):
 
-  def __init__(self, x_obs, y_obs, starting_gaussians):
+  def __init__(self, x_obs, y_obs, starting_gaussians, termination_params=None):
     """Fit one or more gaussians to points (x_obs, y_obs):
          f(x) = sum_i(A_i exp(-(x - mu_i)**2 / (2 * sigma_i**2)))
 
@@ -88,6 +88,7 @@ class gaussian_fit(object):
        :param gaussian: a list or tuple of gaussian objects
        :type gaussian: list
     """
+    self.n_cycles = 0
     self.x_obs = x_obs
     self.y_obs = y_obs
     self.n_gaussians = len(starting_gaussians)
@@ -96,7 +97,8 @@ class gaussian_fit(object):
     self.x = flex.double(list(itertools.chain(
       *[(g.scale, g.mu, math.sqrt(1/(2*g.sigma**2))) for g in starting_gaussians])))
     # run the minimizer
-    self.minimizer = scitbx.lbfgs.run(target_evaluator=self)
+    self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
+                                      termination_params=termination_params)
     # prepare the results
     self.gaussians = []
     for i in range(self.n_gaussians):
@@ -128,7 +130,9 @@ class gaussian_fit(object):
       )))
     return f, g
 
-  #def callback_after_step(self, minimizer):
+  def callback_after_step(self, minimizer):
+    self.n_cycles += 1
+    #print self.n_cycles
     #for i in range(self.n_gaussians):
       #scale, mu, S = tuple(self.x[i*3:i*3+3])
       #sigma = math.sqrt(1/(2 * S**2))
