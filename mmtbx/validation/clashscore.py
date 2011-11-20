@@ -129,7 +129,12 @@ Example:
   #}}}
 
   #{{{ analyze_clashes
-  def analyze_clashes(self, pdb_io=None, hierarchy=None, keep_hydrogens=False) :
+  def analyze_clashes(
+        self,
+        pdb_io=None,
+        hierarchy=None,
+        keep_hydrogens=False,
+        force_unique_chain_ids=False) :
     if (not libtbx.env.has_module(name="probe")):
       print "Probe could not be detected on your system.  Please make sure Probe is in your path."
       print "Probe is available at http://kinemage.biochem.duke.edu/"
@@ -162,6 +167,10 @@ Example:
                                             seg_dict=seg_dict)
       else:
         tmp_r = r
+      duplicate_chain_ids = \
+        utils.check_for_duplicate_chain_ids(pdb_hierarchy=tmp_r)
+      if duplicate_chain_ids:
+        utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
       if keep_hydrogens is False:
         clean_out = easy_run.fully_buffered(trim,
                                     stdin_lines=tmp_r.as_pdb_string())
