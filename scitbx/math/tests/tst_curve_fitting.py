@@ -4,6 +4,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import frange
 from scitbx.array_family import flex
 from scitbx.math import curve_fitting
+import scitbx.lbfgs
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -106,12 +107,15 @@ def run():
     scale, mu, sigma = g.scale, g.mu, g.sigma
     y += scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
 
-  starting_gaussians = [curve_fitting.gaussian(1, 20, 2.1),
+  termination_params = scitbx.lbfgs.termination_parameters(
+    min_iterations=500)
+  starting_gaussians = [curve_fitting.gaussian(1, 21, 2.1),
                         curve_fitting.gaussian(1, 30, 2.8),
                         curve_fitting.gaussian(1, 40, 2.2),
                         curve_fitting.gaussian(1, 51, 1.2),
                         curve_fitting.gaussian(1, 60, 2.3)]
-  fit = curve_fitting.gaussian_fit(x, y, starting_gaussians)
+  fit = curve_fitting.gaussian_fit(
+    x, y, starting_gaussians, termination_params=termination_params)
   y_calc = fit.compute_y_calc()
   assert approx_equal(y, y_calc, eps=1e-3)
 
