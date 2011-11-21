@@ -212,9 +212,16 @@ Example:
           clash_hash[k]="Hbonded"
       bad_clashes = ''
 
+      #sort the output
+      temp = []
       for k in clash_hash.keys():
         if not k in hbond_hash:
-          bad_clashes += k+':'+str(clash_hash[k])+'\n'
+          temp.append(k)
+      def get_clash(k):
+        return clash_hash[k]
+      temp_sorted = sorted(temp, key=get_clash)
+      for k in temp_sorted:
+        bad_clashes += k+':'+str(clash_hash[k])+'\n'
       probe_info = easy_run.fully_buffered(probe_atom,
         stdin_lines=input_str).raise_if_errors().stdout_lines
       for line in probe_info :
