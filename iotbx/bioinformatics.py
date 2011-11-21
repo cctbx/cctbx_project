@@ -1657,9 +1657,11 @@ def composition_from_sequence_file (file_name, log=None) :
     log = sys.stdout
   try :
     seq_file, non_compliant = any_sequence_format(file_name)
+    if (seq_file is None) :
+      raise ValueError("Could not parse %s" % file_name)
   except Exception, e :
     print >> log, str(e)
-    return group_args(n_residues=None, n_bases=None)
+    return None
   else :
     if (len(non_compliant) > 0) :
       print >> log, "Warning: non-compliant entries in sequence file"
