@@ -25,7 +25,8 @@ def exercise_protein () :
     print "Skipping KSDSSP tests: ksdssp module not available."
     run_ksdssp = False
   log = null_out()
-  for file_name in [pdb_file, pdb_file_h] :
+  expected_distances = [2.9, 1.975]
+  for k, file_name in enumerate([pdb_file, pdb_file_h]) :
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
@@ -42,9 +43,21 @@ def exercise_protein () :
     proxies = build_proxies.proxies
     assert (len(proxies) == len(build_proxies.exclude_nb_list) == 109)
     assert (type(proxies[0]).__name__ == "h_bond_simple_proxy")
+    assert (proxies[0].distance_ideal == expected_distances[k])
     (frac_alpha, frac_beta) = m.calculate_structure_content()
     assert ("%.3f" % frac_alpha == "0.643")
     assert ("%.3f" % frac_beta == "0.075")
+    # Make sure the hydrogen auto-detection override is working
+    m.params.h_bond_restraints.substitute_n_for_h = True
+    build_proxies = m.create_hbond_proxies(
+      log=log,
+      as_python_objects=True)
+    proxies = build_proxies.proxies
+    atom_ids = []
+    for i_seq in proxies[0].i_seqs :
+      atom_ids.append(pdb_hierarchy.atoms()[i_seq].id_str())
+    assert (atom_ids == ['pdb=" N   ARG A  41 "', 'pdb=" O   ASP A  37 "'])
+    assert (proxies[0].distance_ideal == 2.9)
     if (run_ksdssp) :
       m = manager(pdb_hierarchy=pdb_hierarchy,
         xray_structure=xray_structure,
