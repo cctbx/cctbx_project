@@ -15,6 +15,10 @@ import sys, os
 ss_restraint_params_str = """
   verbose = False
     .type = bool
+  substitute_n_for_h = None
+    .type = bool
+    .short_caption = Substitute N for H atoms
+    .style = tribool
   restrain_helices = True
     .type = bool
   alpha_only = False
@@ -444,10 +448,19 @@ class manager (object) :
     remove_outliers = self.params.h_bond_restraints.remove_outliers
     if (remove_outliers is None) :
       remove_outliers = True
+    # choice of atoms to restraint is a three-way option: default is to guess
+    # based on whether hydrogens are present in the model, but this can be
+    # misleading in some cases.
+    if (self.params.h_bond_restraints.substitute_n_for_h is None) :
+      use_hydrogens = (not self.assume_hydrogens_all_missing)
+    elif (self.params.h_bond_restraints.substitute_n_for_h) :
+      use_hydrogens = False
+    else :
+      use_hydrogens = True
     build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
-      use_hydrogens=(not self.assume_hydrogens_all_missing),
+      use_hydrogens=use_hydrogens,
       as_python_objects=as_python_objects,
       remove_outliers=remove_outliers,
       master_selection=master_selection,

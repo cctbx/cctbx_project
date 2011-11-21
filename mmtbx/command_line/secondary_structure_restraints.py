@@ -66,7 +66,6 @@ refinement {
     m.show_summary(out=log)
     build_proxies = m.create_hbond_proxies(
       log=log,
-      restraint_type=None,
       as_python_objects=True)
     if (len(build_proxies.proxies) == 0) :
       pass
