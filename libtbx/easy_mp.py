@@ -154,7 +154,7 @@ def pool_map(
       func = func_wrapper(func, buffer_stdout_stderr)
     else:
       fixed_func = func_wrapper(fixed_func, buffer_stdout_stderr)
-  if (processes is None):
+  if (processes is None) or (processes is Auto) :
     from libtbx import introspection
     processes = introspection.number_of_processors()
   if (args is not None):
