@@ -36,9 +36,10 @@ class basic_analyses(object):
       seq_comp = iotbx.bioinformatics.composition_from_sequence_file(
         file_name=phil_object.scaling.input.asu_contents.sequence_file,
         log=out)
-      phil_object.scaling.input.asu_contents.n_residues = seq_comp.n_residues
-      phil_object.scaling.input.asu_contents.n_bases = seq_comp.n_bases
-      self.nres_known = True
+      if (seq_comp is not None) :
+        phil_object.scaling.input.asu_contents.n_residues = seq_comp.n_residues
+        phil_object.scaling.input.asu_contents.n_bases = seq_comp.n_bases
+        self.nres_known = True
     matthews_results =matthews.matthews_rupp(
       crystal_symmetry = miller_array,
       n_residues = phil_object.scaling.input.asu_contents.n_residues,
