@@ -107,7 +107,8 @@ class process_command_line_with_files (object) :
                 pdb_file_def=None,
                 reflection_file_def=None,
                 cif_file_def=None,
-                seq_file_def=None) :
+                seq_file_def=None,
+                pickle_file_def=None) :
     assert (master_phil is not None) or (master_phil_string is not None)
     if (master_phil_string is not None) :
       assert (master_phil is None)
@@ -119,6 +120,7 @@ class process_command_line_with_files (object) :
     self.reflection_file_def = reflection_file_def
     self.cif_file_def = cif_file_def
     self.seq_file_def = seq_file_def
+    self.pickle_file_def = pickle_file_def
     cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
     self.work = cai.process_and_fetch(
        args=args,
@@ -137,6 +139,8 @@ class process_command_line_with_files (object) :
         file_def_name = self.cif_file_def
       elif (f.file_type == "seq") and (self.seq_file_def is not None) :
         file_def_name = self.seq_file_def
+      elif (f.file_type == "pkl") and (self.pickle_file_def is not None) :
+        file_def_name = self.pickle_file_def
       if (file_def_name is not None) :
         return libtbx.phil.parse("%s=%s" % (file_def_name, f.file_name))
       else :
