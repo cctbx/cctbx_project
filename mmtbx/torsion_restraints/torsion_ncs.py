@@ -115,6 +115,9 @@ class torsion_ncs(object):
     dp_hash = {}
     used_chains = []
     res_match_hash = {}
+    atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
+    segids = flex.std_string([ a.segid for a in atom_labels ])
+    use_segid = not segids.all_eq('    ')
     i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
     chain_hash = utils.build_chain_hash(pdb_hierarchy)
     name_hash = utils.build_name_hash(pdb_hierarchy)
@@ -182,8 +185,11 @@ class torsion_ncs(object):
           print >> log, \
             "chain %s has conflicting segid values - skipping" % chain_i.id
           continue
-        chain_i_str = "chain '%s' and segid '%s'" % \
-          (chain_i.id, segid)
+        if (use_segid) :
+          chain_i_str = "chain '%s' and segid '%s'" % \
+            (chain_i.id, segid)
+        else :
+          chain_i_str = "chain '%s'" % chain_i.id
 
         chain_i_list = [chain_i_str]
         sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
@@ -214,8 +220,11 @@ class torsion_ncs(object):
           #print >> log, \
           #  "chain %s has conflicting segid values - skipping" % chain_i.id
           continue
-        chain_i_str = "chain '%s' and segid '%s'" % \
-          (chain_i.id, segid_i)
+        if (use_segid) :
+          chain_i_str = "chain '%s' and segid '%s'" % \
+            (chain_i.id, segid_i)
+        else :
+          chain_i_str = "chain '%s'" % chain_i.id
         for chain_j in chains[i+1:]:
           found_conformer = False
           for conformer in chain_j.conformers():
@@ -229,8 +238,10 @@ class torsion_ncs(object):
           segid_j = utils.get_unique_segid(chain_j)
           if segid_j == None:
             continue
-          chain_j_str = "chain '%s' and segid '%s'" % \
-          (chain_j.id, segid_j)
+          if (use_segid) :
+            chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
+          else :
+            chain_j_str = "chain '%s'" % chain_j.id
           selections = (chain_i_str, chain_j_str)
           residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
                                 params=params,
@@ -245,25 +256,29 @@ class torsion_ncs(object):
                >= self.params.similarity ):
             key = (chain_i_str, chain_j_str)
             alignments[key] = residue_match_map
-            if used_chains is not None:
-              if chain_i.id in used_chains:
-                continue
             pair_key = (chain_i.id, segid_i)
             match_key = (chain_j.id, segid_j)
-            try:
-              pair_hash[pair_key].append(match_key)
-            except Exception:
+            if used_chains is not None:
+              if match_key in used_chains:
+                continue
+            if (not pair_key in pair_hash) :
               pair_hash[pair_key] = []
-              pair_hash[pair_key].append(match_key)
+            pair_hash[pair_key].append(match_key)
             used_chains.append(match_key)
 
       for key in pair_hash.keys():
         ncs_set = []
-        chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
+        if (use_segid) :
+          chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
+        else :
+          chain_str = "chain '%s'" % (key[0])
         ncs_set.append(chain_str)
         for add_chain in pair_hash[key]:
-          chain_str = "chain '%s' and segid '%s'" % \
-            (add_chain[0], add_chain[1])
+          if (use_segid) :
+            chain_str = "chain '%s' and segid '%s'" % \
+              (add_chain[0], add_chain[1])
+          else :
+            chain_str = "chain '%s'" % (add_chain[0])
           ncs_set.append(chain_str)
         self.ncs_groups.append(ncs_set)
       #print self.ncs_groups
