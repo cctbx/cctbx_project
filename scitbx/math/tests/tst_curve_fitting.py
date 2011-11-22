@@ -117,7 +117,7 @@ def run():
   fit = curve_fitting.gaussian_fit(
     x, y, starting_gaussians, termination_params=termination_params)
   y_calc = fit.compute_y_calc()
-  assert approx_equal(y, y_calc, eps=1e-3)
+  assert approx_equal(y, y_calc, eps=1e-2)
 
   if 0:
     from matplotlib import pyplot
