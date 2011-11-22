@@ -2707,6 +2707,24 @@ def exercise_matrix_move():
    11,12,8,9,10,
    16,17,13,14,15]
   #
+  a = flex.long(xrange(1,20+1))
+  a.resize(flex.grid(4,5))
+  b = a.matrix_copy_block(i_row=1,i_column=2,n_rows=2,n_columns=3)
+  assert b.focus() == (2,3)
+  assert list(b) == [8,9,10,13,14,15]
+  a.matrix_paste_block_in_place(block=b, i_row=0, i_column=1)
+  assert list(a) == [
+   1,8,9,10,5,
+   6,13,14,15,10,
+   11,12,13,14,15,
+   16,17,18,19,20]
+  a.matrix_paste_block_in_place(block=b, i_row=2, i_column=2)
+  assert list(a) == [
+   1,8,9,10,5,
+   6,13,14,15,10,
+   11,12,8,9,10,
+   16,17,13,14,15]
+  #
   a = flex.int([1,2,3,4])
   a.reshape(flex.grid(2,2))
   assert not a.matrix_is_symmetric()
