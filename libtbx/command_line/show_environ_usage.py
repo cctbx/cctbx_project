@@ -27,6 +27,9 @@ LIBTBX_DEBUG_LOG
   If set, enables libtbx.introspection.method_debug_log.
   See method_debug_log documentation for details.
 
+LIBTBX_WINGIDE_DEBUG
+  If set, triggers "import wingdbstub" when libtbx.env is loaded.
+
 LIBTBX_CPP0X=False|True
   If False, disables -std=c++0x (if the boost tree is under revision
   control -std=c++0x is enabled automatically for some compilers).

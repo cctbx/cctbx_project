@@ -11,9 +11,8 @@ import re
 import sys, os
 op = os.path
 
-#### DEBUG ####
-if os.environ.get('LIBTBX_WINGIDE_DEBUG'): import wingdbstub
-#### /DEBUG ####
+if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
+  import wingdbstub # special import
 
 # XXX backward compatibility 2011-03-29
 qnew = 2
