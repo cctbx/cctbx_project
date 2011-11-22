@@ -30,6 +30,8 @@ def inspect(py_lines):
         continue
       if (l.endswith(" # implicit import")):
         continue
+      if (l.endswith(" # special import")):
+        continue
       flds = split()
     elif (l.startswith("from ")):
       if (l.startswith("from __future__ ")):
@@ -117,6 +119,7 @@ HINT:
   To suppress flagging of unused imports follow these examples:
     import scitbx.array_family.flex # import dependency
     import something.related # implicit import
+    import wingdbstub # special import
 """
 
 if (__name__ == "__main__"):
