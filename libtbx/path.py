@@ -148,13 +148,13 @@ class path_mixin(object):
     return self.__div__(path)
 
   def isdir(self):
-    return os.path.isdir(abs(self))
+    return op.isdir(abs(self))
 
   def isfile(self):
-    return os.path.isfile(abs(self))
+    return op.isfile(abs(self))
 
   def exists(self):
-    return os.path.exists(abs(self))
+    return op.exists(abs(self))
 
   def open(self, *args, **kwds):
     return open(abs(self), *args, **kwds)
@@ -183,32 +183,32 @@ class path_mixin(object):
     return os.access(abs(self), *args, **kwds)
 
   def basename(self):
-    return os.path.basename(abs(self))
+    return op.basename(abs(self))
 
   def ext(self):
-    return os.path.splitext(self.basename())[1]
+    return op.splitext(self.basename())[1]
 
   def split(self):
     return (self.dirname(), self.basename())
 
   def samefile(self, other):
     if isinstance(other, str) or isinstance(other, unicode):
-      return os.path.samefile(abs(self), other)
+      return op.samefile(abs(self), other)
     else:
-      return os.path.samefile(abs(self), abs(other))
+      return op.samefile(abs(self), abs(other))
 
 
 class absolute_path(path_mixin):
 
   def __init__(self, path, case_sensitive=False):
-    assert os.path.isabs(path)
+    assert op.isabs(path)
     if not case_sensitive:
-      path = os.path.normcase(path)
-    path = os.path.normpath(path)
+      path = op.normcase(path)
+    path = op.normpath(path)
     self._path = path
 
   def __div__(self, other):
-    return absolute_path(os.path.join(self._path, other))
+    return absolute_path(op.join(self._path, other))
 
   def __abs__(self):
     return self._path
@@ -220,15 +220,15 @@ class absolute_path(path_mixin):
     return 'absolute_path("%s")' % self._path
 
   def dirname(self):
-    return absolute_path(os.path.dirname(self._path))
+    return absolute_path(op.dirname(self._path))
 
 
 class relocatable_path(path_mixin):
 
   def __init__(self, rooted, relocatable):
     self._rooted = rooted
-    if os.path.isabs(relocatable):
-      relocatable = os.path.relpath(relocatable, rooted.root_path)
+    if op.isabs(relocatable):
+      relocatable = op.relpath(relocatable, rooted.root_path)
     self.relocatable = relocatable
 
   def root(self):
@@ -237,10 +237,10 @@ class relocatable_path(path_mixin):
 
   def __div__(self, path):
     return relocatable_path(self._rooted,
-                            os.path.join(self.relocatable, path))
+                            op.join(self.relocatable, path))
 
   def __idiv__(self, path):
-    self.relocatable = os.path.join(self.relocatable, path)
+    self.relocatable = op.join(self.relocatable, path)
     return self
 
   def __add__(self, ext):
@@ -253,7 +253,7 @@ class relocatable_path(path_mixin):
       return self
 
   def __abs__(self):
-    return os.path.abspath(os.path.join(self.root, self.relocatable))
+    return op.abspath(op.join(self.root, self.relocatable))
 
   def __repr__(self):
     return 'relocatable_path(root="%s", relocatable="%s")' % (self.root,
@@ -261,13 +261,13 @@ class relocatable_path(path_mixin):
 
   def dirname(self):
     assert self.relocatable
-    return relocatable_path(self._rooted, os.path.dirname(self.relocatable))
+    return relocatable_path(self._rooted, op.dirname(self.relocatable))
 
   def basename(self):
-    return os.path.basename(self.relocatable)
+    return op.basename(self.relocatable)
 
   def normcase(self):
-    return relocatable_path(self._rooted, os.path.normcase(self.relocatable))
+    return relocatable_path(self._rooted, op.normcase(self.relocatable))
 
   def __eq__(self, other):
     return (self._rooted == other._rooted
