@@ -229,9 +229,7 @@ class relocatable_path(path_mixin):
     self._rooted = rooted
     if op.isabs(relocatable):
       assert op.isabs(rooted.root_path)
-      relocatable = op.relpath(
-        op.realpath(relocatable),
-        op.realpath(rooted.root_path))
+      relocatable = op.relpath(op.realpath(relocatable), rooted.root_path)
     self.relocatable = relocatable
 
   def root(self):

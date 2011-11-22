@@ -417,9 +417,10 @@ class environment:
     return relocatable_path(self, path)
 
   def set_build_path(self, build_path):
-    build_path = op.normcase(op.normpath(build_path))
-    self.root_path = op.dirname(build_path)
-    self.build_path = relocatable_path(self, op.basename(build_path))
+    build_path = op.realpath(op.normcase(op.normpath(build_path)))
+    d, b = op.split(build_path)
+    self.root_path = d
+    self.build_path = relocatable_path(self, b)
 
   def set_derived_paths(self):
     self.bin_path     = self.build_path / 'bin'
