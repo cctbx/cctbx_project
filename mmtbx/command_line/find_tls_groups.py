@@ -796,7 +796,7 @@ def find_tls (params,
         #  i_perm, len(perms),target,len(perm)),perm
       print >> out, "    Best fits:"
       print >> out, "      No. of         Targets"
-      print >> out, "      groups   best   rand.pick diff.  score permutation"
+      print >> out, "      groups   best   rand.pick  diff.  score permutation"
       score_best = -1.e+9
       perm_choice = None
       for k, v in zip(dic.keys(),dic.values()):
@@ -818,7 +818,7 @@ def find_tls (params,
           sites_cart = sites_cart.select(chain_selection),
           n_groups   = k)
         score = (r-t_best)/(r+t_best)*100.
-        print >> out, "         %3d   %6.1f   %6.1f %6.1f %6.1f"%(
+        print >> out, "         %3d %6.3f      %6.3f %6.2f %6.3f"%(
           k,t_best, r, r-t_best, score), perm_best
         if(score > score_best):
           score_best = score
