@@ -1,34 +1,28 @@
 
-from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
+from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
 import wx
-import re
 
-class FloatsCtrl (ValidatedTextCtrl) :
-  def __init__ (self, *args, **kwds) :
-    super(FloatsCtrl, self).__init__(*args, **kwds)
-    self.elems = None
-
-  def SetElems (self, elems) :
-    assert (elems is None) or (isinstance(elems, int))
-    self.elems = elems
+class FloatsCtrl (NumbersCtrlBase) :
+  def CheckType (self, value) :
+    return isinstance(value, int) or isinstance(value, float)
 
   def CreateValidator (self) :
     return FloatsValidator()
 
   def SetFloats (self, value) :
     if (value is None) :
-      ValidatedTextCtrl.SetValue(self, "")
+      NumbersCtrlBase.SetValue(self, "")
     elif (isinstance(value, int) or isinstance(value, float)) :
-      ValidatedTextCtrl.SetValue(self, str(float(value)))
+      NumbersCtrlBase.SetValue(self, str(float(value)))
     elif (isinstance(value, list) or isinstance(value, tuple)) :
-      ValidatedTextCtrl.SetValue(self, self.FormatValue(value))
+      NumbersCtrlBase.SetValue(self, self.FormatValue(value))
 
   def SetValue (self, value) :
     self.SetFloats(value)
 
   def GetPhilValue (self) :
     self.Validate()
-    val_str = str(ValidatedTextCtrl.GetValue(self))
+    val_str = str(NumbersCtrlBase.GetValue(self))
     if (val_str == "") :
       return self.ReturnNoneIfOptional()
     return [ float(field) for field in val_str.split() ]
@@ -37,17 +31,9 @@ class FloatsCtrl (ValidatedTextCtrl) :
     format = " ".join([ "%g" for x in range(len(value)) ])
     return format % tuple(value)
 
-class FloatsValidator (TextCtrlValidator) :
-  def CheckFormat (self, value) :
-    if ("," in value) :
-      value = re.sub(",", " ", value)
-    floats_list = [ float(field) for field in value.split() ]
-    if (self.GetWindow().elems is not None) :
-      if (self.GetWindow().elems != len(floats_list)) :
-        raise ValueError(("Wrong number of items - %d values required, "+
-          "but %d are entered.") % (self.GetWindow().elems, len(floats_list)))
-    return floats_list
-#    return self.GetWindow().FormatValue(floats_list)
+class FloatsValidator (NumbersValidator) :
+  def ConvertValue (self, value) :
+    return float(value)
 
 if (__name__ == "__main__") :
   app = wx.App(0)
@@ -57,6 +43,8 @@ if (__name__ == "__main__") :
   floats_ctrl = FloatsCtrl(panel, -1, pos=(300,180), size=(200,-1),
     value=[1.0,2.0,3.5,4.7],
     name="Search model RMSDs")
+  floats_ctrl.SetMin(0.5)
+  floats_ctrl.SetOptional(False)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay (evt) :
     floats = floats_ctrl.GetPhilValue()
