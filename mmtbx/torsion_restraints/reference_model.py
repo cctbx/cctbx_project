@@ -41,6 +41,8 @@ reference_model_params = iotbx.phil.parse("""
    .type = bool
  auto_shutoff_for_ncs = False
    .type = bool
+ SSM_alignment = True
+   .type = bool
  auto_align = False
    .type = bool
  secondary_structure_only = False
@@ -389,15 +391,16 @@ class reference_model(object):
                   selection = sel_ref,
                   log=log).models()[0].chains()[0]
         ssm = None
-        try: #do SSM alignment
-          ssm, ssm_align = utils._ssm_align(
-                      reference_chain = ref_h,
-                      moving_chain = mod_h)
-        except RuntimeError, e:
-          if str(e) != "can't make graph for first structure":
-            raise e
-          else:
-            print >> log, "SSM alignment failed...trying simple matching..."
+        if params.SSM_alignment:
+          try: #do SSM alignment
+            ssm, ssm_align = utils._ssm_align(
+                        reference_chain = ref_h,
+                        moving_chain = mod_h)
+          except RuntimeError, e:
+            if str(e) != "can't make graph for first structure":
+              raise e
+            else:
+              print >> log, "SSM alignment failed..."
         if ssm != None:
           for pair in ssm_align.pairs:
             model_res = pair[0]
@@ -417,7 +420,8 @@ class reference_model(object):
               if ref_atom != None:
                 match_map[temp_model_atoms[key]] = temp_ref_atoms[key]
 
-        else: #ssm failed
+        else: #ssm not selected, or failed
+          print >> log, "trying simple matching..."
           #calculate residue offset
           offset = 0
           if (ref_res_min is not None and ref_res_max is not None \
