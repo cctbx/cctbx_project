@@ -884,7 +884,8 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'export LC_ALL'
     print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd)"'
     print >> f, 'export LIBTBX_BUILD'
-    print >> f, 'LIBTBX_ROOT=$(dirname $LIBTBX_BUILD)'
+    print >> f, 'LIBTBX_ROOT="$(dirname "$LIBTBX_BUILD")"'
+    print >> f, 'export LIBTBX_ROOT'
     print >> f, 'LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename()
     print >> f, 'export LIBTBX_PYEXE_BASENAME'
     source_is_py = False
