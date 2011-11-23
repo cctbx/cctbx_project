@@ -161,6 +161,7 @@ if (compiler not in ("default", None)):
 supported_compilers = (
   "win32_cl",
   "win32_icc",
+  "win32_mingw",
   "unix_gcc",
   "unix_gcc4",
   "unix_clang",
@@ -410,6 +411,70 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
+
+  elif (env_etc.compiler == "win32_mingw"):
+    # the options here are mostly copied from unix_gcc
+    env_etc.libm = ["m"]
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name="gcc")
+    env_base = Environment(ENV=os.environ, tools=['mingw'])
+    env_base.Replace(
+      LINK="g++",
+    )
+    env_etc.shlibsuffix = env_base['SHLIBSUFFIX']
+    env_etc.c_link = "gcc"
+    env_etc.ccflags_base = [
+      "-fPIC",
+      "-fno-strict-aliasing"]
+    env_etc.cxxflags_base = []
+    if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
+      env_etc.cxxflags_base.append("-std=c++0x")
+    if (libtbx.env.build_options.warning_level == 0):
+      warn_options = ["-w"]
+      env_etc._enable_more_warnings = "gcc"
+    elif (libtbx.env.build_options.warning_level == 1):
+      warn_options = gcc_common_warn_options()
+    else:
+      warn_options = gcc_common_warn_options() + ["-Werror"]
+    env_etc.ccflags_base.extend(warn_options)
+    if (libtbx.env.build_options.optimization):
+      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
+        opts.insert(2, "-funroll-loops")
+      # -march=native can make some tests crashing
+      #if (env_etc.gcc_version >= 40300):
+      #  opts.insert(1, "-march=native")
+    else:
+      opts = ["-O0", "-fno-inline"]
+    if (libtbx.env.build_options.mode == "profile"):
+      opts.insert(0, "-pg")
+      opts.insert(1, "-ggdb")
+    elif (libtbx.env.build_options.debug_symbols):
+      opts.insert(0, "-g")
+    opts.append("-DBOOST_ALL_NO_LIB")
+    if (libtbx.env.build_options.enable_boost_threads):
+      opts.append("-pthread")
+    else:
+      opts.append('-DBOOST_DISABLE_THREADS')
+    env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=["-static"])
+      static_exe = None
+      lkfl = []
+    elif libtbx.env.build_options.debug_symbols:
+      lkfl = ["-rdynamic"]
+    else:
+      lkfl = ["-s"]
+    env_etc.shlinkflags = ["-shared"]
+    if (libtbx.env.build_options.mode == "profile"):
+      env_base.Prepend(LINKFLAGS=["-pg"])
+      env_etc.shlinkflags.append("-pg")
+    env_base.Append(LINKFLAGS=lkfl)
+    env_etc.shlinkflags.extend(lkfl)
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+    env_etc.mac_os_use_dsymutil = False
+
   else:
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)

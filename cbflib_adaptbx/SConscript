@@ -20,11 +20,13 @@ env_etc.cbflib_common_includes = [
 
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
-if (os.name == "nt"):
+if (env_etc.compiler == "win32_cl"):
   env.Append(CCFLAGS=[
     "/DCBF_NO_REGEX",
     "/Dmalloc=malloc", # work around problem in bison-generated cbf_stx.c
     "/Dfree=free"])
+elif (env_etc.compiler == "win32_mingw"):
+  env.Append(CCFLAGS=["-DCBF_NO_REGEX"])
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)
 
@@ -78,7 +80,7 @@ if (not env_etc.no_boost_python):
   env_cbflib_boost_python_ext.SharedLibrary(
     target='#lib/_pycbf',
     source=[prefix+"/pycbf/pycbf_wrap.c"],
-    LIBS=["cbf"]+env_etc.libm)
+    LIBS=["cbf"]+env_etc.libs_python+env_etc.libm)
 
   Export("env_cbflib_boost_python_ext")
 
