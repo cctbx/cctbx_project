@@ -1,6 +1,8 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/numpy_bridge.hpp>
+#include <scitbx/array_family/versa_matrix.h>
+#include <scitbx/matrix/move.h>
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost/python/args.hpp>
 #include <boost/python/scope.hpp>
@@ -382,6 +384,24 @@ namespace {
       .def("exclusive_or", exclusive_or_a_a, (arg("other")))
       .def("is_super_set", is_super_set, (arg("other")))
       .def("count", f_w::count, (arg("value")))
+      .def("matrix_copy_block",
+        (versa<bool, c_grid<2> >(*)(
+          const_ref<bool, c_grid<2> > const&,
+          unsigned, unsigned, unsigned, unsigned))
+            matrix::copy_block, (
+              arg("i_row"),
+              arg("i_column"),
+              arg("n_rows"),
+              arg("n_columns")))
+      .def("matrix_paste_block_in_place",
+        (void(*)(
+          ref<bool, c_grid<2> > const&,
+          const_ref<bool, c_grid<2> > const&,
+          unsigned, unsigned))
+            matrix::paste_block_in_place, (
+              arg("block"),
+              arg("i_row"),
+              arg("i_column")))
       .def("as_int", as_int)
       .def("as_double", as_double)
       .def("iselection", iselection, (arg("test_value")=true))
