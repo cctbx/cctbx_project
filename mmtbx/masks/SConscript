@@ -1,7 +1,7 @@
 Import("env_base", "env_etc")
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags,
-  LIBS=["cctbx", "omptbx"]+env_etc.libm)
+  LIBS=["cctbx", "omptbx", "cctbx_sgtbx_asu"]+env_etc.libm)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.mmtbx_common_includes)
@@ -18,7 +18,7 @@ builder(
   source=lib_sources)
 
 env = env.Clone()
-env.Prepend(LIBS=["mmtbx_masks", "iotbx_pdb", "cctbx_sgtbx_asu"])
+env.Prepend(LIBS=["mmtbx_masks", "iotbx_pdb"])
 env.Program( target = "tst_mask",  source="tst_mask.cpp")
 
 if (not env_etc.no_boost_python):
