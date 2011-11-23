@@ -276,7 +276,10 @@ class get_r_free_flags_scores(object):
                 if (scoring.reversed): i_free = 1-i_free
                 effective_test_flag_value = c_keys[i_free]
             elif (counts.size() >= 3):
-              if (c_keys == range(min(c_keys), max(c_keys)+1)):
+              c_keys_min = min(c_keys)
+              c_keys_max = max(c_keys)
+              if (((c_keys_max - c_keys_min) < data.size()) and
+                  (c_keys == range(c_keys_min, c_keys_max+1))) :
                 # XXX 0.55 may be too close a margin - the routine to export
                 # R-free flags for CCP4 seems to get this wrong frequently.
                 if (min(c_values) > max(c_values)*0.55):
@@ -297,6 +300,21 @@ class get_r_free_flags_scores(object):
                     else :
                       effective_test_flag_value = min(c_keys)
                   else:
+                    effective_test_flag_value = test_flag_value
+              else : # XXX gross fix to avoid memory leak for corrupted flags
+                n_binary = counts.get(0, 0) + counts.get(1, 0)
+                if (n_binary >= data.size()*0.95) :
+                  if (looks_like_r_free_flags_info(miller_array.info())):
+                    flag_score = 2
+                  else :
+                    flag_score = 1
+                if (flag_score != 0) :
+                  if (test_flag_value is None) :
+                    if (counts[0] >= data.size()*0.55) :
+                      effective_test_flag_value = 1
+                    else :
+                      effective_test_flag_value = min(c_keys)
+                  else :
                     effective_test_flag_value = test_flag_value
       elif miller_array.is_string_array():
         trial_test_flag_value = "f"
