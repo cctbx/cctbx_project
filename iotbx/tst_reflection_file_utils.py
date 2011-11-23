@@ -546,6 +546,29 @@ to specify an unambiguous substring of the target label.
         " Suitability test for R-free flags can only be disabled if both" \
         " r_free_flags.label and r_free_flags.test_flag_value are defined."
     else: raise Exception_expected
+  # test corrupted R-free flags
+  r_free_flags = miller_set.generate_r_free_flags()
+  int_flags = r_free_flags.data().as_int()
+  int_flags[100] = 10000000
+  r_free_flags = r_free_flags.customized_copy(data=int_flags)
+  mtz_dataset = r_free_flags.as_mtz_dataset(
+    column_root_label="TEST")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  reflection_files = [reflection_file_reader.any_reflection_file(
+    file_name="tmp.mtz")]
+  err = StringIO()
+  reflection_file_srv = reflection_file_server(
+    crystal_symmetry=crystal_symmetry,
+    force_symmetry=True,
+    reflection_files=reflection_files,
+    err=err)
+  flags, value = reflection_file_srv.get_r_free_flags(
+    file_name=None,
+    label=None,
+    test_flag_value=None,
+    disable_suitability_test=False,
+    parameter_scope="r_free_flags")
+  assert (value == 1)
 
 def exercise_get_experimental_phases():
   crystal_symmetry = crystal.symmetry(
