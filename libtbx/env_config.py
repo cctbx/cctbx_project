@@ -1,7 +1,7 @@
 import libtbx.path
 from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
-from libtbx.utils import escape_sh_double_quoted, detect_binary_file
+from libtbx.utils import detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
@@ -885,6 +885,8 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd)"'
     print >> f, 'export LIBTBX_BUILD'
     print >> f, 'LIBTBX_ROOT=$(dirname $LIBTBX_BUILD)'
+    print >> f, 'LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename()
+    print >> f, 'export LIBTBX_PYEXE_BASENAME'
     source_is_py = False
     if (source_file is not None):
       dispatcher_name = target_file.basename()
@@ -897,9 +899,6 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, 'export LIBTBX_DISPATCHER_NAME'
       if source_file.ext().lower() == ".py":
         source_is_py = True
-        print >> f, 'LIBTBX_PYEXE_BASENAME=%s' % show_string(
-          self.python_exe.basename())
-        print >> f, 'export LIBTBX_PYEXE_BASENAME'
     for line in self.dispatcher_include(where="at_start"):
       print >> f, line
     essentials = [("PYTHONPATH", self.pythonpath)]
@@ -907,15 +906,8 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
-      v = ":".join([ op.join('${LIBTBX_ROOT}', p.relocatable) for p in v ])
-      if (sys.platform == "irix6" and n == "LD_LIBRARY_PATH"):
-        n32 = "LD_LIBRARYN32_PATH"
-        print >> f, 'if [ -n "$%s" ]; then' % n32
-        print >> f, '  %s="%s:$%s"' % (n32, v, n32)
-        print >> f, '  export %s' % n32
-        print >> f, 'elif [ -n "$%s" ]; then' % n
-      else:
-        print >> f, 'if [ -n "$%s" ]; then' % n
+      v = ":".join([ op.join('$LIBTBX_ROOT', p.relocatable) for p in v ])
+      print >> f, 'if [ -n "$%s" ]; then' % n
       print >> f, '  %s="%s:$%s"' % (n, v, n)
       print >> f, '  export %s' % n
       print >> f, 'else'
@@ -952,28 +944,22 @@ Wait for the command to finish, then try again.""" % vars())
         print >> f, '  LD_PRELOAD="%s"' % ldpl
         print >> f, '  export LD_PRELOAD'
         print >> f, 'fi'
+    print >> f, 'LIBTBX_PYEXE="%s"' % (
+      self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value()
+    print >> f, 'export LIBTBX_PYEXE'
     if (source_file is not None):
       start_python = False
+      def pre_cmd():
+        return ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit]
       cmd = ""
       if (source_is_py):
-        cmd += ' %s"%s%s$LIBTBX_PYEXE_BASENAME"%s' % (
-          ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit],
-          escape_sh_double_quoted(abs(self.python_exe.dirname())),
-          os.sep,
-          qnew)
+        cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew)
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
           start_python = True
-      if hasattr(source_file, 'relocatable'):
-        source_file = op.join('${LIBTBX_ROOT}', source_file.relocatable)
-      else:
-        source_file = abs(source_file)
       if (not start_python):
-        arch_i386 = ['',
-                     '/usr/bin/arch -i386 '
-                     ][self.build_options.force_32bit and not source_is_py]
-        cmd += ' %s "%s"' % (arch_i386, source_file)
+        cmd += '%s "%s"' % (pre_cmd(), source_file.sh_value())
       if (source_is_python_exe):
         cmd += qnew
       print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
@@ -1013,12 +999,12 @@ Wait for the command to finish, then try again.""" % vars())
       # absolute path and therefore prepending the current directory.
       v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
       print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
-    print >>f, 'set LIBTBX_PYTHON=%s' % abs(self.python_exe)
+    print >>f, 'set LIBTBX_PYEXE=%s' % abs(self.python_exe)
     if source_file.ext().lower() == '.py':
       source_file = op.join('%LIBTBX_ROOT%', source_file.relocatable)
-      print >>f, '"%%LIBTBX_PYTHON%%"%s "%s" %%*' % (qnew, source_file)
+      print >>f, '"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (qnew, source_file)
     elif source_file.basename().lower() == 'python.exe':
-      print >>f, '"%%LIBTBX_PYTHON%%"%s %%*' % qnew
+      print >>f, '"%%LIBTBX_PYEXE%%"%s %%*' % qnew
     else:
       print >>f, '"%s" %%*' % abs(source_file)
     f.close()

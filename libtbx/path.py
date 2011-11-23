@@ -197,6 +197,14 @@ class path_mixin(object):
     else:
       return op.samefile(abs(self), abs(other))
 
+  def is_relocatable(self):
+    return isinstance(self, relocatable_path)
+
+  def sh_value(self, root_var="LIBTBX_ROOT"):
+    if (self.is_relocatable()):
+      return op.join("$%s" % root_var, self.relocatable)
+    return abs(self)
+
 
 class absolute_path(path_mixin):
 
