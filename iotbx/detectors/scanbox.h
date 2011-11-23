@@ -185,6 +185,34 @@ class scanbox_tiling_pilatus2M : public scanbox_tiling_pilatus6M {
 
 };
 
+class scanbox_tiling_pilatus300K : public scanbox_tiling_pilatus6M {
+ public:
+  scanbox_tiling_pilatus300K(const int& firstx, const int& lastx,
+                 const int& firsty, const int& lasty):
+                 scanbox_tiling_pilatus6M(firstx,lastx,firsty,lasty){}
+
+  virtual
+  interval_ptr
+  x_tiles(const int& scanbox_width) {
+    if (persistent_x_tiles.size()==0){
+      // x axis:  619 total pixels
+      persistent_x_tiles = generate_pilatus_spacing(195, 17, 3, scanbox_width, firstx, lastx);
+    }
+    return persistent_x_tiles.begin();
+  }
+
+  virtual
+  interval_ptr
+  y_tiles(const int& scanbox_width) {
+    if (persistent_y_tiles.size()==0){
+      // y axis:  487 total pixels
+      persistent_y_tiles = generate_pilatus_spacing(487, 7, 1, scanbox_width, firsty, lasty);
+    }
+    return persistent_y_tiles.begin();
+  }
+
+};
+
 #include <scitbx/array_family/flex_types.h>
 
 //For CXI CS Pad detector.  Explicitly define the rectangular active areas ahead of time.
