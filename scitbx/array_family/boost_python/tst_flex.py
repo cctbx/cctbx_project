@@ -2689,6 +2689,24 @@ def exercise_matrix_move():
   b = a.matrix_copy_column(i_column=1)
   assert list(b) == [2,4]
   #
+  a = flex.bool([i%2 == 0 for i in xrange(1,20+1)])
+  a.resize(flex.grid(4,5))
+  b = a.matrix_copy_block(i_row=1,i_column=2,n_rows=2,n_columns=3)
+  assert b.focus() == (2,3)
+  assert list(b) == [True,False,True,False,True,False]
+  a.matrix_paste_block_in_place(block=b, i_row=0, i_column=1)
+  assert list(a) == [
+   False,True,False,True,False,
+   True,False,True,False,True,
+   False,True,False,True,False,
+   True,False,True,False,True]
+  a.matrix_paste_block_in_place(block=b, i_row=2, i_column=2)
+  assert list(a) == [
+   False,True,False,True,False,
+   True,False,True,False,True,
+   False,True,True,False,True,
+   True,False,False,True,False]
+  #
   a = flex.int(xrange(1,20+1))
   a.resize(flex.grid(4,5))
   b = a.matrix_copy_block(i_row=1,i_column=2,n_rows=2,n_columns=3)
