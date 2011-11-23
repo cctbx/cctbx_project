@@ -981,6 +981,10 @@ class kernel_normalisation(object):
       )
 
     sel_pos = (self.mean_I_array > 0).iselection()
+    # FIXME rare bug: this crashes when the majority of the data are zero,
+    # e.g. because resolution limit was set too high and F/I filled in with 0.
+    # it would be good to catch such cases in advance by inspecting the binned
+    # values, and raise a different error message.
     assert sel_pos.size() > 0
     assert sel_pos.size() >= self.mean_I_array.size() / 2
     self.mean_I_array = self.mean_I_array.select(sel_pos)
