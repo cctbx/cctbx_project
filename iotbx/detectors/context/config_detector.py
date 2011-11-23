@@ -229,7 +229,10 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
     if imageobject.vendortype == "Pilatus" and \
        imageobject.size1==1679 and imageobject.size2==1475:
        imageobject.vendortype = "Pilatus-2M"
-    if imageobject.vendortype in ["Pilatus-6M","Pilatus-2M"]:
+    if imageobject.vendortype == "Pilatus" and \
+       imageobject.size1==619 and imageobject.size2==487:
+       imageobject.vendortype = "Pilatus-300K"
+    if imageobject.vendortype in ["Pilatus-6M","Pilatus-2M","Pilatus-300K"]:
        beam_center_convention = 0
        set_convention(0,phil_params)
        if phil_params.distl.minimum_signal_height==None:

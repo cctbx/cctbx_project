@@ -50,7 +50,8 @@ def test_all(timer=False):
     read3 = P.linearintdata
     if timer: del G
     expected_image_size = {"Pilatus-6M":(2527,2463),
-                           "Pilatus-2M":(1679,1475)}[P.vendortype]
+                           "Pilatus-2M":(1679,1475),
+                           "Pilatus-300K":(619,487)}[P.vendortype]
     assert read1.accessor().focus() == read2.accessor().focus() == expected_image_size
     from cbflib_adaptbx import assert_equal
     #print "Equality of arrays from two decompress methods", assert_equal(read1,read2), "\n"
