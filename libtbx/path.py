@@ -205,6 +205,11 @@ class path_mixin(object):
       return op.join("$%s" % root_var, self.relocatable)
     return abs(self)
 
+  def bat_value(self, root_var="LIBTBX_ROOT"):
+    if (self.is_relocatable()):
+      return op.join("%%%s%%" % root_var, self.relocatable)
+    return abs(self)
+
 
 class absolute_path(path_mixin):
 

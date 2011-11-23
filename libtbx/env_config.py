@@ -977,7 +977,7 @@ Wait for the command to finish, then try again.""" % vars())
         source_file, target_file, source_is_python_exe=False):
     f = target_file.open('w')
     # By default, changes to environment variables are  permanent on Windows,
-    # i.e. it is as if export XXX was added after each set XXX=...
+    # i.e. it is as if export VAR was added after each set VAR=...
     # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
     # PYTHONPATH each time a dispatcher script is run.
     # Thus setlocal essential (endlocal is implied)
@@ -1000,14 +1000,14 @@ Wait for the command to finish, then try again.""" % vars())
       # absolute path and therefore prepending the current directory.
       v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
       print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
-    print >>f, 'set LIBTBX_PYEXE=%s' % abs(self.python_exe)
+    print >>f, 'set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
     if source_file.ext().lower() == '.py':
-      source_file = op.join('%LIBTBX_ROOT%', source_file.relocatable)
-      print >>f, '"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (qnew, source_file)
+      print >>f, '"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
+        qnew, source_file.bat_value())
     elif source_file.basename().lower() == 'python.exe':
       print >>f, '"%%LIBTBX_PYEXE%%"%s %%*' % qnew
     else:
-      print >>f, '"%s" %%*' % abs(source_file)
+      print >>f, '"%s" %%*' % source_file.bat_value()
     f.close()
 
   def write_dispatcher(self,
