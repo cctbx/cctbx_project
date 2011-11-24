@@ -248,12 +248,17 @@ class common_setpaths(object):
       self.u = StringIO() # /dev/null equivalent
 
   def all_and_debug(self):
+    if (self.suffix == "_debug"):
+      self.update_path("PYTHONPATH",
+        os.pathsep.join([
+          self.path_script_value(_) for _ in self.env.pythonpath]))
+      self.update_path(
+        ld_library_path_var_name(), self.path_script_value(self.env.lib_path))
+
+  def set_unset_vars(self):
     if (self.suffix != ""):
       for var_name,path in self.env.var_name_and_build_or_dist_path_pairs():
-        self.setenv(var_name=var_name, val=abs(path))
-    if (self.suffix == "_debug"):
-      self.update_path("PYTHONPATH", self.env.pythonpath)
-      self.update_path(ld_library_path_var_name(), [self.env.lib_path])
+        self.setenv(var_name=var_name, val=self.path_script_value(path))
 
 class unix_setpaths(common_setpaths):
 
@@ -265,6 +270,9 @@ class unix_setpaths(common_setpaths):
     else:
       self._setenv = "setenv %s "
 
+  def path_script_value(self, path_obj):
+    return abs(path_obj)
+
   def setenv(self, var_name, val):
     if (self.shell == "sh"):
       print >> self.s, '  %s="%s"' % (var_name, val)
@@ -275,7 +283,6 @@ class unix_setpaths(common_setpaths):
       print >> self.u, '  unsetenv %s' % var_name
 
   def update_path(self, var_name, val):
-    val = os.pathsep.join([ abs(p) for p in val ])
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       print >> f, '''  %s"`'%s' '%s' %s %s '%s' < /dev/null`"''' % (
         self._setenv % var_name,
@@ -298,25 +305,25 @@ class windows_setpaths(common_setpaths):
 
   def __init__(self, env, suffix):
     common_setpaths.__init__(self, env, "bat", suffix)
-    f = open(env.under_build("path_util.bat"), 'w')
-    print >>f, '"%s" "%s" %%*' % (abs(env.python_exe), abs(env.path_utility))
-    f.close()
+
+  def path_script_value(self, path_obj):
+    return path_obj.bat_value()
 
   def setenv(self, var_name, val):
-    print >> self.s, '  set %s=%s' % (var_name, val)
-    print >> self.u, '  set %s=' % var_name
+    print >> self.s, 'set %s=%s' % (var_name, val)
+    print >> self.u, 'set %s=' % var_name
 
-  def update_path(self, var_name, val):
-    val = os.pathsep.join([ abs(p) for p in val ])
+  def update_path(self, var_name, val, var_name_in=None):
+    if (var_name_in is None): var_name_in = var_name
     fmt = '''\
-  for /F "delims=" %%%%i in ('path_util.bat %s %s "%s"') do set %s=%%%%i'''
+for /F "delims=" %%%%i in ('libtbx.path_utility %s %s "%s"') do set %s=%%%%i'''
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       print >> f, fmt % (
         action,
-        var_name,
+        var_name_in,
         val,
         var_name)
-      print >> f, '  if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" set %s=' % (
+      print >> f, 'if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" set %s=' % (
         var_name, var_name)
 
 def _windows_pathext():
@@ -1070,7 +1077,7 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, 'if [ $? -ne 0 -o ! -f "%s" ]; then' % abs(self.path_utility)
       write_incomplete_libtbx_environment(f)
       print >> f, 'else'
-    setpaths.update_path("PATH", [self.bin_path])
+    setpaths.update_path("PATH", abs(self.bin_path))
     for command in ["setpaths_all", "unsetpaths"]:
       print >> s, """  alias libtbx.%s='. "%s/%s.sh"'""" % (
        command, abs(self.build_path), command)
@@ -1079,6 +1086,7 @@ Wait for the command to finish, then try again.""" % vars())
       print >> s, """  alias cdlibtbxbuild='cd "%s"'""" % abs(self.build_path)
       print >> u, '  unalias cdlibtbxbuild > /dev/null 2>&1'
     setpaths.all_and_debug()
+    setpaths.set_unset_vars()
     for f in s, u:
       print >> f, 'fi'
       print >> f, 'if [ -n "$libtbx_pyhome_save" ]; then'
@@ -1100,7 +1108,7 @@ Wait for the command to finish, then try again.""" % vars())
       print >> f, 'if ($status != 0 || ! -f "%s") then' % abs(self.path_utility)
       write_incomplete_libtbx_environment(f)
       print >> f, 'else'
-    setpaths.update_path("PATH", [self.bin_path])
+    setpaths.update_path("PATH", abs(self.bin_path))
     for command in ["setpaths_all", "unsetpaths"]:
       print >> s, """  alias libtbx.%s 'source "%s/%s.csh"'""" % (
        command, abs(self.build_path), command)
@@ -1109,6 +1117,7 @@ Wait for the command to finish, then try again.""" % vars())
       print >> s, """  alias cdlibtbxbuild 'cd "%s"'""" % abs(self.build_path)
       print >> u, '  unalias cdlibtbxbuild'
     setpaths.all_and_debug()
+    setpaths.set_unset_vars()
     for f in s, u:
       print >> f, 'endif'
       print >> f, 'if ($?libtbx_pyhome_save) then'
@@ -1120,32 +1129,34 @@ Wait for the command to finish, then try again.""" % vars())
     setpaths = windows_setpaths(self, suffix)
     s, u = setpaths.s, setpaths.u
     for f in s, u:
-      print >> f, '@ECHO off'
-      write_do_not_edit_please_re_run_libtbx_configure_py(f=f, win_bat=True)
-      print >> f, 'if not exist "%s" goto fatal_error' % abs(self.python_exe)
-      print >> f, 'if exist "%s" goto update_path' % abs(self.path_utility)
-      print >> f, ':fatal_error'
-      write_incomplete_libtbx_environment(f)
-      print >> f, '  goto end_of_script'
-      print >> f, ':update_path'
-      print >> f, '  set PYTHONHOME='
-      print >> f, '  set $LIBTBX_BUILD=%~dp0'
-      print >> f, '  pushd "%$LIBTBX_BUILD%"'
-    setpaths.update_path("PATH", [self.bin_path])
-    for f in s, u:
-      print >> f, '  popd'
-    for command in ["setpaths_all", "unsetpaths"]:
-      print >> s, '  doskey libtbx.%s="%s\\%s.bat"' % (
-        command, abs(self.build_path), command)
-    print >> u, '  doskey libtbx.unsetpaths='
-    if (self.is_development_environment()):
-      print >> s, '  doskey cdlibtbxbuild=cd "%s"' % abs(self.build_path)
-      print >> u, '  doskey cdlibtbxbuild='
+      print >> f, r'''@ECHO off
+set LIBTBX_BUILD=%~dp0
+set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%
+for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_ROOT=%%~dpF
+set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%
+set LIBTBX_OPATH=%PATH%'''
+      print >> f, 'set PATH=%s;%%PATH%%' % self.bin_path.bat_value()
     setpaths.all_and_debug()
+    setpaths.update_path(
+      var_name="PATH",
+      val=self.bin_path.bat_value(),
+      var_name_in="LIBTBX_OPATH")
+    for command in ["setpaths_all", "unsetpaths"]:
+      print >> s, 'doskey libtbx.%s="%s\\%s.bat"' % (
+        command, "%LIBTBX_BUILD%", command)
+    print >> u, 'doskey libtbx.unsetpaths='
+    if (self.is_development_environment()):
+      print >> s, 'doskey cdlibtbxbuild=cd "%LIBTBX_BUILD%"'
+      print >> u, 'doskey cdlibtbxbuild='
     if (suffix == "_debug"):
-      print >> s, '  set PYTHONCASEOK=1' # no unset
+      print >> s, 'set PYTHONCASEOK=1' # no unset
+    setpaths.set_unset_vars()
     for f in s, u:
-      print >> f, ':end_of_script'
+      print >> f, 'set LIBTBX_OPATH='
+      if (suffix != "_all"):
+        print >> f, 'set LIBTBX_ROOT='
+      if (suffix == ""):
+        print >> f, 'set LIBTBX_BUILD='
 
   def write_SConstruct(self):
     f = open_info(self.under_build("SConstruct",
