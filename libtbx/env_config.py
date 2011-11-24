@@ -310,20 +310,20 @@ class windows_setpaths(common_setpaths):
     return path_obj.bat_value()
 
   def setenv(self, var_name, val):
-    print >> self.s, 'set %s=%s' % (var_name, val)
-    print >> self.u, 'set %s=' % var_name
+    print >> self.s, '@set %s=%s' % (var_name, val)
+    print >> self.u, '@set %s=' % var_name
 
   def update_path(self, var_name, val, var_name_in=None):
     if (var_name_in is None): var_name_in = var_name
     fmt = '''\
-for /F "delims=" %%%%i in ('libtbx.path_utility %s %s "%s"') do set %s=%%%%i'''
+@for /F "delims=" %%%%i in ('libtbx.path_utility %s %s "%s"') do @set %s=%%%%i'''
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       print >> f, fmt % (
         action,
         var_name_in,
         val,
         var_name)
-      print >> f, 'if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" set %s=' % (
+      print >> f, '@if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" @set %s=' % (
         var_name, var_name)
 
 def _windows_pathext():
@@ -988,33 +988,29 @@ Wait for the command to finish, then try again.""" % vars())
     # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
     # PYTHONPATH each time a dispatcher script is run.
     # Thus setlocal essential (endlocal is implied)
-    print >>f, '@echo off'
-    print >>f, 'setlocal'
-    print >>f, 'set LIBTBX_BUILD=%~dp0'
-    print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-    print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_BUILD=%%~dpF'
-    print >>f, 'set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-    print >>f, r'for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_ROOT=%%~dpF'
-    print >>f, 'set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
-    print >>f, 'set LIBTBX_DISPATCHER_NAME=~nx0'
+    print >>f, '@setlocal'
+    print >>f, '@set LIBTBX_BUILD=%~dp0'
+    print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
+    print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF'
+    print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
+    print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_ROOT=%%~dpF'
+    print >>f, '@set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
+    print >>f, '@set LIBTBX_DISPATCHER_NAME=~nx0'
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
-      # Let's not put quotes around each path p here as it is not necessary
-      # and for PYTHONPATH, it would result in python not seeing we have
-      # absolute path and therefore prepending the current directory.
       v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
-      print >>f, 'set %s=%s;%%%s%%' % (n, v, n)
-    print >>f, 'set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
+      print >>f, '@set %s=%s;%%%s%%' % (n, v, n)
+    print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
     if source_file.ext().lower() == '.py':
-      print >>f, '"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
+      print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew, source_file.bat_value())
     elif source_file.basename().lower() == 'python.exe':
-      print >>f, '"%%LIBTBX_PYEXE%%"%s %%*' % qnew
+      print >>f, '@"%%LIBTBX_PYEXE%%"%s %%*' % qnew
     else:
-      print >>f, '"%s" %%*' % source_file.bat_value()
+      print >>f, '@"%s" %%*' % source_file.bat_value()
     f.close()
 
   def write_dispatcher(self,
@@ -1129,34 +1125,33 @@ Wait for the command to finish, then try again.""" % vars())
     setpaths = windows_setpaths(self, suffix)
     s, u = setpaths.s, setpaths.u
     for f in s, u:
-      print >> f, r'''@ECHO off
-set LIBTBX_BUILD=%~dp0
-set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%
-for %%F in ("%LIBTBX_BUILD%") do set LIBTBX_ROOT=%%~dpF
-set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%
-set LIBTBX_OPATH=%PATH%'''
-      print >> f, 'set PATH=%s;%%PATH%%' % self.bin_path.bat_value()
+      print >> f, r'''@set LIBTBX_BUILD=%~dp0
+@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%
+@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_ROOT=%%~dpF
+@set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%
+@set LIBTBX_OPATH=%PATH%'''
+      print >> f, '@set PATH=%s;%%PATH%%' % self.bin_path.bat_value()
     setpaths.all_and_debug()
     setpaths.update_path(
       var_name="PATH",
       val=self.bin_path.bat_value(),
       var_name_in="LIBTBX_OPATH")
     for command in ["setpaths_all", "unsetpaths"]:
-      print >> s, 'doskey libtbx.%s="%s\\%s.bat"' % (
+      print >> s, '@doskey libtbx.%s="%s\\%s.bat"' % (
         command, "%LIBTBX_BUILD%", command)
-    print >> u, 'doskey libtbx.unsetpaths='
+    print >> u, '@doskey libtbx.unsetpaths='
     if (self.is_development_environment()):
-      print >> s, 'doskey cdlibtbxbuild=cd "%LIBTBX_BUILD%"'
-      print >> u, 'doskey cdlibtbxbuild='
+      print >> s, '@doskey cdlibtbxbuild=cd "%LIBTBX_BUILD%"'
+      print >> u, '@doskey cdlibtbxbuild='
     if (suffix == "_debug"):
-      print >> s, 'set PYTHONCASEOK=1' # no unset
+      print >> s, '@set PYTHONCASEOK=1' # no unset
     setpaths.set_unset_vars()
     for f in s, u:
-      print >> f, 'set LIBTBX_OPATH='
+      print >> f, '@set LIBTBX_OPATH='
       if (suffix != "_all"):
-        print >> f, 'set LIBTBX_ROOT='
+        print >> f, '@set LIBTBX_ROOT='
       if (suffix == ""):
-        print >> f, 'set LIBTBX_BUILD='
+        print >> f, '@set LIBTBX_BUILD='
 
   def write_SConstruct(self):
     f = open_info(self.under_build("SConstruct",
