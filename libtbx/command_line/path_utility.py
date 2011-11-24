@@ -4,13 +4,18 @@ def norm(path):
   return os.path.normcase(os.path.normpath(path))
 
 def run(args):
-  assert len(args) == 3
+  assert len(args) >= 2
   mode = args[0]
-  assert mode in ("prepend", "append", "delete")
   env_key = args[1]
-  arg_paths = args[2].split(os.pathsep)
-  try: env_val = os.environ[env_key]
-  except KeyError: env_val = ""
+  if (mode in ("prepend", "append", "delete")):
+    assert len(args) == 3
+    arg_paths = args[2].split(os.pathsep)
+  elif (mode == "tidy"):
+    assert len(args) == 2
+    arg_paths = []
+  else:
+    raise RuntimeError('Unknown mode: "%s"' % mode)
+  env_val = os.environ.get(env_key, "")
   env_paths = env_val.split(os.pathsep)
   if (os.name == "nt"):
     unquoted_paths = []
