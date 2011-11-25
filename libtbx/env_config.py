@@ -994,7 +994,7 @@ Wait for the command to finish, then try again.""" % vars())
     print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
     print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_ROOT=%%~dpF'
     print >>f, '@set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
-    print >>f, '@set LIBTBX_DISPATCHER_NAME=~nx0'
+    print >>f, '@set LIBTBX_DISPATCHER_NAME=%~nx0'
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
