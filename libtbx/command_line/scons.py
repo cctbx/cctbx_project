@@ -43,7 +43,7 @@ def run():
       "  A possible solution is to unpack a SCons distribution in",
       "  one of these directories:"]
     for path in libtbx.env.repository_paths:
-      msg.append("    " + show_string(path))
+      msg.append("    " + show_string(abs(path)))
     msg.extend([
       "  SCons distributions are available at this location:",
       "    http://www.scons.org/",
