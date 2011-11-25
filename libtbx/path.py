@@ -10,6 +10,80 @@ def abs_real_norm(path):
 def abs_norm(path):
   return op.normpath(op.abspath(path))
 
+def posix_relpath(
+      path,
+      start=".",
+      enable_abspath_if_through_root=False):
+  # based on relpath() in Python-2.7.2/Lib/posixpath.py
+  if not path:
+    raise ValueError("no path specified")
+  def as_list(ap):
+    result = []
+    for _ in ap.split("/"):
+      if (_): result.append(_)
+    return result
+  start_list = as_list(op.abspath(start))
+  path_abs = op.abspath(path)
+  path_list = as_list(path_abs)
+  i = len(op.commonprefix([start_list, path_list]))
+  if (i == 0 and enable_abspath_if_through_root):
+    return path_abs
+  rel_list = [".."] * (len(start_list)-i) + path_list[i:]
+  if not rel_list:
+    return "."
+  return op.join(*rel_list)
+
+def nt_relpath(
+      path,
+      start=".",
+      enable_abspath_if_through_root=False):
+  # based on relpath() in Python-2.7.2/Lib/ntpath.py
+  if not path:
+    raise ValueError("no path specified")
+  start_abs = abs_norm(start)
+  path_abs = abs_norm(path)
+  def _abspath_split(abs):
+    prefix, rest = op.splitunc(abs)
+    is_unc = bool(prefix)
+    if not is_unc:
+      prefix, rest = op.splitdrive(abs)
+    rest_list = []
+    for _ in rest.split("\\"):
+      if _: rest_list.append(_)
+    return is_unc, prefix, rest_list
+  start_is_unc, start_prefix, start_list = _abspath_split(start_abs)
+  path_is_unc, path_prefix, path_list = _abspath_split(path_abs)
+  if path_is_unc ^ start_is_unc:
+    if (enable_abspath_if_through_root):
+      return path_abs
+    raise ValueError("Cannot mix UNC and non-UNC paths (%s and %s)"
+                              % (path, start))
+  if path_prefix.lower() != start_prefix.lower():
+    if (enable_abspath_if_through_root):
+      return path_abs
+    if path_is_unc:
+      raise ValueError("path is on UNC root %s, start on UNC root %s"
+                        % (path_prefix, start_prefix))
+    else:
+      raise ValueError("path is on drive %s, start on drive %s"
+                        % (path_prefix, start_prefix))
+  i = 0
+  for e1, e2 in zip(start_list, path_list):
+    if e1.lower() != e2.lower():
+      break
+    i += 1
+  if (i == 0 and not path_is_unc and enable_abspath_if_through_root):
+    return "\\" + "\\".join(path_list)
+  rel_list = [".."] * (len(start_list)-i) + path_list[i:]
+  if not rel_list:
+    return "."
+  return op.join(*rel_list)
+
+if (os.name == "nt"):
+  relpath = nt_relpath
+else:
+  relpath = posix_relpath
+
 def tail_levels(path, number_of_levels):
   return op.join(*path.split(op.sep)[-number_of_levels:])
 
@@ -242,7 +316,10 @@ class relocatable_path(path_mixin):
     self._rooted = rooted
     if op.isabs(relocatable):
       assert op.isabs(rooted.root_path)
-      relocatable = op.relpath(op.realpath(relocatable), rooted.root_path)
+      relocatable = relpath(
+        path=op.realpath(relocatable),
+        start=rooted.root_path,
+        enable_abspath_if_through_root=True)
     self.relocatable = relocatable
 
   def root(self):
