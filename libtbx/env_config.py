@@ -956,20 +956,19 @@ Wait for the command to finish, then try again.""" % vars())
       self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value()
     print >> f, 'export LIBTBX_PYEXE'
     if (source_file is not None):
-      start_python = False
       def pre_cmd():
         return ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit]
       cmd = ""
-      if (source_is_py):
+      if (source_is_py or source_is_python_exe):
         cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew)
+      start_python = False
+      if (source_is_py):
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
           start_python = True
-      if (not start_python):
-        cmd += '%s "%s"' % (pre_cmd(), source_file.sh_value())
-      if (source_is_python_exe):
-        cmd += qnew
+      if (not start_python and not source_is_python_exe):
+        cmd += ' "%s"' % source_file.sh_value()
       print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
       print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
       print >> f, "elif [ $# -eq 0 ]; then"
