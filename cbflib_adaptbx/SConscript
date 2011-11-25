@@ -25,7 +25,7 @@ if (env_etc.compiler == "win32_cl"):
     "/DCBF_NO_REGEX",
     "/Dmalloc=malloc", # work around problem in bison-generated cbf_stx.c
     "/Dfree=free"])
-elif (env_etc.compiler == "win32_mingw"):
+elif (env_etc.compiler.endswith("_mingw")):
   env.Append(CCFLAGS=["-DCBF_NO_REGEX"])
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)

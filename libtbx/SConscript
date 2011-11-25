@@ -162,6 +162,8 @@ supported_compilers = (
   "win32_cl",
   "win32_icc",
   "win32_mingw",
+  "unix_mingw", # cross-compiling works only with 
+                # --build-boost-python-extensions=False
   "unix_gcc",
   "unix_gcc4",
   "unix_clang",
@@ -261,7 +263,8 @@ env_etc._enable_more_warnings = None
 
 is_64bit_architecture = libtbx.env_config.is_64bit_architecture()
 
-if (sys.platform == "win32"):
+if (sys.platform == "win32" or
+      env_etc.compiler.endswith("mingw")):  # cross-compiling for Windows
   if is_64bit_architecture:
     target_arch = 'x86_64'
   else:
@@ -412,18 +415,23 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
 
-  elif (env_etc.compiler == "win32_mingw"):
+  elif env_etc.compiler.endswith("_mingw"):
+    if env_etc.compiler.startswith('win'):
+      env_base = Environment(ENV=os.environ, tools=['mingw'])
+    else:
+      libtbx_dist_path = libtbx.env.under_dist(module_name="libtbx", path="")
+      env_base = Environment(ENV=os.environ, tools=['crossmingw'],
+                                             toolpath=[libtbx_dist_path])
+      assert env_base['CC'] != "gcc", \
+        "Cross-compiler gcc not found. How is it prefixed? (see crossmingw.py)"
     # the options here are mostly copied from unix_gcc
     env_etc.libm = ["m"]
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
-    env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name="gcc")
-    env_base = Environment(ENV=os.environ, tools=['mingw'])
-    env_base.Replace(
-      LINK="g++",
-    )
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version(
+                                                 command_name=env_base['CC'])
     env_etc.shlibsuffix = env_base['SHLIBSUFFIX']
-    env_etc.c_link = "gcc"
+    env_etc.c_link = env_base['CC']
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
