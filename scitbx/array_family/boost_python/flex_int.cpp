@@ -61,6 +61,17 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  shared<long>
+  as_long(
+    const_ref<int> const& O)
+  {
+    shared<long> result(O.size(), init_functor_null<long>());
+    for(std::size_t i=0;i<O.size();i++) {
+      result[i] = static_cast<long>(O[i]);
+    }
+    return result;
+  }
+
   /* For allowed syntax for the optional format_string argument see:
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
@@ -113,6 +124,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
       .def("as_bool", as_bool, (arg("strict")=true))
+      .def("as_long", as_long)
       .def("as_string", as_string, (arg("format_string")="%d"))
       .def("as_rgb_gray_scale_string", as_rgb_gray_scale_string, (
         arg("saturation")))
