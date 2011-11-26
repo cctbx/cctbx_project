@@ -20,17 +20,27 @@ class rotarama_plot_mixin (object) :
                  show_labels=True,
                  colormap='jet',
                  contours=None,
-                 xyz=None) :
+                 xyz=None,
+                 extent=None,
+                 y_marks=None) :
     import matplotlib.cm
     self._points = []
     self._xyz = []
     cm = getattr(matplotlib.cm, colormap)
     self.plot.clear()
-    self.plot.imshow(stats, origin="lower", cmap=cm, extent=self.extent)
+    if (extent is None) :
+      extent = self.extent
+    else :
+      assert (len(extent) == 4)
+    print extent
+    self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
     if (contours is not None) :
       self.plot.contour(stats, contours, origin="lower", cmap=cm,
-        extent=self.extent)
-    self.set_labels()
+        extent=extent)
+    if (y_marks is None) :
+      self.set_labels()
+    else :
+      self.set_labels(y_marks=y_marks)
     self.plot.set_title(title)
     if (points is not None) :
       if (xyz is not None) : assert (len(xyz) == len(points))
@@ -48,7 +58,7 @@ class rotarama_plot_mixin (object) :
 
 class ramachandran_plot_mixin (rotarama_plot_mixin) :
   extent = [-179,179,-179,179]
-  def set_labels (self) :
+  def set_labels (self, y_marks=()) :
     axes = self.plot.get_axes()
     axes.set_xlabel("Phi")
     axes.set_xticks([-120,-60,0,60,120])
@@ -56,12 +66,12 @@ class ramachandran_plot_mixin (rotarama_plot_mixin) :
     axes.set_yticks([-120,-60,0,60,120])
 
 class rotamer_plot_mixin (rotarama_plot_mixin) :
-  def set_labels (self) :
+  def set_labels (self, y_marks=(60,180,300)) :
     axes = self.plot.get_axes()
     axes.set_xlabel("Chi1")
     axes.set_xticks([60,180,300])
     axes.set_ylabel("Chi2")
-    axes.set_yticks([60,180,300])
+    axes.set_yticks(list(y_marks))
     axes.grid(True, color="0.75")
 
 class simple_plot (object) :
