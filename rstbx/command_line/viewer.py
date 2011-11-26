@@ -16,7 +16,7 @@ def run (args) :
   else :
     for file_name in args:
       assert os.path.isfile(file_name)
-      frame.add_file_name(file_name)
+      frame.add_file_name_or_data(file_name)
     frame.load_image(args[0])
   frame.Show()
   app.MainLoop()

@@ -9,6 +9,12 @@ import wx
 import os
 
 class XrayFrame (wx.Frame) :
+  # Maximum number of entries in the cache.
+  CACHE_SIZE = 16
+
+  # Maximum number of entries in the chooser.
+  CHOOSER_SIZE = 1024
+
   def __init__ (self, *args, **kwds) :
     super(XrayFrame, self).__init__(*args, **kwds)
     self.settings = rstbx.viewer.settings()
@@ -21,7 +27,16 @@ class XrayFrame (wx.Frame) :
     self.settings_frame = None
     self.zoom_frame = None
     self.plot_frame = None
+
+    # Currently displayed image.  XXX This is always the first image
+    # from the cache!
     self._img = None
+
+    # Ordered list of (key, image) tuples, most recently viewed image
+    # first.  The key is either an ASCII-encoded absolute path string
+    # or a timestamp.
+    self._img_cache = []
+
     self._distl = None
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.setup_toolbar()
@@ -80,35 +95,54 @@ class XrayFrame (wx.Frame) :
     item = file_menu.Append(-1, "Save screenshot...")
     self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
 
-  def load_image (self, file_name_or_data) :
-    """The load_image() function displays the image stored in the file
-    named @p file_name_or_data.  If the file is not in the image
-    chooser, it is inserted at the appropriate place.  XXX This will
-    need to be rethought once large datasets are viewed, because it
-    may not be attractive to keep all the images in memory.
+  def get_key (self, file_name_or_data) :
+    """The get_key() function returns the key of @p file_name_or_data.
+    In the case of dictionaries, it is the timestamp of the image.
+    For file names, the key is an ASCII-encoded absolute path string.
+    Otherwise, get_key() returns @c None.
     """
-    for i in xrange(self.image_chooser.GetCount() + 1) :
-      if (i == self.image_chooser.GetCount() or
-          file_name_or_data < self.image_chooser.GetString(i)) :
-        self._img = rstbx.viewer.image(os.path.abspath(file_name_or_data))
-        self.image_chooser.Insert(file_name_or_data, i, self._img)
-        self.image_chooser.SetSelection(i)
-        break
-      elif (file_name_or_data == self.image_chooser.GetString(i)) :
-        self._img = self.image_chooser.GetClientData(i)
-        if (self._img is None) :
-          if (type(file_name_or_data) != type("")) :
-            self._img = rstbx.viewer.image(
-              os.path.abspath(file_name_or_data.encode("ascii")))
-          else :
-            self._img = rstbx.viewer.image(
-              os.path.abspath(file_name_or_data))
-          self.image_chooser.SetClientData(i, self._img)
-        self.image_chooser.SetSelection(i)
-        break
+    if (type(file_name_or_data) is dict and "TIMESTAMP" in file_name_or_data) :
+      return file_name_or_data["TIMESTAMP"]
+    if (os.path.isfile(file_name_or_data)) :
+      if (type(file_name_or_data) is str) :
+        return os.path.abspath(file_name_or_data)
+      else :
+        return os.path.abspath(file_name_or_data.encode("ascii"))
+    return None
+
+  def load_image (self, file_name_or_data) :
+    """The load_image() function displays the image from @p
+    file_name_or_data.  The cache and the chooser are updated
+    appropriately.
+    """
+
+    # If the image is cached, retrieve it and move it to the head of
+    # the cache.  Otherwise, prepend the image to the cache, pruning
+    # the last entry if necessary.  XXX This may lead to stale entries
+    # for dictionary images in the chooser.
+    img = None
+    key = self.get_key(file_name_or_data)
+    for i in xrange(len(self._img_cache)) :
+      if (key == self._img_cache[i][0]) :
+        img = self._img_cache.pop(i)[1]
+        self._img_cache.insert(0, (key, img))
+    if (img is None) :
+      if (len(self._img_cache) >= self.CACHE_SIZE) :
+        self._img_cache.pop()
+      if (type(file_name_or_data) is dict) :
+        img = rstbx.viewer.image(file_name_or_data)
+      else :
+        img = rstbx.viewer.image(key)
+      self._img_cache.insert(0, (key, img))
+
+    # Update the selection in the chooser.
+    i = self.add_file_name_or_data(file_name_or_data)
+    self.image_chooser.SetSelection(i)
+
+    self._img = img # XXX
     self.viewer.set_image(self._img)
     self.settings_frame.set_image(self._img)
-    self.SetTitle(file_name_or_data)
+    self.SetTitle(key)
     self.update_statusbar()
     self.Layout()
 
@@ -126,22 +160,28 @@ class XrayFrame (wx.Frame) :
     self.load_image(img_files[0])
     self.annotate_image(img_files[0])
 
-  def add_file_name (self, file_name) :
-    """The add_file_name() function inserts @p file_name into the
-    image chooser, such that file names remain sorted in ascending
-    order.  XXX Maybe it would make sense to only store the basename
-    (or even just the index), and the directory name somewhere else?
-    XXX This is probably the place for heuristics to determine if the
-    viewer was given a pattern, or a plain list of files.
+  def add_file_name_or_data (self, file_name_or_data) :
+    """The add_file_name_or_data() function appends @p
+    file_name_or_data to the image chooser, unless it is already
+    present.  For file-backed images, the base name is displayed in
+    the chooser.  If necessary, the number of entries in the chooser
+    is pruned.  The function returns the index of the recently added
+    entry.  XXX This is probably the place for heuristics to determine
+    if the viewer was given a pattern, or a plain list of files.  XXX
+    Rename this function, because it only deals with the chooser?
     """
-    if os.path.isfile(file_name):
-      for i in xrange(self.image_chooser.GetCount()) :
-        if (file_name < self.image_chooser.GetString(i)) :
-          self.image_chooser.Insert(file_name, i, None)
-          return
-        if (file_name == self.image_chooser.GetString(i)) :
-          return
-      self.image_chooser.Insert(file_name, self.image_chooser.GetCount(), None)
+    key = self.get_key(file_name_or_data)
+    for i in xrange(self.image_chooser.GetCount()) :
+      if (key == self.image_chooser.GetClientData(i)) :
+        return i
+    if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
+      self.image_chooser.Delete(0)
+    i = self.image_chooser.GetCount()
+    if (type(file_name_or_data) is dict) :
+      self.image_chooser.Insert(key, i, None)
+    else :
+      self.image_chooser.Insert(os.path.basename(key), i, key)
+    return i
 
   def annotate_image (self, file_name) :
     assert (self._distl is not None)
@@ -238,17 +278,18 @@ class XrayFrame (wx.Frame) :
       self.settings_frame.update_controls()
 
   def OnChooseImage (self, event) :
-    self.load_image(self.image_chooser.GetStringSelection())
+    self.load_image(self.image_chooser.GetClientData(
+        self.image_chooser.GetSelection()))
 
   def OnPrevious (self, event) :
     n = self.image_chooser.GetSelection()
     if (n != wx.NOT_FOUND and n - 1 >= 0) :
-      self.load_image(self.image_chooser.GetString(n - 1))
+      self.load_image(self.image_chooser.GetClientData(n - 1))
 
   def OnNext (self, event) :
     n = self.image_chooser.GetSelection()
     if (n != wx.NOT_FOUND and n + 1 < self.image_chooser.GetCount()) :
-      self.load_image(self.image_chooser.GetString(n + 1))
+      self.load_image(self.image_chooser.GetClientData(n + 1))
 
   def OnScreenShot (self, event) :
     file_name = wx.FileSelector(
