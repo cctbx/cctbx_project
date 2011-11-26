@@ -457,7 +457,7 @@ def exercise_misc():
   #
   a = flex.int([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31]).as_long()
   b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31])
-  assert (a == b).count(True) == len(a) == len(b)
+  assert a.all_eq(b)
   #
   class old_style:
     def __init__(self, elems):
