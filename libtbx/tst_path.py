@@ -83,7 +83,11 @@ def exercise_relpath():
     exercise = exercise_nt_relpath
   else:
     exercise = exercise_posix_relpath
-  if (sys.version_info[:2] >= (2,7)): # Python 2.6 is slightly different
+  if (sys.version_info[:3] >= (2,7,1)):
+    # relpath first appeared in Python 2.6
+    # Issue #5117 fixed in Python 2.7.1:
+    # Fixed root directory related issue on posixpath.relpath()
+    # and ntpath.relpath().
     from os.path import relpath
     exercise(relpath, False)
   from libtbx.path import relpath
