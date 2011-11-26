@@ -455,6 +455,10 @@ def exercise_misc():
   assert flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]) \
     .as_bool(strict=False).count(True) == 5
   #
+  a = flex.int([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31]).as_long()
+  b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31])
+  assert (a == b).count(True) == len(a) == len(b)
+  #
   class old_style:
     def __init__(self, elems):
       self.elems = tuple(elems)
