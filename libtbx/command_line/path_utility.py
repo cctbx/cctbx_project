@@ -9,7 +9,10 @@ def run(args):
   env_key = args[1]
   if (mode in ("prepend", "append", "delete")):
     assert len(args) == 3
-    arg_paths = args[2].split(os.pathsep)
+    if (args[2] == "__CWD__"):
+      arg_paths = [os.getcwd()]
+    else:
+      arg_paths = args[2].split(os.pathsep)
   elif (mode == "tidy"):
     assert len(args) == 2
     arg_paths = []
