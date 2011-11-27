@@ -115,7 +115,9 @@ class NpyImage(DetectorImageBase):
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
 
     shifted_int_data_old = self.__getattr__('rawdata')
-    shifted_int_data_new = flex.int(flex.grid(shifted_int_data_old.focus()))
+    # Use __class__ attribute to transparently transform either flex.int or flex.double
+    shifted_int_data_new = shifted_int_data_old.__class__(
+      flex.grid(shifted_int_data_old.focus()))
 
     manager = self.get_tile_manager(phil)
 
