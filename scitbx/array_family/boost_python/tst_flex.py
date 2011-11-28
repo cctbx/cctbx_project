@@ -455,8 +455,9 @@ def exercise_misc():
   assert flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]) \
     .as_bool(strict=False).count(True) == 5
   #
-  a = flex.int([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31]).as_long()
-  b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31])
+  a = flex.int([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0]).as_long()
+  a.reshape(flex.grid(2,5))
+  b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0])
   assert a.all_eq(b)
   #
   class old_style:

@@ -61,13 +61,16 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
-  shared<long>
+  af::versa<long, af::flex_grid<> >
   as_long(
-    const_ref<int> const& O)
+    af::const_ref<int, af::flex_grid<> > const& O)
   {
-    shared<long> result(O.size(), init_functor_null<long>());
-    for(std::size_t i=0;i<O.size();i++) {
-      result[i] = static_cast<long>(O[i]);
+    af::versa<long, af::flex_grid<> > result(
+      O.accessor(), af::init_functor_null<long>());
+    std::size_t n = O.accessor().size_1d();
+    long* r = result.begin();
+    for(std::size_t i=0;i<n;i++) {
+      r[i] = static_cast<long>(O[i]);
     }
     return result;
   }
