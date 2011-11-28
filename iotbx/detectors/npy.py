@@ -81,7 +81,7 @@ class NpyImage(DetectorImageBase):
       self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']
       self.bin_safe_set_data(cspad_data['DATA'])
 
-      if (self.parameters['ACTIVE_AREAS'] != None):
+      if (self.parameters['ACTIVE_AREAS'] is not None):
         horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
     if version_control == "CXI 4.1":
