@@ -8,6 +8,19 @@ from libtbx import easy_pickle
 import wx
 import os
 
+# Instance to bind external update event to an event handler
+EVT_EXTERNAL_UPDATE = wx.PyEventBinder(wx.NewEventType(), 0)
+
+class ExternalUpdateEvent(wx.PyCommandEvent):
+  """XXX This class, along with the EVT_EXTERNAL_UPDATE instance
+  should perhaps move into its own file?
+  """
+
+  def __init__(self, eventType = EVT_EXTERNAL_UPDATE.evtType[0], id = 0):
+    wx.PyCommandEvent.__init__(self, eventType, id)
+    self.img          = None
+    self.title        = None
+
 class XrayFrame (wx.Frame) :
   # Maximum number of entries in the cache.
   CACHE_SIZE = 16
@@ -47,6 +60,19 @@ class XrayFrame (wx.Frame) :
     self.Fit()
     self.SetMinSize(self.GetSize())
     self.OnShowSettings(None)
+    self.Bind(EVT_EXTERNAL_UPDATE, self.OnExternalUpdate)
+
+  def OnExternalUpdate(self, event):
+    """The OnExternalUpdate() function updates the image and the title
+    from @p event."""
+
+    # See self.load_image().
+    self._img = event.img
+    self.viewer.set_image(self._img)
+    self.settings_frame.set_image(self._img)
+    self.SetTitle(event.title)
+    self.update_statusbar()
+    self.Layout()
 
   def setup_toolbar (self) :
     btn = self.toolbar.AddLabelTool(id=-1,
