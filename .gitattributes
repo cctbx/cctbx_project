@@ -1063,6 +1063,7 @@ libtbx/tst_path.py svneol=native#text/x-python
 libtbx/tst_runtime_utils.py -text
 libtbx/tst_topological_sort.py svneol=native#text/x-python
 libtbx/tst_xmlrpc_utils.py -text
+libtbx/valgrind-python-cci.supp -text
 libtbx/wingide.py -text
 libtbx/xmlrpc_server_example.py -text
 libtbx/xmlrpc_utils.py -text
