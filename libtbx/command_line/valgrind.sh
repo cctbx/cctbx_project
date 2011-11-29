@@ -5,8 +5,8 @@ if [ -n "$LIBTBX_VALGRIND_TOOL" ]; then
 else
   tool="memcheck"
 fi
-if [ -n "$VALGRIND_OPTS" ]; then
-  for opt in $VALGRIND_OPTS; do
+if [ -n "$LIBTBX_VALGRIND_OPTS" ]; then
+  for opt in $LIBTBX_VALGRIND_OPTS; do
     if [ "$opt" == "-q" ]; then
       verbose="no"
       break
@@ -24,12 +24,20 @@ if [ ! -n "$LIBTBX_VALGRIND" ]; then
     echo "### LIBTBX_VALGRIND not set: using default."
     echo "### To override, define LIBTBX_VALGRIND"
     echo "### before calling $LIBTBX_DISPATCHER_NAME."
+    if [ "`uname`" = Darwin ]; then
+      echo "### Hint: For debug builds insert"
+      echo "###           env LIBTBX_VALGRIND_OPTS=--dsymutil=yes"
+      echo "###       before the current command."
+    fi
+    echo "### Hint: To generate suppressions for new environments insert"
+    echo "###           env LIBTBX_VALGRIND_OPTS=--gen-suppressions=yes"
+    echo "###       before the current command."
   fi
-  opt="$VALGRIND_OPTS"
+  opt="$LIBTBX_VALGRIND_OPTS"
   if [ "`uname`" = Darwin ]; then
     opt=" $opt --trace-children=yes"
   fi
-  LIBTBX_VALGRIND="valgrind --tool=$tool$opt --suppressions=`libtbx.show_dist_paths libtbx`/valgrind-python24.supp"
+  LIBTBX_VALGRIND="valgrind --tool=$tool$opt --suppressions=`libtbx.show_dist_paths libtbx`/valgrind-python-cci.supp"
   if [ $? -ne 0 ]; then exit 1; fi
   export LIBTBX_VALGRIND
 fi
