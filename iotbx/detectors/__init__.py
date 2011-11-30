@@ -95,7 +95,6 @@ def TrySingleImageType(filename,image_type):
   return I
 
 def identify_dataset (path_name) :
-  from libtbx import group_args
   def get_file_name_components (file_name_) :
     base, ext = os.path.splitext(os.path.basename(file_name_))
     fields = base.split("_")
@@ -150,10 +149,27 @@ def identify_dataset (path_name) :
       img_last = x
     ranges.append((img_start, img_last))
     file_base = "%s_%s%s" % (base, suffixes[base], extensions[base])
-    print "%s %s" % (file_base,
-      ", ".join([ "%d-%d" % (a,b) for (a, b) in ranges ]))
-    dataset = group_args(
+    #print "%s %s" % (file_base,
+    #  ", ".join([ "%d-%d" % (a,b) for (a, b) in ranges ]))
+    dataset = dataset_info(
       base_name=os.path.join(dir_name, file_base),
       ranges=ranges)
     results.append(dataset)
   return results
+
+class dataset_info (object) :
+  def __init__ (self, base_name, ranges) :
+    self.base_name = base_name
+    self.ranges = ranges
+
+  def format (self) :
+    ranges_strs = []
+    for start, end in self.ranges :
+      if (start == end) :
+        ranges_strs.append(str(start))
+      else :
+        ranges_strs.append("%d-%d" % (start, end))
+    return "%s (%s)" % (self.base_name, ",".join(ranges_strs))
+
+  def __str__ (self) :
+    return self.format()
