@@ -269,8 +269,12 @@ class unix_setpaths(common_setpaths):
   def update_path(self, var_name, val, var_name_in=None):
     if (var_name_in is None): var_name_in = var_name
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
-      print >> f, '''%s"`libtbx.path_utility %s %s '%s' < /dev/null`"''' % (
-        self._setenv % var_name, action, var_name_in, val)
+      if (self.shell == "sh"):
+        print >> f, '''%s`libtbx.path_utility %s %s "%s" < /dev/null`''' % (
+          self._setenv % var_name, action, var_name_in, val)
+      else:
+        print >> f, '''%s"`libtbx.path_utility %s %s '%s' < /dev/null`"''' % (
+          self._setenv % var_name, action, var_name_in, val)
       if (f is self.s and self.shell == "sh"):
         print >> f, 'export %s' % var_name
       if (self.shell == "sh"):
