@@ -579,7 +579,7 @@ class process_arrays (object) :
       assert isinstance(output_array, cctbx.miller.array)
       fake_label = 2 * string.uppercase[i]
       column_types = None
-      if array_types[i] is not None :
+      if (array_types[i] is not None) :
         import iotbx.mtz
         default_types = iotbx.mtz.default_column_types(output_array)
         if len(default_types) == len(array_types[i]) :
@@ -622,6 +622,7 @@ class process_arrays (object) :
         # XXX this is important for guessing the right flag when dealing
         # with CCP4-style files, primarily when the flag values are not
         # very evenly distributed
+        output_array = None
         new_array.set_info(info)
         test_flag_value = None
         if (params.mtz_file.r_free_flags.preserve_input_values) :
@@ -692,7 +693,10 @@ class process_arrays (object) :
             output_array = r_free_flags.concatenate(other=missing_flags)
             if not output_array.is_unique_set_under_symmetry() :
               output_array = output_array.merge_equivalents().array()
-        else :
+          # XXX if the flags don't actually need extending, the original
+          # values will be preserved.  I think this is a good thing, but does
+          # this inconsistency cause problems elsewhere?
+        if (output_array is None) :
           output_array = r_free_flags
         if (generate_bijvoet_mates) :
           output_array = output_array.generate_bijvoet_mates()
