@@ -873,7 +873,7 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LC_ALL=C'
     print >> f, 'export LC_ALL'
-    print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd)"' # XXX -P
+    print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd -P)"'
     print >> f, 'export LIBTBX_BUILD'
     print >> f, 'LIBTBX_ROOT="$(dirname "$LIBTBX_BUILD")"'
     print >> f, 'export LIBTBX_ROOT'
@@ -1053,10 +1053,10 @@ Wait for the command to finish, then try again.""" % vars())
       f.write("""\
 ocwd="`pwd`"
 cd "%s"
-LIBTBX_BUILD="`pwd`" # XXX -P
+LIBTBX_BUILD=`pwd -P`
 export LIBTBX_BUILD
 cd ..
-LIBTBX_ROOT="`pwd`" # XXX -P
+LIBTBX_ROOT=`pwd -P`
 export LIBTBX_ROOT
 LIBTBX_OPATH="$PATH"
 export LIBTBX_OPATH
@@ -1095,10 +1095,10 @@ alias libtbx.unsetpaths=". '$LIBTBX_BUILD/unsetpaths.sh'"
       f.write("""\
 set ocwd="$cwd"
 cd "%s"
-setenv LIBTBX_BUILD "`pwd`" # XXX -P
+setenv LIBTBX_BUILD "`/bin/sh -c 'pwd -P'`"
 cd ..
-setenv LIBTBX_ROOT "`pwd`"
-setenv LIBTBX_OPATH "$PATH" # XXX -P
+setenv LIBTBX_ROOT "`/bin/sh -c 'pwd -P'`"
+setenv LIBTBX_OPATH "$PATH"
 setenv PATH "$LIBTBX_BUILD/bin:$PATH"
 cd "$ocwd"
 unset ocwd
