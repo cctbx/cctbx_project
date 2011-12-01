@@ -1064,7 +1064,8 @@ Wait for the command to finish, then try again.""" % vars())
       write_do_not_edit(f=f)
       f.write("""\
 ocwd="`pwd`"
-cd `dirname "$BASH_SOURCE[0]"`
+LIBTBX_BUILD=`dirname "$BASH_SOURCE[0]"`
+cd "$LIBTBX_BUILD"
 LIBTBX_BUILD=`pwd -P`
 export LIBTBX_BUILD
 cd ..
@@ -1078,12 +1079,12 @@ cd "$ocwd"
 ocwd=
 """)
     s.write("""\
-alias libtbx.setpaths_all=". '$LIBTBX_BUILD/setpaths_all.sh'"
-alias libtbx.unsetpaths=". '$LIBTBX_BUILD/unsetpaths.sh'"
+alias libtbx.setpaths_all=". \\"$LIBTBX_BUILD/setpaths_all.sh\\""
+alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
 """)
     print >> u, 'unalias libtbx.unsetpaths > /dev/null 2>&1'
     if (self.is_development_environment()):
-      print >> s, '''alias cdlibtbxbuild="cd '$LIBTBX_BUILD'"'''
+      print >> s, '''alias cdlibtbxbuild="cd \\"$LIBTBX_BUILD\\""'''
       print >> u, 'unalias cdlibtbxbuild > /dev/null 2>&1'
     setpaths.all_and_debug()
     setpaths.set_unset_vars()
