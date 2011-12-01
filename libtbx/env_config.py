@@ -1107,7 +1107,12 @@ alias libtbx.unsetpaths=". '$LIBTBX_BUILD/unsetpaths.sh'"
       write_do_not_edit(f=f)
       f.write("""\
 set ocwd="$cwd"
-cd "%s"
+if ($?LIBTBX_BUILD_RELOCATION_HINT) then
+  cd "$LIBTBX_BUILD_RELOCATION_HINT"
+  unsetenv LIBTBX_BUILD_RELOCATION_HINT
+else
+  cd "%s"
+endif
 setenv LIBTBX_BUILD "`/bin/sh -c 'pwd -P'`"
 cd ..
 setenv LIBTBX_ROOT "`/bin/sh -c 'pwd -P'`"
