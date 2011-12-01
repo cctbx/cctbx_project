@@ -270,14 +270,26 @@ class unix_setpaths(common_setpaths):
     if (var_name_in is None): var_name_in = var_name
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       if (self.shell == "sh"):
-        print >> f, '''%s`libtbx.path_utility %s %s "%s" < /dev/null`''' % (
-          self._setenv % var_name, action, var_name_in, val)
+        print >> f, 'if [ -n "$%s" ]; then' % var_name_in
+        print >> f, '  LIBTBX_TMPVAL="$%s"' % var_name_in
+        print >> f, 'else'
+        print >> f, '  LIBTBX_TMPVAL='
+        print >> f, 'export LIBTBX_TMPVAL'
+        print >> f, 'fi'
+        fmt = \
+          '''%s`libtbx.path_utility %s LIBTBX_TMPVAL "%s" < /dev/null`'''
       else:
-        print >> f, '''%s"`libtbx.path_utility %s %s '%s' < /dev/null`"''' % (
-          self._setenv % var_name, action, var_name_in, val)
-      if (f is self.s and self.shell == "sh"):
-        print >> f, 'export %s' % var_name
+        print >> f, 'if ($?%s) then' % var_name_in
+        print >> f, '  setenv LIBTBX_TMPVAL "$%s"' % var_name_in
+        print >> f, 'else'
+        print >> f, '  unsetenv LIBTBX_TMPVAL'
+        print >> f, 'endif'
+        fmt = \
+          '''%s"`libtbx.path_utility %s LIBTBX_TMPVAL '%s' < /dev/null`"'''
+      print >> f, fmt % (self._setenv % var_name, action, val)
       if (self.shell == "sh"):
+        if (f is self.s):
+          print >> f, 'export %s' % var_name
         print >> f, \
           'if [ "$%s" = "L_I_B_T_B_X_E_M_P_T_Y" ]; then unset %s; fi' % (
           var_name, var_name)
@@ -1080,6 +1092,7 @@ alias libtbx.unsetpaths=". '$LIBTBX_BUILD/unsetpaths.sh'"
       val=self.bin_path.sh_value(),
       var_name_in="LIBTBX_OPATH")
     for f in s, u:
+      print >> f, 'LIBTBX_TMPVAL='
       print >> f, 'LIBTBX_OPATH='
       if (suffix != "_all"):
         print >> f, 'LIBTBX_ROOT='
@@ -1118,6 +1131,7 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
       val=self.bin_path.sh_value(),
       var_name_in="LIBTBX_OPATH")
     for f in s, u:
+      print >> f, 'unsetenv LIBTBX_TMPVAL'
       print >> f, 'unsetenv LIBTBX_OPATH'
       if (suffix != "_all"):
         print >> f, 'unsetenv LIBTBX_ROOT'
