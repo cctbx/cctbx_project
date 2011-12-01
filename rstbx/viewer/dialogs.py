@@ -3,7 +3,8 @@ from wxtbx.phil_controls import path, ints
 from wxtbx import phil_controls
 from wxtbx import icons
 import wx
-from libtbx import object_oriented_patterns as oop
+from libtbx.utils import Abort
+import os
 
 RSTBX_SELECT_IMAGE_IDS = 1
 
@@ -55,7 +56,7 @@ class SelectDatasetDialog (wx.Dialog) :
         size=(400,-1))
       grid.Add(self.frame_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     else :
-      self.frame_ctrl = oop.null()
+      self.frame_ctrl = None
     btn_sizer = wx.StdDialogButtonSizer()
     szr.Add(btn_sizer, 0, wx.ALL|wx.ALIGN_RIGHT, 10)
     cancel_btn = wx.Button(self, wx.ID_CANCEL)
@@ -80,10 +81,14 @@ class SelectDatasetDialog (wx.Dialog) :
 
   def GetDataset (self) :
     if (len(self._datasets) == 0) :
-      return None, None
+      wx.MessageBox("No dataset selected!")
+      raise Abort("No dataset selected!")
     else :
       i = self.stack_ctrl.GetSelection()
-      return self._datasets[i], None
+      frames = None
+      if (self.frame_ctrl is not None) :
+        frames = self.frame_ctrl.GetPhilValue()
+      return self._datasets[i], frames
 
 def select_dataset (parent=None,
                     title="Select a dataset",
@@ -107,5 +112,13 @@ def select_dataset (parent=None,
 # regression testing
 if (__name__ == "__main__") :
   app = wx.App(0)
-  dataset = select_dataset()
-  print dataset
+  dataset, frames = select_dataset(pick_frames=True)
+  if (dataset is not None) :
+    if (frames is not None) :
+      print "Selected images:"
+      for frame in frames :
+        file_name = dataset.get_frame_path(frame)
+        assert os.path.isfile(file_name)
+        print "  " + file_name
+    else :
+      print dataset
