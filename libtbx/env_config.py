@@ -274,8 +274,8 @@ class unix_setpaths(common_setpaths):
         print >> f, '  LIBTBX_TMPVAL="$%s"' % var_name_in
         print >> f, 'else'
         print >> f, '  LIBTBX_TMPVAL='
-        print >> f, 'export LIBTBX_TMPVAL'
         print >> f, 'fi'
+        print >> f, 'export LIBTBX_TMPVAL'
         fmt = \
           '''%s`libtbx.path_utility %s LIBTBX_TMPVAL "%s" < /dev/null`'''
       else:
@@ -1064,7 +1064,7 @@ Wait for the command to finish, then try again.""" % vars())
       write_do_not_edit(f=f)
       f.write("""\
 ocwd="`pwd`"
-cd "%s"
+cd `dirname "$BASH_SOURCE[0]"`
 LIBTBX_BUILD=`pwd -P`
 export LIBTBX_BUILD
 cd ..
@@ -1076,7 +1076,7 @@ PATH="$LIBTBX_BUILD/bin:$PATH"
 export PATH
 cd "$ocwd"
 ocwd=
-""" % abs(self.build_path))
+""")
     s.write("""\
 alias libtbx.setpaths_all=". '$LIBTBX_BUILD/setpaths_all.sh'"
 alias libtbx.unsetpaths=". '$LIBTBX_BUILD/unsetpaths.sh'"
