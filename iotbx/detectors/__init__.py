@@ -1,4 +1,5 @@
 import os
+import re
 
 import boost.python
 ext = boost.python.import_ext("iotbx_detectors_ext")
@@ -173,3 +174,9 @@ class dataset_info (object) :
 
   def __str__ (self) :
     return self.format()
+
+  def get_frame_path (self, frame) :
+    assert isinstance(frame, int)
+    serial_format = "%%0%dd" % (self.base_name.count("#"))
+    format_str = re.sub("[#]{1,}", serial_format, self.base_name)
+    return format_str % frame
