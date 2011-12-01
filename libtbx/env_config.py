@@ -1064,8 +1064,16 @@ Wait for the command to finish, then try again.""" % vars())
       write_do_not_edit(f=f)
       f.write("""\
 ocwd="`pwd`"
-LIBTBX_BUILD=`dirname "$BASH_SOURCE[0]"`
-cd "$LIBTBX_BUILD"
+if [ -n "$LIBTBX_BUILD_RELOCATION_HINT" ]; then
+  cd "$LIBTBX_BUILD_RELOCATION_HINT"
+  LIBTBX_BUILD_RELOCATION_HINT=
+  export LIBTBX_BUILD_RELOCATION_HINT
+elif [ -n "$BASH_SOURCE" ]; then
+  LIBTBX_BUILD=`dirname "$BASH_SOURCE[0]"`
+  cd "$LIBTBX_BUILD"
+else
+  cd "%s"
+fi
 LIBTBX_BUILD=`pwd -P`
 export LIBTBX_BUILD
 cd ..
@@ -1077,7 +1085,7 @@ PATH="$LIBTBX_BUILD/bin:$PATH"
 export PATH
 cd "$ocwd"
 ocwd=
-""")
+""" % abs(self.build_path))
     s.write("""\
 alias libtbx.setpaths_all=". \\"$LIBTBX_BUILD/setpaths_all.sh\\""
 alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
