@@ -41,8 +41,11 @@ class XrayView (wx.Panel) :
     self.Bind(wx.EVT_LEAVE_WINDOW, self.OnLeave)
 
   def set_image (self, image) :
+    old_img = self._img
     self._img = image
     self._img.set_screen_size(*(self.GetSize()))
+    if (old_img is not None) :
+      self._img.inherit_params(old_img)
     self.update_settings()
 
   def get_scale (self) :

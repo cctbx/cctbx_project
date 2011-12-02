@@ -24,6 +24,21 @@ class screen_params (object) :
     self.last_thumb_x = 0 # NKS: hooks for keeping pan position while
     self.last_thumb_y = 0 #  rendering the Prev or Next image
 
+  def inherit_params (self, params) :
+    """
+    Adopts the current screen parameters (to preserve zoom level, offset,
+    etc.), but only if the image dimensions are the same.
+    """
+    if (self.img_w != params.img_w) or (self.img_h != params.img_h) :
+      return
+    self.img_x_offset = params.img_x_offset
+    self.img_y_offset = params.img_y_offset
+    self.screen_x_start = params.screen_x_start
+    self.screen_y_start = params.screen_y_start
+    self.last_thumb_x = params.last_thumb_x
+    self.last_thumb_y = params.last_thumb_y
+    self.zoom = params.zoom
+
   def set_zoom (self, zoom) :
     assert (zoom >= 0)
     # XXX don't do anything fancy if image is uninitialized (for zoom view)
