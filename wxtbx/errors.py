@@ -16,7 +16,7 @@ def wx_excepthook (type, value, traceback) :
   else :
     message = process_exception(type, value, traceback)
     if (message is None) :
-      print str(type).__name__ + ": " + str(value)
+      print str(type.__name__) + ": " + str(value)
       print "".join(format_exception(type, value, traceback))
     else :
       assert isinstance(message, str)
