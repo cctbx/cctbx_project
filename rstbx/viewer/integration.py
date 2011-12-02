@@ -83,7 +83,8 @@ class IntegrationPanel (wx.Panel) :
     sol = self.integration_list.GetFirstSelected()
     main_window = self.GetTopLevelParent()
     result = self._results[sol]
-    main_window.GetParent().display_integration_result(result)
+    viewer = main_window.get_viewer_frame()
+    viewer.display_integration_result(result)
 
   def OnSelect (self, evt) :
     sol = self.integration_list.GetFirstSelected()

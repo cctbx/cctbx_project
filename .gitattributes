@@ -1379,8 +1379,9 @@ rstbx/viewer/__init__.py -text
 rstbx/viewer/calibration.py -text
 rstbx/viewer/calibration_frame.py -text
 rstbx/viewer/controls.py -text
-rstbx/viewer/dialogs.py -text
+rstbx/viewer/dataset.py -text
 rstbx/viewer/display.py -text
+rstbx/viewer/drivers.py -text
 rstbx/viewer/frame.py -text
 rstbx/viewer/indexing.py -text
 rstbx/viewer/integration.py -text

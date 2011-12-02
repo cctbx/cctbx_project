@@ -1,15 +1,25 @@
 
-from rstbx.viewer import results_base, indexing, integration
-from wxtbx.phil_controls import path, ints
+from rstbx.viewer import dataset, results_base, indexing, integration
+from rstbx.viewer.frame import XrayFrame
+from wxtbx import process_control, icons
+import wxtbx.app
+from wxtbx.phil_controls import path
 import wx.lib.agw.flatnotebook
 import wx
 import os
-import sys
 
 class ProcessingFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
+    self.viewer = None
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Image viewer",
+      bitmap=icons.hkl_file.GetBitmap(),
+      shortHelp="Image viewer",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnLaunchViewer, btn)
+    self.toolbar.Realize()
     self.statusbar = self.CreateStatusBar()
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
@@ -30,41 +40,77 @@ class ProcessingFrame (wx.Frame) :
     int_results, summaries = self.result.get_integration()
     self.integration_panel.SetResults(int_results, summaries)
 
-  def OnRun (self, evt) :
-    pass
+  def OnRunIndexing (self, evt) :
+    dataset, frames = self.start_panel.GetDataset()
+    output_dir = self.start_panel.GetOutputDir()
+    result = self.run_indexing(
+      dataset=dataset,
+      frames=frames,
+      output_dir=output_dir)
+    self.LoadResults(output_dir)
+    self.nb.SetSelection(1)
 
-class StartPanel (wx.Panel) :
+  def run_indexing (self, **kwds) :
+    from rstbx.viewer import drivers
+    run = drivers.run_indexing(**kwds)
+    indexing_result = process_control.run_function_as_process_in_dialog(
+      parent=self,
+      thread_function=run,
+      title="Running LABELIT",
+      message="Indexing images and performing simple test integration")
+    return indexing_result
+
+  def launch_viewer_frame (self) :
+    if (self.viewer is None) :
+      self.viewer = XrayFrame(
+        parent=self,
+        title="Image viewer")
+      self.viewer.Show()
+      self.Bind(wx.EVT_CLOSE, self.OnCloseViewer, self.viewer)
+
+  def get_viewer_frame (self) :
+    self.launch_viewer_frame()
+    return self.viewer
+
+  def set_viewer_frame (self, frame) :
+    assert (self.viewer is None)
+    self.viewer = frame
+
+  def OnCloseViewer (self, evt) :
+    self.viewer.Destroy()
+    self.viewer = None
+
+  def OnLaunchViewer (self, evt) :
+    self.launch_viewer_frame()
+
+class StartPanel (wx.Panel, dataset.SelectDatasetPanelMixin) :
   def __init__ (self, *args, **kwds) :
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     box = wx.StaticBox(self, -1, "Indexing setup")
     bszr = wx.StaticBoxSizer(box, wx.VERTICAL)
-    szr.Add(bszr, 0, wx.ALL|wx.EXPAND, 5)
-    grid = wx.FlexGridSizer(cols=2)
-    bszr.Add(grid, 0, wx.ALL|wx.EXPAND)
-    txt1 = wx.StaticText(self, -1, "First image:")
-    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.file_ctrl = path.PathCtrl(parent=self,
-      style=0) #path.WXTBX_PHIL_PATH_VIEW_BUTTON
-    grid.Add(self.file_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    grid.Add((1,1))
-    self.info_txt = wx.StaticText(self, -1, "No images loaded.")
-    grid.Add(self.info_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    txt2 = wx.StaticText(self, -1, "Index on images:")
-    grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.img_ctrl = ints.IntsCtrl(parent=self)
-    grid.Add(self.img_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    szr.Add(bszr, 1, wx.ALL|wx.EXPAND, 5)
+    self.draw_dataset_controls(bszr)
     btn = wx.Button(self, -1, "Run LABELIT...")
     szr.Add(btn, 0, wx.ALL, 10)
     frame = self.GetTopLevelParent()
-    frame.Bind(wx.EVT_BUTTON, frame.OnRun, btn)
+    frame.Bind(wx.EVT_BUTTON, frame.OnRunIndexing, btn)
+
+  def add_controls_to_grid (self, sizer) :
+    txt = wx.StaticText(self, -1, "Output directory:")
+    self.output_ctrl = path.PathCtrl(
+      parent=self,
+      style=path.WXTBX_PHIL_PATH_DIRECTORY)
+    self.output_ctrl.SetValue(os.getcwd())
+    sizer.Add(txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    sizer.Add(self.output_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+
+  def GetOutputDir (self) :
+    return self.output_ctrl.GetPhilValue()
 
 if (__name__ == "__main__") :
-  dir_name = sys.argv[1]
-  assert os.path.isdir(dir_name)
-  app = wx.App(0)
+  app = wxtbx.app.CCTBXApp(0)
   frame = ProcessingFrame(None, -1, "LABELIT")
-  frame.LoadResults(dir_name)
   frame.Show()
   app.MainLoop()
