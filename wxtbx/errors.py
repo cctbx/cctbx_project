@@ -14,7 +14,7 @@ def wx_excepthook (type, value, traceback) :
   elif (type is Sorry) :
     show_sorry(str(value))
   else :
-    message = prcoess_exception(type, value, traceback)
+    message = process_exception(type, value, traceback)
     if (message is None) :
       print str(type).__name__ + ": " + str(value)
       print "".join(format_exception(type, value, traceback))
