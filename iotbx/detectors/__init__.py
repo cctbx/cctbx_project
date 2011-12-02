@@ -176,7 +176,7 @@ class dataset_info (object) :
     return self.format()
 
   def get_frame_path (self, frame) :
-    assert isinstance(frame, int)
+    assert isinstance(frame, int) and (frame > 0)
     serial_format = "%%0%dd" % (self.base_name.count("#"))
     format_str = re.sub("[#]{1,}", serial_format, self.base_name)
     return format_str % frame
