@@ -102,7 +102,7 @@ class NpyImage(DetectorImageBase):
 
     if len(phil.distl.detector_tiling) <= 16:
       # assume this is the 2x2 CS Pad for spectroscopy; do not use tile translations
-      if phil.distl.detector_format_version in ["CXI 4.1","CXI 5.1"]:
+      if phil.distl.detector_format_version in ["CXI 4.1"]:
         # For the Run 4 CXI detector, the first sensor is inactive and pegged high(16K).
         # For calculating display contrast it is better to eliminate the sensor.
         if self.size1 == 370: #there are two sensors; we should eliminate the first
