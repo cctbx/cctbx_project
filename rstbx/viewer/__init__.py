@@ -371,11 +371,14 @@ class image (screen_params) :
     dist = self._raw.parameters['DISTANCE']
     wavelength = self._raw.parameters['WAVELENGTH']
     r = math.sqrt((center_x - x_point)**2 + (center_y - y_point)**2)
-    two_theta = math.atan(r / dist)
-    if (two_theta == 0.0) :
+    if dist > 0:
+      two_theta = math.atan(r / dist)
+      if (two_theta == 0.0) :
+        d_min = None
+      else :
+        d_min = wavelength / (2 * math.sin(two_theta / 2))
+    else:
       d_min = None
-    else :
-      d_min = wavelength / (2 * math.sin(two_theta / 2))
     slow, fast = self.image_coords_as_array_coords(x, y)
     try :
       intensity = self._raw.linearintdata[slow, fast]
