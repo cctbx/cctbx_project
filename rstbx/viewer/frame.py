@@ -1,6 +1,5 @@
 
 import rstbx.viewer.display
-from rstbx.viewer import processing
 import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
@@ -219,8 +218,10 @@ class XrayFrame (wx.Frame) :
         break
 
   def load_integration (self, dir_name) :
+    from rstbx.viewer import processing
     assert os.path.isdir(dir_name)
-    self.proc_frame = processing.ProcessingFrame(self, -1, "LABELIT")
+    self.proc_frame = processing.ProcessingFrame(None, -1, "LABELIT")
+    self.proc_frame.set_viewer_frame(self)
     self.proc_frame.LoadResults(dir_name)
     self.proc_frame.Show()
 
