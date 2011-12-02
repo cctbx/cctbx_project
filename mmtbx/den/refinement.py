@@ -4,6 +4,7 @@ from mmtbx.refinement import tardy
 from libtbx import easy_mp
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
+from libtbx.utils import Sorry
 import sys
 
 class manager(object):
@@ -205,6 +206,9 @@ class manager(object):
     print >>self.log,"|  Gamma    Weight    R-free            "+\
                 "                                      |"
     for out, result in stdout_and_results:
+      if result == None:
+        print >> self.log, out
+        raise Sorry("parallel job failed, see error above")
       cur_gamma = result[0]
       cur_weight = result[1]
       cur_r_free = result[2]
@@ -224,6 +228,9 @@ class manager(object):
     print >>self.log,"|  Gamma    Weight    R-free            "+\
                 "                                      |"
     for out, result in stdout_and_results:
+      if result == None:
+        print >> self.log, out
+        raise Sorry("parallel job failed, see error above")
       cur_gamma = result[0]
       cur_weight = result[1]
       cur_r_free = result[2]
