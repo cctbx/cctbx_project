@@ -82,5 +82,30 @@ def cxi_versioned_extract(*args):
     working_extract.distl.quad_translations = [6,-2,7,-4,-4,1,1,-5]
     return working_extract
 
+  elif cxi_version in ["CXI 5.1"]:
+    working_extract = working_phil.command_extractor
+
+    # The auxiliary translations are identical to CXI 4.1.  If the
+    # SLAC-provided metrology were to be trusted, this would be be all
+    # zeros?
+    corrected_auxiliary_translations = [
+                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,-1,
+                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-2,
+                               0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                               0,0,0,0,0,0,0,0]
+
+    from scitbx.array_family import flex
+    total_tile_translations = flex.int(corrected_auxiliary_translations)
+
+    TT = list(total_tile_translations)
+    working_extract.distl.tile_translations = TT
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
+    working_extract.distl.quad_translations = [-3,-1,-1,-5,-13,2,-7,-4]
+    return working_extract
+
   else:
     return working_phil.command_extractor
