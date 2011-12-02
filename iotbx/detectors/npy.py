@@ -65,7 +65,7 @@ class NpyImage(DetectorImageBase):
       SI = cspad_data['image'].astype(numpy.int32)
       SI = flex.int(SI)
       self.bin_safe_set_data(SI)
-    elif version_control in ["CXI 3.2","CXI 4.1"]:
+    elif version_control in ["CXI 3.2","CXI 4.1","CXI 5.1"]:
       self.parameters['ACTIVE_AREAS']         = cspad_data.get('ACTIVE_AREAS', None)
       self.parameters['BEAM_CENTER_X']        = cspad_data['BEAM_CENTER_X']
       self.parameters['BEAM_CENTER_Y']        = cspad_data['BEAM_CENTER_Y']
@@ -84,7 +84,7 @@ class NpyImage(DetectorImageBase):
       if (self.parameters['ACTIVE_AREAS'] is not None):
         horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
 
-    if version_control == "CXI 4.1":
+    if version_control in ["CXI 4.1","CXI 5.1"]:
       if horizons_phil.distl.tile_translations==None and \
          horizons_phil.distl.detector_tiling is not None:
           horizons_phil.distl.tile_translations = [0]*(len(horizons_phil.distl.detector_tiling)/2)
@@ -102,7 +102,7 @@ class NpyImage(DetectorImageBase):
 
     if len(phil.distl.detector_tiling) <= 16:
       # assume this is the 2x2 CS Pad for spectroscopy; do not use tile translations
-      if phil.distl.detector_format_version in ["CXI 4.1"]:
+      if phil.distl.detector_format_version in ["CXI 4.1","CXI 5.1"]:
         # For the Run 4 CXI detector, the first sensor is inactive and pegged high(16K).
         # For calculating display contrast it is better to eliminate the sensor.
         if self.size1 == 370: #there are two sensors; we should eliminate the first
