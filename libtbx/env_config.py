@@ -353,7 +353,7 @@ class environment:
     self.manage_python_version_major_minor()
     self.reset_dispatcher_support()
     self.set_derived_paths()
-    self.python_exe = relocatable_path(self, sys.executable)
+    self.python_exe = self.as_relocatable_path(sys.executable)
     if self.python_exe.relocatable.startswith('..'):
       self.python_exe = absolute_path(sys.executable)
     # sanity checks
@@ -417,21 +417,20 @@ class environment:
 
   def as_relocatable_path(self, path):
     if isinstance(path, libtbx.path.path_mixin): return path
-    return relocatable_path(self, path)
+    return relocatable_path(self.build_path, path)
 
   def set_build_path(self, build_path):
-    build_path = op.realpath(op.normcase(op.normpath(build_path)))
-    self.root_path = build_path # XXX don't need both
-    self.build_path = relocatable_path(self, build_path)
+    self.build_path = absolute_path(build_path)
 
   def set_derived_paths(self):
-    self.bin_path     = self.build_path / 'bin'
-    self.exe_path     = self.build_path / 'exe'
-    self.lib_path     = self.build_path / 'lib'
-    self.include_path = self.build_path / 'include'
+    r = self.as_relocatable_path
+    self.bin_path     = r("bin")
+    self.exe_path     = r("exe")
+    self.lib_path     = r("lib")
+    self.include_path = r("include")
 
   def under_build(self, path, return_relocatable_path=False):
-    result = self.build_path / path
+    result = self.as_relocatable_path(path)
     if return_relocatable_path:
       return result
     else:
@@ -534,7 +533,7 @@ Wait for the command to finish, then try again.""" % vars())
   def read_command_version_suffix(self):
     path = self.build_path / "command_version_suffix"
     if not path.isfile():
-        self.command_version_suffix = None
+      self.command_version_suffix = None
     else:
       try:
         self.command_version_suffix = path.open().read().strip()
@@ -654,7 +653,7 @@ Wait for the command to finish, then try again.""" % vars())
     return True
 
   def add_repository(self, path):
-    path = relocatable_path(self, path)
+    path = self.as_relocatable_path(path)
     if path not in self.repository_paths:
       self.repository_paths.append(path)
 
@@ -675,7 +674,8 @@ Wait for the command to finish, then try again.""" % vars())
       elif (module_name.count("=") == 1
             and self.find_dist_path(module_name, optional=True) is None):
         module_name, redirection = module_name.split("=")
-        dist_path = relocatable_path(self, op.expandvars(redirection))
+        dist_path = relocatable_path(
+          self.build_path, op.expandvars(redirection))
         if not dist_path.isdir():
           raise RuntimeError(
             'Invalid command line redirection:\n'
@@ -908,7 +908,7 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
-      v = ":".join([ op.join('$LIBTBX_BUILD', p.relocatable) for p in v ])
+      v = ":".join([p.sh_value() for p in v])
       print >> f, 'if [ -n "$%s" ]; then' % n
       print >> f, '  %s="%s:$%s"' % (n, v, n)
       print >> f, '  export %s' % n
@@ -1103,7 +1103,6 @@ alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
     setpaths = unix_setpaths(self, "csh", suffix)
     s, u = setpaths.s, setpaths.u
     for f in s, u:
-      print >> f, "#! /bin/tcsh"
       write_do_not_edit(f=f)
       f.write("""\
 set ocwd="$cwd"
@@ -1250,7 +1249,7 @@ selfx:
     pickle.dump(self, file_name.open("wb"), 0)
 
   def show_module_listing(self):
-    print "Rooted at: %s" % self.root_path
+    print "Relocatable paths anchored at: %s" % abs(self.build_path)
     print "Top-down list of all modules involved:"
     top_down_module_list = list(self.module_list)
     top_down_module_list.reverse()
@@ -1622,9 +1621,8 @@ class module:
             target_files.append(flds[i+1])
         if (ext == ".launch" and "LIBTBX_LAUNCH_EXE" in flds):
           source_file = self.env.under_build(
-            op.join(self.name, "exe", file_name[:-len(ext)]),
+            op.join(self.name, "exe", file_name[:-len(ext)]+exe_suffix),
             return_relocatable_path=True)
-          source_file.relocatable += exe_suffix
     if (len(target_files) == 0):
       target_file = self.name.lower() + target_file_name_infix
       if (not file_name_lower.startswith("main.")

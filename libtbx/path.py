@@ -274,14 +274,14 @@ class path_mixin(object):
   def is_relocatable(self):
     return isinstance(self, relocatable_path)
 
-  def sh_value(self, root_var="LIBTBX_BUILD"):
+  def sh_value(self, anchor_var="LIBTBX_BUILD"):
     if (self.is_relocatable()):
-      return op.join("$%s" % root_var, self.relocatable)
+      return op.join("$%s" % anchor_var, self.relocatable)
     return abs(self)
 
-  def bat_value(self, root_var="LIBTBX_BUILD"):
+  def bat_value(self, anchor_var="LIBTBX_BUILD"):
     if (self.is_relocatable()):
-      return op.join("%%%s%%" % root_var, self.relocatable)
+      return op.join("%%%s%%" % anchor_var, self.relocatable)
     return abs(self)
 
 
@@ -291,7 +291,7 @@ class absolute_path(path_mixin):
     assert op.isabs(path)
     if not case_sensitive:
       path = op.normcase(path)
-    path = op.normpath(path)
+    path = op.realpath(op.normpath(path))
     self._path = path
 
   def __div__(self, other):
@@ -312,30 +312,29 @@ class absolute_path(path_mixin):
 
 class relocatable_path(path_mixin):
 
-  def __init__(self, rooted, relocatable):
-    self._rooted = rooted
+  def __init__(self, anchor, relocatable):
+    assert isinstance(anchor, absolute_path)
+    self._anchor = anchor
     if op.isabs(relocatable):
-      assert op.isabs(rooted.root_path)
       relocatable = relpath(
-        path=op.realpath(relocatable),
-        start=rooted.root_path,
+        path=abs(absolute_path(relocatable)),
+        start=abs(self._anchor),
         enable_abspath_if_through_root=True)
     self.relocatable = relocatable
 
-  def root(self):
-    return self._rooted.root_path
-  root = property(root)
+  def anchor(self):
+    return self._anchor
+  anchor = property(anchor)
 
   def __div__(self, path):
-    return relocatable_path(self._rooted,
-                            op.join(self.relocatable, path))
+    return relocatable_path(self._anchor, op.join(self.relocatable, path))
 
   def __idiv__(self, path):
     self.relocatable = op.join(self.relocatable, path)
     return self
 
   def __add__(self, ext):
-    return relocatable_path(self._rooted, self.relocatable + ext)
+    return relocatable_path(self._anchor, self.relocatable + ext)
 
   def self_or_abs_if(self, flag):
     if flag:
@@ -344,22 +343,22 @@ class relocatable_path(path_mixin):
       return self
 
   def __abs__(self):
-    return op.abspath(op.join(self.root, self.relocatable))
+    return op.abspath(op.join(abs(self.anchor), self.relocatable))
 
   def __repr__(self):
-    return 'relocatable_path(root="%s", relocatable="%s")' % (self.root,
-                                                              self.relocatable)
+    return 'relocatable_path(anchor="%s", relocatable="%s")' % (
+      abs(self.anchor), self.relocatable)
 
   def dirname(self):
     assert self.relocatable
-    return relocatable_path(self._rooted, op.dirname(self.relocatable))
+    return relocatable_path(self._anchor, op.dirname(self.relocatable))
 
   def basename(self):
     return op.basename(self.relocatable)
 
   def normcase(self):
-    return relocatable_path(self._rooted, op.normcase(self.relocatable))
+    return relocatable_path(self._anchor, op.normcase(self.relocatable))
 
   def __eq__(self, other):
-    return (self._rooted == other._rooted
+    return (    self._anchor == other._anchor
             and self.relocatable == other.relocatable)
