@@ -242,6 +242,7 @@ class common_setpaths(object):
   def set_unset_vars(self):
     if (self.suffix != ""):
       for var_name,path in self.env.var_name_and_build_or_dist_path_pairs():
+        if (var_name == "LIBTBX_BUILD"): continue
         self.setenv(var_name=var_name, val=self.path_script_value(path))
 
 class unix_setpaths(common_setpaths):
@@ -420,9 +421,8 @@ class environment:
 
   def set_build_path(self, build_path):
     build_path = op.realpath(op.normcase(op.normpath(build_path)))
-    d, b = op.split(build_path)
-    self.root_path = d
-    self.build_path = relocatable_path(self, b)
+    self.root_path = build_path # XXX don't need both
+    self.build_path = relocatable_path(self, build_path)
 
   def set_derived_paths(self):
     self.bin_path     = self.build_path / 'bin'
@@ -887,8 +887,6 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'export LC_ALL'
     print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd -P)"'
     print >> f, 'export LIBTBX_BUILD'
-    print >> f, 'LIBTBX_ROOT="$(dirname "$LIBTBX_BUILD")"'
-    print >> f, 'export LIBTBX_ROOT'
     print >> f, 'LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename()
     print >> f, 'export LIBTBX_PYEXE_BASENAME'
     source_is_py = False
@@ -910,7 +908,7 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
-      v = ":".join([ op.join('$LIBTBX_ROOT', p.relocatable) for p in v ])
+      v = ":".join([ op.join('$LIBTBX_BUILD', p.relocatable) for p in v ])
       print >> f, 'if [ -n "$%s" ]; then' % n
       print >> f, '  %s="%s:$%s"' % (n, v, n)
       print >> f, '  export %s' % n
@@ -988,15 +986,13 @@ Wait for the command to finish, then try again.""" % vars())
     print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
     print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF'
     print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-    print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_ROOT=%%~dpF'
-    print >>f, '@set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%'
     print >>f, '@set LIBTBX_DISPATCHER_NAME=%~nx0'
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
-      v = ';'.join([ op.join('%LIBTBX_ROOT%', p.relocatable) for p in v ])
+      v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
       print >>f, '@set %s=%s;%%%s%%' % (n, v, n)
     print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
     if source_file.ext().lower() == '.py':
@@ -1076,9 +1072,6 @@ else
 fi
 LIBTBX_BUILD=`pwd -P`
 export LIBTBX_BUILD
-cd ..
-LIBTBX_ROOT=`pwd -P`
-export LIBTBX_ROOT
 LIBTBX_OPATH="$PATH"
 export LIBTBX_OPATH
 PATH="$LIBTBX_BUILD/bin:$PATH"
@@ -1103,8 +1096,6 @@ alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
     for f in s, u:
       print >> f, 'LIBTBX_TMPVAL='
       print >> f, 'LIBTBX_OPATH='
-      if (suffix != "_all"):
-        print >> f, 'LIBTBX_ROOT='
       if (suffix == ""):
         print >> f, 'LIBTBX_BUILD='
 
@@ -1123,8 +1114,6 @@ else
   cd "%s"
 endif
 setenv LIBTBX_BUILD "`/bin/sh -c 'pwd -P'`"
-cd ..
-setenv LIBTBX_ROOT "`/bin/sh -c 'pwd -P'`"
 setenv LIBTBX_OPATH "$PATH"
 setenv PATH "$LIBTBX_BUILD/bin:$PATH"
 cd "$ocwd"
@@ -1147,8 +1136,6 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
     for f in s, u:
       print >> f, 'unsetenv LIBTBX_TMPVAL'
       print >> f, 'unsetenv LIBTBX_OPATH'
-      if (suffix != "_all"):
-        print >> f, 'unsetenv LIBTBX_ROOT'
       if (suffix == ""):
         print >> f, 'unsetenv LIBTBX_BUILD'
 
@@ -1159,8 +1146,6 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
       write_do_not_edit(f=f, win_bat=True)
       print >> f, r'''@set LIBTBX_BUILD=%~dp0
 @set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%
-@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_ROOT=%%~dpF
-@set LIBTBX_ROOT=%LIBTBX_ROOT:~0,-1%
 @set LIBTBX_OPATH=%PATH%'''
       print >> f, '@set PATH=%s;%%PATH%%' % self.bin_path.bat_value()
     setpaths.all_and_debug()
@@ -1180,8 +1165,6 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
     setpaths.set_unset_vars()
     for f in s, u:
       print >> f, '@set LIBTBX_OPATH='
-      if (suffix != "_all"):
-        print >> f, '@set LIBTBX_ROOT='
       if (suffix == ""):
         print >> f, '@set LIBTBX_BUILD='
 
