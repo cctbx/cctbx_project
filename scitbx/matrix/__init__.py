@@ -11,12 +11,22 @@ provides faster C++ alternatives to some algorithms included here.
 
 from __future__ import division
 
-flex = None
-numpy = None
-try: from scitbx.array_family import flex
-except ImportError:
-  try: import numpy.linalg
-  except ImportError: numpy = None
+_flex_imported = False
+def flex_proxy():
+  global _flex_imported
+  if (_flex_imported is False):
+    try: from scitbx.array_family import flex as _flex_imported
+    except ImportError: _flex_imported = None
+  return _flex_imported
+
+_numpy_imported = False
+def numpy_proxy():
+  global _numpy_imported
+  if (_numpy_imported is False):
+    try: import numpy.linalg
+    except ImportError: _numpy_imported = None
+    else: _numpy_imported = numpy
+  return _numpy_imported
 
 try:
   from stdlib import math
@@ -161,6 +171,11 @@ class rec(object):
       return rec([int(round(e)) for e in self.elems], self.n)
     else:
       return rec([int(e) for e in self.elems], self.n)
+
+  def as_numpy_array(self):
+    numpy = numpy_proxy()
+    assert numpy is not None
+    return numpy.array(self.elems).reshape(self.n)
 
   def each_abs(self):
     return rec([abs(e) for e in self.elems], self.n)
@@ -479,6 +494,7 @@ class rec(object):
       return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
              - m[1] * (m[3] * m[8] - m[5] * m[6]) \
              + m[2] * (m[3] * m[7] - m[4] * m[6])
+    flex = flex_proxy()
     if (flex is not None):
       m = flex.double(m)
       m.resize(flex.grid(self.n))
@@ -515,11 +531,13 @@ class rec(object):
       determinant = self.determinant()
       assert determinant != 0
       return self.co_factor_matrix_transposed() / determinant
+    flex = flex_proxy()
     if (flex is not None):
       m = flex.double(self.elems)
       m.resize(flex.grid(n))
       m.matrix_inversion_in_place()
       return rec(elems=m, n=n)
+    numpy = numpy_proxy()
     if (numpy is not None):
       m = numpy.asarray(self.elems)
       m.shape = n
@@ -629,12 +647,14 @@ class rec(object):
     return self.elems
 
   def as_flex_double_matrix(self):
+    flex = flex_proxy()
     assert flex is not None
     result = flex.double(self.elems)
     result.reshape(flex.grid(self.n))
     return result
 
   def as_flex_int_matrix(self):
+    flex = flex_proxy()
     assert flex is not None
     result = flex.int(self.elems)
     result.reshape(flex.grid(self.n))
@@ -833,6 +853,7 @@ def _dihedral_angle(sites, deg):
   return result
 
 def dihedral_angle(sites, deg=False):
+  flex = flex_proxy()
   if (flex is None):
     return _dihedral_angle(sites=sites, deg=deg)
   from scitbx.math import dihedral_angle
@@ -942,8 +963,10 @@ class rt(object):
       raise ValueError(
         "cannot multiply %s by %s: incompatible number of elements"
           % (repr(self), repr(other)))
-    if (n == 3 and flex is not None and isinstance(other, flex.vec3_double)):
-      return self.r.elems * other + self.t.elems
+    if (n == 3):
+      flex = flex_proxy()
+      if (flex is not None and isinstance(other, flex.vec3_double)):
+        return self.r.elems * other + self.t.elems
     raise TypeError("cannot multiply %s by %s" % (repr(self), repr(other)))
 
   def inverse(self):
@@ -1077,7 +1100,8 @@ def exercise():
   try:
     from libtbx import test_utils
   except ImportError:
-    print "Warning: libtbx not available: some tests disabled."
+    print "INFO: libtbx not available: some tests disabled."
+    test_utils = None
     def approx_equal(a, b): return True
     Exception_expected = RuntimeError
   else:
@@ -1253,7 +1277,10 @@ def exercise():
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of elements")
   else: raise Exception_expected
-  if (flex is not None):
+  flex = flex_proxy()
+  if (flex is None):
+    print "INFO: scitbx.array_family.flex not available."
+  else:
     gv = g * flex.vec3_double([(-1,2,3),(2,-3,4)])
     assert isinstance(gv, flex.vec3_double)
     assert approx_equal(gv, [(441, 1063, 1685), (333, 802, 1271)])
@@ -1596,8 +1623,9 @@ def exercise():
   rational1 = sqr((2,1,1,0,1,0,0,0,1))
   assert str(rational1.inverse().elems)==\
     "(0.5, -0.5, -0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)"
-  assert str(rational1.as_boost_rational().inverse().elems)==\
-    "(1/2, -1/2, -1/2, 0, 1, 0, 0, 0, 1)"
+  if (flex is not None):
+    assert str(rational1.as_boost_rational().inverse().elems)==\
+      "(1/2, -1/2, -1/2, 0, 1, 0, 0, 0, 1)"
   #
   assert _dihedral_angle(sites=col_list([(0,0,0)]*4), deg=False) is None
   assert dihedral_angle(sites=col_list([(0,0,0)]*4)) is None
@@ -1611,17 +1639,18 @@ def exercise():
   assert approx_equal(dihedral_angle(sites=sites, deg=True), expected)
   # more dihedral tests in scitbx/math/boost_python/tst_math.py
   #
-  from libtbx import group_args
-  for deg in [False, True]:
-    args = group_args(
-      axis_point_1=sites[0],
-      axis_point_2=sites[1],
-      point=sites[2],
-      angle=13,
-      deg=True).__dict__
-    assert approx_equal(
-      rotate_point_around_axis(**args),
-      __rotate_point_around_axis(**args))
+  if (test_utils is not None):
+    from libtbx import group_args
+    for deg in [False, True]:
+      args = group_args(
+        axis_point_1=sites[0],
+        axis_point_2=sites[1],
+        point=sites[2],
+        angle=13,
+        deg=True).__dict__
+      assert approx_equal(
+        rotate_point_around_axis(**args),
+        __rotate_point_around_axis(**args))
   # exercise plane_equation
   point_1=col((1,2,3))
   point_2=col((10,20,30))
@@ -1630,6 +1659,14 @@ def exercise():
   point_in_plane = (point_3 - (point_2-point_1)/2)/2
   assert approx_equal(
     a*point_in_plane[0]+b*point_in_plane[1]+c*point_in_plane[2]+d,0)
+  #
+  numpy = numpy_proxy()
+  if (numpy is None):
+    print "INFO: numpy not available."
+  else:
+    m = rec(elems=range(6), n=(2,3))
+    n = m.as_numpy_array()
+    assert n.tolist() == [[0, 1, 2], [3, 4, 5]]
   #
   print "OK"
 
