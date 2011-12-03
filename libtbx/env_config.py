@@ -206,7 +206,7 @@ def patch_windows_dispatcher(
        + binary_string[place_holder_start+len(actual_value)+1:]
 
 def write_do_not_edit(f, win_bat=False):
-  if (win_bat): s = "rem"
+  if (win_bat): s = "@rem"
   else:         s = "#"
   print >> f, s+' THIS IS AN AUTOMATICALLY GENERATED FILE.'
   print >> f, s+' DO NOT EDIT! CHANGES WILL BE LOST.'
