@@ -43,6 +43,7 @@ class ResolutionBinTable (controls.ListBase) :
 
 class IntegrationPanel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
+    self.result = None
     wx.Panel.__init__(self, *args, **kwds)
     pszr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(pszr)
@@ -51,6 +52,13 @@ class IntegrationPanel (wx.Panel) :
     f1.SetWeight(wx.FONTWEIGHT_BOLD)
     txt1.SetFont(f1)
     pszr.Add(txt1, 0, wx.ALL, 5)
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    box.Add(wx.StaticText(self, -1, "Image number:"), 0,
+      wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.image_ctrl = wx.Choice(self, -1, size=(600,-1))
+    box.Add(self.image_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.Bind(wx.EVT_CHOICE, self.OnChooseImage, self.image_ctrl)
+    pszr.Add(box)
     self.integration_list = IntegrationTable(self)
     pszr.Add(self.integration_list, 0, wx.BOTTOM|wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
     box = wx.BoxSizer(wx.HORIZONTAL)
@@ -63,7 +71,7 @@ class IntegrationPanel (wx.Panel) :
     pszr.Add(txt2, 0, wx.ALL, 5)
     self.bin_list = ResolutionBinTable(self)
     pszr.Add(self.bin_list, 0, wx.BOTTOM|wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-    self._results = []
+    self._int_results = []
     self._summaries = []
     self.Bind(wx.EVT_BUTTON, self.OnView, btn)
     self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.integration_list)
@@ -71,19 +79,33 @@ class IntegrationPanel (wx.Panel) :
       self.integration_list)
     self.Bind(wx.EVT_CHAR, self.OnChar, self.integration_list)
 
-  def SetResults (self, results, summaries) :
-    assert (len(results) > 0)
-    self._results = results
+  def SetResults (self, result) :
+    self.result = result
+    self.image_ctrl.SetItems(result.get_images())
+    self.ChooseImage(result.get_images()[0])
+
+  def ChooseImage (self, file_name) :
+    image_id = self.result.get_image_id(file_name)
+    #solutions = self.result.get_integration_solutions()
+    int_results, summaries = self.result.get_integration(image_id)
+    assert (len(int_results) > 0)
+    self._int_results = int_results
     self._summaries = summaries
     self.integration_list.SetResults(summaries)
     self.integration_list.Select(0)
-    #self.view_btn.Enable(True)
+
+  def OnChooseImage (self, event) :
+    file_name = self.image_ctrl.GetStringSelection()
+    self.ChooseImage(file_name)
 
   def OnView (self, evt) :
     sol = self.integration_list.GetFirstSelected()
+    if (sol < 0) :
+      raise Sorry("No solution selected!")
     main_window = self.GetTopLevelParent()
-    result = self._results[sol]
+    result = self._int_results[sol]
     viewer = main_window.get_viewer_frame()
+    viewer.load_image(self.image_ctrl.GetStringSelection())
     viewer.display_integration_result(result)
 
   def OnSelect (self, evt) :

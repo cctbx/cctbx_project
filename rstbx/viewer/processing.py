@@ -7,6 +7,7 @@ from wxtbx.phil_controls import path
 import wx.lib.agw.flatnotebook
 import wx
 import os
+import sys
 
 class ProcessingFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
@@ -37,8 +38,8 @@ class ProcessingFrame (wx.Frame) :
   def LoadResults (self, dir_name) :
     self.result = results_base.result(dir_name)
     self.indexing_panel.SetIndexingResults(self.result.get_indexing())
-    int_results, summaries = self.result.get_integration()
-    self.integration_panel.SetResults(int_results, summaries)
+    self.integration_panel.SetResults(self.result)
+    self.nb.SetSelection(1)
 
   def OnRunIndexing (self, evt) :
     dataset, frames = self.start_panel.GetDataset()
@@ -48,7 +49,6 @@ class ProcessingFrame (wx.Frame) :
       frames=frames,
       output_dir=output_dir)
     self.LoadResults(output_dir)
-    self.nb.SetSelection(1)
 
   def run_indexing (self, **kwds) :
     from rstbx.viewer import drivers
@@ -113,4 +113,6 @@ if (__name__ == "__main__") :
   app = wxtbx.app.CCTBXApp(0)
   frame = ProcessingFrame(None, -1, "LABELIT")
   frame.Show()
+  if (len(sys.argv) > 1) and (os.path.isdir(sys.argv[1])) :
+    frame.LoadResults(sys.argv[1])
   app.MainLoop()
