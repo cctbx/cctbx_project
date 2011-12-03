@@ -23,10 +23,39 @@ class result (object) :
   def get_indexing (self) :
     return self._groups
 
-  def get_integration (self) :
-    return load_integration_results(self.dir_name, "integration")
+  def get_images (self) :
+    images = []
+    if (self._labelit is not None) :
+      files = self._labelit['file']
+      for id in sorted(files.keys()) :
+        images.append(files[id])
+    return images
 
-  def get_image_integration (self, sol_id, image_id) :
+  def get_image_id (self, file_name) :
+    assert (self._labelit is not None)
+    files = self._labelit['file']
+    for id, fn in files.iteritems() :
+      if (fn == file_name) :
+        return id
+    return None
+
+  def get_integration_solutions (self) :
+    solutions = []
+    for group in self._groups :
+      sol_id = group['counter']
+      image_id = sorted(self._labelit['file'].keys())[0]
+      integration_file = os.path.join(self.dir_name, "integration_%d_%d.pkl"
+        % (sol_id, image_id))
+      if (os.path.isfile(integration_file)) :
+        solutions.append(sol_id)
+    return solutions
+
+  def get_integration (self, image_id=1) :
+    return load_integration_results(self.dir_name, "integration",
+      image_id=image_id)
+
+  def get_image_integration (self, sol_id, image_id=None, file_name=None) :
+    assert (image_id is not None) or (file_name is not None)
     file_name = os.path.join(self.dir_name, "integration_%d_%d.pkl" % (sol_id,
       image_id))
     if (not os.path.exists(file_name)) :
@@ -64,13 +93,14 @@ def load_integration_results (dir_name, base_name, image_id=1) :
   results = []
   summaries = []
   for file_path in files :
-    result = easy_pickle.load(file_path)
-    results.append(result)
     file_name = os.path.basename(file_path)
     suffix = re.sub(base_name + "_", "", os.path.splitext(file_name)[0])
     sol_id_, img_id_ = suffix.split("_")
     if (int(img_id_) != image_id) :
       continue
+    print "integration file: %s" % file_path
+    result = easy_pickle.load(file_path)
+    results.append(result)
     summary = get_integration_summary(result, int(sol_id_))
     summaries.append(summary)
   r_s = list(zip(results, summaries))

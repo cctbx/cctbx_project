@@ -130,7 +130,7 @@ class XrayView (wx.Panel) :
       dc.SetPen(wx.Pen((255,255,0), 1))
       dc.SetBrush(wx.TRANSPARENT_BRUSH)
       for (x, y) in predictions :
-        dc.DrawCircle(x, y, 5*scale)
+        dc.DrawCircle(x, y, 8*scale)
 
   def save_image (self, file_name) :
     rect = self.GetRect()

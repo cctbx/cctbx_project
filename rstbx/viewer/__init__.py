@@ -234,6 +234,9 @@ class image (screen_params) :
 
   def set_integration_results (self, integration) :
     self._integration = integration
+    mp = integration['mapped_predictions']
+    print "%d spot predictions loaded" % mp.size()
+    print "max. resolution is %g" % integration['resolution']
 
   def set_spots (self, spots) :
     self._spots = spots
