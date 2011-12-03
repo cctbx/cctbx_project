@@ -274,12 +274,12 @@ class path_mixin(object):
   def is_relocatable(self):
     return isinstance(self, relocatable_path)
 
-  def sh_value(self, root_var="LIBTBX_ROOT"):
+  def sh_value(self, root_var="LIBTBX_BUILD"):
     if (self.is_relocatable()):
       return op.join("$%s" % root_var, self.relocatable)
     return abs(self)
 
-  def bat_value(self, root_var="LIBTBX_ROOT"):
+  def bat_value(self, root_var="LIBTBX_BUILD"):
     if (self.is_relocatable()):
       return op.join("%%%s%%" % root_var, self.relocatable)
     return abs(self)
