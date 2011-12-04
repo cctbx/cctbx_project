@@ -15,7 +15,7 @@ m = re.search(r"^(\d+ \. \d+ \. \d+) .*? \[\s*GCC\s* (\d+ \. \d+ \. \d+)",
 print 'Python %s (compiled with gcc %s)' % m.groups()
 print
 
-print "** %s **" % os.path.basename(libtbx.env.build_path)
+print "** %s **" % libtbx.env.build_path.basename()
 libtbx.env.build_options.report()
 
 print
