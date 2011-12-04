@@ -52,6 +52,15 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
         .def("update", &w_t::update<double>, (
           arg("data_value"),
           arg("relative_tolerance")=1e-4))
+        .def("update_from_histogram", &w_t::update_from_histogram<double>, (
+          arg("other")))
+        //.def("update",
+          //(void(*)(double const&, double const&)) &w_t::update<double>,
+          //arg("data_value"),
+          //arg("relative_tolerance")=1e-4)
+        //.def("update",
+          //(void(*)(w_t const&)) &w_t::update<double>,
+          //arg("other"))
         .def("data_min", &w_t::data_min)
         .def("data_max", &w_t::data_max)
         .def("slot_width", &w_t::slot_width)
