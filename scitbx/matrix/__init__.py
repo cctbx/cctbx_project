@@ -849,7 +849,7 @@ def _dihedral_angle(sites, deg):
   result = math.acos(cos_angle)
   if (d_21.dot(n_0121.cross(n_2123)) < 0):
     result *= -1
-  if (deg): result = math.degrees(result)
+  if (deg): result *= 180/math.pi
   return result
 
 def dihedral_angle(sites, deg=False):
