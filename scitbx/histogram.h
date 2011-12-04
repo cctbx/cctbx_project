@@ -54,7 +54,6 @@ namespace scitbx {
       {
         SCITBX_ASSERT(data_max > data_min);
         SCITBX_ASSERT(n_slots > 0);
-        if (data.size() == 0) return;
         slot_width_ = (data_max_ - data_min_) / slots_.size();
         assign_to_slots(data, relative_tolerance);
       }
@@ -121,6 +120,20 @@ namespace scitbx {
           if (cum > max_points) break;
         }
         return data_min_ + i * slot_width_ + slot_width_ * relative_tolerance;
+      }
+
+      template <typename DataType>
+      void update(DataType const& d,
+                  ValueType const& relative_tolerance=1.e-4)
+      {
+        ValueType width_tolerance = slot_width_ * relative_tolerance;
+        if (   d < data_min_ - width_tolerance
+            || d > data_max_ + width_tolerance) {
+          n_out_of_slot_range_++;
+        }
+        else {
+          assign_to_slot(static_cast<ValueType>(d - data_min_));
+        }
       }
 
     protected:

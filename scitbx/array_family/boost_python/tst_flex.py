@@ -1715,6 +1715,19 @@ def exercise_histogram():
   assert h.n_out_of_slot_range() == 0
   assert approx_equal(h.get_cutoff(max_points=15), 7.60038)
   assert approx_equal(h.get_cutoff(15, relative_tolerance=0.1), 7.98)
+  h.update(2)
+  assert tuple(h.slots()) == (5,4,4,4,4)
+  h.update(-12) # out of range
+  h.update(21) # out of range
+  assert tuple(h.slots()) == (5,4,4,4,4)
+  # empty starting histogram
+  h2 = flex.histogram(flex.double(), -2, 4, 4)
+  h2.update(3)
+  h2.update(4.0000001)
+  h2.update(4.01)
+  assert tuple(h2.slots()) == (0, 0, 0, 2)
+  h2.update(4.01, relative_tolerance=1e-1)
+  assert tuple(h2.slots()) == (0, 0, 0, 3)
   y = flex.double(xrange(-3,23))
   hy = flex.histogram(other=h, data=y)
   assert approx_equal(hy.data_min(), 0)
