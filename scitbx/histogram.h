@@ -136,6 +136,20 @@ namespace scitbx {
         }
       }
 
+      // XXX This would be better renamed "update" but I haven't managed to
+      // resolve the overloaded function errors
+      template <typename DataType>
+      void update_from_histogram(histogram const& other)
+      {
+        SCITBX_ASSERT(data_min_ == other.data_min_);
+        SCITBX_ASSERT(data_max_ == other.data_max_);
+        SCITBX_ASSERT(slot_width_ == other.slot_width_);
+        SCITBX_ASSERT(slots_.size() == other.slots_.size());
+        for (std::size_t i=0; i<slots_.size(); i++)
+          slots_[i] += other.slots_[i];
+        n_out_of_slot_range_ += other.n_out_of_slot_range_;
+      }
+
     protected:
       void
       assign_to_slot(ValueType const& d)
