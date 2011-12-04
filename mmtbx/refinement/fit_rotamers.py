@@ -141,12 +141,12 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     edge = []
     bonded_atom_names = secial_cases[residue.resname.strip().upper()]
     for ban in bonded_atom_names:
-      for atom1 in residue_atoms:
+      for ia1,atom1 in enumerate(residue_atoms):
         if(atom1.name.strip().upper() in ban[0]):
-          for atom2 in residue_atoms:
+          for ia2,atom2 in enumerate(residue_atoms):
             if(atom2.name.strip().upper() in ban[1]):
-              assert atom1.i_seq != atom2.i_seq
-              edge = [atom1.i_seq, atom2.i_seq]
+              assert ia1 != ia2
+              edge = [ia1, ia2]
       if(len(edge) > 0): external_edge_list.append(edge)
   #
   tardy_model = mmtbx.monomer_library.rotamer_utils.tardy_model(
