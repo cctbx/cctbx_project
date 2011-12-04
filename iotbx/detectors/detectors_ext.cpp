@@ -336,6 +336,25 @@ scitbx::vec3<double> rotate_vector_around(
     return vector.unit_rotate(unit_direction,angle_rad);
   }
 
+void low_pass_filter(af::flex_complex_double complex_data) {
+  std::size_t sz_x = complex_data.accessor().focus()[0];
+  std::size_t sz_y = complex_data.accessor().focus()[1];
+  std::complex<double>* begin = complex_data.begin();
+  for (std::size_t x = 0; x < sz_x; ++x) {
+    double dx = std::min(x,sz_x-x);
+    for (std::size_t y = 0; y < sz_y; ++y) {
+      double dy = std::min(y,sz_y-y);
+      double dist = std::sqrt(dx*dx + dy*dy);
+      if (dist>50.) {
+        *(begin + x * sz_y  + y) = std::complex<double>(0.,0.);
+      } else {
+        *(begin + x * sz_y  + y) *= std::exp(-dist*dist/20.);
+      }
+    }
+  }
+}
+
+
 } // namespace <anonymous>
 
 #include <boost/python.hpp>
@@ -378,5 +397,6 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
   def("rotate_vector_around", rotate_vector_around,
         (arg("vector"),arg("unit_direction"),arg("angle"))
   );
+  def("low_pass_filter", low_pass_filter);
 
 }

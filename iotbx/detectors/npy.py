@@ -142,6 +142,40 @@ class NpyImage(DetectorImageBase):
 
     self.bin_safe_set_data(shifted_int_data_new)
 
+  def correct_gain_in_place(self, filename, adu_scale, phil):
+    stddev = NpyImage( filename )
+    stddev.readHeader(phil)
+    stddev.translate_tiles(phil)
+    self.bin_safe_set_data( (adu_scale*self.linearintdata)/(1+stddev.linearintdata) )
+
+  def correct_background_in_place(self, phil):
+
+    """The 'in place' function actually changes the raw data in this image object"""
+    active_areas = self.get_tile_manager(phil).effective_tiling_as_flex_int()
+    B = active_areas
+
+    assert len(active_areas)%4 == 0
+    # apply an additional margin of 1 pixel, since we don't seem to be
+    # registering the global peripheral margin.  XXX this should be changed later
+    asics = [(B[i]+1,B[i+1]+1,B[i+2]-1,B[i+3]-1) for i in xrange(0,len(B),4)]
+
+    for asic in asics:
+      self.linearintdata.matrix_paste_block_in_place(
+        block = self.correct_background_by_block(asic),
+        i_row = asic[0],
+        i_column = asic[1]
+      )
+
+    self.bin_safe_set_data(self.linearintdata)
+
+  def correct_background_by_block(self, asic):
+    """The 'by block' function doesn't changes the object data, it just returns the
+       filtered data for a particular detector asic"""
+
+    from iotbx.detectors.util.filters import background_correct_padded_block
+    corrected_data = background_correct_padded_block(self.linearintdata, asic)
+    return corrected_data
+
   def get_tile_manager(self, phil):
     return tile_manager(phil,beam=(int(self.beamx/self.pixel_size),
                                    int(self.beamy/self.pixel_size)))

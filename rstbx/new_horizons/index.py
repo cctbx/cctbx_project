@@ -6,8 +6,10 @@ class new_horizons_state:
   def __init__(self,horizons_phil,args):
     self.horizons_phil = horizons_phil
     if self.horizons_phil.spotfinder=="distl":
+      print "Importing DISTL"
       from labelit.command_line.stats_index import AutoIndexOrganizer
     elif self.horizons_phil.spotfinder=="speck":
+      print "Importing SPECK"
       from rstbx.new_horizons.stats_index import AutoIndexOrganizer
 
     self.organizer = AutoIndexOrganizer(
@@ -17,6 +19,8 @@ class new_horizons_state:
       delegate = self.index_and_integrate)
   def process(self):
     self.organizer.process()
+    self.spotfinder_results = self.organizer.S
+    self.frames = self.organizer.frames
 
   def index_and_integrate(self,frames,files,spotfinder_results):
     self.pd = establish_dict_for_refinement(frames,spotfinder_results)
