@@ -9,7 +9,7 @@ from libtbx import adopt_init_args
 
 class speckfinder:
 
-  def get_active_data(self):
+  def get_active_data_percentile(self):
     data = self.imgobj.linearintdata
     indexing = []
     for asic in self.corners:
@@ -47,6 +47,94 @@ class speckfinder:
           height)
         )
     return indexing
+
+  def get_active_data_sigma(self):
+    data = self.imgobj.linearintdata
+    indexing = []
+    for asic in self.corners:
+      block = data.matrix_copy_block(
+          i_row=asic[0],i_column=asic[1],
+          n_rows=asic[2]-asic[0],
+          n_columns=asic[3]-asic[1])
+      active_data = block.as_1d().as_double()
+
+      order = flex.sort_permutation(active_data)
+      if self.verbose:
+        print "The mean is ",flex.mean(active_data),"on %d pixels"%len(active_data)
+        print "The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]]
+        print "The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]]
+
+      stats = flex.mean_and_variance(active_data)
+      print "stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation()
+      maximas = flex.vec2_double()
+      for idx in xrange(len(active_data)-1, int(0.9*len(active_data)), -1):
+        if active_data[order[idx]] > stats.mean() + 6.0*stats.unweighted_sample_standard_deviation():
+          if self.verbose: print "    ", idx, active_data[order[idx]]
+          irow = order[idx] // (asic[3]-asic[1])
+          icol = order[idx] % (asic[3]-asic[1])
+          #self.green.append((asic[0]+irow, asic[1]+icol))
+          maximas.append((irow, icol))
+      CLUS = clustering(maximas)
+      #coords = CLUS.as_spot_max_pixels(block,asic)
+      coords = CLUS.as_spot_center_of_mass(block,asic,stats.mean())
+      intensities = CLUS.intensities
+      for coord,height in zip(coords,intensities):
+        self.green.append(coord)
+        indexing.append( (
+          coord[0] * float(self.inputpd["pixel_size"]),
+          coord[1] * float(self.inputpd["pixel_size"]),
+          0.0, # 0 -degree offset for still image
+          height)
+        )
+    return indexing
+
+  def get_active_data_corrected_with_fft(self):
+    #data = self.imgobj.linearintdata
+    data = self.imgobj.correct_gain_in_place(
+      filename = self.phil.speckfinder.dark_stddev,
+      adu_scale = self.phil.speckfinder.dark_adu_scale,
+      phil = self.phil
+    )
+    indexing = []
+    for iraw,raw_asic in enumerate(self.corners):
+      filtered_data = self.imgobj.correct_background_by_block(raw_asic)
+
+      active_data = filtered_data.as_double().as_1d()
+
+      order = flex.sort_permutation(active_data)
+      stats = flex.mean_and_variance(active_data)
+      if self.verbose:
+        #print "Stats on %d pixels"%len(active_data)
+        print "stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation()
+        #print "The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]]
+        #print "The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]]
+
+      maximas = flex.vec2_double()
+      for idx in xrange(len(active_data)-1, int(0.9*len(active_data)), -1):
+        if active_data[order[idx]] > stats.mean() + 12.0*stats.unweighted_sample_standard_deviation():
+          if self.verbose: print "    ", idx, active_data[order[idx]]
+          irow = order[idx] // (raw_asic[3]-raw_asic[1])
+          icol = order[idx] % (raw_asic[3]-raw_asic[1])
+          maximas.append((irow, icol))
+      CLUS = clustering(maximas)
+      coords = CLUS.as_spot_center_of_mass(filtered_data,raw_asic,stats.mean())
+      intensities = CLUS.intensities
+      for coord,height in zip(coords,intensities):
+        self.green.append(coord)
+        indexing.append( (
+          coord[0] * float(self.inputpd["pixel_size"]),
+          coord[1] * float(self.inputpd["pixel_size"]),
+          0.0, # 0 -degree offset for still image
+          height)
+        )
+    return indexing
+
+  def get_active_data(self):
+    import time
+    t0 = time.time()
+    active = self.get_active_data_corrected_with_fft()
+    print "time %.2f" % (time.time()-t0)
+    return active
 
   def __init__(self,imgobj,phil,inputpd,verbose=False):
     adopt_init_args(self,locals())

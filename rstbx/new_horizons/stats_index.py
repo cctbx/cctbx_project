@@ -33,7 +33,7 @@ class spotfinder_proxy:
     pd["ref_maxcel"] = self.old_pd["ref_maxcel"] #post-get_aitbx_inputs
     self.images = self.old_S.images # sublattice average profile
     self.pd = pd
-
+    old_count = len(pd["indexing"])
     from rstbx.new_horizons.speckfinder import speckfinder
     self.pd["indexing"]=[] # zero out the old spotfinder spots; use speckfinder spots instead
     for key in self.images.keys():
@@ -41,6 +41,9 @@ class spotfinder_proxy:
                        phil = self.phil,
                        inputpd = self.pd)
       self.pd["indexing"] += self.specks.get_active_data()
+    new_count = len(pd["indexing"])
+    print "Comparing old count %d new count %d, difference %d"%(old_count,new_count,new_count-old_count)
+    print self.specks
     return self.pd
 
 class AutoIndexOrganizer:
@@ -88,6 +91,7 @@ class AutoIndexOrganizer:
       pretty_image_stats(S,frame)
       notes(S,self.frames[0])
     print
+    NEW.get_aitbx_inputs()
 
   def setIndexingDelegate(self,function):
     self.indexing_delegate = function
