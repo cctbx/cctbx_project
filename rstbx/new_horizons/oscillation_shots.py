@@ -172,7 +172,7 @@ class IntegrateCharacters:
           integration_masks_xy = integrate_worker.integration_masks_as_xy_tuples(),
           background_masks_xy = integrate_worker.background_masks_as_xy_tuples()
         )
-        assert info["predictions"].size() == info["mapped_predictions"].size()
+        assert info["predictions"].size() >= info["mapped_predictions"].size()
         assert info["predictions"].size() == info["hkllist"].size()
         G = open(filename,"wb")
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
