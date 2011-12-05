@@ -162,7 +162,7 @@ supported_compilers = (
   "win32_cl",
   "win32_icc",
   "win32_mingw",
-  "unix_mingw", # cross-compiling works only with 
+  "unix_mingw", # cross-compiling works only with
                 # --build-boost-python-extensions=False
   "unix_gcc",
   "unix_gcc4",
@@ -206,7 +206,7 @@ def gcc_common_warn_options():
   return result
 
 def clang_common_warn_options():
-  return [ '-Wmost', '-Wno-unknown-pragmas' ]
+  return [ '-Wmost', '-Wno-unknown-pragmas', '-Wno-logical-op-parentheses' ]
 
 def enable_more_warnings(env):
   """ Enable more warning for debug_level == 0 """
