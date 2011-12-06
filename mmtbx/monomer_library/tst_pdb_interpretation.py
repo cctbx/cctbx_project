@@ -1237,9 +1237,29 @@ scale_restraints {
     else :
       assert (proxy_2.weight == proxy_1.weight)
 
+def exercise_asp_glu_acid():
+  for resname in ["ASP", "GLU"]:
+    file_name = resname.lower() + "_acid.pdb"
+    file_path = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/"+file_name,
+      test=os.path.isfile)
+    if (file_path is None):
+      print "Skipping exercise_asp_glu_acid():", \
+        "input file not available:", file_name
+    else:
+      log = StringIO()
+      processed_pdb_file = monomer_library.pdb_interpretation.run(
+        args=[file_path], log=log)
+      if (resname == "ASP"):
+        pat = "Modifications used: {'ACID-ASP': 1}"
+      else:
+        pat = "Modifications used: {'NH1NOTPRO': 1, 'COOH': 1, 'ACID-GLU': 1}"
+      assert log.getvalue().find(pat) >= 0
+      assert processed_pdb_file.all_chain_proxies \
+        .fatal_problems_message() is None
+
 def run(args):
   assert len(args) == 0
-  exercise_scale_restraints()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   exercise_pdb_string(mon_lib_srv, ener_lib)
@@ -1254,6 +1274,8 @@ def run(args):
   exercise_d_aa_resnames()
   exercise_d_amino_acid_chain_perfect_in_box()
   exercise_rna_v3(mon_lib_srv, ener_lib)
+  exercise_scale_restraints()
+  exercise_asp_glu_acid()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

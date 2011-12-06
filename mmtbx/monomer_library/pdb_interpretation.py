@@ -920,6 +920,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.incomplete_info = self._get_incomplete_info()
 
   def resolve_unexpected(self):
+    mod_dict = self.mon_lib_srv.mod_mod_id_dict
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
@@ -936,9 +937,15 @@ class monomer_mapping(slots_getstate_setstate):
             u_mon_lib[mon_lib_name] = i_seq
         u = u_mon_lib
       if ("HXT" in u):
-        mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COOH"])
+        mod_mod_ids.append(mod_dict["COOH"])
       elif ("OXT" in u):
-        mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COO"])
+        mod_mod_ids.append(mod_dict["COO"])
+      if (self.monomer.chem_comp.id == "GLU"):
+        if ("HE2" in u):
+          mod_mod_ids.append(mod_dict["ACID-GLU"])
+      elif (self.monomer.chem_comp.id == "ASP"):
+        if ("HD2" in u):
+          mod_mod_ids.append(mod_dict["ACID-ASP"])
       def raise_missing_notpro(id, h):
         raise RuntimeError("""\
 A modified version of the monomer library is required to correctly
@@ -954,21 +961,21 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
         nitrogen_hydrogen_translation = None
         if (len(nitrogen_hydrogens) == 3):
           if (self.monomer_atom_dict.get("H") is not None):
-            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
+            mod_mod_ids.append(mod_dict["NH3"])
         elif (len(nitrogen_hydrogens) == 2):
           if (self.monomer.chem_comp.id == "PRO"):
-            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH2"]
+            mod_mod_id = mod_dict["NH2"]
           else:
-            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict.get("NH2NOTPRO")
+            mod_mod_id = mod_dict.get("NH2NOTPRO")
             if (mod_mod_id is None):
               raise_missing_notpro("NH2", "HN2")
           mod_mod_ids.append(mod_mod_id)
           nitrogen_hydrogen_translation = ["HN1", "HN2"]
         elif (len(nitrogen_hydrogens) == 1):
           if (self.monomer.chem_comp.id == "PRO"):
-            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH1"]
+            mod_mod_id = mod_dict["NH1"]
           else:
-            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH1NOTPRO"]
+            mod_mod_id = mod_dict["NH1NOTPRO"]
             if (mod_mod_id is None):
               raise_missing_notpro("NH1", "HN")
           mod_mod_ids.append(mod_mod_id)
@@ -986,39 +993,39 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
               and ("H2" in u or "2H" in u)
               and ("H3" in u or "3H" in u)):
           if (self.monomer_atom_dict.get("H") is not None):
-            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
+            mod_mod_ids.append(mod_dict["NH3"])
         elif (    ("HN1" in u or "1HN" in u)
               and ("HN2" in u or "2HN" in u)):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH2"])
+          mod_mod_ids.append(mod_dict["NH2"])
         elif (    "HN" in u):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH1"])
+          mod_mod_ids.append(mod_dict["NH1"])
         elif (    ("H1" in u or "1H" in u)
               or  ("H2" in u or "2H" in u)
               or  ("H3" in u or "3H" in u)):
           if (self.monomer_atom_dict.get("H") is not None):
-            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
+            mod_mod_ids.append(mod_dict["NH3"])
         elif (    ("HN1" in u or "1HN" in u)
               or  ("HN2" in u or "2HN" in u)):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH2"])
+          mod_mod_ids.append(mod_dict["NH2"])
     elif (self.monomer.classification in ["RNA", "DNA"]):
       if (ani is not None):
         if (ani.have_op3_or_hop3):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["p5*END"])
+          mod_mod_ids.append(mod_dict["p5*END"])
         elif (not ani.have_phosphate):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["5*END"])
+          mod_mod_ids.append(mod_dict["5*END"])
         if (ani.have_ho3prime):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["3*END"])
+          mod_mod_ids.append(mod_dict["3*END"])
       else:
         if ("O3T" in u):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["p5*END"])
+          mod_mod_ids.append(mod_dict["p5*END"])
         else:
           e = self.expected_atoms
           if (    not "P"   in e
               and not "OP1" in e
               and not "OP2" in e):
-            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["5*END"])
+            mod_mod_ids.append(mod_dict["5*END"])
         if ("HO3*" in u):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["3*END"])
+          mod_mod_ids.append(mod_dict["3*END"])
     for mod_mod_id in mod_mod_ids:
       self.apply_mod(mod_mod_id=mod_mod_id)
 
