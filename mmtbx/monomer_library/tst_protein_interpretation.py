@@ -35,7 +35,7 @@ expected_results = {
 "tyr_nterm_all_h_1d1n_v2":
   ['TYR%NH3', 23, [], 'peptide', True, None],
 "glu_nterm_all_h_2bic_v2":
-  ['GLU%NH3', 17, [' HE2'], 'peptide', True, None],
+  ['GLU%ACID-GLU%NH3', 18, [], 'peptide', True, None],
 "ile_cterm_all_h_1pog_v3":
   ['ILE%COOH', 21, [], 'peptide', True, None],
 "met_nterm_all_h_1qqi_v2":
@@ -111,7 +111,7 @@ expected_results = {
 "ala_cterm_all_h_1eio_v2":
   ['ALA%COOH', 12, [], 'peptide', True, None],
 "asp_cterm_all_h_1kb8_v2":
-  ['ASP%COOH', 14, [' HD2'], 'peptide', True, None],
+  ['ASP%COOH%ACID-ASP', 15, [], 'peptide', True, None],
 "ser_nterm_all_h_1gkt_v2":
   ['SER%NH3', 13, [], 'peptide', True, None],
 "ile_nterm_all_h_1ghx_v3":
@@ -131,7 +131,7 @@ expected_results = {
 "phe_nterm_all_h_3ins_v2":
   ['PHE%NH3', 22, [], 'peptide', True, None],
 "asp_nterm_all_h_1x9v_v2":
-  ['ASP%NH3', 14, [' HD2'], 'peptide', True, None],
+  ['ASP%ACID-ASP%NH3', 15, [], 'peptide', True, None],
 "leu_nterm_all_h_1edv_v3":
   ['LEU%NH3', 21, [], 'peptide', True, None],
 "val_nterm_all_h_2mb5_v2":
@@ -149,9 +149,9 @@ expected_results = {
 "glu_chain_all_h_1jjx_v2":
   ['GLU', 15, ['2HE '], 'peptide', None, None],
 "asp_chain_all_h_1kgl_v3":
-  ['ASP', 12, [' HD2'], 'peptide', None, None],
+  ['ASP%ACID-ASP', 13, [], 'peptide', None, None],
 "asp_chain_all_h_1jjx_v3":
-  ['ASP', 12, [' HD2'], 'peptide', None, None],
+  ['ASP%ACID-ASP', 13, [], 'peptide', None, None],
 "gln_nterm_all_h_1w4h_v2":
   ['GLN%NH3', 19, [], 'peptide', True, None],
 "his_nterm_all_h_1c17_v3":
@@ -161,13 +161,13 @@ expected_results = {
 "asn_chain_all_h_1o8t_v2":
   ['ASN', 14, [], 'peptide', None, None],
 "glu_nterm_all_h_2bic_v3":
-  ['GLU%NH3', 17, [' HE2'], 'peptide', True, None],
+  ['GLU%ACID-GLU%NH3', 18, [], 'peptide', True, None],
 "gln_chain_all_h_1o8t_v2":
   ['GLN', 17, [], 'peptide', None, None],
 "arg_chain_all_h_1o8t_v2":
   ['ARG', 24, [], 'peptide', None, None],
 "glu_chain_all_h_1bm4_v3":
-  ['GLU', 15, [' HE2'], 'peptide', None, None],
+  ['GLU%ACID-GLU', 16, [], 'peptide', None, None],
 "phe_nterm_all_h_1e0e_v2":
   ['PHE%NH3', 22, [], 'peptide', True, None],
 "cys_chain_all_h_1rfa_v2":
@@ -189,7 +189,7 @@ expected_results = {
 "cys_chain_all_h_1rfa_v3":
   ['CYS', 11, [], 'peptide', None, None],
 "asp_nterm_all_h_1x9v_v3":
-  ['ASP%NH3', 14, [' HD2'], 'peptide', True, None],
+  ['ASP%ACID-ASP%NH3', 15, [], 'peptide', True, None],
 "phe_nterm_all_h_1g7a_v2":
   ['PHE%NH3', 22, [], 'peptide', True, None],
 "his_chain_all_h_1g7e_v3":
@@ -197,7 +197,7 @@ expected_results = {
 "trp_nterm_all_h_1haj_v2":
   ['TRP%NH3', 26, [], 'peptide', True, None],
 "glu_chain_all_h_1jjx_v3":
-  ['GLU', 15, [' HE2'], 'peptide', None, None],
+  ['GLU%ACID-GLU', 16, [], 'peptide', None, None],
 "thr_nterm_all_h_1o8t_v2":
   ['THR%NH3', 16, [], 'peptide', True, None],
 "ser_nterm_all_h_1goe_v2":
@@ -209,11 +209,11 @@ expected_results = {
 "ala_nterm_all_h_1dgn_v3":
   ['ALA%NH3', 12, [], 'peptide', True, None],
 "glu_chain_all_h_1tmr_v3":
-  ['GLU', 15, [' HE2'], 'peptide', None, None],
+  ['GLU%ACID-GLU', 16, [], 'peptide', None, None],
 "lys_cterm_all_h_1aze_v3":
   ['LYS%COOH', 24, [], 'peptide', True, None],
 "glu_chain_all_h_1bm4_v2":
-  ['GLU', 15, [' HE2'], 'peptide', None, None],
+  ['GLU%ACID-GLU', 16, [], 'peptide', None, None],
 "trp_chain_all_h_1hdp_v3":
   ['TRP', 24, [], 'peptide', None, None],
 "tyr_nterm_all_h_1qo6_v3":
@@ -239,7 +239,7 @@ expected_results = {
 "his_nterm_all_h_2j5p_v3":
   ['HIS%NH3', 20, [], 'peptide', True, None],
 "asp_chain_all_h_2izb_v3":
-  ['ASP', 12, [' HD2'], 'peptide', None, None],
+  ['ASP%ACID-ASP', 13, [], 'peptide', None, None],
 "lys_cterm_all_h_1gkt_v2":
   ['LYS%COOH', 24, [], 'peptide', True, None],
 "gln_chain_all_h_1o8t_v3":
@@ -271,7 +271,7 @@ expected_results = {
 "arg_nterm_all_h_1i9f_v3":
   ['ARG%NH3', 26, [], 'peptide', True, None],
 "asp_cterm_all_h_1kb8_v3":
-  ['ASP%COOH', 14, [' HD2'], 'peptide', True, None],
+  ['ASP%COOH%ACID-ASP', 15, [], 'peptide', True, None],
 "met_chain_all_h_1ozo_v2":
   ['MET', 17, [], 'peptide', None, None],
 "trp_nterm_all_h_1fi6_v3":
@@ -315,9 +315,9 @@ expected_results = {
 "lys_nterm_all_h_2bvb_v3":
   ['LYS%NH3', 24, [], 'peptide', True, None],
 "glu_nterm_all_h_1agg_v2":
-  ['GLU%NH3', 17, [' HE2'], 'peptide', True, None],
+  ['GLU%ACID-GLU%NH3', 18, [], 'peptide', True, None],
 "glu_nterm_all_h_1agg_v3":
-  ['GLU%NH3', 17, [' HE2'], 'peptide', True, None],
+  ['GLU%ACID-GLU%NH3', 18, [], 'peptide', True, None],
 "ala_nterm_all_h_1vcx_v2":
   ['ALA%NH3', 12, [], 'peptide', True, None],
 "ala_cterm_all_h_1eio_v3":
@@ -391,7 +391,7 @@ expected_results = {
 "leu_nterm_all_h_1edv_v2":
   ['LEU%NH3', 21, [], 'peptide', True, None],
 "asp_chain_all_h_1kgl_v2":
-  ['ASP', 12, [' HD2'], 'peptide', None, None],
+  ['ASP%ACID-ASP', 13, [], 'peptide', None, None],
 "lys_nterm_all_h_1gcc_v3":
   ['LYS%NH3', 24, [], 'peptide', True, None],
 "ile_cterm_all_h_1pog_v2":
