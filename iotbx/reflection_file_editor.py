@@ -44,10 +44,10 @@ mtz_file
       .style = bold noauto
     output_unit_cell = None
       .type = unit_cell
-      .style = bold
+      .style = bold noauto
     output_space_group = None
       .type = space_group
-      .style = bold
+      .style = bold noauto
     change_of_basis = None
       .type = str
       .expert_level = 2
@@ -60,8 +60,10 @@ mtz_file
       .style = bold
     disable_unit_cell_check = False
       .type = bool
+      .style = noauto
     disable_space_group_check = False
       .type = bool
+      .style = noauto
   }
   d_max = None
     .type = float
@@ -75,6 +77,7 @@ mtz_file
     .type = path
     .short_caption = Output file
     .style = file_type:mtz new_file bold noauto
+  include scope libtbx.phil.interface.tracking_params
   resolve_label_conflicts = False
     .type = bool
     .help = Updates label names as necessary to avoid conflicts
@@ -149,14 +152,15 @@ mtz_file
     generate = True
       .type = bool
       .short_caption = Generate R-free flags if not already present
-      .style = bold
+      .style = bold noauto
     force_generate = False
       .type = bool
       .short_caption = Generate R-free flags even if they are already present
     new_label = FreeR_flag
       .type = str
       .short_caption = Output label for new R-free flags
-      .style = bold
+      .input_size = 160
+      .style = bold noauto
     include scope cctbx.r_free_utils.generate_r_free_params_str
     random_seed = None
       .type = int
@@ -182,12 +186,14 @@ mtz_file
         the test set.  Phenix will work with either convention, but most CCP4 \
         programs expect the test set to be 0.
       .expert_level = 2
+      .style = noauto
     preserve_input_values = False
       .type = bool
       .short_caption = Preserve original flag values
       .help = If True, CCP4-style R-free flags will be left as random \
         integers instead of being converted to a boolean array.  This option \
         is not compatible with the 'extend' option.
+      .style = noauto
   }
 }""", process_includes=True)
 
