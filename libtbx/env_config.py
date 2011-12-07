@@ -2035,7 +2035,37 @@ def set_preferred_sys_prefix_and_sys_executable(build_path):
           if (sys.executable != new_executable):
             sys.executable = new_executable
 
+def raise_if_source_directory_suspected():
+  likely_sources = []
+  for level1 in os.listdir("."):
+    if (not op.isdir(level1)): continue
+    if (level1 == "cctbx_project"):
+      likely_sources.append(level1)
+    else:
+      for file_name in [
+            "libtbx_config",
+            "libtbx_refresh.py",
+            "libtbx_SConscript"]:
+        level2 = op.join(level1, file_name)
+        if (op.isfile(level2)):
+          likely_sources.append(level1)
+  if (len(likely_sources) != 0):
+    likely_sources = sorted(set(likely_sources))
+    if (len(likely_sources) == 1): t = "this"; s = "y"
+    else:                          t = "these"; s = "ies"
+    msg = ["Safety guard:",
+      "  The current working directory appears to be a source directory",
+      "  as determined by the presence of %s sub-director%s:" % (t, s)]
+    msg.extend(["    %s" % show_string(d) for d in likely_sources])
+    msg.extend([
+      "  To resolve this problem:",
+      "  - If this command was accidentally run in the wrong directory,",
+      "    change to the correct build directory.",
+      "  - Remove or rename the director%s listed above." %s])
+    raise RuntimeError("\n".join(msg))
+
 def cold_start(args):
+  raise_if_source_directory_suspected()
   cwd_was_empty_at_start = True
   for file_name in os.listdir("."):
     if (not file_name.startswith(".")):
