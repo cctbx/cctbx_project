@@ -105,6 +105,7 @@ namespace {
     tuple_mapping_fixed_size<vec3<int> >();
     tuple_mapping_fixed_size<mat3<int> >();
     tuple_mapping_fixed_size<vec3<double> >();
+    tuple_mapping_fixed_size<vec3<boost::optional<double> > >();
     tuple_mapping_fixed_size<mat3<double> >();
     tuple_mapping_fixed_size<sym_mat3<double> >();
     tuple_mapping_fixed_size<vec2<unsigned int> >();
