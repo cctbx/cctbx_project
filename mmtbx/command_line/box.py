@@ -1,21 +1,12 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.box
 
-from mmtbx.tls import tools
+import mmtbx.utils
 from mmtbx.refinement import print_statistics
-import mmtbx.secondary_structure
 import iotbx.pdb
-from cctbx import adptbx
 from scitbx.array_family import flex
-import scitbx.linalg
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx import Auto
-from copy import deepcopy
-import cStringIO
-import random
-import os
-import time
-import sys
+import os, sys
 from iotbx import reflection_file_reader
 
 master_phil = libtbx.phil.parse("""
