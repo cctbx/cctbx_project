@@ -1,6 +1,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref.h>
 #include <tbxx/error_utils.hpp>
+#include <boost/optional.hpp>
 #include <cmath>
 
 namespace scitbx { namespace math {
@@ -15,7 +16,7 @@ class real
 {
 public:
   FTW A,B,D, p,a_,b_,c_,d_;
-  vec3<FTO> x;
+  vec3<boost::optional<FTO> > x;
   static const FTW one_over_three;
 
   real() {}
@@ -26,7 +27,7 @@ public:
     FTW const& c,
     FTW const& d)
   :
-  x(0,0,0), A(0), B(0), D(0)
+  A(0), B(0), D(0)
   {
     FTW const eps = 1.e-9;
     SCITBX_ASSERT(a != 0.);
@@ -49,11 +50,13 @@ public:
     else throw TBXX_UNREACHABLE_ERROR();
   }
 
-  vec3<FTO> residual() {
-    vec3<FTO> result(0,0,0);
+  vec3<boost::optional<FTO> > residual() {
+    vec3<boost::optional<FTO> > result;
     for(std::size_t i=0; i < 3; i++) {
-      result[i] = static_cast<FTO>(
-        a_*std::pow(x[i],3)+b_*std::pow(x[i],2)+c_*x[i]+d_);
+      if (x[i]) {
+        result[i] = static_cast<FTO>(
+          a_*std::pow((*x[i]),3)+b_*std::pow((*x[i]),2)+c_*(*x[i])+d_);
+      }
     }
     return result;
   }
@@ -66,8 +69,8 @@ public:
 
   void case_0() {
     x[0] = static_cast<FTO>(-fractional_power(d_/a_, one_over_three));
-    x[1] = static_cast<FTO>(x[0]);
-    x[2] = static_cast<FTO>(x[0]);
+    x[1] = static_cast<FTO>(*x[0]);
+    x[2] = static_cast<FTO>(*x[0]);
   }
 
   void case_1() {
@@ -80,7 +83,7 @@ public:
     FTW p_over_3 = p/3.;
     x[0] = static_cast<FTO>(M+N-p_over_3);
     x[1] = static_cast<FTO>(-(M+N)/2.-p_over_3);
-    x[2] = x[1];
+    x[2] = *x[1];
   }
 
   void case_2() {
