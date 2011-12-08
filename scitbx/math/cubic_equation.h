@@ -1,10 +1,10 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref.h>
+#include <tbxx/error_utils.hpp>
 #include <cmath>
 
 namespace scitbx { namespace math {
 namespace cubic_equation {
-using scitbx::vec3;
 
 //! Analytical solution of ax**3 + bx**2 + cx + d = 0.
 // Returns zero in case of imaginary roots (so the name 'real')
@@ -46,7 +46,7 @@ public:
     else if(flag)  case_0();
     else if(D==0.) case_1();
     else if(D>0.)  case_2();
-    else SCITBX_ASSERT(0);
+    else throw TBXX_UNREACHABLE_ERROR();
   }
 
   vec3<FTO> residual() {
@@ -64,13 +64,13 @@ public:
     return r;
   }
 
-  inline void case_0() {
+  void case_0() {
     x[0] = static_cast<FTO>(-fractional_power(d_/a_, one_over_three));
     x[1] = static_cast<FTO>(x[0]);
     x[2] = static_cast<FTO>(x[0]);
   }
 
-  inline void case_1() {
+  void case_1() {
     FTW sqrtD = std::sqrt(D);
     FTW minus_b_over_2 = -B/2.;
     FTW M = minus_b_over_2 + sqrtD;
@@ -83,7 +83,7 @@ public:
     x[2] = x[1];
   }
 
-  inline void case_2() {
+  void case_2() {
     SCITBX_ASSERT(D>=0);
     FTW sqrtD = std::sqrt(D);
     FTW minus_B_over_2 = -B/2;
@@ -94,7 +94,7 @@ public:
     x[0] = static_cast<FTO>(S+U-b_/(3.*a_));
   }
 
-  inline void case_3() {
+  void case_3() {
     SCITBX_ASSERT(A<0.);
 /* //alternative method: looks wildly different but delivers exact same results
       FTW iarg = (B*B)/4.-D;
