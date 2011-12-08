@@ -43,10 +43,10 @@ public:
     B = (2.*p*pp-9.*p*q+27.*r)/27.;
     D = (A*A*A)/27.+(B*B)/4.;
     bool flag=std::abs(A)<eps && std::abs(B)<eps && std::abs(D)<eps;
-    if(D<0.0)      case_3();
-    else if(flag)  case_0();
-    else if(D==0.) case_1();
-    else if(D>0.)  case_2();
+    if(D<std::abs(eps) && D<0.)       case_3();
+    else if(flag)                     case_0();
+    else if(D<std::abs(eps) && D>=0.) case_1();
+    else if(D>0.)                     case_2();
     else throw TBXX_UNREACHABLE_ERROR();
   }
 
