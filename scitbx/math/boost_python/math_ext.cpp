@@ -17,11 +17,16 @@
 #include <boost/rational.hpp> // for boost::gcd
 #include <scitbx/math/approx_equal.h>
 #include <scitbx/math/orthonormal_basis.h>
+#include <scitbx/math/gaussian_fit_1d_analytical.h>
+#include <scitbx/math/cubic_equation.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -319,6 +324,37 @@ namespace {
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
     def("ei1", (double(*)(double const&)) bessel::ei1);
     def("ei0", (double(*)(double const&)) bessel::ei0);
+
+    typedef return_value_policy<return_by_value> rbv;
+    namespace smg=scitbx::math::gaussian_fit_1d_analytical;
+    class_<smg::compute<> >("gaussian_fit_1d_analytical")
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<double> const& >(
+             (arg("x"),
+              arg("y"))))
+      .add_property("a", make_getter(&smg::compute<>::a, rbv()))
+      .add_property("b", make_getter(&smg::compute<>::b, rbv()))
+    ;
+
+    //typedef return_value_policy<return_by_value> rbv;
+    namespace cueq=scitbx::math::cubic_equation;
+    class_<cueq::real<> >("cubic_equation_real")
+      .def(init<
+           double const&,
+           double const&,
+           double const&,
+           double const& >(
+             (arg("a"),
+              arg("b"),
+              arg("c"),
+              arg("d"))))
+      .def("residual", &cueq::real<>::residual)
+      .add_property("x", make_getter(&cueq::real<>::x, rbv()))
+      .add_property("A", make_getter(&cueq::real<>::A,  rbv()))
+      .add_property("B", make_getter(&cueq::real<>::B,  rbv()))
+      .add_property("D", make_getter(&cueq::real<>::D,  rbv()))
+    ;
 
 #if defined(SCITBX_MATH_BESSEL_HAS_SPHERICAL)
     def("spherical_bessel",
