@@ -1081,6 +1081,7 @@ mmtbx/cablam/cjw_vectormath.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
+mmtbx/command_line/box.py -text
 mmtbx/command_line/cablam_annote.py -text
 mmtbx/command_line/cablam_training.py -text
 mmtbx/command_line/cbetadev.py -text
