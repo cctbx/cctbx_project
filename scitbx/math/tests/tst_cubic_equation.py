@@ -58,8 +58,8 @@ def exercise2():
   a,b,c,d = 3,-10,14,27
   r = scitbx.math.cubic_equation_real(a=a, b=b, c=c, d=d)
   assert approx_equal(r.x[0],-1)
-  assert approx_equal(r.x[1], 0) # dummy roots, in reality they are imaginary
-  assert approx_equal(r.x[2], 0) # dummy roots, in reality they are imaginary
+  assert r.x[1] is None # imaginary roots
+  assert r.x[2] is None # imaginary roots
   assert approx_equal(residual(a=a,b=b,c=c,d=d,x=-1), 0)
 
 def exercise3():
