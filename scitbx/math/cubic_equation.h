@@ -16,7 +16,7 @@ class real
 public:
   FTW A,B,D, p,a_,b_,c_,d_;
   vec3<FTO> x;
-  FTW static const one_over_three = 1./3;
+  static const FTW one_over_three;
 
   real() {}
 
@@ -128,5 +128,8 @@ public:
   }
 
 };
+
+template <typename FTW, typename FTO>
+const FTW real<FTW, FTO>::one_over_three = 1/3.;
 
 }}}
