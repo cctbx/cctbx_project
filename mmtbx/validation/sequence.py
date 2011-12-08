@@ -226,6 +226,8 @@ class validation (object) :
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False) :
     assert (len(sequences) > 0)
+    for seq_object in sequences :
+      assert (seq_object.sequence != "")
     if (log is None) :
       log = sys.stdout
     if (params is None) :
@@ -446,6 +448,18 @@ END
   1 mismatches to sequence
     residue IDs:  5""")
   s = easy_pickle.dumps(v)
+  seq4 = iotbx.bioinformatics.sequence("")
+  try :
+    v = validation(
+      pdb_hierarchy=pdb_in2.construct_hierarchy(),
+      sequences=[seq4],
+      log=null_out(),
+      nproc=1,
+      extract_coordinates=True)
+  except AssertionError :
+    pass
+  else :
+    raise Exception_expected
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
