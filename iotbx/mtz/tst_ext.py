@@ -199,6 +199,11 @@ def exercise_basic():
       615.060852051*163/165)
     assert approx_equal(flex.mean(column.extract_values(13)),
       (615.060852051*163+2*13)/165)
+    v,s = column.extract_values_and_selection_valid(
+      not_a_number_substitute=-97).as_tuple()
+    assert v.size() == 165
+    assert s.count(True) == 163
+    assert approx_equal(v.select(~s), [-97]*2)
     expected_dataset_ids = iter(range(4))
     expected_dataset_names = iter([
       "HKL_base",

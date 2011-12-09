@@ -15,7 +15,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string, overwrite_at, contains_one_of
 from libtbx.utils import Sorry
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, slots_getstate_setstate
 import warnings
 import re
 import sys, os
@@ -944,6 +944,25 @@ class _(boost.python.injector, ext.dataset):
           else:
             raise RuntimeError("Fatal programming error.")
     return self
+
+class column_values_and_selection_valid(slots_getstate_setstate):
+
+  __slots__ = ["values", "selection_valid"]
+
+  def __init__(O, values, selection_valid):
+    O.values = values
+    O.selection_valid = selection_valid
+
+  def as_tuple(O):
+    return (O.values, O.selection_valid)
+
+class _(boost.python.injector, ext.column):
+
+  def extract_values_and_selection_valid(self, not_a_number_substitute=0):
+    return column_values_and_selection_valid(
+      values=self.extract_values(
+        not_a_number_substitute=not_a_number_substitute),
+      selection_valid=self.selection_valid())
 
 def miller_array_as_mtz_dataset(self,
       column_root_label,
