@@ -106,6 +106,10 @@ def default_column_types(miller_array):
       result = "GP"
     else:
       result = "FP"
+  elif (miller_array.is_xray_reconstructed_amplitude_array()):
+    assert miller_array.anomalous_flag()
+    assert miller_array.sigmas() is not None
+    result = "FQDQ"
   elif ((   miller_array.is_bool_array()
          or miller_array.is_integer_array())
         and miller_array.sigmas() is None):
@@ -159,6 +163,8 @@ class label_decorator(__builtins__["object"]):
         anomalous_minus_suffix="(-)",
         sigmas_prefix="SIG",
         sigmas_suffix="",
+        delta_anomalous_prefix="DANO",
+        delta_anomalous_suffix="",
         phases_prefix="PHI",
         phases_suffix="",
         hendrickson_lattman_suffix_list=["A","B","C","D"]):
@@ -175,6 +181,13 @@ class label_decorator(__builtins__["object"]):
     return self.anomalous(
       self.sigmas_prefix + root_label + self.sigmas_suffix,
       anomalous_sign)
+
+  def delta_anomalous(self, root_label):
+    return self.delta_anomalous_prefix + root_label \
+         + self.delta_anomalous_suffix
+
+  def sigmas_delta_anomalous(self, root_label):
+    return self.sigmas(self.delta_anomalous(root_label))
 
   def phases(self, root_label, anomalous_sign=None):
     return self.anomalous(
@@ -834,61 +847,102 @@ class _(boost.python.injector, ext.dataset):
         raise RuntimeError("Fatal programming error.")
     else:
       asu, matches = miller_array.match_bijvoet_mates()
-      for anomalous_sign in ("+","-"):
-        sel = matches.pairs_hemisphere_selection(anomalous_sign)
-        sel.extend(matches.singles_hemisphere_selection(anomalous_sign))
-        if (anomalous_sign == "+"):
-          indices = asu.indices().select(sel)
-        else:
-          indices = -asu.indices().select(sel)
-        data = asu.data().select(sel)
-        if (default_col_types in ["GL", "KM"]):
-          self._add_observations(
-            data_label=label_decorator.anomalous(
-              column_root_label, anomalous_sign),
-            sigmas_label=label_decorator.sigmas(
-              column_root_label, anomalous_sign),
-            column_types=column_types,
-            indices=indices,
-            data=data,
-            sigmas=asu.sigmas().select(sel))
-        elif (default_col_types == "GP"):
-          self._add_complex(
-            amplitudes_label=label_decorator.anomalous(
-              column_root_label, anomalous_sign),
-            phases_label=label_decorator.phases(
-              column_root_label, anomalous_sign),
-            column_types=column_types,
-            indices=indices,
-            data=data)
-        elif (default_col_types in ["G", "K"]):
+      if (default_col_types == "FQDQ"):
+        _ = matches.pairs_hemisphere_selection
+        selpp = _("+")
+        selpm = _("-")
+        _ = matches.singles_hemisphere_selection
+        selsp = _("+")
+        selsm = _("-")
+        if (selsm.size() != 0):
+          raise RuntimeError(
+            "Unsupported reconstructed amplitude array:"
+            " singles in negative hemisphere.")
+        _ = asu.data()
+        fp = _.select(selpp)
+        fm = _.select(selpm)
+        fs = _.select(selsp)
+        # http://www.ccp4.ac.uk/dist/html/mtzMADmod.html
+        f = 0.5 * (fp + fm)
+        d = fp - fm
+        _ = asu.sigmas()
+        sp = _.select(selpp)
+        sm = _.select(selpm)
+        ss = _.select(selsp)
+        sd = flex.sqrt(sp**2 + sm**2)
+        sf = 0.5 * sd
+        f.extend(fs)
+        sf.extend(ss)
+        _ = asu.indices()
+        hd = _.select(selpp)
+        hf = hd.concatenate(_.select(selsp))
+        label_group = [
+          column_root_label,
+          label_decorator.sigmas(column_root_label),
+          label_decorator.delta_anomalous(column_root_label),
+          label_decorator.sigmas_delta_anomalous(column_root_label)]
+        for i,(mi,data) in enumerate([(hf,f),(hf,sf),(hd,d),(hd,sd)]):
           self.add_column(
-            label=label_decorator.anomalous(column_root_label, anomalous_sign),
-            type=column_types).set_reals(
-              miller_indices=indices,
+            label=label_group[i],
+            type=column_types[i]).set_reals(miller_indices=mi, data=data)
+      else:
+        for anomalous_sign in ("+","-"):
+          sel = matches.pairs_hemisphere_selection(anomalous_sign)
+          sel.extend(matches.singles_hemisphere_selection(anomalous_sign))
+          if (anomalous_sign == "+"):
+            indices = asu.indices().select(sel)
+          else:
+            indices = -asu.indices().select(sel)
+          data = asu.data().select(sel)
+          if (default_col_types in ["GL", "KM"]):
+            self._add_observations(
+              data_label=label_decorator.anomalous(
+                column_root_label, anomalous_sign),
+              sigmas_label=label_decorator.sigmas(
+                column_root_label, anomalous_sign),
+              column_types=column_types,
+              indices=indices,
+              data=data,
+              sigmas=asu.sigmas().select(sel))
+          elif (default_col_types == "GP"):
+            self._add_complex(
+              amplitudes_label=label_decorator.anomalous(
+                column_root_label, anomalous_sign),
+              phases_label=label_decorator.phases(
+                column_root_label, anomalous_sign),
+              column_types=column_types,
+              indices=indices,
               data=data)
-        elif (default_col_types == "I"):
-          self.add_column(
-            label=label_decorator.anomalous(column_root_label, anomalous_sign),
-            type=column_types).set_reals(
-              miller_indices=indices,
-              data=data.as_double())
-        elif (default_col_types == "AAAA"):
-          mtz_reflection_indices = self.add_column(
-            label=label_decorator.hendrickson_lattman(
-              column_root_label, 0, anomalous_sign),
-            type=column_types[0]).set_reals(
-              miller_indices=indices,
-              data=data.slice(0))
-          for i in xrange(1,4):
+          elif (default_col_types in ["G", "K"]):
             self.add_column(
+              label=label_decorator.anomalous(
+                column_root_label, anomalous_sign),
+              type=column_types).set_reals(
+                miller_indices=indices,
+                data=data)
+          elif (default_col_types == "I"):
+            self.add_column(
+              label=label_decorator.anomalous(
+                column_root_label, anomalous_sign),
+              type=column_types).set_reals(
+                miller_indices=indices,
+                data=data.as_double())
+          elif (default_col_types == "AAAA"):
+            mtz_reflection_indices = self.add_column(
               label=label_decorator.hendrickson_lattman(
-                column_root_label, i, anomalous_sign),
-              type=column_types[i]).set_reals(
-                mtz_reflection_indices=mtz_reflection_indices,
-                data=data.slice(i))
-        else:
-          raise RuntimeError("Fatal programming error.")
+                column_root_label, 0, anomalous_sign),
+              type=column_types[0]).set_reals(
+                miller_indices=indices,
+                data=data.slice(0))
+            for i in xrange(1,4):
+              self.add_column(
+                label=label_decorator.hendrickson_lattman(
+                  column_root_label, i, anomalous_sign),
+                type=column_types[i]).set_reals(
+                  mtz_reflection_indices=mtz_reflection_indices,
+                  data=data.slice(i))
+          else:
+            raise RuntimeError("Fatal programming error.")
     return self
 
 def miller_array_as_mtz_dataset(self,
