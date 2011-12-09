@@ -26,9 +26,9 @@ class SBFrame(XrayFrame) :
 
     file_name = os.path.abspath(self.path)
     self._img = rstbx.viewer.image(self.path)
-    #self.viewer.set_image(self._img)
-    self.viewer._img = self._img
-    self.viewer._img.set_screen_size(*(self.viewer.GetSize()))
+    self.viewer.set_image(self._img)
+    #self.viewer._img = self._img
+    #self.viewer._img.set_screen_size(*(self.viewer.GetSize()))
     self.viewer.line = None
     scales = [0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
     zoom = scales[self.viewer.settings.zoom_level]
