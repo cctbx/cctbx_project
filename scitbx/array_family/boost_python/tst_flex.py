@@ -610,7 +610,6 @@ def exercise_flex_sum_axis():
   assert approx_equal(flex.sum(fa, axis=1), (4,8,12))
   fa = flex.double([1]*12+[2]*12)
   fa.resize(flex.grid(2,3,4))
-  na = fa.as_numpy_array()
   assert approx_equal(flex.sum(fa, axis=0), ([3]*12))
   assert approx_equal(flex.sum(fa, axis=1), ([3]*4+[6]*4))
   assert approx_equal(flex.sum(fa, axis=2), ([4]*3+[8]*3))
