@@ -35,6 +35,8 @@ import mmtbx.f_model_info
 master_params =  iotbx.phil.parse("""
   twin_law = None
   .type=str
+  .input_size = 80
+  .style = bold noauto
   twin_target=*twin_lsq_f
   .type=choice
   detwin{
