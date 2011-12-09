@@ -5,6 +5,8 @@ namespace iotbx {
 namespace detectors {
 namespace context {
 
+namespace af = scitbx::af;
+
 class spot_xy_convention{
   double W1,W2,pxlsz;
   int index;
