@@ -468,3 +468,24 @@ def compare_derivatives(more_reliable, less_reliable, eps=1e-6):
     from libtbx.test_utils import approx_equal
     assert approx_equal( # slow but helpful output
       more_reliable/scale, less_reliable/scale, eps=eps)
+
+def sum(flex_array, axis=None):
+  """ Support for numpy-style summation along an axis.
+      If axis=None then summation is performed over the entire array.
+  """
+  if axis is None:
+    return ext.sum(flex_array)
+  elif flex_array.nd() == 1:
+    assert axis == 0
+    return ext.sum(flex_array)
+  else:
+    old_dim = list(flex_array.all())
+    assert axis < len(old_dim)
+    new_dim = list(flex_array.all())
+    new_dim.pop(axis)
+    flex_array_sum = flex_array.__class__(grid(new_dim), 0)
+    slices = [slice(0, old_dim[i]) for i in range(len(old_dim))]
+    for i in range(old_dim[axis]):
+      slices[axis] = slice(i,i+1)
+      flex_array_sum += flex_array[slices]
+    return flex_array_sum

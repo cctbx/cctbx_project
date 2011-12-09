@@ -585,6 +585,35 @@ def exercise_1d_slicing_core(a):
   try: tuple(a[3:3:0]) == ()
   except ValueError, e: assert str(e) == "slice step cannot be zero"
 
+def exercise_flex_sum_axis():
+  import random
+  try:
+    import numpy
+  except ImportError:
+    "Skipping flex.sum numpy compatibility testing (numpy not available)"
+    pass
+  else:
+    for nd in (1,2,3,4,5):
+      dimensions = [random.randint(1,5) for i in range(nd)]
+      fa_size = flex.product(flex.int(dimensions))
+      fa_int = flex.random_int_gaussian_distribution(fa_size, mu=0, sigma=3)
+      fa_double = flex.random_double(fa_size)
+      for fa in (fa_int, fa_double):
+        fa.resize(flex.grid(dimensions))
+        for axis in range(nd):
+          for axis in (axis, -axis):
+            fa_sum = flex.sum(fa, axis=axis)
+            assert approx_equal(fa_sum, fa.as_numpy_array().sum(axis=axis).flatten())
+  fa = flex.int([1]*4+[2]*4+[3]*4)
+  fa.resize(flex.grid(3,4))
+  assert approx_equal(flex.sum(fa, axis=0), (6,6,6,6))
+  assert approx_equal(flex.sum(fa, axis=1), (4,8,12))
+  fa = flex.double([1]*12+[2]*12)
+  fa.resize(flex.grid(2,3,4))
+  na = fa.as_numpy_array()
+  assert approx_equal(flex.sum(fa, axis=0), ([3]*12))
+  assert approx_equal(flex.sum(fa, axis=1), ([3]*4+[6]*4))
+  assert approx_equal(flex.sum(fa, axis=2), ([4]*3+[8]*3))
 
 def exercise_1d_slicing():
   exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
@@ -3184,6 +3213,7 @@ def exercise_python_functions():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_flex_sum_axis()
     exercise_nd_slicing()
     exercise_numpy_slicing_compatibility()
     exercise_matrix_packed_u_diagonal()
