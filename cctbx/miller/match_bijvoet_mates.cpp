@@ -20,25 +20,31 @@ namespace cctbx { namespace miller {
     std::vector<bool> paired_already(miller_indices_.size(), false);
     for(std::size_t i=0;i<miller_indices_.size();i++) {
       if (paired_already[i]) continue;
-      int asu_which = asu.which(miller_indices_[i]);
-      CCTBX_ASSERT(asu_which != 0 || miller_indices_[i].is_zero());
-      lookup_map_type::const_iterator l = lookup_map.find(-miller_indices_[i]);
-      if (l == lookup_map.end()) {
-        if (asu_which > 0) {
-          singles_[0].push_back(i);
-        }
-        else {
-          singles_[1].push_back(i);
-        }
+      if (miller_indices_[i].is_zero()) {
+        singles_[0].push_back(i);
       }
       else {
-        if (asu_which > 0) {
-          pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
+        int asu_which = asu.which(miller_indices_[i]);
+        CCTBX_ASSERT(asu_which != 0);
+        lookup_map_type::const_iterator
+          l = lookup_map.find(-miller_indices_[i]);
+        if (l == lookup_map.end()) {
+          if (asu_which > 0) {
+            singles_[0].push_back(i);
+          }
+          else {
+            singles_[1].push_back(i);
+          }
         }
         else {
-          pairs_.push_back(af::tiny<std::size_t, 2>(l->second, i));
+          if (asu_which > 0) {
+            pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
+          }
+          else {
+            pairs_.push_back(af::tiny<std::size_t, 2>(l->second, i));
+          }
+          paired_already[l->second] = true;
         }
-        paired_already[l->second] = true;
       }
     }
   }

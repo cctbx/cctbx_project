@@ -1346,6 +1346,12 @@ def exercise_array_2(space_group_info):
             anomalous_flag=False),
           data=vfy_data).adopt_set(ave)
         assert vfy.correlation(ave).coefficient() > 1-1.e-6
+  #
+  mi = flex.miller_index([(0,0,0)])
+  matches = miller.match_bijvoet_mates(sgtbx.space_group_type(), mi)
+  assert matches.pairs().size() == 0
+  assert list(matches.singles('+')) == [0]
+  assert matches.singles('-').size() == 0
 
 def exercise_map_to_asu(space_group_info):
   crystal_symmetry = space_group_info.any_compatible_crystal_symmetry(
