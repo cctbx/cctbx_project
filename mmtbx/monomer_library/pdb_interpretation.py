@@ -127,6 +127,9 @@ master_params_str = """\
   disulfide_distance_cutoff = 3
     .type=float
     .optional=False
+  peptide_nucleotide_distance_cutoff = 3
+    .type=float
+    .optional=False
   %(dihedral_function_type_params_str)s
   chir_volume_esd = 0.2
     .type=float
