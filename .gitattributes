@@ -860,6 +860,7 @@ iotbx/detectors/context/config_detector.py -text
 iotbx/detectors/context/endstation.py -text
 iotbx/detectors/context/spot_xy_convention.h -text
 iotbx/detectors/context/spot_xy_convention.py -text
+iotbx/detectors/display.h -text
 iotbx/detectors/dtrek.py -text
 iotbx/detectors/edf.py -text
 iotbx/detectors/image_divider.cpp -text
