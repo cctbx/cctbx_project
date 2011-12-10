@@ -71,7 +71,7 @@ if __name__=='__main__':
   print a.linearintdata
   print a.linearintdata.size()
   print a.linearintdata.accessor().grid()
-  from iotbx.detectors.jpeg import JPEGImage
+  from labelit.detectors.jpeg import JPEGImage
   j = JPEGImage(a)
   j.calcimage()
   j.write(sys.argv[2])
