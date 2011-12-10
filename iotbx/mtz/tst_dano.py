@@ -1,4 +1,3 @@
-from cStringIO import StringIO
 import sys
 
 def recycle_dano_miller_array(miller_array):
@@ -18,34 +17,14 @@ def recycle_dano_miller_array(miller_array):
   assert approx_equal(a.data(), b.data())
   assert approx_equal(a.sigmas(), b.sigmas())
 
-def recycle_dano_mtz(mtz_file_name, verbose):
-  if (verbose): sio = sys.stdout
-  else:         sio = StringIO()
-  print >> sio, "Recycling:", mtz_file_name
+def recycle_dano_mtz(mtz_file_name):
   import iotbx.mtz
   mtz_obj = iotbx.mtz.object(file_name=mtz_file_name)
-  sg = mtz_obj.space_group()
-  hkl = mtz_obj.extract_miller_indices()
-  acentric = ~sg.is_centric(hkl)
-  for column in mtz_obj.columns():
-    if (column.type() == "D"):
-      invalid = ~column.selection_valid()
-      ambiguous = (invalid & acentric).iselection()
-      if (ambiguous.size() != 0):
-        print >> sio, \
-          "Number of ambiguous F,DANO (column %s):" % column.label(), \
-            ambiguous.size()
-        for i in ambiguous:
-          print >> sio, hkl[i]
   for miller_array in mtz_obj.as_miller_arrays():
     if (miller_array.is_xray_reconstructed_amplitude_array()):
-      break
-  else:
-    raise RuntimeError
-  recycle_dano_miller_array(miller_array)
+      recycle_dano_miller_array(miller_array)
 
 def recycle_one_dano(missing, verbose):
-  "verbose=True with mtzMADmod available will show the behavior of mtzMADmod"
   assert missing in [None, "+", "-"]
   from cctbx import crystal
   cs = crystal.symmetry(
@@ -69,49 +48,10 @@ def recycle_one_dano(missing, verbose):
     else:                i = 0
     ma = ma.select(flex.size_t([i]))
   mtz_obj = mtz_dataset.mtz_object()
-  mtz_obj.write(file_name="tmp.mtz")
-  open("tmp.inp", "w").write("""\
-TITLE exercise
-LABIN -
-    F1(+)=X(+) -
-    F1(-)=X(-) -
-    SIGF1(+)=SIGX(+) -
-    SIGF1(-)=SIGX(-)
-LABOUT -
-    F1=AVE  SIGF1=SIGAVE D1=DAVE SIGD1=SIGDAVE
-END
-""")
-  from libtbx.utils import remove_files
-  remove_files(paths=["tmp_mod.mtz"])
-  from libtbx.path import full_command_path
-  cmd_path = full_command_path(command="mtzMADmod")
-  if (cmd_path is not None):
-    if (verbose): sio = sys.stdout
-    else:         sio = StringIO()
-    print >> sio, "Input miller.array for %s:" % cmd_path
-    ma.show_array(f=sio)
-    print >> sio
-    from libtbx import easy_run
-    out = easy_run.fully_buffered(
-      command="%s HKLIN tmp.mtz HKLOUT tmp_mod.mtz < tmp.inp" % cmd_path) \
-        .raise_if_errors().stdout_lines
-    assert ' MTZMADMOD:   *** Normal Termination of mtzMADmod ***' in out
-    import iotbx.mtz
-    mtz_obj_mod = iotbx.mtz.object(file_name="tmp_mod.mtz")
-    print >> sio, "%s result:" % cmd_path
-    mtz_obj_mod.show_column_data_human_readable(out=sio)
-    mas_mod = mtz_obj_mod.as_miller_arrays()
-    assert len(mas_mod) == 2
-    assert str(mas_mod[0].info()) == "ccp4_mtz:X(+),SIGX(+),X(-),SIGX(-)"
-    assert str(mas_mod[1].info()) == "ccp4_mtz:AVE,SIGAVE,DAVE,SIGDAVE"
-    ma_mod = mas_mod[1]
-    print >> sio, "Resulting miller.array after %s:" % cmd_path
-    ma_mod.show_array(f=sio)
-    print >> sio
-  #
   from cctbx.xray import observation_types
   ma.set_observation_type(observation_types.reconstructed_amplitude())
   mtz_obj_reco = ma.as_mtz_dataset(column_root_label="R").mtz_object()
+  from cStringIO import StringIO
   sio = StringIO()
   print >> sio, "Resulting mtz from .as_mtz_dataset():"
   mtz_obj_reco.show_column_data_human_readable(out=sio)
@@ -196,7 +136,7 @@ def run(args):
       test=op.isfile,
       optional=False))
   for mtz_file_name in mtz_file_names:
-    recycle_dano_mtz(mtz_file_name, verbose)
+    recycle_dano_mtz(mtz_file_name)
   for missing in [None, "+", "-"]:
     recycle_one_dano(missing, verbose)
   print "OK"
