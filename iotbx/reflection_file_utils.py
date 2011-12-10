@@ -128,6 +128,10 @@ class label_table(object):
       label=label,
       command_line_switch=command_line_switch)
 
+def presumably_from_mtz_FQDQY(miller_array):
+  lbls = miller_array.info().labels
+  return (lbls is not None and len(lbls) == 5)
+
 def get_amplitude_scores(miller_arrays):
   result = []
   for miller_array in miller_arrays:
@@ -135,12 +139,15 @@ def get_amplitude_scores(miller_arrays):
     if (miller_array.is_complex_array()):
       score = 1
     elif (miller_array.is_real_array()):
-      if (miller_array.is_xray_amplitude_array()):
-        score = 4
+      if (miller_array.is_xray_reconstructed_amplitude_array()):
+        if (presumably_from_mtz_FQDQY(miller_array)):
+          score = 3
+        else:
+          score = 2
+      elif (miller_array.is_xray_amplitude_array()):
+        score = 5
       elif (miller_array.is_xray_intensity_array()):
-        score = 3
-      elif (miller_array.is_xray_reconstructed_amplitude_array()):
-        score = 2
+        score = 4
     result.append(score)
   return result
 
@@ -152,11 +159,11 @@ def get_phase_scores(miller_arrays):
         or miller_array.is_hendrickson_lattman_array()):
       score = 4
     elif (miller_array.is_real_array()):
-      if (miller_array.is_xray_amplitude_array()):
+      if (miller_array.is_xray_reconstructed_amplitude_array()):
+        pass
+      elif (miller_array.is_xray_amplitude_array()):
         pass
       elif (miller_array.is_xray_intensity_array()):
-        pass
-      elif (miller_array.is_xray_reconstructed_amplitude_array()):
         pass
       elif (miller_array.data().size() == 0):
         pass
@@ -184,12 +191,15 @@ def get_xray_data_scores(miller_arrays, ignore_all_zeros):
         else:
           score = 1
       elif (miller_array.is_xray_intensity_array()):
-        score = 8
+        score = 10
       elif (miller_array.is_xray_amplitude_array()):
         if (miller_array.is_xray_reconstructed_amplitude_array()):
-          score = 4
+          if (presumably_from_mtz_FQDQY(miller_array)):
+            score = 6
+          else:
+            score = 4
         else:
-          score = 6
+          score = 8
       else:
         score = 2
       assert score is not None
