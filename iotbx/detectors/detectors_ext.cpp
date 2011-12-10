@@ -10,6 +10,7 @@
 #include <scitbx/math/utils.h>
 #include <iotbx/detectors/image_divider.h>
 #include <scitbx/vec3.h>
+#include <iotbx/detectors/display.h>
 
 namespace af = scitbx::af;
 
@@ -361,6 +362,43 @@ void low_pass_filter(af::flex_complex_double complex_data) {
 #include <scitbx/boost_python/utils.h>
 using namespace boost::python;
 
+template <typename DataType>
+struct flex_image_wrapper {
+
+  typedef iotbx::detectors::display::FlexImage<DataType> w_t;
+  typedef af::versa< DataType, af::flex_grid<> > array_t;
+
+  static void wrap (const char* python_name){
+
+    class_<w_t >(python_name, no_init)
+      .def(init<array_t&, const int&, const std::string&,
+                double const&, int const& >(
+            (
+            arg_("rawdata"),
+            arg_("binning"),
+            arg_("vendortype"),
+            arg_("brightness"),
+            arg_("saturation")
+            )
+          ))
+      .def("spot_convention", &w_t::spot_convention)
+      .def("size1", &w_t::size1)
+      .def("size2", &w_t::size2)
+      .def("setWindow", &w_t::setWindow)
+      .def("ex_size1", &w_t::ex_size1)
+      .def("ex_size2", &w_t::ex_size2)
+      .def("adjust", &w_t::adjust,
+         arg("color_scheme")=0)
+      .def("channel", &w_t::channel)
+      .def("point_overlay", &w_t::point_overlay)
+      .def("circle_overlay", &w_t::circle_overlay)
+      .def("prep_string",&w_t::prep_string)
+      .def("prep_string_monochrome",&w_t::prep_string_monochrome)
+      .def_readonly("export_string",&w_t::export_s)
+    ;
+  }
+};
+
 BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 {
    def("ReadADSC", ReadADSC);
@@ -398,5 +436,13 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
         (arg("vector"),arg("unit_direction"),arg("angle"))
   );
   def("low_pass_filter", low_pass_filter);
+
+  flex_image_wrapper<int>::wrap("FlexImage");
+  flex_image_wrapper<double>::wrap("FlexImage_d");
+
+  class_<iotbx::detectors::display::Color>("Color", no_init)
+    .def(init<int, int, int>())
+    .def("as_unit_rgb", &iotbx::detectors::display::Color::as_unit_rgb)
+  ;
 
 }

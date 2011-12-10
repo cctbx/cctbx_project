@@ -85,9 +85,9 @@ class DetectorImageBase(object):
   def get_flex_image(self,binning=1,brightness=1.0):
     datatype = self.get_data_type()
     if datatype=="int":
-      from labelit.detectors import FlexImage
+      from iotbx.detectors import FlexImage
     elif datatype=="double":
-      from labelit.detectors import FlexImage_d as FlexImage
+      from iotbx.detectors import FlexImage_d as FlexImage
     return FlexImage(
       rawdata=self.linearintdata,
       binning=binning,
