@@ -11,7 +11,7 @@ def recycle_dano_miller_array(miller_array):
   _ = mtz_obj.as_miller_arrays()
   assert len(_) == 1
   miller_array_2 = _[0]
-  assert str(miller_array_2.info()) == "ccp4_mtz:X,SIGX,DANOX,SIGDANOX"
+  assert str(miller_array_2.info()) == "ccp4_mtz:X,SIGX,DANOX,SIGDANOX,ISYMX"
   a, b = miller_array.map_to_asu().common_sets(miller_array_2.map_to_asu())
   assert a.indices().all_eq(b.indices())
   from libtbx.test_utils import approx_equal
@@ -111,31 +111,27 @@ END
   #
   from cctbx.xray import observation_types
   ma.set_observation_type(observation_types.reconstructed_amplitude())
-  try:
-    mtz_obj_reco = ma.as_mtz_dataset(column_root_label="R").mtz_object()
-  except RuntimeError, e:
-    if (missing != "+"): raise
-    assert str(e) == "Unsupported reconstructed amplitude array:" \
-      " singles in negative hemisphere."
-  else:
-    sio = StringIO()
-    print >> sio, "Resulting mtz from .as_mtz_dataset():"
-    mtz_obj_reco.show_column_data_human_readable(out=sio)
-    print >> sio
-    ma_reco = mtz_obj_reco.as_miller_arrays()[0]
-    print >> sio, "mtz_obj_reco.as_miller_arrays result:"
-    ma_reco.show_array(f=sio)
-    print >> sio
-    if (verbose):
-      sys.stdout.write(sio.getvalue())
-    if (missing is None):
-      expected = """\
+  mtz_obj_reco = ma.as_mtz_dataset(column_root_label="R").mtz_object()
+  sio = StringIO()
+  print >> sio, "Resulting mtz from .as_mtz_dataset():"
+  mtz_obj_reco.show_column_data_human_readable(out=sio)
+  print >> sio
+  ma_reco = mtz_obj_reco.as_miller_arrays()[0]
+  print >> sio, "mtz_obj_reco.as_miller_arrays result:"
+  ma_reco.show_array(f=sio)
+  print >> sio
+  if (verbose):
+    sys.stdout.write(sio.getvalue())
+  if (missing is None):
+    expected = """\
 Resulting mtz from .as_mtz_dataset():
 Column data:
 -------------------------------------------------------------------------------
                        R            SIGR           DANOR        SIGDANOR
+                   ISYMR
 
  1  2  3               4        0.158114              -3        0.316228
+                       0
 -------------------------------------------------------------------------------
 
 mtz_obj_reco.as_miller_arrays result:
@@ -143,22 +139,42 @@ mtz_obj_reco.as_miller_arrays result:
 (-1, -2, -3) 5.5 0.223606796247
 
 """
-    else:
-      expected = """\
+  elif (missing == "+"):
+    expected = """\
 Resulting mtz from .as_mtz_dataset():
 Column data:
 -------------------------------------------------------------------------------
                        R            SIGR           DANOR        SIGDANOR
+                   ISYMR
+
+ 1  2  3             5.5             0.3            None            None
+                       2
+-------------------------------------------------------------------------------
+
+mtz_obj_reco.as_miller_arrays result:
+(-1, -2, -3) 5.5 0.300000011921
+
+"""
+  elif (missing == "-"):
+    expected = """\
+Resulting mtz from .as_mtz_dataset():
+Column data:
+-------------------------------------------------------------------------------
+                       R            SIGR           DANOR        SIGDANOR
+                   ISYMR
 
  1  2  3             2.5             0.1            None            None
+                       1
 -------------------------------------------------------------------------------
 
 mtz_obj_reco.as_miller_arrays result:
 (1, 2, 3) 2.5 0.10000000149
 
 """
-    from libtbx.test_utils import show_diff
-    assert not show_diff(sio.getvalue(), expected)
+  else:
+    raise RuntimeError("Unreachable.")
+  from libtbx.test_utils import show_diff
+  assert not show_diff(sio.getvalue(), expected)
 
 def run(args):
   verbose = False
