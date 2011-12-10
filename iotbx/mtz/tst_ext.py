@@ -333,7 +333,8 @@ def exercise_basic():
       column_label_f_data="Frem",
       column_label_f_sigmas="SIGFrem",
       column_label_d_data="DANOrem",
-      column_label_d_sigmas="SIGDANOrem")
+      column_label_d_sigmas="SIGDANOrem",
+      column_label_isym="ISYMrem")
     assert group.anomalous_flag
     assert group.mtz_reflection_indices.size() == 272
     assert group.indices.size() == group.mtz_reflection_indices.size()
@@ -425,7 +426,9 @@ class exercise_extract_any(object):
         column_label_f_data=labels[0],
         column_label_f_sigmas=labels[1],
         column_label_d_data=labels[2],
-        column_label_d_sigmas=labels[3])
+        column_label_d_sigmas=labels[3],
+        column_label_isym=mtz_object.next_isym_column_starting_at(
+          i_column=i+4, return_label=True))
       assert group.data.size() == group.indices.size()
       self.counters["extract_delta_anomalous"] += 1
     i = types.find("FP")

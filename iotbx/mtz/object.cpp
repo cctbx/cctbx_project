@@ -2,6 +2,7 @@
 #include <iotbx/mtz/column.h>
 #include <iotbx/error.h>
 #include <boost/scoped_array.hpp>
+#include <boost/optional.hpp>
 
 namespace iotbx { namespace mtz {
 
@@ -931,7 +932,8 @@ namespace iotbx { namespace mtz {
     const char* column_label_f_data,
     const char* column_label_f_sigmas,
     const char* column_label_d_data,
-    const char* column_label_d_sigmas) const
+    const char* column_label_d_sigmas,
+    const char* column_label_isym) const
   {
     int n_refl = n_reflections();
     observations_group result(true, 2*n_refl);
@@ -940,14 +942,19 @@ namespace iotbx { namespace mtz {
     column f_sigmas(get_column(column_label_f_sigmas));
     column d_data(get_column(column_label_d_data));
     column d_sigmas(get_column(column_label_d_sigmas));
+    boost::optional<column> isym;
+    if (column_label_isym != 0) {
+      isym = get_column(column_label_isym);
+    }
     for(int i_refl=0;i_refl<n_refl;i_refl++) {
+      cctbx::miller::index<> const& h = hkl.get_miller_index(i_refl);
       observation_pair_evaluator
         pair_evaluation_f(f_data, f_sigmas, i_refl);
       if (!pair_evaluation_f.is_consistent) {
         throw cctbx::error(std::string(
           "Inconsistent observation/sigma pair in columns: ")
           + column_label_f_data + ", " + column_label_f_sigmas + ", "
-          + "hkl=" + hkl.get_miller_index(i_refl).as_string()
+          + "hkl=" + h.as_string()
           + phenix_mtz_dump_tip);
       }
       observation_pair_evaluator
@@ -956,7 +963,7 @@ namespace iotbx { namespace mtz {
         throw cctbx::error(std::string(
           "Inconsistent observation/sigma pair in columns: ")
           + column_label_d_data + ", " + column_label_d_sigmas + ", "
-          + "hkl=" + hkl.get_miller_index(i_refl).as_string()
+          + "hkl=" + h.as_string()
           + phenix_mtz_dump_tip);
       }
       if (    pair_evaluation_d.is_usable
@@ -969,13 +976,20 @@ namespace iotbx { namespace mtz {
           + column_label_f_sigmas + ", "
           + column_label_d_data   + ", "
           + column_label_d_sigmas + ", "
-          + "hkl=" + hkl.get_miller_index(i_refl).as_string()
+          + "hkl=" + h.as_string()
           + phenix_mtz_dump_tip);
       }
       if (pair_evaluation_f.is_usable) {
         result.mtz_reflection_indices.push_back(i_refl);
-        result.indices.push_back(hkl.get_miller_index(i_refl));
         if (!pair_evaluation_d.is_usable) {
+          if (   !isym
+              || isym->is_ccp4_nan(i_refl)
+              || isym->int_datum(i_refl) != 2) {
+            result.indices.push_back(h);
+          }
+          else {
+            result.indices.push_back(-h);
+          }
           result.data.push_back(pair_evaluation_f.datum);
           result.sigmas.push_back(pair_evaluation_f.sigma);
         }
@@ -985,7 +999,8 @@ namespace iotbx { namespace mtz {
           double s = std::sqrt(
             pair_evaluation_f.sigma*pair_evaluation_f.sigma + dsh*dsh);
           result.mtz_reflection_indices.push_back(i_refl);
-          result.indices.push_back(-hkl.get_miller_index(i_refl));
+          result.indices.push_back(h);
+          result.indices.push_back(-h);
           result.data.push_back(pair_evaluation_f.datum + ddh);
           result.data.push_back(pair_evaluation_f.datum - ddh);
           result.sigmas.push_back(s);

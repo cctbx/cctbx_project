@@ -109,7 +109,7 @@ def default_column_types(miller_array):
   elif (miller_array.is_xray_reconstructed_amplitude_array()):
     assert miller_array.anomalous_flag()
     assert miller_array.sigmas() is not None
-    result = "FQDQ"
+    result = "FQDQY"
   elif ((   miller_array.is_bool_array()
          or miller_array.is_integer_array())
         and miller_array.sigmas() is None):
@@ -165,6 +165,8 @@ class label_decorator(__builtins__["object"]):
         sigmas_suffix="",
         delta_anomalous_prefix="DANO",
         delta_anomalous_suffix="",
+        delta_anomalous_isym_prefix="ISYM",
+        delta_anomalous_isym_suffix="",
         phases_prefix="PHI",
         phases_suffix="",
         hendrickson_lattman_suffix_list=["A","B","C","D"]):
@@ -186,8 +188,12 @@ class label_decorator(__builtins__["object"]):
     return self.delta_anomalous_prefix + root_label \
          + self.delta_anomalous_suffix
 
-  def sigmas_delta_anomalous(self, root_label):
+  def delta_anomalous_sigmas(self, root_label):
     return self.sigmas(self.delta_anomalous(root_label))
+
+  def delta_anomalous_isym(self, root_label):
+    return self.delta_anomalous_isym_prefix + root_label \
+         + self.delta_anomalous_isym_suffix
 
   def phases(self, root_label, anomalous_sign=None):
     return self.anomalous(
@@ -281,6 +287,15 @@ class _(boost.python.injector, ext.object):
 
   def column_types(self):
     return [column.type() for column in self.columns()]
+
+  def next_isym_column_starting_at(self, i_column, return_label=False):
+    for i,column in enumerate(self.columns()):
+      if (i < i_column): continue
+      if (column.type() == "Y"):
+        if (return_label):
+          return column.label()
+        return column
+    return None
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -512,11 +527,13 @@ class _(boost.python.injector, ext.object):
     all_column_labels = dataset.column_labels()
     all_column_types = mend_non_conforming_anomalous_column_types(
       dataset.column_types(), all_column_labels)
+    all_column_prev_use_flags = [False] * len(all_columns)
     groups = []
     i_column = -1
     while 1:
       i_column += 1
       if (i_column == len(all_columns)): break
+      if (all_column_prev_use_flags[i_column]): continue
       column = all_columns[i_column]
       if (strict and column.type() not in known_mtz_column_types):
         raise RuntimeError(
@@ -579,8 +596,19 @@ class _(boost.python.injector, ext.object):
               for t in all_column_types[i_column:i_column+4]]))
       elif (remaining_types[:4] == "FQDQ"):
         labels = all_column_labels[i_column:i_column+4]
+        def next_isym_column_label():
+          for j in xrange(i_column+4, len(all_column_types)):
+            if (all_column_types[j] == "Y"):
+              vv = all_columns[j].extract_valid_values()
+              if (vv.size() != 0 and vv.all_ge(0) and vv.all_le(2)):
+                all_column_prev_use_flags[j] = True
+                return all_column_labels[j]
+              break
+          return None
+        labels.append(next_isym_column_label())
         i_column += 3
         group = self.extract_delta_anomalous(*labels)
+        if (labels[-1] is None): labels.pop()
         observation_type = xray.observation_types.reconstructed_amplitude()
       elif (t0 in "JFED"):
         # "J": "intensity"
@@ -847,21 +875,18 @@ class _(boost.python.injector, ext.dataset):
         raise RuntimeError("Fatal programming error.")
     else:
       asu, matches = miller_array.match_bijvoet_mates()
-      if (default_col_types == "FQDQ"):
+      if (default_col_types == "FQDQY"):
         _ = matches.pairs_hemisphere_selection
         selpp = _("+")
         selpm = _("-")
         _ = matches.singles_hemisphere_selection
         selsp = _("+")
         selsm = _("-")
-        if (selsm.size() != 0):
-          raise RuntimeError(
-            "Unsupported reconstructed amplitude array:"
-            " singles in negative hemisphere.")
         _ = asu.data()
         fp = _.select(selpp)
         fm = _.select(selpm)
         fs = _.select(selsp)
+        fs.extend(_.select(selsm))
         # http://www.ccp4.ac.uk/dist/html/mtzMADmod.html
         f = 0.5 * (fp + fm)
         d = fp - fm
@@ -869,6 +894,7 @@ class _(boost.python.injector, ext.dataset):
         sp = _.select(selpp)
         sm = _.select(selpm)
         ss = _.select(selsp)
+        ss.extend(_.select(selsm))
         sd = flex.sqrt(sp**2 + sm**2)
         sf = 0.5 * sd
         f.extend(fs)
@@ -876,12 +902,17 @@ class _(boost.python.injector, ext.dataset):
         _ = asu.indices()
         hd = _.select(selpp)
         hf = hd.concatenate(_.select(selsp))
+        hf.extend(-_.select(selsm))
+        isym = flex.double(selpp.size(), 0)       # both F+ and F-
+        isym.resize(selpp.size()+selsp.size(), 1) # only F+
+        isym.resize(hf.size(), 2)                 # only F-
         label_group = [
           column_root_label,
           label_decorator.sigmas(column_root_label),
           label_decorator.delta_anomalous(column_root_label),
-          label_decorator.sigmas_delta_anomalous(column_root_label)]
-        for i,(mi,data) in enumerate([(hf,f),(hf,sf),(hd,d),(hd,sd)]):
+          label_decorator.delta_anomalous_sigmas(column_root_label),
+          label_decorator.delta_anomalous_isym(column_root_label)]
+        for i,(mi,data) in enumerate([(hf,f),(hf,sf),(hd,d),(hd,sd),(hf,isym)]):
           self.add_column(
             label=label_group[i],
             type=column_types[i]).set_reals(miller_indices=mi, data=data)
