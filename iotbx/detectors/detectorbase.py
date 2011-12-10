@@ -77,6 +77,24 @@ class DetectorImageBase(object):
     else:
       self.linearintdata = new_data_array
 
+  def get_data_type(self):
+    typehash = str(self.linearintdata.__class__)
+    if typehash.find("int")>=0: return "int"
+    elif typehash.find("double")>=0: return "double"
+
+  def get_flex_image(self,binning=1,brightness=1.0):
+    datatype = self.get_data_type()
+    if datatype=="int":
+      from labelit.detectors import FlexImage
+    elif datatype=="double":
+      from labelit.detectors import FlexImage_d as FlexImage
+    return FlexImage(
+      rawdata=self.linearintdata,
+      binning=binning,
+      vendortype=self.vendortype,
+      brightness=brightness,
+      saturation=int(getattr(self, "saturation", 65535)))
+
   data_types = dict( SIZE1=int, SIZE2=int, PIXEL_SIZE=float,
                      DISTANCE=float, TWOTHETA=float, OSC_RANGE=float,
                      OSC_START=float, PHI=float, WAVELENGTH=float,

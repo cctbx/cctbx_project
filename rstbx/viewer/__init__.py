@@ -1,5 +1,4 @@
 
-from libtbx.utils import Sorry
 from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
 import math
@@ -248,18 +247,10 @@ class image (screen_params) :
                          brightness=100,
                          color_scheme=0,
                          binning=1) :
-    # FIXME
-    try :
-      from labelit.detectors import FlexImage
-    except ImportError, e :
-      raise Sorry("Labelit not installed or not configured.")
-    saturation = getattr(self._raw, "saturation", 65535)
-    fi = FlexImage(
-      rawdata=self._raw.linearintdata,
+    fi = self._raw.get_flex_image(
       binning=binning,
-      vendortype=self._raw.vendortype,
       brightness=brightness / 100.,
-      saturation=int(saturation))
+    )
     #from scitbx.array_family import flex
     #print flex.max(self._raw.linearintdata), flex.min(self._raw.linearintdata)
     fi.setWindow(0.0, 0.0, 1)
