@@ -19,6 +19,7 @@
 #include <scitbx/math/orthonormal_basis.h>
 #include <scitbx/math/gaussian_fit_1d_analytical.h>
 #include <scitbx/math/cubic_equation.h>
+#include <scitbx/math/distance_difference.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -493,6 +494,8 @@ namespace {
                                     arg("v1"), arg("axis_index_2"),
                                     arg("right_handed")=true));
     }
+    def("distance_difference_matrix", distance_difference_matrix<double>, (
+      arg("sites1"), arg("sites2")));
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>

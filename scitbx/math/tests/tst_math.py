@@ -1923,6 +1923,24 @@ def exercise_interpolation () :
   points = interpolate_catmull_rom_spline(p0, p1, p2, p3, 5)
   assert approx_equal(points[1][1], 0.454, eps=0.0001)
 
+def exercise_misc () :
+  from scitbx.math import distance_difference_matrix
+  sites1 = flex.vec3_double([(0.,0.,0.),(0.,1.,2.),(3.,4.,5.)])
+  sites2 = flex.vec3_double([(1.,1.,1.),(1.,2.,3.),(6.,7.,8.)])
+  ddm = distance_difference_matrix(sites1, sites2)
+  for i in range(3) :
+    assert (ddm[(i,i)] == 0)
+  assert approx_equal(ddm[(0,2)], 3.4170207)
+  assert approx_equal(ddm[(1,2)], 3.4641016)
+  assert approx_equal(ddm[(0,2)], 3.4170207)
+  try :
+    import numpy # import dependency
+  except ImportError :
+    pass
+  else :
+    a = ddm.as_numpy_array()
+    assert (a[0][0] == 0) and (approx_equal(a[1][2], 3.4641016))
+
 def run():
   exercise_weighted_covariance()
   exercise_distributions()
@@ -1959,6 +1977,7 @@ def run():
   exercise_slatec_dlngam()
   exercise_slatec_dbinom()
   exercise_interpolation()
+  exercise_misc()
   forever = "--forever" in sys.argv[1:]
   exercise_unimodular_generator(
     forever=forever and "--unimodular" in sys.argv[1:])
