@@ -1519,6 +1519,7 @@ scitbx/math/cubic_equation.h -text
 scitbx/math/cubic_spline.py -text
 scitbx/math/curve_fitting.py -text
 scitbx/math/dihedral.h svneol=native#text/plain
+scitbx/math/distance_difference.h -text
 scitbx/math/euler_angles.h -text
 scitbx/math/farey.py -text
 scitbx/math/fit_peak.py -text
