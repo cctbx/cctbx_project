@@ -322,18 +322,27 @@ mtz_file {
   try :
     miller_arrays = run_and_reload(params, "tst6.mtz")
   except Sorry, e :
-    assert ("use labels" in str(e))
+    assert ("Five columns" in str(e))
   else :
     raise Exception_expected
-  params.mtz_file.miller_array[1].output_labels = ["F(+)","SIGF(+)",
-                                                   "F(-)","SIGF(-)"]
+  #params.mtz_file.miller_array[1].output_labels = ["F","SIGF"]
+  #params.mtz_file.miller_array
+  #print miller_arrays[1].info().label_string()
+  params.mtz_file.miller_array[1].output_labels.append("ISYM")
   miller_arrays = run_and_reload(params, "tst6.mtz")
   arrays = mtz3.mtz_object().as_miller_arrays()
   assert (arrays[1].is_xray_reconstructed_amplitude_array())
   labels = reflection_file_editor.guess_array_output_labels(arrays[1])
-  assert (labels == ["F(+)","SIGF(+)", "F(-)","SIGF(-)"])
+  assert (labels == ["F","SIGF","DANO","SIGDANO","ISYM"])
+  # now merged
+  params.mtz_file.miller_array[1].output_labels = ["F","SIGF"]
+  params.mtz_file.miller_array[1].output_non_anomalous = True
+  miller_arrays = run_and_reload(params, "tst6.mtz")
+  assert (miller_arrays[1].is_xray_amplitude_array())
+  assert (miller_arrays[1].info().label_string() == "F,SIGF")
   # handle duplicate array labels
   params.mtz_file.output_file = "tst7.mtz"
+  params.mtz_file.miller_array[1].output_non_anomalous = False
   params.mtz_file.miller_array[1].file_name = "tst_data.mtz"
   params.mtz_file.miller_array[1].labels = \
     "I-obs(+),SIGI-obs(+),I-obs(-),SIGI-obs(-)"
