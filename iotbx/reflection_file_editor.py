@@ -374,12 +374,12 @@ class process_arrays (object) :
       if (miller_array.is_xray_reconstructed_amplitude_array()) :
         # FIXME this needs to be handled better - but it should at least catch
         # files from CCP4 data processing
-        if ("DANO" in output_labels) :
+        if ((len(output_labels) != 5) and
+            (not array_params.output_non_anomalous)) :
           raise Sorry(("The array in %s with labels %s will be output as "+
-            "reconstructed Friedel mates, not merged amplitudes and "+
-            "anomalous differences.  You should use labels resembling "+
-            "F(+) SIGF(+) F(-) SIGF(-) for the output MTZ file.") %
-            (file_name, array_params.labels))
+            "amplitudes and anomalous differences with sigmas, plus ISYM. "+
+            "Five columns will be written, but %d labels were specified.") %
+            (file_name, array_params.labels, len(output_labels)))
 
       #-----------------------------------------------------------------
       # APPLY SYMMETRY
@@ -488,8 +488,11 @@ class process_arrays (object) :
       if new_array.anomalous_flag() and array_params.output_non_anomalous :
         print >> log, ("Converting array %s from anomalous to non-anomalous." %
                        array_name)
-        if not new_array.is_xray_intensity_array() :
+        if (not new_array.is_xray_intensity_array()) :
           new_array = new_array.average_bijvoet_mates()
+          # FIXME I think this is a bug in cctbx.miller...
+          if (new_array.is_xray_reconstructed_amplitude_array()) :
+            new_array.set_observation_type_xray_amplitude()
         else :
           new_array = new_array.f_sq_as_f()
           new_array = new_array.average_bijvoet_mates()
@@ -923,14 +926,7 @@ def guess_array_output_labels (miller_array) :
     else :
       output_labels = ["I", "SIGI"]
   elif (miller_array.is_xray_reconstructed_amplitude_array()) :
-    root_label = labels[0]
-    decorator = iotbx.mtz.label_decorator()
-    output_labels = [
-      decorator.anomalous(root_label, "+"),
-      decorator.sigmas(root_label, "+"),
-      decorator.anomalous(root_label, "-"),
-      decorator.sigmas(root_label, "-"),
-    ]
+    output_labels = ["F", "SIGF", "DANO", "SIGDANO", "ISYM"]
   return output_labels
 
 # XXX the requirement for defined crystal symmetry in phil input files is
