@@ -906,6 +906,7 @@ class _(boost.python.injector, ext.dataset):
         isym = flex.double(selpp.size(), 0)       # both F+ and F-
         isym.resize(selpp.size()+selsp.size(), 1) # only F+
         isym.resize(hf.size(), 2)                 # only F-
+        isym.set_selected(miller_array.space_group().is_centric(hf) , 0)
         label_group = [
           column_root_label,
           label_decorator.sigmas(column_root_label),

@@ -1,4 +1,77 @@
+from cStringIO import StringIO
 import sys
+
+def only_element(seq):
+  assert len(seq) == 1
+  return seq[0]
+
+def assert_equal_data_and_sigmas(array_1, array_2):
+  a, b = array_1.map_to_asu().common_sets(array_2.map_to_asu())
+  assert a.indices().all_eq(b.indices())
+  from libtbx.test_utils import approx_equal
+  assert approx_equal(a.data(), b.data())
+  if (not array_1.is_xray_reconstructed_amplitude_array()):
+    assert approx_equal(a.sigmas(), b.sigmas())
+
+def exercise_systematic(verbose):
+  from cctbx import miller
+  from cctbx import crystal
+  from cctbx.array_family import flex
+  cs = crystal.symmetry(
+    unit_cell=(13,15,14,90,90,100),
+    space_group_symbol="P112")
+  ms = miller.set(
+    crystal_symmetry=cs,
+    indices=flex.miller_index([
+      (0,0,1),(0,0,-1),
+      (0,1,1),
+      (1,0,0),
+      (-1,-1,-1)]),
+    anomalous_flag=True).map_to_asu()
+  cf = ms.centric_flags().data()
+  assert cf.count(True) == 1
+  mt = flex.mersenne_twister(seed=0)
+  ma = ms.array(
+    data=mt.random_double(size=5)+0.1,
+    sigmas=mt.random_double(size=5)+0.1)
+  def recycle(expected_column_data):
+    mtz_obj = ma.as_mtz_dataset(column_root_label="X").mtz_object()
+    sio = StringIO()
+    mtz_obj.show_column_data_human_readable(out=sio)
+    from libtbx.test_utils import show_diff
+    if (verbose): sys.stdout.write(sio.getvalue())
+    assert not show_diff(sio.getvalue(), expected_column_data)
+    ma_2 = only_element(mtz_obj.as_miller_arrays())
+    assert_equal_data_and_sigmas(ma, ma_2)
+  recycle("""\
+Column data:
+-------------------------------------------------------------------------------
+                    X(+)         SIGX(+)            X(-)         SIGX(-)
+
+ 0  0  1        0.517022        0.192339        0.820324         0.28626
+ 0  1  1        0.100114        0.445561            None            None
+ 1  0  0        0.402333        0.496767            None            None
+ 1  1  1            None            None        0.246756        0.638817
+-------------------------------------------------------------------------------
+""")
+  from cctbx.xray import observation_types
+  ma.set_observation_type(observation_types.reconstructed_amplitude())
+  recycle("""\
+Column data:
+-------------------------------------------------------------------------------
+                       X            SIGX           DANOX        SIGDANOX
+                   ISYMX
+
+ 0  0  1        0.668673        0.172438       -0.303302        0.344875
+                       0
+ 0  1  1        0.100114        0.445561            None            None
+                       1
+ 1  0  0        0.402333        0.496767            None            None
+                       0
+ 1  1  1        0.246756        0.638817            None            None
+                       2
+-------------------------------------------------------------------------------
+""")
 
 def recycle_dano_miller_array(miller_array):
   assert miller_array.is_xray_reconstructed_amplitude_array()
@@ -7,15 +80,9 @@ def recycle_dano_miller_array(miller_array):
   miller_array = miller_array.select(
     mt.random_permutation(size=miller_array.indices().size()))
   mtz_obj = miller_array.as_mtz_dataset(column_root_label="X").mtz_object()
-  _ = mtz_obj.as_miller_arrays()
-  assert len(_) == 1
-  miller_array_2 = _[0]
+  miller_array_2 = only_element(mtz_obj.as_miller_arrays())
   assert str(miller_array_2.info()) == "ccp4_mtz:X,SIGX,DANOX,SIGDANOX,ISYMX"
-  a, b = miller_array.map_to_asu().common_sets(miller_array_2.map_to_asu())
-  assert a.indices().all_eq(b.indices())
-  from libtbx.test_utils import approx_equal
-  assert approx_equal(a.data(), b.data())
-  assert approx_equal(a.sigmas(), b.sigmas())
+  assert_equal_data_and_sigmas(miller_array, miller_array_2)
 
 def recycle_dano_mtz(mtz_file_name):
   import iotbx.mtz
@@ -51,7 +118,6 @@ def recycle_one_dano(missing, verbose):
   from cctbx.xray import observation_types
   ma.set_observation_type(observation_types.reconstructed_amplitude())
   mtz_obj_reco = ma.as_mtz_dataset(column_root_label="R").mtz_object()
-  from cStringIO import StringIO
   sio = StringIO()
   print >> sio, "Resulting mtz from .as_mtz_dataset():"
   mtz_obj_reco.show_column_data_human_readable(out=sio)
@@ -127,6 +193,7 @@ def run(args):
       verbose = True
     else:
       mtz_file_names.append(arg)
+  exercise_systematic(verbose)
   if (len(mtz_file_names) == 0):
     import libtbx.load_env
     import os
