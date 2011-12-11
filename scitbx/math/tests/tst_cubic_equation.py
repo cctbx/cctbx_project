@@ -31,9 +31,9 @@ def sol(x, a,b,c,d, check_roots, eps=1.e-6):
     for i in xrange(3):
       assert approx_equal(answer[i], solution[i], eps)
 
-def exercise1():
+def exercise1(n_trials):
   v = 1000
-  for i in xrange(10000):
+  for i in xrange(n_trials):
     for scale in [0.0000001, 0.0001, 1.]:
       ri1 = random.randint(-v,v)*scale
       ri2 = random.randint(-v,v)*scale
@@ -79,11 +79,8 @@ def exercise4():
   assert approx_equal(residual(a=a,b=b,c=c,d=d,x=3), 0)
   assert approx_equal(residual(a=a,b=b,c=c,d=d,x=5), 0)
 
-def exercise5():
-  for i in xrange(100000):
-    x1 = random.randint(-10,10)
-    x2 = random.randint(-10,10)
-    x3 = random.randint(-10,10)
+def exercise5(n_trials):
+  def check():
     a,b,c,d = abcd(x = [x1,x2,x3])
     answer = [x1,x2,x3]
     answer.sort()
@@ -98,14 +95,27 @@ def exercise5():
     assert approx_equal(diff, [0,0,0])
     for x in [x1,x2,x3, r.x[0],r.x[1],r.x[2]]:
       assert approx_equal(residual(a=a,b=b,c=c,d=d,x=x), 0)
+  for x1,x2,x3 in flex.nested_loop([-2]*3, [2]*3, open_range=False):
+    check()
+  for i in xrange(n_trials):
+    x1 = random.randint(-10,10)
+    x2 = random.randint(-10,10)
+    x3 = random.randint(-10,10)
+    check()
 
-if (__name__ == "__main__"):
+def run(args):
+  assert len(args) == 0
+  n_trials = 100
   t0 = time.time()
   for i in xrange(1):
-    exercise1()
+    exercise1(n_trials)
     exercise2()
     exercise3()
     exercise4()
-    exercise5()
-  print "Time: %6.3f"%(time.time()-t0)
-  print "OK"
+    exercise5(n_trials)
+  from libtbx.utils import format_cpu_times
+  print format_cpu_times()
+
+if (__name__ == "__main__"):
+  import sys
+  run(args=sys.argv[1:])
