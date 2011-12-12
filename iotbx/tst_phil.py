@@ -2,6 +2,7 @@ import iotbx.phil
 from libtbx.test_utils import show_diff
 from libtbx import Auto
 import os
+import sys
 
 def exercise():
   master = iotbx.phil.parse(input_string="""\
@@ -118,6 +119,25 @@ ATOM      1  O   HOH     1      53.448  18.599 -10.134  1.00 20.00
   params = pcl.work.extract()
   assert (params.model == os.path.join(os.getcwd(), "model.pdb"))
   assert (params.use_geometry_restraints)
+  master_phil_str = """
+data_dir = None
+  .type = path
+d_min = None
+  .type = float
+nproc = None
+  .type = int
+"""
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=["/var/tmp", "3.0", "5"],
+    master_phil_string=master_phil_str,
+    directory_def="data_dir",
+    integer_def="nproc",
+    float_def="d_min")
+  params = pcl.work.extract()
+  if (sys.platform in ["linux2", "darwin"]) :
+    assert (params.data_dir == "/var/tmp")
+  assert (params.d_min == 3.0)
+  assert (params.nproc == 5)
   print "OK"
 
 if (__name__ == "__main__"):
