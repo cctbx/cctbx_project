@@ -108,7 +108,10 @@ class process_command_line_with_files (object) :
                 reflection_file_def=None,
                 cif_file_def=None,
                 seq_file_def=None,
-                pickle_file_def=None) :
+                pickle_file_def=None,
+                directory_def=None,
+                integer_def=None,
+                float_def=None) :
     assert (master_phil is not None) or (master_phil_string is not None)
     if (master_phil_string is not None) :
       assert (master_phil is None)
@@ -121,6 +124,9 @@ class process_command_line_with_files (object) :
     self.cif_file_def = cif_file_def
     self.seq_file_def = seq_file_def
     self.pickle_file_def = pickle_file_def
+    self.directory_def = directory_def
+    self.integer_def = integer_def
+    self.float_def = float_def
     cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
     self.work = cai.process_and_fetch(
        args=args,
@@ -145,10 +151,28 @@ class process_command_line_with_files (object) :
         return libtbx.phil.parse("%s=%s" % (file_def_name, f.file_name))
       else :
         return False
+    elif (os.path.isdir(arg)) :
+      if (self.directory_def is not None) :
+        return libtbx.phil.parse("%s=%s" % (self.directory_def, arg))
     else :
-      return self.process_non_file(arg)
+      int_value = float_value = None
+      if (self.integer_def is not None) :
+        try :
+          int_value = int(arg)
+        except ValueError, e :
+          pass
+        else :
+          return libtbx.phil.parse("%s=%d" % (self.integer_def, int_value))
+      if (self.float_def is not None) :
+        try :
+          float_value = float(arg)
+        except ValueError, e :
+          pass
+        else :
+          return libtbx.phil.parse("%s=%g" % (self.float_def, float_value))
+    return self.process_non_file(arg)
 
-  def process_non_file (self, arg) :
+  def process_other (self, arg) :
     return False
 
 # Utilities for Phenix GUI
