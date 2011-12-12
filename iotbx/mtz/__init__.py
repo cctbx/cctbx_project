@@ -106,9 +106,9 @@ def default_column_types(miller_array):
       result = "GP"
     else:
       result = "FP"
-  elif (miller_array.is_xray_reconstructed_amplitude_array()):
-    assert miller_array.anomalous_flag()
-    assert miller_array.sigmas() is not None
+  elif (    miller_array.is_xray_reconstructed_amplitude_array()
+        and miller_array.anomalous_flag()
+        and miller_array.sigmas() is not None):
     result = "FQDQY"
   elif ((   miller_array.is_bool_array()
          or miller_array.is_integer_array())

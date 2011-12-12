@@ -490,9 +490,6 @@ class process_arrays (object) :
                        array_name)
         if (not new_array.is_xray_intensity_array()) :
           new_array = new_array.average_bijvoet_mates()
-          # FIXME I think this is a bug in cctbx.miller...
-          if (new_array.is_xray_reconstructed_amplitude_array()) :
-            new_array.set_observation_type_xray_amplitude()
         else :
           new_array = new_array.f_sq_as_f()
           new_array = new_array.average_bijvoet_mates()
