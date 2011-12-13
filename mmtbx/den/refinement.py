@@ -1,7 +1,7 @@
 from mmtbx import utils
 from mmtbx.dynamics import simulated_annealing
 from mmtbx.refinement import tardy
-from libtbx import easy_mp
+from libtbx import easy_mp, Auto
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
 import sys
@@ -38,47 +38,75 @@ class manager(object):
         params.main.nproc
     else:
       grid = [(params.den.gamma, params.den.weight)]
+    grid_results = []
+    grid_so = []
 
     if "torsion" in params.den.annealing_type:
       print >> self.log, "Running torsion simulated annealing"
-      stdout_and_results = easy_mp.pool_map(
-        processes=params.main.nproc,
-        fixed_func=self.try_den_weight_torsion,
-        args=grid,
-        buffer_stdout_stderr=True)
-      if params.den.optimize:
-        self.show_den_opt_summary_torsion(stdout_and_results)
+      if ( (params.den.optimize) and
+           ( (params.main.nproc is Auto) or (params.main.nproc > 1) )):
+        stdout_and_results = easy_mp.pool_map(
+          processes=params.main.nproc,
+          fixed_func=self.try_den_weight_torsion,
+          args=grid,
+          buffer_stdout_stderr=True)
+        for so, r in stdout_and_results:
+          if (r is None):
+            raise RuntimeError(("DEN weight optimization failed:"+
+              "\n%s\nThis is a "+
+              "serious error; plesae contact bugs@phenix-online.org.") % so)
+          grid_so.append(so)
+          grid_results.append(r)
+        self.show_den_opt_summary_torsion(grid_results)
+      else:
+        for grid_pair in grid:
+          result = self.try_den_weight_torsion(
+                     grid_pair=grid_pair)
+          grid_results.append(result)
     elif "cartesian" in params.den.annealing_type:
       print >> self.log, "Running Cartesian simulated annealing"
-      stdout_and_results = easy_mp.pool_map(
-        processes=params.main.nproc,
-        fixed_func=self.try_den_weight_cartesian,
-        args=grid,
-        buffer_stdout_stderr=True)
-      if params.den.optimize:
-        self.show_den_opt_summary_cartesian(stdout_and_results)
+      if ( (params.den.optimize) and
+           ( (params.main.nproc is Auto) or (params.main.nproc > 1) )):
+        stdout_and_results = easy_mp.pool_map(
+          processes=params.main.nproc,
+          fixed_func=self.try_den_weight_cartesian,
+          args=grid,
+          buffer_stdout_stderr=True)
+        for so, r in stdout_and_results:
+          if (r is None):
+            raise RuntimeError(("DEN weight optimization failed:"+
+              "\n%s\nThis is a "+
+              "serious error; plesae contact bugs@phenix-online.org.") % so)
+          grid_so.append(so)
+          grid_results.append(r)
+        self.show_den_opt_summary_cartesian(grid_results)
+      else:
+        for grid_pair in grid:
+          result = self.try_den_weight_cartesian(
+                     grid_pair=grid_pair)
+          grid_results.append(result)
     else:
       raise "error in DEN annealing type"
     low_r_free = 1.0
     best_xray_structure = None
     best_gamma =  None
     best_weight = None
-    best_out = None
-    for out, result in stdout_and_results:
+    best_so_i = None
+    for i, result in enumerate(grid_results):
       cur_r_free = result[2]
       if cur_r_free < low_r_free:
         low_r_free = cur_r_free
         best_gamma = result[0]
         best_weight = result[1]
         best_xray_structure = result[3]
-        best_out = out
+        best_so_i = i
     assert best_xray_structure is not None
     if params.den.optimize:
       print >> self.log, "\nbest gamma: %.1f" % best_gamma
       print >> self.log, "best weight: %.1f" % best_weight
       if params.den.verbose:
         print >> self.log, "\nBest annealing results:\n"
-        print >> self.log, best_out
+        print >> self.log, grid_so[best_so_i]
     fmodels.fmodel_xray().xray_structure.replace_scatterers(
       best_xray_structure.deep_copy())
     fmodels.update_xray_structure(
@@ -197,14 +225,14 @@ class manager(object):
             r_free,
             step_xray_structure)
 
-  def show_den_opt_summary_torsion(self, stdout_and_results):
+  def show_den_opt_summary_torsion(self, grid_results):
     print_statistics.make_header(
       "DEN torsion weight optimization results", out=self.log)
     print >>self.log,"|---------------------------------------"+\
                 "--------------------------------------|"
     print >>self.log,"|  Gamma    Weight    R-free            "+\
                 "                                      |"
-    for out, result in stdout_and_results:
+    for result in grid_results:
       if result == None:
         raise RuntimeError("Parallel DEN job failed: %s" % str(out))
       cur_gamma = result[0]
@@ -218,14 +246,14 @@ class manager(object):
     print >>self.log,"|---------------------------------------"+\
                 "--------------------------------------|"
 
-  def show_den_opt_summary_cartesian(self, stdout_and_results):
+  def show_den_opt_summary_cartesian(self, grid_results):
     print_statistics.make_header(
       "DEN Cartesian weight optimization results", out=self.log)
     print >>self.log,"|---------------------------------------"+\
                 "--------------------------------------|"
     print >>self.log,"|  Gamma    Weight    R-free            "+\
                 "                                      |"
-    for out, result in stdout_and_results:
+    for result in grid_results:
       if result == None:
         raise RuntimeError("Parallel DEN job failed: %s" % str(out))
       cur_gamma = result[0]
