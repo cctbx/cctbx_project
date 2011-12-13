@@ -14,12 +14,12 @@ import math
 import numpy
 import os
 import time
-
 import cPickle as pickle
 
-from parse_calib         import Section
 from pypdsdata           import xtc
+
 from scitbx.array_family import flex
+from xfel.cxi.cspad_ana.parse_calib         import Section
 
 
 # The CSPad counters are 14 bits wide (Philipp et al., 2007).  XXX

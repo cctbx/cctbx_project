@@ -1,10 +1,10 @@
-import cspad_tbx
 import os
 import glob
 
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 import scitbx.matrix
+from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class xes_finalise(object):

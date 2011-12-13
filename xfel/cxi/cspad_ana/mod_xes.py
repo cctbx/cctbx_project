@@ -16,13 +16,14 @@ XXX mod_xes must be run as a single process--guard against it!
 __version__ = "$Revision$"
 
 import cPickle   as pickle
-import cspad_tbx
-import average_tbx
 import math
 import os
 
-import scitbx.math
 from libtbx import easy_pickle
+import scitbx.math
+from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import average_tbx
+
 
 class mod_xes(average_tbx.average_mixin):
   """Class for generating first- and second-order statistics within

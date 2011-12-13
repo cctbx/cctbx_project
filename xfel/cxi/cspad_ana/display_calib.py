@@ -15,7 +15,7 @@ import matplotlib.pyplot      as     plt
 
 from optparse import OptionParser
 
-from parse_calib import calib2sections
+from xfel.cxi.cspad_ana.parse_calib import calib2sections
 
 
 # XXX http://www.artima.com/weblogs/viewpost.jsp?thread=4829

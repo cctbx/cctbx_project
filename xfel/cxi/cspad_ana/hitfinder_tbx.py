@@ -1,7 +1,8 @@
-import cspad_tbx
 import numpy
 import math
+
 from scitbx.array_family import flex
+from xfel.cxi.cspad_ana import cspad_tbx
 
 # alternate implementation of hitfinder, use the idea of running spotfinder
 #   on the data from the innermost four sensors.  Once this is done, a hit is

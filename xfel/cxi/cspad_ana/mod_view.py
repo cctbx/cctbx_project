@@ -21,13 +21,13 @@ XXX
 
 __version__ = "$Revision$"
 
-import common_mode
-import cspad_tbx
 import thread
 import threading
 
 from iotbx.detectors.detectorbase import DetectorImageBase
 from rstbx.viewer.frame import XrayFrame, ExternalUpdateEvent
+from xfel.cxi.cspad_ana import common_mode
+from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class cxi_dict(DetectorImageBase):

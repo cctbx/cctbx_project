@@ -1,12 +1,11 @@
-import cspad_tbx
-import common_mode
 import math
 import os
 
+from libtbx import easy_pickle
 from scitbx.array_family import flex
 import scitbx.math
-from libtbx import easy_pickle
-
+from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import common_mode
 
 class pixel_histograms(common_mode.common_mode_correction):
 
