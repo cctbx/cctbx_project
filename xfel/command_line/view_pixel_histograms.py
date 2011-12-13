@@ -48,7 +48,7 @@ def run(args):
         if summed_hist is None:
           summed_hist = d[(i,j)]
         else:
-          summed_hist.update_from_histogram(d[(i,j)])
+          summed_hist.update(d[(i,j)])
 
     title = str(roi)
     plot(summed_hist, window_title=window_title, title=title,
