@@ -50,12 +50,12 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
           af::shared<long> const&,
           std::size_t>()) // intentionally no arg
         .def("update",
-          (void(w_t::*)(double const&, double const&)) &w_t::update,
+          (void(w_t::*)(double const&, double const&)) &w_t::update, (
           arg("data_value"),
-          arg("relative_tolerance")=1e-4)
+          arg("relative_tolerance")=1e-4))
         .def("update",
-          (void(w_t::*)(w_t const&)) &w_t::update,
-          arg("other"))
+          (void(w_t::*)(w_t const&)) &w_t::update, (
+          arg("other")))
         .def("data_min", &w_t::data_min)
         .def("data_max", &w_t::data_max)
         .def("slot_width", &w_t::slot_width)
