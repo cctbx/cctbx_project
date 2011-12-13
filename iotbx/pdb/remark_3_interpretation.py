@@ -595,8 +595,8 @@ def extract_f_model_core_constants(remark_3_records):
       if(l.count("REMARK   3   SOLVENT RADIUS     :")): r_solv = float(ls[5])
       if(l.count("REMARK   3   SHRINKAGE RADIUS   :")): r_shrink = float(ls[5])
       if(l.count("REMARK   3   GRID STEP FACTOR   :")): grid_step_factor = float(ls[6])
-      if(l.count("REMARK   3   R VALUE            (WORKING SET) :")): r_work = float(ls[7])
-      if(l.count("REMARK   3   FREE R VALUE                     :")): r_free = float(ls[6])
+      if(l.count("REMARK   3   R VALUE            (WORKING SET) ")): r_work = float(ls[7])
+      if(l.count("REMARK   3   FREE R VALUE                     ")): r_free = float(ls[6])
     except Exception: pass
   if([b11,b22,b33,b12,b13,b23].count(None)==0): b_cart=[b11,b22,b33,b12,b13,b23]
   return group_args(

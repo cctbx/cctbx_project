@@ -82,15 +82,15 @@ class get_r_rfree_sigma(object):
     return r1
 
   def is_RValueWorkingSet(self, line):
-    r1 = line.startswith("REMARK   3   R VALUE            (WORKING SET) :")
+    r1 = line.startswith("REMARK   3   R VALUE            (WORKING SET) ")
     r2 = line.startswith(
-      "REMARK   3   R VALUE          (WORKING SET, NO CUTOFF) :")
+      "REMARK   3   R VALUE          (WORKING SET, NO CUTOFF) ")
     return r1 or r2
 
   def is_FreeRValue(self, line):
-    r1 = line.startswith("REMARK   3   FREE R VALUE                     :")
+    r1 = line.startswith("REMARK   3   FREE R VALUE                     ")
     r2 = line.startswith(
-      "REMARK   3   FREE R VALUE                  (NO CUTOFF) :")
+      "REMARK   3   FREE R VALUE                  (NO CUTOFF) ")
     return r1 or r2
 
   def is_FitToDataUsedInRefinement(self, line):
