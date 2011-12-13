@@ -16,10 +16,10 @@ import os
 import time
 import cPickle as pickle
 
-from pypdsdata           import xtc
+from pypdsdata import xtc
 
 from scitbx.array_family import flex
-from xfel.cxi.cspad_ana.parse_calib         import Section
+from xfel.cxi.cspad_ana.parse_calib import Section
 
 
 # The CSPad counters are 14 bits wide (Philipp et al., 2007).  XXX
@@ -634,8 +634,11 @@ def getOptROI(s):
     ivl        = roi_str.strip("()").split(",")
     ivl_x      = ivl[0].split(":")
     ivl_y      = ivl[1].split(":")
-    return (int(ivl_x[0]), int(ivl_x[1]),
-            int(ivl_y[0]), int(ivl_y[1]))
+    roi = [ivl_x[0], ivl_x[1], ivl_y[0], ivl_y[1]]
+    for i in range(4):
+      if roi[i] == "": roi[i] = None
+      else: roi[i] = int(roi[i])
+    return tuple(roi)
 
 
 def image(address, config, evt, env, sections):
