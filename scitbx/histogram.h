@@ -136,10 +136,7 @@ namespace scitbx {
         }
       }
 
-      // XXX This would be better renamed "update" but I haven't managed to
-      // resolve the overloaded function errors
-      template <typename DataType>
-      void update_from_histogram(histogram const& other)
+      void update(histogram const& other)
       {
         SCITBX_ASSERT(data_min_ == other.data_min_);
         SCITBX_ASSERT(data_max_ == other.data_max_);
