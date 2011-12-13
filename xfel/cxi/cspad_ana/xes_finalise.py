@@ -77,7 +77,6 @@ class xes_finalise(object):
       # XXX we need to take care of columns where one or more pixels are inactive
       # and/or flagged as a "hot" - in this case the sum is over fewer rows and
       # will introduce artefacts into the spectrum
-      from labelit_regression.xfel.spec_plot import spec_plot
 
       omit_col = True
       if omit_col is True:
@@ -167,6 +166,30 @@ class finalise_one_run(object):
 
     print "Number of images used: %i" %self.nmemb
     assert self.nmemb > 0
+
+def spec_plot(x, y, img, file_name, figure_size=(10,5), transparent=False):
+  import matplotlib
+  import matplotlib.figure
+  import matplotlib.cm
+  from matplotlib.backends.backend_agg import FigureCanvasAgg
+  fig = matplotlib.figure.Figure(figure_size, 144, linewidth=0,
+      facecolor="white")
+  if transparent :
+    self.figure.figurePatch.set_alpha(0.0)
+  canvas = FigureCanvasAgg(fig)
+  p = fig.add_subplot(211)
+  p.set_position([0.1,0.3,0.8,0.6])
+  p.plot(x, y, '-')
+  p.set_xlim(x[0],x[-1])
+  p.set_xlabel("position")
+  p.set_ylabel("intensity")
+  p.set_title("X-ray emission spectrum")
+  p2 = fig.add_subplot(212)
+  p2.set_position([0.1, 0.05, 0.8, 0.2])
+  p2.imshow(img.as_numpy_array())
+  #p2.imshow(img.as_numpy_array(), cmap=matplotlib.cm.gist_yarg)
+  canvas.draw()
+  fig.savefig(file_name, dpi=200, format="png")
 
 
 if __name__ == '__main__':
