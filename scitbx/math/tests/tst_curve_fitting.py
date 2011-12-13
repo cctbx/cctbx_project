@@ -4,11 +4,26 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import frange
 from scitbx.array_family import flex
 from scitbx.math import curve_fitting
+from scitbx import matrix
 import scitbx.lbfgs
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
   flex.set_random_seed(0)
+
+def finite_differences(functor, x, eps=1e-4):
+  grads = []
+  for i in range(len(functor.params)):
+    params = flex.double(functor.params)
+    params[i] += eps
+    f = functor.__class__(*params)
+    qm = matrix.col(f(x))
+    params[i] -= 2 * eps
+    f = functor.__class__(*params)
+    qp = matrix.col(f(x))
+    dq = (qm-qp)/(2*eps)
+    grads.append(list(dq))
+  return grads
 
 def run():
 
@@ -27,6 +42,9 @@ def run():
   for n_terms in range(1, 6):
     params = [100*random.random() for i in range(n_terms)]
     x = flex.double(frange(-random.randint(1,10), random.randint(1,10), 0.1))
+    functor = curve_fitting.univariate_polynomial(*params)
+    fd_grads = finite_differences(functor, x)
+    assert approx_equal(functor.partial_derivatives(x), fd_grads, 1e-4)
     do_polynomial_fit(x, params)
 
   # test fitting of a gaussian
@@ -37,14 +55,17 @@ def run():
     x = flex.double(frange(start, stop, step))
     y = scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
     fit = curve_fitting.single_gaussian_fit(x, y)
-    assert approx_equal(fit.scale, scale, 1e-4)
-    assert approx_equal(fit.mu, mu, eps=1e-4)
-    assert approx_equal(fit.sigma, sigma, eps=1e-4)
+    assert approx_equal(fit.a, scale, 1e-4)
+    assert approx_equal(fit.b, mu, eps=1e-4)
+    assert approx_equal(fit.c, sigma, eps=1e-4)
 
   for i in range(10):
     scale = random.random() * 1000
     sigma = (random.random() + 0.0001) * 10
     mu = (-1)**random.randint(0,1) * random.random() * 1000
+    functor = curve_fitting.gaussian(scale, mu, sigma)
+    fd_grads = finite_differences(functor, x)
+    assert approx_equal(functor.partial_derivatives(x), fd_grads, 1e-4)
     do_gaussian_fit(scale, mu, sigma)
 
   # if we take the log of a gaussian we can fit a parabola
@@ -69,28 +90,17 @@ def run():
   y = flex.double(x.size())
   for i in range(len(gaussians)):
     g = gaussians[i]
-    scale, mu, sigma = g.scale, g.mu, g.sigma
-    y += scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
+    scale, mu, sigma = g.a, g.b, g.c
+    y += g(x)
 
   starting_gaussians = [
     curve_fitting.gaussian(1, 4, 1),
     curve_fitting.gaussian(1, 5, 1)]
   fit = curve_fitting.gaussian_fit(x, y, starting_gaussians)
   for g1, g2 in zip(gaussians, fit.gaussians):
-    assert approx_equal(g1.scale, g2.scale, eps=1e-4)
-    assert approx_equal(g1.mu, g2.mu, eps=1e-4)
-    assert approx_equal(g1.sigma, g2.sigma, eps=1e-4)
-
-  if 0:
-    from matplotlib import pyplot
-    start_y = flex.double(x.size())
-    for i in range(len(starting_gaussians)):
-      g = starting_gaussians[i]
-      scale, mu, sigma = g.scale, g.mu, g.sigma
-      start_y += scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
-    pyplot.plot(x, start_y)
-    fit.pyplot()
-
+    assert approx_equal(g1.a, g2.a, eps=1e-4)
+    assert approx_equal(g1.b, g2.b, eps=1e-4)
+    assert approx_equal(g1.c, g2.c, eps=1e-4)
 
   # use example of 5-gaussian fit from here:
   # http://research.stowers-institute.org/efg/R/Statistics/MixturesOfDistributions/index.htm
@@ -104,8 +114,8 @@ def run():
   y = flex.double(x.size())
   for i in range(len(gaussians)):
     g = gaussians[i]
-    scale, mu, sigma = g.scale, g.mu, g.sigma
-    y += scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
+    scale, mu, sigma = g.a, g.b, g.c
+    y += g(x)
 
   termination_params = scitbx.lbfgs.termination_parameters(
     min_iterations=500)
@@ -118,14 +128,6 @@ def run():
     x, y, starting_gaussians, termination_params=termination_params)
   y_calc = fit.compute_y_calc()
   assert approx_equal(y, y_calc, eps=1e-2)
-
-  if 0:
-    from matplotlib import pyplot
-    start_y = flex.double(x.size())
-    for i in range(len(starting_gaussians)):
-      g = starting_gaussians[i]
-      scale, mu, sigma = g.scale, g.mu, g.sigma
-    fit.pyplot()
 
 
 if (__name__ == "__main__"):
