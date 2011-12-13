@@ -62,7 +62,7 @@ class finalise_one_run(object):
 
 def update_histograms(hist_dict1, hist_dict2):
   for key, value in hist_dict1.iteritems():
-    value.update_from_histogram(hist_dict2[key])
+    value.update(hist_dict2[key])
   return hist_dict1
 
 if __name__ == '__main__':
