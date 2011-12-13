@@ -1,9 +1,9 @@
-
-from xfel.cxi.gfx import status_plot
-from xfel.cxi.cspad_ana import cspad_tbx
 import logging
 import threading
 import wx
+
+from xfel.cxi.gfx import status_plot
+from xfel.cxi.cspad_ana import cspad_tbx
 
 class StatusFrame_thread(threading.Thread):
   """The XrayFrame_thread class allows Run MainLoop() to be run as a

@@ -8,9 +8,10 @@ XXX mod_param must be run as a single process--guard against it!
 
 __version__ = "$Revision$"
 
-import cspad_tbx
 import logging
 import math
+
+from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class mod_param(object):

@@ -2,15 +2,15 @@
 #
 # $Id$
 
-import common_mode
-import cspad_tbx
 import math
 import multiprocessing
 import numpy
-from libtbx import easy_pickle
-import scitbx.math
 
+from libtbx import easy_pickle
 from scitbx.array_family import flex
+import scitbx.math
+from xfel.cxi.cspad_ana import common_mode
+from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class average_mixin(common_mode.common_mode_correction):

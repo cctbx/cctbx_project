@@ -11,9 +11,10 @@ as pickled dictionaries.
 
 __version__ = "$Revision$"
 
-import average_tbx
-import cspad_tbx
 import logging
+
+from xfel.cxi.cspad_ana import average_tbx
+from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class mod_average(average_tbx.average_mixin):

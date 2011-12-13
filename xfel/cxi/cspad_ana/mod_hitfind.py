@@ -9,15 +9,15 @@ XXX
 
 __version__ = "$Revision$"
 
-import common_mode
-import cspad_tbx
 import logging
+
+from scitbx.array_family import flex
+from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
+from xfel.cxi.cspad_ana import common_mode
+from xfel.cxi.cspad_ana import cspad_tbx
 
 # import matplotlib
 # matplotlib.use("PDF")
-
-from scitbx.array_family import flex
-from hitfinder_tbx       import distl_hitfinder
 
 
 class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):

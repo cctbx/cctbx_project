@@ -10,14 +10,15 @@ XXX Better named cspad_base?
 __version__ = "$Revision$"
 
 import cPickle as pickle
-import cspad_tbx
 import logging
 import numpy
 
 from parse_calib         import Section
 from parse_calib         import calib2sections
 from pypdsdata           import xtc
+
 from scitbx.array_family import flex
+from xfel.cxi.cspad_ana import cspad_tbx
 
 
 class common_mode_correction(object):
