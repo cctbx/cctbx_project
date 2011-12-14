@@ -16,9 +16,11 @@ master_phil = libtbx.phil.parse("""
     .type = path
   label = None
     .type = str
-  selection = None
+  selection = all
     .type = str
   selection_radius = 3.0
+    .type = float
+  box_cushion = 3.0
     .type = float
   resolution_factor = 1./4
     .type = float
@@ -33,8 +35,21 @@ def match_labels(target, label):
     if(s.count(label)): return True
   return False
 
+def select_within_no_sym(sites_cart, sites_cart_all, unit_cell, radius):
+  small = 0.1
+  if(radius < small): radius=small
+  sites_frac = unit_cell.fractionalize(sites_cart)
+  sites_frac_all = unit_cell.fractionalize(sites_cart_all)
+  result = flex.bool(sites_frac_all.size(), False)
+  for isfa, sfa in enumerate(sites_frac_all):
+    for sfr in sites_frac:
+      d = unit_cell.distance(sfa,sfr)
+      if(d<radius):
+        result[isfa]=True
+  return result
+
 def run (args, log=None):
-  h = "phenix.map_box: extracting model and map in a box around selected atoms"
+  h = "phenix.map_box: extract box with model and map around selected atoms"
   if(log is None): log = sys.stdout
   print_statistics.make_header(h, out=log)
   default_message="""\
@@ -119,21 +134,33 @@ Parameters:"""%h
   print >> log, "  selects %d atoms from total %d atoms."%(selection.count(True),
     selection.size())
   #
-  print_statistics.make_sub_header("extracting box around selected atoms",
-    out=log)
+  print_statistics.make_sub_header(
+    "extracting box around selected atoms and writing output files", out=log)
   fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
+  #
+  sites_cart_all = xray_structure.sites_cart()
+  sites_cart = sites_cart_all.select(selection)
+  selection = select_within_no_sym(
+    sites_cart     = sites_cart,
+    sites_cart_all = sites_cart_all,
+    unit_cell      = xray_structure.unit_cell(),
+    radius         = params.selection_radius)
+  #
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     pdb_hierarchy    = pdb_hierarchy,
     map_data         = map_data,
-    selection_string = params.selection,
-    selection_radius = params.selection_radius,
-    box_cushion      = 0)
+    box_cushion      = params.box_cushion,
+    selection        = selection)
   output_prefix=os.path.basename(params.pdb_file)[:-4]
   file_name = "%s_box.pdb"%output_prefix
   box.write_pdb_file(file_name=file_name)
+  if("ccp4" in params.output_format):
+    file_name = "%s_box.ccp4"%output_prefix
+    print >> log, "writing map to CCP4 formatted file:   %s"%file_name
+    box.write_ccp4_map(file_name=file_name)
   if("xplor" in params.output_format):
     file_name = "%s_box.xplor"%output_prefix
     print >> log, "writing map to X-plor formatted file: %s"%file_name
@@ -143,11 +170,7 @@ Parameters:"""%h
     print >> log, "writing map coefficients to MTZ file: %s"%file_name
     box.map_coefficients(d_min=map_coeff.d_min(),
       resolution_factor=params.resolution_factor, file_name=file_name)
-  if("ccp4" in params.output_format):
-    file_name = "%s_box.ccp4"%output_prefix
-    print >> log, "writing map to CCP4 formatted file: %s"%file_name
-    box.write_ccp4_map(d_min=map_coeff.d_min(),
-      resolution_factor=params.resolution_factor, file_name=file_name)
+  print >> log
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
