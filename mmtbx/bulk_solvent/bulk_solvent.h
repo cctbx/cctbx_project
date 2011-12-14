@@ -6,6 +6,13 @@
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <mmtbx/f_model/f_model.h>
+#include <scitbx/matrix/outer_product.h>
+#include <scitbx/array_family/versa_algebra.h>
+#include <scitbx/array_family/shared_algebra.h>
+#include <scitbx/matrix/eigensystem.h>
+#include <scitbx/matrix/packed.h>
+#include <scitbx/array_family/versa_matrix.h>
+#include <scitbx/math/cubic_equation.h>
 
 namespace mmtbx { namespace detail {
 
@@ -311,6 +318,223 @@ private:
   scitbx::af::tiny<FloatType, 6> grad_u_star_;
   detail::overall_scale<FloatType, ComplexType> overall_scale;
   scitbx::af::small<FloatType,mmtbx::f_model::max_n_shells> grad_k_sols_;
+};
+
+
+template <
+  typename FloatType=double,
+  typename ComplexType=std::complex<double>,
+  typename CubicEqType=scitbx::math::cubic_equation::real<long double,double> >
+class overall_and_bulk_solvent_scale_coefficients_analytical
+{
+public:
+  FloatType k, x, t;
+
+  overall_and_bulk_solvent_scale_coefficients_analytical() {}
+
+  overall_and_bulk_solvent_scale_coefficients_analytical(
+    af::const_ref<FloatType> const& f_obs,
+    af::const_ref<ComplexType> const& f_calc,
+    af::const_ref<ComplexType> const& f_mask,
+    af::const_ref<bool> const& selection)
+  :
+  k(1), x(0), t(0)
+  {
+    MMTBX_ASSERT(f_obs.size() == f_calc.size());
+    MMTBX_ASSERT(f_obs.size() == f_mask.size());
+    FloatType pi = scitbx::constants::pi;
+    FloatType pi_sq = pi*pi;
+    FloatType minus_two_pi  = -2.*pi_sq;
+    FloatType minus_four_pi = -4.*pi_sq;
+    //
+    FloatType a2 = 0.0;
+    FloatType b2 = 0.0;
+    FloatType c2 = 0.0;
+    FloatType y2 = 0.0;
+    FloatType a3 = 0.0;
+    FloatType b3 = 0.0;
+    FloatType c3 = 0.0;
+    FloatType d3 = 0.0;
+    FloatType y3 = 0.0;
+    //
+    af::shared<container> containers;
+    for(std::size_t i=0; i < f_obs.size(); i++) {
+      if(selection[i]) {
+        container cntr = container(f_obs[i], f_calc[i], f_mask[i]);
+        containers.push_back(cntr);
+        FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;
+        a2 += (u*I);
+        b2 += (2.*v*I);
+        c2 += (w*I);
+        y2 += (I*I);
+        a3 += (u*v);
+        b3 += (2.*v*v+u*w);
+        c3 += (3.*v*w);
+        d3 += (w*w);
+        y3 += (I*v);
+      }
+    }
+    FloatType den = d3*y2-c2*c2;
+    MMTBX_ASSERT(den > 0.0);
+    // coefficients of x**3 + ax**2 + bc + c = 0
+    FloatType a = (c3*y2-c2*b2-c2*y3)/den;
+    FloatType b = (b3*y2-c2*a2-y3*b2)/den;
+    FloatType c = (a3*y2-y3*a2)/den;
+    CubicEqType ceo = CubicEqType(1,a,b,c);
+    vec3<FloatType> X(0,0,0);
+    for(std::size_t j=0; j < 3; j++) {
+      if(ceo.x[j]) {
+        X[j] = *ceo.x[j];
+        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-9);
+      }
+    }
+    vec3<FloatType> K = compute_K(X, c2, b2, a2, y2);
+    vec3<FloatType> J = func_J(K, X, containers.const_ref());
+    if(X[0]>=0. && X[1]>=0. && X[2]>=0) {
+      if(J[0]<=J[1] && J[0]<J[2]) { x = X[0]; k = K[0]; }
+      if(J[1]<=J[0] && J[1]<J[2]) { x = X[1]; k = K[1]; }
+      if(J[2]<=J[0] && J[2]<J[1]) { x = X[2]; k = K[2]; }
+    }
+    else if(X[0]>=0. && X[1]>=0.) {
+      if(J[0]<=J[1]) { x = X[0]; k = K[0]; }
+      if(J[1]<=J[0]) { x = X[1]; k = K[1]; }
+    }
+    else if(X[0]>=0. && X[2]>=0.) {
+      if(J[0]<=J[2]) { x = X[0]; k = K[0]; }
+      if(J[2]<=J[0]) { x = X[2]; k = K[2]; }
+    }
+    else if(X[1]>=0. && X[2]>=0.) {
+      if(J[1]<=J[2]) { x = X[1]; k = K[1]; }
+      if(J[2]<=J[0]) { x = X[2]; k = K[2]; }
+    }
+    else if(X[0]>=0.) { x = X[0]; k = K[0]; }
+    else if(X[1]>=0.) { x = X[1]; k = K[1]; }
+    else if(X[2]>=0.) { x = X[2]; k = K[2]; }
+    else {
+      MMTBX_ASSERT(y2>0.);
+      k = a2/y2;
+    }
+    if(k>0) { t = 1./std::sqrt(k); }
+  }
+
+private:
+  class container {
+    public:
+      FloatType u, v, w, I;
+      container(
+        FloatType const& f_obs,
+        ComplexType const& f_calc,
+        ComplexType const& f_mask)
+      {
+        FloatType p = std::real(f_calc);
+        FloatType r = std::imag(f_calc);
+        FloatType q = std::real(f_mask);
+        FloatType t = std::imag(f_mask);
+        I = f_obs*f_obs;
+        v = p*q+r*t;
+        w = q*q+t*t;
+        u = p*p+r*r;
+      }
+  };
+
+  vec3<FloatType> func_J(
+    vec3<FloatType> const& K,
+    vec3<FloatType> const& x,
+    af::const_ref<container> const& containers)
+  {
+    vec3<FloatType> sum(0,0,0);
+    for(std::size_t i=0; i < containers.size(); i++) {
+      container cntr = containers[i];
+      FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;
+      for(std::size_t j=0; j < 3; j++) {
+        FloatType arg = x[j]*x[j]*w+2.*x[j]*v+u-K[j]*I;
+        sum[j] += (0.5*arg*arg);
+      }
+    }
+    return sum;
+  }
+
+protected:
+  inline static vec3<FloatType> compute_K(
+    vec3<FloatType> const& x,
+    FloatType const& c2,
+    FloatType const& b2,
+    FloatType const& a2,
+    FloatType const& y2)
+    {
+      MMTBX_ASSERT(y2 != 0.0);
+      vec3<FloatType> result(0,0,0);
+      for(std::size_t j=0; j < 3; j++) {
+        FloatType xj = x[j];
+        result[j] = (xj*xj*c2+xj*b2+a2)/y2;
+      }
+      return result;
+    }
+};
+
+template <typename FloatType=double,
+          typename ComplexType=std::complex<double> >
+class aniso_u_scaler
+{
+public:
+  af::versa<FloatType, af::mat_grid> M;
+  af::shared<FloatType> b;
+  af::versa<FloatType, af::mat_grid> tmp;
+  af::shared<FloatType> res;
+  af::shared<FloatType> u_star;
+  af::shared<FloatType> overall_anisotropic_scale;
+
+  aniso_u_scaler() {}
+
+  aniso_u_scaler(
+    af::const_ref<std::complex<double> > const& fm,
+    af::const_ref<FloatType> const& fo,
+    af::const_ref<cctbx::miller::index<> > const& miller_indices)
+  :
+  M(af::mat_grid(6, 6), 0), tmp(af::mat_grid(6, 6), 0), b(6, 0),
+  overall_anisotropic_scale(miller_indices.size(), 0)
+  {
+    MMTBX_ASSERT(fo.size() == fm.size());
+    FloatType pi_sq = scitbx::constants::pi*scitbx::constants::pi;
+    FloatType minus_two_pi  = -2.0*pi_sq;
+    FloatType minus_four_pi = -4.0*pi_sq;
+    for(std::size_t i=0; i < fo.size(); i++) {
+      cctbx::miller::index<> miller_index = miller_indices[i];
+      int mi0 = miller_index[0];
+      int mi1 = miller_index[1];
+      int mi2 = miller_index[2];
+      FloatType A = minus_two_pi  * mi0*mi0;
+      FloatType B = minus_two_pi  * mi1*mi1;
+      FloatType C = minus_two_pi  * mi2*mi2;
+      FloatType D = minus_four_pi * mi0*mi1;
+      FloatType E = minus_four_pi * mi0*mi2;
+      FloatType F = minus_four_pi * mi1*mi2;
+      FloatType fm_abs = std::abs(fm[i]);
+      MMTBX_ASSERT(fm_abs != 0);
+      FloatType Z = std::log(fo[i]/fm_abs);
+      const FloatType V[] = {A,B,C,D,E,F};
+      af::shared<FloatType> v_(V, V+6);
+      scitbx::matrix::outer_product(tmp.begin(),v_.const_ref(),v_.const_ref());
+      M += tmp;
+      const FloatType B_[] = {Z*A, Z*B, Z*C, Z*D, Z*E, Z*F};
+      b += af::shared<FloatType>(B_, B_+6);
+    }
+    af::versa<FloatType, af::c_grid<2> > m(
+       scitbx::matrix::packed_u_as_symmetric(
+         scitbx::matrix::eigensystem::real_symmetric<FloatType>(
+           M.const_ref(),
+           /*relative_epsilon*/ 1.e-6,
+           /*absolute_epsilon*/ 1.e-6)
+             .generalized_inverse_as_packed_u().const_ref()));
+     u_star = af::matrix_multiply(m.const_ref(), b.const_ref());
+     scitbx::sym_mat3<FloatType> u_star_as_sym_mat3(0,0,0,0,0,0);
+     for(std::size_t i=0; i < 6; i++) u_star_as_sym_mat3[i] = u_star[i];
+     for(std::size_t i=0; i < fo.size(); i++) {
+       overall_anisotropic_scale[i] = cctbx::adptbx::debye_waller_factor_u_star(
+         miller_indices[i], u_star_as_sym_mat3, /*exp_arg_limit*/ 40.,
+         /*truncate_exp_arg*/ true);
+     }
+  }
 };
 
 //------------------------------------------------------------------------------
