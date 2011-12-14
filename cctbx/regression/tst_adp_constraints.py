@@ -12,6 +12,44 @@ import sys
 random.seed(0)
 flex.set_random_seed(0)
 
+def exercise_constraint_matrix():
+  expected_matrices = iter("""\
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0
+1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0
+1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0
+-1,-1,-1,1,0,0,-1,-1,-1,0,1,0,-1,-1,-1,0,0,1
+1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0
+1,1,0,1,0,0,1,0,1,0,1,0,0,1,1,0,0,1
+1,1,0,0,0,0,0,0,1,0,0,0
+1,1,0,0,0,0,0,0,1,0,0,0
+1,1,0,1,0,0,1,1,2,0,1,1
+0,0,1,0,0,0,2,2,0,1,0,0
+0,0,1,0,0,0,2,2,0,1,0,0
+1,1,1,0,0,0,0,0,0,1,1,1
+1,1,1,0,0,0
+1,1,1,0,0,0
+2,2,2,1,1,1
+1,1,1,0,0,0
+-3,-3,-3,1,1,1
+""".splitlines())
+  from cctbx import sgtbx
+  from cctbx.sgtbx.bravais_types import acentric
+  for symbol in acentric:
+    def check(sgi):
+      expected = [float(_) for _ in expected_matrices.next().split(",")]
+      gr = sgi.group()
+      assert approx_equal(
+        gr.adp_constraints().constraint_matrix().elems,
+        expected)
+      if (gr.n_ltr() != 1):
+        check(sgi.primitive_setting())
+    check(sgtbx.space_group_info(symbol=symbol))
+
 def d_dw_d_u_star_analytical(h, u_star):
   dw = adptbx.debye_waller_factor_u_star(h, u_star)
   gc = flex.double(adptbx.debye_waller_factor_u_star_gradient_coefficients(h))
@@ -177,7 +215,7 @@ def compare_derivatives(ana, fin, eps=1.e-6):
   s = max(1, flex.max(flex.abs(ana)))
   assert approx_equal(ana/s, fin/s, eps=eps)
 
-def exercise(space_group_info, out):
+def exercise_derivatives(space_group_info, out):
   crystal_symmetry = space_group_info.any_compatible_crystal_symmetry(
     volume=1000)
   space_group = space_group_info.group()
@@ -243,11 +281,12 @@ def run_call_back(flags, space_group_info):
     out = sys.stdout
   else:
     out = StringIO()
-  exercise(space_group_info, out=out)
+  exercise_derivatives(space_group_info, out=out)
   if (space_group_info.group().n_ltr() != 1):
-    exercise(space_group_info.primitive_setting(), out=out)
+    exercise_derivatives(space_group_info.primitive_setting(), out=out)
 
 def run():
+  exercise_constraint_matrix()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
