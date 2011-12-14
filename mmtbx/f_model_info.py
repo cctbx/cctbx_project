@@ -129,7 +129,10 @@ class info(object):
     self.ml_coordinate_error = fmodel.model_error_ml()
     if hasattr(fmodel, "sigmaa") :
       try :
-        self.sigmaa = fmodel.sigmaa().sigmaa() # miller array
+        sa = fmodel.sigmaa()
+        self.sigmaa = None
+        if(sa is not None):
+          self.sigmaa = sa.sigmaa() # miller array
       except RuntimeError, e :
         self.sigmaa = None
     else :
@@ -193,10 +196,13 @@ class info(object):
     beta_t.use_binning_of(fo_t)
     if hasattr(fmodel, "sigmaa") :
       try :
-        sigmaa = fmodel.sigmaa().sigmaa()
+        sa = fmodel.sigmaa()
+        sigmaa = None
+        if(sa is not None):
+          sigmaa = sa.sigmaa()
       except RuntimeError, e :
         sigmaa = None
-      else :
+      if(sigmaa is not None):
         sigmaa.use_binning_of(fo_t)
     else :
       sigmaa = None
