@@ -2,7 +2,7 @@ import os,time
 
 def do_main_apache(filepath, host, port):
   absfile = os.path.abspath(filepath)
-  base_url = "http://%s:%d/spotfinder/distl.signal_strength?distl.image=%s"%(host,port,absfile)
+  base_url = "http://%s:%d/spotfinder/distl.signal_strength_bcsb?distl.image=%s"%(host,port,absfile)
   if len(DISTL_OPTIONS) > 0:
     base_url = base_url + "&" + "&".join(DISTL_OPTIONS)
   import urllib2
@@ -37,7 +37,7 @@ if __name__=="__main__":
   PORT = "8125"
   N_CLIENT_THREADS = 48
   IMAGE_RANGE = xrange(1,721)
-  DISTL_OPTIONS = ["distl.res.outer=4.9","distl.bins.verbose=True"]
-  SERVER_TYPE = ["Python","Apache"][0] # choose 0=Python, 1=Apache mod-python
+  DISTL_OPTIONS = ["distl.bins.verbose=True"]
+  SERVER_TYPE = ["Python","Apache"][1] # choose 0=Python, 1=Apache mod-python
   TIME_DELAY = 0.10 # seconds per-image throughput, depends on server
   multi_thread()

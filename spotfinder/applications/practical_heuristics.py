@@ -235,6 +235,7 @@ class heuristics_base(object):
     self.BinMin = 25
     self.errormessage = None
     self.images = {}
+    self.reporters = {}
     self.protocol = 'tnear2'
     self.overlapping = False #flag indicates whether the special procedure was used
     self.force_detail = False #flag indicates whether percent_overlap > force_detail cutoff
@@ -251,6 +252,7 @@ class heuristics_base(object):
       self.images[frames[x]]['spotoutput']['relpath']=imagefilesinstance.imagepath(frames[x])
 
   def oneImage(self,framenumber,pd,image):
+    self.reporters[framenumber] = []
     # The only way to get pixel size & pixel dimensions (currently) is from header
     pimage = image
     pimage.read()
@@ -476,6 +478,7 @@ class heuristics_base(object):
           ShellR.sigma_analysis()
           print
           ShellR.show(message="Analysis of spots after ice removal, but prior to resolution cutoff, for image \n%s"%pimage.filename)
+          self.reporters[framenumber].append(ShellR)
 
         # slight adjustment so that we don't focus on the lowest
         #  resolution data shell (spends too much time in Ewald sphere)
@@ -577,6 +580,8 @@ class heuristics_base(object):
       ShellR.sigma_analysis()
       print
       ShellR.show(message="Analysis of spots after resolution filtering, but prior to spot quality heuristics, for image \n%s"%pimage.filename)
+      self.reporters[framenumber].append(ShellR)
+
      except Exception: # in case the low-pass filter step was skipped; e.g., blank image.
       pass
 
@@ -816,6 +821,8 @@ class heuristics_base(object):
       ShellR.sigma_analysis()
       print
       ShellR.show(message="Analysis of good Bragg spots after quality heuristics, for image \n%s"%pimage.filename)
+      self.reporters[framenumber].append(ShellR)
+
      except Exception:
       pass #if there aren't enough spots, just skip the tabular printout
 
