@@ -27,7 +27,8 @@ namespace {
                                      self.f_bulk,
                                      self.f_aniso,
                                      self.f_b_sol,
-                                     self.ss);
+                                     self.ss,
+                                     self.f_model_no_aniso_scale);
   }
 
   void init_module()
@@ -67,6 +68,19 @@ namespace {
                                                          arg("hkl"),
                                                          arg("uc"),
                                                          arg("ss"))))
+      .def(init<
+           af::shared<std::complex<double> > const&,
+           af::shared<std::complex<double> > const&,
+           double const&,
+           af::shared<double> const&,
+           af::shared<double> const&,
+           af::shared<double> const& >(
+                                         (arg("f_calc"),
+                                          arg("f_mask"),
+                                          arg("scale"),
+                                          arg("overall_scale"),
+                                          arg("overall_anisotropic_scale"),
+                                          arg("bulk_solvent_scale"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
       .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
       .add_property("f_part1",       make_getter(&core<>::f_part1,      rbv()))
@@ -79,6 +93,7 @@ namespace {
       .add_property("f_aniso",       make_getter(&core<>::f_aniso,      rbv()))
       .add_property("f_b_sol",       make_getter(&core<>::f_b_sol,      rbv()))
       .add_property("ss",            make_getter(&core<>::ss,           rbv()))
+      .add_property("f_model_no_aniso_scale", make_getter(&core<>::f_model_no_aniso_scale, rbv()))
       .def("n_shells", &core<>::n_shells)
       .def("k_sol", &core<>::k_sol)
       .def("k_sols", &core<>::k_sols)
