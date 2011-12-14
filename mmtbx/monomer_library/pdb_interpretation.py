@@ -150,6 +150,8 @@ master_params_str = """\
       .type = float
       .optional = False
       .short_caption = Threshold (degrees) for cis-peptides
+    discard_omega = False
+      .type = bool
     discard_psi_phi = True
       .type = bool
       .optional = False
@@ -1487,14 +1489,20 @@ class add_dihedral_proxies(object):
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
+        trans_cis_ids = [
+          "TRANS", "PTRANS", "NMTRANS",
+          "CIS",   "PCIS",   "NMCIS"]
         if (involves_special_positions(special_position_indices, i_seqs)):
           counters.discarded_because_of_special_positions += 1
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
           pass
         elif (    tor.id in ["psi", "phi"]
-              and self.chem_link_id in ["TRANS", "PTRANS", "NMTRANS",
-                                        "CIS",   "PCIS",   "NMCIS"]
+              and self.chem_link_id in trans_cis_ids
               and peptide_link_params.discard_psi_phi):
+          pass
+        elif (    tor.id == "omega"
+              and self.chem_link_id in trans_cis_ids
+              and peptide_link_params.discard_omega):
           pass
         else:
           if (dihedral_function_type == "determined_by_sign_of_periodicity"):
