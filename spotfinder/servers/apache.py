@@ -6,7 +6,13 @@ def handler(req):
   from mod_python.util import FieldStorage
   FS = FieldStorage(req)
   logfile = StringIO.StringIO()
-  logfile.write(run(args=FS))
+
+  if req.filename.find("distl.signal_strength_bcsb")>=0:
+    from spotfinder.servers.apache_bcsb import run as run_command
+  elif req.filename.find("distl.signal_strength")>0:
+    run_command = run
+
+  logfile.write(run_command(args=FS))
   log = logfile.getvalue()
   req.set_content_length(len(log))
   req.write(log)

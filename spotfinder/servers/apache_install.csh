@@ -85,6 +85,7 @@ the Apache configuration file, ${USE_APACHE}/conf/httpd.conf
      Order allow,deny
      Allow from all
      AddHandler mod_python .signal_strength
+     AddHandler mod_python .signal_strength_bcsb
      PythonHandler apache
    </Directory>
 
@@ -115,6 +116,7 @@ Alias /spotfinder ${CCTBX_SRC}/spotfinder/servers
    Order allow,deny
    Allow from all
    AddHandler mod_python .signal_strength
+   AddHandler mod_python .signal_strength_bcsb
    PythonHandler apache
 </Directory>
 eof
