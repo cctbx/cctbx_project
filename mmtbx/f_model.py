@@ -1233,6 +1233,10 @@ class manager(manager_mixin):
   def f_model_work(self):
     return self.active_arrays.f_model_work
 
+  def f_mask(self):
+    return self.f_calc().customized_copy(
+      data = self.active_arrays.core.data.f_mask())
+
   def f_model_free(self):
     return self.active_arrays.f_model_free
 
