@@ -57,16 +57,6 @@ class _(boost.python.injector, ext.space_group):
   def cartesian_adp_constraints(self, unit_cell):
     return tensor_rank_2_cartesian_constraints(unit_cell, self)
 
-class _(boost.python.injector, tensor_rank_2_constraints):
-
-  def constraint_matrix(self):
-    elems = []
-    ii = self.independent_indices
-    for i in xrange(len(ii)):
-      ip = [0]*len(ii)
-      ip[i] = 1
-      elems.extend(self.all_params(independent_params=ip))
-    return matrix.rec(elems, (len(ii),6))
 
 class any_generator_set(object):
 
