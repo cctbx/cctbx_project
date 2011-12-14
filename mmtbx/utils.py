@@ -2695,12 +2695,12 @@ class extract_box_around_model_and_map(object):
                xray_structure,
                pdb_hierarchy,
                map_data,
-               selection_radius,
                box_cushion,
+               selection_radius=None,
                selection_string=None,
                selection=None):
     adopt_init_args(self, locals())
-    assert [selection_string, selection].count(None) == 1
+    assert [selection_string, selection_radius].count(None) in [0,2]
     if(selection_string is not None):
       selection = pdb_hierarchy.atom_selection_cache().selection(
         string = selection_string)
@@ -2709,7 +2709,8 @@ class extract_box_around_model_and_map(object):
         selection = selection)
     else:
       self.selection_within = selection
-    #
+      assert [selection_string, selection_radius].count(None)==2
+    # extract box
     xray_structure_selected = xray_structure.select(
       selection=self.selection_within)
     frac_max = xray_structure_selected.sites_frac().max()
@@ -2719,20 +2720,23 @@ class extract_box_around_model_and_map(object):
     frac_max = list(flex.double(frac_max)+cushion)
     frac_min = list(flex.double(frac_min)-cushion)
     self.frac_min = frac_min
-    n_real = map_data.all()
-    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
-    gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+    na = map_data.all()
+    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
+    gridding_last=[iceil(f*n) for f,n in zip(frac_max,na)]
+    a=map_data.all()
     self.map_box = maptbx.copy(map_data, gridding_first, gridding_last)
+    o = self.map_box.origin()
+    fs = (-o[0]/a[0],-o[1]/a[1],-o[2]/a[2])
     self.map_box.reshape(flex.grid(self.map_box.all()))
     # shrink unit cell to match the box
     p = xray_structure.unit_cell().parameters()
     abc = []
     for i in range(3):
-      abc.append( p[i] * self.map_box.all()[i]/n_real[i] )
+      abc.append( p[i] * self.map_box.all()[i]/na[i] )
     new_unit_cell_box = uctbx.unit_cell(
       parameters=(abc[0],abc[1],abc[2],p[3],p[4],p[5]))
     # new xray_structure in the box, and corresponding PDB hierarchy
-    sites_frac_new = xray_structure_selected.sites_frac()-frac_min
+    sites_frac_new = xray_structure_selected.sites_frac()+fs
     xray_structure_box=xray_structure_selected.replace_sites_frac(sites_frac_new)
     cs = crystal.symmetry(unit_cell=new_unit_cell_box, space_group="P1")
     sites_cart = xray_structure_box.sites_cart()
@@ -2742,7 +2746,7 @@ class extract_box_around_model_and_map(object):
     self.xray_structure_box = xray.structure(sp,xray_structure_box.scatterers())
     self.pdb_hierarchy_box = self.pdb_hierarchy.select(self.selection_within)
     self.pdb_hierarchy_box.adopt_xray_structure(self.xray_structure_box)
-    # shift to map boxed sites back
+    # shift to map (boxed) sites back
     sc1 = xray_structure_selected.sites_cart()
     sc2 = self.xray_structure_box.sites_cart()
     self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
@@ -2751,30 +2755,40 @@ class extract_box_around_model_and_map(object):
     self.pdb_hierarchy_box.write_pdb_file(file_name=file_name,
       crystal_symmetry = self.xray_structure_box.crystal_symmetry())
 
-  def write_xplor_map(self, file_name):
-    unit_cell = self.xray_structure_box.unit_cell()
-    sites_frac = self.xray_structure_box.sites_frac()
-    frac_max = sites_frac.max()
-    frac_min = sites_frac.min()
-    cushion = flex.double(unit_cell.fractionalize((self.box_cushion,)*3))
-    frac_max = list(flex.double(frac_max)+cushion)
-    frac_min = list(flex.double(frac_min)-cushion)
-    n_real = self.map_box.all()
-    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
-    gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
-    gridding = iotbx.xplor.map.gridding(n = self.map_box.focus(),
-      first = gridding_first, last = gridding_last)
+  def write_xplor_map(self, file_name="box.xplor"):
+    gridding = iotbx.xplor.map.gridding(
+      n     = self.map_box.focus(),
+      first = (0,0,0),
+      last  = self.map_box.focus())
     iotbx.xplor.map.writer(
       file_name          = file_name,
       is_p1_cell         = True,
-      title_lines        = [' None',],
-      unit_cell          = unit_cell,
+      title_lines        = ['Map in box',],
+      unit_cell          = self.xray_structure_box.unit_cell(),
       gridding           = gridding,
       data               = self.map_box,
       average            = -1,
       standard_deviation = -1)
 
-  def map_coefficients(self, d_min, resolution_factor, file_name=None):
+  def write_ccp4_map(self, file_name="box.ccp4"):
+    from iotbx import ccp4_map
+    ccp4_map.write_ccp4_map(
+      file_name      = file_name,
+      unit_cell      = self.xray_structure_box.unit_cell(),
+      space_group    = self.xray_structure_box.space_group(),
+      gridding_first = (0,0,0),
+      gridding_last  = self.map_box.focus(),
+      map_data       = self.map_box,
+      labels=flex.std_string([" "]))
+
+  def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min,
+      resolution_factor = resolution_factor)
+    fft_map = box_map_coeffs.fft_map(resolution_factor=resolution_factor)
+    fft_map.apply_sigma_scaling()
+    return fft_map
+
+  def box_map_coefficients(self, d_min, resolution_factor):
     from scitbx import fftpack
     fft = fftpack.real_to_complex_3d([i for i in self.map_box.all()])
     map_box = maptbx.copy(
@@ -2795,6 +2809,11 @@ class extract_box_around_model_and_map(object):
       anomalous_flag=False,
       indices=box_structure_factors.miller_indices(),
       ).array(data=box_structure_factors.data())
+    return box_map_coeffs
+
+  def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min,
+      resolution_factor = resolution_factor)
     if(file_name is not None):
       mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
       mtz_object = mtz_dataset.mtz_object()
