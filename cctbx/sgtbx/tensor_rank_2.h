@@ -109,6 +109,7 @@ namespace tensor_rank_2 {
         return result;
       }
 
+      //! Constraint matrix (with a historical name).
       af::const_ref<FloatType, af::mat_grid>
       gradient_sum_matrix() const
       {

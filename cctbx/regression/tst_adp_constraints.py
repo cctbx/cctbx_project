@@ -44,7 +44,7 @@ def exercise_constraint_matrix():
       expected = [float(_) for _ in expected_matrices.next().split(",")]
       gr = sgi.group()
       assert approx_equal(
-        gr.adp_constraints().constraint_matrix().elems,
+        gr.adp_constraints().gradient_sum_matrix(),
         expected)
       if (gr.n_ltr() != 1):
         check(sgi.primitive_setting())
