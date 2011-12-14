@@ -295,7 +295,7 @@ def run(args, log = sys.stdout):
     fmodel = fmodel,
     params = params.maps.map_coefficients)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
-  cmo.write_mtz_file(file_name = map_coeff_file_name)
+  write_mtz_file_result = cmo.write_mtz_file(file_name = map_coeff_file_name)
   if(params.maps.output.fmodel_data_file_format is not None):
     fmodel_file_name = file_name_base + "_fmodel." + \
       params.maps.output.fmodel_data_file_format
@@ -306,7 +306,7 @@ def run(args, log = sys.stdout):
       params.maps.output.fmodel_data_file_format)
     fmodel_file_object.close()
   print >> log, "All done."
-  if (map_coeff_file_name is not None) :
+  if (write_mtz_file_result) :
     print >> log, "Map coefficients: %s" % map_coeff_file_name
   for file_name in xplor_maps :
     print >> log, "XPLOR or CCP4 map: %s" % file_name
