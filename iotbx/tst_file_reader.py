@@ -294,6 +294,15 @@ def exercise_hkl () :
 
 def exercise_misc () :
   file_names = ["foo.pdb", "foo.mtz", "bar.pdb", "bar.mtz", "seq.dat"]
+  file_types = ["pdb", "hkl", "pdb", "hkl", "seq"]
+  for i, file_name in enumerate(file_names) :
+    f = open(file_name, "w")
+    f.write("1")
+    f.close()
+    input_file = file_reader.any_file_fast(file_name)
+    assert (input_file.file_type == file_types[i])
+    if (input_file.file_type == "hkl") :
+      assert (input_file.file_object.file_type() == "CCP4 MTZ")
   file_names = sort_by_file_type(file_names, sort_order=["pdb","hkl","seq"])
   assert (file_names == ['foo.pdb','bar.pdb','foo.mtz','bar.mtz','seq.dat'])
   wc = file_reader.get_wildcard_strings(["hkl","pdb","seq"])
