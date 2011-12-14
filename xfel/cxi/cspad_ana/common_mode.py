@@ -191,7 +191,7 @@ class common_mode_correction(object):
     x = hist.slot_centers()
     y = slots.as_double()
     fit = single_gaussian_fit(x, y)
-    scale, mu, sigma = fit.scale, fit.mu, fit.sigma
+    scale, mu, sigma = fit.a, fit.b, fit.c
     self.logger.debug("fitted gaussian: mu=%.3f, sigma=%.3f" %(mu, sigma))
     mode = common_mode
     common_mode = mu
