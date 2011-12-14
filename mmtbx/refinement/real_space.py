@@ -258,7 +258,6 @@ class simple(object):
       else:
         weight += 10
         cp+=1
-      if(weight==10000): break
       if(not cp*cm in [cp,cm]): break
       if(weight<=0 or weight>=1000): break
       if(weight in pool.keys()):
