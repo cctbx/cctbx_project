@@ -141,6 +141,14 @@ def any_file (file_name,
       valid_types=valid_types,
       force_type=force_type)
 
+def splitext (file_name) :
+  (file_base, file_ext) = os.path.splitext(file_name)
+  if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
+    (base2, ext2) = os.path.splitext(file_base)
+    if (ext2 in [".pdb", ".ent", ".cif"]) :
+      file_ext = ext2
+  return (file_base, file_ext)
+
 class any_file_input (object) :
   __extensions__ = standard_file_extensions
   __descriptions__ = standard_file_descriptions
@@ -158,11 +166,7 @@ class any_file_input (object) :
     self.file_size = os.path.getsize(file_name)
     self.get_processed_file = get_processed_file
 
-    (file_base, file_ext) = os.path.splitext(file_name)
-    if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
-      (base2, ext2) = os.path.splitext(file_base)
-      if (ext2 in [".pdb", ".ent", ".cif"]) :
-        file_ext = ext2
+    (file_base, file_ext) = splitext(file_name)
     if force_type is not None :
       read_method = getattr(self, "try_as_%s" % force_type, None)
       if read_method is None :
@@ -385,6 +389,60 @@ class any_file_input (object) :
           standard_file_descriptions.get(self.file_type, "Unknown"),
           "\n  ".join([ standard_file_descriptions.get(f, "Unknown")
                         for f in multiple_formats ])))
+
+# mimics any_file, but without parsing - will instead guess the file type from
+# the extension.  for most output files produced by cctbx/phenix this is
+# relatively safe.
+def any_file_fast (file_name,
+              get_processed_file=False,
+              valid_types=supported_file_types,
+              allow_directories=False,
+              force_type=None,
+              input_class=None) :
+  assert (not get_processed_file) and (force_type is None)
+  if not os.path.exists(file_name) :
+    raise Sorry("Couldn't find the file %s" % file_name)
+  elif os.path.isdir(file_name) :
+    if not allow_directories :
+      raise Sorry("This application does not support folders as input.")
+    else :
+      return directory_input(file_name)
+  elif not os.path.isfile(file_name) :
+    raise Sorry("%s is not a valid file.")
+  else :
+    if input_class is None :
+      input_class = any_file_fast_input
+    return input_class(file_name=file_name,
+      valid_types=valid_types)
+
+class any_file_fast_input (object) :
+  __extensions__ = standard_file_extensions
+  __descriptions__ = standard_file_descriptions
+  def __init__ (self, file_name, valid_types) :
+    self.valid_types = valid_types
+    self.file_name = file_name
+    self.file_object = None
+    self.file_type = None
+    self.file_server = None
+    self.file_description = None
+    file_base, file_ext = splitext(file_name)
+    for file_type in valid_types :
+      if file_ext[1:] in self.__extensions__[file_type] :
+        self.file_type = file_type
+    if self.file_type is not None :
+      self.file_description = self.__descriptions__[self.file_type]
+    # XXX this is a huge hole in this method - for reflection files, the
+    # PHENIX GUI displays the specific format, which requires actually reading
+    # in the file.  the stub class below will work for obvious formats.
+    if (self.file_type == "hkl") :
+      class fake_data_object (object) :
+        def __init__ (self, ext) :
+          self.ext = ext
+        def file_type (self) :
+          if (self.ext == ".mtz") : return "CCP4 MTZ"
+          elif (self.ext == ".sca") : return "Scalepack"
+          else : return "Data (other)"
+      self.file_object = fake_data_object(file_ext)
 
 class directory_input (object) :
   def __init__ (self, dir_name) :
