@@ -1,10 +1,11 @@
 import itertools
 import math
 
-from libtbx import adopt_init_args
 import libtbx
-import scitbx.lbfgs
+from libtbx import adopt_init_args
 from scitbx.array_family import flex
+import scitbx.lbfgs
+import scitbx.math
 
 
 class function_base(object):
@@ -59,6 +60,46 @@ class gaussian(function_base):
     return(exponential_part,
            a * (x_obs - b) / c**2 * exponential_part,
            a * flex.pow2(x_obs - b) / c**3 * exponential_part)
+
+
+class skew_normal(function_base):
+
+  def __init__(self, shape, location, scale):
+    adopt_init_args(self, locals())
+    self.params = (shape, location, scale)
+
+  def __call__(self, x_obs):
+    shape, location, scale = self.params
+    normal_part = (2 / (scale * math.sqrt(2 * math.pi))
+                   * flex.exp(- flex.pow2(x_obs - location)/(2 * scale**2)))
+    cdf_part = 0.5 * (
+      1 + scitbx.math.erf(shape * (x_obs - location)/ (math.sqrt(2) * scale)))
+    y_calc = normal_part * cdf_part
+    return y_calc
+
+  def partial_derivatives(self, x_obs):
+    shape, location, scale = self.params
+    exponential_part = (1/(math.sqrt(2 * math.pi))
+                        * flex.exp(- flex.pow2(x_obs - location)/(2 * scale**2)))
+    normal_part = 2 / scale * exponential_part
+    cdf_part = 0.5 * (
+      1 + scitbx.math.erf(shape * (x_obs - location)/ (math.sqrt(2) * scale)))
+    d_normal_part_d_location = 2 / scale**3 * (x_obs - location) * exponential_part
+    d_normal_part_d_scale = \
+      2 / scale**4 * (flex.pow2(x_obs - location) - scale**2) * exponential_part
+    exponential_part_with_shape = (
+      1 / (math.sqrt(math.pi)) *
+      flex.exp(-shape**2 * flex.pow2(x_obs - location)/(2 * scale**2)))
+    d_cdf_d_shape = \
+      (x_obs - location) / (math.sqrt(2) * scale) * exponential_part_with_shape
+    d_cdf_d_location = \
+      -shape / (math.sqrt(2) * scale) * exponential_part_with_shape
+    d_cdf_d_scale = (-shape * (x_obs - location) * exponential_part_with_shape /
+                     (math.sqrt(2) * scale**2))
+    # product rule
+    return (d_cdf_d_shape * normal_part,
+            d_normal_part_d_location * cdf_part + d_cdf_d_location * normal_part,
+            d_normal_part_d_scale * cdf_part + d_cdf_d_scale * normal_part)
 
 
 
