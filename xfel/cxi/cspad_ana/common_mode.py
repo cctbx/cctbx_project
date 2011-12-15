@@ -89,7 +89,7 @@ class common_mode_correction(object):
       self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
                         Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
     if (self.sections is None):
-      self.logger.error("Failed to load metrology")
+      raise RuntimeError("Failed to load metrology")
 
     # Load the dark image and ensure it is signed and at least 32 bits
     # wide, since it will be used for differencing.  If a dark image
@@ -112,8 +112,7 @@ class common_mode_correction(object):
         assert isinstance(self.dark_stddev, flex.double)
         stream.close()
       except IOError:
-        self.logger.error("Failed to load dark image")
-        raise
+        raise RuntimeError("Failed to load dark image")
       self.dark_mask = (self.dark_stddev > 0)
 
 
@@ -262,10 +261,11 @@ class common_mode_correction(object):
       evt.put(True, "skip_event")
       return
 
-    # Early return if the image is already stored in the event.
-    # Otherwise, get it from the stream.  XXX It is probably not safe
-    # to key the image on self.address, so we should come up with our
-    # own namespace.
+    # Early return if the full detector image is already stored in the
+    # event.  Otherwise, get it from the stream as a double-precision
+    # floating-point flex array.  XXX It is probably not safe to key
+    # the image on self.address, so we should come up with our own
+    # namespace.
     self.cspad_img = evt.get(self.address)
     if (self.cspad_img is not None):
       return
@@ -273,14 +273,10 @@ class common_mode_correction(object):
       self.address, self.config, evt, env, self.sections)
     if (self.cspad_img is None):
       self.nfail += 1
-      self.logger.error("event(): no image, shot skipped")
+      self.logger.warn("event(): no image, shot skipped")
       evt.put(True, "skip_event")
       return
-
-    # Make a signed 32-bit integer flex array of the full detector
-    # image, and scale the ADU values appropriately.
-    self.cspad_img = flex.int(self.cspad_img.astype(numpy.int32))
-    self.cspad_img = self.cspad_img.as_double()
+    self.cspad_img = flex.double(self.cspad_img.astype(numpy.float64))
 
     # If a dark image was provided, subtract it from the image.  There
     # is no point in doing common-mode correction unless the dark
