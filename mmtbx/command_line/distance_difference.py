@@ -90,11 +90,16 @@ def run (args=(), params=None, out=None, display_plot=False) :
   if (display_plot) and (params.display_plot) :
     try :
       display_plot_pylab(ddm, label_1, label_2)
+    except ImportError :
+      raise Sorry("matplotlib is not installed - can't generate plot image.")
     except Exception, e :
       print >> out, "Oops!  Can't display an interactive plot:"
       print >> out, "  %s" % str(e)
   else :
-    import matplotlib
+    try :
+      import matplotlib
+    except ImportError :
+      raise Sorry("matplotlib is not installed - can't generate plot image.")
     matplotlib.use('Agg')
     display_plot_pylab(ddm, label_1, label_2, savefig=True)
     print "Saved plot as distance_difference.png"
