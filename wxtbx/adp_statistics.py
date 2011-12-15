@@ -170,8 +170,10 @@ class ADPStatisticsFrame (wx.Frame) :
     p1, p2 = stats.format_plots()
     y1, yrange1 = p1
     y2, yrange2 = p2
-    self.plot1.convert_histogram(y1)
-    self.plot2.convert_histogram(y2)
+    if (not y1.all_eq(0)) :
+      self.plot1.convert_histogram(y1)
+    if (not y2.all_eq(0)) :
+      self.plot2.convert_histogram(y2)
 
 class adp_histogram (plots.histogram) :
   def convert_histogram (self, bins) :
