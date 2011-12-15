@@ -17,7 +17,7 @@ class distl_hitfinder(object):
     self.hitfinder_d["TIMESTAMP"] = timestamp
     self.hitfinder_d["WAVELENGTH"] = wavelength
 
-    import xfel_targets
+    from xfel_targets import targets
     args = ["indexing.data=dummy",
             "distl.detector_format_version=CXI 5.1",
             "distl.bins.verbose=False",
