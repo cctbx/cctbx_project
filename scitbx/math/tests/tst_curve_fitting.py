@@ -25,7 +25,7 @@ def finite_differences(functor, x, eps=1e-4):
     grads.append(list(dq))
   return grads
 
-def run():
+def exercise_polynomial_fit():
 
   def do_polynomial_fit(x, params):
     n_terms = len(params)
@@ -47,6 +47,8 @@ def run():
     assert approx_equal(functor.partial_derivatives(x), fd_grads, 1e-4)
     do_polynomial_fit(x, params)
 
+def exercise_gaussian_fit():
+
   # test fitting of a gaussian
   def do_gaussian_fit(scale, mu, sigma):
     start = mu - 6 * sigma
@@ -64,6 +66,10 @@ def run():
     sigma = (random.random() + 0.0001) * 10
     mu = (-1)**random.randint(0,1) * random.random() * 1000
     functor = curve_fitting.gaussian(scale, mu, sigma)
+    start = mu - 6 * sigma
+    stop = mu + 6 * sigma
+    step = (stop - start)/1000
+    x = flex.double(frange(start, stop, step))
     fd_grads = finite_differences(functor, x)
     assert approx_equal(functor.partial_derivatives(x), fd_grads, 1e-4)
     do_gaussian_fit(scale, mu, sigma)
@@ -129,6 +135,36 @@ def run():
   y_calc = fit.compute_y_calc()
   assert approx_equal(y, y_calc, eps=1e-2)
 
+
+def exercise_skew_normal_fit():
+  import math
+  shape, location, scale = 8.0, 4.0, 2.0
+  x_obs = flex.double(frange(0, 10, 0.1))
+  f = curve_fitting.skew_normal(shape, location, scale)
+  y_obs = f(x_obs)
+
+  if 0:
+    from matplotlib import pyplot
+    pyplot.plot(x_obs, y_obs)
+    pyplot.show()
+
+  fd_grads = finite_differences(f, x_obs)
+  ana_grads = f.partial_derivatives(x_obs)
+  assert approx_equal(ana_grads, fd_grads, 1e-4)
+  shape, location, scale = 1, 0, 8
+  starting_f = curve_fitting.skew_normal(shape, location, scale)
+  termination_params = scitbx.lbfgs.termination_parameters(
+    min_iterations=100)
+  fit = curve_fitting.generic_minimiser(
+    [starting_f], x_obs, y_obs, termination_params=termination_params)
+  assert approx_equal(fit.functions[0].params, f.params)
+
+
+
+def run():
+  exercise_skew_normal_fit()
+  exercise_polynomial_fit()
+  exercise_gaussian_fit()
 
 if (__name__ == "__main__"):
   run()
