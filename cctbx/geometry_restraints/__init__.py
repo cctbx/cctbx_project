@@ -802,12 +802,12 @@ class _(boost.python.injector, shared_dihedral_proxy):
       if is_ncs:
         raise Sorry("torsion restraint assignment conflict")
       else:
-        proxy_label = "Reference dihedral angle"
+        proxy_label = "Reference torsion angle"
     elif is_ncs:
       if is_reference:
         raise Sorry("torsion restraint assignment conflict")
       else:
-        proxy_label = "NCS dihedral angle"
+        proxy_label = "NCS torsion angle"
     else:
       proxy_label = "Dihedral angle"
     _show_sorted_impl(O=self,
