@@ -161,7 +161,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       elif (self.m_distl_min_peaks is not None):
 
         peak_heights,outvalue = self.distl_filter(
-          self.cspad_img.iround(), # XXX why is iround() needed?
+          self.cspad_img.iround(),
           self.distance,
           self.timestamp,
           self.wavelength)
@@ -195,7 +195,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       active_areas    = self.active_areas,
       beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
       beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-      data            = self.cspad_img,
+      data            = self.cspad_img.iround(),
       distance        = self.distance,
       timestamp       = self.timestamp,
       sequence_number = self.nshots,
