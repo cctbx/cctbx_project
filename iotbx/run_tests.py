@@ -58,6 +58,7 @@ def run():
   "$D/regression/tst_symmetry.py",
   "$D/regression/tst_reindex.py",
   "$D/regression/tst_reflection_file_editor.py",
+  "$D/regression/tst_split_models.py",
   )
 
   build_dir = libtbx.env.under_build("iotbx")
