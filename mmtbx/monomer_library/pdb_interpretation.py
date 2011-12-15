@@ -3773,10 +3773,11 @@ def show_residue_groups(residue_groups, log, prefix, max_items):
 
 def correct_hydrogen_geometries(hierarchy,
                                 xray_structure=None,
+                                restraints_manager=None,
                                 verbose=False,
                                 ):
   from cctbx import geometry
-  
+
   def get_bonded(atom_group, atom, exclude=[]):
     min_d2=1000
     min_atom=None
@@ -3836,27 +3837,85 @@ def correct_hydrogen_geometries(hierarchy,
         corrected_hydrogen_count+=1
     return bad_hydrogen_count, corrected_hydrogen_count
 
+  def get_angles_from_rm(restraints_manager,
+                         xray_structure,
+                         verbose=False,
+                         ):
+    bad_hydrogen_count = 0
+    corrected_hydrogen_count = []
+    angle_proxies_simple = restraints_manager.geometry.angle_proxies
+    scatterers = xray_structure.scatterers()
+    sites_cart = xray_structure.sites_cart()
+    for proxy in angle_proxies_simple:
+      i_seq, j_seq, k_seq = proxy.i_seqs
+      if(scatterers[i_seq].element_symbol() in ["H", "D"] or
+         scatterers[k_seq].element_symbol() in ["H", "D"]
+         ):
+        if(scatterers[i_seq].element_symbol() in ["H", "D"] and
+           scatterers[k_seq].element_symbol() in ["H", "D"]
+           ):
+          continue
+        if(scatterers[i_seq].element_symbol() in ["H", "D"]):
+          i_h = i_seq
+          site_i = scatterers[i_seq].site
+          site_k = scatterers[k_seq].site
+          site_i = sites_cart[i_seq]
+          site_k = sites_cart[k_seq]
+        else:
+          i_h = k_seq
+          site_i = scatterers[k_seq].site
+          site_k = scatterers[i_seq].site
+          site_i = sites_cart[k_seq]
+          site_k = sites_cart[i_seq]
+        site_j = scatterers[j_seq].site
+        site_j = sites_cart[j_seq]
+
+        if i_h in corrected_hydrogen_count: continue
+
+        angle = geometry.angle((site_i, site_j, site_k)).angle_model
+        if angle<85.:
+          xyz=[0,0,0]
+          xyz[0] = site_j[0]*2-site_i[0]
+          xyz[1] = site_j[1]*2-site_i[1]
+          xyz[2] = site_j[2]*2-site_i[2]
+          angle = geometry.angle((xyz, site_j, site_k)).angle_model
+          if angle>95.:
+            sites_cart[i_h] = tuple(xyz)
+            if verbose: print "    %s" % scatterers[i_h].label
+            corrected_hydrogen_count.append(i_h)
+    xray_structure.set_sites_cart(sites_cart)
+    return bad_hydrogen_count, corrected_hydrogen_count
+
   bad_hydrogen_count=0
   corrected_hydrogen_count=0
   if len(hierarchy.models())>1:
     print "  \nPDB files with more than one model are ignored\n"
     return bad_hydrogen_count, corrected_hydrogen_count
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        #
-        # needs to be removed
-        #
-        #if len(residue_group.atom_groups())>1: continue
-        for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
-          for i, atom in enumerate(atom_group.atoms()):
-            if atom.element.strip() in ["H", "D", "T"]:
-              rc = get_angles(atom_group, atom, verbose=verbose)
-              bad_hydrogen_count += rc[0]
-              corrected_hydrogen_count += rc[1]
-  if xray_structure:
-    sites_cart = hierarchy.atoms().extract_xyz()
-    xray_structure.set_sites_cart(sites_cart)
+  if restraints_manager and xray_structure:
+    bad_hydrogen_count, corrected_hydrogen_count = \
+        get_angles_from_rm(restraints_manager,
+                           xray_structure,
+                           verbose=verbose,
+          )
+  else:
+    # depreciated !!!!
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          #
+          # needs to be removed
+          #
+          #if len(residue_group.atom_groups())>1: continue
+          for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
+            for i, atom in enumerate(atom_group.atoms()):
+              if atom.element.strip() in ["H", "D", "T"]:
+                rc = get_angles(atom_group, atom, verbose=verbose)
+                bad_hydrogen_count += rc[0]
+                corrected_hydrogen_count += rc[1]
+    if xray_structure:
+      sites_cart = hierarchy.atoms().extract_xyz()
+      xray_structure.set_sites_cart(sites_cart)
+    corrected_hydrogen_count = [corrected_hydrogen_count]
   return bad_hydrogen_count, corrected_hydrogen_count
 
 class process(object):
