@@ -100,7 +100,6 @@ class torsion_ncs(object):
     self.structures = {}
     self.residue_start = {}
     self.residue_finish = {}
-    self.offset_dict = {}
     self.ncs_dihedral_proxies = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
@@ -109,7 +108,7 @@ class torsion_ncs(object):
     self.log = log
     self.njump = 1
     self.min_length = 10
-    self.min_percent= 95.0
+    #self.min_percent= 95.0
     print >> self.log, "Determining NCS matches..."
     pair_hash = {}
     dp_hash = {}
@@ -117,7 +116,7 @@ class torsion_ncs(object):
     res_match_hash = {}
     atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
     segids = flex.std_string([ a.segid for a in atom_labels ])
-    use_segid = not segids.all_eq('    ')
+    self.use_segid = not segids.all_eq('    ')
     i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
     chain_hash = utils.build_chain_hash(pdb_hierarchy)
     name_hash = utils.build_name_hash(pdb_hierarchy)
@@ -125,6 +124,7 @@ class torsion_ncs(object):
     chains = pdb_hierarchy.models()[0].chains()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     alignments = {}
+    offsets = {}
     n_ncs_groups = 0
     for i_seq, group in enumerate(self.params.restraint_group):
       n_selections = 0
@@ -156,11 +156,11 @@ class torsion_ncs(object):
             if selection_i == selection_j:
               continue
             selections = (selection_i, selection_j)
-            residue_match_map = self._alignment(
-                                  pdb_hierarchy=pdb_hierarchy,
-                                  params=params,
-                                  selections=selections,
-                                  log=log)
+            residue_match_map = \
+              self._alignment(pdb_hierarchy=pdb_hierarchy,
+                              params=params,
+                              selections=selections,
+                              log=log)
             key = (selection_i, selection_j)
             alignments[key] = residue_match_map
         self.ncs_groups.append(ncs_set)
@@ -185,7 +185,7 @@ class torsion_ncs(object):
           print >> log, \
             "chain %s has conflicting segid values - skipping" % chain_i.id
           continue
-        if (use_segid) :
+        if (self.use_segid) :
           chain_i_str = "chain '%s' and segid '%s'" % \
             (chain_i.id, segid)
         else :
@@ -220,7 +220,7 @@ class torsion_ncs(object):
           #print >> log, \
           #  "chain %s has conflicting segid values - skipping" % chain_i.id
           continue
-        if (use_segid) :
+        if (self.use_segid) :
           chain_i_str = "chain '%s' and segid '%s'" % \
             (chain_i.id, segid_i)
         else :
@@ -238,15 +238,16 @@ class torsion_ncs(object):
           segid_j = utils.get_unique_segid(chain_j)
           if segid_j == None:
             continue
-          if (use_segid) :
+          if (self.use_segid) :
             chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
           else :
             chain_j_str = "chain '%s'" % chain_j.id
           selections = (chain_i_str, chain_j_str)
-          residue_match_map = self._alignment(pdb_hierarchy=pdb_hierarchy,
-                                params=params,
-                                selections=selections,
-                                log=log)
+          residue_match_map = \
+            self._alignment(pdb_hierarchy=pdb_hierarchy,
+                            params=params,
+                            selections=selections,
+                            log=log)
           if ( min(len(residue_match_map),
                    chain_i.residue_groups_size(),
                    chain_j.residue_groups_size()) \
@@ -265,41 +266,22 @@ class torsion_ncs(object):
               pair_hash[pair_key] = []
             pair_hash[pair_key].append(match_key)
             used_chains.append(match_key)
-
       for key in pair_hash.keys():
         ncs_set = []
-        if (use_segid) :
+        if (self.use_segid) :
           chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
         else :
           chain_str = "chain '%s'" % (key[0])
         ncs_set.append(chain_str)
         for add_chain in pair_hash[key]:
-          if (use_segid) :
+          if (self.use_segid) :
             chain_str = "chain '%s' and segid '%s'" % \
               (add_chain[0], add_chain[1])
           else :
             chain_str = "chain '%s'" % (add_chain[0])
           ncs_set.append(chain_str)
         self.ncs_groups.append(ncs_set)
-      #print self.ncs_groups
-      #STOP()
 
-      #calculate sequence offsets
-      for ncs_set in self.ncs_groups:
-        chain1 = ncs_set[0]
-        seq1 = self.sequences[chain1]
-        start1 = self.residue_start[chain1]
-        for chain2 in ncs_set[1:]:
-          seq2 = self.sequences[chain2]
-          start2 = self.residue_start[chain2]
-          offset = self.find_offset(
-                     seq2,
-                     start2,
-                     seq1,
-                     start1)
-          self.offset_dict[chain1+chain2] = offset
-      #print self.offset_dict
-      #STOP()
       new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
       for ncs_set in self.ncs_groups:
         new_ncs_groups += "   restraint_group {\n"
@@ -460,6 +442,103 @@ class torsion_ncs(object):
       if len(dp_match) > 1:
         self.dp_ncs.append(dp_match)
 
+    match_counter = {}
+    inclusive_range = {}
+    for group in self.ncs_groups:
+      cur_len = len(group)
+      for chain in group:
+        match_counter[chain] = cur_len
+        inclusive_range[chain] = []
+
+    matched = []
+    ncs_match_hash = {}
+    for dp_set in self.dp_ncs:
+      key_set = []
+      for dp in dp_set:
+        if len(dp_set) < 2:
+          continue
+        cur_key = ""
+        if (self.use_segid):
+          for i_seq in dp.i_seqs:
+            cur_key += (self.name_hash[i_seq] + self.segid_hash[i_seq])
+          if cur_key[5:19] == cur_key[24:38] and \
+             cur_key[5:19] == cur_key[43:57]:
+            key_set.append(cur_key[5:19])
+        else:
+          for i_seq in dp.i_seqs:
+            cur_key += self.name_hash[i_seq]
+          if cur_key[5:14] == cur_key[20:29] and \
+            cur_key[5:14] == cur_key[35:44]:
+            key_set.append(cur_key[5:14])
+      if len(dp_set) == len(key_set):
+        key_set.sort()
+        master_key = None
+        skip = False
+        for i, key in enumerate(key_set):
+          if i == 0:
+            master_key = key
+            if master_key in matched:
+              skip = True
+            elif ncs_match_hash.get(key) is None:
+              ncs_match_hash[key] = []
+            elif len(key_set) <= len(ncs_match_hash[key]):
+              skip = True
+            else:
+              ncs_match_hash[key] = []
+          elif not skip:
+            ncs_match_hash[master_key].append(key)
+            matched.append(key)
+    self.ncs_match_hash = ncs_match_hash
+    self.reduce_redundancies()
+
+    for res in self.ncs_match_hash.keys():
+      chainID = res[3:5].strip()
+      resnum = res[5:9]
+      if self.use_segid:
+        segID = res[-4:]
+        hash_key = "chain '%s' and segid '%s'" % \
+          (chainID, segID)
+      else:
+        hash_key = "chain '%s'" % (chainID)
+      cur_len = match_counter[hash_key]
+      if len(self.ncs_match_hash[res]) == (cur_len - 1):
+        inclusive_range[hash_key].append(int(resnum))
+        for res2 in self.ncs_match_hash[res]:
+          chainID = res2[3:5].strip()
+          resnum = res2[5:9]
+          if self.use_segid:
+            segID = res2[-4:]
+            hash_key = "chain '%s' and segid '%s'" % \
+              (chainID, segID)
+          else:
+            hash_key = "chain '%s'" % (chainID)
+          inclusive_range[hash_key].append(int(resnum))
+
+    #determine ranges
+    self.master_ranges = {}
+    for key in inclusive_range.keys():
+      current = None
+      previous = None
+      start = None
+      stop = None
+      self.master_ranges[key] = []
+      inclusive_range[key].sort()
+      for num in inclusive_range[key]:
+        if previous == None:
+          start = num
+          previous = num
+        elif num > (previous + 1):
+          finish = previous
+          self.master_ranges[key].append( (start, finish) )
+          start = num
+          finish = None
+          previous = num
+        else:
+          previous = num
+      if previous != None:
+        finish = previous
+        self.master_ranges[key].append( (start, finish) )
+
     if self.params.verbose:
       self.show_ncs_summary(log=log)
     print >> self.log, "Initializing torsion NCS restraints..."
@@ -534,24 +613,30 @@ class torsion_ncs(object):
     else:
       return resname[0]
 
-  def _alignment(self, pdb_hierarchy,
-                    params,
-                    selections,
-                    log=None):
+  def _alignment(self,
+                 pdb_hierarchy,
+                 params,
+                 selections,
+                 log=None):
     if(log is None): log = sys.stdout
     res_match_hash = {}
     model_mseq_res_hash = {}
     ref_mseq_res_hash = {}
+    #range_matches = []
     model_seq = self.sequences[selections[0]]
     model_seq_padded = self.padded_sequences[selections[0]]
     model_structures = self.structures[selections[0]]
+    model_start = self.residue_start[selections[0]]
     ref_seq = self.sequences[selections[1]]
     ref_seq_padded = self.padded_sequences[selections[1]]
     ref_structures = self.structures[selections[1]]
+    ref_start = self.residue_start[selections[1]]
     for struct in model_structures:
-      model_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+      model_mseq_res_hash[struct.i_seq] = \
+        struct.rg.atoms()[0].pdb_label_columns()[4:]
     for struct in ref_structures:
-      ref_mseq_res_hash[struct.i_seq] = struct.rg.atoms()[0].pdb_label_columns()[4:]
+      ref_mseq_res_hash[struct.i_seq] = \
+        struct.rg.atoms()[0].pdb_label_columns()[4:]
     if model_seq == ref_seq:
       pg = mmtbx.alignment.pairwise_global(
              model_seq,
@@ -606,41 +691,7 @@ class torsion_ncs(object):
     return res_match_hash
 
   def show_ncs_summary(self, log=None):
-    ncs_match_hash = {}
-    matched = []
     if(log is None): log = sys.stdout
-    for dp_set in self.dp_ncs:
-      key_set = []
-      for dp in dp_set:
-        if len(dp_set) < 2:
-          continue
-        cur_key = ""
-        for i_seq in dp.i_seqs:
-          cur_key += (self.name_hash[i_seq] + self.segid_hash[i_seq])
-        if cur_key[5:19] == cur_key[24:38] and \
-           cur_key[5:19] == cur_key[43:57]:
-          key_set.append(cur_key[5:19])
-      if len(dp_set) == len(key_set):
-        key_set.sort()
-        master_key = None
-        skip = False
-        for i, key in enumerate(key_set):
-          if i == 0:
-            master_key = key
-            if master_key in matched:
-              skip = True
-            elif ncs_match_hash.get(key) is None:
-              ncs_match_hash[key] = []
-            elif len(key_set) <= len(ncs_match_hash[key]):
-              skip = True
-            else:
-              ncs_match_hash[key] = []
-          elif not skip:
-            ncs_match_hash[master_key].append(key)
-            matched.append(key)
-
-    self.ncs_match_hash = ncs_match_hash
-    self.reduce_redundancies()
     def get_key_chain_num(res):
       return res[4:]
     sorted_keys = sorted(self.ncs_match_hash, key=get_key_chain_num)
@@ -649,7 +700,7 @@ class torsion_ncs(object):
     for key in sorted_keys:
       print_line = key
       for match in self.ncs_match_hash[key]:
-        print_line += "  <=====>  %s" % (match)
+        print_line += "  <=>  %s" % (match)
       print >> log, print_line
     print >> log, "--------------------------------------------------------"
 
@@ -877,23 +928,24 @@ class torsion_ncs(object):
       master = param_group.selection[0]
       selection_strings = []
       found_offset = False
-      for selection in param_group.selection[1:]:
-        offset = self.offset_dict.get(master+selection)
-        if offset is None or offset == 0:
-          selection_strings.append(selection)
+      range_text = ""
+      for range in self.master_ranges[master]:
+        if range_text == "":
+          range_text = "(resseq %d:%d" % (range[0], range[1])
         else:
-          start = self.residue_start[selection]
-          finish = self.residue_finish[selection]
-          temp_selection = selection + " and (resseq %d:%d)" \
-                             % (start, finish)
-          selection_strings.append(temp_selection)
-          found_offset = True
-      if found_offset:
-        start = self.residue_start[master]
-        finish = self.residue_finish[master]
-        master = master + " and (resseq %d:%d)" \
-                   % (start, finish)
-
+          range_text += " or resseq %d:%d" % (range[0], range[1])
+      range_text += ")"
+      master = master + " and " + range_text
+      for selection in param_group.selection[1:]:
+        range_text = ""
+        for range in self.master_ranges[selection]:
+          if range_text == "":
+            range_text = "(resseq %d:%d" % (range[0], range[1])
+          else:
+            range_text += " or resseq %d:%d" % (range[0], range[1])
+        range_text += ")"
+        temp_selection = selection + " and " + range_text
+        selection_strings.append(temp_selection)
       group = ncs.restraints.group.from_atom_selections(
         processed_pdb              = processed_pdb_file,
         reference_selection_string = master,
@@ -911,41 +963,41 @@ class torsion_ncs(object):
     else:
       model.restraints_manager.torsion_ncs_groups = ncs_groups
 
-  def find_offset(self,chain1,start1,chain2,start2):
-    best_overlap=0
-    best_offset=None
-    for offset_a in xrange(-len(chain2)+1,len(chain1)+1):
-     offset=start1-start2+offset_a*self.njump
-     overlap=self.get_overlap(chain1,start1,chain2,start2,offset)
-     if overlap and overlap>best_overlap:
-       best_overlap=overlap
-       best_offset=offset
-    return best_offset
+  #def find_offset(self,chain1,start1,chain2,start2):
+  #  best_overlap=0
+  #  best_offset=None
+  #  for offset_a in xrange(-len(chain2)+1,len(chain1)+1):
+  #   offset=start1-start2+offset_a*self.njump
+  #   overlap=self.get_overlap(chain1,start1,chain2,start2,offset)
+  #   if overlap and overlap>best_overlap:
+  #     best_overlap=overlap
+  #     best_offset=offset
+  #  return best_offset
 
-  def get_overlap(self,chain1,start1,chain2,start2,offset):
-    offset1=0
-    offset2=offset
-    n_match=0
-    mismatches=0
-    for i in xrange(len(chain1)):
-      resno=i*self.njump+start1+offset1
-      res1=chain1[i]
-      j=(resno-start2-offset2)//self.njump
-      if j>=0 and j<len(chain2):
-        res2=chain2[j]
-      else:
-        res2=None
-      if res1!=None and res2!=None:
-        if res1==res2:
-          n_match+=1
-        else:
-          mismatches+=1
-    if 100.*float(n_match)/float(self.max(1,n_match+mismatches)) < self.min_percent:
-      return None
-    if n_match >= self.min_length//self.njump:
-      return n_match
-    else:
-      return None
+  #def get_overlap(self,chain1,start1,chain2,start2,offset):
+  #  offset1=0
+  #  offset2=offset
+  #  n_match=0
+  #  mismatches=0
+  #  for i in xrange(len(chain1)):
+  #    resno=i*self.njump+start1+offset1
+  #    res1=chain1[i]
+  #    j=(resno-start2-offset2)//self.njump
+  #    if j>=0 and j<len(chain2):
+  #      res2=chain2[j]
+  #    else:
+  #      res2=None
+  #    if res1!=None and res2!=None:
+  #      if res1==res2:
+  #        n_match+=1
+  #      else:
+  #        mismatches+=1
+  #  if 100.*float(n_match)/float(self.max(1,n_match+mismatches)) < self.min_percent:
+  #    return None
+  #  if n_match >= self.min_length//self.njump:
+  #    return n_match
+  #  else:
+  #    return None
 
   def max(self,x,y):
     if x>=y: return x
@@ -1026,13 +1078,14 @@ def determine_ncs_groups(pdb_hierarchy,
       seq_pair_padded = (padded_sequences[chain_i_str],
                          padded_sequences[chain_j_str])
       struct_pair = (structures[chain_i_str], structures[chain_j_str])
-      residue_match_map = _alignment(pdb_hierarchy=pdb_hierarchy,
-                            params=params,
-                            selections=selections,
-                            sequences=seq_pair,
-                            padded_sequences=seq_pair_padded,
-                            structures=struct_pair,
-                            log=log)
+      residue_match_map = \
+        _alignment(pdb_hierarchy=pdb_hierarchy,
+                   params=params,
+                   selections=selections,
+                   sequences=seq_pair,
+                   padded_sequences=seq_pair_padded,
+                   structures=struct_pair,
+                   log=log)
       if ( min(len(residue_match_map),
                chain_i.residue_groups_size(),
                chain_j.residue_groups_size()) \
