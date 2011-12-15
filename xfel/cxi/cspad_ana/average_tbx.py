@@ -68,19 +68,13 @@ class average_mixin(common_mode.common_mode_correction):
       self.background_img = background_dict['DATA']
 
     # The images read out off the detector have an unsigned 14-bit
-    # dynamic range, and become signed after dark subtraction.  They
-    # grow by another adu_scale_bits bits after multiplication with
-    # adu_scale.  Since the sum of the squared images has to fit into
-    # a signed 64-bit integer, which reserves one bit for the sign,
-    # the number of images that can be safely processed before over-
-    # or underflow becomes an issue is limited to nmemb_safe.
-
-    # XXX FIXME - calculate safe number for doubles
-    adu_scale = 1
-    adu_scale_bits = int(math.ceil(math.log(
-          cspad_tbx.getOptInteger(adu_scale), 2)))
-    nmemb_safe = 2**(63 - 2 * (14 + adu_scale_bits))
-
+    # dynamic range, and become signed after dark subtraction.  Since
+    # the sum of the squared images has to fit into a double-precision
+    # floating-point number with 53 effective bits for the
+    # significand, the number of images that can be safely processed
+    # before over- or underflow becomes an issue is limited.  The
+    # limit, nmemb_safe, works out to about 34 million.
+    nmemb_safe = 2**(53 - 2 * 14)
     if (self.nmemb_max is None):
       self.nmemb_max = nmemb_safe
     elif (self.nmemb_max > nmemb_safe):
@@ -249,7 +243,9 @@ class average_mixin(common_mode.common_mode_correction):
       self._tot_nmemb.value += self.nmemb
       self._tot_wavelength.value += self.sum_wavelength
 
-      # XXX @rwgk: is this really the way to do it?
+      # XXX @rwgk: is this really the way to do it?  Need something
+      # like the numpy bridge for Python arrays.  Also, _tot_sum ->
+      # _tot_img_sum, _tot_ssq -> _tot_img_ssq
       for i in xrange(len(self._tot_sum)):
         self._tot_sum[i] += self.sum_img.as_1d()[i]
         self._tot_ssq[i] += self.sumsq_img.as_1d()[i]
