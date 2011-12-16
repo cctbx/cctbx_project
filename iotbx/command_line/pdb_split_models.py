@@ -74,7 +74,8 @@ def split_models (hierarchy,
   import iotbx.pdb.hierarchy
   n_models = len(hierarchy.models())
   file_names = []
-  for k, model in enumerate(hierarchy.models(), start=1) :
+  for k, model in enumerate(hierarchy.models()) :
+    k += 1
     new_hierarchy = iotbx.pdb.hierarchy.root()
     new_hierarchy.append_model(model.detached_copy())
     if (model.id == "") :
