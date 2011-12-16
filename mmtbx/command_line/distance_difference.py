@@ -5,7 +5,6 @@
 
 import libtbx.phil.command_line
 from libtbx.utils import Sorry, Usage, null_out
-from libtbx import group_args
 import os
 import sys
 
@@ -76,37 +75,38 @@ def run (args=(), params=None, out=None, display_plot=False) :
         else :
           user_phil.append(arg_phil)
           continue
-    for i, file_name in enumerate(pdb_files, start=1) :
+    for i, file_name in enumerate(pdb_files) :
+      i += 1
       user_phil.append(interp.process_arg("model_%d=\"%s\"" % (i, file_name)))
-    for i, chain_id in enumerate(chain_ids, start=1) :
+    for i, chain_id in enumerate(chain_ids) :
+      i += 1
       user_phil.append(interp.process_arg("chain_%d=\"%s\"" % (i, chain_id)))
     working_phil = master_phil.fetch(sources=user_phil)
     params = working_phil.extract()
     validate_params(params)
   params = params.calculate_matrix
   ddm = calculate_matrix(params, log=out)
-  label_1 = "%s chain '%s'" % (params.model_1, params.chain_1)
-  label_2 = "%s chain '%s'" % (params.model_2, params.chain_2)
+  title = "Distance-difference matrix: %s:%s vs. %s:%s" % (
+    os.path.basename(params.model_1), params.chain_1,
+    os.path.basename(params.model_2), params.chain_2)
+  ddm.set_title(title)
   if (display_plot) and (params.display_plot) :
     try :
-      display_plot_pylab(ddm, label_1, label_2)
+      display_plot_pylab(ddm)
     except ImportError :
       raise Sorry("matplotlib is not installed - can't generate plot image.")
     except Exception, e :
       print >> out, "Oops!  Can't display an interactive plot:"
       print >> out, "  %s" % str(e)
-  else :
+  elif (display_plot) : # only if not run from GUI!
     try :
       import matplotlib
     except ImportError :
       raise Sorry("matplotlib is not installed - can't generate plot image.")
     matplotlib.use('Agg')
-    display_plot_pylab(ddm, label_1, label_2, savefig=True)
+    display_plot_pylab(ddm, savefig=True)
     print "Saved plot as distance_difference.png"
-  return group_args(
-    ddm=ddm,
-    label_1=label_1,
-    label_2=label_2)
+  return ddm
 
 def calculate_matrix (params, log=None) :
   if (log is None) : log = null_out()
@@ -119,7 +119,8 @@ def calculate_matrix (params, log=None) :
   pdb_2.check_file_type("pdb")
   hierarchy_2 = pdb_2.file_object.construct_hierarchy()
   hierarchy_2.atoms().reset_i_seq()
-  for k, hierarchy in enumerate([hierarchy_1,hierarchy_2], start=1) :
+  for k, hierarchy in enumerate([hierarchy_1,hierarchy_2]) :
+    k += 1
     if (getattr(params, "chain_%d" % k) is None) :
       try :
         chain_id = find_single_protein_chain(hierarchy)
@@ -232,15 +233,17 @@ class distance_difference_matrix (object) :
     self.m = scitbx.math.distance_difference_matrix(sites_1, sites_2)
     self.resids_1 = resids[0]
     self.resids_2 = resids[1]
+    self.title = "Distance-difference matrix"
+
+  def set_title (self, title) :
+    self.title = title
 
 def draw_plot (ddm,
-               label_1,
-               label_2,
                figure) :
   plot = figure.add_subplot(111)
   plot.imshow(ddm.m.as_numpy_array(), origin="lower")
-  plot.set_xlabel(label_1)
-  plot.set_ylabel(label_2)
+  plot.set_xlabel("Residue ID")
+  plot.set_ylabel("Residue ID")
   xticklabels = []
   for x in plot.get_xticks() :
     if (x >= 0) and (x < len(ddm.resids_1)) :
@@ -255,12 +258,12 @@ def draw_plot (ddm,
     else :
       yticklabels.append("")
   plot.set_yticklabels(yticklabels)
-  plot.set_title("Distance-difference matrix")
+  plot.set_title(ddm.title)
 
-def display_plot_pylab (ddm, label_1, label_2, savefig=False) :
+def display_plot_pylab (ddm, savefig=False) :
   from matplotlib import pyplot as plt
   figure = plt.figure(figsize=(10,10))
-  draw_plot(ddm, label_1, label_2, figure)
+  draw_plot(ddm, figure)
   if (savefig) :
     figure.savefig("distance_difference.png", format="png")
   else :
