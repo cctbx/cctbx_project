@@ -59,3 +59,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   run()
   print "Time: %6.4f"%(time.time()-t0)
+  print "OK"

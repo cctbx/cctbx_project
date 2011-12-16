@@ -9,6 +9,7 @@
 #include <scitbx/matrix/outer_product.h>
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/array_family/shared_algebra.h>
+#include <scitbx/array_family/small_algebra.h>
 #include <scitbx/matrix/eigensystem.h>
 #include <scitbx/matrix/packed.h>
 #include <scitbx/array_family/versa_matrix.h>
@@ -495,20 +496,25 @@ public:
     MMTBX_ASSERT(f_obs.size() == miller_indices.size());
     FloatType minus_two_pi_sq = -2.*std::pow(scitbx::constants::pi, 2);
     af::versa<FloatType, af::mat_grid> m_(af::mat_grid(n_rows, n_rows), 0);
-    af::shared<FloatType> b(n_rows, 0);
     af::versa<FloatType, af::mat_grid> m(af::mat_grid(n_rows, n_rows), 0);
+    af::small<FloatType, 6> b(n_rows, 0);
     for(std::size_t i=0; i < f_obs.size(); i++) {
-      cctbx::miller::index<> miller_index = miller_indices[i];
+      cctbx::miller::index<> const& miller_index = miller_indices[i];
       int i0=miller_index[0],i1=miller_index[1],i2=miller_index[2];
       FloatType fm_abs = std::abs(f_model[i]);
       FloatType fo_i = f_obs[i];
       MMTBX_ASSERT(fm_abs > 0);
       MMTBX_ASSERT(fo_i > 0);
       FloatType z = std::log(fo_i/fm_abs)/minus_two_pi_sq;
-      const int v[] = {i0*i0, i1*i1, i2*i2, 2*i0*i1, 2*i0*i2, 2*i1*i2};
-      af::shared<FloatType> v_(v, v+6);
-      af::shared<FloatType> vr = af::matrix_multiply(
-        adp_constraint_matrix, v_.const_ref());
+      FloatType const v[] = {i0*i0, i1*i1, i2*i2, 2*i0*i1, 2*i0*i2, 2*i1*i2};
+      af::small<FloatType, 6> vr(n_rows);
+      scitbx::matrix::multiply(
+        /*a*/ adp_constraint_matrix.begin(),
+        /*b*/ v,
+        /*ar*/ n_rows,
+        /*ac*/ 6,
+        /*bc*/ 1,
+        /*ab*/ vr.begin());
       scitbx::matrix::outer_product(m_.begin(),vr.const_ref(),vr.const_ref());
       m += m_;
       b += z*vr;
