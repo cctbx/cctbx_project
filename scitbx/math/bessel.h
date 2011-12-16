@@ -302,6 +302,28 @@ namespace bessel {
     }
     return( result );
   }
+
+ template <typename FloatType>
+  FloatType
+  bessel_J(int const& l, FloatType const& x)
+  {
+    using boost::math::cyl_bessel_j;
+    return( cyl_bessel_j(l,x) );
+  }
+
+  template <typename FloatType>
+  scitbx::af::shared< FloatType >
+  bessel_J_array(int const& l, scitbx::af::shared< FloatType >const& x)
+  {
+    using boost::math::cyl_bessel_j;
+    scitbx::af::shared< FloatType > result;
+    for (int ii=0;ii<x.size();ii++){
+      result.push_back( cyl_bessel_j( l, x[ii] ) );
+    }
+    return( result );
+  }
+
+
 #endif
 
 }}} // namespace scitbx::math::bessel
