@@ -70,7 +70,8 @@ class XrayView (wx.Panel) :
     self.Refresh()
     if (self.GetParent().zoom_frame is not None) :
       self.GetParent().zoom_frame.Refresh()
-    self.GetParent().settings_frame.refresh_thumbnail()
+    if self.GetParent().settings_frame is not None:
+      self.GetParent().settings_frame.refresh_thumbnail()
 
   # EVENTS
   def OnPaint (self, event) :
