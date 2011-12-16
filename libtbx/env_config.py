@@ -349,13 +349,11 @@ class environment:
 
   def __init__(self, build_path):
     self.python_version_major_minor = sys.version_info[:2]
-    self.set_build_path(build_path)
+    self.build_path = absolute_path(build_path)
     self.manage_python_version_major_minor()
     self.reset_dispatcher_support()
     self.set_derived_paths()
     self.python_exe = self.as_relocatable_path(sys.executable)
-    if self.python_exe.relocatable.startswith('..'):
-      self.python_exe = absolute_path(sys.executable)
     # sanity checks
     assert self.python_exe.isfile()
     assert self.python_exe.access(os.X_OK)
@@ -418,9 +416,6 @@ class environment:
   def as_relocatable_path(self, path):
     if isinstance(path, libtbx.path.path_mixin): return path
     return relocatable_path(self.build_path, path)
-
-  def set_build_path(self, build_path):
-    self.build_path = absolute_path(build_path)
 
   def set_derived_paths(self):
     r = self.as_relocatable_path
@@ -2141,7 +2136,9 @@ def unpickle():
            "cd cctbx_build; "
            "/your/path/to/python ../cctbx_project/libtbx/configure.py [options] [modules]")
     sys.exit(1)
-  env.set_build_path(build_path)
+  # XXX backward compatibility 2011-12-16
+  if (hasattr(env.build_path, "reset")):
+    env.build_path.reset(build_path) # future: unconditional
   return env
 
 def warm_start(args):

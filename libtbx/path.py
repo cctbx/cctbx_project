@@ -294,6 +294,9 @@ class absolute_path(path_mixin):
     path = op.realpath(op.normpath(path))
     self._path = path
 
+  def reset(self, new_path, case_sensitive=False):
+    self._path = absolute_path(new_path, case_sensitive)._path
+
   def __div__(self, other):
     return absolute_path(op.join(self._path, other))
 
