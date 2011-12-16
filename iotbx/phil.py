@@ -170,7 +170,7 @@ class process_command_line_with_files (object) :
           pass
         else :
           return libtbx.phil.parse("%s=%g" % (self.float_def, float_value))
-    return self.process_non_file(arg)
+    return self.process_other(arg)
 
   def process_other (self, arg) :
     return False
