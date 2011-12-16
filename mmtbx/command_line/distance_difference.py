@@ -23,7 +23,14 @@ chain_2 = None
 
 master_phil = libtbx.phil.parse("""
 calculate_matrix
+  .caption = This tool calculates a distance-difference matrix for two \
+    protein chains.  The resulting plot shows the change in interatomic \
+    distances (between C-alpha atoms), illustrating correlated motions and \
+    rigid bodies in the structures.  The input structures are assumed to be \
+    identical in sequence numbering, but point mutations and missing regions \
+    are allowed.
   .short_caption = Calculate distance-difference matrix
+  .style = auto_align box caption_img:icons/custom/distance_difference.png
 {
 %s
 display_plot = False
@@ -240,8 +247,8 @@ class distance_difference_matrix (object) :
 
 def draw_plot (ddm,
                figure) :
-  plot = figure.add_subplot(111)
-  plot.imshow(ddm.m.as_numpy_array(), origin="lower")
+  plot = figure.add_axes([0.1,0.1,0.8,0.8])
+  im = plot.imshow(ddm.m.as_numpy_array(), origin="lower")
   plot.set_xlabel("Residue ID")
   plot.set_ylabel("Residue ID")
   xticklabels = []
@@ -258,11 +265,13 @@ def draw_plot (ddm,
     else :
       yticklabels.append("")
   plot.set_yticklabels(yticklabels)
+  cb = figure.colorbar(im, ax=plot, fraction=0.05, aspect=40)
+  cb.set_label("Change in C-alpha:C-alpha distance")
   plot.set_title(ddm.title)
 
 def display_plot_pylab (ddm, savefig=False) :
   from matplotlib import pyplot as plt
-  figure = plt.figure(figsize=(10,10))
+  figure = plt.figure(figsize=(12,10))
   draw_plot(ddm, figure)
   if (savefig) :
     figure.savefig("distance_difference.png", format="png")
