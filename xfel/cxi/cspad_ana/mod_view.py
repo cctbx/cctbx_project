@@ -13,19 +13,18 @@ XXX Known issues, wishlist:
   * Sub-pixel zoom like in xdisp, maybe with coordinate tool-tips on
     mouse-over
 
-  * Should use Python's multiprocessing module instead of thread and
-    threading.
-
 XXX
 """
 
 __version__ = "$Revision$"
 
+import multiprocessing
 import thread
 import threading
+import sys
 
 from iotbx.detectors.detectorbase import DetectorImageBase
-from rstbx.viewer.frame import XrayFrame, ExternalUpdateEvent
+from rstbx.viewer.frame import XrayFrame
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 
@@ -88,6 +87,9 @@ class DataDispatch(object):
   def send_data(self, img, title):
     """The send_data() function creates and sends the event.
     """
+
+    from rstbx.viewer.frame import ExternalUpdateEvent
+
     event       = ExternalUpdateEvent()
     event.img   = img
     event.title = title
@@ -103,7 +105,7 @@ class XrayFrame_thread(threading.Thread):
   http://wiki.wxpython.org/MainLoopAsThread.
   """
 
-  def __init__(self, n_frames):
+  def __init__(self):
     """The thread is started automatically on initialisation.
     self.run() will populate self.frames and release self.lock.
     """
@@ -111,10 +113,9 @@ class XrayFrame_thread(threading.Thread):
     super(XrayFrame_thread, self).__init__()
     self.setDaemon(1)
     self.start_orig = self.start
-    self.start      = self.start_local
-    self.frames     = []
-    self.n_frames   = n_frames
-    self.lock       = threading.Lock()
+    self.start = self.start_local
+    self.frame = None
+    self.lock = threading.Lock()
     self.lock.acquire()
     self.start()
 
@@ -131,13 +132,8 @@ class XrayFrame_thread(threading.Thread):
 
     import wx
     app = wx.App(0)
-    for i in xrange(self.n_frames):
-      self.frames.append(
-        XrayFrame(None,
-                  -1,
-                  "X-ray image display [%d/%d]" % (i + 1, self.n_frames),
-                  size = (800, 720)))
-      self.frames[i].Show()
+    self.frame = XrayFrame(None, -1, "X-ray image display", size=(800, 720))
+    self.frame.Show()
 
     self.lock.release()
     app.MainLoop()
@@ -152,6 +148,27 @@ class XrayFrame_thread(threading.Thread):
     self.lock.acquire()
 
 
+def XrayFrame_process(pipe):
+  """The XrayFrame_process() function starts the viewer in a separate
+  thread.  It then continuously reads data from @p pipe and dispatches
+  update events to the viewer.  The function returns when it reads a
+  @c None object from @p pipe or when the viewer thread has exited.
+  """
+
+  import rstbx.viewer
+
+  # Start the viewer's main loop in its own thread, and get the
+  # interface for sending updates to the frame.
+  thread = XrayFrame_thread()
+  send_data = DataDispatch(thread.frame).send_data
+
+  while (True):
+    payload = pipe.recv()
+    if (payload is None or not thread.isAlive()):
+      break
+    send_data(rstbx.viewer.image(payload[0]), payload[1])
+
+
 class mod_view(common_mode.common_mode_correction):
   """XXX
   """
@@ -160,7 +177,6 @@ class mod_view(common_mode.common_mode_correction):
                address,
                n_collate   = None,
                n_update    = 120,
-               n_view      = "1/1",
                common_mode_correction = "none",
                photon_counting=False,
                sigma_scaling=False,
@@ -176,9 +192,6 @@ class mod_view(common_mode.common_mode_correction):
     @param n_collate       Number of shots to average, or <= 0 to
                            average all shots
     @param n_update        Number of shots between updates
-    @param n_view          Index of current viewer and number of
-                           simultaneous viewers in configuration file,
-                           on the form "n/m"
     """
 
     super(mod_view, self).__init__(
@@ -197,22 +210,18 @@ class mod_view(common_mode.common_mode_correction):
       self.ncollate = self.nupdate
       self.logger.warn("n_collate capped to %d" % self.nupdate)
 
-    # Start the viewer's main loop in its own thread, and get the
-    # interface for sending updates to the frame.  If there already is
-    # a running thread, use the appropriate frame from that.
-    n_view         = cspad_tbx.getOptString(n_view).split("/")
-    self.send_data = None
-    for t in threading.enumerate():
-      if (isinstance(t, XrayFrame_thread)):
-        self.send_data = DataDispatch(t.frames[int(n_view[0]) - 1]).send_data
-        break
-    if (self.send_data is None):
-      self.send_data = DataDispatch(
-        XrayFrame_thread(int(n_view[1])).frames[0]).send_data
+    # Create a unidirectional pipe and hand its read end to the viewer
+    # process.  The write end is kept for sending updates.
+    pipe_recv, self._pipe = multiprocessing.Pipe(False)
+    self._proc = multiprocessing.Process(
+      target=XrayFrame_process, args=(pipe_recv, ))
+    self._proc.start()
 
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.
+    XXX Since the viewer is now running in a parallel process, the
+    averaging here is now the bottleneck, .
 
     @param evt Event data object, a configure object
     @param env Environment object
@@ -221,6 +230,9 @@ class mod_view(common_mode.common_mode_correction):
     super(mod_view, self).event(evt, env)
     if (evt.get("skip_event")):
       return
+
+    if (not self._proc.is_alive()):
+      sys.exit(self._proc.exitcode)
 
     # Early exit if the next update to the viewer is more than
     # self.ncollate shots away.  XXX Since the common_mode.event()
@@ -254,17 +266,28 @@ class mod_view(common_mode.common_mode_correction):
     # start a new collation, if appropriate.
     if (next_update == 0):
       from time import localtime, strftime
-      import rstbx.viewer
 
-      img = rstbx.viewer.image(dict(
-        BEAM_CENTER = self.beam_center,
-        DATA        = self.img_sum / self.nvalid,
-        DISTANCE    = self.distance,
-        WAVELENGTH  = self.wavelength))
-      time_str  = strftime("%H:%M:%S", localtime(evt.getTime().seconds()))
+      time_str = strftime("%H:%M:%S", localtime(evt.getTime().seconds()))
       title = "r%04d@%s: average of %d last images" \
           % (evt.run(), time_str, self.nvalid)
 
-      self.send_data(img, title)
+      self._pipe.send((dict(
+          BEAM_CENTER = self.beam_center,
+          DATA = self.img_sum / self.nvalid,
+          DISTANCE = self.distance,
+          WAVELENGTH = self.wavelength), title))
+
       if (self.ncollate > 0):
         self.nvalid = 0
+
+
+  def endjob(self, env):
+    """The endjob() terminates the viewer process by sending it a @c
+    None object, and waiting for it to finish.
+
+    @param env Environment object
+    """
+
+    super(mod_view, self).endjob(env)
+    self._pipe.send(None)
+    self._proc.join()
