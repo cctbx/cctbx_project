@@ -38,6 +38,27 @@ def tst_sph_bessel_j1():
     #print xx, ff, j1(xx), abs( ff-j1(xx) )/abs(ff)
   print "OK"
 
+def tst_bessel_J():
+  x1 = 5.00000000e-02
+  f1 = [9.99375098e-01, 2.49921883e-02, 3.12434901e-04]
+  g1 = [ math.bessel_J(0,x1), math.bessel_J(1,x1), math.bessel_J(2,x1)]
+
+  x2 = 5.00000000e-01
+  f2 = [9.38469807e-01, 2.42268458e-01, 3.06040235e-02]
+  g2 = [ math.bessel_J(0,x2), math.bessel_J(1,x2), math.bessel_J(2,x2) ]
+
+  x3 = 5.00000000e+00
+  f3 = [-1.77596771e-01, -3.27579138e-01, 4.65651163e-02]
+  g3 = [ math.bessel_J(0,x3), math.bessel_J(1,x3), math.bessel_J(2,x3) ]
+
+  for a,b in zip(f1,g1):
+    assert (a-b)/abs(a)< 1e-5
+  for a,b in zip(f2,g2):
+    assert (a-b)/abs(a) < 1e-5
+  for a,b in zip(f3,g3):
+    assert (a-b)/abs(a) < 1e-5
+
+
 
 def exercise():
   if (not hasattr(math, "spherical_bessel")):
@@ -55,5 +76,6 @@ if (__name__ == "__main__"):
   import sys
   if 'test_j1' in sys.argv[1:]:
     tst_sph_bessel_j1()
+    tst_bessel_J()
     exit()
   run(args=sys.argv[1:])

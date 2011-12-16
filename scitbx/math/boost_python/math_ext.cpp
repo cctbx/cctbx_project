@@ -365,6 +365,14 @@ namespace {
       (scitbx::af::shared< double> (*)(
         int const&, scitbx::af::shared<double> const&))
           bessel::spherical_bessel_array);
+    def("bessel_J",
+      (double(*)(int const&, double const&))
+        bessel::bessel_J);
+    def("bessel_J_array",
+      (scitbx::af::shared< double> (*)(
+        int const&, scitbx::af::shared<double> const&))
+          bessel::bessel_J_array);
+
 #endif
 
     def("gamma_complete", (double(*)(double const&, bool))
