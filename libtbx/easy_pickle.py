@@ -10,11 +10,11 @@ def _open(file_name, mode):
 
 def dump(file_name, obj):
   import cPickle
-  return cPickle.dump(obj, _open(file_name, "wb"), 1)
+  return cPickle.dump(obj, _open(file_name, "wb"), cPickle.HIGHEST_PROTOCOL)
 
 def dumps(obj):
   import cPickle
-  return cPickle.dumps(obj, 1)
+  return cPickle.dumps(obj, cPickle.HIGHEST_PROTOCOL)
 
 def load(file_name, faster_but_using_more_memory=True):
   import cPickle
