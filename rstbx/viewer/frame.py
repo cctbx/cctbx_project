@@ -68,7 +68,8 @@ class XrayFrame (wx.Frame) :
     # See self.load_image().
     self._img = event.img
     self.viewer.set_image(self._img)
-    self.settings_frame.set_image(self._img)
+    if self.settings_frame is not None:
+      self.settings_frame.set_image(self._img)
     self.SetTitle(event.title)
     self.update_statusbar()
     self.Layout()
