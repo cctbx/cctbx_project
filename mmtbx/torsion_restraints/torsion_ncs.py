@@ -100,15 +100,18 @@ class torsion_ncs(object):
     self.structures = {}
     self.residue_start = {}
     self.residue_finish = {}
+    self.chi_tracker = {}
     self.ncs_dihedral_proxies = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
+    self.sym_atom_hash = utils.build_sym_atom_hash(pdb_hierarchy)
     self.params = params
     self.found_ncs = None
     self.log = log
     self.njump = 1
     self.min_length = 10
-    #self.min_percent= 95.0
+    self.sa = SidechainAngles(False)
+    self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     print >> self.log, "Determining NCS matches..."
     pair_hash = {}
     dp_hash = {}
@@ -132,7 +135,8 @@ class torsion_ncs(object):
         if(selection is not None):
           n_selections += 1
       if n_selections == 1:
-        raise Sorry("Torsion NCS restraint_groups require at least 2 selections")
+        raise Sorry(
+          "Torsion NCS restraint_groups require at least 2 selections")
       elif n_selections > 1:
         n_ncs_groups += 1
     if n_ncs_groups > 0:
@@ -438,9 +442,23 @@ class torsion_ncs(object):
         if cur_dp_hash is not None:
           dp_match.append(cur_dp_hash)
           dp_hash[tuple(temp[key])] = None
-      dp_hash[dp.i_seqs] = None
+      dp_hash[cb.i_seqs] = None
       if len(dp_match) > 1:
         self.dp_ncs.append(dp_match)
+
+    for dp_set in self.dp_ncs:
+      for dp in dp_set:
+        angle_atoms = self.get_torsion_atoms(dp)
+        angle_resname = self.get_torsion_resname(dp)
+        angle_id = self.get_torsion_id(dp)
+        cur_dict = self.sidechain_angle_hash.get(angle_resname)
+        if cur_dict != None:
+          angle_name = \
+            cur_dict.get(angle_atoms)
+          if angle_name != None:
+            if self.chi_tracker.get(angle_id) is None:
+              self.chi_tracker[angle_id] = {}
+            self.chi_tracker[angle_id][angle_name] = False
 
     match_counter = {}
     inclusive_range = {}
@@ -713,6 +731,38 @@ class torsion_ncs(object):
         if key in self.ncs_match_hash[key2]:
           del self.ncs_match_hash[key]
 
+  def get_torsion_atoms(self, dp):
+    atoms = ''
+    for i_seq in dp.i_seqs:
+      atom_name = self.name_hash[i_seq][0:4]
+      atoms += atom_name
+    return atoms
+
+  def get_torsion_resname(self, dp):
+    resname = None
+    for i_seq in dp.i_seqs:
+      cur_resname = self.name_hash[i_seq][5:8]
+      if resname == None:
+        resname = cur_resname
+      elif cur_resname != resname:
+        return None
+    return resname
+
+  def get_torsion_id(self, dp):
+    id = None
+    for i_seq in dp.i_seqs:
+      cur_id = self.name_hash[i_seq][4:]
+      if id == None:
+        id = cur_id
+      elif cur_id != id:
+        return None
+    return id
+
+  def reset_chi_tracker(self):
+    for key1 in self.chi_tracker.keys():
+      for key2 in self.chi_tracker[key1].keys():
+        self.chi_tracker[key1][key2] = False
+
   def generate_dihedral_ncs_restraints(self, sites_cart, log):
     self.ncs_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
@@ -720,23 +770,84 @@ class torsion_ncs(object):
       if len(dp_set) < 2:
         continue
       angles = []
-      temp_match = {}
-      for dp in dp_set:
-        di = cctbx.geometry_restraints.dihedral(sites_cart=sites_cart, proxy=dp)
+      wrap_hash = {}
+
+      for i, dp in enumerate(dp_set):
+        di = cctbx.geometry_restraints.dihedral(
+               sites_cart=sites_cart, proxy=dp)
         angle = di.angle_model
+        wrap_chis = self.is_symmetric_torsion(dp)
+        if wrap_chis:
+          if angle > 90.0 or angle < -90.0:
+            sym_i_seq = dp.i_seqs[3] #4th atom
+            swap_i_seq = self.sym_atom_hash[sym_i_seq]
+            swap_i_seqs = (dp.i_seqs[0],
+                           dp.i_seqs[1],
+                           dp.i_seqs[2],
+                           swap_i_seq)
+            dp_temp = cctbx.geometry_restraints.dihedral_proxy(
+              i_seqs=swap_i_seqs,
+              angle_ideal=0.0,
+              weight=1/self.sigma**2,
+              limit=self.limit,
+              top_out=TOP_OUT_FLAG,
+              slack=self.slack)
+            wrap_hash[i] = dp_temp
+            di = cctbx.geometry_restraints.dihedral(
+                   sites_cart=sites_cart, proxy=dp_temp)
+            angle = di.angle_model
         angles.append(angle)
-        temp_match[dp.i_seqs] = angle
-      target_angles = self.get_target_angles(angles=angles)
-      for dp in dp_set:
-        target_angle = target_angles[temp_match[dp.i_seqs]]
+      target_angles = self.get_target_angles(
+                        angles=angles)
+      for i, dp in enumerate(dp_set):
+        target_angle = target_angles[i]
+        angle_atoms = self.get_torsion_atoms(dp)
+        angle_resname = self.get_torsion_resname(dp)
+        angle_id = self.get_torsion_id(dp)
+        cur_dict = self.sidechain_angle_hash.get(angle_resname)
+        angle_name = None
+        if cur_dict != None:
+          angle_name = \
+            cur_dict.get(angle_atoms)
         if target_angle is not None:
-          dp_add = cctbx.geometry_restraints.dihedral_proxy(
-            i_seqs=dp.i_seqs,
-            angle_ideal=target_angle,
-            weight=1/self.sigma**2,
-            limit=self.limit,
-            top_out=TOP_OUT_FLAG,
-            slack=self.slack)
+          angle_atoms = self.get_torsion_atoms(dp)
+          angle_resname = self.get_torsion_resname(dp)
+          angle_id = self.get_torsion_id(dp)
+          cur_dict = self.sidechain_angle_hash.get(angle_resname)
+          angle_name = None
+          if cur_dict != None:
+            angle_name = \
+              cur_dict.get(angle_atoms)
+          if angle_name != None:
+            if angle_name[-1:] == '1':
+              self.chi_tracker[angle_id][angle_name] = True
+            else:
+              current_chi_number = int(angle_name[-1:])
+              previous_chi_number = current_chi_number - 1
+              previous_chi_id = "chi%d" % previous_chi_number
+              previous_chi_state = \
+                self.chi_tracker[angle_id].get(previous_chi_id)
+              if previous_chi_state == False:
+                continue
+              else:
+                self.chi_tracker[angle_id][angle_name] = True
+          dp_sym = wrap_hash.get(i)
+          if dp_sym is not None:
+            dp_add = cctbx.geometry_restraints.dihedral_proxy(
+              i_seqs=dp_sym.i_seqs,
+              angle_ideal=target_angle,
+              weight=1/self.sigma**2,
+              limit=self.limit,
+              top_out=TOP_OUT_FLAG,
+              slack=self.slack)
+          else:
+            dp_add = cctbx.geometry_restraints.dihedral_proxy(
+              i_seqs=dp.i_seqs,
+              angle_ideal=target_angle,
+              weight=1/self.sigma**2,
+              limit=self.limit,
+              top_out=TOP_OUT_FLAG,
+              slack=self.slack)
           self.ncs_dihedral_proxies.append(dp_add)
     if len(self.ncs_dihedral_proxies) == 0:
       print >> log, \
@@ -747,7 +858,6 @@ class torsion_ncs(object):
         "Number of torsion NCS restraints: %d" \
           % len(self.ncs_dihedral_proxies)
 
-
   def update_dihedral_ncs_restraints(self,
                                      geometry,
                                      sites_cart,
@@ -755,24 +865,51 @@ class torsion_ncs(object):
     if log is None:
       log = sys.stdout
     print >> log, "Updating torsion NCS restraints..."
+    self.reset_chi_tracker()
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
 
+  def is_symmetric_torsion(self, dp):
+    i_seqs = dp.i_seqs
+    resname = self.name_hash[i_seqs[0]][5:8].upper()
+    if resname not in \
+      ['ASP', 'GLU', 'PHE', 'TYR']:
+      return False
+    torsion_atoms = []
+    for i_seq in i_seqs:
+      name = self.name_hash[i_seq]
+      atom = name[0:4]
+      torsion_atoms.append(atom)
+    if resname == 'ASP':
+      if torsion_atoms == [' CA ', ' CB ', ' CG ', ' OD1'] or \
+         torsion_atoms == [' CA ', ' CB ', ' CG ', ' OD2']:
+        return True
+    elif resname == 'GLU':
+      if torsion_atoms == [' CB ', ' CG ', ' CD ', ' OE1'] or \
+         torsion_atoms == [' CB ', ' CG ', ' CD ', ' OE2']:
+        return True
+    elif resname == 'PHE' or resname == 'TYR':
+      if torsion_atoms == [' CA ', ' CB ',' CG ',' CD1'] or \
+         torsion_atoms == [' CA ', ' CB ',' CG ',' CD2']:
+        return True
+    return False
+
   def get_target_angles(self, angles):
     clusters = {}
     used = []
-    target_angles = {}
-    for i in angles:
+    target_angles = angles[:]
+    wrapped = [False]*len(angles)
+    for i, ang_i in enumerate(angles):
       if i in used:
         continue
-      for j in angles:
+      for j, ang_j in enumerate(angles):
         if i == j:
           continue
         elif j in used:
           continue
         else:
-          if utils.angle_distance(i, j) <= self.params.cutoff:
+          if utils.angle_distance(ang_i, ang_j) <= self.params.cutoff:
             if i not in used:
               clusters[i] = []
               clusters[i].append(i)
@@ -789,12 +926,16 @@ class torsion_ncs(object):
       if cluster is None:
         target_angles[key] = None
       else:
-        target_angle = utils.get_angle_average(cluster)
+        cluster_angles = []
+        for i in cluster:
+          cluster_angles.append(angles[i])
+        target_angle = utils.get_angle_average(cluster_angles)
         if self.params.target_damping:
           for c in cluster:
-            c_dist = utils.angle_distance(c, target_angle)
+            c_dist = utils.angle_distance(local_angles[c], target_angle)
             if c_dist > self.params.damping_limit:
-              d_target = utils.get_angle_average([c, target_angle])
+              d_target = \
+                utils.get_angle_average([local_angles[c], target_angle])
               target_angles[c] = d_target
             else:
               target_angles[c] = target_angle
@@ -963,45 +1104,22 @@ class torsion_ncs(object):
     else:
       model.restraints_manager.torsion_ncs_groups = ncs_groups
 
-  #def find_offset(self,chain1,start1,chain2,start2):
-  #  best_overlap=0
-  #  best_offset=None
-  #  for offset_a in xrange(-len(chain2)+1,len(chain1)+1):
-  #   offset=start1-start2+offset_a*self.njump
-  #   overlap=self.get_overlap(chain1,start1,chain2,start2,offset)
-  #   if overlap and overlap>best_overlap:
-  #     best_overlap=overlap
-  #     best_offset=offset
-  #  return best_offset
-
-  #def get_overlap(self,chain1,start1,chain2,start2,offset):
-  #  offset1=0
-  #  offset2=offset
-  #  n_match=0
-  #  mismatches=0
-  #  for i in xrange(len(chain1)):
-  #    resno=i*self.njump+start1+offset1
-  #    res1=chain1[i]
-  #    j=(resno-start2-offset2)//self.njump
-  #    if j>=0 and j<len(chain2):
-  #      res2=chain2[j]
-  #    else:
-  #      res2=None
-  #    if res1!=None and res2!=None:
-  #      if res1==res2:
-  #        n_match+=1
-  #      else:
-  #        mismatches+=1
-  #  if 100.*float(n_match)/float(self.max(1,n_match+mismatches)) < self.min_percent:
-  #    return None
-  #  if n_match >= self.min_length//self.njump:
-  #    return n_match
-  #  else:
-  #    return None
-
-  def max(self,x,y):
-    if x>=y: return x
-    return y
+  def build_sidechain_angle_hash(self):
+    sidechain_angle_hash = {}
+    for key in self.sa.atomsForAngle.keys():
+      resname = key[0:3].upper()
+      if sidechain_angle_hash.get(resname) is None:
+        sidechain_angle_hash[resname] = {}
+      new_key = ''
+      for atom in self.sa.atomsForAngle[key]:
+        new_key += atom
+      new_value = key[4:]
+      sidechain_angle_hash[resname][new_key] = new_value
+    #modifications
+    sidechain_angle_hash['ILE'][' N   CA  CB  CG2'] = 'chi1'
+    sidechain_angle_hash['THR'][' N   CA  CB  CG2'] = 'chi1'
+    sidechain_angle_hash['VAL'][' N   CA  CB  CG2'] = 'chi1'
+    return sidechain_angle_hash
 
 #split out functions
 def determine_ncs_groups(pdb_hierarchy,
