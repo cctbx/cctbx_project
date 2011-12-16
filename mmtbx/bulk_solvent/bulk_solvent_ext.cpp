@@ -97,15 +97,14 @@ namespace {
       .def(init<
            af::const_ref<std::complex<double> > const&,
            af::const_ref<double> const&,
-           af::const_ref<cctbx::miller::index<> > const& >(
-             (arg("fm"),
-              arg("fo"),
-              arg("miller_indices"))))
-      .add_property("M",  make_getter(&aniso_u_scaler<>::M,  rbv()))
-      .add_property("b",  make_getter(&aniso_u_scaler<>::b,  rbv()))
-      .add_property("u_star", make_getter(&aniso_u_scaler<>::u_star, rbv()))
-      .add_property("overall_anisotropic_scale",
-        make_getter(&aniso_u_scaler<>::overall_anisotropic_scale, rbv()))
+           af::const_ref<cctbx::miller::index<> > const&,
+           af::const_ref<double, af::mat_grid> const& >(
+             (arg("f_model"),
+              arg("f_obs"),
+              arg("miller_indices"),
+              arg("adp_constraint_matrix"))))
+      .add_property("u_star_independent",
+        make_getter(&aniso_u_scaler<>::u_star_independent, rbv()))
    ;
    //
     def("r_factor",

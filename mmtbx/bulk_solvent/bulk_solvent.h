@@ -477,63 +477,48 @@ template <typename FloatType=double,
 class aniso_u_scaler
 {
 public:
-  af::versa<FloatType, af::mat_grid> M;
-  af::shared<FloatType> b;
-  af::versa<FloatType, af::mat_grid> tmp;
-  af::shared<FloatType> res;
-  af::shared<FloatType> u_star;
-  af::shared<FloatType> overall_anisotropic_scale;
+  std::size_t n_rows;
+  af::shared<FloatType> u_star_independent;
 
   aniso_u_scaler() {}
 
   aniso_u_scaler(
-    af::const_ref<std::complex<double> > const& fm,
-    af::const_ref<FloatType> const& fo,
-    af::const_ref<cctbx::miller::index<> > const& miller_indices)
+    af::const_ref<ComplexType> const& f_model,
+    af::const_ref<FloatType> const& f_obs,
+    af::const_ref<cctbx::miller::index<> > const& miller_indices,
+    af::const_ref<FloatType, af::mat_grid> const& adp_constraint_matrix)
   :
-  M(af::mat_grid(6, 6), 0), tmp(af::mat_grid(6, 6), 0), b(6, 0),
-  overall_anisotropic_scale(miller_indices.size(), 0)
+  n_rows(adp_constraint_matrix.accessor().n_rows()),
+  u_star_independent(n_rows, 0)
   {
-    MMTBX_ASSERT(fo.size() == fm.size());
-    FloatType pi_sq = scitbx::constants::pi*scitbx::constants::pi;
-    FloatType minus_two_pi  = -2.0*pi_sq;
-    FloatType minus_four_pi = -4.0*pi_sq;
-    for(std::size_t i=0; i < fo.size(); i++) {
+    MMTBX_ASSERT(f_obs.size() == f_model.size());
+    MMTBX_ASSERT(f_obs.size() == miller_indices.size());
+    FloatType minus_two_pi_sq = -2.*std::pow(scitbx::constants::pi, 2);
+    af::versa<FloatType, af::mat_grid> m_(af::mat_grid(n_rows, n_rows), 0);
+    af::shared<FloatType> b(n_rows, 0);
+    af::versa<FloatType, af::mat_grid> m(af::mat_grid(n_rows, n_rows), 0);
+    for(std::size_t i=0; i < f_obs.size(); i++) {
       cctbx::miller::index<> miller_index = miller_indices[i];
-      int mi0 = miller_index[0];
-      int mi1 = miller_index[1];
-      int mi2 = miller_index[2];
-      FloatType A = minus_two_pi  * mi0*mi0;
-      FloatType B = minus_two_pi  * mi1*mi1;
-      FloatType C = minus_two_pi  * mi2*mi2;
-      FloatType D = minus_four_pi * mi0*mi1;
-      FloatType E = minus_four_pi * mi0*mi2;
-      FloatType F = minus_four_pi * mi1*mi2;
-      FloatType fm_abs = std::abs(fm[i]);
-      MMTBX_ASSERT(fm_abs != 0);
-      FloatType Z = std::log(fo[i]/fm_abs);
-      const FloatType V[] = {A,B,C,D,E,F};
-      af::shared<FloatType> v_(V, V+6);
-      scitbx::matrix::outer_product(tmp.begin(),v_.const_ref(),v_.const_ref());
-      M += tmp;
-      const FloatType B_[] = {Z*A, Z*B, Z*C, Z*D, Z*E, Z*F};
-      b += af::shared<FloatType>(B_, B_+6);
+      int i0=miller_index[0],i1=miller_index[1],i2=miller_index[2];
+      FloatType fm_abs = std::abs(f_model[i]);
+      FloatType fo_i = f_obs[i];
+      MMTBX_ASSERT(fm_abs > 0);
+      MMTBX_ASSERT(fo_i > 0);
+      FloatType z = std::log(fo_i/fm_abs)/minus_two_pi_sq;
+      const int v[] = {i0*i0, i1*i1, i2*i2, 2*i0*i1, 2*i0*i2, 2*i1*i2};
+      af::shared<FloatType> v_(v, v+6);
+      af::shared<FloatType> vr = af::matrix_multiply(
+        adp_constraint_matrix, v_.const_ref());
+      scitbx::matrix::outer_product(m_.begin(),vr.const_ref(),vr.const_ref());
+      m += m_;
+      b += z*vr;
     }
-    af::versa<FloatType, af::c_grid<2> > m(
+    af::versa<FloatType, af::c_grid<2> > m_inv(
        scitbx::matrix::packed_u_as_symmetric(
          scitbx::matrix::eigensystem::real_symmetric<FloatType>(
-           M.const_ref(),
-           /*relative_epsilon*/ 1.e-6,
-           /*absolute_epsilon*/ 1.e-6)
+           m.const_ref(), /*relative_epsilon*/ 1.e-6,/*absolute_epsilon*/ 1.e-6)
              .generalized_inverse_as_packed_u().const_ref()));
-     u_star = af::matrix_multiply(m.const_ref(), b.const_ref());
-     scitbx::sym_mat3<FloatType> u_star_as_sym_mat3(0,0,0,0,0,0);
-     for(std::size_t i=0; i < 6; i++) u_star_as_sym_mat3[i] = u_star[i];
-     for(std::size_t i=0; i < fo.size(); i++) {
-       overall_anisotropic_scale[i] = cctbx::adptbx::debye_waller_factor_u_star(
-         miller_indices[i], u_star_as_sym_mat3, /*exp_arg_limit*/ 40.,
-         /*truncate_exp_arg*/ true);
-     }
+    u_star_independent = af::matrix_multiply(m_inv.const_ref(), b.const_ref());
   }
 };
 
