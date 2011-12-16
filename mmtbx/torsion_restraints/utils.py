@@ -7,7 +7,6 @@ from libtbx import group_args
 import ccp4io_adaptbx
 import math
 
-
 def selection(string, cache):
   return cache.selection(
     string=string)
@@ -183,6 +182,34 @@ def build_segid_hash(pdb_hierarchy):
   for atom in pdb_hierarchy.atoms():
     segid_hash[atom.i_seq] = atom.segid
   return segid_hash
+
+def build_sym_atom_hash(pdb_hierarchy):
+  sym_atom_hash = dict()
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
+          if residue.resname.upper() in ['ASP', 'GLU', 'PHE', 'TYR']:
+            if residue.resname.upper() == 'ASP':
+              atom1 = ' OD1'
+              atom2 = ' OD2'
+            elif residue.resname.upper() == 'GLU':
+              atom1 = ' OE1'
+              atom2 = ' OE2'
+            elif residue.resname.upper() in ['PHE', 'TYR']:
+              atom1 = ' CD1'
+              atom2 = ' CD2'
+            atom1_i_seq = None
+            atom2_i_seq = None
+            for atom in residue.atoms():
+              if atom.name == atom1:
+                atom1_i_seq = atom.i_seq
+              elif atom.name == atom2:
+                atom2_i_seq = atom.i_seq
+            if atom1_i_seq != None and atom2_i_seq != None:
+              sym_atom_hash[atom1_i_seq] = atom2_i_seq
+              sym_atom_hash[atom2_i_seq] = atom1_i_seq
+  return sym_atom_hash
 
 def angle_distance(angle1, angle2):
   distance = math.fabs(angle1 - angle2)
