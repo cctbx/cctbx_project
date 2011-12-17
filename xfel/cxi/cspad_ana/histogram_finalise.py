@@ -1,5 +1,6 @@
 import os
 import glob
+from scitbx.array_family import flex # import dependency
 
 from libtbx import easy_pickle
 
