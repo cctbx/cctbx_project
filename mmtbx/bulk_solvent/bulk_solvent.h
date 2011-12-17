@@ -498,6 +498,7 @@ public:
     af::versa<FloatType, af::mat_grid> m_(af::mat_grid(n_rows, n_rows), 0);
     af::versa<FloatType, af::mat_grid> m(af::mat_grid(n_rows, n_rows), 0);
     af::small<FloatType, 6> b(n_rows, 0);
+    af::small<FloatType, 6> vr(n_rows);
     for(std::size_t i=0; i < f_obs.size(); i++) {
       cctbx::miller::index<> const& miller_index = miller_indices[i];
       int i0=miller_index[0],i1=miller_index[1],i2=miller_index[2];
@@ -507,7 +508,6 @@ public:
       MMTBX_ASSERT(fo_i > 0);
       FloatType z = std::log(fo_i/fm_abs)/minus_two_pi_sq;
       FloatType const v[] = {i0*i0, i1*i1, i2*i2, 2*i0*i1, 2*i0*i2, 2*i1*i2};
-      af::small<FloatType, 6> vr(n_rows);
       scitbx::matrix::multiply(
         /*a*/ adp_constraint_matrix.begin(),
         /*b*/ v,
