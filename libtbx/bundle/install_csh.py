@@ -377,7 +377,7 @@ echo ""
 if (! -d "$build") mkdir -p "$build"
 cd "$build"
 echo "Configuring $bundle build directory"
-"$python_exe" "$sources/libtbx/configure.py" --current_working_directory="$build" --build="$build_mode" %(top_modules)s
+"$python_exe" "$sources/libtbx/configure.py" --build="$build_mode" %(top_modules)s
 source setpaths.csh
 
 if ($have_sources) then
