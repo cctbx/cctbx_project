@@ -1866,14 +1866,6 @@ class pre_process_args:
           " (may be specified multiple times;"
           " paths are searched in the order given)",
         metavar="DIRECTORY")
-      if (hasattr(os.path, "samefile")):
-        parser.option(None, "--current_working_directory",
-          action="store",
-          type="string",
-          default=None,
-          help="preferred spelling of current working directory"
-            " (to resolve ambiguities due to soft links)",
-          metavar="DIRECTORY")
       parser.option(None, "--build",
         choices=build_options.supported_modes,
         default="release",
@@ -1983,8 +1975,6 @@ class pre_process_args:
       raise RuntimeError(
         "At least one module name is required"
         " (use --help to obtain more information).")
-    if (not hasattr(os.path, "samefile")):
-      self.command_line.options.current_working_directory = None
     if (default_repositories is not None):
       self.repository_paths.extend(default_repositories)
     if (not self.warm_start):
@@ -2075,22 +2065,7 @@ def cold_start(args):
   pre_processed_args = pre_process_args(
     args=args[1:],
     default_repositories=default_repositories)
-  build_path=pre_processed_args.command_line.options.current_working_directory
-  if (build_path is None):
-    build_path = os.getcwd()
-  else:
-    if (not op.isabs(build_path)):
-      raise RuntimeError("Not an absolute path name:"
-        " --current_working_directory %s" % show_string(build_path))
-    if (not op.isdir(build_path)):
-      raise RuntimeError("Not a directory:"
-        " --current_working_directory %s" % show_string(build_path))
-    if (not op.samefile(build_path, os.getcwd())):
-      raise RuntimeError("Not equivalent to the current working directory:"
-        " --current_working_directory %s" % show_string(build_path))
-    n = len(os.sep)
-    while (len(build_path) > n and build_path.endswith(os.sep)):
-      build_path = build_path[:-n]
+  build_path = os.getcwd()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   env = environment(build_path=build_path)
   env.process_args(pre_processed_args=pre_processed_args)
