@@ -290,7 +290,8 @@ public:
       for (int i = 0; i<size1; ++i){
         for (int j = 0; j<size2; ++j){
           scitbx::vec2<int> ptr(i,j);
-          scitbx::vec2<int> transformed = XY.call<int>(&ptr);
+          scitbx::vec2<int> transformed = XY.call(
+            &ptr, scitbx::type_holder<int>());
           zac[size1*i+j] = raw[size1*transformed[0]+transformed[1]];
         }
       }

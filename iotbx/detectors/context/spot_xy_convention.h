@@ -1,6 +1,8 @@
 #ifndef IOTBX_DET_CONTEXT_CONV_H
 #define IOTBX_DET_CONTEXT_CONV_H
 
+#include <scitbx/type_holder.h>
+
 namespace iotbx {
 namespace detectors {
 namespace context {
@@ -23,7 +25,11 @@ public:
   }
   //based on code in python detectors/convention.py
   template <typename vec_t>
-  af::tiny<vec_t,2 >  call(const scitbx::vec3<double>* xy) const {
+  af::tiny<vec_t,2 >
+  call(
+    const scitbx::vec3<double>* xy,
+    scitbx::type_holder<vec_t> const&) const
+  {
     switch (index) {
       case 0: return af::tiny<vec_t,2 >(vec_t((*xy)[0]/pxlsz),vec_t((*xy)[1]/pxlsz));
       case 1: return af::tiny<vec_t,2 >(vec_t((*xy)[1]/pxlsz),vec_t((*xy)[0]/pxlsz));
@@ -40,7 +46,11 @@ public:
   //based on code in python detectors/convention.py
   //this set of overloads gives a one-to-one mapping of input to transformed pixels
   template <typename vec_t>
-  af::tiny<vec_t,2 >  call(const scitbx::vec2<int>* xy) const {
+  af::tiny<vec_t,2 >
+  call(
+    const scitbx::vec2<int>* xy,
+    scitbx::type_holder<vec_t> const&) const
+  {
     switch (index) {
       case 0: return af::tiny<vec_t,2 >(vec_t((*xy)[0]),vec_t((*xy)[1]));
       case 1: return af::tiny<vec_t,2 >(vec_t((*xy)[1]),vec_t((*xy)[0]));
