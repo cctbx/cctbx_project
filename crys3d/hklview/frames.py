@@ -14,7 +14,9 @@ import wx
 from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
+import libtbx.load_env
 from math import sqrt
+import os
 
 class settings_window (wxtbx.utils.SettingsPanel) :
   is_3d_view = True
@@ -240,6 +242,24 @@ class HKLViewFrame (wx.Frame) :
     item = wx.MenuItem(self.file_menu, -1, "Load data...\tCtrl-O")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
     self.file_menu.AppendItem(item)
+    if (libtbx.env.has_module("phenix")) :
+      phenix_dir = os.path.dirname(libtbx.env.dist_path("phenix"))
+      examples_dir = os.path.join(phenix_dir, "phenix_examples")
+      if (os.path.isdir(examples_dir)) :
+        submenu = wx.Menu()
+        self.file_menu.AppendSubMenu(submenu, "Load example data")
+        examples_and_data = [
+          ("p9-sad", "p9.sca"),
+          ("sec17-sad", "sec17.sca"),
+          ("rnase-s", "rnase25.mtz"),
+          ("porin-twin", "porin.mtz"),
+        ]
+        for subdir, data in examples_and_data :
+          example_file = os.path.join(examples_dir, subdir, data)
+          item = wx.MenuItem(submenu, -1, subdir)
+          submenu.AppendItem(item)
+          self.Bind(wx.EVT_MENU,
+            lambda evt, f=example_file: self.load_reflections_file(f), item)
     self.add_view_specific_functions()
     self.SetMenuBar(menubar)
     self.toolbar.Realize()
