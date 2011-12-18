@@ -193,8 +193,9 @@ class XrayView (wx.Panel) :
         line = self._img.line_between_points(x1, y1, x2, y2)
       else :
         line = self._img.line_between_points(x2, y2, x1, y1)
+      distance = self._img.distance_between_points(x1, y1, x2, y2)
       self.GetParent().OnShowPlot(None)
-      self.GetParent().plot_frame.show_plot(line)
+      self.GetParent().plot_frame.show_plot(line, distance)
 
   def OnMiddleDrag (self, event) :
     if (self._img is not None) and (not self.flag_set_beam_center_mode) :
@@ -303,6 +304,14 @@ class XrayView (wx.Panel) :
   def ChangeBeamCenter (self) :
     self.flag_set_beam_center_mode = True
 
+  def ResetBeamCenter (self) :
+    if (self._img is not None) :
+      self._img.reset_beam_center()
+      self.Refresh()
+
+########################################################################
+# AUXILARY CLASSES: THUMBNAIL AND ZOOM
+#
 class ThumbnailView (XrayView) :
   def __init__ (self, *args, **kwds) :
     XrayView.__init__(self, *args, **kwds)
