@@ -26,7 +26,7 @@ class XrayView (wx.Panel) :
     # miscellaneous non-user flags
     self.flag_always_show_predictions = False
     self.flag_spots_as_points = False
-    self.flag_beam_center_mode = False
+    self.flag_set_beam_center_mode = False
     self.flag_suppress_messages = False
 
   def SetupEventHandlers (self) :
@@ -46,7 +46,7 @@ class XrayView (wx.Panel) :
     old_img = self._img
     self._img = image
     self._img.set_screen_size(*(self.GetSize()))
-    if (old_img is not None) :
+    if (old_img is not None) and (type(self).__name__ != 'ZoomView') :
       self._img.inherit_params(old_img)
     self.update_settings()
 
@@ -150,6 +150,8 @@ class XrayView (wx.Panel) :
       self._img.set_screen_size(w, h)
       self.Refresh()
 
+  #---------------------------------------------------------------------
+  # MOUSE EVENTS
   def OnRecordMouse (self, event) :
     self.xmouse = event.GetX()
     self.ymouse = event.GetY()
@@ -166,7 +168,7 @@ class XrayView (wx.Panel) :
         self.OnMiddleDrag(event)
       elif (event.RightIsDown()) :
         self.OnRightDrag(event)
-    elif (self._img is not None) :
+    elif (self._img is not None) and (not self.flag_set_beam_center_mode) :
       x, y = self._img.screen_coords_as_image_coords(event.GetX(),event.GetY())
       img_w, img_h = self._img.get_image_size()
       if (x < 0) or (x > img_w) or (y < 0) or (y > img_h) :
@@ -177,38 +179,12 @@ class XrayView (wx.Panel) :
 
   def OnMiddleDown (self, event) :
     self.was_dragged = False
-    self.OnRecordMouse(event)
-    wx.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+    self.line_end = None
+    x, y = event.GetPositionTuple()
+    self.line_start = self._img.screen_coords_as_image_coords(x, y)
 
   def OnMiddleUp (self, event) :
-    wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
-
-  def OnLeftDown (self, event) :
-    if (self._img is None) : return
-    self.was_dragged = False
-    if (event.ShiftDown()) :
-      self.shift_was_down = True
-      self.OnMiddleDown(event)
-    elif (not self.flag_set_beam_center) :
-      self.line_end = None
-      x, y = event.GetPositionTuple()
-      self.line_start = self._img.screen_coords_as_image_coords(x, y)
-      #self.OnRecordMouse(event)
-
-  def OnDoubleClick (self, event) :
-    pass
-
-  def OnLeftDrag (self, event) :
-    if (self._img is not None) and (not self.flag_set_beam_center) :
-      x, y = event.GetPositionTuple()
-      self.line_end = self._img.screen_coords_as_image_coords(x, y)
-      self.Refresh()
-
-  def OnLeftUp (self, event) :
-    if (self._img is None) : return
-    if (self.shift_was_down) :
-      pass
-    elif (self.was_dragged) and (self.line_start is not None) :
+    if (self.was_dragged) and (self.line_start is not None) :
       x, y = event.GetPositionTuple()
       self.line_end = self._img.screen_coords_as_image_coords(x, y)
       x1, y1 = self.line_start
@@ -219,9 +195,38 @@ class XrayView (wx.Panel) :
         line = self._img.line_between_points(x2, y2, x1, y1)
       self.GetParent().OnShowPlot(None)
       self.GetParent().plot_frame.show_plot(line)
+
+  def OnMiddleDrag (self, event) :
+    if (self._img is not None) and (not self.flag_set_beam_center_mode) :
+      x, y = event.GetPositionTuple()
+      self.line_end = self._img.screen_coords_as_image_coords(x, y)
+      self.Refresh()
+
+  def OnLeftDown (self, event) :
+    if (self._img is None) : return
+    self.was_dragged = False
+    if (event.ShiftDown()) :
+      self.shift_was_down = True
+      self.OnMiddleDown(event)
+    elif (not self.flag_set_beam_center_mode) :
+      self.OnRecordMouse(event)
+      wx.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+      #self.OnRecordMouse(event)
+
+  def OnLeftDrag (self, event) :
+    if (self._img is not None) :
+      if (self.shift_was_down) :
+        self.OnMiddleDrag(event)
+      elif (not self.flag_set_beam_center_mode) :
+        self.OnTranslate(event)
+
+  def OnLeftUp (self, event) :
+    if (self._img is None) : return
+    if (self.shift_was_down) :
+      self.OnMiddleUp(event)
     else :
       self.line = None
-      if (not self.was_dragged) and (self.flag_set_beam_center) :
+      if (not self.was_dragged) and (self.flag_set_beam_center_mode) :
         x, y = event.GetPositionTuple()
         (old_x, old_y, x_point, y_point) = \
           self._img.set_beam_center_from_screen_coords(x,y)
@@ -229,13 +234,18 @@ class XrayView (wx.Panel) :
         # console for printing extra info?
         print "Changed beam center to %.2f, %.2f (was: %.2f, %.2f)" % \
           (x_point, y_point, old_x, old_y)
-        self.flag_set_beam_center = False
+        self.flag_set_beam_center_mode = False
+        self.GetParent().update_statusbar()
+    wx.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
     self.Refresh()
     self.shift_was_down = False
     self.was_dragged = False
 
   def OnMiddleDrag (self, event) :
-    self.OnTranslate(event)
+    if (self._img is not None) and (not self.flag_set_beam_center_mode) :
+      x, y = event.GetPositionTuple()
+      self.line_end = self._img.screen_coords_as_image_coords(x, y)
+      self.Refresh()
 
   def OnRightDown (self, event) :
     self.was_dragged = False
@@ -244,12 +254,17 @@ class XrayView (wx.Panel) :
   def OnRightDrag (self, event) :
     self.OnZoom(event)
 
+  def OnDoubleClick (self, event) :
+    pass
+  #---------------------------------------------------------------------
+
   def OnZoom (self, event) :
     if (self._img is None) : return
     x, y = event.GetPositionTuple()
     img_x, img_y = self._img.screen_coords_as_image_coords(x, y)
     self.GetParent().OnShowZoom(None)
     self.GetParent().zoom_frame.set_zoom(img_x, img_y)
+    self._img.set_screen_size(*(self.GetSize()))
 
   def OnTranslate (self, event) :
     if (self._img is None) : return
@@ -268,6 +283,7 @@ class XrayView (wx.Panel) :
     self.GetParent().settings_frame.refresh_thumbnail()
 
   def OnMouseWheel (self, event) :
+    return # XXX disabled now that middle mouse measures intensity profile
     if (self._img is None) : return
     d_x = d_y = 0
     if (event.ShiftDown()) :
@@ -285,7 +301,7 @@ class XrayView (wx.Panel) :
     wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
 
   def ChangeBeamCenter (self) :
-    self.flag_set_beam_center = True
+    self.flag_set_beam_center_mode = True
 
 class ThumbnailView (XrayView) :
   def __init__ (self, *args, **kwds) :
