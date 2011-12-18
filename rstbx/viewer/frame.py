@@ -120,6 +120,10 @@ class XrayFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
     item = file_menu.Append(-1, "Save screenshot...")
     self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
+    actions_menu = wx.Menu()
+    self.mb.Append(actions_menu, "Actions")
+    item = actions_menu.Append(-1, "Change beam center...")
+    self.Bind(wx.EVT_MENU, self.OnChangeBeamCenter, item)
 
   def get_key (self, file_name_or_data) :
     """The get_key() function returns the key of @p file_name_or_data.
@@ -331,6 +335,10 @@ class XrayFrame (wx.Frame) :
       flags=wx.SAVE)
     if (file_name != "") :
       self.viewer.save_image(file_name)
+
+  def OnChangeBeamCenter (self, event) :
+    wx.MessageBox("Click on any point in the image to set the new beam center.")
+    self.viewer.ChangeBeamCenter()
 
 class SettingsFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :

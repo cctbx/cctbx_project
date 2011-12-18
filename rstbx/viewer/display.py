@@ -26,6 +26,8 @@ class XrayView (wx.Panel) :
     # miscellaneous non-user flags
     self.flag_always_show_predictions = False
     self.flag_spots_as_points = False
+    self.flag_beam_center_mode = False
+    self.flag_suppress_messages = False
 
   def SetupEventHandlers (self) :
     self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -187,7 +189,7 @@ class XrayView (wx.Panel) :
     if (event.ShiftDown()) :
       self.shift_was_down = True
       self.OnMiddleDown(event)
-    else :
+    elif (not self.flag_set_beam_center) :
       self.line_end = None
       x, y = event.GetPositionTuple()
       self.line_start = self._img.screen_coords_as_image_coords(x, y)
@@ -197,7 +199,7 @@ class XrayView (wx.Panel) :
     pass
 
   def OnLeftDrag (self, event) :
-    if (self._img is not None) :
+    if (self._img is not None) and (not self.flag_set_beam_center) :
       x, y = event.GetPositionTuple()
       self.line_end = self._img.screen_coords_as_image_coords(x, y)
       self.Refresh()
@@ -219,6 +221,15 @@ class XrayView (wx.Panel) :
       self.GetParent().plot_frame.show_plot(line)
     else :
       self.line = None
+      if (not self.was_dragged) and (self.flag_set_beam_center) :
+        x, y = event.GetPositionTuple()
+        (old_x, old_y, x_point, y_point) = \
+          self._img.set_beam_center_from_screen_coords(x,y)
+        # XXX should it pop up a message here?  maybe we need a built-in
+        # console for printing extra info?
+        print "Changed beam center to %.2f, %.2f (was: %.2f, %.2f)" % \
+          (x_point, y_point, old_x, old_y)
+        self.flag_set_beam_center = False
     self.Refresh()
     self.shift_was_down = False
     self.was_dragged = False
@@ -272,6 +283,9 @@ class XrayView (wx.Panel) :
   def OnLeave (self, event) :
     self.was_dragged = False
     wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
+
+  def ChangeBeamCenter (self) :
+    self.flag_set_beam_center = True
 
 class ThumbnailView (XrayView) :
   def __init__ (self, *args, **kwds) :
