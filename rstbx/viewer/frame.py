@@ -118,12 +118,14 @@ class XrayFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnLoadIntegration, item)
     item = file_menu.Append(-1, "Open image...")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
-    item = file_menu.Append(-1, "Save screenshot...")
-    self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
     actions_menu = wx.Menu()
     self.mb.Append(actions_menu, "Actions")
     item = actions_menu.Append(-1, "Change beam center...")
     self.Bind(wx.EVT_MENU, self.OnChangeBeamCenter, item)
+    item = actions_menu.Append(-1, "Reset beam center to header value")
+    self.Bind(wx.EVT_MENU, lambda evt: self.viewer.ResetBeamCenter(), item)
+    item = actions_menu.Append(-1, "Save screenshot...")
+    self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
 
   def get_key (self, file_name_or_data) :
     """The get_key() function returns the key of @p file_name_or_data.
@@ -495,10 +497,12 @@ class PlotFrame (wx.MiniFrame) :
     self.GetParent().plot_frame = None
 
 class LinePlot (wxtbx.plots.plot_container) :
-  def show_plot (self, y_data) :
+  def show_plot (self, y_data, distance=None) :
     self.figure.clear()
     ax = self.figure.add_subplot(111)
     x_data = range(len(y_data))
     ax.plot(x_data, y_data, 'b-', linewidth=1)
     ax.set_ylabel("Intensity")
+    if (distance is not None) :
+      ax.set_title("Line distance: %.2fmm" % distance)
     self.canvas.draw()

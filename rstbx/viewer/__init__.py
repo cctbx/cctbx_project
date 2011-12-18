@@ -4,6 +4,12 @@ from libtbx.str_utils import format_value
 import math
 
 class screen_params (object) :
+  """
+  Manager for all display parameters: this is independent of the actual image
+  data, although it stores various attributes such as detector dimensions.
+  The primary function is to convert between different coordinate systems and
+  determine which part of the image to display.
+  """
   def __init__ (self, img_w=None, img_h=None) :
     self.img_w = img_w
     self.img_h = img_h
@@ -131,6 +137,10 @@ class screen_params (object) :
     return (x0, y0, n_pixels, n_pixels)
 
   def translate_image (self, delta_x, delta_y) :
+    """
+    Translate the viewport to a different area of the image.  Arguments are
+    in pixels.
+    """
     scale = self.get_scale()
     x_new = max(0, ifloor(self.img_x_offset - (delta_x / scale)))
     y_new = max(0, ifloor(self.img_y_offset - (delta_y / scale)))
@@ -140,6 +150,12 @@ class screen_params (object) :
     self.img_y_offset = min(y_new, max_y)
 
   def center_view_from_thumbnail (self, x, y) :
+    """
+    Translate the viewport to center on the X,Y coordinates equivalent to the
+    point clicked in the thumbnail view.  Arguments are in screen coordinates
+    relative to the upper left corner of the thumbnail (which is assumed to be
+    displayed in its entirety).
+    """
     if (self.zoom == 0) : return
     self.last_thumb_x = x
     self.last_thumb_y = y
@@ -153,6 +169,9 @@ class screen_params (object) :
     self.img_y_offset = min(img_y, max_y)
 
   def image_coords_as_screen_coords (self, x, y) :
+    """
+    Convert image pixel coordinates to viewport pixel coordinates.
+    """
     scale = self.get_scale()
     x1 = self.screen_x_start + ((x+0.5) - self.img_x_offset) * scale
     y1 = self.screen_y_start + ((y+0.5) - self.img_y_offset) * scale
@@ -162,6 +181,9 @@ class screen_params (object) :
     return ((x2), (y2))
 
   def detector_coords_as_image_coords (self, x, y) :
+    """
+    Convert absolute detector position (in mm) to image pixel coordinates.
+    """
     dw = self.img_w * self.detector_pixel_size
     dh = self.img_h * self.detector_pixel_size
     x_frac = x / dw
@@ -174,6 +196,10 @@ class screen_params (object) :
     return (int(x_point), int(y_point))
 
   def image_coords_as_detector_coords (self, x, y) :
+    """
+    Convert image pixel coordinates to absolute position on the detector
+    (in mm).
+    """
     dw, dh = self.get_detector_dimensions()
     w, h = self.get_image_size()
     x_frac = x / w
@@ -186,6 +212,10 @@ class screen_params (object) :
     return x_detector, y_detector
 
   def screen_coords_as_image_coords (self, x, y) :
+    """
+    Convert pixel coordinates in the viewport to pixel coordinates in the
+    raw image.
+    """
     scale = self.get_scale()
     xi, yi, w, h = self.get_bitmap_params()
     x1 = x - max(0, (self.screen_w - (w*scale)) / 2)
@@ -195,7 +225,20 @@ class screen_params (object) :
     return (ifloor(x2) + 1, ifloor(y2) + 1)
 
   def image_coords_as_array_coords (self, x, y) :
+    """
+    Convert image pixel coordinates to indexing values in the FlexImage
+    object.
+    """
     return y-1, x-1
+
+  def distance_between_points (self, x1, y1, x2, y2) :
+    """
+    Given a pair of image pixel coordinates, calculate the distance between
+    them on the detector face in mm.
+    """
+    x1_mm, y1_mm = self.image_coords_as_detector_coords(x1, y1)
+    x2_mm, y2_mm = self.image_coords_as_detector_coords(x2, y2)
+    return math.sqrt((x1_mm - x2_mm)**2 + (y1_mm - y2_mm)**2)
 
 class image (screen_params) :
   def __init__ (self, file_name) :
@@ -263,6 +306,10 @@ class image (screen_params) :
     self.update_image(**kwds)
 
   def update_image (self, brightness=100, color_scheme=0) :
+    """
+    Re-process the image to adjust brightness and colors, and generate a new
+    wx.Image object and corresponding thumbnail image.
+    """
     import wx
     self._img = self.create_flex_image(
       brightness=brightness,
@@ -288,18 +335,28 @@ class image (screen_params) :
     self._wx_thumb_bmp = wx_thumb.ConvertToBitmap()
 
   def get_bitmap (self) :
+    """
+    Returns the primary wx.Image scaled and clipped to the current screen
+    parameters for display in the main canvas.
+    """
     import wx
     x, y, w, h = self.get_bitmap_params()
     scale = self.get_scale()
-    print x, y, w, h, scale
     img = self._wx_img.GetSubImage((x, y, w, h))
     img = img.Scale(w * scale, h * scale, wx.IMAGE_QUALITY_NORMAL)
     return img.ConvertToBitmap()
 
   def get_thumbnail_bitmap (self) :
+    """
+    Returns the thumbnail image (without any further processing).
+    """
     return self._wx_thumb_bmp #.ConvertToBitmap()
 
   def get_zoomed_bitmap (self, x, y, boxsize=400, mag=16) :
+    """
+    Returns a zoomed-in view of the image, centered around the clicked
+    position.
+    """
     import wx
     x0, y0, w, h = self.get_zoom_box(x, y, boxsize, mag)
     assert (w == h)
@@ -307,6 +364,10 @@ class image (screen_params) :
     return img.Scale(boxsize, boxsize, wx.IMAGE_QUALITY_NORMAL)
 
   def get_drawable_spots (self) :
+    """
+    Given an array of spotfinder results (generated separately), determine
+    which of these are within the current bounds of the viewport.
+    """
     if (self._spots is None) : return []
     x, y, w, h = self.get_bitmap_params()
     all_spots = []
@@ -343,6 +404,11 @@ class image (screen_params) :
     return points_out
 
   def set_beam_center_from_screen_coords (self, x, y) :
+    """
+    Reposition the beam center for the current image - this is not saved, but
+    it will override the beam center in the image header.  Arguments are
+    screen pixel coordinates in the main viewport.
+    """
     x_im, y_im = self.screen_coords_as_image_coords(x, y)
     if ((x_im <= 0) or (y_im <= 0) or
         (x_im > self.img_w) or (y_im > self.img_h)) :
@@ -351,6 +417,9 @@ class image (screen_params) :
     old_x, old_y = self.get_beam_center_mm()
     self._beam_center = (x_point, y_point)
     return (old_x, old_y, x_point, y_point)
+
+  def reset_beam_center (self) :
+    self._beam_center = None
 
   def get_beam_center_mm (self) :
     if (self._beam_center is not None) :
@@ -369,6 +438,10 @@ class image (screen_params) :
     return self.detector_coords_as_image_coords(center_x, center_y)
 
   def get_point_info (self, x, y) :
+    """
+    Determine the intensity, resolution, and array indices of a pixel.
+    Arguments are in image pixel coordinates (starting from 1,1).
+    """
     x_point, y_point = self.image_coords_as_detector_coords(x, y)
     x0, y0 = self.detector_coords_as_image_coords(x_point, y_point)
     center_x, center_y = self.get_beam_center_mm()
@@ -392,18 +465,27 @@ class image (screen_params) :
       return point_info(slow, fast, intensity, d_min)
 
   def line_between_points (self, x1, y1, x2, y2, n_values=100) :
+    """
+    Given two points on the image, sample intensities along a line connecting
+    them (using linear interpolation).  This also calculates the coordinates
+    of each sample point, which will be used for lattice dimension calculations
+    once peaks have been identified.  Arguments are in image pixel coordinates
+    (starting at 1,1).
+    """
     x1_, y1_ = self.image_coords_as_array_coords(x1, y1)
     x2_, y2_ = self.image_coords_as_array_coords(x2, y2)
     n_values = ifloor(math.sqrt((x2_-x1_)**2 + (y2_-y1_)**2))
     delta_x = (x2_ - x1_) / (n_values - 1)
     delta_y = (y2_ - y1_) / (n_values - 1)
     vals = []
+    img_coords = []
     d = self._raw.linearintdata
     # TODO remarkably, this is reasonably fast in Python, but it would
     # probably be more at home in scitbx.math
     for n in range(n_values) :
       x = x1_ + (n * delta_x)
       y = y1_ + (n * delta_y)
+      img_coords.append((x,y))
       x_1 = ifloor(x)
       x_2 = iceil(x)
       y_1 = ifloor(y)
@@ -429,6 +511,10 @@ class image (screen_params) :
     return vals
 
 class point_info (object) :
+  """
+  Container for storing attributes of a pixel, for display by the main
+  frame (currently on the statusbar).
+  """
   def __init__ (self, slow, fast, intensity, d_min) :
     self.slow = slow
     self.fast = fast
