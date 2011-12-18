@@ -237,8 +237,8 @@ class XrayFrame (wx.Frame) :
 
   def update_statusbar (self, info=None) :
     if (info is None) :
-      self.statusbar.SetStatusText("Click and drag to plot intensity profile; "+
-        "middle-click to pan, right-click to zoom")
+      self.statusbar.SetStatusText("Click and drag to pan; "+
+        "middle-click and drag to plot intensity profile, right-click to zoom")
     else :
       self.statusbar.SetStatusText(info.format())
 
@@ -338,6 +338,7 @@ class XrayFrame (wx.Frame) :
 
   def OnChangeBeamCenter (self, event) :
     wx.MessageBox("Click on any point in the image to set the new beam center.")
+    self.statusbar.SetStatusText("Changing beam center")
     self.viewer.ChangeBeamCenter()
 
 class SettingsFrame (wx.MiniFrame) :

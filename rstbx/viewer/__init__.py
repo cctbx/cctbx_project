@@ -291,6 +291,7 @@ class image (screen_params) :
     import wx
     x, y, w, h = self.get_bitmap_params()
     scale = self.get_scale()
+    print x, y, w, h, scale
     img = self._wx_img.GetSubImage((x, y, w, h))
     img = img.Scale(w * scale, h * scale, wx.IMAGE_QUALITY_NORMAL)
     return img.ConvertToBitmap()
