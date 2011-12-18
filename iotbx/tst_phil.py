@@ -128,14 +128,13 @@ nproc = None
   .type = int
 """
   pcl = iotbx.phil.process_command_line_with_files(
-    args=["/var/tmp", "3.0", "5"],
+    args=["/", "3.0", "5"],
     master_phil_string=master_phil_str,
     directory_def="data_dir",
     integer_def="nproc",
     float_def="d_min")
   params = pcl.work.extract()
-  if (sys.platform in ["linux2", "darwin"]) :
-    assert (params.data_dir == "/var/tmp")
+  assert (params.data_dir == "/")
   assert (params.d_min == 3.0)
   assert (params.nproc == 5)
   print "OK"
