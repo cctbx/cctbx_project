@@ -291,7 +291,7 @@ class absolute_path(path_mixin):
     assert op.isabs(path)
     if not case_sensitive:
       path = op.normcase(path)
-    path = op.realpath(op.normpath(path))
+    path = op.normpath(path)
     self._path = path
 
   def reset(self, new_path, case_sensitive=False):
@@ -320,8 +320,8 @@ class relocatable_path(path_mixin):
     self._anchor = anchor
     if op.isabs(relocatable):
       relocatable = relpath(
-        path=abs(absolute_path(relocatable)),
-        start=abs(self._anchor),
+        path=op.realpath(abs(absolute_path(relocatable))),
+        start=op.realpath(abs(self._anchor)),
         enable_abspath_if_through_root=True)
     self.relocatable = relocatable
 
