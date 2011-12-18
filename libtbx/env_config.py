@@ -2137,8 +2137,9 @@ def unpickle():
            "/your/path/to/python ../cctbx_project/libtbx/configure.py [options] [modules]")
     sys.exit(1)
   # XXX backward compatibility 2011-12-16
-  if (hasattr(env.build_path, "reset")):
-    env.build_path.reset(build_path) # future: unconditional
+  if (hasattr(env.build_path, "reset")): # future: unconditional
+    if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
+      env.build_path.reset(build_path)
   return env
 
 def warm_start(args):
