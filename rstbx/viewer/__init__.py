@@ -341,7 +341,17 @@ class image (screen_params) :
       self._integration['integration_masks_xy'])
     return points_out
 
-  def get_beam_center (self) :
+  def set_beam_center_from_screen_coords (self, x, y) :
+    x_im, y_im = self.screen_coords_as_image_coords(x, y)
+    if ((x_im <= 0) or (y_im <= 0) or
+        (x_im > self.img_w) or (y_im > self.img_h)) :
+      raise Sorry("Coordinates are out of image!")
+    x_point, y_point = self.image_coords_as_detector_coords(x_im, y_im)
+    old_x, old_y = self.get_beam_center_mm()
+    self._beam_center = (x_point, y_point)
+    return (old_x, old_y, x_point, y_point)
+
+  def get_beam_center_mm (self) :
     if (self._beam_center is not None) :
       center_x, center_y = self._beam_center
     # FIXME Pilatus and ADSC images appear to have different conventions???
@@ -351,17 +361,16 @@ class image (screen_params) :
     else :
       center_x = self._raw.parameters['BEAM_CENTER_X']
       center_y = self._raw.parameters['BEAM_CENTER_Y']
+    return center_x, center_y
+
+  def get_beam_center (self) :
+    center_x, center_y = self.get_beam_center_mm()
     return self.detector_coords_as_image_coords(center_x, center_y)
 
   def get_point_info (self, x, y) :
     x_point, y_point = self.image_coords_as_detector_coords(x, y)
     x0, y0 = self.detector_coords_as_image_coords(x_point, y_point)
-    if (self._invert_beam_center) :
-      center_x = self._raw.parameters['BEAM_CENTER_Y']
-      center_y = self._raw.parameters['BEAM_CENTER_X']
-    else :
-      center_x = self._raw.parameters['BEAM_CENTER_X']
-      center_y = self._raw.parameters['BEAM_CENTER_Y']
+    center_x, center_y = self.get_beam_center_mm()
     dist = self._raw.parameters['DISTANCE']
     wavelength = self._raw.parameters['WAVELENGTH']
     r = math.sqrt((center_x - x_point)**2 + (center_y - y_point)**2)
