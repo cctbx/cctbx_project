@@ -281,7 +281,8 @@ class XrayView (wx.Panel) :
       return
     self._img.translate_image(delta_x, delta_y)
     self.Refresh()
-    self.GetParent().settings_frame.refresh_thumbnail()
+    if (self.GetParent().settings_frame is not None) :
+      self.GetParent().settings_frame.refresh_thumbnail()
 
   def OnMouseWheel (self, event) :
     return # XXX disabled now that middle mouse measures intensity profile
