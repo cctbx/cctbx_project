@@ -70,6 +70,16 @@ class unpicklable(object):
   def __getstate__(O): O.raise_error()
   def __setstate__(O, state): O.raise_error()
 
+def only_element(sequence):
+  n = len(sequence)
+  if (n == 1):
+    return sequence[0]
+  if (n == 0):
+    s = "is empty"
+  else:
+    s = "contains %d elements" % n
+  raise RuntimeError("sequence %s (exactly one element expected)" % s)
+
 if (getattr(sys, "api_version", 0) >= 1013):
 
   class dict_with_default_0(dict):
