@@ -1,9 +1,6 @@
+from libtbx import only_element
 from cStringIO import StringIO
 import sys
-
-def only_element(seq):
-  assert len(seq) == 1
-  return seq[0]
 
 def assert_equal_data_and_sigmas(array_1, array_2):
   a, b = array_1.map_to_asu().common_sets(array_2.map_to_asu())
