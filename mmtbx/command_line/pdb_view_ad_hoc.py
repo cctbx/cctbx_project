@@ -56,6 +56,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       radius=mcs.radius()*minimum_covering_sphere_view_scale)
     O.flag_show_minimum_covering_sphere = False
     O.flag_show_rotation_center = False
+    _ = app.co.labels_threshold
+    O.flag_show_labels = (_ == 0 or len(O.points) <= _)
     O.labels_display_list = None
     O.lines_display_list = None
     O.points_display_list = None
@@ -66,6 +68,12 @@ class App(wx_viewer.App):
     import libtbx.load_env
     command_line = (libtbx_option_parser(
       usage="%s [options] pdb_file" % libtbx.env.dispatcher_name)
+      .option(None, "--labels_threshold",
+        action="store",
+        type="int",
+        default=20,
+        help="do not show atom labels if more than given number of atoms",
+        metavar="INT")
     ).process(args=args, nargs=1)
     O.co = command_line.options
     import iotbx.pdb
