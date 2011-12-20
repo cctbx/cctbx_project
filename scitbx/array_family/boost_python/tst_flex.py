@@ -534,6 +534,12 @@ def exercise_misc():
   s = flex.int([1,3,0,2,-1]).as_rgb_gray_scale_string(saturation=2)
   assert [ord(c) for c in s] \
       == [128, 128, 128, 0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]
+  #
+  a = flex.double([1,2,3,-4,5,6])
+  a.reshape(flex.grid(2,3))
+  s = a.as_scitbx_matrix()
+  assert s.elems == (1,2,3,-4,5,6)
+  assert s.n == (2,3)
 
 def exercise_1d_slicing_core(a):
   if (tuple(a[:]) != ()):
