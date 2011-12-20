@@ -32,13 +32,15 @@ class _(boost.python.injector, grid):
 def sorted(data, reverse=False):
   return data.select(sort_permutation(data=data, reverse=reverse))
 
-def show(a):
+def as_scitbx_matrix(a):
   assert a.nd() == 2
   assert a.is_0_based()
   assert not a.is_padded()
   import scitbx.matrix
-  print scitbx.matrix.rec(
-    a, a.focus()).mathematica_form(one_row_per_line=True)
+  return scitbx.matrix.rec(tuple(a), a.focus())
+
+def show(a):
+  print as_scitbx_matrix(a).mathematica_form(one_row_per_line=True)
 
 def rows(a):
   assert a.nd() == 2
@@ -268,6 +270,16 @@ class _(boost.python.injector, ext.linear_regression_core):
     print >> f, prefix+"is_well_defined:", self.is_well_defined()
     print >> f, prefix+"y_intercept:", self.y_intercept()
     print >> f, prefix+"slope:", self.slope()
+
+class _(boost.python.injector, ext.double):
+
+  def matrix_inversion(self):
+    result = self.deep_copy()
+    result.matrix_inversion_in_place()
+    return result
+
+  def as_scitbx_matrix(self):
+    return as_scitbx_matrix(self)
 
 class _(boost.python.injector, ext.linear_correlation):
 
