@@ -1535,6 +1535,7 @@ scitbx/math/inertia_tensor.h svneol=native#text/plain
 scitbx/math/interpolation.h -text
 scitbx/math/jacks_expf.h svneol=native#text/plain
 scitbx/math/least_squares_plane.h -text
+scitbx/math/minimum_covering_ellipsoid.py svneol=native#text/x-python
 scitbx/math/modulo.h -text
 scitbx/math/numeric_limits.h -text
 scitbx/math/rotation.h -text
@@ -1553,6 +1554,7 @@ scitbx/math/tests/tst_exp_functions.py svneol=native#text/x-python
 scitbx/math/tests/tst_fit_peak.py -text
 scitbx/math/tests/tst_gaussian_fit_1d_analytical.py -text
 scitbx/math/tests/tst_gcd.py svneol=native#text/x-python
+scitbx/math/tests/tst_minimum_covering_ellipsoid.py svneol=native#text/x-python
 scitbx/math/tests/tst_weighted_correlation.py svneol=native#text/x-python
 scitbx/math/traits.h -text
 scitbx/math/tst_2d_zernike.py -text

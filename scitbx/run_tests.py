@@ -16,6 +16,7 @@ def run():
   "$B/array_family/tst_accessors",
   "$B/array_family/tst_optional_copy",
   "$B/serialization/tst_base_256",
+  "$D/math/tests/tst_minimum_covering_ellipsoid.py",
   "$D/math/tests/tst_gaussian_fit_1d_analytical.py",
   "$D/math/tests/tst_cubic_equation.py",
   "$B/math/tests/tst",
