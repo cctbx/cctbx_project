@@ -401,7 +401,17 @@ class ZoomView (XrayView) :
           for I in row :
             if (x > (w-1)) :
               break
-            dc.DrawText(str(I), x+1, y+1)
+            if isinstance(I, float):
+              if I > 100:
+                fmt = "%.0f"
+              elif I > 10:
+                fmt = "%.1f"
+              else:
+                fmt = "%.2f"
+            else:
+              fmt = "%i"
+            txt = fmt % I
+            dc.DrawText(txt, x+1, y+1)
             x += self.zoom_level
           y += self.zoom_level
     else :

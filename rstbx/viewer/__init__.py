@@ -375,8 +375,8 @@ class image (screen_params) :
       for v in range(1, w+1) :
         intensity = d[i+u, j+v]
         values[u-1].append(intensity)
-    for row in values :
-      print format % tuple(row)
+    #for row in values :
+      #print format % tuple(row)
     return values
 
   def get_drawable_spots (self) :
