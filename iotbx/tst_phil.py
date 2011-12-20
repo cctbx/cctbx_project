@@ -2,7 +2,6 @@ import iotbx.phil
 from libtbx.test_utils import show_diff
 from libtbx import Auto
 import os
-import sys
 
 def exercise():
   master = iotbx.phil.parse(input_string="""\
