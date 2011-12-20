@@ -264,7 +264,7 @@ class XrayView (wx.Panel) :
     x, y = event.GetPositionTuple()
     img_x, img_y = self._img.screen_coords_as_image_coords(x, y)
     self.GetParent().OnShowZoom(None)
-    self.GetParent().zoom_frame.set_zoom(img_x, img_y)
+    self.GetParent().zoom_frame.recenter(img_x, img_y)
     self._img.set_screen_size(*(self.GetSize()))
 
   def OnTranslate (self, event) :
@@ -358,11 +358,17 @@ class ZoomView (XrayView) :
     self.zoom_level = 16
     self.screen = screen_params()
     self.screen.set_zoom(16)
+    self.text_color = (255,255,0)
+    self.flag_show_intensities = False
 
   def SetupEventHandlers (self) :
     pass
 
-  def set_zoom (self, x, y) :
+  def set_zoom_level (self, zoom) :
+    self.zoom_level = zoom
+    self.screen.set_zoom(zoom)
+
+  def recenter (self, x, y) :
     self.x_center = x
     self.y_center = y
     self.Refresh()
@@ -371,11 +377,33 @@ class ZoomView (XrayView) :
     pass
 
   def OnPaint (self, event) :
+    self.SetForegroundColour(self.text_color)
     dc = wx.AutoBufferedPaintDCFactory(self)
     if (not None in [self._img, self.x_center, self.y_center]) :
-      wx_image = self._img.get_zoomed_bitmap(self.x_center, self.y_center)
+      w, h = self.GetSize()
+      wx_image = self._img.get_zoomed_bitmap(self.x_center, self.y_center,
+        boxsize=w, mag=self.zoom_level)
       bitmap = wx_image.ConvertToBitmap()
       dc.DrawBitmap(bitmap, 0, 0)
+      if (self.flag_show_intensities) :
+        values = self._img.get_intensities_in_box(
+          x=self.x_center,
+          y=self.y_center,
+          boxsize=w,
+          mag=self.zoom_level)
+        dc.SetPen(wx.Pen(self.text_color))
+        dc.SetFont(wx.Font(7, wx.MODERN, wx.NORMAL, wx.NORMAL))
+        y = 0
+        for row in values :
+          if (y > (h-1)) :
+            break
+          x = 0
+          for I in row :
+            if (x > (w-1)) :
+              break
+            dc.DrawText(str(I), x+1, y+1)
+            x += self.zoom_level
+          y += self.zoom_level
     else :
       dc.SetPen(wx.Pen('red'))
       dc.DrawText("Right-click in the main image field to zoom.", 10, 10)

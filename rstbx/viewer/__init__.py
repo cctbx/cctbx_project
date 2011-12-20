@@ -130,10 +130,10 @@ class screen_params (object) :
     return int(x / tr), int(y / tr), int(w / tr), int(h / tr)
 
   def get_zoom_box (self, x, y, boxsize=400, mag=16) :
-    assert ((boxsize % mag) == 0)
-    n_pixels = boxsize / mag
-    x0 = min(self.img_w - n_pixels, x - (n_pixels / 2))
-    y0 = min(self.img_h - n_pixels, y - (n_pixels / 2))
+    #assert ((boxsize % mag) == 0)
+    n_pixels = iceil(boxsize / mag)
+    x0 = min(self.img_w - n_pixels, ifloor(x - (n_pixels / 2)))
+    y0 = min(self.img_h - n_pixels, ifloor(y - (n_pixels / 2)))
     return (x0, y0, n_pixels, n_pixels)
 
   def translate_image (self, delta_x, delta_y) :
@@ -362,6 +362,22 @@ class image (screen_params) :
     assert (w == h)
     img = self._wx_img.GetSubImage((x0, y0, w, h))
     return img.Scale(boxsize, boxsize, wx.IMAGE_QUALITY_NORMAL)
+
+  # XXX does this need to be in C++?
+  def get_intensities_in_box (self, x, y, boxsize=400, mag=16) :
+    x0, y0, w, h = self.get_zoom_box(x, y, boxsize, mag)
+    i, j = self.image_coords_as_array_coords(x0, y0)
+    d = self._raw.linearintdata
+    format = " ".join([ "%d" for n in range(w) ])
+    values = []
+    for u in range(1, h+1) : # XXX why can't I start at 0?
+      values.append([])
+      for v in range(1, w+1) :
+        intensity = d[i+u, j+v]
+        values[u-1].append(intensity)
+    for row in values :
+      print format % tuple(row)
+    return values
 
   def get_drawable_spots (self) :
     """

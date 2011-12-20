@@ -3,6 +3,7 @@ import rstbx.viewer.display
 import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
+import wx.lib.colourselect
 from libtbx import easy_pickle
 import wx
 import os
@@ -295,7 +296,7 @@ class XrayFrame (wx.Frame) :
   def OnShowZoom (self, event) :
     if (self.zoom_frame is None) :
       self.zoom_frame = ZoomFrame(self, -1, "Zoom",
-        style=wx.CAPTION|wx.CLOSE_BOX)
+        style=wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER)
       self.zoom_frame.set_image(self._img)
       self.zoom_frame.Show()
     self.zoom_frame.Raise()
@@ -460,24 +461,58 @@ class SettingsPanel (wx.Panel) :
   def refresh_main (self) :
     self.GetParent().GetParent().viewer.Refresh()
 
+mag_levels = [8,16,24,32,48,64]
 class ZoomFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     super(ZoomFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
+    self.control_panel = wx.Panel(self)
     self.panel = rstbx.viewer.display.ZoomView(self, -1)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
+    szr.Add(self.control_panel)
     szr.Add(self.panel, 1, wx.EXPAND)
-    szr.Fit(self.panel)
-    self.Fit()
+    self.numbers_box = wx.CheckBox(self.control_panel, -1,
+      "Show intensity values")
+    txt1 = wx.StaticText(self.control_panel, -1, "Text color:")
+    self.text_color = wx.lib.colourselect.ColourSelect(self.control_panel,
+      colour=(255,255,0))
+    pszr = wx.BoxSizer(wx.VERTICAL)
+    self.control_panel.SetSizer(pszr)
+    box1 = wx.BoxSizer(wx.HORIZONTAL)
+    pszr.Add(box1)
+    box1.Add(self.numbers_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box1.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box1.Add(self.text_color, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box2 = wx.BoxSizer(wx.HORIZONTAL)
+    pszr.Add(box2)
+    txt2 = wx.StaticText(self.control_panel, -1, "Magnification:")
+    self.mag_ctrl = wx.Choice(self.control_panel, -1,
+      choices=[ "%dx" % x for x in mag_levels ])
+    self.mag_ctrl.SetSelection(1)
+    box2.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box2.Add(self.mag_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+    self.Bind(wx.EVT_CHECKBOX, self.OnChangeSettings, self.numbers_box)
+    self.Bind(wx.lib.colourselect.EVT_COLOURSELECT, self.OnChangeSettings,
+      self.text_color)
+    self.Bind(wx.EVT_CHOICE, self.OnChangeSettings, self.mag_ctrl)
+    szr.Fit(self.panel)
+    self.Fit()
 
   def __getattr__ (self, name) :
     return getattr(self.panel, name)
 
   def OnDestroy (self, event) :
     self.GetParent().zoom_frame = None
+
+  def OnChangeSettings (self, event) :
+    self.panel.flag_show_intensities = self.numbers_box.GetValue()
+    self.panel.text_color = self.text_color.GetValue()
+    zoom = mag_levels[ self.mag_ctrl.GetSelection() ]
+    self.panel.zoom_level = zoom
+    self.Refresh()
 
 class PlotFrame (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
