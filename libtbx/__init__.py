@@ -43,13 +43,6 @@ class AutoType(object):
 
 Auto = AutoType()
 
-class mutable(object):
-
-  __slots__ = ["value"]
-
-  def __init__(O, value):
-    O.value = value
-
 class slots_getstate_setstate(object):
 
   __slots__ = []
@@ -59,6 +52,13 @@ class slots_getstate_setstate(object):
 
   def __setstate__(self, state):
     for name,value in state.items(): setattr(self, name, value)
+
+class mutable(slots_getstate_setstate):
+
+  __slots__ = ["value"]
+
+  def __init__(O, value):
+    O.value = value
 
 class unpicklable(object):
 
