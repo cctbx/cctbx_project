@@ -3821,7 +3821,7 @@ def correct_hydrogen_geometries(hierarchy,
     if angled[0].element.strip() in ["H", "D", "T"]:
       return bad_hydrogen_count, corrected_hydrogen_count
     try: angle = geometry.angle((atom.xyz,ba.xyz,angled[0].xyz)).angle_model
-    except:
+    except Exception:
       print '  Bad angle "%s"' % (atom.format_atom_record()[:26])
       bad_hydrogen_count +=1
       return bad_hydrogen_count, corrected_hydrogen_count

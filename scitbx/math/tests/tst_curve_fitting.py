@@ -137,7 +137,6 @@ def exercise_gaussian_fit():
 
 
 def exercise_skew_normal_fit():
-  import math
   shape, location, scale = 8.0, 4.0, 2.0
   x_obs = flex.double(frange(0, 10, 0.1))
   f = curve_fitting.skew_normal(shape, location, scale)
