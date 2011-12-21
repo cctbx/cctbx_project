@@ -412,10 +412,11 @@ class ZoomView (XrayView) :
             else:
               fmt = "%i"
             txt = fmt % I
-            pixel_colour = dc.GetPixel(x,y)
             # Calculate appropriate text colour according to formula from
             # http://ux.stackexchange.com/a/8320
-            R, G, B = pixel_colour[:3]
+            R = wx_image.GetRed(x,y)
+            G = wx_image.GetGreen(x,y)
+            B = wx_image.GetBlue(x,y)
             Y = 0.2126 * (R/255)**2.2  +  0.7151 * (G/255)**2.2  +  0.0721 * (B/255)**2.2
             if Y < 0.18:
               dc.SetTextForeground(white) # XXX is white or yellow better here?
