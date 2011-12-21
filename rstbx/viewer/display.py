@@ -193,9 +193,8 @@ class XrayView (wx.Panel) :
         line = self._img.line_between_points(x1, y1, x2, y2)
       else :
         line = self._img.line_between_points(x2, y2, x1, y1)
-      distance = self._img.distance_between_points(x1, y1, x2, y2)
       self.GetParent().OnShowPlot(None)
-      self.GetParent().plot_frame.show_plot(line, distance)
+      self.GetParent().plot_frame.show_plot(line)
 
   def OnMiddleDrag (self, event) :
     if (self._img is not None) and (not self.flag_set_beam_center_mode) :

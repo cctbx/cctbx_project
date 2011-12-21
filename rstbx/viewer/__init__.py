@@ -1,4 +1,5 @@
 
+import rstbx.utils
 from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
 import math
@@ -232,6 +233,15 @@ class screen_params (object) :
     object.
     """
     return y-1, x-1
+
+  def array_coords_as_detector_coords (self, x, y) :
+    """
+    Convert array indices to points on the detector surface.  Used in the
+    calculation of approximate lattice dimensions based on peaks in a
+    user-drawn line in the viewer.
+    """
+    x_, y_ = y+1, x+1
+    return self.image_coords_as_detector_coords(x_, y_)
 
   def distance_between_points (self, x1, y1, x2, y2) :
     """
@@ -475,7 +485,6 @@ class image (screen_params) :
     Determine the intensity, resolution, and array indices of a pixel.
     Arguments are in image pixel coordinates (starting from 1,1).
     """
-    from iotbx.detectors import get_scattering_angle
     from spotfinder import core_toolbox
     x_point, y_point = self.image_coords_as_detector_coords(x, y)
     x0, y0 = self.detector_coords_as_image_coords(x_point, y_point)
@@ -494,7 +503,7 @@ class image (screen_params) :
     """ # future generalization
 
     if (dist > 0) :
-      scattering_angle = get_scattering_angle(
+      scattering_angle = rstbx.utils.get_scattering_angle(
         x=x_point,
         y=y_point,
         center_x=center_x,
@@ -520,7 +529,7 @@ class image (screen_params) :
     """
     Given two points on the image, sample intensities along a line connecting
     them (using linear interpolation).  This also calculates the coordinates
-    of each sample point, which will be used for lattice dimension calculations
+    of each sample point, which is used for lattice dimension calculations
     once peaks have been identified.  Arguments are in image pixel coordinates
     (starting at 1,1).
     """
@@ -537,7 +546,8 @@ class image (screen_params) :
     for n in range(n_values) :
       x = x1_ + (n * delta_x)
       y = y1_ + (n * delta_y)
-      img_coords.append((x,y))
+      xd, yd = self.array_coords_as_detector_coords(x, y)
+      img_coords.append((xd,yd))
       x_1 = ifloor(x)
       x_2 = iceil(x)
       y_1 = ifloor(y)
@@ -560,7 +570,46 @@ class image (screen_params) :
               ((v12 / dxdy) * (x_2 - x) * (y - y_1)) + \
               ((v22 / dxdy) * (x - x_1) * (y - y_1))
       vals.append(vxy)
-    return vals
+    lattice_length = None
+    if (len(vals) > 5) :
+      # first find peaks in the profile
+      peaks = []
+      avg = sum(vals) / len(vals)
+      filtered_vals = []
+      for x in vals :
+        if (x <= avg*3) :
+          filtered_vals.append(x)
+      background = sum(filtered_vals) / len(filtered_vals)
+      i = 2
+      while (i < len(vals) - 2) :
+        x = vals[i]
+        if (x <= background) :
+          pass
+        elif ((x > vals[i-1]) and (x > vals[i-2]) and
+              (x > vals[i+1]) and (x > vals[i+2])) :
+          peaks.append(i)
+        i += 1
+      if (len(peaks) > 0) :
+        # calculate the average lattice length
+        center_x, center_y = self.get_beam_center_mm()
+        distances = []
+        i = 1
+        while (i < len(peaks)) :
+          x1,y1 = img_coords[peaks[i-1]]
+          x2,y2 = img_coords[peaks[i]]
+          rs_distance = rstbx.utils.reciprocal_space_distance(x1, y1, x2, y2,
+            wavelength=self.get_wavelength(),
+            center_x=center_x,
+            center_y=center_y,
+            distance=self.get_detector_distance(),
+            detector_two_theta=self.get_detector_2theta(),
+            distance_is_corrected=True)
+          assert (rs_distance > 0)
+          distances.append(1 / rs_distance)
+          i += 1
+        lattice_length = sum(distances) / len(distances)
+    distance = self.distance_between_points(x1, y1, x2, y2)
+    return line_profile(vals, distance, lattice_length)
 
 class point_info (object) :
   """
@@ -576,6 +625,12 @@ class point_info (object) :
   def format (self) :
     return "resolution = %s  intensity = %.2f  slow=%d  fast=%d" % (
       format_value("%.2f A", self.d_min), self.intensity, self.slow, self.fast)
+
+class line_profile (object) :
+  def __init__ (self, values, distance, lattice_length) :
+    self.values = values
+    self.distance = distance
+    self.lattice_length = lattice_length
 
 # TODO replace this with libtbx.phil
 class settings (object) :

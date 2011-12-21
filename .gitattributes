@@ -1384,6 +1384,7 @@ rstbx/simulation/tst_xfel1_simple.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
+rstbx/utils.py -text
 rstbx/viewer/__init__.py -text
 rstbx/viewer/calibration.py -text
 rstbx/viewer/calibration_frame.py -text
