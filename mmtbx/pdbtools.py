@@ -217,6 +217,8 @@ pdb_interpretation
 {
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
 }
+stop_for_unknowns = True
+  .type = bool
 regularize_geometry = False
   .type = bool
   .short_caption = Perform geometry minimization
@@ -861,7 +863,7 @@ class interpreter:
       crystal_symmetry          = self.crystal_symmetry,
       pdb_parameters            = self.params.input.pdb,
       pdb_interpretation_params = self.params.pdb_interpretation,
-      stop_for_unknowns         = True,
+      stop_for_unknowns         = self.params.stop_for_unknowns,
       log                       = self.log,
       mon_lib_srv               = self.mon_lib_srv,
       ener_lib                  = self.ener_lib,
