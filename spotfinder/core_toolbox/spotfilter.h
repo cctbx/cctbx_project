@@ -59,6 +59,16 @@ struct SpotFilterAgent {
   order_by(spot_list_t, af::shared<int>, std::string);
 };
 
+  double resolution_at_point (
+    double xpoint,
+    double ypoint,
+    double xbeam,
+    double ybeam,
+    double distance,
+    double wavelength,
+    double twotheta,
+    double pixel_size);
+
 } //namespace
 
 } //namespace

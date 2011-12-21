@@ -212,5 +212,14 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
       .def_readonly("y",&SingleMask::y)
    ;
 
-   def("find_active_area",find_active_area);
+   def("find_active_area", find_active_area);
+   def("resolution_at_point", spotfinder::distltbx::resolution_at_point, (
+     arg("xpoint"),
+     arg("ypoint"),
+     arg("xbeam"),
+     arg("ybeam"),
+     arg("distance"),
+     arg("wavelength"),
+     arg("twotheta"),
+     arg("pixel_size")));
 }
