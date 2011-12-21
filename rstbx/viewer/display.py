@@ -394,24 +394,24 @@ class ZoomView (XrayView) :
         white = wx.Colour(255,255,255,255)
         yellow = wx.Colour(255,255,0,255)
         dc.SetFont(wx.Font(7, wx.MODERN, wx.NORMAL, wx.NORMAL))
-        y = 0
-        for row in values :
+        for i, row in enumerate(values) :
+          y = int(self.Size[1]/len(values) * (i + 0.5))
           if (y > (h-1)) :
             break
-          x = 0
-          for I in row :
+          for j, intensity in enumerate(row) :
+            x = int(self.Size[0]/len(values) * (j + 0.5))
             if (x > (w-1)) :
               break
-            if isinstance(I, float):
-              if I > 100:
+            if isinstance(intensity, float):
+              if intensity > 100:
                 fmt = "%.0f"
-              elif I > 10:
+              elif intensity > 10:
                 fmt = "%.1f"
               else:
                 fmt = "%.2f"
             else:
               fmt = "%i"
-            txt = fmt % I
+            txt = fmt % intensity
             # Calculate appropriate text colour according to formula from
             # http://ux.stackexchange.com/a/8320
             R = wx_image.GetRed(x,y)
@@ -422,9 +422,8 @@ class ZoomView (XrayView) :
               dc.SetTextForeground(white) # XXX is white or yellow better here?
             else:
               dc.SetTextForeground(black)
-            dc.DrawText(txt, x+1, y+1)
-            x += self.zoom_level
-          y += self.zoom_level
+            width, height = dc.GetTextExtent(txt)
+            dc.DrawText(txt, x - width//2 , y - height//2)
     else :
       dc.SetPen(wx.Pen('red'))
       dc.DrawText("Right-click in the main image field to zoom.", 10, 10)
