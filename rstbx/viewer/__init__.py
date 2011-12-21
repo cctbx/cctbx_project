@@ -457,7 +457,7 @@ class image (screen_params) :
 
   def get_detector_distance (self) :
     dist = self._raw.parameters['DISTANCE']
-    twotheta = self._raw.parameters['TWOTHETA']
+    twotheta = self.get_detector_2theta()
     if (twotheta == 0.0) :
       return dist
     else :
@@ -475,7 +475,7 @@ class image (screen_params) :
     Determine the intensity, resolution, and array indices of a pixel.
     Arguments are in image pixel coordinates (starting from 1,1).
     """
-    #from iotbx.detectors import get_scattering_angle
+    from iotbx.detectors import get_scattering_angle
     from spotfinder import core_toolbox
     x_point, y_point = self.image_coords_as_detector_coords(x, y)
     x0, y0 = self.detector_coords_as_image_coords(x_point, y_point)
@@ -483,31 +483,31 @@ class image (screen_params) :
     dist = self.get_detector_distance()
     two_theta = self.get_detector_2theta()
     wavelength = self.get_wavelength()
-    d_min = core_toolbox.resolution_at_point(
-      xpoint=x_point - center_x,
-      ypoint=y_point - center_y,
-      xbeam=0,#center_x,
-      ybeam=0,#center_y,
-      distance=self.get_detector_distance(),
-      wavelength=self.get_wavelength(),
-      twotheta=self.get_detector_2theta(),
-      pixel_size=self.detector_pixel_size)
+#    d_min = core_toolbox.resolution_at_point(
+#      xpoint=x_point - center_x,
+#      ypoint=y_point - center_y,
+#      xbeam=0,#center_x,
+#      ybeam=0,#center_y,
+#      distance=self.get_detector_distance(),
+#      wavelength=self.get_wavelength(),
+#      twotheta=self.get_detector_2theta(),
+#      pixel_size=self.detector_pixel_size)
 #    r = math.sqrt((center_x - x_point)**2 + (center_y - y_point)**2)
-#    if (dist > 0) :
-#      scattering_angle = get_scattering_angle(
-#        x=x_point,
-#        y=y_point,
-#        center_x=center_x,
-#        center_y=center_y,
-#        distance=dist,
-#        detector_two_theta=two_theta,
-#        distance_is_corrected=True)
-#      if (scattering_angle == 0.0) :
-#        d_min = None
-#      else :
-#        d_min = wavelength / (2 * math.sin(scattering_angle / 2))
-#    else:
-#      d_min = None
+    if (dist > 0) :
+      scattering_angle = get_scattering_angle(
+        x=x_point,
+        y=y_point,
+        center_x=center_x,
+        center_y=center_y,
+        distance=dist,
+        detector_two_theta=two_theta,
+        distance_is_corrected=True)
+      if (scattering_angle == 0.0) :
+        d_min = None
+      else :
+        d_min = wavelength / (2 * math.sin(scattering_angle / 2))
+    else:
+      d_min = None
     slow, fast = self.image_coords_as_array_coords(x, y)
     try :
       intensity = self._raw.linearintdata[slow, fast]
