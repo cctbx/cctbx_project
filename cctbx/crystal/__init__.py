@@ -820,7 +820,7 @@ class show_distances(object):
         formatted_site = [" %7.4f" % x for x in site_frac_ji]
       s += " (" + ",".join(formatted_site) +")"
       if (not rt_mx_ji.is_unit_mx()):
-        s += " " + str(rt_mx_ji)
+        s += " sym=" + str(rt_mx_ji)
       print >> out, s
 
       if first_time_i_seq and d.pair_count == 0:
