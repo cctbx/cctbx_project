@@ -483,16 +483,16 @@ class image (screen_params) :
     dist = self.get_detector_distance()
     two_theta = self.get_detector_2theta()
     wavelength = self.get_wavelength()
-#    d_min = core_toolbox.resolution_at_point(
-#      xpoint=x_point - center_x,
-#      ypoint=y_point - center_y,
-#      xbeam=0,#center_x,
-#      ybeam=0,#center_y,
-#      distance=self.get_detector_distance(),
-#      wavelength=self.get_wavelength(),
-#      twotheta=self.get_detector_2theta(),
-#      pixel_size=self.detector_pixel_size)
-#    r = math.sqrt((center_x - x_point)**2 + (center_y - y_point)**2)
+    """
+    calc = core_toolbox.resolution_on_image(
+                xbeam_mm = center_x,
+                ybeam_mm = center_y,
+                distance_mm = self._raw.parameters['DISTANCE'],
+                wavelength_ang = wavelength,
+                twotheta_rad = two_theta)
+    d_min = calc.resolution_at_point(x_point, y_point)
+    """ # future generalization
+
     if (dist > 0) :
       scattering_angle = get_scattering_angle(
         x=x_point,
