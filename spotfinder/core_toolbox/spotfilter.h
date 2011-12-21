@@ -59,15 +59,69 @@ struct SpotFilterAgent {
   order_by(spot_list_t, af::shared<int>, std::string);
 };
 
-  double resolution_at_point (
-    double xpoint,
-    double ypoint,
-    double xbeam,
-    double ybeam,
-    double distance,
-    double wavelength,
-    double twotheta,
-    double pixel_size);
+class resolution_on_image {
+
+  typedef scitbx::vec3<double> point;
+  typedef scitbx::vec3<double> axis;
+  typedef scitbx::mat3<double> matrix;
+  typedef scitbx::af::tiny_plain<double,4> quaternion;
+  matrix forward_W;
+  matrix inverse_W;
+  double xbeam_mm;
+  double ybeam_mm;
+  double distance_mm;
+  double wavelength_ang;
+  double twotheta_rad;
+  matrix image_to_detector;
+  point B_XTD_at_zero;
+  axis direct_beam;
+ public:
+  inline resolution_on_image(
+    double const& xbeam_mm,
+    double const& ybeam_mm,
+    double const& distance_mm,
+    double const& wavelength_ang,
+    double const& twotheta_rad):
+    xbeam_mm(xbeam_mm),
+    ybeam_mm(ybeam_mm),
+    distance_mm(distance_mm),
+    wavelength_ang(wavelength_ang),
+    twotheta_rad(twotheta_rad),
+    image_to_detector( -1., 0, 0, 0,1,0,0,0,1), //Not sure if this will be general
+    direct_beam( 0.,0.,1.)  //beam travels in forward z direction
+    {
+
+      axis rotation_axis(0.,1.,0.); //assume for the moment that detector rotation (twotheta) is on y-hat.
+      //express rotation through angle two theta as a unit quaternion;
+      double h = twotheta_rad * 0.5;
+      double c = std::cos(h); double s = std::sin(h);
+      quaternion q(c, rotation_axis[0] * s, rotation_axis[1] * s, rotation_axis[2] * s);
+      //re-express this rotation as a 3x3 matrix operator
+      forward_W = matrix ( 2*(q[0]*q[0]+q[1]*q[1])-1, 2*(q[1]*q[2]-q[0]*q[3]), 2*(q[1]*q[3]+q[0]*q[2]),
+                           2*(q[1]*q[2]+q[0]*q[3]), 2*(q[0]*q[0]+q[2]*q[2])-1, 2*(q[2]*q[3]-q[0]*q[1]),
+                           2*(q[1]*q[3]-q[0]*q[2]), 2*(q[2]*q[3]+q[0]*q[1]), 2*(q[0]*q[0]+q[3]*q[3])-1);
+      inverse_W = forward_W.inverse();
+
+      //get detector
+      point D = inverse_W * point(0,0,(distance_mm/std::cos(twotheta_rad)));
+      point solve1 = image_to_detector * point (xbeam_mm,ybeam_mm,distance_mm);
+      double B0x = D[0] - solve1[0];
+      double B0y = D[1] - solve1[1];
+      B_XTD_at_zero = point(B0x,B0y,distance_mm);
+
+    }
+  inline double resolution_at_point(double const& xpoint_mm, double const& ypoint_mm) {
+    //laboratory coordinates of the detected point:
+    point lab( forward_W * (image_to_detector * point(xpoint_mm,ypoint_mm,distance_mm) + B_XTD_at_zero) );
+    //use dot product with direct beam to get the point's two theta; shortcut knowing direct beam is on z-axis
+    double theta = std::acos(lab[2]/lab.length()) * 0.5;
+    return wavelength_ang / (2* std::sin(theta));
+  }
+
+
+
+};
+
 
 } //namespace
 
