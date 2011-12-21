@@ -358,7 +358,7 @@ class ZoomView (XrayView) :
     self.zoom_level = 16
     self.screen = screen_params()
     self.screen.set_zoom(16)
-    self.text_color = (255,255,0)
+    self.text_color = (255,255,255)
     self.flag_show_intensities = False
 
   def SetupEventHandlers (self) :
@@ -377,7 +377,6 @@ class ZoomView (XrayView) :
     pass
 
   def OnPaint (self, event) :
-    self.SetForegroundColour(self.text_color)
     dc = wx.AutoBufferedPaintDCFactory(self)
     if (not None in [self._img, self.x_center, self.y_center]) :
       w, h = self.GetSize()
@@ -391,7 +390,9 @@ class ZoomView (XrayView) :
           y=self.y_center,
           boxsize=w,
           mag=self.zoom_level)
-        dc.SetPen(wx.Pen(self.text_color))
+        black = wx.Colour(0,0,0,255)
+        white = wx.Colour(255,255,255,255)
+        yellow = wx.Colour(255,255,0,255)
         dc.SetFont(wx.Font(7, wx.MODERN, wx.NORMAL, wx.NORMAL))
         y = 0
         for row in values :
@@ -411,6 +412,15 @@ class ZoomView (XrayView) :
             else:
               fmt = "%i"
             txt = fmt % I
+            pixel_colour = dc.GetPixel(x,y)
+            # Calculate appropriate text colour according to formula from
+            # http://ux.stackexchange.com/a/8320
+            R, G, B = pixel_colour[:3]
+            Y = 0.2126 * (R/255)**2.2  +  0.7151 * (G/255)**2.2  +  0.0721 * (B/255)**2.2
+            if Y < 0.18:
+              dc.SetTextForeground(white) # XXX is white or yellow better here?
+            else:
+              dc.SetTextForeground(black)
             dc.DrawText(txt, x+1, y+1)
             x += self.zoom_level
           y += self.zoom_level
