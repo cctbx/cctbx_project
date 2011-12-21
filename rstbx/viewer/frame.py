@@ -532,12 +532,16 @@ class PlotFrame (wx.MiniFrame) :
     self.GetParent().plot_frame = None
 
 class LinePlot (wxtbx.plots.plot_container) :
-  def show_plot (self, y_data, distance=None) :
+  def show_plot (self, line) :
     self.figure.clear()
     ax = self.figure.add_subplot(111)
-    x_data = range(len(y_data))
-    ax.plot(x_data, y_data, 'b-', linewidth=1)
+    x_data = range(len(line.values))
+    ax.plot(x_data, line.values, 'b-', linewidth=1)
     ax.set_ylabel("Intensity")
-    if (distance is not None) :
-      ax.set_title("Line distance: %.2fmm" % distance)
+    if (line.lattice_length is not None) :
+      ax.set_title(
+        "Line distance = %.2fmm; avg. lattice length = %.2f Angstrom" %
+          (line.distance, line.lattice_length))
+    else :
+      ax.set_title("Line distance: %.2fmm" % line.distance)
     self.canvas.draw()
