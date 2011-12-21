@@ -15,6 +15,8 @@ from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.torsion_restraints import utils
 from mmtbx import ncs
+import scitbx.lbfgs
+from cctbx import maptbx
 
 TOP_OUT_FLAG = True
 
@@ -50,7 +52,7 @@ torsion_ncs_params = iotbx.phil.parse("""
  fix_outliers = True
    .type = bool
    .short_caption = Fix rotamer outliers first
- target_damping = False
+ target_damping = True
    .type = bool
    .expert_level = 1
  damping_limit = 10.0
@@ -84,6 +86,7 @@ torsion_ncs_params = iotbx.phil.parse("""
 class torsion_ncs(object):
   def __init__(self,
                pdb_hierarchy,
+               fmodel,
                geometry,
                sites_cart,
                params,
@@ -93,6 +96,7 @@ class torsion_ncs(object):
     self.limit = params.limit
     self.slack = params.slack
     self.pdb_hierarchy = pdb_hierarchy
+    self.fmodel = fmodel
     self.ncs_groups = []
     self.dp_ncs = []
     self.sequences = {}
@@ -932,10 +936,10 @@ class torsion_ncs(object):
         target_angle = utils.get_angle_average(cluster_angles)
         if self.params.target_damping:
           for c in cluster:
-            c_dist = utils.angle_distance(local_angles[c], target_angle)
+            c_dist = utils.angle_distance(angles[c], target_angle)
             if c_dist > self.params.damping_limit:
               d_target = \
-                utils.get_angle_average([local_angles[c], target_angle])
+                utils.get_angle_average([angles[c], target_angle])
               target_angles[c] = d_target
             else:
               target_angles[c] = target_angle
@@ -950,17 +954,40 @@ class torsion_ncs(object):
 
   def fix_rotamer_outliers(self,
                            xray_structure,
+                           geometry_restraints_manager,
                            log=None,
                            quiet=False):
     pdb_hierarchy=self.pdb_hierarchy
+    fmodel = self.fmodel
     if(log is None): log = self.log
     make_sub_header(
       "Correcting NCS rotamer outliers",
       out=log)
     r = rotalyze()
     sa = SidechainAngles(False)
+    exclude_free_r_reflections = False
+    unit_cell = xray_structure.unit_cell()
     mon_lib_srv = mmtbx.monomer_library.server.server()
     rot_list_model, coot_model = r.analyze_pdb(hierarchy=pdb_hierarchy)
+    target_map_data,fft_map_1 = fit_rotamers.get_map_data(
+      fmodel = self.fmodel, map_type = "2mFo-DFc", kick=False,
+      exclude_free_r_reflections = exclude_free_r_reflections)
+    model_map_data,fft_map_2 = fit_rotamers.get_map_data(
+      fmodel = self.fmodel, map_type = "Fc")
+    residual_map_data,fft_map_3 = fit_rotamers.get_map_data(
+      fmodel = self.fmodel, map_type = "mFo-DFc", kick=False,
+      exclude_free_r_reflections = exclude_free_r_reflections)
+    map_selector = fit_rotamers.select_map(
+      unit_cell  = xray_structure.unit_cell(),
+      target_map_data = target_map_data,
+      model_map_data = model_map_data)
+    self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+      max_iterations = 25)
+    self.lbfgs_exception_handling_params = \
+      scitbx.lbfgs.exception_handling_parameters(
+        ignore_line_search_failed_step_at_lower_bound = True,
+        ignore_line_search_failed_step_at_upper_bound = True,
+        ignore_line_search_failed_maxfev              = True)
     model_hash = {}
     model_score = {}
     model_chis = {}
@@ -1039,6 +1066,18 @@ class torsion_ncs(object):
                 residue_iselection = atom_group.atoms().extract_i_seq()
                 sites_cart_residue = \
                   xray_structure.sites_cart().select(residue_iselection)
+                selection = flex.bool(
+                              len(sites_cart_start),
+                              residue_iselection)
+                rev = fit_rotamers.rotamer_evaluator(
+                  sites_cart_start = sites_cart_residue,
+                  unit_cell        = unit_cell,
+                  two_mfo_dfc_map  = target_map_data,
+                  mfo_dfc_map      = residual_map_data)
+                cc_start = map_selector.get_cc(
+                  sites_cart         = sites_cart_residue,
+                  residue_iselection = residue_iselection)
+                sites_cart_residue_start = sites_cart_residue.deep_copy()
                 for aa in axis_and_atoms_to_rotate:
                   axis = aa[0]
                   atoms = aa[1]
@@ -1057,8 +1096,45 @@ class torsion_ncs(object):
                   sites_cart_start = sites_cart_start.set_selected(
                         residue_iselection, sites_cart_residue)
                   counter += 1
-                xray_structure.set_sites_cart(sites_cart_start)
-                print >> log, "Fixed %s rotamer" % key
+                cc_final = map_selector.get_cc(
+                  sites_cart         = sites_cart_residue,
+                  residue_iselection = residue_iselection)
+                sites_cart_refined = \
+                  self.real_space_refine_residue(
+                    selection = selection,
+                    sites_cart = sites_cart_start,
+                    density_map = target_map_data,
+                    geometry_restraints_manager = \
+                      geometry_restraints_manager)
+                sites_cart_start = sites_cart_start.set_selected(
+                  residue_iselection, sites_cart_refined)
+                if rev.is_better(sites_cart_refined):
+                  xray_structure.set_sites_cart(sites_cart_start)
+                  print >> log, "Fixed %s rotamer" % key
+                else:
+                  sites_cart_start = sites_cart_start.set_selected(
+                        residue_iselection, sites_cart_residue_start)
+                  xray_structure.set_sites_cart(sites_cart_start)
+                  print >> log, "Skipped %s rotamer" % key
+
+  def real_space_refine_residue(
+        self,
+        selection,
+        sites_cart,
+        density_map,
+        geometry_restraints_manager):
+    real_space_target_weight = 100
+    real_space_gradients_delta = self.fmodel.f_obs().d_min()/4
+    result = maptbx.real_space_refinement_simple.lbfgs(
+      selection_variable              = selection,
+      sites_cart                      = sites_cart,
+      density_map                     = density_map,
+      geometry_restraints_manager     = geometry_restraints_manager,
+      real_space_target_weight        = real_space_target_weight,
+      real_space_gradients_delta      = real_space_gradients_delta,
+      lbfgs_termination_params        = self.lbfgs_termination_params,
+      lbfgs_exception_handling_params = self.lbfgs_exception_handling_params)
+    return result.sites_cart_variable
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):
     log = self.log
