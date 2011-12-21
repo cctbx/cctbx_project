@@ -67,9 +67,15 @@ class summary (object) :
                 self.rms_angles = float(fields[i+2])
             break
           elif ("3   R VALUE            (WORKING SET)" in line) :
-            self.r_work = float(line.split(":")[1].strip())
+            try :
+              self.r_work = float(line.split(":")[1].strip())
+            except ValueError :
+              pass
           elif ("3   FREE R VALUE                    " in line) :
-            self.r_free = float(line.split(":")[1].strip())
+            try :
+              self.r_free = float(line.split(":")[1].strip())
+            except ValueError :
+              pass
         elif (line.startswith("REMARK 200")) :
           break
 
