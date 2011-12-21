@@ -1041,6 +1041,9 @@ class process_pdb_file_srv(object):
       ignore_unknown_scattering_types=False,
       ignore_unknown_nonbonded_energy_types=not self.stop_for_unknowns)
     if (msg is not None):
+      msg += """
+  Alternatively, to continue despite this problem use:
+    stop_for_unknowns=False"""
       raise Sorry(msg)
     if (self.log):
       print >> self.log
