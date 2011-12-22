@@ -642,9 +642,13 @@ namespace cctbx { namespace sgtbx {
     CCTBX_ASSERT(phases.size() == miller_indices.size());
     af::shared<double> result((af::reserve(miller_indices.size())));
     for(std::size_t i=0;i<miller_indices.size();i++) {
+      miller::index<>
+#if !defined(CCTBX_SGTBX_PHASE_INFO_APPLE_LLVM2335_WORKAROUND)
+      const&
+#endif
+      h = miller_indices[i];
       result.push_back(
-        phase_restriction(miller_indices[i])
-          .nearest_valid_phase(phases[i], deg));
+        phase_restriction(h).nearest_valid_phase(phases[i], deg));
     }
     return result;
   }

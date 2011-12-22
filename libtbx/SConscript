@@ -675,14 +675,8 @@ else:
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     if env_etc.compiler == "darwin_c++":
-      build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc="c++")
-      is_llvm = libtbx.env_config.is_llvm_compiler(gcc="c++")
-      if (build_nb >= 5658) and (is_llvm) :
-        cc = "gcc-4.2"
-        cxx = "c++-4.2"
-      else :
-        cc = "cc"
-        cxx = "c++"
+      cc = "cc"
+      cxx = "c++"
     else:
       cc  = env_etc.compiler.replace('darwin_','')
       if cc == 'clang':

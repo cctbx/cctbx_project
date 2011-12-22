@@ -32,9 +32,14 @@ namespace cctbx { namespace miller {
         result.push_back(0); // no phase information
       }
       else {
+        index<>
+#if !defined(CCTBX_SGTBX_PHASE_INFO_APPLE_LLVM2335_WORKAROUND)
+        const&
+#endif
+        h = miller_indices[i];
         result.push_back(std::polar(
           amplitude_source[i],
-          space_group.phase_restriction(miller_indices[i])
+          space_group.phase_restriction(h)
             .nearest_valid_phase(std::arg(p))));
       }
     }
