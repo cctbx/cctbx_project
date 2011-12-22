@@ -219,6 +219,7 @@ pdb_interpretation
 }
 stop_for_unknowns = True
   .type = bool
+  .short_caption = Stop for residues missing geometry restraints
 regularize_geometry = False
   .type = bool
   .short_caption = Perform geometry minimization
@@ -1012,6 +1013,9 @@ def validate_params (params, callback=None) :
   elif ((params.modify.output.file_name is not None) and
         (os.path.isdir(params.modify.output.file_name))) :
     raise Sorry("The specified output file is a currently existing directory.")
+  if (not params.stop_for_unknowns) and (params.regularize_geometry) :
+    raise Sorry("You can not run geometry minimization when \"Stop for "+
+      "residues missing geometry restraints\" is unchecked.")
   return True
 
 def finish_job (result) :
