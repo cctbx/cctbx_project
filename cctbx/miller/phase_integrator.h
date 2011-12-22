@@ -94,8 +94,13 @@ namespace cctbx { namespace miller {
         af::shared<std::complex<FloatType> >
           result((af::reserve(miller_indices.size())));
         for(std::size_t i=0;i<miller_indices.size();i++) {
+          index<>
+#if !defined(CCTBX_SGTBX_PHASE_INFO_APPLE_LLVM2335_WORKAROUND)
+          const&
+#endif
+          h = miller_indices[i];
           result.push_back((*this)(
-            space_group.phase_restriction(miller_indices[i]),
+            space_group.phase_restriction(h),
             hendrickson_lattman_coefficients[i]));
         }
         return result;

@@ -3,6 +3,10 @@
 
 #include <cctbx/miller.h>
 
+#if defined(__llvm__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 5658
+#define CCTBX_SGTBX_PHASE_INFO_APPLE_LLVM2335_WORKAROUND
+#endif
+
 namespace cctbx { namespace sgtbx {
 
   class space_group; // forward declaration
