@@ -480,6 +480,7 @@ class aniso_u_scaler
 public:
   std::size_t n_rows;
   af::shared<FloatType> u_star_independent;
+  af::shared<FloatType> a;
 
   aniso_u_scaler() {}
 
@@ -522,9 +523,62 @@ public:
     af::versa<FloatType, af::c_grid<2> > m_inv(
        scitbx::matrix::packed_u_as_symmetric(
          scitbx::matrix::eigensystem::real_symmetric<FloatType>(
-           m.const_ref(), /*relative_epsilon*/ 1.e-6,/*absolute_epsilon*/ 1.e-6)
+           m.const_ref(), /*relative_epsilon*/ 1.e-9,/*absolute_epsilon*/ 1.e-9)
              .generalized_inverse_as_packed_u().const_ref()));
     u_star_independent = af::matrix_multiply(m_inv.const_ref(), b.const_ref());
+  }
+
+  /* SHELXL-like scale: Acta Cryst. (1999). D55, 1158-1167, page 1163
+     Note: in the paper it is applied to Fcalc^2, here it is applied to Fcalc.
+           The code computes coefficients a. */
+  /* XXX try 'long double' to see if that pushed regression test tolerances
+     to lower values */
+  aniso_u_scaler(
+    af::const_ref<ComplexType> const& f_model,
+    af::const_ref<FloatType> const& f_obs,
+    af::const_ref<cctbx::miller::index<> > const& miller_indices,
+    cctbx::uctbx::unit_cell const& unit_cell)
+  :
+  a(12, 0)
+  {
+    MMTBX_ASSERT(f_obs.size() == f_model.size());
+    MMTBX_ASSERT(f_obs.size() == miller_indices.size());
+    af::versa<FloatType, af::mat_grid> m_(af::mat_grid(12, 12), 0);
+    af::versa<FloatType, af::mat_grid> m(af::mat_grid(12, 12), 0);
+    af::tiny<FloatType, 12> b(12, 0);
+    af::double6 p = unit_cell.reciprocal_parameters();
+    FloatType as=p[0], bs=p[1], cs=p[2];
+    for(std::size_t i=0; i < f_obs.size(); i++) {
+      cctbx::miller::index<> const& miller_index = miller_indices[i];
+      int h=miller_index[0], k=miller_index[1], l=miller_index[2];
+      FloatType fm_i = std::abs(f_model[i]);
+      FloatType s = 1./unit_cell.stol_sq(miller_index);
+      FloatType const v[] = {
+        h*h*as*as*s,
+        h*h*as*as,
+        k*k*bs*bs*s,
+        k*k*bs*bs,
+        l*l*cs*cs*s,
+        l*l*cs*cs,
+        2*k*l*bs*cs*s,
+        2*k*l*bs*cs,
+        2*h*l*as*cs*s,
+        2*h*l*as*cs,
+        2*h*k*as*bs*s,
+        2*h*k*as*bs
+      };
+      af::tiny<FloatType, 12> v_(v, v+12);
+      b += f_obs[i]*fm_i*v_;
+      v_ *= fm_i;
+      scitbx::matrix::outer_product(m_.begin(),v_.const_ref(),v_.const_ref());
+      m += m_;
+    }
+    af::versa<FloatType, af::c_grid<2> > m_inv(
+       scitbx::matrix::packed_u_as_symmetric(
+         scitbx::matrix::eigensystem::real_symmetric<FloatType>(
+           m.const_ref(), /*relative_epsilon*/ 1.e-9,/*absolute_epsilon*/ 1.e-9)
+             .generalized_inverse_as_packed_u().const_ref()));
+    a = af::matrix_multiply(m_inv.const_ref(), b.const_ref());
   }
 };
 

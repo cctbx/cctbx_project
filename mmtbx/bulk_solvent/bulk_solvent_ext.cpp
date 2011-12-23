@@ -103,8 +103,18 @@ namespace {
               arg("f_obs"),
               arg("miller_indices"),
               arg("adp_constraint_matrix"))))
+      .def(init<
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
+           af::const_ref<cctbx::miller::index<> > const&,
+           cctbx::uctbx::unit_cell const& >(
+             (arg("f_model"),
+              arg("f_obs"),
+              arg("miller_indices"),
+              arg("unit_cell"))))
       .add_property("u_star_independent",
         make_getter(&aniso_u_scaler<>::u_star_independent, rbv()))
+      .add_property("a", make_getter(&aniso_u_scaler<>::a, rbv()))
    ;
    //
     def("r_factor",
