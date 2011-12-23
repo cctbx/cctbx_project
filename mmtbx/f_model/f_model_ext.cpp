@@ -103,6 +103,20 @@ namespace {
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
+
+    def("overall_anisotropic_scale",
+      (af::shared<double>(*)
+        (af::const_ref<cctbx::miller::index<> > const&,
+         scitbx::sym_mat3<double> const&)) overall_anisotropic_scale);
+   ;
+
+   def("overall_anisotropic_scale",
+      (af::shared<double>(*)
+        (af::const_ref<cctbx::miller::index<> > const&,
+         af::shared<double> const&,
+         cctbx::uctbx::unit_cell const&)) overall_anisotropic_scale);
+   ;
+
   }
 
 } // namespace <anonymous>

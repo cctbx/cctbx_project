@@ -30,6 +30,50 @@ FloatType f_b_exp_one_h(FloatType const& ss, FloatType const& b)
     /*exp_arg_limit*/ 40., /*truncate_exp_arg*/ true);
 }
 
+template <typename FloatType>
+af::shared<FloatType> overall_anisotropic_scale(
+  af::const_ref<cctbx::miller::index<> > const& miller_indices,
+  scitbx::sym_mat3<FloatType> const& u_star)
+{
+  af::shared<FloatType> result(miller_indices.size(), 0);
+  for(std::size_t i=0; i < miller_indices.size(); i++) {
+    result[i] = cctbx::adptbx::debye_waller_factor_u_star(
+      miller_indices[i], u_star, /*exp_arg_limit*/ 40.,
+      /*truncate_exp_arg*/ true);
+  }
+  return result;
+}
+
+template <typename FloatType>
+af::shared<FloatType> overall_anisotropic_scale(
+  af::const_ref<cctbx::miller::index<> > const& miller_indices,
+  af::shared<FloatType> const& a,
+  cctbx::uctbx::unit_cell const& unit_cell)
+{
+  af::shared<FloatType> result(miller_indices.size(), 0);
+  af::double6 p = unit_cell.reciprocal_parameters();
+  FloatType as=p[0], bs=p[1], cs=p[2];
+  for(std::size_t i=0; i < miller_indices.size(); i++) {
+    cctbx::miller::index<> const& miller_index = miller_indices[i];
+    int h=miller_index[0], k=miller_index[1], l=miller_index[2];
+    FloatType s = 1./unit_cell.stol_sq(miller_index);
+    result[i]=
+      h*h*as*as*s   * a[0]+
+      h*h*as*as     * a[1]+
+      k*k*bs*bs*s   * a[2]+
+      k*k*bs*bs     * a[3]+
+      l*l*cs*cs*s   * a[4]+
+      l*l*cs*cs     * a[5]+
+      2*k*l*bs*cs*s * a[6]+
+      2*k*l*bs*cs   * a[7]+
+      2*h*l*as*cs*s * a[8]+
+      2*h*l*as*cs   * a[9]+
+      2*h*k*as*bs*s * a[10]+
+      2*h*k*as*bs   * a[11];
+  }
+  return result;
+}
+
 template <typename FloatType=double,
           typename ComplexType=std::complex<double> >
 class core
