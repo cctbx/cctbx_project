@@ -545,7 +545,8 @@ public:
     MMTBX_ASSERT(f_obs.size() == miller_indices.size());
     af::versa<FloatType, af::mat_grid> m_(af::mat_grid(12, 12), 0);
     af::versa<FloatType, af::mat_grid> m(af::mat_grid(12, 12), 0);
-    af::tiny<FloatType, 12> b(12, 0);
+    af::tiny<FloatType, 12> b;
+    b.fill(0);
     af::double6 p = unit_cell.reciprocal_parameters();
     FloatType as=p[0], bs=p[1], cs=p[2];
     for(std::size_t i=0; i < f_obs.size(); i++) {
@@ -553,21 +554,20 @@ public:
       int h=miller_index[0], k=miller_index[1], l=miller_index[2];
       FloatType fm_i = std::abs(f_model[i]);
       FloatType s = 1./unit_cell.stol_sq(miller_index);
-      FloatType const v[] = {
-        h*h*as*as*s,
-        h*h*as*as,
-        k*k*bs*bs*s,
-        k*k*bs*bs,
-        l*l*cs*cs*s,
-        l*l*cs*cs,
-        2*k*l*bs*cs*s,
-        2*k*l*bs*cs,
-        2*h*l*as*cs*s,
-        2*h*l*as*cs,
-        2*h*k*as*bs*s,
-        2*h*k*as*bs
-      };
-      af::tiny<FloatType, 12> v_(v, v+12);
+      af::tiny<FloatType, 12> v_;
+      FloatType* v = v_.begin();
+      *v++ = h*h*as*as*s;
+      *v++ = h*h*as*as;
+      *v++ = k*k*bs*bs*s;
+      *v++ = k*k*bs*bs;
+      *v++ = l*l*cs*cs*s;
+      *v++ = l*l*cs*cs;
+      *v++ = 2*k*l*bs*cs*s;
+      *v++ = 2*k*l*bs*cs;
+      *v++ = 2*h*l*as*cs*s;
+      *v++ = 2*h*l*as*cs;
+      *v++ = 2*h*k*as*bs*s;
+      *v++ = 2*h*k*as*bs;
       b += f_obs[i]*fm_i*v_;
       v_ *= fm_i;
       scitbx::matrix::outer_product(m_.begin(),v_.const_ref(),v_.const_ref());
