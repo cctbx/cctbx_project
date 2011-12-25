@@ -92,10 +92,12 @@ def run_signal_strength_core(params,E):
          #instead of self.R.setTransform, which requires pickled spotfinder:
          self.R.T = PointTransform()
          self.R.S = self.R.spotfinder
-         self.R.T.setImage(self.R.S,couple)
+         self.R.T.setImage(spotfinder=self.R.S,subwindow_origin=couple,commands=params)
          self.R.title(self.image_name)
          #try:
-         pil_image = graphic(self.image_name,couple)
+         pil_image = graphic(filein = self.image_name,
+                             couple = couple,
+                             commands = params)
          self.R.image(pil_image)
          #except:
          #  print "failure, file %s"%self.filename
