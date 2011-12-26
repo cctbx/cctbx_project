@@ -114,4 +114,15 @@ def run_signal_strength_core(params,E):
     pdf.image_name = params.distl.image
     pdf.set_spotfinder(Org.S)
     pdf.make_image_plots_detail()
+
+  if params.distl.image_viewer == True:
+    try:
+      from rstbx.viewer.spotfinder_wrap import spot_wrapper
+      spot_wrapper(params).display(path = params.distl.image,
+                                   organizer = Org)
+    except ImportError,e:
+      from libtbx.utils import Sorry
+      # must use phenix.wxpython for wx display
+      raise Sorry(str(e)+" Try setting env variable PHENIX_GUI_ENVIRONMENT=1")
+
   return Org
