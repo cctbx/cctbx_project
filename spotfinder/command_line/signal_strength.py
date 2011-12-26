@@ -50,6 +50,10 @@ distl {
   pdf_output = None
     .type = str
     .help="File name for optional PDF graphical output for distl.signal_strength (*.pdf)"
+  image_viewer = False
+    .type = bool
+    .expert_level=2
+    .help="Open the image viewer to inspect the spotfinder spots."
   port = 8125
     .type = int
     .help="For the server version, port number to listen for requests"

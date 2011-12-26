@@ -1397,6 +1397,8 @@ rstbx/viewer/indexing.py -text
 rstbx/viewer/integration.py -text
 rstbx/viewer/processing.py -text
 rstbx/viewer/results_base.py -text
+rstbx/viewer/spotfinder_frame.py -text
+rstbx/viewer/spotfinder_wrap.py -text
 rstbx/viewer/tst.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
