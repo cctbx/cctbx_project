@@ -138,9 +138,8 @@ class intensity_data (object) :
     self.initialize()
 
   def initialize (self) :
+    self.ISIGI        = {}
     self.completeness = flex.int(self.n_refl, 0)
-    self.sum_I        = flex.double(self.n_refl, 0.)
-    self.sum_I_SIGI   = flex.double(self.n_refl, 0.)
     self.summed_N     = flex.double(self.n_refl, 0.)
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
@@ -352,11 +351,14 @@ class scaling_manager (intensity_data) :
     if (data.accept) :
       self.n_accepted    += 1
       self.completeness  += data.completeness
-      self.sum_I         += data.sum_I
-      self.sum_I_SIGI    += data.sum_I_SIGI
       self.summed_N      += data.summed_N
       self.summed_weight += data.summed_weight
       self.summed_wt_I   += data.summed_wt_I
+      for index, isigi in data.ISIGI.iteritems() :
+        if (index in self.ISIGI):
+          self.ISIGI[index] += isigi
+        else:
+          self.ISIGI[index] = isigi
     else :
       self.n_low_corr += 1
     self.uc_values.add_cell(data.indexed_cell,
@@ -380,9 +382,13 @@ class scaling_manager (intensity_data) :
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
 
+    for index, isigi in data.ISIGI.iteritems() :
+      if (index in self.ISIGI):
+        self.ISIGI[index] += isigi
+      else:
+        self.ISIGI[index] = isigi
+
     self.completeness += data.completeness
-    self.sum_I += data.sum_I
-    self.sum_I_SIGI += data.sum_I_SIGI
     self.summed_N += data.summed_N
     self.summed_weight += data.summed_weight
     self.summed_wt_I += data.summed_wt_I
@@ -409,10 +415,10 @@ class scaling_manager (intensity_data) :
       rejected_fractions=self.rejected_fractions,
       frame_d_min=self.d_min_values)
 
-  def get_overall_correlation (self) :
+  def get_overall_correlation (self, sum_I) :
     """
     Correlate the averaged intensities to the intensities from the
-    reference data set.
+    reference data set.  XXX The sum_I argument is really a kludge!
     """
     sum_xx = 0
     sum_xy = 0
@@ -424,7 +430,7 @@ class scaling_manager (intensity_data) :
       if (self.summed_N[i] <= 0):
         continue
       I_r       = self.i_model.data()[i]
-      I_o       = self.sum_I[i]/self.summed_N[i]
+      I_o       = sum_I[i]/self.summed_N[i]
       N      += 1
       sum_xx += I_r**2
       sum_yy += I_o**2
@@ -606,8 +612,16 @@ class scaling_manager (intensity_data) :
         pfactor = (1.+cos_sq_tt)/2.
         data.summed_N[pair[0]] += 1
         Intensity = result.data()[pair[1]] * pfactor / slope
-        data.sum_I[pair[0]] += Intensity
-        data.sum_I_SIGI[pair[0]] += (result.data()[pair[1]] /result.sigmas()[pair[1]])
+
+        # Add the reflection as a two-tuple of intensity and I/sig(I)
+        # to the dictionary of observations.
+        index = self.i_model.indices()[pair[0]]
+        isigi = (Intensity, result.data()[pair[1]] / result.sigmas()[pair[1]])
+        if (index in data.ISIGI):
+          data.ISIGI[index].append(isigi)
+        else:
+          data.ISIGI[index] = [isigi]
+
         sigma = result.sigmas()[pair[1]] * pfactor / slope
         variance = sigma * sigma
         data.summed_wt_I[pair[0]] += Intensity / variance
@@ -701,21 +715,32 @@ def run(args):
       print "ERROR: can't show plots"
       print "  %s" % str(e)
   print >> out, "\n"
+
+  # Sum the observations of I and I/sig(I) for each reflection.
+  sum_I = flex.double(i_model.size(), 0.)
+  sum_I_SIGI = flex.double(i_model.size(), 0.)
+  for i in xrange(i_model.size()) :
+    index = i_model.indices()[i]
+    if index in scaler.ISIGI :
+      for t in scaler.ISIGI[index]:
+        sum_I[i] += t[0]
+        sum_I_SIGI[i] += t[1]
+
   table1 = show_overall_observations(
     obs=i_model,
     redundancy=scaler.completeness,
-    I=scaler.sum_I,
-    I_SIGI=scaler.sum_I_SIGI,
+    I=sum_I,
+    I_SIGI=sum_I_SIGI,
     title="Statistics for all reflections",
     out=out)
   print >> out, ""
-  n_refl, corr = scaler.get_overall_correlation()
+  n_refl, corr = scaler.get_overall_correlation(sum_I)
   print >> out, "\n"
   table2 = show_overall_observations(
     obs=i_model,
     redundancy=scaler.summed_N,
-    I=scaler.sum_I,
-    I_SIGI=scaler.sum_I_SIGI,
+    I=sum_I,
+    I_SIGI=sum_I_SIGI,
     title="Statistics for reflections where I > 0",
     out=out)
   #from libtbx import easy_pickle
