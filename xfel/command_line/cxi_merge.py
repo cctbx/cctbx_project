@@ -311,8 +311,8 @@ class scaling_manager (intensity_data) :
         func=self,
         args=[file_name],
         callback=self.add_frame)
-    while (self.n_processed < len(file_names)) :
-      continue
+    pool.close()
+    pool.join()
 
   def _scale_all_serial (self, file_names) :
     """
