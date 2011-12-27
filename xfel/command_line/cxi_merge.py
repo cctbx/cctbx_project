@@ -208,6 +208,15 @@ class unit_cell_distribution (object) :
     self.all_uc_b_values.append(b)
     self.all_uc_c_values.append(c)
 
+  def add_cells(self, uc) :
+    """Addition operation for unit cell statistics."""
+    self.uc_a_values.extend(uc.uc_a_values)
+    self.uc_b_values.extend(uc.uc_b_values)
+    self.uc_c_values.extend(uc.uc_c_values)
+    self.all_uc_a_values.extend(uc.all_uc_a_values)
+    self.all_uc_b_values.extend(uc.all_uc_b_values)
+    self.all_uc_c_values.extend(uc.all_uc_c_values)
+
   def show_histograms (self, reference, out, n_slots=20) :
     [a0,b0,c0,alpha0,beta0,gamma0] = reference.parameters()
     print >> out, ""
@@ -300,17 +309,16 @@ class scaling_manager (intensity_data) :
     if (nproc is None) or (nproc is Auto) :
       nproc = libtbx.introspection.number_of_processors()
     pool = multiprocessing.Pool(processes=nproc)
-    for file_name in file_names :
-      # XXX scale the frame data in one of the pool processes.  when this is
-      # complete, it will immediately pass the result to self.add_frame in the
-      # main process.
-      # FIXME this is not very efficient, probably because of pickling
-      # overhead.  processing lists of files and returning a summed result
-      # would be faster, but requires refactoring.
+    # Round-robin the frames through the process pool.  Each process
+    # accumulates its own statistics in serial, and the grand total is
+    # eventually collected by the main process' _add_all_frames()
+    # function.
+    for i in xrange(nproc) :
+      sm = scaling_manager(self.miller_set, self.i_model, self.params)
       pool.apply_async(
-        func=self,
-        args=[file_name],
-        callback=self.add_frame)
+        func=sm,
+        args=[[file_names[j] for j in xrange(i, len(file_names), nproc)]],
+        callback=self._add_all_frames)
     pool.close()
     pool.join()
 
@@ -322,6 +330,7 @@ class scaling_manager (intensity_data) :
       scaled = self.scale_frame(file_name)
       if (scaled is not None) :
         self.add_frame(scaled)
+    return (self)
 
   def add_frame (self, data) :
     """
@@ -332,15 +341,14 @@ class scaling_manager (intensity_data) :
     self.n_processed += 1
     if (data is None) :
       return
-    data.show_log_out(self.log)
-    self.log.flush()
+    #data.show_log_out(self.log)
+    #self.log.flush()
     if (isinstance(data, null_data)) :
       if (data.wrong_bravais) :
         self.n_wrong_bravais += 1
       elif (data.wrong_cell) :
         self.n_wrong_cell += 1
       return
-    self.corr_values.append(data.corr)
     if (data.accept) :
       self.n_accepted    += 1
       self.completeness  += data.completeness
@@ -360,6 +368,31 @@ class scaling_manager (intensity_data) :
       self.d_min_values.append(data.d_min)
     self.corr_values.append(data.corr)
     del data
+
+  def _add_all_frames (self, data) :
+    """The _add_all_frames() function collects the statistics
+    accumulated in @p data by the individual scaling processes in
+    process pool.
+    """
+    self.n_accepted += data.n_accepted
+    self.n_low_corr += data.n_low_corr
+    self.n_processed += data.n_processed
+    self.n_wrong_bravais += data.n_wrong_bravais
+    self.n_wrong_cell += data.n_wrong_cell
+
+    self.completeness += data.completeness
+    self.sum_I += data.sum_I
+    self.sum_I_SIGI += data.sum_I_SIGI
+    self.summed_N += data.summed_N
+    self.summed_weight += data.summed_weight
+    self.summed_wt_I += data.summed_wt_I
+
+    self.corr_values.extend(data.corr_values)
+    self.d_min_values.extend(data.d_min_values)
+    self.observations.extend(data.observations)
+    self.rejected_fractions.extend(data.rejected_fractions)
+
+    self.uc_values.add_cells(data.uc_values)
 
   def show_unit_cell_histograms (self) :
     self.uc_values.show_histograms(
@@ -457,9 +490,9 @@ class scaling_manager (intensity_data) :
     all_obs.show_summary(self.log, prefix="  ")
     return mtz_file, all_obs
 
-  def __call__ (self, file_name) :
+  def __call__ (self, file_names) :
     try :
-      return self.scale_frame(file_name)
+      return self._scale_all_serial(file_names)
     except Exception, e :
       print >> self.log, str(e)
       return None
