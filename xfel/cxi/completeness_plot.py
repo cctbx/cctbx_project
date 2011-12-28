@@ -4,13 +4,8 @@ from cctbx.crystal import symmetry
 from rstbx.apps.stills.simple_integration import show_observations
 op = os.path
 
-def get_observations(set,dir_name,params):
+def get_observations(set,file_names,params):
   from libtbx import easy_pickle
-
-  file_names = []
-  for file_name in os.listdir(dir_name):
-    if (file_name.endswith(".pickle")):
-      file_names.append(file_name)
 
   print "Number of pickle files found:", len(file_names)
   print
@@ -21,7 +16,7 @@ def get_observations(set,dir_name,params):
   for name in file_names:
     if name=="stats.pickle":continue
 
-    full_path = file_name=op.join(dir_name, name)
+    full_path = file_name = op.abspath(name)
     obj = easy_pickle.load(file_name=full_path)
     if not obj.has_key("observations"): continue
     unit_cell = obj["observations"][0].unit_cell()
@@ -75,9 +70,6 @@ cut_short_at = None
   .type = int
 """).show()
   print
-  assert len(phil.remaining_args) == 1
-  arg = phil.remaining_args[0]
-  dir_name = arg
   work_params = phil.work.extract()
   assert work_params.d_min is not None
 
@@ -101,8 +93,10 @@ cut_short_at = None
   #resolution_cells = recip_sphere_volume/recip_cell_volume
   #print "Number of asu's in sphere=",resolution_cells/miller_set.size()
 
-  results = get_observations(miller_set,dir_name,work_params)
+  results = get_observations(miller_set,phil.remaining_args,work_params)
 
+  # Create (and initialise?) arrays for statistics on the set of the
+  # observed reflections which are present in the reference data set.
   completeness = flex.int(miller_set.size())
   sum_I        = flex.double(miller_set.size())
   sum_I_SIGI   = flex.double(miller_set.size())
@@ -126,6 +120,9 @@ cut_short_at = None
           except ValueError: pass
     print
 
+    # Match up the observed intensities against the reference data
+    # set, i_model, instead of the pre-generated miller set,
+    # miller_set.
     matches = miller.match_indices(
       miller_set.indices(),
       result.indices())
@@ -134,6 +131,7 @@ cut_short_at = None
     #  print hkl, result.data()[ih]
     print
 
+    # Update the count for each matched reflection.
     completeness +=  (~matches.single_selection(0)).as_int()
     for pair in matches.pairs():
       sum_I[pair[0]] += result.data()[pair[1]]
