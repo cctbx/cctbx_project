@@ -140,7 +140,7 @@ class intensity_data (object) :
   def initialize (self) :
     self.ISIGI        = {}
     self.completeness = flex.int(self.n_refl, 0)
-    self.summed_N     = flex.double(self.n_refl, 0.)
+    self.summed_N     = flex.int(self.n_refl, 0)
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
 
@@ -298,7 +298,7 @@ class scaling_manager (intensity_data) :
       self.n_wrong_bravais
     print >> self.log, "  %d rejected for unit cell outliers" % \
       self.n_wrong_cell
-    print >> self.log, "  %d rejected due to poor correlateion" % \
+    print >> self.log, "  %d rejected due to poor correlation" % \
       self.n_low_corr
 
   def _scale_all_parallel (self, file_names) :
@@ -554,11 +554,10 @@ class scaling_manager (intensity_data) :
     data = frame_data(self.n_refl, file_name)
     data.set_indexed_cell(indexed_cell)
     data.d_min = result.d_min()
-    # Update the count for each matched reflection.
+    # Update the count for each matched reflection.  This counts
+    # reflections with negative intensities, too.
     data.completeness +=  (~matches.single_selection(0)).as_int()
-    # Initialise first- and second-order statistics.  Use the average
-    # wavelength for run 220 (the standard deviation of the wavelength
-    # is small, 0.001809.
+    # Initialise first- and second-order statistics.
     N          = 0
     sum_xx     = 0
     sum_xy     = 0
@@ -572,15 +571,11 @@ class scaling_manager (intensity_data) :
       if (result.data()[pair[1]] <= 0):
         data.n_rejected += 1
         continue
-      #pfactor = (1 + cos_sq(twotheta))/2
       cos_tt = math.cos(result.two_theta(wavelength).data()[pair[1]])
       cos_sq_tt = cos_tt * cos_tt
       pfactor = (1.+cos_sq_tt)/2.
-      # XXX I need to think about the SIGI a bit.
-      #sum_I[pair[0]] += result.data()[pair[1]] * pfactor
-      #sum_I_SIGI[pair[0]] += (result.data()[pair[1]] /result.sigmas()[pair[1]])
       # Update statistics using reference intensities (I_r), and
-      # observed intensities (I_o).  XXX Square I_r here?  See above!
+      # observed intensities (I_o).
       I_r = self.i_model.data()[pair[0]]
       I_o = result.data()[pair[1]] * pfactor
       N      += 1
@@ -606,11 +601,9 @@ class scaling_manager (intensity_data) :
           continue
         # pfactor is the polarization correction for reflected light (doesn't
         # account for incident polarization)
-        #pfactor = (1 + cos_sq(twotheta))/2
         cos_tt = math.cos(result.two_theta(wavelength).data()[pair[1]])
         cos_sq_tt = cos_tt * cos_tt
         pfactor = (1.+cos_sq_tt)/2.
-        data.summed_N[pair[0]] += 1
         Intensity = result.data()[pair[1]] * pfactor / slope
 
         # Add the reflection as a two-tuple of intensity and I/sig(I)
@@ -624,6 +617,7 @@ class scaling_manager (intensity_data) :
 
         sigma = result.sigmas()[pair[1]] * pfactor / slope
         variance = sigma * sigma
+        data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
         data.summed_weight[pair[0]] += 1. / variance
     else :
