@@ -584,8 +584,11 @@ class scaling_manager (intensity_data) :
       sum_xy += I_r * I_o
       sum_x  += I_r
       sum_y  += I_o
-    # Least squares fit of line to I_r vs I_o.
+    # Linearly fit I_r to I_o, i.e. find slope and offset such that
+    # I_o = slope * I_r + offset, optimal in a least-squares sense.
+    # XXX This is backwards, really.
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
+    offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
     data.corr = corr
