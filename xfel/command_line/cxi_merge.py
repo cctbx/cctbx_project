@@ -374,7 +374,7 @@ class scaling_manager (intensity_data) :
   def _add_all_frames (self, data) :
     """The _add_all_frames() function collects the statistics
     accumulated in @p data by the individual scaling processes in
-    process pool.
+    process pool.  XXX Sure this does not need a lock?
     """
     self.n_accepted += data.n_accepted
     self.n_low_corr += data.n_low_corr
@@ -729,8 +729,7 @@ def run(args):
   table1 = show_overall_observations(
     obs=i_model,
     redundancy=scaler.completeness,
-    I=sum_I,
-    I_SIGI=sum_I_SIGI,
+    ISIGI=scaler.ISIGI,
     title="Statistics for all reflections",
     out=out)
   print >> out, ""
@@ -739,8 +738,7 @@ def run(args):
   table2 = show_overall_observations(
     obs=i_model,
     redundancy=scaler.summed_N,
-    I=sum_I,
-    I_SIGI=sum_I_SIGI,
+    ISIGI=scaler.ISIGI,
     title="Statistics for reflections where I > 0",
     out=out)
   #from libtbx import easy_pickle
@@ -772,12 +770,17 @@ def run(args):
   easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
   return result
 
-def show_overall_observations(obs,redundancy,I,I_SIGI,out=None,
+def show_overall_observations(obs,redundancy,ISIGI,out=None,
     title=None):
   if out==None:
     out = sys.stdout
   obs.setup_binner(n_bins = 15)
   result = []
+
+  # R_iso_tot and R_merge_tot are two-membered lists, holding the
+  # numerator and the denominator.
+  R_iso_tot = [0, 0]
+  R_merge_tot = [0, 0]
   for i_bin in obs.binner().range_used():
     sel_w = obs.binner().selection(i_bin)
     sel_fo_all = obs.select(sel_w)
@@ -789,9 +792,40 @@ def show_overall_observations(obs,redundancy,I,I_SIGI,out=None,
     n_present = sel_redundancy.size() - sel_absent
     sel_complete_tag = "[%d/%d]" % (n_present, sel_redundancy.size())
     sel_measurements = flex.sum(sel_redundancy)
-    sel_data = I.select(sel_w)
-    sel_sig = I_SIGI.select(sel_w)
-    if (sel_data.size() > 0 and sel_measurements>0):
+
+    # Per-bin sum of I and I/sig(I) for each observation.  Accumulate
+    # numerators for R_merge (Stout & Jensen, 1968) and R_iso (Chapman
+    # et al., 2011).
+    I_sum = 0
+    I_sigI_sum = 0
+    R_iso = [0, 0]
+    R_merge = [0, 0]
+    for i in obs.binner().array_indices(i_bin) :
+      index = obs.indices()[i]
+      if (index in ISIGI) :
+        # Compute m, the "merged" intensity, as the average intensity
+        # of all observations of the reflection with the given index.
+        N = 0
+        m = 0
+        for t in ISIGI[index] :
+          I_sigI_sum += t[1]
+          N += 1
+          m += t[0]
+        I_sum += m
+        if (N > 0):
+          m /= N
+          R_iso[0] += abs(m - obs.data()[i])
+          R_iso[1] += m
+          for t in ISIGI[index] :
+            R_merge[0] += abs(t[0] - m)
+            R_merge[1] += t[0]
+
+    # Keep track of total sums for global statistics.
+    for i in xrange(2) :
+      R_iso_tot[i] += R_iso[i]
+      R_merge_tot[i] += R_merge[i]
+
+    if (sel_measurements > 0 and R_iso[1] > 0 and R_merge[1] > 0):
       bin = resolution_bin(
         i_bin        = i_bin,
         d_range      = d_range,
@@ -800,24 +834,30 @@ def show_overall_observations(obs,redundancy,I,I_SIGI,out=None,
         complete_tag = sel_complete_tag,
         completeness = n_present / sel_redundancy.size(),
         measurements = sel_measurements,
-        mean_I       = flex.sum(sel_data)/sel_measurements,
-        mean_I_sigI  = flex.sum(sel_sig)/sel_measurements,
+        mean_I       = I_sum / sel_measurements,
+        mean_I_sigI  = I_sigI_sum / sel_measurements,
+        R_iso        = R_iso[0] / R_iso[1],
+        R_merge      = R_merge[0] / R_merge[1],
         )
       result.append(bin)
   if (title is not None) :
     print >> out, title
-  print >>out, "\n Bin  Resolution Range      Compl. <Redundancy>  n_meas  <I>     <I/sig(I)>"
+  print >>out, "\n Bin  Resolution Range  Completeness <Redundancy>  n_meas      <I> <I/sig(I)>    R_iso  R_merge"
   for bin in result:
-    fmt = " %s %s %s %s       %s      %s   %s"
+    fmt = " %s %s %s       %s  %s %s   %s %s %s"
     print >>out,fmt%(
       format_value("%3d",   bin.i_bin),
       format_value("%-13s", bin.d_range),
       format_value("%13s",  bin.complete_tag),
-      format_value("%4.0f", bin.redundancy),
-      format_value("%8d",   bin.measurements),
-      format_value("%8.1f", bin.mean_I),
-      format_value("%8.1f", bin.mean_I_sigI),
+      format_value("%6.2f", bin.redundancy),
+      format_value("%6d",   bin.measurements),
+      format_value("%8.0f", bin.mean_I),
+      format_value("%8.3f", bin.mean_I_sigI),
+      format_value("%8.3f", bin.R_iso),
+      format_value("%8.3f", bin.R_merge)
     )
+  print "Global R_iso   ", R_iso_tot[0] / R_iso_tot[1]
+  print "Global R_merge ", R_merge_tot[0] / R_merge_tot[1]
   # XXX generate table object for displaying plots
   if (title is None) :
     title = "Data statistics by resolution"
@@ -867,6 +907,8 @@ class resolution_bin(object):
                measurements  = None,
                mean_I        = None,
                mean_I_sigI   = None,
+               R_iso         = None,
+               R_merge       = None,
                sigmaa        = None):
     adopt_init_args(self, locals())
 
