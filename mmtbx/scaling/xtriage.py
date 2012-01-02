@@ -941,6 +941,7 @@ class xtriage_summary (object) :
     data_strength = getattr(basic_results, "data_strength")
     self.completeness_table = getattr(data_strength, "table_for_gui", None)
     self.completeness_info = getattr(data_strength, "completeness_info", None)
+    self.resolution_cut = getattr(data_strength, "resolution_cut", None)
     # WORRISOME SHELLS, MEAN INTENSITY, Z-SCORES/COMPLETENESS,
     # ANOMALOUS SIGNAL, <I/SIGI> BY SHELL
     data_stats_attrs = ["suggested_reso_for_hyss"]
