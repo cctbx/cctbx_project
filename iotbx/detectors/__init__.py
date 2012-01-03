@@ -1,6 +1,5 @@
 import os
 import re
-import math
 
 import boost.python
 ext = boost.python.import_ext("iotbx_detectors_ext")
