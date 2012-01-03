@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from wx.lib.agw import pyprogress
 import wx
 from libtbx import thread_utils
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 import threading
 
 JOB_START_ID = wx.NewId()
@@ -207,6 +207,7 @@ class ProcessDialog (wx.Dialog) :
     self.callback = callback
     self.process = None
     self._error = None
+    self._aborted = False
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     szr2 = wx.BoxSizer(wx.VERTICAL)
@@ -232,6 +233,7 @@ class ProcessDialog (wx.Dialog) :
 
   def OnAbort (self, event) :
     self.process.abort()
+    self._aborted = True
     self.EndModal(wx.ID_CANCEL)
 
   def OnError (self, event) :
@@ -240,6 +242,9 @@ class ProcessDialog (wx.Dialog) :
 
   def exception_raised (self) :
     return (self._error is not None)
+
+  def was_aborted (self) :
+    return (self._aborted)
 
   def handle_error (self) :
     if isinstance(self._error, Exception) :
@@ -292,11 +297,16 @@ def run_function_as_process_in_dialog (
     buffer_stdout=True,
     sleep_after_start=1)
   result = None
+  abort = False
   if (dlg.run(p) == wx.ID_OK) :
     result = dlg.get_result()
   elif dlg.exception_raised() :
     dlg.handle_error()
+  elif (dlg.was_aborted()) :
+    abort = True
   wx.CallAfter(dlg.Destroy)
+  if (abort) :
+    raise Abort()
   return result
 
 if (__name__ == "__main__") :
