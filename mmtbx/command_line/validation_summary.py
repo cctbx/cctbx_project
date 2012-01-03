@@ -50,34 +50,14 @@ class summary (object) :
     self.r_free = None
     self.rms_bonds = None
     self.rms_angles = None
+    self.d_min = None
     if (pdb_file is not None) :
-      pdb_lines = open(pdb_file, "r").readlines()
-      for line in pdb_lines :
-        if (line.startswith("REMARK ")) :
-          if ("Final:" in line) :
-            fields = line.strip().split()
-            for i, field in enumerate(fields) :
-              if (field == "r_work") :
-                self.r_work = float(fields[i+2])
-              elif (field == "r_free") :
-                self.r_free = float(fields[i+2])
-              elif (field == "bonds") :
-                self.rms_bonds = float(fields[i+2])
-              elif (field == "angles") :
-                self.rms_angles = float(fields[i+2])
-            break
-          elif ("3   R VALUE            (WORKING SET)" in line) :
-            try :
-              self.r_work = float(line.split(":")[1].strip())
-            except ValueError :
-              pass
-          elif ("3   FREE R VALUE                    " in line) :
-            try :
-              self.r_free = float(line.split(":")[1].strip())
-            except ValueError :
-              pass
-        elif (line.startswith("REMARK 200")) :
-          break
+      from iotbx.pdb import extract_rfactors_resolutions_sigma
+      published_results = extract_rfactors_resolutions_sigma.extract(
+        file_name=pdb_file)
+      self.r_work = published_results.r_work
+      self.r_free = published_results.r_free
+      self.d_min   = published_results.high
 
   def show (self, out=sys.stdout, prefix="  ") :
     def fs (format, value) :
@@ -100,6 +80,8 @@ class summary (object) :
     if (self.rms_angles is not None) :
       print >> out, "%sRMS(angles)           = %6.2f" % (prefix,
         self.rms_angles)
+    if (self.d_min is not None) :
+      print >> out, "%sHigh resolution       = %6.2f" % (prefix, self.d_min)
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) :
