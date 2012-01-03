@@ -2630,7 +2630,8 @@ class array(set):
     else:
       counts = self.binner().counts()
       for i in self.binner().range_used():
-        mean.data[i] *= counts[i]
+        if (mean.data[i] is not None):
+          mean.data[i] *= counts[i]
       return mean
 
   def sum_sq(self, use_binning=False, use_multiplicities=False):
