@@ -3,6 +3,9 @@ import wx
 from rstbx.viewer.frame import XrayFrame,SettingsFrame,SettingsPanel
 
 def derived_draw_spotfinder_spots(self,dc):
+  self.organizer.update_spotfinder()
+  self.spotfinder = self.organizer.S
+
   if self.settings.show_all_pix:
     for spot in self.spotfinder.images[self.frames[0]]["spots_total"]:
       for pxl in spot.bodypixels:
@@ -42,6 +45,7 @@ class SpotFrame(XrayFrame) :
     self.viewer.horizons_phil = self.horizons_phil
     self.viewer.spotfinder = self.spot_organizer.S
     self.viewer.frames = self.spot_organizer.frames
+    self.viewer.organizer = self.spot_organizer
 
   def OnShowSettings (self, event) :
     if (self.settings_frame is None) :
@@ -89,7 +93,7 @@ class SpotSettingsPanel (SettingsPanel) :
     # CONTROLS 1:  Lay them out on the display
     # Zoom control
     self.zoom_ctrl = wx.Choice(self, -1,
-      choices=["Auto", "25%", "50%", "100%", "200%", "400%", "800%"])
+      choices=["Auto", "25%", "50%", "100%", "200%", "400%", "800%", "1600%"])
     self.zoom_ctrl.SetSelection(self.settings.zoom_level)
     box.Add(self.zoom_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._sizer.Fit(self)
@@ -127,6 +131,19 @@ class SpotSettingsPanel (SettingsPanel) :
     self.all_pix.SetValue(self.settings.show_all_pix)
     s.Add(self.all_pix, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
+    # Minimum spot area control
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    from wxtbx.phil_controls.intctrl import IntCtrl
+    from wxtbx.phil_controls import EVT_PHIL_CONTROL
+    self.minspotarea_ctrl = IntCtrl(self, -1, pos=(300,180), size=(80,-1),
+      value=self.GetParent().GetParent().horizons_phil.distl.minimum_spot_area,
+      name="Minimum spot area (pxls)")
+    self.minspotarea_ctrl.SetOptional(False)
+    box.Add(self.minspotarea_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txtd = wx.StaticText(self, -1,  "Minimum spot area (pxls)",)
+    box.Add(txtd, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    s.Add(box)
+
     self.collect_values()
 
     # CONTROLS 3:  Bind events to actions
@@ -136,6 +153,7 @@ class SpotSettingsPanel (SettingsPanel) :
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdateCM, self.ctr_mass)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdateCM, self.max_pix)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdateCM, self.all_pix)
+    self.Bind(EVT_PHIL_CONTROL, self.OnUpdateCM, self.minspotarea_ctrl)
 
     txt3 = wx.StaticText(self, -1, "Thumbnail view:")
     s.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -157,5 +175,5 @@ class SpotSettingsPanel (SettingsPanel) :
 
   def OnUpdateCM (self, event) :
     self.collect_values()
+    self.GetParent().GetParent().horizons_phil.distl.minimum_spot_area = self.minspotarea_ctrl.GetPhilValue()
     self.GetParent().GetParent().update_settings(layout=False)
-
