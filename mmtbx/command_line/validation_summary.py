@@ -58,6 +58,13 @@ class summary (object) :
       self.r_work = published_results.r_work
       self.r_free = published_results.r_free
       self.d_min   = published_results.high
+      lines = open(pdb_file).readlines()
+      for line in lines :
+        if (line.startswith("REMARK Final:")) :
+          fields = line.strip().split()
+          self.rms_bonds = float(fields[-4])
+          self.rms_angles = float(fields[-1])
+          break
 
   def show (self, out=sys.stdout, prefix="  ") :
     def fs (format, value) :
