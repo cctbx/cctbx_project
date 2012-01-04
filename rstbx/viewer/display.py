@@ -58,7 +58,7 @@ class XrayView (wx.Panel) :
 
   def update_settings (self, layout=True) :
     self.line = None
-    scales = [0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
+    scales = [0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
     zoom = scales[self.settings.zoom_level]
     if (self._img is not None) :
       self._img.set_zoom(zoom)
