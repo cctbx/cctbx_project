@@ -1,8 +1,6 @@
 
-# XXX: these functions are utilities used by the Phenix GUI for quickly
-# converting data and map formats on the fly.  the main use of this is
-# in phenix.refine and any program that opens maps in PyMOL.
-# tested as part of Phenix regression tests (since it requires files)
+# XXX most of the functions in this module are deprectated and should be
+# removed as soon as someone has time.
 
 from __future__ import division
 import libtbx.phil

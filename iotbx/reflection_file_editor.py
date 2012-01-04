@@ -122,7 +122,7 @@ mtz_file
       .help = Multiplies data with the given factor
     remove_negatives = False
       .type = bool
-      .short_caption = Remove negative intensities
+      .short_caption = Remove negative values
     massage_intensities = False
       .type = bool
     filter_by_signal_to_noise = None

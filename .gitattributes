@@ -898,12 +898,12 @@ iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
 iotbx/file_reader.py svneol=native#text/x-python
 iotbx/gui_tools/__init__.py -text
 iotbx/gui_tools/import_data_and_flags.py -text
-iotbx/gui_tools/maps.py -text
 iotbx/gui_tools/models.py -text
 iotbx/gui_tools/reflections.py -text
 iotbx/gui_tools/tst.py -text
 iotbx/libtbx_refresh.py svneol=native#text/x-python
 iotbx/logfiles.py -text
+iotbx/map_tools.py -text
 iotbx/mtz/tst_dano.py svneol=native#text/x-python
 iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
 iotbx/pdb/Hy36.java svneol=native#text/plain
@@ -951,6 +951,7 @@ iotbx/ranges.py -text
 iotbx/reflection_file_editor.py -text
 iotbx/regression/tst_add_conformations.py -text
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
+iotbx/regression/tst_map_tools.py -text
 iotbx/regression/tst_pdb_as_fasta.py -text
 iotbx/regression/tst_reflection_file_editor.py -text
 iotbx/regression/tst_reindex.py -text

@@ -11,6 +11,13 @@ MAP_TYPE_F_CALC = 32
 MAP_TYPE_FILLED = 64
 
 class server (object) :
+  """
+  Manager for files containing map coefficients (either as complex arrays or
+  separate F, PHI, and optional FOM).  Once an MTZ file or collection of
+  Miller arrays is loaded, individual maps can be quickly retrieved, and it
+  includes built-in recognition of standard map labels used in PHENIX (and
+  CCP4).
+  """
   def __init__ (self, file_name=None, miller_arrays=()) :
     assert (file_name is not None) or (len(miller_arrays) > 0)
     self.file_name = file_name
@@ -90,7 +97,7 @@ class server (object) :
                                  phi_label=None,
                                  fom_label=None) :
     f_array, phi_array, fom_array = None, None, None
-    for array in self.data_arrays :
+    for array in self.data_arrays+self.map_coeffs :
       if (f_array is None) :
         labels = array.info().labels
         label_string = array.info().label_string()
@@ -240,14 +247,17 @@ class server (object) :
   def _convert_amplitudes_and_phases (self, f_label=None, phi_label=None,
       fom_label=None, weighted=True) :
     f, phi, fom = self.get_amplitudes_and_phases(f_label, phi_label, fom_label)
-    if (f is None) or (phi is None) :
+    if (f is None) or ((not f.is_complex_array()) and (phi is None)) :
       raise RuntimeError(("Couldn't find amplitude or phase arrays in %s.\n"+
         "File contents:\n%s") % (self.file_name, "\n".join(self.array_labels)))
     if (f.anomalous_flag()) :
       f = f.merge_bijvoet_mates()
-    if (weighted) and (fom is not None) :
-      f = f * fom
-    map_coeffs = f.phase_transfer(phi, deg=True) # XXX is deg always True?
+    if (f.is_complex_array()) :
+      map_coeffs = f
+    else :
+      if (weighted) and (fom is not None) :
+        f = f * fom
+      map_coeffs = f.phase_transfer(phi, deg=True) # XXX is deg always True?
     return map_coeffs
 
   def convert_any_map (self, f_label, phi_label, fom_label, **kwds) :
@@ -407,6 +417,8 @@ def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     map_data=map_data,
     labels=flex.std_string(["iotbx.map_conversion.write_ccp4_map_box"]))
 
+########################################################################
+# convenience functions
 def convert_resolve_map (mtz_file, **kwds) :
   server_ = server(file_name=mtz_file)
   return server_.convert_resolve_map(**kwds)
@@ -418,3 +430,50 @@ def convert_solve_map (mtz_file, **kwds) :
 def convert_ccp4_map (mtz_file, **kwds) :
   server_ = server(file_name=mtz_file)
   return server_.convert_ccp4_map(**kwds)
+
+def convert_any_map_coeffs (mtz_file, **kwds) :
+  server_ = server(file_name=mtz_file)
+  return server_.convert_any_map(**kwds)
+
+def convert_phenix_maps (file_base, **kwds) :
+  server_ = server(file_name=file_base+".mtz")
+  return server_.convert_phenix_maps(file_base, **kwds)
+
+def convert_map_coefficients (map_coefficients,
+                              mtz_file,
+                              **kwds) :
+  """
+  Convert the map coefficients in an MTZ file created by phenix.maps or
+  phenix.refine (and related applications).  The parameter block expected in
+  map_coefficients is actually in mmtbx/maps/__init__.py, but the I/O belongs
+  here.
+  """
+  outputs = []
+  server_ = server(file_name=mtz_file)
+  for map in map_coefficients :
+    array_label = map.mtz_label_amplitudes + "," + map.mtz_label_phases
+    map_file = server_.convert_any_map(array_label, None, None, **kwds)
+    outputs.append((map_file, map.map_type))
+  return outputs
+
+class write_ccp4_maps_wrapper (object) :
+  """
+  Callable object for running map conversions in parallel (probably overkill,
+  but anything we can do to take advantage of multiple CPUs is worth trying).
+  """
+  def __init__ (self, pdb_hierarchy, map_coeffs, output_files,
+      resolution_factor) :
+    adopt_init_args(self, locals())
+
+  def run (self) :
+    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+    for map_coeffs, file_name in zip(self.map_coeffs, self.output_files) :
+      if (map_coeffs is None) :
+        continue
+      fft_map = map_coeffs.fft_map(resolution_factor=self.resolution_factor)
+      write_ccp4_map(
+        sites_cart=sites_cart,
+        unit_cell=map_coeffs.unit_cell(),
+        map_data=fft_map.real_map(),
+        n_real=fft_map.n_real(),
+        file_name=file_name)
