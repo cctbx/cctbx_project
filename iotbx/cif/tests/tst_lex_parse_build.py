@@ -54,9 +54,6 @@ def exercise_miller_arrays_as_cif_block():
   else: raise Exception_expected
   cif_model = reader(input_string=cif_global, strict=False).model()
   assert not show_diff(str(cif_model), """\
-data_global_
-_a                                1
-_b                                2
 data_1
 _c                                3
 _d                                4

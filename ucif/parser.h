@@ -6,7 +6,6 @@
 
 #include <ucif/cifLexer.h>
 #include <ucif/cifParser.h>
-#include <ucif/cifWalker.h>
 #include <ucif/utils.h>
 
 namespace ucif {
@@ -37,29 +36,13 @@ class parser
       psr->errors = builder->new_array();
       lxr->pLexer->rec->displayRecognitionError = lexer_displayRecognitionError;
       lxr->errors = builder->new_array();
-      cif_AST = psr->parse(psr, strict);
-      if (lxr->errors->size() == 0 && psr->errors->size() == 0 && cif_AST.tree != NULL) {
-        nodes   = antlr3CommonTreeNodeStreamNewTree(cif_AST.tree, ANTLR3_SIZE_HINT);
-        tree_psr        = cifWalkerNew(nodes);
-        tree_psr->errors = builder->new_array();
-        tree_psr->parse(tree_psr, builder);
-      }
-      else {
-        tree_psr = NULL;
-      }
+      psr->parse(psr, builder, strict);
       fflush(stderr);
     }
 
     ~parser()
     {
       // Essential to clean up after ourselves (in reverse order)
-      if (tree_psr != NULL) {
-        nodes->free(nodes);
-        nodes = NULL;
-        delete tree_psr->errors;
-        tree_psr->free(tree_psr);
-        tree_psr = NULL;
-      }
       delete psr->errors;
       delete lxr->errors;
       psr->free(psr);
@@ -70,13 +53,10 @@ class parser
 
     pcifLexer lxr;
     pcifParser psr;
-    pcifWalker tree_psr;
 
   private:
     pANTLR3_COMMON_TOKEN_STREAM tstream;
     pANTLR3_INPUT_STREAM input;
-    pANTLR3_COMMON_TREE_NODE_STREAM     nodes;
-    cifParser_parse_return cif_AST;
 
 };
 

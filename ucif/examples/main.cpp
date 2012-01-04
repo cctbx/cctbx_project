@@ -69,26 +69,18 @@ int main (int argc, char *argv[])
   ucif::example::my_builder builder;
   ucif::parser parsed(&builder, input_string, filename, /*strict=*/true);
 
-  // Were there any lexing/parsing/tree walking errors?
+  // Were there any lexing/parsing errors?
   std::vector<std::string> lexer_errors =
     dynamic_cast<ucif::example::my_array_wrapper*>(parsed.lxr->errors)->array;
   std::vector<std::string> parser_errors =
     dynamic_cast<ucif::example::my_array_wrapper*>(parsed.psr->errors)->array;
-  std::vector<std::string> tree_walker_errors;
-  if (parsed.tree_psr != NULL) {
-    tree_walker_errors =
-      dynamic_cast<ucif::example::my_array_wrapper*>(parsed.tree_psr->errors)->array;
-  }
   for (int i=0;i<lexer_errors.size();i++) {
     std::cout << lexer_errors[i] << std::endl;
   }
   for (int i=0;i<parser_errors.size();i++) {
     std::cout << parser_errors[i] << std::endl;
   }
-  for (int i=0;i<tree_walker_errors.size();i++) {
-    std::cout << tree_walker_errors[i] << std::endl;
-  }
-  if (lexer_errors.size() + parser_errors.size() + tree_walker_errors.size() == 0) {
+  if (lexer_errors.size() + parser_errors.size() == 0) {
     std::cout << "Congratulations! " << argv[1] <<
     " is a syntactically correct CIF file!" << std::endl;
   }

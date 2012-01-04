@@ -33,7 +33,7 @@ gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
 
 g++ -o cif_parser -I $LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 -I$LIBTBX_UCIF/../ \
 $LIBTBX_UCIF/examples/main.cpp $LIBTBX_UCIF/cifLexer.cpp \
-$LIBTBX_UCIF/cifParser.cpp $LIBTBX_UCIF/cifWalker.cpp \
+$LIBTBX_UCIF/cifParser.cpp   \
 antlr3baserecognizer.o       \
 antlr3commontree.o           \
 antlr3encodings.o            \
