@@ -1,10 +1,9 @@
 
-from iotbx.gui_tools import reflections, models, maps
+from iotbx.gui_tools import reflections, models
 from iotbx import file_reader
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import Sorry
-from libtbx import easy_run
 import os
 
 def find_file (file_name) :
@@ -216,29 +215,6 @@ def exercise_model () :
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
           "59.227 55.922 60.264 90 90 90")
 
-def exercise_maps () :
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/partial_refine_001.pdb",
-    test=os.path.isfile)
-  refine_file = pdb_file[:-4] + "_map_coeffs.mtz"
-  easy_run.call("cp %s ." % refine_file)
-  easy_run.call("rm -f *.ccp4")
-  server = maps.server(file_name="partial_refine_001_map_coeffs.mtz")
-  files = server.convert_phenix_maps(file_base="refine")
-  assert (files == ['refine_mFo-DFc.ccp4', 'refine_mFo-DFc_2.ccp4',
-                    'refine_2mFo-DFc.ccp4', 'refine_2mFo-DFc_no_fill.ccp4'])
-  for fn in files :
-    assert os.path.isfile(fn)
-  resolve_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/resolve_1_offset.mtz",
-    test=os.path.isfile)
-  easy_run.call("cp %s ." % resolve_file)
-  server = maps.server(file_name="resolve_1_offset.mtz")
-  map_file = server.convert_resolve_map(pdb_file=None,
-    force=False)
-  assert (map_file == 'resolve_1_offset.ccp4')
-  assert os.path.exists(map_file)
-
 if (__name__ == "__main__") :
   hkl_dir = libtbx.env.find_in_repositories(
     relative_path="phenix_regression",
@@ -246,7 +222,6 @@ if (__name__ == "__main__") :
   if (hkl_dir is None) :
     print "phenix_regression/reflection_files not found, skipping tests."
   else :
-    exercise_maps()
     exercise_model()
     exercise_reflections()
     print "OK"
