@@ -15,16 +15,6 @@ grammar cif;
 
 options {
   language=C;
-  output=AST;
-  ASTLabelType=pANTLR3_BASE_TREE;
-}
-
-tokens {
-  TAG_VALUE_PAIR;
-  CIF;
-  LOOP;
-  SAVE;
-  DATA_BLOCK;
 }
 
 @lexer::includes{
@@ -32,6 +22,7 @@ tokens {
 }
 
 @includes{
+#include <string>
 #include <ucif/builder.h>
 }
 
@@ -55,59 +46,111 @@ tokens {
   LEXER->super = (void *)ctx;
 }
 
+@members {
+std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
+  ANTLR3_MARKER start = token->getStartIndex(token);
+  ANTLR3_MARKER stop = token->getStopIndex(token);
+  std::string str((const char*)start, stop-start+1);
+  if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
+    (str[0] == '"' && str[str.size()-1] == '"'))
+  { str = str.substr(1, str.size()-2); }
+  return str;
+}
+}
 /*------------------------------------------------------------------
   * PARSER RULES
   *------------------------------------------------------------------*/
 
 // The start rule
-parse[bool strict_]
-scope { bool strict; }
-@init { $parse::strict = strict_; }
-
-  : cif (EOF | '\u001a' /*Ctrl-Z*/) -> cif ;
+parse[ucif::builder_base* builder_, bool strict_]
+scope {
+  ucif::builder_base* builder;
+  bool strict;
+}
+@init {
+  $parse::builder = builder_;
+  $parse::strict = strict_;
+}
+  : cif (EOF | '\u001a' /*Ctrl-Z*/) ;
 /*------------------------------------------------------------------
   * BASIC STRUCTURE OF A CIF
   *------------------------------------------------------------------*/
 
 cif
-  :	COMMENTS? data_block* -> data_block*
+  :	COMMENTS? data_block*
   ;
 
 loop_body
-  :	value+
-  ;
+  :	v1=value
+{ ($data_items::curr_loop_values)->push_back(to_std_string($v1.start)); }
+  ( v2=value
+{ ($data_items::curr_loop_values)->push_back(to_std_string($v2.start)); }
+  )*
+;
 
 save_frame
-  :	SAVE_FRAME_HEADING data_items+ SAVE -> ^(SAVE SAVE_FRAME_HEADING data_items+)
+  :	SAVE_FRAME_HEADING
+{ ($parse::builder)->start_save_frame(to_std_string($SAVE_FRAME_HEADING)); }
+  ( data_items )+ SAVE
+{ ($parse::builder)->end_save_frame(); }
   ;
 
 data_items
-  :	 TAG value -> ^(TAG_VALUE_PAIR TAG value)
-    | loop_header loop_body -> ^(LOOP loop_header loop_body)
-  ;
-
-data_block_heading
-  : DATA_BLOCK_HEADING | {!$parse::strict}?=>GLOBAL_
+scope {
+  ucif::array_wrapper_base* curr_loop_values;
+  ucif::array_wrapper_base* curr_loop_headers;
+}
+@init {
+  $data_items::curr_loop_values = ($parse::builder)->new_array();
+  $data_items::curr_loop_headers = ($parse::builder)->new_array();
+}
+@after {
+  delete $data_items::curr_loop_values;
+  delete $data_items::curr_loop_headers;
+}
+  :	TAG value
+{
+  ($parse::builder)->add_data_item(
+    to_std_string($TAG),
+    to_std_string($value.start));
+}
+  | loop_header loop_body
+{
+  ucif::array_wrapper_base* values = $data_items::curr_loop_values;
+  int n_cols = $data_items::curr_loop_headers->size();
+  if (values->size() \% n_cols != 0) {
+    std::string msg = "Wrong number of data items for loop containing ";
+    msg += (*$data_items::curr_loop_headers)[0];
+    CTX->errors->push_back(msg);
+  }
+  else {
+    ($parse::builder)->add_loop(*$data_items::curr_loop_headers, *values);
+  }
+}
   ;
 
 data_block
-  :	( data_block_heading ( data_items | save_frame )* )
-    -> ^(DATA_BLOCK data_block_heading data_items* save_frame* )
-  ;
+  :	( DATA_BLOCK_HEADING
+{ ($parse::builder)->add_data_block(to_std_string($DATA_BLOCK_HEADING)); }
+  ( ( data_items | save_frame ) )*
+  )
+  | ( {!$parse::strict}?=>GLOBAL_ ( ( data_items | save_frame ) )* ) // global blocks are ignored
+;
 
 loop_header
-  :	LOOP_ TAG+ -> ^(LOOP_ TAG+)
-  ;
+  :	LOOP_ ( TAG
+{ ($data_items::curr_loop_headers)->push_back(to_std_string($TAG)); }
+  )+
+;
 
 /*------------------------------------------------------------------
   * TAGS AND VALUES
   *------------------------------------------------------------------*/
 
+
 value
   :	INAPPLICABLE | UNKNOWN | NUMERIC | char_string | text_field
   ;
-  catch [RecognitionException re] {
-  }
 
 char_string
   :	CHAR_STRING ;

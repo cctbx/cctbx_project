@@ -41,7 +41,6 @@ source.extend([
   "cif_ext.cpp",
   "#ucif/cifParser.cpp",
   "#ucif/cifLexer.cpp",
-  "#ucif/cifWalker.cpp",
 ])
 
 env_etc.include_registry.append(

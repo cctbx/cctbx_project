@@ -1816,9 +1816,6 @@ ucif/antlr3/src/antlr3tokenstream.c -text
 ucif/antlr3/src/antlr3treeparser.c -text
 ucif/antlr3/src/antlr3ucs2inputstream.c -text
 ucif/builder.h -text
-ucif/cifWalker.cpp -text
-ucif/cifWalker.g -text
-ucif/cifWalker.h -text
 ucif/examples/build_cif_parser.bat -text
 ucif/examples/build_cif_parser.sh -text
 ucif/examples/main.cpp -text
