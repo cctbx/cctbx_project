@@ -28,7 +28,6 @@ class average_mixin(common_mode.common_mode_correction):
                stddev_basename=None,
                background_path=None,
                flags=None,
-               photon_threshold=2,
                hot_threshold=4,
                noise_threshold=7,
                elastic_threshold=9,
