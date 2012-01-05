@@ -97,6 +97,10 @@ class selection_tokenizer(tokenizer.word_iterator):
     if (word is None): raise RuntimeError("Missing argument for %s." % keyword)
     return word
 
+def resid_shift(s):
+  if (len(s) < 5 and s[-1] in "0123456789"): return s + " "
+  return s
+
 class AtomSelectionError(Sorry):
   __orig_module__ = __module__
   __module__ = "exceptions"
@@ -179,15 +183,12 @@ class cache(slots_getstate_setstate):
 
   def get_resid_range(self, start, stop):
     from iotbx.pdb import utils_base_256_ordinal as o
-    def shift(s):
-      if (len(s) < 5 and s[-1] in "0123456789"): return s + " "
-      return s
     o_start = None
     o_stop = None
     if (start is not None and start.count(" ") != len(start)):
-      o_start = o(shift(start))
+      o_start = o(resid_shift(start))
     if (stop is not None and stop.count(" ") != len(stop)):
-      o_stop = o(shift(stop))
+      o_stop = o(resid_shift(stop))
     if (    o_start is not None
         and o_stop is not None
         and o_start > o_stop):
@@ -204,15 +205,12 @@ class cache(slots_getstate_setstate):
   def get_resid_sequence (self, start, stop) :
     assert (not None in [start, stop])
     from iotbx.pdb import utils_base_256_ordinal as o
-    def shift(s):
-      if (len(s) < 5 and s[-1] in "0123456789"): return s + " "
-      return s
     o_start = None
     o_stop = None
     if (start.count(" ") != len(start)):
-      o_start = o(shift(start))
+      o_start = o(resid_shift(start))
     if (stop.count(" ") != len(stop)):
-      o_stop = o(shift(stop))
+      o_stop = o(resid_shift(stop))
     result = flex.size_t()
     in_sequence = False
     for i_seq, s in enumerate(self.resid_list) :
