@@ -33,7 +33,6 @@ class fake_config(object):
 
 
 def run(args):
-  print args
   command_line = (option_parser()
                   .option("-o", "--output_filename",
                           action="store",
