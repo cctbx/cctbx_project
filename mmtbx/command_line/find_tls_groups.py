@@ -351,7 +351,7 @@ def chains_and_atoms(pdb_hierarchy, secondary_structure_selection,
                 secondary_structure_selection[atom.i_seq])
         if(result_.size()>0):
           result.append(
-            [result_, is_secondary_structure, rg.resseq, rg.unique_resnames()])
+            [result_, is_secondary_structure, rg.resid(), rg.unique_resnames()])
       if(len(result)>0):
         chains_and_residue_selections.append([chain.id, result])
   print >> out, "Considering these chains:"
@@ -518,9 +518,9 @@ def permutations_as_atom_selection_string(groups, perm):
     for p_ in p:
       for g in groups[p_]:
         one_group.append(g[2])
-    resseq = "resseq %s:%s"%(one_group[0].strip(),
-      one_group[len(one_group)-1].strip())
-    result.append(resseq)
+    resid = "resid %s through %s" % (one_group[0],
+      one_group[len(one_group)-1])
+    result.append(resid)
   return result
 
 # XXX for multiprocessing

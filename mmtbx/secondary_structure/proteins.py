@@ -69,7 +69,7 @@ sheet
 }
 """
 
-use_resids = False # XXX: for debugging purposes only
+use_resids = True # XXX: for debugging purposes only
 helix_classes = ["unknown"] * 10
 helix_classes[0] = "alpha"
 helix_classes[2] = "pi"
