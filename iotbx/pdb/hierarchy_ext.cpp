@@ -392,6 +392,7 @@ namespace {
       IOTBX_LOC(element)
       IOTBX_LOC(charge)
       IOTBX_LOC(anisou)
+      IOTBX_LOC(resid_list)
 #undef IOTBX_LOC
     }
 

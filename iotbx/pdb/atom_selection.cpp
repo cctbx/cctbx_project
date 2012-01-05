@@ -59,6 +59,7 @@ namespace {
         for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
           unsigned rg_i_seq_start = i_seq;
           residue_group const& rg = rgs[i_rg];
+          std::string resid = rg.resid();
           unsigned n_ags = rg.atom_groups_size();
           std::vector<atom_group> const& ags = rg.atom_groups();
           for(unsigned i_ag=0;i_ag<n_ags;i_ag++) {
@@ -75,6 +76,7 @@ namespace {
                 element_s[ad.element].push_back(i_seq);
                 charge_s[ad.charge].push_back(i_seq);
                 if (a.uij_is_defined()) anisou.push_back(i_seq);
+                resid_list.push_back(resid);
               }
               append_range(resname_s[ag.data->resname], ag_i_seq_start, i_seq);
             }

@@ -1474,6 +1474,7 @@ namespace hierarchy {
     map element;
     map charge;
     af::shared<std::size_t> anisou;
+    af::shared<std::string> resid_list;
 
     atom_selection_cache(
       hierarchy::root const& root,

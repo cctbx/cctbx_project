@@ -114,6 +114,7 @@ class cache(slots_getstate_setstate):
     "resseq",
     "icode",
     "resid",
+    "resid_list",
     "segid",
     "model_id",
     "element",
@@ -199,6 +200,30 @@ class cache(slots_getstate_setstate):
       if (o_stop  is not None and os > o_stop): continue
       result.append(iselection)
     return result
+
+  def get_resid_sequence (self, start, stop) :
+    assert (not None in [start, stop])
+    from iotbx.pdb import utils_base_256_ordinal as o
+    def shift(s):
+      if (len(s) < 5 and s[-1] in "0123456789"): return s + " "
+      return s
+    o_start = None
+    o_stop = None
+    if (start.count(" ") != len(start)):
+      o_start = o(shift(start))
+    if (stop.count(" ") != len(stop)):
+      o_stop = o(shift(stop))
+    result = flex.size_t()
+    in_sequence = False
+    for i_seq, s in enumerate(self.resid_list) :
+      os = o(s)
+      if (os == o_start) :
+        in_sequence = True
+      if (in_sequence) :
+        result.append(i_seq)
+      if (os == o_stop) :
+        in_sequence = False
+    return [result]
 
   def get_segid(self, pattern):
     return _get_map_string(
@@ -311,6 +336,10 @@ class cache(slots_getstate_setstate):
   def sel_resid_range(self, start, stop):
     return self.union(iselections=self.get_resid_range(start=start,stop=stop))
 
+  def sel_resid_sequence(self, start, stop) :
+    return self.union(iselections=self.get_resid_sequence(start=start,
+      stop=stop))
+
   def sel_segid(self, pattern):
     return self.union(iselections=self.get_segid(pattern=pattern))
 
@@ -417,12 +446,28 @@ class cache(slots_getstate_setstate):
                   return arg.value+arg_cont.value, i_colon
                 word_iterator.backup()
             return arg.value, i_colon
+          def try_compose_sequence () :
+            arg_next = word_iterator.try_pop()
+            if (arg_next is None) :
+              word_iterator.backup()
+              return None, None
+            lnext = arg_next.value.lower()
+            if (lnext == "through") :
+              arg_final = word_iterator.pop_argument(arg_next.value)
+              return arg.value, arg_final.value
+            word_iterator.backup()
+            return (None, None)
           val, i_colon = try_compose_range()
           if (i_colon < 0):
             if (lword == "resseq"):
               result_stack.append(self.sel_resseq(pattern=arg))
             elif (lword in ["resid", "resi"]):
-              result_stack.append(self.sel_resid(pattern=arg))
+              start, stop = try_compose_sequence()
+              if (start is None) :
+                result_stack.append(self.sel_resid(pattern=arg))
+              else :
+                result_stack.append(self.sel_resid_sequence(start=start,
+                  stop=stop))
             else:
               result_stack.append(self.sel_model_id(pattern=arg))
           else:

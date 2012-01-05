@@ -337,6 +337,30 @@ ATOM    464  OG BSER A  58
 """)).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   assert sel_cache.iselection("single_atom_residue").size() == 0
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      2  CA  GLY A 666      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A 777      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   1      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN A   2       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN A   3       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN A   4       6.831   2.310   4.318  1.00 12.30           C
+TER
+ATOM      6  CA  ASN B 777      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN B   1      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN B   2       0.384   1.888   3.199  1.00 10.53           C
+END
+""")).construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache()
+  sele = sel_cache.iselection("resid 777 through 3 and chain A")
+  assert (sele.size() == 4)
+  sele = sel_cache.iselection("resid 777 through 3")
+  assert (sele.size() == 7)
+  try :
+    sele = sel_cache.iselection("resid 777 through chain A")
+  except pdb.atom_selection.AtomSelectionError, e :
+    pass
+  else : raise Exception_expected
 
 def run():
   exercise_selection()
