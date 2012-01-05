@@ -14,10 +14,10 @@ import math
 import numpy
 import os
 import time
-import cPickle as pickle
 
 from pypdsdata import xtc
 
+from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
 
@@ -408,9 +408,7 @@ def dwritef(d, dirname = None, basename = None):
   path   = os.path.join(dirname, basename       \
                           +      d['TIMESTAMP'] \
                           +      ("_%05d.pickle" % d['SEQUENCE_NUMBER']))
-  stream = open(path, "wb")
-  pickle.dump(d, stream, pickle.HIGHEST_PROTOCOL)
-  stream.close()
+  easy_pickle.dump(path, d)
   return (path)
 
 

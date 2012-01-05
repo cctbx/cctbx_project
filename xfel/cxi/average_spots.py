@@ -7,8 +7,8 @@
 # $Id$
 
 import numpy, os, sys
-import cPickle as pickle
 
+from libtbx import easy_pickle
 from iotbx               import detectors
 from iotbx.detectors.npy import NpyImage
 
@@ -30,9 +30,7 @@ FileName.exts.append("pickle")
 # from the pickled file whose name is the string pointed to by path,
 # and adds them to img_sum, dist_sum, and nrg_sum.
 def img_add(path, img_sum, dist_sum, nrg_sum, nmemb):
-  stream    = open(path, "rb")
-  img_cspad = pickle.load(stream)
-  stream.close()
+  img_cspad = easy_pickle.load(path)
 
   if (img_sum is None):
     img_sum    = img_cspad["image"].astype(numpy.uint32)
@@ -127,9 +125,7 @@ def spot_add(path, spot_sum, dist_sum, nrg_sum, nmemb):
   except e:
     return (spot_sum, dist_sum, nrg_sum, nmemb)
 
-  stream    = open(path, "rb")
-  img_cspad = pickle.load(stream)
-  stream.close()
+  img_cspad = easy_pickle.load(path)
 
   if (spot_sum is None):
     spot_sum   = numpy.zeros((img_cspad["image"].shape[0],
@@ -174,12 +170,11 @@ def main(argv = None):
   # XXX Post-mortem--avoid overflows!  But breaks distance and energy!
   #nmemb = 1.0 * img_sum.max() / (2**14 - 16)
 
-  stream = open(outpath, "wb")
-  pickle.dump(dict(beamEnrg = 1.0 / nmemb * nrg_sum,
-                   distance = 1.0 / nmemb * dist_sum,
-                   image    = 1.0 / nmemb * img_sum), # XXX implicit cast?
-              stream)
-  stream.close()
+  easy_pickle.dump(outpath,
+                   dict(beamEnrg = 1.0 / nmemb * nrg_sum,
+                        distance = 1.0 / nmemb * dist_sum,
+                        image    = 1.0 / nmemb * img_sum), # XXX implicit cast?
+                   )
   print "Wrote average of %d images to '%s'" % (nmemb, outpath)
   return (0)
 
