@@ -386,7 +386,7 @@ public:
     for(std::size_t j=0; j < 3; j++) {
       if(ceo.x[j]) {
         X[j] = *ceo.x[j];
-        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-9);
+        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
       }
     }
     vec3<FloatType> K = compute_K(X, c2, b2, a2, y2);
