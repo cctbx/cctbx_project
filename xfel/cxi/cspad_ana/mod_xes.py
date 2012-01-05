@@ -15,7 +15,6 @@ XXX mod_xes must be run as a single process--guard against it!
 
 __version__ = "$Revision$"
 
-import cPickle   as pickle
 import math
 import os
 

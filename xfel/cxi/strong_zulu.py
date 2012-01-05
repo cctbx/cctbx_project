@@ -104,6 +104,6 @@ if __name__=="__main__":
 
   for path in get_paths():
     print path
-    import pickle
-    L = pickle.load(open(path,"rb"))
+    from libtbx import easy_pickle
+    L = easy_pickle.load(path)
     integrate_one_image(L)

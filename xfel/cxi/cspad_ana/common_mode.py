@@ -9,7 +9,6 @@ XXX Better named cspad_base?
 
 __version__ = "$Revision$"
 
-import cPickle as pickle
 import logging
 import numpy
 
@@ -17,6 +16,7 @@ from parse_calib         import Section
 from parse_calib         import calib2sections
 from pypdsdata           import xtc
 
+from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
 
@@ -33,11 +33,11 @@ class common_mode_correction(object):
 
   def __init__(self,
                address,
-               calib_dir = None,
+               calib_dir=None,
                common_mode_correction="none",
                photon_threshold=2,
-               dark_path = None,
-               dark_stddev = None):
+               dark_path=None,
+               dark_stddev=None):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -99,18 +99,14 @@ class common_mode_correction(object):
     if (dark_path is not None):
       assert dark_stddev is not None
       try:
-        stream = open(dark_path, "rb")
-        dark_dict = pickle.load(stream)
+        dark_dict = easy_pickle.load(dark_path)
         #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
         self.dark_img = dark_dict['DATA']
         assert isinstance(self.dark_img, flex.double)
-        stream.close()
 
-        stream = open(dark_stddev, "rb")
-        dark_stddev_dict = pickle.load(stream)
+        dark_stddev_dict = easy_pickle.load(dark_stddev)
         self.dark_stddev = dark_stddev_dict['DATA']
         assert isinstance(self.dark_stddev, flex.double)
-        stream.close()
       except IOError:
         raise RuntimeError("Failed to load dark image")
       self.dark_mask = (self.dark_stddev > 0)
