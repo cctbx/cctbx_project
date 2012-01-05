@@ -2,6 +2,7 @@
 
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/tuple.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
@@ -456,6 +457,10 @@ namespace {
         .def("get_atom_selection_cache", get_atom_selection_cache)
         .def("altloc_indices", altloc_indices)
       ;
+      def("get_resid_sequence", get_resid_sequence, (
+        arg("resid_list"),
+        arg("start"),
+        arg("stop")));
     }
   };
 

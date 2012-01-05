@@ -1,4 +1,5 @@
 #include <iotbx/pdb/hierarchy.h>
+#include <iotbx/pdb/utils.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
 
@@ -119,6 +120,32 @@ namespace {
       map_array_transfer(charge_s, charge);
     }
     map_array_transfer(altloc_s, altloc);
+  }
+
+  af::shared<unsigned> get_resid_sequence (
+    af::shared<std::string> resid_list,
+    std::string start,
+    std::string stop)
+  {
+    using iotbx::pdb::utils::base_256_ordinal;
+    af::shared<unsigned> result;
+    boost::int64_t o_start = base_256_ordinal(start.c_str());
+    boost::int64_t o_stop = base_256_ordinal(stop.c_str());
+    bool in_sequence = false;
+    for (unsigned i_seq = 0; i_seq < resid_list.size(); i_seq++) {
+      std::string resid = resid_list[i_seq];
+      boost::int64_t resid_os = base_256_ordinal(resid.c_str());
+      if (resid_os == o_start) {
+        in_sequence = true;
+      }
+      if (in_sequence) {
+        result.push_back(i_seq);
+      }
+      if (resid_os == o_stop) {
+        in_sequence = false;
+      }
+    }
+    return result;
   }
 
 }}} // namespace iotbx::pdb::hierarchy

@@ -204,23 +204,11 @@ class cache(slots_getstate_setstate):
 
   def get_resid_sequence (self, start, stop) :
     assert (not None in [start, stop])
-    from iotbx.pdb import utils_base_256_ordinal as o
-    o_start = None
-    o_stop = None
-    if (start.count(" ") != len(start)):
-      o_start = o(resid_shift(start))
-    if (stop.count(" ") != len(stop)):
-      o_stop = o(resid_shift(stop))
-    result = flex.size_t()
-    in_sequence = False
-    for i_seq, s in enumerate(self.resid_list) :
-      os = o(s)
-      if (os == o_start) :
-        in_sequence = True
-      if (in_sequence) :
-        result.append(i_seq)
-      if (os == o_stop) :
-        in_sequence = False
+    import iotbx.pdb.hierarchy
+    result = iotbx.pdb.hierarchy.get_resid_sequence(
+      resid_list=self.resid_list,
+      start=resid_shift(start),
+      stop=resid_shift(stop))
     return [result]
 
   def get_segid(self, pattern):
