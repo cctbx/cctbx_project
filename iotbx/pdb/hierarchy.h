@@ -1884,6 +1884,11 @@ namespace hierarchy {
     altloc(altloc_)
   {}
 
+  af::shared<unsigned> get_resid_sequence (
+    af::shared<std::string> resid_list,
+    std::string start,
+    std::string stop);
+
 }}} // namespace iotbx::pdb::hierarchy
 
 #endif // IOTBX_PDB_HIERARCHY_H
