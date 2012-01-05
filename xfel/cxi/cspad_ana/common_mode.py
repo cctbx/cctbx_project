@@ -37,7 +37,8 @@ class common_mode_correction(object):
                common_mode_correction="none",
                photon_threshold=2,
                dark_path=None,
-               dark_stddev=None):
+               dark_stddev=None,
+               gain_map_path=None):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -65,6 +66,7 @@ class common_mode_correction(object):
     self.address = cspad_tbx.getOptString(address)
     self.dark_path = cspad_tbx.getOptString(dark_path)
     self.dark_stddev = cspad_tbx.getOptString(dark_stddev)
+    gain_map_path = cspad_tbx.getOptString(gain_map_path)
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
 
@@ -110,6 +112,16 @@ class common_mode_correction(object):
       except IOError:
         raise RuntimeError("Failed to load dark image")
       self.dark_mask = (self.dark_stddev > 0)
+
+    self.gain_map = None
+    if gain_map_path is not None:
+      self.gain_map
+      try:
+        gain_dict = easy_pickle.load(gain_map_path)
+        self.gain_map = gain_dict['DATA']
+        assert isinstance(self.gain_map, flex.double)
+      except IOError:
+        raise RuntimeError("Failed to load gain map")
 
 
   def beginjob(self, evt, env):
@@ -328,6 +340,9 @@ class common_mode_correction(object):
               i_row    = i_row,
               i_column = i_column)
 
+    if self.gain_map is not None:
+      self.cspad_img *= self.gain_map
+
     # Store the image in the event.
     evt.put(self.cspad_img, self.address)
 
@@ -352,6 +367,7 @@ class common_mode_correction(object):
     # to believe that the standard deviation of a pixel is proportional to the
     # gain of said pixel, this approximates a gain correction.
     assert self.dark_img is not None
+    assert self.gain_map is None # not appropriate to do sigma scaling and gain correction at the same time!
     flex_cspad_img = self.cspad_img.as_double()
     flex_cspad_img_sel = flex_cspad_img.as_1d().select(self.dark_mask.as_1d())
     flex_dark_stddev = self.dark_stddev.select(self.dark_mask.as_1d()).as_double()
