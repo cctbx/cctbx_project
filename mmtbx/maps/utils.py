@@ -14,6 +14,30 @@ import sys
 #-----------------------------------------------------------------------
 # MAP COEFFICIENT MANIPULATION
 
+def create_map_from_downloaded_pdb (
+    pdb_file,
+    mtz_file,
+    output_file,
+    fill=False,
+    out=None) :
+  """
+  Convenience function, used by phenix.fetch_pdb
+  """
+  if (out is None) : out = sys.stdout
+  from iotbx import file_reader
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+  pdb_in.assert_file_type("pdb")
+  xrs = pdb_in.file_object.xray_structure_simple()
+  fast_maps_from_hkl_file(
+    file_name=mtz_file,
+    xray_structure=xrs,
+    map_out=output_file,
+    log=out,
+    auto_run=True,
+    quiet=True,
+    anomalous_map=True,
+    fill_maps=fill)
+
 class fast_maps_from_hkl_file (object) :
   def __init__ (self,
                 file_name,
@@ -25,6 +49,8 @@ class fast_maps_from_hkl_file (object) :
                 log=sys.stdout,
                 auto_run=True,
                 quiet=False,
+                anomalous_map=False,
+                fill_maps=True,
                 ) :
     adopt_init_args(self, locals())
     from iotbx import file_reader
@@ -52,7 +78,12 @@ class fast_maps_from_hkl_file (object) :
         fallback_f_obs.append(miller_array)
     if f_obs is None :
       if (len(fallback_f_obs) == 1) and (f_label is None) :
-        f_obs = fallback_f_obs[0]
+        for array in fallback_f_obs :
+          if (array.anomalous_flag()) and (self.anomalous_map) :
+            f_obs = array
+            break
+        else :
+          f_obs = fallback_f_obs[0]
       else :
         raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
           "column labels (possible choices: %s)") % (f_label, file_name,
@@ -97,14 +128,17 @@ class fast_maps_from_hkl_file (object) :
       bulk_solvent_correction=True,
       apply_back_trace_of_b_cart=False,
       anisotropic_scaling=True)
-    (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=True)
-    return f_map, df_map
+    (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=self.fill_maps)
+    anom_map = None
+    if (self.anomalous_map) and (self.f_obs.anomalous_flag()) :
+      anom_map = get_anomalous_map(fmodel)
+    return f_map, df_map, anom_map
 
   def run (self) :
-    (f_map, df_map) = self.get_maps_from_fmodel()
+    (f_map, df_map, anom_map) = self.get_maps_from_fmodel()
     if self.map_out is None :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
-    write_map_coeffs(f_map, df_map, self.map_out)
+    write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
 def get_maps_from_fmodel (fmodel, use_filled=False) :
   map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
@@ -117,7 +151,15 @@ def get_maps_from_fmodel (fmodel, use_filled=False) :
     delfwt_coeffs = delfwt_coeffs.average_bijvoet_mates()
   return (fwt_coeffs, delfwt_coeffs)
 
-def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name) :
+def get_anomalous_map (fmodel) :
+  map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
+                                            fill_mode="dfmodel")
+  anom_coeffs = map_manager.map_coefficients(map_type="anom")
+  if (anom_coeffs.anomalous_flag()) :
+    anom_coeffs = anom_coeffs.average_bijvoet_mates()
+  return anom_coeffs
+
+def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None) :
   import iotbx.mtz
   decorator = iotbx.mtz.label_decorator(phases_prefix="PH")
   mtz_dataset = fwt_coeffs.as_mtz_dataset(
@@ -127,6 +169,11 @@ def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name) :
     miller_array=delfwt_coeffs,
     column_root_label="FOFCWT",
     label_decorator=decorator)
+  if (anom_coeffs is not None) :
+    mtz_dataset.add_miller_array(
+      miller_array=anom_coeffs,
+      column_root_label="ANOM",
+      label_decorator=decorator)
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name=file_name)
   del mtz_object

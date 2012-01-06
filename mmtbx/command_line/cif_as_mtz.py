@@ -405,7 +405,7 @@ def run2 (args,
           log=sys.stdout,
           check_params=True,
           params=None) :
-  import iotbx.pdb.fetch
+  import mmtbx.command_line.fetch_pdb.run
   parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   pdb_file = None
@@ -436,9 +436,10 @@ def run2 (args,
     params = master_phil.fetch(sources=sources).extract()
   symm = None
   if (params.input.pdb_id is not None) :
-    params.input.pdb_file = iotbx.pdb.fetch.run(args=[params.input.pdb_id],
+    params.input.pdb_file = mmtbx.command_line.fetch_pdb.run2(
+      args=[params.input.pdb_id],
       log=log)
-    params.input.cif_file = iotbx.pdb.fetch.run(
+    params.input.cif_file = mmtbx.command_line.fetch_pdb.run2(
       args=["-x", params.input.pdb_id],
       log=log)
     symm = crystal_symmetry_from_any.extract_from(params.input.pdb_file)

@@ -49,8 +49,8 @@ class BlastFrame (wx.Frame) :
     pdb_id = self.hit_list.GetSelectedID()
     if (pdb_id is not None) :
       def download (args) :
-        import iotbx.pdb.fetch
-        return iotbx.pdb.fetch.run(args=args)
+        import mmtbx.command_line.fetch_pdb
+        return mmtbx.command_line.fetch_pdb.run2(args=args)
       from wxtbx.process_control import download_file_basic
       download_file_basic(
         window=self,
