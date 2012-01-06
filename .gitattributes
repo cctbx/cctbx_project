@@ -882,6 +882,7 @@ iotbx/examples/iotbx_cif.txt -text
 iotbx/examples/mtz_convert_free_to_work.py svneol=native#text/x-python
 iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
 iotbx/examples/pdb_hierarchy.py svneol=native#text/x-python
+iotbx/examples/pdb_split_chains.py -text
 iotbx/examples/pdb_symmetry_copies.py svneol=native#text/x-python
 iotbx/examples/pdb_tardy_conf_sampling_simple.py svneol=native#text/x-python
 iotbx/examples/pdb_to_map_simple.py svneol=native#text/x-python
