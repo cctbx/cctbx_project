@@ -348,9 +348,11 @@ class refine_adp(object):
         xray_structure = self.fmodels.fmodel_xray().xray_structure,
         update_f_calc  = True)
       print >> self.log, "Accepted refinement result:"
-      # XXX still going to run the final minimization until I figure out why
-      # the final results are different...
-      if True : #(best_u_star is None) :
+      # XXX it appears to be safe to use the saved u_star/u_iso from the
+      # optimization trials instead of minimizing again - results are more
+      # consistent this way.
+      # -Nat 2012-01-06
+      if (best_u_star is None) :
         self.minimize()
       else :
         # XXX reset alpha/beta parameters - if this is not done, the assertion
