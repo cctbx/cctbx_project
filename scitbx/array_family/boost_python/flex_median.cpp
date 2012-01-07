@@ -2,6 +2,7 @@
 #include <scitbx/math/basic_statistics.h>
 
 #include <boost/python/class.hpp>
+#include <vector>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -14,24 +15,27 @@ namespace scitbx { namespace af { namespace boost_python {
     FloatType
     call(
       wt& O,
-      af::ref<FloatType> const& data) { return O(data); }
+      af::const_ref<FloatType> const& data)
+    {
+      std::vector<FloatType> buffer(data.begin(), data.end());
+      return O(af::make_ref(buffer));
+    }
 
     static
     math::median_statistics<FloatType>
     dispersion(
       wt& O,
-      af::ref<FloatType> const &data) { return O.dispersion(data); }
+      af::const_ref<FloatType> const &data)
+    {
+      std::vector<FloatType> buffer(data.begin(), data.end());
+      return O.dispersion(af::make_ref(buffer));
+    }
 
     static void wrap(char const *name) {
       using namespace boost::python;
       class_<wt>(name, no_init)
         .def(init<>())
         .def(init<wt::random_number_engine_t::result_type>(arg("seed")))
-/* Intel C++ 9.1 does not support this syntax:
-        .def("__call__", &wt::operator()<FloatType>, arg("data"))
-        .def("dispersion", &wt::dispersion<FloatType>, arg("data"))
-   Replaced with thin wrappers, for simplicity on all platforms.
- */
         .def("__call__", call, arg("data"))
         .def("dispersion", dispersion, arg("data"))
       ;
