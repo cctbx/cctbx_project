@@ -263,9 +263,9 @@ class image (screen_params) :
     print img.show_header()
     self._invert_beam_center = False
     self.set_image_size(
-      w=self._raw.parameters['SIZE2'],
-      h=self._raw.parameters['SIZE1'])
-    self.set_detector_resolution(self._raw.parameters['PIXEL_SIZE'])
+      w=self._raw.size2,
+      h=self._raw.size1)
+    self.set_detector_resolution(self._raw.pixel_size)
     from spotfinder.command_line.signal_strength import master_params
     from iotbx.detectors.context.config_detector import \
       beam_center_convention_from_image_object
@@ -454,11 +454,11 @@ class image (screen_params) :
       center_x, center_y = self._beam_center
     # FIXME Pilatus and ADSC images appear to have different conventions???
     elif (self._invert_beam_center) :
-      center_x = self._raw.parameters['BEAM_CENTER_Y']
-      center_y = self._raw.parameters['BEAM_CENTER_X']
+      center_x = self._raw.beamy
+      center_y = self._raw.beamx
     else :
-      center_x = self._raw.parameters['BEAM_CENTER_X']
-      center_y = self._raw.parameters['BEAM_CENTER_Y']
+      center_x = self._raw.beamx
+      center_y = self._raw.beamy
     return center_x, center_y
 
   def get_beam_center (self) :
@@ -466,7 +466,7 @@ class image (screen_params) :
     return self.detector_coords_as_image_coords(center_x, center_y)
 
   def get_detector_distance (self) :
-    dist = self._raw.parameters['DISTANCE']
+    dist = self._raw.distance
     twotheta = self.get_detector_2theta()
     if (twotheta == 0.0) :
       return dist
@@ -474,11 +474,11 @@ class image (screen_params) :
       return dist / math.cos(twotheta)
 
   def get_detector_2theta (self) :
-    two_theta = self._raw.parameters['TWOTHETA']
+    two_theta = self._raw.twotheta
     return two_theta * pi_over_180
 
   def get_wavelength (self) :
-    return self._raw.parameters['WAVELENGTH']
+    return self._raw.wavelength
 
   def get_point_info (self, x, y) :
     """
@@ -496,7 +496,7 @@ class image (screen_params) :
     calc = core_toolbox.resolution_on_image(
                 xbeam_mm = center_x,
                 ybeam_mm = center_y,
-                distance_mm = self._raw.parameters['DISTANCE'],
+                distance_mm = self._raw.distance,
                 wavelength_ang = wavelength,
                 twotheta_rad = two_theta)
     d_min = calc.resolution_at_point(x_point, y_point)
