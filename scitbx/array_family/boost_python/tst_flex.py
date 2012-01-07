@@ -540,6 +540,14 @@ def exercise_misc():
   s = a.as_scitbx_matrix()
   assert s.elems == (1,2,3,-4,5,6)
   assert s.n == (2,3)
+  #
+  a = flex.double([1,5,2,8,7])
+  m = flex.median(a)
+  assert approx_equal(a, [1,5,2,8,7])
+  assert approx_equal(m, 5)
+  d = flex.median.dispersion(a)
+  assert approx_equal(a, [1,5,2,8,7])
+  assert approx_equal(d.median, 5)
 
 def exercise_1d_slicing_core(a):
   if (tuple(a[:]) != ()):
