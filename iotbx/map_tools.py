@@ -1,5 +1,6 @@
 
 from libtbx.math_utils import ifloor, iceil
+from libtbx import adopt_init_args
 import os
 
 MAP_TYPE_F_OBS = 1
