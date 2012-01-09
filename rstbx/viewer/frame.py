@@ -404,7 +404,7 @@ class SettingsPanel (wx.Panel) :
     self.brightness_ctrl = wx.Slider(self, -1, size=(200,-1),
       style=wx.SL_AUTOTICKS|wx.SL_LABELS)
     box.Add(self.brightness_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.brightness_ctrl.SetMin(10)
+    self.brightness_ctrl.SetMin(1)
     self.brightness_ctrl.SetMax(500)
     self.brightness_ctrl.SetValue(self.settings.brightness)
     self.brightness_ctrl.SetTickFreq(25)
