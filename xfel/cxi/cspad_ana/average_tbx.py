@@ -28,7 +28,8 @@ class average_mixin(common_mode.common_mode_correction):
                stddev_basename=None,
                background_path=None,
                flags=None,
-               hot_threshold=4,
+               hot_threshold=None,
+               gain_threshold=None,
                noise_threshold=7,
                elastic_threshold=9,
                symnoise_threshold=4,
@@ -58,9 +59,16 @@ class average_mixin(common_mode.common_mode_correction):
     self.stddev_dirname = cspad_tbx.getOptString(stddev_dirname)
     self.background_path = cspad_tbx.getOptString(background_path)
     self.hot_threshold = cspad_tbx.getOptFloat(hot_threshold)
+    self.gain_threshold = cspad_tbx.getOptFloat(gain_threshold)
     self.noise_threshold = cspad_tbx.getOptFloat(noise_threshold)
     self.elastic_threshold = cspad_tbx.getOptFloat(elastic_threshold)
     self.symnoise_threshold = cspad_tbx.getOptFloat(symnoise_threshold)
+
+    if self.dark_img is not None and self.hot_threshold is not None:
+      self.hot_threshold *= flex.median(self.dark_img.as_1d())
+      self.logger.info("HOT THRESHOLD: %.2f" %self.hot_threshold)
+      self.logger.info("Number of pixels above hot threshold: %i" %(
+        self.dark_img > self.hot_threshold).count(True))
 
     if background_path is not None:
       background_dict = easy_pickle.load(background_path)
@@ -163,10 +171,18 @@ class average_mixin(common_mode.common_mode_correction):
       ELASTIC_THRESHOLD = self.elastic_threshold
       self.cspad_img.set_selected(self.cspad_img > ELASTIC_THRESHOLD, 0)
 
-    if ("nohot" in self.flags):
-      # XXX This is not appropriate when using sigma_scaling/photon_counting -
+    if self.hot_threshold is not None:
       HOT_THRESHOLD = self.hot_threshold
-      self.cspad_img.set_selected(self.dark_stddev > HOT_THRESHOLD, 0)
+      self.cspad_img.set_selected(self.dark_img > HOT_THRESHOLD, 0)
+
+    if self.gain_map is not None and self.gain_threshold is not None:
+      # XXX comparing each pixel to a moving average would probably be better
+      # since the gain should vary approximately smoothly over different areas
+      # of the detector
+      GAIN_THRESHOLD = self.gain_threshold
+      #self.logger.debug(
+        #"rejecting: %i" %(self.gain_map > GAIN_THRESHOLD).count(True))
+      self.cspad_img.set_selected(self.gain_map > GAIN_THRESHOLD, 0)
 
     if ("nonoise" in self.flags):
       NOISE_THRESHOLD = self.noise_threshold
