@@ -814,13 +814,13 @@ class reference_model(object):
     reference_chis = {}
     model_outliers = 0
     for line in rot_list_model.splitlines():
-      res, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
+      res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       model_hash[res]=name
       if name == "OUTLIER":
         model_outliers += 1
 
     for line in rot_list_reference.splitlines():
-      res, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
+      res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       reference_hash[res]=name
 
     print >> log, "** evaluating rotamers for working model **"

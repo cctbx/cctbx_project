@@ -136,7 +136,7 @@ Example:
       show_errors=self.params.rotalyze.show_errors)
     out_count, out_percent = self.get_outliers_count_and_fraction()
     if self.params.rotalyze.verbose:
-      print >> out, "residue:score%:chi1:chi2:chi3:chi4:rotamer"
+      print >> out, "residue:occupancy:score%:chi1:chi2:chi3:chi4:rotamer"
       print >> out, output_text
       print >> out, 'SUMMARY: %.2f%% outliers (Goal: %s)' % (out_percent*100,
         self.get_outliers_goal())
@@ -162,20 +162,20 @@ Example:
       for chain in model.chains():
         for rg in chain.residue_groups():
           all_dict = self.construct_complete_sidechain(rg)
-          for conformer in rg.conformers():
-            resname = conformer.only_residue().resname
-            coords = self.get_center(conformer)
-            atom_dict = all_dict.get(conformer.altloc)
+          for atom_group in rg.atom_groups() :
+            resname = atom_group.resname
+            coords = self.get_center(atom_group)
+            atom_dict = all_dict.get(atom_group.altloc)
             try:
-              chis = sa.measureChiAngles(conformer.only_residue(),
+              chis = sa.measureChiAngles(atom_group,
                                        atom_dict)#.get(conformer.altloc))
             except AttributeError:
               if show_errors:
                 res_info = "%s%5s %s" % (chain.id, rg.resid(),
-                  conformer.altloc+resname)
+                  atom_group.altloc+resname)
                 print >> out, '%s is missing some sidechain atoms' % res_info
                 output_list.append([chain.id, rg.resid(),
-                  conformer.altloc+resname, -1, None, None, None, None,
+                  atom_group.altloc+resname, -1, None, None, None, None,
                   "INCOMPLETE", coords])
               continue
             if (chis is not None):
@@ -183,15 +183,17 @@ Example:
                 continue
               value = r.evaluate(resname.lower().strip(), chis)
               if value != None:
+                occupancy = get_occupancy(atom_group)
                 self.numtotal += 1
-                s = '%s%5s %s:%.1f' % \
+                s = '%s%5s %s:%.2f:%.1f' % \
                   (chain.id,
                    rg.resid(),
-                   conformer.altloc+resname.strip(),
+                   atom_group.altloc+resname.strip(),
+                   occupancy,
                    value*100)
                 res_out_list = [chain.id,
                                 rg.resid(),
-                                conformer.altloc+resname,
+                                atom_group.altloc+resname,
                                 value*100]
                 wrap_chis = rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
                 sym_chis = wrap_chis[:]
@@ -292,3 +294,14 @@ Example:
 
     return ""
   #}}}
+
+# XXX does this need to be smarter?
+def get_occupancy (atom_group) :
+  max_partial_occ = 0.
+  for atom in atom_group.atoms() :
+    if (atom.occ > max_partial_occ) and (atom.occ < 1) :
+      max_partial_occ = atom.occ
+  if (max_partial_occ == 0.) :
+    return max([ atom.occ for atom in atom_group.atoms() ])
+  else :
+    return max_partial_occ

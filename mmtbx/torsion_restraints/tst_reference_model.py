@@ -212,12 +212,12 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
                                hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
 
   assert rot_list_model == """\
-C 236  ASN:1.2:227.3:80.2:::t30
-C 237  LEU:0.0:209.6:357.2:::OUTLIER"""
+C 236  ASN:1.00:1.2:227.3:80.2:::t30
+C 237  LEU:1.00:0.0:209.6:357.2:::OUTLIER"""
 
   assert rot_list_reference == """\
-C 236  ASN:41.4:203.2:43.6:::t30
-C 237  LEU:52.8:179.1:57.3:::tp"""
+C 236  ASN:1.00:41.4:203.2:43.6:::t30
+C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
 
   rm.set_rotamer_to_reference(
     xray_structure=xray_structure,
@@ -231,8 +231,8 @@ C 237  LEU:52.8:179.1:57.3:::tp"""
   rot_list_model, coot_model = r.analyze_pdb(
                                    hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert rot_list_model == """\
-C 236  ASN:1.2:227.3:80.2:::t30
-C 237  LEU:52.8:179.1:57.3:::tp"""
+C 236  ASN:1.00:1.2:227.3:80.2:::t30
+C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
 
   cbetadev_hash = utils.build_cbetadev_hash(
                     pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)

@@ -993,7 +993,7 @@ class torsion_ncs(object):
     model_chis = {}
     fix_list = {}
     for line in rot_list_model.splitlines():
-      res, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
+      res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       model_hash[res]=name
       model_score[res]=rotamericity
     for key in self.res_match_master.keys():
