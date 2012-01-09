@@ -7,6 +7,18 @@ import scitbx.matrix
 from xfel.cxi.cspad_ana import cspad_tbx
 
 
+def cspad_unbound_pixel_mask():
+  # Every 10th pixel along the diagonal from the top left hand corner are not
+  # bonded, hence we ignore them in the summed spectrum
+  mask = flex.int(flex.grid(370, 391), 0)
+  print mask.all()
+  for section_offset in ((0,0), (0, 197), (185, 197), (185, 0)):
+    for i in range(19):
+      print section_offset[0] + i * 10, section_offset[1] + i * 10
+      mask[section_offset[0] + i * 10, section_offset[1] + i * 10] = 1
+  return mask
+
+
 class xes_finalise(object):
 
   def __init__(self,
@@ -19,6 +31,7 @@ class xes_finalise(object):
     self.sumsq_img = None
     self.nmemb = 0
     self.roi = cspad_tbx.getOptROI(roi)
+    self.unbound_pixel_mask = cspad_unbound_pixel_mask()
     for i_run, run in enumerate(runs):
       run_scratch_dir = run
       result = finalise_one_run(run_scratch_dir)
@@ -34,7 +47,11 @@ class xes_finalise(object):
     self.avg_img = self.sum_img.as_double() / self.nmemb
     self.stddev_img = flex.sqrt((self.sumsq_img.as_double() - self.sum_img.as_double() * self.avg_img) / (self.nmemb - 1))
 
-    if (output_dirname  is not None and
+    self.mask = flex.int(self.sum_img.accessor(), 0)
+    self.mask.set_selected(self.sum_img == 0, 1)
+    self.mask.set_selected(self.unbound_pixel_mask > 0, 1)
+
+    if (output_dirname is not None and
         avg_basename is not None):
       if (not os.path.isdir(output_dirname)):
         os.makedirs(output_dirname)
@@ -66,17 +83,24 @@ class xes_finalise(object):
       img = self.avg_img
       if self.roi is None:
         spectrum_focus = img
+        mask_focus = self.mask
       else:
-        spectrum_focus = img[self.roi[2]:self.roi[3], self.roi[0]:self.roi[1]]
+        slices = (slice(self.roi[2],self.roi[3]), slice(self.roi[0],self.roi[1]))
+        spectrum_focus = img[slices]
+        mask_focus = self.mask[slices]
       if False:
         from matplotlib import pylab
         pylab.imshow(spectrum_focus.as_numpy_array())
         pylab.show()
 
       spectrum = flex.sum(spectrum_focus, axis=0)
-      # XXX we need to take care of columns where one or more pixels are inactive
+      # take care of columns where one or more pixels are inactive
       # and/or flagged as a "hot" - in this case the sum is over fewer rows and
       # will introduce artefacts into the spectrum
+      mask_sum = flex.sum(mask_focus, axis=0)
+      n_rows = spectrum_focus.all()[0]
+      spectrum *= ((n_rows + mask_sum).as_double()/n_rows)
+
 
       omit_col = True
       if omit_col is True:
@@ -172,6 +196,7 @@ def spec_plot(x, y, img, file_name, figure_size=(10,5), transparent=False):
   import matplotlib.figure
   import matplotlib.cm
   from matplotlib.backends.backend_agg import FigureCanvasAgg
+  figure_size = None
   fig = matplotlib.figure.Figure(figure_size, 144, linewidth=0,
       facecolor="white")
   if transparent :
