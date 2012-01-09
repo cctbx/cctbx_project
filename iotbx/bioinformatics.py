@@ -821,7 +821,7 @@ def parse_sequence(data):
   results = []
 
   for p in parsers:
-    ( seqs, junk ) = p.parse( text = data )
+    ( seqs, junk ) = p( text = data )
 
     if not junk:
       return ( seqs, junk )
