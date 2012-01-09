@@ -35,7 +35,8 @@ class common_mode_correction(object):
                address,
                calib_dir=None,
                common_mode_correction="none",
-               photon_threshold=2,
+               photon_threshold=None,
+               two_photon_threshold=None,
                dark_path=None,
                dark_stddev=None,
                gain_map_path=None):
@@ -69,6 +70,7 @@ class common_mode_correction(object):
     gain_map_path = cspad_tbx.getOptString(gain_map_path)
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
+    self.two_photon_threshold = cspad_tbx.getOptFloat(two_photon_threshold)
 
     self.distance = None
     self.cspad_img = None # The current image - set by self.event()
@@ -387,5 +389,13 @@ class common_mode_correction(object):
     # This only makes sense in combination with some sort of gain correction
     # XXX TODO: count 2, 3, 4, ..., photons
     PHOTON_THRESHOLD = self.photon_threshold
+    TWO_PHOTON_THRESHOLD = self.two_photon_threshold
+    if [PHOTON_THRESHOLD, TWO_PHOTON_THRESHOLD].count(None) > 0:
+      self.logger.info("Skipping photon counting: photon_threshold is not defined")
+      return
     self.cspad_img.set_selected(self.cspad_img<PHOTON_THRESHOLD, 0)
+    self.cspad_img.set_selected(self.cspad_img>=TWO_PHOTON_THRESHOLD, 2)
     self.cspad_img.set_selected(self.cspad_img>=PHOTON_THRESHOLD, 1)
+    self.logger.debug("zero photon counts: %i" %self.cspad_img.count(0))
+    self.logger.debug("one photon counts: %i" %self.cspad_img.count(1))
+    self.logger.debug("two photon counts: %i" %self.cspad_img.count(2))

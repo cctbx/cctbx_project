@@ -210,7 +210,7 @@ class average_mixin(common_mode.common_mode_correction):
       pickle.dump(d,G,pickle.HIGHEST_PROTOCOL)
       G.close()
 
-    if ("photon_counting" in self.flags):
+    if self.photon_threshold is not None and self.two_photon_threshold is not None:
       self.do_photon_counting()
 
     if self.background_path is not None:
