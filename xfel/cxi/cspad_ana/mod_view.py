@@ -11,7 +11,7 @@ XXX Known issues, wishlist:
   * Radial distribution plot, requested by Jan F. Kern
 
   * Sub-pixel zoom like in xdisp, maybe with coordinate tool-tips on
-    mouse-over
+    mouse-over.  Can we choose the colour automagically?
 
 XXX
 """
@@ -29,7 +29,7 @@ from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 
 
-class cxi_dict(DetectorImageBase):
+class _CxiDict(DetectorImageBase):
   """Minimal detector class for in-memory dictionary representation of
   images.
   """
@@ -39,7 +39,7 @@ class cxi_dict(DetectorImageBase):
     convention.
     """
 
-    super(cxi_dict, self).__init__("")
+    super(_CxiDict, self).__init__("")
     self.parameters = parameters
     self.vendortype = "npy_raw"
     self.bin_safe_set_data(data)
@@ -53,11 +53,13 @@ class cxi_dict(DetectorImageBase):
     pass
 
 
-def ImageFactory(img_dict):
+def _image_factory(img_dict):
   """The ImageFactory() function splits @p img_dict into a parameter
   dictionary suitable for iotbx.detectors.DetectorImageBase, and a
   separate image data object.  The function relies on constants from
-  cspad_tbx.  See also iotbx.detectors.NpyImage"""
+  cspad_tbx.  See also iotbx.detectors.NpyImage.
+  """
+
   data       = img_dict["DATA"]
   parameters = dict(
     BEAM_CENTER_X        = cspad_tbx.pixel_size * img_dict["BEAM_CENTER"][0],
@@ -71,33 +73,32 @@ def ImageFactory(img_dict):
     SIZE1                = data.focus()[0],
     SIZE2                = data.focus()[1],
     WAVELENGTH           = img_dict["WAVELENGTH"])
-  return (cxi_dict(data, parameters))
+  return (_CxiDict(data, parameters))
 
 from iotbx import detectors
-detectors.ImageFactory = ImageFactory
+detectors.ImageFactory = _image_factory
 
 
-class DataDispatch(object):
+class _DataDispatch(object):
   """Interface for sending images to the wxPython application."""
 
-  def __init__(self, parent):
-    self.parent = parent
+  def __init__(self, thread):
+    self.frame = thread.frame
 
 
   def send_data(self, img, title):
-    """The send_data() function creates and sends the event.
-    """
+    """The send_data() function creates and sends the event."""
 
     from rstbx.viewer.frame import ExternalUpdateEvent
 
     event       = ExternalUpdateEvent()
     event.img   = img
     event.title = title
-    self.parent.AddPendingEvent(event)
+    self.frame.AddPendingEvent(event)
 
 
-class XrayFrame_thread(threading.Thread):
-  """The XrayFrame_thread class allows Run MainLoop() to be run as a
+class _XrayFrameThread(threading.Thread):
+  """The _XrayFrameThread class allows MainLoop() to be run as a
   thread, which is necessary because all calls to wxPython must be
   made from the same thread that originally imported wxPython.
 
@@ -110,7 +111,7 @@ class XrayFrame_thread(threading.Thread):
     self.run() will populate self.frames and release self.lock.
     """
 
-    super(XrayFrame_thread, self).__init__()
+    super(_XrayFrameThread, self).__init__()
     self.setDaemon(1)
     self.start_orig = self.start
     self.start = self.start_local
@@ -143,24 +144,27 @@ class XrayFrame_thread(threading.Thread):
     """The start_local() function calls the run() function through
     self.start_orig, and exists only after self.lock has been
     released.  This eliminates a race condition which could cause
-    updates to be sent to non-existent frame."""
+    updates to be sent to non-existent frame.
+    """
+
     self.start_orig()
     self.lock.acquire()
 
 
-def XrayFrame_process(pipe):
-  """The XrayFrame_process() function starts the viewer in a separate
-  thread.  It then continuously reads data from @p pipe and dispatches
-  update events to the viewer.  The function returns when it reads a
-  @c None object from @p pipe or when the viewer thread has exited.
+def _xray_frame_process(pipe, hold=False):
+  """The _xray_frame_process() function starts the viewer in a
+  separate thread.  It then continuously reads data from @p pipe and
+  dispatches update events to the viewer.  The function returns when
+  it reads a @c None object from @p pipe or when the viewer thread has
+  exited.
   """
 
   import rstbx.viewer
 
   # Start the viewer's main loop in its own thread, and get the
   # interface for sending updates to the frame.
-  thread = XrayFrame_thread()
-  send_data = DataDispatch(thread.frame).send_data
+  thread = _XrayFrameThread()
+  send_data = _DataDispatch(thread).send_data
 
   while (True):
     payload = pipe.recv()
@@ -214,7 +218,7 @@ class mod_view(common_mode.common_mode_correction):
     # process.  The write end is kept for sending updates.
     pipe_recv, self._pipe = multiprocessing.Pipe(False)
     self._proc = multiprocessing.Process(
-      target=XrayFrame_process, args=(pipe_recv, ))
+      target=_xray_frame_process, args=(pipe_recv, ))
     self._proc.start()
 
 
