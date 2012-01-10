@@ -119,6 +119,7 @@ class cache(slots_getstate_setstate):
     "icode",
     "resid",
     "resid_list",
+    "chain_break_list",
     "segid",
     "model_id",
     "element",
@@ -207,6 +208,7 @@ class cache(slots_getstate_setstate):
     import iotbx.pdb.hierarchy
     result = iotbx.pdb.hierarchy.get_resid_sequence(
       resid_list=self.resid_list,
+      chain_break_list=self.chain_break_list,
       start=resid_shift(start),
       stop=resid_shift(stop))
     return [result]
