@@ -24,8 +24,9 @@ class parser
            std::string input_string,
            std::string filename="memory", bool strict=true)
     {
-      input = antlr3NewAsciiStringInPlaceStream(
+      input = antlr3StringStreamNew(
         pANTLR3_UINT8(input_string.c_str()),
+        ANTLR3_ENC_8BIT,
         input_string.size(),
         pANTLR3_UINT8(filename.c_str()));
       lxr = cifLexerNew(input);

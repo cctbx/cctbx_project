@@ -1793,7 +1793,6 @@ ucif/antlr3/include/antlr3parsetree.h -text
 ucif/antlr3/include/antlr3recognizersharedstate.h -text
 ucif/antlr3/include/antlr3rewritestreams.h -text
 ucif/antlr3/include/antlr3string.h -text
-ucif/antlr3/include/antlr3stringstream.h -text
 ucif/antlr3/include/antlr3tokenstream.h -text
 ucif/antlr3/include/antlr3treeparser.h -text
 ucif/antlr3/src/antlr3baserecognizer.c -text
@@ -1817,10 +1816,8 @@ ucif/antlr3/src/antlr3lexer.c -text
 ucif/antlr3/src/antlr3parser.c -text
 ucif/antlr3/src/antlr3rewritestreams.c -text
 ucif/antlr3/src/antlr3string.c -text
-ucif/antlr3/src/antlr3stringstream.c -text
 ucif/antlr3/src/antlr3tokenstream.c -text
 ucif/antlr3/src/antlr3treeparser.c -text
-ucif/antlr3/src/antlr3ucs2inputstream.c -text
 ucif/builder.h -text
 ucif/examples/build_cif_parser.bat -text
 ucif/examples/build_cif_parser.sh -text

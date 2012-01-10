@@ -114,6 +114,16 @@ typedef ANTLR3_UINT8    UTF8;   /* typically 8 bits */
 #define UNI_MAX_UTF32 (UTF32)0x7FFFFFFF
 #define UNI_MAX_LEGAL_UTF32 (UTF32)0x0010FFFF
 
+#define UNI_SUR_HIGH_START  (UTF32)0xD800
+#define UNI_SUR_HIGH_END    (UTF32)0xDBFF
+#define UNI_SUR_LOW_START   (UTF32)0xDC00
+#define UNI_SUR_LOW_END     (UTF32)0xDFFF
+#define false               ANTLR3_FALSE
+#define true                ANTLR3_TRUE
+#define halfShift           ((UTF32)10)
+#define halfBase            ((UTF32)0x0010000UL)
+#define halfMask            ((UTF32)0x3FFUL)
+
 typedef enum {
         conversionOK,           /* conversion successful */
         sourceExhausted,        /* partial character in source, but hit end */

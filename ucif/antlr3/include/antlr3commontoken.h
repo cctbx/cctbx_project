@@ -322,6 +322,10 @@ typedef struct ANTLR3_TOKEN_FACTORY_struct
      */
     ANTLR3_INT32            thisPool;
 
+    /** Maximum pool count we have available
+     */
+    ANTLR3_INT32            maxPool;
+
     /** The next token to throw out from the pool, will cause a new pool allocation
      *  if this exceeds the available tokenCount
      */
@@ -340,6 +344,11 @@ typedef struct ANTLR3_TOKEN_FACTORY_struct
     /** Pointer to a function that returns a new token
      */
     pANTLR3_COMMON_TOKEN    (*newToken)     (struct ANTLR3_TOKEN_FACTORY_struct * factory);
+
+    /** Pointer to a function that resets the factory so you can reuse the pools it
+     *  has laready allocated
+     */
+    void                    (*reset)        (struct ANTLR3_TOKEN_FACTORY_struct * factory);
 
     /** Pointer to a function that changes teh curent inptu stream so that
      *  new tokens are created with reference to their originating text.

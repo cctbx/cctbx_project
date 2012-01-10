@@ -26,10 +26,8 @@ gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
   "$LIBTBX_ANTLR3/src/antlr3parser.c"\
   "$LIBTBX_ANTLR3/src/antlr3rewritestreams.c"\
   "$LIBTBX_ANTLR3/src/antlr3string.c"\
-  "$LIBTBX_ANTLR3/src/antlr3stringstream.c"\
   "$LIBTBX_ANTLR3/src/antlr3tokenstream.c"\
-  "$LIBTBX_ANTLR3/src/antlr3treeparser.c"\
-  "$LIBTBX_ANTLR3/src/antlr3ucs2inputstream.c"
+  "$LIBTBX_ANTLR3/src/antlr3treeparser.c"
 
 g++ -o cif_parser -I $LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 -I$LIBTBX_UCIF/../ \
 $LIBTBX_UCIF/examples/main.cpp $LIBTBX_UCIF/cifLexer.cpp \
@@ -38,7 +36,6 @@ antlr3baserecognizer.o       \
 antlr3commontree.o           \
 antlr3encodings.o            \
 antlr3parser.o               \
-antlr3ucs2inputstream.o      \
 antlr3basetree.o             \
 antlr3commontreeadaptor.o    \
 antlr3exception.o            \
@@ -50,7 +47,6 @@ antlr3string.o               \
 antlr3bitset.o               \
 antlr3convertutf.o           \
 antlr3inputstream.o          \
-antlr3stringstream.o         \
 antlr3collections.o          \
 antlr3cyclicdfa.o            \
 antlr3intstream.o            \

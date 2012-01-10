@@ -1077,18 +1077,18 @@ antlr3VectorNew (ANTLR3_UINT32 sizeHint)
 ANTLR3_API void
 antlr3SetVectorApi  (pANTLR3_VECTOR vector, ANTLR3_UINT32 sizeHint)
 {
-        ANTLR3_UINT32   initialSize;
+    ANTLR3_UINT32   initialSize;
 
-        // Allow vectors to be guessed by ourselves, so input size can be zero
-        //
-        if      (sizeHint > ANTLR3_VECTOR_INTERNAL_SIZE)
-        {
-                initialSize = sizeHint;
-        }
-        else
-        {
-                initialSize = ANTLR3_VECTOR_INTERNAL_SIZE;
-        }
+    // Allow vectors to be guessed by ourselves, so input size can be zero
+    //
+    if  (sizeHint > ANTLR3_VECTOR_INTERNAL_SIZE)
+    {
+        initialSize = sizeHint;
+    }
+    else
+    {
+        initialSize = ANTLR3_VECTOR_INTERNAL_SIZE;
+    }
 
     if  (sizeHint > ANTLR3_VECTOR_INTERNAL_SIZE)
     {
@@ -1099,33 +1099,34 @@ antlr3SetVectorApi  (pANTLR3_VECTOR vector, ANTLR3_UINT32 sizeHint)
         vector->elements    = vector->internal;
     }
 
-        if      (vector->elements == NULL)
-        {
-                ANTLR3_FREE(vector);
-                return;
-        }
+    if  (vector->elements == NULL)
+    {
+        ANTLR3_FREE(vector);
+        return;
+    }
 
-        // Memory allocated successfully
-        //
-        vector->count                   = 0;                    // No entries yet of course
-        vector->elementsSize    = initialSize;  // Available entries
+    // Memory allocated successfully
+    //
+    vector->count                       = 0;                    // No entries yet of course
+    vector->elementsSize    = initialSize;  // Available entries
 
-        // Now we can install the API
-        //
-        vector->add         = antlr3VectorAdd;
-        vector->del         = antlr3VectorDel;
-        vector->get         = antlr3VectorGet;
-        vector->free    = antlr3VectorFree;
-        vector->set         = antlr3VectorSet;
-        vector->remove  = antrl3VectorRemove;
-        vector->clear   = antlr3VectorClear;
-        vector->size    = antlr3VectorSize;
+    // Now we can install the API
+    //
+    vector->add     = antlr3VectorAdd;
+    vector->del     = antlr3VectorDel;
+    vector->get     = antlr3VectorGet;
+    vector->free    = antlr3VectorFree;
+    vector->set     = antlr3VectorSet;
+    vector->remove  = antrl3VectorRemove;
+    vector->clear   = antlr3VectorClear;
+    vector->size    = antlr3VectorSize;
     vector->swap    = antlr3VectorSwap;
 
-        // Assume that this is not a factory made vector
-        //
-        vector->factoryMade     = ANTLR3_FALSE;
+    // Assume that this is not a factory made vector
+    //
+    vector->factoryMade = ANTLR3_FALSE;
 }
+
 // Clear the entries in a vector.
 // Clearing the vector leaves its capacity the same but
 // it walks the entries first to see if any of them

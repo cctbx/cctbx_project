@@ -202,6 +202,7 @@ newPoolTree         (pANTLR3_ARBORETUM factory)
         //
         tree->baseTree.super    = tree;
 
+
         // And we are done
         //
         return  &(tree->baseTree);
@@ -299,7 +300,7 @@ antlr3SetCTAPI(pANTLR3_COMMON_TREE tree)
 
     // Common tree overrides
 
-    tree->baseTree.isNilNode                                    = isNilNode;
+    tree->baseTree.isNilNode                = isNilNode;
     tree->baseTree.toString                                     = toString;
     tree->baseTree.dupNode                                      = (void *(*)(pANTLR3_BASE_TREE))(dupNode);
     tree->baseTree.getLine                                      = getLine;
@@ -314,7 +315,8 @@ antlr3SetCTAPI(pANTLR3_COMMON_TREE tree)
         tree->baseTree.getChildIndex                    = getChildIndex;
         tree->baseTree.createChildrenList               = createChildrenList;
     tree->baseTree.reuse                    = reuse;
-        tree->baseTree.free                                             = NULL; // Factory trees have no free function
+        tree->baseTree.free                                             = NULL;     // Factory trees have no free function
+    tree->baseTree.u                        = NULL;     // Initialize user pointer
 
         tree->baseTree.children = NULL;
 
@@ -335,7 +337,7 @@ ANTLR3_API pANTLR3_COMMON_TREE
 antlr3CommonTreeNew()
 {
         pANTLR3_COMMON_TREE     tree;
-        tree    = ANTLR3_MALLOC(sizeof(ANTLR3_COMMON_TREE));
+        tree    = ANTLR3_CALLOC(1, sizeof(ANTLR3_COMMON_TREE));
 
         if      (tree == NULL)
         {
