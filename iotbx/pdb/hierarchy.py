@@ -8,6 +8,7 @@ from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0
 from cStringIO import StringIO
+import math
 import sys
 
 class pickle_import_trigger(object): pass
@@ -1180,3 +1181,39 @@ def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
       elif res.resname.strip() in ['HOH','WAT','H2O'] :
         n_h2o += 1
   return (n_res, n_frag, n_h2o)
+
+def sites_diff (hierarchy_1,
+                hierarchy_2,
+                exclude_waters=True,
+                return_hierarchy=True,
+                log=None) :
+  """
+  Given two PDB hierarchies, calculate the shift of each atom (accounting for
+  possible insertions/deletions) and (optionally) apply it to the B-factor for
+  display in PyMOL, plotting in PHENIX GUI, etc.
+  """
+  if (log is None) : log = null_out()
+  atom_lookup = {}
+  deltas = flex.double(hierarchy_2.atoms().size(), -1.)
+  for atom in hierarchy_1.atoms_with_labels() :
+    if (atom.resname in ["HOH", "WAT"]) and (exclude_waters) :
+      continue
+    atom_id = atom.id_str()
+    if (atom_id in atom_lookup) :
+      raise RuntimeError("Duplicate atom ID - can't extract coordinates.")
+    atom_lookup[atom_id] = atom.xyz
+  for i_seq, atom in enumerate(hierarchy_2.atoms_with_labels()) :
+    if (atom.resname in ["HOH", "WAT"]) and (exclude_waters) :
+      continue
+    atom_id = atom.id_str()
+    if (atom_id in atom_lookup) :
+      x1,y1,z1 = atom_lookup[atom_id]
+      x2,y2,z2 = atom.xyz
+      delta = math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+      deltas[i_seq] = delta
+  if (return_hierarchy) :
+    hierarchy_new = hierarchy_2.deep_copy()
+    hierarchy_new.atoms().set_b(deltas)
+    return hierarchy_new
+  else :
+    return deltas
