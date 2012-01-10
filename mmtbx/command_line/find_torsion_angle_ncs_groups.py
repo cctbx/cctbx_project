@@ -1,4 +1,4 @@
-# LIBTBX_SET_DISPATCHER_NAMEW mmtbx.find_ncs_groups
+# LIBTBX_SET_DISPATCHER_NAMEW mmtbx.find_torsion_angle_ncs_groups
 
 import sys
 import time
