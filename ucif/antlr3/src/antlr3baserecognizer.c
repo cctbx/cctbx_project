@@ -345,8 +345,8 @@ antlr3RecognitionExceptionNew(pANTLR3_BASE_RECOGNIZER recognizer)
         case    ANTLR3_TOKENSTREAM:
 
                 ex->token               = cts->tstream->_LT                                             (cts->tstream, 1);          /* Current input token                          */
-                ex->line                = ((pANTLR3_COMMON_TOKEN)(ex->token))->getLine                  (ex->token);
-                ex->charPositionInLine  = ((pANTLR3_COMMON_TOKEN)(ex->token))->getCharPositionInLine    (ex->token);
+                ex->line                = ((pANTLR3_COMMON_TOKEN)(ex->token))->line;
+                ex->charPositionInLine  = ((pANTLR3_COMMON_TOKEN)(ex->token))->charPosition;
                 ex->index               = cts->tstream->istream->index                                  (cts->tstream->istream);
                 if      (((pANTLR3_COMMON_TOKEN)(ex->token))->type == ANTLR3_TOKEN_EOF)
                 {
@@ -1063,7 +1063,7 @@ displayRecognitionError     (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 *
                 tparser     = NULL;
                 is                      = parser->tstream->istream;
                 theToken    = (pANTLR3_COMMON_TOKEN)(recognizer->state->exception->token);
-                ttext       = theToken->toString(theToken);
+                ttext       = theToken->getText(theToken);
 
                 ANTLR3_FPRINTF(stderr, ", at offset %d", recognizer->state->exception->charPositionInLine);
                 if  (theToken != NULL)
@@ -2180,7 +2180,7 @@ getMissingSymbol                        (pANTLR3_BASE_RECOGNIZER recognizer, pAN
         // If we are at EOF, we use the token before EOF
         //
         current = ts->_LT(ts, 1);
-        if      (current->getType(current) == ANTLR3_TOKEN_EOF)
+        if      (current->type == ANTLR3_TOKEN_EOF)
         {
                 current = ts->_LT(ts, -1);
         }
@@ -2199,15 +2199,10 @@ getMissingSymbol                        (pANTLR3_BASE_RECOGNIZER recognizer, pAN
 
         // Set some of the token properties based on the current token
         //
-        token->setLine                                  (token, current->getLine(current));
-        token->setCharPositionInLine    (token, current->getCharPositionInLine(current));
-        token->setChannel                               (token, ANTLR3_TOKEN_DEFAULT_CHANNEL);
-        token->setType                                  (token, expectedTokenType);
-    token->user1                    = current->user1;
-    token->user2                    = current->user2;
-    token->user3                    = current->user3;
-    token->custom                   = current->custom;
-    token->lineStart                = current->lineStart;
+        token->line                                           = current->line;
+        token->charPosition                   = current->charPosition;
+        token->channel                                = ANTLR3_TOKEN_DEFAULT_CHANNEL;
+        token->type                       = expectedTokenType;
 
         // Create the token text that shows it has been inserted
         //
