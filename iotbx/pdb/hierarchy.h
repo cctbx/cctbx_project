@@ -1475,6 +1475,7 @@ namespace hierarchy {
     map charge;
     af::shared<std::size_t> anisou;
     af::shared<std::string> resid_list;
+    af::shared<std::size_t> chain_break_list;
 
     atom_selection_cache(
       hierarchy::root const& root,
@@ -1886,6 +1887,7 @@ namespace hierarchy {
 
   af::shared<unsigned> get_resid_sequence (
     af::shared<std::string> resid_list,
+    af::shared<std::size_t> chain_break_list,
     std::string start,
     std::string stop);
 

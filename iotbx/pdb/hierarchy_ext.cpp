@@ -394,6 +394,7 @@ namespace {
       IOTBX_LOC(charge)
       IOTBX_LOC(anisou)
       IOTBX_LOC(resid_list)
+      IOTBX_LOC(chain_break_list)
 #undef IOTBX_LOC
     }
 
@@ -459,6 +460,7 @@ namespace {
       ;
       def("get_resid_sequence", get_resid_sequence, (
         arg("resid_list"),
+        arg("chain_break_list"),
         arg("start"),
         arg("stop")));
     }

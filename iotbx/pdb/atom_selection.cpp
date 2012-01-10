@@ -1,5 +1,6 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/utils.h>
+#include <iotbx/error.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
 
@@ -45,6 +46,8 @@ namespace {
     std::map<str2, std::vector<unsigned> > element_s;
     std::map<str2, std::vector<unsigned> > charge_s;
     unsigned i_seq = 0;
+    unsigned chain_id_seq = 0;
+    str2 chain_last = -1;
     std::vector<model> const& models = root.models();
     unsigned n_mds = root.models_size();
     for(unsigned i_md=0;i_md<n_mds;i_md++) {
@@ -56,6 +59,9 @@ namespace {
         unsigned chain_i_seq_start = i_seq;
         chain const& ch = chains[i_ch];
         unsigned n_rgs = ch.residue_groups_size();
+        if (ch.data->id != chain_last) {
+          chain_id_seq++;
+        }
         std::vector<residue_group> const& rgs = ch.residue_groups();
         for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
           unsigned rg_i_seq_start = i_seq;
@@ -78,6 +84,7 @@ namespace {
                 charge_s[ad.charge].push_back(i_seq);
                 if (a.uij_is_defined()) anisou.push_back(i_seq);
                 resid_list.push_back(resid);
+                chain_break_list.push_back(chain_id_seq);
               }
               append_range(resname_s[ag.data->resname], ag_i_seq_start, i_seq);
             }
@@ -124,17 +131,25 @@ namespace {
 
   af::shared<unsigned> get_resid_sequence (
     af::shared<std::string> resid_list,
+    af::shared<std::size_t> chain_break_list,
     std::string start,
     std::string stop)
   {
+    IOTBX_ASSERT(resid_list.size() == chain_break_list.size());
     using iotbx::pdb::utils::base_256_ordinal;
     af::shared<unsigned> result;
     boost::int64_t o_start = base_256_ordinal(start.c_str());
     boost::int64_t o_stop = base_256_ordinal(stop.c_str());
     bool in_sequence = false;
+    std::size_t chain_id_last = 0;
     for (unsigned i_seq = 0; i_seq < resid_list.size(); i_seq++) {
       std::string resid = resid_list[i_seq];
       boost::int64_t resid_os = base_256_ordinal(resid.c_str());
+      std::size_t chain_id_current = chain_break_list[i_seq];
+      if (chain_id_current != chain_id_last) {
+        in_sequence = false;
+      }
+      chain_id_last = chain_id_current;
       if (resid_os == o_start) {
         in_sequence = true;
       }
