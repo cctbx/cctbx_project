@@ -765,7 +765,7 @@ createTypeToken (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pAN
 
         /* Set the type of the new token to that supplied
          */
-        fromToken->setType(fromToken, tokenType);
+        fromToken->type = tokenType;
 
         /* Return a new node based upon this token
          */
@@ -792,7 +792,7 @@ createTypeTokenText     (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenT
 
         /* Set the type of the new token to that supplied
          */
-        fromToken->setType(fromToken, tokenType);
+        fromToken->type = tokenType;
 
         /* Set the text of the token accordingly
          */

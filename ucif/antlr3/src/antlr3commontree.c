@@ -432,7 +432,7 @@ getType                 (pANTLR3_BASE_TREE tree)
         }
         else
         {
-                return  theTree->token->getType(theTree->token);
+                return  theTree->token->type;
         }
 }
 
@@ -451,7 +451,7 @@ static ANTLR3_UINT32        getLine                     (pANTLR3_BASE_TREE tree)
 
         token   = cTree->token;
 
-        if      (token == NULL || token->getLine(token) == 0)
+        if      (token == NULL || token->line == 0)
         {
                 if  (tree->getChildCount(tree) > 0)
                 {
@@ -462,7 +462,7 @@ static ANTLR3_UINT32        getLine                     (pANTLR3_BASE_TREE tree)
                 }
                 return 0;
         }
-        return  token->getLine(token);
+        return  token->line;
 }
 
 static ANTLR3_UINT32        getCharPositionInLine       (pANTLR3_BASE_TREE tree)
@@ -471,7 +471,7 @@ static ANTLR3_UINT32        getCharPositionInLine       (pANTLR3_BASE_TREE tree)
 
         token   = ((pANTLR3_COMMON_TREE)(tree->super))->token;
 
-        if      (token == NULL || token->getCharPositionInLine(token) == -1)
+        if      (token == NULL || token->charPosition == -1)
         {
                 if  (tree->getChildCount(tree) > 0)
                 {
@@ -483,7 +483,7 @@ static ANTLR3_UINT32        getCharPositionInLine       (pANTLR3_BASE_TREE tree)
                 }
                 return 0;
         }
-        return  token->getCharPositionInLine(token);
+        return  token->charPosition;
 }
 
 static pANTLR3_STRING       toString                    (pANTLR3_BASE_TREE tree)

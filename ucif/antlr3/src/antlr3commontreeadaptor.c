@@ -298,7 +298,7 @@ createToken             (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenT
     {
                 newToken->textState             = ANTLR3_TEXT_CHARP;
                 newToken->tokText.chars = (pANTLR3_UCHAR)text;
-                newToken->setType(newToken, tokenType);
+                newToken->type = tokenType;
                 newToken->input                         = adaptor->tokenFactory->input;
         newToken->strFactory        = adaptor->strFactory;
     }
@@ -337,8 +337,6 @@ createTokenFromToken    (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN
                 //
                 pANTLR3_STRING  text;
 
-                newToken->toString  = fromToken->toString;
-
                 if      (fromToken->textState == ANTLR3_TEXT_CHARP)
                 {
                         newToken->textState             = ANTLR3_TEXT_CHARP;
@@ -351,11 +349,11 @@ createTokenFromToken    (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN
                         newToken->tokText.text      = adaptor->strFactory->newPtr(adaptor->strFactory, text->chars, text->len);
                 }
 
-                newToken->setLine                               (newToken, fromToken->getLine(fromToken));
-                newToken->setTokenIndex                 (newToken, fromToken->getTokenIndex(fromToken));
-                newToken->setCharPositionInLine (newToken, fromToken->getCharPositionInLine(fromToken));
-                newToken->setChannel                    (newToken, fromToken->getChannel(fromToken));
-                newToken->setType                               (newToken, fromToken->getType(fromToken));
+                newToken->line         = fromToken->line;
+                newToken->index        = fromToken->index;
+                newToken->charPosition = fromToken->charPosition;
+                newToken->channel      = fromToken->channel;
+                newToken->type         = fromToken->type;
     }
 
     return  newToken;
@@ -383,7 +381,7 @@ setTokenBoundaries      (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t,
 
         if      ( startToken != NULL)
         {
-                start = startToken->getTokenIndex(startToken);
+                start = startToken->index;
         }
         else
         {
@@ -392,7 +390,7 @@ setTokenBoundaries      (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t,
 
         if      ( stopToken != NULL)
         {
-                stop = stopToken->getTokenIndex(stopToken);
+                stop = stopToken->index;
         }
         else
         {
@@ -412,7 +410,7 @@ dbgSetTokenBoundaries   (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t,
 
         if      (t != NULL && startToken != NULL && stopToken != NULL)
         {
-                adaptor->debugger->setTokenBoundaries(adaptor->debugger, t, startToken->getTokenIndex(startToken), stopToken->getTokenIndex(stopToken));
+                adaptor->debugger->setTokenBoundaries(adaptor->debugger, t, startToken->index, stopToken->index);
         }
 }
 

@@ -435,15 +435,15 @@ serializeToken(pANTLR3_DEBUG_EVENT_LISTENER delboy, pANTLR3_COMMON_TOKEN t)
         // Now we serialize the elements of the token.Note that the debugger only
         // uses 32 bits.
         //
-        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->getTokenIndex(t)));
+        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->index));
         delboy->tokenString->addc(delboy->tokenString, '\t');
-        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->getType(t)));
+        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->type));
         delboy->tokenString->addc(delboy->tokenString, '\t');
-        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->getChannel(t)));
+        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->channel));
         delboy->tokenString->addc(delboy->tokenString, '\t');
-        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->getLine(t)));
+        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->line));
         delboy->tokenString->addc(delboy->tokenString, '\t');
-        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->getCharPositionInLine(t)));
+        delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(t->charPosition));
 
         // Now send the text that the token represents.
         //
@@ -511,9 +511,9 @@ serializeNode(pANTLR3_DEBUG_EVENT_LISTENER delboy, pANTLR3_BASE_TREE node)
         {
                 // Real token
                 //
-                delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(token->getLine(token)));
+                delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(token->line));
                 delboy->tokenString->addc(delboy->tokenString, ' ');
-                delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(token->getCharPositionInLine(token)));
+                delboy->tokenString->addi(delboy->tokenString, (ANTLR3_INT32)(token->charPosition));
         }
         else
         {
@@ -1004,7 +1004,7 @@ createNodeTok                   (pANTLR3_DEBUG_EVENT_LISTENER delboy, pANTLR3_BA
 {
         char    buffer[128];
 
-        sprintf(buffer, "createNode\t%d\t%d\n", delboy->adaptor->getUniqueID(delboy->adaptor, node), (ANTLR3_UINT32)token->getTokenIndex(token));
+        sprintf(buffer, "createNode\t%d\t%d\n", delboy->adaptor->getUniqueID(delboy->adaptor, node), (ANTLR3_UINT32)token->index);
 
         transmit(delboy, buffer);
 }

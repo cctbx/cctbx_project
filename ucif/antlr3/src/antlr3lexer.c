@@ -148,26 +148,18 @@ antlr3LexerNew(ANTLR3_UINT32 sizeHint, pANTLR3_RECOGNIZER_SHARED_STATE state)
      */
     specialT                                    = &(lexer->rec->state->tokSource->eofToken);
     antlr3SetTokenAPI     (specialT);
-    specialT->setType     (specialT, ANTLR3_TOKEN_EOF);
+    specialT->type              = ANTLR3_TOKEN_EOF;
     specialT->factoryMade               = ANTLR3_TRUE;                                  // Prevent things trying to free() it
     specialT->strFactory        = NULL;
         specialT->textState                     = ANTLR3_TEXT_NONE;
-        specialT->custom                        = NULL;
-        specialT->user1                         = 0;
-        specialT->user2                         = 0;
-        specialT->user3                         = 0;
 
         // Initialize the skip token.
         //
     specialT                                    = &(lexer->rec->state->tokSource->skipToken);
     antlr3SetTokenAPI     (specialT);
-    specialT->setType     (specialT, ANTLR3_TOKEN_INVALID);
+    specialT->type              = ANTLR3_TOKEN_INVALID;
     specialT->factoryMade               = ANTLR3_TRUE;                                  // Prevent things trying to free() it
     specialT->strFactory        = NULL;
-        specialT->custom                        = NULL;
-        specialT->user1                         = 0;
-        specialT->user2                         = 0;
-        specialT->user3                         = 0;
     return  lexer;
 }
 
@@ -248,11 +240,6 @@ nextTokenStr        (pANTLR3_TOKEN_SOURCE toksource)
             state->tokenStartCharPositionInLine     = input->charPositionInLine;
             state->tokenStartLine                   = input->line;
             state->text                             = NULL;
-            state->custom                           = NULL;
-            state->user1                            = 0;
-            state->user2                            = 0;
-            state->user3                            = 0;
-
             if  (istream->_LA(istream, 1) == ANTLR3_CHARSTREAM_EOF)
             {
                 // Reached the end of the current stream, nothing more to do if this is
@@ -262,7 +249,7 @@ nextTokenStr        (pANTLR3_TOKEN_SOURCE toksource)
 
                 teof->setStartIndex (teof, lexer->getCharIndex(lexer));
                 teof->setStopIndex  (teof, lexer->getCharIndex(lexer));
-                teof->setLine       (teof, lexer->getLine(lexer));
+                teof->line = lexer->getLine(lexer);
                 teof->factoryMade = ANTLR3_TRUE;        // This isn't really manufactured but it stops things from trying to free it
                 return  teof;
             }
@@ -670,11 +657,6 @@ emit        (pANTLR3_LEXER lexer)
     {
         token->textState        = ANTLR3_TEXT_NONE;
     }
-    token->lineStart    = lexer->input->currentLine;
-    token->user1        = lexer->rec->state->user1;
-    token->user2        = lexer->rec->state->user2;
-    token->user3        = lexer->rec->state->user3;
-    token->custom       = lexer->rec->state->custom;
 
     lexer->rec->state->token        = token;
 
