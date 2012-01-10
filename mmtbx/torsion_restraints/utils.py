@@ -6,6 +6,7 @@ from iotbx.pdb import amino_acid_codes
 from libtbx import group_args
 import ccp4io_adaptbx
 import math
+import mmtbx.alignment
 
 def selection(string, cache):
   return cache.selection(
@@ -243,6 +244,81 @@ def _ssm_align(reference_chain,
           moving=moving_chain)
   ssm_alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
   return ssm, ssm_alignment
+
+def _alignment(pdb_hierarchy,
+               params,
+               sequences,
+               padded_sequences,
+               structures,
+               log=None):
+  if(log is None): log = sys.stdout
+  res_match_hash = {}
+  model_mseq_res_hash = {}
+  ref_mseq_res_hash = {}
+  model_seq = sequences[0]
+  model_seq_padded = padded_sequences[0]
+  model_structures = structures[0]
+  ref_seq = sequences[1]
+  ref_seq_padded = padded_sequences[1]
+  ref_structures = structures[1]
+  for struct in model_structures:
+    model_mseq_res_hash[struct.i_seq] = \
+      struct.rg.atoms()[0].pdb_label_columns()[4:]
+  for struct in ref_structures:
+    ref_mseq_res_hash[struct.i_seq] = \
+      struct.rg.atoms()[0].pdb_label_columns()[4:]
+  if model_seq == ref_seq:
+    pg = mmtbx.alignment.pairwise_global(
+           model_seq,
+           ref_seq)
+  else:
+    pg = mmtbx.alignment.pairwise_global(
+           model_seq_padded,
+           ref_seq_padded)
+  offset_i = 0
+  offset_j = 0
+  i = 0
+  j = 0
+  seq_j = pg.result2[j]
+  for seq_i in pg.result1:
+    seq_j = pg.result2[j]
+    if seq_i == seq_j and seq_i != 'X' and seq_j != 'X':
+      res_match_hash[model_mseq_res_hash[i-offset_i]] = \
+        ref_mseq_res_hash[j-offset_j]
+      i += 1
+      j += 1
+    else:
+      if seq_i == 'X' and seq_j == 'X':
+        i += 1
+        j += 1
+        offset_i += 1
+        offset_j += 1
+      elif (seq_i == 'X' and seq_j == '-') or \
+           (seq_i == '-' and seq_j == 'X'):
+        i += 1
+        j += 1
+        offset_i += 1
+        offset_j += 1
+      elif seq_i == 'X':
+        i += 1
+        j += 1
+        offset_i += 1
+      elif seq_j == 'X':
+        i += 1
+        j += 1
+        offset_j += 1
+      elif seq_i == '-':
+        i += 1
+        j += 1
+        offset_i += 1
+      elif seq_j == '-':
+        i += 1
+        j += 1
+        offset_j += 1
+      else:
+        i += 1
+        j += 1
+  return res_match_hash
 
 def chain_from_selection(chain, selection):
   from iotbx.pdb.hierarchy import new_hierarchy_from_chain
