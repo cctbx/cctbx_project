@@ -5743,6 +5743,31 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert (len(resids) == 11)
   assert (resids[0] == resids[1] == None)
   assert (resids[-4].strip() == "6B")
+  # sites_diff
+  hierarchy_1 = pdb.input(source_info=None, lines="""\
+ATOM      0  O   WAT B   1      17.523   2.521  10.381  1.10 16.78           O
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+TER
+ATOM      5  O   HOH S   1      -7.523   2.521  10.381  0.10  6.78           O
+""").construct_hierarchy()
+  hierarchy_2 = pdb.input(source_info=None, lines="""\
+ATOM      1  N   GLY A   1      -9.009   4.612   7.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   5.651  1.00 16.57           C
+ATOM      3  C   GLY A   1      -8.015   3.140   5.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -6.523   3.521   6.381  1.00 16.78           O
+TER
+ATOM      5  O   HOH S   1      -9.523   5.521  11.381  0.10  6.78           O
+""").construct_hierarchy()
+  hierarchy_new = pdb.hierarchy.sites_diff(hierarchy_1, hierarchy_2)
+  assert approx_equal(hierarchy_new.atoms().extract_b(),
+      [1.0, 1.0, 1.0, 1.7320508, -1.0])
+  deltas = pdb.hierarchy.sites_diff(hierarchy_1, hierarchy_2,
+      exclude_waters=False, return_hierarchy=False)
+  assert approx_equal(deltas, [1.0, 1.0, 1.0, 1.7320508, 3.7416574])
+  # show_file_summary
   out = StringIO()
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/2C30.pdb",
