@@ -11,15 +11,15 @@ import os
 # Instance to bind external update event to an event handler
 EVT_EXTERNAL_UPDATE = wx.PyEventBinder(wx.NewEventType(), 0)
 
-class ExternalUpdateEvent(wx.PyCommandEvent):
+class ExternalUpdateEvent (wx.PyCommandEvent) :
   """XXX This class, along with the EVT_EXTERNAL_UPDATE instance
   should perhaps move into its own file?
   """
 
-  def __init__(self, eventType = EVT_EXTERNAL_UPDATE.evtType[0], id = 0):
+  def __init__ (self, eventType=EVT_EXTERNAL_UPDATE.evtType[0], id=0) :
     wx.PyCommandEvent.__init__(self, eventType, id)
-    self.img          = None
-    self.title        = None
+    self.img = None
+    self.title = None
 
 class XrayFrame (wx.Frame) :
   # Maximum number of entries in the cache.
@@ -62,14 +62,15 @@ class XrayFrame (wx.Frame) :
     self.OnShowSettings(None)
     self.Bind(EVT_EXTERNAL_UPDATE, self.OnExternalUpdate)
 
-  def OnExternalUpdate(self, event):
+  def OnExternalUpdate (self, event) :
     """The OnExternalUpdate() function updates the image and the title
-    from @p event."""
+    from @p event.
+    """
 
     # See self.load_image().
     self._img = event.img
     self.viewer.set_image(self._img)
-    if self.settings_frame is not None:
+    if self.settings_frame is not None :
       self.settings_frame.set_image(self._img)
     self.SetTitle(event.title)
     self.update_statusbar()
@@ -134,6 +135,7 @@ class XrayFrame (wx.Frame) :
     For file names, the key is an ASCII-encoded absolute path string.
     Otherwise, get_key() returns @c None.
     """
+
     if (type(file_name_or_data) is dict and "TIMESTAMP" in file_name_or_data) :
       return file_name_or_data["TIMESTAMP"]
     if (os.path.isfile(file_name_or_data)) :
@@ -203,6 +205,7 @@ class XrayFrame (wx.Frame) :
     if the viewer was given a pattern, or a plain list of files.  XXX
     Rename this function, because it only deals with the chooser?
     """
+
     key = self.get_key(file_name_or_data)
     for i in xrange(self.image_chooser.GetCount()) :
       if (key == self.image_chooser.GetClientData(i)) :
