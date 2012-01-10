@@ -720,6 +720,13 @@ mismatch(pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 ttype, pANTLR3_BITSET
 static void
 reportError                 (pANTLR3_BASE_RECOGNIZER recognizer)
 {
+        // Invoke the debugger event if there is a debugger listening to us
+        //
+        if      (recognizer->debugger != NULL)
+        {
+                recognizer->debugger->recognitionException(recognizer->debugger, recognizer->state->exception);
+        }
+
     if  (recognizer->state->errorRecovery == ANTLR3_TRUE)
     {
                 // Already in error recovery so don't display another error while doing so
@@ -1429,12 +1436,7 @@ recoverFromMismatchedToken  (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 t
         pANTLR3_INT_STREAM            is;
         void                                    * matchedSymbol;
 
-        // Invoke the debugger event if there is a debugger listening to us
-        //
-        if      (recognizer->debugger != NULL)
-        {
-                recognizer->debugger->recognitionException(recognizer->debugger, recognizer->state->exception);
-        }
+
 
         switch  (recognizer->type)
         {
@@ -1485,8 +1487,6 @@ recoverFromMismatchedToken  (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 t
                 {
                         recognizer->debugger->beginResync(recognizer->debugger);
                 }
-
-                recognizer->beginResync(recognizer);
 
                 // "delete" the extra token
                 //

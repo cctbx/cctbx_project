@@ -145,11 +145,9 @@ typedef struct ANTLR3_LEXER_struct
     ANTLR3_BOOLEAN      (*matchs)           (struct ANTLR3_LEXER_struct * lexer, ANTLR3_UCHAR * string);
 
     /** Pointer to a function that matches and consumes the specified character from the input stream.
-     *  As the input stream is required to provide characters via LA() as UTF32 characters it does not
-     *  need to provide an implementation if it is not sourced from 8 bit ASCII. The default lexer
-     *  implementation is source encoding agnostic, unless for some reason it takes two 32 bit characters
-     *  to specify a single character, in which case the input stream and the lexer rules would have to match
-     *  in encoding and then it would work 'by accident' anyway.
+     *  The input stream is required to provide characters via LA() as UTF32 characters. The default lexer
+     *  implementation is source encoding agnostic and so input streams do not generally need to
+     *  override the default implmentation.
      */
     ANTLR3_BOOLEAN      (*matchc)           (struct ANTLR3_LEXER_struct * lexer, ANTLR3_UCHAR c);
 

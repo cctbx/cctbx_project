@@ -40,7 +40,7 @@
 
 /// Convert 8 bit character to ANTLR char form.
 ///
-/// \param[in] inc Input character to transform in 8 bit ASCII form.
+/// \param[in] inc Input character to transform from 8 bit form.
 /// \return ANTLR3_UCHAR encoding of the character.
 ///
 ANTLR3_API

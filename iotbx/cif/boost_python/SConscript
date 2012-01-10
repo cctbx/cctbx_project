@@ -29,10 +29,8 @@ antlr3_src_files = [
   "antlr3parser.c",
   "antlr3rewritestreams.c",
   "antlr3string.c",
-  "antlr3stringstream.c",
   "antlr3tokenstream.c",
   "antlr3treeparser.c",
-  "antlr3ucs2inputstream.c",
 ]
 
 prefix = "#ucif/antlr3/src"

@@ -81,42 +81,41 @@ typedef struct ANTLR3_STRING_struct
     ANTLR3_UINT8                encoding;
 
     /** Pointer to function that sets the string value to a specific string in the default encoding
-     *  for this string. For instance, if this is ASCII 8 bit, then this function is the same as set8
-     *  but if the encoding is 16 bit, then the pointer is assumed to point to 16 bit characters not
+     *  for this string. For instance, if this is 8 bit, then this function is the same as set8
+     *  but if the encoding is UTF16, then the pointer is assumed to point to UTF16 characters, not
      *  8 bit.
      */
     pANTLR3_UINT8   (*set)      (struct ANTLR3_STRING_struct * string, const char * chars);
 
     /** Pointer to function that sets the string value to a specific 8 bit string in the default encoding
-     *  for this string. For instance, if this is a 16 bit string, then this function is the same as set8
-     *  but if the encoding is 16 bit, then the pointer is assumed to point to 8 bit characters that must
-     *  be converted to 16 bit characters on the fly.
+     *  for this string. For instance, if this is an 8 bit string, then this function is the same as set8
+     *  but if the encoding is UTF16, then the pointer is assumed to point to 8 bit characters that must
+     *  be converted to UTF16 characters on the fly.
      */
     pANTLR3_UINT8   (*set8)     (struct ANTLR3_STRING_struct * string, const char * chars);
 
     /** Pointer to function adds a raw char * type pointer in the default encoding
-     *  for this string. For instance, if this is ASCII 8 bit, then this function is the same as append8
-     *  but if the encoding is 16 bit, then the pointer is assumed to point to 16 bit characters not
+     *  for this string. For instance, if this is 8 bit, then this function is the same as append8
+     *  but if the encoding is UTF16, then the pointer is assumed to point to UTF16 characters not
      *  8 bit.
      */
     pANTLR3_UINT8   (*append)   (struct ANTLR3_STRING_struct * string, const char * newbit);
 
     /** Pointer to function adds a raw char * type pointer in the default encoding
-     *  for this string. For instance, if this is a 16 bit string, then this function assumes the pointer
+     *  for this string. For instance, if this is a UTF16 string, then this function assumes the pointer
      *  points to 8 bit characters that must be converted on the fly.
      */
     pANTLR3_UINT8   (*append8)  (struct ANTLR3_STRING_struct * string, const char * newbit);
 
     /** Pointer to function that inserts the supplied string at the specified
      *  offset in the current string in the default encoding for this string. For instance, if this is an 8
-     *  bit string, then this is the same as insert8, but if this is a 16 bit string, then the poitner
-     *  must point to 16 bit characters.
-     *
+     *  bit string, then this is the same as insert8, but if this is a UTF16 string, then the pointer
+     *  must point to UTF16 characters.
      */
     pANTLR3_UINT8   (*insert)   (struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 point, const char * newbit);
 
     /** Pointer to function that inserts the supplied string at the specified
-     *  offset in the current string in the default encoding for this string. For instance, if this is a 16 bit string
+     *  offset in the current string in the default encoding for this string. For instance, if this is a UTF16 string
      *  then the pointer is assumed to point at 8 bit characteres that must be converted on the fly.
      */
     pANTLR3_UINT8   (*insert8)  (struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 point, const char * newbit);
@@ -142,7 +141,7 @@ typedef struct ANTLR3_STRING_struct
     pANTLR3_UINT8   (*inserti)  (struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 point, ANTLR3_INT32 i);
 
     /** Pointer to function that adds a single character to the end of the string, in the encoding of the
-     *  string - 8 bit, 16 bit, utf-8 etc. Input is a single UTF32 (32 bits wide integer) character.
+     *  string - 8 bit, UTF16, utf-8 etc. Input is a single UTF32 (32 bits wide integer) character.
      */
     pANTLR3_UINT8   (*addc)     (struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 c);
 
@@ -227,8 +226,8 @@ typedef struct  ANTLR3_STRING_FACTORY_struct
     pANTLR3_STRING  (*newSize)  (struct ANTLR3_STRING_FACTORY_struct * factory, ANTLR3_UINT32 size);
 
     /** Pointer to function that manufactures a string from a given pointer and length. The pointer is assumed
-     *  to point to characters in the same encoding as the string type, hence if this is a 16 bit string the
-     *  pointer should point to 16 bit characters.
+     *  to point to characters in the same encoding as the string type, hence if this is a UTF16 string the
+     *  pointer should point to UTF16 characters.
      */
     pANTLR3_STRING  (*newPtr)   (struct ANTLR3_STRING_FACTORY_struct * factory, pANTLR3_UINT8 string, ANTLR3_UINT32 size);
 
@@ -238,7 +237,7 @@ typedef struct  ANTLR3_STRING_FACTORY_struct
     pANTLR3_STRING  (*newPtr8)  (struct ANTLR3_STRING_FACTORY_struct * factory, pANTLR3_UINT8 string, ANTLR3_UINT32 size);
 
     /** Pointer to function that manufactures a string from a given pointer and works out the length. The pointer is
-     *  assumed to point to characters in the same encoding as the string itself, i.e. 16 bit if a 16 bit
+     *  assumed to point to characters in the same encoding as the string itself, i.e. UTF16 if a UTF16
      *  string and so on.
      */
     pANTLR3_STRING  (*newStr)   (struct ANTLR3_STRING_FACTORY_struct * factory, pANTLR3_UINT8 string);

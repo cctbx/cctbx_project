@@ -43,7 +43,7 @@
 
 /** Name of exception #ANTLR3_RECOGNITION_EXCEPTION
  */
-#define ANTLR3_RECOGNITION_EX_NAME  "Recognition Exception"
+#define ANTLR3_RECOGNITION_EX_NAME  "org.antlr.runtime.RecognitionException"
 
 /** Indicates that the recognizer was expecting one token and found a
  *  a different one.
@@ -52,7 +52,7 @@
 
 /** Name of #ANTLR3_MISMATCHED_TOKEN_EXCEPTION
  */
-#define ANTLR3_MISMATCHED_EX_NAME   "Mismatched Token Exception"
+#define ANTLR3_MISMATCHED_EX_NAME   "org.antlr.runtime.MismatchedTokenException"
 
 /** Recognizer could not find a valid alternative from the input
  */
@@ -60,7 +60,7 @@
 
 /** Name of #ANTLR3_NO_VIABLE_ALT_EXCEPTION
  */
-#define ANTLR3_NO_VIABLE_ALT_NAME   "No Viable Alt"
+#define ANTLR3_NO_VIABLE_ALT_NAME   "org.antlr.runtime.NoViableAltException"
 
 /* Character in a set was not found
  */
@@ -68,7 +68,7 @@
 
 /* Name of #ANTLR3_MISMATCHED_SET_EXCEPTION
  */
-#define ANTLR3_MISMATCHED_SET_NAME  "Mismatched set"
+#define ANTLR3_MISMATCHED_SET_NAME  "org.antlr.runtime.MismatchedSetException"
 
 /* A rule predicting at least n elements found less than that,
  * such as: WS: " "+;
@@ -77,22 +77,22 @@
 
 /* Name of #ANTLR3_EARLY_EXIT_EXCEPTION
  */
-#define ANTLR3_EARLY_EXIT_NAME       "Early exit"
+#define ANTLR3_EARLY_EXIT_NAME       "org.antlr.runtime.EarlyExitException"
 
 #define ANTLR3_FAILED_PREDICATE_EXCEPTION   6
-#define ANTLR3_FAILED_PREDICATE_NAME        "Predicate failed!"
+#define ANTLR3_FAILED_PREDICATE_NAME        "org.antlr.runtime.FailedPredicateException"
 
 #define ANTLR3_MISMATCHED_TREE_NODE_EXCEPTION   7
-#define ANTLR3_MISMATCHED_TREE_NODE_NAME    "Mismatched tree node!"
+#define ANTLR3_MISMATCHED_TREE_NODE_NAME    "org.antlr.runtime.MismatchedTreeNodeException"
 
 #define ANTLR3_REWRITE_EARLY_EXCEPTION  8
-#define ANTLR3_REWRITE_EARLY_EXCEPTION_NAME    "Mismatched tree node!"
+#define ANTLR3_REWRITE_EARLY_EXCEPTION_NAME    "org.antlr.runtime.tree.RewriteEarlyExitException"
 
 #define ANTLR3_UNWANTED_TOKEN_EXCEPTION 9
-#define ANTLR3_UNWANTED_TOKEN_EXCEPTION_NAME    "Extraneous token"
+#define ANTLR3_UNWANTED_TOKEN_EXCEPTION_NAME    "org.antlr.runtime.UnwantedTokenException"
 
 #define ANTLR3_MISSING_TOKEN_EXCEPTION  10
-#define ANTLR3_MISSING_TOKEN_EXCEPTION_NAME    "Missing token"
+#define ANTLR3_MISSING_TOKEN_EXCEPTION_NAME    "org.antlr.runtime.MissingTokenException"
 
 #ifdef __cplusplus
 extern "C" {

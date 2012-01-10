@@ -171,9 +171,11 @@ typedef struct ANTLR3_TOKEN_STREAM_struct
     pANTLR3_STRING          (*toStringTT)       (struct ANTLR3_TOKEN_STREAM_struct * tokenStream, pANTLR3_COMMON_TOKEN start, pANTLR3_COMMON_TOKEN stop);
 
 
-        /** Function that sets the token stream into debugging mode
-         */
-        void                            (*setDebugListener)         (struct ANTLR3_TOKEN_STREAM_struct * tokenStream, pANTLR3_DEBUG_EVENT_LISTENER debugger);
+    /** Function that sets the token stream into debugging mode
+     */
+    void                    (*setDebugListener)     (struct ANTLR3_TOKEN_STREAM_struct * tokenStream, pANTLR3_DEBUG_EVENT_LISTENER debugger);
+
+
 
     /** Function that knows how to free the memory for an ANTLR3_TOKEN_STREAM
      */
@@ -279,6 +281,14 @@ typedef struct  ANTLR3_COMMON_TOKEN_STREAM_struct
     pANTLR3_LIST            (*getTokensType)        (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream,
                                                         ANTLR3_UINT32 start, ANTLR3_UINT32 stop, ANTLR3_UINT32 type);
 
+    /** Function that resets the token stream so that it can be reused, but
+     *  but that does not free up any resources, such as the token factory
+     *  the factory pool and so on. This prevents the need to keep freeing
+     *  and reallocating the token pools if the thing you are building is
+     *  a multi-shot dameon or somethign like that. It is much faster to
+     *  just reuse all the vectors.
+     */
+    void                    (*reset)            (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream);
 
     /** Function that knows how to free an ANTLR3_COMMON_TOKEN_STREAM
      */
