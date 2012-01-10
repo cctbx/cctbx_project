@@ -85,7 +85,6 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
       tparser     = NULL;
       is          = parser->tstream->istream;
       theToken    = (pANTLR3_COMMON_TOKEN)(recognizer->state->exception->token);
-      //ttext      = theToken->toString(theToken);
       ttext       =  theToken->getText(theToken);
 
       message << ", at offset " << recognizer->state->exception->charPositionInLine;

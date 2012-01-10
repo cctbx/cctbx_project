@@ -48,8 +48,8 @@ options {
 
 @members {
 std::string to_std_string(pANTLR3_COMMON_TOKEN token) {
-  ANTLR3_MARKER start = token->getStartIndex(token);
-  ANTLR3_MARKER stop = token->getStopIndex(token);
+  ANTLR3_MARKER start = token->start;
+  ANTLR3_MARKER stop = token->stop;
   std::string str((const char*)start, stop-start+1);
   if ((str[0] == '\'' && str[str.size()-1] == '\'') ||
     (str[0] == '"' && str[str.size()-1] == '"'))
