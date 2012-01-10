@@ -596,10 +596,16 @@ Usage:
 def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
   assert sites_cart.size() == u_iso.size()
   target = 0
+  all_selections = []
   for sel_str in selection_strings:
-    sel_str = "(%s) and (not resname HOH)" % sel_str
+    sel_str_final = "(%s) and (not resname HOH)" % sel_str
     sel = pdb_hierarchy.atom_selection_cache().selection(
-      string = sel_str.replace('"',""))
+      string = sel_str_final.replace('"',""))
+    for k, other in enumerate(all_selections) :
+      if ((sel & other).count(True) != 0) :
+        raise RuntimeError("Overlapping TLS selections:\n%s\n%s" % (sel_str,
+          selection_strings[k]))
+    all_selections.append(sel)
     assert sel.size() == u_iso.size()
     if (sel.count(True) == 0) :
       continue
