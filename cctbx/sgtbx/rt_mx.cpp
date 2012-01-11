@@ -56,7 +56,7 @@ namespace cctbx { namespace sgtbx {
       parse_string const& input,
       std::string const& info=": unexpected character")
     {
-      throw error(
+      throw std::invalid_argument(
         "Parse error" + info + ":\n"
         + input.format_where_message(/* prefix */ "  "));
     }
@@ -271,7 +271,7 @@ namespace cctbx { namespace sgtbx {
           << "  translation part: ("
           << result.t().as_string(/*decimal*/ false, /*seperator*/ ", ")
           << ")";
-        throw std::runtime_error(o.str());
+        throw std::invalid_argument(o.str());
       }
       r_ = result.r().transpose();
     }
