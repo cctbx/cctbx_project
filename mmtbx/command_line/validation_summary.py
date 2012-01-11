@@ -44,6 +44,13 @@ class summary (object) :
     cbeta_txt, cbeta_summ, cbeta_list = cbeta.analyze_pdb(
       hierarchy=pdb_hierarchy,
       outliers_only=True)
+    self.mpscore = None
+    if (not None in [self.rota_out, self.rama_fav, self.clashscore]) :
+      from mmtbx.validation.utils import molprobity_score
+      self.mpscore = molprobity_score(
+        clashscore=self.clashscore,
+        rota_out=self.rota_out,
+        rama_fav=self.rama_fav)
     # TODO leave self.cbeta_out as None if not protein
     self.cbeta_out = len(cbeta_list)
     self.r_work = None
@@ -77,7 +84,9 @@ class summary (object) :
       fs("%6.2f", self.rota_out))
     print >> out, "%sC-beta deviations     = %s" % (prefix,
       fs("%6d", self.cbeta_out))
-    print >> out, "%sClashscore            = %6.2f" % (prefix,self.clashscore)
+    print >> out, "%sClashscore            = %6.2f" % (prefix, self.clashscore)
+    if (self.mpscore is not None) :
+      print >> out, "%sMolprobity score      = %6.2f" % (prefix, self.mpscore)
     if (self.r_work is not None) :
       print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
     if (self.r_free is not None) :
