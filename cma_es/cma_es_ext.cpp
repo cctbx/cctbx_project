@@ -56,6 +56,8 @@ namespace cma_es {
 
   public:
     cma_es(const int&, scitbx::af::ref<double>, scitbx::af::ref<double>);
+    cma_es(const int&, scitbx::af::ref<double>, scitbx::af::ref<double>,
+           const int&);
     cma_es(std::string);
     ~cma_es();
     scitbx::af::versa<double,scitbx::af::c_grid<2> > sample_population();
@@ -74,6 +76,14 @@ namespace cma_es {
                  scitbx::af::ref<double> std_dev) {
     N = dimension;
     arFunvals = cmaes_init(&evo,N,x.begin(),std_dev.begin(),0,0,"non");
+    pop_size = cmaes_Get(&evo,"popsize");
+  }
+
+  // default parameters plus population size
+  cma_es::cma_es(const int& dimension, scitbx::af::ref<double> x,
+                 scitbx::af::ref<double> std_dev, const int& lambda) {
+    N = dimension;
+    arFunvals = cmaes_init(&evo,N,x.begin(),std_dev.begin(),0,lambda,"non");
     pop_size = cmaes_Get(&evo,"popsize");
   }
 
@@ -129,6 +139,8 @@ namespace cma_es {
         class_<cma_es>("cma_es",
                        init<const int&,scitbx::af::ref<double>,
                             scitbx::af::ref<double> >() )
+          .def(init<const int&,scitbx::af::ref<double>,
+                    scitbx::af::ref<double>,const int&>() )
           .def(init<std::string>() )
           .def("sample_population",
                &cma_es::cma_es::sample_population)

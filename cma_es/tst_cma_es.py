@@ -73,10 +73,26 @@ def test_cma_es_rosebrock_n(M=10):
   x_final = m.get_result()
   print list(x_final)
 
+def test_cma_es_lambda():
+  N = 3
+  x = flex.double(N,100.0)
+  sd = flex.double(N,5.0)
+  l = 10
+  m = cma_es(N,x,sd,l)
 
+  while (not m.converged()):
+    # sample population
+    p = m.sample_population()
+    pop_size = p.accessor().all()[0]
 
+    # update objective function
+    v = flex.double(pop_size)
+    for i in xrange(pop_size):
+      v[i] = obj_fun(p[(i*N):(i*N + N)])
+    m.update_distribution(v)
 
-
+  x_final = m.get_result()
+  assert(approx_equal(x_final,center,eps=1e-6))
 
 def test_cma_es_file():
   import libtbx.load_env
@@ -100,5 +116,6 @@ def test_cma_es_file():
 # =============================================================================
 if (__name__ == '__main__'):
   test_cma_es()
+  test_cma_es_lambda()
   test_cma_es_file()
   print 'Ok'
