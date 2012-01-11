@@ -718,13 +718,13 @@ class torsion_ncs(object):
           angle_id = self.get_torsion_id(dp)
           cur_dict = self.sidechain_angle_hash.get(angle_resname)
           angle_name = None
-          if cur_dict != None:
+          if cur_dict is not None:
             angle_name = \
               cur_dict.get(angle_atoms)
-          if angle_name != None:
+          if angle_name is not None:
             if angle_name[-1:] == '1':
               self.chi_tracker[angle_id][angle_name] = True
-            else:
+            elif angle_name[-1:].isdigit() :
               current_chi_number = int(angle_name[-1:])
               previous_chi_number = current_chi_number - 1
               previous_chi_id = "chi%d" % previous_chi_number
