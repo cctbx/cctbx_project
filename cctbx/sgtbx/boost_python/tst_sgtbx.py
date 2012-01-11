@@ -624,49 +624,49 @@ def exercise_rt_mx():
   assert str(rt_mx("-x+y,y,-z")) == "-x+y,y,-z"
   assert str(rt_mx("-h,h+k,-l")) == "-x+y,y,-z"
   try: rt_mx("h,x,z")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: mix of x,y,z and h,k,l notation:
+Parse error: mix of x,y,z and h,k,l notation:
   h,x,z
   __^""")
   else: raise Exception_expected
   try: rt_mx("")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: unexpected end of input:
+Parse error: unexpected end of input:
   \n\
   ^""")
   else: raise Exception_expected
   try: rt_mx("x, ")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: unexpected end of input:
+Parse error: unexpected end of input:
   x, \n\
   ___^""")
   else: raise Exception_expected
   try: rt_mx("x")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: not enough row expressions:
+Parse error: not enough row expressions:
   x
   _^""")
   else: raise Exception_expected
   try: rt_mx("x,y,x,z")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: too many row expressions:
+Parse error: too many row expressions:
   x,y,x,z
   _____^""")
   try: rt_mx("x++")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: unexpected character:
+Parse error: unexpected character:
   x++
   __^""")
   try: rt_mx("a, b, c")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: a,b,c notation not supported in this context:
+Parse error: a,b,c notation not supported in this context:
   a, b, c
   ^""")
   else: raise Exception_expected
@@ -685,7 +685,7 @@ cctbx Error: Parse error: a,b,c notation not supported in this context:
   #
   try:
     sgtbx.rt_mx(symbol="h,k,1", r_den=12, t_den=144)
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
 h,k,l matrix symbol must not include a translation part:
   input symbol: "h,k,1"
@@ -1047,9 +1047,9 @@ def exercise_space_group():
       assert t == r
   #
   try: space_group("-P 4 2 (p)")
-  except RuntimeError, e:
+  except ValueError, e:
     assert not show_diff(str(e), """\
-cctbx Error: Parse error: unexpected character:
+Parse error: unexpected character:
   -P 4 2 (p)
   ________^""")
   else: raise Exception_expected
