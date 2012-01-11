@@ -2,6 +2,7 @@
 from libtbx import easy_pickle
 from libtbx import group_args
 import os.path
+import math
 import sys
 
 def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
@@ -99,7 +100,21 @@ def find_sequence_mismatches (pdb_hierarchy,
       expected_seqs.append(best_sequence)
   mismatches = []
 
+def molprobity_score (clashscore, rota_out, rama_fav) :
+  """
+  Calculate the overall Molprobity score, as described here:
+    http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2877634/?tool=pubmed
+    http://kinemage.biochem.duke.edu/suppinfo/CASP8/methods.html
+  """
+  assert (clashscore >= 0) and (rota_out >= 0) and (rama_fav >= 0)
+  rama_iffy = 100. - rama_fav
+  mpscore = (( 0.426 * math.log(1 + clashscore) ) +
+             ( 0.33 * math.log(1 + max(0, rota_out - 1)) ) +
+             ( 0.25 * math.log(1 + max(0, rama_iffy - 2)) )) + 0.5
+  return mpscore
+
 def exercise () :
+  from libtbx.test_utils import approx_equal
   try :
     import numpy
   except ImportError :
@@ -123,6 +138,10 @@ def exercise () :
   assert (atom_info.name == " OD2") and (atom_info.resname == "ASP")
   assert (atom_info.altloc == " ") and (atom_info.chain_id == "A")
   assert (atom_info.resid == "  14L") and (atom_info.resseq == "14")
+  mpscore = molprobity_score(48.0, 9.95, 86.44) # 2hr0
+  assert approx_equal(mpscore, 3.55, eps=0.01)
+  mpscore = molprobity_score(215.8, 17.99, 52.18) # 3mku
+  assert approx_equal(mpscore, 4.71, eps=0.01)
 
 if __name__ == "__main__" :
   exercise()
