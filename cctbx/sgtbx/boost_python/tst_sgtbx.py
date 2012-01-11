@@ -682,6 +682,15 @@ cctbx Error: Parse error: a,b,c notation not supported in this context:
     site_frac_2=site_frac_2)
   assert str(su) == "y+23/2,-x+y-1/3,z-15/4"
   assert approx_equal(su*site_frac_2, (4.3, -5.4333333, 9.15))
+  #
+  try:
+    sgtbx.rt_mx(symbol="h,k,1", r_den=12, t_den=144)
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+h,k,l matrix symbol must not include a translation part:
+  input symbol: "h,k,1"
+  translation part: (0, 0, 1)""")
+  else: raise Exception_expected
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx
