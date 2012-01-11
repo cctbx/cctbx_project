@@ -1312,6 +1312,15 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
+rstbx/bpcx/uc1_2.py -text
+rstbx/bpcx/uc1_2_validate.py -text
+rstbx/bpcx/xparm-uc1-2.xds -text
+rstbx/cftbx/__init__.py -text
+rstbx/cftbx/coordinate_frame_converter.py -text
+rstbx/cftbx/coordinate_frame_helpers.py -text
+rstbx/cftbx/readme.txt -text
+rstbx/cftbx/tests/example-mosflm.mat -text
+rstbx/cftbx/tests/example-xparm.xds -text
 rstbx/command_line/__init__.py -text
 rstbx/command_line/index.py -text
 rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
