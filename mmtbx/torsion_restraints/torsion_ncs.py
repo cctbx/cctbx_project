@@ -960,6 +960,10 @@ class torsion_ncs(object):
                   print >> log, "Skipped %s rotamer (TARDY error)" % key
                   continue
                 assert len(m_chis) == len(r_chis)
+                #exclude H-only clusters if necessary
+                while len(axis_and_atoms_to_rotate) > len(m_chis):
+                  axis_and_atoms_to_rotate = \
+                    axis_and_atoms_to_rotate[:-1]
                 assert len(m_chis) == len(axis_and_atoms_to_rotate)
                 counter = 0
                 residue_iselection = atom_group.atoms().extract_i_seq()
