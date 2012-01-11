@@ -264,7 +264,15 @@ namespace cctbx { namespace sgtbx {
       /* enable_hkl */ true,
       /* enable_abc */ false);
     if (result.have_hkl) {
-      CCTBX_ASSERT(result.t().is_zero());
+      if (!result.t().is_zero()) {
+        std::ostringstream o;
+        o << "h,k,l matrix symbol must not include a translation part:\n"
+          << "  input symbol: \"" << symbol.string() << "\"\n"
+          << "  translation part: ("
+          << result.t().as_string(/*decimal*/ false, /*seperator*/ ", ")
+          << ")";
+        throw std::runtime_error(o.str());
+      }
       r_ = result.r().transpose();
     }
     else r_ = result.r();
