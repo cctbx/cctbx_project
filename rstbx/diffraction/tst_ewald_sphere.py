@@ -3,7 +3,7 @@ import math
 
 from cctbx.uctbx import unit_cell
 from scitbx import matrix
-from rstbx.diffraction import rotation_angles
+from rstbx.diffraction import rotation_angles, reflection_prediction
 from libtbx.test_utils import approx_equal
 
 # This script (provided by Graeme Winter) will take the quartz structure and
@@ -12,7 +12,8 @@ from libtbx.test_utils import approx_equal
 # structure will be quartz 5.01, 5.01, 5.47, 90, 90, 120.
 
 def rotation_scattering(reflections, UB_mat, rotation_vector,
-                        wavelength, resolution,assert_non_integer_index=False):
+                        wavelength, resolution,
+                        assert_non_integer_index = False):
     '''Perform some kind of calculation...'''
 
     ra = rotation_angles(resolution, UB_mat, wavelength, rotation_vector)
@@ -41,6 +42,54 @@ def rotation_scattering(reflections, UB_mat, rotation_vector,
 
                 if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
                     raise RuntimeError, 'length error for %d %d %d' % hkl
+
+def scattering_prediction(reflections, UB_mat, rotation_vector,
+                          wavelength, resolution,
+                          assert_non_integer_index = False):
+    '''Test the reflection_prediction class.'''
+
+    ra = rotation_angles(resolution, UB_mat, wavelength, rotation_vector)
+    beam_vector = matrix.col([0, 0, 1 / wavelength])
+
+    detector_size = 100
+    detector_distance = 100
+
+    rp = reflection_prediction(rotation_vector, beam_vector, UB_mat,
+                               matrix.col((- 0.5 * detector_size,
+                                           - 0.5 * detector_size,
+                                           detector_distance)),
+                               matrix.col((1, 0, 0)),
+                               matrix.col((0, 1, 0)),
+                               0, detector_size, 0, detector_size)
+
+    for hkl in reflections:
+        if ra(hkl):
+            omegas = ra.get_intersection_angles()
+            if assert_non_integer_index:
+                assert ra.H[0] != int(ra.H[0]) or \
+                       ra.H[1] != int(ra.H[1]) or \
+                       ra.H[2] != int(ra.H[2])
+
+            for omegaidx in [0,1]:
+
+                rot_mat = rotation_vector.axis_and_angle_as_r3_rotation_matrix(
+                    omegas[omegaidx])
+                
+                assert(math.fabs(rot_mat.determinant() - 1.0) < 0.0001)
+
+                H1 = (rot_mat * UB_mat)*hkl
+                H1 =  H1 + beam_vector
+                len_H1 = math.sqrt((H1[0] * H1[0]) +
+                                   (H1[1] * H1[1]) +
+                                   (H1[2] * H1[2]))
+
+                if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
+                    raise RuntimeError, 'length error for %d %d %d' % hkl
+
+                if rp(hkl, omegas[omegaidx]):
+                    x, y = rp.get_prediction()
+                    assert(0 < x < detector_size)
+                    assert(0 < y < detector_size)
 
 if __name__ == '__main__':
 
@@ -109,4 +158,8 @@ if __name__ == '__main__':
     rotation_scattering(float_indices, bmat, second_rotation_vector,
                         wavelength, resolution,
                         assert_non_integer_index = True)
+
+
+    scattering_prediction(indices, bmat, second_rotation_vector,
+                          wavelength, resolution)
     print "OK"
