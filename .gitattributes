@@ -1844,6 +1844,7 @@ wxtbx/command_line/__init__.py -text
 wxtbx/command_line/b_plot.py -text
 wxtbx/command_line/inspect_r_free_flags.py -text
 wxtbx/command_line/loggraph.py -text
+wxtbx/custom_restraints.py -text
 wxtbx/errors.py -text
 wxtbx/heavy_atoms.py -text
 wxtbx/icons.py -text
