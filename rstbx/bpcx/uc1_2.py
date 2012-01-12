@@ -74,6 +74,44 @@ def parse_xds_xparm_scan_info(xparm_file):
 
     return img_start, osc_start, osc_range
 
+class reflection_prediction:
+    def __init__(self, axis, s0, ub, detector_origin, 
+                 detector_fast, detector_slow,
+                 f_min, f_max, s_min, s_max):
+        self._axis = axis
+        self._s0 = s0
+        self._ub = ub
+        self._detector_origin = detector_origin
+        self._detector_fast = detector_fast
+        self._detector_slow = detector_slow
+        self._limits = f_min, f_max, s_min, s_max
+
+        return
+
+    def predict(self, observed_reflections):
+
+        detector_normal = self._detector_fast.cross(self._detector_slow)
+        distance = self._detector_origin.dot(detector_normal)
+        
+        observed_reflection_positions = []
+        
+        for hkl, angle in observed_reflections:
+            s = (self._ub * hkl).rotate(self._axis, angle)
+            q = (s + self._s0).normalize()
+            r = (q * distance / q.dot(detector_normal)) - self._detector_origin
+            
+            x = r.dot(self._detector_fast)
+            y = r.dot(self._detector_slow)
+
+            if x < self._limits[0] or y < self._limits[2]:
+                continue
+            if x > self._limits[1] or y > self._limits[3]:
+                continue
+
+            observed_reflection_positions.append((hkl, x, y, angle))
+
+        return observed_reflection_positions
+
 def main(configuration_file, img_range):
     '''Perform the calculations needed for use case 1.1.'''
 
@@ -154,22 +192,12 @@ def main(configuration_file, img_range):
     detector_normal = detector_fast.cross(detector_slow)
     distance = detector_origin.dot(detector_normal)
 
-    observed_reflection_positions = []
+    rp = reflection_prediction(axis, s0, ub, detector_origin,
+                               detector_fast, detector_slow,
+                               0, dimension_fast,
+                               0, dimension_slow)
 
-    for hkl, angle in observed_reflections:
-        s = (ub * hkl).rotate(axis, angle)
-        q = (s + s0).normalize()
-        r = (q * distance / q.dot(detector_normal)) - detector_origin
-        
-        x = r.dot(detector_fast)
-        y = r.dot(detector_slow)
-
-        if x < 0 or y < 0:
-            continue
-        if x > dimension_fast or y > dimension_slow:
-            continue
-
-        observed_reflection_positions.append((hkl, x, y, angle))
+    observed_reflection_positions = rp.predict(observed_reflections)
 
     r2d = 180.0 / math.pi
 
