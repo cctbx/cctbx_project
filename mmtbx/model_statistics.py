@@ -99,6 +99,7 @@ class geometry(object):
       from mmtbx.validation.rotalyze import rotalyze
       from mmtbx.validation.cbetadev import cbetadev
       from mmtbx.validation.clashscore import clashscore
+      from mmtbx.validation.utils import molprobity_score
       self.ramalyze_obj = ramalyze()
       self.ramalyze_obj.analyze_pdb(hierarchy = pdb_hierarchy,
         outliers_only = False)
@@ -116,6 +117,10 @@ class geometry(object):
       self.ramachandran_favored  = self.ramalyze_obj.get_favored_count_and_fraction()[1]*100.
       self.rotamer_outliers = self.rotalyze_obj.get_outliers_count_and_fraction()[1]*100.
       self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
+      self.mpscore = molprobity_score(
+        clashscore=self.clashscore,
+        rota_out=self.rotamer_outliers,
+        rama_fav=self.ramachandran_favored)
 
   def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
     if(out is None): out = sys.stdout
