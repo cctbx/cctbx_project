@@ -139,8 +139,10 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     file_name=None,
     raw_records=reference_raw_records_match,
     for_dihedral_reference=True)
-  pdb_hierarchy_ref_alt_seq = processed_pdb_file_ref_alt_seq.all_chain_proxies.pdb_hierarchy
-  pdb_hierarchy_ref_match = processed_pdb_file_ref_match.all_chain_proxies.pdb_hierarchy
+  pdb_hierarchy_ref_alt_seq = \
+    processed_pdb_file_ref_alt_seq.all_chain_proxies.pdb_hierarchy
+  pdb_hierarchy_ref_match = \
+    processed_pdb_file_ref_match.all_chain_proxies.pdb_hierarchy
   geometry_ref = processed_pdb_file_ref.geometry_restraints_manager()
   sites_cart_ref = processed_pdb_file_ref.all_chain_proxies.sites_cart
   pdb_hierarchy_ref=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy
@@ -206,10 +208,12 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11,
    12: 12, 13: 13, 14: 14, 15: 15}
   r = rotalyze()
-  rot_list_model, coot_model = r.analyze_pdb(
-                                   hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  rot_list_reference, coot_reference = r.analyze_pdb(
-                               hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
+  rot_list_model, coot_model = \
+    r.analyze_pdb(
+      hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  rot_list_reference, coot_reference = \
+    r.analyze_pdb(
+      hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
 
   assert rot_list_model == """\
 C 236  ASN:1.00:1.2:227.3:80.2:::t30
@@ -222,65 +226,33 @@ C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
   rm.set_rotamer_to_reference(
     xray_structure=xray_structure,
     quiet=True)
-  rot_list_model, coot_model = r.analyze_pdb(
-                                   hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  rot_list_model, coot_model = \
+    r.analyze_pdb(
+      hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   pdb_string = xray_structure.as_pdb_file()
   sites_cart = xray_structure.sites_cart()
   for atom in processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms():
     atom.set_xyz(sites_cart[atom.i_seq])
-  rot_list_model, coot_model = r.analyze_pdb(
-                                   hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  rot_list_model, coot_model = \
+    r.analyze_pdb(
+      hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert rot_list_model == """\
 C 236  ASN:1.00:1.2:227.3:80.2:::t30
 C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
 
-  cbetadev_hash = utils.build_cbetadev_hash(
-                    pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
+  cbetadev_hash = \
+    utils.build_cbetadev_hash(
+      pdb_hierarchy=processed_pdb_file_ref.all_chain_proxies.pdb_hierarchy)
   assert cbetadev_hash == \
     {' ASN C 236': '  0.015', ' LEU C 237': '  0.038'}
-  match_map = rm.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
-                                                       pdb_hierarchy_ref=pdb_hierarchy_ref,
-                                                       params=work_params.reference_model)
+  match_map = \
+    rm.process_reference_groups(
+      pdb_hierarchy=pdb_hierarchy,
+      pdb_hierarchy_ref=pdb_hierarchy_ref,
+      params=work_params.reference_model)
   assert match_map == \
   {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11,
    12: 12, 13: 13, 14: 14, 15: 15}
-  master_phil_str_overrides = """
-  reference_model {
-    auto_align = True
-    alignment{
-      similarity_matrix =  blosum50
-    }
-  }
-  """
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  work_params_match = master_phil.fetch(sources=phil_objects).extract()
-  match_map = rm.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
-                                                       pdb_hierarchy_ref=pdb_hierarchy_ref_match,
-                                                       params=work_params_match.reference_model)
-  assert match_map == \
-  {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
-
-  master_phil_str_overrides = """
-  reference_model {
-    auto_align = True
-    alignment{
-      similarity_matrix = identity
-    }
-    alignment_group {
-      reference = resid 270
-      selection = resid 236
-    }
-  }
-  """
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  work_params_match = master_phil.fetch(sources=phil_objects).extract()
-  match_map = rm.process_reference_groups(pdb_hierarchy=pdb_hierarchy,
-                                                       pdb_hierarchy_ref=pdb_hierarchy_ref_match,
-                                                       params=work_params_match.reference_model)
-  assert match_map == \
-  {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
 
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
@@ -295,6 +267,15 @@ C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
   xray_structure=processed_pdb_file.xray_structure()
   pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  work_phil = master_phil.fetch(sources=input_objects["phil"])
+  master_phil_str_overrides = """
+  reference_model {
+    fix_outliers=False
+  }
+  """
+  phil_objects = [
+    iotbx.phil.parse(input_string=master_phil_str_overrides)]
+  work_params = master_phil.fetch(sources=phil_objects).extract()
   rm = reference_model(
     geometry=geometry,
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
@@ -346,8 +327,9 @@ C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
   pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy
 
   import ccp4io_adaptbx
-  ssm = ccp4io_adaptbx.SecondaryStructureMatching(reference=pdb_hierarchy.models()[0].chains()[0],
-                                                  moving=pdb_hierarchy.models()[0].chains()[1])
+  ssm = ccp4io_adaptbx.SecondaryStructureMatching(
+    reference=pdb_hierarchy.models()[0].chains()[0],
+    moving=pdb_hierarchy.models()[0].chains()[1])
   alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
   assert ssm.GetQvalues()[0] > 0.98
 

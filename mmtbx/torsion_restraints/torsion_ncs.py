@@ -168,7 +168,6 @@ class torsion_ncs(object):
                            structures[selection_j])
             residue_match_map = \
               utils._alignment(
-                pdb_hierarchy=pdb_hierarchy,
                 params=params,
                 sequences=seq_pair,
                 padded_sequences=seq_pair_padded,
@@ -178,8 +177,8 @@ class torsion_ncs(object):
             alignments[key] = residue_match_map
         self.ncs_groups.append(ncs_set)
     else:
-      am = alignment_manager(pdb_hierarchy=pdb_hierarchy,
-                             use_segid=self.use_segid)
+      am = utils.alignment_manager(pdb_hierarchy=pdb_hierarchy,
+                                   use_segid=self.use_segid)
 
       for i, chain_i in enumerate(chains):
         found_conformer = False
@@ -226,7 +225,6 @@ class torsion_ncs(object):
                          am.structures[chain_j_str])
           residue_match_map = \
             utils._alignment(
-              pdb_hierarchy=pdb_hierarchy,
               params=params,
               sequences=seq_pair,
               padded_sequences=seq_pair_padded,
@@ -1100,49 +1098,6 @@ class torsion_ncs(object):
     sidechain_angle_hash['VAL'][' N   CA  CB  CG2'] = 'chi1'
     return sidechain_angle_hash
 
-class alignment_manager(object):
-
-  def __init__(self,
-               pdb_hierarchy,
-               use_segid=False):
-    self.sequences = {}
-    self.padded_sequences = {}
-    self.structures = {}
-    sel_cache = pdb_hierarchy.atom_selection_cache()
-    chains = pdb_hierarchy.models()[0].chains()
-    for i, chain_i in enumerate(chains):
-      found_conformer = False
-      for conformer in chain_i.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
-        continue
-      #test for unique segid
-      segid = utils.get_unique_segid(chain_i)
-      if segid == None:
-        print >> log, \
-          "chain %s has conflicting segid values - skipping" % chain_i.id
-        continue
-      if (use_segid) :
-        chain_i_str = "chain '%s' and segid '%s'" % \
-          (chain_i.id, segid)
-      else :
-        chain_i_str = "chain '%s'" % chain_i.id
-
-      chain_i_list = [chain_i_str]
-      sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
-                     cache=sel_cache,
-                     string_list=chain_i_list))
-      chain_seq, chain_seq_padded, chain_structures = \
-        utils.extract_sequence_and_sites(
-          pdb_hierarchy=pdb_hierarchy,
-          selection=sel_atoms_i)
-      self.sequences[chain_i_str] = chain_seq
-      self.padded_sequences[chain_i_str] = chain_seq_padded
-      self.structures[chain_i_str] = chain_structures
-
 #split out functions
 def get_ncs_groups(
       pdb_hierarchy,
@@ -1154,7 +1109,7 @@ def get_ncs_groups(
   used_chains = []
   pair_hash = {}
   chains = pdb_hierarchy.models()[0].chains()
-  am = alignment_manager(pdb_hierarchy, use_segid)
+  am = utils.alignment_manager(pdb_hierarchy, use_segid)
 
   for i, chain_i in enumerate(chains):
     found_conformer = False
@@ -1191,7 +1146,7 @@ def get_ncs_groups(
         chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
       else :
         chain_j_str = "chain '%s'" % chain_j.id
-      selections = (chain_i_str, chain_j_str)
+      #selections = (chain_i_str, chain_j_str)
       seq_pair = (am.sequences[chain_i_str],
                   am.sequences[chain_j_str])
       seq_pair_padded = (am.padded_sequences[chain_i_str],
@@ -1200,7 +1155,6 @@ def get_ncs_groups(
                      am.structures[chain_j_str])
       residue_match_map = \
         utils._alignment(
-          pdb_hierarchy=pdb_hierarchy,
           params=params,
           sequences=seq_pair,
           padded_sequences=seq_pair_padded,
