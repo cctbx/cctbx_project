@@ -8,6 +8,49 @@ import ccp4io_adaptbx
 import math
 import mmtbx.alignment
 
+class alignment_manager(object):
+
+  def __init__(self,
+               pdb_hierarchy,
+               use_segid=False):
+    self.sequences = {}
+    self.padded_sequences = {}
+    self.structures = {}
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    chains = pdb_hierarchy.models()[0].chains()
+    for i, chain_i in enumerate(chains):
+      found_conformer = False
+      for conformer in chain_i.conformers():
+        if not conformer.is_protein() and not conformer.is_na():
+          continue
+        else:
+          found_conformer = True
+      if not found_conformer:
+        continue
+      #test for unique segid
+      segid = get_unique_segid(chain_i)
+      if segid == None:
+        print >> log, \
+          "chain %s has conflicting segid values - skipping" % chain_i.id
+        continue
+      if (use_segid) :
+        chain_i_str = "chain '%s' and segid '%s'" % \
+          (chain_i.id, segid)
+      else :
+        chain_i_str = "chain '%s'" % chain_i.id
+
+      chain_i_list = [chain_i_str]
+      sel_atoms_i = (phil_atom_selections_as_i_seqs_multiple(
+                       cache=sel_cache,
+                       string_list=chain_i_list))
+      chain_seq, chain_seq_padded, chain_structures = \
+        extract_sequence_and_sites(
+          pdb_hierarchy=pdb_hierarchy,
+          selection=sel_atoms_i)
+      self.sequences[chain_i_str] = chain_seq
+      self.padded_sequences[chain_i_str] = chain_seq_padded
+      self.structures[chain_i_str] = chain_structures
+
 def selection(string, cache):
   return cache.selection(
     string=string)
@@ -245,8 +288,7 @@ def _ssm_align(reference_chain,
   ssm_alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
   return ssm, ssm_alignment
 
-def _alignment(pdb_hierarchy,
-               params,
+def _alignment(params,
                sequences,
                padded_sequences,
                structures,
