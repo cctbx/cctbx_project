@@ -144,15 +144,14 @@ class mvd(object):
         print >> log, "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
         print >> log, "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
         print >> log, "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
-      if(i_model.molprobity is not None):
         print >> log, "      Rotamer outliers        : %d (%s %s)" %(
           i_model.molprobity.rotalyze[0],
           str("%6.2f"%(i_model.molprobity.rotalyze[1]*100.)).strip(),"%")
-      if(i_model.molprobity is not None):
         print >> log, "      Cbeta deviations >0.25A : %d"%i_model.molprobity.cbetadev
-      if(i_model.molprobity is not None):
         print >> log, "      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
           i_model.molprobity.clashscore
+        print >> log, "      Overall score           : %.2f" % \
+          i_model.molprobity.mpscore
     #
     print >> log, "  Data:"
     result = " \n    ".join([
@@ -305,7 +304,8 @@ def molprobity_stats(model_statistics_geometry, resname_classes):
       ramalyze_favored  = msg.ramalyze_obj.get_favored_count_and_fraction(),
       rotalyze          = msg.rotalyze_obj.get_outliers_count_and_fraction(),
       cbetadev          = msg.cbetadev_obj.get_outlier_count(),
-      clashscore        = msg.clashscore_obj.get_clashscore())
+      clashscore        = msg.clashscore_obj.get_clashscore(),
+      mpscore           = msg.mpscore)
   else: return None
 
 def show_geometry(xray_structures, processed_pdb_file, scattering_table, hierarchy,
@@ -951,9 +951,10 @@ def summarize_results (mvd_obj) :
     rama_favored = molprobity_stats.ramalyze_favored[1] * 100.0
     rama_outliers = molprobity_stats.ramalyze_outliers[1] * 100.0
     rotamer_outliers = molprobity_stats.rotalyze[1] * 100.0
+    mpscore = molprobity_stats.mpscore
   else:
     c_beta_deviations = clashscore = rama_allowed = rama_favored = \
-      rama_outliers = rotamer_outliers =None
+      rama_outliers = rotamer_outliers = mpscore = None
   def convert_float (value) :
     if (value is None) : return None
     try :
@@ -1007,6 +1008,7 @@ def summarize_results (mvd_obj) :
     rotamer_outliers=rotamer_outliers,
     c_beta_deviations=c_beta_deviations,
     clashscore=clashscore,
+    mpscore=mpscore,
     twin_law=mvd_obj.data.twinned,
     tls=getattr(getattr(getattr(mvd_obj.pdb_header, "tls", None), "pdb_inp_tls",
       None), "tls_present"))
