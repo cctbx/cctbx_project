@@ -19,7 +19,7 @@ import sys
 import math
 
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
-from rstbx.diffraction import rotation_angles
+from rstbx.diffraction import rotation_angles, reflection_prediction
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
 
@@ -74,7 +74,7 @@ def parse_xds_xparm_scan_info(xparm_file):
 
     return img_start, osc_start, osc_range
 
-class reflection_prediction:
+class python_reflection_prediction:
     def __init__(self, axis, s0, ub, detector_origin, 
                  detector_fast, detector_slow,
                  f_min, f_max, s_min, s_max):
@@ -88,17 +88,25 @@ class reflection_prediction:
 
         return
 
-    def predict(self, observed_reflections):
+    def predict(self, indices, angles):
 
         detector_normal = self._detector_fast.cross(self._detector_slow)
         distance = self._detector_origin.dot(detector_normal)
         
         observed_reflection_positions = []
         
-        for hkl, angle in observed_reflections:
+        for hkl, angle in zip(indices, angles):
             s = (self._ub * hkl).rotate(self._axis, angle)
             q = (s + self._s0).normalize()
-            r = (q * distance / q.dot(detector_normal)) - self._detector_origin
+
+            # check if diffracted ray parallel to detector face 
+
+            q_dot_n = q.dot(detector_normal)
+
+            if q_dot_n == 0:
+                continue
+            
+            r = (q * distance / q_dot_n) - self._detector_origin
             
             x = r.dot(self._detector_fast)
             y = r.dot(self._detector_slow)
@@ -109,6 +117,29 @@ class reflection_prediction:
                 continue
 
             observed_reflection_positions.append((hkl, x, y, angle))
+
+        return observed_reflection_positions
+
+class cpp_reflection_prediction:
+    def __init__(self, axis, s0, ub, detector_origin, 
+                 detector_fast, detector_slow,
+                 f_min, f_max, s_min, s_max):
+        self._ub = ub
+        self._axis = axis
+        self._rp = reflection_prediction(axis, s0, ub, detector_origin, 
+                                         detector_fast, detector_slow,
+                                         f_min, f_max, s_min, s_max)
+
+        return
+
+    def predict(self, indices, angles):
+
+        observed_reflection_positions = []
+        
+        for hkl, angle in zip(indices, angles):
+            if self._rp(hkl, angle):
+                x, y = self._rp.get_prediction()
+                observed_reflection_positions.append((hkl, x, y, angle))
 
         return observed_reflection_positions
 
@@ -159,13 +190,15 @@ def main(configuration_file, img_range):
 
     ra = rotation_angles(dmin, ub, wavelength, axis)
 
-    observed_reflections = []
+    observed_indices = []
+    observed_angles = []
 
     for hkl in indices:
         if ra(hkl):
             for angle in ra.get_intersection_angles():
                 if angle >= phi_start and angle <= phi_end:
-                    observed_reflections.append((hkl, angle))
+                    observed_indices.append(hkl)
+                    observed_angles.append(angle)
 
     # convert all of these to full scattering vectors in a laboratory frame
     # (for which I will use the CBF coordinate frame) and calculate which
@@ -192,16 +225,17 @@ def main(configuration_file, img_range):
     detector_normal = detector_fast.cross(detector_slow)
     distance = detector_origin.dot(detector_normal)
 
-    rp = reflection_prediction(axis, s0, ub, detector_origin,
-                               detector_fast, detector_slow,
-                               0, dimension_fast,
-                               0, dimension_slow)
-
-    observed_reflection_positions = rp.predict(observed_reflections)
-
+    rp = cpp_reflection_prediction(axis, s0, ub, detector_origin,
+                                   detector_fast, detector_slow,
+                                   0, dimension_fast,
+                                   0, dimension_slow)
+    
+    cpp_observed_reflection_positions = rp.predict(observed_indices,
+                                                   observed_angles)
+    
     r2d = 180.0 / math.pi
 
-    for hkl, f, s, angle in observed_reflection_positions:
+    for hkl, f, s, angle in cpp_observed_reflection_positions:
         print '%d %d %d' % hkl, '%.4f %4f %2f' % (
             f / pixel_size_fast, s / pixel_size_slow,
             (img_start - 1) + ((angle * r2d) - osc_start) / osc_range)

@@ -200,3 +200,77 @@ rstbx::scattering_list::scattering_list(scitbx::af::shared<cctbx::miller::index<
       reflections_result.push_back( hkl );
     }
 }
+
+/* reflection prediction implementation - detailed in header file */
+
+rstbx::reflection_prediction::reflection_prediction(
+  const scitbx::vec3<double> & _axis,
+  const scitbx::vec3<double> & _s0,
+  const scitbx::mat3<double> & _ub,
+  const scitbx::vec3<double> & _origin,
+  const scitbx::vec3<double> & _fast,
+  const scitbx::vec3<double> & _slow,
+  const double & f_min,
+  const double & f_max,
+  const double & s_min,
+  const double & s_max) 
+{
+  axis = _axis;
+  s0 = _s0;
+  ub = _ub;
+  origin = _origin;
+  fast = _fast;
+  slow = _slow;
+
+  normal = fast.cross(slow);
+  distance = origin * normal;
+
+  limits[0] = f_min;
+  limits[1] = f_max;
+  limits[2] = s_min;
+  limits[3] = s_max;
+}
+
+bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
+					      const double & angle)
+{
+  scitbx::vec3<double> s, q, r;
+  double x, y, q_dot_n;
+
+  /* this is rather weird - the attitude of rotation is back to front in 
+     the c++ code */
+
+  s = (ub * hkl).rotate(axis, - angle);
+  q = (s + s0).normalize();
+  q_dot_n = q * normal;
+
+  if (q_dot_n == 0) return false;
+
+  r = (q * distance / q_dot_n) - origin;
+  
+  x = r * fast;
+  y = r * slow;
+
+  if (x < limits[0]) return false;
+  if (y < limits[2]) return false;
+  if (x > limits[1]) return false;
+  if (y > limits[3]) return false;
+
+  prediction[0] = x;
+  prediction[1] = y;
+
+  return true;
+}
+
+scitbx::vec2<double> rstbx::reflection_prediction::get_prediction()
+{
+  return scitbx::vec2<double>(prediction[0], prediction[1]);
+}
+
+
+
+    
+  
+  
+
+
