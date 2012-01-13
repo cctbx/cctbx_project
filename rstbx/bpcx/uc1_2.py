@@ -124,8 +124,6 @@ class cpp_reflection_prediction:
     def __init__(self, axis, s0, ub, detector_origin, 
                  detector_fast, detector_slow,
                  f_min, f_max, s_min, s_max):
-        self._ub = ub
-        self._axis = axis
         self._rp = reflection_prediction(axis, s0, ub, detector_origin, 
                                          detector_fast, detector_slow,
                                          f_min, f_max, s_min, s_max)
