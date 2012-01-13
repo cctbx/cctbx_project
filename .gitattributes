@@ -1312,6 +1312,7 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
+rstbx/bpcx/doc/readme.txt -text
 rstbx/bpcx/uc1_2.py -text
 rstbx/bpcx/uc1_2_validate.py -text
 rstbx/bpcx/xparm-uc1-2.xds -text
