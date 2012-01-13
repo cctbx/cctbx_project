@@ -14,7 +14,6 @@ def cspad_unbound_pixel_mask():
   print mask.all()
   for section_offset in ((0,0), (0, 197), (185, 197), (185, 0)):
     for i in range(19):
-      print section_offset[0] + i * 10, section_offset[1] + i * 10
       mask[section_offset[0] + i * 10, section_offset[1] + i * 10] = 1
   return mask
 
@@ -60,6 +59,11 @@ class xes_finalise(object):
         distance=1,
       )
       cspad_tbx.dwritef(d, output_dirname, avg_basename)
+      d = cspad_tbx.dpack(
+        data=self.sum_img,
+        distance=1,
+      )
+      cspad_tbx.dwritef(d, output_dirname, "sum_")
       if 1:
         self.output_image(self.avg_img, "%s/avg.png" %output_dirname)
         self.output_image(
@@ -106,18 +110,21 @@ class xes_finalise(object):
       if omit_col is True:
         #omit_columns = [181,193,194,195,196,197,378] # run 4
         omit_columns = [193,194,195,196,197] # run 5
-        plot_x_ = flex.int(xrange(spectrum.size()))
-        plot_y_ = spectrum.deep_copy()
+        plot_x = flex.int(xrange(spectrum.size()))
+        plot_y = spectrum.deep_copy()
         for i in reversed(sorted(omit_columns)):
-          del plot_x_[i]
-          del plot_y_[i]
-        plot_x_ += 1
-        print plot_x_.all(), plot_y_.all()
-        spec_plot(plot_x_,plot_y_,spectrum_focus,
-                  os.path.join(output_dirname, "spectrum")+ ".png")
+          del plot_x[i]
+          del plot_y[i]
+        plot_x += 1
+        print plot_x.all(), plot_y.all()
       else:
-        spec_plot(range(1,len(spectrum)+1),spectrum,spectrum_focus,
-                  os.path.join(output_dirname, "spectrum")+ ".png")
+        plot_x = range(1,len(spectrum)+1)
+        plot_y = spectrum
+      spec_plot(plot_x,plot_y,spectrum_focus,
+                os.path.join(output_dirname, "spectrum")+ ".png")
+      f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
+      print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
+      f.close()
 
       # first moment analysis
       # XXX columns of interest for CXI run 5
