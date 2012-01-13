@@ -7,8 +7,11 @@ they could theoretically be used in other programs.
 """
 
 import wxtbx.bitmaps
+from wxtbx import metallicbutton
 from wxtbx.phil_controls import simple_dialogs
+from wx.lib.agw import flatnotebook
 import wx
+from libtbx import str_utils
 import sys
 
 #-----------------------------------------------------------------------
@@ -58,6 +61,15 @@ class CustomRestraintsPanel (wx.Panel) :
     self.CreateSelectionFields()
     szr.Layout()
 
+  def AddControlButton (self, label, bitmap) :
+    btn = metallicbutton.MetallicButton(
+      parent=self,
+      label=label,
+      bmp=bitmap,
+      highlight_color=(200,220,240))
+    self.buttons.Add(btn, 0, wx.RIGHT, 5)
+    return btn
+
   def CreateList (self) :
     raise NotImplementedError()
 
@@ -68,8 +80,8 @@ class CustomRestraintsPanel (wx.Panel) :
     selections = self.lc.GetSelections()
     assert (len(selections) == self.n_atom_selections)
     for i, sele in enumerate(selections) :
+      field = getattr(self, "selection_%d" % (i+1))
       if (sele is not None) :
-        field = getattr(self, "selection_%d" % (i+1))
         field.SetValue(sele)
       else :
         field.SetValue("")
@@ -92,7 +104,8 @@ class CustomRestraintsPanel (wx.Panel) :
       message="Are you sure you want to delete all items in the list?")
     if (confirm == wx.OK) :
       self.lc.DeleteAllItems()
-      self.lc.ClearSelections()
+      self.lc.ClearRestraints()
+      self.ClearSelections()
 
   def __getattr__ (self, name) :
     return getattr(self.lc, name)
@@ -124,13 +137,28 @@ class CustomBondPanel (CustomRestraintsPanel) :
 
   def CreateSelectionFields (self) :
     edit_szr = wx.FlexGridSizer(cols=2)
-    self.sizer.Add(edit_szr, 0, wx.ALL)
+    self.sizer.Add(edit_szr, 0, wx.ALL, 5)
     edit_szr.Add(wx.StaticText(self, -1, "Atom selections:"))
     for i in range(2) :
-      edit_field = wx.TextCtrl(self, -1, size=(400,-1))
+      edit_field = wx.TextCtrl(self, -1, size=(540,-1),
+        style=wx.TE_PROCESS_ENTER)
       setattr(self, "selection_%d" % (i+1), edit_field)
       edit_szr.Add(edit_field, 0, wx.ALL, 5)
-      if (i == 1) : edit_szr.Add((1,1))
+      if (i == 0) : edit_szr.Add((1,1))
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnUpdate, edit_field)
+
+  def OnOptionsMenu (self, event) :
+    menu = wx.Menu()
+    item1 = menu.Append(-1, "Set ideal distance")
+    item2 = menu.Append(-1, "Set distance sigma")
+    item3 = menu.Append(-1, "Set bond slack")
+    item4 = menu.Append(-1, "Set symmetry operator")
+    self.Bind(wx.EVT_MENU, self.lc.OnSetDistance, item1)
+    self.Bind(wx.EVT_MENU, self.lc.OnSetSigma, item2)
+    self.Bind(wx.EVT_MENU, self.lc.OnSetSlack, item3)
+    self.Bind(wx.EVT_MENU, self.lc.OnSetSymop, item4)
+    event.GetEventObject().PopupMenu(menu)
+    menu.Destroy()
 
 class CustomAnglePanel (CustomRestraintsPanel) :
   n_atom_selections = 3
@@ -140,13 +168,24 @@ class CustomAnglePanel (CustomRestraintsPanel) :
 
   def CreateSelectionFields (self) :
     edit_szr = wx.FlexGridSizer(cols=2)
-    self.sizer.Add(edit_szr, 0, wx.ALL)
+    self.sizer.Add(edit_szr, 0, wx.ALL, 5)
     edit_szr.Add(wx.StaticText(self, -1, "Atom selections:"))
     for i in range(3) :
-      edit_field = wx.TextCtrl(self, -1, size=(400,-1))
+      edit_field = wx.TextCtrl(self, -1, size=(540,-1),
+        style=wx.TE_PROCESS_ENTER)
       setattr(self, "selection_%d" % (i+1), edit_field)
       edit_szr.Add(edit_field, 0, wx.ALL, 5)
-      if (i == 0) : edit_szr.Add((1,1))
+      if (i < 2) : edit_szr.Add((1,1))
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnUpdate, edit_field)
+
+  def OnOptionsMenu (self, event) :
+    menu = wx.Menu()
+    item1 = menu.Append(-1, "Set ideal angle")
+    item2 = menu.Append(-1, "Set angle sigma")
+    self.Bind(wx.EVT_MENU, self.lc.OnSetAngle, item1)
+    self.Bind(wx.EVT_MENU, self.lc.OnSetSigma, item2)
+    event.GetEventObject().PopupMenu(menu)
+    menu.Destroy()
 
 #-----------------------------------------------------------------------
 # ListCtrl-derived classes
@@ -167,6 +206,9 @@ class RestraintsListBase (wx.ListCtrl) :
     else :
       return "geometry_restraints.edits." + self.restraint_name
 
+  def SetPhilPrefix (self, prefix) :
+    self._prefix = prefix
+
   def ClearRestraints (self) :
     self._params = []
 
@@ -174,9 +216,9 @@ class RestraintsListBase (wx.ListCtrl) :
     item = self.InsertStringItem(sys.maxint, "---")
     for i in range(self.n_columns - 1) :
       self.SetStringItem(item, i+1, "---")
-    new_params = self._index.get_template_copy(self.GetPhilPath())
+    new_params = self._index.get_template_copy(self.GetPhilPath()).extract()
     self._params.append(new_params)
-    self.SelectItem(item)
+    self.Select(item)
 
   def DeleteRestraint (self) :
     item = self.GetFirstSelected()
@@ -206,17 +248,27 @@ class RestraintsListBase (wx.ListCtrl) :
   def GetParams (self) :
     return self._params
 
-  def GetPhil (self) :
-    return self._index.master_phil.format(python_object=self._params)
+def fv (fs, val) :
+  return str_utils.format_value(fs, val, replace_none_with="---")
 
 class BondRestraintsList (RestraintsListBase) :
   restraint_name = "bond"
   def CreateColumns (self) :
     self.InsertColumn(0, "Selections", width=400)
-    self.InsertColumn(1, "Sym. exp.", width=120)
-    self.InsertColumn(2, "Distance", width=100)
-    self.InsertColumn(3, "Sigma", width=80)
-    self.InsertColumn(4, "Slack", width=80)
+    self.InsertColumn(1, "Distance", width=100)
+    self.InsertColumn(2, "Sigma", width=80)
+    self.InsertColumn(3, "Slack", width=80)
+    self.InsertColumn(4, "Sym. exp.", width=120)
+
+  def PopulateList (self) :
+    for bond in self._params :
+      selections = [bond.atom_selection_1, bond.atom_selection_2]
+      sele_str = "; ".join([ fv("%s", s) for s in selections ])
+      item = self.InsertStringItem(sys.maxint, sele_str)
+      self.SetStringItem(item, 1, fv("%g", bond.distance_ideal))
+      self.SetStringItem(item, 2, fv("%g", bond.sigma))
+      self.SetStringItem(item, 3, fv("%g", bond.slack))
+      self.SetStringItem(item, 4, fv("%s", bond.symmetry_operation))
 
   def GetSelections (self) :
     item = self.GetFirstSelected()
@@ -232,8 +284,10 @@ class BondRestraintsList (RestraintsListBase) :
       bond = self._params[item]
       bond.atom_selection_1 = selections[0]
       bond.atom_selection_2 = selections[1]
+      sele_text = "; ".join(selections)
+      self.SetStringItem(item, 0, sele_text)
 
-  def OnSetSymexp (self, event) :
+  def OnSetSymop (self, event) :
     pass # TODO
 
   def OnSetDistance (self, event) :
@@ -252,7 +306,8 @@ class BondRestraintsList (RestraintsListBase) :
       if (dlg.ShowModal() == wx.ID_OK) :
         distance_ideal = dlg.GetPhilValue()
         self._params[item].distance_ideal = distance_ideal
-        self.SetStringItem(item, 2, "%g" % distance_ideal)
+        self.SetStringItem(item, 1, "%g" % distance_ideal)
+      dlg.Destroy()
 
   def OnSetSigma (self, event) :
     item = self.GetFirstSelected()
@@ -269,7 +324,8 @@ class BondRestraintsList (RestraintsListBase) :
       if (dlg.ShowModal() == wx.ID_OK) :
         sigma = dlg.GetPhilValue()
         self._params[item].sigma = sigma
-        self.SetStringItem(item, 3, "%g" % sigma)
+        self.SetStringItem(item, 2, fv("%g", sigma))
+      dlg.Destroy()
 
   def OnSetSlack (self, event) :
     item = self.GetFirstSelected()
@@ -288,17 +344,27 @@ class BondRestraintsList (RestraintsListBase) :
       if (dlg.ShowModal() == wx.ID_OK) :
         slack = dlg.GetPhilValue()
         self._params[item].slack = slack
-        if (slack is not None) :
-          self.SetStringItem(item, 4, "%g" % slack)
-        else :
-          self.SetStringItem(item, 4, "---")
+        self.SetStringItem(item, 3, fv("%g", slack))
+      dlg.Destroy()
 
 class AngleRestraintsList (RestraintsListBase) :
   restraint_name = "angle"
-  def CreateColumns (RestraintsListBase) :
+  def CreateColumns (self) :
     self.InsertColumn(0, "Selections", width=600)
     self.InsertColumn(1, "Angle", width=100)
     self.InsertColumn(2, "Sigma", width=80)
+
+  def PopulateList (self) :
+    for angle in self._params :
+      selections = [angle.atom_selection_1, angle.atom_selection_2,
+                    angle.atom_selection_3]
+      if (selections == [None, None]) :
+        sele_str = "---"
+      else :
+        sele_str = "; ".join([ str(s) for s in selections ])
+      item = self.InsertStringItem(sys.maxint, sele_str)
+      self.SetStringItem(item, 2, fv("%g", angle.angle_ideal))
+      self.SetStringItem(item, 3, fv("%g", angle.sigma))
 
   def GetSelections (self) :
     item = self.GetFirstSelected()
@@ -316,6 +382,8 @@ class AngleRestraintsList (RestraintsListBase) :
       angle.atom_selection_1 = selections[0]
       angle.atom_selection_2 = selections[1]
       angle.atom_selection_3 = selections[2]
+      sele_text = "; ".join(selections)
+      self.SetStringItem(item, 0, sele_text)
 
   def OnSetAngle (self, event) :
     item = self.GetFirstSelected()
@@ -332,8 +400,9 @@ class AngleRestraintsList (RestraintsListBase) :
       dlg.SetOptional(False)
       if (dlg.ShowModal() == wx.ID_OK) :
         angle = dlg.GetPhilValue()
-        self._params[item].angle = angle
+        self._params[item].angle_ideal = angle
         self.SetStringItem(item, 1, "%g" % angle)
+      dlg.Destroy()
 
   def OnSetSigma (self, event) :
     item = self.GetFirstSelected()
@@ -351,17 +420,107 @@ class AngleRestraintsList (RestraintsListBase) :
         sigma = dlg.GetPhilValue()
         self._params[item].sigma = sigma
         self.SetStringItem(item, 2, "%g" % sigma)
+      dlg.Destroy()
 
 #-----------------------------------------------------------------------
 # Frame class
 
+# XXX fix for true division bug
+flatnotebook.PageContainer.OnMouseWheel = lambda win, evt: False
 class RestraintsFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.SetSizer(self.sizer)
+    tb = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    tb.SetToolBitmapSize((32,32))
+    self.SetToolBar(tb)
+    btn1 = tb.AddLabelTool(-1,
+      label="Update and exit",
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "button_ok"),
+      kind=wx.ITEM_NORMAL)
+    btn2 = tb.AddLabelTool(-1,
+      label="Cancel",
+      bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "cancel"),
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnUpdate, btn1)
+    self.Bind(wx.EVT_MENU, self.OnCancel, btn2)
+    tb.Realize()
+    self.statusbar = self.CreateStatusBar()
+    self.statusbar.SetStatusText("No restraints loaded.")
+    self.nb = flatnotebook.FlatNotebook(
+      parent=self,
+      agwStyle=flatnotebook.FNB_TABS_BORDER_SIMPLE|flatnotebook.FNB_NODRAG|
+        flatnotebook.FNB_NO_X_BUTTON|flatnotebook.FNB_NO_NAV_BUTTONS)
+    self.bonds_panel = CustomBondPanel(self)
+    self.angles_panel = CustomAnglePanel(self)
+    self.nb.AddPage(self.bonds_panel, "Bonds")
+    self.nb.AddPage(self.angles_panel, "Angles")
+    self.sizer.Add(self.nb, 1, wx.EXPAND|wx.ALL)
+    self.sizer.Fit(self.nb)
+    self.Fit()
+    self.Bind(wx.EVT_CLOSE, lambda evt: self.Destroy(), self)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
+    self._index = self._params = self._prefix = None
+
+  def SetPhilIndex (self, index) :
+    self._index = index
+    self.bonds_panel.SetPhilIndex(index)
+    self.angles_panel.SetPhilIndex(index)
+
+  def SetParams (self, params, prefix=None) :
+    self._params = params
+    self._prefix = prefix
+    geo_params = self.GetGeoParams()
+    self.bonds_panel.SetPhilPrefix(prefix)
+    self.angles_panel.SetPhilPrefix(prefix)
+    self.bonds_panel.SetParams(geo_params.bond)
+    self.angles_panel.SetParams(geo_params.angle)
+    self.statusbar.SetStatusText(
+      "%d custom bond and %d custom angle restraints loaded." % (
+        len(geo_params.bond), len(geo_params.angle)))
+
+  def GetGeoParams (self) :
+    geo_params_parent = self._params
+    if (self._prefix is not None) :
+      geo_params_parent = getattr(geo_params_parent, self._prefix)
+    return geo_params_parent.geometry_restraints.edits
+
+  def GetPhilString (self) :
+    geo_params = self.GetGeoParams()
+    geo_params.bond = self.bonds_panel.GetParams()
+    geo_params.angle = self.angles_panel.GetParams()
+    self.Validate()
+    new_phil = self._index.master_phil.format(python_object=self._params)
+    new_diff = self._index.master_phil.fetch_diff(new_phil)
+    new_diff.show()
+
+  def Validate (self) :
+    from mmtbx.monomer_library import pdb_interpretation
+    pdb_interpretation.validate_geometry_edits_params(self.GetGeoParams())
+
+  def OnCancel (self, event) :
+    self.Close()
+
+  def OnUpdate (self, event) :
+    self.GetPhilString()
+
+  def OnDestroy (self, event) :
+    pass
 
 #-----------------------------------------------------------------------
 # REGRESSION TESTING
 if (__name__ == "__main__") :
-  pass
+  from mmtbx.monomer_library import pdb_interpretation
+  import iotbx.phil
+  import libtbx.phil.interface
+  app = wx.App(0)
+  master_phil = iotbx.phil.parse(pdb_interpretation.grand_master_phil_str,
+    process_includes=True)
+  index = libtbx.phil.interface.index(master_phil)
+  frame = RestraintsFrame(None, -1, "Custom restraints editor")
+  frame.SetPhilIndex(index)
+  params = index.get_python_object()
+  frame.SetParams(index.get_python_object())
+  frame.Show()
+  app.MainLoop()
