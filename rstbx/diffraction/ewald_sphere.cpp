@@ -237,10 +237,7 @@ bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
   scitbx::vec3<double> s, q, r;
   double x, y, q_dot_n;
 
-  /* this is rather weird - the attitude of rotation is back to front in 
-     the c++ code */
-
-  s = (ub * hkl).rotate(axis, - angle);
+  s = (ub * hkl).rotate_around_origin(axis, angle);
   q = (s + s0).normalize();
   q_dot_n = q * normal;
 

@@ -334,7 +334,7 @@ scitbx::vec3<double> rotate_vector_around(
                        scitbx::vec3<double> const& vector,
                        scitbx::vec3<double> const& unit_direction,
                        double const& angle_rad) {
-    return vector.unit_rotate(unit_direction,angle_rad);
+    return vector.unit_rotate_around_origin(unit_direction,-angle_rad);
   }
 
 void low_pass_filter(af::flex_complex_double complex_data) {

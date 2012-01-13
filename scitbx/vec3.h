@@ -218,9 +218,9 @@ namespace scitbx {
           normalized so need not be given as a vector of unit length.
        */
       vec3
-      rotate(vec3 const& direction, NumType const& angle) const {
+      rotate_around_origin(vec3 const& direction, NumType const& angle) const {
         vec3 unit = direction.normalize();
-        return unit_rotate(unit,angle);
+        return unit_rotate_around_origin(unit,angle);
       }
 
       //! Rotate the vector.
@@ -229,11 +229,11 @@ namespace scitbx {
           guarantees that the direction vector is of unit length.
        */
       vec3
-      unit_rotate(vec3 const& unit, NumType const& angle) const {
+      unit_rotate_around_origin(vec3 const& unit, NumType const& angle) const {
         NumType cosang = std::cos(angle);
         return (*this)*cosang +
                unit*(unit*(*this))*(1.0-cosang)+
-               ((*this).cross(unit))*std::sin(angle);
+               (unit.cross(*this))*std::sin(angle);
       }
 
     private:
