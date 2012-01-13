@@ -1314,7 +1314,6 @@ rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
 rstbx/bpcx/doc/diffraction_geometry.pdf -text
 rstbx/bpcx/doc/diffraction_geometry.svg -text
-rstbx/bpcx/doc/prediction_formulae.pdf -text
 rstbx/bpcx/doc/prediction_formulae.tex -text
 rstbx/bpcx/doc/readme.txt -text
 rstbx/bpcx/uc1_2.py -text
