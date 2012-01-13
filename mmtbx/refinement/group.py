@@ -119,9 +119,7 @@ class manager(object):
               size = rworks.size() - 1
               if(abs(rworks[size]-rworks[size-1])<convergence_delta):
                  break
-    # XXX absence of tidy_us will lead to crash in very rare cases; fixing requires too
-    # XXX much of time and brain investment.
-    #fmodel_copy.xray_structure.tidy_us()
+    fmodel_copy.xray_structure.tidy_us()
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     if(refine_occ):

@@ -310,10 +310,16 @@ class refine_adp(object):
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=rfrw,score_target_value=r_free_r_work_gap,
         secondary_target=deltab)
+      # filter by rfree
+      rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
+        score_target=rf,score_target_value=flex.min(rf)+r_free_range_width)
       # filter by <Bi-Bj>
       delta_b_target = max(min_diff_b_iso_bonded, flex.mean(self.fmodels.
         fmodel_xray().xray_structure.extract_u_iso_or_u_equiv()*
           adptbx.u_as_b(1))*mean_diff_b_iso_bonded_fraction)
+      print >> log, "  max suggested <Bi-Bj> for this run: %7.2f"%delta_b_target
+      print >> log, "  max allowed Rfree-Rwork gap: %5.1f"%r_free_r_work_gap
+      print >> log, "  range of equivalent Rfree: %5.1f"%r_free_range_width
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=deltab,score_target_value=delta_b_target)
       # select the result with lowest rfree
@@ -330,11 +336,11 @@ class refine_adp(object):
       best_u_star = None
       best_u_iso = None
       for result in trial_results :
-        if (result.weight == w_best) :
+        if(abs(result.weight-w_best)<=1.e-3) :
           best_u_star = result.u_star
           best_u_iso = result.u_iso
           break
-      if (best_u_iso is None) : # XXX this probably shouldn't happen...
+      if(best_u_iso is None) : # XXX this probably shouldn't happen...
         self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
           self.save_scatterers.deep_copy())
       else :
@@ -348,30 +354,21 @@ class refine_adp(object):
         xray_structure = self.fmodels.fmodel_xray().xray_structure,
         update_f_calc  = True)
       print >> self.log, "Accepted refinement result:"
-      # XXX it appears to be safe to use the saved u_star/u_iso from the
-      # optimization trials instead of minimizing again - results are more
-      # consistent this way.
-      # -Nat 2012-01-06
-      if (best_u_star is None) :
-        self.minimize()
-      else :
-        # XXX reset alpha/beta parameters - if this is not done, the assertion
-        # below will fail
-        fmodels.create_target_functors()
-        if (self.fmodels.fmodel_neutron() is None):
-          self.fmodels.fmodel_xray().xray_structure.tidy_us()
-          self.fmodels.update_xray_structure(
-            xray_structure = self.fmodels.fmodel_xray().xray_structure,
-            update_f_calc  = True)
+      # reset alpha/beta parameters - if this is not done, the assertion
+      # below will fail
+      fmodels.create_target_functors()
+      if(self.fmodels.fmodel_neutron() is None):
+        self.fmodels.fmodel_xray().xray_structure.tidy_us()
+        self.fmodels.update_xray_structure(
+          xray_structure = self.fmodels.fmodel_xray().xray_structure,
+          update_f_calc  = True)
         assert approx_equal(self.fmodels.fmodel_xray().r_work()*100, rw_best,
           0.001)
       self.show(weight=w_best)
-    #
     assert approx_equal(self.fmodels.fmodel_xray().target_w(),
        self.fmodels.target_functor_result_xray(
          compute_gradients=False).target_work())
     self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
-    #
 
   # XXX parallelized
   def try_weight (self, weight, print_stats=False) :
