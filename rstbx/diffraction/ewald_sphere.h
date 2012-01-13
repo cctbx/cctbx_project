@@ -174,7 +174,7 @@ class reflection_prediction:
         observed_reflection_positions = []
         
         for hkl, angle in zip(indices, angles):
-            s = (self._ub * hkl).rotate(self._axis, angle)
+            s = (self._ub * hkl).rotate_around_origin(self._axis, angle)
             q = (s + self._s0).normalize()
 
             # check if diffracted ray parallel to detector face 
