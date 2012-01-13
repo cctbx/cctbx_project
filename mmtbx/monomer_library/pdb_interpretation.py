@@ -354,7 +354,7 @@ def validate_geometry_edits_params (params) :
       raise Sorry(("A custom angle definition (#%d in the list) is "+
         "incomplete; two atom selections are required.") % k)
     elif (angle.angle_ideal is None) :
-      raise Sorry(("The ideal angle for custom angle #%d is not defined. "+ 
+      raise Sorry(("The ideal angle for custom angle #%d is not defined. "+
         "(Atom selections: %s, %s, %s)") % (k, angle.atom_selection_1,
         angle.atom_selection_2, angle.atom_selection_3))
     elif (angle.sigma is None) :
