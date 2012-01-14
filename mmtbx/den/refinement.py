@@ -24,6 +24,7 @@ class manager(object):
     self.params = params
     self.target_weights = target_weights
     self.monitors = monitors
+    self.adp_refinement_manager = None
     self.macro_cycle = macro_cycle
     self.tan_b_iso_max = 0
     self.save_scatterers_local = fmodels.fmodel_xray().\
@@ -277,7 +278,7 @@ class manager(object):
     self.fmodels.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
-    adp_refinement_manager = adp_refinement.manager(
+    self.adp_refinement_manager = adp_refinement.manager(
       fmodels                = self.fmodels,
       model                  = self.model,
       group_adp_selections   = self.model.refinement_flags.adp_group,
