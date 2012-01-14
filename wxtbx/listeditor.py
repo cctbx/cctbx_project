@@ -21,10 +21,10 @@ class ListEditor (wx.Panel) :
       label="Delete",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "cancel", 16))
     self.Bind(wx.EVT_BUTTON, self.OnDelete, del_btn)
-    del_btn = self.AddControlButton(
+    clear_btn = self.AddControlButton(
       label="Clear all",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete", 16))
-    self.Bind(wx.EVT_BUTTON, self.OnDeleteAll, del_btn)
+    self.Bind(wx.EVT_BUTTON, self.OnDeleteAll, clear_btn)
     update_btn = self.AddControlButton(
       label="Update item",
       bitmap=wxtbx.bitmaps.fetch_icon_bitmap("actions", "recur", 16))
