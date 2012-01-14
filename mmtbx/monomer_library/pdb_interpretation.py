@@ -361,6 +361,12 @@ def validate_geometry_edits_params (params) :
       raise Sorry(("The sigma for custom angle #%d is not defined. "+
         "(Atom selections: %s, %s, %s)") % (k, angle.atom_selection_1,
         angle.atom_selection_2, angle.atom_selection_3))
+  for k, plane in enumerate(params.planarity) :
+    if (plane.atom_selection is None) :
+      raise Sorry("The atom selection for custom plane #%d is not defined."% k)
+    elif (plane.sigma is None) :
+      raise Sorry(("The sigma for custom plane #%d is not defined.  (Atom "+
+        "selection: '%s')") % (k, plane.atom_selection))
   return True
 
 geometry_restraints_remove_str = """\
