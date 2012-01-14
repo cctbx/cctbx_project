@@ -1,5 +1,5 @@
 
-from wxtbx.phil_controls import intctrl, floatctrl
+from wxtbx.phil_controls import intctrl, floatctrl, symop
 from libtbx.utils import Abort
 import wx
 
@@ -33,8 +33,9 @@ class SimpleInputDialog (wx.Dialog) :
     ok_btn = wx.Button(self, wx.ID_OK)
     cancel_btn = wx.Button(self, wx.ID_CANCEL)
     btn_szr = wx.StdDialogButtonSizer()
-    btn_szr.Add(ok_btn, 0, wx.ALL, 5)
     btn_szr.Add(cancel_btn, 0, wx.ALL, 5)
+    btn_szr.Add(ok_btn, 0, wx.ALL, 5)
+    ok_btn.SetDefault()
     btn_szr.Realize()
     self.sizer.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
     self.Fit()
@@ -58,6 +59,12 @@ class IntegerDialog (SimpleInputDialog) :
 class FloatDialog (SimpleInputDialog) :
   def CreatePhilControl (self, value) :
     return floatctrl.FloatCtrl(
+      parent=self,
+      value=value)
+
+class SymopDialog (SimpleInputDialog) :
+  def CreatePhilControl (self, value) :
+    return symop.SymopCtrl(
       parent=self,
       value=value)
 
@@ -95,3 +102,9 @@ if (__name__ == "__main__") :
     label="Number of cycles",
     value=5)
   print value2
+  dlg = SymopDialog(
+    parent=None,
+    title="Symmetry operator input",
+    label="Symmetry operator",
+    value=None)
+  print get_phil_value_from_dialog(dlg)
