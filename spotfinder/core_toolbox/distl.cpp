@@ -23,7 +23,12 @@ void
 di::w_spot::p_getaxes() {
 //DEPRECATE SOON---DEPRECATE SOON
   if (p_gotaxes) return;
-
+  if (bodypixels.size() < 2) {
+    p_majoraxis = 1.0;
+    p_minoraxis = 1.0;
+    p_gotaxes = true;
+    return;
+  }
   // iteration to find average position
   af::tiny<double, 2> average_pixel_position = af::tiny<double, 2>(0.,0.);
   for (int i = 0; i < bodypixels.size() ; ++i) {
