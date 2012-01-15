@@ -42,6 +42,8 @@ namespace rstbx { namespace integration {
     }
   }
 
+  static int MIN_BACKGROUND_SZ = 6;//Bare minimimum for OK statistics and invertible matrix
+
   struct simple_integration {
     /* member data */
     double pixel_size;
@@ -222,6 +224,7 @@ namespace rstbx { namespace integration {
 
           mask_t spot_keys = I_S_mask;
           int base_spot_size = spot_keys.size();
+          base_spot_size = std::max(base_spot_size,MIN_BACKGROUND_SZ);
 
           //Guard against spot mask pixels off the active area
           if (check_tiles){
@@ -331,7 +334,9 @@ namespace rstbx { namespace integration {
 
         /*  insist that the background mask pixel count meets/exceeds that of
             the spot mask, otherwise flag the spot to be skipped: */
-        if ( altB_S_mask.size() >= I_S_mask.size()) {
+        if (
+          altB_S_mask.size() >= std::max(I_S_mask.size(),(std::size_t)MIN_BACKGROUND_SZ)
+        ) {
           BSmasks.push_back(altB_S_mask);
         } else {
           BSmasks.push_back(mask_t());
