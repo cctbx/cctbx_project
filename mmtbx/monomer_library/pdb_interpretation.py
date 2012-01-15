@@ -23,11 +23,11 @@ from cStringIO import StringIO
 import string
 import sys, os
 
-# see iotbx/pdb/common_residue_names.h; additionally here only: U
+# see iotbx/pdb/common_residue_names.h; additionally here only: U I
 ad_hoc_single_atom_residue_element_types = """\
 ZN CA MG CL NA MN K FE CU CD HG NI CO BR XE SR CS PT BA TL PB SM AU RB YB LI
 KR MO LU CR OS GD TB LA F AR AG HO GA CE W SE RU RE PR IR EU AL V TE SB PD
-U
+U I
 """.split()
 
 class ad_hoc_single_atom_residue(object):
