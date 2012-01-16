@@ -1,3 +1,5 @@
+from scitbx.array_family import flex
+
 class active_area_filter:
   NEAR = 2
   def __init__(self,IT):
