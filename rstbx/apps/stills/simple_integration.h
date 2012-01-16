@@ -35,7 +35,7 @@ namespace rstbx { namespace integration {
   show_array( ArrType const& A ){
     af::flex_grid<> kg = A.accessor();
     for (int ii=kg.origin()[0];ii<kg.last()[0];++ii){
-      for (int jj=kg.origin()[1];jj<=kg.last()[1];++jj){
+      for (int jj=kg.origin()[1];jj<kg.last()[1];++jj){
         int val = A[ kg(af::adapt(af::tiny<int, 2>(ii,jj))) ]?1:7;
             std::cout<<val;
       } std::cout<<std::endl;
@@ -198,11 +198,15 @@ namespace rstbx { namespace integration {
         }
       }
 
+      int guard_padding = 1+int(std::sqrt((double)guard_width_sq));
       //set up a mask array to show the spot along with potential neighbors
-      af::flex_grid<>::index_type origin(af::adapt(af::tiny<int, 2>(min_x,min_y)));
-      af::flex_grid<>::index_type last(af::adapt(af::tiny<int, 2>(max_x,max_y)));
+      af::flex_grid<>::index_type origin(af::adapt(af::tiny<int, 2>(min_x-guard_padding,
+                                                                    min_y-guard_padding)));
+      af::flex_grid<>::index_type last(af::adapt(af::tiny<int, 2>(max_x+guard_padding,
+                                                                  max_y+guard_padding)));
+      // add padding to avoid seg fault when doing the convolution of spot with guard
       af::flex_grid<> g(origin, last, false);
-      af::flex_bool spot_grid(g);
+      af::flex_bool spot_grid(g); // increment - and + addresses centered at zero.
 
       for (int i=0; i<predicted.size(); ++i){
         scitbx::vec3<double> pred = predicted[i];
@@ -215,7 +219,7 @@ namespace rstbx { namespace integration {
         scitbx::vec2<int> spot_position(
           round(predX + correction[0]),
           round(predY + correction[1]) );
-        detector_xy_draft.push_back(spot_position);
+        detector_xy_draft.push_back(spot_position); // integer grid position of predicted spot, with spotfinder empirical correction
 
         //insert a test to make sure spot is within FRAME
         if (spot_position[0] > FRAME && spot_position[1] > FRAME &&
@@ -253,7 +257,7 @@ namespace rstbx { namespace integration {
                 spot_keys[k->first]=true;
               }
             }
-          }
+          } //Now spot keys has addresses of both self pixels and neighboring spot pixels
 
           int kmin_x=0, kmin_y=0, kmax_x=0, kmax_y=0;
           //insert here to actually make the compound mask
@@ -301,6 +305,7 @@ namespace rstbx { namespace integration {
             // pixels in the spot mask have been eliminated, now eliminate guard pixels
             bool in_guard_zone=false;
             for (int iguard=1; iguard<i_guard_width_limit; ++iguard){
+              // Put assertion in for debug: SCITBX_ASSERT(guard_mask.size()>g(af::adapt(increments_xy[isort] + increments_xy[iguard])));
               if (guard_mask[g(
                   af::adapt(increments_xy[isort] + increments_xy[iguard]))]==true){
                    in_guard_zone=true;}
