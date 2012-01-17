@@ -947,8 +947,10 @@ void diffimage::search_border_generic
   while (!Q.empty()) {
     point pt = Q.top();
     Q.pop();
-    if (pixelvisited[pt.x][pt.y]) {continue;}
+    // Following two lines must be in this order for peripheral_margin==0
+    // Could write a special policy if it impacts performance
     if (pt.x < firstx || pt.x > lastx || pt.y < firsty || pt.y > lasty) {continue;}
+    if (pixelvisited[pt.x][pt.y]) {continue;}
     pixelvisited[pt.x][pt.y] = true;
     if (pixeldata[pt.x][pt.y]<=cutoff) {
       // Hit a nighboring pixel, which does not belong to
