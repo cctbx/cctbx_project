@@ -75,6 +75,8 @@ torsion_ncs_params = iotbx.phil.parse("""
   b_factor_weight=10
     .type=float
     .short_caption = B factor weight
+  coordinate_sigma=0.5
+      .type = float
  }
 """)
 
@@ -86,12 +88,14 @@ class torsion_ncs(object):
                sites_cart,
                params,
                b_factor_weight=None,
+               coordinate_sigma=None,
                log=None):
     if(log is None): log = sys.stdout
     self.sigma = params.sigma
     self.limit = params.limit
     self.slack = params.slack
     self.b_factor_weight = b_factor_weight
+    self.coordinate_sigma = coordinate_sigma
     self.pdb_hierarchy = pdb_hierarchy
     self.fmodel = fmodel
     self.ncs_groups = []
@@ -270,6 +274,9 @@ class torsion_ncs(object):
         if self.b_factor_weight is not None:
           new_ncs_groups += \
             "    b_factor_weight = %f\n" % self.b_factor_weight
+        if self.coordinate_sigma is not None:
+          new_ncs_groups += \
+            "    coordinate_sigma = %f\n" % self.coordinate_sigma
         new_ncs_groups += "   }\n"
       new_ncs_groups += "  }\n }\n}"
       self.found_ncs = new_ncs_groups
@@ -1066,7 +1073,7 @@ class torsion_ncs(object):
         processed_pdb              = processed_pdb_file,
         reference_selection_string = master,
         selection_strings          = selection_strings,
-        coordinate_sigma           = 0.05,
+        coordinate_sigma           = param_group.coordinate_sigma,
         b_factor_weight            = param_group.b_factor_weight,
         special_position_warnings_only
           = False,
