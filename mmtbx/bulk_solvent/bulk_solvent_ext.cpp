@@ -116,6 +116,20 @@ namespace {
         make_getter(&aniso_u_scaler<>::u_star_independent, rbv()))
       .add_property("a", make_getter(&aniso_u_scaler<>::a, rbv()))
    ;
+
+   def("ksol_bsol_grid_search",
+      (af::shared<double>(*)
+        (af::const_ref<double>   const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<double>   const&,
+         af::const_ref<double>   const&,
+         af::const_ref<double>   const&,
+         double                  const&,
+         af::const_ref<double>   const&,
+         af::const_ref<double>   const&,
+         double                  const&)) ksol_bsol_grid_search);
+   ;
    //
     def("r_factor",
       (double(*)
