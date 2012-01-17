@@ -399,7 +399,7 @@ class
       f.close()
     else:
       boost_python_run_tests = \
-        "%s/boost_python_run_tests.csh" % libtbx.env.build_path
+        "%s/boost_python_run_tests.csh" % abs(libtbx.env.build_path)
       f = open(boost_python_run_tests, "w")
       print >> f, "#! /bin/csh -f"
       print >> f, "set verbose"
