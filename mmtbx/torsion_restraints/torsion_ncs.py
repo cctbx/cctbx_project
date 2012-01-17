@@ -35,10 +35,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  similarity = .80
    .type = float
    .short_caption = Sequence similarity cutoff
- b_factor_weight = None
-   .type=float
-   .short_caption = B factor weight
-   .expert_level=1
  hydrogens = False
    .type = bool
    .short_caption = Include hydrogens
@@ -89,11 +85,13 @@ class torsion_ncs(object):
                geometry,
                sites_cart,
                params,
+               b_factor_weight=None,
                log=None):
     if(log is None): log = sys.stdout
     self.sigma = params.sigma
     self.limit = params.limit
     self.slack = params.slack
+    self.b_factor_weight = b_factor_weight
     self.pdb_hierarchy = pdb_hierarchy
     self.fmodel = fmodel
     self.ncs_groups = []
@@ -269,9 +267,9 @@ class torsion_ncs(object):
         new_ncs_groups += "   restraint_group {\n"
         for chain in ncs_set:
           new_ncs_groups += "    selection = %s\n" % chain
-        if params.b_factor_weight is not None:
+        if self.b_factor_weight is not None:
           new_ncs_groups += \
-            "    b_factor_weight = %f\n" % params.b_factor_weight
+            "    b_factor_weight = %f\n" % self.b_factor_weight
         new_ncs_groups += "   }\n"
       new_ncs_groups += "  }\n }\n}"
       self.found_ncs = new_ncs_groups
