@@ -392,9 +392,10 @@ public:
     vec3<FloatType> K = compute_K(X, c2, b2, a2, y2);
     vec3<FloatType> J = func_J(K, X, containers.const_ref());
     if(X[0]>=0. && X[1]>=0. && X[2]>=0) {
-      if(J[0]<=J[1] && J[0]<J[2]) { x = X[0]; k = K[0]; }
-      if(J[1]<=J[0] && J[1]<J[2]) { x = X[1]; k = K[1]; }
-      if(J[2]<=J[0] && J[2]<J[1]) { x = X[2]; k = K[2]; }
+      if(J[0]<=J[1] && J[0]<=J[2]) { x = X[0]; k = K[0]; }
+      else if(J[1]<=J[0] && J[1]<=J[2]) { x = X[1]; k = K[1]; }
+      else if(J[2]<=J[0] && J[2]<=J[1]) { x = X[2]; k = K[2]; }
+      else MMTBX_ASSERT(0);
     }
     else if(X[0]>=0. && X[1]>=0.) {
       if(J[0]<=J[1]) { x = X[0]; k = K[0]; }
@@ -421,11 +422,14 @@ public:
 private:
   class container {
     public:
-      FloatType u, v, w, I;
+      FloatType u, v, w, I, f_obs;
+      ComplexType f_calc, f_mask;
       container(
-        FloatType const& f_obs,
-        ComplexType const& f_calc,
-        ComplexType const& f_mask)
+        FloatType const& f_obs_,
+        ComplexType const& f_calc_,
+        ComplexType const& f_mask_)
+      :
+      f_obs(f_obs_), f_mask(f_mask_), f_calc(f_calc_)
       {
         FloatType p = std::real(f_calc);
         FloatType r = std::imag(f_calc);
@@ -444,13 +448,36 @@ private:
     af::const_ref<container> const& containers)
   {
     vec3<FloatType> sum(0,0,0);
+    vec3<FloatType> num(0,0,0);
+    vec3<FloatType> den(0,0,0);
+    vec3<FloatType> num1(0,0,0);
+    vec3<FloatType> den1(0,0,0);
+    vec3<FloatType> sc(0,0,0);
     for(std::size_t i=0; i < containers.size(); i++) {
       container cntr = containers[i];
-      FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;
       for(std::size_t j=0; j < 3; j++) {
-        FloatType arg = x[j]*x[j]*w+2.*x[j]*v+u-K[j]*I;
-        sum[j] += (0.5*arg*arg);
+        FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
+        num1[j] += std::abs(cntr.f_obs*fm);
+        den1[j] += (fm*fm);
       }
+    }
+    for(std::size_t j=0; j < 3; j++) {
+      sc[j] = num1[j]/den1[j];
+    }
+
+    for(std::size_t i=0; i < containers.size(); i++) {
+      container cntr = containers[i];
+      //FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;//XXX
+      for(std::size_t j=0; j < 3; j++) {
+        //FloatType arg = x[j]*x[j]*w+2.*x[j]*v+u-K[j]*I; //XXX
+        //sum[j] += (0.5*arg*arg);
+        FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
+        num[j] += std::abs(cntr.f_obs-sc[j]*fm);
+        den[j] += cntr.f_obs;
+      }
+    }
+    for(std::size_t j=0; j < 3; j++) {
+      sum[j] = num[j]/den[j];
     }
     return sum;
   }
@@ -581,6 +608,53 @@ public:
     a = af::matrix_multiply(m_inv.const_ref(), b.const_ref());
   }
 };
+
+template <typename FloatType, typename ComplexType>
+ af::shared<FloatType>
+ ksol_bsol_grid_search(
+   af::const_ref<FloatType>   const& f_obs,
+   af::const_ref<ComplexType> const& f_calc,
+   af::const_ref<ComplexType> const& f_mask,
+   af::const_ref<FloatType>   const& k_sol_range,
+   af::const_ref<FloatType>   const& b_sol_range,
+   af::const_ref<FloatType>   const& ss,
+   FloatType                  const& scalar_scale,
+   af::const_ref<FloatType>   const& overall_scale,
+   af::const_ref<FloatType>   const& overall_anisotropic_scale,
+   FloatType                  const& r_ref)
+ {
+   MMTBX_ASSERT(f_mask.size() == f_obs.size());
+   MMTBX_ASSERT(f_obs.size() == f_calc.size());
+   MMTBX_ASSERT(ss.size() == f_calc.size());
+   MMTBX_ASSERT(overall_scale.size() == f_calc.size());
+   MMTBX_ASSERT(overall_anisotropic_scale.size() == f_calc.size());
+   FloatType k_best = 0.0;
+   FloatType b_best = 0.0;
+   FloatType r_best = r_ref;
+   af::shared<ComplexType> f_model(ss.size());
+   af::shared<FloatType> bulk_solvent_scale(f_obs.size());
+   for(std::size_t i=0; i < k_sol_range.size(); i++) {
+     FloatType ks = k_sol_range[i];
+     for(std::size_t j=0; j < b_sol_range.size(); j++) {
+       FloatType mbs = -b_sol_range[j];
+       for(std::size_t k=0; k < f_obs.size(); k++) {
+         FloatType kbs = ks * std::exp(mbs * ss[k]);
+         f_model[k] = scalar_scale * overall_scale[k] *
+           overall_anisotropic_scale[k] * (f_calc[k] + kbs * f_mask[k]);
+       }
+       FloatType r = r_factor(f_obs, f_model.const_ref());
+       if(r < r_best) {
+         k_best = k_sol_range[i];
+         b_best = b_sol_range[j];
+         r_best = r;
+       }
+     }
+   }
+   for(std::size_t k=0; k < f_obs.size(); k++) {
+     bulk_solvent_scale[k] = k_best * std::exp(-b_best * ss[k]);
+   }
+   return bulk_solvent_scale;
+ };
 
 //------------------------------------------------------------------------------
 template <typename FloatType, typename ComplexType>
