@@ -535,9 +535,10 @@ public:
       MMTBX_ASSERT(fm_abs > 0);
       MMTBX_ASSERT(fo_i > 0);
       FloatType z = std::log(fo_i/fm_abs)/minus_two_pi_sq;
-      int const v_int[] = {i0*i0, i1*i1, i2*i2, 2*i0*i1, 2*i0*i2, 2*i1*i2};
-      FloatType v[6];
-      std::copy(v_int,v_int+6,v);
+#define _ static_cast<FloatType>
+      FloatType const v[] = {
+        _(i0*i0), _(i1*i1), _(i2*i2), _(2*i0*i1), _(2*i0*i2), _(2*i1*i2)};
+#undef _
       scitbx::matrix::multiply(
         /*a*/ adp_constraint_matrix.begin(),
         /*b*/ v,
