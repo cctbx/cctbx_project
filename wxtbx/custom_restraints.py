@@ -164,7 +164,7 @@ class CustomBondPanel (CustomRestraintsPanel) :
     edit_szr.Add(wx.StaticText(self, -1, "Atom selections:"))
     for i in range(2) :
       edit_field = wx.TextCtrl(self, -1, size=(540,-1),
-        style=wx.TE_PROCESS_ENTER)
+        style=wx.TE_PROCESS_ENTER, name="bond")
       setattr(self, "selection_%d" % (i+1), edit_field)
       edit_szr.Add(edit_field, 0, wx.ALL, 5)
       select_btn = (1,1)
@@ -199,7 +199,7 @@ class CustomAnglePanel (CustomRestraintsPanel) :
     edit_szr.Add(wx.StaticText(self, -1, "Atom selections:"))
     for i in range(3) :
       edit_field = wx.TextCtrl(self, -1, size=(540,-1),
-        style=wx.TE_PROCESS_ENTER)
+        style=wx.TE_PROCESS_ENTER, name="angle")
       setattr(self, "selection_%d" % (i+1), edit_field)
       edit_szr.Add(edit_field, 0, wx.ALL, 5)
       select_btn = (1,1)
@@ -229,7 +229,7 @@ class CustomPlanarityPanel (CustomRestraintsPanel) :
     self.sizer.Add(edit_szr, 0, wx.ALL, 5)
     edit_szr.Add(wx.StaticText(self, -1, "Atom selection:"))
     self.selection_1 = wx.TextCtrl(self, -1, size=(540,64),
-      style=wx.TE_PROCESS_ENTER)
+      style=wx.TE_PROCESS_ENTER, name="plane")
     edit_szr.Add(self.selection_1, 0, wx.ALL, 5)
     select_btn = (1,1)
     if (self.flag_atom_selection_buttons) :
@@ -410,14 +410,14 @@ class BondRestraintsList (RestraintsListBase) :
         parent=self,
         title="Symmetry operator",
         label="Symmetry operator",
-        value=self._params[item].symmetry_operator,
+        value=self._params[item].symmetry_operation,
         caption="You may specify a bond across symmetry mates; in this case "+
-          "the symmetry operator will be applied to the coordinates of the "+
-          "second atom when calculating the distance.  The operator should "+
+          "the symmetry operation will be applied to the coordinates of the "+
+          "second atom when calculating the distance.  The operation should "+
           "be in a format like 'x,y,-z'.")
       if (dlg.ShowModal() == wx.ID_OK) :
         symop = dlg.GetPhilValue()
-        self._params[item].symmetry_operator = symop
+        self._params[item].symmetry_operation = symop
         self.SetStringItem(item, 4, fv("%s", symop))
 
 class AngleRestraintsList (RestraintsListBase) :
