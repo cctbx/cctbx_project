@@ -186,7 +186,7 @@ class model_scene_with_selection (model_scene) :
 class selection_editor_mixin (model_viewer_mixin) :
   mouse_modes = ["Rotate view", "Toggle chain", "Toggle residue",
     "Toggle atom", "Select range", "Deselect range", "Select single residue",
-    "Select residue pair", "Select atom pair"] #, "Show selection menu"]
+    "Select single atom", "Select residue pair", "Select atom pair"]
   def __init__ (self, *args, **kwds) :
     self.left_button_mode = 0
     self.flag_select_all_conformers = True
@@ -352,6 +352,12 @@ class selection_editor_mixin (model_viewer_mixin) :
       model.select_single_residue(self.current_atom_i_seq)
       return True
 
+  def select_single_atom (self) :
+    model = self.get_model(self.current_object_id)
+    if model is not None :
+      model.select_single_atom(self.current_atom_i_seq)
+      return True
+
   def select_residue_pair (self) :
     model = self.get_model(self.current_object_id)
     if model is not None :
@@ -386,6 +392,7 @@ class selection_editor_mixin (model_viewer_mixin) :
                     "process_range_selection",
                     "process_range_deselection",
                     "select_single_residue",
+                    "select_single_atom",
 #                    "context_selection_menu",
                     "select_residue_pair",
                     "select_atom_pair",]

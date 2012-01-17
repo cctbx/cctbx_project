@@ -360,6 +360,11 @@ class mouse_selection_manager (object) :
       return False
     self.toggle_residue_selection(i_seq)
 
+  def select_single_atom (self, i_seq) :
+    atom = self.atom_index[i_seq]
+    self.clear_selection()
+    self.toggle_atom_selection(i_seq)
+
   def construct_selection (self) :
     final_selection = ""
     # Part 1: stuff we want
