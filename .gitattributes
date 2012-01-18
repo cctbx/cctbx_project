@@ -1315,6 +1315,7 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
+rstbx/bpcx/compare_mosflm_xds.py -text
 rstbx/bpcx/doc/diffraction_geometry.pdf -text
 rstbx/bpcx/doc/diffraction_geometry.svg -text
 rstbx/bpcx/doc/prediction_formulae.tex -text
