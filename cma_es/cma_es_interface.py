@@ -6,13 +6,13 @@ class cma_es_driver(object):
   This object provides one with a easy interface to cma_es optimisation.
   For now, no options can be set, this will be added in the future.
   """
-  def __init__(self, N, mean, sigma, evaluator):
+  def __init__(self, N, mean, sigma, evaluator, l=0):
     self.N = N
     self.x = mean
     self.sigma = sigma
     self.evaluator = evaluator
 
-    self.optimizer = cma_es(self.N, self.x, self.sigma)
+    self.optimizer = cma_es(self.N, self.x, self.sigma, l)
     self.count = 0
 
     while (not self.optimizer.converged() ):
@@ -25,6 +25,7 @@ class cma_es_driver(object):
         vector = p[(i*N):(i*N + N)]
         v[i] = self.evaluator( vector )
       self.optimizer.update_distribution(v)
+      self.count += 1
     self.x_final = self.optimizer.get_result()
     self.score_final = self.evaluator( self.x_final )
 
