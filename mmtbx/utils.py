@@ -839,14 +839,16 @@ def get_atom_selections(all_chain_proxies,
 
 def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
   result = all_chain_proxies.selection(string = string)
-  if(result.size()==0 or (result.size()>0 and result.count(True)==0) and not
-     allow_empty_selection):
+  def is_unexpected_empty_selection():
+    if (allow_empty_selection): return False
+    if (isinstance(result, flex.size_t)):
+      return (result.size() == 0)
+    return result.all_eq(False)
+  if (is_unexpected_empty_selection()):
     raise Sorry(
-      "Selection string '%s' results in empty selection (selects no atoms)."%
-      string)
-  try: return result
-  except KeyboardInterrupt: raise
-  except Exception: raise Sorry("Invalid atom selection: %s" % string)
+      "Selection string results in empty selection (selects no atoms): %s"
+        % show_string(string))
+  return result
 
 def write_pdb_file(
       xray_structure,
