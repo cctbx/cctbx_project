@@ -5,6 +5,7 @@
 # TODO (???) plugin for Coot
 
 from mmtbx import utils
+from scitbx.array_family import flex
 from libtbx.str_utils import make_header
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
@@ -35,9 +36,13 @@ class peaks_holes_container (object) :
     for cutoff in cutoffs :
       n_peaks = (self.peaks.heights > cutoff).count(True)
       print >> out, "  mFo-DFc >  %g  : %6d" % (cutoff, n_peaks)
+    peak_max = flex.max(self.peaks.heights)
+    print >> out, "  mFo-DFc max    : %.2f" % peak_max
     for cutoff in cutoffs :
       n_holes = (self.holes.heights < -cutoff).count(True)
       print >> out, "  mFo-DFc < -%g  : %6d" % (cutoff, n_holes)
+    hole_max = flex.min(self.holes.heights)
+    print >> out, "  mFo-DFc min    : %.2f" % hole_max
     if (self.anom_peaks is not None) :
       print >> out, "  anomalous > %g : %6d" % (self.anom_map_cutoff,
         len(self.anom_peaks.heights))
@@ -65,6 +70,8 @@ class peaks_holes_container (object) :
       n_holes_1=(self.holes.heights < -self.map_cutoff).count(True),
       n_holes_2=(self.holes.heights < -self.map_cutoff - 2).count(True),
       n_holes_3=(self.holes.heights < -self.map_cutoff - 4).count(True),
+      peak_max=flex.max(self.peaks.heights),
+      hole_max=flex.min(self.holes.heights),
       n_anom_peaks=n_anom_peaks,
       n_water_peaks=n_water_peaks,
       n_water_anom_peaks=n_water_anom_peaks)
