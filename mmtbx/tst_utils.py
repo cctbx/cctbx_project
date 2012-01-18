@@ -533,10 +533,12 @@ def exercise_19(verbose):
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
   answer = [ [[8],[9],[10]] ]
+  tmp = "chain A and resseq 1 and name XX and altloc A"
   other_constrained_groups = make_up_other_constrained_groups_obj(
-    selections = [
-      ['chain A and resseq 1 and name XX and altloc A', 'chain A and resseq 1 and name NZ and altloc B', 'chain S and resseq 1'] ]
-    )
+    selections = [[
+      tmp,
+      'chain A and resseq 1 and name NZ and altloc B',
+      'chain S and resseq 1']])
   try:
     result = utils.occupancy_selections(
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
@@ -544,8 +546,9 @@ def exercise_19(verbose):
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
   except Exception, e: pass
-  tmp = "chain A and resseq 1 and name XX and altloc A"
-  assert str(e) == "Selection string '%s' results in empty selection (selects no atoms)."%tmp
+  assert str(e) == \
+    'Selection string results in empty selection (selects no atoms): "%s"' \
+      % tmp
 
 def exercise_20(verbose):
   pdb_file = libtbx.env.find_in_repositories(
