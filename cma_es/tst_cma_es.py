@@ -15,10 +15,10 @@ def obj_fun(x):
 
 # from example1.c
 def fitfun(x,N):
-  sum = 1e4*x[0]*x[0] + 1e-4*x[1]*x[1]
+  isum = 1e4*x[0]*x[0] + 1e-4*x[1]*x[1]
   for i in xrange(2,N):
-    sum += x[i]*x[i]
-  return sum
+    isum += x[i]*x[i]
+  return isum
 
 def test_cma_es():
   N = 3
