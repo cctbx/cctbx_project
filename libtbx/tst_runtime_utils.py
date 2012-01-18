@@ -1,5 +1,6 @@
 from libtbx import runtime_utils
 from libtbx import easy_pickle, easy_run
+import time
 import os
 
 def exercise () :
@@ -32,6 +33,7 @@ current is 57142.857143
 current is 66666.666667
 """)
   assert client.n_cb >= 5 # this is variable!
+  time.sleep(1)
   assert ([ cb.message for cb in client._accumulated_callbacks ] ==
           ['run 0', 'run 1', 'run 2', 'run 3'])
 
