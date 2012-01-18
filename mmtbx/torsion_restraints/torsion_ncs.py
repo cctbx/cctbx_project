@@ -113,10 +113,7 @@ class torsion_ncs(object):
     self.sa = SidechainAngles(False)
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     print >> self.log, "Determining NCS matches..."
-    pair_hash = {}
     dp_hash = {}
-    used_chains = []
-    res_match_hash = {}
     atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
     segids = flex.std_string([ a.segid for a in atom_labels ])
     self.use_segid = not segids.all_eq('    ')
@@ -126,8 +123,6 @@ class torsion_ncs(object):
     element_hash = utils.build_element_hash(pdb_hierarchy)
     chains = pdb_hierarchy.models()[0].chains()
     sel_cache = pdb_hierarchy.atom_selection_cache()
-    alignments = {}
-    offsets = {}
     n_ncs_groups = 0
     for i_seq, group in enumerate(self.params.restraint_group):
       n_selections = 0
@@ -179,93 +174,13 @@ class torsion_ncs(object):
             alignments[key] = residue_match_map
         self.ncs_groups.append(ncs_set)
     else:
-      am = utils.alignment_manager(pdb_hierarchy=pdb_hierarchy,
-                                   use_segid=self.use_segid)
-
-      for i, chain_i in enumerate(chains):
-        found_conformer = False
-        for conformer in chain_i.conformers():
-          if not conformer.is_protein() and not conformer.is_na():
-            continue
-          else:
-            found_conformer = True
-        if not found_conformer:
-          continue
-        #test for unique segid
-        segid_i = utils.get_unique_segid(chain_i)
-        if segid_i == None:
-          #print >> log, \
-          #  "chain %s has conflicting segid values - skipping" % chain_i.id
-          continue
-        if (self.use_segid) :
-          chain_i_str = "chain '%s' and segid '%s'" % \
-            (chain_i.id, segid_i)
-        else :
-          chain_i_str = "chain '%s'" % chain_i.id
-        for chain_j in chains[i+1:]:
-          found_conformer = False
-          for conformer in chain_j.conformers():
-            if not conformer.is_protein() and not conformer.is_na():
-              continue
-            else:
-              found_conformer = True
-          if not found_conformer:
-            continue
-          #test for unique segid
-          segid_j = utils.get_unique_segid(chain_j)
-          if segid_j == None:
-            continue
-          if (self.use_segid) :
-            chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
-          else :
-            chain_j_str = "chain '%s'" % chain_j.id
-          seq_pair = (am.sequences[chain_i_str],
-                      am.sequences[chain_j_str])
-          seq_pair_padded = (am.padded_sequences[chain_i_str],
-                             am.padded_sequences[chain_j_str])
-          struct_pair = (am.structures[chain_i_str],
-                         am.structures[chain_j_str])
-          residue_match_map = \
-            utils._alignment(
-              params=params,
-              sequences=seq_pair,
-              padded_sequences=seq_pair_padded,
-              structures=struct_pair,
-              log=log)
-          if ( min(len(residue_match_map),
-                   chain_i.residue_groups_size(),
-                   chain_j.residue_groups_size()) \
-               / max(len(residue_match_map),
-                     chain_i.residue_groups_size(),
-                     chain_j.residue_groups_size()) \
-               >= self.params.similarity ):
-            key = (chain_i_str, chain_j_str)
-            alignments[key] = residue_match_map
-            pair_key = (chain_i.id, segid_i)
-            match_key = (chain_j.id, segid_j)
-            if used_chains is not None:
-              if match_key in used_chains:
-                continue
-            if (not pair_key in pair_hash) :
-              pair_hash[pair_key] = []
-            pair_hash[pair_key].append(match_key)
-            used_chains.append(match_key)
-      for key in pair_hash.keys():
-        ncs_set = []
-        if (self.use_segid) :
-          chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
-        else :
-          chain_str = "chain '%s'" % (key[0])
-        ncs_set.append(chain_str)
-        for add_chain in pair_hash[key]:
-          if (self.use_segid) :
-            chain_str = "chain '%s' and segid '%s'" % \
-              (add_chain[0], add_chain[1])
-          else :
-            chain_str = "chain '%s'" % (add_chain[0])
-          ncs_set.append(chain_str)
-        self.ncs_groups.append(ncs_set)
-
+      ncs_groups_manager = get_ncs_groups(
+          pdb_hierarchy=self.pdb_hierarchy,
+          use_segid=self.use_segid,
+          params=self.params,
+          log=self.log)
+      self.ncs_groups = ncs_groups_manager.ncs_groups
+      self.alignments = ncs_groups_manager.alignments
       new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
       for ncs_set in self.ncs_groups:
         new_ncs_groups += "   restraint_group {\n"
@@ -358,7 +273,7 @@ class torsion_ncs(object):
             atom_key = self.name_hash[atom.i_seq][0:4]
             j_match = None
             key = (chain_i, chain_j)
-            cur_align = alignments.get(key)
+            cur_align = self.alignments.get(key)
             if cur_align is not None:
               j_match = cur_align.get(res_key)
             if j_match is not None:
@@ -380,7 +295,6 @@ class torsion_ncs(object):
               if res_key not in res_match_master[j_match]:
                 res_match_master[j_match].append(res_key)
     self.res_match_master = res_match_master
-
     #symmetric residues - Val, Phe, Leu, Tyr, Asp, Glu
 
     for dp in geometry.dihedral_proxies:
@@ -1104,103 +1018,105 @@ class torsion_ncs(object):
     return sidechain_angle_hash
 
 #split out functions
-def get_ncs_groups(
-      pdb_hierarchy,
-      use_segid,
-      params,
-      log):
-  ncs_groups = []
-  alignments = {}
-  used_chains = []
-  pair_hash = {}
-  chains = pdb_hierarchy.models()[0].chains()
-  am = utils.alignment_manager(pdb_hierarchy, use_segid)
+class get_ncs_groups(object):
+  def __init__(self,
+               pdb_hierarchy,
+               use_segid,
+               params,
+               log):
+    ncs_groups = []
+    alignments = {}
+    used_chains = []
+    pair_hash = {}
+    chains = pdb_hierarchy.models()[0].chains()
+    am = utils.alignment_manager(pdb_hierarchy, use_segid)
 
-  for i, chain_i in enumerate(chains):
-    found_conformer = False
-    for conformer in chain_i.conformers():
-      if not conformer.is_protein() and not conformer.is_na():
-        continue
-      else:
-        found_conformer = True
-    if not found_conformer:
-      continue
-    segid_i = utils.get_unique_segid(chain_i)
-    if segid_i == None:
-      #print >> log, \
-      #  "chain %s has conflicting segid values - skipping" % chain_i.id
-      continue
-    if (use_segid) :
-      chain_i_str = "chain '%s' and segid '%s'" % \
-        (chain_i.id, segid_i)
-    else :
-      chain_i_str = "chain '%s'" % chain_i.id
-    for chain_j in chains[i+1:]:
+    for i, chain_i in enumerate(chains):
       found_conformer = False
-      for conformer in chain_j.conformers():
+      for conformer in chain_i.conformers():
         if not conformer.is_protein() and not conformer.is_na():
           continue
         else:
           found_conformer = True
       if not found_conformer:
         continue
-      segid_j = utils.get_unique_segid(chain_j)
-      if segid_j == None:
+      segid_i = utils.get_unique_segid(chain_i)
+      if segid_i == None:
+        #print >> log, \
+        #  "chain %s has conflicting segid values - skipping" % chain_i.id
         continue
       if (use_segid) :
-        chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
+        chain_i_str = "chain '%s' and segid '%s'" % \
+          (chain_i.id, segid_i)
       else :
-        chain_j_str = "chain '%s'" % chain_j.id
-      #selections = (chain_i_str, chain_j_str)
-      seq_pair = (am.sequences[chain_i_str],
-                  am.sequences[chain_j_str])
-      seq_pair_padded = (am.padded_sequences[chain_i_str],
-                         am.padded_sequences[chain_j_str])
-      struct_pair = (am.structures[chain_i_str],
-                     am.structures[chain_j_str])
-      residue_match_map = \
-        utils._alignment(
-          params=params,
-          sequences=seq_pair,
-          padded_sequences=seq_pair_padded,
-          structures=struct_pair,
-          log=log)
-      if ( min(len(residue_match_map),
-               chain_i.residue_groups_size(),
-               chain_j.residue_groups_size()) \
-           / max(len(residue_match_map),
+        chain_i_str = "chain '%s'" % chain_i.id
+      for chain_j in chains[i+1:]:
+        found_conformer = False
+        for conformer in chain_j.conformers():
+          if not conformer.is_protein() and not conformer.is_na():
+            continue
+          else:
+            found_conformer = True
+        if not found_conformer:
+          continue
+        segid_j = utils.get_unique_segid(chain_j)
+        if segid_j == None:
+          continue
+        if (use_segid) :
+          chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
+        else :
+          chain_j_str = "chain '%s'" % chain_j.id
+        #selections = (chain_i_str, chain_j_str)
+        seq_pair = (am.sequences[chain_i_str],
+                    am.sequences[chain_j_str])
+        seq_pair_padded = (am.padded_sequences[chain_i_str],
+                           am.padded_sequences[chain_j_str])
+        struct_pair = (am.structures[chain_i_str],
+                       am.structures[chain_j_str])
+        residue_match_map = \
+          utils._alignment(
+            params=params,
+            sequences=seq_pair,
+            padded_sequences=seq_pair_padded,
+            structures=struct_pair,
+            log=log)
+        if ( min(len(residue_match_map),
                  chain_i.residue_groups_size(),
                  chain_j.residue_groups_size()) \
-           >= params.similarity ):
-        key = (chain_i_str, chain_j_str)
-        alignments[key] = residue_match_map
-        pair_key = (chain_i.id, segid_i)
-        match_key = (chain_j.id, segid_j)
-        if used_chains is not None:
-          if match_key in used_chains:
-            continue
-        if (not pair_key in pair_hash) :
-          pair_hash[pair_key] = []
-        pair_hash[pair_key].append(match_key)
-        used_chains.append(match_key)
+             / max(len(residue_match_map),
+                   chain_i.residue_groups_size(),
+                   chain_j.residue_groups_size()) \
+             >= params.similarity ):
+          key = (chain_i_str, chain_j_str)
+          alignments[key] = residue_match_map
+          pair_key = (chain_i.id, segid_i)
+          match_key = (chain_j.id, segid_j)
+          if used_chains is not None:
+            if match_key in used_chains:
+              continue
+          if (not pair_key in pair_hash) :
+            pair_hash[pair_key] = []
+          pair_hash[pair_key].append(match_key)
+          used_chains.append(match_key)
 
-  for key in pair_hash.keys():
-    ncs_set = []
-    if (use_segid) :
-      chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
-    else :
-      chain_str = "chain '%s'" % (key[0])
-    ncs_set.append(chain_str)
-    for add_chain in pair_hash[key]:
+    for key in pair_hash.keys():
+      ncs_set = []
       if (use_segid) :
-        chain_str = "chain '%s' and segid '%s'" % \
-          (add_chain[0], add_chain[1])
+        chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
       else :
-        chain_str = "chain '%s'" % (add_chain[0])
+        chain_str = "chain '%s'" % (key[0])
       ncs_set.append(chain_str)
-    ncs_groups.append(ncs_set)
+      for add_chain in pair_hash[key]:
+        if (use_segid) :
+          chain_str = "chain '%s' and segid '%s'" % \
+            (add_chain[0], add_chain[1])
+        else :
+          chain_str = "chain '%s'" % (add_chain[0])
+        ncs_set.append(chain_str)
+      ncs_groups.append(ncs_set)
 
-  return ncs_groups
+    self.alignments = alignments
+    self.ncs_groups = ncs_groups
 
 def determine_ncs_groups(pdb_hierarchy,
                          params=None,
@@ -1213,13 +1129,12 @@ def determine_ncs_groups(pdb_hierarchy,
   atom_labels = list(pdb_hierarchy.atoms_with_labels())
   segids = flex.std_string([ a.segid for a in atom_labels ])
   use_segid = not segids.all_eq('    ')
-
-  ncs_groups = get_ncs_groups(
-                 pdb_hierarchy=pdb_hierarchy,
-                 use_segid=use_segid,
-                 params=params,
-                 log=log)
-  return ncs_groups
+  ncs_groups_manager = get_ncs_groups(
+                         pdb_hierarchy=pdb_hierarchy,
+                         use_segid=use_segid,
+                         params=params,
+                         log=log)
+  return ncs_groups_manager.ncs_groups
 
 # XXX wrapper for running in Phenix GUI
 class _run_determine_ncs_groups (object) :
