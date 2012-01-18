@@ -153,16 +153,20 @@ class detached_process_server (detached_base) :
     libtbx.call_back.register_handler(self.callback_wrapper)
     try :
       return_value = self.target()
-    except Abort :
+    except Abort : # FIXME why is this not working properly?
       self.callback_abort()
     except Exception, e :
-      if e.__class__.__module__ == "Boost.Python" :
-        e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
-          str(e)))
-      elif hasattr(e, "reset_module") :
-        e.reset_module()
-      traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
-      self.callback_error(e, traceback_str)
+      print >> sys.stderr, type(e).__name__
+      if (type(e).__name__ == "Abort") :
+        self.callback_abort()
+      else :
+        if e.__class__.__module__ == "Boost.Python" :
+          e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
+            str(e)))
+        elif hasattr(e, "reset_module") :
+          e.reset_module()
+        traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+        self.callback_error(e, traceback_str)
     else :
       #time.sleep(1)
       self.callback_final(return_value)
