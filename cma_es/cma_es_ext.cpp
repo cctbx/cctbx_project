@@ -1,8 +1,8 @@
-#include <string>
-
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+
+#include <string>
 
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
