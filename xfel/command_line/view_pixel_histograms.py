@@ -29,10 +29,27 @@ def run(args):
                           action="store_true",
                           default=False,
                           help="Normalise by number of member images.")
+                  .option("--save",
+                          action="store_true",
+                          default=False,
+                          help="Save each plot as a png.")
+                  .option("--start",
+                          type="string",
+                          help="Starting pixel coordinates")
+                  .option("--fit_gaussians",
+                          action="store_true",
+                          default=False,
+                          help="Fit gaussians to the peaks.")
                   ).process(args=args)
   log_scale = command_line.options.log_scale
+  fit_gaussians = command_line.options.fit_gaussians
   roi = cspad_tbx.getOptROI(command_line.options.roi)
   normalise = command_line.options.normalise
+  save_image = command_line.options.save
+  starting_pixel = command_line.options.start
+  if starting_pixel is not None:
+    starting_pixel = eval(starting_pixel)
+    assert isinstance(starting_pixel, tuple)
   args = command_line.args
 
   path = args[0]
@@ -51,8 +68,8 @@ def run(args):
           summed_hist.update(d[(i,j)])
 
     title = str(roi)
-    plot(summed_hist, window_title=window_title, title=title,
-         log_scale=log_scale, normalise=normalise)
+    plot(hist, window_title=window_title, title=title,log_scale=log_scale,
+         normalise=normalise, save_image=save_image, fit_gaussians=fit_gaussians)
     return
 
   if len(args) > 0:
@@ -63,84 +80,141 @@ def run(args):
       hist = d[pixel]
       print pixel
       title = str(pixel)
-      plot(hist, window_title=window_title, title=title,
-           log_scale=log_scale, normalise=normalise)
+      plot(hist, window_title=window_title, title=title,log_scale=log_scale,
+           normalise=normalise, save_image=save_image, fit_gaussians=fit_gaussians)
   else:
-    for pixel, hist in sorted(d.items()):
+    pixels = sorted(d.keys())
+    if starting_pixel is not None:
+      pixels = pixels[pixels.index(starting_pixel):]
+    for pixel in pixels:
+      hist = d[pixel]
       print pixel
       title = str(pixel)
-      plot(hist, window_title=window_title, title=title,
-           log_scale=log_scale, normalise=normalise)
+      plot(hist, window_title=window_title, title=title,log_scale=log_scale,
+           normalise=normalise, save_image=save_image, fit_gaussians=fit_gaussians)
 
-def plot(hist, window_title=None, title=None, log_scale=False, normalise=True):
+def plot(hist, window_title=None, title=None,
+         log_scale=False, normalise=False, save_image=False,
+         fit_gaussians=False):
+  pyplot.clf() # clear current figure
   if log_scale:
     pyplot.yscale("log")
 
-  #fig = pyplot.figure()
-  #fig.canvas.set_window_title(window_title)
   slots = hist.slots().as_double()
   if normalise:
     normalisation = (flex.sum(slots) + hist.n_out_of_slot_range()) / 1e5
     print "normalising by factor: ", normalisation
     slots /= normalisation
-  pyplot.bar(hist.slot_centers(), slots, width=hist.slot_width())
+  bins, data = hist_outline(hist)
+  pyplot.plot(bins, data, '-k')
+  #pyplot.bar(hist.slot_centers()-0.5*hist.slot_width(), slots, width=hist.slot_width())
   pyplot.xlim(hist.data_min(), hist.data_max())
   pyplot.suptitle(title)
+  data_min = min([slot.low_cutoff for slot in hist.slot_infos() if slot.n > 0])
+  data_max = max([slot.low_cutoff for slot in hist.slot_infos() if slot.n > 0])
+  pyplot.xlim(data_min, data_max)
+
+  if fit_gaussians:
+
+    import scitbx.lbfgs
+
+    n_gaussians_to_fit = 2
+
+    fitted_gaussians = []
+
+    lower_fit_thresholds = [-1000, 20, 50]
+    upper_fit_thresholds = [20, 40, 70]
+    estimated_peak_positions = [0, 30, 60]
+
+    x = hist.slot_centers()
+    y = hist.slots().as_double()
+
+    for i in range(n_gaussians_to_fit):
+      lower_threshold = lower_fit_thresholds[i]
+      upper_threshold = upper_fit_thresholds[i]
+      mean = estimated_peak_positions[i]
+
+      fit = peak_fit(hist, lower_threshold, upper_threshold, mean)
+
+      #diff_peak_position = estimated_peak_positions[i] - fit.functions[0].params[1]
+      #if abs(diff_peak_position) > 1:
+        #lower_threshold += diff_peak_position
+        #upper_threshold += diff_peak_position
+        #mean += diff_peak_position
+        #print "Refitting peak: delta peak position: %.2f" %diff_peak_position
+        #print fit.functions[0].params
+        #fit = peak_fit(hist, lower_threshold, upper_threshold, mean)
+        #print fit.functions[0].params
+
+      fitted_gaussians += fit.functions
+
+    y_calc = flex.double(x.size(), 0)
+    for g in fitted_gaussians:
+      #print "%.3f %.3f %.3f %.3f" %(g.a, g.b, g.c, g.area())
+      #scale = g.a
+      #mu = g.b
+      #sigma = g.c
+      #print scale, mu, sigma
+      #y = scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
+      print g.params
+      y = g(x)
+      y_calc += y
+      pyplot.plot(x, y)
+    pyplot.plot(x, y_calc)
+    if log_scale:
+      pyplot.ylim(ymin=0.1)
   pyplot.show()
+
+  if save_image:
+    pyplot.savefig("%s.png" %title)
+  else:
+    pyplot.show()
   return
 
-  starting_gaussians = [
-    curve_fitting.gaussian(scale=10, mu=0, sigma=1),
-    #curve_fitting.gaussian(scale=1, mu=4, sigma=1),
-    #curve_fitting.gaussian(scale=50, mu=200, sigma=2.1),
-    #curve_fitting.gaussian(scale=20, mu=16, sigma=2.1),
-    #curve_fitting.gaussian(scale=10, mu=24, sigma=2.1),
-  ]
+def peak_fit(hist, lower_threshold, upper_threshold, mean):
+  starting_gaussians = [curve_fitting.gaussian(a=100, b=mean, c=5)]
+  lower_slot = 0
+  for slot in hist.slot_centers():
+    lower_slot += 1
+    if slot > lower_threshold: break
+  upper_slot = 0
+  for slot in hist.slot_centers():
+    upper_slot += 1
+    if slot > upper_threshold: break
+
   x = hist.slot_centers()
   y = hist.slots().as_double()
-
-  import scitbx.lbfgs
-  termination_params = None
-  #termination_params = scitbx.lbfgs.termination_parameters(max_iterations=0)
-  #fit = curve_fitting.single_gaussian_fit(x, y)
-  #print fit.scale, fit.mu, fit.sigma
-  #scale = fit.scale
-  #mu = fit.mu
-  #sigma = fit.sigma
-  ##print scale, mu, sigma
-  ##x = flex.double(frange(hist_min, hist_max, step=0.1))
-  #x = hist.slot_centers()
-  #y = scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
-  #y = hist.slots().as_double() - y
-  ##pyplot.plot(x,y)
+  if 1:
+    fit = curve_fitting.lbfgs_minimiser(
+      starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
+  else:
+    fit = curve_fitting.cma_es_minimiser(
+      starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
+  return fit
 
 
-  weights = y
-  #weights = None
-  fit = curve_fitting.gaussian_fit(x, y, starting_gaussians)#, weights=weights)
-  #fit = curve_fitting.single_gaussian_fit(x, y)
-  #fit.gaussians = [curve_fitting.gaussian(fit.scale, fit.mu, fit.sigma)]
-  fit_gaussians = [
-    curve_fitting.gaussian(scale=8100, mu=0.1, sigma=0.4),
-    #curve_fitting.gaussian(scale=220, mu=8.5, sigma=1.7),
-    #curve_fitting.gaussian(scale=80, mu=17, sigma=1.7),
-    #curve_fitting.gaussian(scale=40, mu=25.5, sigma=1.7),
-  ]
-  x = flex.double(frange(hist.data_min(), hist.data_max(), step=0.1))
-  y_calc = flex.double(x.size())
-  #for g in fit.gaussians:
-  for g in fit_gaussians:
-    print "%.3f %.3f %.3f %.3f" %(g.scale, g.mu, g.sigma, g.area())
-    scale = g.scale
-    mu = g.mu
-    sigma = g.sigma
-    print scale, mu, sigma
-    y = scale * flex.exp(-flex.pow2(x - mu) / (2 * sigma**2))
-    y_calc += y
-    pyplot.plot(x, y)
-  pyplot.plot(x, y_calc)
-  pyplot.ylim(ymin=0)
-  pyplot.show()
+
+def hist_outline(hist):
+
+  step_size = hist.slot_width()
+  half_step_size = 0.5 * step_size
+  n_slots = len(hist.slots())
+
+  bins = flex.double(n_slots * 2 + 2, 0)
+  data = flex.double(n_slots * 2 + 2, 0)
+  for i in range(n_slots):
+    bins[2 * i + 1] = hist.slot_centers()[i] - half_step_size
+    bins[2 * i + 2] = hist.slot_centers()[i] + half_step_size
+    data[2 * i + 1] = hist.slots()[i]
+    data[2 * i + 2] = hist.slots()[i]
+
+  bins[0] = bins[1] - step_size
+  bins[-1] = bins[-2] + step_size
+  data[0] = 0
+  data[-1] = 0
+
+  return (bins, data)
+
 
 
 if __name__ == '__main__':
