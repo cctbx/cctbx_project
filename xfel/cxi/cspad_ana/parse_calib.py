@@ -45,7 +45,7 @@ class Section(object):
     three-pixel gap.
 
     XXX This is the metrology convention.  The data in the XTC stream
-    is rotated by 90 degrees (transposed).
+    are rotated by 90 degrees clockwise.
     """
 
     self.angle  = angle
