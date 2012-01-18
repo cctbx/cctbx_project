@@ -32,7 +32,7 @@ class peaks_holes_container (object) :
   def show_summary (self, out=sys.stdout) :
     print >> out, ""
     print >> out, "SUMMARY OF MAP PEAKS:"
-    cutoffs = [self.map_cutoff, self.map_cutoff + 2.0, self.map_cutoff + 4.0]
+    cutoffs = [self.map_cutoff, self.map_cutoff + 3.0, self.map_cutoff + 6.0]
     for cutoff in cutoffs :
       n_peaks = (self.peaks.heights > cutoff).count(True)
       print >> out, "  mFo-DFc >  %g  : %6d" % (cutoff, n_peaks)
@@ -65,11 +65,11 @@ class peaks_holes_container (object) :
       n_water_anom_peaks = len(self.water_anom_peaks)
     return group_args(
       n_peaks_1=(self.peaks.heights > self.map_cutoff).count(True),
-      n_peaks_2=(self.peaks.heights > self.map_cutoff + 2).count(True),
-      n_peaks_3=(self.peaks.heights > self.map_cutoff + 4).count(True),
+      n_peaks_2=(self.peaks.heights > self.map_cutoff + 3).count(True),
+      n_peaks_3=(self.peaks.heights > self.map_cutoff + 6).count(True),
       n_holes_1=(self.holes.heights < -self.map_cutoff).count(True),
-      n_holes_2=(self.holes.heights < -self.map_cutoff - 2).count(True),
-      n_holes_3=(self.holes.heights < -self.map_cutoff - 4).count(True),
+      n_holes_2=(self.holes.heights < -self.map_cutoff - 3).count(True),
+      n_holes_3=(self.holes.heights < -self.map_cutoff - 6).count(True),
       peak_max=flex.max(self.peaks.heights),
       hole_max=flex.min(self.holes.heights),
       n_anom_peaks=n_anom_peaks,
