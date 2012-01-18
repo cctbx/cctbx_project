@@ -72,8 +72,8 @@ def nt_relpath(
     if e1.lower() != e2.lower():
       break
     i += 1
-  if (i == 0 and not path_is_unc and enable_abspath_if_through_root):
-    return "\\" + "\\".join(path_list)
+  if (i == 0 and path_is_unc and enable_abspath_if_through_root):
+    return "\\\\" + "\\".join(path_list)
   rel_list = [".."] * (len(start_list)-i) + path_list[i:]
   if not rel_list:
     return "."
