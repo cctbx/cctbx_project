@@ -25,7 +25,7 @@ anom_map_cutoff = 3.0
 
 class peaks_holes_container (object) :
   def __init__ (self, peaks, holes, map_cutoff=3.0, anom_peaks=None,
-      anom_map_cutoff=5.0, water_peaks=None, water_anom_peaks=None) :
+      anom_map_cutoff=3.0, water_peaks=None, water_anom_peaks=None) :
     adopt_init_args(self, locals())
 
   def show_summary (self, out=sys.stdout) :
@@ -169,6 +169,7 @@ def find_peaks_holes (
     holes=holes,
     anom_peaks=anom,
     map_cutoff=map_cutoff,
+    anom_map_cutoff=anom_map_cutoff,
     water_peaks=waters_out[0],
     water_anom_peaks=waters_out[1])
   all_results.show_summary(out=out)

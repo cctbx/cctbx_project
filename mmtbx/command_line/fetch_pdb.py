@@ -52,13 +52,13 @@ def run (args=(), params=None, out=sys.stdout) :
       elif (params.fetch_pdb.action == "all_plus_maps") :
         args.insert(1, "--maps")
       try :
-        data_files = run2(args=args, out=out)
+        data_files = run2(args=args, log=out)
         print >> out, "\n".join(data_files)
         output_files.extend(data_files)
       except Exception, e :
         errors.append(str(e))
     else :
-      pdb_file = run2(args=[mirror,id], out=out)
+      pdb_file = run2(args=[mirror,id], log=out)
       print >> out, pdb_file
       output_files.append(pdb_file)
   return output_files, errors
