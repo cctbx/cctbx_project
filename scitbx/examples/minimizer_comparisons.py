@@ -46,7 +46,7 @@ class test_lbfgs(object):
     g = derivative(self.x, self.function,h=1e-5)
     return f, g
 
-class test_simplex():
+class test_simplex(object):
   def __init__(self, name):
     self.n = 2
     self.x = start.deep_copy()
@@ -68,7 +68,7 @@ class test_simplex():
     return  Function(self.name)(dim).eval(vector)
 
 
-class test_dssa():
+class test_dssa(object):
   def __init__(self,name):
     self.name=name
     self.fcount=0
@@ -101,7 +101,7 @@ class test_dssa():
 
 
 
-class test_cross_entropy():
+class test_cross_entropy(object):
   def __init__(self,name):
     self.name=name
     self.fcount=0
@@ -137,7 +137,7 @@ class test_cross_entropy():
 
 
 
-class test_differential_evolution():
+class test_differential_evolution(object):
   def __init__(self,name,npop=20):
     self.name=name
     self.fcount=0
@@ -165,7 +165,7 @@ class test_differential_evolution():
 
 
 
-class test_cma_es():
+class test_cma_es(object):
   def __init__(self,name,l=0):
     self.m = start.deep_copy()
     self.s = flex.double( [2,2])
