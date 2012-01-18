@@ -140,7 +140,7 @@ CCD_IMAGE_SATURATION=65535;
     if   attr=='size1' : return self.parameters['SIZE1']
     elif attr=='size2' : return self.parameters['SIZE2']
     elif attr=='npixels' : return self.parameters['SIZE1'] * self.parameters['SIZE2']
-    elif attr=='saturation' : return self.parameters['CCD_IMAGE_SATURATION']
+    elif attr=='saturation' : return self.parameters.get('CCD_IMAGE_SATURATION',65535)
     elif attr=='rawdata' : return self.linearintdata
     elif attr=='pixel_size' : return self.parameters['PIXEL_SIZE']
     elif attr=='osc_start' : return self.parameters['OSC_START']
