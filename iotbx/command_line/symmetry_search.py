@@ -12,17 +12,25 @@ symmetry_search {
     print
     pcl.master.show()
     print
-    raise Usage("%s pdb_file [parameters]" % libtbx.env.dispatcher_name)
-  pdb_file = pcl.remaining_args[0]
+    raise Usage(
+      "%s pdb_file|poscar_file [parameters]" % libtbx.env.dispatcher_name)
+  inp_file = pcl.remaining_args[0]
   from libtbx.str_utils import show_string
-  print "PDB file:", show_string(pdb_file)
+  import iotbx.pdb
+  if (iotbx.pdb.is_pdb_file(inp_file)):
+    print "PDB file:", show_string(inp_file)
+    pdb_inp = iotbx.pdb.input(file_name=inp_file)
+    xs = pdb_inp.xray_structure_simple()
+  else:
+    print "POSCAR file:", show_string(inp_file)
+    import iotbx.poscar
+    poscar = iotbx.poscar.reader(lines=open(inp_file).read().splitlines())
+    poscar.make_up_types_if_necessary()
+    xs = poscar.xray_structure()
   print
   pcl.work.show()
   print
   params = pcl.work.extract().symmetry_search
-  import iotbx.pdb
-  pdb_inp = iotbx.pdb.input(file_name=pdb_file)
-  xs = pdb_inp.xray_structure_simple()
   print "Unit cell:", xs.unit_cell()
   print
   fc_p1 = xs.structure_factors(
