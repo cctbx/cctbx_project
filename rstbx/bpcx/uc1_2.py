@@ -141,7 +141,7 @@ class cpp_reflection_prediction:
 
         return observed_reflection_positions
 
-def main(configuration_file, img_range):
+def main(configuration_file, img_range, dmin = None):
     '''Perform the calculations needed for use case 1.1.'''
 
     d2r = math.pi / 180.0
@@ -150,8 +150,9 @@ def main(configuration_file, img_range):
 
     img_start, osc_start, osc_range = parse_xds_xparm_scan_info(
         configuration_file)
-    
-    dmin = cfc.derive_detector_highest_resolution()
+
+    if dmin is None:
+        dmin = cfc.derive_detector_highest_resolution()
 
     phi_start = ((img_range[0] - img_start) * osc_range + osc_start) * d2r
     phi_end = ((img_range[1] - img_start + 1) * osc_range + osc_start) * d2r
@@ -242,8 +243,12 @@ if __name__ == '__main__':
 
     # FIXME we should perhaps use Phil here to learn how to do this?!
     
-    if len(sys.argv) != 4:
+    if len(sys.argv) < 4:
         msg = "Requires 3 arguments: path/to/xparm.xds start_image_no end_image_no"
         sys.exit(msg)
     else:
-        main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
+        if len(sys.argv) == 4:
+            main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
+        else:
+            main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
+                 float(sys.argv[4]))

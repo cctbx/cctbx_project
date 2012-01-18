@@ -19,7 +19,9 @@
 # N.B. all comparisons done with data in memory, so careful with the sizes of
 # example data sets to use. Also assumes X, Y definitions between Mosflm and
 # XDS are inverted, and computes deviations in terms of pixels and images.
-# This requires reading of the batch headers.
+# This requires reading of the batch headers. Try also comparing with pixels
+# and degrees (perhaps small differences in postrefinement are affecting
+# things?)
 
 import sys
 import math
@@ -61,10 +63,10 @@ def get_phi_range(mtz_object):
 def get_hkl_xyz_isigi(mtz_file):
     m = mtz.object(mtz_file)
 
+    r = get_phi_range(m)
+
     sg = m.space_group()
 
-    r = get_phi_range(m)
-        
     xdet_col = m.get_column('XDET')
     ydet_col = m.get_column('YDET')
     rot_col = m.get_column('ROT')
@@ -86,7 +88,7 @@ def get_hkl_xyz_isigi(mtz_file):
 
     for j in range(mi_s.size()):
         hkl_xyz_isigi.append(((mi_s[j][0], mi_s[j][1], mi_s[j][2]),
-                              (xdet_s[j], ydet_s[j], rot_s[j] / r),
+                              (ydet_s[j], xdet_s[j], rot_s[j] / r),
                               (i_s[j], sigi_s[j])))
 
     return hkl_xyz_isigi
@@ -96,15 +98,21 @@ def read_xds_integrate(xds_integrate_file):
     # N.B. in here need to reduce indices to asymmetric unit
 
     sg_num = 0
+    r = 0.0
 
     for record in open(xds_integrate_file):
         if not '!' in record[:1]:
             break
         if 'SPACE_GROUP_NUMBER' in record:
             sg_num = int(record.split()[-1])
+        if 'OSCILLATION_RANGE' in record:
+            r = float(record.split()[-1])
 
     if not sg_num:
         raise RuntimeError, 'spacegroup missing'
+
+    if not r:
+        raise RuntimeError, 'rotation missing'
 
     sg = space_group(space_group_symbols(sg_num).hall())
 
@@ -119,7 +127,7 @@ def read_xds_integrate(xds_integrate_file):
             continue
         values = record.split()
         hkls.append(map(int, values[:3]))
-        xyzs.append(map(float, values[5:8]))
+        xyzs.append((float(values[5]), float(values[6]), float(values[7])))
         isigmas.append(map(float, values[3:5]))
 
     map_to_asu(sg.type(), False, hkls)
