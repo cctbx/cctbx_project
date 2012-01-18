@@ -69,6 +69,7 @@ def ImageFactory(filename):
       try:
         I = itype(filename)
         I.readHeader()
+        I.parameters["DETECTOR_SN"]=500
         if itype==RAXISImage:
           assert I.head['sizeFast']==I.head['sizeSlow']
           assert 0.4 < I.head['wavelength'] < 10.0 #needed to disambiguate from Bruker
