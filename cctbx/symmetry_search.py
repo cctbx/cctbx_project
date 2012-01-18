@@ -153,8 +153,17 @@ class structure_factor_symmetry(object):
       if len(unique_denominators) == 1:
         den = unique_denominators[0]
         num = [ r.numerator() for r in t ]
-        self.space_group.expand_ltr(
-          sgtbx.tr_vec(num, den).new_denominator(sg_t_den))
+        tr_vec = sgtbx.tr_vec(num, den)
+        try:
+          tr_vec = tr_vec.new_denominator(sg_t_den)
+        except RuntimeError, e:
+          if (not str(e).endswith(
+                "Unsuitable value for rational translation vector.")):
+            raise
+          raise RuntimeError(
+            "Sorry not implemented: handling of translation vector %s"
+              % str(tuple(t)))
+        self.space_group.expand_ltr(tr_vec)
 
   def possible_point_group_generators(self):
     lattice_group = lattice_symmetry.group(self.f_in_p1.unit_cell(),
