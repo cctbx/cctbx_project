@@ -110,22 +110,22 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
     self.score_population()
     converged = False
     monitor_score = flex.min( self.scores )
-    count = 0
+    self.count = 0
     while not converged:
       self.evolve()
       location = flex.min_index( self.scores )
       if self.show_progress:
-        if count%self.show_progress_nth_cycle==0:
+        if self.count%self.show_progress_nth_cycle==0:
           # make here a call to a custom print_status function in the evaluator function
           # the function signature should be (min_target, mean_target, best vector)
           self.evaluator.print_status(
             flex.min(self.scores),
             flex.mean(self.scores),
             self.population[ flex.min_index( self.scores ) ],
-            count)
+            self.count)
 
-      count += 1
-      if count%self.monitor_cycle==0:
+      self.count += 1
+      if self.count%self.monitor_cycle==0:
         if (monitor_score-flex.min(self.scores) ) < self.eps:
           converged = True
         else:
@@ -136,7 +136,7 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
         converged = True
 
 
-      if count>=self.max_iter:
+      if self.count>=self.max_iter:
         converged =True
 
   def make_random_population(self):
@@ -227,8 +227,9 @@ class test_rosenbrock_function(object):
     self.x = None
     self.n = 2*dim
     self.dim = dim
-    self.domain = [ (-10,10) ]*self.n
-    self.optimizer =  differential_evolution_optimizer(self,population_size=min(self.n*10,40),n_cross=self.n,cr=0.9, eps=1e-8, show_progress=False)
+    self.domain = [ (1,3) ]*self.n
+    self.optimizer =  differential_evolution_optimizer(self,population_size=min(self.n*10,40),n_cross=self.n,cr=0.9, eps=1e-8, show_progress=True)
+    print list(self.x)
     for x in self.x:
       assert abs(x-1.0)<1e-2
 
@@ -250,7 +251,7 @@ class test_rosenbrock_function(object):
 def run():
   random.seed(0)
   flex.set_random_seed(0)
-  test_rosenbrock_function(2)
+  test_rosenbrock_function(1)
   print "OK"
 
 
