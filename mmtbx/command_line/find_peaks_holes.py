@@ -37,16 +37,16 @@ class peaks_holes_container (object) :
     cutoffs = [self.map_cutoff, self.map_cutoff + 3.0, self.map_cutoff + 6.0]
     for cutoff in cutoffs :
       n_peaks = (self.peaks.heights > cutoff).count(True)
-      print >> out, "  mFo-DFc >  %g  : %6d" % (cutoff, n_peaks)
+      print >> out, "  mFo-DFc >  %-4g   : %6d" % (cutoff, n_peaks)
     peak_max = flex.max(self.peaks.heights)
-    print >> out, "  mFo-DFc max    : %.2f" % peak_max
+    print >> out, "  mFo-DFc max       : %6.2f" % peak_max
     for cutoff in cutoffs :
       n_holes = (self.holes.heights < -cutoff).count(True)
-      print >> out, "  mFo-DFc < -%g  : %6d" % (cutoff, n_holes)
+      print >> out, "  mFo-DFc < -%-4g   : %6d" % (cutoff, n_holes)
     hole_max = flex.min(self.holes.heights)
-    print >> out, "  mFo-DFc min    : %.2f" % hole_max
+    print >> out, "  mFo-DFc min       : %6.2f" % hole_max
     if (self.anom_peaks is not None) :
-      print >> out, "  anomalous > %g : %6d" % (self.anom_map_cutoff,
+      print >> out, "  anomalous > %-4g : %6d" % (self.anom_map_cutoff,
         len(self.anom_peaks.heights))
     if (self.water_peaks is not None) :
       print >> out, "  suspicious H2O (mFo-DFC > %g) : %6d" % (self.map_cutoff,
@@ -92,12 +92,14 @@ class peaks_holes_container (object) :
   def save_pdb_file (self,
       file_name="peaks.pdb",
       include_holes=True,
-      include_anom=True) :
+      include_anom=True,
+      log=None) :
     """
     Write out a PDB file with up to three chains: A for peaks, B for holes,
     C for anomalous peaks.  Atoms are UNK, with the B-factor set to the height
     or depth of the peak or hole.
     """
+    if (log is None) : log = sys.stdout
     import iotbx.pdb.hierarchy
     selection = flex.sort_permutation(self.peaks.heights, reverse=True)
     peaks_sorted = self.peaks.heights.select(selection)
@@ -156,7 +158,7 @@ class peaks_holes_container (object) :
         k += 1
     f.write(root.as_pdb_string())
     f.close()
-    print "Wrote %s" % file_name
+    print >> log, "Wrote %s" % file_name
 
 class water_peak (object) :
   def __init__ (self, id_str, xyz, peak_height, map_type="mFo-DFc") :
@@ -293,7 +295,7 @@ mmtbx.find_peaks_holes - difference map analysis
     anom_map_cutoff=cmdline.params.anom_map_cutoff,
     out=out)
   if (cmdline.params.write_pdb) :
-    result.save_pdb_file()
+    result.save_pdb_file(log=out)
   return result
 
 if (__name__ == "__main__") :

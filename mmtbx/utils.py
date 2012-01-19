@@ -2342,7 +2342,8 @@ class cmdline_load_pdb_and_data (object) :
       reflection_file_server=reflection_file_server,
       parameters=params.input.xray_data,
       data_parameter_scope="input.xray_data",
-      flags_parameter_scope="input.xray_data.r_free_flags")
+      flags_parameter_scope="input.xray_data.r_free_flags",
+      log=out)
     params.input.pdb.file_name.extend(cmdline.pdb_file_names)
     cif_file_names = params.input.monomer_library.file_name
     cif_objects = cmdline.cif_objects
