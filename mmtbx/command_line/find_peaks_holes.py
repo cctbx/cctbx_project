@@ -171,7 +171,7 @@ class water_peak (object) :
 def find_peaks_holes (
     fmodel,
     pdb_hierarchy,
-    params,
+    params=None,
     map_cutoff=3.0,
     anom_map_cutoff=3.0,
     out=None) :
@@ -182,6 +182,8 @@ def find_peaks_holes (
   the ability to write out a PDB file with the sites of interest).
   """
   if (out is None) : out = sys.stdout
+  if (params is None) :
+    params = master_phil.fetch().extract().find_peaks
   pdb_atoms = pdb_hierarchy.atoms()
   unit_cell = fmodel.xray_structure.unit_cell()
   from mmtbx import find_peaks
