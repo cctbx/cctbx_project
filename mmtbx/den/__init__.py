@@ -1,4 +1,6 @@
 import iotbx.phil
+from cctbx.array_family import flex
+from libtbx import easy_pickle
 import sys
 
 den_params = iotbx.phil.parse("""
@@ -7,16 +9,6 @@ den_params = iotbx.phil.parse("""
    .optional = true
    .short_caption = DEN reference model
    .style = file_type:pdb input_file
- lower_distance_cutoff = 3.0
-   .type = float
- upper_distance_cutoff = 15.0
-   .type = float
- sequence_separation_low = 0
-   .type = int
- sequence_separation_limit = 10
-   .type = int
- ndistance_ratio = 1.0
-   .type = float
  gamma = 0.5
    .type = float
  kappa = 0.1
@@ -53,6 +45,25 @@ den_params = iotbx.phil.parse("""
  output_kinemage = False
    .type = bool
    .help = output kinemage representation of starting DEN restraints
+ restraint_network {
+  lower_distance_cutoff = 3.0
+    .type = float
+  upper_distance_cutoff = 15.0
+    .type = float
+  sequence_separation_low = 0
+    .type = int
+  sequence_separation_limit = 10
+    .type = int
+  ndistance_ratio = 1.0
+    .type = float
+  export_den_pairs = False
+    .type = bool
+    .expert_level = 3
+  den_network_file = None
+    .type = path
+    .optional = True
+    .expert_level = 3
+ }
 """)
 
 den_params_development = iotbx.phil.parse("""
@@ -78,7 +89,6 @@ class den_restraints(object):
                pdb_hierarchy,
                params,
                pdb_hierarchy_ref=None,
-               xray_structure_ref=None,
                log=None):
     if(log is None): log = sys.stdout
     self.log = log
@@ -106,11 +116,20 @@ class den_restraints(object):
     self.weight = params.weight
     self.num_cycles = params.num_cycles
     self.annealing_type = params.annealing_type
-    self.ndistance_ratio = params.ndistance_ratio
-    self.lower_distance_cutoff = params.lower_distance_cutoff
-    self.upper_distance_cutoff = params.upper_distance_cutoff
-    self.sequence_separation_low = params.sequence_separation_low
-    self.sequence_separation_limit = params.sequence_separation_limit
+    self.ndistance_ratio = \
+      params.restraint_network.ndistance_ratio
+    self.lower_distance_cutoff = \
+      params.restraint_network.lower_distance_cutoff
+    self.upper_distance_cutoff = \
+      params.restraint_network.upper_distance_cutoff
+    self.sequence_separation_low = \
+      params.restraint_network.sequence_separation_low
+    self.sequence_separation_limit = \
+      params.restraint_network.sequence_separation_limit
+    self.den_network_file = \
+      params.restraint_network.den_network_file
+    self.export_den_pairs = \
+      params.restraint_network.export_den_pairs
     self.den_proxies = None
 
     self.atoms_per_chain = \
@@ -129,14 +148,19 @@ class den_restraints(object):
       utils.build_name_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
     self.ref_atom_pairs, self.ref_distance_hash = \
       self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
-                           resid_hash=self.resid_hash_ref,
-                           xray_structure=xray_structure_ref)
+                           resid_hash=self.resid_hash_ref)
     self.remove_non_matching_pairs()
-    self.random_ref_atom_pairs = \
-      self.select_random_den_restraints()
+    if self.den_network_file is not None:
+      self.den_atom_pairs = self.load_den_network()
+    else:
+      self.random_ref_atom_pairs = \
+        self.select_random_den_restraints()
+      self.den_atom_pairs = self.get_den_atom_pairs()
+    if self.export_den_pairs:
+      self.dump_den_network()
     self.build_den_restraints()
 
-  def find_atom_pairs(self, pdb_hierarchy, resid_hash, xray_structure=None):
+  def find_atom_pairs(self, pdb_hierarchy, resid_hash):
     print >> self.log, "finding DEN atom pairs..."
     atom_pairs = {}
     distance_hash = {}
@@ -175,40 +199,6 @@ class den_restraints(object):
                   atom_pairs[chain.id].append( (atom1.i_seq, atom2.i_seq) )
                   distance_hash[(atom1.i_seq, atom2.i_seq)] = \
                     (dist**(0.5))
-    #if xray_structure is not None:
-    #  print >> self.log, "calculating pair_asu_table..."
-    #  atoms = list(pdb_hierarchy.atoms_with_labels())
-    #  distance_mix = self.lower_distance_cutoff
-    #  distance_max = self.upper_distance_cutoff
-    #  find_local_distances(xray_structure=xray_structure,
-    #                       pdb_atoms=atoms,
-    #                       distance_min=
-    #                       distance_max=distance_cutoff)
-    #  STOP()
-    #  for chain in pdb_hierarchy.models()[0].chains():
-    #    found_conformer = None
-    #    for conformer in chain.conformers():
-    #      if not conformer.is_protein() and not conformer.is_na():
-    #        continue
-    #      elif found_conformer is None:
-    #        found_conformer = conformer
-    #      else:
-    #        print >> self.log, "warning, multiple conformers found, using first"
-    #    if found_conformer is not None:
-    #      print dir(found_conformer)
-    #      STOP()
-      #distance_cutoff = self.upper_distance_cutoff
-      #pair_asu_table = xray_structure.pair_asu_table(
-      #  distance_cutoff=distance_cutoff)
-      #print dir(pair_asu_table)
-      #print dir(pair_asu_table.asu_mappings())
-      #STOP()
-      #for dict in pair_asu_table.table():
-      #  for i_seq, pair_list in dict.items():
-      #    for j_seq in pair_list:
-      #      print dir(j_seq)
-      #    STOP()
-      #STOP()
     return atom_pairs, distance_hash
 
   # remove any pairs of reference model atoms that do not
@@ -258,15 +248,82 @@ class den_restraints(object):
           random_pairs[chain].append(self.ref_atom_pairs[chain][i])
     return random_pairs
 
+  def dump_den_network(self):
+    den_dump = {}
+    self.get_selection_strings()
+    #print self.selection_string_hash
+    #print self.random_ref_atom_pairs
+    for chain in self.den_atom_pairs.keys():
+      den_dump[chain] = []
+      for pair in self.den_atom_pairs[chain]:
+        i_seq_1 = pair[0]
+        i_seq_2 = pair[1]
+        select_1 = self.selection_string_hash[i_seq_1]
+        select_2 = self.selection_string_hash[i_seq_2]
+        dump_pair = (select_1, select_2)
+        den_dump[chain].append(dump_pair)
+    output_prefix = "den"
+    easy_pickle.dump(
+      "%s.pkl"%output_prefix,
+      den_dump)
+
+  def load_den_network(self):
+    den_atom_pairs = {}
+    network_pairs = easy_pickle.load(
+      self.den_network_file)
+    #check for current model compatibility
+    sel_cache = self.pdb_hierarchy.atom_selection_cache()
+    for chain in network_pairs.keys():
+      den_atom_pairs[chain] = []
+      for pair in network_pairs[chain]:
+        string = "(%s) or (%s)" % (pair[0], pair[1])
+        iselection = sel_cache.selection(string=string).iselection()
+        if iselection.size() != 2:
+          raise Sorry(
+            "input DEN network does not match current model")
+        den_atom_pairs[chain].append(iselection)
+    return den_atom_pairs
+
+  def get_selection_strings(self):
+    selection_string_hash = {}
+    atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
+    segids = flex.std_string([ a.segid for a in atom_labels ])
+    for a in atom_labels:
+      chain = a.chain_id
+      resid = a.resid()
+      resname = a.resname
+      atomname = a.name
+      altloc = a.altloc
+      segid = a.segid
+      selection_string = \
+        "name '%s' and resname '%s' and chain '%s' and resid '%s'" % \
+        (atomname, resname, chain, resid) + \
+        " and segid '%s'" % (segid)
+      if altloc != "":
+        selection_string += " and altid '%s'" % altloc
+      selection_string_hash[a.i_seq] = selection_string
+    self.selection_string_hash = selection_string_hash
+
+  def get_den_atom_pairs(self):
+    den_atom_pairs = {}
+    for chain in self.random_ref_atom_pairs.keys():
+      den_atom_pairs[chain] = []
+      for pair in self.random_ref_atom_pairs[chain]:
+        i_seq_a = self.i_seq_hash[self.name_hash_ref[pair[0]]]
+        i_seq_b = self.i_seq_hash[self.name_hash_ref[pair[1]]]
+        i_seqs = flex.size_t([i_seq_a, i_seq_b])
+        den_atom_pairs[chain].append(i_seqs)
+    return den_atom_pairs
+
   def build_den_restraints(self):
     print >> self.log, "building DEN restraints..."
     den_proxies = self.ext.shared_den_simple_proxy()
-    for chain in self.random_ref_atom_pairs.keys():
-      for pair in self.random_ref_atom_pairs[chain]:
-        distance_ideal = self.ref_distance_hash[pair]
-        i_seq_a = self.i_seq_hash[self.name_hash_ref[pair[0]]]
-        i_seq_b = self.i_seq_hash[self.name_hash_ref[pair[1]]]
-        i_seqs = [i_seq_a, i_seq_b]
+    for chain in self.den_atom_pairs.keys():
+      for pair in self.den_atom_pairs[chain]:
+        i_seq_a = self.i_seq_hash_ref[self.name_hash[pair[0]]]
+        i_seq_b = self.i_seq_hash_ref[self.name_hash[pair[1]]]
+        distance_ideal = self.ref_distance_hash[ (i_seq_a, i_seq_b) ]
+        i_seqs = tuple(pair)
         proxy = self.ext.den_simple_proxy(
           i_seqs=i_seqs,
           eq_distance=distance_ideal,
@@ -295,10 +352,6 @@ class den_restraints(object):
     # defaults adapted from DEN Nature paper Fig. 1
     gamma_array = self.params.opt_gamma_values
     weight_array = self.params.opt_weight_values
-    #if gamma_array is None:
-    #  gamma_array = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    #if weight_array is None:
-    #  weight_array = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0]
     grid = []
     for g in gamma_array:
       for w in weight_array:
@@ -310,9 +363,9 @@ class den_restraints(object):
     print >> self.log, "%s | %s | %s | %s | %s " % \
       ("    atom 1     ",
        "    atom 2     ",
-       "  model dist  ",
-       "    eq dist   ",
-       " eq dist start")
+       "model dist",
+       "  eq dist ",
+       "eq dist start")
     for dp in self.den_proxies:
       i_seqs = dp.i_seqs
       a_xyz = sites_cart[i_seqs[0]]
@@ -320,7 +373,7 @@ class den_restraints(object):
       distance_sq = distance_squared(a_xyz, b_xyz)
       distance = distance_sq**(0.5)
       print >> self.log, \
-        "%s | %s |     %6.3f     |     %6.3f     |     %6.3f    " % \
+        "%s | %s |   %6.3f   |   %6.3f   |   %6.3f  " % \
         (self.name_hash[i_seqs[0]],
          self.name_hash[i_seqs[1]],
          distance,
@@ -366,34 +419,3 @@ class den_restraints(object):
 def distance_squared(a, b):
   return ((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)
 
-#def find_local_distances (xray_structure,
-#                         pdb_atoms,
-#                         selection=None,
-#                         distance_min=0,
-#                         distance_max=5) :
-# from cctbx.array_family import flex
-# sites_frac = xray_structure.sites_frac()
-# unit_cell = xray_structure.unit_cell()
-# pair_asu_table = xray_structure.pair_asu_table(
-#   distance_cutoff=distance_max)
-# pair_sym_table = pair_asu_table.extract_pair_sym_table()
-# contacts = []
-# if (selection is None) :
-#   selection = flex.bool(len(pdb_atoms), True)
-# for i_seq,pair_sym_dict in enumerate(pair_sym_table):
-#   if (not selection[i_seq]) :
-#     continue
-#   site_i = sites_frac[i_seq]
-#   atom_i = pdb_atoms[i_seq]
-#   resname_i = atom_i.resname
-#   atmname_i = atom_i.name
-#   chainid_i = atom_i.chain_id
-#   for j_seq,sym_ops in pair_sym_dict.items():
-#     site_j = sites_frac[j_seq]
-#     atom_j = pdb_atoms[j_seq]
-#     resname_j = atom_j.resname
-#     atmname_j = atom_j.name
-#     chainid_j = atom_j.chain_id
-#     for sym_op in sym_ops:
-#       if sym_op.is_unit_mx() :
-#         distance = unit_cell.distance(site_i, site_j)
