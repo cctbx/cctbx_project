@@ -892,6 +892,7 @@ int main() {
       ('^unix_icc$',  [['-openmp']]*2),
       ('darwin',      [['-fopenmp']]*2),
       ('gcc',         [['-fopenmp']]*2),
+      ('mingw',       [['-fopenmp']]*2),
     ],
     default=[None]*2)
   if (compiler_options is None):
