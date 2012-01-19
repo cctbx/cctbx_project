@@ -110,6 +110,8 @@ END
   assert isel("").size() == 0
   assert isel("all").size() == sel_cache.n_seq
   assert isel("none").size() == 0
+  assert isel("optional none", optional=True).size() == 0
+  assert isel("optional none", optional=False) is None
   assert isel("not all").size() == 0
   assert isel("not none").size() == sel_cache.n_seq
   assert list(isel(r"name c?\*")) == [45,46,48,50,52]
@@ -221,7 +223,9 @@ END
             "and name n",
             "or name n",
             "not",
-            "not not"]:
+            "not not",
+            "altloc a optional",
+            "optional optional altloc a"]:
     try: isel(string=s)
     except pdb.atom_selection.AtomSelectionError, e:
       assert str(e).endswith("""\
