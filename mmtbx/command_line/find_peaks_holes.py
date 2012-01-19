@@ -21,6 +21,8 @@ map_cutoff = 3.0
   .type = float
 anom_map_cutoff = 3.0
   .type = float
+write_pdb = False
+  .type = bool
 """ % utils.cmdline_input_phil_str,
   process_includes=True)
 
@@ -55,6 +57,9 @@ class peaks_holes_container (object) :
     print >> out, ""
 
   def get_summary (self) :
+    """
+    Returns a simple object for harvesting statistics elsewhere.
+    """
     n_anom_peaks = None
     if (self.anom_peaks is not None) :
       n_anom_peaks = len(self.anom_peaks.heights)
@@ -84,6 +89,75 @@ class peaks_holes_container (object) :
     assert (cutoff < 0)
     return (self.holes.heights < cutoff).count(True)
 
+  def save_pdb_file (self,
+      file_name="peaks.pdb",
+      include_holes=True,
+      include_anom=True) :
+    """
+    Write out a PDB file with up to three chains: A for peaks, B for holes,
+    C for anomalous peaks.  Atoms are UNK, with the B-factor set to the height
+    or depth of the peak or hole.
+    """
+    import iotbx.pdb.hierarchy
+    selection = flex.sort_permutation(self.peaks.heights, reverse=True)
+    peaks_sorted = self.peaks.heights.select(selection)
+    sites_sorted = self.peaks.sites.select(selection)
+    root = iotbx.pdb.hierarchy.root()
+    model = iotbx.pdb.hierarchy.model()
+    root.append_model(model)
+    peaks_chain = iotbx.pdb.hierarchy.chain(id="A")
+    model.append_chain(peaks_chain)
+    def create_atom (xyz, peak, serial) :
+      rg = iotbx.pdb.hierarchy.residue_group(resseq=str(serial))
+      ag = iotbx.pdb.hierarchy.atom_group(resname="UNK")
+      rg.append_atom_group(ag)
+      a = iotbx.pdb.hierarchy.atom()
+      ag.append_atom(a)
+      a.name = " UNK"
+      a.element = "X"
+      a.xyz = xyz
+      a.b = peak
+      a.occ = 1.
+      a.serial = serial
+      return rg
+    k = 1
+    for peak, xyz in zip(peaks_sorted, sites_sorted) :
+      rg = create_atom(xyz, peak, k)
+      peaks_chain.append_residue_group(rg)
+      k += 1
+    f = open(file_name, "w")
+    f.write("REMARK  Interesting sites from mmtbx.find_peaks_holes\n")
+    f.write("REMARK  Chain A is mFo-DFc peaks (> %g sigma)\n" % self.map_cutoff)
+    if (include_holes) :
+      f.write("REMARK  Chain B is mFo-DFc holes (< -%g sigma)\n" %
+        (- self.map_cutoff))
+      holes_chain = iotbx.pdb.hierarchy.chain(id="B")
+      model.append_chain(holes_chain)
+      selection = flex.sort_permutation(self.holes.heights)
+      holes_sorted = self.holes.heights.select(selection)
+      sites_sorted = self.holes.sites.select(selection)
+      k = 1
+      for hole, xyz in zip(holes_sorted, sites_sorted) :
+        rg = create_atom(xyz, hole, k)
+        holes_chain.append_residue_group(rg)
+        k += 1
+    if (include_anom) and (self.anom_peaks is not None) :
+      f.write("REMARK  Chain C is anomalous peaks (> %g sigma)\n" %
+        self.anom_map_cutoff)
+      anom_chain = iotbx.pdb.hierarchy.chain(id="C")
+      model.append_chain(anom_chain)
+      selection = flex.sort_permutation(self.anom_peaks.heights, reverse=True)
+      anom_sorted = self.anom_peaks.heights.select(selection)
+      sites_sorted = self.anom_peaks.sites.select(selection)
+      k = 1
+      for peak, xyz in zip(anom_sorted, sites_sorted) :
+        rg = create_atom(xyz, peak, k)
+        anom_chain.append_residue_group(rg)
+        k += 1
+    f.write(root.as_pdb_string())
+    f.close()
+    print "Wrote %s" % file_name
+
 class water_peak (object) :
   def __init__ (self, id_str, xyz, peak_height, map_type="mFo-DFc") :
     adopt_init_args(self, locals())
@@ -99,8 +173,15 @@ def find_peaks_holes (
     map_cutoff=3.0,
     anom_map_cutoff=3.0,
     out=None) :
+  """
+  Find peaks and holes in mFo-DFc map, plus flag solvent atoms with
+  suspiciously high mFo-DFc values, plus anomalous peaks if anomalous data are
+  present.  Returns a pickle-able object storing all this information (with
+  the ability to write out a PDB file with the sites of interest).
+  """
   if (out is None) : out = sys.stdout
   pdb_atoms = pdb_hierarchy.atoms()
+  unit_cell = fmodel.xray_structure.unit_cell()
   from mmtbx import find_peaks
   from cctbx import maptbx
   make_header("Positive difference map peaks", out=out)
@@ -113,6 +194,8 @@ def find_peaks_holes (
   peaks_result.peaks_mapped()
   peaks_result.show_mapped(pdb_atoms)
   peaks = peaks_result.peaks()
+  # XXX very important - sites are initially fractional coordinates!
+  peaks.sites = unit_cell.orthogonalize(peaks.sites)
   print >> out, ""
   make_header("Negative difference map holes", out=out)
   holes_result = find_peaks.manager(
@@ -124,6 +207,7 @@ def find_peaks_holes (
   holes_result.peaks_mapped()
   holes_result.show_mapped(pdb_atoms)
   holes = holes_result.peaks()
+  holes.sites = unit_cell.orthogonalize(holes.sites)
   print >> out, ""
   anom = None
   if (fmodel.f_obs().anomalous_flag()) :
@@ -137,6 +221,7 @@ def find_peaks_holes (
     anom_result.peaks_mapped()
     anom_result.show_mapped(pdb_atoms)
     anom = anom_result.peaks()
+    anom.sites = unit_cell.orthogonalize(anom.sites)
     print >> out, ""
   cache = pdb_hierarchy.atom_selection_cache()
   water_isel = cache.selection("resname HOH").iselection()
@@ -200,13 +285,16 @@ mmtbx.find_peaks_holes - difference map analysis
     out=out,
     process_pdb_file=False,
     create_fmodel=True)
-  return find_peaks_holes(
+  result = find_peaks_holes(
     fmodel=cmdline.fmodel,
     pdb_hierarchy=cmdline.pdb_hierarchy,
     params=cmdline.params.find_peaks,
     map_cutoff=cmdline.params.map_cutoff,
     anom_map_cutoff=cmdline.params.anom_map_cutoff,
     out=out)
+  if (cmdline.params.write_pdb) :
+    result.save_pdb_file()
+  return result
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
