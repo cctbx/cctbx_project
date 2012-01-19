@@ -793,21 +793,13 @@ def get_atom_selections(all_chain_proxies,
       return "(%s)" % sele_str
   if(len(selections)>1):
     if(not isinstance(selections[0], flex.bool)):
-      if(selections[0].size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection %s." % selection_info(0))
       tmp = flex.bool(xray_structure.scatterers().size(), selections[0]).as_int()
     else:
-      if(selections[0].iselection().size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection %s." % selection_info(0))
       tmp = selections[0].deep_copy().as_int()
     for k, tmp_s in enumerate(selections[1:], start=1):
       if(not isinstance(tmp_s, flex.bool)):
-        if(tmp_s.size()==0 and not allow_empty_selection):
-          raise Sorry("Empty selection %s." % selection_info(k))
         tmp = tmp + flex.bool(xray_structure.scatterers().size(),tmp_s).as_int()
       else:
-        if(tmp_s.iselection().size()==0 and not allow_empty_selection):
-          raise Sorry("Empty selection %s." % selection_info(k))
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
       if (parameter_name is not None) :
@@ -815,13 +807,6 @@ def get_atom_selections(all_chain_proxies,
           parameter_name)
       else :
         raise Sorry("One or more overlapping selections.")
-  else:
-    if(not isinstance(selections[0], flex.bool)):
-      if(selections[0].size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection %s." % selection_info(0))
-    else:
-      if(selections[0].iselection().size()==0 and not allow_empty_selection):
-        raise Sorry("Empty selection %s." % selection_info(0))
   #
   if(iselection):
     for i_seq, selection in enumerate(selections):
@@ -838,13 +823,8 @@ def get_atom_selections(all_chain_proxies,
   return selections
 
 def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
-  result = all_chain_proxies.selection(string = string)
-  def is_unexpected_empty_selection():
-    if (allow_empty_selection): return False
-    if (isinstance(result, flex.size_t)):
-      return (result.size() == 0)
-    return result.all_eq(False)
-  if (is_unexpected_empty_selection()):
+  result = all_chain_proxies.selection(string=string, optional=True)
+  if (not allow_empty_selection and result.all_eq(False)):
     raise Sorry(
       "Selection string results in empty selection (selects no atoms): %s"
         % show_string(string))

@@ -2813,14 +2813,18 @@ class build_all_chain_proxies(object):
       return False
     return True
 
-  def selection(self, string, cache=None):
+  def selection(self, string, cache=None, optional=True):
     if (cache is None): cache = self.pdb_hierarchy.atom_selection_cache()
     return cache.selection(
       string=string,
+      optional=optional,
       callback=self._selection_callback)
 
-  def iselection(self, string, cache=None):
-    return self.selection(string=string, cache=cache).iselection()
+  def iselection(self, string, cache=None, optional=True):
+    result = self.selection(string=string, cache=cache, optional=optional)
+    if (result is None):
+      return None
+    return result.iselection()
 
   def process_apply_cif_modification(self, mon_lib_srv, log):
     self.apply_cif_modifications = {}

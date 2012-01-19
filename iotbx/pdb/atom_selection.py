@@ -358,9 +358,11 @@ class cache(slots_getstate_setstate):
 
   def selection_parser(self,
         word_iterator,
+        optional=True,
         callback=None,
         stop_word=None,
         expect_nonmatching_closing_parenthesis=False):
+    have_optional = False
     result_stack = []
     for word,word_iterator in simple_parser.infix_as_postfix(
           word_iterator=word_iterator,
@@ -375,7 +377,13 @@ class cache(slots_getstate_setstate):
             '  Please try using "pepnames" instead.' % lword)
         raise RuntimeError(
           'Atom selection syntax error at word "%s".' % lword)
-      if (lword == "not"):
+      if (lword == "optional"):
+        if (len(result_stack) != 0):
+          raise Sorry('"optional" can appear only at the beginning.')
+        if (have_optional):
+          raise Sorry('"optional" can appear only once.')
+        have_optional = True
+      elif (lword == "not"):
         assert len(result_stack) >= 1
         arg = result_stack.pop()
         result_stack.append(~arg)
@@ -496,19 +504,28 @@ class cache(slots_getstate_setstate):
             raise_syntax_error()
         else:
           raise_syntax_error()
+    if (optional): have_optional = False
     if (len(result_stack) == 0):
+      if (have_optional): return None
       return flex.bool(self.n_seq, False)
     selection = result_stack[0]
     for result in result_stack[1:]:
       selection &= result
+    if (have_optional and selection.all_eq(False)):
+      return None
     return selection
 
-  def selection(self, string, contiguous_word_characters=None, callback=None):
+  def selection(self,
+        string,
+        optional=True,
+        contiguous_word_characters=None,
+        callback=None):
     try:
       return self.selection_parser(
         word_iterator=self.selection_tokenizer(
           string=string,
           contiguous_word_characters=contiguous_word_characters),
+        optional=optional,
         callback=callback)
     except (AtomSelectionError, KeyboardInterrupt): raise
     except Exception:
@@ -518,10 +535,14 @@ class cache(slots_getstate_setstate):
         "  " + string])
       raise AtomSelectionError("\n".join(msg))
 
-  def iselection(self, string, contiguous_word_characters=None):
-    return self.selection(
+  def iselection(self, string, optional=True, contiguous_word_characters=None):
+    result = self.selection(
       string=string,
-      contiguous_word_characters=contiguous_word_characters).iselection()
+      optional=optional,
+      contiguous_word_characters=contiguous_word_characters)
+    if (result is None):
+      return None
+    return result.iselection()
 
   def get_labels(self,
         name=None,
