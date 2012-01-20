@@ -93,6 +93,7 @@ class peaks_holes_container (object) :
       file_name="peaks.pdb",
       include_holes=True,
       include_anom=True,
+      include_water=True,
       log=None) :
     """
     Write out a PDB file with up to three chains: A for peaks, B for holes,
@@ -156,6 +157,26 @@ class peaks_holes_container (object) :
         rg = create_atom(xyz, peak, k)
         anom_chain.append_residue_group(rg)
         k += 1
+    if (include_water) and (self.water_peaks is not None) :
+      f.write("REMARK  Chain D is waters with mFo-DFc peaks (> %g sigma)\n" %
+        self.map_cutoff)
+      waters = sorted(self.water_peaks,
+                      lambda x,y: cmp(x.peak_height, y.peak_height))
+      waters_chain = iotbx.pdb.hierarchy.chain(id="D")
+      model.append_chain(waters_chain)
+      for k, peak in enumerate(waters) :
+        rg = create_atom(peak.xyz, peak.peak_height, k+1)
+        waters_chain.append_residue_group(rg)
+      if (include_anom) and (self.water_anom_peaks is not None) :
+        f.write("REMARK  Chain D is waters with anom. peaks (> %g sigma)\n" %
+          self.anom_map_cutoff)
+        waters_anom = sorted(self.water_anom_peaks,
+                             lambda x,y: cmp(x.peak_height, y.peak_height))
+        waters_chain_2 = iotbx.pdb.hierarchy.chain(id="E")
+        model.append_chain(waters_chain_2)
+        for k, peak in enumerate(waters_anom) :
+          rg = create_atom(peak.xyz, peak.peak_height, k+1)
+          waters_chain_2.append_residue_group(rg)
     f.write(root.as_pdb_string())
     f.close()
     print >> log, "Wrote %s" % file_name
