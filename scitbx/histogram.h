@@ -33,7 +33,7 @@ namespace scitbx {
         data_max_ = af::max(data);
         slot_width_ = (data_max_ - data_min_) / slots_.size();
         for(std::size_t i=0;i<data.size();i++) {
-          assign_to_slot(static_cast<ValueType>(data[i] - data_min_));
+          assign_to_slot(static_cast<ValueType>(data[i]));
         }
       }
 
@@ -132,7 +132,7 @@ namespace scitbx {
           n_out_of_slot_range_++;
         }
         else {
-          assign_to_slot(static_cast<ValueType>(d - data_min_));
+          assign_to_slot(static_cast<ValueType>(d));
         }
       }
 
@@ -147,16 +147,23 @@ namespace scitbx {
         n_out_of_slot_range_ += other.n_out_of_slot_range_;
       }
 
-    protected:
-      void
-      assign_to_slot(ValueType const& d)
+      std::size_t
+      get_i_slot(ValueType const& d_)
       {
         std::size_t i_slot = 0;
+        ValueType d = d_ - data_min_;
         if (d != 0 && d >= slot_width_) {
               i_slot = static_cast<std::size_t>(d / slot_width_);
           if (i_slot >= slots_.size()) i_slot = slots_.size() - 1;
         }
-        slots_[i_slot]++;
+        return i_slot;
+      }
+
+    protected:
+      void
+      assign_to_slot(ValueType const& d)
+      {
+        slots_[get_i_slot(d)]++;
       }
 
       template <typename DataType>
@@ -172,7 +179,7 @@ namespace scitbx {
             n_out_of_slot_range_++;
           }
           else {
-            assign_to_slot(static_cast<ValueType>(data[i] - data_min_));
+            assign_to_slot(static_cast<ValueType>(data[i]));
           }
         }
       }
