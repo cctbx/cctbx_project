@@ -1,4 +1,3 @@
-from iotbx.pdb import amino_acid_codes
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.refinement import fit_rotamers
@@ -9,7 +8,6 @@ import iotbx.phil
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
 import sys
-from libtbx import group_args
 from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.torsion_restraints import utils
@@ -114,9 +112,7 @@ class torsion_ncs(object):
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     print >> self.log, "Determining NCS matches..."
     dp_hash = {}
-    atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
-    segids = flex.std_string([ a.segid for a in atom_labels ])
-    self.use_segid = not segids.all_eq('    ')
+    self.use_segid = False
     i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
     chain_hash = utils.build_chain_hash(pdb_hierarchy)
     name_hash = utils.build_name_hash(pdb_hierarchy)
@@ -138,13 +134,14 @@ class torsion_ncs(object):
       sequences = {}
       padded_sequences = {}
       structures = {}
+      alignments = {}
       for restraint_group in params.restraint_group:
         for selection_i in restraint_group.selection:
           sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
                            cache=sel_cache,
                            string_list=[selection_i]))
           sel_seq, sel_seq_padded, sel_structures = \
-            self.extract_sequence_and_sites(
+            utils.extract_sequence_and_sites(
             pdb_hierarchy=pdb_hierarchy,
             selection=sel_atoms_i)
           sequences[selection_i] = sel_seq
@@ -173,7 +170,11 @@ class torsion_ncs(object):
             key = (selection_i, selection_j)
             alignments[key] = residue_match_map
         self.ncs_groups.append(ncs_set)
+      self.alignments = alignments
     else:
+      atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
+      segids = flex.std_string([ a.segid for a in atom_labels ])
+      self.use_segid = not segids.all_eq('    ')
       ncs_groups_manager = get_ncs_groups(
           pdb_hierarchy=self.pdb_hierarchy,
           use_segid=self.use_segid,
@@ -259,6 +260,7 @@ class torsion_ncs(object):
 
     super_hash = {}
     res_match_master = {}
+    res_to_selection_hash = {}
     for i, group in enumerate(self.ncs_groups):
       for chain_i in group:
         selection = utils.selection(
@@ -294,8 +296,9 @@ class torsion_ncs(object):
                 res_match_master[res_key].append(j_match)
               if res_key not in res_match_master[j_match]:
                 res_match_master[j_match].append(res_key)
+              res_to_selection_hash[res_key] = chain_i
+              res_to_selection_hash[j_match] = chain_j
     self.res_match_master = res_match_master
-    #symmetric residues - Val, Phe, Leu, Tyr, Asp, Glu
 
     for dp in geometry.dihedral_proxies:
       temp = dict()
@@ -373,18 +376,11 @@ class torsion_ncs(object):
         if len(dp_set) < 2:
           continue
         cur_key = ""
-        if (self.use_segid):
-          for i_seq in dp.i_seqs:
-            cur_key += (self.name_hash[i_seq] + self.segid_hash[i_seq])
-          if cur_key[5:19] == cur_key[24:38] and \
-             cur_key[5:19] == cur_key[43:57]:
-            key_set.append(cur_key[5:19])
-        else:
-          for i_seq in dp.i_seqs:
-            cur_key += self.name_hash[i_seq]
-          if cur_key[5:14] == cur_key[20:29] and \
-            cur_key[5:14] == cur_key[35:44]:
-            key_set.append(cur_key[5:14])
+        for i_seq in dp.i_seqs:
+          cur_key += self.name_hash[i_seq]
+        if cur_key[4:19] == cur_key[23:38] and \
+           cur_key[4:19] == cur_key[42:57]:
+          key_set.append(cur_key[4:19])
       if len(dp_set) == len(key_set):
         key_set.sort()
         master_key = None
@@ -407,27 +403,15 @@ class torsion_ncs(object):
     self.reduce_redundancies()
 
     for res in self.ncs_match_hash.keys():
-      chainID = res[3:5].strip()
-      resnum = res[5:9]
-      if self.use_segid:
-        segID = res[-4:]
-        hash_key = "chain '%s' and segid '%s'" % \
-          (chainID, segID)
-      else:
-        hash_key = "chain '%s'" % (chainID)
+      resnum = res[6:10]
+      hash_key = res_to_selection_hash[res]
       cur_len = match_counter[hash_key]
       if len(self.ncs_match_hash[res]) == (cur_len - 1):
         inclusive_range[hash_key].append(int(resnum))
         for res2 in self.ncs_match_hash[res]:
-          chainID = res2[3:5].strip()
-          resnum = res2[5:9]
-          if self.use_segid:
-            segID = res2[-4:]
-            hash_key = "chain '%s' and segid '%s'" % \
-              (chainID, segID)
-          else:
-            hash_key = "chain '%s'" % (chainID)
-          inclusive_range[hash_key].append(int(resnum))
+          resnum2 = res2[6:10]
+          hash_key = res_to_selection_hash[res2]
+          inclusive_range[hash_key].append(int(resnum2))
 
     #determine ranges
     self.master_ranges = {}
@@ -460,74 +444,6 @@ class torsion_ncs(object):
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
 
-  def extract_padded_sequence_from_chain(self, chain):
-    seq = []
-    padded_seq = []
-    last_resseq = 0
-    is_na = False
-    for conformer in chain.conformers():
-      if conformer.is_na():
-        is_na = True
-    for rg in chain.residue_groups():
-      resseq = rg.resseq_as_int()
-      if (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
-          padded_seq.append('X')
-      last_resseq = resseq
-      resname = rg.unique_resnames()[0]
-      if is_na:
-        olc = self.get_nucleic_acid_one_letter_code(resname)
-      else:
-        olc=\
-        amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-      padded_seq.append(olc)
-    return "".join(padded_seq)
-
-  def extract_sequence_and_sites(self, pdb_hierarchy, selection):
-    seq = []
-    result = []
-    padded_seq = []
-    last_resseq = 0
-    counter = 0
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        is_na = False
-        for conformer in chain.conformers():
-          if conformer.is_na():
-            is_na = True
-        for rg in chain.residue_groups():
-          if(len(rg.unique_resnames())==1):
-            resname = rg.unique_resnames()[0]
-            if is_na:
-              olc = self.get_nucleic_acid_one_letter_code(resname)
-            else:
-              olc= \
-              amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-            atoms = rg.atoms()
-            i_seqs = utils.get_i_seqs(atoms)
-            if(olc!="X") and utils.is_residue_in_selection(i_seqs, selection):
-              seq.append(olc)
-              resseq = rg.resseq_as_int()
-              if (resseq > (last_resseq + 1)) :
-                for x in range(resseq - last_resseq - 1) :
-                  padded_seq.append('X')
-              last_resseq = resseq
-              result.append(group_args(i_seq = counter, rg = rg))
-              padded_seq.append(olc)
-              counter += 1
-    return "".join(seq), "".join(padded_seq), result
-
-  def get_nucleic_acid_one_letter_code(self, resname):
-    olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-    if olc != "X":
-      return "X"
-    if resname[0:2] == "  ":
-      return resname[2]
-    elif resname[0] == " " and (resname[1] == "D" or resname[1] == "d"):
-      return resname[2]
-    else:
-      return resname[0]
-
   def show_ncs_summary(self, log=None):
     if(log is None): log = sys.stdout
     def get_key_chain_num(res):
@@ -536,9 +452,15 @@ class torsion_ncs(object):
     print >> log, "--------------------------------------------------------"
     print >> log, "Torsion NCS Matching Summary:"
     for key in sorted_keys:
-      print_line = key
+      if key.endswith("    "):
+        print_line = key[:-4]
+      else:
+        print_line = key
       for match in self.ncs_match_hash[key]:
-        print_line += "  <=>  %s" % (match)
+        if match.endswith("    "):
+          print_line += " <=> %s" % (match[:-4])
+        else:
+          print_line += " <=> %s" % (match)
       print >> log, print_line
     print >> log, "--------------------------------------------------------"
 
@@ -648,6 +570,14 @@ class torsion_ncs(object):
               previous_chi_state = \
                 self.chi_tracker[angle_id].get(previous_chi_id)
               if previous_chi_state == False:
+                #if angle_id.endswith("    "):
+                #  print >> self.log, \
+                #    "skipping %s, chi%d" % \
+                #    (angle_id[:-4], current_chi_number)
+                #else:
+                #  print >> self.log, \
+                #    "skipping %s, chi%d" % \
+                #    (angle_id, current_chi_number)
                 continue
               else:
                 self.chi_tracker[angle_id][angle_name] = True
@@ -684,7 +614,9 @@ class torsion_ncs(object):
                                      log=None):
     if log is None:
       log = sys.stdout
-    print >> log, "Updating torsion NCS restraints..."
+    make_sub_header(
+      "Updating torsion NCS restraints",
+      out=log)
     self.reset_chi_tracker()
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
@@ -813,13 +745,13 @@ class torsion_ncs(object):
       model_hash[res]=name
       model_score[res]=rotamericity
     for key in self.res_match_master.keys():
-      res_key = key[5:6]+key[-5:-1]+' '+key[0:4]
+      res_key = key[5:10]+' '+key[0:4]
       model_rot = model_hash.get(res_key)
       if model_rot == "OUTLIER":
         rotamer = None
         score = 0.0
         for match_res in self.res_match_master[key]:
-          j_key = match_res[5:6]+match_res[-5:-1]+' '+match_res[0:4]
+          j_key = match_res[5:10]+' '+match_res[0:4]
           j_rot = model_hash.get(j_key)
           j_score = model_score.get(j_key)
           if j_rot is not None and j_score is not None:
