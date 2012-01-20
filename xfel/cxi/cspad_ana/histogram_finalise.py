@@ -3,6 +3,7 @@ import glob
 from scitbx.array_family import flex # import dependency
 
 from libtbx import easy_pickle
+from libtbx.option_parser import option_parser
 
 class histogram_finalise(object):
 
@@ -69,7 +70,15 @@ def update_histograms(hist_dict1, hist_dict2):
 if __name__ == '__main__':
   import sys
   args = sys.argv[1:]
-  assert len(args) >= 2
-  scratch_dir = args[0]
-  runs = args[1:]
-  histogram_finalise(scratch_dir, runs)
+  assert len(args) > 0
+  command_line = (option_parser()
+                  .option("--output_dirname", "-o",
+                          type="string",
+                          help="Directory for output files.")
+                  ).process(args=args)
+  output_dirname = command_line.options.output_dirname
+  runs = command_line.args
+  if output_dirname is None:
+    output_dirname = os.path.join(runs[0], "finalise")
+  print "Output directory: %s" %output_dirname
+  histogram_finalise(output_dirname, runs)
