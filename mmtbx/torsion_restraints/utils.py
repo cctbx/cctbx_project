@@ -152,7 +152,8 @@ def build_name_hash(pdb_hierarchy):
     else:
       updated_atom = atom_name
     key = updated_atom+atom.pdb_label_columns()[4:5]+\
-          updated_resname+atom.pdb_label_columns()[8:]
+          updated_resname+atom.pdb_label_columns()[8:]+\
+          atom.segid
     i_seq_name_hash[atom.i_seq]=key
   return i_seq_name_hash
 
@@ -171,7 +172,8 @@ def build_i_seq_hash(pdb_hierarchy):
     else:
       updated_atom = atom_name
     key = updated_atom+atom.pdb_label_columns()[4:5]+\
-          updated_resname+atom.pdb_label_columns()[8:]
+          updated_resname+atom.pdb_label_columns()[8:]+\
+          atom.segid
     name_i_seq_hash[key]=atom.i_seq
   return name_i_seq_hash
 
@@ -305,10 +307,12 @@ def _alignment(params,
   ref_structures = structures[1]
   for struct in model_structures:
     model_mseq_res_hash[struct.i_seq] = \
-      struct.rg.atoms()[0].pdb_label_columns()[4:]
+      struct.rg.atoms()[0].pdb_label_columns()[4:]+\
+      struct.rg.atoms()[0].segid
   for struct in ref_structures:
     ref_mseq_res_hash[struct.i_seq] = \
-      struct.rg.atoms()[0].pdb_label_columns()[4:]
+      struct.rg.atoms()[0].pdb_label_columns()[4:]+\
+      struct.rg.atoms()[0].segid
   if model_seq == ref_seq:
     pg = mmtbx.alignment.pairwise_global(
            model_seq,
@@ -365,7 +369,6 @@ def _alignment(params,
 def chain_from_selection(chain, selection):
   from iotbx.pdb.hierarchy import new_hierarchy_from_chain
   new_hierarchy = new_hierarchy_from_chain(chain=chain).select(selection)
-  print dir(new_hierarchy)
 
 def hierarchy_from_selection(pdb_hierarchy, selection, log):
   import iotbx.pdb.hierarchy
