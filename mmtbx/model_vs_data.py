@@ -674,7 +674,7 @@ def run(args,
   mvd_obj = mvd()
   #
   processed_args = utils.process_command_line_args(args = args,
-    log = sys.stdout, master_params = parsed)
+    log = log, master_params = parsed)
   params = processed_args.params.extract()
   #
   reflection_files = processed_args.reflection_files
@@ -728,7 +728,7 @@ def run(args,
     cif_objects      = processed_args.cif_objects,
     crystal_symmetry = crystal_symmetry,
     use_elbow        = show_geometry_statistics,
-    log              = sys.stdout)
+    log              = log)
   mmtbx_pdb_file.set_ppf(stop_if_duplicate_labels = False)
   processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
@@ -929,6 +929,7 @@ def run(args,
     easy_pickle.dump("%s.pickle"%output_prefix, mvd_obj)
   return mvd_obj
 
+# XXX this is really, really gross.
 def summarize_results (mvd_obj) :
   space_group_str = getattr(mvd_obj.crystal, "sg", None)
   if (space_group_str is None) :
@@ -944,6 +945,10 @@ def summarize_results (mvd_obj) :
       "macromolecule", None)
   bb_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
     "backbone", None)
+  lig_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
+    "ligand", None)
+  wat_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
+    "solvent", None)
   if (molprobity_stats is not None) :
     c_beta_deviations = molprobity_stats.cbetadev
     clashscore = molprobity_stats.clashscore
@@ -955,6 +960,12 @@ def summarize_results (mvd_obj) :
   else:
     c_beta_deviations = clashscore = rama_allowed = rama_favored = \
       rama_outliers = rotamer_outliers = mpscore = None
+  def convert_int (value) :
+    if (value is None) : return None
+    try :
+      return int(value)
+    except ValueError :
+      return None
   def convert_float (value) :
     if (value is None) : return None
     try :
@@ -978,6 +989,10 @@ def summarize_results (mvd_obj) :
     completeness_6A_inf=mvd_obj.data.completeness_6A_inf,
     completeness_d_min_inf=mvd_obj.data.completeness_d_min_inf,
     completeness_in_range=mvd_obj.data.completeness_in_range,
+    n_atoms=convert_int(getattr(xs_stats, "n_atoms", None)),
+    n_macro_atoms=convert_int(getattr(mm_stats, "n_atoms", None)),
+    n_ligand_atoms=convert_int(getattr(lig_stats, "n_atoms", None)),
+    n_solvent_atoms=convert_int(getattr(wat_stats, "n_atoms", None)),
     adp_max_all=convert_float(getattr(xs_stats, "b_max",None)),
     adp_mean_all=convert_float(getattr(xs_stats, "b_mean",None)),
     adp_min_all=convert_float(getattr(xs_stats, "b_min", None)),
@@ -987,6 +1002,8 @@ def summarize_results (mvd_obj) :
     adp_max_bb=convert_float(getattr(bb_stats, "b_max",None)),
     adp_mean_bb=convert_float(getattr(bb_stats, "b_mean",None)),
     adp_min_bb=convert_float(getattr(bb_stats, "b_min", None)),
+    adp_mean_lig=convert_float(getattr(lig_stats, "b_mean", None)),
+    adp_mean_wat=convert_float(getattr(wat_stats, "b_mean", None)),
     n_aniso=getattr(xs_stats, "n_aniso", None),
     wilson_b=mvd_obj.data.wilson_b,
     b_sol=mvd_obj.model_vs_data.b_sol,
