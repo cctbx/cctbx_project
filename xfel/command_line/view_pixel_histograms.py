@@ -105,22 +105,28 @@ class pixel_histograms(object):
         hist, window_title=window_title, title=title,log_scale=log_scale,
         normalise=normalise, save_image=save_image)
       if fit_gaussians:
-        gaussians = self.fit_one_histogram(hist)
-
-        x = hist.slot_centers()
-        y_calc = flex.double(x.size(), 0)
-        for g in gaussians:
-          print g.params
-          y = g(x)
-          y_calc += y
-          pyplot.plot(x, y)
-        pyplot.plot(x, y_calc)
+        self.plot_gaussians(hist, log_scale=log_scale)
 
       if save_image:
         pyplot.savefig("%s.png" %title)
       else:
         pyplot.show()
 
+  def plot_gaussians(self, hist, log_scale=False):
+    if log_scale:
+      pyplot.ylim(ymin=0.1)
+    gaussians = self.fit_one_histogram(hist)
+    x = hist.slot_centers()
+    y_calc = flex.double(x.size(), 0)
+    for g in gaussians:
+      print g.params
+      y = g(x)
+      y_calc += y
+      pyplot.plot(x, y)
+    params = gaussians[0].params
+    g = curve_fitting.gaussian(params[0], 0, params[2])
+    pyplot.plot(x, g(x))
+    pyplot.plot(x, y_calc)
 
   def plot_one_histogram(self, histogram,
                          window_title=None, title=None,
@@ -152,13 +158,25 @@ class pixel_histograms(object):
     upper_fit_thresholds = [20, 40, 70]
     estimated_peak_positions = [0, 30, 60]
 
-    x = histogram.slot_centers()
-    y = histogram.slots().as_double()
+    slot_centers = histogram.slot_centers()
+    slots = histogram.slots().as_double()
 
     for i in range(n_gaussians_to_fit):
       lower_threshold = lower_fit_thresholds[i]
       upper_threshold = upper_fit_thresholds[i]
       mean = estimated_peak_positions[i]
+      #max_freq = 0
+      #max_slot_i = 0
+      #if i > 0: # XXX
+        #for j, slot_center in enumerate(slot_centers):
+          #if slot_center < lower_threshold: continue
+          #if slot_center > upper_threshold: break
+          #max_freq = max(max_freq, slots[j])
+          #if max_freq == slots[j]:
+            #max_slot_i = j
+        #mean = slot_centers[max_slot_i]
+        #lower_threshold = mean - 8
+        #upper_threshold = mean + 8
       fit = self.single_peak_fit(histogram, lower_threshold, upper_threshold, mean)
       fitted_gaussians += fit.functions
 
