@@ -70,9 +70,9 @@ class xes_finalise(object):
           self.avg_img, "%s/avg_inv.png" %output_dirname, invert=True)
 
       if 1:
-        self.output_matlab_form(self.sum_img, "%s/sum.m" %output_dirname)
-        self.output_matlab_form(self.avg_img, "%s/avg.m" %output_dirname)
-        self.output_matlab_form(self.stddev_img, "%s/stddev.m" %output_dirname)
+        output_matlab_form(self.sum_img, "%s/sum.m" %output_dirname)
+        output_matlab_form(self.avg_img, "%s/avg.m" %output_dirname)
+        output_matlab_form(self.stddev_img, "%s/stddev.m" %output_dirname)
 
     if (stddev_basename is not None):
       d = cspad_tbx.dpack(
@@ -97,73 +97,78 @@ class xes_finalise(object):
         pylab.imshow(spectrum_focus.as_numpy_array())
         pylab.show()
 
-      spectrum = flex.sum(spectrum_focus, axis=0)
-      # take care of columns where one or more pixels are inactive
-      # and/or flagged as a "hot" - in this case the sum is over fewer rows and
-      # will introduce artefacts into the spectrum
-      mask_sum = flex.sum(mask_focus, axis=0)
-      n_rows = spectrum_focus.all()[0]
-      spectrum *= ((n_rows + mask_sum).as_double()/n_rows)
-
-
-      omit_col = True
-      if omit_col is True:
-        #omit_columns = [181,193,194,195,196,197,378] # run 4
-        omit_columns = [193,194,195,196,197] # run 5
-        plot_x = flex.int(xrange(spectrum.size()))
-        plot_y = spectrum.deep_copy()
-        for i in reversed(sorted(omit_columns)):
-          del plot_x[i]
-          del plot_y[i]
-        plot_x += 1
-        print plot_x.all(), plot_y.all()
-      else:
-        plot_x = range(1,len(spectrum)+1)
-        plot_y = spectrum
-      spec_plot(plot_x,plot_y,spectrum_focus,
-                os.path.join(output_dirname, "spectrum")+ ".png")
-      f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
-      print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
-      f.close()
-
-      # first moment analysis
-      # XXX columns of interest for CXI run 5
-      numerator = 0
-      denominator = 0
-      for i in range(150, 270):
-        numerator += spectrum[i] * i
-        denominator += spectrum[i]
-      first_moment = numerator/denominator
-      print "first moment: ", first_moment
+    output_spectrum(spectrum_focus, mask_focus=mask_focus)
 
     print "Total number of images used from %i runs: %i" %(i_run+1, self.nmemb)
 
-  def output_image(self, flex_img, filename, invert=False, scale=False):
-    import Image
-    flex_img = flex_img.deep_copy()
-    flex_img -= flex.min(flex_img)
-    if scale:
-      img_max_value = 2**16
-      scale = img_max_value/flex.max(flex_img)
-      flex_img = flex_img.as_double() * scale
-      flex_img = flex_img
-    if invert:
-      img_max_value = 2**16
-      flex_img = img_max_value - flex_img # invert image for display
-    dim = flex_img.all()
-    #easy_pickle.dump("%s/avg_img.pickle" %output_dirname, flex_img)
-    byte_str = flex_img.slice_to_byte_str(0,flex_img.size())
-    im = Image.fromstring(mode="I", size=(dim[1],dim[0]), data=byte_str)
-    im = im.crop((0,185,391,370))
-    #im.save("avg.tiff", "TIFF") # XXX This does not work (phenix.python -Qnew option)
-    im.save(filename, "PNG")
+def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
 
-  def output_matlab_form(self, flex_matrix, filename):
-    f = open(filename, "wb")
-    print >> f, "%% number of images = %i" %(self.nmemb)
-    print >> f, scitbx.matrix.rec(
-      flex_matrix, flex_matrix.focus()).matlab_form(one_row_per_line=True)
-    f.close()
+  spectrum = flex.sum(spectrum_focus, axis=0).as_double()
+  # take care of columns where one or more pixels are inactive
+  # and/or flagged as a "hot" - in this case the sum is over fewer rows and
+  # will introduce artefacts into the spectrum
+  if mask_focus is not None:
+    mask_sum = flex.sum(mask_focus, axis=0)
+    n_rows = spectrum_focus.all()[0]
+    spectrum *= ((n_rows + mask_sum).as_double()/n_rows)
+
+
+  omit_col = True
+  if omit_col is True:
+    #omit_columns = [181,193,194,195,196,197,378] # run 4
+    omit_columns = [193,194,195,196,197] # run 5
+    plot_x = flex.int(xrange(spectrum.size()))
+    plot_y = spectrum.deep_copy()
+    for i in reversed(sorted(omit_columns)):
+      del plot_x[i]
+      del plot_y[i]
+    plot_x += 1
+    print plot_x.all(), plot_y.all()
+  else:
+    plot_x = range(1,len(spectrum)+1)
+    plot_y = spectrum
+  spec_plot(plot_x,plot_y,spectrum_focus,
+            os.path.join(output_dirname, "spectrum")+ ".png")
+  f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
+  print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
+  f.close()
+
+  ## first moment analysis
+  ## XXX columns of interest for CXI run 5
+  #numerator = 0
+  #denominator = 0
+  #for i in range(150, 270):
+    #numerator += spectrum[i] * i
+    #denominator += spectrum[i]
+  #first_moment = numerator/denominator
+  #print "first moment: ", first_moment
+
+def output_matlab_form(flex_matrix, filename):
+  f = open(filename, "wb")
+  print >> f, "%% number of images = %i" %(self.nmemb)
+  print >> f, scitbx.matrix.rec(
+    flex_matrix, flex_matrix.focus()).matlab_form(one_row_per_line=True)
+  f.close()
+
+def output_image(flex_img, filename, invert=False, scale=False):
+  import Image
+  flex_img = flex_img.deep_copy()
+  flex_img -= flex.min(flex_img)
+  if scale:
+    img_max_value = 2**16
+    scale = img_max_value/flex.max(flex_img)
+    flex_img = flex_img.as_double() * scale
+    flex_img = flex_img
+  if invert:
+    img_max_value = 2**16
+    flex_img = img_max_value - flex_img # invert image for display
+  dim = flex_img.all()
+  #easy_pickle.dump("%s/avg_img.pickle" %output_dirname, flex_img)
+  byte_str = flex_img.slice_to_byte_str(0,flex_img.size())
+  im = Image.fromstring(mode="I", size=(dim[1],dim[0]), data=byte_str)
+  im = im.crop((0,185,391,370))
+  #im.save("avg.tiff", "TIFF") # XXX This does not work (phenix.python -Qnew option)
+  im.save(filename, "PNG")
 
 class finalise_one_run(object):
 
