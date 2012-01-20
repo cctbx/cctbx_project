@@ -168,7 +168,9 @@ def process_files (file_name,
           f_obs = miller_arrays[0]
           r_free_flags = None
         else:
-          assert len(miller_arrays) == 2
+          if (len(miller_arrays) != 2) :
+            raise Sorry("The --use-model flag is not supported when more "+
+              "than one array of experimental data is present.")
           r_free_flags = None
           for miller_array in miller_arrays:
             if(miller_array.observation_type() is not None):
