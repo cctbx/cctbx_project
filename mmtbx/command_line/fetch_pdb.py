@@ -16,7 +16,8 @@ fetch_pdb
     recommend creating a new project, but this is not required.  Note that \
     you may also use this tool to generate an MTZ file from the mmCIF \
     structure factors (if available) and even calculate maps, but the options \
-    are more limited than
+    are more limited than what is available in the phenix.cif_as_mtz and \
+    phenix.maps GUIs.
   .style = auto_align caption_img:icons/custom/pdb_import64.png \
     caption_width:400
 {
