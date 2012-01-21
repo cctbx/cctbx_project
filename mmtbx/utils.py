@@ -823,11 +823,16 @@ def get_atom_selections(all_chain_proxies,
   return selections
 
 def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
-  result = all_chain_proxies.selection(string=string, optional=True)
-  if (not allow_empty_selection and result.all_eq(False)):
-    raise Sorry(
-      "Selection string results in empty selection (selects no atoms): %s"
-        % show_string(string))
+  result = all_chain_proxies.selection(
+    string=string,
+    optional=(allow_empty_selection is not None))
+  if (result is None):
+    return None
+  if (allow_empty_selection is not None):
+    if (not allow_empty_selection and result.all_eq(False)):
+      raise Sorry(
+        "Selection string results in empty selection (selects no atoms): %s"
+          % show_string(string))
   return result
 
 def write_pdb_file(
