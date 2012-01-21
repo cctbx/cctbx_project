@@ -407,7 +407,7 @@ def run2 (args,
           log=sys.stdout,
           check_params=True,
           params=None) :
-  import mmtbx.command_line.fetch_pdb.run
+  import mmtbx.command_line.fetch_pdb
   parameter_interpreter = master_phil.command_line_argument_interpreter(
     home_scope="")
   pdb_file = None
