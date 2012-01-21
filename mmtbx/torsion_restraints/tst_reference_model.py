@@ -158,12 +158,14 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   i_seq_name_hash = utils.build_name_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_name_hash == \
-    {0: ' N   ASN C 236 ', 1: ' CA  ASN C 236 ', 2: ' C   ASN C 236 ',
-     3: ' O   ASN C 236 ', 4: ' CB  ASN C 236 ', 5: ' CG  ASN C 236 ',
-     6: ' OD1 ASN C 236 ', 7: ' ND2 ASN C 236 ', 8: ' N   LEU C 237 ',
-     9: ' CA  LEU C 237 ', 10: ' C   LEU C 237 ', 11: ' O   LEU C 237 ',
-     12: ' CB  LEU C 237 ', 13: ' CG  LEU C 237 ', 14: ' CD1 LEU C 237 ',
-     15: ' CD2 LEU C 237 '}
+    {0: ' N   ASN C 236     ', 1: ' CA  ASN C 236     ',
+     2: ' C   ASN C 236     ', 3: ' O   ASN C 236     ',
+     4: ' CB  ASN C 236     ', 5: ' CG  ASN C 236     ',
+     6: ' OD1 ASN C 236     ', 7: ' ND2 ASN C 236     ',
+     8: ' N   LEU C 237     ', 9: ' CA  LEU C 237     ',
+     10: ' C   LEU C 237     ', 11: ' O   LEU C 237     ',
+     12: ' CB  LEU C 237     ', 13: ' CG  LEU C 237     ',
+     14: ' CD1 LEU C 237     ', 15: ' CD2 LEU C 237     '}
   i_seq_element_hash = utils.build_element_hash(
     pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   assert i_seq_element_hash == \

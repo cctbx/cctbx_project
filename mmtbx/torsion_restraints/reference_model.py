@@ -294,10 +294,10 @@ class reference_model(object):
           temp_model_atoms = {}
           temp_ref_atoms = {}
           for atom in model_res.atoms():
-            atom_temp = atom.pdb_label_columns()
+            atom_temp = atom.pdb_label_columns()+atom.segid
             temp_model_atoms[atom.name] = model_iseq_hash[atom_temp]
           for atom in ref_res.atoms():
-            atom_temp = atom.pdb_label_columns()
+            atom_temp = atom.pdb_label_columns()+atom.segid
             temp_ref_atoms[atom.name] = ref_iseq_hash[atom_temp]
           for key in temp_model_atoms.keys():
             ref_atom = temp_ref_atoms.get(key)
