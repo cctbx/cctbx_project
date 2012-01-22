@@ -384,6 +384,7 @@ struct flex_image_wrapper {
       .def("spot_convention", &w_t::spot_convention)
       .def("size1", &w_t::size1)
       .def("size2", &w_t::size2)
+      .def("setZoom", &w_t::setZoom)
       .def("setWindow", &w_t::setWindow)
       .def("ex_size1", &w_t::ex_size1)
       .def("ex_size2", &w_t::ex_size2)
