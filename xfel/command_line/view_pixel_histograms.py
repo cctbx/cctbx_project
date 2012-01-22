@@ -105,17 +105,18 @@ class pixel_histograms(object):
         hist, window_title=window_title, title=title,log_scale=log_scale,
         normalise=normalise, save_image=save_image)
       if fit_gaussians:
-        self.plot_gaussians(hist, log_scale=log_scale)
+        self.plot_gaussians(pixel, log_scale=log_scale)
 
       if save_image:
         pyplot.savefig("%s.png" %title)
       else:
         pyplot.show()
 
-  def plot_gaussians(self, hist, log_scale=False):
+  def plot_gaussians(self, pixel, log_scale=False):
     if log_scale:
       pyplot.ylim(ymin=0.1)
-    gaussians = self.fit_one_histogram(hist)
+    hist = self.histograms[pixel]
+    gaussians = self.fit_one_histogram(pixel)
     x = hist.slot_centers()
     y_calc = flex.double(x.size(), 0)
     for g in gaussians:
@@ -123,6 +124,7 @@ class pixel_histograms(object):
       y = g(x)
       y_calc += y
       pyplot.plot(x, y)
+    #print "Peak height ratio: %.2f" %(gaussians[0].params[0]/gaussians[1].params[0])
     params = gaussians[0].params
     g = curve_fitting.gaussian(params[0], 0, params[2])
     pyplot.plot(x, g(x))
@@ -149,7 +151,8 @@ class pixel_histograms(object):
     data_max = max([slot.low_cutoff for slot in histogram.slot_infos() if slot.n > 0])
     pyplot.xlim(data_min, data_max)
 
-  def fit_one_histogram(self, histogram):
+  def fit_one_histogram(self, pixel):
+    histogram = self.histograms[pixel]
     n_gaussians_to_fit = 2
     fitted_gaussians = []
 
@@ -198,10 +201,19 @@ class pixel_histograms(object):
     if 1:
       fit = curve_fitting.lbfgs_minimiser(
         starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
+      sigma = abs(fit.functions[0].params[2])
+      if sigma < 1 or sigma > 10:
+        print "using cma_es:", sigma
+        fit = curve_fitting.cma_es_minimiser(
+          starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
     else:
       fit = curve_fitting.cma_es_minimiser(
         starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
     return fit
+
+  def pixels(self):
+    for pixel in self.histograms.keys():
+      yield pixel
 
 
 def hist_outline(hist):

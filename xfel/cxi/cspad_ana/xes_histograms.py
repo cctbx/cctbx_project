@@ -35,23 +35,58 @@ def xes_from_histograms(pixel_histograms, output_dirname="."):
 
   start_row = 370
   end_row = 0
+  print len(pixel_histograms.histograms)
 
-  for i, (pixel, hist) in enumerate(pixel_histograms.histograms.iteritems()):
+  pixels = list(pixel_histograms.pixels())
+  results = None
+  from libtbx import easy_mp
+  stdout_and_results = easy_mp.pool_map(
+    processes=easy_mp.Auto,
+    fixed_func=pixel_histograms.fit_one_histogram,
+    args=pixels,
+    buffer_stdout_stderr=True)
+  results = [r for so, r in stdout_and_results]
+
+  for i, pixel in enumerate(pixels):
+    print i
     start_row = min(start_row, pixel[0])
     end_row = max(end_row, pixel[0])
     n_photons = 0
-    gaussians = pixel_histograms.fit_one_histogram(hist)
+    if results is None:
+      # i.e. not multiprocessing
+      try:
+        gaussians = pixel_histograms.fit_one_histogram(pixel)
+      except RuntimeError, e:
+        print "Error fitting pixel %s" %pixel
+        print str(e)
+        mask[pixel] = 1
+        continue
+    else:
+      gaussians = results[i]
+    hist = pixel_histograms.histograms[pixel]
     zero_peak_diff = gaussians[0].params[1]
     gain = gaussians[1].params[1] - gaussians[0].params[1]
     if abs(gain - 30) > 10:
-      print "bad gain!!!!!", pixel
-      mask[pixel]
+      print "bad gain!!!!!", pixel, gain
+      mask[pixel] = 1
       continue
-    i_slot_cutoff = hist.get_i_slot((photon_threshold + zero_peak_diff) * 30/gain)
+    #for g in gaussians:
+      #sigma = abs(g.params[2])
+      #if sigma < 1 or sigma > 10:
+        #print "bad sigma!!!!!", pixel, sigma
+        #mask[pixel] = 1
+        #continue
+    cutoff = (photon_threshold + zero_peak_diff) * 30/gain
+    i_slot_cutoff = hist.get_i_slot(cutoff)
     #print hist.get_i_slot(photon_threshold), i_slot_cutoff
     slots = hist.slots()
-    for i in range(i_slot_cutoff, len(slots)):
-      n_photons += slots[i]
+    for j in range(i_slot_cutoff, len(slots)):
+      if j == i_slot_cutoff:
+        center = hist.slot_centers()[j]
+        upper = center + 0.5 * hist.slot_width()
+        n_photons += int(round((upper - cutoff)/hist.slot_width() * slots[j]))
+      else:
+        n_photons += slots[j]
     sum_img[pixel] = n_photons
 
   mask.set_selected(sum_img == 0, 1)
