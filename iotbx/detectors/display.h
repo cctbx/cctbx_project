@@ -114,13 +114,8 @@ private:
           sampled(i,j) = (raw(2*i,2*j) + raw(2*i+1,2*j+1))/2;
         }
       }
-    } else if (binning==1) {
-      for (std::size_t i = 0; i < sample_size[0]; ++i) {
-        for (std::size_t j = 0; j < sample_size[1]; ++j) {
-          sampled(i,j) = raw(i,j);
-        }
-      }
-    } else {
+    } else if (binning==1) { return raw; }
+    else {
       //binning is a larger power of two.  Take the max pixel for each chunk
       std::vector<DataType> candidate_max;
       for (std::size_t i = 0; i < sample_size[0]; ++i) {
@@ -144,8 +139,9 @@ private:
   inline
   af::versa<int, af::c_grid<2> > bright_contrast(
     af::versa<DataType, af::c_grid<2> > raw) const {
-      /* yes, this could probably be made more efficient using the std::algorithm library */
       const double outscale = 256;
+
+      af::versa<int, af::c_grid<2> > z(raw.accessor());
 
       ptr_area detector_location = ptr_area(new ActiveAreaDefault());
       if (vendortype=="Pilatus-6M") {
@@ -155,60 +151,6 @@ private:
       } else if (vendortype=="Pilatus-300K") {
         detector_location = ptr_area(new ActiveAreaPilatus300K());
       }
-      std::size_t active_count = 0;
-
-      //first pass through data calculate average
-      double qave = 0;
-      for (std::size_t i = 0; i < raw.size(); i++) {
-        int fast = binning*(i%raw.accessor()[1]);
-        int slow = binning*(i/raw.accessor()[1]);
-        int idx = slow*rawdata.accessor().focus()[1]+ fast;
-        if (detector_location->is_active_area_by_linear_index(idx)) {
-          qave+=raw[i];
-          active_count++;
-        }
-      }
-      if (binning==1){
-      if (vendortype=="Pilatus-6M") {
-        SCITBX_ASSERT( (active_count == 60*195*487 || active_count == 5*195*487) );
-      } else if (vendortype=="Pilatus-2M") {
-        SCITBX_ASSERT( (active_count == 24*195*487 || active_count == 3*195*487) );
-      } else if (vendortype=="Pilatus-300K") {
-        SCITBX_ASSERT( (active_count == 3*195*487) );
-      }
-      }
-      qave/=active_count;
-      //std::cout<<"ave shown pixel value is "<<qave<<std::endl;
-
-      //second pass calculate histogram
-      int hsize=100;
-      array_t histogram(hsize);
-      for (std::size_t i = 0; i < raw.size(); i++) {
-        int fast = binning*(i%raw.accessor()[1]);
-        int slow = binning*(i/raw.accessor()[1]);
-        int idx = slow*rawdata.accessor().focus()[1]+ fast;
-        if (detector_location->is_active_area_by_linear_index(idx)) {
-          int temp = int((hsize/2)*raw[i]/qave);
-          if (temp<0){histogram[0]+=1;}
-          else if (temp>=hsize){histogram[hsize-1]+=1;}
-          else {histogram[temp]+=1;}
-        }
-      }
-
-      //third pass calculate 90%
-      double percentile=0;
-      double accum=0;
-      for (std::size_t i = 0; i<hsize; i++) {
-        accum+=histogram[i];
-        if (accum > 0.9*active_count) { percentile=i*qave/(hsize/2); break; }
-      }
-      //std::cout<<"the 90-percentile pixel value is "<<percentile<<std::endl;
-
-      double adjlevel = 0.4;
-      double correction = (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
-
-      af::versa<int, af::c_grid<2> > z(raw.accessor());
-
       for (std::size_t i = 0; i < raw.size(); i++) {
         int fast = binning*(i%raw.accessor()[1]);
         int slow = binning*(i/raw.accessor()[1]);
@@ -230,16 +172,82 @@ private:
           else                         { z[i] = int(outvalue); }
         }
       }
-
       return z;
-
   }
 
+  inline
+  double global_bright_contrast() const {
+      /* yes, this could probably be made more efficient using the std::algorithm library */
+
+      ptr_area detector_location = ptr_area(new ActiveAreaDefault());
+      if (vendortype=="Pilatus-6M") {
+        detector_location = ptr_area(new ActiveAreaPilatus6M());
+      } else if (vendortype=="Pilatus-2M") {
+        detector_location = ptr_area(new ActiveAreaPilatus2M());
+      } else if (vendortype=="Pilatus-300K") {
+        detector_location = ptr_area(new ActiveAreaPilatus300K());
+      }
+      std::size_t active_count = 0;
+
+      //first pass through data calculate average
+      double qave = 0;
+      for (std::size_t i = 0; i < rawdata.size(); i++) {
+        if (detector_location->is_active_area_by_linear_index(i)) {
+          qave+=rawdata[i];
+          active_count++;
+        }
+      }
+      if (vendortype=="Pilatus-6M") {
+        SCITBX_ASSERT( (active_count == 60*195*487 || active_count == 5*195*487) );
+      } else if (vendortype=="Pilatus-2M") {
+        SCITBX_ASSERT( (active_count == 24*195*487 || active_count == 3*195*487) );
+      } else if (vendortype=="Pilatus-300K") {
+        SCITBX_ASSERT( (active_count == 3*195*487) );
+      }
+
+      qave/=active_count;
+      //std::cout<<"ave shown pixel value is "<<qave<<std::endl;
+
+      //second pass calculate histogram
+      int hsize=100;
+      array_t histogram(hsize);
+      for (std::size_t i = 0; i < rawdata.size(); i++) {
+        if (detector_location->is_active_area_by_linear_index(i)) {
+          int temp = int((hsize/2)*rawdata[i]/qave);
+          if (temp<0){histogram[0]+=1;}
+          else if (temp>=hsize){histogram[hsize-1]+=1;}
+          else {histogram[temp]+=1;}
+        }
+      }
+
+      //third pass calculate 90%
+      double percentile=0;
+      double accum=0;
+      for (std::size_t i = 0; i<hsize; i++) {
+        accum+=histogram[i];
+        if (accum > 0.9*active_count) { percentile=i*qave/(hsize/2); break; }
+      }
+      //std::cout<<"the 90-percentile pixel value is "<<percentile<<std::endl;
+
+      double adjlevel = 0.4;
+      return (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
+  }
 
   int binning; // either 1 (unbinned) or a power of 2 (binned)
   std::string vendortype;
-  double brightness;
+  double brightness, correction;
   int saturation;
+  double zoom;
+  /* Relationship between binning & zoom for this class:
+        zoom level  zoom    binning   magnification factor
+        ----------  ----    -------   --------------------
+         -2         0.25      4        1/4 x
+         -1         0.5       2        1/2 x
+         0          1         1        1x
+         1          2         1        2x
+         2          4         1        4x
+         etc.
+  */
 
 public:
   inline
@@ -254,11 +262,12 @@ public:
     vendortype(vendortype){
     //Assert that binning is a power of two
     SCITBX_ASSERT ( binning > 0 && (binning & (binning-1) )==0 );
+    zoom = 1./ binning;
     export_size_uncut1 = size1()/binning;
     export_size_uncut2 = size2()/binning;
     channels = af::versa<int, af::c_grid<3> >(af::c_grid<3>(nchannels,
                             export_size_uncut1,export_size_uncut2));
-
+    correction = global_bright_contrast();
   }
 
   //change raw data to reflect different view
@@ -305,17 +314,33 @@ public:
   inline
   void setWindow(
     const double& wxafrac, const double& wyafrac,const double& fraction){
-    export_size_cut1 = export_size_uncut1*fraction;
-    export_size_cut2 = export_size_uncut2*fraction;
+    int apply_zoom = (binning == 1)? zoom : 1;
+    export_size_cut1 = export_size_uncut1*fraction*apply_zoom;
+    export_size_cut2 = export_size_uncut2*fraction*apply_zoom;
     export_m = af::versa<int, af::c_grid<2> >(
        af::c_grid<2>(export_size_cut1,export_size_cut2));
     //Compute integer anchor index based on input fractional dimension:
-    export_anchor_x = export_size_uncut1*wxafrac;
-    export_anchor_y = export_size_uncut2*wyafrac;
+    export_anchor_x = export_size_uncut1*wxafrac*apply_zoom;
+    export_anchor_y = export_size_uncut2*wyafrac*apply_zoom;
   }
 
   inline int ex_size1() const {return export_m.accessor()[0];}
   inline int ex_size2() const {return export_m.accessor()[1];}
+
+  inline void
+  setZoom( const int& zoom_level) {
+    zoom = std::pow(2.,double(zoom_level));
+
+    int potential_binning = int(std::ceil(1./double(zoom)));
+    if (potential_binning != binning) {
+      binning = potential_binning;
+      export_size_uncut1 = size1()/binning;
+      export_size_uncut2 = size2()/binning;
+      channels = af::versa<int, af::c_grid<3> >(af::c_grid<3>(nchannels,
+                            export_size_uncut1,export_size_uncut2));
+      adjust();
+    }
+  }
 
   void adjust(int color_scheme=COLOR_GRAY) {
     using scitbx::graphics_utils::hsv2rgb;
@@ -411,6 +436,29 @@ public:
     }
     export_s = "";
     export_s.reserve(export_size_cut1*export_size_cut2*3);
+    if (zoom > 1.){
+    for (int zoom_x=export_anchor_x;
+         zoom_x< export_anchor_x+export_size_cut1;
+         ++zoom_x) {
+        for (int zoom_y=export_anchor_y;
+             zoom_y< export_anchor_y+export_size_cut2;
+             ++zoom_y) {
+            int i = zoom_x / zoom;
+            int j = zoom_y / zoom;
+            if (acc.is_valid_index(0,i,j) &&
+                detector_location->is_active_area(i*binning,j*binning)){
+              for (int c=0; c<3; ++c) {
+                export_s.push_back((char)channels(c,i,j));
+              }
+            } else {
+                 //pixels not in-bounds within the image get a pink tint
+                 export_s.push_back((char)255);
+                 export_s.push_back((char)228);
+                 export_s.push_back((char)228);
+            }
+        }
+    }
+    } else {
     for (int i=export_anchor_x; i< export_anchor_x+export_size_cut1; ++i) {
         for (int j=export_anchor_y; j< export_anchor_y+export_size_cut2; ++j) {
             if (acc.is_valid_index(0,i,j) &&
@@ -425,6 +473,7 @@ public:
                  export_s.push_back((char)228);
             }
         }
+    }
     }
   }
 
