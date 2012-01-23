@@ -31,7 +31,7 @@ class StrCtrl (ValidatedTextCtrl) :
     if (value is None) :
       return "None"
     else :
-      return '"%s"' % value
+      return '"""%s"""' % value
 
   def FormatValue (self, value) :
     return str(value)
