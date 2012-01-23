@@ -552,9 +552,21 @@ def show_model_vs_data(fmodel):
   sigmaa_plot = None
   if(not fmodel.twin):
     sigmaa_plot = fmodel.sigmaa().show_short(silent=True)
+  r_work_outer_shell = r_free_outer_shell = None
+  if (type(fmodel).__name__ != "twin_model_manager") :
+    f_obs_work_copy = fmodel.f_obs_work().customized_copy()
+    f_obs_work_copy.setup_binner(n_bins=10)
+    bin_selection_work = f_obs_work_copy.binner().selection(10)
+    f_obs_free_copy = fmodel.f_obs_free().customized_copy()
+    f_obs_free_copy.setup_binner(n_bins=10)
+    bin_selection_free = f_obs_free_copy.binner().selection(10)
+    r_work_outer_shell = fmodel.r_work(selection=bin_selection_work)
+    r_free_outer_shell = fmodel.r_free(selection=bin_selection_free)
   return group_args(
     r_work                   = fmodel.r_work(),
     r_free                   = r_free,
+    r_work_outer_shell       = r_work_outer_shell,
+    r_free_outer_shell       = r_free_outer_shell,
     k_sol                    = fmodel.k_sols(),
     b_sol                    = fmodel.b_sol(),
     b_cart                   = fmodel.b_cart(),
@@ -977,6 +989,8 @@ def summarize_results (mvd_obj) :
     unit_cell=getattr(mvd_obj.crystal, "uc", None),
     r_work=mvd_obj.model_vs_data.r_work,
     r_free=mvd_obj.model_vs_data.r_free,
+    r_work_outer_shell=mvd_obj.model_vs_data.r_work_outer_shell,
+    r_free_outer_shell=mvd_obj.model_vs_data.r_free_outer_shell,
     pdb_header_r_work=getattr(mvd_obj.pdb_header, "r_work", None),
     pdb_header_r_free=getattr(mvd_obj.pdb_header, "r_free", None),
     r_work_cutoffs=getattr(mvd_obj.misc, "r_work_cutoff", None),
