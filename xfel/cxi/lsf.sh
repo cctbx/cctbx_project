@@ -97,7 +97,7 @@ while test $# -ge 0; do
         -x)
             # Experiment subdirectory within the ${CXI}.
             if ! ssh ${NODE} "test -d \"${CXI}/$2\" 2> /dev/null"; then
-                echo "exp must be a directory" > /dev/stderr
+                echo "exp must be a subdirectory of ${CXI}" > /dev/stderr
                 exit 1
             fi
             exp="$2"
@@ -124,8 +124,18 @@ if test $# -gt 0; then
 fi
 
 # Take ${exp} from the environment unless overridden on the command
-# line.
+# line.  Construct an absolute path to the directory with the XTC
+# files as well as a sorted list of unique stream numbers for ${run}.
 test -n "${EXP}" -a -z "${exp}"&& exp="${EXP}"
+xtc="${CXI}/${exp}/xtc"
+streams=`ssh ${NODE} "ls ${xtc}/e*-r${run}-s* 2> /dev/null" \
+    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"              \
+    | sort -u                                               \
+    | tr -s "\n" " "`
+if test -z "${streams}"; then
+    echo "No streams in ${xtc}" > /dev/stderr
+    exit 1
+fi
 
 # If num-cpu is given in ${cfg}, use that instead of whatever might be
 # given on the command line.  Otherwise, the number of processes per
@@ -158,15 +168,6 @@ else
     seq=`echo "${seq}" | awk '{ printf("%03d", $1); }'`
 fi
 out="${out}/${seq}"
-
-# Absolute path to the directory with the XTC files.
-xtc="${CXI}/${exp}/xtc"
-
-# Sorted list of unique stream numbers for ${run}.
-streams=`ssh ${NODE} "ls ${xtc}/e*-r${run}-s*" \
-    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:" \
-    | sort -u                                  \
-    | tr -s "\n" " "`
 
 # Create a directory for temporary files, and install a trap to clean
 # it all up.
@@ -201,7 +202,7 @@ for s in ${streams}; do
     cat >> "${tmpdir}/submit.sh" << EOF
 bsub -J "r${run}[${i}]" -o "\${OUT}/stdout/s${s}.out" \\
     -q psfehq -R "span[hosts=1]" \\
-    "\\"\${PYANA}\" -c \"\${OUT}/pyana_s${s}.cfg\" -p \"\${NPROC}\" \\
+    "\"\${PYANA}\" -c \"\${OUT}/pyana_s${s}.cfg\" -p \"\${NPROC}\" \\
                                 \${XTC}/e*-r${run}-s${s}-c*"
 EOF
 done
