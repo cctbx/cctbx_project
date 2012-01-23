@@ -32,17 +32,14 @@ NODE="psexport.slac.stanford.edu"
 # Path to the chosen pyana script.  This should not need to be
 # changed.  According to Marc Messerschmidt following ana-current
 # should always be fine, unless one really wants to make sure
-# everything is kept at the point where one started developing.
-PYANA="${SIT_RELDIR}/${SIT_RELEASE}/arch/${SIT_ARCH}/bin/pyana"
+# everything is kept at the point where one started developing.  Do
+# not use the shell's built-in which(1), which may give a relative
+# path.
+PYANA=`/usr/bin/which cxi.pyana`
 if ! test -x "${PYANA}"; then
     echo "Cannot execute ${PYANA}" > /dev/stderr
     exit 1
 fi
-
-# Absolute path to the python interpreter.  This should not need to be
-# changed.  Do not use the shell's built-in which(1), which may give a
-# relative path.
-PYTHON=`/usr/bin/which libtbx.python`
 
 args=`getopt c:o:p:r:x: $*`
 if test $? -ne 0; then
@@ -132,7 +129,7 @@ test -n "${EXP}" -a -z "${exp}"&& exp="${EXP}"
 
 # If num-cpu is given in ${cfg}, use that instead of whatever might be
 # given on the command line.  Otherwise, the number of processes per
-# node should be between 7 and 9 according to Marc Messerschmidt.
+# host should be between 7 and 9 according to Marc Messerschmidt.
 t=`awk -F= '/^[[:space:]]*num-cpu[[:space:]]*=/ { \
                 printf("%d\n", $2);               \
             }' "${cfg}"`
@@ -165,10 +162,10 @@ out="${out}/${seq}"
 # Absolute path to the directory with the XTC files.
 xtc="${CXI}/${exp}/xtc"
 
-# Sorted list of unique streams for ${run}.
-streams=`ssh ${NODE} "ls ${xtc}/e*-r${run}-s*"          \
-    | sed -e "s:.*-\(s[[:digit:]][[:digit:]]\)-c.*:\1:" \
-    | sort -u                                           \
+# Sorted list of unique stream numbers for ${run}.
+streams=`ssh ${NODE} "ls ${xtc}/e*-r${run}-s*" \
+    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:" \
+    | sort -u                                  \
     | tr -s "\n" " "`
 
 # Create a directory for temporary files, and install a trap to clean
@@ -189,22 +186,23 @@ cat > "${tmpdir}/submit.sh" << EOF
 NPROC="${nproc}"
 OUT="${out}"
 PYANA="${PYANA}"
-PYTHON="${PYTHON}"
 XTC="${xtc}"
 EOF
 for s in ${streams}; do
-    sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"   \
-        -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1${s}-:" \
-        "${cfg}" > "${tmpdir}/pyana_${s}.cfg"
+    sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
+        -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
+        "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
 
+    # Process each stream on a single host as a base-1 indexed job.
     # Cannot use an indented here-document (<<-), because that would
     # require leading tabs which are not permitted by
     # libtbx.find_clutter.
+    i=`expr "${s}" \+ 1`
     cat >> "${tmpdir}/submit.sh" << EOF
-bsub -o "\${OUT}/stdout/${s}.out" -q psfehq -J "r${run}-${s}"    \\
-    "\"\${PYTHON}\" \"\${PYANA}\" -c \"\${OUT}/pyana_${s}.cfg\" \\
-                                -p \"\${NPROC}\"             \\
-                                \${XTC}/e*-r${run}-${s}-c*"
+bsub -J "r${run}[${i}]" -o "\${OUT}/stdout/s${s}.out" \\
+    -q psfehq -R "span[hosts=1]" \\
+    "\\"\${PYANA}\" -c \"\${OUT}/pyana_s${s}.cfg\" -p \"\${NPROC}\" \\
+                                \${XTC}/e*-r${run}-s${s}-c*"
 EOF
 done
 chmod 755 "${tmpdir}/submit.sh"
