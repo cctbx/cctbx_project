@@ -319,7 +319,9 @@ class validation (object) :
   def get_table_data (self) :
     table = []
     for c in self.chains :
-      table.extend(c.get_outliers_table())
+      outliers = c.get_outliers_table()
+      if (outliers is not None) :
+        table.extend(outliers)
     return table
 
   def show (self, out=None) :
