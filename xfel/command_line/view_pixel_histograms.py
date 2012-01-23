@@ -101,6 +101,8 @@ class pixel_histograms(object):
       hist = self.histograms[pixel]
       print pixel
       title = str(pixel)
+      if fit_gaussians:
+        pyplot.subplot(211)
       self.plot_one_histogram(
         hist, window_title=window_title, title=title,log_scale=log_scale,
         normalise=normalise, save_image=save_image)
@@ -129,11 +131,14 @@ class pixel_histograms(object):
     g = curve_fitting.gaussian(params[0], 0, params[2])
     pyplot.plot(x, g(x))
     pyplot.plot(x, y_calc)
+    xlim = pyplot.xlim() # store for reuse below
+    pyplot.subplot(212)
+    pyplot.plot(x, hist.slots().as_double() - y_calc)
+    pyplot.xlim(xlim)
 
   def plot_one_histogram(self, histogram,
                          window_title=None, title=None,
                          log_scale=False, normalise=False, save_image=False):
-    pyplot.clf() # clear current figure
     if log_scale:
       pyplot.yscale("log")
 
