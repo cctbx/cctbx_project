@@ -18,6 +18,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
     kwds = dict(kwds)
     self._path_style = kwds.get("style", WXTBX_PHIL_PATH_VIEW_BUTTON)
+    value = kwds.pop("value", None)
     kwds['style'] = wx.NO_BORDER
     self._formats = ()
     if (kwds.get("size", None) == wx.DefaultSize) :
@@ -59,6 +60,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     szr.Fit(self)
     drop_target = PathDropTarget(self)
     self.SetDropTarget(drop_target)
+    self.SetValue(value)
 
   def SetFormats (self, formats) :
     if (isinstance(formats, str)) :
