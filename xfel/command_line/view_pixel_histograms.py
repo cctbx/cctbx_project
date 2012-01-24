@@ -139,15 +139,15 @@ class pixel_histograms(object):
   def plot_one_histogram(self, histogram,
                          window_title=None, title=None,
                          log_scale=False, normalise=False, save_image=False):
-    if log_scale:
-      pyplot.yscale("log")
-
     slots = histogram.slots().as_double()
     if normalise:
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
       print "normalising by factor: ", normalisation
       slots /= normalisation
     bins, data = hist_outline(histogram)
+    if log_scale:
+      data.set_selected(data == 0, 0.1) # otherwise lines don't get drawn when we have some empty bins
+      pyplot.yscale("log")
     pyplot.plot(bins, data, '-k')
     #pyplot.bar(hist.slot_centers()-0.5*hist.slot_width(), slots, width=hist.slot_width())
     pyplot.xlim(histogram.data_min(), histogram.data_max())
