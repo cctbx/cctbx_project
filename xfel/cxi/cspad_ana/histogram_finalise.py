@@ -55,6 +55,7 @@ class finalise_one_run(object):
       if self.histogram is None:
         self.histogram = d["histogram"]
       else:
+        if len(d["histogram"].keys()) == 0: continue
         self.histogram = update_histograms(self.histogram, d["histogram"])
       self.nmemb += d["nmemb"]
       print "Read %d images from %s" % (d["nmemb"], path)
