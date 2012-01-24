@@ -143,7 +143,7 @@ fi
 t=`awk -F= '/^[[:space:]]*num-cpu[[:space:]]*=/ { \
                 printf("%d\n", $2);               \
             }' "${cfg}"`
-if test -n "${t}"; then
+if test "${t}" -gt 0 2> /dev/null; then
     test -n "${nproc}" && \
         echo "-p option overridden by configuration file" > /dev/stderr
     nproc="${t}"
@@ -179,15 +179,13 @@ trap "ssh ${NODE} \"rm -fr \\\"${out}\\\"\"; \
 # Write a configuration file for the analysis of each stream by
 # substituting the directory names with appropriate directories in
 # ${out}, and appending the stream number to the base name.  Create a
-# script to submit the jobs to the queue.  XXX Dump the environment in
-# here, too?
+# run-script for each job, as well as a convenience script to submit
+# all the jobs to the queue.  XXX Dump the environment in here, too?
 cat > "${tmpdir}/submit.sh" << EOF
 #! /bin/sh
 
-NPROC="${nproc}"
 OUT="${out}"
-PYANA="${PYANA}"
-XTC="${xtc}"
+
 EOF
 for s in ${streams}; do
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
@@ -195,16 +193,32 @@ for s in ${streams}; do
         "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
 
     # Process each stream on a single host as a base-1 indexed job.
+    # Allocate no more than ${nproc} processors.  Allow the job to
+    # start if at least one processor is available on the host.
     # Cannot use an indented here-document (<<-), because that would
     # require leading tabs which are not permitted by
     # libtbx.find_clutter.
     i=`expr "${s}" \+ 1`
     cat >> "${tmpdir}/submit.sh" << EOF
-bsub -J "r${run}[${i}]" -o "\${OUT}/stdout/s${s}.out" \\
-    -q psfehq -R "span[hosts=1]" \\
-    "\"\${PYANA}\" -c \"\${OUT}/pyana_s${s}.cfg\" -p \"\${NPROC}\" \\
-                                \${XTC}/e*-r${run}-s${s}-c*"
+bsub -J "r${run}[${i}]" -n "1,${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
+    -q "psfehq" -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
 EOF
+
+    # Create the run-script for stream ${s}.  Fall back on using a
+    # single processor if the number of available processors cannot be
+    # obtained from the environment.
+    cat > "${tmpdir}/pyana_s${s}.sh" << EOF
+#! /bin/sh
+
+NPROC=\`printenv LSB_MCPU_HOSTS | awk '{ printf("%d\n", \$2); }'\`
+
+test "\${NPROC}" -gt 0 2> /dev/null || NPROC="1"
+"${PYANA}" \\
+    -c "${out}/pyana_s${s}.cfg" \\
+    -p "\${NPROC}" \\
+    "${xtc}"/e*-r${run}-s${s}-c*
+EOF
+    chmod 755 "${tmpdir}/pyana_s${s}.sh"
 done
 chmod 755 "${tmpdir}/submit.sh"
 
@@ -222,6 +236,7 @@ ssh ${NODE} "mkdir -p \"${out}/stdout\" ${directories}"
 # Submit the analysis of all streams to the queueing system.
 scp -pq "${cfg}"                         "${NODE}:${out}/pyana.cfg"
 scp -pq "${tmpdir}"/pyana_s[0-9][0-9].cfg \
+        "${tmpdir}"/pyana_s[0-9][0-9].sh  \
         "${tmpdir}/submit.sh"             "${NODE}:${out}"
 "${tmpdir}/submit.sh"
 rm -fr "${tmpdir}"
