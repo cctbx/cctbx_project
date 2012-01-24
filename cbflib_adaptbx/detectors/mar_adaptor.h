@@ -29,8 +29,9 @@ class AnyImgAdaptor {
   bool read_header_ok;
   long data_read_position;
   bool read_data_ok;
-  FILE* private_file;
   int img_org_data[4];
+ protected:
+  FILE* private_file;
 
  public:
   AnyImgAdaptor(const std::string& filename);
@@ -57,6 +58,9 @@ class Mar345Adaptor: public AnyImgAdaptor {
  public:
   inline Mar345Adaptor(const std::string& filename):
     AnyImgAdaptor(filename){}
+  inline ~Mar345Adaptor(){ // Not sure where to free up FILE * but it must be done
+    if (private_file != NULL) { std::fclose(private_file); }
+  }
 
   bool header_read_specific(img_handle i, FILE* f, int* g);
   bool data_read_specific(img_handle i, FILE* f, int* g);
