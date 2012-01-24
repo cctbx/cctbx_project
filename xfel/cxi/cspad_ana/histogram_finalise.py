@@ -18,6 +18,7 @@ class histogram_finalise(object):
     for i_run, run in enumerate(runs):
       run_scratch_dir = run
       result = finalise_one_run(run_scratch_dir)
+      if result.histogram is None: continue
       if self.histogram is None:
         self.histogram = result.histogram
       else:
@@ -52,10 +53,10 @@ class finalise_one_run(object):
       except EOFError:
         print "EOFError: skipping %s:" %path
         continue
+      if len(d["histogram"].keys()) == 0: continue
       if self.histogram is None:
         self.histogram = d["histogram"]
       else:
-        if len(d["histogram"].keys()) == 0: continue
         self.histogram = update_histograms(self.histogram, d["histogram"])
       self.nmemb += d["nmemb"]
       print "Read %d images from %s" % (d["nmemb"], path)
