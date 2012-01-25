@@ -54,8 +54,8 @@ class reader(slots_getstate_setstate):
     O.sites = []
     for i in xrange(i_type_counts+2, i_type_counts+2+n_sites):
       site_str = lines[i].split()
-      assert len(site_str) == 3
-      site = [float(_) for _ in site_str]
+      assert len(site_str) >= 3
+      site = [float(_) for _ in site_str[:3]]
       O.sites.append(site)
 
   def unit_cell(O):
