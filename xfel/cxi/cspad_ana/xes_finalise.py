@@ -108,9 +108,18 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
   # and/or flagged as a "hot" - in this case the sum is over fewer rows and
   # will introduce artefacts into the spectrum
   if mask_focus is not None:
-    mask_sum = flex.sum(mask_focus, axis=0)
-    n_rows = spectrum_focus.all()[0]
-    spectrum *= ((n_rows + mask_sum).as_double()/n_rows)
+    scales = flex.sum(spectrum_focus, axis=1).as_double()
+    scales /= flex.sum(scales)
+    for j in range(spectrum_focus.all()[1]):
+      sum_column_weights = 0
+      for i in range(spectrum_focus.all()[0]):
+        if mask_focus[i,j] == 0:
+          sum_column_weights += scales[i]
+      if sum_column_weights < 1:
+        #print "pixels missing from column %i" %j
+        #print sum_column_weights
+        if sum_column_weights > 0:
+          spectrum[j] *= (1/sum_column_weights)
 
 
   omit_col = True
