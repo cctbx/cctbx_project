@@ -386,6 +386,7 @@ struct flex_image_wrapper {
       .def("size2", &w_t::size2)
       .def("setZoom", &w_t::setZoom)
       .def("setWindow", &w_t::setWindow)
+      .def("setWindowCart", &w_t::setWindowCart)
       .def("ex_size1", &w_t::ex_size1)
       .def("ex_size2", &w_t::ex_size2)
       .def("adjust", &w_t::adjust,
