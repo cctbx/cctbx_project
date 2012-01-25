@@ -241,6 +241,7 @@ private:
   /* Relationship between binning & zoom for this class:
         zoom level  zoom    binning   magnification factor
         ----------  ----    -------   --------------------
+         -3         0.125     8        1/8 x
          -2         0.25      4        1/4 x
          -1         0.5       2        1/2 x
          0          1         1        1x
@@ -322,6 +323,22 @@ public:
     //Compute integer anchor index based on input fractional dimension:
     export_anchor_x = export_size_uncut1*wxafrac*apply_zoom;
     export_anchor_y = export_size_uncut2*wyafrac*apply_zoom;
+  }
+
+  inline
+  void setWindowCart(
+    const double& xtile, const double& ytile,const double& fraction){
+      // fractional coverage of image is defined on dimension 1 (slow) only,
+      // allowing square subarea display of a rectangular detector image
+      // tile coverage is specified in cartesian rather than fractional image coordinates
+    int apply_zoom = (binning == 1)? zoom : 1;
+    export_size_cut1 = iround((double(size1())/binning)*fraction*apply_zoom);
+    export_size_cut2 = iround((double(size2())/binning)*fraction*apply_zoom*(double(size1())/double(size2())));
+    export_m = af::versa<int, af::c_grid<2> >(
+       af::c_grid<2>(export_size_cut1,export_size_cut2));
+    //Compute integer anchor index based on input fractional dimension:
+    export_anchor_x = iround(export_size_uncut1*xtile*fraction*apply_zoom);
+    export_anchor_y = iround(export_size_uncut2*ytile*fraction*apply_zoom*(double(size1())/double(size2())));
   }
 
   inline int ex_size1() const {return export_m.accessor()[0];}
