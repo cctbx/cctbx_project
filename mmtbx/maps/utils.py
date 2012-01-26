@@ -51,6 +51,7 @@ class fast_maps_from_hkl_file (object) :
                 quiet=False,
                 anomalous_map=False,
                 fill_maps=True,
+                save_fmodel=False,
                 ) :
     adopt_init_args(self, locals())
     from iotbx import file_reader
@@ -107,6 +108,7 @@ class fast_maps_from_hkl_file (object) :
       self.r_free_flags = new_flags.common_set(f_obs)
       self.f_obs = f_obs.common_set(self.r_free_flags)
     self.log = None
+    self.fmodel = None
     if auto_run :
       self.run()
 
@@ -128,6 +130,8 @@ class fast_maps_from_hkl_file (object) :
       bulk_solvent_correction=True,
       apply_back_trace_of_b_cart=False,
       anisotropic_scaling=True)
+    if (self.save_fmodel) :
+      self.fmodel = fmodel
     (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=self.fill_maps)
     anom_map = None
     if (self.anomalous_map) and (self.f_obs.anomalous_flag()) :

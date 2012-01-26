@@ -5,9 +5,7 @@ from libtbx.utils import Usage, multi_out
 import os
 import sys
 
-master_phil = libtbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
-prune {
+model_prune_master_phil = """
   resolution_factor = 1/4.
     .type = float
   sidechains = True
@@ -26,12 +24,18 @@ prune {
     .type = float
   min_cc_sidechain = 0.7
     .type = float
+"""
+
+master_phil = libtbx.phil.parse("""
+include scope mmtbx.utils.cmdline_input_phil_str
+prune {
+  %s
 }
 output {
   file_name = None
     .type = path
 }
-""", process_includes=True)
+""" % model_prune_master_phil, process_includes=True)
 
 def id_str (chain, residue_group, atom_group) :
   return "%3s %s%4s%s" % (atom_group.resname, chain.id, residue_group.resseq,
@@ -199,6 +203,64 @@ def get_atom_radii (atoms, atom_radius) :
       radii[i_seq] = 1.0
   return radii
 
+def run_post_refinement (
+    pdb_file,
+    map_coeffs_file,
+    output_file=None,
+    params=None,
+    f_map_label="2FOFCWT,PH2FOFCWT",
+    diff_map_label="FOFCWT,PHFOFCWT",
+    model_map_label="F-model,PHIF-model",
+    write_model=True,
+    out=None) :
+  if (out is None) : out = sys.stdout
+  if (params is None) :
+    params = master_phil.fetch().extract().prune
+  from iotbx import file_reader
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+  pdb_in.assert_file_type("pdb")
+  pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+  pdb_hierarchy.atoms().reset_i_seq()
+  # XXX this probably shouldn't be necessary
+  pdb_hierarchy.atoms().set_chemical_element_simple_if_necessary()
+  mtz_in = file_reader.any_file(map_coeffs_file, force_type="hkl")
+  mtz_in.assert_file_type("hkl")
+  f_map_coeffs = diff_map_coeffs = model_map_coeffs = None
+  for array in mtz_in.file_server.miller_arrays :
+    labels = array.info().label_string()
+    if (labels == f_map_label) :
+      f_map_coeffs = array
+    elif (labels == diff_map_label) :
+      diff_map_coeffs = array
+    elif (labels == model_map_label) :
+      model_map_coeffs = array
+  if (f_map_coeffs is None) :
+    raise RuntimeError("2mFo-DFc map not found (expected labels %s)." %
+      f_map_label)
+  elif (diff_map_coeffs is None) :
+    raise RuntimeError("mFo-DFc map not found (expected labels %s)." %
+      diff_map_label)
+  elif (model_map_coeffs is None) :
+    raise RuntimeError("Fc map not found (expected labels %s)." %
+      model_map_label)
+  new_hierarchy = prune_model(
+    f_map_coeffs=f_map_coeffs,
+    diff_map_coeffs=diff_map_coeffs,
+    model_map_coeffs=model_map_coeffs,
+    pdb_hierarchy=pdb_hierarchy,
+    params=params,
+    out=out)
+  if (write_model) :
+    if (output_file is None) :
+      base_name = os.path.basename(pdb_file)
+      output_file = os.path.splitext(base_name)[0] + "_pruned.pdb"
+    f = open(output_file, "w")
+    f.write("%s\n" % "\n".join(pdb_in.file_object.crystallographic_section()))
+    f.write(new_hierarchy.as_pdb_string())
+    f.close()
+    return output_file
+  return new_hierarchy
+
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
   if (len(args) == 0) :
@@ -248,6 +310,7 @@ correction) to remove spurious loops and sidechains.
   f.close()
   log.close()
   print >> out, "Wrote %s" % params.output.file_name
+  return params.output.file_name
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
