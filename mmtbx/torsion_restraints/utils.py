@@ -7,6 +7,7 @@ from libtbx import group_args
 import ccp4io_adaptbx
 import math
 import mmtbx.alignment
+import sys
 
 class alignment_manager(object):
 
