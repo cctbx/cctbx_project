@@ -12,7 +12,9 @@ class alignment_manager(object):
 
   def __init__(self,
                pdb_hierarchy,
-               use_segid=False):
+               use_segid=False,
+               log=None):
+    if(log is None): log = sys.stdout
     self.sequences = {}
     self.padded_sequences = {}
     self.structures = {}
