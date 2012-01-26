@@ -33,6 +33,12 @@ def posix_relpath(
     return "."
   return op.join(*rel_list)
 
+def nt_is_true_abs(path):
+  prefix, _ = op.splitunc(path)
+  if (bool(prefix)): return True
+  prefix, _ = op.splitdrive(path)
+  return bool(prefix)
+
 def nt_relpath(
       path,
       start=".",
@@ -40,6 +46,11 @@ def nt_relpath(
   # based on relpath() in Python-2.7.2/Lib/ntpath.py
   if not path:
     raise ValueError("no path specified")
+  if (enable_abspath_if_through_root
+        and not (    nt_is_true_abs(start)
+                 and nt_is_true_abs(path))):
+    raise RuntimeError(
+      "nt_relpath(): both path and start must be absolute paths.")
   start_abs = abs_norm(start)
   path_abs = abs_norm(path)
   def _abspath_split(abs):
@@ -72,8 +83,8 @@ def nt_relpath(
     if e1.lower() != e2.lower():
       break
     i += 1
-  if (i == 0 and path_is_unc and enable_abspath_if_through_root):
-    return "\\\\" + "\\".join(path_list)
+  if (i == 0 and enable_abspath_if_through_root):
+    return path_prefix + "\\" + "\\".join(path_list)
   rel_list = [".."] * (len(start_list)-i) + path_list[i:]
   if not rel_list:
     return "."
