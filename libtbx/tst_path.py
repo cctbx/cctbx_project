@@ -43,12 +43,11 @@ def exercise_posix_relpath(f, enable_abspath_if_through_root):
 
 def exercise_nt_relpath(f, enable_abspath_if_through_root):
   import os
-  currentdir = os.path.split(os.getcwd())[-1]
+  _, currentdir = os.path.split(os.getcwd())
   def check(args, r_expected, ra_expected=None):
-    if (ra_expected is None): ra_expected = r_expected
     result = f(*args)
     assert result == r_expected
-    if (enable_abspath_if_through_root):
+    if (enable_abspath_if_through_root and ra_expected is not None):
       result = f(*(args), **{"enable_abspath_if_through_root": True})
       assert result == ra_expected
   check(["a"], 'a')
@@ -58,24 +57,28 @@ def exercise_nt_relpath(f, enable_abspath_if_through_root):
   check(["a", "../b"], '..\\'+currentdir+'\\a')
   check(["a/b", "../c"], '..\\'+currentdir+'\\a\\b')
   check(["a", "b/c"], '..\\..\\a')
-  check(["//conky/mountpoint/a", "//conky/mountpoint/b/c"], '..\\..\\a')
+  check(["//conky/mountpoint/a", "//conky/mountpoint/b/c"], '..\\..\\a',
+    "\\\\conky\\mountpoint\\a")
   check(["a", "a"], '.')
-  check(["/foo/bar/bat", "/x/y/z"], '..\\..\\..\\foo\\bar\\bat',
-    "\\foo\\bar\\bat")
-  check(["/foo/bar/bat", "/foo/bar"], 'bat')
-  check(["/foo/bar/bat", "/"], 'foo\\bar\\bat', "\\foo\\bar\\bat")
-  check(["/", "/foo/bar/bat"], '..\\..\\..', "\\")
-  check(["/foo/bar/bat", "/x"], '..\\foo\\bar\\bat', "\\foo\\bar\\bat")
-  check(["/x", "/foo/bar/bat"], '..\\..\\..\\x', "\\x")
-  check(["/", "/"], '.', "\\")
+  check(["c:/foo/bar/bat", "c:/x/y/z"], '..\\..\\..\\foo\\bar\\bat',
+    "c:\\foo\\bar\\bat")
+  check(["c:/foo/bar/bat", "c:/foo/bar"], 'bat', 'bat')
+  check(["c:/foo/bar/bat", "c:/"], 'foo\\bar\\bat', "c:\\foo\\bar\\bat")
+  check(["c:/", "c:/foo/bar/bat"], '..\\..\\..', "c:\\")
+  check(["c:/foo/bar/bat", "c:/x"], '..\\foo\\bar\\bat', "c:\\foo\\bar\\bat")
+  check(["c:/x", "c:/foo/bar/bat"], '..\\..\\..\\x', "c:\\x")
+  check(["c:/", "c:/"], '.', "c:\\")
   check(["/a", "/a"], '.')
   check(["/a/b", "/a/b"], '.')
-  check(["c:/foo", "C:/FOO"], '.')
+  check(["c:/foo", "C:/FOO"], '.', '.')
+  check(["c:/aa", "C:/cccc"], '..\\aa', 'c:\\aa')
+  check(["c:/aa/bbb", "C:/cccc/ddddd"], '..\\..\\aa\\bbb', 'c:\\aa\\bbb')
   #
   if (enable_abspath_if_through_root):
     assert f("c:\\foo", "d:\\foo", True) == "c:\\foo"
     assert f("//m/d", "//n/d", True) == "\\\\m\\d"
     assert f("d:\\foo", "//n/d", True) == "d:\\foo"
+    assert f("//n/d", "d:\\foo", True) == "\\\\n\\d"
 
 def exercise_relpath():
   import sys, os
