@@ -127,7 +127,7 @@ def load_result (file_name,
   result_array.show_summary(f=out, prefix="  ")
   # XXX don't force reference setting here, it will be done later, after the
   # original unit cell is recorded
-  return result_array
+  return obj
 
 class intensity_data (object) :
   """
@@ -158,6 +158,7 @@ class frame_data (intensity_data) :
     self.accept = False
     self.indexed_cell = None
     self.log_out = file_name
+    self.wavelength = None
 
   def set_indexed_cell (self, unit_cell) :
     self.indexed_cell = unit_cell
@@ -271,6 +272,7 @@ class scaling_manager (intensity_data) :
     self.rejected_fractions = flex.double()
     self.uc_values = unit_cell_distribution()
     self.d_min_values = flex.double()
+    self.wavelength = flex.double()
     self.initialize()
 
   def scale_all (self, file_names) :
@@ -369,6 +371,7 @@ class scaling_manager (intensity_data) :
       self.rejected_fractions.append(frac_rejected)
       self.d_min_values.append(data.d_min)
     self.corr_values.append(data.corr)
+    self.wavelength.append(data.wavelength)
     del data
 
   def _add_all_frames (self, data) :
@@ -397,6 +400,7 @@ class scaling_manager (intensity_data) :
     self.d_min_values.extend(data.d_min_values)
     self.observations.extend(data.observations)
     self.rejected_fractions.extend(data.rejected_fractions)
+    self.wavelength.extend(data.wavelength)
 
     self.uc_values.add_cells(data.uc_values)
 
@@ -483,7 +487,7 @@ class scaling_manager (intensity_data) :
     mtz_out = all_obs.as_mtz_dataset(
       column_root_label="Iobs",
       title=self.params.output.title,
-      wavelength=self.params.wavelength)
+      wavelength=flex.mean(self.wavelength))
     mtz_out.add_miller_array(
       miller_array=all_obs.average_bijvoet_mates(),
       column_root_label="IMEAN")
@@ -535,49 +539,63 @@ class scaling_manager (intensity_data) :
         wrong_bravais=wrong_bravais,
         wrong_cell=wrong_cell)
       return null
-    indexed_cell = result.unit_cell()
+    observations = result["observations"][0]
+    indexed_cell = observations.unit_cell()
     # Now do manipulate the data to conform to unit cell, asu, and space group
     # of reference
     # Only works if there is NOT an indexing ambiguity!
-    result = result.customized_copy(
+    observations = observations.customized_copy(
       crystal_symmetry=self.miller_set.crystal_symmetry()
       ).resolution_filter(d_min=self.params.d_min).map_to_asu()
     print >> out, "Data in reference setting:"
-    #result.show_summary(f=out, prefix="  ")
-    show_observations(result, out=out)
+    #observations.show_summary(f=out, prefix="  ")
+    show_observations(observations, out=out)
     # Match up the observed intensities against the reference data
     # set, i_model, instead of the pre-generated miller set,
     # miller_set.
     matches = miller.match_indices(
       self.i_model.indices(),
-      result.indices())
+      observations.indices())
     data = frame_data(self.n_refl, file_name)
     data.set_indexed_cell(indexed_cell)
-    data.d_min = result.d_min()
+    data.d_min = observations.d_min()
     # Update the count for each matched reflection.  This counts
     # reflections with negative intensities, too.
     data.completeness +=  (~matches.single_selection(0)).as_int()
-    # Initialise first- and second-order statistics.
-    N          = 0
-    sum_xx     = 0
-    sum_xy     = 0
-    sum_yy     = 0
-    sum_x      = 0
-    sum_y      = 0
-    wavelength = self.params.wavelength
+
+    # The wavelength from the command line overrides the wavelength in
+    # the pickled integration file.  XXX The wavelength parameter
+    # should probably be removed from master_phil once all integration
+    # pickle files contain it.
+    if (self.params.wavelength is not None):
+      wavelength = self.params.wavelength
+    elif (result.has_key("wavelength")):
+      wavelength = result["wavelength"]
+    else:
+      # XXX Give error, or raise exception?
+      return None
     assert (wavelength > 0)
+    data.wavelength = wavelength
+
+    # Initialise first- and second-order statistics.
+    N = 0
+    sum_xx = 0
+    sum_xy = 0
+    sum_yy = 0
+    sum_x = 0
+    sum_y = 0
     for pair in matches.pairs():
       data.n_obs += 1
-      if (result.data()[pair[1]] <= 0):
+      if (observations.data()[pair[1]] <= 0):
         data.n_rejected += 1
         continue
-      cos_tt = math.cos(result.two_theta(wavelength).data()[pair[1]])
+      cos_tt = math.cos(observations.two_theta(wavelength).data()[pair[1]])
       cos_sq_tt = cos_tt * cos_tt
       pfactor = (1.+cos_sq_tt)/2.
       # Update statistics using reference intensities (I_r), and
       # observed intensities (I_o).
       I_r = self.i_model.data()[pair[0]]
-      I_o = result.data()[pair[1]] * pfactor
+      I_o = observations.data()[pair[1]] * pfactor
       N      += 1
       sum_xx += I_r**2
       sum_yy += I_o**2
@@ -600,25 +618,26 @@ class scaling_manager (intensity_data) :
     if (corr > self.params.min_corr) :
       data.accept = True
       for pair in matches.pairs():
-        if (result.data()[pair[1]] <= 0) :
+        if (observations.data()[pair[1]] <= 0) :
           continue
         # pfactor is the polarization correction for reflected light (doesn't
         # account for incident polarization)
-        cos_tt = math.cos(result.two_theta(wavelength).data()[pair[1]])
+        cos_tt = math.cos(observations.two_theta(wavelength).data()[pair[1]])
         cos_sq_tt = cos_tt * cos_tt
         pfactor = (1.+cos_sq_tt)/2.
-        Intensity = result.data()[pair[1]] * pfactor / slope
+        Intensity = observations.data()[pair[1]] * pfactor / slope
 
         # Add the reflection as a two-tuple of intensity and I/sig(I)
         # to the dictionary of observations.
         index = self.i_model.indices()[pair[0]]
-        isigi = (Intensity, result.data()[pair[1]] / result.sigmas()[pair[1]])
+        isigi = (Intensity,
+                 observations.data()[pair[1]] / observations.sigmas()[pair[1]])
         if (index in data.ISIGI):
           data.ISIGI[index].append(isigi)
         else:
           data.ISIGI[index] = [isigi]
 
-        sigma = result.sigmas()[pair[1]] * pfactor / slope
+        sigma = observations.sigmas()[pair[1]] * pfactor / slope
         variance = sigma * sigma
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
@@ -638,10 +657,11 @@ def run(args):
 
   if ((work_params.d_min is None) or
       (work_params.data is None) or
-      (work_params.model is None) or
-      (work_params.wavelength is None)) :
-    raise Usage("cxi.merge d_min=4.0 data=~/scratch/r0220/006/strong/ model=3bz1_3bz2_core.pdb wavelength=1.36")
-
+      (work_params.model is None)) :
+    raise Usage("cxi.merge "
+                "d_min=4.0 "
+                "data=~/scratch/r0220/006/strong/ "
+                "model=3bz1_3bz2_core.pdb")
   if ((work_params.rescale_with_average_cell) and
       (not work_params.set_average_unit_cell)) :
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
@@ -844,7 +864,7 @@ def show_overall_observations(obs,redundancy,ISIGI,out=None,
     fmt = " %s %s %s       %s  %s %s   %s %s %s"
     print >>out,fmt%(
       format_value("%3d",   bin.i_bin),
-      format_value("%-13s", bin.d_range),
+      format_value("%-13s", bin.d_range), # XXX This doesn't always work, compare thermolysin runs with PSII with spots out to 181 A.
       format_value("%13s",  bin.complete_tag),
       format_value("%6.2f", bin.redundancy),
       format_value("%6d",   bin.measurements),

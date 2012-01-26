@@ -217,6 +217,7 @@ class IntegrateCharacters:
             xbeam = local["r_xbeam"],
             ybeam = local["r_ybeam"],
             distance = local["r_distance"],
+            wavelength = float(local["wavelength"]),
             residual = local["r_residual"],
             mosaicity = local["r_mosaicity"],
             pointgroup = local["spacegroup"],
