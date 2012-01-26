@@ -63,7 +63,7 @@ class peaks_holes_container (object) :
     n_anom_peaks = None
     if (self.anom_peaks is not None) :
       n_anom_peaks = len(self.anom_peaks.heights)
-    n_water_peaks = None
+    n_water_peaks = n_water_anom_peaks = None
     if (self.water_peaks is not None) :
       n_water_peaks = len(self.water_peaks)
     if (self.water_anom_peaks is not None) :
