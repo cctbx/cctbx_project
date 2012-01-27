@@ -102,28 +102,22 @@ class common_mode_correction(object):
     self.dark_img = None
     if (dark_path is not None):
       assert dark_stddev is not None
-      try:
-        dark_dict = easy_pickle.load(dark_path)
-        #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
-        self.dark_img = dark_dict['DATA']
-        assert isinstance(self.dark_img, flex.double)
+      dark_dict = easy_pickle.load(dark_path)
+      #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
+      self.dark_img = dark_dict['DATA']
+      assert isinstance(self.dark_img, flex.double)
 
-        dark_stddev_dict = easy_pickle.load(dark_stddev)
-        self.dark_stddev = dark_stddev_dict['DATA']
-        assert isinstance(self.dark_stddev, flex.double)
-      except IOError:
-        raise RuntimeError("Failed to load dark image")
+      dark_stddev_dict = easy_pickle.load(dark_stddev)
+      self.dark_stddev = dark_stddev_dict['DATA']
+      assert isinstance(self.dark_stddev, flex.double)
       self.dark_mask = (self.dark_stddev > 0)
 
     self.gain_map = None
     if gain_map_path is not None:
       self.gain_map
-      try:
-        gain_dict = easy_pickle.load(gain_map_path)
-        self.gain_map = gain_dict['DATA']
-        assert isinstance(self.gain_map, flex.double)
-      except IOError:
-        raise RuntimeError("Failed to load gain map")
+      gain_dict = easy_pickle.load(gain_map_path)
+      self.gain_map = gain_dict['DATA']
+      assert isinstance(self.gain_map, flex.double)
 
 
   def beginjob(self, evt, env):
