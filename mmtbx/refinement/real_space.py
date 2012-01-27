@@ -5,6 +5,8 @@ from libtbx import adopt_init_args
 from libtbx.str_utils import format_value
 import scitbx.lbfgs
 from cctbx import maptbx
+from cctbx.array_family import flex
+from mmtbx import utils
 
 master_params_str = """\
 real_space_refinement
@@ -269,3 +271,63 @@ class simple(object):
       self.rms_bonds_final = es.bond_deviations()[2]
     self.weight_final = weight
     self.sites_cart_result = sites_cart_result
+
+class box_refinement_manager(object):
+  def __init__(self,
+               xray_structure,
+               pdb_hierarchy,
+               target_map,
+               geometry_restraints_manager):
+    self.xray_structure = xray_structure
+    self.sites_cart = xray_structure.sites_cart()
+    self.pdb_hierarchy = pdb_hierarchy
+    self.target_map = target_map
+    self.geometry_restraints_manager = geometry_restraints_manager
+
+  def update_xray_structure(self, new_xray_structure):
+    self.xray_structure = new_xray_structure
+
+  def update_target_map(self, new_target_map):
+    self.target_map = new_target_map
+
+  def refine(self,
+             selection,
+             selection_buffer_radius=5,
+             box_cushion=2,
+             real_space_gradients_delta=1./4):
+    sites_cart_moving = self.sites_cart
+    selection_within = self.xray_structure.selection_within(
+      radius    = selection_buffer_radius,
+      selection = selection)
+    sel = selection.select(selection_within)
+    iselection = flex.size_t()
+    for i, state in enumerate(selection):
+      if state:
+        iselection.append(i)
+    box = utils.extract_box_around_model_and_map(
+            xray_structure   = self.xray_structure,
+            pdb_hierarchy    = self.pdb_hierarchy,
+            map_data         = self.target_map,
+            selection        = selection_within,
+            box_cushion      = box_cushion)
+    new_unit_cell = box.xray_structure_box.unit_cell()
+    geo_box = \
+      self.geometry_restraints_manager.select(box.selection_within)
+    geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
+    map_box = box.map_box
+    sites_cart_box = box.xray_structure_box.sites_cart()
+    real_space_result = simple(
+      target_map = map_box,
+      sites_cart = sites_cart_box,
+      selection = sel,
+      real_space_gradients_delta = real_space_gradients_delta,
+      geometry_restraints_manager = geo_box)
+    sites_cart_box_refined = real_space_result.sites_cart_result
+    sites_cart_box_refined_shifted_back = \
+      sites_cart_box_refined + box.shift_to_map_boxed_sites_back
+    sites_cart_refined = sites_cart_box_refined_shifted_back.select(
+                           sel)
+    sites_cart_moving = sites_cart_moving.set_selected(
+      iselection, sites_cart_refined)
+    self.xray_structure.set_sites_cart(sites_cart_moving)
+    self.sites_cart = self.xray_structure.sites_cart()
