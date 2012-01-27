@@ -27,10 +27,10 @@ def run(args):
   xes_from_histograms(pixel_histograms, output_dirname=output_dirname)
 
 def xes_from_histograms(pixel_histograms, output_dirname="."):
-  #sum_img = flex.int(flex.grid(391,370), 0) # XXX define the image size some other way?
   sum_img = flex.int(flex.grid(370,391), 0) # XXX define the image size some other way?
 
   photon_threshold = 20 # XXX
+  two_photon_threshold = 50 # XXX
   mask = flex.int(sum_img.accessor(), 0)
 
   start_row = 370
@@ -48,7 +48,7 @@ def xes_from_histograms(pixel_histograms, output_dirname="."):
   results = [r for so, r in stdout_and_results]
 
   for i, pixel in enumerate(pixels):
-    print i
+    #print i
     start_row = min(start_row, pixel[0])
     end_row = max(end_row, pixel[0])
     n_photons = 0
@@ -64,9 +64,13 @@ def xes_from_histograms(pixel_histograms, output_dirname="."):
     else:
       gaussians = results[i]
     hist = pixel_histograms.histograms[pixel]
+    if gaussians is None:
+      # Presumably the peak fitting failed in some way
+      print "Skipping pixel %s"
+      continue
     zero_peak_diff = gaussians[0].params[1]
     gain = gaussians[1].params[1] - gaussians[0].params[1]
-    if abs(gain - 30) > 10:
+    if abs(gain - 30) > 15:
       print "bad gain!!!!!", pixel, gain
       mask[pixel] = 1
       continue
@@ -76,17 +80,25 @@ def xes_from_histograms(pixel_histograms, output_dirname="."):
         #print "bad sigma!!!!!", pixel, sigma
         #mask[pixel] = 1
         #continue
-    cutoff = (photon_threshold + zero_peak_diff) * 30/gain
-    i_slot_cutoff = hist.get_i_slot(cutoff)
-    #print hist.get_i_slot(photon_threshold), i_slot_cutoff
+    one_photon_cutoff, two_photon_cutoff = [
+      (threshold + zero_peak_diff) * gain/30
+      for threshold in (photon_threshold, two_photon_threshold)]
+    i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
+    i_two_photon_cutoff = hist.get_i_slot(two_photon_cutoff)
     slots = hist.slots()
-    for j in range(i_slot_cutoff, len(slots)):
-      if j == i_slot_cutoff:
+    for j in range(i_one_photon_cutoff, len(slots)):
+      if j == i_one_photon_cutoff:
         center = hist.slot_centers()[j]
         upper = center + 0.5 * hist.slot_width()
-        n_photons += int(round((upper - cutoff)/hist.slot_width() * slots[j]))
+        n_photons += int(round((upper - one_photon_cutoff)/hist.slot_width() * slots[j]))
+      elif j == i_two_photon_cutoff:
+        center = hist.slot_centers()[j]
+        upper = center + 0.5 * hist.slot_width()
+        n_photons += 2 * int(round((upper - two_photon_cutoff)/hist.slot_width() * slots[j]))
+      elif j < i_two_photon_cutoff:
+        n_photons += int(round(slots[j]))
       else:
-        n_photons += slots[j]
+        n_photons += 2 * int(round(slots[j]))
     sum_img[pixel] = n_photons
 
   mask.set_selected(sum_img == 0, 1)
