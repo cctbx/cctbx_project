@@ -62,25 +62,9 @@ class finalise_one_run(object):
       print "Read %d images from %s" % (d["nmemb"], path)
 
     print "Number of images used: %i" %self.nmemb
-    assert self.nmemb > 1
+    assert self.nmemb > 0
 
 def update_histograms(hist_dict1, hist_dict2):
   for key, value in hist_dict1.iteritems():
     value.update(hist_dict2[key])
   return hist_dict1
-
-if __name__ == '__main__':
-  import sys
-  args = sys.argv[1:]
-  assert len(args) > 0
-  command_line = (option_parser()
-                  .option("--output_dirname", "-o",
-                          type="string",
-                          help="Directory for output files.")
-                  ).process(args=args)
-  output_dirname = command_line.options.output_dirname
-  runs = command_line.args
-  if output_dirname is None:
-    output_dirname = os.path.join(runs[0], "finalise")
-  print "Output directory: %s" %output_dirname
-  histogram_finalise(output_dirname, runs)
