@@ -74,7 +74,7 @@ def scattering_prediction(reflections, UB_mat, rotation_vector,
 
                 rot_mat = rotation_vector.axis_and_angle_as_r3_rotation_matrix(
                     omegas[omegaidx])
-                
+
                 assert(math.fabs(rot_mat.determinant() - 1.0) < 0.0001)
 
                 H1 = (rot_mat * UB_mat)*hkl
@@ -122,7 +122,7 @@ if __name__ == '__main__':
                         cstar_vec.dot(astar_vec))
     assert approx_equal(astar*bstar*math.cos(math.pi*gammastar/180),
                         astar_vec.dot(bstar_vec))
-    
+
     # proof complete, bmat == A*
     #----------------------------
 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                         wavelength, resolution)
 
     # Now repeat the entire excercise for some non-integer Miller indices
-    
+
     float_indices = []
     for h in range(-maxh, maxh + 1):
         for k in range(-maxk, maxk + 1):

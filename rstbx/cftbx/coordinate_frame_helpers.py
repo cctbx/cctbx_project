@@ -10,7 +10,7 @@ class coordinate_frame_information:
 
     def __init__(self, detector_origin, detector_fast, detector_slow,
                  detector_size_fast_slow, detector_pixel_size_fast_slow,
-                 rotation_axis, sample_to_source, wavelength, 
+                 rotation_axis, sample_to_source, wavelength,
                  real_space_a = None, real_space_b = None,
                  real_space_c = None, space_group_number = None):
         self._detector_origin = detector_origin
@@ -29,7 +29,7 @@ class coordinate_frame_information:
         self._R_to_CBF = None
         self._R_to_Rossmann = None
         self._R_to_Mosflm = None
-        
+
         return
 
     def get_detector_origin(self):
@@ -156,15 +156,15 @@ def align_reference_frame(primary_axis, primary_target,
     else:
         angle_s = - orthogonal_component(axis_s, secondary_target).angle(
             orthogonal_component(axis_s, Rprimary * secondary_axis))
-        
+
     Rsecondary = axis_s.axis_and_angle_as_r3_rotation_matrix(angle_s)
 
     return Rsecondary * Rprimary
-        
+
 def is_xds_xparm(putative_xds_xparm_file):
     '''See if this file looks like an XDS XPARM file i.e. it consists of 42
     floating point values and nothing else.'''
-    
+
     tokens = open(putative_xds_xparm_file).read().split()
     if len(tokens) != 42:
         return False
@@ -180,7 +180,7 @@ def import_xds_xparm(xparm_file):
     into the standard coordinate frame, record this as a dictionary.'''
 
     values = map(float, open(xparm_file).read().split())
-    
+
     assert(len(values) == 42)
 
     # first determine the rotation R from the XDS coordinate frame used in
@@ -196,7 +196,7 @@ def import_xds_xparm(xparm_file):
 
     B = - matrix.col(beam).normalize()
     A = matrix.col(axis).normalize()
-    
+
     X = matrix.col(x).normalize()
     Y = matrix.col(y).normalize()
     N = X.cross(Y)
@@ -215,7 +215,7 @@ def import_xds_xparm(xparm_file):
 
     distance = values[14]
     ox, oy = values[15:17]
-    
+
     a, b, c = values[33:36], values[36:39], values[39:42]
 
     detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
@@ -228,18 +228,18 @@ def import_xds_xparm(xparm_file):
     real_space_b = R * matrix.col(b)
     real_space_c = R * matrix.col(c)
     space_group_number = int(values[26])
-    
+
     return coordinate_frame_information(
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number)
-    
+
 def test_align_reference_frame():
-    
+
     _i = (1, 0, 0)
     _j = (0, 1, 0)
     _k = (0, 0, 1)
-    
+
     primary_axis = _i
     primary_target = _i
     secondary_axis = _k
@@ -262,7 +262,7 @@ def test_align_reference_frame():
                               secondary_axis, secondary_target)
 
     for j in range(3):
-        assert(math.fabs((m * primary_axis).elems[j] - 
+        assert(math.fabs((m * primary_axis).elems[j] -
                          matrix.col(primary_target).elems[j]) < 0.001)
 
 def test_align_reference_frame_dw():
@@ -313,14 +313,14 @@ def find_closest_matrix(moving, target):
 
     trace = 0.0
     reindex = matrix.identity(3)
-    
+
     for op in sgtbx.space_group_info('P422').type().group().all_ops():
         moved = matrix.sqr(op.r().as_double()) * moving
         if (moved.inverse() * target).trace() > trace:
             trace = (moved.inverse() * target).trace()
             reindex = matrix.sqr(op.r().as_double())
-            
+
     return reindex
-    
+
 if __name__ == '__main__':
     test_align_reference_frame_brute()

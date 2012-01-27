@@ -144,7 +144,7 @@ struct scattering_list {
 
 };
 
-/* additional code for reflection prediction - a class which takes the 
+/* additional code for reflection prediction - a class which takes the
    rotation axis, beam vector, UB matrix, detector origin, detector fast
    and slow axes, the extent of the detector in these directions w.r.t.
    the origin. assumes rectangular detector, edges colinear with fast and
@@ -153,7 +153,7 @@ struct scattering_list {
    here is the corresponding Python class:
 
 class reflection_prediction:
-    def __init__(self, axis, s0, ub, detector_origin, 
+    def __init__(self, axis, s0, ub, detector_origin,
                  detector_fast, detector_slow,
                  f_min, f_max, s_min, s_max):
         self._axis = axis
@@ -170,22 +170,22 @@ class reflection_prediction:
 
         detector_normal = self._detector_fast.cross(self._detector_slow)
         distance = self._detector_origin.dot(detector_normal)
-        
+
         observed_reflection_positions = []
-        
+
         for hkl, angle in zip(indices, angles):
             s = (self._ub * hkl).rotate_around_origin(self._axis, angle)
             q = (s + self._s0).normalize()
 
-            # check if diffracted ray parallel to detector face 
+            # check if diffracted ray parallel to detector face
 
             q_dot_n = q.dot(detector_normal)
 
             if q_dot_n == 0:
                 continue
-            
+
             r = (q * distance / q_dot_n) - self._detector_origin
-            
+
             x = r.dot(self._detector_fast)
             y = r.dot(self._detector_slow)
 
@@ -199,7 +199,7 @@ class reflection_prediction:
         return observed_reflection_positions
 
    initial API: constructor sets everything up, operator() tells you whether
-   it was observed (and computes the intersection point if so) and 
+   it was observed (and computes the intersection point if so) and
    get_prediction() returns this as a pair of indices, fast and slow.
    N.B. s0 has length 1.0 / wavelength, and is the vector from the source
    towards the sample.
@@ -207,22 +207,22 @@ class reflection_prediction:
 */
 
 class reflection_prediction {
-  
+
  public:
 
   reflection_prediction(const scitbx::vec3<double> & axis,
-			const scitbx::vec3<double> & s0, 
-			const scitbx::mat3<double> & ub,
-			const scitbx::vec3<double> & origin,
-			const scitbx::vec3<double> & fast,
-			const scitbx::vec3<double> & slow,
-			const double & f_min,
-			const double & f_max,
-			const double & s_min,
-			const double & s_max);
+                        const scitbx::vec3<double> & s0,
+                        const scitbx::mat3<double> & ub,
+                        const scitbx::vec3<double> & origin,
+                        const scitbx::vec3<double> & fast,
+                        const scitbx::vec3<double> & slow,
+                        const double & f_min,
+                        const double & f_max,
+                        const double & s_min,
+                        const double & s_max);
 
-  bool operator()(scitbx::vec3<double> const & hkl, 
-		  const double & angle);
+  bool operator()(scitbx::vec3<double> const & hkl,
+                  const double & angle);
 
   scitbx::vec2<double> get_prediction();
 
@@ -239,7 +239,7 @@ class reflection_prediction {
   double distance;
 
   scitbx::vec2<double> prediction;
-  
+
 };
 
 } //namespace rstbx
