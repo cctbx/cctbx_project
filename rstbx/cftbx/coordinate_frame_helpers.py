@@ -1,6 +1,4 @@
 import math
-import os
-import sys
 import random
 from scitbx import matrix
 from cctbx import sgtbx

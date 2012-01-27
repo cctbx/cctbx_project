@@ -14,7 +14,6 @@
 # Compute intersection angles for all reflections given UB matrix etc.
 # Determine which of those will be recorded on the detector.
 
-import os
 import sys
 import math
 
