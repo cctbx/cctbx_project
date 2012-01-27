@@ -8,7 +8,8 @@ class histogram_finalise(object):
 
   def __init__(self,
                output_dirname,
-               runs):
+               runs,
+               pickle_pattern=None):
     avg_basename="avg_"
     stddev_basename="stddev"
     self.adu_offset = 0
@@ -16,7 +17,7 @@ class histogram_finalise(object):
     self.nmemb = 0
     for i_run, run in enumerate(runs):
       run_scratch_dir = run
-      result = finalise_one_run(run_scratch_dir)
+      result = finalise_one_run(run_scratch_dir, pickle_pattern=pickle_pattern)
       if result.histogram is None: continue
       if self.histogram is None:
         self.histogram = result.histogram
@@ -36,13 +37,16 @@ class histogram_finalise(object):
 
 class finalise_one_run(object):
 
-  def __init__(self, scratch_dir):
+  def __init__(self, scratch_dir, pickle_pattern=None):
     pickle_dirname = "pickle"
     pickle_basename = "pkl_"
     self.nmemb = 0
     self.histogram = None
-    path_pattern = "%s/%s/%ss[0-9][0-9]-[0-9].pickle" %(
-      scratch_dir, pickle_dirname, pickle_basename)
+    if pickle_pattern is not None:
+      path_pattern = "%s/%s/%s" %(scratch_dir, pickle_dirname, pickle_pattern)
+    else:
+      path_pattern = "%s/%s/%ss[0-9][0-9]-[0-9].pickle" %(
+        scratch_dir, pickle_dirname, pickle_basename)
     print path_pattern
     g = glob.glob(path_pattern)
     assert len(g) > 0
