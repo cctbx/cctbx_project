@@ -1,6 +1,6 @@
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.refinement import fit_rotamers
+from mmtbx.refinement import fit_rotamers, real_space
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
@@ -12,8 +12,8 @@ from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.torsion_restraints import utils
 from mmtbx import ncs
-import scitbx.lbfgs
-from cctbx import maptbx
+import mmtbx.utils
+from libtbx import Auto
 
 TOP_OUT_FLAG = True
 
@@ -42,7 +42,7 @@ torsion_ncs_params = iotbx.phil.parse("""
  side_chain = True
    .type = bool
    .short_caption = Include sidechain atoms
- fix_outliers = True
+ fix_outliers = Auto
    .type = bool
    .short_caption = Fix rotamer outliers first
  target_damping = True
@@ -706,6 +706,7 @@ class torsion_ncs(object):
                            log=None,
                            quiet=False):
     pdb_hierarchy=self.pdb_hierarchy
+    selection_radius = 5
     fmodel = self.fmodel
     if(log is None): log = self.log
     make_sub_header(
@@ -717,25 +718,23 @@ class torsion_ncs(object):
     unit_cell = xray_structure.unit_cell()
     mon_lib_srv = mmtbx.monomer_library.server.server()
     rot_list_model, coot_model = r.analyze_pdb(hierarchy=pdb_hierarchy)
-    target_map_data,fft_map_1 = fit_rotamers.get_map_data(
-      fmodel = self.fmodel, map_type = "2mFo-DFc", kick=False,
-      exclude_free_r_reflections = exclude_free_r_reflections)
-    model_map_data,fft_map_2 = fit_rotamers.get_map_data(
-      fmodel = self.fmodel, map_type = "Fc")
-    residual_map_data,fft_map_3 = fit_rotamers.get_map_data(
-      fmodel = self.fmodel, map_type = "mFo-DFc", kick=False,
-      exclude_free_r_reflections = exclude_free_r_reflections)
-    map_selector = fit_rotamers.select_map(
-      unit_cell  = xray_structure.unit_cell(),
-      target_map_data = target_map_data,
-      model_map_data = model_map_data)
-    self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-      max_iterations = 25)
-    self.lbfgs_exception_handling_params = \
-      scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_step_at_lower_bound = True,
-        ignore_line_search_failed_step_at_upper_bound = True,
-        ignore_line_search_failed_maxfev              = True)
+
+    map_obj = self.fmodel.electron_density_map()
+    fft_map = map_obj.fft_map(resolution_factor = 1./4,
+      map_type = "2mFo-DFc", use_all_data=(not exclude_free_r_reflections))
+    fft_map.apply_sigma_scaling()
+    target_map_data = fft_map.real_map_unpadded()
+    fft_map = map_obj.fft_map(resolution_factor = 1./4,
+      map_type = "mFo-DFc", use_all_data=(not exclude_free_r_reflections))
+    fft_map.apply_sigma_scaling()
+    residual_map_data = fft_map.real_map_unpadded()
+
+    brm = real_space.box_refinement_manager(
+            xray_structure = xray_structure,
+            pdb_hierarchy = pdb_hierarchy,
+            target_map = target_map_data,
+            geometry_restraints_manager = geometry_restraints_manager)
+
     model_hash = {}
     model_score = {}
     model_chis = {}
@@ -785,7 +784,8 @@ class torsion_ncs(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
 
-    sites_cart_start = xray_structure.sites_cart()
+    sites_cart_moving = xray_structure.sites_cart()
+    #sites_cart_start = sites_cart_moving.deep_copy()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -817,23 +817,20 @@ class torsion_ncs(object):
                 counter = 0
                 residue_iselection = atom_group.atoms().extract_i_seq()
                 sites_cart_residue = \
-                  xray_structure.sites_cart().select(residue_iselection)
+                  sites_cart_moving.select(residue_iselection)
+                sites_cart_residue_start = sites_cart_residue.deep_copy()
                 selection = flex.bool(
-                              len(sites_cart_start),
+                              len(sites_cart_moving),
                               residue_iselection)
                 rev = fit_rotamers.rotamer_evaluator(
                   sites_cart_start = sites_cart_residue,
                   unit_cell        = unit_cell,
                   two_mfo_dfc_map  = target_map_data,
                   mfo_dfc_map      = residual_map_data)
-                cc_start = map_selector.get_cc(
-                  sites_cart         = sites_cart_residue,
-                  residue_iselection = residue_iselection)
-                sites_cart_residue_start = sites_cart_residue.deep_copy()
+
                 for aa in axis_and_atoms_to_rotate:
                   axis = aa[0]
                   atoms = aa[1]
-                  atom_group.atoms().set_xyz(new_xyz=sites_cart_residue)
                   new_xyz = flex.vec3_double()
                   angle_deg = r_chis[counter] - m_chis[counter]
                   if angle_deg < 0:
@@ -845,48 +842,19 @@ class torsion_ncs(object):
                                 point=sites_cart_residue[atom],
                                 angle=angle_deg, deg=True)
                     sites_cart_residue[atom] = new_xyz
-                  sites_cart_start = sites_cart_start.set_selected(
-                        residue_iselection, sites_cart_residue)
                   counter += 1
-                cc_final = map_selector.get_cc(
-                  sites_cart         = sites_cart_residue,
-                  residue_iselection = residue_iselection)
-                sites_cart_refined = \
-                  self.real_space_refine_residue(
-                    selection = selection,
-                    sites_cart = sites_cart_start,
-                    density_map = target_map_data,
-                    geometry_restraints_manager = \
-                      geometry_restraints_manager)
-                sites_cart_start = sites_cart_start.set_selected(
-                  residue_iselection, sites_cart_refined)
-                if rev.is_better(sites_cart_refined):
-                  xray_structure.set_sites_cart(sites_cart_start)
+
+                brm.refine(selection=selection)
+                sites_cart_refined_residue = \
+                  brm.sites_cart.select(residue_iselection)
+
+                if rev.is_better(sites_cart_refined_residue):
                   print >> log, "Fixed %s rotamer" % key
                 else:
-                  sites_cart_start = sites_cart_start.set_selected(
-                        residue_iselection, sites_cart_residue_start)
-                  xray_structure.set_sites_cart(sites_cart_start)
+                  sites_cart_moving = sites_cart_moving.set_selected(
+                    residue_iselection, sites_cart_residue_start)
+                  xray_structure.set_sites_cart(sites_cart_moving)
                   print >> log, "Skipped %s rotamer" % key
-
-  def real_space_refine_residue(
-        self,
-        selection,
-        sites_cart,
-        density_map,
-        geometry_restraints_manager):
-    real_space_target_weight = 100
-    real_space_gradients_delta = self.fmodel.f_obs().d_min()/4
-    result = maptbx.real_space_refinement_simple.lbfgs(
-      selection_variable              = selection,
-      sites_cart                      = sites_cart,
-      density_map                     = density_map,
-      geometry_restraints_manager     = geometry_restraints_manager,
-      real_space_target_weight        = real_space_target_weight,
-      real_space_gradients_delta      = real_space_gradients_delta,
-      lbfgs_termination_params        = self.lbfgs_termination_params,
-      lbfgs_exception_handling_params = self.lbfgs_exception_handling_params)
-    return result.sites_cart_variable
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):
     log = self.log
@@ -961,7 +929,7 @@ class get_ncs_groups(object):
     used_chains = []
     pair_hash = {}
     chains = pdb_hierarchy.models()[0].chains()
-    am = utils.alignment_manager(pdb_hierarchy, use_segid)
+    am = utils.alignment_manager(pdb_hierarchy, use_segid, log)
 
     for i, chain_i in enumerate(chains):
       found_conformer = False
