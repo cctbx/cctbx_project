@@ -11,7 +11,7 @@ cctbx links
 
 - `Downloads <http://cci.lbl.gov/cctbx_build/>`_
 
-- `Mailing list <http://www.phenix-online.org/mailman/listinfo/cctbxbb>`_
+- `Mailing list (cctbxbb) <http://www.phenix-online.org/mailman/listinfo/cctbxbb>`_
 
 - `Tutorial IUCr 2008 (Software Fayre) <iucr2008/>`_ (rigid_body_refinement_core.py)
 
@@ -30,19 +30,59 @@ cctbx links
 
   - `IUCr Computing Commission No. 1, 2003/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
 
+    - State of the Toolbox: an overview of the Computational Crystallography Toolbox (CCTBX)
+
   - `IUCr Computing Commission No. 2, 2003/07 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
+
+    - Fast triplet generator for direct methods
+    - Gallery of direct-space asymmetric units
 
   - `IUCr Computing Commission No. 3, 2004/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
 
+    - Reduced cell computations
+    - Determination of lattice symmetry
+    - N-Gaussian approximations to scattering factors
+    - Fast structure-factor gradients
+    - Universal reflection file reader
+
   - `IUCr Computing Commission No. 4, 2004/08 <http://cci.lbl.gov/publications/download/iucrcompcomm_aug2004.pdf>`_
+
+    - Geometry restraints
+    - Bulk solvent correction and scaling
 
   - `IUCr Computing Commission No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
 
-  - `IUCr Computing Commission No. 6, 2005/09 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2005sep/>`_ (see also: `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_)
+    - Phil and friends
+      (see also: `latest Phil documentation <libtbx_phil.html>`_)
+    - Refinement tools
+    - Reflection statistics
+    - Double coset decomposition
+    - iotbx.mtz
+
+  - `IUCr Computing Commission No. 6, 2005/09 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2005sep/>`_
+
+    - See also: `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_
 
   - `IUCr Computing Commission No. 7, 2006/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2006.pdf>`_
 
+    - iotbx.pdb
+    - mmtbx.alignment
+    - scitbx.math.superpose
+    - mmtbx.super
+
   - `IUCr Computing Commission No. 8, 2007/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2007.pdf>`_
+
+    - Refinement tools for small-molecule crystallographers
+    - Phil developments
+      (see also: `latest Phil documentation <libtbx_phil.html>`_)
+
+  - `IUCr Computing Commission No. 9, 2008/10 <http://cci.lbl.gov/~rwgk/iucrcompcomm_oct2008.pdf>`_
+
+    - Presentation slides from the IUCr Computing School, Kyoto, Japan
+
+  - `IUCr Computing Commission No. 10, 2009/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_
+
+    - Experience converting a large Fortran-77 program to C++
 
   - `CCP4 newsletter No. 42, Summer 2005: The Phenix refinement framework <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/Afonine_GrosseKunstleve_Adams_18JUL2005.doc>`_
 
@@ -83,6 +123,8 @@ cctbx links
   - `smtbx <current/python/smtbx.html>`_
 
 - `SVN repository <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/>`_
+
+- `Mailing list for cctbx SVN activity <https://lists.sourceforge.net/lists/listinfo/cctbx-cvs>`_
 
 - `Project page at SourceForge <http://sourceforge.net/projects/cctbx/>`_
 
