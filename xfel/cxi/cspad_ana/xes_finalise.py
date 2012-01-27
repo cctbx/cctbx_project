@@ -101,7 +101,7 @@ class xes_finalise(object):
 
     print "Total number of images used from %i runs: %i" %(i_run+1, self.nmemb)
 
-def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
+def get_spectrum(spectrum_focus, mask_focus=None):
 
   spectrum = flex.sum(spectrum_focus, axis=0).as_double()
   # take care of columns where one or more pixels are inactive
@@ -121,7 +121,6 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
         if sum_column_weights > 0:
           spectrum[j] *= (1/sum_column_weights)
 
-
   omit_col = True
   if omit_col is True:
     #omit_columns = [181,193,194,195,196,197,378] # run 4
@@ -136,6 +135,11 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
   else:
     plot_x = range(1,len(spectrum)+1)
     plot_y = spectrum
+
+  return plot_x, plot_y
+
+def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
+  plot_x, plot_y = get_spectrum(spectrum_focus, mask_focus=mask_focus)
   spec_plot(plot_x,plot_y,spectrum_focus,
             os.path.join(output_dirname, "spectrum")+ ".png")
   f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
