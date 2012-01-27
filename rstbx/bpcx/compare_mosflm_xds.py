@@ -25,11 +25,9 @@
 
 import sys
 import math
-import os
 from iotbx import mtz
 from cctbx.array_family import flex
 from annlib_ext import AnnAdaptor as ann_adaptor
-from scitbx import matrix
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.miller import map_to_asu
 

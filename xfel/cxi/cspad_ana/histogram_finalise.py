@@ -3,7 +3,6 @@ import glob
 from scitbx.array_family import flex # import dependency
 
 from libtbx import easy_pickle
-from libtbx.option_parser import option_parser
 
 class histogram_finalise(object):
 
