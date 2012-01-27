@@ -397,6 +397,7 @@ struct flex_image_wrapper {
       .def("prep_string",&w_t::prep_string)
       .def("prep_string_monochrome",&w_t::prep_string_monochrome)
       .def_readonly("export_string",&w_t::export_s)
+      .def_readonly("use_antialiasing",&w_t::use_antialiasing)
     ;
   }
 };
@@ -441,6 +442,17 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 
   flex_image_wrapper<int>::wrap("FlexImage");
   flex_image_wrapper<double>::wrap("FlexImage_d");
+
+  class_<iotbx::detectors::display::generic_flex_image,
+         bases<iotbx::detectors::display::FlexImage<double> > >("generic_flex_image", no_init)
+      .def(init<af::versa<double, af::flex_grid<> >,double const& >(
+            (
+            arg_("rawdata"),
+            arg_("brightness")
+            )
+          ))
+      .def("prep_string",&iotbx::detectors::display::generic_flex_image::prep_string)
+  ;
 
   class_<iotbx::detectors::display::Color>("Color", no_init)
     .def(init<int, int, int>())

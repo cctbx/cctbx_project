@@ -10,9 +10,13 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
 #include <scitbx/vec2.h>
+#include <scitbx/mat3.h>
+#include <scitbx/mat2.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/graphics_utils/colors.h>
 #include <iotbx/detectors/context/spot_xy_convention.h>
+#include <scitbx/random.h>
+#include <scitbx/math/r3_rotation.h>
 
 namespace af = scitbx::af;
 namespace iotbx { namespace detectors { namespace display {
@@ -87,7 +91,7 @@ inline int iround(double const& x)
 template <typename DataType = int>
 class FlexImage {
 
-private:
+public:
   typedef af::versa< DataType, af::flex_grid<> > array_t;
   array_t rawdata;  // original image
   af::versa<int, af::c_grid<3> > channels; // half-size 3-channel cont./bright. adjusted
@@ -238,6 +242,8 @@ private:
   double brightness, correction;
   int saturation;
   double zoom;
+  bool use_antialiasing; //whether the client viewer should apply extra antialiasing
+
   /* Relationship between binning & zoom for this class:
         zoom level  zoom    binning   magnification factor
         ----------  ----    -------   --------------------
@@ -252,6 +258,11 @@ private:
 
 public:
   inline
+  FlexImage(array_t rawdata,const double& brightness = 1.0):
+    rawdata(rawdata),
+    brightness(brightness),nchannels(4),use_antialiasing(false){}
+
+  inline
   FlexImage(array_t rawdata, const int& power_of_two,
             const std::string& vendortype, const double& brightness = 1.0,
             int const& saturation = 65535):
@@ -259,6 +270,7 @@ public:
     saturation(saturation),
     rawdata(rawdata),
     nchannels(4),
+    use_antialiasing(false),
     binning(power_of_two),
     vendortype(vendortype){
     //Assert that binning is a power of two
@@ -540,6 +552,91 @@ public:
         }
       }
     }
+  }
+
+};
+
+class generic_flex_image: public FlexImage<double>{
+ public:
+
+  scitbx::vec3<double> axis;
+  scitbx::mat3<double> rotation;
+  scitbx::mat2<double> rotation2;
+
+  inline
+  generic_flex_image(array_t rawdata,const double& brightness = 1.0
+  ):FlexImage<double>(rawdata,brightness){
+    use_antialiasing=true;
+    binning=1;
+    zoom = 1./ binning;
+    export_size_uncut1 = size1()/binning;
+    export_size_uncut2 = size2()/binning;
+    channels = af::versa<int, af::c_grid<3> >(af::c_grid<3>(nchannels,
+                            export_size_uncut1,export_size_uncut2));
+    axis = scitbx::vec3<double>(0.,0.,1.);
+    rotation = scitbx::math::r3_rotation::axis_and_angle_as_matrix<double>(axis,4.,true);
+    rotation2 = scitbx::mat2<double>(rotation[0],rotation[1],rotation[3],rotation[4]);
+    correction = 1.0;
+    saturation = 1.0;
+  }
+
+  inline scitbx::vec2<int> picture_to_readout(double const& i,double const& j)
+   const {
+    //return scitbx::vec2<int>(iround(i),iround(j));
+    scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
+    return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
+  }
+  inline void prep_string(){
+    typedef af::c_grid<3> t_C;
+    const t_C& acc = channels.accessor();
+    export_s = "";
+    export_s.reserve(export_size_cut1*export_size_cut2*3);
+    //scitbx::vec3<int> datafocus = channels.accessor().focus();
+    if (zoom <= 1.){
+      for (int i=export_anchor_x; i< export_anchor_x+export_size_cut1; ++i) {
+          for (int j=export_anchor_y; j< export_anchor_y+export_size_cut2; ++j) {
+
+              scitbx::vec2<int> irdjrd = picture_to_readout(i,j);
+              if (acc.is_valid_index(0,irdjrd[0],irdjrd[1])){
+                for (int c=0; c<3; ++c) {
+                  export_s.push_back((char)channels(c,irdjrd[0],irdjrd[1]));
+                }
+              } else {
+                  //pixels not in-bounds within the image get a pink tint
+                   export_s.push_back((char)255);
+                   export_s.push_back((char)228);
+                   export_s.push_back((char)228);
+              }
+          }
+      }
+    } else {
+      for (int zoom_x=export_anchor_x;
+           zoom_x< export_anchor_x+export_size_cut1;
+           ++zoom_x) {
+          double i = zoom_x / zoom;
+          for (int zoom_y=export_anchor_y;
+               zoom_y< export_anchor_y+export_size_cut2;
+               ++zoom_y) {
+              double j = zoom_y / zoom;
+              scitbx::vec2<int> irdjrd = picture_to_readout(i,j);
+              if (acc.is_valid_index(0,irdjrd[0],irdjrd[1])){
+                for (int c=0; c<3; ++c) {
+                  export_s.push_back((char)channels(c,irdjrd[0],irdjrd[1]));
+                }
+              } else {
+                  //pixels not in-bounds within the image get a pink tint
+                   export_s.push_back((char)255);
+                   export_s.push_back((char)228);
+                   export_s.push_back((char)228);
+              }
+          }
+      }
+    }
+
+    application_specific_anti_aliasing();
+  }
+  inline void application_specific_anti_aliasing(){
+    // no implementation at present
   }
 
 };
