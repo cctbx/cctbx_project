@@ -1,4 +1,4 @@
-# Compare intensities and positions of measurements from XDS INTEGRATE (which 
+# Compare intensities and positions of measurements from XDS INTEGRATE (which
 # are not necessarily correctly LP corrected) and from Mosflm via sortmtz and
 # scala to sum partials but not merge or scale e.g.
 #
@@ -7,7 +7,7 @@
 # sortmtz hklin thau_2_001.mtz hklout sorted.mtz << eof
 # H K L M/ISYM BATCH
 # eof
-# 
+#
 # scala hklin sorted.mtz hklout summed.mtz << eof
 # run 1 batch 1 to 1800
 # scales constant
@@ -35,16 +35,16 @@ from cctbx.miller import map_to_asu
 
 def meansd(values):
     assert(len(values) > 3)
-    
+
     mean = sum(values) / len(values)
     var = sum([(v - mean) * (v - mean) for v in values]) / (len(values) - 1)
-    
+
     return mean, math.sqrt(var)
 
 def cc(a, b):
 
     assert(len(a) == len(b))
-    
+
     ma, sa = meansd(a)
     mb, sb = meansd(b)
 
@@ -75,7 +75,7 @@ def get_hkl_xyz_isigi(mtz_file):
 
     mi_s = m.extract_miller_indices()
     map_to_asu(sg.type(), False, mi_s)
-    
+
     xdet_s = xdet_col.extract_values(not_a_number_substitute = 0.0)
     ydet_s = ydet_col.extract_values(not_a_number_substitute = 0.0)
     rot_s = rot_col.extract_values(not_a_number_substitute = 0.0)
@@ -121,7 +121,7 @@ def read_xds_integrate(xds_integrate_file):
     hkls = flex.miller_index()
     xyzs = []
     isigmas = []
-    
+
     for record in open(xds_integrate_file):
         if '!' in record[:1]:
             continue
@@ -141,12 +141,12 @@ def main(mtz_file, xds_integrate_file):
     mos_hkl_xyz_isigi = get_hkl_xyz_isigi(mtz_file)
 
     print 'Read %d observations from %s' % (len(mos_hkl_xyz_isigi), mtz_file)
-    
+
     xds_hkl_xyz_isigi = read_xds_integrate(xds_integrate_file)
 
     print 'Read %d observations from %s' % \
           (len(xds_hkl_xyz_isigi), xds_integrate_file)
-    
+
     # treat XDS as reference, mosflm as query (arbitrary)
 
     reference = flex.double()
@@ -156,7 +156,7 @@ def main(mtz_file, xds_integrate_file):
         reference.append(xyz[0])
         reference.append(xyz[1])
         reference.append(xyz[2])
-        
+
     for hkl, xyz, isigi in mos_hkl_xyz_isigi:
         query.append(xyz[0])
         query.append(xyz[1])
@@ -175,7 +175,7 @@ def main(mtz_file, xds_integrate_file):
             i_s_xds.append(xds_hkl_xyz_isigi[c][2][0])
 
     print 'Matched %d observations' % len(i_s_mos)
-    
+
     print cc(i_s_mos, i_s_xds)
 
 if __name__ == '__main__':

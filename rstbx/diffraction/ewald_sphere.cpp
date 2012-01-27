@@ -213,7 +213,7 @@ rstbx::reflection_prediction::reflection_prediction(
   const double & f_min,
   const double & f_max,
   const double & s_min,
-  const double & s_max) 
+  const double & s_max)
 {
   axis = _axis;
   s0 = _s0;
@@ -232,7 +232,7 @@ rstbx::reflection_prediction::reflection_prediction(
 }
 
 bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
-					      const double & angle)
+                                              const double & angle)
 {
   scitbx::vec3<double> s, q, r;
   double x, y, q_dot_n;
@@ -244,7 +244,7 @@ bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
   if (q_dot_n == 0) return false;
 
   r = (q * distance / q_dot_n) - origin;
-  
+
   x = r * fast;
   y = r * slow;
 
@@ -263,11 +263,3 @@ scitbx::vec2<double> rstbx::reflection_prediction::get_prediction()
 {
   return scitbx::vec2<double>(prediction[0], prediction[1]);
 }
-
-
-
-    
-  
-  
-
-

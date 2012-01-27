@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# 
+#
 # Biostruct-X Data Reduction Use Case 1.2:
-# 
+#
 # Validate reflection data from test refinement code against data from XDS,
 # by means of computing a correlaton coefficient between the two sets of
 # positions.
@@ -16,16 +16,16 @@ from scitbx import matrix
 def meansd(values):
 
     assert(len(values) > 3)
-    
+
     mean = sum(values) / len(values)
     var = sum([(v - mean) * (v - mean) for v in values]) / (len(values) - 1)
-    
+
     return mean, math.sqrt(var)
 
 def cc(a, b):
 
     assert(len(a) == len(b))
-    
+
     ma, sa = meansd(a)
     mb, sb = meansd(b)
 
@@ -39,7 +39,7 @@ def work_cc():
     a = [random.random() + 0.01 * j for j in range(1000)]
     b = [random.random() + 0.01 * j for j in range(1000)]
 
-    return cc(a, b) 
+    return cc(a, b)
 
 def test_ann():
 
@@ -47,7 +47,7 @@ def test_ann():
 
     for j in range(3 * 100):
         reference.append(random.random())
-    
+
     query = flex.double()
 
     for j in range(3 * 10):
@@ -72,7 +72,7 @@ def test_ann():
 def read_spot_xds(spot_xds):
 
     observations = []
-    
+
     for record in open(spot_xds):
         if '!' in record[:1]:
             continue
@@ -95,7 +95,7 @@ def read_uc1_2(uc1_2):
         xyz = map(float, values[3:])
 
         predictions.append((hkl, xyz))
-        
+
     return predictions
 
 def validate_predictions(spot_xds, uc1_2):
@@ -139,12 +139,6 @@ def validate_predictions(spot_xds, uc1_2):
             print x, y, z, dx, dy, dz
 
     return meansd(dxs), meansd(dys), meansd(dzs)
-            
+
 if __name__ == '__main__':
     dx, dy, dz = validate_predictions(sys.argv[1], sys.argv[2])
-    
-
-    
-
-    
-

@@ -1,8 +1,8 @@
 #!/usr/bin/env cctbx.python
-# 
+#
 # Biostruct-X Data Reduction Use Case 1.2:
-# 
-# Given UB matrix, centring operation, generate a list of predictions as 
+#
+# Given UB matrix, centring operation, generate a list of predictions as
 # H K L x y phi. Also requires (clearly) a model for the detector positions
 # and the crystal lattice type. This is aimed to help with identifying
 # locations on the images.
@@ -32,14 +32,14 @@ def generate_indices(unit_cell_constants, resolution_limit):
     maxh, maxk, maxl = uc.max_miller_indices(resolution_limit)
 
     indices = []
-    
+
     for h in range(-maxh, maxh + 1):
         for k in range(-maxk, maxk + 1):
             for l in range(-maxl, maxl + 1):
 
                 if h == 0 and k == 0 and l == 0:
                     continue
-                
+
                 if uc.d((h, k, l)) < resolution_limit:
                     continue
 
@@ -65,7 +65,7 @@ def parse_xds_xparm_scan_info(xparm_file):
     '''Read an XDS XPARM file, get the scan information.'''
 
     values = map(float, open(xparm_file).read().split())
-    
+
     assert(len(values) == 42)
 
     img_start = values[0]
@@ -75,7 +75,7 @@ def parse_xds_xparm_scan_info(xparm_file):
     return img_start, osc_start, osc_range
 
 class python_reflection_prediction:
-    def __init__(self, axis, s0, ub, detector_origin, 
+    def __init__(self, axis, s0, ub, detector_origin,
                  detector_fast, detector_slow,
                  f_min, f_max, s_min, s_max):
         self._axis = axis
@@ -92,22 +92,22 @@ class python_reflection_prediction:
 
         detector_normal = self._detector_fast.cross(self._detector_slow)
         distance = self._detector_origin.dot(detector_normal)
-        
+
         observed_reflection_positions = []
-        
+
         for hkl, angle in zip(indices, angles):
             s = (self._ub * hkl).rotate(self._axis, angle)
             q = (s + self._s0).normalize()
 
-            # check if diffracted ray parallel to detector face 
+            # check if diffracted ray parallel to detector face
 
             q_dot_n = q.dot(detector_normal)
 
             if q_dot_n == 0:
                 continue
-            
+
             r = (q * distance / q_dot_n) - self._detector_origin
-            
+
             x = r.dot(self._detector_fast)
             y = r.dot(self._detector_slow)
 
@@ -121,10 +121,10 @@ class python_reflection_prediction:
         return observed_reflection_positions
 
 class cpp_reflection_prediction:
-    def __init__(self, axis, s0, ub, detector_origin, 
+    def __init__(self, axis, s0, ub, detector_origin,
                  detector_fast, detector_slow,
                  f_min, f_max, s_min, s_max):
-        self._rp = reflection_prediction(axis, s0, ub, detector_origin, 
+        self._rp = reflection_prediction(axis, s0, ub, detector_origin,
                                          detector_fast, detector_slow,
                                          f_min, f_max, s_min, s_max)
 
@@ -133,7 +133,7 @@ class cpp_reflection_prediction:
     def predict(self, indices, angles):
 
         observed_reflection_positions = []
-        
+
         for hkl, angle in zip(indices, angles):
             if self._rp(hkl, angle):
                 x, y = self._rp.get_prediction()
@@ -228,21 +228,21 @@ def main(configuration_file, img_range, dmin = None):
                                    detector_fast, detector_slow,
                                    0, dimension_fast,
                                    0, dimension_slow)
-    
+
     cpp_observed_reflection_positions = rp.predict(observed_indices,
                                                    observed_angles)
-    
+
     r2d = 180.0 / math.pi
 
     for hkl, f, s, angle in cpp_observed_reflection_positions:
         print '%d %d %d' % hkl, '%.4f %4f %2f' % (
             f / pixel_size_fast, s / pixel_size_slow,
             (img_start - 1) + ((angle * r2d) - osc_start) / osc_range)
-    
+
 if __name__ == '__main__':
 
     # FIXME we should perhaps use Phil here to learn how to do this?!
-    
+
     if len(sys.argv) < 4:
         msg = "Requires 3 arguments: path/to/xparm.xds start_image_no end_image_no"
         sys.exit(msg)

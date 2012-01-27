@@ -179,18 +179,18 @@ namespace boost_python { namespace {
     ;
 
     class_<reflection_prediction>("reflection_prediction",
-				  init<const scitbx::vec3<double> &,
-				  const scitbx::vec3<double> &,
-				  const scitbx::mat3<double> &,	
-				  const scitbx::vec3<double> &,
-				  const scitbx::vec3<double> &,
-				  const scitbx::vec3<double> &,
-				  const double &, const double &,
-				  const double &, const double &>
+                                  init<const scitbx::vec3<double> &,
+                                  const scitbx::vec3<double> &,
+                                  const scitbx::mat3<double> &,
+                                  const scitbx::vec3<double> &,
+                                  const scitbx::vec3<double> &,
+                                  const scitbx::vec3<double> &,
+                                  const double &, const double &,
+                                  const double &, const double &>
       ((arg("axis"), arg("s0"), arg("ub"),
-	arg("origin"), arg("fast"), arg("slow"),
-	arg("f_min"), arg("f_max"), 
-	arg("s_min"), arg("s_max"))))
+        arg("origin"), arg("fast"), arg("slow"),
+        arg("f_min"), arg("f_max"),
+        arg("s_min"), arg("s_max"))))
       .def("__call__", & reflection_prediction::operator())
       .def("get_prediction", & reflection_prediction::get_prediction);
 
