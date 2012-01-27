@@ -16,10 +16,14 @@ if __name__ == '__main__':
                   .option("--output_dirname", "-o",
                           type="string",
                           help="Directory for output files.")
+                  .option("--pickle_pattern",
+                          type="string",
+                          help="regex for matching pickle files.")
                   ).process(args=args)
   output_dirname = command_line.options.output_dirname
+  pickle_pattern = command_line.options.pickle_pattern
   runs = command_line.args
   if output_dirname is None:
-    output_dirname = os.path.join(runs[0], "finalise")
+    output_dirname = runs[0]
   print "Output directory: %s" %output_dirname
-  histogram_finalise(output_dirname, runs)
+  histogram_finalise(output_dirname, runs, pickle_pattern=pickle_pattern)
