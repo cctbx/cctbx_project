@@ -7,7 +7,7 @@ from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 from cctbx import xray
-from libtbx.utils import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time, Sorry
 from libtbx.str_utils import line_breaker
 from libtbx import group_args
 import mmtbx.utils
@@ -981,3 +981,17 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
       dS.append(derivative)
     derivative_S.append(dS)
   return derivative_T,derivative_L,derivative_S
+
+def check_tls_selections_for_waters (
+    tls_selections,
+    pdb_hierarchy) :
+  cache = pdb_hierarchy.atom_selection_cache()
+  water_sel = cache.selection("resname HOH")
+  tls_sel = flex.bool(water_sel.size(), False)
+  for sele_str in tls_selections :
+    group_sel = cache.selection(sele_str)
+    tls_sel |= group_sel
+  if ((tls_sel & water_sel).count(True) > 0) :
+    raise Sorry("TLS groups contain waters!  If you want to refine waters "+
+      "anisotropically, you need to include them in the anisotropic ADP "+
+      "selection, not TLS groups.")
