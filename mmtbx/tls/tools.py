@@ -992,6 +992,5 @@ def check_tls_selections_for_waters (
     group_sel = cache.selection(sele_str)
     tls_sel |= group_sel
   if ((tls_sel & water_sel).count(True) > 0) :
-    raise Sorry("TLS groups contain waters!  If you want to refine waters "+
-      "anisotropically, you need to include them in the anisotropic ADP "+
-      "selection, not TLS groups.")
+    raise Sorry("TLS groups contain waters, which will conflict with the "+
+      "water picking procedure.")
