@@ -85,6 +85,7 @@ def run():
   "$D/examples/immoptibox_ports.py",
   "$D/examples/rigid_body_refinement_core.py",
   "$D/examples/integrating_a_weighted_sinc_function.py",
+  "$D/examples/minimizer_comparisons.py",
   "$D/graph/tst_utils.py",
   "$D/graph/rigidity.py",
   "$D/graph/tst_rigidity.py",

@@ -4,11 +4,12 @@ from scitbx import simplex
 from scitbx import direct_search_simulated_annealing
 from scitbx import differential_evolution
 from scitbx import cross_entropy
-from cma_es import cma_es_interface
 
 from scitbx import lbfgs
 
 from scitbx.array_family import flex
+
+import libtbx.load_env
 
 dim=2
 start = flex.double( [4,4] )
@@ -38,7 +39,7 @@ class test_lbfgs(object):
 
   def function(self,vector):
     self.fcount+=1
-    result = Function(name)(dim).eval(vector)
+    result = Function(self.name)(dim).eval(vector)
     return result
 
   def compute_functional_and_gradients(self):
@@ -149,7 +150,7 @@ class test_differential_evolution(object):
 
   def function(self,vector):
     self.fcount+=1
-    result = Function(name)(dim).eval(vector)
+    result = Function(self.name)(dim).eval(vector)
     return result
 
   def target(self,vector):
@@ -172,6 +173,7 @@ class test_cma_es(object):
     self.l = l
     self.name = name
     self.fcount = 0
+    from cma_es import cma_es_interface
     self.minimizer = cma_es_interface.cma_es_driver( 2, self.m, self.s, self.my_function, self.l )
     print "CMA-ES ITERATIONS", self.minimizer.count, self.fcount,"SOLUTION",  list(self.minimizer.x_final), self.my_function( self.minimizer.x_final )
 
@@ -189,8 +191,13 @@ class test_cma_es(object):
     return tmp.eval(list(vector))
 
 
+def run(args):
+  assert len(args) == 0
 
-if __name__ == "__main__":
+  have_cma_es = libtbx.env.has_module("cma_es")
+  if (not have_cma_es):
+    print "Skipping some tests: cma_es module not available or not configured."
+    print
 
   names = ['easom','rosenbrock','ackley','rastrigin']
   for name in names:
@@ -201,11 +208,17 @@ if __name__ == "__main__":
       start = flex.double( [4,4] )
     for ii in range(1):
       test_lbfgs(name)
-      test_cma_es(name)
+      if (have_cma_es):
+        test_cma_es(name)
       test_differential_evolution(name)
       test_cross_entropy(name)
       test_simplex(name)
       test_dssa(name)
       print
     print
-    print
+  from libtbx.utils import format_cpu_times
+  print format_cpu_times()
+
+if (__name__ == "__main__"):
+  import sys
+  run(args=sys.argv[1:])
