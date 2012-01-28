@@ -550,7 +550,8 @@ class process_arrays (object) :
         if array_params.output_as == "amplitudes" :
           output_array = new_array.f_sq_as_f()
           output_array.set_observation_type_xray_amplitude()
-          array_types[i] = re.sub("J", "F", array_types[i])
+          if (array_types[i] is not None) :
+            array_types[i] = re.sub("J", "F", array_types[i])
           if output_labels[0].upper().startswith("I") :
             raise Sorry(("The output labels for the array %s:%s (%s) are not "+
               "suitable for amplitudes; please change them to something "+
@@ -560,7 +561,8 @@ class process_arrays (object) :
         if array_params.output_as == "intensities" :
           output_array = new_array.f_as_f_sq()
           output_array.set_observation_type_xray_intensity()
-          array_types[i] = re.sub("F", "J", array_types[i])
+          if (array_types[i] is not None) :
+            array_types[i] = re.sub("F", "J", array_types[i])
           if output_labels[0].upper().startswith("F") :
             raise Sorry(("The output labels for the array %s:%s (%s) are not "+
               "suitable for intensities; please change them to something "+
@@ -573,10 +575,12 @@ class process_arrays (object) :
             (file_name, array_params.labels))
         if (array_params.force_type == "amplitudes") :
           output_array = new_array.set_observation_type_xray_amplitude()
-          array_types[i] = re.sub("J", "F", array_types[i])
+          if (array_types[i] is not None) :
+            array_types[i] = re.sub("J", "F", array_types[i])
         elif (array_params.force_type == "intensities") :
           output_array = new_array.set_observation_type_xray_intensity()
-          array_types[i] = re.sub("F", "J", array_types[i])
+          if (array_types[i] is not None) :
+            array_types[i] = re.sub("F", "J", array_types[i])
       if output_array is None :
         output_array = new_array
 
@@ -591,7 +595,7 @@ class process_arrays (object) :
         if len(default_types) == len(array_types[i]) :
           print >> log, "Recovering original column types %s" % array_types[i]
           column_types = array_types[i]
-      if output_array.data().size() == 0 :
+      if (output_array.data().size() == 0) :
         raise Sorry("The array %s:%s ended up empty.  Please check the "+
           "resolution cutoffs to make sure they do not exclude all data "+
           "from the input file.  If you think the parameters were correct, "+
