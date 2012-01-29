@@ -14,9 +14,19 @@ class Error : public std::exception {
 private:
   std::string s;
 public:
-  inline Error(std::string s):s(s){}
+  inline Error(std::string s):s(s){/*SCITBX_EXAMINE(s);*/}
   inline virtual const char* what() const throw() {return s.c_str();}
   inline virtual ~Error() throw() {}
+};
+class OpenFileError : public std::exception {
+private:
+  std::string s;
+public:
+  inline OpenFileError(std::string s, FILE * stream):s(s){
+    /*SCITBX_EXAMINE(s);*/
+    std::fclose(stream);}
+  inline virtual const char* what() const throw() {return s.c_str();}
+  inline virtual ~OpenFileError() throw() {}
 };
 
   }//namespace detectors

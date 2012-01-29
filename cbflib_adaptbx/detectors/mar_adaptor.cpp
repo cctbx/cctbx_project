@@ -109,13 +109,18 @@ bool
 iotbx::detectors::Mar345Adaptor::header_read_specific
   (img_handle i, FILE* f, int* g){
   int status = img_read_mar345header (i, f, g);
-  std::string detector = get_field("DETECTOR");
+  std::string detector;
+  try {
+    detector = get_field("DETECTOR");
+  } catch (...) {
+    throw OpenFileError("problem parsing the DETECTOR field",f);
+  }
   for (std::string::iterator i = detector.begin(); i!=detector.end(); ++i){
     *i=std::tolower(*i);
   }
   if (detector.find("mar")==std::string::npos ||
       detector.find("345")==std::string::npos){
-    throw Error("detector type other than mar345 from mar345 reader");
+    throw OpenFileError("detector type other than mar345 from mar345 reader",f);
   }
   return (status==0);
 }
