@@ -1023,6 +1023,7 @@ class xtriage_summary (object) :
     other_attrs = []
     for attr in other_attrs :
       setattr(self, attr, getattr(twin_results, attr, None))
+    self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
     twin_summary = twin_results.twin_summary
     self.patterson_verdict = twin_summary.patterson_verdict.getvalue()
     self.twinning_verdict = twin_summary.twinning_verdict.getvalue()
@@ -1030,7 +1031,12 @@ class xtriage_summary (object) :
     self.z_score_info = getattr(twin_summary.twin_results, "z_score_info",None)
     self.intensity_stats = getattr(twin_summary.twin_results,
                                    "independent_stats", None)
-    self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
+    self.is_twinned = False
+    if (self.possible_twin_laws is not None) :
+      if (len(self.possible_twin_laws.operators) > 0) :
+        if (twin_summary.twin_results.maha_l > 4.0):
+          if twin_results.twin_summary.twin_results.l_mean <= 0.48:
+            self.is_twinned = True
     self.translation_pseudo_symmetry = getattr(twin_results,
       "translation_pseudo_symmetry", None)
     self.check_sg = getattr(twin_results, "check_sg", None)
