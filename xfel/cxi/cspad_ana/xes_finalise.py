@@ -65,9 +65,8 @@ class xes_finalise(object):
       )
       cspad_tbx.dwritef(d, output_dirname, "sum_")
       if 1:
-        self.output_image(self.avg_img, "%s/avg.png" %output_dirname)
-        self.output_image(
-          self.avg_img, "%s/avg_inv.png" %output_dirname, invert=True)
+        output_image(self.avg_img, "%s/avg.png" %output_dirname)
+        output_image(self.avg_img, "%s/avg_inv.png" %output_dirname, invert=True)
 
       if 1:
         output_matlab_form(self.sum_img, "%s/sum.m" %output_dirname)
@@ -97,7 +96,8 @@ class xes_finalise(object):
         pylab.imshow(spectrum_focus.as_numpy_array())
         pylab.show()
 
-    output_spectrum(spectrum_focus, mask_focus=mask_focus)
+    output_spectrum(spectrum_focus, mask_focus=mask_focus,
+                    output_dirname=output_dirname)
 
     print "Total number of images used from %i runs: %i" %(i_run+1, self.nmemb)
 
@@ -158,7 +158,7 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
 
 def output_matlab_form(flex_matrix, filename):
   f = open(filename, "wb")
-  print >> f, "%% number of images = %i" %(self.nmemb)
+  #print >> f, "%% number of images = %i" %(self.nmemb)
   print >> f, scitbx.matrix.rec(
     flex_matrix, flex_matrix.focus()).matlab_form(one_row_per_line=True)
   f.close()
