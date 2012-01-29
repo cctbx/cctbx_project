@@ -58,10 +58,6 @@ class Mar345Adaptor: public AnyImgAdaptor {
  public:
   inline Mar345Adaptor(const std::string& filename):
     AnyImgAdaptor(filename){}
-  inline ~Mar345Adaptor(){ // Not sure where to free up FILE * but it must be done
-    if (private_file != NULL) { std::fclose(private_file); }
-  }
-
   bool header_read_specific(img_handle i, FILE* f, int* g);
   bool data_read_specific(img_handle i, FILE* f, int* g);
   inline double pixel_size() { read_header();
