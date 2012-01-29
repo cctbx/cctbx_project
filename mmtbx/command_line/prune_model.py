@@ -2,6 +2,7 @@
 import libtbx.phil
 from libtbx.str_utils import make_header
 from libtbx.utils import Usage, multi_out
+from libtbx import group_args
 import os
 import sys
 
@@ -24,6 +25,8 @@ model_prune_master_phil = """
     .type = float
   min_cc_sidechain = 0.7
     .type = float
+  min_fragment_size = 3
+    .type = int
 """
 
 master_phil = libtbx.phil.parse("""
@@ -40,6 +43,34 @@ output {
 def id_str (chain, residue_group, atom_group) :
   return "%3s %s%4s%s" % (atom_group.resname, chain.id, residue_group.resseq,
     residue_group.icode)
+
+class residue_summary (object) :
+  def __init__ (self,
+                chain_id,
+                residue_group,
+                atom_group,
+                score,
+                score_type="CC",
+                map_type="2mFo-DFc",
+                atoms_type="residue") :
+    self.resname = atom_group.resname
+    self.chain_id = chain_id
+    self.resseq = residue_group.resseq
+    self.icode = residue_group.icode
+    self.score = score
+    self.score_type = score_type
+    self.atoms_type = atoms_type
+    self.map_type = map_type
+
+  def show (self, out=None) :
+    if (out is None) : out = sys.stdout
+    id_str = "%3s %s%4s%s" % (self.resname, self.chain_id, self.resseq,
+      self.icode)
+    if (self.score is not None) :
+      print >> out, "%s : %s %s %s = %.2f" % (id_str, self.atoms_type,
+        self.map_type, self.score_type, self.score)
+    else :
+      print >> out, "%s : not part of a continuous chain" % id_str
 
 def prune_model (
     f_map_coeffs,
@@ -69,6 +100,8 @@ def prune_model (
     atom_radius=None)
   n_res_removed = 0
   n_sc_removed = 0
+  n_res_protein = 0
+  pruned = []
   make_header("Pruning residues and sidechains", out=out)
   for chain in pdb_hierarchy.models()[0].chains() :
     residue_id_hash = {}
@@ -79,6 +112,7 @@ def prune_model (
     if (not first_conf.is_protein()) :
       continue
     for j_seq, residue_group in enumerate(chain.residue_groups()) :
+      n_res_protein += 1
       residue_id_hash[residue_group.resid()] = j_seq
       for atom_group in residue_group.atom_groups() :
         ag_id_str = id_str(chain, residue_group, atom_group)
@@ -93,12 +127,23 @@ def prune_model (
             map_value = f_map.tricubic_interpolation(site_frac)
             diff_map_value = diff_map.tricubic_interpolation(site_frac)
             if (map_value < params.min_c_alpha_2fofc) :
-              print >> out, "%s: C-alpha 2mFo-DFc = %5.2f" % (ag_id_str,
-                map_value)
+              pruned.append(residue_summary(
+                chain_id=chain.id,
+                residue_group=residue_group,
+                atom_group=atom_group,
+                score=map_value,
+                score_type="sigma",
+                atoms_type="C-alpha"))
               remove_atom_group = True
             elif (diff_map_value < params.min_c_alpha_fofc) :
-              print >> out, "%s: C-alpha  mFo-DFc = %5.2f" % (ag_id_str,
-                diff_map_value)
+              pruned.append(residue_summary(
+                chain_id=chain.id,
+                residue_group=residue_group,
+                atom_group=atom_group,
+                score=map_value,
+                score_type="sigma",
+                map_type="mFo-DFc",
+                atoms_type="C-alpha"))
               remove_atom_group = True
             if (remove_atom_group) :
               break
@@ -120,7 +165,11 @@ def prune_model (
           cc = flex.linear_correlation(x=f_map_sel,
             y=model_map_sel).coefficient()
           if (cc < params.min_cc) and (params.residues) :
-            print >> out, "%s: overall CC = %4.2f" % (ag_id_str, cc)
+            pruned.append(residue_summary(
+              chain_id=chain.id,
+              residue_group=residue_group,
+              atom_group=atom_group,
+              score=cc))
             remove_atom_group = True
           elif (len(sidechain_atoms) > 0) and (params.sidechains) :
             # overall CC is acceptable - now look at sidechain alone
@@ -144,7 +193,12 @@ def prune_model (
             cc = flex.linear_correlation(x=f_map_sel,
               y=model_map_sel).coefficient()
             if (cc < params.min_cc_sidechain) :
-              print >> out, "%s: sidechain CC = %4.2f" % (ag_id_str, cc)
+              pruned.append(residue_summary(
+                chain_id=chain.id,
+                residue_group=residue_group,
+                atom_group=atom_group,
+                score=cc,
+                atoms_type="sidechain"))
               remove_sidechain = True
             else :
               # sidechain CC is okay - finally, check mean map values
@@ -159,12 +213,23 @@ def prune_model (
               mean_f_value = flex.mean(f_map_sel.as_1d())
               mean_diff_value = flex.mean(diff_map_sel.as_1d())
               if (mean_f_value < params.min_sidechain_2fofc) :
-                print >> out, "%s: sidechain 2mFo-DFc = %4.2f" % \
-                  (ag_id_str, mean_f_value)
+                pruned.append(residue_summary(
+                  chain_id=chain.id,
+                  residue_group=residue_group,
+                  atom_group=atom_group,
+                  score=mean_f_value,
+                  score_type="sigma",
+                  atoms_type="sidechain"))
                 remove_sidechain = True
               elif (mean_diff_value > params.max_sidechain_fofc) :
-                print >> out, "%s: sidechain  mFo-DFc = %4.2f" % \
-                  (ag_id_str, mean_diff_value)
+                pruned.append(residue_summary(
+                  chain_id=chain.id,
+                  residue_group=residue_group,
+                  atom_group=atom_group,
+                  score=mean_f_value,
+                  score_type="sigma",
+                  atoms_type="sidechain",
+                  map_type="mFo-Dfc"))
                 remove_sidechain = True
             if (remove_sidechain) :
               assert (params.sidechains)
@@ -180,20 +245,34 @@ def prune_model (
         removed_resseqs.append(residue_group.resseq_as_int())
     # Final pass: remove lone single/pair residues
     if (params.residues) :
-      for residue_group in chain.residue_groups() :
+      n_rg = len(chain.residue_groups())
+      for j_seq, residue_group in enumerate(chain.residue_groups()) :
         if (residue_group.icode.strip() != "") :
           continue
         resseq = residue_group.resseq_as_int()
-        if ((resseq - 1 in removed_resseqs) and
-            ((resseq + 1 in removed_resseqs) or
-             (resseq + 2 in removed_resseqs))) :
-          print >> out, "Residue %s %s is not part of a continuous chain" % \
-            (chain.id, residue_group.resseq)
+        remove = False
+        if (resseq - 1 in removed_resseqs) or (j_seq == 0) :
+          for k in range(1, params.min_fragment_size+1) :
+            if (resseq + k in removed_resseqs) :
+              remove = True
+              break
+        if (remove) :
+          pruned.append(residue_summary(
+            chain_id=chain.id,
+            residue_group=residue_group,
+            atom_group=atom_group,
+            score=None))
           chain.remove_residue_group(residue_group)
           removed_resseqs.append(resseq)
+  for outlier in pruned :
+    outlier.show(out)
   print >> out, "Removed %d residues and %d sidechains" % (n_res_removed,
     n_sc_removed)
-  return pdb_hierarchy
+  return group_args(
+    n_res_protein=n_res_protein,
+    n_res_removed=n_res_removed,
+    n_sc_removed=n_sc_removed,
+    outliers=pruned)
 
 def get_atom_radii (atoms, atom_radius) :
   from scitbx.array_family import flex
@@ -243,7 +322,7 @@ def run_post_refinement (
   elif (model_map_coeffs is None) :
     raise RuntimeError("Fc map not found (expected labels %s)." %
       model_map_label)
-  new_hierarchy = prune_model(
+  result = prune_model(
     f_map_coeffs=f_map_coeffs,
     diff_map_coeffs=diff_map_coeffs,
     model_map_coeffs=model_map_coeffs,
@@ -256,10 +335,10 @@ def run_post_refinement (
       output_file = os.path.splitext(base_name)[0] + "_pruned.pdb"
     f = open(output_file, "w")
     f.write("%s\n" % "\n".join(pdb_in.file_object.crystallographic_section()))
-    f.write(new_hierarchy.as_pdb_string())
+    f.write(pdb_hierarchy.as_pdb_string())
     f.close()
-    return output_file
-  return new_hierarchy
+    result.output_file = output_file
+  return result
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
