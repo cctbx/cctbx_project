@@ -1100,6 +1100,7 @@ mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
 mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/distance_difference.py -text
+mmtbx/command_line/estimate_resolution_cutoff.py -text
 mmtbx/command_line/fake_f_obs.py -text
 mmtbx/command_line/fetch_pdb.py -text
 mmtbx/command_line/find_peaks_holes.py -text
