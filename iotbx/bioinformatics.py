@@ -989,7 +989,7 @@ class clustal_alignment_parser(generic_alignment_parser):
   regex = re.compile(
     r"""
     ^
-    (?P<name> [\S]* ) \s+
+    (?P<name> [\S]+ ) \s+
     (?P<alignment> [A-Z\-]* )
     (?P<number> \s+ \d+ )? \s* \n
     """,
