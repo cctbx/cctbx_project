@@ -452,6 +452,8 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
             )
           ))
       .def("prep_string",&iotbx::detectors::display::generic_flex_image::prep_string)
+
+.def("picture_to_readout",&iotbx::detectors::display::generic_flex_image::picture_to_readout_f)
   ;
 
   class_<iotbx::detectors::display::Color>("Color", no_init)

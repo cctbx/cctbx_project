@@ -580,6 +580,12 @@ class generic_flex_image: public FlexImage<double>{
     saturation = 1.0;
   }
 
+  inline af::shared<double> picture_to_readout_f(double const& i,double const& j)
+   const {
+    scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
+    af::shared<double> z; z.push_back(rdout[0]); z.push_back(rdout[1]);
+    return z;
+  }
   inline scitbx::vec2<int> picture_to_readout(double const& i,double const& j)
    const {
     //return scitbx::vec2<int>(iround(i),iround(j));
