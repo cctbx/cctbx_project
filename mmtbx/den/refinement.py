@@ -55,7 +55,7 @@ class manager(object):
           if (r is None):
             raise RuntimeError(("DEN weight optimization failed:"+
               "\n%s\nThis is a "+
-              "serious error; plesae contact bugs@phenix-online.org.") % so)
+              "serious error; please contact bugs@phenix-online.org.") % so)
           grid_so.append(so)
           grid_results.append(r)
         self.show_den_opt_summary_torsion(grid_results)
@@ -77,7 +77,7 @@ class manager(object):
           if (r is None):
             raise RuntimeError(("DEN weight optimization failed:"+
               "\n%s\nThis is a "+
-              "serious error; plesae contact bugs@phenix-online.org.") % so)
+              "serious error; please contact bugs@phenix-online.org.") % so)
           grid_so.append(so)
           grid_results.append(r)
         self.show_den_opt_summary_cartesian(grid_results)
@@ -297,7 +297,8 @@ class manager(object):
       macro_cycle            = self.macro_cycle,
       target_weights         = self.target_weights,
       log                    = log,
-      h_params               = self.params.hydrogens)
+      h_params               = self.params.hydrogens,
+      nproc                  = 1)
     #self.monitors.collect(step    = str(self.macro_cycle)+"_adp:",
     #                 model   = self.model,
     #                 fmodels = self.fmodels)
