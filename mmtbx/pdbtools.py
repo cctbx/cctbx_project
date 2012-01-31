@@ -28,7 +28,7 @@ selection = None
   .help = Selection for atoms to be modified
   .short_caption = Modify atom selection
   .input_size=400
-  .style = bold
+  .style = bold noauto
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
@@ -42,7 +42,7 @@ adp
     .short_caption = Modify ADPs for selection
     .input_size=400
     .style  = bold
-  randomize = None
+  randomize = False
     .type = bool
     .help = Randomize ADP within a certain range
     .short_caption=Randomize ADPs
@@ -50,10 +50,10 @@ adp
     .type = float
     .help = Set ADP of atoms to set_b_iso
     .short_caption=Set isotropic B to
-  convert_to_isotropic = None
+  convert_to_isotropic = False
     .type = bool
     .help = Convert atoms to isotropic
-  convert_to_anisotropic = None
+  convert_to_anisotropic = False
     .type = bool
     .help = Convert atoms to anisotropic
   shift_b_iso = None
@@ -104,15 +104,18 @@ occupancies
   .short_caption=Modify occupancies
   .style  = noauto menu_item parent_submenu:model_modifications
 {
-  randomize = None
+  randomize = False
     .type = bool
     .help = Randomize occupancies within a certain range
+    .short_caption = Randomize occupancies
   set = None
     .type = float
     .help = Set all or selected occupancies to given value
     .short_caption=Set occupancies to
 }
-rotate_about_axis {
+rotate_about_axis
+  .style = box
+{
   axis = None
     .type = str
   angle = None
@@ -120,31 +123,40 @@ rotate_about_axis {
   atom_selection = None
     .type = str
 }
-renumber_residues = None
+renumber_residues = False
   .type = bool
   .help = Re-number residues
-  .style = noauto
-truncate_to_polyala = None
+truncate_to_polyala = False
   .type = bool
   .help = Truncate a model to poly-Ala.  If True, other options will be \
     ignored.
+  .short_caption = Truncate to poly-Ala
   .style = noauto
 remove_alt_confs = False
   .type = bool
   .help = Deletes atoms whose altloc identifier is not blank or 'A', and \
     resets the occupancies of the remaining atoms to 1.0.  If True, other \
     options will be ignored.
+  .short_caption = Remove alternate conformers
+  .style = noauto
 set_chemical_element_simple_if_necessary = None
   .type = bool
+  .short_caption = Guess element field if necessary
   .help = Make a simple guess about what the chemical element is (based on \
           atom name and the way how it is formatted) and write it into output file.
 rename_chain_id
   .help = Rename chains
+  .short_caption = Rename chain ID
+  .style = box
 {
   old_id = None
     .type = str
+    .input_size = 50
+    .short_caption = Old ID
   new_id = None
     .type = str
+    .input_size = 50
+    .short_caption = New ID
 }
 output
   .help = Write out PDB file with modified model (file name is defined in \
@@ -160,6 +172,7 @@ output
     .style = bold
 }
 remove_first_n_atoms_fraction = None
+  .short_caption = Remove first N atoms (fraction)
   .type = float
 random_seed = None
   .type = int
@@ -177,13 +190,13 @@ remove = None
   .help = Selection for the atoms to be removed
   .short_caption=Remove atom selection
   .input_size=400
-  .style = bold
+  .style = bold noauto
 keep = None
   .type = atom_selection
   .help = Select atoms to keep
   .short_caption=Keep only atom selection
   .input_size=400
-  .style = bold
+  .style = bold noauto
 put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.
@@ -210,6 +223,7 @@ input {
 }
 model_statistics = None
   .type = bool
+  .style = hidden
 pdb_interpretation
   .short_caption = PDB Interpretation
   .style = menu_item
