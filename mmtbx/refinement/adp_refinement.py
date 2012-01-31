@@ -114,7 +114,8 @@ class manager(object):
             target_weights         = None,
             macro_cycle            = None,
             log                    = None,
-            h_params               = None):
+            h_params               = None,
+            nproc                  = None):
     global time_adp_refinement_py
     scatterers = fmodels.fmodel_xray().xray_structure.scatterers()
     timer = user_plus_sys_time()
@@ -199,8 +200,16 @@ class manager(object):
        model.xray_structure = fmodels.fmodel_xray().xray_structure
 
     if(refine_adp_individual):
-       refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log,
-       all_params = all_params)
+       refine_adp(
+         model                 = model,
+         fmodels               = fmodels,
+         target_weights        = target_weights,
+         individual_adp_params = individual_adp_params,
+         adp_restraints_params = adp_restraints_params,
+         h_params              = h_params,
+         log                   = log,
+         all_params            = all_params,
+         nproc                 = nproc)
 
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
@@ -218,8 +227,17 @@ class manager(object):
 
 class refine_adp(object):
 
-  def __init__(self, model, fmodels, target_weights, individual_adp_params,
-               adp_restraints_params, h_params, log, all_params):
+  def __init__(
+            self,
+            model,
+            fmodels,
+            target_weights,
+            individual_adp_params,
+            adp_restraints_params,
+            h_params,
+            log,
+            all_params,
+            nproc=None):
     adopt_init_args(self, locals())
     d_min = fmodels.fmodel_xray().f_obs().d_min()
     # initialize with defaults...
@@ -280,7 +298,8 @@ class refine_adp(object):
       self.wx_scale = 1
     self.show(weight=default_weight)
     trial_results = []
-    nproc =  all_params.main.nproc
+    if nproc is None:
+      nproc =  all_params.main.nproc
     parallel = False
     if (len(trial_weights) > 1) and ((nproc is Auto) or (nproc > 1)) :
       parallel = True

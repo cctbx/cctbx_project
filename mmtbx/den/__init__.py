@@ -28,9 +28,12 @@ den_params = iotbx.phil.parse("""
  opt_weight_values = 0.5, 1.0, 3.0, 5.0, 10.0, 25.0, 50.0, 100.0
    .type = floats
    .short_caption = Weight values for optimization
- num_cycles = 8
+ num_cycles = 10
    .type = int
    .short_caption = Number of cycles
+ kappa_burn_in_cycles = 3
+   .type = int
+   .short_caption = Number of cycles where kappa is set to 0.0
  refine_adp = True
    .type = bool
    .short_caption = Refine B-factors
@@ -251,8 +254,6 @@ class den_restraints(object):
   def dump_den_network(self):
     den_dump = {}
     self.get_selection_strings()
-    #print self.selection_string_hash
-    #print self.random_ref_atom_pairs
     for chain in self.den_atom_pairs.keys():
       den_dump[chain] = []
       for pair in self.den_atom_pairs[chain]:
