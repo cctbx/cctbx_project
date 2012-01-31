@@ -917,14 +917,6 @@ class generic_alignment_parser(object):
     return ( None, text )
 
 
-  def valid_alignments(self, alignments):
-
-    for line2 in alignments[1:]:
-      if (len( alignments[0] ) != len( line2 )):
-        return False
-    return True
-
-
   def extract(self, text):
 
     return [ match.groupdict() for match in self.regex.finditer( text ) ]
@@ -940,7 +932,7 @@ class generic_alignment_parser(object):
       for ali_str in data_dict[ "alignments" ]
       ]
 
-    if not self.valid_alignments( alignments ):
+    if not check_alignments_are_valid( alignments ):
       return ( None, text )
 
     data_dict[ "alignments" ] = alignments
@@ -952,6 +944,20 @@ class generic_alignment_parser(object):
   def __call__(self, text):
 
     return self.parse( text )
+
+
+def check_alignments_are_valid(alignments):
+
+  if not alignments:
+    return True
+
+  first = len( alignments[0] )
+
+  for line in alignments[1:]:
+    if first != len( line ):
+      return False
+  
+  return True
 
 
 class sequential_alignment_parser(generic_alignment_parser):
@@ -981,66 +987,73 @@ class sequential_alignment_parser(generic_alignment_parser):
       )
 
 
-class clustal_alignment_parser(generic_alignment_parser):
+CLUSTAL_BODY = re.compile(
+  r"""
+  ^
+  (?P<name> [\S]* ) \s+
+  (?P<alignment> [A-Z\-]* )
+  (?P<number> \s+ \d+ )? \s* $
+  """,
+  re.VERBOSE | re.MULTILINE
+  )
+CLUSTAL_MIDLINE = re.compile( r"^ \s* [:.* ]+ \s* $", re.VERBOSE )
+CLUSTAL_HEADER = re.compile( r"\A(.*) multiple sequence alignment$" )
+
+def clustal_alignment_parse(text):
   """
   Specific for Clustal alignments
   """
 
-  regex = re.compile(
-    r"""
-    ^
-    (?P<name> [\S]+ ) \s+
-    (?P<alignment> [A-Z\-]* )
-    (?P<number> \s+ \d+ )? \s* \n
-    """,
-    re.VERBOSE | re.MULTILINE
-    )
-  HEADER = re.compile( r"\A(.*) multiple sequence alignment$", re.MULTILINE )
+  lines = text.strip().splitlines()
 
-  def parse(self, text):
+  if not lines:
+    return ( None, text )
 
-    match = self.HEADER.search( text )
+  assert 0 < len( lines )
 
-    if not match:
-      return self.fail( text )
+  match = CLUSTAL_HEADER.search( lines[0] )
 
-    program = match.group( 1 )
+  if not match:
+    return ( None, text )
+
+  program = match.group( 1 )
+  data_for = {}
+  names = []
+
+  for line in lines[1:]:
+    if not line.strip():
+      continue
 
     # Get names and data
-    data = self.extract( text )
+    match = CLUSTAL_BODY.search( line )
 
-    # Merge data on names
-    data_for = dict( [ ( info[ "name" ], [] ) for info in data ] )
+    if not match:
+      if CLUSTAL_MIDLINE.search( line ):
+        continue
 
-    for info in data:
-      data_for[ info[ "name" ] ].append( info[ "alignment" ] )
+      return ( None, text )
 
-    # Check that alignments match
-    alignments = [
-      "".join( [ char for char in "".join( segments ) if not char.isspace() ] )
-      for segments in data_for.values()
-      ]
+    info = match.groupdict()
+    name = info[ "name" ]
 
-    if not self.valid_alignments( alignments ):
-      return self.fail( text )
+    if name not in data_for:
+      assert name not in names
+      data_for[ name ] = []
+      names.append( name )
 
-    # Original order need to be maintained
-    alignment_for = dict( zip( data_for.keys(), alignments ) )
-    unique_names = []
+    data_for[ name ].extend( c for c in info[ "alignment" ] if not c.isspace() )
 
-    for info in data:
-      if info[ "name" ] not in unique_names:
-        unique_names.append( info[ "name" ] )
+  if not check_alignments_are_valid( alignments = data_for.values() ):
+    return ( None, text )
 
-    # Create alignment object
-    return (
-      clustal_alignment(
-        names = unique_names,
-        alignments = [ alignment_for[ name ] for name in unique_names ],
-        program = program
-        ),
-      ""
-      )
+  return (
+    clustal_alignment(
+      names = names,
+      alignments = [ "".join( data_for[ name ] ) for name in names ],
+      program = program
+      ),
+    ""
+    )
 
 
 def hhalign_alignment_parse(text):
@@ -1055,7 +1068,6 @@ def hhalign_alignment_parse(text):
 
 
 # Alignment parser instances that can be used as functions
-clustal_alignment_parse = clustal_alignment_parser()
 pir_alignment_parse = sequential_alignment_parser(
   regex = re.compile(
     r"""
