@@ -1,3 +1,5 @@
+/* -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*- */
+
 #ifndef DETECTORS_IMAGE_DISPV_H
 #define DETECTORS_IMAGE_DISPV_H
 
@@ -258,9 +260,9 @@ public:
 
 public:
   inline
-  FlexImage(array_t rawdata,const double& brightness = 1.0):
+  FlexImage(array_t rawdata,const double& brightness = 1.0, const double& saturation = 1.0):
     rawdata(rawdata),
-    brightness(brightness),nchannels(4),use_antialiasing(false){}
+    brightness(brightness),saturation(saturation), nchannels(4),use_antialiasing(false){}
 
   inline
   FlexImage(array_t rawdata, const int& power_of_two,
@@ -563,9 +565,12 @@ class generic_flex_image: public FlexImage<double>{
   scitbx::mat3<double> rotation;
   scitbx::mat2<double> rotation2;
 
+  scitbx::af::shared<scitbx::mat3<double> > rotations;
+  scitbx::af::shared<scitbx::vec3<double> > translations;
+
   inline
-  generic_flex_image(array_t rawdata,const double& brightness = 1.0
-  ):FlexImage<double>(rawdata,brightness){
+  generic_flex_image(array_t rawdata,const double& brightness = 1.0, const double& saturation = 1.0
+    ):FlexImage<double>(rawdata,brightness, saturation){
     use_antialiasing=true;
     binning=1;
     zoom = 1./ binning;
@@ -577,20 +582,38 @@ class generic_flex_image: public FlexImage<double>{
     rotation = scitbx::math::r3_rotation::axis_and_angle_as_matrix<double>(axis,4.,true);
     rotation2 = scitbx::mat2<double>(rotation[0],rotation[1],rotation[3],rotation[4]);
     correction = 1.0;
-    saturation = 1.0;
   }
 
   inline af::shared<double> picture_to_readout_f(double const& i,double const& j)
    const {
-    scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
-    af::shared<double> z; z.push_back(rdout[0]); z.push_back(rdout[1]);
-    return z;
+    if (rotations.size() == 0) {
+      scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
+      af::shared<double> z; z.push_back(rdout[0]); z.push_back(rdout[1]);
+      return z;
+    } else {
+      af::shared<double> z;
+      for (size_t k = 0; k < rotations.size(); k++) {
+        scitbx::vec3<double> rdout =
+          rotations[k] * scitbx::vec3<double>(i, j, 0) + translations[k];
+
+        z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
+      }
+      return z;
+    }
   }
   inline scitbx::vec2<int> picture_to_readout(double const& i,double const& j)
-   const {
-    //return scitbx::vec2<int>(iround(i),iround(j));
-    scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
-    return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
+    const {
+    if (rotations.size() == 0) {
+      //return scitbx::vec2<int>(iround(i),iround(j));
+      scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
+      return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
+    } else {
+      for (size_t k = 0; k < rotations.size(); k++) {
+        scitbx::vec3<double> rdout =
+          rotations[k] * scitbx::vec3<double>(i, j, 0) + translations[k];
+        return scitbx::vec2<int>(iround(rdout[0]), iround(rdout[1]));
+      }
+    }
   }
   inline void prep_string(){
     typedef af::c_grid<3> t_C;
@@ -645,6 +668,12 @@ class generic_flex_image: public FlexImage<double>{
     // no implementation at present
   }
 
+  inline void add_rotation_translation(
+    const scitbx::mat3<double>& R, const scitbx::vec3<double>& t)
+  {
+    rotations.push_back(R);
+    translations.push_back(t);
+  }
 };
 
 }}} //namespace
