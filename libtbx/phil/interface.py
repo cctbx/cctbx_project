@@ -377,7 +377,8 @@ class index (object) :
 
   def get_run_title (self) :
     for def_name in self._full_path_index.keys() :
-      if def_name.endswith(".title") or def_name.endswith(".job_title") :
+      if ((def_name in ["title", "job_title"]) or
+          (def_name.endswith(".title") or def_name.endswith(".job_title"))) :
         phil_def = self._full_path_index[def_name]
         assert phil_def.is_definition
         return phil_def.extract()
