@@ -594,9 +594,9 @@ class generic_flex_image: public FlexImage<double>{
       af::shared<double> z;
       for (size_t k = 0; k < rotations.size(); k++) {
         scitbx::vec3<double> rdout =
-          rotations[k] * scitbx::vec3<double>(i, j, 0) + translations[k];
+          rotations[k] * scitbx::vec3<double>(i, j, 0) + (translations[k]/binning);
 
-        z.push_back(rdout[0] / binning); z.push_back(rdout[1] / binning); z.push_back(k);
+        z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
       }
       return z;
     }
@@ -610,7 +610,7 @@ class generic_flex_image: public FlexImage<double>{
     } else {
       for (size_t k = 0; k < rotations.size(); k++) {
         scitbx::vec3<double> rdout =
-          rotations[k] * scitbx::vec3<double>(i, j, 0) + translations[k];
+          rotations[k] * scitbx::vec3<double>(i, j, 0) + (translations[k]/binning);
         return scitbx::vec2<int>(iround(rdout[0]), iround(rdout[1]));
       }
     }
