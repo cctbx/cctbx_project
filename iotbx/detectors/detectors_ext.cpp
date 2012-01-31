@@ -445,14 +445,16 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 
   class_<iotbx::detectors::display::generic_flex_image,
          bases<iotbx::detectors::display::FlexImage<double> > >("generic_flex_image", no_init)
-      .def(init<af::versa<double, af::flex_grid<> >,double const& >(
+      .def(init<af::versa<double, af::flex_grid<> >,double const&, double const & >(
             (
             arg_("rawdata"),
-            arg_("brightness")
+            arg_("brightness"),
+            arg_("saturation")
             )
           ))
       .def("prep_string",&iotbx::detectors::display::generic_flex_image::prep_string)
 
+.def("add_rotation_translation",&iotbx::detectors::display::generic_flex_image::add_rotation_translation)
 .def("picture_to_readout",&iotbx::detectors::display::generic_flex_image::picture_to_readout_f)
   ;
 
