@@ -14,7 +14,7 @@ import mmtbx.restraints
 import mmtbx.model
 from mmtbx import model_statistics
 import random
-from libtbx import easy_run, easy_pickle
+from libtbx import easy_run
 from iotbx.pdb import combine_unique_pdb_files
 from libtbx import runtime_utils
 import scitbx.matrix
@@ -810,15 +810,6 @@ def run(args, command_name="phenix.pdbtools"):
   utils.print_header("Done", out = log)
   return output_files
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
-    results = run(list(self.args))
-    eff_file = self.args[0]
-    if os.path.isfile(eff_file) :
-      base, ext = os.path.splitext(eff_file)
-      easy_pickle.dump("%s.pkl" % base, results)
-    return results
-
 class interpreter:
   def __init__(self,
         command_name,
@@ -1044,3 +1035,7 @@ def finish_job (result) :
         file_desc = "Unknown file"
       output_files.append((file_desc, file_name))
   return (output_files, [])
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    return run(args=list(self.args))
