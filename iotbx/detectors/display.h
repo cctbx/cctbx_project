@@ -596,7 +596,7 @@ class generic_flex_image: public FlexImage<double>{
         scitbx::vec3<double> rdout =
           rotations[k] * scitbx::vec3<double>(i, j, 0) + translations[k];
 
-        z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
+        z.push_back(rdout[0] / binning); z.push_back(rdout[1] / binning); z.push_back(k);
       }
       return z;
     }
