@@ -11,6 +11,9 @@ MAP_TYPE_NEUTRON = 16
 MAP_TYPE_F_CALC = 32
 MAP_TYPE_FILLED = 64
 
+class MapNotFound (RuntimeError) :
+  pass
+
 class server (object) :
   """
   Manager for files containing map coefficients (either as complex arrays or
@@ -249,7 +252,7 @@ class server (object) :
       fom_label=None, weighted=True) :
     f, phi, fom = self.get_amplitudes_and_phases(f_label, phi_label, fom_label)
     if (f is None) or ((not f.is_complex_array()) and (phi is None)) :
-      raise RuntimeError(("Couldn't find amplitude or phase arrays in %s.\n"+
+      raise MapNotFound(("Couldn't find amplitude or phase arrays in %s.\n"+
         "File contents:\n%s") % (self.file_name, "\n".join(self.array_labels)))
     if (f.anomalous_flag()) :
       f = f.merge_bijvoet_mates()
@@ -453,7 +456,10 @@ def convert_map_coefficients (map_coefficients,
   server_ = server(file_name=mtz_file)
   for map in map_coefficients :
     array_label = map.mtz_label_amplitudes + "," + map.mtz_label_phases
-    map_file = server_.convert_any_map(array_label, None, None, **kwds)
+    try :
+      map_file = server_.convert_any_map(array_label, None, None, **kwds)
+    except MapNotFound :
+      pass
     outputs.append((map_file, map.map_type))
   return outputs
 
