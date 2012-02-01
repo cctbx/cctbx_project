@@ -144,6 +144,14 @@ set_chemical_element_simple_if_necessary = None
   .short_caption = Guess element field if necessary
   .help = Make a simple guess about what the chemical element is (based on \
           atom name and the way how it is formatted) and write it into output file.
+set_seg_id_to_chain_id = False
+  .type = bool
+  .short_caption = Set segID to chain ID
+  .help = Sets the segID field to the chain ID (padded with spaces).
+clear_seg_id = False
+  .type = bool
+  .short_caption = Clear segID field
+  .help = Erases the segID field.
 rename_chain_id
   .help = Rename chains
   .short_caption = Rename chain ID
@@ -533,12 +541,6 @@ class modify(object):
       self.xray_structure.set_sites_cart(
         sites_cart.set_selected(sel, sites_cart_rotated))
 
-def set_chemical_element_simple_if_necessary(hierarchy):
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for atom in chain.atoms():
-        atom.set_element(atom.determine_chemical_element_simple())
-
 def rename_chain_id(hierarchy, params, log):
   print >> log, "old_id= '%s'"%params.old_id
   print >> log, "new_id= '%s'"%params.new_id
@@ -608,8 +610,9 @@ def run(args, command_name="phenix.pdbtools"):
                                          log           = log)
   output_files = []
   ### get i/o file names
-  ofn = command_line_interpreter.params.modify.output.file_name
-  ifn = command_line_interpreter.params.input.pdb.file_name
+  params = command_line_interpreter.params
+  ofn = params.modify.output.file_name
+  ifn = params.input.pdb.file_name
   if(ofn is None):
     if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
     elif(len(ifn)>1): ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
@@ -617,7 +620,7 @@ def run(args, command_name="phenix.pdbtools"):
       pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
       ofn = pdbout+"_modified.pdb"
 ### Truncate to poly-Ala
-  if(command_line_interpreter.params.modify.truncate_to_polyala):
+  if(params.modify.truncate_to_polyala):
     xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
     utils.print_header("Truncating to poly-Ala", out = log)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
@@ -627,21 +630,11 @@ def run(args, command_name="phenix.pdbtools"):
     output_files.append(ofn)
     return output_files
 ### Remove alt. confs.
-  if (command_line_interpreter.params.modify.remove_alt_confs) :
+  if (params.modify.remove_alt_confs) :
     utils.print_header("Removing alternate conformations", out = log)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     remove_alt_confs(hierarchy = pdb_hierarchy)
     print >> log, "All occupancies reset to 1.0."
-    pdb_hierarchy.write_pdb_file(file_name = ofn,
-      crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
-    output_files.append(ofn)
-    return output_files
-### Renumber residues
-  if(command_line_interpreter.params.modify.renumber_residues):
-    xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
-    utils.print_header("Re-numbering residues", out = log)
-    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
-    renumber_residues(pdb_hierarchy = pdb_hierarchy)
     pdb_hierarchy.write_pdb_file(file_name = ofn,
       crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
     output_files.append(ofn)
@@ -652,10 +645,11 @@ def run(args, command_name="phenix.pdbtools"):
     command_line_interpreter.processed_pdb_file.all_chain_proxies
   xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
     show_summary = False)
+  pdb_hierarchy = all_chain_proxies.pdb_hierarchy
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
 ### show_geometry_statistics and exit
-  if(command_line_interpreter.params.model_statistics):
+  if(params.model_statistics):
     utils.print_header("Geometry statistics", out = log)
     command_line_interpreter.processed_pdb_file.log = None # to disable output
     geometry = command_line_interpreter.processed_pdb_file.\
@@ -697,14 +691,13 @@ def run(args, command_name="phenix.pdbtools"):
     return [ofn]
 ### show parameters
   utils.print_header("Complete set of parameters", out = log)
-  master_params.format(command_line_interpreter.params).show(out = log)
+  master_params.format(params).show(out = log)
 ### run geometry regularization
   if((command_line_interpreter.command_line.options.geometry_regularization) or
-     (command_line_interpreter.params.regularize_geometry) or
-     (command_line_interpreter.params.simple_dynamics)) :
+     (params.regularize_geometry) or (params.simple_dynamics)) :
     utils.print_header("Geometry regularization", out = log)
     # Conformation Dependent Library
-    if command_line_interpreter.params.pdb_interpretation.cdl:
+    if params.pdb_interpretation.cdl:
       import time
       from mmtbx import conformation_dependent_library as cdl
       ppf = command_line_interpreter.processed_pdb_file
@@ -731,12 +724,12 @@ def run(args, command_name="phenix.pdbtools"):
 
     from mmtbx.command_line import geometry_minimization
     sites_cart = geometry_minimization.run(
-      params = command_line_interpreter.params.geometry_minimization,
+      params = params.geometry_minimization,
       processed_pdb_file = command_line_interpreter.processed_pdb_file,
       log = log)
     xray_structure = xray_structure.replace_sites_cart(new_sites = sites_cart)
 ### simple cartesian dynamics
-  if (command_line_interpreter.params.simple_dynamics) :
+  if (params.simple_dynamics) :
     utils.print_header("Simple cartesian dynamics", out=log)
     command_line_interpreter.processed_pdb_file.log = None # to disable output
     geometry = command_line_interpreter.processed_pdb_file.\
@@ -746,7 +739,7 @@ def run(args, command_name="phenix.pdbtools"):
       normalization = True)
     sites_cart_start = xray_structure.sites_cart().deep_copy()
     from mmtbx.dynamics import cartesian_dynamics
-    dyna_params = command_line_interpreter.params.cartesian_dynamics
+    dyna_params = params.cartesian_dynamics
     cartesian_dynamics.cartesian_dynamics(
       structure=xray_structure,
       restraints_manager=restraints_manager,
@@ -762,35 +755,38 @@ def run(args, command_name="phenix.pdbtools"):
     print >> log, ""
     print >> log, "RMSD from starting structure: %.3f" % rmsd
 ### set_chemical_element_simple_if_necessary
-  if(command_line_interpreter.params.modify.set_chemical_element_simple_if_necessary):
-    xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
+  if(params.modify.set_chemical_element_simple_if_necessary):
     utils.print_header("Restore 77-78 column", out = log)
-    print >> log, """  Make a simple guess about which chemical element should be in 77-78 column,
+    print >> log, """\
+  Make a simple guess about which chemical element should be in 77-78 column,
   and outputs and new file with this column filled."""
-    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
-    set_chemical_element_simple_if_necessary(hierarchy = pdb_hierarchy)
-    pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
-    pdb_hierarchy.write_pdb_file(file_name = ofn,
-      crystal_symmetry = xray_structure.crystal_symmetry())
-    output_files.append(ofn)
-    print >> log, "All done."
-    return output_files
+    pdb_hierarchy.atoms().set_chemical_element_simple_if_necessary()
 ### rename_chain_id
-  if([command_line_interpreter.params.modify.rename_chain_id.old_id,
-      command_line_interpreter.params.modify.rename_chain_id.new_id].count(None)==0):
+  if([params.modify.rename_chain_id.old_id,
+      params.modify.rename_chain_id.new_id].count(None)==0):
     utils.print_header("Rename chain id", out = log)
-    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     rename_chain_id(hierarchy = pdb_hierarchy,
-      params = command_line_interpreter.params.modify.rename_chain_id, log = log)
-    pdb_hierarchy.write_pdb_file(file_name = ofn,
-      crystal_symmetry = xray_structure.crystal_symmetry())
-    output_files.append(ofn)
-    print >> log, "All done."
-    return output_files
+      params=params.modify.rename_chain_id,
+      log = log)
+### Renumber residues
+  if (params.modify.renumber_residues):
+    utils.print_header("Re-numbering residues", out = log)
+    renumber_residues(pdb_hierarchy = pdb_hierarchy)
+### segID manipulations
+  if (params.modify.set_seg_id_to_chain_id) :
+    if (params.modify.clear_seg_id) :
+      raise Sorry("Parameter conflict - set_seg_id_to_chain_id=True and "+
+        "clear_seg_id=True.  Please choose only one of these options.")
+    for atom in pdb_hierarchy.atoms() :
+      labels = atom.fetch_labels()
+      atom.segid = "%-4s" % labels.chain_id
+  elif (params.modify.clear_seg_id) :
+    for atom in pdb_hierarchy.atoms() :
+      atom.segid = "    "
 ### do other model manipulations
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
-                  params            = command_line_interpreter.params.modify,
+                  params            = params.modify,
                   all_chain_proxies = all_chain_proxies,
                   log               = log)
   result.report_number_of_atoms_to_be_removed()
