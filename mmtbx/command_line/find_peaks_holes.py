@@ -161,7 +161,7 @@ class peaks_holes_container (object) :
       f.write("REMARK  Chain D is waters with mFo-DFc peaks (> %g sigma)\n" %
         self.map_cutoff)
       waters = sorted(self.water_peaks,
-                      lambda x,y: cmp(x.peak_height, y.peak_height))
+                      lambda x,y: cmp(y.peak_height, x.peak_height))
       waters_chain = iotbx.pdb.hierarchy.chain(id="D")
       model.append_chain(waters_chain)
       for k, peak in enumerate(waters) :
@@ -171,7 +171,7 @@ class peaks_holes_container (object) :
         f.write("REMARK  Chain D is waters with anom. peaks (> %g sigma)\n" %
           self.anom_map_cutoff)
         waters_anom = sorted(self.water_anom_peaks,
-                             lambda x,y: cmp(x.peak_height, y.peak_height))
+                             lambda x,y: cmp(y.peak_height, x.peak_height))
         waters_chain_2 = iotbx.pdb.hierarchy.chain(id="E")
         model.append_chain(waters_chain_2)
         for k, peak in enumerate(waters_anom) :
