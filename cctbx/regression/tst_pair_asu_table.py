@@ -38,7 +38,8 @@ def exercise_icosahedron(max_level=2, verbose=0):
           assert approx_equal(d, 1.0514622242382672)
     elif (level < 2):
       s = StringIO()
-      ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites, out=s)
+      ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites, out=s) \
+        .distances_info
       assert ps.pair_counts.all_eq(pair_asu_table.pair_counts())
       assert len(s.getvalue().splitlines()) == [72,320][level]
       del s
