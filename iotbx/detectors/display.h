@@ -572,6 +572,9 @@ class generic_flex_image: public FlexImage<double>{
   scitbx::af::shared<scitbx::mat3<double> > rotations;
   scitbx::af::shared<scitbx::vec3<double> > translations;
 
+  typedef af::c_grid<3> t_C;
+  t_C acc;
+
   inline
   generic_flex_image(array_t rawdata,const double& brightness = 1.0, const double& saturation = 1.0
     ):FlexImage<double>(rawdata,brightness, saturation){
@@ -588,6 +591,24 @@ class generic_flex_image: public FlexImage<double>{
     correction = 1.0;
   }
 
+  // Identical to base class, except for computation of export_anchor.
+  inline
+  void setWindowCart(
+    const double& xtile, const double& ytile,const double& fraction){
+      // fractional coverage of image is defined on dimension 1 (slow) only,
+      // allowing square subarea display of a rectangular detector image
+      // tile coverage is specified in cartesian rather than fractional image coordinates
+    int apply_zoom = (binning == 1)? zoom : 1;
+    export_size_cut1 = iround((double(size1())/binning)*fraction*apply_zoom);
+    export_size_cut2 = iround((double(size2())/binning)*fraction*apply_zoom*(double(size1())/double(size2())));
+
+    export_m = af::versa<int, af::c_grid<2> >(
+       af::c_grid<2>(export_size_cut1,export_size_cut2));
+    //Compute integer anchor index based on input fractional dimension:
+    export_anchor_x = xtile * export_size_cut2;
+    export_anchor_y = ytile * export_size_cut1;
+  }
+
   inline af::shared<double> picture_to_readout_f(double const& i,double const& j)
    const {
     if (rotations.size() == 0) {
@@ -595,13 +616,25 @@ class generic_flex_image: public FlexImage<double>{
       af::shared<double> z; z.push_back(rdout[0]); z.push_back(rdout[1]);
       return z;
     } else {
-      //printf("*** BINNING is %d\n", binning);
+      // The dimension of a readout in the slow dimension, assuming
+      // they are all the same size, and that the number of rotation
+      // matrices is equal to the number of readouts.
+      std::size_t dim_slow = size1() / rotations.size();
+
       af::shared<double> z;
       for (size_t k = 0; k < rotations.size(); k++) {
         scitbx::vec3<double> rdout =
-          rotations[k] * scitbx::vec3<double>(i, j, 0) + translations[k];
+          rotations[k] * scitbx::vec3<double>(i, j, 0) - translations[k];
 
-        z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
+        scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
+        if (irdout[0] >= 0 && irdout[0] < dim_slow) {
+
+          // Since acc is binned, irdout take it into account.
+          if (acc.is_valid_index(0, (k * dim_slow + irdout[0]) / binning, irdout[1] / binning)) {
+            z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
+            return z;
+          }
+        }
       }
       return z;
     }
@@ -613,16 +646,26 @@ class generic_flex_image: public FlexImage<double>{
       scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
       return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
     } else {
+      // The dimension of a binned readout in the slow dimension.
+      std::size_t dim_slow = size1() / rotations.size() / binning;
       for (size_t k = 0; k < rotations.size(); k++) {
         scitbx::vec3<double> rdout =
-          rotations[k] * scitbx::vec3<double>(i, j, 0) + (translations[k]/binning);
-        return scitbx::vec2<int>(iround(rdout[0]), iround(rdout[1]));
+          rotations[k] * scitbx::vec3<double>(i, j, 0) - (translations[k]/binning);
+
+        scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
+        if (irdout[0] >= 0 && irdout[0] < dim_slow) {
+          irdout[0] += k * dim_slow;
+          if (acc.is_valid_index(0, irdout[0], irdout[1])) {
+            return irdout;
+          }
+        }
       }
     }
+    return scitbx::vec2<int>(-1, -1);
   }
   inline void prep_string(){
-    typedef af::c_grid<3> t_C;
-    const t_C& acc = channels.accessor();
+    //const t_C& acc = channels.accessor();
+    acc = channels.accessor();
     export_s = "";
     export_s.reserve(export_size_cut1*export_size_cut2*3);
     //scitbx::vec3<int> datafocus = channels.accessor().focus();
