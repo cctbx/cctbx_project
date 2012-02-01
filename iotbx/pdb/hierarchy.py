@@ -1031,19 +1031,13 @@ class _(boost.python.injector, ext.residue):
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
-class input(object):
+class input_hierarchy_pair(object):
 
-  def __init__(self, file_name=None, pdb_string=None, source_info=Auto):
-    assert [file_name, pdb_string].count(None) == 1
-    import iotbx.pdb
-    if (file_name is not None):
-      assert source_info is Auto
-      self.input = iotbx.pdb.input(file_name=file_name)
-    else:
-      if (source_info is Auto): source_info = "string"
-      self.input = iotbx.pdb.input(
-        source_info=source_info, lines=flex.split_lines(pdb_string))
-    self.hierarchy = self.input.construct_hierarchy()
+  def __init__(self, input, hierarchy=None):
+    self.input = input
+    if (hierarchy is None):
+      hierarchy = self.input.construct_hierarchy()
+    self.hierarchy = hierarchy
 
   def __getinitargs__(self):
     from pickle import PicklingError
@@ -1063,6 +1057,20 @@ class input(object):
     perm = self.input_to_hierarchy_atom_permutation()
     xrs = self.input.xray_structure_simple(*args, **kwds)
     return xrs.select(perm)
+
+class input(input_hierarchy_pair):
+
+  def __init__(self, file_name=None, pdb_string=None, source_info=Auto):
+    assert [file_name, pdb_string].count(None) == 1
+    import iotbx.pdb
+    if (file_name is not None):
+      assert source_info is Auto
+      pdb_inp = iotbx.pdb.input(file_name=file_name)
+    else:
+      if (source_info is Auto): source_info = "string"
+      pdb_inp = iotbx.pdb.input(
+        source_info=source_info, lines=flex.split_lines(pdb_string))
+    super(input, self).__init__(input=pdb_inp)
 
 class show_summary(input):
 
