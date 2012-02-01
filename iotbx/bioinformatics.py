@@ -956,7 +956,7 @@ def check_alignments_are_valid(alignments):
   for line in alignments[1:]:
     if first != len( line ):
       return False
-  
+
   return True
 
 
