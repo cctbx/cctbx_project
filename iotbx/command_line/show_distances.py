@@ -19,7 +19,7 @@ def display(
   pairs = xray_structure.show_distances(
     distance_cutoff=distance_cutoff,
     show_cartesian=show_cartesian,
-    keep_pair_asu_table=True)
+    keep_pair_asu_table=True).distances_info
   print
   if (pairs.pair_counts.size() <= 15):
     print "Pair counts:", list(pairs.pair_counts)

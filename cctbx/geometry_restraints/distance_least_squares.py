@@ -144,7 +144,7 @@ class distance_and_repulsion_least_squares:
     si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
     si_pairs = si_structure.show_distances(
       pair_asu_table=si_pair_asu_table,
-      out=out)
+      out=out).distances_info
     if (connectivities is not None):
       assert list(si_pairs.pair_counts) == connectivities
     print >> out
@@ -162,7 +162,7 @@ class distance_and_repulsion_least_squares:
     si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
     si_o_bonds = si_o.structure.show_distances(
       pair_asu_table=si_o_bond_asu_table,
-      out=out)
+      out=out).distances_info
     n_si = si_pairs.pair_counts.size()
     n_si_o = si_o_bonds.pair_counts.size()
     assert si_o_bonds.pair_counts[:n_si].all_eq(si_pairs.pair_counts)
@@ -174,7 +174,7 @@ class distance_and_repulsion_least_squares:
       si_o_bond_asu_table=si_o_bond_asu_table)
     o_si_o_pairs = si_o.structure.show_distances(
       pair_asu_table=o_si_o_asu_table,
-      out=out)
+      out=out).distances_info
     assert o_si_o_pairs.pair_counts[:n_si].all_eq(0)
     if (si_pairs.pair_counts.count(4) == n_si):
       assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
@@ -303,7 +303,7 @@ class distance_and_repulsion_least_squares:
     print >> out
     minimized_structure.show_distances(
       pair_asu_table=si_o_bond_asu_table,
-      out=out)
+      out=out).distances_info
     print >> out
     sites_cart = minimized_structure.sites_cart()
     pair_proxies = geometry_restraints_manager.pair_proxies(

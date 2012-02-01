@@ -748,7 +748,9 @@ class calculate_distances(object):
 
       self.pair_counts.append(pair_count)
 
-class show_distances(object):
+class show_distances(libtbx.slots_getstate_setstate):
+
+  __slots__ = ["pair_asu_table", "distances_info", "have_sym"]
 
   def __init__(self,
         pair_asu_table,
@@ -767,7 +769,6 @@ class show_distances(object):
       self.pair_asu_table = None
     asu_mappings = pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
-    self._i_seqs = set()
     if (sites_frac is None):
       sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     if (site_labels is None):
@@ -779,22 +780,23 @@ class show_distances(object):
       for label in site_labels:
         label_len = max(label_len, len(label))
       label_fmt = "%%-%ds" % (label_len+1)
-
-    distances = calculate_distances(
+    self.distances_info = calculate_distances(
       pair_asu_table, sites_frac,
       skip_j_seq_less_than_i_seq=skip_j_seq_less_than_i_seq)
-
-    for d in distances:
-      i_seq, j_seq = d.i_seq, d.j_seq
-      rt_mx_ji = d.rt_mx_ji
-      first_time_i_seq = (i_seq not in self._i_seqs)
+    self.have_sym = False
+    i_seqs_done = set()
+    for di in self.distances_info:
+      i_seq, j_seq = di.i_seq, di.j_seq
+      rt_mx_ji = di.rt_mx_ji
+      from scitbx.array_family import flex
+      first_time_i_seq = (i_seq not in i_seqs_done)
       if (first_time_i_seq):
-        self._i_seqs.add(i_seq)
+        i_seqs_done.add(i_seq)
         if (site_labels is None):
           s = label_fmt % (i_seq+1)
         else:
           s = label_fmt % site_labels[i_seq]
-        s += " pair count: %3d" % d.pair_count
+        s += " pair count: %3d" % di.pair_count
         site_frac_i = sites_frac[i_seq]
         if (show_cartesian):
           formatted_site = [" %7.2f" % x
@@ -807,8 +809,8 @@ class show_distances(object):
         print >> out, " ", label_fmt % (j_seq+1) + ":",
       else:
         print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
-      print >> out, "%8.4f" % d.distance,
-      if d.i_j_sym != 0:
+      print >> out, "%8.4f" % di.distance,
+      if di.i_j_sym != 0:
         s = "sym. equiv."
       else:
         s = "           "
@@ -821,14 +823,10 @@ class show_distances(object):
       s += " (" + ",".join(formatted_site) +")"
       if (not rt_mx_ji.is_unit_mx()):
         s += " sym=" + str(rt_mx_ji)
+        self.have_sym = True
       print >> out, s
-
-      if first_time_i_seq and d.pair_count == 0:
+      if first_time_i_seq and di.pair_count == 0:
         print >> out, "  no neighbors"
-
-    self.distances = distances.distances
-    self.pair_counts = distances.pair_counts
-
 
 class calculate_angles(object):
 
