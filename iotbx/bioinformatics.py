@@ -1041,7 +1041,7 @@ def clustal_alignment_parse(text):
       data_for[ name ] = []
       names.append( name )
 
-    data_for[ name ].extend( c for c in info[ "alignment" ] if not c.isspace() )
+    data_for[ name ].extend([c for c in info[ "alignment" ] if not c.isspace()])
 
   if not check_alignments_are_valid( alignments = data_for.values() ):
     return ( None, text )
