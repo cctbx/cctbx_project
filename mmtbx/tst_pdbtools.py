@@ -527,6 +527,40 @@ TER
     line2 = line2.strip()
     assert line1 == line2
 
+def exercise_set_seg_id () :
+  input_pdb = """\
+ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
+ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51           O
+ATOM      3  O   CYS A   1      -1.433   4.734   5.405  1.00  7.85           O
+TER
+ATOM      4  O   SER B   4       0.297   0.843   7.226  1.00  7.65           O
+ATOM      5  OG ASER B   4      -2.625   1.057   4.064  0.50  5.46           O
+ATOM      6  OG BSER B   4      -0.885   0.189   3.843  0.50 11.74           O
+TER
+ATOM      7  O   LEU     0       5.613  12.448   6.864  1.00  7.32           O
+TER
+END
+"""
+  open("tmp_seg_id.pdb", "w").write(input_pdb)
+  easy_run.call("phenix.pdbtools tmp_seg_id.pdb set_seg_id_to_chain_id=True --quiet")
+  pdb_out_1 = open("tmp_seg_id.pdb_modified.pdb").read()
+  assert (pdb_out_1 == """\
+ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04      A    O
+ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51      A    O
+ATOM      3  O   CYS A   1      -1.433   4.734   5.405  1.00  7.85      A    O
+TER
+ATOM      4  O   SER B   4       0.297   0.843   7.226  1.00  7.65      B    O
+ATOM      5  OG ASER B   4      -2.625   1.057   4.064  0.50  5.46      B    O
+ATOM      6  OG BSER B   4      -0.885   0.189   3.843  0.50 11.74      B    O
+TER
+ATOM      7  O   LEU     0       5.613  12.448   6.864  1.00  7.32           O
+TER
+END
+""")
+  easy_run.call("phenix.pdbtools tmp_seg_id.pdb_modified.pdb clear_seg_id=True --quiet")
+  pdb_out_2 = open("tmp_seg_id.pdb_modified.pdb_modified.pdb").read()
+  assert (pdb_out_2 == input_pdb)
+
 def exercise_remove_first_n_atoms_fraction(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "enk_gbr.pdb")
   n_atoms_start = iotbx.pdb.hierarchy.input(
@@ -562,6 +596,7 @@ def exercise(args):
   exercise_truncate_to_polyala(**eargs)
   exercise_renumber_residues()
   exercise_remove_first_n_atoms_fraction(**eargs)
+  exercise_set_seg_id()
   print "OK"
 
 if (__name__ == "__main__"):
