@@ -105,6 +105,7 @@ public:
   int export_anchor_x;
   int export_anchor_y;
   const int nchannels;
+  int color_scheme_state;
 
   inline
   af::versa<DataType, af::c_grid<2> > raw_to_sampled(
@@ -262,7 +263,8 @@ public:
   inline
   FlexImage(array_t rawdata,const double& brightness = 1.0, const double& saturation = 1.0):
     rawdata(rawdata),
-    brightness(brightness),saturation(saturation), nchannels(4),use_antialiasing(false){}
+    brightness(brightness),saturation(saturation), nchannels(4),use_antialiasing(false),
+    color_scheme_state(COLOR_GRAY){}
 
   inline
   FlexImage(array_t rawdata, const int& power_of_two,
@@ -273,6 +275,7 @@ public:
     rawdata(rawdata),
     nchannels(4),
     use_antialiasing(false),
+    color_scheme_state(COLOR_GRAY),
     binning(power_of_two),
     vendortype(vendortype){
     //Assert that binning is a power of two
@@ -369,11 +372,12 @@ public:
       export_size_uncut2 = size2()/binning;
       channels = af::versa<int, af::c_grid<3> >(af::c_grid<3>(nchannels,
                             export_size_uncut1,export_size_uncut2));
-      adjust();
+      adjust(color_scheme_state);
     }
   }
 
   void adjust(int color_scheme=COLOR_GRAY) {
+    color_scheme_state = color_scheme;
     using scitbx::graphics_utils::hsv2rgb;
     using scitbx::graphics_utils::get_heatmap_color;
     af::versa<DataType, af::c_grid<2> > sam(rawdata, af::c_grid<2>(rawdata.accessor()));
