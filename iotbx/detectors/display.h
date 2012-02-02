@@ -611,55 +611,56 @@ class generic_flex_image: public FlexImage<double>{
 
   inline af::shared<double> picture_to_readout_f(double const& i,double const& j)
    const {
+    // The dimension of a readout in the slow dimension, assuming all
+    // readouts are the same size, and that the number of
+    // transformation matrices is equal to the number of readouts.
+    const std::size_t dim_slow = size1() / rotations.size();
+    af::shared<double> z;
+
     if (rotations.size() == 0) {
       scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
-      af::shared<double> z; z.push_back(rdout[0]); z.push_back(rdout[1]);
-      return z;
-    } else {
-      // The dimension of a readout in the slow dimension, assuming
-      // they are all the same size, and that the number of rotation
-      // matrices is equal to the number of readouts.
-      std::size_t dim_slow = size1() / rotations.size();
-
-      af::shared<double> z;
-      for (size_t k = 0; k < rotations.size(); k++) {
-        scitbx::vec3<double> rdout =
-          rotations[k] * scitbx::vec3<double>(i, j, 0) - translations[k];
-
-        scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
-        if (irdout[0] >= 0 && irdout[0] < dim_slow) {
-
-          // Since acc is binned, irdout take it into account.
-          if (acc.is_valid_index(0, (k * dim_slow + irdout[0]) / binning, irdout[1] / binning)) {
-            z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
-            return z;
-          }
-        }
-      }
-      z.push_back(0); z.push_back(0); z.push_back(-1);
+      z.push_back(rdout[0]); z.push_back(rdout[1]);
       return z;
     }
+
+    for (size_t k = 0; k < rotations.size(); k++) {
+      scitbx::vec3<double> rdout =
+        rotations[k] * scitbx::vec3<double>(i, j, 0) - translations[k];
+
+      scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
+      if (irdout[0] >= 0 && irdout[0] < dim_slow) {
+
+        // Since acc may be binned, irdout must take it into account.
+        if (acc.is_valid_index(
+              0, (k * dim_slow + irdout[0]) / binning, irdout[1] / binning)) {
+          z.push_back(rdout[0]); z.push_back(rdout[1]); z.push_back(k);
+          return z;
+        }
+      }
+    }
+    z.push_back(0); z.push_back(0); z.push_back(-1);
+    return z;
   }
   inline scitbx::vec2<int> picture_to_readout(double const& i,double const& j)
     const {
+    // The dimension of a binned readout in the slow dimension.
+    const std::size_t dim_slow = size1() / rotations.size() / binning;
+
     if (rotations.size() == 0) {
       //return scitbx::vec2<int>(iround(i),iround(j));
       scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
       return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
-    } else {
-      // The dimension of a binned readout in the slow dimension.
-      std::size_t dim_slow = size1() / rotations.size() / binning;
-      for (size_t k = 0; k < rotations.size(); k++) {
-        scitbx::vec3<double> rdout =
-          rotations[k] * scitbx::vec3<double>(i, j, 0) - (translations[k]/binning);
+    }
 
-        scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
-        if (irdout[0] >= 0 && irdout[0] < dim_slow) {
-          irdout[0] += k * dim_slow;
-          if (acc.is_valid_index(0, irdout[0], irdout[1])) {
-            return irdout;
-          }
-        }
+    for (size_t k = 0; k < rotations.size(); k++) {
+      scitbx::vec3<double> rdout =
+        rotations[k] * scitbx::vec3<double>(i, j, 0) - (translations[k]/binning);
+
+      scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
+      if (irdout[0] >= 0 && irdout[0] < dim_slow) {
+        irdout[0] += k * dim_slow;
+        if (acc.is_valid_index(0, irdout[0], irdout[1]))
+          return irdout;
       }
     }
     return scitbx::vec2<int>(-1, -1);
