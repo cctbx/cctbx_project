@@ -23,6 +23,7 @@ import multiprocessing
 import thread
 import threading
 import sys
+import time
 
 from iotbx.detectors.detectorbase import DetectorImageBase
 from rstbx.viewer.frame import XrayFrame
@@ -165,18 +166,15 @@ class _XrayFrameThread(threading.Thread):
     if (self._hold):
       # Decrement the counter by one and return immediately if the
       # counter is larger than zero.
-      print "WAITING FOR LOCK" # XXX
       self._next_lock.acquire()
-      print "GOT THE LOCK" # XXX
     if (self.isAlive()):
-      print "We are alive" # XXX
       try:
         self._frame.AddPendingEvent(event)
       except PyDeadObjectError:
         pass
 
 
-def _xray_frame_process(pipe, hold=False):
+def _xray_frame_process(pipe, hold=False, wait=None):
   """The _xray_frame_process() function starts the viewer in a
   separate thread.  It then continuously reads data from @p pipe and
   dispatches update events to the viewer.  The function returns when
@@ -195,6 +193,8 @@ def _xray_frame_process(pipe, hold=False):
     payload = pipe.recv()
     if (payload is None or not thread.isAlive()):
       break
+    if wait is not None:
+      time.sleep(wait)
     send_data(rstbx.viewer.image(payload[0]), payload[1])
 
 
@@ -208,6 +208,7 @@ class mod_view(common_mode.common_mode_correction):
                n_update    = 120,
                common_mode_correction = "none",
                hold=False,
+               wait=None,
                photon_counting=False,
                sigma_scaling=False,
                **kwds):
@@ -221,6 +222,8 @@ class mod_view(common_mode.common_mode_correction):
                            image, required if @p dark_path is given
     @param hold            Whether to wait for user input after each
                            displayed image or not
+    @param wait            Length of time (in seconds) to wait on the current
+                           image before moving on to the next
     @param n_collate       Number of shots to average, or <= 0 to
                            average all shots
     @param n_update        Number of shots between updates
@@ -242,11 +245,13 @@ class mod_view(common_mode.common_mode_correction):
       self.ncollate = self.nupdate
       self.logger.warn("n_collate capped to %d" % self.nupdate)
 
+    wait = cspad_tbx.getOptFloat(wait)
+    hold = cspad_tbx.getOptFloat(hold)
     # Create a unidirectional pipe and hand its read end to the viewer
     # process.  The write end is kept for sending updates.
     pipe_recv, self._pipe = multiprocessing.Pipe(False)
     self._proc = multiprocessing.Process(
-      target=_xray_frame_process, args=(pipe_recv, cspad_tbx.getOptBool(hold)))
+      target=_xray_frame_process, args=(pipe_recv, hold, wait))
     self._proc.start()
 
 
