@@ -324,6 +324,8 @@ class common_mode_correction(object):
               i_row  = i_row,  i_column  = i_column,
               n_rows = n_rows, n_columns = n_columns)
 
+            if section_mask.count(True) == 0: continue
+
             common_mode = self.common_mode(
               section_img, section_stddev, section_mask)
             self.sum_common_mode += common_mode
@@ -368,6 +370,7 @@ class common_mode_correction(object):
     flex_cspad_img_sel = flex_cspad_img.as_1d().select(self.dark_mask.as_1d())
     flex_dark_stddev = self.dark_stddev.select(self.dark_mask.as_1d()).as_double()
     assert flex_dark_stddev.count(0) == 0
+    flex_dark_stddev /= flex.mean(flex_dark_stddev)
     flex_cspad_img_sel /= flex_dark_stddev
     flex_cspad_img.as_1d().set_selected(self.dark_mask.as_1d().iselection(), flex_cspad_img_sel)
     self.cspad_img = flex_cspad_img
