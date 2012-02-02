@@ -11,7 +11,8 @@ XXX Known issues, wishlist:
   * Radial distribution plot, requested by Jan F. Kern
 
   * Sub-pixel zoom like in xdisp, maybe with coordinate tool-tips on
-    mouse-over.  Can we choose the colour automagically?
+    mouse-over.  Can we choose the colour automagically?  Zoom window
+    not updated with hold!
 
 XXX
 """
@@ -79,24 +80,6 @@ from iotbx import detectors
 detectors.ImageFactory = _image_factory
 
 
-class _DataDispatch(object):
-  """Interface for sending images to the wxPython application."""
-
-  def __init__(self, thread):
-    self.frame = thread.frame
-
-
-  def send_data(self, img, title):
-    """The send_data() function creates and sends the event."""
-
-    from rstbx.viewer.frame import ExternalUpdateEvent
-
-    event       = ExternalUpdateEvent()
-    event.img   = img
-    event.title = title
-    self.frame.AddPendingEvent(event)
-
-
 class _XrayFrameThread(threading.Thread):
   """The _XrayFrameThread class allows MainLoop() to be run as a
   thread, which is necessary because all calls to wxPython must be
@@ -106,24 +89,47 @@ class _XrayFrameThread(threading.Thread):
   http://wiki.wxpython.org/MainLoopAsThread.
   """
 
-  def __init__(self):
+  def __init__(self, hold=False):
     """The thread is started automatically on initialisation.
-    self.run() will populate self.frames and release self.lock.
+    self.run() will initialise self.frame and release self._init_lock.
     """
 
     super(_XrayFrameThread, self).__init__()
     self.setDaemon(1)
-    self.start_orig = self.start
-    self.start = self.start_local
-    self.frame = None
-    self.lock = threading.Lock()
-    self.lock.acquire()
+    self._hold = hold
+    self._init_lock = threading.Lock()
+    self._next_lock = threading.Semaphore()
+    self._start_orig = self.start
+    self._frame = None
+    self.start = self._start_local
+
+    self._init_lock.acquire()
     self.start()
+
+
+  def _forward (self, event):
+    """The _forward() function implements an alternate event handler
+    for the viewer's "Next"-button.  It increments the semaphore by
+    one.
+    """
+
+    self._next_lock.release()
+
+
+  def _start_local(self):
+    """The _start_local() function calls the run() function through
+    self._start_orig, and exists only after self._init_lock has been
+    released.  This eliminates a race condition which could cause
+    updates to be sent to a non-existent frame.
+    """
+
+    self._start_orig()
+    self._init_lock.acquire()
 
 
   def run(self):
     """The run() function defines the frame and starts the main loop.
-    self.lock is released only when all initialisation is done.
+    self._init_lock is released only when all initialisation is done.
 
     Whatever thread is the current one when wxWindows is initialised
     is what it will consider the "main thread." For wxPython 2.4 that
@@ -133,22 +139,41 @@ class _XrayFrameThread(threading.Thread):
 
     import wx
     app = wx.App(0)
-    self.frame = XrayFrame(None, -1, "X-ray image display", size=(800, 720))
-    self.frame.Show()
+    self._frame = XrayFrame(None, -1, "X-ray image display", size=(800, 720))
+    if (self._hold):
+      self._frame.Bind(wx.EVT_MENU, self._forward, id=wx.ID_FORWARD)
+    self._frame.Show()
 
-    self.lock.release()
+    self._init_lock.release()
     app.MainLoop()
 
+    # Avoid deadlock where the send_data() function is waiting for the
+    # semaphore after the frame has closed.
+    self._next_lock.release()
 
-  def start_local(self):
-    """The start_local() function calls the run() function through
-    self.start_orig, and exists only after self.lock has been
-    released.  This eliminates a race condition which could cause
-    updates to be sent to non-existent frame.
-    """
 
-    self.start_orig()
-    self.lock.acquire()
+  def send_data(self, img, title):
+    """The send_data() function updates the wxPython application with
+    @p img and @p title by sending it an ExternalUpdateEvent()."""
+
+    from rstbx.viewer.frame import ExternalUpdateEvent
+    from wx import PyDeadObjectError
+
+    event = ExternalUpdateEvent()
+    event.img = img
+    event.title = title
+    if (self._hold):
+      # Decrement the counter by one and return immediately if the
+      # counter is larger than zero.
+      print "WAITING FOR LOCK" # XXX
+      self._next_lock.acquire()
+      print "GOT THE LOCK" # XXX
+    if (self.isAlive()):
+      print "We are alive" # XXX
+      try:
+        self._frame.AddPendingEvent(event)
+      except PyDeadObjectError:
+        pass
 
 
 def _xray_frame_process(pipe, hold=False):
@@ -163,8 +188,8 @@ def _xray_frame_process(pipe, hold=False):
 
   # Start the viewer's main loop in its own thread, and get the
   # interface for sending updates to the frame.
-  thread = _XrayFrameThread()
-  send_data = _DataDispatch(thread).send_data
+  thread = _XrayFrameThread(hold)
+  send_data = thread.send_data
 
   while (True):
     payload = pipe.recv()
@@ -182,6 +207,7 @@ class mod_view(common_mode.common_mode_correction):
                n_collate   = None,
                n_update    = 120,
                common_mode_correction = "none",
+               hold=False,
                photon_counting=False,
                sigma_scaling=False,
                **kwds):
@@ -193,6 +219,8 @@ class mod_view(common_mode.common_mode_correction):
     @param dark_path       Path to input average dark image
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
+    @param hold            Whether to wait for user input after each
+                           displayed image or not
     @param n_collate       Number of shots to average, or <= 0 to
                            average all shots
     @param n_update        Number of shots between updates
@@ -218,14 +246,14 @@ class mod_view(common_mode.common_mode_correction):
     # process.  The write end is kept for sending updates.
     pipe_recv, self._pipe = multiprocessing.Pipe(False)
     self._proc = multiprocessing.Process(
-      target=_xray_frame_process, args=(pipe_recv, ))
+      target=_xray_frame_process, args=(pipe_recv, cspad_tbx.getOptBool(hold)))
     self._proc.start()
 
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.
     XXX Since the viewer is now running in a parallel process, the
-    averaging here is now the bottleneck, .
+    averaging here is now the bottleneck.
 
     @param evt Event data object, a configure object
     @param env Environment object
