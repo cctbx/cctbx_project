@@ -14,6 +14,9 @@ class pixel_histograms(common_mode.common_mode_correction):
                pickle_dirname=".",
                pickle_basename="hist",
                roi=None,
+               hist_min=None,
+               hist_max=None,
+               n_slots=None,
                **kwds):
     """
 
@@ -32,25 +35,20 @@ class pixel_histograms(common_mode.common_mode_correction):
     )
     self.pickle_dirname = cspad_tbx.getOptString(pickle_dirname)
     self.pickle_basename = cspad_tbx.getOptString(pickle_basename)
+    self.hist_min = cspad_tbx.getOptFloat(hist_min)
+    self.hist_max = cspad_tbx.getOptFloat(hist_max)
+    self.n_slots = cspad_tbx.getOptInteger(n_slots)
     self.histograms = {}
     self.dimensions = None
     self.roi = cspad_tbx.getOptROI(roi)
     self.values = flex.long()
 
-    self.sigma_scaling = True
-    if self.sigma_scaling:
-      self.hist_min = -4
-      self.hist_max = 8
-      self.n_slots = 80
-    else:
-      self.hist_min = -40
-      self.hist_max = 80
-      self.n_slots = 80
-
+    self.sigma_scaling = False
+    if self.hist_min is None: self.hist_min = -50
+    if self.hist_max is None: self.hist_max = 150
+    if self.n_slots is None: self.n_slots = 200
 
   def beginjob(self, evt, env):
-    print "beginjob!"
-    self.hist_mgr = env.hmgr()
     super(pixel_histograms, self).beginjob(evt, env)
 
 
@@ -89,7 +87,7 @@ class pixel_histograms(common_mode.common_mode_correction):
         self.histograms[(i,j)].update(pixels[i,j])
 
     self.nmemb += 1
-    if math.log(self.nmemb, 2) % 1 == 0:
+    if 0 and math.log(self.nmemb, 2) % 1 == 0:
       self.endjob(env)
     print self.nmemb
 
