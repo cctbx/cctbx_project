@@ -636,6 +636,7 @@ class generic_flex_image: public FlexImage<double>{
           }
         }
       }
+      z.push_back(0); z.push_back(0); z.push_back(-1);
       return z;
     }
   }
