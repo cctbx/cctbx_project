@@ -1004,7 +1004,7 @@ def clustal_alignment_parse(text):
   Specific for Clustal alignments
   """
 
-  lines = text.strip().splitlines()
+  lines = text.splitlines()
 
   if not lines:
     return ( None, text )
