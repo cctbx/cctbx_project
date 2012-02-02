@@ -125,13 +125,16 @@ def get_spectrum(spectrum_focus, mask_focus=None):
   if omit_col is True:
     #omit_columns = [181,193,194,195,196,197,378] # run 4
     omit_columns = [193,194,195,196,197] # run 5
+    for column_i in range(1, spectrum.size()-1):
+      if spectrum[column_i] < 0.3 * (spectrum[column_i-1]+spectrum[column_i+1]):
+        # row 13
+        omit_columns.append(column_i)
     plot_x = flex.int(xrange(spectrum.size()))
     plot_y = spectrum.deep_copy()
     for i in reversed(sorted(omit_columns)):
       del plot_x[i]
       del plot_y[i]
     plot_x += 1
-    print plot_x.all(), plot_y.all()
   else:
     plot_x = range(1,len(spectrum)+1)
     plot_y = spectrum
