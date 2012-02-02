@@ -76,10 +76,14 @@ class App(wx_viewer.App):
         metavar="INT")
     ).process(args=args, nargs=1)
     O.co = command_line.options
+    file_name = command_line.args[0]
     import iotbx.pdb
-    O.pdb_inp = iotbx.pdb.input(file_name=command_line.args[0])
+    O.pdb_inp = iotbx.pdb.input(file_name=file_name)
     O.pdb_hierarchy = O.pdb_inp.construct_hierarchy()
     O.pdb_atoms = O.pdb_hierarchy.atoms()
+    print file_name
+    print "  number of models:", O.pdb_hierarchy.models_size()
+    print "  number of atoms:", O.pdb_atoms.size()
     super(App, O).__init__(title=libtbx.env.dispatcher_name)
 
   def init_view_objects(O):
