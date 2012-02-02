@@ -72,6 +72,8 @@ class XrayFrame (wx.Frame) :
     self.viewer.set_image(self._img)
     if self.settings_frame is not None :
       self.settings_frame.set_image(self._img)
+    if self.zoom_frame is not None:
+      self.zoom_frame.set_image(self._img)
     self.SetTitle(event.title)
     self.update_statusbar()
     self.Layout()
