@@ -65,7 +65,6 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
       return pixel_histograms.fit_one_histogram(pixel, n_gaussians=1)
   results = None
   from libtbx import easy_mp
-  import libtbx.utils
   stdout_and_results = easy_mp.pool_map(
     processes=easy_mp.Auto,
     fixed_func=fixed_func,
