@@ -103,7 +103,7 @@ class coordinate_frame_converter:
 
         uc = uctbx.unit_cell((a, b, c, alpha, beta, gamma))
 
-        B = matrix.sqr(uc.fractionalization_matrix())
+        B = matrix.sqr(uc.fractionalization_matrix()).transpose()
 
         U = A * B.inverse()
 
