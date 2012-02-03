@@ -484,6 +484,20 @@ def exercise_truncate_to_polyala(pdb_dir, verbose):
     counter += 1
   assert counter == 23
 
+def exercise_set_charge () :
+  from iotbx import file_reader
+  input_pdb = """
+ATOM      1  CL  CL  X   1       0.000   0.000   0.000  1.00 20.00          CL
+END
+"""
+  open("tmp_cl.pdb", "w").write(input_pdb)
+  easy_run.call("phenix.pdbtools tmp_cl.pdb charge_selection='element Cl' charge=-1 --quiet")
+  pdb_in = file_reader.any_file("tmp_cl.pdb_modified.pdb").file_object
+  hierarchy = pdb_in.construct_hierarchy()
+  xrs = pdb_in.xray_structure_simple()
+  assert (xrs.scatterers()[0].scattering_type == 'Cl1-')
+  assert (hierarchy.atoms()[0].charge == '1-')
+
 def exercise_renumber_residues():
   input_pdb = """
 ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
@@ -597,6 +611,7 @@ def exercise(args):
   exercise_renumber_residues()
   exercise_remove_first_n_atoms_fraction(**eargs)
   exercise_set_seg_id()
+  exercise_set_charge()
   print "OK"
 
 if (__name__ == "__main__"):
