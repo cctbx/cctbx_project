@@ -140,10 +140,8 @@ def process_files (file_name,
                    merge_non_unique_under_symmetry=False,
                    map_to_asu=False,
                    remove_systematic_absences=False) :
-  file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
     file_name                       = file_name,
-    file_lines                      = file_lines,
     crystal_symmetry                = crystal_symmetry,
     wavelength_id                   = wavelength_id,
     crystal_id                      = crystal_id,
@@ -200,7 +198,6 @@ def process_files (file_name,
     return mtz_object.n_reflections()
 
 def extract(file_name,
-            file_lines,
             crystal_symmetry,
             wavelength_id,
             crystal_id,
@@ -277,6 +274,8 @@ def extract(file_name,
         if 'crystal_id' in l:
           crys_id = int(l.split('=')[-1])
           break
+      if crys_id > 0 and wavelength_id is None:
+        label += "%i" %crys_id
       if crystal_id is not None and crys_id > 0 and crys_id != crystal_id:
         continue
       if crys_id not in mtz_crystals:
