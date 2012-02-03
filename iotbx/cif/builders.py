@@ -136,7 +136,11 @@ class crystal_symmetry_builder(builder_base):
         if sym_op_ids is None:
           sym_op_id = i+1
         else:
-          sym_op_id = int(sym_op_ids[i])
+          try:
+            sym_op_id = int(sym_op_ids[i])
+          except ValueError, e:
+            raise CifBuilderError("Error interpreting symmetry operator id: %s" %(
+              str(e)))
         self.sym_ops[sym_op_id] = s
         space_group.expand_smx(s)
     else:
@@ -448,6 +452,7 @@ class miller_array_builder(crystal_symmetry_builder):
                   phases = array.data()
                   if key in self._arrays:
                     array = self._arrays[key]
+                    array = as_flex_double(array, key)
                     check_array_sizes(array, phases, key, phase_key)
                     info = self._arrays[key].info()
                     self._arrays[key] = array.phase_transfer(phases, deg=True)
@@ -512,9 +517,11 @@ class miller_array_builder(crystal_symmetry_builder):
     for loop in self.cif_block.loops.values():
       for key in loop.keys():
         if 'index_h' not in key: continue
-        hkl_str = [loop[key.replace('index_h', 'index_%s' %i)] for i in ('h','k','l')]
+        hkl_str = [loop.get(key.replace('index_h', 'index_%s' %i)) for i in 'hkl']
         if hkl_str.count(None) > 0:
-          raise CifBuilderError("Miller indices missing from current CIF block")
+          raise CifBuilderError(
+            "Miller indices missing from current CIF block (%s)"
+            %key.replace('index_h', 'index_%s' %'hkl'[hkl_str.index(None)]))
         hkl_int = []
         for i,h_str in enumerate(hkl_str):
           try:
