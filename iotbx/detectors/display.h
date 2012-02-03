@@ -569,8 +569,8 @@ class generic_flex_image: public FlexImage<double>{
   scitbx::mat3<double> rotation;
   scitbx::mat2<double> rotation2;
 
-  scitbx::af::shared<scitbx::mat3<double> > rotations;
-  scitbx::af::shared<scitbx::vec3<double> > translations;
+  scitbx::af::shared<scitbx::mat2<double> > transformations;
+  scitbx::af::shared<scitbx::vec2<double> > translations;
 
   int size1_readout;
   int size2_readout;
@@ -627,7 +627,7 @@ class generic_flex_image: public FlexImage<double>{
    const {
     af::shared<double> z;
 
-    if (rotations.size() == 0) {
+    if (transformations.size() == 0) {
       scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
       z.push_back(rdout[0]); z.push_back(rdout[1]);
       return z;
@@ -636,11 +636,11 @@ class generic_flex_image: public FlexImage<double>{
     // The length of a padded readout in the slow dimension, assuming
     // all readouts are the same size, and that the number of
     // transformation matrices is equal to the number of readouts.
-    const std::size_t dim_slow = size1() / rotations.size();
+    const std::size_t dim_slow = size1() / transformations.size();
 
-    for (size_t k = 0; k < rotations.size(); k++) {
-      scitbx::vec3<double> rdout =
-        rotations[k] * scitbx::vec3<double>(i, j, 0) - translations[k];
+    for (size_t k = 0; k < transformations.size(); k++) {
+      scitbx::vec2<double> rdout =
+        transformations[k] * scitbx::vec2<double>(i, j) + translations[k];
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
       if (irdout[0] >= 0 && irdout[0] < size1_readout &&
@@ -659,7 +659,7 @@ class generic_flex_image: public FlexImage<double>{
   }
   inline scitbx::vec2<int> picture_to_readout(double const& i,double const& j)
     const {
-    if (rotations.size() == 0) {
+    if (transformations.size() == 0) {
       //return scitbx::vec2<int>(iround(i),iround(j));
       scitbx::vec2<double> rdout = rotation2 * scitbx::vec2<double>(i,j);
       return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
@@ -667,11 +667,12 @@ class generic_flex_image: public FlexImage<double>{
 
     // The length of a binned and padded readout in the slow
     // dimension.
-    const std::size_t dim_slow = size1() / rotations.size() / binning;
+    const std::size_t dim_slow = size1() / transformations.size() / binning;
 
-    for (size_t k = 0; k < rotations.size(); k++) {
-      scitbx::vec3<double> rdout =
-        rotations[k] * scitbx::vec3<double>(i, j, 0) - (translations[k]/binning);
+    for (size_t k = 0; k < transformations.size(); k++) {
+      scitbx::vec2<double> rdout =
+        transformations[k] * scitbx::vec2<double>(i, j) +
+        translations[k] / binning;
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
       if (irdout[0] >= 0 && irdout[0] < size1_readout / binning &&
@@ -737,10 +738,10 @@ class generic_flex_image: public FlexImage<double>{
     // no implementation at present
   }
 
-  inline void add_rotation_translation(
-    const scitbx::mat3<double>& R, const scitbx::vec3<double>& t)
+  inline void add_transformation_and_translation(
+    const scitbx::mat2<double>& T, const scitbx::vec2<double>& t)
   {
-    rotations.push_back(R);
+    transformations.push_back(T);
     translations.push_back(t);
   }
 };
