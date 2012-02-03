@@ -328,8 +328,6 @@ def extract(file_name,
         ma = ma.remove_systematic_absences()
       ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
         .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
-      if i > 0:
-        label += "-%i" %i
       column_labels.add(label)
       dataset.add_miller_array(ma, column_root_label=label)
   return mtz_object
