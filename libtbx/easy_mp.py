@@ -1,6 +1,8 @@
+from libtbx.math_utils import ifloor
 from libtbx import Auto
 from cStringIO import StringIO
 import traceback
+import os
 import sys
 
 _problem_cache = Auto
@@ -42,6 +44,17 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
 """ % str(nproc)
     return nproc
 
+def get_processes (processes) :
+  if (processes is None) or (processes is Auto) :
+    from libtbx import introspection
+    auto_adjust = (processes is Auto)
+    processes = introspection.number_of_processors()
+    if (auto_adjust) :
+      processes = max(ifloor(processes - os.getloadavg()[0]), 1)
+  else :
+    assert (processes > 0)
+  return processes
+
 from weakref import WeakValueDictionary as _
 fixed_func_registry = _()
 
@@ -77,10 +90,7 @@ class Pool(multiprocessing_Pool):
       mp_problem = detect_problem()
       assert mp_problem is not None
       raise RuntimeError(mp_problem)
-    if (processes is None) or (processes is Auto):
-      from libtbx import introspection
-      processes = introspection.number_of_processors()
-    self.processes = processes
+    self.processes = get_processes(processes)
     if (fixed_func is not None):
       key = fixed_func_registry_key_generator.next()
       self.fixed_func_proxy = fixed_func_proxy(key, fixed_func)
@@ -154,9 +164,7 @@ def pool_map(
       func = func_wrapper(func, buffer_stdout_stderr)
     else:
       fixed_func = func_wrapper(fixed_func, buffer_stdout_stderr)
-  if (processes is None) or (processes is Auto) :
-    from libtbx import introspection
-    processes = introspection.number_of_processors()
+  processes = get_processes(processes)
   if (args is not None):
     iterable = args
     if (processes is not None):
