@@ -246,7 +246,7 @@ class mod_view(common_mode.common_mode_correction):
       self.logger.warn("n_collate capped to %d" % self.nupdate)
 
     wait = cspad_tbx.getOptFloat(wait)
-    hold = cspad_tbx.getOptFloat(hold)
+    hold = cspad_tbx.getOptBool(hold)
     # Create a unidirectional pipe and hand its read end to the viewer
     # process.  The write end is kept for sending updates.
     pipe_recv, self._pipe = multiprocessing.Pipe(False)
