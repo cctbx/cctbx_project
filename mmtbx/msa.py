@@ -259,7 +259,7 @@ def align_pdb_hierarchies (hierarchies,
   any of the hierarchies contain atoms with insertion codes, the resid mapping
   will be used automatically.
   """
-  assert (reference_hierarchy is None)
+  #assert (reference_hierarchy is None)
   if (log is None) :
     log = sys.stdout
   pdb_resids = []
