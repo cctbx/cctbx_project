@@ -7,7 +7,7 @@ from libtbx.str_utils import show_string
 import libtbx.phil
 from iotbx import pdb
 from cctbx import crystal
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from iotbx.pdb import crystal_symmetry_from_pdb
 from mmtbx import monomer_library
 import mmtbx.restraints
@@ -148,10 +148,12 @@ set_seg_id_to_chain_id = False
   .type = bool
   .short_caption = Set segID to chain ID
   .help = Sets the segID field to the chain ID (padded with spaces).
+  .style = noauto
 clear_seg_id = False
   .type = bool
   .short_caption = Clear segID field
   .help = Erases the segID field.
+  .style = noauto
 rename_chain_id
   .help = Rename chains
   .short_caption = Rename chain ID
@@ -165,6 +167,16 @@ rename_chain_id
     .type = str
     .input_size = 50
     .short_caption = New ID
+}
+set_charge
+  .short_caption = Set atomic charge
+  .style = box auto_align
+{
+  charge_selection = None
+    .type = atom_selection
+    .short_caption = Atom selection
+  charge = None
+    .type = int(value_max=7,value_min=-3)
 }
 output
   .help = Write out PDB file with modified model (file name is defined in \
@@ -554,6 +566,41 @@ def rename_chain_id(hierarchy, params, log):
     print >> log, \
     "WARNING: no chain id renamed: check input PDB file or renaming parameters."
 
+def set_atomic_charge (
+    hierarchy,
+    xray_structure,
+    pdb_atoms,
+    selection,
+    charge,
+    log=None) :
+  """
+  Set the charge for selected atoms.  Note that both the hierarchy and the
+  xray_structure must be passed here - in the context of the pdbtools app,
+  the scattering_type attributes will override the atom's element and charge
+  when the structure is written out.
+  """
+  assert isinstance(charge, int) and (selection is not None)
+  assert (abs(charge) < 10)
+  if (log is None) : log = null_out()
+  sel_cache = hierarchy.atom_selection_cache()
+  isel = sel_cache.selection(selection).iselection()
+  if (len(isel) == 0) :
+    raise Sorry("No atoms selected for charge modification (selection = %s)." %
+      selection)
+  if (charge == 0) :
+    charge = "  "
+  elif (charge < 0) :
+    charge = "%1d-" % abs(charge)
+  else :
+    charge = "%1d+" % charge
+  scatterers = xray_structure.scatterers()
+  for i_seq in isel :
+    atom = pdb_atoms[i_seq]
+    atom.set_charge(charge)
+    elem_symbol = scatterers[i_seq].element_and_charge_symbols()[0]
+    scatterers[i_seq].scattering_type = elem_symbol + charge
+    print >> log, "  %s : set charge to %s" % (atom.id_str(), charge)
+
 def truncate_to_poly_ala(hierarchy):
   import iotbx.pdb.amino_acid_codes
   aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
@@ -646,6 +693,7 @@ def run(args, command_name="phenix.pdbtools"):
   xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
     show_summary = False)
   pdb_hierarchy = all_chain_proxies.pdb_hierarchy
+  pdb_atoms = all_chain_proxies.pdb_atoms
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
 ### show_geometry_statistics and exit
@@ -783,6 +831,15 @@ def run(args, command_name="phenix.pdbtools"):
   elif (params.modify.clear_seg_id) :
     for atom in pdb_hierarchy.atoms() :
       atom.segid = "    "
+### set atomic charge
+  if (params.modify.set_charge.charge_selection is not None) :
+    set_atomic_charge(
+      hierarchy=pdb_hierarchy,
+      pdb_atoms=pdb_atoms,
+      xray_structure=xray_structure,
+      selection=params.modify.set_charge.charge_selection,
+      charge=params.modify.set_charge.charge,
+      log=log)
 ### do other model manipulations
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
@@ -796,8 +853,8 @@ def run(args, command_name="phenix.pdbtools"):
   ofo = open(ofn, "w")
   utils.write_pdb_file(
     xray_structure       = xray_structure,
-    pdb_hierarchy        = all_chain_proxies.pdb_hierarchy,
-    pdb_atoms            = all_chain_proxies.pdb_atoms,
+    pdb_hierarchy        = pdb_hierarchy,
+    pdb_atoms            = pdb_atoms,
     selection            = getattr(result.remove_selection, "flags", None),
     write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
     out                  = ofo)
