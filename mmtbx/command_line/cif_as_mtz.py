@@ -274,7 +274,7 @@ def extract(file_name,
         if 'crystal_id' in l:
           crys_id = int(l.split('=')[-1])
           break
-      if crys_id > 0 and wavelength_id is None:
+      if crys_id > 0 and crystal_id is None:
         label += "%i" %crys_id
       if crystal_id is not None and crys_id > 0 and crys_id != crystal_id:
         continue
