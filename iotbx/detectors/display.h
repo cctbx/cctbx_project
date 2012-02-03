@@ -572,12 +572,26 @@ class generic_flex_image: public FlexImage<double>{
   scitbx::af::shared<scitbx::mat3<double> > rotations;
   scitbx::af::shared<scitbx::vec3<double> > translations;
 
+  int size1_readout;
+  int size2_readout;
+
   typedef af::c_grid<3> t_C;
   t_C acc;
 
+  // The ASIC:s stacked within rawdata must be padded in each
+  // dimension to multiples of eight.  Hence, the unpadded size of a
+  // readout is passed in size_readout1 and size_readout2.
   inline
-  generic_flex_image(array_t rawdata,const double& brightness = 1.0, const double& saturation = 1.0
-    ):FlexImage<double>(rawdata,brightness, saturation){
+  generic_flex_image(
+    array_t rawdata,
+    const int& size1_readout,
+    const int& size2_readout,
+    const double& brightness = 1.0,
+    const double& saturation = 1.0)
+    : FlexImage<double>(rawdata,brightness, saturation),
+      size1_readout(size1_readout),
+      size2_readout(size2_readout)
+  {
     use_antialiasing=true;
     binning=1;
     zoom = 1./ binning;
@@ -619,8 +633,8 @@ class generic_flex_image: public FlexImage<double>{
       return z;
     }
 
-    // The length of a readout in the slow dimension, assuming all
-    // readouts are the same size, and that the number of
+    // The length of a padded readout in the slow dimension, assuming
+    // all readouts are the same size, and that the number of
     // transformation matrices is equal to the number of readouts.
     const std::size_t dim_slow = size1() / rotations.size();
 
@@ -629,7 +643,8 @@ class generic_flex_image: public FlexImage<double>{
         rotations[k] * scitbx::vec3<double>(i, j, 0) - translations[k];
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
-      if (irdout[0] >= 0 && irdout[0] < dim_slow) {
+      if (irdout[0] >= 0 && irdout[0] < size1_readout &&
+          irdout[1] >= 0 && irdout[1] < size2_readout) {
 
         // Since acc may be binned, irdout must take it into account.
         if (acc.is_valid_index(
@@ -650,7 +665,8 @@ class generic_flex_image: public FlexImage<double>{
       return scitbx::vec2<int>(iround(rdout[0]),iround(rdout[1]));
     }
 
-    // The length of a binned readout in the slow dimension.
+    // The length of a binned and padded readout in the slow
+    // dimension.
     const std::size_t dim_slow = size1() / rotations.size() / binning;
 
     for (size_t k = 0; k < rotations.size(); k++) {
@@ -658,7 +674,9 @@ class generic_flex_image: public FlexImage<double>{
         rotations[k] * scitbx::vec3<double>(i, j, 0) - (translations[k]/binning);
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
-      if (irdout[0] >= 0 && irdout[0] < dim_slow) {
+      if (irdout[0] >= 0 && irdout[0] < size1_readout / binning &&
+          irdout[1] >= 0 && irdout[1] < size2_readout / binning) {
+
         irdout[0] += k * dim_slow;
         if (acc.is_valid_index(0, irdout[0], irdout[1]))
           return irdout;

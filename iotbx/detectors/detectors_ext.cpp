@@ -445,9 +445,11 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 
   class_<iotbx::detectors::display::generic_flex_image,
          bases<iotbx::detectors::display::FlexImage<double> > >("generic_flex_image", no_init)
-      .def(init<af::versa<double, af::flex_grid<> >,double const&, double const & >(
+      .def(init<af::versa<double, af::flex_grid<> >, const int&, const int&, const double&, const double& >(
             (
             arg_("rawdata"),
+            arg_("size1_readout"),
+            arg_("size2_readout"),
             arg_("brightness"),
             arg_("saturation")
             )
