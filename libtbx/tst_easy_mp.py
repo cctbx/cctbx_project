@@ -61,6 +61,7 @@ def exercise(exercise_fail):
   if (exercise_fail):
     eval_parallel(data, exercise_fail=True)
     raise Exception_expected
+  results = easy_mp.pool_map(fixed_func=data, args=range(1000), processes=Auto)
   del data
   assert len(easy_mp.fixed_func_registry) == 0
 
