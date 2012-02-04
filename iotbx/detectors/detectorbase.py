@@ -233,3 +233,7 @@ CCD_IMAGE_SATURATION=65535;
       center_x = self.beamx
       center_y = self.beamy
     return center_x, center_y
+
+  def get_beam_center_pixels_fast_slow(self):
+    center_x, center_y = self.get_beam_center_mm()
+    return self.detector_coords_as_image_coords_float(center_x, center_y)
