@@ -27,8 +27,6 @@ class screen_params (object) :
     self.screen_y_start = 0
     self.detector_pixel_size = 0
     self.zoom = 0
-    self._invert_x = False
-    self._invert_y = False
     self.last_thumb_x = 0 # NKS: hooks for keeping pan position while
     self.last_thumb_y = 0 #  rendering the Prev or Next image
 
@@ -183,37 +181,6 @@ class screen_params (object) :
     y2 = y1 + max(0, (self.screen_h - (h*scale)) / 2)
     return ((x2), (y2))
 
-  def detector_coords_as_image_coords (self, x, y) :
-    """
-    Convert absolute detector position (in mm) to image pixel coordinates.
-    """
-    dw = self.img_w * self.detector_pixel_size
-    dh = self.img_h * self.detector_pixel_size
-    x_frac = x / dw
-    if (self._invert_y) :
-      y_frac = - ((y / dh) - 1.0)
-    else :
-      y_frac = y / dh
-    x_point = x_frac * self.img_w
-    y_point = y_frac * self.img_h
-    return (int(x_point), int(y_point))
-
-  def image_coords_as_detector_coords (self, x, y) :
-    """
-    Convert image pixel coordinates to absolute position on the detector
-    (in mm).
-    """
-    dw, dh = self.get_detector_dimensions()
-    w, h = self.get_image_size()
-    x_frac = x / w
-    y_frac = y / h
-    x_detector = x_frac * dw
-    if (self._invert_y) :
-      y_detector = (1.0 - y_frac) * dh
-    else :
-      y_detector = y_frac * dh
-    return x_detector, y_detector
-
   def screen_coords_as_image_coords (self, x, y) :
     """
     Convert pixel coordinates in the viewport to pixel coordinates in the
@@ -241,15 +208,15 @@ class screen_params (object) :
     user-drawn line in the viewer.
     """
     x_, y_ = y+1, x+1
-    return self.image_coords_as_detector_coords(x_, y_)
+    return self._raw.image_coords_as_detector_coords(x_, y_)
 
   def distance_between_points (self, x1, y1, x2, y2) :
     """
     Given a pair of image pixel coordinates, calculate the distance between
     them on the detector face in mm.
     """
-    x1_mm, y1_mm = self.image_coords_as_detector_coords(x1, y1)
-    x2_mm, y2_mm = self.image_coords_as_detector_coords(x2, y2)
+    x1_mm, y1_mm = self._raw.image_coords_as_detector_coords(x1, y1)
+    x2_mm, y2_mm = self._raw.image_coords_as_detector_coords(x2, y2)
     return math.sqrt((x1_mm - x2_mm)**2 + (y1_mm - y2_mm)**2)
 
 class image (screen_params) :
@@ -261,25 +228,13 @@ class image (screen_params) :
     img.read()
     self._raw = img
     print img.show_header()
-    self._invert_beam_center = False
     self.set_image_size(
       w=self._raw.size2,
       h=self._raw.size1)
     self.set_detector_resolution(self._raw.pixel_size)
     from spotfinder.command_line.signal_strength import master_params
-    from iotbx.detectors.context.config_detector import \
-      beam_center_convention_from_image_object
     params = master_params.extract()
-    bc = beam_center_convention_from_image_object(img,params)
-    print "beam center convention: %d" % bc
-    # FIXME what about 2-4 & 6-7?
-    if (bc == 0) :
-      self._invert_beam_center = True
-      self._invert_y = True
-    elif (bc == 1) :
-      self._invert_y = False
-    elif (bc == 5) :
-      self._invert_y = True
+    self._raw.initialize_viewer_properties(params)
     self._beam_center = None
     self._integration = None
     self._spots = None
@@ -441,7 +396,7 @@ class image (screen_params) :
     if ((x_im <= 0) or (y_im <= 0) or
         (x_im > self.img_w) or (y_im > self.img_h)) :
       raise Sorry("Coordinates are out of image!")
-    x_point, y_point = self.image_coords_as_detector_coords(x_im, y_im)
+    x_point, y_point = self._raw.image_coords_as_detector_coords(x_im, y_im)
     old_x, old_y = self.get_beam_center_mm()
     self._beam_center = (x_point, y_point)
     return (old_x, old_y, x_point, y_point)
@@ -452,18 +407,13 @@ class image (screen_params) :
   def get_beam_center_mm (self) :
     if (self._beam_center is not None) :
       center_x, center_y = self._beam_center
-    # FIXME Pilatus and ADSC images appear to have different conventions???
-    elif (self._invert_beam_center) :
-      center_x = self._raw.beamy
-      center_y = self._raw.beamx
-    else :
-      center_x = self._raw.beamx
-      center_y = self._raw.beamy
+    else:
+      center_x, center_y = self._raw.get_beam_center_mm()
     return center_x, center_y
 
   def get_beam_center (self) :
     center_x, center_y = self.get_beam_center_mm()
-    return self.detector_coords_as_image_coords(center_x, center_y)
+    return self._raw.detector_coords_as_image_coords(center_x, center_y)
 
   def get_detector_distance (self) :
     dist = self._raw.distance
@@ -486,8 +436,8 @@ class image (screen_params) :
     Arguments are in image pixel coordinates (starting from 1,1).
     """
     from spotfinder import core_toolbox
-    x_point, y_point = self.image_coords_as_detector_coords(x, y)
-    x0, y0 = self.detector_coords_as_image_coords(x_point, y_point)
+    x_point, y_point = self._raw.image_coords_as_detector_coords(x, y)
+    x0, y0 = self._raw.detector_coords_as_image_coords(x_point, y_point)
     center_x, center_y = self.get_beam_center_mm()
     dist = self.get_detector_distance()
     two_theta = self.get_detector_2theta()
