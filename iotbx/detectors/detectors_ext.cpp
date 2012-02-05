@@ -459,6 +459,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
       .def("add_transformation_and_translation",&iotbx::detectors::display::generic_flex_image::add_transformation_and_translation)
       .def("picture_to_readout",&iotbx::detectors::display::generic_flex_image::picture_to_readout_f)
       .def("setWindowCart", &iotbx::detectors::display::generic_flex_image::setWindowCart)
+      .def("tile_readout_to_picture", &iotbx::detectors::display::generic_flex_image::tile_readout_to_picture)
   ;
 
   class_<iotbx::detectors::display::Color>("Color", no_init)

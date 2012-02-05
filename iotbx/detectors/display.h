@@ -623,6 +623,15 @@ class generic_flex_image: public FlexImage<double>{
     export_anchor_y = ytile * export_size_cut1;
   }
 
+  inline scitbx::vec2<double> tile_readout_to_picture(
+    int const& tile, int const& islow,int const& ifast) const {
+
+    scitbx::vec2<double> fpicture =
+        transformations[tile].inverse() * (
+          scitbx::vec2<double>(islow, ifast) - translations[tile]);
+
+    return fpicture;
+  }
   inline af::shared<double> picture_to_readout_f(double const& i,double const& j)
    const {
     af::shared<double> z;
