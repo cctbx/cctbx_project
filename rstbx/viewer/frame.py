@@ -444,7 +444,7 @@ class SettingsPanel (wx.Panel) :
       self.settings.zoom_level = self.zoom_ctrl.GetSelection()
       self.settings.brightness = self.brightness_ctrl.GetValue()
       self.settings.show_beam_center = self.center_ctrl.GetValue()
-      self.settings.show_predictions = self.spots_ctrl.GetValue()
+      self.settings.show_spotfinder_spots = self.spots_ctrl.GetValue()
       self.settings.show_integration = self.integ_ctrl.GetValue()
       self.settings.color_scheme = self.color_ctrl.GetSelection()
 #     self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
