@@ -9,8 +9,6 @@ XXX
 
 __version__ = "$Revision$"
 
-import logging
-
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
 from xfel.cxi.cspad_ana import common_mode
@@ -59,6 +57,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                         form fast_low:fast_high,slow_low:slow_high
     @param threshold    Minimum value in region of interest to pass
     """
+
     super(mod_hitfind, self).__init__(
       address                = address,
       calib_dir              = calib_dir,
@@ -275,10 +274,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     @param env Environment object
     """
+
+    super(mod_hitfind, self).endjob(env)
     if (env.subprocess() >= 0):
       self.logger.info("Subprocess %02d: processed %d shots" %
                        (env.subprocess(), self.nshots))
     else:
       self.logger.info("Processed %d shots" % self.nshots)
-
-    logging.shutdown()

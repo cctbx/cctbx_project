@@ -11,8 +11,6 @@ as pickled dictionaries.
 
 __version__ = "$Revision$"
 
-import logging
-
 from xfel.cxi.cspad_ana import average_tbx
 from xfel.cxi.cspad_ana import cspad_tbx
 
@@ -115,7 +113,3 @@ class mod_average(average_tbx.average_mixin):
     else:
       self.logger.warn(
         "%d images processed, %d failed" % (self.nmemb, self.nfail))
-
-    # XXX Design issue: logging was started by the superclass but must
-    # be shut down by the subclass.
-    logging.shutdown()
