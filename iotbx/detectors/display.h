@@ -95,6 +95,7 @@ class FlexImage {
 
 public:
   typedef af::versa< DataType, af::flex_grid<> > array_t;
+  typedef DataType data_t;
   array_t rawdata;  // original image
   af::versa<int, af::c_grid<3> > channels; // half-size 3-channel cont./bright. adjusted
   af::versa<int, af::c_grid<2> > export_m;
@@ -602,7 +603,7 @@ class generic_flex_image: public FlexImage<double>{
     axis = scitbx::vec3<double>(0.,0.,1.);
     rotation = scitbx::math::r3_rotation::axis_and_angle_as_matrix<double>(axis,4.,true);
     rotation2 = scitbx::mat2<double>(rotation[0],rotation[1],rotation[3],rotation[4]);
-    correction = 1.0;
+    correction = 1.0; //requires followup brightness scaling; use separate function
   }
 
   // Identical to base class, except for computation of export_anchor.
@@ -752,6 +753,40 @@ class generic_flex_image: public FlexImage<double>{
   {
     transformations.push_back(T);
     translations.push_back(t);
+  }
+
+  inline
+  void followup_brightness_scale(){
+
+      //first pass through data calculate average
+      double qave = 0;
+      for (std::size_t i = 0; i < rawdata.size(); i++) {
+          qave+=rawdata[i];
+      }
+      qave/=rawdata.size();
+      //std::cout<<"ave shown pixel value is "<<qave<<std::endl;
+
+      //second pass calculate histogram
+      int hsize=100;
+      array_t histogram(hsize);
+      for (std::size_t i = 0; i < rawdata.size(); i++) {
+          int temp = int((hsize/2)*rawdata[i]/qave);
+          if (temp<0){histogram[0]+=1;}
+          else if (temp>=hsize){histogram[hsize-1]+=1;}
+          else {histogram[temp]+=1;}
+      }
+
+      //third pass calculate 90%
+      double percentile=0;
+      double accum=0;
+      for (std::size_t i = 0; i<hsize; i++) {
+        accum+=histogram[i];
+        if (accum > 0.9*rawdata.size()) { percentile=i*qave/(hsize/2); break; }
+      }
+      //std::cout<<"the 90-percentile pixel value is "<<percentile<<std::endl;
+
+      double adjlevel = 0.4;
+      correction = (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
   }
 };
 
