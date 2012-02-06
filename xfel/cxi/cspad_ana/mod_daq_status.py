@@ -1,3 +1,6 @@
+# XXX Get the laser 4 status into this thing!
+
+
 import logging
 import threading
 import wx
@@ -49,6 +52,9 @@ class mod_daq_status (object) :
     self.display_thread = StatusFrame_thread()
     self.window = self.display_thread.frame
     self.run_id = None
+
+  def __del__ (self):
+    logging.shutdown()
 
   def initialize (self) :
     self.nfail = 0

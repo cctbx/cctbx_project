@@ -33,6 +33,10 @@ class mod_param(object):
     self.m_logger.setLevel(logging.INFO)
 
 
+  def __del__(self):
+    logging.shutdown()
+
+
   def beginjob(self, evt, env):
     """The beginjob() function does one-time initialisation from
     event- or environment data.  It is called at an XTC configure
@@ -170,5 +174,3 @@ class mod_param(object):
     self.m_logger.info("No det-z:       %5d" % self.m_no_detz)
     self.m_logger.info("No attenuation: %5d" % self.m_no_sifoil)
     self.m_logger.info("No wavelength:  %5d" % self.m_no_wavelength)
-
-    logging.shutdown()
