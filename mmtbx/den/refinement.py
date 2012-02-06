@@ -118,6 +118,8 @@ class manager(object):
       x2 = model.xray_structure)
 
   def try_den_weight_torsion(self, grid_pair):
+    backup_k_rep = self.params.tardy.\
+      prolsq_repulsion_function_changes.k_rep
     self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
       self.save_scatterers_local.deep_copy())
     self.fmodels.update_xray_structure(
@@ -135,6 +137,9 @@ class manager(object):
       generic_restraints_manager.den_manager.weight = \
         weight_local
     cycle = 0
+    self.model.restraints_manager.geometry.\
+      generic_restraints_manager.den_manager.current_cycle = \
+      cycle+1
     num_den_cycles = self.model.restraints_manager.geometry.\
       generic_restraints_manager.den_manager.num_cycles
     if self.params.den.optimize:
@@ -144,9 +149,18 @@ class manager(object):
     print >> self.log, "  ...trying gamma %.1f, weight %.1f" % (
       gamma_local, weight_local)
     while cycle < num_den_cycles:
+      if self.model.restraints_manager.geometry.\
+           generic_restraints_manager.den_manager.current_cycle == \
+           self.model.restraints_manager.geometry.\
+           generic_restraints_manager.den_manager.torsion_mid_point+1:
+        self.params.tardy.\
+          prolsq_repulsion_function_changes.k_rep = 1.0
       print >> local_log, "DEN cycle %s" % (cycle+1)
       r_free = self.fmodels.fmodel_xray().r_free()
-      print >> local_log, "rfree at start of SA cycle: %f" % r_free
+      print >> local_log, "rfree at start of SA cycle: %.4f" % r_free
+      print >> local_log, "k_rep = %.2f" % \
+        self.params.tardy.\
+          prolsq_repulsion_function_changes.k_rep
       tardy.run(
         fmodels=self.fmodels,
         model=self.model,
@@ -155,14 +169,20 @@ class manager(object):
         log=local_log,
         format_for_phenix_refine=True,
         monitor=self.monitors.monitor_xray)
+      if self.params.den.bulk_solvent_and_scale:
+        self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
       cycle += 1
+      self.model.restraints_manager.geometry.\
+        generic_restraints_manager.den_manager.current_cycle += 1
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at end of SA cycle: %f" % r_free
     r_free = self.fmodels.fmodel_xray().r_free()
     step_xray_structure = self.fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
+    self.params.tardy.\
+      prolsq_repulsion_function_changes.k_rep = backup_k_rep
     return (gamma_local,
             weight_local,
             r_free,
@@ -186,6 +206,9 @@ class manager(object):
       generic_restraints_manager.den_manager.weight = \
         weight_local
     cycle = 0
+    self.model.restraints_manager.geometry.\
+      generic_restraints_manager.den_manager.current_cycle = \
+      cycle+1
     num_den_cycles = self.model.restraints_manager.geometry.\
       generic_restraints_manager.den_manager.num_cycles
     if self.params.den.optimize:
@@ -213,9 +236,13 @@ class manager(object):
         all_params                 = self.params,
         out                        = local_log,
         monitor                    = self.monitors.monitor_xray)
+      if self.params.den.bulk_solvent_and_scale:
+        self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
       cycle += 1
+      self.model.restraints_manager.geometry.\
+        generic_restraints_manager.den_manager.current_cycle += 1
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at end of SA cycle: %f" % r_free
     r_free = self.fmodels.fmodel_xray().r_free()
@@ -267,6 +294,16 @@ class manager(object):
                     "                                    |"
     print >>self.log,"|---------------------------------------"+\
                 "--------------------------------------|"
+
+  def bulk_solvent_and_scale(self, log):
+    self.fmodels.update_bulk_solvent_and_scale(
+      params = self.params.bulk_solvent_and_scale,
+      optimize_mask = self.params.main.optimize_mask,
+      optimize_mask_thorough = \
+        self.params.main.optimize_mask_thorough,
+      force_update_f_mask = True,
+      nproc=1,
+      log=log)
 
   def adp_refinement(self, log):
     if log is None:

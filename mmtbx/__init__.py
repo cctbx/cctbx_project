@@ -88,16 +88,17 @@ class fmodels(object):
         update_f_mask  = update_f_mask,
         force_update_f_mask = force_update_f_mask)
 
-  def show_short(self):
+  def show_short(self, log=None):
+    if log is None: log = self.log
     if(self.fmodel_x is not None):
       prefix = ""
       if(self.fmodel_n is not None): prefix = "x-ray data"
       self.fmodel_xray().info().show_rfactors_targets_scales_overall(
-        header = prefix, out = self.log)
+        header = prefix, out = log)
     if(self.fmodel_n is not None):
       print >> self.log
       self.fmodel_neutron().info().show_rfactors_targets_scales_overall(
-        header = "neutron data", out = self.log)
+        header = "neutron data", out = log)
 
   def show_comprehensive(self, message = ""):
     from mmtbx.refinement import print_statistics
@@ -110,21 +111,22 @@ class fmodels(object):
 
   def update_bulk_solvent_and_scale(self, params = None, optimize_mask = False,
         optimize_mask_thorough = False, force_update_f_mask = False,
-        nproc=1):
+        nproc=1, log=None):
+    if log is None: log = self.log
     from mmtbx.refinement import print_statistics
     print_statistics.make_header("bulk solvent modeling and scaling",
-      out = self.log)
+      out = log)
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
       force_update_f_mask = force_update_f_mask)
     if(self.fmodel_x is not None):
       self.fmodel_xray().update_solvent_and_scale(params = params,
-        out = self.log, verbose =-1, optimize_mask = optimize_mask,
+        out = log, verbose =-1, optimize_mask = optimize_mask,
         optimize_mask_thorough = optimize_mask_thorough, nproc=nproc)
     if(self.fmodel_n is not None):
       self.fmodel_neutron().update_solvent_and_scale(params = params,
-        out = self.log, verbose =-1, optimize_mask = optimize_mask,
+        out = log, verbose =-1, optimize_mask = optimize_mask,
         optimize_mask_thorough = optimize_mask_thorough, nproc=nproc)
-    self.show_short()
+    self.show_short(log=log)
 
   def remove_outliers(self):
     from mmtbx.refinement import print_statistics
