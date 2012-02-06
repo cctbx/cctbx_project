@@ -341,6 +341,14 @@ def action(
         sum_of_allowed_origin_shift_velocity_corrections[0] += correction
   suppress_allowed_origin_shifts(collect_stats=False)
   n_time_steps = 0
+  den_update_interval = None
+  if (tardy_model.potential_obj.reduced_geo_manager is not None) and \
+     (tardy_model.potential_obj.reduced_geo_manager. \
+      generic_restraints_manager is not None):
+    den_update_interval = 50 / ( (  params.start_temperature_kelvin
+                           - params.final_temperature_kelvin) \
+                          / params.number_of_cooling_steps)
+    den_update_interval = int(round(den_update_interval))
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
     if (params.number_of_cooling_steps == 0):
       if (   params.start_temperature_kelvin
@@ -357,9 +365,9 @@ def action(
         generic_restraints_manager is not None):
       if (tardy_model.potential_obj.reduced_geo_manager. \
           generic_restraints_manager.den_manager is not None) and \
-         i_cool_step > 0 and not (i_cool_step+1)%10:
+         i_cool_step > 0 and not (i_cool_step)%den_update_interval:
         print >> log, "   update DEN eq distances at step %d, temp=%.1f" % \
-          ( (i_cool_step+1), t_target)
+          ( (n_time_steps), t_target)
         tardy_model.potential_obj.reduced_geo_manager. \
           generic_restraints_manager.den_manager.update_eq_distances(
             sites_cart=tardy_model.sites_moved())

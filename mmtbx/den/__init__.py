@@ -1,6 +1,9 @@
 import iotbx.phil
 from cctbx.array_family import flex
 from libtbx import easy_pickle
+from libtbx.utils import Sorry
+from libtbx.str_utils import make_sub_header
+from mmtbx.refinement import print_statistics
 import sys
 
 den_params = iotbx.phil.parse("""
@@ -34,6 +37,10 @@ den_params = iotbx.phil.parse("""
  kappa_burn_in_cycles = 3
    .type = int
    .short_caption = Number of cycles where kappa is set to 0.0
+ bulk_solvent_and_scale = True
+   .type = bool
+   .short_caption = Refine bulk solvent and anisou scale after \
+    each DEN cycle
  refine_adp = True
    .type = bool
    .short_caption = Refine B-factors
@@ -95,6 +102,11 @@ class den_restraints(object):
                log=None):
     if(log is None): log = sys.stdout
     self.log = log
+    print_statistics.make_header(
+      "DEN restraint nework", out = self.log)
+    #make_sub_header(
+    #  "DEN restraint network",
+    #  out=self.log)
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("More than one model in input model. DEN refinement "+
                   "is only available for a single model.")
@@ -104,17 +116,35 @@ class den_restraints(object):
                     "DEN refinement "+
                     "is only available for a single model.")
     self.pdb_hierarchy = pdb_hierarchy
+    atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
+    segids = flex.std_string([ a.segid for a in atom_labels ])
+    self.use_model_segid = not segids.all_eq('    ')
     if pdb_hierarchy_ref is None:
       print >> self.log, "No input DEN reference model...restraining model "+ \
         "to starting structure"
       self.pdb_hierarchy_ref = pdb_hierarchy
+      self.restrain_to_starting_model = True
+      self.use_ref_segid = self.use_model_segid
     else:
       self.pdb_hierarchy_ref = pdb_hierarchy_ref
+      self.restrain_to_starting_model = False
+      ref_atom_labels = \
+        list(self.pdb_hierarchy_ref.atoms_with_labels())
+      ref_segids = \
+        flex.std_string([ a.segid for a in ref_atom_labels ])
+      self.use_ref_segid = not ref_segids.all_eq('    ')
+    if (not self.use_model_segid) and self.use_ref_segid:
+      raise Sorry("Reference model contains SEGIDs that do not match "+\
+                  "the working model.")
+    elif self.use_model_segid and (not self.use_ref_segid):
+      raise Sorry("Working model contains SEGIDs that do not match "+\
+                  "the reference model.")
     from mmtbx.torsion_restraints import utils
     import boost.python
     self.ext = boost.python.import_ext("mmtbx_den_restraints_ext")
     self.params = params
     self.kappa = params.kappa
+    self.kappa_burn_in_cycles = params.kappa_burn_in_cycles
     self.gamma = params.gamma
     self.weight = params.weight
     self.num_cycles = params.num_cycles
@@ -133,7 +163,10 @@ class den_restraints(object):
       params.restraint_network.den_network_file
     self.export_den_pairs = \
       params.restraint_network.export_den_pairs
+    self.current_cycle = None
     self.den_proxies = None
+    self.den_pair_count = 0
+    self.torsion_mid_point = int(round(self.num_cycles / 2))
 
     self.atoms_per_chain = \
       self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
@@ -159,12 +192,23 @@ class den_restraints(object):
       self.random_ref_atom_pairs = \
         self.select_random_den_restraints()
       self.den_atom_pairs = self.get_den_atom_pairs()
+    self.check_den_pair_consistency()
     if self.export_den_pairs:
       self.dump_den_network()
     self.build_den_restraints()
 
+  def check_den_pair_consistency(self):
+    if self.den_pair_count == 0:
+      raise Sorry("No DEN pairs matched to working model. "+\
+                  "Please check inputs.")
+
   def find_atom_pairs(self, pdb_hierarchy, resid_hash):
-    print >> self.log, "finding DEN atom pairs..."
+    if self.restrain_to_starting_model:
+      reference_txt = "starting"
+    else:
+      reference_txt = "reference"
+    print >> self.log, "Finding DEN atom pairs from %s model..." % \
+      reference_txt
     atom_pairs = {}
     distance_hash = {}
     atom_pairs_test = {}
@@ -207,9 +251,9 @@ class den_restraints(object):
   # remove any pairs of reference model atoms that do not
   # have matching atom pairs in the working model
   def remove_non_matching_pairs(self):
-    print >> self.log, "removing non-matching pairs..."
+    self.den_pair_count = 0
+    print >> self.log, "Removing non-matching pairs..."
     temp_atom_pairs = {}
-    #temp_distance_hash = {}
     for chain in self.ref_atom_pairs.keys():
       temp_atom_pairs[chain] = []
       for i, pair in enumerate(self.ref_atom_pairs[chain]):
@@ -219,7 +263,9 @@ class den_restraints(object):
         model_atom2 = self.i_seq_hash.get(ref_atom2)
         if model_atom1 != None and model_atom2 != None:
           temp_atom_pairs[chain].append(pair)
+          self.den_pair_count += 1
     self.ref_atom_pairs = temp_atom_pairs
+    self.check_den_pair_consistency()
 
   def count_atoms_per_chain(self, pdb_hierarchy):
     atoms_per_chain = {}
@@ -236,7 +282,7 @@ class den_restraints(object):
 
   def select_random_den_restraints(self):
     from cctbx.array_family import flex
-    print >> self.log, "selecting random DEN restraints..."
+    print >> self.log, "Selecting random DEN pairs..."
     random_pairs = {}
     for chain in self.ref_atom_pairs.keys():
       random_pairs[chain] = []
@@ -269,6 +315,7 @@ class den_restraints(object):
       den_dump)
 
   def load_den_network(self):
+    self.den_pair_count = 0
     den_atom_pairs = {}
     network_pairs = easy_pickle.load(
       self.den_network_file)
@@ -283,6 +330,7 @@ class den_restraints(object):
           raise Sorry(
             "input DEN network does not match current model")
         den_atom_pairs[chain].append(iselection)
+        self.den_pair_count += 1
     return den_atom_pairs
 
   def get_selection_strings(self):
@@ -306,6 +354,7 @@ class den_restraints(object):
     self.selection_string_hash = selection_string_hash
 
   def get_den_atom_pairs(self):
+    self.den_pair_count = 0
     den_atom_pairs = {}
     for chain in self.random_ref_atom_pairs.keys():
       den_atom_pairs[chain] = []
@@ -314,6 +363,7 @@ class den_restraints(object):
         i_seq_b = self.i_seq_hash[self.name_hash_ref[pair[1]]]
         i_seqs = flex.size_t([i_seq_a, i_seq_b])
         den_atom_pairs[chain].append(i_seqs)
+        self.den_pair_count += 1
     return den_atom_pairs
 
   def build_den_restraints(self):
@@ -344,10 +394,14 @@ class den_restraints(object):
 
   def update_eq_distances(self,
                           sites_cart):
+    if self.current_cycle > self.kappa_burn_in_cycles:
+      kappa_local = self.kappa
+    else:
+      kappa_local = 0.0
     self.ext.den_update_eq_distances(sites_cart,
                             self.den_proxies,
                             self.gamma,
-                            self.kappa)
+                            kappa_local)
 
   def get_optimization_grid(self):
     # defaults adapted from DEN Nature paper Fig. 1
@@ -415,7 +469,6 @@ class den_restraints(object):
     #                             width=None)
     #   f.write(vec)
     f.close()
-    STOP()
 
 def distance_squared(a, b):
   return ((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)

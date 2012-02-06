@@ -44,6 +44,7 @@ namespace mmtbx { namespace den {
     af::ref<scitbx::vec3<double> > const& gradient_array,
     double den_weight=1.0)
   {
+    //std::cout << "den_weight=" << den_weight << std::endl;
     double residual_sum = 0;
     double slack = 0.0;
     for (std::size_t i = 0; i < proxies.size(); i++) {
@@ -52,14 +53,16 @@ namespace mmtbx { namespace den {
       af::tiny<unsigned, 2> const& i_seqs = proxy.i_seqs;
       sites[0] = sites_cart[ i_seqs[0] ];
       sites[1] = sites_cart[ i_seqs[1] ];
-      bond restraint(sites, proxy.eq_distance, proxy.weight, slack);
+      //bond restraint(sites, proxy.eq_distance, proxy.weight, slack);
+      bond restraint(sites, proxy.eq_distance, den_weight, slack);
       double residual = restraint.residual();
-      double grad_factor = den_weight;
+      //double grad_factor = den_weight;
       residual_sum += residual;
       if (gradient_array.size() != 0) {
         af::tiny<scitbx::vec3<double>, 2> gradients = restraint.gradients();
-        gradient_array[ i_seqs[0] ] += gradients[0] * grad_factor;
-        gradient_array[ i_seqs[1] ] += gradients[1] * grad_factor;
+        //weight is now handled at the residual level
+        gradient_array[ i_seqs[0] ] += gradients[0];// * grad_factor;
+        gradient_array[ i_seqs[1] ] += gradients[1];// * grad_factor;
       }
     }
     return residual_sum;
