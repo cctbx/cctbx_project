@@ -16,6 +16,7 @@ from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import libtbx.load_env
 from math import sqrt
+import copy
 import os
 
 class settings_window (wxtbx.utils.SettingsPanel) :
@@ -58,11 +59,11 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="sqrt_scale_radii",
-      label="Scale radii to sqrt(I)")
+      label="Scale radii to sqrt(value)")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     ctrls = self.create_controls(
       setting="sqrt_scale_colors",
-      label="Scale colors to sqrt(I)")
+      label="Scale colors to sqrt(value)")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     if (self.is_3d_view) :
       ctrls = self.create_controls(
@@ -217,7 +218,9 @@ class HKLViewFrame (wx.Frame) :
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
     app = wx.GetApp()
     if (getattr(app, "hklview_settings", None) is not None) :
-      self.settings = app.hklview_settings
+      # XXX copying the initial settings avoids awkward interactions when
+      # multiple viewer windows are opened
+      self.settings = copy.deepcopy(app.hklview_settings)
     else :
       self.settings = settings()
     self.create_settings_panel()
