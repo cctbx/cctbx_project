@@ -104,8 +104,9 @@ class skew_normal(function_base):
 
 class univariate_polynomial_fit(object):
 
-  def __init__(self, x_obs, y_obs, degree, max_iterations=None,
-               min_iterations=None):
+  def __init__(self, x_obs, y_obs, degree,
+        min_iterations=0,
+        max_iterations=None):
     """Fit a polynomial of degree n to points (x_obs, y_obs)
          f(x) = a[0] + a[1] x**1 + ... * a[n] x**n.
 
@@ -116,11 +117,6 @@ class univariate_polynomial_fit(object):
        :param degree: the degree of the polynomial - the largest power of x
        :type degree: int
     """
-    termination_params=None
-    if([max_iterations, min_iterations].count(None)==0):
-      termination_params = scitbx.lbfgs.termination_parameters(
-        min_iterations = min_iterations,
-        max_iterations = max_iterations)
     self.x_obs = x_obs
     self.y_obs = y_obs
     assert isinstance(degree, int)
@@ -129,8 +125,13 @@ class univariate_polynomial_fit(object):
     self.n_terms = degree + 1
     params = flex.double([1] * self.n_terms)
     polynomial = univariate_polynomial(*params)
-    fit = generic_minimiser(functions=[polynomial], x_obs=x_obs,
-      y_obs=self.y_obs, termination_params=termination_params)
+    fit = generic_minimiser(
+      functions=[polynomial],
+      x_obs=x_obs,
+      y_obs=self.y_obs,
+      termination_params=scitbx.lbfgs.termination_parameters(
+        min_iterations=min_iterations,
+        max_iterations=max_iterations))
     self.params = fit.functions[0].params
 
 
