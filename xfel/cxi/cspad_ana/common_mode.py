@@ -120,6 +120,10 @@ class common_mode_correction(object):
       assert isinstance(self.gain_map, flex.double)
 
 
+  def __del__(self):
+    logging.shutdown()
+
+
   def beginjob(self, evt, env):
     """The beginjob() function does one-time initialisation from
     event- or environment data.  It is called at an XTC configure
