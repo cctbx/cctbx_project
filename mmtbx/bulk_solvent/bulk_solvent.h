@@ -364,19 +364,30 @@ public:
         container cntr = container(f_obs[i], f_calc[i], f_mask[i]);
         containers.push_back(cntr);
         FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;
-        a2 += (u*I);
-        b2 += (2.*v*I);
-        c2 += (w*I);
-        y2 += (I*I);
-        a3 += (u*v);
-        b3 += (2.*v*v+u*w);
-        c3 += (3.*v*w);
-        d3 += (w*w);
-        y3 += (I*v);
+        FloatType Isq = I*I;
+        //a2 += (u*I);
+        //b2 += (2.*v*I);
+        //c2 += (w*I);
+        //y2 += (I*I);
+        //a3 += (u*v);
+        //b3 += (2.*v*v+u*w);
+        //c3 += (3.*v*w);
+        //d3 += (w*w);
+        //y3 += (I*v);
+        //
+        a2 += (u/I);
+        b2 += (2.*v/I);
+        c2 += (w/I);
+        y2 += 1;
+        a3 += (u*v/Isq);
+        b3 += (2.*v*v+u*w)/Isq;
+        c3 += (3.*v*w)/Isq;
+        d3 += (w*w)/Isq;
+        y3 += (v/I);
       }
     }
     FloatType den = d3*y2-c2*c2;
-    MMTBX_ASSERT(den > 0.0);
+    MMTBX_ASSERT(den != 0.0);
     // coefficients of x**3 + ax**2 + bc + c = 0
     FloatType a = (c3*y2-c2*b2-c2*y3)/den;
     FloatType b = (b3*y2-c2*a2-y3*b2)/den;
@@ -389,6 +400,7 @@ public:
         MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
       }
     }
+    //std::cout<<X[0]<<" "<<X[1]<<" "<<X[2]<<std::endl;
     vec3<FloatType> K = compute_K(X, c2, b2, a2, y2);
     vec3<FloatType> J = func_J(K, X, containers.const_ref());
     if(X[0]>=0. && X[1]>=0. && X[2]>=0) {
@@ -453,32 +465,32 @@ private:
     vec3<FloatType> num1(0,0,0);
     vec3<FloatType> den1(0,0,0);
     vec3<FloatType> sc(0,0,0);
-    for(std::size_t i=0; i < containers.size(); i++) {
-      container cntr = containers[i];
-      for(std::size_t j=0; j < 3; j++) {
-        FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
-        num1[j] += std::abs(cntr.f_obs*fm);
-        den1[j] += (fm*fm);
-      }
-    }
-    for(std::size_t j=0; j < 3; j++) {
-      sc[j] = num1[j]/den1[j];
-    }
+    //for(std::size_t i=0; i < containers.size(); i++) {
+    //  container cntr = containers[i];
+    //  for(std::size_t j=0; j < 3; j++) {
+    //    FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
+    //    num1[j] += std::abs(cntr.f_obs*fm);
+    //    den1[j] += (fm*fm);
+    //  }
+    //}
+    //for(std::size_t j=0; j < 3; j++) {
+    //  sc[j] = num1[j]/den1[j];
+    //}
 
     for(std::size_t i=0; i < containers.size(); i++) {
       container cntr = containers[i];
-      //FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;//XXX
+      FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;//XXX
       for(std::size_t j=0; j < 3; j++) {
-        //FloatType arg = x[j]*x[j]*w+2.*x[j]*v+u-K[j]*I; //XXX
-        //sum[j] += (0.5*arg*arg);
-        FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
-        num[j] += std::abs(cntr.f_obs-sc[j]*fm);
-        den[j] += cntr.f_obs;
+        FloatType arg = (x[j]*x[j]*w+2.*x[j]*v+u)/I-K[j]; //XXX
+        sum[j] += (0.5*arg*arg);
+        //FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
+        //num[j] += std::abs(cntr.f_obs-sc[j]*fm);
+        //den[j] += cntr.f_obs;
       }
     }
-    for(std::size_t j=0; j < 3; j++) {
-      sum[j] = num[j]/den[j];
-    }
+    //for(std::size_t j=0; j < 3; j++) {
+    //  sum[j] = num[j]/den[j];
+    //}
     return sum;
   }
 
@@ -569,13 +581,13 @@ public:
     af::const_ref<cctbx::miller::index<> > const& miller_indices,
     cctbx::uctbx::unit_cell const& unit_cell)
   :
-  a(12, 0)
+  a(13, 0)
   {
     MMTBX_ASSERT(f_obs.size() == f_model.size());
     MMTBX_ASSERT(f_obs.size() == miller_indices.size());
-    af::versa<FloatType, af::mat_grid> m_(af::mat_grid(12, 12), 0);
-    af::versa<FloatType, af::mat_grid> m(af::mat_grid(12, 12), 0);
-    af::tiny<FloatType, 12> b;
+    af::versa<FloatType, af::mat_grid> m_(af::mat_grid(13, 13), 0);
+    af::versa<FloatType, af::mat_grid> m(af::mat_grid(13, 13), 0);
+    af::tiny<FloatType, 13> b;
     b.fill(0);
     af::double6 p = unit_cell.reciprocal_parameters();
     FloatType as=p[0], bs=p[1], cs=p[2];
@@ -584,8 +596,9 @@ public:
       int h=miller_index[0], k=miller_index[1], l=miller_index[2];
       FloatType fm_i = std::abs(f_model[i]);
       FloatType s = 1./unit_cell.stol_sq(miller_index);
-      af::tiny<FloatType, 12> v_;
+      af::tiny<FloatType, 13> v_;
       FloatType* v = v_.begin();
+      *v++ = 1;
       *v++ = h*h*as*as*s;
       *v++ = h*h*as*as;
       *v++ = k*k*bs*bs*s;
