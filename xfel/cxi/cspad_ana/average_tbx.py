@@ -74,20 +74,6 @@ class average_mixin(common_mode.common_mode_correction):
       background_dict = easy_pickle.load(background_path)
       self.background_img = background_dict['DATA']
 
-    # The images read out off the detector have an unsigned 14-bit
-    # dynamic range, and become signed after dark subtraction.  Since
-    # the sum of the squared images has to fit into a double-precision
-    # floating-point number with 53 effective bits for the
-    # significand, the number of images that can be safely processed
-    # before over- or underflow becomes an issue is limited.  The
-    # limit, nmemb_safe, works out to about 34 million.
-    nmemb_safe = 2**(53 - 2 * 14)
-    if (self.nmemb_max is None):
-      self.nmemb_max = nmemb_safe
-    elif (self.nmemb_max > nmemb_safe):
-      self.nmemb_max = nmemb_safe
-      self.logger.warn("Number of shots capped to %d" % nmemb_safe)
-
     # Initialise all totals to zero.  self._tot_peers is a bit field
     # where a bit is set if the partial sum from the corresponding
     # worker process is pending.  XXX Hardcoding the detector size is
@@ -132,7 +118,10 @@ class average_mixin(common_mode.common_mode_correction):
     """
 
     super(average_mixin, self).event(evt, env)
-    if (evt.get("skip_event") or self.nmemb >= self.nmemb_max):
+    if (evt.get("skip_event")):
+      return
+
+    if (self.nmemb_max is not None and self.nmemb >= self.nmemb_max):
       return
 
     if ("skew" in self.flags):
@@ -287,15 +276,16 @@ class average_mixin(common_mode.common_mode_correction):
       self.nmemb = self._tot_nmemb.value
 
       if (self.nmemb != 0):
-        # Since the intensities and square intensities are accumulated
-        # exactly and without overflow, the one-pass formula for the
-        # standard deviation is adequate.
+        # Accumulating floating-point numbers introduces errors, which
+        # may cause negative variances.  Since a two-pass approach is
+        # unacceptable, the standard deviation is clamped at zero.
         self.avg_img = flex.double(self._tot_sum) / self.nmemb
         self.stddev_img = flex.double(self._tot_ssq) \
             - flex.double(self._tot_sum) * self.avg_img
         self.avg_distance = self._tot_distance.value / self.nmemb
         self.avg_wavelength = self._tot_wavelength.value / self.nmemb
 
+        self.stddev_img.set_selected(self.stddev_img < 0, 0)
         if (self.nmemb == 1):
           self.stddev_img = flex.sqrt(self.stddev_img)
         else:
