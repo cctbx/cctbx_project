@@ -58,18 +58,19 @@ af::shared<FloatType> overall_anisotropic_scale(
     int h=miller_index[0], k=miller_index[1], l=miller_index[2];
     FloatType s = 1./unit_cell.stol_sq(miller_index);
     result[i]=
-      h*h*as*as*s   * a[0]+
-      h*h*as*as     * a[1]+
-      k*k*bs*bs*s   * a[2]+
-      k*k*bs*bs     * a[3]+
-      l*l*cs*cs*s   * a[4]+
-      l*l*cs*cs     * a[5]+
-      2*k*l*bs*cs*s * a[6]+
-      2*k*l*bs*cs   * a[7]+
-      2*h*l*as*cs*s * a[8]+
-      2*h*l*as*cs   * a[9]+
-      2*h*k*as*bs*s * a[10]+
-      2*h*k*as*bs   * a[11];
+      a[0] +
+      h*h*as*as*s   * a[1]+
+      h*h*as*as     * a[2]+
+      k*k*bs*bs*s   * a[3]+
+      k*k*bs*bs     * a[4]+
+      l*l*cs*cs*s   * a[5]+
+      l*l*cs*cs     * a[6]+
+      2*k*l*bs*cs*s * a[7]+
+      2*k*l*bs*cs   * a[8]+
+      2*h*l*as*cs*s * a[9]+
+      2*h*l*as*cs   * a[10]+
+      2*h*k*as*bs*s * a[11]+
+      2*h*k*as*bs   * a[12];
   }
   return result;
 }
