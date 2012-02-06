@@ -418,7 +418,8 @@ class run(object):
       X_.append(tmpX)
       Y_.append(tmpY)
     cutoff_x = tmpX
-    cfo = curve_fitting.univariate_polynomial_fit(x_obs=X_, y_obs=Y_, degree=3)
+    cfo = curve_fitting.univariate_polynomial_fit(x_obs=X_, y_obs=Y_, degree=3, 
+      max_iterations=1000, min_iterations=1000)
     def foo(a, x):
       return a[0] + a[1] * x**1 + a[2] * x**2 + a[3] * x**3
     kmask = flex.double(self.core.ss.size(), 0)
