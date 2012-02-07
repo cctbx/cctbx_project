@@ -21,7 +21,7 @@ map_cutoff = 3.0
   .type = float
 anom_map_cutoff = 3.0
   .type = float
-write_pdb = False
+write_pdb = True
   .type = bool
 """ % utils.cmdline_input_phil_str,
   process_includes=True)
