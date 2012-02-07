@@ -1,10 +1,12 @@
 import math
 
 import libtbx
+import libtbx.load_env
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.math
+from scitbx import matrix
 
 
 class function_base(object):
@@ -13,7 +15,25 @@ class function_base(object):
     raise NotImplementedError
 
   def partial_derivatives(self, x_obs):
-    raise NotImplementedError
+    """ This default implementation returns the finite difference partial
+    derivatives. Override this function to calculate the derivatives
+    analytically if required.
+    """
+    return [flex.double(g) for g in self.finite_differences(x_obs)]
+
+  def finite_differences(self, x_obs, eps=1e-4):
+    grads = []
+    for i in range(len(self.params)):
+      params = flex.double(self.params)
+      params[i] += eps
+      f = self.__class__(*params)
+      qm = matrix.col(f(x_obs))
+      params[i] -= 2 * eps
+      f = self.__class__(*params)
+      qp = matrix.col(f(x_obs))
+      dq = (qm-qp)/(2*eps)
+      grads.append(list(dq))
+    return grads
 
 
 class univariate_polynomial(function_base):
@@ -60,6 +80,9 @@ class gaussian(function_base):
            a * (x_obs - b) / c**2 * exponential_part,
            a * flex.pow2(x_obs - b) / c**3 * exponential_part)
 
+  class sigma(libtbx.property):
+    def fget(self):
+      return abs(self.params[2])
 
 class skew_normal(function_base):
 
@@ -125,7 +148,7 @@ class univariate_polynomial_fit(object):
     self.n_terms = degree + 1
     params = flex.double([1] * self.n_terms)
     polynomial = univariate_polynomial(*params)
-    fit = generic_minimiser(
+    fit = lbfgs_minimiser(
       functions=[polynomial],
       x_obs=x_obs,
       y_obs=self.y_obs,
@@ -177,7 +200,7 @@ class gaussian_fit(object):
     self.y_obs = y_obs
     self.n_gaussians = len(starting_gaussians)
     assert self.n_gaussians > 0
-    fit = generic_minimiser(
+    fit = lbfgs_minimiser(
       functions=starting_gaussians, x_obs=x_obs, y_obs=self.y_obs)
     self.gaussians = fit.functions
 
@@ -197,18 +220,21 @@ class gaussian_fit(object):
       pyplot.plot(self.x_obs, y_calc)
     pyplot.show()
 
+class minimiser_base(object):
 
-
-class generic_minimiser(object):
-
-  def __init__(self, functions, x_obs, y_obs, termination_params=None):
+  def __init__(self, functions, x_obs, y_obs):
     self.n_cycles = 0
     self.x_obs = x_obs
     self.y_obs = y_obs
     self.n_functions = len(functions)
     self.functions = functions
-    self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
-                                      termination_params=termination_params)
+
+  def compute_functional(self, params):
+    self.x = params
+    y_calc = self.compute_y_calc()
+    delta_y = self.y_obs - y_calc
+    f = flex.sum(flex.pow2(delta_y))
+    return f
 
   def compute_y_calc(self):
     y_calc = flex.double(self.x_obs.size())
@@ -229,7 +255,6 @@ class generic_minimiser(object):
 
   def callback_after_step(self, minimizer):
     self.n_cycles += 1
-    #print self.n_cycles
 
   def pyplot(self):
     from matplotlib import pyplot
@@ -255,3 +280,27 @@ class generic_minimiser(object):
       for f in self._functions:
         x.extend(f.params)
       self.x = flex.double(x)
+
+
+class lbfgs_minimiser(minimiser_base):
+
+  def __init__(self, functions, x_obs, y_obs, termination_params=None):
+    super(lbfgs_minimiser, self).__init__(functions, x_obs, y_obs)
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self, termination_params=termination_params)
+
+
+have_cma_es = libtbx.env.has_module("cma_es")
+
+if have_cma_es:
+  from cma_es import cma_es_interface
+
+  class cma_es_minimiser(minimiser_base):
+
+    def __init__(self, functions, x_obs, y_obs):
+      super(cma_es_minimiser, self).__init__(functions, x_obs, y_obs)
+      sigma = flex.double(self.x.size(), 1)
+      self.minimizer = cma_es_interface.cma_es_driver(len(self.x), self.x.deep_copy(), sigma, self.compute_functional)
+
+
+generic_minimiser = lbfgs_minimiser # XXX backward compatibility 2012-02-07

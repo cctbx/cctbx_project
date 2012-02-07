@@ -1,29 +1,18 @@
 from stdlib import random
 
+import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from libtbx.utils import frange
 from scitbx.array_family import flex
 from scitbx.math import curve_fitting
-from scitbx import matrix
 import scitbx.lbfgs
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
   flex.set_random_seed(0)
 
-def finite_differences(functor, x, eps=1e-4):
-  grads = []
-  for i in range(len(functor.params)):
-    params = flex.double(functor.params)
-    params[i] += eps
-    f = functor.__class__(*params)
-    qm = matrix.col(f(x))
-    params[i] -= 2 * eps
-    f = functor.__class__(*params)
-    qp = matrix.col(f(x))
-    dq = (qm-qp)/(2*eps)
-    grads.append(list(dq))
-  return grads
+def finite_differences(functor, x):
+  return [flex.double(g) for g in functor.finite_differences(x)]
 
 def exercise_polynomial_fit():
 
@@ -134,6 +123,12 @@ def exercise_gaussian_fit():
     x, y, starting_gaussians, termination_params=termination_params)
   y_calc = fit.compute_y_calc()
   assert approx_equal(y, y_calc, eps=1e-2)
+
+  have_cma_es = libtbx.env.has_module("cma_es")
+  if have_cma_es:
+    fit = curve_fitting.cma_es_minimiser(starting_gaussians, x, y)
+    y_calc = fit.compute_y_calc()
+    assert approx_equal(y, y_calc, eps=1e-2)
 
 
 def exercise_skew_normal_fit():
