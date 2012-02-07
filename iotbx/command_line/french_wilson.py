@@ -116,8 +116,8 @@ def run (args, out=sys.stdout) :
   mtz_object.write(file_name = output_file)
   return output_file
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
     return run(args=list(self.args), out=sys.stdout)
 
 def validate_params (params) :
