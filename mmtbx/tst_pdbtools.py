@@ -491,7 +491,7 @@ ATOM      1  CL  CL  X   1       0.000   0.000   0.000  1.00 20.00          CL
 END
 """
   open("tmp_cl.pdb", "w").write(input_pdb)
-  easy_run.call("phenix.pdbtools tmp_cl.pdb charge_selection='element Cl' charge=-1 --quiet")
+  easy_run.call('phenix.pdbtools tmp_cl.pdb charge_selection="element Cl" charge=-1 --quiet')
   pdb_in = file_reader.any_file("tmp_cl.pdb_modified.pdb").file_object
   hierarchy = pdb_in.construct_hierarchy()
   xrs = pdb_in.xray_structure_simple()
