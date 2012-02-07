@@ -24,8 +24,6 @@ output_dir = None
   .type = path
 tmp_dir = None
   .type = path
-log_file = None
-  .type = path
 debug = False
   .type = bool
 timeout = 200
@@ -46,12 +44,22 @@ class simple_target (object) :
     return True
 
 class target_with_save_result (object) :
-  def __init__ (self, args, file_name, output_dir=None) :
+  def __init__ (self, args, file_name, output_dir=None, log_file=None) :
+    assert (isinstance(file_name, str))
+    assert (isinstance(args, list) or isinstance(args, tuple))
+    assert (output_dir is None) or (isinstance(output_dir, str))
+    assert (log_file is None) or (isinstance(log_file, str))
     adopt_init_args(self, locals())
     if (output_dir is None) :
       self.output_dir = os.getcwd()
 
   def __call__ (self) :
+    if (self.log_file is not None) :
+      log = open(self.log_file, "w")
+      new_out = multi_out()
+      new_out.register("log", log)
+      new_out.register("stdout", sys.stdout)
+      sys.stdout = new_out
     result = self.run()
     easy_pickle.dump(self.file_name, result)
     return result
@@ -140,9 +148,6 @@ class detached_process_server (detached_base) :
     assert hasattr(self.target, "__call__")
     self.callback_start()
     self._stdout = multi_out()
-    if self.params.log_file is not None :
-      log = open(self.params.log_file, "w")
-      self._stdout.register("Saved log", log)
     self._tmp_stdout = open(self.stdout_file, "w")
     self._stdout.register("Communication log", self._tmp_stdout)
 
