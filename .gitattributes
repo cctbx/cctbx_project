@@ -1321,14 +1321,17 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
+rstbx/bpcx/__init__.py -text
 rstbx/bpcx/compare_mosflm_xds.py -text
 rstbx/bpcx/doc/diffraction_geometry.pdf -text
 rstbx/bpcx/doc/diffraction_geometry.svg -text
 rstbx/bpcx/doc/prediction_formulae.tex -text
 rstbx/bpcx/doc/readme.txt -text
+rstbx/bpcx/reeke.py -text
 rstbx/bpcx/uc1_2.py -text
 rstbx/bpcx/uc1_2_positions.py -text
 rstbx/bpcx/uc1_2_positions_idx.py -text
+rstbx/bpcx/uc1_2_reeke.py -text
 rstbx/bpcx/uc1_2_validate.py -text
 rstbx/bpcx/xparm-uc1-2.xds -text
 rstbx/cftbx/__init__.py -text
