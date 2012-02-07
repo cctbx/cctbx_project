@@ -251,6 +251,8 @@ def validate_params (params) :
     raise Sorry("No output file name provided.")
   elif (params.f_obs_label is None) :
     raise Sorry("No data label selected.")
+  elif (params.r_free_flags_label is None) :
+    raise Sorry("No R-free flags label selected.")
   elif (params.space_group is None) or (params.unit_cell is None) :
     raise Sorry("Missing or incomplete symmetry information.")
   return True
@@ -261,8 +263,8 @@ def finish_job (result) :
     output_files.append((result, "Data and phases"))
   return output_files, stats
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
     return run(args=self.args, log=sys.stdout)
 
 if(__name__ == "__main__"):

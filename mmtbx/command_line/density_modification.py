@@ -7,7 +7,6 @@ import iotbx.phil
 from iotbx.reflection_file_reader import any_reflection_file
 from libtbx.utils import show_times_at_exit, Sorry
 from libtbx import runtime_utils
-from libtbx import easy_pickle
 from libtbx import adopt_init_args
 import mmtbx.maps
 from mmtbx.ncs import ncs
@@ -445,15 +444,11 @@ def validate_params (params) :
   if (params_.solvent_fraction is None) :
     raise Sorry("Please specify the solvent fraction!")
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
-    result = run(args=list(self.args),
-                 log=sys.stdout,
-                 as_gui_program=True)
-    config_file = self.args[0]
-    pkl_file = config_file[:-4] + ".pkl"
-    easy_pickle.dump(pkl_file, result)
-    return result
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    return run(args=list(self.args),
+      log=sys.stdout,
+      as_gui_program=True)
 
 class result (object) :
   def __init__ (self, map_file, mtz_file, stats) :
