@@ -140,6 +140,7 @@ class tertiary_xh_site(hydrogens):
   n_constrained_sites = 1
   room_temperature_bond_length = { 'C' : 0.98,
                                    'N' : 0.91,
+                                   'B' : 0.98,
                                    }
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
