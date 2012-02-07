@@ -300,8 +300,8 @@ def run (args, log=sys.stdout) :
 def finish_job (result) :
   return (result, []) # XXX result is already a file name/desc. list
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
     return run(args=list(self.args), log=sys.stdout)
 
 def validate_params (params) :

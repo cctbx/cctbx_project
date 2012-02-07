@@ -489,8 +489,8 @@ def validate_params (params) :
       raise Sorry("Crystal symmetry missing or incomplete.")
   return True
 
-class launcher (runtime_utils.simple_target) :
-  def __call__ (self) :
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
     os.chdir(self.output_dir)
     return run2(args=list(self.args), log=sys.stdout)
 
