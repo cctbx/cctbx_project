@@ -43,12 +43,23 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("bond_params", no_init)
-        .def(init<double, double, optional<double> >((
-          arg("distance_ideal"), arg("weight"), arg("slack")=0)))
+        .def(init<
+          double,
+          double,
+          double,
+          double,
+          bool >((
+            arg("distance_ideal"),
+            arg("weight"),
+            arg("slack")=0,
+            arg("limit")=-1.0,
+            arg("top_out")=false)))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("slack", &w_t::slack)
+        .def_readwrite("limit", &w_t::limit)
+        .def_readwrite("top_out", &w_t::top_out)
       ;
     }
   };
@@ -132,11 +143,18 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<bond_params> >("bond_simple_proxy", no_init)
         .def(init<
-          af::tiny<unsigned, 2> const&, double, double, optional<double> >((
+          af::tiny<unsigned, 2> const&,
+          double,
+          double,
+          double,
+          double,
+          bool >((
             arg("i_seqs"),
             arg("distance_ideal"),
             arg("weight"),
-            arg("slack")=0)))
+            arg("slack")=0,
+            arg("limit")=-1.0,
+            arg("top_out")=false)))
         .def(init<
           af::tiny<unsigned, 2> const&, double, double, double >((
             arg("i_seqs"),
@@ -148,12 +166,16 @@ namespace {
           sgtbx::rt_mx const&,
           double,
           double,
-          optional<double> >((
+          double,
+          double,
+          bool >((
             arg("i_seqs"),
             arg("rt_mx_ji"),
             arg("distance_ideal"),
             arg("weight"),
-            arg("slack")=0)))
+            arg("slack")=0,
+            arg("limit")=-1.0,
+            arg("top_out")=false)))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("rt_mx_ji", make_getter(&w_t::rt_mx_ji, rbv()))
@@ -181,12 +203,16 @@ namespace {
           sgtbx::rt_mx const&,
           double,
           double,
-          optional<double> >((
+          double,
+          double,
+          bool >((
             arg("i_seqs"),
             arg("rt_mx_ji"),
             arg("distance_ideal"),
             arg("weight"),
-            arg("slack")=0)))
+            arg("slack")=0,
+            arg("limit")=-1.0,
+            arg("top_out")=false)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
       ;
@@ -204,11 +230,18 @@ namespace {
       class_<w_t, bases<bond_params, asu_mapping_index_pair> >(
             "bond_asu_proxy", no_init)
         .def(init<
-          asu_mapping_index_pair const&, double, double, optional<double> >((
+          asu_mapping_index_pair const&,
+          double,
+          double,
+          double,
+          double,
+          bool >((
             arg("pair"),
             arg("distance_ideal"),
             arg("weight"),
-            arg("slack")=0)))
+            arg("slack")=0,
+            arg("limit")=-1.0,
+            arg("top_out")=false)))
         .def(init<asu_mapping_index_pair const&, bond_params const&>(
           (arg("pair"), arg("params"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
@@ -236,11 +269,15 @@ namespace {
           af::tiny<scitbx::vec3<double>, 2> const&,
           double,
           double,
-          optional<double> >((
+          double,
+          double,
+          bool >((
             arg("sites"),
             arg("distance_ideal"),
             arg("weight"),
-            arg("slack")=0)))
+            arg("slack")=0,
+            arg("limit")=-1.0,
+            arg("top_out")=false)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_simple_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
