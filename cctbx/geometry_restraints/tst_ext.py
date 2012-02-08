@@ -620,6 +620,33 @@ def exercise_bond():
   assert approx_equal(get(1, 0),
     [0.0, [(10,20,30), (20,30,40)]])
   iselection = flex.size_t([0,1])
+  # top_out potential
+  sites = [[0,0,0],[1.5,0,0]]
+  proxy1 = geometry_restraints.bond_simple_proxy(
+    i_seqs=[0,1],
+    distance_ideal=1.5,
+    weight=400)
+  proxy2 = geometry_restraints.bond_simple_proxy(
+    i_seqs=[0,1],
+    distance_ideal=1.5,
+    weight=400,
+    limit=0.6,
+    top_out=True)
+  for i in range(200) :
+    sites[1][0] = 1.5 + 0.01 * (i - 100)
+    sites_cart = flex.vec3_double(sites) # XXX why isn't this automatic?
+    bond1 = geometry_restraints.bond(sites_cart, proxy1)
+    bond2 = geometry_restraints.bond(sites_cart, proxy2)
+    res1 = bond1.residual()
+    res2 = bond2.residual()
+    if (i <= 100) :
+      assert (res1 == res2)
+    else :
+      assert (res2 < res1)
+    grads_fd = finite_difference_gradients(geometry_restraints.bond,
+      sites_cart, proxy2)
+    grads_an = bond2.gradients()
+    assert approx_equal(grads_fd, grads_an, eps=0.0001)
 
 class py_nonbonded_cos(object): # prototype
 
