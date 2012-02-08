@@ -34,6 +34,9 @@ french_wilson {
     .help = "Keep R-free flag data if present"
     .short_caption = Keep R-free flags if present in input file
   include scope cctbx.french_wilson.master_phil
+  sigma_iobs_rejection_criterion = None
+    .type=float
+    .short_caption = Sigma(Iobs) rejection criterion
 }
 """, process_includes=True)
 
@@ -93,8 +96,11 @@ def run (args, out=sys.stdout) :
     r_free_flags = None
   if (i_obs is None) :
     raise Sorry("Couldn't find intensities!")
+  sigma_iobs_rejection_criterion = work_params.french_wilson.\
+    sigma_iobs_rejection_criterion
   f_obs = french_wilson.french_wilson_scale(miller_array=i_obs,
     params=params,
+    sigma_iobs_rejection_criterion=sigma_iobs_rejection_criterion,
     log=out)
   if f_obs is None:
     raise Sorry("Not enough data to accurately apply the French-Wilson method."+\

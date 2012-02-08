@@ -128,17 +128,19 @@ class fmodels(object):
         optimize_mask_thorough = optimize_mask_thorough, nproc=nproc)
     self.show_short(log=log)
 
-  def remove_outliers(self):
+  def remove_outliers(self, xray=True, neutron=True):
     from mmtbx.refinement import print_statistics
     nx_old = self.fmodel_x.f_obs().size()
     nn_old = None
     print_statistics.make_sub_header("Outlier rejection", out = self.log)
-    if(self.fmodel_x is not None):
+    if (self.fmodel_x is not None) and \
+       (xray):
       if(self.fmodel_n is not None):
         print_statistics.make_sub_header("x-ray data", out = self.log)
       self.fmodel_x = self.fmodel_xray().remove_outliers(
         show = True, log = self.log)
-    if(self.fmodel_n is not None):
+    if(self.fmodel_n is not None) and \
+      (neutron):
       nn_old = self.fmodel_n.f_obs().size()
       print_statistics.make_sub_header("neutron data", out = self.log)
       self.fmodel_n = self.fmodel_neutron().remove_outliers(

@@ -86,9 +86,15 @@ master_phil = libtbx.phil.parse("""
     .help = '''Minimum number of reflections per bin'''
 """)
 
-def fw_acentric(I, sigma_I, mean_intensity) :
+def fw_acentric(
+      I,
+      sigma_I,
+      mean_intensity,
+      sigma_iobs_rejection_criterion) :
   h = (I/sigma_I) - (sigma_I/mean_intensity)
-  if (I/sigma_I) < -3.7 or h < -4.0:
+  h_min = sigma_iobs_rejection_criterion
+  i_sig_min = h_min+0.3
+  if (I/sigma_I) < i_sig_min or h < h_min:
     return -1.0, -1.0, -1.0, -1.0
   else:
     if h < 3.0:
@@ -115,9 +121,15 @@ def fw_acentric(I, sigma_I, mean_intensity) :
       sigma_F = 0.5*(sigma_I/F)
     return J, sigma_J, F, sigma_F
 
-def fw_centric(I, sigma_I, mean_intensity) :
+def fw_centric(
+      I,
+      sigma_I,
+      mean_intensity,
+      sigma_iobs_rejection_criterion) :
   h = (I/sigma_I) - ( sigma_I/(2.0*mean_intensity) )
-  if (I/sigma_I) < -3.7 or h < -4.0:
+  h_min = sigma_iobs_rejection_criterion
+  i_sig_min = h_min+0.3
+  if (I/sigma_I) < i_sig_min or h < h_min:
     return -1.0, -1.0, -1.0, -1.0
   else:
     if h < 4.0:
@@ -282,7 +294,11 @@ def calculate_mean_intensities(miller_array, log=None):
           d_mean_intensities[index] = mean_i
   return d_mean_intensities
 
-def french_wilson_scale(miller_array, params=None, log=None):
+def french_wilson_scale(
+      miller_array,
+      params=None,
+      sigma_iobs_rejection_criterion=None,
+      log=None):
   from cctbx.array_family import flex
   if not miller_array.is_xray_intensity_array():
     raise Sorry("Input array appears to be amplitudes. This method is only appropriate for input intensities.")
@@ -297,6 +313,12 @@ def french_wilson_scale(miller_array, params=None, log=None):
     params.max_bins = 60
   if log == None:
     log = sys.stdout
+  if sigma_iobs_rejection_criterion is None:
+    sigma_iobs_rejection_criterion = -4.0
+  if sigma_iobs_rejection_criterion < -4.0 or \
+     sigma_iobs_rejection_criterion > -1.0 :
+    raise Sorry("For French and Wilson scaling, sigma_iobs_rejection_criterion " +\
+                "must be set between -4.0 and -1.0")
   rejected = []
   make_sub_header("Scaling input intensities via French-Wilson Method",
     out=log)
@@ -313,7 +335,8 @@ def french_wilson_scale(miller_array, params=None, log=None):
   new_sigma_F = flex.double()
   new_indices = flex.miller_index()
   bin_mean_intensities = miller_array.mean(use_binning=True).data
-  d_mean_intensities = calculate_mean_intensities(miller_array=miller_array, log=log)
+  d_mean_intensities = \
+    calculate_mean_intensities(miller_array=miller_array, log=log)
   assert len(d_mean_intensities) == miller_array.data().size()
   for i_bin in miller_array.binner().range_all():
     sel = miller_array.binner().selection(i_bin)
@@ -339,7 +362,9 @@ def french_wilson_scale(miller_array, params=None, log=None):
           J, sigma_J, F, sigma_F = fw_centric(
                                      I=I,
                                      sigma_I=sigma_I,
-                                     mean_intensity=mean_intensity)
+                                     mean_intensity=mean_intensity,
+                                     sigma_iobs_rejection_criterion=\
+                                     sigma_iobs_rejection_criterion)
         if J >= 0:
           assert sigma_J >= 0 and F >= 0 and sigma_F >= 0
           new_I.append(J)
@@ -366,7 +391,9 @@ def french_wilson_scale(miller_array, params=None, log=None):
           J, sigma_J, F, sigma_F = fw_acentric(
                                      I=I,
                                      sigma_I=sigma_I,
-                                     mean_intensity=mean_intensity)
+                                     mean_intensity=mean_intensity,
+                                     sigma_iobs_rejection_criterion=\
+                                     sigma_iobs_rejection_criterion)
         if J >= 0:
           assert sigma_J >= 0 and F >= 0 and sigma_F >= 0
           new_I.append(J)
