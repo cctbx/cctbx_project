@@ -3,6 +3,7 @@
 
 from scitbx import matrix
 import scitbx.math
+import math
 
 class reeke_model:
     """Model and methods for the Reeke algorithm"""
@@ -10,85 +11,92 @@ class reeke_model:
     def __init__(self, ub, axis, s0):
 
         # the original orientation, at phi = 0
-        self.ub = ub
+        self._ub = ub
 
         # mapping of permuted axes P, Q, and R
-        self.permutation = dict(P="h", Q="k", R="l")
+        self._permutation = 0, 1, 2
 
         # the source vector and wavelength
-        self.s0 = s0
-        # wavelength is not required - take it from s0
-        #self.wavelength = wavelength
+        self._s0 = s0
 
         # the rotation axis
-        self.axis = axis
+        self._axis = axis
+
+        # in here initialize other variables which you will subsequently
+        # define and use - set them to None perhaps?
+
+        # reciprocal lattice vectors at the beginning and end of the frame
+
+        self._rlv_beg = None
+        self._rlv_end = None
+
+        return
+
+    def get_s0(self):
+        return self._s0
+
+    def get_ub(self):
+        return self._ub
+
+    def get_axis(self):
+        return self._axis
 
     def _permute_axes(self, ub):
-        """
-        Find permutation of the columns of an orientation matrix so that
+        """Find permutation of the columns of an orientation matrix so that
         column p is closest to the X-ray beam direction s0, column r is
         closest of q and r to the spindle axis and column q is the remaining
-        direction
-        """
+        direction."""
 
-        # Extract the reciprocal lattice direction vectors from the columns of UB
-        rl_directions = [ub.extract_block(start=(0,0), stop=(3,1)).normalize(),
-                         ub.extract_block(start=(0,1), stop=(3,2)).normalize(),
-                         ub.extract_block(start=(0,2), stop=(3,3)).normalize()]
+        # Extract the reciprocal lattice directions from the columns of UB
+
+        rl_dirs = [matrix.col(v).normalize() for v in \
+                   ub.transpose().as_list_of_lists()]
 
         # Find reciprocal lattice axis closest to s0 by checking magnitude
-        # of dot products between normalised axes and s0, then reorder the list
-        # as required
-        along_beam = (abs(rl_directions[0].dot(self.s0)),
-                      abs(rl_directions[1].dot(self.s0)),
-                      abs(rl_directions[2].dot(self.s0)))
-        col1 = along_beam.index(max(along_beam))
-        rl_directions[0], rl_directions[col1] = rl_directions[col1], rl_directions[0]
+        # of dot products between normalised axes and s0, then swap as required
 
-        # Now find which of the two remaining reciprocal lattice axes is closest
-        # to the rotation axis.
-        along_spindle = (abs(rl_directions[1].dot(self.axis)),
-                         abs(rl_directions[2].dot(self.axis)))
+        along_beam = [math.fabs(rl_dirs[j].dot(self._s0)) for j in range(3)]
+
+        col1 = along_beam.index(max(along_beam))
+
+        rl_dirs[0], rl_dirs[col1] = rl_dirs[col1], rl_dirs[0]
+
+        # Now find which of the two remaining reciprocal lattice axes is
+        # closest to the rotation axis.
+
+        along_spindle = [math.fabs(rl_dirs[j].dot(self._axis)) for j in (1, 2)]
+
         col3 = along_spindle.index(max(along_spindle)) + 1
 
-        # Keeping the reciprocal lattice unit directions might be useful? If not, can
-        # remove the next two lines once the code is more complete.
-        rl_directions[2], rl_directions[col3] = rl_directions[col3], rl_directions[2]
-        self.rl_directions = rl_directions
-
         # Which is the remaining column index?
-        col2 = [0, 1, 2]
-        col2[col1] = 0
-        col2[col3] = 0
-        col2 = sum(col2)
+
+        col2 = [j for j in range(3) if not j in (col1, col3)][0]
+
+        # couldn't this be stored as a matrix which would mean you could
+        # have h, k, l = M * (p, q, r)
+
+        self._permutation = col1, col2, col3
 
         # Return the permuted order of the columns
-        perm = ("h", "k", "l")
-        self.permutation["P"] = perm[col1]
-        self.permutation["Q"] = perm[col2]
-        self.permutation["R"] = perm[col3]
+
         return col1, col2, col3
 
     def _ewald_p_limit(self):
-        """
-        Calculate the value of p at which planes of constant p are
+        """Calculate the value of p at which planes of constant p are
         tangential to the Ewald sphere. Note p is the reciprocal cell
-        axis given by the first column of the permuted orientation matrix
-        """
+        axis given by the first column of the permuted orientation matrix."""
 
-        # Determine vector normal to the plane p = 0, by the cross product
-        # of vectors q and r.
-        #v = map(lambda v: v[1].cross(v[2]), self.rl_vec)
-        v_start = self.rl_vectors_start[1].cross(self.rl_vectors_start[2]).normalize()
-        v_end = self.rl_vectors_end[1].cross(self.rl_vectors_end[2]).normalize()
+        v_beg = self._rlv_beg[1].cross(self._rlv_beg[2]).normalize()
+        v_end = self._rlv_end[1].cross(self._rlv_end[2]).normalize()
 
-        # Find distance between the planes of p (this is the same for either orientation
-        # so just do it for the start)
-        p_dist = abs(self.rl_vectors_start[0].dot(v_start))
+        # Find distance between the planes of p
 
-        # Find distance between plane of p = 0 and the centre of the Ewald sphere
-        dp_start = abs(v_start.dot(self.s0))
-        dp_end = abs(v_end.dot(self.s0))
+        p_dist = abs(self._rlv_beg[0].dot(v_beg))
+
+        # Find distances between p = 0 and the centre of the Ewald sphere
+
+        dp_beg = abs(v_beg.dot(self._s0))
+        dp_end = abs(v_end.dot(self._s0))
 
         # There are two planes of constant p that are tangential to the Ewald
         # sphere, on either side of the sphere. The smaller in magnitude of p
@@ -102,89 +110,93 @@ class reeke_model:
         # or antiparallel to the beam direction. If p increases along the beam
         # (i.e. against s0), then the smaller limit is positive.
 
-        p_sign_start = 1.0 if self.rl_vectors_start[0].dot(self.s0) < 0 else -1.0
-        p_lim1 = p_sign_start * (self.s0.length() - dp_start) / p_dist
-        p_lim2 = -1.0 * p_sign_start * (self.s0.length() + dp_start) / p_dist
-        p_lim_start = tuple(sorted([p_lim1, p_lim2]))
+        # The corner cases which we have discussed are mostly impossible
+        # as we know rlv_beg[0] is close to colinear with the beam. This is
+        # always going to be nasty.
 
-        p_sign_end = 1.0 if self.rl_vectors_end[0].dot(self.s0) < 0 else -1.0
-        p_lim1 = p_sign_end * (self.s0.length() - dp_end) / p_dist
-        p_lim2 = -1.0 * p_sign_end * (self.s0.length() + dp_end) / p_dist
-        p_lim_end = tuple(sorted([p_lim1, p_lim2]))
+        sign = cmp(self._rlv_beg[0].dot(self._s0), 0)
 
-        return p_lim_start, p_lim_end
+        limits = [(sign * s * (self._s0.length() + s *  dp_beg) / p_dist) \
+                  for s in (-1, 1)]
+
+        p_lim_beg = tuple(sorted(limits))
+
+        sign = cmp(self._rlv_end[0].dot(self._s0), 0)
+
+        limits = [(sign * s * (self._s0.length() + s *  dp_end) / p_dist) \
+                  for s in (-1, 1)]
+
+        p_lim_end = tuple(sorted(limits))
+
+        return p_lim_beg, p_lim_end
 
     # This method will probably return the list of indices, not the limits, in
     # which case it should be renamed 'generate_indices_reeke', or similar.
-    def loop_limits(self, phi_start, phi_end):
-        """
-        Determine looping limits for indices h, k and l using the
+
+    def loop_limits(self, phi_beg, phi_end):
+        """Determine looping limits for indices h, k and l using the
         Reeke algorithm. This is the top level method for this module.
         All other methods are (probably) called by this, and therefore
         may as well be private. Can clean this up later. Also lots of
-        debugging print statements to remove!
-        """
+        debugging print statements to remove!"""
 
-        # First set the orientation at the start and end of this wedge
+        # First set the orientation at the beginning and end of this wedge
         # (typically this is the oscillation range of a single image)
         # NB Mosflm extends the rotation range at each end by the maximum
         # reflection width, to catch all partials for this image
 
-        r_start = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
-                axis=self.axis, angle=phi_start, deg=True))
-        r_half_osc = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
-                axis=self.axis, angle=(phi_end - phi_start)/2.0, deg=True))
+        r_beg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+            axis = self._axis, angle = phi_beg, deg = True))
+        r_half_osc = matrix.sqr(
+            scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+            axis = self._axis, angle = (phi_end - phi_beg) / 2.0, deg=True))
 
-        ub_start = r_start * self.ub
-        ub_mid = r_half_osc * ub_start
+        ub_beg = r_beg * self._ub
+        ub_mid = r_half_osc * ub_beg
         ub_end = r_half_osc * ub_mid
 
         # Determine the permutation order of columns of the orientation matrix.
         # Use the orientation from the middle of the wedge for this.
+
         col1, col2, col3 = self._permute_axes(ub_mid)
 
-        print "The UB matrix after rotation to the centre of the wedge at %.3f degrees is" % \
-               round(phi_start + (phi_end - phi_start)/2.0, 5)
+        # perhaps a better convention is:
+        #
+        # print 'parameter "%s" is nonsense' % parameter
+
+        print "The UB matrix after rotation to the centre of the " + \
+              "wedge at %.3f degrees is" % \
+              round(phi_beg + (phi_end - phi_beg)/2.0, 5)
         print ub_mid.round(5)
-        print ("The reciprocal cell axes are permuted in order " +
-               self.permutation["P"] +
-               self.permutation["Q"] +
-               self.permutation["R"])
+        print "The reciprocal cell axes are permuted in order %d %d %d" % \
+              self._permutation
         print "giving a unit vector in the p direction,"
-        print self.rl_directions[0].round(5)
-        print "that is most nearly aligned with the beam direction,"
-        print "a unit vector in the r direction,"
-        print self.rl_directions[2].round(5)
-        print "that is most nearly aligned with the spindle,"
-        print "and a remaining unit vector in the q direction"
-        print self.rl_directions[1].round(5)
-        print
 
         # Thus set the reciprocal lattice axis vectors, in permuted order p, q and r
-        rl_vec = [ub_start.extract_block(start=(0,0), stop=(3,1)),
-                  ub_start.extract_block(start=(0,1), stop=(3,2)),
-                  ub_start.extract_block(start=(0,2), stop=(3,3))]
-        self.rl_vectors_start = [rl_vec[col1],
-                                 rl_vec[col2],
-                                 rl_vec[col3]]
+        rl_vec = [ub_beg.extract_block(start=(0,0), stop=(3,1)),
+                  ub_beg.extract_block(start=(0,1), stop=(3,2)),
+                  ub_beg.extract_block(start=(0,2), stop=(3,3))]
+        self._rlv_beg = [rl_vec[col1],
+                         rl_vec[col2],
+                         rl_vec[col3]]
         rl_vec = [ub_end.extract_block(start=(0,0), stop=(3,1)),
                   ub_end.extract_block(start=(0,1), stop=(3,2)),
                   ub_end.extract_block(start=(0,2), stop=(3,3))]
-        self.rl_vectors_end = [rl_vec[col1],
-                               rl_vec[col2],
-                               rl_vec[col3]]
+        self._rlv_end = [rl_vec[col1],
+                         rl_vec[col2],
+                         rl_vec[col3]]
 
         # Set permuted orientation matrices, for beginning and end of wedge
-        self.p_start = matrix.sqr(self.rl_vectors_start[0].elems +
-                                  self.rl_vectors_start[1].elems +
-                                  self.rl_vectors_start[2].elems).transpose()
-        self.p_end = matrix.sqr(self.rl_vectors_end[0].elems +
-                                self.rl_vectors_end[1].elems +
-                                self.rl_vectors_end[2].elems).transpose()
-        #self.p = p_start, p_end
+        self.p_beg = matrix.sqr(self._rlv_beg[0].elems +
+                                self._rlv_beg[1].elems +
+                                self._rlv_beg[2].elems).transpose()
+        self.p_end = matrix.sqr(self._rlv_end[0].elems +
+                                self._rlv_end[1].elems +
+                                self._rlv_end[2].elems).transpose()
+        #self.p = p_beg, p_end
 
         print "The permuted orientation matrix at the beginning of the wedge is"
-        print self.p_start.round(5)
+        print self.p_beg.round(5)
         print "and the permuted orientation matrix at the end of the wedge is"
         print self.p_end.round(5)
         print
@@ -201,22 +213,22 @@ class reeke_model:
         # where h' = (p, q, r, 1)^T and P' = p21 p22 p23 -s0_y
         #       -                       =    p31 p32 p33 -s0_z
         #
-        # Calculate P' matrices for the start and end orientations
-        pp_start = matrix.rec(self.p_start.elems[0:3] + (-1.*self.s0[0],) +
-                              self.p_start.elems[3:6] + (-1.*self.s0[1],) +
-                              self.p_start.elems[6:9] + (-1.*self.s0[2],), n=(3, 4))
-        pp_end = matrix.rec(self.p_end.elems[0:3] + (-1.*self.s0[0],) +
-                            self.p_end.elems[3:6] + (-1.*self.s0[1],) +
-                            self.p_end.elems[6:9] + (-1.*self.s0[2],), n=(3, 4))
-        #self.pp = pp_start, pp_end
+        # Calculate P' matrices for the beginning and end orientations
+        pp_beg = matrix.rec(self.p_beg.elems[0:3] + (-1.*self._s0[0],) +
+                              self.p_beg.elems[3:6] + (-1.*self._s0[1],) +
+                              self.p_beg.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
+        pp_end = matrix.rec(self.p_end.elems[0:3] + (-1.*self._s0[0],) +
+                            self.p_end.elems[3:6] + (-1.*self._s0[1],) +
+                            self.p_end.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
+        #self.pp = pp_beg, pp_end
 
         # Various quantities of interest are obtained from the reciprocal metric
         # tensor T of P'. These quantities are to be used (later) for solving the
         # intersection of a line of constant p, q index with the Ewald sphere. It
         # is efficient to calculate these before the outer loop. So, calculate T
-        # for both start and end orientations
+        # for both beginning and end orientations
         #self.t = map(lambda m: m.transpose() * m, self.pp)
-        t_start = pp_start.transpose() * pp_start
+        t_beg = pp_beg.transpose() * pp_beg
         t_end = pp_end.transpose() * pp_end
 
         # The outer loop is between limits for the axis most closely parallel,
@@ -227,11 +239,11 @@ class reeke_model:
         print "%.3f, %.3f for the end orientation" % p_lim[1]
 
         print "The axis in the p direction is"
-        print self.rl_vectors_start[0].round(5)
+        print self._rlv_beg[0].round(5)
         print "and the vector s0 is"
-        print self.s0.round(5)
+        print self._s0.round(5)
         print "so the unit vector in the beam direction is"
-        print -1.0 * self.s0.normalize().round(5)
+        print -1.0 * self._s0.normalize().round(5)
 
         return
 
@@ -249,11 +261,11 @@ if __name__ == '__main__':
     print
     print "SETTING UP THE REEKE MODEL"
     print "s0 is"
-    print r.s0.round(5)
+    print r._s0.round(5)
     print "Original phi=0 orientation matrix UB is"
-    print r.ub.round(5)
+    print r._ub.round(5)
     print "Rotation axis is"
-    print r.axis.round(5)
+    print r._axis.round(5)
     print
     print "DETERMINING LOOP LIMITS FOR ROTATION BETWEEN 30 and 30.1 DEGREES"
 
