@@ -4,6 +4,7 @@
 #define DETECTORS_IMAGE_DISPV_H
 
 #include <vector>
+#include <algorithm>
 #include <boost/shared_ptr.hpp>
 
 #include <scitbx/constants.h>
@@ -19,6 +20,7 @@
 #include <iotbx/detectors/context/spot_xy_convention.h>
 #include <scitbx/random.h>
 #include <scitbx/math/r3_rotation.h>
+#include <scitbx/math/polygon_intersection.h>
 
 namespace af = scitbx::af;
 namespace iotbx { namespace detectors { namespace display {
@@ -572,6 +574,7 @@ class generic_flex_image: public FlexImage<double>{
 
   scitbx::af::shared<scitbx::mat2<double> > transformations;
   scitbx::af::shared<scitbx::vec2<double> > translations;
+  std::vector<int> windowed_readouts;
 
   int size1_readout;
   int size2_readout;
@@ -606,7 +609,8 @@ class generic_flex_image: public FlexImage<double>{
     correction = 1.0; //requires followup brightness scaling; use separate function
   }
 
-  // Identical to base class, except for computation of export_anchor.
+  // Identical to base class, except for computation of export_anchor &
+  //   just-in-time calculation of window/readout intersections
   inline
   void setWindowCart(
     const double& xtile, const double& ytile,const double& fraction){
@@ -622,6 +626,31 @@ class generic_flex_image: public FlexImage<double>{
     //Compute integer anchor index based on input fractional dimension:
     export_anchor_x = xtile * export_size_cut2;
     export_anchor_y = ytile * export_size_cut1;
+
+    //Find out which readouts have any intersection with this WindowCart
+    windowed_readouts.clear();
+    //Define the 4 corners of the WindowCart rectangle A B C D, counterclockwise from top left,
+    af::shared<scitbx::vec2<double> > window_polygon;
+    /*A*/window_polygon.push_back( scitbx::vec2<double>((export_anchor_x/zoom) - 1.                ,(export_anchor_y/zoom) - 1.                ));
+    /*B*/window_polygon.push_back( scitbx::vec2<double>((((xtile+1) * export_size_cut2)/zoom) + 1. ,(export_anchor_y/zoom) - 1.                ));
+    /*C*/window_polygon.push_back( scitbx::vec2<double>((((xtile+1) * export_size_cut2)/zoom) + 1. ,(((ytile+1) * export_size_cut1)/zoom) + 1. ));
+    /*D*/window_polygon.push_back( scitbx::vec2<double>((export_anchor_x/zoom) - 1.                ,(((ytile+1) * export_size_cut1)/zoom) + 1. ));
+
+    for (size_t k = 0; k < transformations.size(); k++) { //loop through all readout tiles
+      af::shared<scitbx::vec2<double> > readout_polygon;
+
+      for (size_t islow=0; islow <= size1_readout; islow+=size1_readout) {
+      for (size_t ifast=0; ifast <= size2_readout; ifast+=size2_readout) {
+        scitbx::vec2<double> point_p = tile_readout_to_picture(k,islow,ifast);
+        readout_polygon.push_back(point_p);
+      }
+      }
+      std::swap<scitbx::vec2<double> >(readout_polygon[2],readout_polygon[3]);
+      if (scitbx::math::convex_polygons_intersect_2D(window_polygon, readout_polygon)) {
+        windowed_readouts.push_back(k);
+      }
+    }
+
   }
 
   inline scitbx::vec2<double> tile_readout_to_picture(
@@ -679,18 +708,19 @@ class generic_flex_image: public FlexImage<double>{
     // dimension.
     const std::size_t dim_slow = size1() / transformations.size() / binning;
 
-    for (size_t k = 0; k < transformations.size(); k++) {
+    for (size_t k = 0; k < windowed_readouts.size(); k++) {
       scitbx::vec2<double> rdout =
-        transformations[k] * scitbx::vec2<double>(i, j) +
-        translations[k] / binning;
+        transformations[windowed_readouts[k]] * scitbx::vec2<double>(i, j) +
+        translations[windowed_readouts[k]] / binning;
 
       scitbx::vec2<int> irdout(iround(rdout[0]), iround(rdout[1]));
       if (irdout[0] >= 0 && irdout[0] < size1_readout / binning &&
           irdout[1] >= 0 && irdout[1] < size2_readout / binning) {
 
-        irdout[0] += k * dim_slow;
-        if (acc.is_valid_index(0, irdout[0], irdout[1]))
+        irdout[0] += windowed_readouts[k] * dim_slow;
+        if (acc.is_valid_index(0, irdout[0], irdout[1])){
           return irdout;
+        }
       }
     }
     return scitbx::vec2<int>(-1, -1);
