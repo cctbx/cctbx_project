@@ -124,6 +124,8 @@ data_and_flags_str_part1 = """\
   outliers_rejection = True
     .type=bool
     .short_caption = Reject outliers
+    .help = Remove "basic wilson outliers", "extreme wilson outliers", and \
+              "beamstop shadow outliers"
     .expert_level = 0
   french_wilson_scale = True
     .type=bool
@@ -132,11 +134,11 @@ data_and_flags_str_part1 = """\
   {
      include scope cctbx.french_wilson.master_phil
   }
-  sigma_fobs_rejection_criterion = 0.0
+  sigma_fobs_rejection_criterion = None
     .type=float
     .short_caption = Sigma(Fobs) rejection criterion
     .expert_level = 0
-  sigma_iobs_rejection_criterion = 0.0
+  sigma_iobs_rejection_criterion = None
     .type=float
     .short_caption = Sigma(Iobs) rejection criterion
     .expert_level = 0
@@ -428,6 +430,8 @@ class determine_data_and_flags(object):
         f_obs_fw = french_wilson.french_wilson_scale(
           miller_array=f_obs,
           params=self.parameters.french_wilson,
+          sigma_iobs_rejection_criterion=\
+            self.parameters.sigma_iobs_rejection_criterion,
           log=self.log)
         if f_obs_fw is not None:
           f_obs = f_obs_fw
