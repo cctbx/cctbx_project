@@ -206,8 +206,8 @@ class run(object):
       core_selected = self.core.select(selection=sel)
       f_obs_data = core_selected.f_obs.data()
       fodim = flex.mean(f_obs_data)
-      sel_use  = (f_obs_data < fodim*3)
-      sel_use &= (f_obs_data > fodim/3)
+      sel_use  = (f_obs_data < fodim*6)
+      sel_use &= (f_obs_data > fodim/6)
       self.cores_and_selections.append([sel, core_selected, sel_use])
       self.ss_bin_average.append(flex.mean(core_selected.ss)) # unsquare, take mena, then square back ?
     fit_accepted = False
