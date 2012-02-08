@@ -130,6 +130,13 @@ namespace {
          af::const_ref<double>   const&,
          double                  const&)) ksol_bsol_grid_search);
    ;
+
+   def("set_k_mask_to_cubic_polynom",
+      (af::shared<double>(*)
+        (af::const_ref<double> const& ss,
+         double                const& ss_cutoff,
+         af::tiny<double, 4>   const& coeffs)) set_k_mask_to_cubic_polynom);
+   ;
    //
     def("r_factor",
       (double(*)

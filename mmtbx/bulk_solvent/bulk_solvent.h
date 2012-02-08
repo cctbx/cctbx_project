@@ -365,16 +365,6 @@ public:
         containers.push_back(cntr);
         FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;
         FloatType Isq = I*I;
-        //a2 += (u*I);
-        //b2 += (2.*v*I);
-        //c2 += (w*I);
-        //y2 += (I*I);
-        //a3 += (u*v);
-        //b3 += (2.*v*v+u*w);
-        //c3 += (3.*v*w);
-        //d3 += (w*w);
-        //y3 += (I*v);
-        //
         a2 += (u/I);
         b2 += (2.*v/I);
         c2 += (w/I);
@@ -400,7 +390,6 @@ public:
         MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
       }
     }
-    //std::cout<<X[0]<<" "<<X[1]<<" "<<X[2]<<std::endl;
     vec3<FloatType> K = compute_K(X, c2, b2, a2, y2);
     vec3<FloatType> J = func_J(K, X, containers.const_ref());
     if(X[0]>=0. && X[1]>=0. && X[2]>=0) {
@@ -581,13 +570,13 @@ public:
     af::const_ref<cctbx::miller::index<> > const& miller_indices,
     cctbx::uctbx::unit_cell const& unit_cell)
   :
-  a(13, 0)
+  a(12, 0)
   {
     MMTBX_ASSERT(f_obs.size() == f_model.size());
     MMTBX_ASSERT(f_obs.size() == miller_indices.size());
-    af::versa<FloatType, af::mat_grid> m_(af::mat_grid(13, 13), 0);
-    af::versa<FloatType, af::mat_grid> m(af::mat_grid(13, 13), 0);
-    af::tiny<FloatType, 13> b;
+    af::versa<FloatType, af::mat_grid> m_(af::mat_grid(12, 12), 0);
+    af::versa<FloatType, af::mat_grid> m(af::mat_grid(12, 12), 0);
+    af::tiny<FloatType, 12> b;
     b.fill(0);
     af::double6 p = unit_cell.reciprocal_parameters();
     FloatType as=p[0], bs=p[1], cs=p[2];
@@ -595,10 +584,11 @@ public:
       cctbx::miller::index<> const& miller_index = miller_indices[i];
       int h=miller_index[0], k=miller_index[1], l=miller_index[2];
       FloatType fm_i = std::abs(f_model[i]);
-      FloatType s = 1./unit_cell.stol_sq(miller_index);
-      af::tiny<FloatType, 13> v_;
+      FloatType stol = unit_cell.stol_sq(miller_index);
+      FloatType s = 0;
+      if(stol != 0) s = 1./stol;
+      af::tiny<FloatType, 12> v_;
       FloatType* v = v_.begin();
-      *v++ = 1;
       *v++ = h*h*as*as*s;
       *v++ = h*h*as*as;
       *v++ = k*k*bs*bs*s;
@@ -611,7 +601,7 @@ public:
       *v++ = 2*h*l*as*cs;
       *v++ = 2*h*k*as*bs*s;
       *v++ = 2*h*k*as*bs;
-      b += f_obs[i]*fm_i*v_;
+      b += (f_obs[i]-fm_i)*fm_i*v_;
       v_ *= fm_i;
       scitbx::matrix::outer_product(m_.begin(),v_.const_ref(),v_.const_ref());
       m += m_;
@@ -671,6 +661,25 @@ template <typename FloatType, typename ComplexType>
    }
    return bulk_solvent_scale;
  };
+
+template <typename FloatType>
+ af::shared<FloatType>
+ set_k_mask_to_cubic_polynom(
+   af::const_ref<FloatType> const& ss,
+   FloatType                const& ss_cutoff,
+   af::tiny<FloatType, 4>   const& coeffs)
+ {
+   af::shared<FloatType> k_mask(ss.size());
+   for(std::size_t i=0; i < ss.size(); i++) {
+     FloatType x = ss[i];
+     FloatType f = coeffs[0] + coeffs[1]*x + coeffs[2]*x*x + coeffs[3]*x*x*x;
+     if(f<0) f = 0;
+     if(x<ss_cutoff) k_mask[i] = f;
+     else k_mask[i] = 0;
+   }
+   return k_mask;
+ };
+
 
 //------------------------------------------------------------------------------
 template <typename FloatType, typename ComplexType>
