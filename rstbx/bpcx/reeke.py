@@ -82,12 +82,19 @@ class reeke_model:
         return col1, col2, col3
 
     def _ewald_p_limit(self):
-        """Calculate the value of p at which planes of constant p are
+        """Calculate the values of p at which planes of constant p are
         tangential to the Ewald sphere. Note p is the reciprocal cell
         axis given by the first column of the permuted orientation matrix."""
 
+        # Calculate unit vectors normal to planes of constant p, ensuring
+        # they point in the direction of increasing p.
+
         v_beg = self._rlv_beg[1].cross(self._rlv_beg[2]).normalize()
+        sign = cmp(self._rlv_beg[0].dot(v_beg), 0)
+        v_beg = sign * v_beg
         v_end = self._rlv_end[1].cross(self._rlv_end[2]).normalize()
+        sign = cmp(self._rlv_end[0].dot(v_end), 0)
+        v_end = sign * v_end
 
         # Find distance between the planes of p
 
@@ -104,24 +111,19 @@ class reeke_model:
         # minus the number of planes between the centre of the Ewald sphere
         # and the p=0 plane (a diagram helps!). The larger is the number of
         # planes in one radius of the Ewald sphere *plus* the the number of
-        # planes between the centre of the Ewald sphere and p=0.
+        # planes between the centre of the Ewald sphere and p = 0.
         #
-        # The correct sign is determined by whether p is more closely parallel
-        # or antiparallel to the beam direction. If p increases along the beam
-        # (i.e. against s0), then the smaller limit is positive.
+        # The correct sign is determined by whether the plane normal vector is
+        # more closely parallel or antiparallel to the beam direction.
 
-        # The corner cases which we have discussed are mostly impossible
-        # as we know rlv_beg[0] is close to colinear with the beam. This is
-        # always going to be nasty.
-
-        sign = cmp(self._rlv_beg[0].dot(self._s0), 0)
+        sign = cmp(v_beg.dot(self._s0), 0)
 
         limits = [(sign * s * (self._s0.length() + s *  dp_beg) / p_dist) \
                   for s in (-1, 1)]
 
         p_lim_beg = tuple(sorted(limits))
 
-        sign = cmp(self._rlv_end[0].dot(self._s0), 0)
+        sign = cmp(v_end.dot(self._s0), 0)
 
         limits = [(sign * s * (self._s0.length() + s *  dp_end) / p_dist) \
                   for s in (-1, 1)]
@@ -130,6 +132,10 @@ class reeke_model:
 
         return p_lim_beg, p_lim_end
 
+    def _resolution_p_limit(self):
+        """Calculate the values of p at which planes of constant p meet the
+        intersection of the resolution limiting and the Ewald spheres."""
+    
     # This method will probably return the list of indices, not the limits, in
     # which case it should be renamed 'generate_indices_reeke', or similar.
 
@@ -244,7 +250,7 @@ class reeke_model:
         print self._s0.round(5)
         print "so the unit vector in the beam direction is"
         print -1.0 * self._s0.normalize().round(5)
-
+        
         return
 
 
