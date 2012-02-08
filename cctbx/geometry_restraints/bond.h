@@ -344,7 +344,18 @@ namespace cctbx { namespace geometry_restraints {
       /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
        */
       double
-      residual() const { return weight * scitbx::fn::pow2(delta_slack); }
+      residual() const {
+        // unlike the dihedral angle restraint, the harmonic potential is
+        // always used if distance_model < distance_ideal, to compensate for
+        // the lack of a nonbonded restraint for the bonded atoms.
+        if ((top_out) && (delta_slack < 0)) {
+          double top = weight * limit * limit;
+          //top*(1-exp(-weight*x**2/top))
+          return top * (1.0-std::exp(-weight*delta_slack*delta_slack/top));
+        } else {
+          return weight * scitbx::fn::pow2(delta_slack);
+        }
+      }
 
       //! Gradient of R = w * sum(deltas) with respect to sites[0].
       /*! Not available in Python.
@@ -354,7 +365,14 @@ namespace cctbx { namespace geometry_restraints {
       {
         if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
         if (delta < -slack || delta > slack) {
-          return weight * 2 * delta_slack * d_distance_d_site_0(epsilon);
+          if ((top_out) && (delta_slack < 0)) {
+            double top = weight * limit * limit;
+            return weight * 2 * delta_slack * \
+              std::exp(-(weight*delta_slack*delta_slack)/top) * \
+              d_distance_d_site_0(epsilon);
+          } else {
+            return weight * 2 * delta_slack * d_distance_d_site_0(epsilon);
+          }
         }
         return scitbx::vec3<double>(0,0,0);
       }
