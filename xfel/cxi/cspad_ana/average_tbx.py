@@ -217,7 +217,7 @@ class average_mixin(common_mode.common_mode_correction):
     if (self.nmemb == 0):
       # If this is a worker process, set its corresponding bit in the
       # bit field since it will contribute a partial sum.
-      if (env.subprocess() > 0):
+      if (env.subprocess() >= 0):
         self._tot_lock.acquire()
         self._tot_peers.value |= (1 << env.subprocess())
         self._tot_lock.release()
@@ -263,7 +263,7 @@ class average_mixin(common_mode.common_mode_correction):
         self._tot_sum[i] += self.sum_img.as_1d()[i]
         self._tot_ssq[i] += self.sumsq_img.as_1d()[i]
 
-      if (env.subprocess() > 0):
+      if (env.subprocess() >= 0):
         self._tot_peers.value &= ~(1 << env.subprocess())
 
     # XXX Ugly hack: self.nfail and self.nmemb are reset to zero here.
