@@ -12,39 +12,95 @@ import scitbx.math
 import mmtbx.f_model
 from scitbx.math import curve_fitting
 
+#def moving_average(x, offset, ss):
+#  result = flex.double(x.size(), -1)
+#  for i in xrange(x.size()):
+#    if(ss[i]<0.01807):
+#      s = 0
+#      cntr = 0
+#      for j in range(max(0,i-offset), min(x.size()-1, i+offset)):
+#        s+=x[j]
+#        cntr+=1
+#      if(cntr!=0): result[i]=s/cntr
+#      else: result[i]=0
+#    else: result[i]=x[i]
+#  return result
+
+
 def set_bin_selections(d_spacings):
   d_spacings = d_spacings.data()
   selections = []
   cntr = 0
   # this approximately corresponds to regular splitting of s between 0 and 1.
-  limits = [(0   , 1),
-            (1   , 1.25),
-            (1.25, 1.5),
-            (1.5 , 1.75),
-            (1.75, 2),
-            (2  , 2.5),
-            (2.5, 3),
-            (3  , 3.5),
-            (3.5, 4),
-            (4  , 5),
-            (5  , 6),
-            (6  , 7),
-            (7  , 8),
-            (8  , 9),
-            (9  , 10),
-            (10 , 11),
-            (11 , 12),
-            (12 , 13),
-            (13 , 14),
-            (14 , 15),
-            (15 , 20),
-            (20 , 25),
-            (25 , 30),
-            (30 , 35),
-            (35 , 40),
-            (40 , 45),
-            (45 , 50),
-            (50 , 999)]
+  if 1:
+    limits = [(0   , 1),
+              (1   , 1.25),
+              (1.25, 1.5),
+              (1.5 , 1.75),
+              (1.75, 2),
+              (2  , 2.5),
+              (2.5, 3),
+              (3  , 3.5),
+              (3.5, 4),
+              (4  , 5),
+              (5  , 6),
+              (6  , 7),
+              (7  , 8),
+              (8  , 9),
+              (9  , 10),
+              (10 , 11),
+              (11 , 12),
+              (12 , 13),
+              (13 , 14),
+              (14 , 15),
+              (15 , 20),
+              (20 , 25),
+              (25 , 30),
+              (30 , 35),
+              (35 , 40),
+              (40 , 45),
+              (45 , 50),
+              (50 , 999)
+              ]
+  else:
+    limits = [(0   , 1),
+              (1   , 1.25),
+              (1.25, 1.5),
+              (1.5 , 1.75),
+              (1.75, 2),
+              (2  , 2.5),
+              (2.5, 2.75),
+              (2.75, 3),
+              (3,3.25),
+              (3.25, 3.5),
+              (3.5, 4),
+              (4,4.5),
+              (4.5, 5),
+              (5,5.5),
+              (5.5, 6),
+              (6,6.5),
+              (6.5, 7),
+              (7,7.5),
+              (7.5, 8),
+              (8,8.5),
+              (8.5, 9),
+              (9,9.5),
+              (9.5, 10),
+
+              (10 , 11),
+              (11 , 12),
+              (12 , 13),
+              (13 , 14),
+              (14 , 15),
+              (15 , 20),
+              (20 , 25),
+              (25 , 30),
+              (30 , 35),
+              (35 , 40),
+              (40 , 45),
+              (45 , 50),
+              (50 , 999)
+              ]
   limits.reverse()
   for s in limits:
     sel  = d_spacings >= s[0]
@@ -164,6 +220,7 @@ class run(object):
                ss,
                number_of_cycles=20, # termination occures much earlier
                use_polynomial_fit=True,
+               use_k_sol_b_sol_grid_search=True,
                log=None,
                try_poly = True,
                try_expanal = True,
@@ -217,14 +274,19 @@ class run(object):
         print >> log, "  cycle %d:"%cycle
         print >> log, "    r(start): %6.4f"%(r_start)
       # bulk-solvent and overall isotropic scale
-      k_mask_bin,k_overall_bin,k_mask,k_isotropic = self.bulk_solvent_scaling()
-      bs_accepted = self.accept_scale(k_mask=k_mask, k_isotropic=k_isotropic,
-        r_ref=r_start, prefix="r(bulk solvent)")
-      if(use_polynomial_fit):
-        k_mask, k_isotropic, self.polynomial_fit_params = self.fit_poly_k_mask(
-          y=k_mask_bin)
-        fit_accepted = self.accept_scale(k_mask=k_mask, k_isotropic=k_isotropic,
-          r_ref=self.core.r_factor(), prefix="r(bulk solvent, polynomial approx.)")
+      if(cycle==0 and use_k_sol_b_sol_grid_search): #
+        self.bulk_solvent_simple(r_start=r_start)
+        if(verbose):
+          print >> self.log, "r(bulk_solvent_grid_search): %6.4f"%self.core.r_factor()
+      else:
+        k_mask_bin,k_overall_bin,k_mask,k_isotropic = self.bulk_solvent_scaling()
+        bs_accepted = self.accept_scale(k_mask=k_mask, k_isotropic=k_isotropic,
+          r_ref=r_start, prefix="r(bulk solvent)")
+        if(use_polynomial_fit):
+          k_mask, k_isotropic, self.polynomial_fit_params = self.fit_poly_k_mask(
+            y=k_mask_bin)
+          fit_accepted = self.accept_scale(k_mask=k_mask, k_isotropic=k_isotropic,
+            r_ref=self.core.r_factor(), prefix="r(bulk solvent, polynomial approx.)")
       # overall scale
       self.apply_overall_scale()
       # anisotropic scale
@@ -238,6 +300,22 @@ class run(object):
     if(verbose):
       self.show(k_mask=k_mask_bin, fit_accepted=fit_accepted)
       print >> log, "-"*80
+
+  def bulk_solvent_simple(self, r_start):
+    scale_k1 = bulk_solvent.scale(self.core.f_obs.data(), self.core.f_model().data())
+    k_isotropic = flex.double(self.ss.size(), scale_k1)
+    k_mask = bulk_solvent.ksol_bsol_grid_search(
+      self.core.f_obs.data(),
+      self.core.f_calc.data(),
+      self.core.f_mask.data(),
+      flex.double([0.1,0.3,0.5]),
+      flex.double([30,60,90]),
+      self.ss,
+      1,
+      k_isotropic,
+      self.core.k_anisotropic,
+      r_start)
+    self.core.update(k_mask = k_mask, k_isotropic = k_isotropic)
 
   def apply_overall_scale(self):
     self.core.update(k_isotropic = self.core.k_isotropic*bulk_solvent.scale(
@@ -270,7 +348,7 @@ class run(object):
       print >> self.log, "  Polynomial approximation for k_mask was not used."
     print >> self.log, "  Statistics in resolution bins:"
     assert k_mask.size() == len(self.bin_selections)
-    fmt="  %7.5f %6.2f -%6.2f %5.1f %5d %6.3f %6.3f %6.3f %6.3f %8.2f %6.4f"
+    fmt="  %7.5f %6.2f -%6.2f %5.1f %5d %6.4f %6.4f %6.3f %6.3f %8.2f %6.4f"
     f_model = self.core.f_model().data()
     print >> self.log, "  s^2      Resolution    Compl Nrefl  k_mask        k_iso  k_ani <Fobs>   R"
     print >> self.log, "                (A)        (%)        raw    poly"
@@ -294,6 +372,7 @@ class run(object):
   def fit_poly_k_mask(self, y):
     X = self.ss_bin_average
     Y = y
+    #Y = moving_average(x=y, offset=3, ss=X)
     for i in xrange(len(Y)):
       if(i!=0 and i!=len(Y)-1):
         if(Y[i]<=0 and Y[i-1]>0 and Y[i+1]>0):
