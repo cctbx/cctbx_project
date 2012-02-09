@@ -1,14 +1,12 @@
 from scitbx.array_family import flex
-import sys, math, time
+import sys
 from mmtbx import bulk_solvent
 from cctbx import adptbx
-from libtbx.math_utils import iround
 from libtbx import adopt_init_args
 import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
 from mmtbx.bulk_solvent import bulk_solvent_and_scaling
-import scitbx.math
 import mmtbx.f_model
 from scitbx.math import curve_fitting
 
