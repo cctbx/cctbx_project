@@ -90,11 +90,14 @@ class reeke_model:
         # they point in the direction of increasing p.
 
         v_beg = self._rlv_beg[1].cross(self._rlv_beg[2]).normalize()
-        sign = cmp(self._rlv_beg[0].dot(v_beg), 0)
-        v_beg = sign * v_beg
+
+        if self._rlv_beg[0].dot(v_beg) < 0:
+            v_beg = -1 * v_beg
+
         v_end = self._rlv_end[1].cross(self._rlv_end[2]).normalize()
-        sign = cmp(self._rlv_end[0].dot(v_end), 0)
-        v_end = sign * v_end
+
+        if self._rlv_end[0].dot(v_end) < 0:
+            v_end = -1 * v_end
 
         # Find distance between the planes of p
 
@@ -135,7 +138,7 @@ class reeke_model:
     def _resolution_p_limit(self):
         """Calculate the values of p at which planes of constant p meet the
         intersection of the resolution limiting and the Ewald spheres."""
-    
+
     # This method will probably return the list of indices, not the limits, in
     # which case it should be renamed 'generate_indices_reeke', or similar.
 
@@ -250,7 +253,7 @@ class reeke_model:
         print self._s0.round(5)
         print "so the unit vector in the beam direction is"
         print -1.0 * self._s0.normalize().round(5)
-        
+
         return
 
 

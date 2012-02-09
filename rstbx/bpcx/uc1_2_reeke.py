@@ -19,60 +19,8 @@ import math
 
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
 from rstbx.diffraction import rotation_angles, reflection_prediction
-from cctbx.sgtbx import space_group, space_group_symbols
-from cctbx.uctbx import unit_cell
 from rstbx.bpcx import reeke
-
-def generate_indices(unit_cell_constants, resolution_limit):
-    '''Generate all possible reflection indices out to a given resolution
-    limit, ignoring symmetry and centring.'''
-
-    uc = unit_cell(unit_cell_constants)
-
-    maxh, maxk, maxl = uc.max_miller_indices(resolution_limit)
-
-    indices = []
-
-    for h in range(-maxh, maxh + 1):
-        for k in range(-maxk, maxk + 1):
-            for l in range(-maxl, maxl + 1):
-
-                if h == 0 and k == 0 and l == 0:
-                    continue
-
-                if uc.d((h, k, l)) < resolution_limit:
-                    continue
-
-                indices.append((h, k, l))
-
-    return indices
-
-def remove_absent_indices(indices, space_group_number):
-    '''From the given list of indices, remove those reflections which should
-    be systematic absences according to the given space group.'''
-
-    sg = space_group(space_group_symbols(space_group_number).hall())
-
-    present = []
-
-    for hkl in indices:
-        if not sg.is_sys_absent(hkl):
-            present.append(hkl)
-
-    return present
-
-def parse_xds_xparm_scan_info(xparm_file):
-    '''Read an XDS XPARM file, get the scan information.'''
-
-    values = map(float, open(xparm_file).read().split())
-
-    assert(len(values) == 42)
-
-    img_start = values[0]
-    osc_start = values[1]
-    osc_range = values[2]
-
-    return img_start, osc_start, osc_range
+from uc1_2 import remove_absent_indices, parse_xds_xparm_scan_info
 
 class python_reflection_prediction:
     def __init__(self, axis, s0, ub, detector_origin,
