@@ -78,9 +78,9 @@ namespace {
                                          (arg("f_calc"),
                                           arg("f_mask"),
                                           arg("scale"),
-                                          arg("overall_scale"),
-                                          arg("overall_anisotropic_scale"),
-                                          arg("bulk_solvent_scale"))))
+                                          arg("k_isotropic"),
+                                          arg("k_anisotropic"),
+                                          arg("k_mask"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
       .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
       .add_property("f_part1",       make_getter(&core<>::f_part1,      rbv()))

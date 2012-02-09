@@ -56,21 +56,23 @@ af::shared<FloatType> overall_anisotropic_scale(
   for(std::size_t i=0; i < miller_indices.size(); i++) {
     cctbx::miller::index<> const& miller_index = miller_indices[i];
     int h=miller_index[0], k=miller_index[1], l=miller_index[2];
-    FloatType s = 1./unit_cell.stol_sq(miller_index);
+    FloatType stol = unit_cell.stol_sq(miller_index);
+    FloatType s = 0;
+    if(stol != 0) s = 1./stol;
     result[i]=
-      a[0] +
-      h*h*as*as*s   * a[1]+
-      h*h*as*as     * a[2]+
-      k*k*bs*bs*s   * a[3]+
-      k*k*bs*bs     * a[4]+
-      l*l*cs*cs*s   * a[5]+
-      l*l*cs*cs     * a[6]+
-      2*k*l*bs*cs*s * a[7]+
-      2*k*l*bs*cs   * a[8]+
-      2*h*l*as*cs*s * a[9]+
-      2*h*l*as*cs   * a[10]+
-      2*h*k*as*bs*s * a[11]+
-      2*h*k*as*bs   * a[12];
+      1 +
+      h*h*as*as*s   * a[0]+
+      h*h*as*as     * a[1]+
+      k*k*bs*bs*s   * a[2]+
+      k*k*bs*bs     * a[3]+
+      l*l*cs*cs*s   * a[4]+
+      l*l*cs*cs     * a[5]+
+      2*k*l*bs*cs*s * a[6]+
+      2*k*l*bs*cs   * a[7]+
+      2*h*l*as*cs*s * a[8]+
+      2*h*l*as*cs   * a[9]+
+      2*h*k*as*bs*s * a[10]+
+      2*h*k*as*bs   * a[11];
   }
   return result;
 }
@@ -90,9 +92,9 @@ class core
     af::shared<FloatType>                  ss, f_aniso, f_b_sol;
     af::shared<ComplexType>                f_model, f_bulk, f_mask_one;
     mat3<FloatType>                        a;
-    af::shared<FloatType>                  overall_scale;
-    af::shared<FloatType>                  overall_anisotropic_scale;
-    af::shared<FloatType>                  bulk_solvent_scale;
+    af::shared<FloatType>                  k_isotropic;
+    af::shared<FloatType>                  k_anisotropic;
+    af::shared<FloatType>                  k_mask;
     af::shared<ComplexType>                f_model_no_aniso_scale;
 
     int n_shells() const
@@ -187,32 +189,32 @@ class core
     core(af::shared<ComplexType> const& f_calc_,
          af::shared<ComplexType> const& f_mask_one_,
          FloatType               const& scale,
-         af::shared<FloatType>   const& overall_scale_,
-         af::shared<FloatType>   const& overall_anisotropic_scale_,
-         af::shared<FloatType>   const& bulk_solvent_scale_)
+         af::shared<FloatType>   const& k_isotropic_,
+         af::shared<FloatType>   const& k_anisotropic_,
+         af::shared<FloatType>   const& k_mask_)
     :
-      f_calc(f_calc_), f_mask_one(f_mask_one_), bulk_solvent_scale(bulk_solvent_scale_),
-      overall_scale(overall_scale_),
-      overall_anisotropic_scale(overall_anisotropic_scale_),
+      f_calc(f_calc_), f_mask_one(f_mask_one_), k_mask(k_mask_),
+      k_isotropic(k_isotropic_),
+      k_anisotropic(k_anisotropic_),
       f_model(f_calc_.size(), af::init_functor_null<ComplexType>()),
       f_model_no_aniso_scale(f_calc_.size(), af::init_functor_null<ComplexType>())
     {
       MMTBX_ASSERT(f_calc.size() == f_mask_one.size());
-      MMTBX_ASSERT(f_calc.size() == bulk_solvent_scale.size());
-      MMTBX_ASSERT(f_calc.size() == overall_scale.size());
-      MMTBX_ASSERT(f_calc.size() == overall_anisotropic_scale.size());
+      MMTBX_ASSERT(f_calc.size() == k_mask.size());
+      MMTBX_ASSERT(f_calc.size() == k_isotropic.size());
+      MMTBX_ASSERT(f_calc.size() == k_anisotropic.size());
       ComplexType* f_model_  = f_model.begin();
       ComplexType* f_calc__  = f_calc.begin();
       ComplexType* f_mask_one__  = f_mask_one.begin();
-      FloatType* overall_scale__ = overall_scale.begin();
-      FloatType* overall_anisotropic_scale__ = overall_anisotropic_scale.begin();
-      FloatType* bulk_solvent_scale__ = bulk_solvent_scale.begin();
+      FloatType* k_isotropic__ = k_isotropic.begin();
+      FloatType* k_anisotropic__ = k_anisotropic.begin();
+      FloatType* k_mask__ = k_mask.begin();
       ComplexType* f_model_no_aniso_scale_ = f_model_no_aniso_scale.begin();
       for(std::size_t i=0; i < f_calc.size(); i++) {
-        ComplexType fmnas = scale * overall_scale__[i]*(
-          f_calc__[i] + bulk_solvent_scale__[i]*f_mask_one__[i]);
+        ComplexType fmnas = scale * k_isotropic__[i]*(
+          f_calc__[i] + k_mask__[i]*f_mask_one__[i]);
         f_model_no_aniso_scale_[i] = fmnas;
-        f_model_[i] = overall_anisotropic_scale[i]*fmnas;
+        f_model_[i] = k_anisotropic[i]*fmnas;
       }
     }
 
