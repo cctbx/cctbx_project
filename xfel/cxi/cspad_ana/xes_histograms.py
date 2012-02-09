@@ -1,6 +1,7 @@
 import os
 import sys
 
+from libtbx import easy_mp
 from libtbx import easy_pickle
 from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
@@ -22,12 +23,16 @@ def run(args):
                           type="float",
                           default=30,
                           help="The approximate position of the one photon peak.")
+                  .option("--nproc", "-p",
+                          type="int",
+                          help="Number of processors to use.")
                   ).process(args=args)
   args = command_line.args
   assert len(args) == 1
   output_dirname = command_line.options.output_dirname
   gain_map_path = command_line.options.gain_map_path
   estimated_gain = command_line.options.estimated_gain
+  nproc = command_line.options.nproc
   print output_dirname
   if output_dirname is None:
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
@@ -36,10 +41,11 @@ def run(args):
   pixel_histograms = view_pixel_histograms.pixel_histograms(
     hist_d, estimated_gain=estimated_gain)
   xes_from_histograms(pixel_histograms, output_dirname=output_dirname,
-                      gain_map_path=gain_map_path, estimated_gain=estimated_gain)
+                      gain_map_path=gain_map_path, estimated_gain=estimated_gain,
+                      nproc=nproc)
 
 def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None,
-                        estimated_gain=30):
+                        estimated_gain=30, nproc=None):
   sum_img = flex.int(flex.grid(370,391), 0) # XXX define the image size some other way?
   gain_img = flex.double(sum_img.accessor(), 0)
 
@@ -64,7 +70,10 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
     def fixed_func(pixel):
       return pixel_histograms.fit_one_histogram(pixel, n_gaussians=1)
   results = None
-  from libtbx import easy_mp
+  if nproc is None: nproc = easy_mp.Auto
+  nproc = easy_mp.get_processes(nproc)
+  print "nproc: ", nproc
+
   stdout_and_results = easy_mp.pool_map(
     processes=easy_mp.Auto,
     fixed_func=fixed_func,
@@ -158,6 +167,8 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
 
   spectrum_focus = sum_img[start_row:end_row,:]
   mask_focus = mask[start_row:end_row,:]
+
+  print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
 
   d = cspad_tbx.dpack(
     data=spectrum_focus,
