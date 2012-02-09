@@ -36,6 +36,11 @@ class average_mixin(common_mode.common_mode_correction):
                n=None,
                **kwds):
     """
+    @param address         Address string XXX Que?!
+    @param avg_dirname     Directory portion of output average image
+                           XXX mean, mu?
+    @param avg_basename    Filename prefix of output average image XXX
+                           mean, mu?
     @param flags inactive:  Eliminate the inactive pixels
                  noelastic: Eliminate elastic scattering
                  nohot:     Eliminate the hot pixels
@@ -44,6 +49,10 @@ class average_mixin(common_mode.common_mode_correction):
     @param n     The number of shots to process, or as many as
                  possible if undefined XXX Sort of redundant with
                  pyana
+    @param stddev_dirname  Directory portion of output standard
+                           deviation image XXX sigma?
+    @param stddev_basename Filename prefix of output standard
+                           deviation image XXX sigma?
     """
 
     super(average_mixin, self).__init__(

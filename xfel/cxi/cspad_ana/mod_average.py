@@ -32,21 +32,7 @@ class mod_average(average_tbx.average_mixin):
     parameters, except @p address are optional, and hence need not be
     defined in pyana.cfg.
 
-    @param address         Address string XXX Que?!
-    @param avg_dirname     Directory portion of output average image
-                           XXX mean, mu?
-    @param avg_basename    Filename prefix of output average image XXX
-                           mean, mu?
-    @param calib_dir       Directory with calibration information
-    @param common_mode_correction The type of common mode correction to apply
-    @param dark_path       Path to input dark image
-    @param n               The number of shots to process, or as many
-                           as possible if undefined XXX Sort of
-                           redundant with pyana
-    @param stddev_dirname  Directory portion of output standard
-                           deviation image XXX sigma?
-    @param stddev_basename Filename prefix of output standard
-                           deviation image XXX sigma?
+    @param address Address string XXX Que?!
     """
 
     super(mod_average, self).__init__(
