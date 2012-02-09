@@ -451,20 +451,6 @@ def env_distance(env):
   return (None)
 
 
-def env_pulse_length(env):
-  """The env_pulse_length() function returns the pulse length in fs.
-
-  @param env Environment object
-  @return    Pulse length, in fs
-  """
-
-  if (env is not None):
-    pv = env.epicsStore().value("SIOC:SYS0:ML00:AO820")
-    if (pv is not None and len(pv.values) == 1):
-      return pv.values[0]
-  return None
-
-
 def env_sifoil(env):
   """The env_sifoil() function returns the total thickness of Si-foil,
   in um, that attenuates the beam.  According to an e-mail from Garth
@@ -507,6 +493,22 @@ def env_sifoil(env):
         and                abs(pv.values[0]) <  7):
       si_tot += si_len
   return (si_tot)
+
+
+def evt_pulse_length(evt):
+  """The evt_pulse_length() function returns the pulse length in fs.
+  It is calculated as the ratio of the charge (in nC) and the peak
+  current (in A).
+
+  @param evt Event data object, a configure object
+  @return    Pulse length, in fs
+  """
+
+  if (evt is not None):
+    ebeam = evt.getEBeam()
+    if (ebeam is not None and ebeam.fEbeamPkCurrBC2 > 0):
+      return 1e6 * ebeam.fEbeamCharge / ebeam.fEbeamPkCurrBC2
+  return None
 
 
 def evt_time(evt = None):
@@ -566,14 +568,13 @@ def evt_wavelength(evt):
   """
 
   if (evt is not None):
-    # XXX EBeam object (of type bld.BldDataEBeam or bld.BldDataEBeamV0)
     ebeam = evt.getEBeam()
-    if (ebeam is not None):
+    if (ebeam is not None and ebeam.fEbeamL3Energy > 0):
       gamma = ebeam.fEbeamL3Energy / 0.510998910
-      K     = 3.5
-      L     = 3.0e8
-      return (L / (2 * gamma**2) * (1 + K**2 / 2))
-  return (None)
+      K = 3.5
+      L = 3.0e8
+      return L / (2 * gamma**2) * (1 + K**2 / 2)
+  return None
 
 def getOptBool(s):
   if s is None: return False
