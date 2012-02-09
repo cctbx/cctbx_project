@@ -56,7 +56,8 @@ def cbcaa(config, sections):
   quadrant.  Note that first corner index is vertical coordinate,
   second index is the horizontal coordinate.  XXX Construct the active
   areas in "spotfinder format", i.e. opposing corners.  XXX This is a
-  really bad function name!
+  really bad function name!  XXX The beam centre may be excracted from
+  the ebeam object?
 
   @param config   XXX
   @param sections XXX Directory with calibration information
@@ -450,6 +451,20 @@ def env_distance(env):
   return (None)
 
 
+def env_pulse_length(env):
+  """The env_pulse_length() function returns the pulse length in fs.
+
+  @param env Environment object
+  @return    Pulse length, in fs
+  """
+
+  if (env is not None):
+    pv = env.epicsStore().value("SIOC:SYS0:ML00:AO820")
+    if (pv is not None and len(pv.values) == 1):
+      return pv.values[0]
+  return None
+
+
 def env_sifoil(env):
   """The env_sifoil() function returns the total thickness of Si-foil,
   in um, that attenuates the beam.  According to an e-mail from Garth
@@ -492,6 +507,7 @@ def env_sifoil(env):
         and                abs(pv.values[0]) <  7):
       si_tot += si_len
   return (si_tot)
+
 
 def evt_time(evt = None):
   """The evt_time() function returns a tuple of the time in seconds
@@ -624,7 +640,7 @@ def getOptFloat(s):
   return (float(s))
 
 def getOptROI(s):
-  """Return a tuple ofthe region of interest.
+  """Return a tuple of the region of interest.
      Format: roi = fast_low:fast_high,slow_low:slow_high
   """
   roi_str    = getOptString(s)
