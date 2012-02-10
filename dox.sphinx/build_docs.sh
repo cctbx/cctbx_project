@@ -7,7 +7,7 @@
 # also it's necessary to call setpaths_all.sh before running this script:
 # $> source setpaths_all.sh
 
-MODULES="cctbx rstbx mmtbx iotbx scitbx chiltbx smtbx wxtbx crys3d gltbx spotfinder fable fftw3tbx omptbx" #not working: libtbx
+MODULES="cctbx chiltbx cma_es crys3d fable fftw3tbx gltbx iotbx mmtbx omptbx rstbx scitbx smtbx spotfinder wxtbx xfel" #left out: cudatbx libtbx
 mkdir $MODULES
 for MODULE in $MODULES
 do
