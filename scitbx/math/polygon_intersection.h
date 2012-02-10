@@ -1,11 +1,9 @@
-#ifndef SCITBX_MATH_2DPOLYGON_INT_H
-#define SCITBX_MATH_2DPOLYGON_INT_H
+#ifndef SCITBX_MATH_POLYGON_INTERSECTION_H
+#define SCITBX_MATH_POLYGON_INTERSECTION_H
 
-#include <cmath>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec2.h>
 
-namespace af = scitbx::af;
 namespace scitbx { namespace math {
 
   template <typename DataType = double>
@@ -81,4 +79,4 @@ namespace scitbx { namespace math {
 
 }} //namespace
 
-#endif //SCITBX_MATH_2DPOLYGON_INT_H
+#endif // GUARD
