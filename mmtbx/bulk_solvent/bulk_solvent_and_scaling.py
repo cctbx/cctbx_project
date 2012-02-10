@@ -411,7 +411,7 @@ class bulk_solvent_and_scales(object):
         processes=nproc,
         fixed_func=self._try_ksol_bsol,
         args=args,
-        buffer_stdout_stderr=True)
+        func_wrapper="buffer_stdout_stderr")
       for sio_out, result in _results :
         results.append(result)
     for result in results :

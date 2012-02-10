@@ -78,7 +78,7 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
     processes=nproc,
     fixed_func=fixed_func,
     args=pixels,
-    buffer_stdout_stderr=True)
+    func_wrapper="buffer_stdout_stderr")
   results = [r for so, r in stdout_and_results]
 
   for i, pixel in enumerate(pixels):

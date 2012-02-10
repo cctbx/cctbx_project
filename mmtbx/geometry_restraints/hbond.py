@@ -459,7 +459,7 @@ class optimize_hbond_restraints (object) :
     stdout_and_results = easy_mp.pool_map(
       fixed_func=self._trial_minimization,
       args=trial_settings,
-      buffer_stdout_stderr=True)
+      func_wrapper="buffer_stdout_stderr")
     results = [ r for (so, r) in stdout_and_results ]
     print >> self.log, ps("-" * 70)
     print >> self.log, ps(" Weight:")
@@ -481,7 +481,7 @@ class optimize_hbond_restraints (object) :
     stdout_and_results = easy_mp.pool_map(
       fixed_func=self._trial_minimization,
       args=trial_settings,
-      buffer_stdout_stderr=True)
+      func_wrapper="buffer_stdout_stderr")
     results = [ r for (so, r) in stdout_and_results ]
     print >> self.log, ps(" Theta high vs. theta low:")
     self.process_results(results, (not params.optimize_hbonds_thorough))
@@ -504,7 +504,7 @@ class optimize_hbond_restraints (object) :
       stdout_and_results = easy_mp.pool_map(
         fixed_func=self._trial_minimization,
         args=trial_settings,
-        buffer_stdout_stderr=True)
+        func_wrapper="buffer_stdout_stderr")
       results = [ r for (so, r) in stdout_and_results ]
       print >> self.log, ps(" N-O distance vs. distance cutoff vs. angle cutoff:")
       self.process_results(results, False)
@@ -526,7 +526,7 @@ class optimize_hbond_restraints (object) :
       stdout_and_results = easy_mp.pool_map(
         fixed_func=self._trial_minimization,
         args=trial_settings,
-        buffer_stdout_stderr=True)
+        func_wrapper="buffer_stdout_stderr")
       results = [ r for (so, r) in stdout_and_results ]
       print >> self.log, ps(" Weight:")
       self.process_results(results)

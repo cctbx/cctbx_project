@@ -308,7 +308,7 @@ class refine_adp(object):
         processes=nproc,
         fixed_func=self.try_weight,
         args=trial_weights,
-        buffer_stdout_stderr=True) # XXX safer for phenix GUI
+        func_wrapper="buffer_stdout_stderr") # XXX safer for phenix GUI
       trial_results = [ r for so, r in stdout_and_results ]
     else :
       for weight in trial_weights:

@@ -528,7 +528,7 @@ def index_and_integrate(work_params, image_mdls):
       args=range(n_mdls),
       chunksize=1,
       log=sys.stdout,
-      buffer_stdout_stderr=True)
+      func_wrapper="buffer_stdout_stderr")
     print
     sys.stdout.flush()
     for i_img,(log,mp_result) in enumerate(mp_results):

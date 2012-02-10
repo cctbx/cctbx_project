@@ -134,69 +134,88 @@ def show_caught_exception(index, arg):
     print "ARGUMENT LEADING TO EXCEPTION:", r
   traceback.print_exc(file=sys.stdout)
 
-class func_wrapper_default(object):
+class func_wrapper_simple_impl(object):
 
-  def __init__(O, func, buffer_stdout_stderr=False):
+  def __init__(O, options, func):
+    O.options = options
     O.func = func
-    O.buffer_stdout_stderr = buffer_stdout_stderr
 
   def __call__(O, index_and_arg):
     assert len(index_and_arg) == 2
     index, arg = index_and_arg
-    if (O.buffer_stdout_stderr):
+    if (O.options.buffer_stdout_stderr):
       sys.stderr = sys.stdout = sio = StringIO()
     try:
       result = O.func(arg)
     except: # intentional
       result = None
       show_caught_exception(index, arg)
-    if (O.buffer_stdout_stderr):
+    if (O.options.buffer_stdout_stderr):
       return (sio.getvalue(), result)
     return result
 
-class func_wrapper_sub_directories(object):
+class func_wrapper_simple(object):
 
-  def __init__(O, func, sub_name_format="mp%03d", makedirs_mode=0777):
-    assert isinstance(sub_name_format, str)
-    assert len(sub_name_format % 0) != 0
+  def __init__(O, buffer_stdout_stderr=False):
+    O.buffer_stdout_stderr = buffer_stdout_stderr
+
+  def wrap(O, func):
+    return func_wrapper_simple_impl(options=O, func=func)
+
+class func_wrapper_sub_directories_impl(object):
+
+  def __init__(O, options, func):
+    O.options = options
     O.func = func
-    O.sub_name_format = sub_name_format
-    O.makedirs_mode = makedirs_mode
 
   def __call__(O, index_and_arg):
     assert len(index_and_arg) == 2
     index, arg = index_and_arg
-    sub_name = O.sub_name_format % index
+    sub_name = O.options.sub_name_format % index
     op = os.path
     if (op.exists(sub_name)):
-      print "ERROR: sub-directory exists already: %s" % show_string(sub_name)
-      return
+      return (
+        "sub-directory exists already: %s" % show_string(sub_name),
+        None)
     try:
-      os.makedirs(sub_name, mode=O.makedirs_mode)
+      os.makedirs(sub_name, mode=O.options.makedirs_mode)
     except: # intentional
-      print "ERROR: cannot create sub-directory: %s" % show_string(sub_name)
-      return
+      return (
+        "cannot create sub-directory: %s" % show_string(sub_name),
+        None)
     if (not op.isdir(sub_name)):
-      print "ERROR: failure creating sub-directory: %s" % show_string(sub_name)
-      return
+      return (
+        "failure creating sub-directory: %s" % show_string(sub_name),
+        None)
     try:
       os.chdir(sub_name)
     except: # intentional
-      print "ERROR: cannot chdir to sub-directory: %s" % show_string(sub_name)
-      return
+      return (
+        "cannot chdir to sub-directory: %s" % show_string(sub_name),
+        None)
+    def sub_log(): return show_string(op.join(sub_name, "log"))
     try:
       _ = open("log", "w")
     except: # intentional
-      print "ERROR: cannot open file: %s" % show_string(
-        op.join(sub_name, "log"))
-      return
+      return ("cannot open file: %s" % sub_log(), None)
     sys.stderr = sys.stdout = _
     try:
       result = O.func(arg)
     except: # intentional
-      result = None
       show_caught_exception(index, arg)
-    return result
+      return ("CAUGHT EXCEPTION: %s" % sub_log(), None)
+    return (None, result)
+
+class func_wrapper_sub_directories(object):
+
+  def __init__(O, sub_name_format="mp%03d", makedirs_mode=0777):
+    assert isinstance(sub_name_format, str)
+    assert len(sub_name_format % 0) != 0
+    O.sub_name_format = sub_name_format
+    O.makedirs_mode = makedirs_mode
+
+  def wrap(O, func):
+    return func_wrapper_sub_directories_impl(options=O, func=func)
 
 def pool_map(
       processes=None,
@@ -208,30 +227,33 @@ def pool_map(
       iterable=None,
       args=None,
       chunksize=None,
-      func_wrapper="default",
+      func_wrapper="simple",
       index_args=True,
-      log=None,
-      buffer_stdout_stderr=False):
+      log=None):
   assert [func, fixed_func].count(None) == 1
   assert [iterable, args].count(None) == 1
   if (isinstance(func_wrapper, str)):
-    if (func_wrapper == "default"):
-      func_wrapper = func_wrapper_default
+    if (func_wrapper == "simple"):
+      func_wrapper = func_wrapper_simple()
+    elif (func_wrapper == "buffer_stdout_stderr"):
+      func_wrapper = func_wrapper_simple(buffer_stdout_stderr=True)
     elif (func_wrapper == "sub_directories"):
-      func_wrapper = func_wrapper_sub_directories
+      func_wrapper = func_wrapper_sub_directories()
+    elif (func_wrapper.startswith("sub_directories:")):
+      sub_dir_prefix = func_wrapper[16:]
+      assert len(sub_dir_prefix) != 0
+      func_wrapper = func_wrapper_sub_directories(
+        sub_name_format=sub_dir_prefix+"%03d")
     else:
       raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
   if (func_wrapper is not None):
+    wrap = getattr(func_wrapper, "wrap", None)
+    if (wrap is None):
+      raise RuntimeError("func_wrapper must have a .wrap() method.")
     if (func is not None):
-      if (buffer_stdout_stderr):
-        func = func_wrapper(func, buffer_stdout_stderr)
-      else:
-        func = func_wrapper(func)
+      func = wrap(func)
     else:
-      if (buffer_stdout_stderr):
-        fixed_func = func_wrapper(fixed_func, buffer_stdout_stderr)
-      else:
-        fixed_func = func_wrapper(fixed_func)
+      fixed_func = wrap(fixed_func)
   processes = get_processes(processes)
   if (args is not None):
     iterable = args

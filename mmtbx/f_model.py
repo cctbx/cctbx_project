@@ -876,7 +876,7 @@ class manager(manager_mixin):
         processes=nproc,
         fixed_func=self.try_mask_params,
         args=trial_params,
-        buffer_stdout_stderr=True) # XXX safer for phenix GUI
+        func_wrapper="buffer_stdout_stderr") # XXX safer for phenix GUI
       mask_results = [ r for so, r in stdout_and_results ]
     else :
       for r_solv, r_shrink in trial_params :
