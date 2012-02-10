@@ -1,3 +1,4 @@
+from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
 from cStringIO import StringIO
@@ -121,26 +122,81 @@ class Pool(multiprocessing_Pool):
       iterable=iterable,
       chunksize=chunksize)
 
-class func_wrapper(object):
+def show_caught_exception(index, arg):
+  print "CAUGHT EXCEPTION: (argument #%d)" % index
+  try:
+    r = repr(arg)
+  except: # intentional
+    pass
+  else:
+    if (len(r) > 256):
+      r = r[:127] + "..." + r[-126:]
+    print "ARGUMENT LEADING TO EXCEPTION:", r
+  traceback.print_exc(file=sys.stdout)
 
-  def __init__(O, func, buffer_stdout_stderr):
+class func_wrapper_default(object):
+
+  def __init__(O, func, buffer_stdout_stderr=False):
     O.func = func
     O.buffer_stdout_stderr = buffer_stdout_stderr
 
-  def __call__(O, arg):
+  def __call__(O, index_and_arg):
+    assert len(index_and_arg) == 2
+    index, arg = index_and_arg
     if (O.buffer_stdout_stderr):
       sys.stderr = sys.stdout = sio = StringIO()
     try:
       result = O.func(arg)
     except: # intentional
       result = None
-      print "CAUGHT EXCEPTION:"
-      traceback.print_exc(file=sys.stdout)
+      show_caught_exception(index, arg)
     if (O.buffer_stdout_stderr):
       return (sio.getvalue(), result)
     return result
 
-default_func_wrapper = func_wrapper
+class func_wrapper_sub_directories(object):
+
+  def __init__(O, func, sub_name_format="mp%03d", makedirs_mode=0777):
+    assert isinstance(sub_name_format, str)
+    assert len(sub_name_format % 0) != 0
+    O.func = func
+    O.sub_name_format = sub_name_format
+    O.makedirs_mode = makedirs_mode
+
+  def __call__(O, index_and_arg):
+    assert len(index_and_arg) == 2
+    index, arg = index_and_arg
+    sub_name = O.sub_name_format % index
+    op = os.path
+    if (op.exists(sub_name)):
+      print "ERROR: sub-directory exists already: %s" % show_string(sub_name)
+      return
+    try:
+      os.makedirs(sub_name, mode=O.makedirs_mode)
+    except: # intentional
+      print "ERROR: cannot create sub-directory: %s" % show_string(sub_name)
+      return
+    if (not op.isdir(sub_name)):
+      print "ERROR: failure creating sub-directory: %s" % show_string(sub_name)
+      return
+    try:
+      os.chdir(sub_name)
+    except: # intentional
+      print "ERROR: cannot chdir to sub-directory: %s" % show_string(sub_name)
+      return
+    try:
+      _ = open("log", "w")
+    except: # intentional
+      print "ERROR: cannot open file: %s" % show_string(
+        op.join(sub_name, "log"))
+      return
+    sys.stderr = sys.stdout = _
+    try:
+      result = O.func(arg)
+    except: # intentional
+      result = None
+      show_caught_exception(index, arg)
+    return result
 
 def pool_map(
       processes=None,
@@ -152,23 +208,37 @@ def pool_map(
       iterable=None,
       args=None,
       chunksize=None,
-      func_wrapper=Auto,
+      func_wrapper="default",
+      index_args=True,
       log=None,
       buffer_stdout_stderr=False):
   assert [func, fixed_func].count(None) == 1
   assert [iterable, args].count(None) == 1
-  if (func_wrapper is Auto):
-    func_wrapper = default_func_wrapper
+  if (isinstance(func_wrapper, str)):
+    if (func_wrapper == "default"):
+      func_wrapper = func_wrapper_default
+    elif (func_wrapper == "sub_directories"):
+      func_wrapper = func_wrapper_sub_directories
+    else:
+      raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
   if (func_wrapper is not None):
     if (func is not None):
-      func = func_wrapper(func, buffer_stdout_stderr)
+      if (buffer_stdout_stderr):
+        func = func_wrapper(func, buffer_stdout_stderr)
+      else:
+        func = func_wrapper(func)
     else:
-      fixed_func = func_wrapper(fixed_func, buffer_stdout_stderr)
+      if (buffer_stdout_stderr):
+        fixed_func = func_wrapper(fixed_func, buffer_stdout_stderr)
+      else:
+        fixed_func = func_wrapper(fixed_func)
   processes = get_processes(processes)
   if (args is not None):
     iterable = args
     if (processes is not None):
       processes = min(processes, len(args))
+  if (index_args):
+    iterable = enumerate(iterable)
   if (log is not None):
     print >> log, "multiprocessing pool size:", processes
     flush = getattr(log, "flush", None)
