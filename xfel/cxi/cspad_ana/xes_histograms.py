@@ -75,7 +75,7 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
   print "nproc: ", nproc
 
   stdout_and_results = easy_mp.pool_map(
-    processes=easy_mp.Auto,
+    processes=nproc,
     fixed_func=fixed_func,
     args=pixels,
     buffer_stdout_stderr=True)
