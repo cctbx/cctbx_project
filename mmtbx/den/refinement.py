@@ -50,7 +50,7 @@ class manager(object):
           processes=params.main.nproc,
           fixed_func=self.try_den_weight_torsion,
           args=grid,
-          buffer_stdout_stderr=True)
+          func_wrapper="buffer_stdout_stderr")
         for so, r in stdout_and_results:
           if (r is None):
             raise RuntimeError(("DEN weight optimization failed:"+
@@ -72,7 +72,7 @@ class manager(object):
           processes=params.main.nproc,
           fixed_func=self.try_den_weight_cartesian,
           args=grid,
-          buffer_stdout_stderr=True)
+          func_wrapper="buffer_stdout_stderr")
         for so, r in stdout_and_results:
           if (r is None):
             raise RuntimeError(("DEN weight optimization failed:"+

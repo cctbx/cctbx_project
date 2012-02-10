@@ -14,7 +14,7 @@ class potentially_large(unpicklable):
 
 def eval_parallel(
       data,
-      func_wrapper="default",
+      func_wrapper="simple",
       index_args=True,
       log=None,
       exercise_out_of_range=False,
@@ -27,13 +27,14 @@ def eval_parallel(
   if (exercise_fail):
     mp_results = easy_mp.pool_map(func=data, args=args)
   else:
+    if (func_wrapper == "simple" and exercise_out_of_range):
+      func_wrapper = "buffer_stdout_stderr"
     mp_results = easy_mp.pool_map(
       fixed_func=data,
       args=args,
       func_wrapper=func_wrapper,
       index_args=index_args,
-      log=log,
-      buffer_stdout_stderr=exercise_out_of_range)
+      log=log)
   if (not exercise_out_of_range):
     assert mp_results == range(3, size+3)
   else:
@@ -69,6 +70,57 @@ def exercise(exercise_fail):
   results = easy_mp.pool_map(fixed_func=data, args=range(1000), processes=Auto)
   del data
   assert len(easy_mp.fixed_func_registry) == 0
+  #
+  from libtbx.clear_paths import \
+    remove_or_rename_files_and_directories_if_possible as clear
+  from libtbx import only_element
+  import os
+  op = os.path
+  def fixed_func(arg):
+    print "hello world", arg
+    return 10*arg
+  def go():
+    return easy_mp.pool_map(
+      fixed_func=fixed_func,
+      func_wrapper="sub_directories",
+      args=[1,2])
+  clear(paths=["mp000", "mp001"])
+  results = go()
+  assert results == [(None, 10), (None, 20)]
+  for i in [1,2]:
+    only_element(open("mp%03d/log" % (i-1)).read().splitlines()) \
+      == "hello world %d" % i
+  results = go()
+  assert results == [
+    ('sub-directory exists already: "mp000"', None),
+    ('sub-directory exists already: "mp001"', None)]
+  clear(paths=["mp001"])
+  results = go()
+  assert results == [
+    ('sub-directory exists already: "mp000"', None),
+    (None, 20)]
+  clear(paths=["mp000", "mp001"])
+  results = easy_mp.pool_map(
+    fixed_func=fixed_func,
+    func_wrapper=easy_mp.func_wrapper_sub_directories(makedirs_mode=0),
+    args=[1,2])
+  assert results == [
+    ('cannot chdir to sub-directory: "mp000"', None),
+    ('cannot chdir to sub-directory: "mp001"', None)]
+  clear(paths=["mp000", "mp001"])
+  clear(paths=["bf000", "bf001"])
+  def bad_func(arg):
+    raise RuntimeError(str(arg))
+  results = easy_mp.pool_map(
+    fixed_func=bad_func,
+    func_wrapper="sub_directories:bf",
+    args=[1,2])
+  assert results == [
+    ('CAUGHT EXCEPTION: "bf000/log"', None),
+    ('CAUGHT EXCEPTION: "bf001/log"', None)]
+  for i in [1,2]:
+    assert open("bf%03d/log" % (i-1)).read().splitlines()[-1] \
+      == "RuntimeError: %d" % i
 
 def run(args):
   assert args in [[], ["--fail"]]

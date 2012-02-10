@@ -780,7 +780,7 @@ def find_tls (params,
           fixed_func=process_perms,
           args=perms,
           chunksize=100,
-          buffer_stdout_stderr=True)
+          func_wrapper="buffer_stdout_stderr")
         targets = [ t for so, t in stdout_and_targets ]
         for (perm, target) in zip(perms, targets) :
           dic.setdefault(len(perm), []).append([target,perm])
