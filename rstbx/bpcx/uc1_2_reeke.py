@@ -129,13 +129,13 @@ def main(configuration_file, img_range, dmin = None):
     s0 = (- 1.0 / wavelength) * cfc.get_c('sample_to_source')
 
     # generate indices per image based on the Reeke algorithm (see Mosflm)
-    reeke_model = reeke.reeke_model(ub, axis, s0)
+    reeke_model = reeke.reeke_model(ub, axis, s0, dmin)
     sys.exit("The Reeke algorithm is not yet implemented")
     indices = []
     for img in range(img_range[0], img_range[1] + 1):
         img_phi_start = ((img - img_start) * osc_range + osc_start) * d2r
         img_phi_end = img_phi_start + osc_range * d2r
-        indices.extend(reeke_model.loop_limits(img_phi_start, img_phi_end))
+        indices.extend(reeke_model.generate_indices(img_phi_start, img_phi_end))
 
     indices = remove_absent_indices(indices, sg)
 
