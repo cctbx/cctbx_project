@@ -225,6 +225,19 @@ class func_wrapper_sub_directories(object):
 
   def __init__(O, sub_name_format="mp%03d", makedirs_mode=0777):
     assert isinstance(sub_name_format, str)
+    s = sub_name_format
+    if (s.find("%") < 0):
+      i = s.find("#")
+      if (i >= 0):
+        c = s.count("#", i)
+        if (i + c == len(s)):
+          s = s[:i] + "%0" + str(c) + "d"
+        else:
+          i = -1
+      if (i < 0):
+        s += "%03d"
+    sub_name_format = s
+    assert len(sub_name_format) != 0
     assert len(sub_name_format % 0) != 0
     O.sub_name_format = sub_name_format
     O.makedirs_mode = makedirs_mode
@@ -257,10 +270,8 @@ def pool_map(
       if (maxtasksperchild is Auto and _have_maxtasksperchild):
         maxtasksperchild = 1
     elif (func_wrapper.startswith("sub_directories:")):
-      sub_dir_prefix = func_wrapper[16:]
-      assert len(sub_dir_prefix) != 0
       func_wrapper = func_wrapper_sub_directories(
-        sub_name_format=sub_dir_prefix+"%03d")
+        sub_name_format=func_wrapper[16:])
       if (maxtasksperchild is Auto and _have_maxtasksperchild):
         maxtasksperchild = 1
     else:
