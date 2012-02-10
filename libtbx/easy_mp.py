@@ -254,7 +254,7 @@ def pool_map(
       fixed_func=None,
       iterable=None,
       args=None,
-      chunksize=None,
+      chunksize=Auto,
       func_wrapper="simple",
       index_args=True,
       log=None):
@@ -263,19 +263,20 @@ def pool_map(
   if (isinstance(func_wrapper, str)):
     if (func_wrapper == "simple"):
       func_wrapper = func_wrapper_simple()
-    elif (func_wrapper == "buffer_stdout_stderr"):
-      func_wrapper = func_wrapper_simple(buffer_stdout_stderr=True)
-    elif (func_wrapper == "sub_directories"):
-      func_wrapper = func_wrapper_sub_directories()
-      if (maxtasksperchild is Auto and _have_maxtasksperchild):
-        maxtasksperchild = 1
-    elif (func_wrapper.startswith("sub_directories:")):
-      func_wrapper = func_wrapper_sub_directories(
-        sub_name_format=func_wrapper[16:])
-      if (maxtasksperchild is Auto and _have_maxtasksperchild):
-        maxtasksperchild = 1
     else:
-      raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
+      if (func_wrapper == "buffer_stdout_stderr"):
+        func_wrapper = func_wrapper_simple(buffer_stdout_stderr=True)
+      elif (func_wrapper == "sub_directories"):
+        func_wrapper = func_wrapper_sub_directories()
+      elif (func_wrapper.startswith("sub_directories:")):
+        func_wrapper = func_wrapper_sub_directories(
+          sub_name_format=func_wrapper[16:])
+      else:
+        raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
+      if (maxtasksperchild is Auto and _have_maxtasksperchild):
+        maxtasksperchild = 1
+      if (chunksize is Auto):
+        chunksize = 1
   if (func_wrapper is not None):
     wrap = getattr(func_wrapper, "wrap", None)
     if (wrap is None):
@@ -304,6 +305,8 @@ def pool_map(
     initargs=initargs,
     maxtasksperchild=maxtasksperchild,
     fixed_func=fixed_func)
+  if (chunksize is Auto):
+    chunksize = None
   try:
     if (func is not None):
       result = pool.map(func=func, iterable=iterable, chunksize=chunksize)
