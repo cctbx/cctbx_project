@@ -14,7 +14,8 @@ class potentially_large(unpicklable):
 
 def eval_parallel(
       data,
-      func_wrapper=Auto,
+      func_wrapper="default",
+      index_args=True,
       log=None,
       exercise_out_of_range=False,
       exercise_fail=False):
@@ -27,7 +28,11 @@ def eval_parallel(
     mp_results = easy_mp.pool_map(func=data, args=args)
   else:
     mp_results = easy_mp.pool_map(
-      fixed_func=data, args=args, func_wrapper=func_wrapper, log=log,
+      fixed_func=data,
+      args=args,
+      func_wrapper=func_wrapper,
+      index_args=index_args,
+      log=log,
       buffer_stdout_stderr=exercise_out_of_range)
   if (not exercise_out_of_range):
     assert mp_results == range(3, size+3)
@@ -46,12 +51,12 @@ def exercise(exercise_fail):
   data = potentially_large(size=1000)
   eval_parallel(data)
   assert len(easy_mp.fixed_func_registry) == 0
-  eval_parallel(data, func_wrapper=None)
+  eval_parallel(data, func_wrapper=None, index_args=False)
   assert len(easy_mp.fixed_func_registry) == 1
-  eval_parallel(data, func_wrapper=None, log=sys.stdout)
+  eval_parallel(data, func_wrapper=None, index_args=False, log=sys.stdout)
   assert len(easy_mp.fixed_func_registry) == 2
   sio = StringIO()
-  eval_parallel(data, func_wrapper=None, log=sio)
+  eval_parallel(data, func_wrapper=None, index_args=False, log=sio)
   assert len(easy_mp.fixed_func_registry) == 3
   lines = sio.getvalue().splitlines()
   assert len(lines) == 2
