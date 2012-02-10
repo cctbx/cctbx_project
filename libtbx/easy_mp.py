@@ -6,6 +6,8 @@ import traceback
 import os
 import sys
 
+_have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
+
 _problem_cache = Auto
 
 def detect_problem():
@@ -98,6 +100,8 @@ class Pool(multiprocessing_Pool):
     else:
       self.fixed_func_proxy = None
     init = super(Pool, self).__init__
+    if (maxtasksperchild is Auto):
+      maxtasksperchild = None
     if (maxtasksperchild is None):
       init(
         processes=processes,
@@ -187,23 +191,34 @@ class func_wrapper_sub_directories_impl(object):
       return (
         "failure creating sub-directory: %s" % show_string(sub_name),
         None)
+    initial_cwd = os.getcwd()
     try:
-      os.chdir(sub_name)
-    except: # intentional
-      return (
-        "cannot chdir to sub-directory: %s" % show_string(sub_name),
-        None)
-    def sub_log(): return show_string(op.join(sub_name, "log"))
-    try:
-      _ = open("log", "w")
-    except: # intentional
-      return ("cannot open file: %s" % sub_log(), None)
-    sys.stderr = sys.stdout = _
-    try:
-      result = O.func(arg)
-    except: # intentional
-      show_caught_exception(index, arg)
-      return ("CAUGHT EXCEPTION: %s" % sub_log(), None)
+      try:
+        os.chdir(sub_name)
+      except: # intentional
+        return (
+          "cannot chdir to sub-directory: %s" % show_string(sub_name),
+          None)
+      def sub_log(): return show_string(op.join(sub_name, "log"))
+      try:
+        log = open("log", "w")
+      except: # intentional
+        return ("cannot open file: %s" % sub_log(), None)
+      initial_out = sys.stdout
+      initial_err = sys.stderr
+      try:
+        sys.stderr = sys.stdout = log
+        try:
+          result = O.func(arg)
+        except: # intentional
+          show_caught_exception(index, arg)
+          return ("CAUGHT EXCEPTION: %s" % sub_log(), None)
+      finally:
+        sys.stdout = initial_out
+        sys.stderr = initial_err
+        log.close()
+    finally:
+      os.chdir(initial_cwd)
     return (None, result)
 
 class func_wrapper_sub_directories(object):
@@ -221,7 +236,7 @@ def pool_map(
       processes=None,
       initializer=None,
       initargs=(),
-      maxtasksperchild=None,
+      maxtasksperchild=Auto,
       func=None,
       fixed_func=None,
       iterable=None,
@@ -239,11 +254,15 @@ def pool_map(
       func_wrapper = func_wrapper_simple(buffer_stdout_stderr=True)
     elif (func_wrapper == "sub_directories"):
       func_wrapper = func_wrapper_sub_directories()
+      if (maxtasksperchild is Auto and _have_maxtasksperchild):
+        maxtasksperchild = 1
     elif (func_wrapper.startswith("sub_directories:")):
       sub_dir_prefix = func_wrapper[16:]
       assert len(sub_dir_prefix) != 0
       func_wrapper = func_wrapper_sub_directories(
         sub_name_format=sub_dir_prefix+"%03d")
+      if (maxtasksperchild is Auto and _have_maxtasksperchild):
+        maxtasksperchild = 1
     else:
       raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
   if (func_wrapper is not None):
