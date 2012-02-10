@@ -4,6 +4,23 @@ from libtbx import Auto
 from cStringIO import StringIO
 import sys
 
+def exercise_func_wrapper_sub_directories():
+  from libtbx.easy_mp import func_wrapper_sub_directories as f
+  w = f("")
+  assert w.sub_name_format == "%03d"
+  w = f("x")
+  assert w.sub_name_format == "x%03d"
+  w = f("%05d")
+  assert w.sub_name_format == "%05d"
+  w = f("#")
+  assert w.sub_name_format == "%01d"
+  w = f("##")
+  assert w.sub_name_format == "%02d"
+  w = f("y####")
+  assert w.sub_name_format == "y%04d"
+  w = f("#z###")
+  assert w.sub_name_format == "#z###%03d"
+
 class potentially_large(unpicklable):
 
   def __init__(self, size):
@@ -44,6 +61,7 @@ def eval_parallel(
     assert mp_results[size][1] is None
 
 def exercise(exercise_fail):
+  exercise_func_wrapper_sub_directories()
   from libtbx import easy_mp
   mp_problem = easy_mp.detect_problem()
   if (mp_problem is not None):
