@@ -108,10 +108,12 @@ def morph_models (params, out=None) :
       if (j != i_ref) :
         sites_moving = static_coords[j]
         if (params.morph.fitting.sieve_fit) :
-          sites_moving_new = sieve_fit(
+          from scitbx.math import superpose
+          lsq_fit = superpose.sieve_fit(
             sites_fixed=sites_fixed,
             sites_moving=sites_moving,
             selection=selection)
+          sites_moving_new = lsq_fit.other_sites_best_fit()
         else :
           sites_moving_new = fit_sites(
             sites_fixed=sites_fixed,
@@ -223,31 +225,6 @@ def fit_sites (sites_fixed, sites_moving, selection) : # TODO
   from scitbx.math import superpose
   sites_fixed_aln = sites_fixed.select(selection)
   sites_moving_aln = sites_moving.select(selection)
-  lsq_fit_obj = superpose.least_squares_fit(
-    reference_sites=sites_fixed_aln,
-    other_sites=sites_moving_aln)
-  sites_moved = lsq_fit_obj.r.elems * sites_moving + lsq_fit_obj.t.elems
-  return sites_moved
-
-def sieve_fit (sites_fixed, sites_moving, selection) : # TODO
-  """
-  Reference: Chothia & Lesk???
-  """
-  from scitbx.math import superpose
-  from scitbx.array_family import flex
-  # step 1: superpose using originally selected atoms
-  sites_fixed_aln = sites_fixed.select(selection)
-  sites_moving_aln = sites_moving.select(selection)
-  lsq_fit_obj = superpose.least_squares_fit(
-    reference_sites=sites_fixed_aln,
-    other_sites=sites_moving_aln)
-  sites_moving_new = lsq_fit_obj.r.elems * sites_moving_aln + \
-    lsq_fit_obj.t.elems
-  # step 2: discard 50% of sites that deviate the most, and superpose again
-  deltas = (sites_fixed_aln - sites_moving_new).norms()
-  selection = (deltas > flex.median(deltas))
-  sites_fixed_aln = sites_fixed_aln.select(selection)
-  sites_moving_aln = sites_moving_aln.select(selection)
   lsq_fit_obj = superpose.least_squares_fit(
     reference_sites=sites_fixed_aln,
     other_sites=sites_moving_aln)
