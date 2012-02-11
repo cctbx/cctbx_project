@@ -79,7 +79,35 @@ class least_squares_fit(object):
   def rt(self):
     return matrix.rt(tuple_r_t=(self.r, self.t))
 
-
+# TODO test
+def sieve_fit (sites_fixed,
+               sites_moving,
+               selection=None,
+               frac_discard=0.5) :
+  """
+  Reference: Chothia & Lesk???
+  """
+  assert (sites_fixed.size() == sites_moving.size())
+  if (selection is None) :
+    selection = flex.bool(sites_fixed.size(), True)
+  # step 1: superpose using originally selected atoms
+  sites_fixed_aln = sites_fixed.select(selection)
+  sites_moving_aln = sites_moving.select(selection)
+  lsq_fit_obj = least_squares_fit(
+    reference_sites=sites_fixed_aln,
+    other_sites=sites_moving_aln)
+  sites_moving_new = lsq_fit_obj.other_sites_best_fit()
+  # step 2: discard 50% of sites that deviate the most, and superpose again
+  deltas = (sites_fixed_aln - sites_moving_new).norms()
+  deltas_sorted = flex.sorted(deltas)
+  cutoff = deltas_sorted[int((1-frac_discard)*deltas.size())]
+  selection = (deltas > cutoff)
+  sites_fixed_aln = sites_fixed_aln.select(selection)
+  sites_moving_aln = sites_moving_aln.select(selection)
+  lsq_fit_obj = least_squares_fit(
+    reference_sites=sites_fixed_aln,
+    other_sites=sites_moving_aln)
+  return lsq_fit_obj
 
 """
 The NSD engine is a simple implementation of the normalized spatial discrepancy
