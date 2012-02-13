@@ -7,6 +7,7 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/enum.hpp>
 
+#include <cctbx/sgtbx/space_group.h>
 #include <rstbx/dps_core/dps_core.h>
 #include <rstbx/dps_core/direction.h>
 #include <rstbx/diffraction/ewald_sphere.h>
@@ -15,6 +16,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <vector>
 #include <rstbx/backplane.h>
+
 using namespace boost::python;
 
 namespace rstbx {
@@ -74,6 +76,83 @@ class SimpleSamplerTool {
   }
 };
 
+static boost::python::tuple
+observed_indices_and_angles_from_rotation_angles_range(rotation_angles& ra,
+  double const& phi_start_rad,double const& phi_end_rad,
+  const scitbx::af::shared<cctbx::miller::index<> >& indices){
+    //This is going to require some revision to assure it works in an arbitrary
+    // principle value region for phi_start_rad and phi_end_rad
+
+    scitbx::af::shared<scitbx::vec3<double> > return_indices;
+    scitbx::af::shared<double> return_angles_rad;
+
+    for (int ihkl = 0; ihkl < indices.size(); ++ihkl) {
+       scitbx::vec3<double> test_index( // convert integer Miller index to double type
+         indices[ihkl][0],indices[ihkl][1],indices[ihkl][2]);
+       if (ra( test_index )) {
+         scitbx::vec2<Angle> intersection_angles = ra.get_intersection_angles();
+         for (int iangle = 0; iangle < 2; ++iangle){
+           if (intersection_angles[iangle] >= phi_start_rad &&
+               intersection_angles[iangle] <= phi_end_rad){
+                 return_indices.push_back(test_index);
+                 return_angles_rad.push_back(intersection_angles[iangle]);
+           }
+         }
+       }
+     }
+     return make_tuple(return_indices,return_angles_rad);
+}
+
+static boost::python::tuple
+rp_predict(reflection_prediction& rp,
+  scitbx::af::shared<scitbx::vec3<double> > const& observed_indices,
+  scitbx::af::shared<double> const& observed_angles){
+
+    scitbx::af::shared<scitbx::vec3<double> > return_indices;
+    scitbx::af::shared<double> return_fast_px;
+    scitbx::af::shared<double> return_slow_px;
+    scitbx::af::shared<double> return_angle_rad;
+
+    for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
+       if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
+         scitbx::vec2<double> xy = rp.get_prediction();
+
+                 return_indices.push_back(observed_indices[ihkl]);
+                 return_angle_rad.push_back(observed_angles[ihkl]);
+                 return_fast_px.push_back(xy[0]);
+                 return_slow_px.push_back(xy[1]);
+       }
+     }
+     return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad);
+}
+
+static af::shared<cctbx::miller::index<> >
+full_sphere_indices(cctbx::uctbx::unit_cell const& uc,
+                    double const& resolution_limit,
+                    cctbx::sgtbx::space_group const& sg){
+
+  cctbx::miller::index<> maxhkl = uc.max_miller_indices(resolution_limit);
+
+  af::shared<cctbx::miller::index<> > present;
+
+  for (int h = -maxhkl[0]; h <= maxhkl[0]; ++h){
+    for (int k = -maxhkl[1]; k <= maxhkl[1]; ++k){
+      for (int l = -maxhkl[2]; l <= maxhkl[2]; ++l){
+
+        if (h == 0 && k == 0 && l == 0) { continue; }
+
+        if (uc.d(cctbx::miller::index<>(h, k, l)) < resolution_limit){
+                    continue;}
+
+        if (sg.is_sys_absent(cctbx::miller::index<>(h, k, l))){
+                    continue;}
+
+        present.push_back(cctbx::miller::index<>(h, k, l));
+      }
+    }
+  }
+  return present;
+}
 
 namespace boost_python { namespace {
 
@@ -176,6 +255,9 @@ namespace boost_python { namespace {
       .def("axis", &rotation_angles::axis)
       .def("offsetdot", &rotation_angles::offsetdot)
       .def("get_intersection_angles", &rotation_angles::get_intersection_angles)
+      .def("observed_indices_and_angles_from_angle_range",
+            &observed_indices_and_angles_from_rotation_angles_range,
+           (arg("phi_start_rad"),arg("phi_end_rad"),arg("indices")))
     ;
 
     class_<reflection_prediction>("reflection_prediction",
@@ -192,7 +274,14 @@ namespace boost_python { namespace {
         arg("f_min"), arg("f_max"),
         arg("s_min"), arg("s_max"))))
       .def("__call__", & reflection_prediction::operator())
-      .def("get_prediction", & reflection_prediction::get_prediction);
+      .def("get_prediction", & reflection_prediction::get_prediction)
+      .def("predict",
+            &rp_predict,
+           (arg("observed_indices"),arg("observed_angles")));
+
+    def("full_sphere_indices",&full_sphere_indices,
+      (arg("unit_cell"), arg("resolution_limit"),
+       arg("space_group")));
 
     class_<partial_spot_position_partial_H, bases<rotation_angles> >(
       "partial_spot_position_partial_H",

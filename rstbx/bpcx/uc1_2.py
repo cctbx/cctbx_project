@@ -19,10 +19,11 @@ import math
 
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
 from rstbx.diffraction import rotation_angles, reflection_prediction
+from rstbx.diffraction import full_sphere_indices
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
 
-def generate_indices(unit_cell_constants, resolution_limit):
+def Py_generate_indices(unit_cell_constants, resolution_limit):
     '''Generate all possible reflection indices out to a given resolution
     limit, ignoring symmetry and centring.'''
 
@@ -46,7 +47,7 @@ def generate_indices(unit_cell_constants, resolution_limit):
 
     return indices
 
-def remove_absent_indices(indices, space_group_number):
+def Py_remove_absent_indices(indices, space_group_number):
     '''From the given list of indices, remove those reflections which should
     be systematic absences according to the given space group.'''
 
@@ -119,27 +120,6 @@ class python_reflection_prediction:
 
         return observed_reflection_positions
 
-class cpp_reflection_prediction:
-    def __init__(self, axis, s0, ub, detector_origin,
-                 detector_fast, detector_slow,
-                 f_min, f_max, s_min, s_max):
-        self._rp = reflection_prediction(axis, s0, ub, detector_origin,
-                                         detector_fast, detector_slow,
-                                         f_min, f_max, s_min, s_max)
-
-        return
-
-    def predict(self, indices, angles):
-
-        observed_reflection_positions = []
-
-        for hkl, angle in zip(indices, angles):
-            if self._rp(hkl, angle):
-                x, y = self._rp.get_prediction()
-                observed_reflection_positions.append((hkl, x, y, angle))
-
-        return observed_reflection_positions
-
 def main(configuration_file, img_range, dmin = None):
     '''Perform the calculations needed for use case 1.1.'''
 
@@ -166,13 +146,17 @@ def main(configuration_file, img_range, dmin = None):
 
     cell = (A.length(), B.length(), C.length(), B.angle(C, deg = True),
             C.angle(A, deg = True), A.angle(B, deg = True))
+    uc = unit_cell(cell)
 
     # generate all of the possible indices, then pull out those which should
     # be systematically absent
 
     sg = cfc.get('space_group_number')
 
-    indices = remove_absent_indices(generate_indices(cell, dmin), sg)
+    indices = full_sphere_indices(
+      unit_cell = uc,
+      resolution_limit = dmin,
+      space_group = space_group(space_group_symbols(sg).hall()))
 
     # then get the UB matrix according to the Rossmann convention which
     # is used within the Labelit code.
@@ -185,18 +169,12 @@ def main(configuration_file, img_range, dmin = None):
 
     # work out which reflections should be observed (i.e. pass through the
     # Ewald sphere)
-
     ra = rotation_angles(dmin, ub, wavelength, axis)
 
-    observed_indices = []
-    observed_angles = []
-
-    for hkl in indices:
-        if ra(hkl):
-            for angle in ra.get_intersection_angles():
-                if angle >= phi_start and angle <= phi_end:
-                    observed_indices.append(hkl)
-                    observed_angles.append(angle)
+    observed_indices, observed_angles = ra.observed_indices_and_angles_from_angle_range(
+        phi_start_rad=phi_start,
+        phi_end_rad=phi_end,
+        indices=indices)
 
     # convert all of these to full scattering vectors in a laboratory frame
     # (for which I will use the CBF coordinate frame) and calculate which
@@ -223,18 +201,22 @@ def main(configuration_file, img_range, dmin = None):
     detector_normal = detector_fast.cross(detector_slow)
     distance = detector_origin.dot(detector_normal)
 
-    rp = cpp_reflection_prediction(axis, s0, ub, detector_origin,
+    rp = reflection_prediction(axis, s0, ub, detector_origin,
                                    detector_fast, detector_slow,
                                    0, dimension_fast,
                                    0, dimension_slow)
 
-    cpp_observed_reflection_positions = rp.predict(observed_indices,
-                                                   observed_angles)
+    obs_hkl,obs_fast,obs_slow,obs_angle = rp.predict(observed_indices,
+                                                     observed_angles)
 
     r2d = 180.0 / math.pi
 
-    for hkl, f, s, angle in cpp_observed_reflection_positions:
-        print '%d %d %d' % hkl, '%.4f %4f %2f' % (
+    for iobs in xrange(len(obs_hkl)):
+      hkl = obs_hkl[iobs]
+      f = obs_fast[iobs]
+      s = obs_slow[iobs]
+      angle = obs_angle[iobs]
+      print '%d %d %d' % hkl, '%.4f %4f %2f' % (
             f / pixel_size_fast, s / pixel_size_slow,
             (img_start - 1) + ((angle * r2d) - osc_start) / osc_range)
 
