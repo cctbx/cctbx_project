@@ -112,8 +112,18 @@ class pixel_histograms(object):
       self.plot_one_histogram(
         hist, window_title=window_title, title=title,log_scale=log_scale,
         normalise=normalise, save_image=save_image)
+      fontsize = 15
+      pyplot.ylabel("Counts", fontsize=fontsize)
+      pyplot.xlabel("ADU units", fontsize=fontsize)
       if fit_gaussians:
         self.plot_gaussians(pixel, log_scale=log_scale)
+      pyplot.ylabel("Counts", fontsize=fontsize)
+      pyplot.xlabel("ADUs", fontsize=fontsize)
+      #axes = pyplot.axes()
+      #for tick in axes.xaxis.get_ticklabels():
+        #tick.set_fontsize(20)
+      #for tick in axes.yaxis.get_ticklabels():
+        #tick.set_fontsize(20)
 
       if save_image:
         pyplot.savefig("%s.png" %title)
@@ -132,13 +142,13 @@ class pixel_histograms(object):
       print g.params
       y = g(x)
       y_calc += y
-      pyplot.plot(x, y)
+      pyplot.plot(x, y, linewidth=2)
     #print "Peak height ratio: %.2f" %(gaussians[0].params[0]/gaussians[1].params[0])
     pyplot.plot(x, y_calc)
     # Plot the fit residuals
     xlim = pyplot.xlim() # store for reuse below
     pyplot.subplot(212)
-    pyplot.plot(x, hist.slots().as_double() - y_calc)
+    pyplot.plot(x, hist.slots().as_double() - y_calc, linewidth=2)
 
     pyplot.xlim(xlim)
 
@@ -154,7 +164,7 @@ class pixel_histograms(object):
     if log_scale:
       data.set_selected(data == 0, 0.1) # otherwise lines don't get drawn when we have some empty bins
       pyplot.yscale("log")
-    pyplot.plot(bins, data, '-k')
+    pyplot.plot(bins, data, '-k', linewidth=2)
     #pyplot.bar(hist.slot_centers()-0.5*hist.slot_width(), slots, width=hist.slot_width())
     pyplot.xlim(histogram.data_min(), histogram.data_max())
     pyplot.suptitle(title)
@@ -184,8 +194,6 @@ class pixel_histograms(object):
           fit = self.single_peak_fit(histogram, lower_threshold, upper_threshold, mean,
                                      zero_peak_gaussian=zero_peak_gaussian)
       else:
-        lower_threshold = self.estimated_gain * i - 0.2 * self.estimated_gain
-        upper_threshold = self.estimated_gain * i + 0.33 * self.estimated_gain
         y_obs = histogram.slots().as_double()
         x = histogram.slot_centers()
         y_calc = flex.double(y_obs.size(), 0)
@@ -197,7 +205,7 @@ class pixel_histograms(object):
         residual = sliding_average(residual)
         # we assume that the peaks are separated by at least 4 sigma
         four_sigma = abs(4 * fitted_gaussians[0].params[2])
-        slot_i = histogram.get_i_slot(four_sigma)
+        slot_i = histogram.get_i_slot(fitted_gaussians[i-1].params[1]+four_sigma)
         max_slot_i = flex.max_index(residual[slot_i:]) + slot_i
         mean = slot_centers[max_slot_i]
         lower_threshold = mean - 0.3 * (mean - fitted_gaussians[0].params[1])
@@ -209,6 +217,19 @@ class pixel_histograms(object):
       fitted_gaussians += fit.functions
       if i == 0: zero_peak_gaussian = fit.functions[0]
 
+    if len(fitted_gaussians) > 1:
+      gain = fitted_gaussians[1].params[1] - fitted_gaussians[0].params[1]
+      print "gain: %s" %gain
+      zero_peak = fitted_gaussians[0].params[1]
+      photon_threshold = 2/3
+      n_single_photons = flex.sum(
+        histogram.slots()[histogram.get_i_slot(photon_threshold * gain + zero_peak):])
+      n_double_photons = flex.sum(
+        histogram.slots()[histogram.get_i_slot((1+photon_threshold) * gain + zero_peak):])
+      n_single_photons -= n_double_photons
+      print "n_single_photons: %i" %n_single_photons
+      print "n_double_photons: %i" %n_double_photons
+      #print n_double_photons/(n_single_photons+n_double_photons)
     return fitted_gaussians
 
   def single_peak_fit(self, hist, lower_threshold, upper_threshold, mean,
