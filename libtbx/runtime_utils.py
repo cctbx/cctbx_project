@@ -142,16 +142,20 @@ class stdout_redirect (object) :
     pass
 
 class detached_process_server (detached_base) :
-  def __init__ (self, *args, **kwds) :
+  def __init__ (self, target, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
-    self.target = easy_pickle.load(self.params.run_file)
+    self.target = target
     assert hasattr(self.target, "__call__")
+
+  # XXX support for libtbx.queueing_system_utils.generic.Job
+  def __call__ (self, *args, **kwds) :
+    return self.run()
+
+  def run (self) :
     self.callback_start()
     self._stdout = multi_out()
     self._tmp_stdout = open(self.stdout_file, "w")
     self._stdout.register("Communication log", self._tmp_stdout)
-
-  def run (self) :
     old_stdout = sys.stdout
     sys.stdout = stdout_redirect(self)
     import libtbx.callbacks
@@ -397,7 +401,8 @@ def run (args) :
   if params.run_file is None :
     working_phil.show()
     raise Sorry("Pickled target function run_file not defined.")
-  server = detached_process_server(params)
+  target = easy_pickle.load(params.run_file)
+  server = detached_process_server(target, params=params)
   server.run()
 
 ########################################################################
