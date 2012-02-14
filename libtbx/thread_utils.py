@@ -175,6 +175,7 @@ class stdout_pipe (object) :
     pass
 
 wait_before_flush = 0.2 # minimum time between send() calls
+max_between_flush = 5
 
 # this slows down the output so it won't stall a GUI
 class stdout_pipe_buffered (stdout_pipe) :
@@ -184,10 +185,13 @@ class stdout_pipe_buffered (stdout_pipe) :
 
   def write (self, data) :
     self._data += data
+    t = time.time()
+    if (t >= (self._last_t + max_between_flush)) :
+      self.flush()
 
   def flush (self) :
     t = time.time()
-    if t >= (self._last_t + wait_before_flush) :
+    if (t >= (self._last_t + wait_before_flush)) :
       self._flush()
       self._last_t = t
 

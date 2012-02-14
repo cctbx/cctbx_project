@@ -178,7 +178,7 @@ EOF
     self.kwargs = kwargs
     self.qinterface = qinterface
     self.process = None
-
+    self.jobid = None
 
   def start(self):
 
@@ -209,7 +209,12 @@ EOF
 
     self.process.stdin.write( self.SCRIPT % ( self.SETPATHS, self.name ) )
     self.process.stdin.close()
+    self.parse_process_stdout()
 
+  # grab job ID, etc. from stdout - subclass as necessary (PBSJob already
+  # handles this separately)
+  def parse_process_stdout (self) :
+    pass
 
   def is_alive(self):
 
@@ -349,69 +354,84 @@ class PBSJob(Job):
 
     return m.group( 1 )
 
+class SGEJob (Job) :
+  def parse_process_stdout (self) :
+    qsub_out = self.process.stdout.readlines()
+    for line in qsub_out :
+      if line.startswith("Your job") :
+        self.jobid = int(line.split()[2])
+        break
 
-class sge_interface(object):
+class queue_interface (object) :
+  COMMAND = None
+  def __init__(self, command, asynchronous=False):
+    self.async = asynchronous
+    if command is None:
+      assert (self.COMMAND is not None)
+      self.command = [ self.COMMAND, ]
+    else:
+      self.command = command
+
+class sge_interface(queue_interface):
   """
   Interface to Sun Grid Engine (SGE)
   """
 
   COMMAND = "qsub"
 
-  def __init__(self, command):
-
-    if command is None:
-      self.command = ( self.COMMAND, )
-
-    else:
-      self.command = command
-
-
   def __call__(self, name, out, err):
 
-    return self.command + ( "-S", "/bin/sh", "-cwd", "-N", name, "-sync", "y",
-      "-o", out, "-e", err )
+    cmd = self.command + [ "-S", "/bin/sh", "-cwd", "-N", name, "-o", out,
+      "-e", err ]
+    if (not self.async) :
+      cmd.extend(["-sync", "y"])
+    return cmd
 
 
-class lsf_interface(object):
+class lsf_interface(queue_interface):
   """
   Interface to Load Sharing Facility (LSF)
   """
 
   COMMAND = "bsub"
 
-  def __init__(self, command):
-
-    if command is None:
-      self.command = ( self.COMMAND, )
-
-    else:
-      self.command = command
-
-
   def __call__(self, name, out, err):
 
-    return self.command + ( "-K", "-J", name,
-      "-o", out, "-e", err )
+    cmd = self.command +  [ "-J", name, "-o", out, "-e", err ]
+    if (not self.async) :
+      cmd.append("-K")
+    return cmd
 
-
-class pbs_interface(object):
+class pbs_interface(queue_interface):
   """
   Interface to Portable Batch System (PBS)
   """
 
   COMMAND = "qsub"
 
-  def __init__(self, command):
-
-    if command is None:
-      self.command = ( self.COMMAND, )
-
-    else:
-      self.command = command
-
-
   def __call__(self, name, out, err):
 
-    return self.command + ( "-d", ".", "-N", name,
-      "-o", out, "-e", err )
+    return self.command + [ "-d", ".", "-N", name,
+      "-o", out, "-e", err ]
 
+def qsub (target,
+          name="libtbx_python",
+          platform="sge",
+          command=None,
+          asynchronous=True) :
+  assert hasattr(target, "__call__")
+  if (platform == "sge") :
+    return SGEJob(
+      target=target,
+      name=name,
+      qinterface=sge_interface(command, asynchronous))
+  elif (platform == "pbs") :
+    return PBSJob(
+      target=target,
+      name=name,
+      qinterface=pbs_interface(command, asynchronous))
+  elif (platform == "lsf") :
+    return Job(
+      target=target,
+      name=name,
+      qinterface=lsf_interface(command, asynchronous))
