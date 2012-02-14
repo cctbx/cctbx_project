@@ -266,91 +266,103 @@ Example:
     self.numprepro = 0
     self.numtotal = 0
     r = ramachandran_eval.RamachandranEval()
+    prev_rezes, next_rezes = None, None
+    prev_resid = None
+    cur_resid = None
+    next_resid = None
     for model in hierarchy.models():
       for chain in model.chains():
-        #prevRes, prevC, resN, resCA, resO = None, None, None, None, None;
-        #help(chain)
         residues = list(chain.residue_groups())
-        #help(residues)
         for i, residue_group in enumerate(residues):
-            #The reason I pass lists of atom_groups to get_phi and get_psi is to deal with the
-            #particular issue where some residues have an A alt conf that needs some atoms from
-            #a "" alt conf to get calculated correctly.
-            #See 1jxt.pdb for examples.  This way I can search both the alt conf atoms and
-            #the "" atoms if necessary.
-            prev_rezes, next_rezes, prev_atom_list, next_atom_list, atom_list = \
-              None, None, None, None, None
-            if (i > 0):
-              if residue_group.resseq_as_int() != (residues[i-1].resseq_as_int())+1:
+          #The reason I pass lists of atom_groups to get_phi and get_psi is to deal with the
+          #particular issue where some residues have an A alt conf that needs some atoms from
+          #a "" alt conf to get calculated correctly.
+          #See 1jxt.pdb for examples.  This way I can search both the alt conf atoms and
+          #the "" atoms if necessary.
+          prev_atom_list, next_atom_list, atom_list = None, None, None
+          if cur_resid is not None:
+            prev_rezes = rezes
+            prev_resid = cur_resid
+          rezes = self.construct_complete_residues(residues[i])
+          cur_resid = residue_group.resseq_as_int()
+          if (i > 0):
+            #check for insertion codes
+            if residue_group.resseq_as_int() == \
+               residues[i-1].resseq_as_int():
+              if residue_group.icode == ' ':
                 continue
-              prev_rezes = self.construct_complete_residues(residues[i-1])
-            rezes = self.construct_complete_residues(residues[i])
-            if (i < len(residues)-1):
-              if residue_group.resseq_as_int() != (residues[i+1].resseq_as_int())-1:
+            elif (residue_group.resseq_as_int() != \
+               (residues[i-1].resseq_as_int())+1):
+              continue
+          if (i < len(residues)-1):
+            #find next residue
+            if residue_group.resseq_as_int() == \
+               residues[i+1].resseq_as_int():
+              if residues[i+1].icode == ' ':
                 continue
-              next_rezes = self.construct_complete_residues(residues[i+1])
-            #for alt_conf in sorted(rezes.keys()):
-            for atom_group in residue_group.atom_groups():
-              alt_conf = atom_group.altloc
-              if rezes is not None:
-                atom_list = rezes.get(alt_conf)
-              if prev_rezes is not None:
-                prev_atom_list = prev_rezes.get(alt_conf)
-                if (prev_atom_list is None):
-                  prev_keys = sorted(prev_rezes.keys())
-                  prev_atom_list = prev_rezes.get(prev_keys[0])
-                  #print prev_atom_list
-              if next_rezes is not None:
-                next_atom_list = next_rezes.get(alt_conf)
-                if (next_atom_list is None):
-                  next_keys = sorted(next_rezes.keys())
-                  next_atom_list = next_rezes.get(next_keys[0])
-              phi = self.get_phi(prev_atom_list, atom_list)
-              psi = self.get_psi(atom_list, next_atom_list)
-              coords = self.get_center(atom_group)
+            elif residue_group.resseq_as_int() != \
+               (residues[i+1].resseq_as_int())-1:
+              continue
+            next_rezes = self.construct_complete_residues(residues[i+1])
+            next_resid = residues[i+1].resseq_as_int()
+          else:
+            next_rezes = None
+            next_resid = None
+          for atom_group in residue_group.atom_groups():
+            alt_conf = atom_group.altloc
+            if rezes is not None:
+              atom_list = rezes.get(alt_conf)
+            if prev_rezes is not None:
+              prev_atom_list = prev_rezes.get(alt_conf)
+              if (prev_atom_list is None):
+                prev_keys = sorted(prev_rezes.keys())
+                prev_atom_list = prev_rezes.get(prev_keys[0])
+            if next_rezes is not None:
+              next_atom_list = next_rezes.get(alt_conf)
+              if (next_atom_list is None):
+                next_keys = sorted(next_rezes.keys())
+                next_atom_list = next_rezes.get(next_keys[0])
+            phi = self.get_phi(prev_atom_list, atom_list)
+            psi = self.get_psi(atom_list, next_atom_list)
+            coords = self.get_center(atom_group)
+            if (phi is not None and psi is not None):
+              resType = None
+              self.numtotal += 1
+              if (atom_group.resname[0:3] == "GLY"):
+                resType = "glycine"
+                self.numgly += 1
+              elif (atom_group.resname[0:3] == "PRO"):
+                resType = "proline"
+                self.numpro += 1
+              elif (self.isPrePro(residues, i)):
+                resType = "prepro"
+                self.numprepro += 1
+              else:
+                resType = "general"
+                self.numgen += 1
 
-              if (phi is not None and psi is not None):
-                resType = None
-                self.numtotal += 1
-                if (atom_group.resname[0:3] == "GLY"):
-                  resType = "glycine"
-                  self.numgly += 1
-                elif (atom_group.resname[0:3] == "PRO"):
-                  resType = "proline"
-                  self.numpro += 1
-                elif (self.isPrePro(residues, i)):
-                  resType = "prepro"
-                  self.numprepro += 1
-                else:
-                  resType = "general"
-                  self.numgen += 1
+              value = r.evaluate(resType, [phi, psi])
+              ramaType = self.evaluateScore(resType, value)
+              if (not outliers_only or self.isOutlier(resType, value)):
+                analysis += '%s%5s %s%s:%.2f:%.2f:%.2f:%s:%s\n' % \
+                  (chain.id,
+                   residue_group.resid(),atom_group.altloc,
+                   atom_group.resname,
+                   value*100,
+                   phi,
+                   psi,
+                   ramaType,
+                   resType.capitalize())
 
-                #value = 0
-
-                value = r.evaluate(resType, [phi, psi])
-                ramaType = self.evaluateScore(resType, value)
-                #print params_old["outliersonly"]
-                if (not outliers_only or self.isOutlier(resType, value)):
-                  analysis += '%s%5s %s%s:%.2f:%.2f:%.2f:%s:%s\n' % \
-                    (chain.id,
-                     residue_group.resid(),atom_group.altloc,
-                     atom_group.resname,
-                     value*100,
-                     phi,
-                     psi,
-                     ramaType,
-                     resType.capitalize())
-
-                  output_list.append([chain.id,
-                                      residue_group.resid(),
-                                      atom_group.altloc+atom_group.resname,
-                                      value*100,
-                                      phi,
-                                      psi,
-                                      ramaType,
-                                      resType.capitalize(),
-                                      coords])
-
+                output_list.append([chain.id,
+                                    residue_group.resid(),
+                                    atom_group.altloc+atom_group.resname,
+                                    value*100,
+                                    phi,
+                                    psi,
+                                    ramaType,
+                                    resType.capitalize(),
+                                    coords])
     return analysis.rstrip(), output_list
   #}}}
 
