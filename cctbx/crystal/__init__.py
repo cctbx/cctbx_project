@@ -452,6 +452,10 @@ class special_position_settings(symmetry):
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     return result
 
+  def xray_structure(self, scatterers=None):
+    import cctbx.xray.structure as _
+    return _(special_position_settings=self, scatterers=scatterers)
+
   def asu_mappings(self,
         buffer_thickness,
         sites_frac=None,
