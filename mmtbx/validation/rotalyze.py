@@ -149,26 +149,30 @@ Example:
   #{{{ analyze_pdb
   def analyze_pdb(self, pdb_io=None, hierarchy=None, outliers_only=False,
                   show_errors = False, out=sys.stdout):
-    sa = SidechainAngles(show_errors)
-    r = rotamer_eval.RotamerEval()
+    self.sa = SidechainAngles(show_errors)
+    self.r = rotamer_eval.RotamerEval()
     if(pdb_io is not None):
       hierarchy = pdb_io.construct_hierarchy()
     analysis = ""
     output_list = []
     self.numoutliers = 0
     self.numtotal = 0
-    rot_id = rotamer_eval.RotamerID() # loads in the rotamer names
+    self.rot_id = rotamer_eval.RotamerID() # loads in the rotamer names
     for model in hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           all_dict = self.construct_complete_sidechain(rg)
+          #print all_dict
           for atom_group in rg.atom_groups() :
             resname = atom_group.resname
             coords = self.get_center(atom_group)
             atom_dict = all_dict.get(atom_group.altloc)
+            #print atom_dict
+            #STOP()
             try:
-              chis = sa.measureChiAngles(atom_group,
-                                       atom_dict)#.get(conformer.altloc))
+              chis = self.sa.measureChiAngles(
+                       atom_group,
+                       atom_dict)#.get(conformer.altloc))
             except AttributeError:
               if show_errors:
                 res_info = "%s%5s %s" % (chain.id, rg.resid(),
@@ -181,7 +185,7 @@ Example:
             if (chis is not None):
               if None in chis:
                 continue
-              value = r.evaluate(resname.lower().strip(), chis)
+              value = self.r.evaluate(resname.lower().strip(), chis)
               if value != None:
                 occupancy = get_occupancy(atom_group)
                 self.numtotal += 1
@@ -195,9 +199,11 @@ Example:
                                 rg.resid(),
                                 atom_group.altloc+resname,
                                 value*100]
-                wrap_chis = rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
+                wrap_chis = \
+                  self.rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
                 sym_chis = wrap_chis[:]
-                sym_chis = rot_id.wrap_sym(resname.strip(), sym_chis)
+                sym_chis = \
+                  self.rot_id.wrap_sym(resname.strip(), sym_chis)
                 for i in range(4):
                   s += ':'
                   if i < len(wrap_chis):
@@ -215,8 +221,8 @@ Example:
                     analysis += s
                     output_list.append(res_out_list)
                 else:
-                  s += rot_id.identify(resname, wrap_chis) + "\n"
-                  res_out_list.append(rot_id.identify(resname, wrap_chis))
+                  s += self.rot_id.identify(resname, wrap_chis) + "\n"
+                  res_out_list.append(self.rot_id.identify(resname, wrap_chis))
                   res_out_list.append(coords)
                 if not outliers_only:
                   analysis += s
@@ -225,13 +231,19 @@ Example:
   #}}}
 
   #{{{ evaluate_residue
-  def evaluate_residue(self, residue_group, sa, r, all_dict):
+  def evaluate_residue(
+        self,
+        residue_group,
+        sa,
+        r,
+        all_dict,
+        sites_cart=None):
     is_outlier = False
     for ag in residue_group.atom_groups():
       atom_dict = all_dict.get(ag.altloc)
       try:
         chis = sa.measureChiAngles(ag, atom_dict)
-        value = r.evaluate(ag.resname.lower().strip(), chis)
+        value = r.evaluate(ag.resname.lower().strip(), chis, sites_cart)
       except Exception:
         #print ag.resname.lower()+residue_group.resseq+" is missing some sidechain atoms"
         value = None;
@@ -246,6 +258,31 @@ Example:
       else:
         return is_outlier, value
   #}}}
+
+  #{{{ evalute_rotamer
+  def evaluate_rotamer(
+        self,
+        atom_group,
+        all_dict,
+        sites_cart=None):
+    atom_dict = all_dict.get(atom_group.altloc)
+    resname = atom_group.resname
+    try:
+      chis = self.sa.measureChiAngles(atom_group, atom_dict, sites_cart)
+      value = self.r.evaluate(
+                atom_group.resname.lower().strip(),
+                chis)
+    except Exception:
+      return None, None
+    wrap_chis = \
+      self.rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
+    rotamer_name = self.rot_id.identify(resname.strip(), wrap_chis)
+    if (value is None):
+      return None, None
+    elif (value < 0.01):
+      return 'OUTLIER', value
+    else:
+      return rotamer_name, value
 
   #{{{ get functions
   def get_outliers_count_and_fraction(self):
