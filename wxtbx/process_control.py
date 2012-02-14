@@ -1,8 +1,11 @@
 
-from __future__ import absolute_import
+# TODO more comprehensive tests
+
+from __future__ import absolute_import # XXX is this necessary?
 from wx.lib.agw import pyprogress
 import wx
 from libtbx import thread_utils
+from libtbx import runtime_utils
 from libtbx.utils import Sorry, Abort
 import threading
 
@@ -112,6 +115,40 @@ class event_agent (object) :
     event = CallbackEvent(data, **kwds)
     wx.PostEvent(self.window, event)
 
+# simplified for when the window is really the app object
+class background_event_agent (event_agent) :
+  def callback_stdout (self, data) :
+    pass
+
+  def callback_other (self, data) :
+    pass
+
+class detached_process (runtime_utils.detached_process_client) :
+  def __init__ (self, params, proxy) :
+    runtime_utils.detached_process_client.__init__(self, params)
+    self.proxy = proxy
+
+  def callback_start (self, data) :
+    self.proxy.callback_start(data)
+
+  def callback_stdout (self, data) :
+    self.proxy.callback_stdout(data)
+
+  def callback_other (self, data) :
+    self.proxy.callback_other(data)
+
+  def callback_abort (self) :
+    self.proxy.callback_abort()
+
+  def callback_final (self, result) :
+    self.proxy.callback_final(result)
+
+  def callback_error (self, error, traceback_info) :
+    self.proxy.callback_error(error, traceback_info)
+
+  def start (self) :
+    pass
+
 # this just adds event posting callbacks to the original class
 class process_with_gui_callbacks (thread_utils.process_with_callbacks) :
   def __init__ (self, proxy, target, args=(), kwargs={}, buffer_stdout=True) :
@@ -127,6 +164,9 @@ class process_with_gui_callbacks (thread_utils.process_with_callbacks) :
       buffer_stdout   = buffer_stdout)
 
   def set_job (self, job) :
+    pass
+
+  def purge_files (self) :
     pass
 
 class simple_gui_process (process_with_gui_callbacks) :
