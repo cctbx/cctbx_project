@@ -148,11 +148,6 @@ Example:
     self.clash_dict = {}
     self.list_dict = {}
 
-    trim = "phenix.reduce -quiet -trim -"
-    build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
-    probe = 'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
-    probe_atom = 'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
-
     for i,m in enumerate(hierarchy.models()):
       r = iotbx.pdb.hierarchy.root()
       mdc = m.detached_copy()
@@ -171,73 +166,17 @@ Example:
         utils.check_for_duplicate_chain_ids(pdb_hierarchy=tmp_r)
       if duplicate_chain_ids:
         utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
-      if keep_hydrogens is False:
-        clean_out = easy_run.fully_buffered(trim,
-                                    stdin_lines=tmp_r.as_pdb_string())
-        build_out = easy_run.fully_buffered(build,
-                                    stdin_lines=clean_out.stdout_lines)
-        input_str = string.join(build_out.stdout_lines, '\n')
-      else:
-        input_str = tmp_r.as_pdb_string()
-      self.pdb_hierarchy = pdb.hierarchy.input(pdb_string=input_str).hierarchy
-      clash_hash={}
-      hbond_hash={}
-      probe_unformatted = easy_run.fully_buffered(probe,
-                         stdin_lines=input_str).stdout_lines
-      for line in probe_unformatted:
-        name, pat, type, srcAtom, targAtom, min_gap, gap, kissEdge2BullsEye, dot2BE, \
-        dot2SC, spike, score, stype, ttype, x, y, z, sbVal, tBval = line.split(":")
-        if (cmp(srcAtom,targAtom) < 0):
-          key = srcAtom+targAtom
-        else:
-          key = targAtom+srcAtom
-        if (type == "so" or type == "bo"):
-          if (float(gap) <= -0.4):
-            try:
-              if (float(gap) < clash_hash[key]):
-                clash_hash[key] = float(gap)
-            except Exception:
-              clash_hash[key] = float(gap)
-        elif (type == "hb"):
-          try:
-            if (float(gap) < hbond_hash[key]):
-              hbond_hash[key] = float(gap)
-          except Exception:
-            hbond_hash[key] = float(gap)
-      clashes = len(clash_hash)
-
-      for k in clash_hash.keys():
-        if k in hbond_hash:
-          clashes=clashes-1
-          clash_hash[k]="Hbonded"
-      bad_clashes = ''
-
-      #sort the output
-      temp = []
-      for k in clash_hash.keys():
-        if not k in hbond_hash:
-          temp.append(k)
-      def get_clash(k):
-        return clash_hash[k]
-      temp_sorted = sorted(temp, key=get_clash)
-      for k in temp_sorted:
-        bad_clashes += k+':'+str(clash_hash[k])+'\n'
-      probe_info = easy_run.fully_buffered(probe_atom,
-        stdin_lines=input_str).raise_if_errors().stdout_lines
-      for line in probe_info :
-        dump, natoms = line.split(":")
-
-      if int(natoms) == 0:
-        clashscore = 0.0
-      else:
-        clashscore = (clashes*1000)/float(natoms)
-      self.clashscore.append(clashscore)
-      self.bad_clashes_list.append(bad_clashes)
-      self.clash_dict[m.id]=clashscore
-      self.list_dict[m.id]=bad_clashes
-    self.clashscore=clashscore
-    self.bad_clashes=bad_clashes
-    self.probe_unformatted = probe_unformatted
+      input_str = tmp_r.as_pdb_string()
+      pcm = probe_clashscore_manager(pdb_string=input_str)
+      self.pdb_hierarchy = pdb.hierarchy.\
+        input(pdb_string=pcm.h_pdb_string).hierarchy
+      self.clashscore.append(pcm.clashscore)
+      self.bad_clashes_list.append(pcm.bad_clashes)
+      self.clash_dict[m.id]=pcm.clashscore
+      self.list_dict[m.id]=pcm.bad_clashes
+    self.clashscore=pcm.clashscore
+    self.bad_clashes=pcm.bad_clashes
+    self.probe_unformatted =pcm.probe_unformatted
     return self.clash_dict, self.list_dict
   #}}}
 
@@ -265,3 +204,91 @@ Example:
       else:
         print >> out, "Bad Clashes >= 0.4 Angstrom MODEL%s" % k
         print >> out, self.list_dict[k]
+
+class probe_clashscore_manager(object):
+  def __init__(self,
+               pdb_string,
+               keep_hydrogens=False):
+    self.trim = \
+      "phenix.reduce -quiet -trim -"
+    self.build = \
+      "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
+    self.probe_txt = \
+      'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
+    self.probe_atom_txt = \
+      'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
+    if not keep_hydrogens:
+      h_pdb_string = self.run_reduce(pdb_string)
+    else:
+      h_pdb_string = pdb_string
+    self.h_pdb_string = h_pdb_string
+    self.run_probe_clashscore(self.h_pdb_string)
+
+  def run_reduce(self, pdb_string):
+    clean_out = easy_run.fully_buffered(self.trim,
+                  stdin_lines=pdb_string)
+    build_out = easy_run.fully_buffered(self.build,
+                  stdin_lines=clean_out.stdout_lines)
+    reduce_str = string.join(build_out.stdout_lines, '\n')
+    return reduce_str
+
+  #def update_clashscore(self, pdb_string):
+  #  self.run_probe_clashscore(pdb_string)
+
+  def run_probe_clashscore(self, pdb_string):
+    clash_hash={}
+    hbond_hash={}
+    clashscore = None
+    probe_unformatted = easy_run.fully_buffered(self.probe_txt,
+                         stdin_lines=pdb_string).stdout_lines
+    self.probe_unformatted = probe_unformatted
+    for line in probe_unformatted:
+      name, pat, type, srcAtom, targAtom, min_gap, gap, \
+      kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
+      ttype, x, y, z, sbVal, tBval = line.split(":")
+      if (cmp(srcAtom,targAtom) < 0):
+        key = srcAtom+targAtom
+      else:
+        key = targAtom+srcAtom
+      if (type == "so" or type == "bo"):
+        if (float(gap) <= -0.4):
+          try:
+            if (float(gap) < clash_hash[key]):
+              clash_hash[key] = float(gap)
+          except Exception:
+            clash_hash[key] = float(gap)
+      elif (type == "hb"):
+        try:
+          if (float(gap) < hbond_hash[key]):
+            hbond_hash[key] = float(gap)
+        except Exception:
+          hbond_hash[key] = float(gap)
+    clashes = len(clash_hash)
+
+    for k in clash_hash.keys():
+      if k in hbond_hash:
+        clashes=clashes-1
+        clash_hash[k]="Hbonded"
+    bad_clashes = ''
+
+    #sort the output
+    temp = []
+    for k in clash_hash.keys():
+      if not k in hbond_hash:
+        temp.append(k)
+    def get_clash(k):
+      return clash_hash[k]
+    temp_sorted = sorted(temp, key=get_clash)
+    for k in temp_sorted:
+      bad_clashes += k+':'+str(clash_hash[k])+'\n'
+    probe_info = easy_run.fully_buffered(self.probe_atom_txt,
+      stdin_lines=pdb_string).raise_if_errors().stdout_lines
+    for line in probe_info :
+      dump, natoms = line.split(":")
+
+    if int(natoms) == 0:
+      clashscore = 0.0
+    else:
+      clashscore = (clashes*1000)/float(natoms)
+    self.clashscore = clashscore
+    self.bad_clashes = bad_clashes

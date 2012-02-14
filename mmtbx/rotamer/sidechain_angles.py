@@ -87,13 +87,21 @@ class SidechainAngles:
         rotamers[rotamer] = [ float(x) for x in self.anglesForRot[key] ]
     return rotamers
 
-  def measureChiAngles(self, res, atom_dict = None):
+  def measureChiAngles(
+        self,
+        res,
+        atom_dict = None,
+        sites_cart = None):
     resName = res.resname.lower().strip()
     try:
       numChis = int(self.chisPerAA[resName])
       values = []
       for i in range(numChis):
-        values.append(self.measureAngle("chi"+str(i+1), res, atom_dict))
+        values.append(self.measureAngle(
+                        angleName="chi"+str(i+1),
+                        res=res,
+                        atom_dict=atom_dict,
+                        sites_cart=sites_cart))
       return values
     except KeyError:
       if self.show_errors: print resName + " is an unknown residue type"
@@ -108,10 +116,19 @@ class SidechainAngles:
 #    except KeyError:
 #      resName + " is unknown"
 
-  def measureAngle(self, *args, **kwds):
-    angleAtoms = self.extract_chi_atoms(*args, **kwds)
+  def measureAngle(self, angleName, res, atom_dict, sites_cart=None):
+    angleAtoms = self.extract_chi_atoms(
+                   angleName=angleName,
+                   res=res,
+                   atom_dict=atom_dict)
+    if sites_cart is None:
+      sites = [a.xyz for a in angleAtoms]
+    else:
+      sites = []
+      for a in angleAtoms:
+        sites.append(sites_cart[a.i_seq])
     return scitbx.math.dihedral_angle(
-      sites=[a.xyz for a in angleAtoms], deg=True)
+      sites=sites, deg=True)
 
   def extract_chi_atoms (self, angleName, res, atom_dict=None) :
     atomNamesMap = None

@@ -7,6 +7,7 @@ import scitbx.lbfgs
 from cctbx import maptbx
 from cctbx.array_family import flex
 from mmtbx import utils
+from mmtbx.validation import clashscore
 
 master_params_str = """\
 real_space_refinement
@@ -294,7 +295,8 @@ class box_refinement_manager(object):
              selection,
              selection_buffer_radius=5,
              box_cushion=2,
-             real_space_gradients_delta=1./4):
+             real_space_gradients_delta=1./4,
+             monitor_clashscore=False):
     sites_cart_moving = self.sites_cart
     selection_within = self.xray_structure.selection_within(
       radius    = selection_buffer_radius,
@@ -304,6 +306,16 @@ class box_refinement_manager(object):
     for i, state in enumerate(selection):
       if state:
         iselection.append(i)
+    if monitor_clashscore:
+      pdb_string = utils.write_pdb_file(
+                     xray_structure=self.xray_structure,
+                     pdb_hierarchy=self.pdb_hierarchy,
+                     write_cryst1_record = False,
+                     selection = selection_within,
+                     return_pdb_string = True)
+      csm = clashscore.probe_clashscore_manager(
+              pdb_string=pdb_string)
+      self.clashscore = csm.clashscore
     box = utils.extract_box_around_model_and_map(
             xray_structure   = self.xray_structure,
             pdb_hierarchy    = self.pdb_hierarchy,
@@ -331,3 +343,13 @@ class box_refinement_manager(object):
       iselection, sites_cart_refined)
     self.xray_structure.set_sites_cart(sites_cart_moving)
     self.sites_cart = self.xray_structure.sites_cart()
+    if monitor_clashscore:
+      pdb_string = utils.write_pdb_file(
+                     xray_structure=self.xray_structure,
+                     pdb_hierarchy=self.pdb_hierarchy,
+                     write_cryst1_record = False,
+                     selection = selection_within,
+                     return_pdb_string = True)
+      csm = clashscore.probe_clashscore_manager(
+              pdb_string=pdb_string)
+      self.clashscore_refined = csm.clashscore

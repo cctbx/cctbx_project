@@ -713,7 +713,7 @@ class torsion_ncs(object):
       "Correcting NCS rotamer outliers",
       out=log)
     r = rotalyze()
-    sa = SidechainAngles(False)
+    #sa = SidechainAngles(False)
     exclude_free_r_reflections = False
     unit_cell = xray_structure.unit_cell()
     mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -739,6 +739,7 @@ class torsion_ncs(object):
     model_score = {}
     model_chis = {}
     fix_list = {}
+    rotamer_targets = {}
     for line in rot_list_model.splitlines():
       res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       model_hash[res]=name
@@ -758,12 +759,15 @@ class torsion_ncs(object):
               if rotamer == None:
                 rotamer = j_key
                 score = j_score
+                target = j_rot
               else:
                 if j_score > score:
                   rotamer = j_key
                   score = j_score
+                  target = j_rot
         if rotamer != None:
           fix_list[res_key] = rotamer
+          rotamer_targets[res_key] = target
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
@@ -772,7 +776,7 @@ class torsion_ncs(object):
             for atom_group in residue_group.atom_groups():
               try:
                 atom_dict = all_dict.get(atom_group.altloc)
-                chis = sa.measureChiAngles(atom_group, atom_dict)
+                chis = r.sa.measureChiAngles(atom_group, atom_dict)
                 if chis is not None:
                   key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
@@ -786,9 +790,13 @@ class torsion_ncs(object):
 
     sites_cart_moving = xray_structure.sites_cart()
     #sites_cart_start = sites_cart_moving.deep_copy()
+    #print fix_list
+    #print rotamer_targets
+    #STOP()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
+          all_dict = r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
             if atom_group.resname == "PRO":
               continue
@@ -796,6 +804,7 @@ class torsion_ncs(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
             if key in fix_list.keys():
+              #print key
               m_chis = model_chis.get(key)
               r_chis = model_chis.get(fix_list[key])
               if m_chis is not None and r_chis is not None:
@@ -844,17 +853,53 @@ class torsion_ncs(object):
                     sites_cart_residue[atom] = new_xyz
                   counter += 1
 
-                brm.refine(selection=selection)
+                sites_cart_moving = sites_cart_moving.set_selected(
+                    residue_iselection, sites_cart_residue)
+                xray_structure.set_sites_cart(sites_cart_moving)
+                rotamer, value = r.evaluate_rotamer(
+                  atom_group=atom_group,
+                  all_dict=all_dict,
+                  sites_cart=sites_cart_moving)
+                brm.refine(selection=selection,
+                           monitor_clashscore=False)
                 sites_cart_refined_residue = \
                   brm.sites_cart.select(residue_iselection)
-
-                if rev.is_better(sites_cart_refined_residue):
+                rotamer, value = r.evaluate_rotamer(
+                  atom_group=atom_group,
+                  all_dict=all_dict,
+                  sites_cart=brm.sites_cart)
+                xray_structure.set_sites_cart(brm.sites_cart)
+                #print rotamer, rotamer_targets[key]
+                #print "%.2f, %.2f" % (brm.clashscore,
+                #                      brm.clashscore_refined)
+                rotamer_match = (rotamer == rotamer_targets[key])
+                if rev.is_better(sites_cart_refined_residue) and \
+                   rotamer_match:
+                  sites_cart_moving = sites_cart_moving.set_selected(
+                    residue_iselection, sites_cart_refined_residue)
+                  xray_structure.set_sites_cart(sites_cart_moving)
+                  mmtbx.utils.assert_xray_structures_equal(
+                    x1 = xray_structure,
+                    x2 = brm.xray_structure)
                   print >> log, "Fixed %s rotamer" % key
                 else:
                   sites_cart_moving = sites_cart_moving.set_selected(
                     residue_iselection, sites_cart_residue_start)
                   xray_structure.set_sites_cart(sites_cart_moving)
                   print >> log, "Skipped %s rotamer" % key
+                sites_cart_temp = \
+                  sites_cart_moving.select(residue_iselection)
+                #print len(sites_cart_temp)
+                #print list(sites_cart_temp)
+    #output_txt = mmtbx.utils.write_pdb_file(
+    #               xray_structure=xray_structure,
+    #               pdb_hierarchy=pdb_hierarchy,
+    #               return_pdb_string = True)
+    #out_file = "test.pdb"
+    #f = file(out_file, "w")
+    #print >> f, output_txt
+    #f.close()
+    #STOP()
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):
     log = self.log
