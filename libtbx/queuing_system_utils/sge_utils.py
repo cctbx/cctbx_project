@@ -65,7 +65,7 @@ class info(task_info):
 class qstat_items(object):
 
   def __init__(self, job_id, prior, name, user, state,
-                     submit, queue, slots, ja_task_id):
+                     submit, queue, slots, ja_task_id, qtype="sge"):
     self.job_id = job_id
     self.prior = prior
     self.name = name
@@ -75,6 +75,7 @@ class qstat_items(object):
     self.queue = queue
     self.slots = slots
     self.ja_task_id = ja_task_id
+    self.qtype = qtype
 
   def counts(self):
     ja_task_id = self.ja_task_id

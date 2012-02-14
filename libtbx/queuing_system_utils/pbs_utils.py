@@ -50,6 +50,44 @@ class chunk_info(object):
       i = (O.pbs_arrayid-1 + O.pbs_arrayid_offset) * O.mpi_num_procs + O.mpi_vpid
     return n, i
 
+# XXX this is probably only going to work with newer versions, e.g. Torque
+def qstat_parse () :
+  from libtbx.queuing_system_utils.sge_utils import qstat_items
+  from libtbx import easy_run
+  from xml.dom import minidom
+  qstat_out = easy_run.fully_buffered(
+    command="qstat -x").raise_if_errors().stdout_lines
+  result = []
+  if (len(qstat_out) == 0):
+    return result
+  xml = minidom.parseString("\n".join(qstat_out))
+  jobs = xml.getElementsByTagName("Job")
+  def get_tag_content (node, tag_name) :
+    node = node.getElementsByTagName(tag_name)[0].childNodes[0]
+    assert (node.nodeType == node.TEXT_NODE)
+    return node.data
+  for job in jobs :
+    id = get_tag_content(job, "Job_Id")
+    name = get_tag_content(job, "Job_Name")
+    user = get_tag_content(job, "Job_Owner").split("@")[0]
+    state = get_tag_content(job, "job_state")
+    prior = get_tag_content(job, "Priority")
+    submit = get_tag_content(job, "start_time")
+    queue = get_tag_content(job, "queue")
+    nodect = get_tag_content(job, "nodect")
+    result.append(qstat_items(
+      job_id=id,
+      prior=prior,
+      name=name,
+      user=user,
+      state=state,
+      submit=submit,
+      queue=queue,
+      slots=nodect,
+      ja_task_id="",
+      qtype="pbs")) # XXX is there any equivalent for this?
+  return result
+
 if (__name__ == "__main__"):
   n,i = chunk_info().show(prefix="*** ", even_if_none=True).as_n_i_pair()
   print "n,i:", n,i
