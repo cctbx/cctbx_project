@@ -77,6 +77,12 @@ class App(wx_viewer.App):
     import libtbx.load_env
     command_line = (libtbx_option_parser(
       usage="%s [options] pdb_file" % libtbx.env.dispatcher_name)
+      .option(None, "--model_id",
+        action="store",
+        type="str",
+        default=None,
+        help="only show model with given id",
+        metavar="STR")
       .option(None, "--labels_threshold",
         action="store",
         type="int",
@@ -96,6 +102,20 @@ class App(wx_viewer.App):
     print file_name
     print "  number of models:", O.pdb_hierarchy.models_size()
     print "  number of atoms:", O.pdb_atoms.size()
+    if (O.co.model_id is not None):
+      mid = O.co.model_id.strip()
+      from libtbx.str_utils import show_string
+      print "Selecting model with id %s" % show_string(mid)
+      for mdl in O.pdb_hierarchy.models():
+        if (mdl.id.strip() == mid):
+          O.pdb_hierarchy = iotbx.pdb.hierarchy.root()
+          O.pdb_hierarchy.append_model(mdl)
+          O.pdb_atoms = O.pdb_hierarchy.atoms()
+          print "  number of atoms:", O.pdb_atoms.size()
+          break
+      else:
+        raise RuntimeError(
+          "--model-id=%s is not in the pdb file." % show_string(mid))
     super(App, O).__init__(title=libtbx.env.dispatcher_name)
 
   def init_view_objects(O):
