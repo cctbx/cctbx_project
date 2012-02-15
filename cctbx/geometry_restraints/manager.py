@@ -22,6 +22,7 @@ class manager(object):
         shell_sym_tables=None,
         nonbonded_params=None,
         nonbonded_types=None,
+        nonbonded_charges=None,
         nonbonded_function=None,
         nonbonded_distance_cutoff=None,
         nonbonded_buffer=1,
@@ -44,6 +45,10 @@ class manager(object):
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None and site_symmetry_table is not None):
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
+    if (nonbonded_types is not None) :
+      if (nonbonded_charges is None) :
+        nonbonded_charges = flex.int(nonbonded_types.size(), 0)
+      assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals())
     self.reset_internals()
 
@@ -205,7 +210,8 @@ class manager(object):
         sym_excl_indices=None,
         donor_acceptor_excl_groups=None,
         site_symmetry_table=None,
-        nonbonded_types=None):
+        nonbonded_types=None,
+        nonbonded_charges=None):
     assert n_additional_sites >= 0
     assert (model_indices is None) == (self.model_indices is None)
     assert (conformer_indices is None) == (self.conformer_indices is None)
@@ -255,6 +261,12 @@ class manager(object):
       assert nonbonded_types.size() == n_additional_sites
       nonbonded_types = self.nonbonded_types.concatenate(
         nonbonded_types)
+    if (self.nonbonded_charges is not None) :
+      if (nonbonded_charges is None) :
+        nonbonded_charges = flex.int(n_additional_sites, 0)
+      assert (nonbonded_charges.size() == n_additional_sites)
+      nonbonded_charges = self.nonbonded_charges.concatenate(
+        nonbonded_charges)
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=model_indices,
@@ -266,6 +278,7 @@ class manager(object):
       shell_sym_tables=shell_sym_tables,
       nonbonded_params=self.nonbonded_params,
       nonbonded_types=nonbonded_types,
+      nonbonded_charges=nonbonded_charges,
       nonbonded_function=self.nonbonded_function,
       nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
       nonbonded_buffer=self.nonbonded_buffer,
@@ -325,6 +338,10 @@ class manager(object):
       selected_nonbonded_types = self.nonbonded_types.select(
         iselection)
       n_seqs[self.nonbonded_types.size()] += 1
+    if (self.nonbonded_charges is not None) :
+      selected_nonbonded_charges = self.nonbonded_charges.select(
+        iselection)
+      n_seqs[self.nonbonded_charges.size()] += 1
     n_seq = None
     def get_n_seq():
       if (len(n_seqs) == 0):
@@ -375,6 +392,7 @@ class manager(object):
       shell_sym_tables=selected_shell_sym_tables,
       nonbonded_params=self.nonbonded_params,
       nonbonded_types=selected_nonbonded_types,
+      nonbonded_charges=selected_nonbonded_charges,
       nonbonded_function=self.nonbonded_function,
       nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
       nonbonded_buffer=self.nonbonded_buffer,
@@ -403,6 +421,7 @@ class manager(object):
       shell_sym_tables=[t.discard_symmetry() for t in self.shell_sym_tables],
       nonbonded_params=self.nonbonded_params,
       nonbonded_types=self.nonbonded_types,
+      nonbonded_charges=self.nonbonded_charges,
       nonbonded_function=self.nonbonded_function,
       nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
       nonbonded_buffer=self.nonbonded_buffer,
@@ -622,6 +641,7 @@ class manager(object):
           donor_acceptor_excl_groups=self.donor_acceptor_excl_groups,
           nonbonded_params=self.nonbonded_params,
           nonbonded_types=self.nonbonded_types,
+          nonbonded_charges=self.nonbonded_charges,
           nonbonded_distance_cutoff_plus_buffer
             =current_nonbonded_distance_cutoff_plus_buffer,
           min_cubicle_edge=self.min_cubicle_edge)

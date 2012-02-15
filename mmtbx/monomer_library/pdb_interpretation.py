@@ -512,6 +512,7 @@ class type_symbol_registry_base(object):
     self.n_resolved_conflicts = 0
     self.source_labels = flex.std_string(symbols.size())
     self.source_n_expected_atoms = flex.int(symbols.size(), -1)
+    self.charges = flex.int(symbols.size(), 0)
 
   def discard_tables(self):
     self.source_labels = None
@@ -519,6 +520,9 @@ class type_symbol_registry_base(object):
 
   def assign_directly(self, i_seq, symbol):
     self.symbols[i_seq] = symbol
+
+  def assign_charge (self, i_seq, charge=0) :
+    self.charges[i_seq] = charge
 
   def assign_from_monomer_mapping(self, conf_altloc, mm):
     atom_dict = mm.monomer_atom_dict
@@ -563,6 +567,14 @@ class type_symbol_registry_base(object):
         self.symbols[i_seq] = symbol
         self.source_labels[i_seq] = source_label
         self.source_n_expected_atoms[i_seq] = source_n_expected_atoms
+        charge_str = atom.charge_tidy(strip=True)
+        if (charge_str is not None) and (len(charge_str) != 0) :
+          charge = 0
+          if ("-" in charge_str) :
+            charge = - int(charge_str.replace("-", ""))
+          elif ("+" in charge_str) :
+            charge = int(charge_str.replace("+", ""))
+          self.charges[i_seq] = charge
       elif (raise_conflict):
         source = "with residue name %s" % source_label
         if (prev_source_label == ""):
@@ -1779,6 +1791,9 @@ def ener_lib_as_nonbonded_params(
       r = getattr(energy_lib_atom, pref2)
     if (r is not None):
       params.radius_table[atom_type] = r
+    r_ionic = getattr(energy_lib_atom, "ion_radius")
+    if (r_ionic is not None) :
+      params.ionic_radius_table[atom_type] = r_ionic
     # N = 0, D = 1, A = 2, B = 3, H = 4
     if getattr(energy_lib_atom, "hb_type") == 'N':
       params.donor_acceptor_table[atom_type] = 0
@@ -2943,6 +2958,7 @@ class build_all_chain_proxies(object):
       nonbonded_params=geometry_restraints.nonbonded_params(
         default_distance=1),
       nonbonded_types=flex.std_string(conformer_indices.size()),
+      nonbonded_charges=flex.int(conformer_indices.size(), 0),
       nonbonded_distance_cutoff_plus_buffer=disulfide_distance_cutoff,
       min_cubicle_edge=5,
       shell_asu_tables=[pair_asu_table])
@@ -3714,6 +3730,7 @@ class build_all_chain_proxies(object):
       shell_sym_tables=shell_sym_tables,
       nonbonded_params=nonbonded_params,
       nonbonded_types=self.nonbonded_energy_type_registry.symbols,
+      nonbonded_charges=self.nonbonded_energy_type_registry.charges,
       nonbonded_function=geometry_restraints.prolsq_repulsion_function(
         c_rep=nonbonded_weight),
       nonbonded_distance_cutoff=self.params.nonbonded_distance_cutoff,

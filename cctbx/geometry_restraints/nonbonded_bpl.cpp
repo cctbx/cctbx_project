@@ -31,6 +31,7 @@ namespace {
           (arg("nonbonded_types")))
         .def_readonly("distance_table", &w_t::distance_table)
         .def_readonly("radius_table", &w_t::radius_table)
+        .def_readonly("ionic_radius_table", &w_t::ionic_radius_table)
         .def_readonly("donor_acceptor_table", &w_t::donor_acceptor_table)
         .def_readwrite("factor_1_4_interactions",
                   &w_t::factor_1_4_interactions)
