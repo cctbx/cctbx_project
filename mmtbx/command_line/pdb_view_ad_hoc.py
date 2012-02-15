@@ -19,15 +19,19 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       for atom in rg.atoms():
         atom.tmp = i
     O.points = pdb_atoms.extract_xyz()
-    rg_done = set()
-    for atom in pdb_atoms:
-      i = atom.tmp
-      if (i not in rg_done):
-        rg_done.add(i)
-        l = atom.id_str()
-      else:
-        l = atom.name
-      O.labels.append(l)
+    if (app.co.i_seq_labels):
+      for i in xrange(O.points.size()):
+        O.labels.append(str(i))
+    else:
+      rg_done = set()
+      for atom in pdb_atoms:
+        i = atom.tmp
+        if (i not in rg_done):
+          rg_done.add(i)
+          l = atom.id_str()
+        else:
+          l = atom.name
+        O.labels.append(l)
     from cctbx.crystal.distance_based_connectivity import \
       build_simple_two_way_bond_sets
     bond_sets = build_simple_two_way_bond_sets(
@@ -74,6 +78,9 @@ class App(wx_viewer.App):
         default=20,
         help="do not show atom labels if more than given number of atoms",
         metavar="INT")
+      .option(None, "--i_seq_labels",
+        action="store_true",
+        default=False)
     ).process(args=args, nargs=1)
     O.co = command_line.options
     file_name = command_line.args[0]
