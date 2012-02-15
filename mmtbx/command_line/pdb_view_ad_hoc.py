@@ -19,9 +19,14 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       for atom in rg.atoms():
         atom.tmp = i
     O.points = pdb_atoms.extract_xyz()
-    if (app.co.i_seq_labels):
-      for i in xrange(O.points.size()):
-        O.labels.append(str(i))
+    if (app.co.serial_labels):
+      m = ""
+      need_m = (app.pdb_hierarchy.models_size() != 1)
+      for mdl in app.pdb_hierarchy.models():
+        if (need_m): m = mdl.id.strip() + ":"
+        for i in xrange(mdl.atoms_size()):
+          O.labels.append(m+str(i))
+      assert len(O.labels) == O.points.size()
     else:
       rg_done = set()
       for atom in pdb_atoms:
@@ -78,7 +83,7 @@ class App(wx_viewer.App):
         default=20,
         help="do not show atom labels if more than given number of atoms",
         metavar="INT")
-      .option(None, "--i_seq_labels",
+      .option(None, "--serial_labels",
         action="store_true",
         default=False)
     ).process(args=args, nargs=1)
