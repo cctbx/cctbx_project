@@ -72,7 +72,9 @@ namespace cctbx { namespace geometry_restraints {
     get_nonbonded_distance(
       std::string const& type_i,
       std::string const& type_j,
-      bool donor_acceptor_adjust) const
+      bool donor_acceptor_adjust,
+      int charge_i=0,
+      int charge_j=0) const
     {
       nonbonded_distance_table::const_iterator
         distance_dict = distance_table.find(type_i);
@@ -92,11 +94,21 @@ namespace cctbx { namespace geometry_restraints {
           return dict_entry->second;
         }
       }
-      geometry_restraints::nonbonded_radius_table::const_iterator
+      geometry_restraints::nonbonded_radius_table::const_iterator radius_i;
+      if (charge_i != 0) {
+        radius_i = ionic_radius_table.find(type_i);
+      }
+      if ((charge_i == 0) || (radius_i == ionic_radius_table.end())) {
         radius_i = radius_table.find(type_i);
+      }
       if (radius_i != radius_table.end()) {
-        geometry_restraints::nonbonded_radius_table::const_iterator
+        geometry_restraints::nonbonded_radius_table::const_iterator radius_j;
+        if (charge_j != 0) {
+          radius_j = ionic_radius_table.find(type_j);
+        }
+        if ((charge_j == 0) || (radius_j == ionic_radius_table.end())) {
           radius_j = radius_table.find(type_j);
+        }
         if (radius_j != radius_table.end()) {
           //return radius_i->second + radius_j->second;
           return_vdw = radius_i->second + radius_j->second;
@@ -164,6 +176,8 @@ namespace cctbx { namespace geometry_restraints {
     nonbonded_distance_table distance_table;
     //! Table of VdW radii (given one energy type).
     nonbonded_radius_table radius_table;
+    //! Table of VdW radii for ions
+    nonbonded_radius_table ionic_radius_table;
     //! Table of Donor/Acceptor status given one energy type
     nonbonded_radius_table donor_acceptor_table; //re-use table type
     //! Multiplicative attenuation factor for 1-4 interactions.

@@ -64,6 +64,7 @@ namespace {
           af::const_ref<std::size_t> const&,
           nonbonded_params const&,
           af::const_ref<std::string> const&,
+          af::const_ref<int> const&,
           double,
           double,
           std::vector<crystal::pair_asu_table<> > const&>((
@@ -73,6 +74,7 @@ namespace {
             arg("donor_acceptor_excl_groups"),
             arg("nonbonded_params"),
             arg("nonbonded_types"),
+            arg("nonbonded_charges"),
             arg("nonbonded_distance_cutoff_plus_buffer"),
             arg("min_cubicle_edge"),
             arg("shell_asu_tables"))))

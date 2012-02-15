@@ -1257,6 +1257,7 @@ class pair_proxies(object):
         donor_acceptor_excl_groups=None,
         nonbonded_params=None,
         nonbonded_types=None,
+        nonbonded_charges=None,
         nonbonded_distance_cutoff_plus_buffer=None,
         min_cubicle_edge=5):
     self.bond_proxies = None
@@ -1277,6 +1278,9 @@ class pair_proxies(object):
       assert nonbonded_distance_cutoff_plus_buffer is not None
       assert shell_asu_tables is not None
       assert len(shell_asu_tables) > 0
+      if (nonbonded_charges is None) :
+        nonbonded_charges = flex.int(nonbonded_types.size(), 0)
+      assert (nonbonded_types.size() == nonbonded_charges.size())
       self.nonbonded_proxies = nonbonded_sorted_asu_proxies(
         model_indices=model_indices,
         conformer_indices=conformer_indices,
@@ -1284,6 +1288,7 @@ class pair_proxies(object):
         donor_acceptor_excl_groups=donor_acceptor_excl_groups,
         nonbonded_params=nonbonded_params,
         nonbonded_types=nonbonded_types,
+        nonbonded_charges=nonbonded_charges,
         nonbonded_distance_cutoff_plus_buffer=\
           nonbonded_distance_cutoff_plus_buffer,
         min_cubicle_edge=min_cubicle_edge,

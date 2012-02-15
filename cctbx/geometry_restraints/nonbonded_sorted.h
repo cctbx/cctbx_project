@@ -42,6 +42,7 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<std::size_t> const& donor_acceptor_excl_groups,
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
+        af::const_ref<int> const& nonbonded_charges,
         double nonbonded_distance_cutoff_plus_buffer,
         double min_cubicle_edge,
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables)
@@ -112,7 +113,7 @@ namespace cctbx { namespace geometry_restraints {
           if (   shell_asu_tables_size > 2
               && shell_asu_tables[2].contains(pair)) {
             nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair,
+              nonbonded_params, nonbonded_types, nonbonded_charges, pair,
               /*is_1_4_interaction*/ true, /*donor_acceptor_adjust*/ false);
             if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
               min_vdw_distance = proxy.vdw_distance;
@@ -125,7 +126,7 @@ namespace cctbx { namespace geometry_restraints {
           }
           {
             nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair,
+              nonbonded_params, nonbonded_types, nonbonded_charges, pair,
               /*is_1_4_interaction*/ false, donor_acceptor_adjust);
             if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
               min_vdw_distance = proxy.vdw_distance;
@@ -143,14 +144,17 @@ namespace cctbx { namespace geometry_restraints {
       make_nonbonded_asu_proxy(
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
+        af::const_ref<int> const& nonbonded_charges,
         direct_space_asu::asu_mapping_index_pair const& pair,
         bool is_1_4_interaction,
         bool donor_acceptor_adjust)
       {
         std::string const& type_i = nonbonded_types[pair.i_seq];
         std::string const& type_j = nonbonded_types[pair.j_seq];
+        int charge_i = nonbonded_charges[pair.i_seq];
+        int charge_j = nonbonded_charges[pair.j_seq];
         double distance = nonbonded_params.get_nonbonded_distance(
-          type_i, type_j, donor_acceptor_adjust);
+          type_i, type_j, donor_acceptor_adjust, charge_i, charge_j);
         if (distance != -1) {
           return nonbonded_asu_proxy(
             pair,
