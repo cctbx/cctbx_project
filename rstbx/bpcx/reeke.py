@@ -24,7 +24,8 @@ class reeke_model:
         self._axis = axis
 
         # the resolution limit
-        self._dmin = dmin
+        self._dstarmax = 1 / dmin
+        self._dstarmax2 = self._dstarmax**2
 
         # margin by which to expand limits. Mosflm uses 3. Can play with
         # this value to see what difference it makes - perhaps it is to
@@ -51,7 +52,11 @@ class reeke_model:
         self._res_p_lim_beg = None
         self._res_p_lim_end = None
 
+        # quantities that are constant with p
+        self._cp = None
+
         # looping p limits
+
         self._p_lim = None
 
         return
@@ -111,12 +116,35 @@ class reeke_model:
 
         return col1, col2, col3
 
+    def _solve_quad(self, a, b, c):
+        """Robust solution for real roots only of a quadratic in the form
+        (ax^2 + bx + c)."""
+
+        discriminant = b**2 - 4 * a * c
+
+        if discriminant > 0:
+            sign = cmp(b, 0)
+            if sign == 0: sign = 1.0
+            q = -0.5 * (b + sign * math.sqrt(discriminant))
+            x1 = q / a if a != 0 else None
+            x2 = c / q if q != 0 else None
+            return [x1, x2]
+
+        elif discriminant == 0:
+            return [(-b) / (2 * a)] * 2
+
+        else:
+            return [None]
+
+
     def _p_limits(self):
         """Calculate the values of p at which planes of constant p are
         tangential to the Ewald sphere, and values of p at which planes
         of constant p touch the circle of intersection between the Ewald
         and resolution limiting sphere. Note p is the reciprocal cell
-        axis given by the first column of the permuted orientation matrix."""
+        axis given by the first column of the permuted orientation matrix.
+        Set the limits as attributes and return a single set of overall
+        limits."""
 
         # Calculate unit vectors normal to planes of constant p, ensuring
         # they point in the direction of increasing p.
@@ -171,7 +199,7 @@ class reeke_model:
 
         # better way to get sin_2theta?
         # also need some sanity checks in case dmin is ridiculous
-        sin_theta = self._wavelength / (2.0 * self._dmin)
+        sin_theta = 0.5 * self._wavelength * self._dstarmax
         sin_2theta = math.sin(2.0 * math.asin(sin_theta))
 
         e = 2.0 * sin_theta**2 * dp_beg
@@ -191,19 +219,104 @@ class reeke_model:
         p_lim_end = sorted(self._ewald_p_lim_end + self._res_p_lim_end)[1:3]
 
         # single set of limits covering overall range
-        self._p_lim = sorted(p_lim_beg + p_lim_end)[0::3]
-        self._p_lim[0] = int(self._p_lim[0]) - self._margin
-        self._p_lim[1] = int(self._p_lim[1]) + self._margin
+        p_lim = sorted(p_lim_beg + p_lim_end)[0::3]
+        p_lim[0] = int(p_lim[0]) - self._margin
+        p_lim[1] = int(p_lim[1]) + self._margin
 
-        return
+        return p_lim
 
-    def _q_limits(self):
+    def _q_limits(self, p):
         """Calculate the values of q at which lines of constant p, q are
         tangential to the circle intersecting the Ewald sphere at plane p,
         and values of q at which lines of constant p, q are tangential to
-        the circle intersecting the resolution limiting sphere at plane p."""
+        the circle intersecting the resolution limiting sphere at plane p.i
+        Return the appropriate overall limits."""
 
         # First the resolution limits. Set up the quadratic to solve
+
+        a = self._cp[6]
+        b = 2.0 * p * self._cp[5]
+        c = p**2 * self._cp[3] + self._cp[0] * self._dstarmax2
+
+        res_q_lim = self._solve_quad(a, b, c)
+        res_q_lim = sorted([item for item in res_q_lim \
+                            if item is not None])
+        if len(res_q_lim) == 0: return None
+
+        # Extend limits by the margin, ensuring there is a range even for
+        # a single quadratic root
+        res_q_lim = [int(res_q_lim[0]) - max(self._margin, 1),
+                     int(res_q_lim[-1]) + max(self._margin, 1)]
+
+        # Ewald sphere limits for the beginning orientation
+
+        b = 2.0 * (self._cp[4][0] + p * self._cp[5])
+        c = self._cp[1][0] + p * (2 * self._cp[2][0] + p * self._cp[3])
+
+        ewald_q_lim_beg = self._solve_quad(a, b, c)
+
+        # Ewald sphere limits for the end orientation
+
+        b = 2.0 * (self._cp[4][1] + p * self._cp[5])
+        c = self._cp[1][1] + p * (2 * self._cp[2][1] + p * self._cp[3])
+
+        ewald_q_lim_end = self._solve_quad(a, b, c)
+
+        # Determine the overall Ewald limits
+        ewald_q_lim = sorted([item for item in ewald_q_lim_beg + \
+                              ewald_q_lim_end if item is not None])
+        if len(ewald_q_lim) > 0:
+            ewald_q_lim = [int(ewald_q_lim[0]) - max(self._margin, 1),
+                           int(ewald_q_lim[-1]) + max(self._margin, 1)]
+
+        else:
+            return None
+
+        # Choose most restrictive of Ewald and res limits. The expansion of
+        # limits by the margin ensures that we have a 4 element list here
+
+        q_lim = sorted(res_q_lim + ewald_q_lim)
+        q_lim = [q_lim[1], q_lim[2]]
+
+        return q_lim
+
+    def _r_limits(self, p, q, cq):
+        """Calculate the values of r at which lines of constant p, q
+        intersect the resolution limiting and the Ewald spheres, and
+        return the appropriate overall limits"""
+
+        # First the resolution limits. Set up the quadratic to solve
+
+        a = self._cp[0]
+        b = cq[0] + q * self._cp[8]
+        c = cq[1] + q**2 * self._cp[10] + q * cq[2] - self._dstarmax2
+
+        res_r_lim = self._solve_quad(a, b, c)
+        res_r_lim = sorted([item for item in res_r_lim if item is not None])
+        if len(res_r_lim) == 0: return None
+
+        # Extend limits by the margin, ensuring there is a range even for
+        # a single quadratic root
+        res_r_lim = [int(res_r_lim[0]) - max(self._margin, 1),
+                     int(res_r_lim[-1]) + max(self._margin, 1)]
+
+       # Ewald sphere limits for the beginning orientation
+
+        b =  cq[0] + q * self._cp[8] + self._cp[12][0]
+        c =  cq[1] + q * (cq[2] + self._cp[13][0]) + q**2 * self._cp[10] + cq[3][0]
+
+        ewald_r_lim_beg = self._solve_quad(a, b, c)
+
+        # Alternative way to calculate - as used by Mosflm. Are they equal?
+
+        # Ewald sphere limits for the end orientation
+
+        b = cq[0] + q * self._cp[8] + self._cp[12][0]
+        c =  cq[1] + q * (cq[2] + self._cp[13][1]) + q**2 * self._cp[10] + cq[3][1]
+
+        ewald_r_lim_end = self._solve_quad(a, b, c)
+
+        return ewald_r_lim_beg, ewald_r_lim_end
 
     def generate_indices(self, phi_beg, phi_end):
         """Determine looping limits for indices h, k and l using the
@@ -287,30 +400,82 @@ class reeke_model:
         # intersection of a line of constant p, q index with the Ewald sphere. It
         # is efficient to calculate these before the outer loop. So, calculate T
         # for both beginning and end orientations
-        t_beg = pp_beg.transpose() * pp_beg
-        t_end = pp_end.transpose() * pp_end
+        t_beg = (pp_beg.transpose() * pp_beg).as_list_of_lists()
+        t_end = (pp_end.transpose() * pp_end).as_list_of_lists()
+
+        # quantities that are constant with p
+        self._cp = [(t_beg[2][2]), \
+                    (t_beg[2][3]**2, t_end[2][3]**2), \
+                    (t_beg[0][2] * t_beg[2][3] - t_beg[0][3] * t_beg[2][2], \
+                     t_end[0][2] * t_end[2][3] - t_end[0][3] * t_end[2][2]), \
+                    (t_beg[0][2]**2 - t_beg[0][0] * t_beg[2][2]), \
+                    (t_beg[1][2] * t_beg[2][3] - t_beg[1][3] * t_beg[2][2], \
+                     t_end[1][2] * t_end[2][3] - t_end[1][3] * t_end[2][2]), \
+                    (t_beg[0][2] * t_beg[1][2] - t_beg[0][1] * t_beg[2][2]),
+                    (t_beg[1][2]**2 - t_beg[1][1] * t_beg[2][2]), \
+                    (2.0 * t_beg[0][2]), \
+                    (2.0 * t_beg[1][2]), \
+                    (t_beg[0][0]), \
+                    (t_beg[1][1]), \
+                    (2.0 * t_beg[0][1]), \
+                    (2.0 * t_beg[2][3], 2.0 * t_end[2][3]), \
+                    (2.0 * t_beg[1][3], 2.0 * t_end[1][3]), \
+                    (2.0 * t_beg[0][3], 2.0 * t_end[0][3])]
+        #_cp[0]   t33
+        #_cp[1]   R00_beg, R00_end
+        #_cp[2]   R01_beg, R01_end
+        #_cp[3]   R02
+        #_cp[4]   R10_beg, R10_end
+        #_cp[5]   R11
+        #_cp[6]   R2
+        #_cp[7]   2 t13
+        #_cp[8]   2 t23
+        #_cp[9]   t11
+        #_cp[10]  t22
+        #_cp[11]  2 t12
+        #_cp[12]  2 t34_beg, 2 t34_end
+        #_cp[13]  2 t24_beg, 2 t24_end
+        #_cp[14]  2 t14_beg, 2 t14_end
 
         # The outer loop is between limits for the axis most closely parallel,
         # or antiparallel, to the X-ray beam, which is called 'p'.
 
         # Determine the limiting values of p
-        self._p_limits()
-        p_lim = self.get_all_p_limits()
+        p_lim = self._p_limits()
+        x = self.get_all_p_limits()
         print "Ewald sphere limits for p index are p ="
-        print "%.3f, %.3f for the start orientation" % p_lim[0]
-        print "%.3f, %.3f for the end orientation" % p_lim[1]
+        print "%.3f, %.3f for the start orientation" % x[0]
+        print "%.3f, %.3f for the end orientation" % x[1]
 
         print "Limiting sphere limits for p index are p ="
-        print "%.3f, %.3f for the start orientation" % p_lim[2]
-        print "%.3f, %.3f for the end orientation" % p_lim[3]
+        print "%.3f, %.3f for the start orientation" % x[2]
+        print "%.3f, %.3f for the end orientation" % x[3]
 
-        print "chosen looping limits", self._p_lim
+        print "chosen looping limits", p_lim
 
         # loop over p
-        for p in range(self._p_lim[0], self._p_lim[1] + 1):
+        for p in range(p_lim[0], p_lim[1] + 1):
+
+            # quantities that vary with p but are constant with q
+            cq = [(p * self._cp[7]), \
+                  (p**2 * self._cp[9]), \
+                  (p * self._cp[11]), \
+                  (p * self._cp[14][0], p * self._cp[14][1])]
+            #cq[0]    2 p t13
+            #cq[1]    p^2 t11
+            #cq[2]    2 p t12
+            #cq[3]    2 p t14
 
             # find the limiting values of q
-            self._q_limits()
+            q_lim = self._q_limits(p)
+
+            # loop over q
+            if q_lim is None: continue
+            for q in range(q_lim[0], q_lim[1] + 1):
+
+                # find the limiting values of r
+                r_lim = self._r_limits(p, q, cq)
+                print "for p = %d, q = %d, r_lim are " % (p, q), r_lim
         return
 
 
@@ -321,7 +486,7 @@ if __name__ == '__main__':
     ub = matrix.sqr([-0.0133393674072, -0.00541609051856, -0.00367748834997,
                     0.00989309470346, 0.000574825936669, -0.0054505379664,
                     0.00475395109417, -0.0163935257377, 0.00102384915696])
-    s0 = matrix.col([0.00237878589035, 1.55544539299e-16,-1.09015329696])
+    s0 = matrix.col([0.00237878589035, 1.55544539299e-16, 1.09015329696])
     dmin = 1.20117776325
     r = reeke_model(ub, axis, s0, dmin)
 
