@@ -40,7 +40,8 @@ class common_mode_correction(object):
                dark_path=None,
                dark_stddev=None,
                gain_map_path=None,
-               cache_image=True):
+               cache_image=True,
+               roi=None):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -80,7 +81,7 @@ class common_mode_correction(object):
     self.sum_common_mode = 0
     self.sumsq_common_mode = 0
     self.wavelength = None # The current wavelength - set by self.event()
-    self.roi = None # used to ignore a section in chebyshev fit
+    self.roi = cspad_tbx.getOptROI(roi) # used to ignore the signal region in chebyshev fit
 
     assert self.common_mode_correction in \
         ("gaussian", "mean", "median", "mode", "none", "chebyshev")
@@ -342,12 +343,29 @@ class common_mode_correction(object):
             if section_mask.count(True) == 0: continue
 
             if self.common_mode_correction == "chebyshev":
-              chebyshev_corrected = self.chebyshev_fit(section_img, section_mask)
-              section_img.as_1d().copy_selected(section_mask.as_1d().iselection(), chebyshev_corrected.as_1d())
-              self.cspad_img.matrix_paste_block_in_place(
-                block=section_img,
-                i_row=i_row,
-                i_column=i_column)
+              assert len(self.sections[q]) == 2
+              if s == 0:
+                section_imgs = [section_img]
+                section_masks = [section_mask]
+                i_rows = [i_row]
+                i_columns = [i_column]
+                continue
+              else:
+                section_imgs.append(section_img)
+                section_masks.append(section_mask)
+                i_rows.append(i_row)
+                i_columns.append(i_column)
+
+                chebyshev_corrected_imgs = self.chebyshev_common_mode(
+                  section_imgs, section_masks)
+                for i in range(2):
+                  section_imgs[i].as_1d().copy_selected(
+                    section_masks[i].as_1d().iselection(),
+                    chebyshev_corrected_imgs[i].as_1d())
+                  self.cspad_img.matrix_paste_block_in_place(
+                    block=section_imgs[i],
+                    i_row=i_rows[i],
+                    i_column=i_columns[i])
 
             else:
               common_mode = self.common_mode(
@@ -409,28 +427,92 @@ class common_mode_correction(object):
       pyplot.show()
 
 
-  def chebyshev_fit(self, img, mask):
-    from scitbx.math import chebyshev_polynome
-    from scitbx.math import chebyshev_lsq_fit
-    masked_img = img.deep_copy()
-    masked_img.set_selected(~mask, 0.)
-    n_masked_rows = flex.sum(masked_img, axis=1).count(0)
-    #print "n_masked_rows:", n_masked_rows
-    rows, columns = masked_img.all()
-    sum_x = flex.sum(masked_img, axis=0)
-    sum_x /= (rows - n_masked_rows)
-    assert img.all() == (185, 391) # XXX
-    # fit one polynome for both asics
-    y_obs = sum_x[:194] + sum_x[197:]
-    y_obs /= 2
+  def chebyshev_common_mode(self, imgs, masks):
+    assert len(imgs) == 2
+    assert len(masks) == 2
+    corrected_imgs = []
+    # first fit the variation along the columns of the detector
+    sum_y = flex.double()
+    for i, (img, mask) in enumerate(zip(imgs, masks)):
+      img -= flex.mean(img)
+      masked_img = img.deep_copy()
+      masked_img.set_selected(~mask, 0.)
+      rows, columns = masked_img.all()
+      sum_y.extend(flex.sum(masked_img, axis=1))
+    # if the region of interest is across a row, use the noise from the
+    # same row on the other section
+    midpoint = sum_y.size()//2
+    for i in range(0, midpoint):
+      if sum_y[i] == 0:
+        sum_y[i] == sum_y[i + midpoint]
+    for i in range(midpoint, sum_y.size()):
+      if sum_y[i] == 0:
+        sum_y[i] == sum_y[midpoint - i]
+    # we assume that both sections have the same variation
+    y_obs = sum_y[:midpoint] + sum_y[midpoint:]
+    y_obs /= (2 * columns)
     x_obs = flex.double(range(y_obs.size()))
     w_obs = flex.double(x_obs.size(), 1)
-    # mask out the edges and the gap down the middle from the fit
-    w_obs.set_selected(y_obs == 0, 1e16)
+    # don't let the edge pixels influence the fit
     w_obs[0] = 1e16
     w_obs[-1] = 1e16
-    #n_terms = None
+    y_fitted = self.chebyshev_fit(x_obs, y_obs, w_obs, n_terms=5)
+
+    y_correction = flex.double()
+    for i in range(columns):
+      y_correction.extend(y_fitted)
+    y_correction.reshape(flex.grid(columns, rows))
+    y_correction.matrix_transpose_in_place()
+    if 0:
+      from matplotlib import pyplot
+      pyplot.imshow(y_correction.as_numpy_array())
+      pyplot.show()
+
+    # now fit the variation along the rows
     n_terms = 10
+    for img, mask in zip(imgs, masks):
+      img -= y_correction
+      masked_img = img.deep_copy()
+      masked_img.set_selected(~mask, 0.)
+      n_masked_rows = flex.sum(masked_img, axis=1).count(0)
+      rows, columns = masked_img.all()
+      sum_x = flex.sum(masked_img, axis=0)
+      sum_x /= (rows - n_masked_rows)
+      assert img.all() == (185, 391) # XXX
+      # fit one polynome for both asics
+      x_obs = sum_x[:194] + sum_x[197:]
+      x_obs /= 2
+      y_obs = flex.double(range(x_obs.size()))
+      w_obs = flex.double(y_obs.size(), 1)
+      # mask out the edges and the gap down the middle from the fit
+      w_obs.set_selected(y_obs == 0, 1e16)
+      w_obs[0] = 1e16
+      w_obs[-1] = 1e16
+      x_fitted = self.chebyshev_fit(y_obs, x_obs, w_obs, n_terms=10)
+      x_calc = x_fitted.deep_copy()
+      x_calc.extend(flex.double([0,0,0])) # The 3 pixel gap between asics
+      x_calc.extend(x_fitted)
+
+      correction = flex.double()
+      for i in range(rows):
+        correction.extend(x_calc)
+      correction.reshape(img.accessor())
+      zero_pixels_sel = (img == 0)
+      img -= correction
+      if 0:
+        from matplotlib import pyplot
+        pyplot.imshow(correction.as_numpy_array())
+        pyplot.show()
+
+      img.set_selected(zero_pixels_sel, 0)
+      corrected_imgs.append(img)
+
+    return corrected_imgs
+
+
+  def chebyshev_fit(self, x_obs, y_obs, w_obs, n_terms=None):
+    from scitbx.math import chebyshev_polynome
+    from scitbx.math import chebyshev_lsq_fit
     if n_terms is None:
       # determining the number of terms takes much, much longer than the fit
       n_terms = chebyshev_lsq_fit.cross_validate_to_determine_number_of_terms(
@@ -443,27 +525,15 @@ class common_mode_correction(object):
     fit_funct = chebyshev_polynome(
       n_terms, fit.low_limit, fit.high_limit, fit.coefs)
     y_fitted = fit_funct.f(x_obs)
-    y_calc = y_fitted.deep_copy()
-    y_calc.extend(flex.double([0,0,0])) # The 3 pixel gap between asics
-    y_calc.extend(y_fitted)
     if 0:
       # debugging plots
       from matplotlib import pyplot
       pyplot.clf()
       pyplot.plot(x_obs, y_obs)
-      print x_obs.size(), y_fitted.size()
       pyplot.plot(x_obs, y_fitted)
       pyplot.draw()
       pyplot.show()
-    correction = flex.double()
-    for i in range(rows):
-      correction.extend(y_calc)
-    correction.reshape(img.accessor())
-    zero_pixels_sel = (img == 0)
-    img -= correction
-
-    img.set_selected(zero_pixels_sel, 0)
-    return img
+    return y_fitted
 
 
   def do_photon_counting(self):
