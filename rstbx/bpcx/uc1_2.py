@@ -121,7 +121,8 @@ class python_reflection_prediction:
         return observed_reflection_positions
 
 class make_prediction_list:
-  def predict_observations(self,configuration_file, img_range, dmin = None):
+  def predict_observations(self,configuration_file, img_range, dmin = None,
+                           rocking_curve = "none"):
 
     d2r = math.pi / 180.0
 
