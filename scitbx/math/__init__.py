@@ -34,6 +34,29 @@ def r3_rotation_cos_rotation_angle_from_matrix(r):
     -1.0
     )
 
+def r3_rotation_average_rotation_matrix_from_matrices(*matrices):
+  """
+  Calculates an approximation of the Riemannian (geometric) mean through
+  quaternion averaging
+
+  Arithmetic and geometric solutions for average rigid-body rotation (2010).
+  I Sharf, A Wolf & M.B. Rubin, Mechanism and Machine Theory, 45, 1239-1251
+  """
+
+  if not matrices:
+    raise TypeError, "Average of empty sequence"
+
+  import operator
+  import scitbx.matrix
+
+  average = reduce(
+    operator.add,
+    [ scitbx.matrix.col( r3_rotation_matrix_as_unit_quaternion( e ) )
+      for e in matrices ]
+    )
+
+  return r3_rotation_unit_quaternion_as_matrix( average.normalize() )
+
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
     angles = [a*math.pi/180 for a in angles]
