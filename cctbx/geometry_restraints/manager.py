@@ -45,9 +45,7 @@ class manager(object):
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None and site_symmetry_table is not None):
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
-    if (nonbonded_types is not None) :
-      if (nonbonded_charges is None) :
-        nonbonded_charges = flex.int(nonbonded_types.size(), 0)
+    if (nonbonded_types is not None) and (nonbonded_charges is not None) :
       assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals())
     self.reset_internals()
@@ -338,6 +336,7 @@ class manager(object):
       selected_nonbonded_types = self.nonbonded_types.select(
         iselection)
       n_seqs[self.nonbonded_types.size()] += 1
+    selected_nonbonded_charges = None
     if (self.nonbonded_charges is not None) :
       selected_nonbonded_charges = self.nonbonded_charges.select(
         iselection)
