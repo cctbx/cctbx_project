@@ -567,14 +567,20 @@ class type_symbol_registry_base(object):
         self.symbols[i_seq] = symbol
         self.source_labels[i_seq] = source_label
         self.source_n_expected_atoms[i_seq] = source_n_expected_atoms
-        charge_str = atom.charge_tidy(strip=True)
-        if (charge_str is not None) and (len(charge_str) != 0) :
-          charge = 0
-          if ("-" in charge_str) :
-            charge = - int(charge_str.replace("-", ""))
-          elif ("+" in charge_str) :
-            charge = int(charge_str.replace("+", ""))
-          self.charges[i_seq] = charge
+        if (self.type_label == "nonbonded energy"):
+          charge_str = atom.charge_tidy(strip=True)
+          if (charge_str is not None) and (len(charge_str) != 0) :
+            charge = 0
+            if ("-" in charge_str) :
+              charge = - int(charge_str.replace("-", ""))
+            elif ("+" in charge_str) :
+              charge = int(charge_str.replace("+", ""))
+            self.charges[i_seq] = charge
+          elif ((len(mm.expected_atoms) == 1) and
+                (mm.residue_name.strip() == atom.name.strip()) and
+                (atom.name.strip() == atom_dict[atom_id].type_symbol.strip())):
+            # XXX this is an ion, even if the charge isn't set in PDB file
+            self.charges[i_seq] = 1
       elif (raise_conflict):
         source = "with residue name %s" % source_label
         if (prev_source_label == ""):
