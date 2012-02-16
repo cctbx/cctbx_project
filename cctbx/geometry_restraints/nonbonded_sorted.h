@@ -151,8 +151,12 @@ namespace cctbx { namespace geometry_restraints {
       {
         std::string const& type_i = nonbonded_types[pair.i_seq];
         std::string const& type_j = nonbonded_types[pair.j_seq];
-        int charge_i = nonbonded_charges[pair.i_seq];
-        int charge_j = nonbonded_charges[pair.j_seq];
+        int charge_i = 0;
+        int charge_j = 0;
+        if (nonbonded_charges.begin() != 0) {
+          charge_i = nonbonded_charges[pair.i_seq];
+          charge_j = nonbonded_charges[pair.j_seq];
+        }
         double distance = nonbonded_params.get_nonbonded_distance(
           type_i, type_j, donor_acceptor_adjust, charge_i, charge_j);
         if (distance != -1) {
