@@ -120,21 +120,21 @@ class python_reflection_prediction:
 
         return observed_reflection_positions
 
-def main(configuration_file, img_range, dmin = None):
-    '''Perform the calculations needed for use case 1.1.'''
+class make_prediction_list:
+  def predict_observations(self,configuration_file, img_range, dmin = None):
 
     d2r = math.pi / 180.0
 
     cfc = coordinate_frame_converter(configuration_file)
 
-    img_start, osc_start, osc_range = parse_xds_xparm_scan_info(
+    self.img_start, self.osc_start, self.osc_range = parse_xds_xparm_scan_info(
         configuration_file)
 
     if dmin is None:
         dmin = cfc.derive_detector_highest_resolution()
 
-    phi_start = ((img_range[0] - img_start) * osc_range + osc_start) * d2r
-    phi_end = ((img_range[1] - img_start + 1) * osc_range + osc_start) * d2r
+    phi_start = ((img_range[0] - self.img_start) * self.osc_range + self.osc_start) * d2r
+    phi_end = ((img_range[1] - self.img_start + 1) * self.osc_range + self.osc_start) * d2r
 
     # in principle this should come from the crystal model - should that
     # crystal model record the cell parameters or derive them from the
@@ -182,7 +182,10 @@ def main(configuration_file, img_range, dmin = None):
 
     u, b = cfc.get_u_b()
     axis = cfc.get_c('rotation_axis')
-    s0 = (- 1.0 / wavelength) * cfc.get_c('sample_to_source')
+    # must guarantee that sample_to_source vector is normalized so that
+    #  s0 has length of 1/wavelength.
+    sample_to_source_vec = cfc.get_c('sample_to_source').normalize()
+    s0 = (- 1.0 / wavelength) * sample_to_source_vec
     ub = u * b
 
     # need some detector properties for this as well... this should be
@@ -192,11 +195,11 @@ def main(configuration_file, img_range, dmin = None):
     detector_fast = cfc.get_c('detector_fast')
     detector_slow = cfc.get_c('detector_slow')
     sample_to_source = cfc.get_c('sample_to_source')
-    pixel_size_fast, pixel_size_slow = cfc.get('detector_pixel_size_fast_slow')
+    self.pixel_size_fast, self.pixel_size_slow = cfc.get('detector_pixel_size_fast_slow')
     size_fast, size_slow = cfc.get('detector_size_fast_slow')
 
-    dimension_fast = size_fast * pixel_size_fast
-    dimension_slow = size_slow * pixel_size_slow
+    dimension_fast = size_fast * self.pixel_size_fast
+    dimension_slow = size_slow * self.pixel_size_slow
 
     detector_normal = detector_fast.cross(detector_slow)
     distance = detector_origin.dot(detector_normal)
@@ -205,9 +208,13 @@ def main(configuration_file, img_range, dmin = None):
                                    detector_fast, detector_slow,
                                    0, dimension_fast,
                                    0, dimension_slow)
+    return rp.predict(observed_indices,observed_angles)
 
-    obs_hkl,obs_fast,obs_slow,obs_angle = rp.predict(observed_indices,
-                                                     observed_angles)
+  def main(self,configuration_file, img_range, dmin = None):
+    '''Perform the calculations needed for use case 1.1.'''
+
+    obs_hkl,obs_fast,obs_slow,obs_angle = \
+      self.predict_observations(configuration_file, img_range, dmin)
 
     r2d = 180.0 / math.pi
 
@@ -216,9 +223,9 @@ def main(configuration_file, img_range, dmin = None):
       f = obs_fast[iobs]
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
-      print '%d %d %d' % hkl, '%.4f %4f %2f' % (
-            f / pixel_size_fast, s / pixel_size_slow,
-            (img_start - 1) + ((angle * r2d) - osc_start) / osc_range)
+      print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
+            f / self.pixel_size_fast, s / self.pixel_size_slow,
+            (self.img_start - 1) + ((angle * r2d) - self.osc_start) / self.osc_range)
 
 if __name__ == '__main__':
 
@@ -228,8 +235,9 @@ if __name__ == '__main__':
         msg = "Requires 3 arguments: path/to/xparm.xds start_image_no end_image_no"
         sys.exit(msg)
     else:
+        M = make_prediction_list()
         if len(sys.argv) == 4:
-            main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
+            M.main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
         else:
-            main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
+            M.main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
                  float(sys.argv[4]))
