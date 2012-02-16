@@ -39,7 +39,8 @@ class common_mode_correction(object):
                two_photon_threshold=None,
                dark_path=None,
                dark_stddev=None,
-               gain_map_path=None):
+               gain_map_path=None,
+               cache_image=True):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -71,6 +72,7 @@ class common_mode_correction(object):
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
     self.two_photon_threshold = cspad_tbx.getOptFloat(two_photon_threshold)
+    self.cache_image = cspad_tbx.getOptBool(cache_image)
 
     self.distance = None
     self.cspad_img = None # The current image - set by self.event()
@@ -78,9 +80,10 @@ class common_mode_correction(object):
     self.sum_common_mode = 0
     self.sumsq_common_mode = 0
     self.wavelength = None # The current wavelength - set by self.event()
+    self.roi = None # used to ignore a section in chebyshev fit
 
     assert self.common_mode_correction in \
-        ("gaussian", "mean", "median", "mode", "none")
+        ("gaussian", "mean", "median", "mode", "none", "chebyshev")
 
     # Get and parse metrology.  There is no metrology information for
     # the Sc1 detector, so make it up.
@@ -299,6 +302,14 @@ class common_mode_correction(object):
         # the threshold tunable?
         cspad_mask = self.dark_mask.deep_copy()
 
+        if self.roi is not None:
+          roi_mask = cspad_mask[self.roi[2]:self.roi[3], :]
+          roi_mask = flex.bool(roi_mask.accessor(), False)
+          cspad_mask.matrix_paste_block_in_place(
+            block=roi_mask,
+            i_row=self.roi[2],
+            i_column=0)
+
         # Extract each active section from the assembled detector
         # image and apply the common mode correction.
         q_mask = self.config.quadMask()
@@ -330,23 +341,33 @@ class common_mode_correction(object):
 
             if section_mask.count(True) == 0: continue
 
-            common_mode = self.common_mode(
-              section_img, section_stddev, section_mask)
-            self.sum_common_mode += common_mode
-            self.sumsq_common_mode += common_mode**2
+            if self.common_mode_correction == "chebyshev":
+              chebyshev_corrected = self.chebyshev_fit(section_img, section_mask)
+              section_img.as_1d().copy_selected(section_mask.as_1d().iselection(), chebyshev_corrected.as_1d())
+              self.cspad_img.matrix_paste_block_in_place(
+                block=section_img,
+                i_row=i_row,
+                i_column=i_column)
 
-            # Apply the rounded integer common mode correction to the
-            # section, and paste it back into the image.
-            self.cspad_img.matrix_paste_block_in_place(
-              block    = section_img - common_mode,
-              i_row    = i_row,
-              i_column = i_column)
+            else:
+              common_mode = self.common_mode(
+                section_img, section_stddev, section_mask)
+              self.sum_common_mode += common_mode
+              self.sumsq_common_mode += common_mode**2
+
+              # Apply the rounded integer common mode correction to the
+              # section, and paste it back into the image.
+              self.cspad_img.matrix_paste_block_in_place(
+                block    = section_img - common_mode,
+                i_row    = i_row,
+                i_column = i_column)
 
     if self.gain_map is not None:
       self.cspad_img *= self.gain_map
 
-    # Store the image in the event.
-    evt.put(self.cspad_img, self.address)
+    if self.cache_image:
+      # Store the image in the event.
+      evt.put(self.cspad_img, self.address)
 
 
   def endjob(self, env):
@@ -363,6 +384,7 @@ class common_mode_correction(object):
 
       self.logger.info("mean common mode: %.3f" %self.mean_common_mode)
       self.logger.info("std. dev. common mode: %.3f" %self.stddev_commond_mode)
+
 
   def do_sigma_scaling(self):
     # Divide each pixel value by it's dark standard deviation. Since we are led
@@ -385,6 +407,64 @@ class common_mode_correction(object):
       n_slots = 100
       n, bins, patches = pyplot.hist(flex_cspad_img_sel.as_1d().as_numpy_array(), bins=n_slots, range=(hist_min, hist_max))
       pyplot.show()
+
+
+  def chebyshev_fit(self, img, mask):
+    from scitbx.math import chebyshev_polynome
+    from scitbx.math import chebyshev_lsq_fit
+    masked_img = img.deep_copy()
+    masked_img.set_selected(~mask, 0.)
+    n_masked_rows = flex.sum(masked_img, axis=1).count(0)
+    #print "n_masked_rows:", n_masked_rows
+    rows, columns = masked_img.all()
+    sum_x = flex.sum(masked_img, axis=0)
+    sum_x /= (rows - n_masked_rows)
+    assert img.all() == (185, 391) # XXX
+    # fit one polynome for both asics
+    y_obs = sum_x[:194] + sum_x[197:]
+    y_obs /= 2
+    x_obs = flex.double(range(y_obs.size()))
+    w_obs = flex.double(x_obs.size(), 1)
+    # mask out the edges and the gap down the middle from the fit
+    w_obs.set_selected(y_obs == 0, 1e16)
+    w_obs[0] = 1e16
+    w_obs[-1] = 1e16
+    #n_terms = None
+    n_terms = 10
+    if n_terms is None:
+      # determining the number of terms takes much, much longer than the fit
+      n_terms = chebyshev_lsq_fit.cross_validate_to_determine_number_of_terms(
+        x_obs, y_obs, w_obs,
+        min_terms=5, max_terms=20,
+        n_goes=20, n_free=20)
+    self.logger.info("Fitting with %i terms" %n_terms)
+    fit = chebyshev_lsq_fit.chebyshev_lsq_fit(n_terms, x_obs, y_obs, w_obs)
+    self.logger.info("Least Squares residual: %7.6f" %(fit.f))
+    fit_funct = chebyshev_polynome(
+      n_terms, fit.low_limit, fit.high_limit, fit.coefs)
+    y_fitted = fit_funct.f(x_obs)
+    y_calc = y_fitted.deep_copy()
+    y_calc.extend(flex.double([0,0,0])) # The 3 pixel gap between asics
+    y_calc.extend(y_fitted)
+    if 0:
+      # debugging plots
+      from matplotlib import pyplot
+      pyplot.clf()
+      pyplot.plot(x_obs, y_obs)
+      print x_obs.size(), y_fitted.size()
+      pyplot.plot(x_obs, y_fitted)
+      pyplot.draw()
+      pyplot.show()
+    correction = flex.double()
+    for i in range(rows):
+      correction.extend(y_calc)
+    correction.reshape(img.accessor())
+    zero_pixels_sel = (img == 0)
+    img -= correction
+
+    img.set_selected(zero_pixels_sel, 0)
+    return img
+
 
   def do_photon_counting(self):
     # This only makes sense in combination with some sort of gain correction
