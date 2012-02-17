@@ -397,7 +397,7 @@ struct flex_image_wrapper {
       .def("prep_string",&w_t::prep_string)
       .def("prep_string_monochrome",&w_t::prep_string_monochrome)
       .def_readonly("export_string",&w_t::export_s)
-      .def_readonly("use_antialiasing",&w_t::use_antialiasing)
+      .def_readonly("supports_rotated_tiles_antialiasing_recommended",&w_t::supports_rotated_tiles_antialiasing_recommended)
     ;
   }
 };
