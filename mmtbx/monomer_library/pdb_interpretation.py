@@ -579,7 +579,7 @@ class type_symbol_registry_base(object):
           elif ((len(mm.expected_atoms) == 1) and
                 (mm.residue_name.strip() == atom.name.strip()) and
                 (atom.name.strip() == atom_dict[atom_id].type_symbol.strip())):
-            # XXX this is an ion, even if the charge isn't set in PDB file -
+            # this is an ion, even if the charge isn't set in the PDB file -
             # the charge is set to an unrealistic number to avoid ambiguity
             self.charges[i_seq] = 99
       elif (raise_conflict):
