@@ -36,9 +36,12 @@ namespace mmtbx { namespace geometry_restraints {
       double distance_ideal_,
       double distance_cut_,
       double weight_,
-      double slack_=0)
+      double slack_=0,
+      double limit_=-1.0,
+      bool top_out_=false)
     :
-      bond_simple_proxy(i_seqs_, distance_ideal_, weight_, slack_),
+      bond_simple_proxy(i_seqs_, distance_ideal_, weight_, slack_, limit_,
+        top_out_),
       distance_cut(distance_cut_)
     {
       MMTBX_ASSERT((distance_cut <= 0) || (distance_cut > distance_ideal));
@@ -50,7 +53,7 @@ namespace mmtbx { namespace geometry_restraints {
       h_bond_simple_proxy const& proxy)
     :
       bond_simple_proxy(i_seqs_, proxy.distance_ideal, proxy.weight,
-        proxy.slack),
+        proxy.slack, proxy.limit, proxy.top_out),
       distance_cut(proxy.distance_cut)
     {
       MMTBX_ASSERT((distance_cut <= 0) ||
