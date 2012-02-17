@@ -123,7 +123,6 @@ class python_reflection_prediction:
 class make_prediction_list:
   def predict_observations(self,configuration_file, img_range, dmin = None,
                            rocking_curve = "none"):
-
     d2r = math.pi / 180.0
 
     cfc = coordinate_frame_converter(configuration_file)
@@ -209,6 +208,10 @@ class make_prediction_list:
                                    detector_fast, detector_slow,
                                    0, dimension_fast,
                                    0, dimension_slow)
+    if rocking_curve is not None:
+      assert rocking_curve!="none"
+      rp.set_rocking_curve(rocking_curve)
+      rp.set_mosaicity(0.0)
     return rp.predict(observed_indices,observed_angles)
 
   def main(self,configuration_file, img_range, dmin = None):

@@ -1360,6 +1360,7 @@ rstbx/diffraction/fastbragg/tst_bragg_minimal.py -text
 rstbx/diffraction/fastbragg/tst_utils_clustering.py -text
 rstbx/diffraction/partial_spot_position_partial_H.cpp -text
 rstbx/diffraction/partial_spot_position_partial_H.h -text
+rstbx/diffraction/reflection_range.h -text
 rstbx/diffraction/tst_ewald_sphere.py -text
 rstbx/diffraction/tst_partial_derivatives.py -text
 rstbx/diffraction/tst_predict.py -text

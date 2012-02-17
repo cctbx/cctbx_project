@@ -112,7 +112,24 @@ rp_predict(reflection_prediction& rp,
     scitbx::af::shared<double> return_fast_px;
     scitbx::af::shared<double> return_slow_px;
     scitbx::af::shared<double> return_angle_rad;
+    scitbx::af::shared<double> return_angle_full_width_rad;
+    scitbx::af::shared<double> return_lorentz_factor;
 
+    if (rp.use_gh1982a){
+      for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
+        if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
+           scitbx::vec2<double> xy = rp.get_prediction();
+           return_indices.push_back(observed_indices[ihkl]);
+           return_angle_rad.push_back(observed_angles[ihkl]);
+           return_fast_px.push_back(xy[0]);
+           return_slow_px.push_back(xy[1]);
+           return_lorentz_factor.push_back(rp.lorentz_factor());
+           return_angle_full_width_rad.push_back(rp.get_full_width());
+         }
+       }
+       return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad,
+         return_lorentz_factor, return_angle_full_width_rad);
+    }
     for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
        if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
          scitbx::vec2<double> xy = rp.get_prediction();
@@ -275,9 +292,12 @@ namespace boost_python { namespace {
         arg("s_min"), arg("s_max"))))
       .def("__call__", & reflection_prediction::operator())
       .def("get_prediction", & reflection_prediction::get_prediction)
+      .def("set_rocking_curve", & reflection_prediction::set_rocking_curve)
+      .def("set_mosaicity", & reflection_prediction::set_mosaicity)
       .def("predict",
             &rp_predict,
-           (arg("observed_indices"),arg("observed_angles")));
+           (arg("observed_indices"),arg("observed_angles")))
+    ;
 
     def("full_sphere_indices",&full_sphere_indices,
       (arg("unit_cell"), arg("resolution_limit"),
