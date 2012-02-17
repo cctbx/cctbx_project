@@ -89,6 +89,7 @@ class ThreeProteinResidues(list):
     self.restraints_manager = restraints_manager
     self.bond_params_table = restraints_manager.geometry.bond_params_table
     #except: self.bond_params_table = restraints_manager.bond_params_table
+    self.errors = []
 
   def __repr__(self):
     return self.show()
@@ -110,10 +111,18 @@ class ThreeProteinResidues(list):
   def are_linked(self):
     for i, residue in enumerate(self):
       if i==0: continue
-      try: ccn1 = get_c_ca_n(residue)
-      except Exception: break
-      try: ccn2 = get_c_ca_n(self[i-1])
-      except Exception: break
+      ccn1, outl1 = get_c_ca_n(residue)
+      ccn2, outl2 = get_c_ca_n(self[i-1])
+      if ccn1 is None:
+        for line in outl1:
+          if line not in self.errors:
+            self.errors.append(line)
+        break
+      if ccn2 is None:
+        for line in outl2:
+          if line not in self.errors:
+            self.errors.append(line)
+        break
       n = ccn1[2]
       c = ccn2[0]
       bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
@@ -163,9 +172,9 @@ class ThreeProteinResidues(list):
     return atoms
 
   def get_cdl_key(self, verbose=False):
-    backbone_i_minus_1 = get_c_ca_n(self[0])
-    backbone_i = get_c_ca_n(self[1])
-    backbone_i_plus_1 = get_c_ca_n(self[2])
+    backbone_i_minus_1, junk = get_c_ca_n(self[0])
+    backbone_i, junk = get_c_ca_n(self[1])
+    backbone_i_plus_1, junk = get_c_ca_n(self[2])
     assert len(backbone_i_minus_1)==3
     assert len(backbone_i)==3
     assert len(backbone_i_plus_1)==3
@@ -293,17 +302,17 @@ def get_res_type_group(resname1, resname2):
 
 def get_c_ca_n(atom_group):
   tmp = []
+  outl = []
   for name in ["C", "CA", "N"]:
     for atom in atom_group.atoms():
       if atom.name.strip()==name:
         tmp.append(atom)
         break
     else:
-      print "Residues not completely updated with CDL restraints"
       for atom in atom_group.atoms():
-        print atom.format_atom_record()
-      assert 0
-  return tmp
+        outl.append(atom.format_atom_record())
+      tmp = None
+  return tmp, outl
 
 def round_to_ten(d):
   t = int(round((float(d))/10))*10
@@ -353,6 +362,7 @@ def update_restraints(hierarchy,
                       cdl_proxies=None,
                       ideal=True,
                       esd=True,
+                      log=None,
                       verbose=False,
                       ):
   global registry
@@ -366,7 +376,7 @@ def update_restraints(hierarchy,
 
   for threes in generate_protein_threes(hierarchy,
                                         restraints_manager,
-                                        verbose=verbose,
+                                        #verbose=verbose,
                                         ):
     res_type_group = get_res_type_group(
       threes[1].resname,
@@ -375,12 +385,11 @@ def update_restraints(hierarchy,
     if res_type_group is None:
       continue
 
-    key = threes.get_cdl_key(verbose=verbose)
-    if verbose: print 'key',key
+    key = threes.get_cdl_key() #verbose=verbose)
 
     restraint_values = cdl_database[res_type_group][key]
-    if verbose:
-      print threes, threes.are_linked(), res_type_group, key, restraint_values
+    #if verbose:
+    #  print threes, threes.are_linked(), res_type_group, key, restraint_values
 
     threes.apply_updates(restraint_values,
                          cdl_proxies,
@@ -389,6 +398,14 @@ def update_restraints(hierarchy,
                          )
   if registry.n: threes.apply_average_updates(registry)
   restraints_manager.geometry.reset_internals()
+  if verbose and threes.errors:
+    if log:
+      log.write("  Residues not completely updated with CDL restraints\n\n")
+    for line in threes.errors:
+      if log:
+        log.write("%s\n" % line)
+      else:
+        print line
   return restraints_manager
 
 def run(filename):
