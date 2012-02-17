@@ -246,9 +246,9 @@ public:
   int binning; // either 1 (unbinned) or a power of 2 (binned)
   std::string vendortype;
   double brightness, correction;
-  int saturation;
+  DataType saturation;
   double zoom;
-  bool use_antialiasing; //whether the client viewer should apply extra antialiasing
+  bool supports_rotated_tiles_antialiasing_recommended; //whether the client viewer should apply extra antialiasing
 
   /* Relationship between binning & zoom for this class:
         zoom level  zoom    binning   magnification factor
@@ -264,20 +264,20 @@ public:
 
 public:
   inline
-  FlexImage(array_t rawdata,const double& brightness = 1.0, const double& saturation = 1.0):
+  FlexImage(array_t rawdata,const double& brightness = 1.0, const DataType& saturation = 1.0):
     rawdata(rawdata),
-    brightness(brightness),saturation(saturation), nchannels(4),use_antialiasing(false),
+    brightness(brightness),saturation(saturation), nchannels(4),supports_rotated_tiles_antialiasing_recommended(false),
     color_scheme_state(COLOR_GRAY){}
 
   inline
   FlexImage(array_t rawdata, const int& power_of_two,
             const std::string& vendortype, const double& brightness = 1.0,
-            int const& saturation = 65535):
+            const DataType& saturation = 65535):
     brightness(brightness),
     saturation(saturation),
     rawdata(rawdata),
     nchannels(4),
-    use_antialiasing(false),
+    supports_rotated_tiles_antialiasing_recommended(false),
     color_scheme_state(COLOR_GRAY),
     binning(power_of_two),
     vendortype(vendortype){
@@ -596,7 +596,7 @@ class generic_flex_image: public FlexImage<double>{
       size1_readout(size1_readout),
       size2_readout(size2_readout)
   {
-    use_antialiasing=true;
+    supports_rotated_tiles_antialiasing_recommended=true;
     binning=1;
     zoom = 1./ binning;
     export_size_uncut1 = size1()/binning;
