@@ -213,7 +213,8 @@ rstbx::reflection_prediction::reflection_prediction(
   const double & f_min,
   const double & f_max,
   const double & s_min,
-  const double & s_max)
+  const double & s_max):
+    reflection_range( _axis, _s0,  _ub )
 {
   axis = _axis;
   s0 = _s0;
@@ -256,6 +257,15 @@ bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
   prediction[0] = x;
   prediction[1] = y;
 
+  if (!this->reflection_range::operator()(q,s)) {
+    //printf("Too close to the spindle for full measurement. %4d %4d %4d angle %7.4f\n",
+    //  int(hkl[0]),int(hkl[1]),int(hkl[2]),angle*180./scitbx::constants::pi);
+    /* come back to this later.  These spots are not fully recorded since they are too close
+       to the spindle, but we may want to remember their location for future creation
+       of overlap masks
+    */
+    return false;
+  }
   return true;
 }
 

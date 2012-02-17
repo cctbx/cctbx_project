@@ -6,6 +6,7 @@
 #include <cctbx/miller.h>
 #include <scitbx/array_family/shared.h>
 #include <cctbx/crystal_orientation.h>
+#include <rstbx/diffraction/reflection_range.h>
 
 namespace af = scitbx::af;
 namespace rstbx {
@@ -206,7 +207,7 @@ class reflection_prediction:
 
 */
 
-class reflection_prediction {
+class reflection_prediction : public reflection_range {
 
  public:
 
