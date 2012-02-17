@@ -61,6 +61,8 @@ namespace cctbx { namespace geometry_restraints {
         CCTBX_ASSERT(donor_acceptor_excl_groups.size() == 0
                   || donor_acceptor_excl_groups.size() ==
                      nonbonded_types.size());
+        CCTBX_ASSERT(nonbonded_charges.size() == 0
+                  || nonbonded_charges.size() == nonbonded_types.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
