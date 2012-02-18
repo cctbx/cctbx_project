@@ -349,6 +349,55 @@ namespace scitbx { namespace af {
     a.resize(flex_grid<FlexGridIndexType>(n_columns, n_rows));
   }
 
+  template <typename NumType>
+  versa<NumType, c_grid<2> >
+  matrix_rot90(const_ref<NumType, c_grid<2> > const& a, int k)
+  {
+    typedef typename c_grid<2>::value_type index_value_type;
+    index_value_type n_rows = a.accessor()[0];
+    index_value_type n_columns = a.accessor()[1];
+    versa<NumType, c_grid<2> > result(
+      k%2==0?c_grid<2>(n_rows, n_columns):c_grid<2>(n_columns, n_rows),
+      init_functor_null<NumType>());
+    NumType* r = result.begin();
+    std::size_t ir_nc_ic;
+    switch (k%4) {
+    case 0:
+      if (a.begin() != 0) {
+        std::copy(a.begin(), a.end(), result.begin());
+      }
+      break;
+    case -3:
+    case +1:
+      for (index_value_type ic=0;ic<n_columns;ic++) {
+        ir_nc_ic = n_columns - 1 - ic;
+        for (index_value_type ir=0;ir<n_rows;ir++,ir_nc_ic+=n_columns) {
+          *r++ = a[ir_nc_ic];
+        }
+      }
+      break;
+    case -2:
+    case +2:
+      ir_nc_ic = n_columns * n_rows - 1;
+      for (index_value_type ic=0;ic<n_columns;ic++) {
+        for (index_value_type ir=0;ir<n_rows;ir++,ir_nc_ic--) {
+          *r++ = a[ir_nc_ic];
+        }
+      }
+      break;
+    case -1:
+    case +3:
+      for (index_value_type ic=0;ic<n_columns;ic++) {
+        ir_nc_ic = n_columns * (n_rows - 1) + ic;
+        for (index_value_type ir=0;ir<n_rows;ir++,ir_nc_ic-=n_columns) {
+          *r++ = a[ir_nc_ic];
+        }
+      }
+      break;
+    }
+    return result;
+  }
+
   template <typename FloatType>
   shared<std::size_t>
   matrix_lu_decomposition_in_place(
