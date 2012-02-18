@@ -46,8 +46,8 @@ class reflection_range {
   }
 
   inline void
-  set_mosaicity( const double& mos ){
-    mosaicity_rad = mos;
+  set_mosaicity( const double& mos, bool const& degrees ){
+    mosaicity_rad = degrees? mos * scitbx::constants::pi_180 : mos;
   }
 
   inline void

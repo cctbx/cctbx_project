@@ -122,7 +122,7 @@ class python_reflection_prediction:
 
 class make_prediction_list:
   def predict_observations(self,configuration_file, img_range, dmin = None,
-                           rocking_curve = "none"):
+                           rocking_curve = "none", mosaicity_deg=0.0):
     d2r = math.pi / 180.0
 
     cfc = coordinate_frame_converter(configuration_file)
@@ -211,7 +211,7 @@ class make_prediction_list:
     if rocking_curve is not None:
       assert rocking_curve!="none"
       rp.set_rocking_curve(rocking_curve)
-      rp.set_mosaicity(0.0)
+      rp.set_mosaicity(mosaicity_deg, degrees=True)
     return rp.predict(observed_indices,observed_angles)
 
   def main(self,configuration_file, img_range, dmin = None):
