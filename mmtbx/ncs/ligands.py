@@ -18,8 +18,6 @@ import sys
 debug = True
 
 ncs_ligand_phil = """
-ligand_code = LIG
-  .type = str
 max_rmsd = 2.0
   .type = float
 min_cc = 0.7
@@ -34,16 +32,18 @@ remove_clashing_atoms = True
   .type = bool
 clash_cutoff = 2.0
   .type = float
-write_sampled_pdbs = True
+write_sampled_pdbs = False
   .type = bool
-output_file = None
-  .type = path
-output_map = None
-  .type = path
 """
 
 master_phil_str = """
 include scope mmtbx.utils.cmdline_input_phil_str
+ligand_code = LIG
+  .type = str
+output_file = None
+  .type = path
+output_map = None
+  .type = path
 %s
 """ % ncs_ligand_phil
 
@@ -459,10 +459,10 @@ def get_final_maps_and_cc (
     final_cc.append(cc)
     print >> log, "  Ligand %d: CC = %5.3f" % (k+1, cc)
   print >> log, ""
-  if (params.output_map is not None) :
+  if (params is not None) and (params.output_map is not None) :
     import iotbx.mtz
     diff_map = map_helper.map_coefficients("mFo-DFc")
-    dec = iotbx.mtz.ccp4_label_decorator()
+    dec = iotbx.mtz.label_decorator(phases_prefix="PH")
     mtz_dat = map_coeffs.as_mtz_dataset(
       column_root_label="2FOFCWT",
       label_decorator=dec)
@@ -472,6 +472,16 @@ def get_final_maps_and_cc (
     mtz_dat.mtz_object().write(output_map)
     print >> log, "Wrote %s" % params.output_map
   return final_cc
+
+def extract_ligand_residues (pdb_hierarchy, ligand_code) :
+  assert (len(pdb_hierarchy.models()) == 1)
+  ligands = []
+  for chain in pdb_hierarchy.models()[0].chains() :
+    for residue_group in chain.residue_groups() :
+      for atom_group in residue_group.atom_groups() :
+        if (atom_group.resname == ligand_code) :
+          ligands.append(atom_group)
+  return ligands
 
 # Main function
 def apply_ligand_ncs (
@@ -493,13 +503,7 @@ def apply_ligand_ncs (
   for ncs_group in ncs_ops :
     for k, group in enumerate(ncs_group) :
       group.show_summary(log)
-  assert (len(pdb_hierarchy.models()) == 1)
-  ligands = []
-  for chain in pdb_hierarchy.models()[0].chains() :
-    for residue_group in chain.residue_groups() :
-      for atom_group in residue_group.atom_groups() :
-        if (atom_group.resname == params.ligand_code) :
-          ligands.append(atom_group)
+  ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code)
   if (len(ligands) == 0) :
     raise Sorry("No ligands found!")
   pdb_hierarchy.atoms().reset_i_seq()
@@ -529,6 +533,14 @@ def apply_ligand_ncs (
     ligands=ligands,
     params=params,
     log=log)
+  if (params.output_file is not None) :
+    f = open(params.output_file, "w")
+    cryst1 = iotbx.pdb.format_cryst1_record(fmodel.xray_structure)
+    f.write("%s\n" % cryst1)
+    f.write(pdb_hierarchy.as_pdb_string())
+    f.close()
+    print >> out, ""
+    print >> out, "Wrote %s" % params.output_file
   return final_cc
 
 def run (args, out=None) :
@@ -543,22 +555,16 @@ def run (args, out=None) :
   pdb_hierarchy = cmdline.pdb_hierarchy
   fmodel = cmdline.fmodel
   params = cmdline.params
-  apply_ligand_ncs(
-    pdb_hierarchy=pdb_hierarchy,
-    fmodel=fmodel,
-    params=params,
-    log=out)
   if (params.output_file is None) :
     params.output_file = "ncs_ligands.pdb"
   if (params.output_map is None) :
     params.output_map = "ncs_ligands.mtz"
-  f = open(params.output_file, "w")
-  cryst1 = iotbx.pdb.format_cryst1_record(fmodel.xray_structure)
-  f.write("%s\n" % cryst1)
-  f.write(pdb_hierarchy.as_pdb_string())
-  f.close()
-  print >> out, ""
-  print >> out, "Wrote %s" % params.output_file
+  final_cc = apply_ligand_ncs(
+    pdb_hierarchy=pdb_hierarchy,
+    fmodel=fmodel,
+    params=params,
+    log=out)
+  return final_cc
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
