@@ -2549,6 +2549,19 @@ def exercise_matrix_int():
   assert list(a)==[1, 3, 5, 2, 4, 6]
   a.matrix_swap_columns_in_place(0,2)
   assert list(a)==[5, 3, 1, 6, 4, 2]
+  #
+  b = a.matrix_rot90(4)
+  c = a.matrix_rot90(-8)
+  assert b.focus()==(2,3) and c.focus()==(2,3) and list(b)==list(c)
+  b = b.matrix_rot90(5)
+  c = c.matrix_rot90(-7)
+  assert b.focus()==(3,2) and c.focus()==(3,2) and list(b)==list(c)
+  b = b.matrix_rot90(6)
+  c = c.matrix_rot90(-6)
+  assert b.focus()==(3,2) and c.focus()==(3,2) and list(b)==list(c)
+  b = b.matrix_rot90(7)
+  c = c.matrix_rot90(-5)
+  assert b.focus()==(2,3) and c.focus()==(2,3) and list(b)==list(c)
 
 def exercise_matrix_norms():
   a = flex.double((1,  2, -3,

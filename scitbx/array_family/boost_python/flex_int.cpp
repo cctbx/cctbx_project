@@ -149,6 +149,9 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("n_columns")))
       .def("matrix_transpose_in_place",
         (void(*)(versa<int, flex_grid<> >&)) matrix_transpose_in_place)
+      .def("matrix_rot90",
+        (versa<int, c_grid<2> >(*)(
+           const_ref<int, c_grid<2> > const&, int)) matrix_rot90)
       .def("matrix_swap_rows_in_place",
         (void(*)(
           ref<int, c_grid<2> > const&, unsigned, unsigned))

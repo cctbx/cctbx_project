@@ -223,6 +223,9 @@ namespace boost_python {
            const_ref<double, c_grid<2> > const&)) matrix_transpose)
       .def("matrix_transpose_in_place",
         (void(*)(versa<double, flex_grid<> >&)) matrix_transpose_in_place)
+      .def("matrix_rot90",
+        (versa<double, c_grid<2> >(*)(
+           const_ref<double, c_grid<2> > const&, int)) matrix_rot90)
       .def("matrix_outer_product",
         (versa<double, c_grid<2> >(*)(
            const_ref<double> const&,
