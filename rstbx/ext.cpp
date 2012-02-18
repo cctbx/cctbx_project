@@ -293,7 +293,8 @@ namespace boost_python { namespace {
       .def("__call__", & reflection_prediction::operator())
       .def("get_prediction", & reflection_prediction::get_prediction)
       .def("set_rocking_curve", & reflection_prediction::set_rocking_curve)
-      .def("set_mosaicity", & reflection_prediction::set_mosaicity)
+      .def("set_mosaicity", & reflection_prediction::set_mosaicity,
+            (arg("mos"),arg("degrees")))
       .def("predict",
             &rp_predict,
            (arg("observed_indices"),arg("observed_angles")))
