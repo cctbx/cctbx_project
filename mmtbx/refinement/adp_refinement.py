@@ -383,6 +383,8 @@ class refine_adp(object):
           update_f_calc  = True)
         assert approx_equal(self.fmodels.fmodel_xray().r_work()*100, rw_best,
           0.001)
+        # this needs to be done again again, just in case
+        fmodels.create_target_functors()
       self.show(weight=w_best)
     assert approx_equal(self.fmodels.fmodel_xray().target_w(),
        self.fmodels.target_functor_result_xray(
