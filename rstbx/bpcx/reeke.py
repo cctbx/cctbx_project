@@ -14,7 +14,7 @@ class reeke_model:
         self._ub = ub
 
         # mapping of permuted axes p, q, and r
-        self._permutation = 0, 1, 2
+        self._permutation = None
 
         # the source vector and wavelength
         self._s0 = s0
@@ -29,11 +29,10 @@ class reeke_model:
 
         # margin by which to expand limits. Mosflm uses 3. Can play with
         # this value to see what difference it makes - perhaps it is to
-        # account for errors in the orientation
+        # account for errors in the orientation?
         self._margin = int(margin)
 
         # reciprocal lattice vectors at the beginning and end of the wedge
-
         self._rlv_beg = None
         self._rlv_end = None
 
@@ -42,13 +41,11 @@ class reeke_model:
         self._p_end = None
 
         # planes of constant p tangential to the Ewald sphere
-
         self._ewald_p_lim_beg = None
         self._ewald_p_lim_end = None
 
         # planes of constant p touching the circle of intersection between
         # the Ewald and resolution limiting spheres
-
         self._res_p_lim_beg = None
         self._res_p_lim_end = None
 
@@ -56,7 +53,6 @@ class reeke_model:
         self._cp = None
 
         # looping p limits
-
         self._p_lim = None
 
         return
@@ -73,6 +69,7 @@ class reeke_model:
     def get_all_p_limits(self):
         """Get both the Ewald and limiting sphere limits for planes of p.
         This is useful for plotting the planes, for example."""
+
         return (self._ewald_p_lim_beg, self._ewald_p_lim_end, \
                 self._res_p_lim_beg, self._res_p_lim_end)
 
@@ -83,13 +80,11 @@ class reeke_model:
         direction."""
 
         # Extract the reciprocal lattice directions from the columns of UB
-
         rl_dirs = [matrix.col(v).normalize() for v in \
                    ub.transpose().as_list_of_lists()]
 
         # Find reciprocal lattice axis closest to s0 by checking magnitude
         # of dot products between normalised axes and s0, then swap as required
-
         along_beam = [math.fabs(rl_dirs[j].dot(self._s0)) for j in range(3)]
 
         col1 = along_beam.index(max(along_beam))
@@ -98,19 +93,20 @@ class reeke_model:
 
         # Now find which of the two remaining reciprocal lattice axes is
         # closest to the rotation axis.
-
         along_spindle = [math.fabs(rl_dirs[j].dot(self._axis)) for j in (1, 2)]
 
         col3 = along_spindle.index(max(along_spindle)) + 1
 
         # Which is the remaining column index?
-
         col2 = [j for j in range(3) if not j in (col1, col3)][0]
 
-        # couldn't this be stored as a matrix which would mean you could
-        # have h, k, l = M * (p, q, r)
+        # permutation matrix such that h, k, l = M * (p, q, r)
+        elems = [int(0)] * 9
+        elems[col1] = int(1)
+        elems[col2 + 3] = int(1)
+        elems[col3 + 6] = int(1)
 
-        self._permutation = col1, col2, col3
+        self._permutation = matrix.sqr(elems)
 
         # Return the permuted order of the columns
 
@@ -197,8 +193,8 @@ class reeke_model:
         # Now determine limits for the planes of p that touch the circle of
         # intersection between the Ewald and resolution limiting spheres
 
-        # better way to get sin_2theta?
-        # also need some sanity checks in case dmin is ridiculous
+        # TODO better way to get sin_2theta?
+        # TODO also need some sanity checks in case dmin is ridiculous
         sin_theta = 0.5 * self._wavelength * self._dstarmax
         sin_2theta = math.sin(2.0 * math.asin(sin_theta))
 
@@ -245,6 +241,7 @@ class reeke_model:
 
         # Extend limits by the margin, ensuring there is a range even for
         # a single quadratic root
+
         res_q_lim = [int(res_q_lim[0]) - max(self._margin, 1),
                      int(res_q_lim[-1]) + max(self._margin, 1)]
 
@@ -297,26 +294,79 @@ class reeke_model:
 
         # Extend limits by the margin, ensuring there is a range even for
         # a single quadratic root
+
         res_r_lim = [int(res_r_lim[0]) - max(self._margin, 1),
                      int(res_r_lim[-1]) + max(self._margin, 1)]
 
-       # Ewald sphere limits for the beginning orientation
+        # Ewald sphere limits for the beginning orientation
 
         b =  cq[0] + q * self._cp[8] + self._cp[12][0]
-        c =  cq[1] + q * (cq[2] + self._cp[13][0]) + q**2 * self._cp[10] + cq[3][0]
+        c =  cq[1] + q * (cq[2] + self._cp[13][0]) + \
+             q**2 * self._cp[10] + cq[3][0]
 
         ewald_r_lim_beg = self._solve_quad(a, b, c)
-
-        # Alternative way to calculate - as used by Mosflm. Are they equal?
+        ewald_r_lim_beg = [item for item in ewald_r_lim_beg \
+                           if item is not None]
 
         # Ewald sphere limits for the end orientation
 
         b = cq[0] + q * self._cp[8] + self._cp[12][0]
-        c =  cq[1] + q * (cq[2] + self._cp[13][1]) + q**2 * self._cp[10] + cq[3][1]
+        c =  cq[1] + q * (cq[2] + self._cp[13][1]) + \
+             q**2 * self._cp[10] + cq[3][1]
 
         ewald_r_lim_end = self._solve_quad(a, b, c)
+        ewald_r_lim_end = [item for item in ewald_r_lim_end \
+                           if item is not None]
 
-        return ewald_r_lim_beg, ewald_r_lim_end
+        # if no intersections at all, return None
+
+        if len(ewald_r_lim_beg) == 0 and len(ewald_r_lim_end) == 0:
+            return None
+
+        # if there are no intersections at the beginning orientation, set
+        # a single loop covering the range between the intersections at
+        # the end orientation, and vice versa.
+
+        if len(ewald_r_lim_beg) == 0:
+
+            l1 = [int(min(ewald_r_lim_end)) - max(self._margin, 1), \
+                  int(max(ewald_r_lim_end)) + max(self._margin, 1)]
+            l2 = [None]
+
+        elif len(ewald_r_lim_end) == 0:
+
+            l1 = [int(min(ewald_r_lim_beg)) - max(self._margin, 1), \
+                  int(max(ewald_r_lim_beg)) + max(self._margin, 1)]
+            l2 = [None]
+
+        # otherwise there is at least one intersection at both orientations.
+        # Set two loops, one for each range swept out by a point of
+        # intersection as it travels from the beginning to the end
+        # orientation.
+
+        else:
+
+            l1 = sorted([min(ewald_r_lim_beg), min(ewald_r_lim_end)])
+            l1 = [int(l1[0]) - max(self._margin, 1), \
+                  int(l1[1]) + max(self._margin, 1)]
+            l2 = sorted([max(ewald_r_lim_beg), max(ewald_r_lim_end)])
+            l2 = [int(l2[0]) - max(self._margin, 1), \
+                  int(l2[1]) + max(self._margin, 1)]
+
+        # restrict loops according to the resolution limit
+
+        l1[0] = max(res_r_lim[0], l1[0])
+        l1[1] = min(res_r_lim[1], l1[1])
+        if l1[0] >= l1[1]: l1 = [None]
+
+        if l2 != [None]:
+            l2[0] = max(res_r_lim[0], l2[0])
+            l2[1] = min(res_r_lim[1], l2[1])
+            if l2[0] >= l2[1]: l2 = [None]
+
+        if l1 == [None] and l2 == [None]: return None
+
+        return [tuple(l1), tuple(l2)]
 
     def generate_indices(self, phi_beg, phi_end):
         """Determine looping limits for indices h, k and l using the
@@ -340,12 +390,14 @@ class reeke_model:
         ub_mid = r_half_osc * ub_beg
         ub_end = r_half_osc * ub_mid
 
-        # Determine the permutation order of columns of the orientation matrix.
-        # Use the orientation from the middle of the wedge for this.
+        # Determine the permutation order of columns of the orientation
+        # matrix. Use the orientation from the middle of the wedge for this.
 
         col1, col2, col3 = self._permute_axes(ub_mid)
 
-        # Thus set the reciprocal lattice axis vectors, in permuted order p, q and r
+        # Thus set the reciprocal lattice axis vectors, in permuted order
+        # p, q and r for both orientations
+
         rl_vec = [ub_beg.extract_block(start=(0,0), stop=(3,1)),
                   ub_beg.extract_block(start=(0,1), stop=(3,2)),
                   ub_beg.extract_block(start=(0,2), stop=(3,3))]
@@ -359,20 +411,14 @@ class reeke_model:
                          rl_vec[col2],
                          rl_vec[col3]]
 
-        # Set permuted orientation matrices, for beginning and end of wedge
+        # Set permuted orientation matrices
+
         self._p_beg = matrix.sqr(self._rlv_beg[0].elems +
                                 self._rlv_beg[1].elems +
                                 self._rlv_beg[2].elems).transpose()
         self._p_end = matrix.sqr(self._rlv_end[0].elems +
                                 self._rlv_end[1].elems +
                                 self._rlv_end[2].elems).transpose()
-        #self.p = _p_beg, _p_end
-
-        print "The permuted orientation matrix at the beginning of the wedge is"
-        print self._p_beg.round(5)
-        print "and the permuted orientation matrix at the end of the wedge is"
-        print self._p_end.round(5)
-        print
 
         # Define a new coordinate system concentric with the Ewald sphere.
         #
@@ -386,24 +432,27 @@ class reeke_model:
         # where h' = (p, q, r, 1)^T and P' = p21 p22 p23 -s0_y
         #       -                       =    p31 p32 p33 -s0_z
         #
+        
         # Calculate P' matrices for the beginning and end orientations
+
         pp_beg = matrix.rec(self._p_beg.elems[0:3] + (-1.*self._s0[0],) +
                             self._p_beg.elems[3:6] + (-1.*self._s0[1],) +
                             self._p_beg.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
         pp_end = matrix.rec(self._p_end.elems[0:3] + (-1.*self._s0[0],) +
                             self._p_end.elems[3:6] + (-1.*self._s0[1],) +
                             self._p_end.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
-        #self.pp = pp_beg, pp_end
 
         # Various quantities of interest are obtained from the reciprocal metric
         # tensor T of P'. These quantities are to be used (later) for solving the
         # intersection of a line of constant p, q index with the Ewald sphere. It
         # is efficient to calculate these before the outer loop. So, calculate T
         # for both beginning and end orientations
+
         t_beg = (pp_beg.transpose() * pp_beg).as_list_of_lists()
         t_end = (pp_end.transpose() * pp_end).as_list_of_lists()
 
         # quantities that are constant with p
+
         self._cp = [(t_beg[2][2]), \
                     (t_beg[2][3]**2, t_end[2][3]**2), \
                     (t_beg[0][2] * t_beg[2][3] - t_beg[0][3] * t_beg[2][2], \
@@ -421,67 +470,129 @@ class reeke_model:
                     (2.0 * t_beg[2][3], 2.0 * t_end[2][3]), \
                     (2.0 * t_beg[1][3], 2.0 * t_end[1][3]), \
                     (2.0 * t_beg[0][3], 2.0 * t_end[0][3])]
-        #_cp[0]   t33
-        #_cp[1]   R00_beg, R00_end
-        #_cp[2]   R01_beg, R01_end
-        #_cp[3]   R02
-        #_cp[4]   R10_beg, R10_end
-        #_cp[5]   R11
-        #_cp[6]   R2
-        #_cp[7]   2 t13
-        #_cp[8]   2 t23
-        #_cp[9]   t11
-        #_cp[10]  t22
-        #_cp[11]  2 t12
-        #_cp[12]  2 t34_beg, 2 t34_end
-        #_cp[13]  2 t24_beg, 2 t24_end
-        #_cp[14]  2 t14_beg, 2 t14_end
 
         # The outer loop is between limits for the axis most closely parallel,
         # or antiparallel, to the X-ray beam, which is called 'p'.
 
         # Determine the limiting values of p
+
         p_lim = self._p_limits()
-        x = self.get_all_p_limits()
-        print "Ewald sphere limits for p index are p ="
-        print "%.3f, %.3f for the start orientation" % x[0]
-        print "%.3f, %.3f for the end orientation" % x[1]
+        
+        # fill indices list by looping over p, q and r
 
-        print "Limiting sphere limits for p index are p ="
-        print "%.3f, %.3f for the start orientation" % x[2]
-        print "%.3f, %.3f for the end orientation" % x[3]
+        hkl = []
 
-        print "chosen looping limits", p_lim
-
-        # loop over p
         for p in range(p_lim[0], p_lim[1] + 1):
 
             # quantities that vary with p but are constant with q
+
             cq = [(p * self._cp[7]), \
                   (p**2 * self._cp[9]), \
                   (p * self._cp[11]), \
                   (p * self._cp[14][0], p * self._cp[14][1])]
-            #cq[0]    2 p t13
-            #cq[1]    p^2 t11
-            #cq[2]    2 p t12
-            #cq[3]    2 p t14
 
             # find the limiting values of q
-            q_lim = self._q_limits(p)
 
-            # loop over q
+            q_lim = self._q_limits(p)
             if q_lim is None: continue
+
             for q in range(q_lim[0], q_lim[1] + 1):
 
                 # find the limiting values of r
-                r_lim = self._r_limits(p, q, cq)
-                print "for p = %d, q = %d, r_lim are " % (p, q), r_lim
-        return
 
+                r_lim = self._r_limits(p, q, cq)
+                if r_lim is None: continue
+
+                for item in r_lim:
+
+                    if item[0] is None: continue
+
+                    for r in range(item[0], item[1]+1):
+                        hkl.append((self._permutation * (p, q, r)).elems)
+
+        return hkl
+
+    def visualize(self, phi_beg, phi_end):
+        """Write an R script (vis.R) and an associated data file (vis.dat)
+        for visualisation of generated indices between phi_beg and phi_end,
+        using R and the rgl add-on package. Sorry, I don't know matplotlib
+        yet."""
+
+        # write R script
+
+        f = open("vis.R", "w")
+
+        f.write("# Run this from within R using\n# install.packages('rgl')\n" + \
+                "# source('vis.R')\n\n")
+        f.write("library(rgl)\n")
+        f.write("p_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[0].elems)
+        f.write("q_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[1].elems)
+        f.write("r_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[2].elems)
+        f.write("s0 <- c(%.9f, %.9f, %.9f)\n" % self._s0.elems)
+        f.write("dstarmax <- %.9f\n" % self._dstarmax)
+        f.write("perm <- solve(matrix(data = c(" + \
+                "%d, %d, %d, %d, %d, %d, %d, %d, %d" % self._permutation.elems + \
+                "), nrow=3, byrow=T))\n")
+        f.write("\n# draw the Ewald and limiting spheres\n" + \
+                "spheres3d(s0,radius=sqrt(sum(s0*s0)),color='#CCCCFF'," + \
+                "alpha=0.3)\n" + \
+                "spheres3d(c(0,0,0),radius=dstarmax,color='red',alpha=0.1)\n" + \
+                "\n# draw the source vector\n" + \
+                "lines3d(rbind(c(0,0,0),s0))\n" + \
+                "\n# draw the reciprocal lattice axes at ten times their " + \
+                "length\n" + \
+                "lines3d(rbind(c(0,0,0),10*p_ax),col='red')\n" + \
+                "lines3d(rbind(c(0,0,0),10*q_ax),col='green')\n" + \
+                "lines3d(rbind(c(0,0,0),10*r_ax),col='blue')\n"
+                "s0mag <- sqrt(sum(s0*s0))\n" + \
+                "s0unit <- s0 / s0mag\n" + \
+                "\n# two unit vectors orthogonal to s0\n" + \
+                "s0unitx1 <- c((-s0unit[3]),(0),(s0unit[1]))\n" + \
+                "s0unitx2 <- c((s0unit[2]*s0unitx1[3] - " + \
+                "s0unit[3]*s0unitx1[2]),\n" + \
+                "   (s0unit[1]*s0unitx1[3] - s0unit[3]*s0unitx1[1]),\n" + \
+                "   (s0unit[1]*s0unitx1[2] - s0unit[2]*s0unitx1[1]))\n" + \
+                "sin_theta <- dstarmax/(2*s0mag)\n" + \
+                "sin_2theta <- sin(2*asin(sin_theta))\n" + \
+                "\n# distance to the centre of the circle of" + \
+                "intersection, along s0\n" + \
+                "e <- 2 * sqrt(sum(s0*s0)) * sin_theta ^2\n" + \
+                "\n# radius of the circle of intersection\n" + \
+                "R <- s0mag * sin_2theta\n" + \
+                "\n# make points around the circle\n" + \
+                "tau <- seq(from=0,to=2*pi,by=0.01)\n" + \
+                "circ <- t(sapply(tau, function(x){\n" + \
+                "  e * s0unit + R*sin(x) * s0unitx1 + R*cos(x) * s0unitx2}))\n" + \
+                "\n# draw the circle\n" + \
+                "lines3d(circ)\n" + \
+                "\n# load the generated indices\n" + \
+                "pts <- read.csv('./vis.dat')\n" + \
+                "\n# convert h, k, l to reciprocal space coordinates\n" + \
+                "conv <- function(h) {p <- perm %*% h\n" + \
+                "    return(p[1]*p_ax + p[2]*q_ax + p[3]*r_ax)}\n" + \
+                "pts <- t(apply(pts, MARGIN = 1, FUN = conv))\n" + \
+                "\n# draw the generated indices\n" + \
+                "points3d(pts, col='blue')\n" + \
+                "\n")
+        f.close()
+
+        # write data file
+
+        indices = self.generate_indices(phi_beg, phi_end)
+
+        f = open("vis.dat", "w")
+        f.write("h, k, l\n")
+
+        for hkl in indices:
+            f.write("%d, %d, %d\n" % hkl)
+        f.close()
+
+        return
 
 if __name__ == '__main__':
 
-    # test run for development/debugging.
+    # test run for development/debugging. Values come from the use case data
+
     axis = matrix.col([0.0, 1.0, 0.0])
     ub = matrix.sqr([-0.0133393674072, -0.00541609051856, -0.00367748834997,
                     0.00989309470346, 0.000574825936669, -0.0054505379664,
@@ -490,16 +601,7 @@ if __name__ == '__main__':
     dmin = 1.20117776325
     r = reeke_model(ub, axis, s0, dmin)
 
-    print
-    print "SETTING UP THE REEKE MODEL"
-    print "s0 is"
-    print r._s0.round(5)
-    print "Original phi=0 orientation matrix UB is"
-    print r._ub.round(5)
-    print "Rotation axis is"
-    print r._axis.round(5)
-    print
-    print "DETERMINING LOOP LIMITS FOR ROTATION BETWEEN 30 and 30.1 DEGREES"
+    indices = r.generate_indices(30, 30.1)
 
-    r.generate_indices(30, 30.1)
-    #r.generate_indices(35, 35.1)
+    for hkl in indices: print "%d, %d, %d" % hkl
+    #r.visualize(30,30.1)
