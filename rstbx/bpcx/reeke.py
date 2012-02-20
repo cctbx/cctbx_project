@@ -8,7 +8,7 @@ import math
 class reeke_model:
     """Model and methods for the Reeke algorithm"""
 
-    def __init__(self, ub, axis, s0, dmin, margin = 3):
+    def __init__(self, ub, axis, s0, dmin, phi_beg, phi_end, margin = 3):
 
         # the original orientation, at phi = 0
         self._ub = ub
@@ -27,18 +27,112 @@ class reeke_model:
         self._dstarmax = 1 / dmin
         self._dstarmax2 = self._dstarmax**2
 
-        # margin by which to expand limits. Mosflm uses 3. Can play with
-        # this value to see what difference it makes - perhaps it is to
-        # account for errors in the orientation?
+        # margin by which to expand limits. Mosflm uses 3. C
+        # TODO play with this value to see what difference it makes.
+        # It might be useful to account for errors in the orientation.
         self._margin = int(margin)
 
-        # reciprocal lattice vectors at the beginning and end of the wedge
-        self._rlv_beg = None
-        self._rlv_end = None
+        # Set the orientation at the beginning and end of this wedge.
+        # NB The wedge could be the oscillation range for a single image, but
+        # would need expanding by the rocking width and beam divergence to
+        # catch all the partials on this image. Alternatively, expand only
+        # at the extrema of the whole sweep and allow the partials to be
+        # captured on adjacent wedges.
 
-        # orientation at beginning and end of wedge, in permuted order
-        self._p_beg = None
-        self._p_end = None
+        r_beg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+            axis = self._axis, angle = phi_beg, deg = True))
+        r_half_osc = matrix.sqr(
+            scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+            axis = self._axis, angle = (phi_end - phi_beg) / 2.0, deg=True))
+
+        ub_beg = r_beg * self._ub
+        ub_mid = r_half_osc * ub_beg
+        ub_end = r_half_osc * ub_mid
+
+        # Determine the permutation order of columns of the orientation
+        # matrix. Use the orientation from the middle of the wedge for this.
+        # As a side-effect set self._permutation.
+
+        self._permutation = None
+        col1, col2, col3 = self._permute_axes(ub_mid)
+
+        # Thus set the reciprocal lattice axis vectors, in permuted order
+        # p, q and r for both orientations
+
+        rl_vec = [ub_beg.extract_block(start=(0,0), stop=(3,1)),
+                  ub_beg.extract_block(start=(0,1), stop=(3,2)),
+                  ub_beg.extract_block(start=(0,2), stop=(3,3))]
+        self._rlv_beg = [rl_vec[col1],
+                         rl_vec[col2],
+                         rl_vec[col3]]
+        rl_vec = [ub_end.extract_block(start=(0,0), stop=(3,1)),
+                  ub_end.extract_block(start=(0,1), stop=(3,2)),
+                  ub_end.extract_block(start=(0,2), stop=(3,3))]
+        self._rlv_end = [rl_vec[col1],
+                         rl_vec[col2],
+                         rl_vec[col3]]
+
+        # Set permuted orientation matrices
+
+        self._p_beg = matrix.sqr(self._rlv_beg[0].elems +
+                                 self._rlv_beg[1].elems +
+                                 self._rlv_beg[2].elems).transpose()
+        self._p_end = matrix.sqr(self._rlv_end[0].elems +
+                                 self._rlv_end[1].elems +
+                                 self._rlv_end[2].elems).transpose()
+
+        # Define a new coordinate system concentric with the Ewald sphere.
+        #
+        # X' = X - s0_x
+        # Y' = Y - s0_y
+        # Z' = Z - s0_z
+        #
+        # X = P' h'
+        # -   =  -
+        #                                    p11 p12 p13 -s0_X
+        # where h' = (p, q, r, 1)^T and P' = p21 p22 p23 -s0_y
+        #       -                       =    p31 p32 p33 -s0_z
+        #
+
+        # Calculate P' matrices for the beginning and end orientations
+
+        pp_beg = matrix.rec(self._p_beg.elems[0:3] + (-1.*self._s0[0],) +
+                            self._p_beg.elems[3:6] + (-1.*self._s0[1],) +
+                            self._p_beg.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
+        pp_end = matrix.rec(self._p_end.elems[0:3] + (-1.*self._s0[0],) +
+                            self._p_end.elems[3:6] + (-1.*self._s0[1],) +
+                            self._p_end.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
+
+        # Various quantities of interest are obtained from the reciprocal metric
+        # tensor T of P'. These quantities are to be used (later) for solving the
+        # intersection of a line of constant p, q index with the Ewald sphere. It
+        # is efficient to calculate these before the outer loop. So, calculate T
+        # for both beginning and end orientations
+
+        t_beg = (pp_beg.transpose() * pp_beg).as_list_of_lists()
+        t_end = (pp_end.transpose() * pp_end).as_list_of_lists()
+
+        # quantities that are constant with p
+
+        self._cp = [(t_beg[2][2]), \
+                    (t_beg[2][3]**2, t_end[2][3]**2), \
+                    (t_beg[0][2] * t_beg[2][3] - t_beg[0][3] * t_beg[2][2], \
+                     t_end[0][2] * t_end[2][3] - t_end[0][3] * t_end[2][2]), \
+                    (t_beg[0][2]**2 - t_beg[0][0] * t_beg[2][2]), \
+                    (t_beg[1][2] * t_beg[2][3] - t_beg[1][3] * t_beg[2][2], \
+                     t_end[1][2] * t_end[2][3] - t_end[1][3] * t_end[2][2]), \
+                    (t_beg[0][2] * t_beg[1][2] - t_beg[0][1] * t_beg[2][2]),
+                    (t_beg[1][2]**2 - t_beg[1][1] * t_beg[2][2]), \
+                    (2.0 * t_beg[0][2]), \
+                    (2.0 * t_beg[1][2]), \
+                    (t_beg[0][0]), \
+                    (t_beg[1][1]), \
+                    (2.0 * t_beg[0][1]), \
+                    (2.0 * t_beg[2][3], 2.0 * t_end[2][3]), \
+                    (2.0 * t_beg[1][3], 2.0 * t_end[1][3]), \
+                    (2.0 * t_beg[0][3], 2.0 * t_end[0][3])]
+
+        # The following are set during the generation of indices
 
         # planes of constant p tangential to the Ewald sphere
         self._ewald_p_lim_beg = None
@@ -48,9 +142,6 @@ class reeke_model:
         # the Ewald and resolution limiting spheres
         self._res_p_lim_beg = None
         self._res_p_lim_end = None
-
-        # quantities that are constant with p
-        self._cp = None
 
         # looping p limits
         self._p_lim = None
@@ -368,108 +459,12 @@ class reeke_model:
 
         return [tuple(l1), tuple(l2)]
 
-    def generate_indices(self, phi_beg, phi_end):
+    def generate_indices(self):
         """Determine looping limits for indices h, k and l using the
         Reeke algorithm. This is the top level method for this module.
         All other methods are (probably) called by this, and therefore
         may as well be private. Can clean this up later. Also lots of
         debugging print statements to remove!"""
-
-        # First set the orientation at the beginning and end of this wedge
-        # (typically this is the oscillation range of a single image)
-        # NB Mosflm extends the rotation range at each end by the maximum
-        # reflection width, to catch all partials for this image
-
-        r_beg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
-            axis = self._axis, angle = phi_beg, deg = True))
-        r_half_osc = matrix.sqr(
-            scitbx.math.r3_rotation_axis_and_angle_as_matrix(
-            axis = self._axis, angle = (phi_end - phi_beg) / 2.0, deg=True))
-
-        ub_beg = r_beg * self._ub
-        ub_mid = r_half_osc * ub_beg
-        ub_end = r_half_osc * ub_mid
-
-        # Determine the permutation order of columns of the orientation
-        # matrix. Use the orientation from the middle of the wedge for this.
-
-        col1, col2, col3 = self._permute_axes(ub_mid)
-
-        # Thus set the reciprocal lattice axis vectors, in permuted order
-        # p, q and r for both orientations
-
-        rl_vec = [ub_beg.extract_block(start=(0,0), stop=(3,1)),
-                  ub_beg.extract_block(start=(0,1), stop=(3,2)),
-                  ub_beg.extract_block(start=(0,2), stop=(3,3))]
-        self._rlv_beg = [rl_vec[col1],
-                         rl_vec[col2],
-                         rl_vec[col3]]
-        rl_vec = [ub_end.extract_block(start=(0,0), stop=(3,1)),
-                  ub_end.extract_block(start=(0,1), stop=(3,2)),
-                  ub_end.extract_block(start=(0,2), stop=(3,3))]
-        self._rlv_end = [rl_vec[col1],
-                         rl_vec[col2],
-                         rl_vec[col3]]
-
-        # Set permuted orientation matrices
-
-        self._p_beg = matrix.sqr(self._rlv_beg[0].elems +
-                                self._rlv_beg[1].elems +
-                                self._rlv_beg[2].elems).transpose()
-        self._p_end = matrix.sqr(self._rlv_end[0].elems +
-                                self._rlv_end[1].elems +
-                                self._rlv_end[2].elems).transpose()
-
-        # Define a new coordinate system concentric with the Ewald sphere.
-        #
-        # X' = X - s0_x
-        # Y' = Y - s0_y
-        # Z' = Z - s0_z
-        #
-        # X = P' h'
-        # -   =  -
-        #                                    p11 p12 p13 -s0_X
-        # where h' = (p, q, r, 1)^T and P' = p21 p22 p23 -s0_y
-        #       -                       =    p31 p32 p33 -s0_z
-        #
-        
-        # Calculate P' matrices for the beginning and end orientations
-
-        pp_beg = matrix.rec(self._p_beg.elems[0:3] + (-1.*self._s0[0],) +
-                            self._p_beg.elems[3:6] + (-1.*self._s0[1],) +
-                            self._p_beg.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
-        pp_end = matrix.rec(self._p_end.elems[0:3] + (-1.*self._s0[0],) +
-                            self._p_end.elems[3:6] + (-1.*self._s0[1],) +
-                            self._p_end.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
-
-        # Various quantities of interest are obtained from the reciprocal metric
-        # tensor T of P'. These quantities are to be used (later) for solving the
-        # intersection of a line of constant p, q index with the Ewald sphere. It
-        # is efficient to calculate these before the outer loop. So, calculate T
-        # for both beginning and end orientations
-
-        t_beg = (pp_beg.transpose() * pp_beg).as_list_of_lists()
-        t_end = (pp_end.transpose() * pp_end).as_list_of_lists()
-
-        # quantities that are constant with p
-
-        self._cp = [(t_beg[2][2]), \
-                    (t_beg[2][3]**2, t_end[2][3]**2), \
-                    (t_beg[0][2] * t_beg[2][3] - t_beg[0][3] * t_beg[2][2], \
-                     t_end[0][2] * t_end[2][3] - t_end[0][3] * t_end[2][2]), \
-                    (t_beg[0][2]**2 - t_beg[0][0] * t_beg[2][2]), \
-                    (t_beg[1][2] * t_beg[2][3] - t_beg[1][3] * t_beg[2][2], \
-                     t_end[1][2] * t_end[2][3] - t_end[1][3] * t_end[2][2]), \
-                    (t_beg[0][2] * t_beg[1][2] - t_beg[0][1] * t_beg[2][2]),
-                    (t_beg[1][2]**2 - t_beg[1][1] * t_beg[2][2]), \
-                    (2.0 * t_beg[0][2]), \
-                    (2.0 * t_beg[1][2]), \
-                    (t_beg[0][0]), \
-                    (t_beg[1][1]), \
-                    (2.0 * t_beg[0][1]), \
-                    (2.0 * t_beg[2][3], 2.0 * t_end[2][3]), \
-                    (2.0 * t_beg[1][3], 2.0 * t_end[1][3]), \
-                    (2.0 * t_beg[0][3], 2.0 * t_end[0][3])]
 
         # The outer loop is between limits for the axis most closely parallel,
         # or antiparallel, to the X-ray beam, which is called 'p'.
@@ -477,7 +472,7 @@ class reeke_model:
         # Determine the limiting values of p
 
         p_lim = self._p_limits()
-        
+
         # fill indices list by looping over p, q and r
 
         hkl = []
@@ -512,11 +507,12 @@ class reeke_model:
 
         return hkl
 
-    def visualize(self, phi_beg, phi_end):
+    def visualize(self):
         """Write an R script (vis.R) and an associated data file (vis.dat)
         for visualisation of generated indices between phi_beg and phi_end,
-        using R and the rgl add-on package. Sorry, I don't know matplotlib
-        yet."""
+        using R and the rgl add-on package."""
+
+        # Sorry, this is ugly. I don't know matplotlib yet.
 
         # write R script
 
@@ -578,7 +574,7 @@ class reeke_model:
 
         # write data file
 
-        indices = self.generate_indices(phi_beg, phi_end)
+        indices = self.generate_indices()
 
         f = open("vis.dat", "w")
         f.write("h, k, l\n")
@@ -599,9 +595,9 @@ if __name__ == '__main__':
                     0.00475395109417, -0.0163935257377, 0.00102384915696])
     s0 = matrix.col([0.00237878589035, 1.55544539299e-16, -1.09015329696])
     dmin = 1.20117776325
-    r = reeke_model(ub, axis, s0, dmin)
+    r = reeke_model(ub, axis, s0, dmin, 30, 30.1)
 
-    indices = r.generate_indices(30, 30.1)
+    indices = r.generate_indices()
 
     for hkl in indices: print "%d, %d, %d" % hkl
     #r.visualize(30,30.1)
