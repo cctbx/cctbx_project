@@ -72,6 +72,7 @@ class structure(crystal.special_position_settings):
         non_unit_occupancy_implies_min_distance_sym_equiv_zero=
           self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     self.scattering_type_registry_params = None
+    self.inelastic_form_factors_source = None
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(
@@ -1140,7 +1141,27 @@ class structure(crystal.special_position_settings):
       set_inelastic_ff = ext.set_inelastic_form_factors_from_henke
     else:
       raise RuntimeError("Unknown inelastic form factors table: %s" % table)
+    self.inelastic_form_factors_source = table
     set_inelastic_ff(self.scatterers(), photon, set_use_fp_fdp)
+
+  def set_custom_inelastic_form_factors(self, table, set_use_fp_fdp=True,
+                                        source="custom"):
+    """ Expects a dictionary of tuples like 'C' : (fp, fdp). If an element is
+    not in the dictionary, the fp and fdp are reset to 0 and the use_fp_fdp is
+    set to false.
+    """
+    for sc in self.scatterers():
+      fp_fdp = table.get(sc.scattering_type, None)
+      if fp_fdp is None:
+        sc.fp = 0
+        sc.fdp = 0
+        sc.use_fp_fdp = False
+      else:
+        sc.fp = fp_fdp[0]
+        sc.fdp = fp_fdp[1]
+        if set_use_fp_fdp:
+          sc.use_fp_fdp = True
+    self.inelastic_form_factors_source = source
 
   def mean_scattering_density(self):
     r = self.scattering_type_registry()
