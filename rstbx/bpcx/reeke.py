@@ -623,4 +623,4 @@ if __name__ == '__main__':
     print "Generated indices were written to reeke_hkl.dat"
     print "An R script for visualising these was written to reeke_vis.R,"
     print "which can be run from the R prompt with:"
-    print "source('reeke_vis.R,')"
+    print "source('reeke_vis.R')"
