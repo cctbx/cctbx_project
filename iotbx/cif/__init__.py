@@ -184,6 +184,10 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
     "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
   }
+  inelatic_references = {
+    "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
+    "sasaki" : "S.Sasaki, KEK Report, 1989, 88-14, 1",
+  }
 
   def __init__(self, xray_structure, covariance_matrix=None,
                cell_covariance_matrix=None):
@@ -283,10 +287,18 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     atom_type_loop = model.loop(header=('_atom_type_symbol',
                                         '_atom_type_scat_dispersion_real',
                                         '_atom_type_scat_dispersion_imag',
-                                        '_atom_type_scat_source'))
+                                        '_atom_type_scat_source',
+                                        '_atom_type_scat_dispersion_source'))
     scattering_type_registry = xray_structure.scattering_type_registry()
     params = xray_structure.scattering_type_registry_params
     scat_source = self.sources.get(params.table)
+    disp_source = self.inelatic_references.get(
+      xray_structure.inelastic_form_factors_source)
+    # custom?
+    if disp_source is None:
+      disp_source = xray_structure.inelastic_form_factors_source
+    if disp_source is None:
+      disp_source = "undefined"
     scattering_type_registry = xray_structure.scattering_type_registry()
     for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().iteritems():
       if params.custom_dict and atom_type in params.custom_dict:
@@ -297,7 +309,8 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."""
         scat_source = scat_source %gaussian.n_terms()
       fp, fdp = fp_fdp_table[atom_type]
-      atom_type_loop.add_row((atom_type, "%.5f" %fp, "%.5f" %fdp, scat_source))
+      atom_type_loop.add_row(
+        (atom_type, "%.5f" %fp, "%.5f" %fdp, scat_source, disp_source))
     self.cif_block.add_loop(atom_type_loop)
 
 
