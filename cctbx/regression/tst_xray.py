@@ -695,6 +695,7 @@ Si*5  O     Si*6   146.93
   xs.add_scatterer(xray.scatterer("S3", site=(0.3, 0.3, 0.3)))
   xs1 = xs.deep_copy_scatterers()
   xs1.set_inelastic_form_factors(wavelengths.characteristic("Mo"), "sasaki")
+  assert xs1.inelastic_form_factors_source == "sasaki"
   for sc in xs1.scatterers():
     assert sc.flags.use_fp_fdp() == True
     assert sc.fp != 0
@@ -706,6 +707,7 @@ Si*5  O     Si*6   146.93
     assert approx_equal(sc.fdp, sc_fp_fdp_sasaki.fdp())
   xs2 = xs.deep_copy_scatterers()
   xs2.set_inelastic_form_factors(0.71073, "henke") # angstrom
+  assert xs2.inelastic_form_factors_source == "henke"
   for sc in xs2.scatterers():
     assert sc.flags.use_fp_fdp() == True
     assert sc.fp != 0
@@ -738,11 +740,24 @@ Si   Si     3 ( 0.5000  0.5000  0.3333) 1.00 0.0000 [ - ]
 O    O      6 ( 0.1970 -0.1970  0.8333) 1.00 0.0000 [ - ]
 """)
   #
+  xs.set_custom_inelastic_form_factors({'Si' : (-1,1), 'C' : (-2,2)},
+                                       source="my source")
   xs_p1 = xs.customized_copy(
     space_group_info=sgtbx.space_group_info(symbol="P1"),
     non_unit_occupancy_implies_min_distance_sym_equiv_zero=True)
   assert xs_p1.space_group_info().type().number() == 1
   assert xs_p1.non_unit_occupancy_implies_min_distance_sym_equiv_zero()
+  assert xs.scatterers()[0].fp == -1 or xs.scatterers()[0].fdp == 1
+  assert xs.scatterers()[1].fp == -2 or xs.scatterers()[1].fdp == 2
+  assert xs.scatterers()[2].fp == 0 or xs.scatterers()[2].fdp == 0
+  assert xs.scatterers()[0].flags.use_fp_fdp() and\
+         xs.scatterers()[1].flags.use_fp_fdp() and\
+         not xs.scatterers()[2].flags.use_fp_fdp()
+  assert xs_p1.inelastic_form_factors_source == xs.inelastic_form_factors_source
+  assert xs_p1.inelastic_form_factors_source == "my source"
+  xs_p1.erase_scatterers()
+  assert not xs_p1.inelastic_form_factors_source
+
 
 def exercise_closest_distances():
   xs = random_structure.xray_structure(

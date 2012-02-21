@@ -84,6 +84,7 @@ class structure(crystal.special_position_settings):
     self._scattering_type_registry = other._scattering_type_registry
     self._scattering_type_registry_is_out_of_date \
       = other._scattering_type_registry_is_out_of_date
+    self.inelastic_form_factors_source = other.inelastic_form_factors_source
 
   def crystal_symmetry(self):
     """Get crystal symmetry of the structure
@@ -103,6 +104,7 @@ class structure(crystal.special_position_settings):
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
     self._scattering_type_registry_is_out_of_date = True
+    self.inelastic_form_factors_source = None
 
   def deep_copy_scatterers(self):
     """Create a deep copy of the structure with all scatterers
@@ -132,7 +134,7 @@ class structure(crystal.special_position_settings):
     if (non_unit_occupancy_implies_min_distance_sym_equiv_zero is Keep):
       non_unit_occupancy_implies_min_distance_sym_equiv_zero \
         = self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
-    return structure(
+    str = structure(
       special_position_settings=crystal.special_position_settings(
         crystal_symmetry=crystal_symmetry,
         min_distance_sym_equiv=self._min_distance_sym_equiv,
@@ -142,6 +144,8 @@ class structure(crystal.special_position_settings):
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =non_unit_occupancy_implies_min_distance_sym_equiv_zero,
       scattering_type_registry=self._scattering_type_registry)
+    str.inelastic_form_factors_source = self.inelastic_form_factors_source
+    return str
 
   def scatterers(self):
     """Get all scatterers of the structure
@@ -1160,7 +1164,7 @@ class structure(crystal.special_position_settings):
         sc.fp = fp_fdp[0]
         sc.fdp = fp_fdp[1]
         if set_use_fp_fdp:
-          sc.use_fp_fdp = True
+          sc.flags.set_use_fp_fdp(True)
     self.inelastic_form_factors_source = source
 
   def mean_scattering_density(self):
