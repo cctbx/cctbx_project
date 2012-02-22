@@ -7,9 +7,11 @@
 from mmtbx import utils
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header
+from libtbx import runtime_utils
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
 from cStringIO import StringIO
+import os
 import sys
 
 master_phil = libtbx.phil.parse("""
@@ -19,17 +21,30 @@ find_peaks {
 }
 map_cutoff = 3.0
   .type = float
+  .short_caption = mFo-DFc map cutoff (sigma)
 anom_map_cutoff = 3.0
   .type = float
+  .short_caption = Anomalous map cutoff (sigma)
 write_pdb = True
   .type = bool
+  .short_caption = Write peaks to PDB file
+write_maps = False
+  .type = bool
+  .short_caption = Save map coefficients
+output_file_prefix = peaks_holes
+  .type = str
+include scope libtbx.phil.interface.tracking_params
 """ % utils.cmdline_input_phil_str,
   process_includes=True)
+
+master_params = master_phil # for phenix GUI
 
 class peaks_holes_container (object) :
   def __init__ (self, peaks, holes, map_cutoff=3.0, anom_peaks=None,
       anom_map_cutoff=3.0, water_peaks=None, water_anom_peaks=None) :
     adopt_init_args(self, locals())
+    self.pdb_file = None
+    self.map_file = None
 
   def show_summary (self, out=sys.stdout) :
     print >> out, ""
@@ -180,6 +195,15 @@ class peaks_holes_container (object) :
     f.write(root.as_pdb_string())
     f.close()
     print >> log, "Wrote %s" % file_name
+    self.pdb_file = file_name
+
+  def get_output_file_info (self) :
+    output_files = []
+    if (self.pdb_file is not None) :
+      output_files.append((self.pdb_file, "Peaks as PDB atoms"))
+    if (self.map_file is not None) :
+      output_files.append((self.map_file, "Map coefficients"))
+    return output_files
 
 class water_peak (object) :
   def __init__ (self, id_str, xyz, peak_height, map_type="mFo-DFc") :
@@ -317,9 +341,49 @@ mmtbx.find_peaks_holes - difference map analysis
     map_cutoff=cmdline.params.map_cutoff,
     anom_map_cutoff=cmdline.params.anom_map_cutoff,
     out=out)
+  prefix = cmdline.params.output_file_prefix
   if (cmdline.params.write_pdb) :
-    result.save_pdb_file(log=out)
+    result.save_pdb_file(file_name="%s.pdb" % prefix, log=out)
+  if (cmdline.params.write_maps) :
+    import mmtbx.maps.utils
+    import iotbx.mtz
+    f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(cmdline.fmodel,
+      use_filled=False)
+    dec = iotbx.mtz.label_decorator(phases_prefix="PH")
+    mtz_dat = f_map.as_mtz_dataset(
+      column_root_label="2FOFCWT",
+      label_decorator=dec)
+    mtz_dat.add_miller_array(diff_map,
+      column_root_label="FOFCWT",
+      label_decorator=dec)
+    if (cmdline.fmodel.f_obs().anomalous_flag()) :
+      anom_map = mmtbx.maps.utils.get_anomalous_map(cmdline.fmodel)
+      mtz_dat.add_miller_array(anom_map,
+        column_root_label="ANOM",
+        label_decorator=dec)
+    mtz_dat.mtz_object().write("%s_maps.mtz" % prefix)
+    result.map_file = "%s_maps.mtz" % prefix
   return result
+
+def validate_params (params, callback=None) :
+  if params.input.pdb.file_name is None :
+    raise Sorry("No PDB file defined.")
+  elif params.input.xray_data.file_name is None :
+    raise Sorry("No reflection file defined.")
+  elif params.input.xray_data.labels is None :
+    raise Sorry("No labels chosen for reflection data.")
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.chdir(self.output_dir)
+    return run(args=list(self.args), out=sys.stdout)
+
+def finish_job (result) :
+  output_files = []
+  stats = []
+  if (result is not None) :
+    output_files = result.get_output_file_info()
+  return (output_files, stats)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
