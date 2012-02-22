@@ -26,6 +26,10 @@ def run(args):
                   .option("--nproc", "-p",
                           type="int",
                           help="Number of processors to use.")
+                  .option("--sum_adu",
+                          action="store_true",
+                          default=False,
+                          help="Sum the ADUs instead of counting photons.")
                   ).process(args=args)
   args = command_line.args
   assert len(args) == 1
@@ -33,6 +37,10 @@ def run(args):
   gain_map_path = command_line.options.gain_map_path
   estimated_gain = command_line.options.estimated_gain
   nproc = command_line.options.nproc
+  if command_line.options.sum_adu:
+    method = "sum_adu"
+  else:
+    method = "photon_counting"
   print output_dirname
   if output_dirname is None:
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
@@ -42,11 +50,12 @@ def run(args):
     hist_d, estimated_gain=estimated_gain)
   xes_from_histograms(pixel_histograms, output_dirname=output_dirname,
                       gain_map_path=gain_map_path, estimated_gain=estimated_gain,
-                      nproc=nproc)
+                      method=method, nproc=nproc)
 
 def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None,
-                        estimated_gain=30, nproc=None):
-  sum_img = flex.int(flex.grid(370,391), 0) # XXX define the image size some other way?
+                        method="photon_counting", estimated_gain=30, nproc=None):
+  assert method in ("sum_adu", "photon_counting")
+  sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
   gain_img = flex.double(sum_img.accessor(), 0)
 
   if gain_map_path is not None:
@@ -55,8 +64,11 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
   else:
     gain_map = None
 
-  photon_threshold = 2/3 * estimated_gain # XXX
-  two_photon_threshold = 4/3 * estimated_gain # XXX
+
+  #photon_threshold = 1/2
+  photon_threshold = 2/3
+  two_photon_threshold = photon_threshold + 1
+
   mask = flex.int(sum_img.accessor(), 0)
 
   start_row = 370
@@ -109,17 +121,20 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
         mask[pixel] = 1
         continue
       gain = gaussians[1].params[1] - gaussians[0].params[1]
-      gain = 30
-      if abs(gain - estimated_gain) > 0.5 * estimated_gain:
+      if 0 and estimated_gain is not None and abs(gain - estimated_gain) > 0.5 * estimated_gain:
         print "bad gain!!!!!", pixel, gain
         mask[pixel] = 1
         continue
-      #elif gaussians[1].sigma < gaussians[0].sigma:
-        #print "bad gain!!!!!", pixel
-        #mask[pixel] = 1
-        #continue
-      elif gain < (3 * gaussians[0].sigma):
-        print "bad gain!!!!!", pixel
+      elif gaussians[1].sigma < (0.5 * gaussians[0].sigma):
+        print "bad sigma!!!!!", pixel, gaussians[1].sigma
+        mask[pixel] = 1
+        continue
+      elif gain < (4 * gaussians[0].sigma):
+        print "bad gain!!!!!", pixel, gain
+        mask[pixel] = 1
+        continue
+      elif gain > (20 * gaussians[0].sigma): # XXX is 20 to low?
+        print "bad gain!!!!!", pixel, gain
         mask[pixel] = 1
         continue
       gain_img[pixel] = gain
@@ -136,27 +151,43 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
         #print "bad sigma!!!!!", pixel, sigma
         #mask[pixel] = 1
         #continue
-    one_photon_cutoff, two_photon_cutoff = [
-      (threshold + zero_peak_diff) * gain_ratio
-      for threshold in (photon_threshold, two_photon_threshold)]
-    #print "cutoffs: %s %.2f, %.2f" %(pixel, one_photon_cutoff, two_photon_cutoff)
-    i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
-    i_two_photon_cutoff = hist.get_i_slot(two_photon_cutoff)
-    slots = hist.slots()
-    for j in range(i_one_photon_cutoff, len(slots)):
-      if j == i_one_photon_cutoff:
-        center = hist.slot_centers()[j]
-        upper = center + 0.5 * hist.slot_width()
-        n_photons += int(round((upper - one_photon_cutoff)/hist.slot_width() * slots[j]))
-      elif j == i_two_photon_cutoff:
-        center = hist.slot_centers()[j]
-        upper = center + 0.5 * hist.slot_width()
-        n_photons += 2 * int(round((upper - two_photon_cutoff)/hist.slot_width() * slots[j]))
-      elif j < i_two_photon_cutoff:
-        n_photons += int(round(slots[j]))
-      else:
-        n_photons += 2 * int(round(slots[j]))
-    sum_img[pixel] = n_photons
+    if method == "sum_adu":
+      #print "summing adus"
+      sum_adu = 0
+      one_photon_cutoff, two_photon_cutoff = [
+        (threshold * gain + zero_peak_diff)
+        for threshold in (photon_threshold, two_photon_threshold)]
+      i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
+      slots = hist.slots().as_double()
+      slot_centers = hist.slot_centers()
+      slots -= gaussians[0](slot_centers)
+      for j in range(i_one_photon_cutoff, len(slots)):
+        center = slot_centers[j]
+        sum_adu += slots[j] * (center - zero_peak_diff) * 30/gain
+      sum_img[pixel] = sum_adu
+    elif method == "photon_counting":
+      #print "counting photons"
+      one_photon_cutoff, two_photon_cutoff = [
+        (threshold * gain + zero_peak_diff)
+        for threshold in (photon_threshold, two_photon_threshold)]
+      #print "cutoffs: %s %.2f, %.2f" %(pixel, one_photon_cutoff, two_photon_cutoff)
+      i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
+      i_two_photon_cutoff = hist.get_i_slot(two_photon_cutoff)
+      slots = hist.slots()
+      for j in range(i_one_photon_cutoff, len(slots)):
+        if j == i_one_photon_cutoff:
+          center = hist.slot_centers()[j]
+          upper = center + 0.5 * hist.slot_width()
+          n_photons += int(round((upper - one_photon_cutoff)/hist.slot_width() * slots[j]))
+        elif j == i_two_photon_cutoff:
+          center = hist.slot_centers()[j]
+          upper = center + 0.5 * hist.slot_width()
+          n_photons += 2 * int(round((upper - two_photon_cutoff)/hist.slot_width() * slots[j]))
+        elif j < i_two_photon_cutoff:
+          n_photons += int(round(slots[j]))
+        else:
+          n_photons += 2 * int(round(slots[j]))
+      sum_img[pixel] = n_photons
 
   mask.set_selected(sum_img == 0, 1)
   unbound_pixel_mask = xes_finalise.cspad_unbound_pixel_mask()
@@ -188,7 +219,7 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
     )
     cspad_tbx.dwritef(d, output_dirname, 'gain_map_')
 
-  xes_finalise.output_spectrum(spectrum_focus, mask_focus=mask_focus,
+  xes_finalise.output_spectrum(spectrum_focus.iround(), mask_focus=mask_focus,
                                output_dirname=output_dirname)
 
 
