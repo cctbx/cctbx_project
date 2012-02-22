@@ -9,8 +9,6 @@ from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from scitbx.math import curve_fitting
 
-from matplotlib import pyplot
-
 from xfel.cxi.cspad_ana import cspad_tbx
 
 def run(args):
@@ -97,6 +95,7 @@ class pixel_histograms(object):
 
   def plot(self, pixels=None, starting_pixel=None, fit_gaussians=True,
            window_title=None, log_scale=False, save_image=False):
+    from matplotlib import pyplot
     normalise=False # XXX
     assert [pixels, starting_pixel].count(None) > 0
     if pixels is None:
@@ -114,7 +113,7 @@ class pixel_histograms(object):
         normalise=normalise, save_image=save_image)
       fontsize = 15
       pyplot.ylabel("Counts", fontsize=fontsize)
-      pyplot.xlabel("ADU units", fontsize=fontsize)
+      pyplot.xlabel("ADUs", fontsize=fontsize)
       if fit_gaussians:
         self.plot_gaussians(pixel, log_scale=log_scale)
       pyplot.ylabel("Counts", fontsize=fontsize)
@@ -131,6 +130,7 @@ class pixel_histograms(object):
         pyplot.show()
 
   def plot_gaussians(self, pixel, log_scale=False):
+    from matplotlib import pyplot
     if log_scale:
       pyplot.ylim(ymin=0.1)
     hist = self.histograms[pixel]
@@ -155,6 +155,7 @@ class pixel_histograms(object):
   def plot_one_histogram(self, histogram,
                          window_title=None, title=None,
                          log_scale=False, normalise=False, save_image=False):
+    from matplotlib import pyplot
     slots = histogram.slots().as_double()
     if normalise:
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
