@@ -22,6 +22,7 @@ def run():
   "$D/tst_dlite.py",
   "$D/phil/tst_tokenizer.py",
   "$D/phil/tst.py",
+  "$D/phil/tst_experimental.py",
   "$D/phil/tst_interface.py",
   "$D/tst_object_oriented_patterns.py",
   "$D/find_reference_cycles.py",

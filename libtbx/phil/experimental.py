@@ -20,7 +20,7 @@ def merge_params_by_key(dst, src, key):
   extract @p src into @p dst.  Two scopes with attributes named @p key
   are merged only if the values of @p key are equal.  The function
   returns @c True if @p src was merged into @p dst, and @c False
-  otherwise.  XXX Experimental!  XXX param or extract in name?
+  otherwise.
   """
 
   # Base case: if dst and src both have keys, they must match.
@@ -34,37 +34,34 @@ def merge_params_by_key(dst, src, key):
     if (len(attr) <= 0 or attr[0] == "_"):
       continue
 
-    val = getattr(src, attr)
-    if (val is None):
+    src_val = getattr(src, attr)
+    if (src_val is None):
       # Do not merge undefined values.
       continue
 
-    elif (isinstance(val, phil.scope_extract)):
+    elif (isinstance(src_val, phil.scope_extract)):
       # If dst has a scope with the same name, merge it recursively.
-      # XXX Not sure how to handle the case when dst has a non-scope
-      # item with the same name.  That can probably never occur for
-      # proper phil objects?  Same applies to the scope_extract_list
-      # below.
-      if (hasattr(dst, attr) and
-          isinstance(getattr(dst, attr), phil.scope_extract)):
-        merge_params_by_key(getattr(dst, attr), val, key)
+      if (hasattr(dst, attr)):
+        dst_val = getattr(dst, attr)
+        assert isinstance(dst_val, phil.scope_extract)
+        merge_params_by_key(dst_val, src_val, key)
       else:
-        setattr(dst, attr, val)
+        setattr(dst, attr, src_val)
 
-    elif (isinstance(val, phil.scope_extract_list)):
+    elif (isinstance(src_val, phil.scope_extract_list)):
       # If dst has a list of scopes with the same name, merge them
       # recursively, item by item.
-      if (hasattr(dst, attr) and
-          isinstance(getattr(dst, attr), phil.scope_extract_list)):
+      if (hasattr(dst, attr)):
         dst_list = getattr(dst, attr)
-        for src_item in val:
+        assert isinstance(dst_list, phil.scope_extract_list)
+        for src_item in src_val:
           if (not _merge_param_into_list(dst_list, src_item, key)):
             dst_list.append(src_item)
       else:
-        setattr(dst, attr, val)
+        setattr(dst, attr, src_val)
 
     else:
       # Merge non-scope values.
-      setattr(dst, attr, val)
+      setattr(dst, attr, src_val)
 
   return True
