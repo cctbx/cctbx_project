@@ -195,7 +195,20 @@ class ThreeProteinResidues(list):
     psi = dihedral_angle(sites=[atom.xyz for atom in psi_atoms], deg=True)
     if verbose:
       print "psi, phi",psi,phi
-    key = (round_to_ten(phi), round_to_ten(psi))
+    try: key = (round_to_ten(phi), round_to_ten(psi))
+    except:
+      print '-'*80
+      for atom in backbone_i_minus_1:
+        print atom.format_atom_record()
+      print '-'*80
+      for atom in backbone_i:
+        print atom.format_atom_record()
+      print '-'*80
+      for atom in backbone_i_plus_1:
+        print atom.format_atom_record()
+      print '-'*80
+      print "psi, phi",psi,phi
+      raise
     return key
 
   def apply_updates(self,
@@ -244,7 +257,9 @@ class ThreeProteinResidues(list):
             restraint_values[i],
             restraint_values[i+1],
             )
-          #print "ANGLE", 1/restraint_values[i+1]**2/angle.weight,1/restraint_values[i+1]**2, angle.weight
+        names.sort()
+        registry[tuple(names)] = restraint_values[i]
+        #print "ANGLE", 1/restraint_values[i+1]**2/angle.weight,1/restraint_values[i+1]**2, angle.weight
         if ideal: angle_proxy.angle_ideal = restraint_values[i]
         if esd: angle_proxy.weight = 1/restraint_values[i+1]**2
       elif len(names)==2:
@@ -278,16 +293,18 @@ class ThreeProteinResidues(list):
         rkey = list(copy.deepcopy(key))
         rkey.reverse()
         rkey=tuple(rkey)
-        print averages
-        print averages.n
         for angle in self.restraints_manager.geometry.angle_proxies:
-          if angle.i_seqs==key or angle.i_seqs==rkey:
-            print angle.angle_ideal,
-            angle.angle_ideal = averages[key]
-            print angle.angle_ideal
-            assert 0
+          # could be better!
+          akey = list(copy.deepcopy(angle.i_seqs))
+          akey.sort()
+          akey=tuple(akey)
+          if akey==key or akey==rkey:
+            angle.angle_ideal = averages[key]/averages.n[key]
             break
         else:
+          print key,rkey
+          print averages[key]
+          print averages.n[key]
           assert 0
 
 def get_res_type_group(resname1, resname2):
@@ -370,9 +387,14 @@ def update_restraints(hierarchy,
   if current_geometry:
     sites_cart = current_geometry.sites_cart()
     pdb_atoms = hierarchy.atoms()
-    # XXX PDB_TRANSITION SLOW
-    for j_seq,atom in enumerate(pdb_atoms):
+    #if atom_lookup:
+    #  for j_seq, scatterer in enumerate(current_geometry.scatterers()):
+    #    pdb_atoms[atom_lookup[scatterer.label]].xyz = sites_cart[j_seq]
+    #else:
+    # XXX PDB_TRANSITION VERY SLOW
+    for j_seq, atom in enumerate(pdb_atoms):
       atom.xyz = sites_cart[j_seq]
+      #atom_lookup[atom.id_str()] = j_seq    
 
   for threes in generate_protein_threes(hierarchy,
                                         restraints_manager,
