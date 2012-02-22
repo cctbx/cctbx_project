@@ -195,20 +195,7 @@ class ThreeProteinResidues(list):
     psi = dihedral_angle(sites=[atom.xyz for atom in psi_atoms], deg=True)
     if verbose:
       print "psi, phi",psi,phi
-    try: key = (round_to_ten(phi), round_to_ten(psi))
-    except:
-      print '-'*80
-      for atom in backbone_i_minus_1:
-        print atom.format_atom_record()
-      print '-'*80
-      for atom in backbone_i:
-        print atom.format_atom_record()
-      print '-'*80
-      for atom in backbone_i_plus_1:
-        print atom.format_atom_record()
-      print '-'*80
-      print "psi, phi",psi,phi
-      raise
+    key = (round_to_ten(phi), round_to_ten(psi))
     return key
 
   def apply_updates(self,
@@ -394,7 +381,7 @@ def update_restraints(hierarchy,
     # XXX PDB_TRANSITION VERY SLOW
     for j_seq, atom in enumerate(pdb_atoms):
       atom.xyz = sites_cart[j_seq]
-      #atom_lookup[atom.id_str()] = j_seq    
+      #atom_lookup[atom.id_str()] = j_seq
 
   for threes in generate_protein_threes(hierarchy,
                                         restraints_manager,
