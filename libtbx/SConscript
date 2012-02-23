@@ -450,9 +450,6 @@ libtbx.scons: Warning: compiling with /MDd:
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
       if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
         opts.insert(2, "-funroll-loops")
-      # -march=native can make some tests crashing
-      #if (env_etc.gcc_version >= 40300):
-      #  opts.insert(1, "-march=native")
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.mode == "profile"):
@@ -569,8 +566,6 @@ else:
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
       if (env_etc.gcc_version >= 40100 and is_64bit_architecture):
         opts.insert(2, "-funroll-loops")
-      if (env_etc.gcc_version >= 40300):
-        opts.insert(1, "-march=native")
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.mode == "profile"):
