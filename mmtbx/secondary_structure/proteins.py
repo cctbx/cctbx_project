@@ -250,12 +250,18 @@ def _create_hbond_proxy (
     slack_ = slack
     if (slack is None) :
       slack_ = hbond_params.slack
+    limit = -1
+    if (hbond_params.top_out) :
+      limit = (distance_cut - distance_ideal)**2 * weight/(sigma_**2)
+      print "limit: %.2f" % limit
     build_proxies.add_proxy(
       i_seqs=[donor.i_seq, acceptor.i_seq],
       distance_ideal=distance_ideal,
       distance_cut=distance_cut,
       weight=weight/(sigma_ ** 2),
-      slack=slack_)
+      slack=slack_,
+      limit=limit,
+      top_out=hbond_params.top_out)
     build_proxies.add_nonbonded_exclusion(donor.i_seq, acceptor.i_seq)
     return 1
   else :
