@@ -48,6 +48,8 @@ ss_restraint_params_str = """
     .type = float
   slack = 0.0
     .type = float
+  top_out = False
+    .type = bool
 """
 
 ss_tardy_params_str = """\
