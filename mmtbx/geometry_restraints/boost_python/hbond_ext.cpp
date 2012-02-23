@@ -23,12 +23,15 @@ namespace {
     typedef h_bond_simple_proxy w_t;
     class_<w_t>("h_bond_simple_proxy", no_init)
       .def(init<
-        af::tiny<unsigned, 2> const&, double, double, double, double >((
+        af::tiny<unsigned, 2> const&, double, double, double, double,
+        double, bool >((
           arg("i_seqs"),
           arg("distance_ideal"),
           arg("distance_cut"),
           arg("weight"),
-          arg("slack")=0)))
+          arg("slack")=0,
+          arg("limit")=-1.0,
+          arg("top_out")=false)))
       .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       .def_readonly("distance_ideal", &w_t::distance_ideal)
       .def_readonly("distance_cut", &w_t::distance_cut)
@@ -160,7 +163,7 @@ namespace {
       arg("gradient_array"),
       arg("falloff_distance")=0.05,
       arg("epsilon")=0.0001,
-      arg("use_finite_differences")=true));
+      arg("use_finite_differences")=false));
   }
 
   void wrap_misc () {
