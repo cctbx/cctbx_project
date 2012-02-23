@@ -1132,6 +1132,7 @@ mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/reciprocal_space_arrays.py -text
 mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
+mmtbx/command_line/search_pdb_symmetry.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
 mmtbx/command_line/simulate_low_res_data.py -text
 mmtbx/command_line/tls.py -text
@@ -1208,6 +1209,7 @@ mmtbx/monomer_library/tst_rotamer_utils.py svneol=native#text/x-python
 mmtbx/msa.py -text
 mmtbx/ncs/ligands.py -text
 mmtbx/pdb_distances.py -text
+mmtbx/pdb_symmetry.py -text
 mmtbx/pdbtools.py -text
 mmtbx/polygon/__init__.py -text
 mmtbx/polygon/output.py -text
