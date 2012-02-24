@@ -6,6 +6,8 @@
 #include <scitbx/math/utils.h>
 #include <scitbx/array_family/shared.h>
 #include <stdexcept>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/variate_generator.hpp>
 
 namespace scitbx {
 
@@ -224,6 +226,45 @@ namespace random {
         double x1 = random_double();
         double x2 = random_double();
         return math::r3_rotation::random_matrix_arvo_1992(x0, x1, x2);
+      }
+
+      //! Uniformly distributed random 3D rotation matrix using quaternions
+      scitbx::mat3<double>
+      random_double_r3_rotation_matrix_quaternion()
+      {
+        // pick a uniformly distributed, random point on 3-sphere
+        // http://mathworld.wolfram.com/HyperspherePointPicking.html
+        double hypersphere_point[4];
+        boost::random::normal_distribution<double> distribution(0.0,1.0);
+        boost::variate_generator<boost_random::mt19937&,
+          boost::random::normal_distribution<double> >
+          p(generator_,distribution);
+        double r = 0.0;
+        for (int i=0; i<4; i++) {
+          hypersphere_point[i] = p();
+          r += hypersphere_point[i] * hypersphere_point[i];
+        }
+        r = std::sqrt(r);
+        for (int i=0; i<4; i++) {
+          hypersphere_point[i] = hypersphere_point[i]/r;
+        }
+
+        // convert quaternion to rotation matrix
+        // http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
+        double aa = hypersphere_point[0] * hypersphere_point[0];
+        double bb = hypersphere_point[1] * hypersphere_point[1];
+        double cc = hypersphere_point[2] * hypersphere_point[2];
+        double dd = hypersphere_point[3] * hypersphere_point[3];
+        double two_bc = 2.0 * hypersphere_point[1] * hypersphere_point[2];
+        double two_ad = 2.0 * hypersphere_point[0] * hypersphere_point[3];
+        double two_bd = 2.0 * hypersphere_point[1] * hypersphere_point[3];
+        double two_ac = 2.0 * hypersphere_point[0] * hypersphere_point[2];
+        double two_cd = 2.0 * hypersphere_point[2] * hypersphere_point[3];
+        double two_ab = 2.0 * hypersphere_point[0] * hypersphere_point[1];
+        return scitbx::mat3<double>
+          ( aa + bb - cc - dd, two_bc - two_ad,  two_bd + two_ac,
+             two_bc + two_ad, aa - bb + cc - dd, two_cd - two_ab,
+             two_bd - two_ac,  two_cd + two_ab, aa - bb - cc + dd );
       }
 
       //! Integer array with Gaussian distribution.

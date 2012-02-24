@@ -47,6 +47,8 @@ namespace {
           &w_t::random_double_r3_rotation_matrix)
         .def("random_double_r3_rotation_matrix_arvo_1992",
           &w_t::random_double_r3_rotation_matrix_arvo_1992)
+        .def("random_double_r3_rotation_matrix_quaternion",
+          &w_t::random_double_r3_rotation_matrix_quaternion)
         .def("random_int_gaussian_distribution",
           (af::shared<int>(w_t::*)(std::size_t,const double&,const double&))
           &w_t::random_int_gaussian_distribution,

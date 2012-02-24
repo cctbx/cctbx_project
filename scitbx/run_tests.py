@@ -62,6 +62,7 @@ def run():
   "$D/math/tests/tst_halton.py",
   "$D/math/tests/tst_euler_angles.py",
   "$D/math/tests/tst_superpose.py",
+  "$D/math/tests/tst_uniform_rotation_matrix.py",
   "$D/math/tst_zernike.py",
   "$D/math/tst_zernike_mom.py",
   "$D/math/sieve_of_eratosthenes.py",
