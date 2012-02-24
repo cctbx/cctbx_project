@@ -1321,6 +1321,11 @@ class set(crystal.symmetry):
         slice_end=slice_end)
     return self.select(selection)
 
+  def delete_index (self, hkl) :
+    assert (len(hkl) == 3)
+    sele = (self.indices() == hkl)
+    return self.select(sele, negate=True)
+
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
     crystal_symmetry,
