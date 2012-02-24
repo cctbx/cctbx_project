@@ -1,4 +1,8 @@
+# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+#
 # LIBTBX_SET_DISPATCHER_NAME cxi.merge
+#
+# $Id$
 
 from rstbx.apps.stills.simple_integration import show_observations
 import iotbx.phil
@@ -65,6 +69,9 @@ unit_cell_angle_tolerance = 2.
 nproc = None
   .type = int
 output {
+  n_bins = 10
+    .type = int
+    .help = Number of resolution bins in statistics table
   prefix = iobs
     .type = str
     .help = Prefix for all output file names
@@ -747,6 +754,7 @@ def run(args):
     obs=i_model,
     redundancy=scaler.completeness,
     ISIGI=scaler.ISIGI,
+    n_bins=work_params.output.n_bins,
     title="Statistics for all reflections",
     out=out)
   print >> out, ""
@@ -756,6 +764,7 @@ def run(args):
     obs=i_model,
     redundancy=scaler.summed_N,
     ISIGI=scaler.ISIGI,
+    n_bins=work_params.output.n_bins,
     title="Statistics for reflections where I > 0",
     out=out)
   #from libtbx import easy_pickle
@@ -787,11 +796,11 @@ def run(args):
   easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
   return result
 
-def show_overall_observations(obs,redundancy,ISIGI,out=None,
-    title=None):
+def show_overall_observations(
+  obs, redundancy, ISIGI, n_bins=15, out=None, title=None):
   if out==None:
     out = sys.stdout
-  obs.setup_binner(n_bins = 15)
+  obs.setup_binner(n_bins=n_bins)
   result = []
 
   # R_iso_tot and R_merge_tot are two-membered lists, holding the
