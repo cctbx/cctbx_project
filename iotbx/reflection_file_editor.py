@@ -83,6 +83,12 @@ mtz_file
     .help = Updates label names as necessary to avoid conflicts
     .short_caption = Automatically resolve output label conflicts
     .style = noauto bold
+  exclude_reflection = None
+    .multiple = True
+    .optional = True
+    .type = ints(size=3)
+    .input_size = 100
+    .style = noauto menu_item
   miller_array
     .multiple = True
     .short_caption = Output Miller array
@@ -583,6 +589,9 @@ class process_arrays (object) :
             array_types[i] = re.sub("F", "J", array_types[i])
       if output_array is None :
         output_array = new_array
+      if (len(params.mtz_file.exclude_reflection) > 0) :
+        for hkl in params.mtz_file.exclude_reflection :
+          output_array = output_array.delete_index(hkl)
 
       #-----------------------------------------------------------------
       # OUTPUT
@@ -710,6 +719,9 @@ class process_arrays (object) :
           output_array = r_free_flags
         if (generate_bijvoet_mates) :
           output_array = output_array.generate_bijvoet_mates()
+        if (len(params.mtz_file.exclude_reflection) > 0) :
+          for hkl in params.mtz_file.exclude_reflection :
+            output_array = output_array.delete_index(hkl)
         if params.mtz_file.r_free_flags.export_for_ccp4 :
           print >> log, "%s: converting to CCP4 convention" % array_name
           output_array = export_r_free_flags(miller_array=output_array,
@@ -746,6 +758,9 @@ class process_arrays (object) :
           test_flag_value=True)
       else:
         output_array = new_r_free_array
+      if (len(params.mtz_file.exclude_reflection) > 0) :
+        for hkl in params.mtz_file.exclude_reflection :
+          output_array = output_array.delete_index(hkl)
       self.mtz_dataset.add_miller_array(
         miller_array=output_array,
         column_root_label="ZZ") #r_free_params.new_label)
