@@ -189,7 +189,7 @@ output
     .short_caption = Output PDB file
     .help = Default is the original file name with the file extension \
             replaced by "_modified.pdb".
-    .style = bold
+    .style = bold new_file file_type:pdb
 }
 remove_first_n_atoms_fraction = None
   .short_caption = Remove first N atoms (fraction)
