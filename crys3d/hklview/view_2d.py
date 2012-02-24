@@ -26,7 +26,8 @@ class hklview_2d (wx.PyPanel) :
     self._radii_2d = []
     self._clicked = None
 
-  def set_miller_array (self, array) :
+  # XXX silent keyword 'zoom=False' is for compatibility with view_3d.py
+  def set_miller_array (self, array, zoom=False) :
     self.miller_array = array
     if (array is not None) :
       self.construct_reciprocal_space()
