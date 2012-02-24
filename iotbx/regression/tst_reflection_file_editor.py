@@ -170,6 +170,12 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst1.mtz")
   assert approx_equal(miller_arrays[0].d_min(), 2.0, eps=0.01)
   assert approx_equal(miller_arrays[1].d_min(), 1.0, eps=0.01)
+  # filter by index
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.exclude_reflection.append((1,1,1))
+  params.mtz_file.exclude_reflection.append((1,2,3))
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  assert (miller_arrays[0].indices().size() == (set1.indices().size() - 2))
   # change-of-basis (reindexing)
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.crystal_symmetry.change_of_basis = "b,a,c"
