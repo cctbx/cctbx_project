@@ -369,9 +369,8 @@ class HKLViewFrame (wx.Frame) :
           if (cnf == wx.YES) :
             self.settings.spheres = False
             self.settings_panel.spheres_ctrl.SetValue(False)
-    self.viewer.set_miller_array(array)
+    self.viewer.set_miller_array(array, zoom=True)
     self.viewer.Refresh()
-    self.viewer.fit_into_viewport()
     if (self.view_2d is not None) :
       self.view_2d.set_miller_array(array)
 
@@ -439,6 +438,7 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.clear_labels()
 
   def OnClose (self, event) :
+    self.Unbind(wx.EVT_ACTIVATE)
     self.Destroy()
     event.Skip()
 
