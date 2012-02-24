@@ -23,8 +23,13 @@ import wx.lib.imageutils
 from wx.lib.colourutils import *
 
 # Used on OSX to get access to carbon api constants
+CAPTION_SIZE = 9
+LABEL_SIZE = 11
 if wx.Platform == '__WXMAC__':
-    import Carbon.Appearance
+  import Carbon.Appearance
+elif (wx.Platform == '__WXMSW__') :
+  CAPTION_SIZE = 9
+  LABEL_SIZE = 11
 
 GRADIENT_NORMAL = 0
 GRADIENT_PRESSED = 1
@@ -35,12 +40,23 @@ MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
 class MetallicButton (wx.PyControl) :
-  def __init__ (self, parent, id_=wx.ID_ANY, label='', label2='', bmp=None,
-                pos=wx.DefaultPosition, size=wx.DefaultSize,
-                style=MB_STYLE_DEFAULT, name=wx.ButtonNameStr,
-                start_color=(218,218,218), gradient_percent=15.0,
-                highlight_color=(230,230,230), label_size=13,
-                caption_size=11, button_margin=2, disable_after_click=0):
+  def __init__ (self,
+                parent,
+                id_=wx.ID_ANY,
+                label='',
+                label2='',
+                bmp=None,
+                pos=wx.DefaultPosition,
+                size=wx.DefaultSize,
+                style=MB_STYLE_DEFAULT,
+                name=wx.ButtonNameStr,
+                start_color=(218,218,218),
+                gradient_percent=15.0,
+                highlight_color=(230,230,230),
+                label_size=LABEL_SIZE,
+                caption_size=CAPTION_SIZE,
+                button_margin=2,
+                disable_after_click=0):
     wx.PyControl.__init__(self, parent, id_, pos, size,
       wx.NO_BORDER, name=name)
     self.InheritAttributes()
@@ -58,12 +74,12 @@ class MetallicButton (wx.PyControl) :
     # XXX this crashes on wxOSX_Cocoa!
     if (not 'wxOSX-cocoa' in wx.PlatformInfo) :
       self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
+    font_size = label_size
+    self._label_font = self.GetFont()
+    self._label_font.SetPointSize(label_size)
     if style & MB_STYLE_BOLD_LABEL :
-      font_size = label_size
-      self._label_font = self.GetFont()
-      self._label_font.SetPointSize(label_size)
       self._label_font.SetWeight(wx.FONTWEIGHT_BOLD)
-      self.SetFont(self._label_font)
+    self.SetFont(self._label_font)
     #self._label2_font = wx.Font(caption_size, wx.SWISS, wx.ITALIC, wx.NORMAL)
 
     self._menu = None
@@ -179,7 +195,7 @@ class MetallicButton (wx.PyControl) :
       if False : #self._caption_lines is not None :
         lines = self._caption_lines
       else :
-        if wx.Platform == '__WXGTK__' :
+        if (wx.Platform in ['__WXGTK__', '__WXMSW__']) :
           dc = wx.ClientDC(self)
           dc.SetFont(self._label2_font)
           #txt_w += 100
@@ -371,6 +387,8 @@ class MetallicButton (wx.PyControl) :
         if line_w > caption_width :
           caption_width = line_w
         caption_height += line_h + buffer
+      if (wx.Platform == '__WXMSW__') :
+        caption_height += 4
     width += max(caption_width, label_width) + 4
     height = max(caption_height + label_height + 12, height)
 
