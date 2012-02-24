@@ -1912,7 +1912,6 @@ xfel/command_line/__init__.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_index.py -text
-xfel/command_line/cxi_merge.py -text
 xfel/command_line/cxi_pyana.py -text
 xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_view.py -text
