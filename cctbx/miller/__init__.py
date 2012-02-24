@@ -1323,8 +1323,8 @@ class set(crystal.symmetry):
 
   def delete_index (self, hkl) :
     assert (len(hkl) == 3)
-    sele = (self.indices() == hkl)
-    return self.select(sele, negate=True)
+    sele = (self.indices() != hkl)
+    return self.select(sele)
 
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
