@@ -6,8 +6,6 @@
 #include <scitbx/math/utils.h>
 #include <scitbx/array_family/shared.h>
 #include <stdexcept>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/variate_generator.hpp>
 
 namespace scitbx {
 
@@ -175,7 +173,7 @@ namespace random {
               4. Let x = r * cos(t).
               5. Let y = r * sin(t).
        */
-      scitbx::vec3<double>
+      vec3<double>
       random_double_point_on_sphere()
       {
         vec3<double> result;
@@ -191,25 +189,36 @@ namespace random {
       af::tiny<double, 4>
       random_double_unit_quaternion()
       {
-        /* Results are not predictable if the calls of
-           random_double_point_on_sphere() and random_double()
-           are inlined into the axis_and_angle_as_matrix()
-           constructor. This is because the compiler can generate
-           code that evaluates the arguments in any order. To avoid
-           this ambiguity, axis and angle are assigned to intermediate
-           variables.
-         */
-        scitbx::vec3<double> axis = random_double_point_on_sphere();
-        double angle = constants::two_pi * random_double();
-        return math::r3_rotation::axis_and_angle_as_unit_quaternion(
-          axis, angle, /* deg */ false);
+        // pick a uniformly distributed, random point on 3-sphere
+        // http://mathworld.wolfram.com/HyperspherePointPicking.html
+        af::tiny<double, 4> result;
+        double r = 0.0;
+        do {
+          for (int i=0; i<4; i++) {
+            result[i] = random_double();
+            r += result[i] * result[i];
+          }
+          r = std::sqrt(r);
+        }
+        while (r == 0.0);
+        for (int i=0; i<4; i++) {
+          result[i] /= r;
+        }
+        return result;
       }
 
-      scitbx::mat3<double>
+      //! Uniformly distributed random 3D rotation matrix using quaternions
+      mat3<double>
+      random_double_r3_rotation_matrix_quaternion()
+      {
+        return math::r3_rotation::unit_quaternion_as_matrix(
+          random_double_unit_quaternion());
+      }
+
+      mat3<double>
       random_double_r3_rotation_matrix()
       {
-        // See comment inside random_double_unit_quaternion.
-        scitbx::vec3<double> axis = random_double_point_on_sphere();
+        vec3<double> axis = random_double_point_on_sphere();
         double angle = constants::two_pi * random_double();
         return math::r3_rotation::axis_and_angle_as_matrix(
           axis, angle, /* deg */ false);
@@ -218,53 +227,17 @@ namespace random {
       //! Uniformly distributed random 3D rotation matrix using Arvo's method.
       /*! See also: scitbx::math::r3_rotation::random_matrix_arvo_1992
        */
-      scitbx::mat3<double>
+      mat3<double>
       random_double_r3_rotation_matrix_arvo_1992()
       {
-        // See comment inside random_double_unit_quaternion.
+        /* Results are not predictable if the calls of random_double()
+           are inlined into the function call. This is because the compiler
+           is free to generate code that evaluates the arguments in any order.
+         */
         double x0 = random_double();
         double x1 = random_double();
         double x2 = random_double();
         return math::r3_rotation::random_matrix_arvo_1992(x0, x1, x2);
-      }
-
-      //! Uniformly distributed random 3D rotation matrix using quaternions
-      scitbx::mat3<double>
-      random_double_r3_rotation_matrix_quaternion()
-      {
-        // pick a uniformly distributed, random point on 3-sphere
-        // http://mathworld.wolfram.com/HyperspherePointPicking.html
-        double hypersphere_point[4];
-        boost::random::normal_distribution<double> distribution(0.0,1.0);
-        boost::variate_generator<boost_random::mt19937&,
-          boost::random::normal_distribution<double> >
-          p(generator_,distribution);
-        double r = 0.0;
-        for (int i=0; i<4; i++) {
-          hypersphere_point[i] = p();
-          r += hypersphere_point[i] * hypersphere_point[i];
-        }
-        r = std::sqrt(r);
-        for (int i=0; i<4; i++) {
-          hypersphere_point[i] = hypersphere_point[i]/r;
-        }
-
-        // convert quaternion to rotation matrix
-        // http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
-        double aa = hypersphere_point[0] * hypersphere_point[0];
-        double bb = hypersphere_point[1] * hypersphere_point[1];
-        double cc = hypersphere_point[2] * hypersphere_point[2];
-        double dd = hypersphere_point[3] * hypersphere_point[3];
-        double two_bc = 2.0 * hypersphere_point[1] * hypersphere_point[2];
-        double two_ad = 2.0 * hypersphere_point[0] * hypersphere_point[3];
-        double two_bd = 2.0 * hypersphere_point[1] * hypersphere_point[3];
-        double two_ac = 2.0 * hypersphere_point[0] * hypersphere_point[2];
-        double two_cd = 2.0 * hypersphere_point[2] * hypersphere_point[3];
-        double two_ab = 2.0 * hypersphere_point[0] * hypersphere_point[1];
-        return scitbx::mat3<double>
-          ( aa + bb - cc - dd, two_bc - two_ad,  two_bd + two_ac,
-             two_bc + two_ad, aa - bb + cc - dd, two_cd - two_ab,
-             two_bd - two_ac,  two_cd + two_ab, aa - bb - cc + dd );
       }
 
       //! Integer array with Gaussian distribution.
@@ -279,7 +252,7 @@ namespace random {
         af::shared<int> result(size, af::init_functor_null<int>());
         int* r = result.begin();
         for(std::size_t i=0;i<size;i++) {
-          double x2pi = random_double() * 2.0 * scitbx::constants::pi;
+          double x2pi = random_double() * 2.0 * constants::pi;
           double g2rad = std::sqrt(-2.0 * std::log(1.-random_double()));
           *r++ = math::nearest_integer(mean + std::cos(x2pi) * g2rad * sigma);
         }

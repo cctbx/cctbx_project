@@ -1522,11 +1522,13 @@ def exercise_random():
   check_r3r(flex.random_double_r3_rotation_matrix)
   #
   assert approx_equal(flex.random_double_unit_quaternion(), (
-    0.28487732137889482,
-    -0.66174567235163873, -0.64981109136819859, 0.24224599567946281))
-  for i_trial in xrange(10):
+    0.6425703, 0.6396906, 0.4186082, 0.05163791))
+  for i_trial in xrange(7):
     assert approx_equal(
       abs(matrix.col(flex.random_double_unit_quaternion())), 1)
+  #
+  # just so the expected results below don't have to be changed
+  flex.random_double()
   #
   assert list(flex.random_int_gaussian_distribution(
     size=3,
