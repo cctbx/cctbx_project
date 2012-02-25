@@ -85,4 +85,4 @@ if (__name__ == '__main__'):
   flex.set_random_seed(0)
   for i in xrange(3):
     test_uniform_rotation_matrix(N=1000, choice=i, verbose=False)
-  print 'Ok'
+  print 'OK'
