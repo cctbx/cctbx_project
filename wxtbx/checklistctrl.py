@@ -82,7 +82,7 @@ holding down the shift key in combination with mouse selection."""
     items = self.GetCheckedItems()
     strings = []
     for item in items :
-      strings.append(self.GetItemText(item))
+      strings.append(str(self.GetItemText(item)))
     return strings
 
   def InsertStringItem (self, *args, **kwds) :

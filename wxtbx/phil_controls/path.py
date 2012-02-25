@@ -73,13 +73,18 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     return self._path_style
 
   def GetValue (self) :
-    return self._path_text.GetValue()
+    val = self._path_text.GetValue()
+    if (isinstance(val, unicode)) :
+      return val.encode('utf8')
+    else :
+      assert isinstance(val, str)
+      return val
 
   def SetValue (self, value) :
     if (value is None) or (value is Auto) :
       self._path_text.SetValue("")
     else :
-      assert isinstance(value, str)
+      assert isinstance(value, str) or isinstance(value, unicode)
       self._path_text.SetValue(value)
 
   def SetBackgroundColour (self, *args, **kwds) :
@@ -87,7 +92,8 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def GetPhilValue (self) :
     self._path_text.Validate()
-    val_str = self._path_text.GetValue()
+    val_str = self.GetValue()
+    assert isinstance(val_str, str)
     if (val_str == "") :
       return self.ReturnNoneIfOptional()
     return val_str
@@ -113,13 +119,13 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     if (self._path_style & WXTBX_PHIL_PATH_DIRECTORY) :
       new_path = wx.DirSelector(
         message="Choose a directory: %s" % self.GetName(),
-        defaultPath=self._path_text.GetValue(),
+        defaultPath=self.GetValue(),
         style=flags|wx.DD_NEW_DIR_BUTTON,
         parent=self)
     else :
       from iotbx import file_reader
       wildcard = file_reader.get_wildcard_strings(self._formats)
-      current_path = self._path_text.GetValue()
+      current_path = self.GetValue()
       defaultDir = defaultFile = ""
       if (current_path != "") :
         defaultDir, defaultFile = os.path.split(current_path)
@@ -138,7 +144,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       self.DoSendEvent()
 
   def OnDisplayFile (self, event) :
-    file_name = self._path_text.GetValue()
+    file_name = self.GetValue()
     if (file_name == "") :
       return
     elif (not os.path.exists(file_name)) :
@@ -150,7 +156,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       print "NotImplemented"
 
   def OnDisplayFileMenu (self, event) :
-    file_name = self._path_text.GetValue()
+    file_name = self.GetValue()
     if (file_name == "") :
       return
     elif (not os.path.exists(file_name)) :

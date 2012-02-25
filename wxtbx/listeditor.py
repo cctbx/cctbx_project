@@ -124,7 +124,7 @@ class ListEditor (wx.Panel) :
 
   def OnSelect (self, event) :
     item = self.list.GetFirstSelected()
-    txt = self.list.GetItemText(item)
+    txt = str(self.list.GetItemText(item))
     if (txt == self._default_label) :
       txt = ""
     self.edit.SetValue(txt)
@@ -142,7 +142,7 @@ class ListEditor (wx.Panel) :
     i = 0
     n = self.list.GetItemCount()
     while (i < n) :
-      txt = self.list.GetItemText(i)
+      txt = str(self.list.GetItemText(i))
       if (txt == self._default_label) :
         txt = None
       items.append(txt)
@@ -172,7 +172,7 @@ class ListEditor (wx.Panel) :
     i = self.list.GetFirstSelected()
     if (i == -1) :
       return None
-    return self.list.GetItemText(i)
+    return str(self.list.GetItemText(i))
 
   def SetCallback (self, callback) :
     assert hasattr(callback, "__call__")
