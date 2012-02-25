@@ -21,6 +21,14 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
     if (saved_value is not None) :
       self.SetValue(saved_value)
 
+  def GetValue (self) :
+    val = wx.TextCtrl.GetValue(self)
+    if (isinstance(val, unicode)) :
+      return val.encode('utf8')
+    else :
+      assert isinstance(val, str)
+      return val
+
   def OnEnter (self) :
     self.Validate()
     self.DoSendEvent()
@@ -89,7 +97,7 @@ class TextCtrlValidator (wx.PyValidator) :
     except NotImplementedError :
       raise
     except Exception, e :
-      ctrl_name = ctrl.GetName()
+      ctrl_name = str(ctrl.GetName())
       wx.MessageBox(caption="Format error",
         message="Inappropriate value given for \"%s\": %s" %(ctrl_name,str(e)))
       ctrl.SetBackgroundColour("red")
