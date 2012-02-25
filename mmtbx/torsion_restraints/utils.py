@@ -309,13 +309,23 @@ def _alignment(params,
   ref_seq_padded = padded_sequences[1]
   ref_structures = structures[1]
   for struct in model_structures:
-    model_mseq_res_hash[struct.i_seq] = \
-      struct.rg.atoms()[0].pdb_label_columns()[4:]+\
-      struct.rg.atoms()[0].segid
+    resname = struct.rg.atoms()[0].pdb_label_columns()[5:8]
+    if resname.upper() == "MSE":
+      resname = "MET"
+    updated_resname = modernize_rna_resname(resname)
+    key = struct.rg.atoms()[0].pdb_label_columns()[4:5]+\
+          updated_resname+struct.rg.atoms()[0].pdb_label_columns()[8:]+\
+          struct.rg.atoms()[0].segid
+    model_mseq_res_hash[struct.i_seq] = key
   for struct in ref_structures:
-    ref_mseq_res_hash[struct.i_seq] = \
-      struct.rg.atoms()[0].pdb_label_columns()[4:]+\
-      struct.rg.atoms()[0].segid
+    resname = struct.rg.atoms()[0].pdb_label_columns()[5:8]
+    if resname.upper() == "MSE":
+      resname = "MET"
+    updated_resname = modernize_rna_resname(resname)
+    key = struct.rg.atoms()[0].pdb_label_columns()[4:5]+\
+          updated_resname+struct.rg.atoms()[0].pdb_label_columns()[8:]+\
+          struct.rg.atoms()[0].segid
+    ref_mseq_res_hash[struct.i_seq] = key
   if model_seq == ref_seq:
     pg = mmtbx.alignment.pairwise_global(
            model_seq,
