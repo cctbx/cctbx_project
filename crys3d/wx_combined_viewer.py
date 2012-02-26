@@ -220,7 +220,7 @@ class map_viewer_mixin (wxGLWindow) :
         parent=self,
         id=-1,
         title="Map controls",
-        style=wx.CLOSE_BOX|wx.CAPTION,
+        style=wx.CLOSE_BOX|wx.CAPTION|wx.SYSTEM_MENU,
         pos=pos)
       self.map_panel.Show()
 
