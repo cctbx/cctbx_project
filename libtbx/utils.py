@@ -619,6 +619,15 @@ class host_and_user:
     self.sge_info = sge_utils.info()
     self.pbs_info = pbs_utils.chunk_info()
 
+  def get_host_name (self) :
+    if (self.host is not None) :
+      return self.host
+    elif (self.hostname is not None) :
+      return self.hostname
+    elif (self.computername is not None) :
+      return self.computername
+    return None
+
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     if (self.host is not None):

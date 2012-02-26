@@ -183,7 +183,8 @@ class ServerProxy (object) :
 
 #-----------------------------------------------------------------------
 class external_program_thread (threading.Thread) :
-  def __init__ (self, command, program_id, log=None, intercept_output=True) :
+  def __init__ (self, command_args, program_id, log=None,
+      intercept_output=True) :
     adopt_init_args(self, locals())
     if self.log is None :
       self.log = sys.stdout
@@ -192,10 +193,10 @@ class external_program_thread (threading.Thread) :
 
   def run (self) :
     if self.intercept_output :
-      p = subprocess.Popen(args=[self.command], stdout=subprocess.PIPE,
+      p = subprocess.Popen(args=self.command_args, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, shell=True)
     else :
-      p = subprocess.Popen(args=[self.command], shell=True)
+      p = subprocess.Popen(args=self.command_args, shell=True)
     while True :
       if p.poll() is not None :
         break
@@ -215,9 +216,10 @@ class external_program_thread (threading.Thread) :
 class external_program_server (object) :
   port_ranges = [ (40001, 40840),
                   (46000, 46999) ]
-  def __init__ (self, command, program_id, timeout, cache_requests=False,
+  def __init__ (self, command_args, program_id, timeout, cache_requests=False,
                 local_port=None, log=None, intercept_output=False) :
     adopt_init_args(self, locals())
+    assert isinstance(command_args, list) or isinstance(command_args, tuple)
     self._process = None
     self._server = None
     self.initialize_server()
@@ -236,7 +238,7 @@ class external_program_server (object) :
       if self.local_port is not None :
         os.environ["CCTBX_XMLRPC_PORT"] = str(self.local_port)
       self._process = external_program_thread(
-        command=self.command,
+        command_args=self.command_args,
         program_id=self.program_id,
         log=self.log,
         intercept_output=self.intercept_output)
