@@ -8,7 +8,7 @@
 
 import libtbx.phil
 import libtbx.load_env
-from libtbx.utils import Sorry, Abort, multi_out
+from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
 import traceback
@@ -190,8 +190,10 @@ class detached_process_server (detached_base) :
         cached=cached))
 
   def callback_start (self, data=None) :
+    info = host_and_user()
+    assert (info.pid is not None)
     f = open(self.start_file, "w")
-    f.write("%s %d" % (os.uname()[1], os.getpid()))
+    f.write("%s %d" % (info.get_host_name(), info.pid))
     f.close()
 
   def callback_stdout (self, data) :
