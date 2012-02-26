@@ -212,7 +212,8 @@ class any_file_input (object) :
     from iotbx.reflection_file_reader import any_reflection_file
     from iotbx.reflection_file_utils import reflection_file_server
     try :
-      hkl_file = any_reflection_file(self.file_name)
+      # XXX this is unfortunate, but unicode breaks Boost.Python extensions
+      hkl_file = any_reflection_file(str(self.file_name))
     except Exception, e :
       print e
       raise
@@ -230,7 +231,7 @@ class any_file_input (object) :
     from iotbx.reflection_file_reader import any_reflection_file
     from iotbx.reflection_file_utils import reflection_file_server
     try :
-      cif_file = any_reflection_file(self.file_name)
+      cif_file = any_reflection_file(str(self.file_name))
     except Exception, e :
       print e
       raise
@@ -243,7 +244,7 @@ class any_file_input (object) :
       self.file_object = cif_file
       self.file_type = "hkl"
     else:
-      self.file_object = iotbx.cif.reader(file_path=self.file_name,
+      self.file_object = iotbx.cif.reader(file_path=str(self.file_name),
         strict=False)
       self.file_type = "cif"
 
@@ -293,13 +294,13 @@ class any_file_input (object) :
 
   def try_as_xplor_map (self) :
     import iotbx.xplor.map
-    map_object = iotbx.xplor.map.reader(file_name=self.file_name)
+    map_object = iotbx.xplor.map.reader(file_name=str(self.file_name))
     self.file_type = "xplor_map"
     self.file_object = map_object
 
   def try_as_ccp4_map (self) :
     import iotbx.ccp4_map
-    map_object = iotbx.ccp4_map.map_reader(file_name=self.file_name)
+    map_object = iotbx.ccp4_map.map_reader(file_name=str(self.file_name))
     self.file_type = "ccp4_map"
     self.file_object = map_object
 

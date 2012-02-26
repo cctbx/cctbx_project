@@ -11,6 +11,8 @@ class InfoPanelBase (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
     kwds['style'] = wx.CAPTION|wx.CLOSE_BOX
+    if (wx.Platform == '__WXMSW__') :
+      kwds['style'] |= wx.SYSTEM_MENU
     wx.MiniFrame.__init__(self, *args, **kwds)
     self.panel = wx.Panel(self, -1, style=wx.RAISED_BORDER)
     self.panel_sizer = wx.BoxSizer(wx.VERTICAL)

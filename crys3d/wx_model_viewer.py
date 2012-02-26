@@ -723,7 +723,7 @@ class model_viewer_mixin (wxGLWindow) :
       pos = (x_start, frame_rect[1] + 10)
       self.model_panel = wx_tools.ModelControlPanel(self, -1,
         title="Model controls",
-        style=wx.CLOSE_BOX|wx.CAPTION,
+        style=wx.CLOSE_BOX|wx.CAPTION|wx.SYSTEM_MENU,
         pos=pos)
       self.model_panel.Show()
 

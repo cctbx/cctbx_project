@@ -378,6 +378,8 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.update_settings(*args, **kwds)
 
   def load_reflections_file (self, file_name) :
+    if (isinstance(file_name, unicode)) :
+      file_name = str(file_name)
     if (file_name != "") :
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
