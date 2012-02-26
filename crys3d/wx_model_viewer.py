@@ -529,7 +529,7 @@ class model_viewer_mixin (wxGLWindow) :
         radius=mcs.radius() + buffer)
     else :
       self.minimum_covering_sphere = mcs
-    if recenter_and_zoom :
+    if (recenter_and_zoom) and (not self.GL_uninitialised) :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
 
@@ -732,7 +732,7 @@ class model_viewer_mixin (wxGLWindow) :
   @debug
   def OnUpdate (self, event) :
     self.update_scene_objects()
-    if getattr(event, "recenter", False) :
+    if getattr(event, "recenter", False) and (not self.GL_uninitialised) :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
 
