@@ -42,17 +42,17 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
   """
   if (choice == 0):
     # l=1, m=1
-    # result = (0.883369789909+0j) (0.686220579249+0j) (0.882300433708+0j)
+    # result = (0.883199394206+0j) (0.883824001444+0j)
     lm = 1
     c = -0.5 * math.sqrt(1.5/math.pi)
   elif (choice == 1):
     # l = 5, m = 5
-    # result = (0.959064952412+0j) (0.700628294859+0j) (0.956409721463+0j)
+    # result = (0.959557841214+0j) (0.959331535539+0j)
     lm = 5
     c = -(3/32) * math.sqrt(77/math.pi)
   else:
     # l = 10, m = 10
-    # result = (0.977374411637+0j) (0.703910728454+0j) (0.973932410244+0j)
+    # result = (0.977753926603+0j) (0.97686871766+0j)
     lm = 10
     c = (1/1024) * math.sqrt(969969/math.pi)
 
@@ -73,7 +73,9 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
     print
 
   assert(result[0].real > 0.85)
+  assert(result[0].real < 1.15)
   assert(result[1].real > 0.85)
+  assert(result[1].real < 1.15)
 
 if (__name__ == '__main__'):
   flex.set_random_seed(0)
