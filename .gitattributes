@@ -996,6 +996,7 @@ libtbx/command_line/configure.sh svneol=native#text/x-sh
 libtbx/command_line/create_install_script_bat.py svneol=native#text/x-python
 libtbx/command_line/csh.sh -text
 libtbx/command_line/dtrace.py -text
+libtbx/command_line/easy_qsub.py -text
 libtbx/command_line/extract_code_from_txt.py svneol=native#text/x-python
 libtbx/command_line/fetch_pubmed_citation.py -text
 libtbx/command_line/file_clutter.py -text
