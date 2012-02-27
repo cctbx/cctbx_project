@@ -1,32 +1,43 @@
 
 import wxtbx.bitmaps
-_import_error = None
-try :
-  from wx import webkit
-except ImportError, e :
-  webkit = None
-  _import_error = str(e)
 import wx
 
-class webkit_frame (wx.Frame) :
+class browser_frame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
     wx.Frame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     self.SetupToolbar()
     self._was_shown = False
-    if (webkit is None) :
+    self.viewer = None
+    _import_error = None
+    if (wx.Platform == '__WXMAC__') :
+      try :
+        from wx import webkit
+      except ImportError, e :
+        _import_error = str(e)
+      else :
+        self.viewer = webkit.WebKitCtrl(self, -1)
+        self.Bind(webkit.EVT_WEBKIT_STATE_CHANGED, self.OnChangeState,
+          self.viewer)
+        self.Bind(webkit.EVT_WEBKIT_BEFORE_LOAD, self.OnBeforeLoad, self.viewer)
+    elif (wx.Platform == '__WXMSW__') :
+      try :
+        from wx.lib import iewin
+      except ImportError, e :
+        _import_error = str(e)
+      else :
+        self.viewer = iewin.IEHtmlWindow(self, -1)
+    if (self.viewer is None) :
       raise ImportError(("Sorry, this module is only supported on Macintosh "+
-        "at present.  (Original error: %s)") % _import_error)
-    self.viewer = webkit.WebKitCtrl(self, -1)
+        "and Windows at present.  (Original error: %s)") % _import_error)
     szr.Add(self.viewer, 1, wx.EXPAND)
     self.statusbar = self.CreateStatusBar()
     self.SetInitialSize((1024,640))
     #self.Bind(wx.EVT_WINDOW_CREATE, self.OnShow)
-    self.Bind(webkit.EVT_WEBKIT_STATE_CHANGED, self.OnChangeState, self.viewer)
-    self.Bind(webkit.EVT_WEBKIT_BEFORE_LOAD, self.OnBeforeLoad, self.viewer)
 
   def SetHomepage (self, url) :
+    print "URL: ", url
     self.home_url = url
 
   def SetupToolbar (self) :
@@ -52,13 +63,20 @@ class webkit_frame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnPhenixWeb, phenix_btn)
     self.toolbar.Realize()
 
+  def LoadURL (self, url) :
+    print "url: ", url
+    if (wx.Platform == '__WXMAC__') :
+      self.viewer.LoadURL(url)
+    elif (wx.Platform == '__WXMSW__') :
+      self.viewer.LoadUrl(url)
+
   def OnShow (self, event) :
     if (not self._was_shown) :
-      self.viewer.LoadURL(self.home_url)
+      self.LoadURL(self.home_url)
       self._was_shown = True
 
   def OnHome (self, event) :
-    self.viewer.LoadURL(self.home_url)
+    self.LoadURL(self.home_url)
 
   def OnBack (self, event) :
     if self.viewer.CanGoBack() :
@@ -69,18 +87,23 @@ class webkit_frame (wx.Frame) :
       self.viewer.GoForward()
 
   def OnReload (self, event) :
-    self.viewer.Reload()
+    if (wx.Platform == '__WXMAC__') :
+      self.viewer.Reload()
+    elif (wx.Platform == '__WXMSW__') :
+      self.viewer.RefreshPage()
 
   def OnStop (self, event) :
     self.viewer.Stop()
 
   def Open (self, url) :
-    self.viewer.LoadURL(url)
+    self.LoadURL(url)
 
   def OnPhenixWeb (self, event) :
-    self.viewer.LoadURL("http://www.phenix-online.org")
+    self.LoadURL("http://www.phenix-online.org")
 
+  # XXX Mac only
   def OnChangeState (self, event) :
+    import wx.webkit
     state = event.GetState()
     url = event.GetURL()
     if (state == wx.webkit.WEBKIT_STATE_START) :
@@ -100,7 +123,7 @@ class webkit_frame (wx.Frame) :
 
 if __name__ == "__main__" :
   app = wx.App(0)
-  frame = webkit_frame(None, -1, "wxtbx.browser example")
+  frame = browser_frame(None, -1, "wxtbx.browser example")
   #  size=(800,600))
   frame.SetHomepage("http://cci.lbl.gov")
   frame.Show()
