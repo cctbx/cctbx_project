@@ -5,6 +5,8 @@
 #include <scitbx/math/r3_rotation.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/array_family/shared.h>
+#include <boost/random/normal_distribution.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <stdexcept>
 
 namespace scitbx {
@@ -192,10 +194,15 @@ namespace random {
         // pick a uniformly distributed, random point on 3-sphere
         // http://mathworld.wolfram.com/HyperspherePointPicking.html
         af::tiny<double, 4> result;
+        boost::normal_distribution<double> distribution(0.0, 1.0);
+        boost::variate_generator<
+          boost_random::mt19937&,
+          boost::normal_distribution<double> >
+            normal_distribution_random_double(generator_, distribution);
         double r = 0.0;
         do {
           for (int i=0; i<4; i++) {
-            result[i] = random_double();
+            result[i] = normal_distribution_random_double();
             r += result[i] * result[i];
           }
           r = std::sqrt(r);
