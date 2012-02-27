@@ -89,7 +89,8 @@ namespace {
           arg("distance_cutoff")=3.5,
           arg("min_cubicle_edge")=5,
           arg("tolerance")=0.5,
-          arg("epsilon")=1e-6), return_self<>())
+          arg("epsilon")=1e-6,
+          arg("radii")=std::map<std::string,double>()), return_self<>())
         .def("add_all_pairs", &w_t::add_all_pairs, (
           arg("distance_cutoff"),
           arg("min_cubicle_edge")=5,

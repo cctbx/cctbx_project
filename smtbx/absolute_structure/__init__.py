@@ -297,7 +297,7 @@ class students_t_hooft_analysis(hooft_analysis):
 
 class flack_analysis(object):
 
-  def __init__(self, xray_structure, obs_, exti=None):
+  def __init__(self, xray_structure, obs_, exti=None, connectivity_table=None):
     if exti is None:
       exti = xray.dummy_extinction_correction()
     adopt_init_args(self, locals())
@@ -321,8 +321,10 @@ class flack_analysis(object):
     obs = observations.customized_copy(obs_, twin_fractions, twin_components)
     # reparameterisation needs all fractions
     twin_fractions += twin_components
+    if connectivity_table is None:
+      connectivity_table = smtbx.utils.connectivity_table(xray_structure)
     reparametrisation = constraints.reparametrisation(
-      xray_structure, [], smtbx.utils.connectivity_table(xray_structure),
+      xray_structure, [], connectivity_table,
       twin_fractions=twin_fractions,
       extinction=exti
     )

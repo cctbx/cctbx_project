@@ -121,8 +121,13 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       'adp_u_eq_similarity': smtbx_adp_restraints.adp_u_eq_similarity_restraints,
       'adp_volume_similarity': smtbx_adp_restraints.adp_volume_similarity_restraints,
     }
+    adp_restraint_types_requiring_connectivity_only = {
+      'adp_similarity': smtbx_adp_restraints.adp_similarity_restraints,
+      'rigid_bond': smtbx_adp_restraints.rigid_bond_restraints,
+    }
   else:
     adp_restraint_types = {}
+    adp_restraint_types_requiring_connectivity_only = {}
 
   def __init__(self, *args, **kwds):
     super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
@@ -148,7 +153,9 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
   def add_proxy(self, restraint_type, *args, **kwds):
     if restraint_type in self.adp_restraint_types:
       kwds['proxies'] = self._proxies[restraint_type]
-      kwds['xray_structure'] = self.structure
+      if restraint_type not in self.adp_restraint_types_requiring_connectivity_only or\
+         'pair_sym_table' not in kwds:
+        kwds['xray_structure'] = self.structure
       self.adp_restraint_types[restraint_type](**kwds)
     else:
       proxy_type = self.geometry_restraint_types[restraint_type]

@@ -544,6 +544,29 @@ def exercise_pair_tables():
                                         conformer_indices=conformer_indices)
   assert approx_equal(covalent_asu_table.pair_counts(), (1, 2, 2, 1))
   #
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell="10 10 10 90 90 90",
+      space_group_symbol="P1"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer("C1", site=(0.0, 0.0, 0.0)),
+      xray.scatterer("C2", site=(-0.1, 0.1, 0.0)),
+      xray.scatterer("C3", site=(0.1, 0.1, 0.0)),
+      xray.scatterer("C4", site=(0.1, -0.1, 0.0)),
+      xray.scatterer("C5", site=(-0.1, -0.1, 0.0)),
+    ]))
+  scattering_types = xs.scatterers().extract_scattering_types()
+  asu_mappings = xs.asu_mappings(buffer_thickness=3.5)
+  covalent_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  #central to the peripheral, > sqrt(2)/2
+  covalent_asu_table.add_covalent_pairs(scattering_types=scattering_types,
+                                        radii={'C' : 0.71}, tolerance=0)
+  assert approx_equal(covalent_asu_table.pair_counts(), (4, 1, 1, 1, 1))
+  #central to the peripharal + peripheral to two neighbours, > 1
+  covalent_asu_table.add_covalent_pairs(scattering_types=scattering_types,
+                                        radii={'C' : 1.01}, tolerance=0)
+  assert approx_equal(covalent_asu_table.pair_counts(), (4, 3, 3, 3, 3))
+  #
   structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)

@@ -412,7 +412,9 @@ namespace cctbx { namespace crystal {
         FloatType const& distance_cutoff=3.5,
         FloatType const& min_cubicle_edge=5,
         FloatType const& tolerance=0.5,
-        FloatType const& epsilon=1.e-6)
+        FloatType const& epsilon=1.e-6,
+        std::map<std::string, FloatType> const &radii
+          = std::map<std::string, FloatType>())
       {
         CCTBX_ASSERT(!conformer_indices.size()
                   ||  conformer_indices.size() == scattering_types.size());
@@ -423,6 +425,16 @@ namespace cctbx { namespace crystal {
           distance_cutoff*(1+epsilon),
           /*minimal*/ true,
           min_cubicle_edge);
+        typedef std::map<std::string, FloatType> RadiiRegType;
+        RadiiRegType radii_;
+        for (std::size_t i=0; i < scattering_types.size(); i++) {
+          radii_[scattering_types[i]] =
+            eltbx::covalent_radii::table(scattering_types[i]).radius();
+        }
+        for (RadiiRegType::const_iterator i = radii.begin(); i != radii.end(); i++) {
+          radii_[i->first] = i->second;
+        }
+
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
             const& pair = pair_generator.next();
@@ -459,11 +471,8 @@ namespace cctbx { namespace crystal {
                    && sym_excl_indices[pair.i_seq] != 0))) {
                 continue;
           }
-          FloatType const& radius_i =  eltbx::covalent_radii::table(
-            scattering_types[pair.i_seq]).radius();
-          FloatType const& radius_j =  eltbx::covalent_radii::table(
-            scattering_types[pair.j_seq]).radius();
-          FloatType const max_bond_length = radius_i + radius_j + tolerance;
+          FloatType const max_bond_length = radii_[scattering_types[pair.i_seq]] +
+            radii_[scattering_types[pair.j_seq]] + tolerance;
           if (std::sqrt(pair.dist_sq) <= max_bond_length) {
             add_pair(pair);
           }

@@ -7,9 +7,9 @@ class connectivity_table(object):
   covalent_bond_tolerance = 0.5 # Angstrom
   conformer_indices=None
   sym_excl_indices=None
-
+  radii=None
   # TODO: add possibility to fine tune connectivity by addition and deletion
-  #       of individual bonds, and also by user-provided radii
+  #       of individual bonds
 
   def __init__(self,
                structure,
@@ -17,21 +17,29 @@ class connectivity_table(object):
     from cctbx.eltbx import covalent_radii
     self.structure = structure
     libtbx.adopt_optional_init_args(self, kwds)
-
-    radii = [
-      covalent_radii.table(elt).radius() for elt in
-      structure.scattering_type_registry().type_index_pairs_as_dict() ]
+    max_r = 0
+    for st in structure.scattering_type_registry().type_index_pairs_as_dict():
+      r = 0
+      if self.radii:
+        r = self.radii.get(st, 0)
+      if r == 0:
+        r = covalent_radii.table(st).radius()
+      if r > max_r: max_r = r
     self.structure = structure
-    self.buffer_thickness = 2*max(radii) + self.covalent_bond_tolerance
+    self.buffer_thickness = 2*max_r + self.covalent_bond_tolerance
     asu_mappings = structure.asu_mappings(
       buffer_thickness=self.buffer_thickness)
     self._pair_asu_table = crystal.pair_asu_table(asu_mappings)
     self._pair_asu_table_needs_updating = False
+    if self.radii is None:
+      self.radii = {}
     self._pair_asu_table.add_covalent_pairs(
       structure.scattering_types(),
       conformer_indices=self.conformer_indices,
       sym_excl_indices=self.sym_excl_indices,
-      tolerance=self.covalent_bond_tolerance)
+      tolerance=self.covalent_bond_tolerance,
+      radii=self.radii
+    )
     self.pair_sym_table = self.pair_asu_table.extract_pair_sym_table()
 
 
