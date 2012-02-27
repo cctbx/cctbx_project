@@ -186,7 +186,7 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
   }
   inelatic_references = {
     "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
-    "sasaki" : "S.Sasaki, KEK Report, 1989, 88-14, 1",
+    "sasaki" : "Sasaki, KEK Report, 1989, 88-14, 1",
   }
 
   def __init__(self, xray_structure, covariance_matrix=None,
