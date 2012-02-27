@@ -234,6 +234,8 @@ multiple residues."
       char_w = max(12, line_w / 50)
     elif wx.Platform == '__WXMAC__' :
       char_w = max(10, line_w / 50)
+    elif (wx.Platform == '__WXMSW__') :
+      char_w = max(10, line_w / 50)
     else :
       raise RuntimeError("Platform not supported!")
     char_h = max(16, char_h)
@@ -539,9 +541,9 @@ residue(s).  Holding down shift enables multiple selections."""
         gc.PopState()
       gc.SetPen(strand_pen)
     missing = self.get_missing()
-    if wx.Platform == '__WXGTK__' : # dashed pen freezes on Linux
+    if (wx.Platform == '__WXGTK__') : # dashed pen freezes on Linux
       missing_pen = wx.Pen((150, 150, 150), 4)
-    elif wx.Platform == '__WXMAC__' :
+    elif (wx.Platform in ['__WXMAC__', '__WXMSW__']) :
       missing_pen = wx.Pen((150, 150, 150), 4, style=wx.SHORT_DASH)
     h_missing_pen = wx.Pen((255, 255, 0), 12)
     for k, (i_start, i_end) in enumerate(missing) :
