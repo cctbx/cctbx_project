@@ -2,8 +2,10 @@
 
 import boost.python
 from libtbx import introspection
+import libtbx.load_env
 import platform
 import sys, os
+op = os.path
 
 class div_probe(object):
   def __div__(O, other): return "floor"
@@ -12,6 +14,12 @@ class div_probe(object):
 def run (out=None, omit_unicode_experiment=False):
   if (out is None): out = sys.stdout
   out.write(boost.python.platform_info)
+  tag = libtbx.env.under_dist("boost", "TAG")
+  if (op.isfile(tag)):
+    tag = open(tag).read().strip()
+  else:
+    tag = None
+  print >> out, "boost/TAG:", tag
   print >> out, "os.name:", os.name
   print >> out, "sys.platform:", sys.platform
   print >> out, "sys.byteorder:", sys.byteorder
