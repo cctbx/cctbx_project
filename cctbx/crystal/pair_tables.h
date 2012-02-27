@@ -193,6 +193,7 @@ namespace cctbx { namespace crystal {
   template <typename FloatType=double, typename IntShiftType=int>
   class pair_asu_table
   {
+     typedef std::map<std::string, FloatType> RadiiRegType;
     public:
       //! Default constructor. Some data members are not initialized!
       pair_asu_table() {}
@@ -413,8 +414,7 @@ namespace cctbx { namespace crystal {
         FloatType const& min_cubicle_edge=5,
         FloatType const& tolerance=0.5,
         FloatType const& epsilon=1.e-6,
-        std::map<std::string, FloatType> const &radii
-          = std::map<std::string, FloatType>())
+        RadiiRegType const &radii=RadiiRegType())
       {
         CCTBX_ASSERT(!conformer_indices.size()
                   ||  conformer_indices.size() == scattering_types.size());
@@ -425,14 +425,14 @@ namespace cctbx { namespace crystal {
           distance_cutoff*(1+epsilon),
           /*minimal*/ true,
           min_cubicle_edge);
-        typedef std::map<std::string, FloatType> RadiiRegType;
         RadiiRegType radii_;
         for (std::size_t i=0; i < scattering_types.size(); i++) {
           radii_[scattering_types[i]] =
             eltbx::covalent_radii::table(scattering_types[i]).radius();
         }
-        for (RadiiRegType::const_iterator i = radii.begin(); i != radii.end(); i++) {
-          radii_[i->first] = i->second;
+        typedef typename RadiiRegType::const_iterator Itr;
+        for (Itr itr = radii.begin(); itr != radii.end(); itr++) {
+          radii_[itr->first] = itr->second;
         }
 
         while (!pair_generator.at_end()) {
