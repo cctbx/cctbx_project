@@ -207,21 +207,14 @@ namespace random {
         return result;
       }
 
-      //! Uniformly distributed random 3D rotation matrix using quaternions
-      mat3<double>
-      random_double_r3_rotation_matrix_quaternion()
-      {
-        return math::r3_rotation::unit_quaternion_as_matrix(
-          random_double_unit_quaternion());
-      }
-
+      /*! \brief Uniformly distributed random 3D rotation matrix based on
+          unit quaternion.
+       */
       mat3<double>
       random_double_r3_rotation_matrix()
       {
-        vec3<double> axis = random_double_point_on_sphere();
-        double angle = constants::two_pi * random_double();
-        return math::r3_rotation::axis_and_angle_as_matrix(
-          axis, angle, /* deg */ false);
+        return math::r3_rotation::unit_quaternion_as_matrix(
+          random_double_unit_quaternion());
       }
 
       //! Uniformly distributed random 3D rotation matrix using Arvo's method.

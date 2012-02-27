@@ -91,7 +91,6 @@ def export_to(target_module_name):
     "random_double_unit_quaternion",
     "random_double_r3_rotation_matrix",
     "random_double_r3_rotation_matrix_arvo_1992",
-    "random_double_r3_rotation_matrix_quaternion",
     "random_int_gaussian_distribution",
     "median",
     "py_object",
@@ -233,8 +232,6 @@ random_double_r3_rotation_matrix \
   = random_generator.random_double_r3_rotation_matrix
 random_double_r3_rotation_matrix_arvo_1992 \
   = random_generator.random_double_r3_rotation_matrix_arvo_1992
-random_double_r3_rotation_matrix_quaternion \
-  = random_generator.random_double_r3_rotation_matrix_quaternion
 random_int_gaussian_distribution \
   = random_generator.random_int_gaussian_distribution
 

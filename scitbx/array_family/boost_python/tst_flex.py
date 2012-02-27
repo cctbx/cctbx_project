@@ -1511,9 +1511,9 @@ def exercise_random():
   assert list(flex.random_bool(size=3, threshold=1)) == [True, True, True]
   #
   assert approx_equal(flex.random_double_r3_rotation_matrix(),
-    [-0.7907416426023901, -0.51092729410463222, -0.33716606411884431,
-     0.19015198986882362, 0.3185310997188201, -0.92864425872389156,
-     0.58186757548724155, -0.7984304845450465, -0.15472196335931598])
+    [-0.8158532, -0.01672908, 0.578017,
+     0.5452424, -0.3551823, 0.759313,
+     0.1925988, 0.9346473, 0.298898])
   def check_r3r(method):
     for i_trial in xrange(100):
       r = matrix.sqr(method())
@@ -1522,23 +1522,20 @@ def exercise_random():
   check_r3r(flex.random_double_r3_rotation_matrix)
   #
   assert approx_equal(flex.random_double_unit_quaternion(), (
-    0.6425703, 0.6396906, 0.4186082, 0.05163791))
-  for i_trial in xrange(7):
+    0.9219209, 0.02017586, 0.04304701, 0.3844498))
+  for i_trial in xrange(10):
     assert approx_equal(
       abs(matrix.col(flex.random_double_unit_quaternion())), 1)
-  #
-  # just so the expected results below don't have to be changed
-  flex.random_double()
   #
   assert list(flex.random_int_gaussian_distribution(
     size=3,
     mu=-4.56,
-    sigma=3.89)) == [-7, -2, -5]
+    sigma=3.89)) == [-6, -5, 1]
   #
   assert approx_equal(flex.random_double_r3_rotation_matrix_arvo_1992(),
-    [0.6873899762748122, -0.63631577028227, -0.35013891672733893,
-     -0.3604550683492223, 0.11964253502834543, -0.9250717850595969,
-     0.6305292730859295, 0.7620944195452901, -0.14712216515419052])
+    [0.1408159, 0.986947, 0.07814446,
+     0.405628, 0.01448828, -0.9139234,
+     -0.9031261, 0.1603926, -0.3982931])
   check_r3r(flex.random_double_r3_rotation_matrix_arvo_1992)
 
 def exercise_flex_vec3_double():

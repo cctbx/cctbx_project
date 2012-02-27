@@ -38,11 +38,7 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
   By picking uniformly random points on a sphere, the surface integral can be
   numerically approximated.
 
-  In this test, the points from random_double_r3_rotation_matrix_arvo_1992
-  and random_double_r3_rotation_matrix_quaternion are roughly uniform
-  (numerical integration yields numbers close to 1.0), but the points from
-  random_double_r3_rotation_matrix() are not (results are around 0.7).  The
-  results in the comments below are for N = 1 000 000.
+  The results in the comments below are for N = 1 000 000.
   """
   if (choice == 0):
     # l=1, m=1
@@ -60,10 +56,9 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
     lm = 10
     c = (1/1024) * math.sqrt(969969/math.pi)
 
-  result = [ 0.0, 0.0, 0.0 ]
+  result = [ 0.0, 0.0 ]
   for i in range(N):
-    R  = [ matrix.sqr(flex.random_double_r3_rotation_matrix_quaternion()),
-           matrix.sqr(flex.random_double_r3_rotation_matrix()),
+    R  = [ matrix.sqr(flex.random_double_r3_rotation_matrix()),
            matrix.sqr(flex.random_double_r3_rotation_matrix_arvo_1992()) ]
     for j in xrange(len(result)):
       result[j] += add_point(lm,c,R[j])
@@ -78,8 +73,7 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
     print
 
   assert(result[0].real > 0.85)
-  assert(result[1].real > 0.60)
-  assert(result[2].real > 0.85)
+  assert(result[1].real > 0.85)
 
 if (__name__ == '__main__'):
   flex.set_random_seed(0)

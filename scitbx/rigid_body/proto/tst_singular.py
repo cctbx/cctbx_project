@@ -76,7 +76,7 @@ def exercise_six_dof(out, n_trials, n_dynamics_steps, delta_t=0.001):
         assert relative_range < 1.e-4
 
 def exercise_six_dof2(out, n_trials, n_dynamics_steps, delta_t=0.001):
-  mersenne_twister = flex.mersenne_twister(seed=0)
+  mersenne_twister = flex.mersenne_twister(seed=1)
   for n_sites in xrange(1,4):
     for i_trial in xrange(n_trials):
       body1 = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
