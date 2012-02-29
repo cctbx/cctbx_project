@@ -377,12 +377,12 @@ class refine_adp(object):
       # below will fail
       fmodels.create_target_functors()
       if(self.fmodels.fmodel_neutron() is None):
-        self.fmodels.fmodel_xray().xray_structure.tidy_us()
         self.fmodels.update_xray_structure(
           xray_structure = self.fmodels.fmodel_xray().xray_structure,
           update_f_calc  = True)
         assert approx_equal(self.fmodels.fmodel_xray().r_work()*100, rw_best,
           0.001)
+        self.fmodels.fmodel_xray().xray_structure.tidy_us()
         # this needs to be done again again, just in case
         fmodels.create_target_functors()
       self.show(weight=w_best)
