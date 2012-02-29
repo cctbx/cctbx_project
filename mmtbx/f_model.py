@@ -559,6 +559,32 @@ class manager(manager_mixin):
       show_histogram(data = self.passive_arrays.f_obs.data(), n_slots = 10, log = log)
     o_sel = self.outlier_selection(show = show, log = log)
     if(o_sel.count(False) > 0):
+      #
+      indices = self.passive_arrays.f_obs.indices()
+      data = self.passive_arrays.f_obs.data()
+      sigmas = self.passive_arrays.f_obs.sigmas()
+      o_sel_neg = (~o_sel).iselection()
+      d_spacings = self.passive_arrays.f_obs.d_spacings().data()
+      f_model_data = abs(self.f_model_scaled_with_k1()).data()
+      if(show):
+        print >> log, "Discarded reflections:"
+        if(sigmas is not None):
+          print >> log, \
+            "    h    k    l           f_obs         f_model      sigma   d_min"
+          fmt = "%5d%5d%5d %15.4f %15.4f %10.4f %7.4f"
+          for si in o_sel_neg:
+            i = indices[si]
+            print >> log, fmt%(i[0],i[1],i[2], data[si], f_model_data[si],
+              sigmas[si], d_spacings[si])
+        else:
+          print >> log, \
+            "    h    k    l           f_obs         f_model   d_min"
+          fmt = "%5d%5d%5d %15.4f %15.4f %7.4f"
+          for si in o_sel_neg:
+            i = indices[si]
+            print >> log, fmt%(i[0],i[1],i[2], data[si], f_model_data[si],
+              d_spacings[si])
+      #
       assert self.twin_set is None #XXX twinning is not supported yet
       assert self.active_arrays.core_twin is None
       new_f_obs = self.passive_arrays.f_obs.select(o_sel)
