@@ -146,7 +146,7 @@ class make_prediction_list:
 
     cell = (A.length(), B.length(), C.length(), B.angle(C, deg = True),
             C.angle(A, deg = True), A.angle(B, deg = True))
-    uc = unit_cell(cell)
+    self.uc = unit_cell(cell)
 
     # generate all of the possible indices, then pull out those which should
     # be systematically absent
@@ -154,7 +154,7 @@ class make_prediction_list:
     sg = cfc.get('space_group_number')
 
     indices = full_sphere_indices(
-      unit_cell = uc,
+      unit_cell = self.uc,
       resolution_limit = dmin,
       space_group = space_group(space_group_symbols(sg).hall()))
 
@@ -166,6 +166,7 @@ class make_prediction_list:
     ub = u * b
 
     wavelength = cfc.get('wavelength')
+    self.wavelength = wavelength
 
     # work out which reflections should be observed (i.e. pass through the
     # Ewald sphere)
@@ -202,7 +203,7 @@ class make_prediction_list:
     dimension_slow = size_slow * self.pixel_size_slow
 
     detector_normal = detector_fast.cross(detector_slow)
-    distance = detector_origin.dot(detector_normal)
+    self.distance = detector_origin.dot(detector_normal) # used for polarization correction
 
     rp = reflection_prediction(axis, s0, ub, detector_origin,
                                    detector_fast, detector_slow,
