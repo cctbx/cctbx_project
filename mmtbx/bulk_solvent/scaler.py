@@ -532,55 +532,71 @@ class run(object):
     k_mask_bin = flex.double()
     k_mask_trial_range = flex.double([i/1000. for i in range(0,1000,10)])
     scale_k1 = self.estimate_scale_k1()
+    def get_k_mask_trial_range(x, shift=0.05):
+      result = flex.double()
+      inc = max(0,x-shift)
+      while inc<=x+shift+1.e-3:
+        result.append(inc)
+        inc+=0.01
+      return result
     for i_cas, cas in enumerate(self.cores_and_selections):
       selection, core, selection_use = cas
       scale = self.core.k_anisotropic.select(selection)*scale_k1
+      f_obs  = core.f_obs.data()
+      f_calc = core.f_calc.data()*scale
+      f_mask = core.f_mask.data()*scale
       if(self.scale_method == "k_iso_k_mask_anal"):
         obj = bulk_solvent.overall_and_bulk_solvent_scale_coefficients_analytical(
-          f_obs     = core.f_obs.data(),
-          f_calc    = core.f_calc.data()*scale,
-          f_mask    = core.f_mask.data()*scale,
+          f_obs     = f_obs,
+          f_calc    = f_calc,
+          f_mask    = f_mask,
           selection = flex.bool(selection_use.size(), True))
         k_mask_bin.append(obj.x_best)
         k_mask.set_selected(selection, obj.x_best)
       elif(self.scale_method == "k_mask_anal"):
         obj = bulk_solvent.bulk_solvent_scale_coefficients_analytical(
-          f_obs     = core.f_obs.data(),
-          f_calc    = core.f_calc.data()*scale,
-          f_mask    = core.f_mask.data()*scale,
+          f_obs     = f_obs,
+          f_calc    = f_calc,
+          f_mask    = f_mask,
           selection = flex.bool(selection_use.size(), True))
         k_mask_bin.append(obj.x_best)
         k_mask.set_selected(selection, obj.x_best)
       elif(self.scale_method == "k_mask_r_grid_search"):
         k_mask_bin_, k_isotropic_bin_ = \
           bulk_solvent.k_mask_and_k_overall_grid_search(
-            core.f_obs.data(),
-            core.f_calc.data()*scale,
-            core.f_mask.data()*scale,
+            f_obs,
+            f_calc,
+            f_mask,
             k_mask_trial_range)
         k_mask_bin.append(k_mask_bin_)
         k_mask.set_selected(selection, k_mask_bin_)
       elif(self.scale_method == "combo"):
         obj1 = bulk_solvent.overall_and_bulk_solvent_scale_coefficients_analytical(
-          f_obs     = core.f_obs.data(),
-          f_calc    = core.f_calc.data()*scale,
-          f_mask    = core.f_mask.data()*scale,
+          f_obs     = f_obs,
+          f_calc    = f_calc,
+          f_mask    = f_mask,
           selection = flex.bool(selection_use.size(), True)) # use selection_use: never a good idea
         k_mask.set_selected(selection, obj1.x_best)
         r1 = self.core.try_scale(k_mask = k_mask, selection=selection)
         #
         obj2 = bulk_solvent.bulk_solvent_scale_coefficients_analytical(
-          f_obs     = core.f_obs.data(),
-          f_calc    = core.f_calc.data()*scale,
-          f_mask    = core.f_mask.data()*scale,
+          f_obs     = f_obs,
+          f_calc    = f_calc,
+          f_mask    = f_mask,
           selection = flex.bool(selection_use.size(), True)) # use selection_use: never a good idea
         k_mask.set_selected(selection, obj2.x_best)
         r2 = self.core.try_scale(k_mask = k_mask, selection=selection)
-        #
         if(r1<r2): x = obj1.x_best
         else: x = obj2.x_best
-        k_mask_bin.append(x)
-        k_mask.set_selected(selection, x)
+        # fine-sample k_mask around minimum of LS to fall into minimum of R
+        k_mask_bin_, k_isotropic_bin_ = \
+          bulk_solvent.k_mask_and_k_overall_grid_search(
+            f_obs,
+            f_calc,
+            f_mask,
+            get_k_mask_trial_range(x = x))
+        k_mask_bin.append(k_mask_bin_)
+        k_mask.set_selected(selection, k_mask_bin_)
       else: assert 0
     #
     k_mask_bin_smooth = self.smooth(k_mask_bin)
