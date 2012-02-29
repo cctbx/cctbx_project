@@ -5,6 +5,7 @@ from libtbx import easy_mp
 from libtbx import easy_pickle
 from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
+import scitbx.math
 
 from xfel.command_line import view_pixel_histograms # XXX
 from xfel.cxi.cspad_ana import cspad_tbx
@@ -15,6 +16,10 @@ def run(args):
                   .option("--output_dirname", "-o",
                           type="string",
                           help="Directory for output files.")
+                  .option("--roi",
+                          type="string",
+                          help="Region of interest for summing up histograms"
+                          "from neighbouring pixels.")
                   .option("--gain_map_path",
                           type="string",
                           help="Path to a gain map that will be used instead of"
@@ -26,6 +31,11 @@ def run(args):
                   .option("--nproc", "-p",
                           type="int",
                           help="Number of processors to use.")
+                  .option("--photon_threshold",
+                          type="float",
+                          default=2/3,
+                          help="Threshold for counting photons (as a fraction of"
+                          "the distance between the zero and one photon peaks.")
                   .option("--sum_adu",
                           action="store_true",
                           default=False,
@@ -34,9 +44,11 @@ def run(args):
   args = command_line.args
   assert len(args) == 1
   output_dirname = command_line.options.output_dirname
+  roi = cspad_tbx.getOptROI(command_line.options.roi)
   gain_map_path = command_line.options.gain_map_path
   estimated_gain = command_line.options.estimated_gain
   nproc = command_line.options.nproc
+  photon_threshold = command_line.options.photon_threshold
   if command_line.options.sum_adu:
     method = "sum_adu"
   else:
@@ -46,14 +58,25 @@ def run(args):
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
     print output_dirname
   hist_d = easy_pickle.load(args[0])
+  if roi is not None:
+    for ij, hist in hist_d.items():
+      i, j = ij
+    for (i, j), hist in hist_d.items():
+      if (   i < roi[2]
+          or i > roi[3]
+          or j < roi[0]
+          or j > roi[1]):
+        del hist_d[(i,j)]
   pixel_histograms = view_pixel_histograms.pixel_histograms(
     hist_d, estimated_gain=estimated_gain)
   xes_from_histograms(pixel_histograms, output_dirname=output_dirname,
                       gain_map_path=gain_map_path, estimated_gain=estimated_gain,
-                      method=method, nproc=nproc)
+                      method=method, nproc=nproc,
+                      photon_threshold=photon_threshold)
 
 def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None,
-                        method="photon_counting", estimated_gain=30, nproc=None):
+                        method="photon_counting", estimated_gain=30, nproc=None,
+                        photon_threshold=2/3):
   assert method in ("sum_adu", "photon_counting")
   sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
   gain_img = flex.double(sum_img.accessor(), 0)
@@ -64,9 +87,6 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
   else:
     gain_map = None
 
-
-  #photon_threshold = 1/2
-  photon_threshold = 2/3
   two_photon_threshold = photon_threshold + 1
 
   mask = flex.int(sum_img.accessor(), 0)
@@ -92,6 +112,8 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
     args=pixels,
     func_wrapper="buffer_stdout_stderr")
   results = [r for so, r in stdout_and_results]
+
+  gains = flex.double()
 
   for i, pixel in enumerate(pixels):
     #print i
@@ -145,6 +167,7 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
         print "bad gain!!!!!", pixel
         continue
       gain_ratio = 1/gain
+    gains.append(gain)
     #for g in gaussians:
       #sigma = abs(g.params[2])
       #if sigma < 1 or sigma > 10:
@@ -189,6 +212,10 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
           n_photons += 2 * int(round(slots[j]))
       sum_img[pixel] = n_photons
 
+  stats = scitbx.math.basic_statistics(gains)
+  print "gain statistics:"
+  stats.show()
+
   mask.set_selected(sum_img == 0, 1)
   unbound_pixel_mask = xes_finalise.cspad_unbound_pixel_mask()
   mask.set_selected(unbound_pixel_mask > 0, 1)
@@ -211,6 +238,11 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
   if gain_map is None:
     gain_map = flex.double(gain_img.accessor(), 0)
     img_sel = (gain_img > 0).as_1d()
+    d = cspad_tbx.dpack(
+      data=gain_img,
+      distance=1
+    )
+    cspad_tbx.dwritef(d, output_dirname, 'raw_gain_map_')
     gain_map.as_1d().set_selected(img_sel.iselection(), 1/gain_img.as_1d().select(img_sel))
     gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
     d = cspad_tbx.dpack(
@@ -222,6 +254,7 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
   xes_finalise.output_spectrum(spectrum_focus.iround(), mask_focus=mask_focus,
                                output_dirname=output_dirname)
 
+  xes_finalise.output_matlab_form(spectrum_focus, "%s/sum.m" %output_dirname)
 
 
 if __name__ == '__main__':
