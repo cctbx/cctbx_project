@@ -71,13 +71,11 @@ namespace {
       .def(init<
            af::shared<std::complex<double> > const&,
            af::shared<std::complex<double> > const&,
-           double const&,
            af::shared<double> const&,
            af::shared<double> const&,
            af::shared<double> const& >(
                                          (arg("f_calc"),
                                           arg("f_mask"),
-                                          arg("scale"),
                                           arg("k_isotropic"),
                                           arg("k_anisotropic"),
                                           arg("k_mask"))))
@@ -102,7 +100,6 @@ namespace {
       .def("shell_f_masks", &core<>::shell_f_masks) // XXX re-name to f_masks
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
-      .def("select", &core<>::select)
     ;
 
     def("overall_anisotropic_scale",
