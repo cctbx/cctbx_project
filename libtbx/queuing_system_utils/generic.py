@@ -370,6 +370,8 @@ class queue_interface (object) :
       assert (self.COMMAND is not None)
       self.command = [ self.COMMAND, ]
     else:
+      if (isinstance(command, str)) :
+        self.command = [ command, ]
       self.command = command
 
 class sge_interface(queue_interface):
@@ -411,8 +413,7 @@ class pbs_interface(queue_interface):
 
   def __call__(self, name, out, err):
 
-    return self.command + [ "-d", ".", "-N", name,
-      "-o", out, "-e", err ]
+    return self.command + [ "-d", ".", "-N", name, "-o", out, "-e", err ]
 
 def qsub (target,
           name="libtbx_python",
