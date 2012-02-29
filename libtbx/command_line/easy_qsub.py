@@ -103,7 +103,12 @@ def run(phenix_source=None,
   print '  Inputs'
   print '    phenix_source',phenix_source
   print '    where',where
-  print '    commands',commands
+  if type(commands)==type([]):
+    print '    commands',len(commands)
+    if len(commands)>1:
+      print '      like',commands[0]
+  else:
+    print '    commands',commands
   print '    size_of_chunks',size_of_chunks
   print '    number_of_chunks',number_of_chunks
   print '-'*80
@@ -114,9 +119,12 @@ def run(phenix_source=None,
   assert commands
   assert os.path.exists(commands)
 
-  f=file(commands, "rb")
-  lines = f.readlines()
-  f.close()
+  if type(commands)==type([]):
+    lines = commands
+  else:
+    f=file(commands, "rb")
+    lines = f.readlines()
+    f.close()
   number_of_jobs = len(lines)
   print '\n  Number of lines in command file',number_of_jobs
   if number_of_chunks is None:
