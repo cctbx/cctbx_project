@@ -1011,7 +1011,6 @@ class get_ncs_groups(object):
           chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
         else :
           chain_j_str = "chain '%s'" % chain_j.id
-        #selections = (chain_i_str, chain_j_str)
         seq_pair = (am.sequences[chain_i_str],
                     am.sequences[chain_j_str])
         seq_pair_padded = (am.padded_sequences[chain_i_str],
@@ -1025,6 +1024,8 @@ class get_ncs_groups(object):
             padded_sequences=seq_pair_padded,
             structures=struct_pair,
             log=log)
+        key = (chain_i_str, chain_j_str)
+        alignments[key] = residue_match_map
         if ( min(len(residue_match_map),
                  chain_i.residue_groups_size(),
                  chain_j.residue_groups_size()) \
@@ -1032,16 +1033,21 @@ class get_ncs_groups(object):
                    chain_i.residue_groups_size(),
                    chain_j.residue_groups_size()) \
              >= params.similarity ):
-          key = (chain_i_str, chain_j_str)
-          alignments[key] = residue_match_map
           pair_key = (chain_i.id, segid_i)
           match_key = (chain_j.id, segid_j)
           if used_chains is not None:
             if match_key in used_chains:
               continue
-          if (not pair_key in pair_hash) :
-            pair_hash[pair_key] = []
-          pair_hash[pair_key].append(match_key)
+          assign_key = None
+          if pair_key in used_chains:
+            for group_key in pair_hash.keys():
+              if pair_key in pair_hash[group_key]:
+                assign_key = group_key
+          if assign_key is None:
+            assign_key = pair_key
+          if (not assign_key in pair_hash) :
+            pair_hash[assign_key] = []
+          pair_hash[assign_key].append(match_key)
           used_chains.append(match_key)
 
     for key in pair_hash.keys():
