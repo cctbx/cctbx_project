@@ -430,7 +430,7 @@ class run(object):
     k_mask_bin_smooth_ = str(None)
     k_mask_bin_approx_ = str(None)
     for i_sel, sel in enumerate(self.bin_selections):
-      ss_ = self.ss_bin_average[i_sel]
+      ss_ = self.ss_bin_values[i_sel][2]
       if(b is not None and self.bss_result.k_mask_bin_orig is not None):
         k_mask_bin_orig_ = "%6.4f"%self.bss_result.k_mask_bin_orig[i_sel]
       if(b is not None and self.bss_result.k_mask_bin_smooth is not None):
@@ -541,8 +541,8 @@ class run(object):
           f_calc    = core.f_calc.data()*scale,
           f_mask    = core.f_mask.data()*scale,
           selection = flex.bool(selection_use.size(), True))
-        k_mask_bin.append(obj.x_r)
-        k_mask.set_selected(selection, obj.x_r)
+        k_mask_bin.append(obj.x_best)
+        k_mask.set_selected(selection, obj.x_best)
       elif(self.scale_method == "k_mask_anal"):
         obj = bulk_solvent.bulk_solvent_scale_coefficients_analytical(
           f_obs     = core.f_obs.data(),
