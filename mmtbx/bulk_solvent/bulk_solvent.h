@@ -321,6 +321,96 @@ private:
   scitbx::af::small<FloatType,mmtbx::f_model::max_n_shells> grad_k_sols_;
 };
 
+//------------------------------------------------------------------------------
+// All scales (overall, overall anisotropic, etc) must be applied.
+template <
+  typename FloatType=double,
+  typename ComplexType=std::complex<double>,
+  typename CubicEqType=scitbx::math::cubic_equation::real<long double, double> >
+class bulk_solvent_scale_coefficients_analytical
+{
+public:
+  af::shared<FloatType> x, r;
+  FloatType x_best, r_best;
+
+  bulk_solvent_scale_coefficients_analytical() {}
+
+  bulk_solvent_scale_coefficients_analytical(
+    af::const_ref<FloatType> const& f_obs,
+    af::const_ref<ComplexType> const& f_calc,
+    af::const_ref<ComplexType> const& f_mask,
+    af::const_ref<bool> const& selection)
+  :
+  x_best(0), r_best(0)
+  {
+    MMTBX_ASSERT(f_obs.size() == f_calc.size());
+    MMTBX_ASSERT(f_obs.size() == f_mask.size());
+    MMTBX_ASSERT(f_obs.size() == selection.size());
+    FloatType a2 = 0.0;
+    FloatType d3 = 0.0;
+    FloatType a = 0.0;
+    FloatType b = 0.0;
+    FloatType c = 0.0;
+    for(std::size_t i=0; i < f_obs.size(); i++) {
+      if(selection[i]) {
+        FloatType p = std::real(f_calc[i]);
+        FloatType r = std::imag(f_calc[i]);
+        FloatType q = std::real(f_mask[i]);
+        FloatType t = std::imag(f_mask[i]);
+        FloatType I = f_obs[i]*f_obs[i];
+        FloatType v = p*q+r*t;
+        FloatType w = q*q+t*t;
+        FloatType u = p*p+r*r;
+        a2 += (u*I);
+        d3 += (w*w);
+        a  += (3.*v*w);
+        b  += (2*v*v + u*w - w*I);
+        c  += (u*v - v*I);
+      }
+    }
+    MMTBX_ASSERT(d3 != 0.0);
+    // coefficients of x**3 + ax**2 + bx + c = 0
+    CubicEqType ceo = CubicEqType(1,a/d3,b/d3,c/d3);
+    // we are interested in non-negative roots only
+    x.push_back(0);
+    for(std::size_t j=0; j < 3; j++) {
+      if(ceo.x[j]) {
+        FloatType root = *ceo.x[j];
+        if(root>=0) {
+          x.push_back(root);
+        }
+        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
+      }
+    }
+    // put together plausible results
+    bool zero = false;
+    af::shared<ComplexType> f_model(f_obs.size());
+    for(std::size_t j=0; j < x.size(); j++) {
+      if((x[j]>0) || (x[j]==0 && zero==false)) {
+        for(std::size_t i=0; i < f_obs.size(); i++) {
+          if(selection[i]) {
+            f_model[i] = f_calc[i] + x[j] * f_mask[i];
+          }
+        }
+        r.push_back(r_factor(f_obs, f_model.const_ref()));
+      }
+      else {
+        r.push_back(-1);
+      }
+      if(x[j]==0) zero = true;
+    }
+    // select best result
+    x_best = x[0];
+    r_best=1.e+9;
+    for(std::size_t j=0; j < x.size(); j++) {
+      if(r[j]<=r_best && r[j]>=0) {
+        r_best = r[j];
+        x_best = x[j];
+      }
+    }
+  }
+};
+//------------------------------------------------------------------------------
 
 template <
   typename FloatType=double,
@@ -329,7 +419,8 @@ template <
 class overall_and_bulk_solvent_scale_coefficients_analytical
 {
 public:
-  FloatType k, x, t;
+  af::shared<FloatType> x, r;
+  FloatType x_best, r_best;
 
   overall_and_bulk_solvent_scale_coefficients_analytical() {}
 
@@ -339,15 +430,11 @@ public:
     af::const_ref<ComplexType> const& f_mask,
     af::const_ref<bool> const& selection)
   :
-  k(1), x(0), t(0)
+  x_best(0), r_best(0)
   {
     MMTBX_ASSERT(f_obs.size() == f_calc.size());
     MMTBX_ASSERT(f_obs.size() == f_mask.size());
-    FloatType pi = scitbx::constants::pi;
-    FloatType pi_sq = pi*pi;
-    FloatType minus_two_pi  = -2.*pi_sq;
-    FloatType minus_four_pi = -4.*pi_sq;
-    //
+    MMTBX_ASSERT(f_obs.size() == selection.size());
     FloatType a2 = 0.0;
     FloatType b2 = 0.0;
     FloatType c2 = 0.0;
@@ -357,23 +444,25 @@ public:
     FloatType c3 = 0.0;
     FloatType d3 = 0.0;
     FloatType y3 = 0.0;
-    //
-    af::shared<container> containers;
     for(std::size_t i=0; i < f_obs.size(); i++) {
       if(selection[i]) {
-        container cntr = container(f_obs[i], f_calc[i], f_mask[i]);
-        containers.push_back(cntr);
-        FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;
-        FloatType Isq = I*I;
-        a2 += (u/I);
-        b2 += (2.*v/I);
-        c2 += (w/I);
-        y2 += 1;
-        a3 += (u*v/Isq);
-        b3 += (2.*v*v+u*w)/Isq;
-        c3 += (3.*v*w)/Isq;
-        d3 += (w*w)/Isq;
-        y3 += (v/I);
+        FloatType p = std::real(f_calc[i]);
+        FloatType r = std::imag(f_calc[i]);
+        FloatType q = std::real(f_mask[i]);
+        FloatType t = std::imag(f_mask[i]);
+        FloatType I = f_obs[i]*f_obs[i];
+        FloatType v = p*q+r*t;
+        FloatType w = q*q+t*t;
+        FloatType u = p*p+r*r;
+        a2 += (u*I);
+        b2 += (2.*v*I);
+        c2 += (w*I);
+        y2 += (I*I);
+        a3 += (u*v);
+        b3 += (2.*v*v+u*w);
+        c3 += (3.*v*w);
+        d3 += (w*w);
+        y3 += (v*I);
       }
     }
     FloatType den = d3*y2-c2*c2;
@@ -383,122 +472,44 @@ public:
     FloatType b = (b3*y2-c2*a2-y3*b2)/den;
     FloatType c = (a3*y2-y3*a2)/den;
     CubicEqType ceo = CubicEqType(1,a,b,c);
-    vec3<FloatType> X(0,0,0);
+    // we are interested in non-negative roots only
+    x.push_back(0);
     for(std::size_t j=0; j < 3; j++) {
       if(ceo.x[j]) {
-        X[j] = *ceo.x[j];
+        FloatType root = *ceo.x[j];
+        if(root>=0) {
+          x.push_back(root);
+        }
         MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
       }
     }
-    vec3<FloatType> K = compute_K(X, c2, b2, a2, y2);
-    vec3<FloatType> J = func_J(K, X, containers.const_ref());
-    if(X[0]>=0. && X[1]>=0. && X[2]>=0) {
-      if(J[0]<=J[1] && J[0]<=J[2]) { x = X[0]; k = K[0]; }
-      else if(J[1]<=J[0] && J[1]<=J[2]) { x = X[1]; k = K[1]; }
-      else if(J[2]<=J[0] && J[2]<=J[1]) { x = X[2]; k = K[2]; }
-      else MMTBX_ASSERT(0);
+    // put together plausible results
+    bool zero = false;
+    af::shared<ComplexType> f_model(f_obs.size());
+    for(std::size_t j=0; j < x.size(); j++) {
+      if((x[j]>0) || (x[j]==0 && zero==false)) {
+        for(std::size_t i=0; i < f_obs.size(); i++) {
+          if(selection[i]) {
+            f_model[i] = f_calc[i] + x[j] * f_mask[i];
+          }
+        }
+        r.push_back(r_factor(f_obs, f_model.const_ref()));
+      }
+      else {
+        r.push_back(-1);
+      }
+      if(x[j]==0) zero = true;
     }
-    else if(X[0]>=0. && X[1]>=0.) {
-      if(J[0]<=J[1]) { x = X[0]; k = K[0]; }
-      if(J[1]<=J[0]) { x = X[1]; k = K[1]; }
+    // select best result
+    x_best = x[0];
+    r_best=1.e+9;
+    for(std::size_t j=0; j < x.size(); j++) {
+      if(r[j]<=r_best && r[j]>=0) {
+        r_best = r[j];
+        x_best = x[j];
+      }
     }
-    else if(X[0]>=0. && X[2]>=0.) {
-      if(J[0]<=J[2]) { x = X[0]; k = K[0]; }
-      if(J[2]<=J[0]) { x = X[2]; k = K[2]; }
-    }
-    else if(X[1]>=0. && X[2]>=0.) {
-      if(J[1]<=J[2]) { x = X[1]; k = K[1]; }
-      if(J[2]<=J[0]) { x = X[2]; k = K[2]; }
-    }
-    else if(X[0]>=0.) { x = X[0]; k = K[0]; }
-    else if(X[1]>=0.) { x = X[1]; k = K[1]; }
-    else if(X[2]>=0.) { x = X[2]; k = K[2]; }
-    else {
-      MMTBX_ASSERT(y2>0.);
-      k = a2/y2;
-    }
-    if(k>0) { t = 1./std::sqrt(k); }
   }
-
-private:
-  class container {
-    public:
-      FloatType u, v, w, I, f_obs;
-      ComplexType f_calc, f_mask;
-      container(
-        FloatType const& f_obs_,
-        ComplexType const& f_calc_,
-        ComplexType const& f_mask_)
-      :
-      f_obs(f_obs_), f_mask(f_mask_), f_calc(f_calc_)
-      {
-        FloatType p = std::real(f_calc);
-        FloatType r = std::imag(f_calc);
-        FloatType q = std::real(f_mask);
-        FloatType t = std::imag(f_mask);
-        I = f_obs*f_obs;
-        v = p*q+r*t;
-        w = q*q+t*t;
-        u = p*p+r*r;
-      }
-  };
-
-  vec3<FloatType> func_J(
-    vec3<FloatType> const& K,
-    vec3<FloatType> const& x,
-    af::const_ref<container> const& containers)
-  {
-    vec3<FloatType> sum(0,0,0);
-    vec3<FloatType> num(0,0,0);
-    vec3<FloatType> den(0,0,0);
-    vec3<FloatType> num1(0,0,0);
-    vec3<FloatType> den1(0,0,0);
-    vec3<FloatType> sc(0,0,0);
-    //for(std::size_t i=0; i < containers.size(); i++) {
-    //  container cntr = containers[i];
-    //  for(std::size_t j=0; j < 3; j++) {
-    //    FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
-    //    num1[j] += std::abs(cntr.f_obs*fm);
-    //    den1[j] += (fm*fm);
-    //  }
-    //}
-    //for(std::size_t j=0; j < 3; j++) {
-    //  sc[j] = num1[j]/den1[j];
-    //}
-
-    for(std::size_t i=0; i < containers.size(); i++) {
-      container cntr = containers[i];
-      FloatType u=cntr.u, v=cntr.v, w=cntr.w, I=cntr.I;//XXX
-      for(std::size_t j=0; j < 3; j++) {
-        FloatType arg = (x[j]*x[j]*w+2.*x[j]*v+u)/I-K[j]; //XXX
-        sum[j] += (0.5*arg*arg);
-        //FloatType fm = std::abs(cntr.f_calc+x[j]*cntr.f_mask)/std::sqrt(K[j]);
-        //num[j] += std::abs(cntr.f_obs-sc[j]*fm);
-        //den[j] += cntr.f_obs;
-      }
-    }
-    //for(std::size_t j=0; j < 3; j++) {
-    //  sum[j] = num[j]/den[j];
-    //}
-    return sum;
-  }
-
-protected:
-  inline static vec3<FloatType> compute_K(
-    vec3<FloatType> const& x,
-    FloatType const& c2,
-    FloatType const& b2,
-    FloatType const& a2,
-    FloatType const& y2)
-    {
-      MMTBX_ASSERT(y2 != 0.0);
-      vec3<FloatType> result(0,0,0);
-      for(std::size_t j=0; j < 3; j++) {
-        FloatType xj = x[j];
-        result[j] = (xj*xj*c2+xj*b2+a2)/y2;
-      }
-      return result;
-    }
 };
 
 template <typename FloatType=double,
@@ -616,6 +627,37 @@ public:
 };
 
 template <typename FloatType, typename ComplexType>
+ af::tiny<FloatType, 2>
+ k_mask_and_k_overall_grid_search(
+   af::const_ref<FloatType>   const& f_obs,
+   af::const_ref<ComplexType> const& f_calc,
+   af::const_ref<ComplexType> const& f_mask,
+   af::const_ref<FloatType>   const& k_mask_range
+   )
+ {
+   MMTBX_ASSERT(f_mask.size() == f_obs.size());
+   MMTBX_ASSERT(f_obs.size() == f_calc.size());
+   FloatType k_mask_best = 0.0;
+   FloatType k_overall_best = 0.0;
+   FloatType r_best = r_factor(f_obs, f_calc);
+   af::shared<ComplexType> f_model(f_obs.size());
+   for(std::size_t i=0; i < k_mask_range.size(); i++) {
+     FloatType k_mask = k_mask_range[i];
+     for(std::size_t j=0; j < f_obs.size(); j++) {
+       f_model[j] = f_calc[j] + k_mask * f_mask[j];
+     }
+     FloatType k_overall = scale(f_obs, f_model.const_ref());
+     FloatType r = r_factor(f_obs, f_model.const_ref(), k_overall);
+     if(r < r_best) {
+       k_mask_best = k_mask;
+       k_overall_best = k_overall;
+       r_best = r;
+     }
+   }
+   return af::tiny<FloatType, 2> (k_mask_best, k_overall_best);
+ };
+
+template <typename FloatType, typename ComplexType>
  af::shared<FloatType>
  ksol_bsol_grid_search(
    af::const_ref<FloatType>   const& f_obs,
@@ -664,6 +706,26 @@ template <typename FloatType, typename ComplexType>
 
 template <typename FloatType>
  af::shared<FloatType>
+ set_to_liear_interpolated(
+   af::const_ref<FloatType> const& ss,
+   FloatType                const& k,
+   FloatType                const& b,
+   af::const_ref<bool>      const& selection,
+   af::shared<FloatType>           data)
+ {
+   af::shared<FloatType> k_mask(ss.size());
+   for(std::size_t i=0; i < ss.size(); i++) {
+     if(selection[i]) {
+       FloatType v = k * ss[i] + b;
+       if(v<0) v=0;
+       data[i] = v;
+     }
+   }
+   return data;
+ };
+
+template <typename FloatType>
+ af::shared<FloatType>
  set_k_mask_to_cubic_polynom(
    af::const_ref<FloatType> const& ss,
    FloatType                const& ss_cutoff,
@@ -679,7 +741,6 @@ template <typename FloatType>
    }
    return k_mask;
  };
-
 
 //------------------------------------------------------------------------------
 template <typename FloatType, typename ComplexType>

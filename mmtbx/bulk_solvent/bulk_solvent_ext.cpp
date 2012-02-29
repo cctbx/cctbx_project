@@ -80,17 +80,40 @@ namespace {
            af::const_ref<double> const&,
            af::const_ref<std::complex<double> > const&,
            af::const_ref<std::complex<double> > const&,
-           af::const_ref<bool> const&>(
+           af::const_ref<bool> const& >(
              (arg("f_obs"),
               arg("f_calc"),
               arg("f_mask"),
               arg("selection"))))
-      .add_property("k", make_getter(
-        &overall_and_bulk_solvent_scale_coefficients_analytical<>::k, rbv()))
       .add_property("x", make_getter(
         &overall_and_bulk_solvent_scale_coefficients_analytical<>::x, rbv()))
-      .add_property("t", make_getter(
-        &overall_and_bulk_solvent_scale_coefficients_analytical<>::t, rbv()))
+      .add_property("r", make_getter(
+        &overall_and_bulk_solvent_scale_coefficients_analytical<>::r, rbv()))
+      .add_property("x_best", make_getter(
+        &overall_and_bulk_solvent_scale_coefficients_analytical<>::x_best, rbv()))
+      .add_property("r_best", make_getter(
+        &overall_and_bulk_solvent_scale_coefficients_analytical<>::r_best, rbv()))
+   ;
+
+   class_<bulk_solvent_scale_coefficients_analytical<> >(
+      "bulk_solvent_scale_coefficients_analytical")
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<bool> const& >(
+             (arg("f_obs"),
+              arg("f_calc"),
+              arg("f_mask"),
+              arg("selection"))))
+      .add_property("x", make_getter(
+        &bulk_solvent_scale_coefficients_analytical<>::x, rbv()))
+      .add_property("r", make_getter(
+        &bulk_solvent_scale_coefficients_analytical<>::r, rbv()))
+      .add_property("x_best", make_getter(
+        &bulk_solvent_scale_coefficients_analytical<>::x_best, rbv()))
+      .add_property("r_best", make_getter(
+        &bulk_solvent_scale_coefficients_analytical<>::r_best, rbv()))
    ;
 
    class_<aniso_u_scaler<> >("aniso_u_scaler")
@@ -117,6 +140,15 @@ namespace {
       .add_property("a", make_getter(&aniso_u_scaler<>::a, rbv()))
    ;
 
+    def("k_mask_and_k_overall_grid_search",
+      (af::tiny<double, 2>(*)
+        (af::const_ref<double>                const& f_obs,
+         af::const_ref<std::complex<double> > const& f_calc,
+         af::const_ref<std::complex<double> > const& f_mask,
+         af::const_ref<double>                const& k_mask_range
+         )) k_mask_and_k_overall_grid_search);
+   ;
+
    def("ksol_bsol_grid_search",
       (af::shared<double>(*)
         (af::const_ref<double>   const&,
@@ -136,6 +168,15 @@ namespace {
         (af::const_ref<double> const& ss,
          double                const& ss_cutoff,
          af::tiny<double, 4>   const& coeffs)) set_k_mask_to_cubic_polynom);
+   ;
+
+   def("set_to_liear_interpolated",
+      (af::shared<double>(*)
+        (af::const_ref<double> const& ss,
+         double                const& k,
+         double                const& b,
+         af::const_ref<bool>   const& selection,
+         af::shared<double>           data)) set_to_liear_interpolated);
    ;
    //
     def("r_factor",
