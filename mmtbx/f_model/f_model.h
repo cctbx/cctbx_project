@@ -188,7 +188,6 @@ class core
 
     core(af::shared<ComplexType> const& f_calc_,
          af::shared<ComplexType> const& f_mask_one_,
-         FloatType               const& scale,
          af::shared<FloatType>   const& k_isotropic_,
          af::shared<FloatType>   const& k_anisotropic_,
          af::shared<FloatType>   const& k_mask_)
@@ -211,37 +210,12 @@ class core
       FloatType* k_mask__ = k_mask.begin();
       ComplexType* f_model_no_aniso_scale_ = f_model_no_aniso_scale.begin();
       for(std::size_t i=0; i < f_calc.size(); i++) {
-        ComplexType fmnas = scale * k_isotropic__[i]*(
+        ComplexType fmnas = k_isotropic__[i]*(
           f_calc__[i] + k_mask__[i]*f_mask_one__[i]);
         f_model_no_aniso_scale_[i] = fmnas;
         f_model_[i] = k_anisotropic[i]*fmnas;
       }
     };
-
-    core<> select(af::const_ref<bool> const& selection)
-    {
-      af::shared<ComplexType> f_calc_;
-      af::shared<ComplexType> f_mask_one_;
-      af::shared<FloatType> k_isotropic_;
-      af::shared<FloatType> k_anisotropic_;
-      af::shared<FloatType> k_mask_;
-      for(std::size_t i=0; i < selection.size(); i++) {
-        if(selection[i]) {
-          f_calc_.push_back(f_calc[i]);
-          f_mask_one_.push_back(f_mask_one[i]);
-          k_isotropic_.push_back(k_isotropic[i]);
-          k_anisotropic_.push_back(k_anisotropic[i]);
-          k_mask_.push_back(k_mask[i]);
-        }
-      }
-      return core(
-        f_calc_,
-        f_mask_one_,
-        1,
-        k_isotropic_,
-        k_anisotropic_,
-        k_mask_);
-    }
 
     protected:
        ComplexType f_k_bexp_f_one_h(ComplexType const& f_h,
