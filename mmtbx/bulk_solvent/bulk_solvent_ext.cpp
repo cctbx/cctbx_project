@@ -188,6 +188,12 @@ namespace {
       (double(*)
         (af::const_ref<double> const&,
          af::const_ref< std::complex<double> > const&,
+         af::const_ref<bool> const&)) r_factor);
+   ;
+   def("r_factor",
+      (double(*)
+        (af::const_ref<double> const&,
+         af::const_ref< std::complex<double> > const&,
          af::const_ref< std::complex<double> > const&,
          double const&)) r_factor);
    ;
@@ -195,6 +201,13 @@ namespace {
       (double(*)
         (af::const_ref<double> const&,
          af::const_ref< std::complex<double> > const&,
+         double const&)) r_factor);
+   ;
+   def("r_factor",
+      (double(*)
+        (af::const_ref<double> const&,
+         af::const_ref< std::complex<double> > const&,
+         af::const_ref<bool> const&,
          double const&)) r_factor);
    ;
    def("r_factor",
@@ -220,6 +233,12 @@ namespace {
       (double(*)
         (af::const_ref<double> const&,
          af::const_ref< std::complex<double> > const&)) scale);
+   ;
+   def("scale",
+      (double(*)
+        (af::const_ref<double> const&,
+         af::const_ref< std::complex<double> > const&,
+         af::const_ref<bool> const&)) scale);
    ;
    def("scale",
       (double(*)

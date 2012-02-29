@@ -759,6 +759,27 @@ scale(af::const_ref<FloatType> const& fo,
     return (denum == 0 ? 0 : num/denum);
 };
 
+template <typename FloatType, typename ComplexType>
+FloatType
+scale(af::const_ref<FloatType> const& fo,
+      af::const_ref<ComplexType> const& fc,
+      af::const_ref<bool> const& selection)
+{
+    MMTBX_ASSERT(fo.size()==fc.size());
+    MMTBX_ASSERT(fo.size()==selection.size());
+    FloatType num=0.0;
+    FloatType denum=0.0;
+    for(std::size_t i=0; i < fo.size(); i++) {
+      if(selection[i]) {
+        FloatType fc_abs = std::abs(fc[i]);
+        num += fo[i] * fc_abs;
+        denum += fc_abs * fc_abs;
+      }
+    }
+    return (denum == 0 ? 0 : num/denum);
+};
+
+
 template <typename FloatType>
 FloatType
 scale(af::const_ref<FloatType> const& fo,
@@ -834,6 +855,28 @@ template <typename FloatType>
 FloatType
 r_factor(
   af::const_ref<FloatType> const& fo,
+  af::const_ref< std::complex<FloatType> > const& fc,
+  af::const_ref<bool> const& selection,
+  FloatType const& scale)
+{
+  MMTBX_ASSERT(fo.size()==fc.size());
+  MMTBX_ASSERT(fo.size()==selection.size());
+  FloatType num=0.0;
+  FloatType denum=0.0;
+  for(std::size_t i=0; i < fo.size(); i++) {
+    if(selection[i]) {
+      num += std::abs(fo[i] - std::abs(fc[i]) * scale);
+      denum += fo[i];
+    }
+  }
+  if(denum == 0) return 1.e+9;
+  return num/denum;
+};
+
+template <typename FloatType>
+FloatType
+r_factor(
+  af::const_ref<FloatType> const& fo,
   af::const_ref<FloatType> const& fc)
 {
   MMTBX_ASSERT(fo.size()==fc.size());
@@ -850,6 +893,19 @@ r_factor(
   MMTBX_ASSERT(fo.size()==fc.size());
   FloatType sc = scale(fo,fc);
   return r_factor(fo,fc,sc);
+};
+
+template <typename FloatType, typename ComplexType>
+FloatType
+r_factor(
+  af::const_ref<FloatType> const& fo,
+  af::const_ref<std::complex<ComplexType> > const& fc,
+  af::const_ref<bool> const& selection)
+{
+  MMTBX_ASSERT(fo.size()==fc.size());
+  MMTBX_ASSERT(fo.size()==selection.size());
+  FloatType sc = scale(fo,fc,selection);
+  return r_factor(fo,fc,selection,sc);
 };
 
 template <typename FloatType, typename ComplexType>
