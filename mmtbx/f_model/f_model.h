@@ -216,6 +216,31 @@ class core
         f_model_no_aniso_scale_[i] = fmnas;
         f_model_[i] = k_anisotropic[i]*fmnas;
       }
+    };
+
+    core<> select(af::const_ref<bool> const& selection)
+    {
+      af::shared<ComplexType> f_calc_;
+      af::shared<ComplexType> f_mask_one_;
+      af::shared<FloatType> k_isotropic_;
+      af::shared<FloatType> k_anisotropic_;
+      af::shared<FloatType> k_mask_;
+      for(std::size_t i=0; i < selection.size(); i++) {
+        if(selection[i]) {
+          f_calc_.push_back(f_calc[i]);
+          f_mask_one_.push_back(f_mask_one[i]);
+          k_isotropic_.push_back(k_isotropic[i]);
+          k_anisotropic_.push_back(k_anisotropic[i]);
+          k_mask_.push_back(k_mask[i]);
+        }
+      }
+      return core(
+        f_calc_,
+        f_mask_one_,
+        1,
+        k_isotropic_,
+        k_anisotropic_,
+        k_mask_);
     }
 
     protected:

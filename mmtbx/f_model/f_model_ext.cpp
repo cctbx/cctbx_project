@@ -102,6 +102,7 @@ namespace {
       .def("shell_f_masks", &core<>::shell_f_masks) // XXX re-name to f_masks
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
+      .def("select", &core<>::select)
     ;
 
     def("overall_anisotropic_scale",
