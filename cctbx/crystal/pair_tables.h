@@ -676,11 +676,15 @@ namespace cctbx { namespace crystal {
           af::const_ref<sgtbx::rt_mx> const&
             site_symmetry_matrices = site_symmetry_table
               .get(i_seq).matrices().const_ref();
+          boost::optional<sgtbx::rt_mx> rt_mx_ji_inv;
+          if (i_seq == j_seq) {
+            rt_mx_ji_inv = rt_mx_ji.inverse();
+          }
           for(unsigned i_mi=0;i_mi<site_symmetry_matrices.size();i_mi++) {
             sgtbx::rt_mx const& mi = site_symmetry_matrices[i_mi];
-            if (i_seq == j_seq) {
+            if (rt_mx_ji_inv) {
               sgtbx::rt_mx rt_mx_j_eq
-                = rt_mx_i.multiply(rt_mx_ji.multiply(mi).inverse_cancel());
+                = rt_mx_i.multiply(mi.multiply(*rt_mx_ji_inv));
               int j_sym_eq = asu_mappings_->find_i_sym(j_seq, rt_mx_j_eq);
               CCTBX_ASSERT(j_sym_eq >= 0);
               j_syms.insert(j_sym_eq);
