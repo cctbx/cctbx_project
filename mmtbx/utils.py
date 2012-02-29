@@ -1510,6 +1510,7 @@ def fmodel_manager(
 
 def xtriage(f_obs):
   from mmtbx.scaling import xtriage
+  from mmtbx.scaling import twin_analyses
   twin_laws = []
   try:
     from mmtbx.scaling import xtriage
@@ -1518,7 +1519,10 @@ def xtriage(f_obs):
       text_out   = StringIO(),
       plot_out   = StringIO())
     if(xtriage_results.twin_results is not None):
-      twin_laws = xtriage_results.twin_results.twin_summary.twin_results.twin_laws
+      ta = twin_analyses.twin_analyses_brief(miller_array = f_obs)
+      if(ta):
+        twin_laws = \
+          xtriage_results.twin_results.twin_summary.twin_results.twin_laws
   except Exception, e:
     print "XTRIAGE error: "
     print str(e)
@@ -1574,6 +1578,7 @@ def fmodel_simple(f_obs,
     return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = xtriage(f_obs = f_obs.deep_copy())
+
   optimize_mask = True
   if(twin_laws is not None and len(twin_laws)>1): optimize_mask=False
   # DEBUG twin_laws=None
