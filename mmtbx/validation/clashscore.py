@@ -209,14 +209,18 @@ class probe_clashscore_manager(object):
   def __init__(self,
                pdb_string,
                keep_hydrogens=False):
+    assert (libtbx.env.has_module(name="reduce") and
+            libtbx.env.has_module(name="probe"))
+    reduce_path = libtbx.env.under_build("bin/phenix.reduce")
+    probe_path = libtbx.env.under_build("bin/phenix.probe")
     self.trim = \
-      "phenix.reduce -quiet -trim -"
+      "%s -quiet -trim -" % reduce_path
     self.build = \
-      "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
+      "%s -oh -his -flip -pen9999 -keep -allalt -" % reduce_path
     self.probe_txt = \
-      'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
+      '%s -u -q -mc -het -once "ogt33 not water" "ogt33" -' % probe_path
     self.probe_atom_txt = \
-      'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
+      '%s -q -mc -het -dumpatominfo "ogt33 not water" -' % probe_path
     if not keep_hydrogens:
       h_pdb_string = self.run_reduce(pdb_string)
     else:

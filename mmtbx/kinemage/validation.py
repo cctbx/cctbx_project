@@ -212,9 +212,14 @@ def kin_vec(start_key, start_xyz, end_key, end_xyz, width=None):
            end_xyz[2])
 
 def make_probe_dots(hierarchy, keep_hydrogens=False):
-  probe = 'phenix.probe -4H -quiet -noticks -nogroup -dotmaster -mc -self "ALL" -'
-  trim = "phenix.reduce -quiet -trim -"
-  build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
+  assert (libtbx.env.has_module(name="reduce") and
+          libtbx.env.has_module(name="probe"))
+  reduce_path = libtbx.env.under_build("bin/phenix.reduce")
+  probe_path = libtbx.env.under_build("bin/phenix.probe")
+  probe = probe_path + \
+    ' -4H -quiet -noticks -nogroup -dotmaster -mc -self "ALL" -'
+  trim = reduce_path + " -quiet -trim -"
+  build = reduce_path + " -oh -his -flip -pen9999 -keep -allalt -"
   probe_return = ""
   for i,m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()

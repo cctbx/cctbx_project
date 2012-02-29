@@ -1,5 +1,6 @@
 
 from __future__ import division
+import libtbx.load_env
 from libtbx import easy_run
 from libtbx.utils import Sorry
 from libtbx import Auto
@@ -210,6 +211,7 @@ def get_distances(residues,
   return db.get_distances(base_pair, pair_type, use_hydrogens)
 
 def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
+  assert (libtbx.env.has_module(name="probe"))
   bare_chains = utils.find_bare_chains_with_segids(
                   pdb_hierarchy=pdb_hierarchy)
   if bare_chains:
@@ -238,7 +240,8 @@ def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
         reverted_reduce_output += line+'\n'
   else:
     reverted_reduce_output = reduce_output
-  cmd = "phenix.probe " + flags + " -"
+  probe_path = libtbx.env.under_build("bin/phenix.probe")
+  cmd = probe_path + " " + flags + " -"
   probe_output = easy_run.fully_buffered(cmd,
            stdin_lines=reverted_reduce_output)
   return probe_output
@@ -264,8 +267,10 @@ def clean_single_base_name(base):
 
 def run_reduce(hierarchy, remove_hydrogens=True):
   #log = sys.stderr
-  trim = "phenix.reduce -quiet -trim -"
-  build = "phenix.reduce -quiet -build -allalt -"
+  assert (libtbx.env.has_module(name="reduce"))
+  reduce_path = libtbx.env.under_build("bin/phenix.reduce")
+  trim = "%s -quiet -trim -" % reduce_path
+  build = "%s -quiet -build -allalt -" % reduce_path
   input_str = ""
   pdb_string = hierarchy.as_pdb_string()
   clean_lines = []
