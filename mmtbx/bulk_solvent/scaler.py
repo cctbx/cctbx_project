@@ -128,6 +128,9 @@ class core(object):
       k_isotropic   = self.k_isotropic,
       k_anisotropic = self.k_anisotropic,
       k_mask        = self.k_mask)
+    self.f_model_ = self.f_calc.customized_copy(data=self.core_data.f_model)
+    self.f_model_no_aniso_scale_ = self.f_calc.customized_copy(data =
+      self.core_data.f_model_no_aniso_scale)
 
   def select(self, selection):
     assert self.f_obs.indices().size() == selection.size()
@@ -142,11 +145,10 @@ class core(object):
       ss            = self.ss.select(selection))
 
   def f_model(self):
-    return self.f_calc.customized_copy(data=self.core_data.f_model)
+    return self.f_model_
 
-  def f_model_no_scale(self):
-    return self.f_calc.customized_copy(data =
-      self.core_data.f_model_no_aniso_scale)
+  def f_model_no_aniso_scale(self):
+    return self.f_model_no_aniso_scale_
 
   def r_factor(self):
     return bulk_solvent.r_factor(self.f_obs.data(), self.f_model().data())
@@ -160,8 +162,7 @@ class core(object):
       assert k_mask.size() == self.k_mask.size()
       self.k_mask = k_mask
     if(k_anisotropic is not None):
-      assert k_anisotropic.size() == \
-        self.k_anisotropic.size()
+      assert k_anisotropic.size() == self.k_anisotropic.size()
       self.k_anisotropic = k_anisotropic
     self.core_data = ext.core(
       f_calc        = self.f_calc.data(),
@@ -170,6 +171,9 @@ class core(object):
       k_isotropic   = self.k_isotropic,
       k_anisotropic = self.k_anisotropic,
       k_mask        = self.k_mask)
+    self.f_model_ = self.f_calc.customized_copy(data=self.core_data.f_model)
+    self.f_model_no_aniso_scale_ = self.f_calc.customized_copy(data =
+      self.core_data.f_model_no_aniso_scale)
 
   def try_scale(self, k_isotropic=None, k_mask=None, k_anisotropic=None,
                 selection=None):
@@ -184,8 +188,7 @@ class core(object):
       k_isotropic   = k_isotropic,
       k_anisotropic = k_anisotropic,
       k_mask        = k_mask)
-    return bulk_solvent.r_factor(self.f_obs.data().select(selection),
-      core_data.f_model.select(selection))
+    return bulk_solvent.r_factor(self.f_obs.data(),core_data.f_model, selection)
 
 
 def gs(fo, fc, fm):
@@ -213,6 +216,7 @@ class run(object):
                scale_method,
                smooth_k_mask=0,
                number_of_cycles=20, # termination occures much earlier
+               r_free_flags=None,
                log=None,
                try_poly = True,
                try_expanal = True,
@@ -326,10 +330,8 @@ class run(object):
         return sel
 
   def _r_low(self):
-    sel = self.low_res_selection
-    fo = self.core.f_obs.select(sel)
-    fm = self.core.f_model().select(sel)
-    return bulk_solvent.r_factor(fo.data(), fm.data(), 1)
+    return bulk_solvent.r_factor(self.core.f_obs.data(),
+      self.core.f_model().data(), self.low_res_selection)
 
   def _bin_selections(self):
     r = set_bin_selections(d_spacings = self.d_spacings, min_ref_low = 300)
@@ -452,33 +454,33 @@ class run(object):
         k_mask_bin_orig_, k_mask_bin_smooth_,k_maks_bin_averaged_,k_mask_bin_approx_,
         k_isotropic_, k_anisotropic_, f_obs_mean_, r_)
 
-  def fit_poly_k_mask(self, y):
-    X = []
-    for x in self.ss_bin_values:
-      X.append(x[2])
-    Y = y
-    for i in xrange(len(Y)):
-      if(i!=0 and i!=len(Y)-1):
-        if(Y[i]<=0 and Y[i-1]>0 and Y[i+1]>0):
-          Y[i]=(Y[i-1]>0 + Y[i+1])/2.
-    Y_ = flex.double()
-    X_ = flex.double()
-    for tmpY, tmpX in zip(Y,X):
-      d = 1/(2.*math.sqrt(tmpX)) # XXX
-      if(tmpY <= 0 or d<3.): # XXX
-        X_.append(tmpX)
-        Y_.append(0)
-        break
-      X_.append(tmpX)
-      Y_.append(tmpY)
-    self.poly_approx_cutoff = tmpX
-    cfo = curve_fitting.univariate_polynomial_fit(x_obs=X_, y_obs=Y_, degree=3,
-        max_iterations=30, min_iterations=25, number_of_cycles=25)
-    k_mask = bulk_solvent.set_k_mask_to_cubic_polynom(self.core.ss,
-      self.poly_approx_cutoff, cfo.params)
-    k_isotropic = self._k_isotropic_as_scale_k1(k_mask = k_mask)
-    assert (k_mask<0).count(True)==0
-    return k_mask, k_isotropic, cfo.params
+# DISABLE  def fit_poly_k_mask(self, y):
+# DISABLE    X = []
+# DISABLE    for x in self.ss_bin_values:
+# DISABLE      X.append(x[2])
+# DISABLE    Y = y
+# DISABLE    for i in xrange(len(Y)):
+# DISABLE      if(i!=0 and i!=len(Y)-1):
+# DISABLE        if(Y[i]<=0 and Y[i-1]>0 and Y[i+1]>0):
+# DISABLE          Y[i]=(Y[i-1]>0 + Y[i+1])/2.
+# DISABLE    Y_ = flex.double()
+# DISABLE    X_ = flex.double()
+# DISABLE    for tmpY, tmpX in zip(Y,X):
+# DISABLE      d = 1/(2.*math.sqrt(tmpX)) # XXX
+# DISABLE      if(tmpY <= 0 or d<3.): # XXX
+# DISABLE        X_.append(tmpX)
+# DISABLE        Y_.append(0)
+# DISABLE        break
+# DISABLE      X_.append(tmpX)
+# DISABLE      Y_.append(tmpY)
+# DISABLE    self.poly_approx_cutoff = tmpX
+# DISABLE    cfo = curve_fitting.univariate_polynomial_fit(x_obs=X_, y_obs=Y_, degree=3,
+# DISABLE        max_iterations=30, min_iterations=25, number_of_cycles=25)
+# DISABLE    k_mask = bulk_solvent.set_k_mask_to_cubic_polynom(self.core.ss,
+# DISABLE      self.poly_approx_cutoff, cfo.params)
+# DISABLE    k_isotropic = self._k_isotropic_as_scale_k1(k_mask = k_mask)
+# DISABLE    assert (k_mask<0).count(True)==0
+# DISABLE    return k_mask, k_isotropic, cfo.params
 
   def _k_isotropic_as_scale_k1(self, k_mask):
     result = flex.double(self.core.ss.size(), -1)
@@ -490,8 +492,7 @@ class run(object):
       k_anisotropic = self.core.k_anisotropic,
       k_mask        = k_mask)
     for sel in self.bin_selections:
-      scale_k1 = bulk_solvent.scale(
-        self.core.f_obs.data().select(sel), core_data.f_model.select(sel))
+      scale_k1 =bulk_solvent.scale(self.core.f_obs.data(),core_data.f_model,sel)
       result = result.set_selected(sel, scale_k1)
     assert result.count(-1.) == 0
     return result
@@ -528,8 +529,6 @@ class run(object):
 
   def bulk_solvent_scaling(self, r_start):
     k_mask     = flex.double(self.core.f_obs.size(), -1)
-    k_mask_gs     = flex.double(self.core.f_obs.size(), -1) # XXX
-    k_mask_a     = flex.double(self.core.f_obs.size(), -1) # XXX
     k_mask_bin = flex.double()
     k_mask_trial_range = flex.double([i/1000. for i in range(0,1000,10)])
     scale_k1 = self.estimate_scale_k1()
@@ -600,19 +599,21 @@ class run(object):
       if(self.verbose):
         print >> self.log, "    %s: %6.4f"%("bulk-solvent", r_start)
       #
-      k_mask_fit_parameters = None
-      k_mask, k_isotropic, k_mask_fit_parameters = self.fit_poly_k_mask(
-        y = self.bss_result.k_mask_bin_smooth)
-      r_poly = self.core.try_scale(
-        k_isotropic = k_isotropic,
-        k_mask      = k_mask) # XXX may use low-res selection
-      if(r_poly < r_start):
-        self.bss_result.k_mask            = k_mask
-        self.bss_result.k_isotropic       = k_isotropic
-        self.bss_result.k_mask_fit_params = k_mask_fit_parameters
-        r_start                           = r_poly
-        if(self.verbose):
-          print >> self.log, "    %s: %6.4f (%s)"%("bulk-solvent:", r_start, "poly-approx.")
+# Note, the result of approximation was not actually used ! Fix it later.
+#
+# DISABLE       k_mask_fit_parameters = None
+# DISABLE       k_mask, k_isotropic, k_mask_fit_parameters = self.fit_poly_k_mask(
+# DISABLE         y = self.bss_result.k_mask_bin_smooth)
+# DISABLE       r_poly = self.core.try_scale(
+# DISABLE         k_isotropic = k_isotropic,
+# DISABLE         k_mask      = k_mask) # XXX may use low-res selection
+# DISABLE       if(r_poly < r_start):
+# DISABLE         self.bss_result.k_mask            = k_mask
+# DISABLE         self.bss_result.k_isotropic       = k_isotropic
+# DISABLE         self.bss_result.k_mask_fit_params = k_mask_fit_parameters
+# DISABLE         r_start                           = r_poly
+# DISABLE         if(self.verbose):
+# DISABLE           print >> self.log, "    %s: %6.4f (%s)"%("bulk-solvent:", r_start, "poly-approx.")
     else:
       if(self.verbose):
         print >> self.log, "    %s: %6.4f (%s)"%("bulk-solvent", r, "result rejected")
@@ -631,7 +632,7 @@ class run(object):
     k_anisotropic_expanal, k_anisotropic_poly, \
       k_anisotropic_expmin = None, None, None
     scale_matrix_expanal, scale_matrix_poly, scale_matrix_expmin= None,None,None
-    f_model_no_scale_data = self.core.f_model_no_scale().data()
+    f_model_no_scale_data = self.core.f_model_no_aniso_scale().data()
     # try exp_anal
     if(self.try_expanal):
       obj = bulk_solvent.aniso_u_scaler(
@@ -673,7 +674,7 @@ class run(object):
       zero = self.core.f_calc.customized_copy(data =
         flex.complex_double(self.core.f_obs.data().size(), 0))
       fm = mmtbx.f_model.core(
-        f_calc  = self.core.f_model_no_scale(),
+        f_calc  = self.core.f_model_no_aniso_scale(),
         f_mask  = zero,
         k_sols  = [0.],
         b_sol   = 0.,
