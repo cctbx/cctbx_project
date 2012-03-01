@@ -56,9 +56,22 @@ master_params = iotbx.phil.parse("""\
 
 class peaks_holder(object):
   def __init__(self, heights, sites, iseqs_of_closest_atoms = None):
+    assert (len(heights) == len(sites))
     self.heights = heights
     self.sites = sites
     self.iseqs_of_closest_atoms = iseqs_of_closest_atoms
+
+  def sort (self, reverse=False) :
+    from scitbx.array_family import flex
+    selection = flex.sort_permutation(self.heights, reverse=reverse)
+    heights_sorted = self.heights.select(selection)
+    sites_sorted = self.sites.select(selection)
+    iseqs_sorted = None
+    if (self.iseqs_of_closest_atoms is not None) :
+      iseqs_sorted = self.iseqs_of_closest_atoms.select(selection)
+    self.heights = heights_sorted
+    self.sites = sites_sorted
+    self.iseqs_of_closest_atoms = iseqs_sorted
 
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
