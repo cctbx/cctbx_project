@@ -1,8 +1,9 @@
 
+from wxtbx import reports
 import wx
 import sys
 
-class BlastFrame (wx.Frame) :
+class BlastFrame (wx.Frame, reports.PDBLinkMixin) :
   def __init__ (self, *args, **kwds) :
     super(BlastFrame, self).__init__(*args, **kwds)
     self.statusbar = self.CreateStatusBar()
@@ -24,14 +25,7 @@ class BlastFrame (wx.Frame) :
       size=(600,240))
     #self.hit_list.SetMinSize((600,240))
     boxszr.Add(self.hit_list, 1, wx.ALL|wx.EXPAND, 5)
-    szr2 = wx.BoxSizer(wx.HORIZONTAL)
-    boxszr.Add(szr2)
-    btn1 = wx.Button(panel, -1, "Download selected structure")
-    szr2.Add(btn1, 0, wx.ALL, 5)
-    self.Bind(wx.EVT_BUTTON, self.OnDownload, btn1)
-    btn2 = wx.Button(panel, -1, "View PDB web page")
-    szr2.Add(btn2, 0, wx.ALL, 5)
-    self.Bind(wx.EVT_BUTTON, self.OnViewPDB, btn2)
+    self.create_pdb_buttons(panel, boxszr)
     szr.Fit(panel)
     self.Layout()
     self.Fit()
@@ -45,38 +39,8 @@ class BlastFrame (wx.Frame) :
     self.seq_ctrl.SetValue(query)
     self.hit_list.SetResults(results)
 
-  def OnDownload (self, event) :
-    pdb_id = self.hit_list.GetSelectedID()
-    if (pdb_id is not None) :
-      def download (args) :
-        import mmtbx.command_line.fetch_pdb
-        return mmtbx.command_line.fetch_pdb.run2(args=args)
-      from wxtbx.process_control import download_file_basic
-      download_file_basic(
-        window=self,
-        dl_func=download,
-        args=[pdb_id])
-
-  def OnViewPDB (self, event) :
-    pdb_id = self.hit_list.GetSelectedID()
-    if (pdb_id is not None) :
-      url = "http://www.rcsb.org/pdb/explore/explore.do?structureId=%s" %pdb_id
-      if (sys.platform == "darwin") :
-        from wxtbx import browser
-        if (self.web_frame is None) :
-          self.web_frame = browser.webkit_frame(self, -1, "RCSB PDB")
-          self.web_frame.SetHomepage("http://www.rcsb.org")
-          self.Bind(wx.EVT_WINDOW_DESTROY, self.OnCloseWWW, self.web_frame)
-          self.web_frame.Show()
-        self.web_frame.Raise()
-        self.web_frame.Open(url)
-        self.web_frame.Refresh()
-      else :
-        from libtbx import easy_run
-        easy_run.call("env LD_LIBRARY_PATH='' firefox %s" % url)
-
-  def OnCloseWWW (self, event) :
-      self.web_frame = None
+  def get_pdb_id_for_viewing (self) :
+    return self.hit_list.GetSelectedID()
 
 class BlastList (wx.ListCtrl) :
   def __init__ (self, *args, **kwds) :

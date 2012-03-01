@@ -1870,7 +1870,6 @@ wxtbx/adp_statistics.py -text
 wxtbx/app.py -text
 wxtbx/b_plot.py -text
 wxtbx/bitmaps.py svneol=native#text/x-python
-wxtbx/blast_report.py -text
 wxtbx/browser.py -text
 wxtbx/checklistctrl.py -text
 wxtbx/command_line/__init__.py -text
@@ -1909,6 +1908,9 @@ wxtbx/polygon.py -text
 wxtbx/polygon_db_viewer.py -text
 wxtbx/process_control.py -text
 wxtbx/qstat_view.py svneol=native#text/x-python
+wxtbx/reports/__init__.py -text
+wxtbx/reports/blast.py -text
+wxtbx/reports/pdb_symmetry.py -text
 wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
 wxtbx/symmetry_dialog.py -text
