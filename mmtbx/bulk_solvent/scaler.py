@@ -486,13 +486,22 @@ class run(object):
         k_mask_bin.append(k_mask_bin_)
         k_mask.set_selected(selection, k_mask_bin_)
       elif(self.scale_method == "combo"):
+        r = flex.double()
+        k = flex.double()
+        x0 = self.bss_result.k_mask_bin_orig[i_cas]
+        k_mask.set_selected(selection, x0)
+        r0 = self.try_scale(k_mask = k_mask, selection=selection)
+        r.append(r0)
+        k.append(x0)
+        #
         obj1 = bulk_solvent.overall_and_bulk_solvent_scale_coefficients_analytical(
           f_obs     = f_obs,
           f_calc    = f_calc,
           f_mask    = f_mask,
           selection = selection_use)
         k_mask.set_selected(selection, obj1.x_best)
-        r1 = self.try_scale(k_mask = k_mask, selection=selection)
+        r.append(self.try_scale(k_mask = k_mask, selection=selection))
+        k.append(obj1.x_best)
         #
         obj2 = bulk_solvent.bulk_solvent_scale_coefficients_analytical(
           f_obs     = f_obs,
@@ -500,9 +509,10 @@ class run(object):
           f_mask    = f_mask,
           selection = selection_use)
         k_mask.set_selected(selection, obj2.x_best)
-        r2 = self.try_scale(k_mask = k_mask, selection=selection)
-        if(r1<r2): x = obj1.x_best
-        else: x = obj2.x_best
+        r.append(self.try_scale(k_mask = k_mask, selection=selection))
+        k.append(obj2.x_best)
+        s = flex.sort_permutation(r)
+        x = k.select(s)[0]
         # fine-sample k_mask around minimum of LS to fall into minimum of R
         k_mask_bin_, k_isotropic_bin_ = \
           bulk_solvent.k_mask_and_k_overall_grid_search(
