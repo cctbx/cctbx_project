@@ -145,7 +145,8 @@ namespace {
         (af::const_ref<double>                const& f_obs,
          af::const_ref<std::complex<double> > const& f_calc,
          af::const_ref<std::complex<double> > const& f_mask,
-         af::const_ref<double>                const& k_mask_range
+         af::const_ref<double>                const& k_mask_range,
+         af::const_ref<bool>                  const& selection
          )) k_mask_and_k_overall_grid_search);
    ;
 
