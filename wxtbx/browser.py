@@ -37,7 +37,6 @@ class browser_frame (wx.Frame) :
     #self.Bind(wx.EVT_WINDOW_CREATE, self.OnShow)
 
   def SetHomepage (self, url) :
-    print "URL: ", url
     self.home_url = url
 
   def SetupToolbar (self) :
@@ -64,7 +63,6 @@ class browser_frame (wx.Frame) :
     self.toolbar.Realize()
 
   def LoadURL (self, url) :
-    print "url: ", url
     if (wx.Platform == '__WXMAC__') :
       self.viewer.LoadURL(url)
     elif (wx.Platform == '__WXMSW__') :
