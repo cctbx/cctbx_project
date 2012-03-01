@@ -632,11 +632,12 @@ template <typename FloatType, typename ComplexType>
    af::const_ref<FloatType>   const& f_obs,
    af::const_ref<ComplexType> const& f_calc,
    af::const_ref<ComplexType> const& f_mask,
-   af::const_ref<FloatType>   const& k_mask_range
-   )
+   af::const_ref<FloatType>   const& k_mask_range,
+   af::const_ref<bool>        const& selection)
  {
    MMTBX_ASSERT(f_mask.size() == f_obs.size());
    MMTBX_ASSERT(f_obs.size() == f_calc.size());
+   MMTBX_ASSERT(f_obs.size() == selection.size());
    FloatType k_mask_best = 0.0;
    FloatType k_overall_best = 0.0;
    FloatType r_best = r_factor(f_obs, f_calc);
@@ -644,10 +645,12 @@ template <typename FloatType, typename ComplexType>
    for(std::size_t i=0; i < k_mask_range.size(); i++) {
      FloatType k_mask = k_mask_range[i];
      for(std::size_t j=0; j < f_obs.size(); j++) {
-       f_model[j] = f_calc[j] + k_mask * f_mask[j];
+       if(selection[j]) {
+         f_model[j] = f_calc[j] + k_mask * f_mask[j];
+       }
      }
      FloatType k_overall = scale(f_obs, f_model.const_ref());
-     FloatType r = r_factor(f_obs, f_model.const_ref(), k_overall);
+     FloatType r = r_factor(f_obs, f_model.const_ref(), selection, k_overall);
      if(r < r_best) {
        k_mask_best = k_mask;
        k_overall_best = k_overall;
