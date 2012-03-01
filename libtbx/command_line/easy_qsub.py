@@ -21,6 +21,7 @@ key_words = {
   "commands"         : str,
   "number_of_chunks" : int,
   "size_of_chunks"   : int,
+  "code"             : str,
   }
 
 script_file = """
@@ -98,6 +99,7 @@ def run(phenix_source=None,
         commands=None,
         size_of_chunks=1,
         number_of_chunks=None,
+        code=None,
         ):
   print '-'*80
   print '  Inputs'
@@ -105,12 +107,14 @@ def run(phenix_source=None,
   print '    where',where
   assert commands
   if type(commands)==type([]):
+    if code is None: code = "easy_qsub"
     print '    commands',len(commands)
     if len(commands)>1:
-      print '      like',commands[0]
+      print '      similar to\n  ',commands[0]
   else:
     print '    commands',commands
     assert os.path.exists(commands)
+    if code is None: code = commands[:8]
   print '    size_of_chunks',size_of_chunks
   print '    number_of_chunks',number_of_chunks
   print '-'*80
@@ -154,7 +158,6 @@ def run(phenix_source=None,
   f.write(script_file % outl)
   f.close()
 
-  code = commands[:8]
   print "  Writing queue command script:",qsub_run_filename
   f=file(qsub_run_filename, "wb")
   f.write(run_file % (
