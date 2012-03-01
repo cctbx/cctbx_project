@@ -155,7 +155,7 @@ def get_maps_from_fmodel (fmodel, use_filled=False) :
     delfwt_coeffs = delfwt_coeffs.average_bijvoet_mates()
   return (fwt_coeffs, delfwt_coeffs)
 
-def get_anomalous_map (fmodel) :
+def get_anomalous_map (fmodel, use_filled=False) :
   map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
                                             fill_mode="dfmodel")
   anom_coeffs = map_manager.map_coefficients(map_type="anom")

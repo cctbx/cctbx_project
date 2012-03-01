@@ -246,6 +246,7 @@ def find_peaks_holes (
   # XXX very important - sites are initially fractional coordinates!
   peaks.sites = unit_cell.orthogonalize(peaks.sites)
   print >> out, ""
+  out.flush()
   make_header("Negative difference map holes", out=out)
   holes_result = find_peaks.manager(
     fmodel=fmodel,
@@ -258,6 +259,7 @@ def find_peaks_holes (
   holes = holes_result.peaks()
   holes.sites = unit_cell.orthogonalize(holes.sites)
   print >> out, ""
+  out.flush()
   anom = None
   if (fmodel.f_obs().anomalous_flag()) :
     make_header("Anomalous difference map peaks", out=out)
@@ -272,6 +274,7 @@ def find_peaks_holes (
     anom = anom_result.peaks()
     anom.sites = unit_cell.orthogonalize(anom.sites)
     print >> out, ""
+    out.flush()
   cache = pdb_hierarchy.atom_selection_cache()
   water_isel = cache.selection("resname HOH").iselection()
   waters_out = [None, None]
@@ -334,6 +337,7 @@ mmtbx.find_peaks_holes - difference map analysis
     out=out,
     process_pdb_file=False,
     create_fmodel=True)
+  out.flush()
   result = find_peaks_holes(
     fmodel=cmdline.fmodel,
     pdb_hierarchy=cmdline.pdb_hierarchy,
