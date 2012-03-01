@@ -131,8 +131,8 @@ class run(object):
                f_mask, # only one shell is supported
                r_free_flags,
                ss,
-               k_mask_approximator,
                scale_method,
+               k_mask_approximator=None,
                smooth_k_mask=0,
                number_of_cycles=20, # termination occures much earlier
                log=None,
@@ -290,7 +290,9 @@ class run(object):
       if(x1!=x2): k=(y2-y1)/(x2-x1)
       b = y1-k*x1
       return k,b
-    result = flex.double(self.core.f_obs.size(), -1)
+    result1 = flex.double(self.core.f_obs.size(), -1)
+    result2 = flex.double(self.core.f_obs.size(), -1)
+    result  = flex.double(self.core.f_obs.size(), -1)
     for i, cas in enumerate(self.cores_and_selections):
       selection, zzz, zzz, zzz = cas
       x1,x2 = self.ss_bin_values[i][0], self.ss_bin_values[i][1]
@@ -300,7 +302,14 @@ class run(object):
       else:
         y2 = k_mask_bin[i+1]
       k,b = linear_interpolation(x1=x1,x2=x2,y1=y1,y2=y2)
-      bulk_solvent.set_to_liear_interpolated(self.core.ss,k,b,selection,result)
+      bulk_solvent.set_to_liear_interpolated(self.core.ss,k,b,selection,result1)
+      result2.set_selected(selection, y1)
+      r1 = self.try_scale(k_mask = result1, selection=selection) # XXX inefficient
+      r2 = self.try_scale(k_mask = result2, selection=selection) # XXX inefficient
+      if(r1<r2):
+        bulk_solvent.set_to_liear_interpolated(self.core.ss,k,b,selection,result)
+      else:
+        result.set_selected(selection, y1)
     assert (result < 0).count(True) == 0
     return result
 
