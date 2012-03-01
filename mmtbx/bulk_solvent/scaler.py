@@ -558,7 +558,8 @@ class run(object):
     result = moving_average2(x = x)
     result_ = flex.double(len(result), 0)
     for i, r in enumerate(result):
-      if(r==0): break
+      d = 1/math.sqrt(self.ss_bin_values[i][1])/2
+      if(r==0 and d<3): break
       result_[i]=r
     return result_
 
