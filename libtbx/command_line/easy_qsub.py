@@ -103,12 +103,14 @@ def run(phenix_source=None,
   print '  Inputs'
   print '    phenix_source',phenix_source
   print '    where',where
+  assert commands
   if type(commands)==type([]):
     print '    commands',len(commands)
     if len(commands)>1:
       print '      like',commands[0]
   else:
     print '    commands',commands
+    assert os.path.exists(commands)
   print '    size_of_chunks',size_of_chunks
   print '    number_of_chunks',number_of_chunks
   print '-'*80
@@ -116,8 +118,6 @@ def run(phenix_source=None,
     where = os.getcwd()
 
   assert phenix_source
-  assert commands
-  assert os.path.exists(commands)
 
   if type(commands)==type([]):
     lines = commands
