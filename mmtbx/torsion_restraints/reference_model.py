@@ -23,6 +23,9 @@ reference_model_params = iotbx.phil.parse("""
    .type = path
    .short_caption = Reference model
    .style = bold file_type:pdb hidden
+ use_starting_model_as_reference = False
+   .type = bool
+   .short_caption = use starting model as reference
  sigma = 1.0
    .type = float
  limit = 15.0
@@ -540,10 +543,10 @@ class reference_model(object):
           continue
       try:
         reference_angle = self.reference_dihedral_hash[key]
-        if key[5:14] == key[20:29] and \
-           key[5:14] == key[35:44] and \
-           key_work[5:14] == key_work[20:29] and \
-           key_work[5:14] == key_work[35:44]:
+        if key[5:18] == key[24:37] and \
+           key[5:18] == key[43:56] and \
+           key_work[5:18] == key_work[24:37] and \
+           key_work[5:18] == key_work[43:56]:
           residue_match_hash[key_work[5:14]] = key[5:14]
       except Exception:
         continue
