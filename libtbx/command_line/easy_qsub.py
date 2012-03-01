@@ -152,7 +152,8 @@ def run(phenix_source=None,
 
   outl = ""
   for line in lines:
-    outl += "  '%s',\n" % line[:-1]
+    if line[-1]=="\n": line = line[:-1]
+    outl += "  '%s',\n" % line
   print "  Writing queue python script:", python_run_filename
   f=file(python_run_filename, "wb")
   f.write(script_file % outl)
