@@ -474,6 +474,8 @@ class loggraph (plot_frame) :
     grid.Add(txt, 0, wx.ALL|wx.EXPAND, 5)
     self.table_chooser = wx.Choice(parent=cp,
       choices=[ t.title for t in self.tables])
+    if (len(self.tables) > 0) :
+      self.table_chooser.SetSelection(0)
     self.Bind(wx.EVT_CHOICE, self.OnSelectTable, self.table_chooser)
     grid.Add(self.table_chooser, 0, wx.ALL|wx.EXPAND, 5)
     txt2 = wx.StaticText(self.top_panel, -1, "Plot:")
@@ -481,6 +483,8 @@ class loggraph (plot_frame) :
     plot_choices = self.tables[0].graph_names
     self.plot_chooser = wx.Choice(parent=cp,
       choices=plot_choices)
+    if (len(plot_choices) > 0) :
+      self.plot_chooser.SetSelection(0)
     self.Bind(wx.EVT_CHOICE, self.OnSelectPlot, self.plot_chooser)
     grid.Add(self.plot_chooser, 0, wx.ALL|wx.EXPAND, 5)
     cp_sizer.Add(grid, 0, wx.EXPAND)
