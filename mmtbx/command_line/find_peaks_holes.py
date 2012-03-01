@@ -44,6 +44,17 @@ class peaks_holes_container (object) :
   def __init__ (self, peaks, holes, map_cutoff=3.0, anom_peaks=None,
       anom_map_cutoff=3.0, water_peaks=None, water_anom_peaks=None) :
     adopt_init_args(self, locals())
+    # XXX pre-sort all lists
+    self.peaks.sort(reverse=True)
+    self.holes.sort()
+    if (self.anom_peaks is not None) :
+      self.anom_peaks.sort(reverse=True)
+    if (self.water_peaks is not None) :
+      self.water_peaks = sorted(self.water_peaks,
+        lambda x,y: cmp(y.peak_height, x.peak_height))
+    if (self.water_anom_peaks is not None) :
+      self.water_anom_peaks = sorted(self.water_anom_peaks,
+        lambda x,y: cmp(y.peak_height, x.peak_height))
     self.pdb_file = None
     self.map_file = None
 
@@ -118,9 +129,7 @@ class peaks_holes_container (object) :
     """
     if (log is None) : log = sys.stdout
     import iotbx.pdb.hierarchy
-    selection = flex.sort_permutation(self.peaks.heights, reverse=True)
-    peaks_sorted = self.peaks.heights.select(selection)
-    sites_sorted = self.peaks.sites.select(selection)
+    self.peaks.sort(reverse=True)
     root = iotbx.pdb.hierarchy.root()
     model = iotbx.pdb.hierarchy.model()
     root.append_model(model)
@@ -140,7 +149,7 @@ class peaks_holes_container (object) :
       a.serial = serial
       return rg
     k = 1
-    for peak, xyz in zip(peaks_sorted, sites_sorted) :
+    for peak, xyz in zip(self.peaks.heights, self.peaks.sites) :
       rg = create_atom(xyz, peak, k)
       peaks_chain.append_residue_group(rg)
       k += 1
@@ -152,11 +161,8 @@ class peaks_holes_container (object) :
         (- self.map_cutoff))
       holes_chain = iotbx.pdb.hierarchy.chain(id="B")
       model.append_chain(holes_chain)
-      selection = flex.sort_permutation(self.holes.heights)
-      holes_sorted = self.holes.heights.select(selection)
-      sites_sorted = self.holes.sites.select(selection)
       k = 1
-      for hole, xyz in zip(holes_sorted, sites_sorted) :
+      for hole, xyz in zip(self.holes.heights, self.holes.sites) :
         rg = create_atom(xyz, hole, k)
         holes_chain.append_residue_group(rg)
         k += 1
@@ -165,32 +171,25 @@ class peaks_holes_container (object) :
         self.anom_map_cutoff)
       anom_chain = iotbx.pdb.hierarchy.chain(id="C")
       model.append_chain(anom_chain)
-      selection = flex.sort_permutation(self.anom_peaks.heights, reverse=True)
-      anom_sorted = self.anom_peaks.heights.select(selection)
-      sites_sorted = self.anom_peaks.sites.select(selection)
       k = 1
-      for peak, xyz in zip(anom_sorted, sites_sorted) :
+      for peak, xyz in zip(self.anom_peaks.heights, self.anom_peaks.sites) :
         rg = create_atom(xyz, peak, k)
         anom_chain.append_residue_group(rg)
         k += 1
     if (include_water) and (self.water_peaks is not None) :
       f.write("REMARK  Chain D is waters with mFo-DFc peaks (> %g sigma)\n" %
         self.map_cutoff)
-      waters = sorted(self.water_peaks,
-                      lambda x,y: cmp(y.peak_height, x.peak_height))
       waters_chain = iotbx.pdb.hierarchy.chain(id="D")
       model.append_chain(waters_chain)
-      for k, peak in enumerate(waters) :
+      for k, peak in enumerate(self.water_peaks) :
         rg = create_atom(peak.xyz, peak.peak_height, k+1)
         waters_chain.append_residue_group(rg)
       if (include_anom) and (self.water_anom_peaks is not None) :
         f.write("REMARK  Chain D is waters with anom. peaks (> %g sigma)\n" %
           self.anom_map_cutoff)
-        waters_anom = sorted(self.water_anom_peaks,
-                             lambda x,y: cmp(y.peak_height, x.peak_height))
         waters_chain_2 = iotbx.pdb.hierarchy.chain(id="E")
         model.append_chain(waters_chain_2)
-        for k, peak in enumerate(waters_anom) :
+        for k, peak in enumerate(self.water_anom_peaks) :
           rg = create_atom(peak.xyz, peak.peak_height, k+1)
           waters_chain_2.append_residue_group(rg)
     f.write(root.as_pdb_string())
