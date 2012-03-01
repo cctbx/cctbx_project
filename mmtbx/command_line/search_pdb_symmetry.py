@@ -1,15 +1,20 @@
 
 import iotbx.phil
 from libtbx.utils import Sorry, Usage
+from libtbx import group_args
 import sys
 
 master_phil = iotbx.phil.parse("""
 symmetry_search
+  .short_caption = PDB symmetry search
   .caption = This utility allows you to search the PDB for structures with \
     similar unit cell parameters.  Crystallization artifacts due to \
     impurities in the protein solution can often be detected this way, if the \
-    protein which actually crystallized has been solved before.
-  .style = auto_align caption_img:icons/custom/db_lookup.png
+    protein which actually crystallized has been solved before.  Note that \
+    a large number of false positives are usually expected for genuinely \
+    novel structures, so the presence of similar unit cells is not \
+    necessarily a bad sign.
+  .style = box auto_align caption_img:icons/custom/pdb_import64.png
 {
   file_name = None
     .type = path
@@ -63,6 +68,7 @@ def run (args=(), params=None, out=sys.stdout) :
   niggli_cell = symm.niggli_cell().unit_cell().parameters()
   print >> out, ""
   print >> out, "Top %d matches (sorted by RMSD):"
+  results = []
   for scored in scores[:params.max_hits_to_display] :
     print >> out, "%s (rmsd = %.3f, volume ratio = %.2f)" % \
       (scored.entry.pdb_id, scored.rmsd, scored.volume_ratio)
@@ -73,6 +79,14 @@ def run (args=(), params=None, out=sys.stdout) :
     print >> out, "  Target cell: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f" % \
       niggli_cell
     print >> out, ""
+    results.append(group_args(
+      pdb_id=scored.entry.pdb_id,
+      rmsd=scored.rmsd,
+      volume_ratio=scored.volume_ratio,
+      pdb_symmetry=scored.entry.crystal_symmetry))
+  return group_args(
+    crystal_symmetry=symm,
+    hits=results)
 
 def validate_params (params) :
   params = params.symmetry_search

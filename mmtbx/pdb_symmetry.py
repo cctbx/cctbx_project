@@ -83,7 +83,10 @@ def symmetry_search (
   for entry in symmetry_db :
     entry_volume = entry.niggli_cell.unit_cell().volume()
     entry_uc = entry.niggli_cell.unit_cell().parameters()
-    rmsd = rms_difference(niggli_uc, entry_uc)
+    # XXX suggested by James Holton - sum separate RMSDs for edge lengths and
+    # angles
+    rmsd = rms_difference(niggli_uc[0:3], entry_uc[0:3]) + \
+           rms_difference(niggli_uc[3:6], entry_uc[3:6])
     if (max_rmsd is not None) and (rmsd > max_rmsd) :
       continue
     scores.append(group_args(entry=entry,
