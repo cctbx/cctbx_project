@@ -529,23 +529,45 @@ namespace cctbx { namespace sgtbx {
         if (cmp_i_vec(3)(ri_b.ev().begin(), ri_a.ev().begin())) return false;
         if (ri_a.sense() > ri_b.sense()) return true;
         if (ri_a.sense() < ri_b.sense()) return false;
-        if (cmp_i_vec(3)(
-          a.t().num().begin(), b.t().num().begin())) return true;
-        if (cmp_i_vec(3)(
-          b.t().num().begin(), a.t().num().begin())) return false;
+        if (a.t().den() == b.t().den()) {
+          if (cmp_i_vec(3)(
+            a.t().num().begin(), b.t().num().begin())) return true;
+          if (cmp_i_vec(3)(
+            b.t().num().begin(), a.t().num().begin())) return false;
+        }
+        else {
+          throw std::runtime_error("Not implemented.");
+        }
         for(std::size_t i=0;i<9;i++) {
           if (a.r()[i] < b.r()[i]) return true;
           if (a.r()[i] > b.r()[i]) return false;
         }
-        for(std::size_t i=0;i<3;i++) {
-          if (a.t()[i] < b.t()[i]) return true;
-          if (a.t()[i] > b.t()[i]) return false;
+        if (a.t().den() == b.t().den()) {
+          for(std::size_t i=0;i<3;i++) {
+            if (a.t()[i] < b.t()[i]) return true;
+            if (a.t()[i] > b.t()[i]) return false;
+          }
+        }
+        else {
+          throw std::runtime_error("Not implemented.");
         }
         return false;
       }
     };
 
   } // namespace <anonymous>
+
+  bool
+  rt_mx::operator<(rt_mx const& rhs) const
+  {
+    return cmp_smx()(*this, rhs);
+  }
+
+  bool
+  rt_mx::operator>(rt_mx const& rhs) const
+  {
+    return cmp_smx()(rhs, *this);
+  }
 
   space_group&
   space_group::make_tidy()

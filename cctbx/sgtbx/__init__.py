@@ -717,20 +717,18 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
     ssm_j = site_symmetry_ops_j.matrices()
     if (not i_seq_eq_j_seq and len(ssm_i) == 1 and len(ssm_j) == 1):
       # just for fast handling of common case
-      O.registry[None] = (None, rt_mx_ji)
+      rt_mx_ji = rt_mx_ji.cancel()
+      O.registry[rt_mx_ji] = rt_mx_ji
       return
     sso_j = site_symmetry_ops_j.special_op()
     def add(mi, rt_mx_ji):
       rt_mx_ji_eq = mi.multiply(rt_mx_ji)
-      rt_mx_ji_eq_str = str(rt_mx_ji_eq)
-      rs = str(rt_mx_ji_eq.multiply(sso_j))
+      rs = rt_mx_ji_eq.multiply(sso_j)
       if (rs not in O.registry):
-        O.registry[rs] = (rt_mx_ji_eq_str, rt_mx_ji_eq)
+        best = rt_mx_ji_eq
         for mj in ssm_j:
-          alt = rt_mx_ji_eq.multiply(mj)
-          alt_str = str(alt)
-          if (compare_symop_strings(O.registry[rs][0], alt_str) > 0):
-            O.registry[rs] = (alt_str, alt)
+          best = min(best, rt_mx_ji_eq.multiply(mj))
+        O.registry[rs] = best
     for mi in ssm_i:
       add(mi, rt_mx_ji)
     if (i_seq_eq_j_seq):
@@ -740,15 +738,8 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
 
   def get(O):
     result = O.registry.values()
-    result.sort(compare_symop_strings)
-    return [rt_mx_ji_eq for _,rt_mx_ji_eq in result]
-
-def compare_symop_strings(a, b):
-  if (len(a) < len(b)): return -1
-  if (len(a) > len(b)): return 1
-  if (a < b): return -1
-  if (a > b): return 1
-  return 0
+    result.sort()
+    return result
 
 def compare_cb_op_as_hkl(a, b):
   if (len(a) < len(b)): return -1

@@ -121,6 +121,36 @@ namespace cctbx { namespace sgtbx {
         return !((*this) == rhs);
       }
 
+      /*! \brief Tests if lhs "is less than" rhs using the same
+          ordering as space_group::make_tidy().
+       */
+      bool
+      operator<(rt_mx const& rhs) const;
+
+      /*! \brief Tests if lhs "is less than or equal" rhs using the same
+          ordering as space_group::make_tidy().
+       */
+      bool
+      operator<=(rt_mx const& rhs) const
+      {
+        return (*this == rhs) || (*this < rhs);
+      }
+
+      /*! \brief Tests if lhs "is greater than" rhs using the same
+          ordering as space_group::make_tidy().
+       */
+      bool
+      operator>(rt_mx const& rhs) const;
+
+      /*! \brief Tests if lhs "is greater than or equal" rhs using the same
+          ordering as space_group::make_tidy().
+       */
+      bool
+      operator>=(rt_mx const& rhs) const
+      {
+        return (*this == rhs) || (*this > rhs);
+      }
+
       //! Test if the matrix is valid.
       /*! A rt_mx is valid only if both the rotation denominator and the
           translation denominator are not zero.
