@@ -81,6 +81,11 @@ multiple residues."
 
   def OnPaint (self, event) :
     dc = wx.AutoBufferedPaintDCFactory(self)
+    # XXX is there any reason not to do this on all systems?  test on Linux
+    if (wx.Platform == "__WXMSW__") :
+      dc.SetBackground(wx.WHITE_BRUSH)
+      dc.SetBackgroundMode(wx.SOLID)
+      dc.Clear()
     gc = wx.GraphicsContext.Create(dc)
     self.paint(gc)
 
