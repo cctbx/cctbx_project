@@ -223,45 +223,6 @@ def exercise_site_cluster_analysis(
     general_positions_only=True)
   assert sca_selection.all_eq(pat_selection)
 
-def enumerate_sym_equiv_pair_interactions(
-      i_seq_eq_j_seq,
-      rt_mx_ji,
-      site_symmetry_ops_i,
-      site_symmetry_ops_j):
-  ssm_i = site_symmetry_ops_i.matrices()
-  ssm_j = site_symmetry_ops_j.matrices()
-  if (not i_seq_eq_j_seq and len(ssm_i) == 1 and len(ssm_j) == 1):
-    # just for fast handling of common case
-    return [rt_mx_ji]
-  def cmp_symop_strings(a, b):
-    if (len(a) < len(b)): return -1
-    if (len(a) > len(b)): return 1
-    if (a < b): return -1
-    if (a > b): return 1
-    return 0
-  result = {}
-  sso_j = site_symmetry_ops_j.special_op()
-  def add(mi, rt_mx_ji):
-    rt_mx_ji_eq = mi.multiply(rt_mx_ji)
-    rt_mx_ji_eq_str = str(rt_mx_ji_eq)
-    rs = str(rt_mx_ji_eq.multiply(sso_j))
-    if (rs not in result):
-      result[rs] = (rt_mx_ji_eq_str, rt_mx_ji_eq)
-      for mj in ssm_j:
-        alt = rt_mx_ji_eq.multiply(mj)
-        alt_str = str(alt)
-        if (cmp_symop_strings(result[rs][0], alt_str) > 0):
-          result[rs] = (alt_str, alt)
-  for mi in ssm_i:
-    add(mi, rt_mx_ji)
-  if (i_seq_eq_j_seq):
-    rt_mx_ji_inv = rt_mx_ji.inverse()
-    for mi in ssm_i:
-      add(mi, rt_mx_ji_inv)
-  result = result.values()
-  result.sort(cmp_symop_strings)
-  return [rt_mx_ji_eq for _,rt_mx_ji_eq in result]
-
 def exercise(
       structure,
       distance_cutoff,
@@ -289,7 +250,7 @@ def exercise(
       bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       bond_asu_table.add_pair_sym_table(
         sym_table=bond_sym_table)
-      def work():
+      def exercise_symmetry_equivalent_pair_interactions():
         asu_mappings = bond_asu_table.asu_mappings()
         for i_seq, j_seq_dict in enumerate(bond_asu_table.table()):
           rt_mx_i = asu_mappings.get_rt_mx(i_seq, 0)
@@ -309,19 +270,20 @@ def exercise(
                   asu_mappings.get_rt_mx(j_seq, j_sym))
                 equiv_rt_mx_ji.append(rt_mx_ji)
               old_coords = get_coords(equiv_rt_mx_ji)
-              all_enumed = set()
+              all_sepi = set()
               for rt_mx_ji in equiv_rt_mx_ji:
                 _ = asu_mappings.site_symmetry_table().get
-                enumed = enumerate_sym_equiv_pair_interactions(
+                from cctbx import sgtbx
+                sepi = sgtbx.symmetry_equivalent_pair_interactions(
                   i_seq_eq_j_seq=(i_seq==j_seq),
                   rt_mx_ji=rt_mx_ji,
                   site_symmetry_ops_i=_(i_seq),
-                  site_symmetry_ops_j=_(j_seq))
-                new_coords = get_coords(enumed)
+                  site_symmetry_ops_j=_(j_seq)).get()
+                new_coords = get_coords(sepi)
                 assert new_coords == old_coords
-                all_enumed.add(";".join([str(_) for _ in enumed]))
-              assert len(all_enumed) == 1
-      work()
+                all_sepi.add(";".join([str(_) for _ in sepi]))
+              assert len(all_sepi) == 1
+      exercise_symmetry_equivalent_pair_interactions()
     if (connectivities is not None):
       check_connectivities(bond_asu_table, connectivities, verbose)
     check_sym_equiv(
