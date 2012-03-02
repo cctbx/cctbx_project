@@ -37,12 +37,12 @@ def run(only_i=None,
         chunk_size=len(cmds),
        ):
   try: only_i = int(only_i)
-  except: only_i=None
+  except ValueError: only_i=None
 
   try: chunk_n = int(chunk_n)
-  except: chunk_n=1
+  except ValueError: chunk_n=1
   try: chunk_size = int(chunk_size)
-  except: chunk_size=len(cmds)
+  except ValueError: chunk_size=len(cmds)
 
   assert chunk_size==len(cmds) or chunk_n==1
   assert chunk_n>0

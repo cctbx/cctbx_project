@@ -2,18 +2,14 @@ from scitbx.array_family import flex
 import sys
 from mmtbx import bulk_solvent
 from cctbx import adptbx
-from libtbx import adopt_init_args
 import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
 from mmtbx.bulk_solvent import bulk_solvent_and_scaling
 import mmtbx.f_model
-from scitbx.math import curve_fitting
-import math, time
+import math
 from libtbx import group_args
 import scitbx.math
-from libtbx.test_utils import approx_equal
-from cctbx import miller
 
 import mmtbx.arrays
 
@@ -34,7 +30,7 @@ def moving_average0(x):
       elif(i==x.size()-1): result[i]=(x[i-1]+x[i])/2.
       else: result[i]=(x[i-1]+x[i]+x[i+1])/3.
     assert (result<0).count(True)==0
-  except: return x
+  except Exception: return x
   return result
 
 
