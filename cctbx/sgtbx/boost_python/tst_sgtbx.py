@@ -1084,6 +1084,23 @@ cctbx Error: Rotation matrix is not invertible.""")
     assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
       " incompatible translation-part denominator."
   else: raise Exception_expected
+  #
+  sg = space_group("-I 4bd 2c 3")
+  sg.make_tidy()
+  prev_s = None
+  for s in list(sg.smx())[1:]:
+    if (prev_s is not None):
+      assert prev_s < s
+      assert prev_s <= s
+      assert s > prev_s
+      assert s >= prev_s
+      assert s != prev_s
+    prev_s = s
+  #
+  for s in sg:
+    c = rt_mx(str(s))
+    assert c == s
+    assert hash(c) == hash(s)
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group
