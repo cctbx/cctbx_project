@@ -263,6 +263,7 @@ def exercise(
                 result.append(numstr(s * scs[j_seq].site))
               result.sort()
               return result
+            prev_equiv_rt_mx_ji = None
             for j_syms in j_sym_group:
               equiv_rt_mx_ji = []
               for j_sym in j_syms:
@@ -274,15 +275,22 @@ def exercise(
               for rt_mx_ji in equiv_rt_mx_ji:
                 _ = asu_mappings.site_symmetry_table().get
                 from cctbx import sgtbx
-                sepi = sgtbx.symmetry_equivalent_pair_interactions(
+                sepi_obj = sgtbx.symmetry_equivalent_pair_interactions(
                   i_seq_eq_j_seq=(i_seq==j_seq),
                   rt_mx_ji=rt_mx_ji,
                   site_symmetry_ops_i=_(i_seq),
-                  site_symmetry_ops_j=_(j_seq)).get()
+                  site_symmetry_ops_j=_(j_seq))
+                sepi = sepi_obj.get()
                 new_coords = get_coords(sepi)
                 assert new_coords == old_coords
                 all_sepi.add(";".join([str(_) for _ in sepi]))
+                for _ in equiv_rt_mx_ji:
+                  assert sepi_obj.is_equivalent(rt_mx_ji=_)
+                if (prev_equiv_rt_mx_ji is not None):
+                  for _ in prev_equiv_rt_mx_ji:
+                    assert not sepi_obj.is_equivalent(rt_mx_ji=_)
               assert len(all_sepi) == 1
+              prev_equiv_rt_mx_ji = equiv_rt_mx_ji
       exercise_symmetry_equivalent_pair_interactions()
     if (connectivities is not None):
       check_connectivities(bond_asu_table, connectivities, verbose)
