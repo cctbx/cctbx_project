@@ -705,22 +705,23 @@ class _(boost.python.injector, structure_seminvariants):
 
 class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
 
-  __slots__ = ["registry"]
+  __slots__ = ["site_symmetry_ops_j", "registry"]
 
   def __init__(O,
         i_seq_eq_j_seq,
         rt_mx_ji,
         site_symmetry_ops_i,
         site_symmetry_ops_j):
+    O.site_symmetry_ops_j = site_symmetry_ops_j
     O.registry = {}
-    ssm_i = site_symmetry_ops_i.matrices()
-    ssm_j = site_symmetry_ops_j.matrices()
+    ssm_i =   site_symmetry_ops_i.matrices()
+    ssm_j = O.site_symmetry_ops_j.matrices()
     if (not i_seq_eq_j_seq and len(ssm_i) == 1 and len(ssm_j) == 1):
       # just for fast handling of common case
       rt_mx_ji = rt_mx_ji.cancel()
       O.registry[rt_mx_ji] = rt_mx_ji
       return
-    sso_j = site_symmetry_ops_j.special_op()
+    sso_j = O.site_symmetry_ops_j.special_op()
     def add(mi, rt_mx_ji):
       rt_mx_ji_eq = mi.multiply(rt_mx_ji)
       rs = rt_mx_ji_eq.multiply(sso_j)
@@ -740,6 +741,11 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
     result = O.registry.values()
     result.sort()
     return result
+
+  def is_equivalent(O, rt_mx_ji):
+    sso_j = O.site_symmetry_ops_j.special_op()
+    rs = rt_mx_ji.multiply(sso_j)
+    return rs in O.registry
 
 def compare_cb_op_as_hkl(a, b):
   if (len(a) < len(b)): return -1
