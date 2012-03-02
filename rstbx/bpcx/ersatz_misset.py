@@ -1,5 +1,4 @@
 import sys
-import os
 import math
 from scitbx import matrix
 from scitbx.math.euler_angles import xyz_angles
@@ -7,15 +6,15 @@ from scitbx.math import r3_rotation_axis_and_angle_as_matrix
 
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
 
-# ersatz_misset - 
-# 
+# ersatz_misset -
+#
 # Code which will read SPOT.XDS and XPARM.XDS from indexing and "refine" the
 # orientation matrix as a function of image number. This works by computing
 # the predicted and observed positions in reciprocal space, then computing a
 # rotation from one to the other, and decompose this to Euler angles rx, ry,
-# rz, which are then averaged. This should probably be a smoothed model which 
-# is properly refined not averaged. Still useful though to give an idea of 
-# where the crystal actually is. Initial magnitude of shifts appears to be 
+# rz, which are then averaged. This should probably be a smoothed model which
+# is properly refined not averaged. Still useful though to give an idea of
+# where the crystal actually is. Initial magnitude of shifts appears to be
 # consistent with refined results from XDS INTEGRATE step.
 
 def ersatz_misset(integrate_lp):
