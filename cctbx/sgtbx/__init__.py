@@ -667,6 +667,13 @@ class _(boost.python.injector, ext.site_symmetry_table):
       table=[site_symmetry_ops(1, site_sym.special_op(), site_sym.matrices())],
       special_position_indices=flex.size_t())
 
+  def symmetry_equivalent_pair_interactions(self, i_seq, j_seq, rt_mx_ji):
+    return symmetry_equivalent_pair_interactions(
+      site_symmetry_ops_i=self.get(i_seq),
+      site_symmetry_ops_j=self.get(j_seq),
+      i_seq_eq_j_seq=(i_seq == j_seq),
+      rt_mx_ji=rt_mx_ji)
+
 class _(boost.python.injector, wyckoff_position):
 
   def special_op_simplified(self):
@@ -708,10 +715,10 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
   __slots__ = ["site_symmetry_ops_j", "registry"]
 
   def __init__(O,
-        i_seq_eq_j_seq,
-        rt_mx_ji,
         site_symmetry_ops_i,
-        site_symmetry_ops_j):
+        site_symmetry_ops_j,
+        i_seq_eq_j_seq,
+        rt_mx_ji):
     O.site_symmetry_ops_j = site_symmetry_ops_j
     O.registry = {}
     ssm_i =   site_symmetry_ops_i.matrices()
