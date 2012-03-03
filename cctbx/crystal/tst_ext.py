@@ -802,6 +802,30 @@ Si(2)
   Si(2)
     y,-x+y,-z
 """
+      f = StringIO()
+      sym_table.show(
+        f=f,
+        site_labels=[scatterer.label for scatterer in structure.scatterers()],
+        site_symmetry_table=structure.site_symmetry_table())
+      assert not show_diff(f.getvalue(), """\
+Si(0)
+  Si(0)
+    -y+1,-x+1,-z+1/2
+    x,x-y+2,-z+1/2
+  Si(1)
+    -y+1,x-y+1,-z+1/2
+    -y+1,x-y+1,z       sym. equiv.
+Si(1)
+  Si(1)
+    x,x-y+1,z
+    -y+1,-x+1,z
+  Si(2)
+    -x+y+1,-x+1,z
+Si(2)
+  Si(2)
+    y,-x+y,-z
+    x-y,x,-z   sym. equiv.
+""")
   #
   sites_cart = flex.vec3_double([(0,0,0), (2,0,0), (0,3,0)])
   asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
