@@ -273,13 +273,9 @@ def exercise(
               old_coords = get_coords(equiv_rt_mx_ji)
               all_sepi = set()
               for rt_mx_ji in equiv_rt_mx_ji:
-                _ = asu_mappings.site_symmetry_table().get
-                from cctbx import sgtbx
-                sepi_obj = sgtbx.symmetry_equivalent_pair_interactions(
-                  i_seq_eq_j_seq=(i_seq==j_seq),
-                  rt_mx_ji=rt_mx_ji,
-                  site_symmetry_ops_i=_(i_seq),
-                  site_symmetry_ops_j=_(j_seq))
+                _ = asu_mappings.site_symmetry_table()
+                sepi_obj = _.symmetry_equivalent_pair_interactions(
+                  i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
                 sepi = sepi_obj.get()
                 new_coords = get_coords(sepi)
                 assert new_coords == old_coords
