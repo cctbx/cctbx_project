@@ -1011,22 +1011,44 @@ class _(boost.python.injector, pair_sym_table):
         for rt_mx_ji in sym_ops:
           yield sym_pair(i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
 
-  def show(self, f=None, site_labels=None):
+  def show(self, f=None, site_labels=None, site_symmetry_table=None):
+    if (site_labels is not None):
+      assert len(site_labels) == self.size()
+    if (site_symmetry_table is not None):
+      assert site_symmetry_table.indices().size() == self.size()
     if (f is None): f = sys.stdout
-    if (site_labels is None):
-      for i_seq,pair_sym_dict in enumerate(self):
+    def show_i():
+      if (site_labels is None):
         print >> f, "i_seq:", i_seq
-        for j_seq,sym_ops in pair_sym_dict.items():
-          print >> f, "  j_seq:", j_seq
-          for sym_op in sym_ops:
-            print >> f, "   ", sym_op
-    else:
-      for i_seq,pair_sym_dict in enumerate(self):
+      else:
         print >> f, "%s(%d)" % (site_labels[i_seq], i_seq)
-        for j_seq,sym_ops in pair_sym_dict.items():
-          print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
-          for sym_op in sym_ops:
-            print >> f, "   ", sym_op
+    def show_j():
+      if (site_labels is None):
+        print >> f, "  j_seq:", j_seq
+      else:
+        print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
+    for i_seq,pair_sym_dict in enumerate(self):
+      show_i()
+      for j_seq,sym_ops in pair_sym_dict.items():
+        show_j()
+        if (site_symmetry_table is None):
+          for rt_mx_ji in sym_ops:
+            print >> f, "   ", rt_mx_ji
+        else:
+          max_len = 0
+          seq_sets = []
+          for rt_mx_ji in sym_ops:
+            sepi = site_symmetry_table.symmetry_equivalent_pair_interactions(
+              i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji).get()
+            seq_sets.append([str(_) for _ in sepi])
+            max_len = max(max_len, max([len(_) for _ in seq_sets[-1]]))
+          assert max_len != 0
+          fmt = "    %%-%ds%%s" % max_len
+          for ss in seq_sets:
+            e = ""
+            for s in ss:
+              print >> f, (fmt % (s, e)).rstrip()
+              e = "  sym. equiv."
 
   def number_of_pairs_involving_symmetry(self):
     result = 0
