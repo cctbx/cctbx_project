@@ -11,6 +11,7 @@ class ImageException(exceptions.Exception):
   pass
 
 from iotbx.detectors.adsc import ADSCImage
+from iotbx.detectors.hamamatsu import HamamatsuImage
 from iotbx.detectors.mar import MARImage
 from iotbx.detectors.marIP import MARIPImage
 from iotbx.detectors.cbf import CBFImage
@@ -40,7 +41,7 @@ class EDFWrapper(EDFImage, DetectorImageBase):
     self.parameters['BEAM_CENTER_Y']=0.0 #Dummy argument
     self.parameters['DISTANCE']=100.0 #Dummy argument
 
-all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,
+all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 

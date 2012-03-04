@@ -241,4 +241,8 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
           phil_params.distl.minimum_spot_area > 5:
           phil_params.distl.minimum_spot_area=5
 
+    elif imageobject.vendortype == "Hamamatsu":
+      beam_center_convention = 0
+      set_convention(0,phil_params)
+
     return beam_center_convention
