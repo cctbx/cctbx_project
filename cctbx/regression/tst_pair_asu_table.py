@@ -29,7 +29,8 @@ def exercise_icosahedron(max_level=2, verbose=0):
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
     if (0 or verbose):
-      ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites)
+      ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites) \
+        .distances_info
       print "level", level, "min", flex.min(ps.distances)
       print "     ", " ",   "max", flex.max(ps.distances)
       assert ps.pair_counts.all_eq(pair_asu_table.pair_counts())
