@@ -4,7 +4,7 @@ from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from libtbx import dict_with_default_0
@@ -289,6 +289,54 @@ def exercise(
               assert len(all_sepi) == 1
               prev_equiv_rt_mx_ji = equiv_rt_mx_ji
       exercise_symmetry_equivalent_pair_interactions()
+      def exercise_pair_sym_table_tidy_and_full_connectivity():
+        def check_one_way(pst):
+          for sym_pair in pst.iterator():
+            i_seq, j_seq = sym_pair.i_seqs()
+            assert i_seq <= j_seq
+            assert len(pst[i_seq][j_seq]) > 0
+            if (i_seq != j_seq):
+              assert i_seq not in pst[j_seq]
+        def check_two_way(pst):
+          for sym_pair in pst.iterator():
+            i_seq, j_seq = sym_pair.i_seqs()
+            assert len(pst[i_seq][j_seq]) > 0
+            assert len(pst[j_seq][i_seq]) > 0
+        pst_extracted = bond_sym_table
+        check_one_way(pst_extracted)
+        sio_extracted = StringIO()
+        structure.pair_sym_table_show(pst_extracted, out=sio_extracted)
+        pst = pst_extracted.tidy(
+          site_symmetry_table=structure.site_symmetry_table())
+        check_one_way(pst)
+        sio = StringIO()
+        structure.pair_sym_table_show(pst, out=sio)
+        assert not show_diff(sio.getvalue(), sio_extracted.getvalue())
+        pst = pst_extracted.full_connectivity()
+        check_two_way(pst)
+        pst_full = pst_extracted.full_connectivity(
+          site_symmetry_table=structure.site_symmetry_table())
+        check_two_way(pst_full)
+        sio = StringIO()
+        structure.pair_sym_table_show(
+          pst_full, is_full_connectivity=True, out=sio)
+        assert sio.getvalue().find("sym. equiv.") < 0
+        pst = pst_full.tidy(
+          site_symmetry_table=structure.site_symmetry_table())
+        check_one_way(pst)
+        sio = StringIO()
+        structure.pair_sym_table_show(pst, out=sio)
+        assert not show_diff(sio.getvalue(), sio_extracted.getvalue())
+        pst_full2 = pst_full.full_connectivity(
+          site_symmetry_table=structure.site_symmetry_table())
+        check_two_way(pst_full2)
+        pst = pst_full2.tidy(
+          site_symmetry_table=structure.site_symmetry_table())
+        check_one_way(pst)
+        sio = StringIO()
+        structure.pair_sym_table_show(pst, out=sio)
+        assert not show_diff(sio.getvalue(), sio_extracted.getvalue())
+      exercise_pair_sym_table_tidy_and_full_connectivity()
     if (connectivities is not None):
       check_connectivities(bond_asu_table, connectivities, verbose)
     check_sym_equiv(
