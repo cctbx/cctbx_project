@@ -1712,6 +1712,21 @@ class structure(crystal.special_position_settings):
       da_db=da_db,
       daa_dbb_dab=daa_dbb_dab)
 
+  def pair_sym_table_show(self,
+        pair_sym_table,
+        is_full_connectivity=False,
+        out=None):
+    if (is_full_connectivity):
+      site_symmetry_table = None
+    else:
+      site_symmetry_table = self.site_symmetry_table()
+    pair_sym_table.show(
+      f=out,
+      site_labels=self.scatterers().extract_labels(),
+      site_symmetry_table=site_symmetry_table,
+      sites_frac=self.sites_frac(),
+      unit_cell=self.unit_cell())
+
   def asu_mappings(self, buffer_thickness, asu_is_inside_epsilon=None):
     result = crystal.symmetry.asu_mappings(self,
       buffer_thickness=buffer_thickness,

@@ -1011,9 +1011,73 @@ class _(boost.python.injector, pair_sym_table):
         for rt_mx_ji in sym_ops:
           yield sym_pair(i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
 
-  def show(self, f=None, site_labels=None, site_symmetry_table=None):
+  def tidy(self, site_symmetry_table):
+    result = pair_sym_table(size=self.size())
+    for i_seq,pair_sym_dict in enumerate(self):
+      ri = result[i_seq]
+      for j_seq,sym_ops in pair_sym_dict.items():
+        if (j_seq < i_seq):
+          continue
+        sepi_objs = []
+        for rt_mx_ji in sym_ops:
+          for sepi_obj in sepi_objs:
+            if (sepi_obj.is_equivalent(rt_mx_ji=rt_mx_ji)):
+              break
+          else:
+            sepi_obj = site_symmetry_table \
+              .symmetry_equivalent_pair_interactions(
+                i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
+            sepi_objs.append(sepi_obj)
+        ri[j_seq] = pair_sym_ops()
+        rij = ri[j_seq]
+        for sepi_obj in sepi_objs:
+          rij.append(sepi_obj.get()[0])
+    return result
+
+  def full_connectivity(self, site_symmetry_table=None):
+    result = pair_sym_table(size=self.size())
+    for i_seq,pair_sym_dict in enumerate(self):
+      ri = result[i_seq]
+      for j_seq,sym_ops in pair_sym_dict.items():
+        rij = ri.get(j_seq)
+        if (rij is None):
+          ri[j_seq] = pair_sym_ops()
+          rij = ri[j_seq]
+        rj = result[j_seq]
+        rji = rj.get(i_seq)
+        if (rji is None):
+          rj[i_seq] = pair_sym_ops()
+          rji = rj[i_seq]
+        for rt_mx_ji in sym_ops:
+          if (site_symmetry_table is None):
+            rij.append(rt_mx_ji)
+            if (i_seq != j_seq):
+              rji.append(rt_mx_ji.inverse())
+          else:
+            sepi = site_symmetry_table.symmetry_equivalent_pair_interactions
+            for s in sepi(
+                       i_seq=i_seq,
+                       j_seq=j_seq,
+                       rt_mx_ji=rt_mx_ji).get():
+              rij.append(s)
+            if (i_seq != j_seq):
+              for s in sepi(
+                         i_seq=j_seq,
+                         j_seq=i_seq,
+                         rt_mx_ji=rt_mx_ji.inverse()).get():
+                rji.append(s)
+    return result
+
+  def show(self, f=None,
+        site_labels=None,
+        site_symmetry_table=None,
+        sites_frac=None,
+        unit_cell=None):
     if (site_labels is not None):
       assert len(site_labels) == self.size()
+    if (sites_frac is not None):
+      assert len(sites_frac) == self.size()
+      assert unit_cell is not None
     if (site_symmetry_table is not None):
       assert site_symmetry_table.indices().size() == self.size()
     if (f is None): f = sys.stdout
@@ -1032,23 +1096,35 @@ class _(boost.python.injector, pair_sym_table):
       for j_seq,sym_ops in pair_sym_dict.items():
         show_j()
         if (site_symmetry_table is None):
-          for rt_mx_ji in sym_ops:
-            print >> f, "   ", rt_mx_ji
+          if (sites_frac is None):
+            for rt_mx_ji in sym_ops:
+              print >> f, "   ", rt_mx_ji
+          elif (len(sym_ops) > 0):
+            max_len = max([len(str(_)) for _ in sym_ops])
+            fmt = "    %%-%ds  %%8.4f" % max_len
+            for rt_mx_ji in sym_ops:
+              d = unit_cell.distance(
+                sites_frac[i_seq], rt_mx_ji * sites_frac[j_seq])
+              print >> f, fmt % (str(rt_mx_ji), d)
         else:
           max_len = 0
-          seq_sets = []
+          sepis = []
           for rt_mx_ji in sym_ops:
             sepi = site_symmetry_table.symmetry_equivalent_pair_interactions(
               i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji).get()
-            seq_sets.append([str(_) for _ in sepi])
-            max_len = max(max_len, max([len(_) for _ in seq_sets[-1]]))
-          assert max_len != 0
-          fmt = "    %%-%ds%%s" % max_len
-          for ss in seq_sets:
-            e = ""
-            for s in ss:
-              print >> f, (fmt % (s, e)).rstrip()
-              e = "  sym. equiv."
+            sepis.append(sepi)
+            max_len = max(max_len, max([len(str(_)) for _ in sepi]))
+          if (max_len != 0):
+            fmt = "    %%-%ds%%s%%s" % max_len
+            for sepi in sepis:
+              d = ""
+              e = ""
+              for s in sepi:
+                if (sites_frac is not None):
+                  d = "  %8.4f" % unit_cell.distance(
+                    sites_frac[i_seq], s * sites_frac[j_seq])
+                print >> f, (fmt % (str(s), d, e)).rstrip()
+                e = "  sym. equiv."
 
   def number_of_pairs_involving_symmetry(self):
     result = 0
