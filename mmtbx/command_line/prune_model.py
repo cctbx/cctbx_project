@@ -3,30 +3,48 @@ import libtbx.phil
 from libtbx.str_utils import make_header
 from libtbx.utils import Usage, multi_out
 from libtbx import group_args
+from cStringIO import StringIO
 import os
 import sys
 
 model_prune_master_phil = """
   resolution_factor = 1/4.
     .type = float
+    .help = Map grid spacing (multiplied times d_min).
   sidechains = True
     .type = bool
+    .help = Remove poor sidechains
   residues = True
     .type = bool
+    .help = Remove entire residues in poor density
   min_c_alpha_2fofc = 1.0
     .type = float
+    .help = Minimum 2mFo-DFc sigma level at C-alpha to keep.  Residues with \
+      C-alpha in density below this cutoff will be deleted.
   min_c_alpha_fofc = -3.0
     .type = float
+    .help = Minimum mFo-DFc sigma level at C-alpha to keep.  Residues with \
+      C-alpha in difference density below this cutoff will be deleted.
   min_sidechain_2fofc = 0.5
     .type = float
-  max_sidechain_fofc = 2.8
+    .help = Minimum mean 2mFo-DFc sigma level for sidechain atoms to keep. \
+      Residues with sidechains below this level will be truncated.
+  min_sidechain_fofc = -2.8
     .type = float
+    .help = Minimum mean 2mFo-DFc sigma level for sidechain atoms to keep. \
+      Residues with sidechains below this level will be truncated.
   min_cc = 0.75
     .type = float
+    .help = Minimum overall CC for entire residue to keep.
   min_cc_sidechain = 0.7
     .type = float
+    .help = Minimum overall CC for sidechains to keep.
   min_fragment_size = 3
     .type = int
+    .help = Minimum fragment size to keep.  Fragments smaller than this will \
+      be deleted in the final step (based on the assumption that the adjacent \
+      residues were already removed).  Set this to None to prevent fragment \
+      filtering.
 """
 
 master_phil = libtbx.phil.parse("""
@@ -221,7 +239,7 @@ def prune_model (
                   score_type="sigma",
                   atoms_type="sidechain"))
                 remove_sidechain = True
-              elif (mean_diff_value > params.max_sidechain_fofc) :
+              elif (mean_diff_value < params.min_sidechain_fofc) :
                 pruned.append(residue_summary(
                   chain_id=chain.id,
                   residue_group=residue_group,
@@ -244,7 +262,7 @@ def prune_model (
         n_res_removed += 1
         removed_resseqs.append(residue_group.resseq_as_int())
     # Final pass: remove lone single/pair residues
-    if (params.residues) :
+    if (params.residues) and (params.min_fragment_size is not None) :
       n_rg = len(chain.residue_groups())
       for j_seq, residue_group in enumerate(chain.residue_groups()) :
         if (residue_group.icode.strip() != "") :
@@ -343,6 +361,8 @@ def run_post_refinement (
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
   if (len(args) == 0) :
+    phil_out = StringIO()
+    master_phil.show(out=phil_out, attributes_level=1)
     raise Usage("""\
 mmtbx.prune_model model.pdb data.mtz [options...]
 
@@ -350,7 +370,10 @@ Filters protein residues based on CC to 2mFo-DFc map and absolute
 (sigma-scaled) values in 2mFo-DFc and mFo-DFc maps.  For fast automatic
 correction of MR solutions after initial refinement (ideally with rotamer
 correction) to remove spurious loops and sidechains.
-""")
+
+Full parameters:
+%s
+""" % phil_out.getvalue())
   from mmtbx.utils import cmdline_load_pdb_and_data
   import iotbx.pdb
   cmdline = cmdline_load_pdb_and_data(
@@ -374,7 +397,7 @@ correction) to remove spurious loops and sidechains.
   f_map_coeffs = map_helper.map_coefficients(map_type="2mFo-DFc")
   diff_map_coeffs = map_helper.map_coefficients(map_type="mFo-DFc")
   model_map_coeffs = map_helper.map_coefficients(map_type="Fc")
-  new_hierarchy = prune_model(
+  result = prune_model(
     f_map_coeffs=f_map_coeffs,
     diff_map_coeffs=diff_map_coeffs,
     model_map_coeffs=model_map_coeffs,
@@ -385,7 +408,7 @@ correction) to remove spurious loops and sidechains.
   cryst1 = iotbx.pdb.format_cryst1_record(fmodel.xray_structure)
   f.write("REMARK edited by mmtbx.prune_model\n")
   f.write("%s\n" % cryst1)
-  f.write(new_hierarchy.as_pdb_string())
+  f.write(cmdline.pdb_hierarchy.as_pdb_string())
   f.close()
   log.close()
   print >> out, "Wrote %s" % params.output.file_name
