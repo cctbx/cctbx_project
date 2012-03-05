@@ -511,47 +511,49 @@ def evt_pulse_length(evt):
   return None
 
 
-def evt_time(evt = None):
+def evt_time(evt=None):
   """The evt_time() function returns a tuple of the time in seconds
-  and milliseconds.  The return value reflects the time at which @p
-  evt occurred.  If @p evt is @c None or does not contain a time, the
-  current time is used.
+  and milliseconds.  If @p evt is not @c None the return value
+  reflects the time at which @p evt occurred, otherwise the current
+  time is used.  If @p evt does not contain a time, evt_time() returns
+  @c None.
 
   @param evt Event data object, a configure object
   @return    Tuple of the time in seconds and milliseconds
   """
 
-  if (evt is not None):
-    t = evt.getTime()
-    if (t is not None):
-      s  = t.seconds()
-      ms = t.nanoseconds() // 1000000
-      return (s, ms)
+  if (evt is None):
+    t = time.time()
+    s = int(math.floor(t))
+    return (s, int(round((t - s) * 1000)))
 
-  t  = time.time()
-  s  = int(math.floor(t))
-  ms = int(round((t - s) * 1000))
-  return (s, ms)
+  t = evt.getTime()
+  if (t is None):
+    return None
+  return (t.seconds(), t.nanoseconds() // 1000000)
 
 
-def evt_timestamp(evt = None):
+def evt_timestamp(evt=None):
   """The evt_timestamp() function returns a string representation of
-  an extended human-readable ISO 8601 timestamp.  The return value
-  reflects the time at which @p evt occurred.  If @p evt is @c None or
-  does not contain a time, the current time is used.  Millisecond
-  accuracy is sufficient, because at 120 Hz, shots are taken at 8.3 ms
-  intervals.  XXX Note that the string contains colons which may look
-  funny in the Finder.
+  an extended human-readable ISO 8601 timestamp.  If @p evt is not
+  None the return value reflects the time at which @p evt occurred,
+  otherwise the current time is used.  If @p evt does not contain a
+  time, evt_timestamp() returns @c None.  Millisecond accuracy is
+  sufficient, because at 120 Hz, shots are taken at 8.3 ms intervals.
+
+  @note The string contains colons which, if used in paths, may look
+        funny in the Finder and require escaping in the shell.
 
   @param evt Event data object, a configure object
   @return    Human-readable ISO 8601 timestamp in string
              representation
   """
 
-  s, ms = evt_time(evt=evt)
-  timestamp = time.strftime("%Y-%m-%dT%H:%MZ%S", time.gmtime(s)) \
-      +       (".%03d" % ms)
-  return (timestamp)
+  t = evt_time(evt=evt)
+  if (t is None):
+    return None
+  return time.strftime("%Y-%m-%dT%H:%MZ%S", time.gmtime(t[0])) + \
+      (".%03d" % t[1])
 
 
 def evt_wavelength(evt):
