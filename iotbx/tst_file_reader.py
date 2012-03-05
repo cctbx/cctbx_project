@@ -1,6 +1,7 @@
 import os
 import libtbx.load_env
 from libtbx.utils import Sorry
+from libtbx import easy_run
 from libtbx.test_utils import Exception_expected
 from iotbx import file_reader
 from iotbx.file_reader import any_file, sort_by_file_type, group_files
@@ -72,6 +73,9 @@ _chem_comp_angle.value_angle_esd
   f.close()
   cif = any_file("tmp1.cif")
   cif.assert_file_type("cif")
+  # test command-line tool
+  lines = easy_run.fully_buffered("iotbx.file_reader tmp1.cif").stdout_lines
+  assert ("cif" in lines[0])
   os.remove("tmp1.cif")
 
 def exercise_pdb () :
