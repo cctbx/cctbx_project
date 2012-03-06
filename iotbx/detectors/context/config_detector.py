@@ -20,9 +20,17 @@ Beamline 12.3.2 ADSC Q315 s/n 907
 After Aug 2006:
 Beamline 5.0.3 ADSC Q315r  s/n 923
 Installed Nov 2009:
-Beamline 5.0.1 ADSC Q315r s/n 931'''
+Beamline 5.0.1 ADSC Q315r s/n 931
+As of March 2012:
+5.0.1 don't know if it is 926 or 931 ???
+5.0.2 s/n 913; s/n 442 is the service spare
+5.0.3 s/n 923
+8.2.1 s/n 925
+8.2.2 s/n 905
+8.3.1 s/n 907;
+'''
 
-known_als_detectors = [401,423,445,447,905,913,923,925,913]
+known_als_detectors = [401,423,445,905,913,923,925,913]
 known_als831_detectors = [907,442]
 
 def als_beam_rules(iobj): #take an ADSC image object
@@ -72,9 +80,13 @@ ADSC s/n 429  Web Beam0 (no strong evidence for 0) Regression
 ADSC 210 441  CHESS A1, Marian Szebenyi, reverse phi after 10/2004, Beam5
 ADSC 210 443  APS IMCA-CAT 17ID, Xaiochun Yang, Beam0
 ADSC 210 446  BNL X6A, Vivian Stojanoff, Beam5
+ADSC 270 447  Photon Factory KEK BL-5A, Yusuke Yamada
 ADSC 210 448  CHESS F2, Marian Szebenyi, reverse phi, Beam5
+ADSC 270 449  Photon Factory KEK AR-NW12A, Yusuke Yamada
 ADSC 210r 457 Australian Synchrotron Tom Caradoc-Davies, reverse phi, beam on center
 ADSC 270 471  CHESS F1, Marian Szebenyi, reverse phi, Beam5
+ADSC 270 472  Photon Factory KEK AR-NE3A, Yusuke Yamada
+ADSC 270 474  Photon Factory KEK BL-1A, Yusuke Yamada
 ADSC 210 901  SSRL BL9-2 Beam5
 ADSC s/n 902  SSRL BL11-1 Beam5
 ADSC s/n 903  Web unknown location Beam5
@@ -83,6 +95,7 @@ ADSC s/n 906  BNL X29. convention not certain...no calibration dataset.
 ADSC s/n 908  SSRL BL9-1 Beam5
 ADSC s/n 910  APS BioCARS 14-BM-C installed before August 2007.
 ADSC s/n 911  APS [24-ID-C or 24-BM-B] (NE-CAT), Beam0
+ADSC s/n 912  Photon Factory KEK BL-17A, Yusuke Yamada
 ADSC s/n 914  APS ID19
 ADSC s/n 916  APS 24-ID-E (NE-CAT), Beam0
 ADSC s/n 917  [ESRF ID23-1 Q315]
@@ -122,6 +135,16 @@ def ADSC910_at_BioCARS(iobj):
 def other_beamlines(iobj,passthru_convention):
   beam5 = [402,403,406,409,410,411,414,418,441,446,448,471,901,902,903,908]
   beam0 = [413,415,420,428,429,443,444,457,904,914,916,917,918,919,924,928]
+  KEK = [474,912,449,472]
+
+  record_date = iobj.parameters["DATE"]
+  record_tse = time.mktime(time.strptime(record_date))
+  cutoff_447 = time.mktime(time.strptime("Sun Nov 01 00:00:00 2009"))
+  if record_tse > cutoff_447:
+    KEK.append(447)
+  else:
+    known_als_detectors.append(447)
+
   alld = beam5+beam0+known_als_detectors+known_als831_detectors
   if iobj.serial_number in beam5:
     beam_center_convention = 5
