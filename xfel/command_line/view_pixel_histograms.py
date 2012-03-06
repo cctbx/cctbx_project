@@ -37,6 +37,10 @@ def run(args):
                           action="store_true",
                           default=False,
                           help="Fit gaussians to the peaks.")
+                  .option("--n_gaussians",
+                          type="int",
+                          default=2,
+                          help="Number of gaussians to fit.")
                   .option("--estimated_gain",
                           type="float",
                           default=30,
@@ -48,6 +52,7 @@ def run(args):
   normalise = command_line.options.normalise
   save_image = command_line.options.save
   starting_pixel = command_line.options.start
+  n_gaussians = command_line.options.n_gaussians
   estimated_gain = command_line.options.estimated_gain
   if starting_pixel is not None:
     starting_pixel = eval(starting_pixel)
@@ -84,7 +89,8 @@ def run(args):
   histograms = pixel_histograms(d, estimated_gain=estimated_gain)
   histograms.plot(
     pixels=pixels, starting_pixel=starting_pixel, fit_gaussians=fit_gaussians,
-    window_title=window_title, log_scale=log_scale, save_image=save_image)
+    n_gaussians=n_gaussians, window_title=window_title, log_scale=log_scale,
+    save_image=save_image)
 
 
 class pixel_histograms(object):
@@ -94,10 +100,11 @@ class pixel_histograms(object):
     self.estimated_gain = estimated_gain
 
   def plot(self, pixels=None, starting_pixel=None, fit_gaussians=True,
-           window_title=None, log_scale=False, save_image=False):
+           n_gaussians=2, window_title=None, log_scale=False, save_image=False):
     from matplotlib import pyplot
     normalise=False # XXX
     assert [pixels, starting_pixel].count(None) > 0
+    print "n_images:", flex.sum(self.histograms.values()[0].slots())
     if pixels is None:
       pixels = sorted(self.histograms.keys())
       if starting_pixel is not None:
@@ -111,31 +118,31 @@ class pixel_histograms(object):
       self.plot_one_histogram(
         hist, window_title=window_title, title=title,log_scale=log_scale,
         normalise=normalise, save_image=save_image)
-      fontsize = 15
+      fontsize = 24
       pyplot.ylabel("Counts", fontsize=fontsize)
       pyplot.xlabel("ADUs", fontsize=fontsize)
       if fit_gaussians:
-        self.plot_gaussians(pixel, log_scale=log_scale)
+        self.plot_gaussians(pixel, n_gaussians=n_gaussians, log_scale=log_scale)
       pyplot.ylabel("Counts", fontsize=fontsize)
       pyplot.xlabel("ADUs", fontsize=fontsize)
       #axes = pyplot.axes()
       #for tick in axes.xaxis.get_ticklabels():
-        #tick.set_fontsize(20)
+        #tick.set_fontsize(fontsize)
       #for tick in axes.yaxis.get_ticklabels():
-        #tick.set_fontsize(20)
+        #tick.set_fontsize(fontsize)
 
       if save_image:
         pyplot.savefig("%s.png" %title)
       else:
         pyplot.show()
 
-  def plot_gaussians(self, pixel, log_scale=False):
+  def plot_gaussians(self, pixel, n_gaussians=2, log_scale=False):
     from matplotlib import pyplot
     if log_scale:
       pyplot.ylim(ymin=0.1)
     hist = self.histograms[pixel]
     #pyplot.ylim(ymax=flex.max(hist.slots()))
-    gaussians = self.fit_one_histogram(pixel)
+    gaussians = self.fit_one_histogram(pixel, n_gaussians=n_gaussians)
     x = hist.slot_centers()
     y_calc = flex.double(x.size(), 0)
     for g in gaussians:
@@ -148,8 +155,8 @@ class pixel_histograms(object):
     # Plot the fit residuals
     xlim = pyplot.xlim() # store for reuse below
     pyplot.subplot(212)
-    pyplot.plot(x, hist.slots().as_double() - y_calc, linewidth=2)
-
+    residual = hist.slots().as_double() - y_calc
+    pyplot.plot(x, residual, linewidth=2)
     pyplot.xlim(xlim)
 
   def plot_one_histogram(self, histogram,
@@ -204,21 +211,32 @@ class pixel_histograms(object):
         # triangular smoothing of residual to find peak position
         residual = sliding_average(residual)
         residual = sliding_average(residual)
-        # we assume that the peaks are separated by at least 4 sigma
-        four_sigma = abs(4 * fitted_gaussians[0].params[2])
-        slot_i = histogram.get_i_slot(fitted_gaussians[i-1].params[1]+four_sigma)
-        max_slot_i = flex.max_index(residual[slot_i:]) + slot_i
-        mean = slot_centers[max_slot_i]
-        lower_threshold = mean - 0.3 * (mean - fitted_gaussians[0].params[1])
-        upper_threshold = mean + 0.4 * (mean - fitted_gaussians[0].params[1])
-        print lower_threshold, mean, upper_threshold
-        #zero_peak_gaussian = None
-        fit = self.single_peak_fit(histogram, lower_threshold, upper_threshold, mean,
-                                   zero_peak_gaussian=zero_peak_gaussian)
+        for n in (4, 5, 6, 7, 8):
+        #for n in (5, 6, 7, 8):
+          # we assume that the peaks are separated by at least n sigma
+          n_sigma = abs(n * fitted_gaussians[0].params[2])
+          slot_i = histogram.get_i_slot(fitted_gaussians[i-1].params[1]+n_sigma)
+          max_slot_i = flex.max_index(residual[slot_i:]) + slot_i
+          mean = slot_centers[max_slot_i]
+          lower_threshold = mean - 0.3 * (mean - fitted_gaussians[0].params[1])
+          upper_threshold = mean + 0.4 * (mean - fitted_gaussians[0].params[1])
+          #print lower_threshold, mean, upper_threshold
+          #zero_peak_gaussian = None
+          fit = self.single_peak_fit(histogram, lower_threshold, upper_threshold, mean,
+                                     zero_peak_gaussian=zero_peak_gaussian)
+          if (fit.functions[0].params[1] > fitted_gaussians[-1].params[1]
+              and fit.functions[0].sigma > 0.5 * fitted_gaussians[-1].sigma
+              and (fit.functions[0].params[1] - fitted_gaussians[-1].params[1]) > n_sigma):
+            break
       fitted_gaussians += fit.functions
       if i == 0: zero_peak_gaussian = fit.functions[0]
 
+
     if len(fitted_gaussians) > 1:
+      try:
+        check_pixel_histogram_fit(histogram, fitted_gaussians)
+      except PixelFitError, e:
+        print "PixelFitError:", str(e)
       gain = fitted_gaussians[1].params[1] - fitted_gaussians[0].params[1]
       print "gain: %s" %gain
       zero_peak = fitted_gaussians[0].params[1]
@@ -235,7 +253,6 @@ class pixel_histograms(object):
 
   def single_peak_fit(self, hist, lower_threshold, upper_threshold, mean,
                       zero_peak_gaussian=None):
-    starting_gaussians = [curve_fitting.gaussian(a=100, b=mean, c=3)]
     lower_slot = 0
     for slot in hist.slot_centers():
       lower_slot += 1
@@ -247,6 +264,8 @@ class pixel_histograms(object):
 
     x = hist.slot_centers()
     y = hist.slots().as_double()
+    starting_gaussians = [curve_fitting.gaussian(
+      a=flex.max(y[lower_slot:upper_slot]), b=mean, c=3)]
     if zero_peak_gaussian is not None:
       y -= zero_peak_gaussian(x)
     if 1:
@@ -275,7 +294,6 @@ def sliding_average(y):
   averaged.append(y[-1])
   return averaged
 
-
 def hist_outline(hist):
 
   step_size = hist.slot_width()
@@ -298,6 +316,56 @@ def hist_outline(hist):
   return (bins, data)
 
 
+class PixelFitError(RuntimeError):
+  pass
+
+def check_pixel_histogram_fit(hist, gaussians):
+  assert gaussians is not None
+  #if gaussians is None:
+    ## Presumably the peak fitting failed in some way
+    #print "Skipping pixel %s" %str(pixel)
+    #continue
+  zero_peak_diff = gaussians[0].params[1]
+  if len(gaussians) < 2:
+    raise PixelFitError("Only one gaussian!")
+  y_obs = hist.slots().as_double()
+  x = hist.slot_centers()
+  y_calc = flex.double(y_obs.size(), 0)
+  for g in gaussians:
+    y_calc += g(x)
+  residual = y_obs - y_calc
+
+  # check the overall residual
+  if flex.max(residual)/flex.sum(hist.slots()) > 0.015:
+    raise PixelFitError("Bad fit residual: %f" %(flex.max(residual)/flex.sum(hist.slots())))
+
+  # check the residual around the zero photon peak
+  zero_gaussian = gaussians[0]
+  selection = ((x < zero_gaussian.params[1] + 1 * zero_gaussian.sigma))
+  if ((flex.max(residual.select(selection))/flex.sum(hist.slots()) > 0.008)
+      or (flex.min(residual.select(selection))/flex.sum(hist.slots()) < -0.0067)):
+    raise PixelFitError("Bad fit residual around zero photon peak")
+
+  # check the residual around the one photon peak
+  one_gaussian = gaussians[1]
+  selection = ((x > one_gaussian.params[1] - 1.4 * one_gaussian.sigma)) # &
+  if selection.count(True) == 0:
+    raise PixelFitError("Bad fit residual around one photon peak")
+  max_residual_sel = flex.max(residual.select(selection))
+  if max_residual_sel > 20 and max_residual_sel > 1.2 * one_gaussian.params[0]:
+    raise PixelFitError("Bad fit residual: %f" %max_residual_sel)
+
+  gain = gaussians[1].params[1] - gaussians[0].params[1]
+  if 0 and estimated_gain is not None and abs(gain - estimated_gain) > 0.5 * estimated_gain:
+    print "bad gain!!!!!", pixel, gain
+  #elif (one_gaussian.sigma / zero_gaussian.sigma) > 1.9:
+    #raise PixelFitError("Bad sigma ratio: %.1f, %.1f" %(one_gaussian.sigma, zero_gaussian.sigma))
+  elif gaussians[1].sigma < (0.5 * gaussians[0].sigma):
+    raise PixelFitError("Bad sigma: %f" %gaussians[1].sigma)
+  elif gain < (4 * gaussians[0].sigma):
+    raise PixelFitError("Bad gain: %f" %gain)
+  elif gain > (20 * gaussians[0].sigma): # XXX is 20 to low?
+    raise PixelFitError("Bad gain: %f" %gain)
 
 if __name__ == '__main__':
   run(sys.argv[1:])
