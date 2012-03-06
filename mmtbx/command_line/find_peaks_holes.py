@@ -26,7 +26,7 @@ anom_map_cutoff = 3.0
   .short_caption = Anomalous map cutoff (sigma)
 filter_peaks_by_2fofc = None
   .type = float
-  .short_caption = Filter by 2mFo-DFc value at peak
+  .short_caption = Filter peaks by 2mFo-DFc
   .help = If this is set, peaks outside 2mFo-DFc density at the \
     cutoff will be discarded.  (This does not apply to the analysis of \
     solvent atoms.)  Holes will not be changed.
@@ -264,9 +264,12 @@ def find_peaks_holes (
   peaks_result.show_mapped(pdb_atoms)
   peaks = peaks_result.peaks()
   if (filter_peaks_by_2fofc is not None) :
-    peaks.filter_by_secondary_map(
+    n_removed = peaks.filter_by_secondary_map(
       map=f_map,
       min_value=filter_peaks_by_2fofc)
+    print >> out, ""
+    print >> out, "%d peaks remaining after 2mFo-DFc filtering" % \
+      len(peaks.sites)
   # very important - sites are initially fractional coordinates!
   peaks.sites = unit_cell.orthogonalize(peaks.sites)
   print >> out, ""
@@ -305,6 +308,9 @@ def find_peaks_holes (
       anom.filter_by_secondary_map(
         map=f_map,
         min_value=filter_peaks_by_2fofc)
+      print >> out, ""
+      print >> out, "%d peaks remaining after 2mFo-DFc filtering" % \
+        len(anom.sites)
     anom.sites = unit_cell.orthogonalize(anom.sites)
     print >> out, ""
     out.flush()
