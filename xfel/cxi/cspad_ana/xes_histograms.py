@@ -138,27 +138,13 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
       continue
     zero_peak_diff = gaussians[0].params[1]
     if gain_map is None:
-      if len(gaussians) < 2:
-        print "bad pixel!!!!!", pixel
+      try:
+        view_pixel_histograms.check_pixel_histogram_fit(hist, gaussians)
+      except view_pixel_histograms.PixelFitError, e:
+        print "PixelFitError:", str(pixel), str(e)
         mask[pixel] = 1
         continue
       gain = gaussians[1].params[1] - gaussians[0].params[1]
-      if 0 and estimated_gain is not None and abs(gain - estimated_gain) > 0.5 * estimated_gain:
-        print "bad gain!!!!!", pixel, gain
-        mask[pixel] = 1
-        continue
-      elif gaussians[1].sigma < (0.5 * gaussians[0].sigma):
-        print "bad sigma!!!!!", pixel, gaussians[1].sigma
-        mask[pixel] = 1
-        continue
-      elif gain < (4 * gaussians[0].sigma):
-        print "bad gain!!!!!", pixel, gain
-        mask[pixel] = 1
-        continue
-      elif gain > (20 * gaussians[0].sigma): # XXX is 20 to low?
-        print "bad gain!!!!!", pixel, gain
-        mask[pixel] = 1
-        continue
       gain_img[pixel] = gain
       gain_ratio = gain/estimated_gain
     else:
@@ -166,8 +152,10 @@ def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None
       if gain == 0:
         print "bad gain!!!!!", pixel
         continue
+      gain = 30/gain
       gain_ratio = 1/gain
     gains.append(gain)
+
     #for g in gaussians:
       #sigma = abs(g.params[2])
       #if sigma < 1 or sigma > 10:
