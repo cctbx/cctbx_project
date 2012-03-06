@@ -137,15 +137,16 @@ def other_beamlines(iobj,passthru_convention):
   beam0 = [413,415,420,428,429,443,444,457,904,914,916,917,918,919,924,928]
   KEK = [474,912,449,472]
 
-  record_date = iobj.parameters["DATE"]
-  record_tse = time.mktime(time.strptime(record_date))
-  cutoff_447 = time.mktime(time.strptime("Sun Nov 01 00:00:00 2009"))
-  if record_tse > cutoff_447:
-    KEK.append(447)
-  else:
-    known_als_detectors.append(447)
+  if iobj.serial_number == 447:
+    record_date = iobj.parameters["DATE"]
+    record_tse = time.mktime(time.strptime(record_date))
+    cutoff_447 = time.mktime(time.strptime("Sun Nov 01 00:00:00 2009"))
+    if record_tse > cutoff_447:
+      KEK.append(447)
+    else:
+      known_als_detectors.append(447)
 
-  alld = beam5+beam0+known_als_detectors+known_als831_detectors
+  alld = beam5+beam0+known_als_detectors+known_als831_detectors+KEK
   if iobj.serial_number in beam5:
     beam_center_convention = 5
   elif ADSC910_at_BioCARS(iobj):
