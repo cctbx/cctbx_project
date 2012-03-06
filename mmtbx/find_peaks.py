@@ -61,6 +61,19 @@ class peaks_holder(object):
     self.sites = sites
     self.iseqs_of_closest_atoms = iseqs_of_closest_atoms
 
+  def filter_by_secondary_map (self, map, min_value) :
+    n_deleted = 0
+    k = 0
+    while (k < len(self.sites)) :
+      map_value = map.tricubic_interpolation(self.sites[k])
+      if (map_value < min_value) :
+        del self.sites[k]
+        del self.heights[k]
+        n_deleted += 1
+      else :
+        k += 1
+    return n_deleted
+
   def sort (self, reverse=False) :
     from scitbx.array_family import flex
     selection = flex.sort_permutation(self.heights, reverse=reverse)
