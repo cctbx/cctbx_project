@@ -28,6 +28,12 @@ def exercise () :
   pdbh = any_file("%s.pdb" % os.getpid()).file_object.construct_hierarchy()
   assert (len(pdbh.atoms()) == 4)
   assert (pdbh.atoms()[0].b == 3.45)
+  # filter by 2fo-fc
+  out = StringIO()
+  peaks_holes = find_peaks_holes.run(
+    args=[pdb_file, mtz_file, "filter_peaks_by_2fofc=1.0"],
+    out=out)
+  assert contains_substring(out.getvalue(), "  mFo-DFc max       :   None")
 
 if (__name__ == "__main__") :
   exercise()

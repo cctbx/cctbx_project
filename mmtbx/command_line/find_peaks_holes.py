@@ -2,12 +2,10 @@
 
 # simple frontend to mmtbx.find_peaks, primarily intended for use in quickly
 # analyzing structures in the PDB (and storing results)
-#
-# TODO (???) plugin for Coot
 
 from mmtbx import utils
 from scitbx.array_family import flex
-from libtbx.str_utils import make_header
+from libtbx.str_utils import make_header, format_value
 from libtbx import runtime_utils
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
@@ -26,10 +24,16 @@ map_cutoff = 3.0
 anom_map_cutoff = 3.0
   .type = float
   .short_caption = Anomalous map cutoff (sigma)
+filter_peaks_by_2fofc = None
+  .type = float
+  .short_caption = Filter by 2mFo-DFc value at peak
+  .help = If this is set, peaks outside 2mFo-DFc density at the \
+    cutoff will be discarded.  (This does not apply to the analysis of \
+    solvent atoms.)  Holes will not be changed.
 write_pdb = True
   .type = bool
   .short_caption = Write peaks to PDB file
-write_maps = False
+write_maps = True
   .type = bool
   .short_caption = Save map coefficients
 output_file_prefix = peaks_holes
@@ -65,13 +69,19 @@ class peaks_holes_container (object) :
     for cutoff in cutoffs :
       n_peaks = (self.peaks.heights > cutoff).count(True)
       print >> out, "  mFo-DFc >  %-4g   : %6d" % (cutoff, n_peaks)
-    peak_max = flex.max(self.peaks.heights)
-    print >> out, "  mFo-DFc max       : %6.2f" % peak_max
+    if (len(self.peaks.heights) > 0) :
+      peak_max = flex.max(self.peaks.heights)
+    else :
+      peak_max = None
+    print >> out, "  mFo-DFc max       : %s" % format_value("%6.2f", peak_max)
     for cutoff in cutoffs :
       n_holes = (self.holes.heights < -cutoff).count(True)
       print >> out, "  mFo-DFc < -%-4g   : %6d" % (cutoff, n_holes)
-    hole_max = flex.min(self.holes.heights)
-    print >> out, "  mFo-DFc min       : %6.2f" % hole_max
+    if (len(self.holes.heights) > 0) :
+      hole_max = flex.min(self.holes.heights)
+    else :
+      hole_max = None
+    print >> out, "  mFo-DFc min       : %s" % format_value("%6.2f", hole_max)
     if (self.anom_peaks is not None) :
       print >> out, "  anomalous > %-4g : %6d" % (self.anom_map_cutoff,
         len(self.anom_peaks.heights))
@@ -185,7 +195,7 @@ class peaks_holes_container (object) :
         rg = create_atom(peak.xyz, peak.peak_height, k+1)
         waters_chain.append_residue_group(rg)
       if (include_anom) and (self.water_anom_peaks is not None) :
-        f.write("REMARK  Chain D is waters with anom. peaks (> %g sigma)\n" %
+        f.write("REMARK  Chain E is waters with anom. peaks (> %g sigma)\n" %
           self.anom_map_cutoff)
         waters_chain_2 = iotbx.pdb.hierarchy.chain(id="E")
         model.append_chain(waters_chain_2)
@@ -219,6 +229,7 @@ def find_peaks_holes (
     params=None,
     map_cutoff=3.0,
     anom_map_cutoff=3.0,
+    filter_peaks_by_2fofc=None,
     out=None) :
   """
   Find peaks and holes in mFo-DFc map, plus flag solvent atoms with
@@ -233,6 +244,15 @@ def find_peaks_holes (
   unit_cell = fmodel.xray_structure.unit_cell()
   from mmtbx import find_peaks
   from cctbx import maptbx
+  f_map = None
+  if (filter_peaks_by_2fofc is not None) :
+    f_map_ = fmodel.electron_density_map().fft_map(
+      resolution_factor=params.resolution_factor,
+      symmetry_flags=maptbx.use_space_group_symmetry,
+      map_type="2mFo-DFc",
+      use_all_data=True)
+    f_map_.apply_sigma_scaling()
+    f_map = f_map_.real_map()
   make_header("Positive difference map peaks", out=out)
   peaks_result = find_peaks.manager(
     fmodel=fmodel,
@@ -243,7 +263,11 @@ def find_peaks_holes (
   peaks_result.peaks_mapped()
   peaks_result.show_mapped(pdb_atoms)
   peaks = peaks_result.peaks()
-  # XXX very important - sites are initially fractional coordinates!
+  if (filter_peaks_by_2fofc is not None) :
+    peaks.filter_by_secondary_map(
+      map=f_map,
+      min_value=filter_peaks_by_2fofc)
+  # very important - sites are initially fractional coordinates!
   peaks.sites = unit_cell.orthogonalize(peaks.sites)
   print >> out, ""
   out.flush()
@@ -257,6 +281,11 @@ def find_peaks_holes (
   holes_result.peaks_mapped()
   holes_result.show_mapped(pdb_atoms)
   holes = holes_result.peaks()
+  # XXX is this useful?
+  #if (filter_peaks_by_2fofc is not None) :
+  #  holes.filter_by_secondary_map(
+  #    map=f_map,
+  #    min_value=filter_peaks_by_2fofc)
   holes.sites = unit_cell.orthogonalize(holes.sites)
   print >> out, ""
   out.flush()
@@ -272,6 +301,10 @@ def find_peaks_holes (
     anom_result.peaks_mapped()
     anom_result.show_mapped(pdb_atoms)
     anom = anom_result.peaks()
+    if (filter_peaks_by_2fofc is not None) :
+      anom.filter_by_secondary_map(
+        map=f_map,
+        min_value=filter_peaks_by_2fofc)
     anom.sites = unit_cell.orthogonalize(anom.sites)
     print >> out, ""
     out.flush()
@@ -344,6 +377,7 @@ mmtbx.find_peaks_holes - difference map analysis
     params=cmdline.params.find_peaks,
     map_cutoff=cmdline.params.map_cutoff,
     anom_map_cutoff=cmdline.params.anom_map_cutoff,
+    filter_peaks_by_2fofc=cmdline.params.filter_peaks_by_2fofc,
     out=out)
   prefix = cmdline.params.output_file_prefix
   if (cmdline.params.write_pdb) :
