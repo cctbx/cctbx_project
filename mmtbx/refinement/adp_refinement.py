@@ -355,7 +355,7 @@ class refine_adp(object):
       best_u_star = None
       best_u_iso = None
       for result in trial_results :
-        if(abs(result.weight-w_best)<=1.e-3) :
+        if(abs(result.weight-w_best)<=1.e-8) :
           best_u_star = result.u_star
           best_u_iso = result.u_iso
           break
