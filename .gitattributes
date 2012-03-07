@@ -1244,6 +1244,7 @@ mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_msa.py -text
+mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
 mmtbx/resolve_resources.py -text
 mmtbx/rotamer/graphics.py -text

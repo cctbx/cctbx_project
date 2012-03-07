@@ -21,22 +21,22 @@ model_prune_master_phil = """
     .type = float
     .help = Minimum 2mFo-DFc sigma level at C-alpha to keep.  Residues with \
       C-alpha in density below this cutoff will be deleted.
-  min_c_alpha_fofc = -3.0
+  max_c_alpha_fofc = -3.0
     .type = float
-    .help = Minimum mFo-DFc sigma level at C-alpha to keep.  Residues with \
+    .help = Maximum mFo-DFc sigma level at C-alpha to keep.  Residues with \
       C-alpha in difference density below this cutoff will be deleted.
   min_sidechain_2fofc = 0.5
     .type = float
     .help = Minimum mean 2mFo-DFc sigma level for sidechain atoms to keep. \
       Residues with sidechains below this level will be truncated.
-  min_sidechain_fofc = -2.8
+  max_sidechain_fofc = -2.8
     .type = float
-    .help = Minimum mean 2mFo-DFc sigma level for sidechain atoms to keep. \
+    .help = Maximum mean 2mFo-DFc sigma level for sidechain atoms to keep. \
       Residues with sidechains below this level will be truncated.
-  min_cc = 0.75
+  min_cc = 0.7
     .type = float
     .help = Minimum overall CC for entire residue to keep.
-  min_cc_sidechain = 0.7
+  min_cc_sidechain = 0.6
     .type = float
     .help = Minimum overall CC for sidechains to keep.
   min_fragment_size = 3
@@ -153,12 +153,12 @@ def prune_model (
                 score_type="sigma",
                 atoms_type="C-alpha"))
               remove_atom_group = True
-            elif (diff_map_value < params.min_c_alpha_fofc) :
+            elif (diff_map_value < params.max_c_alpha_fofc) :
               pruned.append(residue_summary(
                 chain_id=chain.id,
                 residue_group=residue_group,
                 atom_group=atom_group,
-                score=map_value,
+                score=diff_map_value,
                 score_type="sigma",
                 map_type="mFo-DFc",
                 atoms_type="C-alpha"))
@@ -239,12 +239,12 @@ def prune_model (
                   score_type="sigma",
                   atoms_type="sidechain"))
                 remove_sidechain = True
-              elif (mean_diff_value < params.min_sidechain_fofc) :
+              elif (mean_diff_value < params.max_sidechain_fofc) :
                 pruned.append(residue_summary(
                   chain_id=chain.id,
                   residue_group=residue_group,
                   atom_group=atom_group,
-                  score=mean_f_value,
+                  score=mean_diff_value,
                   score_type="sigma",
                   atoms_type="sidechain",
                   map_type="mFo-Dfc"))
@@ -270,8 +270,12 @@ def prune_model (
         resseq = residue_group.resseq_as_int()
         remove = False
         if (resseq - 1 in removed_resseqs) or (j_seq == 0) :
+          print "candidate:", resseq
           for k in range(1, params.min_fragment_size+1) :
             if (resseq + k in removed_resseqs) :
+              remove = True
+              break
+            elif ((j_seq + k) >= len(chain.residue_groups())) :
               remove = True
               break
         if (remove) :
@@ -282,6 +286,7 @@ def prune_model (
             score=None))
           chain.remove_residue_group(residue_group)
           removed_resseqs.append(resseq)
+          n_res_removed += 1
   for outlier in pruned :
     outlier.show(out)
   print >> out, "Removed %d residues and %d sidechains" % (n_res_removed,
