@@ -1,6 +1,6 @@
 try:
   import boost.python
-except ImportError:
+except Exception:
   ext = None
 else:
   ext = boost.python.import_ext("fable_ext", optional=True)
