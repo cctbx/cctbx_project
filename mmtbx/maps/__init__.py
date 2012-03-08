@@ -395,6 +395,12 @@ def map_coefficients_from_fmodel(fmodel, params):
         map_type   = params.map_type,
         isotropize = params.isotropize,
         sharp      = params.sharpening).map_coeffs
+  # XXX need to figure out why this happens
+  if (coeffs is None) :
+    raise RuntimeError(("Map coefficient generation failed (map_type=%s, "
+      "kicked=%s, sharpening=%s, isotropize=%s, anomalous=%s.") %
+        (params.map_type, params.kicked, params.sharpening, params.isotropize,
+         fmodel.f_obs().anomalous_flag()))
   # XXX is this redundant?
   if(coeffs.anomalous_flag() and not
      mmtbx.map_names(params.map_type).anomalous):
