@@ -4073,7 +4073,7 @@ class process(object):
         print >> self.log
         def note_geo():
           print >> self.log, """\
-  NOTE: a complete listing of the restaints can be found in the
+  NOTE: a complete listing of the restraints can be found in the
         .geo file."""
         note_geo()
         print >> self.log
