@@ -84,29 +84,29 @@ maps {
   map_coefficients {
     map_type = 2mFo-DFc
     format = *mtz phs
-    mtz_label_amplitudes = 2mFoDFc
-    mtz_label_phases = P2mFoDFc
+    mtz_label_amplitudes = 2FOFCWT
+    mtz_label_phases = PH2FOFCWT
     fill_missing_f_obs = False
   }
   map_coefficients {
     map_type = 2mFo-DFc
     format = *mtz phs
-    mtz_label_amplitudes = 2mFoDFc_fill
-    mtz_label_phases = P2mFoDFc_fill
+    mtz_label_amplitudes = 2FOFCWT_fill
+    mtz_label_phases = PH2FOFCWT_fill
     fill_missing_f_obs = True
   }
   map_coefficients {
     map_type = mFo-DFc
     format = *mtz phs
-    mtz_label_amplitudes = mFoDFc
-    mtz_label_phases = PmFoDFc
+    mtz_label_amplitudes = FOFCWT
+    mtz_label_phases = PHFOFCWT
     fill_missing_f_obs = False
   }
   map_coefficients {
     map_type = anomalous
     format = *mtz phs
     mtz_label_amplitudes = ANOM
-    mtz_label_phases = PANOM
+    mtz_label_phases = PHANOM
   }
   map {
     map_type = 2mFo-DFc
