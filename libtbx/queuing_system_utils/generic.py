@@ -372,7 +372,8 @@ class queue_interface (object) :
     else:
       if (isinstance(command, str)) :
         self.command = [ command, ]
-      self.command = command
+      else :
+        self.command = command
 
 class sge_interface(queue_interface):
   """
