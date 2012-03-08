@@ -58,13 +58,7 @@ Change-of-basis operator: h,k,l or x,y,z or
   labels = ["H","K","L"]
   warnings = []
   for array in miller_arrays :
-    if (array.is_xray_reconstructed_amplitude_array()) :
-      if ("F(+)" in labels) :
-        labels.extend(["F_rec(+)", "SIGF_rec(+)", "F_rec(-)", "SIGF_rec(-)"])
-      else :
-        labels.extend(["F(+)", "SIGF(+)", "F(-)", "SIGF(-)"])
-    else :
-      labels.extend(array.info().labels)
+    labels.extend(array.info().labels)
     array = array.change_basis(cb_op=cb_op)
     new_arrays.append(array)
   mtz_out = new_arrays[0].as_mtz_dataset(
