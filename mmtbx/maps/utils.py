@@ -61,10 +61,11 @@ class fast_maps_from_hkl_file (object) :
         os.path.basename(file_name)
     f_obs = None
     fallback_f_obs = []
-    default_labels = ["F,SIGF","FOBS,SIGFOBS","F(+),SIGF(+),F(-),SIGF(-)",
-      "FOBS_X"]
+    default_labels = ["F(+),SIGF(+),F(-),SIGF(-)", "I(+),SIGI(+),I(-),SIGI(-)",
+      "F,SIGF","FOBS,SIGFOBS", "FOBS_X"]
     default_rfree_labels = ["FreeR_flag", "FREE", "R-free-flags"]
     all_labels = []
+    best_label = sys.maxint
     data_file = file_reader.any_file(file_name, force_type="hkl")
     for miller_array in data_file.file_server.miller_arrays :
       labels = miller_array.info().label_string()
@@ -73,8 +74,10 @@ class fast_maps_from_hkl_file (object) :
         f_obs = miller_array
         break
       elif (f_label is None) and (labels in default_labels) :
-        f_obs = miller_array
-        break
+        label_score = default_labels.index(labels)
+        if (label_score < best_label) :
+          f_obs = miller_array
+          best_label = label_score
       elif miller_array.is_xray_amplitude_array() :
         fallback_f_obs.append(miller_array)
     if f_obs is None :
@@ -89,6 +92,8 @@ class fast_maps_from_hkl_file (object) :
         raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
           "column labels (possible choices: %s)") % (f_label, file_name,
             " ".join(all_labels)))
+    if (f_obs.is_xray_intensity_array()) :
+      f_obs = f_obs.f_sq_as_f()
     sys_abs_flags = f_obs.sys_absent_flags().data()
     f_obs = f_obs.map_to_asu().select(selection=~sys_abs_flags)
     r_free = data_file.file_server.get_r_free_flags(
@@ -105,6 +110,8 @@ class fast_maps_from_hkl_file (object) :
       array, test_flag_value = r_free[0]
       new_flags = array.customized_copy(
         data=array.data() == test_flag_value).map_to_asu()
+      if (f_obs.anomalous_flag()) and (not new_flags.anomalous_flag()) :
+        new_flags = new_flags.generate_bijvoet_mates()
       self.r_free_flags = new_flags.common_set(f_obs)
       self.f_obs = f_obs.common_set(self.r_free_flags)
     self.log = None
