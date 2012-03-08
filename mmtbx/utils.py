@@ -2819,3 +2819,46 @@ class extract_box_around_model_and_map(object):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
     return box_map_coeffs
+
+class experimental_data_target_and_gradients(object):
+  def __init__(self, fmodel, alpha_beta=None):
+    self.fmodel = fmodel
+    size = self.fmodel.xray_structure.scatterers().size()
+    self.sel = flex.bool(size, True).iselection()
+    self.target_functor = self.fmodel.target_functor(
+      alpha_beta = alpha_beta)(compute_gradients=True)
+
+  def update_xray_structure(self, xray_structure, alpha_beta=None):
+    self.fmodel.update_xray_structure(xray_structure = xray_structure,
+      update_f_calc=True)
+    self.target_functor = self.fmodel.target_functor(
+      alpha_beta = alpha_beta)(compute_gradients=True)
+
+  def grad_occ(self):
+    self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
+    self.fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
+      iselection = self.sel)
+    return self.target_functor.gradients_wrt_atomic_parameters(occupancy=True)
+
+  def grad_sites_cart(self):
+    self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
+    return self.target_functor.d_target_d_site_cart()
+
+  def target(self):
+    return self.target_functor.target_work()
+
+  def show(self, log=None):
+    if(log is None): log = sys.stdout
+    print >> log, "Target type and value: %s %-15.6f" %(self.fmodel.target_name,
+      self.target())
+    print >> log, "r_work=%6.4f r_free=%6.4f" % (self.fmodel.r_work(),
+      self.fmodel.r_free())
+    go = self.grad_occ()
+    gs = self.grad_sites_cart()
+    sites_cart = self.fmodel.xray_structure.sites_cart()
+    print >> log, "                                          Gradients"
+    print >> log, "                sites_cart   occ   b_iso      occ                 sites_cart"
+    fmt="%8.3f %8.3f %8.3f %5.2f %7.2f %8.4f %8.4f %8.4f %8.4f"
+    for i, sc in enumerate(self.fmodel.xray_structure.scatterers()):
+      print >> log, fmt%(sites_cart[i][0], sites_cart[i][1], sites_cart[i][2],
+        sc.occupancy,adptbx.u_as_b(sc.u_iso), go[i], gs[i][0],gs[i][1],gs[i][2])

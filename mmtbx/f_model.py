@@ -1128,8 +1128,9 @@ class manager(manager_mixin):
         "Unknown target name: %s" % show_string(self.target_name))
     return result
 
-  def target_functor(self):
-    return mmtbx.refinement.targets.target_functor(manager=self)
+  def target_functor(self, alpha_beta=None):
+    return mmtbx.refinement.targets.target_functor(manager=self,
+      alpha_beta=alpha_beta)
 
   def set_target_name(self, target_name):
     if (target_name == "ls"): target_name = "ls_wunit_k1"

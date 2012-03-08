@@ -144,7 +144,7 @@ class phaser_sad_target_functor(object):
 
 class target_functor(object):
 
-  def __init__(self, manager):
+  def __init__(self, manager, alpha_beta=None):
     self.manager = manager
     target_name = manager.target_name
     assert target_name is not None
@@ -166,11 +166,12 @@ class target_functor(object):
         experimental_phases = manager.hl_coeffs()
       else:
         experimental_phases = None
+      if(alpha_beta is None): alpha_beta = manager.alpha_beta()
       self.core = xray.target_functors.max_like(
         f_obs=manager.f_obs(),
         r_free_flags=manager.r_free_flags(),
         experimental_phases=experimental_phases,
-        alpha_beta=manager.alpha_beta(),
+        alpha_beta=alpha_beta,
         scale_factor=manager.scale_ml_wrapper(),
         integration_step_size=5.0)
     else:
