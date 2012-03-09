@@ -101,6 +101,48 @@ class DetectorImageBase(object):
                      BEAM_CENTER_X=float, BEAM_CENTER_Y=float,
                      CCD_IMAGE_SATURATION=int, DETECTOR_SN=str )
 
+  def get_spotfinder(self,distl_params): #following heuristics_base.register_frames() example
+    #application-specific adjustments to parameters
+    #XXX this should probably be a deep copy of parameters.
+    if distl_params.distl.res.inner!=None:
+      distl_params.distl_lowres_limit = distl_params.distl.res.inner
+    if distl_params.distl.res.outer!=None:
+      distl_params.force_method2_resolution_limit = distl_params.distl.res.outer
+      distl_params.distl_highres_limit = distl_params.distl.res.outer
+
+    distl_params.distl_force_binning = False
+    distl_params.distl_permit_binning = False
+    distl_params.wedgelimit = 1
+    distl_params.spotfinder_header_tests = False
+
+    #unusual location for min spot area tests...
+    from iotbx.detectors.context.config_detector import beam_center_convention_from_image_object
+    beam_center_convention_from_image_object(self,distl_params)
+    # end special min spot area treatment
+
+    from spotfinder.applications.practical_heuristics import heuristics_base
+    from spotfinder.diffraction.imagefiles import file_names
+    class empty:pass
+    E = empty()
+    E.argv = ["Empty",self.filename]
+    names = file_names(E)
+    this_frame = names.frames()[0]
+    process_dictionary = dict(twotheta = "%f"%self.twotheta,
+       ybeam = "%f"%self.beamy,
+       xbeam = "%f"%self.beamx,
+       distance = "%f"%self.distance,
+       wavelength = "%f"%self.wavelength,
+       template = [item.template for item in names.FN if item.number==this_frame][0],
+                              )
+    Spotfinder = heuristics_base(process_dictionary,distl_params)
+    Spotfinder.images[this_frame] = Spotfinder.oneImage(this_frame,
+      Spotfinder.pd, self)
+    Spotfinder.determine_maxcell(this_frame,Spotfinder.pd)
+    Spotfinder.images[this_frame]['spotoutput']['relpath']=self.filename
+    from spotfinder.applications.stats_distl import pretty_image_stats
+    pretty_image_stats(Spotfinder,this_frame)
+    return Spotfinder,this_frame
+
   def debug_write(self,fileout,mod_data=None):
     if not self.parameters.has_key("TWOTHETA"):
       self.parameters["TWOTHETA"]=0.0
