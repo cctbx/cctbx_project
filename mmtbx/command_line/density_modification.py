@@ -359,15 +359,17 @@ map_coefficients {
     mtz_dataset.add_miller_array(
       phase_source.array(data=flex.abs(phase_source.data())),
       column_root_label="FOM",
+      column_types='W',
       label_decorator=label_decorator)
     mtz_dataset.add_miller_array(
       phase_source.array(data=phase_source.phases(deg=True).data()),
       column_root_label="PHIB",
+      column_types='P',
       label_decorator=None)
     if mtz_params.output_hendrickson_lattman_coefficients:
       mtz_dataset.add_miller_array(
         dm_hl_coeffs,
-        column_root_label="P",
+        column_root_label="HL",
         label_decorator=label_decorator)
     mtz_dataset.mtz_object().write(mtz_params.file_name)
 
