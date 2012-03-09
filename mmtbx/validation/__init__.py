@@ -51,5 +51,5 @@ class residue_info (object) :
       return "(chain '%s' and resname %s and resid %s)" % (self.chain_id,
         self.resname, self.resid)
     else :
-      return "(chain '%s' and resname %s and resid %s and altloc %s)" %
+      return "(chain '%s' and resname %s and resid %s and altloc %s)" % \
         (self.chain_id, self.resname, self.resid, self.altloc)
