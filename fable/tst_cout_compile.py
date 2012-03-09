@@ -301,7 +301,9 @@ class process_file_info(object):
                 command=cmda, join_stdout_stderr=True)
               print "\n".join(buffers.stdout_lines)
             return result
-          if (file_name == "dynamic_parameters_1.f"):
+          if (file_name == "read_lines.f"):
+            exercise_end_of_line(exe_name=exe_name, verbose=opts.verbose)
+          elif (file_name == "dynamic_parameters_1.f"):
             buffers = run_with_args("--fem-dynamic-parameters=5")
             assert not show_diff(buffers.stdout_lines, """\
           14          15          16          17          18          19
@@ -322,6 +324,36 @@ class process_file_info(object):
               "C", "rP  ", "uWq ", "D   "]) + "\n")
     #
     return n_failures[0]
+
+def exercise_end_of_line(exe_name, verbose):
+  lines = """\
+a
+bc
+def
+ghij
+klmno
+""".splitlines()
+  open("unix.txt", "wb").write("\n".join(lines)+"\n")
+  open("dos.txt", "wb").write("\r\n".join(lines)+"\r\n")
+  open("dos2.txt", "wb").write("\r\r\n".join(lines)+"\r\n")
+  open("mac.txt", "wb").write("\r".join(lines)+"\r")
+  from libtbx import easy_run
+  from libtbx.utils import remove_files
+  import os
+  op = os.path
+  expected_outputs = [
+    "a   \nbc  \ndef \nghij\nklmn\n",
+    "a   \nbc  \ndef \nghij\nklmn\n",
+    "a\r  \nbc\r \ndef\r\nghij\nklmn\n",
+    "a\rbc\n"]
+  for vers,expected in zip(["unix", "dos", "dos2", "mac"], expected_outputs):
+    remove_files(paths=["read_lines_out"])
+    cmd = "%s < %s.txt > read_lines_out" % (op.join(".", exe_name), vers)
+    if (verbose): print cmd
+    easy_run.fully_buffered(command=cmd).raise_if_errors_or_output()
+    assert op.isfile("read_lines_out")
+    result = open("read_lines_out", "rb").read()
+    assert result == expected
 
 def exercise_compile_valid(regex_patterns, opts):
   from fable import cout

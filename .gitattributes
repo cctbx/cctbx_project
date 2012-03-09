@@ -704,6 +704,7 @@ fable/test/valid/read_iostat_end_err_1.f -text
 fable/test/valid/read_iostat_end_err_2.f -text
 fable/test/valid/read_iostat_from_file.f -text
 fable/test/valid/read_iostat_from_string.f -text
+fable/test/valid/read_lines.f -text
 fable/test/valid/read_rec_iostat.f -text
 fable/test/valid/read_star.f -text
 fable/test/valid/read_star_empty.f -text

@@ -8,8 +8,7 @@ namespace fem { namespace utils {
   is_end_of_line(
     int c)
   {
-    return (c == '\r'
-         || c == '\n');
+    return (c == '\n');
   }
 
   inline

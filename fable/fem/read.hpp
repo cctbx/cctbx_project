@@ -195,6 +195,15 @@ namespace fem {
       inp_get()
       {
         int result = inp->get();
+        if (result == '\r') {
+          int next_char = inp->get();
+          if (next_char == '\n') {
+            result = next_char;
+          }
+          else {
+            inp->backup();
+          }
+        }
         if (utils::is_stream_err(result)) {
           inp.reset();
           if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;

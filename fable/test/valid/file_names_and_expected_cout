@@ -415,6 +415,17 @@ read_format.f
 read_format.f
 <1 3<
 | 14|
+read_lines.f
+<a<
+<bc<
+<def<
+<ghij<
+<klmno<
+|a   |
+|bc  |
+|def |
+|ghij|
+|klmn|
 open_write_read.f
 |OK|
 write_implied_do_1.f
