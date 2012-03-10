@@ -875,6 +875,57 @@ Si(2)
     y,-x+y,-z    3.1094
     x-y,x,-z     3.1094  sym. equiv.
 """)
+      structure_plus = structure.deep_copy_scatterers()
+      structure_plus.add_scatterer(xray.scatterer(
+        label="O",
+        site=(0,0,0)))
+      sym_table.append(crystal.pair_sym_dict())
+      sio = StringIO()
+      sym_table.show_distances(
+        unit_cell=structure_plus.unit_cell(),
+        site_symmetry_table=structure_plus.site_symmetry_table(),
+        site_labels=[scatterer.label
+          for scatterer in structure_plus.scatterers()],
+        sites_frac=structure_plus.sites_frac(),
+        out=sio)
+      assert not show_diff(sio.getvalue(), """\
+Si                        <<  0.2466,  0.9965,  0.2500>>
+  Si:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
+  Si:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
+  Si:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
+  Si:   3.1703 sym. equiv. (  0.3294,  0.9111,  0.1254) sym=-y+1,x-y+1,z
+Si                        <<  0.5817,  0.6706,  0.1254>>
+  Si:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
+  Si:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
+  Si:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
+Si                        <<  0.2478,  0.0000,  0.0000>>
+  Si:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
+  Si:   3.1094 sym. equiv. (  0.2478,  0.2478,  0.0000) sym=x-y,x,-z
+O                         <<  0.0000,  0.0000,  0.0000>>
+  no neighbors
+""")
+      del sym_table[-1]
+      sio = StringIO()
+      sym_table.show_distances(
+        unit_cell=structure.unit_cell(),
+        site_symmetry_table=structure.site_symmetry_table(),
+        sites_cart=structure.sites_cart(),
+        show_cartesian=True,
+        out=sio)
+      assert not show_diff(sio.getvalue(), """\
+site_1                        <<   -3.16,   10.83,    5.20>>
+  site_1:   3.0504             (   -4.68,    8.19,    5.20) sym=-y+1,-x+1,-z+1/2
+  site_1:   3.1822             (   -4.75,   13.58,    5.20) sym=x,x-y+2,-z+1/2
+  site_2:   3.1703             (   -1.58,    9.90,    7.79) sym=-y+1,x-y+1,-z+1/2
+  site_2:   3.1703 sym. equiv. (   -1.58,    9.90,    2.61) sym=-y+1,x-y+1,z
+site_2                        <<    3.09,    7.29,    2.61>>
+  site_2:   3.0178             (    1.58,    9.90,    2.61) sym=x,x-y+1,z
+  site_2:   3.1659             (    1.51,    4.55,    2.61) sym=-y+1,-x+1,z
+  site_3:   3.1986             (    4.72,    8.17,    0.00) sym=-x+y+1,-x+1,z
+site_3                        <<    3.11,    0.00,    0.00>>
+  site_3:   3.1094             (    1.55,   -2.69,    0.00) sym=y,-x+y,-z
+  site_3:   3.1094 sym. equiv. (    1.55,    2.69,    0.00) sym=x-y,x,-z
+""")
   #
   sites_cart = flex.vec3_double([(0,0,0), (2,0,0), (0,3,0)])
   asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
