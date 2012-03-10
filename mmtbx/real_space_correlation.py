@@ -962,3 +962,61 @@ def show_result(result, show_hydrogens = False, log = None):
         r.map_2_val,
         r.data_points)
   else: raise RuntimeError
+
+def map_statistics_for_atom_selection (
+    atom_selection,
+    fmodel=None,
+    resolution_factor=0.25,
+    map1=None,
+    map2=None,
+    xray_structure=None,
+    map1_type="2mFo-DFc",
+    map2_type="Fmodel",
+    atom_radius=1.5) :
+  """
+  Simple-but-flexible function to give the model-to-map CC and mean density
+  values (sigma-scaled, unless pre-calculated maps are provided) for any
+  arbitrary atom selection.
+  """
+  assert (atom_selection is not None) and (len(atom_selection) > 0)
+  if (fmodel is not None) :
+    assert (map1 is None) and (map2 is None) and (xray_structure is None)
+    map1_coeffs = fmodel.electron_density_map().map_coefficients(map1_type)
+    map1 = map1_coeffs.fft_map(
+      resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
+    map2_coeffs = fmodel.electron_density_map().map_coefficients(map2_type)
+    map2 = map2_coeffs.fft_map(
+      resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
+    xray_structure = fmodel.xray_structure
+  else :
+    assert (not None in [map1, map2, xray_structure])
+    assert isinstance(map1, flex.double) and isinstance(map2, flex.double)
+  sites = xray_structure.sites_cart().select(atom_selection)
+  scatterers = xray_structure.scatterers().select(atom_selection)
+  atom_radii = flex.double(sites.size(), atom_radius)
+  for i_seq, sc in enumerate(scatterers):
+    if (sc.element_symbol().strip().lower() in ["h","d"]):
+      atom_radii[i_seq] = 1.0
+  sel = maptbx.grid_indices_around_sites(
+    unit_cell  = xray_structure.unit_cell(),
+    fft_n_real = map1.focus(),
+    fft_m_real = map1.all(),
+    sites_cart = sites,
+    site_radii = atom_radii)
+  map1_sel = map1.select(sel)
+  map2_sel = map2.select(sel)
+  cc = flex.linear_correlation(x=map1_sel, y=map2_sel).coefficient()
+  return group_args(
+    cc=cc,
+    map1_mean=flex.mean(map1_sel.as_1d()),
+    map2_mean=flex.mean(map2_sel.as_1d()))
+
+def map_statistics_for_fragment (fragment, **kwds) :
+  """
+  Shortcut to map_statistics_for_atom_selection using a PDB hierarchy object
+  to define the atom selection.
+  """
+  atoms = fragment.atoms()
+  i_seqs = atoms.extract_i_seq()
+  assert (not i_seqs.all_eq(0))
+  return map_statistics_for_atom_selection(i_seqs, **kwds)
