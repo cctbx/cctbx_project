@@ -19,19 +19,19 @@ def exercise_basic () :
     anomalous_flag=True,
     d_min=1.0)
   assert (set1.indices().size() == 341)
-  data1 = flex.double(set1.indices().size(), 100.)
+  data0 = flex.double(set1.indices().size(), 100.)
   sigmas1 = flex.double(set1.indices().size(), 4.)
   for i in range(10) :
-    data1[2+i*30] = -1
+    data0[2+i*30] = -1
   for i in range(10) :
-    data1[5+i*30] = 7.5
-  array1 = set1.array(data=data1, sigmas=sigmas1)
-  array1.set_observation_type_xray_intensity()
-  flags = array1.generate_r_free_flags(
+    data0[5+i*30] = 7.5
+  array0 = set1.array(data=data0, sigmas=sigmas1)
+  array0.set_observation_type_xray_intensity()
+  flags = array0.generate_r_free_flags(
     use_lattice_symmetry=True).average_bijvoet_mates()
-  mtz1 = array1.as_mtz_dataset(column_root_label="I-obs")
-  mtz1.add_miller_array(flags, column_root_label="R-free-flags")
-  mtz1.mtz_object().write("tst_data.mtz")
+  mtz0 = array0.as_mtz_dataset(column_root_label="I-obs")
+  mtz0.add_miller_array(flags, column_root_label="R-free-flags")
+  mtz0.mtz_object().write("tst_data.mtz")
   # convert intensities to amplitudes
   new_phil = libtbx.phil.parse("""
 mtz_file {
@@ -119,6 +119,20 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst1.mtz")
   data3 = miller_arrays[0].data()
   assert (flex.max(data3) == 2000.)
+  # apply isotropic B-factor
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.miller_array[0].add_b_iso = 20.0
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  data_b = miller_arrays[0].data()
+  sigmas_b = miller_arrays[0].sigmas()
+  assert approx_equal(data_b[0], 72.68358, eps=0.00001)
+  # apply anisotropic B-factor
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.miller_array[0].add_b_aniso = (20.,20.,20.,0.,0.,0.)
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  data_b = miller_arrays[0].data()
+  sigmas_b = miller_arrays[0].sigmas()
+  assert approx_equal(data_b[0], 72.68358, eps=0.00001)
   # improper operations on R-free flags
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].scale_factor = None
@@ -249,7 +263,7 @@ mtz_file {
   new_selection = (miller_arrays[1].data() == 0)
   assert (free_selection.all_eq(new_selection))
   # more R-free manipulations
-  mtz2 = array1.as_mtz_dataset(column_root_label="I-obs")
+  mtz2 = array0.as_mtz_dataset(column_root_label="I-obs")
   flags2 = flags.generate_bijvoet_mates()
   mtz2.add_miller_array(flags2, column_root_label="R-free-flags")
   mtz2.mtz_object().write("tst_data4.mtz")
@@ -274,7 +288,7 @@ mtz_file {
   assert ((miller_arrays[0].anomalous_flag()) and
           (not miller_arrays[1].anomalous_flag()))
   # flags all the same value
-  mtz2 = array1.as_mtz_dataset(column_root_label="I-obs")
+  mtz2 = array0.as_mtz_dataset(column_root_label="I-obs")
   flags2 = flags.generate_bijvoet_mates()
   flags2 = flags2.customized_copy(
     data=flex.int(flags2.data().size(), 1))
@@ -292,8 +306,8 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst5.mtz")
   assert miller_arrays[1].data().all_eq(1)
   # reconstructed amplitudes, yuck
-  mtz3 = array1.as_mtz_dataset(column_root_label="I-obs")
-  indices = array1.average_bijvoet_mates().indices()
+  mtz3 = array0.as_mtz_dataset(column_root_label="I-obs")
+  indices = array0.average_bijvoet_mates().indices()
   # XXX why does this come out as an unmerged array?
   mtz3.add_column(label="F", type="F").set_reals(
     miller_indices=indices,
