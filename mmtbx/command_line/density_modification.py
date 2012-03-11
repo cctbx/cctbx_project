@@ -110,9 +110,9 @@ def run(args, log = sys.stdout, as_gui_program=False):
     args=command_line.args,
     cmd_cs=command_line.symmetry,
     master_params=parsed,
-    log=sys.stdout,
+    log=log,
     suppress_symmetry_related_errors=True)
-  processed_args.params.show()
+  processed_args.params.show(out=log)
   params = processed_args.params.extract().density_modification
   output_plots = command_line.options.output_plots
 
@@ -133,11 +133,11 @@ def run(args, log = sys.stdout, as_gui_program=False):
   fo = mmtbx.utils.determine_data_and_flags(
     server,
     parameters=params.input.reflection_data,
-    extract_r_free_flags=False).f_obs
+    extract_r_free_flags=False,log=log).f_obs
   hl_coeffs = mmtbx.utils.determine_experimental_phases(
     server,
     params.input.experimental_phases,
-    log=sys.stdout,
+    log=log,
     parameter_scope="",
     working_point_group=None,
     symmetry_safety_check=True,
@@ -397,6 +397,7 @@ class density_modify(density_modification.density_modification):
       self, params, fo, hl_coeffs,
       ncs_object=ncs_object,
       map_coeffs=map_coeffs,
+      log=log,
       as_gui_program=as_gui_program)
     if len(self.correlation_coeffs) > 1:
       model_coeffs, start_coeffs = self.model_map_coeffs.common_sets(self.map_coeffs_start)
@@ -449,7 +450,7 @@ def validate_params (params) :
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
     return run(args=list(self.args),
-      log=sys.stdout,
+      log=sys.stdout, # 2012-03-09 should be called with log defined?
       as_gui_program=True)
 
 class result (object) :
