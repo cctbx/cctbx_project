@@ -91,7 +91,7 @@ mtz_file
     .style = noauto menu_item
   miller_array
     .multiple = True
-    .short_caption = Output Miller array
+    .short_caption = Output data array
     .style = fixed auto_align
   {
     file_name = None
@@ -119,21 +119,35 @@ mtz_file
         allows the observation type to be set without modifying the data. \
         This is primarily used for structure factors downloaded from the PDB, \
         which sometimes have the data type specified incorrectly.
+      .expert_level = 2
     scale_max = None
       .type = float
       .short_caption = Scale to maximum value
       .help = Scales data such that the maximum is equal to the given value
+      .expert_level = 1
     scale_factor = None
       .type = float
       .help = Multiplies data with the given factor
+      .expert_level = 1
     remove_negatives = False
       .type = bool
       .short_caption = Remove negative values
+      .expert_level = 1
     massage_intensities = False
       .type = bool
+      .expert_level = 2
     filter_by_signal_to_noise = None
       .type = float
       .short_caption = Filter by signal-to-noise ratio
+      .expert_level = 2
+    add_b_iso = None
+      .type = float
+      .short_caption = Add isotropic B-factor
+      .expert_level = 2
+    add_b_aniso = 0 0 0 0 0 0
+      .type = floats(size=6)
+      .short_caption = Add anisotropic B-factor
+      .expert_level = 2
     output_non_anomalous = False
       .type = bool
       .short_caption = Output non-anomalous data
@@ -549,6 +563,24 @@ class process_arrays (object) :
         data = new_array.data()
         new_array = new_array.select(
           (data / sigmas) > array_params.filter_by_signal_to_noise)
+      # leave the default as [0]*6 to make the format clear, but reset to
+      # None if unchanged
+      if (array_params.add_b_aniso == [0,0,0,0,0,0]) :
+        array_params.add_b_aniso = None
+      if ((array_params.add_b_iso is not None) or
+          (array_params.add_b_aniso is not None)) :
+        if (not isinstance(new_array.data(), flex.double) or
+                isinstance(new_array.data(), flex.complex_double)) :
+          raise Sorry(("Applying a B-factor to the data in %s:%s is not "+
+            "permitted.") % (file_name, array_params.labels))
+        if (array_params.add_b_iso is not None) :
+          new_array = new_array.apply_debye_waller_factors(
+            b_iso=array_params.add_b_iso,
+            apply_to_sigmas=True)
+        if (array_params.add_b_aniso is not None) :
+          new_array = new_array.apply_debye_waller_factors(
+            b_cart=array_params.add_b_aniso,
+            apply_to_sigmas=True)
 
       #-----------------------------------------------------------------
       # MISCELLANEOUS
