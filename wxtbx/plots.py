@@ -124,7 +124,7 @@ class plot_container (wx.BoxSizer) :
   def save_image (self, default_path="") :
     output_file = wx.FileSelector("Saved image name",
       default_path=default_path,
-      default_filename="plot.pdf",
+      default_filename="plot.png",
       wildcard="Adobe PDF figure (*.pdf)|*.pdf|" + \
                "PNG image (*.png)|*.png|" + \
                "Postscript figure (*.ps)|*.ps", flags=wx.SAVE)
@@ -138,17 +138,19 @@ class plot_container (wx.BoxSizer) :
 
 class histogram (plot_container) :
   def show_histogram (self, data, n_bins, reference_value=None, pos=(1,1,1),
-      draw_now=True, x_label=None, y_label=None) :
+      draw_now=True, x_label=None, y_label=None, title=None) :
     assert len(pos) == 3
     self.figure.clear()
     p = self.figure.add_subplot(*pos)
     p.hist(data, n_bins, facecolor='blue')
     if reference_value is not None :
       p.axvline(reference_value, color='r')
-    if x_label is not None :
+    if (x_label is not None) :
       p.set_xlabel(x_label)
-    if y_label is not None :
+    if (y_label is not None) :
       p.set_ylabel(y_label)
+    if (title is not None) :
+      p.set_title(title)
     if draw_now :
       self.canvas.draw()
     return p
