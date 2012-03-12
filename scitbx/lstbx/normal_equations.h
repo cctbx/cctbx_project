@@ -9,7 +9,7 @@
 #include <scitbx/array_family/owning_ref.h>
 #include <scitbx/array_family/accessors/row_and_column.h>
 #include <scitbx/matrix/cholesky.h>
-#include <scitbx/matrix/matrix_vector_operations.h>
+#include <scitbx/matrix/symmetric_rank_1_update.h>
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
 
@@ -332,7 +332,8 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
    and references therein.
   */
-  template <typename FloatType>
+  template <typename FloatType,
+            template<typename> class SumOfRank1UpdatesType=matrix::sum_of_symmetric_rank_1_updates>
   class non_linear_ls_with_separable_scale_factor
   {
   public:
@@ -349,7 +350,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         n_params(n_parameters),
         n_data(0),
         normalised_(normalised),
-        a(n_parameters),
+        grad_yc_dot_grad_yc(n_parameters),
         yo_dot_grad_yc(n_parameters),
         yc_dot_grad_yc(n_parameters),
         grad_k_star(n_parameters),
@@ -400,10 +401,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                       scalar_t yo, scalar_t w)
     {
       add_residual(yc, yo, w);
-      double *pa = a.begin();
-      for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
-        *pa++ += w * grad_yc[i] * grad_yc[j];
-      }
+      grad_yc_dot_grad_yc.add(grad_yc, w);
       for (int i=0; i<n_params; ++i) {
         yo_dot_grad_yc[i] += w * yo * grad_yc[i];
         yc_dot_grad_yc[i] += w * yc * grad_yc[i];
@@ -466,6 +464,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     void finalise(bool objective_only=false) {
       SCITBX_ASSERT(!finalised() && n_equations())(n_equations());
       finalised_ = true;
+
+      grad_yc_dot_grad_yc.finalise();
+      a = grad_yc_dot_grad_yc;
 
       scalar_t k_star = optimal_scale_factor(), k_star_sq = k_star*k_star;
       r_sq = yo_sq*(1 - (k_star_sq * yc_sq)/yo_sq);
@@ -534,7 +535,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     void reset() {
       n_data = 0;
       yo_dot_yc = 0; yc_sq = 0; yo_sq = 0;
-      std::fill(a.begin(), a.end(), scalar_t(0));
+      grad_yc_dot_grad_yc.reset();
       std::fill(yo_dot_grad_yc.begin(), yo_dot_grad_yc.end(), scalar_t(0));
       std::fill(yc_dot_grad_yc.begin(), yc_dot_grad_yc.end(), scalar_t(0));
       std::fill(grad_k_star.begin(), grad_k_star.end(), scalar_t(0));
@@ -546,6 +547,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     int n_params;
     std::size_t n_data;
     bool normalised_;
+    SumOfRank1UpdatesType<scalar_t> grad_yc_dot_grad_yc;
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
     vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;
