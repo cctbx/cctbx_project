@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       157,          7]
-NotebookDataLength[      5149,        172]
-NotebookOptionsPosition[      4452,        143]
-NotebookOutlinePosition[      4809,        159]
-CellTagsIndexPosition[      4766,        156]
+NotebookDataLength[      6469,        202]
+NotebookOptionsPosition[      5769,        173]
+NotebookOutlinePosition[      6126,        189]
+CellTagsIndexPosition[      6083,        186]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -36,8 +36,18 @@ Cell[BoxData[
 Cell[CellGroupData[{
 
 Cell[BoxData[{
- RowBox[{"p", "[", 
-  RowBox[{"i", ",", "j", ",", "n"}], "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"p", "[", 
+   RowBox[{"i", ",", "j", ",", "n"}], "]"}], "\[IndentingNewLine]", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "The", " ", "following", " ", "is", " ", "the", " ", "original", " ", 
+    "implementation", " ", "in", " ", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"scitbx", "/", "array_family"}], "/", "accessors"}], "/", 
+     RowBox[{"packed_matrix", ".", "h"}]}], " ", "for", " ", "packed_u"}], 
+   " ", "\[IndentingNewLine]", "*)"}]}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{"p", "[", 
@@ -53,7 +63,9 @@ Cell[BoxData[{
   "Simplify"}]}], "Input",
  CellChangeTimes->{{3.5339745252284327`*^9, 3.5339745273004427`*^9}, {
   3.533974574418998*^9, 3.533974594138153*^9}, {3.5339746718094893`*^9, 
-  3.533974689561781*^9}, {3.533974738657791*^9, 3.533974762125843*^9}}],
+  3.533974689561781*^9}, {3.533974738657791*^9, 3.533974762125843*^9}, {
+  3.540560321876831*^9, 3.540560350276373*^9}, {3.5405604528884153`*^9, 
+  3.5405604795103493`*^9}}],
 
 Cell[BoxData[
  RowBox[{
@@ -78,17 +90,23 @@ Cell[BoxData["True"], "Output",
 
 Cell[BoxData[
  RowBox[{
-  RowBox[{"p1", "[", 
-   RowBox[{"i_", ",", "j_", ",", "n_"}], "]"}], ":=", 
-  RowBox[{
+  RowBox[{"(*", " ", 
    RowBox[{
-    RowBox[{"(", 
-     RowBox[{
-      RowBox[{"2", "n"}], "-", "1", "-", "i"}], ")"}], 
-    RowBox[{"i", "/", "2"}]}], "+", "j"}]}]], "Input",
+   "This", " ", "is", " ", "a", " ", "simpler", " ", "formula", " ", "with", 
+    " ", "less", " ", "ops"}], " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"p1", "[", 
+    RowBox[{"i_", ",", "j_", ",", "n_"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"2", "n"}], "-", "1", "-", "i"}], ")"}], 
+     RowBox[{"i", "/", "2"}]}], "+", "j"}]}]}]], "Input",
  CellChangeTimes->{{3.533974768405034*^9, 3.533974782610043*^9}, {
   3.5339748142004957`*^9, 3.5339748234592247`*^9}, {3.5339750730311823`*^9, 
-  3.533975074031617*^9}}],
+  3.533975074031617*^9}, {3.540560368770965*^9, 3.54056037889742*^9}, {
+  3.5405604221073236`*^9, 3.540560429690488*^9}}],
 
 Cell[CellGroupData[{
 
@@ -108,19 +126,31 @@ Cell[BoxData["True"], "Output",
 
 Cell[BoxData[
  RowBox[{
-  RowBox[{"q", "[", 
-   RowBox[{"i_", ",", "j_", ",", "n_"}], "]"}], ":=", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "This", " ", "is", " ", "the", " ", "original", " ", "implementation", " ",
+     "in", "  ", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"scitbx", "/", "array_family"}], "/", "accessors"}], "/", 
+     RowBox[{"packed_matrix", ".", "h"}]}], " ", "for", " ", "packed_l", " ", 
+    "\[IndentingNewLine]", "Already", " ", "simplest", " ", "possible"}], " ",
+    "\[IndentingNewLine]", "*)"}], "\[IndentingNewLine]", 
   RowBox[{
-   RowBox[{"Sum", "[", 
-    RowBox[{"k", ",", 
-     RowBox[{"{", 
-      RowBox[{"k", ",", "1", ",", "i"}], "}"}]}], "]"}], "+", 
-   "j"}]}]], "Input",
+   RowBox[{"q", "[", 
+    RowBox[{"i_", ",", "j_", ",", "n_"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{"Sum", "[", 
+     RowBox[{"k", ",", 
+      RowBox[{"{", 
+       RowBox[{"k", ",", "1", ",", "i"}], "}"}]}], "]"}], "+", 
+    "j"}]}]}]], "Input",
  CellChangeTimes->{{3.533975085497325*^9, 3.533975099018035*^9}, {
   3.5339751734614687`*^9, 3.533975181290846*^9}, {3.533975247791946*^9, 
   3.533975248554481*^9}, {3.533975284658141*^9, 3.533975284813034*^9}, {
   3.5339753161227427`*^9, 3.5339753168983192`*^9}, {3.533975357500574*^9, 
-  3.533975357645916*^9}, {3.533975390653922*^9, 3.5339753911264887`*^9}}],
+  3.533975357645916*^9}, {3.533975390653922*^9, 3.5339753911264887`*^9}, {
+  3.540560415728921*^9, 3.540560476562932*^9}}],
 
 Cell[CellGroupData[{
 
@@ -142,7 +172,7 @@ Cell[BoxData[
 }, Open  ]]
 },
 WindowSize->{740, 867},
-WindowMargins->{{335, Automatic}, {Automatic, 66}},
+WindowMargins->{{Automatic, 213}, {80, Automatic}},
 FrontEndVersion->"8.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (November 6, \
 2010)",
 StyleDefinitions->"Default.nb"
@@ -160,23 +190,22 @@ CellTagsIndex->{}
 Notebook[{
 Cell[557, 20, 442, 13, 27, "Input"],
 Cell[CellGroupData[{
-Cell[1024, 37, 662, 18, 43, "Input"],
-Cell[1689, 57, 430, 12, 46, "Output"],
-Cell[2122, 71, 224, 4, 27, "Output"]
+Cell[1024, 37, 1164, 30, 88, "Input"],
+Cell[2191, 69, 430, 12, 46, "Output"],
+Cell[2624, 83, 224, 4, 27, "Output"]
 }, Open  ]],
-Cell[2361, 78, 436, 12, 27, "Input"],
+Cell[2863, 90, 733, 18, 43, "Input"],
 Cell[CellGroupData[{
-Cell[2822, 94, 331, 8, 27, "Input"],
-Cell[3156, 104, 95, 1, 27, "Output"]
+Cell[3621, 112, 331, 8, 27, "Input"],
+Cell[3955, 122, 95, 1, 27, "Output"]
 }, Open  ]],
-Cell[3266, 108, 623, 14, 27, "Input"],
+Cell[4065, 126, 1141, 26, 88, "Input"],
 Cell[CellGroupData[{
-Cell[3914, 126, 202, 4, 27, "Input"],
-Cell[4119, 132, 317, 8, 46, "Output"]
+Cell[5231, 156, 202, 4, 27, "Input"],
+Cell[5436, 162, 317, 8, 46, "Output"]
 }, Open  ]]
 }
 ]
 *)
 
 (* End of internal cache information *)
-
