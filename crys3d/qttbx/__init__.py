@@ -10,8 +10,25 @@ from PyQt4.QtGui import *
 from scitbx import matrix as mat
 import math
 
+class widget_with_fp_exception_trapping_off_mixin(object):
 
-class widget(QGLWidget):
+  def show(self):
+    from boost.python import ext
+    try:
+      division_by_zero = ext.is_division_by_zero_trapped()
+      invalid = ext.is_invalid_trapped()
+      overflow = ext.is_overflow_trapped()
+      ext.trap_exceptions(division_by_zero=False,
+                          invalid=False,
+                          overflow=False)
+      super(widget_with_fp_exception_trapping_off_mixin, self).show()
+    finally:
+      ext.trap_exceptions(division_by_zero=division_by_zero,
+                          invalid=invalid,
+                          overflow=overflow)
+
+class widget(widget_with_fp_exception_trapping_off_mixin,
+             QGLWidget):
 
   from_here = (0,0,0)
   to_there =  (1,1,1)
@@ -281,7 +298,8 @@ class widget(QGLWidget):
 
 
 
-class widget_control_mixin(QWidget):
+class widget_control_mixin(widget_with_fp_exception_trapping_off_mixin,
+                           QWidget):
 
   def __init__(self, view, *args, **kwds):
     QWidget.__init__(self, *args, **kwds)
