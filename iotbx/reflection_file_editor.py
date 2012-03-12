@@ -199,13 +199,17 @@ mtz_file
         programs expect the test set to be 0.
       .expert_level = 2
       .style = noauto
-    preserve_input_values = False
+    preserve_input_values = True
       .type = bool
       .short_caption = Preserve original flag values
       .help = If True, CCP4-style R-free flags will be left as random \
         integers instead of being converted to a boolean array.  This option \
-        is not compatible with the 'extend' option.
+        is not compatible with the option to export flags to the CCP4 \
+        convention.
       .style = noauto
+    warn_if_all_same_value = True
+      .type = bool
+      .short_caption = Warn if R-free flags are all the same value
   }
 }""", process_includes=True)
 
@@ -218,6 +222,7 @@ class process_arrays (object) :
     validate_params(params)
     from iotbx import file_reader
     import cctbx.miller
+    from cctbx import r_free_utils
     from cctbx import crystal
     from cctbx import sgtbx
     from scitbx.array_family import flex
@@ -668,34 +673,36 @@ class process_arrays (object) :
         output_array = None
         new_array.set_info(info)
         test_flag_value = None
+        flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
+          test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
+        test_flag_value = flag_scores.test_flag_values[0]
+        if (test_flag_value is None) :
+          if (params.mtz_file.r_free_flags.old_test_flag_value is not None) :
+            test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value
+          elif ((params.mtz_file.r_free_flags.warn_if_all_same_value) or
+                (params.mtz_file.r_free_flags.extend)) :
+            raise Sorry(("The data in %s:%s appear to be R-free flags, but "+
+              "a suitable test flag value (usually 1 or 0) could not be "+
+              "automatically determined.  This may indicate that the flags "+
+              "are uniform, which is not suitable for refinement; it can "+
+              "also happen when there are exactly 3 different values used. "+
+              " If this is not the case, you may specify the test flag "+
+              "value manually by clicking the button labeled \"R-free flags "+
+              "generation...\" and entering the value to use under "+
+              "\"Original test flag value\".  Alternately, unchecking the box "+
+              "\"Warn if R-free flags are all the same value\" will skip this "+
+              "step, but you will not be able to extend the flags to higher "+
+              "resolution.") % (file_name, info.label_string()))
         if (params.mtz_file.r_free_flags.preserve_input_values) :
-          assert (not params.mtz_file.r_free_flags.extend)
           r_free_flags = new_array
         else :
-          flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
-            test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
-          test_flag_value = flag_scores.test_flag_values[0]
-          if (test_flag_value is None) :
-            if (params.mtz_file.r_free_flags.old_test_flag_value is not None) :
-              test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value
-            else :
-              raise Sorry(("The data in %s:%s appear to be R-free flags, but "+
-                "a suitable test flag value (usually 1 or 0) could not be "+
-                "automatically determined.  This may indicate that the flags "+
-                "are uniform, which is not suitable for refinement; it can "+
-                "als ohappen when there are exactly 3 different values used. "+
-                " If this is not the case, you may specify the test flag "+
-                "value manually by clicking the button labeled \"R-free flags "+
-                "generation...\" and entering the value to use under "+
-                "\"Original test flag value\".  Alternately, checking the box "+
-                "\"Preserve original flag values\" will skip this step, but "+
-                "you will not be able to extend the flags to higher "+
-                "resolution.") % (file_name, info.label_string()))
           new_data = (new_array.data()==test_flag_value)
           assert isinstance(new_data, flex.bool)
           r_free_flags = new_array.array(data=new_data)
         r_free_flags = r_free_flags.map_to_asu()
         generate_bijvoet_mates = False
+        if not r_free_flags.is_unique_set_under_symmetry() :
+          r_free_flags = r_free_flags.merge_equivalents().array()
         if (r_free_flags.anomalous_flag()) :
           if (len(output_labels) == 1) :
             r_free_flags = r_free_flags.average_bijvoet_mates()
@@ -733,9 +740,38 @@ class process_arrays (object) :
                 fraction=fraction_free,
                 max_free=None,
                 use_lattice_symmetry=True)
-            output_array = r_free_flags.concatenate(other=missing_flags)
-            if not output_array.is_unique_set_under_symmetry() :
-              output_array = output_array.merge_equivalents().array()
+            if (params.mtz_file.r_free_flags.preserve_input_values) :
+              if (r_free_utils.looks_like_ccp4_flags(r_free_flags)) :
+                print >> log, "Exporting missing flags to CCP4 convention"
+                exported_flags = r_free_utils.export_r_free_flags(
+                  flags=missing_flags.data(),
+                  test_flag_value=test_flag_value)
+                output_array = r_free_flags.concatenate(
+                  other=missing_flags.customized_copy(data=exported_flags))
+              else :
+                # XXX this is gross too - what conventions (if any) should be
+                # followed here?
+                work_flag_value = None
+                if (test_flag_value in [1,-1]) :
+                  work_flag_value = 0
+                elif (test_flag_value == 0) :
+                  work_flag_value = 1
+                if (work_flag_value is None) :
+                  raise Sorry(("PHENIX doesn't know how to deal with the "+
+                    "R-free flag convention in %s:%s; you will need to "+
+                    "disable either extending the flags or preserving the "+
+                    "input values.") % (file_name, info.label_string()))
+                exported_flags = flex.int()
+                new_flags = missing_flags.data()
+                for i_seq in range(missing_flags.data().size()) :
+                  if (new_flags[i_seq]) :
+                    exported_flags.append(test_flag_value)
+                  else :
+                    exported_flags.append(work_flag_value)
+                output_array = r_free_flags.concatenate(
+                  other=missing_flags.customized_copy(data=exported_flags))
+            else :
+              output_array = r_free_flags.concatenate(other=missing_flags)
           # XXX if the flags don't actually need extending, the original
           # values will be preserved.  I think this is a good thing, but does
           # this inconsistency cause problems elsewhere?
@@ -746,7 +782,7 @@ class process_arrays (object) :
         if (len(params.mtz_file.exclude_reflection) > 0) :
           for hkl in params.mtz_file.exclude_reflection :
             output_array = output_array.delete_index(hkl)
-        if params.mtz_file.r_free_flags.export_for_ccp4 :
+        if (params.mtz_file.r_free_flags.export_for_ccp4) :
           print >> log, "%s: converting to CCP4 convention" % array_name
           output_array = export_r_free_flags(miller_array=output_array,
             test_flag_value=True)
@@ -868,36 +904,14 @@ class process_arrays (object) :
     return n_refl
 
 #-----------------------------------------------------------------------
-def get_r_free_stats (miller_array, test_flag_value) :
-  from scitbx.array_family import flex
-  array = get_r_free_as_bool(miller_array, test_flag_value)
-  n_free = array.data().count(True)
-  accu =  array.sort(by_value="resolution").r_free_flags_accumulation()
-  lr = flex.linear_regression(accu.reflection_counts.as_double(),
-                              accu.free_fractions)
-  assert lr.is_well_defined()
-  slope = lr.slope()
-  y_ideal = accu.reflection_counts.as_double() * slope
-  sse = 0
-  n_bins = 0
-  n_ref_last = 0
-  sse = flex.sum(flex.pow(y_ideal - accu.free_fractions, 2))
-  for x in accu.reflection_counts :
-    if x > (n_ref_last + 1) :
-      n_bins += 1
-    n_ref_last = x
-  return (n_bins, n_free, sse, accu)
+# TODO get rid of these two (need to make sure they aren't imported elsewhere)
+def get_r_free_stats (*args, **kwds) :
+  from cctbx import r_free_utils
+  return r_free_utils.get_r_free_stats(*args, **kwds)
 
-def get_r_free_as_bool (miller_array, test_flag_value=0) :
-  if miller_array.is_bool_array() :
-    return miller_array
-  else :
-    from scitbx.array_family import flex
-    assert isinstance(test_flag_value, int)
-    assert miller_array.is_integer_array()
-    new_data = miller_array.data() == test_flag_value
-    assert isinstance(new_data, flex.bool)
-    return miller_array.customized_copy(data=new_data, sigmas=None)
+def get_r_free_as_bool (*args, **kwds) :
+  from cctbx import r_free_utils
+  return r_free_utils.get_r_free_as_bool(*args, **kwds)
 
 def get_best_resolution (miller_arrays) :
   best_d_min = None
@@ -1049,10 +1063,6 @@ def validate_params (params) :
   if None in [params.mtz_file.crystal_symmetry.space_group,
               params.mtz_file.crystal_symmetry.unit_cell] :
     raise Sorry("Missing or incomplete symmetry information.")
-  if (params.mtz_file.r_free_flags.extend and
-      params.mtz_file.r_free_flags.preserve_input_values) :
-    raise Sorry("You may not extend R-free flags to higher resolution "+
-      "when preserving the original input values.")
   if (params.mtz_file.r_free_flags.export_for_ccp4 and
       params.mtz_file.r_free_flags.preserve_input_values) :
     raise Sorry("r_free_flags.preserve_input_values and "+

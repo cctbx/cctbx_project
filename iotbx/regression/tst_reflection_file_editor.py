@@ -243,6 +243,7 @@ mtz_file {
   # export for ccp4 programs (flag=0, everything else > 0)
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.r_free_flags.export_for_ccp4 = True
+  params.mtz_file.r_free_flags.preserve_input_values = False
   params.mtz_file.output_file = "tst_data3.mtz"
   miller_arrays = run_and_reload(params, "tst_data3.mtz")
   free_selection = (miller_arrays[1].data() == 0)
@@ -253,14 +254,31 @@ mtz_file {
   params.mtz_file.output_file = "tst4.mtz"
   for ma in params.mtz_file.miller_array :
     ma.file_name = "tst_data3.mtz"
-  # actually, the flag values won't be preserved here...
-  miller_arrays = run_and_reload(params, "tst4.mtz")
-  new_selection = (miller_arrays[1].data() == 1)
-  assert (free_selection.all_eq(new_selection))
-  # ...but they will here
-  params.mtz_file.r_free_flags.preserve_input_values = True
+  # flags will be preserved here...
   miller_arrays = run_and_reload(params, "tst4.mtz")
   new_selection = (miller_arrays[1].data() == 0)
+  assert (free_selection.all_eq(new_selection))
+  # ...and here... [extending a CCP4 test set]
+  params.mtz_file.miller_array[1].d_min = 1.2
+  params.mtz_file.output_file = "tst_data4.mtz"
+  truncated_arrays = run_and_reload(params, "tst_data4.mtz")
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.r_free_flags.extend = True
+  for ma in params.mtz_file.miller_array :
+    ma.file_name = "tst_data4.mtz"
+  params.mtz_file.output_file = "tst4.mtz"
+  miller_arrays = run_and_reload(params, "tst4.mtz")
+  common_flags = truncated_arrays[1].common_set(other=miller_arrays[1])
+  common_flags2 = miller_arrays[1].common_set(other=truncated_arrays[1])
+  assert (common_flags2.data().all_eq(common_flags.data()))
+  # ...but not here
+  for ma in params.mtz_file.miller_array :
+    ma.file_name = "tst_data3.mtz"
+  params.mtz_file.output_file = "tst4.mtz"
+  params.mtz_file.miller_array[1].d_min = None
+  params.mtz_file.r_free_flags.preserve_input_values = False
+  miller_arrays = run_and_reload(params, "tst4.mtz")
+  new_selection = (miller_arrays[1].data() == 1)
   assert (free_selection.all_eq(new_selection))
   # more R-free manipulations
   mtz2 = array0.as_mtz_dataset(column_root_label="I-obs")
@@ -302,7 +320,7 @@ mtz_file {
     raise Exception_expected
   # now force them through (no conversion to flex.bool)
   params.mtz_file.r_free_flags.extend = False
-  params.mtz_file.r_free_flags.preserve_input_values = True
+  params.mtz_file.r_free_flags.warn_if_all_same_value = False
   miller_arrays = run_and_reload(params, "tst5.mtz")
   assert miller_arrays[1].data().all_eq(1)
   # reconstructed amplitudes, yuck
@@ -467,7 +485,8 @@ def exercise_command_line () :
   old_r_free_2 = miller_arrays[-1]
   p = reflection_file_editor.run(
     args=[file1, file2, "resolve_label_conflicts=True", "extend=False",
-          "export_for_ccp4=True", "output_file=%s" % test_file2],
+          "export_for_ccp4=True", "preserve_input_values=False",
+          "output_file=%s" % test_file2],
     out=log)
   mtz_in = file_reader.any_file(test_file2)
   miller_arrays = mtz_in.file_object.as_miller_arrays()
