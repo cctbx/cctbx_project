@@ -85,7 +85,47 @@ def export_r_free_flags (flags, test_flag_value) :
       new_flags[i] = iceil(random.random() * (n_bins - 1))
   return new_flags
 
+def looks_like_ccp4_flags (flags) :
+  from scitbx.array_family import flex
+  assert isinstance(flags.data(), flex.int)
+  return (flex.max(flags.data()) >= 4)
+
+def get_r_free_stats (miller_array, test_flag_value) :
+  from scitbx.array_family import flex
+  array = get_r_free_as_bool(miller_array, test_flag_value)
+  n_free = array.data().count(True)
+  accu =  array.sort(by_value="resolution").r_free_flags_accumulation()
+  lr = flex.linear_regression(accu.reflection_counts.as_double(),
+                              accu.free_fractions)
+  assert lr.is_well_defined()
+  slope = lr.slope()
+  y_ideal = accu.reflection_counts.as_double() * slope
+  sse = 0
+  n_bins = 0
+  n_ref_last = 0
+  sse = flex.sum(flex.pow(y_ideal - accu.free_fractions, 2))
+  for x in accu.reflection_counts :
+    if x > (n_ref_last + 1) :
+      n_bins += 1
+    n_ref_last = x
+  return (n_bins, n_free, sse, accu)
+
+def get_r_free_as_bool (miller_array, test_flag_value=0) :
+  if miller_array.is_bool_array() :
+    return miller_array
+  else :
+    from scitbx.array_family import flex
+    assert isinstance(test_flag_value, int)
+    assert miller_array.is_integer_array()
+    new_data = miller_array.data() == test_flag_value
+    assert isinstance(new_data, flex.bool)
+    return miller_array.customized_copy(data=new_data, sigmas=None)
+
 def exercise () :
+  from cctbx import miller
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from cctbx import uctbx
   from scitbx.array_family import flex
   flags_1 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05)
   assert (flags_1.count(True) == 5000)
@@ -101,6 +141,17 @@ def exercise () :
   ccp4_flags = export_r_free_flags(flags_3, True)
   assert (ccp4_flags.count(0) == flags_3.count(True))
   assert (flex.max(ccp4_flags) == 39)
+  # now with an actual Miller array
+  symm = crystal.symmetry(
+    space_group_info=sgtbx.space_group_info("P212121"),
+    unit_cell=uctbx.unit_cell((6,7,8,90,90,90)))
+  set1 = miller.build_set(
+    crystal_symmetry=symm,
+    anomalous_flag=True,
+    d_min=1.0)
+  flags_4 = set1.generate_r_free_flags()
+  stats = get_r_free_stats(flags_4, True)
+  assert (20 <= stats[0] <= 24) # XXX is this even necessary?
 
 if (__name__ == "__main__") :
   exercise()
