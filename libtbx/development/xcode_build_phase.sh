@@ -2,7 +2,7 @@ cd $cctbxroot
 
 ##############################################################################
 
-${LIBTBX_BUILD}/bin/python <<PYSCRIPT
+${LIBTBX_BUILD}/bin/python -u <<PYSCRIPT
 import sys, os, re
 import libtbx.load_env
 from libtbx.command_line import scons
