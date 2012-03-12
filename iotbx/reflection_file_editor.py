@@ -101,6 +101,17 @@ mtz_file
       .type = str
       .short_caption = Array name
       .style = noedit bold
+    output_labels = None
+      .type = strings
+      .optional = True
+      .short_caption = Output column labels
+      .input_size = 300
+      .help = Most Miller arrays have more than one label, and there must be \
+              exactly as many new labels as the number of labels in the \
+              old array.  Note however that the output labels do not \
+              necessarily correspond to the original array name.  (See caveat \
+              in Phenix manual about Scalepack files.)
+      .style = fixed
     d_min = None
       .type = float
       .short_caption = High resolution
@@ -119,51 +130,32 @@ mtz_file
         allows the observation type to be set without modifying the data. \
         This is primarily used for structure factors downloaded from the PDB, \
         which sometimes have the data type specified incorrectly.
-      .expert_level = 2
     scale_max = None
       .type = float
       .short_caption = Scale to maximum value
       .help = Scales data such that the maximum is equal to the given value
-      .expert_level = 1
     scale_factor = None
       .type = float
       .help = Multiplies data with the given factor
-      .expert_level = 1
     remove_negatives = False
       .type = bool
       .short_caption = Remove negative values
-      .expert_level = 1
     massage_intensities = False
       .type = bool
-      .expert_level = 2
     filter_by_signal_to_noise = None
       .type = float
       .short_caption = Filter by signal-to-noise ratio
-      .expert_level = 2
     add_b_iso = None
       .type = float
       .short_caption = Add isotropic B-factor
-      .expert_level = 2
     add_b_aniso = 0 0 0 0 0 0
       .type = floats(size=6)
       .short_caption = Add anisotropic B-factor
-      .expert_level = 2
     output_non_anomalous = False
       .type = bool
       .short_caption = Output non-anomalous data
       .help = If enabled, anomalous arrays will be merged first.  Note that \
         this will cut the number of output labels in half.
-    output_labels = None
-      .type = strings
-      .optional = True
-      .short_caption = Output column labels
-      .input_size = 300
-      .help = Most Miller arrays have more than one label, and there must be \
-              exactly as many new labels as the number of labels in the \
-              old array.  Note however that the output labels do not \
-              necessarily correspond to the original array name.  (See caveat \
-              in Phenix manual about Scalepack files.)
-      .style = fixed
   }
   r_free_flags
     .short_caption = R-free flags generation
