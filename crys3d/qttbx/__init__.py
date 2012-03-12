@@ -32,7 +32,7 @@ class widget(widget_with_fp_exception_trapping_off_mixin,
 
   from_here = (0,0,0)
   to_there =  (1,1,1)
-  clear_colour = (0, 0, 0, 1)
+  clear_colour = (0.9, 0.92, 0.94, 1)
   fovy = 30
   orthographic = False
   zoom = 1.
