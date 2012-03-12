@@ -134,11 +134,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
     //! Default constructor. Some data members are not initialized!
     build_normal_equations() {}
 
-    template <template<typename> class NormalEquations,
+    template <class NormalEquations,
               template<typename> class WeightingScheme,
               class OneMillerIndexFcalc>
     build_normal_equations(
-      NormalEquations<FloatType> &normal_equations,
+      NormalEquations &normal_equations,
       cctbx::xray::observations<FloatType> const &reflections,
       af::const_ref<std::complex<FloatType> > const &f_mask,
       WeightingScheme<FloatType> const &weighting_scheme,
