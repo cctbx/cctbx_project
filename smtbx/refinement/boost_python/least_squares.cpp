@@ -11,7 +11,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
   namespace boost_python {
 
   template <typename FloatType,
-            template<typename> class NormalEquations,
+            class NormalEquations,
             class OneMillerIndexLinearisation>
   struct normal_equation_building
   {
@@ -20,7 +20,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     template <template<typename> class WeightingSchemeType>
     static void def_init(boost::python::class_<wt> &klass) {
       using namespace boost::python;
-      klass.def(init<NormalEquations<FloatType> &,                    // normal_equations
+      klass.def(init<NormalEquations &,                    // normal_equations
                 cctbx::xray::observations<FloatType> const &,         // miller_indices+data+sigmas
                 af::const_ref<std::complex<FloatType> > const &,      // f_mask
                 WeightingSchemeType<FloatType> const &,               // weighting_scheme
@@ -51,7 +51,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     normal_equation_building<
       double,
-      lstbx::normal_equations::non_linear_ls_with_separable_scale_factor,
+      lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<double>,
       structure_factors::direct::one_h::std_trigonometry<
         double,
         structure_factors::direct::one_h::modulus_squared
