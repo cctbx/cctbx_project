@@ -1,6 +1,7 @@
 
 # Assorted info boxes for displaying essential file information
 
+import wxtbx.plots
 import wxtbx.icons
 import wx
 import re
@@ -33,6 +34,7 @@ class ReflectionFileInfo (InfoPanelBase) :
     super(ReflectionFileInfo, self).__init__(*args, **kwds)
     self.miller_arrays = None
     self._hkl_in = None
+    self._current_array = None
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box, 0)
     bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.hkl_file.GetBitmap())
@@ -78,6 +80,7 @@ class ReflectionFileInfo (InfoPanelBase) :
       if (array_.info().label_string() == array_label) :
         array = array_
     assert (array is not None)
+    self._current_array = array
     info_out = cStringIO.StringIO()
     array.show_comprehensive_summary(f=info_out)
     array.show_comprehensive_summary()
@@ -108,10 +111,21 @@ class ReflectionFileInfo (InfoPanelBase) :
       font2.SetFamily(wx.FONTFAMILY_MODERN)
       txt2.SetFont(font2)
       grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    if (array.is_complex_array()) :
+      btn = wx.Button(self.info_panel, -1, "Show map statistics")
+      szr.Add(btn, 0, wx.ALL, 5)
+      self.Bind(wx.EVT_BUTTON, self.OnShowMapStats, btn)
     szr.Fit(self.info_panel)
     self.panel.Layout()
     self.panel_sizer.Fit(self.panel)
     self.Fit()
+
+  def OnShowMapStats (self, event) :
+    map_info = MapCoeffsInfo(self.GetTopLevelParent(), -1,
+      "Map statistics for %s" % self._current_array.info().label_string())
+    map_info.set_file(self.file_name)
+    map_info.set_map_coeffs(self._current_array)
+    map_info.Show()
 
 class PDBFileInfo (InfoPanelBase) :
   def __init__ (self, *args, **kwds) :
@@ -241,13 +255,94 @@ class ImageFileInfo (InfoPanelBase) :
     self.panel_sizer.Fit(self.panel)
     self.Fit()
 
+class MapCoeffsInfo (InfoPanelBase) :
+  def __init__ (self, *args, **kwds) :
+    super(MapCoeffsInfo, self).__init__(*args, **kwds)
+    self._current_array = None
+    self._current_map = None
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.panel_sizer.Add(box, 0)
+    bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.hkl_file.GetBitmap())
+    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid = wx.FlexGridSizer(cols=2)
+    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txt1 = wx.StaticText(self.panel, -1, "File name:")
+    font = txt1.GetFont()
+    font.SetWeight(wx.FONTWEIGHT_BOLD)
+    txt1.SetFont(font)
+    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.file_txt = wx.StaticText(self.panel, -1, "(None)")
+    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txt3 = wx.StaticText(self.panel, -1, "Map coefficients:")
+    txt3.SetFont(font)
+    grid.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.map_txt = wx.StaticText(self.panel, -1, "(None)")
+    grid.Add(self.map_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+
+  def set_file (self, file_name) :
+    self.file_txt.SetLabel(file_name)
+
+  def set_map_coeffs (self, array) :
+    assert (array.is_complex_array())
+    self.map_txt.SetLabel(str(array.info().label_string()))
+    self._current_array = array
+    map = array.fft_map(resolution_factor=0.25)
+    self._current_map = map
+    self.info_panel = wx.Panel(self.panel, -1)
+    self.panel_sizer.Add(self.info_panel, 1, wx.ALL|wx.EXPAND)
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.info_panel.SetSizer(szr)
+    box = wx.StaticBox(self.info_panel, -1, "Map info:")
+    box_szr = wx.StaticBoxSizer(box, wx.VERTICAL)
+    szr.Add(box_szr, 1, wx.EXPAND|wx.ALL, 5)
+    grid = wx.FlexGridSizer(cols=2)
+    box_szr.Add(grid, 0, wx.EXPAND)
+    import iotbx.map_tools
+    info_list = iotbx.map_tools.get_map_summary(map)
+    for label, value in info_list :
+      txt1 = wx.StaticText(self.info_panel, -1, label + ":")
+      font = txt1.GetFont()
+      font.SetWeight(wx.FONTWEIGHT_BOLD)
+      txt1.SetFont(font)
+      grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      str_value = str(value)
+      alert = False
+      if (str_value.endswith("***")) :
+        str_value = re.sub("\s*\*\*\*", "", str_value)
+        alert = True
+      txt2 = wx.StaticText(self.info_panel, -1, str_value)
+      font2 = txt2.GetFont()
+      font2.SetFamily(wx.FONTFAMILY_MODERN)
+      if (alert) :
+        font2.SetWeight(wx.FONTWEIGHT_BOLD)
+        txt2.SetForegroundColour((200,0,0))
+        txt1.SetForegroundColour((200,0,0))
+      txt2.SetFont(font2)
+      grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    histogram = wxtbx.plots.histogram(self.info_panel, figure_size=(6,4))
+    histogram.show_histogram(
+      data=map.real_map(False).as_1d().as_numpy_array(),
+      n_bins=20,#n_bins,
+      reference_value=0.0,
+      x_label="Sigma level",
+      y_label="Number of points",
+      title="Distribution of grid values (spacing=d_min/4)")
+    box_szr.Add(histogram, 1, wx.EXPAND, 5)
+    btn = wx.Button(self.info_panel, -1, "Save plot to file...")
+    self.Bind(wx.EVT_BUTTON, lambda evt: histogram.save_image(), btn)
+    box_szr.Add(btn, 0, wx.TOP, 5)
+    szr.Fit(self.info_panel)
+    self.panel.Layout()
+    self.panel_sizer.Fit(self.panel)
+    self.Fit()
+
 if (__name__ == "__main__") :
   import libtbx.load_env
   pdb1 = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/2C30.pdb",
     test=os.path.isfile)
   hkl1 = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/nsf-d2.mtz",
+    relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
     test=os.path.isfile)
   img1 = "/net/sunbird/raid1/sauter/jcsg/1vph/data/jcsg/ssrl1/9_2/20040718/TB0723W/11318/11318_2_017.img"
   assert (not None in [pdb1, hkl1])
