@@ -1,6 +1,8 @@
 #ifndef SCITBX_MATRIX_VECTOR_OPERATIONS_H
 #define SCITBX_MATRIX_VECTOR_OPERATIONS_H
 
+#include <algorithm>
+
 namespace scitbx { namespace matrix {
 
   /// x(0:n) *= alpha
