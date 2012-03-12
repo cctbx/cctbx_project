@@ -1694,6 +1694,7 @@ scitbx/rigid_body/tardy.h svneol=native#text/plain
 scitbx/rigid_body/tst.py svneol=native#text/x-python
 scitbx/rotr3.h svneol=native#text/plain
 scitbx/simplex.py -text
+scitbx/smoothing.py -text
 scitbx/source_generators/flex_fwd_h.py -text
 scitbx/source_generators/lbfgs_fem.py svneol=native#text/x-python
 scitbx/sparse/__init__.py -text
