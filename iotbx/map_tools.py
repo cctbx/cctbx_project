@@ -484,3 +484,24 @@ class write_ccp4_maps_wrapper (object) :
         map_data=fft_map.real_map(),
         n_real=fft_map.n_real(),
         file_name=file_name)
+
+def get_map_summary (map, resolution_factor=0.25) :
+  info = []
+  real_map = map.real_map_unpadded()
+  n_grid_points = real_map.size()
+  map.apply_volume_scaling()
+  stats_vol = map.statistics()
+  info.append(("Grid points (with resolution_factor=%g)" % resolution_factor,
+    str(n_grid_points)))
+  info.append(("Min value (volume-scaled)", "%.2f" % stats_vol.min()))
+  info.append(("Max value (volume-scaled)", "%.2f" % stats_vol.max()))
+  info.append(("Mean value (volume-scaled)", "%.2f" % stats_vol.mean()))
+  info.append(("Sigma (volume-scaled)", "%.2f" % stats_vol.sigma()))
+  map.apply_sigma_scaling()
+  stats_sigma = map.statistics()
+  info.append(("Min value (sigma-scaled)", "%.2f" % stats_sigma.min()))
+  info.append(("Max value (sigma-scaled)", "%.2f" % stats_sigma.max()))
+  from cctbx import maptbx
+  more_stats = maptbx.more_statistics(map.real_map(False))
+  info.append(("Skewness", "%.2f" % more_stats.skewness()))
+  return info
