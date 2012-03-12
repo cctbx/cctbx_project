@@ -1451,6 +1451,7 @@ scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
 scitbx/array_family/accessors/c_interval_grid.h svneol=native#text/plain
 scitbx/array_family/accessors/f_grid.h -text
+scitbx/array_family/accessors/lower-upper[!!-~]diagonal[!!-~]indexing.nb -text
 scitbx/array_family/accessors/mat_grid.h -text
 scitbx/array_family/accessors/row_and_column.h -text
 scitbx/array_family/accessors/striding.h -text
