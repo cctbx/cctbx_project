@@ -1133,6 +1133,8 @@ class _(boost.python.injector, pair_sym_table):
         sites_frac=None,
         sites_cart=None,
         show_cartesian=False,
+        skip_j_seq_less_than_i_seq=False,
+        skip_sym_equiv=False,
         out=None):
     assert [sites_frac, sites_cart].count(None) == 1
     if (out is None): out = sys.stdout
@@ -1145,12 +1147,45 @@ class _(boost.python.injector, pair_sym_table):
     else:
       label_len = max(1, max([len(_) for _ in site_labels]))
       label_fmt = "%%-%ds" % (label_len+1)
+    if (skip_j_seq_less_than_i_seq):
+      back_interactions = None
+    else:
+      back_interactions = [set() for _ in xrange(self.size())]
+      for i_seq,pair_sym_dict in enumerate(self):
+        for j_seq,sym_ops in pair_sym_dict.items():
+          if (j_seq != i_seq):
+            assert i_seq < j_seq
+            back_interactions[j_seq].add(i_seq)
+    pair_counts = []
     for i_seq,pair_sym_dict in enumerate(self):
+      site_frac_i = sites_frac[i_seq]
+      distance_info = []
+      def distance_info_append(j_seq, rt_mx_ji):
+        site_frac_ji = rt_mx_ji * sites_frac[j_seq]
+        sepi = site_symmetry_table.symmetry_equivalent_pair_interactions(
+          i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji).get()
+        distance_info.append([
+          unit_cell.distance(site_frac_i, site_frac_ji),
+          j_seq,
+          rt_mx_ji,
+          sepi])
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for rt_mx_ji in sym_ops:
+          distance_info_append(j_seq, rt_mx_ji)
+      if (back_interactions is not None):
+        for j_seq in back_interactions[i_seq]:
+          for rt_mx_ji_inv in self[j_seq][i_seq]:
+            distance_info_append(j_seq, rt_mx_ji_inv.inverse())
+      distance_info.sort()
+      if (skip_sym_equiv):
+        pair_count = len(distance_info)
+      else:
+        pair_count = sum([len(sepi) for _,_,_,sepi in distance_info])
       if (site_labels is None):
         s = label_fmt % (i_seq+1)
       else:
         s = label_fmt % site_labels[i_seq]
-      site_frac_i = sites_frac[i_seq]
+      s += " pair count: %3d" % pair_count
       if (show_cartesian):
         formatted_site = [" %7.2f" % x
           for x in unit_cell.orthogonalize(site_frac_i)]
@@ -1158,40 +1193,32 @@ class _(boost.python.injector, pair_sym_table):
         formatted_site = [" %7.4f" % x for x in site_frac_i]
       print >> out, ("%%-%ds" % (label_len+23)) % s, \
         "<<"+",".join(formatted_site)+">>"
-      pair_count = 0
-      for j_seq,sym_ops in pair_sym_dict.items():
-        distance_rt_mx_ji = []
-        for rt_mx_ji in sym_ops:
-          site_frac_ji = rt_mx_ji * sites_frac[j_seq]
-          distance_rt_mx_ji.append([
-            unit_cell.distance(site_frac_i, site_frac_ji),
-            rt_mx_ji])
-        distance_rt_mx_ji.sort()
-        for distance, rt_mx_ji in distance_rt_mx_ji:
-          sepi = site_symmetry_table.symmetry_equivalent_pair_interactions(
-            i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji).get()
-          sym_equiv = "           "
-          for rt_mx_ji_equiv in sepi:
-            if (site_labels is None):
-              print >> out, " ", label_fmt % (j_seq+1) + ":",
-            else:
-              print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
-            print >> out, "%8.4f" % distance,
-            s = sym_equiv
-            sym_equiv = "sym. equiv."
-            site_frac_ji_equiv = rt_mx_ji_equiv * sites_frac[j_seq]
-            if (show_cartesian):
-              formatted_site = [" %7.2f" % x
-                for x in unit_cell.orthogonalize(site_frac_ji_equiv)]
-            else:
-              formatted_site = [" %7.4f" % x for x in site_frac_ji_equiv]
-            s += " (" + ",".join(formatted_site) +")"
-            if (not rt_mx_ji_equiv.is_unit_mx()):
-              s += " sym=" + str(rt_mx_ji_equiv)
-            print >> out, s
-            pair_count += 1
+      for distance,j_seq,_,sepi in distance_info:
+        sym_equiv = "           "
+        for rt_mx_ji_equiv in sepi:
+          if (site_labels is None):
+            print >> out, " ", label_fmt % (j_seq+1) + ":",
+          else:
+            print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
+          print >> out, "%8.4f" % distance,
+          s = sym_equiv
+          sym_equiv = "sym. equiv."
+          site_frac_ji_equiv = rt_mx_ji_equiv * sites_frac[j_seq]
+          if (show_cartesian):
+            formatted_site = [" %7.2f" % x
+              for x in unit_cell.orthogonalize(site_frac_ji_equiv)]
+          else:
+            formatted_site = [" %7.4f" % x for x in site_frac_ji_equiv]
+          s += " (" + ",".join(formatted_site) +")"
+          if (not rt_mx_ji_equiv.is_unit_mx()):
+            s += " sym=" + str(rt_mx_ji_equiv)
+          print >> out, s
+          if (skip_sym_equiv):
+            break
       if (pair_count == 0):
         print >> out, "  no neighbors"
+      pair_counts.append(pair_count)
+    return pair_count
 
   def number_of_pairs_involving_symmetry(self):
     result = 0
