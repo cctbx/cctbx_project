@@ -1720,12 +1720,28 @@ class structure(crystal.special_position_settings):
       site_symmetry_table = None
     else:
       site_symmetry_table = self.site_symmetry_table()
-    pair_sym_table.show(
+    return pair_sym_table.show(
       f=out,
       site_labels=self.scatterers().extract_labels(),
       site_symmetry_table=site_symmetry_table,
       sites_frac=self.sites_frac(),
       unit_cell=self.unit_cell())
+
+  def pair_sym_table_show_distances(self,
+        pair_sym_table,
+        show_cartesian=False,
+        skip_j_seq_less_than_i_seq=False,
+        skip_sym_equiv=False,
+        out=None):
+    return pair_sym_table.show_distances(
+      unit_cell=self.unit_cell(),
+      site_symmetry_table=self.site_symmetry_table(),
+      site_labels=self.scatterers().extract_labels(),
+      sites_frac=self.sites_frac(),
+      show_cartesian=show_cartesian,
+      skip_j_seq_less_than_i_seq=skip_j_seq_less_than_i_seq,
+      skip_sym_equiv=skip_sym_equiv,
+      out=out)
 
   def asu_mappings(self, buffer_thickness, asu_is_inside_epsilon=None):
     result = crystal.symmetry.asu_mappings(self,
