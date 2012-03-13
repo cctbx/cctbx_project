@@ -195,15 +195,6 @@ namespace fem {
       inp_get()
       {
         int result = inp->get();
-        if (result == '\r') {
-          int next_char = inp->get();
-          if (next_char == '\n') {
-            result = next_char;
-          }
-          else {
-            inp->backup();
-          }
-        }
         if (utils::is_stream_err(result)) {
           inp.reset();
           if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
@@ -215,6 +206,15 @@ namespace fem {
             inp.reset();
             if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
             throw read_end("End of input during read");
+          }
+        }
+        if (io_mode == io_formatted && result == '\r') {
+          int next_char = inp->get();
+          if (next_char == '\n') {
+            result = '\n';
+          }
+          else {
+            inp->backup();
           }
         }
         return result;
