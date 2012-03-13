@@ -14,6 +14,14 @@ aminoAcids = {
     'proline' : 'pro',
     'prepro' : 'prepro',
 }
+aminoAcids_8000 = {
+    'general' : 'general-noGPIVpreP',
+    'glycine' : 'gly-sym',
+    'cis-proline' : 'cispro',
+    'trans-proline' : 'transpro',
+    'pre-proline' : 'prepro-noGP',
+    'isoleucine or valine' : 'ileval-nopreP',
+}
 
 class RamachandranEval:
 
@@ -29,10 +37,10 @@ class RamachandranEval:
             self.aaTables[aa] = ndt_weakref()
         rama_data_dir = find_rotarama_data_dir()
         target_db = open_rotarama_dlite(rotarama_data_dir=rama_data_dir)
-        for aa, aafile in aminoAcids.items():
+        for aa, aafile in aminoAcids_8000.items():
                 if (self.aaTables.get(aa) is not None): continue
-                data_file = "rama500-"+aafile+".data"
-                pickle_file = "rama500-"+aafile+".pickle"
+                data_file = "rama8000-"+aafile+".data"
+                pickle_file = "rama8000-"+aafile+".pickle"
                 pair_info = target_db.pair_info(
                   source_path=data_file,
                   target_path=pickle_file,
@@ -60,7 +68,12 @@ class RamachandranEval:
         return ndt.valueAt(phiPsi)
 
     def evaluate_sites (self, aaName, phi_psi_i_seqs, sites_cart) :
-      assert (aaName in ["general", "glycine", "proline", "prepro"])
+      assert (aaName in ["general",
+                         "glycine",
+                         "cis-proline",
+                         "trans-proline",
+                         "pre-proline",
+                         "isoleucine or valine"])
       (phi, psi) = mmtbx.rotamer.phi_psi_from_sites(
         i_seqs=phi_psi_i_seqs,
         sites_cart=sites_cart)

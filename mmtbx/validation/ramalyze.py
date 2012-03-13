@@ -262,8 +262,10 @@ Example:
     self.numfavored = 0
     self.numgen = 0
     self.numgly = 0
-    self.numpro = 0
+    self.numcispro = 0
+    self.numtranspro = 0
     self.numprepro = 0
+    self.numileval = 0
     self.numtotal = 0
     r = ramachandran_eval.RamachandranEval()
     prev_rezes, next_rezes = None, None
@@ -332,11 +334,20 @@ Example:
                 resType = "glycine"
                 self.numgly += 1
               elif (atom_group.resname[0:3] == "PRO"):
-                resType = "proline"
-                self.numpro += 1
+                is_cis = self.is_cis_peptide(prev_atom_list, atom_list)
+                if is_cis:
+                  resType = "cis-proline"
+                  self.numcispro += 1
+                else:
+                  resType = "trans-proline"
+                  self.numtranspro += 1
               elif (self.isPrePro(residues, i)):
-                resType = "prepro"
+                resType = "pre-proline"
                 self.numprepro += 1
+              elif (atom_group.resname[0:3] == "ILE" or \
+                    atom_group.resname[0:3] == "VAL"):
+                resType = "isoleucine or valine"
+                self.numileval += 1
               else:
                 resType = "general"
                 self.numgen += 1
@@ -423,6 +434,28 @@ Example:
       return mmtbx.rotamer.psi_from_atoms(resN, resCA, resC, nextN)
   #}}}
 
+  #{{{ get_omega
+  def get_omega(self, prev_atoms, atoms):
+    prevCA, prevC, thisN, thisCA = None, None, None, None
+    if (prev_atoms is not None):
+      for atom in prev_atoms:
+        if (atom.name == " CA "): prevCA = atom
+        if (atom.name == " C  "): prevC = atom
+    if (atoms is not None):
+      for atom in atoms:
+        if (atom.name == " N  "): thisN = atom
+        if (atom.name == " CA "): thisCA = atom
+    if (prevCA is not None and prevC is not None and thisN is not None and thisCA is not None):
+      return mmtbx.rotamer.omega_from_atoms(prevCA, prevC, thisN, thisCA)
+
+  #{{{is_cis_peptide
+  def is_cis_peptide(self, prev_atoms, atoms):
+    omega = self.get_omega(prev_atoms, atoms)
+    if(omega > -30 and omega < 30):
+      return True
+    else:
+      return False
+
   #{{{ construct_complete_residues
   def construct_complete_residues(self, res_group):
     if (res_group is not None):
@@ -490,8 +523,15 @@ Example:
       else:
         self.numoutliers += 1
         return "OUTLIER"
+    elif (resType == "cis-proline"):
+      if (value >=0.0020):
+        self.numallowed += 1
+        return "Allowed"
+      else:
+        self.numoutliers += 1
+        return "OUTLIER"
     else:
-      if (value >= 0.0020):
+      if (value >= 0.0010):
         self.numallowed += 1
         return "Allowed"
       else:
@@ -544,11 +584,18 @@ Example:
       return self.numgly, fraction
     return 0, 0.
 
-  def get_pro_count_and_fraction(self):
+  def get_cis_pro_count_and_fraction(self):
     if (self.numtotal != 0):
-      fraction = (float(self.numpro)/self.numtotal)
+      fraction = (float(self.numcispro)/self.numtotal)
       assert fraction <= 1.0
-      return self.numpro, fraction
+      return self.numcispro, fraction
+    return 0, 0.
+
+  def get_trans_pro_count_and_fraction(self):
+    if (self.numtotal != 0):
+      fraction = (float(self.numtranspro)/self.numtotal)
+      assert fraction <= 1.0
+      return self.numtranspro, fraction
     return 0, 0.
 
   def get_prepro_count_and_fraction(self):
@@ -556,6 +603,13 @@ Example:
       fraction = (float(self.numprepro)/self.numtotal)
       assert fraction <= 1.0
       return self.numprepro, fraction
+    return 0, 0.
+
+  def get_ileval_count_and_fraction(self):
+    if (self.numtotal != 0):
+      fraction = (float(self.numileval)/self.numtotal)
+      assert fraction <= 1.0
+      return self.numileval, fraction
     return 0, 0.
 
   def get_phi_psi_residues_count(self):

@@ -23,8 +23,8 @@ def exercise_rna_validate():
   rv=rna_validate()
   rv.analyze_pdb(pdb_io=pdb_io)
   assert len(rv.pucker_outliers) == 2
-  assert len(rv.bond_outliers) == 1
-  assert len(rv.angle_outliers) == 4
+  assert len(rv.bond_outliers) == 2
+  assert len(rv.angle_outliers) == 0
   assert len(rv.suite_outliers) == 3
 
 #{{{ exercise_clashscore
@@ -139,55 +139,53 @@ def exercise_ramalyze():
 
   r = ramalyze()
   output, output_list = r.analyze_pdb(pdb_io=pdb_io, outliers_only=True)
-  assert output.count("OUTLIER") == 75
+  assert output.count("OUTLIER") == 100
   assert output.count("Favored") == 0
-  assert output.count("Allowed") == 0
-  assert output.count("General") == 65
-  assert output.count("Glycine") == 5
-  assert output.count("Proline") == 1
-  assert output.count("Prepro") == 4
+  assert output.count("Allowed") == 4
+  assert output.count("General") == 64
+  assert output.count("Glycine") == 7
+  assert output.count("Trans-proline") == 1
+  assert output.count("Cis-proline") == 0
+  assert output.count("Pre-proline") == 4
+  assert output.count("Isoleucine or valine") == 28
 
   output, output_list = r.analyze_pdb(pdb_io=pdb_io, outliers_only=False)
-  assert output.count("OUTLIER") == 75
-  assert output.count("Favored") == 494
-  assert output.count("Allowed") == 154
-  assert output.count("General") == 640
+  assert output.count("OUTLIER") == 100
+  assert output.count("Favored") == 461
+  assert output.count("Allowed") == 162
+  assert output.count("General") == 513
   assert output.count("Glycine") == 39
-  assert output.count("Proline") == 23
-  assert output.count("Prepro") == 21
+  assert output.count("Trans-proline") == 23
+  assert output.count("Cis-proline") == 0
+  assert output.count("Pre-proline") == 21
+  assert output.count("Isoleucine or valine") == 127
   numtotal = r.get_phi_psi_residues_count()
-  #test1, test2 = r.get_outliers_count_and_fraction()
-  #print test2
-  #test1, test2 = r.get_allowed_count_and_fraction()
-  #print test2
-  #test1, test2 = r.get_favored_count_and_fraction()
-  #print test2
-  #print 75./numtotal
-  #print 75./numtotal == test2
-  assert r.get_outliers_count_and_fraction() == (75, 75./numtotal)
-  assert r.get_allowed_count_and_fraction()  == (154, 154./numtotal)
-  assert r.get_favored_count_and_fraction()  == (494, 494./numtotal)
-  assert r.get_general_count_and_fraction()  == (640, 640./numtotal)
-  assert r.get_gly_count_and_fraction()      == (39, 39./numtotal)
-  assert r.get_pro_count_and_fraction()      == (23, 23./numtotal)
-  assert r.get_prepro_count_and_fraction()   == (21, 21./numtotal)
+  assert r.get_outliers_count_and_fraction()  == (100, 100./numtotal)
+  assert r.get_allowed_count_and_fraction()   == (162, 162./numtotal)
+  assert r.get_favored_count_and_fraction()   == (461, 461./numtotal)
+  assert r.get_general_count_and_fraction()   == (513, 513./numtotal)
+  assert r.get_gly_count_and_fraction()       == (39, 39./numtotal)
+  assert r.get_trans_pro_count_and_fraction() == (23, 23./numtotal)
+  assert r.get_cis_pro_count_and_fraction()   == (0, 0./numtotal)
+  assert r.get_prepro_count_and_fraction()    == (21, 21./numtotal)
+  assert r.get_ileval_count_and_fraction()    == (127, 127./numtotal)
   assert numtotal == 75+154+494
   output_lines = output.splitlines()
   assert len(output_lines) == 723
-  assert output_lines[0] == "A  15  SER:39.85:-83.26:131.88:Favored:General"
-  assert output_lines[1] == "A  16  SER:0.93:-111.53:71.36:Allowed:General"
-  assert output_lines[168] == "A 191  ASP:2.90:-42.39:121.87:Favored:Prepro"
-  assert output_lines[169] == "A 192  PRO:3.65:-39.12:-31.84:Favored:Proline"
-  assert output_lines[713] == "B 368  LYS:62.62:-62.97:-53.28:Favored:General"
-  assert output_lines[714] == "B 369  GLU:9.58:-44.36:-45.50:Favored:General"
-  assert output_lines[715] == "B 370  LYS:37.37:-50.00:-39.06:Favored:General"
-  assert output_lines[716] == "B 371  VAL:71.48:-60.38:-51.85:Favored:General"
-  assert output_lines[717] == "B 372  LEU:0.04:-61.13:-170.23:OUTLIER:General"
-  assert output_lines[718] == "B 373  ARG:0.03:60.09:-80.26:OUTLIER:General"
-  assert output_lines[719] == "B 374  ALA:0.57:-37.21:-36.12:Allowed:General"
-  assert output_lines[720] == "B 375  LEU:13.45:-89.81:-41.45:Favored:General"
-  assert output_lines[721] == "B 376  ASN:84.52:-58.30:-41.39:Favored:General"
-  assert output_lines[722] == "B 377  GLU:32.22:-56.79:-21.74:Favored:General"
+  assert output_lines[0] == "A  15  SER:35.07:-83.26:131.88:Favored:General"
+  assert output_lines[1] == "A  16  SER:0.74:-111.53:71.36:Allowed:General"
+  assert output_lines[168] == "A 191  ASP:2.66:-42.39:121.87:Favored:Pre-proline"
+  assert output_lines[169] == "A 192  PRO:0.31:-39.12:-31.84:Allowed:Trans-proline"
+  assert output_lines[713] == "B 368  LYS:56.44:-62.97:-53.28:Favored:General"
+  assert output_lines[714] == "B 369  GLU:8.89:-44.36:-45.50:Favored:General"
+  assert output_lines[715] == "B 370  LYS:40.00:-50.00:-39.06:Favored:General"
+  assert output_lines[716] == "B 371  VAL:68.24:-60.38:-51.85:Favored:Isoleucine or valine"
+  assert output_lines[717] == "B 372  LEU:0.02:-61.13:-170.23:OUTLIER:General"
+  assert output_lines[718] == "B 373  ARG:0.02:60.09:-80.26:OUTLIER:General"
+  assert output_lines[719] == "B 374  ALA:0.13:-37.21:-36.12:Allowed:General"
+  assert output_lines[720] == "B 375  LEU:11.84:-89.81:-41.45:Favored:General"
+  assert output_lines[721] == "B 376  ASN:84.33:-58.30:-41.39:Favored:General"
+  assert output_lines[722] == "B 377  GLU:30.88:-56.79:-21.74:Favored:General"
 
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
@@ -207,31 +205,35 @@ def exercise_ramalyze():
   assert output.count("Favored") == 47
   assert output.count("Allowed") == 1
   assert output.count("OUTLIER") == 0
-  assert output.count("General") == 35
+  assert output.count("General") == 27
   assert output.count("Glycine") == 4
-  assert output.count("Proline") == 4
-  assert output.count("Prepro") == 5
+  assert output.count("Trans-proline") == 4
+  assert output.count("Cis-proline") == 0
+  assert output.count("Pre-proline") == 5
+  assert output.count("Isoleucine or valine") == 8
   numtotal = r.get_phi_psi_residues_count()
   assert r.get_outliers_count_and_fraction()  == (0, 0./numtotal)
   assert r.get_allowed_count_and_fraction()   == (1, 1./numtotal)
   assert r.get_favored_count_and_fraction()   == (47, 47./numtotal)
-  assert r.get_general_count_and_fraction()   == (35, 35./numtotal)
+  assert r.get_general_count_and_fraction()   == (27, 27./numtotal)
   assert r.get_gly_count_and_fraction()       == (4, 4./numtotal)
-  assert r.get_pro_count_and_fraction()       == (4, 4./numtotal)
+  assert r.get_trans_pro_count_and_fraction() == (4, 4./numtotal)
+  assert r.get_cis_pro_count_and_fraction()   == (0, 0./numtotal)
   assert r.get_prepro_count_and_fraction()    == (5, 5./numtotal)
+  assert r.get_ileval_count_and_fraction()    == (8, 8./numtotal)
   output_lines = output.splitlines()
   assert len(output_lines) == 48
-  assert output_lines[0] == "A   2  ATHR:33.82:-106.92:144.23:Favored:General"
-  assert output_lines[1] == "A   2  BTHR:40.03:-97.44:137.00:Favored:General"
-  assert output_lines[6] == "A   7  AILE:96.87:-61.91:-44.35:Favored:General"
-  assert output_lines[7] == "A   7  BILE:69.60:-56.21:-51.56:Favored:General"
-  assert output_lines[8] == "A   8  AVAL:48.16:-50.35:-49.64:Favored:General"
-  assert output_lines[9] == "A   8  BVAL:51.20:-83.20:-12.14:Favored:General"
-  assert output_lines[10] == "A   8  CVAL:82.24:-61.22:-36.49:Favored:General"
-  assert output_lines[44] == "A  43  AASP:42.93:-94.64:5.45:Favored:General"
-  assert output_lines[45] == "A  43  BASP:49.80:-88.69:-0.12:Favored:General"
-  assert output_lines[46] == "A  44  TYR:1.42:-133.10:58.75:Allowed:General"
-  assert output_lines[47] == "A  45  ALA:52.28:-86.61:-8.57:Favored:General"
+  assert output_lines[0] == "A   2  ATHR:33.85:-106.92:144.23:Favored:General"
+  assert output_lines[1] == "A   2  BTHR:37.07:-97.44:137.00:Favored:General"
+  assert output_lines[6] == "A   7  AILE:98.76:-61.91:-44.35:Favored:Isoleucine or valine"
+  assert output_lines[7] == "A   7  BILE:61.50:-56.21:-51.56:Favored:Isoleucine or valine"
+  assert output_lines[8] == "A   8  AVAL:23.11:-50.35:-49.64:Favored:Isoleucine or valine"
+  assert output_lines[9] == "A   8  BVAL:12.01:-83.20:-12.14:Favored:Isoleucine or valine"
+  assert output_lines[10] == "A   8  CVAL:73.11:-61.22:-36.49:Favored:Isoleucine or valine"
+  assert output_lines[44] == "A  43  AASP:51.81:-94.64:5.45:Favored:General"
+  assert output_lines[45] == "A  43  BASP:56.98:-88.69:-0.12:Favored:General"
+  assert output_lines[46] == "A  44  TYR:1.76:-133.10:58.75:Allowed:General"
+  assert output_lines[47] == "A  45  ALA:57.37:-86.61:-8.57:Favored:General"
 
 #}}}
 
@@ -261,7 +263,6 @@ def exercise_rotalyze():
 
   output, output_list = r.analyze_pdb(pdb_io, outliers_only=False)
   assert output.count("OUTLIER") == 113
-  #print output.count(":")
   assert output.count(":") == 4501
   assert output.count("p") == 121
   assert output.count("m") == 333
