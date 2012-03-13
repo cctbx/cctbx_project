@@ -39,16 +39,23 @@ def get_rotarama_data (residue_type=None, pos_type=None, db="rama",
     convert_to_numpy_array=False) :
   from mmtbx.rotamer import ramachandran_eval
   from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
-  assert (pos_type in ["general", "proline", "glycine", "prepro", None])
+  # backwards compatibility
+  if (pos_type == "proline") : pos_type = "trans-proline"
+  if (pos_type == "prepro") : pos_type = "pre-proline"
+  assert (pos_type in ["general", "cis-proline", "trans-proline", "glycine",
+    "isoleucine or valine", "pre-proline",None])
   assert (db in ["rama", "rota"])
   assert (residue_type is not None) or (pos_type is not None)
   if pos_type is not None :
-    residue_type = ramachandran_eval.aminoAcids[pos_type]
+    residue_type = ramachandran_eval.aminoAcids_8000[pos_type]
   if residue_type.lower() in ["phe", "tyr"] :
     residue_type = "phetyr"
   assert (residue_type is not None)
   rama_data_dir = find_rotarama_data_dir()
-  pkl_file = "%s500-%s.pickle" % (db, residue_type.lower())
+  if (db == "rama") :
+    pkl_file = "%s8000-%s.pickle" % (db, residue_type)
+  else :
+    pkl_file = "%s500-%s.pickle" % (db, residue_type.lower())
   ndt = easy_pickle.load(os.path.join(rama_data_dir, pkl_file))
   if convert_to_numpy_array :
     if (db == "rama") :
@@ -127,7 +134,7 @@ def exercise () :
   # ramachandran
   z_data = get_rotarama_data(pos_type="general",
     convert_to_numpy_array=test_numpy)
-  z_data = get_rotarama_data(pos_type="prepro",
+  z_data = get_rotarama_data(pos_type="pre-proline",
     convert_to_numpy_array=test_numpy)
   # rotamer
   z_data = get_rotarama_data(residue_type="arg",

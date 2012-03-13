@@ -35,7 +35,9 @@ class rotarama_plot_mixin (object) :
     print extent
     self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
     if (contours is not None) :
-      self.plot.contour(stats, contours, origin="lower", cmap=cm,
+      self.plot.contour(stats, contours,
+        origin="lower",
+        cmap=cm, # FIXME solid black or dark grey would be more visible
         extent=extent)
     if (y_marks is None) :
       self.set_labels()
@@ -123,13 +125,14 @@ def get_residue_ramachandran_data (ramalyze_data,
                                    position_type,
                                    residue_name,
                                    point_type) :
-  assert (position_type in ["general", "glycine", "proline", "prepro"])
+  assert (position_type in ["general", "glycine", "cis-proline", "trans-proline",
+    "pre-proline", "isoleucine or valine"])
   points, coords = [], []
   for i, residue in enumerate(ramalyze_data) :
     (chain_id,resseq,resname,quality,phi,psi,status,pos_name,xyz) = residue
     if (position_type == "general") :
       if (((residue_name == '*') or (resname.upper() == residue_name.upper()))
-          and (not resname in ["PRO","GLY"])) :
+          and (not resname in ["PRO","GLY","ILE","VAL"])) :
         if ((point_type == "All") or
             (point_type=="Allowed/Outlier" and
              status in ["Allowed","OUTLIER"]) or
@@ -148,12 +151,16 @@ def get_residue_ramachandran_data (ramalyze_data,
 
 def format_ramachandran_plot_title (position_type, residue_type) :
   title = "Ramachandran plot for "
-  if position_type == "proline" :
-    title += "Proline"
-  elif position_type == "glycine" :
+  if (position_type == "cis-proline") :
+    title += "cis-Proline"
+  elif (position_type == "trans-proline") :
+    title += "trans-Proline"
+  elif (position_type == "glycine") :
     title += "Glycine"
-  elif position_type == "prepro" :
+  elif (position_type == "pre-proline") :
     title += "pre-Proline residues"
+  elif (position_type == "isoleucine or valine") :
+    title += "Ile or Val"
   else :
     if residue_type == '*' :
       title += "all non-Pro/Gly residues"
