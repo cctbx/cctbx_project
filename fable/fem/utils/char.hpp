@@ -18,6 +18,7 @@ namespace fem { namespace utils {
   {
     return (c == ' '
          || c == '\t'
+         || c == '\r'
          || is_end_of_line(c));
   }
 
