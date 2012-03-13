@@ -92,7 +92,8 @@ Example:
       self.processed_pdb_file = pdb_interpretation.process(
         mon_lib_srv=mon_lib_srv,
         ener_lib=ener_lib,
-        pdb_inp=pdb_io)
+        pdb_inp=pdb_io,
+        substitute_non_crystallographic_unit_cell_if_necessary=True)
     else:
       self.processed_pdb_file=processed_pdb_file
     self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
