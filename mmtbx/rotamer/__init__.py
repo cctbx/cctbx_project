@@ -3,6 +3,10 @@ import libtbx.load_env
 from libtbx import group_args
 import os
 
+def omega_from_atoms(prevCA, prevC, thisN, thisCA):
+  assert (not None in [prevCA, prevC, thisN, thisCA])
+  return phi_from_sites(prevCA.xyz, prevC.xyz, thisN.xyz, thisCA.xyz)
+
 def get_phi_psi_atoms (prev_res, residue, next_res) :
   c1, n2, ca2, c2, n3 = None, None, None, None, None
   for atom in prev_res.atoms() :
