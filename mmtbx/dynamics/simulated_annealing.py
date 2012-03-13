@@ -17,7 +17,8 @@ def manager(simulated_annealing_params,
             fmodels,
             model,
             out = None,
-            monitor=None):
+            monitor=None,
+            call_back_after_step=True):
   if(out is None): out = sys.stdout
   print_statistics.make_header("simulated annealing refinement", out = out)
   model.set_refine_individual_sites()
@@ -59,7 +60,8 @@ def manager(simulated_annealing_params,
     mask_parameters            = mask_parameters,
     wc                         = target_weights.xyz_weights_result.w,
     out                        = out,
-    monitor                    = monitor)
+    monitor                    = monitor,
+    call_back_after_step       = call_back_after_step)
 
 def run_simulated_annealing(simulated_annealing_params,
                             model,
@@ -71,7 +73,8 @@ def run_simulated_annealing(simulated_annealing_params,
                             alpha_beta_parameters,
                             mask_parameters,
                             out,
-                            monitor):
+                            monitor,
+                            call_back_after_step=True):
   xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
   sa_temp = simulated_annealing_params.start_temperature
   verbose = simulated_annealing_params.verbose
@@ -131,7 +134,7 @@ def run_simulated_annealing(simulated_annealing_params,
     geom_stat = model.show_geometry_statistics(
       ignore_hd = not neutron_refinement,
       message = "SA temperature = "+str(sa_temp))
-    if monitor is not None :
+    if (monitor is not None) and (call_back_after_step) :
       monitor.call_back(model, fmodel, "simulated_annealing")
     sa_temp -= simulated_annealing_params.cool_rate
     if cartesian_den_restraints:
