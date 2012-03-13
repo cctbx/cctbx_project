@@ -174,7 +174,8 @@ class potential_object(object):
     return O.g
 
 def run(fmodels, model, target_weights, params, log,
-        format_for_phenix_refine=False, monitor=None):
+        format_for_phenix_refine=False, monitor=None,
+        call_back_after_step=True):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
   xs = fmodels.fmodel_xray().xray_structure
@@ -234,7 +235,7 @@ def run(fmodels, model, target_weights, params, log,
     near_singular_hinges_angular_tolerance_deg=
       params.near_singular_hinges_angular_tolerance_deg)
   def refinement_callback (fmodel) :
-    if monitor is not None :
+    if (monitor is not None) and (call_back_after_step) :
       monitor.call_back(model, fmodel, "torsion_dynamics")
   action( # XXX neutron
     tardy_model=tardy_model,

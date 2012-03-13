@@ -168,7 +168,8 @@ class manager(object):
         params=self.params.tardy,
         log=local_log,
         format_for_phenix_refine=True,
-        monitor=self.monitors.monitor_xray)
+        monitor=self.monitors.monitor_xray,
+        call_back_after_step=False)
       if self.params.den.bulk_solvent_and_scale:
         self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
@@ -235,7 +236,8 @@ class manager(object):
         model                      = self.model,
         all_params                 = self.params,
         out                        = local_log,
-        monitor                    = self.monitors.monitor_xray)
+        monitor                    = self.monitors.monitor_xray,
+        call_back_after_step       = False)
       if self.params.den.bulk_solvent_and_scale:
         self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
