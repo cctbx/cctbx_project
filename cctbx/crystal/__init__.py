@@ -1156,7 +1156,7 @@ class _(boost.python.injector, pair_sym_table):
           if (j_seq != i_seq):
             assert i_seq < j_seq
             back_interactions[j_seq].add(i_seq)
-    pair_counts = []
+    pair_counts = flex.size_t()
     for i_seq,pair_sym_dict in enumerate(self):
       site_frac_i = sites_frac[i_seq]
       distance_info = []

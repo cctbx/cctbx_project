@@ -901,7 +901,7 @@ Si  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
 O   pair count:   0       <<  0.0000,  0.0000,  0.0000>>
   no neighbors
 """)
-      assert pair_counts == [4,3,2,0]
+      assert list(pair_counts) == [4,3,2,0]
       del sym_table[-1]
       sio = StringIO()
       sym_table.show_distances(
