@@ -1218,7 +1218,7 @@ class _(boost.python.injector, pair_sym_table):
       if (pair_count == 0):
         print >> out, "  no neighbors"
       pair_counts.append(pair_count)
-    return pair_count
+    return pair_counts
 
   def number_of_pairs_involving_symmetry(self):
     result = 0
