@@ -19,12 +19,11 @@ namespace coordination_sequences {
 
     //! Initialization of rt_mx and rt_mx_unique.
     node(
-      direct_space_asu::asu_mappings<> const& asu_mappings,
-      unsigned i_seq,
+      sgtbx::rt_mx const& special_op,
       sgtbx::rt_mx const& rt_mx_)
     :
       rt_mx(rt_mx_),
-      rt_mx_unique(rt_mx_.multiply(asu_mappings.special_op(i_seq)))
+      rt_mx_unique(rt_mx_.multiply(special_op))
     {}
 
     //! Matrix as passed to the constructor.
@@ -50,14 +49,13 @@ namespace coordination_sequences {
      */
     void
     clear(
-      direct_space_asu::asu_mappings<> const& asu_mappings,
+      sgtbx::rt_mx const& special_op,
       unsigned i_seq_pivot)
     {
       prev->clear();
       middle->clear();
       next->clear();
-      (*next)[i_seq_pivot].push_back(
-        node(asu_mappings, i_seq_pivot, sgtbx::rt_mx(1,1)));
+      (*next)[i_seq_pivot].push_back(node(special_op, sgtbx::rt_mx(1,1)));
     }
 
     //! To be called when starting with a new shell.
@@ -140,7 +138,9 @@ namespace coordination_sequences {
       three_shells shells;
       for(this->i_seq_pivot=0; this->i_seq_pivot<n_seq; this->i_seq_pivot++) {
         sgtbx::rt_mx rt_mx_pivot = asu_mappings.get_rt_mx(this->i_seq_pivot,0);
-        shells.clear(asu_mappings, this->i_seq_pivot);
+        shells.clear(
+          asu_mappings.special_op(this->i_seq_pivot),
+          this->i_seq_pivot);
         for(this->i_shell_minus_1=0;
             this->i_shell_minus_1<max_shell;
             this->i_shell_minus_1++) {
@@ -179,7 +179,8 @@ namespace coordination_sequences {
                     sgtbx::rt_mx
                       rt_mx_j = asu_mappings.get_rt_mx(j_seq, j_sym);
                     node new_node(
-                      asu_mappings, j_seq, rt_mx_ni.multiply(rt_mx_j));
+                      asu_mappings.special_op(j_seq),
+                      rt_mx_ni.multiply(rt_mx_j));
                     if (!shells.find_node(j_seq, new_node)) {
                       (*shells.next)[j_seq].push_back(new_node);
                     }
