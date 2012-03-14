@@ -234,6 +234,12 @@ def extract(file_name,
         break
       elif miller_array.is_hendrickson_lattman_array():
         label = "HL"
+    if label is not None:
+      label_base = label
+      i = 1
+      while label in column_labels:
+        label = label_base + "-%i" %(i)
+        i += 1
     return label
 
   mtz_object = iotbx.mtz.object() \
