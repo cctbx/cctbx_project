@@ -12,6 +12,8 @@ def run(args):
   pdb_hierarchy.atoms().reset_i_seq()
   ncs_groups = torsion_ncs.determine_ncs_groups(
                  pdb_hierarchy=pdb_hierarchy)
+  if len(ncs_groups) == 0:
+    print "No NCS groups found"
   for i, group in enumerate(ncs_groups):
     print "Group %d:" % (i+1)
     for chain in group:
