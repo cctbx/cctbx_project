@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 from libtbx.test_utils import \
   Exception_expected, show_diff, anchored_block_show_diff
 from libtbx import Auto
+import warnings
 from cStringIO import StringIO
 import copy
 import sys, os
@@ -5483,6 +5484,51 @@ u
   assert c.scope_extract is params.u
   assert c.keyword_args == {"a": 3, "b": 4}
 
+def exercise_deprecation () :
+  master = phil.parse("""
+foo {
+  bar = None
+    .type = str
+}
+fubar = None
+  .type = str
+  .deprecated = True
+strategy = *xyz *adp tls
+  .type = choice(multi=True)
+  .deprecated = True
+""")
+  class _showwarning (object) :
+    def __init__ (self) :
+      self.n = 0
+      self.message = None
+
+    def __call__ (self, message, category, *args, **kwds) :
+      if (category is phil.PhilDeprecationWarning) :
+        self.n += 1
+        self.message = str(message)
+  warn = _showwarning()
+  warnings.showwarning = warn.__call__
+  w0 = master.fetch()
+  out = StringIO()
+  w0.show(out=out, attributes_level=2)
+  assert (not "fubar" in out.getvalue())
+  user1 = phil.parse("""fubar=None""")
+  w1 = master.fetch(source=user1)
+  out = StringIO()
+  w1.show(out=out, attributes_level=3)
+  assert (not "fubar" in out.getvalue())
+  user2 = phil.parse("""fubar=abcedf""")
+  w2 = master.fetch(source=user2)
+  assert (warn.n == 1)
+  assert (warn.message == 'fubar is deprecated - not recommended for use.')
+  out = StringIO()
+  w2.show(out=out, attributes_level=3)
+  assert ("fubar" in out.getvalue())
+  user3 = phil.parse("""strategy=xyz+tls""")
+  w2 = master.fetch(source=user3)
+  assert (warn.n == 2)
+  assert (warn.message == 'strategy is deprecated - not recommended for use.')
+
 scope_call_not_callable = None
 
 def scope_call_func(scope_extract, **keyword_args):
@@ -5525,6 +5571,7 @@ def exercise():
   exercise_definition_validate_etc()
   exercise_command_line()
   exercise_choice_multi_plus_support()
+  exercise_deprecation()
   print "OK"
 
 if (__name__ == "__main__"):
