@@ -1,9 +1,5 @@
-from cctbx.geometry_restraints import distance_least_squares
-from iotbx.kriber import strudat
-from iotbx.option_parser import option_parser
-import sys
-
 def run(args, distance_cutoff=3.5):
+  from iotbx.option_parser import option_parser
   command_line = (option_parser(
     usage="iotbx.distance_least_squares [options] studat_file [...]",
     description="Example: iotbx.distance_least_squares strudat --tag=SOD")
@@ -37,11 +33,21 @@ def run(args, distance_cutoff=3.5):
       default=1,
       help="Number of macro cycles per trial",
       metavar="INT")
+    .option(None, "--dev",
+      action="store_true",
+      default=False)
   ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
   co = command_line.options
+  if (co.dev):
+    print "DEVELOPMENT VERSION"
+    from cctbx.geometry_restraints import distance_least_squares_dev as dls
+    print
+  else:
+    from cctbx.geometry_restraints import distance_least_squares as dls
+  from iotbx.kriber import strudat
   for file_name in command_line.args:
     strudat_entries = strudat.read_all_entries(open(file_name))
     for entry in strudat_entries.entries:
@@ -49,7 +55,7 @@ def run(args, distance_cutoff=3.5):
         continue
       print "strudat tag:", entry.tag
       print
-      distance_least_squares.distance_and_repulsion_least_squares(
+      dls.distance_and_repulsion_least_squares(
         si_structure=entry.as_xray_structure(),
         distance_cutoff=distance_cutoff,
         nonbonded_repulsion_function_type=co.repulsion_function,
@@ -59,4 +65,5 @@ def run(args, distance_cutoff=3.5):
         connectivities=entry.connectivities(all_or_nothing=True))
 
 if (__name__ == "__main__"):
+  import sys
   run(sys.argv[1:])
