@@ -55,7 +55,9 @@ den_params = iotbx.phil.parse("""
  output_kinemage = False
    .type = bool
    .help = output kinemage representation of starting DEN restraints
- restraint_network {
+ restraint_network
+    .style = box auto_align
+ {
   lower_distance_cutoff = 3.0
     .type = float
   upper_distance_cutoff = 15.0
