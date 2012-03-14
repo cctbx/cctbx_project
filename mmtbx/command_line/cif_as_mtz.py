@@ -272,7 +272,7 @@ def extract(file_name,
       labels = ma.info().labels
       label = get_label(ma)
       if label is None: continue
-      elif label == output_r_free_label:
+      elif label.startswith(output_r_free_label):
         ma, _ = cif_status_flags_as_int_r_free_flags(
           ma, test_flag_value="f")
       crys_id = 0
