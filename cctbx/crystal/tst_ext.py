@@ -881,7 +881,7 @@ Si(2)
         site=(0,0,0)))
       sym_table.append(crystal.pair_sym_dict())
       sio = StringIO()
-      structure_plus.pair_sym_table_show_distances(
+      pair_counts = structure_plus.pair_sym_table_show_distances(
         pair_sym_table=sym_table,
         skip_j_seq_less_than_i_seq=True,
         out=sio)
@@ -901,6 +901,7 @@ Si  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
 O   pair count:   0       <<  0.0000,  0.0000,  0.0000>>
   no neighbors
 """)
+      assert pair_counts == [4,3,2,0]
       del sym_table[-1]
       sio = StringIO()
       sym_table.show_distances(
