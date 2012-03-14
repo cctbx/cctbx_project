@@ -63,57 +63,56 @@ def setup_nonbonded_params():
 
 class add_oxygen(object):
 
-  def __init__(self, si_structure, si_pair_asu_table):
+  def __init__(self, si_structure, si_pair_sym_table):
     self.structure = si_structure.deep_copy_scatterers()
-    self.bond_sym_table = crystal.pair_sym_table(
-      si_pair_asu_table.table().size())
+    bond_sym_table = crystal.pair_sym_table(si_pair_sym_table.size())
     sites_frac = si_structure.sites_frac()
-    si_asu_mappings = si_pair_asu_table.asu_mappings()
     i_oxygen = count(1)
-    for i_seq,asu_dict in enumerate(si_pair_asu_table.table()):
-      rt_mx_i_inv = si_asu_mappings.get_rt_mx(i_seq, 0).inverse()
-      site_frac_i = sites_frac[i_seq]
-      for j_seq,j_sym_groups in asu_dict.items():
-        for i_group,j_sym_group in enumerate(j_sym_groups):
-          if (j_seq < i_seq): continue
-          j_sym = j_sym_group[0]
-          rt_mx_ji = rt_mx_i_inv.multiply(
-            si_asu_mappings.get_rt_mx(j_seq, j_sym))
-          site_frac_ji = rt_mx_ji * sites_frac[j_seq]
-          bond_center = (mx.col(site_frac_i) + mx.col(site_frac_ji)) / 2
+    for i_seq,pair_sym_dict in enumerate(si_pair_sym_table):
+      site_frac_i = mx.col(sites_frac[i_seq])
+      for j_seq,sym_ops in pair_sym_dict.items():
+        assert j_seq >= i_seq
+        for rt_mx_ji in sym_ops:
+          site_frac_ji = mx.col(rt_mx_ji * sites_frac[j_seq])
+          bond_center = (site_frac_i + site_frac_ji) / 2
           i_seq_o = self.structure.scatterers().size()
           self.structure.add_scatterer(xray.scatterer(
             label="O%d"%i_oxygen.next(),
             site=bond_center))
-          self.bond_sym_table[i_seq].setdefault(i_seq_o).append(
+          bond_sym_table[i_seq].setdefault(i_seq_o).append(
             sgtbx.rt_mx(1,1))
-          self.bond_sym_table[j_seq].setdefault(i_seq_o).append(
+          bond_sym_table[j_seq].setdefault(i_seq_o).append(
             rt_mx_ji.inverse_cancel())
+          bond_sym_table.append(crystal.pair_sym_dict())
+    self.bond_sym_table = bond_sym_table.tidy(
+      site_symmetry_table=self.structure.site_symmetry_table())
 
-def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
+def make_o_si_o_sym_table(si_o_structure, si_o_bond_sym_table):
   scatterers = si_o_structure.scatterers()
-  asu_mappings = si_o_bond_asu_table.asu_mappings()
-  o_si_o_asu_table = crystal.pair_asu_table(
-    asu_mappings=asu_mappings)
-  for i_seq,asu_dict in enumerate(si_o_bond_asu_table.table()):
+  si_o_full_sym_table = si_o_bond_sym_table.full_connectivity(
+    site_symmetry_table=si_o_structure.site_symmetry_table())
+  o_si_o_sym_table = crystal.pair_sym_table(si_o_full_sym_table.size())
+  for i_seq,pair_sym_dict in enumerate(si_o_full_sym_table):
     if (scatterers[i_seq].scattering_type != "Si"): continue
-    pair_list = []
-    for j_seq,j_sym_groups in asu_dict.items():
+    jr_list = []
+    for j_seq,sym_ops in pair_sym_dict.items():
       if (scatterers[j_seq].scattering_type != "O"): continue
-      for i_group,j_sym_group in enumerate(j_sym_groups):
-        for j_sym in j_sym_group:
-          pair_list.append((j_seq,j_sym))
-    for i_jj1 in xrange(0,len(pair_list)-1):
-      jj1 = pair_list[i_jj1]
-      rt_mx_jj1_inv = asu_mappings.get_rt_mx(*jj1).inverse()
-      for i_jj2 in xrange(i_jj1+1,len(pair_list)):
-        jj2 = pair_list[i_jj2]
-        rt_mx_jj21 = rt_mx_jj1_inv.multiply(asu_mappings.get_rt_mx(*jj2))
-        o_si_o_asu_table.add_pair(
-          i_seq=jj1[0],
-          j_seq=jj2[0],
-          rt_mx_ji=rt_mx_jj21)
-  return o_si_o_asu_table
+      for rt_mx_ji in sym_ops:
+        jr_list.append((j_seq,rt_mx_ji))
+    for i_jj1 in xrange(0,len(jr_list)-1):
+      jr1 = jr_list[i_jj1]
+      i_seq = jr1[0]
+      rt_mx_jr1_inv = jr1[1].inverse()
+      for i_jj2 in xrange(i_jj1+1,len(jr_list)):
+        jr2 = jr_list[i_jj2]
+        j_seq = jr2[0]
+        rt_mx_jr21 = rt_mx_jr1_inv.multiply(jr2[1])
+        if (i_seq <= j_seq):
+          o_si_o_sym_table[i_seq].setdefault(j_seq).append(rt_mx_jr21)
+        else:
+          o_si_o_sym_table[j_seq].setdefault(i_seq).append(rt_mx_jr21.inverse())
+  return o_si_o_sym_table.tidy(
+    site_symmetry_table=si_o_structure.site_symmetry_table())
 
 class distance_and_repulsion_least_squares:
 
@@ -137,49 +136,49 @@ class distance_and_repulsion_least_squares:
     si_structure.show_summary(f=out).show_scatterers(f=out)
     print >> out
     out.flush()
-    si_asu_mappings = si_structure.asu_mappings(
-      buffer_thickness=distance_cutoff)
-    si_pair_asu_table = crystal.pair_asu_table(
-      asu_mappings=si_asu_mappings)
-    si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
-    si_pairs = si_structure.show_distances(
-      pair_asu_table=si_pair_asu_table,
-      out=out).distances_info
-    if (connectivities is not None):
-      assert list(si_pairs.pair_counts) == connectivities
-    print >> out
+    def get_si_pair_sym_table():
+      si_asu_mappings = si_structure.asu_mappings(
+        buffer_thickness=distance_cutoff)
+      si_pair_asu_table = crystal.pair_asu_table(
+        asu_mappings=si_asu_mappings)
+      si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+      si_pair_sym_table = si_pair_asu_table.extract_pair_sym_table()
+      si_pair_counts = si_structure.pair_sym_table_show_distances(
+        pair_sym_table=si_pair_sym_table,
+        out=out)
+      if (connectivities is not None):
+        assert list(si_pair_counts) == connectivities
+      print >> out
+      return si_pair_sym_table, si_pair_counts
+    si_pair_sym_table, si_pair_counts = get_si_pair_sym_table()
     out.flush()
     si_o = add_oxygen(
       si_structure=si_structure,
-      si_pair_asu_table=si_pair_asu_table)
+      si_pair_sym_table=si_pair_sym_table)
     si_o.structure.show_summary(f=out).show_scatterers(f=out)
     print >> out
     out.flush()
-    si_o_asu_mappings = si_o.structure.asu_mappings(
-      buffer_thickness=distance_cutoff/2.*3)
-    si_o_bond_asu_table = crystal.pair_asu_table(
-      asu_mappings=si_o_asu_mappings)
-    si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
-    si_o_bonds = si_o.structure.show_distances(
-      pair_asu_table=si_o_bond_asu_table,
-      out=out).distances_info
-    n_si = si_pairs.pair_counts.size()
-    n_si_o = si_o_bonds.pair_counts.size()
-    assert si_o_bonds.pair_counts[:n_si].all_eq(si_pairs.pair_counts)
-    assert si_o_bonds.pair_counts[n_si:].count(2) == n_si_o-n_si
+    si_o_pair_counts = si_o.structure.pair_sym_table_show_distances(
+      pair_sym_table=si_o.bond_sym_table,
+      out=out)
+    n_si = si_pair_counts.size()
+    n_si_o = si_o_pair_counts.size()
+    assert si_o_pair_counts[:n_si].all_eq(si_pair_counts)
+    assert si_o_pair_counts[n_si:].count(2) == n_si_o-n_si
     print >> out
     out.flush()
-    o_si_o_asu_table = make_o_si_o_asu_table(
+    o_si_o_sym_table = make_o_si_o_sym_table(
       si_o_structure=si_o.structure,
-      si_o_bond_asu_table=si_o_bond_asu_table)
-    o_si_o_pairs = si_o.structure.show_distances(
-      pair_asu_table=o_si_o_asu_table,
-      out=out).distances_info
-    assert o_si_o_pairs.pair_counts[:n_si].all_eq(0)
-    if (si_pairs.pair_counts.count(4) == n_si):
-      assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
+      si_o_bond_sym_table=si_o.bond_sym_table)
+    o_si_o_pair_counts = si_o.structure.pair_sym_table_show_distances(
+      pair_sym_table=o_si_o_sym_table,
+      out=out)
+    assert o_si_o_pair_counts[:n_si].all_eq(0)
+    if (si_pair_counts.count(4) == n_si):
+      assert o_si_o_pair_counts[n_si:].all_eq(6)
     print >> out
     out.flush()
+    return # XXX
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=si_o_bond_asu_table,
       max_shell=3)
