@@ -37,7 +37,7 @@ class rotarama_plot_mixin (object) :
     if (contours is not None) :
       self.plot.contour(stats, contours,
         origin="lower",
-        cmap=cm, # FIXME solid black or dark grey would be more visible
+        colors='k',
         extent=extent)
     if (y_marks is None) :
       self.set_labels()
