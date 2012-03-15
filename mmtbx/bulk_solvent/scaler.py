@@ -82,27 +82,29 @@ def set_bin_selections(d_spacings, min_ref_low):
     cntr += sel.count(True)
     if(sel.count(True)>0): selections.append(sel)
   assert cntr == d_spacings.size()
-  for i in xrange(len(selections)):
-    count_true = selections[i].count(True)
-    if(count_true>0 and count_true<min_ref_low and i+1<len(selections)):
-      s = selections[i] | selections[i+1]
-      selections[i+1]=s
-      selections[i]=None
-    elif(count_true<500 and i==len(selections)-1 and selections[i-1] is not None):
-      #print selections[i] , selections[i-1]
-      s = selections[i] | selections[i-1]
-      selections[i-1]=s
-      selections[i]=None
-  #print
-  sn = []
-  cntr = 0
-  for s in selections:
-    if(s is not None):
-      sn.append(s)
-      cntr += s.count(True)
-      #print s.count(True)
-  assert cntr == d_spacings.size()
-  return sn
+  for t in [1,2,3]:
+    for i in xrange(len(selections)):
+      count_true = selections[i].count(True)
+      if(count_true>0 and count_true<min_ref_low and i+1<len(selections)):
+        s = selections[i] | selections[i+1]
+        selections[i+1]=s
+        selections[i]=None
+      elif(count_true<500 and i==len(selections)-1 and selections[i-1] is not None):
+        #print selections[i] , selections[i-1]
+        s = selections[i] | selections[i-1]
+        selections[i-1]=s
+        selections[i]=None
+    #print
+    sn = []
+    cntr = 0
+    for s in selections:
+      if(s is not None):
+        sn.append(s)
+        cntr += s.count(True)
+        #print s.count(True)
+    assert cntr == d_spacings.size()
+    selections = sn
+  return selections
 
 
 def gs(fo, fc, fm):
@@ -127,15 +129,17 @@ class run(object):
                f_mask, # only one shell is supported
                r_free_flags,
                ss,
-               scale_method,
+               scale_method="combo",
                k_mask_approximator=None,
-               smooth_k_mask=0,
+               smooth_k_mask=2,
                number_of_cycles=20, # termination occures much earlier
                log=None,
                try_poly = True,
                try_expanal = True,
                try_expmin = False,
-               verbose=False):
+               verbose=False,
+               auto = True):
+    self.auto = auto
     self.log = log
     self.scale_method = scale_method
     self.verbose = verbose
@@ -180,6 +184,7 @@ class run(object):
     self.cores_and_selections = []
     self.bin_selections = self._bin_selections()
     self.low_res_selection = self._low_resolution_selection()
+    self.high_res_selection = self._high_resolution_selection()
     if(verbose):
       print >> log, "  Using %d resolution bins"%len(self.bin_selections)
     self.ss_bin_values=[]
@@ -216,7 +221,8 @@ class run(object):
       print >> log, "  r(final): %6.4f"%(self.r_factor())
       self.show(fit_accepted=fit_accepted)
     #
-    self.r_low = self._r_low()
+    self.r_low  = self._r_low()
+    self.r_high = self._r_high()
     if(verbose):
       d = self.d_spacings.data().select(self.low_res_selection)
       d1 = ("%7.4f"%flex.min(d)).strip()
@@ -266,9 +272,17 @@ class run(object):
         result = sel
     return result & self.core.selection_work.data()
 
+  def _high_resolution_selection(self):
+    return self.bin_selections[len(self.bin_selections)-1] & \
+      self.core.selection_work.data()
+
+  def _r_high(self):
+    return bulk_solvent.r_factor(self.core.f_obs.data(),
+      self.core.f_model.data(), self.high_res_selection, 1)
+
   def _r_low(self):
     return bulk_solvent.r_factor(self.core.f_obs.data(),
-      self.core.f_model.data(), self.low_res_selection)
+      self.core.f_model.data(), self.low_res_selection, 1)
 
   def _bin_selections(self):
     r = set_bin_selections(d_spacings = self.d_spacings, min_ref_low = 300)
@@ -597,7 +611,8 @@ class run(object):
         print >> self.log, "      r_poly   : %6.4f"%r_poly
     # pre-analyze
     force_to_use_expmin=False
-    if(r_poly<r_expanal and (k_anisotropic_poly<=0).count(True)>0):
+    if(self.auto and r_poly<r_expanal and k_anisotropic_poly is not None and
+       (k_anisotropic_poly<=0).count(True)>0):
       force_to_use_expmin = True
       self.try_expmin = True
     # try expmin
@@ -629,7 +644,7 @@ class run(object):
       k_anisotropic_expmin = ext.overall_anisotropic_scale(mi_all, u_star)
       r_expmin = self.try_scale(k_anisotropic = k_anisotropic_expmin)
       if(self.verbose): print >> self.log, "    r_expmin   : %6.4f"%r_expmin
-      if(force_to_use_expmin):
+      if(self.auto and force_to_use_expmin):
         self.core = self.core.update(k_anisotropic = k_anisotropic_expmin)
         if(self.verbose):
           print >> self.log, "      b_cart(11,22,33,12,13,23):",\
