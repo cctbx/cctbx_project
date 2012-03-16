@@ -2,6 +2,8 @@ from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.utils import Sorry
 from cStringIO import StringIO
 import random
 import sys
@@ -69,11 +71,32 @@ def exercise(space_group_info, anomalous_flag,
         part(f_calc_com.data()),
         part(f_calc_ave.data())).coefficient() > 1-1.e-6
 
+def exercise_incompatible_flags_replacement():
+  i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))
+  d = flex.int((1,1,0,1,0,1))
+  from cctbx import crystal
+  cs = crystal.symmetry(unit_cell=(10,10,10,90,90,90), space_group_symbol="P1")
+  ms = miller.set(cs, i)
+  ma = miller.array(ms, data=d)
+  try: ma.merge_equivalents()
+  except Sorry, e: assert "merge_equivalents_exact: incompatible flags" in str(e)
+  else: raise Exception_expected
+  merging = ma.merge_equivalents(incompatible_flags_replacement=0)
+  me = merging.array()
+  assert approx_equal(me.data(), (1,1,0))
+  merging = ma.merge_equivalents(incompatible_flags_replacement=2)
+  me = merging.array()
+  assert approx_equal(me.data(), (1,1,2))
+
+
+
+
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
     exercise(space_group_info, anomalous_flag)
 
 def run():
+  exercise_incompatible_flags_replacement()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 

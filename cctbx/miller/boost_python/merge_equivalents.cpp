@@ -82,10 +82,15 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>(python_name, no_init)
         .def(init<af::const_ref<index<> > const&,
-                  af::const_ref<IntegralType> const&>())
+                  af::const_ref<IntegralType> const&,
+                  boost::optional<IntegralType> >
+                  //())
+                  ((arg("unmerged_indices"), arg("unmerged_data"),
+                  arg("incompatible_flags_replacement")=boost::optional<IntegralType>())))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
+        .add_property("n_incompatible_flags", make_getter(&w_t::n_incompatible_flags, rbv()))
       ;
     }
   };

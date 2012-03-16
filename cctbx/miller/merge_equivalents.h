@@ -1,6 +1,8 @@
 #ifndef CCTBX_MILLER_MERGE_EQUIVALENTS_H
 #define CCTBX_MILLER_MERGE_EQUIVALENTS_H
 
+#include <boost/optional.hpp>
+
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/mean_and_variance.h>
 
@@ -124,7 +126,11 @@ namespace cctbx { namespace miller {
 
     merge_equivalents_exact(
       af::const_ref<index<> > const& unmerged_indices,
-      af::const_ref<IntegralType> const& unmerged_data)
+      af::const_ref<IntegralType> const& unmerged_data,
+      boost::optional<IntegralType> incompatible_flags_replacement=boost::optional<IntegralType>())
+    :
+      incompatible_flags_replacement(incompatible_flags_replacement),
+      n_incompatible_flags(0)
     {
       merge_equivalents_impl<IntegralType>
         ::loop_over_groups(*this, unmerged_indices, unmerged_data);
@@ -133,6 +139,8 @@ namespace cctbx { namespace miller {
     af::shared<index<> > indices;
     af::shared<IntegralType> data;
     af::shared<int> redundancies;
+    boost::optional<IntegralType> incompatible_flags_replacement;
+    int n_incompatible_flags;
 
     IntegralType
     merge(
@@ -141,6 +149,10 @@ namespace cctbx { namespace miller {
     {
       for(std::size_t i=1;i<n;i++) {
         if (data_group[i] != data_group[0]) {
+          if (incompatible_flags_replacement) {
+            n_incompatible_flags++;
+            return *incompatible_flags_replacement;
+          }
           char buf[128];
           std::sprintf(buf,
             "merge_equivalents_exact:"
