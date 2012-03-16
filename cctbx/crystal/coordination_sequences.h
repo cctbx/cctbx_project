@@ -119,10 +119,10 @@ namespace coordination_sequences {
 
   //! Generic coordination sequence algorithm.
   template <typename Actions>
-  struct core : Actions
+  struct core_asu : Actions
   {
     //! Execution of the coordination sequence algorithm.
-    core(
+    core_asu(
       crystal::pair_asu_table<> const& pair_asu_table,
       unsigned max_shell)
     :
@@ -137,7 +137,6 @@ namespace coordination_sequences {
       unsigned n_seq = asu_table_ref.size();
       three_shells shells;
       for(this->i_seq_pivot=0; this->i_seq_pivot<n_seq; this->i_seq_pivot++) {
-        sgtbx::rt_mx rt_mx_pivot = asu_mappings.get_rt_mx(this->i_seq_pivot,0);
         shells.clear(
           asu_mappings.special_op(this->i_seq_pivot),
           this->i_seq_pivot);
@@ -196,11 +195,72 @@ namespace coordination_sequences {
     }
   };
 
-  //! Actions for simple counting.
-  struct term_table_actions
+  //! Generic coordination sequence algorithm.
+  template <typename Actions>
+  struct core_sym : Actions
   {
-    //! Called at start of core<term_table_actions>.
-    term_table_actions(
+    //! Execution of the coordination sequence algorithm.
+    core_sym(
+      crystal::pair_sym_table const& full_pair_sym_table,
+      sgtbx::site_symmetry_table const& site_symmetry_table,
+      unsigned max_shell)
+    :
+      Actions(full_pair_sym_table, max_shell)
+    {
+      CCTBX_ASSERT(
+        full_pair_sym_table.size() == site_symmetry_table.indices().size());
+      unsigned n_seq = full_pair_sym_table.size();
+      three_shells shells;
+      for(this->i_seq_pivot=0; this->i_seq_pivot<n_seq; this->i_seq_pivot++) {
+        shells.clear(
+          site_symmetry_table.get(this->i_seq_pivot).special_op(),
+          this->i_seq_pivot);
+        for(this->i_shell_minus_1=0;
+            this->i_shell_minus_1<max_shell;
+            this->i_shell_minus_1++) {
+          shells.shift();
+          for(std::map<unsigned, std::vector<node> >::const_iterator
+                items_m=shells.middle->begin();
+                items_m!=shells.middle->end();
+                items_m++) {
+            unsigned i_seq_m = items_m->first;
+            std::vector<node> const& nodes_middle = items_m->second;
+            unsigned nodes_middle_size = nodes_middle.size();
+            for(unsigned i_node_m=0;i_node_m<nodes_middle_size;i_node_m++) {
+              node node_m = nodes_middle[i_node_m];
+              pair_sym_dict::const_iterator
+                pair_sym_dict_end = full_pair_sym_table[i_seq_m].end();
+              for(pair_sym_dict::const_iterator
+                    pair_sym_dict_i = full_pair_sym_table[i_seq_m].begin();
+                    pair_sym_dict_i != pair_sym_dict_end;
+                    pair_sym_dict_i++) {
+                unsigned j_seq = pair_sym_dict_i->first;
+                pair_sym_ops const& j_sym_ops = pair_sym_dict_i->second;
+                for(unsigned i_j_sym_op=0;
+                             i_j_sym_op<j_sym_ops.size();
+                             i_j_sym_op++) {
+                  node new_node(
+                    site_symmetry_table.get(j_seq).special_op(),
+                    node_m.rt_mx.multiply(j_sym_ops[i_j_sym_op]));
+                  if (!shells.find_node(j_seq, new_node)) {
+                    (*shells.next)[j_seq].push_back(new_node);
+                  }
+                }
+              }
+            }
+          }
+          this->shell_complete(shells);
+        }
+        this->pivot_complete();
+      }
+    }
+  };
+
+  //! Actions for simple counting.
+  struct term_table_actions_asu
+  {
+    //! Called at start of core_asu<term_table_actions_asu>.
+    term_table_actions_asu(
       crystal::pair_asu_table<> const& pair_asu_table,
       unsigned /*max_shell*/)
     :
@@ -235,19 +295,70 @@ namespace coordination_sequences {
     std::vector<unsigned>* terms;
   };
 
-  //! Friendly interface to core<term_table_actions>.
+  //! Actions for simple counting.
+  struct term_table_actions_sym
+  {
+    //! Called at start of core_sym<term_table_actions_sym>.
+    term_table_actions_sym(
+      crystal::pair_sym_table const& full_pair_sym_table,
+      unsigned /*max_shell*/)
+    :
+      terms(0)
+    {
+      term_table.reserve(full_pair_sym_table.size());
+    }
+
+    //! Called when the next shell is complete.
+    void
+    shell_complete(three_shells const& shells)
+    {
+      if (terms == 0) {
+        term_table.push_back(std::vector<unsigned>());
+        terms = &term_table.back();
+        terms->push_back(1);
+      }
+      terms->push_back(shells.count_next());
+    }
+
+    //! Called when a pivot site is completed.
+    void
+    pivot_complete() { terms = 0; }
+
+    //! Index of current pivot site.
+    unsigned i_seq_pivot;
+    //! Index of current shell - 1.
+    unsigned i_shell_minus_1;
+    //! Final table of terms.
+    af::shared<std::vector<unsigned> > term_table;
+    //! Pointer to term_table[i_seq_pivot].
+    std::vector<unsigned>* terms;
+  };
+
+  //! Friendly interface to core_asu<term_table_actions_asu>.
   af::shared<std::vector<unsigned> >
   simple(
     crystal::pair_asu_table<> const& pair_asu_table,
     unsigned max_shell)
   {
-    return core<term_table_actions>(pair_asu_table, max_shell).term_table;
+    return core_asu<term_table_actions_asu>(
+      pair_asu_table, max_shell).term_table;
+  }
+
+  //! Friendly interface to core_asu<term_table_actions_asu>.
+  af::shared<std::vector<unsigned> >
+  simple_sym(
+    crystal::pair_sym_table const& full_pair_sym_table,
+    sgtbx::site_symmetry_table const& site_symmetry_table,
+    unsigned max_shell)
+  {
+    return core_sym<term_table_actions_sym>(
+      full_pair_sym_table, site_symmetry_table, max_shell).term_table;
   }
 
   //! Actions for the generation of higher-level (nonbonded) interactions.
   struct shell_asu_tables_actions
   {
-    //! Called at start of core<term_table_actions>.
+    //! Called at start of core_asu<shell_asu_tables_actions>.
     shell_asu_tables_actions(
       crystal::pair_asu_table<> const& pair_asu_table,
       unsigned max_shell)
@@ -306,13 +417,13 @@ namespace coordination_sequences {
     std::vector<pair_asu_table<> > shell_asu_tables;
   };
 
-  //! Friendly interface to core<shell_asu_tables_actions>.
+  //! Friendly interface to core_asu<shell_asu_tables_actions>.
   std::vector<pair_asu_table<> >
   shell_asu_tables(
     crystal::pair_asu_table<> const& pair_asu_table,
     unsigned max_shell)
   {
-    return core<shell_asu_tables_actions>(pair_asu_table, max_shell)
+    return core_asu<shell_asu_tables_actions>(pair_asu_table, max_shell)
       .shell_asu_tables;
   }
 
