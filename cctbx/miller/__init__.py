@@ -2802,8 +2802,11 @@ class array(set):
     assert self.sigmas() is None
     return self.arg(deg)
 
-  def merge_equivalents(self, algorithm="gaussian"):
-    return merge_equivalents(self, algorithm)
+  def merge_equivalents(self, algorithm="gaussian",
+                        incompatible_flags_replacement=None):
+    return merge_equivalents(
+      self, algorithm,
+      incompatible_flags_replacement=incompatible_flags_replacement)
 
   def as_non_anomalous_array(self):
     return array(
@@ -3524,31 +3527,42 @@ class normalised_amplitudes(object):
 
 class merge_equivalents(object):
 
-  def __init__(self, miller_array, algorithm="gaussian"):
+  def __init__(self, miller_array, algorithm="gaussian",
+               incompatible_flags_replacement=None):
     assert algorithm in ["gaussian", "shelx"]
     self._r_linear = None
     self._r_square = None
     self._r_int = None
     self._inconsistent_equivalents = None
+    self.n_incompatible_flags = None
+    data_type_str = miller_array.data().__class__.__name__
     merge_type = {
       "bool": ext.merge_equivalents_exact_bool,
       "int": ext.merge_equivalents_exact_int,
       "complex_double": ext.merge_equivalents_complex,
       "hendrickson_lattman": ext.merge_equivalents_hl,
-    }.get(miller_array.data().__class__.__name__, None)
+    }.get(data_type_str, None)
     if (merge_type is not None):
       asu_array = miller_array.map_to_asu()
       perm = asu_array.sort_permutation(by_value="packed_indices")
       try :
-        merge_ext = merge_type(
-          asu_array.indices().select(perm),
-          asu_array.data().select(perm))
+        if data_type_str in ("bool", "int"):
+          merge_ext = merge_type(
+            asu_array.indices().select(perm),
+            asu_array.data().select(perm),
+            incompatible_flags_replacement=incompatible_flags_replacement)
+        else:
+          merge_ext = merge_type(
+            asu_array.indices().select(perm),
+            asu_array.data().select(perm))
       except RuntimeError, e :
         if ("merge_equivalents_exact: incompatible" in str(e)) :
           raise Sorry(str(e) + " (mismatch between Friedel mates)")
         raise
       sigmas = None
       del asu_array
+      if hasattr(merge_ext, "n_incompatible_flags"):
+        self.n_incompatible_flags = merge_ext.n_incompatible_flags
     elif (isinstance(miller_array.data(), flex.double)):
       asu_set = set.map_to_asu(miller_array)
       perm = asu_set.sort_permutation(by_value="packed_indices")
