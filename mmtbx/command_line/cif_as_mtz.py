@@ -76,6 +76,10 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       .option(None, "--merge",
         action="store_true",
         help="Merge non-unique data where present.")
+      .option(None, "--incompatible_flags_to_work_set",
+        action="store_true",
+        help="When merging place reflections with incompatible flags into the "
+             "working set.")
       .option(None, "--remove_systematic_absences",
         action="store_true",
         help="Remove systematic absent reflections.")
@@ -127,7 +131,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     output_r_free_label=command_line.options.output_r_free_label,
     merge_non_unique_under_symmetry=command_line.options.merge,
     map_to_asu=command_line.options.map_to_asu,
-    remove_systematic_absences=command_line.options.remove_systematic_absences)
+    remove_systematic_absences=command_line.options.remove_systematic_absences,
+    incompatible_flags_to_work_set=command_line.options.incompatible_flags_to_work_set)
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -139,7 +144,8 @@ def process_files (file_name,
                    output_r_free_label,
                    merge_non_unique_under_symmetry=False,
                    map_to_asu=False,
-                   remove_systematic_absences=False) :
+                   remove_systematic_absences=False,
+                   incompatible_flags_to_work_set=False) :
   mtz_object = extract(
     file_name                       = file_name,
     crystal_symmetry                = crystal_symmetry,
@@ -149,7 +155,8 @@ def process_files (file_name,
     output_r_free_label             = output_r_free_label,
     merge_non_unique_under_symmetry = merge_non_unique_under_symmetry,
     map_to_asu                      = map_to_asu,
-    remove_systematic_absences      = remove_systematic_absences)
+    remove_systematic_absences      = remove_systematic_absences,
+    incompatible_flags_to_work_set  = incompatible_flags_to_work_set)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -205,7 +212,8 @@ def extract(file_name,
             output_r_free_label,
             merge_non_unique_under_symmetry,
             map_to_asu,
-            remove_systematic_absences):
+            remove_systematic_absences,
+            incompatible_flags_to_work_set=False):
   import iotbx.cif
   all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays()
   if (len(all_miller_arrays) == 0) :
@@ -309,7 +317,17 @@ def extract(file_name,
         if merge_non_unique_under_symmetry:
           print "Warning: merging non-unique data"
           try:
-            ma = ma.merge_equivalents().array().customized_copy(
+            if (label.startswith(output_r_free_label)
+                and incompatible_flags_to_work_set):
+              merging = ma.merge_equivalents(
+                incompatible_flags_replacement=0)
+              if merging.n_incompatible_flags > 0:
+                print "Warning: %i reflections were placed in the working set " \
+                      "because of incompatible flags between equivalents." %(
+                        merging.n_incompatible_flags)
+            else:
+              merging = ma.merge_equivalents()
+            ma = merging.array().customized_copy(
               crystal_symmetry=ma).set_info(ma.info())
           except Sorry, e:
             if ("merge_equivalents_exact: incompatible" in str(e)) :
