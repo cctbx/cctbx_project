@@ -3,6 +3,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 
 simple = crystal.coordination_sequences_simple
+simple_sym = crystal.coordination_sequences_simple_sym
 shell_asu_tables = crystal.coordination_sequences_shell_asu_tables
 
 class node(object):

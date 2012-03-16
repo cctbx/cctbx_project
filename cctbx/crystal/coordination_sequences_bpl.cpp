@@ -16,6 +16,11 @@ namespace {
     def("coordination_sequences_simple", coordination_sequences::simple, (
       arg("pair_asu_table"),
       arg("max_shell")));
+    def("coordination_sequences_simple_sym",
+         coordination_sequences::simple_sym, (
+      arg("full_pair_sym_table"),
+      arg("site_symmetry_table"),
+      arg("max_shell")));
     def("coordination_sequences_shell_asu_tables",
       coordination_sequences::shell_asu_tables, (
       arg("pair_asu_table"),

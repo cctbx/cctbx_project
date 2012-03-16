@@ -15,8 +15,15 @@ def exercise_simple(structure, distance_cutoff, max_shell, verbose):
   term_table_slow = crystal.coordination_sequences.simple_and_slow(
     pair_asu_table=pair_asu_table,
     max_shell=max_shell)
-  term_table_simple = cctbx.crystal.coordination_sequences.simple(
+  term_table_simple_asu = cctbx.crystal.coordination_sequences.simple(
     pair_asu_table=pair_asu_table,
+    max_shell=max_shell)
+  site_symmetry_table = structure.site_symmetry_table()
+  full_pair_sym_table = pair_asu_table.extract_pair_sym_table() \
+    .full_connectivity(site_symmetry_table=site_symmetry_table)
+  term_table_simple_sym = cctbx.crystal.coordination_sequences.simple_sym(
+    full_pair_sym_table=full_pair_sym_table,
+    site_symmetry_table=site_symmetry_table,
     max_shell=max_shell)
   if (verbose):
     print "term_table_slow:"
@@ -24,13 +31,19 @@ def exercise_simple(structure, distance_cutoff, max_shell, verbose):
       structure=structure,
       term_table=term_table_slow)
     print
-    print "term_table_simple:"
+    print "term_table_simple_asu:"
     cctbx.crystal.coordination_sequences.show_terms(
       structure=structure,
-      term_table=term_table_simple)
+      term_table=term_table_simple_asu)
     print
-  for terms_slow,terms_simple in zip(term_table_slow, term_table_simple):
-    assert terms_slow == list(terms_simple)
+    print "term_table_simple_sym:"
+    cctbx.crystal.coordination_sequences.show_terms(
+      structure=structure,
+      term_table=term_table_simple_sym)
+    print
+  for term_table_simple in [term_table_simple_asu, term_table_simple_sym]:
+    for terms_slow,terms_simple in zip(term_table_slow, term_table_simple):
+      assert terms_slow == list(terms_simple)
 
 def exercise_shell_asu_tables(structure, verbose):
   asu_mappings = structure.asu_mappings(buffer_thickness=10)
