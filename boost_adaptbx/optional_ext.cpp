@@ -32,6 +32,7 @@ namespace {
 BOOST_PYTHON_MODULE(boost_optional_ext)
 {
   using boost_adaptbx::optional_conversions::to_and_from_python;
+  to_and_from_python<boost::optional<bool> >();
   to_and_from_python<boost::optional<int> >();
   to_and_from_python<boost::optional<unsigned> >();
 #if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
