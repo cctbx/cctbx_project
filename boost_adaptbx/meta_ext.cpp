@@ -532,10 +532,12 @@ namespace {
       PyErr_SetString(PyExc_OverflowError,
         "string is too large to make repr");
       boost::python::throw_error_already_set();
+      return boost::python::object(); // to avoid compiler warnings
     }
     PyObject* v = PyString_FromStringAndSize((char *)NULL, newsize);
     if (v == NULL) {
       boost::python::throw_error_already_set();
+      return boost::python::object(); // to avoid compiler warnings
     }
     else {
       int quote = preferred_quote;
