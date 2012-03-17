@@ -28,8 +28,7 @@ class reeke_model:
         self._dstarmax = 1 / dmin
         self._dstarmax2 = self._dstarmax**2
 
-        # margin by which to expand limits. Mosflm uses 3. C
-        # TODO play with this value to see what difference it makes.
+        # Margin by which to expand limits. Mosflm uses 3.
         # It might be useful to account for errors in the orientation.
         self._margin = int(margin)
 
@@ -206,7 +205,7 @@ class reeke_model:
         return col1, col2, col3
 
     def _solve_quad(self, a, b, c):
-        """Robust solution for real roots only of a quadratic in the form
+        """Robust solution, for real roots only, of a quadratic in the form
         (ax^2 + bx + c)."""
 
         discriminant = b**2 - 4 * a * c
@@ -287,8 +286,8 @@ class reeke_model:
         # intersection between the Ewald and resolution limiting spheres
 
         # TODO better way to get sin_2theta?
-        # TODO also need some sanity checks in case dmin is ridiculous
         sin_theta = 0.5 * self._wavelength * self._dstarmax
+        assert abs(sin_theta) <= 1.0 # sanity check
         sin_2theta = math.sin(2.0 * math.asin(sin_theta))
 
         e = 2.0 * sin_theta**2 * dp_beg
@@ -509,20 +508,20 @@ class reeke_model:
 
         return hkl
 
-    def visualize(self):
-        """Write an R script (reeke_vis.R) and an associated data file
-        (reeke_hkl.dat) for visualisation of generated indices between
-        phi_beg and phi_end, using R and the rgl add-on package."""
+    def visualize_with_rgl(self, rscript="reeke_vis.R", dat="reeke_hkl.dat"):
+        """Write an R script and an associated data file
+        for visualisation of generated indices between phi_beg and phi_end,
+        using R and the rgl add-on package."""
 
         # Sorry, this is ugly. I don't know matplotlib yet.
 
         # write R script
 
-        f = open("reeke_vis.R", "w")
+        f = open(rscript, "w")
 
         f.write("# Run this from within R using\n" + \
                 "# install.packages('rgl')\n" + \
-                "# source('reeke_vis.R')\n\n")
+                "# source('%s')\n\n" % rscript)
         f.write("library(rgl)\n")
         f.write("p_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[0].elems)
         f.write("q_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[1].elems)
@@ -573,9 +572,9 @@ class reeke_model:
                 "  e * s0unit + R*sin(x) * s0unitx1 + R*cos(x) * s0unitx2}))\n" + \
                 "\n# draw the circle\n" + \
                 "lines3d(circ)\n" + \
-                "\n# load the generated indices\n" + \
-                "pts <- read.csv('./reeke_hkl.dat')\n" + \
-                "\n# convert h, k, l to reciprocal space coordinates\n" + \
+                "\n# load the generated indices\n"
+                "pts <- read.csv('./%s')\n" % dat)
+        f.write("\n# convert h, k, l to reciprocal space coordinates\n" + \
                 "conv <- function(h) {p <- perm %*% h\n" + \
                 "    return(p[1]*p_ax + p[2]*q_ax + p[3]*r_ax)}\n" + \
                 "pts <- t(apply(pts, MARGIN = 1, FUN = conv))\n" + \
@@ -588,27 +587,25 @@ class reeke_model:
 
         indices = self.generate_indices()
 
-        f = open("reeke_hkl.dat", "w")
+        f = open(dat, "w")
         f.write("h, k, l\n")
 
         for hkl in indices:
             f.write("%d, %d, %d\n" % hkl)
         f.close()
 
+        print "Generated indices were written to %s" % dat
+        print "An R script for visualising these was written to %s," % rscript
+        print "which can be run from the R prompt with:"
+        print "source('%s')" % rscript
+
         return
 
-if __name__ == '__main__':
-
-    import sys
-
-    if len(sys.argv) < 3:
-        msg = "Requires 2 or 3 arguments: start_phi end_phi margin=3"
-        sys.exit(msg)
-
-    phi_beg, phi_end = float(sys.argv[1]), float(sys.argv[2])
-    margin = int(sys.argv[3]) if len(sys.argv) == 4 else 3
-
-    # test run for development/debugging. Values come from the use case data
+def reeke_model_for_use_case(phi_beg, phi_end, margin):
+    """Construct a reeke_model for the geometry of the Use Case Thaumatin
+    dataset, taken from the XDS XPARM. The values are hard-
+    coded here so that this module does not rely on the location of that
+    file."""
 
     axis = matrix.col([0.0, 1.0, 0.0])
     ub = matrix.sqr([-0.0133393674072, -0.00541609051856, -0.00367748834997,
@@ -617,10 +614,62 @@ if __name__ == '__main__':
     s0 = matrix.col([0.00237878589035, 1.55544539299e-16, -1.09015329696])
     dmin = 1.20117776325
 
-    r = reeke_model(ub, axis, s0, dmin, phi_beg, phi_end, margin)
+    return reeke_model(ub, axis, s0, dmin, phi_beg, phi_end, margin)
 
-    r.visualize()
-    print "Generated indices were written to reeke_hkl.dat"
-    print "An R script for visualising these was written to reeke_vis.R,"
-    print "which can be run from the R prompt with:"
-    print "source('reeke_vis.R')"
+def regression_test():
+    """Perform a regression test by generating indices for a small wedge in
+    phi for the Use Case data, and compare to expected results."""
+
+    r = reeke_model_for_use_case(0, 0.2, 3)
+    indices = r.generate_indices()
+
+    h, k, l = zip(*indices)
+    assert (min(h), max(h)) == (-47, 37)
+    assert (min(k), max(k)) == (0, 32)
+    assert (min(l), max(l)) == (-124, 109)
+
+    # test reduced margin size
+    r = reeke_model_for_use_case(0, 0.2, 1)
+    indices = r.generate_indices()
+
+    h, k, l = zip(*indices)
+    assert (min(h), max(h)) == (-47, 37)
+    assert (min(k), max(k)) == (2, 31)
+    assert (min(l), max(l)) == (-122, 107)
+
+    # test increased wedge angle
+    r = reeke_model_for_use_case(0, 1.0, 3)
+    indices = r.generate_indices()
+
+    h, k, l = zip(*indices)
+    assert (min(h), max(h)) == (-47, 37)
+    assert (min(k), max(k)) == (-1, 32)
+    assert (min(l), max(l)) == (-124, 109)
+
+    #TODO Tests for an oblique cell
+    #TODO Better tests than ranges of generated indices
+
+    print "OK"
+
+if __name__ == '__main__':
+
+    import sys
+
+    if len(sys.argv) == 1:
+        regression_test()
+
+    elif len(sys.argv) < 3:
+        from libtbx.utils import Sorry
+        raise Sorry("Expecting either 2 or 3 arguments: start_phi end_phi margin=3")
+
+    else:
+
+        phi_beg, phi_end = float(sys.argv[1]), float(sys.argv[2])
+        margin = int(sys.argv[3]) if len(sys.argv) == 4 else 3
+
+        # test run for development/debugging. Values come from the use case data
+        r = reeke_model_for_use_case(phi_beg, phi_end, margin)
+        indices = r.generate_indices()
+
+        for hkl in indices:
+            print "%4d %4d %4d" % hkl
