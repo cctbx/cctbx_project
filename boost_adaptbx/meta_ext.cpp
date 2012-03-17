@@ -528,7 +528,7 @@ namespace {
   {
     PyStringObject* op = (PyStringObject*) string.ptr();
     size_t newsize = 2 + 4 * Py_SIZE(op);
-    if (newsize > PY_SSIZE_T_MAX || newsize / 4 != Py_SIZE(op)) {
+    if (newsize > boost::python::ssize_t_max || newsize / 4 != Py_SIZE(op)) {
       PyErr_SetString(PyExc_OverflowError,
         "string is too large to make repr");
       boost::python::throw_error_already_set();
@@ -546,7 +546,7 @@ namespace {
       }
       char* p = PyString_AS_STRING(v);
       *p++ = quote;
-      for (Py_ssize_t i = 0; i < Py_SIZE(op); i++) {
+      for (boost::python::ssize_t i = 0; i < Py_SIZE(op); i++) {
         /* There's at least enough room for a hex escape
            and a closing quote. */
         TBXX_ASSERT(newsize - (p - PyString_AS_STRING(v)) >= 5);
