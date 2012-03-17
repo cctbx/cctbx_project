@@ -49,6 +49,7 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
 
 def get_processes (processes) :
   if (processes is None) or (processes is Auto) :
+    if (os.name == "nt") : return 1
     from libtbx import introspection
     auto_adjust = (processes is Auto)
     processes = introspection.number_of_processors()
