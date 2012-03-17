@@ -57,7 +57,9 @@ def tokenize_value_literal(input_string, source_info):
     input_string=input_string,
     source_info=source_info,
     list_of_settings=[
-      tokenizer.settings(contiguous_word_characters="")]))
+      tokenizer.settings(
+        contiguous_word_characters="",
+        enable_quoted_t_n_r_x_escapes=True)]))
 
 class words_converters(object):
 
@@ -2062,11 +2064,13 @@ def parse(
         tokenizer.settings(
           unquoted_single_character_words="{}=",
           contiguous_word_characters="",
+          enable_quoted_t_n_r_x_escapes=True,
           comment_characters="#",
           meta_comment="phil"),
         tokenizer.settings(
           unquoted_single_character_words="{};",
-          contiguous_word_characters="")]),
+          contiguous_word_characters="",
+          enable_quoted_t_n_r_x_escapes=True)]),
     converter_registry=converter_registry,
     primary_id_generator=count(1),
     primary_parent_scope=result)
