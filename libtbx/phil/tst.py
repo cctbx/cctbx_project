@@ -37,6 +37,25 @@ def exercise_string_quote_and_tokenize():
             c0123 = c012 + c3
             check(string=c0123)
   assert n_ok[0] == 3120
+  #
+  def tvl(input_string):
+    return phil.tokenize_value_literal(
+      input_string=input_string, source_info=None)
+  words = tvl(input_string='"\\t\\n\\r\\x7a\\x8F"')
+  assert len(words) == 1
+  assert words[0].value == "\t\n\rz\x8f"
+  assert str(words[0]) == '"\t\n\rz\x8f"'
+  value = "".join([chr(_) for _ in xrange(256)])
+  words = tvl(input_string=repr(value))
+  assert len(words) == 1
+  assert words[0].value == value
+  words = tvl(input_string=str(words[0]))
+  assert len(words) == 1
+  assert words[0].value == value
+  word = phil.tokenizer.word(value=value, quote_token=Auto)
+  words = tvl(input_string=str(word))
+  assert len(words) == 1
+  assert words[0].value == value
 
 class recycle(object):
 

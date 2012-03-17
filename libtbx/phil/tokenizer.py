@@ -159,6 +159,7 @@ class settings(slots_getstate_setstate):
   __slots__ = [
     "unquoted_single_character_words",
     "contiguous_word_characters",
+    "enable_quoted_t_n_r_x_escapes",
     "enable_unquoted_embedded_quotes",
     "comment_characters",
     "meta_comment"]
@@ -166,6 +167,7 @@ class settings(slots_getstate_setstate):
   def __init__(O,
         unquoted_single_character_words="",
         contiguous_word_characters=None,
+        enable_quoted_t_n_r_x_escapes=False,
         enable_unquoted_embedded_quotes=True,
         comment_characters="",
         meta_comment=None):
@@ -174,6 +176,7 @@ class settings(slots_getstate_setstate):
       O.contiguous_word_characters = default_contiguous_word_characters
     else:
       O.contiguous_word_characters = contiguous_word_characters
+    O.enable_quoted_t_n_r_x_escapes = enable_quoted_t_n_r_x_escapes
     O.enable_unquoted_embedded_quotes = enable_unquoted_embedded_quotes
     O.comment_characters = comment_characters
     O.meta_comment = meta_comment
@@ -238,13 +241,27 @@ class word_iterator(slots_getstate_setstate):
               char_iter.skip_ahead_1()
               break
           if (c == "\\"):
-            if (char_iter.look_ahead_1() == "\\"):
+            _ = char_iter.look_ahead_1()
+            if (_ == "\\"):
               char_iter.skip_ahead_1()
-            elif (char_iter.look_ahead_1() == quote_char):
+            elif (_ == quote_char):
               c = char_iter.next()
-            elif (char_iter.look_ahead_1() == "\n"):
+            elif (_ == "\n"):
               char_iter.skip_ahead_1()
               continue
+            elif (settings.enable_quoted_t_n_r_x_escapes):
+              if (_ in "tnr"):
+                char_iter.skip_ahead_1()
+                c = eval('"'+c+_+'"')
+              elif (_ == "x"):
+                hex = char_iter.look_ahead(n=3)
+                hex_chars = "0123456789ABCDEFabcdef"
+                if (hex is not None
+                      and hex[1] in hex_chars
+                      and hex[2] in hex_chars):
+                  for _ in xrange(3):
+                    char_iter.skip_ahead_1()
+                  c = eval('"'+c+hex+'"')
           if (c is None):
             raise RuntimeError(
               "Syntax error: missing closing quote%s" % (
