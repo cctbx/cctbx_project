@@ -519,6 +519,66 @@ namespace {
     }
   };
 
+  //! based on stringobject.c, Python 2.7.2
+  boost::python::object
+  string_representation(
+    boost::python::str const& string,
+    char preferred_quote,
+    char alternative_quote)
+  {
+    PyStringObject* op = (PyStringObject*) string.ptr();
+    size_t newsize = 2 + 4 * Py_SIZE(op);
+    if (newsize > PY_SSIZE_T_MAX || newsize / 4 != Py_SIZE(op)) {
+      PyErr_SetString(PyExc_OverflowError,
+        "string is too large to make repr");
+      boost::python::throw_error_already_set();
+    }
+    PyObject* v = PyString_FromStringAndSize((char *)NULL, newsize);
+    if (v == NULL) {
+      boost::python::throw_error_already_set();
+    }
+    else {
+      int quote = preferred_quote;
+      if (   alternative_quote != preferred_quote
+          &&  memchr(op->ob_sval, preferred_quote, Py_SIZE(op))
+          && !memchr(op->ob_sval, alternative_quote, Py_SIZE(op))) {
+        quote = alternative_quote;
+      }
+      char* p = PyString_AS_STRING(v);
+      *p++ = quote;
+      for (Py_ssize_t i = 0; i < Py_SIZE(op); i++) {
+        /* There's at least enough room for a hex escape
+           and a closing quote. */
+        TBXX_ASSERT(newsize - (p - PyString_AS_STRING(v)) >= 5);
+        char c = op->ob_sval[i];
+        if (c == quote || c == '\\')
+          *p++ = '\\', *p++ = c;
+        else if (c == '\t')
+          *p++ = '\\', *p++ = 't';
+        else if (c == '\n')
+          *p++ = '\\', *p++ = 'n';
+        else if (c == '\r')
+          *p++ = '\\', *p++ = 'r';
+        else if (c < ' ' || c >= 0x7f) {
+          /* For performance, we don't want to call
+             PyOS_snprintf here (extra layers of
+             function call). */
+          sprintf(p, "\\x%02x", c & 0xff);
+          p += 4;
+        }
+        else
+          *p++ = c;
+      }
+      TBXX_ASSERT(newsize - (p - PyString_AS_STRING(v)) >= 1);
+      *p++ = quote;
+      *p = '\0';
+      if (_PyString_Resize(&v, (p - PyString_AS_STRING(v)))) {
+        boost::python::throw_error_already_set();
+      }
+      return boost::python::object(boost::python::handle<>(v));
+    }
+  }
+
 } // namespace anonymous
 
 namespace boost_python_meta_ext { struct holder {}; }
@@ -555,6 +615,10 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
   python_streambuf_wrapper::wrap();
   python_ostream_wrapper::wrap();
+  def("string_representation", string_representation, (
+    arg("string"),
+    arg("preferred_quote"),
+    arg("alternative_quote")));
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
     .def(init<bool, bool>((
       arg("show_user_defined"),

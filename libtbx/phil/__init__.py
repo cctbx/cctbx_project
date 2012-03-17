@@ -94,7 +94,7 @@ def strings_as_words(python_object):
     if (is_standard_identifier(value)):
       words.append(tokenizer.word(value=value))
     else:
-      words.append(tokenizer.word(value=value, quote_token='"'))
+      words.append(tokenizer.word(value=value, quote_token=Auto))
   return words
 
 class strings_converters(object):
@@ -128,7 +128,7 @@ class str_converters(object):
       return [tokenizer.word(value="None")]
     if (python_object is Auto):
       return [tokenizer.word(value="Auto")]
-    return [tokenizer.word(value=python_object, quote_token='"')]
+    return [tokenizer.word(value=python_object, quote_token=Auto)]
 
 class qstr_converters(object):
 
@@ -801,7 +801,7 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
         indent = " " * (len(prefix) + 3 + len(name) + 3)
         fits_on_one_line = len(indent+value) < print_width
         if (not is_standard_identifier(value) or not fits_on_one_line):
-          value = str(tokenizer.word(value=value, quote_token='"'))
+          value = str(tokenizer.word(value=value, quote_token=Auto))
           fits_on_one_line = len(indent+value) < print_width
         if (fits_on_one_line):
           print >> out, prefix+"  ."+name, "=", value
@@ -1139,7 +1139,7 @@ class definition(slots_getstate_setstate):
       for fragment in substitution_proxy.fragments:
         if (not fragment.is_variable):
           fragment.result = tokenizer.word(
-            value=fragment.value, quote_token='"')
+            value=fragment.value, quote_token=Auto)
           continue
         variable_words = None
         if (self.primary_parent_scope is not None):
@@ -1159,7 +1159,7 @@ class definition(slots_getstate_setstate):
           if (env_var is not None):
             variable_words = [tokenizer.word(
               value=env_var,
-              quote_token='"',
+              quote_token=Auto,
               source_info='environment: "%s"'%fragment.value)]
         if (variable_words is None):
           raise RuntimeError("Undefined variable: $%s%s" % (
@@ -1169,7 +1169,7 @@ class definition(slots_getstate_setstate):
         else:
           fragment.result = tokenizer.word(
             value=" ".join([word.value for word in variable_words]),
-            quote_token='"')
+            quote_token=Auto)
       new_words.extend(substitution_proxy.get_new_words())
     return self.customized_copy(words=new_words)
 
@@ -2036,7 +2036,7 @@ class variable_substitution_proxy(slots_getstate_setstate):
       return self.fragments[0].result
     return [tokenizer.word(
       value="".join([fragment.result.value for fragment in self.fragments]),
-      quote_token='"')]
+      quote_token=Auto)]
 
 def parse(
       input_string=None,

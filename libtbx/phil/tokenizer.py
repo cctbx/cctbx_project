@@ -1,4 +1,5 @@
-from libtbx import slots_getstate_setstate
+from libtbx.str_utils import string_representation
+from libtbx import Auto, slots_getstate_setstate
 
 def escape_python_str(quote_char, string):
   return string.replace("\\", "\\\\").replace(quote_char, "\\"+quote_char)
@@ -126,6 +127,9 @@ class word(slots_getstate_setstate):
   def __str__(O):
     if (O.quote_token is None):
       return O.value
+    if (O.quote_token is Auto):
+      return string_representation(
+        string=O.value, preferred_quote='"', alternative_quote='"')
     return quote_python_str(quote_token=O.quote_token, string=O.value)
 
   def where(O):

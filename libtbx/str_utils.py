@@ -17,6 +17,38 @@ def pad_string (line, width=72, border="|") :
   n_spaces = width - (len(border) * 2) - len(line)
   return border + line + (" " * n_spaces) + border
 
+def py_string_representation(string, preferred_quote, alternative_quote):
+  "based on stringobject.c, Python 2.7.2"
+  quote = preferred_quote
+  if (    alternative_quote != preferred_quote
+      and string.find(preferred_quote) >= 0
+      and string.find(alternative_quote) < 0):
+    quote = alternative_quote
+  result = [quote]
+  rapp = result.append
+  for c in string:
+    if (c == quote or c == '\\'):
+      rapp('\\')
+      rapp(c)
+    elif (c == '\t'):
+      rapp('\\t')
+    elif (c == '\n'):
+      rapp('\\n')
+    elif (c == '\r'):
+      rapp('\\r')
+    elif (c < ' ' or c >= chr(0x7f)):
+      rapp("\\x%02x" % (ord(c) & 0xff))
+    else:
+      rapp(c)
+  rapp(quote)
+  return "".join(result)
+
+try:
+  from boost.python import ext as _
+  string_representation = _.string_representation
+except Exception:
+  string_representation = py_string_representation
+
 def split_keeping_spaces(s):
   result = []
   field = []
