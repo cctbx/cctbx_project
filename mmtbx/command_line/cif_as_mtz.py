@@ -316,23 +316,25 @@ def extract(file_name,
       if not ma.is_unique_set_under_symmetry():
         if merge_non_unique_under_symmetry:
           print "Warning: merging non-unique data"
-          try:
-            if (label.startswith(output_r_free_label)
-                and incompatible_flags_to_work_set):
-              merging = ma.merge_equivalents(
-                incompatible_flags_replacement=0)
-              if merging.n_incompatible_flags > 0:
-                print "Warning: %i reflections were placed in the working set " \
-                      "because of incompatible flags between equivalents." %(
-                        merging.n_incompatible_flags)
-            else:
+          if (label.startswith(output_r_free_label)
+              and incompatible_flags_to_work_set):
+            merging = ma.merge_equivalents(
+              incompatible_flags_replacement=0)
+            if merging.n_incompatible_flags > 0:
+              print "Warning: %i reflections were placed in the working set " \
+                    "because of incompatible flags between equivalents." %(
+                      merging.n_incompatible_flags)
+          else:
+            try:
               merging = ma.merge_equivalents()
-            ma = merging.array().customized_copy(
-              crystal_symmetry=ma).set_info(ma.info())
-          except Sorry, e:
-            if ("merge_equivalents_exact: incompatible" in str(e)) :
-              raise Sorry(str(e) + " for %s" %ma.info().labels[-1])
-            raise
+            except Sorry, e:
+              if ("merge_equivalents_exact: incompatible" in str(e)):
+                raise Sorry(str(e) + " for %s" %ma.info().labels[-1] + "\n" +
+                  "Add --incompatible_flags_to_work_set to command line "
+                  "arguments to place incompatible flags to working set.")
+                raise
+          ma = merging.array().customized_copy(
+            crystal_symmetry=ma).set_info(ma.info())
         else:
           n_all = ma.indices().size()
           sel_unique = ma.unique_under_symmetry_selection()
