@@ -57,9 +57,7 @@ def tokenize_value_literal(input_string, source_info):
     input_string=input_string,
     source_info=source_info,
     list_of_settings=[
-      tokenizer.settings(
-        contiguous_word_characters="",
-        enable_quoted_t_n_r_x_escapes=True)]))
+      tokenizer.settings(contiguous_word_characters="")]))
 
 class words_converters(object):
 
@@ -96,7 +94,7 @@ def strings_as_words(python_object):
     if (is_standard_identifier(value)):
       words.append(tokenizer.word(value=value))
     else:
-      words.append(tokenizer.word(value=value, quote_token=Auto))
+      words.append(tokenizer.word(value=value, quote_token='"'))
   return words
 
 class strings_converters(object):
@@ -130,7 +128,7 @@ class str_converters(object):
       return [tokenizer.word(value="None")]
     if (python_object is Auto):
       return [tokenizer.word(value="Auto")]
-    return [tokenizer.word(value=python_object, quote_token=Auto)]
+    return [tokenizer.word(value=python_object, quote_token='"')]
 
 class qstr_converters(object):
 
@@ -803,7 +801,7 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
         indent = " " * (len(prefix) + 3 + len(name) + 3)
         fits_on_one_line = len(indent+value) < print_width
         if (not is_standard_identifier(value) or not fits_on_one_line):
-          value = str(tokenizer.word(value=value, quote_token=Auto))
+          value = str(tokenizer.word(value=value, quote_token='"'))
           fits_on_one_line = len(indent+value) < print_width
         if (fits_on_one_line):
           print >> out, prefix+"  ."+name, "=", value
@@ -1141,7 +1139,7 @@ class definition(slots_getstate_setstate):
       for fragment in substitution_proxy.fragments:
         if (not fragment.is_variable):
           fragment.result = tokenizer.word(
-            value=fragment.value, quote_token=Auto)
+            value=fragment.value, quote_token='"')
           continue
         variable_words = None
         if (self.primary_parent_scope is not None):
@@ -1161,7 +1159,7 @@ class definition(slots_getstate_setstate):
           if (env_var is not None):
             variable_words = [tokenizer.word(
               value=env_var,
-              quote_token=Auto,
+              quote_token='"',
               source_info='environment: "%s"'%fragment.value)]
         if (variable_words is None):
           raise RuntimeError("Undefined variable: $%s%s" % (
@@ -1171,7 +1169,7 @@ class definition(slots_getstate_setstate):
         else:
           fragment.result = tokenizer.word(
             value=" ".join([word.value for word in variable_words]),
-            quote_token=Auto)
+            quote_token='"')
       new_words.extend(substitution_proxy.get_new_words())
     return self.customized_copy(words=new_words)
 
@@ -2038,7 +2036,7 @@ class variable_substitution_proxy(slots_getstate_setstate):
       return self.fragments[0].result
     return [tokenizer.word(
       value="".join([fragment.result.value for fragment in self.fragments]),
-      quote_token=Auto)]
+      quote_token='"')]
 
 def parse(
       input_string=None,
@@ -2064,13 +2062,11 @@ def parse(
         tokenizer.settings(
           unquoted_single_character_words="{}=",
           contiguous_word_characters="",
-          enable_quoted_t_n_r_x_escapes=True,
           comment_characters="#",
           meta_comment="phil"),
         tokenizer.settings(
           unquoted_single_character_words="{};",
-          contiguous_word_characters="",
-          enable_quoted_t_n_r_x_escapes=True)]),
+          contiguous_word_characters="")]),
     converter_registry=converter_registry,
     primary_id_generator=count(1),
     primary_parent_scope=result)
