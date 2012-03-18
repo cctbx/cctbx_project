@@ -492,6 +492,7 @@ def apply_ligand_ncs (
   if (log is None) : log = sys.stdout
   if (params is None) :
     params = master_phil().fetch().extract()
+  assert (params.ligand_code is not None) and (len(params.ligand_code) <= 3)
   make_header("Determining NCS operators", log)
   ncs_ops = find_ncs_operators(pdb_hierarchy,
     max_rmsd=params.max_rmsd,
@@ -503,6 +504,7 @@ def apply_ligand_ncs (
   for ncs_group in ncs_ops :
     for k, group in enumerate(ncs_group) :
       group.show_summary(log)
+  print "Looking for ligands named %s..." % params.ligand_code
   ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code)
   if (len(ligands) == 0) :
     raise Sorry("No ligands found!")
