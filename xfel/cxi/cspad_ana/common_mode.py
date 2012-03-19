@@ -19,9 +19,10 @@ from pypdsdata           import xtc
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana.mod_event_info import mod_event_info
 
 
-class common_mode_correction(object):
+class common_mode_correction(mod_event_info):
   """Dark subtraction and alternate implementation of common mode
   substituting for cspad_tbx.
 
@@ -54,19 +55,10 @@ class common_mode_correction(object):
                            image, required if @p dark_path is given
     """
 
-    self.logger = logging.getLogger(self.__class__.__name__)
-    self.logger.setLevel(logging.INFO)
+    mod_event_info.__init__(self, address=address)
+    # this doesn't work because the class name is reused as an argument!
+    #super(common_mode_correction, self).__init__(address=address)
 
-    # This is for messages that are picked up by Nat's monitoring program
-    self.stats_logger = logging.getLogger("stats logger")
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(message)s')
-    handler.setFormatter(formatter)
-    self.stats_logger.addHandler(handler)
-    self.stats_logger.removeHandler(self.stats_logger.handlers[0])
-    self.stats_logger.setLevel(logging.INFO)
-
-    self.address = cspad_tbx.getOptString(address)
     self.dark_path = cspad_tbx.getOptString(dark_path)
     self.dark_stddev = cspad_tbx.getOptString(dark_stddev)
     gain_map_path = cspad_tbx.getOptString(gain_map_path)
@@ -75,12 +67,9 @@ class common_mode_correction(object):
     self.two_photon_threshold = cspad_tbx.getOptFloat(two_photon_threshold)
     self.cache_image = cspad_tbx.getOptBool(cache_image)
 
-    self.distance = None
     self.cspad_img = None # The current image - set by self.event()
-    self.sifoil = None
     self.sum_common_mode = 0
     self.sumsq_common_mode = 0
-    self.wavelength = None # The current wavelength - set by self.event()
     self.roi = cspad_tbx.getOptROI(roi) # used to ignore the signal region in chebyshev fit
 
     assert self.common_mode_correction in \
@@ -122,10 +111,6 @@ class common_mode_correction(object):
       gain_dict = easy_pickle.load(gain_map_path)
       self.gain_map = gain_dict['DATA']
       assert isinstance(self.gain_map, flex.double)
-
-
-  def __del__(self):
-    logging.shutdown()
 
 
   def beginjob(self, evt, env):
@@ -232,45 +217,8 @@ class common_mode_correction(object):
     @param env Environment object
     """
 
-    # Increase the event counter, even if this event is to be skipped.
-    self.nshots += 1
+    super(common_mode_correction, self).event(evt, env)
     if (evt.get("skip_event")):
-      return
-
-    distance = cspad_tbx.env_distance(env)
-    if (distance is None):
-      self.nfail += 1
-      self.logger.warn("event(): no distance, shot skipped")
-      evt.put(True, "skip_event")
-      return
-    if (self.distance is not None and self.distance != distance):
-      self.logger.warn("event(): distance changed mid-run: % 8.4f -> % 8.4f" %
-        (self.distance, distance))
-    self.distance = distance
-
-    sifoil = cspad_tbx.env_sifoil(env)
-    if (sifoil is None):
-      self.nfail += 1
-      self.logger.warn("event(): no Si-foil thickness, shot skipped")
-      evt.put(True, "skip_event")
-      return
-    if (self.sifoil is not None and self.sifoil != sifoil):
-      self.logger.warn("event(): Si-foil changed mid-run: % 8i -> % 8d" %
-        (self.sifoil, sifoil))
-    self.sifoil = sifoil
-
-    self.timestamp = cspad_tbx.evt_timestamp(evt)
-    if (self.timestamp is None):
-      self.nfail += 1
-      self.logger.warn("event(): no timestamp, shot skipped")
-      evt.put(True, "skip_event")
-      return
-
-    self.wavelength = cspad_tbx.evt_wavelength(evt)
-    if (self.wavelength is None):
-      self.nfail += 1
-      self.logger.warn("event(): no wavelength, shot skipped")
-      evt.put(True, "skip_event")
       return
 
     # Early return if the full detector image is already stored in the
@@ -550,3 +498,4 @@ class common_mode_correction(object):
     self.logger.debug("zero photon counts: %i" %self.cspad_img.count(0))
     self.logger.debug("one photon counts: %i" %self.cspad_img.count(1))
     self.logger.debug("two photon counts: %i" %self.cspad_img.count(2))
+    self.logger.info("No. photons: %i" %flex.sum(self.cspad_img))
