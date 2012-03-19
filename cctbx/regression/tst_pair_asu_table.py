@@ -302,7 +302,8 @@ def exercise(
             i_seq, j_seq = sym_pair.i_seqs()
             assert len(pst[i_seq][j_seq]) > 0
             assert len(pst[j_seq][i_seq]) > 0
-        pst_extracted = bond_sym_table
+        pst_extracted = bond_sym_table.tidy(
+          site_symmetry_table=structure.site_symmetry_table())
         check_one_way(pst_extracted)
         sio_extracted = StringIO()
         structure.pair_sym_table_show(pst_extracted, out=sio_extracted)

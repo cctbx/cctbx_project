@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 simple = crystal.coordination_sequences_simple
 simple_sym = crystal.coordination_sequences_simple_sym
 shell_asu_tables = crystal.coordination_sequences_shell_asu_tables
+shell_sym_tables = crystal.coordination_sequences_shell_sym_tables
 
 class node(object):
 

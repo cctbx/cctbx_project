@@ -417,6 +417,63 @@ namespace coordination_sequences {
     std::vector<pair_asu_table<> > shell_asu_tables;
   };
 
+  //! Actions for the generation of higher-level (nonbonded) interactions.
+  struct shell_sym_tables_actions
+  {
+    //! Called at start of core_sym<shell_sym_tables_actions>.
+    shell_sym_tables_actions(
+      crystal::pair_sym_table const& full_pair_sym_table,
+      unsigned max_shell)
+    {
+      shell_sym_tables.reserve(max_shell);
+      if (max_shell > 0) {
+        shell_sym_tables.push_back(full_pair_sym_table);
+        for(i_shell_minus_1=1;
+            i_shell_minus_1<max_shell;
+            i_shell_minus_1++) {
+          shell_sym_tables.push_back(
+            crystal::pair_sym_table(full_pair_sym_table.size()));
+        }
+      }
+    }
+
+    //! Called when the next shell is complete.
+    void
+    shell_complete(three_shells const& shells)
+    {
+      if (i_shell_minus_1 == 0) return;
+      pair_sym_table& shell_sym_table = shell_sym_tables[i_shell_minus_1];
+      for(std::map<unsigned, std::vector<node> >::const_iterator
+            items_n=shells.next->begin();
+            items_n!=shells.next->end();
+            items_n++) {
+        unsigned i_seq_node = items_n->first;
+        std::vector<node> const& nodes = items_n->second;
+        for(unsigned i_node=0;i_node<nodes.size();i_node++) {
+          if (i_seq_pivot <= i_seq_node) {
+            shell_sym_table[i_seq_pivot][i_seq_node].push_back(
+              nodes[i_node].rt_mx);
+          }
+          else {
+            shell_sym_table[i_seq_node][i_seq_pivot].push_back(
+              nodes[i_node].rt_mx.inverse());
+          }
+        }
+      }
+    }
+
+    //! Called when a pivot site is completed.
+    void
+    pivot_complete() {}
+
+    //! Index of current pivot site.
+    unsigned i_seq_pivot;
+    //! Index of current shell - 1.
+    unsigned i_shell_minus_1;
+    //! Final array of pair_sym_table instances.
+    std::vector<pair_sym_table> shell_sym_tables;
+  };
+
   //! Friendly interface to core_asu<shell_asu_tables_actions>.
   std::vector<pair_asu_table<> >
   shell_asu_tables(
@@ -425,6 +482,18 @@ namespace coordination_sequences {
   {
     return core_asu<shell_asu_tables_actions>(pair_asu_table, max_shell)
       .shell_asu_tables;
+  }
+
+  //! Friendly interface to core_sym<shell_sym_tables_actions>.
+  std::vector<pair_sym_table >
+  shell_sym_tables(
+    crystal::pair_sym_table const& full_pair_sym_table,
+    sgtbx::site_symmetry_table const& site_symmetry_table,
+    unsigned max_shell)
+  {
+    return core_sym<shell_sym_tables_actions>(
+      full_pair_sym_table, site_symmetry_table, max_shell)
+        .shell_sym_tables;
   }
 
 }}} // namespace cctbx::crystal::coordination_sequences
