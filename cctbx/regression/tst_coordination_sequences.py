@@ -52,7 +52,34 @@ def exercise_shell_asu_tables(structure, verbose):
   shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
     pair_asu_table=bond_asu_table,
     max_shell=3)
-  for shell_asu_table in shell_asu_tables:
+  site_symmetry_table = structure.site_symmetry_table()
+  full_pair_sym_table = bond_asu_table.extract_pair_sym_table() \
+    .full_connectivity(site_symmetry_table=site_symmetry_table)
+  shell_sym_tables_orig = crystal.coordination_sequences.shell_sym_tables(
+    full_pair_sym_table=full_pair_sym_table,
+    site_symmetry_table=site_symmetry_table,
+    max_shell=3)
+  shell_sym_tables = [_.tidy(site_symmetry_table=site_symmetry_table)
+    for _ in shell_sym_tables_orig]
+  have_redundancies = False
+  for o_pst,t_pst in zip(shell_sym_tables_orig[1:], shell_sym_tables[1:]):
+    for o_pair_sym_dict,t_pair_sym_dict in zip(o_pst, t_pst):
+      assert o_pair_sym_dict.keys() == t_pair_sym_dict.keys()
+      if (verbose and not have_redundancies):
+        for j_seq,o_sym_ops in o_pair_sym_dict.items():
+          t_sym_ops = t_pair_sym_dict[j_seq]
+          if (len(t_sym_ops) != len(o_sym_ops)):
+            have_redundancies = True
+  if (have_redundancies):
+    print "crystal.coordination_sequences.shell_sym_tables redundancies:"
+    print "original:"
+    o_pst.show()
+    print
+    print "tidy:"
+    t_pst.show()
+    print
+  for shell_asu_table,shell_sym_table in zip(
+        shell_asu_tables, shell_sym_tables):
     if (0 or verbose):
       pairs_1 = structure.show_distances(pair_asu_table=shell_asu_table) \
         .distances_info
@@ -71,6 +98,15 @@ def exercise_shell_asu_tables(structure, verbose):
       print
       assert pairs_1.pair_counts.all_eq(pairs_2.pair_counts)
     assert asu_table == shell_asu_table
+    shell_sym_from_asu_table = shell_asu_table.extract_pair_sym_table() \
+      .tidy(site_symmetry_table=site_symmetry_table)
+    from cStringIO import StringIO
+    sio_sym = StringIO()
+    shell_sym_table.show(f=sio_sym)
+    sio_asu = StringIO()
+    shell_sym_from_asu_table.show(f=sio_asu)
+    from libtbx.test_utils import show_diff
+    assert not show_diff(sio_sym.getvalue(), sio_asu.getvalue())
 
 def exercise(args, distance_cutoff=3.5, max_shell=5):
   command_line = (iotbx_option_parser()
@@ -82,6 +118,7 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
     .option(None, "--verbose",
       action="store_true")
   ).process(args=args)
+  co = command_line.options
   atlas_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
@@ -91,14 +128,16 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
   all_entries = strudat.read_all_entries(open(atlas_file))
   for i,entry in enumerate(all_entries.entries):
     structure = entry.as_xray_structure()
-    if (command_line.options.tag is not None):
-      if (command_line.options.tag != entry.tag):
+    if (co.tag is not None):
+      if (co.tag != entry.tag):
         continue
-    elif (not (command_line.options.full or i % 20 == 0)):
+    elif (not (co.full or i % 20 == 0)):
       continue
+    if (co.verbose):
+      print "strudat tag:", entry.tag
     exercise_simple(
-      structure, distance_cutoff, max_shell, command_line.options.verbose)
-    exercise_shell_asu_tables(structure, command_line.options.verbose)
+      structure, distance_cutoff, max_shell, co.verbose)
+    exercise_shell_asu_tables(structure, co.verbose)
 
 def run():
   exercise(sys.argv[1:])

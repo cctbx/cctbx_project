@@ -23,12 +23,19 @@ namespace {
       arg("max_shell")));
     def("coordination_sequences_shell_asu_tables",
       coordination_sequences::shell_asu_tables, (
-      arg("pair_asu_table"),
-      arg("max_shell")));
+        arg("pair_asu_table"),
+        arg("max_shell")));
+    def("coordination_sequences_shell_sym_tables",
+      coordination_sequences::shell_sym_tables, (
+        arg("full_pair_sym_table"),
+        arg("site_symmetry_table"),
+        arg("max_shell")));
     {
       using namespace scitbx::boost_python::container_conversions;
       tuple_mapping<
         std::vector<pair_asu_table<> >, variable_capacity_policy>();
+      tuple_mapping<
+        std::vector<pair_sym_table>, variable_capacity_policy>();
     }
   }
 

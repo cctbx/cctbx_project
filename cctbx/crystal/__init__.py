@@ -1030,8 +1030,8 @@ class _(boost.python.injector, pair_sym_table):
             sepi_objs.append(sepi_obj)
         ri[j_seq] = pair_sym_ops()
         rij = ri[j_seq]
-        for sepi_obj in sepi_objs:
-          rij.append(sepi_obj.get()[0])
+        for rt_mx_ji in sorted([sepi_obj.get()[0] for sepi_obj in sepi_objs]):
+          rij.append(rt_mx_ji)
     return result
 
   def full_connectivity(self, site_symmetry_table=None):
