@@ -413,6 +413,14 @@ def dwritef(d, dirname = None, basename = None):
   return (path)
 
 
+def env_injector_xyz(env):
+  """Returns the coordinates of the sample injector. XXX units unknown?"""
+  if env is not None:
+    return tuple([
+      env.epicsStore().value("CXI:USR:MZM:0%i:ENCPOSITIONGET" %(i+1))
+                             for i in range(3)])
+
+
 def env_detz(env):
   """The env_detz() function returns the position of the Ds1 detector
   on the z-axis in mm.  The zero-point is as far away as possible from
@@ -508,6 +516,19 @@ def evt_pulse_length(evt):
     ebeam = evt.getEBeam()
     if (ebeam is not None and ebeam.fEbeamPkCurrBC2 > 0):
       return 1e6 * ebeam.fEbeamCharge / ebeam.fEbeamPkCurrBC2
+  return None
+
+
+def evt_beam_charge(evt):
+  """The evt_beam_charge() function returns the charge of the pulse (in nC).
+
+  @param evt Event data object, a configure object
+  @return    Pulse charge, in fs
+  """
+
+  if (evt is not None):
+    ebeam = evt.getEBeam()
+    return ebeam.fEbeamCharge
   return None
 
 
