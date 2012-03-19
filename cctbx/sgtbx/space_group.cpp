@@ -519,16 +519,28 @@ namespace cctbx { namespace sgtbx {
       {
         using scitbx::fn::absolute;
         using utils::cmp_i_vec;
-        rot_mx_info ri_a(a.r());
-        rot_mx_info ri_b(b.r());
-        if (absolute(ri_a.type()) > absolute(ri_b.type())) return true;
-        if (absolute(ri_a.type()) < absolute(ri_b.type())) return false;
-        if (ri_a.type() > ri_b.type()) return true;
-        if (ri_a.type() < ri_b.type()) return false;
-        if (cmp_i_vec(3)(ri_a.ev().begin(), ri_b.ev().begin())) return true;
-        if (cmp_i_vec(3)(ri_b.ev().begin(), ri_a.ev().begin())) return false;
-        if (ri_a.sense() > ri_b.sense()) return true;
-        if (ri_a.sense() < ri_b.sense()) return false;
+        bool cmp_as_symop = (
+             a.r().den() == 1
+          && b.r().den() == 1
+          && a.r().type() != 0
+          && b.r().type() != 0);
+        if (cmp_as_symop) {
+          rot_mx_info ri_a(a.r());
+          rot_mx_info ri_b(b.r());
+          if (absolute(ri_a.type()) > absolute(ri_b.type())) return true;
+          if (absolute(ri_a.type()) < absolute(ri_b.type())) return false;
+          if (ri_a.type() > ri_b.type()) return true;
+          if (ri_a.type() < ri_b.type()) return false;
+          if (cmp_i_vec(3)(ri_a.ev().begin(), ri_b.ev().begin())) return true;
+          if (cmp_i_vec(3)(ri_b.ev().begin(), ri_a.ev().begin())) return false;
+          if (ri_a.sense() > ri_b.sense()) return true;
+          if (ri_a.sense() < ri_b.sense()) return false;
+        }
+        else {
+          int o = compare_rot_mx(a.r(), b.r());
+          if (o < 0) return true;
+          if (o > 0) return false;
+        }
         if (a.t().den() == b.t().den()) {
           if (cmp_i_vec(3)(
             a.t().num().begin(), b.t().num().begin())) return true;
@@ -536,11 +548,18 @@ namespace cctbx { namespace sgtbx {
             b.t().num().begin(), a.t().num().begin())) return false;
         }
         else {
-          throw std::runtime_error("Not implemented.");
+          int den_lcm = boost::lcm(a.t().den(), b.t().den());
+          tr_vec al = a.t().new_denominator(den_lcm);
+          tr_vec bl = b.t().new_denominator(den_lcm);
+          if (cmp_i_vec(3)(
+            al.num().begin(), bl.num().begin())) return true;
+          if (cmp_i_vec(3)(
+            bl.num().begin(), al.num().begin())) return false;
         }
-        for(std::size_t i=0;i<9;i++) {
-          if (a.r()[i] < b.r()[i]) return true;
-          if (a.r()[i] > b.r()[i]) return false;
+        if (cmp_as_symop) {
+          int o = compare_rot_mx(a.r(), b.r());
+          if (o < 0) return true;
+          if (o > 0) return false;
         }
         if (a.t().den() == b.t().den()) {
           for(std::size_t i=0;i<3;i++) {
@@ -549,9 +568,38 @@ namespace cctbx { namespace sgtbx {
           }
         }
         else {
-          throw std::runtime_error("Not implemented.");
+          int den_lcm = boost::lcm(a.t().den(), b.t().den());
+          tr_vec al = a.t().new_denominator(den_lcm);
+          tr_vec bl = b.t().new_denominator(den_lcm);
+          for(std::size_t i=0;i<3;i++) {
+            if (al[i] < bl[i]) return true;
+            if (al[i] > bl[i]) return false;
+          }
         }
         return false;
+      }
+
+      int
+      compare_rot_mx(
+        rot_mx const& a,
+        rot_mx const& b)
+      {
+        if (a.den() == b.den()) {
+          for(std::size_t i=0;i<9;i++) {
+            if (a[i] < b[i]) return -1;
+            if (a[i] > b[i]) return  1;
+          }
+        }
+        else {
+          int den_lcm = boost::lcm(a.den(), b.den());
+          rot_mx al = a.new_denominator(den_lcm);
+          rot_mx bl = b.new_denominator(den_lcm);
+          for(std::size_t i=0;i<9;i++) {
+            if (al[i] < bl[i]) return -1;
+            if (al[i] > bl[i]) return  1;
+          }
+        }
+        return 0;
       }
     };
 

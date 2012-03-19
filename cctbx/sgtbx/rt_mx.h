@@ -111,7 +111,7 @@ namespace cctbx { namespace sgtbx {
       bool
       operator==(rt_mx const& rhs) const
       {
-        return (this->r_ == rhs.r_) && (this->t_ == rhs.t_);
+        return !((*this) < rhs) && !(rhs < (*this));
       }
 
       //! Tests inequality.

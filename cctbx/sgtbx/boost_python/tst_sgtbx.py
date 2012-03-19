@@ -578,7 +578,7 @@ def exercise_rt_mx():
   assert rt_mx("y,y-x,z+1/6", "", 2, 24).cancel() \
       == rt_mx("y,y-x,z+1/6", "", 1, 6)
   assert rt_mx("x-y,x,z+5/6").inverse_cancel() \
-      != rt_mx("y,-x+y,z-5/6")
+      == rt_mx("y,-x+y,z-5/6")
   assert rt_mx("x-y,x,z+5/6").inverse_cancel() \
       == rt_mx("y,-x+y,z-5/6").cancel()
   assert rt_mx("x-y,x,z+5/6").multiply(rt_mx("y,-x+y,z-5/6")).is_unit_mx()
@@ -1095,12 +1095,45 @@ cctbx Error: Rotation matrix is not invertible.""")
       assert s > prev_s
       assert s >= prev_s
       assert s != prev_s
+      assert not (s == prev_s)
     prev_s = s
   #
   for s in sg:
     c = rt_mx(str(s))
     assert c == s
     assert hash(c) == hash(s)
+  #
+  sa = sgtbx.rt_mx(symbol="x+1/4,z+1/4,y+1/4")
+  assert sa.r().den() == 1
+  sx = sa.new_denominators(r_den=2, t_den=24)
+  sb = sgtbx.rt_mx(symbol="x+1/4,z-1/4,y+1/4")
+  assert sb.r().den() == 1
+  sy = sb.new_denominators(r_den=2, t_den=24)
+  sc = sgtbx.rt_mx(symbol="-x,y,z")
+  assert sc.r().den() == 1
+  sz = sc.new_denominators(r_den=2, t_den=24)
+  assert sa == sx
+  assert not (sa < sa)
+  assert not (sa < sx)
+  assert not (sx < sa)
+  assert not (sx < sx)
+  assert sa != sb
+  assert sa < sb
+  assert sa < sy
+  assert sx < sb
+  assert sx < sy
+  assert sa != sc
+  assert not (sa < sc)
+  assert not (sa < sz)
+  assert not (sx < sc)
+  assert not (sx < sz)
+  assert not sa < sa
+  assert sa <= sa
+  assert not sa > sa
+  assert sa >= sa
+  assert sa <= sb
+  assert not (sa > sb)
+  assert not (sa >= sb)
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group
