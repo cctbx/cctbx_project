@@ -17,7 +17,7 @@ def run():
   "$D/tst_path.py",
   "$D/tst_math_utils.py",
   "$D/assert_utils.py",
-  "$D/str_utils.py",
+  "$D/tst_str_utils.py",
   "$D/table_utils.py",
   "$D/tst_dlite.py",
   "$D/phil/tst_tokenizer.py",
