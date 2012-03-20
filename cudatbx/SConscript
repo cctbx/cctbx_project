@@ -15,20 +15,20 @@ if (not env_etc.no_boost_python):
 if (env_etc.enable_cuda):
   env_bpl.cudaSharedLibrary(
     target = "#lib/cudatbx_ext",
-    source = ['cuda_base.cu',
-              'cudatbx_ext.cu',
+    source = ['cuda_utilities.cu',
+              'cudatbx_ext.cpp',
               ])
 
   env_bpl.cudaSharedLibrary(
     target = "#lib/cudatbx_special_functions_ext",
     source = ['math/special_functions/spherical_bessel_jn.cu',
-              'math/special_functions/special_functions_ext.cu',
+              'math/special_functions/special_functions_ext.cpp',
               ])
 
   env_bpl.Prepend(LIBS=["cufft"])
   env_bpl.cudaSharedLibrary(
     target = "#lib/cudatbx_cufft_ext",
-    source = ['cufft/ext.cu',
-	      'cufft/ext_double.cu',
-	      'cufft/ext_float.cu',
+    source = ['cufft/ext.cpp',
+	      'cufft/ext_double.cpp',
+	      'cufft/ext_float.cpp',
 	     ])

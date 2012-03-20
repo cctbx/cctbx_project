@@ -1,4 +1,4 @@
-#include <cudatbx/math/special_functions/spherical_bessel_jn.h>
+#include <cudatbx/math/special_functions/spherical_bessel_jn.cuh>
 
 // large values may result in too few registers per thread
 const int threads_per_block = 256;

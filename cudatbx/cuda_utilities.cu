@@ -1,4 +1,5 @@
-#include <cudatbx/cuda_base.h>
+#include <cudatbx/cuda_utilities.h>
+#include <cudatbx/cuda_base.cuh>
 
 namespace cudatbx {
 
