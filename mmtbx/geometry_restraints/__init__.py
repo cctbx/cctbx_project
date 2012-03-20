@@ -105,3 +105,6 @@ class manager (object) :
       self.hydrogen_bond_proxies = self.hydrogen_bond_proxies.proxy_select(
         n_seq, iselection)
     # TODO DEN restraint selection
+    if (self.den_manager is not None) :
+      self.den_manager.den_proxies = self.den_manager.den_proxies.proxy_select(
+        n_seq, iselection)
