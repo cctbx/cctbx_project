@@ -2,7 +2,6 @@ import iotbx.phil
 from cctbx.array_family import flex
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-from libtbx.str_utils import make_sub_header
 from mmtbx.refinement import print_statistics
 import sys
 
@@ -107,11 +106,10 @@ class den_restraints(object):
                den_proxies=None) :
     if(log is None): log = sys.stdout
     self.log = log
-    print_statistics.make_header(
-      "DEN restraint nework", out = self.log)
-    #make_sub_header(
-    #  "DEN restraint network",
-    #  out=self.log)
+    self.den_proxies = den_proxies
+    if self.den_proxies is None:
+      print_statistics.make_header(
+        "DEN restraint nework", out = self.log)
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("More than one model in input model. DEN refinement "+
                   "is only available for a single model.")
@@ -171,30 +169,29 @@ class den_restraints(object):
     self.export_den_pairs = \
       params.restraint_network.export_den_pairs
     self.current_cycle = None
-    self.den_proxies = den_proxies
     self.den_atom_pairs = None
     self.den_pair_count = 0
     self.torsion_mid_point = int(round(self.num_cycles / 2))
 
-    self.atoms_per_chain = \
-      self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
-    self.atoms_per_chain_ref = \
-      self.count_atoms_per_chain(pdb_hierarchy=self.pdb_hierarchy_ref)
-    self.resid_hash_ref = \
-      utils.build_resid_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
-    self.i_seq_hash = \
-      utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
-    self.i_seq_hash_ref = \
-      utils.build_i_seq_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
-    self.name_hash = \
-      utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
-    self.name_hash_ref = \
-      utils.build_name_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
-    self.ref_atom_pairs, self.ref_distance_hash = \
-      self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
-                           resid_hash=self.resid_hash_ref)
-    self.remove_non_matching_pairs()
     if (self.den_proxies is None) :
+      self.atoms_per_chain = \
+        self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
+      self.atoms_per_chain_ref = \
+        self.count_atoms_per_chain(pdb_hierarchy=self.pdb_hierarchy_ref)
+      self.resid_hash_ref = \
+        utils.build_resid_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
+      self.i_seq_hash = \
+        utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
+      self.i_seq_hash_ref = \
+        utils.build_i_seq_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
+      self.name_hash = \
+        utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+      self.name_hash_ref = \
+        utils.build_name_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
+      self.ref_atom_pairs, self.ref_distance_hash = \
+        self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
+                             resid_hash=self.resid_hash_ref)
+      self.remove_non_matching_pairs()
       if self.den_network_file is not None:
         self.den_atom_pairs = self.load_den_network()
       else:
