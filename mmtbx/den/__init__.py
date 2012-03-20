@@ -103,7 +103,8 @@ class den_restraints(object):
                pdb_hierarchy,
                params,
                pdb_hierarchy_ref=None,
-               log=None):
+               log=None,
+               den_proxies=None) :
     if(log is None): log = sys.stdout
     self.log = log
     print_statistics.make_header(
@@ -170,7 +171,8 @@ class den_restraints(object):
     self.export_den_pairs = \
       params.restraint_network.export_den_pairs
     self.current_cycle = None
-    self.den_proxies = None
+    self.den_proxies = den_proxies
+    self.den_atom_pairs = None
     self.den_pair_count = 0
     self.torsion_mid_point = int(round(self.num_cycles / 2))
 
@@ -192,16 +194,17 @@ class den_restraints(object):
       self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
                            resid_hash=self.resid_hash_ref)
     self.remove_non_matching_pairs()
-    if self.den_network_file is not None:
-      self.den_atom_pairs = self.load_den_network()
-    else:
-      self.random_ref_atom_pairs = \
-        self.select_random_den_restraints()
-      self.den_atom_pairs = self.get_den_atom_pairs()
-    self.check_den_pair_consistency()
-    if self.export_den_pairs:
-      self.dump_den_network()
-    self.build_den_restraints()
+    if (self.den_proxies is None) :
+      if self.den_network_file is not None:
+        self.den_atom_pairs = self.load_den_network()
+      else:
+        self.random_ref_atom_pairs = \
+          self.select_random_den_restraints()
+        self.den_atom_pairs = self.get_den_atom_pairs()
+      self.check_den_pair_consistency()
+      if self.export_den_pairs:
+        self.dump_den_network()
+      self.build_den_restraints()
 
   def check_den_pair_consistency(self):
     if self.den_pair_count == 0:
@@ -491,6 +494,14 @@ class den_restraints(object):
     #   f.write(vec)
     f.close()
 
+  def select (self, n_seq, selection) :
+    assert (self.den_proxies is not None)
+    return den_restraints(
+      pdb_hierarchy=self.pdb_hierarchy,
+      params=self.params,
+      pdb_hierarchy_ref=self.pdb_hierarchy_ref,
+      log=self.log,
+      den_proxies=self.den_proxies.proxy_select(n_seq, selection))
+
 def distance_squared(a, b):
   return ((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)
-
