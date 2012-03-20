@@ -9,10 +9,6 @@
 #include <fem/utils/misc.hpp>
 #include <fem/utils/real_as_string.hpp>
 
-#if defined(_WIN32)
-# define FABLE_WRITE_CRLF
-#endif
-
 namespace fem {
 
   struct write_loop_base
@@ -153,11 +149,7 @@ namespace fem {
               if(final) terminated_by_colon = true;
             }
             else if (tv[0] == '/') {
-#if defined(FABLE_WRITE_CRLF)
-              to_stream_fmt("\r\n", 2);
-#else
               to_stream_fmt("\n", 1);
-#endif
             }
             else if (tv[0] == '$') {
               suppress_new_line_at_end = true;
@@ -665,11 +657,7 @@ namespace fem {
               next_edit_descriptor(/*final*/ true);
             }
             if (!suppress_new_line_at_end) {
-#if defined(FABLE_WRITE_CRLF)
-              out->put("\r\n", 2);
-#else
               out->put('\n');
-#endif
             }
           }
           out->flush();
@@ -749,11 +737,7 @@ namespace fem {
           pos = 1;
         }
         else if (pos + (space ? 1 : 0) + n > 80) {
-#if defined(FABLE_WRITE_CRLF)
-          out->put("\r\n ", 3);
-#else
           out->put("\n ", 2);
-#endif
           pos = 1;
         }
         else if (space) {
