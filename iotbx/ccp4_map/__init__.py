@@ -18,3 +18,11 @@ class _(boost.python.injector, ext.map_reader) :
     print >> out, prefix + "space group number:  ", self.space_group_number
     print >> out, prefix + "map origin:", self.data.origin()
     print >> out, prefix + "map grid:  ", self.data.all()
+
+  def unit_cell (self) :
+    from cctbx import uctbx
+    return uctbx.unit_cell(self.unit_cell_parameters)
+
+  def statistics (self) :
+    from cctbx import maptbx
+    return maptbx.statistics(self.data)
