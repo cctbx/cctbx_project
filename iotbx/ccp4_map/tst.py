@@ -3,6 +3,7 @@ from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
+from cStringIO import StringIO
 import sys, os
 
 def exercise_with_tst_input_map():
@@ -22,6 +23,9 @@ def exercise_with_tst_input_map():
   assert m.data.origin() == (0, 0, 0)
   assert m.data.all() == (16, 8, 16)
   assert not m.data.is_padded()
+  out = StringIO()
+  m.show_summary(out=out)
+  assert ("map grid:   (16, 8, 16)" in out.getvalue())
 
 def exercise(args):
   exercise_with_tst_input_map()
