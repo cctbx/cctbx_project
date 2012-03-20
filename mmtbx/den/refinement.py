@@ -58,12 +58,12 @@ class manager(object):
               "serious error; please contact bugs@phenix-online.org.") % so)
           grid_so.append(so)
           grid_results.append(r)
-        self.show_den_opt_summary_torsion(grid_results)
       else:
         for grid_pair in grid:
           result = self.try_den_weight_torsion(
                      grid_pair=grid_pair)
           grid_results.append(result)
+      self.show_den_opt_summary_torsion(grid_results)
     elif "cartesian" in params.den.annealing_type:
       print >> self.log, "Running Cartesian simulated annealing"
       if ( (params.den.optimize) and
@@ -80,12 +80,12 @@ class manager(object):
               "serious error; please contact bugs@phenix-online.org.") % so)
           grid_so.append(so)
           grid_results.append(r)
-        self.show_den_opt_summary_cartesian(grid_results)
       else:
         for grid_pair in grid:
           result = self.try_den_weight_cartesian(
                      grid_pair=grid_pair)
           grid_results.append(result)
+      self.show_den_opt_summary_cartesian(grid_results)
     else:
       raise "error in DEN annealing type"
     low_r_free = 1.0
@@ -104,7 +104,7 @@ class manager(object):
     assert best_xray_structure is not None
     if params.den.optimize:
       print >> self.log, "\nbest gamma: %.1f" % best_gamma
-      print >> self.log, "best weight: %.1f" % best_weight
+      print >> self.log, "best weight: %.1f\n" % best_weight
       if params.den.verbose:
         print >> self.log, "\nBest annealing results:\n"
         print >> self.log, grid_so[best_so_i]
